@@ -234,7 +234,7 @@ gismo::gsTensorBSpline<2, real_t>
 gsFrogSplines<N>::load_model_patch(int valence, std::string subtype)
 {
 
-    gsFileData<real_t> fd(m_options.getString("model_patch_path") + "Val" +
+    gsFileData<real_t> fd(m_options.getString("frog_dir") + "Val" +
                           std::to_string(valence) + "Fcts.xml");
     auto fitting_fcts = fd.getAll<gsMultiPatch<real_t>>();
     auto patches = fitting_fcts[0]->patches();
@@ -573,8 +573,8 @@ template <size_t N> gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
 
     auto& mesh = *m_mesh;
     const bool optimize_fit = m_options.getSwitch("optimize_fit");
-    const std::string model_patch_path =
-        m_options.getString("model_patch_path");
+    const std::string frog_dir =
+        m_options.getString("frog_dir");
 
     std::vector<index_t> ev_coef_starts;
     std::vector<index_t> ev_coef_ends;
@@ -586,7 +586,7 @@ template <size_t N> gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
             continue;
 
         // Load the model-patch fitting functions.
-        gsFileData<real_t> fd(m_options.getString("model_patch_path") + "Val" +
+        gsFileData<real_t> fd(m_options.getString("frog_dir") + "Val" +
                               std::to_string(mesh.valence(v)) + "Fcts.xml");
         auto fitting_fcts = fd.getAll<gsMultiPatch<real_t>>();
         const size_t function_count = fitting_fcts.size();
@@ -611,13 +611,13 @@ template <size_t N> gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
         const index_t ev_coef_start = ev_coef_starts[ev_index];
 
         // Load the model-patch fitting functions.
-        gsFileData<real_t> fd(m_options.getString("model_patch_path") + "Val" +
+        gsFileData<real_t> fd(m_options.getString("frog_dir") + "Val" +
                               std::to_string(valence) + "Fcts.xml");
         auto fitting_fcts = fd.getAll<gsMultiPatch<real_t>>();
         const size_t function_count = fitting_fcts.size();
 
         gsMatrix<real_t> kernel;
-        auto _file = gsReadFile<>(model_patch_path + "Val" +
+        auto _file = gsReadFile<>(frog_dir + "Val" +
                                       std::to_string(valence) + "Kernel.xml",
                                   kernel);
 
@@ -634,7 +634,7 @@ template <size_t N> gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
         }
         else
         {
-            gsReadFile<>(model_patch_path + "Val" + std::to_string(valence) +
+            gsReadFile<>(frog_dir + "Val" + std::to_string(valence) +
                              "Constraints.xml",
                          functional);
         }
@@ -897,7 +897,7 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
         }
 
         // Load the model-patch fitting functions.
-        gsFileData<real_t> fd(m_options.getString("model_patch_path") + "Val" +
+        gsFileData<real_t> fd(m_options.getString("frog_dir") + "Val" +
                               std::to_string(valence) + "Fcts.xml");
         auto fitting_fcts = fd.getAll<gsMultiPatch<real_t>>();
         const size_t function_count = fitting_fcts.size();

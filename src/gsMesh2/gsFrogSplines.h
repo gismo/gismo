@@ -55,8 +55,9 @@ public: // Constructors
     ///   least-squares fit around extraordinary vertices using a per-sample
     ///   weight vector loaded from
     ///   \c filedata/frog/val\<v\>_weights.xml.
-    /// - \c model_patch_path (string, default \c "frog/bubble/"): path
-    ///   to the directory containing the model patch \c .xml files.
+    /// - \c frog_dir (string, default \c "frog/bubble/"): path
+    ///   to the directory containing a set of frog spline generating
+    ///   functions for each required valence.
     ///
     /// \param mesh Pointer to the \c gsSurfMesh to be targeted by this object.
     gsFrogSplines(gsSurfMesh* mesh, size_t D) : gsSubdivisionScheme(mesh), D(D)
@@ -72,7 +73,7 @@ public: // Constructors
                             "using a per-sample weight vector loaded from "
                             "`filedata/frog/val<v>_weights.xml`.",
                             false);
-        m_options.addString("model_patch_path", "Path to the model patches.",
+        m_options.addString("frog_dir", "Path to the directory containing a set of frog spline generating functions for each required valence.",
                             "frog/bubble/");
     }
 
@@ -203,7 +204,7 @@ private: // Helper functions
     /// \brief Loads a model patch of the given valence and type.
     ///
     /// Reads the file \c Val<valence>Fct1.xml from the directory given by the
-    /// \c model_patch_path option, selects the patch corresponding to
+    /// \c frog_dir option, selects the patch corresponding to
     /// \c subtype, drops the third coordinate (returns a 2D patch), and
     /// applies the rotation or scaling needed so that the \f$(0,0)\f$
     /// parameter point of every \c fine_* patch coincides with the central

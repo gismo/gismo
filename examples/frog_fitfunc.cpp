@@ -19,15 +19,13 @@
 
     \par Command-line arguments
     - \b -m / \b --mesh (default: \c frog/flat/Val5Flat.xml): path to
-   the input mesh \c .xml file (collection of \c gsTensorBSpline<2> patches),
+      the input mesh \c .xml file (collection of \c gsTensorBSpline<2> patches),
       relative to \c filedata/.
     - \b -f / \b --function (default: \c "x+y"): analytic expression of the
       target function \f$f(x,y)\f$ to be fitted to the last coordinate.
-    - \b -p / \b --patches (default: \c frog/bubble/): path, relative
-      to \c filedata/, to the directory containing the model patch files for
-      extraordinary-vertex subdivision together with the auxiliary
-      \c Val\<v\>Kernel.xml files and, unless \b --opt is set, the
-      \c Val\<v\>Constraints.xml files.
+    - \b -p / \b --frogdir (default: \c frog/bubble/): path, relative
+      to \c filedata/, to the directory containing a set of frog spline
+      generating functions for each required valence.
     - \b -s / \b --steps (default: \c 2): number of refinement levels to test
       (i.e. maximum number of subdivision steps).
     - \b -a / \b --samples (default: \c 10): number of sample points per
@@ -35,12 +33,15 @@
     - \b -v / \b --valence (default: \c -1, disabled): if set to a positive
       value, \b --mesh is ignored and the flat model patch for the given
       extraordinary valence is loaded directly from the patch directory.
-    - \b --paraview: if set, writes Paraview output (\c results/fitfunc_*.vts
-      and \c results/fitfunc.pvd) for every refinement level.
+    - \b --paraview: if set, writes Paraview output (\c results/step*.vts,
+      \c results/function_fit.pvd, and optionally \c results/error*.vts and
+      \c results/function_error.pvd) for every refinement level.
     - \b --cnet: if set (together with \b --paraview), also writes the Bézier
-      control net and the EV Greville control points with their point indices.
-    - \b --errors: if set, writes the \f$L^\infty\f$ and \f$L^2\f$ error
-      column vectors to \c errors.csv.
+      control net (\c results/function_cnet.pvd) and the EV Greville control
+      points with their point indices.
+    - \b -e / \b --errors: if set to a file path, writes the \f$L^\infty\f$
+      and \f$L^2\f$ error column vectors to the specified file and outputs
+      the error as a paraview patch (if \b --paraview is set).
     - \b --weighted: if set, weights the least-squares fit around
       extraordinary vertices using a per-sample weight vector loaded from \c
       filedata/frog/val\<v\>_weights.xml.
@@ -75,7 +76,7 @@ int main(int argc, char** argv)
     bool optimize_fit(false);
     bool weighted_fit(false);
     bool paraview(false);
-    bool write_errors(false);
+    std::string error_path("");
 
     // Inputs
     gsCmdLine cmd("Frog subdivision");
@@ -84,9 +85,9 @@ int main(int argc, char** argv)
                   "A function to replace the last coordinate of your loaded "
                   "object. E.g. `x^2 + y`. Defaults to `x+y`",
                   function);
-    cmd.addString("p", "patches",
-                  "The path to the folder containing the model patches for EV "
-                  "subdivision.",
+    cmd.addString("p", "frogdir",
+                  "The path to the folder containing a set of frog spline "
+                  "generating functions for each required valence.",
                   model_patch_path);
     cmd.addInt("s", "steps",
                "The number of steps (subdivide, fit, smooth) to repeat.",
@@ -100,10 +101,11 @@ int main(int argc, char** argv)
         valence);
     cmd.addSwitch("paraview", "Outputs the fits to paraview.", paraview);
     cmd.addSwitch("cnet", "Shows the control net of the patches.", control_net);
-    cmd.addSwitch("errors",
-                  "Writes an error matrix to a file and outputs the error as a "
+    cmd.addString("e", "errors",
+                  "Writes an error matrix to a file at the given path and "
+                  "outputs the error as a "
                   "paraview patch.",
-                  write_errors);
+                  error_path);
     cmd.addSwitch("opt",
                   "During smoothing, selects EV coefficient representatives by "
                   "minimizing the diff functional instead of using "
@@ -129,7 +131,7 @@ int main(int argc, char** argv)
 
     gsSurfMesh mesh = gsSurfMesh();
     auto subdiv = gsFrogSplines<5>(&mesh, 2);
-    subdiv.options().setString("model_patch_path", model_patch_path);
+    subdiv.options().setString("frog_dir", model_patch_path);
     subdiv.options().setSwitch("optimize_fit", optimize_fit);
     subdiv.options().setSwitch("weighted_fit", weighted_fit);
 
@@ -153,7 +155,7 @@ int main(int argc, char** argv)
         }
         subdiv.fit_function(func);
 
-        if (write_errors)
+        if (!error_path.empty())
             errors.col(i) = subdiv.error(func, samples);
 
         if (paraview)
@@ -164,7 +166,7 @@ int main(int argc, char** argv)
             subdiv.write_paraview(stepname, &collection, &cnet_collection,
                                   i + 1, control_net);
 
-            if (write_errors)
+            if (!error_path.empty())
             {
                 subdiv.write_paraview_error(
                     func, errors(0, i), "results/error" + std::to_string(i + 1),
@@ -201,16 +203,17 @@ int main(int argc, char** argv)
     if (paraview)
     {
         collection.save();
-        if (write_errors)
+        if (!error_path.empty())
             error_collection.save();
         if (control_net)
             cnet_collection.save();
     }
 
     // Write error matrix to errors.csv.
-    // The `build/errors/` directory needs to be manually created for this to work!
-    if (write_errors)
-        gsWriteCsv("errors/fit_errors.csv", errors);
+    // The `build/errors/` directory needs to be manually created for this to
+    // work!
+    if (!error_path.empty())
+        gsWriteCsv(error_path, errors);
 
     return 0;
 }

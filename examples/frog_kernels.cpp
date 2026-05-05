@@ -25,9 +25,9 @@
     subdirectory of \c filedata.
 
     \par Command-line arguments
-    - \b -p / \b --patchpath (default: \c frog/bubble/): path, relative
-      to \c filedata/, to the directory that contains the collated model patch
-      file \c Val\<v\>Fcts.xml.
+    - \b -p / \b --frogdir (default: \c frog/bubble/): path, relative
+      to \c filedata/, to the directory containing a set of frog spline
+      generating functions for each required valence.
     - \b -v / \b --valence (default: \c 9): maximum extraordinary-vertex
       valence to process. Kernel bases are generated for all valences
       \f$v \in \{3, 5, 6, \ldots, \mathrm{valence\_max}\}\f$ (valence 4 is
@@ -48,9 +48,9 @@ int main(int argc, char** argv)
     std::string patchpath("frog/bubble/");
     gsCmdLine cmd("Frog subdivision");
     index_t valence_max(6);
-    cmd.addString("p", "patchpath",
-                  "The path to the files containing the model patches for EV "
-                  "subdivision.",
+    cmd.addString("p", "frogdir",
+                  "The path to the folder containing a set of frog spline "
+                  "generating functions for each required valence.",
                   patchpath);
     cmd.addInt("v", "valence", "Maximal valence to calculate.", valence_max);
     try

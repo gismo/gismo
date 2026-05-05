@@ -19,9 +19,9 @@
       to perform. Each character is executed in order:
       - \c d — one subdivision step (\c subdivide()).
       - \c s — one \f$C^1\f$ smoothing step (\c smooth(1)).
-    - \b -p / \b --patches (default: \c frog/bubble/): path to the
-      directory containing the model patch \c .xml files used for
-      extraordinary-vertex subdivision.
+    - \b -p / \b --frogdir (default: \c frog/bubble/): path to the
+      directory containing a set of frog spline generating functions for
+      each required valence.
     - \b --cnet: if set, also writes the Bézier control net alongside the
       patch surface at every step.
     - \b --opt: if set, uses kernel-space functional optimisation
@@ -54,9 +54,9 @@ int main(int argc, char** argv)
                   "Operations to perform on the mesh. Use d for subdivision "
                   "and s for (c1) smoothing",
                   operations);
-    cmd.addString("p", "patches",
-                  "The path to the files containing the model patches for EV "
-                  "subdivision.",
+    cmd.addString("p", "frogdir",
+                  "The path to the folder containing a set of frog spline "
+                  "generating functions for each required valence.",
                   patchpath);
     cmd.addSwitch("cnet", "Shows the control net of the patches.", control_net);
     cmd.addSwitch(
@@ -75,7 +75,7 @@ int main(int argc, char** argv)
     gsSurfMesh mesh = gsSurfMesh();
     auto subdiv = gsFrogSplines<5>(&mesh, 3);
 
-    subdiv.options().setString("model_patch_path", patchpath);
+    subdiv.options().setString("frog_dir", patchpath);
     subdiv.options().setSwitch("optimize_fit", optimize_fit);
 
     subdiv.initialize_data(filepath, 3);

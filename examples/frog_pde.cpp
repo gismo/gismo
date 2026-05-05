@@ -47,9 +47,9 @@
       - ID 2 (\c Function, optional): the exact solution \f$u^*(x,y)\f$.
         If present, \f$L^\infty\f$ and \f$L^2\f$ errors are printed and
         written to \c errors.csv.
-    - \b -p / \b --patches (default: \c frog/bubble/): path, relative to
-      \c filedata/, to the directory containing the model patch files for
-      extraordinary-vertex subdivision.
+    - \b -p / \b --frogdir (default: \c frog/bubble/): path, relative to
+      \c filedata/, to the directory containing a set of frog spline
+      generating functions for each required valence.
     - \b -s / \b --steps (default: \c 2): number of refinement levels
       (subdivide-then-solve iterations).
     - \b --paraview: if set, writes Paraview output (\c results/pde_*.vts
@@ -103,9 +103,9 @@ int main(int argc, char** argv)
                   "Path to an XML file containing PDE inputs (OptionList at "
                   "ID 0, RHS function at ID 1, exact solution at ID 2).",
                   input_path);
-    cmd.addString("p", "patches",
-                  "The path to the folder containing the model patches for EV "
-                  "subdivision.",
+    cmd.addString("p", "frogdir",
+                  "The path to the folder containing a set of frog spline "
+                  "generating functions for each required valence.",
                   model_patch_path);
 
     // Process modification
@@ -176,7 +176,7 @@ int main(int argc, char** argv)
 
     gsSurfMesh mesh = gsSurfMesh();
     auto subdiv = gsFrogSplines<5>(&mesh, mesh_dim);
-    subdiv.options().setString("model_patch_path", model_patch_path);
+    subdiv.options().setString("frog_dir", model_patch_path);
 
     gsMatrix<real_t> errors(2, steps);
 
