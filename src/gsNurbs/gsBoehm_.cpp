@@ -207,6 +207,39 @@ void gsTensorInsertKnotDegreeTimes<2,
         gsVector<index_t, 2>& end);
 
 
+// gsKnotRemoveSingle
+
+TEMPLATE_INST
+bool gsKnotRemoveSingle<T, gsKnotVector<T>, gsMatrix<T> >(
+    gsKnotVector<T> & knots,
+    gsMatrix<T>     & coefs,
+    T                 val,
+    bool              update_knots
+    );
+
+// gsKnotRemove
+
+TEMPLATE_INST
+index_t gsKnotRemove<T, gsKnotVector<T>, gsMatrix<T> >(
+        gsKnotVector<T> & knots,
+        gsMatrix<T>     & coefs,
+        T                 val,
+        index_t               t,
+        bool              update_knots
+        );
+
+// gsTensorKnotRemove
+
+TEMPLATE_INST
+index_t gsTensorKnotRemove<T, gsKnotVector<T>, gsMatrix<T> >(
+        gsKnotVector<T>    & knots,
+        gsMatrix<T>        & coefs,
+        T                    val,
+        index_t              direction,
+        gsVector<index_t>    str,
+        index_t              t,
+        bool                 update_knots);
+
 } // end namespace gismo
 
 #undef T

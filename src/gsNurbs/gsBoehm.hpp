@@ -801,4 +801,250 @@ void gsTensorInsertKnotDegreeTimes(
     } while(nextCubePoint<gsVector<index_t, d> >(position, start, end));
 }
 
+
+// =============================================================================
+// Knot removal algorithms (Tiller, NURBS Book Algorithm A5.8)
+// =============================================================================
+
+template<class T, class KnotVectorType, class Mat>
+bool gsKnotRemoveSingle(
+    KnotVectorType & knots,
+    Mat            & coefs,
+    T                val,
+    bool             update_knots)
+{
+    // Piegl & Tiller, "The NURBS Book" 2nd ed., Algorithm A5.8
+    const short_t p = knots.degree();
+    const index_t n = coefs.rows() - 1; // last coef index (0-based)
+
+    // r: last-occurrence index of val in the knot vector (0-based)
+    const index_t r = knots.iFind(val) - knots.begin();
+    const index_t s = knots.multiplicity(val);
+
+    GISMO_ASSERT(s >= 1, "Knot value " << val << " not found in knot vector.");
+
+    const index_t ord   = p + 1;
+    const index_t first = r - p;
+    const index_t last  = r - s;
+
+    // temp stores candidate control points offset so that
+    //   temp[k]  represents the point at absolute index (first - 1 + k),
+    //   i.e. temp[0] = P[first-1], temp[last-first+2] = P[last+1].
+    const index_t sz = last - first + 3;
+    Mat temp(sz, coefs.cols());
+    temp.row(0)      = coefs.row(first - 1);
+    temp.row(sz - 1) = coefs.row(last  + 1);
+
+    // ii and jj are indices INTO temp (1-based left, (sz-2)-based right).
+    // i and j are indices into the original coef array.
+    index_t i  = first,   ii = 1;
+    index_t j  = last,    jj = sz - 2;
+
+    while (ii <= jj)
+    {
+        const T alfi = (val - knots[i])   / (knots[i + ord] - knots[i]);
+        const T alfj = (val - knots[j])   / (knots[j + ord] - knots[j]);
+        temp.row(ii) = (coefs.row(i) - (T(1) - alfi) * temp.row(ii - 1)) / alfi;
+        temp.row(jj) = (coefs.row(j) -        alfj   * temp.row(jj + 1)) / (T(1) - alfj);
+        ++i; ++ii;
+        --j; --jj;
+    }
+
+    // P&T feasibility check (The NURBS Book, Algorithm A5.8 / Eq. 5.28):
+    // After the loop, if j < i the chains crossed (no middle point): check
+    // that temp[ii-1] == temp[jj+1].  If j >= i a middle point remains: check
+    // that coefs[i] lies on the interpolated line between temp[ii-1] and
+    // temp[jj+1] (reference: NURBS-Python helpers.py knot_removal, line 698-712).
+    if (j < i)  // chains crossed — odd number of points in [first,last]
+    {
+        if ((temp.row(ii - 1) - temp.row(jj + 1)).norm() > T(1e-10))
+            return false;
+    }
+    else  // middle point remains — check interpolation
+    {
+        const T alfa = (val - knots[i]) / (knots[i + ord] - knots[i]);
+        if ((coefs.row(i) - (alfa * temp.row(ii - 1) + (T(1) - alfa) * temp.row(jj + 1))).norm() > T(1e-10))
+            return false;
+    }
+
+    // Write back new control points.
+    // Mirror the computation: left chain → coefs[first..], right chain → ..coefs[last].
+    // Middle point (if sz is odd) is left unchanged.
+    {
+        index_t wi = first, wj = last, wii = 1, wjj = sz - 2;
+        while (wi < wj)
+        {
+            coefs.row(wi) = temp.row(wii);
+            coefs.row(wj) = temp.row(wjj);
+            ++wi; ++wii;
+            --wj; --wjj;
+        }
+    }
+
+    // Shift [last+1 .. n] left by one to close the gap
+    for (index_t idx = last + 1; idx <= n; ++idx)
+        coefs.row(idx - 1) = coefs.row(idx);
+
+    coefs.conservativeResize(n, coefs.cols());
+
+    if (update_knots)
+        knots.remove(val, 1);
+
+    return true;
+}
+
+
+template<class T, class KnotVectorType, class Mat>
+index_t gsKnotRemove(
+    KnotVectorType & knots,
+    Mat            & coefs,
+    T                val,
+    index_t              t,
+    bool             update_knots)
+{
+    index_t removed = 0;
+    for (index_t i = 0; i < t; ++i)
+    {
+        if (!gsKnotRemoveSingle<T>(knots, coefs, val, update_knots))
+            break;
+        ++removed;
+    }
+    return removed;
+}
+
+
+template<typename T, typename KnotVectorType, typename Mat>
+index_t gsTensorKnotRemove(
+        KnotVectorType        & knots,
+        Mat                   & coefs,
+        T                       val,
+        index_t                 direction,
+        gsVector<index_t>       str,
+        index_t                 t,
+        bool                    update_knots)
+{
+    GISMO_ASSERT(t >= 1, "Must remove at least once.");
+    GISMO_ASSERT(direction < str.size(),
+                 "Direction out of range.");
+
+    const short_t d           = str.size();
+    const index_t num_in_dir  = knots.size() - knots.degree() - 1;
+    const index_t num_fibers  = coefs.rows() / num_in_dir;
+    const index_t step        = str[direction];
+
+    // Helper: extract a single fiber (column of coefficients along direction)
+    // and write it back.
+    index_t total_removed = t; // will be reduced to minimum over fibers per pass
+
+    for (index_t pass = 0; pass < t; ++pass)
+    {
+        // Try one removal on all fibers; if any fails the pass is aborted
+        // and coefs/knots are restored from saved copies.
+        Mat coefs_backup = coefs;
+
+        // Re-compute strides from current state
+        gsVector<index_t> position(d);
+        position.fill(0);
+        gsVector<index_t> first_point(d);
+        first_point.fill(0);
+        gsVector<index_t> last_point(d);
+        getLastIndex(str, coefs.rows(), last_point);
+        last_point[direction] = 0;
+
+        bool all_ok = true;
+
+        do
+        {
+            const index_t base = getIndex(str, position);
+
+            // Build fiber coefficient matrix (num_in_dir rows)
+            Mat fiber(num_in_dir, coefs.cols());
+            for (index_t i = 0; i < num_in_dir; ++i)
+                fiber.row(i) = coefs.row(base + i * step);
+
+            // Attempt removal on fiber (don't update knots yet)
+            KnotVectorType knots_copy = knots;
+            if (!gsKnotRemoveSingle<T>(knots_copy, fiber, val, false))
+            {
+                all_ok = false;
+                break;
+            }
+
+            // Write fiber back (now has num_in_dir - 1 rows)
+            // We write into coefs_backup at the right positions
+            // Note: coefs_backup still has the old size; we will
+            // rebuild coefs after all fibers succeed.
+            for (index_t i = 0; i < num_in_dir - 1; ++i)
+                coefs_backup.row(base + i * step) = fiber.row(i);
+            // The "last" slot is temporarily stale — will be fixed
+            // when we compact below.
+
+        } while (nextCubePoint<gsVector<index_t>>(position, first_point, last_point));
+
+        if (!all_ok)
+        {
+            // Restore and stop
+            total_removed = pass;
+            break;
+        }
+
+        // All fibers succeeded: compact the coefficient matrix
+        // (remove one "layer" per direction stride)
+        const index_t new_num_in_dir = num_in_dir - 1;
+        const index_t new_npts = num_fibers * new_num_in_dir;
+        Mat new_coefs(new_npts, coefs.cols());
+
+        // Recompute stride for the compacted matrix
+        gsVector<index_t> new_str(str);
+        correctNewStride(new_str, str, direction, -1);  // -1 removal
+
+        gsVector<index_t> pos(d);  pos.fill(0);
+        gsVector<index_t> fp(d);   fp.fill(0);
+        gsVector<index_t> lp(d);
+        getLastIndex(str, coefs.rows(), lp);
+        lp[direction] = 0;
+        gsVector<index_t> new_pos(d); new_pos.fill(0);
+        gsVector<index_t> new_lp(d);
+        getLastIndex(new_str, new_npts, new_lp);
+        new_lp[direction] = 0;
+
+        const index_t new_step = new_str[direction];
+
+        bool flag2 = true;
+        do
+        {
+            if (!flag2)
+                GISMO_ERROR("gsTensorKnotRemove: index error during compaction.");
+
+            const index_t ind     = getIndex(str,     pos);
+            const index_t new_ind = getIndex(new_str, new_pos);
+
+            // Rebuild fiber from coefs_backup
+            Mat fiber(num_in_dir, coefs.cols());
+            for (index_t i = 0; i < num_in_dir; ++i)
+                fiber.row(i) = coefs.row(ind + i * step);
+
+            // Re-run the (guaranteed) removal to get the compacted fiber
+            KnotVectorType knots_dummy = knots;
+            gsKnotRemoveSingle<T>(knots_dummy, fiber, val, false);
+
+            for (index_t i = 0; i < new_num_in_dir; ++i)
+                new_coefs.row(new_ind + i * new_step) = fiber.row(i);
+
+            flag2 = nextCubePoint<gsVector<index_t>>(new_pos, fp, new_lp);
+
+        } while (nextCubePoint<gsVector<index_t>>(pos, fp, lp));
+
+        coefs = give(new_coefs);
+        str   = new_str;
+
+        if (update_knots)
+            knots.remove(val, 1);
+    }
+
+    if (total_removed == t) // loop completed without break
+        return t;
+    return total_removed;
+}
+
 } // namespace gismo
