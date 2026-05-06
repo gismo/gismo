@@ -4,7 +4,7 @@
   <!-- Computational domain -->
   <MultiPatch parDim="2" id="0">
     <patches type="id_range">500 500</patches>
-    <boundary name="clamped">
+    <boundary name="weak">
       500 1
       500 2
       500 3
