@@ -220,24 +220,24 @@ bool gsKnotRemoveSingle<T, gsKnotVector<T>, gsMatrix<T> >(
 // gsKnotRemove
 
 TEMPLATE_INST
-index_t gsKnotRemove<T, gsKnotVector<T>, gsMatrix<T> >(
+int gsKnotRemove<T, gsKnotVector<T>, gsMatrix<T> >(
         gsKnotVector<T> & knots,
         gsMatrix<T>     & coefs,
         T                 val,
-        index_t               t,
+        int               t,
         bool              update_knots
         );
 
 // gsTensorKnotRemove
 
 TEMPLATE_INST
-index_t gsTensorKnotRemove<T, gsKnotVector<T>, gsMatrix<T> >(
+int gsTensorKnotRemove<T, gsKnotVector<T>, gsMatrix<T> >(
         gsKnotVector<T>    & knots,
         gsMatrix<T>        & coefs,
         T                    val,
-        index_t              direction,
-        gsVector<index_t>    str,
-        index_t              t,
+        int                  direction,
+        gsVector<unsigned>   str,
+        int                  t,
         bool                 update_knots);
 
 } // end namespace gismo

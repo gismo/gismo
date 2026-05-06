@@ -895,15 +895,15 @@ bool gsKnotRemoveSingle(
 
 
 template<class T, class KnotVectorType, class Mat>
-index_t gsKnotRemove(
+int gsKnotRemove(
     KnotVectorType & knots,
     Mat            & coefs,
     T                val,
-    index_t              t,
+    int              t,
     bool             update_knots)
 {
-    index_t removed = 0;
-    for (index_t i = 0; i < t; ++i)
+    int removed = 0;
+    for (int i = 0; i < t; ++i)
     {
         if (!gsKnotRemoveSingle<T>(knots, coefs, val, update_knots))
             break;
@@ -914,13 +914,13 @@ index_t gsKnotRemove(
 
 
 template<typename T, typename KnotVectorType, typename Mat>
-index_t gsTensorKnotRemove(
+int gsTensorKnotRemove(
         KnotVectorType        & knots,
         Mat                   & coefs,
         T                       val,
-        index_t                 direction,
-        gsVector<index_t>       str,
-        index_t                 t,
+        int                     direction,
+        gsVector<unsigned>      str,
+        int                     t,
         bool                    update_knots)
 {
     GISMO_ASSERT(t >= 1, "Must remove at least once.");
@@ -934,9 +934,9 @@ index_t gsTensorKnotRemove(
 
     // Helper: extract a single fiber (column of coefficients along direction)
     // and write it back.
-    index_t total_removed = t; // will be reduced to minimum over fibers per pass
+    int total_removed = t; // will be reduced to minimum over fibers per pass
 
-    for (index_t pass = 0; pass < t; ++pass)
+    for (int pass = 0; pass < t; ++pass)
     {
         // Try one removal on all fibers; if any fails the pass is aborted
         // and coefs/knots are restored from saved copies.
@@ -995,7 +995,7 @@ index_t gsTensorKnotRemove(
         Mat new_coefs(new_npts, coefs.cols());
 
         // Recompute stride for the compacted matrix
-        gsVector<index_t> new_str(str);
+        gsVector<unsigned> new_str(str);
         correctNewStride(new_str, str, direction, -1);  // -1 removal
 
         gsVector<index_t> pos(d);  pos.fill(0);

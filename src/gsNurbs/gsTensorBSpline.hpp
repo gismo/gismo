@@ -345,7 +345,7 @@ template<short_t d, class T>
 index_t gsTensorBSpline<d,T>::removeKnot( T knot, short_t dir, short_t i)
 {
     GISMO_ASSERT( i > 0, "Must remove at least once.");
-    GISMO_ASSERT( dir >= 0 &&  < d,
+    GISMO_ASSERT( dir >= 0 && dir < d,
                   "Invalid direction " << dir );
 
     gsVector<index_t,d> sz;
