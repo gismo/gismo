@@ -559,13 +559,28 @@ template <size_t N> gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
     gsMappedBasis<2> mapped_basis;
     this->c1_basis(multi_patch, multi_basis, mapped_basis);
 
+    gsInfo << "Pre-solve\n";
+
+    // Use CGDiagonal instead of the default SimplicialLDLT direct solver.
+    // At fine refinements, SimplicialLDLT produces huge fill-in for systems
+    // with EV basis functions spanning many patches, causing OOM kills.
+    // Also disable the post-solve error integral: smooth() does not need it.
+    // TODO: Maybe just replace this with a solver as in laplace_beltrami.
+    gsOptionList proj_opts;
+    proj_opts.addString("LinearSolver", "Linear solver for L2 projection",
+                        "CGDiagonal");
+    proj_opts.addSwitch("ComputeError",
+                        "Compute L2 projection error after solve", false);
+
     gsMatrix<real_t> coefficients;
     gsL2Projection<real_t>::project(multi_basis, mapped_basis, multi_patch,
-                                    coefficients);
+                                    coefficients, proj_opts);
 
     // The L2 projection returns a flattened vector with one block per
     // coordinate direction; gsMappedSpline expects one row per mapped DoF.
     coefficients = coefficients.reshape(mapped_basis.size(), D);
+
+    gsInfo << "pre-opt\n";
 
     // ===============================
     // Phase 2: Optimize Coefficients
