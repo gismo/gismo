@@ -42,14 +42,15 @@ int main(int argc, char** argv)
 {
     // Command line
     std::string filepath("off/octtorus.off");
-    std::string patchpath("frog/bubble/");
+    std::string frogdir("frog/bubble/");
     std::string operations("sd");
     bool control_net(false);
     bool optimize_fit(false);
 
     // Inputs
     gsCmdLine cmd("frog subdivision");
-    cmd.addPlainString("mesh", "Path to the file containing the mesh.", filepath);
+    cmd.addPlainString("mesh", "Path to the file containing the mesh.",
+                       filepath);
     cmd.addString("o", "operations",
                   "Operations to perform on the mesh. Use d for subdivision "
                   "and s for (c1) smoothing",
@@ -57,7 +58,7 @@ int main(int argc, char** argv)
     cmd.addString("p", "frogdir",
                   "The path to the folder containing a set of frog spline "
                   "generating functions for each required valence.",
-                  patchpath);
+                  frogdir);
     cmd.addSwitch("cnet", "Shows the control net of the patches.", control_net);
     cmd.addSwitch(
         "opt",
@@ -75,7 +76,7 @@ int main(int argc, char** argv)
     gsSurfMesh mesh = gsSurfMesh();
     auto subdiv = gsFrogSplines<5>(&mesh, 3);
 
-    subdiv.options().setString("frog_dir", patchpath);
+    subdiv.options().setString("frog_dir", frogdir);
     subdiv.options().setSwitch("optimize_fit", optimize_fit);
 
     subdiv.initialize_data(filepath, 3);
@@ -84,7 +85,8 @@ int main(int argc, char** argv)
     gsParaviewCollection collection("results/fit");
     gsParaviewCollection cnet_collection("results/cnet");
 
-    subdiv.write_paraview("results/initial_data", &collection, &cnet_collection, 0, control_net);
+    subdiv.write_paraview("results/initial_data", &collection, &cnet_collection,
+                          0, control_net);
 
     size_t i(1);
     for (char c : operations)
@@ -104,13 +106,13 @@ int main(int argc, char** argv)
             break;
         }
 
-        subdiv.write_paraview("results/step" + std::to_string(i),
-                              &collection,&cnet_collection,  i, control_net);
+        subdiv.write_paraview("results/step" + std::to_string(i), &collection,
+                              &cnet_collection, i, control_net);
         ++i;
     }
 
     collection.save();
-    if(control_net)
+    if (control_net)
         cnet_collection.save();
 
     return 0;

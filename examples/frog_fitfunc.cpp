@@ -67,7 +67,7 @@ int main(int argc, char** argv)
 {
     // Command line inputs
     std::string mesh_path("frog/flat/Val5Flat.xml");
-    std::string model_patch_path("frog/bubble/");
+    std::string frogdir("frog/bubble/");
     index_t steps(2);
     index_t valence(-1);
     index_t samples(10);
@@ -88,7 +88,7 @@ int main(int argc, char** argv)
     cmd.addString("p", "frogdir",
                   "The path to the folder containing a set of frog spline "
                   "generating functions for each required valence.",
-                  model_patch_path);
+                  frogdir);
     cmd.addInt("s", "steps",
                "The number of steps (subdivide, fit, smooth) to repeat.",
                steps);
@@ -131,7 +131,7 @@ int main(int argc, char** argv)
 
     gsSurfMesh mesh = gsSurfMesh();
     auto subdiv = gsFrogSplines<5>(&mesh, 2);
-    subdiv.options().setString("frog_dir", model_patch_path);
+    subdiv.options().setString("frog_dir", frogdir);
     subdiv.options().setSwitch("optimize_fit", optimize_fit);
     subdiv.options().setSwitch("weighted_fit", weighted_fit);
 

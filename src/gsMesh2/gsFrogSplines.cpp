@@ -490,8 +490,8 @@ template <size_t N> void gsFrogSplines<N>::subdivide()
                     // Get the parameters of the same point in the coarse
                     // geometry model via Newton-Raphson. Note that internally,
                     // the tolerance is squared, so this is a tolerance of
-                    // 1e-6.
-                    coarse_model.closestPointTo(point, closest_point, 1e-3,
+                    // 1e-12.
+                    coarse_model.closestPointTo(point, closest_point, 1e-6,
                                                 true);
 
                     // Sample the old control net.

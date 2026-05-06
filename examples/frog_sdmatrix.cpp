@@ -48,13 +48,13 @@ using namespace gismo;
 int main(int argc, char** argv)
 {
     // CMD arguments
-    std::string patchpath("frog/bubble/");
+    std::string frogdir("frog/bubble/");
     index_t valence_max(6);
     gsCmdLine cmd("frog subdivision");
     cmd.addString("p", "frogdir",
                   "The path to the folder containing a set of frog spline "
                   "generating functions for each required valence.",
-                  patchpath);
+                  frogdir);
     cmd.addInt("v", "valence", "Maximal valence to calculate.", valence_max);
     try
     {
@@ -68,7 +68,7 @@ int main(int argc, char** argv)
     // Basic objects
     gsSurfMesh mesh = gsSurfMesh();
     auto subdiv = gsFrogSplines<5>(&mesh, 3);
-    subdiv.options().setString("frog_dir", patchpath);
+    subdiv.options().setString("frog_dir", frogdir);
 
     // Iterate all valences
     for (size_t valence = 3; valence <= size_t(valence_max); ++valence)
@@ -79,7 +79,7 @@ int main(int argc, char** argv)
         gsInfo << "=================\n    Valence " << valence
                << "\n=================\n\n";
 
-        gsFileData<real_t> fd(patchpath + "Val" + std::to_string(valence) +
+        gsFileData<real_t> fd(frogdir + "Val" + std::to_string(valence) +
                               "Fcts.xml");
         auto fcts = fd.getAll<gsMultiPatch<real_t>>();
 
@@ -91,9 +91,7 @@ int main(int argc, char** argv)
         {
             gsInfo << "Function " << function << "\n";
             // Load the basis function patch file.
-            subdiv.initialize_data_xml(patchpath + "Val" +
-                                       std::to_string(valence) + "Fct" +
-                                       std::to_string(function) + ".xml");
+            subdiv.initialize_data_multipatch(*fcts[function]);
 
             // Subdivide once
             subdiv.subdivide();

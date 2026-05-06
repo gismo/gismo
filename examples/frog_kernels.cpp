@@ -45,13 +45,13 @@ using namespace gismo;
 int main(int argc, char** argv)
 {
     // CMD arguments
-    std::string patchpath("frog/bubble/");
+    std::string frogdir("frog/bubble/");
     gsCmdLine cmd("Frog subdivision");
     index_t valence_max(6);
     cmd.addString("p", "frogdir",
                   "The path to the folder containing a set of frog spline "
                   "generating functions for each required valence.",
-                  patchpath);
+                  frogdir);
     cmd.addInt("v", "valence", "Maximal valence to calculate.", valence_max);
     try
     {
@@ -73,7 +73,7 @@ int main(int argc, char** argv)
         gsInfo << "=================\n    Valence " << valence
                << "\n=================\n\n";
 
-        gsFileData<real_t> fd(patchpath + "Val" + std::to_string(valence) +
+        gsFileData<real_t> fd(frogdir + "Val" + std::to_string(valence) +
                               "Fcts.xml");
         auto fcts = fd.getAll<gsMultiPatch<real_t>>();
 
@@ -101,11 +101,11 @@ int main(int argc, char** argv)
         gsInfo << "Kernel size:   " << (fcts.size() - legal_pl.rank())
                << "\n";
         gsMatrix<> K = legal_pl.kernel();
-        gsWrite(K, "../filedata/" + patchpath + "Val" +
+        gsWrite(K, "../filedata/" + frogdir + "Val" +
                        std::to_string(valence) + "Kernel.xml");
 
         gsInfo << "Written kernel basis for valence " << valence << " to `"
-               << (gsFileManager::findInDataDir("") + patchpath + "Val" +
+               << (gsFileManager::findInDataDir("") + frogdir + "Val" +
                    std::to_string(valence) + "Kernel.xml")
                << "`.\n";
     }

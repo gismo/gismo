@@ -54,13 +54,13 @@ using namespace gismo;
 int main(int argc, char** argv)
 {
     // CMD arguments
-    std::string patchpath("frog/bubble/");
+    std::string frogdir("frog/bubble/");
     gsCmdLine cmd("Frog subdivision");
     index_t valence_max(6);
     cmd.addString("p", "frogdir",
                   "The path to the folder containing a set of frog spline "
                   "generating functions for each required valence.",
-                  patchpath);
+                  frogdir);
     cmd.addInt("v", "valence", "Maximal valence to calculate.", valence_max);
     try
     {
@@ -74,7 +74,7 @@ int main(int argc, char** argv)
     // Basic objects
     gsSurfMesh mesh = gsSurfMesh();
     auto subdiv = gsFrogSplines<5>(&mesh, 3);
-    subdiv.options().setString("frog_dir", patchpath);
+    subdiv.options().setString("frog_dir", frogdir);
     subdiv.options().setSwitch("optimize_fit", true);
 
     // Iterate all valences
@@ -86,7 +86,7 @@ int main(int argc, char** argv)
         gsInfo << "=================\n    Valence " << valence
                << "\n=================\n\n";
 
-        gsFileData<real_t> fd(patchpath + "Val" + std::to_string(valence) +
+        gsFileData<real_t> fd(frogdir + "Val" + std::to_string(valence) +
                               "Fcts.xml");
         auto fcts = fd.getAll<gsMultiPatch<real_t>>();
 
@@ -114,13 +114,13 @@ int main(int argc, char** argv)
         auto legal_pl = coeffs.fullPivLu();
         legal_pl.setThreshold(1e-4);
         gsMatrix<> K = legal_pl.kernel().transpose();
-        gsWrite(K, "../filedata/" + patchpath + "Val" +
+        gsWrite(K, "../filedata/" + frogdir + "Val" +
                        std::to_string(valence) + "Constraints.xml");
 
         gsInfo << "Written representative-selection functionals for valence "
                << valence
                << " to `"
-                << (gsFileManager::findInDataDir("") + patchpath + "Val" +
+                << (gsFileManager::findInDataDir("") + frogdir + "Val" +
                     std::to_string(valence) + "Constraints.xml")
                << "`.\n";
     }
