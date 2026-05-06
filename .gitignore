@@ -38,6 +38,8 @@ CMakeFiles/
 *.vtk
 *.vts
 *.vtp
+
+# Other output files
 *.csv
 *.log
 

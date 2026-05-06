@@ -13,8 +13,6 @@
 */
 
 #pragma once
-#include <fstream>
-#include <iostream>
 
 namespace gismo {
 
@@ -28,53 +26,14 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &bb,
     gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,(T)1.0,1);
     gsQuadRule<T>  qRule     = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,nNodes);
     qRule.mapTo(ab, pts);//map points on element
-
-    //gsDebugVar(ab);
-
-    // // ========== Uniform point grid ==========
-    // gsVector<T> a = ab.col(0); 
-    // gsVector<T> b = ab.col(1); 
-
-    // // Sample vector with the number of nodes
-    // gsVector<unsigned> sample(2);
-    // sample << nNodes(0), nNodes(1);
-
-    // pts = gsPointGrid(a, b, sample);
-    //gsDebugVar(pts);
-    // =========================================
-    
     bb .eval_into(pts, bev);//evaluate basis
     fun.eval_into(pts, fev);//evaluate function
     bev.transposeInPlace();
     fev.transposeInPlace();
     tmp = bev.fullPivLu().solve(fev);//solve on element
 
-    // gsInfo<<"THIS IS THE LOCALINTPL\n";
-    // gsDebugVar(bev);
-    // gsDebugVar(fev);
-    
-    //gsDebugVar(bev.fullPivLu().rcond());//solve on element
-    //real_t cond_num = bev.fullPivLu().rcond();
-    // new
     gsMatrix<T> interpolatedFev = bev.transpose() * tmp; // interpolated values at quad points
     gsMatrix<T> error = fev - interpolatedFev; // local error
-    // gsInfo<<"Iter \n";
-    // gsInfo<<"Error is: \n"<<error<<"\n";
-    
-    // std::ofstream myfile;
-    // myfile.open("error.txt", std::ios_base::app); 
-    // if (myfile.is_open())
-    // {
-    //     myfile << "Error is: \n" << error << "\n";
-    //     myfile.close();
-    // }
-    // std::ofstream myfile;
-    // myfile.open("condition.txt", std::ios_base::app); 
-    // if (myfile.is_open())
-    // {
-    //     myfile << "Error is: \n" << cond_num << "\n";
-    //     myfile.close();
-    // }
    
     // find the i-th BS:
     gsMatrix<index_t> act = bb.active(pts.col(0));
@@ -153,16 +112,7 @@ gsMatrix<T> gsQuasiInterpolate<T>::localL2(const gsHTensorBasis<d,T> &bb,
 {
     index_t lvl = bb.levelOf(i);
     index_t j = bb.flatTensorIndexOf(i);
-    // gsInfo<<"=================\n";
-    // gsDebugVar(j);
-    // gsDebugVar(lvl);
-    // gsDebugVar(bb.tensorLevel(lvl)); // returns tensor level basis function!
-    // gsDebugVar(bb.elementInSupportOf(i));
-    // gsInfo<<"=================\n";
-
     return localL2(bb.tensorLevel(lvl),fun,j,bb.elementInSupportOf(i)); // uses the H-grid element implementation
-    //return localL2(intbasis,bb.tensorLevel(lvl),fun,geometry,j); // uses the H-grid element implementation
-
 }
 
 template<typename T>
@@ -200,7 +150,6 @@ void gsQuasiInterpolate<T>::localL2(const gsBasis<T> &b,
         cf = localL2(b,fun,i);
         result.row(i) = cf;
     }
-
 }
 
 template<typename T>

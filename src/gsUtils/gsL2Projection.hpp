@@ -33,7 +33,6 @@ T gsL2Projection<T>::_project(  const gsMultiBasis<T>  & integrationBasis,
     // Create an assembler
     gsExprAssembler<T> A(1,1);
     A.options().update(options,gsOptionList::addIfUnknown); 
-    // gsDebugVar(A.options());
 
     // Set the integration elements
     A.setIntegrationDomain(integrationBasis.domain());
@@ -80,7 +79,6 @@ T gsL2Projection<T>::_project(  const gsMultiBasis<T>  & integrationBasis,
         solution sol = A.getSolution(u, coefs);
         gsExprEvaluator<> ev(A);
         ev.options().update(options,gsOptionList::addIfUnknown); 
-        // gsDebugVar(ev.options());
         return ev.integral((sol-f).sqNorm() * meas(G));
     }
     else
@@ -276,35 +274,6 @@ T gsL2Projection<T>::projectFunction(    const gsMultiBasis<T>   & intbasis,
     gsExprAssembler<T> A(1,1);
 
     A.setIntegrationDomain(intbasis.domain());
-    space u = A.getSpace(basis,source.targetDim());
-    auto  f = A.getCoeff(source);
-    geometryMap G = A.getMap(geometry);
-
-    u.setup(-1);
-    A.initSystem();
-
-    // assemble system
-    A.assemble(u*u.tr()*meas(G),u * f *meas(G));
-
-    typename gsSparseSolver<T>::uPtr solver = gsSparseSolver<real_t>::get( "SimplicialLDLT" );
-    solver->compute(A.matrix());
-    result = solver->solve(A.rhs());
-
-    solution sol = A.getSolution(u, result);
-    gsExprEvaluator<> ev(A);
-    return ev.integral((sol-f).sqNorm() * meas(G));
-}
-
-template<typename T>
-T gsL2Projection<T>::projectFunction(    const gsMultiBasis<T>   & intbasis,
-                                            const gsMultiBasis<T> & basis,
-                                            const gsFunctionSet<T>  & source,
-                                            const gsMultiPatch<T>   & geometry,
-                                            gsMatrix<T> & result)
-{
-    gsExprAssembler<T> A(1,1);
-
-    A.setIntegrationElements(intbasis);
     space u = A.getSpace(basis,source.targetDim());
     auto  f = A.getCoeff(source);
     geometryMap G = A.getMap(geometry);
