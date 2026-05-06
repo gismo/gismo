@@ -248,25 +248,39 @@ void writeSingleControlNet(const gsGeometry<T> & Geo,
                            std::string const & fn)
 {
     const int d = Geo.parDim();
+    const unsigned n = Geo.geoDim();
+
+    // We can only write control nets up to dimension 4.
+    // For a 4D net, we need to fall back to an unstructured point cloud.
+    if (n == 4)
+    {
+        gsDebug << "Fallling back to writing 4-dimensional control net as "
+                   "point cloud.\n";
+        const gsMatrix<T>& cp = Geo.coefs();
+        gsWriteParaviewPoints<T>(cp.transpose(), fn);
+        return;
+    }
+
+    // A >4D net is not supported at all.
+    if (n > 4)
+    {
+        gsWarn << "Skipping writing of control net of dimension " << n
+               << ". Control nets are only supported up to dimension 4.";
+        return;
+    }
+
+    // A <4D net works with the normal process.
     gsMesh<T> msh;
     Geo.controlNet(msh);
-    const unsigned n = Geo.geoDim();
-    if ( n == 1 )
+    if (n == 1)
     {
         gsMatrix<T> anch = Geo.basis().anchors();
         // Lift vertices at anchor positions
-        for (size_t i = 0; i!= msh.numVertices(); ++i)
+        for (size_t i = 0; i != msh.numVertices(); ++i)
         {
             msh.vertex(i)[d] = msh.vertex(i)[0];
             msh.vertex(i).topRows(d) = anch.col(i);
         }
-    }
-    else if (n>3)
-    {
-        gsDebug<<"Writing 4th coordinate\n";
-        const gsMatrix<T> & cp = Geo.coefs();
-        gsWriteParaviewPoints<T>(cp.transpose(), fn );
-        return;
     }
 
     gsWriteParaview(msh, fn, false);
@@ -291,6 +305,7 @@ void gsWriteParaviewTPgrid(const gsMatrix<T> & eval_geo  ,
 
     index_t np1 = (np.size()>1 ? np(1)-1 : 0);
     index_t np2 = (np.size()>2 ? np(2)-1 : 0);
+    index_t dd = eval_field.rows();
 
     file <<"<?xml version=\"1.0\"?>\n";
     file <<"<VTKFile type=\"StructuredGrid\" version=\"0.1\">\n";
@@ -298,18 +313,19 @@ void gsWriteParaviewTPgrid(const gsMatrix<T> & eval_geo  ,
          << np2 <<"\">\n";
     file <<"<Piece Extent=\"0 "<< np(0)-1<<" 0 "<<np1<<" 0 "
          << np2 <<"\">\n";
-    file <<"<PointData "<< ( eval_field.rows()==1 ?"Scalars":(eval_field.rows()>3?"Tensors":"Vectors"))<<"=\"SolutionField\">\n";
-    file <<"<DataArray type=\"Float32\" Name=\"SolutionField\" format=\"ascii\" NumberOfComponents=\""<< eval_field.rows() <<"\">\n";
-    if ( eval_field.rows()==1 )
+    file <<"<PointData "<< ( dd==1 ?"Scalars":(dd>3?"Tensors":"Vectors"))<<"=\"SolutionField\">\n";
+    index_t ncomp = (dd!=1) ? math::max(3,dd) : dd;
+    file <<"<DataArray type=\"Float32\" Name=\"SolutionField\" format=\"ascii\" NumberOfComponents=\""<< ncomp <<"\">\n";
+    if ( dd==1 )
         for ( index_t j=0; j<eval_field.cols(); ++j)
             file<< eval_field.at(j) <<" ";
     else
     {
         for ( index_t j=0; j<eval_field.cols(); ++j)
         {
-            for ( index_t i=0; i!=eval_field.rows(); ++i)
+            for ( index_t i=0; i!=dd; ++i)
                 file<< eval_field(i,j) <<" ";
-            for ( index_t i=eval_field.rows(); i<3; ++i)
+            for ( index_t i=dd; i<3; ++i)
                 file<<"0 ";
         }
     }
@@ -981,7 +997,7 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
 /// Export a multipatch Geometry without scalar information using Bezier elements
 template <class T>
 void gsWriteParaviewBezier(const gsMultiPatch<T> & mPatch, std::string const & filename, bool ctrlNet)
-{    
+{
     std::string fnBase;
 
     // Write file contents to the respective file
@@ -990,7 +1006,7 @@ void gsWriteParaviewBezier(const gsMultiPatch<T> & mPatch, std::string const & f
     file.close();
 
     if ( ctrlNet ) // Output the control net
-    {   
+    {
         gsParaviewCollection collection(filename);
         collection.addPart(gsFileManager::getFilename(filename) + ".vtu");
         for (size_t patch=0; patch<mPatch.nPatches();++patch)
@@ -1251,54 +1267,63 @@ void writeSingleBox(const gsMatrix<T> & box, std::string const & fn, T value)
 
 /// Writes \a boxes to a file with name \a fn
 template<class T>
-void gsWriteParaview(const gsMatrix<T> & boxes, std::string const & fn, T value)
+void gsWriteParaview(const gsMatrix<T> & boxes, std::string const & fn, const std::vector<T> & values)
 {
-    gsParaviewCollection collection(fn);
+    GISMO_ASSERT(boxes.cols()/2==(index_t)values.size() || values.size()==0,
+        "Values should have size 0 or equal to the number of boxes (i.e., boxes.cols()/2 = " +
+        std::to_string(boxes.cols()/2) + "), but got values.size() = " +
+        std::to_string(values.size()));
 
-    std::string fileName;
+    const short_t d = boxes.rows();
+    gsMesh<T> mesh; // only needs vertices
+    gsMatrix<> tmpbox;
+    gsVector<unsigned> np(d);
+    np.setConstant(2);
+    gsMatrix<T> corners;
     for (index_t k=0; k!=boxes.cols()/2; k++)
     {
-        gsMatrix<> tmpbox = boxes.middleCols(2*k,2);
-        fileName = fn + "_" + util::to_string(k);
-        writeSingleBox(tmpbox,fileName,value);
-        fileName = gsFileManager::getFilename(fileName);
-        collection.addPart(fileName + ".vts");
+        tmpbox = boxes.middleCols(2*k,2);
+        corners = gsPointGrid<T>(tmpbox.col(0),tmpbox.col(1),np);
+        for (index_t i=0; i!=corners.cols(); i++)
+        {
+            typename gsMesh<T>::VertexHandle vertex = mesh.addVertex(corners.col(i));
+            if (values.size()!=0)
+                vertex->data = values[k];
+        }
     }
 
-    // Write out the collection file
-    collection.save();
+    if ( boxes.rows() == 3)
+        writeSingleBasisMesh3D(mesh,fn);
+    else if ( boxes.rows() == 2)
+        writeSingleBasisMesh2D(mesh,fn);
+    else
+        gsWriteParaview(mesh, fn, false);
 }
 
-/// Writes \a boxes to a file with name \a fn
 template<class T>
-void gsWriteParaview(const gsMatrix<T> & boxes, const gsVector<T> & values, std::string const & fn)
+void gsWriteParaview(const gsMatrix<T> & boxes, std::string const & fn, const gsVector<T> & values)
 {
-    gsParaviewCollection collection(fn);
+    std::vector<T> v(values.data(), values.data() + values.size());
+    gsWriteParaview(boxes,fn,v);
+}
 
-    std::string fileName;
-    GISMO_ASSERT(boxes.cols()/2==values.rows(),"Number of boxes and values does not match!");
-    for (index_t k=0; k!=boxes.cols()/2; k++)
-    {
-        gsMatrix<> tmpbox = boxes.middleCols(2*k,2);
-        fileName = fn + "_" + util::to_string(k);
-        writeSingleBox(tmpbox,fileName,values[k]);
-        fileName = gsFileManager::getFilename(fileName);
-        collection.addPart(fileName + ".vts");
-    }
-
-    // Write out the collection file
-    collection.save();
+template<class T>
+void gsWriteParaview(const gsMatrix<T> & boxes, std::string const & fn, const T value)
+{
+    std::vector<T> v(boxes.cols()/2,value);
+    gsWriteParaview(boxes,fn,v);
 }
 
 /// Writes a single \ref gsHBox \a box to a file with name \a fn
-template<class T>
-void writeSingleHBox(const gsHBox<2,T> & box, std::string const & fn)
+template<short_t d, class T>
+void writeSingleHBox(const gsHBox<d,T> & box, std::string const & fn)
 {
-    gsMatrix<T> points, values(3,4),corners(2,2);
-    gsVector<index_t> np(2);
-    np<<2,2;
     box.computeCoordinates();
-    points = gsPointGrid<T>(box.getCoordinates(),4);
+    gsVector<index_t,d> np;
+    np.setConstant(2);
+    gsGridIterator<T,CUBE,d> grid(box.getCoordinates(),np);
+    gsMatrix<T> points = grid.toMatrix();
+    gsMatrix<T> values(3,points.cols());
     values.row(0).setConstant(box.level());
     values.row(1).setConstant(box.error());
     values.row(2).setConstant(box.projectedErrorRef());
@@ -1306,37 +1331,51 @@ void writeSingleHBox(const gsHBox<2,T> & box, std::string const & fn)
 }
 
 /// Writes a single \ref gsHBox \a box to a file with name \a fn
-template<class T>
-void gsWriteParaview(const gsHBox<2,T> & box, std::string const & fn)
+template<short_t d, class T>
+void gsWriteParaview(const gsHBox<d,T> & box, std::string const & fn, short_t mode)
 {
-    gsParaviewCollection collection(fn);
-
-    writeSingleHBox(box,fn);
-    collection.addPart(fn + ".vts");
-
-    // Write out the collection file
-    collection.save();
+    box.computeCoordinates();
+    switch (mode)
+    {
+        case 1:
+            gsWriteParaview(box.getCoordinates(), fn, box.error());
+            break;
+        case 2:
+            gsWriteParaview(box.getCoordinates(), fn, box.projectedErrorRef());
+            break;
+        default:
+            gsWriteParaview(box.getCoordinates(), fn, (T)box.level());
+            break;
+    }
 }
 
-/// Writes a container of \ref gsHBox , i.e. a \gsHBoxContainer \a boxes, to a file with name \a fn
-template<class T>
-void gsWriteParaview(const gsHBoxContainer<2,T> & boxes, std::string const & fn)
+template<short_t d, class T>
+void gsWriteParaview(const gsHBoxContainer<d,T> & boxes, std::string const & fn, short_t mode)
 {
-    gsParaviewCollection collection(fn);
-
+    gsMatrix<T> boxCoords(d,boxes.totalSize()*2);
+    gsVector<T> boxValues(boxes.totalSize());
+    boxCoords.setZero();
     index_t i=0;
     std::string fileName;
-    for (typename gsHBoxContainer<2,T>::cHIterator Hit = boxes.cbegin(); Hit!=boxes.cend(); Hit++)
-        for (typename gsHBoxContainer<2,T>::cIterator Cit = Hit->cbegin(); Cit!=Hit->cend(); Cit++, i++)
+    for (typename gsHBoxContainer<d,T>::cHIterator Hit = boxes.cbegin(); Hit!=boxes.cend(); Hit++)
+        for (typename gsHBoxContainer<d,T>::cIterator Cit = Hit->cbegin(); Cit!=Hit->cend(); Cit++, i++)
         {
-            fileName = fn + util::to_string(i);
-            writeSingleHBox<T>(*Cit,fileName);
-            fileName = gsFileManager::getFilename(fileName);
-            collection.addPart(fileName + ".vts",-1,"",i);
+            Cit->computeCoordinates();
+            boxCoords.middleCols(i*2,2) = Cit->getCoordinates();
+            switch (mode)
+            {
+                case 1:
+                    boxValues(i) = Cit->error();
+                    break;
+                case 2:
+                    boxValues(i) = Cit->projectedErrorRef();
+                    break;
+                default:
+                    boxValues(i) = Cit->level();
+                    break;
+            }
         }
-
-    // Write out the collection file
-    collection.save();
+    gsWriteParaview(boxCoords, fn, boxValues);
 }
 
 /// Export basis functions
@@ -1628,7 +1667,7 @@ void gsWriteParaviewPoints(gsMatrix<T> const& points, std::string const & fn)
         gsWriteParaviewPoints<T>(points.row(0), points.row(1), points.row(2), points.row(3), fn);
         break;
     default:
-        GISMO_ERROR("Point plotting is implemented just for 2D and 3D (rows== 1, 2 or 3).");
+        GISMO_ERROR("Point plotting is implemented just for 2D, 3D and 4D (rows== 1, 2, 3 or 4).");
     }
 }
 

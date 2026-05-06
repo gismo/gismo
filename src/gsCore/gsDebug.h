@@ -1,13 +1,13 @@
 /** @file gsDebug.h
 
-    @brief This file contains the debugging and messaging system of G+Smo. 
+    @brief This file contains the debugging and messaging system of G+Smo.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -47,7 +47,11 @@ namespace gismo {
  *
  *  Note that gsWarn cannot be given as a parameter to another function.
  */
-#define gsWarn std::cout<<"Warning: "
+#if (defined(_WIN32) || defined(__CYGWIN__))  || !defined(GISMO_WITH_COLORS)
+  #define gsWarn std::cout<<"Warning: "
+#else
+  #define gsWarn std::cout<<"\033[1m\033[33m"<<"Warning: "<<"\033[0m"
+#endif
 //#define gsWarn std::cerr
 
 /** Logging messages:
@@ -56,14 +60,18 @@ namespace gismo {
  *
  *  Note that gsDebug cannot be given as a parameter to another function.
  */
-#ifndef  NDEBUG 
+#ifndef  NDEBUG
 
+#if (defined(_WIN32) || defined(__CYGWIN__)) || !defined(GISMO_WITH_COLORS)
     #define gsDebug std::cout<<"GISMO_DEBUG: "
+#else
+    #define gsDebug std::cout<<"\033[1m\033[34m"<<"GISMO_DEBUG: "<<"\033[0m"
+#endif
 
     #define gsDebugVar(variable) gsDebug << (strrchr(__FILE__, '/') ?          \
                              strrchr(__FILE__, '/') + 1 : __FILE__) <<":"<<    \
     __LINE__<< ", "#variable": \n"<<(variable)<<std::endl
-#define gsDebugIf(cond,variable) if (cond) gsDebug <<"[ "#cond" ] -- "<<       \
+    #define gsDebugIf(cond,variable) if (cond) gsDebug <<"[ "#cond" ] -- "<<       \
               (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__) \
                <<":"<<__LINE__<< ", "#variable": \n"<<(variable)<<std::endl
 #else
@@ -72,39 +80,50 @@ namespace gismo {
     #define gsDebugIf(cond,variable)
 #endif
 
-/** 
+/**
  *  Used for optional inclusion of .hpp header files in the .h files.
  *  Allows to drop dependencies on the .hpp files when using
- *  GISMO_BUILD_LIB for compiling a library instance.  
+ *  GISMO_BUILD_LIB for compiling a library instance.
  *  When compiling as a pure template library CMake will detect
  *  dependency on .hpp files.
  */
 #define GISMO_HPP_HEADER(x) #x
 
-/**  
- *  Runtime assertions which display a message  
+/**
+ *  Runtime assertions which display a message
  *
  */
+
+#if (defined(_WIN32) || defined(__CYGWIN__))  || !defined(GISMO_WITH_COLORS)
+#   define GISMO_ERROR_PRE(type) std::cerr<<#type
+#else
+#   define GISMO_ERROR_PRE(type) std::cerr<<"\033[1m\033[31m"  \
+                                          <<#type              \
+                                          <<"\033[0m"
+#endif
+
 #ifndef NDEBUG
-#   define GISMO_ASSERT(cond, message) do if(!(cond)) {std::cerr          \
-       <<"Assert `"<<#cond<<"` "<<message<<"\n"<<__FILE__<<", line "\
+#   define GISMO_ASSERT(cond, message) do if(!(cond)) { \
+      GISMO_ERROR_PRE(Assert)<<" `"                     \
+      <<#cond<<"` "<<message<<"\n"<<__FILE__<<", line " \
        <<__LINE__<<" ("<<__FUNCTION__<<")"<<std::endl;                    \
        throw std::logic_error("GISMO_ASSERT"); } while(false)
 #else
 #   define GISMO_ASSERT(condition, message)
 #endif
 
-/**  
+/**
  *  Runtime check and display error message. This command is the same as
  *  GISMO_ASSERT but it is executed in release builds as well.
  *
  */
-#define GISMO_ENSURE(cond, message) do if(!(cond)) {std::cerr             \
-    <<"Ensure `"<<#cond<<"` "<<message<<"\n"<<__FILE__<<", line "   \
+#define GISMO_ENSURE(cond, message) do if(!(cond)) {    \
+    GISMO_ERROR_PRE(Ensure)<<" `"                       \
+    <<#cond<<"` "<<message<<"\n"<<__FILE__<<", line "   \
     <<__LINE__<<" ("<< __FUNCTION__<< ")"<<std::endl;                     \
     throw std::runtime_error("GISMO_ENSURE");} while(false)
 
-/**  
+/**
  *  Denote a variable as unused, used to silence warnings in release
  *  mode builds.
  *
@@ -115,16 +134,18 @@ namespace gismo {
  *  Runtime error message
  *
  */
-#define GISMO_ERROR(message) do {std::cerr <<"Error " <<message<<"\n"\
+#define GISMO_ERROR(message) do {   \
+    GISMO_ERROR_PRE(Error)        \
+    <<message<<"\n"      \
     <<__FILE__<<", line " <<__LINE__<<" ("<<__FUNCTION__<<")"<<std::endl;  \
     throw std::runtime_error("GISMO_ERROR");} while(false)
 
-/**  
+/**
  *  Runtime "no implementation" error happens when the user calls a
 
  *  virtual member function without a default implementation.
  */
- 
+
 // TO DO: for GCC __PRETTY_FUNC__ is better
 #define GISMO_NO_IMPLEMENTATION {std::cerr                                       \
      <<"Virtual member function `"<<__FUNCTION__<<"` has not been implemented\n" \
@@ -165,18 +186,18 @@ template <typename T> bool gsIsfinite(T a) {return  (a - a) == (a - a);}
 
 /*
   Disable debug/abort popup windows on MS Windows
-  
+
   See http://msdn.microsoft.com/en-us/library/1y71x448.aspx
 
   You might also need to disable "error reporting" on your windows
   system for popup-free runs.
 */
-#if _MSC_VER //>= 1400 
-static const int    gismo_CrtSetReportMode = _CrtSetReportMode( 
+#if _MSC_VER //>= 1400
+static const int    gismo_CrtSetReportMode = _CrtSetReportMode(
     _CRT_ASSERT, _CRTDBG_MODE_FILE   );
-static const _HFILE gismo_CrtSetReportFile = _CrtSetReportFile( 
+static const _HFILE gismo_CrtSetReportFile = _CrtSetReportFile(
     _CRT_ASSERT, _CRTDBG_FILE_STDERR );
-static const int  gismo_set_abort_behavior = _set_abort_behavior( 
+static const int  gismo_set_abort_behavior = _set_abort_behavior(
     0x0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
 #endif
 
@@ -194,7 +215,7 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 // 4244 - 'argument' : conversion from 'type1' to 'type2', possible loss of data
 // 4251 - needs to have dll-interface to be used by clients of class
 // 4273 - QtAlignedMalloc, inconsistent DLL linkage
-// 4275 - non dll-interface base 
+// 4275 - non dll-interface base
 // 4324 - structure was padded due to declspec(align())
 // 4428 - universal-character-name encountered in source
 // 4503 - decorated name length exceeded
@@ -211,7 +232,7 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 // 4996 - 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead.
 // 4510 - default constructor could not be generated
 // 4610 - user defined constructor required
-// 4752 - found Intel(R) Advanced Vector Extensions; consider using /arch:AVX 
+// 4752 - found Intel(R) Advanced Vector Extensions; consider using /arch:AVX
   #pragma warning( push )
   #pragma warning( disable : 4100 4127 4146 4231 4251 4428 4275 4503 4505 4512 4566 4661 4714 4789 4996 4510 4610 4752)
 
@@ -223,7 +244,7 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 //        ICC 12 generates this warning on assert(constant_expression_depending_on_template_params) and frankly this is a legitimate use case.
 // 161  - unrecognized pragma
 // 175  - subscript out of range
-//        to avoid warnings on #pragma GCC diagnostic          
+//        to avoid warnings on #pragma GCC diagnostic
 #pragma warning push
   #pragma warning disable 2196 279 161 175
 
@@ -251,16 +272,16 @@ static const int  gismo_set_abort_behavior = _set_abort_behavior(
 
 
 /*
-   Compile-time assertions: 
-  
+   Compile-time assertions:
+
   - in GISMO_STATIC_ASSERT(CONDITION,MSG) the parameter CONDITION
      must be a compile time boolean expression, and MSG an error
      message (string)
- 
+
    - define GISMO_NO_STATIC_ASSERT to disable them (and save
      compilation time) in that case, the static assertion is
      converted to a runtime assertion.
- 
+
   - GISMO_STATIC_ASSERT can only be used in function scope
  */
 #ifndef GISMO_NO_STATIC_ASSERT

@@ -215,14 +215,14 @@ public:
 
         if ( tdim == 1)
         {
-            node->value( makeValue(std::to_string(obj.value(0)), data) );
+            node->value( makeValue(util::to_string(obj.value(0)), data) );
         }
         else
         {
             gsXmlNode * cnode;
             for (short_t c = 0; c!=tdim; ++c)
             {
-                cnode = makeNode("c", std::to_string(obj.value(c)), data);
+                cnode = makeNode("c", util::to_string(obj.value(c)), data);
                 node->append_node(cnode);
             }
         }

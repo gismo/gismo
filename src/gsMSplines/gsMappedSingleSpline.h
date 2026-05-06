@@ -16,6 +16,7 @@
 #include <gsCore/gsGeometry.h>
 #include <gsMSplines/gsMappedSpline.h>
 #include <gsMSplines/gsMappedSingleBasis.h>
+#include <gsCore/gsFuncData.h>
 
 namespace gismo
 {
@@ -106,6 +107,23 @@ public:
                           bool sameElement = false) const override
     {
         m_spline->evalAllDers_into(m_index,u,n,result,sameElement);
+    }
+
+    void compute(const gsMatrix<T> & in, gsFuncData<T> & out) const override
+    {
+        out.values.resize(out.maxDeriv()+1);
+        out.dim.first  = this->domainDim();
+        out.dim.second = this->targetDim();
+
+        this->evalAllDers_into(in, out.maxDeriv(), out.values);
+
+        // Actives are not implemented.
+        // They are resized to a zero matrix to generate errors elsewhere.
+        // Throwing an error here triggers too often, since the
+        // NEED_ACTIVE flag is often set but not necessarily needed for
+        // geometries.
+        if (out.flags & NEED_ACTIVE)
+            out.actives.resize(0,0);
     }
 
     // support (domain of definition)
