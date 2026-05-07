@@ -26,7 +26,10 @@ void gsProjection<Norm,T>::_matrix(const gsMultiBasis<T>         & integrationBa
                                          gsSparseMatrix<T>       & systemMatrix,
                                          short_t                   targetDim,
                                    const gsBoundaryConditions<T> & bc,
-                                   const gsOptionList            & options)
+                                   const gsOptionList            & options,
+                                   T alpha,
+                                   T beta,
+                                   T gamma)
 {
     // Clear the result
     systemMatrix.clear();
@@ -52,13 +55,13 @@ void gsProjection<Norm,T>::_matrix(const gsMultiBasis<T>         & integrationBa
     // assemble system
     if (!options.askSwitch("Lumped",false))
     {
-        gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G);
+        gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G,alpha,beta,gamma);
         A.matrix_into(systemMatrix);
     }
     else
     {
         gsInfo<<"Warning: Lumped mass matrix is not implemented for the matrix-only assembly. Falling back to consistent mass matrix."<<std::endl;
-        gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G);
+        gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G,alpha,beta,gamma);
         A.matrix_into(systemMatrix);
     }
 }
@@ -70,7 +73,10 @@ void gsProjection<Norm,T>::_rhs(const gsMultiBasis<T>         & integrationBasis
                                 const gsFunctionSet<T>        & sourceFunction,
                                       gsMatrix<T>             & rhs,
                                 const gsBoundaryConditions<T> & bc,
-                                const gsOptionList            & options)
+                                const gsOptionList            & options,
+                                T alpha,
+                                T beta,
+                                T gamma)
 {
     // Clear the result
     rhs.clear();
@@ -96,7 +102,7 @@ void gsProjection<Norm,T>::_rhs(const gsMultiBasis<T>         & integrationBasis
     // Initialize the system
     A.initSystem();
 
-    gsProjection<Norm,T>::template _assembleRhs<Norm>(A,u,f,G);
+    gsProjection<Norm,T>::template _assembleRhs<Norm>(A,u,f,G,alpha,beta,gamma);
     A.rhs_into(rhs);
 }
 
@@ -108,7 +114,10 @@ void gsProjection<Norm,T>::_system(const gsMultiBasis<T>         & integrationBa
                                          gsSparseMatrix<T>       & systemMatrix,
                                          gsMatrix<T>             & rhs,
                                    const gsBoundaryConditions<T> & bc,
-                                   const gsOptionList            & options)
+                                   const gsOptionList            & options,
+                                   T alpha,
+                                   T beta,
+                                   T gamma)
 {
     // Clear the results
     systemMatrix.clear();
@@ -138,8 +147,8 @@ void gsProjection<Norm,T>::_system(const gsMultiBasis<T>         & integrationBa
     // assemble system
     if (!options.askSwitch("Lumped",false))
     {
-        gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G);
-        gsProjection<Norm,T>::template _assembleRhs<Norm>(A,u,f,G);
+        gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G,alpha,beta,gamma);
+        gsProjection<Norm,T>::template _assembleRhs<Norm>(A,u,f,G,alpha,beta,gamma);
         A.matrix_into(systemMatrix);
         A.rhs_into(rhs);
     }
@@ -156,7 +165,10 @@ T gsProjection<Norm,T>::_project(const gsMultiBasis<T>         & integrationBasi
                                  const gsFunctionSet<T>        & sourceFunction,
                                        gsMatrix<T>             & coefs,
                                  const gsBoundaryConditions<T> & bc,
-                                 const gsOptionList            & options)
+                                 const gsOptionList            & options,
+                                 T alpha,
+                                 T beta,
+                                 T gamma)
 {
     // Clear the result
     coefs.clear();
@@ -185,8 +197,8 @@ T gsProjection<Norm,T>::_project(const gsMultiBasis<T>         & integrationBasi
     // assemble system
     if (!options.askSwitch("Lumped",false))
     {
-        gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G);
-        gsProjection<Norm,T>::template _assembleRhs<Norm>(A,u,f,G);
+        gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G,alpha,beta,gamma);
+        gsProjection<Norm,T>::template _assembleRhs<Norm>(A,u,f,G,alpha,beta,gamma);
         // Solve the system
         typename gsSparseSolver<T>::uPtr solver = gsSparseSolver<T>::get( options.askString("LinearSolver","SimplicialLDLT") );
         solver->compute(A.matrix());
@@ -194,11 +206,11 @@ T gsProjection<Norm,T>::_project(const gsMultiBasis<T>         & integrationBasi
     }
     else
     {
-        gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G);
-        gsProjection<Norm,T>::template _assembleRhs<Norm>(A,u,f,G);
+        gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G,alpha,beta,gamma);
+        gsProjection<Norm,T>::template _assembleRhs<Norm>(A,u,f,G,alpha,beta,gamma);
         gsMatrix<> LHS = A.matrix() * gsMatrix<>::Ones(A.matrix().rows(),1);
         A.clearRhs();
-        gsProjection<Norm,T>::template _assembleRhs<Norm>(A,u,f,G);
+        gsProjection<Norm,T>::template _assembleRhs<Norm>(A,u,f,G,alpha,beta,gamma);
         gsMatrix<> RHS = A.rhs();
         coefs = LHS.cwiseInverse().cwiseProduct(RHS);
     }
@@ -208,7 +220,7 @@ T gsProjection<Norm,T>::_project(const gsMultiBasis<T>         & integrationBasi
         // Extract the solution and compute the error
         solution sol = A.getSolution(u, coefs);
         gsExprEvaluator<T> ev(A);
-        return gsProjection<Norm,T>::template _computeError<Norm>(ev,sol,f,G);
+        return gsProjection<Norm,T>::template _computeError<Norm>(ev,sol,f,G,alpha,beta,gamma);
     }
     else
         return -1;

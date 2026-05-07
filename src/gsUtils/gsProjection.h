@@ -74,7 +74,10 @@ protected:
                         const gsFunctionSet<T>        & sourceFunction,
                               gsMatrix<T>             & coefs,
                         const gsBoundaryConditions<T> & bc,
-                        const gsOptionList            & options);
+                        const gsOptionList            & options,
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0);
 
 	/** 
 	 * \brief      Obtain the system matrix and right-hand side for the projection of a function onto a basis
@@ -94,7 +97,10 @@ protected:
                               gsSparseMatrix<T>       & systemMatrix,
                               gsMatrix<T>             & rhs,
                         const gsBoundaryConditions<T> & bc,
-                        const gsOptionList            & options);
+                        const gsOptionList            & options,
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0);
 
 	/** 
 	 * \brief      Obtain the system matrix for the projection of a function onto a basis
@@ -110,9 +116,12 @@ protected:
                         const gsFunctionSet<T>        & projectionBasis,
                         const gsFunctionSet<T>        & geometryMap,
                               gsSparseMatrix<T>       & systemMatrix,
-                              short_t                   targetDim, 
+                              short_t                   targetDim,
                         const gsBoundaryConditions<T> & bc,
-                        const gsOptionList            & options);
+                        const gsOptionList            & options,
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0);
 
 	/**
 	 * \brief      Obtain the right-hand side for the projection of a function onto a basis
@@ -130,69 +139,81 @@ protected:
                         const gsFunctionSet<T>        & sourceFunction,
                               gsMatrix<T>             & rhs,
                         const gsBoundaryConditions<T> & bc,
-                        const gsOptionList            & options);
+                        const gsOptionList            & options,
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0);
 
 	template<enum ProjectionNorm _Norm>
 	static typename std::enable_if<(_Norm == L2), void>::type
-	_assembleMatrix(gsExprAssembler<T> & A, space & u, geometryMap & G)
+	_assembleMatrix(gsExprAssembler<T> & A, space & u, geometryMap & G, T alpha, T beta, T gamma)
 	{
-		A.assemble(u * u.tr() * meas(G));
+		GISMO_UNUSED(beta);
+		GISMO_UNUSED(gamma);
+		A.assemble(alpha * (u * u.tr()) * meas(G));
 	}
 
 	template<enum ProjectionNorm _Norm>
 	static typename std::enable_if<(_Norm == H1), void>::type
-	_assembleMatrix(gsExprAssembler<T> & A, space & u, geometryMap & G)
+	_assembleMatrix(gsExprAssembler<T> & A, space & u, geometryMap & G, T alpha, T beta, T gamma)
 	{
-		A.assemble(u * u.tr() * meas(G) + igrad(u,G) * igrad(u,G).tr() * meas(G));
+		GISMO_UNUSED(gamma);
+		A.assemble((alpha * u * u.tr() + beta * igrad(u,G) * igrad(u,G).tr()) * meas(G));
 	}
 
 	template<enum ProjectionNorm _Norm>
 	static typename std::enable_if<(_Norm == H2), void>::type
-	_assembleMatrix(gsExprAssembler<T> & A, space & u, geometryMap & G)
+	_assembleMatrix(gsExprAssembler<T> & A, space & u, geometryMap & G, T alpha, T beta, T gamma)
 	{
-		A.assemble(u * u.tr() * meas(G) + igrad(u,G) * igrad(u,G).tr() * meas(G) + ilapl(u,G) * ilapl(u,G).tr() * meas(G));
+		A.assemble((alpha * u * u.tr() + beta * igrad(u,G) * igrad(u,G).tr() + gamma * ilapl(u,G) * ilapl(u,G).tr()) * meas(G));
 	}
 
 	template<enum ProjectionNorm _Norm, typename _F>
 	static typename std::enable_if<(_Norm == L2), void>::type
-	_assembleRhs(gsExprAssembler<T> & A, space & u, _F & f, geometryMap & G)
+	_assembleRhs(gsExprAssembler<T> & A, space & u, _F & f, geometryMap & G, T alpha, T beta, T gamma)
 	{
-		A.assemble(u * f * meas(G));
+		GISMO_UNUSED(beta);
+		GISMO_UNUSED(gamma);
+		A.assemble(alpha * (u * f) * meas(G));
 	}
 
 	template<enum ProjectionNorm _Norm, typename _F>
 	static typename std::enable_if<(_Norm == H1), void>::type
-	_assembleRhs(gsExprAssembler<T> & A, space & u, _F & f, geometryMap & G)
-	{		
-		A.assemble(u * f * meas(G) + igrad(u,G) * igrad(f,G) * meas(G));
+	_assembleRhs(gsExprAssembler<T> & A, space & u, _F & f, geometryMap & G, T alpha, T beta, T gamma)
+	{
+		GISMO_UNUSED(gamma);
+		A.assemble((alpha * u * f + beta * igrad(u,G) * igrad(f,G).tr()) * meas(G));
 	}
 
 	template<enum ProjectionNorm _Norm, typename _F>
 	static typename std::enable_if<(_Norm == H2), void>::type
-	_assembleRhs(gsExprAssembler<T> & A, space & u, _F & f, geometryMap & G)
+	_assembleRhs(gsExprAssembler<T> & A, space & u, _F & f, geometryMap & G, T alpha, T beta, T gamma)
 	{
-		A.assemble(u * f * meas(G) + igrad(u,G) * igrad(f,G) * meas(G) + ilapl(u,G) * ilapl(f,G) * meas(G));
+		A.assemble((alpha * u * f + beta * igrad(u,G) * igrad(f,G).tr() + gamma * ilapl(u,G) * ilapl(f,G)) * meas(G));
 	}
 
 	template<enum ProjectionNorm _Norm, typename _F>
 	static typename std::enable_if<(_Norm == L2), T>::type
-	_computeError(gsExprEvaluator<T> & ev, _F & f, geometryMap & G)
+	_computeError(gsExprEvaluator<T> & ev, solution & s, _F & f, geometryMap & G, T alpha, T beta, T gamma)
 	{
-		return ev.integral((u-f).sqNorm() * meas(G));
+		GISMO_UNUSED(beta);
+		GISMO_UNUSED(gamma);
+		return ev.integral(alpha * ((s-f).sqNorm()) * meas(G));
 	}
 
 	template<enum ProjectionNorm _Norm, typename _F>
 	static typename std::enable_if<(_Norm == H1), T>::type
-	_computeError(gsExprEvaluator<T> & ev, _F & f, geometryMap & G)
+	_computeError(gsExprEvaluator<T> & ev, solution & s, _F & f, geometryMap & G, T alpha, T beta, T gamma)
 	{
-		return ev.integral((u-f).sqNorm() * meas(G) + (igrad(u,G)-igrad(f,G)).sqNorm() * meas(G));
+		GISMO_UNUSED(gamma);
+		return ev.integral((alpha * (s-f).sqNorm() + beta * (igrad(s,G)-igrad(f,G)).sqNorm()) * meas(G));
 	}
 
 	template<enum ProjectionNorm _Norm, typename _F>
 	static typename std::enable_if<(_Norm == H2), T>::type
-	_computeError(gsExprEvaluator<T> & ev, solution & s, _F & f, geometryMap & G)
+	_computeError(gsExprEvaluator<T> & ev, solution & s, _F & f, geometryMap & G, T alpha, T beta, T gamma)
 	{
-		return ev.integral((s-f).sqNorm() * meas(G) + (igrad(s,G)-igrad(f,G)).sqNorm() * meas(G) + (ilapl(s,G)-ilapl(f,G)).sqNorm() * meas(G));
+		return ev.integral((alpha * (s-f).sqNorm() + beta * (igrad(s,G)-igrad(f,G)).sqNorm() + gamma * (ilapl(s,G)-ilapl(f,G)).sqNorm()) * meas(G));
 	}
 
 public:
@@ -210,9 +231,12 @@ public:
                         const gsMultiPatch<T>         & geometryMap,
                               gsMatrix<T>             & coefs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                        const gsOptionList            & options = gsOptionList())
+                        const gsOptionList            & options = gsOptionList(),
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0)
     {
-        return _project(projectionBasis, projectionBasis, geometryMap, geometryMap, coefs, bc, options);   
+        return _project(projectionBasis, projectionBasis, geometryMap, geometryMap, coefs, bc, options, alpha, beta, gamma);
     }
     
     /**
@@ -230,9 +254,12 @@ public:
                         const gsMultiPatch<T>         & geometryMap,
                               gsMatrix<T>             & coefs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                        const gsOptionList            & options = gsOptionList())
+                        const gsOptionList            & options = gsOptionList(),
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0)
     {
-        return _project(integrationBasis, projectionBasis, geometryMap, geometryMap, coefs, bc, options);   
+        return _project(integrationBasis, projectionBasis, geometryMap, geometryMap, coefs, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -248,12 +275,14 @@ public:
                         const gsGeometry<T>           & geometryMap,
                               gsMatrix<T>             & coefs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                        const gsOptionList            & options = gsOptionList())
+                        const gsOptionList            & options = gsOptionList(),
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0)
     {
         gsMultiBasis<T> basis(projectionBasis);
         gsMultiPatch<T> geometry(geometryMap);
-        return _project(basis, basis, geometry, geometry, coefs, bc, options);   
-        
+        return _project(basis, basis, geometry, geometry, coefs, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -271,12 +300,15 @@ public:
                         const gsGeometry<T>           & geometryMap,
                               gsMatrix<T>             & coefs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                        const gsOptionList            & options = gsOptionList())
+                        const gsOptionList            & options = gsOptionList(),
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0)
     {
         gsMultiBasis<T> basis(projectionBasis);
         gsMultiBasis<T> intbasis(integrationBasis);
         gsMultiPatch<T> geometry(geometryMap);
-        return _project(intbasis, basis, geometry, geometry, coefs, bc, options);
+        return _project(intbasis, basis, geometry, geometry, coefs, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -294,9 +326,12 @@ public:
                         const gsFunctionSet<T>        & sourceFunction,
                               gsMatrix<T>             & coefs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                        const gsOptionList            & options = gsOptionList())
+                        const gsOptionList            & options = gsOptionList(),
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0)
     {
-        return _project(projectionBasis, projectionBasis, geometryMap, sourceFunction, coefs, bc, options);
+        return _project(projectionBasis, projectionBasis, geometryMap, sourceFunction, coefs, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -316,9 +351,12 @@ public:
                         const gsFunctionSet<T>        & sourceFunction,
                               gsMatrix<T>             & coefs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                        const gsOptionList            & options = gsOptionList())
+                        const gsOptionList            & options = gsOptionList(),
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0)
     {
-        return _project(integrationBasis, projectionBasis, geometryMap, sourceFunction, coefs, bc, options);
+        return _project(integrationBasis, projectionBasis, geometryMap, sourceFunction, coefs, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -336,11 +374,14 @@ public:
                         const gsFunction<T>           & sourceFunction,
                               gsMatrix<T>             & coefs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                        const gsOptionList            & options = gsOptionList())
+                        const gsOptionList            & options = gsOptionList(),
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0)
     {
         gsMultiBasis<T> basis(projectionBasis);
         gsMultiPatch<T> geometry(geometryMap);
-        return _project(basis, basis, geometry, sourceFunction, coefs, bc, options);
+        return _project(basis, basis, geometry, sourceFunction, coefs, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -360,12 +401,15 @@ public:
                         const gsFunction<T>           & sourceFunction,
                               gsMatrix<T>             & coefs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                        const gsOptionList            & options = gsOptionList())
+                        const gsOptionList            & options = gsOptionList(),
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0)
     {
         gsMultiBasis<T> basis(projectionBasis);
         gsMultiBasis<T> intbasis(integrationBasis);
         gsMultiPatch<T> geometry(geometryMap);
-        return _project(intbasis, basis, geometry, sourceFunction, coefs, bc, options);
+        return _project(intbasis, basis, geometry, sourceFunction, coefs, bc, options, alpha, beta, gamma);
     }
 
 
@@ -390,9 +434,12 @@ public:
                               gsSparseMatrix<T>       & systemMatrix,
                               gsMatrix<T>             & rhs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                        const gsOptionList            & options = gsOptionList())
+                        const gsOptionList            & options = gsOptionList(),
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0)
     {
-        _system(projectionBasis, projectionBasis, geometryMap, geometryMap, systemMatrix, rhs, bc, options);
+        _system(projectionBasis, projectionBasis, geometryMap, geometryMap, systemMatrix, rhs, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -414,9 +461,12 @@ public:
                               gsSparseMatrix<T>       & systemMatrix,
                               gsMatrix<T>             & rhs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                        const gsOptionList            & options = gsOptionList())
+                        const gsOptionList            & options = gsOptionList(),
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0)
     {
-        _system(integrationBasis, projectionBasis, geometryMap, geometryMap, systemMatrix, rhs, bc, options);
+        _system(integrationBasis, projectionBasis, geometryMap, geometryMap, systemMatrix, rhs, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -436,11 +486,14 @@ public:
                               gsSparseMatrix<T>       & systemMatrix,
                               gsMatrix<T>             & rhs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                        const gsOptionList            & options = gsOptionList())
+                        const gsOptionList            & options = gsOptionList(),
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0)
     {
         gsMultiBasis<T> basis(projectionBasis);
         gsMultiPatch<T> geometry(geometryMap);
-        _system(basis, basis, geometry, geometry, systemMatrix, rhs, bc, options);
+        _system(basis, basis, geometry, geometry, systemMatrix, rhs, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -462,12 +515,15 @@ public:
                               gsSparseMatrix<T>       & systemMatrix,
                               gsMatrix<T>             & rhs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                        const gsOptionList            & options = gsOptionList())
+                        const gsOptionList            & options = gsOptionList(),
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0)
     {
         gsMultiBasis<T> basis(projectionBasis);
         gsMultiBasis<T> intbasis(integrationBasis);
         gsMultiPatch<T> geometry(geometryMap);
-        _system(intbasis, basis, geometry, geometry, systemMatrix, rhs, bc, options);
+        _system(intbasis, basis, geometry, geometry, systemMatrix, rhs, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -488,9 +544,12 @@ public:
                               gsSparseMatrix<T>       & systemMatrix,
                               gsMatrix<T>             & rhs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                        const gsOptionList            & options = gsOptionList())
+                        const gsOptionList            & options = gsOptionList(),
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0)
     {
-        _system(projectionBasis, projectionBasis, geometryMap, sourceFunction, systemMatrix, rhs, bc, options);
+        _system(projectionBasis, projectionBasis, geometryMap, sourceFunction, systemMatrix, rhs, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -513,9 +572,12 @@ public:
                               gsSparseMatrix<T>       & systemMatrix,
                               gsMatrix<T>             & rhs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                        const gsOptionList            & options = gsOptionList())
+                        const gsOptionList            & options = gsOptionList(),
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0)
     {
-        _system(integrationBasis, projectionBasis, geometryMap, sourceFunction, systemMatrix, rhs, bc, options);
+        _system(integrationBasis, projectionBasis, geometryMap, sourceFunction, systemMatrix, rhs, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -536,11 +598,14 @@ public:
                               gsSparseMatrix<T>       & systemMatrix,
                               gsMatrix<T>             & rhs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                        const gsOptionList            & options = gsOptionList())
+                        const gsOptionList            & options = gsOptionList(),
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0)
     {
         gsMultiBasis<T> basis(projectionBasis);
         gsMultiPatch<T> geometry(geometryMap);
-        _system(basis, basis, geometry, sourceFunction, systemMatrix, rhs, bc, options);
+        _system(basis, basis, geometry, sourceFunction, systemMatrix, rhs, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -563,12 +628,15 @@ public:
                               gsSparseMatrix<T>       & systemMatrix,
                               gsMatrix<T>             & rhs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                        const gsOptionList            & options = gsOptionList())
+                        const gsOptionList            & options = gsOptionList(),
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0)
     {
         gsMultiBasis<T> basis(projectionBasis);
         gsMultiBasis<T> intbasis(integrationBasis);
         gsMultiPatch<T> geometry(geometryMap);
-        _system(intbasis, basis, geometry, sourceFunction, systemMatrix, rhs, bc, options);
+        _system(intbasis, basis, geometry, sourceFunction, systemMatrix, rhs, bc, options, alpha, beta, gamma);
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -590,9 +658,12 @@ public:
                               gsSparseMatrix<T>       & systemMatrix,
                               short_t                   targetDim = 1,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                        const gsOptionList            & options = gsOptionList())
+                        const gsOptionList            & options = gsOptionList(),
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0)
     {
-        _matrix(projectionBasis, projectionBasis, geometryMap, systemMatrix, targetDim, bc, options);
+        _matrix(projectionBasis, projectionBasis, geometryMap, systemMatrix, targetDim, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -612,9 +683,12 @@ public:
                               gsSparseMatrix<T>       & systemMatrix,
                               short_t                   targetDim = 1,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                        const gsOptionList            & options = gsOptionList())
+                        const gsOptionList            & options = gsOptionList(),
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0)
     {
-        _matrix(integrationBasis, projectionBasis, geometryMap, systemMatrix, targetDim, bc, options);
+        _matrix(integrationBasis, projectionBasis, geometryMap, systemMatrix, targetDim, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -632,11 +706,14 @@ public:
                               gsSparseMatrix<T>       & systemMatrix,
                               short_t                   targetDim = 1,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                        const gsOptionList            & options = gsOptionList())
+                        const gsOptionList            & options = gsOptionList(),
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0)
     {
         gsMultiBasis<T> basis(projectionBasis);
         gsMultiPatch<T> geometry(geometryMap);
-        _matrix(basis, basis, geometry, systemMatrix, targetDim, bc, options);
+        _matrix(basis, basis, geometry, systemMatrix, targetDim, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -656,12 +733,15 @@ public:
                               gsSparseMatrix<T>       & systemMatrix,
                               short_t                   targetDim = 1,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                        const gsOptionList            & options = gsOptionList())
+                        const gsOptionList            & options = gsOptionList(),
+                        T alpha = 1.0,
+                        T beta = 1.0,
+                        T gamma = 1.0)
     {
         gsMultiBasis<T> basis(projectionBasis);
         gsMultiBasis<T> intbasis(integrationBasis);
         gsMultiPatch<T> geometry(geometryMap);
-        _matrix(intbasis, basis, geometry, systemMatrix, targetDim, bc, options);
+        _matrix(intbasis, basis, geometry, systemMatrix, targetDim, bc, options, alpha, beta, gamma);
     }
 
 
@@ -684,9 +764,12 @@ public:
                     const gsMultiPatch<T>         & geometryMap,
                           gsMatrix<T>             & rhs,
                     const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                    const gsOptionList            & options = gsOptionList())
+                    const gsOptionList            & options = gsOptionList(),
+                    T alpha = 1.0,
+                    T beta = 1.0,
+                    T gamma = 1.0)
     {
-        _rhs(projectionBasis, projectionBasis, geometryMap, geometryMap, rhs, bc, options);
+        _rhs(projectionBasis, projectionBasis, geometryMap, geometryMap, rhs, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -705,10 +788,13 @@ public:
                     const gsFunctionSet<T>        & projectionBasis,
                     const gsMultiPatch<T>         & geometryMap,
                           gsMatrix<T>             & rhs,
-                    const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(), 
-                    const gsOptionList            & options = gsOptionList())
+                    const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
+                    const gsOptionList            & options = gsOptionList(),
+                    T alpha = 1.0,
+                    T beta = 1.0,
+                    T gamma = 1.0)
     {
-        _rhs(integrationBasis, projectionBasis, geometryMap, geometryMap, rhs, bc, options);
+        _rhs(integrationBasis, projectionBasis, geometryMap, geometryMap, rhs, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -726,11 +812,14 @@ public:
                     const gsGeometry<T>           & geometryMap,
                           gsMatrix<T>             & rhs,
                     const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                    const gsOptionList            & options = gsOptionList())
+                    const gsOptionList            & options = gsOptionList(),
+                    T alpha = 1.0,
+                    T beta = 1.0,
+                    T gamma = 1.0)
     {
         gsMultiBasis<T> basis(projectionBasis);
         gsMultiPatch<T> geometry(geometryMap);
-        _rhs(basis, basis, geometry, geometry, rhs, bc, options);
+        _rhs(basis, basis, geometry, geometry, rhs, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -750,12 +839,15 @@ public:
                     const gsGeometry<T>           & geometryMap,
                           gsMatrix<T>             & rhs,
                     const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                    const gsOptionList            & options = gsOptionList())
+                    const gsOptionList            & options = gsOptionList(),
+                    T alpha = 1.0,
+                    T beta = 1.0,
+                    T gamma = 1.0)
     {
         gsMultiBasis<T> basis(projectionBasis);
         gsMultiBasis<T> intbasis(integrationBasis);
         gsMultiPatch<T> geometry(geometryMap);
-        _rhs(intbasis, basis, geometry, geometry, rhs, bc, options);
+        _rhs(intbasis, basis, geometry, geometry, rhs, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -774,9 +866,12 @@ public:
                     const gsFunctionSet<T>        & sourceFunction,
                           gsMatrix<T>             & rhs,
                     const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                    const gsOptionList            & options = gsOptionList())
+                    const gsOptionList            & options = gsOptionList(),
+                    T alpha = 1.0,
+                    T beta = 1.0,
+                    T gamma = 1.0)
     {
-        _rhs(projectionBasis, projectionBasis, geometryMap, sourceFunction, rhs, bc, options);
+        _rhs(projectionBasis, projectionBasis, geometryMap, sourceFunction, rhs, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -797,9 +892,12 @@ public:
                     const gsFunctionSet<T>        & sourceFunction,
                           gsMatrix<T>             & rhs,
                     const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                    const gsOptionList            & options = gsOptionList())
+                    const gsOptionList            & options = gsOptionList(),
+                    T alpha = 1.0,
+                    T beta = 1.0,
+                    T gamma = 1.0)
     {
-        _rhs(integrationBasis, projectionBasis, geometryMap, sourceFunction, rhs, bc, options);
+        _rhs(integrationBasis, projectionBasis, geometryMap, sourceFunction, rhs, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -818,11 +916,14 @@ public:
                     const gsFunction<T>           & sourceFunction,
                           gsMatrix<T>             & rhs,
                     const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                    const gsOptionList            & options = gsOptionList())
+                    const gsOptionList            & options = gsOptionList(),
+                    T alpha = 1.0,
+                    T beta = 1.0,
+                    T gamma = 1.0)
     {
         gsMultiBasis<T> basis(projectionBasis);
         gsMultiPatch<T> geometry(geometryMap);
-        _rhs(basis, basis, geometry, sourceFunction, rhs, bc, options);
+        _rhs(basis, basis, geometry, sourceFunction, rhs, bc, options, alpha, beta, gamma);
     }
 
     /**
@@ -843,21 +944,40 @@ public:
                     const gsFunction<T>           & sourceFunction,
                           gsMatrix<T>             & rhs,
                     const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
-                    const gsOptionList            & options = gsOptionList())
+                    const gsOptionList            & options = gsOptionList(),
+                    T alpha = 1.0,
+                    T beta = 1.0,
+                    T gamma = 1.0)
     {
         gsMultiBasis<T> basis(projectionBasis);
         gsMultiBasis<T> intbasis(integrationBasis);
         gsMultiPatch<T> geometry(geometryMap);
-        _rhs(intbasis, basis, geometry, sourceFunction, rhs, bc, options);
+        _rhs(intbasis, basis, geometry, sourceFunction, rhs, bc, options, alpha, beta, gamma);
     }
 
 }; //struct
 
+// Type aliases for convenience
+template <class T>
+using gsL2Projection = gsProjection<ProjectionNorm::L2, T>;
+
+template <class T>
+using gsH1Projection = gsProjection<ProjectionNorm::H1, T>;
+
+template <class T>
+using gsH2Projection = gsProjection<ProjectionNorm::H2, T>;
+
 #ifdef GISMO_WITH_PYBIND11
+
+    /**
+     * @brief Initializes the Python wrapper for the ProjectionNorm enum
+     */
+    void pybind11_enum_gsProjectionNorm(pybind11::module &m);
 
     /**
      * @brief Initializes the Python wrapper for the class: gsProjection
      */
+    template<ProjectionNorm Norm>
     void pybind11_init_gsProjection(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
