@@ -35,7 +35,7 @@ namespace gismo
 template<short_t d, class T, bool Trunc>
 class gsTHBSplineBasis : public gsHTensorBasis<d,T>
 {
-    template<short_t D, class U> friend class gsTHBSplineBasisOpposite;
+    template<short_t D, class U> friend class gsTHBSplineBasisSubtractive;
 
 public:
     /// @brief Associated geometry type.
