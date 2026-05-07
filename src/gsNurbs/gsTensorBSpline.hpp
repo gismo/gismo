@@ -359,7 +359,7 @@ index_t gsTensorBSpline<d,T>::removeKnot( T knot, short_t dir, short_t i)
         this->coefs(),
         knot,
         dir,
-        intStrides,
+        intStrides.template cast<unsigned>(),
         i,
         true);
 }
