@@ -559,8 +559,6 @@ template <size_t N> gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
     gsMappedBasis<2> mapped_basis;
     this->c1_basis(multi_patch, multi_basis, mapped_basis);
 
-    gsInfo << "Pre-solve\n";
-
     // Use CGDiagonal instead of the default SimplicialLDLT direct solver.
     // At fine refinements, SimplicialLDLT produces huge fill-in for systems
     // with EV basis functions spanning many patches, causing OOM kills.
@@ -569,18 +567,17 @@ template <size_t N> gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
     gsOptionList proj_opts;
     proj_opts.addString("LinearSolver", "Linear solver for L2 projection",
                         "CGDiagonal");
-    proj_opts.addSwitch("ComputeError",
-                        "Compute L2 projection error after solve", false);
 
     gsMatrix<real_t> coefficients;
+    // real_t l2_error = // uncomment if the L2 error is needed.
     gsL2Projection<real_t>::project(multi_basis, mapped_basis, multi_patch,
                                     coefficients, proj_opts);
+
+    // gsInfo << "L2 error: " << l2_error << "\n";
 
     // The L2 projection returns a flattened vector with one block per
     // coordinate direction; gsMappedSpline expects one row per mapped DoF.
     coefficients = coefficients.reshape(mapped_basis.size(), D);
-
-    gsInfo << "pre-opt\n";
 
     // ===============================
     // Phase 2: Optimize Coefficients
@@ -588,8 +585,7 @@ template <size_t N> gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
 
     auto& mesh = *m_mesh;
     const bool optimize_fit = m_options.getSwitch("optimize_fit");
-    const std::string frog_dir =
-        m_options.getString("frog_dir");
+    const std::string frog_dir = m_options.getString("frog_dir");
 
     std::vector<index_t> ev_coef_starts;
     std::vector<index_t> ev_coef_ends;
@@ -632,9 +628,8 @@ template <size_t N> gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
         const size_t function_count = fitting_fcts.size();
 
         gsMatrix<real_t> kernel;
-        auto _file = gsReadFile<>(frog_dir + "Val" +
-                                      std::to_string(valence) + "Kernel.xml",
-                                  kernel);
+        auto _file = gsReadFile<>(
+            frog_dir + "Val" + std::to_string(valence) + "Kernel.xml", kernel);
 
         gsMatrix<real_t> functional;
         if (optimize_fit)
