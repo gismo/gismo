@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
 #ifdef GISMO_WITH_PARDISO
     gsSparseSolver<>::PardisoLDLT solver;
 #else
-    gsSparseSolver<>::CGDiagonal solver;
+    gsSparseSolver<>::LU solver;
 #endif
 
 
@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
     // Solution vector and solution variable
     gsMatrix<> Cnew, Calpha, Cold;
     gsMatrix<> dCnew,dCalpha,dCold, dCupdate;
-    gsMultiPatch<> cnew, dcnew;
+    gsMultiPatch<> cnew;
     if (random)
     {
         // %%%%%%%%%%%%%%%%%%%%%%%% Random initial condition %%%%%%%%%%%%%%%%%%%%%%%%
@@ -222,13 +222,13 @@ int main(int argc, char *argv[])
                     dCalpha.noalias() = dCold + tmp_alpha_m * ( dCnew - dCold);
 
                     assembler.constructSolution(Calpha,  cnew);
-                    assembler.constructSolution(dCalpha,dcnew);
-                    assembler.assembleResidual(cnew, dcnew);
+                    assembler.assembleResidual(cnew);
                     assembler.rhs_into(Q);
+                    Q += M * dCalpha; // add mass matrix contribution: M*dC
 
                     if (bc.get("Weak Clamped").size()!=0 && !assembler.options().getSwitch("AssembleWeakBCs"))
                     {
-                        assembler.assembleNitscheVector(cnew,dcnew);
+                        assembler.assembleNitscheVector(cnew);
                         assembler.rhs_into(Qnitsche);
                         Q.noalias() += Qnitsche; // add the residual term from Nitche (using the matrix )
                     }
@@ -253,7 +253,7 @@ int main(int argc, char *argv[])
 
 
                     // Assembly of the tangent stiffness matrix (K_m and K_f simultaneously) %%
-                    assembler.assembleJacobian(cnew, dcnew);
+                    assembler.assembleJacobian(cnew);
                     assembler.matrix_into(K);
                     K *= (tmp_alpha_f * tmp_gamma * dt);
                     K += tmp_alpha_m * M;
