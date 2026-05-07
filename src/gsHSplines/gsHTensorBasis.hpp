@@ -1582,6 +1582,16 @@ void gsHTensorBasis<d,T>::merge(const gsHTensorBasis<d,T> & other)
 }
 
 template<short_t d, class T>
+typename gsHTensorBasis<d,T>::uPtr
+gsHTensorBasis<d,T>::merge(const gsHTensorBasis<d,T> & basis1,
+                           const gsHTensorBasis<d,T> & basis2)
+{
+    uPtr result = basis1.clone();
+    result->merge(basis2);
+    return result;
+}
+
+template<short_t d, class T>
 void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul, int dir)
 {
     GISMO_UNUSED(numKnots);

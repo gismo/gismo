@@ -597,18 +597,6 @@ public:
 
 private:
 
-    static node* mergeNodes(const node* node1, const node* node2, node* parent = nullptr);
-    static node* mergeLeafWithSplit(const node* leafNode, const node* splitNode, node* parent);
-    static node* mergeTwoSplits(const node* node1, const node* node2, node* parent);
-    static node* createRefinedSplit(const node* primarySplit, const node* secondarySplit, node* parent);
-    static node* mergeNodeWithSplit(const node* targetNode, const node* splitNode, node* parent);
-    static box getNodeBox(const node* n);
-    static bool boxesOverlap(const typename node::kdBox& box1, const typename node::kdBox& box2);
-    static box intersectBoxes(const typename node::kdBox& box1, const typename node::kdBox& box2);
-    static bool nodeOverlapsWithBox(const node* node, const typename node::kdBox& box);
-    static node* splitNodeAndMerge(const node* targetNode, const node* splitNode, node* parent);
-    static node* copySubtreeInBox(const node* source, const typename node::kdBox& box, node* parent);
-
     /// Returns true if the boxes overlap
     /// \param box1
     /// \param box2

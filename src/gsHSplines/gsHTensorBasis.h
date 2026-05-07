@@ -687,6 +687,12 @@ public:
      */
     void merge(const gsHTensorBasis<d,T> & other);
 
+    /// Returns a new basis that is the mesh union of \a basis1 and \a basis2.
+    /// Both must share the same level-0 tensor-product basis.
+    /// @note Does not work when manualLevels is true.
+    static uPtr merge(const gsHTensorBasis<d,T> & basis1,
+                      const gsHTensorBasis<d,T> & basis2);
+
     // Refine the basis uniformly by inserting \a numKnots new knots on each knot span
     virtual void uniformRefine(int numKnots = 1, int mul=1, int dir=-1);
 
