@@ -233,8 +233,7 @@ void gsTHBSplineBasis<d,T, Trunc>::_representBasisFunction(
                   level + 1, bspl_vec_ti, cur_level, finest_low);
 
     }
-    _saveNewBasisFunPresentation(coefs, act_size_of_coefs,
-                                 j, pres_level, finest_low);
+    _saveNewBasisFunPresentation(coefs, act_size_of_coefs, j, pres_level, finest_low);
 }
 
 
@@ -274,6 +273,8 @@ void gsTHBSplineBasis<d,T, Trunc>::_saveNewBasisFunPresentation(
     gsSparseVector<T>& presentation = this->m_presentation[j];
     //presentation.reserve(coefs.rows()); // reserve memory ?
 
+    bool nonTruncated = true;
+
     do
     {
         // ten_index - (tensor) index of a bspline function with respect to
@@ -291,9 +292,17 @@ void gsTHBSplineBasis<d,T, Trunc>::_saveNewBasisFunPresentation(
 
         if (coefs(coef_index) != 0)
             presentation(ten_index) = coefs(coef_index);
+        else
+            nonTruncated = false;
 
     } while(nextCubePoint<gsVector<index_t, d> > (position, first_point,
                                                    last_point));
+
+    if (nonTruncated)
+    {
+        this->m_presentation.erase(j);
+        this->m_is_truncated[j] = -1;
+    }
 }
 
 
