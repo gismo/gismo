@@ -80,13 +80,17 @@ SUITE(gsProjection_test)
         err = gsProjection<ProjectionNorm::L2, real_t>::project(mb, mp, f_poly, coefs);
         CHECK_CLOSE(math::sqrt(err), 0.0, 1e-7);
 
+#ifdef GISMO_WITH_ADIFF
         err = gsProjection<ProjectionNorm::H1, real_t>::project(mb, mp, f_poly, coefs);
         CHECK_CLOSE(math::sqrt(err), 0.0, 1e-7);
+#endif
 
+#ifdef GISMO_WITH_ADIFF
         // f = x³ + y³  →  Δf = 6x + 6y ∈ Vₕ for degree ≥ 3
         gsFunctionExpr<> f_poly_h2("x^3+y^3", 2);
         err = gsProjection<ProjectionNorm::H2, real_t>::project(mb, mp, f_poly_h2, coefs);
         CHECK_CLOSE(math::sqrt(err), 0.0, 1e-7);
+#endif
     }
 
     // ===================================================================
@@ -111,6 +115,7 @@ SUITE(gsProjection_test)
         u_h = gsSparseSolver<real_t>::SimplicialLDLT().compute(M).solve(b);
         CHECK((M * u_h - b).norm() / b.norm() < 1e-10);
 
+#ifdef GISMO_WITH_ADIFF
         // H1
         gsProjection<ProjectionNorm::H1, real_t>::system(mb, mp, f_smooth, M, b);
         u_h = gsSparseSolver<real_t>::SimplicialLDLT().compute(M).solve(b);
@@ -120,6 +125,7 @@ SUITE(gsProjection_test)
         gsProjection<ProjectionNorm::H2, real_t>::system(mb, mp, f_smooth, M, b);
         u_h = gsSparseSolver<real_t>::SimplicialLDLT().compute(M).solve(b);
         CHECK((M * u_h - b).norm() / b.norm() < 1e-10);
+#endif
     }
 
     // ===================================================================
@@ -174,6 +180,11 @@ SUITE(gsProjection_test)
 
     TEST(convergence_H1_projection)
     {
+#ifndef GISMO_WITH_ADIFF
+        gsWarn << "Skipping H1 convergence test: GISMO_WITH_ADIFF not enabled.\n";
+        return;
+#endif
+
         const index_t degree  = 3;
         const index_t maxIter = 3;
         const real_t  tol_h1  = 2.5;  // expected p=3
@@ -208,6 +219,11 @@ SUITE(gsProjection_test)
 
     TEST(convergence_H2_projection)
     {
+#ifndef GISMO_WITH_ADIFF
+        gsWarn << "Skipping H2 convergence test: GISMO_WITH_ADIFF not enabled.\n";
+        return;
+#endif
+
         const index_t degree   = 3;
         const index_t maxIter  = 3;
         const real_t  tol_lapl = 1.7;  // expected p-1=2
