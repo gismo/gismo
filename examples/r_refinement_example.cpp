@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
     bool last              = true;
     bool colloc            = false;
     bool fit               = false;
-    bool L2proj            = true;
+    bool L2            = true;
 
     // gsStopwatch timer;
     // timer.restart();
@@ -225,8 +225,8 @@ int main(int argc, char *argv[])
                 colloc);                
     cmd.addSwitch("fit", "Use fitting to compute the composition",
                 fit);
-    cmd.addSwitch("L2proj", "Use L2-projection to compute the composition",
-                L2proj);
+    cmd.addSwitch("L2", "Use L2-projection to compute the composition",
+                L2);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     if(fit)
@@ -317,9 +317,9 @@ int main(int argc, char *argv[])
     //----------------------------------------------------------------------
     // ... computes the composition of geometry maps L^2-projection method !
     //----------------------------------------------------------------------
-    if(L2proj)
+    if(L2)
     {
-    mpPsi           = MAE.buildCompMultiPatch(dbasis, quadValue);
+    mpPsi           = MAE.buildCompMultiPatch(dbasis, quadValue, false);
     geometryMap GPi = A.getMap(mpPsi);
     // ... Error analysis
     double maxDist = 0.;
@@ -347,11 +347,10 @@ int main(int argc, char *argv[])
 
     if(fit){
     //---------------------------------------------------------- 
-    //...Interpolation of the mapping by fit method !
+    //...Interpolation of the mapping by fitting method !
     //----------------------------------------------------------
     gsInfo<<"Fitting the mapping ++++++" <<numLevels<<"\n";
-    mpPsi                   = MAE.buildFitCompMultiPatch(dbasis, 50, 1e-5);
-    gsWrite(mpPsi, "akhniss.xml");
+    mpPsi                   = MAE.buildFitCompMultiPatch(dbasis, 50, 1e-7);
     geometryMap PGF         = A.getMap(mpPsi);
     // ... Error analysis
     double maxDist = 0.;
@@ -369,22 +368,25 @@ int main(int argc, char *argv[])
     {
         outFile << "#DoF_PDE: q"<< quadValue<<"pPr"<< dbasis.basis(0).maxDegree()<<"pPsi"<< mpLeft.basis(0).maxDegree()-numReduceMAE <<"\n"
                 << std::scientific << DoFPDE.transpose() << "\n";
-        if (L2proj){
+        if (L2){
+        outFile << "#L2 projection error analysis: \n";
         outFile << "#Hausdorff_error: \n" << std::scientific << std::setprecision(3) << Hdferror.transpose() << "\n";
         outFile << "#Boundary_error: \n" << std::scientific << std::setprecision(3) << Bdrerr.transpose() << "\n";
         outFile << "#L2_error: \n" << std::scientific << std::setprecision(3) << L2Jerror.transpose() << "\n";
         }
         if (colloc){
-        outFile << "#INTERPOL Hausdorff_error: \n" << std::scientific << std::setprecision(3) << IHdferror.transpose() << "\n";
-        outFile << "#INTERPOL Boundary_error: \n" << std::scientific << std::setprecision(3) << IBdrerr.transpose() << "\n";
-        outFile << "#INTERPOL L2_error: \n" << std::scientific << std::setprecision(3) << IL2Jerror.transpose() << "\n";
+        outFile << "#Collocation projection error analysis: \n";
+        outFile << "#Hausdorff_error: \n" << std::scientific << std::setprecision(3) << IHdferror.transpose() << "\n";
+        outFile << "#Boundary_error: \n" << std::scientific << std::setprecision(3) << IBdrerr.transpose() << "\n";
+        outFile << "#L2_error: \n" << std::scientific << std::setprecision(3) << IL2Jerror.transpose() << "\n";
         }
         if (fit){
-        outFile << "#FITTING Hausdorff_error: \n" << std::scientific << std::setprecision(3) << FHdferror.transpose() << "\n";
-        outFile << "#FITTING Boundary_error: \n" << std::scientific << std::setprecision(3) << FBdrerr.transpose() << "\n";
-        outFile << "#FITTING L2_error: \n" << std::scientific << std::setprecision(3) << FL2Jerror.transpose() << "\n";
+        outFile << "#Fitting projection error analysis: \n";
+        outFile << "#Hausdorff_error: \n" << std::scientific << std::setprecision(3) << FHdferror.transpose() << "\n";
+        outFile << "#Boundary_error: \n" << std::scientific << std::setprecision(3) << FBdrerr.transpose() << "\n";
+        outFile << "#L2_error: \n" << std::scientific << std::setprecision(3) << FL2Jerror.transpose() << "\n";
         }
-        outFile << "#C_error:  "<< quadValue << ": "<< std::scientific << std::setprecision(3) << CHdferror.transpose() << "\n";
+        // outFile << "#C_error:  "<< quadValue << ": "<< std::scientific << std::setprecision(3) << CHdferror.transpose() << "\n";
         outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
         outFile.close(); // Close the file after writing
         gsInfo << "Error analysis results appended to errorGeometry_analysis.txt.\n";
@@ -405,7 +407,7 @@ int main(int argc, char *argv[])
          << std::setw(13) << "L2" << " & "
          << std::setw(6)  << "EOcL2"      << "\n";
     // --- Print table row by row ---
-    if (L2proj){
+    if (L2){
     gsInfo << std::string(50, '-') << "L2Proj\n";
         auto orderofConvBndr = ( Bdrerr.head(numRefine).array() /
                   Bdrerr.tail(numRefine).array() ).log().transpose() / std::log(2.0);
@@ -527,7 +529,7 @@ int main(int argc, char *argv[])
         MarkingStrategy adaptRefCrit = PUCA;
         //MarkingStrategy adaptRefCrit = GARU;
         //MarkingStrategy adaptRefCrit = errorFraction;
-        real_t adaptRefParam = 0.7;
+        real_t adaptRefParam = 0.8;
 
         for (int r=0; r<=numLRefine; ++r)
         {

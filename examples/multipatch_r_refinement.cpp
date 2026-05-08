@@ -46,6 +46,7 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot          = false;
+    double Intensity   = 0.;
     index_t numRefine  = 3;
     index_t numElevate = 0;
     index_t maxIter    = 50;
@@ -58,7 +59,12 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
     gsMultiPatch<> mpLeft;// = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);// Initial geometry
-    fd.getId(4,mpLeft);
+    fd.getId(5,mpLeft);
+    //.. density 
+    // std::string frho("density_function.xml");
+    // gsFileData<> strho(frho);
+    // gsMultiPatch<> monitor_fct;
+    // strho.getId(5,monitor_fct);
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
@@ -220,13 +226,27 @@ int main(int argc, char *argv[])
             gsMultiPatch<> rhotmp;
             geometryMap GLeft = A.getMap(mpLeft.patch(n_patch));
             auto ff = A.getCoeff(f, GLeft);
+            // ---- manipulation of density function ----
+            auto empldensity = (ev.max(abs(ff.val()))-ev.min(abs(ff.val())));
+            double  int_uh_0 = 1.;
+            double  int_uh_1 = 1.;
+
+            if (empldensity < 1e-5|| Intensity <= 1. )
+            {
+                gsInfo << " rho = 1.~~";
+            }
+            else{
+                int_uh_0     = (Intensity-1.)/empldensity;
+                int_uh_1     = (ev.max(abs(ff.val()))-Intensity*ev.min(abs(ff.val())))/empldensity;
+            }
+            // end of manipulation
             u.setup(bc_x, dirichlet::interpolation, -1);
 
             A.initSystem();
             A.assemble(
             u * u.tr() * meas(G) //matrix
             ,
-            u * ff.val() *meas(G) //rhs vector
+            u * (int_uh_0*ff[0].val()+int_uh_1) * meas(G) //rhs vector
             );        
             solVectorho  = solver.compute(A.matrix()).solve(A.rhs());
             u_solho.extract(rhotmp);
