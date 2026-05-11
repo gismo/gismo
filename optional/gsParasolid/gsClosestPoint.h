@@ -1,0 +1,74 @@
+/** @file gsClosestPoint.h
+
+    @brief Provides declarations of functions for determining the
+    closest point and parameter on a geometry to a given point using
+    Parasolid functionality.
+
+    This file is part of the G+Smo library. 
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    
+    Author(s): D. Mokris
+*/
+
+#pragma once
+
+#include <gsCore/gsForwardDeclarations.h>
+#include <gsCore/gsLinearAlgebra.h>
+
+#include <gsParasolid/gsPKSession.h>
+
+// TODO: Why can't I include gsFrustrum.h already here?
+
+struct PK_VECTOR_s;
+typedef struct PK_VECTOR_s PK_VECTOR_t;
+typedef int PK_ERROR_code_t;
+
+namespace gismo
+{
+    namespace extensions
+    {
+        /// Converts a G+Smo vector to a Parasolid vector.
+        template <class T>
+        PK_VECTOR_t gsPK_VECTOR(const gsVector<T, 3>& gsVector);
+
+        enum range_opt
+        {
+            performance = 23760,
+            accuracy    = 23761
+        };
+
+        /**
+           Finds the point on \a gsBSurf that is closest to \a gsPoint
+           and writes its parameter values into \a gsResult. The
+           optional parameter \a performance decides between
+           performance and accuracy. Returns Parasolid
+           error status.
+        */
+        template <class T>
+        PK_ERROR_code_t gsClosestParam(const gsTensorBSpline<2, T>& gsBSurf,
+                                       const gsVector<T, 3>& gsPoint,
+                                       gsVector<T, 2>& gsResult,
+                                       range_opt optimise = range_opt::performance);
+
+        /**
+           For each three-dimensional point represented as a row of \a
+           gsPoints finds the closest point on \a gsBSurf and writes
+           its parameters as a column of \a gsResults. (This might
+           sound strange but it corresponds to the ordering in
+           gsFitting.) The optional parameter \a performance decides
+           between performance and accuracy. Returns
+           Parasolid error status.
+        */
+        template <class T>
+        PK_ERROR_code_t gsClosestParam(const gsTensorBSpline<2, T>& gsBSurf,
+                                       const gsMatrix<T>& gsPoints,
+                                       gsMatrix<T>& gsResults,
+                                       range_opt optimise = range_opt::performance);
+
+    } // namespace extensions
+
+} // namespace gismo
+    

@@ -40,8 +40,9 @@ public:
     { }
 
     gsFiberMatrix(index_t rows, index_t cols)
-    : m_fibers(IsRowMajor?rows:cols)
     {
+        if (!IsRowMajor) std::swap(rows,cols);
+        m_fibers.resize(rows);
         for (size_t i = 0; i < m_fibers.size(); ++i)
             m_fibers[i] = new Fiber(cols);
     }
@@ -158,30 +159,37 @@ public:
         return *m_fibers[i];
     }
 
-    T & coef(index_t i, index_t j)
+    T coeff(index_t i, index_t j) const
     {
-        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<i<<"<cols()"<<"="<<cols() );
+        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<j<<"<cols()"<<"="<<cols() );
         if (!IsRowMajor) std::swap(i,j);
         return m_fibers[i]->coeff(j);
     }
 
     T & coeffRef(index_t i, index_t j)
     {
-        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<i<<"<cols()"<<"="<<cols() );
+        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<j<<"<cols()"<<"="<<cols() );
         if (!IsRowMajor) std::swap(i,j);
         return m_fibers[i]->coeffRef(j);
     }
 
+    T & insert(index_t i, index_t j)
+    {
+        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<j<<"<cols()"<<"="<<cols() );
+        if (!IsRowMajor) std::swap(i,j);
+        return m_fibers[i]->insert(j);
+    }
+
     void insertExplicitZero(index_t i, index_t j)
     {
-        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<i<<"<cols()"<<"="<<cols() );
+        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<j<<"<cols()"<<"="<<cols() );
         if (!IsRowMajor) std::swap(i,j);
         m_fibers[i]->data().atWithInsertion(j);
     }
 
     bool isExplicitZero(index_t i, index_t j) const
     {
-        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<i<<"<cols()"<<"="<<cols() );
+        GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<j<<"<cols()"<<"="<<cols() );
         if (!IsRowMajor) std::swap(i,j);
         auto & vdata = m_fibers[i]->data();
         const index_t jj = vdata.searchLowerIndex(j);
@@ -248,20 +256,26 @@ public:
         if (!IsRowMajor) std::swap(newRows,newCols);
 
         const index_t oldRows = fibers();
-
-        // delete any fibers which will be removed, if any
-        for (index_t i = newRows; i < oldRows; ++i)
-            delete m_fibers[i];
-
-        m_fibers.resize(newRows);
-
-        // allocate newly added fibers, if any
-        for (index_t i = oldRows; i < newRows; ++i)
-            m_fibers[i] = new Fiber(newCols);
-
         const index_t m = std::min(oldRows, newRows);
         for (index_t i = 0; i < m; ++i)
             m_fibers[i]->conservativeResize(newCols);
+
+        resizeFibers(newRows);
+    }
+
+    void resizeFibers(index_t newSz)
+    {
+        const index_t oldSz = fibers();
+
+        // delete any fibers which will be removed, if any
+        for (index_t i = newSz; i < oldSz; ++i)
+            delete m_fibers[i];
+
+        m_fibers.resize(newSz);
+
+        // allocate newly added fibers, if any
+        for (index_t i = oldSz; i < newSz; ++i)
+            m_fibers[i] = new Fiber(innerSize());
     }
 
     void duplicateRow(index_t k) //..
@@ -363,18 +377,6 @@ public:
 
 private:
     std::vector< Fiber* > m_fibers;
-
-    /// Change the number of fibers without allocating newly added rows
-    void resizeFibers(index_t newRows)
-    {
-        // delete fibers which will be removed from the array
-        // (does nothing if newRows >= fibers())
-        for (index_t i = newRows; i < fibers(); ++i)
-            delete m_fibers[i];
-
-        m_fibers.resize(newRows);
-    }
-
 };
 
 } // namespace gismo

@@ -114,7 +114,7 @@ void pybind11_init_gsDofMapper(py::module &m)
     .def("componentsSize", &Class::componentsSize, "Returns the components size")
     .def("patchSize", &Class::patchSize, "Returns the total number of patch-local DoFs that live on patch \a k for component \a c")
     .def("totalSize", &Class::totalSize, "Returns the total size of the mapper")
-    .def("indexOnPatch", &Class::indexOnPatch, "For \a gl being a global index, this function returns true whenever \a gl corresponds to patch \a k")
+    .def("indexOnPatch", static_cast<bool (Class::*)(index_t,index_t) const > (&Class::indexOnPatch), "For \a gl being a global index, this function returns true whenever \a gl corresponds to patch \a k")
     .def("__str__",
          [] (Class & self)
         {

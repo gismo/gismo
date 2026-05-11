@@ -38,7 +38,7 @@ public:
 
     CmpVec(float _eps=FLT_MIN) : eps_(_eps) {}
 
-    bool operator()(const Point& v0, const Point& v1) const
+    bool operator()(const gsSurfMesh::Point& v0, const gsSurfMesh::Point& v1) const
     {
         if (math::abs(v0[0] - v1[0]) <= eps_)
         {
@@ -61,9 +61,11 @@ private:
 
 bool read_stl(gsSurfMesh& mesh, const std::string& filename)
 {
+    typedef gsSurfMesh::Point Point;
+    
     char                             line[100], *c;
     unsigned int                     i, nT;
-    Point                            p;
+    gsSurfMesh::Point                 p;
     gsSurfMesh::Vertex               v;
     std::vector<gsSurfMesh::Vertex>  vertices(3);
     size_t n_items(0);
@@ -205,6 +207,9 @@ bool read_stl(gsSurfMesh& mesh, const std::string& filename)
 
 bool write_stl(const gsSurfMesh& mesh, const std::string& filename)
 {
+    typedef gsSurfMesh::Point Point;
+    typedef gsSurfMesh::Normal Normal;
+    
     if (!mesh.is_triangle_mesh())
     {
         std::cerr << "write_stl: not a triangle mesh!" << std::endl;

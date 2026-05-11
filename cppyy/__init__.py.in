@@ -12,6 +12,15 @@
     Author(s): F. Scholz
 """
 
+import os
+# When the library is compiled without AVX but Cling's JIT auto-detects
+# it on the host CPU, Eigen SIMD code paths diverge causing ABI mismatches.
+# EIGEN_DONT_VECTORIZE forces scalar code in JIT; the library's own
+# pre-compiled vectorized code is unaffected.
+_cling_flags = '@GISMO_CLING_FLAGS@'
+if _cling_flags:
+    os.environ['EXTRA_CLING_ARGS'] = os.environ.get('EXTRA_CLING_ARGS', '') + ' ' + _cling_flags
+
 import cppyy
 import builtins
 from .pythonize import pythonize_gismo

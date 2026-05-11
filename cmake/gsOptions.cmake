@@ -31,7 +31,7 @@ message ("  GISMO_SHORT_TYPE        ${GISMO_SHORT_TYPE}")
 ## #################################################################
 ## Options list: Standard options
 ## #################################################################
-  
+
 option(GISMO_OPTIONAL_HEAD "Updates submodules to HEAD (online mode)" false  )
 if  (${GISMO_OPTIONAL_HEAD})
 message ("  GISMO_OPTIONAL_HEAD   ${GISMO_OPTIONAL_HEAD}")
@@ -159,6 +159,11 @@ endif()
 option(GISMO_WITH_WARNINGS            "Enable G+Smo related warnings" false  )
 if (GISMO_WITH_WARNINGS)
 message ("  GISMO_WITH_WARNINGS     ${GISMO_WITH_WARNINGS}")
+endif()
+
+option(GISMO_WITH_COLORS         "Enable terminal colors (Linux and MacOS only)" false  )
+if  (${GISMO_WITH_COLORS})
+message ("  GISMO_WITH_COLORS       ${GISMO_WITH_COLORS}")
 endif()
 
 option(GISMO_WITH_VTK            "With VTK"                      false  )
