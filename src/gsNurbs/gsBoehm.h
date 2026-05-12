@@ -72,7 +72,60 @@ void gsBoehmRefine( KnotVectorType & knots,
 
 // =============================================================================
 
-// Inserting knots in tensor-product B-splines.
+// Removing knots from B-splines (Tiller's algorithm, NURBS Book A5.8).
+
+// =============================================================================
+
+
+/// @brief Attempts to remove knot \a val from \a knots exactly once.
+///
+/// Implements the exact (zero-tolerance) variant of Tiller's knot removal
+/// algorithm (The NURBS Book, Algorithm A5.8).  The knot is removed only if
+/// the two sets of candidate control points computed from the left and from
+/// the right agree exactly in the middle (up to floating-point equality).
+///
+/// \param knots         Knot vector (modified in place when successful).
+/// \param coefs         Coefficient matrix (modified in place when successful).
+/// \param val           Knot value to remove.
+/// \param update_knots  Whether to also update the knot vector.
+/// \return              \c true if the knot was successfully removed.
+///
+/// \ingroup Nurbs
+template<class T, class KnotVectorType, class Mat>
+bool gsKnotRemoveSingle(
+    KnotVectorType & knots,
+    Mat            & coefs,
+    T                val,
+    bool             update_knots = true
+);
+
+
+/// @brief Removes knot \a val from \a knots up to \a t times (exact).
+///
+/// Calls gsKnotRemoveSingle() repeatedly until either \a t removals have been
+/// performed or the exact-removal condition is no longer satisfied.
+///
+/// \param knots         Knot vector (modified in place).
+/// \param coefs         Coefficient matrix (modified in place).
+/// \param val           Knot value to remove.
+/// \param t             Maximum number of removals.
+/// \param update_knots  Whether to also update the knot vector.
+/// \return              Number of times the knot was successfully removed.
+///
+/// \ingroup Nurbs
+template<class T, class KnotVectorType, class Mat>
+int gsKnotRemove(
+    KnotVectorType & knots,
+    Mat            & coefs,
+    T                val,
+    int              t             = 1,
+    bool             update_knots = true
+);
+
+
+// =============================================================================
+
+// Removing knots from tensor-product B-splines.
 
 // =============================================================================
 
@@ -167,6 +220,35 @@ void gsTensorBoehmRefineLocal(
         ValIt valBegin,
         ValIt valEnd,
         const bool update_knots);
+
+
+/// @brief Removes knot \a val from a tensor-product B-spline in direction
+///        \a direction, up to \a t times (exact removal only).
+///
+/// Iterates over all coefficient fibers in the given direction and applies
+/// gsKnotRemoveSingle() on each one.  The removal is carried out atomically:
+/// if any fiber fails the exact-removal check the whole operation is aborted
+/// and the coefficients/knot vector are left unchanged for that attempt.
+///
+/// \param knots      Knot vector in direction \a direction.
+/// \param coefs      Full coefficient matrix (all directions).
+/// \param val        Knot value to remove.
+/// \param direction  Parametric direction.
+/// \param str        Tensor strides.
+/// \param t          Maximum number of removals.
+/// \param update_knots  Whether to update the knot vector.
+/// \return           Number of times the knot was successfully removed.
+///
+/// \ingroup Nurbs
+template<typename T, typename KnotVectorType, typename Mat>
+int gsTensorKnotRemove(
+        KnotVectorType        & knots,
+        Mat                   & coefs,
+        T                       val,
+        int                     direction,
+        gsVector<unsigned>      str,
+        int                     t             = 1,
+        bool                    update_knots = true);
 
 
 /// @brief Inserts knot @a val such that multiplicity of a @a val in knot vector

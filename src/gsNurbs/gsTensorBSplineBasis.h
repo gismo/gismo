@@ -367,6 +367,14 @@ public:
             Self_t::component(j).reduceContinuity(i);
     }
 
+    /// \brief Elevates spline continuity (in all directions) at
+    /// interior knots by \a i (i.e. reduces interior knot multiplicity)
+    void elevateContinuity(int const & i = 1) override
+    {
+        for (short_t j = 0; j < d; ++j)
+            Self_t::component(j).elevateContinuity(i);
+    }
+
     /// \brief Returns span (element) indices of the beginning and end
     /// of the support of the i-th basis function.
     template <int _Rows>
@@ -520,9 +528,8 @@ protected:
   /**
    * @brief Initializes the Python wrapper for the class: gsTensorBSplineBasis
    */
-  void pybind11_init_gsTensorBSplineBasis2(pybind11::module &m);
-  void pybind11_init_gsTensorBSplineBasis3(pybind11::module &m);
-  void pybind11_init_gsTensorBSplineBasis4(pybind11::module &m);
+  template <short_t d>
+  void pybind11_init_gsTensorBSplineBasis(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

@@ -181,6 +181,53 @@ public:
     /// Inserts knot \a knot at direction \a dir, \a i times
     void insertKnot( T knot, int dir, int i = 1) override;
 
+    /// Removes knot \a knot from direction \a dir up to \a i times (exact).
+    /// Returns the number of times the knot was successfully removed.
+    int removeKnot( T knot, int dir, int i = 1);
+
+    // -----------------------------------------------------------------------
+    //  Calculus methods
+    // -----------------------------------------------------------------------
+
+    /// Returns a new gsTensorBSpline in full Bézier (C^{-1}) form by inserting
+    /// each interior knot to multiplicity degree+1 in every direction.
+    gsTensorBSpline<d,T> toBezier() const;
+
+    /// Returns c² as a new gsTensorBSpline (only for scalar targetDim==1).
+    /// Uses the Bernstein product formula element by element.
+    /// If \a keepBezier is false (default), interior knots are removed to the
+    /// minimal space S(2p, C^{p-1}) (interior multiplicity p+1).
+    /// If \a keepBezier is true, the raw Bézier (C^{-1}) result is returned.
+    gsTensorBSpline<d,T> squared(bool keepBezier = false) const;
+
+    /// Returns c³ as a new gsTensorBSpline (only for scalar targetDim==1).
+    /// Computed as squared(true) × self in Bézier form.
+    /// If \a keepBezier is false (default), interior knots are removed to the
+    /// minimal space S(3p, C^{p-1}) (interior multiplicity 2p+1).
+    /// If \a keepBezier is true, the raw Bézier (C^{-1}) result is returned.
+    gsTensorBSpline<d,T> cubed(bool keepBezier = false) const;
+
+    /// Returns the partial derivative in direction \a dir as a gsTensorBSpline.
+    /// The result has degree p-1 in direction \a dir and p in all other directions.
+    gsTensorBSpline<d,T> grad(short_t dir) const;
+
+    /// Returns all d partial derivatives as a vector of gsTensorBSpline.
+    std::vector< gsTensorBSpline<d,T> > grad() const;
+
+    /// Returns the divergence: for targetDim==d, sum_k ∂f_k/∂x_k.
+    /// Result is a scalar gsTensorBSpline.
+    gsTensorBSpline<d,T> div() const;
+
+    /// Returns the Laplacian: for scalar targetDim==1, sum_k ∂²c/∂x_k².
+    /// If \a keepBezier is false (default), the result is the minimal
+    /// S(p, C^{p-3}) space (interior multiplicity p-1, two less than input).
+    /// If \a keepBezier is true, all terms are degree-elevated back to p and
+    /// knots are inserted to Bézier (C^{-1}) form (old behaviour).
+    gsTensorBSpline<d,T> lapl(bool keepBezier = false) const;
+
+    /// Hessian: placeholder — not yet implemented.
+    gsTensorBSpline<d,T> hess() const;
+
     /// Returns a reference to the knot vector in direction \a i
     KnotVectorType & knots(const int i) { return this->basis().knots(i); }
 
@@ -279,9 +326,8 @@ protected:
   /**
    * @brief Initializes the Python wrapper for the class: gsTensorBSpline
    */
-  void pybind11_init_gsTensorBSpline2(pybind11::module &m);
-  void pybind11_init_gsTensorBSpline3(pybind11::module &m);
-  void pybind11_init_gsTensorBSpline4(pybind11::module &m);
+  template <short_t d>
+  void pybind11_init_gsTensorBSpline(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

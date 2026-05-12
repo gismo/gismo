@@ -239,6 +239,10 @@ public:
     /// Insert the given new knot (multiplicity \a i) without changing
     /// the curve.
     void insertKnot( T knot, index_t i = 1);
+
+    /// Remove knot \a knot up to \a i times (exact removal only).
+    /// Returns the number of times the knot was successfully removed.
+    index_t removeKnot( T knot, index_t i = 1);
 private:
     // Resolve hidden overload w.r.t. gsGeometry
     virtual void insertKnot( T knot, index_t dir, index_t i = 1) override;

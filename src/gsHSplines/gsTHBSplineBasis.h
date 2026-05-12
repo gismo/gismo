@@ -780,13 +780,8 @@ protected:
   /**
    * @brief Initializes the Python wrapper for the class: gsTHBSplineBasis
    */
-  void pybind11_init_gsTHBSplineBasis2(pybind11::module &m);
-  void pybind11_init_gsTHBSplineBasis3(pybind11::module &m);
-  void pybind11_init_gsTHBSplineBasis4(pybind11::module &m);
-
-  void pybind11_init_gsHBSplineBasis2(pybind11::module &m);
-  void pybind11_init_gsHBSplineBasis3(pybind11::module &m);
-  void pybind11_init_gsHBSplineBasis4(pybind11::module &m);
+  template <short_t d, bool Trunc>
+  void pybind11_init_gsTHBSplineBasis(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

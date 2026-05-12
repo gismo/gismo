@@ -619,30 +619,139 @@ gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
 
   /**
    * @brief Initializes the Python wrapper for the class: gsSparseMatrix
+   *
+   * Exposes sparse matrix structure accessors for scipy.sparse integration.
+   * Provides zero-copy access to internal compressed data via numpy arrays.
    */
   template<typename T>
   void pybind11_init_gsSparseMatrix(pybind11::module &m, const std::string & typestr)
   {
     using Class = gsSparseMatrix<T>;
+    using Index = index_t;
+
     std::string pyclass_name = std::string("gsSparseMatrix") + typestr;
     pybind11::class_<Class>(m, pyclass_name.c_str(), pybind11::buffer_protocol(), pybind11::dynamic_attr())
+
     // Constructors
     .def(pybind11::init<>())
     .def(pybind11::init<index_t, index_t>())
-    // Member functions
-    .def("size",      &Class::size)
-    .def("rows",      &Class::rows)
-    .def("cols",      &Class::cols)
-    // .def("transpose", &Class::transpose)
-    // .def("addTo",     &Class::addTo)
-    // .def("insertTo",  &Class::insertTo)
-    .def("toDense",   &Class::toDense)
+
+    // Basic accessors — member function pointers, unambiguous dispatch
+    .def("size",    &Class::size,    "Total number of elements (rows * cols)")
+    .def("rows",    &Class::rows,    "Number of rows")
+    .def("cols",    &Class::cols,    "Number of columns")
+    .def("toDense", &Class::toDense, "Convert to dense gsMatrix")
+
+    // Additional accessors — lambdas with const Class& self.
+    // Dispatch works correctly because the type_caster<gsSparseMatrix<T>>
+    // specialisation below (outside namespace gismo) delegates to
+    // type_caster_base, bypassing the Eigen sparse type_caster.
+    .def("nnz",          [](const Class& s){ return s.nonZeros(); },
+         "Number of non-zero elements")
+    .def("nonZeros",     [](const Class& s){ return s.nonZeros(); },
+         "Alias for nnz()")
+    .def("isCompressed", [](const Class& s){ return s.isCompressed(); },
+         "True if storage is in compressed format")
+    .def("makeCompressed", [](Class& s){ s.makeCompressed(); },
+         "Switch to compressed storage (required before data/indices/indptr/toScipySparse)")
+    .def("toarray", [](Class& s){ return s.toDense(); },
+         "Alias for toDense() — expensive for large matrices!")
+
+    // Zero-copy numpy views into internal CSC arrays.
+    // The returned arrays keep the matrix alive via the base-object mechanism.
+    .def("data", [](Class& s) -> pybind11::array_t<T> {
+        if (!s.isCompressed())
+            throw std::runtime_error("gsSparseMatrix.data(): call makeCompressed() first.");
+        return pybind11::array_t<T>(
+            {static_cast<pybind11::ssize_t>(s.nonZeros())},
+            {sizeof(T)},
+            s.valuePtr(),
+            pybind11::cast(s));
+    }, "Non-zero values array (zero-copy numpy view)")
+
+    .def("indices", [](Class& s) -> pybind11::array_t<Index> {
+        if (!s.isCompressed())
+            throw std::runtime_error("gsSparseMatrix.indices(): call makeCompressed() first.");
+        return pybind11::array_t<Index>(
+            {static_cast<pybind11::ssize_t>(s.nonZeros())},
+            {sizeof(Index)},
+            const_cast<Index*>(s.innerIndexPtr()),
+            pybind11::cast(s));
+    }, "Inner (row) indices array (zero-copy numpy view)")
+
+    .def("indptr", [](Class& s) -> pybind11::array_t<Index> {
+        if (!s.isCompressed())
+            throw std::runtime_error("gsSparseMatrix.indptr(): call makeCompressed() first.");
+        return pybind11::array_t<Index>(
+            {static_cast<pybind11::ssize_t>(s.outerSize() + 1)},
+            {sizeof(Index)},
+            const_cast<Index*>(s.outerIndexPtr()),
+            pybind11::cast(s));
+    }, "Outer column-pointer array (zero-copy numpy view)")
+
+    // Convenience: build a scipy.sparse.csc_matrix directly (zero-copy).
+    // Requires scipy to be installed.
+    .def("toScipySparse", [](Class& s) -> pybind11::object {
+        if (!s.isCompressed())
+            throw std::runtime_error(
+                "gsSparseMatrix.toScipySparse(): call makeCompressed() first.");
+        pybind11::module_ sp;
+        try {
+            sp = pybind11::module_::import("scipy.sparse");
+        } catch (const pybind11::error_already_set&) {
+            throw std::runtime_error(
+                "gsSparseMatrix.toScipySparse(): scipy is not available.");
+        }
+        pybind11::object self = pybind11::cast(s);
+        auto data_arr = pybind11::array_t<T>(
+            {static_cast<pybind11::ssize_t>(s.nonZeros())}, {sizeof(T)},
+            s.valuePtr(), self);
+        auto indices_arr = pybind11::array_t<Index>(
+            {static_cast<pybind11::ssize_t>(s.nonZeros())}, {sizeof(Index)},
+            const_cast<Index*>(s.innerIndexPtr()), self);
+        auto indptr_arr = pybind11::array_t<Index>(
+            {static_cast<pybind11::ssize_t>(s.outerSize() + 1)}, {sizeof(Index)},
+            const_cast<Index*>(s.outerIndexPtr()), self);
+        return sp.attr("csc_matrix")(
+            pybind11::make_tuple(data_arr, indices_arr, indptr_arr),
+            pybind11::arg("shape") = pybind11::make_tuple(s.rows(), s.cols()));
+    }, "Convert to scipy.sparse.csc_matrix with zero-copy data views")
+
     ;
   }
 
 #endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
+
+#ifdef GISMO_WITH_PYBIND11
+  /**
+   * @brief Specialise pybind11's type_caster for gsSparseMatrix<T> so that it
+   *        is handled as a registered pybind11 class, NOT as a scipy sparse
+   *        matrix.
+   *
+   * pybind11/eigen.h defines a partial specialisation
+   *   type_caster<Type, enable_if_t<is_eigen_sparse<Type>::value>>
+   * that converts Eigen sparse matrices to/from scipy.sparse objects.
+   * gsSparseMatrix<T> inherits from Eigen::SparseMatrix<T>, so it would be
+   * caught by that caster.  When gsSparseMatrix<T> is also registered as a
+   * pybind11::class_<> we want the class machinery (not the scipy caster) to
+   * handle it.  A full explicit specialisation of type_caster takes priority
+   * over the partial specialisation, so we delegate to type_caster_base.
+   */
+  namespace pybind11 { namespace detail {
+  // Explicit (full) specialisations for the two concrete instantiations that
+  // pygismo registers.  Full specialisations are always preferred over partial
+  // specialisations, so these take priority over the Eigen sparse type_caster.
+  template<>
+  struct type_caster<gismo::gsSparseMatrix<double>, void>
+      : public type_caster_base<gismo::gsSparseMatrix<double>> {};
+  // index_t is #define index_t int (see gsConfig.h), so we use int directly.
+  template<>
+  struct type_caster<gismo::gsSparseMatrix<int>, void>
+      : public type_caster_base<gismo::gsSparseMatrix<int>> {};
+  }} // namespace pybind11::detail
+#endif // GISMO_WITH_PYBIND11
 
 
 namespace gsEigen { namespace internal {
