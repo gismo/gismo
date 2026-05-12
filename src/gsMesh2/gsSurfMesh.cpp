@@ -814,6 +814,46 @@ mesh_statistics(bool eoc_verbose)
 }
 void
 gsSurfMesh::
+gradBoundary()
+{
+
+    std::map<Vertex, Point> bvmap; // New positions for boundary vertices
+    Vertex bv;
+    auto pts = this->points();
+    // Compute the new positions for boundary vertices.
+    for (auto hit : halfedges())
+    {
+        if (touches_boundary(hit))
+        {
+            bv = from_vertex(hit);
+
+            if (valence(bv) == 3) // Regular boundary case
+            {
+                bvmap[bv] = 2 * pts[bv] - pts[from_vertex(prev_halfedge(hit))];
+            }
+            else if (valence(bv) == 2) // Corner boundary case
+            {
+                bvmap[bv] = 4 * pts[bv] - 2 * pts[from_vertex(prev_halfedge(hit))]
+                    - 2 * pts[to_vertex(hit)] + pts[to_vertex(next_halfedge(hit))];
+            }
+            else // irregular case
+            {
+                gsWarn << "Irregular boundary stop process\n";
+                return;
+            }
+
+        }
+    }
+   
+    // Modify mesh
+    for (auto vit : vertices())
+        if (is_boundary(vit))
+            position(vit) = bvmap[vit];
+
+
+}
+void
+gsSurfMesh::
 triangulate()
 {
     /* The iterators will stay valid, even though new faces are added,
