@@ -369,6 +369,27 @@ public:
         this->row(k+1) = this->row(k);
     }
 
+    
+    /// \brief Matrix rotation.
+    ///
+    /// Returns a copy of this matrix with the entries rotated
+    /// clockwise around the center. Does not change this matrix.
+    /// This function is implicitly `inline`.
+    gsMatrix<T, Dynamic, Dynamic> rotate_cw() const
+    {
+        return this->transpose().colwise().reverse().eval();
+    }
+
+    /// \brief Matrix rotation.
+    ///
+    /// Returns a copy of this matrix with the entries rotated
+    /// counterclockwise around the center. Does not change this matrix.
+    /// This function is implicitly `inline`.
+    gsMatrix<T, Dynamic, Dynamic> rotate_ccw() const
+    {
+        return this->transpose().rowwise().reverse().eval();
+    }
+
     void removeNoise(const T tol)
     {
         this->noalias() = this->unaryExpr(removeNoise_helper(tol));
