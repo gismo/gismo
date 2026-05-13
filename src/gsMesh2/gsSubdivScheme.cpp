@@ -414,7 +414,50 @@ namespace gismo {
         
         return limits;
     }
+    void
+    gsSubdivScheme::
+    gradBoundary()
+    {
 
+        // Current implementation only for regular boundary (vertex valence = 3) and 
+        // conrners (vertex valence = 2).
+        // TODO: General case for EF in boundary by using Chebysev points (see A.Nashri 1987).
+
+        std::map<Vertex, Point> bvmap; // New positions for boundary vertices
+        Vertex bv;
+        auto pts = m_mesh->points();
+        // Compute the new positions for boundary vertices.
+        for (auto hit : m_mesh->halfedges())
+        {
+            if (m_mesh->touches_boundary(hit))
+            {
+                bv = m_mesh->from_vertex(hit);
+
+                if (m_mesh->valence(bv) == 3) // Regular boundary case
+                {
+                    bvmap[bv] = 2 * pts[bv] - pts[m_mesh->from_vertex(m_mesh->prev_halfedge(hit))];
+                }
+                else if (m_mesh->valence(bv) == 2) // Corner boundary case
+                {
+                    bvmap[bv] = 4 * pts[bv] - 2 * pts[m_mesh->from_vertex(m_mesh->prev_halfedge(hit))]
+                        - 2 * pts[m_mesh->to_vertex(hit)] + pts[m_mesh->to_vertex(m_mesh->next_halfedge(hit))];
+                }
+                else // irregular case
+                {
+                    gsWarn << "Irregular boundary stop process\n";
+                    return;
+                }
+
+            }
+        }
+
+        // Modify mesh boundary
+        for (auto vit : m_mesh->vertices())
+            if (m_mesh->is_boundary(vit))
+                m_mesh->position(vit) = bvmap[vit];
+
+
+    }
     void gsSubdivScheme::chaikin_scheme()
     {
 

@@ -132,12 +132,21 @@ public: // Loop subdivision
 
 public: // curve subdivision schemes
 
-    // Chaikin scheme
+    /// Chaikin scheme
     void chaikin_scheme();
 
 
+public: // Operations to mesh related to subdivision methods
 
 
+    /// Augment mesh boundaries for boundary control on dual subdivision schemes. 
+    ///
+    /// Necessary all faces that touch boundary be quads. Is used for modify input mesh
+    /// on PnS.
+    /// 
+    /// In practice is the implementation of A. Nashri 1987 - "Polyhedral Subdivision Methods for Free - Form Surfaces"
+    /// 
+    void gradBoundary();
 
 };//namespace internal
 

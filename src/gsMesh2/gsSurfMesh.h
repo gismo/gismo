@@ -1636,13 +1636,6 @@ public:
      */
     void flip(Edge e);
 
-    /// Convert boundaries to suitble for constant grad
-    ///
-    /// Necessary all faces that touch boundary be quads. Is used for modify input mesh
-    /// on PnS.
-    /// 
-    void gradBoundary();
-
     /// Mesh statistics
     ///
     /// Print info on mesh as:
