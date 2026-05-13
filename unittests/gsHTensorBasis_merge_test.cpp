@@ -57,7 +57,8 @@ SUITE(gsHTensorBasis_merge_test)
         unsigned maxLevel1 = basis1->tree().getMaxInsLevel();
 
         // Refine basis2 in a region
-        gsVector<index_t, 2> lo(0, 0), up(2, 2);
+        std::array<index_t, 2> lo = {0, 0};
+        std::array<index_t, 2> up = {2, 2};
         basis2->refineElements({{1, lo[0], lo[1], up[0], up[1]}}); // level 1, box [0,2] x [0,2]
 
         unsigned maxLevel2 = basis2->tree().getMaxInsLevel();
@@ -80,11 +81,13 @@ SUITE(gsHTensorBasis_merge_test)
         gsTHBSplineBasis<2>* basisB = makeTestBasis();
 
         // Refine A
-        gsVector<index_t, 2> loA(0, 0), upA(2, 2);
+        std::array<index_t, 2> loA = {0, 0};
+        std::array<index_t, 2> upA = {2, 2};
         basisA->refineElements({{1, loA[0], loA[1], upA[0], upA[1]}});
 
         // Refine B differently
-        gsVector<index_t, 2> loB(2, 2), upB(4, 4);
+        std::array<index_t, 2> loB = {2, 2};
+        std::array<index_t, 2> upB = {4, 4};
         basisB->refineElements({{1, loB[0], loB[1], upB[0], upB[1]}});
 
         // Store original states
@@ -117,7 +120,8 @@ SUITE(gsHTensorBasis_merge_test)
         gsTHBSplineBasis<2>* basis2 = makeTestBasis();
 
         // Refine both
-        gsVector<index_t, 2> lo(0, 0), up(2, 2);
+        std::array<index_t, 2> lo = {0, 0};
+        std::array<index_t, 2> up = {2, 2};
         basis1->refineElements({{1, lo[0], lo[1], up[0], up[1]}});
         basis2->refineElements({{1, lo[0], lo[1], up[0], up[1]}});
 
@@ -150,11 +154,13 @@ SUITE(gsHTensorBasis_merge_test)
         gsTHBSplineBasis<2>* basis = makeTestBasis();
 
         // Refine to create non-trivial hierarchy
-        gsVector<index_t, 2> lo(0, 0), up(2, 2);
+        std::array<index_t, 2> lo = {0, 0};
+        std::array<index_t, 2> up = {2, 2};
         basis->refineElements({{1, lo[0], lo[1], up[0], up[1]}});
 
         gsTHBSplineBasis<2>* basis2 = basis->clone().release();
-        gsVector<index_t, 2> lo2(2, 2), up2(4, 4);
+        std::array<index_t, 2> lo2 = {2, 2};
+        std::array<index_t, 2> up2 = {4, 4};
         basis2->refineElements({{1, lo2[0], lo2[1], up2[0], up2[1]}});
 
         // Merge
