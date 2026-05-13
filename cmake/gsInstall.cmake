@@ -85,10 +85,13 @@ install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsExport.h
         DESTINATION include/${PROJECT_NAME}/gsCore )
 
 # For gsLinearAlgebra.h
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/gsEigen
-        DESTINATION include/${PROJECT_NAME}
-        PATTERN "*.txt" EXCLUDE
-        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+# Only install the vendored Eigen headers when not using an external Eigen.
+if(NOT Eigen_DIR)
+  install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/Eigen
+          DESTINATION include/${PROJECT_NAME}
+          PATTERN "*.txt" EXCLUDE
+          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+endif()
 
 # For gsCmdLine.h
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/tclap

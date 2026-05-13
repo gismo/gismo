@@ -424,7 +424,7 @@ void gsRationalBasis<SrcT>::eval_into(const gsMatrix<T> & u, gsMatrix<T>& result
 template<class SrcT>
 void gsRationalBasis<SrcT>::evalFunc_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const
 {
-    assert( coefs.rows() == m_weights.rows() ) ;
+    GISMO_ASSERT( coefs.rows() == m_weights.rows(), "Invalid basis/coefficients ("<<coefs.rows()<<"/"<<m_weights.rows()); ;
 
     // Compute projective coefficients
     const gsMatrix<T> tmp = m_weights.asDiagonal() * coefs;

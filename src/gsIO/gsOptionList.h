@@ -203,15 +203,14 @@ public:
         m_reals(other.m_reals),
         m_switches(other.m_switches) { }
 
-#if EIGEN_HAS_RVALUE_REFERENCES
     // Note: functions cannot be defaulted/deleted in VS2013 or older
-    gsOptionList(gsOptionList && other) EIGEN_NOEXCEPT :
+    gsOptionList(gsOptionList && other) noexcept :
         m_strings(std::move(other.m_strings)),
         m_ints(std::move(other.m_ints)),
         m_reals(std::move(other.m_reals)),
         m_switches(std::move(other.m_switches)) { }
 
-    gsOptionList& operator=(gsOptionList && other) EIGEN_NOEXCEPT
+    gsOptionList& operator=(gsOptionList && other) noexcept
     {
         m_strings  = std::move(other.m_strings);
         m_ints     = std::move(other.m_ints);
@@ -219,7 +218,6 @@ public:
         m_switches = std::move(other.m_switches);
         return *this;
     }
-#endif
 
     /// Swaps contents
     void swap(gsOptionList& other)

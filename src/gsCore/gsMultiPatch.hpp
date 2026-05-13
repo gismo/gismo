@@ -64,8 +64,6 @@ memory::shared_ptr<gsDomain<T> > gsMultiPatch<T>::domain() const
     return memory::make_shared( new gsCompositeDomain<T>(*this) );
 }
 
-#if EIGEN_HAS_RVALUE_REFERENCES
-
 template<class T>
 gsMultiPatch<T>& gsMultiPatch<T>::operator=( const gsMultiPatch& other )
 {
@@ -91,7 +89,6 @@ gsMultiPatch<T>& gsMultiPatch<T>::operator=( gsMultiPatch&& other )
 }
 
 
-#endif
 
 template<class T>
 gsMultiPatch<T>::gsMultiPatch(PatchContainer & patches )
@@ -211,7 +208,7 @@ template<class T>
 void gsMultiPatch<T>::permute(const std::vector<short_t> & perm)
 {
     gsAsVector<gsGeometry<T>*> a (m_patches);
-    a = gsEigen::PermutationMatrix<-1,-1,short_t>(gsAsConstVector<short_t>(perm)) * a;
+    a = Eigen::PermutationMatrix<-1,-1,short_t>(gsAsConstVector<short_t>(perm)) * a;
 }
 
 template<class T>
@@ -1140,14 +1137,14 @@ gsMultiPatch<T> gsMultiPatch<T>::extractBezier() const
                 // As per Borden et al. 2010 "Isogeometric finite element data structures
                 // based on Bézier extraction of NURBS", eq (79);
                 newWeights = Cit->transpose() * globalWeights(Ait->asVector(),0);
-                newCoefs = Cit->transpose() * globalWeights(Ait->asVector(),0).asDiagonal() * globalCoefs(Ait->asVector(),gsEigen::all);
+                newCoefs = Cit->transpose() * globalWeights(Ait->asVector(),0).asDiagonal() * globalCoefs(Ait->asVector(),Eigen::placeholders::all);
                 newCoefs = newCoefs.array().colwise() / newWeights.col(0).array();
                 result.addPatch( gsNurbsBasis<T>::create(kv,newWeights)->makeGeometry(give(newCoefs)) );
             }
             else // If all weights are equal (Polynomial)
             {
                 result.addPatch( gsBSplineBasis<T>::create(kv)->makeGeometry(
-                       Cit->transpose() * globalCoefs(Ait->asVector(),gsEigen::all) ) );
+                       Cit->transpose() * globalCoefs(Ait->asVector(),Eigen::placeholders::all) ) );
             }
             // bezier extraction operator * original control points
         }

@@ -1406,8 +1406,8 @@ void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,
 template<class T>
 void gsWriteParaviewPoints(gsMatrix<T> const& X, gsMatrix<T> const& Y, std::string const & fn)
 {
-    assert( X.cols() == Y.cols() );
-    assert( X.rows() == 1 && Y.rows() == 1 );
+    GISMO_ASSERT( X.cols() == Y.cols(), "X and Y must have the same number of columns!" );
+    GISMO_ASSERT( X.rows() == 1 && Y.rows() == 1, "X and Y must have only one row!" );
     index_t np = X.cols();
 
     std::string mfn(fn);
@@ -1728,7 +1728,7 @@ void gsWriteParaview(gsSolid<T> const& sl, std::string const & fn, unsigned numP
                         break;}
                 }
                 gsMatrix<T> curvePoints = face->surf->sampleBoundaryCurve(iedge, numPoints_for_eachCurve);
-                if (iedge==0) assert( numOfPoints == curvePoints.cols());
+                if (iedge==0) GISMO_ASSERT( numOfPoints == curvePoints.cols(), "Inconsistent number of points!" );
                 color=color_convex;
                 if (isMember==true) color=color_eloop;
                 if (face->getHalfEdgeFromBoundaryOrder(iedge)->is_convex==false){color = color_nonconvex;}

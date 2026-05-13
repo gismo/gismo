@@ -90,7 +90,7 @@ bool read_off_ascii(gsSurfMesh& mesh,
 
         // position
         //items = sscanf(lp, "%f %f %f%n", (float*)&p[0], (float*)&p[1], (float*)&p[2], &nc);
-        //assert(items==3);
+        //GISMO_ASSERT(items==3, "Failed to read vertex position.");
 
         is >> p[0] >> p[1] >> p[2];
         v = mesh.add_vertex(p.cast<gsSurfMesh::Scalar>());
@@ -121,7 +121,7 @@ bool read_off_ascii(gsSurfMesh& mesh,
         if (has_texcoords)
         {
             items = sscanf(lp, "%f %f%n", (float*)&t[0], (float*)&t[1], &nc);
-            assert(items == 2);
+            GISMO_ASSERT(items == 2, "Failed to read texture coordinates.");
             texcoords[v][0] = t[0];
             texcoords[v][1] = t[1];
             lp += nc;
@@ -141,7 +141,7 @@ bool read_off_ascii(gsSurfMesh& mesh,
         is >> nV;
         gsDebugVar(nV);
         //items = sscanf(lp, "%d%n", (int*)&nV, &nc);
-        //assert(items == 1);
+        //GISMO_ASSERT(items == 1, "Failed to read number of face vertices.");
         vertices.resize(nV);
         //lp += nc;
 
@@ -151,7 +151,7 @@ bool read_off_ascii(gsSurfMesh& mesh,
             is >> idx;
             gsDebugVar(idx);
             //items = sscanf(lp, "%d%n", (int*)&idx, &nc);
-            //assert(items == 1);
+            //GISMO_ASSERT(items == 1, "Failed to read face vertex index.");
             vertices[j] = gsSurfMesh::Vertex(idx);
             //lp += nc;
         }
@@ -206,7 +206,7 @@ bool read_off_ascii(gsSurfMesh& mesh,
 
         // position
         items = sscanf(lp, "%f %f %f%n", (float*)&p[0], (float*)&p[1], (float*)&p[2], &nc);
-        assert(items==3);
+        GISMO_ASSERT(items==3, "Failed to read vertex position.");
         v = mesh.add_vertex(p.cast<gsSurfMesh::Scalar>());
         lp += nc;
 
@@ -235,7 +235,7 @@ bool read_off_ascii(gsSurfMesh& mesh,
         if (has_texcoords)
         {
             items = sscanf(lp, "%f %f%n", (float*)&t[0], (float*)&t[1], &nc);
-            assert(items == 2);
+            GISMO_ASSERT(items == 2, "Failed to read texture coordinates.");
             texcoords[v][0] = t[0];
             texcoords[v][1] = t[1];
             lp += nc;
@@ -254,7 +254,7 @@ bool read_off_ascii(gsSurfMesh& mesh,
 
         // #vertices
         items = sscanf(lp, "%d%n", (int*)&nV, &nc);
-        assert(items == 1);
+        GISMO_ASSERT(items == 1, "Failed to read number of face vertices.");
         vertices.resize(nV);
         lp += nc;
 
@@ -262,7 +262,7 @@ bool read_off_ascii(gsSurfMesh& mesh,
         for (j=0; j<nV; ++j)
         {
             items = sscanf(lp, "%d%n", (int*)&idx, &nc);
-            assert(items == 1);
+            GISMO_ASSERT(items == 1, "Failed to read face vertex index.");
             vertices[j] = gsSurfMesh::Vertex(idx);
             lp += nc;
         }
@@ -367,7 +367,7 @@ bool read_off(gsSurfMesh& mesh, const std::string& filename)
 
     // read header: [ST][C][N][4][n]OFF BINARY
     char *c = fgets(line, 200, in);
-    assert(c != NULL);
+    GISMO_ASSERT(c != NULL, "Failed to read file header.");
     c = line;
     if (c[0] == 'S' && c[1] == 'T') { has_texcoords = true; c += 2; }
     if (c[0] == 'C') { has_colors  = true; ++c; }
@@ -392,7 +392,7 @@ bool read_off(gsSurfMesh& mesh, const std::string& filename)
         fclose(in);
         in = fopen(filename.c_str(), "rb");
         c = fgets(line, 200, in);
-        assert(c != NULL);
+        GISMO_ASSERT(c != NULL, "Failed to read file header.");
     }
 
 

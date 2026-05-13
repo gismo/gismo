@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
         L2prev = dataOut.errorL2;
         H1prev = dataOut.errorH1;
 
-        if (dataOut.solverInfo != gsEigen::ComputationInfo::Success)
+        if (dataOut.solverInfo != Eigen::ComputationInfo::Success)
         {
             gsInfo << "Solver did not converge...\n";
         }

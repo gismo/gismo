@@ -829,7 +829,7 @@ class AndersonAcceleration {
   }
 
   // Linear solver for the Least-Square problem
-  gsEigen::FullPivLU<gsMatrix<Scalar>> m_linearSolver;
+  Eigen::FullPivLU<gsMatrix<Scalar>> m_linearSolver;
   // Parameters
   const preAAParam<Scalar> m_param;
   int m_dim = -1;
@@ -851,7 +851,7 @@ class AndersonAcceleration {
   gsVector<Scalar> m_scaledF;
   // Preconditioning
   gsSparseMatrix<Scalar> m_preconditioner;
-  gsEigen::SparseLU<gsSparseMatrix<Scalar>> m_linearSolverPreconditioning;
+  Eigen::SparseLU<gsSparseMatrix<Scalar>> m_linearSolverPreconditioning;
   // Print information
   bool m_printInfo = true;
 
