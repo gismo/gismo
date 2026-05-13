@@ -250,8 +250,8 @@ public:
     /// sample standard unit normals along a trimming curve
     gsMatrix<T> sampleNormal(int loopNumber, int curveNumber, size_t npoints) const
     {
-      assert( (loopNumber>=0) && (loopNumber < m_domain->numLoops()) );
-      assert( (curveNumber>=0) && (curveNumber < m_domain->loop(loopNumber).size() ) );
+      GISMO_ASSERT( (loopNumber>=0) && (loopNumber < m_domain->numLoops()), "Loop number is out of bounds." );
+      GISMO_ASSERT( (curveNumber>=0) && (curveNumber < m_domain->loop(loopNumber).size() ), "Curve number is out of bounds." );
       //gsMatrix<T> u( this->geoDim(), npoints );
 
       gsMatrix<T> u(3, npoints);

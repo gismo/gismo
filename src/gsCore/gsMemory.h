@@ -251,9 +251,7 @@ inline std::vector<T*> release(std::vector< unique_ptr<T> >& cont)
 // MSVC < 1900 do not work probably. give makes a deep copy for return value,
 // losses left value. But the alternative code results in segmentation vaults
 // because a swap/give loop leads to a stack overflow.
-// From the adresses, it seams that Eigen do not support rvalue with MSVC < 1900
-// Therefore disabled EIGEN_HAS_RVALUE_REFERENCES for MSVC < 1900 and use
-// alternative code.
+// Note: MSVC < 1900 (VS2013 and older) is no longer supported.
 
 /** 
     Alias for std::move, to be used instead of writing std::move for

@@ -211,7 +211,7 @@ T gsRemapInterface<T>::estimateReparamError(const index_t steps) const
                 m_g1->eval(points1)
                 -
                 m_g2->eval(points2)
-            ).template lpNorm<gsEigen::Infinity>();
+            ).template lpNorm<Eigen::Infinity>();
 }
 
 namespace {

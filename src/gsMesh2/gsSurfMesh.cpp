@@ -274,7 +274,7 @@ gsSurfMesh::Halfedge
 gsSurfMesh::
 find_halfedge(Vertex start, Vertex end) const
 {
-    assert(is_valid(start) && is_valid(end));
+    GISMO_ASSERT(is_valid(start) && is_valid(end), "Invalid vertex handle(s) in find_halfedge: " << start << ", " << end);
 
     Halfedge h  = halfedge(start);
     const Halfedge hh = h;
@@ -415,8 +415,8 @@ add_face(const std::vector<Vertex>& vertices)
                 }
                 while (!is_boundary(boundary_prev) || boundary_prev==inner_prev);
                 boundary_next = next_halfedge(boundary_prev);
-                assert(is_boundary(boundary_prev));
-                assert(is_boundary(boundary_next));
+                GISMO_ASSERT(is_boundary(boundary_prev), "Expected boundary halfedge.");
+                GISMO_ASSERT(is_boundary(boundary_next), "Expected boundary halfedge.");
 
 
                 // ok ?
@@ -1141,8 +1141,8 @@ gsSurfMesh::Halfedge
 gsSurfMesh::
 insert_edge(Halfedge h0, Halfedge h1)
 {
-    assert(face(h0) == face(h1));
-    assert(face(h0).is_valid());
+    GISMO_ASSERT(face(h0) == face(h1), "Halfedges do not belong to the same face.");
+    GISMO_ASSERT(face(h0).is_valid(), "Invalid face handle.");
 
     Vertex   v0 = to_vertex(h0);
     Vertex   v1 = to_vertex(h1);
@@ -1209,7 +1209,7 @@ flip(Edge e)
     // whether this operation is allowed or not!
 
     //let's make it sure it is actually checked
-    assert(is_flip_ok(e));
+    GISMO_ASSERT(is_flip_ok(e), "Flipping edge is not allowed.");
 
     Halfedge a0 = halfedge(e, 0);
     Halfedge b0 = halfedge(e, 1);
@@ -1830,7 +1830,8 @@ gsMultiPatch<> gsSurfMesh::asSpline(int deg) const
     else // 1 == deg%2
         for (auto f : faces())
         {
-            if (valence(f) != 4) continue;
+            n = valence(f); // avoid uninitialized n
+            if (n != 4) continue;
 
             evface = false;
             if (is_boundary(f)) continue; // handling boundaries
@@ -2304,8 +2305,8 @@ namespace internal
 
 void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
 {
-    assert( ( !strcmp( node->name(),"SurfMesh") || !strcmp( node->name(),"Mesh") )
-            &&  ( !strcmp(node->first_attribute("type")->value(),"off") ) );
+    GISMO_ASSERT( ( !strcmp( node->name(),"SurfMesh") || !strcmp( node->name(),"Mesh") )
+            &&  ( !strcmp(node->first_attribute("type")->value(),"off") ) , "Wrong node name or type for gsSurfMesh deserialization");
 
     result = gsSurfMesh();
 

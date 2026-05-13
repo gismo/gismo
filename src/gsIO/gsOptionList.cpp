@@ -564,12 +564,9 @@ void pybind11_init_gsOptionList(py::module &m) {
     .def("getAllEntries", &gsOptionList::getAllEntries)
 
     .def(py::init<>())
-    .def("assign", &gsOptionList::operator=)
+    .def("assign", (gsOptionList& (gsOptionList::*)(const gsOptionList&)) &gsOptionList::operator=)
 
-#if EIGEN_HAS_RVALUE_REFERENCES
     .def(py::init<const gsOptionList&>())
-    .def(py::init<gsOptionList&&>())
-#endif
 
     .def("__repr__",
          [](const gsOptionList &obj) {

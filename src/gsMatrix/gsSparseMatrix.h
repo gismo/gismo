@@ -30,11 +30,11 @@ namespace gismo
    \ingroup Matrix
 */
 template<typename T>
-class gsSparseEntries : public std::vector<gsEigen::Triplet<T,index_t> >
+class gsSparseEntries : public std::vector<Eigen::Triplet<T,index_t> >
 {
 public:
-    typedef gsEigen::Triplet<T,index_t> Triplet;
-    typedef std::vector<gsEigen::Triplet<T,index_t> > Base;
+    typedef Eigen::Triplet<T,index_t> Triplet;
+    typedef std::vector<Eigen::Triplet<T,index_t> > Base;
 
     typedef typename Base::iterator       iterator;
 public:
@@ -66,13 +66,13 @@ protected:
 /**
     @brief Iterator over the non-zero entries of a sparse matrix
 
-    This class is similar to gsEigen::SparseMatrix::InnerIteretor but in
+    This class is similar to Eigen::SparseMatrix::InnerIteretor but in
     addition it is default-constructible and assignable.
 */
 template<typename T, int _Options, typename _Index>
 class gsSparseMatrixIter
 {
-    typedef gsEigen::SparseMatrix<T,_Options,_Index> SparseMatrix;
+    typedef Eigen::SparseMatrix<T,_Options,_Index> SparseMatrix;
     static const int IsRowMajor = SparseMatrix::IsRowMajor;
 
 public:
@@ -147,12 +147,12 @@ protected:
     _Index m_outer;
 };
 
-/** @brief Sparse matrix class, based on gsEigen::SparseMatrix.
+/** @brief Sparse matrix class, based on Eigen::SparseMatrix.
  *
  * See http://eigen.tuxfamily.org/dox/group__SparseQuickRefPage.html
  * for Eigen's sparse matrix manipulations and
  * http://eigen.tuxfamily.org/dox/classEigen_1_1SparseMatrix.html for
- * documentation of the gsEigen::SparseMatrix class.
+ * documentation of the Eigen::SparseMatrix class.
  *
  * Remarks:
  *
@@ -170,18 +170,18 @@ protected:
 // Export the result to a file: saveAsBitmap(...);
 
 template<typename T, int _Options, typename _Index>
-class gsSparseMatrix : public gsEigen::SparseMatrix<T,_Options,_Index>
+class gsSparseMatrix : public Eigen::SparseMatrix<T,_Options,_Index>
 {
 public:
-    typedef gsEigen::SparseMatrix<T,_Options,_Index> Base;
+    typedef Eigen::SparseMatrix<T,_Options,_Index> Base;
 
     typedef gsSparseMatrixIter<T,_Options,_Index> iterator;
 
     // Type pointing to a block of the sparse matrix
-    typedef typename gsEigen::Block<Base> Block;
+    typedef typename Eigen::Block<Base> Block;
 
     // Type pointing to a const block of the sparse matrix
-    typedef typename gsEigen::Block<const Base> constBlock;
+    typedef typename Eigen::Block<const Base> constBlock;
 
     // Type pointing to a block view of the sparse matrix
     typedef gsMatrixBlockView<Base> BlockView;
@@ -197,11 +197,11 @@ public:
 
     /// Type of the full view of the matrix, for the case when only
     /// the lower diagonal part is stored
-    typedef typename gsEigen::SparseSelfAdjointView<Base, Lower> fullView;
+    typedef typename Eigen::SparseSelfAdjointView<Base, Lower> fullView;
 
     /// Type of the full view of the matrix, for the case when only
     /// the lower diagonal part is stored
-    typedef typename gsEigen::SparseSelfAdjointView<const Base, Lower> constFullView;
+    typedef typename Eigen::SparseSelfAdjointView<const Base, Lower> constFullView;
 
 public:
     gsSparseMatrix() ;
@@ -209,51 +209,29 @@ public:
     gsSparseMatrix(_Index rows, _Index cols) ;
 
     /// This constructor allows constructing a gsSparseMatrix from Eigen expressions
+    /// Eigen 5's SparseMatrix has no EigenBase-taking constructor but provides
+    /// operator=(EigenBase), so we default-construct and assign.
     template<typename OtherDerived>
-    gsSparseMatrix(const gsEigen::EigenBase<OtherDerived>& other)  : Base(other) { }
+    gsSparseMatrix(const Eigen::EigenBase<OtherDerived>& other)  : Base() { Base::operator=(other.derived()); }
 
     /// This constructor allows constructing a gsSparseMatrix from a selfadjoint view
     template<typename OtherDerived, unsigned int UpLo>
-    gsSparseMatrix(const gsEigen::SparseSelfAdjointView<OtherDerived, UpLo>& other)
+    gsSparseMatrix(const Eigen::SparseSelfAdjointView<OtherDerived, UpLo>& other)
     : Base(other) { }
 
     /// This constructor allows constructing a gsSparseMatrix from Eigen expressions
     template<typename OtherDerived>
-    gsSparseMatrix(const gsEigen::MatrixBase<OtherDerived>& other)  : Base(other) { }
+    gsSparseMatrix(const Eigen::MatrixBase<OtherDerived>& other)  : Base(other) { }
 
     /// This constructor allows constructing a gsSparseMatrix from another sparse expression
     template<typename OtherDerived>
-    gsSparseMatrix(const gsEigen::SparseMatrixBase<OtherDerived>& other)  : Base(other) { }
+    gsSparseMatrix(const Eigen::SparseMatrixBase<OtherDerived>& other)  : Base(other) { }
 
     /// This constructor allows constructing a gsSparseMatrix from Eigen expressions
     template<typename OtherDerived>
-    gsSparseMatrix(const gsEigen::ReturnByValue<OtherDerived>& other)  : Base(other) { }
+    gsSparseMatrix(const Eigen::ReturnByValue<OtherDerived>& other)  : Base(other) { }
 
-#if !EIGEN_HAS_RVALUE_REFERENCES
-    // swap assignment operator
-    gsSparseMatrix & operator=(gsSparseMatrix other)
-    {
-        this->swap(other);
-        return *this;
-    }
-
-    template<typename OtherDerived, int a>
-    gsSparseMatrix & operator=(const gsEigen::SparseSymmetricPermutationProduct<OtherDerived, a>& other)
-    {
-        this->Base::operator=(other);
-        return *this;
-    }
-#else
-#  ifdef _MSC_VER
-    template <class EigenExpr>
-    gsSparseMatrix& operator= (const EigenExpr & other)
-    {
-        this->Base::operator=(other);
-        return *this;
-    }
-#  else
     using Base::operator=;
-#  endif
 
     // Avoid default keyword for MSVC<2013
     // https://msdn.microsoft.com/en-us/library/hh567368.aspx
@@ -271,8 +249,6 @@ public:
         other.clear();
         return *this;
     }
-
-#endif
 
     /**
        \brief This function returns a smart pointer to the
@@ -645,11 +621,22 @@ gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
 } // namespace gismo
 
 
-namespace gsEigen { namespace internal {
+namespace Eigen { namespace internal {
 template<typename T, int _Options, typename _Index>
 struct traits<gismo::gsSparseMatrix<T,_Options,_Index> >:
-gsEigen::internal::traits<gsEigen::SparseMatrix<T,_Options,_Index> > { };
-} }
+Eigen::internal::traits<Eigen::SparseMatrix<T,_Options,_Index> > { };
+
+template<typename T, int _Options, typename _Index>
+struct evaluator<gismo::gsSparseMatrix<T,_Options,_Index> > :
+    evaluator<Eigen::SparseMatrix<T,_Options,_Index> >
+{
+    typedef gismo::gsSparseMatrix<T,_Options,_Index> XprType;
+    typedef evaluator<Eigen::SparseMatrix<T,_Options,_Index> > Base;
+    EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE evaluator() = default;
+    EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE explicit evaluator(const XprType& m)
+        : Base(static_cast<const Eigen::SparseMatrix<T,_Options,_Index>&>(m)) {}
+};
+} } // namespace Eigen::internal
 
 /* *****************************************************************
 #ifdef GISMO_BUILD_LIB

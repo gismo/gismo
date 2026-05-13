@@ -18,7 +18,6 @@
 
 // Eigen linear algebra library (http://eigen.tuxfamily.org)
 
-#define Eigen gsEigen
 // Make Eigen use GISMO_ASSERT which throws exceptions
 //
 // Must be defined before including Eigen headers
@@ -27,10 +26,17 @@
 
 // Plugin provides extra members
 #define EIGEN_MATRIXBASE_PLUGIN <gsMatrix/gsMatrixAddons.h>
-#define EIGEN_PLAINOBJECTBASE_PLUGIN <gsMatrix/gsPlainObjectBaseAddons.h>
 #include <gsMatrix/gsEigenDeclarations.h>
 
-#include <gsEigen/Core>
+// Suppress -Wmaybe-uninitialized false positive from Eigen's
+// ei_declare_aligned_stack_constructed_variable pattern in
+// SelfadjointMatrixVector.h; harmless but noisy with gcc.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+
+#include <Eigen/Core>
 
 #if defined(gsMpfr_ENABLED)
 #include <unsupported/Eigen/MPRealSupport>
@@ -40,10 +46,10 @@
 #include <unsupported/Eigen/MPQClassSupport>
 #endif
 
-#include <gsEigen/Dense>
-#include <gsEigen/Sparse>
-#include <gsEigen/StdVector>
-#include <gsEigen/Geometry>
+#include <Eigen/Dense>
+#include <Eigen/Sparse>
+#include <Eigen/StdVector>
+#include <Eigen/Geometry>
 
 // Extra Eigen code
 #include <gsMatrix/Adjugate.h>
@@ -52,15 +58,15 @@
 //#include <gsMatrix/RowSelection.h>
 
 #ifdef GISMO_WITH_SUPERLU
-#include <gsEigen/SuperLUSupport>
+#include <Eigen/SuperLUSupport>
 #endif
 
 #ifdef GISMO_WITH_PARDISO
-#include <gsEigen/PardisoSupport>
+#include <Eigen/PardisoSupport>
 #endif
 
 #ifdef GISMO_WITH_PASTIX
-#include <gsEigen/PaStiXSupport>
+#include <Eigen/PaStiXSupport>
 #endif
 
 // sparsesuite
@@ -78,16 +84,17 @@
 #include <pybind11/eigen.h>
 #endif
 
-#undef Eigen
-#undef eigen_assert
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
+
 #undef EIGEN_MATRIXBASE_PLUGIN
-#undef EIGEN_PLAINOBJECTBASE_PLUGIN
 
 
 namespace gismo
 {
 
-using gsEigen::internal::cast; // from Core/MathFunctions.h
+using Eigen::internal::cast; // from Core/MathFunctions.h
 
 /**
    \brief Check if all the entires if the matrix \a x are not NAN (not
@@ -97,7 +104,7 @@ using gsEigen::internal::cast; // from Core/MathFunctions.h
    and https://en.wikipedia.org/wiki/NaN
  */
 template<typename Derived>
-inline bool (isnumber)(const gsEigen::MatrixBase<Derived>& x)
+inline bool (isnumber)(const Eigen::MatrixBase<Derived>& x)
 { return ((x.array() == x.array())).all(); }
 
 /**
@@ -106,22 +113,22 @@ inline bool (isnumber)(const gsEigen::MatrixBase<Derived>& x)
    See https://en.wikipedia.org/wiki/Floating_point#Special_values
  */
 template<typename Derived>
-inline bool isfinite(const gsEigen::MatrixBase<Derived>& x)
+inline bool isfinite(const Eigen::MatrixBase<Derived>& x)
 { return ( (x - x).array() == (x - x).array()).all(); }
 
 
 
 //Constantss related to gsMatrix
 //( see also external/Eigen/src/Core/util/Constants.h )
-using gsEigen::Dynamic ;//=-1
+using Eigen::Dynamic ;//=-1
 
-using gsEigen::Lower;//=1
-using gsEigen::Upper;//=2
+using Eigen::Lower;//=1
+using Eigen::Upper;//=2
 
 // Values for matrix align options
-using gsEigen::RowMajor;//=0
-using gsEigen::ColMajor;//=1
-using gsEigen::AutoAlign;//=0
+using Eigen::RowMajor;//=0
+using Eigen::ColMajor;//=1
+using Eigen::AutoAlign;//=0
 
 template<class T, int _Rows, int _Cols> class gsAsMatrix ;
 template<class T, int _Rows, int _Cols> class gsAsConstMatrix ;
@@ -150,53 +157,53 @@ struct gsEigenAdaptor
 {
 public:
     // Note: IncompleteILU is not compatible with
-    // gsEigen::ConjugateGradient because this preconditionner does not
+    // Eigen::ConjugateGradient because this preconditionner does not
     // preserve symmetry.
 
     /// Congugate gradient without preconditioner (identity as preconditioner) 
-    typedef gsEigen::ConjugateGradient<gsEigen::SparseMatrix<T,0,index_t>,
-            gsEigen::Lower|gsEigen::Upper, gsEigen::IdentityPreconditioner> CGIdentity;
+    typedef Eigen::ConjugateGradient<Eigen::SparseMatrix<T,0,index_t>,
+            Eigen::Lower|Eigen::Upper, Eigen::IdentityPreconditioner> CGIdentity;
 
     /// Congugate gradient with diagonal (Jacobi) preconditioner
-    typedef gsEigen::ConjugateGradient<gsEigen::SparseMatrix<T,0,index_t>, 
-            gsEigen::Lower|gsEigen::Upper, gsEigen::DiagonalPreconditioner<T> > CGDiagonal;
+    typedef Eigen::ConjugateGradient<Eigen::SparseMatrix<T,0,index_t>, 
+            Eigen::Lower|Eigen::Upper, Eigen::DiagonalPreconditioner<T> > CGDiagonal;
 
     /// BiCGSTAB with Incomplete LU factorization with dual-threshold strategy
-    typedef gsEigen::BiCGSTAB<gsEigen::SparseMatrix<T,0,index_t>,
-                            gsEigen::IncompleteLUT<T, index_t> > BiCGSTABILUT;
+    typedef Eigen::BiCGSTAB<Eigen::SparseMatrix<T,0,index_t>,
+                            Eigen::IncompleteLUT<T, index_t> > BiCGSTABILUT;
 
     /// BiCGSTAB with Diagonal (Jacobi) preconditioner
-    typedef gsEigen::BiCGSTAB<gsEigen::SparseMatrix<T,0,index_t>,
-                            gsEigen::DiagonalPreconditioner<T> > BiCGSTABDiagonal;
+    typedef Eigen::BiCGSTAB<Eigen::SparseMatrix<T,0,index_t>,
+                            Eigen::DiagonalPreconditioner<T> > BiCGSTABDiagonal;
 
     /// BiCGSTAB without preconditioner (identity as preconditioner) 
-    typedef gsEigen::BiCGSTAB<gsEigen::SparseMatrix<T,0,index_t>,
-                            gsEigen::IdentityPreconditioner > BiCGSTABIdentity;
+    typedef Eigen::BiCGSTAB<Eigen::SparseMatrix<T,0,index_t>,
+                            Eigen::IdentityPreconditioner > BiCGSTABIdentity;
 
     /// Direct LDLt factorization
-    typedef gsEigen::SimplicialLDLT<gsEigen::SparseMatrix<T,0,index_t> > SimplicialLDLT;
+    typedef Eigen::SimplicialLDLT<Eigen::SparseMatrix<T,0,index_t> > SimplicialLDLT;
 
     /// Direct LLt factorization
-    typedef gsEigen::SimplicialLLT<gsEigen::SparseMatrix<T,0,index_t> > SimplicialLLT;
+    typedef Eigen::SimplicialLLT<Eigen::SparseMatrix<T,0,index_t> > SimplicialLLT;
 
     /// Sparse LU solver
-    typedef gsEigen::SparseLU<gsEigen::SparseMatrix<T,0,index_t>,
-                            gsEigen::COLAMDOrdering<index_t> > SparseLU;
+    typedef Eigen::SparseLU<Eigen::SparseMatrix<T,0,index_t>,
+                            Eigen::COLAMDOrdering<index_t> > SparseLU;
 
     /// Sparse QR solver
-    typedef gsEigen::SparseQR<gsEigen::SparseMatrix<T,0,index_t>,
-                            gsEigen::COLAMDOrdering<index_t> > SparseQR;
+    typedef Eigen::SparseQR<Eigen::SparseMatrix<T,0,index_t>,
+                            Eigen::COLAMDOrdering<index_t> > SparseQR;
     
     #ifdef GISMO_WITH_SUPERLU
     /// SuperLU (if enabled)
-    typedef gsEigen::SuperLU<gsEigen::SparseMatrix<T,0,index_t> > SuperLU;
+    typedef Eigen::SuperLU<Eigen::SparseMatrix<T,0,index_t> > SuperLU;
     #endif
 
     #ifdef GISMO_WITH_PARDISO
     /// Pardiso (if enabled)
-    typedef gsEigen::PardisoLDLT<gsEigen::SparseMatrix<T,0,int> > PardisoLDLT;
-    typedef gsEigen::PardisoLLT <gsEigen::SparseMatrix<T,0,int> > PardisoLLT;
-    typedef gsEigen::PardisoLU  <gsEigen::SparseMatrix<T,0,int> > PardisoLU;
+    typedef Eigen::PardisoLDLT<Eigen::SparseMatrix<T,0,int> > PardisoLDLT;
+    typedef Eigen::PardisoLLT <Eigen::SparseMatrix<T,0,int> > PardisoLLT;
+    typedef Eigen::PardisoLU  <Eigen::SparseMatrix<T,0,int> > PardisoLU;
     #endif
 
 };
@@ -211,4 +218,5 @@ public:
 #include <gsMatrix/gsSparseMatrix.h>
 #include <gsMatrix/gsSparseVector.h>
 #include <gsMatrix/gsSparseSolver.h>
+#include <gsMatrix/gsIncompleteLUT.h>
 #include <gsMatrix/gsPoint.h>

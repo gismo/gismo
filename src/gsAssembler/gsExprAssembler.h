@@ -186,10 +186,8 @@ public:
         return (nullptr == m_gmap ? m_exprdata->multiPatch() : *m_gmap);
     }
 
-#if EIGEN_HAS_RVALUE_REFERENCES
     void setIntegrationElements(const gsMultiBasis<T> &&) = delete;
     //const gsMultiBasis<T> * c++98
-#endif
 
     /// \brief Returns the domain of integration
     const gsDomain<T> & domain() const

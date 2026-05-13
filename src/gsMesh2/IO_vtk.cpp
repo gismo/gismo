@@ -65,7 +65,7 @@ bool read_vtk(gsSurfMesh& mesh,
 
         // position
         items = sscanf(lp, "%f %f %f%n", (float*)&p[0], (float*)&p[1], (float*)&p[2], &nc);
-        assert(items==3);
+        GISMO_ASSERT(items==3, "Failed to read vertex position.");
         v = mesh.add_vertex(p.cast<gsSurfMesh::Scalar>());
         lp += nc;
 
@@ -94,7 +94,7 @@ bool read_vtk(gsSurfMesh& mesh,
         if (has_texcoords)
         {
             items = sscanf(lp, "%f %f%n", (float*)&t[0], (float*)&t[1], &nc);
-            assert(items == 2);
+            GISMO_ASSERT(items == 2, "Failed to read texture coordinates.");
             texcoords[v][0] = t[0];
             texcoords[v][1] = t[1];
             lp += nc;
@@ -113,7 +113,7 @@ bool read_vtk(gsSurfMesh& mesh,
 
         // #vertices
         items = sscanf(lp, "%d%n", (int*)&nV, &nc);
-        assert(items == 1);
+        GISMO_ASSERT(items == 1, "Failed to read number of face vertices.");
         vertices.resize(nV);
         lp += nc;
 
@@ -121,7 +121,7 @@ bool read_vtk(gsSurfMesh& mesh,
         for (j=0; j<nV; ++j)
         {
             items = sscanf(lp, "%d%n", (int*)&idx, &nc);
-            assert(items == 1);
+            GISMO_ASSERT(items == 1, "Failed to read face vertex index.");
             vertices[j] = gsSurfMesh::Vertex(idx);
             lp += nc;
         }

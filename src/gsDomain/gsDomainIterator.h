@@ -79,7 +79,6 @@ public:
         this->operator=(_other);
     }
 
-#if EIGEN_HAS_RVALUE_REFERENCES
     /// Move constructor
     gsDomainIteratorWrapper(gsDomainIteratorWrapper && _other)
     : m_domainIter(give(_other.m_domainIter))
@@ -93,19 +92,11 @@ public:
     }
 
     /// Move assignment operator
-    gsDomainIteratorWrapper & operator=(gsDomainIteratorWrapper && _other) EIGEN_NOEXCEPT
+    gsDomainIteratorWrapper & operator=(gsDomainIteratorWrapper && _other) noexcept
     {
         m_domainIter = give(_other.m_domainIter);
         return *this;
     }
-#else
-    /// Assignment operator (uses copy-and-swap idiom)
-    gsDomainIteratorWrapper& operator= ( gsDomainIteratorWrapper _other )
-    {
-        std::swap(m_domainIter, _other.m_domainIter);
-        return *this;
-    }
-#endif
 
     /// Equality operator to compare two iterators
     bool operator==(const gsDomainIteratorWrapper& other) const
