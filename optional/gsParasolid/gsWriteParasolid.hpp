@@ -96,9 +96,6 @@ void getInterval(const bool directionU,
                  const PK_CURVE_t line,
                  PK_INTERVAL_t& result);
 
-bool validMultiplicities(const std::vector<index_t>& mult,
-                         const int deg);
-
 template <class T>
 bool exportCheck(const gsTHBSpline<2, T>& surface);
 
@@ -582,25 +579,7 @@ bool exportTHBsurface(const gsTHBSpline<2, T>& surface,
 // ================================================================================
 // utilities
 
-// returns true la all multiplicities in muls are less (<) than deg + 1
-// parasolid restriction
-bool validMultiplicities(const std::vector<index_t>& mult,
-                         const int deg)
-{
-    for (size_t i = 1; i != mult.size() - 1; i++)
-    {
-        if (mult[i] == deg + 1)
-        {
-            std::cout <<
-                "Only B-Splines with (inner) multiplicity less (<) "
-                "than degree + 1 are supported. \n"
-                "Parasolid restriction."
-                      << std::endl;
-            return false;
-        }
-    }
-    return true;
-}
+
 
 
 // computes the parameter interval of the iso-curve (line) on the surface (bspline)
