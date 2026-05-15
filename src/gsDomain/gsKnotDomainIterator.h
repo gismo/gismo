@@ -28,7 +28,7 @@ private:
     typedef typename gsDomainIterator<T>::uPtr domainIter;
 
     // Data members
-    knotIterator m_it, m_itEnd;
+    knotIterator m_it, m_itBegin, m_itEnd;
 
 public:
 
@@ -36,6 +36,7 @@ public:
     :
     gsDomainIterator<T>(start ? 0 : _knots.numElements()),
     m_it(start ? _knots.domainUBegin() : _knots.domainUEnd()),
+    m_itBegin(_knots.domainUBegin()),
     m_itEnd(_knots.domainUEnd())
     {
 
@@ -79,7 +80,7 @@ public:
     // Documentation in gsDomainIterator.h
     void reset() override
     {
-        m_it.reset();
+        m_it = m_itBegin;
     }
 
     gsVector<T> lowerCorner() const override
