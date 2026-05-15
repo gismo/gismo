@@ -33,7 +33,7 @@ gsCahnHilliardAssembler<T>::gsCahnHilliardAssembler(const gsMultiPatch<T> & mp,
                                                     )
 :
 m_patches(mp),
-m_basis(mb),
+m_integrationBasis(&mb),
 m_spaceBasis(&mb),
 m_bcs(bcs),
 m_initialized(false)
@@ -51,14 +51,14 @@ gsCahnHilliardAssembler<T>& gsCahnHilliardAssembler<T>::operator=( const gsCahnH
         // m_continuity=other.m_continuity;
 
         m_patches=other.m_patches;
-        m_basis=other.m_basis;
+        m_integrationBasis=other.m_integrationBasis;
         m_spaceBasis=other.m_spaceBasis;
         m_bcs=other.m_bcs;
 
         m_options=other.m_options;
 
         // To do: make copy constructor for the gsExprAssembler
-        m_assembler.setIntegrationElements(m_basis);
+        m_assembler.setIntegrationElements(*m_integrationBasis);
         m_assembler.setOptions(m_options);
     }
     return *this;
@@ -72,14 +72,14 @@ gsCahnHilliardAssembler<T>& gsCahnHilliardAssembler<T>::operator=( gsCahnHilliar
     // m_continuity=give(other.m_continuity);
 
     m_patches=give(other.m_patches);
-    m_basis=give(other.m_basis);
+    m_integrationBasis=give(other.m_integrationBasis);
     m_spaceBasis=give(other.m_spaceBasis);
     m_bcs=give(other.m_bcs);
 
     m_options=give(other.m_options);
 
     // To do: make copy constructor for the gsExprAssembler
-    m_assembler.setIntegrationElements(m_basis);
+    m_assembler.setIntegrationElements(*m_integrationBasis);
     m_assembler.setOptions(m_options);
     return *this;
 }
@@ -124,7 +124,7 @@ void gsCahnHilliardAssembler<T>::initialize()
     this->_getOptions();
 
     // Elements used for numerical integration
-    m_assembler.setIntegrationElements(m_basis);
+    m_assembler.setIntegrationElements(*m_integrationBasis);
     m_assembler.setOptions(m_options.getGroup("ExprAssembler"));
 
     GISMO_ASSERT(m_bcs.hasGeoMap(),"No geometry map was assigned to the boundary conditions. Use bc.setGeoMap to assign one!");
@@ -135,6 +135,7 @@ void gsCahnHilliardAssembler<T>::initialize()
     u.setup(m_bcs,
             m_assembler.options().askInt("DirichletValues",dirichlet::l2Projection),
             m_options.askInt("Continuity",-1));
+    m_ddofs = u.fixedPart(); // store non-zero Dirichlet DOF values (for future compat with non-homogeneous BCs)
     m_assembler.initSystem();
 
     // Compute sparsity patter: this is done automatically - but
@@ -145,36 +146,99 @@ void gsCahnHilliardAssembler<T>::initialize()
 }
 
 template <class T>
-void gsCahnHilliardAssembler<T>::assembleResidual(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC)
+void gsCahnHilliardAssembler<T>::assemble(const gsFunctionSet<T> & C)
 {
     GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
     // m_assembler.clearRhs(); // Resets to zero the values of the already allocated to residual (RHS)
     m_assembler.initVector();
+    m_assembler.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
 
     // Set the geometry map
     geometryMap G = m_assembler.getMap(m_patches);
 
     // Get the solution and its derivative
     auto c  = m_assembler.getCoeff(C);
-    auto dc = m_assembler.getCoeff(DC);
 
     // Set the discretization space
     auto w = m_assembler.trialSpace(0);
 
-    // Derivatives of the double well potential (Gomez et al., 2008)
-    // @lventavinuela where to use the double well potential option?
-    auto dmu_c = - 1.0 + 3.0 * (c*c).val(); // f_2 (second derivative of double well)
-    // auto ddmu_c = 6*c.val(); // f_3 (third derivative of double well)
-
-    // // Mobility
-    // T m0 = m_options.getReal("M0");
+    // Mobility
     auto M_c  = 1.0 + 0.0*c.val(); // replace with const_expr(1.0) instead of using 0*c
     // auto dM_c = 0.0 * igrad(c,G); // replace with const_expr(1.0) instead of using 0*c!!
 
-    auto residual = w*dc + // M
-                    M_c.val() * igrad(w,G)  * dmu_c * igrad(c,G).tr() + // F_bar
-                    M_c.val() * ilapl(w,G)*m_lambda*ilapl(c,G).val(); // K_laplacian
-                    // lambda*ilapl(c,G).val()*igrad(w,G)*dM_c.tr() + // term gradient mobility!
+    // Psi(c) = 1/4*(c^2-1)^2 and its derivatives
+    // Psi'(c) = c^3 - c
+    // Psi''(c) = 3*c^2 - 1
+    auto psi_prime = (c*c*c).val() - c.val();    // c^3 - c
+    auto psi_double_prime = 3.0*(c*c).val() - 1.0; // 3c^2 - 1
+    auto psi_triple_prime = 6.0*c.val();           // 6c
+
+    // Weak form residual
+    // mu = psi'(c) - lambda*laplacian(c)
+    // term1: M*grad(w)*psi''(c)*grad(c)
+    // term2: M*lapl(w)*lambda*lapl(c)
+    auto residual = M_c.val() * igrad(w,G) * psi_double_prime * igrad(c,G).tr() + // F_bar
+                    M_c.val() * ilapl(w,G) * m_lambda * ilapl(c,G).val(); // K_laplacian
+
+    auto jacobian = M_c.val() * psi_double_prime * igrad(w,G) * igrad(w,G).tr() + // K_f1
+                    M_c.val() * psi_triple_prime * igrad(w,G) * igrad(c,G).tr() * w.tr() + // K_f2
+                    M_c.val() * m_lambda * ilapl(w,G) * ilapl(w,G).tr(); // K_laplacian
+
+    m_assembler.assemble(jacobian * meas(G), residual * meas(G));
+
+    // ASSEMBLE NITSCHE
+    if (m_options.getSwitch("AssembleWeakBCs"))
+    {
+        if (m_bcs.get("Weak Clamped").size()==0)
+            gsWarn<<"Nitsche boundary assembly is requested, but no boundaries are marked 'Weak Clamped'";
+
+        T hmax = 0;
+        for (size_t p=0; p!=m_patches.nPatches(); p++)
+            hmax = math::max(hmax, m_patches.basis(p).getMaxCellLength());
+
+        auto weak_bc_residual = - igrad(w,G) * nv(G) * m_lambda * ilapl(c,G).val()
+                                +(igrad(w,G) * nv(G).normalized()) * hmax * m_penalty * (igrad(c,G) * nv(G))
+                                - m_lambda * ilapl(w,G) * igrad(c,G) * nv(G);
+        auto weak_bc_jacobian = - m_lambda * igrad(w,G) *  nv(G)  * ilapl(w,G).tr() + // consistency term
+                                m_penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
+                                m_lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr(); // symmetry term
+
+        m_assembler.assembleBdr(m_bcs.get("Weak Clamped"), weak_bc_jacobian, weak_bc_residual);
+    }
+}
+
+template <class T>
+void gsCahnHilliardAssembler<T>::assembleResidual(const gsFunctionSet<T> & C)
+{
+    GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
+    m_assembler.initVector();
+
+    // Set the geometry map
+    geometryMap G = m_assembler.getMap(m_patches);
+
+    // Get the solution
+    auto c  = m_assembler.getCoeff(C);
+
+    // Set the discretization space
+    auto w = m_assembler.trialSpace(0);
+
+    // Mobility
+    auto M_c  = 1.0 + 0.0*c.val(); // replace with const_expr(1.0) instead of using 0*c
+    // auto dM_c = 0.0 * igrad(c,G); // replace with const_expr(1.0) instead of using 0*c!!
+
+    // Psi(c) = 1/4*(c^2-1)^2 and its derivatives
+    // Psi'(c) = c^3 - c
+    // Psi''(c) = 3*c^2 - 1
+    auto psi_prime = (c*c*c).val() - c.val();    // c^3 - c
+    auto psi_double_prime = 3.0*(c*c).val() - 1.0; // 3c^2 - 1
+
+    // Weak form residual
+    // mu = psi'(c) - lambda*laplacian(c)
+    // term1: M*grad(w)*psi''(c)*grad(c)
+    // term2: M*lapl(w)*lambda*lapl(c)
+    auto residual = M_c.val() * igrad(w,G) * psi_double_prime * igrad(c,G).tr() + // F_bar
+                    M_c.val() * ilapl(w,G) * m_lambda * ilapl(c,G).val(); // K_laplacian
+
     m_assembler.assemble(residual * meas(G));
 
     // ASSEMBLE NITSCHE
@@ -182,17 +246,17 @@ void gsCahnHilliardAssembler<T>::assembleResidual(const gsFunctionSet<T> & C, co
     {
         if (m_bcs.get("Weak Clamped").size()==0)
             gsWarn<<"Nitsche boundary assembly is requested, but no boundaries are marked 'Weak Clamped'";
-        // Determine maximum mesh size
-        // gsWarn<<"Mesh size computation needs to be checked!\n";
+
         T hmax = 0;
         for (size_t p=0; p!=m_patches.nPatches(); p++)
             hmax = math::max(hmax, m_patches.basis(p).getMaxCellLength());
 
-        m_assembler.assembleBdr(m_bcs.get("Weak Clamped"), - igrad(w,G) * nv(G) * m_lambda * ilapl(c,G).val() // consistency term
-                                                        +(igrad(w,G) * nv(G).normalized()) * hmax * m_penalty * (igrad(c,G) * nv(G)) // penalty term
-                                                        - m_lambda * ilapl(w,G) * igrad(c,G) * nv(G)); // symmetry term
+        m_assembler.assembleBdr(m_bcs.get("Weak Clamped"),
+            - igrad(w,G) * nv(G) * m_lambda * ilapl(c,G).val()
+            +(igrad(w,G) * nv(G).normalized()) * hmax * m_penalty * (igrad(c,G) * nv(G))
+            - m_lambda * ilapl(w,G) * igrad(c,G) * nv(G));
     }
-
+    // NOTE: no m_assembler.cleanUp() here — parse() handles cleanup at the start of the next call
 }
 
 template <class T>
@@ -213,38 +277,36 @@ void gsCahnHilliardAssembler<T>::assembleMassMatrix()
 }
 
 template <class T>
-void gsCahnHilliardAssembler<T>::assembleJacobian(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC)
+void gsCahnHilliardAssembler<T>::assembleJacobian(const gsFunctionSet<T> & C)
 {
-    GISMO_UNUSED(DC);
-
     GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
     m_assembler.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
 
     // Set the geometry map
     geometryMap G = m_assembler.getMap(m_patches);
 
-    // Get the solution and its derivative
+        // Get the solution and its derivative
     auto c  = m_assembler.getCoeff(C);
-    // auto dc = m_assembler.getCoeff(DC);
 
     // Set the discretization space
     auto w = m_assembler.trialSpace(0);
 
-    // Derivatives of the double well potential (Gomez et al., 2008)
-    auto dmu_c = - 1.0 + 3.0 * (c*c).val(); // f_2 (second derivative of double well)
-    auto ddmu_c = 6*c.val(); // f_3 (third derivative of double well)
-
-    // // Mobility
-    // auto M_c  = 1.0 + 0.0*c.val(); // replace with const_expr(1.0) instead of using 0*c
+    // Mobility
+    auto M_c  = 1.0 + 0.0*c.val(); // replace with const_expr(1.0) instead of using 0*c
     // auto dM_c = 0.0 * igrad(c,G); // replace with const_expr(1.0) instead of using 0*c!!
 
-    m_assembler.clearMatrix(); // Resets to zero the values of the already allocated to matrix (LHS)
+    // Psi(c) = 1/4*(c^2-1)^2 and its derivatives
+    // Psi'(c) = c^3 - c
+    // Psi''(c) = 3*c^2 - 1
+    auto psi_prime = (c*c*c).val() - c.val();    // c^3 - c
+    auto psi_double_prime = 3.0*(c*c).val() - 1.0; // 3c^2 - 1
+    auto psi_triple_prime = 6.0*c.val();           // 6c
 
-    m_assembler.assemble((
-                dmu_c *igrad(w,G) * igrad(w,G).tr() + // K_f1
-                ddmu_c * igrad(w,G) * igrad(c,G).tr() * w.tr() + // K_f2
-                m_lambda * ilapl(w,G) * ilapl(w,G).tr()
-                ) * meas(G)); // K_laplacian
+    // Weak form jacobian
+    auto jacobian = M_c.val() * psi_double_prime * igrad(w,G) * igrad(w,G).tr() + // K_f1
+                    M_c.val() * psi_triple_prime * igrad(w,G) * igrad(c,G).tr() * w.tr() + // K_f2
+                    M_c.val() * m_lambda * ilapl(w,G) * ilapl(w,G).tr(); // K_laplacian
+    m_assembler.assemble(jacobian * meas(G));
 
     // ASSEMBLE NITSCHE
     if (m_options.getSwitch("AssembleWeakBCs"))
@@ -263,13 +325,13 @@ void gsCahnHilliardAssembler<T>::assembleJacobian(const gsFunctionSet<T> & C, co
                   m_penalty * (igrad(w,G) * nv(G).normalized()) * hmax * (igrad(w,G) * nv(G)).tr() - // penalty (stabilizing) term
                   m_lambda * ilapl(w,G) * (igrad(w,G)  * nv(G)).tr()); // symmetry term
     }
+
+    // NOTE: no m_assembler.cleanUp() here — parse() handles cleanup at the start of the next call
 }
 
 template <class T>
-void gsCahnHilliardAssembler<T>::assembleNitscheVector(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC)
+void gsCahnHilliardAssembler<T>::assembleNitscheVector(const gsFunctionSet<T> & C)
 {
-    GISMO_UNUSED(DC);
-
     GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before assembling the system.");
     if (m_bcs.get("Weak Clamped").size()==0)
     {
@@ -299,6 +361,8 @@ void gsCahnHilliardAssembler<T>::assembleNitscheVector(const gsFunctionSet<T> & 
     m_assembler.assembleBdr(m_bcs.get("Weak Clamped"), - igrad(w,G) * nv(G) * m_lambda * ilapl(c,G).val() // consistency term
                                                        +(igrad(w,G) * nv(G).normalized()) * hmax * m_penalty * (igrad(c,G) * nv(G)) // penalty term
                                                        - m_lambda * ilapl(w,G) * igrad(c,G) * nv(G)); // symmetry term
+
+    // NOTE: no m_assembler.cleanUp() here — parse() handles cleanup at the start of the next call
 }
 
 template <class T>
@@ -332,37 +396,48 @@ void gsCahnHilliardAssembler<T>::assembleNitscheMatrix()
 }
 
 template <class T>
-void gsCahnHilliardAssembler<T>::constructSolution(gsMatrix<T>     & Cvec,
-                                                   gsMultiPatch<T> & C)
+void gsCahnHilliardAssembler<T>::constructSolution(const gsMatrix<T> & Cvec,
+                                                   gsMultiPatch<T>   & C) const
 {
     auto w  = m_assembler.trialSpace(0);
-    auto c  = m_assembler.getSolution(w,  Cvec);
-    c.extract(C);
+    w.fixedPart() = m_ddofs;
+    C.clear();
+    for (size_t p = 0; p != m_patches.nPatches(); ++p)
+    {
+        gsMatrix<T> cf;
+        w.getCoeffs(Cvec, cf, p);
+        typename gsGeometry<T>::uPtr patch = m_spaceBasis->basis(p).makeGeometry(give(cf));
+        C.addPatch(give(patch));
+    }
 }
 
 template <class T>
-void gsCahnHilliardAssembler<T>::constructSolution(gsMatrix<T>         & Cvec,
-                                                   gsMappedSpline<2,T> & C)
+void gsCahnHilliardAssembler<T>::constructSolution(const gsMatrix<T>   & Cvec,
+                                                   gsMappedSpline<2,T> & C) const
 {
     auto w  = m_assembler.trialSpace(0);
-    auto c  = m_assembler.getSolution(w,  Cvec);
+    w.fixedPart() = m_ddofs;
+    gsMatrix<T> Cvec_nc = Cvec; // getSolution needs non-const ref
+    auto c  = m_assembler.getSolution(w, Cvec_nc);
     c.extract(C);
 }
 
 template <class T>
 void gsCahnHilliardAssembler<T>::constructSolution(const gsMultiPatch<T> & C,
-                                                         gsMatrix<T>     & Cvec)
+                                                         gsMatrix<T>     & Cvec) const
 {
     GISMO_ASSERT(C.geoDim()==1,"C must be a scalar function");
-    GISMO_ASSERT(C.nPatches()==m_basis.nBases(),"Number of patches in C must be equal to the number of bases in the assembler");
+    const gsMultiBasis<T> * basis = dynamic_cast<const gsMultiBasis<T>*>(m_spaceBasis);
+    GISMO_ASSERT(basis,"The space basis must be a multi-basis to construct the solution from a multi-patch");
+    GISMO_ASSERT(C.nPatches()==basis->nBases(),"Number of patches in C must be equal to the number of bases in the assembler");
     auto w  = m_assembler.trialSpace(0);
 
     Cvec.setZero(this->numDofs(),1);
-    for (size_t b=0; b!=m_basis.nBases(); b++)
+    for (size_t b=0; b!=basis->nBases(); b++)
     {
-        for (index_t i = 0; i < m_basis.basis(b).size(); i++)
+        for (index_t i = 0; i < basis->basis(b).size(); i++)
         {
-            GISMO_ASSERT(C.basis(b).size()==m_basis.basis(b).size(),"Number of basis functions in C must be equal to the number of basis functions in the assembler");
+            GISMO_ASSERT(C.basis(b).size()==basis->basis(b).size(),"Number of basis functions in C must be equal to the number of basis functions in the assembler");
             if (w.mapper().is_free(i,b))
                 Cvec(w.mapper().index(i,b)) = C.patch(b).coefs()(i,0);
         }
@@ -370,9 +445,165 @@ void gsCahnHilliardAssembler<T>::constructSolution(const gsMultiPatch<T> & C,
 }
 
 template <class T>
+void gsCahnHilliardAssembler<T>::assemble(const gsMatrix<T> & Cvec)
+{
+    gsMultiPatch<T> C, DC;
+    constructSolution(Cvec,  C);
+    assemble(C);
+}
+
+template <class T>
+void gsCahnHilliardAssembler<T>::assembleResidual(const gsMatrix<T> & Cvec)
+{
+    gsMultiPatch<T> C;
+    constructSolution(Cvec,  C);
+    assembleResidual(C);
+}
+
+template <class T>
+void gsCahnHilliardAssembler<T>::assembleJacobian(const gsMatrix<T> & Cvec)
+{
+    gsMultiPatch<T> C;
+    constructSolution(Cvec,  C);
+    assembleJacobian(C);
+}
+
+template <class T>
+void gsCahnHilliardAssembler<T>::assembleNitscheVector(const gsMatrix<T> & Cvec)
+{
+    gsMultiPatch<T> C;
+    constructSolution(Cvec,  C);
+    assembleNitscheVector(C);
+}
+
+template <class T>
 void gsCahnHilliardAssembler<T>::setSpaceBasis(const gsFunctionSet<T> & spaceBasis)
 {
     m_spaceBasis = &spaceBasis;
+}
+
+template <class T>
+void gsCahnHilliardAssembler<T>::setIntegrationBasis(const gsMultiBasis<T> & integrationBasis)
+{
+    m_integrationBasis = &integrationBasis;
+}
+
+template <class T>
+T gsCahnHilliardAssembler<T>::computeMass(const gsFunctionSet<T> & C)
+{
+    GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet. Call initialize() before computing mass.");
+    gsExprEvaluator<T> evaluator(m_assembler);
+
+    // Set the geometry map
+    geometryMap G = evaluator.getMap(m_patches);
+    
+    // Get the solution
+    auto c = evaluator.getVariable(C);
+    
+    // Compute M(c) = ∫ c dx
+    return evaluator.integral(c * meas(G));
+}
+
+template <class T>
+T gsCahnHilliardAssembler<T>::computeMass(const gsMatrix<T> & Cvec)
+{
+    gsMultiPatch<T> C;
+    constructSolution(Cvec,  C);
+    return computeMass(C);
+}
+
+template <class T>
+T gsCahnHilliardAssembler<T>::computeDissipation(const gsFunctionSet<T> & C, const gsFunctionSet<T> & mu)
+{
+    // NOTE: this implementation requires a field for the chemical potential mu, avoiding the requirement for igrad(ilapl(c)) which requires a C^2 space.
+    // NOTE2: C is not really used now
+    GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet.");
+    gsExprEvaluator<T> evaluator(m_assembler);
+    geometryMap G = evaluator.getMap(m_patches);
+    auto c = evaluator.getVariable(C, G);
+    auto Mu= evaluator.getVariable(mu, G);
+
+    // 1. Define Mobility (M)
+    auto M_c = 1.0 * c.val(); // replace with const_expr(1.0) instead of using 0*c
+    // 2. Define grad(mu)
+    auto grad_mu = igrad(Mu, G);
+
+    // Dissipation is integral of M * |grad mu|^2
+    return evaluator.integral(M_c * grad_mu.sqNorm() * meas(G));
+}
+
+template <class T>
+T gsCahnHilliardAssembler<T>::computeDissipation(const gsMatrix<T> & Cvec, const gsMatrix<T> & muVec)
+{
+    gsMultiPatch<T> C, mu;
+    constructSolution(Cvec,  C);
+    constructSolution(muVec, mu);
+    return computeDissipation(C, mu);
+}
+
+template <class T>
+T gsCahnHilliardAssembler<T>::computeDissipation(const gsFunctionSet<T> & C)
+{
+    // NOTE: Below is an implementation that requires igrad(ilapl(c)) which requires a C^2 space. 
+    // igrad(ilapl) is not currently supported by the assembler, but it can be implemented in the future if needed. 
+    /* 
+        GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet.");
+        gsExprEvaluator<T> evaluator(m_assembler);
+        geometryMap G = evaluator.getMap(m_patches);
+        auto c = evaluator.getVariable(C, G);
+
+        // 1. Define Mobility (M)
+        auto M_c = 1.0 * c.val(); // replace with const_expr(1.0) instead of using 0*c
+
+        // 2. Define grad(mu) = Psi''(c)*grad(c) - lambda*grad(lapl(c))
+        // Psi(c) = 1/4 (c^2 - 1)^2 
+        // Psi'(c) = c^3 - c
+        // Psi''(c) = 3*c^2 - 1
+        // mu(c) = Psi'(c) - lambda*lapl(c) = c^3 - c - lambda*lapl(c)
+        // grad(mu) = Psi''(c)*grad(c) - lambda*grad(lapl(c)) = (3*c^2 - 1)*grad(c) - lambda*grad(lapl(c))
+        auto psi_double_prime = 3.0 * (c * c).val() - 1.0;
+        auto grad_mu = psi_double_prime * igrad(c, G) - m_lambda * igrad(ilapl(c, G), G);
+        
+        // Dissipation is integral of M * |grad mu|^2
+        return evaluator.integral(M_c * (grad_mu * grad_mu).sum() * meas(G));
+    */
+    GISMO_UNUSED(C);
+    GISMO_NO_IMPLEMENTATION;
+}
+
+template <class T>
+T gsCahnHilliardAssembler<T>::computeDissipation(const gsMatrix<T> & Cvec)
+{
+    gsMultiPatch<T> C;
+    constructSolution(Cvec,  C);
+    return computeDissipation(C);
+}
+
+template <class T>
+T gsCahnHilliardAssembler<T>::computeEnergy(const gsFunctionSet<T> & C)
+{
+    GISMO_ENSURE(m_initialized,"The assembler has not been initialized yet.");
+    gsExprEvaluator<T> evaluator(m_assembler);
+    geometryMap G = evaluator.getMap(m_patches);
+    auto c = evaluator.getVariable(C, G);
+    
+    // Bulk energy: 1/4 * (c^2 - 1)^2
+    auto c2 = (c * c).val();
+    auto bulk = 0.25 * (c2 - 1.0) * (c2 - 1.0);
+    
+    // Interface energy: lambda/2 * |grad c|^2
+    auto grad_c = igrad(c, G);
+    auto interface = 0.5 * m_lambda *  grad_c.sqNorm();
+    
+    return evaluator.integral((bulk + interface) * meas(G));
+}
+
+template <class T>
+T gsCahnHilliardAssembler<T>::computeEnergy(const gsMatrix<T> & Cvec)
+{
+    gsMultiPatch<T> C;
+    constructSolution(Cvec,  C);
+    return computeEnergy(C);
 }
 
 }// namespace gismo

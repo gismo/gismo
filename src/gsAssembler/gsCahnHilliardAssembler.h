@@ -27,6 +27,24 @@ namespace gismo
 template <class T>
 class gsCahnHilliardAssembler
 {
+protected:
+
+    // class DissipationFunction : public gsFunction<T>
+    // {
+    //     public: 
+    //         DissipationFunction(const gsFunctionSet<T> & C) : m_C(C)
+    //         {}
+
+    //         short_t domainDim() const override { return m_C.domainDim(); }
+    //         short_t targetDim() const override { return 1; }
+
+    //         void 
+
+
+    //     protected:
+    //         const gsFunctionSet<T> & m_C;
+    // };
+
 public:
 
 /**
@@ -74,13 +92,22 @@ public:
     void initialize();
 
     /**
-     * @brief Overwrites the basis to be used as a space,
-     *        and keeps the basis defined in the constructor
-     *        for integration
-     * @note  This option is usually called for assembly on \ref gsMappedBasis
-     * @param spaceBasis The basis to be used for the space
-     */
+      * @brief Overwrites the basis to be used as a space,
+      *        and keeps the basis defined in the constructor
+      *        for integration
+      * @note  This option is usually called for assembly on \ref gsMappedBasis
+      * @param spaceBasis The basis to be used for the space
+      */
     void setSpaceBasis(const gsFunctionSet<T> & spaceBasis);
+
+    /**
+     * @brief Overwrites the basis to be used for integration,
+     *        and keeps the basis defined in the constructor
+     *        for the space
+     * @note  This option is usually called for assembly on \ref gsMappedBasis
+     * @param integrationBasis The basis to be used for integration
+     */
+    void setIntegrationBasis(const gsMultiBasis<T> & integrationBasis);
 
     /**
      * @brief Assembles the mass matrix separately
@@ -88,25 +115,60 @@ public:
     void assembleMassMatrix();
 
     /**
-     * @brief Assembles the stiffness matrix separately
-     * @param C The solution
-     * @param DC The time-derivative of the solution
+     * @brief Assembles the full system
+     * @param C The solution (as a gsFunctionSet, e.g. gsMultiPatch)
      */
-    void assembleJacobian(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC);
+    void assemble(const gsFunctionSet<T> & C);
 
     /**
-     * @brief Assembles the residual
-     * @param C The solution
-     * @param DC The time-derivative of the solution
+     * @brief Assembles the full system from coefficient vectors.
+     *        Calls constructSolution internally so the gsMultiPatch stays on the C++ stack.
+     * @param Cvec The solution coefficient vector
      */
-    void assembleResidual(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC);
+    void assemble(const gsMatrix<T> & Cvec);
 
     /**
-     * @brief Assembles the Nitsche vector for boundary conditions separately
-     * @param C The solution
-     * @param DC The time-derivative of the solution
+     * @brief Assembles the stiffness matrix (Jacobian) separately.
+     *        Does not depend on the time-derivative of the solution.
+     * @param C The solution (as a gsFunctionSet, e.g. gsMultiPatch)
      */
-    void assembleNitscheVector(const gsFunctionSet<T> & C, const gsFunctionSet<T> & DC);
+    void assembleJacobian(const gsFunctionSet<T> & C);
+
+    /**
+     * @brief Assembles the stiffness matrix (Jacobian) from a coefficient vector.
+     *        Calls constructSolution internally so the gsMultiPatch stays on the C++ stack.
+     * @param Cvec The solution coefficient vector
+     */
+    void assembleJacobian(const gsMatrix<T> & Cvec);
+
+    /**
+     * @brief Assembles the spatial (static) residual — the nonlinear spatial terms only.
+     *        The time-derivative contribution M*dC must be added by the caller:
+     *            Q = assembler.rhs() + M * dC
+     * @param C The solution (as a gsFunctionSet, e.g. gsMultiPatch)
+     */
+    void assembleResidual(const gsFunctionSet<T> & C);
+
+    /**
+     * @brief Assembles the spatial residual from a coefficient vector.
+     *        Calls constructSolution internally so the gsMultiPatch stays on the C++ stack.
+     * @param Cvec The solution coefficient vector
+     */
+    void assembleResidual(const gsMatrix<T> & Cvec);
+
+    /**
+     * @brief Assembles the Nitsche vector for boundary conditions separately.
+     *        Does not depend on the time-derivative of the solution.
+     * @param C The solution (as a gsFunctionSet, e.g. gsMultiPatch)
+     */
+    void assembleNitscheVector(const gsFunctionSet<T> & C);
+
+    /**
+     * @brief Assembles the Nitsche vector from a coefficient vector.
+     *        Calls constructSolution internally so the gsMultiPatch stays on the C++ stack.
+     * @param Cvec The solution coefficient vector
+     */
+    void assembleNitscheVector(const gsMatrix<T> & Cvec);
 
     /**
      * @brief Assembles the Nitsche matrix for boundary conditions separately
@@ -160,24 +222,87 @@ public:
      * @param Cvec The solution vector
      * @param C The solution
      */
-    void constructSolution(gsMatrix<T>     & Cvec,
-                           gsMultiPatch<T> & C);
+    void constructSolution(const gsMatrix<T> & Cvec,
+                           gsMultiPatch<T>   & C) const;
 
     /**
      * @brief Constructs a spline solution from a solution vector
      * @param Cvec The solution vector
      * @param C The solution
      */
-    void constructSolution(gsMatrix<T>         & Cvec,
-                           gsMappedSpline<2,T> & C);
+    void constructSolution(const gsMatrix<T>   & Cvec,
+                           gsMappedSpline<2,T> & C) const;
 
     /**
-     * @brief Constructs a solution vector from a multi-patch solution
-     * @param C The solution
-     * @param Cvec The solution vector
-     */
+      * @brief Constructs a solution vector from a multi-patch solution
+      * @param C The solution
+      * @param Cvec The solution vector
+      */
     void constructSolution(const gsMultiPatch<T> & C,
-                                 gsMatrix<T>     & Cvec);
+                                 gsMatrix<T>     & Cvec) const;
+
+    /**
+     * @brief Computes the mass M(c) = ∫ c dx
+     * @param C The solution (as a gsFunctionSet, e.g. gsMultiPatch)
+     * @return The computed mass integral
+     */
+    T computeMass(const gsFunctionSet<T> & C);
+
+    /**
+     * @brief Computes the mass M(c) = ∫ c dx from a coefficient vector.
+     *        Calls constructSolution internally so the gsMultiPatch stays on the C++ stack.
+     * @param Cvec The solution coefficient vector
+     * @return The computed mass integral
+     */
+    T computeMass(const gsMatrix<T> & Cvec);
+
+    /**
+     * @brief Computes the dissipation D(c) = ∫ |∇mu|^2 dx where mu = -c + c^3 - lambda Δc
+     * @param C The solution (as a gsFunctionSet, e.g. gsMultiPatch)
+     * @return The computed dissipation integral
+     */
+    T computeDissipation(const gsFunctionSet<T> & C);
+
+    /**
+     * @brief Computes the dissipation D(c) = ∫ |∇mu|^2 dx where mu = -c + c^3 - lambda Δc from a coefficient vector.
+     *        Calls constructSolution internally so the gsMultiPatch stays on the C++ stack.
+     * @param Cvec The solution coefficient vector
+     * @return The computed dissipation integral
+     */
+    T computeDissipation(const gsMatrix<T> & Cvec);
+
+    /**
+     * @brief Computes the dissipation D(c) = ∫ M(c) |∇mu|^2 dx where mu = -c + c^3 - lambda Δc
+     * @param C The solution (as a gsFunctionSet, e.g. gsMultiPatch)
+     * @param mu The chemical potential (as a gsFunctionSet, e.g. gsMultiPatch)
+     * @return The computed dissipation integral
+     * @note This implementation requires a field for the chemical potential mu, avoiding the requirement for
+     */
+    T computeDissipation(const gsFunctionSet<T> & C, const gsFunctionSet<T> & mu);
+
+    /**
+     * @brief Computes the dissipation D(c) = ∫ M(c) |∇mu|^2 dx where mu = -c + c^3 - lambda Δc from coefficient vectors.
+     *        Calls constructSolution internally so the gsMultiPatch stays on the C++ stack.
+     * @param Cvec The solution coefficient vector
+     * @param muVec The chemical potential coefficient vector
+     * @return The computed dissipation integral
+     * @note This implementation requires a field for the chemical potential mu, avoiding the requirement for
+     */
+    T computeDissipation(const gsMatrix<T> & Cvec, const gsMatrix<T> & muVec);
+
+    /**
+     * @brief Computes the energy E(c) = ∫ [ 1/4 (c^2 - 1)^2 + lambda/2 |∇c|^2 ] dx
+     * @param C The solution (as a gsFunctionSet, e.g. gsMultiPatch)
+     * @return The computed energy integral
+     */
+    T computeEnergy(const gsFunctionSet<T> & C);
+    /**
+     * @brief Computes the energy E(c) = ∫ [ 1/4 (c^2 - 1)^2 + lambda/2 |∇c|^2 ] dx from a coefficient vector.
+     *        Calls constructSolution internally so the gsMultiPatch stays on the C++ stack.
+     * @param Cvec The solution coefficient vector
+     * @return The computed energy integral
+     */
+    T computeEnergy(const gsMatrix<T> & Cvec);
 
 protected:
 
@@ -195,10 +320,11 @@ protected:
     gsExprEvaluator<T> m_evaluator;
 
     gsMultiPatch<T>           m_patches;
-    mutable gsMultiBasis<T>   m_basis;
+    const gsMultiBasis<T> *   m_integrationBasis;
     const gsFunctionSet<T> *  m_spaceBasis;
     gsBoundaryConditions<T>   m_bcs;
     bool m_initialized;
+    gsMatrix<T> m_ddofs; ///< Non-zero Dirichlet DOF values stored during initialize(), for future compat.
 
     mutable gsOptionList m_options;
 
