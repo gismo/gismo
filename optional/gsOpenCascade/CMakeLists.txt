@@ -26,7 +26,10 @@ set(_occ_system_hints
     /usr/lib/x86_64-linux-gnu/cmake/opencascade
     /usr/lib/cmake/opencascade
     /usr/local/lib/cmake/opencascade
-    /usr/share/opencascade/cmake)
+    /usr/share/opencascade/cmake
+    /opt/homebrew/opt/opencascade/lib/cmake/opencascade
+    /opt/homebrew/lib/cmake/opencascade
+    /usr/local/opt/opencascade/lib/cmake/opencascade)
 unset(OpenCASCADE_DIR CACHE)
 find_package(OpenCASCADE QUIET
     NO_DEFAULT_PATH PATHS ${_occ_system_hints})
@@ -134,7 +137,13 @@ else()
   set(OCC_INCLUDE_DIR ${OpenCASCADE_INCLUDE_DIR} CACHE INTERNAL "")
 
   # Mirror the same subset of libraries used in the build-from-source path.
-  set(OCC_LIBNAMES TKBO TKBool TKBRep TKernel TKFeat TKFillet TKG2d TKG3d TKGeomAlgo TKGeomBase TKHLR TKIGES TKMath TKMesh TKOffset TKPrim TKShHealing TKSTEP TKSTEPAttr TKSTEPBase TKSTEP209 TKSTL TKTopAlgo TKXSBase TKVRML TKV3d TKService)
+  # In OCC >= 7.7 the data-exchange libs were consolidated:
+  #   TKIGES + TKSTEP* -> TKDEIGES + TKDESTEP; TKSTL -> TKDESTL; TKVRML -> TKDEVRML
+  if (OpenCASCADE_MAJOR_VERSION GREATER_EQUAL 7 AND OpenCASCADE_MINOR_VERSION GREATER_EQUAL 7)
+    set(OCC_LIBNAMES TKBO TKBool TKBRep TKernel TKFeat TKFillet TKG2d TKG3d TKGeomAlgo TKGeomBase TKHLR TKMath TKMesh TKOffset TKPrim TKShHealing TKTopAlgo TKXSBase TKV3d TKService TKDEIGES TKDESTEP TKDESTL TKDEVRML)
+  else()
+    set(OCC_LIBNAMES TKBO TKBool TKBRep TKernel TKFeat TKFillet TKG2d TKG3d TKGeomAlgo TKGeomBase TKHLR TKIGES TKMath TKMesh TKOffset TKPrim TKShHealing TKSTEP TKSTEPAttr TKSTEPBase TKSTEP209 TKSTL TKTopAlgo TKXSBase TKVRML TKV3d TKService)
+  endif()
   foreach(OCC_LIB ${OCC_LIBNAMES})
     list(APPEND OCC_LIBRARIES ${OpenCASCADE_LIBRARY_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}${OCC_LIB}${CMAKE_SHARED_LIBRARY_SUFFIX})
   endforeach()
