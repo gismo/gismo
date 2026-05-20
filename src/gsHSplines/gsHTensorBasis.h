@@ -568,8 +568,8 @@ public:
            << this->size()<<", tree_nodes="<< this->m_tree.size()
             //   << ", leaf_nodes="<< this->m_tree.leafSize();
             //const std::pair<int,int> paths  = this->m_tree.minMaxPath();
-            //os << ", path lengths=("<<paths.first<<", "<<paths.second
-           << ").\n";
+            //os << ", path lengths=("<<paths.first<<", "<<paths.second << ").\n";
+            << ".\n";
         const gsMatrix<T> supp  = this->support();
         os << "Domain: ["<< supp.col(0).transpose()<< "]..["<<
             supp.col(1).transpose()<< "].\n";
