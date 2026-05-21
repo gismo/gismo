@@ -119,7 +119,9 @@ struct mkMultiGridSolver {
         mg->setOptions(opt);
 
         for (index_t i = 1; i < mg->numLevels(); ++i)
+        {
             mg->setSmoother(i, makeGaussSeidelOp(mg->matrix(i)));
+        }
 
         gsInfo << "done (" << lv << " grid levels).\n";
 
@@ -153,6 +155,8 @@ gsLinearOperator<>::Ptr mkTimeMultiLevelPreconder(
             {
                 gsSparseMatrix<real_t,RowMajor> tmp = gh.getTransferMatrices()[i];
                 gsSparseMatrix<real_t,RowMajor> tmp2 = tmp.block(1, 1, tmp.rows()-1, tmp.cols()-1);
+                GISMO_ENSURE (tmp.rows()-1==tmp2.rows(),"");
+                GISMO_ENSURE (tmp.cols()-1==tmp2.cols(),"");
                 transferMatrices.push_back( tmp2.kron(id) );
             }
         }
@@ -173,21 +177,25 @@ gsLinearOperator<>::Ptr mkTimeMultiLevelPreconder(
         }
 
         gsSumOp<>::Ptr preconder = gsSumOp<>::make();
-        real_t tau = pow(.5,lv) * opt.askReal("Sigma", 1); // TODO
+        real_t tau = pow(.5,lv);
         for (index_t i=0; i<lv; ++i)
         {
 
             const index_t nSpaceDofs = space_stiff.rows();
             const index_t nTimeDofs = accumulatedTransferMatrices[i].cols() / nSpaceDofs;
+
+#if 1            
             gsSparseMatrix<> id(nTimeDofs, nTimeDofs); id.setIdentity();
-
-            gsSparseMatrix<> system = ( gsSparseMatrix<>(sqrt(tau)*id).kron(space_stiff) ) + ( gsSparseMatrix<>(sqrt(1/tau)*id).kron(space_mass) );
+            gsSparseMatrix<> system = id.kron( opt.askReal("Sigma", 1)*sqrt(tau)*space_stiff + sqrt(1/tau)*space_mass );
             gsLinearOperator<>::Ptr systemSolver = makeSolver(system);
-
             gsSparseMatrix<> multiplierMatrix = id.kron(space_stiff);
             gsLinearOperator<>::Ptr multiplier = makeMatrixOp(multiplierMatrix.moveToPtr());
-
-
+#else
+            gsLinearOperator<>::Ptr idOp = gsIdentityOp<>::make(nTimeDofs);
+            gsSparseMatrix<> system = opt.askReal("Sigma", 1)*sqrt(tau)*space_stiff + sqrt(1/tau)*space_mass;
+            gsLinearOperator<>::Ptr systemSolver = gsKroneckerOp<>::make(idOp, makeSolver(system));
+            gsLinearOperator<>::Ptr multiplier = gsKroneckerOp<>::make(idOp, makeMatrixOp(gsSparseMatrix<>(space_stiff).moveToPtr()));
+#endif
             gsSparseMatrix<real_t,RowMajor> transformMatrix  = accumulatedTransferMatrices[i];
             gsSparseMatrix<real_t>          transformTMatrix = accumulatedTransferMatrices[i].transpose();
             gsLinearOperator<>::Ptr transform  = makeMatrixOp( transformMatrix .moveToPtr() );
@@ -824,7 +832,7 @@ int main(int argc, char *argv[])
     index_t iter6 = -1;
     real_t cond6  = -1;
     gsInfo << "Setup of ML+MG preconder... " << std::flush; // ML in time, mg (using Pearson factorzation) in space
-    if (mlluPreconder)
+    if (mlmgPreconder)
     {
         gsLinearOperator<>::Ptr preconder = mkTimeMultiLevelPreconder(time_stiff1, space_stiff, time_mass1, space_mass, tb1, ic, cmd.getGroup("ML"), mkMultiGridSolver{mb,bc,cmd.getGroup("MG")});
 
