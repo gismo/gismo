@@ -75,8 +75,18 @@ gsSparseMatrix<real_t, RowMajor> mkTimeEmbedding(const gsSparseMatrix<real_t, Ro
     return timeEmbedding1 * mat * timeEmbedding2;
 }
 
+gsSparseMatrix<> forLevel(gsSparseMatrix<> matrix, index_t lv, const std::vector<gsSparseMatrix<real_t, RowMajor>>& transfers)
+{
+    for (index_t i=transfers.size()-1; i>=lv; --i)
+    {
+        GISMO_ASSERT (transfers[i].rows() == matrix.rows(), transfers[i].cols()<<","<<transfers[i].rows() <<"=="<< matrix.rows());
+        matrix = transfers[i].transpose() * matrix * transfers[i];
+    }
+    return matrix;
+}
+
 gsLinearOperator<>::Ptr makeSpaceTimeMultiGridSolver(
-        gsSparseMatrix<> matrixA, gsSparseMatrix<> matrixB, //gsSparseMatrix<> matrixC,
+        gsSparseMatrix<> matrixA, gsSparseMatrix<> matrixB, gsSparseMatrix<> massMatrix,
         const gsMultiBasis<>& mbY, const gsBoundaryConditions<>& bcY,
         const gsMultiBasis<>& tiY, const gsBoundaryConditions<>& icY,
         gsOptionList opt,
@@ -152,6 +162,15 @@ gsLinearOperator<>::Ptr makeSpaceTimeMultiGridSolver(
     {
         if (smoother_type=='g')
             mg->setSmoother(i, makeGaussSeidelOp(mg->matrix(i)));
+        else if (smoother_type=='m')
+        {
+            gsSparseMatrix<> mass_lv = forLevel(massMatrix, i, transfers);
+            GISMO_ASSERT (mass_lv.rows() == mg->matrix(i).rows(), mass_lv.rows()<<" == "<<mg->matrix(i).rows());
+            mass_lv *= getOpNorm(mg->matrix(i)) / getOpNorm(mass_lv) * opt.getReal("SigmaMass");
+            mass_lv += mg->matrix(i) * opt.getReal("SigmaStiff");
+            gsLinearOperator<>::Ptr smootherOp = makeSparseCholeskySolver(mass_lv);
+            mg->setSmoother(i, gsPreconditionerFromOp<>::make(mg->underlyingOp(i),smootherOp));
+        }
         else
             GISMO_ENSURE(false, "Unknown smoother type.");
     }
@@ -173,7 +192,6 @@ int main(int argc, char *argv[])
     index_t refinementsT = 2;
     index_t degree = 2;
     real_t kappa = 1.;
-    real_t sigma = 1.;
     index_t maxIterations = 100;
     real_t tolerance = 1.e-6;
     index_t preSmooth = 1;
@@ -183,6 +201,9 @@ int main(int argc, char *argv[])
     index_t exactPreconder = 1;
     index_t fdPreconder = 1;
     index_t mggsPreconder = 1;
+    index_t mgmsPreconder = 1;
+    real_t sigmaMass = 1.;
+    real_t sigmaStiff = 1.;
 
     std::string out;
 
@@ -192,7 +213,6 @@ int main(int argc, char *argv[])
     cmd.addInt   ("s", "RefinementsT",          "Number of uniform tau-refinement steps to perform before solving", refinementsT);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
     cmd.addReal  ("k", "Kappa",                 "Diffusion parameter", kappa);
-    cmd.addReal  ("",  "ML.Sigma",              "Sigma for time-multilevel", sigma);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Maximum iterations for linear solver", maxIterations);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
     cmd.addInt   ("",  "MG.NumPreSmooth",       "Number of pre smoothing steps (only for mg)", preSmooth);
@@ -202,6 +222,9 @@ int main(int argc, char *argv[])
     cmd.addInt   ("",  "useExactPreconder",     "Use that scheme", exactPreconder);
     cmd.addInt   ("",  "useFdPreconder",        "Use that scheme", fdPreconder);
     cmd.addInt   ("",  "useMgGsPreconder",      "Use that scheme", mggsPreconder);
+    cmd.addInt   ("",  "useMgMsPreconder",      "Use that scheme", mgmsPreconder);
+    cmd.addReal  ("",  "MG.SigmaMass",          "Sigma for mass", sigmaMass);
+    cmd.addReal  ("",  "MG.SigmaStiff",         "Sigma for stiff", sigmaStiff);
 
     cmd.addString("",  "out",                   "Write solution and used options to file", out);
 
@@ -314,7 +337,7 @@ int main(int argc, char *argv[])
         assembler.assemble( igrad(u,G) * igrad(u,G).tr() * meas(G) );
         space_stiff = assembler.matrix();
     }
-    
+
     gsSparseMatrix<> space_biharm;
     {
         gsExprAssembler<> assembler(1,1);
@@ -460,18 +483,18 @@ int main(int argc, char *argv[])
     //  Somewhat exact preconder
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::array<index_t,6> iters = {-1,-1,-1,-1,-1,-1};
-    std::array<real_t,6> conds  = {-1,-1,-1,-1,-1,-1};
-    
-    
+    std::array<index_t,4> iters = {-1,-1,-1,-1};
+    std::array<real_t,4> conds  = {-1,-1,-1,-1};
+
+
     gsInfo << "Setup of somewhat exact preconder... " << std::flush;
     if (exactPreconder)
     {
         index_t &iter = iters[0];
         real_t &cond = conds[0];
-        
+
         gsSparseMatrix<> preconderMatrix = time_stiff1.kron(space_mass) + (kappa*kappa)*time_mass1.kron(space_biharm);
-        
+
         gsLinearOperator<>::Ptr preconder = makeSparseCholeskySolver(preconderMatrix);
 
 
@@ -521,7 +544,7 @@ int main(int argc, char *argv[])
     {
         index_t &iter = iters[1];
         real_t &cond = conds[1];
-        
+
         gsLinearOperator<>::Ptr preconder = fastDiagnonalization(time_stiff1, space_mass, (kappa*kappa)*time_mass1, space_biharm, mkSparseLUSolver);
 
         //gsInfo << "\npreconderMatrix=\n" << preconderMatrix << "\n";
@@ -559,8 +582,8 @@ int main(int argc, char *argv[])
     {
         gsInfo << "skip.\n";
     }
-    
-    
+
+
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //  MG+GS preconder
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -572,15 +595,17 @@ int main(int argc, char *argv[])
         index_t &iter = iters[2];
         real_t &cond = conds[2];
 
+        gsSparseMatrix<> massMatrix;
+
         std::string info;
         gsLinearOperator<>::Ptr preconder = makeSpaceTimeMultiGridSolver(
-            time_stiff1.kron(space_mass), (kappa*kappa)*time_mass1.kron(space_biharm),
+            time_stiff1.kron(space_mass), (kappa*kappa)*time_mass1.kron(space_biharm), massMatrix,
             mb, bc,
             tb1, ic,
-            cmd.getGroup("MultGrid"),
+            cmd.getGroup("MG"),
             info, 'g');
-        
-        
+
+
         //gsInfo << "\npreconderMatrix=\n" << preconderMatrix << "\n";
         gsInfo << "done: " << preconder->rows() << " dofs; type: " << info << "\n";
 
@@ -616,7 +641,64 @@ int main(int argc, char *argv[])
     {
         gsInfo << "skip.\n";
     }
-    
+
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  MG+MS preconder
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    gsInfo << "Setup of MG+MS preconder... " << std::flush; // MG in space-time, mass smoother (no subspace correction)
+    if (mggsPreconder)
+    {
+
+        index_t &iter = iters[3];
+        real_t &cond = conds[3];
+
+        std::string info;
+        gsLinearOperator<>::Ptr preconder = makeSpaceTimeMultiGridSolver(
+            time_stiff1.kron(space_mass), (kappa*kappa)*time_mass1.kron(space_biharm), time_mass1.kron(space_mass),
+            mb, bc,
+            tb1, ic,
+            cmd.getGroup("MG"),
+            info, 'm');
+
+
+        //gsInfo << "\npreconderMatrix=\n" << preconderMatrix << "\n";
+        gsInfo << "done: " << preconder->rows() << " dofs; type: " << info << "\n";
+
+        gsInfo << "Setup cg solver and solve... " << std::flush;
+
+        gsMatrix<> x;
+        x.setRandom( leastSquares->rows(), 1 );
+        gsMatrix<> rhs;
+        rhs.setRandom( leastSquares->rows(), 1 ); // TODO
+        gsMatrix<> errorHistory;
+        gsConjugateGradient<> solver( leastSquares, preconder );
+        solver.setCalcEigenvalues(true);
+        solver.setOptions( cmd.getGroup("Solver") ).solveDetailed( rhs, x, errorHistory );
+
+        gsInfo << "done.\n\n";
+
+        iter = errorHistory.rows()-1;
+        const bool success = errorHistory(iter,0) < tolerance;
+        if (success)
+            gsInfo << "Reached desired tolerance after " << iter << " iterations:\n";
+        else
+            gsInfo << "Did not reach desired tolerance after " << iter << " iterations:\n";
+
+        if (errorHistory.rows() < 20)
+            gsInfo << errorHistory.transpose() << "\n\n";
+        else
+            gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
+
+        cond = solver.getConditionNumber();
+        gsInfo << "Estimated condition number: " << cond << "\n";
+    }
+    else
+    {
+        gsInfo << "skip.\n";
+    }
+
 
     if (!out.empty())
     {
@@ -632,7 +714,8 @@ int main(int argc, char *argv[])
                 "refinementsT\t"
                 "degree\t"
                 "kappa\t"
-                "sigma\t"
+                "sigmaMass\t"
+                "sigmaStiff\t"
                 "preSmooth\t"
                 "postSmooth\t"
                 "cycles\t"
@@ -643,11 +726,7 @@ int main(int argc, char *argv[])
                 "iter2\t"
                 "cond2\t"
                 "iter3\t"
-                "cond3\t"
-                "iter4\t"
-                "cond4\t"
-                "iter5\t"
-                "cond5\n";
+                "cond3\n";
 
         outfile << "parabolic_l2ls_example\t"
             << geoIdx << "\t"
@@ -655,7 +734,8 @@ int main(int argc, char *argv[])
             << refinementsT << "\t"
             << degree << "\t"
             << kappa << "\t"
-            << sigma << "\t"
+            << sigmaMass << "\t"
+            << sigmaStiff << "\t"
             << preSmooth << "\t"
             << postSmooth << "\t"
             << cycles << "\t"
@@ -666,11 +746,7 @@ int main(int argc, char *argv[])
             << iters[2] << "\t"
             << conds[2] << "\t"
             << iters[3] << "\t"
-            << conds[3] << "\t"
-            << iters[4] << "\t"
-            << conds[4] << "\t"
-            << iters[5] << "\t"
-            << conds[5] << "\n";
+            << conds[3] << "\n";
     }
 
 
