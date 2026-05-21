@@ -1,0 +1,679 @@
+/** @file parabolic_l2ls_example.cpp
+
+    @brief
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): S. Takacs
+*/
+
+#include <ctime>
+#include <gismo.h>
+
+using namespace gismo;
+
+//#define printMat(m) gsInfo << #m << " (" << m.rows() << "x" << m.cols() << "):\n\n"; for (int i=0; i<m.rows(); ++i) {for (int j=0; j<m.cols(); ++j) gsInfo << m(i,j) << "\t"; gsInfo << "\n";} gsInfo << "\n\n";
+#define printMat(m)
+
+template<typename S>
+gsLinearOperator<>::Ptr fastDiagnonalization(const gsSparseMatrix<>& A1, const gsSparseMatrix<>& B1, const gsSparseMatrix<>& A2, const gsSparseMatrix<>& B2, const S& makeSolver)
+{
+    GISMO_ASSERT(A1.rows() == A1.cols() && A1.rows() == A2.rows() && A2.rows() == A2.cols(), "");
+    GISMO_ASSERT(B1.rows() == B1.cols() && B1.rows() == B2.rows() && B2.rows() == B2.cols(), "");
+
+    typedef gsMatrix<>::GenSelfAdjEigenSolver EVSolver;
+    EVSolver ges;
+    ges.compute(A2, A1, gsEigen::ComputeEigenvectors);
+    gsSparseMatrix<> D1(A1.rows(), A1.rows()), D2(A1.rows(), A1.rows());
+    GISMO_ASSERT (ges.eigenvalues().rows() == A1.rows() && ges.eigenvalues().cols() == 1, "");
+    GISMO_ASSERT (ges.eigenvectors().rows() == A1.rows() && ges.eigenvectors().cols() == A1.rows(), "");
+    for (index_t i=0; i<A1.rows(); ++i)
+    {
+        D1(i,i) = 1;
+        D2(i,i) = ges.eigenvalues()(i,0);
+    }
+    gsSparseMatrix<> system = D1.kron(B1)+D2.kron(B2); //TODO: is this orderd such that a direct solver would do this efficiently?
+    gsLinearOperator<>::Ptr systemSolver = makeSolver(system);
+    gsMatrix<> eigs = ges.eigenvectors();
+    gsMatrix<> eigsT = ges.eigenvectors().transpose();
+
+    gsLinearOperator<>::Ptr transform  = gsKroneckerOp<>::make( makeMatrixOp(eigs.moveToPtr()), gsIdentityOp<>::make(B1.rows()) );
+    gsLinearOperator<>::Ptr transformT = gsKroneckerOp<>::make( makeMatrixOp(eigsT.moveToPtr()), gsIdentityOp<>::make(B1.rows()) );
+    return gsProductOp<>::make( transformT, systemSolver, transform );
+
+}
+
+
+
+gsLinearOperator<>::Ptr mkSparseLUSolver(const gsSparseMatrix<>& m) { return makeSparseLUSolver(m); }
+
+real_t getOpNorm(const gsSparseMatrix<>& mat) // used by makeSpaceTimeMultiGridSolver
+{
+    real_t max = 0;
+    for (index_t i=0; i<mat.rows(); ++i)
+       if (mat(i,i)>max) max = mat(i,i);
+    return max;
+}
+
+gsSparseMatrix<real_t, RowMajor> mkTimeEmbedding(const gsSparseMatrix<real_t, RowMajor>& mat) // used by makeSpaceTimeMultiGridSolver
+{
+    // Compensate for initial conditions
+    const index_t sz1 = mat.rows();
+    gsSparseMatrix<> timeEmbedding1(sz1-1,sz1);
+    for (index_t j=0; j<sz1-1; ++j)
+        timeEmbedding1(j,j+1)=1;
+
+    const index_t sz2 = mat.cols();
+    gsSparseMatrix<> timeEmbedding2(sz2, sz2-1);
+    for (index_t j=0; j<sz2-1; ++j)
+        timeEmbedding2(j+1,j)=1;
+
+    return timeEmbedding1 * mat * timeEmbedding2;
+}
+
+gsLinearOperator<>::Ptr makeSpaceTimeMultiGridSolver(
+        gsSparseMatrix<> matrixA, gsSparseMatrix<> matrixB, //gsSparseMatrix<> matrixC,
+        const gsMultiBasis<>& mbY, const gsBoundaryConditions<>& bcY,
+        const gsMultiBasis<>& tiY, const gsBoundaryConditions<>& icY,
+        gsOptionList opt,
+        std::string& info,
+        char smoother_type
+        )
+{
+
+    const gsSparseMatrix<> fineMatrix = matrixA + matrixB; //+ matrixC;
+    gsInfo << "Setup space-time multigrid solver...\n" << std::flush;
+    gsOptionList cmd;
+    cmd.addInt( "InterfaceStrategy", "", iFace::conforming      );
+    cmd.addInt( "DirichletStrategy", "", dirichlet::elimination );
+    gsGridHierarchy<> ghSpace = gsGridHierarchy<>::buildByCoarsening(mbY, bcY, cmd);
+    gsGridHierarchy<> ghTime  = gsGridHierarchy<>::buildByCoarsening(tiY, icY, cmd);
+    index_t szGhSpace = ghSpace.getTransferMatrices().size();
+    index_t szGhTime = ghTime.getTransferMatrices().size();
+
+    std::vector<gsSparseMatrix<real_t, RowMajor>> transfers;
+
+    GISMO_ENSURE( ghSpace.getTransferMatrices().size() > 0, "Need at least one transfer." );
+    GISMO_ENSURE( ghTime.getTransferMatrices().size() > 0, "Need at least one transfer." );
+
+    while (true)
+    {
+        const real_t A_norm = getOpNorm(matrixA);
+        const real_t B_norm = getOpNorm(matrixB);
+        gsInfo << "  A_norm: " << A_norm << ", B_norm: " << B_norm << ", ratio: " << A_norm/B_norm << "; ";
+        if (A_norm > B_norm)
+        {
+            if (szGhTime<1) {
+                gsInfo << "cannot coarsen in time.\n";
+                break;
+            }
+            else
+                gsInfo << "coarsen in time... " << std::flush;
+            info.append("t");
+            const index_t sz = szGhSpace>0 ? ghSpace.getTransferMatrices()[szGhSpace-1].rows() : ghSpace.getTransferMatrices()[szGhSpace].cols();
+            gsSparseMatrix<real_t,RowMajor> transferSpace(sz,sz); transferSpace.setIdentity();
+            gsSparseMatrix<real_t,RowMajor> transferTime = mkTimeEmbedding(ghTime.getTransferMatrices()[szGhTime-1]);
+            transfers.push_back( transferTime.kron(transferSpace) );
+            szGhTime -= 1;
+        }
+        else
+        {
+            if (szGhSpace<1) {
+                gsInfo << "cannot coarsen in space.\n";
+                break;
+            }
+            else
+                gsInfo << "coarsen in space... " << std::flush;
+            info.append("s");
+            gsSparseMatrix<real_t,RowMajor> transferSpace = ghSpace.getTransferMatrices()[szGhSpace-1];
+            const index_t sz = szGhTime>0 ? ghTime.getTransferMatrices()[szGhTime-1].rows() : ghTime.getTransferMatrices()[szGhTime].cols();
+            gsSparseMatrix<real_t,RowMajor> transferTime(sz-1,sz-1); transferTime.setIdentity();
+            transfers.push_back( transferTime.kron(transferSpace) );
+            szGhSpace -= 1;
+        }
+        // update
+        matrixA = transfers.back().transpose() * matrixA * transfers.back();
+        matrixB = transfers.back().transpose() * matrixB * transfers.back();
+        gsInfo << "done.\n";
+    }
+
+    std::reverse(transfers.begin(), transfers.end());
+
+    gsInfo << "  Have " << transfers.size() << " transfer matrices.\n";
+    GISMO_ENSURE( transfers.size() > 0, "Need at least one transfer." );
+
+    gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make( fineMatrix, transfers );
+    mg->setOptions(opt);
+    for (index_t i=1; i<mg->numLevels(); ++i)
+    {
+        if (smoother_type=='g')
+            mg->setSmoother(i, makeGaussSeidelOp(mg->matrix(i)));
+        else
+            GISMO_ENSURE(false, "Unknown smoother type.");
+    }
+    gsInfo << "done.\n";
+
+    return mg;
+
+}
+
+
+
+
+int main(int argc, char *argv[])
+{
+    /************** Define command line options *************/
+
+    index_t geoIdx = 1;
+    index_t refinementsX = 2;
+    index_t refinementsT = 2;
+    index_t degree = 2;
+    real_t kappa = 1.;
+    real_t sigma = 1.;
+    index_t maxIterations = 100;
+    real_t tolerance = 1.e-6;
+    index_t preSmooth = 1;
+    index_t postSmooth = 1;
+    index_t cycles = 1;
+
+    index_t exactPreconder = 1;
+    index_t fdPreconder = 1;
+    index_t mggsPreconder = 1;
+
+    std::string out;
+
+    gsCmdLine cmd("parabolic_l2ls_example");
+    cmd.addInt   ("g", "Geometry",              "0=Rectangle, 1=Quarter Annulus", geoIdx);
+    cmd.addInt   ("r", "RefinementsX",          "Number of uniform h-refinement steps to perform before solving", refinementsX);
+    cmd.addInt   ("s", "RefinementsT",          "Number of uniform tau-refinement steps to perform before solving", refinementsT);
+    cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
+    cmd.addReal  ("k", "Kappa",                 "Diffusion parameter", kappa);
+    cmd.addReal  ("",  "ML.Sigma",              "Sigma for time-multilevel", sigma);
+    cmd.addInt   ("",  "Solver.MaxIterations",  "Maximum iterations for linear solver", maxIterations);
+    cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
+    cmd.addInt   ("",  "MG.NumPreSmooth",       "Number of pre smoothing steps (only for mg)", preSmooth);
+    cmd.addInt   ("",  "MG.NumPostSmooth",      "Number of post smoothing steps (only for mg)", postSmooth);
+    cmd.addInt   ("",  "MG.NumCycles",          "Number of multi-grid cycles for coarse-grid correction, i.e., 1=V, 2=W cycle", cycles);
+
+    cmd.addInt   ("",  "useExactPreconder",     "Use that scheme", exactPreconder);
+    cmd.addInt   ("",  "useFdPreconder",        "Use that scheme", fdPreconder);
+    cmd.addInt   ("",  "useMgGsPreconder",      "Use that scheme", mggsPreconder);
+
+    cmd.addString("",  "out",                   "Write solution and used options to file", out);
+
+    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+    bool ok = true;
+
+    gsMultiPatch<> geos[] = {
+        *gsNurbsCreator<>::BSplineRectangle(),
+        *gsNurbsCreator<>::BSplineQuarterAnnulus()
+    };
+
+    if (geoIdx<0          || geoIdx>=(int)(util::size(geos))         ) { gsInfo << "Unfeasible choice for --Geometry (-g).\n";        ok=false; }
+    if (!ok) return -1;
+
+    gsInfo << "Run parabolic_oc_example with options:\n" << cmd << std::endl;
+
+    /******************* Define geometry ********************/
+
+    gsInfo << "Define geometry... " << std::flush;
+
+    const gsMultiPatch<>& mp = geos[geoIdx];
+    gsMultiPatch<> tp(*gsNurbsCreator<>::BSplineUnitInterval(2));
+
+    gsInfo << "done.\n";
+
+    /************** Define boundary and initial conditions **************/
+
+    gsInfo << "Define boundary and initial conditions... " << std::flush;
+
+    gsConstantFunction<> zero( 0, mp.geoDim() );
+
+    gsFunctionExpr<> y0( "if(((x-3/2*cos(3*pi/8))^2+(y-3/2*sin(3*pi/8))^2)<0.04,1,0) + "
+                         "if(((x-3/2*cos(2*pi/8))^2+(y-3/2*sin(2*pi/8))^2)<0.04,1,0) + "
+                         "if(((x-3/2*cos(1*pi/8))^2+(y-3/2*sin(1*pi/8))^2)<0.04,1,0) ", mp.geoDim() );
+
+    gsBoundaryConditions<> bc;
+    for (gsMultiPatch<>::const_biterator it = mp.bBegin(); it < mp.bEnd(); ++it)
+    {
+        bc.addCondition( *it, condition_type::dirichlet, zero );
+    }
+
+    gsBoundaryConditions<> ic; // Handle ic separately. Here: none
+
+    gsInfo << "done.\n";
+
+    /************ Setup bases and adjust degree *************/
+    gsMultiBasis<> mb(mp);
+    gsMultiBasis<> tb1(tp);
+    gsMultiBasis<> tb2(tp);
+
+    gsInfo << "Setup bases and adjust degree... " << std::flush;
+
+    for ( size_t i = 0; i < mb.nBases(); ++ i )
+        mb[i].setDegreePreservingMultiplicity(degree);
+
+    for ( size_t i = 0; i < tb1.nBases(); ++ i )
+        tb1[i].setDegreePreservingMultiplicity(degree);
+
+    for ( size_t i = 0; i < tb2.nBases(); ++ i )
+        tb2[i].setDegreePreservingMultiplicity(degree);
+
+    for ( index_t i = 0; i < refinementsX; ++i )
+        mb.uniformRefine();
+
+    for ( index_t i = 0; i < refinementsT; ++i )
+        tb1.uniformRefine();
+
+    for ( index_t i = 0; i < refinementsT; ++i )
+        tb2.uniformRefine();
+
+    for ( size_t i = 0; i < tb2.nBases(); ++ i )
+        tb2[i].reduceContinuity(1);
+
+    gsInfo << "done.\n";
+    gsInfo << "Knots in tb1: " << dynamic_cast<gsTensorBSplineBasis<1,real_t>&>(tb1[0]).component(0).knots() << "\n";
+    gsInfo << "Knots in tb2: " << dynamic_cast<gsTensorBSplineBasis<1,real_t>&>(tb2[0]).component(0).knots() << "\n";
+
+
+
+    /********* Setup assembler and assemble matrix **********/
+
+    gsInfo << "Setup assembler and assemble matrices... " << std::flush;
+
+
+    // Assemble space matrices
+    gsSparseMatrix<> space_mass;
+    {
+        gsExprAssembler<> assembler(1,1);
+        assembler.setIntegrationElements(mb);
+        gsExprEvaluator<> ev(assembler);
+        gsExprAssembler<>::geometryMap G = assembler.getMap(mp);
+        gsExprAssembler<>::space       u = assembler.getSpace(mb,1,0);
+        bc.setGeoMap(mp);
+        u.setup(bc, dirichlet::interpolation, 0);
+        assembler.initSystem();
+        assembler.assemble( u * u.tr() * meas(G) );
+        space_mass = assembler.matrix();
+    }
+
+    gsSparseMatrix<> space_stiff;
+    {
+        gsExprAssembler<> assembler(1,1);
+        assembler.setIntegrationElements(mb);
+        gsExprEvaluator<> ev(assembler);
+        gsExprAssembler<>::geometryMap G = assembler.getMap(mp);
+        gsExprAssembler<>::space       u = assembler.getSpace(mb,1,0);
+        bc.setGeoMap(mp);
+        u.setup(bc, dirichlet::interpolation, 0);
+        assembler.initSystem();
+        assembler.assemble( igrad(u,G) * igrad(u,G).tr() * meas(G) );
+        space_stiff = assembler.matrix();
+    }
+    
+    gsSparseMatrix<> space_biharm;
+    {
+        gsExprAssembler<> assembler(1,1);
+        assembler.setIntegrationElements(mb);
+        gsExprEvaluator<> ev(assembler);
+        gsExprAssembler<>::geometryMap G = assembler.getMap(mp);
+        gsExprAssembler<>::space       u = assembler.getSpace(mb,1,0);
+        bc.setGeoMap(mp);
+        u.setup(bc, dirichlet::interpolation, 0);
+        assembler.initSystem();
+        assembler.assemble( ilapl(u,G) * ilapl(u,G).tr() * meas(G) );
+        space_biharm = assembler.matrix();
+    }
+
+    // Assemble in time
+
+    gsSparseMatrix<> time_stiff1;
+    {
+        gsExprAssembler<> assembler(1,1);
+        assembler.setIntegrationElements(tb1);
+        gsExprEvaluator<> ev(assembler);
+        gsExprAssembler<>::geometryMap G = assembler.getMap(tp);
+        gsExprAssembler<>::space u = assembler.getSpace(tb1,1,0);
+        ic.setGeoMap(tp);
+        u.setup(ic, dirichlet::interpolation, 0);
+        assembler.initSystem();
+        assembler.assemble( igrad(u,G) * igrad(u,G).tr() * meas(G) );
+        time_stiff1 = assembler.matrix();
+        const index_t n = time_stiff1.rows();
+        time_stiff1 = time_stiff1.block(1, 1, n-1, n-1);
+    }
+
+
+
+    gsSparseMatrix<> time_mass1;
+    {
+        gsExprAssembler<> assembler(1,1);
+        assembler.setIntegrationElements(tb1);
+        gsExprEvaluator<> ev(assembler);
+        gsExprAssembler<>::geometryMap G = assembler.getMap(tp);
+        gsExprAssembler<>::space u = assembler.getSpace(tb1,1,0);
+        ic.setGeoMap(tp);
+        u.setup(ic, dirichlet::interpolation, 0);
+        assembler.initSystem();
+        assembler.assemble( u * u.tr() * meas(G) );
+        time_mass1 = assembler.matrix();
+        const index_t n = time_mass1.rows();
+        time_mass1 = time_mass1.block(1, 1, n-1, n-1);
+    }
+
+
+    gsSparseMatrix<> time_mass2;
+    {
+        gsExprAssembler<> assembler(1,1);
+        assembler.setIntegrationElements(tb2);
+        gsExprEvaluator<> ev(assembler);
+        gsExprAssembler<>::geometryMap G = assembler.getMap(tp);
+        gsExprAssembler<>::space u = assembler.getSpace(tb2,1,0);
+        ic.setGeoMap(tp);
+        u.setup(ic, dirichlet::interpolation, 0);
+        assembler.initSystem();
+        assembler.assemble( u * u.tr() * meas(G) );
+        time_mass2 = assembler.matrix();
+    }
+
+    gsSparseMatrix<> time_massL;
+    {
+        gsExprAssembler<> assembler(2,2);
+        assembler.setIntegrationElements(tb1);
+        gsExprEvaluator<> ev(assembler);
+        gsExprAssembler<>::geometryMap G = assembler.getMap(tp);
+        gsExprAssembler<>::space u = assembler.getSpace(tb1,1,0);
+        gsExprAssembler<>::space v = assembler.getSpace(tb2,1,1);
+        ic.setGeoMap(tp);
+        u.setup(ic, dirichlet::interpolation, 0);
+        v.setup(ic, dirichlet::interpolation, 0);
+        assembler.initSystem();
+        assembler.assemble( u * v.tr() * meas(G) );
+        time_massL = assembler.matrix();
+
+        const index_t n1 = time_mass1.rows()+1;
+        const index_t n2 = time_mass2.rows();
+        GISMO_ENSURE(time_massL.rows() == n1+n2, time_massL.rows()<<"=="<<n1<<"+"<<n2);
+        time_massL = time_massL.block(1, n1, n1-1, n2).transpose(); //TODO
+    }
+
+
+    gsSparseMatrix<> time_gradL;
+    {
+        gsExprAssembler<> assembler(2,2);
+        assembler.setIntegrationElements(tb1);
+        gsExprEvaluator<> ev(assembler);
+        gsExprAssembler<>::geometryMap G = assembler.getMap(tp);
+        gsExprAssembler<>::space u = assembler.getSpace(tb1,1,0);
+        gsExprAssembler<>::space v = assembler.getSpace(tb2,1,1);
+        ic.setGeoMap(tp);
+        u.setup(ic, dirichlet::interpolation, 0);
+        v.setup(ic, dirichlet::interpolation, 0);
+        assembler.initSystem();
+        assembler.assemble( igrad(u,G) * v.tr() * meas(G) );
+        time_gradL = assembler.matrix();
+
+        const index_t n1 = time_mass1.rows()+1;
+        const index_t n2 = time_mass2.rows();
+        GISMO_ENSURE(time_gradL.rows() == n1+n2, "");
+        time_gradL = time_gradL.block(1, n1, n1-1, n2).transpose(); //TODO
+
+    }
+
+
+    if (0)
+    {
+        gsInfo << "\nspace_mass=\n" << space_mass << "\n";
+        gsInfo << "\nspace_stiff=\n" << space_stiff << "\n";
+        gsInfo << "\ntime_massL=\n" << time_massL << "\n";
+        gsInfo << "\ntime_gradL=\n" << time_gradL << "\n";
+        gsInfo << "\ntime_stiff1=\n" << time_stiff1 << "\n";
+        gsInfo << "\ntime_mass1=\n" << time_mass1 << "\n";
+        gsInfo << "\ntime_mass2=\n" << time_mass2 << "\n";
+    }
+    gsInfo << "done.\n";
+    gsInfo << "Setup of linear operators... " << std::flush;
+
+
+    gsLinearOperator<>::Ptr Lh
+        = gsSumOp<>::make(
+            gsKroneckerOp<>::make( makeMatrixOp(time_gradL), makeMatrixOp(space_mass) ),
+            gsScaledOp<>::make( gsKroneckerOp<>::make( makeMatrixOp(time_massL), makeMatrixOp(space_stiff) ), kappa )
+        );
+    gsLinearOperator<>::Ptr LhT
+        = gsSumOp<>::make(
+            gsKroneckerOp<>::make( makeMatrixOp(time_gradL.transpose()), makeMatrixOp(space_mass) ),
+            gsScaledOp<>::make( gsKroneckerOp<>::make( makeMatrixOp(time_massL.transpose()), makeMatrixOp(space_stiff) ), kappa )
+        );
+    gsLinearOperator<>::Ptr dualPc
+        = gsKroneckerOp<>::make( makeSparseCholeskySolver(time_mass2), makeSparseCholeskySolver(space_mass) );
+
+    gsLinearOperator<>::Ptr leastSquares = gsProductOp<>::make( Lh, dualPc, LhT );
+
+    gsInfo << "done; " << leastSquares->rows() << " dofs.\n";
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  Somewhat exact preconder
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    std::array<index_t,6> iters = {-1,-1,-1,-1,-1,-1};
+    std::array<real_t,6> conds  = {-1,-1,-1,-1,-1,-1};
+    
+    
+    gsInfo << "Setup of somewhat exact preconder... " << std::flush;
+    if (exactPreconder)
+    {
+        index_t &iter = iters[0];
+        real_t &cond = conds[0];
+        
+        gsSparseMatrix<> preconderMatrix = time_stiff1.kron(space_mass) + (kappa*kappa)*time_mass1.kron(space_biharm);
+        
+        gsLinearOperator<>::Ptr preconder = makeSparseCholeskySolver(preconderMatrix);
+
+
+        gsInfo << "done: " << preconder->rows() << " dofs.\n";
+
+        gsInfo << "Setup cg solver and solve... " << std::flush;
+
+        gsMatrix<> x;
+        x.setRandom( leastSquares->rows(), 1 );
+        gsMatrix<> rhs;
+        rhs.setRandom( leastSquares->rows(), 1 );
+        gsMatrix<> errorHistory;
+        gsConjugateGradient<> solver( leastSquares, preconder );
+        solver.setCalcEigenvalues(true);
+        solver.setOptions( cmd.getGroup("Solver") ).solveDetailed( rhs, x, errorHistory );
+
+        gsInfo << "done.\n\n";
+
+        iter = errorHistory.rows()-1;
+        const bool success = errorHistory(iter,0) < tolerance;
+        if (success)
+            gsInfo << "Reached desired tolerance after " << iter << " iterations:\n";
+        else
+            gsInfo << "Did not reach desired tolerance after " << iter << " iterations:\n";
+
+        if (errorHistory.rows() < 20)
+            gsInfo << errorHistory.transpose() << "\n\n";
+        else
+            gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
+
+        cond = solver.getConditionNumber();
+        gsInfo << "Estimated condition number: " << cond << "\n";
+    }
+    else
+    {
+        gsInfo << "skip.\n";
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  FD preconder
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+    gsInfo << "Setup of FD preconder... " << std::flush; // FD in time, direct in space
+    if (fdPreconder)
+    {
+        index_t &iter = iters[1];
+        real_t &cond = conds[1];
+        
+        gsLinearOperator<>::Ptr preconder = fastDiagnonalization(time_stiff1, space_mass, (kappa*kappa)*time_mass1, space_biharm, mkSparseLUSolver);
+
+        //gsInfo << "\npreconderMatrix=\n" << preconderMatrix << "\n";
+        gsInfo << "done: " << preconder->rows() << " dofs.\n";
+
+        gsInfo << "Setup cg solver and solve... " << std::flush;
+
+        gsMatrix<> x;
+        x.setRandom( leastSquares->rows(), 1 );
+        gsMatrix<> rhs;
+        rhs.setRandom( leastSquares->rows(), 1 ); // TODO
+        gsMatrix<> errorHistory;
+        gsConjugateGradient<> solver( leastSquares, preconder );
+        solver.setCalcEigenvalues(true);
+        solver.setOptions( cmd.getGroup("Solver") ).solveDetailed( rhs, x, errorHistory );
+
+        gsInfo << "done.\n\n";
+
+        iter = errorHistory.rows()-1;
+        const bool success = errorHistory(iter,0) < tolerance;
+        if (success)
+            gsInfo << "Reached desired tolerance after " << iter << " iterations:\n";
+        else
+            gsInfo << "Did not reach desired tolerance after " << iter << " iterations:\n";
+
+        if (errorHistory.rows() < 20)
+            gsInfo << errorHistory.transpose() << "\n\n";
+        else
+            gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
+
+        cond = solver.getConditionNumber();
+        gsInfo << "Estimated condition number: " << cond << "\n";
+    }
+    else
+    {
+        gsInfo << "skip.\n";
+    }
+    
+    
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  MG+GS preconder
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    gsInfo << "Setup of MG+GS preconder... " << std::flush; // MG in space-time, Gauss-Seidel smoother
+    if (mggsPreconder)
+    {
+
+        index_t &iter = iters[2];
+        real_t &cond = conds[2];
+
+        std::string info;
+        gsLinearOperator<>::Ptr preconder = makeSpaceTimeMultiGridSolver(
+            time_stiff1.kron(space_mass), (kappa*kappa)*time_mass1.kron(space_biharm),
+            mb, bc,
+            tb1, ic,
+            cmd.getGroup("MultGrid"),
+            info, 'g');
+        
+        
+        //gsInfo << "\npreconderMatrix=\n" << preconderMatrix << "\n";
+        gsInfo << "done: " << preconder->rows() << " dofs; type: " << info << "\n";
+
+        gsInfo << "Setup cg solver and solve... " << std::flush;
+
+        gsMatrix<> x;
+        x.setRandom( leastSquares->rows(), 1 );
+        gsMatrix<> rhs;
+        rhs.setRandom( leastSquares->rows(), 1 ); // TODO
+        gsMatrix<> errorHistory;
+        gsConjugateGradient<> solver( leastSquares, preconder );
+        solver.setCalcEigenvalues(true);
+        solver.setOptions( cmd.getGroup("Solver") ).solveDetailed( rhs, x, errorHistory );
+
+        gsInfo << "done.\n\n";
+
+        iter = errorHistory.rows()-1;
+        const bool success = errorHistory(iter,0) < tolerance;
+        if (success)
+            gsInfo << "Reached desired tolerance after " << iter << " iterations:\n";
+        else
+            gsInfo << "Did not reach desired tolerance after " << iter << " iterations:\n";
+
+        if (errorHistory.rows() < 20)
+            gsInfo << errorHistory.transpose() << "\n\n";
+        else
+            gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
+
+        cond = solver.getConditionNumber();
+        gsInfo << "Estimated condition number: " << cond << "\n";
+    }
+    else
+    {
+        gsInfo << "skip.\n";
+    }
+    
+
+    if (!out.empty())
+    {
+        const bool exists = gsFileManager::fileExists(out);
+        std::ofstream outfile;
+        outfile.open(out.c_str(), std::ios_base::app);
+
+
+        if (!exists)
+            outfile << "parabolic_l2ls_example\t"
+                "geoIdx\t"
+                "refinementsX\t"
+                "refinementsT\t"
+                "degree\t"
+                "kappa\t"
+                "sigma\t"
+                "preSmooth\t"
+                "postSmooth\t"
+                "cycles\t"
+                "iter0\t"
+                "cond0\t"
+                "iter1\t"
+                "cond1\t"
+                "iter2\t"
+                "cond2\t"
+                "iter3\t"
+                "cond3\t"
+                "iter4\t"
+                "cond4\t"
+                "iter5\t"
+                "cond5\n";
+
+        outfile << "parabolic_l2ls_example\t"
+            << geoIdx << "\t"
+            << refinementsX << "\t"
+            << refinementsT << "\t"
+            << degree << "\t"
+            << kappa << "\t"
+            << sigma << "\t"
+            << preSmooth << "\t"
+            << postSmooth << "\t"
+            << cycles << "\t"
+            << iters[0] << "\t"
+            << conds[0] << "\t"
+            << iters[1] << "\t"
+            << conds[1] << "\t"
+            << iters[2] << "\t"
+            << conds[2] << "\t"
+            << iters[3] << "\t"
+            << conds[3] << "\t"
+            << iters[4] << "\t"
+            << conds[4] << "\t"
+            << iters[5] << "\t"
+            << conds[5] << "\n";
+    }
+
+
+    return 0;
+
+}
