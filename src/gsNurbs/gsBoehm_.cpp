@@ -176,6 +176,40 @@ void gsTensorBoehmRefineLocal<4,
         //const unsigned number_of_iterations,
         const bool update_knots);
 
+    TEMPLATE_INST
+    void gsTensorBoehmRefineLocal<5,
+                      gsKnotVector<T>,
+                      gsMatrix<T>,
+                      std::vector<T>::const_iterator>(
+        gsKnotVector<T>& knots,
+        const unsigned index,
+        gsMatrix<T>& coefs,
+        gsVector<index_t, 5>& nmb_of_coefs,
+        const gsVector<index_t, 5>& act_size_of_coeffs,
+        const gsVector<index_t, 5>& size_of_coefs,
+        const unsigned direction,
+        std::vector<T>::const_iterator valBegin,
+        std::vector<T>::const_iterator valEnd,
+        //const unsigned number_of_iterations,
+        const bool update_knots);
+
+    TEMPLATE_INST
+    void gsTensorBoehmRefineLocal<6,
+                      gsKnotVector<T>,
+                      gsMatrix<T>,
+                      std::vector<T>::const_iterator>(
+        gsKnotVector<T>& knots,
+        const unsigned index,
+        gsMatrix<T>& coefs,
+        gsVector<index_t, 6>& nmb_of_coefs,
+        const gsVector<index_t, 6>& act_size_of_coeffs,
+        const gsVector<index_t, 6>& size_of_coefs,
+        const unsigned direction,
+        std::vector<T>::const_iterator valBegin,
+        std::vector<T>::const_iterator valEnd,
+        //const unsigned number_of_iterations,
+        const bool update_knots);
+
 // =============================================================================
 // gsTensorInsertKnotDegreeTimes
 // =============================================================================
@@ -205,6 +239,32 @@ void gsTensorInsertKnotDegreeTimes<2,
         const unsigned direction,
         gsVector<index_t, 2>& start,
         gsVector<index_t, 2>& end);
+
+    TEMPLATE_INST
+    void gsTensorInsertKnotDegreeTimes<5,
+                T,
+                gsKnotVector<T>,
+                gsMatrix<T> >(
+        const gsKnotVector<T>& knots,
+        gsMatrix<T>& coefs,
+        const gsVector<index_t, 5>& size_of_coefs,
+        T val,
+        const unsigned direction,
+        gsVector<index_t, 5>& start,
+        gsVector<index_t, 5>& end);
+
+    TEMPLATE_INST
+    void gsTensorInsertKnotDegreeTimes<6,
+                T,
+                gsKnotVector<T>,
+                gsMatrix<T> >(
+        const gsKnotVector<T>& knots,
+        gsMatrix<T>& coefs,
+        const gsVector<index_t, 6>& size_of_coefs,
+        T val,
+        const unsigned direction,
+        gsVector<index_t, 6>& start,
+        gsVector<index_t, 6>& end);
 
 
 } // end namespace gismo

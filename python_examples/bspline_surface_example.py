@@ -17,7 +17,7 @@
 import os, sys
 gismo_path=os.path.join(os.path.dirname(__file__), "../build/lib")
 print("G+Smo path:",gismo_path,"(change if needed).")
-sys.path.append(gismo_path)
+sys.path.insert(0, gismo_path)
 
 import pygismo as gs
 import numpy as np
@@ -25,8 +25,8 @@ import numpy as np
 ## See gismo/filedata/surfaces/simple.xml for the geometry
 c1 = np.array([0.,0.,0.,0.,1.,1.,1.,1.])
 c2 = np.array([0.,0.,0.,0.,1.,1.,1.,1.])
-ku1 = gs.nurbs.gsKnotVector(c1,3)
-ku2 = gs.nurbs.gsKnotVector(c2,3)
+ku1 = gs.nurbs.gsKnotVector(c1)
+ku2 = gs.nurbs.gsKnotVector(c2)
 
 coefs = np.array([
                     [0     ,0    ,0   ],
@@ -49,8 +49,10 @@ coefs = np.array([
 
 
 # Construct basis using knot vectors
-tbasis1 = gs.nurbs.gsTensorBSplineBasis2(ku1,ku2)
+tbasis1 = gs.nurbs.gsTensorBSplineBasis2(ku1, ku2)
 tspline1 = gs.nurbs.gsTensorBSpline2(tbasis1,coefs)
+
+tbasis4 = gs.nurbs.gsTensorBSplineBasis5(ku1, ku1, ku1, ku1, ku2)
 
 print("Coefficients:\n", tspline1.coefs())
 

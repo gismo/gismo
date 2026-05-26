@@ -12,39 +12,76 @@ namespace gismo
 CLASS_TEMPLATE_INST gsTensorBSplineBasis<2,real_t>;
 CLASS_TEMPLATE_INST gsTensorBSplineBasis<3,real_t>;
 CLASS_TEMPLATE_INST gsTensorBSplineBasis<4,real_t>;
+CLASS_TEMPLATE_INST gsTensorBSplineBasis<5,real_t>;
+CLASS_TEMPLATE_INST gsTensorBSplineBasis<6,real_t>;
 
 CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSplineBasis<1,real_t> >;
 CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSplineBasis<2,real_t> >;
 CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSplineBasis<3,real_t> >;
 CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSplineBasis<4,real_t> >;
+CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSplineBasis<5,real_t> >;
+CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSplineBasis<6,real_t> >;
 
 #ifdef GISMO_WITH_PYBIND11
 
 namespace py = pybind11;
-// Helper binder to add dimension-specific constructors without
-// producing hard template substitution errors in the function body.
-template<short_t D, typename C, typename B>
-struct tensor_ctor_binder { static void bind(py::class_<C,B>&) {} };
 
-template<typename C, typename B>
-struct tensor_ctor_binder<1,C,B>
-{ static void bind(py::class_<C,B>& c)
-    { c.def(py::init<gsKnotVector<real_t>>(), "Constructor for 1D tensor product B-spline basis"); } };
+std::vector<gsKnotVector<real_t>> knot_vector_list_from_args(const py::args & knotVectors)
+{
+    std::vector<gsKnotVector<real_t>> knotVectorList;
 
-template<typename C, typename B>
-struct tensor_ctor_binder<2,C,B>
-{ static void bind(py::class_<C,B>& c)
-    { c.def(py::init<gsKnotVector<real_t>, gsKnotVector<real_t>>(), "Constructor for 2D tensor product B-spline basis"); } };
+    if (knotVectors.size() == 1 && py::isinstance<py::sequence>(knotVectors[0]))
+    {
+        const py::sequence sequence = py::reinterpret_borrow<py::sequence>(knotVectors[0]);
+        knotVectorList.reserve(py::len(sequence));
+        for (auto it : sequence)
+            knotVectorList.push_back(py::cast<gsKnotVector<real_t>>(it));
+    }
+    else
+    {
+        knotVectorList.reserve(knotVectors.size());
+        for (auto it : knotVectors)
+            knotVectorList.push_back(py::cast<gsKnotVector<real_t>>(it));
+    }
 
-template<typename C, typename B>
-struct tensor_ctor_binder<3,C,B>
-{ static void bind(py::class_<C,B>& c)
-    { c.def(py::init<gsKnotVector<real_t>, gsKnotVector<real_t>, gsKnotVector<real_t>>(), "Constructor for 3D tensor product B-spline basis"); } };
+    return knotVectorList;
+}
 
-template<typename C, typename B>
-struct tensor_ctor_binder<4,C,B>
-{ static void bind(py::class_<C,B>& c)
-    { c.def(py::init<gsKnotVector<real_t>, gsKnotVector<real_t>, gsKnotVector<real_t>, gsKnotVector<real_t>>(), "Constructor for 4D tensor product B-spline basis"); } };
+template <short_t D>
+gsTensorBSplineBasis<D,real_t> tensor_basis_from_args(const py::args & knotVectors)
+{
+    std::vector<gsKnotVector<real_t>> knotVectorList = knot_vector_list_from_args(knotVectors);
+
+    if (knotVectorList.size() != D)
+        throw py::value_error("Expected either " + std::to_string(D) + " knot vectors as positional arguments or a single sequence containing exactly " + std::to_string(D) + " knot vectors.");
+
+    return gsTensorBSplineBasis<D,real_t>(give(knotVectorList));
+}
+
+void pybind11_init_gsTensorBSplineBasis_factory(py::module &m)
+{
+    m.def("gsTensorBSplineBasis", [](py::args knotVectors) -> py::object
+    {
+        std::vector<gsKnotVector<real_t>> knotVectorList = knot_vector_list_from_args(knotVectors);
+
+        switch (knotVectorList.size())
+        {
+        case 2:
+            return py::cast(new gsTensorBSplineBasis<2,real_t>(give(knotVectorList)));
+        case 3:
+            return py::cast(new gsTensorBSplineBasis<3,real_t>(give(knotVectorList)));
+        case 4:
+            return py::cast(new gsTensorBSplineBasis<4,real_t>(give(knotVectorList)));
+        case 5:
+            return py::cast(new gsTensorBSplineBasis<5,real_t>(give(knotVectorList)));
+        case 6:
+            return py::cast(new gsTensorBSplineBasis<6,real_t>(give(knotVectorList)));
+        default:
+            throw py::value_error("Expected 2 to 6 knot vectors as positional arguments or in a single sequence.");
+        }
+    },
+    "Factory constructor that dispatches to gsTensorBSplineBasis2..6 based on the number of knot vectors");
+}
 
 template <short_t d>
 void pybind11_init_gsTensorBSplineBasis(py::module &m)
@@ -56,8 +93,11 @@ void pybind11_init_gsTensorBSplineBasis(py::module &m)
 
         cls.def(py::init<>());
 
-        // add the appropriate constructors for this dimension
-        tensor_ctor_binder<d,Class,Base>::bind(cls);
+        cls.def(py::init([](py::args knotVectors)
+            {
+                return new Class(tensor_basis_from_args<d>(knotVectors));
+            }),
+            "Constructor from knot vectors passed either as varargs or as a single sequence");
 
         cls
         .def("knots", static_cast<      gsKnotVector<real_t>& (Class::*)(int)      > (&Class::knots), "Get the knot vector as a reference")
@@ -76,6 +116,8 @@ void pybind11_init_gsTensorBSplineBasis(py::module &m)
 template void pybind11_init_gsTensorBSplineBasis<2>(py::module &m);
 template void pybind11_init_gsTensorBSplineBasis<3>(py::module &m);
 template void pybind11_init_gsTensorBSplineBasis<4>(py::module &m);
+template void pybind11_init_gsTensorBSplineBasis<5>(py::module &m);
+template void pybind11_init_gsTensorBSplineBasis<6>(py::module &m);
 
 #endif
 

@@ -91,22 +91,34 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsHTensorBasis<2>( hsplines );
   gismo::pybind11_init_gsHTensorBasis<3>( hsplines );
   gismo::pybind11_init_gsHTensorBasis<4>( hsplines );
+  gismo::pybind11_init_gsHTensorBasis<5>( hsplines );
+  gismo::pybind11_init_gsHTensorBasis<6>( hsplines );
   gismo::pybind11_init_gsTHBSplineBasis<1, true>( hsplines );
   gismo::pybind11_init_gsTHBSplineBasis<2, true>( hsplines );
   gismo::pybind11_init_gsTHBSplineBasis<3, true>( hsplines );
   gismo::pybind11_init_gsTHBSplineBasis<4, true>( hsplines );
+  gismo::pybind11_init_gsTHBSplineBasis<5, true>( hsplines );
+  gismo::pybind11_init_gsTHBSplineBasis<6, true>( hsplines );
   gismo::pybind11_init_gsTHBSplineBasis<1, false>( hsplines );
   gismo::pybind11_init_gsTHBSplineBasis<2, false>( hsplines );
   gismo::pybind11_init_gsTHBSplineBasis<3, false>( hsplines );
   gismo::pybind11_init_gsTHBSplineBasis<4, false>( hsplines );
+  gismo::pybind11_init_gsTHBSplineBasis<5, false>( hsplines );
+  gismo::pybind11_init_gsTHBSplineBasis<6, false>( hsplines );
   gismo::pybind11_init_gsTHBSpline<1, true>( hsplines );
   gismo::pybind11_init_gsTHBSpline<2, true>( hsplines );
   gismo::pybind11_init_gsTHBSpline<3, true>( hsplines );
   gismo::pybind11_init_gsTHBSpline<4, true>( hsplines );
+  gismo::pybind11_init_gsTHBSpline<5, true>( hsplines );
+  gismo::pybind11_init_gsTHBSpline<6, true>( hsplines );
   gismo::pybind11_init_gsTHBSpline<1, false>( hsplines );
   gismo::pybind11_init_gsTHBSpline<2, false>( hsplines );
   gismo::pybind11_init_gsTHBSpline<3, false>( hsplines );
   gismo::pybind11_init_gsTHBSpline<4, false>( hsplines );
+  gismo::pybind11_init_gsTHBSpline<5, false>( hsplines );
+  gismo::pybind11_init_gsTHBSpline<6, false>( hsplines );
+  gismo::pybind11_init_gsTHBSplineBasis_factory( hsplines );
+  gismo::pybind11_init_gsTHBSpline_factory( hsplines );
 
   py::module io = m.def_submodule("io");
 
@@ -179,9 +191,16 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsTensorBSpline<2>( nurbs );
   gismo::pybind11_init_gsTensorBSpline<3>( nurbs );
   gismo::pybind11_init_gsTensorBSpline<4>( nurbs );
+  gismo::pybind11_init_gsTensorBSpline<5>( nurbs );
+  gismo::pybind11_init_gsTensorBSpline<6>( nurbs );
+  gismo::pybind11_init_gsTensorBSpline_factory( nurbs );
   gismo::pybind11_init_gsTensorBSplineBasis<2>( nurbs );
   gismo::pybind11_init_gsTensorBSplineBasis<3>( nurbs );
   gismo::pybind11_init_gsTensorBSplineBasis<4>( nurbs );
+  gismo::pybind11_init_gsTensorBSplineBasis<5>( nurbs );
+  gismo::pybind11_init_gsTensorBSplineBasis<6>( nurbs );
+  gismo::pybind11_init_gsTensorBSplineBasis_factory( nurbs );
+  
   gismo::pybind11_init_gsNurbsCreator( nurbs );
 
 
