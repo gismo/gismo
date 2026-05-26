@@ -84,6 +84,7 @@ namespace internal
 
 #include <gsCore/gsComposedBasis.h>
 #include <gsCore/gsComposedGeometry.h>
+//#include <gsCore/gsGluingData.h>
 
 // Tensors
 #include <gsDomain/gsTensorDomainIterator.h>
@@ -231,6 +232,7 @@ namespace internal
 #include <gsUtils/gsFunctionWithDerivatives.h>
 #include <gsUtils/gsQuasiInterpolate.h>
 #include <gsUtils/gsL2Projection.h>
+
 
 /* ----------- Extension ----------- */
 #ifdef GISMO_WITH_ADIFF

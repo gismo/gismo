@@ -90,21 +90,16 @@ inline gsVector<T> getPartial(const gsMatrix<T>& d, index_t dir, index_t col)
 }
 
 /// Collect knot-span break points for the 1D component basis in
-/// direction dir.  Falls back to support-interval endpoints when
-/// the component basis is not a gsBSplineBasis.
+/// direction dir. 
 template <class T>
 std::vector<T> collectBreaks(const gsGeometry<T>& geo, short_t dir)
 {
     const gsBSplineBasis<T>* bb =
         dynamic_cast<const gsBSplineBasis<T>*>(&geo.basis().component(dir));
-    if (bb)
-        return bb->knots().breaks();
-
-    gsMatrix<T> sup = geo.support();
-    std::vector<T> brk;
-    brk.push_back(sup(dir, 0));
-    brk.push_back(sup(dir, 1));
-    return brk;
+    GISMO_ENSURE(bb, "Unsupported basis type for collecting breaks.");
+    return bb->knots().breaks();
+    //this should work for general geometries, but we only test on B-spline patches here
+    //BUT FOR NOW IT'S FINE
 }
 
 // ====================================================================
@@ -179,6 +174,9 @@ bool solveConstantAlpha(
 
     return (berr < eps);
 }
+
+//if alphas are both negative. integral must be -1, not 1, to satisfy the gauge constraint. 
+
 
 /// Step 2 + 2b: General linear alpha via KKT, then general linear beta.
 /// On success writes a10..b21 and returns true.
@@ -379,6 +377,7 @@ gsVector<T> computeGluingDataForInterface(
     // Tangential flip: does the tangential direction of patch 2 run
     // opposite to that of patch 1?
     const bool flipped = !interf.dirOrientation(ps1, tanDir1);
+    //is this correct?  
 
     gsInfo << "Interface: " << interf << "\n"
            << "  Patch " << ps1.patch << " side " << ps1
@@ -469,6 +468,7 @@ gsVector<T> computeGluingDataForInterface(
         return result;
     }
 
+
     gsInfo << "D1 range: [" << D1.minCoeff() << ", " << D1.maxCoeff() << "]\n"
            << "D2 range: [" << D2.minCoeff() << ", " << D2.maxCoeff() << "]\n"
            << "D3 range: [" << D3.minCoeff() << ", " << D3.maxCoeff() << "]\n";
@@ -477,6 +477,14 @@ gsVector<T> computeGluingDataForInterface(
     T a10, a11, a20, a21, b10, b11, b20, b21;
 
     gsInfo << "\n--- Step 1: constant alpha ---\n";
+    bool flippedOrientation = D1.minCoeff()*D2.minCoeff() > 0;
+    if (flippedOrientation) {
+        gsInfo << "Same sign detected for D1 and D2.\n";
+        D1 = -D1;
+        //is this correct and what sign is D3  
+    
+    }
+
     if (solveConstantAlpha(D1, D2, D3, w, t_vals,
                            a10, a11, a20, a21,
                            b10, b11, b20, b21, eps))
@@ -496,6 +504,12 @@ gsVector<T> computeGluingDataForInterface(
         }
         else
             gsInfo << "  FAILED: not AS-G1.\n";
+    }
+
+    if (flippedOrientation) {
+        a10 = -a10;  a11 = -a11;
+        b20 = -b20;  b21 = -b21;
+        //is this correct and what sign is b10..b21?
     }
 
     if (!success)
@@ -556,6 +570,7 @@ gsMatrix<T> computeGluingDataMatrix(
         gsVector<T> gd = computeGluingDataForInterface(
             mp, interf, ok, eps, numGaussPerSpan);
         if (!ok) { gsInfo << "Failed for interface " << interf << "\n"; continue; }
+        //change gismo ensure
 
         const patchSide& ps1 = interf.first();
         const patchSide& ps2 = interf.second();
@@ -571,6 +586,7 @@ gsMatrix<T> computeGluingDataMatrix(
         mat(ps2.patch, col2+1) = gd(5);
         mat(ps2.patch, col2+2) = gd(6);
         mat(ps2.patch, col2+3) = gd(7);
+        //for loop or block assignment
     }
     return mat;
 }
