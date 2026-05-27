@@ -191,6 +191,8 @@ int main(int argc, char *argv[])
     index_t refinementsX = 2;
     index_t refinementsT = 2;
     index_t degree = 2;
+    index_t dualAddMultiplicityX = 0;
+    index_t dualAddMultiplicityT = 1;
     real_t kappa = 1.;
     index_t maxIterations = 100;
     real_t tolerance = 1.e-6;
@@ -200,8 +202,8 @@ int main(int argc, char *argv[])
 
     index_t exactPreconder = 1;
     index_t fdPreconder = 1;
-    index_t mggsPreconder = 1;
-    index_t mgmsPreconder = 1;
+    index_t mggsPreconder = 0;
+    index_t mgmsPreconder = 0;
     real_t sigmaMass = 1.;
     real_t sigmaStiff = 1.;
 
@@ -212,6 +214,8 @@ int main(int argc, char *argv[])
     cmd.addInt   ("r", "RefinementsX",          "Number of uniform h-refinement steps to perform before solving", refinementsX);
     cmd.addInt   ("s", "RefinementsT",          "Number of uniform tau-refinement steps to perform before solving", refinementsT);
     cmd.addInt   ("p", "Degree",                "Degree of the B-spline discretization space", degree);
+    cmd.addInt   ("",  "DualAddMultiplicityX",  "Additional multiplicity in space for dual space", dualAddMultiplicityX);
+    cmd.addInt   ("",  "DualAddMultiplicityT",  "Additional multiplicity in time for dual space", dualAddMultiplicityT);
     cmd.addReal  ("k", "Kappa",                 "Diffusion parameter", kappa);
     cmd.addInt   ("",  "Solver.MaxIterations",  "Maximum iterations for linear solver", maxIterations);
     cmd.addReal  ("t", "Solver.Tolerance",      "Stopping criterion for linear solver", tolerance);
@@ -271,14 +275,18 @@ int main(int argc, char *argv[])
     gsInfo << "done.\n";
 
     /************ Setup bases and adjust degree *************/
-    gsMultiBasis<> mb(mp);
+    gsMultiBasis<> mb1(mp);
+    gsMultiBasis<> mb2(mp);
     gsMultiBasis<> tb1(tp);
     gsMultiBasis<> tb2(tp);
 
     gsInfo << "Setup bases and adjust degree... " << std::flush;
 
-    for ( size_t i = 0; i < mb.nBases(); ++ i )
-        mb[i].setDegreePreservingMultiplicity(degree);
+    for ( size_t i = 0; i < mb1.nBases(); ++ i )
+        mb1[i].setDegreePreservingMultiplicity(degree);
+
+    for ( size_t i = 0; i < mb2.nBases(); ++ i )
+        mb2[i].setDegreePreservingMultiplicity(degree);
 
     for ( size_t i = 0; i < tb1.nBases(); ++ i )
         tb1[i].setDegreePreservingMultiplicity(degree);
@@ -287,7 +295,10 @@ int main(int argc, char *argv[])
         tb2[i].setDegreePreservingMultiplicity(degree);
 
     for ( index_t i = 0; i < refinementsX; ++i )
-        mb.uniformRefine();
+        mb1.uniformRefine();
+
+    for ( index_t i = 0; i < refinementsX; ++i )
+        mb2.uniformRefine();
 
     for ( index_t i = 0; i < refinementsT; ++i )
         tb1.uniformRefine();
@@ -295,8 +306,16 @@ int main(int argc, char *argv[])
     for ( index_t i = 0; i < refinementsT; ++i )
         tb2.uniformRefine();
 
-    for ( size_t i = 0; i < tb2.nBases(); ++ i )
-        tb2[i].reduceContinuity(1);
+    GISMO_ENSURE (dualAddMultiplicityX==0 || dualAddMultiplicityX==2, "Non-valid value "<<dualAddMultiplicityX);
+    if (dualAddMultiplicityX)
+        for ( size_t i = 0; i < mb2.nBases(); ++ i )
+            mb2[i].reduceContinuity(dualAddMultiplicityX);
+
+
+    GISMO_ENSURE (dualAddMultiplicityT==0 || dualAddMultiplicityT==1, "Non-valid value "<<dualAddMultiplicityT);
+    if (dualAddMultiplicityT)
+        for ( size_t i = 0; i < tb2.nBases(); ++ i )
+            tb2[i].reduceContinuity(dualAddMultiplicityT);
 
     gsInfo << "done.\n";
     gsInfo << "Knots in tb1: " << dynamic_cast<gsTensorBSplineBasis<1,real_t>&>(tb1[0]).component(0).knots() << "\n";
@@ -310,46 +329,110 @@ int main(int argc, char *argv[])
 
 
     // Assemble space matrices
-    gsSparseMatrix<> space_mass;
+    gsSparseMatrix<> space_mass1;
     {
         gsExprAssembler<> assembler(1,1);
-        assembler.setIntegrationElements(mb);
+        assembler.setIntegrationElements(mb1);
         gsExprEvaluator<> ev(assembler);
         gsExprAssembler<>::geometryMap G = assembler.getMap(mp);
-        gsExprAssembler<>::space       u = assembler.getSpace(mb,1,0);
+        gsExprAssembler<>::space       u = assembler.getSpace(mb1,1,0);
         bc.setGeoMap(mp);
         u.setup(bc, dirichlet::interpolation, 0);
         assembler.initSystem();
         assembler.assemble( u * u.tr() * meas(G) );
-        space_mass = assembler.matrix();
+        space_mass1 = assembler.matrix();
     }
 
-    gsSparseMatrix<> space_stiff;
+    gsSparseMatrix<> space_mass2;
+    if (dualAddMultiplicityX==0)
+        space_mass2 = space_mass1;
+    else
     {
         gsExprAssembler<> assembler(1,1);
-        assembler.setIntegrationElements(mb);
+        assembler.setIntegrationElements(mb2);
         gsExprEvaluator<> ev(assembler);
         gsExprAssembler<>::geometryMap G = assembler.getMap(mp);
-        gsExprAssembler<>::space       u = assembler.getSpace(mb,1,0);
+        gsExprAssembler<>::space       u = assembler.getSpace(mb2,1,0);
+        bc.setGeoMap(mp);
+        //u.setup(bc, dirichlet::interpolation, 0); // no boundary conditions
+        assembler.initSystem();
+        assembler.assemble( u * u.tr() * meas(G) );
+        space_mass2 = assembler.matrix();
+    }
+
+    gsSparseMatrix<> space_massL;
+    if (dualAddMultiplicityX==0)
+        space_massL = space_mass1;
+    else
+    {
+        gsExprAssembler<> assembler(2,2);
+        assembler.setIntegrationElements(mb1);
+        gsExprEvaluator<> ev(assembler);
+        gsExprAssembler<>::geometryMap G = assembler.getMap(mp);
+        gsExprAssembler<>::space u = assembler.getSpace(mb1,1,0);
+        gsExprAssembler<>::space v = assembler.getSpace(mb2,1,1);
+        bc.setGeoMap(mp);
+        u.setup(bc, dirichlet::interpolation, 0);
+        //v.setup(bc, dirichlet::interpolation, 0); // no boundary conditions
+        assembler.initSystem();
+        assembler.assemble( u * v.tr() * meas(G) );
+        space_massL = assembler.matrix();
+
+        const index_t n1 = space_mass1.rows();
+        const index_t n2 = space_mass2.rows();
+        GISMO_ENSURE(space_massL.rows() == n1+n2, "");
+        space_massL = space_massL.block(0, n1, n1, n2).transpose(); //TODO
+
+    }
+
+    gsSparseMatrix<> space_stiffL;
+    if (dualAddMultiplicityX==0)
+    {
+        gsExprAssembler<> assembler(1,1);
+        assembler.setIntegrationElements(mb1);
+        gsExprEvaluator<> ev(assembler);
+        gsExprAssembler<>::geometryMap G = assembler.getMap(mp);
+        gsExprAssembler<>::space u = assembler.getSpace(mb1,1,0);
         bc.setGeoMap(mp);
         u.setup(bc, dirichlet::interpolation, 0);
         assembler.initSystem();
         assembler.assemble( igrad(u,G) * igrad(u,G).tr() * meas(G) );
-        space_stiff = assembler.matrix();
+        space_stiffL = assembler.matrix();
     }
-
-    gsSparseMatrix<> space_biharm;
+    else
     {
-        gsExprAssembler<> assembler(1,1);
-        assembler.setIntegrationElements(mb);
+        gsExprAssembler<> assembler(2,2);
+        assembler.setIntegrationElements(mb1);
         gsExprEvaluator<> ev(assembler);
         gsExprAssembler<>::geometryMap G = assembler.getMap(mp);
-        gsExprAssembler<>::space       u = assembler.getSpace(mb,1,0);
+        gsExprAssembler<>::space u = assembler.getSpace(mb1,1,0);
+        gsExprAssembler<>::space v = assembler.getSpace(mb2,1,1);
+        bc.setGeoMap(mp);
+        u.setup(bc, dirichlet::interpolation, 0);
+        //v.setup(bc, dirichlet::interpolation, 0); // no boundary conditoons
+        assembler.initSystem();
+        assembler.assemble( igrad(u,G) * igrad(v,G).tr() * meas(G) );
+        space_stiffL = assembler.matrix();
+
+        const index_t n1 = space_mass1.rows();
+        const index_t n2 = space_mass2.rows();
+        GISMO_ENSURE(space_stiffL.rows() == n1+n2, "");
+        space_stiffL = space_stiffL.block(0, n1, n1, n2).transpose(); //TODO
+
+    }
+
+    gsSparseMatrix<> space_biharm1;
+    {
+        gsExprAssembler<> assembler(1,1);
+        assembler.setIntegrationElements(mb1);
+        gsExprEvaluator<> ev(assembler);
+        gsExprAssembler<>::geometryMap G = assembler.getMap(mp);
+        gsExprAssembler<>::space       u = assembler.getSpace(mb1,1,0);
         bc.setGeoMap(mp);
         u.setup(bc, dirichlet::interpolation, 0);
         assembler.initSystem();
         assembler.assemble( ilapl(u,G) * ilapl(u,G).tr() * meas(G) );
-        space_biharm = assembler.matrix();
+        space_biharm1 = assembler.matrix();
     }
 
     // Assemble in time
@@ -390,6 +473,9 @@ int main(int argc, char *argv[])
 
 
     gsSparseMatrix<> time_mass2;
+    if (dualAddMultiplicityT==0)
+        time_mass2 = time_mass1;
+    else
     {
         gsExprAssembler<> assembler(1,1);
         assembler.setIntegrationElements(tb2);
@@ -397,13 +483,16 @@ int main(int argc, char *argv[])
         gsExprAssembler<>::geometryMap G = assembler.getMap(tp);
         gsExprAssembler<>::space u = assembler.getSpace(tb2,1,0);
         ic.setGeoMap(tp);
-        u.setup(ic, dirichlet::interpolation, 0);
+        u.setup(ic, dirichlet::interpolation, 0); // no initial condition
         assembler.initSystem();
         assembler.assemble( u * u.tr() * meas(G) );
         time_mass2 = assembler.matrix();
     }
 
     gsSparseMatrix<> time_massL;
+    if (dualAddMultiplicityT==0)
+        time_massL = time_mass1;
+    else
     {
         gsExprAssembler<> assembler(2,2);
         assembler.setIntegrationElements(tb1);
@@ -412,8 +501,8 @@ int main(int argc, char *argv[])
         gsExprAssembler<>::space u = assembler.getSpace(tb1,1,0);
         gsExprAssembler<>::space v = assembler.getSpace(tb2,1,1);
         ic.setGeoMap(tp);
-        u.setup(ic, dirichlet::interpolation, 0);
-        v.setup(ic, dirichlet::interpolation, 0);
+        u.setup(ic, dirichlet::interpolation, 0); // initial condition below
+        v.setup(ic, dirichlet::interpolation, 0); // no initial condition
         assembler.initSystem();
         assembler.assemble( u * v.tr() * meas(G) );
         time_massL = assembler.matrix();
@@ -426,6 +515,22 @@ int main(int argc, char *argv[])
 
 
     gsSparseMatrix<> time_gradL;
+    if (dualAddMultiplicityT==0)
+    {
+        gsExprAssembler<> assembler(1,1);
+        assembler.setIntegrationElements(tb1);
+        gsExprEvaluator<> ev(assembler);
+        gsExprAssembler<>::geometryMap G = assembler.getMap(tp);
+        gsExprAssembler<>::space u = assembler.getSpace(tb1,1,0);
+        ic.setGeoMap(tp);
+        u.setup(ic, dirichlet::interpolation, 0); // initial condition below
+        assembler.initSystem();
+        assembler.assemble( igrad(u,G) * u.tr() * meas(G) );
+        time_gradL = assembler.matrix();
+        const index_t n1 = time_mass1.rows();
+        time_gradL = time_gradL.block(1, 1, n1, n1).transpose(); //TODO
+    }
+    else
     {
         gsExprAssembler<> assembler(2,2);
         assembler.setIntegrationElements(tb1);
@@ -434,8 +539,8 @@ int main(int argc, char *argv[])
         gsExprAssembler<>::space u = assembler.getSpace(tb1,1,0);
         gsExprAssembler<>::space v = assembler.getSpace(tb2,1,1);
         ic.setGeoMap(tp);
-        u.setup(ic, dirichlet::interpolation, 0);
-        v.setup(ic, dirichlet::interpolation, 0);
+        u.setup(ic, dirichlet::interpolation, 0); // initial condition below
+        v.setup(ic, dirichlet::interpolation, 0); // no initial condition
         assembler.initSystem();
         assembler.assemble( igrad(u,G) * v.tr() * meas(G) );
         time_gradL = assembler.matrix();
@@ -450,8 +555,12 @@ int main(int argc, char *argv[])
 
     if (0)
     {
-        gsInfo << "\nspace_mass=\n" << space_mass << "\n";
-        gsInfo << "\nspace_stiff=\n" << space_stiff << "\n";
+        gsInfo << "\nspace_mass1=\n" << space_mass1 << "\n";
+        gsInfo << "\nspace_mass2=\n" << space_mass2 << "\n";
+        gsInfo << "\nspace_massL=\n" << space_massL << "\n";
+        gsInfo << "\nspace_stiffL=\n" << space_stiffL << "\n";
+        gsInfo << "\nspace_biharm1=\n" << space_biharm1 << "\n";
+
         gsInfo << "\ntime_massL=\n" << time_massL << "\n";
         gsInfo << "\ntime_gradL=\n" << time_gradL << "\n";
         gsInfo << "\ntime_stiff1=\n" << time_stiff1 << "\n";
@@ -464,16 +573,16 @@ int main(int argc, char *argv[])
 
     gsLinearOperator<>::Ptr Lh
         = gsSumOp<>::make(
-            gsKroneckerOp<>::make( makeMatrixOp(time_gradL), makeMatrixOp(space_mass) ),
-            gsScaledOp<>::make( gsKroneckerOp<>::make( makeMatrixOp(time_massL), makeMatrixOp(space_stiff) ), kappa )
+            gsKroneckerOp<>::make( makeMatrixOp(time_gradL), makeMatrixOp(space_massL) ),
+            gsScaledOp<>::make( gsKroneckerOp<>::make( makeMatrixOp(time_massL), makeMatrixOp(space_stiffL) ), kappa )
         );
     gsLinearOperator<>::Ptr LhT
         = gsSumOp<>::make(
-            gsKroneckerOp<>::make( makeMatrixOp(time_gradL.transpose()), makeMatrixOp(space_mass) ),
-            gsScaledOp<>::make( gsKroneckerOp<>::make( makeMatrixOp(time_massL.transpose()), makeMatrixOp(space_stiff) ), kappa )
+            gsKroneckerOp<>::make( makeMatrixOp(time_gradL.transpose()), makeMatrixOp(space_massL.transpose()) ),
+            gsScaledOp<>::make( gsKroneckerOp<>::make( makeMatrixOp(time_massL.transpose()), makeMatrixOp(space_stiffL.transpose()) ), kappa )
         );
     gsLinearOperator<>::Ptr dualPc
-        = gsKroneckerOp<>::make( makeSparseCholeskySolver(time_mass2), makeSparseCholeskySolver(space_mass) );
+        = gsKroneckerOp<>::make( makeSparseCholeskySolver(time_mass2), makeSparseCholeskySolver(space_mass2) );
 
     gsLinearOperator<>::Ptr leastSquares = gsProductOp<>::make( Lh, dualPc, LhT );
 
@@ -493,7 +602,7 @@ int main(int argc, char *argv[])
         index_t &iter = iters[0];
         real_t &cond = conds[0];
 
-        gsSparseMatrix<> preconderMatrix = time_stiff1.kron(space_mass) + (kappa*kappa)*time_mass1.kron(space_biharm);
+        gsSparseMatrix<> preconderMatrix = time_stiff1.kron(space_mass1) + (kappa*kappa)*time_mass1.kron(space_biharm1);
 
         gsLinearOperator<>::Ptr preconder = makeSparseCholeskySolver(preconderMatrix);
 
@@ -545,7 +654,7 @@ int main(int argc, char *argv[])
         index_t &iter = iters[1];
         real_t &cond = conds[1];
 
-        gsLinearOperator<>::Ptr preconder = fastDiagnonalization(time_stiff1, space_mass, (kappa*kappa)*time_mass1, space_biharm, mkSparseLUSolver);
+        gsLinearOperator<>::Ptr preconder = fastDiagnonalization(time_stiff1, space_mass1, (kappa*kappa)*time_mass1, space_biharm1, mkSparseLUSolver);
 
         //gsInfo << "\npreconderMatrix=\n" << preconderMatrix << "\n";
         gsInfo << "done: " << preconder->rows() << " dofs.\n";
@@ -599,8 +708,8 @@ int main(int argc, char *argv[])
 
         std::string info;
         gsLinearOperator<>::Ptr preconder = makeSpaceTimeMultiGridSolver(
-            time_stiff1.kron(space_mass), (kappa*kappa)*time_mass1.kron(space_biharm), massMatrix,
-            mb, bc,
+            time_stiff1.kron(space_mass1), (kappa*kappa)*time_mass1.kron(space_biharm1), massMatrix,
+            mb1, bc,
             tb1, ic,
             cmd.getGroup("MG"),
             info, 'g');
@@ -648,7 +757,7 @@ int main(int argc, char *argv[])
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     gsInfo << "Setup of MG+MS preconder... " << std::flush; // MG in space-time, mass smoother (no subspace correction)
-    if (mggsPreconder)
+    if (mgmsPreconder)
     {
 
         index_t &iter = iters[3];
@@ -656,8 +765,8 @@ int main(int argc, char *argv[])
 
         std::string info;
         gsLinearOperator<>::Ptr preconder = makeSpaceTimeMultiGridSolver(
-            time_stiff1.kron(space_mass), (kappa*kappa)*time_mass1.kron(space_biharm), time_mass1.kron(space_mass),
-            mb, bc,
+            time_stiff1.kron(space_mass1), (kappa*kappa)*time_mass1.kron(space_biharm1), time_mass1.kron(space_mass1),
+            mb1, bc,
             tb1, ic,
             cmd.getGroup("MG"),
             info, 'm');
@@ -713,6 +822,8 @@ int main(int argc, char *argv[])
                 "refinementsX\t"
                 "refinementsT\t"
                 "degree\t"
+                "dualAddMultiplicityX\t"
+                "dualAddMultiplicityT\t"
                 "kappa\t"
                 "sigmaMass\t"
                 "sigmaStiff\t"
@@ -733,6 +844,8 @@ int main(int argc, char *argv[])
             << refinementsX << "\t"
             << refinementsT << "\t"
             << degree << "\t"
+            << dualAddMultiplicityX << "\t"
+            << dualAddMultiplicityT << "\t"
             << kappa << "\t"
             << sigmaMass << "\t"
             << sigmaStiff << "\t"
