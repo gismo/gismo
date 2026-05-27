@@ -1242,6 +1242,16 @@ const gsTensorBSplineBasis<1,T> & gsTensorBSplineBasis<1,T>::component(short_t i
 // C++11-compatible TMP dispatch for constructing gsTensorBSplineBasis<D,T>
 // from a std::vector of knot vectors. Recursively checks cKV.size()==D,
 // stepping down from GISMO_MAX_DIMENSION to 1.
+// The D==1 base case must be declared first so the D>1 recursive overload
+// can see it during C++11 two-phase name lookup.
+template<short_t D, class T,
+         typename std::enable_if<(D == 1), int>::type = 0>
+static typename gsBasis<T>::uPtr
+make_tensor_bspline(std::vector<typename gsBSplineBasis<T>::KnotVectorType> cKV)
+{
+    return typename gsBasis<T>::uPtr(new gsBSplineBasis<T>(give(cKV)));
+}
+
 template<short_t D, class T,
          typename std::enable_if<(D > 1), int>::type = 0>
 static typename gsBasis<T>::uPtr
@@ -1250,14 +1260,6 @@ make_tensor_bspline(std::vector<typename gsBSplineBasis<T>::KnotVectorType> cKV)
     if ((short_t)cKV.size() == D)
         return typename gsBasis<T>::uPtr(new gsTensorBSplineBasis<D,T>(std::move(cKV)));
     return make_tensor_bspline<D-1, T>(std::move(cKV));
-}
-
-template<short_t D, class T,
-         typename std::enable_if<(D == 1), int>::type = 0>
-static typename gsBasis<T>::uPtr
-make_tensor_bspline(std::vector<typename gsBSplineBasis<T>::KnotVectorType> cKV)
-{
-    return typename gsBasis<T>::uPtr(new gsBSplineBasis<T>(give(cKV)));
 }
 
 template <class T>

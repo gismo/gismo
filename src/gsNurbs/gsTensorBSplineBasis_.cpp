@@ -55,30 +55,25 @@ gsTensorBSplineBasis<D,real_t> tensor_basis_from_args(const py::args & knotVecto
     return gsTensorBSplineBasis<D,real_t>(give(knotVectorList));
 }
 
-// C++11-compatible TMP dispatch: try dimension D, recurse down to 2
-template<short_t D, typename std::enable_if<(D > 2), int>::type = 0>
-py::object make_gsTensorBSplineBasis(size_t n, std::vector<gsKnotVector<real_t>> kvs)
-{
-    if ((short_t)n == D)
-        return py::cast(new gsTensorBSplineBasis<D,real_t>(give(kvs)));
-    return make_gsTensorBSplineBasis<D-1>(n, std::move(kvs));
-}
-
-template<short_t D, typename std::enable_if<(D == 2), int>::type = 0>
-py::object make_gsTensorBSplineBasis(size_t n, std::vector<gsKnotVector<real_t>> kvs)
-{
-    if ((short_t)n == D)
-        return py::cast(new gsTensorBSplineBasis<D,real_t>(give(kvs)));
-    throw py::value_error("Expected 2 to " + std::to_string(GISMO_MAX_DIMENSION)
-                          + " knot vectors as positional arguments or in a single sequence.");
-}
-
 void pybind11_init_gsTensorBSplineBasis_factory(py::module &m)
 {
-    m.def("gsTensorBSplineBasis", [](py::args knotVectors) -> py::object
+    m.def("gsTensorBSplineBasis", [module = py::module_(m)](py::args knotVectors) -> py::object
     {
-        std::vector<gsKnotVector<real_t>> knotVectorList = knot_vector_list_from_args(knotVectors);
-        return make_gsTensorBSplineBasis<GISMO_MAX_DIMENSION>(knotVectorList.size(), std::move(knotVectorList));
+        int d;
+        if (knotVectors.size() == 1 && py::isinstance<py::sequence>(knotVectors[0]))
+            d = (int)py::len(knotVectors[0]);
+        else
+            d = (int)knotVectors.size();
+
+        if (d < 2 || d > GISMO_MAX_DIMENSION)
+            throw py::value_error("Expected 2 to " + std::to_string(GISMO_MAX_DIMENSION)
+                                  + " knot vectors as positional arguments or in a single sequence.");
+
+        const std::string className = "gsTensorBSplineBasis" + std::to_string(d);
+        py::object cls = module.attr(className.c_str());
+        PyObject* result = PyObject_CallObject(cls.ptr(), knotVectors.ptr());
+        if (!result) throw py::error_already_set();
+        return py::reinterpret_steal<py::object>(result);
     },
     "Factory constructor that dispatches to gsTensorBSplineBasis2..N based on the number of knot vectors");
 }

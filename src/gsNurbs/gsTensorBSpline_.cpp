@@ -50,22 +50,8 @@ short_t tensor_spline_dimension_from_args(const py::args & args)
     return d;
 }
 
-// C++11-compatible TMP dispatch: try dimension D, recurse down to 2
-template<short_t D, typename std::enable_if<(D > 2), int>::type = 0>
-py::object make_gsTensorBSpline(py::module module, const short_t d, const py::args & args)
-{
-    if (d == D)
-    {
-        const std::string className = "gsTensorBSpline" + std::to_string(D);
-        py::object ctor = module.attr(className.c_str());
-        PyObject * result = PyObject_CallObject(ctor.ptr(), args.ptr());
-        if (!result)
-            throw py::error_already_set();
-        return py::reinterpret_steal<py::object>(result);
-    }
-    return make_gsTensorBSpline<D-1>(module, d, args);
-}
-
+// C++11-compatible TMP dispatch: base case D==2 must be declared first so the
+// recursive D>2 overload can see it during two-phase name lookup.
 template<short_t D, typename std::enable_if<(D == 2), int>::type = 0>
 py::object make_gsTensorBSpline(py::module module, const short_t d, const py::args & args)
 {
@@ -80,6 +66,21 @@ py::object make_gsTensorBSpline(py::module module, const short_t d, const py::ar
     }
     throw py::value_error("Expected inferred dimension in [2, " + std::to_string(GISMO_MAX_DIMENSION)
                           + "] for gsTensorBSpline factory.");
+}
+
+template<short_t D, typename std::enable_if<(D > 2), int>::type = 0>
+py::object make_gsTensorBSpline(py::module module, const short_t d, const py::args & args)
+{
+    if (d == D)
+    {
+        const std::string className = "gsTensorBSpline" + std::to_string(D);
+        py::object ctor = module.attr(className.c_str());
+        PyObject * result = PyObject_CallObject(ctor.ptr(), args.ptr());
+        if (!result)
+            throw py::error_already_set();
+        return py::reinterpret_steal<py::object>(result);
+    }
+    return make_gsTensorBSpline<D-1>(module, d, args);
 }
 
 void pybind11_init_gsTensorBSpline_factory(py::module &m)
