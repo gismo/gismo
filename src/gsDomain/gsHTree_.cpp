@@ -1,16 +1,15 @@
 #include <gsCore/gsTemplateTools.h>
+#include <gsCore/gsDimMacro.h>
 
 #include <gsDomain/gsHTree.h>
 #include <gsDomain/gsHTree.hpp>
 
 namespace gismo
 {
-    CLASS_TEMPLATE_INST gsHTree<1,index_t>;
-    CLASS_TEMPLATE_INST gsHTree<2,index_t>;
-    CLASS_TEMPLATE_INST gsHTree<3,index_t>;
-    CLASS_TEMPLATE_INST gsHTree<4,index_t>;
-    CLASS_TEMPLATE_INST gsHTree<5,index_t>;
-    CLASS_TEMPLATE_INST gsHTree<6,index_t>;
+
+#define INST(D) CLASS_TEMPLATE_INST gsHTree<D,index_t>;
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
 /*
     // Explicit member instansiations. Quite ugly for now..

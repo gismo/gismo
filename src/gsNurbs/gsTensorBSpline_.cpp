@@ -1,5 +1,6 @@
 
 #include <gsCore/gsTemplateTools.h>
+#include <gsCore/gsDimMacro.h>
 
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsNurbs/gsTensorBSpline.hpp>
@@ -7,51 +8,25 @@
 
 namespace gismo
 {
-TEMPLATE_INST
-void constructCoefsForSlice<1, real_t>(index_t dir_fixed,
-                                       const index_t index,
-                                       const gsMatrix<real_t> & fullCoefs,
-                                       const gsVector<index_t, 1> & sizes,
-                                       gsMatrix<real_t> & result
+
+#define INST(D) \
+TEMPLATE_INST \
+void constructCoefsForSlice<D, real_t>(index_t dir_fixed, \
+                                       const index_t index, \
+                                       const gsMatrix<real_t> & fullCoefs, \
+                                       const gsVector<index_t, D> & sizes, \
+                                       gsMatrix<real_t> & result \
                                       );
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
-TEMPLATE_INST
-void constructCoefsForSlice<2, real_t>(index_t dir_fixed,
-                                       const index_t index,
-                                       const gsMatrix<real_t> & fullCoefs,
-                                       const gsVector<index_t, 2> & sizes,
-                                       gsMatrix<real_t> & result
-                                      );
+#define INST(D) CLASS_TEMPLATE_INST gsTensorBSpline<D,real_t>;
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
-TEMPLATE_INST
-void constructCoefsForSlice<3, real_t>(index_t dir_fixed,
-                                       const index_t index,
-                                       const gsMatrix<real_t> & fullCoefs,
-                                       const gsVector<index_t, 3> & sizes,
-                                       gsMatrix<real_t> & result
-                                      );
-TEMPLATE_INST
-void constructCoefsForSlice<4, real_t>(index_t dir_fixed,
-                                       const index_t index,
-                                       const gsMatrix<real_t> & fullCoefs,
-                                       const gsVector<index_t, 4> & sizes,
-                                       gsMatrix<real_t> & result
-                                      );
-
-
-CLASS_TEMPLATE_INST gsTensorBSpline<1,real_t>;
-CLASS_TEMPLATE_INST gsTensorBSpline<2,real_t>;
-CLASS_TEMPLATE_INST gsTensorBSpline<3,real_t>;
-CLASS_TEMPLATE_INST gsTensorBSpline<4,real_t>;
-CLASS_TEMPLATE_INST gsTensorBSpline<5,real_t>;
-CLASS_TEMPLATE_INST gsTensorBSpline<6,real_t>;
-
-CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSpline<1,real_t> >;
-CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSpline<2,real_t> >;
-CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSpline<3,real_t> >;
-CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSpline<4,real_t> >;
-CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSpline<5,real_t> >;
-CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSpline<6,real_t> >;
+#define INST(D) CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSpline<D,real_t> >;
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
 
 #ifdef GISMO_WITH_PYBIND11
@@ -68,10 +43,43 @@ short_t tensor_spline_dimension_from_args(const py::args & args)
         throw py::value_error("Cannot infer tensor spline dimension: first argument has no dim() method.");
 
     const short_t d = py::cast<short_t>(first.attr("dim")());
-    if (d < 2 || d > 6)
-        throw py::value_error("Expected inferred dimension in [2, 6] for gsTensorBSpline factory.");
+    if (d < 2 || d > GISMO_MAX_DIMENSION)
+        throw py::value_error("Expected inferred dimension in [2, " + std::to_string(GISMO_MAX_DIMENSION)
+                              + "] for gsTensorBSpline factory.");
 
     return d;
+}
+
+// C++11-compatible TMP dispatch: try dimension D, recurse down to 2
+template<short_t D, typename std::enable_if<(D > 2), int>::type = 0>
+py::object make_gsTensorBSpline(py::module module, const short_t d, const py::args & args)
+{
+    if (d == D)
+    {
+        const std::string className = "gsTensorBSpline" + std::to_string(D);
+        py::object ctor = module.attr(className.c_str());
+        PyObject * result = PyObject_CallObject(ctor.ptr(), args.ptr());
+        if (!result)
+            throw py::error_already_set();
+        return py::reinterpret_steal<py::object>(result);
+    }
+    return make_gsTensorBSpline<D-1>(module, d, args);
+}
+
+template<short_t D, typename std::enable_if<(D == 2), int>::type = 0>
+py::object make_gsTensorBSpline(py::module module, const short_t d, const py::args & args)
+{
+    if (d == D)
+    {
+        const std::string className = "gsTensorBSpline" + std::to_string(D);
+        py::object ctor = module.attr(className.c_str());
+        PyObject * result = PyObject_CallObject(ctor.ptr(), args.ptr());
+        if (!result)
+            throw py::error_already_set();
+        return py::reinterpret_steal<py::object>(result);
+    }
+    throw py::value_error("Expected inferred dimension in [2, " + std::to_string(GISMO_MAX_DIMENSION)
+                          + "] for gsTensorBSpline factory.");
 }
 
 void pybind11_init_gsTensorBSpline_factory(py::module &m)
@@ -79,16 +87,9 @@ void pybind11_init_gsTensorBSpline_factory(py::module &m)
     m.def("gsTensorBSpline", [module = py::module_(m)](py::args args) -> py::object
     {
         const short_t d = tensor_spline_dimension_from_args(args);
-        const std::string className = "gsTensorBSpline" + std::to_string(d);
-        py::object ctor = module.attr(className.c_str());
-
-        PyObject * result = PyObject_CallObject(ctor.ptr(), args.ptr());
-        if (!result)
-            throw py::error_already_set();
-
-        return py::reinterpret_steal<py::object>(result);
+        return make_gsTensorBSpline<GISMO_MAX_DIMENSION>(module, d, args);
     },
-    "Factory constructor that dispatches to gsTensorBSpline2..6 based on inferred dimension");
+    "Factory constructor that dispatches to gsTensorBSpline2..N based on inferred dimension");
 }
 
 template <short_t d>
@@ -109,11 +110,9 @@ void pybind11_init_gsTensorBSpline(py::module &m)
     ;
 }
 
-template void pybind11_init_gsTensorBSpline<2>(py::module &m);
-template void pybind11_init_gsTensorBSpline<3>(py::module &m);
-template void pybind11_init_gsTensorBSpline<4>(py::module &m);
-template void pybind11_init_gsTensorBSpline<5>(py::module &m);
-template void pybind11_init_gsTensorBSpline<6>(py::module &m);
+#define INST(D) template void pybind11_init_gsTensorBSpline<D>(py::module &m);
+GISMO_DIM_FOREACH_FROM2(INST)
+#undef INST
 
 #endif
 

@@ -12,6 +12,7 @@
 */
 
 #include <gsCore/gsTemplateTools.h>
+#include <gsCore/gsDimMacro.h>
 
 #include <gsMSplines/gsMappedBasis.h>
 #include <gsMSplines/gsMappedBasis.hpp>
@@ -19,9 +20,9 @@
 namespace gismo
 {
 
-CLASS_TEMPLATE_INST gsMappedBasis<1,real_t> ;
-CLASS_TEMPLATE_INST gsMappedBasis<2,real_t> ;
-CLASS_TEMPLATE_INST gsMappedBasis<3,real_t> ;
+#define INST(D) CLASS_TEMPLATE_INST gsMappedBasis<D,real_t>;
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
 #ifdef GISMO_WITH_PYBIND11
 
@@ -43,7 +44,9 @@ void pybind11_init_gsMappedBasis(py::module &m)
     ;
 }
 
-template void pybind11_init_gsMappedBasis<2>(py::module &m);
+#define INST(D) template void pybind11_init_gsMappedBasis<D>(py::module &m);
+GISMO_DIM_FOREACH_FROM2(INST)
+#undef INST
 
 template <short_t d>
 void pybind11_init_gsMappedSingleBasis(py::module &m)
@@ -55,7 +58,9 @@ void pybind11_init_gsMappedSingleBasis(py::module &m)
     ;
 }
 
-template void pybind11_init_gsMappedSingleBasis<2>(py::module &m);
+#define INST(D) template void pybind11_init_gsMappedSingleBasis<D>(py::module &m);
+GISMO_DIM_FOREACH_FROM2(INST)
+#undef INST
 
 #endif
 

@@ -1,4 +1,5 @@
 #include <gsCore/gsTemplateTools.h>
+#include <gsCore/gsDimMacro.h>
 
 #include <gsIO/gsXml.h>
 
@@ -14,78 +15,48 @@
 namespace gismo
 {
 
-CLASS_TEMPLATE_INST gsHTensorBasis <1,real_t>;
-CLASS_TEMPLATE_INST gsHTensorBasis <2,real_t>;
-CLASS_TEMPLATE_INST gsHTensorBasis <3,real_t>;
-CLASS_TEMPLATE_INST gsHTensorBasis <4,real_t>;
-CLASS_TEMPLATE_INST gsHTensorBasis <5,real_t>;
-CLASS_TEMPLATE_INST gsHTensorBasis <6,real_t>;
-  
-CLASS_TEMPLATE_INST gsTHBSplineBasis <1,real_t,true>;
-CLASS_TEMPLATE_INST gsTHBSplineBasis <2,real_t,true>;
-CLASS_TEMPLATE_INST gsTHBSplineBasis <3,real_t,true>;
-CLASS_TEMPLATE_INST gsTHBSplineBasis <4,real_t,true>;
-CLASS_TEMPLATE_INST gsTHBSplineBasis <5,real_t,true>;
-CLASS_TEMPLATE_INST gsTHBSplineBasis <6,real_t,true>;
+#define INST(D) CLASS_TEMPLATE_INST gsHTensorBasis<D,real_t>;
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
-CLASS_TEMPLATE_INST gsTHBSplineBasis <1,real_t,false>;
-CLASS_TEMPLATE_INST gsTHBSplineBasis <2,real_t,false>;
-CLASS_TEMPLATE_INST gsTHBSplineBasis <3,real_t,false>;
-CLASS_TEMPLATE_INST gsTHBSplineBasis <4,real_t,false>;
-CLASS_TEMPLATE_INST gsTHBSplineBasis <5,real_t,false>;
-CLASS_TEMPLATE_INST gsTHBSplineBasis <6,real_t,false>;
+#define INST(D) CLASS_TEMPLATE_INST gsTHBSplineBasis<D,real_t,true>;
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
-CLASS_TEMPLATE_INST gsTHBSpline      <1,real_t,true>;
-CLASS_TEMPLATE_INST gsTHBSpline      <2,real_t,true>;
-CLASS_TEMPLATE_INST gsTHBSpline      <3,real_t,true>;
-CLASS_TEMPLATE_INST gsTHBSpline      <4,real_t,true>;
-CLASS_TEMPLATE_INST gsTHBSpline      <5,real_t,true>;
-CLASS_TEMPLATE_INST gsTHBSpline      <6,real_t,true>;
+#define INST(D) CLASS_TEMPLATE_INST gsTHBSplineBasis<D,real_t,false>;
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
-CLASS_TEMPLATE_INST gsTHBSpline      <1,real_t,false>;
-CLASS_TEMPLATE_INST gsTHBSpline      <2,real_t,false>;
-CLASS_TEMPLATE_INST gsTHBSpline      <3,real_t,false>;
-CLASS_TEMPLATE_INST gsTHBSpline      <4,real_t,false>;
-CLASS_TEMPLATE_INST gsTHBSpline      <5,real_t,false>;
-CLASS_TEMPLATE_INST gsTHBSpline      <6,real_t,false>;
+#define INST(D) CLASS_TEMPLATE_INST gsTHBSpline<D,real_t,true>;
+GISMO_DIM_FOREACH(INST)
+#undef INST
+
+#define INST(D) CLASS_TEMPLATE_INST gsTHBSpline<D,real_t,false>;
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
 namespace internal
 {
 
-CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<1,real_t> >;
-CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<2,real_t> >;
-CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<3,real_t> >;
-CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<4,real_t> >;
-CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<5,real_t> >;
-CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<6,real_t> >;
-  
-CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<1,real_t,true> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<2,real_t,true> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<3,real_t,true> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<4,real_t,true> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<5,real_t,true> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<6,real_t,true> >;
+#define INST(D) CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<D,real_t> >;
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
-CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<1,real_t,false> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<2,real_t,false> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<3,real_t,false> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<4,real_t,false> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<5,real_t,false> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<6,real_t,false> >;
+#define INST(D) CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<D,real_t,true> >;
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
-CLASS_TEMPLATE_INST gsXml< gsTHBSpline<1,real_t,true> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSpline<2,real_t,true> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSpline<3,real_t,true> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSpline<4,real_t,true> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSpline<5,real_t,true> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSpline<6,real_t,true> >;
+#define INST(D) CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<D,real_t,false> >;
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
-CLASS_TEMPLATE_INST gsXml< gsTHBSpline<1,real_t,false> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSpline<2,real_t,false> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSpline<3,real_t,false> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSpline<4,real_t,false> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSpline<5,real_t,false> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSpline<6,real_t,false> >;
+#define INST(D) CLASS_TEMPLATE_INST gsXml< gsTHBSpline<D,real_t,true> >;
+GISMO_DIM_FOREACH(INST)
+#undef INST
+
+#define INST(D) CLASS_TEMPLATE_INST gsXml< gsTHBSpline<D,real_t,false> >;
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
 }
 
@@ -114,8 +85,8 @@ short_t h_spline_dimension_from_args(const py::args & args, const char * factory
         throw py::value_error(std::string("Cannot infer dimension for ") + factoryName + ": first argument has neither dim() nor domainDim().");
     }
 
-    if (d < 1 || d > 6)
-        throw py::value_error(std::string("Expected inferred dimension in [1, 6] for ") + factoryName + ".");
+    if (d < 1 || d > GISMO_MAX_DIMENSION)
+        throw py::value_error(std::string("Expected inferred dimension in [1, ") + std::to_string(GISMO_MAX_DIMENSION) + "] for " + factoryName + ".");
 
     return d;
 }
@@ -139,14 +110,14 @@ void pybind11_init_gsTHBSplineBasis_factory(py::module &m)
         const short_t d = h_spline_dimension_from_args(args, "gsTHBSplineBasis");
         return call_dimensioned_constructor(module, "gsTHBSplineBasis", d, args);
     },
-    "Factory constructor that dispatches to gsTHBSplineBasis1..6 based on inferred dimension");
+    "Factory constructor that dispatches to gsTHBSplineBasis1..N based on inferred dimension");
 
     m.def("gsHBSplineBasis", [module = py::module_(m)](py::args args) -> py::object
     {
         const short_t d = h_spline_dimension_from_args(args, "gsHBSplineBasis");
         return call_dimensioned_constructor(module, "gsHBSplineBasis", d, args);
     },
-    "Factory constructor that dispatches to gsHBSplineBasis1..6 based on inferred dimension");
+    "Factory constructor that dispatches to gsHBSplineBasis1..N based on inferred dimension");
 }
 
 void pybind11_init_gsTHBSpline_factory(py::module &m)
@@ -156,14 +127,14 @@ void pybind11_init_gsTHBSpline_factory(py::module &m)
         const short_t d = h_spline_dimension_from_args(args, "gsTHBSpline");
         return call_dimensioned_constructor(module, "gsTHBSpline", d, args);
     },
-    "Factory constructor that dispatches to gsTHBSpline1..6 based on inferred dimension");
+    "Factory constructor that dispatches to gsTHBSpline1..N based on inferred dimension");
 
     m.def("gsHBSpline", [module = py::module_(m)](py::args args) -> py::object
     {
         const short_t d = h_spline_dimension_from_args(args, "gsHBSpline");
         return call_dimensioned_constructor(module, "gsHBSpline", d, args);
     },
-    "Factory constructor that dispatches to gsHBSpline1..6 based on inferred dimension");
+    "Factory constructor that dispatches to gsHBSpline1..N based on inferred dimension");
 }
 
 template <short_t d>
@@ -178,12 +149,9 @@ void pybind11_init_gsHTensorBasis(py::module &m)
     ;
 }
 
-template void pybind11_init_gsHTensorBasis<1>(py::module &m);
-template void pybind11_init_gsHTensorBasis<2>(py::module &m);
-template void pybind11_init_gsHTensorBasis<3>(py::module &m);
-template void pybind11_init_gsHTensorBasis<4>(py::module &m);
-template void pybind11_init_gsHTensorBasis<5>(py::module &m);
-template void pybind11_init_gsHTensorBasis<6>(py::module &m);
+#define INST(D) template void pybind11_init_gsHTensorBasis<D>(py::module &m);
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
 template <short_t d, bool Trunc>
 void pybind11_init_gsTHBSplineBasis(py::module &m)
@@ -199,19 +167,13 @@ void pybind11_init_gsTHBSplineBasis(py::module &m)
     ;
 }
 
-template void pybind11_init_gsTHBSplineBasis<1, true>(py::module &m);
-template void pybind11_init_gsTHBSplineBasis<2, true>(py::module &m);
-template void pybind11_init_gsTHBSplineBasis<3, true>(py::module &m);
-template void pybind11_init_gsTHBSplineBasis<4, true>(py::module &m);
-template void pybind11_init_gsTHBSplineBasis<5, true>(py::module &m);
-template void pybind11_init_gsTHBSplineBasis<6, true>(py::module &m);
+#define INST(D) template void pybind11_init_gsTHBSplineBasis<D, true>(py::module &m);
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
-template void pybind11_init_gsTHBSplineBasis<1, false>(py::module &m);
-template void pybind11_init_gsTHBSplineBasis<2, false>(py::module &m);
-template void pybind11_init_gsTHBSplineBasis<3, false>(py::module &m);
-template void pybind11_init_gsTHBSplineBasis<4, false>(py::module &m);
-template void pybind11_init_gsTHBSplineBasis<5, false>(py::module &m);
-template void pybind11_init_gsTHBSplineBasis<6, false>(py::module &m);
+#define INST(D) template void pybind11_init_gsTHBSplineBasis<D, false>(py::module &m);
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
 template <short_t d, bool Trunc>
 void pybind11_init_gsTHBSpline(py::module &m)
@@ -226,19 +188,13 @@ void pybind11_init_gsTHBSpline(py::module &m)
     ;
 }
 
-template void pybind11_init_gsTHBSpline<1, true>(py::module &m);
-template void pybind11_init_gsTHBSpline<2, true>(py::module &m);
-template void pybind11_init_gsTHBSpline<3, true>(py::module &m);
-template void pybind11_init_gsTHBSpline<4, true>(py::module &m);
-template void pybind11_init_gsTHBSpline<5, true>(py::module &m);
-template void pybind11_init_gsTHBSpline<6, true>(py::module &m);
+#define INST(D) template void pybind11_init_gsTHBSpline<D, true>(py::module &m);
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
-template void pybind11_init_gsTHBSpline<1, false>(py::module &m);
-template void pybind11_init_gsTHBSpline<2, false>(py::module &m);
-template void pybind11_init_gsTHBSpline<3, false>(py::module &m);
-template void pybind11_init_gsTHBSpline<4, false>(py::module &m);
-template void pybind11_init_gsTHBSpline<5, false>(py::module &m);
-template void pybind11_init_gsTHBSpline<6, false>(py::module &m);
+#define INST(D) template void pybind11_init_gsTHBSpline<D, false>(py::module &m);
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
 #endif
 

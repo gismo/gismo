@@ -611,17 +611,16 @@ std::ostream& operator<<( std::ostream& os, const gsHBox<d,T>& b )
 #undef  EXTERN_CLASS_TEMPLATE
 #define EXTERN_CLASS_TEMPLATE CLASS_TEMPLATE_INST
 #endif
+#include <gsCore/gsDimMacro.h>
 namespace gismo
 {
-EXTERN_CLASS_TEMPLATE gsHBox<1,real_t>;
-EXTERN_CLASS_TEMPLATE gsHBox<2,real_t>;
-EXTERN_CLASS_TEMPLATE gsHBox<3,real_t>;
-EXTERN_CLASS_TEMPLATE gsHBox<4,real_t>;
+#define GISMO_EXTERN_GSBOX(D) EXTERN_CLASS_TEMPLATE gsHBox<D,real_t>;
+GISMO_DIM_FOREACH(GISMO_EXTERN_GSBOX)
+#undef GISMO_EXTERN_GSBOX
 
-EXTERN_CLASS_TEMPLATE internal::gsXml< gsHBox<1,real_t> >;
-EXTERN_CLASS_TEMPLATE internal::gsXml< gsHBox<2,real_t> >;
-EXTERN_CLASS_TEMPLATE internal::gsXml< gsHBox<3,real_t> >;
-EXTERN_CLASS_TEMPLATE internal::gsXml< gsHBox<4,real_t> >;
+#define GISMO_EXTERN_GSBOX_XML(D) EXTERN_CLASS_TEMPLATE internal::gsXml< gsHBox<D,real_t> >;
+GISMO_DIM_FOREACH(GISMO_EXTERN_GSBOX_XML)
+#undef GISMO_EXTERN_GSBOX_XML
 
 }
 #endif

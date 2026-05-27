@@ -238,11 +238,12 @@ protected:
 #undef  EXTERN_CLASS_TEMPLATE
 #define EXTERN_CLASS_TEMPLATE CLASS_TEMPLATE_INST
 #endif
+#include <gsCore/gsDimMacro.h>
 namespace gismo
 {
-EXTERN_CLASS_TEMPLATE gsTensorNurbsBasis<2,real_t>;
-EXTERN_CLASS_TEMPLATE gsTensorNurbsBasis<3,real_t>;
-EXTERN_CLASS_TEMPLATE gsTensorNurbsBasis<4,real_t>;
+#define GISMO_EXTERN_TENSOR_NURBS_BASIS(D) EXTERN_CLASS_TEMPLATE gsTensorNurbsBasis<D,real_t>;
+GISMO_DIM_FOREACH_FROM2(GISMO_EXTERN_TENSOR_NURBS_BASIS)
+#undef GISMO_EXTERN_TENSOR_NURBS_BASIS
 }
 #endif
 // *****************************************************************

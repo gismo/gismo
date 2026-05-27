@@ -1,11 +1,13 @@
 
 #include <gsCore/gsTemplateTools.h>
+#include <gsCore/gsDimMacro.h>
 
 #include <gsHSplines/gsHElementMarker.h>
 #include <gsHSplines/gsHElementMarker.hpp>
 
 namespace gismo
 {
-    CLASS_TEMPLATE_INST gsHElementMarker<2,real_t>;
-    CLASS_TEMPLATE_INST gsHElementMarker<3,real_t>;
+#define INST(D) CLASS_TEMPLATE_INST gsHElementMarker<D,real_t>;
+GISMO_DIM_FOREACH_FROM2(INST)
+#undef INST
 }

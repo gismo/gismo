@@ -2,6 +2,8 @@
 
 //#define gsTensorBSplineBasis_EXPORT
 
+#include <gsCore/gsTemplateTools.h>
+#include <gsCore/gsDimMacro.h>
 #include <gsCore/gsBasisFun.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 #include <gsNurbs/gsTensorBSplineBasis.hpp>
@@ -9,18 +11,13 @@
 namespace gismo
 {
 
-CLASS_TEMPLATE_INST gsTensorBSplineBasis<2,real_t>;
-CLASS_TEMPLATE_INST gsTensorBSplineBasis<3,real_t>;
-CLASS_TEMPLATE_INST gsTensorBSplineBasis<4,real_t>;
-CLASS_TEMPLATE_INST gsTensorBSplineBasis<5,real_t>;
-CLASS_TEMPLATE_INST gsTensorBSplineBasis<6,real_t>;
+#define INST(D) CLASS_TEMPLATE_INST gsTensorBSplineBasis<D,real_t>;
+GISMO_DIM_FOREACH_FROM2(INST)
+#undef INST
 
-CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSplineBasis<1,real_t> >;
-CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSplineBasis<2,real_t> >;
-CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSplineBasis<3,real_t> >;
-CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSplineBasis<4,real_t> >;
-CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSplineBasis<5,real_t> >;
-CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSplineBasis<6,real_t> >;
+#define INST(D) CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSplineBasis<D,real_t> >;
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
 #ifdef GISMO_WITH_PYBIND11
 
@@ -58,29 +55,32 @@ gsTensorBSplineBasis<D,real_t> tensor_basis_from_args(const py::args & knotVecto
     return gsTensorBSplineBasis<D,real_t>(give(knotVectorList));
 }
 
+// C++11-compatible TMP dispatch: try dimension D, recurse down to 2
+template<short_t D, typename std::enable_if<(D > 2), int>::type = 0>
+py::object make_gsTensorBSplineBasis(size_t n, std::vector<gsKnotVector<real_t>> kvs)
+{
+    if ((short_t)n == D)
+        return py::cast(new gsTensorBSplineBasis<D,real_t>(give(kvs)));
+    return make_gsTensorBSplineBasis<D-1>(n, std::move(kvs));
+}
+
+template<short_t D, typename std::enable_if<(D == 2), int>::type = 0>
+py::object make_gsTensorBSplineBasis(size_t n, std::vector<gsKnotVector<real_t>> kvs)
+{
+    if ((short_t)n == D)
+        return py::cast(new gsTensorBSplineBasis<D,real_t>(give(kvs)));
+    throw py::value_error("Expected 2 to " + std::to_string(GISMO_MAX_DIMENSION)
+                          + " knot vectors as positional arguments or in a single sequence.");
+}
+
 void pybind11_init_gsTensorBSplineBasis_factory(py::module &m)
 {
     m.def("gsTensorBSplineBasis", [](py::args knotVectors) -> py::object
     {
         std::vector<gsKnotVector<real_t>> knotVectorList = knot_vector_list_from_args(knotVectors);
-
-        switch (knotVectorList.size())
-        {
-        case 2:
-            return py::cast(new gsTensorBSplineBasis<2,real_t>(give(knotVectorList)));
-        case 3:
-            return py::cast(new gsTensorBSplineBasis<3,real_t>(give(knotVectorList)));
-        case 4:
-            return py::cast(new gsTensorBSplineBasis<4,real_t>(give(knotVectorList)));
-        case 5:
-            return py::cast(new gsTensorBSplineBasis<5,real_t>(give(knotVectorList)));
-        case 6:
-            return py::cast(new gsTensorBSplineBasis<6,real_t>(give(knotVectorList)));
-        default:
-            throw py::value_error("Expected 2 to 6 knot vectors as positional arguments or in a single sequence.");
-        }
+        return make_gsTensorBSplineBasis<GISMO_MAX_DIMENSION>(knotVectorList.size(), std::move(knotVectorList));
     },
-    "Factory constructor that dispatches to gsTensorBSplineBasis2..6 based on the number of knot vectors");
+    "Factory constructor that dispatches to gsTensorBSplineBasis2..N based on the number of knot vectors");
 }
 
 template <short_t d>
@@ -113,11 +113,9 @@ void pybind11_init_gsTensorBSplineBasis(py::module &m)
         ;
 }
 
-template void pybind11_init_gsTensorBSplineBasis<2>(py::module &m);
-template void pybind11_init_gsTensorBSplineBasis<3>(py::module &m);
-template void pybind11_init_gsTensorBSplineBasis<4>(py::module &m);
-template void pybind11_init_gsTensorBSplineBasis<5>(py::module &m);
-template void pybind11_init_gsTensorBSplineBasis<6>(py::module &m);
+#define INST(D) template void pybind11_init_gsTensorBSplineBasis<D>(py::module &m);
+GISMO_DIM_FOREACH_FROM2(INST)
+#undef INST
 
 #endif
 

@@ -12,6 +12,7 @@
 */
 
 #include <gsCore/gsConfig.h>
+#include <gsCore/gsDimMacro.h>
 #include <gsCore/gsExport.h>
 
 #include <gismo.h>
@@ -87,36 +88,26 @@ PYBIND11_MODULE(pygismo, m) {
   hsplines.attr("__version__") = GISMO_VERSION;
   hsplines.doc() = "G+Smo (Geometry + Simulation Modules): HSplines module";
 
-  gismo::pybind11_init_gsHTensorBasis<1>( hsplines );
-  gismo::pybind11_init_gsHTensorBasis<2>( hsplines );
-  gismo::pybind11_init_gsHTensorBasis<3>( hsplines );
-  gismo::pybind11_init_gsHTensorBasis<4>( hsplines );
-  gismo::pybind11_init_gsHTensorBasis<5>( hsplines );
-  gismo::pybind11_init_gsHTensorBasis<6>( hsplines );
-  gismo::pybind11_init_gsTHBSplineBasis<1, true>( hsplines );
-  gismo::pybind11_init_gsTHBSplineBasis<2, true>( hsplines );
-  gismo::pybind11_init_gsTHBSplineBasis<3, true>( hsplines );
-  gismo::pybind11_init_gsTHBSplineBasis<4, true>( hsplines );
-  gismo::pybind11_init_gsTHBSplineBasis<5, true>( hsplines );
-  gismo::pybind11_init_gsTHBSplineBasis<6, true>( hsplines );
-  gismo::pybind11_init_gsTHBSplineBasis<1, false>( hsplines );
-  gismo::pybind11_init_gsTHBSplineBasis<2, false>( hsplines );
-  gismo::pybind11_init_gsTHBSplineBasis<3, false>( hsplines );
-  gismo::pybind11_init_gsTHBSplineBasis<4, false>( hsplines );
-  gismo::pybind11_init_gsTHBSplineBasis<5, false>( hsplines );
-  gismo::pybind11_init_gsTHBSplineBasis<6, false>( hsplines );
-  gismo::pybind11_init_gsTHBSpline<1, true>( hsplines );
-  gismo::pybind11_init_gsTHBSpline<2, true>( hsplines );
-  gismo::pybind11_init_gsTHBSpline<3, true>( hsplines );
-  gismo::pybind11_init_gsTHBSpline<4, true>( hsplines );
-  gismo::pybind11_init_gsTHBSpline<5, true>( hsplines );
-  gismo::pybind11_init_gsTHBSpline<6, true>( hsplines );
-  gismo::pybind11_init_gsTHBSpline<1, false>( hsplines );
-  gismo::pybind11_init_gsTHBSpline<2, false>( hsplines );
-  gismo::pybind11_init_gsTHBSpline<3, false>( hsplines );
-  gismo::pybind11_init_gsTHBSpline<4, false>( hsplines );
-  gismo::pybind11_init_gsTHBSpline<5, false>( hsplines );
-  gismo::pybind11_init_gsTHBSpline<6, false>( hsplines );
+#define REG_HTBASIS(D) gismo::pybind11_init_gsHTensorBasis<D>( hsplines );
+  GISMO_DIM_FOREACH(REG_HTBASIS)
+#undef REG_HTBASIS
+
+#define REG_THBBASIS_TRUE(D) gismo::pybind11_init_gsTHBSplineBasis<D, true>( hsplines );
+  GISMO_DIM_FOREACH(REG_THBBASIS_TRUE)
+#undef REG_THBBASIS_TRUE
+
+#define REG_THBBASIS_FALSE(D) gismo::pybind11_init_gsTHBSplineBasis<D, false>( hsplines );
+  GISMO_DIM_FOREACH(REG_THBBASIS_FALSE)
+#undef REG_THBBASIS_FALSE
+
+#define REG_THBSPLINE_TRUE(D) gismo::pybind11_init_gsTHBSpline<D, true>( hsplines );
+  GISMO_DIM_FOREACH(REG_THBSPLINE_TRUE)
+#undef REG_THBSPLINE_TRUE
+
+#define REG_THBSPLINE_FALSE(D) gismo::pybind11_init_gsTHBSpline<D, false>( hsplines );
+  GISMO_DIM_FOREACH(REG_THBSPLINE_FALSE)
+#undef REG_THBSPLINE_FALSE
+
   gismo::pybind11_init_gsTHBSplineBasis_factory( hsplines );
   gismo::pybind11_init_gsTHBSpline_factory( hsplines );
 
@@ -164,8 +155,12 @@ PYBIND11_MODULE(pygismo, m) {
   msplines.attr("__version__") = GISMO_VERSION;
   msplines.doc() = "G+Smo (Geometry + Simulation Modules): MSplines module";
 
-  gismo::pybind11_init_gsMappedBasis<2>( msplines );
-  gismo::pybind11_init_gsMappedSingleBasis<2>( msplines );
+#define REG_MAPPED_BASIS(D) gismo::pybind11_init_gsMappedBasis<D>( msplines );
+  GISMO_DIM_FOREACH_FROM2(REG_MAPPED_BASIS)
+#undef REG_MAPPED_BASIS
+#define REG_MAPPED_SINGLE_BASIS(D) gismo::pybind11_init_gsMappedSingleBasis<D>( msplines );
+  GISMO_DIM_FOREACH_FROM2(REG_MAPPED_SINGLE_BASIS)
+#undef REG_MAPPED_SINGLE_BASIS
 
   py::module mpi = m.def_submodule("mpi");
 
@@ -188,17 +183,13 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsKnotVector( nurbs );
   gismo::pybind11_init_gsBSpline( nurbs );
   gismo::pybind11_init_gsBSplineBasis( nurbs );
-  gismo::pybind11_init_gsTensorBSpline<2>( nurbs );
-  gismo::pybind11_init_gsTensorBSpline<3>( nurbs );
-  gismo::pybind11_init_gsTensorBSpline<4>( nurbs );
-  gismo::pybind11_init_gsTensorBSpline<5>( nurbs );
-  gismo::pybind11_init_gsTensorBSpline<6>( nurbs );
+#define REG_TENSOR_BSPLINE(D) gismo::pybind11_init_gsTensorBSpline<D>( nurbs );
+  GISMO_DIM_FOREACH_FROM2(REG_TENSOR_BSPLINE)
+#undef REG_TENSOR_BSPLINE
   gismo::pybind11_init_gsTensorBSpline_factory( nurbs );
-  gismo::pybind11_init_gsTensorBSplineBasis<2>( nurbs );
-  gismo::pybind11_init_gsTensorBSplineBasis<3>( nurbs );
-  gismo::pybind11_init_gsTensorBSplineBasis<4>( nurbs );
-  gismo::pybind11_init_gsTensorBSplineBasis<5>( nurbs );
-  gismo::pybind11_init_gsTensorBSplineBasis<6>( nurbs );
+#define REG_TENSOR_BSPLINE_BASIS(D) gismo::pybind11_init_gsTensorBSplineBasis<D>( nurbs );
+  GISMO_DIM_FOREACH_FROM2(REG_TENSOR_BSPLINE_BASIS)
+#undef REG_TENSOR_BSPLINE_BASIS
   gismo::pybind11_init_gsTensorBSplineBasis_factory( nurbs );
   
   gismo::pybind11_init_gsNurbsCreator( nurbs );

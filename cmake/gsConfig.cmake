@@ -61,6 +61,22 @@ if(NOT GISMO_SHORT_TYPE)
    "int" "int8_t" "int16_t" "int32_t" "int64_t" "long" "long long" )
 endif()
 
+# Maximum spatial dimension for which bases/splines are instantiated
+if(NOT GISMO_MAX_DIMENSION)
+   set(GISMO_MAX_DIMENSION 4 CACHE STRING
+   "Maximum dimension for template instantiations of bases and splines (e.g. gsTensorBSplineBasis<D,T>)" FORCE)
+endif()
+
+# Build the X-macro expansion strings for gsDimMacro.h
+set(GISMO_DIM_FOREACH_BODY "")
+set(GISMO_DIM_FOREACH_FROM2_BODY "")
+foreach(d RANGE 1 ${GISMO_MAX_DIMENSION})
+  string(APPEND GISMO_DIM_FOREACH_BODY "X(${d}) ")
+  if(d GREATER 1)
+    string(APPEND GISMO_DIM_FOREACH_FROM2_BODY "X(${d}) ")
+  endif()
+endforeach()
+
 # Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING

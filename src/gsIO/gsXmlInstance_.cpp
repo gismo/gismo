@@ -1,4 +1,5 @@
 #include <gsCore/gsTemplateTools.h>
+#include <gsCore/gsDimMacro.h>
 
 #include <gsIO/gsXmlUtils.h>
 #include <gsIO/gsXmlUtils.hpp>
@@ -31,12 +32,13 @@ namespace internal
     CLASS_TEMPLATE_INST gsXml< gsNurbs<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsNurbsBasis<real_t> >;
 
-    CLASS_TEMPLATE_INST gsXml< gsTensorNurbs<2,real_t> >;
-    CLASS_TEMPLATE_INST gsXml< gsTensorNurbs<3,real_t> >;
-    CLASS_TEMPLATE_INST gsXml< gsTensorNurbs<4,real_t> >;
-    CLASS_TEMPLATE_INST gsXml< gsTensorNurbsBasis<2,real_t> >;
-    CLASS_TEMPLATE_INST gsXml< gsTensorNurbsBasis<3,real_t> >;
-    CLASS_TEMPLATE_INST gsXml< gsTensorNurbsBasis<4,real_t> >;
+#define INST(D) CLASS_TEMPLATE_INST gsXml< gsTensorNurbs<D,real_t> >;
+GISMO_DIM_FOREACH_FROM2(INST)
+#undef INST
+
+#define INST(D) CLASS_TEMPLATE_INST gsXml< gsTensorNurbsBasis<D,real_t> >;
+GISMO_DIM_FOREACH_FROM2(INST)
+#undef INST
 
     CLASS_TEMPLATE_INST gsXml< gsComposedBasis<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsComposedGeometry<real_t> >;

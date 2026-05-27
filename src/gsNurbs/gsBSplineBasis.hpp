@@ -26,6 +26,8 @@
 
 #include <gsIO/gsXml.h>
 
+#include <gsCore/gsDimMacro.h>
+
 namespace gismo
 {
 
@@ -1237,29 +1239,34 @@ const gsTensorBSplineBasis<1,T> & gsTensorBSplineBasis<1,T>::component(short_t i
     return const_cast<gsTensorBSplineBasis&>(*this);
 }
 
+// C++11-compatible TMP dispatch for constructing gsTensorBSplineBasis<D,T>
+// from a std::vector of knot vectors. Recursively checks cKV.size()==D,
+// stepping down from GISMO_MAX_DIMENSION to 1.
+template<short_t D, class T,
+         typename std::enable_if<(D > 1), int>::type = 0>
+static typename gsBasis<T>::uPtr
+make_tensor_bspline(std::vector<typename gsBSplineBasis<T>::KnotVectorType> cKV)
+{
+    if ((short_t)cKV.size() == D)
+        return typename gsBasis<T>::uPtr(new gsTensorBSplineBasis<D,T>(std::move(cKV)));
+    return make_tensor_bspline<D-1, T>(std::move(cKV));
+}
+
+template<short_t D, class T,
+         typename std::enable_if<(D == 1), int>::type = 0>
+static typename gsBasis<T>::uPtr
+make_tensor_bspline(std::vector<typename gsBSplineBasis<T>::KnotVectorType> cKV)
+{
+    return typename gsBasis<T>::uPtr(new gsBSplineBasis<T>(give(cKV)));
+}
+
 template <class T>
 typename gsBasis<T>::uPtr
 gsTensorBSplineBasis<1,T>::create(std::vector<KnotVectorType> cKV)
 {
-    typedef typename gsBasis<T>::uPtr basisPtr;
-
-    const index_t dd = cKV.size();
-    switch (dd)
-    {
-    case 1:
-        return basisPtr(new gsBSplineBasis<T>(give(cKV)));
-        break;
-    case 2:
-        return basisPtr(new gsTensorBSplineBasis<2,T>(give(cKV)));
-        break;
-    case 3:
-        return basisPtr(new gsTensorBSplineBasis<3,T>(give(cKV)));
-        break;
-    case 4:
-        return basisPtr(new gsTensorBSplineBasis<4,T>(give(cKV)));
-        break;
-    }
-    GISMO_ERROR("Dimension should be between 1 and 4.");
+    GISMO_ASSERT(!cKV.empty() && (short_t)cKV.size() <= (short_t)GISMO_MAX_DIMENSION,
+                 "Dimension should be between 1 and " << GISMO_MAX_DIMENSION << ".");
+    return make_tensor_bspline<(short_t)GISMO_MAX_DIMENSION, T>(std::move(cKV));
 }
 
 namespace internal

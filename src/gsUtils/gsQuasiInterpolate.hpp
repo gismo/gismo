@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <gsCore/gsDimMacro.h>
+
 namespace gismo {
 
 template<typename T>
@@ -86,23 +88,20 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &bb,
                                               const gsFunction<T> &fun,
                                               index_t i)
 {
-    if (const gsHTensorBasis<1,T>* b = dynamic_cast<const gsHTensorBasis<1,T>* >(&bb))
+#define GISMO_QI_TRY_DIM(D) \
+    if (const gsHTensorBasis<D,T>* b = dynamic_cast<const gsHTensorBasis<D,T>* >(&bb)) \
         return localIntpl(*b,fun,i);
-    if (const gsHTensorBasis<2,T>* b = dynamic_cast<const gsHTensorBasis<2,T>* >(&bb))
-         return localIntpl(*b,fun,i);
-    if (const gsHTensorBasis<3,T>* b = dynamic_cast<const gsHTensorBasis<3,T>* >(&bb))
-        return localIntpl(*b,fun,i);
-    if (const gsHTensorBasis<4,T>* b = dynamic_cast<const gsHTensorBasis<4,T>* >(&bb))
-        return localIntpl(*b,fun,i);        
+GISMO_DIM_FOREACH(GISMO_QI_TRY_DIM)
+#undef GISMO_QI_TRY_DIM
+
     // If it is a gsRationalTHBSplineBasis, we check the source
-    if (const gsHTensorBasis<1, T>* b = dynamic_cast<const gsHTensorBasis<1,T>* >(&bb.source())) 
+#define GISMO_QI_TRY_SOURCE_DIM(D) \
+    if (const gsHTensorBasis<D,T>* b = dynamic_cast<const gsHTensorBasis<D,T>* >(&bb.source())) \
         return localIntpl(*b,fun,i);
-    if (const gsHTensorBasis<2, T>* b = dynamic_cast<const gsHTensorBasis<2,T>* >(&bb.source())) 
-        return localIntpl(*b,fun,i);
-    if (const gsHTensorBasis<3, T>* b = dynamic_cast<const gsHTensorBasis<3,T>* >(&bb.source()))
-        return localIntpl(*b,fun,i);
-    else
-        return localIntpl(bb,fun,i,bb.elementInSupportOf(i));
+GISMO_DIM_FOREACH(GISMO_QI_TRY_SOURCE_DIM)
+#undef GISMO_QI_TRY_SOURCE_DIM
+
+    return localIntpl(bb,fun,i,bb.elementInSupportOf(i));
 }
 
 

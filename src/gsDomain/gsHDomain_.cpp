@@ -1,15 +1,14 @@
 #include <gsCore/gsTemplateTools.h>
+#include <gsCore/gsDimMacro.h>
 
 #include <gsDomain/gsHDomain.h>
 
 namespace gismo
 {
-    CLASS_TEMPLATE_INST gsHDomain<1,real_t,index_t>;
-    CLASS_TEMPLATE_INST gsHDomain<2,real_t,index_t>;
-    CLASS_TEMPLATE_INST gsHDomain<3,real_t,index_t>;
-    CLASS_TEMPLATE_INST gsHDomain<4,real_t,index_t>;
-    CLASS_TEMPLATE_INST gsHDomain<5,real_t,index_t>;
-    CLASS_TEMPLATE_INST gsHDomain<6,real_t,index_t>;
+
+#define INST(D) CLASS_TEMPLATE_INST gsHDomain<D,real_t,index_t>;
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
 /*
     // Explicit member instansiations. Quite ugly for now..

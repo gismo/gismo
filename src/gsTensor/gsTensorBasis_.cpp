@@ -1,5 +1,6 @@
 
 #include <gsCore/gsTemplateTools.h>
+#include <gsCore/gsDimMacro.h>
 
 #include <gsTensor/gsTensorBasis.h>
 #include <gsTensor/gsTensorBasis.hpp>
@@ -7,13 +8,8 @@
 namespace gismo
 {
 
-//TEMPLATE_INST gsXmlNode * putTensorBasisToXml 
-
-CLASS_TEMPLATE_INST gsTensorBasis<1, real_t  >;
-CLASS_TEMPLATE_INST gsTensorBasis<2, real_t  >;
-CLASS_TEMPLATE_INST gsTensorBasis<3, real_t  >;
-CLASS_TEMPLATE_INST gsTensorBasis<4, real_t  >;
-CLASS_TEMPLATE_INST gsTensorBasis<5, real_t  >;
-CLASS_TEMPLATE_INST gsTensorBasis<6, real_t  >;
+#define INST(D) CLASS_TEMPLATE_INST gsTensorBasis<D, real_t>;
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
 }

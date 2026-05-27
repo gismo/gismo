@@ -12,15 +12,16 @@
 */
 
 #include <gsCore/gsTemplateTools.h>
+#include <gsCore/gsDimMacro.h>
 
 #include <gsHSplines/gsRationalTHBSplineBasis.h>
 #include <gsHSplines/gsRationalTHBSplineBasis.hpp>
 
 namespace gismo
 {
-    CLASS_TEMPLATE_INST internal::gsXml< gsRationalTHBSplineBasis<1,real_t> >;
-    CLASS_TEMPLATE_INST internal::gsXml< gsRationalTHBSplineBasis<2,real_t> >;
-    CLASS_TEMPLATE_INST internal::gsXml< gsRationalTHBSplineBasis<3,real_t> >;
-    CLASS_TEMPLATE_INST internal::gsXml< gsRationalTHBSplineBasis<4,real_t> >;
+
+#define INST(D) CLASS_TEMPLATE_INST internal::gsXml< gsRationalTHBSplineBasis<D,real_t> >;
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
 } // namespace gismo

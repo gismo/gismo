@@ -274,12 +274,12 @@ protected:
 #undef  EXTERN_CLASS_TEMPLATE
 #define EXTERN_CLASS_TEMPLATE CLASS_TEMPLATE_INST
 #endif
+#include <gsCore/gsDimMacro.h>
 namespace gismo
 {
-    EXTERN_CLASS_TEMPLATE gsAdaptiveMeshing<1,real_t>;
-    EXTERN_CLASS_TEMPLATE gsAdaptiveMeshing<2,real_t>;
-    EXTERN_CLASS_TEMPLATE gsAdaptiveMeshing<3,real_t>;
-    EXTERN_CLASS_TEMPLATE gsAdaptiveMeshing<4,real_t>;
+#define GISMO_EXTERN_GSADAPTIVEMESHING(D) EXTERN_CLASS_TEMPLATE gsAdaptiveMeshing<D,real_t>;
+GISMO_DIM_FOREACH(GISMO_EXTERN_GSADAPTIVEMESHING)
+#undef GISMO_EXTERN_GSADAPTIVEMESHING
     // EXTERN_CLASS_TEMPLATE gsHBoxCheck<1,real_t>;
     // EXTERN_CLASS_TEMPLATE gsHBoxCheck<2,real_t>;
     // EXTERN_CLASS_TEMPLATE gsHBoxCheck<3,real_t>;

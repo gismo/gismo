@@ -12,6 +12,7 @@
 */
 
 #include <gsCore/gsTemplateTools.h>
+#include <gsCore/gsDimMacro.h>
 
 #include <gsMSplines/gsMappedSpline.h>
 #include <gsMSplines/gsMappedSpline.hpp>
@@ -19,8 +20,8 @@
 namespace gismo
 {
 
-    CLASS_TEMPLATE_INST gsMappedSpline<1,real_t> ;
-    CLASS_TEMPLATE_INST gsMappedSpline<2,real_t> ;
-    CLASS_TEMPLATE_INST gsMappedSpline<3,real_t> ;
+#define INST(D) CLASS_TEMPLATE_INST gsMappedSpline<D,real_t>;
+GISMO_DIM_FOREACH(INST)
+#undef INST
 
 } // end namespace gismo

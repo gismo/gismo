@@ -397,6 +397,8 @@ configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
                 "${PROJECT_BINARY_DIR}/gsCore/gsConfig.h" )
 configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsExport.h.in"
                 "${PROJECT_BINARY_DIR}/gsCore/gsExport.h" )
+configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsDimMacro.h.in"
+                "${PROJECT_BINARY_DIR}/gsCore/gsDimMacro.h" )
 
 include(gsInstall)
 

@@ -18,6 +18,7 @@
 */
 
 #include <gsCore/gsTemplateTools.h>
+#include <gsCore/gsDimMacro.h>
 
 #include <gsModeling/gsBarrierCore.h>
 #include <gsModeling/gsBarrierCore.hpp>
@@ -30,11 +31,13 @@
 
 namespace gismo
 {
-	CLASS_TEMPLATE_INST gsBarrierCore<2,real_t>;
-	CLASS_TEMPLATE_INST gsBarrierCore<3,real_t>;
+#define INST(D) CLASS_TEMPLATE_INST gsBarrierCore<D,real_t>;
+GISMO_DIM_FOREACH_FROM2(INST)
+#undef INST
 
-	CLASS_TEMPLATE_INST gsBarrierPatch<2,real_t>;
-	CLASS_TEMPLATE_INST gsBarrierPatch<3,real_t>;
+#define INST(D) CLASS_TEMPLATE_INST gsBarrierPatch<D,real_t>;
+GISMO_DIM_FOREACH_FROM2(INST)
+#undef INST
 
 //	CLASS_TEMPLATE_INST gsBarrierPatchGenerator<2,real_t>;
 //	CLASS_TEMPLATE_INST gsBarrierPatchGenerator<3,real_t>;
@@ -61,8 +64,9 @@ namespace gismo
 		;
 	}
 
-	template void pybind11_init_gsBarrierPatch<2>(py::module &m);
-	template void pybind11_init_gsBarrierPatch<3>(py::module &m);
+#define INST(D) template void pybind11_init_gsBarrierPatch<D>(py::module &m);
+GISMO_DIM_FOREACH_FROM2(INST)
+#undef INST
 
 #endif
 } // namespace gismo

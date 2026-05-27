@@ -134,6 +134,10 @@ install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsConfig_install.h
 install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsConfigExt.h
   DESTINATION include/${PROJECT_NAME}/gsCore/)
 
+# For gsDimMacro.h
+install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsDimMacro.h
+  DESTINATION include/${PROJECT_NAME}/gsCore/)
+
 # Install cmake files
 install(FILES
   "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake"
