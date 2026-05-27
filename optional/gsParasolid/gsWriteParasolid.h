@@ -37,10 +37,8 @@
 #include <gsHSplines/gsTHBSplineBasis.h>
 
 #include <gsParasolid/gsPKSession.h>
+#include <gsParasolid/gsPKUtils.h>
 
-typedef int PK_GEOM_t;
-typedef int PK_BSURF_t;
-typedef int PK_BCURVE_t;
 typedef int PK_BODY_t;
 typedef int PK_ASSEMBLY_t;
 struct PK_UVBOX_s;
@@ -73,26 +71,6 @@ namespace extensions {
     /// Converts \a tp into a PK_SHEET and writes it to filename.xmt_txt.
     template<class T>
     bool gsWritePK_SHEET(const gsTensorBSpline<2, T>& tp, const std::string& filename);
-
-
-    /// Translates a gsTensorBSpline to a PK_BSURF_t
-    /// \param[in] bsp B-spline surface
-    /// \param[out] bsurf Parasolid spline surface
-    template<class T>
-    bool createPK_BSURF( const gsTensorBSpline< 2,T> & bsp, PK_BSURF_t & bsurf,
-			 bool closed_u = false, bool closed_v = false );
-
-    /// Translates a gsBSpline to a PK_BCURVE_t
-    /// \param[in] curve B-Spline surve
-    /// \param[out] bcurve Parasolid spline curve
-    template<class T> 
-    bool createPK_BCURVE( const gsBSpline<T>& curve, PK_BCURVE_t& bcurve );
-
-    /// Translates a gsGeometry to a PK_GEOM_t
-    /// \param[in] ggeo inpute G+SMO geometry
-    /// \param[out] pgeo Parasolid geometric entity
-    template<class T> 
-    bool createPK_GEOM( const gsGeometry<T> & ggeo, PK_GEOM_t & pgeo );
 
     /// Translates a gsMesh to PK_BODY_t
     /// \param[in] mesh input G+Smo mesh

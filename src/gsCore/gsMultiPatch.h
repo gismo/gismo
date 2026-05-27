@@ -213,7 +213,10 @@ public:
     index_t nPieces() const override { return static_cast<index_t>(m_patches.size()); }
 
     index_t size() const override { return 1; }
-
+     
+    /// for use together with resize and setPatch
+    bool isValid(index_t pid) { return (nullptr != m_patches[pid]); }
+    
     /// Return the number of coefficients (control points)
     index_t coefsSize() const
     {

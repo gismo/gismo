@@ -1380,23 +1380,25 @@ void gsHTensorBasis<d,T>::initialize_class(gsBasis<T> const&  tbasis)
 }
 
 template<short_t d, class T>
-gsMatrix<index_t>  gsHTensorBasis<d,T>::allBoundary( ) const
+gsMatrix<index_t> gsHTensorBasis<d,T>::allBoundary() const
 {
     std::vector<index_t> temp;
-    gsVector<index_t, d>  ind;
-    for(size_t i = 0; i != m_xmatrix[i].size(); i++)
+    gsVector<index_t, d> ind;
+
+    for (size_t i = 0; i != m_xmatrix.size(); ++i)
         for (CMatrix::const_iterator it = m_xmatrix[i].begin();
-             it != m_xmatrix[i].end(); it++)
+             it != m_xmatrix[i].end(); ++it)
         {
             ind = this->m_bases[i]->tensorIndex(*it);
-            for (unsigned j=0; j!=d; ++j )
-                if ( (ind[j]==0) || (ind[j]==(this->m_bases[i]->size(j)-1)) )
+            for (unsigned j = 0; j != d; ++j)
+                if ((ind[j] == 0) || (ind[j] == (this->m_bases[i]->size(j) - 1)))
                 {
-                    temp.push_back(m_xmatrix_offset[i] + (it-m_xmatrix[i].begin()) );
+                    temp.push_back(m_xmatrix_offset[i] + (it - m_xmatrix[i].begin()));
                     break;
                 }
         }
-    return makeMatrix<index_t>(temp.begin(),temp.size(),1 );
+
+    return makeMatrix<index_t>(temp.begin(), temp.size(), 1);
 }
 
 template<short_t d, class T>

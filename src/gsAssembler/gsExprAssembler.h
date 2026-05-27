@@ -341,7 +341,8 @@ public:
         clearMatrix(false);
     }
 
-    void clearRhs() { m_rhs.setZero(); }
+    // @hverhelst: adds explicit size, because if the RHS is moved ('given'), its sizes are lost.
+    void clearRhs(const index_t numRhs = 1) { m_rhs.setZero(numTestDofs(),numRhs); }
 
     /**
      * @brief Re-Init Matrix (set zero by default)
@@ -354,6 +355,7 @@ public:
         if (m_fmatrix.nonZeros() && save_sparsety_pattern)
         {
             m_fmatrix.assignZero();
+            m_modified = true;
         }
         else
         {

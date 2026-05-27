@@ -2,7 +2,7 @@ name: build_python_wheels
 
 on:
   push:
-    branches: ["stable"]
+    branches: ["dev"]
   pull_request:
 
     
@@ -25,17 +25,15 @@ jobs:
             cw_build: "pp*"
 
     steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: recursive
+    - uses: actions/checkout@v6
     - name: build wheels
-      uses: pypa/cibuildwheel@v2.16.5
+      uses: pypa/cibuildwheel@v3.3.1
       env:
         CIBW_ENVIRONMENT: "GITHUB_ACTIONS=True"
         CIBW_ARCHS: ${{ matrix.arch }}
         CIBW_BUILD: ${{ matrix.cw_build }}
         CIBW_TEST_SKIP: "*-macosx_arm64"
-        CIBW_SKIP: "*36* *37*"
+        CIBW_SKIP: "cp3??t-*"
 
     - uses: actions/upload-artifact@v4
       with:
@@ -48,16 +46,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: recursive
+    - uses: actions/checkout@v6
     - name: build wheels
-      uses: pypa/cibuildwheel@v2.16.5
+      uses: pypa/cibuildwheel@v3.3.1
       env:
         CIBW_ENVIRONMENT: "GITHUB_ACTIONS=True"
         CIBW_ARCHS: "x86_64"
         CIBW_BUILD: "cp*manylinux*"
-        CIBW_SKIP: "*36* *37*"
+        CIBW_SKIP: "cp3??t-*"
 
     - uses: actions/upload-artifact@v4
       with:
@@ -74,12 +70,10 @@ jobs:
     strategy:
       matrix:
         arch: [aarch64, ppc64le]
-        cw_build: ["cp38*many*", "cp39*many*", "cp310*many*", "cp311*many*", "cp312*many*"]
+        cw_build: ["cp38*many*", "cp39*many*", "cp310*many*", "cp311*many*", "cp312*many*", "cp313*many*", "cp314*many*"]
 
     steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: recursive
+    - uses: actions/checkout@v6
 
     - name: Set up QEMU
       if: runner.os == 'Linux'
@@ -88,7 +82,7 @@ jobs:
         platforms: arm64, ppc64le
 
     - name: build wheels
-      uses: pypa/cibuildwheel@v2.16.5
+      uses: pypa/cibuildwheel@v3.3.1
       env:
         CIBW_ENVIRONMENT: "GITHUB_ACTIONS=True"
         CIBW_ARCHS: ${{ matrix.arch }}
@@ -105,9 +99,7 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: recursive
+    - uses: actions/checkout@v6
 
     - name: Build sdist
       run: pipx run build --sdist
@@ -121,8 +113,11 @@ jobs:
   upload_pypi:
     needs: [macos_wheel, linux_wheel, linux_wheel_qemu, source_dist]
     runs-on: ubuntu-latest
-    # try to publish only if this is a push to stable branch
-    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/stable' }}
+    environment: pypi
+    permissions:
+      id-token: write
+    # try to publish only if this is a push to dev branch
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/dev' }}
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -130,7 +125,7 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - uses: pypa/gh-action-pypi-publish@v1.12.4
+      - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           skip_existing: true
           user: __token__

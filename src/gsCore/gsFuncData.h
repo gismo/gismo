@@ -162,6 +162,62 @@ public:
     : _element(nullptr), flags(flags), patchId(patch)
     { }
 
+    /// \brief Copy constructor
+    gsFuncData(const gsFuncData<T> & other)
+    : flags(other.flags), patchId(other.patchId), dim(other.dim)
+    {
+        actives = other.actives;
+        values = other.values;
+        curls = other.curls;
+        divs = other.divs;
+        laplacians = other.laplacians;
+    }
+
+    /// \brief Move constructor
+    gsFuncData(gsFuncData<T> && other)
+    : flags(other.flags), patchId(other.patchId), dim(other.dim)
+    {
+        actives.swap(other.actives);
+        values.swap(other.values);
+        curls.swap(other.curls);
+        divs.swap(other.divs);
+        laplacians.swap(other.laplacians);
+    }
+
+    /// \brief Copy assignment
+    gsFuncData<T> & operator=(const gsFuncData<T> & other)
+    {
+        if (this != &other)
+        {
+            flags = other.flags;
+            patchId = other.patchId;
+            dim = other.dim;
+            actives = other.actives;
+            values = other.values;
+            curls = other.curls;
+            divs = other.divs;
+            laplacians = other.laplacians;
+        }
+        return *this;
+    }
+
+    /// \brief Move assignment
+    gsFuncData<T> & operator=(gsFuncData<T> && other)
+    {
+        if (this != &other)
+        {
+            flags = other.flags;
+            patchId = other.patchId;
+            dim = other.dim;
+            actives.swap(other.actives);
+            values.swap(other.values);
+            curls.swap(other.curls);
+            divs.swap(other.divs);
+            laplacians.swap(other.laplacians);
+        }
+        return *this;
+    }
+
 public:
 
     /**
@@ -374,6 +430,47 @@ public:
     explicit gsMapData(unsigned flags = 0)
     : Base(flags), side(boundary::none)
     { }
+
+    /// \brief Copy constructor
+    gsMapData(const gsMapData<T> & other)
+    : Base(other), side(other.side), points(other.points), measures(other.measures),
+      fundForms(other.fundForms), jacInvTr(other.jacInvTr), normals(other.normals), outNormals(other.outNormals)
+    { }
+
+    /// \brief Move constructor
+    gsMapData(gsMapData<T> && other)
+    : Base(std::move(other)), side(other.side), points(std::move(other.points)),
+      measures(std::move(other.measures)), fundForms(std::move(other.fundForms)),
+      jacInvTr(std::move(other.jacInvTr)), normals(std::move(other.normals)), outNormals(std::move(other.outNormals))
+    { }
+
+    /// \brief Copy assignment
+    gsMapData<T> & operator=(gsMapData<T> && other)
+    {
+        Base::operator=(std::move(other));
+        side = other.side;
+        points = std::move(other.points);
+        measures = std::move(other.measures);
+        fundForms = std::move(other.fundForms);
+        jacInvTr = std::move(other.jacInvTr);
+        normals = std::move(other.normals);
+        outNormals = std::move(other.outNormals);
+        return *this;
+    }
+
+    /// \brief Move assignment
+    gsMapData<T> & operator=(const gsMapData<T> & other)
+    {
+        Base::operator=(other);
+        side = other.side;
+        points = other.points;
+        measures = other.measures;
+        fundForms = other.fundForms;
+        jacInvTr = other.jacInvTr;
+        normals = other.normals;
+        outNormals = other.outNormals;
+        return *this;
+    }
 
 public:
     using Base::flags;
