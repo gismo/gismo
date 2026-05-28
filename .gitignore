@@ -37,3 +37,6 @@ CMakeFiles/
 
 #Mac OS
 **/.DS_Store
+
+# Dokumentierung — exclude compiled binaries, keep XMLs/source/docs
+Dokumentierung/**/*.exe
