@@ -76,21 +76,21 @@ public: // virtual interface
 
 public: // non-virtual interface
 
-    inline std::vector<bool> inDomain(const gsMatrix<T> & u)
+    inline std::vector<char> inDomain(const gsMatrix<T> & u)
     {
-        std::vector<bool> res(u.cols());
+        std::vector<char> res(u.cols());
         gsVector<short_t> val = this->sign(u);
-        bool * r = res.data();
+        char * r = res.data();
         for (short_t * a = val.data(); a != val.data()+val.size(); ++a)
             *(r++) = (*a<0 ? false : true);
         return res;
     }
 
-    inline std::vector<bool> onBoundary(const gsMatrix<T> & u)
+    inline std::vector<char> onBoundary(const gsMatrix<T> & u)
     {
-        std::vector<bool> res(u.cols());
+        std::vector<char> res(u.cols());
         gsVector<short_t> val = this->sign(u);
-        bool * r = res.data();
+        char * r = res.data();
         for (short_t * a = val.data(); a != val.data()+val.size(); ++a)
             *(r++) = (*a!=0 ? false : true);
         return res;
