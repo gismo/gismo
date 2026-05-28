@@ -4,7 +4,7 @@
 
     Embedding box: [0,1]x[0,1]
     Physical domain: Omega = {(x,y): x>0, y>0, x^2+y^2<1}
-    ./build/bin/poisson2_nitsche_immersed_example -r 7 -e 1 --plot 
+    ./build/bin/poisson2_nitsche_immersed_example -r 2 -e 1 --plot -g 1e8
 
     This file is part of the G+Smo library.
 */
@@ -283,13 +283,16 @@ int main(int argc, char *argv[])
                 makeRootPvd(boundaryBase + ".pvd", debugDir + "/boundarysign_collection.pvd", "boundarysign/");
             }
 
-            // ===== QUADRATURE POINT VISUALIZATION (ALGOIM) =====
+            // ===== QUADRATURE POINT VISUALIZATION (gsAlgoim) =====
             {
                 gsAlgoimGenericRule<real_t> algoimRule(impl_fun, *tbsPtr);
-                gsMatrix<real_t> quad_points(3, 0);
+                gsGaussRule<real_t> gaussRule(gsVector<index_t,2>::Constant(deg + 1));
+                auto l2_error_point = (u_ex - u_sol).norm();
+                gsMatrix<real_t> quad_points(4, 0);
                 gsMatrix<real_t> pts;
                 gsVector<real_t> wts;
 
+                // Iterate over the cut elements
                 for (auto elem_it = tr_domain->beginBdr(boundary::none);
                      elem_it != tr_domain->endBdr(boundary::none); ++elem_it)
                 {
@@ -300,16 +303,35 @@ int main(int argc, char *argv[])
                     mp.patch(0).eval_into(pts, phys);
 
                     const index_t c = quad_points.cols();
-                    quad_points.conservativeResize(3, c + pts.cols());
+                    quad_points.conservativeResize(4, c + pts.cols());
                     quad_points.block(0, c, 2, pts.cols()) = phys;
                     quad_points.row(2).segment(c, pts.cols()).setZero();
+                    for (index_t j = 0; j < pts.cols(); ++j)
+                        quad_points(3, c + j) = ev.eval(l2_error_point, pts.col(j), 0)(0,0);
+                }
+
+                // Iterate over interior elements
+                for (auto elem_it = tr_domain->beginInterior(); elem_it != tr_domain->end<InteriorSign>(); ++elem_it)
+                {
+                    gaussRule.mapTo(elem_it.lowerCorner(), elem_it.upperCorner(), pts, wts);
+                    if (pts.cols() == 0) continue;
+
+                    gsMatrix<real_t> phys;
+                    mp.patch(0).eval_into(pts, phys);
+
+                    const index_t c = quad_points.cols();
+                    quad_points.conservativeResize(4, c + pts.cols());
+                    quad_points.block(0, c, 2, pts.cols()) = phys;
+                    quad_points.row(2).segment(c, pts.cols()).setZero();
+                    for (index_t j = 0; j < pts.cols(); ++j)
+                        quad_points(3, c + j) = ev.eval(l2_error_point, pts.col(j), 0)(0,0);
                 }
 
                 if (quad_points.cols() > 0)
                 {
-                    const std::string base = out + "/quadrature_points_algoim";
+                    const std::string base = out + "/quadrature_points_tr_domain";
                     gsInfo << "Exporting " << quad_points.cols()
-                           << " Algoim quadrature points to " << base << ".vtp\n";
+                           << " trimmed-domain quadrature points to " << base << ".vtp\n";
                     gsWriteParaviewPoints(quad_points, base);
                 }
             }
