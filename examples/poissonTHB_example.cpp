@@ -6596,6 +6596,8 @@ int checkJacobianDeterminant(
         std::vector<size_t> rawPos(numPatches, 0);
         std::vector<size_t> signedNeg(numPatches, 0);
         std::vector<bool> mirroredPerPatch;
+        // Per-patch minimum signed Jacobian determinant (used to measure cross-patch coupling).
+        std::vector<real_t> minSignedDetPerPatch(numPatches, std::numeric_limits<real_t>::max());
         
         // Open detailed log file with exception handling
         std::ofstream irregularLog;
@@ -6979,6 +6981,9 @@ int checkJacobianDeterminant(
                             const bool patchMirrored =
                                 (patch < static_cast<index_t>(mirrorBaseline.size())) ? mirrorBaseline[patch] : false;
                             real_t signedDet = patchMirrored ? -det : det;
+                            // Track per-patch minimum signed det (even for regular points).
+                            if (patch < static_cast<index_t>(minSignedDetPerPatch.size()))
+                                minSignedDetPerPatch[patch] = std::min(minSignedDetPerPatch[patch], signedDet);
                             if (signedDet <= 0) {
                                 ++signedNeg[patch];
                                 if (patch < static_cast<index_t>(numIrregular.size())) {
@@ -7015,6 +7020,19 @@ int checkJacobianDeterminant(
         // outfile << "=== checkJacobianDeterminant END ===\n";
         gsInfo << "Total irregular points: " << totalIrregular << "\n";
         outfile << "Total irregular points: " << totalIrregular << "\n";
+
+        // Per-patch min signed det — key metric for measuring cross-patch coupling magnitude.
+        for (index_t p = 0; p < numPatches; ++p)
+        {
+            const real_t minD = (p < static_cast<index_t>(minSignedDetPerPatch.size()))
+                                ? minSignedDetPerPatch[p]
+                                : std::numeric_limits<real_t>::max();
+            const index_t irr = (p < numIrregular.size()) ? static_cast<index_t>(numIrregular[p]) : 0;
+            gsInfo  << "[jack-patch] patch " << p << ": minSignedDet=" << minD
+                    << ", irregular=" << irr << "\n";
+            outfile << "[jack-patch] patch " << p << ": minSignedDet=" << minD
+                    << ", irregular=" << irr << "\n";
+        }
 
         // if (verbose) {
         //     for (index_t p = 0; p < numPatches; ++p) {

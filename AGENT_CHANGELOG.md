@@ -1,5 +1,89 @@
 # Agent Change Log
 
+## 2026-05-29 (session 3)
+
+### Scope
+Extended validation of `mask_L3_Sfold20.xml` NLO triggering across the full multi-patch run,
+clarification of the NLO-trigger mechanism, and three new geometry experiments (TightSwirl,
+SfoldTightSwirl, Sfold20) with `--fit-grid 40` vs `--fit-grid 20`.
+
+### Geometry experiments summary
+
+| Geometry | fit-grid | Initial violations (MPBES) | NLO triggers |
+|----------|----------|----------------------------|--------------|
+| `mask_L3_TightSwirl.xml` | 40 | 0 ✓ | 0 (LO always) |
+| `mask_L3_SfoldTightSwirl.xml` | 40 | 0 ✓ | 0 (LO always) |
+| `mask_L3_Sfold20.xml` | 20 | **119 (patches 0+2)** | **5 (steps 1–5)** |
+
+`mask_L3_Sfold20.xml` is generated with `--sfold-amplitude 5.0 --sfold-half-width 0.25 --stress-min-det -50 --fit-grid 20`.
+
+### Definitive NLO trigger pattern (mask_L3_Sfold20.xml)
+
+Steps 1–5 (coarsening the S-fold region of patch 0):
+| Step | After LS | After LO | After NLO |
+|------|----------|----------|-----------|
+| 1 | 119 violations | **11** (patch 7) | **0** ✓ (iter 2) |
+| 2 | — | **11** (patch 7) | **0** ✓ (iter 2) |
+| 3 | — | **11** (patch 7) | **0** ✓ (iter 2) |
+| 4 | — | **11** (patch 7) | **0** ✓ (iter 2) |
+| 5 | — | **11** (patch 7) | **0** ✓ (iter 2) |
+| 6+ | 0 | 0 | N/A — LO always |
+
+ACCEPTEDSIZE trajectory: 112 → 61 → 49 → 49 → 49 → 31 (step 6, LO).
+Total steps in full run: 83+ (still running), NLO=5, LO=78+.
+
+### Mechanism (confirmed by `[jack-patch]` logging)
+
+- Before LO on patch 0: `[jack-patch] patch 7: minSignedDet=33.37, irregular=0`
+- After LO: `[jack-patch] patch 7: minSignedDet=-19.96, irregular=11` → **LO drove patch 7 into violation**
+- After NLO iter 1: patch 7 minSignedDet=+53.5 → NLO immediately restored it
+- After NLO iter 2: patch 7 minSignedDet=+58.96, 0 violations → **NLO converged**
+
+The cross-patch violation path:
+1. Initial geometry has 60+ violations in patch 0 and 45 in patch 2 (S-fold with stress-min-det=-50)
+2. Q_u baseline encodes this violated initial state
+3. LO globally minimizes `fitting + ε·Q_u + ε·Q_l` across ALL patches
+4. Q_u gradient points toward the violated initial state → LO moves patch 7 (mirrored orientation) into violation
+5. NLO's Q_s/Q_e/Q_a provide curved trajectories that avoid the violation → NLO fixes in 2 iterations
+6. After step 5, the Q_u reference (updated to the NLO-accepted state) is regular → steps 6+ are clean LO
+
+### Structural analysis: Why regular initial geometry always leads to LO success
+
+- If initial state has 0 MPBES violations → Q_u baseline is regular
+- Q_u gradient always points toward regularity → LO has a "safety net" always opposing violations
+- Fitting (weight 1.0) vs Q_u (0.023) + Q_l (0.011): even with this 44:1 ratio, LO can restore small violations
+- Confirmed across ALL tested geometries: TightSwirl, SfoldTightSwirl, NearSing7, TV, ellipse_hole
+
+**Conclusion**: NLO from a strictly regular initial geometry (0 MPBES violations) appears unreachable
+with the current Q_u formulation. The Q_u violated baseline is the structural prerequisite.
+
+### Code changes this session
+
+1. **`examples/fitting_mspline.cpp`**:
+   - Added `--patch-det p:val` and `--patch-focal p:u:v` per-patch override flags
+   - Pre-parsed before `cmd.getValues()` using a `filteredArgv` vector to avoid gsCmdLine rejection
+   - Per-patch bisection uses overrides for focal point and minDet target
+
+2. **`examples/poissonTHB_example.cpp`**:
+   - Added `[jack-patch]` per-patch minSignedDet logging to every Jacobian check call
+   - Logs `minSignedDet` (after mirroring correction) and `irregular` count per patch
+
+3. **New XML files** (in `filedata/generatedMPs/`):
+   - `mask_L3_TightSwirl.xml` — swirl at THB boundary, fit-grid=40, 0 initial violations
+   - `mask_L3_SfoldTightSwirl.xml` — S-fold + swirl combined, fit-grid=40, 0 initial violations
+   - `mask_L3_Sfold20.xml` — S-fold only, fit-grid=20, 119 initial violations, **reliably triggers NLO**
+
+### Notes for Next Agent
+- `mask_L3_Sfold20.xml` reliably triggers NLO but starts from a VIOLATED initial geometry (C1 not satisfied for input)
+- For paper validation purposes: document that NLO is demonstrated on a distorted geometry; input irregularity is by design (stress-min-det=-50)
+- **Next avenues if regular-start NLO is still needed**:
+  1. **Reduce LO uniformity weight**: Set `uniformityWeight = 0` in LO (but keep in NLO). Weaker LO → NLO needed even from regular start. This tests whether Q_s/Q_e/Q_a are the ONLY sufficient terms.
+  2. **Targeted near-singularity**: Distort geometry so det is ≈1e-5 at the exact MPBES interior locations where violations appear after LS coarsening. This requires knowing violation locations in advance (from NearSing7 run: u≈0.615-0.666, v≈0.256-0.307).
+  3. **Accept current result**: Sfold20 demonstrates NLO capability. Paper can note that input with pre-existing violations (from extreme distortion) requires NLO for the first 5 coarsening steps.
+- `epsilon_g=1e6` and `epsilon_f=0.1` remain HARDCODED — never add as CLI parameters.
+
+---
+
 ## 2026-05-28 (session 2)
 
 ### Scope

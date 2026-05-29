@@ -38,6 +38,13 @@ namespace
         real_t bisectTol = 1e-2;      // Bisection interval tolerance for strength/alpha tuning.
         std::string outputFile = ""; // If empty, use <input_basename>_NLO.xml.
         std::string logFile = "distortion_log.txt";
+
+        // Per-patch overrides for targeted near-singular construction.
+        // --patch-det <p>:<val>   : override minOrientedDet threshold for patch p only.
+        // --patch-focal <p>:<u>:<v> : override bell focal point (u,v) for patch p only.
+        std::map<index_t, real_t> perPatchMinDet;
+        std::map<index_t, real_t> perPatchFocalU;
+        std::map<index_t, real_t> perPatchFocalV;
     };
 
     struct nonlinearOptions
@@ -1300,7 +1307,58 @@ int main(int argc, char* argv[])
     cmd.addReal("f", "sfold-amplitude", "Peak S-fold displacement as fraction of patch radius (0 = disabled).", nlo.sfoldAmplitude);
     cmd.addReal("W", "sfold-half-width", "S-fold zone half-width as fraction of patch radius (default 0.15).", nlo.sfoldHalfWidth);
 
-    try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
+    // Pre-parse per-patch overrides before gsCmdLine sees them (it would fail on unknown args).
+    //   --patch-det <p>:<val>       e.g. --patch-det 7:1e-5
+    //   --patch-focal <p>:<u>:<v>   e.g. --patch-focal 7:0.0:0.5
+    // These allow targeted near-singular construction: push one patch to det≈ε
+    // while other patches use the global --stress-min-det floor.
+    // We strip these args from argv before passing to gsCmdLine.
+    std::vector<char*> filteredArgv;
+    filteredArgv.push_back(argv[0]);
+    for (int ai = 1; ai < argc; ++ai)
+    {
+        const std::string arg = argv[ai];
+        if ((arg == "--patch-det") && ai + 1 < argc)
+        {
+            const std::string spec = argv[++ai];
+            const size_t c = spec.find(':');
+            if (c != std::string::npos)
+            {
+                const index_t p = static_cast<index_t>(std::stoi(spec.substr(0, c)));
+                const real_t  v = static_cast<real_t>(std::stod(spec.substr(c + 1)));
+                opt.perPatchMinDet[p] = v;
+            }
+            else
+            {
+                gsWarn << "Ignoring malformed --patch-det spec (expected p:val): " << spec << "\n";
+            }
+        }
+        else if ((arg == "--patch-focal") && ai + 1 < argc)
+        {
+            const std::string spec = argv[++ai];
+            const size_t c1 = spec.find(':');
+            const size_t c2 = (c1 != std::string::npos) ? spec.find(':', c1 + 1) : std::string::npos;
+            if (c1 != std::string::npos && c2 != std::string::npos)
+            {
+                const index_t p = static_cast<index_t>(std::stoi(spec.substr(0, c1)));
+                const real_t  u = static_cast<real_t>(std::stod(spec.substr(c1 + 1, c2 - c1 - 1)));
+                const real_t  vv = static_cast<real_t>(std::stod(spec.substr(c2 + 1)));
+                opt.perPatchFocalU[p] = u;
+                opt.perPatchFocalV[p] = vv;
+            }
+            else
+            {
+                gsWarn << "Ignoring malformed --patch-focal spec (expected p:u:v): " << spec << "\n";
+            }
+        }
+        else
+        {
+            filteredArgv.push_back(argv[ai]);
+        }
+    }
+    int filteredArgc = static_cast<int>(filteredArgv.size());
+
+    try { cmd.getValues(filteredArgc, filteredArgv.data()); } catch (int rv) { return rv; }
 
     std::string resolvedInput = resolveInputFilename(argc, argv, filename);
     if (opt.outputFile.empty())
@@ -1335,7 +1393,32 @@ int main(int argc, char* argv[])
     log << "focal-u: " << nlo.focalU << "\n";
     log << "focal-v: " << nlo.focalV << "\n";
     log << "sfold-amplitude: " << nlo.sfoldAmplitude << "\n";
-    log << "sfold-half-width: " << nlo.sfoldHalfWidth << "\n\n";
+    log << "sfold-half-width: " << nlo.sfoldHalfWidth << "\n";
+    if (!opt.perPatchMinDet.empty())
+    {
+        log << "per-patch-min-det overrides:";
+        for (const auto& kv : opt.perPatchMinDet)
+            log << " p" << kv.first << "=" << kv.second;
+        log << "\n";
+        gsInfo << "[per-patch] min-det overrides:";
+        for (const auto& kv : opt.perPatchMinDet)
+            gsInfo << " p" << kv.first << "=" << kv.second;
+        gsInfo << "\n";
+    }
+    if (!opt.perPatchFocalU.empty() || !opt.perPatchFocalV.empty())
+    {
+        log << "per-patch-focal overrides:";
+        for (const auto& kv : opt.perPatchFocalU)
+        {
+            const real_t vFocal = opt.perPatchFocalV.count(kv.first)
+                                  ? opt.perPatchFocalV.at(kv.first)
+                                  : nlo.focalV;
+            log << " p" << kv.first << "=(" << kv.second << "," << vFocal << ")";
+        }
+        log << "\n";
+        gsInfo << "[per-patch] focal overrides applied\n";
+    }
+    log << "\n";
 
     std::map<patchSide, gsGeometry<>::uPtr> constraintCurves;
 
@@ -1441,6 +1524,15 @@ int main(int argc, char* argv[])
             if (interfacePatches.count(pIdx))
                 continue;
 
+            // Apply per-patch overrides for near-singular targeted construction.
+            const real_t patchMinDetS = opt.perPatchMinDet.count(pIdx)
+                ? opt.perPatchMinDet.at(pIdx) : nlo.minOrientedDet;
+            nonlinearOptions sfoldNlo = nlo;
+            if (opt.perPatchFocalU.count(pIdx)) sfoldNlo.focalU = opt.perPatchFocalU.at(pIdx);
+            if (opt.perPatchFocalV.count(pIdx)) sfoldNlo.focalV = opt.perPatchFocalV.at(pIdx);
+            if (patchMinDetS != nlo.minOrientedDet)
+                gsInfo << "Patch " << pIdx << ": using per-patch minDet=" << patchMinDetS << " for s-fold\n";
+
             bool foundRegular = false;
             const real_t safeAmplitude = tuneParameterByBisection(
                 *mp,
@@ -1449,13 +1541,13 @@ int main(int argc, char* argv[])
                 0.0,
                 nlo.sfoldAmplitude,
                 opt.bisectTol,
-                nlo.minOrientedDet,
+                patchMinDetS,
                 kC0Tolerance,
                 opt.fitGrid,
                 "sfold-amplitude",
-                [&nlo](gsMultiPatch<>& trialMp, index_t patchIdx, real_t amp)
+                [sfoldNlo](gsMultiPatch<>& trialMp, index_t patchIdx, real_t amp)
                 {
-                    applySfoldDistortion(trialMp, patchIdx, amp, nlo.sfoldHalfWidth, nlo);
+                    applySfoldDistortion(trialMp, patchIdx, amp, sfoldNlo.sfoldHalfWidth, sfoldNlo);
                 },
                 log,
                 true,
@@ -1468,7 +1560,7 @@ int main(int argc, char* argv[])
                 continue;
             }
 
-            applySfoldDistortion(newmp, pIdx, safeAmplitude, nlo.sfoldHalfWidth, nlo);
+            applySfoldDistortion(newmp, pIdx, safeAmplitude, sfoldNlo.sfoldHalfWidth, sfoldNlo);
             enforceC0AcrossInterfaces(newmp);
             newmp.computeTopology();
             appliedSfold[pIdx] = safeAmplitude;
@@ -1483,6 +1575,10 @@ int main(int argc, char* argv[])
             if (appliedSfold[p] != 0.0)
                 log << "  patch " << p << " -> " << appliedSfold[p] << "\n";
         }
+
+        // Per-patch det summary after S-fold — critical for verifying near-singular patches.
+        runMirrorAwareJacobianCheck(*mp, newmp, opt.fitGrid, opt.detThreshold,
+                                    "after s-fold", log, true);
     }
 
     // ===== Phase 1: Swirl distortion on the clean fitted geometry =====
@@ -1500,6 +1596,15 @@ int main(int argc, char* argv[])
             if (nlo.patchIndex >= 0 && pIdx != nlo.patchIndex)
                 continue;
 
+            // Apply per-patch overrides for near-singular targeted construction.
+            const real_t patchMinDetW = opt.perPatchMinDet.count(pIdx)
+                ? opt.perPatchMinDet.at(pIdx) : nlo.minOrientedDet;
+            nonlinearOptions swirlNlo = nlo;
+            if (opt.perPatchFocalU.count(pIdx)) swirlNlo.focalU = opt.perPatchFocalU.at(pIdx);
+            if (opt.perPatchFocalV.count(pIdx)) swirlNlo.focalV = opt.perPatchFocalV.at(pIdx);
+            if (patchMinDetW != nlo.minOrientedDet)
+                gsInfo << "Patch " << pIdx << ": using per-patch minDet=" << patchMinDetW << " for swirl\n";
+
             bool foundRegular = false;
             const real_t safeAlpha = tuneParameterByBisection(
                 *mp,
@@ -1508,13 +1613,13 @@ int main(int argc, char* argv[])
                 0.0,
                 nlo.swirlAlpha,
                 opt.bisectTol,
-                nlo.minOrientedDet,
+                patchMinDetW,
                 kC0Tolerance,
                 opt.fitGrid,
                 "swirl-alpha",
-                [&nlo](gsMultiPatch<>& trialMp, index_t patchIdx, real_t alpha)
+                [swirlNlo](gsMultiPatch<>& trialMp, index_t patchIdx, real_t alpha)
                 {
-                    applySwirlDistortion(trialMp, patchIdx, alpha, nlo);
+                    applySwirlDistortion(trialMp, patchIdx, alpha, swirlNlo);
                 },
                 log,
                 true,
@@ -1527,7 +1632,7 @@ int main(int argc, char* argv[])
                 continue;
             }
 
-            applySwirlDistortion(newmp, pIdx, safeAlpha, nlo);
+            applySwirlDistortion(newmp, pIdx, safeAlpha, swirlNlo);
             enforceC0AcrossInterfaces(newmp);
             newmp.computeTopology();
             appliedSwirl[pIdx] = safeAlpha;
@@ -1555,8 +1660,17 @@ int main(int argc, char* argv[])
         if (nlo.patchIndex >= 0 && pIdx != nlo.patchIndex)
             continue;
 
+        // Apply per-patch overrides for near-singular targeted construction.
+        const real_t patchMinDetR = opt.perPatchMinDet.count(pIdx)
+            ? opt.perPatchMinDet.at(pIdx) : nlo.minOrientedDet;
+        nonlinearOptions radialNlo = nlo;
+        if (opt.perPatchFocalU.count(pIdx)) radialNlo.focalU = opt.perPatchFocalU.at(pIdx);
+        if (opt.perPatchFocalV.count(pIdx)) radialNlo.focalV = opt.perPatchFocalV.at(pIdx);
+        if (patchMinDetR != nlo.minOrientedDet)
+            gsInfo << "Patch " << pIdx << ": using per-patch minDet=" << patchMinDetR << " for radial\n";
+
         bool foundRegular = false;
-        const nonlinearOptions patchOpt = nlo;
+        const nonlinearOptions patchOpt = radialNlo;
         const real_t safeStrength = tuneParameterByBisection(
             *mp,
             newmp,
@@ -1564,7 +1678,7 @@ int main(int argc, char* argv[])
             0.0,
             nlo.strength,
             opt.bisectTol,
-            nlo.minOrientedDet,
+            patchMinDetR,
             kC0Tolerance,
             opt.fitGrid,
             "radial-strength",
@@ -1586,7 +1700,7 @@ int main(int argc, char* argv[])
             continue;
         }
 
-        nonlinearOptions applyOpt = nlo;
+        nonlinearOptions applyOpt = radialNlo;
         applyOpt.patchIndex = pIdx;
         applyOpt.strength = safeStrength;
         applyCompactCenterCompression(newmp, pIdx, applyOpt, 1.0);
