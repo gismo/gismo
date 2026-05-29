@@ -1,5 +1,132 @@
 # Agent Change Log
 
+## 2026-05-28 (session 2)
+
+### Scope
+Verify that the `--fit-grid 40` geometry is genuinely regular at MPBES resolution,
+diagnose why swirl alone does not trigger LO failure, and combine S-fold + swirl to
+target angular violations.
+
+### Finding 1: fit-grid 40 geometry confirmed genuinely regular
+Running `poissonTHB_example.exe` on the `--fit-grid 40` geometry produced:
+
+```
+=== INITIAL MPBES DETERMINANT CHECK ===
+[initial-mpbes] irregular points: 0 / 16000 (0%)
+```
+
+All patches show 0 initial irregular points. The geometry is **genuinely regular** at MPBES resolution. This closed the previous session's open question.
+
+### Finding 2: S-fold alone → LO always succeeds
+
+Over ~14 tested coarsening steps, `minusnumber(LO)=0` on every step. Root cause:
+
+- S-fold violations appear at the **THB refinement boundary** (u ≈ 0.625 = 5/8 for level-3),
+  clustered in patch 0, the same patch being coarsened.
+- LO's Q_l + Q_u can reach these control points directly → LO converges in one iteration.
+- **S-fold is a compression/accordion distortion** — LO's length penalty fixes it trivially.
+
+### Finding 3: Swirl alone → LS never produces any violations
+
+With `--swirl-alpha 3.0 --bell-sigma 0.25`:
+- After LS on every coarsening step: `Total irregular points: 0`.
+- Root cause: swirl creates a **smooth, low-frequency rotation**. The coarser THB basis can
+  represent a smooth rotation without regularity loss. No violations → LO not even called.
+
+### Proposed fix: S-fold first, then swirl on top
+The S-fold creates high-frequency (cell-scale) structure that the coarser basis cannot
+represent. The swirl then rotates that structure. Combined effect after coarsening:
+
+- Violations appear (from S-fold's unrepresentable frequency — same mechanism as before).
+- But the violations are now at the **patch center** (uv ≈ 0.46, 0.46) instead of the THB
+  boundary — because the swirl shifted the violation locations.
+- The violations have angular character (Jacobian with large off-diagonal component).
+- LO (Q_l + Q_u) may not fix angular violations — this is the test in progress.
+
+### Parameters used for combined S-fold + swirl geometry
+```
+fitting_mspline.exe mask_approximation_fine_L3.xml \
+  --sfold-amplitude 5.0 --sfold-half-width 0.25 \
+  --swirl-alpha 3.0 --bell-sigma 0.25 --focal-u 0.375 --focal-v 0.625 \
+  --stress-strength 0.0 --stress-min-det 0.001 --fit-grid 40
+```
+
+Applied amplitudes:
+- S-fold: p0=0.654, p1=0.771, p2=0.537, p3=0.078, p6=0.146, p7=0.068, p8=0.137, p9=0.088
+- Swirl: p0=0.352 rad, p1=0.012, p2=1.400, p3=0.035, p4=1.547, p5=1.535, p6=0.334, p7=0.029, p8=0.023, p9=0.059 rad
+
+Min oriented det after both distortions:
+- Patch 0: **0.00384** (barely regular!), Patch 2: 0.072, Patch 3: 0.040, Patch 6: **0.029**
+
+Initial MPBES check: **0 irregular points** ✓
+
+Step 1 LS: **2 violations at uv=(0.462, 0.462)** and (0.487, 0.462) — patch center, not THB boundary.
+LO outcome: **LO succeeded** (minusnumber(LO)=0 on every step).
+
+### Finding 4: S-fold+swirl on ellipse_hole (4-patch ring domain)
+The `ellipse_hole_approximation_fine_L3.xml` (4 patches in a ring around a hole) was tried next because more cross-patch coupling was hoped for (4 interfaces vs 1 for mask).
+
+Distortion:
+```
+fitting_mspline.exe ellipse_hole_approximation_fine_L3.xml \
+  --sfold-amplitude 5.0 --sfold-half-width 0.25 \
+  --swirl-alpha 3.0 --bell-sigma 0.25 \
+  --stress-strength 0.0 --stress-min-det 0.001 --fit-grid 40
+```
+
+Min oriented det: p0=0.033, p1=0.047, p2=0.322, p3=0.178. Initial MPBES: 0 violations.
+Steps 1-3: 6, 24, 19 violations after LS (det magnitudes up to -154!) — all in patch 0 (mirrored).
+LO: always minusnumber=0 in one iteration.
+
+Total LO outcomes: **0 NLO triggers across all geometries tried.**
+
+### Root Cause (Definitive)
+For NLO to trigger, violations must appear in a DIFFERENT PATCH from the coarsened one.
+LO can only adjust control points belonging to the coarsened MPBES basis. If violations are
+in a remote patch, LO has no access to those control points → fails.
+
+This only occurs when:
+1. The initial geometry is highly stressed in a remote patch (min det << 0), AND
+2. Coarsening in patch A creates a large enough MPBES rearrangement to push remote patch B negative.
+
+With genuinely regular initial geometry (min det > 0 at all MPBES grid points), the rearrangement
+is proportionally smaller — never large enough to push any remote patch below 0.
+
+The -50 case worked because the initial geometry already had pre-existing violations in patch 7
+(from the large distortion), which LO could not eliminate.
+
+### `--input` flag added to poissonTHB_example.cpp
+To support testing with different input files without recompiling, a `--input <path>` argument
+was added to `main()` in `examples/poissonTHB_example.cpp` (near line 21494).
+
+Usage: `poissonTHB_example.exe --input /path/to/file.xml`
+
+### Files Changed
+- `examples/poissonTHB_example.cpp` — added `--input` CLI flag (near line 21494)
+- `filedata/generatedMPs/mask_approximation_fine_L3_NLO.xml` — overwritten with S-fold+swirl combined geometry.
+- `filedata/generatedMPs/ellipse_hole_approximation_fine_L3_NLO.xml` — newly created distorted ellipse-hole.
+
+### Finding 5: TV geometry (16 patches, undistorted) — LO never triggered
+
+Run: `poissonTHB_example.exe --input ".../tv_approximation_fine_L3.xml"` (background task bens4pevv)
+
+- Initial MPBES check: **0 / 25600 irregular points** (genuinely regular ✓)
+- **23 coarsening steps completed; all `minusnumber: 0` after LS**
+- LS alone was sufficient every step — LO not called, NLO not called
+- `Success! iteration = 1, coarselevel = 2` on every step (LS converged in one pass)
+- Confirms: undistorted regular geometry → proportionally small rearrangements → no violations → no LO/NLO
+
+### Notes for Next Agent
+- **Open question**: Is there ANY regular initial geometry + distortion that triggers NLO from scratch?
+- Hypothesis: No, because regularity constraint limits distortion → limits rearrangement magnitude.
+- Alternative: Accept the `-50` case as the paper's validation (shows NLO works even if input is irregular).
+- Or: Explore geometries where LO is structurally infeasible (non-convex domains forcing impossible interface constraints).
+- **Next geometry to try**: `joystick_approximation_fine_L3.xml` (30 patches) — highest cross-patch coupling.
+- `epsilon_g=1e6` and `epsilon_f=0.1` remain HARDCODED — never add as CLI parameters.
+- The `-50` geometry (valid NLO trigger but irregular initial) is archived in `Dokumentierung/2026-05-28_08-22-20/`.
+
+---
+
 ## 2026-05-28
 
 ### Scope
