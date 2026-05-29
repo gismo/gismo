@@ -261,6 +261,21 @@ public:
     }
 
     /**
+     * \brief Elevates the degree of the basis (all or one direction) by \a i
+     * and produces a sparse transfer matrix mapping old coefficient vectors
+     * to new ones.
+     *
+     * The resulting \a transfer satisfies: new_coefs = transfer * old_coefs.
+     * The basis is modified in-place.
+     *
+     * \param[out] transfer Transfer matrix
+     * \param[in]  i        Degree elevation amount (default 1)
+     * \param[in]  dir      Direction to elevate (-1 = all directions)
+     */
+    void degreeElevate_withTransfer(gsSparseMatrix<T,RowMajor> & transfer,
+                                    short_t i = 1, short_t dir = -1);
+
+    /**
      * \brief Takes a vector of coordinate wise knot values and
      * inserts these values to the basis.
      *

@@ -63,6 +63,30 @@ active_cwise(const gsMatrix<T> & u,
 
 template<short_t d, class T>
 void gsTensorBSplineBasis<d,T>::
+degreeElevate_withTransfer(gsSparseMatrix<T,RowMajor> & transfer,
+                           short_t i, short_t dir)
+{
+    GISMO_ASSERT(i >= 0, "degreeElevate_withTransfer: elevation amount must be >= 0");
+    gsSparseMatrix<T,RowMajor> B[d];
+
+    for (short_t k = 0; k < d; ++k)
+    {
+        if (dir == -1 || dir == k)
+            this->component(k).degreeElevate_withTransfer(B[k], i);
+        else
+        {
+            // unchanged direction: transfer is the identity
+            const index_t n = this->component(k).size();
+            B[k].resize(n, n);
+            B[k].setIdentity();
+        }
+    }
+
+    tensorCombineTransferMatrices<d, T>(B, transfer);
+}
+
+template<short_t d, class T>
+void gsTensorBSplineBasis<d,T>::
 refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer,
                     const std::vector< std::vector<T> >& refineKnots)
 {

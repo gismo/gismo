@@ -515,6 +515,13 @@ public:
         refine_withCoefs(coefs,refineKnots.front() );
     }
 
+    /// @brief Elevate the degree by \a i and produce a sparse transfer matrix
+    /// mapping old coefficient vectors to new ones.
+    ///
+    /// The resulting \a transfer satisfies: new_coefs = transfer * old_coefs.
+    /// The basis is modified in-place (degree elevated).
+    void degreeElevate_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, short_t i = 1);
+
     /// @brief Refine the basis by inserting the given knots and produce a sparse matrix which maps coarse coefficient vectors to refined ones.
     void refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector<T>& knots);
     void refine_withTransfer(gsMatrix<T>& /* coefs */, const gsMatrix<T> & /* boxes */)

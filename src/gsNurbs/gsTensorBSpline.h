@@ -207,6 +207,14 @@ public:
     /// If \a keepBezier is true, the raw Bézier (C^{-1}) result is returned.
     gsTensorBSpline<d,T> cubed(bool keepBezier = false) const;
 
+    /// Returns the pointwise product \c (*this) * \a other as a new gsTensorBSpline
+    /// (only for scalar targetDim==1 operands with the same mesh breakpoints).
+    /// Uses the Bernstein product formula. Result degree in direction k is
+    /// deg(*this,k) + deg(other,k). If \a keepBezier is false (default),
+    /// interior knots are removed to the minimal C^{min(p,q)-1} space.
+    gsTensorBSpline<d,T> multiplyWith(const gsTensorBSpline<d,T>& other,
+                                      bool keepBezier = false) const;
+
     /// Returns the partial derivative in direction \a dir as a gsTensorBSpline.
     /// The result has degree p-1 in direction \a dir and p in all other directions.
     gsTensorBSpline<d,T> grad(short_t dir) const;

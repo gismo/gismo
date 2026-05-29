@@ -1051,6 +1051,27 @@ void gsTensorBSplineBasis<1,T>::refine_withCoefs(gsMatrix<T>& coefs, const std::
 
 
 template <class T>
+void gsTensorBSplineBasis<1,T>::degreeElevate_withTransfer(
+    gsSparseMatrix<T,RowMajor> & transfer, short_t i)
+{
+    GISMO_ASSERT(i >= 0, "degreeElevate_withTransfer: elevation amount must be >= 0");
+    if (i == 0)
+    {
+        const index_t n = this->size();
+        transfer.resize(n, n);
+        transfer.setIdentity();
+        return;
+    }
+    // degreeElevateBSpline is linear in coefs; feed the identity to extract
+    // the transfer matrix.  After the call, coefs has shape (n_new x n_old).
+    const index_t n_old = this->size();
+    gsMatrix<T> coefs = gsMatrix<T>::Identity(n_old, n_old);
+    bspline::degreeElevateBSpline(*this, coefs, i);
+    // coefs is now (n_new x n_old) — convert to sparse
+    transfer = coefs.sparseView();
+}
+
+template <class T>
 void gsTensorBSplineBasis<1,T>::refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector<T>& knots)
 {
     // See remark about periodic basis in refine_withCoefs, please.

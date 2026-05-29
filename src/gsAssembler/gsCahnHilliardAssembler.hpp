@@ -399,7 +399,6 @@ void gsCahnHilliardAssembler<T>::constructSolution(const gsMatrix<T> & Cvec,
                                                    gsMultiPatch<T>   & C) const
 {
     auto w  = m_assembler.trialSpace(0);
-    w.fixedPart() = m_ddofs;
     C.clear();
     for (size_t p = 0; p != m_patches.nPatches(); ++p)
     {
@@ -415,7 +414,6 @@ void gsCahnHilliardAssembler<T>::constructSolution(const gsMatrix<T>   & Cvec,
                                                    gsMappedSpline<2,T> & C) const
 {
     auto w  = m_assembler.trialSpace(0);
-    w.fixedPart() = m_ddofs;
     gsMatrix<T> Cvec_nc = Cvec; // getSolution needs non-const ref
     auto c  = m_assembler.getSolution(w, Cvec_nc);
     c.extract(C);

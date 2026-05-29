@@ -1108,6 +1108,179 @@ gsTensorBSpline<d,T> gsTensorBSpline<d,T>::cubed(bool keepBezier) const
 }
 
 // ----------------------------------------------------------------------------
+//  multiplyWith  (Bernstein product formula, two operands)
+// ----------------------------------------------------------------------------
+template<short_t d, class T>
+gsTensorBSpline<d,T>
+gsTensorBSpline<d,T>::multiplyWith(const gsTensorBSpline<d,T>& other,
+                                   bool keepBezier) const
+{
+    GISMO_ASSERT(this->targetDim() == 1 && other.targetDim() == 1,
+                 "multiplyWith() is only implemented for scalar (targetDim==1) splines.");
+
+    // Convert both to Bézier form
+    gsTensorBSpline<d,T> f = this->toBezier();
+    gsTensorBSpline<d,T> g = other.toBezier();
+
+    gsVector<index_t,d> degF, degG;
+    for (short_t k = 0; k < d; ++k)
+    {
+        degF[k] = static_cast<index_t>(f.degree(k));
+        degG[k] = static_cast<index_t>(g.degree(k));
+    }
+
+    // Result knot vectors: degree degF[k]+degG[k], Bézier multiplicity
+    std::vector<KnotVectorType> kvs_result(d);
+    for (short_t k = 0; k < d; ++k)
+    {
+        const KnotVectorType& kv = f.knots(k);
+        const index_t pRes = degF[k] + degG[k];
+        std::vector<T> knots_result;
+        for (index_t i = 0; i < kv.uSize(); ++i)
+            for (index_t m = 0; m < pRes + 1; ++m)
+                knots_result.push_back(kv.uValue(i));
+        kvs_result[k] = KnotVectorType(knots_result, static_cast<short_t>(pRes));
+    }
+    std::vector<Family_t*> cbases;
+    cbases.reserve(d);
+    for (short_t k = 0; k < d; ++k)
+        cbases.push_back(new gsBSplineBasis<T>(kvs_result[k]));
+    Basis* result_basis = Basis::New(cbases);
+
+    gsVector<index_t,d> f_sz, g_sz;
+    f.basis().size_cwise(f_sz);
+    g.basis().size_cwise(g_sz);
+
+    gsVector<index_t,d> n_elems;
+    for (short_t k = 0; k < d; ++k)
+        n_elems[k] = f_sz[k] / (degF[k] + 1);
+
+    gsVector<index_t,d> f_stride, g_stride;
+    f_stride[0] = 1; g_stride[0] = 1;
+    for (short_t k = 1; k < d; ++k)
+    {
+        f_stride[k] = f_stride[k-1] * f_sz[k-1];
+        g_stride[k] = g_stride[k-1] * g_sz[k-1];
+    }
+
+    gsVector<index_t,d> res_sz;
+    for (short_t k = 0; k < d; ++k)
+        res_sz[k] = n_elems[k] * (degF[k] + degG[k] + 1);
+    gsVector<index_t,d> res_stride;
+    res_stride[0] = 1;
+    for (short_t k = 1; k < d; ++k)
+        res_stride[k] = res_stride[k-1] * res_sz[k-1];
+
+    gsMatrix<T> res_coefs(res_sz.prod(), 1);
+    res_coefs.setZero();
+
+    const gsMatrix<T>& fc = f.coefs();
+    const gsMatrix<T>& gc = g.coefs();
+
+    gsVector<index_t,d> elem_idx;
+    elem_idx.setZero();
+    do
+    {
+        gsVector<index_t,d> k_idx;
+        k_idx.setZero();
+        do
+        {
+            T val = T(0);
+            gsVector<index_t,d> i_idx;
+            i_idx.setZero();
+            do
+            {
+                bool valid = true;
+                gsVector<index_t,d> j_idx;
+                T weight = T(1);
+                for (short_t kd = 0; kd < d; ++kd)
+                {
+                    j_idx[kd] = k_idx[kd] - i_idx[kd];
+                    if (j_idx[kd] < 0 || j_idx[kd] > degG[kd])
+                    { valid = false; break; }
+                    weight *= static_cast<T>(binom(degF[kd], i_idx[kd]))
+                            * static_cast<T>(binom(degG[kd], j_idx[kd]))
+                            / static_cast<T>(binom(degF[kd]+degG[kd], k_idx[kd]));
+                }
+                if (valid)
+                {
+                    index_t fi = 0, gi = 0;
+                    for (short_t kd = 0; kd < d; ++kd)
+                    {
+                        fi += (elem_idx[kd] * (degF[kd]+1) + i_idx[kd]) * f_stride[kd];
+                        gi += (elem_idx[kd] * (degG[kd]+1) + j_idx[kd]) * g_stride[kd];
+                    }
+                    val += weight * fc(fi, 0) * gc(gi, 0);
+                }
+                short_t carry = 0;
+                do
+                {
+                    ++i_idx[carry];
+                    if (i_idx[carry] > degF[carry]) { i_idx[carry] = 0; ++carry; }
+                    else break;
+                } while (carry < d);
+                if (carry == d) break;
+            } while (true);
+
+            index_t fr = 0;
+            for (short_t kd = 0; kd < d; ++kd)
+                fr += (elem_idx[kd] * (degF[kd]+degG[kd]+1) + k_idx[kd]) * res_stride[kd];
+            res_coefs(fr, 0) = val;
+
+            short_t carry = 0;
+            do
+            {
+                ++k_idx[carry];
+                if (k_idx[carry] > degF[carry]+degG[carry]) { k_idx[carry] = 0; ++carry; }
+                else break;
+            } while (carry < d);
+            if (carry == d) break;
+        } while (true);
+
+        short_t carry = 0;
+        do
+        {
+            ++elem_idx[carry];
+            if (elem_idx[carry] >= n_elems[carry]) { elem_idx[carry] = 0; ++carry; }
+            else break;
+        } while (carry < d);
+        if (carry == d) break;
+    } while (true);
+
+    gsTensorBSpline<d,T> result(*result_basis, give(res_coefs));
+
+    if (!keepBezier)
+    {
+        // Remove interior knots to minimal C^{min(p,q)-1} space.
+        // Interior multiplicity target: max(degF[k], degG[k]) + 1
+        for (short_t k = 0; k < d; ++k)
+        {
+            const int targetMult = static_cast<int>(std::max(degF[k], degG[k])) + 1;
+            std::vector<T> interior;
+            {
+                const KnotVectorType& kv0 = result.knots(k);
+                const T first = kv0.first(), last = kv0.last();
+                for (index_t i = 0; i < kv0.uSize(); ++i)
+                {
+                    const T xi = kv0.uValue(i);
+                    if (xi > first && xi < last) interior.push_back(xi);
+                }
+            }
+            for (const T xi : interior)
+            {
+                int mult = result.knots(k).multiplicity(xi);
+                while (mult > targetMult)
+                {
+                    if (result.removeKnot(xi, k, 1) == 0) break;
+                    --mult;
+                }
+            }
+        }
+    }
+    return result;
+}
+
+// ----------------------------------------------------------------------------
 //  grad(dir) — partial derivative in direction dir
 // ----------------------------------------------------------------------------
 template<short_t d, class T>
