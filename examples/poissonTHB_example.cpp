@@ -827,6 +827,25 @@ static bool g_skipLoFallback = false;
 // regularisation so that LO is easier to break; useful for probing the failure threshold.
 static double g_loWeightScale = 1.0;
 
+// Global approximation error tolerance ε_g.  Negative = use hardcoded default (1e+6).
+// Set via --epsilon-g <value>.
+static double g_epsilonG = -1.0;
+
+// Feature boundary error tolerance ε_f.  Negative = use hardcoded default (0.1).
+// Set via --epsilon-f <value>.
+static double g_epsilonF = -1.0;
+
+// Use local fitting instead of global.  Set via --local-fitting flag.
+// Global fitting uses all MPBES evaluation points; local fitting restricts to the
+// axis-aligned bounding box of the support of functions active on the coarsened cells
+// (paper equations (9)-(10) with lambda-cell extension).  Default off (global).
+static bool g_useLocalFitting = false;
+
+// Locality parameter λ for local fitting (number of cell widths to extend the local
+// evaluation region beyond the coarsened cell support).  Set via --lambda <n>.
+// Only used when --local-fitting is active.  Default 0 (tight bounding box).
+static int g_localityLambda = 0;
+
 // Use a dedicated exit code so partition failures are easy to detect from scripts.
 static constexpr int kPartitionUnityViolationExitCode = 86;
 // Temporary diagnostic exit: geometry regular, but epsilon acceptance conditions fail.
@@ -2958,6 +2977,7 @@ static gsVector<real_t> evaluateFittedGeometryPoint(
 {
     gsVector<real_t> xy(2);
     xy.setZero();
+    real_t pouSum = static_cast<real_t>(0);
 
     const index_t count = std::min<index_t>(mpbes.size(), coefficients.rows());
     for (index_t f = 0; f < count; ++f)
@@ -2973,7 +2993,16 @@ static gsVector<real_t> evaluateFittedGeometryPoint(
 
         xy(0) += value * coefficients(f, 0);
         xy(1) += value * coefficients(f, 1);
+        pouSum += value;
     }
+
+    // Normalize by the actual partition-of-unity sum to correct any over-counting.
+    // When POU = 1 (correct) this is a no-op.  When the sum exceeds 1 because the
+    // same physical basis function is counted more than once (e.g. a triple-junction
+    // corner function that appears in multiple twin pairs), the evaluation is scaled
+    // back to the convex hull of the control coefficients.
+    if (std::abs(pouSum) > static_cast<real_t>(1e-12))
+        xy /= pouSum;
 
     return xy;
 }
@@ -18533,7 +18562,12 @@ AlgorithmResult unrefinementAlgorithmHBJ(
     //printValue(Bells);
     //goestaerDaeOPokhu(Bells);
 
-    int fullMonty, lastNonZeroRow;
+    int fullMonty;
+    // Per-patch active-box counter (replaces the old scalar lastNonZeroRow).
+    // Used via a reference alias `int& lastNonZeroRow = lastNonZeroRowPerPatch(patch)`
+    // inside the main coarsening loop so that existing code is unchanged.
+    gsVector<int> lastNonZeroRowPerPatch(mp->nPatches());
+    lastNonZeroRowPerPatch.setZero();
     gsVector<index_t> currentLastNonZeroRow(mp->nPatches());
     gsVector<index_t> AcceptedlastRow(mp->nPatches());
 
@@ -18564,9 +18598,9 @@ AlgorithmResult unrefinementAlgorithmHBJ(
     std::chrono::time_point<std::chrono::system_clock> toc;
     gsVector<index_t> initialBoxesNum(Bells.size());
     for (int patch = 0; patch < Bells.size(); ++patch) {
-        lastNonZeroRow = lowCorners(patch).rows();
-        initialBoxesNum(patch) = lastNonZeroRow;
-        currentLastNonZeroRow(patch) = lastNonZeroRow;
+        lastNonZeroRowPerPatch(patch) = static_cast<int>(lowCorners(patch).rows());
+        initialBoxesNum(patch) = lastNonZeroRowPerPatch(patch);
+        currentLastNonZeroRow(patch) = lastNonZeroRowPerPatch(patch);
         boxMat(patch).resize(numCells);
         for (size_t i = 0; i < numCells; i++)
         {
@@ -18644,21 +18678,22 @@ AlgorithmResult unrefinementAlgorithmHBJ(
         }
         outfile << "\n";
     }
+    // -----------------------------------------------------------------------
+    // Global cell-selection loop: level-first, then patch.
+    // All patches are processed at the same level before descending,
+    // so Grendas' algorithm (and any other selection method) draws from
+    // a single global candidate pool across all patches simultaneously.
+    // -----------------------------------------------------------------------
+    {
+    const int globalMaxCoarseLevel = static_cast<int>(coarseLevel.maxCoeff());
+    for (int levNow = globalMaxCoarseLevel; levNow >= 0; --levNow) {
     for (int patch = 0; patch < mp->nPatches(); ++patch) {
-        lastNonZeroRow = initialBoxesNum(patch);
-        //for (int patch = 0; patch < 1; ++patch) {
-            //gsDebugVar(patch);
-        // gsInfo << "started checking the patch number " << patch << "\n";
-        // gsInfo << "started checking the patch number " << patch << "\n";
+        if (levNow > static_cast<int>(coarseLevel(patch))) continue; // patch has no cells at this level
+        // Reference alias: all existing code that reads/writes lastNonZeroRow
+        // transparently operates on the per-patch slot.
+        int& lastNonZeroRow = lastNonZeroRowPerPatch(patch);
         // gsInfo << "started checking the patch number " << patch << "\n";
         // outfile << "started checking the patch number " << patch << "\n";
-        // outfile << "started checking the patch number " << patch << "\n";
-        // outfile << "started checking the patch number " << patch << "\n";
-        //gsDebugVar(coarseLevel(patch));
-        for (int levNow = coarseLevel(patch); levNow >= 0; --levNow) {
-            //for (int levNow = coarseLevel(patch); levNow >= 1; --levNow) {
-            //for (int levNow = coarseLevel(patch); levNow >= 2; --levNow) {
-            //for (int levNow = coarseLevel(patch); levNow >= coarseLevel(patch); --levNow) {
             iteration = 0;
             theLev = levNow;
             /*if ((levNow < coarseLevel(patch)) && wasRebuilt) {
@@ -19183,7 +19218,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                             commonSize = 0;
                         }
 
-                        const FittingMode fittingMode = FittingMode::GlobalFitting; // Change to FittingMode::LocalFitting to enable local fitting
+                        const FittingMode fittingMode = g_useLocalFitting ? FittingMode::LocalFitting : FittingMode::GlobalFitting;
                         const bool useLocalFitting = (fittingMode == FittingMode::LocalFitting);
                         const bool verboseLocalRegionDump = false;
                         const bool verboseFitMatrixDump = false;
@@ -19233,7 +19268,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                             localCells.push_back(fallbackCell);
                         }
 
-                        const int localityLambda = 0;
+                        const int localityLambda = g_localityLambda;
                         LocalCoarseningRegion localRegion;
                         gsVector<gsMatrix<real_t>> uvFitting = uv1;
                         index_t basisSelected = 0;
@@ -21203,15 +21238,19 @@ AlgorithmResult unrefinementAlgorithmHBJ(
 
             if (success == 0 && successfullAttempts == 0)
             {
-                gsInfo << "No cell accepted in first pass (patch=" << patch
-                       << ", levNow=" << levNow << "). Aborting.\n";
-                outfile << "No cell accepted in first pass (patch=" << patch
-                        << ", levNow=" << levNow << "). Aborting.\n";
+                // Skip this (patch, level) — do not abort.  Other (patch, level)
+                // combinations may still succeed.  A hard abort here would prevent
+                // the global pool from processing the remaining patches.
+                gsInfo << "No cell accepted for (patch=" << patch
+                       << ", levNow=" << levNow << "), skipping.\n";
+                outfile << "No cell accepted for (patch=" << patch
+                        << ", levNow=" << levNow << "), skipping.\n";
                 outfile.flush();
-                throw ProgramExitSignal(3, "No cell accepted in first pass");
+                continue; // advance to next patch in the inner for(patch) loop
             }
-        }
-    }
+    } // end for (patch) — inner loop
+    } // end for (levNow) — outer loop
+    } // end global cell-selection block
 
     // Prepare return values
     AlgorithmResult result;
@@ -21581,6 +21620,60 @@ int main(int argc, char** argv) {
             gsInfo << "[flag] --lo-weight-scale=" << g_loWeightScale
                    << ": LO uniformity and length weights will be multiplied by this factor.\n";
         }
+        else if (std::string(argv[ai]) == "--local-fitting")
+        {
+            g_useLocalFitting = true;
+            gsInfo << "[flag] --local-fitting active: LS/LO will be restricted to the "
+                      "local support region of coarsened cells (paper eq. 9-10).\n";
+        }
+        else if (std::string(argv[ai]) == "--lambda" && ai + 1 < argc)
+        {
+            g_localityLambda = std::stoi(argv[ai + 1]);
+            ++ai;
+            gsInfo << "[flag] --lambda=" << g_localityLambda
+                   << ": locality extension for local fitting region.\n";
+        }
+        else if (std::string(argv[ai]) == "--epsilon-g" && ai + 1 < argc)
+        {
+            g_epsilonG = std::stod(argv[ai + 1]);
+            ++ai;
+            gsInfo << "[flag] --epsilon-g=" << g_epsilonG
+                   << ": global approximation error tolerance.\n";
+        }
+        else if (std::string(argv[ai]) == "--epsilon-f" && ai + 1 < argc)
+        {
+            g_epsilonF = std::stod(argv[ai + 1]);
+            ++ai;
+            gsInfo << "[flag] --epsilon-f=" << g_epsilonF
+                   << ": feature boundary error tolerance.\n";
+        }
+        else if (std::string(argv[ai]) == "--feature" && ai + 2 < argc)
+        {
+            const int    patchIdx = std::stoi(argv[ai + 1]);
+            std::string  sideStr  = argv[ai + 2];
+            ai += 2;
+            std::string sideLow = sideStr;
+            std::transform(sideLow.begin(), sideLow.end(), sideLow.begin(),
+                           [](unsigned char c){ return static_cast<char>(std::tolower(c)); });
+            FeatureSide side = FeatureSide::U0;
+            bool sideOk = true;
+            if      (sideLow == "u0") side = FeatureSide::U0;
+            else if (sideLow == "u1") side = FeatureSide::U1;
+            else if (sideLow == "v0") side = FeatureSide::V0;
+            else if (sideLow == "v1") side = FeatureSide::V1;
+            else sideOk = false;
+            if (sideOk)
+            {
+                featureSides.push_back(FeatureBoundarySpec{static_cast<index_t>(patchIdx), side});
+                gsInfo << "[flag] --feature patch=" << patchIdx
+                       << " side=" << sideStr << "\n";
+            }
+            else
+            {
+                gsWarn << "[flag] --feature: unknown side '" << sideStr
+                       << "' (expected u0/u1/v0/v1), skipping.\n";
+            }
+        }
     }
 
     gsInfo << "Startup mode: "
@@ -21685,7 +21778,10 @@ int main(int argc, char** argv) {
     std::string givenGeo;
     int valid = 0;
     int gradingExtent;
-    real_t epsilon_g = 1e+6, epsilon_f = 0.1;
+    real_t epsilon_g = (g_epsilonG >= 0.0) ? static_cast<real_t>(g_epsilonG) : real_t(1e+6);
+    real_t epsilon_f = (g_epsilonF >= 0.0) ? static_cast<real_t>(g_epsilonF) : real_t(0.1);
+    gsInfo << "[params] epsilon_g=" << epsilon_g << "  epsilon_f=" << epsilon_f
+           << "  featureSides=" << featureSides.size() << "\n";
     real_t lcx, lcy, ucx, ucy;
     std::string acCond = to_string(epsilon_g) + "and" + to_string(epsilon_f);
     givenGeo = "two_squares_lev1";
