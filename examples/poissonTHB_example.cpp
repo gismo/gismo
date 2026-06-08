@@ -7034,11 +7034,7 @@ int checkJacobianDeterminant(
                                     ++numIrregular[patch];
                                     ++totalIrregular;
                                     
-                                    gsInfo  << "  [IRREGULAR] Patch=" << patch
-                                        << ", pt=" << pt
-                                        << ", uv=(" << param(0) << ", " << param(1)
-                                        << "), det=" << det
-                                        << ", signedDet=" << signedDet << "\n";
+                                    // gsInfo [IRREGULAR] suppressed — too verbose for console
                                     outfile << "  [IRREGULAR] Patch=" << patch
                                         << ", pt=" << pt
                                         << ", uv=(" << param(0) << ", " << param(1)
