@@ -21179,13 +21179,6 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 vectSol = baseVectSol;
                                 removeCellIdsByValue(nonCheckedCells, attemptedCellIds);
                                 outfile << "nonCheckedCells.size() has become: " << nonCheckedCells.size() << "\n";
-                                if (usedNLO)
-                                {
-                                    gsInfo << "EXIT: NLO was invoked but could not restore regularity. Exiting with code 2.\n";
-                                    outfile << "EXIT: NLO was invoked but could not restore regularity. Exiting with code 2.\n";
-                                    outfile.flush();
-                                    throw ProgramExitSignal(2, "NLO invoked but failed to restore regularity");
-                                }
                                 break;
                             }
                             while (false);
