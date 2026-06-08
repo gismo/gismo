@@ -20753,6 +20753,23 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 //return 0;
                             }
 
+                            // Early withdrawal: FIT is LS-optimal. If the result is already regular
+                            // (minusnumber==0) but errors still exceed epsilon, LO/NLO add
+                            // regularization on top — they can only worsen accuracy, never improve it.
+                            // No point running them; withdraw this candidate now.
+                            if (minusnumber == 0)
+                            {
+                                gsInfo << "FIT regular (minusnumber=0) but error/feature tolerance not met"
+                                       << " (globalError=" << globalError << ", featureError=" << featureError
+                                       << "). Skipping LO/NLO — withdrawing candidate.\n";
+                                outfile << "FIT regular (minusnumber=0) but error/feature tolerance not met"
+                                        << " (globalError=" << globalError << ", featureError=" << featureError
+                                        << "). Skipping LO/NLO — withdrawing candidate.\n";
+                                removeCellIdsByValue(nonCheckedCells, attemptedCellIds);
+                                outfile << "nonCheckedCells.size() has become: " << nonCheckedCells.size() << "\n";
+                                continue;
+                            }
+
                             gsInfo << "\n=== Starting attempt " << attempt << " - calling nonLinearOptimization ===\n";
                             outfile << "\n=== Starting attempt " << attempt << " - calling nonLinearOptimization ===\n";
                             
