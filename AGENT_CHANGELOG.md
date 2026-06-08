@@ -1,5 +1,31 @@
 # Agent Change Log
 
+## 2026-06-08 (session 6)
+
+### Fix: multipatch topology lost in approximateFile output XML (commit 7ddaaa83)
+
+**Problem.** `commandLineArg_example` calls `out.computeTopology()` after fitting, but the LS-fitted boundary control points of adjacent patches differ from the originals by more than the geometric detection tolerance. `computeTopology()` therefore finds 0 interfaces and writes no `<interfaces>` / `<boundary>` sections to the XML. When `poissonTHB_example` later loads the file, `mp.interfaces()` is empty → `testBoundaryAssembly` returns 0 immediately → `featureError = 0` for every coarsening step regardless of geometry.
+
+**Fix.** After `out.computeTopology()`, if no interfaces were found but the loaded input `gsMultiPatch` has topology (read from the source XML which does have `<interfaces>`), copy interfaces and boundary sides directly from the input. Patch ordering is preserved 1-to-1 by `approximateMultiPatchToMultiPatch`, so the input topology applies directly to the output. Applied in both code paths (`approximateFile` and the inline `effectiveOutputName` path).
+
+**Verification.** `tv_approximation_fine_L3.xml` regenerated; `Select-String` confirms `<interfaces>` (8 entries) and `<boundary>` (48 entries) are now present.
+
+**Files changed:** `examples/commandLineArg_example.cpp`, `filedata/generatedMPs/tv_approximation_fine_L3.xml`
+
+---
+
+### Tunnel geometry: refined to L3 (no distortion)
+
+`multipatch_tunnel_thb_fine_L3.xml` generated from `unsupported/multipatch_tunnel_thb.xml` using:
+```
+commandLineArg_example.exe --input .../multipatch_tunnel_thb.xml --output-name multipatch_tunnel_thb_fine_L3 --refinement-level 3
+```
+All 10 patches pass Jacobian check. Errors at levels 2 and 1 are numerical zeros (~1e-14) — geometry is exactly polynomial so no distortion needed for basic testing, but local ≠ global fitting requires wigglify before comparison.
+
+**Files changed:** `filedata/generatedMPs/multipatch_tunnel_thb_fine_L3.xml`
+
+---
+
 ## 2026-06-05 (session 5)
 
 ### Global cell-selection: level-first loop order (commit 41a11d11)
