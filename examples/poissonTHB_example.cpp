@@ -20753,21 +20753,42 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 //return 0;
                             }
 
-                            // Early withdrawal: FIT is LS-optimal. If the result is already regular
-                            // (minusnumber==0) but errors still exceed epsilon, LO/NLO add
-                            // regularization on top — they can only worsen accuracy, never improve it.
-                            // No point running them; withdraw this candidate now.
-                            if (minusnumber == 0)
+                            // Early withdrawal — two cases where LO/NLO cannot help:
+                            //
+                            // Case 1: FIT is already regular (minusnumber==0) but errors exceed
+                            //   epsilon. FIT is LS-optimal; adding regularization can only worsen
+                            //   accuracy. No point running LO/NLO.
+                            //
+                            // Case 2: featureError is more than 10x epsilon_f regardless of
+                            //   irregularity. Even if LO/NLO fixed every irregular point, the
+                            //   error gap is too large to close. Withdraw immediately.
                             {
-                                gsInfo << "FIT regular (minusnumber=0) but error/feature tolerance not met"
-                                       << " (globalError=" << globalError << ", featureError=" << featureError
-                                       << "). Skipping LO/NLO — withdrawing candidate.\n";
-                                outfile << "FIT regular (minusnumber=0) but error/feature tolerance not met"
-                                        << " (globalError=" << globalError << ", featureError=" << featureError
+                                const bool regularButOverTolerance =
+                                    (minusnumber == 0) &&
+                                    (globalError > epsilon_g || featureError > epsilon_f);
+                                const bool hopelesslyLargeError =
+                                    (featureError  > epsilon_f * 10.0) ||
+                                    (globalError   > epsilon_g * 10.0);
+
+                                if (regularButOverTolerance || hopelesslyLargeError)
+                                {
+                                    if (regularButOverTolerance)
+                                        gsInfo << "FIT regular (minusnumber=0) but error/feature tolerance not met";
+                                    else
+                                        gsInfo << "Errors are hopelessly large (>10x epsilon)";
+                                    gsInfo << " (globalError=" << globalError
+                                           << ", featureError=" << featureError
+                                           << "). Skipping LO/NLO — withdrawing candidate.\n";
+                                    outfile << (regularButOverTolerance
+                                        ? "FIT regular (minusnumber=0) but error/feature tolerance not met"
+                                        : "Errors are hopelessly large (>10x epsilon)")
+                                        << " (globalError=" << globalError
+                                        << ", featureError=" << featureError
                                         << "). Skipping LO/NLO — withdrawing candidate.\n";
-                                removeCellIdsByValue(nonCheckedCells, attemptedCellIds);
-                                outfile << "nonCheckedCells.size() has become: " << nonCheckedCells.size() << "\n";
-                                continue;
+                                    removeCellIdsByValue(nonCheckedCells, attemptedCellIds);
+                                    outfile << "nonCheckedCells.size() has become: " << nonCheckedCells.size() << "\n";
+                                    continue;
+                                }
                             }
 
                             gsInfo << "\n=== Starting attempt " << attempt << " - calling nonLinearOptimization ===\n";
