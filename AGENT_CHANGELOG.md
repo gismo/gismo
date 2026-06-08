@@ -1,5 +1,17 @@
 # Agent Change Log
 
+## 2026-06-08 (session 7)
+
+### Cosmetic fix: featureError prints N/A instead of inf when tooFar=true (commit 94f8c1e7)
+
+**Problem.** `doStep` initializes `featureErrorOut = infinity` as a sentinel. When `residual > epsilon_g * 10.0` it returns `{tooFar=true}` immediately without evaluating `testBoundaryAssembly` — so `featureErrorOut` stays at `inf`. The LO-step and NLO-iter result lines then printed `featureError=inf`, which looked like a numerical failure.
+
+**Fix.** Both gsInfo and outfile log lines for `[LO-step]` and `[NLO-iter]` now use `std::isfinite` to print `"N/A"` when the value is not finite.
+
+**Files changed:** `examples/poissonTHB_example.cpp`
+
+---
+
 ## 2026-06-08 (session 6)
 
 ### Fix: multipatch topology lost in approximateFile output XML (commit 7ddaaa83)
