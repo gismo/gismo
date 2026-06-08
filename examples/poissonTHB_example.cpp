@@ -21478,13 +21478,13 @@ void nonLinearOptimization(
         StepStatus loStatus = doStep(fitting, uniformity, 0.0, length, 0.0, 0.0, 0.0, false,
                                      minusnumberLO, residualLO, featureErrorLO);
         gsInfo << "[LO-step] residual=" << residualLO
-               << ", featureError=" << featureErrorLO
+               << ", featureError=" << (std::isfinite(featureErrorLO) ? std::to_string(featureErrorLO) : std::string("N/A"))
                << ", minusnumber=" << minusnumberLO
                << ", converged=" << (loStatus.converged ? "true" : "false")
                << ", smallStep=" << (loStatus.smallStep ? "true" : "false")
                << ", tooFar=" << (loStatus.tooFar ? "true" : "false") << "\n";
         outfile << "[LO-step] residual=" << residualLO
-                << ", featureError=" << featureErrorLO
+                << ", featureError=" << (std::isfinite(featureErrorLO) ? std::to_string(featureErrorLO) : std::string("N/A"))
                 << ", minusnumber=" << minusnumberLO
                 << ", converged=" << (loStatus.converged ? "true" : "false")
                 << ", smallStep=" << (loStatus.smallStep ? "true" : "false")
@@ -21525,14 +21525,14 @@ void nonLinearOptimization(
 
         gsInfo << "[NLO-iter " << (iter + 1) << "/" << maxIterations << "]"
                << " result: residual=" << residualNow
-               << ", featureError=" << featureErrorNow
+               << ", featureError=" << (std::isfinite(featureErrorNow) ? std::to_string(featureErrorNow) : std::string("N/A"))
                << ", minusnumber=" << minusnumberNow
                << ", converged=" << (nloStatus.converged ? "true" : "false")
                << ", smallStep=" << (nloStatus.smallStep ? "true" : "false")
                << ", tooFar=" << (nloStatus.tooFar ? "true" : "false") << "\n";
         outfile << "[NLO-iter " << (iter + 1) << "/" << maxIterations << "]"
             << " result: residual=" << residualNow
-            << ", featureError=" << featureErrorNow
+            << ", featureError=" << (std::isfinite(featureErrorNow) ? std::to_string(featureErrorNow) : std::string("N/A"))
             << ", minusnumber=" << minusnumberNow
             << ", converged=" << (nloStatus.converged ? "true" : "false")
             << ", smallStep=" << (nloStatus.smallStep ? "true" : "false")
