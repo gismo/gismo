@@ -1,5 +1,41 @@
 # Agent Change Log
 
+## 2026-06-09 (session 8)
+
+### Global cross-patch cell selection via Grenda's algorithm (commits: brace fix + preflight fix + preflightOnly)
+
+**Problem.** The coarsening loop was `for(patch) { for(levNow) { while(pool) { ... } } }` — each level was processed patch-by-patch in order. Grenda's geometry-based ranking (lowest delta = most regular candidate) could only compare cells within a single patch per pass. Cells on patch 0 were always tried before patches 1–9.
+
+**Fix.** Restructured to a global pool: `for(levNow) { while(anyPoolNonEmpty) { while(anyVectorSNonEmpty) { pick globally best patch } } }`. All patches share one candidate set per level. Each inner-while iteration:
+1. Preflight: calls `selectCellForCoarsening` for every non-empty patch with `preflightOnly=true` to read `acceptedDelta` without calling `rand()`.
+2. Global selection: picks the patch with lowest `acceptedDelta`; falls back to first non-empty patch when no Grenda geometry candidates exist anywhere.
+3. Inner body: calls `selectCellForCoarsening` once for the selected patch (actual cell selection + rebuild).
+
+**Key details.**
+- `CellSelectionResult` gained `acceptedDelta` field (set to `geoDelta` in Grenda path, `0.0` for mirrored sibling group, `inf` for fallback).
+- `preflightOnly=true` parameter added to `selectCellForCoarsening`: skips `pickCell` in all fallback paths, preserving the `rand()` state for the real call.
+- Preflight passes a copy of `perPatchPickedCells[p]` to avoid corrupting pick-tracking state.
+- Removed one spurious `}` that prematurely closed the function body (brace-depth bug introduced during restructuring).
+- Confirmed working: 151 FIT attempts across all 10 patches on the mask geometry.
+
+**Files changed:** `examples/poissonTHB_example.cpp`
+
+---
+
+### Replace filter-based local UV sampling with fixed-density resampling (commit cfc13106)
+
+**Problem.** `filterUvByLocalRegion` started from the global 11×11 UV grid and retained only points falling inside the local AABB. As coarsening progressed and local regions shrank, the retained count dropped (e.g. to 20 points), making the LS system underdetermined (97 DOF, 20 equations). The solver found a numerically valid but geometrically meaningless solution, folding patch 3 with 838 irregular points.
+
+**Fix.** New function `resampleLocalRegion`:
+- Counts `basisSelected` (nLocalDOF) from `localRegion.basisInd` before sampling.
+- Computes `k = ceil(sqrt(1.5 * nLocalDOF))` — oversampling ratio 1.5 ensures k²>nLocalDOF at all stages.
+- Generates a fresh k×k uniform grid inside each patch's `patchAABB` (uMin, vMin, uMax, vMax).
+- Always k² points per patch in the region — independent of region size or coarsening stage.
+
+**Files changed:** `examples/poissonTHB_example.cpp`
+
+---
+
 ## 2026-06-08 (session 7)
 
 ### Cosmetic fix: featureError prints N/A instead of inf when tooFar=true (commit 94f8c1e7)
