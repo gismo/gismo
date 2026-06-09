@@ -22,6 +22,97 @@ gsDofMapper::gsDofMapper() :
   m_numCpldDofs(1,0), m_curElimId(-1)
 { }
 
+gsDofMapper::gsDofMapper(const Data & data)
+{
+    setData(data);
+}
+
+gsDofMapper::Data gsDofMapper::data() const
+{
+    Data result;
+    result.dofs = m_dofs;
+    result.offset = m_offset;
+    result.shift = m_shift;
+    result.boundaryShift = m_bshift;
+    result.numFreeDofs = m_numFreeDofs;
+    result.numElimDofs = m_numElimDofs;
+    result.numCpldDofs = m_numCpldDofs;
+    result.curElimId = m_curElimId;
+    result.tagged = m_tagged;
+    return result;
+}
+
+void gsDofMapper::setData(const Data & data)
+{
+    GISMO_ENSURE(!data.dofs.empty(),
+                 "gsDofMapper::setData: expected at least one component.");
+    GISMO_ENSURE(!data.offset.empty(),
+                 "gsDofMapper::setData: expected at least one patch offset.");
+    const size_t numComp = data.dofs.size();
+    const size_t totalLocal = data.dofs.front().size();
+    for (size_t c = 0; c != numComp; ++c)
+        GISMO_ENSURE(data.dofs[c].size() == totalLocal,
+                     "gsDofMapper::setData: inconsistent component map sizes.");
+    GISMO_ENSURE(data.numFreeDofs.size() == numComp + 1,
+                 "gsDofMapper::setData: invalid free-dof offset size.");
+    GISMO_ENSURE(data.numElimDofs.size() == numComp + 1,
+                 "gsDofMapper::setData: invalid eliminated-dof offset size.");
+    GISMO_ENSURE(data.numCpldDofs.size() == numComp + 1,
+                 "gsDofMapper::setData: invalid coupled-dof offset size.");
+    GISMO_ENSURE(data.numFreeDofs.front() == 0 &&
+                 data.numElimDofs.front() == 0 &&
+                 data.numCpldDofs.front() == 0,
+                 "gsDofMapper::setData: cumulative counters must start at zero.");
+    GISMO_ENSURE(data.curElimId >= 0,
+                 "gsDofMapper::setData: only finalized mappers can be restored.");
+    GISMO_ENSURE(data.curElimId == data.numFreeDofs.back(),
+                 "gsDofMapper::setData: inconsistent finalized free size.");
+
+    for (size_t k = 1; k != data.offset.size(); ++k)
+        GISMO_ENSURE(data.offset[k] >= data.offset[k-1],
+                     "gsDofMapper::setData: patch offsets must be monotone.");
+    GISMO_ENSURE(data.offset.back() <= totalLocal,
+                 "gsDofMapper::setData: last patch offset exceeds map size.");
+
+    const index_t totalSize = data.numFreeDofs.back() + data.numElimDofs.back();
+    for (size_t c = 0; c != numComp; ++c)
+    {
+        GISMO_ENSURE(data.numFreeDofs[c+1] >= data.numFreeDofs[c] &&
+                     data.numElimDofs[c+1] >= data.numElimDofs[c] &&
+                     data.numCpldDofs[c+1] >= data.numCpldDofs[c],
+                     "gsDofMapper::setData: cumulative counters must be monotone.");
+        for (size_t i = 0; i != data.dofs[c].size(); ++i)
+        {
+            const index_t idx = data.dofs[c][i];
+            GISMO_ENSURE(0 <= idx && idx < totalSize,
+                         "gsDofMapper::setData: mapped index out of range.");
+        }
+    }
+    for (size_t i = 0; i != data.tagged.size(); ++i)
+        GISMO_ENSURE(0 <= data.tagged[i] && data.tagged[i] < totalSize,
+                     "gsDofMapper::setData: tagged index out of range.");
+    GISMO_ENSURE(std::is_sorted(data.tagged.begin(), data.tagged.end()),
+                 "gsDofMapper::setData: tagged indices must be sorted.");
+    GISMO_ENSURE(std::adjacent_find(data.tagged.begin(), data.tagged.end()) ==
+                 data.tagged.end(),
+                 "gsDofMapper::setData: tagged indices must be unique.");
+
+    m_dofs = data.dofs;
+    m_offset = data.offset;
+    m_shift = data.shift;
+    m_bshift = data.boundaryShift;
+    m_numFreeDofs = data.numFreeDofs;
+    m_numElimDofs = data.numElimDofs;
+    m_numCpldDofs = data.numCpldDofs;
+    m_curElimId = data.curElimId;
+    m_tagged = data.tagged;
+}
+
+gsDofMapper gsDofMapper::fromData(const Data & data)
+{
+    return gsDofMapper(data);
+}
+
 void gsDofMapper::localToGlobal(const gsMatrix<index_t>& locals,
                                 index_t patchIndex,
                                 gsMatrix<index_t>& globals,

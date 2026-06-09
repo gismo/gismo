@@ -188,6 +188,14 @@ public:
      */
     index_t numDofs() const { return m_assembler.numDofs(); };
 
+    /// Returns the finalized trial-space DoF mapper used by this assembler.
+    const gsDofMapper & dofMapper() const
+    { return m_assembler.trialSpace(0).mapper(); }
+
+    /// Returns values for eliminated trial-space DoFs.
+    const gsMatrix<T> & fixedPart() const
+    { return m_assembler.trialSpace(0).fixedPart(); }
+
     /**
      * @brief Returns a handle to the options stored in the class
      * @return The options

@@ -69,8 +69,23 @@ class GISMO_EXPORT gsDofMapper
 {
 public:
 
+    struct Data
+    {
+        std::vector<std::vector<index_t> > dofs;
+        std::vector<size_t> offset;
+        index_t shift;
+        index_t boundaryShift;
+        std::vector<index_t> numFreeDofs;
+        std::vector<index_t> numElimDofs;
+        std::vector<index_t> numCpldDofs;
+        index_t curElimId;
+        std::vector<index_t> tagged;
+    };
+
     /// Default empty constructor
     gsDofMapper();
+
+    explicit gsDofMapper(const Data & data);
 
     /**
      * @brief construct a dof mapper that identifies the degrees
@@ -234,6 +249,15 @@ public:
 
     /// \brief Checks whether finalize() has been called.
     bool isFinalized() const { return m_curElimId>=0; }
+
+    /// Export the exact mapper state for persistence.
+    Data data() const;
+
+    /// Replace this mapper by an exact persisted mapper state.
+    void setData(const Data & data);
+
+    /// Construct a mapper from an exact persisted mapper state.
+    static gsDofMapper fromData(const Data & data);
 
     /// \brief Returns true iff the mapper is a permuatation
     bool isPermutation() const { return static_cast<size_t>(size())==mapSize(); }
