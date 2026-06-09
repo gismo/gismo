@@ -13448,6 +13448,59 @@ static gsVector<gsMatrix<real_t>> filterUvByLocalRegion(
     return localUv;
 }
 
+// Generate a fresh k×k uniform UV grid inside each patch's local AABB.
+// k is chosen so that k*k > nLocalDOF (overdetermined system regardless of region size).
+// Replaces filterUvByLocalRegion for the local-fitting mode.
+static gsVector<gsMatrix<real_t>> resampleLocalRegion(
+    const LocalCoarseningRegion& region,
+    index_t nPatches,
+    int k)
+{
+    gsVector<gsMatrix<real_t>> localUv(nPatches);
+    index_t totalGenerated = 0;
+
+    for (index_t patch = 0; patch < nPatches; ++patch)
+    {
+        if (!region.enabled ||
+            patch >= static_cast<index_t>(region.hasPatch.size()) ||
+            !region.hasPatch[patch])
+        {
+            localUv(patch).resize(2, 0);
+            continue;
+        }
+
+        const real_t uMin = region.patchAABB[patch][0];
+        const real_t vMin = region.patchAABB[patch][1];
+        const real_t uMax = region.patchAABB[patch][2];
+        const real_t vMax = region.patchAABB[patch][3];
+
+        localUv(patch).resize(2, k * k);
+        index_t col = 0;
+        for (int j = 0; j < k; ++j)
+        {
+            const real_t v = (k > 1)
+                ? vMin + j * (vMax - vMin) / (k - 1)
+                : 0.5 * (vMin + vMax);
+            for (int i = 0; i < k; ++i)
+            {
+                const real_t u = (k > 1)
+                    ? uMin + i * (uMax - uMin) / (k - 1)
+                    : 0.5 * (uMin + uMax);
+                localUv(patch)(0, col) = u;
+                localUv(patch)(1, col) = v;
+                ++col;
+            }
+        }
+        totalGenerated += k * k;
+    }
+
+    if (outfile.is_open())
+        outfile << "[local-region] resampled total local uv points=" << totalGenerated
+                << " k=" << k << " k*k=" << k * k << "\n";
+
+    return localUv;
+}
+
 int rebuildTheHierarchy(gsVector< gsVector<gsVector<index_t>>>& boxMat, int row, int x1U, int x1Bi, int x2U, int x2Bi, int y1U, int y1Bi, int y2U, int y2Bi, int levNow, int& lastNonZeroRow,
     int& createdBoxNum, int& centerInd, int ourBox[], int& needToEscape, int patch) {
     int RTH = 0;
@@ -17528,6 +17581,9 @@ struct CellSelectionResult
     index_t y2U = 0;
     std::vector<CellToCoarsen> geoCells;
     std::vector<int> geoCellIndices;
+    // Lowest Grenda delta at which candidates were found (infinity = no Grenda match).
+    // Used by global pool to rank patches: smaller delta = more regular geometry.
+    real_t acceptedDelta = std::numeric_limits<real_t>::infinity();
 };
 
 static CellSelectionResult selectCellForCoarsening(
@@ -17543,7 +17599,8 @@ static CellSelectionResult selectCellForCoarsening(
     int& currArrayIndex,
     const MPBES<2, real_t>* currentMpbes,
     const gsMultiPatch<real_t>& mp1,
-    const gsVector<gsTHBSplineBasis<2, real_t>>& SubdomainHierarchy)
+    const gsVector<gsTHBSplineBasis<2, real_t>>& SubdomainHierarchy,
+    bool preflightOnly = false)
 {
     CellSelectionResult result;
     result.currArrayIndex = currArrayIndex;
@@ -17659,6 +17716,7 @@ static CellSelectionResult selectCellForCoarsening(
                 if (mapped > 0) {
                     result.geoCells = std::move(mappedCells);
                     result.geoCellIndices = std::move(mappedIndices);
+                    result.acceptedDelta = geoDelta;
                     gsInfo << "[geo-coarsen] delta accepted=" << geoDelta << " (breaking)\n";
                     outfile << "[geo-coarsen] delta accepted=" << geoDelta << " (breaking)\n";
                     break;
@@ -17681,6 +17739,8 @@ static CellSelectionResult selectCellForCoarsening(
                     << " firstIndex=" << result.currCellIndex
                     << " firstBox=[" << result.x1U << "," << result.y1U << "," << result.x2U << "," << result.y2U << "]\n";
         } else {
+            // preflightOnly: don't call pickCell — preserve rand() state for the real call
+            if (preflightOnly) return result; // acceptedDelta stays infinity
             int x1Ui = 0, y1Ui = 0, x2Ui = 0, y2Ui = 0;
             result.currCellIndex = pickCell(vectorS, result.currArrayIndex, levNow,
                 x1Ui, y1Ui, x2Ui, y2Ui, interior);
@@ -17704,6 +17764,7 @@ static CellSelectionResult selectCellForCoarsening(
                 chosenArrayIndex))
         {
             result.useGeo = true;
+            result.acceptedDelta = 0.0; // sibling group found — highest priority
             result.currArrayIndex = chosenArrayIndex;
             result.currCellIndex = result.geoCellIndices.front();
             result.x1U = result.geoCells.front().x1;
@@ -17719,6 +17780,8 @@ static CellSelectionResult selectCellForCoarsening(
         }
         else
         {
+            // preflightOnly: don't call pickCell — preserve rand() state
+            if (preflightOnly) return result; // acceptedDelta stays infinity
             int x1Ui = 0, y1Ui = 0, x2Ui = 0, y2Ui = 0;
             result.currCellIndex = pickCell(vectorS, result.currArrayIndex, levNow,
                 x1Ui, y1Ui, x2Ui, y2Ui, interior);
@@ -18683,55 +18746,95 @@ AlgorithmResult unrefinementAlgorithmHBJ(
     {
     const int globalMaxCoarseLevel = static_cast<int>(coarseLevel.maxCoeff());
     for (int levNow = globalMaxCoarseLevel; levNow >= 0; --levNow) {
-    for (int patch = 0; patch < mp->nPatches(); ++patch) {
-        if (levNow > static_cast<int>(coarseLevel(patch))) continue; // patch has no cells at this level
-        // Reference alias: all existing code that reads/writes lastNonZeroRow
-        // transparently operates on the per-patch slot.
-        int& lastNonZeroRow = lastNonZeroRowPerPatch(patch);
-        // gsInfo << "started checking the patch number " << patch << "\n";
-        // outfile << "started checking the patch number " << patch << "\n";
-            iteration = 0;
-            theLev = levNow;
-            /*if ((levNow < coarseLevel(patch)) && wasRebuilt) {
-                std::string input(xmlFile + ".xml");
-                gsMultiPatch<>::uPtr AcceptedMultiPatch = gsReadFile<>(xmlFile);
-                for (int currentPatch = 0; currentPatch < AcceptedMultiPatch->nPatches(); ++currentPatch) {
-                    THBAccepted(currentPatch)
-                            = dynamic_cast<gsTHBSplineBasis<2> *>(&AcceptedMultiPatch->patch(
-                            currentPatch).basis().source());
-                    (THBAccepted(currentPatch)->tree().getBoxes(lowCorners(currentPatch), upCorners(currentPatch),
-                                                                myLevel(currentPatch)));
-                    for (int i = 0; i < lowCorners(currentPatch).size(); ++i) {
-                        boxMat(currentPatch)(i)(0) = myLevel(currentPatch)(i);
-                        boxMat(currentPatch)(i)(1) = (real_t) lowCorners(currentPatch)(i, 0) /
-                                                     pow(2, maxLevel(currentPatch) - myLevel(currentPatch)(i));
-                        boxMat(currentPatch)(i)(2) = (real_t) lowCorners(currentPatch)(i, 1) /
-                                                     pow(2, maxLevel(currentPatch) - myLevel(currentPatch)(i));
-                        boxMat(currentPatch)(i)(3) = (real_t) upCorners(currentPatch)(i, 0) /
-                                                     pow(2, maxLevel(currentPatch) - myLevel(currentPatch)(i));
-                        boxMat(currentPatch)(i)(4) = (real_t) upCorners(currentPatch)(i, 1) /
-                                                     pow(2, maxLevel(currentPatch) - myLevel(currentPatch)(i));
+        // -----------------------------------------------------------------------
+        // Truly global cell pool: all eligible patches share one candidate set.
+        // Grenda's algorithm evaluates every patch and picks the globally best
+        // cell (lowest delta = most regular geometry) on each attempt.
+        // -----------------------------------------------------------------------
+        const int nPatches = mp->nPatches();
+        const int cellsAtLevel = static_cast<int>(
+            (interior + 1) * std::pow(2, levNow) *
+            (interior + 1) * std::pow(2, levNow));
+
+        std::vector<gsVector<int>>    perPatchNCC(nPatches);
+        std::vector<gsMatrix<int>>    perPatchPickedCells(nPatches);
+        for (int p = 0; p < nPatches; ++p) {
+            if (levNow > static_cast<int>(coarseLevel(p))) {
+                perPatchNCC[p].resize(0);
+                continue;
+            }
+            perPatchNCC[p].resize(cellsAtLevel);
+            perPatchPickedCells[p].resize(1, cellsAtLevel);
+            for (int i = 0; i < cellsAtLevel; ++i) {
+                perPatchNCC[p](i)        = i;
+                perPatchPickedCells[p](0, i) = 0;
+            }
+        }
+
+        auto anyPoolNonEmpty = [&](const std::vector<gsVector<int>>& pools) {
+            for (const auto& v : pools) if (v.size() > 0) return true;
+            return false;
+        };
+        auto anyVectorSNonEmpty = [&](const std::vector<gsVector<index_t>>& vss) {
+            for (const auto& v : vss) if (v.size() > 0) return true;
+            return false;
+        };
+
+        int success = 1;
+        attempt = 0;
+        iteration = 0;
+        theLev = levNow;
+
+        while (anyPoolNonEmpty(perPatchNCC) && success) {
+            iteration++;
+            success = 0;
+
+            // Per-pass vectorS: copy of perPatchNCC (cells to try this pass)
+            std::vector<gsVector<index_t>> perPatchVectorS(nPatches);
+            for (int p = 0; p < nPatches; ++p)
+                perPatchVectorS[p] = perPatchNCC[p].cast<index_t>();
+
+            fullMonty = 0;
+            while (anyVectorSNonEmpty(perPatchVectorS)) {
+                // ----------------------------------------------------------
+                // Global Grenda selection: evaluate every patch's remaining
+                // candidates and pick the one with the lowest accepted delta.
+                // ----------------------------------------------------------
+                int patch = -1;
+                real_t bestDelta = std::numeric_limits<real_t>::infinity();
+                for (int p = 0; p < nPatches; ++p) {
+                    if (perPatchVectorS[p].size() == 0) continue;
+                    int pickedOneTmp = -1, validTmp = 1, currArrTmp = 0;
+                    gsVector<index_t> vsTmp = perPatchVectorS[p];
+                    // Preflight: preflightOnly=true skips pickCell, preserving rand() state.
+                    // Also pass a copy of pickedCells so preflight doesn't modify real state.
+                    gsMatrix<int> pickedCellsCopy = perPatchPickedCells[p];
+                    CellSelectionResult resTmp = selectCellForCoarsening(
+                        method, vsTmp, levNow, interior, p, attempt,
+                        pickedOneTmp, pickedCellsCopy, validTmp, currArrTmp,
+                        Acceptedmpbes.get(), mp1, SubdomainHierarchy,
+                        /*preflightOnly=*/true);
+                    if (resTmp.acceptedDelta < bestDelta) {
+                        bestDelta = resTmp.acceptedDelta;
+                        patch = p;
                     }
                 }
-                lastNonZeroRow = lowCorners(patch).rows() - 1;
-            }*/
-            // outfile << "working with level " << levNow << " as a coarseLevel\n";
-            // gsInfo << "working with level " << levNow << " as a coarseLevel\n";
-            int pickedOne = -1;
-            gsVector<int> nonCheckedCells((interior + 1) * pow(2, levNow) * (interior + 1) * pow(2, levNow));
-            gsMatrix<int> pickedCells(1, (interior + 1) * pow(2, levNow) * (interior + 1) * pow(2, levNow));
-            for (int i = 0; i < nonCheckedCells.size(); i++) {
-                nonCheckedCells(i) = i;
-                pickedCells(0, i) = 0;
-            }
-            int success = 1;
-            attempt = 0;
-            while (nonCheckedCells.size() != 0 && success) {
-                iteration++;
-                success = 0;
-                gsVector<index_t> vectorS = nonCheckedCells;
-                fullMonty = 0;
-                while (vectorS.size() != 0) {
+                // If no Grenda geometry candidate found in ANY patch, fall back to the
+                // first non-empty patch and let selectCellForCoarsening use its pickCell fallback.
+                if (patch < 0) {
+                    for (int p = 0; p < nPatches; ++p) {
+                        if (perPatchVectorS[p].size() > 0) { patch = p; break; }
+                    }
+                }
+                if (patch < 0) break; // truly nothing left to do
+
+                // Reference aliases so the existing inner body is unchanged
+                int& lastNonZeroRow = lastNonZeroRowPerPatch(patch);
+                gsVector<int>&      nonCheckedCells = perPatchNCC[patch];
+                gsVector<index_t>&  vectorS         = perPatchVectorS[patch];
+                gsMatrix<int>&      pickedCells      = perPatchPickedCells[patch];
+                int pickedOne = -1;
+                {
                     // Declare MPBES data variables at broader scope
                     std::vector<std::vector<std::vector<index_t>>> functionDescription;
                     std::vector<std::vector<std::array<int, 3>>> spilloverFunctionCoordinates;
@@ -19277,13 +19380,17 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 interior,
                                 interior,
                                 localityLambda);
-                            gsInfo << "passing local grid resolution " << numPoints
-                                   << " to filterUvByLocalRegion using the original uv mesh\n";
-                            uvFitting = filterUvByLocalRegion(uv1, localRegion, numPoints);
-
+                            // Count local DOF before sampling so k can be derived from them
                             for (index_t f = 0; f < localRegion.basisInd.cols(); ++f)
                                 if (localRegion.basisInd(0, f) != 0.0)
                                     ++basisSelected;
+
+                            // k*k > nLocalDOF with oversampling ratio 1.5
+                            const int kLocal = std::max(3, static_cast<int>(
+                                std::ceil(std::sqrt(1.5 * static_cast<real_t>(basisSelected)))));
+                            gsInfo << "local sampling: basisSelected=" << basisSelected
+                                   << " k=" << kLocal << " k*k=" << kLocal * kLocal << "\n";
+                            uvFitting = resampleLocalRegion(localRegion, uv1.size(), kLocal);
                         }
                         else
                         {
@@ -21260,22 +21367,9 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                     }
                     outfile << "FINISHED\n";
                     //break;
-                }
-            }
-
-            if (success == 0 && successfullAttempts == 0)
-            {
-                // Skip this (patch, level) — do not abort.  Other (patch, level)
-                // combinations may still succeed.  A hard abort here would prevent
-                // the global pool from processing the remaining patches.
-                gsInfo << "No cell accepted for (patch=" << patch
-                       << ", levNow=" << levNow << "), skipping.\n";
-                outfile << "No cell accepted for (patch=" << patch
-                        << ", levNow=" << levNow << "), skipping.\n";
-                outfile.flush();
-                continue; // advance to next patch in the inner for(patch) loop
-            }
-    } // end for (patch) — inner loop
+                } // end inner-body scope (aliases: nonCheckedCells, vectorS, pickedCells, lastNonZeroRow)
+            } // end while (anyVectorSNonEmpty) — global inner loop
+        } // end while (anyPoolNonEmpty && success) — global outer loop
     } // end for (levNow) — outer loop
     } // end global cell-selection block
 
