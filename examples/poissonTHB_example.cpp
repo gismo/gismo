@@ -20860,7 +20860,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 //return 0;
                             }
 
-                            // Early withdrawal — two cases where LO/NLO cannot help:
+                            // Early withdrawal — three cases:
                             //
                             // Case 1: FIT is already regular (minusnumber==0) but errors exceed
                             //   epsilon. FIT is LS-optimal; adding regularization can only worsen
@@ -20869,6 +20869,9 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                             // Case 2: featureError is more than 10x epsilon_f regardless of
                             //   irregularity. Even if LO/NLO fixed every irregular point, the
                             //   error gap is too large to close. Withdraw immediately.
+                            //
+                            // Case 3: FIT produced an irregular parameterization (minusnumber>0).
+                            //   LO/NLO are disabled — withdraw and continue.
                             {
                                 const bool regularButOverTolerance =
                                     (minusnumber == 0) &&
@@ -20876,22 +20879,39 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 const bool hopelesslyLargeError =
                                     (featureError  > epsilon_f * 10.0) ||
                                     (globalError   > epsilon_g * 10.0);
+                                const bool geometryIrregular = (minusnumber > 0);
 
-                                if (regularButOverTolerance || hopelesslyLargeError)
+                                if (regularButOverTolerance || hopelesslyLargeError || geometryIrregular)
                                 {
-                                    if (regularButOverTolerance)
-                                        gsInfo << "FIT regular (minusnumber=0) but error/feature tolerance not met";
+                                    if (geometryIrregular)
+                                    {
+                                        gsInfo << "Geometry irregular after FIT (minusnumber=" << minusnumber
+                                               << "). Withdrawing candidate.\n";
+                                        outfile << "Geometry irregular after FIT (minusnumber=" << minusnumber
+                                                << "). Withdrawing candidate.\n";
+                                    }
+                                    else if (regularButOverTolerance)
+                                    {
+                                        gsInfo << "FIT regular but error/feature tolerance not met"
+                                               << " (globalError=" << globalError
+                                               << ", featureError=" << featureError
+                                               << "). Withdrawing candidate.\n";
+                                        outfile << "FIT regular but error/feature tolerance not met"
+                                                << " (globalError=" << globalError
+                                                << ", featureError=" << featureError
+                                                << "). Withdrawing candidate.\n";
+                                    }
                                     else
-                                        gsInfo << "Errors are hopelessly large (>10x epsilon)";
-                                    gsInfo << " (globalError=" << globalError
-                                           << ", featureError=" << featureError
-                                           << "). Skipping LO/NLO — withdrawing candidate.\n";
-                                    outfile << (regularButOverTolerance
-                                        ? "FIT regular (minusnumber=0) but error/feature tolerance not met"
-                                        : "Errors are hopelessly large (>10x epsilon)")
-                                        << " (globalError=" << globalError
-                                        << ", featureError=" << featureError
-                                        << "). Skipping LO/NLO — withdrawing candidate.\n";
+                                    {
+                                        gsInfo << "Errors are hopelessly large (>10x epsilon)"
+                                               << " (globalError=" << globalError
+                                               << ", featureError=" << featureError
+                                               << "). Withdrawing candidate.\n";
+                                        outfile << "Errors are hopelessly large (>10x epsilon)"
+                                                << " (globalError=" << globalError
+                                                << ", featureError=" << featureError
+                                                << "). Withdrawing candidate.\n";
+                                    }
                                     removeCellIdsByValue(nonCheckedCells, attemptedCellIds);
                                     outfile << "nonCheckedCells.size() has become: " << nonCheckedCells.size() << "\n";
                                     continue;
