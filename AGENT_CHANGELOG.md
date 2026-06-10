@@ -1,5 +1,52 @@
 # Agent Change Log
 
+## 2026-06-10 (session 10)
+
+### Local fitting: correct matrix dimensions and defect-correction b-adjustment (commit f63522fd)
+
+**Problem.** `assemble()` was called with `nullptr` for `activeFunctionIds`, producing A as (n_pts × 1110) — all global MPBES functions. The local-DOF columns (214) were then extracted post-hoc from the dense matrix. This was wasteful and conceptually wrong: A should have dimensions (# sampling points) × (# local functions), x should be (# local functions) × 2, and b should be (# sampling points) × 2.
+
+The old "fixed rows" b-adjustment (iterating over non-local columns of the full 1110-column A) also became a dead code path when A was assembled locally.
+
+**Fix.**
+
+1. **Assembly**: Pass `&assembleActiveFunctions` when `useLocalFitting && !assembleActiveFunctions.empty()`, otherwise `nullptr`. The `assemble()` function already supported this via `activeFunctionIds`; A is now (n_pts × n_local) for local fitting.
+
+2. **b-adjustment via defect correction**: The correct LS system for local fitting is:
+   `A_local * x_local = b_target - A_nonlocal * x_nonlocal_current`
+   Since A_nonlocal is not assembled, compute its contribution indirectly:
+   `b_adj = b_target - geom_current + A_local * x_local_current`
+   where `geom_current` is the current parameterization evaluated at each sampling point via `evaluateFittedGeometryPoint`, and `x_local_current` is extracted from `vectSolSeed` at the `assembleActiveFunctions` indices.
+
+3. The old "fixed rows" block (`if (useLocalFitting && matA_dense.cols() == fullRows)`) is replaced by the new defect-correction block (`if (useLocalFitting && !assembleActiveFunctions.empty() && matA_dense.cols() == assembleActiveFunctions.size())`). Everything downstream (column extraction, normal equations, scatter-back) is unchanged.
+
+**Files changed:** `examples/poissonTHB_example.cpp`
+
+---
+
+## 2026-06-09 (session 9)
+
+### Skip LO/NLO: withdraw immediately if FIT produces irregular geometry (commit 625f88bb)
+
+**Problem.** When FIT left the geometry irregular (`minusnumber > 0`), the algorithm proceeded through full LO and NLO optimization cycles. This caused very long runtimes, crashes in the NLO destructor, and provided no useful information (NLO cannot recover from 838 irregular points).
+
+**Fix.** Added a third case to the existing early-withdrawal block (lines ~20863–20899). If `minusnumber > 0` after FIT, the candidate is immediately withdrawn and the loop continues. No LO or NLO is invoked.
+
+```cpp
+const bool geometryIrregular = (minusnumber > 0);
+if (regularButOverTolerance || hopelesslyLargeError || geometryIrregular)
+{
+    if (geometryIrregular)
+        gsInfo << "Geometry irregular after FIT (minusnumber=...). Withdrawing candidate.\n";
+    ...
+    continue;
+}
+```
+
+**Files changed:** `examples/poissonTHB_example.cpp`
+
+---
+
 ## 2026-06-09 (session 8)
 
 ### Global cross-patch cell selection via Grenda's algorithm (commits: brace fix + preflight fix + preflightOnly)
