@@ -19720,8 +19720,14 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         //     outfile << "\n=== DETAILED ASSEMBLY LOGGING (Patch " << patch << ", Level " << levNow << ", Attempt " << attempt << ") ===\n";
                         // }
 
-                        // Use new MPBES-based assemble
-                        // gsInfo << "About to call assemble()...\n";
+                        // Use new MPBES-based assemble.
+                        // For local fitting: pass assembleActiveFunctions so A has
+                        // dimensions (# sampling pts) x (# local functions) only.
+                        // For global fitting: pass nullptr → A covers all MPBES functions.
+                        const std::vector<index_t>* activeFunctionsForAssembly =
+                            (useLocalFitting && !assembleActiveFunctions.empty())
+                            ? &assembleActiveFunctions
+                            : nullptr;
                         assemble(
                             uvFitting,
                             mpbes,
@@ -19732,8 +19738,12 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                             patch,
                             levNow,
                             attempt,
-                            nullptr);
-                        // gsInfo << "Returned from assemble().\n";
+                            activeFunctionsForAssembly);
+                        if (outfile.is_open())
+                            outfile << "[assemble] mode=" << (activeFunctionsForAssembly ? "local" : "global")
+                                    << " A cols=" << (activeFunctionsForAssembly
+                                        ? static_cast<index_t>(assembleActiveFunctions.size())
+                                        : mpbes.size()) << "\n";
 
                         // if (attempt == 56) {
                         //     std::string cmpFile = "compare_mpbes_thb_attempt56.txt";
@@ -20169,37 +20179,62 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 solveMask[static_cast<std::size_t>(globalCol)] = 1;
                         }
 
-                        if (useLocalFitting && matA_dense.cols() == fullRows)
+                        // Defect correction for local fitting.
+                        //
+                        // A_local (n_pts x n_local) was assembled with only the local functions.
+                        // The LS system models:
+                        //   A_local * x_local = b_target - A_nonlocal * x_nonlocal_current
+                        //
+                        // Since A_nonlocal is not assembled, compute the non-local contribution
+                        // indirectly:
+                        //   A_nonlocal * x_nonlocal = geom_current - A_local * x_local_current
+                        //
+                        // So: b_adj = b_target - geom_current + A_local * x_local_current
+                        if (useLocalFitting
+                            && !assembleActiveFunctions.empty()
+                            && matA_dense.cols() == static_cast<index_t>(assembleActiveFunctions.size()))
                         {
-                            gsMatrix<real_t> fixedContribution = gsMatrix<real_t>::Zero(b_vec.rows(), b_vec.cols());
-                            index_t fixedRowsUsed = 0;
-                            for (index_t f = 0; f < fullRows; ++f)
-                            {
-                                if (solveMask[static_cast<std::size_t>(f)] != 0)
-                                    continue;
+                            const index_t nLocal = static_cast<index_t>(assembleActiveFunctions.size());
 
-                                bool hasNonZeroSeed = false;
-                                for (index_t c = 0; c < fullCols; ++c)
+                            // 1. Extract current local control-point values from seed solution
+                            gsMatrix<real_t> x_local_current(nLocal, fullCols);
+                            for (index_t j = 0; j < nLocal; ++j)
+                            {
+                                const index_t gf = assembleActiveFunctions[j];
+                                if (gf >= 0 && gf < vectSolSeed.rows())
+                                    x_local_current.row(j) = vectSolSeed.row(gf);
+                                else
+                                    x_local_current.row(j).setZero();
+                            }
+
+                            // 2. Evaluate current parameterization (all functions) at uvFitting pts
+                            gsMatrix<real_t> geom_current(b_vec.rows(), fullCols);
+                            geom_current.setZero();
+                            {
+                                index_t row = 0;
+                                for (index_t p = 0; p < static_cast<index_t>(uvFitting.size()); ++p)
                                 {
-                                    if (math::abs(vectSolSeed(f, c)) > 0)
+                                    for (index_t c = 0; c < uvFitting(p).cols(); ++c)
                                     {
-                                        hasNonZeroSeed = true;
-                                        break;
+                                        gsVector<real_t> uv_pt = uvFitting(p).col(c);
+                                        gsVector<real_t> geomPt = evaluateFittedGeometryPoint(
+                                            mpbes, vectSolSeed, p, uv_pt, false);
+                                        for (index_t d = 0; d < fullCols && d < geomPt.size(); ++d)
+                                            geom_current(row, d) = geomPt(d);
+                                        ++row;
                                     }
                                 }
-                                if (!hasNonZeroSeed)
-                                    continue;
-
-                                for (index_t c = 0; c < fullCols; ++c)
-                                    fixedContribution.col(c).noalias() += matA_dense.col(f) * vectSolSeed(f, c);
-                                ++fixedRowsUsed;
                             }
 
-                            if (fixedRowsUsed > 0)
-                            {
-                                b_vec -= fixedContribution;
-                                gsInfo << "local fit RHS adjusted by " << fixedRowsUsed << " fixed rows\n";
-                            }
+                            // 3. b_adj = b_target - geom_current + A_local * x_local_current
+                            b_vec -= geom_current;
+                            b_vec.noalias() += matA_dense * x_local_current;
+
+                            gsInfo << "local fit: b adjusted by defect correction"
+                                   << " (nLocal=" << nLocal << " pts=" << b_vec.rows() << ")\n";
+                            if (outfile.is_open())
+                                outfile << "local fit: b adjusted by defect correction"
+                                        << " (nLocal=" << nLocal << " pts=" << b_vec.rows() << ")\n";
                         }
 
                         if (outfile.is_open())
