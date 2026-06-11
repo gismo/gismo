@@ -13012,7 +13012,8 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
     const std::vector<CellToCoarsen>& cells,
     index_t interioru,
     index_t interiorv,
-    int localityLambda)
+    int localityLambda,
+    const std::vector<std::pair<int, std::vector<CellToCoarsen>>>& extraSeeds = {})
 {
     LocalCoarseningRegion region;
     const index_t nPatches = mpbes.nPatches();
@@ -13108,6 +13109,36 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
                         << " box stays " << formatBox(region.patchAABB[sourcePatch]) << "\n";
             }
         }
+    }
+
+    // Seed AABBs from co-patch group members (common block-diagonal fit).
+    for (const auto& xEntry : extraSeeds) {
+        const int xPatch = xEntry.first;
+        const std::vector<CellToCoarsen>& xCells = xEntry.second;
+        if (xPatch < 0 || xPatch >= static_cast<int>(nPatches)) continue;
+        for (const auto& cell : xCells) {
+            const index_t divU = (interioru + 1) * static_cast<index_t>(std::pow(2.0, cell.level));
+            const index_t divV = (interiorv + 1) * static_cast<index_t>(std::pow(2.0, cell.level));
+            if (divU <= 0 || divV <= 0) continue;
+            const real_t u1 = static_cast<real_t>(cell.x1) / static_cast<real_t>(divU);
+            const real_t v1 = static_cast<real_t>(cell.y1) / static_cast<real_t>(divV);
+            const real_t u2 = static_cast<real_t>(cell.x2) / static_cast<real_t>(divU);
+            const real_t v2 = static_cast<real_t>(cell.y2) / static_cast<real_t>(divV);
+            const real_t du = std::abs(u2 - u1);
+            const real_t dv = std::abs(v2 - v1);
+            const std::array<real_t, 4> requestedBox = {
+                clampToUnit(u1 - region.lambda * du),
+                clampToUnit(v1 - region.lambda * dv),
+                clampToUnit(u2 + region.lambda * du),
+                clampToUnit(v2 + region.lambda * dv)
+            };
+            mergePatchAabb(region, xPatch,
+                requestedBox[0], requestedBox[1], requestedBox[2], requestedBox[3]);
+        }
+        if (outfile.is_open())
+            outfile << "[local-region] co-patch=" << xPatch
+                    << " cells=" << xCells.size() << " seeded\n";
+        region.enabled = true;
     }
 
     const auto& functionDescription = mpbes.functionDescription();
@@ -18802,6 +18833,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                 // ----------------------------------------------------------
                 int patch = -1;
                 real_t bestDelta = std::numeric_limits<real_t>::infinity();
+                std::vector<CellSelectionResult> preflightResults(nPatches);
                 for (int p = 0; p < nPatches; ++p) {
                     if (perPatchVectorS[p].size() == 0) continue;
                     int pickedOneTmp = -1, validTmp = 1, currArrTmp = 0;
@@ -18809,13 +18841,13 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                     // Preflight: preflightOnly=true skips pickCell, preserving rand() state.
                     // Also pass a copy of pickedCells so preflight doesn't modify real state.
                     gsMatrix<int> pickedCellsCopy = perPatchPickedCells[p];
-                    CellSelectionResult resTmp = selectCellForCoarsening(
+                    preflightResults[p] = selectCellForCoarsening(
                         method, vsTmp, levNow, interior, p, attempt,
                         pickedOneTmp, pickedCellsCopy, validTmp, currArrTmp,
                         Acceptedmpbes.get(), mp1, SubdomainHierarchy,
                         /*preflightOnly=*/true);
-                    if (resTmp.acceptedDelta < bestDelta) {
-                        bestDelta = resTmp.acceptedDelta;
+                    if (preflightResults[p].acceptedDelta < bestDelta) {
+                        bestDelta = preflightResults[p].acceptedDelta;
                         patch = p;
                     }
                 }
@@ -18827,6 +18859,35 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                     }
                 }
                 if (patch < 0) break; // truly nothing left to do
+
+                // Build the coarsening group: all patches that achieved bestDelta.
+                // Non-connected patches at equal delta must be coarsened in one step.
+                struct CoarsenGroupEntry {
+                    int patchId;
+                    std::vector<CellToCoarsen> geoCells;
+                    std::vector<int> geoCellIndices;
+                };
+                std::vector<CoarsenGroupEntry> coarsenGroup;
+                if (bestDelta < std::numeric_limits<real_t>::infinity()) {
+                    for (int p = 0; p < nPatches; ++p) {
+                        if (!preflightResults[p].geoCells.empty() &&
+                            preflightResults[p].acceptedDelta <= bestDelta + 1e-12) {
+                            coarsenGroup.push_back({p,
+                                preflightResults[p].geoCells,
+                                preflightResults[p].geoCellIndices});
+                        }
+                    }
+                }
+                if (coarsenGroup.size() > 1) {
+                    gsInfo  << "[coarsen-group] size=" << coarsenGroup.size() << " patches:";
+                    outfile << "[coarsen-group] size=" << coarsenGroup.size() << " patches:";
+                    for (const auto& cpe : coarsenGroup) {
+                        gsInfo  << " " << cpe.patchId;
+                        outfile << " " << cpe.patchId;
+                    }
+                    gsInfo  << " delta=" << bestDelta << "\n";
+                    outfile << " delta=" << bestDelta << "\n";
+                }
 
                 // Reference aliases so the existing inner body is unchanged
                 int& lastNonZeroRow = lastNonZeroRowPerPatch(patch);
@@ -19160,6 +19221,42 @@ AlgorithmResult unrefinementAlgorithmHBJ(
 
 
                         SubdomainHierarchy(patch) = THB;
+                        gsInfo  << "[primary coarsen] patch=" << patch
+                                << " cells=" << (useGeo ? geoCells.size() : static_cast<size_t>(1))
+                                << " THBsize=" << THB.size() << "\n";
+                        outfile << "[primary coarsen] patch=" << patch
+                                << " cells=" << (useGeo ? geoCells.size() : static_cast<size_t>(1))
+                                << " THBsize=" << THB.size() << "\n";
+
+                        // Rebuild co-patch hierarchies so MPBES sees the full group in one shot.
+                        for (const auto& cpe : coarsenGroup) {
+                            if (cpe.patchId == patch) continue;
+                            int cpLNZR = lastNonZeroRowPerPatch(cpe.patchId);
+                            int cpCreated = 0, cpCenter = -1, cpEscape = 0;
+                            int cpOurBox[4] = {0, 0, 0, 0};
+                            int cpRTH = rebuildTheHierarchyMultiple(
+                                boxMat, cpe.geoCells, cpLNZR, cpCreated,
+                                cpCenter, cpOurBox, cpEscape, cpe.patchId);
+                            outfile << "[co-patch coarsen] patch=" << cpe.patchId
+                                    << " RTH=" << cpRTH << "\n";
+                            if (cpRTH == 1) {
+                                lastNonZeroRowPerPatch(cpe.patchId) = cpLNZR;
+                                currentLastNonZeroRow(cpe.patchId) = cpLNZR;
+                                gsTHBSplineBasis<2, real_t> cpTHB(tens);
+                                for (int row = 0; row < cpLNZR; ++row) {
+                                    std::vector<index_t> box;
+                                    for (int col = 0; col < 5; ++col)
+                                        box.push_back(boxMat(cpe.patchId)(row)(col));
+                                    cpTHB.refineElements(box);
+                                }
+                                SubdomainHierarchy(cpe.patchId) = cpTHB;
+                                gsInfo  << "[co-patch coarsen] patch=" << cpe.patchId
+                                        << " THBsize=" << cpTHB.size() << "\n";
+                                outfile << "[co-patch coarsen] patch=" << cpe.patchId
+                                        << " THBsize=" << cpTHB.size() << "\n";
+                            }
+                        }
+
                         THB.anchors_into(anmat);
                         gsMatrix<real_t> basisInd(1, THB.size()); // 1 if THB function is not represented in the previous support set
                         for (int l = 0; l < THB.size(); ++l) {
@@ -19373,13 +19470,19 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         index_t basisSelected = 0;
                         if (useLocalFitting)
                         {
+                            std::vector<std::pair<int, std::vector<CellToCoarsen>>> groupSeeds;
+                            for (const auto& cpe : coarsenGroup) {
+                                if (cpe.patchId == patch) continue;
+                                groupSeeds.emplace_back(cpe.patchId, cpe.geoCells);
+                            }
                             localRegion = buildLocalCoarseningRegion(
                                 mpbes,
                                 patch,
                                 localCells,
                                 interior,
                                 interior,
-                                localityLambda);
+                                localityLambda,
+                                groupSeeds);
                             // Count local DOF before sampling so k can be derived from them
                             for (index_t f = 0; f < localRegion.basisInd.cols(); ++f)
                                 if (localRegion.basisInd(0, f) != 0.0)
@@ -20872,6 +20975,21 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                             wasRebuilt = 1;
                             removeCellIdsByValue(nonCheckedCells, attemptedCellIds);
                             outfile << "nonCheckedCells.size() has become: " << nonCheckedCells.size() << "\n";
+                            // Commit co-patch group cells.
+                            for (const auto& cpe : coarsenGroup) {
+                                if (cpe.patchId == patch) continue;
+                                std::unordered_set<int> cpRemove(
+                                    cpe.geoCellIndices.begin(), cpe.geoCellIndices.end());
+                                auto& cpVS = perPatchVectorS[cpe.patchId];
+                                gsVector<index_t> cpFiltered(cpVS.size());
+                                int cpPos = 0;
+                                for (int ci = 0; ci < cpVS.size(); ++ci)
+                                    if (cpRemove.find(static_cast<int>(cpVS(ci))) == cpRemove.end())
+                                        cpFiltered(cpPos++) = cpVS(ci);
+                                cpFiltered.conservativeResize(cpPos);
+                                cpVS = cpFiltered;
+                                removeCellIdsByValue(perPatchNCC[cpe.patchId], cpe.geoCellIndices);
+                            }
 
                             int jopa = 4 * (int)pow(2, levNow) * 4 * (int)pow(2, levNow);
                             attempt = (attempt + 1) % (jopa);
@@ -21354,6 +21472,21 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                     wasRebuilt = 1;
                                     removeCellIdsByValue(nonCheckedCells, attemptedCellIds);
                                     outfile << "nonCheckedCells.size() has become: " << nonCheckedCells.size() << "\n";
+                                    // Commit co-patch group cells.
+                                    for (const auto& cpe : coarsenGroup) {
+                                        if (cpe.patchId == patch) continue;
+                                        std::unordered_set<int> cpRemove(
+                                            cpe.geoCellIndices.begin(), cpe.geoCellIndices.end());
+                                        auto& cpVS = perPatchVectorS[cpe.patchId];
+                                        gsVector<index_t> cpFiltered(cpVS.size());
+                                        int cpPos = 0;
+                                        for (int ci = 0; ci < cpVS.size(); ++ci)
+                                            if (cpRemove.find(static_cast<int>(cpVS(ci))) == cpRemove.end())
+                                                cpFiltered(cpPos++) = cpVS(ci);
+                                        cpFiltered.conservativeResize(cpPos);
+                                        cpVS = cpFiltered;
+                                        removeCellIdsByValue(perPatchNCC[cpe.patchId], cpe.geoCellIndices);
+                                    }
                                     optimizationAccepted = true;
                                     break;
                                 }
@@ -21418,7 +21551,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         attempt = (attempt + 1) % (jopa);
                         removeCellIdsByValue(nonCheckedCells, attemptedCellIds);
                         outfile << "nonCheckedCells.size() has become: " << nonCheckedCells.size() << "\n";
-                         
+
                     }
                     outfile << "FINISHED\n";
                     //break;

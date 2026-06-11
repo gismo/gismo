@@ -1,5 +1,39 @@
 # Agent Change Log
 
+## 2026-06-11 (session 12)
+
+### Global Grenda group coarsening with common block-diagonal fit
+
+**Problem.** The inner coarsening loop picked exactly ONE patch per iteration (the patch with the smallest Grenda delta). If two non-connected patches shared the same minimum delta their cells were processed in separate iterations. For non-connected patches there is no MPBES coupling, so there is no automatic mechanism to coarsen them together — they must be coarsened simultaneously and fitted jointly in one block-diagonal system.
+
+**Architecture.** One combined fit across all patches in the Grenda group. The system matrix A is block-diagonal when patches are non-connected (independent) and nearly block-diagonal when patches share an interface (coupled via MPBES spill-over). `buildLocalCoarseningRegion` extended with `extraSeeds` seeds the AABB for every group patch simultaneously, so the local-DOF selection and sampling-point cloud naturally cover all patches.
+
+**Changes.**
+
+1. **Save preflight results (`preflightResults[p]`).** The preflight loop now stores each `CellSelectionResult` instead of discarding it. All per-patch cell lists are available after the loop to build the group.
+
+2. **Build `coarsenGroup`.** After the primary `patch` is identified, all patches whose `acceptedDelta ≤ bestDelta + 1e-12` are collected into `std::vector<CoarsenGroupEntry> coarsenGroup`. A log line `[coarsen-group]` is emitted whenever the group has more than one patch.
+
+3. **Rebuild co-patch THBs inside `if (createSpline == 1)`.** Immediately after `SubdomainHierarchy(patch) = THB` (primary rebuild), loop over non-primary group entries: call `rebuildTheHierarchyMultiple` for each co-patch's `boxMat`, build a fresh `gsTHBSplineBasis<2>` from `tens`, assign to `SubdomainHierarchy(cpe.patchId)`, update `lastNonZeroRowPerPatch` and `currentLastNonZeroRow`. The subsequent MPBES build sees the globally coarsened state.
+
+4. **Extend `buildLocalCoarseningRegion` with `extraSeeds`.** Added optional parameter `const std::vector<std::pair<int, std::vector<CellToCoarsen>>>& extraSeeds = {}`. After seeding the primary-patch AABB, the function iterates over `extraSeeds` and calls `mergePatchAabb` for each co-patch's cells, making those patches part of the combined local region.
+
+5. **Pass `groupSeeds` at call site.** Before calling `buildLocalCoarseningRegion`, build `groupSeeds` from `coarsenGroup` (all entries except the primary) and pass it as `extraSeeds`.
+
+6. **Commit co-patch cells on success.** At both success exit paths (FIT success, LO/NLO success), after the primary's `removeCellIdsByValue`, loop over co-patches: filter their cells out of `perPatchVectorS[cpId]` and call `removeCellIdsByValue(perPatchNCC[cpId], ...)`. On withdrawal/failure paths co-patch cells are NOT removed — they remain candidates for the next iteration.
+
+**Files changed:** `examples/poissonTHB_example.cpp`, `AGENT_CHANGELOG.md`
+
+---
+
+## 2026-06-11 (session 11)
+
+### Attempted cross-patch coarsening — reverted
+
+Session 11 added and then removed co-patch group machinery after discovering the justification was wrong. The MPBES is specifically designed to handle non-matching meshes at twin-patch interfaces via Kraft selection and truncation, so the earlier rationale ("MPBES can't handle the mismatch") was incorrect. The correct rationale (simultaneous coarsening of non-connected patches at equal Grenda delta, common block-diagonal fit) was established at the end of session 11 and implemented in session 12.
+
+---
+
 ## 2026-06-10 (session 10)
 
 ### Local fitting: correct matrix dimensions and defect-correction b-adjustment (commit f63522fd)
