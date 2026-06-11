@@ -1107,6 +1107,8 @@ protected:
 
 private:
 
+    template <short_t d2, class T2> friend class gsHElementHelper;
+
     /// \brief Inserts a domain into the basis
     void insert_box(point const & k1, point const & k2, int lvl);
 

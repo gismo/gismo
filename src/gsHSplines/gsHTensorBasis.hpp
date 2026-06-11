@@ -1340,6 +1340,11 @@ void gsHTensorBasis<d,T>::needLevel(int maxLevel) const
     // +1 for the initial basis in m_bases
     m_bases.reserve(maxLevel+1);
     const int extraLevels = maxLevel + 1 - m_bases.size();
+    
+    GISMO_ASSERT(!m_manualLevels || extraLevels <= 0,
+                 "Manual levels basis has been partially destroyed (m_bases.size()="
+                 << m_bases.size() << " < " << (maxLevel+1) << "). ");
+                 
     for ( int i = 0; i < extraLevels; ++i )
     {
         tensorBasis * next_basis = m_bases.back()->clone().release();
@@ -1447,23 +1452,25 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& 
 }
 
 template<short_t d, class T>
-gsMatrix<index_t>  gsHTensorBasis<d,T>::allBoundary( ) const
+gsMatrix<index_t> gsHTensorBasis<d,T>::allBoundary() const
 {
     std::vector<index_t> temp;
-    gsVector<index_t, d>  ind;
-    for(size_t i = 0; i != m_xmatrix[i].size(); i++)
+    gsVector<index_t, d> ind;
+
+    for (size_t i = 0; i != m_xmatrix.size(); ++i)
         for (CMatrix::const_iterator it = m_xmatrix[i].begin();
-             it != m_xmatrix[i].end(); it++)
+             it != m_xmatrix[i].end(); ++it)
         {
             ind = this->m_bases[i]->tensorIndex(*it);
-            for (unsigned j=0; j!=d; ++j )
-                if ( (ind[j]==0) || (ind[j]==(this->m_bases[i]->size(j)-1)) )
+            for (unsigned j = 0; j != d; ++j)
+                if ((ind[j] == 0) || (ind[j] == (this->m_bases[i]->size(j) - 1)))
                 {
-                    temp.push_back(m_xmatrix_offset[i] + (it-m_xmatrix[i].begin()) );
+                    temp.push_back(m_xmatrix_offset[i] + (it - m_xmatrix[i].begin()));
                     break;
                 }
         }
-    return makeMatrix<index_t>(temp.begin(),temp.size(),1 );
+
+    return makeMatrix<index_t>(temp.begin(), temp.size(), 1);
 }
 
 template<short_t d, class T>
@@ -1777,11 +1784,16 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<index_t> >&
         m_xmatrix.pop_back();
 
     // ...similarly, erase all those fine bases which are actually not used.
-    const int sizeDiff = static_cast<int>( m_bases.size() - m_xmatrix.size() );
-    if( sizeDiff > 0 )
+    // Note: when manual levels are set, the user-defined bases must be preserved
+    // since higher levels will be needed in subsequent refinement iterations.
+    if (!m_manualLevels)
     {
-        freeAll(m_bases.end() - sizeDiff, m_bases.end());
-        m_bases.resize(m_xmatrix.size());
+        const int sizeDiff = static_cast<int>( m_bases.size() - m_xmatrix.size() );
+        if( sizeDiff > 0 )
+        {
+            freeAll(m_bases.end() - sizeDiff, m_bases.end());
+            m_bases.resize(m_xmatrix.size());
+        }
     }
 
     result.makeCompressed();

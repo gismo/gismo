@@ -34,7 +34,7 @@ namespace gismo
         // We make sure that the basis is not using manual levels, since we don't use lines like
         // `_knotIndexToDiadicIndex` in this code.
         // TODO: fix that
-        GISMO_ASSERT(!basis.manualLevels(),"The basis must not have manual levels for this helper to work.");
+        // GISMO_ASSERT(!basis.manualLevels(),"The basis must not have manual levels for this helper to work.");
     }
 
     template <short_t d, class T>
@@ -48,6 +48,11 @@ namespace gismo
             const gsKnotVector<T> & kv = m_basis.tensorLevel(level).knots(j);
             lowIdx(j) = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd(),low[j] ) - 1).uIndex();
             uppIdx(j) = (std::upper_bound(kv.domainUBegin(), kv.domainUEnd()+1,upp[j] ) - 1).uIndex();
+        }
+        if (m_basis.manualLevels())
+        {
+            m_basis._knotIndexToDiadicIndex(level,lowIdx);
+            m_basis._knotIndexToDiadicIndex(level,uppIdx);
         }
         return element_t(lowIdx, uppIdx, level, patch);
     }
@@ -83,12 +88,20 @@ namespace gismo
         gsMatrix<T> box(d, 2);
         const point_t & low = element.lowerCorner();
         const point_t & upp = element.upperCorner();
+        level_t level = element.level();
         for(index_t j = 0; j < d; j++)
         {
             // Convert the knot indices back to parameter coordinates
             const gsKnotVector<T> & kv = m_basis.tensorLevel(element.level()).knots(j);
-            box(j,0) = kv.uValue(low(j));
-            box(j,1) = kv.uValue(upp(j));
+            index_t lowIdx = low(j);
+            index_t uppIdx = upp(j);
+            if (m_basis.manualLevels())
+            {
+                m_basis._diadicIndexToKnotIndex(level,j,lowIdx);
+                m_basis._diadicIndexToKnotIndex(level,j,uppIdx);
+            }
+            box(j,0) = kv.uValue(lowIdx); // low index is diadic!
+            box(j,1) = kv.uValue(uppIdx);
         }
         return {box, element.level()};
     }
@@ -248,6 +261,23 @@ namespace gismo
     typename gsHElementHelper<d,T>::box_t gsHElementHelper<d,T>::getSupportExtension(const element_t & element) const
     {
         gsElementHelper<d,T> helper(m_basis.tensorLevel(element.level()));
+        if (m_basis.manualLevels())
+        {
+            // Element corners are stored as dyadic indices; gsElementHelper operates in KI space.
+            point_t low_ki = element.lowerCorner();
+            point_t upp_ki = element.upperCorner();
+            m_basis._diadicIndexToKnotIndex(element.level(), low_ki);
+            m_basis._diadicIndexToKnotIndex(element.level(), upp_ki);
+            typename gsElementHelper<d,T>::element_t ki_element(low_ki, upp_ki, element.patch());
+            box_t result = helper.getSupportExtension(ki_element);
+            // Convert result back from KI to dyadic
+            point_t res_low = result.col(0), res_upp = result.col(1);
+            m_basis._knotIndexToDiadicIndex(element.level(), res_low);
+            m_basis._knotIndexToDiadicIndex(element.level(), res_upp);
+            result.col(0) = res_low;
+            result.col(1) = res_upp;
+            return result;
+        }
         return helper.getSupportExtension(element);
     }
 
@@ -482,8 +512,10 @@ namespace gismo
         {
             // Get the degree
             degree = m_basis.degree(i);
+            // gsInfo << "Lower and upper corner of the element: " << element.lowerCorner()(i) << " and " << element.upperCorner()(i) << "\n";
             lowerIndex = element.lowerCorner()(i)*math::pow(2, diff);
             upperIndex = element.upperCorner()(i)*math::pow(2, diff);
+            // gsInfo << "Degree: " << degree << " lowerIndex: " << lowerIndex << " upperIndex: " << upperIndex << "\n";
             if (degree % 2 == 1 && degree > 1)
                 ( (lowerIndex < (degree-1)/2-1) ? lowerIndex = 0 : lowerIndex -= (degree-1)/2-1);
             else
@@ -558,6 +590,23 @@ namespace gismo
     {
         GISMO_ASSERT(level >= 0, "Level must be non-negative.");
         gsElementHelper<d,T> helper(m_basis.tensorLevel(level));
+        if (m_basis.manualLevels())
+        {
+            // low/upp are dyadic indices; convert to KI for gsElementHelper, then back to dyadic.
+            point_t low_ki = low, upp_ki = upp;
+            m_basis._diadicIndexToKnotIndex(level, low_ki);
+            m_basis._diadicIndexToKnotIndex(level, upp_ki);
+            ElementContainer exploded = helper.explode(low_ki, upp_ki, patch);
+            HElementContainer result;
+            for (const auto & elem : exploded)
+            {
+                point_t elow = elem.lowerCorner(), eupp = elem.upperCorner();
+                m_basis._knotIndexToDiadicIndex(level, elow);
+                m_basis._knotIndexToDiadicIndex(level, eupp);
+                result.emplace(elow, eupp, level, patch);
+            }
+            return result;
+        }
         ElementContainer exploded = helper.explode(low, upp, patch);
         return this->toElements(exploded, level);
     }
