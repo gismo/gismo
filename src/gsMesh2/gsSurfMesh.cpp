@@ -812,6 +812,19 @@ mesh_statistics(bool eoc_verbose)
 
 
 }
+
+real_t gsSurfMesh::
+angle(gsSurfMesh::Halfedge h1, gsSurfMesh::Halfedge h2)
+{
+    real_t result = 0.0;
+    gsVector<> v1 = position(to_vertex(h1)) - position(from_vertex(h1));
+    gsVector<> v2 = position(to_vertex(h2)) - position(from_vertex(h2));
+    result = acos(v1.dot(v2)/(v1.norm()*v2.norm()));
+
+    return result;
+}
+
+
 void
 gsSurfMesh::
 triangulate()
@@ -2593,7 +2606,29 @@ gsSurfMesh::face_barycenter(Face f)
 
 }
 
+gsVector<gsSurfMesh::Vertex> 
+gsSurfMesh::add_mesh(gsSurfMesh& subMesh)
+{
 
+    gsVector<Vertex> idmap(subMesh.n_vertices()); // local vertex of subMesh mapping with global to new mesh
+
+    // Adding vertices to current mesh
+    for (auto vit : subMesh.vertices())
+        idmap[vit.idx()] = this->add_vertex(subMesh.position(vit));
+
+    std::vector<Vertex> vv;
+    // Adding faces to current mesh
+    for (auto fit : subMesh.faces())
+    {
+        vv.clear();
+        for (auto vit : subMesh.vertices(fit))
+           vv.push_back(idmap[vit.idx()]);
+          
+        this->add_face(vv);
+    }
+
+    return idmap;
+}
 
 // e(v1,v0): h0(v1->v0) and h1(v0->v1)
 // v0 = vertex(e,0) ==   to_vertex(h0)  == from_vertex(h1)

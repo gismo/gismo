@@ -1059,6 +1059,16 @@ public:
         return h.is_valid() ? edge(h) : add_edge(start,end);
         */
     }
+    
+    /// Add a mesh to the current one. The two meshes should be distinct from each other
+    /// 
+    /// It retuns the vector of vertices that will be the 
+    /// map of local vertices'ids in the \c subMesh with the global vertices' id
+    /// of out current mesh.
+    /// 
+    /// \param subMesh Distinct mesh to be added in the current one
+    gsVector<Vertex> add_mesh(gsSurfMesh& subMesh);
+
 
 public:
 
@@ -1207,6 +1217,35 @@ public:
 
     inline Halfedge backward_halfedge(gsSurfMesh::Halfedge he) const
     { return prev_halfedge(opposite_halfedge(prev_halfedge(he))); }
+
+    inline Halfedge forward_halfedge(gsSurfMesh::Halfedge he, int r) const
+    { 
+        for (int k = 0; k < r; k++) 
+            he = forward_halfedge(he);  
+        return he;
+    }
+
+    inline Halfedge backward_halfedge(gsSurfMesh::Halfedge he, int r) const
+    { 
+        for (int k = 0; k < r; k++) 
+            he = backward_halfedge(he); 
+        return he;
+    }
+
+    inline Halfedge next_halfedge(gsSurfMesh::Halfedge he, int r) const
+    {
+        for (int k = 0; k < r; k++)
+            he = next_halfedge(he);
+        return he;
+    }
+
+    inline Halfedge prev_halfedge(gsSurfMesh::Halfedge he, int r) const
+    {
+        for (int k = 0; k < r; k++)
+            he = prev_halfedge(he);
+        return he;
+    }
+
 
 public:
 
@@ -1645,6 +1684,13 @@ public:
     ///
     /// \param eoc_verbose: If true, returns the number of each extraordinary case (EV,EF)
     void mesh_statistics(bool eoc_verbose = false);
+
+    /// Angle between halfedges
+    ///
+    /// 
+    /// \param h1: Halfedge 1
+    /// \param h2: Halfedge 2
+    real_t angle(Halfedge h1, Halfedge h2);
 
 public:
 
