@@ -231,10 +231,13 @@ trace(const gsSparseMatrix<>& mat)
 
 
 gsLinearOperator<>::Ptr
-mkOpsForMg(gsSparseMatrix<> time_stiff, gsSparseMatrix<> space_stiff, gsSparseMatrix<> time_mass, gsSparseMatrix<> space_mass)
+mkOpsForMg(gsSparseMatrix<> time_stiff, gsSparseMatrix<> space_stiff, gsSparseMatrix<> time_mass, gsSparseMatrix<> space_mass, real_t kappa)
 {
     gsLinearOperator<>::Ptr spmass = makeMatrixOp(space_mass.moveToPtr());
     gsLinearOperator<>::Ptr schur = gsProductOp<>::make(spmass, makeSparseCholeskySolver(space_stiff), spmass);
+
+    time_mass *= (kappa*kappa);
+
     return gsSumOp<>::make
         (
             gsKroneckerOp<>::make(
@@ -249,11 +252,11 @@ mkOpsForMg(gsSparseMatrix<> time_stiff, gsSparseMatrix<> space_stiff, gsSparseMa
 }
 
 gsLinearOperator<>::Ptr
-mkSmsForMg(const gsSparseMatrix<>& time_stiff, const gsSparseMatrix<>& space_stiff, const gsSparseMatrix<>& time_mass, const gsSparseMatrix<>& space_mass)
+mkSmsForMg(const gsSparseMatrix<>& time_stiff, const gsSparseMatrix<>& space_stiff, const gsSparseMatrix<>& time_mass, const gsSparseMatrix<>& space_mass, real_t kappa, real_t sigma)
 {
     const real_t hSq = 1./trace(space_stiff);
     const real_t tauSq = 1./trace(time_stiff);
-    const real_t factor = hSq/(tauSq*tauSq) + 1./hSq;
+    const real_t factor = sigma*hSq/(tauSq*tauSq) + kappa*kappa/hSq;
     // TODO: Better scaling
     return gsScaledOp<>::make(gsIdentityOp<>::make(time_stiff.rows() * space_stiff.rows()), 1./factor); // 1/(...) since we want to solve...
 }
@@ -268,11 +271,9 @@ makeSpaceTimeMultiGridSolver(
     const gsBoundaryConditions<>& bc_time,
     const gsMultiBasis<>& mb_space,
     const gsBoundaryConditions<>& bc_space,
-    const gsOptionList& opt)
+    const gsOptionList& opt,
+    real_t kappa, real_t sigma)
 {
-
-    // TODO: kappa, sigma,...!?
-
     gsInfo << "Setup space-time multigrid solver... " << std::flush;
 
     gsOptionList cmd_time;
@@ -312,8 +313,8 @@ makeSpaceTimeMultiGridSolver(
         index_t space_dofs = space_mass.rows();
         index_t time_dofs  = time_mass .rows();
 
-        ops         .push_back(mkOpsForMg(time_stiff,space_stiff,time_mass,space_mass));
-        smoother_ops.push_back(mkSmsForMg(time_stiff,space_stiff,time_mass,space_mass));
+        ops         .push_back(mkOpsForMg(time_stiff,space_stiff,time_mass,space_mass,kappa));
+        smoother_ops.push_back(mkSmsForMg(time_stiff,space_stiff,time_mass,space_mass,kappa,sigma));
 
         for (index_t l_time = lv_time-2, l_space = lv_space-2;;)
         {
@@ -321,7 +322,7 @@ makeSpaceTimeMultiGridSolver(
             const real_t hSq = trace(space_mass)/trace(space_stiff);
             const real_t tauSq = trace(time_mass)/trace(time_stiff);
 
-            bool coarsenInTime = hSq*hSq > tauSq; // TODO: a bit more elaborate...
+            bool coarsenInTime = sigma*hSq*hSq > tauSq*kappa*kappa; // TODO: a bit more elaborate...
 
             gsSparseMatrix<real_t,RowMajor> prolmat;
             bool doBreak;
@@ -379,17 +380,16 @@ makeSpaceTimeMultiGridSolver(
                 ));
             }
 
-            ops         .push_back(mkOpsForMg(time_stiff,space_stiff,time_mass,space_mass));
-            smoother_ops.push_back(mkSmsForMg(time_stiff,space_stiff,time_mass,space_mass));
+            ops         .push_back(mkOpsForMg(time_stiff,space_stiff,time_mass,space_mass,kappa));
+            smoother_ops.push_back(mkSmsForMg(time_stiff,space_stiff,time_mass,space_mass,kappa,sigma));
 
             if (doBreak)
                 break;
         }
         // Construct coarseSolver
         {
-            gsLinearOperator<>::Ptr op = mkOpsForMg(time_stiff,space_stiff,time_mass,space_mass);
             gsMatrix<> mat;
-            op->toMatrix(mat);
+            ops.back()->toMatrix(mat);
             gsSparseMatrix<> sm = mat.sparseView(1,1e-8);
             coarseSolver = makeSparseCholeskySolver(sm);
         }
@@ -440,6 +440,7 @@ int main(int argc, char *argv[])
     index_t degree = 1;
     real_t kappa = 1.;
     real_t sigma = 1.;
+    real_t mgsigma = 1.;
     index_t maxIterations = 100;
     real_t tolerance = 1.e-6;
     index_t preSmooth = 1;
@@ -468,6 +469,7 @@ int main(int argc, char *argv[])
     cmd.addInt   ("",  "MG.NumPostSmooth",      "Number of post smoothing steps (only for mg)", postSmooth);
     cmd.addInt   ("",  "MG.NumCycles",          "Number of multi-grid cycles for coarse-grid correction, i.e., 1=V, 2=W cycle", cycles);
     cmd.addReal  ("",  "MG.Damping",            "Damping factor for the smoother", damping);
+    cmd.addReal  ("",  "MG.Sigma",              "Sigma for ST-MG", mgsigma);
     cmd.addInt   ("",  "useExactPreconder",     "Use that scheme", exactPreconder);
     cmd.addInt   ("",  "useFdPreconder",        "Use that scheme", fdPreconder);
     cmd.addInt   ("",  "useFdPfPreconder",      "Use that scheme", fdpfPreconder);
@@ -1091,7 +1093,7 @@ int main(int argc, char *argv[])
     gsInfo << "Setup of ST-MG preconder... " << std::flush;
     if (stmgPreconder)
     {
-        gsLinearOperator<>::Ptr preconder = makeSpaceTimeMultiGridSolver(time_stiff1, space_stiff, time_mass1, space_mass, tb1, ic, mb, bc, cmd.getGroup("MG"));
+        gsLinearOperator<>::Ptr preconder = makeSpaceTimeMultiGridSolver(time_stiff1, space_stiff, time_mass1, space_mass, tb1, ic, mb, bc, cmd.getGroup("MG"), kappa, mgsigma);
 
         gsInfo << "done: " << preconder->rows() << " dofs.\n";
 
