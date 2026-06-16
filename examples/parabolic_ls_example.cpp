@@ -19,6 +19,13 @@ using namespace gismo;
 //#define printMat(m) gsInfo << #m << " (" << m.rows() << "x" << m.cols() << "):\n\n"; for (int i=0; i<m.rows(); ++i) {for (int j=0; j<m.cols(); ++j) gsInfo << m(i,j) << "\t"; gsInfo << "\n";} gsInfo << "\n\n";
 #define printMat(m)
 
+gsSparseMatrix<>
+incorporateIc(const gsSparseMatrix<>& m)
+{
+    return m.block(1,1,m.rows()-1,m.cols()-1);
+}
+
+
 template<typename S>
 gsLinearOperator<>::Ptr fastDiagnonalization(const gsSparseMatrix<>& A1, const gsSparseMatrix<>& B1, const gsSparseMatrix<>& A2, const gsSparseMatrix<>& B2, const S& makeSolver)
 {
@@ -153,11 +160,7 @@ gsLinearOperator<>::Ptr mkTimeMultiLevelPreconder(
             id.setIdentity();
             for (index_t i=0; i<lv-1; ++i)
             {
-                gsSparseMatrix<real_t,RowMajor> tmp = gh.getTransferMatrices()[i];
-                gsSparseMatrix<real_t,RowMajor> tmp2 = tmp.block(1, 1, tmp.rows()-1, tmp.cols()-1);
-                GISMO_ENSURE (tmp.rows()-1==tmp2.rows(),"");
-                GISMO_ENSURE (tmp.cols()-1==tmp2.cols(),"");
-                transferMatrices.push_back( tmp2.kron(id) );
+                transferMatrices.push_back(incorporateIc(gh.getTransferMatrices()[i]).kron(id));
             }
         }
 
@@ -327,8 +330,7 @@ makeSpaceTimeMultiGridSolver(
 
             if (coarsenInTime)
             {
-                prolmat = gh_time.getTransferMatrices()[l_time];
-                prolmat = prolmat.block(1,1, prolmat.rows()-1, prolmat.cols()-1);
+                prolmat = incorporateIc(gh_time.getTransferMatrices()[l_time]);
                 doBreak = l_time==0;
                 --l_time;
             }
@@ -598,9 +600,7 @@ int main(int argc, char *argv[])
         u.setup(ic, dirichlet::interpolation, 0);
         assembler.initSystem();
         assembler.assemble( igrad(u,G) * igrad(u,G).tr() * meas(G) );
-        time_stiff1 = assembler.matrix();
-        const index_t n = time_stiff1.rows();
-        time_stiff1 = time_stiff1.block(1, 1, n-1, n-1);
+        time_stiff1 = incorporateIc(assembler.matrix());
     }
 
 
@@ -616,9 +616,7 @@ int main(int argc, char *argv[])
         u.setup(ic, dirichlet::interpolation, 0);
         assembler.initSystem();
         assembler.assemble( u * u.tr() * meas(G) );
-        time_mass1 = assembler.matrix();
-        const index_t n = time_mass1.rows();
-        time_mass1 = time_mass1.block(1, 1, n-1, n-1);
+        time_mass1 = incorporateIc(assembler.matrix());
     }
 
 
