@@ -282,11 +282,9 @@ makeSpaceTimeMultiGridSolver(
     gsGridHierarchy<> gh_time = gsGridHierarchy<>::buildByCoarsening(mb_time, bc_time, cmd_time, 10000, 4);
     const index_t lv_time = gh_time.getTransferMatrices().size()+1;
     {
-        gsInfo << "\n" << lv_time << " levels in time:";
+        gsInfo << "\n" << lv_time << " levels in time: " << (gh_time.getTransferMatrices()[0].rows()-1);
         for (index_t i=lv_time-2; i>-1; --i)
-        {
-            gsInfo << " " << (gh_time.getTransferMatrices()[i].rows()-1) << "x" << (gh_time.getTransferMatrices()[i].cols()-1);
-        }
+            gsInfo << ", " << (gh_time.getTransferMatrices()[i].cols()-1);
         gsInfo << "\n";
     }
 
@@ -296,17 +294,15 @@ makeSpaceTimeMultiGridSolver(
     gsGridHierarchy<> gh_space = gsGridHierarchy<>::buildByCoarsening(mb_space, bc_space, cmd_space, 10000, 8);
     const index_t lv_space = gh_space.getTransferMatrices().size()+1;
     {
-        gsInfo << lv_space << " levels in space:";
+        gsInfo << lv_space << " levels in space: " << gh_space.getTransferMatrices()[0].rows();
         for (index_t i=lv_space-2; i>-1; --i)
-        {
-            gsInfo << " " << gh_space.getTransferMatrices()[i].rows() << "x" << gh_space.getTransferMatrices()[i].cols();
-        }
+            gsInfo << ", " << gh_space.getTransferMatrices()[i].cols();
         gsInfo << "\n";
     }
 
 
     // Provide transfers, ops and smoother_ops for all levels
-    gsInfo << "Setup of combined space-time grid hierarchy..." << std::flush;
+    gsInfo << "Setup of combined space-time grid hierarchy...\n" << std::flush;
     std::vector<gsLinearOperator<>::Ptr> prolongations, restrictions, ops, smoother_ops;
     gsLinearOperator<>::Ptr coarseSolver;
     {
@@ -327,7 +323,7 @@ makeSpaceTimeMultiGridSolver(
             gsSparseMatrix<real_t,RowMajor> prolmat;
             bool doBreak;
 
-            gsInfo << (coarsenInTime?"T":"S") << " (tau=" << sqrt(tauSq) << "; h=" << sqrt(hSq) << "); " << std::flush;
+            gsInfo << "  tau=" << sqrt(tauSq) << "; h=" << sqrt(hSq) << ": Coarsening in " << (coarsenInTime?"time":"space") << "\n" << std::flush;
 
             if (coarsenInTime)
             {
@@ -386,6 +382,14 @@ makeSpaceTimeMultiGridSolver(
             if (doBreak)
                 break;
         }
+
+        // end
+        {
+            const real_t hSq = trace(space_mass)/trace(space_stiff);
+            const real_t tauSq = trace(time_mass)/trace(time_stiff);
+            gsInfo << "  tau=" << sqrt(tauSq) << "; h=" << sqrt(hSq) << "\n" << std::flush;
+        }
+
         // Construct coarseSolver
         {
             gsMatrix<> mat;
@@ -397,11 +401,9 @@ makeSpaceTimeMultiGridSolver(
 
     const index_t lv_total = prolongations.size()+1;
     {
-        gsInfo << "\n" << lv_total << " levels in space-time:";
+        gsInfo << "\n" << lv_total << " levels in space-time: " << prolongations[0]->rows();
         for (index_t i=0; i<lv_total-1; ++i)
-        {
-            gsInfo << " " << prolongations[i]->rows() << "x" << prolongations[i]->cols();
-        }
+            gsInfo << ", " << prolongations[i]->cols();
         gsInfo << "\n";
     }
 
@@ -414,14 +416,28 @@ makeSpaceTimeMultiGridSolver(
     std::reverse(ops.begin(), ops.end());
     gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make( ops, prolongations, restrictions, coarseSolver );
     mg->setOptions(opt);
+
+    bool autoDamp = opt.getReal("Damping")<0;
+    if (autoDamp)
+        gsInfo << "Automatically chosen damping parameters: ";
+
     for (index_t i=1; i<mg->numLevels(); ++i)
     {
         gsLinearOperator<>::Ptr smop = smoother_ops[smoother_ops.size()-i-1];
         GISMO_ENSURE (smop->rows() == mg->underlyingOp(i)->rows(), "Dimension missmatch: " << smop->rows()<<"=="<<mg->underlyingOp(i)->rows());
-        gsPreconditionerOp<>::Ptr smootherOp = gsPreconditionerFromOp<>::make(mg->underlyingOp(i),smop);
-        smootherOp->setOptions(opt); //TODO: How to choose damping?
+        gsPreconditionerFromOp<>::Ptr smootherOp = gsPreconditionerFromOp<>::make(mg->underlyingOp(i),smop);
+
+        if (autoDamp)
+        {
+            const real_t damping = -opt.getReal("Damping")/smootherOp->estimateLargestEigenvalueOfPreconditionedSystem(10);
+            smootherOp->setDamping(damping);
+            gsInfo << damping << " ";
+        }
+        else
+            smootherOp->setOptions(opt);
         mg->setSmoother(i, smootherOp);
     }
+    gsInfo << "\n";
 
     return mg;
 }
