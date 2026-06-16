@@ -184,7 +184,7 @@ gsLinearOperator<>::Ptr mkTimeMultiLevelPreconder(
             const index_t nSpaceDofs = space_stiff.rows();
             const index_t nTimeDofs = accumulatedTransferMatrices[i].cols() / nSpaceDofs;
 
-#if 1            
+#if 1
             gsSparseMatrix<> id(nTimeDofs, nTimeDofs); id.setIdentity();
             gsSparseMatrix<> system = id.kron( opt.askReal("Sigma", 1)*sqrt(tau)*space_stiff + sqrt(1/tau)*space_mass );
             gsLinearOperator<>::Ptr systemSolver = makeSolver(system);
@@ -217,6 +217,214 @@ gsLinearOperator<>::Ptr mkTimeMultiLevelPreconder(
         return preconder;
 }
 
+real_t
+trace(const gsSparseMatrix<>& mat)
+{
+    real_t coef = 0;
+    for (index_t i=0; i<mat.rows(); ++i)
+        coef += mat(i,i);
+    return coef/mat.rows();
+}
+
+
+gsLinearOperator<>::Ptr
+mkOpsForMg(gsSparseMatrix<> time_stiff, gsSparseMatrix<> space_stiff, gsSparseMatrix<> time_mass, gsSparseMatrix<> space_mass)
+{
+    gsLinearOperator<>::Ptr spmass = makeMatrixOp(space_mass.moveToPtr());
+    gsLinearOperator<>::Ptr schur = gsProductOp<>::make(spmass, makeSparseCholeskySolver(space_stiff), spmass);
+    return gsSumOp<>::make
+        (
+            gsKroneckerOp<>::make(
+                    makeMatrixOp(time_stiff.moveToPtr()),
+                    schur
+            ),
+            gsKroneckerOp<>::make(
+                    makeMatrixOp(time_mass.moveToPtr()),
+                    makeMatrixOp(space_stiff.moveToPtr())
+            )
+        );
+}
+
+gsLinearOperator<>::Ptr
+mkSmsForMg(const gsSparseMatrix<>& time_stiff, const gsSparseMatrix<>& space_stiff, const gsSparseMatrix<>& time_mass, const gsSparseMatrix<>& space_mass)
+{
+    const real_t hSq = 1./trace(space_stiff);
+    const real_t tauSq = 1./trace(time_stiff);
+    const real_t factor = hSq/(tauSq*tauSq) + 1./hSq;
+    // TODO: Better scaling
+    return gsScaledOp<>::make(gsIdentityOp<>::make(time_stiff.rows() * space_stiff.rows()), 1./factor); // 1/(...) since we want to solve...
+}
+
+gsLinearOperator<>::Ptr
+makeSpaceTimeMultiGridSolver(
+    gsSparseMatrix<> time_stiff,
+    gsSparseMatrix<> space_stiff,
+    gsSparseMatrix<> time_mass,
+    gsSparseMatrix<> space_mass,
+    const gsMultiBasis<>& mb_time,
+    const gsBoundaryConditions<>& bc_time,
+    const gsMultiBasis<>& mb_space,
+    const gsBoundaryConditions<>& bc_space,
+    const gsOptionList& opt)
+{
+
+    // TODO: kappa, sigma,...!?
+
+    gsInfo << "Setup space-time multigrid solver... " << std::flush;
+
+    gsOptionList cmd_time;
+    cmd_time.addInt( "InterfaceStrategy", "", iFace::conforming      );
+    cmd_time.addInt( "DirichletStrategy", "", dirichlet::elimination );
+    gsGridHierarchy<> gh_time = gsGridHierarchy<>::buildByCoarsening(mb_time, bc_time, cmd_time, 10000, 4);
+    const index_t lv_time = gh_time.getTransferMatrices().size()+1;
+    {
+        gsInfo << "\n" << lv_time << " levels in time:";
+        for (index_t i=lv_time-2; i>-1; --i)
+        {
+            gsInfo << " " << (gh_time.getTransferMatrices()[i].rows()-1) << "x" << (gh_time.getTransferMatrices()[i].cols()-1);
+        }
+        gsInfo << "\n";
+    }
+
+    gsOptionList cmd_space;
+    cmd_space.addInt( "InterfaceStrategy", "", iFace::conforming      );
+    cmd_space.addInt( "DirichletStrategy", "", dirichlet::elimination );
+    gsGridHierarchy<> gh_space = gsGridHierarchy<>::buildByCoarsening(mb_space, bc_space, cmd_space, 10000, 8);
+    const index_t lv_space = gh_space.getTransferMatrices().size()+1;
+    {
+        gsInfo << lv_space << " levels in space:";
+        for (index_t i=lv_space-2; i>-1; --i)
+        {
+            gsInfo << " " << gh_space.getTransferMatrices()[i].rows() << "x" << gh_space.getTransferMatrices()[i].cols();
+        }
+        gsInfo << "\n";
+    }
+
+
+    // Provide transfers, ops and smoother_ops for all levels
+    gsInfo << "Setup of combined space-time grid hierarchy..." << std::flush;
+    std::vector<gsLinearOperator<>::Ptr> prolongations, restrictions, ops, smoother_ops;
+    gsLinearOperator<>::Ptr coarseSolver;
+    {
+        index_t space_dofs = space_mass.rows();
+        index_t time_dofs  = time_mass .rows();
+
+        ops         .push_back(mkOpsForMg(time_stiff,space_stiff,time_mass,space_mass));
+        smoother_ops.push_back(mkSmsForMg(time_stiff,space_stiff,time_mass,space_mass));
+
+        for (index_t l_time = lv_time-2, l_space = lv_space-2;;)
+        {
+
+            const real_t hSq = trace(space_mass)/trace(space_stiff);
+            const real_t tauSq = trace(time_mass)/trace(time_stiff);
+
+            bool coarsenInTime = hSq*hSq > tauSq; // TODO: a bit more elaborate...
+
+            gsSparseMatrix<real_t,RowMajor> prolmat;
+            bool doBreak;
+
+            gsInfo << (coarsenInTime?"T":"S") << " (tau=" << sqrt(tauSq) << "; h=" << sqrt(hSq) << "); " << std::flush;
+
+            if (coarsenInTime)
+            {
+                prolmat = gh_time.getTransferMatrices()[l_time];
+                prolmat = prolmat.block(1,1, prolmat.rows()-1, prolmat.cols()-1);
+                doBreak = l_time==0;
+                --l_time;
+            }
+            else
+            {
+                prolmat = gh_space.getTransferMatrices()[l_space];
+                doBreak = l_space==1; // TODO: the coarset space level has 0 dofs ...
+                --l_space;
+            }
+
+            gsSparseMatrix<real_t> restmat = prolmat.transpose();
+            if (coarsenInTime)
+            {
+                GISMO_ENSURE (time_dofs == prolmat.rows(), "Dimension missmatch: "<<time_dofs<<"=="<<prolmat.rows());
+                time_dofs = prolmat.cols();
+
+                GISMO_ENSURE(restmat.cols() == time_mass.rows(), "Dimension missmatch: "<<restmat.cols()<<"=="<<time_mass.rows());
+                time_mass  = restmat * time_mass  * prolmat;
+                time_stiff = restmat * time_stiff * prolmat;
+
+                prolongations.push_back(gsKroneckerOp<>::make(
+                        makeMatrixOp(prolmat.moveToPtr()),
+                        gsIdentityOp<>::make(space_dofs)
+                ));
+                restrictions .push_back(gsKroneckerOp<>::make(
+                        makeMatrixOp(restmat.moveToPtr()),
+                        gsIdentityOp<>::make(space_dofs)
+                ));
+            }
+            else //if (!coarsenInTime)
+            {
+                GISMO_ENSURE (space_dofs == prolmat.rows(), "Dimension missmatch: "<<space_dofs<<"=="<<prolmat.rows());
+                space_dofs = prolmat.cols();
+
+                GISMO_ENSURE(restmat.cols() == space_mass.rows(), "Dimension missmatch: "<<restmat.cols()<<"=="<<space_mass.rows());
+                space_mass  = restmat * space_mass  * prolmat;
+                space_stiff = restmat * space_stiff * prolmat;
+
+                prolongations.push_back(gsKroneckerOp<>::make(
+                        gsIdentityOp<>::make(time_dofs),
+                        makeMatrixOp(prolmat.moveToPtr())
+                ));
+                restrictions .push_back(gsKroneckerOp<>::make(
+                        gsIdentityOp<>::make(time_dofs),
+                        makeMatrixOp(restmat.moveToPtr())
+                ));
+            }
+
+            ops         .push_back(mkOpsForMg(time_stiff,space_stiff,time_mass,space_mass));
+            smoother_ops.push_back(mkSmsForMg(time_stiff,space_stiff,time_mass,space_mass));
+
+            if (doBreak)
+                break;
+        }
+        // Construct coarseSolver
+        {
+            gsLinearOperator<>::Ptr op = mkOpsForMg(time_stiff,space_stiff,time_mass,space_mass);
+            gsMatrix<> mat;
+            op->toMatrix(mat);
+            gsSparseMatrix<> sm = mat.sparseView(1,1e-8);
+            coarseSolver = makeSparseCholeskySolver(sm);
+        }
+    }
+
+    const index_t lv_total = prolongations.size()+1;
+    {
+        gsInfo << "\n" << lv_total << " levels in space-time:";
+        for (index_t i=0; i<lv_total-1; ++i)
+        {
+            gsInfo << " " << prolongations[i]->rows() << "x" << prolongations[i]->cols();
+        }
+        gsInfo << "\n";
+    }
+
+    GISMO_ENSURE (ops.size() == prolongations.size()+1, "Dimension missmatch: "<<ops.size()<<"=="<<prolongations.size()+1);
+    GISMO_ENSURE (restrictions.size() == prolongations.size(), "Dimension missmatch: "<<restrictions.size()<<"=="<<prolongations.size());
+
+
+    std::reverse(prolongations.begin(), prolongations.end());
+    std::reverse(restrictions.begin(), restrictions.end());
+    std::reverse(ops.begin(), ops.end());
+    gsMultiGridOp<>::Ptr mg = gsMultiGridOp<>::make( ops, prolongations, restrictions, coarseSolver );
+    mg->setOptions(opt);
+    for (index_t i=1; i<mg->numLevels(); ++i)
+    {
+        gsLinearOperator<>::Ptr smop = smoother_ops[smoother_ops.size()-i-1];
+        GISMO_ENSURE (smop->rows() == mg->underlyingOp(i)->rows(), "Dimension missmatch: " << smop->rows()<<"=="<<mg->underlyingOp(i)->rows());
+        gsPreconditionerOp<>::Ptr smootherOp = gsPreconditionerFromOp<>::make(mg->underlyingOp(i),smop);
+        smootherOp->setOptions(opt); //TODO: How to choose damping?
+        mg->setSmoother(i, smootherOp);
+    }
+
+    return mg;
+}
+
+
 
 
 
@@ -235,12 +443,14 @@ int main(int argc, char *argv[])
     index_t preSmooth = 1;
     index_t postSmooth = 1;
     index_t cycles = 1;
-    index_t exactPreconder = 1;
-    index_t fdPreconder = 1;
-    index_t fdpfPreconder = 1;
-    index_t fdmgPreconder = 1;
-    index_t mlluPreconder = 1;
-    index_t mlmgPreconder = 1;
+    real_t damping = 1.;
+    index_t exactPreconder = 0;
+    index_t fdPreconder    = 0;
+    index_t fdpfPreconder  = 0;
+    index_t fdmgPreconder  = 0;
+    index_t mlluPreconder  = 0;
+    index_t mlmgPreconder  = 0;
+    index_t stmgPreconder  = 1;
     std::string out;
 
     gsCmdLine cmd("parabolic_ls_example");
@@ -255,12 +465,14 @@ int main(int argc, char *argv[])
     cmd.addInt   ("",  "MG.NumPreSmooth",       "Number of pre smoothing steps (only for mg)", preSmooth);
     cmd.addInt   ("",  "MG.NumPostSmooth",      "Number of post smoothing steps (only for mg)", postSmooth);
     cmd.addInt   ("",  "MG.NumCycles",          "Number of multi-grid cycles for coarse-grid correction, i.e., 1=V, 2=W cycle", cycles);
+    cmd.addReal  ("",  "MG.Damping",            "Damping factor for the smoother", damping);
     cmd.addInt   ("",  "useExactPreconder",     "Use that scheme", exactPreconder);
     cmd.addInt   ("",  "useFdPreconder",        "Use that scheme", fdPreconder);
     cmd.addInt   ("",  "useFdPfPreconder",      "Use that scheme", fdpfPreconder);
     cmd.addInt   ("",  "useFdMgPreconder",      "Use that scheme", fdmgPreconder);
     cmd.addInt   ("",  "useMlLuPreconder",      "Use that scheme", mlluPreconder);
     cmd.addInt   ("",  "useMlMgPreconder",      "Use that scheme", mlmgPreconder);
+    cmd.addInt   ("",  "useStMgPreconder",      "Use that scheme", stmgPreconder);
     cmd.addString("",  "out",                   "Write solution and used options to file", out);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
@@ -871,6 +1083,53 @@ int main(int argc, char *argv[])
         gsInfo << "skip.\n";
     }
 
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //  ST-MG preconder
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    index_t iter7 = -1;
+    real_t cond7  = -1;
+    gsInfo << "Setup of ST-MG preconder... " << std::flush;
+    if (stmgPreconder)
+    {
+        gsLinearOperator<>::Ptr preconder = makeSpaceTimeMultiGridSolver(time_stiff1, space_stiff, time_mass1, space_mass, tb1, ic, mb, bc, cmd.getGroup("MG"));
+
+        gsInfo << "done: " << preconder->rows() << " dofs.\n";
+
+        gsInfo << "Setup cg solver and solve... " << std::flush;
+
+        gsMatrix<> x;
+        x.setRandom( leastSquares->rows(), 1 );
+        gsMatrix<> rhs;
+        rhs.setRandom( leastSquares->rows(), 1 ); // TODO
+        gsMatrix<> errorHistory;
+        gsConjugateGradient<> solver( leastSquares, preconder );
+        solver.setCalcEigenvalues(true);
+        solver.setOptions( cmd.getGroup("Solver") ).solveDetailed( rhs, x, errorHistory );
+
+        gsInfo << "done.\n\n";
+
+        iter7 = errorHistory.rows()-1;
+        const bool success = errorHistory(iter7,0) < tolerance;
+        if (success)
+            gsInfo << "Reached desired tolerance after " << iter7 << " iterations:\n";
+        else
+            gsInfo << "Did not reach desired tolerance after " << iter7 << " iterations:\n";
+
+        if (errorHistory.rows() < 20)
+            gsInfo << errorHistory.transpose() << "\n\n";
+        else
+            gsInfo << errorHistory.topRows(5).transpose() << " ... " << errorHistory.bottomRows(5).transpose()  << "\n\n";
+
+        cond7 = solver.getConditionNumber();
+        gsInfo << "Estimated condition number: " << cond7 << "\n";
+    }
+    else
+    {
+        gsInfo << "skip.\n";
+    }
+
 
     if (!out.empty())
     {
@@ -901,7 +1160,9 @@ int main(int argc, char *argv[])
                 "iter5\t"
                 "cond5\t"
                 "iter6\t"
-                "cond6\n";
+                "cond6\t"
+                "iter7\t"
+                "cond7\n";
 
         outfile << "parabolic_ls_example\t"
             << geoIdx << "\t"
@@ -924,7 +1185,9 @@ int main(int argc, char *argv[])
             << iter5 << "\t"
             << cond5 << "\t"
             << iter6 << "\t"
-            << cond6 << "\n";
+            << cond6 << "\t"
+            << iter7 << "\t"
+            << cond7 << "\n";
     }
 
 
