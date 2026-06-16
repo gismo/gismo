@@ -1692,6 +1692,12 @@ public:
     /// \param h2: Halfedge 2
     real_t angle(Halfedge h1, Halfedge h2);
 
+    /// Add property "v:halfedge" of normal halfedges to all faces of the mesh.
+    /// 
+    /// The property will be added to the vertices. TODO: better visulaization on points
+    /// close to vertices not on vertices, to be shown on face.
+    void display_halfedge();
+
 public:
 
     /** returns the valence (number of incident edges or neighboring vertices)

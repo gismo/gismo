@@ -626,7 +626,7 @@ void
 gsSurfMesh::
 mesh_statistics(bool eoc_verbose)
 {
-    index_t maxvalEV = 0, minvalEV = 0, maxvalEF = 0, minvalEF = 0, maxvalBoundEV = 0,
+    unsigned int maxvalEV = 0, minvalEV = 0, maxvalEF = 0, minvalEF = 0, maxvalBoundEV = 0,
         minvalBoundEV = 0, maxvalBoundEF = 0, minvalBoundEF = 0;
     int cnt = 0, cntB = 0;
     int cntf = 0, cntBf = 0;
@@ -819,9 +819,23 @@ angle(gsSurfMesh::Halfedge h1, gsSurfMesh::Halfedge h2)
     real_t result = 0.0;
     gsVector<> v1 = position(to_vertex(h1)) - position(from_vertex(h1));
     gsVector<> v2 = position(to_vertex(h2)) - position(from_vertex(h2));
-    result = acos(v1.dot(v2)/(v1.norm()*v2.norm()));
+    result = math::acos(v1.dot(v2)/(v1.norm()*v2.norm()));
 
     return result;
+}
+
+void gsSurfMesh::
+display_halfedge()
+{
+    Point tmp;
+    auto hpp = add_vertex_property<Point>("v:halfedge", tmp.setZero());
+    Halfedge he;
+    for (auto fit : faces())
+    {
+        he = halfedge(fit);
+        hpp[from_vertex(he)] = (position(to_vertex(he)) -
+                position(from_vertex(he))).normalized();
+    }
 }
 
 
