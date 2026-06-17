@@ -254,10 +254,13 @@ mkOpsForMg(gsSparseMatrix<> time_stiff, gsSparseMatrix<> space_stiff, gsSparseMa
 gsLinearOperator<>::Ptr
 mkSmsForMg(const gsSparseMatrix<>& time_stiff, const gsSparseMatrix<>& space_stiff, const gsSparseMatrix<>& time_mass, const gsSparseMatrix<>& space_mass, real_t kappa, real_t sigma)
 {
-    const real_t hSq = 1./trace(space_stiff);
-    const real_t tauSq = 1./trace(time_stiff);
-    const real_t factor = sigma*hSq/(tauSq*tauSq) + kappa*kappa/hSq;
-    // TODO: Better scaling
+    const real_t space_stiff_hat = trace(space_stiff);
+    const real_t space_mass_hat = trace(space_mass);
+    const real_t time_stiff_hat = trace(time_stiff);
+    const real_t time_mass_hat = trace(time_mass);
+
+    const real_t factor = sigma*time_stiff_hat*(space_mass_hat*space_mass_hat/space_stiff_hat) + kappa*kappa*time_mass_hat*space_stiff_hat;
+
     return gsScaledOp<>::make(gsIdentityOp<>::make(time_stiff.rows() * space_stiff.rows()), 1./factor); // 1/(...) since we want to solve...
 }
 
