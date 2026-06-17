@@ -1,16 +1,26 @@
-/** @file 2D_embedding_and_D_derivative_and_second_layer_example.cpp
+/** @file 2D_embedding_and_D_derivative_and_second_layer_example_v4.cpp
 
-    @brief Build an Argyris-type basis transformation that enforces
+    @brief v4: Build an Argyris-type basis transformation that enforces
            zero directional derivative d_i at each patch boundary,
            where the direction is defined by gluing data (alpha, beta):
 
-               d_i = (1 / alpha_i) * (n + beta_i * t)
+               d_i = (1 / alpha_i) * (n + beta_i * t_gd)
 
-           Here n and t are the normal and tangential partial
-           derivatives in the parameter domain.
+           Here n is the outward normal derivative and t_gd is the
+           tangential derivative **in the gluing-data tangent frame**.
+
+    v4 change: `createGluingDataArgyrisBasis` takes an optional
+    `tangentSign` parameter.  Pass -1 when the patch's natural
+    tangent runs opposite to the gluing-data tangent (i.e. the
+    interface orientation flag `flipped = !dirOrientation(ps1, tDir1)`
+    is true).  This corrects the `beta * partial_t v` term in the
+    boundary-column gamma-solve RHS, where `partial_t v` is taken in
+    the patch's own tangent parameter while `beta` is defined in the
+    gluing-data tangent frame.
 
     For boundary sides (no neighbouring patch), alpha=1, beta=0,
-    which recovers the standard zero-normal-derivative constraint.
+    tangentSign=+1 recovers the standard zero-normal-derivative
+    constraint.
 
     This file is part of the G+Smo library.
 
@@ -147,7 +157,11 @@ gsSparseMatrix<T> createGluingDataArgyrisBasis(
     boxSide side,
     T alpha0, T alpha1,
     T beta0,  T beta1,
-    T eps = 1e-12)
+    T eps = 1e-12,
+    T tangentSign = T(1))   // v4: multiplies the beta*dVm term in the
+                              // boundary-column RHS.  Pass -1 when the
+                              // patch tangent runs opposite to the
+                              // gluing-data tangent (`flipped`).
 {
     // --- Tangential (side) basis and its sub-bases ---
     gsBSplineBasis<T> sideBasis = *tensorBasis.boundaryBasis(side);
@@ -241,7 +255,8 @@ gsSparseMatrix<T> createGluingDataArgyrisBasis(
 
     gsInfo << "  Side: " << side
            << "  alpha = " << alpha0 << "*(1-t)+" << alpha1 << "*t"
-           << "  beta = "  << beta0  << "*(1-t)+" << beta1  << "*t\n";
+           << "  beta = "  << beta0  << "*(1-t)+" << beta1  << "*t"
+           << "  tangentSign = " << tangentSign << "\n";
 
     // =================================================================
     // Build the result matrix
@@ -365,11 +380,12 @@ gsSparseMatrix<T> createGluingDataArgyrisBasis(
             }
 
             // RHS for gamma collocation:
-            //   signN * (dBdry * V_m + dNeigh * G_m) + beta * V'_m = 0
-            //   => G_m = -(1/dNeigh) * [dBdry * V_m + signN * beta * V'_m]
+            //   signN * (dBdry * V_m + dNeigh * G_m) + tangentSign * beta * V'_m = 0
+            //   => G_m = -(1/dNeigh) * [dBdry * V_m + tangentSign * signN * beta * V'_m]
             gsMatrix<T> rhs(nPts, 1);
             for (index_t pt = 0; pt < nPts; ++pt)
-                rhs(pt, 0) = -(dBdry * Vm(pt) + signN * betaVals(pt) * dVm(pt)) / dNeigh;
+                rhs(pt, 0) = -(dBdry * Vm(pt)
+                               + tangentSign * signN * betaVals(pt) * dVm(pt)) / dNeigh;
 
             // Solve for gamma coefficients in the side basis
             gsMatrix<T> gamma;
@@ -758,6 +774,26 @@ int main(int argc, char* argv[])
     }
     gsInfo << "\n";
 
+    // ---- Determine tangentSign per (patch, side) from interfaces ----
+    // For each interior interface, both halves use tangentSign = -1 if
+    // the orientation is FLIPPED, otherwise +1.  For boundary sides
+    // (no neighbour), tangentSign = +1 (irrelevant because beta=0).
+    gsMatrix<T> tangentSignMat(mp.nPatches(), 4);
+    tangentSignMat.setOnes();
+    for (auto it = mp.iBegin(); it != mp.iEnd(); ++it)
+    {
+        const boundaryInterface& interf = *it;
+        const patchSide ps1 = interf.first();
+        const patchSide ps2 = interf.second();
+        const short_t tDir1 = 1 - ps1.direction();
+        const bool flipped = !interf.dirOrientation(ps1, tDir1);
+        const T ts = flipped ? T(-1) : T(1);
+        const index_t s1 = static_cast<index_t>(ps1.side()) - 1;
+        const index_t s2 = static_cast<index_t>(ps2.side()) - 1;
+        tangentSignMat(ps1.patch, s1) = ts;
+        tangentSignMat(ps2.patch, s2) = ts;
+    }
+
     // ---- Build the Argyris basis transformation for each patch/side ----
     // Side ordering: west=1, east=2, south=3, north=4 in boxSide convention
     const boxSide allSides[4] = {
@@ -777,13 +813,15 @@ int main(int argc, char* argv[])
             const T a1 = gluingData(p, 4 * s + 1);
             const T b0 = gluingData(p, 4 * s + 2);
             const T b1 = gluingData(p, 4 * s + 3);
+            const T ts = tangentSignMat(p, s);
 
             gsInfo << "\n  --- Side " << sideNames[s]
                    << " (alpha=" << a0 << "*(1-t)+" << a1 << "*t"
-                   << ", beta=" << b0 << "*(1-t)+" << b1 << "*t) ---\n";
+                   << ", beta=" << b0 << "*(1-t)+" << b1 << "*t"
+                   << ", tangentSign=" << ts << ") ---\n";
 
             gsSparseMatrix<T> E = createGluingDataArgyrisBasis(
-                tb, allSides[s], a0, a1, b0, b1);
+                tb, allSides[s], a0, a1, b0, b1, T(1e-12), ts);
 
             gsInfo << "  Embedding size: " << E.rows() << " x " << E.cols() << "\n";
         }
@@ -806,9 +844,10 @@ int main(int argc, char* argv[])
         const T a1 = gluingData(demoPatch, 4 * demoSideIdx + 1);
         const T b0 = gluingData(demoPatch, 4 * demoSideIdx + 2);
         const T b1 = gluingData(demoPatch, 4 * demoSideIdx + 3);
+        const T ts = tangentSignMat(demoPatch, demoSideIdx);
 
         gsSparseMatrix<T> E = createGluingDataArgyrisBasis(
-            tb0, allSides[demoSideIdx], a0, a1, b0, b1);
+            tb0, allSides[demoSideIdx], a0, a1, b0, b1, T(1e-12), ts);
 
         gsInfo << "Embedding matrix size: " << E.rows() << " x " << E.cols() << "\n";
         gsInfo << "Embedding matrix:\n" << E << "\n";
