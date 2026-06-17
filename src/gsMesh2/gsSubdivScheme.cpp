@@ -513,19 +513,23 @@ namespace gismo {
 
         // Make a map to identify the new vertices
         std::map<std::pair<Vertex, Face>, Vertex> Map;
-
+        //for (auto he : m_mesh->halfedges()) // for all halfedges
+        // add_vertex
+        
+    
+        //std::map<Halfedge, Vertex> Map; // TODO
 
         // Create of V-Faces
         Vertex v;
         std::vector<Vertex> ffv;
-        for (auto oldv : m_mesh->vertices()) {
-
+        for (auto oldv : m_mesh->vertices())
+        {
             // Map vertices and face of old mesh with new (calculated) vertex
             ffv.clear();
             for (auto oldf : m_mesh->faces(oldv))
             {
                 if (option == 1)
-                    v = new_mesh.add_vertex(ds_image_point_calc_vanila(oldv, oldf));
+                    v = new_mesh.add_vertex(ds_image_point_calc_vanila(oldv, oldf));//to remove
                 else
                     v = new_mesh.add_vertex(ds_image_point_calc_interpolation(oldv, oldf));
 
@@ -570,7 +574,58 @@ namespace gismo {
 
     }
 
-  
+    void gsSubdivScheme::ds_subdivide2()
+    {
+        const index_t option = m_options.askInt("ds.boundaryMask");
+
+        gsSurfMesh new_mesh;
+        for (auto he : m_mesh->halfedges()) // for all halfedges
+        {
+            Face f = m_mesh->face(he);
+            if (f.is_valid()) //to remove
+            {
+                new_mesh.add_vertex(ds_image_point_calc_vanila(m_mesh->from_vertex(he), f));
+            }
+            else
+                new_mesh.add_vertex(Point());//dummy
+        }
+
+        Halfedge h;
+        std::vector<Vertex> ffv;
+        ffv.reserve(4);
+        for (auto ee : m_mesh->edges()) // for all edges
+        {
+            ffv.clear();
+            h = m_mesh->halfedge(ee,0);
+            ffv.push_back( Vertex(h.idx()) );
+            h = m_mesh->cw_rotated_halfedge(h);
+            ffv.push_back( Vertex(h.idx()) );
+            h = m_mesh->prev_halfedge(h);
+            ffv.push_back( Vertex(h.idx()) );
+            h = m_mesh->cw_rotated_halfedge(h);
+            ffv.push_back( Vertex(h.idx()) );
+            new_mesh.add_face(ffv); // E-face
+        }
+
+        for (auto v : m_mesh->vertices()) // for all vertices
+        {
+            ffv.clear();
+            for (auto he : m_mesh->halfedges(v))
+                ffv.push_back( Vertex(he.idx()) );
+            new_mesh.add_face(ffv); // V-face
+        }
+
+        for (auto f : m_mesh->faces()) // for all faces
+        {
+            ffv.clear();
+            for (auto he : m_mesh->halfedges(f))
+                ffv.push_back( Vertex(he.idx()) );
+            new_mesh.add_face(ffv); // F-face
+        }
+        
+        *m_mesh = std::move(new_mesh);
+    }
+
     gsSurfMesh::Point
     gsSubdivScheme::ds_image_point_calc_interpolation(Vertex oldv, Face oldf)
     {
@@ -661,6 +716,9 @@ namespace gismo {
             }
         }
 
+        //return ds_image_point_calc_vanila(he); //TODO
+
+            
         real_t val{ 0 };
 
         gsSurfMesh::Point coords;

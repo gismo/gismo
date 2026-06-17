@@ -101,6 +101,7 @@ public: // Doo-Sabin functions
      *
     */
     void ds_subdivide();
+    void ds_subdivide2();
 
     /// Compute DS vertex limit positions
     gsSurfMesh::Face_property<Point> ds_vertex_limits(std::string label = "v:limit");
