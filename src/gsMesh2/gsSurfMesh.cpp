@@ -838,7 +838,6 @@ display_halfedge()
     }
 }
 
-
 void
 gsSurfMesh::
 triangulate()

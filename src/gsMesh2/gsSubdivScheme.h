@@ -42,6 +42,7 @@ public:
     typedef gsSurfMesh::Point Point;
     typedef gsSurfMesh::Vertex Vertex;
     typedef gsSurfMesh::Face Face;
+    typedef gsSurfMesh::Halfedge Halfedge;
 
 public:
 
@@ -92,16 +93,21 @@ public: // Catmull-Clark functions
 
 public: // Doo-Sabin functions
 
-    /** Doo-Sabin subdvision
-     * Options:
-     *
-     * ds_opt:
-     *   0 - Interpolation of the boundary using Chaikin's scheme.
-     *   1 - Vanila version that leads to trimmed boundaries.
-     *
-    */
+    /// Doo-Sabin subdivision
+    /// Options:
+    ///
+    /// ds_opt:
+    ///   0 - Interpolation of the boundary using Chaikin's scheme.
+    ///   1 - Vanila version that leads to trimmed boundaries.
+    ///   
+    ///   If you want to use polyhedral modification to interpolate the original boundary
+    ///   at the limit surface, you should use gradBoundary() function before and only your
+    ///   first subdivision.
     void ds_subdivide();
-    void ds_subdivide2();
+
+    /// Doo-Sabin subdivision. Works little bit faster than the generic implementation.
+    /// Only for closed models.
+    void ds_subdivide_closed();
 
     /// Compute DS vertex limit positions
     gsSurfMesh::Face_property<Point> ds_vertex_limits(std::string label = "v:limit");
@@ -113,11 +119,17 @@ public: // Doo-Sabin functions
 
 protected:
     
-    /// Doo-Sabin Image point calculation per vertex in a face (boundary interpolation)
-    Point ds_image_point_calc_interpolation(Vertex oldv, Face oldf);
+    /// Doo-Sabin Image point calculation per halfedge in a face (vanila - trimmed)
+    ///
+    /// \param hf: Given halfedge. Its start will be the vertex from which we will compute
+    /// the image.
+    Point ds_image_point_calc(Halfedge hf);
 
-    /// Doo-Sabin Image point calculation per vertex in a face (trimmed)
-    Point ds_image_point_calc_vanila(Vertex oldv, Face oldf);
+    /// Doo-Sabin Image point calculation per halfedge in a face (boundary interpolation - Chaikin scheme)
+    ///
+    /// \param hf: Given halfedge. Its start will be the vertex from which we will compute
+    /// the image.
+    Point ds_image_point_calc_interpolation(Halfedge hf);
 
 public: // Loop subdivision
 
