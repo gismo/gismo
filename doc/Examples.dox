@@ -70,8 +70,6 @@ In the gismo/examples sub-directory we find:
 
 - \subpage stokes_ieti_example
 
-- \subpage surfaceReparametrization_example
-
 - \subpage thbRefinement_example
 
 - \subpage thbSplineBasis_example

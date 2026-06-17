@@ -30,7 +30,7 @@ if(DOXYGEN_FOUND)
   # Set some Doxygen flags
   set(GISMO_DOXY_PROJECT_NAME             "G+Smo")
   set(GISMO_DOXY_OUTPUT_DIRECTORY_SUFFIX  "")
-  set(GISMO_DOXY_INPUT                    "\"${gismo_SOURCE_DIR}/src\" \"${gismo_SOURCE_DIR}/doc\" \"${gismo_SOURCE_DIR}/optional\" \"${gismo_BINARY_DIR}/gsCore\" \"${gismo_SOURCE_DIR}/plugins\" \"${gismo_SOURCE_DIR}/examples\"")
+  set(GISMO_DOXY_INPUT                    "\"${gismo_SOURCE_DIR}/src\" \"${gismo_SOURCE_DIR}/doc\" \"${gismo_SOURCE_DIR}/optional\" \"${gismo_BINARY_DIR}/gsCore\"") #\"${gismo_SOURCE_DIR}/plugins\" \"${gismo_SOURCE_DIR}/examples\"
 #  set(GISMO_DOXY_INPUT                    \"${gismo_SOURCE_DIR}/optional\")
   # Uncomment the line below to have doxygen process only
   # what is inside the doc folder when typing 'make doc'

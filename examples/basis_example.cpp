@@ -103,7 +103,8 @@ int main(int argc, char* argv[])
     gsInfo << "#Active basis functions at u: " << size(active) << ": \n"
            << active << "\n\n";
 
-    gsInfo << "Is number 2 active at the point ? " <<pBasis->isActive(2,u.col(0)) << "\n";
+    gsInfo << "Is number 2 active at the point ? " <<pBasis->isActive(0,u.col(0)) << ": \n"
+           << active << "\n\n";
 
 
     // values of all active functions at u
