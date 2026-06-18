@@ -2,6 +2,32 @@
 
 ## 2026-06-18 (session 13)
 
+### `poissonTHB_example.cpp`: fix topology preservation and remove debug exits for mask geometry
+
+**Problem.** Three separate issues blocked `poissonTHB_example` from running on `mask_approximation_fine_L3_NLO.xml`:
+
+1. **`std::exit(2)` in `IdentifyPatches`** (line 11522) — a debug trap that terminated the process immediately after printing boundary interfaces. This fired inside `buildOriginalMpbesReference` before any algorithm work started.
+
+2. **`mp1.computeTopology(1e-4, true)`** (unconditional, line 18756) — overwrote the 11 interfaces read from the XML with the 1 interface found by side-centre comparison. For the ring-topology mask geometry, `computeTopology` only matches 1 of 11 interfaces. With only 1 interface, MPBES twin identification was wrong for patches 3/4/6/8.
+
+3. **Default filename** was `hexagon_3p_4l.xml`, not the mask file.
+
+**Changes.**
+
+1. **Remove `std::exit(2)` and debug print block** from `IdentifyPatches`. The surrounding log lines (`[IdentifyPatches] boundaryInterfaces count=...`) and the `gsInfo` mirror prints were also removed.
+
+2. **Guard `mp1.computeTopology(1e-4, true)`** — now called only when `mp1.interfaces().empty()`. Preserves the 11 declared interfaces for the mask; for `hexagon_3p_4l.xml` (which declares 0 interfaces) falls back to detection as before.
+
+3. **Guard `newmp.computeTopology(tol, false)`** at output serialization — same pattern. For ring-topology outputs, avoids resetting topology before writing the result XML.
+
+4. **Switch default filename** to `mask_approximation_fine_L3_NLO.xml`. Old default commented out below it.
+
+**Verification.** Program runs to completion on `mask_approximation_fine_L3_NLO.xml`: all 11 interfaces detected, initial MPBES check shows 0 violations on all 10 patches, 30 coarsening steps complete via FIT. Exit 0. All `minusnumber=0` (no LO/NLO needed — expected for pure radial distortion).
+
+**Files changed:** `examples/poissonTHB_example.cpp`, `AGENT_CHANGELOG.md`
+
+---
+
 ### `fitting_mspline.cpp`: replace `computeTopology()` with geometric interface detection
 
 **Problem.** `gsMultiPatch::computeTopology()` detects interfaces by matching side-centre physical points. For ring-topology patches (the mask geometry), side centres of adjacent patches do not coincide as single points, so `computeTopology()` found only 1 of the 11 actual interfaces. The generated `mask_approximation_fine_L3_NLO.xml` had only that 1 interface declared, causing `poissonTHB_example` to skip patches 3, 6, and 8 entirely (not treated as fitting targets).

@@ -4042,6 +4042,8 @@ void generateOriginalGeometryMesh(
     
     meshOut.close();
     gsInfo << "Original geometry mesh saved to " << meshFile << "\n";
+    outfile << "generateOriginalGeometryMesh: Original geometry mesh saved to " << meshFile << "\n";
+    
 }
 
 void generateUniformPatchGrid(
@@ -18740,6 +18742,9 @@ AlgorithmResult unrefinementAlgorithmHBJ(
     int ourBox[5];
 
 
+    if (mp1.interfaces().empty())
+        mp1.computeTopology(1e-4, true);
+
     IdentifyPatches(mp1,
         Bells,
         isTouching,
@@ -19240,8 +19245,37 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                             outfile << "[co-patch coarsen] patch=" << cpe.patchId
                                     << " RTH=" << cpRTH << "\n";
                             if (cpRTH == 1) {
+                                // Build unstructured THB from post-rebuild boxMat
+                                gsTHBSplineBasis<2, real_t> cpTHBUnstructured(tens);
+                                for (int row = 0; row < cpLNZR; ++row) {
+                                    std::vector<index_t> box;
+                                    for (int col = 0; col < 5; ++col)
+                                        box.push_back(boxMat(cpe.patchId)(row)(col));
+                                    cpTHBUnstructured.refineElements(box);
+                                }
+                                // Extract canonical tree form (mirrors primary patch flow)
+                                lowCorners(cpe.patchId).clear();
+                                upCorners(cpe.patchId).clear();
+                                myLevel(cpe.patchId).clear();
+                                cpTHBUnstructured.tree().getBoxes(
+                                    lowCorners(cpe.patchId), upCorners(cpe.patchId), myLevel(cpe.patchId));
+                                cpLNZR = lowCorners(cpe.patchId).rows();
                                 lastNonZeroRowPerPatch(cpe.patchId) = cpLNZR;
                                 currentLastNonZeroRow(cpe.patchId) = cpLNZR;
+                                // Rewrite boxMat from canonical form
+                                for (int i = 0; i < cpLNZR; ++i) {
+                                    boxMat(cpe.patchId)(i).resize(5);
+                                    boxMat(cpe.patchId)(i)(0) = myLevel(cpe.patchId)(i);
+                                    boxMat(cpe.patchId)(i)(1) = (real_t)lowCorners(cpe.patchId)(i, 0) /
+                                        pow(2, cpTHBUnstructured.maxLevel() - myLevel(cpe.patchId)(i));
+                                    boxMat(cpe.patchId)(i)(2) = (real_t)lowCorners(cpe.patchId)(i, 1) /
+                                        pow(2, cpTHBUnstructured.maxLevel() - myLevel(cpe.patchId)(i));
+                                    boxMat(cpe.patchId)(i)(3) = (real_t)upCorners(cpe.patchId)(i, 0) /
+                                        pow(2, cpTHBUnstructured.maxLevel() - myLevel(cpe.patchId)(i));
+                                    boxMat(cpe.patchId)(i)(4) = (real_t)upCorners(cpe.patchId)(i, 1) /
+                                        pow(2, cpTHBUnstructured.maxLevel() - myLevel(cpe.patchId)(i));
+                                }
+                                // Build canonical THB from normalized boxMat
                                 gsTHBSplineBasis<2, real_t> cpTHB(tens);
                                 for (int row = 0; row < cpLNZR; ++row) {
                                     std::vector<index_t> box;
@@ -19417,7 +19451,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         const FittingMode fittingMode = g_useLocalFitting ? FittingMode::LocalFitting : FittingMode::GlobalFitting;
                         const bool useLocalFitting = (fittingMode == FittingMode::LocalFitting);
                         const bool verboseLocalRegionDump = false;
-                        const bool verboseFitMatrixDump = false;
+                        const bool verboseFitMatrixDump = true;
                         const bool verboseVectSolRowDump = false;
 
                         vectSol.setZero(commonSize, 2);
@@ -19483,6 +19517,46 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 interior,
                                 localityLambda,
                                 groupSeeds);
+
+                            // Extend local region to cover patches adjacent to the coarsened
+                            // group but NOT in it.  Their MPBES functions otherwise keep the
+                            // wrong seed from mapMpCoefficientsToMpbes (fine mp1 THB indices
+                            // are mismatched to the coarsened THB basis), producing large
+                            // globalErrorEval at shared corners/edges.
+                            if (coarsenGroup.size() > 1) {
+                                std::unordered_set<int> groupPatchIds;
+                                for (const auto& cpe : coarsenGroup)
+                                    groupPatchIds.insert(cpe.patchId);
+                                const index_t nPatchesMpbes = mpbes.nPatches();
+                                const auto& fd = mpbes.functionDescription();
+                                for (size_t ii = 0; ii < firstPatch.size(); ++ii) {
+                                    for (int side = 0; side < 2; ++side) {
+                                        int inGroup   = (side == 0) ? firstPatch[ii] : secondPatch[ii];
+                                        int neighbor  = (side == 0) ? secondPatch[ii] : firstPatch[ii];
+                                        if (!groupPatchIds.count(inGroup)) continue;
+                                        if ( groupPatchIds.count(neighbor)) continue;
+                                        if (neighbor < 0 || neighbor >= static_cast<int>(nPatchesMpbes)) continue;
+                                        // Add full [0,1]^2 coverage for this neighbor patch
+                                        localRegion.patchAABB[neighbor] = {0.0, 0.0, 1.0, 1.0};
+                                        localRegion.hasPatch[neighbor]  = true;
+                                        localRegion.enabled = true;
+                                        // Mark all MPBES functions touching neighbor as active
+                                        for (index_t f = 0; f < localRegion.basisInd.cols(); ++f) {
+                                            if (localRegion.basisInd(0, f) != 0.0) continue;
+                                            if (f >= static_cast<index_t>(fd.size())) break;
+                                            for (const auto& comp : fd[f]) {
+                                                if (!comp.empty() && comp[0] == neighbor) {
+                                                    localRegion.basisInd(0, f) = 1.0;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        outfile << "[local-region] neighbor patch=" << neighbor
+                                                << " added (group-adjacent, full domain)\n";
+                                    }
+                                }
+                            }
+
                             // Count local DOF before sampling so k can be derived from them
                             for (index_t f = 0; f < localRegion.basisInd.cols(); ++f)
                                 if (localRegion.basisInd(0, f) != 0.0)
@@ -21010,6 +21084,17 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 gsInfo << "The parameterization is not regular, attempt =" << attempt << "\n";
                                 for (index_t p = 0; p < numIrregular.size(); ++p)
                                     gsInfo << numIrregular(p) << "\n";
+                                {
+                                    std::string irregMeshName = filePrefix + "output_mesh_irregular_FIT_p"
+                                        + std::to_string(patch)
+                                        + "_lev" + std::to_string(levNow)
+                                        + "_att" + std::to_string(attempt);
+                                    gsInfo << "Saving irregular-FIT mesh: " << irregMeshName << "\n";
+                                    outfile << "Saving irregular-FIT mesh: " << irregMeshName << "\n";
+                                    generateVisualizationMesh(boxMat, 20, mpbes, mp1, vectSol,
+                                        currentLastNonZeroRow, irregMeshName, true);
+                                    outfile.flush();
+                                }
                                 //return 0;
                             }
 
@@ -21042,6 +21127,8 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                                << "). Withdrawing candidate.\n";
                                         outfile << "Geometry irregular after FIT (minusnumber=" << minusnumber
                                                 << "). Withdrawing candidate.\n";
+                                        outfile.flush();
+                                        std::exit(260614);
                                     }
                                     else if (regularButOverTolerance)
                                     {
@@ -21505,6 +21592,17 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 {
                                     outfile << "The parameterization is not regular\n";
                                     gsInfo << "The parameterization is not regular\n";
+                                    {
+                                        std::string irregMeshName = filePrefix + "output_mesh_irregular_NLO_p"
+                                            + std::to_string(patch)
+                                            + "_lev" + std::to_string(levNow)
+                                            + "_att" + std::to_string(attempt);
+                                        gsInfo << "Saving irregular-NLO mesh: " << irregMeshName << "\n";
+                                        outfile << "Saving irregular-NLO mesh: " << irregMeshName << "\n";
+                                        generateVisualizationMesh(boxMat, 20, mpbes, mp1, vectSol,
+                                            currentLastNonZeroRow, irregMeshName, true);
+                                        outfile.flush();
+                                    }
                                 }
 
                                 gsInfo << "Both LO and NLO failed for this attempt. Restoring baseVectSol and withdrawing candidate.\n";
@@ -21557,6 +21655,20 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                     //break;
                 } // end inner-body scope (aliases: nonCheckedCells, vectorS, pickedCells, lastNonZeroRow)
             } // end while (anyVectorSNonEmpty) — global inner loop
+
+            if (iteration == 1)
+            {
+                std::string meshName = filePrefix + "output_mesh_after_iter1_lev" + std::to_string(levNow);
+                gsInfo << "Saving after-iter1 mesh: " << meshName << "\n";
+                outfile << "Saving after-iter1 mesh: " << meshName << "\n";
+                if (Acceptedmpbes)
+                    generateVisualizationMesh(AcceptedboxMat, 20, *Acceptedmpbes, mp1, AcceptedvectSol,
+                        AcceptedlastRow, meshName, true);
+                else
+                    gsInfo << "[after-iter1] No accepted coarsening in iteration 1 — skipping mesh save.\n";
+                outfile.flush();
+            }
+
         } // end while (anyPoolNonEmpty && success) — global outer loop
     } // end for (levNow) — outer loop
     } // end global cell-selection block
@@ -21899,6 +22011,8 @@ int main(int argc, char** argv) {
     const bool useManualStartupInput = false;
      const std::string defaultFilename =
          "C:\\Users\\heydatey\\source\\repos\\gismo\\filedata\\generatedMPs\\mask_approximation_fine_L3_NLO.xml";
+    // const std::string defaultFilename =
+    //     "C:\\Users\\heydatey\\source\\repos\\gismo\\filedata\\generatedMPs\\hexagon_3p_4l.xml";
     // const std::string defaultFilename =
     //     "C:\\Users\\heydatey\\source\\repos\\gismo\\filedata\\generatedMPs\\tv_approximation_fine_L3.xml";
     //const std::string defaultFilename =
@@ -22300,7 +22414,8 @@ void saveMultipatchGeometry(
     try
     {
         real_t tol = 1e-8;
-        newmp.computeTopology(tol, false);
+        if (newmp.interfaces().empty())
+            newmp.computeTopology(tol, false);
 
         gsFileData<> fdG;
         fdG << newmp;
