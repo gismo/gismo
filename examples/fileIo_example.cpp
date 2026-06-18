@@ -102,6 +102,8 @@ int main(int argc, char *argv[])
   
   lookFor< gsMesh<> > (data) ;
 
+  lookFor< gsSurfMesh > (data) ;
+    
   lookFor< gsSolid<> > (data) ;
 
   lookFor< gsKnotVector<> > (data) ;

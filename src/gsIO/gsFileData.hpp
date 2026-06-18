@@ -1286,7 +1286,8 @@ bool gsFileData<T>::readOffFile( String const & fn )
     { gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
     gsXmlNode* g = internal::makeNode("Mesh", *data);
-    g->append_attribute( internal::makeAttribute("type", "off", *data) );
+    g->append_attribute( internal::makeAttribute("type", "", *data) );//no inheritance
+    g->append_attribute( internal::makeAttribute("format", "off", *data) );
     data->appendToRoot(g);
 
     String line;
@@ -1346,7 +1347,8 @@ bool gsFileData<T>::readStlFile( String const & fn )
     { gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
     gsXmlNode* g = internal::makeNode("Mesh", *data);
-    g->append_attribute( internal::makeAttribute("type", "off", *data) );
+    g->append_attribute( internal::makeAttribute("type", "", *data) );
+    g->append_attribute( internal::makeAttribute("format", "stl", *data) );
     data->appendToRoot(g);
 
     std::ostringstream triangles;

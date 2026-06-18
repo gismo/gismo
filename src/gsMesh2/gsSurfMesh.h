@@ -1006,6 +1006,9 @@ public:
     /// add a new vertex with position \c p
     Vertex add_vertex(const Point& p);
 
+    /// add \a nverts new vertex at once, with position \a 0
+    void add_batch_vertices(size_t nverts);
+
     /// add a new face with vertex list \c vertices
     /// \sa add_triangle, add_quad
     Face add_face(const std::vector<Vertex>& vertices);
@@ -1426,23 +1429,23 @@ public:
 
     /** get the type_info \c T of vertex property named \c. returns an typeid(void)
      if the property does not exist or if the type does not match. */
-    const std::type_info& get_vertex_property_type(const std::string& name)
+    const std::type_info& get_vertex_property_type(const std::string& name) const
     { return vprops_.get_type(name); }
     /** get the type_info \c T of halfedge property named \c. returns an typeid(void)
      if the property does not exist or if the type does not match. */
-    const std::type_info& get_halfedge_property_type(const std::string& name)
+    const std::type_info& get_halfedge_property_type(const std::string& name) const
     { return hprops_.get_type(name); }
     /** get the type_info \c T of edge property named \c. returns an typeid(void)
      if the property does not exist or if the type does not match. */
-    const std::type_info& get_edge_property_type(const std::string& name)
+    const std::type_info& get_edge_property_type(const std::string& name) const
     { return eprops_.get_type(name); }
     /** get the type_info \c T of face property named \c. returns an typeid(void)
      if the property does not exist or if the type does not match. */
-    const std::type_info& get_face_property_type(const std::string& name)
+    const std::type_info& get_face_property_type(const std::string& name) const
     { return fprops_.get_type(name); }
     /** get the type_info \c T of face property named \c. returns an typeid(void)
      if the property does not exist or if the type does not match. */
-    const std::type_info& get_mesh_property_type(const std::string& name)
+    const std::type_info& get_mesh_property_type(const std::string& name) const
     { return mprops_.get_type(name); }
 
     /// returns the names of all vertex properties
@@ -1950,7 +1953,7 @@ public:
     GSXML_COMMON_FUNCTIONS(gsSurfMesh)
     GSXML_GET_POINTER(gsSurfMesh)
     static std::string tag () { return "Mesh"; }
-    static std::string type() { return "off"; }
+    static std::string type() { return ""; } //no inheritance
 
     static void get_into(gsXmlNode * node, gsSurfMesh & result);
     static gsXmlNode * put (const gsSurfMesh & obj, gsXmlTree & data);

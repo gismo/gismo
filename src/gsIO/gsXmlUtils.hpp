@@ -275,40 +275,49 @@ private:
 public:
     GSXML_COMMON_FUNCTIONS(gsMesh<T>);
     static std::string tag () { return "Mesh"; }
-    static std::string type () { return "off"; }
+    static std::string type () { return ""; } // no inheritance
 
     static gsMesh<T> * get (gsXmlNode * node)
     {
-        assert( ( !strcmp( node->name(),"Mesh") )
-                &&  ( !strcmp(node->first_attribute("type")->value(),"off") ) );
-
-        gsMesh<T> * m = new gsMesh<T>;
-        std::istringstream str;
-        str.str( node->value() );
-
-        unsigned n  = atoi ( node->first_attribute("vertices")->value() ) ;
-        T x,y, z;
-        for (unsigned i=0; i<n; ++i)
+        assert( ( !strcmp( node->name(),"Mesh") ) );
+        if ( !strcmp(node->first_attribute("format")->value(),"off") )
         {
-            gsGetReal(str, x);
-            gsGetReal(str, y);
-            gsGetReal(str, z);
-            m->addVertex(x,y,z);
+            gsMesh<T> * m = new gsMesh<T>;
+            std::istringstream str;
+            str.str( node->value() );
+
+            unsigned n  = atoi ( node->first_attribute("vertices")->value() ) ;
+            T x,y, z;
+            for (unsigned i=0; i<n; ++i)
+            {
+                gsGetReal(str, x);
+                gsGetReal(str, y);
+                gsGetReal(str, z);
+                m->addVertex(x,y,z);
+            }
+
+            n  = atoi ( node->first_attribute("faces")->value() ) ;
+            unsigned c = 0;
+            std::vector<int> face;
+            for (unsigned i=0; i<n; ++i)
+            {
+                gsGetInt(str, c);
+                face.resize(c);
+                for (unsigned j=0; j<c; ++j)
+                    gsGetInt(str, face[j]);
+                m->addFace(face);
+            }
+            m->cleanMesh();
+            return m;
+        }
+        
+        if ( !strcmp(node->first_attribute("format")->value(),"surf") )
+        {
+            gsDebug<<"Reader not implemented.\n";
+            return new gsMesh<T>;
         }
 
-        n  = atoi ( node->first_attribute("faces")->value() ) ;
-        unsigned c = 0;
-        std::vector<int> face;
-        for (unsigned i=0; i<n; ++i)
-        {
-            gsGetInt(str, c);
-            face.resize(c);
-            for (unsigned j=0; j<c; ++j)
-                gsGetInt(str, face[j]);
-            m->addFace(face);
-        }
-        m->cleanMesh();
-        return m;
+        GISMO_ERROR("Problem in xml file Mesh format");
     }
 
     static gsXmlNode * put (const gsMesh<T> &,
