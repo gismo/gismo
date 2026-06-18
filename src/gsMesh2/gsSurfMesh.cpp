@@ -3057,6 +3057,9 @@ gsXml<gsSurfMesh>::put (const gsSurfMesh & obj, gsXmlTree & data)
     pname = obj.vertex_properties();
     for (auto & name : pname)
     {
+        if (name == "v:connectivity") continue;
+        if (name == "v:deleted") continue;
+        
         const std::type_info & ti = obj.get_vertex_property_type(name);
         if (ti == typeid(bool)) //sparse
         {
@@ -3118,6 +3121,9 @@ gsXml<gsSurfMesh>::put (const gsSurfMesh & obj, gsXmlTree & data)
     pname = obj.face_properties();
     for (auto & name : pname)
     {
+        if (name == "f:connectivity") continue;
+        if (name == "f:deleted") continue;
+
         const std::type_info & ti = obj.get_face_property_type(name);
         if (ti == typeid(bool)) //sparse
         {
@@ -3181,6 +3187,8 @@ gsXml<gsSurfMesh>::put (const gsSurfMesh & obj, gsXmlTree & data)
     pname = obj.edge_properties();
     for (auto & name : pname)
     {
+        if (name == "e:deleted") continue;
+
         const std::type_info & ti = obj.get_edge_property_type(name);
         if (ti == typeid(bool)) //sparse
         {
@@ -3245,6 +3253,8 @@ gsXml<gsSurfMesh>::put (const gsSurfMesh & obj, gsXmlTree & data)
     pname = obj.halfedge_properties();
     for (auto & name : pname)
     {
+        if (name == "h:connectivity") continue;
+
         const std::type_info & ti = obj.get_halfedge_property_type(name);
         if (ti == typeid(bool)) //sparse
         {
