@@ -2790,6 +2790,7 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
         result.add_batch_vertices(nv);
             
         gsXmlNode* fn = node->first_node("faces");
+        str.clear();
         str.str( fn->value() );
         unsigned k, c = 0;
         std::vector<gsSurfMesh::Vertex> face(4);
@@ -2821,6 +2822,7 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
         {
             if ( !strcmp( child->first_attribute("type")->value(), "bool" ) )
             {
+                str.clear();
                 str.str( child->value() );
                 auto vprop = result.vertex_property<bool>( child->first_attribute("name")->value() ); 
                 index_t r;
@@ -2829,6 +2831,7 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
             }
             else if ( !strcmp( child->first_attribute("type")->value(), "Point" ) )
             {
+                str.clear();
                 str.str( child->value() );
                 auto vprop = result.vertex_property<gsSurfMesh::Point>( child->first_attribute("name")->value() );
                 for (auto v : result.vertices() )
@@ -2840,6 +2843,7 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
             }
             else if ( !strcmp( child->first_attribute("type")->value(), "index" ) )
             {
+                str.clear();
                 str.str( child->value() );
                 auto vprop = result.vertex_property<index_t>( child->first_attribute("name")->value() );
                 for (auto v : result.vertices() )
@@ -2847,6 +2851,7 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
             }
             else if ( !strcmp( child->first_attribute("type")->value(), "real" ) )
             {
+                str.clear();
                 str.str( child->value() );
                 auto vprop = result.vertex_property<real_t>( child->first_attribute("name")->value() );
                 for (auto v : result.vertices() )
@@ -2862,6 +2867,7 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
         std::vector<gsSurfMesh::Halfedge> hlist;
         if (nullptr != en)
         {
+            str.clear();
             str.str( en->value() );
             hlist.resize(ne);
             unsigned k, c = 0;
@@ -2878,6 +2884,7 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
         {
             if ( !strcmp( child->first_attribute("type")->value(), "bool" ) )
             {
+                str.clear();
                 str.str( child->value() );
                 auto heprop = result.halfedge_property<bool>( child->first_attribute("name")->value() ); 
                 index_t r,c;
@@ -2886,6 +2893,7 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
             }
             else if ( !strcmp( child->first_attribute("type")->value(), "Point" ) )
             {
+                str.clear();
                 str.str( child->value() );
                 auto heprop = result.halfedge_property<gsSurfMesh::Point>( child->first_attribute("name")->value() );
                 gsSurfMesh::Halfedge he;
@@ -2903,6 +2911,7 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
             }
             else if ( !strcmp( child->first_attribute("type")->value(), "index" ) )
             {
+                str.clear();
                 str.str( child->value() );
                 auto heprop = result.halfedge_property<index_t>( child->first_attribute("name")->value() );
                 gsSurfMesh::Halfedge he;
@@ -2916,6 +2925,7 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
             }
             else if ( !strcmp( child->first_attribute("type")->value(), "real" ) )
             {
+                str.clear();
                 str.str( child->value() );
                 auto heprop = result.halfedge_property<real_t>( child->first_attribute("name")->value() );
                 gsSurfMesh::Halfedge he;

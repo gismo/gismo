@@ -153,6 +153,9 @@ void gsWriteParaview(gsSurfMesh const & sm,
         file << "POINT_DATA " << sm.n_vertices() << "\n";//once
     for( auto & pr : props )
     {
+        if (pr == "v:connectivity") continue;
+        if (pr == "v:deleted") continue;
+
         if (pr == "v:normal")
         {
             auto vn = sm.get_vertex_property<gsSurfMesh::Point>(pr);
@@ -194,7 +197,18 @@ void gsWriteParaview(gsSurfMesh const & sm,
             continue;
         }
 
-        gsWarn<< "gsWriteParaview: Property "<< pr << " ignored.\n";
+        auto vb = sm.get_vertex_property<bool>(pr);
+        if (vb)
+        {
+            file << "SCALARS "<<pr<<" float\nLOOKUP_TABLE default\n";
+            for (auto v : sm.vertices() )
+                file << vb[v] <<" ";
+            file << "\n";
+            continue;
+        }
+
+        const std::type_info & ti = sm.get_vertex_property_type(pr);
+        gsWarn<< "gsWriteParaview: Property "<< pr << " ignored, "<<ti.name()<<".\n";
     }
 
     file.close();
