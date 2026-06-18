@@ -105,8 +105,15 @@ void plot_errors<real_t>(const gsMatrix<real_t>&,
 #define PLOT_PRECISION 12
 
 void gsWriteParaview(gsSurfMesh const & sm,
+                     std::string const & fn)
+{
+    std::vector<std::string> pname = sm.vertex_properties();
+    gsWriteParaview(sm, fn, pname);
+}
+    
+void gsWriteParaview(gsSurfMesh const & sm,
                      std::string const & fn,
-                     std::initializer_list<std::string> props)
+                     std::vector<std::string> props)
 {
     std::string mfn(fn);
     mfn.append(".vtk");

@@ -2942,9 +2942,17 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
         std::istringstream str;
         str.str( node->value() );
 
-        unsigned nv  = atoi ( node->first_attribute("vertices")->value() ) ;
-        unsigned nf  = atoi ( node->first_attribute("faces")->value() ) ;
-        unsigned ne  = atoi ( node->first_attribute("edges")->value() ) ;
+            std::string line;
+            getline(str, line);
+            if ( line.compare(0,3,"OFF") != 0)
+                return;
+
+            std::istringstream lnstream;
+            getline(str, line);
+            lnstream.str(line);
+            unsigned nv, nf, ne(0);
+            lnstream >> std::ws >>  nv >> std::ws >> nf >> std::ws >> ne ;
+
         result.reserve(nv, std::max(3*nv, ne), nf);
         real_t x(0), y(0), z(0); // T?
         for (unsigned i=0; i<nv; ++i)
@@ -2995,6 +3003,12 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
             }
         }
     }// read off
+
+    if ( !strcmp(node->first_attribute("format")->value(),"vtk") )
+    {
+
+    }
+    
 }
 
 gsXmlNode *

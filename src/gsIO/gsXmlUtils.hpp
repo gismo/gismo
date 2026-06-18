@@ -286,9 +286,19 @@ public:
             std::istringstream str;
             str.str( node->value() );
 
-            unsigned n  = atoi ( node->first_attribute("vertices")->value() ) ;
-            T x,y, z;
-            for (unsigned i=0; i<n; ++i)
+            std::string line;
+            getline(str, line);
+            if ( line.compare(0,3,"OFF") != 0)
+                return nullptr;
+
+            std::istringstream lnstream;
+            getline(str, line);
+            lnstream.str(line);
+            unsigned nverts, nfaces, nedges(0);
+            lnstream >> std::ws >>  nverts >> std::ws >> nfaces >> std::ws >> nedges ;
+
+            T x, y, z;
+            for (unsigned i=0; i<nverts; ++i)
             {
                 gsGetReal(str, x);
                 gsGetReal(str, y);
@@ -296,10 +306,9 @@ public:
                 m->addVertex(x,y,z);
             }
 
-            n  = atoi ( node->first_attribute("faces")->value() ) ;
             unsigned c = 0;
             std::vector<int> face;
-            for (unsigned i=0; i<n; ++i)
+            for (unsigned i=0; i<nfaces; ++i)
             {
                 gsGetInt(str, c);
                 face.resize(c);
