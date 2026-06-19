@@ -27,28 +27,37 @@ public: // Constructors
   ///
   /// Default constructor.
   /// Creates the 'ds.BoundaryMask' optionw and initializes it with value `0`.
-  gsDooSabin() : gsSubdivisionScheme() {
-    m_options.addInt("ds.boundaryMask", "Option for masks in Doo-Sabin subdivision scheme",0);
+  gsDooSabin() : gsSubdivisionScheme()
+  {
+      m_options.addInt("ds.boundaryMask", "Option for masks in Doo-Sabin subdivision scheme",0);
   }
 
   /// \brief Constructor with a mesh to target.
   ///
   /// Constructor that accepts a mesh to be targeted by this constructor.
   /// Creates the 'ds.BoundaryMask' optionw and initializes it with value `0`.
-  gsDooSabin(gsSurfMesh* mesh) : gsSubdivisionScheme(mesh) {
-    m_options.addInt("ds.boundaryMask", "Option for masks in Doo-Sabin subdivision scheme",0);
+  gsDooSabin(gsSurfMesh* mesh) : gsSubdivisionScheme()
+  {
+      m_options.addInt("ds.boundaryMask", "Option for masks in Doo-Sabin subdivision scheme",0);
+      this->assign(mesh);
   }
 
 public:
-  void subdivide() override;
+  void subdivide_impl() GISMO_OVERRIDE;
 
 private: // Helper functions
-    
-    /// Doo-Sabin Image point calculation per vertex in a face (boundary interpolation)
-    Point ds_image_point_calc_interpolation(Vertex oldv, Face oldf);
 
-    /// Doo-Sabin Image point calculation per vertex in a face (trimmed)
-    Point ds_image_point_calc_vanila(Vertex oldv, Face oldf);
+    /// Doo-Sabin Image point calculation per halfedge in a face (vanila - trimmed)
+    ///
+    /// \param hf: Given halfedge. Its start will be the vertex from which we will compute
+    /// the image.
+    Point ds_image_point_calc(Halfedge hf);
+
+        /// Doo-Sabin Image point calculation per halfedge in a face (boundary interpolation - Chaikin scheme)
+    ///
+    /// \param hf: Given halfedge. Its start will be the vertex from which we will compute
+    /// the image.
+    Point ds_image_point_calc_interpolation(Halfedge hf);
   
 };//namespace internal
 

@@ -33,11 +33,15 @@ public: // Constructors
   ///
   /// Constructor that accepts a mesh to be targeted by this constructor.
   /// Catmull-Clark has no special options.
-  gsCatmullClark(gsSurfMesh* mesh) : gsSubdivisionScheme(mesh) {}
+  gsCatmullClark(gsSurfMesh* mesh): gsSubdivisionScheme()
+  { this->assign(mesh); }
 
-public:
-  void subdivide() override;
-  
+  static void apply(gsSurfMesh& mesh);
+
+protected:
+
+  void subdivide_impl() GISMO_OVERRIDE;
+
 };//namespace internal
 
 } // namespace gismo

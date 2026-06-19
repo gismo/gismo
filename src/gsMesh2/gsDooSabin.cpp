@@ -23,201 +23,155 @@ typedef gsSurfMesh::Face Face;
 typedef gsSurfMesh::Halfedge Halfedge;
 typedef gsSurfMesh::Edge Edge;
 
-void gsDooSabin::subdivide()
+void gsDooSabin::subdivide_impl()
 {
-
+       
     index_t option = m_options.askInt("ds.boundaryMask");
 
     // New Mesh instance
     gsSurfMesh new_mesh;
 
+    new_mesh.reserve(2 * m_mesh->n_edges(),
+                     2 * (m_mesh->n_vertices() + m_mesh->n_faces() + m_mesh->n_edges()),
+                     m_mesh->n_vertices() + m_mesh->n_faces() + m_mesh->n_edges());
+
     // Make a map to identify the new vertices
-    std::map<std::pair<Vertex, Face>, Vertex> Map;
-
-    // Create of V-Faces
-    Vertex v;
-    std::vector<Vertex> ffv;
-    for (auto oldv : m_mesh->vertices())
+    std::map<Halfedge, Vertex> Map;
+        
+    // Create the vertices images and assign them to a halfedge
+    for (auto he : m_mesh->halfedges()) // for all halfedges
     {
-
-        // Map vertices and face of old mesh with new (calculated) vertex
-        ffv.clear();
-        for (auto oldf : m_mesh->faces(oldv))
+        if (!m_mesh->is_boundary(he))
         {
-            if (option == 1)
-                v = new_mesh.add_vertex(
-                    ds_image_point_calc_vanila(oldv, oldf));
-            else
-                v = new_mesh.add_vertex(
-                    ds_image_point_calc_interpolation(oldv, oldf));
-
-            ffv.push_back(v);
-            Map[std::make_pair(oldv, oldf)] = v;
+            if (option > 0) // trimmed cases (option = 1).
+            {
+                Map[he] = new_mesh.add_vertex(ds_image_point_calc(he));
+            }
+            else // interpolatory case (option = 0).
+            {
+                Map[he] = new_mesh.add_vertex(ds_image_point_calc_interpolation(he));
+            }
         }
+    }
+
+    std::vector<Vertex> ffv;
+    // For all vertices create V-faces
+    for (auto v : m_mesh->vertices()) 
+    {
+        ffv.clear();
+        for (auto he : m_mesh->halfedges(v))
+        {
+            if (!m_mesh->is_boundary(he))
+            {
+                ffv.push_back(Map[he]);
+            }
+        }   
+
         if (ffv.size() == 2)
         {
-            new_mesh.add_edge(ffv[0], ffv[1]);
+            new_mesh.add_edge(ffv[0], ffv[1]); // V-Edge in the regular boundary case
         }
-        else if (ffv.size() > 2)
+        else
         {
-            new_mesh.add_face(ffv);
+            new_mesh.add_face(ffv); // V-face
         }
     }
 
-    // Create of F-faces
-    for (auto oldf : m_mesh->faces())
+    // For all faces create F-Faces
+    for (auto f : m_mesh->faces())
     {
         ffv.clear();
-        for (auto oldv : m_mesh->vertices(oldf))
-        {
-            ffv.push_back(Map[std::make_pair(oldv, oldf)]);
-        }
-        new_mesh.add_face(ffv);
+        for (auto he : m_mesh->halfedges(f))
+            ffv.push_back(Map[he]);
+        new_mesh.add_face(ffv); // F-face
     }
 
-    // Create E-Face by looping through boundary of F,V-faces
-    for (auto olde : m_mesh->edges())
+    Halfedge h;
+    // For all non-boundary edges create E-Faces
+    for (auto ee : m_mesh->edges()) 
     {
-        if (!(m_mesh->is_boundary(olde)))
+        if (!(m_mesh->is_boundary(ee)))
         {
-            auto h0 = m_mesh->halfedge(olde, 0);
-            auto h1 = m_mesh->halfedge(olde, 1);
-
-            new_mesh.add_quad(
-                Map[std::make_pair(m_mesh->from_vertex(h1), m_mesh->face(h0))],
-                Map[std::make_pair(m_mesh->from_vertex(h0), m_mesh->face(h0))],
-                Map[std::make_pair(m_mesh->from_vertex(h0), m_mesh->face(h1))],
-                Map[std::make_pair(m_mesh->from_vertex(h1), m_mesh->face(h1))]
-
-            );
+            ffv.clear();
+            h = m_mesh->halfedge(ee, 0);
+            ffv.push_back(Map[h]);
+            h = m_mesh->cw_rotated_halfedge(h);
+            ffv.push_back(Map[h]);
+            h = m_mesh->prev_halfedge(h);
+            ffv.push_back(Map[h]);
+            h = m_mesh->cw_rotated_halfedge(h);
+            ffv.push_back(Map[h]);
+            new_mesh.add_face(ffv); // E-face
         }
     }
+
     *m_mesh = std::move(new_mesh);
 }
 
-gsSurfMesh::Point gsDooSabin::ds_image_point_calc_interpolation(Vertex oldv,
-                                                                Face oldf)
+gsSurfMesh::Point
+gsDooSabin::ds_image_point_calc_interpolation(Halfedge hf)
 {
-    unsigned int face_valence{m_mesh->valence(oldf)};
-
-    // Find the halfedge of the vertex I am looking in case the IDs of m_mesh->
-    // // are not sequencial (i.e. Quad ID: 1,23,3,5)
-    Halfedge hf = m_mesh->halfedge(oldf);
-    for (auto hh : m_mesh->halfedges(oldf))
-    {
-        if (m_mesh->from_vertex(hh) == oldv)
-        {
-            hf = hh;
-            break;
-        }
-    }
-
-    real_t val{0};
-
-    gsEigen::Matrix<double, 3, 1, 0, 3, 1> coords;
+    gsSurfMesh::Point coords;
     coords.setZero();
+    Vertex oldv = m_mesh->from_vertex(hf);
 
-    if (m_mesh->is_boundary(oldv))
+    if (m_mesh->is_boundary(oldv)) 
     {
 
-        if (m_mesh->valence(oldv) == 2)
-        { // Corner's case (same position because it will go to limit)
+        if (m_mesh->valence(oldv) == 2) // Corner's case (same position because it will go to limit)
+        {
             coords = m_mesh->position(oldv);
         }
-        else
-        { // Chaikin method for the boundary
-            if (m_mesh->is_boundary(m_mesh->to_vertex(hf)))
+        else // Chaikin method for the boundary
+        { 
+            if (m_mesh->is_boundary(m_mesh->to_vertex(hf))) 
             {
-                coords = 0.75 * m_mesh->position(oldv) +
-                         0.25 * m_mesh->position(m_mesh->to_vertex(hf));
+                coords = 0.75 * m_mesh->position(oldv) + 0.25 * m_mesh->position(m_mesh->to_vertex(hf));
             }
-            else
+            else 
             {
-                coords = 0.25 * m_mesh->position(m_mesh->from_vertex(
-                                    m_mesh->prev_halfedge(hf))) +
-                         0.75 * m_mesh->position(oldv);
+                coords = 0.25 * m_mesh->position(m_mesh->from_vertex(m_mesh->prev_halfedge(hf))) + 0.75 * m_mesh->position(oldv);
             }
         }
     }
-    else
+    else 
     {
-
-        int tempj{0};
-
-        // Coefficient of the first (current) vertex (i=j case)
-        val = (real_t)(face_valence + 5) / (4 * face_valence);
-        coords += val * m_mesh->position(m_mesh->from_vertex(hf));
-        real_t sum_val{val};
-        Halfedge next_he{m_mesh->next_halfedge(hf)};
-
-        // Creating the mask (image vertice coefficients) by looping to the
-        // number of halfedges until I reach the initial half-edge (case i!=j).
-        while (next_he != hf)
-        {
-            tempj++;
-            val = (3 + 2 * cos(2.0 * EIGEN_PI * (0 - tempj) / face_valence)) /
-                  (4 * face_valence);
-            coords += val * m_mesh->position(m_mesh->from_vertex(next_he));
-            next_he = m_mesh->next_halfedge(next_he);
-            sum_val += val;
-        }
+        coords = ds_image_point_calc(hf);
     }
-
-    Point temp;
-    temp[0] = coords(0);
-    temp[1] = coords(1);
-    temp[2] = coords(2);
-
-    return temp;
+    return coords;
 }
 
-gsSurfMesh::Point gsDooSabin::ds_image_point_calc_vanila(Vertex oldv, Face oldf)
+
+gsSurfMesh::Point
+gsDooSabin::ds_image_point_calc(Halfedge hf)
 {
-    unsigned int face_valence{m_mesh->valence(oldf)};
+    unsigned int face_valence{ m_mesh->valence(m_mesh->face(hf)) };
 
-    // Find the halfedge of the vertex I am looking in case the IDs of m_mesh->
-    // // are not sequencial (i.e. Quad ID: 1,23,3,5)
-    Halfedge hf = m_mesh->halfedge(oldf);
-    for (auto hh : m_mesh->halfedges(oldf))
-    {
-        if (m_mesh->from_vertex(hh) == oldv)
-        {
-            hf = hh;
-            break;
-        }
-    }
-
-    real_t val{0};
-
-    gsEigen::Matrix<double, 3, 1, 0, 3, 1> coords;
+    Point coords;
     coords.setZero();
 
-    int tempj{0};
-
+    int tempj = 0;
+    real_t val = 0.0;
     // Coefficient of the first (current) vertex (i=j case)
     val = (real_t)(face_valence + 5) / (4 * face_valence);
     coords += val * m_mesh->position(m_mesh->from_vertex(hf));
-    real_t sum_val{val};
-    Halfedge next_he{m_mesh->next_halfedge(hf)};
+    real_t sum_val = val;
+    Halfedge next_he = m_mesh->next_halfedge(hf);
 
     // Creating the mask (image vertice coefficients) by looping to the number
     // of halfedges until I reach the initial half-edge (case i!=j).
     while (next_he != hf)
     {
         tempj++;
-        val = (3 + 2 * cos(2.0 * EIGEN_PI * (0 - tempj) / face_valence)) /
-              (4 * face_valence);
+        val = (3 + 2 * cos(2.0 * EIGEN_PI * (0 - tempj) / face_valence)) / (4 * face_valence);
         coords += val * m_mesh->position(m_mesh->from_vertex(next_he));
         next_he = m_mesh->next_halfedge(next_he);
         sum_val += val;
+
     }
 
-    Point temp;
-    temp[0] = coords(0);
-    temp[1] = coords(1);
-    temp[2] = coords(2);
+    return coords;
 
-    return temp;
 }
 
 } // namespace gismo

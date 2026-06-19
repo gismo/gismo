@@ -8,12 +8,12 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): L. Mussmaecher
+    Author(s): L. Mussmaecher, A. Mantzaflaris
 */
 
 #pragma once
 
-#include "gsCore/gsExport.h"
+#include <gsCore/gsExport.h>
 #include <gsIO/gsOptionList.h>
 #include <gsMesh2/gsSurfMesh.h>
 
@@ -31,34 +31,17 @@ protected: // Type definitions for mesh components.
     using Halfedge = gsSurfMesh::Halfedge;
     using Edge = gsSurfMesh::Edge;
 
-protected: // Constructors
+public:
+    /// Assign the mesh to be subdivided
+    void assign(gsSurfMesh* mesh) { m_mesh = mesh; }
+
+protected: // Constructor
     /// \brief Default constructor without options.
     /// This constructor simply creates a default gsSubdivisionScheme.
     /// No options are set.
     /// The member pointers `m_mesh` is not initialized, so some methods may
     /// fail if used without first initializing it.
     gsSubdivisionScheme() : m_options(gsOptionList()), m_mesh(nullptr) {}
-
-    /// \brief Constructor with a set of options for child classes to use.
-    /// The member pointers `m_mesh` is not initialized, so some methods may
-    /// fail if used without first initializing it.
-    explicit gsSubdivisionScheme(gsOptionList& options)
-        : m_options(options), m_mesh(nullptr)
-    {
-    }
-
-    /// \brief Constructor with a mesh to operate on.
-    explicit gsSubdivisionScheme(gsSurfMesh* mesh)
-        : m_options(gsOptionList()), m_mesh(mesh)
-    {
-    }
-
-    /// \brief Constructor with a mesh to operate on and a set of options for
-    /// child classes to use.
-    gsSubdivisionScheme(gsSurfMesh* mesh, gsOptionList& options)
-        : m_options(options), m_mesh(mesh)
-    {
-    }
 
 public: // Destructor
     /// \brief Normal destructor.
@@ -80,35 +63,15 @@ public: // Options
     /// Returns possible options for the chosen subdivision scheme.
     gsOptionList& options() { return m_options; }
 
+    /// Returns the mesh
+    gsSurfMesh & mesh() { GISMO_ASSERT(nullptr!=m_mesh,"Invalid mesh"); return *m_mesh; }
+
+    /// Returns the mesh in const context
+    const gsSurfMesh & mesh() const { GISMO_ASSERT(nullptr!=m_mesh,"Invalid mesh"); return *m_mesh; }
+
 public: // Subdivision method
-    /// \brief Subdivides the targeted mesh based on the chosen algorithm.
-    ///
-    /// The main subdivision method. Mutates the mesh `m_mesh` managed by this
-    /// by sudividing it. Has to be overriden by implementors.
-    virtual void subdivide() = 0;
 
-    /// \brief Subdivides a mesh based on the chosen algorithm.
-    ///
-    /// Takes in a pointer to a mesh and mutates that mesh by sudividing it.
-    /// Sets the member mesh to the given mesh.
-    ///
-    /// \param mesh The mesh to be subdivided. Will be changed in the operation.
-    virtual void subdivide(gsSurfMesh& mesh) { subdivide(mesh, 1); };
-
-    /// \brief Repeated subdivision.
-    ///
-    /// Runs subdivision algorithm defined in `subdivide` multiple times.
-    ///
-    /// \param mesh The mesh to be subdivided. Will be changed in the operation.
-    /// \param repetitions How often to repeath the subdivision algorithm.
-    void subdivide(gsSurfMesh& mesh, size_t repetitions)
-    {
-        m_mesh = &mesh;
-        for (size_t i = 0; i < repetitions; ++i)
-            this->subdivide();
-    }
-
-    /// \brief Repeated subdivision on the targeted mesh.
+/// \brief Repeated subdivision on the targeted mesh.
     ///
     /// Runs subdivision algorithm defined in `subdivide` multiple times.
     /// Operates on the targeted mesh and mutates it.
@@ -117,60 +80,41 @@ public: // Subdivision method
     void subdivide(size_t repetitions)
     {
         for (size_t i = 0; i < repetitions; ++i)
-            this->subdivide();
+            this->subdivide_impl();
     }
 
-    /// \brief Subdivides a mesh out-of-place.
+protected:
+    /// \brief Subdivides the targeted mesh based on the chosen algorithm.
     ///
-    /// Returns a subdivided copy of the given mesh without mutating the
-    /// original, using the algorithm defined in `subdivide`. Does not mutate
-    /// the given mesh.
-    ///
-    /// \param mesh The mesh to be subdivided. Will not be changed in the
-    /// operation.
-    gsSurfMesh subdivided(gsSurfMesh& mesh)
-    {
-        return this->subdivided(mesh, 1);
-    }
+    /// The main subdivision method. Mutates the mesh `m_mesh` managed by this
+    /// by sudividing it. Has to be overriden by implementors.
+    virtual void subdivide_impl() = 0;
 
-    /// \brief Subdivides the targeted mesh out-of-place.
-    ///
-    /// Returns a subdivided copy of the targeted mesh without mutating the
-    /// original, using the algorithm defined in `subdivide`. Does not mutate
-    /// the given mesh.
-    gsSurfMesh subdivided() { return this->subdivided(1); }
+public:
 
-    /// \brief Subdivides a mesh out-of-place, multiple times.
-    ///
-    /// Returns a copy of the given mesh that has been subdivided multiple times
-    /// without mutating the original, using the algorithm defined in
-    /// `subdivide`. Does not mutate the given mesh.
-    /// Sets the targeted mesh to the given mesh.
-    ///
-    /// \param mesh The mesh to be subdivided. Will not be changed in the
-    /// operation.
-    /// \param repetitions How often to repeath the subdivision algorithm.
-    gsSurfMesh subdivided(gsSurfMesh& mesh, size_t repetitions)
-    {
-        m_mesh = &mesh;
-        auto mesh_copy = gsSurfMesh(mesh);
-        this->subdivide(mesh_copy, repetitions);
-        return mesh_copy;
-    }
+    /// Compute vertex limit positions
+    virtual gsSurfMesh::Vertex_property<Point> vertex_limits(std::string label = "v:limit")
+    {GISMO_NO_IMPLEMENTATION}
 
-    /// \brief Subdivides the targeted mesh out-of-place, multiple times.
-    ///
-    /// Returns a copy of the targeted mesh that has been subdivided multiple
-    /// times without mutating the original, using the algorithm defined in
-    /// `subdivide`. Does not mutate the targeted mesh.
-    ///
-    /// \param repetitions How often to repeath the subdivision algorithm.
-    gsSurfMesh subdivided(size_t repetitions)
-    {
-        auto mesh_copy = gsSurfMesh(*m_mesh);
-        this->subdivide(mesh_copy, repetitions);
-        return mesh_copy;
-    }
+    /// Compute vertex limit normals
+    virtual gsSurfMesh::Vertex_property<Point> vertex_normal_limits(std::string label = "v:normal")
+    {GISMO_NO_IMPLEMENTATION}
+
+    /// Compute vertex limit tangent
+    virtual gsSurfMesh::Vertex_property<Point> vertex_tangent_limits(std::string label = "v:tanvec")
+    {GISMO_NO_IMPLEMENTATION}
+
+    /// Compute face limit positions
+    virtual gsSurfMesh::Face_property<Point> face_limits(std::string label = "f:limit")
+    {GISMO_NO_IMPLEMENTATION}
+
+    /// Compute face limit normals
+    virtual gsSurfMesh::Face_property<Point> face_normal_limits(std::string label = "f:normal")
+    {GISMO_NO_IMPLEMENTATION}
+
+    /// Compute face limit tangent
+    virtual gsSurfMesh::Face_property<Point> face_tangent_limits(std::string label = "f:tanvec")
+    {GISMO_NO_IMPLEMENTATION}
 
 public: // Validity
     /// \brief Validity of a subdivision algorithm.
@@ -231,7 +175,7 @@ public:
     gsIdentityScheme() : gsSubdivisionScheme() {}
 
 public:
-    void subdivide() {}
+    void subdivide_impl() GISMO_OVERRIDE {}
 };
 
 } // namespace gismo
