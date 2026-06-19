@@ -279,10 +279,11 @@ public:
 
     static gsMesh<T> * get (gsXmlNode * node)
     {
+        gsMesh<T> * m = new gsMesh<T>;
+
         assert( ( !strcmp( node->name(),"Mesh") ) );
         if ( !strcmp(node->first_attribute("format")->value(),"off") )
         {
-            gsMesh<T> * m = new gsMesh<T>;
             std::istringstream str;
             str.str( node->value() );
 
@@ -320,19 +321,15 @@ public:
             return m;
         }
         
-        if ( !strcmp(node->first_attribute("format")->value(),"surf") )
-        {
-            gsDebug<<"Reader not implemented.\n";
-            return new gsMesh<T>;
-        }
-
-        GISMO_ERROR("Problem in xml file Mesh format");
+        gsDebug<<"Reader not implemented.\n";
+        gsWarn<<"Problem in reading "<<node->first_attribute("format")->value()<<" file to gsMesh.\n";
+        return m;
     }
 
     static gsXmlNode * put (const gsMesh<T> &,
                             gsXmlTree & )
     {
-        return NULL;
+        return nullptr;
     }
 };
 
