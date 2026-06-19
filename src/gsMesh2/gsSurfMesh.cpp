@@ -184,7 +184,7 @@ bool
 gsSurfMesh::
 read(const std::string& filename)
 {
-    return read_mesh(*this, filename);
+    GISMO_NO_IMPLEMENTATION
 }
 
 bool
@@ -2774,11 +2774,6 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
 
     result = gsSurfMesh();
 
-    // !strcmp(node->first_attribute("format")->value(),"poly")
-    // !strcmp(node->first_attribute("format")->value(),"stl")
-    //!strcmp(node->first_attribute("format")->value(),"obj")
-    //!strcmp(node->first_attribute("format")->value(),"vtk")
-
     if ( !strcmp(node->first_attribute("format")->value(),"surf") )
     {
         std::istringstream str;
@@ -2945,23 +2940,21 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
 
         //to add: edge, face
     }
-
-    
-    if ( !strcmp(node->first_attribute("format")->value(),"off") )
+    else if ( !strcmp(node->first_attribute("format")->value(),"off") )
     {
         std::istringstream str;
         str.str( node->value() );
 
-            std::string line;
-            getline(str, line);
-            if ( line.compare(0,3,"OFF") != 0)
-                return;
+        std::string line;
+        getline(str, line);
+        if ( line.compare(0,3,"OFF") != 0)
+            return;
 
-            std::istringstream lnstream;
-            getline(str, line);
-            lnstream.str(line);
-            unsigned nv, nf, ne(0);
-            lnstream >> std::ws >>  nv >> std::ws >> nf >> std::ws >> ne ;
+        std::istringstream lnstream;
+        getline(str, line);
+        lnstream.str(line);
+        unsigned nv, nf, ne(0);
+        lnstream >> std::ws >>  nv >> std::ws >> nf >> std::ws >> ne ;
 
         result.reserve(nv, std::max(3*nv, ne), nf);
         real_t x(0), y(0), z(0); // T?
@@ -3012,13 +3005,23 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
                 sharp[he] = true;
             }
         }
-    }// read off
-
-    if ( !strcmp(node->first_attribute("format")->value(),"vtk") )
+    }// read off -- TODO...
+    else if ( !strcmp(node->first_attribute("format")->value(),"vtk") )
     {
-
+        gsWarn<<"vtk.\n";
     }
-    
+    else if ( !strcmp(node->first_attribute("format")->value(),"obj") )
+    {
+        std::istringstream str;
+        str.str( node->value() );
+        read_obj(result,str);
+    }
+    else if ( !strcmp(node->first_attribute("format")->value(),"stl") )
+    {
+        std::istringstream str;
+        str.str( node->value() );
+        //read_stl(result,str);
+    }
 }
 
 gsXmlNode *
