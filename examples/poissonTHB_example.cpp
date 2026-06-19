@@ -19557,16 +19557,34 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 }
                             }
 
-                            // Count local DOF before sampling so k can be derived from them
+                            // Count local DOFs and active patches for sampling density
+                            index_t nLocalPatches = 0;
                             for (index_t f = 0; f < localRegion.basisInd.cols(); ++f)
                                 if (localRegion.basisInd(0, f) != 0.0)
                                     ++basisSelected;
+                            for (index_t p = 0; p < static_cast<index_t>(localRegion.hasPatch.size()); ++p)
+                                if (localRegion.hasPatch[p])
+                                    ++nLocalPatches;
+                            if (nLocalPatches < 1) nLocalPatches = 1;
 
-                            // k*k > nLocalDOF with oversampling ratio 1.5
-                            const int kLocal = std::max(3, static_cast<int>(
-                                std::ceil(std::sqrt(1.5 * static_cast<real_t>(basisSelected)))));
+                            // Global k baseline: same density as the pre-existing global uv1 grid
+                            index_t totalGlobalPts = 0;
+                            for (index_t p = 0; p < uv1.size(); ++p)
+                                totalGlobalPts += uv1(p).cols();
+                            const int kGlobal = std::max(3, static_cast<int>(
+                                std::ceil(std::sqrt(static_cast<real_t>(totalGlobalPts)
+                                                    / static_cast<real_t>(uv1.size())))));
+
+                            // k is per-patch: total points = k*k*nLocalPatches >= 1.5*basisSelected,
+                            // but never sparser than the global grid (kGlobal) to avoid underdetermination
+                            const int kFromDofs = std::max(3, static_cast<int>(
+                                std::ceil(std::sqrt(1.5 * static_cast<real_t>(basisSelected)
+                                                    / static_cast<real_t>(nLocalPatches)))));
+                            const int kLocal = std::max(kGlobal, kFromDofs);
                             gsInfo << "local sampling: basisSelected=" << basisSelected
-                                   << " k=" << kLocal << " k*k=" << kLocal * kLocal << "\n";
+                                   << " nLocalPatches=" << nLocalPatches
+                                   << " k=" << kLocal << " k*k=" << kLocal * kLocal
+                                   << " total=" << kLocal * kLocal * nLocalPatches << "\n";
                             uvFitting = resampleLocalRegion(localRegion, uv1.size(), kLocal);
                         }
                         else
