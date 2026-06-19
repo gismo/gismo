@@ -1,5 +1,27 @@
 # Agent Change Log
 
+## 2026-06-19 (session 14)
+
+### `poissonTHB_example.cpp`: fix local fitting sample density
+
+**Bug.** `k = ceil(sqrt(1.5 × basisSelected))` treated `basisSelected` (total DOF count across all patches) as if it were a per-patch value. With `basisSelected=1023` and 10 patches, `k=40` → `40² × 10 = 16000` rows in the LS matrix — 13× more than the global case (1210 rows). This tripled LS solve time, thrashed CPU cache causing jack checks to slow 3× as well, with zero accuracy benefit.
+
+**Fix.** Divide by `nLocalPatches` (active patches in the local region) so `total points = k² × nLocalPatches ≥ 1.5 × basisSelected`. Added a floor at `kGlobal` (derived from the global `uv1` grid, typically k=11) to prevent going below global sampling density when `basisSelected` drops — otherwise late-stage steps (basisSelected=630, k=10) went underdetermined and produced irregular geometry (minusnumber=1483).
+
+**Result** on `mask_approximation_fine_L3_NLO.xml --epsilon-g 0.3 --local-fitting`:
+
+| | LS matrix (step 1) | Jack/step | Total |
+|---|---|---|---|
+| Old local | 16000 × 1023 | 13s | ~514s |
+| **Fixed local** | **1690 × 1023** | **5s** | **162s** |
+| Global (reference) | 1210 × 1023 | 4.5s | 188s |
+
+Local fitting is now 14% faster than global and 3.2× faster than before.
+
+**Files changed:** `examples/poissonTHB_example.cpp`, `AGENT_CHANGELOG.md`
+
+---
+
 ## 2026-06-18 (session 13)
 
 ### `poissonTHB_example.cpp`: fix topology preservation and remove debug exits for mask geometry
