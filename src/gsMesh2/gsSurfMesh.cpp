@@ -2990,16 +2990,14 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
 
         if (0!=ne)
         {
-            gsSurfMesh::Halfedge_property<bool> sharp = result.add_halfedge_property<bool>("h:sharp");
-            face.resize(2);
+            gsSurfMesh::Halfedge_property<bool> sharp =
+                result.add_halfedge_property<bool>("h:sharp");
             gsSurfMesh::Halfedge he;
-            for(unsigned i = 0; i!=ne; ++i)
+            for (unsigned i =0; i < ne
+                     && gsGetInt(str, k) && gsGetInt(str, c)
+                     ; i++)
             {
-                gsGetInt(str, k);
-                face[0] = gsSurfMesh::Vertex(k);
-                gsGetInt(str, k);
-                face[1] = gsSurfMesh::Vertex(k);
-                he = result.find_halfedge(face[0], face[1]);
+                he = result.find_halfedge(gsSurfMesh::Vertex(k), gsSurfMesh::Vertex(c));
                 sharp[he] = true;
                 he = result.opposite_halfedge(he);
                 sharp[he] = true;
