@@ -931,7 +931,7 @@ gsSurfMesh::compute_face_normal(Face f) const
     if (next_halfedge(h) == hend) // face is a triangle
     {
         p2-=p1; p0-=p1;
-        return p2.cross(p1).normalized();
+        return p2.cross(p0).normalized();
     }
 
     else // face is a general polygon
