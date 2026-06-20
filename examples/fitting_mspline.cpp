@@ -1050,21 +1050,47 @@ namespace
             gsMatrix<index_t> ids1 = g1.basis().boundaryOffset(ps1.side(), 0);
             gsMatrix<index_t> ids2 = g2.basis().boundaryOffset(ps2.side(), 0);
 
+            real_t interfaceMaxGap = 0;
             if (ids1.rows() != ids2.rows())
             {
-                ++violatingInterfacesOut;
-                maxGapOut = std::numeric_limits<real_t>::infinity();
-                continue;
+                // Non-matching mesh sizes: use geometric curve sampling instead of
+                // control-point comparison. Sample both boundary curves at N points
+                // and compare physical positions.
+                gsGeometry<>::uPtr c1 = g1.boundary(ps1.side());
+                gsGeometry<>::uPtr c2 = g2.boundary(ps2.side());
+                if (!c1 || !c2)
+                {
+                    ++violatingInterfacesOut;
+                    maxGapOut = std::numeric_limits<real_t>::infinity();
+                    continue;
+                }
+                const int nSample = 25;
+                gsMatrix<> supp1 = c1->support();
+                gsMatrix<> supp2 = c2->support();
+                const bool orientSame = bi.dirOrientation(ps1, 1 - ps1.direction());
+                for (int k = 0; k <= nSample; ++k)
+                {
+                    const real_t t = static_cast<real_t>(k) / nSample;
+                    gsMatrix<> u1(1, 1), u2(1, 1);
+                    u1(0, 0) = supp1(0, 0) + t * (supp1(0, 1) - supp1(0, 0));
+                    u2(0, 0) = orientSame
+                        ? supp2(0, 0) + t * (supp2(0, 1) - supp2(0, 0))
+                        : supp2(0, 1) - t * (supp2(0, 1) - supp2(0, 0));
+                    const real_t gap = (c1->eval(u1) - c2->eval(u2)).norm();
+                    interfaceMaxGap = std::max(interfaceMaxGap, gap);
+                    maxGapOut      = std::max(maxGapOut, gap);
+                }
             }
-
-            const bool orientSame = bi.dirOrientation(ps1, 1 - ps1.direction());
-            real_t interfaceMaxGap = 0;
-            for (index_t k = 0; k < ids1.rows(); ++k)
+            else
             {
-                const index_t mapped = orientSame ? k : (ids1.rows() - 1 - k);
-                const real_t gap = (g1.coef(ids1(k, 0)) - g2.coef(ids2(mapped, 0))).norm();
-                interfaceMaxGap = std::max(interfaceMaxGap, gap);
-                maxGapOut = std::max(maxGapOut, gap);
+                const bool orientSame = bi.dirOrientation(ps1, 1 - ps1.direction());
+                for (index_t k = 0; k < ids1.rows(); ++k)
+                {
+                    const index_t mapped = orientSame ? k : (ids1.rows() - 1 - k);
+                    const real_t gap = (g1.coef(ids1(k, 0)) - g2.coef(ids2(mapped, 0))).norm();
+                    interfaceMaxGap = std::max(interfaceMaxGap, gap);
+                    maxGapOut = std::max(maxGapOut, gap);
+                }
             }
 
             if (interfaceMaxGap > tolerance)
@@ -1427,6 +1453,7 @@ int main(int argc, char* argv[])
 
     Options opt;
     nonlinearOptions nlo;
+    int extraRefinePatch = -1;
 
     gsCmdLine cmd("Distort multipatch geometry while preserving exact C0 continuity.");
     cmd.addPlainString("filename", "Input multipatch XML file.", filename);
@@ -1435,6 +1462,7 @@ int main(int argc, char* argv[])
     cmd.addInt("g", "fit-grid", "Grid size per patch for Jacobian sampling (default 20).", opt.fitGrid);
     cmd.addReal("t", "bisect-tol", "Bisection interval tolerance for strength/alpha (default 1e-2).", opt.bisectTol);
     cmd.addReal("j", "det-threshold", "Report if jacobian determinant < threshold.", opt.detThreshold);
+    cmd.addInt("R", "extra-refine-patch", "Apply one extra uniform refinement to this patch before distortion (-1 = disabled).", extraRefinePatch);
     cmd.addInt("p", "stress-patch", "Patch index for stress test (-1: all patches with bisection).", nlo.patchIndex);
     cmd.addReal("a", "stress-strength", "Single outward distortion strength.", nlo.strength);
     cmd.addReal("M", "stress-min-det", "Minimum oriented Jacobian determinant used for reporting.", nlo.minOrientedDet);
@@ -1684,6 +1712,28 @@ int main(int argc, char* argv[])
 
     detectTopologyGeometrically(newmp);
     enforceC0AcrossInterfaces(newmp);
+
+    // Optional extra uniform refinement for a specific patch.
+    // uniformRefine() inserts knots via exact knot-insertion — geometry is unchanged,
+    // so the boundary of the refined patch stays geometrically C0 with its neighbours.
+    // Boundary control points are protected by fixedPointMask throughout distortion,
+    // so no C0 gap can appear even though enforceC0AcrossInterfaces skips the
+    // size-mismatched interface. The only effect is more DOFs with smaller support
+    // on the refined patch, enabling genuinely local fitting in poissonTHB_example.
+    if (extraRefinePatch >= 0 && extraRefinePatch < static_cast<int>(newmp.nPatches()))
+    {
+        const index_t basisBefore = newmp.patch(extraRefinePatch).basis().size();
+        newmp.patch(extraRefinePatch).uniformRefine();
+        // Also refine the reference mesh so restoreBoundaryControlPointsFromReference
+        // keeps matching control-point counts during bisection trials.
+        mp->patch(extraRefinePatch).uniformRefine();
+        const index_t basisAfter = newmp.patch(extraRefinePatch).basis().size();
+        detectTopologyGeometrically(newmp);
+        log << "\nExtra uniform refinement: patch " << extraRefinePatch
+            << " basis size " << basisBefore << " -> " << basisAfter << "\n";
+        gsInfo << "Extra uniform refinement: patch " << extraRefinePatch
+               << " basis size " << basisBefore << " -> " << basisAfter << "\n";
+    }
 
     const bool hasNegativeAfterFitting =
         runMirrorAwareJacobianCheck(*mp, newmp, opt.fitGrid, opt.detThreshold,

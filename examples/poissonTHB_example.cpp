@@ -13333,8 +13333,10 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
         return changed;
     };
 
-    index_t closureIterations = 0;
+    // Multi-pass closure: iteratively select functions whose support intersects the
+    // current region AABBs and expand the region until no new functions are added.
     bool selectedNewFunction = true;
+    index_t closureIterations = 0;
     while (selectedNewFunction)
     {
         selectedNewFunction = false;
@@ -13376,8 +13378,8 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
             }
 
             region.basisInd(0, f) = 1.0;
-            const bool grew = expandRegionByFunction(f);
             selectedNewFunction = true;
+            const bool grew = expandRegionByFunction(f);
 
             if (outfile.is_open())
             {
@@ -13393,9 +13395,6 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
             }
         }
     }
-
-    if (closureIterations > 0 && !selectedNewFunction)
-        --closureIterations;
 
     if (outfile.is_open())
     {

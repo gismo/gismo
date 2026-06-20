@@ -1,5 +1,37 @@
 # Agent Change Log
 
+## 2026-06-20 (session 15)
+
+### `fitting_mspline.cpp`: add `--extra-refine-patch` flag and fix geometric C0 check
+
+**Context.** Investigation into whether extra B-spline refinement on a single patch could enable truly local fitting in `poissonTHB_example --local-fitting` by making interior functions small enough to avoid interface twins.
+
+**Changes to `fitting_mspline.cpp`:**
+
+1. **New `--extra-refine-patch <p>` (`-R`) flag.** After `newmp` is created and `enforceC0AcrossInterfaces` is applied, calls `uniformRefine()` on the specified patch in both `newmp` and the reference `*mp`. Both must be refined together because `restoreBoundaryControlPointsFromReference` asserts matching control-point counts.
+
+   `uniformRefine()` is exact knot insertion — geometry is unchanged. Boundary control points stay geometrically C0 with neighbours. `enforceC0AcrossInterfaces` silently skips size-mismatched interfaces (line 991), but this is harmless since boundary points are also protected by `fixedPointMask` during distortion.
+
+2. **Geometric C0 check for non-matching interfaces in `hasC0Violation`.** The original code set `maxGapOut = infinity` for any size-mismatched interface pair. Replaced with 25-point parametric sampling of both boundary curves via `geometry.boundary(side)`, comparing physical positions. Matching-size interfaces still use the original control-point comparison.
+
+3. **Generated `mask_approximation_fine_L3_p0refined_NLO.xml`** — mask geometry with patch 0 at 16×16 B-spline background (others at 8×8). Distortion applied as usual. File written to `filedata/generatedMPs/`.
+
+**Also: revert single-pass closure to multi-pass in `poissonTHB_example.cpp`.** Session 14 left a broken single-pass `buildLocalCoarseningRegion` (exit 86 on any ring-topology step). Reverted to original `while (selectedNewFunction)` multi-pass loop.
+
+**Test result on `mask_approximation_fine_L3_p0refined_NLO.xml --local-fitting`:** `nLocalPatches=10` for every step — closure still cascades to all patches.
+
+**Root cause diagnosed.** The multi-pass AABB expansion is the accelerant:
+- Starting from a small interior AABB on patch 0, each selected function expands the AABB to its full support
+- Eventually the AABB grows to cover boundary-adjacent level-0 functions (support ≈ 0.25 of the 16×16 mesh but still touching the boundary for outermost rows/columns)
+- Those functions have twin components at interfaces → cascade to all 10 patches via `expandRegionByFunction`
+- Extra refinement shifts the background mesh but does not prevent the AABB from eventually reaching boundary-touching functions over multiple closure iterations
+
+**Conclusion.** True local fitting is not achievable for connected multipatch ring geometries with the current multi-pass closure. The expansion is correct for partition of unity; restricting it to exclude boundary functions would break the LS system.
+
+**Files changed:** `examples/fitting_mspline.cpp`, `examples/poissonTHB_example.cpp`, `AGENT_CHANGELOG.md`, `filedata/generatedMPs/mask_approximation_fine_L3_p0refined_NLO.xml`
+
+---
+
 ## 2026-06-19 (session 14)
 
 ### `poissonTHB_example.cpp`: fix local fitting sample density
