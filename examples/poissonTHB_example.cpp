@@ -131,7 +131,11 @@ struct LocalCoarseningRegion
 {
     bool enabled = false;
     int lambda = 0;
-    std::vector<std::array<real_t, 4>> patchAABB;
+    // Exact union: one list of non-overlapping rectangles per patch.
+    // Using a list of rects instead of a single bounding box prevents the
+    // "gap bridging" effect where two distant twin strips on the same patch
+    // were merged into one large AABB that captured all functions in between.
+    std::vector<std::vector<std::array<real_t, 4>>> patchAABB;
     std::vector<bool> hasPatch;
     gsMatrix<real_t> basisInd;
 };
@@ -812,6 +816,7 @@ ofstream outfile;
 ofstream summaryFile;
 ofstream xboxFile;
 ofstream yboxFile;
+ofstream closureLogFile;
 
 // Set to true to emit INTERFACE_X_Y_DIAGNOSTIC_BEGIN/END blocks in the console/log.
 // Off by default — these blocks are very verbose (~60 lines per interface per step).
@@ -12916,17 +12921,25 @@ static inline bool intervalsOverlap(real_t a0, real_t a1, real_t b0, real_t b1)
     return (a0 <= b1) && (b0 <= a1);
 }
 
+// Check if a function support intersects any rectangle in the per-patch list.
 template <typename SupportMatrix>
-static inline bool supportIntersectsAabb(const SupportMatrix& support, const std::array<real_t, 4>& box)
+static inline bool supportIntersectsRectList(const SupportMatrix& support,
+                                              const std::vector<std::array<real_t, 4>>& rects)
 {
     const real_t u0 = static_cast<real_t>(support(0, 0));
     const real_t u1 = static_cast<real_t>(support(0, 1));
     const real_t v0 = static_cast<real_t>(support(1, 0));
     const real_t v1 = static_cast<real_t>(support(1, 1));
-    return intervalsOverlap(u0, u1, box[0], box[2]) &&
-           intervalsOverlap(v0, v1, box[1], box[3]);
+    for (const auto& box : rects)
+        if (intervalsOverlap(u0, u1, box[0], box[2]) &&
+            intervalsOverlap(v0, v1, box[1], box[3]))
+            return true;
+    return false;
 }
 
+// Merge rect {uMin,vMin,uMax,vMax} into the per-patch exact-union list.
+// Overlapping existing rects are absorbed into the new rect (greedy merge),
+// keeping the list free of pairwise overlaps.
 static inline bool mergePatchAabb(LocalCoarseningRegion& region,
                                   int patch,
                                   real_t uMin,
@@ -12942,25 +12955,48 @@ static inline bool mergePatchAabb(LocalCoarseningRegion& region,
     uMax = clampToUnit(uMax);
     vMax = clampToUnit(vMax);
 
-    if (uMax < uMin)
-        std::swap(uMax, uMin);
-    if (vMax < vMin)
-        std::swap(vMax, vMin);
+    if (uMax < uMin) std::swap(uMax, uMin);
+    if (vMax < vMin) std::swap(vMax, vMin);
+
+    std::array<real_t, 4> incoming = { uMin, vMin, uMax, vMax };
 
     if (!region.hasPatch[patch])
     {
-        region.patchAABB[patch] = { uMin, vMin, uMax, vMax };
         region.hasPatch[patch] = true;
+        region.patchAABB[patch].push_back(incoming);
         return true;
     }
 
-    auto old = region.patchAABB[patch];
-    region.patchAABB[patch][0] = std::min(region.patchAABB[patch][0], uMin);
-    region.patchAABB[patch][1] = std::min(region.patchAABB[patch][1], vMin);
-    region.patchAABB[patch][2] = std::max(region.patchAABB[patch][2], uMax);
-    region.patchAABB[patch][3] = std::max(region.patchAABB[patch][3], vMax);
+    // Containment-only merge: absorb existing rects that are contained in
+    // incoming (subsumed), and skip if incoming is contained in an existing rect.
+    // Two rects that merely overlap but neither contains the other are kept separate
+    // so the list stays an exact union, not an over-approximating bounding box.
+    auto rectContains = [](const std::array<real_t, 4>& outer,
+                           const std::array<real_t, 4>& inner) -> bool {
+        return outer[0] <= inner[0] && outer[1] <= inner[1] &&
+               outer[2] >= inner[2] && outer[3] >= inner[3];
+    };
 
-    return old != region.patchAABB[patch];
+    bool keep = true;
+    while (keep)
+    {
+        keep = false;
+        for (auto it = region.patchAABB[patch].begin();
+             it != region.patchAABB[patch].end(); ++it)
+        {
+            if (rectContains(*it, incoming))
+                return false; // incoming already covered, nothing to add
+            if (rectContains(incoming, *it))
+            {
+                region.patchAABB[patch].erase(it);
+                keep = true;
+                break;
+            }
+        }
+    }
+
+    region.patchAABB[patch].push_back(incoming);
+    return true;
 }
 
 static inline bool pointInsidePatchRegion(const LocalCoarseningRegion& region,
@@ -12973,8 +13009,10 @@ static inline bool pointInsidePatchRegion(const LocalCoarseningRegion& region,
     if (patch < 0 || patch >= static_cast<int>(region.hasPatch.size()) || !region.hasPatch[patch])
         return false;
 
-    const auto& box = region.patchAABB[patch];
-    return (u >= box[0] && u <= box[2] && v >= box[1] && v <= box[3]);
+    for (const auto& box : region.patchAABB[patch])
+        if (u >= box[0] && u <= box[2] && v >= box[1] && v <= box[3])
+            return true;
+    return false;
 }
 
 static inline bool patchElementIntersectsRegion(const LocalCoarseningRegion& region,
@@ -12987,11 +13025,14 @@ static inline bool patchElementIntersectsRegion(const LocalCoarseningRegion& reg
     if (patch < 0 || patch >= static_cast<int>(region.hasPatch.size()) || !region.hasPatch[patch])
         return false;
 
-    const auto& box = region.patchAABB[patch];
-    return intervalsOverlap(lower(0), upper(0), box[0], box[2]) &&
-           intervalsOverlap(lower(1), upper(1), box[1], box[3]);
+    for (const auto& box : region.patchAABB[patch])
+        if (intervalsOverlap(lower(0), upper(0), box[0], box[2]) &&
+            intervalsOverlap(lower(1), upper(1), box[1], box[3]))
+            return true;
+    return false;
 }
 
+// Returns true if the bounding box of the rect list covers [0,1]^2.
 static inline bool patchRegionCoversWholePatch(const LocalCoarseningRegion& region,
                                                int patch,
                                                real_t tol = 1e-12)
@@ -13001,11 +13042,14 @@ static inline bool patchRegionCoversWholePatch(const LocalCoarseningRegion& regi
     if (patch < 0 || patch >= static_cast<int>(region.hasPatch.size()) || !region.hasPatch[patch])
         return false;
 
-    const auto& box = region.patchAABB[patch];
-    return std::abs(box[0]) <= tol &&
-           std::abs(box[1]) <= tol &&
-           std::abs(box[2] - 1.0) <= tol &&
-           std::abs(box[3] - 1.0) <= tol;
+    real_t u0 = 1, v0 = 1, u1 = 0, v1 = 0;
+    for (const auto& box : region.patchAABB[patch])
+    {
+        u0 = std::min(u0, box[0]); v0 = std::min(v0, box[1]);
+        u1 = std::max(u1, box[2]); v1 = std::max(v1, box[3]);
+    }
+    return std::abs(u0) <= tol && std::abs(v0) <= tol &&
+           std::abs(u1 - 1.0) <= tol && std::abs(v1 - 1.0) <= tol;
 }
 
 static LocalCoarseningRegion buildLocalCoarseningRegion(
@@ -13021,7 +13065,7 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
     const index_t nPatches = mpbes.nPatches();
     const index_t nFunctions = mpbes.size();
 
-    region.patchAABB.resize(nPatches, { 1.0, 1.0, 0.0, 0.0 });
+    region.patchAABB.resize(nPatches); // each patch starts with empty rect list
     region.hasPatch.assign(nPatches, false);
     region.basisInd.setZero(1, nFunctions);
     region.lambda = std::max(0, localityLambda);
@@ -13030,6 +13074,19 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
     {
         std::ostringstream ss;
         ss << "[" << box[0] << ", " << box[1] << "] x [" << box[2] << ", " << box[3] << "]";
+        return ss.str();
+    };
+
+    auto formatBoxList = [&](const std::vector<std::array<real_t, 4>>& rects) -> std::string
+    {
+        if (rects.empty()) return "(empty)";
+        std::ostringstream ss;
+        for (size_t i = 0; i < rects.size(); ++i)
+        {
+            if (i) ss << " | ";
+            ss << "[" << rects[i][0] << "," << rects[i][1] << "]x["
+               << rects[i][2] << "," << rects[i][3] << "]";
+        }
         return ss.str();
     };
 
@@ -13078,38 +13135,20 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
             clampToUnit(v2 + region.lambda * dv)
         };
 
-        const bool hadPatch = region.hasPatch[sourcePatch];
-        const std::array<real_t, 4> oldBox = hadPatch ? region.patchAABB[sourcePatch] : std::array<real_t, 4>{ 1.0, 1.0, 0.0, 0.0 };
-
-        const bool changed = mergePatchAabb(region,
-                                            sourcePatch,
-                                            requestedBox[0],
-                                            requestedBox[1],
-                                            requestedBox[2],
-                                            requestedBox[3]);
+        mergePatchAabb(region,
+                       sourcePatch,
+                       requestedBox[0],
+                       requestedBox[1],
+                       requestedBox[2],
+                       requestedBox[3]);
 
         if (outfile.is_open())
         {
             outfile << "[local-region] seed cell " << cellNum
                     << ": level=" << cell.level
                     << " cell=[" << cell.x1 << ", " << cell.y1 << "] x [" << cell.x2 << ", " << cell.y2 << "]"
-                    << " requestedBox=" << formatBox(requestedBox) << "\n";
-            if (!hadPatch)
-            {
-                outfile << "  -> created patch " << sourcePatch
-                        << " box " << formatBox(region.patchAABB[sourcePatch]) << "\n";
-            }
-            else if (changed)
-            {
-                outfile << "  -> patch " << sourcePatch
-                        << " box grew from " << formatBox(oldBox)
-                        << " to " << formatBox(region.patchAABB[sourcePatch]) << "\n";
-            }
-            else
-            {
-                outfile << "  -> no growth; patch " << sourcePatch
-                        << " box stays " << formatBox(region.patchAABB[sourcePatch]) << "\n";
-            }
+                    << " requestedBox=" << formatBox(requestedBox)
+                    << " -> rects=" << formatBoxList(region.patchAABB[sourcePatch]) << "\n";
         }
     }
 
@@ -13158,15 +13197,12 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
         {
             if (!initialHasPatch[p])
                 continue;
-            const auto& b = initialAabb[p];
-            outfile << "  patch=" << p << " box=["
-                    << b[0] << ", " << b[1] << "] x ["
-                    << b[2] << ", " << b[3] << "]\n";
+            outfile << "  patch=" << p << " rects=" << formatBoxList(initialAabb[p]) << "\n";
         }
     }
 
     auto collectRegionHits = [&](index_t f,
-                                 const std::vector<std::array<real_t, 4>>& activeAabb,
+                                 const std::vector<std::vector<std::array<real_t, 4>>>& activeAabb,
                                  const std::vector<bool>& activeHasPatch,
                                  std::vector<RegionSupportRef>& hits) -> bool
     {
@@ -13186,7 +13222,7 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
                 continue;
 
             const auto support = Bells[p][lvl].function(idx).support();
-            if (supportIntersectsAabb(support, activeAabb[p]))
+            if (supportIntersectsRectList(support, activeAabb[p]))
                 hits.push_back({ p, lvl, idx, false });
         }
 
@@ -13205,7 +13241,7 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
                     continue;
 
                 const auto support = Bells[p][lvl].function(idx).support();
-                if (supportIntersectsAabb(support, activeAabb[p]))
+                if (supportIntersectsRectList(support, activeAabb[p]))
                     hits.push_back({ p, lvl, idx, true });
             }
         }
@@ -13238,8 +13274,6 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
                 static_cast<real_t>(support(0, 1)),
                 static_cast<real_t>(support(1, 1))
             };
-            const bool hadPatch = region.hasPatch[p];
-            const std::array<real_t, 4> oldBox = hadPatch ? region.patchAABB[p] : std::array<real_t, 4>{ 1.0, 1.0, 0.0, 0.0 };
             const bool merged = mergePatchAabb(region, p,
                                                supportBox[0],
                                                supportBox[1],
@@ -13253,23 +13287,8 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
                         << " component patch=" << p
                         << " level=" << lvl
                         << " tensorIdx=" << idx
-                        << " support=" << formatBox(supportBox) << "\n";
-                if (!hadPatch)
-                {
-                    outfile << "      -> created patch " << p
-                            << " box " << formatBox(region.patchAABB[p]) << "\n";
-                }
-                else if (merged)
-                {
-                    outfile << "      -> patch " << p
-                            << " box grew from " << formatBox(oldBox)
-                            << " to " << formatBox(region.patchAABB[p]) << "\n";
-                }
-                else
-                {
-                    outfile << "      -> no growth; patch " << p
-                            << " box stays " << formatBox(region.patchAABB[p]) << "\n";
-                }
+                        << " support=" << formatBox(supportBox)
+                        << " -> rects=" << formatBoxList(region.patchAABB[p]) << "\n";
             }
         }
 
@@ -13294,8 +13313,6 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
                     static_cast<real_t>(support(0, 1)),
                     static_cast<real_t>(support(1, 1))
                 };
-                const bool hadPatch = region.hasPatch[p];
-                const std::array<real_t, 4> oldBox = hadPatch ? region.patchAABB[p] : std::array<real_t, 4>{ 1.0, 1.0, 0.0, 0.0 };
                 const bool merged = mergePatchAabb(region, p,
                                                    supportBox[0],
                                                    supportBox[1],
@@ -13309,23 +13326,8 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
                             << " spillover patch=" << p
                             << " level=" << lvl
                             << " tensorIdx=" << idx
-                            << " support=" << formatBox(supportBox) << "\n";
-                    if (!hadPatch)
-                    {
-                        outfile << "      -> created patch " << p
-                                << " box " << formatBox(region.patchAABB[p]) << "\n";
-                    }
-                    else if (merged)
-                    {
-                        outfile << "      -> patch " << p
-                                << " box grew from " << formatBox(oldBox)
-                                << " to " << formatBox(region.patchAABB[p]) << "\n";
-                    }
-                    else
-                    {
-                        outfile << "      -> no growth; patch " << p
-                                << " box stays " << formatBox(region.patchAABB[p]) << "\n";
-                    }
+                            << " support=" << formatBox(supportBox)
+                            << " -> rects=" << formatBoxList(region.patchAABB[p]) << "\n";
                 }
             }
         }
@@ -13337,6 +13339,24 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
     // current region AABBs and expand the region until no new functions are added.
     bool selectedNewFunction = true;
     index_t closureIterations = 0;
+
+    // Write per-step header to closure_log.txt
+    if (closureLogFile.is_open())
+    {
+        static int closureStepCounter = 0;
+        ++closureStepCounter;
+        closureLogFile << "\n=== STEP " << closureStepCounter
+                       << " srcPatch=" << sourcePatch
+                       << " nFunctions=" << functionDescription.size()
+                       << " ===\n";
+        closureLogFile << "Initial rects:\n";
+        for (index_t p = 0; p < nPatches; ++p)
+        {
+            if (!region.hasPatch[p]) continue;
+            closureLogFile << "  patch=" << p << " " << formatBoxList(region.patchAABB[p]) << "\n";
+        }
+    }
+
     while (selectedNewFunction)
     {
         selectedNewFunction = false;
@@ -13344,6 +13364,26 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
 
         const auto iterationAabb = region.patchAABB;
         const auto iterationHasPatch = region.hasPatch;
+
+        // Closure-log: snapshot at start of this iteration
+        if (closureLogFile.is_open())
+        {
+            closureLogFile << "--- Iteration " << closureIterations << " ---\n";
+            closureLogFile << "  Snapshot patches:";
+            for (index_t p = 0; p < nPatches; ++p)
+                if (iterationHasPatch[p]) closureLogFile << " " << p;
+            closureLogFile << "\n";
+            for (index_t p = 0; p < nPatches; ++p)
+            {
+                if (!iterationHasPatch[p]) continue;
+                closureLogFile << "  patch=" << p << " " << formatBoxList(iterationAabb[p]) << "\n";
+            }
+        }
+
+        index_t newFuncThisIter = 0;
+        std::vector<bool> patchWasActive(nPatches, false);
+        for (index_t p = 0; p < nPatches; ++p)
+            patchWasActive[p] = iterationHasPatch[p];
 
         for (index_t f = 0; f < static_cast<index_t>(functionDescription.size()); ++f)
         {
@@ -13373,27 +13413,86 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
                             << " level=" << hit.level
                             << " tensorIdx=" << hit.index
                             << " support=" << formatBox(supportBox)
-                            << " intersects current box " << formatBox(iterationAabb[hit.patch]) << "\n";
+                            << " intersects rects " << formatBoxList(iterationAabb[hit.patch]) << "\n";
                 }
             }
 
             region.basisInd(0, f) = 1.0;
             selectedNewFunction = true;
+            ++newFuncThisIter;
             const bool grew = expandRegionByFunction(f);
 
             if (outfile.is_open())
             {
                 if (!grew)
                     outfile << "  -> function " << f << " caused no AU box growth\n";
-                outfile << "  -> AU boxes after function " << f << ":\n";
+                outfile << "  -> AU rects after function " << f << ":\n";
                 for (index_t p = 0; p < nPatches; ++p)
                 {
                     if (!region.hasPatch[p])
                         continue;
-                    outfile << "     patch=" << p << " box=" << formatBox(region.patchAABB[p]) << "\n";
+                    outfile << "     patch=" << p << " rects=" << formatBoxList(region.patchAABB[p]) << "\n";
+                }
+            }
+
+            // Closure-log: one line per newly-selected function
+            if (closureLogFile.is_open())
+            {
+                for (const auto& hit : regionHits)
+                {
+                    const auto support = Bells[hit.patch][hit.level].function(hit.index).support();
+                    closureLogFile << "  f=" << f
+                                   << " p=" << hit.patch
+                                   << " lv=" << hit.level
+                                   << " idx=" << hit.index
+                                   << " sup=[" << support(0,0) << "," << support(1,0)
+                                   << "]x[" << support(0,1) << "," << support(1,1) << "]"
+                                   << (hit.spillover ? " (spillover)" : "")
+                                   << (grew ? "" : " (no box growth)")
+                                   << "\n";
+                    break; // log only the first (primary) component to keep lines compact
                 }
             }
         }
+
+        // Closure-log: end-of-iteration summary
+        if (closureLogFile.is_open())
+        {
+            closureLogFile << "  => " << newFuncThisIter << " new function(s) selected\n";
+            // Which patches were newly added this iteration
+            closureLogFile << "  => New patches added:";
+            bool anyNew = false;
+            for (index_t p = 0; p < nPatches; ++p)
+            {
+                if (region.hasPatch[p] && !patchWasActive[p])
+                {
+                    closureLogFile << " " << p;
+                    anyNew = true;
+                }
+            }
+            if (!anyNew) closureLogFile << " (none)";
+            closureLogFile << "\n";
+            // Rect state after this iteration
+            closureLogFile << "  => Rects after iteration " << closureIterations << ":\n";
+            for (index_t p = 0; p < nPatches; ++p)
+            {
+                if (!region.hasPatch[p]) continue;
+                closureLogFile << "     patch=" << p << " " << formatBoxList(region.patchAABB[p]) << "\n";
+            }
+        }
+    }
+
+    if (closureLogFile.is_open())
+    {
+        index_t activeFunctions = 0;
+        for (index_t f = 0; f < region.basisInd.cols(); ++f)
+            if (region.basisInd(0, f) != 0.0) ++activeFunctions;
+        index_t activePatches = 0;
+        for (index_t p = 0; p < nPatches; ++p)
+            if (region.hasPatch[p]) ++activePatches;
+        closureLogFile << "Final: " << closureIterations << " iterations, "
+                       << activePatches << " patches, "
+                       << activeFunctions << " functions\n";
     }
 
     if (outfile.is_open())
@@ -13403,15 +13502,13 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
             if (region.basisInd(0, f) != 0.0)
                 ++activeFunctions;
 
-        outfile << "[local-region] final AU boxes:\n";
+        outfile << "[local-region] final AU rects:\n";
         for (index_t p = 0; p < nPatches; ++p)
         {
             if (!region.hasPatch[p])
                 continue;
-            const auto& b = region.patchAABB[p];
-            outfile << "  patch=" << p << " box=["
-                    << b[0] << ", " << b[1] << "] x ["
-                    << b[2] << ", " << b[3] << "]\n";
+            outfile << "  patch=" << p << " nRects=" << region.patchAABB[p].size()
+                    << " " << formatBoxList(region.patchAABB[p]) << "\n";
         }
             outfile << "[local-region] closureIterations=" << closureIterations << "\n";
         outfile << "[local-region] basisInd selected " << activeFunctions
@@ -13501,10 +13598,14 @@ static gsVector<gsMatrix<real_t>> resampleLocalRegion(
             continue;
         }
 
-        const real_t uMin = region.patchAABB[patch][0];
-        const real_t vMin = region.patchAABB[patch][1];
-        const real_t uMax = region.patchAABB[patch][2];
-        const real_t vMax = region.patchAABB[patch][3];
+        // Compute bounding box of all rects for this patch for sampling.
+        real_t uMin = 1, vMin = 1, uMax = 0, vMax = 0;
+        for (const auto& r : region.patchAABB[patch])
+        {
+            uMin = std::min(uMin, r[0]); vMin = std::min(vMin, r[1]);
+            uMax = std::max(uMax, r[2]); vMax = std::max(vMax, r[3]);
+        }
+        if (uMin > uMax || vMin > vMax) { localUv(patch).resize(2, 0); continue; }
 
         localUv(patch).resize(2, k * k);
         index_t col = 0;
@@ -19450,7 +19551,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         const FittingMode fittingMode = g_useLocalFitting ? FittingMode::LocalFitting : FittingMode::GlobalFitting;
                         const bool useLocalFitting = (fittingMode == FittingMode::LocalFitting);
                         const bool verboseLocalRegionDump = false;
-                        const bool verboseFitMatrixDump = true;
+                        const bool verboseFitMatrixDump = false;
                         const bool verboseVectSolRowDump = false;
 
                         vectSol.setZero(commonSize, 2);
@@ -19536,7 +19637,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                         if ( groupPatchIds.count(neighbor)) continue;
                                         if (neighbor < 0 || neighbor >= static_cast<int>(nPatchesMpbes)) continue;
                                         // Add full [0,1]^2 coverage for this neighbor patch
-                                        localRegion.patchAABB[neighbor] = {0.0, 0.0, 1.0, 1.0};
+                                        localRegion.patchAABB[neighbor] = {{0.0, 0.0, 1.0, 1.0}};
                                         localRegion.hasPatch[neighbor]  = true;
                                         localRegion.enabled = true;
                                         // Mark all MPBES functions touching neighbor as active
@@ -19584,6 +19685,16 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                    << " nLocalPatches=" << nLocalPatches
                                    << " k=" << kLocal << " k*k=" << kLocal * kLocal
                                    << " total=" << kLocal * kLocal * nLocalPatches << "\n";
+
+                            if (nLocalPatches >= static_cast<index_t>(uv1.size()))
+                            {
+                                gsInfo << "[local-fitting] NOTE: local region covers all "
+                                       << nLocalPatches << " patches — local and global fitting are equivalent at this step.\n";
+                                if (outfile.is_open())
+                                    outfile << "[local-fitting] NOTE: local region covers all "
+                                            << nLocalPatches << " patches — local and global fitting are equivalent at this step.\n";
+                            }
+
                             uvFitting = resampleLocalRegion(localRegion, uv1.size(), kLocal);
                         }
                         else
@@ -22204,6 +22315,7 @@ int main(int argc, char** argv) {
 
     xboxFile.open(filePrefix + "xboxFile.txt");
     yboxFile.open(filePrefix + "yboxFile.txt");
+    closureLogFile.open(filePrefix + "closure_log.txt");
     gsStopwatch clock;
     DTD = 0;
     printAB = 0;

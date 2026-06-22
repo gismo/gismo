@@ -1,5 +1,27 @@
 # Agent Change Log
 
+## 2026-06-22 (session 16)
+
+### `poissonTHB_example.cpp`: exact-union rect list, closure log file, equivalence notice, verboseFitMatrixDump fix
+
+**Context.** Investigation into why `--local-fitting` always cascades to all 10 patches in the ring-topology geometry.
+
+**Changes:**
+
+1. **Exact-union rect list for `LocalCoarseningRegion::patchAABB`.** Changed type from `vector<array<4>>` (single bounding box per patch) to `vector<vector<array<4>>>` (list of rectangles per patch). The old greedy bounding-box merge (`mergePatchAabb`) over-approximated the union when two rects overlapped but neither contained the other — e.g., `[0,0]x[0.75,0.75]` and `[0.5,0.5]x[1,1]` were merged to `[0,0]x[1,1]` even though the true union is L-shaped. Replaced with **containment-only merge**: two rects that merely overlap but neither contains the other are kept as separate entries. If the incoming rect is already contained in an existing one it is dropped; if it contains existing ones they are absorbed. All callers updated: `supportIntersectsRectList`, `pointInsidePatchRegion`, `patchElementIntersectsRegion`, `patchRegionCoversWholePatch`, `resampleLocalRegion`, seeding, and the explicit neighbor extension at line 19640.
+
+2. **Dedicated `closure_log.txt`.** Added `ofstream closureLogFile` (global), opened alongside `outfile` as `<inputBase>_closure_log.txt`. The while loop in `buildLocalCoarseningRegion` now writes one block per step and one block per iteration: snapshot rect list, newly-selected functions (one line each: `f= p= lv= idx= sup=`), count of new functions, newly-added patch indices, and rect list after the iteration. Final summary per step: iterations, patches, functions. Produces a human-readable file that is O(steps × iterations) lines rather than O(functions) lines.
+
+3. **Local=global equivalence notice.** After `nLocalPatches` is computed, if `nLocalPatches >= nPatches` (closure reached every patch), prints to `gsInfo` and `outfile`: `[local-fitting] NOTE: local region covers all N patches — local and global fitting are equivalent at this step.`
+
+4. **Fixed `verboseFitMatrixDump = true` bad_alloc.** This flag was hardcoded `true` in the local-fitting branch, causing `printTheMatrix` to write a 1440×914 matrix to both `outfile` and a separate `.txt` file at every step. By step 3 this exhausted allocatable memory. Set to `false`.
+
+**Key finding documented by the closure log.** The cascade is caused by a level-2 THB function (`p=3 lv=2 idx=24 sup=[0,0]x[1,1]`) whose support equals the entire unit square. This function is selected in iteration 1 (it intersects any non-empty seed). `mergePatchAabb([0,0,1,1])` correctly contains all existing smaller rects and replaces them with `[0,0]x[1,1]`. Neither the bounding-box approach nor the exact-union approach can prevent this — the function itself spans the whole patch. Every step, all 10 patches are reached.
+
+**Files changed:** `examples/poissonTHB_example.cpp`, `AGENT_CHANGELOG.md`
+
+---
+
 ## 2026-06-20 (session 15)
 
 ### `fitting_mspline.cpp`: add `--extra-refine-patch` flag and fix geometric C0 check
