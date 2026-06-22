@@ -1,5 +1,19 @@
 # Agent Change Log
 
+## 2026-06-22 (session 17)
+
+### `fitting_mspline.cpp`: add `--refine-all <n>` flag for uniform mesh refinement
+
+**Context.** Local fitting with `--local-fitting` always expanded to all 10 patches due to a level-2 THB function with full-unit-square support in the L3 mesh. Hypothesis: a uniformly finer mesh (L4) will have no such globally-supported function, making local fitting genuinely local.
+
+**Change.** Added `index_t refineAll = 0` and CLI flag `--refine-all` / `-r`. When `refineAll > 0`, calls `uniformRefine()` `n` times on **every** patch (both `newmp` and the reference `*mp`) after the initial B-spline fitting and after the optional `--extra-refine-patch` step. Re-detects topology and enforces C0 after refinement. Logs per-patch basis size before/after.
+
+**Result.** Running `fitting_mspline.exe mask_approximation_fine_L3.xml --refine-all 1 -o mask_approximation_fine_L4_NLO.xml` produced a clean 10-patch geometry: all patches expanded from 121 (11×11) to 361 (19×19) control points. Distortion strengths were re-bisected and all patches passed the Jacobian check. Output saved to `filedata/generatedMPs/mask_approximation_fine_L4_NLO.xml` and copied to `build/bin/Release/`.
+
+**Files changed:** `examples/fitting_mspline.cpp`, `AGENT_CHANGELOG.md`
+
+---
+
 ## 2026-06-22 (session 16)
 
 ### `poissonTHB_example.cpp`: exact-union rect list, closure log file, equivalence notice, verboseFitMatrixDump fix

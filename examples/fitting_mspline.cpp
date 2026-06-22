@@ -1454,6 +1454,7 @@ int main(int argc, char* argv[])
     Options opt;
     nonlinearOptions nlo;
     int extraRefinePatch = -1;
+    index_t refineAll = 0;
 
     gsCmdLine cmd("Distort multipatch geometry while preserving exact C0 continuity.");
     cmd.addPlainString("filename", "Input multipatch XML file.", filename);
@@ -1463,6 +1464,7 @@ int main(int argc, char* argv[])
     cmd.addReal("t", "bisect-tol", "Bisection interval tolerance for strength/alpha (default 1e-2).", opt.bisectTol);
     cmd.addReal("j", "det-threshold", "Report if jacobian determinant < threshold.", opt.detThreshold);
     cmd.addInt("R", "extra-refine-patch", "Apply one extra uniform refinement to this patch before distortion (-1 = disabled).", extraRefinePatch);
+    cmd.addInt("r", "refine-all", "Number of uniform refinements applied to ALL patches before distortion (0 = disabled).", refineAll);
     cmd.addInt("p", "stress-patch", "Patch index for stress test (-1: all patches with bisection).", nlo.patchIndex);
     cmd.addReal("a", "stress-strength", "Single outward distortion strength.", nlo.strength);
     cmd.addReal("M", "stress-min-det", "Minimum oriented Jacobian determinant used for reporting.", nlo.minOrientedDet);
@@ -1733,6 +1735,38 @@ int main(int argc, char* argv[])
             << " basis size " << basisBefore << " -> " << basisAfter << "\n";
         gsInfo << "Extra uniform refinement: patch " << extraRefinePatch
                << " basis size " << basisBefore << " -> " << basisAfter << "\n";
+    }
+
+    // Optional uniform refinement of ALL patches. Each step doubles the knot spans
+    // in both directions on every patch, producing a strictly uniform mesh at the
+    // next finer level.  Both newmp and the reference *mp are refined so that
+    // restoreBoundaryControlPointsFromReference stays consistent during bisection.
+    if (refineAll > 0)
+    {
+        const index_t nPatches = static_cast<index_t>(newmp.nPatches());
+        log << "\nUniform refinement (--refine-all=" << refineAll
+            << "): applying to all " << nPatches << " patches\n";
+        gsInfo << "Uniform refinement: applying " << refineAll
+               << " level(s) to all " << nPatches << " patches\n";
+
+        for (index_t p = 0; p < nPatches; ++p)
+        {
+            const index_t sizeBefore = newmp.patch(p).basis().size();
+            for (index_t r = 0; r < refineAll; ++r)
+            {
+                newmp.patch(p).uniformRefine();
+                mp->patch(p).uniformRefine();
+            }
+            const index_t sizeAfter = newmp.patch(p).basis().size();
+            log << "  patch " << p << ": basis size " << sizeBefore
+                << " -> " << sizeAfter << "\n";
+            gsInfo << "  patch " << p << ": basis size " << sizeBefore
+                   << " -> " << sizeAfter << "\n";
+        }
+
+        detectTopologyGeometrically(newmp);
+        enforceC0AcrossInterfaces(newmp);
+        log << "Topology re-detected and C0 enforced after uniform refinement.\n";
     }
 
     const bool hasNegativeAfterFitting =
