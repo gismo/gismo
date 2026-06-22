@@ -19690,9 +19690,17 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                             {
                                 gsInfo << "[local-fitting] NOTE: local region covers all "
                                        << nLocalPatches << " patches — local and global fitting are equivalent at this step.\n";
+                                gsInfo << "[local-fitting] Exiting early: no locality benefit for this geometry.\n";
                                 if (outfile.is_open())
+                                {
                                     outfile << "[local-fitting] NOTE: local region covers all "
                                             << nLocalPatches << " patches — local and global fitting are equivalent at this step.\n";
+                                    outfile << "[local-fitting] Exiting early: no locality benefit for this geometry.\n";
+                                    outfile.flush();
+                                }
+                                if (summaryFile.is_open()) summaryFile.flush();
+                                if (closureLogFile.is_open()) closureLogFile.flush();
+                                std::exit(0);
                             }
 
                             uvFitting = resampleLocalRegion(localRegion, uv1.size(), kLocal);
@@ -20608,6 +20616,13 @@ AlgorithmResult unrefinementAlgorithmHBJ(
 
                         commonSize = functionDescription.size();
                         gsMatrix<real_t> vectSolReduced = matAsquare.partialPivLu().solve(vectB);
+                        {
+                            auto afterfit = std::chrono::system_clock::now();
+                            std::chrono::duration<double> elapsed_fit = afterfit - beforeassembleA;
+                            gsInfo << "fit took: " << elapsed_fit.count() << "\n";
+                            if (outfile.is_open())
+                                outfile << "fit took: " << elapsed_fit.count() << "\n";
+                        }
 
                         vectSol = vectSolSeed;
 

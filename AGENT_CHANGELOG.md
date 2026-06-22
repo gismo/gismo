@@ -2,6 +2,18 @@
 
 ## 2026-06-22 (session 17)
 
+### `poissonTHB_example.cpp`: fit timing + early exit when local = global
+
+**Changes:**
+
+1. **`fit took:` timing.** Immediately after `matAsquare.partialPivLu().solve(vectB)` (the LS solve), captures `std::chrono::system_clock::now()` and prints `fit took: Xs` to both console and `outfile`. Uses `beforeassembleA` (already set just before matrix assembly) as the start, so the reported time covers full assembly + column extraction + AᵀA/Aᵀb formation + LU solve. Mirrors the existing `jack took:` pattern.
+
+2. **`std::exit(0)` when local region = global.** When `nLocalPatches >= nPatches` (local region expanded to cover all patches), after the equivalence notice message, flushes `outfile`, `summaryFile`, and `closureLogFile`, then calls `std::exit(0)`. This makes the L4-mesh test self-terminating: if local fitting is genuinely local the run continues; if it collapses to global it exits immediately at the first such step.
+
+**Files changed:** `examples/poissonTHB_example.cpp`, `AGENT_CHANGELOG.md`
+
+---
+
 ### `fitting_mspline.cpp`: add `--refine-all <n>` flag for uniform mesh refinement
 
 **Context.** Local fitting with `--local-fitting` always expanded to all 10 patches due to a level-2 THB function with full-unit-square support in the L3 mesh. Hypothesis: a uniformly finer mesh (L4) will have no such globally-supported function, making local fitting genuinely local.
