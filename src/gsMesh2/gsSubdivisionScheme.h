@@ -8,7 +8,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): L. Mussmaecher, A. Mantzaflaris
+    Author(s): L. Mussmaecher, A. Mantzaflaris, D.Tolis
 */
 
 #pragma once
@@ -97,11 +97,11 @@ public:
     {GISMO_NO_IMPLEMENTATION}
 
     /// Compute vertex limit normals
-    virtual gsSurfMesh::Vertex_property<Point> vertex_normal_limits(std::string label = "v:normal")
+    virtual gsSurfMesh::Vertex_property<Point> vertex_normal_limits(std::string label = "v:normal", bool normalize = true)
     {GISMO_NO_IMPLEMENTATION}
 
     /// Compute vertex limit tangent
-    virtual gsSurfMesh::Vertex_property<Point> vertex_tangent_limits(std::string label = "v:tanvec")
+    virtual gsSurfMesh::Vertex_property<Point> vertex_tangent_limits(std::string label = "v:tanvec", bool normalize = true)
     {GISMO_NO_IMPLEMENTATION}
 
     /// Compute face limit positions
@@ -109,11 +109,11 @@ public:
     {GISMO_NO_IMPLEMENTATION}
 
     /// Compute face limit normals
-    virtual gsSurfMesh::Face_property<Point> face_normal_limits(std::string label = "f:normal")
+    virtual gsSurfMesh::Face_property<Point> face_normal_limits(std::string label = "f:normal", bool normalize = true)
     {GISMO_NO_IMPLEMENTATION}
 
     /// Compute face limit tangent
-    virtual gsSurfMesh::Face_property<Point> face_tangent_limits(std::string label = "f:tanvec")
+    virtual gsSurfMesh::Face_property<Point> face_tangent_limits(std::string label = "f:tanvec", bool normalize = true)
     {GISMO_NO_IMPLEMENTATION}
 
 public: // Validity

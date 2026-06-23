@@ -2,6 +2,16 @@
 
     @brief Tests different subdivision schemes
 
+    Option flag gives different result depending on the scheme:
+
+    Doo-Sabin options:
+        0 - Interpolatory boundary using Chaikin scheme.
+        1 - Trimmed boundary using Doo-Sabin scheme.
+    
+    Loop options:
+       0 - Simplified Loop's scheme. (cf. book Warren, Weimer 2002) 
+       1 - Original Loop's scheme.  (cf. book Loop 1987) 
+
     Author(s): A. Mantzaflaris, M.Marsala, D.Tolis, L. Mussmaecher
 */
 
@@ -17,6 +27,7 @@ int main(int argc, char** argv)
     bool dm = false;
     std::string scheme_name = "Catmull-Clark";
     index_t r(1);
+    index_t option(0);
 
     // Read command-line options
     gsCmdLine cmd("Hi, give me a mesh");
@@ -25,6 +36,7 @@ int main(int argc, char** argv)
     cmd.addSwitch("dual", "Create the dual mesh (graph)", dm);
     cmd.addString("s", "scheme", "Choice of Subdivision Scheme", scheme_name);
     cmd.addInt("r", "ref", "Number of refinement steps", r);
+    cmd.addInt("o","option","Option on subdivision scheme", option);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
       
 
@@ -41,10 +53,20 @@ int main(int argc, char** argv)
 
     if (scheme_name == "Catmull-Clark"){
             scheme = new gsCatmullClark();
+            gsInfo << "Catmull-Clark subdivision "<< r <<" times.\n";
     } else if (scheme_name == "Doo-Sabin"){
             scheme = new gsDooSabin();
-    } else {
+            scheme->options().setInt("ds.boundaryMask", option); // option on doo-sabin boundary treatment
+            gsInfo << "Doo-Sabin subdivision "<< r <<" times.\n";
+        }
+    else if (scheme_name == "Loop") {
+            scheme = new gsLoop();
+            scheme->options().setInt("loop.maskType", option); // option on loop mask type
+            gsInfo << "Loop subdivision "<< r <<" times.\n";
+    }
+    else {
             scheme = new gsCatmullClark();
+            gsInfo << "Catmull-Clark subdivision "<< r <<" times.\n";
     }
 
     scheme->assign(&mesh);
@@ -53,6 +75,9 @@ int main(int argc, char** argv)
     mesh.write("mesh_out.off");
     if (dm) // Dual mesh
         mesh.dual_mesh();
+
+    gsInfo << "Output: " << mesh.n_vertices() << " vertices, "
+        << mesh.n_edges() << " edges, " << mesh.n_faces() << " faces. \n";
 
     if (plot)
     {

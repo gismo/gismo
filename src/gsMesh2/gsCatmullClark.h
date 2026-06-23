@@ -38,6 +38,15 @@ public: // Constructors
 
   static void apply(gsSurfMesh& mesh);
 
+  /// Compute vertex limit positions
+  gsSurfMesh::Vertex_property<Point> vertex_limits(std::string label = "v:limit");
+
+  /// Compute vertex limit normals for Catmull-Clark subdivision scheme
+  gsSurfMesh::Vertex_property<Point> vertex_normal_limits(std::string label = "v:normal", bool normalize = true);
+
+  /// Compute vertex limit tangent for Catmull-Clark subdivision scheme
+  gsSurfMesh::Vertex_property<Point> vertex_tangent_limits(std::string label = "v:tanvec", bool normalize = true);
+
 protected:
 
   void subdivide_impl() GISMO_OVERRIDE;

@@ -124,6 +124,7 @@ namespace internal
 #include <gsMesh2/gsSubdivisionScheme.h>
 #include <gsMesh2/gsCatmullClark.h>
 #include <gsMesh2/gsDooSabin.h>
+#include <gsMesh2/gsLoop.h>
 
 /* ----------- MSplines ----------- */
 #include <gsMSplines/gsMappedBasis.h>

@@ -167,4 +167,125 @@ void gsCatmullClark::apply(gsSurfMesh& mesh)
     }
 }
 
+gsSurfMesh::Vertex_property<gsSurfMesh::Point> gsCatmullClark::vertex_limits(std::string label)
+{
+    auto points = m_mesh->points();
+    auto limits = m_mesh->add_vertex_property<Point>(
+        (label == "v:point" ? "v:limit_points_2022" : label), Point(0, 0, 0));
+    real_t n;
+#   pragma omp parallel for default(shared) private(n)
+    for (auto vit = m_mesh->vertices_begin(); vit < m_mesh->vertices_end(); ++vit)
+    {
+        n = m_mesh->valence(*vit);
+        if (m_mesh->is_boundary(*vit))
+        {
+            gsWarn << "Boundary vertex is ignored.\n";
+
+            if (2 > n)
+            {
+
+            }
+            continue;
+        }
+
+        auto& pt = limits[*vit];
+        pt = n * n * points[*vit];
+        for (auto he : m_mesh->halfedges(*vit))
+        {
+            if (m_mesh->is_boundary(he))
+            {
+                gsWarn << "Boundary halfedge is ignored.\n";
+            }
+
+            pt += 4 * points[m_mesh->to_vertex(he)] +
+                points[m_mesh->to_vertex(m_mesh->next_halfedge(he))];
+        }
+        pt /= (n * (n + 5));
+    }
+
+    if (label == "v:point") //vertices are replaced by their limit positions
+    {
+        m_mesh->rename_vertex_property(points, "v:point_original");
+        m_mesh->rename_vertex_property(limits, "v:point");
+    }
+    return limits;
+}
+
+gsSurfMesh::Vertex_property<gsSurfMesh::Point> gsCatmullClark::vertex_normal_limits(std::string label, bool normalize)
+{
+    auto points = m_mesh->points();
+    //todo: check if label exists
+    auto limits = m_mesh->add_vertex_property<Point>(label, Point(0, 0, 0));
+    Point t1, t2;
+    real_t c1, c2, cc1, cc2;
+    index_t i;
+    gsSurfMesh::Halfedge h2;
+#   pragma omp parallel for default(shared) private(h2,t1,t2,c1,c2,cc1,cc2,i)
+    for (auto vit = m_mesh->vertices_begin(); vit < m_mesh->vertices_end(); ++vit)
+    {
+        const real_t n = m_mesh->valence(*vit);
+        const real_t cospin = math::cos(EIGEN_PI / n);
+        cc2 = 1 / (n * math::sqrt(4 + cospin * cospin));
+        cc1 = 1 / n + cospin * cc2;
+        t1.setZero();
+        t2.setZero();
+        i = 0;
+        for (auto he : m_mesh->halfedges(*vit))
+        {
+            h2 = m_mesh->ccw_rotated_halfedge(he);
+            c1 = math::cos(2 * i * EIGEN_PI / n) * cc1;
+            c2 = math::cos((2 * i + 1) * EIGEN_PI / n) * cc2;
+            t1 += c1 * points[m_mesh->to_vertex(he)]
+                + c2 * points[m_mesh->to_vertex(m_mesh->next_halfedge(he))];
+            t2 += c1 * points[m_mesh->to_vertex(h2)]
+                + c2 * points[m_mesh->to_vertex(m_mesh->next_halfedge(h2))];
+            ++i;
+        }
+        if (normalize)
+            limits[*vit] = t1.cross(t2).normalized();
+        else
+            limits[*vit] = t1.cross(t2);
+    }
+    return limits;
+}
+
+gsSurfMesh::Vertex_property<gsSurfMesh::Point> gsCatmullClark::vertex_tangent_limits(std::string label, bool normalize)
+{
+    gsSurfMesh::Vertex v;
+    gsSurfMesh::Halfedge h2;
+
+    auto points = m_mesh->points();
+    //todo: check if label exists
+    auto limits = m_mesh->add_vertex_property<Point>(label, Point(0, 0, 0));
+    Point t1, t2;
+    real_t c1, c2, cc1, cc2;
+    index_t i;
+#   pragma omp parallel for default(shared) private(v,h2,t1,t2,c1,c2,cc1,cc2,i)
+    for (auto vit = m_mesh->vertices_begin(); vit < m_mesh->vertices_end(); ++vit)
+    {
+        const real_t n = m_mesh->valence(*vit);
+        const real_t cospin = math::cos(EIGEN_PI / n);
+        cc2 = 1 / (n * math::sqrt(4 + cospin * cospin));
+        cc1 = 1 / n + cospin * cc2;
+        t1.setZero();
+        t2.setZero();
+        i = 0;
+        for (auto he : m_mesh->halfedges(*vit))
+        {
+            h2 = m_mesh->ccw_rotated_halfedge(he);
+            c1 = math::cos(2 * i * EIGEN_PI / n) * cc1;
+            c2 = math::cos((2 * i + 1) * EIGEN_PI / n) * cc2;
+            t1 += c1 * points[m_mesh->to_vertex(he)]
+                + c2 * points[m_mesh->to_vertex(m_mesh->next_halfedge(he))];
+            ++i;
+        }
+        if (normalize)
+            limits[*vit] = t1.normalized();
+        else
+            limits[*vit] = t1;
+    }
+    return limits;
+}
+
+
 }

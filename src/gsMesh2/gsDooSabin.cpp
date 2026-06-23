@@ -174,4 +174,75 @@ gsDooSabin::ds_image_point_calc(Halfedge hf)
 
 }
 
+gsSurfMesh::Face_property<Point> gsDooSabin::face_limits(std::string label)
+{
+
+    Halfedge hb;
+    auto limits = m_mesh->add_face_property<Point>((label), Point(0, 0, 0));
+#   pragma omp parallel for default(shared)
+    for (auto fit = m_mesh->faces_begin(); fit < m_mesh->faces_end(); ++fit)
+    {
+        if (m_mesh->is_boundary(*fit)) // Chaikin: middle edge point in the boundary
+        {
+            for (auto hit : m_mesh->halfedges(*fit))
+                if (m_mesh->touches_boundary(hit))
+                    hb = hit;
+            if (m_mesh->touches_boundary(m_mesh->next_halfedge(hb))) // Corner case
+                limits[*fit] = m_mesh->position(m_mesh->to_vertex(hb));
+            else if (m_mesh->valence(m_mesh->from_vertex(hb)) == 2) // Corner case
+                limits[*fit] = m_mesh->position(m_mesh->from_vertex(hb));
+            else // Normal boundary
+            {
+                limits[*fit] = 0.5 * (m_mesh->position(m_mesh->from_vertex(hb)) +
+                    m_mesh->position(m_mesh->to_vertex(hb)));
+            }
+
+            continue;
+        }
+        limits[*fit] = m_mesh->face_barycenter(*fit);
+    }
+
+    return limits;
+}
+
+gsSurfMesh::Face_property<Point> gsDooSabin::face_normal_limits(std::string label, bool normalize)
+{
+    auto points = m_mesh->points();
+    auto limits = m_mesh->add_face_property<Point>((label), Point(0, 0, 0));
+    unsigned int n;
+    Halfedge he, hh;
+    int i;
+    Point t1, t2;
+#   pragma omp parallel for default(shared) private(n,he,hh,i,t1,t2)
+    for (auto fit = m_mesh->faces_begin(); fit < m_mesh->faces_end(); ++fit)
+    {
+        n = m_mesh->valence(*fit);
+        if (m_mesh->is_boundary(*fit)) // TODO: Deprecate this feature by using middle edge point
+        {
+            gsWarn << "Boundary face is ignored.\n";
+            continue;
+        }
+
+        auto& pt = limits[*fit];
+        he = m_mesh->halfedge(*fit);
+        hh = he;
+        t1.setZero();
+        t2.setZero();
+        i = 0;
+        do
+        {
+            t1 += math::cos(2 * i * EIGEN_PI / n) * points[m_mesh->from_vertex(hh)];
+            t2 += math::sin(2 * i * EIGEN_PI / n) * points[m_mesh->from_vertex(hh)];
+            hh = m_mesh->next_halfedge(hh);
+            i++;
+        } while (hh != he);
+        pt = t1.cross(t2);
+
+        if (normalize)
+            pt = pt.normalized();
+    }
+
+    return limits;
+}
+
 } // namespace gismo

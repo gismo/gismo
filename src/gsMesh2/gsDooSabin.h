@@ -29,21 +29,37 @@ public: // Constructors
   /// Creates the 'ds.BoundaryMask' optionw and initializes it with value `0`.
   gsDooSabin() : gsSubdivisionScheme()
   {
-      m_options.addInt("ds.boundaryMask", "Option for masks in Doo-Sabin subdivision scheme",0);
+      m_options.addInt("ds.boundaryMask", "Option for boundary masks in Doo-Sabin subdivision scheme",0);
   }
 
   /// \brief Constructor with a mesh to target.
   ///
   /// Constructor that accepts a mesh to be targeted by this constructor.
-  /// Creates the 'ds.BoundaryMask' optionw and initializes it with value `0`.
+  /// Creates the 'ds.boundaryMask' option and initializes it with value `0`.
+  /// 
+  /// ds.boundaryMask (Boundary treatment):
+  ///  * 0 - interpolatory case (cf. Chaikin 1974). 
+  ///  * 1 - trimmed boundary (cf. Doo-Sabin 1978). 
   gsDooSabin(gsSurfMesh* mesh) : gsSubdivisionScheme()
   {
-      m_options.addInt("ds.boundaryMask", "Option for masks in Doo-Sabin subdivision scheme",0);
+      m_options.addInt("ds.boundaryMask", "Option for boundary masks in Doo-Sabin subdivision scheme",0);
       this->assign(mesh);
   }
 
 public:
   void subdivide_impl() GISMO_OVERRIDE;
+
+  /// Compute face limit positions
+  gsSurfMesh::Face_property<Point> face_limits(std::string label = "f:limit");
+
+  /// Compute face limit normals
+  gsSurfMesh::Face_property<Point> face_normal_limits(std::string label = "f:normal", bool normalize = true);
+
+  /// Compute face limit tangent
+  gsSurfMesh::Face_property<Point> face_tangent_limits(std::string label = "f:tanvec", bool normalize = true)
+  {GISMO_NO_IMPLEMENTATION}
+
+
 
 private: // Helper functions
 
