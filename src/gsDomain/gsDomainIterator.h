@@ -402,9 +402,9 @@ public:
     T volume() const
     { return (upperCorner() - lowerCorner()).prod(); }
 
-    inline  boxSide  side() const {return m_pside.side();}
-    inline  index_t  patchIndex() const {return m_pside.patch;}
-    virtual index_t  subdomainIndex() const { return patchIndex(); }
+    inline   boxSide  side() const {return m_pside.side();}
+    virtual  index_t  patchIndex() const {return m_pside.patch;}
+    virtual  index_t  subdomainIndex() const { return patchIndex(); }
 protected:
 
 

@@ -46,7 +46,7 @@ class gsCompositeDomainIterator : public gsDomainIterator<T>
     typedef typename gsDomainIterator<T>::uPtr domainIter;
 
     domainContainer m_domains;
-    std::vector<size_t> m_numEl; //offsets
+    std::vector<size_t> m_numElOffset; //offsets
     gsDomainIteratorWrapper<T> m_cur;
 
     index_t m_sid; //< Composite (sub-domain) id
@@ -58,12 +58,12 @@ public:
     : Base(), m_domains(give(_dom))
     {
         GISMO_ASSERT(!m_domains.empty(), "Empty..");
-        m_numEl.reserve(m_domains.size()+1);
-        m_numEl.push_back(0);
+        m_numElOffset.reserve(m_domains.size()+1);
+        m_numElOffset.push_back(0);
         m_sid = 0;
         for( auto & sd : m_domains )
         {
-            m_numEl.push_back(m_numEl.back()+sd->numElements());
+            m_numElOffset.push_back(m_numElOffset.back()+sd->numElements());
         }
         m_cur = m_domains.front()->beginAll();
     }
@@ -74,11 +74,11 @@ public:
     virtual ~gsCompositeDomainIterator() { }
 
     
-    index_t subdomainIndex() const { return m_sid; }
+    index_t subdomainIndex() const override { return m_sid; }
 
     virtual size_t localId() const { return m_cur.id(); }
 
-    index_t patchIndex() const { return m_cur.patchIndex(); };
+    index_t patchIndex() const override { return m_cur.patchIndex(); }
     
 private:
 
@@ -88,7 +88,7 @@ private:
         //note: we cannot rely on this->id()
         //if (m_cur.id() + 1 == m_numEl[m_sid+1]-m_numEl[m_sid])
 
-        if ( this->id() + 1 == m_numEl[m_sid])
+        if ( this->id() + 1 == m_numElOffset[m_sid+1])
         {
             ++m_sid;
             if ((size_t)m_sid<m_domains.size())
@@ -107,17 +107,17 @@ private:
     void next(index_t increment) override
     {
         const size_t pos = this->id() + increment;
-        if ( pos < m_numEl[m_sid+1])
+        if ( pos < m_numElOffset[m_sid+1])
         {
             m_cur += increment;
             return;
         }
 
-        //note: could end at min( --m_numEl.end(), m_numEl.begin() + increment)
-        auto it = --std::upper_bound(m_numEl.begin()+m_sid, --m_numEl.end(), pos);
-        m_sid = it - m_numEl.begin();
+        //note: could end at min( --m_numElOffset.end(), m_numElOffset.begin() + increment)
+        auto it = --std::upper_bound(m_numElOffset.begin()+m_sid, --m_numElOffset.end(), pos);
+        m_sid = it - m_numElOffset.begin();
         m_cur  = m_domains[m_sid]->beginAll();
-        m_cur +=  pos - m_numEl[m_sid];
+        m_cur +=  pos - m_numElOffset[m_sid];
         return;
     }
 
@@ -175,7 +175,9 @@ public:
         }
     }
 
-    gsCompositeDomain(const domainContainer domains)
+    // Caller is responsible for tagging patch indices on the supplied domains
+    // via setPatchIndex(); untagged domains keep patchIndex()==-1.
+    gsCompositeDomain(domainContainer domains)
     : Base(), m_domains(give(domains)) { }
 
     // void insert(Ptr other);
