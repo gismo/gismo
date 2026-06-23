@@ -233,10 +233,6 @@ namespace internal
 #include <gsUtils/gsL2Projection.h>
 
 /* ----------- Extension ----------- */
-#ifdef GISMO_WITH_ADIFF
-#include <gsAutoDiff.h>
-#endif
-
 #ifdef gsTrilinos_ENABLED
 #include <gsTrilinos/gsTrilinos.h>
 #endif

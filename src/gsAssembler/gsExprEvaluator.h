@@ -407,7 +407,21 @@ private:
 
         static inline void acc_global(const T contrib, T & res)
         {
+            if_autodiff_use_critical(contrib, res);
+        }
+    private:
+        // For autodiff types: use critical section
+        template<typename U, typename std::enable_if<gismo::is_autodiff_type<U>::value, int>::type = 0>
+        static inline void if_autodiff_use_critical(const U contrib, U & res)
+        {
 #           pragma omp critical
+            res += contrib;
+        }
+        // For standard types: use atomic operation
+        template<typename U, typename std::enable_if<!gismo::is_autodiff_type<U>::value, int>::type = 0>
+        static inline void if_autodiff_use_critical(const U contrib, U & res)
+        {
+#           pragma omp atomic update
             res += contrib;
         }
     };
@@ -418,7 +432,21 @@ private:
         {res = math::min(contrib, res);	}
         static inline void acc_global(const T contrib, T & res)
         {
+            if_autodiff_use_critical(contrib, res);
+        }
+    private:
+        // For autodiff types: use critical section
+        template<typename U, typename std::enable_if<gismo::is_autodiff_type<U>::value, int>::type = 0>
+        static inline void if_autodiff_use_critical(const U contrib, U & res)
+        {
 #           pragma omp critical
+            res = math::min(contrib, res);
+        }
+        // For standard types: use atomic operation
+        template<typename U, typename std::enable_if<!gismo::is_autodiff_type<U>::value, int>::type = 0>
+        static inline void if_autodiff_use_critical(const U contrib, U & res)
+        {
+#           pragma omp atomic write
             res = math::min(contrib, res);
         }
 
@@ -430,7 +458,21 @@ private:
         { res = math::max(contrib, res); }
         static inline void acc_global(const T contrib, T & res)
         {
+            if_autodiff_use_critical(contrib, res);
+        }
+    private:
+        // For autodiff types: use critical section
+        template<typename U, typename std::enable_if<gismo::is_autodiff_type<U>::value, int>::type = 0>
+        static inline void if_autodiff_use_critical(const U contrib, U & res)
+        {
 #           pragma omp critical
+            res = math::max(contrib, res);
+        }
+        // For standard types: use atomic operation
+        template<typename U, typename std::enable_if<!gismo::is_autodiff_type<U>::value, int>::type = 0>
+        static inline void if_autodiff_use_critical(const U contrib, U & res)
+        {
+#           pragma omp atomic write
             res = math::max(contrib, res);
         }
     };
