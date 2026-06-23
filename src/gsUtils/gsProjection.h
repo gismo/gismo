@@ -33,10 +33,6 @@ namespace gismo {
     - H2: H2 projection, which takes into account function values and higher
       derivatives as supported by gsProjection.
 
-    Reserved enum values, not currently implemented in gsProjection:
-    - Hdiv: Reserved for a future H(div) projection.
-    - Hcurl: Reserved for a future H(curl) projection.
-
     The choice of norm should be based on the specific requirements of the
     problem being solved and on the set of projection norms currently
     implemented by gsProjection.
@@ -46,8 +42,6 @@ enum ProjectionNorm
     L2,
     H1,
     H2,
-    Hdiv,
-    Hcurl
 };
 
 /** \brief Class that performs a projection
