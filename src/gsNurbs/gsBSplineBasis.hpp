@@ -849,7 +849,7 @@ void gsTensorBSplineBasis<1,T>::deriv3Single_into(index_t i, const gsMatrix<T> &
 
     for (index_t j = 0; j < u.cols(); ++j)
     {
-        const unsigned first = firstActive(u(0,j));
+        const index_t first = firstActive(u(0,j));
         if ( (i>= first) && (i<= first + m_p) )
             result(0,j) = tmp(i-first,j);
         else
