@@ -219,6 +219,34 @@ void gsTensorDeriv2_into(const gsMatrix<T>& u,
 }
 
 // =============================================================================
+// ===== third derivatives for BSpline
+// =============================================================================
+
+template<short_t d, typename T, typename KnotVectorType, typename Mat>
+inline
+void gsTensorDeriv3_into(const gsMatrix<T>& u,
+                        const gsTensorBSplineBasis<d, T>& base,
+                        const Mat& coefs,
+                        gsMatrix<T>& result)
+{//LC
+    const unsigned nPts = u.cols(); // number points
+    const unsigned n3der = (d * (d + 1) * (d + 2)) / (3*2*1); // number of third derivatives
+
+    result.setZero(n3der, nPts);
+    gsMatrix<T> deriv3; // third derivatives
+    gsMatrix<unsigned> ind;
+
+
+    base.deriv3_into(u, deriv3);
+    base.active_into(u, ind);
+
+    for (unsigned j = 0; j < nPts; j++)
+        for (unsigned k = 0; k < n3der; k++)
+            for (index_t i = 0; i < ind.rows(); i++)
+                result(k, j) += coefs(ind(i, j)) * deriv3(k + i * n3der, j);
+}
+
+// =============================================================================
 // other version of evaluation via knot insertion
 // =============================================================================
 

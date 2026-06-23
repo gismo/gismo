@@ -268,6 +268,9 @@ public:
     // Evaluates the second derivatives of the non-zero basis functions at value u.
     virtual void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const override;
 
+    // Evaluates the second derivatives of the non-zero basis functions at value u.
+    virtual void deriv3_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+
 private:
     // Internal function
     //
@@ -284,12 +287,18 @@ private:
                    const gsVector<unsigned, d> & size,
                    gsMatrix<T>& result);
 
+    static void deriv3_tp(const std::vector< gsMatrix<T> > values[],
+                          const gsVector<unsigned, d> & size,
+                          gsMatrix<T>& result);
+
 public:
     // see gsBasis for doxygen documentation
     // Evaluate the i-th basis function derivative at all columns of
     virtual void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const override;
 
     virtual void deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const override;
+
+    virtual void deriv3Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const override;
 
     // Evaluates the (partial) derivatives of an element given by coefs at (the columns of) u.
     //void deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const ;

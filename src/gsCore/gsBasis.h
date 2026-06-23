@@ -142,6 +142,14 @@ public:
         return result;
     }
 
+    /// Evaluate the third derivative of a single basis function \a i at points \a u.
+    gsMatrix<T> deriv3Single(index_t i, const gsMatrix<T> & u) const
+    {
+        gsMatrix<T> result;
+        this->deriv3Single_into(i, u, result);
+        return result;
+    }
+
     /** \brief Number of active basis functions at an arbitrary parameter value.
      *
      *  Usually, this is used for getting the active functions on one
@@ -663,10 +671,17 @@ public:
      */
     virtual void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const;
 
+    virtual void deriv3_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const;
+
     /// @brief Evaluate the (partial) derivatives of the \a i-th basis function
     /// at points \a u into \a result.
     // hessianSingle_into
     virtual void deriv2Single_into(index_t i,
+                                   const gsMatrix<T> & u,
+                                   gsMatrix<T>& result ) const;
+
+    /// Like \a deriv2Single_into but for third derivatives.
+    virtual void deriv3Single_into(index_t i,
                                    const gsMatrix<T> & u,
                                    gsMatrix<T>& result ) const;
 
