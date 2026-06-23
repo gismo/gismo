@@ -21,13 +21,25 @@ namespace gismo {
 /**
  * \brief Enumeration of projection norms
 
-    This enumeration defines the different norms that can be used for projections. The choice of norm affects the definition of the projection and the resulting coefficients. The available norms are:
-    - L2: Standard L2 projection, which minimizes the L2 norm of the error between the source function and its projection.
-    - H1: H1 projection, which minimizes the H1 norm of the error, taking into account both the function values and their gradients.
-    - Hdiv: H(div) projection, which is suitable for vector fields and takes into account the divergence of the functions.
-    - Hcurl: H(curl) projection, which is suitable for vector fields and takes into account the curl of the functions.
+    This enumeration defines the projection norm identifiers exposed by gsProjection.
+    The choice of norm affects the definition of the projection and the resulting
+    coefficients.
 
-    The choice of norm should be based on the specific requirements of the problem being solved and the properties of the function space being projected onto.
+    Currently implemented in gsProjection:
+    - L2: Standard L2 projection, which minimizes the L2 norm of the error
+      between the source function and its projection.
+    - H1: H1 projection, which minimizes the H1 norm of the error, taking
+      into account both the function values and their gradients.
+    - H2: H2 projection, which takes into account function values and higher
+      derivatives as supported by gsProjection.
+
+    Reserved enum values, not currently implemented in gsProjection:
+    - Hdiv: Reserved for a future H(div) projection.
+    - Hcurl: Reserved for a future H(curl) projection.
+
+    The choice of norm should be based on the specific requirements of the
+    problem being solved and on the set of projection norms currently
+    implemented by gsProjection.
  */
 enum ProjectionNorm
 {
@@ -418,16 +430,13 @@ public:
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     
     /**
-     * @brief      Obtain the system matrix and right-hand side for the L2 projection of a function onto a basis
+     * @brief      Obtain the system matrix and right-hand side for the L2 projection onto a basis
      * 
      * @param[in]  projectionBasis  The basis to project on
      * @param[in]  geometryMap      The geometry
-     * @param[in]  sourceFunction   The source function
      * @param      systemMatrix     The output system matrix
      * @param      rhs              The output right-hand side vector
      * @param      options          The options that control the projection process
-     * 
-     * @return     The L2 error of the projection
      */
     static void system( const gsMultiBasis<T>         & projectionBasis,
                         const gsMultiPatch<T>         & geometryMap,

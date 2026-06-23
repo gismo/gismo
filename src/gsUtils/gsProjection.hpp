@@ -145,17 +145,15 @@ void gsProjection<Norm,T>::_system(const gsMultiBasis<T>         & integrationBa
     A.initSystem();
 
     // assemble system
-    if (!options.askSwitch("Lumped",false))
-    {
-        gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G,alpha,beta,gamma);
-        gsProjection<Norm,T>::template _assembleRhs<Norm>(A,u,f,G,alpha,beta,gamma);
-        A.matrix_into(systemMatrix);
-        A.rhs_into(rhs);
-    }
-    else
+    if (options.askSwitch("Lumped",false))
     {
         gsInfo<<"Warning: Lumped mass matrix is not implemented for the system assembly. Falling back to consistent mass matrix."<<std::endl;
     }
+
+    gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G,alpha,beta,gamma);
+    gsProjection<Norm,T>::template _assembleRhs<Norm>(A,u,f,G,alpha,beta,gamma);
+    A.matrix_into(systemMatrix);
+    A.rhs_into(rhs);
 }
 
 template<enum ProjectionNorm Norm, typename T>
@@ -208,10 +206,8 @@ T gsProjection<Norm,T>::_project(const gsMultiBasis<T>         & integrationBasi
     {
         gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G,alpha,beta,gamma);
         gsProjection<Norm,T>::template _assembleRhs<Norm>(A,u,f,G,alpha,beta,gamma);
-        gsMatrix<> LHS = A.matrix() * gsMatrix<>::Ones(A.matrix().rows(),1);
-        A.clearRhs();
-        gsProjection<Norm,T>::template _assembleRhs<Norm>(A,u,f,G,alpha,beta,gamma);
-        gsMatrix<> RHS = A.rhs();
+        gsMatrix<T> LHS = A.matrix() * gsMatrix<T>::Ones(A.matrix().rows(),1);
+        gsMatrix<T> RHS = A.rhs();
         coefs = LHS.cwiseInverse().cwiseProduct(RHS);
     }
 
