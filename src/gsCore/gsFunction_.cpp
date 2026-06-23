@@ -125,7 +125,7 @@ private:
         }
 
         // Fallback: If no Python clone exists, this is an error for a trampoline
-        GISMO_ERROR("A Python-derived gsBasis must implement a clone() method "
+        GISMO_ERROR("A Python-derived gsFunction must implement a clone() method "
                     "using 'return copy.copy(self)' to support parallel assembly.");
     }
 

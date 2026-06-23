@@ -675,9 +675,9 @@ gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
         return pybind11::array_t<Index>(
             {static_cast<pybind11::ssize_t>(s.nonZeros())},
             {sizeof(Index)},
-            const_cast<Index*>(s.innerIndexPtr()),
+            static_cast<const Index*>(s.innerIndexPtr()),
             pybind11::cast(s));
-    }, "Inner (row) indices array (zero-copy numpy view)")
+    }, "Inner (row) indices array (read-only zero-copy numpy view)")
 
     .def("indptr", [](Class& s) -> pybind11::array_t<Index> {
         if (!s.isCompressed())
@@ -685,9 +685,9 @@ gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
         return pybind11::array_t<Index>(
             {static_cast<pybind11::ssize_t>(s.outerSize() + 1)},
             {sizeof(Index)},
-            const_cast<Index*>(s.outerIndexPtr()),
+            static_cast<const Index*>(s.outerIndexPtr()),
             pybind11::cast(s));
-    }, "Outer column-pointer array (zero-copy numpy view)")
+    }, "Outer column-pointer array (read-only zero-copy numpy view)")
 
     // Convenience: build a scipy.sparse.csc_matrix directly (zero-copy).
     // Requires scipy to be installed.
