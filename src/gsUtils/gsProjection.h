@@ -255,8 +255,8 @@ public:
      *
      * @return     The L2 error of the projection
      */
-    static T project(   const gsMultiBasis<T>         & integrationBasis,
-                        const gsFunctionSet<T>        & projectionBasis,
+    static T project(   const gsFunctionSet<T>        & projectionBasis,
+                        const gsMultiBasis<T>         & integrationBasis,
                         const gsMultiPatch<T>         & geometryMap,
                               gsMatrix<T>             & coefs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
@@ -446,20 +446,19 @@ public:
     }
 
     /**
-     * @brief      Obtain the system matrix and right-hand side for the L2 projection of a function onto a basis
+     * @brief      Obtain the system matrix and right-hand side for the L2 projection of a geometry onto a basis
      * 
      * @param[in]  projectionBasis  The basis to project on
      * @param[in]  integrationBasis The basis used for numerical integration.
      * @param[in]  geometryMap      The geometry
-     * @param[in]  sourceFunction   The source function
      * @param      systemMatrix     The output system matrix
      * @param      rhs              The output right-hand side vector
      * @param      options          The options that control the projection process
      * 
      * @return     The L2 error of the projection
      */
-    static void system( const gsMultiBasis<T>         & integrationBasis,
-                        const gsFunctionSet<T>        & projectionBasis,
+    static void system( const gsFunctionSet<T>        & projectionBasis,
+                        const gsMultiBasis<T>         & integrationBasis,
                         const gsMultiPatch<T>         & geometryMap,
                               gsSparseMatrix<T>       & systemMatrix,
                               gsMatrix<T>             & rhs,
@@ -500,12 +499,11 @@ public:
     }
 
     /**
-     * @brief      Obtain the system matrix and right-hand side for the L2 projection of a function onto a basis
+     * @brief      Obtain the system matrix and right-hand side for the L2 projection of a geometry onto a basis
      * 
      * @param[in]  projectionBasis  The basis to project on
      * @param[in]  integrationBasis The basis used for numerical integration.
      * @param[in]  geometryMap      The geometry
-     * @param[in]  sourceFunction   The source function
      * @param      systemMatrix     The output system matrix
      * @param      rhs              The output right-hand side vector
      * @param      options          The options that control the projection process
@@ -680,8 +678,8 @@ public:
      * 
      * @return     The L2 error of the projection
      */
-    static void matrix( const gsMultiBasis<T>         & integrationBasis,
-                        const gsFunctionSet<T>        & projectionBasis,
+    static void matrix( const gsFunctionSet<T>        & projectionBasis,
+                        const gsMultiBasis<T>         & integrationBasis,
                         const gsMultiPatch<T>         & geometryMap,
                               gsSparseMatrix<T>       & systemMatrix,
                               short_t                   targetDim = 1,
@@ -787,8 +785,8 @@ public:
      * 
      * @return     The L2 error of the projection
      */
-    static void rhs(const gsMultiBasis<T>         & integrationBasis,
-                    const gsFunctionSet<T>        & projectionBasis,
+    static void rhs(const gsFunctionSet<T>        & projectionBasis,
+                    const gsMultiBasis<T>         & integrationBasis,
                     const gsMultiPatch<T>         & geometryMap,
                           gsMatrix<T>             & rhs,
                     const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
