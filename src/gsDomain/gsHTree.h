@@ -242,8 +242,8 @@ public:
                            unsigned lvl,
                            gsVector<Z, d> & result) const;
 
+    /// Read-only access to the root node.
     const node* getRoot() const { return m_root; }
-          node* getRoot()       { return m_root; }
 
     /// Accessor for gsHTree::m_upperIndex
     const point & upperCorner() const
@@ -278,8 +278,11 @@ public:
     void insertBox (point const & lower, point const & upper,
                     node * _node, int lvl);
 
-    /** \brief Merge two trees
-    \todo continue docs
+    /** \brief Merge two trees into their common refinement.
+    *
+    * Both trees must describe the same domain and use the same index level.
+    * The returned tree contains the union of the leaf boxes from both inputs,
+    * compressed to remove siblings that end up at the same level.
     */
     // void merge(const gsHTree<d,Z> & other);
     static gsHTree merge(const gsHTree<d,Z>& tree1, const gsHTree<d,Z>& tree2);
@@ -787,7 +790,7 @@ private:
         }
     };
 
-    /// Counts number of nodes in the tree
+    /// Prints all leaves in the tree
     struct printLeaves_visitor
     {
         typedef int return_type;
@@ -799,7 +802,7 @@ private:
         }
     };
 
-    /// Counts number of nodes in the tree
+    /// Prints all nodes in the tree
     struct printNodes_visitor
     {
         typedef int return_type;
@@ -842,4 +845,3 @@ private:
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsHTree.hpp)
 #endif
-
