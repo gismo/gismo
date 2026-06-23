@@ -204,7 +204,7 @@ template<ProjectionNorm Norm> void pybind11_init_gsProjection(py::module &m)
             Class::matrix(projectionBasis, geometryMap, systemMatrix, targetDim, bc, options, alpha, beta, gamma);
         }
         return systemMatrix;
-    }, "Obtain the mass matrix for geometry projection (multi-patch)", py::arg("projectionBasis"), py::arg("geometryMap"), py::arg("targetDim") = 1, py::arg("bc") = gsBoundaryConditions<real_t>(), py::arg("options") = gsOptionList(), py::arg("alpha") = (real_t)1.0, py::arg("beta") = (real_t)1.0, py::arg("gamma") = (real_t)1.0)
+    }, "Obtain the mass matrix for geometry projection (multi-patch)", py::arg("projectionBasis"), py::arg("geometryMap"), py::arg("targetDim") = -1, py::arg("bc") = gsBoundaryConditions<real_t>(), py::arg("options") = gsOptionList(), py::arg("alpha") = (real_t)1.0, py::arg("beta") = (real_t)1.0, py::arg("gamma") = (real_t)1.0)
     .def_static("matrix", [](const gsFunctionSet<real_t> & projectionBasis, const gsMultiBasis<real_t> & integrationBasis, const gsMultiPatch<real_t> & geometryMap, short_t targetDim, const gsBoundaryConditions<real_t> & bc, const gsOptionList & options, real_t alpha, real_t beta, real_t gamma)
     {
         gsSparseMatrix<real_t> systemMatrix;
@@ -213,7 +213,7 @@ template<ProjectionNorm Norm> void pybind11_init_gsProjection(py::module &m)
             Class::matrix(projectionBasis, integrationBasis, geometryMap, systemMatrix, targetDim, bc, options, alpha, beta, gamma);
         }
         return systemMatrix;
-    }, "Obtain the mass matrix for geometry projection with custom integration basis (multi-patch)", py::arg("projectionBasis"), py::arg("integrationBasis"), py::arg("geometryMap"), py::arg("targetDim") = 1, py::arg("bc") = gsBoundaryConditions<real_t>(), py::arg("options") = gsOptionList(), py::arg("alpha") = (real_t)1.0, py::arg("beta") = (real_t)1.0, py::arg("gamma") = (real_t)1.0)
+    }, "Obtain the mass matrix for geometry projection with custom integration basis (multi-patch)", py::arg("projectionBasis"), py::arg("integrationBasis"), py::arg("geometryMap"), py::arg("targetDim") = -1, py::arg("bc") = gsBoundaryConditions<real_t>(), py::arg("options") = gsOptionList(), py::arg("alpha") = (real_t)1.0, py::arg("beta") = (real_t)1.0, py::arg("gamma") = (real_t)1.0)
     .def_static("matrix", [](const gsBasis<real_t> & projectionBasis, const gsGeometry<real_t> & geometryMap, short_t targetDim, const gsBoundaryConditions<real_t> & bc, const gsOptionList & options, real_t alpha, real_t beta, real_t gamma)
     {
         gsSparseMatrix<real_t> systemMatrix;
@@ -222,7 +222,7 @@ template<ProjectionNorm Norm> void pybind11_init_gsProjection(py::module &m)
             Class::matrix(projectionBasis, geometryMap, systemMatrix, targetDim, bc, options, alpha, beta, gamma);
         }
         return systemMatrix;
-    }, "Obtain the mass matrix for geometry projection (single patch)", py::arg("projectionBasis"), py::arg("geometryMap"), py::arg("targetDim") = 1, py::arg("bc") = gsBoundaryConditions<real_t>(), py::arg("options") = gsOptionList(), py::arg("alpha") = (real_t)1.0, py::arg("beta") = (real_t)1.0, py::arg("gamma") = (real_t)1.0)
+    }, "Obtain the mass matrix for geometry projection (single patch)", py::arg("projectionBasis"), py::arg("geometryMap"), py::arg("targetDim") = -1, py::arg("bc") = gsBoundaryConditions<real_t>(), py::arg("options") = gsOptionList(), py::arg("alpha") = (real_t)1.0, py::arg("beta") = (real_t)1.0, py::arg("gamma") = (real_t)1.0)
     .def_static("matrix", [](const gsBasis<real_t> & projectionBasis, const gsBasis<real_t> & integrationBasis, const gsGeometry<real_t> & geometryMap, short_t targetDim, const gsBoundaryConditions<real_t> & bc, const gsOptionList & options, real_t alpha, real_t beta, real_t gamma)
     {
         gsSparseMatrix<real_t> systemMatrix;
@@ -231,7 +231,7 @@ template<ProjectionNorm Norm> void pybind11_init_gsProjection(py::module &m)
             Class::matrix(projectionBasis, integrationBasis, geometryMap, systemMatrix, targetDim, bc, options, alpha, beta, gamma);
         }
         return systemMatrix;
-    }, "Obtain the mass matrix for geometry projection with custom integration basis (single patch)", py::arg("projectionBasis"), py::arg("integrationBasis"), py::arg("geometryMap"), py::arg("targetDim") = 1, py::arg("bc") = gsBoundaryConditions<real_t>(), py::arg("options") = gsOptionList(), py::arg("alpha") = (real_t)1.0, py::arg("beta") = (real_t)1.0, py::arg("gamma") = (real_t)1.0)
+    }, "Obtain the mass matrix for geometry projection with custom integration basis (single patch)", py::arg("projectionBasis"), py::arg("integrationBasis"), py::arg("geometryMap"), py::arg("targetDim") = -1, py::arg("bc") = gsBoundaryConditions<real_t>(), py::arg("options") = gsOptionList(), py::arg("alpha") = (real_t)1.0, py::arg("beta") = (real_t)1.0, py::arg("gamma") = (real_t)1.0)
     // rhs bindings
     .def_static("rhs", [](const gsMultiBasis<real_t> & projectionBasis, const gsMultiPatch<real_t> & geometryMap, const gsBoundaryConditions<real_t> & bc, const gsOptionList & options, real_t alpha, real_t beta, real_t gamma)
     {
