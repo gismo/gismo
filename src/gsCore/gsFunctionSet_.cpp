@@ -53,8 +53,9 @@ public:
                 {(py::ssize_t)sizeof(T), (py::ssize_t)(result.rows() * sizeof(T))},
                 result.data(), base);
             overload(u, result_view);
+        } else {
+            Base::eval_into(u, result);
         }
-        // eval_into has a default implementation in gsFunctionSet; no fail if not overridden
     }
 
     void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override
@@ -69,8 +70,9 @@ public:
                 {(py::ssize_t)sizeof(T), (py::ssize_t)(result.rows() * sizeof(T))},
                 result.data(), base);
             overload(u, result_view);
+        } else {
+            Base::deriv_into(u, result);
         }
-        // deriv_into has a default implementation in gsFunctionSet; no fail if not overridden
     }
 
     void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override
@@ -86,8 +88,9 @@ public:
                 {(py::ssize_t)sizeof(T), (py::ssize_t)(result.rows() * sizeof(T))},
                 result.data(), base);
             overload(u, result_view);
+        } else {
+            Base::deriv2_into(u, result);
         }
-        // deriv2_into has a default implementation in gsFunctionSet; no fail if not overridden
     }
 
     short_t domainDim() const override
