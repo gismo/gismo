@@ -11,7 +11,7 @@
     Author(s): A. Mantzaflaris, D. Tolis, L. Mussmaecher
 */
 
-#include <gsMesh2/gsDooSabin.h>
+#include <gsMesh2/gsSubdivisionSchemes/gsDooSabin.h>
 #include <gsMesh2/gsSurfMesh.h>
 
 namespace gismo
@@ -205,8 +205,9 @@ gsSurfMesh::Face_property<Point> gsDooSabin::face_limits(std::string label)
     return limits;
 }
 
-gsSurfMesh::Face_property<Point> gsDooSabin::face_normal_limits(std::string label, bool normalize)
+gsSurfMesh::Face_property<Point> gsDooSabin::face_normal_limits(std::string label)
 {
+    bool normalize = m_options.askSwitch("normalize");
     auto points = m_mesh->points();
     auto limits = m_mesh->add_face_property<Point>((label), Point(0, 0, 0));
     unsigned int n;

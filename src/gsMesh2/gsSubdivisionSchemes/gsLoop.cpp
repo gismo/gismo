@@ -11,7 +11,7 @@
     Author(s): A. Mantzaflaris, D. Tolis, L. Mussmaecher
 */
 
-#include <gsMesh2/gsLoop.h>
+#include <gsMesh2/gsSubdivisionSchemes/gsLoop.h>
 #include <gsMesh2/gsSurfMesh.h>
 
 namespace gismo

@@ -28,6 +28,7 @@ int main(int argc, char** argv)
     std::string scheme_name = "Catmull-Clark";
     index_t r(1);
     index_t option(0);
+    bool normalize(true);
 
     // Read command-line options
     gsCmdLine cmd("Hi, give me a mesh");
@@ -37,6 +38,7 @@ int main(int argc, char** argv)
     cmd.addString("s", "scheme", "Choice of Subdivision Scheme", scheme_name);
     cmd.addInt("r", "ref", "Number of refinement steps", r);
     cmd.addInt("o","option","Option on subdivision scheme", option);
+    cmd.addSwitch("normalize", "Normalize limit normals and tangents", normalize);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
       
 

@@ -11,9 +11,8 @@
     Author(s): A. Mantzaflaris, D. Tolis, L. Mussmaecher
 */
 
-
-#include <gsMesh2/gsCatmullClark.h>
-#include <gsMesh2/gsSubdivScheme.h>
+#include <gsMesh2/gsSubdivisionSchemes/gsCatmullClark.h>
+#include <gsMesh2/gsSurfMesh.h>
 
 namespace gismo {
 
@@ -211,8 +210,9 @@ gsSurfMesh::Vertex_property<gsSurfMesh::Point> gsCatmullClark::vertex_limits(std
     return limits;
 }
 
-gsSurfMesh::Vertex_property<gsSurfMesh::Point> gsCatmullClark::vertex_normal_limits(std::string label, bool normalize)
+gsSurfMesh::Vertex_property<gsSurfMesh::Point> gsCatmullClark::vertex_normal_limits(std::string label)
 {
+    bool normalize = m_options.askSwitch("normalize");
     auto points = m_mesh->points();
     //todo: check if label exists
     auto limits = m_mesh->add_vertex_property<Point>(label, Point(0, 0, 0));
@@ -249,8 +249,9 @@ gsSurfMesh::Vertex_property<gsSurfMesh::Point> gsCatmullClark::vertex_normal_lim
     return limits;
 }
 
-gsSurfMesh::Vertex_property<gsSurfMesh::Point> gsCatmullClark::vertex_tangent_limits(std::string label, bool normalize)
+gsSurfMesh::Vertex_property<gsSurfMesh::Point> gsCatmullClark::vertex_tangent_limits(std::string label)
 {
+    bool normalize = m_options.askSwitch("normalize");
     gsSurfMesh::Vertex v;
     gsSurfMesh::Halfedge h2;
 

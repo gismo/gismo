@@ -27,14 +27,20 @@ public: // Constructors
   ///
   /// Default constructor.
   /// Catmull-Clark has no special options.
-  gsCatmullClark() : gsSubdivisionScheme() {}
+  gsCatmullClark() : gsSubdivisionScheme() 
+  {
+    m_options.addSwitch("normalize", "Normalize limit normals and tangents", true);
+  }
 
   /// \brief Constructor with a mesh to target.
   ///
   /// Constructor that accepts a mesh to be targeted by this constructor.
   /// Catmull-Clark has no special options.
   gsCatmullClark(gsSurfMesh* mesh): gsSubdivisionScheme()
-  { this->assign(mesh); }
+  { 
+    m_options.addSwitch("normalize", "Normalize limit normals and tangents", true);
+    this->assign(mesh); 
+  }
 
   static void apply(gsSurfMesh& mesh);
 
@@ -42,10 +48,10 @@ public: // Constructors
   gsSurfMesh::Vertex_property<Point> vertex_limits(std::string label = "v:limit");
 
   /// Compute vertex limit normals for Catmull-Clark subdivision scheme
-  gsSurfMesh::Vertex_property<Point> vertex_normal_limits(std::string label = "v:normal", bool normalize = true);
+  gsSurfMesh::Vertex_property<Point> vertex_normal_limits(std::string label = "v:normal");
 
   /// Compute vertex limit tangent for Catmull-Clark subdivision scheme
-  gsSurfMesh::Vertex_property<Point> vertex_tangent_limits(std::string label = "v:tanvec", bool normalize = true);
+  gsSurfMesh::Vertex_property<Point> vertex_tangent_limits(std::string label = "v:tanvec");
 
 protected:
 

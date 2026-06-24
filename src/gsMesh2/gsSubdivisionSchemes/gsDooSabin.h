@@ -30,6 +30,7 @@ public: // Constructors
   gsDooSabin() : gsSubdivisionScheme()
   {
       m_options.addInt("ds.boundaryMask", "Option for boundary masks in Doo-Sabin subdivision scheme",0);
+      m_options.addSwitch("normalize", "Normalize limit normals and tangents", true);
   }
 
   /// \brief Constructor with a mesh to target.
@@ -43,6 +44,7 @@ public: // Constructors
   gsDooSabin(gsSurfMesh* mesh) : gsSubdivisionScheme()
   {
       m_options.addInt("ds.boundaryMask", "Option for boundary masks in Doo-Sabin subdivision scheme",0);
+      m_options.addSwitch("normalize", "Normalize limit normals and tangents", true);
       this->assign(mesh);
   }
 
@@ -53,10 +55,10 @@ public:
   gsSurfMesh::Face_property<Point> face_limits(std::string label = "f:limit");
 
   /// Compute face limit normals
-  gsSurfMesh::Face_property<Point> face_normal_limits(std::string label = "f:normal", bool normalize = true);
+  gsSurfMesh::Face_property<Point> face_normal_limits(std::string label = "f:normal");
 
   /// Compute face limit tangent
-  gsSurfMesh::Face_property<Point> face_tangent_limits(std::string label = "f:tanvec", bool normalize = true)
+  gsSurfMesh::Face_property<Point> face_tangent_limits(std::string label = "f:tanvec")
   {GISMO_NO_IMPLEMENTATION}
 
 
