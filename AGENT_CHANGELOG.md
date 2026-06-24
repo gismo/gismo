@@ -1,5 +1,22 @@
 # Agent Change Log
 
+## 2026-06-24 (session 18 continued)
+
+### `poissonTHB_example.cpp`: Phase 1 / Phase 2 closure + remove early exit
+
+**Changes:**
+
+1. **Two-phase local fitting closure.** Replaced the unbounded iterative closure (which cascaded to all 10 patches) with a two-phase algorithm:
+   - **Phase 1:** Full closure restricted to the initially-active seed patches only (`expansionAllowed` gates `expandRegionByFunction` so no new patches are added). Seed patches are the ones that hold the coarsened global function's twin components.
+   - **Phase 2:** After Phase 1 converges, collect the supports of each Phase-1-selected function's twin components on non-seed patches. Use those supports as mapped E(c)' seeds for a single-patch closure on each neighboring patch independently — no cascade beyond it. `expansionAllowed` is set to one patch at a time.
+   - Result: for the L4 mesh with seed `{3,4,6,8}`, 16 consecutive steps ran with `nLocalPatches=8` instead of the previous 10. Patches 1 and 2 (not directly adjacent to any seed patch) were correctly excluded.
+
+2. **Removed `std::exit(0)` when local = global.** The previous behavior killed the entire program when `nLocalPatches >= nPatches`. Replaced with a step-level fallback: when the local region covers all patches, `uvFitting = uv1` (use the global sample cloud) and the step continues normally. This allows coarsening to proceed past steps where locality cannot be guaranteed (e.g., when the seed cluster is topologically central, or when level-2 functions with degree-3 full-unit support are reached).
+
+**Files changed:** `examples/poissonTHB_example.cpp`, `AGENT_CHANGELOG.md`
+
+---
+
 ## 2026-06-22 (session 17)
 
 ### `poissonTHB_example.cpp`: fit timing + early exit when local = global

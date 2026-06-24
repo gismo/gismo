@@ -13249,6 +13249,12 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
         return !hits.empty();
     };
 
+    // Phase 1 runs the closure only on the initially-active (seed) patches.
+    // Phase 2 maps those seeds to neighboring patches and runs a single-patch
+    // closure on each — no further cascade beyond them.
+    const std::vector<bool> seedHasPatch = region.hasPatch;
+    std::vector<bool> expansionAllowed   = seedHasPatch; // Phase 1: seed patches only
+
     auto expandRegionByFunction = [&](index_t f) -> bool
     {
         bool changed = false;
@@ -13262,6 +13268,8 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
             const int lvl = static_cast<int>(desc[1]);
             const int idx = static_cast<int>(desc[2]);
             if (p < 0 || p >= static_cast<int>(nPatches))
+                continue;
+            if (!expansionAllowed[p])
                 continue;
             if (p >= static_cast<int>(Bells.size()) || lvl < 0 || lvl >= static_cast<int>(Bells[p].size()) ||
                 idx < 0 || idx >= static_cast<int>(Bells[p][lvl].size()))
@@ -13301,6 +13309,8 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
                 const int lvl = sp[1];
                 const int idx = sp[2];
                 if (p < 0 || p >= static_cast<int>(nPatches))
+                    continue;
+                if (!expansionAllowed[p])
                     continue;
                 if (p >= static_cast<int>(Bells.size()) || lvl < 0 || lvl >= static_cast<int>(Bells[p].size()) ||
                     idx < 0 || idx >= static_cast<int>(Bells[p][lvl].size()))
@@ -13420,6 +13430,12 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
             region.basisInd(0, f) = 1.0;
             selectedNewFunction = true;
             ++newFuncThisIter;
+
+            // Snapshot patch membership before expanding so we can report new pulls
+            std::vector<bool> patchBeforeExpand(nPatches, false);
+            for (index_t p = 0; p < nPatches; ++p)
+                patchBeforeExpand[p] = region.hasPatch[p];
+
             const bool grew = expandRegionByFunction(f);
 
             if (outfile.is_open())
@@ -13436,22 +13452,48 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
             }
 
             // Closure-log: one line per newly-selected function
+            // Format: f=X HIT:p=A lv=B idx=C sup=... [PULL->p=D sup=...] [(no box growth)]
             if (closureLogFile.is_open())
             {
-                for (const auto& hit : regionHits)
+                // Primary hit: the twin whose support overlapped the active AABB
+                const auto& hit = regionHits[0];
+                const auto hitSup = Bells[hit.patch][hit.level].function(hit.index).support();
+                closureLogFile << "  f=" << f
+                               << " HIT:p=" << hit.patch
+                               << " lv=" << hit.level
+                               << " idx=" << hit.index
+                               << " sup=[" << hitSup(0,0) << "," << hitSup(1,0)
+                               << "]x[" << hitSup(0,1) << "," << hitSup(1,1) << "]"
+                               << (hit.spillover ? " (spillover)" : "");
+
+                // Any twin that pulled a previously-inactive patch into the region
+                for (const auto& desc : functionDescription[f])
                 {
-                    const auto support = Bells[hit.patch][hit.level].function(hit.index).support();
-                    closureLogFile << "  f=" << f
-                                   << " p=" << hit.patch
-                                   << " lv=" << hit.level
-                                   << " idx=" << hit.index
-                                   << " sup=[" << support(0,0) << "," << support(1,0)
-                                   << "]x[" << support(0,1) << "," << support(1,1) << "]"
-                                   << (hit.spillover ? " (spillover)" : "")
-                                   << (grew ? "" : " (no box growth)")
-                                   << "\n";
-                    break; // log only the first (primary) component to keep lines compact
+                    if (desc.size() < 3) continue;
+                    const int tp = static_cast<int>(desc[0]);
+                    if (tp < 0 || tp >= static_cast<int>(nPatches)) continue;
+                    if (!patchBeforeExpand[tp] && region.hasPatch[tp])
+                    {
+                        const int tlv  = static_cast<int>(desc[1]);
+                        const int tidx = static_cast<int>(desc[2]);
+                        if (tp < static_cast<int>(Bells.size()) &&
+                            tlv >= 0 && tlv < static_cast<int>(Bells[tp].size()) &&
+                            tidx >= 0 && tidx < static_cast<int>(Bells[tp][tlv].size()))
+                        {
+                            const auto twinSup = Bells[tp][tlv].function(tidx).support();
+                            closureLogFile << " PULL->p=" << tp
+                                           << " sup=[" << twinSup(0,0) << "," << twinSup(1,0)
+                                           << "]x[" << twinSup(0,1) << "," << twinSup(1,1) << "]";
+                        }
+                        else
+                        {
+                            closureLogFile << " PULL->p=" << tp;
+                        }
+                    }
                 }
+
+                if (!grew) closureLogFile << " (no box growth)";
+                closureLogFile << "\n";
             }
         }
 
@@ -13479,6 +13521,104 @@ static LocalCoarseningRegion buildLocalCoarseningRegion(
                 if (!region.hasPatch[p]) continue;
                 closureLogFile << "     patch=" << p << " " << formatBoxList(region.patchAABB[p]) << "\n";
             }
+        }
+    }
+
+    // =========================================================
+    // Phase 2: one-shot twin extension to neighboring patches.
+    // Each Phase-1-selected function's twins on non-seed patches
+    // define the mapped E(c)' for that neighbor.  We then run a
+    // full single-patch closure on each neighbor independently —
+    // no cascade beyond it.
+    // =========================================================
+    {
+        // Reset expansionAllowed: each non-seed patch gets its own turn.
+        for (index_t p = 0; p < static_cast<index_t>(nPatches); ++p)
+            expansionAllowed[p] = false;
+
+        // Collect mapped seed cells for each non-seed patch from Phase-1 selections.
+        std::vector<std::vector<std::array<real_t,4>>> phase2Seeds(nPatches);
+        for (index_t f = 0; f < static_cast<index_t>(functionDescription.size()); ++f)
+        {
+            if (region.basisInd(0, f) == 0.0) continue;
+            for (const auto& desc : functionDescription[f])
+            {
+                if (desc.size() < 3) continue;
+                const int p   = static_cast<int>(desc[0]);
+                const int lvl = static_cast<int>(desc[1]);
+                const int idx = static_cast<int>(desc[2]);
+                if (p < 0 || p >= static_cast<int>(nPatches)) continue;
+                if (seedHasPatch[p]) continue; // already covered by Phase 1
+                if (p >= static_cast<int>(Bells.size()) || lvl < 0 ||
+                    lvl >= static_cast<int>(Bells[p].size()) ||
+                    idx < 0 || idx >= static_cast<int>(Bells[p][lvl].size()))
+                    continue;
+                const auto sup = Bells[p][lvl].function(idx).support();
+                phase2Seeds[p].push_back({
+                    static_cast<real_t>(sup(0,0)), static_cast<real_t>(sup(1,0)),
+                    static_cast<real_t>(sup(0,1)), static_cast<real_t>(sup(1,1))
+                });
+            }
+        }
+
+        // For each non-seed patch that received seeds, run a single-patch closure.
+        for (index_t targetP = 0; targetP < static_cast<index_t>(nPatches); ++targetP)
+        {
+            if (phase2Seeds[targetP].empty()) continue;
+
+            // Seed the patch AABB from the mapped twin supports.
+            region.hasPatch[targetP] = true;
+            for (const auto& seed : phase2Seeds[targetP])
+                mergePatchAabb(region, targetP, seed[0], seed[1], seed[2], seed[3]);
+
+            if (closureLogFile.is_open())
+            {
+                closureLogFile << "--- Phase2 patch=" << targetP
+                               << " seed=" << formatBoxList(region.patchAABB[targetP]) << " ---\n";
+            }
+
+            expansionAllowed[targetP] = true; // this patch only
+
+            bool p2New = true;
+            index_t p2Iter = 0;
+            while (p2New)
+            {
+                p2New = false;
+                ++p2Iter;
+                const auto p2Aabb = region.patchAABB;
+                std::vector<bool> p2Has(nPatches, false);
+                p2Has[targetP] = true;
+
+                index_t p2Count = 0;
+                for (index_t f = 0; f < static_cast<index_t>(functionDescription.size()); ++f)
+                {
+                    if (region.basisInd(0, f) != 0.0) continue;
+
+                    std::vector<RegionSupportRef> p2Hits;
+                    if (!collectRegionHits(f, p2Aabb, p2Has, p2Hits)) continue;
+
+                    region.basisInd(0, f) = 1.0;
+                    p2New = true;
+                    ++p2Count;
+                    expandRegionByFunction(f); // restricted to targetP by expansionAllowed
+
+                    if (closureLogFile.is_open())
+                    {
+                        const auto& h = p2Hits[0];
+                        const auto hs = Bells[h.patch][h.level].function(h.index).support();
+                        closureLogFile << "  [p2] f=" << f
+                                       << " HIT:p=" << h.patch
+                                       << " lv=" << h.level
+                                       << " idx=" << h.index
+                                       << " sup=[" << hs(0,0) << "," << hs(1,0)
+                                       << "]x[" << hs(0,1) << "," << hs(1,1) << "]\n";
+                    }
+                }
+                if (closureLogFile.is_open())
+                    closureLogFile << "  [p2 iter " << p2Iter << "] " << p2Count << " new\n";
+            }
+
+            expansionAllowed[targetP] = false; // prevent leakage into the next patch's turn
         }
     }
 
@@ -18111,7 +18251,7 @@ static OriginalMpbesReference buildOriginalMpbesReference(const std::string& fil
                 std::pow(2.0, boxLevelMax - myLevel(patch)(boxInd));
         }
 
-        gsTensorBSplineBasis<2, real_t> tensForBells = tens;
+        gsTensorBSplineBasis<2, real_t> tensForBells = THBFromGeo(patch)->tensorLevel(0);
         Bells(patch).resize(maxLevel(patch) + 1);
         for (int level = 0; level < Bells(patch).size(); ++level)
         {
@@ -19689,21 +19829,18 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                             if (nLocalPatches >= static_cast<index_t>(uv1.size()))
                             {
                                 gsInfo << "[local-fitting] NOTE: local region covers all "
-                                       << nLocalPatches << " patches — local and global fitting are equivalent at this step.\n";
-                                gsInfo << "[local-fitting] Exiting early: no locality benefit for this geometry.\n";
+                                       << nLocalPatches << " patches — falling back to global fitting for this step.\n";
                                 if (outfile.is_open())
                                 {
                                     outfile << "[local-fitting] NOTE: local region covers all "
-                                            << nLocalPatches << " patches — local and global fitting are equivalent at this step.\n";
-                                    outfile << "[local-fitting] Exiting early: no locality benefit for this geometry.\n";
-                                    outfile.flush();
+                                            << nLocalPatches << " patches — falling back to global fitting for this step.\n";
                                 }
-                                if (summaryFile.is_open()) summaryFile.flush();
-                                if (closureLogFile.is_open()) closureLogFile.flush();
-                                std::exit(0);
+                                uvFitting = uv1;
                             }
-
-                            uvFitting = resampleLocalRegion(localRegion, uv1.size(), kLocal);
+                            else
+                            {
+                                uvFitting = resampleLocalRegion(localRegion, uv1.size(), kLocal);
+                            }
                         }
                         else
                         {
@@ -22172,6 +22309,12 @@ int main(int argc, char** argv) {
         {
             cliInputFile = std::string(argv[ai + 1]);
             ++ai;
+        }
+        else if (std::string(argv[ai]).size() > 4 &&
+                 std::string(argv[ai]).substr(std::string(argv[ai]).size() - 4) == ".xml" &&
+                 std::string(argv[ai]).front() != '-')
+        {
+            cliInputFile = std::string(argv[ai]);
         }
         else if (std::string(argv[ai]) == "--skip-lo-fallback")
         {
