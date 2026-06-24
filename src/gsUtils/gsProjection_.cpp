@@ -1,6 +1,6 @@
 #include <gsCore/gsTemplateTools.h>
 
-//Prerequisits
+// Prerequisites
 #include <gsUtils/gsProjection.h>
 #include <gsUtils/gsProjection.hpp>
 

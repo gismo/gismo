@@ -56,7 +56,7 @@ void gsProjection<Norm,T>::_matrix(const gsMultiBasis<T>         & integrationBa
     A.initSystem();
 
     gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G,alpha,beta,gamma);
-    const gsSparseMatrix<T> consistentMatrix = A.matrix();
+    const gsSparseMatrix<T> & consistentMatrix = A.matrix();
     if (options.askSwitch("Lumped",false))
     {
         gsMatrix<T> ones = gsMatrix<T>::Ones(consistentMatrix.cols(), 1);
@@ -211,10 +211,15 @@ T gsProjection<Norm,T>::_project(const gsMultiBasis<T>         & integrationBasi
     {
         gsMatrix<T> ones = gsMatrix<T>::Ones(A.matrix().cols(), 1);
         gsMatrix<T> diagVals = A.matrix() * ones;
-        gsMatrix<T> rhsVals = A.rhs();
-        coefs.resize(diagVals.rows(), 1);
+        const gsMatrix<T> & rhsVals = A.rhs();
+        coefs.resize(diagVals.rows(), rhsVals.cols());
         for (index_t i = 0; i < diagVals.rows(); ++i)
-            coefs(i,0) = (diagVals(i,0) != T(0)) ? rhsVals(i,0) / diagVals(i,0) : T(0);
+        {
+            if (diagVals(i,0) != T(0))
+                coefs.row(i) = rhsVals.row(i) / diagVals(i,0);
+            else
+                coefs.row(i).setZero();
+        }
     }
     else
     {
