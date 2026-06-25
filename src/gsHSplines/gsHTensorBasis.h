@@ -636,11 +636,28 @@ public:
         index_t lvl = levelOf(j);
         gsMatrix<index_t,d,2> sup;
         m_bases[lvl]->elementSupport_into(m_xmatrix[lvl][j-m_xmatrix_offset[lvl]], sup);
-        std::pair<point,point> box =  m_tree.queryLevelCell(sup.col(0),sup.col(1),lvl);
+        // elementSupport_into returns knot-index-space coordinates, but the
+        // tree uses diadic indices.  For manualLevels they differ, so convert.
+        point sup0 = sup.col(0);
+        point sup1 = sup.col(1);
+        if (m_manualLevels)
+        {
+            this->_knotIndexToDiadicIndex(lvl, sup0);
+            this->_knotIndexToDiadicIndex(lvl, sup1);
+        }
+        std::pair<point,point> box =  m_tree.queryLevelCell(sup0,sup1,lvl);
         for ( short_t i = 0; i!=d; ++i) //get intersection
         {
-            box.first[i]  = ( sup(i,0) >= box.first[i]  ? sup(i,0) : box.first[i] );
-            box.second[i] = ( sup(i,1) <= box.second[i] ? sup(i,1) : box.second[i]);
+            box.first[i]  = ( sup0(i) >= box.first[i]  ? sup0(i) : box.first[i] );
+            box.second[i] = ( sup1(i) <= box.second[i] ? sup1(i) : box.second[i]);
+        }
+        // For manualLevels, box is in diadic space; convert boundaries back to
+        // knot-index space before computing the midpoint, so that the midpoint
+        // lands on a valid element boundary and elementDom receives correct indices.
+        if (m_manualLevels)
+        {
+            this->_diadicIndexToKnotIndex(lvl, box.first);
+            this->_diadicIndexToKnotIndex(lvl, box.second);
         }
         sup.col(0) = (box.first+box.second)/2;
         sup.col(1) = sup.col(0).array() + 1;
