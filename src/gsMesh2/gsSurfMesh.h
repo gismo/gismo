@@ -1587,22 +1587,35 @@ public:
     void split(Face f, Vertex v);
 
 
-    /*
-      Split an arbitrary face into triangles by connecting each vertex of fh to vh.
-      - fh will remain valid (it will become one of the triangles)
-      - the halfedge handles of the new triangles will point to the old halfeges
+    
+    /** \brief Triangle - split a face connecting vertex \a v with the vertices in vector \c edgeverts
+    
+        The vector should contain a vertex for each edge of a face.
+        The halfedge orientation in each trinagle is the same as in the original face.
+     
+        \param edgeverts: Vector with vertices. We need one vertex per edge.
+        \param f: Face to be splitted
+        \param v: Inserted vertex for split.
     */
-    void split(std::vector<Vertex> vv, Face f, Vertex v);
+    void split_to_triangles(std::vector<Vertex>& edgeverts, Face f, Vertex v);
 
 
     /// Quad-split face connecting vertex \a v, starting from corner
     /// \a s of the face
     /// \a f is assumed to have 8 vertices, and contains halfedge \a s
     void quad_split(Face f, Vertex v, Halfedge s);
-    void quad_split();
-    
 
-    ///  Quad-split at uniform positions on each edge respectively
+    /// Quad-split uniformly at the half of each edge respectively.
+    void quad_split();
+
+    /**  Quad-split at uniform \c w positions on each edge respectively.
+     
+     Depending on the \c w, for each face, each each is splitted into \c w + 1 edges.
+        * For w = 1: 1 Face ---> 4 Faces.
+        * For w = 2: 1 Face ---> 9 Faces.
+     
+     \param w: Option regarding the edge split in each edge. For now works for \c w <= 2.
+    */
     void quad_split(index_t w);
 
     /** Split the edge \c e by first adding point \c p to the mesh and then
@@ -1695,11 +1708,24 @@ public:
     /// \param h2: Halfedge 2
     real_t angle(Halfedge h1, Halfedge h2);
 
-    /// Add property "v:halfedge" of normal halfedges to all faces of the mesh.
+    /// Add property "v:halfedge" of normalized halfedges to all faces of the mesh.
     /// 
-    /// The property will be added to the vertices. TODO: better visulaization on points
+    /// If the mesh is plotted, this property shows in a every face a halfedge.
+    /// 
+    /// The property will be added to the vertices.
     /// close to vertices not on vertices, to be shown on face.
     void display_halfedge();
+
+
+public:  // mesh operations related to subdivision schemes
+
+    /// Augment mesh boundaries for boundary control on dual subdivision schemes. 
+    ///
+    /// Necessary all faces that touch boundary be quads. 
+    /// 
+    /// In practice is the implementation of A. Nashri 1987 - "Polyhedral Subdivision Methods for Free-Form Surfaces"
+    /// 
+    void polyhedral_modification_boundary();
 
 public:
 
@@ -1759,7 +1785,7 @@ public:
     /// deletes the face \c f from the mesh
     void delete_face(Face f);
 
-    /// creates dual mesh (Dual-graph) creation for 2-manifolds without boundaries using barycentric method.
+    /// creates in-place the dual mesh (Dual-graph) for 2-manifolds without boundaries using barycentric method.
     void dual_mesh_inplace();
 
     /// returns dual mesh (Dual-graph) creation for 2-manifolds without boundaries using barycentric method.

@@ -844,6 +844,47 @@ display_halfedge()
     }
 }
 
+void gsSurfMesh::polyhedral_modification_boundary()
+{
+    // Current implementation only for regular boundary (vertex valence = 3) and 
+       // conrners (vertex valence = 2).
+       // TODO: General case for EF in boundary by using Chebysev points (see A.Nashri 1987).
+
+    std::map<Vertex, Point> bvmap; // New positions for boundary vertices
+    Vertex bv;
+    auto pts = points();
+    // Compute the new positions for boundary vertices.
+    for (auto hit : halfedges())
+    {
+        if (touches_boundary(hit))
+        {
+            bv = from_vertex(hit);
+
+            if (valence(bv) == 3) // Regular boundary case
+            {
+                bvmap[bv] = 2 * pts[bv] - pts[from_vertex(prev_halfedge(hit))];
+            }
+            else if (valence(bv) == 2) // Corner boundary case
+            {
+                bvmap[bv] = 4 * pts[bv] - 2 * pts[from_vertex(prev_halfedge(hit))]
+                    - 2 * pts[to_vertex(hit)] + pts[to_vertex(next_halfedge(hit))];
+            }
+            else // irregular case
+            {
+                gsWarn << "Irregular boundary stop process\n";
+                return;
+            }
+
+        }
+    }
+
+    // Modify mesh boundary
+    for (auto vit : vertices())
+        if (is_boundary(vit))
+            position(vit) = bvmap[vit];
+}
+
+
 void
 gsSurfMesh::
 triangulate()
@@ -1081,34 +1122,33 @@ split(Face f, Vertex v)
 
 void
 gsSurfMesh::
-split(std::vector<Vertex> vv, Face f, Vertex v)
+split_to_triangles(std::vector<Vertex>& edgeverts, Face f, Vertex v)
 {
-    /*
-      Split an arbitrary face into triangles by connecting specif vertex of f vector to vh.
-      - fh will remain valid (it will become one of the triangles)
-      - the halfedge handles of the new triangles will point to the old halfeges
-    */
 
-    Halfedge hend = halfedge(f);
+    GISMO_ASSERT(valence(f) == edgeverts.size(), "The edgeverts vector needs one vertex per edge\n");
+
+    Halfedge hend = halfedge(f); // find halfedge beginning from first new vertex in an edge
     do 
     {
         hend = next_halfedge(hend);
-    } while (from_vertex(hend) != vv[0]);
+    } while (from_vertex(hend) != edgeverts[0]);
 
 
     Halfedge h = next_halfedge(hend);
 
-    Halfedge hold = new_edge(from_vertex(hend), v);
+    Halfedge hold = new_edge(from_vertex(hend), v); // connect first edge vertex with v
 
-    index_t sz = vv.size();
+    index_t sz = edgeverts.size();
     hold = opposite_halfedge(hold);
     int cnt, count=0;
     Face fnew;
     Halfedge hnew, holdinit=hold;
 
+    // circularly make trinagles by connecting inital faces corners and new edge vertices
+    // with v. The halfedge orientation in each trinagle is the same as in the original face.
     while (h != hend)
     {
-        cnt = std::count(vv.begin(), vv.end(), to_vertex(h));
+        cnt = std::count(edgeverts.begin(), edgeverts.end(), to_vertex(h));
         
         if (cnt == 0)
         {
@@ -1268,20 +1308,19 @@ void gsSurfMesh::quad_split()
 void gsSurfMesh::quad_split(index_t w)
 {
 
-    
-    if (w==0)
+    if (w==0) // original faces (dummy)
     {
         return;
     }
-    else if (w == 1)
+    else if (w == 1) // uniform split at half of each edge
     {
         quad_split();
         return;
     }
-    else 
+    else // general cases for w >=2
     {
 
-        GISMO_ASSERT(w < 3, "NOT TESTED!");
+        GISMO_ASSERT(w < 3, "NOT TESTED for w>=3!");
 
         gsSurfMesh::Vertex v, vs, ve;
         gsSurfMesh::Halfedge he, hh, hb;
@@ -2582,11 +2621,13 @@ gsSurfMesh gsSurfMesh::dual_mesh()
 
     std::map<Face, Vertex> FVMap;
 
+    // For each face take the barycenter
     for (auto fit : faces()) {
         v = dm.add_vertex(face_barycenter(fit));
         FVMap[fit] = v;
     }
 
+    // For the connected vertices in the original mesh create the dual faces
     std::vector<Vertex> df;
     for (auto vit : vertices()) {
         if (is_boundary(vit)) { continue; }
