@@ -233,8 +233,10 @@ public:
 
     inline boxSide side() const {return m_domainIter->side();}
 
-    inline index_t patch() const {return m_domainIter->patch();}
+    inline index_t patchIndex() const {return m_domainIter->patchIndex();}
 
+    inline index_t  subdomainIndex() const { return m_domainIter->subdomainIndex(); }
+    
     inline index_t localId() const {return m_domainIter->localId();}
     
     /// Fetches data of integer type based on string label
@@ -258,14 +260,14 @@ public:
 public:
 
     explicit gsDomainIterator(index_t _id = 0, const boxSide & _bs = boundary::none)
-    : m_id(_id), m_pside(0,_bs)
+    : m_id(_id), m_pside(0,_bs) // note: Patch defaults to zero
     { }
 
     virtual ~gsDomainIterator() { }
 
     virtual uPtr clone() const { GISMO_NO_IMPLEMENTATION }
 
-    //void setPatch(index_t k) { m_pside.patch = k; }
+    void setPatchIndex(index_t k) { m_pside.patch = k; }
 
 private:
 
@@ -400,9 +402,9 @@ public:
     T volume() const
     { return (upperCorner() - lowerCorner()).prod(); }
 
-    inline boxSide side() const {return m_pside.side();}
-    inline index_t patch() const {return m_pside.patch;}
-    inline index_t & patch() {return m_pside.patch;}
+    inline   boxSide  side() const {return m_pside.side();}
+    virtual  index_t  patchIndex() const {return m_pside.patch;}
+    virtual  index_t  subdomainIndex() const { return patchIndex(); }
 protected:
 
 

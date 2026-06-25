@@ -250,25 +250,39 @@ void writeSingleControlNet(const gsGeometry<T> & Geo,
                            std::string const & fn)
 {
     const int d = Geo.parDim();
+    const unsigned n = Geo.geoDim();
+
+    // We can only write control nets up to dimension 4.
+    // For a 4D net, we need to fall back to an unstructured point cloud.
+    if (n == 4)
+    {
+        gsDebug << "Fallling back to writing 4-dimensional control net as "
+                   "point cloud.\n";
+        const gsMatrix<T>& cp = Geo.coefs();
+        gsWriteParaviewPoints<T>(cp.transpose(), fn);
+        return;
+    }
+
+    // A >4D net is not supported at all.
+    if (n > 4)
+    {
+        gsWarn << "Skipping writing of control net of dimension " << n
+               << ". Control nets are only supported up to dimension 4.";
+        return;
+    }
+
+    // A <4D net works with the normal process.
     gsMesh<T> msh;
     Geo.controlNet(msh);
-    const unsigned n = Geo.geoDim();
-    if ( n == 1 )
+    if (n == 1)
     {
         gsMatrix<T> anch = Geo.basis().anchors();
         // Lift vertices at anchor positions
-        for (size_t i = 0; i!= msh.numVertices(); ++i)
+        for (size_t i = 0; i != msh.numVertices(); ++i)
         {
             msh.vertex(i)[d] = msh.vertex(i)[0];
             msh.vertex(i).topRows(d) = anch.col(i);
         }
-    }
-    else if (n>3)
-    {
-        gsDebug<<"Writing 4th coordinate\n";
-        const gsMatrix<T> & cp = Geo.coefs();
-        gsWriteParaviewPoints<T>(cp.transpose(), fn );
-        return;
     }
 
     gsWriteParaview(msh, fn, false);
@@ -1655,7 +1669,7 @@ void gsWriteParaviewPoints(gsMatrix<T> const& points, std::string const & fn)
         gsWriteParaviewPoints<T>(points.row(0), points.row(1), points.row(2), points.row(3), fn);
         break;
     default:
-        GISMO_ERROR("Point plotting is implemented just for 2D and 3D (rows== 1, 2 or 3).");
+        GISMO_ERROR("Point plotting is implemented just for 2D, 3D and 4D (rows== 1, 2, 3 or 4).");
     }
 }
 

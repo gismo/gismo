@@ -948,7 +948,7 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
     for ( auto & elem : m_exprdata->domain().allElements() )
     {
         m_exprdata->points() = elem.centerPoint();
-        patchInd = elem.patch();
+        patchInd = elem.patchIndex();
         op_tuple(pp, arg_tpl);
     }
 
@@ -1135,9 +1135,9 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 
     for ( auto & elem : m_exprdata->domain().allElements() )
     {
-        if (/*changeQuadrature && */QuPatch!=elem.patch())
+        if (/*changeQuadrature && */QuPatch!=elem.patchIndex())
         {
-            QuPatch = elem.patch();
+            QuPatch = elem.patchIndex();
             // get Degree of the domain
             QuRule = gsQuadrature::getPtr<T>(this->trialSpace(0).source().basis(QuPatch), m_options);
         }
@@ -1383,9 +1383,9 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 
     for ( auto & elem : m_exprdata->domain().allElements() )
     {
-        if (changeQuadrature && QuPatch!=elem.patch())
+        if (changeQuadrature && QuPatch!=elem.patchIndex())
         {
-            QuPatch = elem.patch();
+            QuPatch = elem.patchIndex();
             // get Degree of the domain
             QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(QuPatch), m_options);
         }
