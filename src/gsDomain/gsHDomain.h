@@ -153,8 +153,8 @@ public:
                         {
                             index_t ll = it.lowerCorner()[i];
                             index_t uu = it.upperCorner()[i];
-                            m_basis._diadicIndexToKnotIndex(it.level(),s.direction(),ll);
-                            m_basis._diadicIndexToKnotIndex(it.level(),s.direction(),uu);
+                            m_basis._diadicIndexToKnotIndex(it.level(),i,ll);
+                            m_basis._diadicIndexToKnotIndex(it.level(),i,uu);
                             nel_local *= uu - ll;
                         }
                         else
