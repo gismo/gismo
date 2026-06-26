@@ -35,10 +35,10 @@
 
     <!-- Assembler options -->
     <OptionList label="optimizer_options">
-        <string label="Optimizer"       desc="" value="LBFGS"/>
+        <string label="Optimizer"       desc="" value="HLBFGS"/>
         <int  label="MaxIterations"     desc="" value="1000"/>
-        <int  label="Verbose"           desc="" value="1"/>
-        <!-- <real label="GradErrTol"        desc="" value="1e-6"/> -->
+        <int  label="Verbose"           desc="" value="2"/>
+        <real label="GradErrTol"        desc="" value="1e-3"/>
         <real label="WolfeCons2"        desc="" value="0.1"/>
     </OptionList>
 
@@ -48,7 +48,7 @@
         <bool label="Slide"             desc="" value="1"/>
         <bool label="Parametric"        desc="" value="0"/>
         <real label="Smoothing"         desc="" value="1e1"/>
-        <real label="Penalty"           desc="" value="1e-2"/>
+        <real label="Penalty"           desc="" value="1e-6"/>
     </OptionList>
 
     <!-- other options -->

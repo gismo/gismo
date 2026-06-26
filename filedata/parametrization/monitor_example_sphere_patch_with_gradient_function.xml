@@ -49,7 +49,7 @@
         <bool label="Slide"             desc="" value="0"/>
         <bool label="Parametric"        desc="" value="0"/>
         <real label="Smoothing"         desc="" value="1e1"/>
-        <real label="Penalty"           desc="" value="1e-2"/>
+        <real label="Penalty"           desc="" value="1e-8"/>
     </OptionList>
 
     <!-- other options -->

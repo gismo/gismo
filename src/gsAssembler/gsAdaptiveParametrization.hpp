@@ -181,11 +181,13 @@ gsOptionList & gsOptMesh<T,MODE>::options()
 // Metric:      C = J_c^T J_c  (dd x dd)
 // Geometry metric: C_g = J_g^T J_g  (dd x dd)
 //
-// WITHOUT monitor:
-//   E(alpha) = int  tr(C^{-1}) / sqrt(det C)  d hat{Omega}
+// WITHOUT monitor (q=2, ω=1/g default, blue form §8 of derivation):
+//   E(alpha) = int  tr(C^{-1})  d hat{Omega}  =  int T/g^2 d hat{Omega}
+//   (harmonic-map Dirichlet energy of the inverse parameterization)
 //
-// WITH monitor (weight m^2 = 1/(1 + theta * eta^2)):
+// WITH monitor (weight m^2 = 1/(1 + theta * eta^2), q=1, blue form):
 //   E(alpha) = int  m^2 * tr(C^{-1}) * sqrt(det C)  d hat{Omega}
+//            = int  m^2 * T/g  d hat{Omega}
 //
 // where eta^2 depends on MonitorMode:
 //
@@ -295,13 +297,13 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
                 // Planar case (td==dd): use det(J_c) = det(J_g * J_s) — the composed Jacobian.
                 //   chi_c = 0.5*(det_c + sqrt(penalty^2 + det_c^2)) > 0 always.
                 //   When det_c < 0 (folded mesh), chi_c -> 0+, so 1/chi_c^2 -> +inf (fold barrier).
-                //   No-monitor:   tr(C^{-1}) * |det_c|   / chi_c^2
-                //   With-monitor: tr(C^{-1}) * |det_c|^3 / chi_c^2
+                //   No-monitor:   tr(C^{-1}) * |det_c|^2 / chi_c^2  (p=2, E ≈ T/g^2)
+                //   With-monitor: m2*tr(C^{-1}) * |det_c|^3 / chi_c^2  (p=3, E ≈ m2*T/g)
                 //
                 // Surface case (td>dd): J_c is rectangular (td x dd), no scalar determinant.
                 //   Use det_s = det(J_s) (sigma Jacobian, dd x dd) as the area element.
                 //   chi_s = 0.5*(det_s + sqrt(penalty^2 + det_s^2))  — fold barrier.
-                //   No-monitor:   tr(C^{-1}) * |det_s|   / chi_s^2   (p=1, mirrors planar)
+                //   No-monitor:   tr(C^{-1}) * |det_s|^2 / chi_s^2  (p=2, mirrors planar)
                 //   With-monitor: m2 * tr(C^{-1}) * |det_s|^3 / chi_s^2  (p=3, mirrors planar)
 
                 T integrand;
@@ -318,7 +320,8 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
                         if (MODE == ValueBased)
                         {
                             T eta = monVals(0, p);
-                            m2 = T(1) / (T(1) + theta * eta * eta);
+                            // Paper Eq. (13): omega = 1/sqrt(1+theta*f), so m2 = omega^2 = 1/(1+theta*f)
+                            m2 = T(1) / (T(1) + theta * eta);
                         }
                         else
                         {
@@ -331,15 +334,19 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
                                 grad_xi_f.noalias() = Jg.transpose() * monDerivs_eval.col(p).reshaped(td, 1);
 
                             T eta2 = (grad_xi_f.transpose() * Cg_inv * grad_xi_f)(0, 0);
+                            // Paper Eq. (12): omega = 1/sqrt(1+theta*||∇f||^2), so m2 = omega^2 = 1/(1+theta*||∇f||^2)
                             m2 = T(1) / (T(1) + theta * eta2);
                         }
-                        // With-monitor integrand (p=3): m2 * tr(C^{-1}) * |det_c|^3 / chi_c^2
-                        integrand = m2 * Cinv.trace() * abs_det_c * abs_det_c * abs_det_c / (chi_c * chi_c);
+                        // With-monitor integrand (p=3): omega * tr(C^{-1}) * |det_c|^3 / chi_c^2
+                        // where omega = sqrt(m2) is the monitor weight; m2 = omega^2
+                        // Paper Eq. (18) [surface] / Eq. (17) [planar]: E = int omega * T/g d{hat-Omega}
+                        T omega = math::sqrt(m2);
+                        integrand = omega * Cinv.trace() * abs_det_c * abs_det_c * abs_det_c / (chi_c * chi_c);
                     }
                     else
                     {
-                        // No-monitor integrand (p=1): tr(C^{-1}) * |det_c| / chi_c^2
-                        integrand = Cinv.trace() * abs_det_c / (chi_c * chi_c);
+                        // No-monitor integrand (p=2): tr(C^{-1}) * |det_c|^2 / chi_c^2 ≈ T/g^2
+                        integrand = Cinv.trace() * abs_det_c * abs_det_c / (chi_c * chi_c);
                     }
                 }
                 else
@@ -349,11 +356,15 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
                     // det_s CAN be negative (fold), so chi_s = 0.5*(det_s + sqrt(pen^2+det_s^2))
                     // provides a true fold barrier — identical structure to the planar chi_c.
                     //
-                    // No-monitor:   tr(C^{-1}) * |det_s|   / chi_s^2  (p=1, matches planar)
-                    // With-monitor: m2 * tr(C^{-1}) * |det_s|^3 / chi_s^2  (p=3, matches planar)
-                    //
-                    // For a flat surface (geoDim=3, z=0), J_g = [[1,0],[0,1],[0,0]], so
-                    // det(J_s) = det(J_c projected) = det_c, and the formula is identical to planar.
+                    // No-monitor:   tr(C^{-1}) * |det_s|^2 / chi_s^2  (p=2): already = T/g_c^2
+                    //               = paper Eq.(14) [omega=1/g_c] => no g_S factor needed.
+                    // With-monitor: omega * tr(C^{-1}) * |det_s|^3 / chi_s^2 * g_S  (p=3)
+                    //   Here g_S = sqrt(det(Cg)) = ||d1 S x d2 S|| is the SURFACE area element.
+                    //   The composite area element is g_c = g_s * g_S, with g_s = |det_s|.
+                    //   tr(C^{-1}) = T/g_c^2 and |det_s|^3/chi_s^2 -> g_s (penalty->0), so
+                    //     omega*tr(C^{-1})*g_s*g_S -> omega*T/g_c = paper Eq.(18). Without the
+                    //   g_S factor the integrand would be off by 1/g_S (J_c is rectangular on a
+                    //   surface, so det_s alone does NOT carry the full area element).
                     T det_s     = Js.determinant();
                     T sqrt_reg_s = math::sqrt(penalty * penalty + det_s * det_s);
                     T chi_s     = T(0.5) * (det_s + sqrt_reg_s);
@@ -362,14 +373,17 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
                     T m2 = T(0);
                     if (hasMonitor)
                     {
+                        // Surface area element g_S = sqrt(det(Cg)), Cg = Jg^T Jg.
+                        Cg.noalias() = Jg.transpose() * Jg;
+                        const T gS = math::sqrt(Cg.determinant());
                         if (MODE == ValueBased)
                         {
                             T eta = monVals(0, p);
-                            m2 = T(1) / (T(1) + theta * eta * eta);
+                            // Paper Eq. (13): omega = 1/sqrt(1+theta*f), so m2 = omega^2 = 1/(1+theta*f)
+                            m2 = T(1) / (T(1) + theta * eta);
                         }
                         else
                         {
-                            Cg.noalias() = Jg.transpose() * Jg;
                             Cg_inv.noalias() = Cg.inverse();
 
                             if (m_parametric)
@@ -378,15 +392,18 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
                                 grad_xi_f.noalias() = Jg.transpose() * monDerivs_eval.col(p).reshaped(td, 1);
 
                             T eta2 = (grad_xi_f.transpose() * Cg_inv * grad_xi_f)(0, 0);
+                            // Paper Eq. (12): omega = 1/sqrt(1+theta*||∇f||^2), so m2 = omega^2 = 1/(1+theta*||∇f||^2)
                             m2 = T(1) / (T(1) + theta * eta2);
                         }
-                        // With-monitor (p=3): m2 * tr(C^{-1}) * |det_s|^3 / chi_s^2
-                        integrand = m2 * Cinv.trace() * abs_det_s * abs_det_s * abs_det_s / (chi_s * chi_s);
+                        // With-monitor (p=3): omega * tr(C^{-1}) * |det_s|^3 / chi_s^2 * g_S
+                        // where omega = sqrt(m2) is the monitor weight, g_S the surface area element
+                        T omega = math::sqrt(m2);
+                        integrand = omega * Cinv.trace() * abs_det_s * abs_det_s * abs_det_s / (chi_s * chi_s) * gS;
                     }
                     else
                     {
-                        // No-monitor (p=1): tr(C^{-1}) * |det_s| / chi_s^2
-                        integrand = Cinv.trace() * abs_det_s / (chi_s * chi_s);
+                        // No-monitor (p=2): tr(C^{-1}) * |det_s|^2 / chi_s^2 ≈ T/g^2
+                        integrand = Cinv.trace() * abs_det_s * abs_det_s / (chi_s * chi_s);
                     }
                 }
 
@@ -452,25 +469,24 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
 // Objective and integrand
 // ---------------------------------------------------------------------------
 //
-// phi1 = |det_c|   / chi_c^2   (no-monitor exponent p=1)
-// phi3 = |det_c|^3 / chi_c^2   (with-monitor exponent p=3)
+// phi2 = |det_c|^2 / chi_c^2   (no-monitor exponent p=2, E ≈ T/g^2)
+// phi3 = |det_c|^3 / chi_c^2   (with-monitor exponent p=3, E ≈ m^2*T/g)
 //
-// No-monitor:   E_nm = tr(C^{-1}) * phi1
+// No-monitor:   E_nm = tr(C^{-1}) * phi2
 // With-monitor: E_wm = m^2 * tr(C^{-1}) * phi3
 //
 // Both integrands blow up as det_c -> 0 (fold), providing a fold barrier.
-// This matches the old expression-evaluator code (commit 8c42f2d05).
 //
 // ---------------------------------------------------------------------------
 // Integrand derivative  (no monitor)
 // ---------------------------------------------------------------------------
 //
-// dE_nm = d(tr(C^{-1}))/dalpha * phi1 + tr(C^{-1}) * d(phi1)/dalpha
-//       = -trCinvdCCinv * phi1 + tr(C^{-1}) * dphi1_dalpha
+// dE_nm = d(tr(C^{-1}))/dalpha * phi2 + tr(C^{-1}) * d(phi2)/dalpha
+//       = -trCinvdCCinv * phi2 + tr(C^{-1}) * dphi2_dalpha
 //
 // where trCinvdCCinv = tr(C^{-1} dC C^{-1})  (= -d(tr(C^{-1}))/dalpha)
 //
-// d(phi1)/dalpha = phi1 * (1/det_c - 2*dchi_ddet_c/chi_c) * ddet_c/dalpha
+// d(phi2)/dalpha = phi2 * (2/det_c - 2*dchi_ddet_c/chi_c) * ddet_c/dalpha
 //
 // ---------------------------------------------------------------------------
 // Integrand derivative  (with monitor, both ValueBased & GradientBased)
@@ -637,19 +653,19 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                 //
                 // Planar (td==dd): use det(J_c) — the composed Jacobian determinant.
                 //   chi_c = 0.5*(det_c + sqrt(penalty^2 + det_c^2))
-                //   phi_noMon = |det_c|   / chi_c^2   (no-monitor, exponent p=1)
-                //   phi_mon   = |det_c|^3 / chi_c^2   (with-monitor, exponent p=3)
+                //   phi_noMon = |det_c|^2 / chi_c^2   (no-monitor, exponent p=2, E ≈ T/g^2)
+                //   phi_mon   = |det_c|^3 / chi_c^2   (with-monitor, exponent p=3, E ≈ m^2*T/g)
                 //   d(phi_p)/d(alpha) uses ddet_c/d(alpha) via adj(J_c)
                 //
                 // Surface (td>dd): J_c is rectangular — no scalar determinant.
                 //   Use det_s = det(J_s) as signed area element.
                 //   chi_s = 0.5*(det_s + sqrt(pen^2 + det_s^2)) — fold barrier.
-                //   phi_noMon_s = |det_s|   / chi_s^2  (p=1, mirrors planar)
+                //   phi_noMon_s = |det_s|^2 / chi_s^2  (p=2, mirrors planar)
                 //   phi_mon_s   = |det_s|^3 / chi_s^2  (p=3, mirrors planar)
                 //   ddet_s/d(alpha) via adj(J_s) and sigma basis derivatives.
                 T det_c = T(0), sqrt_reg = T(0), chi_c = T(0), dchi_ddet_c = T(0);
-                // phi_noMon = |det_c|^1 / chi_c^2  (no-monitor integrand factor, exponent p=1)
-                // phi_mon   = |det_c|^3 / chi_c^2  (with-monitor integrand factor, exponent p=3)
+                // phi_noMon = |det_c|^2 / chi_c^2  (no-monitor integrand factor, exponent p=2, E≈T/g^2)
+                // phi_mon   = |det_c|^3 / chi_c^2  (with-monitor integrand factor, exponent p=3, E≈m^2*T/g)
                 T abs_det_c = T(0), phi_noMon = T(0), phi_mon = T(0);
                 if (td == dd)
                 {
@@ -659,7 +675,7 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                     // d(chi_c)/d(det_c) = 0.5*(1 + det_c/sqrt(penalty^2+det_c^2))
                     dchi_ddet_c = T(0.5) * (T(1) + det_c / sqrt_reg);
                     abs_det_c = math::abs(det_c);
-                    phi_noMon = abs_det_c / (chi_c * chi_c);
+                    phi_noMon = abs_det_c * abs_det_c / (chi_c * chi_c);
                     phi_mon   = abs_det_c * abs_det_c * abs_det_c / (chi_c * chi_c);
                 }
                 // Surface case (td>dd): det_s, chi_s, phi_s are computed per-alpha in the
@@ -672,9 +688,11 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                     if (MODE == ValueBased)
                     {
                         T eta = monVals(0, p);
-                        T denom = T(1) + theta * eta * eta;
+                        // Paper Eq. (13): omega = 1/sqrt(1+theta*f), m2 = omega^2 = 1/(1+theta*f)
+                        T denom = T(1) + theta * eta;
                         m2 = T(1) / denom;
-                        T dm2_deta = -T(2) * theta * eta / (denom * denom);
+                        // d(m2)/d(f) = d(1/(1+theta*f))/d(f) = -theta/(1+theta*f)^2
+                        T dm2_deta = -theta / (denom * denom);
 
                         if (m_parametric)
                             gradMon.noalias() = monDerivs.col(p);
@@ -722,6 +740,23 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
 
                 if (hasMonitor && MODE == GradientBased)
                     v.noalias() = Cg_inv * grad_xi_f;
+
+                // Surface area element g_S = sqrt(det Cg) (Cg = Jg^T Jg) and Cg^{-1},
+                // needed for the paper-exact surface with-monitor area weight (Eq.18).
+                // For GradientBased these are already set above; ensure they exist for
+                // ValueBased too. Planar (td==dd) does not need g_S.
+                T gS = T(1);
+                gsVector<T> trCginvE_d;   // tr(Cg^{-1} E_d), E_d = D_d^T Jg + Jg^T D_d (surface only)
+                if (hasMonitor && td > dd)
+                {
+                    if (MODE == ValueBased)
+                    {
+                        Cg.noalias()     = Jg.transpose() * Jg;
+                        Cg_inv.noalias() = Cg.inverse();
+                    }
+                    gS = math::sqrt(Cg.determinant());
+                    trCginvE_d.setZero(dd);
+                }
 
                 JcT.noalias() = Jc.transpose();
 
@@ -811,6 +846,15 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                             mon_scalar_d(d) = -vEv_d + T(2) * (v.transpose() * (Dg_d + JtHJd))(0,0);
                         }
                     }
+
+                    // Surface area-element derivative factor (paper-exact Eq.18):
+                    //   d(g_S)/d(alpha_{k,d}) = 0.5 * g_S * tr(Cg^{-1} E_d) * N_k
+                    //   E_d = D_d^T Jg + Jg^T D_d   (= d(Cg)/d(xi_d) contracted)
+                    if (hasMonitor && td > dd)
+                    {
+                        gsMatrix<T> E_d = D_d.transpose() * Jg + Jg.transpose() * D_d;
+                        trCginvE_d(d) = (Cg_inv * E_d).trace();
+                    }
                 }
 
                 const index_t nActive = actives.rows();
@@ -869,7 +913,7 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                             // d(phi_p)/d(alpha) = phi_p * (p/det_c - 2*dchi/chi) * ddet_c_dalpha
                             T inv_det_c = (det_c != T(0)) ? T(1) / det_c : T(0);
                             T common_factor = -T(2) * dchi_ddet_c / chi_c;
-                            T dphi_noMon_dalpha = phi_noMon * (inv_det_c + common_factor) * ddet_c_dalpha;
+                            T dphi_noMon_dalpha = phi_noMon * (T(2)*inv_det_c + common_factor) * ddet_c_dalpha;
                             T dphi_mon_dalpha   = phi_mon   * (T(3)*inv_det_c + common_factor) * ddet_c_dalpha;
 
                             if (hasMonitor)
@@ -880,9 +924,12 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                                 else
                                     dm2_dalpha = dm2_deta2 * Nk * mon_scalar_d(d);
 
-                                // d/d(alpha) [ m2 * tr(C^{-1}) * |det_c|^3 / chi_c^2 ]
-                                dE = m2 * (-trCinvdCCinv * phi_mon + trCinv * dphi_mon_dalpha)
-                                   + dm2_dalpha * trCinv * phi_mon;
+                                // d/d(alpha) [ omega * tr(C^{-1}) * |det_c|^3 / chi_c^2 ]
+                                // where omega = sqrt(m2), so d(omega)/d(alpha) = dm2_dalpha / (2*omega)
+                                T omega = math::sqrt(m2);
+                                T domega_dalpha = dm2_dalpha / (T(2) * omega);
+                                dE = omega * (-trCinvdCCinv * phi_mon + trCinv * dphi_mon_dalpha)
+                                   + domega_dalpha * trCinv * phi_mon;
                             }
                             else
                             {
@@ -895,8 +942,8 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                             // Surface case (td>dd): use det_s = det(J_s) as the signed area element.
                             // Mirrors the planar case with det_s playing the role of det_c.
                             //
-                            // E_noMon   = tr(C^{-1}) * |det_s|   / chi_s^2   (p=1)
-                            // E_withMon = m2 * tr(C^{-1}) * |det_s|^3 / chi_s^2   (p=3)
+                            // E_noMon   = tr(C^{-1}) * |det_s|^2 / chi_s^2   (p=2, E≈T/g^2)
+                            // E_withMon = m2 * tr(C^{-1}) * |det_s|^3 / chi_s^2   (p=3, E≈m2*T/g)
                             //   chi_s = 0.5*(det_s + sqrt(pen^2 + det_s^2))  -- fold barrier
                             //   When det_s < 0 (fold), chi_s -> 0+ so energy -> +inf.
                             //
@@ -904,8 +951,8 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                             //   d(det_s)/dalpha = adj(J_s).row(d) . gradNk
                             //   For dd=2: adj(J_s) = [[Js(1,1),-Js(0,1)],[-Js(1,0),Js(0,0)]]
                             //
-                            // phi_noMon = |det_s|   / chi_s^2   (p=1)
-                            // phi_mon   = |det_s|^3 / chi_s^2   (p=3)
+                            // phi_noMon = |det_s|^2 / chi_s^2   (p=2, E ≈ T/g^2)
+                            // phi_mon   = |det_s|^3 / chi_s^2   (p=3, E ≈ m^2*T/g)
                             // d(phi_p)/d(alpha) = phi_p * (p/det_s - 2*dchi_s/chi_s) * ddet_s_dalpha
 
                             T det_s     = Js.determinant();
@@ -913,7 +960,7 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                             T chi_s     = T(0.5) * (det_s + sqrt_reg_s);
                             T dchi_s_ddet_s = T(0.5) * (T(1) + det_s / sqrt_reg_s);
                             T abs_det_s = math::abs(det_s);
-                            T phi_noMon_s = abs_det_s / (chi_s * chi_s);
+                            T phi_noMon_s = abs_det_s * abs_det_s / (chi_s * chi_s);
                             T phi_mon_s   = abs_det_s * abs_det_s * abs_det_s / (chi_s * chi_s);
 
                             // d(det_s)/d(alpha_{k,d}) = adj(Js)^T.row(d) . gradNk
@@ -942,7 +989,7 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                             T inv_det_s   = (det_s != T(0)) ? T(1) / det_s : T(0);
                             T inv_chi_s   = (chi_s  > T(0)) ? T(1) / chi_s  : T(0);
                             T common_s    = -T(2) * dchi_s_ddet_s * inv_chi_s;
-                            T dphi_noMon_s_dalpha = phi_noMon_s * (inv_det_s + common_s) * ddet_s_dalpha;
+                            T dphi_noMon_s_dalpha = phi_noMon_s * (T(2)*inv_det_s + common_s) * ddet_s_dalpha;
                             T dphi_mon_s_dalpha   = phi_mon_s   * (T(3)*inv_det_s + common_s) * ddet_s_dalpha;
 
                             if (hasMonitor)
@@ -953,9 +1000,19 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                                 else
                                     dm2_dalpha = dm2_deta2 * Nk * mon_scalar_d(d);
 
-                                // d/d(alpha) [m2 * tr(C^{-1}) * |det_s|^3 / chi_s^2]
-                                dE = m2 * (-trCinvdCCinv * phi_mon_s + trCinv * dphi_mon_s_dalpha)
-                                   + dm2_dalpha * trCinv * phi_mon_s;
+                                // Paper Eq.18 surface integrand: e = A * g_S, where
+                                //   A   = omega * tr(C^{-1}) * |det_s|^3 / chi_s^2   (current factor)
+                                //   g_S = sqrt(det Cg)   (surface area element)
+                                // Product rule: de/dalpha = dA/dalpha * g_S + A * dg_S/dalpha
+                                // with omega = sqrt(m2), d(omega)/d(alpha) = dm2_dalpha/(2*omega)
+                                // and dg_S/dalpha = 0.5 * g_S * tr(Cg^{-1} E_d) * N_k.
+                                T omega = math::sqrt(m2);
+                                T domega_dalpha = dm2_dalpha / (T(2) * omega);
+                                T dA = omega * (-trCinvdCCinv * phi_mon_s + trCinv * dphi_mon_s_dalpha)
+                                     + domega_dalpha * trCinv * phi_mon_s;
+                                T A  = omega * trCinv * phi_mon_s;
+                                T dgS_dalpha = T(0.5) * gS * trCginvE_d(d) * Nk;
+                                dE = dA * gS + A * dgS_dalpha;
                             }
                             else
                             {
@@ -1012,35 +1069,48 @@ T gsOptMesh<T,MODE>::computeMinJacobian(const gsAsConstVector<T> & u) const
 
     auto dom = m_mb.domain();
 
-    gsFuncData<T> compData;
-    compData.flags = NEED_VALUE | NEED_DERIV;
-
-    gsMatrix<T> Js(dd, dd);
-    gsQuadRule<T> QuRule;
-    index_t QuPatch = -1;
-
-    gsMatrix<T> uvPoints;
-    gsVector<T> tmpWeights;
-
-    for (auto & elem : dom->allElements())
+    // OpenMP element sweep (mirrors evalObj): gsDomain::allElements() hands each
+    // thread its own element chunk, m_comp->compute is read-only after
+    // setControls (already called concurrently in evalObj). The per-element
+    // minima are combined by a min-reduction, which — unlike a sum — is
+    // order-independent and exact, so the result is bit-identical to a serial
+    // sweep.
+#   pragma omp parallel
     {
-        if (QuPatch != elem.patch())
-        {
-            QuPatch = elem.patch();
-            QuRule = gsQuadrature::get(m_ib->basis(QuPatch), quadOptions);
-        }
+        T thMin = std::numeric_limits<T>::max();
 
-        QuRule.mapTo(elem.lowerCorner(), elem.upperCorner(), uvPoints, tmpWeights);
-        m_comp->compute(uvPoints, compData);
+        gsFuncData<T> compData;
+        compData.flags = NEED_VALUE | NEED_DERIV;
 
-        const index_t nPts = uvPoints.cols();
-        for (index_t p = 0; p != nPts; ++p)
+        gsMatrix<T> Js(dd, dd);
+        gsQuadRule<T> QuRule;
+        index_t QuPatch = -1;
+
+        gsMatrix<T> uvPoints;
+        gsVector<T> tmpWeights;
+
+        for (auto & elem : dom->allElements())
         {
-            Js.noalias() = compData.values[1].col(p).reshaped(dd, dd).transpose();
-            T det = Js.determinant();
-            if (det < minDet) minDet = det;
+            if (QuPatch != elem.patch())
+            {
+                QuPatch = elem.patch();
+                QuRule = gsQuadrature::get(m_ib->basis(QuPatch), quadOptions);
+            }
+
+            QuRule.mapTo(elem.lowerCorner(), elem.upperCorner(), uvPoints, tmpWeights);
+            m_comp->compute(uvPoints, compData);
+
+            const index_t nPts = uvPoints.cols();
+            for (index_t p = 0; p != nPts; ++p)
+            {
+                Js.noalias() = compData.values[1].col(p).reshaped(dd, dd).transpose();
+                const T det = Js.determinant();
+                if (det < thMin) thMin = det;
+            }
         }
-    }
+#       pragma omp critical (gsOptMesh_computeMinJacobian)
+        if (thMin < minDet) minDet = thMin;
+    } // omp parallel
 
     return minDet;
 }

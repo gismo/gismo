@@ -198,12 +198,24 @@ public:
         this->getOptions();
         // std::function<void(index_t N, T* x, T* prev_x, T* f, T* g)>
 
+        // Track the best iterate seen across all evaluations: HLBFGS leaves
+        // the *last trial point* in x on exit (e.g. after a failed line
+        // search), which need not be the best accepted iterate. We restore
+        // the best one after the run so that currentDesign() matches the
+        // reported objective.
+        T bestF = std::numeric_limits<T>::max();
+        std::vector<T> bestX;
+
         const std::function<void(int N, real_t* x, real_t* prev_x, real_t* f, real_t* g)> wrapfunc =
             [&](int N, real_t* x, real_t*, real_t* f, real_t* g) {
-            std::vector<real_t> array_x(N), array_g(N);
-
             gsAsConstVector<real_t> u(x,N);
             *f = m_op->evalObj(u);
+
+            if (*f < bestF)
+            {
+                bestF = *f;
+                bestX.assign(x, x + N);
+            }
 
             gsAsVector<real_t> Gvec(g,N);
             m_op->gradObj_into(u,Gvec);
@@ -234,6 +246,10 @@ public:
                 m_hlbfgs_pars,
                 m_hlbfgs_info
               );
+
+        // Restore the best evaluated iterate (see comment above wrapfunc).
+        if (bestX.size() == sol.size())
+            sol = bestX;
     }
 
     void solve(const gsMatrix<T> & initialGuess)

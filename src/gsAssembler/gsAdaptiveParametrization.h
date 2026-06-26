@@ -64,26 +64,38 @@ public:
      * \f$ J_c = J_g\,J_\sigma \f$ and metric tensor
      * \f$ C = J_c^\top J_c \f$.
      *
-     * **Without monitor** (\c m_fun == nullptr):
+     * **Without monitor** (\c m_fun == nullptr, \f$\omega=1/g\f$, paper Eq.(14)):
      * \f[
-     *   E(\alpha) = \int_{\hat\Omega}
-     *     \frac{\operatorname{tr}(C^{-1})}{\sqrt{\det C}} \; d\hat\Omega
+     *   E(\alpha) = \int_{\hat\Omega} \operatorname{tr}(C^{-1}) \; d\hat\Omega
+     *             = \int_{\hat\Omega} \frac{T}{g^2} \; d\hat\Omega
      * \f]
+     * This is the harmonic-map Dirichlet energy of the inverse parameterization
+     * \f$G^{-1}:\Omega\to\hat\Omega\f$ (Radó–Kneser–Choquet bijectivity theory).
      *
-     * **With monitor** (\c m_fun != nullptr), using a weight
-     * \f$ m^2 = 1/(1 + \theta\,\eta^2) \f$:
+     * **With monitor** (\c m_fun != nullptr), paper Eq.(18) [surface] / Eq.(17) [planar]:
      * \f[
-     *   E(\alpha) = \int_{\hat\Omega}
-     *     m^2\;\operatorname{tr}(C^{-1})\,\sqrt{\det C} \; d\hat\Omega
+     *   E(\alpha) = \int_{\hat\Omega} \omega(f)\,\frac{T}{g} \; d\hat\Omega
      * \f]
-     * where \f$\eta^2\f$ depends on the \c MonitorMode:
-     * - **ValueBased**: \f$ \eta = f(\xi(\alpha)) \f$ and
-     *   \f$ m^2 = 1/(1+\theta\,\eta^2) \f$.
-     * - **GradientBased**: \f$ \eta^2 = (\nabla_\xi f)^\top\,
-     *   C_g^{-1}\,(\nabla_\xi f) \f$ with geometry metric
-     *   \f$ C_g = J_g^\top J_g \f$, which equals
-     *   \f$ \|\nabla_x f\|^2 \f$ (the squared physical gradient norm)
-     *   in the planar case.
+     * The discrete integrand uses \f$ \omega = \sqrt{m^2} \f$ (the paper's monitor
+     * weight, NOT \f$m^2\f$): with the fold barrier \f$\chi\f$ and (penalty\f$\to0\f$)
+     * \f$ |\det|^3/\chi^2 \to g_\sigma \f$ this reads
+     * \f$ \omega\,\operatorname{tr}(C^{-1})\,|\det|^3/\chi^2 \to \omega\,T/g \f$.
+     * The weight \f$\omega\f$ depends on the \c MonitorMode:
+     * - **ValueBased** (paper Eq.13): \f$ \omega = 1/\sqrt{1+\theta f} \f$,
+     *   i.e. \f$ m^2 = 1/(1+\theta f) \f$ (linear in \f$f\f$, NOT \f$f^2\f$).
+     * - **GradientBased** (paper Eq.12, implemented form): \f$ \omega =
+     *   1/\sqrt{1+\theta\,\eta^2} \f$ with \f$ \eta^2 = (\nabla_\xi f)^\top
+     *   C_g^{-1}\,(\nabla_\xi f) = \|\nabla_x f\|^2 \f$ (squared physical gradient
+     *   norm), \f$ C_g = J_g^\top J_g \f$.
+     *
+     * @note Surface case (td>dd): the integrand carries an extra surface area
+     *   element \f$ g_S = \sqrt{\det C_g} \f$ so that
+     *   \f$ \omega\,T/(g_\sigma g_S^2)\cdot g_S = \omega\,T/g_c \f$ matches Eq.(18)
+     *   exactly (\f$g_c = g_\sigma g_S\f$ is the composite area element). Planar
+     *   (td==dd) needs no such factor (\f$\det J_c\f$ already carries the full area).
+     *
+     * @note The \f$\det^2\f$ (no-monitor) vs \f$\det^3\f$ (with-monitor) exponent
+     *   tracks MONITOR PRESENCE, not planar-vs-surface.
      *
      * @note For GradientBased mode, the derivatives of the monitor
      *   function \a m_fun must be exact (e.g. via automatic
