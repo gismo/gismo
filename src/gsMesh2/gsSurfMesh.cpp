@@ -2824,7 +2824,7 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
         result.reserve(nv, std::max(3*nv, ne), nf);
 
         result.add_batch_vertices(nv);
-            
+
         gsXmlNode* fn = node->first_node("faces");
         str.clear();
         str.str( fn->value() );
@@ -2869,7 +2869,8 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
             {
                 str.clear();
                 str.str( child->value() );
-                auto vprop = result.vertex_property<gsSurfMesh::Point>( child->first_attribute("name")->value() );
+                auto vprop = result.vertex_property<gsSurfMesh::Point>(child->first_attribute("name")->value(),
+                                                                        gsSurfMesh::Point(0,0,0) );
                 for (auto v : result.vertices() )
                 {
                     gsGetReal(str, vprop[v].x());

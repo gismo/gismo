@@ -41,7 +41,10 @@ protected: // Constructor
     /// No options are set.
     /// The member pointers `m_mesh` is not initialized, so some methods may
     /// fail if used without first initializing it.
-    gsSubdivisionScheme() : m_options(gsOptionList()), m_mesh(nullptr) {}
+    gsSubdivisionScheme() : m_options(gsOptionList()), m_mesh(nullptr)
+    {
+        m_options.addSwitch("normalize", "Normalize limit normals and tangents", true);
+    }
 
 public: // Destructor
     /// \brief Normal destructor.
@@ -97,11 +100,11 @@ public:
     {GISMO_NO_IMPLEMENTATION}
 
     /// Compute vertex limit normals
-    virtual gsSurfMesh::Vertex_property<Point> vertex_normal_limits(std::string label = "v:normal", bool normalize = true)
+    virtual gsSurfMesh::Vertex_property<Point> vertex_normal_limits(std::string label = "v:normal")
     {GISMO_NO_IMPLEMENTATION}
 
     /// Compute vertex limit tangent
-    virtual gsSurfMesh::Vertex_property<Point> vertex_tangent_limits(std::string label = "v:tanvec", bool normalize = true)
+    virtual gsSurfMesh::Vertex_property<Point> vertex_tangent_limits(std::string label = "v:tanvec")
     {GISMO_NO_IMPLEMENTATION}
 
     /// Compute face limit positions
@@ -109,11 +112,11 @@ public:
     {GISMO_NO_IMPLEMENTATION}
 
     /// Compute face limit normals
-    virtual gsSurfMesh::Face_property<Point> face_normal_limits(std::string label = "f:normal", bool normalize = true)
+    virtual gsSurfMesh::Face_property<Point> face_normal_limits(std::string label = "f:normal")
     {GISMO_NO_IMPLEMENTATION}
 
     /// Compute face limit tangent
-    virtual gsSurfMesh::Face_property<Point> face_tangent_limits(std::string label = "f:tanvec", bool normalize = true)
+    virtual gsSurfMesh::Face_property<Point> face_tangent_limits(std::string label = "f:tanvec")
     {GISMO_NO_IMPLEMENTATION}
 
 public: // Validity

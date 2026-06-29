@@ -23,33 +23,23 @@ class GISMO_EXPORT gsLoop : public gsSubdivisionScheme
 {
 
 public: // Constructors
-  /// \brief Default constructor.
-  ///
-  /// Default constructor.
-  /// Creates the 'loop.maskType' optionw and initializes it with value `0`.
-  gsLoop() : gsSubdivisionScheme()
-  {
-    m_options.addSwitch("normalize", "Normalize limit normals and tangents", true);  
-    m_options.addInt("loop.maskType", "Option for mask in Loop subdivision scheme",1);
-  }
 
-  /// \brief Constructor with a mesh to target.
-  ///
-  /// Constructor that accepts a mesh to be targeted by this constructor.
-  /// Creates the 'loop.maskType' option and initializes it with value `1`.
-  /// 
-  /// loop.maskType:
-  ///  * 0 - Simplified Loop's scheme. (cf. book Warren, Weimer 2002) 
-  ///  * 1 - Original Loop's scheme.  (cf. book Loop 1987)
-  gsLoop(gsSurfMesh* mesh) : gsSubdivisionScheme()
-  {
-      m_options.addInt("loop.maskType", "Option for mask in Loop subdivision scheme",1);
-      m_options.addSwitch("normalize", "Normalize limit normals and tangents", true);
-      this->assign(mesh);
-  }
+    /// \brief Constructor with a mesh to target.
+    ///
+    /// Constructor that accepts a mesh to be targeted by this constructor.
+    /// Creates the 'loop.maskType' option and initializes it with value `1`.
+    /// 
+    /// loop.maskType:
+    ///  * 0 - Simplified Loop's scheme. (cf. book Warren, Weimer 2002) 
+    ///  * 1 - Original Loop's scheme.  (cf. book Loop 1987)
+    explicit gsLoop(gsSurfMesh* mesh = nullptr) : gsSubdivisionScheme()
+    {
+        m_options.addInt("loop.maskType", "Option for mask in Loop subdivision scheme",1);
+        this->assign(mesh);
+    }
 
 public:
-  void subdivide_impl() GISMO_OVERRIDE;
+    void subdivide_impl() GISMO_OVERRIDE;
 
 private: // Helper functions
 
