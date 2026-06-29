@@ -2608,7 +2608,10 @@ void generateParametricGrid(
     // if (verbose)
     //     gsInfo << "Generating parametric grid from box structure...\n";
 
-    // Find maximum refinement level per patch to determine finest grid spacing
+    // Find maximum refinement level per patch to determine finest grid spacing.
+    // Use all boxes in boxMat directly — activeLevels only tracks which levels have
+    // direct MPBES functions, but twin functions mean a box can exist at a level that
+    // has no local functions on that patch. boxMat is always authoritative.
     std::vector<index_t> maxLevelPerPatch(boxMat.size(), 0);
     for (index_t patch = 0; patch < boxMat.size(); ++patch)
     {
@@ -2616,12 +2619,7 @@ void generateParametricGrid(
         for (index_t boxIdx = 0; boxIdx < numBoxes; ++boxIdx)
         {
             if (boxMat[patch][boxIdx].size() >= 5)
-            {
-                if (!isVisualizationLevelActive(activeLevels, patch, boxMat[patch][boxIdx][0]))
-                    continue;
-
                 maxLevelPerPatch[patch] = std::max(maxLevelPerPatch[patch], boxMat[patch][boxIdx][0]);
-            }
         }
     }
 
@@ -2644,9 +2642,6 @@ void generateParametricGrid(
         for (index_t boxIdx = 0; boxIdx < numBoxes; ++boxIdx)
         {
             if (boxMat[patch][boxIdx].size() < 5)
-                continue;
-
-            if (!isVisualizationLevelActive(activeLevels, patch, boxMat[patch][boxIdx][0]))
                 continue;
 
             // Skip boxes completely covered by finer boxes
