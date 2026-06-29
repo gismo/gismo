@@ -1294,7 +1294,7 @@ bool gsFileData<T>::readStlFile( String const & fn )
 
     gsXmlNode* g = internal::makeNode("Mesh", *data);
     g->append_attribute( internal::makeAttribute("type", "", *data) );
-    g->append_attribute( internal::makeAttribute("format", "stl", *data) );
+    g->append_attribute( internal::makeAttribute("format", "off", *data) );//convert internally
     data->appendToRoot(g);
 
     std::ostringstream triangles;
@@ -1361,7 +1361,10 @@ bool gsFileData<T>::readStlFile( String const & fn )
     g->append_attribute( internal::makeAttribute("vertices", nvert,  *data) );
     g->append_attribute( internal::makeAttribute("faces"   , nfaces, *data) );
     vertices << triangles.str() ;
-    g->value( internal::makeValue( vertices.str(), *data) );
+    triangles.clear();
+    triangles.str("");
+    triangles << "OFF\n"<< nvert <<" "<< nfaces <<"\n";
+    g->value( internal::makeValue( triangles.str() + vertices.str(), *data) );
 
     return true;
 }
