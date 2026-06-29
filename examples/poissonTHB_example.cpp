@@ -19849,6 +19849,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
 
                         const FittingMode fittingMode = g_useLocalFitting ? FittingMode::LocalFitting : FittingMode::GlobalFitting;
                         const bool useLocalFitting = (fittingMode == FittingMode::LocalFitting);
+                        bool localFittingEffective = useLocalFitting; // set false when local region = global
                         const bool verboseLocalRegionDump = false;
                         const bool verboseFitMatrixDump = false;
                         const bool verboseVectSolRowDump = false;
@@ -20002,6 +20003,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                             << nLocalPatches << " patches — falling back to global fitting for this step.\n";
                                 }
                                 uvFitting = uv1;
+                                localFittingEffective = false;
                             }
                             else
                             {
@@ -20239,7 +20241,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         gsSparseMatrix<real_t> matA(numTotalRows, commonSize);
 
                         std::vector<index_t> assembleActiveFunctions;
-                        if (useLocalFitting && localRegion.enabled && localRegion.basisInd.cols() == commonSize)
+                        if (localFittingEffective && localRegion.enabled && localRegion.basisInd.cols() == commonSize)
                         {
                             const auto& fdLocal = mpbes.functionDescription();
                             const auto& hasSpillLocal = mpbes.hasSpillover();
