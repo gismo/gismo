@@ -1006,6 +1006,9 @@ public:
     /// add a new vertex with position \c p
     Vertex add_vertex(const Point& p);
 
+    /// add \a nverts new vertex at once, with position \a 0
+    void add_batch_vertices(size_t nverts);
+
     /// add a new face with vertex list \c vertices
     /// \sa add_triangle, add_quad
     Face add_face(const std::vector<Vertex>& vertices);
@@ -1059,6 +1062,16 @@ public:
         return h.is_valid() ? edge(h) : add_edge(start,end);
         */
     }
+    
+    /// Add a mesh to the current one. The two meshes should be distinct from each other
+    /// 
+    /// It retuns the vector of vertices that will be the 
+    /// map of local vertices'ids in the \c subMesh with the global vertices' id
+    /// of out current mesh.
+    /// 
+    /// \param subMesh Distinct mesh to be added in the current one
+    gsVector<Vertex> add_mesh(gsSurfMesh& subMesh);
+
 
 public:
 
@@ -1207,6 +1220,35 @@ public:
 
     inline Halfedge backward_halfedge(gsSurfMesh::Halfedge he) const
     { return prev_halfedge(opposite_halfedge(prev_halfedge(he))); }
+
+    inline Halfedge forward_halfedge(gsSurfMesh::Halfedge he, int r) const
+    { 
+        for (int k = 0; k < r; k++) 
+            he = forward_halfedge(he);  
+        return he;
+    }
+
+    inline Halfedge backward_halfedge(gsSurfMesh::Halfedge he, int r) const
+    { 
+        for (int k = 0; k < r; k++) 
+            he = backward_halfedge(he); 
+        return he;
+    }
+
+    inline Halfedge next_halfedge(gsSurfMesh::Halfedge he, int r) const
+    {
+        for (int k = 0; k < r; k++)
+            he = next_halfedge(he);
+        return he;
+    }
+
+    inline Halfedge prev_halfedge(gsSurfMesh::Halfedge he, int r) const
+    {
+        for (int k = 0; k < r; k++)
+            he = prev_halfedge(he);
+        return he;
+    }
+
 
 public:
 
@@ -1387,23 +1429,23 @@ public:
 
     /** get the type_info \c T of vertex property named \c. returns an typeid(void)
      if the property does not exist or if the type does not match. */
-    const std::type_info& get_vertex_property_type(const std::string& name)
+    const std::type_info& get_vertex_property_type(const std::string& name) const
     { return vprops_.get_type(name); }
     /** get the type_info \c T of halfedge property named \c. returns an typeid(void)
      if the property does not exist or if the type does not match. */
-    const std::type_info& get_halfedge_property_type(const std::string& name)
+    const std::type_info& get_halfedge_property_type(const std::string& name) const
     { return hprops_.get_type(name); }
     /** get the type_info \c T of edge property named \c. returns an typeid(void)
      if the property does not exist or if the type does not match. */
-    const std::type_info& get_edge_property_type(const std::string& name)
+    const std::type_info& get_edge_property_type(const std::string& name) const
     { return eprops_.get_type(name); }
     /** get the type_info \c T of face property named \c. returns an typeid(void)
      if the property does not exist or if the type does not match. */
-    const std::type_info& get_face_property_type(const std::string& name)
+    const std::type_info& get_face_property_type(const std::string& name) const
     { return fprops_.get_type(name); }
     /** get the type_info \c T of face property named \c. returns an typeid(void)
      if the property does not exist or if the type does not match. */
-    const std::type_info& get_mesh_property_type(const std::string& name)
+    const std::type_info& get_mesh_property_type(const std::string& name) const
     { return mprops_.get_type(name); }
 
     /// returns the names of all vertex properties
@@ -1544,12 +1586,38 @@ public:
      */
     void split(Face f, Vertex v);
 
+
+    
+    /** \brief Triangle - split a face connecting vertex \a v with the vertices in vector \c edgeverts
+    
+        The vector should contain a vertex for each edge of a face.
+        The halfedge orientation in each trinagle is the same as in the original face.
+     
+        \param edgeverts: Vector with vertices. We need one vertex per edge.
+        \param f: Face to be splitted
+        \param v: Inserted vertex for split.
+    */
+    void split_to_triangles(std::vector<Vertex>& edgeverts, Face f, Vertex v);
+
+
     /// Quad-split face connecting vertex \a v, starting from corner
     /// \a s of the face
     /// \a f is assumed to have 8 vertices, and contains halfedge \a s
     void quad_split(Face f, Vertex v, Halfedge s);
+
+    /// Quad-split uniformly at the half of each edge respectively.
     void quad_split();
-    
+
+    /**  Quad-split at uniform \c w positions on each edge respectively.
+     
+     Depending on the \c w, for each face, each each is splitted into \c w + 1 edges.
+        * For w = 1: 1 Face ---> 4 Faces.
+        * For w = 2: 1 Face ---> 9 Faces.
+     
+     \param w: Option regarding the edge split in each edge. For now works for \c w <= 2.
+    */
+    void quad_split(index_t w);
+
     /** Split the edge \c e by first adding point \c p to the mesh and then
      connecting it to the two vertices of the adjacent triangles that are
      opposite to edge \c e. Returns the halfedge pointing to \c p that is
@@ -1623,6 +1691,42 @@ public:
      */
     void flip(Edge e);
 
+    /// Mesh statistics
+    ///
+    /// Print info on mesh as:
+    ///    * Number of vertices, faces and edges.
+    ///    * Number of extraordinary vertices, with minimum and maximum valence for interior and boundary.
+    ///    * Number of extraordinary faces, with minimum and maximum valence for interior and boundary.
+    ///
+    /// \param eoc_verbose: If true, returns the number of each extraordinary case (EV,EF)
+    void mesh_statistics(bool eoc_verbose = false);
+
+    /// Angle between halfedges
+    ///
+    /// 
+    /// \param h1: Halfedge 1
+    /// \param h2: Halfedge 2
+    real_t angle(Halfedge h1, Halfedge h2);
+
+    /// Add property "v:halfedge" of normalized halfedges to all faces of the mesh.
+    /// 
+    /// If the mesh is plotted, this property shows in a every face a halfedge.
+    /// 
+    /// The property will be added to the vertices.
+    /// close to vertices not on vertices, to be shown on face.
+    void display_halfedge();
+
+
+public:  // mesh operations related to subdivision schemes
+
+    /// Augment mesh boundaries for boundary control on dual subdivision schemes. 
+    ///
+    /// Necessary all faces that touch boundary be quads. 
+    /// 
+    /// In practice is the implementation of A. Nashri 1987 - "Polyhedral Subdivision Methods for Free-Form Surfaces"
+    /// 
+    void polyhedral_modification_boundary();
+
 public:
 
     /** returns the valence (number of incident edges or neighboring vertices)
@@ -1681,8 +1785,11 @@ public:
     /// deletes the face \c f from the mesh
     void delete_face(Face f);
 
-    /// creates dual mesh (Dual-graph) creation for 2-manifolds without boundaries using barycentric method.
-    void dual_mesh();
+    /// creates in-place the dual mesh (Dual-graph) for 2-manifolds without boundaries using barycentric method.
+    void dual_mesh_inplace();
+
+    /// returns dual mesh (Dual-graph) creation for 2-manifolds without boundaries using barycentric method.
+    gsSurfMesh dual_mesh();
 
     /// calculate barycenter of a face
     Point face_barycenter(Face f);
@@ -1872,7 +1979,7 @@ public:
     GSXML_COMMON_FUNCTIONS(gsSurfMesh)
     GSXML_GET_POINTER(gsSurfMesh)
     static std::string tag () { return "Mesh"; }
-    static std::string type() { return "off"; }
+    static std::string type() { return ""; } //no inheritance
 
     static void get_into(gsXmlNode * node, gsSurfMesh & result);
     static gsXmlNode * put (const gsSurfMesh & obj, gsXmlTree & data);
