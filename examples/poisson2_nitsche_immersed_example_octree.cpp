@@ -4,8 +4,12 @@
 
     Embedding box: [0,1]x[0,1]
     Physical domain: Omega = {(x,y): x>0, y>0, x^2+y^2<1}
-    ./build/bin/poisson2_nitsche_immersed_example_octree -r 2 -e 1 -L 3 --plot -g 1e8 -o output_immersed_octree -q 13
-
+    Cutcell:
+    ./build/bin/poisson2_nitsche_immersed_example_octree -r 4 -e 1 -L 4 --plot -g 1000 -o output_immersed_cutcell -q 11
+    Algoim: 
+    ./build/bin/poisson2_nitsche_immersed_example_octree -r 4 -e 1 -L 4 --plot -g 1000 -o output_immersed_algoim -q 12
+    Octree:
+    ./build/bin/poisson2_nitsche_immersed_example_octree -r 4 -e 1 -L 4 --plot -g 1000 -o output_immersed_octree -q 13
     This file is part of the G+Smo library.
 */
 
@@ -187,6 +191,9 @@ int main(int argc, char *argv[])
         memory::shared_ptr<gsImplicitTrimmedDomain<2,real_t> > tr_domain =
             memory::make_shared(new gsImplicitTrimmedDomain<2,real_t>(impl_fun, *tbsPtr));
         gsExprEvaluator<> ev(A);
+        // Integrate error norms over the physical (trimmed) domain Omega with
+        // the same immersed volume rule, not the whole background square.
+        ev.options().setInt("quRule", rules[k].id);
 
         std::vector<patchSide> bdr_immersed(1); // vector of size 1
         bdr_immersed[0]= patchSide(0,boundary::none); // assign the first and only element
@@ -232,36 +239,33 @@ int main(int argc, char *argv[])
 
         auto g_D = A.getCoeff(u_exact, G); // prescribe solution at the immersed boundary!
 
+        // Immersed surface measure (Nanson factor): surface quadrature weights
+        // are PARAMETRIC arc-length on {phi==0}; physical measure is
+        // meas(G)*||jac(G)^{-T} n|| (= 1 for the identity map). Applied to ALL
+        // Nitsche sub-terms (matrix and rhs) for consistency.
+        auto surfMeas = meas(G) * (jac(G).inv().tr() * n_imm).norm();
+
+        // Switch to SURFACE quadrature (phi==0) for the immersed Nitsche term.
+        // Each rule (CutCell/Octree/Algoim) does its OWN surface integral.
+        A.options().addInt("quDim", "Surface (phi==0) quadrature selector", 2);
+
         // Symmetric Nitsche terms (matrix part)
-        // A.assembleBdr(
-        //     bdr_immersed,
-        //     - (igrad(u, G) * igrad(impl,G)) * u.tr()
-        //     - u * (igrad(u, G) * igrad(impl,G)).tr()
-        //     + gamma / hmax * u * u.tr() * meas(G)
-        // );
-
         A.assembleBdr(
             bdr_immersed,
-            - (igrad(u, G) * n_imm) * u.tr()
-            - u * (igrad(u, G) * n_imm).tr()
-            + gamma / hmax * u * u.tr() * meas(G)
+            - (igrad(u, G) * n_imm) * u.tr()       * surfMeas
+            - u * (igrad(u, G) * n_imm).tr()       * surfMeas
+            + gamma / hmax * u * u.tr()            * surfMeas
         );
 
-        // Symmetric Nitsche terms (rhs part)
-        // unit outward normal: n_imm.normalized()
-        // A.assembleBdr(
-        //     bdr_immersed,
-        //     - (igrad(u, G) * igrad(impl,G)) * g_D * meas(G)
-        //     + gamma / hmax * u * g_D * meas(G)
-        // );
-
-        // if i use igrad(impl,G), I get some issues in the computation! 
-
+        // Symmetric Nitsche terms (rhs part) — same measure & unit normal
         A.assembleBdr(
             bdr_immersed,
-            - (igrad(u, G) * n_imm) * g_D * meas(G)
-            + gamma / hmax * u * g_D * meas(G)
+            - (igrad(u, G) * n_imm) * g_D          * surfMeas
+            + gamma / hmax * u * g_D               * surfMeas
         );
+
+        // Restore volume quadrature for any subsequent integration.
+        A.options().setInt("quDim", -1);
 
         gsInfo << A.numDofs() << "." << std::flush;
 

@@ -4,8 +4,7 @@
 
     Embedding box: [0,1]x[0,1]
     Physical domain: Omega = {(x,y): x>0, y>0, x^2+y^2<1}
-    ./build/bin/poisson2_nitsche_immersed_example -r 2 -e 1 --plot -g 1e8
-
+    ./build/bin/poisson2_nitsche_immersed_example  -r 4 -e 1 -g 1000 --plot
     This file is part of the G+Smo library.
 */
 
@@ -23,6 +22,8 @@ int main(int argc, char *argv[])
     index_t numElevate = 0;
     real_t penalty = 1e3;
     real_t gamma = 1e3;
+    index_t quRule = gsQuadrature::AlgoimRule;
+    std::string outFolder = "output_immersed";
 
     gsCmdLine cmd("Poisson immersed quarter-circle in [0,1]^2.");
     cmd.addInt("e", "degreeElevation", "Number of degree elevation steps", numElevate);
@@ -30,7 +31,16 @@ int main(int argc, char *argv[])
     cmd.addReal("p", "penalty", "Weak Dirichlet penalty", penalty);
     cmd.addSwitch("plot", "Create a ParaView file", plot);
     cmd.addReal("g","gamma","penalty parameter", gamma);
+    cmd.addInt("q", "quRule", "Quadrature rule: 11=CutCell, 12=Algoim", quRule);
+    cmd.addString("o", "output", "Output folder", outFolder);
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
+
+    if (quRule != gsQuadrature::AlgoimRule && quRule != gsQuadrature::CutCellRule)
+    {
+        gsWarn << "Unsupported quRule=" << quRule
+               << ". Falling back to AlgoimRule (12).\n";
+        quRule = gsQuadrature::AlgoimRule;
+    }
 
     // Embedding box [0,1]^2
     gsMultiPatch<> mp(*gsNurbsCreator<>::BSplineSquare());
@@ -78,9 +88,14 @@ int main(int argc, char *argv[])
     gsInfo<< "Degree of the basis: " << dbasis.maxCwiseDegree() << "\n";
     gsInfo << "(dot1=assembled, dot2=solved, dot3=error)\n\nDoFs: ";
 
-    std::string out = gsFileManager::getCanonicRepresentation(
-        gsFileManager::getPath(std::string(__FILE__), true) + "../output_immersed"
-    );
+    std::string outPath = outFolder;
+    if (outPath.empty())
+        outPath = "output_immersed";
+    const bool isAbsolutePath = (!outPath.empty() && outPath[0] == '/');
+    if (!isAbsolutePath)
+        outPath = gsFileManager::getCurrentPath() + "/" + outPath;
+
+    std::string out = gsFileManager::getCanonicRepresentation(outPath);
     gsFileManager::mkdir(out);
     const std::string debugDir = out + "/trimmed_domain_debug";
     const std::string insideDir = debugDir + "/inside";
@@ -141,13 +156,19 @@ int main(int argc, char *argv[])
         typedef gsExprAssembler<>::solution    solution;
 
         gsExprAssembler<> A(1, 1);
-        A.options().setInt("quRule", gsQuadrature::AlgoimRule);
-        // A.setIntegrationDomain(memory::make_shared_not_owned(&tr_domain));  // BAD - COMMENTED OUT!
-        // Create and set the trimmed domain - let the assembler own it
-        A.setIntegrationDomain(
-            memory::make_shared(new gsImplicitTrimmedDomain<2,real_t>(impl_fun, *tbsPtr))
-        );  
+        A.options().setInt("quRule", quRule);
+
+        // Trimmed (implicit) integration domain; the assembler owns it. It is
+        // applied AFTER the FCM stabilization below, so the stabilization is
+        // integrated over the full background mesh while the physical terms use
+        // the trimmed domain.
+        memory::shared_ptr<gsImplicitTrimmedDomain<2,real_t> > tr_domain =
+            memory::make_shared(new gsImplicitTrimmedDomain<2,real_t>(impl_fun, *tbsPtr));
+
         gsExprEvaluator<> ev(A);
+        // Integrate the error norms over the physical (trimmed) domain Omega,
+        // not the whole background square: use the same immersed volume rule.
+        ev.options().setInt("quRule", quRule);
 
         std::vector<patchSide> bdr_immersed(1); // vector of size 1
         bdr_immersed[0]= patchSide(0,boundary::none); // assign the first and only element
@@ -163,9 +184,27 @@ int main(int argc, char *argv[])
         solution u_sol = A.getSolution(u, solVector);
 
         u.setup(bc, dirichlet::none, 0);
+
+        // Start on the FULL background mesh so the FCM stabilization below is
+        // integrated over all cells (including exterior/cut ones).
+        A.setIntegrationElements(dbasis);
         A.initSystem();
         A.computePattern(igrad(u) * igrad(u).tr());
-        // A.getCoeff()
+
+        // --- FCM stabilization ---------------------------------------------
+        // Trimmed integration leaves DoFs whose support lies entirely in the
+        // exterior (phi>0) with zero stiffness rows -> singular matrix. Assemble
+        // a tiny multiple alpha of the FULL background-mesh stiffness FIRST
+        // (standard Gauss) so those DoFs keep a well-conditioned coupling to
+        // their neighbours. Perturbs the physical solution only by O(alpha).
+        const real_t alpha = 1e-10;
+        A.options().setInt("quRule", gsQuadrature::GaussLegendre);
+        A.assemble( alpha * igrad(u, G) * igrad(u, G).tr() * meas(G) );
+
+        // Restrict integration to the trimmed (implicit) physical domain for
+        // the remaining physical terms, using the selected immersed rule.
+        A.setIntegrationDomain(tr_domain);
+        A.options().setInt("quRule", quRule);
 
         A.assemble(
             igrad(u, G) * igrad(u, G).tr() * meas(G),
@@ -174,36 +213,34 @@ int main(int argc, char *argv[])
 
         auto g_D = A.getCoeff(u_exact, G); // prescribe solution at the immersed boundary!
 
+        // Immersed surface measure (Nanson factor): the surface quadrature
+        // weights are PARAMETRIC arc-length on {phi==0}, so the physical measure
+        // is meas(G)*||jac(G)^{-T} n||. For the identity embedding map this is
+        // exactly 1; it generalizes correctly to scaled/curved boxes. The same
+        // factor is applied to ALL Nitsche sub-terms (matrix and rhs) so they
+        // stay consistent.
+        auto surfMeas = meas(G) * (jac(G).inv().tr() * n_imm).norm();
+
+        // Switch to SURFACE quadrature (phi==0) for the immersed Nitsche term.
+        A.options().addInt("quDim", "Surface (phi==0) quadrature selector", 2);
+
         // Symmetric Nitsche terms (matrix part)
-        // A.assembleBdr(
-        //     bdr_immersed,
-        //     - (igrad(u, G) * igrad(impl,G)) * u.tr()
-        //     - u * (igrad(u, G) * igrad(impl,G)).tr()
-        //     + gamma / hmax * u * u.tr() * meas(G)
-        // );
-
         A.assembleBdr(
             bdr_immersed,
-            - (igrad(u, G) * n_imm) * u.tr()
-            - u * (igrad(u, G) * n_imm).tr()
-            + gamma / hmax * u * u.tr() * meas(G)
+            - (igrad(u, G) * n_imm) * u.tr()       * surfMeas
+            - u * (igrad(u, G) * n_imm).tr()       * surfMeas
+            + gamma / hmax * u * u.tr()            * surfMeas
         );
 
-        // Symmetric Nitsche terms (rhs part)
-        // unit outward normal: n_imm.normalized()
-        // A.assembleBdr(
-        //     bdr_immersed,
-        //     - (igrad(u, G) * igrad(impl,G)) * g_D * meas(G)
-        //     + gamma / hmax * u * g_D * meas(G)
-        // );
-
-        // if i use igrad(impl,G), I get some issues in the computation! 
-
+        // Symmetric Nitsche terms (rhs part) — same measure & unit normal
         A.assembleBdr(
             bdr_immersed,
-            - (igrad(u, G) * n_imm) * g_D * meas(G)
-            + gamma / hmax * u * g_D * meas(G)
+            - (igrad(u, G) * n_imm) * g_D          * surfMeas
+            + gamma / hmax * u * g_D               * surfMeas
         );
+
+        // Restore volume quadrature for any subsequent integration.
+        A.options().setInt("quDim", -1);
 
         gsInfo << A.numDofs() << "." << std::flush;
 
@@ -283,48 +320,76 @@ int main(int argc, char *argv[])
                 makeRootPvd(boundaryBase + ".pvd", debugDir + "/boundarysign_collection.pvd", "boundarysign/");
             }
 
-            // ===== QUADRATURE POINT VISUALIZATION (gsAlgoim) =====
+            // ===== QUADRATURE POINT VISUALIZATION =====
             {
-                gsAlgoimGenericRule<real_t> algoimRule(impl_fun, *tbsPtr);
-                gsGaussRule<real_t> gaussRule(gsVector<index_t,2>::Constant(deg + 1));
-                auto l2_error_point = (u_ex - u_sol).norm();
                 gsMatrix<real_t> quad_points(4, 0);
                 gsMatrix<real_t> pts;
                 gsVector<real_t> wts;
 
-                // Iterate over the cut elements
-                for (auto elem_it = tr_domain->beginBdr(boundary::none);
-                     elem_it != tr_domain->endBdr(boundary::none); ++elem_it)
+                if (quRule == gsQuadrature::CutCellRule)
                 {
-                    algoimRule.mapTo(elem_it.lowerCorner(), elem_it.upperCorner(), pts, wts);
-                    if (pts.cols() == 0) continue;
+                    // CutCell: keep only points with non-zero weight (in/out mask result).
+                    gsGaussRule<real_t> baseRule(gsVector<index_t,2>::Constant(deg + 1));
+                    gsCutCellRule<real_t> cutRule(baseRule, impl_fun);
 
-                    gsMatrix<real_t> phys;
-                    mp.patch(0).eval_into(pts, phys);
+                    for (auto elem_it = tr_domain->beginAll(); elem_it != tr_domain->endAll(); ++elem_it)
+                    {
+                        cutRule.mapTo(elem_it.lowerCorner(), elem_it.upperCorner(), pts, wts);
+                        if (pts.cols() == 0) continue;
 
-                    const index_t c = quad_points.cols();
-                    quad_points.conservativeResize(4, c + pts.cols());
-                    quad_points.block(0, c, 2, pts.cols()) = phys;
-                    quad_points.row(2).segment(c, pts.cols()).setZero();
-                    for (index_t j = 0; j < pts.cols(); ++j)
-                        quad_points(3, c + j) = ev.eval(l2_error_point, pts.col(j), 0)(0,0);
+                        gsMatrix<real_t> phys;
+                        mp.patch(0).eval_into(pts, phys);
+
+                        for (index_t j = 0; j < pts.cols(); ++j)
+                        {
+                            if (wts[j] <= 0) continue;
+                            const index_t c = quad_points.cols();
+                            quad_points.conservativeResize(4, c + 1);
+                            quad_points(0, c) = phys(0, j);
+                            quad_points(1, c) = phys(1, j);
+                            quad_points(2, c) = 0;
+                            quad_points(3, c) = wts[j];
+                        }
+                    }
                 }
-
-                // Iterate over interior elements
-                for (auto elem_it = tr_domain->beginInterior(); elem_it != tr_domain->end<InteriorSign>(); ++elem_it)
+                else
                 {
-                    gaussRule.mapTo(elem_it.lowerCorner(), elem_it.upperCorner(), pts, wts);
-                    if (pts.cols() == 0) continue;
+                    gsAlgoimGenericRule<real_t> algoimRule(impl_fun, *tbsPtr);
+                    gsGaussRule<real_t> gaussRule(gsVector<index_t,2>::Constant(deg + 1));
+                    auto l2_error_point = (u_ex - u_sol).norm();
 
-                    gsMatrix<real_t> phys;
-                    mp.patch(0).eval_into(pts, phys);
+                    for (auto elem_it = tr_domain->beginBdr(boundary::none);
+                         elem_it != tr_domain->endBdr(boundary::none); ++elem_it)
+                    {
+                        algoimRule.mapTo(elem_it.lowerCorner(), elem_it.upperCorner(), pts, wts);
+                        if (pts.cols() == 0) continue;
 
-                    const index_t c = quad_points.cols();
-                    quad_points.conservativeResize(4, c + pts.cols());
-                    quad_points.block(0, c, 2, pts.cols()) = phys;
-                    quad_points.row(2).segment(c, pts.cols()).setZero();
-                    for (index_t j = 0; j < pts.cols(); ++j)
-                        quad_points(3, c + j) = ev.eval(l2_error_point, pts.col(j), 0)(0,0);
+                        gsMatrix<real_t> phys;
+                        mp.patch(0).eval_into(pts, phys);
+
+                        const index_t c = quad_points.cols();
+                        quad_points.conservativeResize(4, c + pts.cols());
+                        quad_points.block(0, c, 2, pts.cols()) = phys;
+                        quad_points.row(2).segment(c, pts.cols()).setZero();
+                        for (index_t j = 0; j < pts.cols(); ++j)
+                            quad_points(3, c + j) = ev.eval(l2_error_point, pts.col(j), 0)(0,0);
+                    }
+
+                    for (auto elem_it = tr_domain->beginInterior(); elem_it != tr_domain->end<InteriorSign>(); ++elem_it)
+                    {
+                        gaussRule.mapTo(elem_it.lowerCorner(), elem_it.upperCorner(), pts, wts);
+                        if (pts.cols() == 0) continue;
+
+                        gsMatrix<real_t> phys;
+                        mp.patch(0).eval_into(pts, phys);
+
+                        const index_t c = quad_points.cols();
+                        quad_points.conservativeResize(4, c + pts.cols());
+                        quad_points.block(0, c, 2, pts.cols()) = phys;
+                        quad_points.row(2).segment(c, pts.cols()).setZero();
+                        for (index_t j = 0; j < pts.cols(); ++j)
+                            quad_points(3, c + j) = ev.eval(l2_error_point, pts.col(j), 0)(0,0);
+                    }
                 }
 
                 if (quad_points.cols() > 0)
@@ -335,7 +400,7 @@ int main(int argc, char *argv[])
                     gsWriteParaviewPoints(quad_points, base);
                 }
             }
-            // ========================================================
+            // ==========================================
         }
 
         gsInfo << "Penalty: " << gamma/hmax << "\n";

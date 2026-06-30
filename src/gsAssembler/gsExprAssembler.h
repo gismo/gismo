@@ -1139,7 +1139,9 @@ void gsExprAssembler<T>::assemble(const expr &... args)
         {
             QuPatch = elem.patch();
             // get Degree of the domain
-            QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(QuPatch), m_options);
+            // Use the integration domain (e.g. trimmed/implicit) instead of the
+            // plain basis domain, so cut-cell/octree/Algoim rules see the level set.
+            QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(QuPatch), m_options);
         }
 
         // Map the Quadrature rule to the element
@@ -1195,7 +1197,7 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
     {
         const boundary_condition<T> * it = &iit->get();
 
-        QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(it->patch()), m_options, it->side().direction());
+        QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(it->patch()), m_options, it->side().direction());
 
         // Update boundary function source
         m_exprdata->setMutSource(*it->function());
@@ -1248,7 +1250,7 @@ void gsExprAssembler<T>::assembleBdr(const bContainer & bnd, expr&... args)
     for (gsBoxTopology::const_biterator it = bnd.begin();
          it != bnd.end(); ++it )
     {
-        QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(it->patch),
+        QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(it->patch),
                                     m_options, it->side().direction());
 
         // Initialize domain element iterator for current patch
@@ -1323,7 +1325,7 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
         else
             interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), iFace);
 
-        QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(patch1),
+        QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(patch1),
                                    m_options, iFace.first().side().direction());
 
         // TODO [later]: Use beginIfc instead of beginBdr
@@ -1387,7 +1389,9 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
         {
             QuPatch = elem.patch();
             // get Degree of the domain
-            QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(QuPatch), m_options);
+            // Use the integration domain (e.g. trimmed/implicit) instead of the
+            // plain basis domain, so cut-cell/octree/Algoim rules see the level set.
+            QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(QuPatch), m_options);
         }
 
         // Map the Quadrature rule to the element
@@ -1443,7 +1447,7 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
 
         gsCPPInterface<T> interfaceMap(getGeometryMap(), iFace);
 
-        QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(patch1),
+        QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(patch1),
                                    m_options, iFace.first().side().direction());
 
         // Initialize domain element iterator for current patch
