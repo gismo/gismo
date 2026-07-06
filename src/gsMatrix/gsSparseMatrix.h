@@ -615,6 +615,76 @@ gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
         }
 }
 
+template<typename T>
+class gsBlockSparseMatrix {
+    typedef gsSparseMatrix<T> sm;
+    typedef memory::shared_ptr<sm> sm_ptr;
+public:
+    gsBlockSparseMatrix(index_t rows, index_t cols)
+        : m_rows(rows), m_cols(cols), m_nnz(0), m_rowsizes(rows), m_colsizes(cols), m_data(rows*cols)
+    {
+        m_rowsizes.setZero();
+        m_colsizes.setZero();
+    }
+
+    gsBlockSparseMatrix&
+    set(index_t row, index_t col, gsSparseMatrix<T> mat)
+    {
+        GISMO_ASSERT(row>=0 && row<m_rows && col >=0 && col<m_cols, "Out of bounds");
+        if (m_rowsizes[row]==0)
+            m_rowsizes[row] = mat.rows();
+        if (m_colsizes[col]==0)
+            m_colsizes[col] = mat.cols();
+        GISMO_ASSERT(m_rowsizes[row]==mat.rows() && m_colsizes[col]==mat.cols(), "Dimension missmatch");
+        m_nnz += mat.nonZeros();
+        m_data[row+col*m_rows] = mat.moveToPtr();
+        return *this;
+    }
+
+    sm toSparse() const
+    {
+        gsVector<index_t> rowoffsets = accumulate(m_rowsizes);
+        gsVector<index_t> coloffsets = accumulate(m_colsizes);
+
+        gsSparseEntries<T> se;
+        se.reserve(m_nnz);
+        for (index_t r=0; r<m_rows; ++r)
+            for (index_t c=0; c<m_cols; ++c)
+                if (m_data[r+c*m_rows])
+                {
+                    const sm& A = *m_data[r+c*m_rows];
+                    for (index_t i=0; i<A.outerSize(); ++i)
+                        for (typename gsSparseMatrix<T>::InnerIterator it(A,i); it; ++it)
+                            se.add(rowoffsets[r] + it.row(), coloffsets[c] + it.col(), it.value());
+                }
+
+        sm result(rowoffsets[m_rows], coloffsets[m_cols]);
+        result.setFrom(se);
+        return result;
+
+    }
+
+    operator sm() const
+    {
+        return toSparse();
+    }
+
+private:
+    static gsVector<index_t> accumulate(const gsVector<index_t>& v)
+    {
+        gsVector<index_t> result;
+        result.setZero(v.rows()+1);
+        for (index_t i=1; i<v.rows()+1; ++i)
+            result[i] = result[i-1] + v[i-1];
+        return result;
+    }
+
+private:
+    index_t m_rows, m_cols, m_nnz;
+    gsVector<index_t> m_rowsizes, m_colsizes;
+    std::vector<sm_ptr> m_data;
+};
+
 #ifdef GISMO_WITH_PYBIND11
 
   /**

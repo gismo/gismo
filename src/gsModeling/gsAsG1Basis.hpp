@@ -31,46 +31,6 @@ gsSparseMatrix<T> asEmbeddingMatrix(index_t rows, const gsMatrix<index_t>& c)
     return result;
 }
 
-template<typename T>
-gsSparseMatrix<T> arrangeBlockMatricesRowwise(const gsSparseMatrix<T>& A, const gsSparseMatrix<T>& B)
-{
-    GISMO_ASSERT (A.cols() == B.cols(), "Dimension missmatch.");
-    gsSparseEntries<T> se;
-    se.reserve(A.nonZeros() + B.nonZeros());
-    for (index_t i=0; i<A.outerSize(); ++i)
-        for (typename gsSparseMatrix<T>::InnerIterator it(A,i); it; ++it)
-            se.add(it.row(), it.col(), it.value());
-    for (index_t i=0; i<B.outerSize(); ++i)
-        for (typename gsSparseMatrix<T>::InnerIterator it(B,i); it; ++it)
-            se.add(A.rows()+it.row(), it.col(), it.value());
-    gsSparseMatrix<T> result(A.rows()+B.rows(), A.cols());
-    result.setFrom(se);
-    return result;
-}
-
-
-template<typename T>
-gsSparseMatrix<T> arrangeBlockMatricesColwise(const gsSparseMatrix<T>& A, const gsSparseMatrix<T>& B)
-{
-    return arrangeBlockMatricesRowwise<T>(A.transpose(), B.transpose()).transpose();
-}
-
-template<typename T>
-gsSparseMatrix<T> blockDiagonalMatrix(const gsSparseMatrix<T>& A, const gsSparseMatrix<T>& B)
-{
-    gsSparseEntries<T> se;
-    se.reserve(A.nonZeros() + B.nonZeros());
-    for (index_t i=0; i<A.outerSize(); ++i)
-        for (typename gsSparseMatrix<T>::InnerIterator it(A,i); it; ++it)
-            se.add(it.row(), it.col(), it.value());
-    for (index_t i=0; i<B.outerSize(); ++i)
-        for (typename gsSparseMatrix<T>::InnerIterator it(B,i); it; ++it)
-            se.add(A.rows()+it.row(), A.cols()+it.col(), it.value());
-    gsSparseMatrix<T> result(A.rows()+B.rows(), A.cols()+B.cols());
-    result.setFrom(se);
-    return result;
-}
-
 
 // ====================================================================
 // Helper utilities (basis evaluation)
@@ -227,10 +187,9 @@ gsSparseMatrix<T> deriveEdgeEmbedding(
     const gsBSplineBasis<T> sideBasis = *tensorBasis.boundaryBasis(side);
     const gsMatrix<T> greville = sideBasis.anchors();
 
-    const gsSparseMatrix<T> collocateLeft = arrangeBlockMatricesRowwise<T>(
-        collocateBoundaryValues(tensorBasis, side, greville),
-        collocateBoundaryCrossingDerivative(tensorBasis, side, localGluingData, greville)
-    );
+    const gsSparseMatrix<T> collocateLeft = gsBlockSparseMatrix<T>(2,1)
+        .set(0,0,collocateBoundaryValues(tensorBasis, side, greville))
+        .set(1,0,collocateBoundaryCrossingDerivative(tensorBasis, side, localGluingData, greville));
 
     gsBSplineBasis<T> sideLowerDegreeBasis = sideBasis;
     sideLowerDegreeBasis.degreeReduce(1);
@@ -238,10 +197,9 @@ gsSparseMatrix<T> deriveEdgeEmbedding(
     gsBSplineBasis<T> sideSmootherBasis = sideBasis;
     sideSmootherBasis.elevateContinuity(1);
 
-    const gsSparseMatrix<T> collocateRight = blockDiagonalMatrix<T>(
-            collocationMatrix(sideSmootherBasis, greville),
-            collocationMatrix(sideLowerDegreeBasis, greville)
-    );
+    const gsSparseMatrix<T> collocateRight = gsBlockSparseMatrix<T>(2,2)
+            .set(0,0,collocationMatrix(sideSmootherBasis, greville))
+            .set(1,1,collocationMatrix(sideLowerDegreeBasis, greville));
 
     const gsLinearOperator<>::Ptr solver = makeSparseLUSolver(collocateLeft);
     gsMatrix<T> result;
@@ -298,14 +256,15 @@ gsSparseMatrix<T> createGluingDataArgyrisBasis(
 
     const gsSparseMatrix<T> embeddingInterior = deriveInnerEmbedding(tensorBasis, side);
 
-    const gsSparseMatrix<T> simpleEdgeEmbedding = arrangeBlockMatricesColwise<T>(
-        asEmbeddingMatrix<T>(rows, tensorBasis.boundary(side)),
-        asEmbeddingMatrix<T>(rows, tensorBasis.boundaryOffset(side,1))
-    );
+    const gsSparseMatrix<T> simpleEdgeEmbedding = gsBlockSparseMatrix<T>(1,2)
+        .set(0,0,asEmbeddingMatrix<T>(rows, tensorBasis.boundary(side)))
+        .set(0,1,asEmbeddingMatrix<T>(rows, tensorBasis.boundaryOffset(side,1)));
 
     const gsSparseMatrix<T> asG1edgeEmbedding = deriveEdgeEmbedding(tensorBasis, localGluingData, side);
 
-    return arrangeBlockMatricesColwise<T>(embeddingInterior,simpleEdgeEmbedding * asG1edgeEmbedding);
+    return gsBlockSparseMatrix<T>(1,2)
+         .set(0,0,embeddingInterior)
+         .set(0,1,simpleEdgeEmbedding * asG1edgeEmbedding);
 }
 
 
