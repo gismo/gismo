@@ -178,11 +178,13 @@ int main(int argc, char* argv[])
     // the gluing-data tangent frame.
     const short_t tdir1 = 1 - ps1.direction();
     const bool flippedAtEmb = !ifc.dirOrientation(ps1, tdir1);
-    const T tSign = flippedAtEmb ? T(-1) : T(1);
-    gd(0,2) *= tSign;
-    gd(0,3) *= tSign;
-    gd(0,6) *= tSign;
-    gd(0,7) *= tSign;
+    if (flippedAtEmb)
+    {
+        gd(0,2) *= -1;
+        gd(0,3) *= -1;
+        gd(0,6) *= -1;
+        gd(0,7) *= -1;
+    }
     // There is another fix to be made: In the paper we have written
     // that the tangential vector is obtained by rotating the normal
     // vector; the gluing data computation code uses always (+1,0) and (0,+1).
