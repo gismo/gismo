@@ -13,9 +13,67 @@
 
 namespace gismo {
 
+// ====================================================================
+// Helper utilities (matrix manipulations algebra)
+// ====================================================================
+
+template<typename T>
+gsSparseMatrix<T> asEmbeddingMatrix(index_t rows, const gsMatrix<index_t>& c)
+{
+    index_t cols = c.rows();
+    GISMO_ASSERT(c.cols() == 1, "");
+    gsSparseEntries<T> se;
+    se.reserve(cols);
+    for (index_t i=0; i<c.size(); ++i)
+        se.add(c(i,0),i,1);
+    gsSparseMatrix<T>result(rows, cols);
+    result.setFrom(se);
+    return result;
+}
+
+template<typename T>
+gsSparseMatrix<T> arrangeBlockMatricesRowwise(const gsSparseMatrix<T>& A, const gsSparseMatrix<T>& B)
+{
+    GISMO_ASSERT (A.cols() == B.cols(), "Dimension missmatch.");
+    gsSparseEntries<T> se;
+    se.reserve(A.nonZeros() + B.nonZeros());
+    for (index_t i=0; i<A.outerSize(); ++i)
+        for (typename gsSparseMatrix<T>::InnerIterator it(A,i); it; ++it)
+            se.add(it.row(), it.col(), it.value());
+    for (index_t i=0; i<B.outerSize(); ++i)
+        for (typename gsSparseMatrix<T>::InnerIterator it(B,i); it; ++it)
+            se.add(A.rows()+it.row(), it.col(), it.value());
+    gsSparseMatrix<T> result(A.rows()+B.rows(), A.cols());
+    result.setFrom(se);
+    return result;
+}
+
+
+template<typename T>
+gsSparseMatrix<T> arrangeBlockMatricesColwise(const gsSparseMatrix<T>& A, const gsSparseMatrix<T>& B)
+{
+    return arrangeBlockMatricesRowwise<T>(A.transpose(), B.transpose()).transpose();
+}
+
+template<typename T>
+gsSparseMatrix<T> blockDiagonalMatrix(const gsSparseMatrix<T>& A, const gsSparseMatrix<T>& B)
+{
+    gsSparseEntries<T> se;
+    se.reserve(A.nonZeros() + B.nonZeros());
+    for (index_t i=0; i<A.outerSize(); ++i)
+        for (typename gsSparseMatrix<T>::InnerIterator it(A,i); it; ++it)
+            se.add(it.row(), it.col(), it.value());
+    for (index_t i=0; i<B.outerSize(); ++i)
+        for (typename gsSparseMatrix<T>::InnerIterator it(B,i); it; ++it)
+            se.add(A.rows()+it.row(), A.cols()+it.col(), it.value());
+    gsSparseMatrix<T> result(A.rows()+B.rows(), A.cols()+B.cols());
+    result.setFrom(se);
+    return result;
+}
+
 
 // ====================================================================
-// Helper utilities (same as in the per-side example)
+// Helper utilities (basis evaluation)
 // ====================================================================
 
 template<typename T>
@@ -36,9 +94,16 @@ bool isNested(const gsBSplineBasis<T>& coarseBasis, const gsBSplineBasis<T>& fin
 
 template<typename T>
 gsSparseMatrix<T> collocationMatrix(const gsBSplineBasis<T>& basis,
-                                    const gsMatrix<T>& pts)
+                                    const gsMatrix<T>& pts,
+                                    const index_t derivative = 0)
 {
-    gsMatrix<T>       vals = basis.eval(pts);
+    gsMatrix<T> vals;
+    if (derivative == 0)
+        vals = basis.eval(pts);
+    else if (derivative == 1)
+        vals = basis.deriv(pts);
+    else
+        GISMO_ERROR ("Invalid value.");
     gsMatrix<index_t> idx  = basis.active(pts);
     gsSparseEntries<T> entries;
     entries.reserve(vals.rows() * vals.cols());
@@ -62,216 +127,186 @@ gsSparseMatrix<T> embeddingMatrix(const gsBSplineBasis<T>& coarse,
     return result.sparseView(1, 1e-10);
 }
 
-std::vector<index_t> getInteriorDofs(const index_t tbSize,
-                                     const gsMatrix<index_t>& firstLayerDOFs,
-                                     const gsMatrix<index_t>& secondLayerDOFs)
+template<typename T>
+gsSparseMatrix<T> evaluateBasisAtBoundary(
+        const gsBSplineBasis<T>& basis,
+        index_t sideParameter,
+        index_t derivative,
+        index_t layers
+)
+{
+    GISMO_ASSERT (sideParameter==0 || sideParameter==1, "Invalid side.");
+
+    const gsMatrix<T> pt = basis.support().col(sideParameter);
+    gsMatrix<index_t> indices = basis.active(pt);
+
+    gsMatrix<T> values;
+    if (derivative==0)
+        values = basis.eval(pt);
+    else if (derivative==1)
+    {
+        values = basis.deriv(pt);
+        // On left hand side, normal vector is -1
+        if (sideParameter==0)
+            values *= -1;
+    }
+    else
+        GISMO_ERROR ("Invalid value.");
+
+    // Flip indices if right side is selected
+    if (sideParameter==1)
+        indices.array() = basis.size() - 1 - indices.array();
+
+    // Store in sparse matrix
+    gsSparseMatrix<T> result(1, layers);
+    for (index_t i=0; i<indices.rows(); ++i)
+        if (indices(i,0)<layers)
+            result(0, indices(i,0)) = values(i,0);
+
+
+    return result;
+}
+
+
+// ====================================================================
+// Evaluation of tensor basis
+// ====================================================================
+
+template<typename T>
+gsSparseMatrix<T> collocateBoundaryValues(
+        const gsTensorBSplineBasis<2,T>& tensorBasis,
+        boxSide side,
+        const gsMatrix<T>& pts
+)
+{
+    const gsBSplineBasis<T> normalBasis     =  tensorBasis.component(side.direction());
+    const gsBSplineBasis<T> tangentialBasis = *tensorBasis.boundaryBasis(side);
+
+    return evaluateBasisAtBoundary(normalBasis, side.parameter(), 0, 2).kron(collocationMatrix(tangentialBasis, pts));
+}
+
+template<typename T>
+gsSparseMatrix<T> collocateBoundaryCrossingDerivative(
+        const gsTensorBSplineBasis<2,T>& tensorBasis,
+        boxSide side,
+        const gsMatrix<T>& gluingData,
+        const gsMatrix<T>& pts
+)
+{
+    const gsBSplineBasis<T> normalBasis      = tensorBasis.component(side.direction());
+    const gsBSplineBasis<T> tangentialBasis = *tensorBasis.boundaryBasis(side);
+
+    const gsMatrix<T> tangentialBasisSupport = tangentialBasis.support();
+    const T a = tangentialBasisSupport(0,0);
+    const T b = tangentialBasisSupport(0,1);
+    const gsMatrix<T> ptsNormalized = (pts.transpose().array()-a)/(b-a);
+    const gsMatrix<T> alpha = gluingData(0,0)*(1-ptsNormalized.array()) + gluingData(0,1)*ptsNormalized.array();
+    const gsMatrix<T> beta  = gluingData(0,2)*(1-ptsNormalized.array()) + gluingData(0,3)*ptsNormalized.array();
+    const gsMatrix<T> scaling0 = beta.array()/alpha.array() * (side.parameter()==side.direction() ? 1 : -1); //This is as in the paper
+    const gsMatrix<T> scaling1 = 1/alpha.array();
+
+    return evaluateBasisAtBoundary(normalBasis, side.parameter(), 0, 2)
+              .kron(scaling0.asDiagonal() * collocationMatrix(tangentialBasis, pts, 1))
+            + evaluateBasisAtBoundary(normalBasis, side.parameter(), 1, 2)
+              .kron(scaling1.asDiagonal() * collocationMatrix(tangentialBasis, pts, 0));
+}
+
+
+// ====================================================================
+// Derive various embeddings
+// ====================================================================
+
+template<typename T>
+gsSparseMatrix<T> deriveEdgeEmbedding(
+        const gsTensorBSplineBasis<2,T>& tensorBasis,
+        const gsMatrix<T>& localGluingData,
+        boxSide side,
+        T eps = 1e-4
+)
+{
+    const gsBSplineBasis<T> sideBasis = *tensorBasis.boundaryBasis(side);
+    const gsMatrix<T> greville = sideBasis.anchors();
+
+    const gsSparseMatrix<T> collocateLeft = arrangeBlockMatricesRowwise<T>(
+        collocateBoundaryValues(tensorBasis, side, greville),
+        collocateBoundaryCrossingDerivative(tensorBasis, side, localGluingData, greville)
+    );
+
+    gsBSplineBasis<T> sideLowerDegreeBasis = sideBasis;
+    sideLowerDegreeBasis.degreeReduce(1);
+
+    gsBSplineBasis<T> sideSmootherBasis = sideBasis;
+    sideSmootherBasis.elevateContinuity(1);
+
+    const gsSparseMatrix<T> collocateRight = blockDiagonalMatrix<T>(
+            collocationMatrix(sideSmootherBasis, greville),
+            collocationMatrix(sideLowerDegreeBasis, greville)
+    );
+
+    const gsLinearOperator<>::Ptr solver = makeSparseLUSolver(collocateLeft);
+    gsMatrix<T> result;
+    solver->apply(collocateRight, result);
+    return result.sparseView(1, eps);
+}
+
+template<typename T>
+std::vector<index_t> getInteriorDofs(const gsTensorBSplineBasis<2,T>& tensorBasis, boxSide side)
 {
     std::vector<index_t> removedSet;
-    removedSet.reserve(firstLayerDOFs.rows() + secondLayerDOFs.rows());
-    std::merge(firstLayerDOFs.data(),
-               firstLayerDOFs.data() + firstLayerDOFs.rows(),
-               secondLayerDOFs.data(),
-               secondLayerDOFs.data() + secondLayerDOFs.rows(),
-               std::back_inserter(removedSet));
+    for (index_t i=0; i<2; ++i)
+    {
+        gsMatrix<index_t> bdyDofs = tensorBasis.boundaryOffset(side, i);
+        std::copy(bdyDofs.data(), bdyDofs.data()+bdyDofs.rows(), std::back_inserter(removedSet));
+    }
+
     std::sort(removedSet.begin(), removedSet.end());
 
-    std::vector<index_t> all(tbSize);
+    std::vector<index_t> all(tensorBasis.size());
     std::iota(all.begin(), all.end(), 0);
 
     std::vector<index_t> interior;
-    interior.reserve(all.size() - removedSet.size());
+    interior.reserve(all.size());
     std::set_difference(all.begin(), all.end(),
                         removedSet.begin(), removedSet.end(),
                         std::back_inserter(interior));
     return interior;
 }
 
+template<typename T>
+gsSparseMatrix<T> deriveInnerEmbedding(const gsTensorBSplineBasis<2,T>& tensorBasis, boxSide side)
+{
+    std::vector<index_t> interior = getInteriorDofs(tensorBasis, side);
+    // Convert to gsVector
+    gsVector<index_t> interiorVec;
+    interiorVec.assign(interior.begin(), interior.end());
+    // Create embedding matrix
+    return asEmbeddingMatrix<T>(tensorBasis.size(), interiorVec);
+}
+
 // ====================================================================
-// Per-side Argyris embedding with gluing-data directional derivative
+// Assemble overall embedding matrix
 // ====================================================================
 
-/// Creates the per-side embedding for ONE side of a tensor-product basis.
-///
-/// Column layout:  [interior DOFs | second-layer cols | boundary cols]
-///
-/// - Interior DOFs: identity
-/// - Boundary cols: value spans smoother basis, d_i derivative = 0
-/// - Second-layer cols: zero value, d_i derivative spans lower-deg basis
 template<typename T>
 gsSparseMatrix<T> createGluingDataArgyrisBasis(
     const gsTensorBSplineBasis<2,T>& tensorBasis,
     boxSide side,
-    T alpha0, T alpha1,
-    T beta0,  T beta1,
-    T eps = 1e-12,
-    T tangentSign = T(1))    // Multiplies the beta*dVm term in the
-                              // trace gamma RHS.  Pass -1 when the
-                              // patch's tangent runs opposite to the
-                              // gluing-data tangent (i.e. `flipped`).
+    const gsMatrix<T> & localGluingData,
+    T eps = 1e-12)
 {
-    gsBSplineBasis<T> sideBasis = *tensorBasis.boundaryBasis(side);
+    index_t rows = tensorBasis.size();
 
-    GISMO_ENSURE(sideBasis.knots().minInteriorMultiplicity() > 1,
-                 "Too small interior multiplicity.");
+    const gsSparseMatrix<T> embeddingInterior = deriveInnerEmbedding(tensorBasis, side);
 
-    gsBSplineBasis<T> sideSmootherBasis = sideBasis;
-    sideSmootherBasis.elevateContinuity(1);
-    GISMO_ASSERT(isNested(sideSmootherBasis, sideBasis),
-                 "Computed bases not nested.");
+    const gsSparseMatrix<T> simpleEdgeEmbedding = arrangeBlockMatricesColwise<T>(
+        asEmbeddingMatrix<T>(rows, tensorBasis.boundary(side)),
+        asEmbeddingMatrix<T>(rows, tensorBasis.boundaryOffset(side,1))
+    );
 
-    gsBSplineBasis<T> sideLowerDegreeBasis = sideBasis;
-    sideLowerDegreeBasis.degreeReduce(1);
-    GISMO_ASSERT(isNested(sideLowerDegreeBasis, sideBasis),
-                 "Computed bases not nested.");
+    const gsSparseMatrix<T> asG1edgeEmbedding = deriveEdgeEmbedding(tensorBasis, localGluingData, side);
 
-    gsSparseMatrix<T> embFirstLayer  = embeddingMatrix(sideSmootherBasis, sideBasis);
-
-    const bool    isLow  = !side.parameter();
-    const int     dir    = side.direction();
-    const int     tanDir = 1 - dir;
-    const index_t stride       = (dir == 0) ? 1 : tensorBasis.size(0);
-    const index_t signedStride = isLow ? stride : -stride;
-
-    const gsBSplineBasis<T> normalBasis = tensorBasis.component(dir);
-    const index_t nNormal  = normalBasis.size();
-    const index_t bdryIdx  = isLow ? 0 : nNormal - 1;
-    const index_t neighIdx = isLow ? 1 : nNormal - 2;
-
-    gsMatrix<T> bdryPt1D = normalBasis.support().col(isLow ? 0 : 1);
-    const T dBdry  = normalBasis.derivSingle(bdryIdx,  bdryPt1D)(0, 0);
-    const T dNeigh = normalBasis.derivSingle(neighIdx, bdryPt1D)(0, 0);
-    GISMO_ENSURE(std::abs(dNeigh) > eps,
-                 "Neighbor derivative is zero.");
-
-    const T signN = isLow ? T(-1) : T(1);
-
-    gsMatrix<index_t> firstLayerDOFs  = tensorBasis.boundary(side);
-    gsMatrix<index_t> secondLayerDOFs = tensorBasis.boundaryOffset(side, 1);
-    std::vector<index_t> interiorDOFs =
-        getInteriorDofs(tensorBasis.size(), firstLayerDOFs, secondLayerDOFs);
-
-    const index_t nSide     = sideBasis.size();
-    const index_t nSmoother = sideSmootherBasis.size();
-    const index_t nLowerDeg = sideLowerDegreeBasis.size();
-    const index_t nInterior = static_cast<index_t>(interiorDOFs.size());
-
-    gsMatrix<T> greville = sideBasis.anchors();
-    const index_t nPts = greville.cols();
-
-    gsMatrix<T> supTan = tensorBasis.component(tanDir).support();
-    const T tA = supTan(0, 0), tB = supTan(0, 1);
-
-    gsMatrix<T> sideVals  = sideBasis.eval(greville);
-    gsMatrix<T> sideDeriv = sideBasis.deriv(greville);
-    gsMatrix<index_t> sideActives = sideBasis.active(greville);
-
-    gsMatrix<T> Phi  = gsMatrix<T>::Zero(nSide, nPts);
-    gsMatrix<T> dPhi = gsMatrix<T>::Zero(nSide, nPts);
-    for (index_t pt = 0; pt < nPts; ++pt)
-        for (index_t a = 0; a < sideActives.rows(); ++a)
-        {
-            const index_t k = sideActives(a, pt);
-            Phi(k, pt)  = sideVals(a, pt);
-            dPhi(k, pt) = sideDeriv(a, pt);
-        }
-
-    gsSparseMatrix<T> sideColloc = collocationMatrix(sideBasis, greville);
-
-    gsVector<T> tNorm(nPts), betaVals(nPts), alphaVals(nPts);
-    for (index_t pt = 0; pt < nPts; ++pt)
-    {
-        tNorm(pt) = (greville(0, pt) - tA) / (tB - tA);
-        betaVals(pt)  = beta0  * (1 - tNorm(pt)) + beta1  * tNorm(pt);
-        alphaVals(pt) = alpha0 * (1 - tNorm(pt)) + alpha1 * tNorm(pt);
-    }
-
-    const index_t numRows = tensorBasis.size();
-    const index_t numCols = nInterior + nLowerDeg + nSmoother;
-    gsSparseMatrix<T> result(numRows, numCols);
-
-    // Block 1: interior DOFs → identity
-    index_t col0 = 0;
-    for (const index_t i : interiorDOFs)
-    {
-        result(i, col0) = T(1);
-        ++col0;
-    }
-
-    // Block 2: second-layer columns  (d_i derivative = phi_j)
-    const index_t colOffsetL2 = nInterior;
-    {
-        gsMatrix<T> lowerVals(nLowerDeg, nPts);
-        for (index_t j = 0; j < nLowerDeg; ++j)
-        {
-            gsMatrix<T> tmp = sideLowerDegreeBasis.evalSingle(j, greville);
-            lowerVals.row(j) = tmp.row(0);
-        }
-        for (index_t j = 0; j < nLowerDeg; ++j)
-        {
-            gsMatrix<T> rhs(nPts, 1);
-            for (index_t pt = 0; pt < nPts; ++pt)
-                rhs(pt, 0) = alphaVals(pt) * lowerVals(j, pt);
-
-            gsMatrix<T> coeffs;
-            makeSparseLUSolver(sideColloc)->apply(rhs, coeffs); // This means that the LU decompisition is recomputed for each j
-
-            const T scale = signN / dNeigh;
-            for (index_t k = 0; k < nSide; ++k)
-                if (std::abs(coeffs(k, 0)) > eps)
-                {
-                    const index_t row2D = secondLayerDOFs(k, 0);
-                    result(row2D, colOffsetL2 + j) = coeffs(k, 0) * scale;
-                }
-        }
-    }
-
-    // Block 3: boundary columns  (value = smoother basis, d_i derivative = 0)
-    const index_t colOffsetBdry = colOffsetL2 + nLowerDeg;
-    {
-        //gsMatrix<T> E_dense = embFirstLayer.toDense();   // Why do you convert a sparse matrix to a dense one here??
-
-        for (index_t m = 0; m < nSmoother; ++m)
-        {
-            gsVector<T> Vm(nPts), dVm(nPts);
-            Vm.setZero(); dVm.setZero();
-            for (index_t k = 0; k < nSide; ++k)
-            {
-                const T ek = embFirstLayer(k, m);
-                if (std::abs(ek) < eps) continue;
-                for (index_t pt = 0; pt < nPts; ++pt)
-                {
-                    Vm(pt)  += ek * Phi(k, pt);     // Vm(pt) = embFirstLayer(k, m) * Phi(k, pt) is a matrix-matrix product. Why so complicated
-                    dVm(pt) += ek * dPhi(k, pt);    // The same
-                }
-            }
-
-            gsMatrix<T> rhs(nPts, 1);
-            for (index_t pt = 0; pt < nPts; ++pt)
-                rhs(pt, 0) = -(dBdry * Vm(pt) + tangentSign * signN * betaVals(pt) * dVm(pt)) / dNeigh;
-
-            gsMatrix<T> gamma;
-            makeSparseLUSolver(sideColloc)->apply(rhs, gamma); // This means that the LU decompisition is recomputed for each j
-
-            const index_t col2D = colOffsetBdry + m;
-            for (index_t k = 0; k < nSide; ++k)
-            {
-                const index_t bdryRow = firstLayerDOFs(k, 0);
-                if (std::abs(embFirstLayer(k, m)) > eps)
-                    result(bdryRow, col2D) = embFirstLayer(k, m);
-                if (std::abs(gamma(k, 0)) > eps)
-                {
-                    const index_t neighRow = bdryRow + signedStride;
-                    result(neighRow, col2D) = gamma(k, 0);
-                }
-            }
-        }
-    }
-
-    result.makeCompressed();
-    return result;
+    return arrangeBlockMatricesColwise<T>(embeddingInterior,simpleEdgeEmbedding * asG1edgeEmbedding);
 }
-
-
 
 
 } // namespace gismo

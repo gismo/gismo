@@ -166,12 +166,39 @@ int main(int argc, char* argv[])
 
     // ---- Compute gluing data for the interface ----
     bool ok = false;
-    gsVector<T> gd = computeGluingDataForInterface(
-        mp, ifc, ok, T(1e-8), numGaussPerSpan);
+    gsMatrix<T> gd = computeGluingDataForInterface(mp, ifc, ok, T(1e-8), numGaussPerSpan).transpose();
     GISMO_ENSURE(ok, "Gluing data computation failed.");
 
-    const T a1_0 = gd(0), a1_1 = gd(1), b1_0 = gd(2), b1_1 = gd(3);
-    const T a2_0 = gd(4), a2_1 = gd(5), b2_0 = gd(6), b2_1 = gd(7);
+    // ---- Correct gluing data ----
+    // when the patch tangent runs opposite to the
+    // gluing-data tangent (i.e. `flipped`), pass tangentSign = -1
+    // to the embedding so that `beta * d/dt(smoother)` is evaluated
+    // in the gluing-data tangent frame.  Both patches need it
+    // because both halves of the AS-G1 relation are expressed in
+    // the gluing-data tangent frame.
+    const short_t tdir1 = 1 - ps1.direction();
+    const bool flippedAtEmb = !ifc.dirOrientation(ps1, tdir1);
+    const T tSign = flippedAtEmb ? T(-1) : T(1);
+    gd(0,2) *= tSign;
+    gd(0,3) *= tSign;
+    gd(0,6) *= tSign;
+    gd(0,7) *= tSign;
+    // There is another fix to be made: In the paper we have written
+    // that the tangential vector is obtained by rotating the normal
+    // vector; the gluing data computation code uses always (+1,0) and (0,+1).
+    if (ps1.parameter()!=ps1.direction())
+    {
+        gd(0,2) *= -1;
+        gd(0,3) *= -1;
+    }
+    if (ps2.parameter()!=ps2.direction())
+    {
+        gd(0,6) *= -1;
+        gd(0,7) *= -1;
+    }
+
+    const T a1_0 = gd(0,0), a1_1 = gd(0,1), b1_0 = gd(0,2), b1_1 = gd(0,3);
+    const T a2_0 = gd(0,4), a2_1 = gd(0,5), b2_0 = gd(0,6), b2_1 = gd(0,7);
 
     gsInfo << "\nGluing data:\n"
            << "  Patch " << ps1.patch << " side " << ps1.side()
@@ -187,20 +214,8 @@ int main(int argc, char* argv[])
     const gsTensorBSplineBasis<2,T>& tb2 =
         dynamic_cast<const gsTensorBSplineBasis<2,T>&>(mp.patch(ps2.patch).basis());
 
-    // v4 fix #1: when the patch tangent runs opposite to the
-    // gluing-data tangent (i.e. `flipped`), pass tangentSign = -1
-    // to the embedding so that `beta * d/dt(smoother)` is evaluated
-    // in the gluing-data tangent frame.  Both patches need it
-    // because both halves of the AS-G1 relation are expressed in
-    // the gluing-data tangent frame.
-    const short_t _tdir1 = 1 - ps1.direction();
-    const bool _flippedAtEmb = !ifc.dirOrientation(ps1, _tdir1);
-    const T tSign = _flippedAtEmb ? T(-1) : T(1);
-
-    gsSparseMatrix<T> E1 = createGluingDataArgyrisBasis(
-        tb1, ps1.side(), a1_0, a1_1, b1_0, b1_1, T(1e-12), tSign);
-    gsSparseMatrix<T> E2 = createGluingDataArgyrisBasis(
-        tb2, ps2.side(), a2_0, a2_1, b2_0, b2_1, T(1e-12), tSign);
+    gsSparseMatrix<T> E1 = createGluingDataArgyrisBasis<T>(tb1, ps1.side(), gd.leftCols(4), T(1e-12));
+    gsSparseMatrix<T> E2 = createGluingDataArgyrisBasis<T>(tb2, ps2.side(), gd.rightCols(4), T(1e-12));
 
     gsInfo << "Patch " << ps1.patch << " interface embedding: "
            << E1.rows() << " x " << E1.cols() << "\n";
@@ -226,15 +241,8 @@ int main(int argc, char* argv[])
     gsBSplineBasis<T> lowerDegBasis2 = sideBasis2;
     lowerDegBasis2.degreeReduce(1);
 
-    gsMatrix<index_t> bdryDOFs1  = tb1.boundary(ps1.side());
-    gsMatrix<index_t> neighDOFs1 = tb1.boundaryOffset(ps1.side(), 1);
-    std::vector<index_t> intDOFs1 =
-        getInteriorDofs(tb1.size(), bdryDOFs1, neighDOFs1);
-
-    gsMatrix<index_t> bdryDOFs2  = tb2.boundary(ps2.side());
-    gsMatrix<index_t> neighDOFs2 = tb2.boundaryOffset(ps2.side(), 1);
-    std::vector<index_t> intDOFs2 =
-        getInteriorDofs(tb2.size(), bdryDOFs2, neighDOFs2);
+    std::vector<index_t> intDOFs1 = getInteriorDofs(tb1, ps1);
+    std::vector<index_t> intDOFs2 = getInteriorDofs(tb2, ps2);
 
     const index_t nInt1 = static_cast<index_t>(intDOFs1.size());
     const index_t nInt2 = static_cast<index_t>(intDOFs2.size());
@@ -333,7 +341,7 @@ int main(int argc, char* argv[])
         // Second-layer columns of E1 → global shared L2 cols
         for (index_t j = 0; j < nLD1; ++j)
         {
-            const index_t e1col = nInt1 + j;
+            const index_t e1col = nInt1 + nSm1 + j;
             for (typename gsSparseMatrix<T>::InnerIterator it(E1, e1col); it; ++it)
                 G1.insert(it.row(), gOff_L2 + j) = it.value();
         }
@@ -341,10 +349,11 @@ int main(int argc, char* argv[])
         // Boundary columns of E1 → global shared boundary cols
         for (index_t j = 0; j < nSm1; ++j)
         {
-            const index_t e1col = nInt1 + nLD1 + j;
+            const index_t e1col = nInt1 + j;
             for (typename gsSparseMatrix<T>::InnerIterator it(E1, e1col); it; ++it)
                 G1.insert(it.row(), gOff_bdry + j) = it.value();
         }
+
     }
     G1.makeCompressed();
 
@@ -369,7 +378,7 @@ int main(int argc, char* argv[])
         for (index_t j = 0; j < nLD2; ++j)
         {
             const index_t j2 = flipped ? (nLD2 - 1 - j) : j;
-            const index_t e2col = nInt2 + j2;
+            const index_t e2col = nInt2 + nSm2 + j2;
             for (typename gsSparseMatrix<T>::InnerIterator it(E2, e2col); it; ++it)
                 G2.insert(it.row(), gOff_L2 + j) = l2Sign * it.value();
         }
@@ -379,10 +388,11 @@ int main(int argc, char* argv[])
         for (index_t j = 0; j < nSm2; ++j)
         {
             const index_t j2 = flipped ? (nSm2 - 1 - j) : j;
-            const index_t e2col = nInt2 + nLD2 + j2;
+            const index_t e2col = nInt2 + j2;
             for (typename gsSparseMatrix<T>::InnerIterator it(E2, e2col); it; ++it)
                 G2.insert(it.row(), gOff_bdry + j) = it.value();
         }
+
     }
     G2.makeCompressed();
 
