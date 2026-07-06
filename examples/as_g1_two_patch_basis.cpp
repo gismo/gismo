@@ -185,6 +185,11 @@ int main(int argc, char* argv[])
         gd(0,6) *= -1;
         gd(0,7) *= -1;
     }
+    else
+    {
+        gd(0,0) *= -1;
+        gd(0,1) *= -1;
+    }
     // There is another fix to be made: In the paper we have written
     // that the tangential vector is obtained by rotating the normal
     // vector; the gluing data computation code uses always (+1,0) and (0,+1).
@@ -368,21 +373,13 @@ int main(int argc, char* argv[])
                 G2.insert(it.row(), gOff_int2 + j) = it.value();
 
         // Second-layer columns of E2 → global shared L2 cols
-        // AS-G1 requires alpha_1*d_1 + alpha_2*d_2 = 0, so patch 2's
-        // second-layer contribution is sign-flipped relative to patch 1.
-        // When the tangential directions are FLIPPED, the d-deriv basis
-        // function indexing also reverses (j2 = nLD2-1-j).  The relative
-        // sign of patch-2's d_i derivative depends on the orientation:
-        //   - aligned:  d_2 = +alpha_2 * phi_j (after embedding) → negate to oppose patch 1
-        //   - flipped:  d_2 also has an additional minus from the reparam,
-        //               which cancels the negation, so we DON'T negate.
-        const T l2Sign = flipped ? T(1) : T(-1);
+        // If flipped, DOF j on patch 1 corresponds to DOF (nLD2-1-j) on patch 2.
         for (index_t j = 0; j < nLD2; ++j)
         {
             const index_t j2 = flipped ? (nLD2 - 1 - j) : j;
             const index_t e2col = nInt2 + nSm2 + j2;
             for (typename gsSparseMatrix<T>::InnerIterator it(E2, e2col); it; ++it)
-                G2.insert(it.row(), gOff_L2 + j) = l2Sign * it.value();
+                G2.insert(it.row(), gOff_L2 + j) = it.value();
         }
 
         // Boundary columns of E2 → global shared boundary cols
