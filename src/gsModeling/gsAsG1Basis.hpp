@@ -125,7 +125,6 @@ gsSparseMatrix<T> createGluingDataArgyrisBasis(
                  "Computed bases not nested.");
 
     gsSparseMatrix<T> embFirstLayer  = embeddingMatrix(sideSmootherBasis, sideBasis);
-    gsSparseMatrix<T> embSecondLayer = embeddingMatrix(sideLowerDegreeBasis, sideBasis);
 
     const bool    isLow  = !side.parameter();
     const int     dir    = side.direction();
@@ -214,7 +213,7 @@ gsSparseMatrix<T> createGluingDataArgyrisBasis(
                 rhs(pt, 0) = alphaVals(pt) * lowerVals(j, pt);
 
             gsMatrix<T> coeffs;
-            makeSparseLUSolver(sideColloc)->apply(rhs, coeffs);
+            makeSparseLUSolver(sideColloc)->apply(rhs, coeffs); // This means that the LU decompisition is recomputed for each j
 
             const T scale = signN / dNeigh;
             for (index_t k = 0; k < nSide; ++k)
@@ -229,7 +228,7 @@ gsSparseMatrix<T> createGluingDataArgyrisBasis(
     // Block 3: boundary columns  (value = smoother basis, d_i derivative = 0)
     const index_t colOffsetBdry = colOffsetL2 + nLowerDeg;
     {
-        gsMatrix<T> E_dense = embFirstLayer.toDense();
+        //gsMatrix<T> E_dense = embFirstLayer.toDense();   // Why do you convert a sparse matrix to a dense one here??
 
         for (index_t m = 0; m < nSmoother; ++m)
         {
@@ -237,12 +236,12 @@ gsSparseMatrix<T> createGluingDataArgyrisBasis(
             Vm.setZero(); dVm.setZero();
             for (index_t k = 0; k < nSide; ++k)
             {
-                const T ek = E_dense(k, m);
+                const T ek = embFirstLayer(k, m);
                 if (std::abs(ek) < eps) continue;
                 for (index_t pt = 0; pt < nPts; ++pt)
                 {
-                    Vm(pt)  += ek * Phi(k, pt);
-                    dVm(pt) += ek * dPhi(k, pt);
+                    Vm(pt)  += ek * Phi(k, pt);     // Vm(pt) = embFirstLayer(k, m) * Phi(k, pt) is a matrix-matrix product. Why so complicated
+                    dVm(pt) += ek * dPhi(k, pt);    // The same
                 }
             }
 
@@ -251,14 +250,14 @@ gsSparseMatrix<T> createGluingDataArgyrisBasis(
                 rhs(pt, 0) = -(dBdry * Vm(pt) + tangentSign * signN * betaVals(pt) * dVm(pt)) / dNeigh;
 
             gsMatrix<T> gamma;
-            makeSparseLUSolver(sideColloc)->apply(rhs, gamma);
+            makeSparseLUSolver(sideColloc)->apply(rhs, gamma); // This means that the LU decompisition is recomputed for each j
 
             const index_t col2D = colOffsetBdry + m;
             for (index_t k = 0; k < nSide; ++k)
             {
                 const index_t bdryRow = firstLayerDOFs(k, 0);
-                if (std::abs(E_dense(k, m)) > eps)
-                    result(bdryRow, col2D) = E_dense(k, m);
+                if (std::abs(embFirstLayer(k, m)) > eps)
+                    result(bdryRow, col2D) = embFirstLayer(k, m);
                 if (std::abs(gamma(k, 0)) > eps)
                 {
                     const index_t neighRow = bdryRow + signedStride;
