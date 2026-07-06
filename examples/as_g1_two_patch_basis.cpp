@@ -85,7 +85,7 @@ int main(int argc, char* argv[])
     std::string geometry("domain2d/2patch/two_bilinear_patches.xml");
     std::string outDir("");
     index_t numGaussPerSpan = 0;
-    index_t refinements = 0;
+    index_t refinements = 1;
     index_t plot = -1;
 
     gsCmdLine cmd("AS-G1 conforming two-patch basis.");
