@@ -33,11 +33,9 @@ inline gsVector<T> partial(const gsMatrix<T>& d, index_t dir, index_t col)
 template <class T>
 std::vector<T> breaksOf(const gsGeometry<T>& geo, short_t dir)
 {
-    const gsBSplineBasis<T>* bb =
-        dynamic_cast<const gsBSplineBasis<T>*>(&geo.basis().component(dir));
-    if (bb) return bb->knots().breaks();
-    gsMatrix<T> sup = geo.support();
-    return { sup(dir, 0), sup(dir, 1) };
+    const gsBSplineBasis<T>& bb =
+        dynamic_cast<const gsBSplineBasis<T>&>(geo.basis().component(dir));
+    return bb.knots().breaks();
 }
 
 /// Sampled determinants on the interface (patch-1 tangential parameter
