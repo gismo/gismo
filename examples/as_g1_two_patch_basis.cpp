@@ -1,56 +1,6 @@
-/** @file as_g1_two_patch_basis_v4.cpp
+/** @file as_g1_two_patch_basis.cpp
 
-    @brief Build an AS-G1 conforming basis across two patches.
-
-    Streamlined v4 -- same gluing-data computation as v3, plus two
-    fixes that make the construction work for ALL 196 two-patch
-    parametrizations (8 left-side x 8 right-side reparametrizations
-    times 3 geometry families), instead of only the 100/196 that
-    worked in v2/v3.
-
-    The two fixes are both triggered by the interface orientation
-    flag `flipped = !ifc.dirOrientation(ps1, tDir1)`, which is true
-    exactly when patch-2's natural tangent runs opposite to patch-1's
-    natural tangent along the shared interface.
-
-    1) `tangentSign` parameter on `createGluingDataArgyrisBasis`:
-       The per-patch trace embedding solves a Greville interpolation
-       problem whose RHS reads
-           rhs = -(dBdry*Vm + tangentSign*signN*beta*dVm) / dNeigh
-       where dVm is d/dt of the smoother basis in the *patch's own*
-       tangent parameter, while beta is the gluing-data tangential
-       coefficient defined in the *gluing-data* tangent frame.  When
-       the patch's tangent is opposite to the gluing-data tangent,
-       these two derivatives differ by a sign, which must be
-       absorbed into the embedding's RHS.  We pass tangentSign = -1
-       to BOTH patches when `flipped`, because both halves of the
-       global AS-G1 relation
-            alpha_1 d_1(G^(1)) + alpha_2 d_2(G^(2)) = 0
-       are rewritten in the gluing-data tangent frame.
-
-    2) Conditional second-layer sign `l2Sign` in the global G2
-       assembly:  In v2 the d-derivative columns of patch-2 were
-       inserted with an unconditional `-it.value()`.  When the
-       tangent is flipped, that sign must be `+it.value()` because
-       the column reversal (j2 = nLD2-1-j) already accounts for the
-       mirror reparametrization of the lower-degree basis, which
-       flips the d-derivative sign once.
-
-    With these two fixes the global basis satisfies the AS-G1
-    condition across the interface to machine precision
-    (~1e-15 on bilinear patches, ~3e-7 on cubically refined curved
-    patches due to representable approximation error).
-
-    Only the shared interface receives the gluing-data directional
-    derivative constraints.  All other boundary sides are left
-    untouched (standard tensor B-spline DOFs).
-
-    Interface trace (boundary) DOFs and interface d-derivative
-    (second-layer) DOFs are shared between the two patches.
-    All other DOFs are independent per patch.
-
-    Use  -p N  to plot global basis function N on both patches
-    via Paraview.
+    @brief Build a C1 conforming basis across two patches over AS-G1 geometry.
 
     This file is part of the G+Smo library.
 
@@ -165,9 +115,7 @@ int main(int argc, char* argv[])
            << " <-> patch " << ps2.patch << " side " << ps2.side() << "\n";
 
     // ---- Compute gluing data for the interface ----
-    bool ok = false;
-    gsMatrix<T> gd = computeGluingDataForInterface(mp, ifc, ok, T(1e-8), numGaussPerSpan).transpose();
-    GISMO_ENSURE(ok, "Gluing data computation failed.");
+    gsMatrix<T> gd = computeGluingDataForInterface(mp, ifc, T(1e-8), numGaussPerSpan).transpose();
 
     // ---- Correct gluing data ----
     // when the patch tangent runs opposite to the
@@ -221,8 +169,8 @@ int main(int argc, char* argv[])
     const gsTensorBSplineBasis<2,T>& tb2 =
         dynamic_cast<const gsTensorBSplineBasis<2,T>&>(mp.patch(ps2.patch).basis());
 
-    gsAsG1Embedding<T> argBasis1 = createGluingDataArgyrisBasis<T>(tb1, ps1.side(), gd.leftCols(4), T(1e-12));
-    gsAsG1Embedding<T> argBasis2 = createGluingDataArgyrisBasis<T>(tb2, ps2.side(), gd.rightCols(4), T(1e-12));
+    gsAsG1Embedding<T> argBasis1 = deriveArgyrisBasisEmbedding<T>(tb1, ps1.side(), gd.leftCols(4), T(1e-12));
+    gsAsG1Embedding<T> argBasis2 = deriveArgyrisBasisEmbedding<T>(tb2, ps2.side(), gd.rightCols(4), T(1e-12));
 
     const gsSparseMatrix<T>& E1 = argBasis1.matrix;
     const gsSparseMatrix<T>& E2 = argBasis2.matrix;
@@ -449,10 +397,8 @@ int main(int argc, char* argv[])
                << "    D-deriv DOFs:     " << maxErrL2 << "\n";
         if (maxValErr < 1e-8 && maxGradErr < 1e-3)
             gsInfo << "  STATUS: PASS\n";
-        else if (maxValErr < 1e-8 && maxGradErr < 1e-1)
-            gsInfo << "  STATUS: APPROX (AS-G1 approximation error)\n";
         else
-            gsInfo << "  STATUS: FAIL (check coupling)\n";
+            gsInfo << "  STATUS: FAIL\n";
     }
 
     // ====================================================================
@@ -538,9 +484,9 @@ int main(int argc, char* argv[])
     gsInfo << "    Shared interface trace:     " << nLvl0 << "\n";
     gsInfo << "    Shared interface d-deriv:   " << nLvl1 << "\n";
     gsInfo << "\nTo plot basis function k:\n"
-           << "  ./bin/as_g1_two_patch_basis_v4 -f <file> -r <ref> -p k\n"
+           << "  ./bin/as_g1_two_patch_basis -f <file> -r <ref> -p k\n"
            << "To plot ALL basis functions:\n"
-           << "  ./bin/as_g1_two_patch_basis_v4 -f <file> -r <ref> -p -2\n";
+           << "  ./bin/as_g1_two_patch_basis -f <file> -r <ref> -p -2\n";
 
     gsInfo << "\nDone.\n";
     return 0;

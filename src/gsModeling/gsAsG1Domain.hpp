@@ -230,26 +230,23 @@ template <class T>
 gsVector<T> computeGluingDataForInterface(
     const gsMultiPatch<T>& mp,
     const boundaryInterface& interf,
-    bool& success,
     const T eps = T(1e-8),
     index_t numGaussPerSpan = 0)
 {
-    success = false;
     gsVector<T> result(8); result.setZero();
 
     bool flipped = false;
     InterfaceSamples<T> S =
         sampleInterface(mp, interf, flipped, numGaussPerSpan);
 
-    if (S.D1.minCoeff() * S.D1.maxCoeff() < 0 ||
-        S.D2.minCoeff() * S.D2.maxCoeff() < 0)
-        return result;
+    GISMO_ENSURE (S.D1.minCoeff() * S.D1.maxCoeff() > 0 &&
+        S.D2.minCoeff() * S.D2.maxCoeff() > 0, "Not AS-G1");
 
     const bool sameSign = (S.D1.minCoeff() * S.D2.minCoeff() > 0);
     if (sameSign) S.D1 = -S.D1;
 
     SolveResult<T> r = solveLinearGluing(S);
-    if (r.alphaErr >= eps) return result;
+    GISMO_ENSURE (r.alphaErr <= eps, "Not AS-G1");
 
     if (sameSign)
     {
@@ -276,8 +273,10 @@ gsVector<T> computeGluingDataForInterface(
         result(6) = b21; result(7) = b20;
     }
     else
-    { result(4) = a20; result(5) = a21; result(6) = b20; result(7) = b21; }
-    success = true;
+    {
+        result(4) = a20; result(5) = a21;
+        result(6) = b20; result(7) = b21;
+    }
     return result;
 }
 
@@ -308,10 +307,8 @@ gsMatrix<T> computeGluingData(
     {
         const boundaryInterface& interf = *it;
 
-        bool ok = false;
         gsVector<T> gd = computeGluingDataForInterface(
-            mp, interf, ok, eps, numGaussPerSpan);
-        GISMO_ENSURE (ok, "Not Analysis suitable.");
+            mp, interf, eps, numGaussPerSpan);
 
         const index_t c1 = sideCol(interf.first());
         const index_t c2 = sideCol(interf.second());

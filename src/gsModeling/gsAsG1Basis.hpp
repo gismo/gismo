@@ -268,7 +268,7 @@ public:
 };
 
 template<typename T>
-gsAsG1Embedding<T> createGluingDataArgyrisBasis(
+gsAsG1Embedding<T> deriveArgyrisBasisEmbedding(
     const gsTensorBSplineBasis<2,T>& tensorBasis,
     boxSide side,
     const gsMatrix<T> & localGluingData,
