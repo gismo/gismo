@@ -214,16 +214,6 @@ SolveResult<T> solveLinearGluing(const InterfaceSamples<T>& S)
 /// Returns 8 numbers in patch-1 tangential parametrisation:
 ///   [ a1_0, a1_1, b1_0, b1_1, a2_0, a2_1, b2_0, b2_1 ]
 ///
-/// SAME-SIGN CORRECTION: when sign(D1) == sign(D2) along the interface,
-/// the homogeneous condition a1*D2 + a2*D1 = 0 with a normalisation
-/// integral(a1+a2)=1 has no solution; we solve with D1 := -D1 and then
-/// remap (a1, b2) := (-a1, -b2) (a2 and b1 unchanged, D3 unchanged).
-///
-/// FINAL beta SIGN: the embedding `createGluingDataArgyrisBasis` uses
-/// the convention beta_1*D2 - beta_2*D1 = -D3, while the solver fits
-/// beta_1*D2 - beta_2*D1 = +D3.  So we negate all beta values just
-/// before returning, to match the embedding.  This matches the
-/// post-negation that the v2 code did at the same point.
 template <class T>
 gsVector<T> computeGluingDataForInterface(
     const gsMultiPatch<T>& mp,
@@ -248,16 +238,9 @@ gsVector<T> computeGluingDataForInterface(
 
     if (sameSign)
     {
-        // v3 same-sign convention
         r.a[0] = -r.a[0];  r.a[1] = -r.a[1];
         r.b[2] = -r.b[2];  r.b[3] = -r.b[3];
     }
-
-    T a10 = r.a[0], a11 = r.a[1], a20 = r.a[2], a21 = r.a[3];
-    T b10 = r.b[0], b11 = r.b[1], b20 = r.b[2], b21 = r.b[3];
-
-    // Embedding-convention sign flip on beta (see header comment above).
-    b10 = -b10; b11 = -b11; b20 = -b20; b21 = -b21;
 
     if (flipped)
     {
@@ -265,17 +248,17 @@ gsVector<T> computeGluingDataForInterface(
         // and beta at the reversed endpoint pairing (a21 at gd-t=0,
         // a20 at gd-t=1).  The sign-related fix-up is done at the
         // embedding call site via `tangentSign`.
-        result(0) = a10; result(1) = a11;
-        result(2) = b10; result(3) = b11;
-        result(4) = a21; result(5) = a20;
-        result(6) = b21; result(7) = b20;
+        result(0) =  r.a[0]; result(1) =  r.a[1];
+        result(2) = -r.b[0]; result(3) = -r.b[1];
+        result(4) =  r.a[3]; result(5) =  r.a[2];
+        result(6) = -r.b[3]; result(7) = -r.b[2];
     }
     else
     {
-        result(0) = a10; result(1) = a11;
-        result(2) = b10; result(3) = b11;
-        result(4) = a20; result(5) = a21;
-        result(6) = b20; result(7) = b21;
+        result(0) =  r.a[0]; result(1) =  r.a[1];
+        result(2) = -r.b[0]; result(3) = -r.b[1];
+        result(4) =  r.a[2]; result(5) =  r.a[3];
+        result(6) = -r.b[2]; result(7) = -r.b[3];
     }
     return result;
 }
