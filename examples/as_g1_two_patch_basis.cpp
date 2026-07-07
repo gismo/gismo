@@ -118,26 +118,6 @@ int main(int argc, char* argv[])
     gsMatrix<T> gd = computeGluingDataForInterface(mp, ifc, T(1e-8), numGaussPerSpan).transpose();
 
     // ---- Correct gluing data ----
-    // when the patch tangent runs opposite to the
-    // gluing-data tangent (i.e. `flipped`), pass tangentSign = -1
-    // to the embedding so that `beta * d/dt(smoother)` is evaluated
-    // in the gluing-data tangent frame.  Both patches need it
-    // because both halves of the AS-G1 relation are expressed in
-    // the gluing-data tangent frame.
-    const short_t tdir1 = 1 - ps1.direction();
-    const bool flippedAtEmb = !ifc.dirOrientation(ps1, tdir1);
-    if (flippedAtEmb)
-    {
-        gd(0,2) *= -1;
-        gd(0,3) *= -1;
-        gd(0,6) *= -1;
-        gd(0,7) *= -1;
-    }
-    else
-    {
-        gd(0,0) *= -1;
-        gd(0,1) *= -1;
-    }
     // There is another fix to be made: In the paper we have written
     // that the tangential vector is obtained by rotating the normal
     // vector; the gluing data computation code uses always (+1,0) and (0,+1).

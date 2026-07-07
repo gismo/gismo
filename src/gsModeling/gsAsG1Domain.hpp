@@ -249,13 +249,13 @@ gsVector<T> computeGluingDataForInterface(
         // a20 at gd-t=1).  The sign-related fix-up is done at the
         // embedding call site via `tangentSign`.
         result(0) =  r.a[0]; result(1) =  r.a[1];
-        result(2) = -r.b[0]; result(3) = -r.b[1];
+        result(2) =  r.b[0]; result(3) =  r.b[1];
         result(4) =  r.a[3]; result(5) =  r.a[2];
-        result(6) = -r.b[3]; result(7) = -r.b[2];
+        result(6) =  r.b[3]; result(7) =  r.b[2];
     }
     else
     {
-        result(0) =  r.a[0]; result(1) =  r.a[1];
+        result(0) = -r.a[0]; result(1) = -r.a[1];
         result(2) = -r.b[0]; result(3) = -r.b[1];
         result(4) =  r.a[2]; result(5) =  r.a[3];
         result(6) = -r.b[2]; result(7) = -r.b[3];
