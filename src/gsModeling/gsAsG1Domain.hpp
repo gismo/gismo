@@ -245,8 +245,7 @@ gsVector<T> computeGluingDataForInterface(
     {
         // Patch-2 tangent is flipped, so we evaluate the patch-2 alpha
         // and beta at the reversed endpoint pairing (a21 at gd-t=0,
-        // a20 at gd-t=1).  The sign-related fix-up is done at the
-        // embedding call site via `tangentSign`.
+        // a20 at gd-t=1).
         result(0) =  r.a[0]; result(1) =  r.a[1];
         result(2) =  r.b[0]; result(3) =  r.b[1];
         result(4) =  r.a[3]; result(5) =  r.a[2];

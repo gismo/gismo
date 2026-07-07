@@ -76,18 +76,6 @@ gsSparseMatrix<T> collocationMatrix(const gsBSplineBasis<T>& basis,
 }
 
 template<typename T>
-gsSparseMatrix<T> embeddingMatrix(const gsBSplineBasis<T>& coarse,
-                                  const gsBSplineBasis<T>& fine)
-{
-    gsMatrix<T> greville = fine.anchors();
-    gsSparseMatrix<T> Cc = collocationMatrix(coarse, greville);
-    gsSparseMatrix<T> Cf = collocationMatrix(fine,   greville);
-    gsMatrix<T> result;
-    makeSparseLUSolver(Cf)->apply(Cc, result);
-    return result.sparseView(1, 1e-10);
-}
-
-template<typename T>
 gsSparseMatrix<T> evaluateBasisAtBoundary(
         const gsBSplineBasis<T>& basis,
         index_t sideParameter,
