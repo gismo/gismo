@@ -221,55 +221,16 @@ int main(int argc, char* argv[])
     const gsTensorBSplineBasis<2,T>& tb2 =
         dynamic_cast<const gsTensorBSplineBasis<2,T>&>(mp.patch(ps2.patch).basis());
 
-    gsSparseMatrix<T> E1 = createGluingDataArgyrisBasis<T>(tb1, ps1.side(), gd.leftCols(4), T(1e-12));
-    gsSparseMatrix<T> E2 = createGluingDataArgyrisBasis<T>(tb2, ps2.side(), gd.rightCols(4), T(1e-12));
+    gsAsG1Embedding<T> argBasis1 = createGluingDataArgyrisBasis<T>(tb1, ps1.side(), gd.leftCols(4), T(1e-12));
+    gsAsG1Embedding<T> argBasis2 = createGluingDataArgyrisBasis<T>(tb2, ps2.side(), gd.rightCols(4), T(1e-12));
+
+    const gsSparseMatrix<T>& E1 = argBasis1.matrix;
+    const gsSparseMatrix<T>& E2 = argBasis2.matrix;
 
     gsInfo << "Patch " << ps1.patch << " interface embedding: "
            << E1.rows() << " x " << E1.cols() << "\n";
     gsInfo << "Patch " << ps2.patch << " interface embedding: "
            << E2.rows() << " x " << E2.cols() << "\n";
-
-    // ---- DOF classification for each patch ----
-    // The embedding column layout is:
-    //   [nInterior_i | nLowerDeg_i | nSmoother_i]
-    // where _i refers to the interface side.
-
-    // Side bases for the interface side
-    gsBSplineBasis<T> sideBasis1 = *tb1.boundaryBasis(ps1.side());
-    gsBSplineBasis<T> sideBasis2 = *tb2.boundaryBasis(ps2.side());
-
-    gsBSplineBasis<T> smootherBasis1 = sideBasis1;
-    smootherBasis1.elevateContinuity(1);
-    gsBSplineBasis<T> lowerDegBasis1 = sideBasis1;
-    lowerDegBasis1.degreeReduce(1);
-
-    gsBSplineBasis<T> smootherBasis2 = sideBasis2;
-    smootherBasis2.elevateContinuity(1);
-    gsBSplineBasis<T> lowerDegBasis2 = sideBasis2;
-    lowerDegBasis2.degreeReduce(1);
-
-    std::vector<index_t> intDOFs1 = getInteriorDofs(tb1, ps1);
-    std::vector<index_t> intDOFs2 = getInteriorDofs(tb2, ps2);
-
-    const index_t nInt1 = static_cast<index_t>(intDOFs1.size());
-    const index_t nInt2 = static_cast<index_t>(intDOFs2.size());
-    const index_t nLD1  = lowerDegBasis1.size();   // second-layer cols
-    const index_t nLD2  = lowerDegBasis2.size();
-    const index_t nSm1  = smootherBasis1.size();   // boundary cols
-    const index_t nSm2  = smootherBasis2.size();
-
-    // Sanity checks
-    GISMO_ENSURE(E1.cols() == nInt1 + nLD1 + nSm1,
-                 "Column count mismatch for patch " << ps1.patch);
-    GISMO_ENSURE(E2.cols() == nInt2 + nLD2 + nSm2,
-                 "Column count mismatch for patch " << ps2.patch);
-
-    gsInfo << "\nPatch " << ps1.patch << ": nInterior=" << nInt1
-           << "  nSecondLayer=" << nLD1
-           << "  nBoundary=" << nSm1 << "\n";
-    gsInfo << "Patch " << ps2.patch << ": nInterior=" << nInt2
-           << "  nSecondLayer=" << nLD2
-           << "  nBoundary=" << nSm2 << "\n";
 
     // ====================================================================
     // Assemble the global basis
@@ -277,30 +238,27 @@ int main(int argc, char* argv[])
     //
     // The global DOF numbering is:
     //
-    //   [patch1_interior | patch2_interior | shared_boundary | shared_second_layer]
+    //   [patch1_interior | patch2_interior | shared_level0 | shared_level1]
     //
     // where:
     //   - patch_i interior: DOFs not on the interface boundary/second-layer
     //     These are independent per patch and map via identity in E_i.
-    //   - shared boundary: The nSm (= nSm1 = nSm2) interface trace DOFs.
-    //     The same trace coefficients are used for both patches.
-    //   - shared second-layer: The nLD (= nLD1 = nLD2) interface d-derivative DOFs.
-    //     These are shared between patches; the AS-G1 condition means
-    //     the same second-layer coefficient feeds both patches' embeddings.
+    //   - shared_level0: The interface trace DOFs.
+    //   - shared_level1: The nLD interface crossing-derivative DOFs.
     //
-    // IMPORTANT: For the two patches to share the interface trace values
-    // and d-derivative values, the two side bases must be compatible
-    // (same knot vector along the interface).  We verify this.
 
-    GISMO_ENSURE(nSm1 == nSm2,
-                 "Smoother basis sizes differ across interface ("
-                     << nSm1 << " vs " << nSm2 << ").");
-    GISMO_ENSURE(nLD1 == nLD2,
-                 "Lower-degree basis sizes differ across interface ("
-                     << nLD1 << " vs " << nLD2 << ").");
+    GISMO_ENSURE(argBasis1.sizes[1] == argBasis2.sizes[1],
+                 "Level 0 (function values) interfaces sizes differ across interface ("
+                     << argBasis1.sizes[1] << " vs " << argBasis1.sizes[1] << ").");
+    GISMO_ENSURE(argBasis1.sizes[2] == argBasis2.sizes[2],
+                 "Level 1 (crossing derivatives) interfaces sizes differ across interface ("
+                     << argBasis1.sizes[2] << " vs " << argBasis2.sizes[2] << ").");
 
-    const index_t nSharedBdry = nSm1;    // shared trace DOFs
-    const index_t nSharedL2   = nLD1;    // shared second-layer DOFs
+    const index_t nInt1       = argBasis1.sizes[0];    // interior dofs (first patch)
+    const index_t nInt2       = argBasis2.sizes[0];    // interior dofs (second patch)
+    const index_t nLvl0       = argBasis1.sizes[1];    // shared dofs layer 0 (function values)
+    const index_t nLvl1       = argBasis1.sizes[2];    // shared dofs layer 1 (crossing derivatives)
+    const index_t nGlobal     = nInt1 + nInt2 + nLvl0 + nLvl1;
 
     // Check interface orientation: if the tangential directions
     // run in opposite directions, we need to reverse the DOF mapping
@@ -311,31 +269,29 @@ int main(int argc, char* argv[])
     gsInfo << "Interface orientation: "
            << (flipped ? "FLIPPED" : "aligned") << "\n";
 
-    const index_t nGlobal = nInt1 + nInt2 + nSharedBdry + nSharedL2;
-
     gsInfo << "\nGlobal DOFs: " << nGlobal
            << " = " << nInt1 << " (int1) + " << nInt2 << " (int2) + "
-           << nSharedBdry << " (shared bdry) + "
-           << nSharedL2 << " (shared L2)\n";
+           << nLvl0 << " (level0: shared function values) + "
+           << nLvl1 << " (level1: shared crossing derivatives)\n";
 
     // Build the two global-to-patch matrices:
     //   G1 : nGlobal → tb1.size()    (coefficients for patch 1)
     //   G2 : nGlobal → tb2.size()    (coefficients for patch 2)
     //
     // For patch 1:
-    //   - Global cols [0 .. nInt1-1]  →  E1 cols [0 .. nInt1-1]   (interior)
-    //   - Global cols [nInt1+nInt2 .. +nSharedBdry-1]  →  E1 cols [nInt1+nLD1 .. end] (boundary)
-    //   - Global cols [nInt1+nInt2+nSharedBdry .. end]  →  E1 cols [nInt1 .. nInt1+nLD1-1] (L2)
+    //   - Global cols [0 .. nInt1-1]                        →  E1 cols [0 .. nInt1-1]           (interior)
+    //   - Global cols [nInt1+nInt2 .. nInt1+nInt2+nLvl0-1]  →  E1 cols [nInt1 .. nInt1+nLvl0-1] (level0)
+    //   - Global cols [nInt1+nInt2+nLvl0 .. end]            →  E1 cols [nInt1+nLvl0 .. end]     (level1)
     //
     // For patch 2:
-    //   - Global cols [nInt1 .. nInt1+nInt2-1]  →  E2 cols [0 .. nInt2-1]   (interior)
-    //   - Global cols [nInt1+nInt2 .. +nSharedBdry-1]  →  E2 cols [nInt2+nLD2 .. end] (boundary)
-    //   - Global cols [nInt1+nInt2+nSharedBdry .. end]  →  E2 cols [nInt2 .. nInt2+nLD2-1] (L2)
+    //   - Global cols [nInt1 .. nInt1+nInt2-1]              →  E2 cols [0 .. nInt2-1]           (interior)
+    //   - Global cols [nInt1+nInt2 .. nInt1+nInt2+nLvl0-1]  →  E2 cols [nInt2 .. nInt2+nLvl0-1] (level0)
+    //   - Global cols [nInt1+nInt2+nLvl0 .. end]            →  E2 cols [nInt2+nLvl0 .. end]     (level1)
 
     const index_t gOff_int1     = 0;
     const index_t gOff_int2     = nInt1;
-    const index_t gOff_bdry     = nInt1 + nInt2;
-    const index_t gOff_L2       = nInt1 + nInt2 + nSharedBdry;
+    const index_t gOff_lvl0     = nInt1 + nInt2;
+    const index_t gOff_lvl1     = nInt1 + nInt2 + nLvl0;
 
     // --- Patch 1 global matrix ---
     gsSparseMatrix<T> G1(tb1.size(), nGlobal);
@@ -345,21 +301,22 @@ int main(int argc, char* argv[])
             for (typename gsSparseMatrix<T>::InnerIterator it(E1, j); it; ++it)
                 G1.insert(it.row(), gOff_int1 + j) = it.value();
 
-        // Second-layer columns of E1 → global shared L2 cols
-        for (index_t j = 0; j < nLD1; ++j)
-        {
-            const index_t e1col = nInt1 + nSm1 + j;
-            for (typename gsSparseMatrix<T>::InnerIterator it(E1, e1col); it; ++it)
-                G1.insert(it.row(), gOff_L2 + j) = it.value();
-        }
-
-        // Boundary columns of E1 → global shared boundary cols
-        for (index_t j = 0; j < nSm1; ++j)
+        // First-layer of E1 → global shared boundary cols
+        for (index_t j = 0; j < nLvl0; ++j)
         {
             const index_t e1col = nInt1 + j;
             for (typename gsSparseMatrix<T>::InnerIterator it(E1, e1col); it; ++it)
-                G1.insert(it.row(), gOff_bdry + j) = it.value();
+                G1.insert(it.row(), gOff_lvl0 + j) = it.value();
         }
+
+        // Second-layer columns of E1 → global shared L2 cols
+        for (index_t j = 0; j < nLvl1; ++j)
+        {
+            const index_t e1col = nInt1 + nLvl0 + j;
+            for (typename gsSparseMatrix<T>::InnerIterator it(E1, e1col); it; ++it)
+                G1.insert(it.row(), gOff_lvl1 + j) = it.value();
+        }
+
 
     }
     G1.makeCompressed();
@@ -372,24 +329,25 @@ int main(int argc, char* argv[])
             for (typename gsSparseMatrix<T>::InnerIterator it(E2, j); it; ++it)
                 G2.insert(it.row(), gOff_int2 + j) = it.value();
 
-        // Second-layer columns of E2 → global shared L2 cols
-        // If flipped, DOF j on patch 1 corresponds to DOF (nLD2-1-j) on patch 2.
-        for (index_t j = 0; j < nLD2; ++j)
-        {
-            const index_t j2 = flipped ? (nLD2 - 1 - j) : j;
-            const index_t e2col = nInt2 + nSm2 + j2;
-            for (typename gsSparseMatrix<T>::InnerIterator it(E2, e2col); it; ++it)
-                G2.insert(it.row(), gOff_L2 + j) = it.value();
-        }
 
-        // Boundary columns of E2 → global shared boundary cols
-        // If flipped, DOF j on patch 1 corresponds to DOF (nSm2-1-j) on patch 2.
-        for (index_t j = 0; j < nSm2; ++j)
+        // First-layer columns of E2 → global shared boundary cols
+        // If flipped, DOF j on patch 1 corresponds to DOF (nLvl0-1-j) on patch 2.
+        for (index_t j = 0; j < nLvl0; ++j)
         {
-            const index_t j2 = flipped ? (nSm2 - 1 - j) : j;
+            const index_t j2 = flipped ? (nLvl0 - 1 - j) : j;
             const index_t e2col = nInt2 + j2;
             for (typename gsSparseMatrix<T>::InnerIterator it(E2, e2col); it; ++it)
-                G2.insert(it.row(), gOff_bdry + j) = it.value();
+                G2.insert(it.row(), gOff_lvl0 + j) = it.value();
+        }
+
+        // Second-layer columns of E2 → global shared L2 cols
+        // If flipped, DOF j on patch 1 corresponds to DOF (nLvl1-1-j) on patch 2.
+        for (index_t j = 0; j < nLvl1; ++j)
+        {
+            const index_t j2 = flipped ? (nLvl1 - 1 - j) : j;
+            const index_t e2col = nInt2 + nLvl0 + j2;
+            for (typename gsSparseMatrix<T>::InnerIterator it(E2, e2col); it; ++it)
+                G2.insert(it.row(), gOff_lvl1 + j) = it.value();
         }
 
     }
@@ -475,9 +433,9 @@ int main(int argc, char* argv[])
             }
 
             // Classify DOF
-            if (idx < gOff_bdry)
+            if (idx < gOff_lvl0)
                 maxErrInt = std::max(maxErrInt, thisMaxGrad);
-            else if (idx < gOff_L2)
+            else if (idx < gOff_lvl1)
                 maxErrTrace = std::max(maxErrTrace, thisMaxGrad);
             else
                 maxErrL2 = std::max(maxErrL2, thisMaxGrad);
@@ -508,12 +466,13 @@ int main(int argc, char* argv[])
         if (idx < gOff_int2)
             return "p" + std::to_string(ps1.patch) + "_int_"
                        + std::to_string(idx - gOff_int1);
-        if (idx < gOff_bdry)
+        else if (idx < gOff_lvl0)
             return "p" + std::to_string(ps2.patch) + "_int_"
                        + std::to_string(idx - gOff_int2);
-        if (idx < gOff_L2)
-            return "ifc_trace_" + std::to_string(idx - gOff_bdry);
-        return "ifc_dderiv_" + std::to_string(idx - gOff_L2);
+        else if (idx < gOff_lvl1)
+            return "ifc_trace_" + std::to_string(idx - gOff_lvl0);
+        else
+            return "ifc_dderiv_" + std::to_string(idx - gOff_lvl1);
     };
 
     // Determine which basis functions to plot
@@ -572,12 +531,12 @@ int main(int argc, char* argv[])
     gsInfo << "\n=== Summary ===\n";
     gsInfo << "  Tensor basis size per patch: " << tb1.size() << "\n";
     gsInfo << "  Per-patch embedding cols:    " << E1.cols()
-           << " (int=" << nInt1 << " L2=" << nLD1 << " bdry=" << nSm1 << ")\n";
+           << " (int=" << nInt1 << " nLvl0=" << nLvl0 << " nLvl1=" << nLvl1 << ")\n";
     gsInfo << "  Global DOFs:                 " << nGlobal << "\n";
     gsInfo << "    Patch " << ps1.patch << " interior: " << nInt1 << "\n";
     gsInfo << "    Patch " << ps2.patch << " interior: " << nInt2 << "\n";
-    gsInfo << "    Shared interface trace:     " << nSharedBdry << "\n";
-    gsInfo << "    Shared interface d-deriv:   " << nSharedL2 << "\n";
+    gsInfo << "    Shared interface trace:     " << nLvl0 << "\n";
+    gsInfo << "    Shared interface d-deriv:   " << nLvl1 << "\n";
     gsInfo << "\nTo plot basis function k:\n"
            << "  ./bin/as_g1_two_patch_basis_v4 -f <file> -r <ref> -p k\n"
            << "To plot ALL basis functions:\n"

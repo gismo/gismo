@@ -177,7 +177,13 @@ gsSparseMatrix<T> collocateBoundaryCrossingDerivative(
 // ====================================================================
 
 template<typename T>
-gsSparseMatrix<T> deriveEdgeEmbedding(
+struct gsEdgeEmbedding {
+    gsSparseMatrix<T> matrix;
+    gsVector<index_t,2> sizes;
+};
+
+template<typename T>
+gsEdgeEmbedding<T> deriveEdgeEmbedding(
         const gsTensorBSplineBasis<2,T>& tensorBasis,
         const gsMatrix<T>& localGluingData,
         boxSide side,
@@ -204,7 +210,12 @@ gsSparseMatrix<T> deriveEdgeEmbedding(
     const gsLinearOperator<>::Ptr solver = makeSparseLUSolver(collocateLeft);
     gsMatrix<T> result;
     solver->apply(collocateRight, result);
-    return result.sparseView(1, eps);
+
+    gsEdgeEmbedding<T> ee;
+    ee.matrix = result.sparseView(1, eps);
+    ee.sizes[0] = sideSmootherBasis.size();
+    ee.sizes[1] = sideLowerDegreeBasis.size();
+    return ee;
 }
 
 template<typename T>
@@ -246,25 +257,43 @@ gsSparseMatrix<T> deriveInnerEmbedding(const gsTensorBSplineBasis<2,T>& tensorBa
 // ====================================================================
 
 template<typename T>
-gsSparseMatrix<T> createGluingDataArgyrisBasis(
+struct gsAsG1Embedding {
+public:
+    gsSparseMatrix<T> matrix;
+    // Sizes of blocks:
+    //   0...interior dofs
+    //   1...edge dofs level 0 (function values)
+    //   2...edge dofs level 1 (crossing derivatives)
+    gsVector<index_t,3> sizes;
+};
+
+template<typename T>
+gsAsG1Embedding<T> createGluingDataArgyrisBasis(
     const gsTensorBSplineBasis<2,T>& tensorBasis,
     boxSide side,
     const gsMatrix<T> & localGluingData,
     T eps = 1e-12)
 {
+    gsAsG1Embedding<T> result;
     index_t rows = tensorBasis.size();
 
     const gsSparseMatrix<T> embeddingInterior = deriveInnerEmbedding(tensorBasis, side);
+    result.sizes[0] = embeddingInterior.cols();
 
     const gsSparseMatrix<T> simpleEdgeEmbedding = gsBlockSparseMatrix<T>(1,2)
         .set(0,0,asEmbeddingMatrix<T>(rows, tensorBasis.boundary(side)))
         .set(0,1,asEmbeddingMatrix<T>(rows, tensorBasis.boundaryOffset(side,1)));
 
-    const gsSparseMatrix<T> asG1edgeEmbedding = deriveEdgeEmbedding(tensorBasis, localGluingData, side);
+    const gsEdgeEmbedding<T> asG1edgeEmbedding = deriveEdgeEmbedding(tensorBasis, localGluingData, side);
 
-    return gsBlockSparseMatrix<T>(1,2)
+    result.sizes[1] = asG1edgeEmbedding.sizes[0];
+    result.sizes[2] = asG1edgeEmbedding.sizes[1];
+
+    result.matrix = gsBlockSparseMatrix<T>(1,2)
          .set(0,0,embeddingInterior)
-         .set(0,1,simpleEdgeEmbedding * asG1edgeEmbedding);
+         .set(0,1,simpleEdgeEmbedding * asG1edgeEmbedding.matrix);
+
+    return result;
 }
 
 
