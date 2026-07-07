@@ -260,6 +260,21 @@ gsVector<T> computeGluingDataForInterface(
         result(4) =  r.a[2]; result(5) =  r.a[3];
         result(6) = -r.b[2]; result(7) = -r.b[3];
     }
+
+    // There is another fix to be made: In the paper we have written
+    // that the tangential vector is obtained by rotating the normal
+    // vector; the gluing data computation code uses always (+1,0) and (0,+1).
+    const patchSide ps1 = interf.first(), ps2 = interf.second();
+    if (ps1.parameter()!=ps1.direction())
+    {
+        result(2) *= -1;
+        result(3) *= -1;
+    }
+    if (ps2.parameter()!=ps2.direction())
+    {
+        result(6) *= -1;
+        result(7) *= -1;
+    }
     return result;
 }
 

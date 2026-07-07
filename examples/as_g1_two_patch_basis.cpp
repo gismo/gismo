@@ -117,21 +117,6 @@ int main(int argc, char* argv[])
     // ---- Compute gluing data for the interface ----
     gsMatrix<T> gd = computeGluingDataForInterface(mp, ifc, T(1e-8), numGaussPerSpan).transpose();
 
-    // ---- Correct gluing data ----
-    // There is another fix to be made: In the paper we have written
-    // that the tangential vector is obtained by rotating the normal
-    // vector; the gluing data computation code uses always (+1,0) and (0,+1).
-    if (ps1.parameter()!=ps1.direction())
-    {
-        gd(0,2) *= -1;
-        gd(0,3) *= -1;
-    }
-    if (ps2.parameter()!=ps2.direction())
-    {
-        gd(0,6) *= -1;
-        gd(0,7) *= -1;
-    }
-
     gsInfo << "\nGluing data:\n"
            << "  Patch " << ps1.patch << " side " << ps1.side()
            << ": alpha=" << gd(0,0) << "*(1-t)+" << gd(0,1) << "*t"
