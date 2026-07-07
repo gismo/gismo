@@ -152,16 +152,13 @@ int main(int argc, char* argv[])
         gd(0,7) *= -1;
     }
 
-    const T a1_0 = gd(0,0), a1_1 = gd(0,1), b1_0 = gd(0,2), b1_1 = gd(0,3);
-    const T a2_0 = gd(0,4), a2_1 = gd(0,5), b2_0 = gd(0,6), b2_1 = gd(0,7);
-
     gsInfo << "\nGluing data:\n"
            << "  Patch " << ps1.patch << " side " << ps1.side()
-           << ": alpha=" << a1_0 << "*(1-t)+" << a1_1 << "*t"
-           << "  beta=" << b1_0 << "*(1-t)+" << b1_1 << "*t\n"
+           << ": alpha=" << gd(0,0) << "*(1-t)+" << gd(0,1) << "*t"
+           << "  beta=" << gd(0,2) << "*(1-t)+" << gd(0,3) << "*t\n"
            << "  Patch " << ps2.patch << " side " << ps2.side()
-           << ": alpha=" << a2_0 << "*(1-t)+" << a2_1 << "*t"
-           << "  beta=" << b2_0 << "*(1-t)+" << b2_1 << "*t\n\n";
+           << ": alpha=" << gd(0,4) << "*(1-t)+" << gd(0,5) << "*t"
+           << "  beta=" << gd(0,6) << "*(1-t)+" << gd(0,7) << "*t\n\n";
 
     // ---- Build per-patch interface-side embeddings ----
     const gsTensorBSplineBasis<2,T>& tb1 =
