@@ -259,19 +259,21 @@ gsVector<T> computeGluingDataForInterface(
     // Embedding-convention sign flip on beta (see header comment above).
     b10 = -b10; b11 = -b11; b20 = -b20; b21 = -b21;
 
-    result(0) = a10; result(1) = a11;
-    result(2) = b10; result(3) = b11;
     if (flipped)
     {
         // Patch-2 tangent is flipped, so we evaluate the patch-2 alpha
         // and beta at the reversed endpoint pairing (a21 at gd-t=0,
         // a20 at gd-t=1).  The sign-related fix-up is done at the
         // embedding call site via `tangentSign`.
+        result(0) = a10; result(1) = a11;
+        result(2) = b10; result(3) = b11;
         result(4) = a21; result(5) = a20;
         result(6) = b21; result(7) = b20;
     }
     else
     {
+        result(0) = a10; result(1) = a11;
+        result(2) = b10; result(3) = b11;
         result(4) = a20; result(5) = a21;
         result(6) = b20; result(7) = b21;
     }
