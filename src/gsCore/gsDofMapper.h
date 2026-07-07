@@ -303,18 +303,18 @@ public:
         return MAPPER_PATCH_DOF(i,k,c);
     }
 
- index_t componentOf(index_t gl) const
- {
-     GISMO_ASSERT(m_curElimId>=0,"finalize() was not called on gsDofMapper");
-     //index_t c = 1; // could do some binary search
-     //in place
-     //while (gl >= m_numFreeDofs[c]+m_numElimDofs[c]) { ++c; }
-     //elim
-     return (gl<m_numFreeDofs.back() ?
-       std::distance(m_numFreeDofs.begin(), std::upper_bound(m_numFreeDofs.begin(), m_numFreeDofs.end(), gl))
-	     : std::distance(m_numElimDofs.begin(),std::upper_bound(m_numElimDofs.begin(), m_numElimDofs.end(), gl-m_numFreeDofs.back())) ) - 1;
-     //while (gl >= m_numFreeDofs[c] + m_shift) { ++c; } return c-1;
- }
+    index_t componentOf(index_t gl) const
+    {
+         GISMO_ASSERT(m_curElimId>=0,"finalize() was not called on gsDofMapper");
+         //index_t c = 1; // could do some binary search
+         //in place
+         //while (gl >= m_numFreeDofs[c]+m_numElimDofs[c]) { ++c; }
+         //elim
+         return (gl<m_numFreeDofs.back() ?
+                std::distance(m_numFreeDofs.begin(), std::upper_bound(m_numFreeDofs.begin(), m_numFreeDofs.end(), gl))
+              : std::distance(m_numElimDofs.begin(),std::upper_bound(m_numElimDofs.begin(), m_numElimDofs.end(), gl-m_numFreeDofs.back())) ) - 1;
+         //while (gl >= m_numFreeDofs[c] + m_shift) { ++c; } return c-1;
+    }
 
     /** \brief Returns the global dof index associated to local dof \a i of patch \a k.
      *
@@ -510,31 +510,37 @@ public:
 
     /// \brief For \a gl being a global index, this function returns
     /// true whenever \a gl corresponds to patch \a k
-    bool indexOnPatch(const index_t gl, const index_t k) const;
+    bool indexOnPatch(const index_t gl, const index_t k, index_t & local) const;
+
+    inline bool indexOnPatch(const index_t gl, const index_t k) const
+    {
+        index_t local;
+        return indexOnPatch(gl, k, local);
+    }
 
     /// \brief For \a n being an index which is already offsetted, it
     /// returns the global index where it is mapped to by the dof
     /// mapper.
-    index_t mapIndex(index_t n) const
+    inline index_t mapIndex(index_t n) const
     {
         return m_dofs[n/m_dofs.front().size()]
             [n%m_dofs.front().size()] + m_shift;
     }
 
-      /// \brief Returns all boundary dofs on patch k (local dof indices)
-     gsVector<index_t> findBoundary(const index_t k) const;
+    /// \brief Returns all boundary dofs on patch k (local dof indices)
+    gsVector<index_t> findBoundary(const index_t k) const;
 
-     /// \brief Returns all free dofs on patch k (local dof indices)
-     gsVector<index_t> findFree(const index_t k) const;
+    /// \brief Returns all free dofs on patch k (local dof indices)
+    gsVector<index_t> findFree(const index_t k) const;
 
-     /// \brief Returns all coupled dofs on patch k (local dof indices)
-     gsVector<index_t> findCoupled(const index_t k, const index_t j = -1) const;
+    /// \brief Returns all coupled dofs on patch k (local dof indices)
+    gsVector<index_t> findCoupled(const index_t k, const index_t j = -1) const;
 
-     /// \brief Returns all free, not coupled dofs on patch k (local dof indices)
-     gsVector<index_t> findFreeUncoupled(const index_t k) const;
+    /// \brief Returns all free, not coupled dofs on patch k (local dof indices)
+    gsVector<index_t> findFreeUncoupled(const index_t k) const;
 
-     /// \brief Returns all tagged dofs on patch k (local dof indices)
-     gsVector<index_t> findTagged(const index_t k) const;
+    /// \brief Returns all tagged dofs on patch k (local dof indices)
+    gsVector<index_t> findTagged(const index_t k) const;
 
 private:
 

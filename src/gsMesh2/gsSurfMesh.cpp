@@ -18,10 +18,9 @@
 
 #include <gsCore/gsMultiPatch.h>
 #include <gsNurbs/gsTensorBSpline.h>
-
+#include <gsIO/gsXml.h>
 
 namespace gismo {
-
 
 gsSurfMesh::
 gsSurfMesh()
@@ -50,15 +49,10 @@ gsSurfMesh(const gsMatrix<Scalar> & pts)
         this->add_vertex(col);
 }
 
-
 gsSurfMesh::
 ~gsSurfMesh()
 {
 }
-
-
-
-
 
 gsSurfMesh&
 gsSurfMesh::
@@ -95,7 +89,6 @@ operator=(const gsSurfMesh& rhs)
 
     return *this;
 }
-
 
 gsSurfMesh&
 gsSurfMesh::
@@ -149,6 +142,43 @@ assign(const gsSurfMesh& rhs)
     return *this;
 }
 
+gsSurfMesh& gsSurfMesh::operator=(gsSurfMesh&& rhs) noexcept
+{
+    if (this != &rhs)
+    {
+        
+        // deep copy of property containers
+        vprops_ = rhs.vprops_;
+        hprops_ = rhs.hprops_;
+        eprops_ = rhs.eprops_;
+        fprops_ = rhs.fprops_;
+        mprops_ = rhs.mprops_;
+
+        // property handles contain pointers, have to be reassigned
+        vconn_ = vertex_property<Vertex_connectivity>("v:connectivity");
+        hconn_ = halfedge_property<Halfedge_connectivity>("h:connectivity");
+        fconn_ = face_property<Face_connectivity>("f:connectivity");
+        vdeleted_ = vertex_property<bool>("v:deleted");
+        edeleted_ = edge_property<bool>("e:deleted");
+        fdeleted_ = face_property<bool>("f:deleted");
+        vpoint_ = get_vertex_property<Point>("v:point");
+
+        // normals might be there, therefore use get_property
+        vnormal_ = get_vertex_property<Point>("v:normal");
+        fnormal_ = get_face_property<Point>("f:normal");
+
+        // how many elements are deleted?
+        deleted_vertices_ = rhs.deleted_vertices_;
+        deleted_edges_ = rhs.deleted_edges_;
+        deleted_faces_ = rhs.deleted_faces_;
+        garbage_ = rhs.garbage_;
+
+        rhs.clear();
+
+    }
+    return *this;
+    
+}
 
 bool
 gsSurfMesh::
@@ -157,14 +187,12 @@ read(const std::string& filename)
     return read_mesh(*this, filename);
 }
 
-
 bool
 gsSurfMesh::
 write(const std::string& filename) const
 {
     return write_mesh(*this, filename);
 }
-
 
 void
 gsSurfMesh::
@@ -193,7 +221,6 @@ free_memory()
     mprops_.free_memory();
 }
 
-
 void
 gsSurfMesh::
 reserve(unsigned int nvertices,
@@ -206,7 +233,6 @@ reserve(unsigned int nvertices,
     fprops_.reserve(nfaces);
     mprops_.reserve(1);
 }
-
 
 void
 gsSurfMesh::
@@ -235,7 +261,6 @@ property_stats() const
         std::cout << "\t" << props[i] << std::endl;
 }
 
-
 gsSurfMesh::Vertex
 gsSurfMesh::
 add_vertex(const Point& p)
@@ -244,7 +269,6 @@ add_vertex(const Point& p)
     vpoint_[v] = p;
     return v;
 }
-
 
 gsSurfMesh::Halfedge
 gsSurfMesh::
@@ -269,8 +293,6 @@ find_halfedge(Vertex start, Vertex end) const
     return Halfedge();
 }
 
-
-
 gsSurfMesh::Edge
 gsSurfMesh::
 find_edge(Vertex a, Vertex b) const
@@ -279,7 +301,6 @@ find_edge(Vertex a, Vertex b) const
     return h.is_valid() ? edge(h) : Edge();
 }
 
-
 void
 gsSurfMesh::
 adjust_outgoing_halfedge(Vertex v)
@@ -287,7 +308,7 @@ adjust_outgoing_halfedge(Vertex v)
     Halfedge h  = halfedge(v);
     const Halfedge hh = h;
 
-    if (h.is_valid())
+    if (h.is_valid() && (h != cw_rotated_halfedge(h)) )
     {
         do
         {
@@ -302,7 +323,6 @@ adjust_outgoing_halfedge(Vertex v)
     }
 }
 
-
 gsSurfMesh::Face
 gsSurfMesh::
 add_triangle(Vertex v0, Vertex v1, Vertex v2)
@@ -313,7 +333,6 @@ add_triangle(Vertex v0, Vertex v1, Vertex v2)
     add_face_vertices_[2] = v2;
     return add_face(add_face_vertices_);
 }
-
 
 gsSurfMesh::Face
 gsSurfMesh::
@@ -326,9 +345,6 @@ add_quad(Vertex v0, Vertex v1, Vertex v2, Vertex v3)
     add_face_vertices_[3] = v3;
     return add_face(add_face_vertices_);
 }
-
-
-//-----------------------------------------------------------------------------
 
 
 gsSurfMesh::Face
@@ -357,13 +373,12 @@ add_face(const std::vector<Vertex>& vertices)
     next_cache.clear();
     next_cache.reserve(3*n);
 
-
     // test for topological errors
     for (i=0, ii=1; i<n; ++i, ++ii, ii%=n)
     {
         if ( !is_boundary(vertices[i]) )
         {
-            std::cerr << "gsSurfMesh::add_face: complex vertex\n";
+            std::cerr << "gsSurfMesh::add_face: complex vertex "<<vertices[i]<<".\n";
             return Face();
         }
 
@@ -372,11 +387,10 @@ add_face(const std::vector<Vertex>& vertices)
 
         if (!is_new[i] && !is_boundary(halfedges[i]))
         {
-            std::cerr << "gsSurfMesh::add_face: complex edge\n";
+            std::cerr << "gsSurfMesh::add_face: complex edge at "<<from_vertex(halfedges[i])<<" -- "<<to_vertex(halfedges[i])<<".\n";
             return Face();
         }
     }
-
 
     // re-link patches if necessary
     for (i=0, ii=1; i<n; ++i, ++ii, ii%=n)
@@ -408,7 +422,7 @@ add_face(const std::vector<Vertex>& vertices)
                 // ok ?
                 if (boundary_next == inner_next)
                 {
-                    std::cerr << "gsSurfMeshT::add_face: patch re-linking failed\n";
+                    std::cerr << "gsSurfMesh::add_face: patch re-linking failed\n";
                     return Face();
                 }
 
@@ -524,32 +538,51 @@ add_face(const std::vector<Vertex>& vertices)
     return f;
 }
 
-
 unsigned int
 gsSurfMesh::
 valence(Vertex v) const
 {
     unsigned int count(0);
-    for (auto u : vertices(v))
+    Halfedge h  = halfedge(v);
+    if (h.is_valid())
     {
-        std::ignore = u;
-        ++count;
+        const Halfedge hh = h;
+        do
+        {
+            ++count;
+            h = cw_rotated_halfedge(h);
+        }
+        while (h != hh);
     }
     return count;
 }
 
+unsigned int
+gsSurfMesh::
+hcount(Vertex v, const Halfedge_property<bool>  & prop) const
+{
+    unsigned int count(0);
+    for (auto h : halfedges(v))
+    {
+        if ( prop[h] || touches_boundary(h) || is_boundary(h) )
+            ++count;
+    }
+    return count;
+}
 
 unsigned int
 gsSurfMesh::
 valence(Face f) const
 {
     unsigned int count(0);
-
-    Vertex_around_face_circulator fvit = vertices(f);
-    Vertex_around_face_circulator fvend = fvit;
-    do {
+    Halfedge h  = halfedge(f);
+    const Halfedge hh = h;
+    do
+    {
         ++count;
-    } while (++fvit != fvend);
+        h = next_halfedge(h);
+    }
+    while (h != hh);
 
     return count;
 }
@@ -566,7 +599,6 @@ face_valence_sum() const
     return count;
 }
 
-
 bool
 gsSurfMesh::
 is_triangle_mesh() const
@@ -578,7 +610,6 @@ is_triangle_mesh() const
 
     return true;
 }
-
 
 bool
 gsSurfMesh::
@@ -592,7 +623,6 @@ is_quad_mesh() const
     return true;
 }
 
-
 void
 gsSurfMesh::
 triangulate()
@@ -605,7 +635,6 @@ triangulate()
     for (; fit!=fend; ++fit)
         triangulate(*fit);
 }
-
 
 void
 gsSurfMesh::
@@ -653,7 +682,6 @@ triangulate(Face f)
     set_face(base_h, f);
 }
 
-
 void
 gsSurfMesh::
 update_face_normals()
@@ -667,10 +695,8 @@ update_face_normals()
         fnormal_[*fit] = compute_face_normal(*fit);
 }
 
-
-Normal
-gsSurfMesh::
-compute_face_normal(Face f) const
+gsSurfMesh::Normal
+gsSurfMesh::compute_face_normal(Face f) const
 {
     Halfedge h = halfedge(f);
     Halfedge hend = h;
@@ -706,7 +732,6 @@ compute_face_normal(Face f) const
     }
 }
 
-
 void
 gsSurfMesh::
 update_vertex_normals()
@@ -721,9 +746,8 @@ update_vertex_normals()
 }
 
 
-Normal
-gsSurfMesh::
-compute_vertex_normal(Vertex v) const
+gsSurfMesh::Normal
+gsSurfMesh::compute_vertex_normal(Vertex v) const
 {
     Point     nn(0,0,0);
     Halfedge  h = halfedge(v);
@@ -777,15 +801,12 @@ compute_vertex_normal(Vertex v) const
     return nn;
 }
 
-
-
 gsSurfMesh::Scalar
 gsSurfMesh::
 edge_length(Edge e) const
 {
     return (vpoint_[vertex(e,0)] - vpoint_[vertex(e,1)]).norm();
 }
-
 
 void
 gsSurfMesh::
@@ -863,7 +884,6 @@ quad_split(Face f, Vertex v, Halfedge s)
     set_face(e0, f);
     set_next_halfedge(e0, h);//sets next(e0) and also prev(h)
 
-    // ---------------
     Halfedge e = new_edge(from_vertex(hnext),v);
     set_face(e, f);
 
@@ -953,7 +973,6 @@ void gsSurfMesh::quad_split()
     }
 
 }
-
 
 gsSurfMesh::Halfedge
 gsSurfMesh::
@@ -1054,8 +1073,6 @@ split(Edge e, Vertex v)
     return t1;
 }
 
-
-
 gsSurfMesh::Halfedge
 gsSurfMesh::
 insert_vertex(Halfedge h0, Vertex v)
@@ -1082,7 +1099,7 @@ insert_vertex(Halfedge h0, Vertex v)
     Face     fo = face(o0);
 
     Halfedge h1 = new_edge(v, v2);
-    Halfedge o1 = opposite_halfedge(h1);
+    Halfedge o1 = opposite_halfedge(h1);    
 
     // adjust halfedge connectivity
     set_next_halfedge(h1, h2);
@@ -1159,7 +1176,6 @@ insert_edge(Halfedge h0, Halfedge h1)
     return h4;
 }
 
-
 bool
 gsSurfMesh::
 is_flip_ok(Edge e) const
@@ -1183,7 +1199,6 @@ is_flip_ok(Edge e) const
 
     return true;
 }
-
 
 void
 gsSurfMesh::
@@ -1236,8 +1251,6 @@ flip(Edge e)
     if (halfedge(vb0) == a0)
         set_halfedge(vb0, b1);
 }
-
-
 
 bool
 gsSurfMesh::
@@ -1299,10 +1312,6 @@ is_collapse_ok(Halfedge v0v1)
     return true;
 }
 
-
-
-
-
 void
 gsSurfMesh::
 collapse(Halfedge h)
@@ -1321,10 +1330,6 @@ collapse(Halfedge h)
     if (next_halfedge(next_halfedge(o1)) == o1)
         remove_loop(o1);
 }
-
-
-
-
 
 void
 gsSurfMesh::
@@ -1379,10 +1384,6 @@ remove_edge(Halfedge h)
     garbage_ = true;
 }
 
-
-
-
-
 void
 gsSurfMesh::
 remove_loop(Halfedge h)
@@ -1432,10 +1433,6 @@ remove_loop(Halfedge h)
     garbage_ = true;
 }
 
-
-
-
-
 void
 gsSurfMesh::
 delete_vertex(Vertex v)
@@ -1471,10 +1468,6 @@ delete_vertex(Vertex v)
     }
 }
 
-
-
-
-
 void
 gsSurfMesh::
 delete_edge(Edge e)
@@ -1487,9 +1480,6 @@ delete_edge(Edge e)
     if (f0.is_valid()) delete_face(f0);
     if (f1.is_valid()) delete_face(f1);
 }
-
-
-
 
 void
 gsSurfMesh::
@@ -1605,8 +1595,6 @@ delete_face(Face f)
 
     garbage_ = true;
 }
-
-
 
 void
 gsSurfMesh::
@@ -1747,8 +1735,8 @@ garbage_collection()
 }
 
 // Returns true if there is a sharp halfedge emenating from vertex \a v
-inline bool gsSurfMesh::has_flag(Vertex v,
-                                 const gsSurfMesh::Halfedge_property<bool> & hflag)
+bool gsSurfMesh::
+has_flag(Vertex v, const gsSurfMesh::Halfedge_property<bool> & hflag) const
 {
     /*//count hflags
       int c = 0;
@@ -1760,257 +1748,123 @@ inline bool gsSurfMesh::has_flag(Vertex v,
     return false;
 }
 
-void gsSurfMesh::cc_subdivide()
+inline gsGeometry<>::uPtr gsSurfMesh::asPatch(gsSurfMesh::Halfedge h, int deg) const
 {
-    gsSurfMesh::Vertex v;
-    gsSurfMesh::Halfedge he;
+    static gsKnotVector<> kv;
+    kv.initUniform(0, 1, 0, 1, 1, deg);
+    static gsTensorBSplineBasis<2> bs;
+    bs = { kv,kv };
+    static gsMatrix<> coefs;
+    coefs.resize( (deg+1)*(deg+1), 3);
 
-    // reserve vertices, edges, faces
-    reserve( n_vertices()+n_edges()+n_faces(),
-             2*n_edges(), 4*n_faces() );
+    Halfedge hh;
+    index_t c = 0;
 
-    auto points = get_vertex_property<Point>("v:point");
-
-    const bool do_sharp = hprops_.has("h:sharp");
-    Halfedge_property<bool> sharp;
-    if (do_sharp)
-        sharp = get_halfedge_property<bool>("h:sharp");
-
-    index_t env = n_vertices(); // edge vertices start here
-
-    // loop over all edges, add edge points
-    Point tmp;
-    for (auto eit : edges())
+    // Finding the first point and take its halfedge
+    for (index_t i = 0; i<(deg/2); ++i)
     {
-        he  = halfedge(eit,0);
-        tmp = (points[from_vertex(he)]+points[to_vertex(he)]) / 2;
-        v   = add_vertex(tmp);// edge points initialized as midpoints
-        insert_vertex(he,v);
+        h = backward_halfedge(h);
+        h = next_halfedge(next_halfedge(opposite_halfedge(h)));
     }
 
-    index_t fnv = n_vertices(); // face vertices start here
-
-    // loop over all faces, add face points
-    for (auto fit : faces())
+    // Going through the control points for each row
+    for (int j = 0; j<deg; ++j)
     {
-        auto fv = vertices(fit);
-        tmp.setZero();
-        for (auto vc = fv.begin(); vc!=fv.end(); ++vc, ++vc)
-            tmp += points[*vc];
-        tmp /= 4;
-        add_vertex(tmp);  // vertex gets shifted face id
-    }
-
-    int i = 0;
-    for (auto fit : faces())
-    {
-        v = gsSurfMesh::Vertex(fnv+(i++));//face vertex id ?
-        //Start from an original vertex
-        auto fv = vertices(fit).begin();
-        if ( (*fv).idx() >= env) ++fv; //todo: add -> operator
-        //assert ( (*fv).idx() < nv )
-        quad_split(fit,v,fv.he());
-    }
-
-#   pragma omp parallel for default(shared) private(v,tmp)
-    for (i = env; i<fnv;++i)
-    {
-        v = gsSurfMesh::Vertex(i); //edge points
-
-        if (do_sharp && has_flag(v,sharp))
-            continue;
-        else if (is_boundary(v))
+        coefs.row(c++) = vpoint_[from_vertex(h)];
+        coefs.row(c++) = vpoint_[  to_vertex(h)];
+        hh = h;
+        for (int i = 1; i<deg; ++i)
         {
-            //gsWarn<< "Boundary vertex "<< v.idx() <<"\n";
-            continue;
+            hh = forward_halfedge(hh);
+            coefs.row(c++) = vpoint_[to_vertex(hh)];
         }
-        else
-        {
-            //Interior edge points finalized here
-            auto vit = vertices(v);
-            auto vcp = vit;
-            tmp.setZero();
-            if (vit) do
-                     {
-                         tmp += points[*vit];
-                     } while (++vit != vcp);
-            tmp /= 4 ; // =valence(v);
-            points[v] = tmp;
-        }
+        h = ccw_rotated_halfedge((prev_halfedge(h)));
     }
-
-#   pragma omp parallel for default(shared) private(v)
-    for (i = 0; i<env;++i)
+    //last row
+    coefs.row(c++) = vpoint_[from_vertex(h)];
+    coefs.row(c++) = vpoint_[  to_vertex(h)];
+    hh = h;
+    for (int i = 1; i<deg; ++i)
     {
-        v = gsSurfMesh::Vertex(i); // original vertices
-        auto n = valence(v);
-        //original vertex positions are computed using new edge/face points only
-        auto & pt = points[v];
+        hh = opposite_halfedge( prev_halfedge( opposite_halfedge(
+             prev_halfedge( opposite_halfedge(hh) ))));
+        coefs.row(c++) = vpoint_[to_vertex(hh)];
+    }
+    return bs.makeGeometry(coefs);
+}
 
-        if (do_sharp && has_flag(v,sharp))
+gsMultiPatch<> gsSurfMesh::asSpline(int deg) const
+{
+    gsMultiPatch<> res;
+    int n;
+    Halfedge he, hh;
+    Vertex ve;
+    bool evface;
+    if ( 0 == deg%2 )
+        for (auto v : vertices())
         {
-            pt *= 2;
-            auto hh = halfedge(v);
-            while(!sharp[hh])
+            if (is_boundary(v)) continue; // handling boundaries
+            n = valence(v);
+
+            he = halfedge(v);
+            
+            evface = false;
+            hh = he;
+            // exluding ev faces
+            do
+            {
+                if (valence(face(hh)) != 4)
+                {
+                    evface = true;
+                    break;
+                }
                 hh = ccw_rotated_halfedge(hh);
-            pt += points[to_vertex(hh)]; // first flagged neighbor
-            hh = ccw_rotated_halfedge(hh);
-            while(!sharp[hh])
-                hh = ccw_rotated_halfedge(hh);
-            pt += points[to_vertex(hh)]; // second flagged neighbor
-            pt /= 4;
+            } while (hh != he);
+
+            if (evface)
+                continue;
+
+            if (4==n)  // exluding ev points
+                res.addPatch( asPatch(he, deg) );
         }
-        else if (is_boundary(v))
+    else // 1 == deg%2
+        for (auto f : faces())
         {
-            pt *= 2;
-            auto hh = halfedge(v);
-            while(!touches_boundary(hh))
-                hh = cw_rotated_halfedge(hh);
-            //GISMO_ASSERT(touches_boundary(hh), "Did not find a boundary halfedge.");
-            pt += points[to_vertex(hh)]; //  right boundary neighbor
-            hh = next_halfedge(opposite_halfedge(hh));
-            pt += points[to_vertex(hh)]; // left boundary neighbor
-            pt /= 4;
-        }
-        else
-        {
-            auto vit = halfedges(v);
-            auto vcp = vit;
-            //formula: pt = ( (n*(n-3))*points[v] + 4*E - F ) / (n*n);
-            pt *= n*(n-3);
-            if (vit)
+            if (valence(f) != 4) continue;
+
+            evface = false;
+            if (is_boundary(f)) continue; // handling boundaries
+
+            for ( auto v : vertices(f) )
+            {
+                n = valence(v);
+                                
+                if ( n!=4 ) break;
+
+                he = halfedge(v);
+                hh = he;
+
+                // exluding ev faces
                 do
-                { //pt += 4*E-F
-                    pt += 4*points[ to_vertex(*vit) ]
-                        - points[ to_vertex(next_halfedge(*vit)) ];
-                } while (++vit != vcp);
-            pt /= n*n;
-        }
-    }
-}
+                {
+                    if (valence(face(hh)) != 4)
+                    {
+                        evface = true;
+                        break;
+                    }
+                    hh = ccw_rotated_halfedge(hh);
+                } while (hh != he);
 
-gsSurfMesh::Vertex_property<Point>
-gsSurfMesh::cc_limit_points(std::string label)
-{
-    auto points = get_vertex_property<Point>("v:point");
-    auto limits = add_vertex_property<Point>(
-        (label == "v:point" ? "v:limit_points_2022" : label),Point(0,0,0));
-    real_t n;
-#   pragma omp parallel for default(shared) private(n)
-    for (auto vit = vertices_begin(); vit < vertices_end(); ++vit)
-    {
-        n = valence(*vit);
-        if (is_boundary(*vit))
-        {
-            gsWarn<< "Boundary vertex is ignored.\n";
-
-            if (2>n)
-            {
-
-            }
-            continue;
-        }
-
-        auto & pt = limits[*vit];
-        pt = n*n*points[*vit];
-        for ( auto he : halfedges(*vit) )
-        {
-            if (is_boundary(he))
-            {
-                gsWarn<< "Boundary halfedge is ignored.\n";
+                if (evface) break;
             }
 
-            pt += 4 * points[ to_vertex(he) ] +
-                points[ to_vertex(next_halfedge(he)) ];
+            if (evface) continue;
+
+            if (4==n)
+                res.addPatch( asPatch(halfedge(f), deg) );
         }
-        pt /= (n*(n+5));
-    }
 
-    if (label == "v:point") //vertices are replaced by their limit positions
-    {
-        rename_vertex_property(points,"v:point_original");
-        rename_vertex_property(limits,"v:point");
-    }
-    return limits;
-}
-
-
-gsSurfMesh::Vertex_property<Point>
-gsSurfMesh::cc_limit_normals(std::string label, bool normalize)
-{
-    auto points = get_vertex_property<Point>("v:point");
-    //todo: check if label exists
-    auto limits = add_vertex_property<Point>(label,Point(0,0,0));
-    Point t1, t2;
-    real_t c1, c2, cc1, cc2;
-    index_t i;
-    gsSurfMesh::Halfedge h2;
-#   pragma omp parallel for default(shared) private(h2,t1,t2,c1,c2,cc1,cc2,i)
-    for (auto vit = vertices_begin(); vit < vertices_end(); ++vit)
-    {
-        const real_t n = valence(*vit);
-        const real_t cospin = math::cos(EIGEN_PI/n);
-        cc2 = 1 / ( n * math::sqrt(4+cospin*cospin) );
-        cc1 = 1/n + cospin*cc2;
-        t1.setZero();
-        t2.setZero();
-        i = 0;
-        for ( auto he : halfedges(*vit) )
-        {
-            h2 = ccw_rotated_halfedge(he);
-            c1  = math::cos( 2*i   *EIGEN_PI/n)*cc1;
-            c2  = math::cos((2*i+1)*EIGEN_PI/n)*cc2;
-            t1 += c1 * points[ to_vertex(he ) ]
-                + c2 * points[ to_vertex(next_halfedge(he)) ];
-            t2 += c1 * points[ to_vertex(h2 ) ]
-                + c2 * points[ to_vertex(next_halfedge(h2)) ];
-            ++i;
-        }
-        if (normalize)
-            limits[*vit] = t1.cross(t2).normalized();
-        else
-            limits[*vit] = t1.cross(t2);
-    }
-    return limits;
-}
-
-gsSurfMesh::Vertex_property<Point>
-gsSurfMesh::cc_limit_tangent_vec(std::string label, bool normalize)
-{
-    gsSurfMesh::Vertex v;
-    gsSurfMesh::Halfedge h2;
-
-    auto points = get_vertex_property<Point>("v:point");
-    //todo: check if label exists
-    auto limits = add_vertex_property<Point>(label,Point(0,0,0));
-    Point t1, t2;
-    real_t c1, c2, cc1, cc2;
-    index_t i;
-#   pragma omp parallel for default(shared) private(v,h2,t1,t2,c1,c2,cc1,cc2,i)
-    for (auto vit = vertices_begin(); vit < vertices_end(); ++vit)
-    {
-        const real_t n = valence(*vit);
-        const real_t cospin = math::cos(EIGEN_PI/n);
-        cc2 = 1 / ( n * math::sqrt(4+cospin*cospin) );
-        cc1 = 1/n + cospin*cc2;
-        t1.setZero();
-        t2.setZero();
-        i = 0;
-        for ( auto he : halfedges(*vit) )
-        {
-            h2 = ccw_rotated_halfedge(he);
-            c1  = math::cos( 2*i   *EIGEN_PI/n)*cc1;
-            c2  = math::cos((2*i+1)*EIGEN_PI/n)*cc2;
-            t1 += c1 * points[ to_vertex(he ) ]
-                + c2 * points[ to_vertex(next_halfedge(he)) ];
-            ++i;
-        }
-        if (normalize)
-            limits[*vit] = t1.normalized();
-        else
-            limits[*vit] = t1;
-    }
-    return limits;
+    return res;
 }
 
 
@@ -2035,131 +1889,6 @@ inline index_t face_pt_idx(index_t i, index_t j, index_t s, index_t sz)
     }
 }
 }
-
-gsMultiPatch<real_t> gsSurfMesh::cc_acc3(bool comp_topology) const
-{
-    auto points = get_vertex_property<Point>("v:point");
-    gsMultiPatch<real_t> mp;
-    gsKnotVector<> kv(0,1,0,4);//cubic degree
-    gsTensorBSplineBasis<2> bb(kv,kv);
-    gsMatrix<real_t> coefs;
-    gsSurfMesh::Halfedge h2;
-    gsSurfMesh::Vertex v;
-    real_t n;
-#   pragma omp parallel for default(shared) private(n,v,h2,coefs) shared(mp)
-    for (auto fit = faces_begin(); fit < faces_end(); ++fit)
-    {
-        //gsInfo << "face id: "<< fit->idx() <<"\n";
-        coefs.resize(16,3);//thread privates must be initialized for each thread
-        index_t s = 0;
-
-        for ( auto he : halfedges(*fit) )
-        {
-            v = from_vertex(he);
-            n = valence(v);
-            auto c00 = coefs.row(face_pt_idx(0,0,s,4)).transpose();
-            auto c11 = coefs.row(face_pt_idx(1,1,s,4)).transpose();
-            auto c10 = coefs.row(face_pt_idx(1,0,s,4)).transpose();
-            auto c01 = coefs.row(face_pt_idx(0,1,s,4)).transpose();
-            h2 = opposite_halfedge(prev_halfedge(he));
-            if (is_boundary(v))
-            {
-                c10 = ( 2*points[v] + points[to_vertex(he)] ) / 3;
-                c01 = ( 2*points[v] + points[to_vertex(h2)] ) / 3;
-
-                if (n>2)
-                {
-                    h2 = he; //find boundary edge
-                    while ( !is_boundary(opposite_halfedge(h2)) )
-                        h2 = cw_rotated_halfedge(h2);
-                    c00 = (4*points[v] + points[to_vertex(h2)] +
-                           points[to_vertex(next_halfedge((opposite_halfedge(h2))))] )/6;
-                }
-                else//single face at corner
-                {
-                    c00 = points[v];
-                    n=3; // for c11
-                }
-
-                c11 = 2*(n-1) * points[v] +
-                    2 * points[to_vertex(he)] +
-                    points[to_vertex(next_halfedge(he))] +
-                    2 * points[to_vertex(ccw_rotated_halfedge(he))];
-                c11 /= 2*n+3;
-            }
-            else // interior vertex
-            {
-                c00 = n*n*points[v];
-                for (auto h : halfedges(v))
-                    c00 += 4 * points[ to_vertex(h) ] +
-                        points[ to_vertex(next_halfedge(h)) ] ;
-                c00 /= n*(n+5);
-                c11 = n * points[v] +
-                    2 * points[to_vertex(he)] +
-                    points[to_vertex(next_halfedge(he))] +
-                    2 * points[to_vertex(ccw_rotated_halfedge(he))];
-                c11 /= n+5;
-                c10 = n * points[v]
-                    + 2 * points[to_vertex(he)]+
-                    points[to_vertex(ccw_rotated_halfedge(he))]+
-                    points[to_vertex(cw_rotated_halfedge(he)) ]+
-                    0.5 * points[to_vertex(next_halfedge(he))] +
-                    0.5 * points[to_vertex(next_halfedge(cw_rotated_halfedge(he))) ];
-                c10 /= n+5;
-                c01 = n * points[v]
-                    + 2 * points[to_vertex(h2)]+
-                    points[to_vertex(ccw_rotated_halfedge(h2))]+
-                    points[to_vertex(cw_rotated_halfedge(h2)) ]+
-                    0.5 * points[to_vertex(next_halfedge(h2))] +
-                    0.5 * points[to_vertex(next_halfedge(cw_rotated_halfedge(h2))) ];
-                c01 /= n+5;
-            }
-
-            /*
-            h2 = opposite_halfedge(prev_halfedge(he));
-            n = valence(v);
-            if ( is_boundary( opposite_halfedge(he) ) )
-            {
-                c10 = ( 2*points[v] + points[to_vertex(he)] ) / 3;
-            }
-            else //interior edge
-            {
-                c10 = n * points[v] + 2 * points[to_vertex(he)] +
-                    points[to_vertex(ccw_rotated_halfedge(he))]+
-                    points[to_vertex(cw_rotated_halfedge(he)) ]+
-                    0.5 * points[to_vertex(next_halfedge(he))] +
-                    0.5 * points[to_vertex(next_halfedge(cw_rotated_halfedge(he))) ];
-                c10 /= n+5;
-            }
-
-            h2 = opposite_halfedge(prev_halfedge(he));
-            //if ( is_boundary(h2) )
-            if (is_boundary(v))
-            {
-                c01 = ( 2 * points[v] + points[to_vertex(h2)] ) / 3;
-            }
-            else //interior edge
-            {
-                c01 = n * points[v] + 2 * points[to_vertex(h2)] +
-                    points[to_vertex(ccw_rotated_halfedge(h2))]+
-                    points[to_vertex(cw_rotated_halfedge(h2)) ]+
-                    0.5 * points[to_vertex(next_halfedge(h2))] +
-                    0.5 * points[to_vertex(next_halfedge(cw_rotated_halfedge(h2))) ];
-                c01 /= n+5;
-            }
-            */
-
-            ++s;//next halfedge
-        }
-
-#       pragma omp critical (mp_addPatch)
-        mp.addPatch( bb.makeGeometry(give(coefs)) );
-    }
-    if (comp_topology)
-        mp.computeTopology();
-    return mp;
-}
-
 
 gsMultiPatch<real_t> gsSurfMesh::linear_patches() const
 {
@@ -2393,8 +2122,185 @@ gsMultiPatch<real_t> gsSurfMesh::linear_patches() const
     return mp;
 }
 
-namespace internal {
 
+void gsSurfMesh::dual_mesh()
+{
+    // Dual-mesh instance
+    gsSurfMesh dm;
+
+    //Instances of the original mesh
+    gsSurfMesh::Vertex v;
+    gsSurfMesh::Face f;
+    gsSurfMesh::Face fop;
+    gsSurfMesh::Edge e;
+
+
+    // Calculate the dual vertices (from barycenter of original faces)
+
+    std::map<Face, Vertex> FVMap;
+
+    for (auto fit : faces()) {
+        v = dm.add_vertex(face_barycenter(fit));
+        FVMap[fit] = v;
+    }
+
+    std::vector<Vertex> df;
+    for (auto vit : vertices()) {
+        if (is_boundary(vit)) { continue; }
+        df.clear();
+        for (auto fit : faces(vit)) {
+            df.push_back(FVMap[fit]);
+        }
+        dm.add_face(df);
+
+
+    }
+
+    
+                
+    *this = std::move(dm);
+
+}
+
+gsSurfMesh::Point
+gsSurfMesh::face_barycenter(Face f)
+{
+    unsigned int f_val{ 0 };
+    Point coords, tmp;
+
+    f_val = valence(f);
+    coords.setZero();
+    for (auto vit : vertices(f)) {
+        coords += position(vit);
+    }
+    coords = coords / f_val;
+    tmp[0] = coords(0);
+    tmp[1] = coords(1);
+    tmp[2] = coords(2);
+
+    return tmp;
+
+}
+
+
+
+// e(v1,v0): h0(v1->v0) and h1(v0->v1)
+// v0 = vertex(e,0) ==   to_vertex(h0)  == from_vertex(h1)
+// v1 = vertex(e,1) == from_vertex (h0) ==  to_vertex(h1)
+// Insert a new quad by four consecutive border edges
+gsSurfMesh::Face gsSurfMesh::add_quad(gsSurfMesh::Edge e0, gsSurfMesh::Edge e1,
+                                      gsSurfMesh::Edge e2, gsSurfMesh::Edge e3)
+{
+    Halfedge h[4];
+    for (int i : {0,1})
+        for (int j : {0,1})
+        {
+            if ( vertex(e0,i) == vertex(e1,j) )
+            {
+                h[0] = halfedge(e0, i);
+                h[1] = halfedge(e1,!j);
+                break;
+            }
+        }
+
+    GISMO_ASSERT( is_valid(h[0]) && is_valid(h[1]), "Error in gsSurfMesh::add_quad");
+    h[2] = ( to_vertex(h[1]) == vertex(e2,0) ? halfedge(e2,1) : halfedge(e2,0) );
+    h[3] = ( to_vertex(h[2]) == vertex(e3,0) ? halfedge(e3,1) : halfedge(e3,0) );
+    GISMO_ASSERT( to_vertex(h[1]) == from_vertex(h[2]), "Error in gsSurfMesh::add_quad");
+    GISMO_ASSERT( to_vertex(h[2]) == from_vertex(h[3]), "Error in gsSurfMesh::add_quad");
+    GISMO_ASSERT( to_vertex(h[3]) == from_vertex(h[0]), "Error in gsSurfMesh::add_quad");
+
+    for(int i = 0; i!=4; ++i)
+    {
+        if (is_valid(face(h[i])))
+        {
+            std::cerr << "gsSurfMesh::add_face: discovered a complex edge f"
+                      << face(h[i]).idx()<<": "
+                      << from_vertex(h[i]).idx()<<"~"<<to_vertex(h[i]).idx()<<".\n";
+
+            // Try to add new twin edges for the extra faces
+            auto start = from_vertex(h[i]);
+            auto  end  = to_vertex(h[i]);
+            for( Halfedge hh : halfedges() )
+                if ( from_vertex(hh) == start && to_vertex(hh)== end
+                     && hh !=h[i] && !is_valid(face(hh)) )
+                {
+                    h[i] = hh;
+                    return add_quad(edge(h[0]),edge(h[1]),edge(h[2]),edge(h[3]));
+                }
+
+            Edge e = add_edge( from_vertex(h[i]), to_vertex(h[i]) );
+            h[i] = halfedge(e, 0);
+            return add_quad(edge(h[0]),edge(h[1]),edge(h[2]),edge(h[3]));
+        }
+
+        if ( !is_boundary( from_vertex(h[i]) ) )
+        {
+            std::cerr << "gsSurfMesh::add_face: discovered a complex vertex v"
+                      <<from_vertex(h[i]).idx()<<".\n";
+            return Face();
+        }
+    }
+
+    return new_quad(h,4);
+}
+
+gsSurfMesh::Face gsSurfMesh::new_quad(gsSurfMesh::Halfedge * h, int sz)
+{
+    GISMO_UNUSED(sz);
+    Face f = new_face();
+    set_halfedge(f, h[0]);
+    for (index_t i = 0; i!=4; ++i)
+    {
+        set_face(h[i], f);
+        set_next_halfedge(h[i], h[(i+1)%4]);
+    }
+
+    Halfedge ho, hl, hr; // relink boundary
+    for (index_t i = 0; i!=4; ++i)
+    {
+        ho = opposite_halfedge(h[i]);
+        hr = ho;
+        do //CW
+        {
+            if (is_boundary(hr))
+            {
+                hl = h[i];
+                do //CCW
+                {
+                    hl = prev_halfedge(hl);
+                    hl = opposite_halfedge(hl);
+                    if (is_boundary(hl))
+                    {
+                        set_next_halfedge(hr,hl);
+                        break;
+                    }
+                }
+                while (hl!=h[i]);                
+            }
+            hr = next_halfedge(hr);
+            hr = opposite_halfedge(hr);
+        }
+        while ( hr!=ho );
+    }
+
+    for (index_t i = 0; i!=4; ++i)
+    {
+        set_halfedge(from_vertex(h[i]), h[i]);
+        adjust_outgoing_halfedge(from_vertex(h[i]));
+    }
+
+    return f;
+}
+
+    
+void gsSurfMesh::mergeDoubleVertices()
+{
+    GISMO_NO_IMPLEMENTATION
+}
+  
+namespace internal
+{
 
 void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
 {
@@ -2430,8 +2336,27 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
         gsGetReal(str, x);
         gsGetReal(str, y);
         gsGetReal(str, z);
-        result.add_vertex(Point(x,y,z));
+        result.add_vertex(gsSurfMesh::Point(x,y,z));
     }
+
+    /* //Alternative for reading quads only (with complex topolog)
+   unsigned k, c = 0;
+    std::vector<gsSurfMesh::Vertex> face(4);
+    std::vector<gsSurfMesh::Edge> e(4);
+    for (unsigned i=0; i<nf; ++i)
+    {
+        gsGetInt(str, c);
+        GISMO_ASSERT(4==c, "quads?");
+        for (unsigned j=0; j<c; ++j)
+        {
+            gsGetInt(str, k);
+            face[j] = gsSurfMesh::Vertex(k);
+        }
+        for (unsigned j=0; j<c; ++j)
+            e[j] = result.find_or_add_edge(face[j],face[(j+1)%c]);
+        result.add_quad(e[0], e[1], e[2], e[3]);
+    }
+    //*/
 
     unsigned k, c = 0;
     std::vector<gsSurfMesh::Vertex> face;
@@ -2476,6 +2401,4 @@ gsXml<gsSurfMesh>::put (const gsSurfMesh & obj, gsXmlTree & data)
 
 }//namespace internal
 
-//=============================================================================
 } // namespace gismo
-//=============================================================================

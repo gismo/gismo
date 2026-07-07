@@ -57,7 +57,7 @@ public:
     typedef typename gsBSplineTraits<d,T>::Geometry GeometryType;
 
     /// Associated Boundary basis type
-    typedef typename gsBSplineTraits<static_cast<short_t>(d-1),T>::Basis BoundaryBasisType;
+    typedef typename gsBSplineTraits<d-1,T>::Basis BoundaryBasisType;
 
     typedef typename Base::iterator        iterator;
     typedef typename Base::const_iterator  const_iterator;
@@ -165,7 +165,7 @@ public:
     /// \brief Returns the boundary basis for side s.
     typename gsBSplineTraits<static_cast<short_t>(d-1),T>::Basis::uPtr boundaryBasis(boxSide const & s);
 #endif
-    GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &)
+    GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &) override
     {
         std::vector<gsBasis<T>*> rr;
         this->getComponentsForSide(n1,rr);
@@ -199,18 +199,18 @@ public:
     { return Self_t::component(i).knots()[k]; }
 
 
-    const Basis_t & component(short_t dir) const
+    const Basis_t & component(short_t dir) const override
     {
         return static_cast<const Basis_t &>(Base::component(dir));
     }
 
-    Basis_t & component(short_t dir)
+    Basis_t & component(short_t dir) override
     {
         return static_cast<Basis_t &>(Base::component(dir));
     }
 
     // Look at gsBasis class for a description
-    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const;
+    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const override;
 
     /// Returns a box with the coordinate-wise active functions
     /// \param u evaluation points
@@ -220,7 +220,7 @@ public:
                       gsVector<index_t,d>& upp ) const;
 
     /// Prints the object as a string.
-    std::ostream &print(std::ostream &os) const
+    std::ostream &print(std::ostream &os) const override
     {
         os << "TensorBSplineBasis: dim=" << this->dim()<< ", size="<< this->size() <<".";
         if( m_isPeriodic != -1 )
@@ -355,13 +355,13 @@ public:
      *
      *    \note: the \a refExt parameter is ignored in this implementation
      */
-    void refine( gsMatrix<T> const & boxes, int refExt = 0);
+    void refine( gsMatrix<T> const & boxes, int refExt = 0) override;
 
     GISMO_MAKE_GEOMETRY_NEW
 
     /// \brief Reduces spline continuity (in all directions) at
     /// interior knots by \a i
-    void reduceContinuity(int const & i = 1)
+    void reduceContinuity(int const & i = 1) override
     {
         for (short_t j = 0; j < d; ++j)
             Self_t::component(j).reduceContinuity(i);

@@ -61,7 +61,6 @@ public:
     {
         m_leaf = this->init(m_tree);
         updateLeaf();
-        updateElement();
     }
 
 
@@ -83,8 +82,6 @@ public:
 
         // Initialize cell data
         m_curElement.resize(d);
-        m_lower     .resize(d);
-        m_upper     .resize(d);
 
         // Allocate breaks
         m_breaks = std::vector<std::vector<T> >(d, std::vector<T>());
@@ -96,15 +93,8 @@ public:
     void next() override
     {
         bool isGood = nextLexicographic(m_curElement, m_meshStart, m_meshEnd);
-
-        if (isGood) // new element in m_leaf
-            updateElement();
-        else // went through all elements in m_leaf
-        {
+        if (!isGood) // went through all elements in m_leaf
             isGood = nextLeaf();
-            if (isGood)
-                updateElement();
-        }
     }
 
     // ---> Documentation in gsDomainIterator.h
@@ -121,9 +111,6 @@ public:
             if (!isGood)
                 isGood = nextLeaf();
         }
-
-        if (isGood)
-            updateElement();
     }
 
     /// Resets the iterator so that it can be used for another
@@ -132,7 +119,6 @@ public:
     {
         m_leaf = m_tree.beginLeafIterator();
         updateLeaf();
-        updateElement();
     }
 
     gsVector<T> lowerCorner() const override
@@ -227,14 +213,6 @@ private:
             // for n breaks, we have n - 1 elements (spans)
             m_meshEnd(dim) =  m_breaks[dim].end() - 1;
         }
-    }
-
-    /// Computes lower, upper and center point of the current element, maps the reference
-    /// quadrature nodes and weights to the current element, and computes the
-    /// active functions.
-    GISMO_DEPRECATED
-    void updateElement()
-    {
     }
 
 // =============================================================================

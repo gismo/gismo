@@ -4,6 +4,8 @@ submodules.txt
 
 # CLion user-specific files
 .idea
+# Clang user-specific files
+.cache
 
 # Binary directories
 cmake-build-*/
@@ -40,3 +42,5 @@ CMakeFiles/
 #Mac OS
 **/.DS_Store
 
+#Symbolic link Eigen library
+external/Eigen

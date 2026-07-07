@@ -259,3 +259,49 @@ In meson, for example, in order to compile and link to an installed G+Smo packag
   - gsOptProblem::numConstraints() returned the number of lower bounds (which are box constraints). Now it returns the member m_numConstraints which is a user-defined flag. This keeps it functional for non-linear constraints, but the user has to set it explicitly. -- https://github.com/gismo/gismo/pull/721
   - Replace `gsL2Projection::projectFunction` and `gsL2Projection::projectGeometry` with `gsL2Projection::project` -- https://github.com/gismo/gismo/pull/723
   - Make `gsBasis<T>::evalAllDersSingle_into` with argument `gsMatrix<T> &` deprecated, and add `gsBasis<T>::evalAllDersSingle_into` with argument `std::vector<gsMatrix<T>>` in line with `evalAllDers_into`. Only `gsBSplineBasis::evalAllDersSingle_into` overloads, but throws a warning for a bug anyways. -- https://github.com/gismo/gismo/pull/712
+
+v25.07.0 (https://github.com/gismo/gismo/releases/tag/v25.07.0)
+------
+* NEW:
+    - Introducing: Composite maps -- https://github.com/gismo/gismo/pull/746
+    - Add Zenodo DOI -- https://github.com/gismo/gismo/pull/817
+    - JSON file support -- https://github.com/gismo/gismo/pull/816
+    - Introducing the expressions module -- https://github.com/gismo/gismo/pull/807
+    - Add `derivSingle_into` for rational splines; enrich `gsNurbsCreator` with multi-patch annulus and cylinder -- https://github.com/gismo/gismo/pull/823
+    - **ORGANIZATIONAL CHANGE**: The next releases will come from the `main` branch. The `stable` branch will not change name, but serves as a pre-release development branch. All PRs go into `stable` and for every release we make a PR into `main`.
+* IMPROVED:
+    - Documentation updates -- https://github.com/gismo/gismo/pull/772
+    - Add __str__ methods to pybind11 classes -- https://github.com/gismo/gismo/pull/774
+    - Added 'override' keyword to overrides of (pure) virtual functions -- https://github.com/gismo/gismo/pull/781
+    - Introduce copy constructors for domain iterators -- https://github.com/gismo/gismo/pull/783
+    - Add option to enable/disable SAME_ELEMENT flag -- https://github.com/gismo/gismo/pull/786
+    - typos -- https://github.com/gismo/gismo/pull/785
+    - Implementing HB-Splines through THB-Splines -- https://github.com/gismo/gismo/pull/793
+    - Improve gsFiberMatrix and gsSparseMatrix iterator and add gsHTensorBasis loading methos -- https://github.com/gismo/gismo/pull/805
+    - Update CMakeLists.txt -- https://github.com/gismo/gismo/pull/809
+    - Sanitize includes -- https://github.com/gismo/gismo/pull/811
+    - Added override keywords where reported by compiler -- https://github.com/gismo/gismo/pull/812
+    - Added OFA support for Apple M4 -- https://github.com/gismo/gismo/pull/813
+    - Move static data (quadrature node/weight values) to anonymous namespace -- https://github.com/gismo/gismo/pull/819
+    - Introduce C++11 range-based for loops for domain (element) iterators. Fully parallel will openmp -- https://github.com/gismo/gismo/pull/820
+    - :art: 1. add setter function for m_lambda1 and m_lambda2 -- https://github.com/gismo/gismo/pull/822
+    - XML support for Rational THB, some refactoring in gsXmlUtils and some minor fixes. -- https://github.com/gismo/gismo/pull/821
+
+* FIXED:
+    - Fixes for older cmake, remove opennurbs from default modules, remove unneeded asserts, update optimizer parameter strings -- https://github.com/gismo/gismo/pull/777
+    - CI builds wheel for pull requests -- https://github.com/gismo/gismo/pull/776
+    - fix gsHomain for manual levels -- https://github.com/gismo/gismo/pull/784
+    - Avoids exposing 'gismo' namespace in header file. -- https://github.com/gismo/gismo/pull/794
+    - Bug in interface assembly, after the changes of #779 -- https://github.com/gismo/gismo/pull/797
+    - Fix typo in gsFiberMatrix -- https://github.com/gismo/gismo/pull/800
+    - Fix gsExprAssembler::computePattern -- https://github.com/gismo/gismo/pull/801
+    - FIX: in THB-splines: orphan elements might cause truncation in levels without any active functions -- https://github.com/gismo/gismo/pull/803
+    - Fix `gsQuadrature::getAllNodes` on boundaries -- https://github.com/gismo/gismo/pull/808
+    - Surface reparameterization conflict fix -- https://github.com/gismo/gismo/pull/798
+    - fix `abs_expr` -- https://github.com/gismo/gismo/pull/814
+    - :bug: bugfix for discontinuous curves in gsBSpline<>::merge -- https://github.com/gismo/gismo/pull/815
+    - :bug: hotfix for the missing ternary_expr -- https://github.com/gismo/gismo/pull/825
+
+* API:
+    - Improving domain iteration -- https://github.com/gismo/gismo/pull/779
+    - Follow-up of domain iterations -- https://github.com/gismo/gismo/pull/782

@@ -382,7 +382,7 @@ private:
 public:
     GSXML_COMMON_FUNCTIONS(gsTHBSpline<TMPLA3(d,T,Trunc)>);
     static std::string tag () { return "Geometry"; }
-    static std::string type () { return "THBSpline"+to_string(d); }
+    static std::string type () { return std::string(Trunc?"T":"") + "HBSpline"+to_string(d); }
 
     static gsTHBSpline<d,T,Trunc> * get (gsXmlNode * node)
     {
@@ -394,6 +394,7 @@ public:
     {
         return putGeometryToXml< gsTHBSpline<d,T,Trunc> >(obj,data);
     }
+    GSXML_GET_INTO(gsTHBSpline<TMPLA3(d,T,Trunc)>)
 };
 
 }// namespace internal

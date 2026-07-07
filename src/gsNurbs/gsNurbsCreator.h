@@ -51,6 +51,15 @@ public:
 
     static void rotate2D(gsGeometry<T> & geo, const T turndeg = 0, const T Tx = 0, const T Ty = 0);
 
+    /**
+     * @brief Rotates a 3D geometry by the given angles around the z, y, and x axes using Euler angles.
+     * @param geo The geometry to rotate.
+     * @param phi_z Rotation angle around the z-axis in radians.
+     * @param phi_y Rotation angle around the y-axis in radians.
+     * @param phi_x Rotation angle around the x-axis in radians.
+     */
+    static void rotate3D(gsGeometry<T> & geo, const T phi_z = 0, const T phi_y = 0, const T phi_x = 0);
+
     static TensorBSpline2Ptr shift2D(gsTensorBSpline<2,T> const & geo, const T dx = 0, const T dy = 0, const T dz = 0);
 
     static void shift2D(gsGeometry<T> & geo, const T dx = 0, const T dy = 0, const T dz = 0);
@@ -253,11 +262,18 @@ public:
 
     static TensorBSpline2Ptr NurbsQrtPlateWHoleC0();
 
-    /// Makes a Isosceles triangle with height \a H and width \a W 
+    /// Makes a Isosceles triangle with height \a H and width \a W
     static TensorBSpline2Ptr BSplineTriangle(T const & H = 1, T const & W = 1);
 
     /// Makes a star with \a N patches, outer radius \a R0 and inner radius \a R1
     static gsMultiPatch<T> BSplineStar(index_t const & N = 3, T const & R0 = 1, T const & R1 = 0.5 );
+
+    /// Makes a cylinder with radius \a R and height \a H, consisting of 4 patches
+    static gsMultiPatch<T> MultiPatchCylinder(T const & R = 1, T const & H = 1);
+
+    /// Makes a cylinder with radius \a R and height \a H, consisting of 4 patches
+    static gsMultiPatch<T> MultiPatchAnnulus(T const & Ri = 0.5, T const & Ro = 1);
+
 
 }; // struct
 

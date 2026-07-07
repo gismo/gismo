@@ -94,34 +94,6 @@ int main(int argc, char *argv[])
                 gsInfo<< "Max error: "<< fitting.maxPointError() <<"\n";
             }
         }
-        
-        if (1==method)
-        {
-            gsVector<index_t,2> sz; //str
-            gsVector<unsigned> sz2(2);
-            
-            gsVector<> a(2); a.setZero();
-            gsVector<> b(2); b.setOnes();
-            gsMatrix<> param;
-            
-            for ( size_t i = 0; i< mp->nPatches(); ++i )
-            {
-                gsTensorBSplineBasis<2> * bb =
-                    dynamic_cast<gsTensorBSplineBasis<2> *>(&mp->patch(i).basis().source());
-                bb->size_cwise(sz);
-                sz2[0]= sz[0];
-                sz2[1]= sz[1];
-                param = gsPointGrid(a,b,sz2);
-                gsFitting<>  fitting(param, mp->patch(i).coefs().transpose(), bs);
-                fitting.compute(0.0000001);
-                newmp.addPatch( *fitting.result() );
-
-                fitting.computeMaxNormErrors();
-                gsInfo<< "Min error: "<< fitting.minPointError() <<"\n";
-                gsInfo<< "Max error: "<< fitting.maxPointError() <<"\n";
-            }
-        }
-
         mp->swap(newmp);
     }
 

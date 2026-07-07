@@ -220,7 +220,7 @@ public:
         GISMO_NO_IMPLEMENTATION;
     }
 
-    GISMO_OVERRIDE_CLONE_FUNCTION(gsMappedSingleBasis)
+    GISMO_CLONE_FUNCTION(gsMappedSingleBasis)
 
     memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const override
     {
@@ -340,7 +340,6 @@ public:
         // TODO Not always working: make it more general
         return m_basis->getBase(m_index).makeDomainIterator(s);
     }
-
 
     gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset) const override
     {

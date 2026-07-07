@@ -162,22 +162,22 @@ public: // iterator ends
 
     domainIter beginAll() const override
     {
-        return new gsKnotDomainIterator<T>(*this);
+        return domainIter(new gsKnotDomainIterator<T>(*this));
     }
 
-    domainIter beginBdr(const boxSide   bs) const override
+    domainIter beginBdr(const boxSide   /* bs */) const override
     {
-        return new gsKnotDomainIterator<T>(*this);
+        return domainIter(new gsKnotDomainIterator<T>(*this));
     }
 
     domainIter endAll() const override
     {
-        return new gsKnotDomainIterator<T>(*this,false);
+        return domainIter(new gsKnotDomainIterator<T>(*this,false));
     }
 
-    domainIter endBdr(const boxSide   bs) const override
+    domainIter endBdr(const boxSide   /* bs */) const override
     {
-        return new gsKnotDomainIterator<T>(*this,false);
+        return domainIter(new gsKnotDomainIterator<T>(*this,false));
     }
 
     short_t dim() const override { return 1; }
@@ -373,14 +373,14 @@ public: // miscellaneous
     /// Returns an iterator pointing to the starting knot of the domain.
     iterator domainBegin() const
     {
-        GISMO_ASSERT( size() > static_cast<size_t>(2*m_deg+1), "Not enough knots.");
+        GISMO_ASSERT( size() > static_cast<size_t>(2*m_deg+1), "Not enough knots, expecting more than " << 2*m_deg+1);
         return begin() + m_deg;
     }
 
     /// Returns an iterator pointing to the end-knot of the domain.
     iterator domainEnd() const
     {
-        GISMO_ASSERT( size() > static_cast<size_t>(2*m_deg+1), "Not enough knots.");
+        GISMO_ASSERT( size() > static_cast<size_t>(2*m_deg+1), "Not enough knots, expecting more than " << 2*m_deg+1);
         return end() - (m_deg + 1);
     }
 
@@ -443,6 +443,8 @@ public: // miscellaneous
         return std::distance(domainUEnd(), uend()) - 1;
     }
 
+    /// Returns true iff the knotvector is clamped (extremal knots are of multiplicities m_deg+1)
+    bool clamped() const { return 0==numLeftGhosts() && 0==numRightGhosts(); }
 public:
 
     /// Sanity check.
@@ -575,8 +577,8 @@ public:
     }
 
     /// Returns the greville points of the B-splines defined on this
-    /// knot vector.
-    gsMatrix<T> greville() const
+    /// knot vector. Points are clamped if \a clamp is true
+    gsMatrix<T> greville(bool clamp = true) const
     {
         gsMatrix<T> gr( 1,this->size() - m_deg - 1 );
         this->greville_into(gr);
@@ -739,12 +741,13 @@ public: // things required by gsKnotVector
     /// Returns the degree of the knot vector.
     short_t degree(short_t i = 0) const override //overload from gsDomain
     {
+        GISMO_UNUSED(i);
         return m_deg;
     }
 
     /// Writes Greville abscissae of the B-splines defined on this
-    /// knot vector to \a result.
-    void greville_into(gsMatrix<T> & result) const;
+    /// knot vector to \a result. Points are clamped if \a clamp is true
+    void greville_into(gsMatrix<T> & result, bool clamp = true) const;
 
     /// Writes the center points of each element (knot-span inside the
     /// domain) to \a result.

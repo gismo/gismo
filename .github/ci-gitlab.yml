@@ -51,7 +51,7 @@ workflow:
     - external_pull_requests
 
 ################################################################################
-# 1. Building and testing of commits to stable branch only
+# 1. Building and testing of commits to dev branch only
 ################################################################################
 
 #-------------------------------------------------------------------------------
@@ -193,7 +193,7 @@ install_and_deploy_linux:
   image: gcc:9
   interruptible: true
   only:
-    - stable
+    - dev
     - external_pull_requests
   before_script:
     - apt-get update -y

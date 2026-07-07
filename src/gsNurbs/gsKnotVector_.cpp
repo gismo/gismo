@@ -1,14 +1,11 @@
 /* Symbol export for G+Smo shared object */
 
 #define gsKnotVector_EXPORT
-
 #include <gsNurbs/gsKnotVector.h>
-#include <gsNurbs/gsKnotVector.hpp> //dependency
 
 namespace gismo
 {
 
-//CLASS_TEMPLATE_INST gsKnotVector<real_t>;
 CLASS_TEMPLATE_INST internal::gsXml< gsKnotVector<real_t> >;
 
 #ifdef GISMO_WITH_PYBIND11
@@ -48,7 +45,7 @@ void pybind11_init_gsKnotVector(py::module &m)
     .def("isConsistent", &Class::isConsistent, "Sanity check")
     .def("inDomain", &Class::inDomain, "Checks, whether the given value is inside the domain")
     .def("greville",static_cast<gsMatrix<real_t>
-         (Class::*)(void) const>(&Class::greville), "Returns the Greville points")
+         (Class::*)(bool) const>(&Class::greville), "Returns the Greville points", py::arg("clamp") = true)
      .def("__str__", [] (Class & self)
      {
          std::ostringstream os;

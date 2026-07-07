@@ -1,7 +1,7 @@
 ######################################################################
 ## ctest_script.cmake
 ## This file is part of the G+Smo library.
-## https://raw.githubusercontent.com/gismo/gismo/stable/cmake/ctest_script.cmake
+## https://raw.githubusercontent.com/gismo/gismo/dev/cmake/ctest_script.cmake
 ##
 ## Author: Angelos Mantzaflaris
 ######################################################################
@@ -88,7 +88,11 @@
 ##
 ######################################################################
 
-cmake_minimum_required(VERSION 2.8.12)
+if(CMAKE_VERSION VERSION_LESS "3.19")
+  cmake_minimum_required(VERSION 2.8.12)
+else()
+  cmake_minimum_required(VERSION 3.1...3.10)
+endif()
 
 if (POLICY CMP0048)# CMake 3.0
   cmake_policy(SET CMP0011 NEW)
@@ -283,7 +287,7 @@ if (NOT DEFINED UPDATE_TYPE AND NOT DEFINED KEEPCONFIG)
 endif()
 
 if (NOT DEFINED GISMO_BRANCH) #for initial checkout
-  set(GISMO_BRANCH stable)
+  set(GISMO_BRANCH dev)
 endif()
 
 # For continuous builds, number of seconds to stay alive
@@ -316,7 +320,7 @@ if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}" AND NOT DEFINED KEEPCONFIG)
     unset(CTEST_CHECKOUT_COMMAND)
 
   elseif("x${UPDATE_TYPE}" STREQUAL "xsvn")
-    if("x${GISMO_BRANCH}" STREQUAL "xstable") # stable
+    if("x${GISMO_BRANCH}" STREQUAL "xdev") # dev
       set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} checkout https://github.com/gismo/gismo.git/trunk ${CTEST_SOURCE_DIRECTORY}")
     else() # branch
       set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} checkout https://github.com/gismo/gismo.git/branches/${GISMO_BRANCH} ${CTEST_SOURCE_DIRECTORY}")

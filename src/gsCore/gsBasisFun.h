@@ -56,21 +56,21 @@ public:
 public:
 
     /// Prints the object as a string.
-    virtual std::ostream &print(std::ostream &os) const
+    virtual std::ostream &print(std::ostream &os) const override
     {
         os << "gsBasisFun"; return os;
     }
 
 
-    short_t domainDim () const {return m_basis.domainDim();}
+    short_t domainDim () const override {return m_basis.domainDim();}
 
-    short_t targetDim () const {return m_basis.targetDim();}
+    short_t targetDim () const override {return m_basis.targetDim();}
 
-    gsMatrix<T> support() const;
+    gsMatrix<T> support() const override;
 
-    void eval_into (const gsMatrix<T>& u, gsMatrix<T>& result ) const;
+    void eval_into (const gsMatrix<T>& u, gsMatrix<T>& result ) const override;
 
-    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result ) const;
+    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result ) const override;
 
     /// The gsBasisFun points to the i-th basis function of m_basis
     /// after calling this setter.
@@ -89,7 +89,7 @@ public:
     unsigned index() const { return m_index; }
     
     // temporary hack
-    virtual const gsBasisFun & piece(const index_t) const
+    virtual const gsBasisFun & piece(const index_t) const override
     {
         return *this; 
     }
