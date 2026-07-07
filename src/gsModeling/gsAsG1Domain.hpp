@@ -48,14 +48,14 @@ struct InterfaceSamples
     gsVector<T> w;
     index_t size() const { return D1.size(); }
     T integrate(const gsVector<T>& f) const { return w.dot(f); }
+    bool flipped;
 };
 
-/// Sample D1,D2,D3 along the interface.  Sets tangentialFlipped.
+/// Sample D1,D2,D3 along the interface.
 template <class T>
 InterfaceSamples<T> sampleInterface(
     const gsMultiPatch<T>& mp,
     const boundaryInterface& interf,
-    bool& tangentialFlipped,
     index_t numGaussPerSpan = 0)
 {
     const patchSide ps1 = interf.first(), ps2 = interf.second();
@@ -73,7 +73,7 @@ InterfaceSamples<T> sampleInterface(
     const T n1 = sup1(nDir1, par1 ? 1 : 0);
     const T n2 = sup2(nDir2, par2 ? 1 : 0);
 
-    tangentialFlipped = !interf.dirOrientation(ps1, tDir1);
+    bool tangentialFlipped = !interf.dirOrientation(ps1, tDir1);
 
     const T t1a = sup1(tDir1, 0), t1b = sup1(tDir1, 1);
     const T t2a = sup2(tDir2, 0), t2b = sup2(tDir2, 1);
@@ -124,6 +124,7 @@ InterfaceSamples<T> sampleInterface(
         S.D3(i) = s1 * s2 * det2(g1n, g2n);
         S.t(i)  = (nodes(0,i) - t1a) / (t1b - t1a);
     }
+    S.flipped = tangentialFlipped;
     return S;
 }
 
@@ -221,11 +222,9 @@ gsVector<T> computeGluingDataForInterface(
     const T eps = T(1e-8),
     index_t numGaussPerSpan = 0)
 {
-    gsVector<T> result(8); result.setZero();
+    gsVector<T> result(8);
 
-    bool flipped = false;
-    InterfaceSamples<T> S =
-        sampleInterface(mp, interf, flipped, numGaussPerSpan);
+    InterfaceSamples<T> S = sampleInterface(mp, interf, numGaussPerSpan);
 
     GISMO_ENSURE (S.D1.minCoeff() * S.D1.maxCoeff() > 0 &&
         S.D2.minCoeff() * S.D2.maxCoeff() > 0, "Not AS-G1");
@@ -242,7 +241,7 @@ gsVector<T> computeGluingDataForInterface(
         r.b[2] = -r.b[2];  r.b[3] = -r.b[3];
     }
 
-    if (flipped)
+    if (S.flipped)
     {
         // Patch-2 tangent is flipped, so we evaluate the patch-2 alpha
         // and beta at the reversed endpoint pairing (a21 at gd-t=0,
