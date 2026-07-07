@@ -233,7 +233,7 @@ gsVector<T> computeGluingDataForInterface(
     if (sameSign) S.D1 = -S.D1;
 
     SolveResult<T> r = solveLinearGluing(S);
-    GISMO_ENSURE (r.alphaErr <= eps, "Not AS-G1");
+    GISMO_ENSURE (r.alphaErr <= eps && r.betaErr <= eps, "Not AS-G1");
 
     if (sameSign)
     {
