@@ -655,7 +655,7 @@ private:
             verbose_selectionMechanism
         );
 
-        if (outfile.is_open())
+        if (outfile.is_open() && g_verbose)
         {
             outfile << "[mpbes-init] functionDescription dump begin\n";
             for (size_t f = 0; f < m_functionDescription.size(); ++f)
@@ -839,6 +839,16 @@ static double g_epsilonG = -1.0;
 // Feature boundary error tolerance ε_f.  Negative = use hardcoded default (0.1).
 // Set via --epsilon-f <value>.
 static double g_epsilonF = -1.0;
+
+// Cell selection method.  Set via --cell-method <g|l|r|s>.
+// 'g' = Grenda's geometry-based (default), 'l' = lexicographic, 'r' = random, 's' = smallest.
+static char g_cellMethod = 'g';
+
+// Verbose logging.  Set via --verbose flag.
+// When false (default): only essential output (timing, errors, escape times, FIT entries).
+// When true: also dumps indexInTHB, functionDescription, vectSol coefficients,
+//            IdentifyPatches twin pairs, and geo-coarsen candidate details.
+static bool g_verbose = false;
 
 // Use local fitting instead of global.  Set via --local-fitting flag.
 // Global fitting uses all MPBES evaluation points; local fitting restricts to the
@@ -1375,7 +1385,8 @@ static gsVector<real_t> evaluateFittedGeometryPoint(
     const gsMatrix<real_t>& coefficients,
     index_t patch,
     const gsVector<real_t>& uv,
-    bool includeSpilloverFallback);
+    bool includeSpilloverFallback = false,
+    bool normalizePou = true);
 
 void exportMeshToFile(
     const std::vector<gsMatrix<>>& xyLines,
@@ -2973,7 +2984,8 @@ static gsVector<real_t> evaluateFittedGeometryPoint(
     const gsMatrix<real_t>& coefficients,
     index_t patch,
     const gsVector<real_t>& uv,
-    bool includeSpilloverFallback = false)
+    bool includeSpilloverFallback,
+    bool normalizePou)
 {
     gsVector<real_t> xy(2);
     xy.setZero();
@@ -3001,7 +3013,10 @@ static gsVector<real_t> evaluateFittedGeometryPoint(
     // same physical basis function is counted more than once (e.g. a triple-junction
     // corner function that appears in multiple twin pairs), the evaluation is scaled
     // back to the convex hull of the control coefficients.
-    if (std::abs(pouSum) > static_cast<real_t>(1e-12))
+    // normalizePou=false bypasses this: required when comparing evaluations from two
+    // different patches at a shared interface, where asymmetric POU sums would introduce
+    // an apparent gap that does not exist in the actual parameterization.
+    if (normalizePou && std::abs(pouSum) > static_cast<real_t>(1e-12))
         xy /= pouSum;
 
     return xy;
@@ -3173,8 +3188,8 @@ static std::vector<InterfaceVisualizationMetadata> buildInterfaceVisualizationMe
 
         const gsVector<real_t> uvA = uvOnFeatureSide(sideA.side, 0.5);
         const gsVector<real_t> uvB = uvOnFeatureSide(sideB.side, 0.5);
-        info.midpointA = evaluateFittedGeometryPoint(mpbes, coefficients, info.patchA, uvA, true);
-        info.midpointB = evaluateFittedGeometryPoint(mpbes, coefficients, info.patchB, uvB, true);
+        info.midpointA = evaluateFittedGeometryPoint(mpbes, coefficients, info.patchA, uvA, false, false);
+        info.midpointB = evaluateFittedGeometryPoint(mpbes, coefficients, info.patchB, uvB, false, false);
         info.midpointGap = vectorDistance(info.midpointA, info.midpointB);
 
         gsVector<real_t> duA(2), dvA(2), duB(2), dvB(2);
@@ -5310,15 +5325,18 @@ real_t testGlobalFittingError(
         }
 
         // Per-patch max error breakdown
-        gsInfo  << "Per-patch globalError:";
-        outfile << "Per-patch globalError:";
-        for (index_t p = 0; p < static_cast<index_t>(patchMaxError.size()); ++p)
+        if (g_verbose)
         {
-            gsInfo  << " p" << p << "=" << patchMaxError[p];
-            outfile << " p" << p << "=" << patchMaxError[p];
+            gsInfo  << "Per-patch globalError:";
+            outfile << "Per-patch globalError:";
+            for (index_t p = 0; p < static_cast<index_t>(patchMaxError.size()); ++p)
+            {
+                gsInfo  << " p" << p << "=" << patchMaxError[p];
+                outfile << " p" << p << "=" << patchMaxError[p];
+            }
+            gsInfo  << "\n";
+            outfile << "\n";
         }
-        gsInfo  << "\n";
-        outfile << "\n";
     }
 
     if (maxError == 0.0)
@@ -5931,39 +5949,42 @@ real_t testBoundaryAssembly(
             const index_t side      = localRow / pointsPerEdge; // 0=sideA, 1=sideB
             const index_t ptIdx     = localRow % pointsPerEdge;
 
-            gsInfo  << "Per-interface featureError breakdown (max " << maxError << "):\n";
-            outfile << "Per-interface featureError breakdown (max " << maxError << "):\n";
-
-            // Print all interface errors
-            for (index_t i = 0; i < static_cast<index_t>(validationInterfaces.size()); ++i)
+            if (g_verbose)
             {
-                real_t ifaceMax = 0.0;
-                const index_t rowStart = i * rowsPerIface;
-                const index_t rowEnd   = std::min<index_t>(rowStart + rowsPerIface, residual.rows());
-                for (index_t r = rowStart; r < rowEnd; ++r)
+                gsInfo  << "Per-interface featureError breakdown (max " << maxError << "):\n";
+                outfile << "Per-interface featureError breakdown (max " << maxError << "):\n";
+
+                // Print all interface errors
+                for (index_t i = 0; i < static_cast<index_t>(validationInterfaces.size()); ++i)
                 {
-                    real_t e = std::sqrt(residual(r,0)*residual(r,0) + residual(r,1)*residual(r,1));
-                    if (std::isfinite(e)) ifaceMax = std::max(ifaceMax, e);
+                    real_t ifaceMax = 0.0;
+                    const index_t rowStart = i * rowsPerIface;
+                    const index_t rowEnd   = std::min<index_t>(rowStart + rowsPerIface, residual.rows());
+                    for (index_t r = rowStart; r < rowEnd; ++r)
+                    {
+                        real_t e = std::sqrt(residual(r,0)*residual(r,0) + residual(r,1)*residual(r,1));
+                        if (std::isfinite(e)) ifaceMax = std::max(ifaceMax, e);
+                    }
+                    gsInfo  << "  iface " << i << " (p" << validationInterfaces[i].patchA
+                            << "<->p" << validationInterfaces[i].patchB << "): " << ifaceMax << "\n";
+                    outfile << "  iface " << i << " (p" << validationInterfaces[i].patchA
+                            << "<->p" << validationInterfaces[i].patchB << "): " << ifaceMax << "\n";
                 }
-                gsInfo  << "  iface " << i << " (p" << validationInterfaces[i].patchA
-                        << "<->p" << validationInterfaces[i].patchB << "): " << ifaceMax << "\n";
-                outfile << "  iface " << i << " (p" << validationInterfaces[i].patchA
-                        << "<->p" << validationInterfaces[i].patchB << "): " << ifaceMax << "\n";
-            }
 
-            if (ifaceIdx < static_cast<index_t>(validationInterfaces.size()))
-            {
-                const auto& spec = validationInterfaces[ifaceIdx];
-                gsInfo  << "  worst: iface " << ifaceIdx
-                        << " (p" << spec.patchA << "<->p" << spec.patchB << ")"
-                        << " side=" << side << " pt=" << ptIdx
-                        << ", reconstructed=(" << reconstructed(maxRow,0) << "," << reconstructed(maxRow,1) << ")"
-                        << ", target=("        << b_interface(maxRow,0)   << "," << b_interface(maxRow,1)   << ")\n";
-                outfile << "  worst: iface " << ifaceIdx
-                        << " (p" << spec.patchA << "<->p" << spec.patchB << ")"
-                        << " side=" << side << " pt=" << ptIdx
-                        << ", reconstructed=(" << reconstructed(maxRow,0) << "," << reconstructed(maxRow,1) << ")"
-                        << ", target=("        << b_interface(maxRow,0)   << "," << b_interface(maxRow,1)   << ")\n";
+                if (ifaceIdx < static_cast<index_t>(validationInterfaces.size()))
+                {
+                    const auto& spec = validationInterfaces[ifaceIdx];
+                    gsInfo  << "  worst: iface " << ifaceIdx
+                            << " (p" << spec.patchA << "<->p" << spec.patchB << ")"
+                            << " side=" << side << " pt=" << ptIdx
+                            << ", reconstructed=(" << reconstructed(maxRow,0) << "," << reconstructed(maxRow,1) << ")"
+                            << ", target=("        << b_interface(maxRow,0)   << "," << b_interface(maxRow,1)   << ")\n";
+                    outfile << "  worst: iface " << ifaceIdx
+                            << " (p" << spec.patchA << "<->p" << spec.patchB << ")"
+                            << " side=" << side << " pt=" << ptIdx
+                            << ", reconstructed=(" << reconstructed(maxRow,0) << "," << reconstructed(maxRow,1) << ")"
+                            << ", target=("        << b_interface(maxRow,0)   << "," << b_interface(maxRow,1)   << ")\n";
+                }
             }
         }
 
@@ -11594,7 +11615,7 @@ void IdentifyPatches(gsMultiPatch<> mp,
             secondSide);
         const GeometryPreflightInterfaceInfo* preflightInfo =
             findPreflightInterfaceInfo(firstPatch, secondPatch);
-        if (preflightInfo && outfile.is_open())
+        if (preflightInfo && outfile.is_open() && g_verbose)
         {
             outfile << "[IdentifyPatches] interface=" << interfaceNum
                     << " firstPatch=" << firstPatch
@@ -11708,12 +11729,12 @@ void IdentifyPatches(gsMultiPatch<> mp,
                             }
                         }
 
-                        if (bestDistance > 1e-8)
+                        if (bestDistance > 1e-5)
                             twinIndex = -1;
                     }
 
                     const bool rejectedByDistance =
-                        (bestDistance < std::numeric_limits<real_t>::infinity() && bestDistance > 1e-8);
+                        (bestDistance < std::numeric_limits<real_t>::infinity() && bestDistance > 1e-5);
 
                     if (twinIndex != -1 && patchHasFunction(secondPatch, level, twinIndex)) {
                         if (
@@ -11727,7 +11748,7 @@ void IdentifyPatches(gsMultiPatch<> mp,
                             hasATwin(secondPatch)(level)(twinIndex) = 1;
                             directTwinCountPerLevel[level]++;
 
-                            if (outfile.is_open())
+                            if (outfile.is_open() && g_verbose)
                             {
                                 outfile << "[IdentifyPatches] direct twin level=" << level
                                         << " via interface " << interfaceNum
@@ -11824,15 +11845,14 @@ void IdentifyPatches(gsMultiPatch<> mp,
                             const int candidateIndex = twinsIndex(patchIndex)(level)(functionIndex)[twinNum2];
                             const int candidatePatch = twinsPatch(patchIndex)(level)(functionIndex)[twinNum2];
                             if (!hasTwinPair(arr1, arr2, candidateIndex, candidatePatch) &&
-                                candidateIndex != funcIndex &&
-                                candidatePatch != patch
+                                !(candidateIndex == funcIndex && candidatePatch == patch)
                                 ) {
                                 arr1.push_back(candidateIndex);
                                 arr2.push_back(candidatePatch);
                                 twinsIndex(patch)(level)(funcIndex) = arr1;
                                 twinsPatch(patch)(level)(funcIndex) = arr2;
 
-                                if (outfile.is_open())
+                                if (outfile.is_open() && g_verbose)
                                 {
                                     outfile << "[IdentifyPatches] transitive twin level=" << level
                                             << " seed=(patch=" << patch << ", index=" << funcIndex << ")"
@@ -11869,15 +11889,14 @@ void IdentifyPatches(gsMultiPatch<> mp,
                             const int candidateIndex = twinsIndex(patchIndex)(level)(functionIndex)[twinNum2];
                             const int candidatePatch = twinsPatch(patchIndex)(level)(functionIndex)[twinNum2];
                             if (!hasTwinPair(arr1, arr2, candidateIndex, candidatePatch) &&
-                                candidateIndex != funcIndex &&
-                                candidatePatch != patch
+                                !(candidateIndex == funcIndex && candidatePatch == patch)
                                 ) {
                                 arr1.push_back(candidateIndex);
                                 arr2.push_back(candidatePatch);
                                 twinsIndex(patch)(level)(funcIndex) = arr1;
                                 twinsPatch(patch)(level)(funcIndex) = arr2;
 
-                                if (outfile.is_open())
+                                if (outfile.is_open() && g_verbose)
                                 {
                                     outfile << "[IdentifyPatches] transitive twin reverse-pass level=" << level
                                             << " seed=(patch=" << patch << ", index=" << funcIndex << ")"
@@ -11902,7 +11921,7 @@ void IdentifyPatches(gsMultiPatch<> mp,
         }
     }
 
-    if (outfile.is_open())
+    if (outfile.is_open() && g_verbose)
     {
         outfile << "[IdentifyPatches] results begin\n";
         for (int patch = 0; patch < twinsIndex.size(); ++patch)
@@ -12493,23 +12512,26 @@ void createIndexMapping(
         }
     }
 
-    outfile << "indexInTHB\n";
-    for (size_t patch = 0; patch < indexInTHB.size(); patch++)
+    if (g_verbose && outfile.is_open())
     {
-        for (size_t level = 0; level < indexInTHB(patch).size(); level++)
+        outfile << "indexInTHB\n";
+        for (size_t patch = 0; patch < indexInTHB.size(); patch++)
         {
-            for (size_t i = 0; i < indexInTHB(patch)(level).size(); i++)
+            for (size_t level = 0; level < indexInTHB(patch).size(); level++)
             {
-                outfile << patch << " " << level << " " << i << ": " << indexInTHB(patch)(level)(i) << "\n";
+                for (size_t i = 0; i < indexInTHB(patch)(level).size(); i++)
+                {
+                    outfile << patch << " " << level << " " << i << ": " << indexInTHB(patch)(level)(i) << "\n";
+                }
             }
         }
-    }
-    outfile << "thbToBellsMapping\n";
-    for (size_t patch = 0; patch < thbToBellsMapping.size(); patch++)
-    {
-        for (size_t i = 0; i < thbToBellsMapping[patch].size(); i++)
+        outfile << "thbToBellsMapping\n";
+        for (size_t patch = 0; patch < thbToBellsMapping.size(); patch++)
         {
-            outfile << thbToBellsMapping[patch][i][0] << " " << thbToBellsMapping[patch][i][1] << "\n";
+            for (size_t i = 0; i < thbToBellsMapping[patch].size(); i++)
+            {
+                outfile << thbToBellsMapping[patch][i][0] << " " << thbToBellsMapping[patch][i][1] << "\n";
+            }
         }
     }
 }
@@ -17977,7 +17999,7 @@ static CellSelectionResult selectCellForCoarsening(
                   // outfile << "[geo-coarsen] geoPtrs patch=" << patch
                   //         << " total=" << geoPtrsPatch.size() << "\n";
 
-                if (logCandidates) {
+                if (logCandidates && g_verbose) {
                     for (size_t gi = 0; gi < geoPtrsPatch.size(); ++gi) {
                         const auto* ptr = geoPtrsPatch[gi];
                         if (!ptr) {
@@ -18037,19 +18059,25 @@ static CellSelectionResult selectCellForCoarsening(
                     mapped++;
                 }
 
-                gsInfo << "[geo-coarsen] patch=" << patch << " level=" << levNow
-                       << " geoBoxes=" << geoBoxes.size() << " mappedToVectorS=" << mapped
-                       << " available=" << available.size() << "\n";
-                outfile << "[geo-coarsen] patch=" << patch << " level=" << levNow
-                        << " geoBoxes=" << geoBoxes.size() << " mappedToVectorS=" << mapped
-                        << " available=" << available.size() << "\n";
+                if (g_verbose)
+                {
+                    gsInfo << "[geo-coarsen] patch=" << patch << " level=" << levNow
+                           << " geoBoxes=" << geoBoxes.size() << " mappedToVectorS=" << mapped
+                           << " available=" << available.size() << "\n";
+                    outfile << "[geo-coarsen] patch=" << patch << " level=" << levNow
+                            << " geoBoxes=" << geoBoxes.size() << " mappedToVectorS=" << mapped
+                            << " available=" << available.size() << "\n";
+                }
 
                 if (mapped > 0) {
                     result.geoCells = std::move(mappedCells);
                     result.geoCellIndices = std::move(mappedIndices);
                     result.acceptedDelta = geoDelta;
-                    gsInfo << "[geo-coarsen] delta accepted=" << geoDelta << " (breaking)\n";
-                    outfile << "[geo-coarsen] delta accepted=" << geoDelta << " (breaking)\n";
+                    if (g_verbose)
+                    {
+                        gsInfo << "[geo-coarsen] delta accepted=" << geoDelta << " (breaking)\n";
+                        outfile << "[geo-coarsen] delta accepted=" << geoDelta << " (breaking)\n";
+                    }
                     break;
                 }
             }
@@ -20642,30 +20670,27 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         // Check matrix rank before solving
                         // gsInfo << "Converting matA to dense...\n";
                         // gsInfo << "matA.rows()=" << matA.rows() << ", matA.cols()=" << matA.cols() << ", matA.nonZeros()=" << matA.nonZeros() << "\n";
-                        gsMatrix<> matA_dense = gsEigen::MatrixXd(matA);
+                        // Non-finite check directly on sparse stored values (avoids 87.7MB dense conversion)
                         if (outfile.is_open())
                         {
                             outfile << "[fit-solve] matA sparse rows=" << matA.rows()
                                     << " cols=" << matA.cols()
                                     << " nonZeros=" << matA.nonZeros() << "\n";
-                            outfile << "[fit-solve] matA_dense rows=" << matA_dense.rows()
-                                    << " cols=" << matA_dense.cols() << "\n";
                             index_t nonFiniteA = 0;
-                            for (index_t r = 0; r < matA_dense.rows(); ++r)
-                                for (index_t c = 0; c < matA_dense.cols(); ++c)
-                                    if (!std::isfinite(matA_dense(r, c)))
-                                        ++nonFiniteA;
-                            outfile << "[fit-solve] matA_dense nonFiniteEntries=" << nonFiniteA << "\n";
+                            for (index_t k = 0; k < matA.outerSize(); ++k)
+                                for (gsSparseMatrix<real_t>::InnerIterator it(matA, k); it; ++it)
+                                    if (!std::isfinite(it.value())) ++nonFiniteA;
+                            outfile << "[fit-solve] matA nonFiniteEntries=" << nonFiniteA << "\n";
                         }
 
                         std::vector<index_t> sourceCols;
                         std::vector<index_t> globalCols;
-                        sourceCols.reserve(matA_dense.cols());
-                        globalCols.reserve(matA_dense.cols());
+                        sourceCols.reserve(matA.cols());
+                        globalCols.reserve(matA.cols());
                         if (useLocalFitting)
                         {
                             if (!assembleActiveFunctions.empty() &&
-                                matA_dense.cols() == commonSize)
+                                matA.cols() == commonSize)
                             {
                                 for (index_t globalCol = 0; globalCol < static_cast<index_t>(assembleActiveFunctions.size()); ++globalCol)
                                 {
@@ -20674,17 +20699,17 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 }
                             }
                             else if (!assembleActiveFunctions.empty() &&
-                                matA_dense.cols() == static_cast<index_t>(assembleActiveFunctions.size()))
+                                matA.cols() == static_cast<index_t>(assembleActiveFunctions.size()))
                             {
-                                for (index_t localCol = 0; localCol < static_cast<index_t>(matA_dense.cols()); ++localCol)
+                                for (index_t localCol = 0; localCol < matA.cols(); ++localCol)
                                 {
                                     sourceCols.push_back(localCol);
                                     globalCols.push_back(assembleActiveFunctions[localCol]);
                                 }
                             }
-                            else if (localRegion.enabled && localRegion.basisInd.cols() == matA_dense.cols())
+                            else if (localRegion.enabled && localRegion.basisInd.cols() == matA.cols())
                             {
-                                for (index_t f = 0; f < static_cast<index_t>(matA_dense.cols()); ++f)
+                                for (index_t f = 0; f < matA.cols(); ++f)
                                     if (localRegion.basisInd(0, f) != 0.0)
                                     {
                                         sourceCols.push_back(f);
@@ -20695,33 +20720,31 @@ AlgorithmResult unrefinementAlgorithmHBJ(
 
                         if (sourceCols.empty())
                         {
-                            for (index_t f = 0; f < static_cast<index_t>(matA_dense.cols()); ++f)
+                            for (index_t f = 0; f < matA.cols(); ++f)
                             {
                                 sourceCols.push_back(f);
                                 globalCols.push_back(f);
                             }
                         }
 
-                        gsMatrix<> matA_work(matA_dense.rows(), sourceCols.size());
-                        for (index_t j = 0; j < static_cast<index_t>(sourceCols.size()); ++j)
-                            matA_work.col(j) = matA_dense.col(sourceCols[j]);
-
+                        // Column informative check — squared norm directly on sparse columns
                         std::vector<index_t> informativeCols;
                         informativeCols.reserve(sourceCols.size());
                         const real_t colTol = 1e-14;
-                        for (index_t j = 0; j < static_cast<index_t>(matA_work.cols()); ++j)
+                        for (index_t j = 0; j < static_cast<index_t>(sourceCols.size()); ++j)
                         {
-                            if (!useLocalFitting || matA_work.col(j).squaredNorm() > colTol)
+                            const index_t localCol = sourceCols[j];
+                            if (!useLocalFitting || matA.col(localCol).squaredNorm() > colTol)
                                 informativeCols.push_back(j);
                         }
 
                         if (informativeCols.empty())
                         {
-                            for (index_t j = 0; j < static_cast<index_t>(matA_work.cols()); ++j)
+                            for (index_t j = 0; j < static_cast<index_t>(sourceCols.size()); ++j)
                                 informativeCols.push_back(j);
                         }
 
-                        std::vector<char> isInformative(matA_work.cols(), 0);
+                        std::vector<char> isInformative(sourceCols.size(), 0);
                         for (index_t idx = 0; idx < static_cast<index_t>(informativeCols.size()); ++idx)
                         {
                             const index_t localCol = informativeCols[idx];
@@ -20729,52 +20752,42 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 isInformative[localCol] = 1;
                         }
 
-                        gsMatrix<> matA_solve(matA_work.rows(), informativeCols.size());
                         std::vector<index_t> solveCols;
                         solveCols.reserve(informativeCols.size());
                         for (index_t k = 0; k < static_cast<index_t>(informativeCols.size()); ++k)
-                        {
-                            matA_solve.col(k) = matA_work.col(informativeCols[k]);
                             solveCols.push_back(globalCols[informativeCols[k]]);
-                        }
 
                         if (outfile.is_open())
                         {
                             outfile << "[fit-solve] column mapping source="
                                 << ((!assembleActiveFunctions.empty() &&
-                                 matA_dense.cols() == static_cast<index_t>(assembleActiveFunctions.size()))
+                                 matA.cols() == static_cast<index_t>(assembleActiveFunctions.size()))
                                     ? "assembleActiveFunctions(global)"
-                                    : ((localRegion.enabled && localRegion.basisInd.cols() == matA_dense.cols())
+                                    : ((localRegion.enabled && localRegion.basisInd.cols() == matA.cols())
                                     ? "basisInd(global)"
                                     : "identity/global"))
                                 << "\n";
-                                outfile << "[fit-solve] dynamic column reduction: selected=" << sourceCols.size()
-                                    << " / " << matA_dense.cols() << "\n";
-                            outfile << "[fit-solve] matA_work rows=" << matA_work.rows()
-                                    << " cols=" << matA_work.cols() << "\n";
+                            outfile << "[fit-solve] dynamic column reduction: selected=" << sourceCols.size()
+                                    << " / " << matA.cols() << "\n";
+                            outfile << "[fit-solve] matA rows=" << matA.rows()
+                                    << " cols=" << sourceCols.size() << "\n";
                             outfile << "[fit-solve] informative column reduction: selected=" << solveCols.size()
                                     << " / " << sourceCols.size() << "\n";
-                            outfile << "[fit-solve] matA_solve rows=" << matA_solve.rows()
-                                    << " cols=" << matA_solve.cols() << "\n";
-                                outfile << "[fit-solve] dropped active/global columns by informative reduction begin\n";
-                                for (index_t j = 0; j < static_cast<index_t>(sourceCols.size()); ++j)
-                                {
+                            outfile << "[fit-solve] matA_solve rows=" << matA.rows()
+                                    << " cols=" << solveCols.size() << "\n";
+                            outfile << "[fit-solve] dropped active/global columns by informative reduction begin\n";
+                            for (index_t j = 0; j < static_cast<index_t>(sourceCols.size()); ++j)
+                            {
                                 if (j < static_cast<index_t>(isInformative.size()) && isInformative[j] != 0)
                                     continue;
-                                const real_t colNorm2 = matA_work.col(j).squaredNorm();
+                                const real_t colNorm2 = matA.col(sourceCols[j]).squaredNorm();
                                 outfile << "  localCol=" << j
                                     << " sourceCol=" << sourceCols[j]
                                     << " globalCol=" << globalCols[j]
                                     << " squaredNorm=" << colNorm2 << "\n";
-                                }
-                                outfile << "[fit-solve] dropped active/global columns by informative reduction end\n";
+                            }
+                            outfile << "[fit-solve] dropped active/global columns by informative reduction end\n";
                         }
-                        // gsInfo << "Dense conversion complete. matA_dense.rows()=" << matA_dense.rows() << ", matA_dense.cols()=" << matA_dense.cols() << "\n";
-                        
-                        // gsInfo << "Computing rank...\n";
-                        int rankA = computeRankByZeroRows(matA_solve);
-                        // gsInfo << "Matrix A rank (by zero rows): " << rankA << " / " << matA.rows() << " rows\n";
-                        // gsInfo << "Matrix A dimensions: " << matA.rows() << " x " << matA.cols() << "\n";
 
                         // Solve the system
                         // gsInfo << "Creating b_vec copy...\n";
@@ -20810,7 +20823,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         // So: b_adj = b_target - geom_current + A_local * x_local_current
                         if (useLocalFitting
                             && !assembleActiveFunctions.empty()
-                            && matA_dense.cols() == static_cast<index_t>(assembleActiveFunctions.size()))
+                            && matA.cols() == static_cast<index_t>(assembleActiveFunctions.size()))
                         {
                             const index_t nLocal = static_cast<index_t>(assembleActiveFunctions.size());
 
@@ -20846,7 +20859,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
 
                             // 3. b_adj = b_target - geom_current + A_local * x_local_current
                             b_vec -= geom_current;
-                            b_vec.noalias() += matA_dense * x_local_current;
+                            b_vec.noalias() += matA * x_local_current;
 
                             gsInfo << "local fit: b adjusted by defect correction"
                                    << " (nLocal=" << nLocal << " pts=" << b_vec.rows() << ")\n";
@@ -20898,7 +20911,8 @@ AlgorithmResult unrefinementAlgorithmHBJ(
 
                         if (verboseFitMatrixDump)
                         {
-                            printTheMatrix(matA_solve, "A_fit_reduced");
+                            gsMatrix<> matA_solve_dbg(matA_sp);
+                            printTheMatrix(matA_solve_dbg, "A_fit_reduced");
                             printTheMatrix(b_vec, "b_fit_original");
                             printTheMatrix(vectB, "At_b_fit");
                         }
@@ -20928,8 +20942,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 outfile << "fit took: " << elapsed_fit.count() << "\n";
                         }
 
-                        // Dense conversion for nonLinearOptimization (sparse→dense, O(n²), done once)
-                        gsMatrix<> matAsquare(AtA_sp);
+                        // matAsquare (dense A^T*A) deferred — only built inside LO/NLO block when needed
 
                         vectSol = vectSolSeed;
 
@@ -21033,34 +21046,27 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 if (workColIndex >= 0)
                                 {
                                     const index_t sourceCol = sourceCols[workColIndex];
-                                    const real_t denseNorm2 = matA_dense.col(sourceCol).squaredNorm();
-                                    const real_t workNorm2 = matA_work.col(workColIndex).squaredNorm();
-                                    index_t denseNonZeros = 0;
-                                    for (index_t r = 0; r < matA_dense.rows(); ++r)
-                                        if (matA_dense(r, sourceCol) != 0.0)
-                                            ++denseNonZeros;
+                                    const real_t sparseNorm2 = matA.col(sourceCol).squaredNorm();
+                                    index_t sparseNonZeros = 0;
+                                    for (gsSparseMatrix<real_t>::InnerIterator it(matA, sourceCol); it; ++it)
+                                        ++sparseNonZeros;
 
                                     outfile << "  sourceCol=" << sourceCol
                                             << " globalCol=" << globalCols[workColIndex]
                                             << " informative="
                                             << ((workColIndex < static_cast<index_t>(isInformative.size()) && isInformative[workColIndex] != 0) ? 1 : 0)
                                             << " colTol=" << colTol
-                                            << " denseSquaredNorm=" << denseNorm2
-                                            << " workSquaredNorm=" << workNorm2
-                                            << " denseNonZeros=" << denseNonZeros << "\n";
+                                            << " sparseSquaredNorm=" << sparseNorm2
+                                            << " sparseNonZeros=" << sparseNonZeros << "\n";
 
                                     outfile << "  assembled column entries begin\n";
-                                    for (index_t r = 0; r < matA_dense.rows(); ++r)
-                                    {
-                                        const real_t value = matA_dense(r, sourceCol);
-                                        if (value != 0.0)
-                                            outfile << "    row=" << r << " value=" << value << "\n";
-                                    }
+                                    for (gsSparseMatrix<real_t>::InnerIterator it(matA, sourceCol); it; ++it)
+                                        outfile << "    row=" << it.row() << " value=" << it.value() << "\n";
                                     outfile << "  assembled column entries end\n";
                                 }
                                 else
                                 {
-                                    outfile << "  selected diagnostic row has no compact/global column in matA_work\n";
+                                    outfile << "  selected diagnostic row has no compact/global column in sourceCols\n";
                                 }
 
                                 outfile << "  regular components begin\n";
@@ -21296,7 +21302,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         outfile << "Irregular points: " << minusnumber << " / " << totalPoints
                                 << " (" << irregularPercentage << "%)\n";
                         logMirroredCheck(
-                            uv2,
+                            uv2_adaptive,
                             mpbes,
                             vectSol,
                             1e-12,
@@ -21325,10 +21331,13 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                             "savedPatch", localIndex
                         );
                         // Mesh generation moved to before emergency exit only
-                        // Output solution coefficients
-                        outfile << "Solution coefficients: " << vectSol.rows() << " x " << vectSol.cols() << "\n";
-                        for (index_t i = 0; i < vectSol.rows(); ++i) {
-                            outfile << vectSol(i, 0) << " " << vectSol(i, 1) << "\n";
+                        // Output solution coefficients (verbose only)
+                        if (g_verbose && outfile.is_open())
+                        {
+                            outfile << "Solution coefficients: " << vectSol.rows() << " x " << vectSol.cols() << "\n";
+                            for (index_t i = 0; i < vectSol.rows(); ++i) {
+                                outfile << vectSol(i, 0) << " " << vectSol(i, 1) << "\n";
+                            }
                         }
                         gsMatrix<> matFeatOut;
                         double featureError = 1;
@@ -21727,7 +21736,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                         + "_lev" + std::to_string(levNow)
                                         + "_att" + std::to_string(attempt);
                                     logMirroredCheck(
-                                        uv2,
+                                        uv2_adaptive,
                                         mpbes,
                                         vectSol,
                                         1e-12,
@@ -21834,7 +21843,8 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 // }
 
                                 A.setZero();
-                                gsSparseMatrix<real_t> matAForOptimization = matA_dense.sparseView();
+                                gsMatrix<> matAsquare(AtA_sp);
+                                const gsSparseMatrix<real_t>& matAForOptimization = matA;
                                 real_t acceptedFittingWeight = fittingWeight;
                                 real_t acceptedUniformityWeight = uniformityWeight;
                                 real_t acceptedOrthogonalityWeight = 0.0;
@@ -22534,6 +22544,26 @@ int main(int argc, char** argv) {
             gsInfo << "[flag] --lambda=" << g_localityLambda
                    << ": locality extension for local fitting region.\n";
         }
+        else if (std::string(argv[ai]) == "--cell-method" && ai + 1 < argc)
+        {
+            const std::string val = argv[ai + 1];
+            if (val == "g" || val == "l" || val == "r" || val == "s")
+            {
+                g_cellMethod = val[0];
+                ++ai;
+                gsInfo << "[flag] --cell-method=" << g_cellMethod
+                       << ": cell selection method (g=Grenda, l=lexicographic, r=random, s=smallest).\n";
+            }
+            else
+                gsInfo << "[flag] --cell-method: unknown value '" << val
+                       << "', ignoring (valid: g l r s).\n";
+        }
+        else if (std::string(argv[ai]) == "--verbose")
+        {
+            g_verbose = true;
+            gsInfo << "[flag] --verbose: verbose logging enabled (indexInTHB, functionDescription,"
+                   << " vectSol coefficients, IdentifyPatches twins, geo-coarsen candidates).\n";
+        }
         else if (std::string(argv[ai]) == "--epsilon-g" && ai + 1 < argc)
         {
             g_epsilonG = std::stod(argv[ai + 1]);
@@ -22702,7 +22732,7 @@ int main(int argc, char** argv) {
     int successfullAttempts = 0, totalAttempts = 0;
     index_t degree;
     real_t tol = 1e-8, gtol = 1e-8;
-    char method = 'g';
+    char method = g_cellMethod;
 
     // Generate original geometry visualization
     generateOriginalGeometryMesh(filename, 8, filePrefix + "output_mesh_original");
