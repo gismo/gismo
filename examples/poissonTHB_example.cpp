@@ -832,6 +832,14 @@ static bool g_skipLoFallback = false;
 // regularisation so that LO is easier to break; useful for probing the failure threshold.
 static double g_loWeightScale = 1.0;
 
+// LS-only mode: skip LO and NLO; accept only when FIT is already regular and within tolerance.
+// Set via --ls-only flag.  Default off (full algorithm: FIT → LO → NLO).
+static bool g_lsOnly = false;
+
+// LO-only mode: try LO when FIT is irregular, but do not invoke NLO.
+// Set via --lo-only flag.  Default off.
+static bool g_loOnly = false;
+
 // Global approximation error tolerance ε_g.  Negative = use hardcoded default (1e+6).
 // Set via --epsilon-g <value>.
 static double g_epsilonG = -1.0;
@@ -21558,7 +21566,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 //return 0;
                             }
 
-                            // Early withdrawal — three cases:
+                            // Early withdrawal — two always-on cases + one mode-dependent case:
                             //
                             // Case 1: FIT is already regular (minusnumber==0) but errors exceed
                             //   epsilon. FIT is LS-optimal; adding regularization can only worsen
@@ -21568,8 +21576,9 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                             //   irregularity. Even if LO/NLO fixed every irregular point, the
                             //   error gap is too large to close. Withdraw immediately.
                             //
-                            // Case 3: FIT produced an irregular parameterization (minusnumber>0).
-                            //   LO/NLO are disabled — withdraw and continue.
+                            // Case 3 (--ls-only only): FIT produced an irregular parameterization.
+                            //   In full mode, LO/NLO are given a chance to restore regularity.
+                            //   In --ls-only mode, withdraw immediately without invoking them.
                             {
                                 const bool regularButOverTolerance =
                                     (minusnumber == 0) &&
@@ -21577,7 +21586,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 const bool hopelesslyLargeError =
                                     (featureError  > epsilon_f * 10.0) ||
                                     (globalError   > epsilon_g * 10.0);
-                                const bool geometryIrregular = (minusnumber > 0);
+                                const bool geometryIrregular = g_lsOnly && (minusnumber > 0);
 
                                 if (regularButOverTolerance || hopelesslyLargeError || geometryIrregular)
                                 {
@@ -21590,10 +21599,10 @@ AlgorithmResult unrefinementAlgorithmHBJ(
 
                                     if (geometryIrregular)
                                     {
-                                        gsInfo << "Geometry irregular after FIT (minusnumber=" << minusnumber
-                                               << "). Withdrawing candidate.\n";
-                                        outfile << "Geometry irregular after FIT (minusnumber=" << minusnumber
-                                                << "). Withdrawing candidate.\n";
+                                        gsInfo << "[--ls-only] Geometry irregular after FIT (minusnumber=" << minusnumber
+                                               << "). Withdrawing candidate (LO/NLO disabled).\n";
+                                        outfile << "[--ls-only] Geometry irregular after FIT (minusnumber=" << minusnumber
+                                                << "). Withdrawing candidate (LO/NLO disabled).\n";
                                         gsInfo  << "Escape time: " << escapeTimeBuf << " (+" << escapeElapsed.count() << "s, "
                                                 << (escapeElapsed.count() - totalJackTime) << "s without jacobian checks)\n";
                                         outfile << "Escape time: " << escapeTimeBuf << " (+" << escapeElapsed.count() << "s, "
@@ -21897,7 +21906,13 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 } // end !g_skipLoFallback
                                 if (!optimizationAccepted)
                                 {
-                                    if (minusnumber == 0)
+                                    if (g_loOnly)
+                                    {
+                                        gsInfo << "[--lo-only] LO did not succeed; withdrawing without NLO.\n";
+                                        outfile << "[--lo-only] LO did not succeed; withdrawing without NLO.\n";
+                                        // Leave usedNLO=false so the withdrawal block does not exit(2).
+                                    }
+                                    else if (minusnumber == 0)
                                     {
                                         // LO produced a regular parameterization but failed the
                                         // approximation-error criterion.  NLO's angular functionals
@@ -22517,6 +22532,17 @@ int main(int argc, char** argv) {
                  std::string(argv[ai]).front() != '-')
         {
             cliInputFile = std::string(argv[ai]);
+        }
+        else if (std::string(argv[ai]) == "--ls-only")
+        {
+            g_lsOnly = true;
+            gsInfo << "[flag] --ls-only: LS fitting only — LO and NLO disabled. "
+                      "FIT must be regular and within tolerance, else candidate is withdrawn.\n";
+        }
+        else if (std::string(argv[ai]) == "--lo-only")
+        {
+            g_loOnly = true;
+            gsInfo << "[flag] --lo-only: LO enabled as fallback after FIT, but NLO disabled.\n";
         }
         else if (std::string(argv[ai]) == "--skip-lo-fallback")
         {
