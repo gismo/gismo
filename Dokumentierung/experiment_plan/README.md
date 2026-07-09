@@ -1,20 +1,22 @@
 # Paper Experiment Plan
 ## "An Unrefinement Algorithm for Planar THB-spline Parameterizations"
 
-Last updated: 2026-07-08
+Last updated: 2026-07-09
 
 ---
 
 ## Overview
 
-11 planned experiments across 4 classes + 2 already completed (Class 4).
+14 planned runs across 4 classes. Class 4 is complete.
 
 | Class | Topic | Geometry | # runs | Status |
 |---|---|---|---|---|
 | 1 | ε tolerance variation | Hexagon with wiggly boundary | 3 | **geometry missing** |
-| 2 | Projection stage: LS / LO / NLO | `mask_L3_PatchOnly689_noR.xml` | 3 | **flags missing** |
-| 3 | λ locality parameter | TBD (mask or joystick) | 3 | ready |
+| 2 | Projection stage: LS / LO / NLO | `mask_L3_PatchOnly689_noR.xml` | 3 | **ready — rebuild required** |
+| 3 | λ locality parameter | mask (existing) + joystick (new) | 6 | **ready — rebuild required** |
 | 4 | Cell selection: Grenda vs lex | `joystick_approximation_fine_L3_NLO.xml` | 2 | **DONE** |
+
+**Binary state:** Commit `2c926d01` (2026-07-09) changed default algorithm behaviour (Case 3 removed). Binary must be rebuilt before running Classes 2 and 3.
 
 ---
 
@@ -32,11 +34,11 @@ Last updated: 2026-07-08
 | 1b | 0.30 | 0.10 | full boundary | Medium: baseline |
 | 1c | 0.30 | 0.30 | interior only | Loose on feature: more accepted at boundary |
 
-**Flags (all existing):**
+**Flags:**
 ```
 --epsilon-g <value> --epsilon-f <value>
 ```
-Feature set F is currently encoded in the geometry (which interfaces are marked as feature). Varying F may require a code change or a geometry variant with a different feature marking.
+Feature set F is encoded in the geometry (which interfaces are marked as feature). Varying F may require a geometry variant with different feature markings.
 
 **Missing before running:**
 - Hexagon geometry XML
@@ -46,51 +48,47 @@ Feature set F is currently encoded in the geometry (which interfaces are marked 
 
 ## Class 2 — Projection stage comparison (LS / LO / NLO)
 
-**Purpose:** Show that each successive stage (local LS → LO → NLO) expands the set of successfully coarsened cases on the same input geometry.
+**Purpose:** Show that each successive stage (FIT → LO → NLO) expands the set of successfully coarsened cases.
 
-**Geometry:** `mask_L3_PatchOnly689_noR.xml`  
-**Why:** Confirmed to produce 8 LO events + 3 NLO events at natural weights (base lowered to 2e-4). The NLO events are coarsenings where LS alone was insufficient and LO alone was insufficient but NLO restored regularity.
+**Geometry:** `filedata/generatedMPs/mask_L3_PatchOnly689_noR.xml`
 
-**Proposed runs:**
+**Why:** Confirmed on an archived binary (2026-05-31) to produce 8 LO events + 3 NLO events at natural weights. With Case 3 removed (commit `2c926d01`), the current binary re-enables this behaviour. **Needs a fresh run to re-confirm counts on current code.**
 
-| Run | Flags | Expected |
+**Runs:**
+
+| Run | Command | Expected |
 |---|---|---|
-| 2a | `--ls-only` | Fewest accepted coarsenings |
-| 2b | `--lo-only` (LO but no NLO) | More accepted than 2a |
-| 2c | (default — full LS+LO+NLO) | Most accepted; matches paper result |
+| 2a | `poissonTHB_example.exe --ls-only mask_L3_PatchOnly689_noR.xml` | Fewest accepted coarsenings |
+| 2b | `poissonTHB_example.exe --lo-only mask_L3_PatchOnly689_noR.xml` | More accepted than 2a |
+| 2c | `poissonTHB_example.exe mask_L3_PatchOnly689_noR.xml` | Most accepted; should reproduce 8 LO + 3 NLO |
 
-**Flags — MISSING, need to add:**
-- `--ls-only` — skip LO and NLO entirely; accept only when FIT is already regular and within tolerance
-- `--lo-only` — allow LO fallback but not NLO fallback
-
-Note: `--skip-lo-fallback` (already exists) goes the other way: skips LO and jumps straight to NLO — not what we need here.
+**Note on --ls-only behaviour:** When FIT is irregular (minusnumber>0), `--ls-only` withdraws immediately (same as old Case 3 behaviour). Without the flag, the default full algorithm passes irregular FIT results to LO, and LO failures with minusnumber>0 to NLO.
 
 ---
 
 ## Class 3 — Locality parameter λ
 
-**Purpose:** Show the effect of the locality extension parameter on fitting quality and/or timing.
+**Purpose:** Show the effect of the locality extension parameter on which cells are accepted and on timing.
 
-**Geometry:** TBD. Options:
-- `mask_L3_PatchOnly689_noR.xml` (main paper geometry)
-- `joystick_approximation_fine_L3_NLO.xml` (30-patch, tests scaling)
+**Decision (2026-07-09):** Two geometries.
+- `mask_L3_PatchOnly689_noR.xml` — compact, 10-patch geometry. Local region frequently covers all patches (fallback to global). Results already exist in `Dokumentierung/2026-05-31_session4_PatchOnly689/` (λ=0 only; other λ values can be extracted if that run used `--local-fitting`).
+- `joystick_approximation_fine_L3_NLO.xml` — 30-patch, spatially spread. Local region is genuinely local at λ=0. New runs needed for λ=0,1,2.
 
-**Proposed runs:**
+**Why two geometries:** Mask shows the fallback regime (local = global on compact geometry). Joystick shows genuine locality effect (local region actually smaller than global).
 
-| Run | Flags | Meaning |
-|---|---|---|
-| 3a | `--local-fitting --lambda=0` | Tight bounding box (default local) |
-| 3b | `--local-fitting --lambda=1` | 1 cell-width extension |
-| 3c | `--local-fitting --lambda=2` | 2 cell-width extension |
+**Cell method:** Grenda (`g`) — default, no flag needed.
 
-**Flags (all existing):**
-```
---local-fitting --lambda=<value>
-```
+**Joystick runs (new — to be executed):**
 
-**Known issue:** `--local-fitting` currently has a performance regression: defect correction fires even when local region equals global region (fallback case), making it slower than global fitting (1.74 s vs 1.38 s mean). This must be fixed before timing comparisons in this class are meaningful. (Fix target: skip defect correction on fallback; see `feedback_local_fitting_perf.md`.)
+| Run | Command |
+|---|---|
+| 3a | `poissonTHB_example.exe --local-fitting --lambda 0 filedata/generatedMPs/joystick_approximation_fine_L3_NLO.xml` |
+| 3b | `poissonTHB_example.exe --local-fitting --lambda 1 filedata/generatedMPs/joystick_approximation_fine_L3_NLO.xml` |
+| 3c | `poissonTHB_example.exe --local-fitting --lambda 2 filedata/generatedMPs/joystick_approximation_fine_L3_NLO.xml` |
 
-**Decision needed:** Which geometry to use for Class 3?
+Note: `--lambda` takes its value as the next argument (space-separated), not with `=`.
+
+**Baseline for comparison:** The Grenda baseline run without `--local-fitting` is archived in `Dokumentierung/2026-07-06_grenda_joystick_baseline/`. Use that as the global-fitting reference for the joystick.
 
 ---
 
@@ -106,60 +104,59 @@ Note: `--skip-lo-fallback` (already exists) goes the other way: skips LO and jum
 
 ---
 
-## What is missing before running Classes 1–3
+## What is missing before running
 
 | Item | Needed for | Status |
 |---|---|---|
+| Rebuild binary | Classes 2, 3 | Required (commit 2c926d01 changed behaviour) |
 | Hexagon with wiggly boundary (XML) | Class 1 | Not created |
-| Feature set F toggling | Class 1 | May need code change |
-| `--ls-only` flag | Class 2 | Not implemented |
-| `--lo-only` flag | Class 2 | Not implemented |
-| `--local-fitting` perf regression fix | Class 3 timing | Known issue, not yet fixed |
-| Class 3 geometry choice (mask vs joystick) | Class 3 | Decision pending |
+| Feature set F toggling | Class 1 | May need code change or geometry variant |
+| Re-confirm 8 LO + 3 NLO on current binary | Class 2 | Run 2c first |
+| Joystick λ=0, 1, 2 runs | Class 3 | Not yet run |
 
 ---
 
-## Existing CLI flags (full list as of 2026-07-08)
+## CLI flags (full list as of 2026-07-09)
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `--epsilon-g <v>` | real | -1 (disabled) | Global approximation tolerance |
-| `--epsilon-f <v>` | real | -1 (disabled) | Feature boundary tolerance |
-| `--cell-method <c>` | char | g | Cell selection: g=Grenda, l=lex, r=random, s=smallest |
-| `--verbose` | bool | false | Verbose logging (indexInTHB, functionDescription, per-patch/interface breakdown, etc.) |
+| `--epsilon-g <v>` | real | 1e6 (effectively off) | Global approximation tolerance |
+| `--epsilon-f <v>` | real | 1.0 | Feature boundary tolerance |
+| `--cell-method <c>` | char | `g` | Cell selection: g=Grenda, l=lex, r=random, s=smallest |
+| `--verbose` | bool | false | Verbose logging |
 | `--local-fitting` | bool | false | Restrict LS/LO to local region around removed cell |
-| `--lambda=<v>` | int | 0 | Locality extension in cell widths (used with --local-fitting) |
-| `--skip-lo-fallback` | bool | false | Skip LO; go straight to NLO when minusnumber > 0 |
+| `--lambda <v>` | int | 0 | Locality extension in cell widths (space-separated: `--lambda 1`) |
+| `--ls-only` | bool | false | FIT only — withdraw if irregular or over tolerance; no LO/NLO |
+| `--lo-only` | bool | false | LO enabled after FIT failure, NLO disabled |
+| `--skip-lo-fallback` | bool | false | Skip LO; jump straight to NLO when FIT irregular |
 | `--lo-weight-scale <v>` | real | 1.0 | Scale LO uniformity+length weights |
 
 ---
 
-## Runner script skeleton
-
-Once geometry and flags are ready, run all experiments via:
+## Runner script
 
 ```powershell
-# Dokumentierung/run_experiments.ps1
-$binary  = "build\bin\Release\poissonTHB_example.exe"
+# Dokumentierung/experiment_plan/run_experiments.ps1
+$binary   = "build\bin\Release\poissonTHB_example.exe"
 $joystick = "filedata/generatedMPs/joystick_approximation_fine_L3_NLO.xml"
 $mask     = "filedata/generatedMPs/mask_L3_PatchOnly689_noR.xml"
 $hexagon  = "filedata/generatedMPs/hexagon_wiggly.xml"   # not yet created
 
 $experiments = @(
-    # Class 1 — tolerance variation
-    @{ name="class1_tight";    args="--epsilon-g 0.10 --epsilon-f 0.10 $hexagon" },
-    @{ name="class1_medium";   args="--epsilon-g 0.30 --epsilon-f 0.10 $hexagon" },
-    @{ name="class1_loose_f";  args="--epsilon-g 0.30 --epsilon-f 0.30 $hexagon" },
+    # Class 1 — tolerance variation (geometry missing)
+    @{ name="class1_tight";       args=@("--epsilon-g","0.10","--epsilon-f","0.10",$hexagon) },
+    @{ name="class1_medium";      args=@("--epsilon-g","0.30","--epsilon-f","0.10",$hexagon) },
+    @{ name="class1_loose_f";     args=@("--epsilon-g","0.30","--epsilon-f","0.30",$hexagon) },
 
-    # Class 2 — projection stage
-    @{ name="class2_ls_only";  args="--ls-only $mask" },        # flag not yet implemented
-    @{ name="class2_lo_only";  args="--lo-only $mask" },        # flag not yet implemented
-    @{ name="class2_full";     args="$mask" },
+    # Class 2 — projection stage (rebuild required)
+    @{ name="class2_ls_only";     args=@("--ls-only",$mask) },
+    @{ name="class2_lo_only";     args=@("--lo-only",$mask) },
+    @{ name="class2_full";        args=@($mask) },
 
-    # Class 3 — locality
-    @{ name="class3_lambda0";  args="--local-fitting --lambda=0 $mask" },
-    @{ name="class3_lambda1";  args="--local-fitting --lambda=1 $mask" },
-    @{ name="class3_lambda2";  args="--local-fitting --lambda=2 $mask" },
+    # Class 3 — locality, joystick (rebuild required; mask results already in Dokumentierung)
+    @{ name="class3_joy_lambda0"; args=@("--local-fitting","--lambda","0",$joystick) },
+    @{ name="class3_joy_lambda1"; args=@("--local-fitting","--lambda","1",$joystick) },
+    @{ name="class3_joy_lambda2"; args=@("--local-fitting","--lambda","2",$joystick) },
 )
 
 foreach ($exp in $experiments) {
@@ -167,23 +164,22 @@ foreach ($exp in $experiments) {
     if (Test-Path "$outDir\cmd_output.txt") { Write-Host "SKIP: $($exp.name)"; continue }
     New-Item -ItemType Directory -Path $outDir -Force | Out-Null
     $t0 = Get-Date
-    $argList = $exp.args -split '\s+'
-    & $binary @argList *> "$outDir\cmd_output.txt"
+    & $binary @($exp.args) *> "$outDir\cmd_output.txt"
     $elapsed = [math]::Round(((Get-Date) - $t0).TotalSeconds, 1)
     Add-Content "$outDir\timing.txt" "Total: $elapsed s"
     Write-Host "DONE: $($exp.name) — $elapsed s"
 }
 ```
 
-Skip-if-done (`Test-Path`) ensures you can re-run the script after adding a missing experiment without re-running completed ones.
+After each run, copy `*_summary_log.txt` and `*_logFile_poissonTHB_example.txt` from the working directory into the run's output directory.
 
 ---
 
 ## Reproducibility note
 
-Every run should produce at minimum:
-- `cmd_output.txt` — stdout+stderr (redirect both: `*>`)
-- `summary_log.txt` — generated by binary in working directory
-- `logFile.txt` — generated by binary in working directory
+Every run produces at minimum:
+- `cmd_output.txt` — stdout+stderr (`*>` redirect)
+- `*_summary_log.txt` — generated by binary in working directory
+- `*_logFile_poissonTHB_example.txt` — generated by binary in working directory
 
-After each run, archive these three files to the experiment's output directory.
+Archive all three per run. The summary log is the primary result (FIT/LO/NLO counts, errors, timings). The logFile is the full diagnostic trace.
