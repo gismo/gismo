@@ -51,12 +51,9 @@
 #include <gsCoDiPack/gsCoDiPack.h>
 #endif
 
-#ifdef GISMO_WITH_PYBIND11
-#include <pybind11/iostream.h>
-#include <pybind11/operators.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
-#endif
+
+
+
 
 namespace gismo
 {

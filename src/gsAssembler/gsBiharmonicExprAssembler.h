@@ -167,15 +167,6 @@ protected:
 
   }; // class gsBiharmonicExprAssembler
 
-#ifdef GISMO_WITH_PYBIND11
-
-  /**
-   * @brief Initializes the Python wrapper for the class: gsBiharmonicExprAssembler
-   */
-  void pybind11_init_gsBiharmonicExprAssembler(pybind11::module &m);
-
-#endif // GISMO_WITH_PYBIND11
-
 } // namespace gismo
 
 

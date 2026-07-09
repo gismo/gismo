@@ -45,6 +45,10 @@ endif()
 #  export(TARGETS other
 #    FILE "${PROJECT_BINARY_DIR}/gismoTargets.cmake" APPEND)
 #endif()
+if(GISMO_WITH_NANOBIND)
+  export(TARGETS nanobind-gismo
+    FILE "${PROJECT_BINARY_DIR}/gismoTargets.cmake" APPEND)
+endif()
 
 # Export the package for use from the build-tree
 # (this registers the build-tree with a global CMake-registry)
@@ -58,6 +62,9 @@ set(CONF_INCLUDE_DIRS "${GISMO_INCLUDE_DIRS}")
 set(CONF_LIB_DIRS     "${CMAKE_BINARY_DIR}/lib")
 set(CONF_MODULE_PATH  "${gismo_SOURCE_DIR}/cmake")
 set(CONF_USE_FILE     "${CMAKE_BINARY_DIR}/gismoUse.cmake")
+if(GISMO_WITH_NANOBIND)
+  set(CONF_PYGISMO_DIR "${PYGISMO_PKG_DIR}")
+endif()
 configure_file(${PROJECT_SOURCE_DIR}/cmake/gismoConfig.cmake.in
               "${CMAKE_BINARY_DIR}/gismoConfig.cmake" @ONLY)
 file(COPY ${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake DESTINATION ${CMAKE_BINARY_DIR})
@@ -68,6 +75,9 @@ set(CONF_INCLUDE_DIRS "${CMAKE_INSTALL_PREFIX}/${INCLUDE_INSTALL_DIR}/${PROJECT_
 set(CONF_LIB_DIRS     "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
 set(CONF_MODULE_PATH  "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DIR}")
 set(CONF_USE_FILE     "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DIR}/gismoUse.cmake")
+if(GISMO_WITH_NANOBIND)
+  set(CONF_PYGISMO_DIR "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}/pygismo")
+endif()
 configure_file(${PROJECT_SOURCE_DIR}/cmake/gismoConfig.cmake.in
                "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/gismoConfig.cmake" @ONLY)
 
@@ -159,9 +169,64 @@ install(FILES
   "${PROJECT_SOURCE_DIR}/cmake/ofa/cpuinfo_x86.cxx"
   DESTINATION "${CMAKE_INSTALL_DIR}" COMPONENT devel)
 
-# Install the export set for use with the install-tree
-#install(EXPORT gismoTargets DESTINATION
-#  "${CMAKE_INSTALL_DIR}" COMPONENT devel)
+if(GISMO_WITH_NANOBIND)
+
+  if(DEFINED SKBUILD)
+    set(_nb_pkg_dest "pygismo")
+  else()
+    set(_nb_pkg_dest "${LIB_INSTALL_DIR}/pygismo")
+  endif()
+
+  if(NOT DEFINED SKBUILD)
+    install(TARGETS nanobind-gismo
+      EXPORT gismoTargets
+      LIBRARY DESTINATION "${LIB_INSTALL_DIR}" COMPONENT shared
+      ARCHIVE DESTINATION "${LIB_INSTALL_DIR}" COMPONENT static)
+  endif()
+
+  foreach(_nbt ${PYGISMO_TARGETS})
+    install(TARGETS ${_nbt}
+      LIBRARY DESTINATION "${_nb_pkg_dest}" COMPONENT shared)
+  endforeach()
+
+  set(_install_init "from . import _core\nfrom ._core import *\n__version__ = _core.__version__\n")
+  list(REMOVE_DUPLICATES PYGISMO_TARGETS)
+  foreach(_nbt ${PYGISMO_TARGETS})
+    if(_nbt STREQUAL "pygismo__core")
+      continue()
+    endif()
+    if(DEFINED SKBUILD)
+      list(FIND PYGISMO_OPTIONAL_TARGETS ${_nbt} _is_optional)
+      if(NOT _is_optional EQUAL -1)
+        continue()
+      endif()
+    endif()
+    get_target_property(_out_name ${_nbt} OUTPUT_NAME)
+    string(APPEND _install_init "from .${_out_name} import *\n")
+  endforeach()
+
+  # THIS CODE DEPRECATES THE modelling ALIAS IN FAVOR OF modeling
+  string(APPEND _install_init
+    "import importlib as _importlib, warnings as _warnings\n"
+    "class _DeprecatedAlias:\n"
+    "    _MAP = {'modelling': 'modeling'}\n"
+    "    def __init__(self, mod): self._mod = mod\n"
+    "    def __getattr__(self, name):\n"
+    "        return getattr(_importlib.import_module('.' + self._mod, __package__), name)\n"
+    "def __getattr__(name):\n"
+    "    if name in _DeprecatedAlias._MAP:\n"
+    "        _warnings.warn(f'pygismo.{name} is deprecated, use pygismo.{_DeprecatedAlias._MAP[name]}', DeprecationWarning, stacklevel=2)\n"
+    "        return _DeprecatedAlias(_DeprecatedAlias._MAP[name])\n"
+    "    raise AttributeError(f'module pygismo has no attribute {name!r}')\n"
+  )
+  file(WRITE "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/pygismo__init__.py"
+    "${_install_init}")
+  install(FILES "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/pygismo__init__.py"
+    DESTINATION "${_nb_pkg_dest}" RENAME "__init__.py")
+endif()
+
+install(EXPORT gismoTargets DESTINATION
+  "${CMAKE_INSTALL_DIR}" COMPONENT devel)
 
 # Produce pkg-config file
 configure_file ("${PROJECT_SOURCE_DIR}/gismo_lib.pc.in"

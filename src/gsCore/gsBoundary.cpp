@@ -249,57 +249,5 @@ void boundaryInterface::reorderCorners(gsMatrix<index_t> & boundary) const
 }
 
 
-#ifdef GISMO_WITH_PYBIND11
-
-    namespace py = pybind11;
-
-    void pybind11_enum_gsBoundary(py::module &m)
-    {
-        py::enum_<boundary::side>(m, "side")
-            .value("west" , boundary::west )
-            .value("east" , boundary::east )
-            .value("south", boundary::south)
-            .value("north", boundary::north)
-            .value("front", boundary::front)
-            .value("back" , boundary::back )
-            .value("stime", boundary::stime)
-            .value("etime", boundary::etime)
-            .value("left" , boundary::left )
-            .value("right", boundary::right)
-            .value("down" , boundary::down )
-            .value("up"   , boundary::up   )
-            .value("none" , boundary::none )
-            .export_values();
-
-        py::enum_<boundary::corner>(m, "corner")
-            .value("southwestfront", boundary::southwestfront)
-            .value("southeastfront", boundary::southeastfront)
-            .value("northwestfront", boundary::northwestfront)
-            .value("northeastfront", boundary::northeastfront)
-            .value("southwestback" , boundary::southwestback )
-            .value("southeastback" , boundary::southeastback )
-            .value("northwestback" , boundary::northwestback )
-            .value("northeastback" , boundary::northeastback )
-            .value("southwest"     , boundary::southwest     )
-            .value("southeast"     , boundary::southeast     )
-            .value("northwest"     , boundary::northwest     )
-            .value("northeast"     , boundary::northeast     )
-            .export_values();
-
-        py::class_<boxSide>(m, "boxSide")
-            .def(py::init<short_t>())
-            .def("index", static_cast<short_t (boxSide::*)() const> (&boxSide::index), "Returns side index.");
-
-        py::class_<patchSide, boxSide>(m, "patchSide")
-            .def(py::init<index_t, boxSide>())
-            .def("patchIndex", &patchSide::patchIndex, "Return the patch index.")
-            .def("side", static_cast<boxSide& (patchSide::*)()> (&patchSide::side), "Return the box side.");
-
-        py::class_<boundaryInterface>(m, "boundaryInterface")
-            .def(py::init<patchSide, patchSide, short_t>())
-            .def("first", static_cast<patchSide& (boundaryInterface::*)()> (&boundaryInterface::first), "Return the first box side.")
-            .def("second", static_cast<patchSide& (boundaryInterface::*)()> (&boundaryInterface::second), "Return the second box side.");
-    }
-#endif
 
 } //namespace gismo

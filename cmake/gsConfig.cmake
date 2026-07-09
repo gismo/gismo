@@ -207,21 +207,41 @@ elseif(NOT MSVC AND NOT POLICY CMP0063 AND NOT ${CMAKE_SYSTEM_NAME} MATCHES "Dar
     endif()
 endif()
 
-if (GISMO_WITH_PYBIND11)
-   find_package(pybind11 REQUIRED)
-   include_directories(${pybind11_INCLUDE_DIR})
-  
-   #find_package(PythonLibs REQUIRED)# deprecated since cmake 3.12
-   #PYTHON_LIBRARY
-   #PYTHON_INCLUDE_DIR
-   # New and better way:
-   #find_package(Python REQUIRED COMPONENTS Development) #Python2 Python3
-   #Python_INCLUDE_DIRS
-   #Python_LIBRARIES
+if (GISMO_WITH_NANOBIND)
+   if (CMAKE_CXX_STANDARD LESS 17)
+     set(CMAKE_CXX_STANDARD 17)
+   endif()
+   set(CMAKE_CXX_STANDARD_REQUIRED ON)
+   find_package(Python 3.9 COMPONENTS Interpreter Development.Module REQUIRED)
+   find_package(nanobind CONFIG QUIET)
+   if (NOT nanobind_FOUND)
+     execute_process(
+       COMMAND "${Python_EXECUTABLE}" -m nanobind --cmake_dir
+       OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE nanobind_ROOT)
+     find_package(nanobind CONFIG REQUIRED)
+   endif()
+     set(PYGISMO_PKG_DIR "${CMAKE_BINARY_DIR}/pygismo"
+       CACHE INTERNAL "pygismo package output directory")
 
-   #find_package(PythonLibsNew ${PYBIND11_PYTHON_VERSION} MODULE REQUIRED) #pybind11
-
-   include_directories(${PYTHON_INCLUDE_DIRS})
+      if (NOT TARGET nanobind-gismo)
+        set(PYGISMO_TARGETS "" CACHE INTERNAL "nanobind module targets")
+        file(MAKE_DIRECTORY "${PYGISMO_PKG_DIR}")
+        file(WRITE "${PYGISMO_PKG_DIR}/__init__.py"
+         "from . import _core\n"
+         "from ._core import *\n"
+         "__version__ = _core.__version__\n")
+      nanobind_build_library(nanobind-gismo)
+      set_target_properties(nanobind-gismo PROPERTIES EXCLUDE_FROM_ALL OFF)
+      if(NOT MSVC)
+        target_link_options(nanobind-gismo PRIVATE "-Wl,--allow-shlib-undefined" "-Wl,-z,undefs")
+      endif()
+      find_package(Python 3.9 COMPONENTS Development QUIET)
+      if (TARGET Python::Python)
+        target_link_libraries(nanobind-gismo PUBLIC Python::Python)
+      elseif(Python_LIBRARIES)
+        target_link_libraries(nanobind-gismo PUBLIC ${Python_LIBRARIES})
+      endif()
+    endif()
 endif()
 
 if (GISMO_WITH_OPENMP)

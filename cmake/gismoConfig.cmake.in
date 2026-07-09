@@ -24,10 +24,20 @@
 # Compute paths
 #get_filename_component(GISMO_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
 
+# Satisfy dependencies of imported targets before loading them
+set(GISMO_WITH_NANOBIND @GISMO_WITH_NANOBIND@)
+if(GISMO_WITH_NANOBIND)
+  include(CMakeFindDependencyMacro)
+  find_dependency(Python 3.9 COMPONENTS Development)
+endif()
+
 # Our library dependencies (contains definitions for IMPORTED targets)
-#if(NOT TARGET gismo AND NOT gismo_BINARY_DIR)
-#  include("${GISMO_CMAKE_DIR}/gismoTargets.cmake")
-#endif()
+get_filename_component(GISMO_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+if(NOT TARGET gismo AND NOT gismo_BINARY_DIR)
+  if(EXISTS "${GISMO_CMAKE_DIR}/gismoTargets.cmake")
+    include("${GISMO_CMAKE_DIR}/gismoTargets.cmake")
+  endif()
+endif()
 
 # These are IMPORTED targets created by gismoTargets.cmake (add TARGETS gsView ...)
 
@@ -49,6 +59,9 @@ set(TARGET_ARCHITECTURE "@TARGET_ARCHITECTURE@")
 set(GISMO_MODULE_PATH  "@CONF_MODULE_PATH@")
 set(GISMO_USE_FILE     "@CONF_USE_FILE@")
 set(GISMO_BUILD_TYPE   "@CMAKE_BUILD_TYPE@")
+if(GISMO_WITH_NANOBIND)
+  set(GISMO_PYGISMO_DIR "@CONF_PYGISMO_DIR@")
+endif()
 
 if(NOT GISMO_IS_CONFIGURED_MESSAGE)
   message(STATUS "G+Smo is configured at ${GISMO_LIBRARY_DIR}")

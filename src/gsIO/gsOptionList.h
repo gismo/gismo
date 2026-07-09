@@ -284,15 +284,6 @@ inline std::ostream &operator<<(std::ostream &os, const gsOptionList::OptionList
 inline bool operator< ( const gsOptionList::OptionListEntry& a, const gsOptionList::OptionListEntry& b )
 { return a.label < b.label; }
 
-#ifdef GISMO_WITH_PYBIND11
-
-  /**
-   * @brief Initializes the Python wrapper for the class: gsOptionList
-   */
-  void pybind11_init_gsOptionList(pybind11::module &m);
-
-#endif // GISMO_WITH_PYBIND11
-
 } // namespace gismo
 
 #include <gsIO/gsOptionListXml.h>

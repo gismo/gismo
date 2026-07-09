@@ -393,16 +393,6 @@ private:
 }; // class gsFitting
 
 
-#ifdef GISMO_WITH_PYBIND11
-
-  /**
-   * @brief Initializes the Python wrapper for the class: gsKnotVector
-   */
-  void pybind11_init_gsFitting(pybind11::module &m);
-
-#endif // GISMO_WITH_PYBIND11
-
-
 }// namespace gismo
 
 

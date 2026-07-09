@@ -964,16 +964,6 @@ template<class T>
 std::ostream &operator<<(std::ostream &os, const gsBoundaryConditions<T>& bvp)
 {return bvp.print(os); }
 
-#ifdef GISMO_WITH_PYBIND11
-
-    /**
-     * @brief Initializes the Python wrapper for the class: gsBoundaryConditions
-     */
-    void pybind11_init_gsBoundaryConditions(pybind11::module &m);
-    void pybind11_enum_gsBoundaryConditions(pybind11::module &m);
-
-#endif
-
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB

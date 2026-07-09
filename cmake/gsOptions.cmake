@@ -60,9 +60,9 @@ if  (${GISMO_BUILD_PCH})
 message ("  GISMO_BUILD_PCH         ${GISMO_BUILD_PCH}")
 endif()
 
-option(GISMO_WITH_PYBIND11      "Build Python module using pybind11" false  )
-if  (${GISMO_WITH_PYBIND11})
-message ("  GISMO_WITH_PYBIND11    ${GISMO_WITH_PYBIND11}")
+option(GISMO_WITH_NANOBIND      "Build Python module using nanobind" false  )
+if  (${GISMO_WITH_NANOBIND})
+message ("  GISMO_WITH_NANOBIND    ${GISMO_WITH_NANOBIND}")
 endif()
 
 option(GISMO_PLUGIN_PVIEW         "Build Paraview Plugin"     false  )

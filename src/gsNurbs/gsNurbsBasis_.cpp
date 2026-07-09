@@ -8,12 +8,5 @@ namespace gismo
 
 //CLASS_TEMPLATE_INST internal::gsXml< gsNurbsBasis<real_t> >; // at gsXmlUtils
 
-/*
-#ifdef GISMO_WITH_PYBIND11
-
-//namespace py = pybind11;
-
-#endif
-*/
 
 }

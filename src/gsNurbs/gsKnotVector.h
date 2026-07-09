@@ -1019,15 +1019,6 @@ static bool isNested(const gsKnotVector<T> & SubSpace, const gsKnotVector<T> & S
     return (difference.size()==0);
 }
 
-#ifdef GISMO_WITH_PYBIND11
-
-  /**
-   * @brief Initializes the Python wrapper for the class: gsKnotVector
-   */
-  void pybind11_init_gsKnotVector(pybind11::module &m);
-
-#endif // GISMO_WITH_PYBIND11
-
 } // namespace gismo
 
 

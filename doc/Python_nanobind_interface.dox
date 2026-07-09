@@ -1,0 +1,403 @@
+namespace gismo {
+/**
+
+\page Python_nanobind_interface Python via nanobind
+
+\gismo provides Python bindings via <a href="https://github.com/wjakob/nanobind">nanobind</a>, producing a package called \c pygismo. Nanobind is a lightweight binding library offering fast compile times and small binaries.
+
+<h2>1. Overview</h2>
+
+<h3>Key characteristics</h3>
+
+- <b>Package name</b>: \c pygismo (PyPI: \c pygismo)
+- <b>Build option</b>: \c -DGISMO_WITH_NANOBIND=ON
+- <b>C++ standard</b>: Nanobind requires C++17; binding files are compiled separately from the C++14 \gismo library
+- <b>Shared runtime</b>: All modules share one \c libnanobind-gismo.so runtime via \c NB_SHARED \c NB_DOMAIN \c gismo, enabling cross-module type visibility
+- <b>Auto-discovery</b>: Binding files matching \c src/gsXxx/nanobind/*_nb.cpp are automatically found by CMake
+- <b>Extensible</b>: Optional modules (e.g. \c gsModule) can add their own \c .so to the package, and can be published as independent PyPI wheels
+
+<h3>Architecture</h3>
+
+The \c pygismo package consists of multiple shared extension modules:
+
+<table>
+<tr><th>Module</th><th>Source</th><th>Contents</th></tr>
+<tr><td><tt>core.so</tt></td><td><tt>src/misc/gsNanoBind.cpp</tt></td><td>Package metadata (\c __version__, docstring)</td></tr>
+<tr><td><tt>gsCore.so</tt></td><td><tt>src/gsCore/nanobind/gsCore_nb.cpp</tt></td><td>Core classes (gsMultiPatch, gsBasis, ...)</td></tr>
+<tr><td><i>auto-discovered</i></td><td><tt>src/gsXxx/nanobind/*_nb.cpp</tt></td><td>One \c .so per binding file</td></tr>
+<tr><td><tt>gsModule.so</tt></td><td><tt>optional/gsModule/src/nanobind/gsClass_nb.cpp</tt></td><td>Optional module bindings</td></tr>
+</table>
+
+All modules link against \c libgismo.so (the shared \gismo library) and \c libnanobind-gismo.so (the nanobind shared runtime). The \c __init__.py imports \c core and all auto-discovered modules with <tt>from .xxx import *</tt>.
+
+<h3>File layout</h3>
+
+~~~~
+cmake/
+  gsConfig.cmake         # nanobind find_package, nanobind-gismo runtime setup
+  gsLibrary.cmake        # pygismo_core target + auto-discovery loop + pygismo_full
+  gsInstall.cmake        # install rules (regular and SKBUILD wheel)
+  gismoConfig.cmake.in   # exposes GISMO_WITH_NANOBIND, GISMO_PYGISMO_DIR
+src/
+  misc/gsNanoBind.cpp    # core.so (version, docstring)
+  gsCore/nanobind/
+    gsCore_nb.cpp        # gsCore.so (gsMultiPatch, gsBasis, ...)
+  gsXxx/nanobind/
+    gsXxx_nb.cpp         # auto-discovered binding files
+optional/
+  gsModule/
+    CMakeLists.txt       # in-tree build (nanobind section at bottom)
+    src/nanobind/
+      gsClass_nb.cpp     # gsModule.so binding source
+    nanobind/
+      CMakeLists.txt     # standalone build against installed gismo
+      pyproject.toml     # wheel metadata (pygismo-gsmodule)
+      README.md          # standalone/wheel build instructions
+wheel/
+  pyproject.toml         # wheel metadata for pygismo (scikit-build-core)
+VERSION                  # version string read by scikit-build-core
+~~~~
+
+<h2>2. Getting started</h2>
+
+<h3>Installation from pip</h3>
+
+When available on PyPI, install with:
+~~~~{.sh}
+pip install pygismo
+~~~~
+
+Optional module extensions (e.g. gsModule) are installed separately:
+~~~~{.sh}
+pip install pygismo-gsmodule
+~~~~
+
+<h3>Building from source</h3>
+
+<b>Prerequisites</b>:
+- CMake 3.17+
+- Python 3.9+ with development headers
+- nanobind (\c apt \c install \c nanobind-dev or \c pip \c install \c nanobind)
+
+~~~~{.sh}
+# Configure with nanobind enabled
+cmake -B build -DGISMO_WITH_NANOBIND=ON -DGISMO_BUILD_LIB=ON
+
+# Build all nanobind modules + the gismo library
+cmake --build build --target pygismo_full gismo
+
+# The package is in build/pygismo/
+~~~~
+
+<h3>Local builds</h3>
+
+There are two ways to use pygismo locally: building a wheel or pointing Python at the CMake build directory.
+
+<h4>Option A: Build and install a wheel (recommended)</h4>
+
+This produces a self-contained, installable package:
+
+~~~~{.sh}
+# Build the wheel (scikit-build-core drives CMake internally)
+pip wheel wheel/ -w dist/
+
+# On Linux, vendor the shared libraries into the wheel
+pip install patchelf  # needed by auditwheel
+LD_LIBRARY_PATH=wheel/build/cp*-linux_*/lib \
+  auditwheel repair dist/pygismo-*.whl -w dist/repaired/
+
+# Install the repaired wheel
+pip install dist/repaired/pygismo-*.whl
+
+# Use it — no path manipulation needed
+python3 -c "import pygismo; print(pygismo.__version__)"
+~~~~
+
+On macOS, use \c delocate instead of \c auditwheel:
+~~~~{.sh}
+pip install delocate
+delocate-wheel -w dist/repaired/ dist/pygismo-*.whl
+~~~~
+
+<h4>Option B: Use the CMake build directory directly</h4>
+
+After building with CMake, add the build directory to Python's path:
+
+~~~~{.sh}
+cmake -B build -DGISMO_WITH_NANOBIND=ON -DGISMO_BUILD_LIB=ON
+cmake --build build --target pygismo_full gismo
+~~~~
+
+Then in Python:
+~~~~{.py}
+import sys
+sys.path.insert(0, "/path/to/build")
+import pygismo
+~~~~
+
+Or using an environment variable:
+~~~~{.sh}
+PYTHONPATH=/path/to/build python3 my_script.py
+~~~~
+
+If gismo is installed to a prefix:
+~~~~{.sh}
+cmake --install build --prefix /your/prefix
+~~~~
+~~~~{.py}
+import sys
+sys.path.insert(0, "/your/prefix/lib")
+import pygismo
+~~~~
+
+<h3>Usage</h3>
+
+~~~~{.py}
+import pygismo
+
+print(pygismo.__version__)
+
+mp = pygismo.gsMultiPatch()
+print(mp.nPatches())
+~~~~
+
+<h2>3. Adding bindings for a class in src/</h2>
+
+This section explains how to expose a new \gismo class to Python via nanobind. The process is designed to be minimal: create one file, reconfigure CMake, done.
+
+<h3>Step 1: Create the binding file</h3>
+
+Create a file at \c src/gsXxx/nanobind/gsXxx_nb.cpp. The naming convention \c *_nb.cpp is required for auto-discovery.
+
+Here is a complete template:
+
+~~~~{.cpp}
+#include <gsCore/gsConfig.h>
+
+#ifdef GISMO_WITH_NANOBIND
+
+#include <nanobind/nanobind.h>
+#include <nanobind/stl/string.h>
+
+#include <gismo.h>
+
+namespace nb = nanobind;
+
+NB_MODULE(gsXxx, m) {
+  m.doc() = "G+Smo gsXxx module";
+
+  using MyClass = gismo::gsMyClass<real_t>;
+  nb::class_<MyClass>(m, "gsMyClass")
+    .def(nb::init<>())
+    .def("myMethod", &MyClass::myMethod)
+    ;
+}
+
+#endif // GISMO_WITH_NANOBIND
+~~~~
+
+<b>Important conventions</b>:
+- Always guard with <tt>\#ifdef GISMO_WITH_NANOBIND</tt> / <tt>\#endif</tt>
+- The \c NB_MODULE name (first argument) becomes the \c .so name and the Python submodule name
+- Use \c real_t and \c index_t directly (without \c gismo:: prefix, since \c index_t is a macro)
+- Include nanobind headers only in this file (never in global \gismo headers)
+- Include STL type casters as needed: \c nanobind/stl/string.h, \c nanobind/stl/vector.h, etc.
+
+<h3>Step 2: Reconfigure CMake</h3>
+
+~~~~{.sh}
+cmake --build build   # reconfigures automatically due to GLOB
+~~~~
+
+The file is auto-discovered by this CMake glob in \c cmake/gsLibrary.cmake:
+~~~~{.cmake}
+file(GLOB _nb_binding_files "${gismo_SOURCE_DIR}/src/gs*/nanobind/*_nb.cpp")
+~~~~
+
+Each discovered file gets its own \c nanobind_add_module target, linked against \c gismo, with output placed in \c build/pygismo/.
+
+<h3>Step 3: Build and test</h3>
+
+~~~~{.sh}
+cmake --build build --target pygismo_full
+cd build
+python3 -c "import pygismo; print(dir(pygismo))"
+~~~~
+
+The new module's exports are automatically imported via \c __init__.py (which contains <tt>from .gsXxx import *</tt>).
+
+<h3>Reference: existing binding file</h3>
+
+See \c src/gsCore/nanobind/gsCore_nb.cpp for a production example that binds \ref gsMultiPatch with constructors, methods, static casts for overloaded functions, return-value policies, and default arguments.
+
+<h2>4. Adding a new optional module</h2>
+
+Optional modules (stored in \c optional/) can provide their own nanobind bindings. The module \c gsModule serves as a complete template.
+
+<h3>Step 1: Create the binding file</h3>
+
+Create \c optional/gsMyModule/src/nanobind/gsMyClass_nb.cpp following the same template as in section 3.
+
+~~~~{.cpp}
+#include <gsCore/gsConfig.h>
+
+#ifdef GISMO_WITH_NANOBIND
+
+#include <nanobind/nanobind.h>
+#include <gsMyModule/src/gsMyClass.h>
+
+namespace nb = nanobind;
+
+NB_MODULE(gsMyModule, m) {
+  m.doc() = "G+Smo gsMyModule bindings";
+
+  nb::class_<gismo::gsMyClass>(m, "gsMyClass")
+    .def(nb::init<>())
+    .def("doSomething", &gismo::gsMyClass::doSomething)
+    ;
+}
+
+#endif // GISMO_WITH_NANOBIND
+~~~~
+
+<h3>Step 2: Add nanobind section to the module's CMakeLists.txt</h3>
+
+At the bottom of \c optional/gsMyModule/CMakeLists.txt, add:
+
+~~~~{.cmake}
+if (GISMO_WITH_NANOBIND)
+  nanobind_add_module(pygismo_gsMyModule
+    NB_SHARED
+    NB_DOMAIN gismo
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/nanobind/gsMyClass_nb.cpp"
+  )
+  target_link_libraries(pygismo_gsMyModule PRIVATE gismo)
+  set_target_properties(pygismo_gsMyModule PROPERTIES
+    OUTPUT_NAME "gsMyModule"
+    LIBRARY_OUTPUT_DIRECTORY "${PYGISMO_PKG_DIR}"
+  )
+  file(APPEND "${PYGISMO_PKG_DIR}/__init__.py"
+    "from .gsMyModule import *\n")
+
+  set(PYGISMO_TARGETS ${PYGISMO_TARGETS} pygismo_gsMyModule
+    CACHE INTERNAL "nanobind module targets")
+endif()
+~~~~
+
+<h3>Step 3 (optional): Create standalone build infrastructure</h3>
+
+For publishing the module as an independent wheel on PyPI, create \c optional/gsMyModule/nanobind/ with:
+- \c CMakeLists.txt — standalone CMake build against an installed gismo prefix
+- \c pyproject.toml — scikit-build-core wheel metadata
+
+See \c optional/gsModule/nanobind/ for a complete working example.
+
+<h3>Step 4: Build and test</h3>
+
+~~~~{.sh}
+cmake --build build --target pygismo_full
+cd build
+python3 -c "from pygismo import gsMyModule; print('OK')"
+~~~~
+
+<h2>5. Wheel packaging</h2>
+
+The nanobind bindings can be packaged as Python wheels for distribution via PyPI.
+
+<h3>Base package: pygismo</h3>
+
+<table>
+<tr><th>Item</th><th>Location</th></tr>
+<tr><td>Build config</td><td><tt>wheel/pyproject.toml</tt></td></tr>
+<tr><td>Build backend</td><td>scikit-build-core</td></tr>
+<tr><td>Version source</td><td><tt>VERSION</tt> file (must match CMakeLists.txt)</td></tr>
+<tr><td>CI workflow</td><td><tt>.github/workflows/build_wheels.yml</tt></td></tr>
+<tr><td>PyPI secret</td><td><tt>PYPI_TOKEN</tt></td></tr>
+</table>
+
+The build process:
+1. scikit-build-core drives CMake with \c -DGISMO_WITH_NANOBIND=ON
+2. CMake builds \c gismo + \c pygismo_full
+3. \c cmake \c --install places extensions into \c pygismo/
+4. \c wheel.exclude filters out headers, cmake files, and data
+5. \c auditwheel \c repair (Linux) / \c delocate (macOS) vendors \c libgismo.so and \c libnanobind-gismo.so into the wheel
+
+To build locally:
+~~~~{.sh}
+pip wheel wheel/ -w dist/
+~~~~
+
+<h3>Module package: pygismo-gsmodule</h3>
+
+<table>
+<tr><th>Item</th><th>Location</th></tr>
+<tr><td>Build config</td><td><tt>optional/gsModule/nanobind/pyproject.toml</tt></td></tr>
+<tr><td>CI workflow</td><td><tt>.github/workflows/build_wheels_gsmodule.yml</tt></td></tr>
+<tr><td>PyPI secret</td><td><tt>PYPI_GSMODULE_TOKEN</tt></td></tr>
+</table>
+
+Module wheels install their \c .so into \c site-packages/pygismo/ alongside the base package. The base package owns \c __init__.py; module wheels only add extension files. Users import modules with:
+
+~~~~{.py}
+from pygismo import gsModule
+from pygismo.gsModule import submoduleClass
+~~~~
+
+<h3>Publishing a new module wheel</h3>
+
+1. Copy \c optional/gsModule/nanobind/ as a template
+2. Adjust \c CMakeLists.txt and \c pyproject.toml
+3. Create a GitHub Actions workflow (see \c build_wheels_gsmodule.yml)
+4. Add the PyPI token as a repository secret
+
+<h2>6. Build system internals</h2>
+
+This section documents the CMake machinery that makes the nanobind integration work.
+
+<h3>cmake/gsConfig.cmake (lines 227-255)</h3>
+
+Responsible for:
+- Finding Python 3.9+ and nanobind (apt package or pip fallback)
+- Setting \c PYGISMO_PKG_DIR (build-tree output directory)
+- Creating the \c nanobind-gismo shared runtime via \c nanobind_build_library()
+- Resetting \c PYGISMO_TARGETS cache on first configure
+- Writing the initial \c __init__.py
+- Linking \c nanobind-gismo to \c Python::Python (fixes \c -Wl,--no-undefined)
+- Setting \c EXCLUDE_FROM_ALL \c OFF on \c nanobind-gismo
+
+This block is guarded by <tt>if (NOT TARGET nanobind-gismo)</tt> so it runs only once even if \c gsConfig.cmake is included multiple times.
+
+<h3>cmake/gsLibrary.cmake (lines 96-136)</h3>
+
+Responsible for:
+- Creating \c pygismo_core from \c src/misc/gsNanoBind.cpp
+- Auto-discovering \c src/gs*/nanobind/*_nb.cpp binding files via \c file(GLOB)
+- Creating a \c nanobind_add_module target for each discovered file
+- Appending to \c __init__.py and \c PYGISMO_TARGETS
+- Creating the \c pygismo_full convenience target
+
+<h3>cmake/gsInstall.cmake (lines 168-200)</h3>
+
+Responsible for:
+- Installing \c nanobind-gismo to \c lib/ (regular install) or skipping it (wheel build — auditwheel vendors it)
+- Installing all \c PYGISMO_TARGETS to \c lib/pygismo/ (regular) or \c pygismo/ (wheel)
+- Generating and installing \c __init__.py from the target list
+- For wheel builds (\c SKBUILD defined): installing \c libgismo.so alongside the extensions (skipped for regular installs)
+
+<h3>cmake/gismoConfig.cmake.in</h3>
+
+The installed CMake config file. Exposes:
+- \c GISMO_WITH_NANOBIND — whether nanobind was enabled
+- \c GISMO_PYGISMO_DIR — install path of the \c pygismo/ package
+- Calls \c find_dependency(Python) before importing targets (needed because \c nanobind-gismo has a \c PUBLIC link to \c Python::Python)
+
+<h3>Technical constraints</h3>
+
+- <b>C++17</b>: Nanobind requires C++17. The \c nanobind_add_module() command sets this automatically. \gismo itself compiles at C++14.
+- <b>Separate files</b>: Nanobind headers must never appear in global \gismo headers.
+- <b>\c -Wl,--no-undefined</b>: \gismo sets this globally. The fix is linking \c nanobind-gismo against \c Python::Python.
+- <b>NB_DOMAIN</b>: All modules must use <tt>NB_DOMAIN gismo</tt> so that nanobind's internal type tables are shared across modules.
+- <b>nanobind 1.9.2 (apt)</b>: No \c stl.h umbrella header (use \c stl/string.h etc.), and \c eigen/dense.h conflicts with \gismo's custom Eigen namespace (\c gsEigen).
+
+*/
+}

@@ -687,31 +687,6 @@ gsMatrix<T,_Rows, _Cols, _Options> * gsMatrix<T,_Rows, _Cols, _Options>::clone()
 */
 
 
-#ifdef GISMO_WITH_PYBIND11
-
-  /**
-   * @brief Initializes the Python wrapper for the class: gsMatrix
-   */
-  template<typename T>
-  void pybind11_init_gsMatrix(pybind11::module &m, const std::string & typestr)
-  {
-    using Class = gsMatrix<T>;
-    std::string pyclass_name = std::string("gsMatrix") + typestr;
-    pybind11::class_<Class>(m, pyclass_name.c_str(), pybind11::buffer_protocol(), pybind11::dynamic_attr())
-    // Constructors
-    .def(pybind11::init<>())
-    .def(pybind11::init<index_t, index_t>())
-    // Member functions
-    .def("size",       &Class::size)
-    .def("rows",       &Class::rows)
-    .def("cols",       &Class::cols)
-    // .def("transpose",  &Class::transpose)
-    ;
-  }
-
-#endif // GISMO_WITH_PYBIND11
-
-
 } // namespace gismo
 
 

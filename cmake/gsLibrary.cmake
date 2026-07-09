@@ -53,41 +53,96 @@ OUTPUT_NAME ${PROJECT_NAME}${gs_static_lib_suffix} )
 # Pygismo
 ###################################################################
 
-if (GISMO_WITH_PYBIND11)
+if (GISMO_WITH_NANOBIND)
 
-  pybind11_add_module(py${PROJECT_NAME} MODULE
-    "${gismo_SOURCE_DIR}/src/misc/gsPyBind11.cpp"
-    )
-
-  set_target_properties(py${PROJECT_NAME} PROPERTIES
-    COMPILE_DEFINITIONS gismo_EXPORTS
-    POSITION_INDEPENDENT_CODE ON
-    LINKER_LANGUAGE CXX
-    CXX_VISIBILITY_PRESET "hidden"
-    CUDA_VISIBILITY_PRESET "hidden"
-    )
-
-  # since gismo (${PROJECT_NAME}) target includes bindings, it needs
-  # pybind/python info. Those are automatically managed in
-  # `pybind11_add_module`. Since we aren't using it, setup gismo target
-  # in similar fashion manually. 
-  target_link_libraries(${PROJECT_NAME}_static pybind11::module)
-
-  if(NOT DEFINED CMAKE_INTERPROCEDURAL_OPTIMIZATION)
-    target_link_libraries(${PROJECT_NAME}_static pybind11::lto)
+  # Determine the best Python target once
+  set(_py_target "")
+  if(TARGET Python::Module)
+    set(_py_target Python::Module)
+  elseif(TARGET Python::Python)
+    set(_py_target Python::Python)
   endif()
 
-  # link gismo to pygismo
-  target_link_libraries(py${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_static)
+  # Linker fix for strict CI environments (manlylinux/gcc-toolset)
+  # This tells the linker to allow Python symbols to be resolved at runtime
+  set(_py_linker_fix "")
+  if(NOT MSVC)
+    set(_py_linker_fix "-Wl,--allow-shlib-undefined" "-Wl,-z,undefs")
+  endif()
 
-  pybind11_strip(py${PROJECT_NAME})
-  pybind11_extension(py${PROJECT_NAME})
+  set(PYGISMO_NAME_MAP_gsCore        "core")
+  set(PYGISMO_NAME_MAP_gsIO          "io")
+  set(PYGISMO_NAME_MAP_gsNurbs       "nurbs")
+  set(PYGISMO_NAME_MAP_gsModeling    "modeling")
+  set(PYGISMO_NAME_MAP_gsPde         "pde")
+  set(PYGISMO_NAME_MAP_gsMatrix      "matrix")
+  set(PYGISMO_NAME_MAP_gsHSplines    "hsplines")
+  set(PYGISMO_NAME_MAP_gsAssembler   "assembler")
+  set(PYGISMO_NAME_MAP_gsMSplines    "msplines")
 
-  if (GISMO_KLSHELL)
-    target_compile_definitions(py${PROJECT_NAME} PUBLIC GISMO_KLSHELL)
-  endif()# To fix
+  nanobind_add_module(pygismo__core
+    NB_SHARED
+    NB_DOMAIN gismo
+    "${gismo_SOURCE_DIR}/src/misc/gsNanoBind.cpp"
+  )
+  target_link_libraries(pygismo__core PRIVATE ${PROJECT_NAME} ${_py_target})
+  target_link_options(pygismo__core PRIVATE ${_py_linker_fix})
 
-endif(GISMO_WITH_PYBIND11)
+  set_target_properties(pygismo__core PROPERTIES
+    OUTPUT_NAME "_core"
+    LIBRARY_OUTPUT_DIRECTORY "${PYGISMO_PKG_DIR}"
+  )
+
+  list(APPEND PYGISMO_TARGETS pygismo__core)
+
+  file(GLOB _nb_binding_files "${gismo_SOURCE_DIR}/src/gs*/nanobind/*_nb.cpp")
+  foreach(_nb_file ${_nb_binding_files})
+    get_filename_component(_nb_name ${_nb_file} NAME_WE)
+    string(REGEX REPLACE "_nb$" "" _src_name "${_nb_name}")
+
+    if(DEFINED PYGISMO_NAME_MAP_${_src_name})
+      set(_mod_name "${PYGISMO_NAME_MAP_${_src_name}}")
+    else()
+      string(TOLOWER "${_src_name}" _mod_name)
+    endif()
+
+    nanobind_add_module(pygismo_${_src_name}
+      NB_SHARED
+      NB_DOMAIN gismo
+      "${_nb_file}"
+    )
+    target_link_libraries(pygismo_${_src_name} PRIVATE ${PROJECT_NAME} ${_py_target})
+    target_link_options(pygismo_${_src_name} PRIVATE ${_py_linker_fix})
+
+    set_target_properties(pygismo_${_src_name} PROPERTIES
+      OUTPUT_NAME "${_mod_name}"
+      LIBRARY_OUTPUT_DIRECTORY "${PYGISMO_PKG_DIR}"
+    )
+    file(APPEND "${PYGISMO_PKG_DIR}/__init__.py"
+      "from .${_mod_name} import *\n")
+
+    list(APPEND PYGISMO_TARGETS pygismo_${_src_name})
+  endforeach()
+
+  file(APPEND "${PYGISMO_PKG_DIR}/__init__.py"
+    "import importlib as _importlib, warnings as _warnings\n"
+    "class _DeprecatedAlias:\n"
+    "    _MAP = {'modelling': 'modeling'}\n"
+    "    def __init__(self, mod): self._mod = mod\n"
+    "    def __getattr__(self, name):\n"
+    "        return getattr(_importlib.import_module('.' + self._mod, __package__), name)\n"
+    "def __getattr__(name):\n"
+    "    if name in _DeprecatedAlias._MAP:\n"
+    "        _warnings.warn(f'pygismo.{name} is deprecated, use pygismo.{_DeprecatedAlias._MAP[name]}', DeprecationWarning, stacklevel=2)\n"
+    "        return _DeprecatedAlias(_DeprecatedAlias._MAP[name])\n"
+    "    raise AttributeError(f'module pygismo has no attribute {name!r}')\n"
+  )
+
+  set(PYGISMO_TARGETS ${PYGISMO_TARGETS} CACHE INTERNAL "nanobind module targets")
+
+  add_custom_target(pygismo_full DEPENDS ${PYGISMO_TARGETS})
+
+endif(GISMO_WITH_NANOBIND)
 
 ###################################################################
 # Shared library
@@ -136,9 +191,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
   )
   #generate_export_header(${PROJECT_NAME})
 
-  if (GISMO_WITH_PYBIND11)
-    target_link_libraries(${PROJECT_NAME} pybind11::embed)
-  endif()
+
 
   #if(gsMpfr_ENABLED OR gsGmp_ENABLED)
   #    find_package(GMP)

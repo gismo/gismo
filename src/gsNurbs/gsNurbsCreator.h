@@ -277,15 +277,6 @@ public:
 
 }; // struct
 
-#ifdef GISMO_WITH_PYBIND11
-
-    /**
-     * @brief Initializes the Python wrapper for the class: gsBoundaryConditions
-     */
-    void pybind11_init_gsNurbsCreator(pybind11::module &m);
-
-#endif
-
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB

@@ -59,7 +59,7 @@
 //#cmakedefine GISMO_HAS_EXTERN_TEMPLATES
 
 /* Determine if Python module should be built. */
-#cmakedefine GISMO_WITH_PYBIND11
+#cmakedefine GISMO_WITH_NANOBIND
 
 /* Debug settings. */
 #cmakedefine GISMO_WITH_XDEBUG

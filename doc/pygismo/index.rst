@@ -5,6 +5,7 @@ pygismo Documentation
    :maxdepth: 1
    :caption: Contents
 
+   pygismo_assembler.rst
    pygismo_core.rst
    pygismo_hsplines.rst
    pygismo_io.rst
