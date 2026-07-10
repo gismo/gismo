@@ -36,10 +36,11 @@ private:
 
 public:
     gsImplicitTrimmedDomain(const gsFunction<T> & fnc,
-                        const gsTensorBSplineBasis<d,T> & tbasis) :
+                        const gsTensorBSplineBasis<d,T> & tbasis,
+                        index_t samples = 5) :
     m_implFunction(memory::make_shared_not_owned(&fnc))
     {
-        this->init(tbasis, 3);
+        this->init(tbasis, samples);
     }
 
     /// Constructor for hierarchical tensor bases

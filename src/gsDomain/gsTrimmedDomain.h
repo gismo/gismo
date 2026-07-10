@@ -272,7 +272,10 @@ protected:
 
             _classifyLeaf(cur, QuRule);
 
-            if (cur->nodeData().sign() == 0)
+            // Always split multi-element leaves regardless of sign so that a
+            // mis-classified exterior block (all sample points outside the
+            // surface by chance) is recursively refined to single-element
+            // resolution before being frozen.
             {
                 const point_t & lc = cur->nodeData().lowerCorner();
                 const point_t & uc = cur->nodeData().upperCorner();
