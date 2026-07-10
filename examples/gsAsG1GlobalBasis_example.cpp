@@ -94,6 +94,10 @@ bool testFile(const std::string& filename, int refinements, int degree, T tolVal
     const index_t nCheck = 21;
     T maxValErr = 0;
     T maxGradErr = 0;
+    index_t idxMaxVal = -1;
+    int maxP1 = -1, maxP2 = -1;
+    T maxS = -1;
+    index_t idxMaxG = -1; int gP1 = -1, gP2 = -1; T gS = -1;
 
     for (auto it = mp.iBegin(); it != mp.iEnd(); ++it)
     {
@@ -140,7 +144,7 @@ bool testFile(const std::string& filename, int refinements, int degree, T tolVal
                 gsMatrix<T> v1 = func1->eval(pt1);
                 gsMatrix<T> v2 = func2->eval(pt2);
                 T valErr = std::abs(v1(0, 0) - v2(0, 0));
-                maxValErr = std::max(maxValErr, valErr);
+                if (valErr > maxValErr) { maxValErr = valErr; idxMaxVal = idx; maxP1 = ps1.patch; maxP2 = ps2.patch; maxS = s; }
 
                 // Check G1
                 gsMatrix<T> df1, df2, dG1, dG2;
@@ -163,13 +167,13 @@ bool testFile(const std::string& filename, int refinements, int degree, T tolVal
                 gsVector<T> physGrad2 = J2.inverse().transpose() * paramGrad2;
 
                 T gradErr = (physGrad1 - physGrad2).norm();
-                maxGradErr = std::max(maxGradErr, gradErr);
+                if (gradErr > maxGradErr) { maxGradErr = gradErr; idxMaxG = idx; gP1 = ps1.patch; gP2 = ps2.patch; gS = s; }
             }
         }
     }
 
-    gsInfo << "  Max C0 error: " << maxValErr << "\n";
-    gsInfo << "  Max G1 error: " << maxGradErr << "\n";
+    gsInfo << "  Max C0 error: " << maxValErr << " (at global DOF " << idxMaxVal << " of " << nGlobal << ", ifc p" << maxP1 << "-p" << maxP2 << " s=" << maxS << ")\n";
+    gsInfo << "  Max G1 error: " << maxGradErr << " (at global DOF " << idxMaxG << " of " << nGlobal << ", ifc p" << gP1 << "-p" << gP2 << " s=" << gS << ")\n";
 
     if (maxValErr < tolVal && maxGradErr < tolGrad)
     {

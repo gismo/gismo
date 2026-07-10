@@ -628,10 +628,11 @@ private:
           const gsTensorBSpline<2, T> &geo =
               dynamic_cast<const gsTensorBSpline<2, T> &>(
                   m_mp.patch(patchOf[k]));
-          int cIdx = 1;
-          if (v_group[k].c == 1) cIdx = 2;
-          else if (v_group[k].c == 2) cIdx = 4;
-          else if (v_group[k].c == 3) cIdx = 3;
+          // reparamCorner uses boxCorner numbering: cIdx = 1 + u + 2v, i.e.
+          //   cIdx 1=(0,0), 2=(1,0), 3=(0,1), 4=(1,1).
+          // The local corner code c uses the same (u,v) layout, so the map
+          // is simply cIdx = c + 1.
+          int cIdx = v_group[k].c + 1;
           reparamCorner<T>(geo, cIdx, geoRot[k], perm[k]);
         }
 
@@ -681,19 +682,39 @@ private:
             inv_perm_k[perm[k][r]] = r;
           }
 
-          boxSide w_side_orig =
-              (corner == 0 || corner == 3) ? boxSide(1) : boxSide(2);
-          boxSide s_side_orig =
-              (corner == 0 || corner == 1) ? boxSide(3) : boxSide(4);
+          // Determine, robustly from the reparametrization permutation,
+          // which ORIGINAL patch side corresponds to geoRot's West edge
+          // (boxSide 1, u=0) and South edge (boxSide 3, v=0), and whether
+          // the vertex sits at the high-parameter (a1) end of that side.
+          // This replaces fragile hand-coded per-corner tables and keeps
+          // the side/end choices consistent with reparamCorner for every
+          // corner (including the v=1 corners 2 and 3).
+          const gsTensorBSplineBasis<2, T> &tbOrig =
+              static_cast<const gsTensorBSplineBasis<2, T> &>(m_mb.basis(pk));
+          const index_t N0o = tbOrig.size(0), N1o = tbOrig.size(1);
+          const index_t n0R = tbRot.size(0);
 
-          const gsTensorBSpline<2, T> &geo_orig =
-              dynamic_cast<const gsTensorBSpline<2, T> &>(m_mp.patch(patchOf[k]));
-          bool switched = (geo_orig.orientation() == -1);
-          bool swapped = (corner == 1 || corner == 3);
-          if (switched) swapped = !swapped;
+          auto classifySide = [&](index_t rotNeighbor, boxSide &side,
+                                  bool &highEnd) {
+            const index_t oc = perm[k][0];         // vertex corner (original)
+            const index_t on = perm[k][rotNeighbor]; // neighbor along the edge
+            const index_t ci = oc % N0o, cj = oc / N0o;
+            const index_t nj = on / N0o;
+            if (nj == cj) {
+              // horizontal original edge (constant j): south/north
+              side = (cj == 0) ? boxSide(3) : boxSide(4);
+              highEnd = (ci == N0o - 1); // tangential param is i
+            } else {
+              // vertical original edge (constant i): west/east
+              side = (ci == 0) ? boxSide(1) : boxSide(2);
+              highEnd = (cj == N1o - 1); // tangential param is j
+            }
+          };
 
-          boxSide w_side = swapped ? s_side_orig : w_side_orig;
-          boxSide s_side = swapped ? w_side_orig : s_side_orig;
+          boxSide w_side, s_side;
+          bool w_high, s_high;
+          classifySide(n0R, w_side, w_high); // +v neighbor -> West edge
+          classifySide(1, s_side, s_high);   // +u neighbor -> South edge
 
           gsSparseMatrix<T> &M_West_edge =
               side_matrices[pk][w_side.index() - 1];
@@ -707,7 +728,7 @@ private:
           bL_W.degreeReduce(1);
           int nS_W = bS_W.size(), nL_W = bL_W.size();
           int nInt_W = M_West_edge.cols() - nL_W - nS_W;
-          bool w_start = swapped ? (corner == 0 || corner == 3) : (corner == 0 || corner == 1);
+          bool w_start = !w_high; // vertex at low tangential param of w_side
           int w_idxS = w_start ? 0 : nS_W - 3;
           int w_idxL = w_start ? 0 : nL_W - 2;
           std::vector<int> cols_W = {nInt_W + nL_W + w_idxS + 0,
@@ -722,7 +743,7 @@ private:
           bL_S.degreeReduce(1);
           int nS_S = bS_S.size(), nL_S = bL_S.size();
           int nInt_S = M_South_edge.cols() - nL_S - nS_S;
-          bool s_start = swapped ? (corner == 0 || corner == 1) : (corner == 0 || corner == 3);
+          bool s_start = !s_high; // vertex at low tangential param of s_side
           int s_idxS = s_start ? 0 : nS_S - 3;
           int s_idxL = s_start ? 0 : nL_S - 2;
           std::vector<int> cols_S = {nInt_S + nL_S + s_idxS + 0,
@@ -752,6 +773,7 @@ private:
           }
           T J00 = J(0, 0), J10 = J(1, 0);
           T J01 = J(0, 1), J11 = J(1, 1);
+
           T X_uu = secDers(0, 0), X_vv = secDers(1, 0), X_uv = secDers(2, 0);
           T Y_uu = secDers(3, 0), Y_vv = secDers(4, 0), Y_uv = secDers(5, 0);
 
@@ -799,17 +821,40 @@ private:
           T a0_S, a1_S, b0_S, b1_S, tSign_S;
           getGluing(pk, s_side, a0_S, a1_S, b0_S, b1_S, tSign_S);
 
-          bool w_is_end = (corner == 2 || corner == 3);
+          // The gluing at-vertex end for each edge follows directly from the
+          // reparametrization permutation: w_high/s_high are true when the
+          // vertex sits at the high-tangential-parameter (a1) end of the
+          // corresponding original side.
+          // Stored (a0,a1) are aligned with each side's own tangential
+          // parameter (low->high); sampleInterface/computeGluingData undo
+          // any interface flip. Hence the vertex uses the a1 end exactly
+          // when it sits at the high-tangential end (w_high/s_high).
+          bool w_is_end = w_high;
           T alpha0_W = w_is_end ? a1_W : a0_W;
           T alpha_prime_W = w_is_end ? (a0_W - a1_W) : (a1_W - a0_W);
           T beta0_W = w_is_end ? b1_W : b0_W;
           T beta_prime_W = w_is_end ? (b0_W - b1_W) : (b1_W - b0_W);
 
-          bool s_is_end = (corner == 1 || corner == 2);
+          bool s_is_end = s_high;
           T alpha0_S = s_is_end ? a1_S : a0_S;
           T alpha_prime_S = s_is_end ? (a0_S - a1_S) : (a1_S - a0_S);
           T beta0_S = s_is_end ? b1_S : b0_S;
           T beta_prime_S = s_is_end ? (b0_S - b1_S) : (b1_S - b0_S);
+
+          // The gluing (alpha,beta) of a patch side is signed by which side
+          // of the interface the patch lies on (computeGluingData gives one
+          // patch alpha>0 and the neighbour alpha<0, negating beta together).
+          // The vertex construction works in the reparametrized (geoRot)
+          // frame whose normal points into the patch and assumes alpha>0, so
+          // normalise the (alpha,beta) pair to alpha>0 here.
+          if (alpha0_W < T(0)) {
+            alpha0_W = -alpha0_W; alpha_prime_W = -alpha_prime_W;
+            beta0_W = -beta0_W;   beta_prime_W = -beta_prime_W;
+          }
+          if (alpha0_S < T(0)) {
+            alpha0_S = -alpha0_S; alpha_prime_S = -alpha_prime_S;
+            beta0_S = -beta0_S;   beta_prime_S = -beta_prime_S;
+          }
 
           gsMatrix<T> zero_pt = gsMatrix<T>::Zero(1, 1);
           T dNeigh_W = b0.derivSingle(1, zero_pt)(0, 0);
