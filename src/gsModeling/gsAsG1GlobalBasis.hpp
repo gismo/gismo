@@ -628,7 +628,11 @@ private:
           const gsTensorBSpline<2, T> &geo =
               dynamic_cast<const gsTensorBSpline<2, T> &>(
                   m_mp.patch(patchOf[k]));
-          reparamCorner<T>(geo, v_group[k].c + 1, geoRot[k], perm[k]);
+          int cIdx = 1;
+          if (v_group[k].c == 1) cIdx = 2;
+          else if (v_group[k].c == 2) cIdx = 4;
+          else if (v_group[k].c == 3) cIdx = 3;
+          reparamCorner<T>(geo, cIdx, geoRot[k], perm[k]);
         }
 
         // Uniform scaling sigma (same heuristic as gsUnstructuredSplines).
@@ -672,23 +676,38 @@ private:
           gsTensorBSplineBasis<2, T> &tbRot =
               const_cast<gsTensorBSplineBasis<2, T> &>(geoRot[k].basis());
 
-          boxSide w_side =
+          std::vector<index_t> inv_perm_k(tbRot.size());
+          for (index_t r = 0; r < tbRot.size(); ++r) {
+            inv_perm_k[perm[k][r]] = r;
+          }
+
+          boxSide w_side_orig =
               (corner == 0 || corner == 3) ? boxSide(1) : boxSide(2);
+          boxSide s_side_orig =
+              (corner == 0 || corner == 1) ? boxSide(3) : boxSide(4);
+
+          const gsTensorBSpline<2, T> &geo_orig =
+              dynamic_cast<const gsTensorBSpline<2, T> &>(m_mp.patch(patchOf[k]));
+          bool switched = (geo_orig.orientation() == -1);
+          bool swapped = (corner == 1 || corner == 3);
+          if (switched) swapped = !swapped;
+
+          boxSide w_side = swapped ? s_side_orig : w_side_orig;
+          boxSide s_side = swapped ? w_side_orig : s_side_orig;
+
           gsSparseMatrix<T> &M_West_edge =
               side_matrices[pk][w_side.index() - 1];
-          boxSide s_side =
-              (corner == 0 || corner == 1) ? boxSide(3) : boxSide(4);
           gsSparseMatrix<T> &M_South_edge =
               side_matrices[pk][s_side.index() - 1];
 
-          // Find side basis functions for West/East edge
-          gsBSplineBasis<T> bS_W = *tbRot.boundaryBasis(w_side);
+          // Find side basis functions for West edge of tbRot (always boxSide 1)
+          gsBSplineBasis<T> bS_W = *tbRot.boundaryBasis(boxSide(1));
           bS_W.elevateContinuity(1);
-          gsBSplineBasis<T> bL_W = *tbRot.boundaryBasis(w_side);
+          gsBSplineBasis<T> bL_W = *tbRot.boundaryBasis(boxSide(1));
           bL_W.degreeReduce(1);
           int nS_W = bS_W.size(), nL_W = bL_W.size();
           int nInt_W = M_West_edge.cols() - nL_W - nS_W;
-          bool w_start = (corner == 0 || corner == 1);
+          bool w_start = swapped ? (corner == 0 || corner == 3) : (corner == 0 || corner == 1);
           int w_idxS = w_start ? 0 : nS_W - 3;
           int w_idxL = w_start ? 0 : nL_W - 2;
           std::vector<int> cols_W = {nInt_W + nL_W + w_idxS + 0,
@@ -696,14 +715,14 @@ private:
                                      nInt_W + nL_W + w_idxS + 2,
                                      nInt_W + w_idxL + 0, nInt_W + w_idxL + 1};
 
-          // Find side basis functions for South/North edge
-          gsBSplineBasis<T> bS_S = *tbRot.boundaryBasis(s_side);
+          // Find side basis functions for South edge of tbRot (always boxSide 3)
+          gsBSplineBasis<T> bS_S = *tbRot.boundaryBasis(boxSide(3));
           bS_S.elevateContinuity(1);
-          gsBSplineBasis<T> bL_S = *tbRot.boundaryBasis(s_side);
+          gsBSplineBasis<T> bL_S = *tbRot.boundaryBasis(boxSide(3));
           bL_S.degreeReduce(1);
           int nS_S = bS_S.size(), nL_S = bL_S.size();
           int nInt_S = M_South_edge.cols() - nL_S - nS_S;
-          bool s_start = (corner == 0 || corner == 3);
+          bool s_start = swapped ? (corner == 0 || corner == 1) : (corner == 0 || corner == 3);
           int s_idxS = s_start ? 0 : nS_S - 3;
           int s_idxL = s_start ? 0 : nL_S - 2;
           std::vector<int> cols_S = {nInt_S + nL_S + s_idxS + 0,
@@ -713,11 +732,24 @@ private:
 
           // Evaluate Jacobian and Hessian of the reparametrized geometry at
           // (0,0)
+          /*gsMatrix<T> zero_uv = gsMatrix<T>::Zero(2, 1);
+          gsMatrix<T> J = geoRot[k].jacobian(zero_uv);
+          gsMatrix<T> secDers;
+          geoRot[k].deriv2_into(zero_uv, secDers);*/
+
           gsMatrix<T> zero_uv = gsMatrix<T>::Zero(2, 1);
           gsMatrix<T> J = geoRot[k].jacobian(zero_uv);
           gsMatrix<T> secDers;
           geoRot[k].deriv2_into(zero_uv, secDers);
 
+          // Singularity check: det(J) near 0
+          T detJ = J(0, 0) * J(1, 1) - J(0, 1) * J(1, 0);
+          bool isSingular = (std::abs(detJ) < 1e-12);
+          if (isSingular) {
+            gsInfo << "Singular geometry at corner " << corner
+                   << ": det(J) = " << detJ << ", using pseudo-inverse."
+                   << std::endl;
+          }
           T J00 = J(0, 0), J10 = J(1, 0);
           T J01 = J(0, 1), J11 = J(1, 1);
           T X_uu = secDers(0, 0), X_vv = secDers(1, 0), X_uv = secDers(2, 0);
@@ -761,30 +793,80 @@ private:
             }
           }
 
-          gsMatrix<T> M_W = gsMatrix<T>::Zero(5, 5);
+          T a0_W, a1_W, b0_W, b1_W, tSign_W;
+          getGluing(pk, w_side, a0_W, a1_W, b0_W, b1_W, tSign_W);
+
+          T a0_S, a1_S, b0_S, b1_S, tSign_S;
+          getGluing(pk, s_side, a0_S, a1_S, b0_S, b1_S, tSign_S);
+
+          bool w_is_end = (corner == 2 || corner == 3);
+          T alpha0_W = w_is_end ? a1_W : a0_W;
+          T alpha_prime_W = w_is_end ? (a0_W - a1_W) : (a1_W - a0_W);
+          T beta0_W = w_is_end ? b1_W : b0_W;
+          T beta_prime_W = w_is_end ? (b0_W - b1_W) : (b1_W - b0_W);
+
+          bool s_is_end = (corner == 1 || corner == 2);
+          T alpha0_S = s_is_end ? a1_S : a0_S;
+          T alpha_prime_S = s_is_end ? (a0_S - a1_S) : (a1_S - a0_S);
+          T beta0_S = s_is_end ? b1_S : b0_S;
+          T beta_prime_S = s_is_end ? (b0_S - b1_S) : (b1_S - b0_S);
+
+          gsMatrix<T> zero_pt = gsMatrix<T>::Zero(1, 1);
+          T dNeigh_W = b0.derivSingle(1, zero_pt)(0, 0);
+          T dNeigh_S = b1.derivSingle(1, zero_pt)(0, 0);
+
+          gsMatrix<T> M_W_raw = gsMatrix<T>::Zero(5, 5);
           for (int col = 0; col < 5; ++col) {
             for (typename gsSparseMatrix<T>::InnerIterator it(M_West_edge,
                                                               cols_W[col]);
                  it; ++it) {
-              M_W(0, col) += it.value() * eval_val(it.row());
-              M_W(1, col) += it.value() * eval_v(it.row());  // tangent
-              M_W(2, col) += it.value() * eval_vv(it.row()); // second tangent
-              M_W(3, col) += it.value() * eval_u(it.row());  // normal
-              M_W(4, col) += it.value() * eval_uv(it.row()); // mixed
+              index_t r = inv_perm_k[it.row()];
+              M_W_raw(0, col) += it.value() * eval_val(r);
+              M_W_raw(1, col) += it.value() * eval_v(r);  // tangent
+              M_W_raw(2, col) += it.value() * eval_vv(r); // second tangent
+              M_W_raw(3, col) += it.value() * eval_u(r);  // normal
+              M_W_raw(4, col) += it.value() * eval_uv(r); // mixed
             }
           }
 
-          gsMatrix<T> M_S = gsMatrix<T>::Zero(5, 5);
+          gsMatrix<T> M_S_raw = gsMatrix<T>::Zero(5, 5);
           for (int col = 0; col < 5; ++col) {
             for (typename gsSparseMatrix<T>::InnerIterator it(M_South_edge,
                                                               cols_S[col]);
                  it; ++it) {
-              M_S(0, col) += it.value() * eval_val(it.row());
-              M_S(1, col) += it.value() * eval_u(it.row());  // tangent
-              M_S(2, col) += it.value() * eval_uu(it.row()); // second tangent
-              M_S(3, col) += it.value() * eval_v(it.row());  // normal
-              M_S(4, col) += it.value() * eval_uv(it.row()); // mixed
+              index_t r = inv_perm_k[it.row()];
+              M_S_raw(0, col) += it.value() * eval_val(r);
+              M_S_raw(1, col) += it.value() * eval_u(r);  // tangent
+              M_S_raw(2, col) += it.value() * eval_uu(r); // second tangent
+              M_S_raw(3, col) += it.value() * eval_v(r);  // normal
+              M_S_raw(4, col) += it.value() * eval_uv(r); // mixed
             }
+          }
+
+          gsMatrix<T> M_W = gsMatrix<T>::Zero(5, 5);
+          for (int col = 0; col < 5; ++col) {
+            M_W(0, col) = M_W_raw(0, col);
+            M_W(1, col) = M_W_raw(1, col);
+            M_W(2, col) = M_W_raw(2, col);
+            
+            T d10 = (1.0 / (dNeigh_W * alpha0_W)) * (tSign_W * beta0_W * M_W_raw(1, col) - M_W_raw(3, col));
+            M_W(3, col) = d10;
+            
+            T d11 = (1.0 / (dNeigh_W * alpha0_W)) * (tSign_W * beta0_W * M_W_raw(2, col) + tSign_W * beta_prime_W * M_W_raw(1, col) - M_W_raw(4, col) - dNeigh_W * alpha_prime_W * d10);
+            M_W(4, col) = d11;
+          }
+
+          gsMatrix<T> M_S = gsMatrix<T>::Zero(5, 5);
+          for (int col = 0; col < 5; ++col) {
+            M_S(0, col) = M_S_raw(0, col);
+            M_S(1, col) = M_S_raw(1, col);
+            M_S(2, col) = M_S_raw(2, col);
+            
+            T d10 = (1.0 / (dNeigh_S * alpha0_S)) * (tSign_S * beta0_S * M_S_raw(1, col) - M_S_raw(3, col));
+            M_S(3, col) = d10;
+            
+            T d11 = (1.0 / (dNeigh_S * alpha0_S)) * (tSign_S * beta0_S * M_S_raw(2, col) + tSign_S * beta_prime_S * M_S_raw(1, col) - M_S_raw(4, col) - dNeigh_S * alpha_prime_S * d10);
+            M_S(4, col) = d11;
           }
 
           std::vector<std::pair<int, int>> patch_indices = {
@@ -817,12 +899,18 @@ private:
             T f_uv = J00 * J01 * d11_phi + (J00 * J11 + J10 * J01) * d12_phi +
                      J10 * J11 * d22_phi + d1_phi * X_uv + d2_phi * Y_uv;
 
+            T d10_target_W = (1.0 / (dNeigh_W * alpha0_W)) * (tSign_W * beta0_W * f_v - f_u);
+            T d11_target_W = (1.0 / (dNeigh_W * alpha0_W)) * (tSign_W * beta0_W * f_vv + tSign_W * beta_prime_W * f_v - f_uv - dNeigh_W * alpha_prime_W * d10_target_W);
+
             gsVector<T> rhs_W(5);
-            rhs_W << f_val, f_v, f_vv, f_u, f_uv;
+            rhs_W << f_val, f_v, f_vv, d10_target_W, d11_target_W;
             gsVector<T> coefs_W = M_W.partialPivLu().solve(rhs_W);
 
+            T d10_target_S = (1.0 / (dNeigh_S * alpha0_S)) * (tSign_S * beta0_S * f_u - f_v);
+            T d11_target_S = (1.0 / (dNeigh_S * alpha0_S)) * (tSign_S * beta0_S * f_uu + tSign_S * beta_prime_S * f_u - f_uv - dNeigh_S * alpha_prime_S * d10_target_S);
+
             gsVector<T> rhs_S(5);
-            rhs_S << f_val, f_u, f_uu, f_v, f_uv;
+            rhs_S << f_val, f_u, f_uu, d10_target_S, d11_target_S;
             gsVector<T> coefs_S = M_S.partialPivLu().solve(rhs_S);
 
             gsVector<T> rhs_P(4);
@@ -834,7 +922,7 @@ private:
               for (typename gsSparseMatrix<T>::InnerIterator it(M_West_edge,
                                                                 cols_W[col]);
                    it; ++it) {
-                local_W(it.row()) += coefs_W(col) * it.value();
+                local_W(inv_perm_k[it.row()]) += coefs_W(col) * it.value();
               }
             }
 
@@ -843,7 +931,7 @@ private:
               for (typename gsSparseMatrix<T>::InnerIterator it(M_South_edge,
                                                                 cols_S[col]);
                    it; ++it) {
-                local_S(it.row()) += coefs_S(col) * it.value();
+                local_S(inv_perm_k[it.row()]) += coefs_S(col) * it.value();
               }
             }
 

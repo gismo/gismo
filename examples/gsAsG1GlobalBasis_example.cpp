@@ -9,7 +9,7 @@
 using namespace gismo;
 
 template <typename T>
-bool testFile(const std::string& filename, int refinements, T tolVal, T tolGrad)
+bool testFile(const std::string& filename, int refinements, int degree, T tolVal, T tolGrad)
 {
     gsInfo << "Testing file: " << filename << "\n";
 
@@ -28,11 +28,11 @@ bool testFile(const std::string& filename, int refinements, T tolVal, T tolGrad)
     gsMultiPatch<T>& mp = *mpPtr;
     mp.computeTopology();
 
-    // Ensure degree >= 3
+    // Ensure degree >= targetDegree
     const short_t inputDeg = mp.patch(0).basis().degree(0);
-    if (inputDeg < 3)
+    if (inputDeg < degree)
     {
-        const short_t elev = 3 - inputDeg;
+        const short_t elev = degree - inputDeg;
         mp.degreeElevate(elev);
     }
 
@@ -163,7 +163,7 @@ bool testFile(const std::string& filename, int refinements, T tolVal, T tolGrad)
                 gsVector<T> physGrad2 = J2.inverse().transpose() * paramGrad2;
 
                 T gradErr = (physGrad1 - physGrad2).norm();
-                if(gradErr > 1e-10) gsInfo << "DOF " << idx << " gradErr: " << gradErr << "\n"; maxGradErr = std::max(maxGradErr, gradErr);
+                maxGradErr = std::max(maxGradErr, gradErr);
             }
         }
     }
@@ -192,12 +192,14 @@ int main(int argc, char* argv[])
 
     std::string folder("/home/fhasanova/gismo/filedata/domain2d/2patch");
     index_t refinements = 1;
+    index_t degree = 3;
     T tolVal = 1e-8;
     T tolGrad = 1e-3;
 
     gsCmdLine cmd("Test gsAsG1GlobalBasis G1 continuity on a directory.");
     cmd.addString("d", "dir", "Directory containing XML files", folder);
     cmd.addInt("r", "refinements", "Number of refinements", refinements);
+    cmd.addInt("p", "degree", "Target polynomial degree", degree);
 
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
 
@@ -227,7 +229,7 @@ int main(int argc, char* argv[])
         std::string filepath = folder + "/" + xml_files[i];
         bool success = false;
         try {
-            success = testFile<T>(filepath, refinements, tolVal, tolGrad);
+            success = testFile<T>(filepath, refinements, degree, tolVal, tolGrad);
         } catch (const std::exception& e) {
             gsInfo << "  Exception: " << e.what() << "\n";
             success = false;
