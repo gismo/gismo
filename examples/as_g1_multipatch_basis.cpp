@@ -197,7 +197,24 @@ int main(int argc, char *argv[]) {
              << ", " << ps2.patch << ", " << offLvl1_2 + j2 << ")\n";
       mapper.matchDof(ps1.patch, offLvl1_1 + j1, ps2.patch, offLvl1_2 + j2);
     }
-    // TODO: Match the 2*6 corner dofs
+
+    // Also match the corners
+    std::vector<patchCorner> corners;
+    ps1.getContainedCorners(2, corners);
+    GISMO_ASSERT (corners.size() == 2, "Unexpected number of corners");
+    for (index_t i=0; i<2; ++i)
+    {
+        const index_t c1 = corners[i].m_index - 1;
+        const index_t c2 = ifc.mapCorner(corners[i]).m_index - 1;
+
+        const index_t off_corner_1 = sumUntil(argBasis[ps1.patch].sizes, 9 + c1);
+        const index_t off_corner_2 = sumUntil(argBasis[ps2.patch].sizes, 9 + c2);
+
+        for (index_t i=0; i<6; ++i)
+            mapper.matchDof(ps1.patch, off_corner_1+i, ps2.patch, off_corner_2+i);
+
+    }
+
   }
   mapper.finalize();
 
