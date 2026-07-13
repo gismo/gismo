@@ -199,6 +199,10 @@ int main(int argc, char* argv[])
 
     GISMO_ASSERT(nGlobal==nInt1+nInt2+nLvl0+nLvl1, "Size missmatch.");
 
+
+    gsSparseMatrix<T> cc = collocateCorners(tb1, mp.patch(ps1.patch));
+    gsInfo << "Corner collocation:\n" << cc << "\n";
+
     // ====================================================================
     // Extract global embedding matrices from gsDofMapper
     // ====================================================================

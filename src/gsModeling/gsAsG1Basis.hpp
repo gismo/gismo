@@ -160,6 +160,47 @@ gsSparseMatrix<T> collocateBoundaryCrossingDerivative(
 }
 
 
+
+template<typename T>
+gsSparseMatrix<T> collocateCorners(
+    const gsTensorBSplineBasis<2,T>& tensorBasis, 
+    const gsGeometry<T>& geo
+)
+{   
+  
+    const gsMatrix<T> support = tensorBasis.support();
+    gsMatrix<T> corners(2,4);
+    corners(0,0) = support(0,0); corners(1,0) = support(1,0);
+    corners(0,1) = support(0,1); corners(1,1) = support(1,0);
+    corners(0,2) = support(0,0); corners(1,2) = support(1,1);
+    corners(0,3) = support(0,1); corners(1,3) = support(1,1);
+    
+    gsMatrix<index_t> idx = tensorBasis.active(corners);
+    gsMatrix<T> vals = tensorBasis.eval(corners);
+    gsMatrix<T> der1 = tensorBasis.deriv(corners);
+    gsMatrix<T> der2 = tensorBasis.deriv2(corners);
+
+    gsMatrix<T> result(24,tensorBasis.size());
+    result.setZero();
+    for (index_t i=0; i<4; ++i)
+    {
+        for(index_t j=0; j<idx.rows(); ++j)
+        {
+            const index_t col = idx(j,i); 
+            result(i*6+0, col) = vals(j,    i); // u
+            result(i*6+1, col) = der1(2*j,  i); // dx u
+            result(i*6+2, col) = der1(2*j+1,i); // dy u
+            result(i*6+3, col) = der2(3*j,  i); // dxx u
+            result(i*6+4, col) = der2(3*j+1,i); // dyy u
+            result(i*6+5, col) = der2(3*j+2,i); // dxy u
+        }
+    }
+
+    return result.sparseView(1, 1e-4);
+}
+
+
+
 // ====================================================================
 // Derive various embeddings
 // ====================================================================
