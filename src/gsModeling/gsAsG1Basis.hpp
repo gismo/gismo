@@ -334,6 +334,42 @@ deriveInnerEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
   return asEmbeddingMatrix<T>(tensorBasis.size(), interiorVec);
 }
 
+template <typename T>
+std::vector<index_t>
+getInteriorDofs(const gsTensorBSplineBasis<2, T> &tensorBasis) {
+  std::vector<index_t> removedSet;
+  for (boxSide side = boxSide::getFirst(2); side != boxSide::getEnd(2);
+       ++side) {
+    for (index_t i = 0; i < 2; ++i) {
+      gsMatrix<index_t> bdyDofs = tensorBasis.boundaryOffset(side, i);
+      std::copy(bdyDofs.data(), bdyDofs.data() + bdyDofs.rows(),
+                std::back_inserter(removedSet));
+    }
+  }
+
+  std::sort(removedSet.begin(), removedSet.end());
+
+  std::vector<index_t> all(tensorBasis.size());
+  std::iota(all.begin(), all.end(), 0);
+
+  std::vector<index_t> interior;
+  interior.reserve(all.size());
+  std::set_difference(all.begin(), all.end(), removedSet.begin(),
+                      removedSet.end(), std::back_inserter(interior));
+  return interior;
+}
+
+template <typename T>
+gsSparseMatrix<T>
+deriveInnerEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis) {
+  std::vector<index_t> interior = getInteriorDofs(tensorBasis);
+  // Convert to gsVector
+  gsVector<index_t> interiorVec;
+  interiorVec.assign(interior.begin(), interior.end());
+  // Create embedding matrix
+  return asEmbeddingMatrix<T>(tensorBasis.size(), interiorVec);
+}
+
 // ====================================================================
 // Assemble overall embedding matrix
 // ====================================================================
@@ -358,6 +394,7 @@ deriveArgyrisBasisEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
 
   const gsSparseMatrix<T> embeddingInterior =
       deriveInnerEmbedding(tensorBasis, side);
+  deriveInnerEmbedding(tensorBasis);
   result.sizes[0] = embeddingInterior.cols();
 
   const gsSparseMatrix<T> simpleEdgeEmbedding =
