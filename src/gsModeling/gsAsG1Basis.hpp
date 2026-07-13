@@ -385,6 +385,48 @@ public:
 };
 
 template <typename T>
+gsSparseMatrix<T>
+deriveCornerEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
+                      const gsGeometry<T> &geo,
+                      const gsMatrix<T> &localGluingData) {
+
+  index_t rows = tensorBasis.size();
+  gsBlockSparseMatrix<T> collocation(6, 5);
+
+  collocation.set(0, 0, collocateCorners(tensorBasis, geo));
+  collocation.set(1, 0, deriveInnerEmbedding(tensorBasis).transpose());
+
+  for (boxSide side = boxSide::getFirst(2); side != boxSide::getEnd(2);
+       ++side) {
+
+    const gsSparseMatrix<T> simpleEdgeEmbedding =
+        gsBlockSparseMatrix<T>(1, 2)
+            .set(0, 0, asEmbeddingMatrix<T>(rows, tensorBasis.boundary(side)))
+            .set(0, 1,
+                 asEmbeddingMatrix<T>(rows,
+                                      tensorBasis.boundaryOffset(side, 1)));
+
+    collocation.set(1 + side.m_index, 0, simpleEdgeEmbedding.transpose());
+    collocation.set(1 + side.m_index, side.m_index,
+                    deriveCornersPortionEdgeEmbedding(deriveEdgeEmbedding(
+                        tensorBasis, localGluingData, side)));
+  }
+
+  gsSparseMatrix<T> collocationMatrix = collocation;
+
+  gsMatrix<T> rhs(collocationMatrix.rows(), 24);
+  rhs.setZero();
+  for (int i = 0; i < 24; i++) {
+    rhs(i, i) = 1;
+  }
+
+  gsMatrix<T> result;
+  makeSparseLUSolver(collocationMatrix)->apply(rhs, result);
+
+  return result.topRows(rows).sparseView(1e-4);
+}
+
+template <typename T>
 gsAsG1Embedding<T>
 deriveArgyrisBasisEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
                             boxSide side, const gsMatrix<T> &localGluingData,
@@ -405,9 +447,6 @@ deriveArgyrisBasisEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
 
   const gsEdgeEmbedding<T> asG1edgeEmbedding =
       deriveEdgeEmbedding(tensorBasis, localGluingData, side);
-
-  deriveCornersPortionEdgeEmbedding(asG1edgeEmbedding);
-  deriveInnerPortionEdgeEmbedding(asG1edgeEmbedding);
 
   result.sizes[1] = asG1edgeEmbedding.sizes[0];
   result.sizes[2] = asG1edgeEmbedding.sizes[1];
