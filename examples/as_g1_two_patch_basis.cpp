@@ -137,8 +137,8 @@ int main(int argc, char *argv[]) {
           mp.patch(ps2.patch).basis());
 
   gsAsG1Embedding<T> argBasis1 =
-      deriveArgyrisBasisEmbedding<T>(tb1, ps1.side(), gd.leftCols(4), T(1e-12));
-  gsAsG1Embedding<T> argBasis2 = deriveArgyrisBasisEmbedding<T>(
+      deriveTwoPatchASG1Embedding<T>(tb1, ps1.side(), gd.leftCols(4), T(1e-12));
+  gsAsG1Embedding<T> argBasis2 = deriveTwoPatchASG1Embedding<T>(
       tb2, ps2.side(), gd.rightCols(4), T(1e-12));
 
   const gsSparseMatrix<T> &E1 = argBasis1.matrix;
@@ -211,10 +211,6 @@ int main(int argc, char *argv[]) {
          << " (level1: shared crossing derivatives)\n";
 
   GISMO_ASSERT(nGlobal == nInt1 + nInt2 + nLvl0 + nLvl1, "Size missmatch.");
-
-  gsSparseMatrix<T> cc = deriveCornerEmbedding(tb1, mp.patch(ps1.patch),
-                                               gsMatrix<T>(gd.leftCols(4)));
-  gsInfo << "Corner embedding:\n" << cc << "\n";
 
   // ====================================================================
   // Extract global embedding matrices from gsDofMapper

@@ -374,16 +374,6 @@ deriveInnerEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis) {
 // Assemble overall embedding matrix
 // ====================================================================
 
-template <typename T> struct gsAsG1Embedding {
-public:
-  gsSparseMatrix<T> matrix;
-  // Sizes of blocks:
-  //   0...interior dofs
-  //   1...edge dofs level 0 (function values)
-  //   2...edge dofs level 1 (crossing derivatives)
-  gsVector<index_t, 3> sizes;
-};
-
 template <typename T>
 gsSparseMatrix<T>
 deriveCornerEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
@@ -407,9 +397,12 @@ deriveCornerEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
                                       tensorBasis.boundaryOffset(side, 1)));
 
     collocation.set(1 + side.m_index, 0, simpleEdgeEmbedding.transpose());
-    collocation.set(1 + side.m_index, side.m_index,
-                    deriveCornersPortionEdgeEmbedding(deriveEdgeEmbedding(
-                        tensorBasis, localGluingData, side)));
+    collocation.set(
+        1 + side.m_index, side.m_index,
+        deriveCornersPortionEdgeEmbedding(deriveEdgeEmbedding(
+            tensorBasis,
+            gsMatrix<T>(localGluingData.middleCols(4 * (side.m_index - 1), 4)),
+            side)));
   }
 
   gsSparseMatrix<T> collocationMatrix = collocation;
@@ -426,9 +419,19 @@ deriveCornerEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
   return result.topRows(rows).sparseView(1e-4);
 }
 
+template <typename T> struct gsAsG1Embedding {
+public:
+  gsSparseMatrix<T> matrix;
+  // Sizes of blocks:
+  //   0...interior dofs
+  //   1...edge dofs level 0 (function values)
+  //   2...edge dofs level 1 (crossing derivatives)
+  gsVector<index_t, 3> sizes;
+};
+
 template <typename T>
 gsAsG1Embedding<T>
-deriveArgyrisBasisEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
+deriveTwoPatchASG1Embedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
                             boxSide side, const gsMatrix<T> &localGluingData,
                             T eps = 1e-12) {
   gsAsG1Embedding<T> result;
@@ -436,7 +439,6 @@ deriveArgyrisBasisEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
 
   const gsSparseMatrix<T> embeddingInterior =
       deriveInnerEmbedding(tensorBasis, side);
-  deriveInnerEmbedding(tensorBasis);
   result.sizes[0] = embeddingInterior.cols();
 
   const gsSparseMatrix<T> simpleEdgeEmbedding =
@@ -455,6 +457,63 @@ deriveArgyrisBasisEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
       gsBlockSparseMatrix<T>(1, 2)
           .set(0, 0, embeddingInterior)
           .set(0, 1, simpleEdgeEmbedding * asG1edgeEmbedding.matrix);
+
+  return result;
+}
+
+template <typename T> struct gsArgyrisEmbedding {
+public:
+  gsSparseMatrix<T> matrix;
+  // Sizes of blocks:
+  //   0...interior dofs
+  //   1...edge dofs level 0 (function values)
+  //   2...edge dofs level 1 (crossing derivatives)
+  gsVector<index_t, 13> sizes;
+};
+
+template <typename T>
+gsArgyrisEmbedding<T>
+deriveArgyrisBasisEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
+                            const gsMatrix<T> &localGluingData,
+                            gsGeometry<T> &geo, T eps = 1e-12) {
+  gsArgyrisEmbedding<T> result;
+  gsBlockSparseMatrix<T> blockMatrix(1, 6);
+  index_t rows = tensorBasis.size();
+
+  gsSparseMatrix<T> embeddingInterior = deriveInnerEmbedding(tensorBasis);
+  blockMatrix.set(0, 0, embeddingInterior);
+  result.sizes[0] = embeddingInterior.cols();
+
+  for (boxSide side = boxSide::getFirst(2); side != boxSide::getEnd(2);
+       ++side) {
+    const gsSparseMatrix<T> simpleEdgeEmbedding =
+        gsBlockSparseMatrix<T>(1, 2)
+            .set(0, 0, asEmbeddingMatrix<T>(rows, tensorBasis.boundary(side)))
+            .set(0, 1,
+                 asEmbeddingMatrix<T>(rows,
+                                      tensorBasis.boundaryOffset(side, 1)));
+
+    const gsEdgeEmbedding<T> asG1edgeEmbedding = deriveEdgeEmbedding(
+        tensorBasis,
+        gsMatrix<T>(localGluingData.middleCols(4 * (side.m_index - 1), 4)),
+        side);
+
+    blockMatrix.set(0, side.m_index,
+                    simpleEdgeEmbedding *
+                        deriveInnerPortionEdgeEmbedding(asG1edgeEmbedding));
+
+    result.sizes[1 + 2 * (side.m_index - 1)] = asG1edgeEmbedding.sizes[0] - 6;
+    result.sizes[2 + 2 * (side.m_index - 1)] = asG1edgeEmbedding.sizes[1] - 4;
+  }
+
+  blockMatrix.set(0, 5,
+                  deriveCornerEmbedding(tensorBasis, geo, localGluingData));
+  result.sizes[9] = 6;
+  result.sizes[10] = 6;
+  result.sizes[11] = 6;
+  result.sizes[12] = 6;
+
+  result.matrix = blockMatrix;
 
   return result;
 }
