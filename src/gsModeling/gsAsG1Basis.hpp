@@ -159,40 +159,66 @@ gsSparseMatrix<T> collocateBoundaryCrossingDerivative(
               .kron(scaling1.asDiagonal() * collocationMatrix(tangentialBasis, pts, 0));
 }
 
-
-
 template<typename T>
 gsSparseMatrix<T> collocateCorners(
-    const gsTensorBSplineBasis<2,T>& tensorBasis, 
+    const gsTensorBSplineBasis<2,T>& tensorBasis,
     const gsGeometry<T>& geo
 )
-{   
-  
+{
     const gsMatrix<T> support = tensorBasis.support();
     gsMatrix<T> corners(2,4);
     corners(0,0) = support(0,0); corners(1,0) = support(1,0);
     corners(0,1) = support(0,1); corners(1,1) = support(1,0);
     corners(0,2) = support(0,0); corners(1,2) = support(1,1);
     corners(0,3) = support(0,1); corners(1,3) = support(1,1);
-    
-    gsMatrix<index_t> idx = tensorBasis.active(corners);
-    gsMatrix<T> vals = tensorBasis.eval(corners);
-    gsMatrix<T> der1 = tensorBasis.deriv(corners);
-    gsMatrix<T> der2 = tensorBasis.deriv2(corners);
 
-    gsMatrix<T> result(24,tensorBasis.size());
-    result.setZero();
+    gsMatrix<index_t> idx   = tensorBasis.active(corners);
+    gsMatrix<T>       vals  = tensorBasis.eval(corners);
+    gsMatrix<T>       der1  = tensorBasis.deriv(corners);
+    gsMatrix<T>       der2  = tensorBasis.deriv2(corners);
+
+    GISMO_ASSERT (idx.cols() == 4, idx.rows() << "x" << idx.cols());
+    GISMO_ASSERT (vals.cols() == 4 && vals.rows() == idx.rows(), vals.rows() << "x" << vals.cols());
+    GISMO_ASSERT (der1.cols() == 4 && der1.rows() == 2*idx.rows(), der1.rows() << "x" << der1.cols());
+    GISMO_ASSERT (der2.cols() == 4 && der2.rows() == 3*idx.rows(), der2.rows() << "x" << der2.cols());
+
+    // Transform first and second derivatives to physical domain
+    gsMapData<T> md(NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER);
+    md.points = corners;
+    geo.computeMap(md);
+
+    gsMatrix<T> der1Phys(der1.rows(), der1.cols());
     for (index_t i=0; i<4; ++i)
     {
-        for(index_t j=0; j<idx.rows(); ++j)
+        gsMatrix<T> tmp;
+        transformGradients(md, i, der1, tmp);
+        tmp.resize(der1.rows(),1);
+        der1Phys.col(i) = tmp;
+    }
+
+    gsMatrix<T> der2Phys(der2.rows(), der2.cols());
+    for (index_t i=0; i<4; ++i)
+    {
+        gsMatrix<T> tmp;
+        transformDeriv2Hgrad(md, i, der1, der2, tmp);
+        tmp = tmp.transpose();
+        tmp.resize(der2.rows(),1);
+        der2Phys.col(i) = tmp;
+    }
+
+    gsMatrix<T> result(24, tensorBasis.size());
+    result.setZero();
+
+    for (index_t i=0; i<4; ++i)
+    {
+        for (index_t j=0; j<idx.rows(); ++j)
         {
-            const index_t col = idx(j,i); 
-            result(i*6+0, col) = vals(j,    i); // u
-            result(i*6+1, col) = der1(2*j,  i); // dx u
-            result(i*6+2, col) = der1(2*j+1,i); // dy u
-            result(i*6+3, col) = der2(3*j,  i); // dxx u
-            result(i*6+4, col) = der2(3*j+1,i); // dyy u
-            result(i*6+5, col) = der2(3*j+2,i); // dxy u
+            result(6*i  ,idx(j,i)) = vals    (j,    i);    // u
+            result(6*i+1,idx(j,i)) = der1Phys(2*j,  i);    // dx u
+            result(6*i+2,idx(j,i)) = der1Phys(2*j+1,i);    // dy u
+            result(6*i+3,idx(j,i)) = der2Phys(3*j,  i);    // dxx u
+            result(6*i+4,idx(j,i)) = der2Phys(3*j+1,i);    // dyy u
+            result(6*i+5,idx(j,i)) = der2Phys(3*j+2,i);    // dxy u
         }
     }
 
