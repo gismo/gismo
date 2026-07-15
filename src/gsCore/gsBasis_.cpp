@@ -53,16 +53,18 @@ void pybind11_init_gsBasis(py::module &m)
 
     .def("uniformRefine_withTransfer",
         [](Class& self, int numKnots, int mul) {
-            gsSparseMatrix<real_t, RowMajor> transfer;
-            self.uniformRefine_withTransfer(transfer, numKnots, mul);
+            gsSparseMatrix<real_t, RowMajor> transfer_rm;
+            self.uniformRefine_withTransfer(transfer_rm, numKnots, mul);
+            gsSparseMatrix<real_t> transfer(transfer_rm);
             return transfer;
         },
         py::arg("numKnots")=1, py::arg("mul")=1,
         "Uniform h-refinement (all directions); returns the sparse transfer matrix")
     .def("uniformCoarsen_withTransfer",
         [](Class& self, int numKnots) {
-            gsSparseMatrix<real_t, RowMajor> transfer;
-            self.uniformCoarsen_withTransfer(transfer, numKnots);
+            gsSparseMatrix<real_t, RowMajor> transfer_rm;
+            self.uniformCoarsen_withTransfer(transfer_rm, numKnots);
+            gsSparseMatrix<real_t> transfer(transfer_rm);
             return transfer;
         },
         py::arg("numKnots")=1,
