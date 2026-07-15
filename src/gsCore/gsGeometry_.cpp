@@ -53,8 +53,31 @@ namespace gismo
 		"Returns the bspline basis as a reference")
 		.def("rotate", (void (Class::*)(real_t, const gsVector<real_t,3>&)) &Class::rotate, "Apply 3D Rotation by an angle radians around axis")
 		.def("rotate", (void (Class::*)(real_t)) &Class::rotate, "Apply 2D Rotation by an angle radians")
-		.def("closestPointTo", (void (Class::*)(real_t)) &Class::rotate, "Get the closest position to a given point in space")
-		
+		.def("closestPointTo",
+		     [](const Class& self, const gsVector<real_t> & pt, real_t accuracy, index_t maxIterations, real_t relaxation)
+		     {
+		         gsVector<real_t> u(self.parDim());
+		         u.setZero();
+		         real_t dist = self.closestPointTo(pt, u, accuracy, false, maxIterations, relaxation);
+		         return py::make_tuple(dist, u);
+		     },
+		     py::arg("pt"),
+		     py::arg("accuracy") = 1e-6,
+		     py::arg("maxIterations") = 100,
+		     py::arg("relaxation") = 1.0,
+		     "Get the closest parameter coordinate to a given physical point. Returns (distance, u).")
+		.def("closestPointTo",
+		     [](const Class& self, const gsVector<real_t> & pt, gsVector<real_t> initial, real_t accuracy, index_t maxIterations, real_t relaxation)
+		     {
+		         real_t dist = self.closestPointTo(pt, initial, accuracy, true, maxIterations, relaxation);
+		         return py::make_tuple(dist, initial);
+		     },
+		     py::arg("pt"),
+		     py::arg("initial"),
+		     py::arg("accuracy") = 1e-6,
+		     py::arg("maxIterations") = 100,
+		     py::arg("relaxation") = 1.0,
+		     "Get the closest parameter coordinate to a given physical point using an initial guess. Returns (distance, u).")
 		.def("uniformRefine", &Class::uniformRefine, "Uniformly refines the geometry", py::arg("numKnots") = 1, py::arg("mul") = 1, py::arg("dir") = -1)
 		.def("uniformCoarsen", &Class::uniformCoarsen, "Uniformly coarsens the geometry", py::arg("numKnots") = 1)
 		.def("refineElements",&Class::refineElements  ,"Refines the geometry given elements  ", py::arg("boxes"))

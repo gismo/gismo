@@ -104,23 +104,23 @@ namespace py = pybind11;
                     throw py::value_error("No object with label '" + label + "' found.");
                 if (tag == internal::gsXml<gsOptionList>::tag()) {
                     auto obj = self.getLabel<gsOptionList>(label);
-                    return py::cast(obj.get(), py::return_value_policy::move);
+                    return py::cast(obj.release(), py::return_value_policy::take_ownership);
                 }
                 if (tag == internal::gsXml<gsMultiPatch<real_t>>::tag()) {
                     auto obj = self.getLabel<gsMultiPatch<real_t>>(label);
-                    return py::cast(obj.get(), py::return_value_policy::move);
+                    return py::cast(obj.release(), py::return_value_policy::take_ownership);
                 }
                 if (tag == internal::gsXml<gsBoundaryConditions<real_t>>::tag()) {
                     auto obj = self.getLabel<gsBoundaryConditions<real_t>>(label);
-                    return py::cast(obj.get(), py::return_value_policy::move);
+                    return py::cast(obj.release(), py::return_value_policy::take_ownership);
                 }
                 if (tag == internal::gsXml<gsMatrix<real_t>>::tag()) {
                     auto obj = self.getLabel<gsMatrix<real_t>>(label);
-                    return py::cast(obj.get(), py::return_value_policy::move);
+                    return py::cast(obj.release(), py::return_value_policy::take_ownership);
                 }
                 if (tag == internal::gsXml<gsSparseMatrix<real_t>>::tag()) {
                     auto obj = self.getLabel<gsSparseMatrix<real_t>>(label);
-                    return py::cast(obj.get(), py::return_value_policy::move);
+                    return py::cast(obj.release(), py::return_value_policy::take_ownership);
                 }
                 throw py::value_error(
                     "getLabel: unrecognized tag '" + tag + "' for label '" + label + "'. "

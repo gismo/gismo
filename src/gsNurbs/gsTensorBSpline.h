@@ -183,7 +183,7 @@ public:
 
     /// Removes knot \a knot from direction \a dir up to \a i times (exact).
     /// Returns the number of times the knot was successfully removed.
-    int removeKnot( T knot, int dir, int i = 1);
+    index_t removeKnot( T knot, short_t dir, short_t i = 1);
 
     // -----------------------------------------------------------------------
     //  Calculus methods

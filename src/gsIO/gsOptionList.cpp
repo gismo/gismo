@@ -574,23 +574,15 @@ void pybind11_init_gsOptionList(py::module &m) {
             std::string key = pybind11::cast<std::string>(item.first);
             py::handle val_handle = item.second;
             
-            // Try to interpret value as int, real, or bool, in that order
-            try { 
-                opt->addInt(key, "", pybind11::cast<int>(val_handle)); 
-            }
-            catch (...) {
-                try { 
-                    opt->addReal(key, "", pybind11::cast<real_t>(val_handle)); 
-                }
-                catch (...) {
-                    try { 
-                        opt->addSwitch(key, "", pybind11::cast<bool>(val_handle)); 
-                    }
-                    catch (...) { 
-                        // Skip entries that can't be converted
-                    }
-                }
-            }
+            // Prefer exact Python types to avoid bool being treated as int.
+            if (py::isinstance<py::bool_>(val_handle))
+                opt->addSwitch(key, "", py::cast<bool>(val_handle));
+            else if (py::isinstance<py::int_>(val_handle))
+                opt->addInt(key, "", py::cast<int>(val_handle));
+            else if (py::isinstance<py::float_>(val_handle))
+                opt->addReal(key, "", py::cast<real_t>(val_handle));
+            else
+                continue;
         }
         return opt;
     }), "Construct gsOptionList from a Python dictionary")

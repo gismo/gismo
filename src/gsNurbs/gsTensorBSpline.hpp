@@ -1140,11 +1140,10 @@ gsTensorBSpline<d,T> gsTensorBSpline<d,T>::grad(short_t dir) const
     for (index_t i = 0; i < n_dir - 1; ++i)
     {
         const T denom = kv[i + p + 1] - kv[i + 1];
-        GISMO_ASSERT(math::abs(denom) > T(0),
-                     "grad: zero denominator at i=" << i <<
-                     " (kv[" << i+p+1 << "]=" << kv[i+p+1] <<
-                     ", kv[" << i+1 << "]=" << kv[i+1] << ")");
-        dcoefs.row(i) = (T(p) / denom) * (coefs.row(i + 1) - coefs.row(i));
+        if (denom == T(0))
+            dcoefs.row(i).setZero();
+        else
+            dcoefs.row(i) = (T(p) / denom) * (coefs.row(i + 1) - coefs.row(i));
     }
 
     // Unflatten back to tensor layout with updated size in the derivative direction
