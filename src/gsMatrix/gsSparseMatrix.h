@@ -615,11 +615,13 @@ gsSparseMatrix<T, _Options, _Index>::rrefInPlace()
         }
 }
 
+// #ifdef GISMO_WITH_PYBIND11
 // NOTE: gsSparseMatrix is intentionally NOT registered as a pybind11 class.
 // It derives from Eigen::SparseMatrix, so pybind11/eigen.h's Eigen sparse
 // type_caster converts it to/from scipy.sparse automatically (copying into a
 // scipy-owned buffer). Sparse matrices therefore cross the Python boundary as
 // scipy.sparse objects in both directions.
+// #endif
 
 } // namespace gismo
 
