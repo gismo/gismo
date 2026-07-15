@@ -18,36 +18,26 @@ CLASS_TEMPLATE_INST gsHTensorBasis <1,real_t>;
 CLASS_TEMPLATE_INST gsHTensorBasis <2,real_t>;
 CLASS_TEMPLATE_INST gsHTensorBasis <3,real_t>;
 CLASS_TEMPLATE_INST gsHTensorBasis <4,real_t>;
-CLASS_TEMPLATE_INST gsHTensorBasis <5,real_t>;
-CLASS_TEMPLATE_INST gsHTensorBasis <6,real_t>;
   
 CLASS_TEMPLATE_INST gsTHBSplineBasis <1,real_t,true>;
 CLASS_TEMPLATE_INST gsTHBSplineBasis <2,real_t,true>;
 CLASS_TEMPLATE_INST gsTHBSplineBasis <3,real_t,true>;
 CLASS_TEMPLATE_INST gsTHBSplineBasis <4,real_t,true>;
-CLASS_TEMPLATE_INST gsTHBSplineBasis <5,real_t,true>;
-CLASS_TEMPLATE_INST gsTHBSplineBasis <6,real_t,true>;
 
 CLASS_TEMPLATE_INST gsTHBSplineBasis <1,real_t,false>;
 CLASS_TEMPLATE_INST gsTHBSplineBasis <2,real_t,false>;
 CLASS_TEMPLATE_INST gsTHBSplineBasis <3,real_t,false>;
 CLASS_TEMPLATE_INST gsTHBSplineBasis <4,real_t,false>;
-CLASS_TEMPLATE_INST gsTHBSplineBasis <5,real_t,false>;
-CLASS_TEMPLATE_INST gsTHBSplineBasis <6,real_t,false>;
 
 CLASS_TEMPLATE_INST gsTHBSpline      <1,real_t,true>;
 CLASS_TEMPLATE_INST gsTHBSpline      <2,real_t,true>;
 CLASS_TEMPLATE_INST gsTHBSpline      <3,real_t,true>;
 CLASS_TEMPLATE_INST gsTHBSpline      <4,real_t,true>;
-CLASS_TEMPLATE_INST gsTHBSpline      <5,real_t,true>;
-CLASS_TEMPLATE_INST gsTHBSpline      <6,real_t,true>;
 
 CLASS_TEMPLATE_INST gsTHBSpline      <1,real_t,false>;
 CLASS_TEMPLATE_INST gsTHBSpline      <2,real_t,false>;
 CLASS_TEMPLATE_INST gsTHBSpline      <3,real_t,false>;
 CLASS_TEMPLATE_INST gsTHBSpline      <4,real_t,false>;
-CLASS_TEMPLATE_INST gsTHBSpline      <5,real_t,false>;
-CLASS_TEMPLATE_INST gsTHBSpline      <6,real_t,false>;
 
 namespace internal
 {
@@ -56,36 +46,26 @@ CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<1,real_t> >;
 CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<2,real_t> >;
 CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<3,real_t> >;
 CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<4,real_t> >;
-CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<5,real_t> >;
-CLASS_TEMPLATE_INST gsXml< gsHTensorBasis<6,real_t> >;
   
 CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<1,real_t,true> >;
 CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<2,real_t,true> >;
 CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<3,real_t,true> >;
 CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<4,real_t,true> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<5,real_t,true> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<6,real_t,true> >;
 
 CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<1,real_t,false> >;
 CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<2,real_t,false> >;
 CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<3,real_t,false> >;
 CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<4,real_t,false> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<5,real_t,false> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSplineBasis<6,real_t,false> >;
 
 CLASS_TEMPLATE_INST gsXml< gsTHBSpline<1,real_t,true> >;
 CLASS_TEMPLATE_INST gsXml< gsTHBSpline<2,real_t,true> >;
 CLASS_TEMPLATE_INST gsXml< gsTHBSpline<3,real_t,true> >;
 CLASS_TEMPLATE_INST gsXml< gsTHBSpline<4,real_t,true> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSpline<5,real_t,true> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSpline<6,real_t,true> >;
 
 CLASS_TEMPLATE_INST gsXml< gsTHBSpline<1,real_t,false> >;
 CLASS_TEMPLATE_INST gsXml< gsTHBSpline<2,real_t,false> >;
 CLASS_TEMPLATE_INST gsXml< gsTHBSpline<3,real_t,false> >;
 CLASS_TEMPLATE_INST gsXml< gsTHBSpline<4,real_t,false> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSpline<5,real_t,false> >;
-CLASS_TEMPLATE_INST gsXml< gsTHBSpline<6,real_t,false> >;
 
 }
 
@@ -114,7 +94,7 @@ short_t h_spline_dimension_from_args(const py::args & args, const char * factory
         throw py::value_error(std::string("Cannot infer dimension for ") + factoryName + ": first argument has neither dim() nor domainDim().");
     }
 
-    if (d < 1 || d > 6)
+    if (d < 1 || d > 4)
         throw py::value_error(std::string("Expected inferred dimension in [1, 6] for ") + factoryName + ".");
 
     return d;
@@ -165,7 +145,6 @@ void pybind11_init_gsTHBSpline_factory(py::module &m)
     },
     "Factory constructor that dispatches to gsHBSpline1..6 based on inferred dimension");
 }
-
 template <short_t d>
 void pybind11_init_gsHTensorBasis(py::module &m)
 {
@@ -182,8 +161,6 @@ template void pybind11_init_gsHTensorBasis<1>(py::module &m);
 template void pybind11_init_gsHTensorBasis<2>(py::module &m);
 template void pybind11_init_gsHTensorBasis<3>(py::module &m);
 template void pybind11_init_gsHTensorBasis<4>(py::module &m);
-template void pybind11_init_gsHTensorBasis<5>(py::module &m);
-template void pybind11_init_gsHTensorBasis<6>(py::module &m);
 
 template <short_t d, bool Trunc>
 void pybind11_init_gsTHBSplineBasis(py::module &m)
@@ -203,15 +180,10 @@ template void pybind11_init_gsTHBSplineBasis<1, true>(py::module &m);
 template void pybind11_init_gsTHBSplineBasis<2, true>(py::module &m);
 template void pybind11_init_gsTHBSplineBasis<3, true>(py::module &m);
 template void pybind11_init_gsTHBSplineBasis<4, true>(py::module &m);
-template void pybind11_init_gsTHBSplineBasis<5, true>(py::module &m);
-template void pybind11_init_gsTHBSplineBasis<6, true>(py::module &m);
-
 template void pybind11_init_gsTHBSplineBasis<1, false>(py::module &m);
 template void pybind11_init_gsTHBSplineBasis<2, false>(py::module &m);
 template void pybind11_init_gsTHBSplineBasis<3, false>(py::module &m);
 template void pybind11_init_gsTHBSplineBasis<4, false>(py::module &m);
-template void pybind11_init_gsTHBSplineBasis<5, false>(py::module &m);
-template void pybind11_init_gsTHBSplineBasis<6, false>(py::module &m);
 
 template <short_t d, bool Trunc>
 void pybind11_init_gsTHBSpline(py::module &m)
@@ -230,15 +202,10 @@ template void pybind11_init_gsTHBSpline<1, true>(py::module &m);
 template void pybind11_init_gsTHBSpline<2, true>(py::module &m);
 template void pybind11_init_gsTHBSpline<3, true>(py::module &m);
 template void pybind11_init_gsTHBSpline<4, true>(py::module &m);
-template void pybind11_init_gsTHBSpline<5, true>(py::module &m);
-template void pybind11_init_gsTHBSpline<6, true>(py::module &m);
-
 template void pybind11_init_gsTHBSpline<1, false>(py::module &m);
 template void pybind11_init_gsTHBSpline<2, false>(py::module &m);
 template void pybind11_init_gsTHBSpline<3, false>(py::module &m);
 template void pybind11_init_gsTHBSpline<4, false>(py::module &m);
-template void pybind11_init_gsTHBSpline<5, false>(py::module &m);
-template void pybind11_init_gsTHBSpline<6, false>(py::module &m);
 
 #endif
 

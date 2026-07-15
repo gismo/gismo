@@ -49,10 +49,8 @@ coefs = np.array([
 
 
 # Construct basis using knot vectors
-tbasis1 = gs.nurbs.gsTensorBSplineBasis2(ku1, ku2)
-tspline1 = gs.nurbs.gsTensorBSpline2(tbasis1,coefs)
-
-tbasis4 = gs.nurbs.gsTensorBSplineBasis5(ku1, ku1, ku1, ku1, ku2)
+tbasis1 = gs.nurbs.gsTensorBSplineBasis(ku1, ku2)
+tspline1 = gs.nurbs.gsTensorBSpline(tbasis1,coefs)
 
 print("Coefficients:\n", tspline1.coefs())
 

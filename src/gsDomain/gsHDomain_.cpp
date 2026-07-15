@@ -8,8 +8,6 @@ namespace gismo
     CLASS_TEMPLATE_INST gsHDomain<2,real_t,index_t>;
     CLASS_TEMPLATE_INST gsHDomain<3,real_t,index_t>;
     CLASS_TEMPLATE_INST gsHDomain<4,real_t,index_t>;
-    CLASS_TEMPLATE_INST gsHDomain<5,real_t,index_t>;
-    CLASS_TEMPLATE_INST gsHDomain<6,real_t,index_t>;
 
 /*
     // Explicit member instansiations. Quite ugly for now..

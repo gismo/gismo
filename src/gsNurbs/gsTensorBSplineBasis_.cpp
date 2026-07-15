@@ -12,15 +12,11 @@ namespace gismo
 CLASS_TEMPLATE_INST gsTensorBSplineBasis<2,real_t>;
 CLASS_TEMPLATE_INST gsTensorBSplineBasis<3,real_t>;
 CLASS_TEMPLATE_INST gsTensorBSplineBasis<4,real_t>;
-CLASS_TEMPLATE_INST gsTensorBSplineBasis<5,real_t>;
-CLASS_TEMPLATE_INST gsTensorBSplineBasis<6,real_t>;
 
 CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSplineBasis<1,real_t> >;
 CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSplineBasis<2,real_t> >;
 CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSplineBasis<3,real_t> >;
 CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSplineBasis<4,real_t> >;
-CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSplineBasis<5,real_t> >;
-CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSplineBasis<6,real_t> >;
 
 #ifdef GISMO_WITH_PYBIND11
 
@@ -72,10 +68,6 @@ void pybind11_init_gsTensorBSplineBasis_factory(py::module &m)
             return py::cast(new gsTensorBSplineBasis<3,real_t>(give(knotVectorList)));
         case 4:
             return py::cast(new gsTensorBSplineBasis<4,real_t>(give(knotVectorList)));
-        case 5:
-            return py::cast(new gsTensorBSplineBasis<5,real_t>(give(knotVectorList)));
-        case 6:
-            return py::cast(new gsTensorBSplineBasis<6,real_t>(give(knotVectorList)));
         default:
             throw py::value_error("Expected 2 to 6 knot vectors as positional arguments or in a single sequence.");
         }
@@ -116,8 +108,6 @@ void pybind11_init_gsTensorBSplineBasis(py::module &m)
 template void pybind11_init_gsTensorBSplineBasis<2>(py::module &m);
 template void pybind11_init_gsTensorBSplineBasis<3>(py::module &m);
 template void pybind11_init_gsTensorBSplineBasis<4>(py::module &m);
-template void pybind11_init_gsTensorBSplineBasis<5>(py::module &m);
-template void pybind11_init_gsTensorBSplineBasis<6>(py::module &m);
 
 #endif
 
