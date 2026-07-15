@@ -686,7 +686,7 @@ gsTensorBSpline<d,T> gsTensorBSpline<d,T>::toBezier() const
         // Collect unique interior knots BEFORE any insertion (avoids invalidation)
         std::vector<T> interior;
         interior.reserve(static_cast<size_t>(kv0.uSize()));
-        for (index_t i = 0; i < kv0.uSize(); ++i)
+        for (size_t i = 0; i < kv0.uSize(); ++i)
         {
             const T xi = kv0.uValue(i);
             if (xi > first && xi < last)
@@ -748,7 +748,7 @@ gsTensorBSpline<d,T> gsTensorBSpline<d,T>::squared(bool keepBezier) const
         const index_t p  = deg[k];
         const index_t p2 = 2 * p;
         std::vector<T> knots_result;
-        for (index_t i = 0; i < kv.uSize(); ++i)
+        for (size_t i = 0; i < kv.uSize(); ++i)
         {
             const T xi = kv.uValue(i);
             for (index_t m = 0; m < p2 + 1; ++m)
@@ -903,7 +903,7 @@ gsTensorBSpline<d,T> gsTensorBSpline<d,T>::squared(bool keepBezier) const
             {
                 const KnotVectorType & kv0 = result.knots(k);
                 const T first = kv0.first(), last = kv0.last();
-                for (index_t i = 0; i < kv0.uSize(); ++i)
+                for (size_t i = 0; i < kv0.uSize(); ++i)
                 {
                     const T xi = kv0.uValue(i);
                     if (xi > first && xi < last) interior.push_back(xi);
@@ -956,7 +956,7 @@ gsTensorBSpline<d,T> gsTensorBSpline<d,T>::cubed(bool keepBezier) const
         const KnotVectorType & kv = c1.knots(k);
         const index_t p3 = 3 * deg[k];
         std::vector<T> knots_result;
-        for (index_t i = 0; i < kv.uSize(); ++i)
+        for (size_t i = 0; i < kv.uSize(); ++i)
         {
             const T xi = kv.uValue(i);
             for (index_t m = 0; m < p3 + 1; ++m)
@@ -1087,7 +1087,7 @@ gsTensorBSpline<d,T> gsTensorBSpline<d,T>::cubed(bool keepBezier) const
             {
                 const KnotVectorType & kv0 = result3.knots(k);
                 const T first = kv0.first(), last = kv0.last();
-                for (index_t i = 0; i < kv0.uSize(); ++i)
+                for (size_t i = 0; i < kv0.uSize(); ++i)
                 {
                     const T xi = kv0.uValue(i);
                     if (xi > first && xi < last) interior.push_back(xi);
@@ -1234,7 +1234,7 @@ gsTensorBSpline<d,T> gsTensorBSpline<d,T>::div() const
             const KnotVectorType & kv_src = terms[k].knots(dir);
             const T first = kv_src.first();
             const T last  = kv_src.last();
-            for (index_t i = 0; i < kv_src.uSize(); ++i)
+            for (size_t i = 0; i < kv_src.uSize(); ++i)
             {
                 const T xi = kv_src.uValue(i);
                 if (xi <= first || xi >= last) continue;
@@ -1251,7 +1251,7 @@ gsTensorBSpline<d,T> gsTensorBSpline<d,T>::div() const
             const KnotVectorType & kv_res = result.knots(dir);
             const T first = kv_res.first();
             const T last  = kv_res.last();
-            for (index_t i = 0; i < kv_res.uSize(); ++i)
+            for (size_t i = 0; i < kv_res.uSize(); ++i)
             {
                 const T xi = kv_res.uValue(i);
                 if (xi <= first || xi >= last) continue;
@@ -1335,7 +1335,7 @@ gsTensorBSpline<d,T> gsTensorBSpline<d,T>::lapl(bool keepBezier) const
                 const KnotVectorType & orig_kv = this->knots(j);
                 const T first = orig_kv.first();
                 const T last  = orig_kv.last();
-                for (index_t i = 0; i < orig_kv.uSize(); ++i)
+                for (size_t i = 0; i < orig_kv.uSize(); ++i)
                 {
                     const T xi = orig_kv.uValue(i);
                     if (xi <= first || xi >= last) continue;
@@ -1360,7 +1360,7 @@ gsTensorBSpline<d,T> gsTensorBSpline<d,T>::lapl(bool keepBezier) const
                 {
                     const KnotVectorType & kv_src = D2.knots(dir);
                     const T first = kv_src.first(), last = kv_src.last();
-                    for (index_t i = 0; i < kv_src.uSize(); ++i)
+                    for (size_t i = 0; i < kv_src.uSize(); ++i)
                     {
                         const T xi = kv_src.uValue(i);
                         if (xi <= first || xi >= last) continue;
@@ -1374,7 +1374,7 @@ gsTensorBSpline<d,T> gsTensorBSpline<d,T>::lapl(bool keepBezier) const
                 {
                     const KnotVectorType & kv_res = result.knots(dir);
                     const T first = kv_res.first(), last = kv_res.last();
-                    for (index_t i = 0; i < kv_res.uSize(); ++i)
+                    for (size_t i = 0; i < kv_res.uSize(); ++i)
                     {
                         const T xi = kv_res.uValue(i);
                         if (xi <= first || xi >= last) continue;
