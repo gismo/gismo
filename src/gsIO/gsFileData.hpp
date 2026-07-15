@@ -212,6 +212,8 @@ bool gsFileData<T>::read(String const & fn, bool recursive)
 #endif
     else if (ext== "obj")
         return readObjFile(m_lastPath);
+    else if (ext== "vtk")
+        return readVtkFile(m_lastPath);
     else if (ext== "stl")
         return readStlFile(m_lastPath);
     else if (ext=="igs" || ext== "iges")
@@ -1270,67 +1272,12 @@ bool gsFileData<T>::readOffFile( String const & fn )
 
     //https://stackoverflow.com/questions/38874200/trying-to-replace-scanf-with-sstream
 
-    /* //verb-read
     std::ifstream buffer(fn);
     std::ostringstream bb; bb << buffer.rdbuf();    
-    gsXmlNode* m = internal::makeNode("SurfMesh", *data);
-    m->append_attribute( internal::makeAttribute("type", "off", *data) );        
+    gsXmlNode* m = internal::makeNode("Mesh", *data);
+    m->append_attribute( internal::makeAttribute("format", "off", *data) );        
     m->value( internal::makeValue( bb.str(), *data) );
     data->appendToRoot(m);
-    return true;
-    */
-
-    //Input file
-    std::ifstream file(fn.c_str(),std::ios::in);
-    if ( !file.good() )
-    { gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
-
-    gsXmlNode* g = internal::makeNode("Mesh", *data);
-    g->append_attribute( internal::makeAttribute("type", "off", *data) );
-    data->appendToRoot(g);
-
-    String line;
-    std::istringstream lnstream;
-    lnstream.unsetf(std::ios_base::skipws);
-    std::ostringstream tmp;
-
-    getline(file, line);
-    if ( line.compare(0,3,"OFF") != 0)
-        return false;
-
-    getline(file, line);
-    int nverts, nfaces, nedges(0);
-    lnstream.str(line);
-    lnstream >> std::ws >>  nverts >>
-        std::ws >> nfaces >>
-        std::ws >> nedges ;
-
-    g->append_attribute( internal::makeAttribute("vertices", nverts, *data) );
-    g->append_attribute( internal::makeAttribute("faces"   , nfaces, *data) );
-
-    for (int i = 0; i < nverts; i++)
-        if ( getline(file, line) )
-            tmp << line.substr(0,line.size()) << std::endl;
-        else
-            return false;
-
-    for (int i = 0; i < nfaces; i++)
-        if ( getline(file, line) )
-            tmp << line.substr(0,line.size()) << std::endl;
-        else
-            return false;
-
-    int i = 0;
-    for (; i < nedges; i++)
-        if ( getline(file, line) )
-            tmp << line.substr(0,line.size()) << std::endl;
-        else
-            break;//edges are optional
-
-    g->append_attribute( internal::makeAttribute("edges", i, *data) );
-    g->value( internal::makeValue( tmp.str(), *data) );
-    tmp.clear();
-
     return true;
 }
 
@@ -1346,7 +1293,8 @@ bool gsFileData<T>::readStlFile( String const & fn )
     { gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 
     gsXmlNode* g = internal::makeNode("Mesh", *data);
-    g->append_attribute( internal::makeAttribute("type", "off", *data) );
+    g->append_attribute( internal::makeAttribute("type", "", *data) );
+    g->append_attribute( internal::makeAttribute("format", "off", *data) );//convert internally
     data->appendToRoot(g);
 
     std::ostringstream triangles;
@@ -1413,24 +1361,43 @@ bool gsFileData<T>::readStlFile( String const & fn )
     g->append_attribute( internal::makeAttribute("vertices", nvert,  *data) );
     g->append_attribute( internal::makeAttribute("faces"   , nfaces, *data) );
     vertices << triangles.str() ;
-    g->value( internal::makeValue( vertices.str(), *data) );
+    triangles.clear();
+    triangles.str("");
+    triangles << "OFF\n"<< nvert <<" "<< nfaces <<"\n";
+    g->value( internal::makeValue( triangles.str() + vertices.str(), *data) );
 
     return true;
 }
 
 
 template<class T>
+bool gsFileData<T>::readVtkFile( String const & fn )
+{
+    std::ifstream buffer(fn);
+    std::ostringstream bb; bb << buffer.rdbuf();    
+    gsXmlNode* m = internal::makeNode("Mesh", *data);
+    m->append_attribute( internal::makeAttribute("format", "vtk", *data) );        
+    m->value( internal::makeValue( bb.str(), *data) );
+    data->appendToRoot(m);
+    return true;
+}
+    
+template<class T>
 bool gsFileData<T>::readObjFile( String const & fn )
 {
-    GISMO_UNUSED(fn);
-    //gsWarn<<"Assuming Linux file, please convert dos2unix first.\n";
+    std::ifstream buffer(fn);
+    std::ostringstream bb; bb << buffer.rdbuf();    
+    gsXmlNode* m = internal::makeNode("Mesh", *data);
+    m->append_attribute( internal::makeAttribute("format", "obj", *data) );        
+    m->value( internal::makeValue( bb.str(), *data) );
+    data->appendToRoot(m);
+    return true;
 
+    /*
     //Input file
     std::ifstream file(fn.c_str(),std::ios::in);
     if ( !file.good() )
     { gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
-
-/*
 // -- mesh start
     std::string s;
     while(file>>s)

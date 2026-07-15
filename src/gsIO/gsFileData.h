@@ -146,6 +146,9 @@ protected:
     /// Reads Wavefront OBJ file
     bool readObjFile(String const & fn);
 
+    /// Reads VTK file
+    bool readVtkFile(String const & fn);
+
     /// Reads OpenCascade brep file
     bool readBrepFile(String const & fn);
 
