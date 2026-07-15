@@ -574,19 +574,20 @@ void pybind11_init_gsOptionList(py::module &m) {
             std::string key = pybind11::cast<std::string>(item.first);
             py::handle val_handle = item.second;
             
-            // Try to interpret value as int, real, or bool, in that order
-            try { 
-                opt->addInt(key, "", pybind11::cast<int>(val_handle)); 
-            }
-            catch (...) {
-                try { 
-                    opt->addReal(key, "", pybind11::cast<real_t>(val_handle)); 
+            // Try to interpret value as bool, int, or real, in that order.
+            // bool must come before int: Python bool is a subclass of int, so
+            // cast<int>(True) succeeds and would silently store 1 instead of a switch.
+            if (pybind11::isinstance<pybind11::bool_>(val_handle)) {
+                opt->addSwitch(key, "", pybind11::cast<bool>(val_handle));
+            } else {
+                try {
+                    opt->addInt(key, "", pybind11::cast<int>(val_handle));
                 }
                 catch (...) {
-                    try { 
-                        opt->addSwitch(key, "", pybind11::cast<bool>(val_handle)); 
+                    try {
+                        opt->addReal(key, "", pybind11::cast<real_t>(val_handle));
                     }
-                    catch (...) { 
+                    catch (...) {
                         // Skip entries that can't be converted
                     }
                 }

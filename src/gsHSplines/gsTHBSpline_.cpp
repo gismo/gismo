@@ -85,8 +85,7 @@ short_t h_spline_dimension_from_args(const py::args & args, const char * factory
         throw py::value_error(std::string("Cannot infer dimension for ") + factoryName + ": first argument has neither dim() nor domainDim().");
     }
 
-    if (d < 1 || d > GISMO_MAX_DIMENSION)
-        throw py::value_error(std::string("Expected inferred dimension in [1, ") + std::to_string(GISMO_MAX_DIMENSION) + "] for " + factoryName + ".");
+
 
     return d;
 }
@@ -136,7 +135,6 @@ void pybind11_init_gsTHBSpline_factory(py::module &m)
     },
     "Factory constructor that dispatches to gsHBSpline1..N based on inferred dimension");
 }
-
 template <short_t d>
 void pybind11_init_gsHTensorBasis(py::module &m)
 {

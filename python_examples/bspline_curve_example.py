@@ -47,7 +47,7 @@ b.eval_into(upts,vals)
 print(f"Evaluation of the Bspline on {u[x] for x in range(len(upts))} with void function:\n", vals)
 """
 
-b.insertKnot(u, 2)
+b.insertKnot(u[0], 2)  # knot value is a scalar (multiplicity 2)
 print("Number of coefficients after knot-insertion:\n", b.numCoefs())
 test_val = np.empty(2)
 b.eval_into(u, test_val)

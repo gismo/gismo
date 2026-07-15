@@ -133,8 +133,9 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsVector<index_t>(matrix,"Int"); //gsVectorInt
   gismo::pybind11_init_gsMatrix<real_t>(matrix,"Real"); //gsMatrixReal
   gismo::pybind11_init_gsMatrix<index_t>(matrix,"Int"); //gsMatrixInt
-  gismo::pybind11_init_gsSparseMatrix<real_t>(matrix,"Real"); //gsSparseMatrixReal
-  gismo::pybind11_init_gsSparseMatrix<index_t>(matrix,"Int"); //gsSparseMatrixInt
+  // gsSparseMatrix is not registered as a pybind11 class: it derives from
+  // Eigen::SparseMatrix, so pybind11/eigen.h converts it to/from scipy.sparse
+  // automatically (see note in gsMatrix/gsSparseMatrix.h).
 
   py::module modelling = m.def_submodule("modelling");
 

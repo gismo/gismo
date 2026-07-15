@@ -237,9 +237,11 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/gismo/gismo",
-    install_requires=[
-        "",
-    ],
+    # numpy: required at import (pybind11/eigen.h registers numpy type casters on load).
+    # scipy: gsSparseMatrix crosses the Python boundary as scipy.sparse via the Eigen caster.
+    # Unpinned on purpose: pybind11 carries no numpy build/ABI dependency and pybind11>=2.12
+    # (see build-system.requires) supports numpy 2, so no upper cap is needed.
+    install_requires=["numpy", "scipy"],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",

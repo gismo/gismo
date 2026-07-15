@@ -34,7 +34,13 @@ namespace gismo
         .def("distanceH1", py::overload_cast<const gsFunctionSet<real_t> &, const gsMultiBasis<real_t> &, bool>(&Class::distanceH1, py::const_), "Computes the H1-seminorm of the difference between a field and a function using a given mesh", py::arg("func"), py::arg("mesh"), py::arg("isFunc_param")=false)
         .def("distanceH2", &Class::distanceH2, "Computes the H2-seminorm of the difference between a field and a function", py::arg("func"), py::arg("isFunc_param")=false)
         .def("distanceDG", &Class::distanceDG, "Computes the DG-distance between a field and a function", py::arg("func"), py::arg("isFunc_param")=false)
-        .def("__str__", &Class::print, "Returns the string representation of the field")
+        .def("__str__",
+            [](const Class& self) {
+                std::ostringstream os;
+                self.print(os);
+                return os.str();
+            },
+            "Returns the string representation of the field")
         .def("parDim", &Class::parDim, "Returns the parametric dimension of the field")
         .def("geoDim", &Class::geoDim, "Returns the geometric dimension of the field")
         .def("dim", &Class::dim, "Returns the dimension of the field")
