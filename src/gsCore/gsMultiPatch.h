@@ -206,6 +206,12 @@ public:
         m_patches[pid] = ptr.release();
     }
 
+    void removePatch(index_t pid)
+    {
+        delete m_patches[pid];
+        m_patches.erase(m_patches.begin()+pid);
+    }
+
     const gsGeometry<T> & piece(const index_t i) const override { return patch(i); }
 
     gsMultiPatch<T> coord(const index_t c) const;

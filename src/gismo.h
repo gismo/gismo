@@ -119,8 +119,12 @@ namespace internal
 /* ----------- Mesh ----------- */
 #include <gsMesh2/gsSurfMesh.h>
 
-/* ----------- Subdivision operations ----------- */
-#include <gsMesh2/gsSubdivScheme.h>
+/* ----------- Mesh subdivision ----------- */
+#include <gsMesh2/gsSubdivisionScheme.h>
+#include <gsMesh2/gsSubdivisionSchemes/gsCatmullClark.h>
+#include <gsMesh2/gsSubdivisionSchemes/gsDooSabin.h>
+#include <gsMesh2/gsSubdivisionSchemes/gsLoop.h>
+#include <gsMesh2/gsSubdivisionSchemes/gsChaikin.h>
 
 /* ----------- MSplines ----------- */
 #include <gsMSplines/gsMappedBasis.h>
