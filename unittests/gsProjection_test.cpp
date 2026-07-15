@@ -2,13 +2,13 @@
 
     @brief Tests for gsProjection (L2, H1, H2 norms).
 
-    Three test tiers:
-      Tier 1 — Polynomial exactness: if f ∈ Vₕ the projection error is ≈ ε_machine.
-      Tier 2 — Galerkin orthogonality: the linear-system residual is ≈ ε_machine.
-      Tier 3 — Convergence rates: h-refinement gives the expected EOC for each norm.
+    Three test steps:
+      Step 1 - Polynomial exactness: if f ∈ Vₕ the projection error is ≈ ε_machine.
+      Step 2 - Galerkin orthogonality: the linear-system residual is ≈ ε_machine.
+      Step 3 - Convergence rates: h-refinement gives the expected EOC for each norm.
 
-    Geometry: unit square with identity map (ensures polynomial exactness in Tier 1).
-    Test function: f = sin(πx)sin(πy) for Tiers 2–3.
+    Geometry: unit square with identity map (ensures polynomial exactness in Step 1).
+    Test function: f = sin(πx)sin(πy) for Steps 2-3.
 
     This file is part of the G+Smo library.
 
@@ -55,13 +55,13 @@ static gsMultiPatch<> makeSquare()
 }
 
 // Smooth test function (non-polynomial, analytic derivatives known).
-static const char * F_SMOOTH = "sin(3.14159265358979323846*x)*sin(3.14159265358979323846*y)";
+static const char * F_SMOOTH = "sin(pi*x)*sin(pi*y)";
 
 SUITE(gsProjection_test)
 {
 
     // ===================================================================
-    // Tier 1: Polynomial Exactness
+    // Step 1: Polynomial Exactness
     // If f ∈ Vₕ then u_h = f exactly; error should be ≈ ε_machine.
     // ===================================================================
     TEST(polynomial_exactness)
@@ -93,8 +93,40 @@ SUITE(gsProjection_test)
 #endif
     }
 
+    TEST(lumped_system_produces_diagonal_matrix)
+    {
+        const index_t degree = 2;
+        gsMultiPatch<> mp = makeSquare();
+        gsMultiBasis<> mb(mp);
+        mb.setDegree(degree);
+        mb.uniformRefine(2);
+
+        gsFunctionExpr<> f_smooth(F_SMOOTH, 2);
+        gsOptionList options;
+        options.addSwitch("Lumped", "Use a lumped mass matrix for the projection system", true);
+
+        gsSparseMatrix<> M;
+        gsMatrix<> b;
+        gsProjection<ProjectionNorm::L2, real_t>::system(mb, mp, f_smooth, M, b, gsBoundaryConditions<>(), options);
+
+        CHECK(M.rows() > 0);
+        CHECK(M.rows() == M.cols());
+        CHECK(b.rows() == M.rows());
+
+        // Verify the lumped matrix is diagonal
+        bool isDiag = true;
+        for (int k = 0; k < M.outerSize(); ++k)
+            for (gsSparseMatrix<>::InnerIterator it(M, k); it; ++it)
+                if (it.row() != it.col() && math::abs(it.value()) > 1e-14)
+                    isDiag = false;
+        CHECK(isDiag);
+
+        gsMatrix<> u_h = gsSparseSolver<real_t>::SimplicialLDLT().compute(M).solve(b);
+        CHECK((M * u_h - b).norm() / b.norm() < 1e-10);
+    }
+
     // ===================================================================
-    // Tier 2: Galerkin Orthogonality
+    // Step 2: Galerkin Orthogonality
     // The assembled linear system should be solved to machine precision:
     // ||M u_h - b|| / ||b|| ≈ ε_machine.
     // ===================================================================
@@ -129,7 +161,7 @@ SUITE(gsProjection_test)
     }
 
     // ===================================================================
-    // Tier 3: Optimal Convergence Rates
+    // Step 3: Optimal Convergence Rates
     //
     // Degree p=3, f = sin(πx)sin(πy).  Expected EOC (asymptotic):
     //   L2-projection:  ||e||_L2 → O(h^{p+1}=4),  ||e||_H1 → O(h^p=3)

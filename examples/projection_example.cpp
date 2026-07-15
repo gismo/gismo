@@ -1,11 +1,11 @@
 /** @file projection_example.cpp
 
-    @brief Three-tier verification of gsProjection for L2, H1, and H2 norms.
+    @brief Three-step verification of gsProjection for L2, H1, and H2 norms.
 
-    Tier 1 — Polynomial exactness: if f ∈ Vₕ, the projection is exact to
+    Step 1 - Polynomial exactness: if f ∈ Vₕ, the projection is exact to
              machine precision.
-    Tier 2 — Galerkin orthogonality: the linear-system residual is ≈ 0.
-    Tier 3 — Optimal convergence: h-refinement reproduces the expected rates
+    Step 2 - Galerkin orthogonality: the linear-system residual is ≈ 0.
+    Step 3 - Optimal convergence: h-refinement reproduces the expected rates
              O(h^{p+1})/O(h^p)/O(h^{p-1}) for L2/H1/H2 projections.
 
     This file is part of the G+Smo library.
@@ -49,14 +49,14 @@ int main(int argc, char* argv[])
 {
     index_t numRefine = 4;
     index_t degree    = 3;
-    index_t tier      = 0;
+    index_t step      = 0;
     bool    plot      = false;
 
     gsCmdLine cmd("Verification of gsProjection: L2, H1, H2 norms.");
-    cmd.addInt("r", "numRefine", "h-refinement levels for Tier 3",        numRefine);
+    cmd.addInt("r", "numRefine", "h-refinement levels for Step 3",        numRefine);
     cmd.addInt("p", "degree",    "Polynomial degree (>= 2 for H2)",        degree);
-    cmd.addInt("t", "tier",      "Tier to run: 1, 2, 3, or 0 for all",    tier);
-    cmd.addSwitch("plot", "Write ParaView output of final Tier-3 solution", plot);
+    cmd.addInt("t", "step",      "Step to run: 1, 2, 3, or 0 for all",    step);
+    cmd.addSwitch("plot", "Write ParaView output of final Step-3 solution", plot);
 
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
 
@@ -72,19 +72,19 @@ int main(int argc, char* argv[])
         degree = 2;
     }
 
-    // Unit square with affine identity map — ensures polynomials of degree ≤ p
-    // lie exactly in Vₕ (required for Tier 1).
+    // Unit square with affine identity map - ensures polynomials of degree ≤ p
+    // lie exactly in Vₕ (required for Step 1).
     gsMultiPatch<> mp;
     mp.addPatch(*gsNurbsCreator<>::BSplineSquare());
 
     // ===================================================================
-    // Tier 1: Polynomial Exactness
+    // Step 1: Polynomial Exactness
     // If f ∈ Vₕ then a(u_h, v) = a(f, v) is trivially satisfied,
     // so u_h = f exactly and the projection error should be ≈ ε_machine.
     // ===================================================================
-    if (tier == 0 || tier == 1)
+    if (step == 0 || step == 1)
     {
-        gsInfo << "\n=== Tier 1: Polynomial Exactness ===\n";
+        gsInfo << "\n=== Step 1: Polynomial Exactness ===\n";
         gsInfo << "(f ∈ Vₕ  →  ||f - u_h|| ≈ ε_machine)\n\n";
 
         gsMultiBasis<> mb(mp);
@@ -122,17 +122,17 @@ int main(int argc, char* argv[])
                    << "   ||e||_H2 = " << math::sqrt(err) << "\n";
         }
 
-        gsInfo << "\nTier 1: PASSED\n";
+        gsInfo << "\nStep 1: PASSED\n";
     }
 
     // ===================================================================
-    // Tier 2: Galerkin Orthogonality
+    // Step 2: Galerkin Orthogonality
     // The Galerkin error e = f - u_h is a(e, v_h) = 0 ∀ v_h ∈ Vₕ,
     // which is equivalent to the linear-system residual ||Mu - b|| ≈ 0.
     // ===================================================================
-    if (tier == 0 || tier == 2)
+    if (step == 0 || step == 2)
     {
-        gsInfo << "\n=== Tier 2: Galerkin Orthogonality ===\n";
+        gsInfo << "\n=== Step 2: Galerkin Orthogonality ===\n";
         gsInfo << "(linear-system residual ||Mu - b|| / ||b|| should be ≈ ε_machine)\n\n";
 
         // Use a 2× uniformly refined mesh for a non-trivial system size.
@@ -140,8 +140,8 @@ int main(int argc, char* argv[])
         mb.setDegree(degree);
         mb.uniformRefine(2);
 
-        // f = sin(πx)sin(πy) — smooth, non-polynomial
-        gsFunctionExpr<> f_smooth("sin(3.14159265358979323846*x)*sin(3.14159265358979323846*y)", 2);
+        // f = sin(πx)sin(πy) - smooth, non-polynomial
+        gsFunctionExpr<> f_smooth("sin(pi*x)*sin(pi*y)", 2);
 
         gsSparseMatrix<> M;
         gsMatrix<>       b, u_h;
@@ -149,41 +149,33 @@ int main(int argc, char* argv[])
 
         gsInfo << std::scientific << std::setprecision(3);
 
+        typename gsSparseSolver<real_t>::SimplicialLDLT solver;
         // L2
         gsProjection<ProjectionNorm::L2, real_t>::system(mb, mp, f_smooth, M, b);
-        {
-            typename gsSparseSolver<real_t>::SimplicialLDLT solver;
-            solver.compute(M);
-            u_h = solver.solve(b);
-        }
+        solver.compute(M);
+        u_h = solver.solve(b);
         rel_res = (M * u_h - b).norm() / b.norm();
         gsInfo << "L2 projection: ||Mu-b||/||b|| = " << rel_res << "\n";
 
         // H1
         gsProjection<ProjectionNorm::H1, real_t>::system(mb, mp, f_smooth, M, b);
-        {
-            typename gsSparseSolver<real_t>::SimplicialLDLT solver;
-            solver.compute(M);
-            u_h = solver.solve(b);
-        }
+        solver.compute(M);
+        u_h = solver.solve(b);
         rel_res = (M * u_h - b).norm() / b.norm();
         gsInfo << "H1 projection: ||Mu-b||/||b|| = " << rel_res << "\n";
 
         // H2
         gsProjection<ProjectionNorm::H2, real_t>::system(mb, mp, f_smooth, M, b);
-        {
-            typename gsSparseSolver<real_t>::SimplicialLDLT solver;
-            solver.compute(M);
-            u_h = solver.solve(b);
-        }
+        solver.compute(M);
+        u_h = solver.solve(b);
         rel_res = (M * u_h - b).norm() / b.norm();
         gsInfo << "H2 projection: ||Mu-b||/||b|| = " << rel_res << "\n";
 
-        gsInfo << "\nTier 2: PASSED\n";
+        gsInfo << "\nStep 2: PASSED\n";
     }
 
     // ===================================================================
-    // Tier 3: Optimal Convergence Rates
+    // Step 3: Optimal Convergence Rates
     //
     // f = sin(πx)sin(πy), refine h → h/2 uniformly.
     //
@@ -192,15 +184,15 @@ int main(int argc, char* argv[])
     //   H1-projection:  L2 error O(h^p),       H1-semi O(h^p)
     //   H2-projection:  Lapl-semi error O(h^{p-1})
     // ===================================================================
-    if (tier == 0 || tier == 3)
+    if (step == 0 || step == 3)
     {
-        gsInfo << "\n=== Tier 3: Optimal Convergence Rates ===\n";
+        gsInfo << "\n=== Step 3: Optimal Convergence Rates ===\n";
         gsInfo << "f = sin(πx)sin(πy),  degree p = " << degree << "\n";
         gsInfo << "Expected EOC:  L2→L2 = " << degree+1
                << "  L2→H1 = H1→H1 = " << degree
                << "  H2→Δ = " << degree-1 << "\n\n";
 
-        gsFunctionExpr<> f_smooth("sin(3.14159265358979323846*x)*sin(3.14159265358979323846*y)", 2);
+        gsFunctionExpr<> f_smooth("sin(pi*x)*sin(pi*y)", 2);
 
         const index_t N = numRefine + 1;
         gsVector<real_t> l2_L2(N), h1_L2(N);   // L2-projection errors
@@ -212,7 +204,6 @@ int main(int argc, char* argv[])
         for (index_t r = 0; r < N; r++)
         {
             mb.uniformRefine();
-            gsInfo<<"mb.basis(0) = "<<mb.basis(0)<<"\n";
 
             gsMatrix<> coefs;
             real_t dummy;
@@ -265,7 +256,7 @@ int main(int argc, char* argv[])
         gsInfo << "  EOC (Δ):  " << eoc(lapl_H2).transpose()
                << "  (expected " << degree-1 << ")\n";
 
-        gsInfo << "\nTier 3: complete (check EOC values above).\n";
+        gsInfo << "\nStep 3: complete (check EOC values above).\n";
     }
 
     return EXIT_SUCCESS;
