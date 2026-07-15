@@ -573,17 +573,13 @@ class preAAParam {
   /// An `std::invalid_argument` exception will be thrown if some parameter
   /// is invalid.
   ///
-  inline void check_param() const {
-    if (m < 0)
-      throw std::invalid_argument("'m' must be non-negative");
-    if (epsilon < 0)
-      throw std::invalid_argument("'epsilon' must be non-negative");
-    if (epsilon_rel < 0)
-      throw std::invalid_argument("'epsilon_rel' must be non-negative");
-    if (max_iterations < 0)
-      throw std::invalid_argument("'max_iterations' must be non-negative");
-//    if (beta < 0 || beta > 1.0)
-//      throw std::invalid_argument("'beta' must be between 0 and 1");
+  inline void check_param() const 
+  {
+    GISMO_ASSERT(m >= 0, "'m' must be non-negative");
+    GISMO_ASSERT(epsilon >= 0, "'epsilon' must be non-negative");
+    GISMO_ASSERT(epsilon_rel >= 0, "'epsilon_rel' must be non-negative");
+    GISMO_ASSERT(max_iterations >= 0, "'max_iterations' must be non-negative");
+//    GISMO_ASSERT(beta >= 0 && beta <= 1.0, "'beta' must be between 0 and 1");
   }
 };
 
