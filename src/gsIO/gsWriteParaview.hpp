@@ -29,10 +29,122 @@
 
 #include <gsHSplines/gsHBoxContainer.h>
 
+#include <type_traits>
+
 #define PLOT_PRECISION 12
 
 namespace gismo
 {
+
+namespace pv_unstructured_detail
+{
+template <typename Scalar>
+inline std::string vtkTypeName()
+{
+    if (std::is_same<Scalar, unsigned char>::value)
+        return "UInt8";
+    if (std::is_same<Scalar, char>::value || std::is_same<Scalar, signed char>::value)
+        return "Int8";
+    if (std::is_same<Scalar, unsigned short>::value)
+        return "UInt16";
+    if (std::is_same<Scalar, short>::value)
+        return "Int16";
+    if (std::is_same<Scalar, unsigned int>::value)
+        return "UInt32";
+    if (std::is_same<Scalar, int>::value)
+        return "Int32";
+    if (std::is_same<Scalar, unsigned long>::value)
+        return sizeof(unsigned long) == 4 ? "UInt32" : "UInt64";
+    if (std::is_same<Scalar, long>::value)
+        return sizeof(long) == 4 ? "Int32" : "Int64";
+    if (std::is_same<Scalar, unsigned long long>::value)
+        return "UInt64";
+    if (std::is_same<Scalar, long long>::value)
+        return "Int64";
+    if (std::is_same<Scalar, float>::value)
+        return "Float32";
+    if (std::is_same<Scalar, double>::value)
+        return "Float64";
+
+    GISMO_ERROR("Unsupported scalar type for VTK DataArray");
+    return "";
+}
+
+template <class MatrixType>
+inline void writeDataArray(std::ostream & stream,
+                           const MatrixType & matrix,
+                           const std::string & name,
+                           unsigned precision,
+                           bool export_base64)
+{
+    typedef typename MatrixType::Scalar Scalar;
+    stream << "<DataArray type=\"" << vtkTypeName<Scalar>()
+           << "\" format=\"" << (export_base64 ? "binary" : "ascii") << "\" ";
+    if (!name.empty())
+        stream << "Name=\"" << name << "\" ";
+    if (matrix.rows() > 1)
+        stream << "NumberOfComponents=\"" << matrix.rows() << "\" ";
+    stream << ">\n";
+
+    if (export_base64)
+    {
+        std::vector<Scalar> values;
+        values.reserve(static_cast<std::size_t>(matrix.rows()) * static_cast<std::size_t>(matrix.cols()));
+        for (index_t j = 0; j < matrix.cols(); ++j)
+            for (index_t i = 0; i < matrix.rows(); ++i)
+                values.push_back(matrix(i, j));
+
+        std::vector<uint64_t> header(1, static_cast<uint64_t>(values.size() * sizeof(Scalar)));
+        stream << Base64::Encode(header) << Base64::Encode(values) << "\n";
+    }
+    else
+    {
+        stream.setf(std::ios::fixed);
+        stream.precision(precision);
+        for (index_t j = 0; j < matrix.cols(); ++j)
+            for (index_t i = 0; i < matrix.rows(); ++i)
+                stream << matrix(i, j) << " ";
+        stream << "\n";
+    }
+
+    stream << "</DataArray>\n";
+}
+
+template <class MatrixType>
+inline void writeUnstructuredGrid(std::ostream & file,
+                                  const MatrixType & allPoints,
+                                  const gsMatrix<index_t> & connectivity,
+                                  const gsMatrix<index_t> & offsets,
+                                  const gsMatrix<unsigned char> & types,
+                                  const gsMatrix<index_t> & patchIds,
+                                  const std::string & cellDataName,
+                                  const MatrixType * cellData,
+                                  bool export_base64)
+{
+    file << "<Points>\n";
+    writeDataArray(file, allPoints, "", PLOT_PRECISION, export_base64);
+    file << "</Points>\n";
+
+    file << "<Cells>\n";
+    writeDataArray(file, connectivity, "connectivity", PLOT_PRECISION, export_base64);
+    writeDataArray(file, offsets, "offsets", PLOT_PRECISION, export_base64);
+    writeDataArray(file, types, "types", PLOT_PRECISION, export_base64);
+    file << "</Cells>\n";
+
+    if (cellData && !cellDataName.empty())
+    {
+        file << "<CellData Scalars=\"" << cellDataName << "\">\n";
+        writeDataArray(file, *cellData, cellDataName, PLOT_PRECISION, export_base64);
+        file << "</CellData>\n";
+    }
+    else
+    {
+        file << "<CellData Scalars=\"PatchID\">\n";
+        writeDataArray(file, patchIds, "PatchID", PLOT_PRECISION, export_base64);
+        file << "</CellData>\n";
+    }
+}
+} // namespace pv_unstructured_detail
 
 // Export a 3D parametric mesh
 template<class T>
@@ -1026,6 +1138,370 @@ void gsWriteParaviewBezier(const gsMultiPatch<T> & mPatch, std::string const & f
         }
         collection.save();
     }
+}
+
+template<class T>
+void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch,
+                                     std::string const & fn,
+                                     unsigned npts,
+                                     bool export_base64,
+                                     bool skipPvd)
+{
+    const index_t nPatches = static_cast<index_t>(mPatch.nPatches());
+    GISMO_ASSERT(nPatches > 0, "Cannot export empty multipatch");
+
+    std::ofstream file((fn + ".vtu").c_str());
+    if ( !file.is_open() )
+        gsWarn << "gsWriteParaviewUnstructuredGrid: Problem opening file \"" << fn << "\"" << std::endl;
+
+    index_t totalPoints = 0;
+    index_t totalCells = 0;
+    index_t totalConnectivityEntries = 0;
+
+    std::vector<gsMatrix<T> > patchPoints;
+    std::vector<gsVector<unsigned> > patchNp;
+    std::vector<index_t> patchPointCounts;
+
+    for (index_t p = 0; p < nPatches; ++p)
+    {
+        const gsGeometry<T>& geo = mPatch.patch(p);
+        const int d = geo.domainDim();
+        GISMO_ASSERT(d >= 1 && d <= 3, "Unstructured export supports only 1D/2D/3D patches");
+
+        gsMatrix<T> ab = geo.support();
+        gsVector<T> a = ab.col(0);
+        gsVector<T> b = ab.col(1);
+        gsVector<unsigned> np = uniformSampleCount(a, b, npts);
+        gsMatrix<T> pts = gsPointGrid(a, b, np);
+        gsMatrix<T> eval_geo = geo.eval(pts);
+
+        if (eval_geo.rows() < 3)
+            eval_geo.conservativeResizeLike(gsMatrix<T>::Zero(3, eval_geo.cols()));
+
+        index_t cellsInPatch = 1;
+        for (int dim = 0; dim < d; ++dim)
+            cellsInPatch *= (np[dim] - 1);
+
+        const index_t vertsPerCell = (d == 1 ? 2 : (d == 2 ? 4 : 8));
+
+        patchPoints.push_back(eval_geo);
+        patchNp.push_back(np);
+        patchPointCounts.push_back(eval_geo.cols());
+
+        totalPoints += eval_geo.cols();
+        totalCells += cellsInPatch;
+        totalConnectivityEntries += cellsInPatch * vertsPerCell;
+    }
+
+    file << "<?xml version=\"1.0\"?>\n";
+    file << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\"";
+    if (export_base64)
+        file << " byte_order=\"LittleEndian\" header_type=\"UInt64\"";
+    file << ">\n";
+    file << "<UnstructuredGrid>\n";
+    file << "<Piece NumberOfPoints=\"" << totalPoints << "\" NumberOfCells=\"" << totalCells << "\">\n";
+
+    gsMatrix<T> allPoints(3, totalPoints);
+    gsMatrix<index_t> connectivity(1, totalConnectivityEntries);
+    gsMatrix<index_t> offsets(1, totalCells);
+    gsMatrix<unsigned char> types(1, totalCells);
+    gsMatrix<index_t> patchIds(1, totalCells);
+
+    index_t pointOffset = 0;
+    index_t connOffset = 0;
+    index_t cellOffset = 0;
+    index_t runningOffsets = 0;
+
+    for (index_t p = 0; p < nPatches; ++p)
+    {
+        const gsVector<unsigned>& np = patchNp[p];
+        const int d = mPatch.patch(p).domainDim();
+        const index_t nPoints = patchPointCounts[p];
+        const index_t vertsPerCell = (d == 1 ? 2 : (d == 2 ? 4 : 8));
+        const unsigned char cellType = static_cast<unsigned char>(d == 1 ? 3 : (d == 2 ? 9 : 12));
+        const index_t nu = static_cast<index_t>(np[0]);
+        const index_t nv = (np.rows() > 1 ? static_cast<index_t>(np[1]) : 1);
+        const index_t nw = (np.rows() > 2 ? static_cast<index_t>(np[2]) : 1);
+
+        allPoints.block(0, pointOffset, 3, nPoints) = patchPoints[p];
+
+        if (d == 1)
+        {
+            for (index_t i = 0; i < nu - 1; ++i)
+            {
+                connectivity(0, connOffset++) = pointOffset + i;
+                connectivity(0, connOffset++) = pointOffset + i + 1;
+                runningOffsets += vertsPerCell;
+                offsets(0, cellOffset) = runningOffsets;
+                types(0, cellOffset) = cellType;
+                patchIds(0, cellOffset) = p;
+                ++cellOffset;
+            }
+        }
+        else if (d == 2)
+        {
+            for (index_t j = 0; j < nv - 1; ++j)
+            {
+                for (index_t i = 0; i < nu - 1; ++i)
+                {
+                    const index_t i0 = pointOffset + i + j * nu;
+                    const index_t i1 = i0 + 1;
+                    const index_t i2 = i0 + nu + 1;
+                    const index_t i3 = i0 + nu;
+
+                    connectivity(0, connOffset++) = i0;
+                    connectivity(0, connOffset++) = i1;
+                    connectivity(0, connOffset++) = i2;
+                    connectivity(0, connOffset++) = i3;
+                    runningOffsets += vertsPerCell;
+                    offsets(0, cellOffset) = runningOffsets;
+                    types(0, cellOffset) = cellType;
+                    patchIds(0, cellOffset) = p;
+                    ++cellOffset;
+                }
+            }
+        }
+        else
+        {
+            for (index_t k = 0; k < nw - 1; ++k)
+            {
+                for (index_t j = 0; j < nv - 1; ++j)
+                {
+                    for (index_t i = 0; i < nu - 1; ++i)
+                    {
+                        const index_t i0 = pointOffset + i + j * nu + k * nu * nv;
+                        const index_t i1 = i0 + 1;
+                        const index_t i2 = i0 + nu + 1;
+                        const index_t i3 = i0 + nu;
+                        const index_t i4 = i0 + nu * nv;
+                        const index_t i5 = i4 + 1;
+                        const index_t i6 = i4 + nu + 1;
+                        const index_t i7 = i4 + nu;
+
+                        connectivity(0, connOffset++) = i0;
+                        connectivity(0, connOffset++) = i1;
+                        connectivity(0, connOffset++) = i2;
+                        connectivity(0, connOffset++) = i3;
+                        connectivity(0, connOffset++) = i4;
+                        connectivity(0, connOffset++) = i5;
+                        connectivity(0, connOffset++) = i6;
+                        connectivity(0, connOffset++) = i7;
+                        runningOffsets += vertsPerCell;
+                        offsets(0, cellOffset) = runningOffsets;
+                        types(0, cellOffset) = cellType;
+                        patchIds(0, cellOffset) = p;
+                        ++cellOffset;
+                    }
+                }
+            }
+        }
+
+        pointOffset += nPoints;
+    }
+
+    pv_unstructured_detail::writeUnstructuredGrid(
+        file, allPoints, connectivity, offsets, types, patchIds,
+        "", static_cast<const gsMatrix<T>*>(0), export_base64);
+
+    file << "</Piece>\n";
+    file << "</UnstructuredGrid>\n";
+    file << "</VTKFile>\n";
+    file.close();
+
+    if (!skipPvd)
+        makeCollection(fn, ".vtu");
+}
+
+template<class T>
+void gsWriteParaviewUnstructuredGrid(const gsField<T> & field,
+                                     std::string const & fn,
+                                     unsigned npts,
+                                     bool export_base64,
+                                     bool skipPvd)
+{
+    const index_t nPieces = static_cast<index_t>(field.nPieces());
+    GISMO_ASSERT(nPieces > 0, "Cannot export empty field");
+
+    std::ofstream file((fn + ".vtu").c_str());
+    if ( !file.is_open() )
+        gsWarn << "gsWriteParaviewUnstructuredGrid: Problem opening file \"" << fn << "\"" << std::endl;
+
+    index_t totalPoints = 0;
+    index_t totalCells = 0;
+    index_t totalConnectivityEntries = 0;
+
+    std::vector<gsMatrix<T> > patchPoints;
+    std::vector<gsMatrix<T> > patchFields;
+    std::vector<gsVector<unsigned> > patchNp;
+    std::vector<index_t> patchPointCounts;
+
+    for (index_t p = 0; p < nPieces; ++p)
+    {
+        const gsFunction<T>& geo = field.patch(p);
+        const gsFunction<T>& func = field.function(p);
+        const int d = geo.domainDim();
+        GISMO_ASSERT(d >= 1 && d <= 3, "Unstructured export supports only 1D/2D/3D patches");
+
+        gsMatrix<T> ab = geo.support();
+        gsVector<T> a = ab.col(0);
+        gsVector<T> b = ab.col(1);
+        gsVector<unsigned> np = uniformSampleCount(a, b, npts);
+        gsMatrix<T> pts = gsPointGrid(a, b, np);
+        gsMatrix<T> eval_geo = geo.eval(pts);
+        gsMatrix<T> eval_field = field.isParametric() ? func.eval(pts) : func.eval(eval_geo);
+
+        if (eval_geo.rows() < 3)
+            eval_geo.conservativeResizeLike(gsMatrix<T>::Zero(3, eval_geo.cols()));
+
+        index_t cellsInPatch = 1;
+        for (int dim = 0; dim < d; ++dim)
+            cellsInPatch *= (np[dim] - 1);
+
+        const index_t vertsPerCell = (d == 1 ? 2 : (d == 2 ? 4 : 8));
+
+        patchPoints.push_back(eval_geo);
+        patchFields.push_back(eval_field);
+        patchNp.push_back(np);
+        patchPointCounts.push_back(eval_geo.cols());
+
+        totalPoints += eval_geo.cols();
+        totalCells += cellsInPatch;
+        totalConnectivityEntries += cellsInPatch * vertsPerCell;
+    }
+
+    const index_t fieldRows = patchFields.front().rows();
+    const bool fieldIsVector = (fieldRows > 1 && fieldRows <= 3);
+    const bool padVector = fieldIsVector && fieldRows < 3;
+    const index_t fieldComponents = padVector ? 3 : fieldRows;
+
+    gsMatrix<T> allPoints(3, totalPoints);
+    gsMatrix<T> allField = gsMatrix<T>::Zero(fieldComponents, totalPoints);
+    gsMatrix<index_t> connectivity(1, totalConnectivityEntries);
+    gsMatrix<index_t> offsets(1, totalCells);
+    gsMatrix<unsigned char> types(1, totalCells);
+    gsMatrix<index_t> patchIds(1, totalCells);
+
+    index_t pointOffset = 0;
+    index_t connOffset = 0;
+    index_t cellOffset = 0;
+    index_t runningOffsets = 0;
+
+    for (index_t p = 0; p < nPieces; ++p)
+    {
+        const gsVector<unsigned>& np = patchNp[p];
+        const int d = field.patch(p).domainDim();
+        const index_t nPoints = patchPointCounts[p];
+        const index_t vertsPerCell = (d == 1 ? 2 : (d == 2 ? 4 : 8));
+        const unsigned char cellType = static_cast<unsigned char>(d == 1 ? 3 : (d == 2 ? 9 : 12));
+        const index_t nu = static_cast<index_t>(np[0]);
+        const index_t nv = (np.rows() > 1 ? static_cast<index_t>(np[1]) : 1);
+        const index_t nw = (np.rows() > 2 ? static_cast<index_t>(np[2]) : 1);
+
+        allPoints.block(0, pointOffset, 3, nPoints) = patchPoints[p];
+        allField.block(0, pointOffset, patchFields[p].rows(), nPoints) = patchFields[p];
+
+        if (d == 1)
+        {
+            for (index_t i = 0; i < nu - 1; ++i)
+            {
+                connectivity(0, connOffset++) = pointOffset + i;
+                connectivity(0, connOffset++) = pointOffset + i + 1;
+                runningOffsets += vertsPerCell;
+                offsets(0, cellOffset) = runningOffsets;
+                types(0, cellOffset) = cellType;
+                patchIds(0, cellOffset) = p;
+                ++cellOffset;
+            }
+        }
+        else if (d == 2)
+        {
+            for (index_t j = 0; j < nv - 1; ++j)
+            {
+                for (index_t i = 0; i < nu - 1; ++i)
+                {
+                    const index_t i0 = pointOffset + i + j * nu;
+                    const index_t i1 = i0 + 1;
+                    const index_t i2 = i0 + nu + 1;
+                    const index_t i3 = i0 + nu;
+
+                    connectivity(0, connOffset++) = i0;
+                    connectivity(0, connOffset++) = i1;
+                    connectivity(0, connOffset++) = i2;
+                    connectivity(0, connOffset++) = i3;
+                    runningOffsets += vertsPerCell;
+                    offsets(0, cellOffset) = runningOffsets;
+                    types(0, cellOffset) = cellType;
+                    patchIds(0, cellOffset) = p;
+                    ++cellOffset;
+                }
+            }
+        }
+        else
+        {
+            for (index_t k = 0; k < nw - 1; ++k)
+            {
+                for (index_t j = 0; j < nv - 1; ++j)
+                {
+                    for (index_t i = 0; i < nu - 1; ++i)
+                    {
+                        const index_t i0 = pointOffset + i + j * nu + k * nu * nv;
+                        const index_t i1 = i0 + 1;
+                        const index_t i2 = i0 + nu + 1;
+                        const index_t i3 = i0 + nu;
+                        const index_t i4 = i0 + nu * nv;
+                        const index_t i5 = i4 + 1;
+                        const index_t i6 = i4 + nu + 1;
+                        const index_t i7 = i4 + nu;
+
+                        connectivity(0, connOffset++) = i0;
+                        connectivity(0, connOffset++) = i1;
+                        connectivity(0, connOffset++) = i2;
+                        connectivity(0, connOffset++) = i3;
+                        connectivity(0, connOffset++) = i4;
+                        connectivity(0, connOffset++) = i5;
+                        connectivity(0, connOffset++) = i6;
+                        connectivity(0, connOffset++) = i7;
+                        runningOffsets += vertsPerCell;
+                        offsets(0, cellOffset) = runningOffsets;
+                        types(0, cellOffset) = cellType;
+                        patchIds(0, cellOffset) = p;
+                        ++cellOffset;
+                    }
+                }
+            }
+        }
+
+        pointOffset += nPoints;
+    }
+
+    file << "<?xml version=\"1.0\"?>\n";
+    file << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\"";
+    if (export_base64)
+        file << " byte_order=\"LittleEndian\" header_type=\"UInt64\"";
+    file << ">\n";
+    file << "<UnstructuredGrid>\n";
+    file << "<Piece NumberOfPoints=\"" << totalPoints << "\" NumberOfCells=\"" << totalCells << "\">\n";
+
+    if (fieldRows == 1)
+        file << "<PointData Scalars=\"SolutionField\">\n";
+    else if (fieldRows > 3)
+        file << "<PointData Tensors=\"SolutionField\">\n";
+    else
+        file << "<PointData Vectors=\"SolutionField\">\n";
+    pv_unstructured_detail::writeDataArray(file, allField, "SolutionField", PLOT_PRECISION, export_base64);
+    file << "</PointData>\n";
+
+    pv_unstructured_detail::writeUnstructuredGrid(
+        file, allPoints, connectivity, offsets, types, patchIds,
+        "SolutionField", &allField, export_base64);
+
+    file << "</Piece>\n";
+    file << "</UnstructuredGrid>\n";
+    file << "</VTKFile>\n";
+    file.close();
+
+    if (!skipPvd)
+        makeCollection(fn, ".vtu");
 }
 
 /// Export i-th Basis function

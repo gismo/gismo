@@ -25,6 +25,7 @@ TEST(DefaultOptions)
     CHECK_EQUAL(5,    pv.options().getInt("precision"));
     CHECK(!pv.options().getSwitch("plotElements"));
     CHECK(!pv.options().getSwitch("plotControlNet"));
+    CHECK(!pv.options().getSwitch("singleFile"));
     CHECK(!pv.options().getSwitch("base64"));
     CHECK(!pv.options().getSwitch("show"));
 }
@@ -121,6 +122,43 @@ TEST(WriteField_smoke)
     pv.write(field, fn);
 
     CHECK(gsFileManager::fileExists(fn + ".pvd"));
+}
+
+TEST(WriteSingleFileVTU_smoke)
+{
+    const std::string tmp = gsFileManager::getTempPath();
+    if (tmp.empty()) return;
+
+    gsMultiPatch<> mp;
+    mp.addPatch(gsNurbsCreator<>::BSplineSquare());
+    mp.addPatch(gsNurbsCreator<>::BSplineSquare());
+
+    {
+        const std::string fn = tmp + "gsParaview_mp_singlefile_test";
+        gsParaview<real_t> pv;
+        pv.options().setSwitch("singleFile", true);
+        pv.write(mp, fn);
+
+        CHECK(gsFileManager::fileExists(fn + ".vtu"));
+        std::ifstream f(fn + ".vtu");
+        std::string s((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+        CHECK(s.find("<UnstructuredGrid>") != std::string::npos);
+        CHECK(s.find("PatchID") != std::string::npos);
+    }
+
+    {
+        const std::string fn = tmp + "gsParaview_field_singlefile_test";
+        gsField<> field(mp, mp);
+        gsParaview<real_t> pv;
+        pv.options().setSwitch("singleFile", true);
+        pv.write(field, fn);
+
+        CHECK(gsFileManager::fileExists(fn + ".vtu"));
+        std::ifstream f(fn + ".vtu");
+        std::string s((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+        CHECK(s.find("<UnstructuredGrid>") != std::string::npos);
+        CHECK(s.find("SolutionField") != std::string::npos);
+    }
 }
 
 TEST(TimeSteppingWorkflow_smoke)

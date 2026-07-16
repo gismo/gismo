@@ -156,6 +156,34 @@ void gsWriteParaview(const gsMultiPatch<T> & Geo, std::string const & fn,
 template<class T>
 void gsWriteParaviewBezier(const gsMultiPatch<T> & mPatch, std::string const & filename, bool ctrlNet = false);
 
+/// \brief Export a multipatch geometry to a single unstructured-grid .vtu file.
+///
+/// \param mPatch a multipatch object
+/// \param fn filename where paraview file is written
+/// \param npts number of points used for sampling each patch
+/// \param export_base64 if true, exports binary base64 encoded arrays
+/// \param skipPvd if true, skip writing a wrapper .pvd collection
+template<class T>
+void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch,
+                                     std::string const & fn,
+                                     unsigned npts = NS,
+                                     bool export_base64 = false,
+                                     bool skipPvd = false);
+
+/// \brief Export a field to a single unstructured-grid .vtu file.
+///
+/// \param field a field object
+/// \param fn filename where paraview file is written
+/// \param npts number of points used for sampling each patch
+/// \param export_base64 if true, exports binary base64 encoded arrays
+/// \param skipPvd if true, skip writing a wrapper .pvd collection
+template<class T>
+void gsWriteParaviewUnstructuredGrid(const gsField<T> & field,
+                                     std::string const & fn,
+                                     unsigned npts = NS,
+                                     bool export_base64 = false,
+                                     bool skipPvd = false);
+
 /// \brief Export a multipatch Geometry (without scalar information) to paraview file
 ///
 /// \param Geo a vector of the geometries to be plotted
