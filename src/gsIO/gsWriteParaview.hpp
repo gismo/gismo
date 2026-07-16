@@ -15,6 +15,7 @@
 #pragma once
 
 #include <gsIO/gsParaviewCollection.h>
+#include <gsIO/gsBase64.h>
 
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsGeometrySlice.h>
@@ -690,8 +691,8 @@ void gsWriteParaview(const gsField<T> & field,
     */
 
     const unsigned n = field.nPieces();
-    gsParaviewCollection::uPtr collection;
-    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection(fn));
+    typename gsParaviewCollection<T>::uPtr collection;
+    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection<T>(fn));
     std::string fileName, fileName_nopath;
 
     for ( unsigned i=0; i < n; ++i )
@@ -734,8 +735,8 @@ void gsWriteParaview(gsFunctionSet<T> const& geo,
     GISMO_ASSERT(geo.nPieces()==func.nPieces(),"Function sets must have same number of pieces, but func has "<<func.nPieces()<<" and geo has "<<geo.nPieces());
 
     const unsigned n = geo.nPieces();
-    gsParaviewCollection::uPtr collection;
-    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection(fn));
+    typename gsParaviewCollection<T>::uPtr collection;
+    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection<T>(fn));
     std::string fileName, fileName_nopath;
 
     for ( unsigned i=0; i < n; ++i )
@@ -754,8 +755,8 @@ void gsWriteParaview(gsMappedSpline<2,T> const& mspline,
                      std::string const & fn,
                      unsigned npts, bool skipPvd)
 {
-    gsParaviewCollection::uPtr collection;
-    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection(fn));
+    typename gsParaviewCollection<T>::uPtr collection;
+    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection<T>(fn));
     std::string fileName, fileName_nopath;
     for ( index_t p=0; p < mspline.nPieces(); ++p )
     {
@@ -795,8 +796,8 @@ void gsWriteParaview(gsFunctionSet<T> const& geom,
     else
         plotIndices = indices;
 
-    gsParaviewCollection::uPtr collection;
-    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection(fn));
+    typename gsParaviewCollection<T>::uPtr collection;
+    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection<T>(fn));
     std::string fileName, fileName_nopath;
     gsMatrix<T> eval_geo, eval_basis, pts, ab;
     gsVector<T> a, b;
@@ -866,8 +867,8 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
 {
     const bool curve = ( Geo.domainDim() == 1 );
 
-    gsParaviewCollection::uPtr collection;
-    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection(fn));
+    typename gsParaviewCollection<T>::uPtr collection;
+    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection<T>(fn));
     std::string fn_nopath = gsFileManager::getFilename(fn);
     if ( curve )
     {
@@ -927,7 +928,7 @@ void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
 {
     // GISMO_ASSERT sizes
 
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection<T> collection(fn);
 
     for (size_t i = 0; i != domain.nPatches(); ++i)
     {
@@ -962,7 +963,7 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
 {
     const size_t n = Geo.size();
 
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection<T> collection(fn);
     std::string fnBase, fnBase_nopath;
 
     for ( size_t i=0; i<n ; i++)
@@ -1013,7 +1014,7 @@ void gsWriteParaviewBezier(const gsMultiPatch<T> & mPatch, std::string const & f
 
     if ( ctrlNet ) // Output the control net
     {
-        gsParaviewCollection collection(filename);
+        gsParaviewCollection<T> collection(filename);
         collection.addPart(gsFileManager::getFilename(filename) + ".vtu");
         for (size_t patch=0; patch<mPatch.nPatches();++patch)
         {
@@ -1111,7 +1112,7 @@ void gsWriteParaview(gsFunctionSet<T> const& func, std::string const & fn, unsig
 {
     // GISMO_ASSERT sizes
 
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection<T> collection(fn);
 
     for (index_t i = 0; i != func.size(); ++i)
     {
@@ -1200,7 +1201,7 @@ void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn,
                      unsigned npts, bool mesh)
 {
     const index_t n = basis.size();
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection<T> collection(fn);
 
     for ( index_t i=0; i< n; i++)
     {
@@ -1229,7 +1230,7 @@ void gsWriteParaview(gsBasis<T> const& basis,
                      std::string const & fn,
                      unsigned npts, bool mesh)
 {
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection<T> collection(fn);
 
     for (typename std::vector<index_t>::const_iterator idx = indices.cbegin();
                                                        idx != indices.cend();
@@ -1391,8 +1392,8 @@ void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,
 {
     GISMO_ENSURE(mp.nPatches()==mb.nBases(),"Number of bases and patches do not correspond");
 
-    gsParaviewCollection::uPtr collection;
-    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection(fn));
+    typename gsParaviewCollection<T>::uPtr collection;
+    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection<T>(fn));
 
     gsMatrix<T> eval_geo, eval_basis, pts, ab;
     gsVector<T> a, b;
@@ -1828,7 +1829,7 @@ void gsWriteParaviewSolid(gsSolid<T> const& sl,
                           unsigned numSamples)
 {
     const size_t n = sl.numHalfFaces;
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection<T> collection(fn);
 
     // for( typename gsSolid<T>::const_face_iterator it = sl.begin();
     //      it != sl.end(); ++it)
@@ -2051,7 +2052,7 @@ template<class T>
 void gsWriteParaview(const gsTrimSurface<T> & surf, std::string const & fn,
                      unsigned npts, bool trimCurves)
 {
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection<T> collection(fn);
 
     writeSingleTrimSurface(surf, fn, npts);
     std::string fn_nopath = gsFileManager::getFilename(fn);
@@ -2073,7 +2074,7 @@ void gsWriteParaview(const gsVolumeBlock<T>& volBlock,
 {
     using util::to_string;
 
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection<T> collection(fn);
 
     // for each face
     for (unsigned idFace = 0; idFace != volBlock.face.size(); idFace++)

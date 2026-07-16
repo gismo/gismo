@@ -80,7 +80,9 @@ public:
         gsOptionList opt;
         opt.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0  );
         opt.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
+        opt.addInt ("numPoints", "Number of sampling points for plotting", 3000 );
         opt.addInt ("plot.npts", "Number of sampling points for plotting", 3000 );
+        opt.addSwitch("plotElements", "Include the element mesh in plot (when applicable)", false);
         opt.addSwitch("plot.elements", "Include the element mesh in plot (when applicable)", false);
         opt.addSwitch("flipSide", "Flip side of interface where evaluation is performed.", false);
         //opt.addSwitch("plot.cnet", "Include the control net in plot (when applicable)", false);
@@ -371,13 +373,19 @@ public:
     void writeParaview(const expr::_expr<E> & expr,
                        geometryMap G, std::string const & fn)
     {
-        gsMultiPatch<T> & mp =
-            const_cast<gsMultiPatch<T>&>(
-                static_cast<const gsMultiPatch<T>&>(G.source()));
-        gsParaviewCollection pc(fn, this);
-        pc.options().setInt   ("numPoints",    m_options.askInt   ("plot.npts",     1000));
-        pc.options().setSwitch("plotElements", m_options.askSwitch("plot.elements", false));
-        pc.newTimeStep(&mp);
+        const gsMultiPatch<T> & mp =
+            static_cast<const gsMultiPatch<T>&>(G.source());
+        gsParaviewCollection<T> pc(fn, *this);
+        // Backward compatibility
+        const index_t npts = m_options.exists("numPoints")
+            ? m_options.askInt("numPoints", 1000)
+            : m_options.askInt("plot.npts", 1000);
+        const bool plotElements = m_options.exists("plotElements")
+            ? m_options.askSwitch("plotElements", false)
+            : m_options.askSwitch("plot.elements", false);
+        pc.options().setInt("numPoints", npts);
+        pc.options().setSwitch("plotElements", plotElements);
+        pc.newTimeStep(mp);
         pc.addField(expr, "value");
         pc.saveTimeStep();
         pc.save();
@@ -456,24 +464,24 @@ private:
 // Relocated from gsParaviewUtils.h so that Utils no longer depends on gsExprEvaluator; the
 // bridge lives here, where gsExprEvaluator<> is a complete type. Forward-declared (with
 // defaults) in gsParaviewDataSet.h for use by gsParaviewDataSet::addField(expr).
-template <class E>
+template <class E, class T>
 std::vector<std::string> toParaview(const expr::_expr<E>& expr,
-                               gsExprEvaluator<>* evaltr,
+                               gsExprEvaluator<T>& evaltr,
                                unsigned nPts, unsigned precision,
                                std::string label, const bool& export_base64)
 {
     std::vector<std::string> out;
-    const index_t n = evaltr->exprData()->domain().nPieces();
-    gsMatrix<real_t> evaluated_values, bounding_box_dimensions;
+    const index_t n = evaltr.exprData()->domain().nPieces();
+    gsMatrix<T> evaluated_values, bounding_box_dimensions;
     for (index_t i = 0; i != n; ++i) {
-        bounding_box_dimensions = evaltr->exprData()->domain().subdomain(i)->boundingBox();
-        gsGridIterator<real_t, CUBE> grid_iterator(bounding_box_dimensions, nPts);
-        evaltr->eval(expr, grid_iterator, i);
-        evaluated_values = evaltr->allValues(
-            evaltr->elementwise().size() / grid_iterator.numPoints(), grid_iterator.numPoints());
+        bounding_box_dimensions = evaltr.exprData()->domain().subdomain(i)->boundingBox();
+        gsGridIterator<T, CUBE> grid_iterator(bounding_box_dimensions, nPts);
+        evaltr.eval(expr, grid_iterator, i);
+        evaluated_values = evaltr.allValues(
+            evaltr.elementwise().size() / grid_iterator.numPoints(), grid_iterator.numPoints());
         GISMO_ASSERT(evaluated_values.rows() <= 3, "The expression can be scalar or have at most 3 components.");
         if (evaluated_values.rows() == 2)
-            evaluated_values.conservativeResizeLike(gsEigen::MatrixXd::Zero(3, evaluated_values.cols()));
+            evaluated_values.conservativeResizeLike(gsMatrix<T>::Zero(3, evaluated_values.cols()));
         out.push_back(toDataArray(evaluated_values, {{"Name", label}}, precision, export_base64));
     }
     return out;

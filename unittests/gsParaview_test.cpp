@@ -13,6 +13,7 @@
 
 #include "gismo_unittest.h"
 #include <gsIO/gsParaview.h>
+#include <gsIO/gsParaviewCollection.h>
 
 SUITE(gsParaview_test)
 {
@@ -21,9 +22,10 @@ TEST(DefaultOptions)
 {
     gsParaview<real_t> pv;
     CHECK_EQUAL(1000, pv.options().getInt("numPoints"));
-    CHECK_EQUAL(12,   pv.options().getInt("precision"));
+    CHECK_EQUAL(5,    pv.options().getInt("precision"));
     CHECK(!pv.options().getSwitch("plotElements"));
     CHECK(!pv.options().getSwitch("plotControlNet"));
+    CHECK(!pv.options().getSwitch("base64"));
     CHECK(!pv.options().getSwitch("show"));
 }
 
@@ -134,13 +136,36 @@ TEST(TimeSteppingWorkflow_smoke)
     // Identity field: function = geometry
     gsField<> field(mp, mp);
 
-    gsParaviewCollection collection(fn);
-    collection.newTimeStep(&mp, 0.0);
+    gsParaviewCollection<real_t> collection(fn);
+    collection.newTimeStep(mp, 0.0);
     collection.addField(field, "identity");
     collection.saveTimeStep();
     collection.save();
 
     CHECK(gsFileManager::fileExists(fn + ".pvd"));
+}
+
+TEST(TimeSteppingLegacyOptionAliases_smoke)
+{
+    const std::string tmp = gsFileManager::getTempPath();
+    if (tmp.empty()) return;
+
+    const std::string fn = tmp + "gsParaview_ts_alias_test";
+
+    gsMultiPatch<> mp;
+    mp.addPatch(gsNurbsCreator<>::BSplineSquare());
+    gsField<> field(mp, mp);
+
+    gsParaviewCollection<real_t> collection(fn);
+    collection.options().setInt("plot.npts", 64);
+    collection.options().setSwitch("plot.elements", true);
+    collection.newTimeStep(mp, 0.0);
+    collection.addField(field, "identity");
+    collection.saveTimeStep();
+    collection.save();
+
+    CHECK(gsFileManager::fileExists(fn + ".pvd"));
+    CHECK(gsFileManager::fileExists(fn + "_pvd/" + gsFileManager::getBasename(fn) + "_t0.000000_mesh0.vtp"));
 }
 
 } // SUITE

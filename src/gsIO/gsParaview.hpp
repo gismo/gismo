@@ -51,7 +51,7 @@ gsOptionList gsParaview<T>::defaultOptions()
 {
     gsOptionList opt;
     opt.addInt   ("numPoints",      "Number of sampling points per patch", 1000);
-    opt.addInt   ("precision",      "Output file floating-point precision", 12);
+    opt.addInt   ("precision",      "Output file floating-point precision", 5);
     opt.addString("patchDelimiter", "Delimiter between patch indices in filenames", "_");
     opt.addSwitch("plotElements",   "Plot the parameter mesh", false);
     opt.addSwitch("plotControlNet", "Plot the control net", false);
@@ -64,6 +64,7 @@ gsOptionList gsParaview<T>::defaultOptions()
     opt.addSwitch("fullSupport",    "Plot basis over whole domain (for mapped basis)", false);
     opt.addInt   ("hboxMode",       "Mode for gsHBox/gsHBoxContainer: 0=level, 1=error, 2=projectedError", 0);
     opt.addSwitch("writePvd",       "Wrap one-shot writes in a .pvd collection file", true);
+    opt.addSwitch("base64",         "Write unstructured-grid arrays in base64 binary format", false);
     return opt;
 }
 
@@ -98,6 +99,8 @@ void gsParaview<T>::write(const gsMultiPatch<T> & mp, const std::string & fn) co
     const bool mesh     = m_options.getSwitch("plotElements");
     const bool ctrlNet  = m_options.getSwitch("plotControlNet");
     const std::string pDelim = m_options.getString("patchDelimiter");
+    const bool exportBase64 = m_options.getSwitch("base64");
+    const bool skipPvd = !m_options.getSwitch("writePvd");
 
     if (m_options.getSwitch("bezier"))
     {
