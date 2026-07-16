@@ -238,7 +238,9 @@ public:
     inline index_t  subdomainIndex() const { return m_domainIter->subdomainIndex(); }
     
     inline index_t localId() const {return m_domainIter->localId();}
-    
+
+    inline index_t adjacentVolumeLocalId() const {return m_domainIter->adjacentVolumeLocalId();}
+
     /// Fetches data of integer type based on string label
     const index_t & label(const std::string & _label)
     {return m_domainIter->label(_label); }
@@ -316,6 +318,15 @@ public:
 
     /// Returns the local element id -- e.g. the id inside the patch
     virtual size_t localId() const { return m_id; }
+
+    /// For a boundary-element iterator: the local (per-patch, beginAll()-
+    /// order) id of the volume element adjacent to the current boundary
+    /// element, if this iterator type can provide it without point
+    /// location (e.g. from an already-known integer tensor index). Returns
+    /// -1 if it cannot, in which case callers must fall back to their own
+    /// point-location. See gsDomain::globalElementId() to convert the
+    /// result into a global id.
+    virtual index_t adjacentVolumeLocalId() const { return -1; }
 
     /// Return dimension of the elements
     short_t dim() const   { return centerPoint().size(); }

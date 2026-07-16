@@ -122,7 +122,7 @@ protected:
     // From Basis:
     // -[X] gsDomainIterator
     // -[X] numElements
-    // -[ ] elementIndex
+    // -[X] elementIndex
 
     // From gsDomainIterator
     // - side
@@ -157,6 +157,28 @@ public:
     }
 
     virtual size_t nPieces() const { return 1; }
+
+    /// Locates the global element index (i.e., the id a beginAll()
+    /// traversal of this domain would assign) of the element on \a patch
+    /// containing the point \a u, via a domain-type-specific analytic fast
+    /// path (e.g. binary search over tensor-product breaks). Returns -1 if
+    /// this domain type does not provide one, in which case callers must
+    /// fall back to their own point-location (e.g. a linear scan) --
+    /// nothing regresses for domain types that don't override this.
+    virtual index_t elementIndex(index_t patch, const gsVector<T>& u) const
+    { GISMO_UNUSED(patch); GISMO_UNUSED(u); return -1; }
+
+    /// Converts a per-patch local (beginAll()-order, as returned by e.g. a
+    /// per-patch domain iterator's id()) element id into the global
+    /// beginAll()-order id of this domain. Companion to elementIndex()
+    /// above: elementIndex() locates an element by point, this locates it
+    /// by an already-known local id (e.g. from
+    /// gsDomainIterator::adjacentVolumeLocalId()), skipping the
+    /// point-location entirely. Single-piece default is the identity
+    /// (local id == global id); multi-piece domains (e.g.
+    /// gsCompositeDomain) must override.
+    virtual index_t globalElementId(index_t patch, index_t localId) const
+    { GISMO_UNUSED(patch); return localId; }
 
 
 public: // Domain element iterators

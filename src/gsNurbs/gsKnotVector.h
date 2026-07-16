@@ -306,6 +306,18 @@ public: // queries
     inline size_t numElements() const override
     { return (domainUEnd() - domainUBegin()); }
 
+    /// Fast (binary-search) element lookup; see \ref gsDomain::elementIndex.
+    /// \a patch is ignored (a knot vector is a single-piece 1-D domain);
+    /// \a u must have size 1. uIndex() is already domain-relative (ghost
+    /// knots left of domainUBegin() report negative uIndex()), matching
+    /// numElements()'s 0-based counting.
+    index_t elementIndex(index_t patch, const gsVector<T>& u) const override
+    {
+        GISMO_UNUSED(patch);
+        GISMO_ASSERT(u.size()==1, "gsKnotVector::elementIndex expects a 1-D point.");
+        return static_cast<index_t>(this->uFind(u[0]).uIndex());
+    }
+
 public: // getters
 
     /// Returns unique knots.

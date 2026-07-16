@@ -91,6 +91,49 @@ public: // more members
 
     short_t dim() const override { return D; }
 
+    /// Fast element lookup; see \ref gsDomain::elementIndex. \a patch is
+    /// ignored (a tensor domain is single-piece); resolves each direction's
+    /// cell index via its component domain's own elementIndex(), then
+    /// combines them via elementIndexFromCellIndices() below. Returns -1
+    /// (falls back to the caller's own point-location) if any direction's
+    /// component domain doesn't provide a fast lookup itself.
+    index_t elementIndex(index_t patch, const gsVector<T>& u) const override
+    {
+        GISMO_UNUSED(patch);
+        GISMO_ASSERT(u.size()==D, "gsTensorDomain::elementIndex: point dimension mismatch.");
+        gsVector<index_t,D> idx(D);
+        gsVector<T> ui(1);
+        for (short_t i = 0; i < D; ++i)
+        {
+            ui[0] = u[i];
+            const index_t idx_i = m_knotVectors[i]->elementIndex(0, ui);
+            if (idx_i < 0) return -1;
+            idx[i] = idx_i;
+        }
+        return elementIndexFromCellIndices(idx);
+    }
+
+    /// Combines per-direction integer cell indices (as opposed to
+    /// elementIndex()'s per-direction point-based lookup) into a single
+    /// global element id, via strides with direction 0 fastest-varying --
+    /// matching nextLexicographicIter's enumeration order
+    /// (gsTensorDomainIterator's next()), which is what determines
+    /// beginAll() id order. Used both by elementIndex() above and by
+    /// gsTensorDomainBoundaryIterator::adjacentVolumeLocalId(), which
+    /// already knows its adjacent volume element's integer tensor index
+    /// without needing a point at all.
+    index_t elementIndexFromCellIndices(const gsVector<index_t,D>& idx) const
+    {
+        index_t result = 0;
+        index_t stride = 1;
+        for (short_t i = 0; i < D; ++i)
+        {
+            result += stride * idx[i];
+            stride *= static_cast<index_t>(m_knotVectors[i]->numElements());
+        }
+        return result;
+    }
+
     gsMatrix<T> boundingBox() const override
     {
         gsMatrix<T> result(D, 2);

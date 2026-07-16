@@ -25,6 +25,24 @@ namespace gismo
  *
  *  This allows efficient row resizing and insertion
  *  operations, particularly for knot insertion algorithms.
+ *
+ *  \subsection lazy Lazy column allocation
+ *
+ *  When constructed via \a resizeLazy, fibers are allocated on first
+ *  insertion (allocate-on-first-touch) instead of eagerly up-front.
+ *  Untouched fibers cost one null pointer (8 B). This is
+ *  memory-lean for subdomain assembly where only a fraction of the
+ *  global DOF columns receive entries.
+ *
+ *  Thread-safety: lazy allocation during pattern construction is
+ *  race-free because \c _pattern::push already serializes per column
+ *  via \c omp_set_lock before any insertion. During value assembly
+ *  (\c _eval::push), \c coeffRef only touches pattern-existing entries
+ *  (fiber already allocated). \c assembleJacobian 's pattern-free
+ *  insertions run under \c omp critical — also safe.
+ *
+ *  Eager mode (the default, via \a resize) is bit-identical to the
+ *  pre-lazy behaviour.
  */
 template <class T, int Major = ColMajor> // RowMajor==0, ColMajor==1
 class gsFiberMatrix
@@ -37,28 +55,35 @@ public:
     struct RowBlockXpr;
 
     gsFiberMatrix()
+    : m_innerSize(0), m_lazy(false), m_reserveHint(0)
     { }
 
     gsFiberMatrix(index_t rows, index_t cols)
+    : m_innerSize(0), m_lazy(false), m_reserveHint(0)
     {
-        if (!IsRowMajor) std::swap(rows,cols);
-        m_fibers.resize(rows);
-        for (size_t i = 0; i < m_fibers.size(); ++i)
-            m_fibers[i] = new Fiber(cols);
+        resize(rows, cols);
     }
 
     gsFiberMatrix(const gsFiberMatrix& other)
-    : m_fibers(other.outerSize())
+    : m_fibers(other.m_fibers.size()),
+      m_innerSize(other.m_innerSize),
+      m_lazy(other.m_lazy),
+      m_reserveHint(other.m_reserveHint)
     {
         for (size_t i = 0; i < m_fibers.size(); ++i)
-            m_fibers[i] = new Fiber( *other.m_fibers[i] );
+            m_fibers[i] = other.m_fibers[i] ? new Fiber( *other.m_fibers[i] ) : nullptr;
     }
 
     gsFiberMatrix(const RowBlockXpr& rowxpr)
-    : m_fibers(rowxpr.num)
+    : m_fibers(rowxpr.num),
+      m_innerSize(rowxpr.mat.m_innerSize),
+      m_lazy(rowxpr.mat.m_lazy),
+      m_reserveHint(rowxpr.mat.m_reserveHint)
     {
         for (index_t i = 0; i < rowxpr.num; ++i)
-            m_fibers[i] = new Fiber( *rowxpr.mat.m_fibers[rowxpr.start + i] );
+            m_fibers[i] = rowxpr.mat.m_fibers[rowxpr.start + i]
+                            ? new Fiber( *rowxpr.mat.m_fibers[rowxpr.start + i] )
+                            : nullptr;
     }
 
     ~gsFiberMatrix()
@@ -66,18 +91,30 @@ public:
         clear();
     }
 
-    iterator begin(index_t j) const { return iterator(*m_fibers[j]); }
+    iterator begin(index_t j) const
+    {
+        GISMO_ASSERT(m_fibers[j], "Fiber "<<j<<" is null (lazy not yet allocated)");
+        return iterator(*m_fibers[j]);
+    }
 
 #if EIGEN_HAS_RVALUE_REFERENCES
-    gsFiberMatrix(gsFiberMatrix&& other) : m_fibers(give(other.m_fibers)) {}
+    gsFiberMatrix(gsFiberMatrix&& other)
+    : m_fibers(give(other.m_fibers)),
+      m_innerSize(other.m_innerSize),
+      m_lazy(other.m_lazy),
+      m_reserveHint(other.m_reserveHint)
+    { other.m_innerSize = 0; other.m_lazy = false; other.m_reserveHint = 0; }
 
     /// Assignment operator
     gsFiberMatrix& operator= ( const gsFiberMatrix& other )
     {
         clear();
-        m_fibers.resize(other.outerSize());
+        m_fibers.resize(other.m_fibers.size());
+        m_innerSize   = other.m_innerSize;
+        m_lazy        = other.m_lazy;
+        m_reserveHint = other.m_reserveHint;
         for (size_t i = 0; i < m_fibers.size(); ++i)
-            m_fibers[i] = new Fiber( *other.m_fibers[i] );
+            m_fibers[i] = other.m_fibers[i] ? new Fiber( *other.m_fibers[i] ) : nullptr;
         return *this;
     }
 
@@ -85,7 +122,13 @@ public:
     gsFiberMatrix& operator= ( gsFiberMatrix&& other )
     {
         clear();
-        m_fibers = give(other.m_fibers);
+        m_fibers      = give(other.m_fibers);
+        m_innerSize   = other.m_innerSize;
+        m_lazy        = other.m_lazy;
+        m_reserveHint = other.m_reserveHint;
+        other.m_innerSize = 0;
+        other.m_lazy      = false;
+        other.m_reserveHint = 0;
         return *this;
     }
 #else
@@ -103,23 +146,22 @@ public:
         return *this;
     }
 
-    inline index_t fibers() const { return m_fibers.size(); }
+    inline index_t fibers() const { return static_cast<index_t>(m_fibers.size()); }
 
     /** \returns the size of the storage major dimension,
      * i.e., the number of columns for a columns major matrix, and the number of rows otherwise */
     inline index_t outerSize() const
-    { return m_fibers.size(); }
+    { return static_cast<index_t>(m_fibers.size()); }
 
     /** \returns the size of the inner dimension according to the storage order,
       * i.e., the number of rows for a columns major matrix, and the number of cols otherwise */
     inline index_t innerSize() const
-    //    { return ( m_fibers.empty() ? 0 : m_fibers.front()->size() ); }
-    { return ( m_fibers.size()>0 ? m_fibers.front()->size() : 0 ); }
+    { return m_innerSize; }
 
     void setZero()
     {
         for( auto & f : m_fibers)
-            f->setZero();
+            if (f) f->setZero();
     }
 
     /** \returns the number of rows of the matrix */
@@ -128,20 +170,31 @@ public:
     /** \returns the number of columns of the matrix */
     inline index_t cols() const { return IsRowMajor ? innerSize() : outerSize(); }
 
-    Fiber& fiber(index_t i)              { return *m_fibers[i]; }
-    const Fiber& fiber(index_t i) const { return *m_fibers[i]; }
+    Fiber& fiber(index_t i)
+    {
+        GISMO_ASSERT( i>=0 && i<outerSize(), "Invalid fiber: "<<i);
+        GISMO_ENSURE(m_fibers[i], "Fiber "<<i<<" is null (lazy not yet allocated)");
+        return *m_fibers[i];
+    }
+    const Fiber& fiber(index_t i) const
+    {
+        GISMO_ASSERT( i>=0 && i<outerSize(), "Invalid fiber: "<<i);
+        GISMO_ENSURE(m_fibers[i], "Fiber "<<i<<" is null (lazy not yet allocated)");
+        return *m_fibers[i];
+    }
 
     Fiber& row(index_t i)
     {
         GISMO_ASSERT( i>=0 && i<rows(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows());
         GISMO_ENSURE(IsRowMajor, "Cannot access row in col-major fiber matrix");
-        return *m_fibers[i];
+        return fiberRef(i);
     }
 
     const Fiber& row(index_t i) const
     {
         GISMO_ASSERT( i>=0 && i<rows(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows());
         GISMO_ENSURE(IsRowMajor, "Cannot access row in col-major fiber matrix");
+        GISMO_ENSURE(m_fibers[i], "Row "<<i<<" is null (lazy not yet allocated)");
         return *m_fibers[i];
     }
 
@@ -149,13 +202,14 @@ public:
     {
         GISMO_ASSERT(i>=0 && i<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<cols()"<<"="<<cols());
         GISMO_ENSURE(!IsRowMajor, "Cannot access col in col-major fiber matrix");
-        return *m_fibers[i];
+        return fiberRef(i);
     }
 
     const Fiber& col(index_t i) const
     {
         GISMO_ASSERT(i>=0 && i<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<cols()"<<"="<<cols());
         GISMO_ENSURE(!IsRowMajor, "Cannot access col in row-major fiber matrix");
+        GISMO_ENSURE(m_fibers[i], "Col "<<i<<" is null (lazy not yet allocated)");
         return *m_fibers[i];
     }
 
@@ -163,6 +217,7 @@ public:
     {
         GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<j<<"<cols()"<<"="<<cols() );
         if (!IsRowMajor) std::swap(i,j);
+        if (!m_fibers[i]) return T(0);
         return m_fibers[i]->coeff(j);
     }
 
@@ -170,27 +225,28 @@ public:
     {
         GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<j<<"<cols()"<<"="<<cols() );
         if (!IsRowMajor) std::swap(i,j);
-        return m_fibers[i]->coeffRef(j);
+        return fiberRef(i).coeffRef(j);
     }
 
     T & insert(index_t i, index_t j)
     {
         GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<j<<"<cols()"<<"="<<cols() );
         if (!IsRowMajor) std::swap(i,j);
-        return m_fibers[i]->insert(j);
+        return fiberRef(i).insert(j);
     }
 
     void insertExplicitZero(index_t i, index_t j)
     {
         GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<j<<"<cols()"<<"="<<cols() );
         if (!IsRowMajor) std::swap(i,j);
-        m_fibers[i]->data().atWithInsertion(j);
+        fiberRef(i).data().atWithInsertion(j);
     }
 
     bool isExplicitZero(index_t i, index_t j) const
     {
         GISMO_ASSERT( i>=0 && i<rows() && j>=0 && j<cols(), "Invalid element: "<<i<<">=0 && "<<i<<"<rows()"<<"="<<rows()<<"  &&  "<<j<<">=0 && "<<j<<"<cols()"<<"="<<cols() );
         if (!IsRowMajor) std::swap(i,j);
+        if (!m_fibers[i]) return true; // null fiber → no explicit zero slot present
         auto & vdata = m_fibers[i]->data();
         const index_t jj = vdata.searchLowerIndex(j);
         return ((jj==vdata.size()) || (vdata.index(jj)!=j));
@@ -199,15 +255,21 @@ public:
     void clear()
     {
         for (int i = 0; i < fibers(); ++i)
-            delete m_fibers[i];
+            delete m_fibers[i]; // safe on nullptr
         m_fibers.clear();
+        m_innerSize   = 0;
+        m_lazy        = false;
+        m_reserveHint = 0;
     }
 
     //void prune()
-    
+
     void swap(gsFiberMatrix& other)
     {
         m_fibers.swap( other.m_fibers );
+        std::swap(m_innerSize,   other.m_innerSize);
+        std::swap(m_lazy,        other.m_lazy);
+        std::swap(m_reserveHint, other.m_reserveHint);
     }
 
     void setIdentity(index_t n)
@@ -223,9 +285,10 @@ public:
     void assignZero()
     {
         for (auto & fb : m_fibers)
-            std::fill(fb->valuePtr(), fb->valuePtr() + fb->nonZeros(), (T)0.);
+            if (fb) std::fill(fb->valuePtr(), fb->valuePtr() + fb->nonZeros(), (T)0.);
     }
 
+    /// \brief Eager resize: allocates every fiber up-front (default; bit-identical to pre-lazy behaviour).
     void resize(index_t rows, index_t cols)
     {
         GISMO_ASSERT( rows >= 0 && cols >= 0, "Invalid row/col in resize.");
@@ -235,12 +298,40 @@ public:
         m_fibers.resize(rows);
         for (index_t i = 0; i < rows; ++i)
             m_fibers[i] = new Fiber(cols);
+        m_innerSize = cols;
+        m_lazy      = false;
+    }
+
+    /// \brief Lazy resize: fibers are allocated on first touch (null until then).
+    ///
+    /// Untouched fibers cost one null pointer (8 B). Memory-lean for
+    /// subdomain assembly where only a fraction of global DOF columns
+    /// receive entries. Thread-safe under the pattern-then-value
+    /// discipline of gsExprAssembler (see class docstring).
+    void resizeLazy(index_t rows, index_t cols)
+    {
+        GISMO_ASSERT( rows >= 0 && cols >= 0, "Invalid row/col in resizeLazy.");
+        if (!IsRowMajor) std::swap(rows,cols);
+
+        clear();
+        m_fibers.resize(rows, nullptr);
+        m_innerSize = cols;
+        m_lazy      = true;
     }
 
     void reservePerColumn(index_t nz)
     {
-        for (index_t i = 0; i < fibers(); ++i)
-            m_fibers[i]->reserve(nz);
+        if (m_lazy)
+        {
+            m_reserveHint = nz;
+            for (index_t i = 0; i < fibers(); ++i)
+                if (m_fibers[i]) m_fibers[i]->reserve(nz);
+        }
+        else
+        {
+            for (index_t i = 0; i < fibers(); ++i)
+                m_fibers[i]->reserve(nz);
+        }
     }
 
     template<typename Cont>
@@ -248,7 +339,7 @@ public:
     {
         GISMO_ASSERT(m_fibers.size()==(size_t)nz.size(), "Wrong size in nonzero vector.");
         for (index_t i = 0; i < fibers(); ++i)
-            m_fibers[i]->reserve(nz[i]);
+            if (m_fibers[i]) m_fibers[i]->reserve(nz[i]);
     }
 
     void conservativeResize(index_t newRows, index_t newCols)
@@ -258,8 +349,9 @@ public:
         const index_t oldRows = fibers();
         const index_t m = std::min(oldRows, newRows);
         for (index_t i = 0; i < m; ++i)
-            m_fibers[i]->conservativeResize(newCols);
+            if (m_fibers[i]) m_fibers[i]->conservativeResize(newCols);
 
+        if (newCols > m_innerSize) m_innerSize = newCols;
         resizeFibers(newRows);
     }
 
@@ -269,13 +361,13 @@ public:
 
         // delete any fibers which will be removed, if any
         for (index_t i = newSz; i < oldSz; ++i)
-            delete m_fibers[i];
+            delete m_fibers[i]; // safe on nullptr
 
         m_fibers.resize(newSz);
 
         // allocate newly added fibers, if any
         for (index_t i = oldSz; i < newSz; ++i)
-            m_fibers[i] = new Fiber(innerSize());
+            m_fibers[i] = m_lazy ? nullptr : new Fiber(m_innerSize);
     }
 
     void duplicateRow(index_t k) //..
@@ -283,7 +375,7 @@ public:
         GISMO_ASSERT(IsRowMajor &&  0 <= k && k < fibers(), "k out of bounds.");
 
         //todo, something like: m_fibers.insert(m_fibers.begin()+k, new Fiber( fiber(k) );
-        
+
         // add one new fiber
         m_fibers.resize(m_fibers.size()+1);
 
@@ -292,7 +384,7 @@ public:
             m_fibers[i] = m_fibers[i-1];
 
         // allocate new row
-        m_fibers[k+1] = new Fiber( row(k) );
+        m_fibers[k+1] = m_fibers[k] ? new Fiber( *m_fibers[k] ) : nullptr;
     }
 
     // row expressions //..
@@ -310,7 +402,7 @@ public:
     {
         index_t nnz = 0;
         for (index_t i = 0; i < fibers(); ++i)
-            nnz += m_fibers[i]->nonZeros();
+            if (m_fibers[i]) nnz += m_fibers[i]->nonZeros();
         return nnz;
     }
 
@@ -318,7 +410,7 @@ public:
     {
         gsVector<index_t> result(fibers());
         for (size_t i = 0; i != m_fibers.size(); ++i)
-            result[i] = m_fibers[i]->nonZeros();
+            result[i] = m_fibers[i] ? m_fibers[i]->nonZeros() : 0;
         return result;
     }
 
@@ -336,6 +428,7 @@ public:
         m.derived().reserve( nonZerosPerFiber() );
         for (index_t i = 0; i < fibers(); ++i)
         {
+            if (!m_fibers[i]) continue;
             for (typename Fiber::InnerIterator it(*m_fibers[i]); it; ++it)
                 m.derived().insert(IsRowMajor?i:it.index(), IsRowMajor?it.index():i) = it.value();
         }
@@ -376,7 +469,26 @@ public:
     };
 
 private:
+    /// Allocate-on-first-touch: returns the fiber at \a outer, allocating
+    /// it (with the reservation hint) if it is null. In eager mode this
+    /// is a null-check + return — no allocation occurs.
+    Fiber& fiberRef(index_t outer)
+    {
+        GISMO_ASSERT(outer >= 0 && outer < outerSize(), "Invalid fiber index");
+        if (!m_fibers[outer])
+        {
+            m_fibers[outer] = new Fiber(m_innerSize);
+            if (m_reserveHint > 0)
+                m_fibers[outer]->reserve(m_reserveHint);
+        }
+        return *m_fibers[outer];
+    }
+
     std::vector< Fiber* > m_fibers;
-};
+    index_t m_innerSize    = 0;  ///< inner dimension (fiber length); explicit so it survives null fibers
+    bool    m_lazy         = false; ///< true when fibers may be null (allocated on first touch)
+    index_t m_reserveHint  = 0;  ///< reservation hint applied at first-touch allocation (lazy mode)
+
+}; // class gsFiberMatrix
 
 } // namespace gismo

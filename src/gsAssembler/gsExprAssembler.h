@@ -13,6 +13,10 @@
 
 #pragma once
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #include <gsUtils/gsPointGrid.h>
 #include <gsAssembler/gsQuadrature.h>
 #include <gsExpressions/gsExprHelper.h>
@@ -25,6 +29,20 @@
 
 namespace gismo
 {
+
+/**
+   \brief Pattern-lock pool size for striped locking.
+   Fixed power-of-two cap (1<<16) so one omp_lock_t per global DOF is never
+   allocated. Threads acquire at most one lock at a time before any insertion,
+   so striping cannot deadlock. Behaviour-identical to per-DOF locking.
+*/
+static inline index_t patternLockPoolSize(index_t numDofs)
+{
+    index_t cap = (index_t(1) << 16);
+    index_t s = 1;
+    while (s < numDofs && s < cap) s <<= 1;
+    return s;
+}
 
 /**
    Assembler class for generating matrices and right-hand sides based
@@ -168,12 +186,12 @@ public:
     /// \brief Sets the domain of integration.
     /// \warning Must be called before any computation is requested
     void setIntegrationElements(const gsMultiBasis<T> & mesh)
-    { m_exprdata->setDomain(mesh.domain()); } // @hverhelst TODO
+    { m_exprdata->setDomain(mesh.domain()); m_sparsity = 0; }
 
     /// \brief Sets the domain of integration.
     /// \warning Must be called before any computation is requested
     void setIntegrationDomain(typename gsDomain<T>::Ptr domain)
-    { m_exprdata->setDomain(give(domain)); } // @hverhelst TODO
+    { m_exprdata->setDomain(give(domain)); m_sparsity = 0; }
 
 
     /// \brief Set the geometrymap ( used for interface assembly)
@@ -359,7 +377,10 @@ public:
         }
         else
         {
-            m_fmatrix.resize(numTestDofs(), numDofs());
+            if (m_options.askSwitch("lazyMatrix",false))
+                m_fmatrix.resizeLazy(numTestDofs(), numDofs());
+            else
+                m_fmatrix.resize(numTestDofs(), numDofs());
             m_sparsity = 0;
 
             if (0 == m_fmatrix.rows() || 0 == m_fmatrix.cols())
@@ -382,25 +403,27 @@ public:
         }
     }
 
-    /// Initializes the pattern of the sparse matrix
+    /// Initializes the pattern of the sparse matrix. The m_sparsity bit is
+    /// set inside _computePattern() itself (Fix 2), only when a pattern was
+    /// actually (re)computed -- i.e. only when one of \a args is a matrix
+    /// expression -- not unconditionally here.
     template<class... expr> void computePattern(const expr &... args)
     {
         _computePattern(args...);
-        m_sparsity |= 1;
     }
 
-    /// Initializes the pattern of the sparse matrix at boundary integrals
+    /// Initializes the pattern of the sparse matrix at boundary integrals.
+    /// See computePattern() above re. where m_sparsity gets set.
     template<class... expr> void computePatternBdr(const bcRefList & BCs, const expr &... args)
     {
         _computePatternBdr(BCs, args...);
-        m_sparsity |= 2;
     }
 
-    /// Initializes the pattern of the sparse matrix at boundary integrals
+    /// Initializes the pattern of the sparse matrix at boundary integrals.
+    /// See computePattern() above re. where m_sparsity gets set.
     template<class... expr> void computePatternIfc(const ifContainer & iFaces, expr... args)
     {
         _computePatternIfc(iFaces, args...);
-        m_sparsity |= 4;
     }
 
     /// \brief Initializes the right-hand side vector only
@@ -470,7 +493,22 @@ private:
 
     template<class... expr> void _computePattern(const expr &... args);
     template<class... expr> void _computePatternBdr(const bcRefList & BCs, const expr &... args);
+    template<class... expr> void _computePatternBdr(const bContainer & bnd, const expr &... args);
     template<class... expr> void _computePatternIfc(const ifContainer & iFaces, expr... args);
+
+    /// Serial warm-up for a subdomain-restricted domain's per-patch view
+    /// (see gsIndexSubDomainPatchView in gsIndexSubDomain.h): touches its
+    /// lazily-filled boundary-count cache once, from single-threaded code,
+    /// before _computePatternBdr()/_computePatternIfc() enter their
+    /// #pragma omp parallel region and construct boundary iterators on that
+    /// view concurrently. Without this, first-touch of the cache would
+    /// happen from multiple threads at once -- an unsynchronized write race
+    /// (Fix 1). A no-op for domain types that don't restrict integration to
+    /// a subdomain (subdomain() just returns the raw per-patch domain).
+    void _warmupSubdomainViews(index_t patch, boxSide side)
+    {
+        m_exprdata->domain().subdomain(patch)->numElementsBdr(side);
+    }
 
     void _blockDims(gsVector<index_t> & rowSizes,
                     gsVector<index_t> & colSizes)
@@ -775,7 +813,7 @@ private:
                     if ( colMap.is_free_index(jj) )
                     {
 #ifdef _OPENMP
-                        omp_set_lock(&m_lock[jj]);
+                        omp_set_lock(&m_lock[jj & (m_lock.size()-1)]);
 #endif
                         for (index_t r = 0; r != rd; ++r)
                             for (index_t i = 0; i != rowInd0.rows(); ++i)
@@ -785,7 +823,7 @@ private:
                                     m_fmatrix.insertExplicitZero(ii, jj);
                             }
 #ifdef _OPENMP
-                        omp_unset_lock(&m_lock[jj]);
+                        omp_unset_lock(&m_lock[jj & (m_lock.size()-1)]);
 #endif
                     }
                 }
@@ -810,6 +848,7 @@ gsOptionList gsExprAssembler<T>::defaultOptions()
     opt.addSwitch("flipSide", "Flip side of interface where integration is performed.", false);
     opt.addSwitch("movingInterface", "Used in interface assembly when interface is not stationary.", false);
     opt.addSwitch("SameElement","Activates optimization if all quadrature points are located in the same element", true);
+    opt.addSwitch("lazyMatrix","Allocate matrix columns on first use (memory-lean for subdomain assembly)", false);
     return opt;
 
     /// dirichlet treatment? elimination ????
@@ -919,20 +958,28 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
 {
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized, matrix.cols() = "<<m_fmatrix.cols()<<"!="<<numDofs()<<" = numDofs()");
 
-#ifdef _OPENMP
-    std::vector<omp_lock_t> lock(numDofs());
-    for (auto & l : lock)
-        omp_init_lock(&l);
-#endif
-
     // Checks if any of the expressions in args is a matrix
     // If not, then there is no need to compute sparity patterns
-    // and returns
+    // and returns. Checked *before* allocating/initializing the lock pool
+    // below (Fix 9): the pool used to be created unconditionally and then
+    // leaked on this early-return path, since the matching destroy loop
+    // sits after it.
     bool isMatrix = false;
     _checkMatrix CM(isMatrix);
     auto arg_tpl0 = std::make_tuple(args...);
     op_tuple(CM, arg_tpl0);
     if (!isMatrix) return;
+
+#ifdef _OPENMP
+    // Striped lock pool (power-of-two cap 1<<16) replaces one omp_lock_t per
+    // global DOF — removes the O(numDofs) lock-array cost of _computePattern.
+    // Threads acquire at most one lock at a time before insertion, so striping
+    // cannot deadlock. Indexed via m_lock[jj & (m_lock.size()-1)] in _pattern::push.
+    const index_t lockPoolSize = patternLockPoolSize(numDofs());
+    std::vector<omp_lock_t> lock(lockPoolSize);
+    for (auto & l : lock)
+        omp_init_lock(&l);
+#endif
 
 #pragma omp parallel
 {
@@ -958,6 +1005,12 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
     for (auto & l : lock)
         omp_destroy_lock(&l);
 #endif
+
+    // Fix 2: the pattern was actually (re)computed here -- and only here,
+    // guarded by the isMatrix early-return above -- so this is the right
+    // place to record it, not the public computePattern() wrapper (which
+    // used to set this bit unconditionally regardless of isMatrix).
+    m_sparsity |= 1;
 }
 
 template<class T>
@@ -968,20 +1021,39 @@ void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &.
 
     if ( BCs.empty() || 0==numDofs() ) return;
 
-#ifdef _OPENMP
-    std::vector<omp_lock_t> lock(numDofs());
-    for (auto & l : lock)
-        omp_init_lock(&l);
-#endif
-
     // Checks if any of the expressions in args is a matrix
     // If not, then there is no need to compute sparity patterns
-    // and returns
+    // and returns. Checked *before* allocating/initializing the lock pool
+    // below (Fix 9): used to leak the pool on this early-return path.
     bool isMatrix = false;
     _checkMatrix CM(isMatrix);
     auto arg_tpl0 = std::make_tuple(args...);
     op_tuple(CM, arg_tpl0);
     if (!isMatrix) return;
+
+#ifdef _OPENMP
+    // Striped lock pool (power-of-two cap 1<<16) replaces one omp_lock_t per
+    // global DOF — removes the O(numDofs) lock-array cost of _computePattern.
+    // Threads acquire at most one lock at a time before insertion, so striping
+    // cannot deadlock. Indexed via m_lock[jj & (m_lock.size()-1)] in _pattern::push.
+    const index_t lockPoolSize = patternLockPoolSize(numDofs());
+    std::vector<omp_lock_t> lock(lockPoolSize);
+    for (auto & l : lock)
+        omp_init_lock(&l);
+#endif
+
+    // Fix 1b (hoist): touch every (patch,side) subdomain view's boundary
+    // count cache serially, *before* opening the parallel region below --
+    // gsIndexSubDomainPatchView::numElementsBdr() lazily fills a mutable
+    // cache on first touch (see gsIndexSubDomain.h), so touching it from
+    // multiple threads concurrently (as the loop below used to, via
+    // beginBdr/endBdr) would race. Threads inside the parallel region then
+    // only ever read an already-warm cache.
+    for (typename bcRefList::const_iterator iit = BCs.begin(); iit != BCs.end(); ++iit)
+    {
+        const boundary_condition<T> * it = &iit->get();
+        _warmupSubdomainViews(it->patch(), it->side());
+    }
 
 #pragma omp parallel
 {
@@ -1024,6 +1096,90 @@ void gsExprAssembler<T>::_computePatternBdr(const bcRefList & BCs, const expr &.
     for (auto & l : lock)
         omp_destroy_lock(&l);
 #endif
+
+    // Fix 2: see _computePattern() above -- set only here, after an actual
+    // (isMatrix-guarded) recompute, not unconditionally by the public
+    // computePatternBdr() wrapper. Shared with the bContainer overload of
+    // this pattern computation (Fix 7): both represent "boundary pattern
+    // computed", so a call to either skips a subsequent call to the other.
+    // Correct only if both overloads compute equivalent patterns for the
+    // same BC/side set -- true here since both walk BC-derived boundary
+    // sides through the same subdomain-restricted domain.
+    m_sparsity |= 2;
+}
+
+// Fix 7: bContainer twin of _computePatternBdr(bcRefList) above -- same
+// body minus the BC-function plumbing (bContainer carries plain
+// patchSide entries, no boundary_condition/function attached), iterating
+// \a bnd sides directly. Shares bit 2 of m_sparsity with the bcRefList
+// overload (see the comment at the end of that overload) so that
+// assembleBdr(bContainer) participates in the same pattern/sparsity
+// contract as assembleBdr(bcRefList) -- required for lazyMatrix and any
+// future parallelization of this loop.
+template<class T>
+template<class... expr>
+void gsExprAssembler<T>::_computePatternBdr(const bContainer & bnd, const expr &... args)
+{
+    GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized, matrix.cols() = "<<m_fmatrix.cols()<<"!="<<numDofs()<<" = numDofs()");
+
+    if ( bnd.size()==0 || 0==numDofs() ) return;
+
+    bool isMatrix = false;
+    _checkMatrix CM(isMatrix);
+    auto arg_tpl0 = std::make_tuple(args...);
+    op_tuple(CM, arg_tpl0);
+    if (!isMatrix) return;
+
+#ifdef _OPENMP
+    const index_t lockPoolSize = patternLockPoolSize(numDofs());
+    std::vector<omp_lock_t> lock(lockPoolSize);
+    for (auto & l : lock)
+        omp_init_lock(&l);
+#endif
+
+    // Fix 1b (hoist): see the matching comment in the bcRefList overload.
+    for (gsBoxTopology::const_biterator it = bnd.begin(); it != bnd.end(); ++it)
+        _warmupSubdomainViews(it->patch, it->side());
+
+#pragma omp parallel
+{
+        auto arg_tpl = std::make_tuple(args...);
+        m_exprdata->parsePattern(arg_tpl);
+        typename gsBasis<T>::domainIter domIt;
+        typename gsBasis<T>::domainIter domItEnd;
+        unsigned patchInd;
+        _pattern pp(m_fmatrix, m_exprdata->points(), patchInd
+#ifdef _OPENMP
+                    , lock
+#endif
+            );
+
+    for (gsBoxTopology::const_biterator it = bnd.begin(); it != bnd.end(); ++it)
+    {
+            patchInd = it->patch;
+
+            domIt = m_exprdata->domain().subdomain(it->patch)->beginBdr(it->side());
+            domItEnd = m_exprdata->domain().subdomain(it->patch)->endBdr(it->side());
+
+            for (; domIt<domItEnd; ++domIt )
+            {
+#               pragma omp single nowait
+                {
+                    m_exprdata->points() = domIt.centerPoint();
+                    op_tuple(pp, arg_tpl);
+                }
+            }
+    }
+}//omp parallel
+
+#ifdef _OPENMP
+    for (auto & l : lock)
+        omp_destroy_lock(&l);
+#endif
+
+    // Fix 2 + Fix 7: same bit as the bcRefList overload -- see the comment
+    // there for why this is intentional, not a bug.
+    m_sparsity |= 2;
 }
 
 
@@ -1034,15 +1190,10 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
     if ( iFaces.empty() || 0==numDofs() ) return;
 
-#ifdef _OPENMP
-    std::vector<omp_lock_t> lock(numDofs());
-    for (auto & l : lock)
-        omp_init_lock(&l);
-#endif
-
     // Checks if any of the expressions in args is a matrix
     // If not, then there is no need to compute sparity patterns
-    // and returns
+    // and returns. Checked *before* allocating/initializing the lock pool
+    // below (Fix 9): used to leak the pool on this early-return path.
     bool isMatrix = false;
     _checkMatrix CM(isMatrix);
     auto arg_tpl0 = std::make_tuple(args...);
@@ -1051,6 +1202,27 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
 
     typedef typename gsFunction<T>::uPtr ifacemap;
     const bool flipSide = m_options.askSwitch("flipSide", false);
+
+#ifdef _OPENMP
+    // Striped lock pool (power-of-two cap 1<<16) replaces one omp_lock_t per
+    // global DOF — removes the O(numDofs) lock-array cost of _computePattern.
+    // Threads acquire at most one lock at a time before insertion, so striping
+    // cannot deadlock. Indexed via m_lock[jj & (m_lock.size()-1)] in _pattern::push.
+    const index_t lockPoolSize = patternLockPoolSize(numDofs());
+    std::vector<omp_lock_t> lock(lockPoolSize);
+    for (auto & l : lock)
+        omp_init_lock(&l);
+#endif
+
+    // Fix 1b (hoist): warm up every interface's (patch1,side) subdomain
+    // view serially before opening the parallel region -- see the matching
+    // comment in _computePatternBdr() above.
+    for (gsBoxTopology::const_iiterator it = iFaces.begin(); it != iFaces.end(); ++it)
+    {
+        const boundaryInterface & iFace = flipSide ? it->getInverse() : *it;
+        _warmupSubdomainViews(iFace.first().patch, iFace.first().side());
+    }
+
 #pragma omp parallel
 {
     auto arg_tpl = std::make_tuple(args...);
@@ -1072,6 +1244,16 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
         const index_t patch1 = iFace.first() .patch;
         const index_t patch2 = iFace.second().patch;
 
+        // Fix 7: patchInd must track the side actually being iterated
+        // (patch1) -- _pattern::push (below) uses this single patchInd for
+        // both row and column active-basis lookups, so leaving it at its
+        // init value of 0 evaluates patch-0's actives at patch-1's boundary
+        // points whenever patch1 != 0. Cross-patch (left/right) coupling
+        // entries are still not pre-patterned here (pre-existing
+        // limitation, see _pattern::push's "pattern ifc ?" comment below);
+        // they land via structural insertion in the serial assembleIfc().
+        patchInd = patch1;
+
         const gsBasis<T> & basis1 = this->trialSpace(0).source().basis(patch1);
         const gsBasis<T> & basis2 = this->trialSpace(0).source().basis(patch2);
         if (iFace.type() == interaction::conforming)
@@ -1081,8 +1263,15 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
         else
             interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), iFace);
 
-        typename gsBasis<T>::domainIter domIt = basis1.domain()->beginBdr(iFace.first().side());
-        typename gsBasis<T>::domainIter domItEnd = basis1.domain()->endBdr(iFace.first().side());
+        // Use the assembler's own (possibly subdomain-restricted) domain,
+        // not the raw basis domain -- otherwise this pattern precomputation
+        // ignores setIntegrationDomain() entirely and always walks the full
+        // patch boundary, regardless of what assembleIfc() will actually
+        // insert.
+        typename gsBasis<T>::domainIter domIt =
+            m_exprdata->domain().subdomain(patch1)->beginBdr(iFace.first().side());
+        typename gsBasis<T>::domainIter domItEnd =
+            m_exprdata->domain().subdomain(patch1)->endBdr(iFace.first().side());
 
         // Start iteration over elements
         //for ( domIt.next(tid); domIt.good(); domIt.next(nt) )
@@ -1097,6 +1286,17 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
         }
     }
 }//omp parallel
+
+#ifdef _OPENMP
+    // Fix 9: this destroy loop was missing entirely (not just unreached on
+    // an early-return path) -- every call to this function used to leak
+    // its whole lock pool.
+    for (auto & l : lock)
+        omp_destroy_lock(&l);
+#endif
+
+    // Fix 2: see _computePattern() above.
+    m_sparsity |= 4;
 }
 
 
@@ -1234,6 +1434,13 @@ void gsExprAssembler<T>::assembleBdr(const bContainer & bnd, expr&... args)
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
 
     if ( bnd.size()==0 || 0==numDofs() ) return;
+
+    // Fix 7: previously this overload never computed/guarded a pattern at
+    // all (unlike its bcRefList sibling below) -- see
+    // _computePatternBdr(bContainer) above for why it shares bit 2 with
+    // that sibling rather than using a separate bit.
+    if ((m_sparsity & 2) == 0)
+        this->_computePatternBdr(bnd, args...);
 
     auto arg_tpl = std::make_tuple(args...);
     m_exprdata->parse(arg_tpl);

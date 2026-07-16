@@ -85,6 +85,15 @@ public:
             meshStart[i]  = give(domain.component(i)->beginAll());
             curElement[i] = give(domain.component(i)->beginAll());
         }
+
+        // Cache the *full* per-direction element counts (unlike meshStart/
+        // meshEnd, which for direction \a dir only span the single boundary
+        // layer) so adjacentVolumeLocalId() below can combine per-direction
+        // cell indices into a global element id without holding a live
+        // reference to \a domain.
+        m_numElPerDir.resize(d);
+        for (short_t i = 0; i < d; ++i)
+            m_numElPerDir[i] = static_cast<index_t>(domain.component(i)->numElements());
     }
 
 
@@ -151,6 +160,27 @@ public:
         return curElement[dir].upperCorner().value() - curElement[dir].lowerCorner().value();
     }
 
+    /// See \ref gsDomainIterator::adjacentVolumeLocalId. Combines index()'s
+    /// per-direction tensor index (`tindex` already substituted in \a dir,
+    /// see index() above) via strides -- must match
+    /// gsTensorDomain::elementIndexFromCellIndices()'s convention exactly
+    /// (direction 0 fastest-varying); cross-validated once at construction
+    /// by gsIndexSubDomain's debug assert (see gsIndexSubDomain.h,
+    /// initVolumeLookup()). Uses the runtime dimension \a d (not the
+    /// compile-time D), matching index()'s own loop bound.
+    index_t adjacentVolumeLocalId() const override
+    {
+        const gsVector<unsigned, D> idx = index();
+        index_t result = 0;
+        index_t stride = 1;
+        for (short_t i = 0; i < d; ++i)
+        {
+            result += stride * static_cast<index_t>(idx[i]);
+            stride *= m_numElPerDir[i];
+        }
+        return result;
+    }
+
     GISMO_DEPRECATED
     void adjacent( const gsVector<bool> & /* orient */,
                    gsDomainIterator<T>  & /* other */ ) override
@@ -203,6 +233,10 @@ private:
 
     // Current element as pointers to it's supporting mesh-lines
     gsVector<domainIterWrapper, D> curElement;
+
+    // Full per-direction element counts (all D directions, not just the
+    // boundary-parallel ones) -- see adjacentVolumeLocalId().
+    gsVector<index_t, D> m_numElPerDir;
 
 public:
 #   define Eigen gsEigen

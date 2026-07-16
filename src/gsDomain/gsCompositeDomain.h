@@ -143,6 +143,23 @@ private:
 
     const gsBoxTopology * m_topology;
 
+    // Cumulative element count before patch i, i.e. the same offsets
+    // gsCompositeDomainIterator recomputes on every beginAll() call
+    // (m_numElOffset there) -- cached here once, eagerly, at construction
+    // time so elementIndex()/globalElementId() below can convert a per-patch
+    // local id into the global beginAll()-order id without re-walking every
+    // patch's elements. Built eagerly (not lazily) so that subdomain()
+    // callers can query it from inside an OpenMP parallel region without a
+    // data race (see gsIndexSubDomain.h / gsExprAssembler.h Fix 1).
+    std::vector<size_t> m_numElOffset;
+
+    void buildNumElOffset()
+    {
+        m_numElOffset.assign(1, 0);
+        for (const Ptr & sd : m_domains)
+            m_numElOffset.push_back(m_numElOffset.back() + sd->numElements());
+    }
+
 public:
 
     /** @brief Constructor from a \ref gsMultiBasis.
@@ -158,6 +175,7 @@ public:
             m_domains[i] = multiBasis.basis(i).domain();
             m_domains[i]->setPatchIndex(i);
         }
+        buildNumElOffset();
     }
 
     /** @brief Constructor from a \ref gsMultipatch.
@@ -173,12 +191,13 @@ public:
             m_domains[i] = mp.patch(i).basis().domain();
             m_domains[i]->setPatchIndex(i);
         }
+        buildNumElOffset();
     }
 
     // Caller is responsible for tagging patch indices on the supplied domains
     // via setPatchIndex(); untagged domains keep patchIndex()==-1.
     gsCompositeDomain(domainContainer domains)
-    : Base(), m_domains(give(domains)) { }
+    : Base(), m_domains(give(domains)) { buildNumElOffset(); }
 
     // void insert(Ptr other);
 
@@ -216,6 +235,33 @@ public:
 
     /// See \ref gsDomain.h for documentation.
     short_t dim() const override { return m_domains.front()->dim(); }
+
+    /// Fast element lookup; see \ref gsDomain::elementIndex. Delegates to
+    /// the per-patch domain's own elementIndex() for the local id, then
+    /// converts it to the global beginAll()-order id via globalElementId()
+    /// below. Returns -1 (falls back to the caller's own point-location) if
+    /// \a patch's own domain has no fast lookup.
+    index_t elementIndex(index_t patch, const gsVector<T>& u) const override
+    {
+        GISMO_ASSERT(patch>=0 && static_cast<size_t>(patch)<m_domains.size(),
+                     "Patch index "<<patch<<" out of range.");
+        const index_t local = m_domains[patch]->elementIndex(0, u);
+        if (local < 0) return -1;
+        return globalElementId(patch, local);
+    }
+
+    /// See \ref gsDomain::globalElementId. Converts a per-patch local
+    /// (beginAll()-order) element id into the global beginAll()-order id of
+    /// this composite domain, by adding the patch's cumulative-element
+    /// offset (same convention gsCompositeDomainIterator uses to go the
+    /// other way). \a m_numElOffset is built eagerly at construction (Fix
+    /// 1), so this is a pure lookup -- safe to call from multiple threads.
+    index_t globalElementId(index_t patch, index_t localId) const override
+    {
+        GISMO_ASSERT(patch>=0 && static_cast<size_t>(patch)<m_domains.size(),
+                     "Patch index "<<patch<<" out of range.");
+        return static_cast<index_t>(m_numElOffset[patch]) + localId;
+    }
 
     /// See \ref gsDomain.h for documentation.
     gsMatrix<T> boundingBox() const override

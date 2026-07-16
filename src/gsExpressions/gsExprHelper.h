@@ -248,9 +248,24 @@ private:
 
     inline gsExprHelper & iface()
     {
-        if (nullptr==m_mirror )
-            m_mirror = memory::make_shared(new gsExprHelper(this));
-        return *m_mirror;
+        // Race fix: m_mirror is a lazily-created shared object; the old
+        // unguarded "if null then create" was a classic double-checked-
+        // locking-without-the-locking race -- concurrent threads could both
+        // see nullptr and both assign m_mirror, tearing the shared_ptr and
+        // corrupting the heap (confirmed by TSAN: dozens of cascading races
+        // in ~gsExprHelper/~gsFuncData/~gsThreaded/DenseStorage, all
+        // downstream of this one). Both the check-and-create AND the read
+        // must be inside the same critical section: a thread that only
+        // *reads* here (never creates) still needs a happens-before edge to
+        // whichever thread did create it, which only the shared lock gives.
+        gsExprHelper * mirror;
+#       pragma omp critical (m_mirror_init)
+        {
+            if (nullptr==m_mirror )
+                m_mirror = memory::make_shared(new gsExprHelper(this));
+            mirror = m_mirror.get();
+        }
+        return *mirror;
     }
 
     template <class E1>
@@ -295,11 +310,19 @@ private:
 
     void setInitialFlags()
     {
+        // Race fix: same pattern as parsePattern() above -- these maps are
+        // shared across threads and populated via add() under
+        // critical(m_*data_first_touch); iterate each under the matching
+        // critical so a reader here can't run concurrently with an
+        // insert/rebalance elsewhere in the same critical section.
         // Additional evaluation flags
+#       pragma omp critical (m_mdata_first_touch)
         for (MapDataIt it  = m_mdata.begin(); it != m_mdata.end(); ++it)
             it->second.mine().flags |= NEED_ACTIVE;
+#       pragma omp critical (m_fdata_first_touch)
         for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
             it->second.mine().flags |= NEED_ACTIVE;
+#       pragma omp critical (m_cdata_first_touch)
         for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
         it->second.mine().flags |= NEED_ACTIVE;
         //gsInfo<< "\n-fdata: "<< m_fdata.size()<<"\n";
@@ -308,10 +331,13 @@ private:
 
         if (isMirrored())
         {
+#           pragma omp critical (m_mdata_first_touch)
             for (MapDataIt it  = m_mirror->m_mdata.begin(); it != m_mirror->m_mdata.end(); ++it)
                 it->second.mine().flags |= NEED_ACTIVE;
+#           pragma omp critical (m_fdata_first_touch)
             for (FuncDataIt it = m_mirror->m_fdata.begin(); it != m_mirror->m_fdata.end(); ++it)
                 it->second.mine().flags |= NEED_ACTIVE;
+#           pragma omp critical (m_cdata_first_touch)
             for (CFuncDataIt it  = m_mirror->m_cdata.begin(); it != m_mirror->m_cdata.end(); ++it)
                 it->second.mine().flags |= NEED_ACTIVE;
             // gsInfo<< "+fdata: "<< m_mirror->m_fdata.size()<<"\n";
@@ -327,6 +353,15 @@ public:
     {
         cleanUp(); //assumes parse is called once.
         _parse_tuple(tuple);
+        // Race fix: every thread reaches this point unconditionally (SPMD),
+        // so a barrier here is legal and gives all threads a synchronized
+        // view of m_mirror/m_mdata/m_fdata/m_cdata -- including threads that
+        // never themselves called add()/iface() this pass -- before
+        // setInitialFlags() below reads them. See iface()'s comment for the
+        // underlying race this closes.
+#       ifdef _OPENMP
+#       pragma omp barrier
+#       endif
         setInitialFlags();
     }
 
@@ -335,11 +370,28 @@ public:
     {
         cleanUp(); //assumes parse is called once.
         _parse_tt_tuple(tuple);
-        for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
-            it->second.mine().flags = NEED_ACTIVE;
-        if (isMirrored())
-            for (FuncDataIt it = m_mirror->m_fdata.begin(); it != m_mirror->m_fdata.end(); ++it)
+        // Race fix: see parse() above -- same barrier, same reason.
+#       ifdef _OPENMP
+#       pragma omp barrier
+#       endif
+        // m_fdata is shared across threads and every thread's add() (in
+        // _parse_tt_tuple above) inserts into it under
+        // critical(m_fdata_first_touch). Iterating it here without the same
+        // critical lets one thread walk the map's tree structure while
+        // another thread is mid-insertion/rebalance in that same critical
+        // section elsewhere -- confirmed by TSAN as the root cause of the
+        // gsIndexSubDomain_InterfaceAssembly race (unguarded reader vs.
+        // critical-guarded writer on the same std::map). The barrier above
+        // already orders all inserts before this read, so this critical is
+        // now redundant belt-and-braces, not load-bearing on its own.
+#       pragma omp critical (m_fdata_first_touch)
+        {
+            for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
                 it->second.mine().flags = NEED_ACTIVE;
+            if (isMirrored())
+                for (FuncDataIt it = m_mirror->m_fdata.begin(); it != m_mirror->m_fdata.end(); ++it)
+                    it->second.mine().flags = NEED_ACTIVE;
+        }
     }
 
     template<class... expr>
@@ -347,6 +399,10 @@ public:
     {
         cleanUp(); //assumes parse is called once.
         _parse(args...);
+        // Race fix: see the tuple overload of parse() above.
+#       ifdef _OPENMP
+#       pragma omp barrier
+#       endif
         setInitialFlags();
     }
 
