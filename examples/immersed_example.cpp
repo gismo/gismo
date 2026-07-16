@@ -23,7 +23,7 @@ namespace gismo
 {
 
 struct BoundarySign { bool operator()(short_t s) const { return s==0; } };
-struct InteriorSign { bool operator()(short_t s) const { return s>=0; } };
+struct InteriorSign { bool operator()(short_t s) const { return s<=0; } };
 
 template<short_t d, class Z>
 class gsCutTreeData
@@ -171,6 +171,10 @@ public: // virtual interface
         GISMO_NO_IMPLEMENTATION
     }
 
+    ///
+    // virtual gsVector<short_t> sign( NODE )
+
+
 public: // non-virtual interface
 
     const gsDomain<T> & backgroundDomain() const { return *m_bgDomain; }
@@ -247,8 +251,114 @@ public: // non-virtual interface
 
 protected:
 
+
+
+    /*
+        // bool SignOp.operator()(gsCutTreeData<XXX> & data) // sets data.sign(), returns false if splitting needed
+
+        struct SignOp // ASSUMES LEAF
+        {
+            SignOp( const gsTensorBSplineBasis<d,T> & tbasis, index_t samples )
+            : tbasis(tbasis)
+            , QuRule( gsVector<index_t>::Constant(d,samples) )
+            {}
+
+            bool operator()(gsCutTreeData<XXX> & data)
+            {
+                auto & k1 = curNode->nodeData().lowerCorner();
+                auto & k2 = curNode->nodeData().upperCorner();
+                for(short_t j = 0; j < d;j++)
+                {
+                    const gsKnotVector<T> & kv = tbasis.knots(j);
+                    u1[j] = kv.uValue(k1[j]);
+                    u2[j] = kv.uValue(k2[j]);
+                }
+
+                QuRule.mapTo(u1, u2, pts, wts);
+                sgn = this->sign(pts);
+
+                if ( (sgn.array() == 1).all() ) // domain active ?
+                {
+                    data.sign() = 1;
+                    return true;
+                }
+                if ( (sgn.array() == -1).all() ) // domain inactive ?
+                {
+                    data.sign() = - 1;
+                    return true;
+                }
+                // There are both positive and negative signs
+                if ( 1 == (k2-k1).prod() )
+                {
+                    data.sign() = 0;
+                    return true;
+                }
+                else
+                {
+                    return false; // splitting needed
+                }
+            }
+        };
+
+        // OTHER SIGN OPS
+        // * With sub-grid iterator (now gsGridIterator) over elements in box, using:
+        //   TODO: For all elements inside [k1,k2].....
+                /*
+                    // Could be replaced by a gsSubTensorDomainIterator
+                    gsGridIterator<Z,CUBE,d> git(k1, k2);
+                    for( ; git; ++git)
+                    {
+                        // get element corners in param. space
+                        for(short_t j = 0; j < d;j++)
+                        {
+                            const gsKnotVector<T> & kv = tbasis.knots(j);
+                            u1[j] = kv.uValue( git.current()[j]     );
+                            u2[j] = kv.uValue( git.current()[j] + 1 );
+                        }
+
+                        QuRule.mapTo(u1, u2, pts, wts);
+                        sgn = this->sign(pts);
+                        // process sgn ...
+                    }
+                */
+        // One not depending on tensor product basis (for THB)
+
+
+        template<typename SignOp, short_t d, class T, class Z>
+        void init(const gsTensorBSplineBasis<d,T> & tbasis, index_t samples = 3)
+        {
+
+            SignOp signOp;
+            Tree_t * curNode;
+            while ( ! stack.empty() )
+            {
+                curNode = stack.back(); //top();
+                stack.pop_back();       //pop();
+
+                if ( curNode->isLeaf() ) // reached a leaf
+                {
+                    if (!signOp( curNode->nodeData() ))
+                    {
+                        // splitting needed
+                        curNode->anyMidSplit(1);
+                        stack.push_back(curNode->left );
+                        stack.push_back(curNode->right);
+                    }
+                }
+                else // roll down the tree
+                {
+                    stack.push_back(curNode->left );
+                    stack.push_back(curNode->right);
+                }
+            }
+        }
+    */
+
     void init(T tol, index_t samples = 10)
     {
+        /*
+
+        */
 
     }
 
@@ -296,6 +406,24 @@ protected:
                 //question: treat Trivial boxes ?
 
                 // TODO: For all elements inside [k1,k2].....
+                /*
+                    // Could be replaced by a gsSubTensorDomainIterator
+                    gsGridIterator<Z,CUBE,d> git(k1, k2);
+                    for( ; git; ++git)
+                    {
+                        // get element corners in param. space
+                        for(short_t j = 0; j < d;j++)
+                        {
+                            const gsKnotVector<T> & kv = tbasis.knots(j);
+                            u1[j] = kv.uValue( git.current()[j]     );
+                            u2[j] = kv.uValue( git.current()[j] + 1 );
+                        }
+
+                        QuRule.mapTo(u1, u2, pts, wts);
+                        sgn = this->sign(pts);
+                        // process sgn ...
+                    }
+                */
                 QuRule.mapTo(u1, u2, pts, wts);
                 sgn = this->sign(pts);
 
@@ -480,14 +608,14 @@ private:
 
 /// Class representing an implicit trimmed domain
 template<short_t d, class T>
-class gsImplTrimmedDomain : public gsTrimmedDomain<d,T>
+class gsImplicitTrimmedDomain : public gsTrimmedDomain<d,T>
 {
     typedef gsTrimmedDomain<d,T> Base;
 private:
     typename gsFunction<T>::Ptr m_implFunction; // implicit function
 
 public:
-    gsImplTrimmedDomain(const gsFunction<T> & fnc,
+    gsImplicitTrimmedDomain(const gsFunction<T> & fnc,
                         const gsTensorBSplineBasis<d,T> & tbasis) :
     m_implFunction(memory::make_shared_not_owned(&fnc))
     {
@@ -500,6 +628,11 @@ public:
         return gsVector<short_t>(val.array().sign().template cast<short_t>());
     }
 
+    const gsFunction<T> & implicitFunction() const
+    {
+        return *m_implFunction;
+    }
+
 };
 
 template<short_t d, class T>
@@ -507,11 +640,11 @@ class gsImmersedGeometry// : public gsFunction<T>
 {
 private:
     typename gsFunction<T>::Ptr m_bgGeo; // background geometry
-    gsImplTrimmedDomain<d,  T> m_trDomain;  // trimmed domain
+    gsImplicitTrimmedDomain<d,  T> m_trDomain;  // trimmed domain
 
 public:
     gsImmersedGeometry(const gsFunction<T> & bgGeo,
-                       const gsImplTrimmedDomain<d, T> & trDomain) :
+                       const gsImplicitTrimmedDomain<d, T> & trDomain) :
     m_bgGeo(bgGeo.clone()), m_trDomain(trDomain)
     { }
 
@@ -520,7 +653,7 @@ public://function interface?
 public:
     const gsFunction<T> & background() const { return *m_bgGeo; }
 
-    const gsImplTrimmedDomain<d, T> & domain() const { return m_trDomain; }
+    const gsImplicitTrimmedDomain<d, T> & domain() const { return m_trDomain; }
 
     /// Return a triangulation of the boundaty of the immersed geometry
     memory::unique_ptr<gsMesh<T> > toBoundaryMesh(int npoints = 50) const
@@ -577,6 +710,13 @@ protected:
     const gsFunction<T> & m_levelSet;
 };
 
+
+// Other quadrature rules for cut-cells:
+// * Algoim
+// * Octree-based
+
+
+
 }//namespace gismo
 
 using namespace gismo;
@@ -595,8 +735,8 @@ void test_2D(int p, int k)
     //gsFunctionExpr<> impl_fun("-1", 2);
     //gsFunctionExpr<> impl_fun("0", 2);
 
-    //gsFunctionExpr<> impl_fun("1 - (x-1)^2 - (y-1)^2", 2);
-    gsFunctionExpr<> impl_fun("1 - x^2 - y^2", 2);
+    gsFunctionExpr<> impl_fun("-(1 - (x-1)^2 - (y-1)^2)", 2);
+    //gsFunctionExpr<> impl_fun("1 - x^2 - y^2", 2);
     //gsFunctionExpr<> impl_fun("x-y", 2);
     //gsFunctionExpr<> impl_fun("x*y", 2);
     gsMatrix<> bb(2,2);
@@ -610,8 +750,8 @@ void test_2D(int p, int k)
     gsKnotVector<> kv(-1,1,k,p+1);
     gsTensorBSplineBasis<2,real_t> tbs(kv,kv);
 
-    gsImplTrimmedDomain<2,real_t> tr_domain(impl_fun, tbs);
-    //gsDebugVar(tr_domain.boundingBox());
+    gsImplicitTrimmedDomain<2,real_t> tr_domain(impl_fun, tbs);
+    gsDebugVar(tr_domain.boundingBox());
 
     //tr_domain.tree().printLeaves();
 
@@ -644,12 +784,13 @@ void test_2D(int p, int k)
 
     gsMatrix<> pts;
     gsVector<> wts;
-    gsGaussRule<real_t> rule(gsVector<index_t,2>::Constant(p+1));
-    gsCutCellRule<real_t> ccrule(rule, impl_fun);
+    gsGaussRule<real_t> rule(gsVector<index_t,2>::Constant(5));
+    // gsCutCellRule<real_t> ccrule(rule, impl_fun);
+    // gsAlgoimRule<2,real_t> rule(impl_fun,tbs);
     real_t area(0.0);
     for (auto & elem : tr_domain.allElements())
     {
-        ccrule.mapTo(elem.lowerCorner(), elem.upperCorner(), pts, wts);
+        rule.mapTo(elem.lowerCorner(), elem.upperCorner(), pts, wts);
         area += wts.sum();
     }
     gsInfo<<"Area = "<<area<<"\n";
@@ -665,7 +806,7 @@ void test_3D(int p, int k)
     bg.knots(1).transform(-1,1);
     bg.knots(2).transform(-1,1);
     // defines the inside or the outside of the (parametric) domain
-    gsFunctionExpr<> impl_fun("1 - x^2 - y^2 - z^2", 3);
+    gsFunctionExpr<> impl_fun("-(1 - x^2 - y^2 - z^2)", 3);
     gsMatrix<> bb(3,2);
     bb << -1, 1,
           -1, 1,
@@ -678,7 +819,7 @@ void test_3D(int p, int k)
     gsKnotVector<> kv(-1,1,k,p+1);
     gsTensorBSplineBasis<3,real_t> tbs(kv,kv,kv);
 
-    gsImplTrimmedDomain<3,real_t> tr_domain(impl_fun, tbs);
+    gsImplicitTrimmedDomain<3,real_t> tr_domain(impl_fun, tbs);
 
     //tr_domain.tree().printLeaves();
 
@@ -713,13 +854,14 @@ void test_3D(int p, int k)
 
     gsMatrix<> pts;
     gsVector<> wts;
-    gsGaussRule<real_t> rule(gsVector<index_t,3>::Constant(p+1));
-    gsCutCellRule<real_t> ccrule(rule, impl_fun);
+    gsGaussRule<real_t> rule(gsVector<index_t,3>::Constant(5));
+    // gsCutCellRule<real_t> ccrule(rule, impl_fun);
+    // gsAlgoimRule<3,real_t> rule(impl_fun,tbs);
     real_t area(0.0);
     for (auto & elem : tr_domain.allElements())
     {
-        ccrule.mapTo(elem.lowerCorner(), elem.upperCorner(), pts, wts);
-        //gsDebugVar(wts.transpose());
+        rule.mapTo(elem.lowerCorner(), elem.upperCorner(), pts, wts);
+        gsDebugVar(wts.transpose());
         area += wts.sum();
     }
     gsInfo<<"Area = "<<area<<"\n";

@@ -46,6 +46,7 @@
 
 #include <gismo.h>
 #include <gsAlgoim/gsAlgoimRule.h>
+#include <gsAlgoim/gsAlgoimAdaptiveRule.h>
 
 #include <algorithm>
 #include <cmath>
@@ -446,6 +447,8 @@ int main(int argc, char* argv[])
     index_t     numRef    = 5;
     index_t     degree    = 2;
     index_t     quadDepth = 1;
+    std::string indicator = "integralChange";
+    real_t      indicatorTol = 1e-2;
     real_t      fill      = (real_t)0.9;
     bool        plot      = false;
 
@@ -457,6 +460,9 @@ int main(int argc, char* argv[])
     cmd.addInt   ("r", "refine",    "Number of uniform refinements",            numRef);
     cmd.addInt   ("e", "degree",    "B-spline degree of the background mesh",    degree);
     cmd.addInt   ("",  "quadDepth", "Adaptive quad-tree depth for cut cells",   quadDepth);
+    cmd.addString("",  "indicator", "Adaptive indicator: uniform, fallback or "
+                                    "integralChange",                          indicator);
+    cmd.addReal  ("",  "indicatorTol", "integralChange acceptance tolerance",  indicatorTol);
     cmd.addReal  ("",  "fill",      "Fill fraction of [0,1]^2 (0..1)",          fill);
     cmd.addSwitch("plot", "Write ParaView output",                              plot);
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
@@ -604,12 +610,17 @@ int main(int argc, char* argv[])
 
         gsImplicitTrimmedDomain<2,real_t> tr_domain(phi, bkgBasis);
 
-        gsAlgoimGenericRule<real_t> volRule (phi, bkgBasis);   // dim=-1: phi<0 volume
-        gsAlgoimGenericRule<real_t> surfRule(phi, bkgBasis);
-        surfRule.options().setInt("dim", 2);                   // phi=0 boundary curve
+        gsOptionList adaptiveOptions = gsAlgoimAdaptiveRule<real_t>::defaultOptions();
+        adaptiveOptions.setInt("maxDepth", quadDepth);
+        adaptiveOptions.setInt("nFallback", nFallback);
+        adaptiveOptions.setString("indicator", indicator);
+        adaptiveOptions.setReal("indicatorTol", indicatorTol);
+        adaptiveOptions.setSwitch("analyticInterior", true);
+        gsAlgoimAdaptiveRule<real_t> volumeRule(phi, bkgBasis, adaptiveOptions);
 
-        gsMatrix<real_t> pts_s;
-        gsVector<real_t> wts_s;
+        gsOptionList surfaceOptions = adaptiveOptions;
+        surfaceOptions.setInt("dim", 2);
+        gsAlgoimAdaptiveRule<real_t> surfaceRule(phi, bkgBasis, surfaceOptions);
 
         // -- Background interior cells: exact area (no quadrature needed)
         real_t           areaInterior = 0;
@@ -649,10 +660,15 @@ int main(int argc, char* argv[])
             gsMatrix<real_t> subIntCtr(2, 0), leafPts(2, 0);
             gsVector<real_t> subIntArea, leafWts;
 
-            collectAdaptive2D(volRule, phi, quadDepth,
-                              nFallback, it.lowerCorner(), it.upperCorner(), 0,
-                              nSubBoxes,
-                              subIntCtr, subIntArea, leafPts, leafWts);
+            const auto classifier = [&](const gsVector<real_t> & childLo,
+                                        const gsVector<real_t> & childHi) -> int
+            {
+                return boxClassPhi2D(phi, childLo, childHi);
+            };
+
+            volumeRule.mapToSeparated(it.lowerCorner(), it.upperCorner(),
+                                      subIntCtr, subIntArea,
+                                      leafPts, leafWts, classifier);
 
             areaCut   += subIntArea.sum() + leafWts.sum();
             nSubInteriorQPs += subIntCtr.cols();
@@ -666,13 +682,17 @@ int main(int argc, char* argv[])
                 appendCloud2D(quadAll, leafPts,   leafWts);
             }
 
-            // Perimeter (surface Algoim over the cut cell, independent of quadDepth)
-            surfRule.mapTo(it.lowerCorner(), it.upperCorner(), pts_s, wts_s);
-            perim += wts_s.sum();
+            gsMatrix<real_t> surfInterior(2, 0), surfCut(2, 0);
+            gsVector<real_t> surfInteriorW, surfCutW;
+            surfaceRule.mapToSeparated(it.lowerCorner(), it.upperCorner(),
+                                       surfInterior, surfInteriorW,
+                                       surfCut, surfCutW, classifier);
+            perim += surfCutW.sum();
         }
 
         if (plot) appendCloud2D(quadAll, intCtr, intArea);
 
+        nSubBoxes = volumeRule.stats().nSubBoxes;   // accumulated over the loop
         const real_t area = areaInterior + areaCut;
     const index_t nQuadPts = nSubInteriorQPs + nBoundaryQPs;
 

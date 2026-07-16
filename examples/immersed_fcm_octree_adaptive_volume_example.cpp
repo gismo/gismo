@@ -35,6 +35,7 @@
 
 #include <gismo.h>
 #include <gsAlgoim/gsAlgoimRule.h>
+#include <gsAlgoim/gsAlgoimAdaptiveRule.h>
 #include "gsGmsh/gsMeshLevelSet.h"
 
 #include <algorithm>
@@ -82,6 +83,8 @@ int main(int argc, char * argv[])
     index_t numRefine  = 3;
     real_t  fill       = 0.9;
     index_t quadDepth  = 0;
+    std::string indicator = "integralChange";
+    real_t  indicatorTol = 1e-2;
     bool    plot       = false;
 
     gsCmdLine cmd("Volume of a 3D .obj mesh via FCM + adaptive octree (SAT classification).");
@@ -90,6 +93,9 @@ int main(int argc, char * argv[])
     cmd.addInt   ("r", "uniformRefine", "Number of uniform refinement steps", numRefine);
     cmd.addReal  ("",  "fill",          "Fill fraction of [0,1]^3 (0..1)",    fill);
     cmd.addInt   ("",  "quadDepth",     "Adaptive octree depth for cut cells", quadDepth);
+    cmd.addString("",  "indicator",     "Adaptive indicator: uniform, fallback or "
+                                        "integralChange",                      indicator);
+    cmd.addReal  ("",  "indicatorTol",  "integralChange acceptance tolerance", indicatorTol);
     cmd.addSwitch("plot", "Create ParaView output",                           plot);
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
 
@@ -153,8 +159,6 @@ int main(int argc, char * argv[])
             << std::setw(12) << "subBoxes" << "\n";
 
     const double invScale3 = 1.0 / (scale*scale*scale);
-    const index_t nFallback = 4;
-
     // ParaView collections spanning all refinement levels (one .pvd each).
     std::unique_ptr<gsParaviewCollection> colInterior, colCut, colAll, colBg;
     if (plot)
@@ -179,7 +183,13 @@ int main(int argc, char * argv[])
             dynamic_cast<gsTensorBSplineBasis<3,real_t>*>(&dbasis.basis(0));
         GISMO_ENSURE(tbsPtr, "Expected a tensor B-spline basis.");
 
-        gsAlgoimGenericRule<real_t> algoimRule(impl_fun, *tbsPtr);
+        gsOptionList adaptiveOptions = gsAlgoimAdaptiveRule<real_t>::defaultOptions();
+        adaptiveOptions.setInt("maxDepth", quadDepth);
+        adaptiveOptions.setInt("nFallback", 4);
+        adaptiveOptions.setString("indicator", indicator);
+        adaptiveOptions.setReal("indicatorTol", indicatorTol);
+        adaptiveOptions.setSwitch("analyticInterior", true);
+        gsAlgoimAdaptiveRule<real_t> adaptiveRule(impl_fun, *tbsPtr, adaptiveOptions);
 
         // Element break-points (unique knot values per direction).
         const std::vector<real_t> bx = tbsPtr->knots(0).breaks();
@@ -246,10 +256,14 @@ int main(int argc, char * argv[])
         {
             gsMatrix<real_t> insCtr(3,0), cutP(3,0);
             gsVector<real_t> insVol, cutW;
-            collectAdaptive(algoimRule, impl_fun,
-                            verts, tris, cutTris[i],
-                            quadDepth, nFallback,
-                            cutLo[i], cutHi[i], 0, insCtr, insVol, cutP, cutW);
+            adaptiveRule.mapToSeparated(
+                cutLo[i], cutHi[i], insCtr, insVol, cutP, cutW,
+                [&](const gsVector<real_t> & childLo,
+                    const gsVector<real_t> & childHi) -> int
+                {
+                    return boxClassSAT(verts, tris, cutTris[i], impl_fun,
+                                       childLo, childHi);
+                });
 
             volCut += insVol.sum() + cutW.sum();
             nQuad  += insCtr.cols() + cutP.cols();

@@ -44,7 +44,8 @@
 
 #include <gismo.h>
 #include <gsAlgoim/gsAlgoimRule.h>
-#include "gsMeshLevelSet.h"
+#include <gsAlgoim/gsAlgoimAdaptiveRule.h>
+#include "gsGmsh/gsMeshLevelSet.h"
 
 #include <cmath>
 #include <functional>
@@ -68,6 +69,8 @@ int main(int argc, char * argv[])
     real_t  fill       = 0.9;  // fraction of [0,1]^3 spanned by the largest extent
     real_t  gamma      = 1e3;  // Nitsche penalty parameter (scaled by 1/h)
     index_t quadDepth  = 0;    // octree subdivision depth for cut-cell quadrature
+    std::string indicator = "integralChange";
+    real_t indicatorTol = 1e-2;
     bool    plot       = false;
     bool    noNitsche  = false;
 
@@ -79,6 +82,9 @@ int main(int argc, char * argv[])
     cmd.addReal  ("",  "fill",            "Fill fraction of [0,1]^3 (0..1)",      fill);
     cmd.addReal  ("g", "gamma",           "Nitsche penalty parameter",           gamma);
     cmd.addInt   ("",  "quadDepth",       "Adaptive octree subdivision depth for cut-cell quadrature", quadDepth);
+    cmd.addString("",  "indicator",       "Adaptive indicator: uniform, fallback or "
+                                          "integralChange",                      indicator);
+    cmd.addReal  ("",  "indicatorTol",    "integralChange acceptance tolerance", indicatorTol);
     cmd.addSwitch("plot",      "Create ParaView output",                        plot);
     cmd.addSwitch("noNitsche", "Disable the weak/Nitsche BC (interior forcing only)", noNitsche);
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
@@ -193,11 +199,16 @@ int main(int argc, char * argv[])
 
         // Quadrature rules -- exactly the same objects as the volume example.
         gsGaussRule<real_t>         gauss(gsVector<index_t, 3>::Constant(deg + 1));
-        gsAlgoimGenericRule<real_t> algoimRule(impl_fun, *tbsPtr);            // {phi<0} volume
-
-        gsOptionList surfOpts = gsAlgoimGenericRule<real_t>::defaultOptions();
-        surfOpts.setInt("dim", D);
-        gsAlgoimGenericRule<real_t> algoimSurf(impl_fun, *tbsPtr, surfOpts);  // {phi==0} surface
+        gsAlgoimGenericRule<real_t> algoimRule(impl_fun, *tbsPtr); // kept for legacy fallback helper
+        gsOptionList adaptiveOptions = gsAlgoimAdaptiveRule<real_t>::defaultOptions();
+        adaptiveOptions.setInt("maxDepth", quadDepth);
+        adaptiveOptions.setInt("nFallback", nFallback);
+        adaptiveOptions.setString("indicator", indicator);
+        adaptiveOptions.setReal("indicatorTol", indicatorTol);
+        gsAlgoimAdaptiveRule<real_t> volumeRule(impl_fun, *tbsPtr, adaptiveOptions);
+        gsOptionList surfaceOptions = adaptiveOptions;
+        surfaceOptions.setInt("dim", D);
+        gsAlgoimAdaptiveRule<real_t> surfaceRule(impl_fun, *tbsPtr, surfaceOptions);
 
         // ---------------------------------------------------------------
         // Per-leaf cut-cell volume quadrature = Algoim rule on a box, with
@@ -325,9 +336,7 @@ int main(int argc, char * argv[])
                                      gsMatrix<real_t> & insP, gsVector<real_t> & insW,
                                      gsMatrix<real_t> & cutP, gsVector<real_t> & cutW)
         {
-            insP.resize(3,0); insW.resize(0);
-            cutP.resize(3,0); cutW.resize(0);
-            collectAdaptive(lo_c, hi_c, 0, insP, insW, cutP, cutW);
+            volumeRule.mapToSeparated(lo_c, hi_c, insP, insW, cutP, cutW, boxClass);
         };
 
         // ---------------------------------------------------------------
@@ -412,11 +421,13 @@ int main(int argc, char * argv[])
         // ---------------------------------------------------------------
         if (!noNitsche)
         {
+            surfaceRule.resetStats();
             for (auto it = tr_domain.beginBdr(boundary::none); it != tr_domain.endBdr(boundary::none); ++it)
             {
-                gsMatrix<real_t> spts; gsVector<real_t> swts;
-                algoimSurf.mapTo(it.lowerCorner(), it.upperCorner(), spts, swts);
-                if (spts.cols() == 0) continue;
+                gsMatrix<real_t> sInterior(3,0), spts(3,0);
+                gsVector<real_t> sInteriorW, swts;
+                surfaceRule.mapToSeparated(it.lowerCorner(), it.upperCorner(),
+                                           sInterior, sInteriorW, spts, swts, boxClass);
 
                 gsMatrix<index_t> act;
                 gsMatrix<real_t>  bv, bd, phi_d, gDv;
@@ -462,6 +473,10 @@ int main(int argc, char * argv[])
                     }
                 }
             }
+            if (surfaceRule.stats().nZeroSurfaceLeaves > 0)
+                gsInfo << " zeroSurfaceLeaves=" << surfaceRule.stats().nZeroSurfaceLeaves
+                       << " unresolvedSurfaceMeasure~"
+                       << surfaceRule.stats().unresolvedSurfaceMeasure;
         }
 
         // Assemble sparse matrix and solve.

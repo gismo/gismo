@@ -33,7 +33,8 @@
 
 #include <gismo.h>
 #include <gsAlgoim/gsAlgoimRule.h>
-#include "gsMeshLevelSet.h"
+#include <gsAlgoim/gsAlgoimAdaptiveRule.h>
+#include "gsGmsh/gsMeshLevelSet.h"
 
 #include <cmath>
 #include <functional>
@@ -182,11 +183,15 @@ int main(int argc, char * argv[])
 
         // Quadrature rules -- exactly the same objects as the volume example.
         gsGaussRule<real_t>         gauss(gsVector<index_t, 3>::Constant(deg + 1));
-        gsAlgoimGenericRule<real_t> algoimRule(impl_fun, *tbsPtr);            // {phi<0} volume
-
-        gsOptionList surfOpts = gsAlgoimGenericRule<real_t>::defaultOptions();
-        surfOpts.setInt("dim", D);
-        gsAlgoimGenericRule<real_t> algoimSurf(impl_fun, *tbsPtr, surfOpts);  // {phi==0} surface
+        gsAlgoimGenericRule<real_t> algoimRule(impl_fun, *tbsPtr); // kept for legacy fallback helper
+        gsOptionList adaptiveOptions = gsAlgoimAdaptiveRule<real_t>::defaultOptions();
+        adaptiveOptions.setInt("maxDepth", quadDepth);
+        adaptiveOptions.setInt("nFallback", nFallback);
+        adaptiveOptions.setString("indicator", "uniform");
+        gsAlgoimAdaptiveRule<real_t> volumeRule(impl_fun, *tbsPtr, adaptiveOptions);
+        gsOptionList surfaceOptions = adaptiveOptions;
+        surfaceOptions.setInt("dim", D);
+        gsAlgoimAdaptiveRule<real_t> surfaceRule(impl_fun, *tbsPtr, surfaceOptions);
 
         // ---------------------------------------------------------------
         // Per-leaf cut-cell volume quadrature = Algoim rule on a box, with
@@ -280,9 +285,18 @@ int main(int argc, char * argv[])
         auto cutCellPoints = [&](const gsVector<real_t> & lo_c, const gsVector<real_t> & hi_c,
                                  gsMatrix<real_t> & pts, gsVector<real_t> & wts)
         {
-            pts.resize(3, 0);
-            wts.resize(0);
-            collectCutCellPoints(lo_c, hi_c, 0, pts, wts);
+            gsMatrix<real_t> interior(3,0);
+            gsVector<real_t> interiorW;
+            volumeRule.mapToSeparated(lo_c, hi_c, interior, interiorW, pts, wts);
+            if (interior.cols() > 0)
+            {
+                const index_t oldCols = pts.cols();
+                pts.conservativeResize(3, oldCols + interior.cols());
+                pts.block(0, oldCols, 3, interior.cols()) = interior;
+                const index_t oldW = wts.size();
+                wts.conservativeResize(oldW + interiorW.size());
+                wts.segment(oldW, interiorW.size()) = interiorW;
+            }
         };
 
         // ---------------------------------------------------------------
@@ -367,9 +381,10 @@ int main(int argc, char * argv[])
         {
             for (auto it = tr_domain.beginBdr(boundary::none); it != tr_domain.endBdr(boundary::none); ++it)
             {
-                gsMatrix<real_t> spts; gsVector<real_t> swts;
-                algoimSurf.mapTo(it.lowerCorner(), it.upperCorner(), spts, swts);
-                if (spts.cols() == 0) continue;
+                gsMatrix<real_t> sInterior(3,0), spts(3,0);
+                gsVector<real_t> sInteriorW, swts;
+                surfaceRule.mapToSeparated(it.lowerCorner(), it.upperCorner(),
+                                           sInterior, sInteriorW, spts, swts);
 
                 gsMatrix<index_t> act;
                 gsMatrix<real_t>  bv, bd, phi_d, gDv;
