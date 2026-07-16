@@ -483,6 +483,7 @@ macro(update_gismo ug_ucount)
     WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
     RESULT_VARIABLE isdetached)
   if(isdetached EQUAL 0 AND UPDATE_REPO)
+    set(CTEST_UPDATE_VERSION_ONLY ON) #real update was already done before
     ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY} RETURN_VALUE ${ug_ucount})
     ctest_submit(PARTS Update RETRY_COUNT 3 RETRY_DELAY 3)
   endif()
