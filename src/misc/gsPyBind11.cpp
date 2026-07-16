@@ -220,6 +220,11 @@ PYBIND11_MODULE(pygismo, m) {
   utils.attr("__version__") = GISMO_VERSION;
   utils.doc() = "G+Smo (Geometry + Simulation Modules): Utils module";
 
+  gismo::pybind11_enum_gsProjectionNorm( utils );
+  gismo::pybind11_init_gsProjection<gismo::L2>( utils );
+  gismo::pybind11_init_gsProjection<gismo::H1>( utils );
+  gismo::pybind11_init_gsProjection<gismo::H2>( utils );
+
   gismo::pybind11_init_PPN( m );
 
 #ifdef gsRemappedBasis_ENABLED
