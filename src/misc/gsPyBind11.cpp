@@ -182,6 +182,7 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsTensorBSpline<2>( nurbs );
   gismo::pybind11_init_gsTensorBSpline<3>( nurbs );
   gismo::pybind11_init_gsTensorBSpline<4>( nurbs );
+  gismo::pybind11_init_gsTensorBSpline_factory( nurbs );
   gismo::pybind11_init_gsTensorBSplineBasis<2>( nurbs );
   gismo::pybind11_init_gsTensorBSplineBasis<3>( nurbs );
   gismo::pybind11_init_gsTensorBSplineBasis<4>( nurbs );
@@ -213,8 +214,6 @@ PYBIND11_MODULE(pygismo, m) {
   tensor.doc() = "G+Smo (Geometry + Simulation Modules): Tensor module";
 
   py::module utils = m.def_submodule("utils");
-  gismo::pybind11_init_gsL2Projection( utils );
-  gismo::pybind11_init_gsQuasiInterpolate( utils );
 
   utils.attr("__name__") = "pygismo.utils";
   utils.attr("__version__") = GISMO_VERSION;
@@ -224,6 +223,7 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsProjection<gismo::L2>( utils );
   gismo::pybind11_init_gsProjection<gismo::H1>( utils );
   gismo::pybind11_init_gsProjection<gismo::H2>( utils );
+  gismo::pybind11_init_gsQuasiInterpolate( utils );
 
   gismo::pybind11_init_PPN( m );
 
