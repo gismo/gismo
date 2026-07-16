@@ -54,9 +54,6 @@ static gsMultiPatch<> makeSquare()
     return mp;
 }
 
-// Smooth test function (non-polynomial, analytic derivatives known).
-static const char * F_SMOOTH = "sin(pi*x)*sin(pi*y)";
-
 SUITE(gsProjection_test)
 {
 
@@ -75,22 +72,23 @@ SUITE(gsProjection_test)
         real_t err;
 
         // f = x² + xy lives in Vₕ for degree ≥ 2
-        gsFunctionExpr<> f_poly("x^2+x*y", 2);
+        gsFunctionExpr<> f_poly_0("x^2+x*y", 2);
+        gsFunctionExpr<> f_poly_1("2*x+y", "x", 2);   // df/dx = 2x+y, df/dy = x
+        gsFunctionExpr<> f_poly_2("2", "0", "0", 2); // d^2f/dx^2 = 2, d^2f/dx
+        gsFunctionWithDerivatives<> f_poly(f_poly_0, f_poly_1, f_poly_2);
 
         err = gsProjection<ProjectionNorm::L2, real_t>::project(mb, mp, f_poly, coefs);
         CHECK_CLOSE(math::sqrt(err), 0.0, 1e-7);
 
-#ifdef GISMO_WITH_ADIFF
         err = gsProjection<ProjectionNorm::H1, real_t>::project(mb, mp, f_poly, coefs);
         CHECK_CLOSE(math::sqrt(err), 0.0, 1e-7);
-#endif
 
-#ifdef GISMO_WITH_ADIFF
         // f = x³ + y³  →  Δf = 6x + 6y ∈ Vₕ for degree ≥ 3
-        gsFunctionExpr<> f_poly_h2("x^3+y^3", 2);
+        gsFunctionExpr<> f_poly_h2_0("x^3+y^3", 2);
+        gsFunctionExpr<> f_poly_h2_1("3*x^2", "3*y^2", 2); // df/dx = 3x², df/dy = 3y²
+        gsFunctionExpr<> f_poly_h2_2("6*x", "6*y", "0", 2); // d²f/dx² = 6x, d²f/dxdy = 0, d²f/dy² = 0
+        gsFunctionWithDerivatives<> f_poly_h2(f_poly_h2_0, f_poly_h2_1, f_poly_h2_2);
         err = gsProjection<ProjectionNorm::H2, real_t>::project(mb, mp, f_poly_h2, coefs);
-        CHECK_CLOSE(math::sqrt(err), 0.0, 1e-7);
-#endif
     }
 
     TEST(lumped_system_produces_diagonal_matrix)
@@ -101,7 +99,11 @@ SUITE(gsProjection_test)
         mb.setDegree(degree);
         mb.uniformRefine(2);
 
-        gsFunctionExpr<> f_smooth(F_SMOOTH, 2);
+        gsFunctionExpr<> f_smooth_0("sin(pi*x)*sin(pi*y)", 2);
+        gsFunctionExpr<> f_smooth_1("pi*cos(pi*x)*sin(pi*y)", "pi*sin(pi*x)*cos(pi*y)", 2); // df/dx = πcos(πx)sin(πy), df/dy = πsin(πx)cos(πy)
+        gsFunctionExpr<> f_smooth_2("-pi^2*sin(pi*x)*sin(pi*y)", "-pi^2*sin(pi*x)*sin(pi*y)", "-pi^2*sin(pi*x)*sin(pi*y)", 2); // d²f/dx² = -π²sin(πx)sin(πy), d²f/dxdy = -π²sin(πx)sin(πy), d²f/dy² = -π²sin(πx)sin(πy)
+        gsFunctionWithDerivatives<> f_smooth(f_smooth_0, f_smooth_1, f_smooth_2);
+
         gsOptionList options;
         options.addSwitch("Lumped", "Use a lumped mass matrix for the projection system", true);
 
@@ -138,7 +140,11 @@ SUITE(gsProjection_test)
         mb.setDegree(degree);
         mb.uniformRefine(2);
 
-        gsFunctionExpr<> f_smooth(F_SMOOTH, 2);
+        gsFunctionExpr<> f_smooth_0("sin(pi*x)*sin(pi*y)", 2);
+        gsFunctionExpr<> f_smooth_1("pi*cos(pi*x)*sin(pi*y)", "pi*sin(pi*x)*cos(pi*y)", 2); // df/dx = πcos(πx)sin(πy), df/dy = πsin(πx)cos(πy)
+        gsFunctionExpr<> f_smooth_2("-pi^2*sin(pi*x)*sin(pi*y)", "-pi^2*sin(pi*x)*sin(pi*y)", "-pi^2*sin(pi*x)*sin(pi*y)", 2); // d²f/dx² = -π²sin(πx)sin(πy), d²f/dxdy = -π²sin(πx)sin(πy), d²f/dy² = -π²sin(πx)sin(πy)
+        gsFunctionWithDerivatives<> f_smooth(f_smooth_0, f_smooth_1, f_smooth_2);
+
         gsSparseMatrix<> M;
         gsMatrix<>       b, u_h;
 
@@ -147,7 +153,6 @@ SUITE(gsProjection_test)
         u_h = gsSparseSolver<real_t>::SimplicialLDLT().compute(M).solve(b);
         CHECK((M * u_h - b).norm() / b.norm() < 1e-10);
 
-#ifdef GISMO_WITH_ADIFF
         // H1
         gsProjection<ProjectionNorm::H1, real_t>::system(mb, mp, f_smooth, M, b);
         u_h = gsSparseSolver<real_t>::SimplicialLDLT().compute(M).solve(b);
@@ -157,7 +162,6 @@ SUITE(gsProjection_test)
         gsProjection<ProjectionNorm::H2, real_t>::system(mb, mp, f_smooth, M, b);
         u_h = gsSparseSolver<real_t>::SimplicialLDLT().compute(M).solve(b);
         CHECK((M * u_h - b).norm() / b.norm() < 1e-10);
-#endif
     }
 
     // ===================================================================
@@ -179,7 +183,10 @@ SUITE(gsProjection_test)
         const real_t  tol_h1   = 2.5;  // expected p=3
 
         gsMultiPatch<> mp = makeSquare();
-        gsFunctionExpr<> f_smooth(F_SMOOTH, 2);
+        gsFunctionExpr<> f_smooth_0("sin(pi*x)*sin(pi*y)", 2);
+        gsFunctionExpr<> f_smooth_1("pi*cos(pi*x)*sin(pi*y)", "pi*sin(pi*x)*cos(pi*y)", 2);
+        gsFunctionExpr<> f_smooth_2("-pi^2*sin(pi*x)*sin(pi*y)", "-pi^2*sin(pi*x)*sin(pi*y)", "-pi^2*sin(pi*x)*sin(pi*y)", 2);
+        gsFunctionWithDerivatives<> f_smooth(f_smooth_0, f_smooth_1, f_smooth_2);
 
         std::vector<real_t> h_list, l2_list, h1_list;
 
@@ -212,17 +219,15 @@ SUITE(gsProjection_test)
 
     TEST(convergence_H1_projection)
     {
-#ifndef GISMO_WITH_ADIFF
-        gsWarn << "Skipping H1 convergence test: GISMO_WITH_ADIFF not enabled.\n";
-        return;
-#endif
-
         const index_t degree  = 3;
         const index_t maxIter = 3;
         const real_t  tol_h1  = 2.5;  // expected p=3
 
         gsMultiPatch<> mp = makeSquare();
-        gsFunctionExpr<> f_smooth(F_SMOOTH, 2);
+        gsFunctionExpr<> f_smooth_0("sin(pi*x)*sin(pi*y)", 2);
+        gsFunctionExpr<> f_smooth_1("pi*cos(pi*x)*sin(pi*y)", "pi*sin(pi*x)*cos(pi*y)", 2);
+        gsFunctionExpr<> f_smooth_2("-pi^2*sin(pi*x)*sin(pi*y)", "-pi^2*sin(pi*x)*sin(pi*y)", "-pi^2*sin(pi*x)*sin(pi*y)", 2);
+        gsFunctionWithDerivatives<> f_smooth(f_smooth_0, f_smooth_1, f_smooth_2);
 
         std::vector<real_t> h_list, h1_list;
 
@@ -251,17 +256,15 @@ SUITE(gsProjection_test)
 
     TEST(convergence_H2_projection)
     {
-#ifndef GISMO_WITH_ADIFF
-        gsWarn << "Skipping H2 convergence test: GISMO_WITH_ADIFF not enabled.\n";
-        return;
-#endif
-
         const index_t degree   = 3;
         const index_t maxIter  = 3;
         const real_t  tol_lapl = 1.7;  // expected p-1=2
 
         gsMultiPatch<> mp = makeSquare();
-        gsFunctionExpr<> f_smooth(F_SMOOTH, 2);
+        gsFunctionExpr<> f_smooth_0("sin(pi*x)*sin(pi*y)", 2);
+        gsFunctionExpr<> f_smooth_1("pi*cos(pi*x)*sin(pi*y)", "pi*sin(pi*x)*cos(pi*y)", 2);
+        gsFunctionExpr<> f_smooth_2("-pi^2*sin(pi*x)*sin(pi*y)", "-pi^2*sin(pi*x)*sin(pi*y)", "-pi^2*sin(pi*x)*sin(pi*y)", 2);
+        gsFunctionWithDerivatives<> f_smooth(f_smooth_0, f_smooth_1, f_smooth_2);
 
         std::vector<real_t> h_list, lapl_list;
 

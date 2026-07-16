@@ -161,7 +161,7 @@ gsFileData<T>::ioError(int lineNumber, const std::string& str)
 {
     gsWarn<<"gsFileData: Problem with file "<<m_lastPath
           <<": IO error near line "<<lineNumber<<std::endl;
-    GISMO_ERROR(str + " failed", std::runtime_error);
+    GISMO_ERROR(str + " failed");
 }
 
 template<class T>

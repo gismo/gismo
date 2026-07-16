@@ -41,7 +41,7 @@ gsBarrierPatch<d, T>::gsBarrierPatch(const gsMultiPatch<T> &mp,
     : m_mp(mp), m_mb(mp)
 {
   // Input data sanity check
-  GISMO_ASSERT(!mp.empty() && mapper.freeSize() > 0,
+  GISMO_ENSURE(!mp.empty() && mapper.freeSize() > 0,
                "Invalid input to gsBarrierPatch constructor");
   // Set the default options
   this->defaultOptions();
@@ -56,7 +56,7 @@ gsBarrierPatch<d, T>::gsBarrierPatch(const gsMultiPatch<T> &mp, bool patchWise)
     : m_mp(mp), m_mb(mp)
 {
   // Input data sanity check
-  GISMO_ASSERT(!mp.empty(), "Invalid multi-patch input to gsBarrierPatch constructor");
+  GISMO_ENSURE(!mp.empty(), "Invalid multi-patch input to gsBarrierPatch constructor");
 
   // Set the default options
   this->defaultOptions();

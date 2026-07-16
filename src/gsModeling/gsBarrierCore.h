@@ -575,11 +575,11 @@ class preAAParam {
   ///
   inline void check_param() const 
   {
-    GISMO_ASSERT(m >= 0, "'m' must be non-negative");
-    GISMO_ASSERT(epsilon >= 0, "'epsilon' must be non-negative");
-    GISMO_ASSERT(epsilon_rel >= 0, "'epsilon_rel' must be non-negative");
-    GISMO_ASSERT(max_iterations >= 0, "'max_iterations' must be non-negative");
-//    GISMO_ASSERT(beta >= 0 && beta <= 1.0, "'beta' must be between 0 and 1");
+    GISMO_ENSURE(m >= 0, "'m' must be non-negative");
+    GISMO_ENSURE(epsilon >= 0, "'epsilon' must be non-negative");
+    GISMO_ENSURE(epsilon_rel >= 0, "'epsilon_rel' must be non-negative");
+    GISMO_ENSURE(max_iterations >= 0, "'max_iterations' must be non-negative");
+//    GISMO_ENSURE(beta >= 0 && beta <= 1.0, "'beta' must be between 0 and 1");
   }
 };
 

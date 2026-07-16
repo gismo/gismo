@@ -346,7 +346,7 @@ void gsBarrierCore<d, T>::foldoverElimination(const gsMultiPatch<T> &mp,
     if (Efoldover <= EPSILON) { break; }
   }
 
-  GISMO_ASSERT(Efoldover <= EPSILON,
+  GISMO_ENSURE(Efoldover <= EPSILON,
                "Foldover elimination failed. The foldover-energy value is " +
                    std::to_string(Efoldover) +
                    ". This suggests there may be issues with the input data.");

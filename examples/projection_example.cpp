@@ -60,12 +60,6 @@ int main(int argc, char* argv[])
 
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
 
-#ifndef GISMO_WITH_ADIFF
-    gsWarn << "G+Smo was compiled without GISMO_WITH_ADIFF=ON. "
-              "H1 and H2 projections may be inaccurate (source function "
-              "derivatives rely on symbolic differentiation).\n";
-#endif
-
     if (degree < 2)
     {
         gsWarn << "Degree raised to 2 (minimum for H2 projection).\n";
@@ -94,7 +88,10 @@ int main(int argc, char* argv[])
         real_t err;
 
         // f = x² + xy  (degree 2, in Vₕ for p ≥ 2)
-        gsFunctionExpr<> f_poly("x^2+x*y", 2);
+        gsFunctionExpr<> f_poly_0("x^2+x*y", 2);
+        gsFunctionExpr<> f_poly_1("2*x+y", "x", 2);   // df/dx = 2x+y, df/dy = x
+        gsFunctionExpr<> f_poly_2("2", "0", "0", 2); // d^2f/dx^2 = 2, d^2f/dxdy = 0, d^2f/dy^2 = 0
+        gsFunctionWithDerivatives<> f_poly(f_poly_0, f_poly_1, f_poly_2);
 
         err = gsProjection<ProjectionNorm::L2, real_t>::project(mb, mp, f_poly, coefs);
         gsInfo << std::scientific << std::setprecision(4);
@@ -141,7 +138,10 @@ int main(int argc, char* argv[])
         mb.uniformRefine(2);
 
         // f = sin(πx)sin(πy) - smooth, non-polynomial
-        gsFunctionExpr<> f_smooth("sin(pi*x)*sin(pi*y)", 2);
+        gsFunctionExpr<> f_smooth_0("sin(pi*x)*sin(pi*y)", 2);
+        gsFunctionExpr<> f_smooth_1("pi*cos(pi*x)*sin(pi*y)", "pi*sin(pi*x)*cos(pi*y)", 2); // df/dx = πcos(πx)sin(πy), df/dy = πsin(πx)cos(πy)
+        gsFunctionExpr<> f_smooth_2("-pi^2*sin(pi*x)*sin(pi*y)", "-pi^2*sin(pi*x)*sin(pi*y)", "-pi^2*sin(pi*x)*sin(pi*y)", 2); // d²f/dx² = -π²sin(πx)sin(πy), d²f/dxdy = -π²sin(πx)sin(πy), d²f/dy² = -π²sin(πx)sin(πy)
+        gsFunctionWithDerivatives<> f_smooth(f_smooth_0, f_smooth_1, f_smooth_2);
 
         gsSparseMatrix<> M;
         gsMatrix<>       b, u_h;
@@ -192,7 +192,10 @@ int main(int argc, char* argv[])
                << "  L2→H1 = H1→H1 = " << degree
                << "  H2→Δ = " << degree-1 << "\n\n";
 
-        gsFunctionExpr<> f_smooth("sin(pi*x)*sin(pi*y)", 2);
+        gsFunctionExpr<> f_smooth_0("sin(pi*x)*sin(pi*y)", 2);
+        gsFunctionExpr<> f_smooth_1("pi*cos(pi*x)*sin(pi*y)", "pi*sin(pi*x)*cos(pi*y)", 2); // df/dx = πcos(πx)sin(πy), df/dy = πsin(πx)cos(πy)
+        gsFunctionExpr<> f_smooth_2("-pi^2*sin(pi*x)*sin(pi*y)", "-pi^2*sin(pi*x)*sin(pi*y)", "-pi^2*sin(pi*x)*sin(pi*y)", 2); // d²f/dx² = -π²sin(πx)sin(πy), d²f/dxdy = -π²sin(πx)sin(πy), d²f/dy² = -π²sin(πx)sin(πy)
+        gsFunctionWithDerivatives<> f_smooth(f_smooth_0, f_smooth_1, f_smooth_2);
 
         const index_t N = numRefine + 1;
         gsVector<real_t> l2_L2(N), h1_L2(N);   // L2-projection errors
