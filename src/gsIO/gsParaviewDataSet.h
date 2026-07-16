@@ -14,11 +14,9 @@
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
-#include <gsMSplines/gsMappedBasis.h>   // Only to make linker happy
-#include <gsCore/gsDofMapper.h>         // Only to make linker happy
-#include <gsExpressions/gsExprHelper.h>
-#include <gsAssembler/gsExprEvaluator.h>
+#include <gsIO/gsOptionList.h>             // m_options is stored by value
 #include <gsIO/gsParaviewUtils.h>
+#include <gsExpressions/gsExprHelper.h>   // for expr::_expr<E>, used by addField(expr)
 
 #include<fstream>
 
@@ -44,6 +42,10 @@ private:
     bool m_isSaved;
 
 public:
+
+    typedef memory::unique_ptr<gsParaviewDataSet> uPtr;
+
+
     /// @brief Basic constructor
     /// @param basename The basename that will be used to create all the individual filenames
     /// @param geometry A gsMultiPatch of the geometry that will be exported and where the fields are defined
@@ -67,20 +69,21 @@ public:
     /// @param label The name that will be displayed in Paraview for this field.
     template <class E>
     void addField(const expr::_expr<E>& expr, std::string label) {
+        GISMO_ENSURE(m_evaltr, "expression fields need an evaluator");
         GISMO_ENSURE(!m_isSaved,
                      "You cannot add more fields if the gsParaviewDataSet has "
                      "been saved.");
         // evaluates the expression and appends it to the vts files
         // for every patch
         const unsigned nPts = m_options.askInt("numPoints", 1000);
-        const unsigned precision = m_options.askInt("precision", 5);
+        const unsigned precision = m_options.askInt("precision", 12);
         const bool export_base64 = m_options.askSwitch("base64", false);
 
         // gsExprEvaluator<real_t> ev;
         // gsMultiBasis<real_t> mb(*m_geometry);
         // ev.setIntegrationElements(mb);
         const std::vector<std::string> tags =
-            toVTK(expr, m_evaltr, nPts, precision, label, export_base64);
+            toParaview(expr, m_evaltr, nPts, precision, label, export_base64);
         std::vector<std::string> fnames = filenames();
 
         for (index_t k = 0; k != m_geometry->nPieces();
@@ -137,7 +140,7 @@ public:
         const bool export_base64 = m_options.askSwitch("base64", false);
 
         const std::vector<std::string> tags =
-            toVTK(field, nPts, precision, label, export_base64);
+            toParaview(field, nPts, precision, label, export_base64);
         const std::vector<std::string> fnames = filenames();
 
         for (index_t k = 0; k != m_geometry->nPieces();

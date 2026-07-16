@@ -59,6 +59,9 @@ public:
     /// @brief Constructor with custom options
     gsParaview(const gsOptionList & options);
 
+    /// @brief Destructor
+    ~gsParaview();
+
     /// @brief Returns a reference to the options list
     gsOptionList & options() { return m_options; }
 

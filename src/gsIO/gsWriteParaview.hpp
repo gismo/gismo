@@ -679,7 +679,7 @@ template<class T>
 void gsWriteParaview(const gsField<T> & field,
                      std::string const & fn,
                      unsigned npts, bool mesh,
-                     const std::string pDelim)
+                     const std::string pDelim, bool skipPvd)
 {
     /*
     if (mesh && (!field.isParametrized()) )
@@ -690,7 +690,8 @@ void gsWriteParaview(const gsField<T> & field,
     */
 
     const unsigned n = field.nPieces();
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection::uPtr collection;
+    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection(fn));
     std::string fileName, fileName_nopath;
 
     for ( unsigned i=0; i < n; ++i )
@@ -701,18 +702,18 @@ void gsWriteParaview(const gsField<T> & field,
         fileName = fn + pDelim + util::to_string(i);
         fileName_nopath = gsFileManager::getFilename(fileName);
         writeSinglePatchField( field, i, fileName, npts );
-        collection.addPart(fileName_nopath + ".vts");
+        if (collection) collection->addPart(fileName_nopath + ".vts");
         if ( mesh )
         {
             fileName+= "_mesh";
             fileName_nopath = gsFileManager::getFilename(fileName);
             writeSingleCompMesh(dom, field.patch(i), fileName);
 
-            collection.addPart(fileName_nopath + ".vtp");
+            if (collection) collection->addPart(fileName_nopath + ".vtp");
         }
 
     }
-    collection.save();
+    if (collection) collection->save();
 }
 
 /// Write a file containing a solution field over a geometry
@@ -720,7 +721,7 @@ template<class T>
 void gsWriteParaview(gsFunctionSet<T> const& geo,
                      gsFunctionSet<T> const& func,
                      std::string const & fn,
-                     unsigned npts, const std::string pDelim)
+                     unsigned npts, const std::string pDelim, bool skipPvd)
 {
     /*
     if (mesh && (!field.isParametrized()) )
@@ -733,7 +734,8 @@ void gsWriteParaview(gsFunctionSet<T> const& geo,
     GISMO_ASSERT(geo.nPieces()==func.nPieces(),"Function sets must have same number of pieces, but func has "<<func.nPieces()<<" and geo has "<<geo.nPieces());
 
     const unsigned n = geo.nPieces();
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection::uPtr collection;
+    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection(fn));
     std::string fileName, fileName_nopath;
 
     for ( unsigned i=0; i < n; ++i )
@@ -741,18 +743,19 @@ void gsWriteParaview(gsFunctionSet<T> const& geo,
         fileName = fn + pDelim + util::to_string(i);
         fileName_nopath = gsFileManager::getFilename(fileName);
         writeSinglePatchField( geo.function(i), func.function(i), true, fileName, npts );
-        collection.addPart(fileName_nopath + ".vts");
+        if (collection) collection->addPart(fileName_nopath + ".vts");
     }
-    collection.save();
+    if (collection) collection->save();
 }
 
 /// Write a file containing a solution field over a geometry
 template<class T>
 void gsWriteParaview(gsMappedSpline<2,T> const& mspline,
                      std::string const & fn,
-                     unsigned npts)
+                     unsigned npts, bool skipPvd)
 {
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection::uPtr collection;
+    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection(fn));
     std::string fileName, fileName_nopath;
     for ( index_t p=0; p < mspline.nPieces(); ++p )
     {
@@ -760,9 +763,9 @@ void gsWriteParaview(gsMappedSpline<2,T> const& mspline,
         fileName = fn + "_" + util::to_string(p);
         fileName_nopath = gsFileManager::getFilename(fileName);
         writeSingleGeometry(mspline.piece(p),mspline.piece(p).support(),fileName,npts);
-        collection.addPart(fileName_nopath + ".vts",-1,"",p);
+        if (collection) collection->addPart(fileName_nopath + ".vts",-1,"",p);
     }
-    collection.save();
+    if (collection) collection->save();
 }
 
 /// Write a file containing a solution field over a geometry
@@ -772,7 +775,8 @@ void gsWriteParaview(gsFunctionSet<T> const& geom,
                      std::string const & fn,
                      unsigned npts,
                      const bool fullsupport,
-                     const std::vector<index_t> indices)
+                     const std::vector<index_t> indices,
+                     bool skipPvd)
 {
     /*
         We loop over all global basis functions.
@@ -791,7 +795,8 @@ void gsWriteParaview(gsFunctionSet<T> const& geom,
     else
         plotIndices = indices;
 
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection::uPtr collection;
+    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection(fn));
     std::string fileName, fileName_nopath;
     gsMatrix<T> eval_geo, eval_basis, pts, ab;
     gsVector<T> a, b;
@@ -838,7 +843,7 @@ void gsWriteParaview(gsFunctionSet<T> const& geom,
             eval_basis = mbasis.piece(p).evalSingle(*i,pts);
             gsWriteParaviewTPgrid(eval_geo, eval_basis, np.template cast<index_t>(), fileName);
 
-            collection.addPart(fileName_nopath + ".vts",*i,"",p);
+            if (collection) collection->addPart(fileName_nopath + ".vts",*i,"",p);
         }
         // for (index_t k = 0; k < mbasis.globalSize(); k++)
         // {
@@ -851,27 +856,28 @@ void gsWriteParaview(gsFunctionSet<T> const& geom,
         //     collection.addPart(fileName_nopath + ".vts",k,"",p);
         // }
     }
-    collection.save();
+    if (collection) collection->save();
 }
 
 /// Export a Geometry without scalar information
 template<class T>
 void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
-                     unsigned npts, bool mesh, bool ctrlNet)
+                     unsigned npts, bool mesh, bool ctrlNet, bool skipPvd)
 {
     const bool curve = ( Geo.domainDim() == 1 );
 
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection::uPtr collection;
+    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection(fn));
     std::string fn_nopath = gsFileManager::getFilename(fn);
     if ( curve )
     {
         writeSingleCurve(Geo, fn, npts);
-        collection.addPart(fn_nopath + ".vtp");
+        if (collection) collection->addPart(fn_nopath + ".vtp");
     }
     else
     {
         writeSingleGeometry(Geo, fn, npts);
-        collection.addPart(fn_nopath + ".vts");
+        if (collection) collection->addPart(fn_nopath + ".vts");
     }
 
     if ( mesh ) // Output the underlying mesh
@@ -899,7 +905,7 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
     	}
 
         writeSingleCompMesh(Geo.basis(), Geo, fileName, ptsPerEdge);
-        collection.addPart(fileName_nopath + ".vtp");
+        if (collection) collection->addPart(fileName_nopath + ".vtp");
     }
 
     if ( ctrlNet ) // Output the control net
@@ -907,11 +913,11 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
         const std::string fileName = fn + "_cnet";
         std::string fileName_nopath = gsFileManager::getFilename(fileName);
         writeSingleControlNet(Geo, fileName);
-        collection.addPart(fileName_nopath + ".vtp");
+        if (collection) collection->addPart(fileName_nopath + ".vtp");
     }
 
     // Write out the collection file
-    collection.save();
+    if (collection) collection->save();
 }
 
 // Export a multibasis mesh
@@ -1381,11 +1387,12 @@ void gsWriteParaview(const gsHBoxContainer<d,T> & boxes, std::string const & fn,
 /// Export basis functions
 template<class T>
 void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,
-                     std::string const & fn, unsigned npts)
+                     std::string const & fn, unsigned npts, bool skipPvd)
 {
     GISMO_ENSURE(mp.nPatches()==mb.nBases(),"Number of bases and patches do not correspond");
 
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection::uPtr collection;
+    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection(fn));
 
     gsMatrix<T> eval_geo, eval_basis, pts, ab;
     gsVector<T> a, b;
@@ -1411,9 +1418,9 @@ void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,
             gsWriteParaviewTPgrid(eval_geo, eval_basis, np.template cast<index_t>(), fileName);
             // gsWriteParaview_basisFnct<T>(i, basis, fileName, npts ) ;
             // collection.addPart(fileName_nopath + ".vts",-1,"",k);
-            collection.addPart(fileName_nopath + ".vts",k);
+            if (collection) collection->addPart(fileName_nopath + ".vts",k);
         }
-    collection.save();
+    if (collection) collection->save();
 }
 
 /// Export Point set to Paraview

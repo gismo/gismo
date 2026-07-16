@@ -14,10 +14,9 @@
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
+#include <gsIO/gsOptionList.h>
 #include <gsIO/gsFileManager.h>
 #include <gsIO/gsParaviewDataSet.h>
-
-
 
 #include<fstream>
 
@@ -76,35 +75,16 @@ namespace gismo {
 class GISMO_EXPORT gsParaviewCollection
 {
 public:
+    typedef memory::unique_ptr<gsParaviewCollection> uPtr;
     typedef std::string String;
 public:
 
     /// Constructor using a filename and an (optional) evaluator.
     gsParaviewCollection(String const  &fn,
-                         gsExprEvaluator<> * evaluator=nullptr)
-                        : m_filename(fn),
-                        m_isSaved(false),
-                        m_time(-1),
-                        m_evaluator(evaluator),
-                        m_options(gsParaviewDataSet::defaultOptions()),
-                        counter(0)
-    {
-        std::string path = gsFileManager::getPath(m_filename);
+                         gsExprEvaluator<> * evaluator=nullptr);
 
-        // If the path does not start with ./ or / , it is assumed to be a relative path
-        if ( !gsFileManager::isFullyQualified(path) )
-            path = gsFileManager::getCurrentPath() + path;
-
-        m_filename = path + gsFileManager::getBasename(m_filename) + ".pvd";
-        gsFileManager::mkdir( path );
-
-        // if ( "" != m_filename.parent_path())
-        // GISMO_ENSURE( fsystem::exists( m_filename.parent_path() ), 
-        //     "The specified folder " << m_filename.parent_path() << " does not exist, please create it first.");  
-        mfile <<"<?xml version=\"1.0\"?>\n";
-        mfile <<"<VTKFile type=\"Collection\" version=\"0.1\">\n";
-        mfile <<"<Collection>\n";
-    }
+    /// Destructor
+    ~gsParaviewCollection();
 
     /// @brief Appends a file to the Paraview collection (.pvd file).
     /// @param fn Filename to be added. Can also be a path relative to the where the collection file is. 
@@ -175,28 +155,28 @@ public:
     /// @param time Value of time for this timestep (optional, else an internal integer counter is used)
     void newTimeStep(gsMultiPatch<real_t> * geometry, real_t time=-1);
 
- 
     /// @brief All arguments are forwarded to gsParaviewDataSet::addField().
     template <typename... Rest>
     void addField(Rest... rest)
     {
-        GISMO_ENSURE( !m_dataset.isEmpty(), "The gsParaviewDataSet, stored internally by gsParaviewCollection, is empty! Try running newTimestep() before addField().");
-        m_dataset.addField(rest...);
+        GISMO_ENSURE( m_dataset && !m_dataset->isEmpty(),
+            "The gsParaviewDataSet, stored internally by gsParaviewCollection, is empty! "
+            "Try running newTimestep() before addField().");
+        m_dataset->addField(rest...);
     }
 
     /// @brief All arguments are forwarded to gsParaviewDataSet::addFields().
     template <typename... Rest>
     void addFields(Rest... rest)
     {
-        GISMO_ENSURE( !m_dataset.isEmpty(), "The gsParaviewDataSet, stored internally by gsParaviewCollection, is empty! Try running newTimestep() before addFields().");
-        m_dataset.addFields(rest...);
+        GISMO_ENSURE( m_dataset && !m_dataset->isEmpty(),
+            "The gsParaviewDataSet, stored internally by gsParaviewCollection, is empty! "
+            "Try running newTimestep() before addFields().");
+        m_dataset->addFields(rest...);
     }
 
     /// @brief The current timestep is saved and files written to disk.
-    void saveTimeStep(){
-        GISMO_ENSURE( !m_dataset.isEmpty(), "The gsParaviewDataSet, stored internally by gsParaviewCollection, is empty! Try running newTimestep() before saveTimeStep().");
-        addDataSet(m_dataset,m_time);
-    };
+    void saveTimeStep();
 
     /// Finalizes the collection by closing the XML tags, always call
     /// this function (once) when you finish adding files
@@ -236,7 +216,7 @@ private:
 
     gsExprEvaluator<> * m_evaluator;
 
-    gsParaviewDataSet m_dataset;
+    gsParaviewDataSet::uPtr m_dataset;
 
     gsOptionList m_options;
 

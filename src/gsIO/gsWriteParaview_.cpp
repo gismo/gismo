@@ -13,11 +13,11 @@ namespace gismo
 
 TEMPLATE_INST
 void gsWriteParaview(const gsField<T> & field, std::string const & fn,
-                     unsigned npts, bool mesh, const std::string pDelim);
+                     unsigned npts, bool mesh, const std::string pDelim, bool skipPvd);
 
 TEMPLATE_INST
 void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
-                     unsigned npts, bool mesh, bool ctrlNet);
+                     unsigned npts, bool mesh, bool ctrlNet, bool skipPvd);
 
 TEMPLATE_INST
 void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo, std::string const & fn,
@@ -41,16 +41,16 @@ TEMPLATE_INST
 void gsWriteParaview(gsFunctionSet<T> const& func, std::string const & fn, unsigned npts);
 
 TEMPLATE_INST
-void gsWriteParaview(gsFunctionSet<T> const& geo, gsFunctionSet<T> const& func,std::string const & fn, unsigned npts, const std::string pDelim);
+void gsWriteParaview(gsFunctionSet<T> const& geo, gsFunctionSet<T> const& func,std::string const & fn, unsigned npts, const std::string pDelim, bool skipPvd);
 
 TEMPLATE_INST
-void gsWriteParaview(gsMappedSpline<2,T> const& mspline, std::string const & fn,unsigned npts);
+void gsWriteParaview(gsMappedSpline<2,T> const& mspline, std::string const & fn,unsigned npts, bool skipPvd);
 
 TEMPLATE_INST
-void gsWriteParaview(gsFunctionSet<T> const& geom, gsMappedBasis<2,T>  const& mbasis,std::string const & fn,unsigned npts,const bool fullsupport, const std::vector<index_t> indices);
+void gsWriteParaview(gsFunctionSet<T> const& geom, gsMappedBasis<2,T>  const& mbasis,std::string const & fn,unsigned npts,const bool fullsupport, const std::vector<index_t> indices, bool skipPvd);
 
 TEMPLATE_INST
-void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,std::string const & fn, unsigned npts);
+void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,std::string const & fn, unsigned npts, bool skipPvd);
 
 TEMPLATE_INST
 void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::string const & fn, unsigned npts, bool graph);
@@ -194,13 +194,14 @@ namespace py = pybind11;
 void pybind11_init_gsWriteParaview(py::module &m)
 {
     m.def("gsWriteParaview",
-            static_cast<void (*)(const gsGeometry<real_t> &, std::string const &, unsigned, bool, bool)>(&gsWriteParaview),
+            static_cast<void (*)(const gsGeometry<real_t> &, std::string const &, unsigned, bool, bool, bool)>(&gsWriteParaview),
             "Writes a geometry to Paraview",
             py::arg("Geo"),
             py::arg("fn"),
             py::arg("npts")=1000,
             py::arg("mesh")=false,
-            py::arg("ctrlNet")=false);
+            py::arg("ctrlNet")=false,
+            py::arg("skipPvd")=false);
     m.def("gsWriteParaview",
             static_cast<void (*)(const gsBasis<real_t> &, std::string const &, unsigned, bool)>(&gsWriteParaview),
             "Writes a basis to Paraview",
@@ -215,13 +216,14 @@ void pybind11_init_gsWriteParaview(py::module &m)
             py::arg("fn"),
             py::arg("npts")=1000);
     m.def("gsWriteParaview",
-            static_cast<void (*)(const gsFunctionSet<real_t> &, const gsFunctionSet<real_t> &, std::string const &, unsigned, const std::string)>(&gsWriteParaview),
+            static_cast<void (*)(const gsFunctionSet<real_t> &, const gsFunctionSet<real_t> &, std::string const &, unsigned, const std::string, bool)>(&gsWriteParaview),
             "Writes a geometry to Paraview",
             py::arg("geo"),
             py::arg("func"),
             py::arg("fn"),
             py::arg("npts")=1000,
-            py::arg("pDelim")="");
+            py::arg("pDelim")="",
+            py::arg("skipPvd")=false);
 
     m.def("gsWriteParaviewPoints",
             static_cast<void (*)(const gsMatrix<real_t> &, const gsMatrix<real_t> &, std::string const &)>(&gsWriteParaviewPoints),

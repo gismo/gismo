@@ -44,6 +44,9 @@ gsParaview<T>::gsParaview(const gsOptionList & options)
 { }
 
 template<class T>
+gsParaview<T>::~gsParaview() = default;
+
+template<class T>
 gsOptionList gsParaview<T>::defaultOptions()
 {
     gsOptionList opt;
@@ -60,6 +63,7 @@ gsOptionList gsParaview<T>::defaultOptions()
     opt.addSwitch("graph",          "Plot function as graph", true);
     opt.addSwitch("fullSupport",    "Plot basis over whole domain (for mapped basis)", false);
     opt.addInt   ("hboxMode",       "Mode for gsHBox/gsHBoxContainer: 0=level, 1=error, 2=projectedError", 0);
+    opt.addSwitch("writePvd",       "Wrap one-shot writes in a .pvd collection file", true);
     return opt;
 }
 
@@ -82,7 +86,8 @@ void gsParaview<T>::write(const gsGeometry<T> & geo, const std::string & fn) con
     gsWriteParaview(geo, fn,
                     m_options.getInt("numPoints"),
                     m_options.getSwitch("plotElements"),
-                    m_options.getSwitch("plotControlNet"));
+                    m_options.getSwitch("plotControlNet"),
+                    !m_options.getSwitch("writePvd"));
     openIfRequested(fn);
 }
 
@@ -100,6 +105,9 @@ void gsParaview<T>::write(const gsMultiPatch<T> & mp, const std::string & fn) co
     }
     else
     {
+        // NOTE: this gsMultiPatch convenience overload has no skipPvd parameter
+        // (it forwards to the std::vector<gsGeometry*> overload, which doesn't
+        // have one either); "writePvd" is not honored for this write() overload.
         gsWriteParaview(mp, fn, npts, mesh, ctrlNet, pDelim);
     }
 
@@ -133,7 +141,8 @@ void gsParaview<T>::write(const gsField<T> & field, const std::string & fn) cons
     gsWriteParaview(field, fn,
                     m_options.getInt("numPoints"),
                     m_options.getSwitch("plotElements"),
-                    m_options.getString("patchDelimiter"));
+                    m_options.getString("patchDelimiter"),
+                    !m_options.getSwitch("writePvd"));
     openIfRequested(fn);
 }
 
@@ -179,7 +188,8 @@ void gsParaview<T>::write(const gsFunctionSet<T> & geo, const gsFunctionSet<T> &
 {
     gsWriteParaview(geo, func, fn,
                     m_options.getInt("numPoints"),
-                    m_options.getString("patchDelimiter"));
+                    m_options.getString("patchDelimiter"),
+                    !m_options.getSwitch("writePvd"));
     openIfRequested(fn);
 }
 
@@ -261,14 +271,16 @@ template<class T>
 void gsParaview<T>::write(const gsMultiPatch<T> & mp, const gsMultiBasis<T> & mb,
                           const std::string & fn) const
 {
-    gsWriteParaview(mp, mb, fn, m_options.getInt("numPoints"));
+    gsWriteParaview(mp, mb, fn, m_options.getInt("numPoints"),
+                    !m_options.getSwitch("writePvd"));
     openIfRequested(fn);
 }
 
 template<class T>
 void gsParaview<T>::write(const gsMappedSpline<2,T> & mspline, const std::string & fn) const
 {
-    gsWriteParaview(mspline, fn, m_options.getInt("numPoints"));
+    gsWriteParaview(mspline, fn, m_options.getInt("numPoints"),
+                    !m_options.getSwitch("writePvd"));
     openIfRequested(fn);
 }
 
@@ -280,7 +292,8 @@ void gsParaview<T>::write(const gsFunctionSet<T> & geom, const gsMappedBasis<2,T
     gsWriteParaview(geom, mbasis, fn,
                     m_options.getInt("numPoints"),
                     m_options.getSwitch("fullSupport"),
-                    indices);
+                    indices,
+                    !m_options.getSwitch("writePvd"));
     openIfRequested(fn);
 }
 

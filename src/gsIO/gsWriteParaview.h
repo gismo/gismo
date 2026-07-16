@@ -36,7 +36,8 @@ namespace gismo {
 /// \ingroup IO
 template<class T>
 void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
-                     unsigned npts=NS, bool mesh = false, bool ctrlNet = false);
+                     unsigned npts=NS, bool mesh = false, bool ctrlNet = false,
+                     bool skipPvd = false);
 
 /**
  * @brief      Writes a gsMappedSpline geometry
@@ -48,7 +49,7 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
  */
 template<class T>
 void gsWriteParaview(gsMappedSpline<2,T> const& mspline,
-                     std::string const & fn,unsigned npts = NS);
+                     std::string const & fn,unsigned npts = NS, bool skipPvd = false);
 
 
 
@@ -64,7 +65,7 @@ void gsWriteParaview(gsMappedSpline<2,T> const& mspline,
  */
 template<class T>
 void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,
-                     std::string const & fn, unsigned npts = NS);
+                     std::string const & fn, unsigned npts = NS, bool skipPvd = false);
 
 /**
  * @brief      Writes a gsMappedBasis over a gsMappedSpline geometry
@@ -82,7 +83,8 @@ void gsWriteParaview(gsFunctionSet<T> const& geom,
                      gsMappedBasis<2,T>  const& mbasis,
                      std::string const & fn,unsigned npts = NS,
                      const bool fullsupport = false,
-                     const std::vector<index_t> indices = std::vector<index_t>());
+                     const std::vector<index_t> indices = std::vector<index_t>(),
+                     bool skipPvd = false);
 
 /// \brief Export a mesh to paraview file
 ///
@@ -117,7 +119,8 @@ void gsWriteParaview(const std::vector<gsMesh<T> >& meshes, std::string const& f
 /// \param pDelim is the delimiter that is used to separate fn from the patch index
 template<class T>
 void gsWriteParaview(const gsField<T> & field, std::string const & fn,
-                     unsigned npts=NS, bool mesh = false, const std::string pDelim = "");
+                     unsigned npts=NS, bool mesh = false, const std::string pDelim = "",
+                     bool skipPvd = false);
 
 /// \brief Write a file containing a solution \a func (as color on its geometry \a geo), defined using functionsets, to paraview file
 ///
@@ -127,7 +130,8 @@ void gsWriteParaview(const gsField<T> & field, std::string const & fn,
 /// \param npts number of points used for sampling each patch
 template<class T>
 void gsWriteParaview(gsFunctionSet<T> const& geo, gsFunctionSet<T> const& func,
-                     std::string const & fn, unsigned npts = NS, const std::string pDelim = "");
+                     std::string const & fn, unsigned npts = NS, const std::string pDelim = "",
+                     bool skipPvd = false);
 
 /// \brief Export a multipatch Geometry (without scalar information) to paraview file
 ///

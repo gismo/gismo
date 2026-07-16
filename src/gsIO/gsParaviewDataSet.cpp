@@ -14,6 +14,10 @@
 #include<gsIO/gsParaviewDataSet.h>
 #include<gsIO/gsWriteParaview.h>
 #include<gsIO/gsParaviewUtils.h>
+#include<gsMSplines/gsMappedBasis.h>
+#include<gsCore/gsDofMapper.h>
+#include<gsExpressions/gsExprHelper.h>
+#include<gsAssembler/gsExprEvaluator.h>
 
 namespace gismo
 {
@@ -53,7 +57,7 @@ namespace gismo
             // for every patch
             std::ofstream file(m_filenames[k].c_str());
             file << std::fixed;            // no exponents
-            file << std::setprecision(5);  // PLOT_PRECISION
+            file << std::setprecision(m_options.askInt("precision", 5));
             file << "<?xml version=\"1.0\"?>\n";
             file << "<VTKFile type=\"StructuredGrid\" version=\"0.1\"";
             if (export_base64) {
@@ -93,7 +97,7 @@ namespace gismo
 
             // Transform points into strings for export
             const std::vector<std::string> points =
-                toVTK(*m_geometry, nPts, precision, "", export_base64);
+                toParaview(*m_geometry, nPts, precision, "", export_base64);
 
             // QUESTION: Can I be certain that the ids are consecutive?
             for ( index_t k=0; k!=m_geometry->nPieces(); k++) // For every patch.
@@ -122,9 +126,18 @@ namespace gismo
                             * math::pow(evalPtsPerElem, (real_t)(1.0)/static_cast<real_t>(m_geometry->domainDim())) );
                     }
                     //gsMesh<real_t> msh( gsMultiBasis<real_t>(*m_geometry).basis(k), numPoints);
-                    gsMesh<real_t> msh(*m_evaltr->exprData()->domain().subdomain(k), numPoints);
-                    static_cast<const gsGeometry<real_t>&>(m_geometry->piece(k)).evaluateMesh(msh);
-                    gsWriteParaview(msh, m_basename + "_mesh" + std::to_string(k), false);
+                    if (m_evaltr)
+                    {
+                        gsMesh<real_t> msh(*m_evaltr->exprData()->domain().subdomain(k), numPoints);
+                        static_cast<const gsGeometry<real_t>&>(m_geometry->piece(k)).evaluateMesh(msh);
+                        gsWriteParaview(msh, m_basename + "_mesh" + std::to_string(k), false);
+                    }
+                    else
+                    {
+                        gsMesh<real_t> msh(m_geometry->piece(k).basis(), numPoints);
+                        static_cast<const gsGeometry<real_t>&>(m_geometry->piece(k)).evaluateMesh(msh);
+                        gsWriteParaview(msh, m_basename + "_mesh" + std::to_string(k), false);
+                    }
                     m_filenames.push_back( m_basename + "_mesh" + std::to_string(k)+".vtp");
                 }
             }

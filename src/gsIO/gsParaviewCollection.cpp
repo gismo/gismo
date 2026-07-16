@@ -12,10 +12,44 @@
 */
 
 #include <gsIO/gsParaviewCollection.h>
-
+#include <gsIO/gsParaviewDataSet.h>
 
 namespace gismo
 {
+
+    gsParaviewCollection::gsParaviewCollection(String const & fn,
+                                               gsExprEvaluator<> * evaluator)
+        : m_filename(fn),
+          m_isSaved(false),
+          m_time(-1),
+          m_evaluator(evaluator),
+          m_options(gsParaviewDataSet::defaultOptions()),
+          counter(0)
+    {
+        std::string path = gsFileManager::getPath(m_filename);
+
+        if ( !gsFileManager::isFullyQualified(path) )
+            path = gsFileManager::getCurrentPath() + path;
+
+        m_filename = path + gsFileManager::getBasename(m_filename) + ".pvd";
+        gsFileManager::mkdir( path );
+
+        mfile <<"<?xml version=\"1.0\"?>\n";
+        mfile <<"<VTKFile type=\"Collection\" version=\"0.1\">\n";
+        mfile <<"<Collection>\n";
+    }
+
+    gsParaviewCollection::~gsParaviewCollection() = default;
+
+    void gsParaviewCollection::saveTimeStep()
+    {
+        GISMO_ENSURE( m_dataset && !m_dataset->isEmpty(),
+            "The gsParaviewDataSet, stored internally by gsParaviewCollection, is empty! "
+            "Try running newTimestep() before saveTimeStep().");
+        addDataSet(*m_dataset, m_time);
+    }
+
+
     // EVERY PATCH NEEDS TO BE PUT INTO ITS OWN "PART" THUS ITS OWN <DATASET>
     // The part does not need to be specified as long as the <DataSet> appear
     // in the same order for each timestep
@@ -56,7 +90,7 @@ namespace gismo
 
     void gsParaviewCollection::newTimeStep(gsMultiPatch<real_t> * geometry, real_t time)
     {   
-        GISMO_ASSERT( m_dataset.isEmpty() || m_dataset.isSaved(), "Previous timestep has not been saved. try running saveTimeStep() before newTimeStep().");
+        GISMO_ASSERT( !m_dataset || m_dataset->isEmpty() || m_dataset->isSaved(), "Previous timestep has not been saved. try running saveTimeStep() before newTimeStep().");
         GISMO_ASSERT(-1==time || time>=0, "Time should be a non-negative real number.");
 
         if (-1 == time )
@@ -81,10 +115,9 @@ namespace gismo
             name = gsFileManager::getPath(m_filename) + gsFileManager::getBasename(m_filename);
         }
 
-
         name += "_t" + std::to_string( cast<real_t, double>( time ) );
        
-        m_dataset = gsParaviewDataSet(name, geometry, m_evaluator, m_options);
+        m_dataset = memory::make_unique(new gsParaviewDataSet(name, geometry, m_evaluator, m_options) );
     }
 }
 
