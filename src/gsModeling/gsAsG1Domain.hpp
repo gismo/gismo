@@ -133,11 +133,12 @@ InterfaceSamples<T> sampleInterface(
 /// is gauged by integral(alpha_1*beta_1 - alpha_2*beta_2)=0.  Tikhonov
 /// bias resolves null directions (toward constant alpha and beta_1=beta_2).
 template <class T>
-struct SolveResult { T a[4]; T b[4]; T alphaErr; T betaErr; };
+struct SolveResult { gsVector<T> alpha; gsVector<T> beta; };
 
 template <class T>
-SolveResult<T> solveLinearGluing(const InterfaceSamples<T>& S)
+SolveResult<T> solveLinearGluing(const InterfaceSamples<T>& S, real_t eps)
 {
+    SolveResult<T> out;
     const index_t N = S.size();
 
     gsMatrix<T> Phi(N, 4);
@@ -163,12 +164,11 @@ SolveResult<T> solveLinearGluing(const InterfaceSamples<T>& S)
     K.block(0,4,4,1) = c;
     K.block(4,0,1,4) = c.transpose();
     gsVector<T> r(5); r.setZero(); r(4) = T(1);
-    gsVector<T> aSol = K.fullPivLu().solve(r).head(4);
+    out.alpha = K.fullPivLu().solve(r).head(4);
 
-    SolveResult<T> out;
-    for (index_t k = 0; k < 4; ++k) out.a[k] = aSol(k);
-    gsVector<T> aRes = Phi * aSol;
-    out.alphaErr = S.integrate(aRes.cwiseProduct(aRes));
+    const gsVector<T> aRes = Phi * out.alpha;
+    const T alphaErr = S.integrate(aRes.cwiseProduct(aRes));
+    GISMO_ENSURE (alphaErr <= eps, "Not AS-G1");
 
     // beta solve: Psi = [(1-t)D2, t*D2, -(1-t)D1, -t*D1]
     gsMatrix<T> Psi = Phi;
@@ -189,8 +189,8 @@ SolveResult<T> solveLinearGluing(const InterfaceSamples<T>& S)
         for (index_t i = 0; i < N; ++i)
         {
             const T p0 = T(1) - S.t(i), p1 = S.t(i);
-            alpha1(i) = out.a[0]*p0 + out.a[1]*p1;
-            alpha2(i) = out.a[2]*p0 + out.a[3]*p1;
+            alpha1(i) = out.alpha[0]*p0 + out.alpha[1]*p1;
+            alpha2(i) = out.alpha[2]*p0 + out.alpha[3]*p1;
         }
         e(0) =  S.integrate(alpha1.cwiseProduct((T(1) - S.t.array()).matrix()));
         e(1) =  S.integrate(alpha1.cwiseProduct(S.t));
@@ -203,10 +203,12 @@ SolveResult<T> solveLinearGluing(const InterfaceSamples<T>& S)
     Kb.block(0,4,4,1) = e;
     Kb.block(4,0,1,4) = e.transpose();
     gsVector<T> rb(5); rb.head(4) = T(2)*d; rb(4) = T(0);
-    gsVector<T> bSol = Kb.fullPivLu().solve(rb).head(4);
-    for (index_t k = 0; k < 4; ++k) out.b[k] = bSol(k);
-    gsVector<T> bRes = Psi * bSol - S.D3;
-    out.betaErr = S.integrate(bRes.cwiseProduct(bRes));
+    out.beta = Kb.fullPivLu().solve(rb).head(4);
+
+    gsVector<T> bRes = Psi * out.beta - S.D3;
+    const T betaErr = S.integrate(bRes.cwiseProduct(bRes));
+    GISMO_ENSURE (betaErr <= eps, "Not AS-G1");
+
     return out;
 }
 
@@ -232,13 +234,12 @@ gsVector<T> computeGluingDataForInterface(
     const bool sameSign = (S.D1.minCoeff() * S.D2.minCoeff() > 0);
     if (sameSign) S.D1 = -S.D1;
 
-    SolveResult<T> r = solveLinearGluing(S);
-    GISMO_ENSURE (r.alphaErr <= eps && r.betaErr <= eps, "Not AS-G1");
+    SolveResult<T> r = solveLinearGluing(S, eps);
 
     if (sameSign)
     {
-        r.a[0] = -r.a[0];  r.a[1] = -r.a[1];
-        r.b[2] = -r.b[2];  r.b[3] = -r.b[3];
+        r.alpha.topRows(2) *= -1;
+        r.beta.bottomRows(2) *= -1;
     }
 
     if (S.flipped)
@@ -246,17 +247,17 @@ gsVector<T> computeGluingDataForInterface(
         // Patch-2 tangent is flipped, so we evaluate the patch-2 alpha
         // and beta at the reversed endpoint pairing (a21 at gd-t=0,
         // a20 at gd-t=1).
-        result(0) =  r.a[0]; result(1) =  r.a[1];
-        result(2) =  r.b[0]; result(3) =  r.b[1];
-        result(4) =  r.a[3]; result(5) =  r.a[2];
-        result(6) =  r.b[3]; result(7) =  r.b[2];
+        result[0] =  r.alpha[0]; result[1] =  r.alpha[1];
+        result[2] =  r.beta [0]; result[3] =  r.beta [1];
+        result[4] =  r.alpha[3]; result[5] =  r.alpha[2];
+        result[6] =  r.beta [3]; result[7] =  r.beta [2];
     }
     else
     {
-        result(0) = -r.a[0]; result(1) = -r.a[1];
-        result(2) = -r.b[0]; result(3) = -r.b[1];
-        result(4) =  r.a[2]; result(5) =  r.a[3];
-        result(6) = -r.b[2]; result(7) = -r.b[3];
+        result[0] = -r.alpha[0]; result[1] = -r.alpha[1];
+        result[2] = -r.beta [0]; result[3] = -r.beta [1];
+        result[4] =  r.alpha[2]; result[5] =  r.alpha[3];
+        result[6] = -r.beta [2]; result[7] = -r.beta [3];
     }
 
     // There is another fix to be made: In the paper we have written
@@ -265,13 +266,13 @@ gsVector<T> computeGluingDataForInterface(
     const patchSide ps1 = interf.first(), ps2 = interf.second();
     if (ps1.parameter()!=ps1.direction())
     {
-        result(2) *= -1;
-        result(3) *= -1;
+        result[2] *= -1;
+        result[3] *= -1;
     }
     if (ps2.parameter()!=ps2.direction())
     {
-        result(6) *= -1;
-        result(7) *= -1;
+        result[6] *= -1;
+        result[7] *= -1;
     }
     return result;
 }
