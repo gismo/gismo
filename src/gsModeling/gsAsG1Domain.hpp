@@ -141,15 +141,14 @@ SolveResult<T> solveLinearGluing(const InterfaceSamples<T>& S, real_t eps)
     SolveResult<T> out;
     const index_t N = S.size();
 
+    const gsVector<T>  p0 = 1 - S.t.array();
+    const gsVector<T>& p1 = S.t;
+
     gsMatrix<T> Phi(N, 4);
-    for (index_t i = 0; i < N; ++i)
-    {
-        const T p0 = T(1) - S.t(i), p1 = S.t(i);
-        Phi(i,0) = p0 * S.D2(i);
-        Phi(i,1) = p1 * S.D2(i);
-        Phi(i,2) = p0 * S.D1(i);
-        Phi(i,3) = p1 * S.D1(i);
-    }
+    Phi.col(0) = p0.cwiseProduct(S.D2);
+    Phi.col(1) = p1.cwiseProduct(S.D2);
+    Phi.col(2) = p0.cwiseProduct(S.D1);
+    Phi.col(3) = p1.cwiseProduct(S.D1);
 
     gsMatrix<T> G = Phi.transpose() * S.w.asDiagonal() * Phi;
 
@@ -160,20 +159,17 @@ SolveResult<T> solveLinearGluing(const InterfaceSamples<T>& S, real_t eps)
 
     gsVector<T> c(4); c.setConstant(T(0.5));
     gsMatrix<T> K(5,5); K.setZero();
-    K.block(0,0,4,4) = T(2) * G;
+    K.block(0,0,4,4) = 2 * G;
     K.block(0,4,4,1) = c;
     K.block(4,0,1,4) = c.transpose();
-    gsVector<T> r(5); r.setZero(); r(4) = T(1);
+    gsVector<T> r(5); r.setZero(); r(4) = 1;
     out.alpha = K.fullPivLu().solve(r).head(4);
 
-    const gsVector<T> aRes = Phi * out.alpha;
-    const T alphaErr = S.integrate(aRes.cwiseProduct(aRes));
-    GISMO_ENSURE (alphaErr <= eps, "Not AS-G1");
+    GISMO_ENSURE (S.integrate((Phi * out.alpha).array().square()) <= eps, "Not AS-G1");
 
     // beta solve: Psi = [(1-t)D2, t*D2, -(1-t)D1, -t*D1]
     gsMatrix<T> Psi = Phi;
-    Psi.col(2) *= T(-1);
-    Psi.col(3) *= T(-1);
+    Psi.rightCols(2) *= -1;
 
     gsMatrix<T> H = Psi.transpose() * S.w.asDiagonal() * Psi;
     gsVector<T> d = Psi.transpose() * S.w.asDiagonal() * S.D3;
@@ -185,29 +181,23 @@ SolveResult<T> solveLinearGluing(const InterfaceSamples<T>& S, real_t eps)
 
     gsVector<T> e(4);
     {
-        gsVector<T> alpha1(N), alpha2(N);
-        for (index_t i = 0; i < N; ++i)
-        {
-            const T p0 = T(1) - S.t(i), p1 = S.t(i);
-            alpha1(i) = out.alpha[0]*p0 + out.alpha[1]*p1;
-            alpha2(i) = out.alpha[2]*p0 + out.alpha[3]*p1;
-        }
-        e(0) =  S.integrate(alpha1.cwiseProduct((T(1) - S.t.array()).matrix()));
-        e(1) =  S.integrate(alpha1.cwiseProduct(S.t));
-        e(2) = -S.integrate(alpha2.cwiseProduct((T(1) - S.t.array()).matrix()));
-        e(3) = -S.integrate(alpha2.cwiseProduct(S.t));
+        gsVector<T> alpha1 = out.alpha[0] * p0 + out.alpha[1] * p1;
+        gsVector<T> alpha2 = out.alpha[2] * p0 + out.alpha[3] * p1;
+
+        e(0) =  S.integrate(alpha1.cwiseProduct(p0));
+        e(1) =  S.integrate(alpha1.cwiseProduct(p1));
+        e(2) = -S.integrate(alpha2.cwiseProduct(p0));
+        e(3) = -S.integrate(alpha2.cwiseProduct(p1));
     }
 
     gsMatrix<T> Kb(5,5); Kb.setZero();
-    Kb.block(0,0,4,4) = T(2) * H;
+    Kb.block(0,0,4,4) = 2 * H;
     Kb.block(0,4,4,1) = e;
     Kb.block(4,0,1,4) = e.transpose();
-    gsVector<T> rb(5); rb.head(4) = T(2)*d; rb(4) = T(0);
+    gsVector<T> rb(5); rb.head(4) = 2*d; rb(4) = 0;
     out.beta = Kb.fullPivLu().solve(rb).head(4);
 
-    gsVector<T> bRes = Psi * out.beta - S.D3;
-    const T betaErr = S.integrate(bRes.cwiseProduct(bRes));
-    GISMO_ENSURE (betaErr <= eps, "Not AS-G1");
+    GISMO_ENSURE (S.integrate((Psi * out.beta - S.D3).array().square()) <= eps, "Not AS-G1");
 
     return out;
 }
