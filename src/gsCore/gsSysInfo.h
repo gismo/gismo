@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <gsCore/gsForwardDeclarations.h>
 
 namespace gismo

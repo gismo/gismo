@@ -184,7 +184,7 @@ bool
 gsSurfMesh::
 read(const std::string& filename)
 {
-    return read_mesh(*this, filename);
+    GISMO_NO_IMPLEMENTATION
 }
 
 bool
@@ -268,6 +268,12 @@ add_vertex(const Point& p)
     Vertex v = new_vertex();
     vpoint_[v] = p;
     return v;
+}
+
+void gsSurfMesh::add_batch_vertices(size_t nverts)
+{
+    for(size_t i = 0; i!=nverts; ++i)
+        new_vertex();
 }
 
 gsSurfMesh::Halfedge
@@ -626,7 +632,7 @@ void
 gsSurfMesh::
 mesh_statistics(bool eoc_verbose)
 {
-    index_t maxvalEV = 0, minvalEV = 0, maxvalEF = 0, minvalEF = 0, maxvalBoundEV = 0,
+    unsigned int maxvalEV = 0, minvalEV = 0, maxvalEF = 0, minvalEF = 0, maxvalBoundEV = 0,
         minvalBoundEV = 0, maxvalBoundEF = 0, minvalBoundEF = 0;
     int cnt = 0, cntB = 0;
     int cntf = 0, cntBf = 0;
@@ -812,6 +818,73 @@ mesh_statistics(bool eoc_verbose)
 
 
 }
+
+real_t gsSurfMesh::
+angle(gsSurfMesh::Halfedge h1, gsSurfMesh::Halfedge h2)
+{
+    real_t result = 0.0;
+    gsVector<> v1 = position(to_vertex(h1)) - position(from_vertex(h1));
+    gsVector<> v2 = position(to_vertex(h2)) - position(from_vertex(h2));
+    result = math::acos(v1.dot(v2)/(v1.norm()*v2.norm()));
+
+    return result;
+}
+
+void gsSurfMesh::
+display_halfedge()
+{
+    Point tmp;
+    auto hpp = add_vertex_property<Point>("v:halfedge", tmp.setZero());
+    Halfedge he;
+    for (auto fit : faces())
+    {
+        he = halfedge(fit);
+        hpp[from_vertex(he)] = (position(to_vertex(he)) -
+                position(from_vertex(he))).normalized();
+    }
+}
+
+void gsSurfMesh::polyhedral_modification_boundary()
+{
+    // Current implementation only for regular boundary (vertex valence = 3) and 
+       // conrners (vertex valence = 2).
+       // TODO: General case for EF in boundary by using Chebysev points (see A.Nashri 1987).
+
+    std::map<Vertex, Point> bvmap; // New positions for boundary vertices
+    Vertex bv;
+    auto pts = points();
+    // Compute the new positions for boundary vertices.
+    for (auto hit : halfedges())
+    {
+        if (touches_boundary(hit))
+        {
+            bv = from_vertex(hit);
+
+            if (valence(bv) == 3) // Regular boundary case
+            {
+                bvmap[bv] = 2 * pts[bv] - pts[from_vertex(prev_halfedge(hit))];
+            }
+            else if (valence(bv) == 2) // Corner boundary case
+            {
+                bvmap[bv] = 4 * pts[bv] - 2 * pts[from_vertex(prev_halfedge(hit))]
+                    - 2 * pts[to_vertex(hit)] + pts[to_vertex(next_halfedge(hit))];
+            }
+            else // irregular case
+            {
+                gsWarn << "Irregular boundary stop process\n";
+                return;
+            }
+
+        }
+    }
+
+    // Modify mesh boundary
+    for (auto vit : vertices())
+        if (is_boundary(vit))
+            position(vit) = bvmap[vit];
+}
+
+
 void
 gsSurfMesh::
 triangulate()
@@ -899,7 +972,7 @@ gsSurfMesh::compute_face_normal(Face f) const
     if (next_halfedge(h) == hend) // face is a triangle
     {
         p2-=p1; p0-=p1;
-        return p2.cross(p1).normalized();
+        return p2.cross(p0).normalized();
     }
 
     else // face is a general polygon
@@ -1049,34 +1122,33 @@ split(Face f, Vertex v)
 
 void
 gsSurfMesh::
-split(std::vector<Vertex> vv, Face f, Vertex v)
+split_to_triangles(std::vector<Vertex>& edgeverts, Face f, Vertex v)
 {
-    /*
-      Split an arbitrary face into triangles by connecting specif vertex of f vector to vh.
-      - fh will remain valid (it will become one of the triangles)
-      - the halfedge handles of the new triangles will point to the old halfeges
-    */
 
-    Halfedge hend = halfedge(f);
+    GISMO_ASSERT(valence(f) == edgeverts.size(), "The edgeverts vector needs one vertex per edge\n");
+
+    Halfedge hend = halfedge(f); // find halfedge beginning from first new vertex in an edge
     do 
     {
         hend = next_halfedge(hend);
-    } while (from_vertex(hend) != vv[0]);
+    } while (from_vertex(hend) != edgeverts[0]);
 
 
     Halfedge h = next_halfedge(hend);
 
-    Halfedge hold = new_edge(from_vertex(hend), v);
+    Halfedge hold = new_edge(from_vertex(hend), v); // connect first edge vertex with v
 
-    index_t sz = vv.size();
+    index_t sz = edgeverts.size();
     hold = opposite_halfedge(hold);
     int cnt, count=0;
     Face fnew;
     Halfedge hnew, holdinit=hold;
 
+    // circularly make trinagles by connecting inital faces corners and new edge vertices
+    // with v. The halfedge orientation in each trinagle is the same as in the original face.
     while (h != hend)
     {
-        cnt = std::count(vv.begin(), vv.end(), to_vertex(h));
+        cnt = std::count(edgeverts.begin(), edgeverts.end(), to_vertex(h));
         
         if (cnt == 0)
         {
@@ -1236,20 +1308,19 @@ void gsSurfMesh::quad_split()
 void gsSurfMesh::quad_split(index_t w)
 {
 
-    
-    if (w==0)
+    if (w==0) // original faces (dummy)
     {
         return;
     }
-    else if (w == 1)
+    else if (w == 1) // uniform split at half of each edge
     {
         quad_split();
         return;
     }
-    else 
+    else // general cases for w >=2
     {
 
-        GISMO_ASSERT(w < 3, "NOT TESTED!");
+        GISMO_ASSERT(w < 3, "NOT TESTED for w>=3!");
 
         gsSurfMesh::Vertex v, vs, ve;
         gsSurfMesh::Halfedge he, hh, hb;
@@ -2550,11 +2621,13 @@ gsSurfMesh gsSurfMesh::dual_mesh()
 
     std::map<Face, Vertex> FVMap;
 
+    // For each face take the barycenter
     for (auto fit : faces()) {
         v = dm.add_vertex(face_barycenter(fit));
         FVMap[fit] = v;
     }
 
+    // For the connected vertices in the original mesh create the dual faces
     std::vector<Vertex> df;
     for (auto vit : vertices()) {
         if (is_boundary(vit)) { continue; }
@@ -2593,7 +2666,29 @@ gsSurfMesh::face_barycenter(Face f)
 
 }
 
+gsVector<gsSurfMesh::Vertex> 
+gsSurfMesh::add_mesh(gsSurfMesh& subMesh)
+{
 
+    gsVector<Vertex> idmap(subMesh.n_vertices()); // local vertex of subMesh mapping with global to new mesh
+
+    // Adding vertices to current mesh
+    for (auto vit : subMesh.vertices())
+        idmap[vit.idx()] = this->add_vertex(subMesh.position(vit));
+
+    std::vector<Vertex> vv;
+    // Adding faces to current mesh
+    for (auto fit : subMesh.faces())
+    {
+        vv.clear();
+        for (auto vit : subMesh.vertices(fit))
+           vv.push_back(idmap[vit.idx()]);
+          
+        this->add_face(vv);
+    }
+
+    return idmap;
+}
 
 // e(v1,v0): h0(v1->v0) and h1(v0->v1)
 // v0 = vertex(e,0) ==   to_vertex(h0)  == from_vertex(h1)
@@ -2715,108 +2810,568 @@ namespace internal
 
 void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
 {
-    assert( ( !strcmp( node->name(),"SurfMesh") || !strcmp( node->name(),"Mesh") )
-            &&  ( !strcmp(node->first_attribute("type")->value(),"off") ) );
+    GISMO_ASSERT( !strcmp( node->name(),"SurfMesh") || !strcmp( node->name(),"Mesh"),
+        "Expecting a mesh.");
 
     result = gsSurfMesh();
 
-    /*
-      if ( !strcmp(node->first_attribute("type")->value(),"off") )
-      {
-      read_off_ascii(result,node->value());
-      return;
-      }
-    */
-
-    // !strcmp(node->first_attribute("type")->value(),"poly")
-    // !strcmp(node->first_attribute("type")->value(),"stl")
-    //!strcmp(node->first_attribute("type")->value(),"obj")
-    //!strcmp(node->first_attribute("type")->value(),"vtk")
-
-
-    std::istringstream str;
-    str.str( node->value() );
-
-    unsigned nv  = atoi ( node->first_attribute("vertices")->value() ) ;
-    unsigned nf  = atoi ( node->first_attribute("faces")->value() ) ;
-    unsigned ne  = atoi ( node->first_attribute("edges")->value() ) ;
-    result.reserve(nv, std::max(3*nv, ne), nf);
-    real_t x(0), y(0), z(0); // T?
-    for (unsigned i=0; i<nv; ++i)
+    if ( !strcmp(node->first_attribute("format")->value(),"surf") )
     {
-        gsGetReal(str, x);
-        gsGetReal(str, y);
-        gsGetReal(str, z);
-        result.add_vertex(gsSurfMesh::Point(x,y,z));
+        std::istringstream str;
+        unsigned nv  = atoi ( node->first_attribute("vertices")->value() ) ;
+        unsigned nf  = atoi ( node->first_attribute("faces")->value() ) ;
+        unsigned ne  = atoi ( node->first_attribute("edges")->value() ) ;
+        result.reserve(nv, std::max(3*nv, ne), nf);
+
+        result.add_batch_vertices(nv);
+
+        gsXmlNode* fn = node->first_node("faces");
+        str.clear();
+        str.str( fn->value() );
+        unsigned k, c = 0;
+        std::vector<gsSurfMesh::Vertex> face(4);
+        std::vector<gsSurfMesh::Edge> e(4);
+        for (unsigned i=0; i<nf; ++i)
+        {
+            gsGetInt(str, c);
+            face.resize(c);
+            for (unsigned j=0; j<c; ++j)
+            {
+                gsGetInt(str, k);
+                face[j] = gsSurfMesh::Vertex(k);
+            }
+            if (c == 4)
+            {
+                for (unsigned j = 0; j < c; ++j)
+                    e[j] = result.find_or_add_edge(face[j], face[(j + 1) % c]);
+                result.add_quad(e[0], e[1], e[2], e[3]);
+            }
+            else
+                result.add_face(face);
+        }
+
+        //for (gsXmlNode * child = node->first_node("mdata");
+        //    child; child = child->next_sibling("mdata") )
+
+        for (gsXmlNode * child = node->first_node("vdata");
+             child; child = child->next_sibling("vdata") )
+        {
+            if ( !strcmp( child->first_attribute("type")->value(), "bool" ) )
+            {
+                str.clear();
+                str.str( child->value() );
+                auto vprop = result.vertex_property<bool>( child->first_attribute("name")->value() ); 
+                index_t r;
+                while( (str >> r) )
+                    vprop[gsSurfMesh::Vertex(r)] = true;                
+            }
+            else if ( !strcmp( child->first_attribute("type")->value(), "Point" ) )
+            {
+                str.clear();
+                str.str( child->value() );
+                auto vprop = result.vertex_property<gsSurfMesh::Point>(child->first_attribute("name")->value(),
+                                                                        gsSurfMesh::Point(0,0,0) );
+                for (auto v : result.vertices() )
+                {
+                    gsGetReal(str, vprop[v].x());
+                    gsGetReal(str, vprop[v].y());
+                    gsGetReal(str, vprop[v].z());
+                }
+            }
+            else if ( !strcmp( child->first_attribute("type")->value(), "index" ) )
+            {
+                str.clear();
+                str.str( child->value() );
+                auto vprop = result.vertex_property<index_t>( child->first_attribute("name")->value() );
+                for (auto v : result.vertices() )
+                    gsGetInt(str, vprop[v]);
+            }
+            else if ( !strcmp( child->first_attribute("type")->value(), "real" ) )
+            {
+                str.clear();
+                str.str( child->value() );
+                auto vprop = result.vertex_property<real_t>( child->first_attribute("name")->value() );
+                for (auto v : result.vertices() )
+                    gsGetReal(str, vprop[v]);
+            }
+            else
+            {
+                gsInfo <<"Ignored vdata: "<< child->first_attribute("name")->value() <<"\n";
+            }
+        }
+
+        gsXmlNode* en = node->first_node("edges");
+        std::vector<gsSurfMesh::Halfedge> hlist;
+        if (nullptr != en)
+        {
+            str.clear();
+            str.str( en->value() );
+            hlist.resize(ne);
+            unsigned k, c = 0;
+            for (unsigned i=0; i<ne; ++i)
+            {
+                gsGetInt(str, c);
+                gsGetInt(str, k);
+                hlist[i] = result.find_halfedge(gsSurfMesh::Vertex(c),gsSurfMesh::Vertex(k));
+            }
+        }
+
+        for (gsXmlNode * child = node->first_node("hedata");
+             child; child = child->next_sibling("hedata") )
+        {
+            if ( !strcmp( child->first_attribute("type")->value(), "bool" ) )
+            {
+                str.clear();
+                str.str( child->value() );
+                auto heprop = result.halfedge_property<bool>( child->first_attribute("name")->value() ); 
+                index_t r,c;
+                while( (str >> r) && (str >> c) )
+                    heprop[ result.find_halfedge(gsSurfMesh::Vertex(r),gsSurfMesh::Vertex(c))] = true;                
+            }
+            else if ( !strcmp( child->first_attribute("type")->value(), "Point" ) )
+            {
+                str.clear();
+                str.str( child->value() );
+                auto heprop = result.halfedge_property<gsSurfMesh::Point>( child->first_attribute("name")->value() );
+                gsSurfMesh::Halfedge he;
+                for (unsigned i = 0; i!=ne; ++i)
+                {
+                    he = hlist[i];// order in hlist
+                    gsGetReal(str, heprop[he].x());
+                    gsGetReal(str, heprop[he].y());
+                    gsGetReal(str, heprop[he].z());
+                    he = result.opposite_halfedge(he);
+                    gsGetReal(str, heprop[he].x());
+                    gsGetReal(str, heprop[he].y());
+                    gsGetReal(str, heprop[he].z());
+                }
+            }
+            else if ( !strcmp( child->first_attribute("type")->value(), "index" ) )
+            {
+                str.clear();
+                str.str( child->value() );
+                auto heprop = result.halfedge_property<index_t>( child->first_attribute("name")->value() );
+                gsSurfMesh::Halfedge he;
+                for (unsigned i = 0; i!=ne; ++i)
+                {
+                    he = hlist[i];// order in hlist
+                    gsGetInt(str, heprop[he]);
+                    he = result.opposite_halfedge(he);
+                    gsGetInt(str, heprop[he]);
+                }
+            }
+            else if ( !strcmp( child->first_attribute("type")->value(), "real" ) )
+            {
+                str.clear();
+                str.str( child->value() );
+                auto heprop = result.halfedge_property<real_t>( child->first_attribute("name")->value() );
+                gsSurfMesh::Halfedge he;
+                for (unsigned i = 0; i!=ne; ++i)
+                {
+                    he = hlist[i];// order in hlist
+                    gsGetReal(str, heprop[he]);
+                    he = result.opposite_halfedge(he);
+                    gsGetReal(str, heprop[he]);
+                }
+            }
+            else
+            {
+                gsInfo <<"Ignored vdata: "<< child->first_attribute("name")->value() <<"\n";
+            }
+        }
+
+        //to add: edge, face
     }
-
-   // /* //Alternative for reading quads only (with complex topolog)
-   unsigned k, c = 0;
-    std::vector<gsSurfMesh::Vertex> face(4);
-    std::vector<gsSurfMesh::Edge> e(4);
-    for (unsigned i=0; i<nf; ++i)
+    else if ( !strcmp(node->first_attribute("format")->value(),"off") )
     {
-        gsGetInt(str, c);
-        face.resize(c);
-        //GISMO_ASSERT(4==c, "quads?");
-        for (unsigned j=0; j<c; ++j)
-        {
-            gsGetInt(str, k);
-            face[j] = gsSurfMesh::Vertex(k);
-        }
-        if (c == 4)
-        {
-            for (unsigned j = 0; j < c; ++j)
-                e[j] = result.find_or_add_edge(face[j], face[(j + 1) % c]);
-            result.add_quad(e[0], e[1], e[2], e[3]);
-        }
-        else
-            result.add_face(face);
+        std::istringstream str;
+        str.str( node->value() );
 
+        std::string line;
+        getline(str, line);
+        if ( line.compare(0,3,"OFF") != 0)
+            return;
+
+        std::istringstream lnstream;
+        getline(str, line);
+        lnstream.str(line);
+        unsigned nv, nf, ne(0);
+        lnstream >> std::ws >>  nv >> std::ws >> nf >> std::ws >> ne ;
+
+        result.reserve(nv, std::max(3*nv, ne), nf);
+        real_t x(0), y(0), z(0); // T?
+        for (unsigned i=0; i<nv; ++i)
+        {
+            gsGetReal(str, x);
+            gsGetReal(str, y);
+            gsGetReal(str, z);
+            result.add_vertex(gsSurfMesh::Point(x,y,z));
+        }
+
+        unsigned k, c = 0;
+        std::vector<gsSurfMesh::Vertex> face(4);
+        std::vector<gsSurfMesh::Edge> e(4);
+        for (unsigned i=0; i<nf; ++i)
+        {
+            gsGetInt(str, c);
+            face.resize(c);
+            for (unsigned j=0; j<c; ++j)
+            {
+                gsGetInt(str, k);
+                face[j] = gsSurfMesh::Vertex(k);
+            }
+            if (c == 4)
+            {
+                for (unsigned j = 0; j < c; ++j)
+                    e[j] = result.find_or_add_edge(face[j], face[(j + 1) % c]);
+                result.add_quad(e[0], e[1], e[2], e[3]);
+            }
+            else
+                result.add_face(face);
+        }
+
+        if (0!=ne)
+        {
+            gsSurfMesh::Halfedge_property<bool> sharp =
+                result.add_halfedge_property<bool>("h:sharp");
+            gsSurfMesh::Halfedge he;
+            for (unsigned i =0; i < ne
+                     && gsGetInt(str, k) && gsGetInt(str, c)
+                     ; i++)
+            {
+                he = result.find_halfedge(gsSurfMesh::Vertex(k), gsSurfMesh::Vertex(c));
+                sharp[he] = true;
+                he = result.opposite_halfedge(he);
+                sharp[he] = true;
+            }
+        }
+    }// read off -- TODO...
+    else if ( !strcmp(node->first_attribute("format")->value(),"vtk") )
+    {
+        gsWarn<<"vtk.\n";
     }
-    //*/
-
-    /*
-    unsigned k, c = 0;
-    std::vector<gsSurfMesh::Vertex> face;
-    for (unsigned i=0; i<nf; ++i)
+    else if ( !strcmp(node->first_attribute("format")->value(),"obj") )
     {
-        gsGetInt(str, c);
-        face.resize(c);
-        for (unsigned j=0; j<c; ++j)
-        {
-            gsGetInt(str, k);
-            face[j] = gsSurfMesh::Vertex(k);
-        }
-        result.add_face(face);
+        std::istringstream str;
+        str.str( node->value() );
+        read_obj(result,str);
     }
-    //*/
-
-    if (0!=ne)
+    else if ( !strcmp(node->first_attribute("format")->value(),"stl") )
     {
-        gsSurfMesh::Halfedge_property<bool> sharp = result.add_halfedge_property<bool>("h:sharp");
-        face.resize(2);
-        gsSurfMesh::Halfedge he;
-        for(unsigned i = 0; i!=ne; ++i)
-        {
-            gsGetInt(str, k);
-            face[0] = gsSurfMesh::Vertex(k);
-            gsGetInt(str, k);
-            face[1] = gsSurfMesh::Vertex(k);
-            he = result.find_halfedge(face[0], face[1]);
-            sharp[he] = true;
-            he = result.opposite_halfedge(he);
-            sharp[he] = true;
-        }
+        std::istringstream str;
+        str.str( node->value() );
+        //read_stl(result,str);
     }
 }
 
 gsXmlNode *
 gsXml<gsSurfMesh>::put (const gsSurfMesh & obj, gsXmlTree & data)
 {
-    GISMO_UNUSED(obj);
-    GISMO_UNUSED(data);
-    return nullptr;
+    gsXmlNode* g = internal::makeNode("Mesh", data);
+    g->append_attribute( internal::makeAttribute("type", "", data) ); // no inheritance
+    g->append_attribute( internal::makeAttribute("format", "surf", data) );
+    g->append_attribute( internal::makeAttribute("vertices", obj.n_vertices(), data) );
+    g->append_attribute( internal::makeAttribute("edges", obj.n_edges()      , data) );
+    g->append_attribute( internal::makeAttribute("faces", obj.n_faces()      , data) );
+
+    std::ostringstream tmp;
+
+    gsXmlNode* fn = internal::makeNode("faces", data);
+    g->append_node(fn);
+    tmp<<"\n";
+    for (auto f : obj.faces() )
+    {
+        tmp << obj.valence(f);
+        for (auto v : obj.vertices(f) )
+            tmp <<" "<< v.idx();
+        tmp<<"\n";
+    }
+    fn->value( internal::makeValue( tmp.str(), data) );
+    tmp.clear();
+    tmp.str("");
+
+    std::vector<std::string> pname = obj.mesh_properties(); // TODO
+    for (auto & name : pname)
+    {
+        const std::type_info & ti = obj.get_mesh_property_type(name);
+        gsInfo << ti.name() <<"\n";
+    }
+
+    pname = obj.vertex_properties();
+    for (auto & name : pname)
+    {
+        if (name == "v:connectivity") continue;
+        if (name == "v:deleted") continue;
+        
+        const std::type_info & ti = obj.get_vertex_property_type(name);
+        if (ti == typeid(bool)) //sparse
+        {
+            gsXmlNode* pn = internal::makeNode("vdata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "bool", data) );
+            g->append_node(pn);
+            auto vprop = obj.get_vertex_property<bool>(name);
+            for (auto v : obj.vertices() )
+                if (vprop[v])
+                    tmp <<" "<< v.idx();
+            tmp<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+        }
+        else if (ti == typeid(gsSurfMesh::Point))
+        {
+            gsXmlNode* pn = internal::makeNode("vdata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "Point", data) );
+            g->append_node(pn);
+            auto vprop = obj.get_vertex_property<gsSurfMesh::Point>(name);
+            tmp<<"\n";
+            for (auto v : obj.vertices() )
+                tmp <<" "<< vprop[v].transpose() <<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+        }
+        else if (ti == typeid(index_t))
+        {
+            gsXmlNode* pn = internal::makeNode("vdata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "index", data) );
+            g->append_node(pn);
+            auto vprop = obj.get_vertex_property<index_t>(name);
+            for (auto v : obj.vertices() )
+                tmp <<" "<< vprop[v];
+            tmp<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );            
+        }
+        else if (ti == typeid(real_t))
+        {
+            gsXmlNode* pn = internal::makeNode("vdata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "real", data) );
+            g->append_node(pn);
+            auto vprop = obj.get_vertex_property<real_t>(name);
+            for (auto v : obj.vertices() )
+                tmp <<" "<< vprop[v];
+            tmp<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );                        
+        }
+        else
+        {
+            gsInfo <<"Ignored vdata: "<< ti.name() <<"\n";
+        }
+        tmp.clear();
+        tmp.str("");
+    }
+
+    pname = obj.face_properties();
+    for (auto & name : pname)
+    {
+        if (name == "f:connectivity") continue;
+        if (name == "f:deleted") continue;
+
+        const std::type_info & ti = obj.get_face_property_type(name);
+        if (ti == typeid(bool)) //sparse
+        {
+            gsXmlNode* pn = internal::makeNode("fdata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "bool", data) );
+            g->append_node(pn);
+            auto fprop = obj.get_face_property<bool>(name);
+            for (auto f : obj.faces() )
+                if (fprop[f])
+                    tmp <<" "<< f.idx();
+            tmp<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+        }
+        else if (ti == typeid(gsSurfMesh::Point))
+        {
+            gsXmlNode* pn = internal::makeNode("fdata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "Point", data) );
+            g->append_node(pn);
+            auto fprop = obj.get_face_property<gsSurfMesh::Point>(name);
+            tmp<<"\n";
+            for (auto f : obj.faces() )
+                tmp <<" "<< fprop[f].transpose() <<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+        }
+        else if (ti == typeid(index_t))
+        {
+            gsXmlNode* pn = internal::makeNode("fdata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "index", data) );
+            g->append_node(pn);
+            auto fprop = obj.get_face_property<index_t>(name);
+            for (auto f : obj.faces() )
+                tmp <<" "<< fprop[f];
+            tmp<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );            
+        }
+        else if (ti == typeid(real_t))
+        {
+            gsXmlNode* pn = internal::makeNode("fdata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "real", data) );
+            g->append_node(pn);
+            auto fprop = obj.get_face_property<real_t>(name);
+            for (auto f : obj.faces() )
+                tmp <<" "<< fprop[f];
+            tmp<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );                        
+        }
+        else
+        {
+            gsInfo <<"Ignored fdata: "<< ti.name() <<"\n";                
+        }
+        tmp.clear();
+        tmp.str("");
+    }
+
+    bool writeEdges(false);
+
+    pname = obj.edge_properties();
+    for (auto & name : pname)
+    {
+        if (name == "e:deleted") continue;
+
+        const std::type_info & ti = obj.get_edge_property_type(name);
+        if (ti == typeid(bool)) //sparse
+        {
+            gsXmlNode* pn = internal::makeNode("edata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "bool", data) );
+            g->append_node(pn);
+            auto eprop = obj.get_edge_property<bool>(name);
+            tmp<<"\n";
+            for (auto e : obj.edges() )
+                if (eprop[e])
+                    tmp << obj.vertex(e,0).idx() <<" "<<obj.vertex(e,1).idx()<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+        }
+        else if (ti == typeid(gsSurfMesh::Point))
+        {
+            gsXmlNode* pn = internal::makeNode("edata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "Point", data) );
+            g->append_node(pn);
+            auto eprop = obj.get_edge_property<gsSurfMesh::Point>(name);
+            tmp<<"\n";
+            for (auto e : obj.edges() )
+                tmp <<" "<< eprop[e].transpose()<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+            writeEdges = true;
+        }
+        else if (ti == typeid(index_t))
+        {
+            gsXmlNode* pn = internal::makeNode("edata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "index", data) );
+            g->append_node(pn);
+            auto eprop = obj.get_edge_property<index_t>(name);
+            for (auto e : obj.edges() )
+                tmp <<" "<< eprop[e];
+            tmp<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+            writeEdges = true;
+        }
+        else if (ti == typeid(real_t))
+        {
+            gsXmlNode* pn = internal::makeNode("edata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "real", data) );
+            g->append_node(pn);
+            auto eprop = obj.get_edge_property<real_t>(name);
+            for (auto e : obj.edges() )
+                tmp <<" "<< eprop[e];
+            tmp<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+            writeEdges = true;
+        }
+        else
+        {
+            gsInfo <<"Ignore edata"<< ti.name() <<"\n";                
+        }
+        tmp.clear();
+        tmp.str("");
+    }
+
+    pname = obj.halfedge_properties();
+    for (auto & name : pname)
+    {
+        if (name == "h:connectivity") continue;
+
+        const std::type_info & ti = obj.get_halfedge_property_type(name);
+        if (ti == typeid(bool)) //sparse
+        {
+            gsXmlNode* pn = internal::makeNode("hedata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "bool", data) );
+            g->append_node(pn);
+            auto eprop = obj.get_halfedge_property<bool>(name);
+            tmp<<"\n";
+            for (auto h : obj.halfedges() )
+                if (eprop[h])
+                    tmp << obj.from_vertex(h).idx() <<" "<<obj.to_vertex(h).idx()<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+        }
+        else if (ti == typeid(gsSurfMesh::Point))
+        {
+            gsXmlNode* pn = internal::makeNode("hedata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "Point", data) );
+            g->append_node(pn);
+            auto eprop = obj.get_halfedge_property<gsSurfMesh::Point>(name);
+            tmp<<"\n";
+            for (auto h : obj.halfedges() )
+                tmp <<" "<< eprop[h].transpose()<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+            writeEdges = true;
+        }
+        else if (ti == typeid(index_t))
+        {
+            gsXmlNode* pn = internal::makeNode("hedata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "index", data) );
+            g->append_node(pn);
+            auto eprop = obj.get_halfedge_property<index_t>(name);
+            for (auto h : obj.halfedges() )
+                tmp <<" "<< eprop[h];
+            tmp<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+            writeEdges = true;
+        }
+        else if (ti == typeid(real_t))
+        {
+            gsXmlNode* pn = internal::makeNode("hedata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "real", data) );
+            g->append_node(pn);
+            auto eprop = obj.get_halfedge_property<real_t>(name);
+            for (auto h : obj.halfedges() )
+                tmp <<" "<< eprop[h];
+            tmp<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+            writeEdges = true;
+        }
+        else
+        {
+            gsInfo <<"Ignore hedata: "<< ti.name() <<"\n";                
+        }
+        tmp.clear();
+        tmp.str("");
+    }
+
+    if (writeEdges)
+    {
+        gsXmlNode* en = internal::makeNode("edges", data);
+        g->append_node(en);
+        tmp << "\n";
+        for (auto e : obj.edges() )
+            tmp << obj.vertex(e,0).idx() <<" "<<obj.vertex(e,1).idx()<<"\n";
+        en->value( internal::makeValue( tmp.str(), data) );
+        tmp.clear();
+        tmp.str("");
+    }
+
+    return g;
 };
 
 }//namespace internal

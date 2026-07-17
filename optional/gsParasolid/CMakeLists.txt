@@ -46,6 +46,7 @@ if(GISMO_BUILD_LIB)
 install(FILES   ${CMAKE_CURRENT_SOURCE_DIR}/gsReadParasolid.h
 		${CMAKE_CURRENT_SOURCE_DIR}/gsWriteParasolid.h
 		${CMAKE_CURRENT_SOURCE_DIR}/gsPKSession.h
+		${CMAKE_CURRENT_SOURCE_DIR}/gsClosestPoint.h
         DESTINATION include/gismo/gsParasolid/)
 endif()
 

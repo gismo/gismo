@@ -4,6 +4,8 @@ submodules.txt
 
 # CLion user-specific files
 .idea
+# Clang user-specific files
+.cache
 
 # Binary directories
 cmake-build-*/

@@ -221,6 +221,62 @@ SUITE(gsKnotVectors_test)
         gsKnotVector<real_t> kv2(deg,v.begin(),v.end());
         testFindSpan(kv2);
     }
+
+    TEST(notClampedDomainIteration)
+    {
+        std::vector<real_t> knots = {-2, -1.75, -1.5, -1.25, -1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2};
+        gsKnotVector<real_t> u_knots(3, knots.begin(), knots.end());
+
+        CHECK_CLOSE( *u_knots.domainBegin(), -1.25, 1e-10 );
+        CHECK_CLOSE( *u_knots.domainEnd(),    1.25, 1e-10 );
+
+        gsBSplineBasis<real_t> u_basis(u_knots);
+        gsBasis<real_t>::domainIter domIt    = u_basis.domain()->beginAll();
+        gsBasis<real_t>::domainIter domItEnd = u_basis.domain()->endAll();
+
+        size_t count = 0;
+        std::vector<real_t> domBreaks = u_knots.breaks();
+        for (; domIt != domItEnd; ++domIt)
+        {
+            CHECK( count < domBreaks.size() - 1 );
+            CHECK_CLOSE( domIt.lowerCorner()(0), domBreaks[count],   1e-10 );
+            CHECK_CLOSE( domIt.upperCorner()(0), domBreaks[count+1], 1e-10 );
+            ++count;
+        }
+        CHECK( count == u_knots.numElements() );
+    }
+
+    TEST(notClampedTensorDomainIteration)
+    {
+        std::vector<real_t> knots = {-2, -1.75, -1.5, -1.25, -1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2};
+        gsKnotVector<real_t> u_knots(3, knots.begin(), knots.end());
+        gsKnotVector<real_t> v_knots(-1, 1, 3, 4);
+        gsTensorBSplineBasis<2> basis(u_knots, v_knots);
+
+        size_t expectedElements = u_knots.numElements() * v_knots.numElements();
+        CHECK( basis.domain()->numElements() == expectedElements );
+
+        gsBasis<real_t>::domainIter domIt    = basis.domain()->beginAll();
+        gsBasis<real_t>::domainIter domItEnd = basis.domain()->endAll();
+
+        real_t domStartU = *u_knots.domainBegin();
+        real_t domEndU   = *u_knots.domainEnd();
+        real_t domStartV = *v_knots.domainBegin();
+        real_t domEndV   = *v_knots.domainEnd();
+
+        size_t count = 0;
+        for (; domIt != domItEnd; ++domIt)
+        {
+            gsVector<real_t> lo = domIt.lowerCorner();
+            gsVector<real_t> up = domIt.upperCorner();
+            CHECK( lo(0) >= domStartU - 1e-10 );
+            CHECK( up(0) <= domEndU   + 1e-10 );
+            CHECK( lo(1) >= domStartV - 1e-10 );
+            CHECK( up(1) <= domEndV   + 1e-10 );
+            ++count;
+        }
+        CHECK( count == expectedElements );
+    }
 }
 
 SUITE(gsKnotVectors_test_2)

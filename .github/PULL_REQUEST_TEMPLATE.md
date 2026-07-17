@@ -2,7 +2,7 @@
 Pull requests can only be merged after at least one review (and
 approval) from @gismo/admins.
 
-Code submitted to the stable branch should be clean, well-documented
+Code submitted to the dev branch should be clean, well-documented
 and free of bugs.
 
 # The commit description must be structured as a list follows:
