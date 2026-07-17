@@ -430,7 +430,11 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
     // The position in the solution vector already corresponds to the
     // numbering by the boundary index. Hence, we can simply take them
     // for the values of the eliminated Dirichlet DOFs.
+#ifdef GISMO_WITH_PARDISO
+    typename gsSparseSolver<T>::PardisoLU solver;
+#else
     typename gsSparseSolver<T>::CGDiagonal solver;
+#endif
     fixedDofs = solver.compute(globProjMat).solve(globProjRhs);
 } // computeDirichletDofsL2Proj
 
