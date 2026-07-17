@@ -518,4 +518,81 @@ deriveArgyrisBasisEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
   return result;
 }
 
+index_t sumUntil(const gsVector<index_t, 13> &vec, index_t until) {
+  index_t sum = 0;
+  for (index_t i = 0; i < until; ++i)
+    sum += vec(i);
+  return sum;
+}
+
+template<typename T>
+gsDofMapper makeMapperForArgyrisBasis(const gsMultiPatch<T>& mp,
+                                      const std::vector<gsArgyrisEmbedding<T>>& argBasis)
+{
+  gsVector<index_t> patchDofSizes(argBasis.size());
+  for (size_t i = 0; i < argBasis.size(); ++i) {
+    patchDofSizes[i] = argBasis[i].matrix.cols();
+  }
+  gsDofMapper mapper(patchDofSizes);
+  for (auto it = mp.iBegin(); it != mp.iEnd(); ++it) {
+    const boundaryInterface &ifc = *it;
+    const patchSide ps1 = ifc.first();
+    const patchSide ps2 = ifc.second();
+    const gsVector<index_t>& sz1 = argBasis[ps1.patch].sizes;
+    const gsVector<index_t>& sz2 = argBasis[ps2.patch].sizes;
+
+    const index_t nLvl0 = sz1[1 + 2 * (ps1.m_index - 1)];
+    const index_t offLvl0_1 = sumUntil(sz1, 1 + 2 * (ps1.m_index - 1));
+    const index_t offLvl0_2 = sumUntil(sz2, 1 + 2 * (ps2.m_index - 1));
+
+    const index_t nLvl1 = sz1[2 + 2 * (ps1.m_index - 1)];
+    const index_t offLvl1_1 = sumUntil(sz1, 2 + 2 * (ps1.m_index - 1));
+    const index_t offLvl1_2 = sumUntil(sz2, 2 + 2 * (ps2.m_index - 1));
+
+    GISMO_ASSERT(nLvl0 == sz2[1 + 2 * (ps2.m_index - 1)],
+                 "Dimension missmatch.");
+    GISMO_ASSERT(nLvl1 == sz2[2 + 2 * (ps2.m_index - 1)],
+                 "Dimension missmatch.");
+
+    // Check interface orientation: if the tangential directions
+    // run in opposite directions, we need to reverse the DOF mapping
+    // for patch 2's shared columns.
+    const short_t tanDir1 = 1 - ps1.direction();
+    const bool flipped = !ifc.dirOrientation(ps1, tanDir1);
+
+    for (index_t j1 = 0; j1 < nLvl0; ++j1) {
+      // If flipped, DOF j1 on patch 1 corresponds to DOF (nLvl0-1-j1) on
+      // patch 2.
+      const index_t j2 = flipped ? nLvl0 - 1 - j1 : j1;
+      mapper.matchDof(ps1.patch, offLvl0_1 + j1, ps2.patch, offLvl0_2 + j2);
+    }
+    for (index_t j1 = 0; j1 < nLvl1; ++j1) {
+      // If flipped, DOF j1 on patch 1 corresponds to DOF (nLvl1-1-j1) on
+      // patch 2.
+      const index_t j2 = flipped ? nLvl1 - 1 - j1 : j1;
+      mapper.matchDof(ps1.patch, offLvl1_1 + j1, ps2.patch, offLvl1_2 + j2);
+    }
+
+    // Also match the corners
+    std::vector<patchCorner> corners;
+    ps1.getContainedCorners(2, corners);
+    GISMO_ASSERT (corners.size() == 2, "Unexpected number of corners");
+    for (index_t i=0; i<2; ++i)
+    {
+        const index_t c1 = corners[i].m_index - 1;
+        const index_t c2 = ifc.mapCorner(corners[i]).m_index - 1;
+
+        const index_t off_corner_1 = sumUntil(argBasis[ps1.patch].sizes, 9 + c1);
+        const index_t off_corner_2 = sumUntil(argBasis[ps2.patch].sizes, 9 + c2);
+
+        for (index_t i=0; i<6; ++i)
+            mapper.matchDof(ps1.patch, off_corner_1+i, ps2.patch, off_corner_2+i);
+
+    }
+  }
+  mapper.finalize();
+  return mapper;
+}
+
+
 } // namespace gismo

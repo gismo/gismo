@@ -119,13 +119,10 @@ int main(int argc, char *argv[]) {
 
   // ---- Build per-patch interface-side embeddings ----
   std::vector<gsArgyrisEmbedding<T>> argBasis;
-  gsVector<index_t> patchDofSizes(mp.nPatches());
   for (size_t i = 0; i < mp.nPatches(); ++i) {
     argBasis.push_back(deriveArgyrisBasisEmbedding(
         dynamic_cast<const gsTensorBSplineBasis<2, T> &>(mp.patch(i).basis()),
         gsMatrix<T>(gd.row(i)), mp.patch(i)));
-
-    patchDofSizes[i] = argBasis[i].matrix.cols();
   }
 
   for (size_t i = 0; i < mp.nPatches(); ++i) {
@@ -136,82 +133,7 @@ int main(int argc, char *argv[]) {
   // ====================================================================
   // Setup of gsDofMapper
   // ====================================================================
-
-  auto sumUntil = [](const gsVector<index_t, 13> &vec, index_t until) {
-    index_t sum = 0;
-    for (index_t i = 0; i < until; ++i)
-      sum += vec(i);
-    return sum;
-  };
-
-  gsDofMapper mapper(patchDofSizes);
-  for (auto it = mp.iBegin(); it != mp.iEnd(); ++it) {
-    const boundaryInterface &ifc = *it;
-    const patchSide ps1 = ifc.first();
-    const patchSide ps2 = ifc.second();
-
-    const index_t nLvl0 = argBasis[ps1.patch].sizes[1 + 2 * (ps1.m_index - 1)];
-    const index_t offLvl0_1 =
-        sumUntil(argBasis[ps1.patch].sizes, 1 + 2 * (ps1.m_index - 1));
-    const index_t offLvl0_2 =
-        sumUntil(argBasis[ps2.patch].sizes, 1 + 2 * (ps2.m_index - 1));
-
-    const index_t nLvl1 = argBasis[ps1.patch].sizes[2 + 2 * (ps1.m_index - 1)];
-    const index_t offLvl1_1 =
-        sumUntil(argBasis[ps1.patch].sizes, 2 + 2 * (ps1.m_index - 1));
-    const index_t offLvl1_2 =
-        sumUntil(argBasis[ps2.patch].sizes, 2 + 2 * (ps2.m_index - 1));
-
-    GISMO_ASSERT(nLvl0 == argBasis[ps2.patch].sizes[1 + 2 * (ps2.m_index - 1)],
-                 "Dimension missmatch.");
-    GISMO_ASSERT(nLvl1 == argBasis[ps2.patch].sizes[2 + 2 * (ps2.m_index - 1)],
-                 "Dimension missmatch.");
-
-    // Check interface orientation: if the tangential directions
-    // run in opposite directions, we need to reverse the DOF mapping
-    // for patch 2's shared columns.
-    const short_t tanDir1 = 1 - ps1.direction();
-    const bool flipped = !ifc.dirOrientation(ps1, tanDir1);
-
-    gsInfo << "Interface orientation: " << (flipped ? "FLIPPED" : "aligned")
-           << "\n";
-
-    for (index_t j1 = 0; j1 < nLvl0; ++j1) {
-      // If flipped, DOF j1 on patch 1 corresponds to DOF (nLvl0-1-j1) on
-      // patch 2.
-      const index_t j2 = flipped ? nLvl0 - 1 - j1 : j1;
-      gsInfo << "mapper.matchDof(" << ps1.patch << ", " << offLvl0_1 + j1
-             << ", " << ps2.patch << ", " << offLvl0_2 + j2 << ")\n";
-      mapper.matchDof(ps1.patch, offLvl0_1 + j1, ps2.patch, offLvl0_2 + j2);
-    }
-    for (index_t j1 = 0; j1 < nLvl1; ++j1) {
-      // If flipped, DOF j1 on patch 1 corresponds to DOF (nLvl1-1-j1) on
-      // patch 2.
-      const index_t j2 = flipped ? nLvl1 - 1 - j1 : j1;
-      gsInfo << "mapper.matchDof(" << ps1.patch << ", " << offLvl1_1 + j1
-             << ", " << ps2.patch << ", " << offLvl1_2 + j2 << ")\n";
-      mapper.matchDof(ps1.patch, offLvl1_1 + j1, ps2.patch, offLvl1_2 + j2);
-    }
-
-    // Also match the corners
-    std::vector<patchCorner> corners;
-    ps1.getContainedCorners(2, corners);
-    GISMO_ASSERT (corners.size() == 2, "Unexpected number of corners");
-    for (index_t i=0; i<2; ++i)
-    {
-        const index_t c1 = corners[i].m_index - 1;
-        const index_t c2 = ifc.mapCorner(corners[i]).m_index - 1;
-
-        const index_t off_corner_1 = sumUntil(argBasis[ps1.patch].sizes, 9 + c1);
-        const index_t off_corner_2 = sumUntil(argBasis[ps2.patch].sizes, 9 + c2);
-
-        for (index_t i=0; i<6; ++i)
-            mapper.matchDof(ps1.patch, off_corner_1+i, ps2.patch, off_corner_2+i);
-
-    }
-
-  }
-  mapper.finalize();
+  gsDofMapper mapper = makeMapperForArgyrisBasis(mp, argBasis);
 
   const index_t nGlobal = mapper.freeSize();
   gsInfo << "\nGlobal DOFs: " << nGlobal << "\n";
