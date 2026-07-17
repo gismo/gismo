@@ -83,35 +83,33 @@ InterfaceSamples<T> sampleInterface(
     if (tangentialFlipped)
         std::swap(t2a, t2b);
 
-    gsVector<T> breaks1 = breaksOf(g1, tDir1);
-    gsVector<T> breaks2 = breaksOf(g2, tDir2);
+    // normalized breakpoints
+    const gsVector<T> breaks1 = (breaksOf(g1, tDir1).array() - t1a) / (t1b - t1a);
+    const gsVector<T> breaks2 = (breaksOf(g2, tDir2).array() - t2a) / (t2b - t2a);
 
-    // map the breakpoints to parameter domain of first patch
-    breaks2 = t1a + (breaks2.array() - t2a) / (t2b - t2a) * (t1b - t1a);
-
+    // merge normalized breakpoints
     std::set<T> merged(breaks1.begin(), breaks1.end());
     merged.insert(breaks2.begin(), breaks2.end());
-    const std::vector<T> brk(merged.begin(), merged.end());
+    const std::vector<T> breaks(merged.begin(), merged.end());
 
+    // derive Gauss nodes
     const short_t deg = std::max(g1.basis().degree(tDir1), g2.basis().degree(tDir2));
     const index_t nGauss = (numGaussPerSpan > 0) ? numGaussPerSpan : 2*deg + 1;
-    gsGaussRule<T> rule(nGauss);
-    gsMatrix<T> nodes1;
+    const gsGaussRule<T> rule(nGauss);
+    gsMatrix<T> nodes;
     gsVector<T> wts;
-    rule.mapToAll(brk, nodes1, wts);
+    rule.mapToAll(breaks, nodes, wts);
 
-    gsMatrix<T> nodesNormalized = (nodes1.array() - t1a) / (t1b - t1a);
-    gsMatrix<T> nodes2 = t2a + nodesNormalized.array() * (t2b - t2a);
-
-    const index_t N = nodes1.cols();
+    // map nodes back
+    const index_t N = nodes.cols();
     gsMatrix<T> pts1(2,N), pts2(2,N);
     pts1.row(nDir1).setConstant(n1);
     pts2.row(nDir2).setConstant(n2);
-    pts1.row(tDir1) = nodes1;
-    pts2.row(tDir2) = nodes2;
+    pts1.row(tDir1) = t1a + nodes.array() * (t1b - t1a);
+    pts2.row(tDir2) = t2a + nodes.array() * (t2b - t2a);
 
-    gsMatrix<T> d1 = g1.deriv(pts1);
-    gsMatrix<T> d2 = g2.deriv(pts2);
+    const gsMatrix<T> d1 = g1.deriv(pts1);
+    const gsMatrix<T> d2 = g2.deriv(pts2);
 
     InterfaceSamples<T> S;
     S.D1.resize(N); S.D2.resize(N); S.D3.resize(N); S.t.resize(N);
@@ -126,7 +124,7 @@ InterfaceSamples<T> sampleInterface(
         S.D2(i) = s2      * det2(g2n, g2t);
         S.D3(i) = s1 * s2 * det2(g1n, g2n);
     }
-    S.t = nodesNormalized.transpose();
+    S.t = nodes.transpose();
     S.flipped = tangentialFlipped;
     return S;
 }
