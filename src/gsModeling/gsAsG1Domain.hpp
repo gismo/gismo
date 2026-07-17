@@ -31,11 +31,14 @@ inline gsVector<T> partial(const gsMatrix<T>& d, index_t dir, index_t col)
 }
 
 template <class T>
-std::vector<T> breaksOf(const gsGeometry<T>& geo, short_t dir)
+gsVector<T> breaksOf(const gsGeometry<T>& geo, short_t dir)
 {
     const gsBSplineBasis<T>& bb =
         dynamic_cast<const gsBSplineBasis<T>&>(geo.basis().component(dir));
-    return bb.knots().breaks();
+    const std::vector<T> &brks = bb.knots().breaks();
+    gsVector<T> result(brks.size());
+    result.assign(brks.begin(), brks.end());
+    return result;
 }
 
 /// Sampled determinants on the interface (patch-1 tangential parameter
@@ -73,19 +76,20 @@ InterfaceSamples<T> sampleInterface(
     const T n1 = sup1(nDir1, par1 ? 1 : 0);
     const T n2 = sup2(nDir2, par2 ? 1 : 0);
 
-    bool tangentialFlipped = !interf.dirOrientation(ps1, tDir1);
+    const bool tangentialFlipped = !interf.dirOrientation(ps1, tDir1);
 
     const T t1a = sup1(tDir1, 0), t1b = sup1(tDir1, 1);
     const T t2a = sup2(tDir2, 0), t2b = sup2(tDir2, 1);
 
-    std::vector<T> breaks1 = breaksOf(g1, tDir1);
-    std::vector<T> breaks2 = breaksOf(g2, tDir2);
-    for (T& br : breaks2)
-    {
-        T s = (br - t2a) / (t2b - t2a);
-        if (tangentialFlipped) s = T(1) - s;
-        br = t1a + s * (t1b - t1a);
-    }
+    gsVector<T> breaks1 = breaksOf(g1, tDir1);
+    gsVector<T> breaks2 = breaksOf(g2, tDir2);
+
+    // map the breakpoints to parameter domain of first patch
+    if (tangentialFlipped)
+        breaks2 = t1a + (breaks2.array() - t2b) / (t2a - t2b) * (t1b - t1a);
+    else
+        breaks2 = t1a + (breaks2.array() - t2a) / (t2b - t2a) * (t1b - t1a);
+
     std::set<T> merged(breaks1.begin(), breaks1.end());
     merged.insert(breaks2.begin(), breaks2.end());
     const std::vector<T> brk(merged.begin(), merged.end());
@@ -93,22 +97,27 @@ InterfaceSamples<T> sampleInterface(
     const short_t deg = std::max(g1.basis().degree(tDir1), g2.basis().degree(tDir2));
     const index_t nGauss = (numGaussPerSpan > 0) ? numGaussPerSpan : 2*deg + 1;
     gsGaussRule<T> rule(nGauss);
-    gsMatrix<T> nodes; gsVector<T> wts;
-    rule.mapToAll(brk, nodes, wts);
-    const index_t N = nodes.cols();
+    gsMatrix<T> nodes1;
+    gsVector<T> wts;
+    rule.mapToAll(brk, nodes1, wts);
 
+    gsMatrix<T> nodesNormalized = (nodes1.array() - t1a) / (t1b - t1a);
+
+    gsMatrix<T> nodes2;
+    if (tangentialFlipped)
+        nodes2 = t2b + nodesNormalized.array() * (t2a - t2b);
+    else
+        nodes2 = t2a + nodesNormalized.array() * (t2b - t2a);
+
+    const index_t N = nodes1.cols();
     gsMatrix<T> pts1(2,N), pts2(2,N);
-    for (index_t i = 0; i < N; ++i)
-    {
-        const T t  = nodes(0,i);
-        const T u  = (t - t1a) / (t1b - t1a);
-        const T u2 = tangentialFlipped ? (T(1)-u) : u;
-        pts1(nDir1,i) = n1;  pts1(tDir1,i) = t;
-        pts2(nDir2,i) = n2;  pts2(tDir2,i) = t2a + u2 * (t2b - t2a);
-    }
-    gsMatrix<T> d1, d2;
-    g1.deriv_into(pts1, d1);
-    g2.deriv_into(pts2, d2);
+    pts1.row(nDir1).setConstant(n1);
+    pts2.row(nDir2).setConstant(n2);
+    pts1.row(tDir1) = nodes1;
+    pts2.row(tDir2) = nodes2;
+
+    gsMatrix<T> d1 = g1.deriv(pts1);
+    gsMatrix<T> d2 = g2.deriv(pts2);
 
     InterfaceSamples<T> S;
     S.D1.resize(N); S.D2.resize(N); S.D3.resize(N); S.t.resize(N);
@@ -122,8 +131,8 @@ InterfaceSamples<T> sampleInterface(
         S.D1(i) = s1      * det2(g1n, g1t);
         S.D2(i) = s2      * det2(g2n, g2t);
         S.D3(i) = s1 * s2 * det2(g1n, g2n);
-        S.t(i)  = (nodes(0,i) - t1a) / (t1b - t1a);
     }
+    S.t = nodesNormalized.transpose();
     S.flipped = tangentialFlipped;
     return S;
 }
