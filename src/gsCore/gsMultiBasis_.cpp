@@ -27,6 +27,8 @@ repairInterfaceFindElements<3>(const boundaryInterface & bi,
   {
     using Base = gsFunctionSet<real_t>;
     using Class = gsMultiBasis<real_t>;
+    using Mat = gsSparseMatrix<real_t, RowMajor>;
+    using BC = gsBoundaryConditions<real_t>;
     py::class_<Class,Base>(m, "gsMultiBasis")
 
       // Constructors
@@ -43,6 +45,29 @@ repairInterfaceFindElements<3>(const boundaryInterface & bi,
       // Note: Bindings with unique pointers are not possible https://pybind11.readthedocs.io/en/stable/advanced/smart_ptrs.html
       // .def("addPatch", static_cast<void (Class::*)(typename gsBasis<real_t>::uPtr)> (&Class::addBasis), "Adds a patch")
       .def("addBasis", static_cast<void (Class::*)(         gsBasis<real_t> *    )> (&Class::addBasis), "Adds a patch")
+
+      // Refinement and coarsening with transfer matrices (critical for multigrid)
+      .def("uniformRefine_withTransfer",
+           [](Class &self, const BC &bc, const gsOptionList &opts,
+              int numKnots, int mul, index_t unk) {
+             Mat transfer;
+             self.uniformRefine_withTransfer(transfer, bc, opts, numKnots, mul, unk);
+             return transfer;
+           },
+           py::arg("boundaryConditions"), py::arg("options"),
+           py::arg("numKnots") = 1, py::arg("mul") = 1, py::arg("unk") = 0,
+           "Uniformly refine all bases and return transfer matrix from coarse to fine space")
+
+      .def("uniformCoarsen_withTransfer",
+           [](Class &self, const BC &bc, const gsOptionList &opts,
+              int numKnots, index_t unk) {
+             Mat transfer;
+             self.uniformCoarsen_withTransfer(transfer, bc, opts, numKnots, unk);
+             return transfer;
+           },
+           py::arg("boundaryConditions"), py::arg("options"),
+           py::arg("numKnots") = 1, py::arg("unk") = 0,
+           "Uniformly coarsen all bases and return transfer matrix from fine to coarse space")
       ;
   }
 

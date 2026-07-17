@@ -227,19 +227,19 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByHierarchicalCoarsening(
     )
 {
     // Check all bases
-    size_t maxLevel = 0;
+    index_t maxLevel = 0;
     for (size_t i = 0; i < mBasis.nBases(); ++i)
         if (gsHTensorBasis<1,T>* basis = dynamic_cast<gsHTensorBasis<1,T>*>(&mBasis.basis(i)))
-            maxLevel = math::max(maxLevel, (size_t)basis->maxLevel());
+            maxLevel = math::max(maxLevel, (index_t)basis->maxLevel());
         else if (gsHTensorBasis<2,T>* basis = dynamic_cast<gsHTensorBasis<2,T>*>(&mBasis.basis(i)))
-            maxLevel = math::max(maxLevel, (size_t)basis->maxLevel());
+            maxLevel = math::max(maxLevel, (index_t)basis->maxLevel());
         else if (gsHTensorBasis<3,T>* basis = dynamic_cast<gsHTensorBasis<3,T>*>(&mBasis.basis(i)))
-            maxLevel = math::max(maxLevel, (size_t)basis->maxLevel());
+            maxLevel = math::max(maxLevel, (index_t)basis->maxLevel());
         else if (gsHTensorBasis<4,T>* basis = dynamic_cast<gsHTensorBasis<4,T>*>(&mBasis.basis(i)))
-            maxLevel = math::max(maxLevel, (size_t)basis->maxLevel());
+            maxLevel = math::max(maxLevel, (index_t)basis->maxLevel());
         else
             GISMO_ERROR("Basis " << i << " must be hierarchical.");
-    maxLevel = math::min(maxLevel, (size_t)options.askInt("Levels", 2));
+    maxLevel = math::min(maxLevel, (index_t)options.askInt("Levels", 2));
 
 
     gsGridHierarchy<T> result;
@@ -252,7 +252,7 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByHierarchicalCoarsening(
     bool eliminateDirichlet = dirichlet::elimination==options.askInt("DirichletStrategy",11);
     std::vector< gsSparseMatrix<T, RowMajor> > localTransferMatrices(result.m_mBases[0].nBases());
     gsDofMapper coarseMapper, fineMapper;
-    for (size_t i = 0; i != maxLevel; i++)
+    for (index_t i = 0; i != maxLevel; i++)
     {
         gsSparseMatrix<T, RowMajor> transferMatrix;
         gsMultiBasis<T> coarseMBasis = result.m_mBases[i];

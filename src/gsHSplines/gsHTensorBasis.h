@@ -930,13 +930,13 @@ public:
     virtual void refineElements(std::vector<index_t> const & boxes);
 
     /**
-     * @brief Refines the cells up to level \a targetLevel.
-     * All cells on levels coarser than \a targetLevel are refined so that
-     * all active cells are at level \a targetLevel or finer.
+     * @brief Refines the cells up to level \a minLevel.
+     * All cells on levels coarser than \a minLevel are refined so that
+     * all active cells are at level \a minLevel or finer.
      */
-    void refineToLevel(index_t targetLevel);
-    void refineToLevel_withTransfer(index_t targetLevel, gsSparseMatrix<T,RowMajor> &transfer);
-    void refineToLevel_withCoefs(index_t targetLevel, gsMatrix<T> & coefs);
+    void refineToLevel(index_t minLevel);
+    void refineToLevel_withTransfer(index_t minLevel, gsSparseMatrix<T,RowMajor> &transfer);
+    void refineToLevel_withCoefs(index_t minLevel, gsMatrix<T> & coefs);
     /**
      * @brief Refines the cells of the coarsest level.
      */
@@ -953,12 +953,12 @@ public:
     virtual void unrefineElements(std::vector<index_t> const & boxes);
 
     /**
-     * @brief Unrefines the cells down to level \a targetLevel.
-     * All cells on levels finer than \a targetLevel are coarsened to level \a targetLevel.
+     * @brief Unrefines the cells down to level \a minLevel.
+     * All cells on levels finer than \a minLevel are coarsened to level \a minLevel.
      */
-    void unrefineToLevel(index_t targetLevel);
-    void unrefineToLevel_withTransfer(index_t targetLevel, gsSparseMatrix<T,RowMajor> &transfer);
-    void unrefineToLevel_withCoefs(index_t targetLevel, gsMatrix<T> & coefs);
+    void unrefineToLevel(index_t minLevel);
+    void unrefineToLevel_withTransfer(index_t minLevel, gsSparseMatrix<T,RowMajor> &transfer);
+    void unrefineToLevel_withCoefs(index_t minLevel, gsMatrix<T> & coefs);
     /**
      * @brief Unrefines the cells of the finest level.
      */

@@ -162,10 +162,12 @@ PYBIND11_MODULE(pygismo, m) {
   mpi.doc() = "G+Smo (Geometry + Simulation Modules): MPI module";
 
   py::module multigrid = m.def_submodule("multigrid");
-  
+
   multigrid.attr("__name__") = "pygismo.multigrid";
   multigrid.attr("__version__") = GISMO_VERSION;
   multigrid.doc() = "G+Smo (Geometry + Simulation Modules): MultiGrid module";
+
+  gismo::pybind11_init_gsGridHierarchy( multigrid );
 
   py::module nurbs = m.def_submodule("nurbs");
 

@@ -861,24 +861,24 @@ void gsHTensorBasis<d,T>::refineElements(std::vector<index_t> const & boxes)
 }
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::refineToLevel(index_t targetLevel)
+void gsHTensorBasis<d,T>::refineToLevel(index_t minLevel)
 {
     point i1;
     point i2;
 
-    GISMO_ASSERT( targetLevel >= 0,"The target level must be non-negative." );
+    GISMO_ASSERT( minLevel >= 0,"The minimum level must be non-negative." );
     index_t dLevel;
     auto leafIt = m_tree.beginLeafIterator();
     std::vector<index_t> boxes;
     for (; leafIt.good(); leafIt.next())
     {
-        dLevel = targetLevel - leafIt.level();
+        dLevel = minLevel - leafIt.level();
         if (dLevel <= 0)
             continue;
         else
         {
             // we want to refine this leaf
-            boxes.push_back(targetLevel);
+            boxes.push_back(minLevel);
 
             for( short_t j = 0; j < d; j++ )
             {
@@ -898,33 +898,33 @@ void gsHTensorBasis<d,T>::refineToLevel(index_t targetLevel)
 }
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::refineToLevel_withTransfer(index_t targetLevel, gsSparseMatrix<T,RowMajor> & tran)
+void gsHTensorBasis<d,T>::refineToLevel_withTransfer(index_t minLevel, gsSparseMatrix<T,RowMajor> & tran)
 {
     std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
-    this->refineToLevel(targetLevel);
+    this->refineToLevel(minLevel);
     this->transfer(OX, tran);
 }
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::refineToLevel_withCoefs(index_t targetLevel, gsMatrix<T> & coefs)
+void gsHTensorBasis<d,T>::refineToLevel_withCoefs(index_t minLevel, gsMatrix<T> & coefs)
 {
     gsSparseMatrix<T,RowMajor> transf;
-    this->refineToLevel_withTransfer(targetLevel,transf);
+    this->refineToLevel_withTransfer(minLevel,transf);
     coefs = transf*coefs;
 }
 
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::refineCoarsestLevel()
 {
-    index_t targetLevel = 0;
+    index_t minLevel = 0;
     // Find the coarsest (lowest-index) level that has any active basis functions
     for (size_t level = 0; level != m_xmatrix.size(); ++level)
         if (m_xmatrix[level].size())
         {
-            targetLevel = static_cast<index_t>(level);
+            minLevel = static_cast<index_t>(level);
             break;
         }
-    this->refineToLevel(targetLevel+1);
+    this->refineToLevel(minLevel+1);
 }
 
 template<short_t d, class T>
@@ -981,16 +981,16 @@ void gsHTensorBasis<d,T>::unrefineElements(std::vector<index_t> const & boxes)
 }
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::unrefineToLevel(index_t targetLevel)
+void gsHTensorBasis<d,T>::unrefineToLevel(index_t minLevel)
 {
     point i1;
     point i2;
 
     index_t maxLevel = m_tree.getMaxInsLevel();
-    GISMO_ASSERT( targetLevel >= 0 && targetLevel <= maxLevel,
-                  "The target level must be between 0 and the current max level ("
+    GISMO_ASSERT( minLevel >= 0 && minLevel <= maxLevel,
+                  "The minimum level must be between 0 and the current max level ("
                   <<maxLevel<<")." );
-    index_t dLevel = maxLevel - targetLevel;
+    index_t dLevel = maxLevel - minLevel;
     if (dLevel == 0)
     { return; } // nothing to do
 
@@ -998,13 +998,13 @@ void gsHTensorBasis<d,T>::unrefineToLevel(index_t targetLevel)
     std::vector<index_t> boxes;
     for (; leafIt.good(); leafIt.next())
     {
-        dLevel = leafIt.level() - targetLevel;
+        dLevel = leafIt.level() - minLevel;
         if (dLevel <= 0)
             continue;
         else
         {
             // we want to unrefine this leaf
-            boxes.push_back(targetLevel);
+            boxes.push_back(minLevel);
 
             for( short_t j = 0; j < d; j++ )
             {
@@ -1024,18 +1024,18 @@ void gsHTensorBasis<d,T>::unrefineToLevel(index_t targetLevel)
 }
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::unrefineToLevel_withTransfer(index_t targetLevel, gsSparseMatrix<T,RowMajor> & tran)
+void gsHTensorBasis<d,T>::unrefineToLevel_withTransfer(index_t minLevel, gsSparseMatrix<T,RowMajor> & tran)
 {
     typename gsHTensorBasis<d,T>::uPtr cp = this->clone();
-    this->unrefineToLevel(targetLevel);
+    this->unrefineToLevel(minLevel);
     cp->transfer(this->m_xmatrix,tran);
 }
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::unrefineToLevel_withCoefs(index_t targetLevel, gsMatrix<T> & coefs)
+void gsHTensorBasis<d,T>::unrefineToLevel_withCoefs(index_t minLevel, gsMatrix<T> & coefs)
 {
     gsSparseMatrix<T,RowMajor> transf;
-    this->unrefineToLevel_withTransfer(targetLevel,transf);
+    this->unrefineToLevel_withTransfer(minLevel,transf);
     typename gsSparseSolver<T>::QR solver(transf);
     coefs=solver.solve(coefs);
 }
@@ -1046,20 +1046,20 @@ void gsHTensorBasis<d,T>::unrefineFinestLevel()
     // Ensure that at least level 0 exists; unrefinement is defined relative to it.
     GISMO_ENSURE(!m_xmatrix.empty(), "unrefineFinestLevel expects at least level 0 to exist.");
 
-    index_t targetLevel = 0;
+    index_t minLevel = 0;
     // Find the finest (highest) non-empty level by iterating backwards over the levels.
     for (size_t levelIndex = m_xmatrix.size(); levelIndex > 0; --levelIndex)
     {
         if (m_xmatrix[levelIndex - 1].size())
         {
-            targetLevel = static_cast<index_t>(levelIndex - 1);
+            minLevel = static_cast<index_t>(levelIndex - 1);
             break;
         }
     }
-    if (targetLevel == 0)
+    if (minLevel == 0)
         return; // nothing to do
 
-    this->unrefineToLevel(targetLevel-1);
+    this->unrefineToLevel(minLevel-1);
 }
 
 template<short_t d, class T>

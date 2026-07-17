@@ -19,27 +19,17 @@
 
 namespace gismo {
 
+    // Primary init (topology/BC/conforming optional via defaults in header)
     TEMPLATE_INST void gsDofMapper::init(
-            const gsFunctionSet<real_t> & bases, index_t nComp);
-
-    TEMPLATE_INST void gsDofMapper::init(
-            const gsFunctionSet<real_t> & bases, 
-            const gsBoxTopology & topology, 
-            index_t nComp, 
-            int unk,
-            bool conforming);
+            const gsFunctionSet<real_t>         & bases,
+            index_t                               nComp,
+            bool                                  conforming,
+            const gsBoxTopology                 & topology,
+            const gsBoundaryConditions<real_t>  & bc,
+            int                                   unk);
 
     TEMPLATE_INST void gsDofMapper::init(
             std::vector<const gsFunctionSet<real_t> *> const & bases);
-
-    TEMPLATE_INST void gsDofMapper::init(
-            const gsFunctionSet<real_t>         &basis,
-            const gsBoxTopology                 &topology,
-            const gsBoundaryConditions<real_t>  &bc,
-            index_t nComp,
-            int unk,
-            bool conforming
-    );
 
     TEMPLATE_INST void gsDofMapper::init(
             const gsBasis<real_t>               &basis,

@@ -289,6 +289,10 @@ private:
 
 } // namespace gismo
 
+#ifdef GISMO_WITH_PYBIND11
+  void pybind11_init_gsGridHierarchy(pybind11::module &m);
+#endif
+
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsGridHierarchy.hpp)
 #endif

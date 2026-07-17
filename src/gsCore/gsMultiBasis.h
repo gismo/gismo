@@ -638,7 +638,7 @@ public:
     /**
      * @brief Constructs a gsDofMapper for the multi-basis.
      *
-     * @note Assumes a single-component solution and unk=0.
+     * @note Assumes unk=0. Use the full overload to specify a different unknown index.
      *
      * See the other overload of getMapper() for details.
      */

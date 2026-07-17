@@ -161,7 +161,7 @@ public:
     typedef gsEigen::ConjugateGradient<gsEigen::SparseMatrix<T,0,index_t>,
             gsEigen::Lower|gsEigen::Upper, gsEigen::DiagonalPreconditioner<T> > CGDiagonal;
 
-    /// Conjugate gradient with diagonal (Custom) preconditioner
+    /// Conjugate gradient with custom Gismo preconditioner (gsPreconditionerWrapper)
     typedef gsEigen::ConjugateGradient<gsEigen::SparseMatrix<T,0,index_t>,
             gsEigen::Lower|gsEigen::Upper, gsPreconditionerWrapper<T> > CGCustom;
 
