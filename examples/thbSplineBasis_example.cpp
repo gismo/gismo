@@ -51,8 +51,11 @@ int main(int argc, char *argv[])
 
     gsInfo << "basis before refinement:\n" << thb << std::endl;
 
-    // Export the initial basis to paraview files
-    gsWriteParaview(thb, "thb0_init" );
+    if (plot)
+    {
+        // Export the initial basis to paraview files
+        gsWriteParaview(thb, "thb0_init" );
+    }
 
     //! [refViaStdVec]
     std::vector<index_t> box;
@@ -65,8 +68,11 @@ int main(int argc, char *argv[])
     thb.refineElements(box);
     //! [refViaStdVec]
 
-    // Export the refined basis to paraview files
-    gsWriteParaview(thb, "thb_refined_first" );
+    if (plot)
+    {
+        // Export the refined basis to paraview files
+        gsWriteParaview(thb, "thb_refined_first" );
+    }
     gsInfo << "after refinement," << std::endl;
 
     //! [stdOpsCout]
@@ -175,7 +181,10 @@ int main(int argc, char *argv[])
     gsInfo << "after 2nd refinement, this basis is:\n" << thb << std::endl;
     //! [refViaStdVec2]
 
-    gsWriteParaview(thb, "thb_refined_second" );
+    if (plot)
+    {
+        gsWriteParaview(thb, "thb_refined_second" );
+    }
 
     boxSide side(1);
     gsMatrix<index_t> result = thb.boundaryOffset(1,0);
@@ -203,9 +212,12 @@ int main(int argc, char *argv[])
            << "  thb:  " << thb.size() << " functions, maxLevel = " << thb.maxLevel() << "\n"
            << "  thb2: " << thb2.size() << " functions, maxLevel = " << thb2.maxLevel() << "\n";
 
-    // Export before merge for visualization
-    gsWriteParaview(thb,  "thb_before_merge");
-    gsWriteParaview(thb2, "thb2_before_merge");
+    if (plot)
+    {
+        // Export before merge for visualization
+        gsWriteParaview(thb,  "thb_before_merge");
+        gsWriteParaview(thb2, "thb2_before_merge");
+    }
 
     // Merge thb2 into thb (mesh union)
     thb.merge(thb2);
@@ -213,14 +225,17 @@ int main(int argc, char *argv[])
     gsInfo << "After merge:\n"
            << "  merged: " << thb.size() << " functions, maxLevel = " << thb.maxLevel() << "\n";
 
-    gsWriteParaview(thb, "thb_after_merge");
+    if (plot)
+    {
+        gsWriteParaview(thb, "thb_after_merge");
+    }
 
     // --------------- plot basis after 1 refinement ---------------
     //! [Plot in Paraview]
     if( plot )
     {
         // Run paraview with the merged result
-        gsFileManager::open("thb_merged.pvd");
+        gsFileManager::open("thb_after_merge.pvd");
     }
     //! [Plot in Paraview]
     else
