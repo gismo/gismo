@@ -79,16 +79,15 @@ InterfaceSamples<T> sampleInterface(
     const bool tangentialFlipped = !interf.dirOrientation(ps1, tDir1);
 
     const T t1a = sup1(tDir1, 0), t1b = sup1(tDir1, 1);
-    const T t2a = sup2(tDir2, 0), t2b = sup2(tDir2, 1);
+    T t2a = sup2(tDir2, 0), t2b = sup2(tDir2, 1);
+    if (tangentialFlipped)
+        std::swap(t2a, t2b);
 
     gsVector<T> breaks1 = breaksOf(g1, tDir1);
     gsVector<T> breaks2 = breaksOf(g2, tDir2);
 
     // map the breakpoints to parameter domain of first patch
-    if (tangentialFlipped)
-        breaks2 = t1a + (breaks2.array() - t2b) / (t2a - t2b) * (t1b - t1a);
-    else
-        breaks2 = t1a + (breaks2.array() - t2a) / (t2b - t2a) * (t1b - t1a);
+    breaks2 = t1a + (breaks2.array() - t2a) / (t2b - t2a) * (t1b - t1a);
 
     std::set<T> merged(breaks1.begin(), breaks1.end());
     merged.insert(breaks2.begin(), breaks2.end());
@@ -102,12 +101,7 @@ InterfaceSamples<T> sampleInterface(
     rule.mapToAll(brk, nodes1, wts);
 
     gsMatrix<T> nodesNormalized = (nodes1.array() - t1a) / (t1b - t1a);
-
-    gsMatrix<T> nodes2;
-    if (tangentialFlipped)
-        nodes2 = t2b + nodesNormalized.array() * (t2a - t2b);
-    else
-        nodes2 = t2a + nodesNormalized.array() * (t2b - t2a);
+    gsMatrix<T> nodes2 = t2a + nodesNormalized.array() * (t2b - t2a);
 
     const index_t N = nodes1.cols();
     gsMatrix<T> pts1(2,N), pts2(2,N);
