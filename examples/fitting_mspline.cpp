@@ -58,6 +58,12 @@ namespace
         // Swirl patch filter:
         // --swirl-only-patches <p1,p2,...> : apply swirl only to these patches (whitelist)
         std::set<index_t> swirlOnlyPatches;
+
+        // Outer boundary wave:
+        // --boundary-wave-eps <val>  : sinusoidal amplitude on outer boundary sides (physical units)
+        // --boundary-wave-k <n>      : wave periods per outer boundary side (default 3)
+        real_t boundaryWaveEps = 0.0;
+        index_t boundaryWaveK = 3;
     };
 
     struct nonlinearOptions
@@ -1417,6 +1423,8 @@ namespace
         for (int i = 1; i < argc; ++i)
         {
             std::string arg = argv[i];
+            // Skip the value that follows -o / --output (it is the output path, not input).
+            if (arg == "-o" || arg == "--output") { ++i; continue; }
             if (endsWith(arg, ".xml") && gsFileManager::fileExists(arg))
                 return arg;
         }
@@ -1474,6 +1482,8 @@ int main(int argc, char* argv[])
     cmd.addReal("v", "focal-v", "Normalized [0,1] v-parameter of bell center (default -1 = control-net centroid).", nlo.focalV);
     cmd.addReal("f", "sfold-amplitude", "Peak S-fold displacement as fraction of patch radius (0 = disabled).", nlo.sfoldAmplitude);
     cmd.addReal("W", "sfold-half-width", "S-fold zone half-width as fraction of patch radius (default 0.15).", nlo.sfoldHalfWidth);
+    cmd.addReal("B", "boundary-wave-eps", "Sinusoidal wave amplitude on outer boundary sides (0 = disabled, physical units).", opt.boundaryWaveEps);
+    cmd.addInt("K", "boundary-wave-k", "Number of wave periods per outer boundary side (default 3).", opt.boundaryWaveK);
 
     // Pre-parse per-patch overrides before gsCmdLine sees them (it would fail on unknown args).
     //   --patch-det <p>:<val>       e.g. --patch-det 7:1e-5
@@ -1616,6 +1626,8 @@ int main(int argc, char* argv[])
     log << "focal-v: " << nlo.focalV << "\n";
     log << "sfold-amplitude: " << nlo.sfoldAmplitude << "\n";
     log << "sfold-half-width: " << nlo.sfoldHalfWidth << "\n";
+    log << "boundary-wave-eps: " << opt.boundaryWaveEps << "\n";
+    log << "boundary-wave-k: " << opt.boundaryWaveK << "\n";
     log << "sfold-allow-interface-patches: " << (opt.sfoldAllowInterfacePatches ? "true" : "false") << "\n";
     if (!opt.sfoldFlipPatches.empty())
     {
@@ -1744,29 +1756,85 @@ int main(int argc, char* argv[])
     if (refineAll > 0)
     {
         const index_t nPatches = static_cast<index_t>(newmp.nPatches());
-        log << "\nUniform refinement (--refine-all=" << refineAll
+        log << "\nTHB refinement (--refine-all=" << refineAll
             << "): applying to all " << nPatches << " patches\n";
-        gsInfo << "Uniform refinement: applying " << refineAll
+        gsInfo << "THB refinement: applying " << refineAll
                << " level(s) to all " << nPatches << " patches\n";
 
-        for (index_t p = 0; p < nPatches; ++p)
+        for (index_t r = 0; r < refineAll; ++r)
         {
-            const index_t sizeBefore = newmp.patch(p).basis().size();
-            for (index_t r = 0; r < refineAll; ++r)
+            // Build fresh multipatches patch-by-patch so the base knot vectors
+            // (stored in XML) remain [0,..,0,1,..,1] — no interior knots introduced.
+            // Strategy: extract tensor level at maxLevel, do standard tensor B-spline
+            // subdivision (uniformRefine_withCoefs — exact, no approximation), then
+            // wrap in a new THB with all cells at maxLevel+1.
+            gsMultiPatch<real_t> newmpFine;
+            gsMultiPatch<real_t> mpFine;
+
+            for (index_t p = 0; p < nPatches; ++p)
             {
-                newmp.patch(p).uniformRefine();
-                mp->patch(p).uniformRefine();
+                const index_t sizeBefore = newmp.patch(p).basis().size();
+
+                auto* thbN = dynamic_cast<gsTHBSplineBasis<2, real_t>*>(
+                    &newmp.patch(p).basis());
+                auto* thbM = dynamic_cast<gsTHBSplineBasis<2, real_t>*>(
+                    &mp->patch(p).basis());
+
+                if (thbN && thbM)
+                {
+                    const int    maxLvl = static_cast<int>(thbN->maxLevel());
+                    const int    newLvl = maxLvl + 1;
+                    const index_t gridSz = index_t(1) << newLvl;
+
+                    // Tensor B-spline refinement at current maxLevel (exact subdivision)
+                    gsTensorBSplineBasis<2, real_t> tensN = thbN->tensorLevel(maxLvl);
+                    gsMatrix<real_t> coefsN = newmp.patch(p).coefs();
+                    tensN.uniformRefine_withCoefs(coefsN, 1);
+
+                    gsTensorBSplineBasis<2, real_t> tensM = thbM->tensorLevel(maxLvl);
+                    gsMatrix<real_t> coefsM = mp->patch(p).coefs();
+                    tensM.uniformRefine_withCoefs(coefsM, 1);
+
+                    // New THB: single-element base (only 0 and 1 as knots),
+                    // all cells at newLvl.
+                    gsTHBSplineBasis<2, real_t> newThbN(thbN->tensorLevel(0));
+                    const std::vector<index_t> boxes = {
+                        index_t(newLvl), index_t(0), index_t(0), gridSz, gridSz};
+                    newThbN.refineElements(boxes);
+
+                    gsTHBSplineBasis<2, real_t> newThbM(thbM->tensorLevel(0));
+                    newThbM.refineElements(boxes);
+
+                    newmpFine.addPatch(gsTHBSpline<2, real_t>(newThbN, coefsN));
+                    mpFine.addPatch(gsTHBSpline<2, real_t>(newThbM, coefsM));
+
+                    const index_t sizeAfter = newmpFine.patch(p).basis().size();
+                    log << "  r=" << r << " patch " << p << ": basis size "
+                        << sizeBefore << " -> " << sizeAfter << "\n";
+                    gsInfo << "  r=" << r << " patch " << p << ": basis size "
+                           << sizeBefore << " -> " << sizeAfter << "\n";
+                }
+                else
+                {
+                    // Non-THB fallback (inserts interior knots — acceptable for tensor B-splines)
+                    gsGeometry<real_t>* clN = newmp.patch(p).clone().release();
+                    gsGeometry<real_t>* clM = mp->patch(p).clone().release();
+                    clN->uniformRefine();
+                    clM->uniformRefine();
+                    newmpFine.addPatch(typename gsGeometry<real_t>::uPtr(clN));
+                    mpFine.addPatch(typename gsGeometry<real_t>::uPtr(clM));
+                }
             }
-            const index_t sizeAfter = newmp.patch(p).basis().size();
-            log << "  patch " << p << ": basis size " << sizeBefore
-                << " -> " << sizeAfter << "\n";
-            gsInfo << "  patch " << p << ": basis size " << sizeBefore
-                   << " -> " << sizeAfter << "\n";
+
+            newmp.swap(newmpFine);
+            mp->swap(mpFine);
         }
 
         detectTopologyGeometrically(newmp);
+        detectTopologyGeometrically(*mp);
         enforceC0AcrossInterfaces(newmp);
-        log << "Topology re-detected and C0 enforced after uniform refinement.\n";
+        enforceC0AcrossInterfaces(*mp);
+        log << "Topology re-detected and C0 enforced after THB refinement.\n";
     }
 
     const bool hasNegativeAfterFitting =
@@ -2054,6 +2122,32 @@ int main(int argc, char* argv[])
 
     enforceC0AcrossInterfaces(newmp);
 
+    // ===== Phase 3: Outer boundary wave =====
+    // Applies a sinusoidal normal-direction wave to each outer boundary side.
+    // Skips corners (k=0 and k=n-1 are untouched), so no C0 gap at patch junctions.
+    // Gate hasBoundaryPointDrift below when this is active.
+    if (opt.boundaryWaveEps != 0.0)
+    {
+        log << "\n========== OUTER BOUNDARY WAVE (eps=" << opt.boundaryWaveEps
+            << ", k=" << opt.boundaryWaveK << ") ==========\n";
+        gsInfo << "Applying outer boundary wave, eps=" << opt.boundaryWaveEps
+               << ", k=" << opt.boundaryWaveK << "\n";
+
+        const gsBoxTopology::bContainer& bdrySides = newmp.boundaries();
+        for (size_t i = 0; i < bdrySides.size(); ++i)
+        {
+            const patchSide& ps = bdrySides[i];
+            applyWaveToBoundaryControlPoints(newmp.patch(ps.patch), ps.side(),
+                                             opt.boundaryWaveEps,
+                                             static_cast<index_t>(opt.boundaryWaveK));
+            log << "  patch " << ps.patch << " side " << ps.side().index() << "\n";
+            gsInfo << "  patch " << ps.patch << " side " << ps.side().index() << "\n";
+        }
+
+        runMirrorAwareJacobianCheck(*mp, newmp, opt.fitGrid, opt.detThreshold,
+                                    "after boundary wave", log, true);
+    }
+
     real_t finalMaxC0Gap = 0;
     index_t finalViolatingInterfaces = 0;
     const bool finalC0Broken = hasC0Violation(newmp, kFinalC0Tolerance,
@@ -2071,12 +2165,17 @@ int main(int argc, char* argv[])
     log << "Boundary-point drift check: max drift=" << finalMaxBoundaryDrift
         << ", moved boundary points=" << finalMovedBoundaryCount
         << ", tolerance=" << kFinalC0Tolerance << "\n";
-    if (boundaryPointsMoved)
+    if (boundaryPointsMoved && opt.boundaryWaveEps == 0.0)
     {
         log << "Result rejected: boundary control points were modified.\n";
         gsInfo << "Result rejected: boundary control points were modified"
                << " (max drift=" << finalMaxBoundaryDrift << ").\n";
         return EXIT_FAILURE;
+    }
+    if (boundaryPointsMoved && opt.boundaryWaveEps != 0.0)
+    {
+        log << "Boundary drift noted (expected: boundary wave was applied, max drift="
+            << finalMaxBoundaryDrift << ").\n";
     }
     if (finalC0Broken)
     {

@@ -13,7 +13,7 @@ Last updated: 2026-07-09
 |---|---|---|---|---|
 | 1 | ε tolerance variation | Hexagon with wiggly boundary | 3 | **geometry missing** |
 | 2 | Projection stage: LS / LO / NLO | `mask_L3_PatchOnly689_noR.xml` | 3 | **ready — rebuild required** |
-| 3 | λ locality parameter | mask (existing) + joystick (new) | 6 | **ready — rebuild required** |
+| 3 | λ locality parameter | mask (existing) + joystick (new) | 6 | **global + λ=0 done; λ=1,2 pending** |
 | 4 | Cell selection: Grenda vs lex | `joystick_approximation_fine_L3_NLO.xml` | 2 | **DONE** |
 
 **Binary state:** Commit `2c926d01` (2026-07-09) changed default algorithm behaviour (Case 3 removed). Binary must be rebuilt before running Classes 2 and 3.
@@ -24,25 +24,34 @@ Last updated: 2026-07-09
 
 **Purpose:** Show how tightening ε_g, ε_f, and the feature set F controls the tradeoff between DoF reduction and approximation quality.
 
-**Geometry needed:** Hexagon with wiggly boundary — does not exist yet. Must be created in `fitting_mspline.cpp` or as a hand-crafted XML. The wiggly boundary is essential to stress ε_f and F simultaneously; a smooth boundary makes the two indistinguishable.
+**Geometry:** `filedata/generatedMPs/hexagon_wiggly.xml` — **CREATED 2026-07-21**.
+- Base: `hexagon_3p_4l.xml` (3-patch, level-4 THB-spline, degree 1, circumradius 1)
+- Distortion: outer boundary wave, eps=0.03, k=5 periods per side, no interior radial distortion
+- Min det J after distortion: 0.14 (healthy margin)
+- Created by `fitting_mspline.cpp` with `--boundary-wave-eps 0.03 --boundary-wave-k 5 -a 0`
+- Wave k=5 is above level-3 Nyquist (max k=4 for 8 cells), so level-3 coarsening aliases the wave.
+  Feature error per boundary-cell removal ≈ 0.03 (wave amplitude).
 
-**Proposed runs:**
+**Runs (ε_f calibrated to wave amplitude 0.03):**
 
-| Run | ε_g | ε_f | F | Expected effect |
-|---|---|---|---|---|
-| 1a | 0.10 | 0.10 | full boundary | Tight: few coarsenings accepted |
-| 1b | 0.30 | 0.10 | full boundary | Medium: baseline |
-| 1c | 0.30 | 0.30 | interior only | Loose on feature: more accepted at boundary |
+| Run | ε_g | ε_f | Expected effect |
+|---|---|---|---|
+| 1a tight | 0.10 | 0.020 | ε_f < amplitude → boundary cells rejected |
+| 1b medium | 0.10 | 0.030 | ε_f ≈ amplitude → boundary at threshold |
+| 1c loose_f | 0.10 | 0.050 | ε_f > amplitude → boundary cells accepted |
+
+**Note:** ε_g = 0.10 is intentionally loose (interior has no radial distortion; interior coarsenings
+produce small errors). The contrast across runs comes from ε_f only. If ε_g also turns out to be
+never binding, a follow-up run with tighter ε_g (e.g. 0.005) can reveal the global-error axis.
 
 **Flags:**
 ```
 --epsilon-g <value> --epsilon-f <value>
 ```
-Feature set F is encoded in the geometry (which interfaces are marked as feature). Varying F may require a geometry variant with different feature markings.
+Feature set F = full outer boundary (default). Toggling F to interior-only requires either a flag
+(check poissonTHB_example) or a second geometry variant — deferred.
 
-**Missing before running:**
-- Hexagon geometry XML
-- Clarify whether F can be toggled by flag or requires geometry variants
+**Status: READY**
 
 ---
 
@@ -78,17 +87,32 @@ Feature set F is encoded in the geometry (which interfaces are marked as feature
 
 **Cell method:** Grenda (`g`) — default, no flag needed.
 
-**Joystick runs (new — to be executed):**
+**Joystick runs:**
 
-| Run | Command |
-|---|---|
-| 3a | `poissonTHB_example.exe --local-fitting --lambda 0 filedata/generatedMPs/joystick_approximation_fine_L3_NLO.xml` |
-| 3b | `poissonTHB_example.exe --local-fitting --lambda 1 filedata/generatedMPs/joystick_approximation_fine_L3_NLO.xml` |
-| 3c | `poissonTHB_example.exe --local-fitting --lambda 2 filedata/generatedMPs/joystick_approximation_fine_L3_NLO.xml` |
+| Run | Command | Status | Archive |
+|---|---|---|---|
+| global (baseline) | `poissonTHB_example.exe filedata/generatedMPs/joystick_approximation_fine_L3_NLO.xml` | **DONE** | `Dokumentierung/2026-07-09_joystick_global/` |
+| 3a λ=0 | `poissonTHB_example.exe --local-fitting --lambda 0 filedata/generatedMPs/joystick_approximation_fine_L3_NLO.xml` | **DONE** | `Dokumentierung/2026-07-09_joystick_local_lambda0/` |
+| 3b λ=1 | `poissonTHB_example.exe --local-fitting --lambda 1 filedata/generatedMPs/joystick_approximation_fine_L3_NLO.xml` | pending | — |
+| 3c λ=2 | `poissonTHB_example.exe --local-fitting --lambda 2 filedata/generatedMPs/joystick_approximation_fine_L3_NLO.xml` | pending | — |
 
 Note: `--lambda` takes its value as the next argument (space-separated), not with `=`.
 
-**Baseline for comparison:** The Grenda baseline run without `--local-fitting` is archived in `Dokumentierung/2026-07-06_grenda_joystick_baseline/`. Use that as the global-fitting reference for the joystick.
+**Global baseline result (2026-07-09 12:33, commit 2c926d01):**
+42/42 accepted, final DoF = **348**, time = **194.23 s**, minusnumber = 0 throughout.
+FIT stage sufficient — no LO or NLO events. Archived in `Dokumentierung/2026-07-09_joystick_global/`.
+
+**Local λ=0 result (2026-07-09 16:49, commit 2c926d01):**
+42/42 accepted, final DoF = **348**, time = **193.11 s**. Mean basisSelected = **48.9 %** (range 6.3–97.8 %).
+Genuinely local — joystick's 30 patches give real spatial separation at λ=0. Identical acceptance
+decisions and final DoF as global; slight error differences at level 2 (local residual ≠ global, but
+within tolerance). Archived in `Dokumentierung/2026-07-09_joystick_local_lambda0/`.
+
+**Prior Grenda baselines (epsilon-constrained — for reference only):**
+- `Dokumentierung/2026-07-06_grenda_joystick_baseline/`: 25/25 accepted, 585 DoF, 265.8 s (epsilon_g=-1.0 old default blocked level-0)
+- `Dokumentierung/2026-07-07_grenda_lex_comparison/grenda/`: 25/25 accepted, 585 DoF, 159.2 s (`--epsilon-g 0.30 --epsilon-f 0.10` blocks level-0)
+
+**Important:** The global reference for Class 3 is `2026-07-09_joystick_global` (unconstrained, new binary). The older baselines are NOT comparable because they used epsilon constraints that blocked level-0 cells.
 
 ---
 
@@ -112,7 +136,8 @@ Note: `--lambda` takes its value as the next argument (space-separated), not wit
 | Hexagon with wiggly boundary (XML) | Class 1 | Not created |
 | Feature set F toggling | Class 1 | May need code change or geometry variant |
 | Re-confirm 8 LO + 3 NLO on current binary | Class 2 | Run 2c first |
-| Joystick λ=0, 1, 2 runs | Class 3 | Not yet run |
+| Joystick global baseline | Class 3 | **DONE** — `Dokumentierung/2026-07-09_joystick_global/` |
+| Joystick λ=0, 1, 2 runs | Class 3 | Pending (global baseline done) |
 
 ---
 
