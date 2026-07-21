@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <gsUtils/gsCombinatorics.h>
+
 namespace gismo {
 
 template<typename T>
@@ -195,79 +197,109 @@ void gsQuasiInterpolate<T>::Taylor(const gsBasis<T> &bb, const gsFunction<T> &fu
 }
 
 template<typename T>
-gsMatrix<T> gsQuasiInterpolate<T>::localTaylor(const gsBasis<T> &bb,
+index_t gsQuasiInterpolate<T>::derivRow(const gsVector<index_t> &alpha, short_t d, index_t comp)
+{
+    const index_t m = alpha.sum(); // total derivative order
+    if (0==m) // value
+        return comp;
+
+    if (1==m) // first derivatives: [d_0, d_1, ..., d_{d-1}]
+    {
+        for (short_t dir = 0; dir!=d; ++dir)
+            if (1==alpha[dir]) return comp*d + dir;
+        GISMO_ERROR("Invalid multi-index");
+    }
+
+    if (2==m) // second derivatives: pure [d_00,..,d_{d-1,d-1}] then mixed d_ab (a<b) lex.
+    {
+        const index_t str = d*(d+1)/2; // block size per component
+        for (short_t dir = 0; dir!=d; ++dir)
+            if (2==alpha[dir]) return comp*str + dir; // pure
+        // mixed: find the two directions a<b with alpha==1 and their lex. pair index
+        index_t pair = 0;
+        for (short_t a = 0; a!=d; ++a)
+            for (short_t b = a+1; b!=d; ++b, ++pair)
+                if (1==alpha[a] && 1==alpha[b])
+                    return comp*str + d + pair;
+        GISMO_ERROR("Invalid multi-index");
+    }
+
+    // m>=3 : composition (lexicographic) order, see nextComposition
+    const index_t str = numCompositions(m, d); // block size per component
+    gsVector<index_t> comp_it;
+    firstComposition(m, d, comp_it);
+    index_t pos = 0;
+    do
+    {
+        if (comp_it==alpha) return comp*str + pos;
+        ++pos;
+    } while (nextComposition(comp_it));
+    GISMO_ERROR("Invalid multi-index");
+}
+
+template<typename T>
+template<short_t d>
+gsMatrix<T> gsQuasiInterpolate<T>::localTaylor(const gsTensorBSplineBasis<d,T> &b,
                                               const gsFunction<T> &fun,
                                               const int &r,
-                                              index_t j,
-                                              index_t lvl)
+                                              index_t j)
 {
-    // Do it dimension independent????????
-    const gsTensorBSplineBasis<2,T>* b = dynamic_cast<const gsTensorBSplineBasis<2,T>* >(&bb); // 2D 
+    const index_t dim = fun.targetDim();
 
-    const gsKnotVector<T> & kv0 = b->knots(0);
-    const gsKnotVector<T> & kv1 = b->knots(1);
-    int deg0 = b->degree(0);
-    int deg1 = b->degree(1);
-
-    gsMatrix<T> xj0 = b->component(0).anchors();
-    gsMatrix<T> xj1 = b->component(1).anchors();
-
-    int n = b->size();
-    int dim = fun.targetDim();
-
-    std::vector<gsMatrix<T> > derivs;
-    fun.evalAllDers_into(b->anchors(), r, derivs);
-
-    gsMatrix<T> val;
-    std::vector<T> knots0;
-    std::vector<T> knots1;
-    gsVector<index_t,2> jj;
-    T factor2;
-    const index_t str = dim + dim*(dim-1)/2;
-
-    jj = b->tensorIndex(j);
-
-    val.setZero(1,dim);
-    knots0.clear();
-    knots1.clear();
-
-    for(int q=jj[0]+1; q<=jj[0]+deg0; q++)
-        knots0.push_back(kv0[q]);
-    
-    for(int qq=jj[1]+1; qq<=jj[1]+deg1; qq++)
-        knots1.push_back(kv1[qq]);
-    
-    for(int k0=0; k0<=r; k0++) // loop over x direction!
+    // Per-direction data: degree, the deg roots of rho_j, the anchor x_j
+    // and the maximal derivative order used in that direction.
+    const gsVector<index_t,d> jj = b.tensorIndex(j);
+    gsVector<index_t,d> deg, rdir;
+    std::vector<std::vector<T> > knots(d);
+    gsMatrix<T> point(d,1);
+    for (short_t dir = 0; dir!=d; ++dir)
     {
-        const T factor1_0 = derivProd(knots0, deg0-k0, xj0(jj[0])); //
-        
-        for(int k1=0; k1<=r; k1++) // loop over y direction!
-        {
-            const T factor1_1 = derivProd(knots1, deg1-k1, xj1(jj[1])); 
-            
-            for (int i = 0; i < dim; i++)
-            {
-                if (2==k0)
-                    factor2 = derivs[2]( i*str, j );
-                else if (2==k1)
-                    factor2 = derivs[2]( i*str+1, j );
-                else if (2==k0+k1)
-                    factor2 = derivs[2]( i*str+dim, j );
-                else if(1==k0+k1)
-                    factor2 = derivs[1]( i*dim+k1, j );
-                else if(0==k0+k1)
-                    factor2 = derivs[0]( i, j );
-                else
-                    GISMO_ERROR("deg<=2");
-
-                val(i) += std::pow(-1.0,k0) * std::pow(-1.0,k1) * factor1_0 * factor1_1 * factor2;
-            }
-            
-        }
-
+        deg[dir]  = b.degree(dir);
+        rdir[dir] = math::min(r, static_cast<int>(deg[dir])); // r <= p per direction
+        const gsKnotVector<T> & kv = b.knots(dir);
+        for (index_t q = jj[dir]+1; q<=jj[dir]+deg[dir]; ++q)
+            knots[dir].push_back(kv[q]);
+        point(dir,0) = b.component(dir).anchors()(0, jj[dir]);
     }
-        
-    val /= factorial(deg0)*factorial(deg1);
+
+    // Mixed partials of the target function up to the max total order needed
+    // (sum of the per-direction orders), evaluated once at the single anchor
+    // point x_j. Note: this requires \a fun to provide derivatives up to that
+    // order. Tensor B-spline (and hierarchical) geometries do (see
+    // gsTensorBasis::evalAllDers_into, which handles arbitrary order); an
+    // analytic gsFunctionExpr is limited to order 2, hence usable here only when
+    // the total order does not exceed 2.
+    const index_t maxOrder = rdir.sum();
+    std::vector<gsMatrix<T> > derivs;
+    fun.evalAllDers_into(point, maxOrder, derivs);
+
+    // Tensor product of the univariate Taylor QIs: sum over the derivative
+    // multi-index k, with 0 <= k[dir] <= rdir[dir]. nextLexicographic uses an
+    // exclusive upper bound, hence rdir+1.
+    const gsVector<index_t,d> bound = rdir + gsVector<index_t,d>::Ones();
+    gsMatrix<T> val;
+    val.setZero(1,dim);
+    gsVector<index_t,d> k = gsVector<index_t,d>::Zero();
+    do
+    {
+        const index_t order = k.sum();
+
+        T factor1 = (T)1;
+        for (short_t dir = 0; dir!=d; ++dir)
+            factor1 *= derivProd(knots[dir], deg[dir]-k[dir], point(dir,0));
+
+        const T sign = (0==(order%2)) ? (T)1 : (T)(-1);
+        for (index_t i = 0; i!=dim; ++i)
+        {
+            const T factor2 = derivs[order]( derivRow(k, d, i), 0 );
+            val(i) += sign * factor1 * factor2;
+        }
+    } while ( nextLexicographic(k, bound) );
+
+    T denom = (T)1;
+    for (short_t dir = 0; dir!=d; ++dir)
+        denom *= factorial(deg[dir]);
+    val /= denom;
     return val;
 }
 
@@ -280,7 +312,7 @@ gsMatrix<T> gsQuasiInterpolate<T>::localTaylor(const gsHTensorBasis<d,T> &bb,
 {
     index_t lvl = bb.levelOf(i);
     index_t j = bb.flatTensorIndexOf(i);
-    return localTaylor(bb.tensorLevel(lvl),fun,r,j,lvl); // uses the H-grid element implementation
+    return localTaylor<d>(bb.tensorLevel(lvl),fun,r,j); // uses the H-grid element implementation
 }
 
 template<typename T>
@@ -289,8 +321,7 @@ gsMatrix<T> gsQuasiInterpolate<T>::localTaylor(const gsBasis<T> &bb,
                                               const int &r,
                                               index_t i)
 {
-    // const gsHTensorBasis<2,T>* b = dynamic_cast<const gsHTensorBasis<2,T>* >(&bb);
-    // return localTaylor(*b,fun,r, i); 
+    // Hierarchical tensor bases: dispatch on the parameter dimension.
     if (const gsHTensorBasis<1,T>* b = dynamic_cast<const gsHTensorBasis<1,T>* >(&bb))
         return localTaylor(*b,fun,r,i);
     if (const gsHTensorBasis<2,T>* b = dynamic_cast<const gsHTensorBasis<2,T>* >(&bb))
@@ -299,8 +330,16 @@ gsMatrix<T> gsQuasiInterpolate<T>::localTaylor(const gsBasis<T> &bb,
         return localTaylor(*b,fun,r,i);
     if (const gsHTensorBasis<4,T>* b = dynamic_cast<const gsHTensorBasis<4,T>* >(&bb))
         return localTaylor(*b,fun,r,i);
-    else
-        return localTaylor(bb,fun,r,i);
+    // Plain tensor B-spline bases: dispatch on the parameter dimension.
+    if (const gsTensorBSplineBasis<1,T>* b = dynamic_cast<const gsTensorBSplineBasis<1,T>* >(&bb))
+        return localTaylor<1>(*b,fun,r,i);
+    if (const gsTensorBSplineBasis<2,T>* b = dynamic_cast<const gsTensorBSplineBasis<2,T>* >(&bb))
+        return localTaylor<2>(*b,fun,r,i);
+    if (const gsTensorBSplineBasis<3,T>* b = dynamic_cast<const gsTensorBSplineBasis<3,T>* >(&bb))
+        return localTaylor<3>(*b,fun,r,i);
+    if (const gsTensorBSplineBasis<4,T>* b = dynamic_cast<const gsTensorBSplineBasis<4,T>* >(&bb))
+        return localTaylor<4>(*b,fun,r,i);
+    GISMO_ERROR("localTaylor: unsupported basis type/dimension");
 }
 
 
@@ -328,78 +367,10 @@ void gsQuasiInterpolate<T>::localTaylor(const gsBasis<T> &b,
 template<typename T>
 void gsQuasiInterpolate<T>::Taylor2D(const gsBasis<T> &bb, const gsFunction<T> &fun, const int &r, gsMatrix<T> & coefs)
 {
-    const gsTensorBSplineBasis<2,T>* b = dynamic_cast<const gsTensorBSplineBasis<2,T>* >(&bb); // 2D 
-
-    const gsKnotVector<T> & kv0 = b->knots(0);
-    const gsKnotVector<T> & kv1 = b->knots(1);
-    int deg0 = b -> degree(0);
-    int deg1 = b -> degree(1);
-
-    gsMatrix<T> xj0 = b->component(0).anchors();
-    gsMatrix<T> xj1 = b->component(1).anchors();
-
-    int n = b -> size();
-    int dim = fun.targetDim();
-    coefs.resize(n,dim);
-
-    std::vector<gsMatrix<T> > derivs;
-    fun.evalAllDers_into(b->anchors(), r, derivs);
-
-    gsMatrix<T> val;
-    std::vector<T> knots0;
-    std::vector<T> knots1;
-    gsVector<index_t,2> jj;
-    T factor2;
-    const index_t str = dim + dim*(dim-1)/2;
-
-    for(int j=0; j<n; j++)
-    {
-        jj = b->tensorIndex(j);
-
-        val.setZero(1,dim);
-        knots0.clear();
-        knots1.clear();
-
-        for(int q=jj[0]+1; q<=jj[0]+deg0; q++)
-            knots0.push_back(kv0[q]);
-        
-        for(int qq=jj[1]+1; qq<=jj[1]+deg1; qq++)
-            knots1.push_back(kv1[qq]);
-        
-        for(int k0=0; k0<=r; k0++) // loop over x direction!
-        {
-            const T factor1_0 = derivProd(knots0, deg0-k0, xj0(jj[0])); //
-            
-            for(int k1=0; k1<=r; k1++) // loop over y direction!
-            {
-                const T factor1_1 = derivProd(knots1, deg1-k1, xj1(jj[1])); 
-                
-                for (int i = 0; i < dim; i++)
-                {
-                    if (2==k0)
-                        factor2 = derivs[2]( i*str, j );
-                    else if (2==k1)
-                        factor2 = derivs[2]( i*str+1, j );
-                    else if (2==k0+k1)
-                        factor2 = derivs[2]( i*str+dim, j );
-                    else if(1==k0+k1)
-                        factor2 = derivs[1]( i*dim+k1, j );
-                    else if(0==k0+k1)
-                        factor2 = derivs[0]( i, j );
-                    else
-                        GISMO_ERROR("deg<=2");
-
-                    val(i) += std::pow(-1.0,k0) * std::pow(-1.0,k1) * factor1_0 * factor1_1 * factor2;
-                }
-                
-            }
-
-        }
-        
-        val /= factorial(deg0)*factorial(deg1);
-        coefs.row(j) = val;
-    }
-
+    // Superseded by the dimension-independent localTaylor. Kept for API
+    // compatibility; delegates to the general per-coefficient Taylor QI (which
+    // also fixes the old 2D aliasing and targetDim-stride bugs).
+    localTaylor(bb, fun, r, coefs);
 }
 
 template<typename T> gsMatrix<T>

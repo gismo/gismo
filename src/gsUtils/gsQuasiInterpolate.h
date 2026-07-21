@@ -74,11 +74,15 @@ struct gsQuasiInterpolate
                            const gsFunction<T> &fun,
                            gsMatrix<T> &result);
     
-    static gsMatrix<T> localTaylor(const gsBasis<T> &b,
+    /// \brief Dimension-independent per-coefficient Taylor QI on a
+    /// tensor B-spline basis. Computes the \a j-th coefficient as the
+    /// tensor product of the univariate Taylor quasi-interpolants (see
+    /// \ref Taylor). \tparam d is the parameter-domain dimension.
+    template<short_t d>
+    static gsMatrix<T> localTaylor(const gsTensorBSplineBasis<d,T> &b,
                                   const gsFunction<T> &fun,
                                   const int &r,
-                                  index_t i,
-                                  index_t lvl);
+                                  index_t j);
 
     static gsMatrix<T> localTaylor(const gsBasis<T> &b,
                                 const gsFunction<T>  &fun,
@@ -248,6 +252,29 @@ protected:
      * @return      the value of the derivative, at the given point, \f$D^\alpha g(x)\f$, where \f$\alpha\f$ is the given order.
      */
     static T derivProd(const std::vector<T> &zeros, const int &order, const T &x);
+
+
+    /**
+     * @brief Row index, within \c derivs[|alpha|] of \ref
+     * gsFunctionSet::evalAllDers_into, of the mixed partial derivative
+     * \f$ \partial^\alpha f^{(comp)} \f$ for a function of domain
+     * dimension \a d.
+     *
+     * Encodes the packing convention of \c evalAllDers_into: per target
+     * component the block holds, for order \f$m=|\alpha|\f$: the value
+     * (m=0); the first derivatives \f$\partial_0,\dots,\partial_{d-1}\f$
+     * (m=1); for m=2 the pure second derivatives
+     * \f$\partial_{00},\dots,\partial_{d-1,d-1}\f$ first, then the mixed
+     * ones \f$\partial_{ab}\f$ (a<b) in lexicographic order; and for
+     * \f$m\ge 3\f$ the derivatives in composition (lexicographic) order,
+     * see \ref nextComposition.
+     *
+     * @param alpha per-direction derivative orders (size \a d)
+     * @param d     domain dimension
+     * @param comp  target component index
+     * @return      the row of \f$\partial^\alpha f^{(comp)}\f$
+     */
+    static index_t derivRow(const gsVector<index_t> &alpha, short_t d, index_t comp);
 
 
     /**
