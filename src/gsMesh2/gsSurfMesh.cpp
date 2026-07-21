@@ -844,6 +844,47 @@ display_halfedge()
     }
 }
 
+gsSurfMesh gsSurfMesh::
+flip_orientation()
+{
+
+    // Build flipped face connectivity
+    std::vector<std::vector<Vertex>> F;
+    F.reserve(n_faces());
+
+    std::vector<Vertex> face;
+
+    for (auto fit : faces())
+    {
+        face.clear();
+        for (auto fv : vertices(fit))
+            face.push_back(fv);
+
+        // Flip orientation (reverse vertices in the face)
+        std::reverse(face.begin() + 1, face.end());
+
+        F.push_back(face);
+    }
+
+    // Reconstruct the mesh
+     gsSurfMesh out;
+     for (auto vit : vertices())
+     {
+         out.add_vertex(position(vit));
+     }   
+     for (auto vec : F)
+     {
+         out.add_face(vec);
+     }
+
+    //////// Recompute normals
+    out.update_face_normals();
+    //out.update_vertex_normals();
+
+    return out;
+}
+
+
 void gsSurfMesh::polyhedral_modification_boundary()
 {
     // Current implementation only for regular boundary (vertex valence = 3) and 

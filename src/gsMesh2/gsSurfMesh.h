@@ -1221,6 +1221,20 @@ public:
     inline Halfedge backward_halfedge(gsSurfMesh::Halfedge he) const
     { return prev_halfedge(opposite_halfedge(prev_halfedge(he))); }
 
+    inline Halfedge ccw_rotated_halfedge(Halfedge h, int r) const
+    {
+        for (int k = 0; k < r; k++)
+            h = ccw_rotated_halfedge(h);
+        return h;
+    }
+
+    inline Halfedge cw_rotated_halfedge(Halfedge h, int r) const
+    {
+        for (int k = 0; k < r; k++)
+            h = cw_rotated_halfedge(h);
+        return h;
+    }
+
     inline Halfedge forward_halfedge(gsSurfMesh::Halfedge he, int r) const
     { 
         for (int k = 0; k < r; k++) 
@@ -1716,6 +1730,9 @@ public:
     /// close to vertices not on vertices, to be shown on face.
     void display_halfedge();
 
+
+    /// Flips halfedge orientation i.e., if it is CW, becomes CCW.
+    gsSurfMesh flip_orientation();
 
 public:  // mesh operations related to subdivision schemes
 
