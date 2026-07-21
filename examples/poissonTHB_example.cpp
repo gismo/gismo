@@ -486,6 +486,196 @@ public:
         }
     }
 
+    /// Batch Jacobian assembly for one patch using fastDeriv_into.
+    /// Replaces N×evalDerivSingleOnPatch calls with one fastDeriv_into + a map lookup.
+    /// activeFuncs: global MPBES function indices active on this patch.
+    /// Returns J00,J01,J10,J11 each of size (1 × M).
+    void jacContribOnPatch(
+        index_t patch,
+        const gsMatrix<T>& u,
+        const gsMatrix<T>& vectSol,
+        const std::vector<index_t>& activeFuncs,
+        gsMatrix<T>& J00, gsMatrix<T>& J01,
+        gsMatrix<T>& J10, gsMatrix<T>& J11) const
+    {
+        const index_t M = u.cols();
+        J00.setZero(1, M); J01.setZero(1, M);
+        J10.setZero(1, M); J11.setZero(1, M);
+
+        // --- Build THB-index → (cx,cy) map for non-truncated components ---
+        // Truncated components (twins) are accumulated separately via evalDerivSingleOnPatch.
+        std::unordered_map<index_t, std::pair<T,T>> thbCoeffMap;
+        thbCoeffMap.reserve(activeFuncs.size());
+
+        gsMatrix<T> bd;
+        for (index_t f : activeFuncs) {
+            if (f >= static_cast<index_t>(vectSol.rows()) || vectSol.cols() < 2) continue;
+            const T cx = vectSol(f, 0), cy = vectSol(f, 1);
+            if (!std::isfinite(cx) || !std::isfinite(cy)) continue;
+            if (f >= static_cast<index_t>(m_functionDescription.size())) continue;
+
+            int compIdx = 0;
+            for (const auto& twin : m_functionDescription[f]) {
+                if (twin.size() < 3 || twin[0] != static_cast<int>(patch)) { ++compIdx; continue; }
+                const int level = twin[1], tensorIdx = twin[2];
+                if (level < 0 || tensorIdx < 0) { ++compIdx; continue; }
+
+                if (isComponentTruncated(f, compIdx)) {
+                    // Truncated twin: fall back to per-function path
+                    evalDerivSingleOnPatch(f, patch, u, bd);
+                    J00 += cx * bd.row(0);  J01 += cx * bd.row(1);
+                    J10 += cy * bd.row(0);  J11 += cy * bd.row(1);
+                } else {
+                    // Non-truncated: record the THB index this function maps to
+                    if (patch < static_cast<index_t>(m_indexInTHB.size()) &&
+                        level < static_cast<index_t>(m_indexInTHB[patch].size()) &&
+                        tensorIdx < static_cast<index_t>(m_indexInTHB[patch][level].size())) {
+                        const index_t thbIdx = m_indexInTHB[patch][level][tensorIdx];
+                        if (thbIdx >= 0)
+                            thbCoeffMap[thbIdx] = {cx, cy};
+                    }
+                }
+                ++compIdx;
+            }
+        }
+
+        if (thbCoeffMap.empty()) return;
+
+        // --- One fastDeriv_into call for all non-truncated contributions ---
+        gsMatrix<index_t> activeIdx;
+        m_thbBases[patch].active_into(u, activeIdx);          // (numAct × M)
+        gsMatrix<T> thbDeriv;
+        m_thbBases[patch].fastDeriv_into(u, thbDeriv);        // (numAct*d × M)
+        const index_t numAct = activeIdx.rows();
+
+        for (index_t pt = 0; pt < M; ++pt) {
+            for (index_t ind = 0; ind < numAct; ++ind) {
+                const index_t thbIdx = activeIdx(ind, pt);
+                if (ind != 0 && thbIdx == 0) break;           // trailing zero sentinel
+                auto it = thbCoeffMap.find(thbIdx);
+                if (it == thbCoeffMap.end()) continue;
+                const T cx = it->second.first, cy = it->second.second;
+                const T du = thbDeriv(ind * d,     pt);
+                const T dv = thbDeriv(ind * d + 1, pt);
+                J00(0, pt) += cx * du;  J01(0, pt) += cx * dv;
+                J10(0, pt) += cy * du;  J11(0, pt) += cy * dv;
+            }
+        }
+    }
+
+    /// Batch-evaluate FULL geometry (all MPBES functions) on a patch at given UV points.
+    /// geomOut is sized (M × 2) and filled by this method.
+    void evalGeomOnPatch(
+        index_t patch,
+        const gsMatrix<T>& u,           // 2 × M
+        const gsMatrix<T>& vectSol,
+        gsMatrix<T>& geomOut) const     // M × 2, zeroed and filled here
+    {
+        const index_t M = u.cols();
+        geomOut.setZero(M, 2);
+
+        // Build THB-index → (cx,cy) map for non-truncated components on this patch.
+        // Truncated components are evaluated in batch via evalSingleOnPatch (all M pts in one call).
+        std::unordered_map<index_t, std::pair<T,T>> thbCoeffMap;
+        thbCoeffMap.reserve(static_cast<size_t>(m_functionDescription.size() / 10 + 16));
+
+        gsMatrix<T> bv;
+        const index_t nf = std::min<index_t>(
+            static_cast<index_t>(m_functionDescription.size()), vectSol.rows());
+        for (index_t f = 0; f < nf; ++f) {
+            if (vectSol.cols() < 2) continue;
+            const T cx = vectSol(f, 0), cy = vectSol(f, 1);
+
+            int compIdx = 0;
+            for (const auto& twin : m_functionDescription[f]) {
+                if (twin.size() < 3 || twin[0] != static_cast<int>(patch)) { ++compIdx; continue; }
+                const int level = twin[1], tensorIdx = twin[2];
+                if (level < 0 || tensorIdx < 0) { ++compIdx; continue; }
+
+                if (isComponentTruncated(f, compIdx)) {
+                    // Truncated: one batch call for all M points
+                    evalSingleOnPatch(f, patch, u, bv, false);
+                    if (bv.rows() >= 1 && bv.cols() == M) {
+                        for (index_t pt = 0; pt < M; ++pt) {
+                            const T val = bv(0, pt);
+                            if (val == T(0)) continue;
+                            geomOut(pt, 0) += val * cx;
+                            geomOut(pt, 1) += val * cy;
+                        }
+                    }
+                } else {
+                    if (patch < static_cast<index_t>(m_indexInTHB.size()) &&
+                        level < static_cast<index_t>(m_indexInTHB[patch].size()) &&
+                        tensorIdx < static_cast<index_t>(m_indexInTHB[patch][level].size())) {
+                        const index_t thbIdx = m_indexInTHB[patch][level][tensorIdx];
+                        if (thbIdx >= 0)
+                            thbCoeffMap[thbIdx] = {cx, cy};
+                    }
+                }
+                ++compIdx;
+            }
+        }
+
+        if (thbCoeffMap.empty()) return;
+
+        // One active_into + eval_into call covers all non-truncated contributions
+        gsMatrix<index_t> activeIdx;
+        m_thbBases[patch].active_into(u, activeIdx);   // numAct × M
+        gsMatrix<T> thbVals;
+        m_thbBases[patch].eval_into(u, thbVals);       // numAct × M
+        const index_t numAct = activeIdx.rows();
+
+        for (index_t pt = 0; pt < M; ++pt) {
+            for (index_t ind = 0; ind < numAct; ++ind) {
+                const index_t thbIdx = activeIdx(ind, pt);
+                if (ind != 0 && thbIdx == 0) break;    // trailing zero sentinel
+                auto it = thbCoeffMap.find(thbIdx);
+                if (it == thbCoeffMap.end()) continue;
+                const T val = thbVals(ind, pt);
+                geomOut(pt, 0) += val * it->second.first;
+                geomOut(pt, 1) += val * it->second.second;
+            }
+        }
+    }
+
+    /// Batch-collect global MPBES function indices active at UV points on a given patch.
+    /// Uses active_into + reverse THB→global map; O(nf + M×numActivePerPoint).
+    void collectActiveGlobalIndices(
+        index_t patch,
+        const gsMatrix<T>& u,
+        std::unordered_set<index_t>& activeGlobal) const
+    {
+        if (u.cols() == 0 || patch >= static_cast<index_t>(m_thbBases.size())) return;
+
+        // Build reverse map: THB index → global MPBES index for this patch
+        std::unordered_map<index_t, index_t> thbToGlobal;
+        thbToGlobal.reserve(static_cast<size_t>(m_functionDescription.size() / 4 + 16));
+        const index_t nf = static_cast<index_t>(m_functionDescription.size());
+        for (index_t f = 0; f < nf; ++f) {
+            for (const auto& twin : m_functionDescription[f]) {
+                if (twin.size() < 3 || twin[0] != static_cast<int>(patch)) continue;
+                const int level = twin[1], tensorIdx = twin[2];
+                if (level < 0 || tensorIdx < 0) continue;
+                if (patch < static_cast<index_t>(m_indexInTHB.size()) &&
+                    level < static_cast<index_t>(m_indexInTHB[patch].size()) &&
+                    tensorIdx < static_cast<index_t>(m_indexInTHB[patch][level].size())) {
+                    const index_t thbIdx = m_indexInTHB[patch][level][tensorIdx];
+                    if (thbIdx != static_cast<index_t>(-1))
+                        thbToGlobal.emplace(thbIdx, f);
+                }
+            }
+        }
+        if (thbToGlobal.empty()) return;
+
+        gsMatrix<index_t> activeThb;
+        m_thbBases[patch].active_into(u, activeThb);
+        for (index_t col = 0; col < activeThb.cols(); ++col)
+            for (index_t row = 0; row < activeThb.rows(); ++row) {
+                auto it = thbToGlobal.find(activeThb(row, col));
+                if (it != thbToGlobal.end()) activeGlobal.insert(it->second);
+            }
+    }
+
     /// Evaluate second derivative of single function on specific patch
     void evalDeriv2SingleOnPatch(
         index_t globalIdx,
@@ -2645,7 +2835,7 @@ void generateParametricGrid(
     // gridResolution is minimum samples per finest-level index cell
     const index_t samplesPerIndexCell = std::max<index_t>(gridResolution, 1);
 
-    if (verbose)
+    if (g_verbose)
         gsInfo << "  Samples per index cell: " << samplesPerIndexCell << "\n";
 
     index_t skippedBoxes = 0;
@@ -2654,7 +2844,7 @@ void generateParametricGrid(
     {
         const index_t numBoxes = numBoxesPerPatch[patch];
 
-        if (verbose)
+        if (g_verbose)
             gsInfo << "  Patch " << patch << ": " << numBoxes
                    << " boxes, maxLevel=" << maxLevelPerPatch[patch] << "\n";
 
@@ -3000,9 +3190,9 @@ static gsVector<real_t> evaluateFittedGeometryPoint(
     real_t pouSum = static_cast<real_t>(0);
 
     const index_t count = std::min<index_t>(mpbes.size(), coefficients.rows());
+    gsMatrix<real_t> basisValue;
     for (index_t f = 0; f < count; ++f)
     {
-        gsMatrix<real_t> basisValue;
         mpbes.evalSingleOnPatch(f, patch, uv, basisValue, includeSpilloverFallback);
         if (basisValue.rows() < 1 || basisValue.cols() < 1)
             continue;
@@ -3043,9 +3233,9 @@ static real_t evaluateFittedJacobianDeterminant(
     real_t dydv = 0.0;
 
     const index_t count = std::min<index_t>(mpbes.size(), coefficients.rows());
+    gsMatrix<real_t> basisDeriv;
     for (index_t f = 0; f < count; ++f)
     {
-        gsMatrix<real_t> basisDeriv;
         mpbes.evalDerivSingleOnPatch(f, patch, uv, basisDeriv, includeSpilloverFallback);
         if (basisDeriv.rows() < 2 || basisDeriv.cols() < 1)
             continue;
@@ -3077,9 +3267,9 @@ static void evaluateFittedJacobianColumns(
     dv.setZero();
 
     const index_t count = std::min<index_t>(mpbes.size(), coefficients.rows());
+    gsMatrix<real_t> basisDeriv;
     for (index_t f = 0; f < count; ++f)
     {
-        gsMatrix<real_t> basisDeriv;
         mpbes.evalDerivSingleOnPatch(f, patch, uv, basisDeriv, includeSpilloverFallback);
         if (basisDeriv.rows() < 2 || basisDeriv.cols() < 1)
             continue;
@@ -3997,34 +4187,25 @@ void logSpecificInterface(
 }
 
 void generateOriginalGeometryMesh(
-    const std::string& filename,
+    const gsMultiPatch<real_t>& mp,
     index_t gridResolution,
     const std::string& outputPrefix)
 {
-    // gsInfo << "\n=== Generating original geometry mesh ===\n";
-    
-    gsMultiPatch<>::uPtr mp = gsReadFile<>(filename);
-    if (!mp)
-    {
-        gsInfo << "ERROR: Could not read geometry file: " << filename << "\n";
-        return;
-    }
-    
     std::string meshFile = outputPrefix + ".txt";
     std::ofstream meshOut(meshFile);
-    
+
     if (!meshOut.is_open())
     {
         gsInfo << "ERROR: Could not open " << meshFile << " for writing\n";
         return;
     }
-    
+
     meshOut << "# Original Geometry Mesh\n";
     meshOut << "# Format: x y patch direction\n";
     meshOut << "# NOTE: Uniform sampling (independent of box hierarchy)\n";
     meshOut << "# Grid resolution: " << gridResolution << "\n\n";
-    
-    for (index_t patch = 0; patch < mp->nPatches(); ++patch)
+
+    for (index_t patch = 0; patch < mp.nPatches(); ++patch)
     {
         // Generate grid lines in u direction
         for (int i = 0; i <= gridResolution; ++i)
@@ -4036,14 +4217,14 @@ void generateOriginalGeometryMesh(
                 uvLine(0, j) = u;
                 uvLine(1, j) = j / (real_t)gridResolution;
             }
-            gsMatrix<> xyLine = mp->patch(patch).eval(uvLine);
+            gsMatrix<> xyLine = mp.patch(patch).eval(uvLine);
             for (int j = 0; j <= gridResolution; ++j)
             {
                 meshOut << xyLine(0, j) << " " << xyLine(1, j) << " " << patch << " u\n";
             }
             meshOut << "\n";
         }
-        
+
         // Generate grid lines in v direction
         for (int j = 0; j <= gridResolution; ++j)
         {
@@ -4054,7 +4235,7 @@ void generateOriginalGeometryMesh(
                 uvLine(0, i) = i / (real_t)gridResolution;
                 uvLine(1, i) = v;
             }
-            gsMatrix<> xyLine = mp->patch(patch).eval(uvLine);
+            gsMatrix<> xyLine = mp.patch(patch).eval(uvLine);
             for (int i = 0; i <= gridResolution; ++i)
             {
                 meshOut << xyLine(0, i) << " " << xyLine(1, i) << " " << patch << " v\n";
@@ -5214,6 +5395,33 @@ real_t testGlobalFittingError(
     index_t globalRow = 0;
     std::vector<real_t> patchMaxError(uv1.size(), 0.0);
 
+    // Precompute active functions per patch — avoids evaluating ~94% of functions that return 0
+    const index_t numFunctionsGFE = mpbes.size();
+    const auto& funcDescGFE = mpbes.functionDescription();
+    const auto& idxInTHBGFE = mpbes.indexInTHB();
+    const index_t numPatchesGFE = static_cast<index_t>(uv1.size());
+    std::vector<std::vector<index_t>> activeFuncsGFE(numPatchesGFE);
+    for (index_t p = 0; p < numPatchesGFE; ++p) {
+        std::vector<index_t>& active = activeFuncsGFE[p];
+        for (index_t f = 0; f < numFunctionsGFE; ++f) {
+            if (f >= static_cast<index_t>(funcDescGFE.size())) break;
+            for (const auto& desc : funcDescGFE[f]) {
+                if (desc.size() < 3) continue;
+                const int patchId = desc[0], levelId = desc[1], indexId = desc[2];
+                if (patchId == static_cast<int>(p) &&
+                    levelId >= 0 && indexId >= 0 &&
+                    levelId < static_cast<int>(idxInTHBGFE[p].size()) &&
+                    indexId < static_cast<int>(idxInTHBGFE[p][levelId].size()) &&
+                    idxInTHBGFE[p][levelId][indexId] != static_cast<index_t>(-1)) {
+                    active.push_back(f);
+                    break;
+                }
+            }
+        }
+    }
+    gsMatrix<real_t> basisValueGFE;
+    gsVector<real_t> xFitGFE(geoDim);
+
     for (index_t patch = 0; patch < uv1.size(); ++patch)
     {
         const gsMatrix<real_t>& uvPatch = uv1(patch); // (d × nPts)
@@ -5232,13 +5440,22 @@ real_t testGlobalFittingError(
             // parameter point (d × 1)
             const gsVector<real_t> uv = uvPatch.col(k);
 
-            // Use patch-local basis for a stable, apples-to-apples fitting error metric.
-            const gsVector<real_t> xFit = evaluateFittedGeometryPoint(
-                mpbes,
-                vectSol,
-                patch,
-                uv,
-                false);
+            // Active-function-filtered evaluation — only iterates over functions active on this patch
+            xFitGFE.setZero();
+            real_t pouSumGFE = 0.0;
+            for (index_t f : activeFuncsGFE[patch]) {
+                if (f >= vectSol.rows()) continue;
+                mpbes.evalSingleOnPatch(f, patch, uv, basisValueGFE, false);
+                if (basisValueGFE.rows() < 1 || basisValueGFE.cols() < 1) continue;
+                const real_t val = basisValueGFE(0, 0);
+                if (!std::isfinite(val) || val == 0.0) continue;
+                for (index_t d = 0; d < geoDim; ++d)
+                    xFitGFE(d) += val * vectSol(f, d);
+                pouSumGFE += val;
+            }
+            if (std::abs(pouSumGFE) > static_cast<real_t>(1e-12))
+                xFitGFE /= pouSumGFE;
+            const gsVector<real_t>& xFit = xFitGFE;
 
             bool xFitFinite = true;
             for (index_t d = 0; d < geoDim; ++d)
@@ -5302,11 +5519,12 @@ real_t testGlobalFittingError(
     if (numSamples > 0)
     {
         const real_t rmsError = std::sqrt(sumSqError / static_cast<real_t>(numSamples));
-        gsInfo << "Global fitting error stats: max=" << maxError
-               << ", rms=" << rmsError
-               << ", samples=" << numSamples
-               << ", maxAtPatch=" << maxPatch
-               << ", maxAtLocalPoint=" << maxLocalPoint << "\n";
+        if (g_verbose)
+            gsInfo << "Global fitting error stats: max=" << maxError
+                   << ", rms=" << rmsError
+                   << ", samples=" << numSamples
+                   << ", maxAtPatch=" << maxPatch
+                   << ", maxAtLocalPoint=" << maxLocalPoint << "\n";
         outfile << "Global fitting error stats: max=" << maxError
                 << ", rms=" << rmsError
                 << ", samples=" << numSamples
@@ -5315,18 +5533,20 @@ real_t testGlobalFittingError(
 
         if (hasMaxSample)
         {
-            gsInfo << "Global fitting max sample: uv=(" << maxUv[0] << "," << maxUv[1] << ")";
+            if (g_verbose)
+                gsInfo << "Global fitting max sample: uv=(" << maxUv[0] << "," << maxUv[1] << ")";
             outfile << "Global fitting max sample: uv=(" << maxUv[0] << "," << maxUv[1] << ")";
             if (geoDim >= 2)
             {
-                gsInfo << ", xFit=(" << maxXFit[0] << "," << maxXFit[1] << ")"
-                       << ", target=(" << maxTarget[0] << "," << maxTarget[1] << ")\n";
+                if (g_verbose)
+                    gsInfo << ", xFit=(" << maxXFit[0] << "," << maxXFit[1] << ")"
+                           << ", target=(" << maxTarget[0] << "," << maxTarget[1] << ")\n";
                 outfile << ", xFit=(" << maxXFit[0] << "," << maxXFit[1] << ")"
                         << ", target=(" << maxTarget[0] << "," << maxTarget[1] << ")\n";
             }
             else
             {
-                gsInfo << "\n";
+                if (g_verbose) gsInfo << "\n";
                 outfile << "\n";
             }
 
@@ -6909,10 +7129,61 @@ int checkJacobianDeterminant(
                 }
             }
 
-            const MirroredCheckResult currentMirrorReport =
-                computeMirroredCheckPerPatch(uv, mpbes, vectSol, 1e-12);
-            mirroredPerPatch = currentMirrorReport.mirrored;
+            // ---- BATCH-EVAL: one evalDerivSingleOnPatch call per function over all valid pts
+            // (replaces per-point per-function calls — N×M calls → N calls per patch).
+            const real_t interiorMargin = 0.05;
 
+            // Step 1: collect valid parameter points per patch into pre-filtered matrices
+            std::vector<gsMatrix<real_t>> filteredUV(numPatches);
+            std::vector<std::vector<index_t>> filteredPtIdx(numPatches);
+            for (index_t patch = 0; patch < numPatches; ++patch) {
+                if (patch >= static_cast<index_t>(uv.size())) continue;
+                const gsMatrix<>& uvPatch = uv[patch];
+                if (uvPatch.rows() < 2 || uvPatch.cols() == 0) continue;
+                std::vector<index_t>& cols = filteredPtIdx[patch];
+                cols.reserve(uvPatch.cols());
+                for (index_t pt = 0; pt < uvPatch.cols(); ++pt) {
+                    const real_t u0 = uvPatch(0, pt), u1 = uvPatch(1, pt);
+                    if (u0 < 0 || u0 > 1 || u1 < 0 || u1 > 1) continue;
+                    if (u0 <= interiorMargin || u0 >= 1.0 - interiorMargin ||
+                        u1 <= interiorMargin || u1 >= 1.0 - interiorMargin) continue;
+                    cols.push_back(pt);
+                }
+                const index_t M = static_cast<index_t>(cols.size());
+                filteredUV[patch].resize(2, M);
+                for (index_t i = 0; i < M; ++i)
+                    filteredUV[patch].col(i) = uvPatch.col(cols[i]);
+            }
+
+            // Step 2: batch-evaluate Jacobian components per patch
+            // J = [J00 J01; J10 J11], det = J00*J11 - J01*J10
+            std::vector<gsMatrix<real_t>> patchDets(numPatches);
+            for (index_t patch = 0; patch < numPatches; ++patch) {
+                if (patch >= static_cast<index_t>(activeFuncsPerPatch.size())) continue;
+                const index_t M = static_cast<index_t>(filteredPtIdx[patch].size());
+                if (M == 0) { patchDets[patch].resize(1, 0); continue; }
+
+                gsMatrix<real_t> J00, J01, J10, J11;
+                mpbes.jacContribOnPatch(patch, filteredUV[patch], vectSol,
+                                        activeFuncsPerPatch[patch],
+                                        J00, J01, J10, J11);
+
+                patchDets[patch] = J00.cwiseProduct(J11) - J01.cwiseProduct(J10);
+
+                // Accumulate rawNeg/rawPos for orientation detection
+                for (index_t i = 0; i < M; ++i) {
+                    const real_t det = patchDets[patch](0, i);
+                    if (!std::isfinite(det)) continue;
+                    if (det <= 0) ++rawNeg[patch]; else ++rawPos[patch];
+                }
+            }
+
+            // ---- Determine orientation from eval results (replaces computeMirroredCheckPerPatch) ----
+            mirroredPerPatch.assign(numPatches, false);
+            for (index_t p = 0; p < numPatches; ++p)
+                mirroredPerPatch[p] = (rawNeg[p] > rawPos[p]);
+
+            // ---- Preflight reconciliation (same logic as before) ----
             std::vector<bool> mirrorBaseline = mirroredPerPatch;
             bool usingPreflightMirrorBaseline = false;
             if (g_geometryPreflight.valid &&
@@ -6920,229 +7191,42 @@ int checkJacobianDeterminant(
             {
                 mirrorBaseline = g_geometryPreflight.mirroredReport.mirrored;
                 usingPreflightMirrorBaseline = true;
-
-                // Reconcile per patch: if current evaluation has usable samples and disagrees
-                // with preflight, prefer current orientation for determinant sign normalization.
                 for (index_t p = 0; p < static_cast<index_t>(mirrorBaseline.size()); ++p)
                 {
-                    if (p >= static_cast<index_t>(currentMirrorReport.usedPerPatch.size()))
-                        continue;
-
-                    if (currentMirrorReport.usedPerPatch[p] == 0)
-                        continue;
-
+                    if (filteredPtIdx[p].empty()) continue;  // no samples → keep preflight
                     if (mirrorBaseline[p] != mirroredPerPatch[p])
-                        mirrorBaseline[p] = mirroredPerPatch[p];
+                        mirrorBaseline[p] = mirroredPerPatch[p];  // current wins on disagreement
                 }
             }
 
-            if (verbose) {
-                gsInfo << "checkJacobianDeterminant: mirroredPerPatch size=" << mirroredPerPatch.size() << "\n";
-                outfile << "checkJacobianDeterminant: mirroredPerPatch size=" << mirroredPerPatch.size() << "\n";
-                for (index_t p = 0; p < static_cast<index_t>(mirroredPerPatch.size()); ++p) {
-                    gsInfo << "  patch " << p << ": mirrored=" << (mirroredPerPatch[p] ? "true" : "false") << "\n";
-                    outfile << "  patch " << p << ": mirrored=" << (mirroredPerPatch[p] ? "true" : "false") << "\n";
-                }
-                if (usingPreflightMirrorBaseline) {
-                    gsInfo << "checkJacobianDeterminant: using preflight mirror baseline\n";
-                    outfile << "checkJacobianDeterminant: using preflight mirror baseline\n";
-                    for (index_t p = 0; p < static_cast<index_t>(mirrorBaseline.size()); ++p) {
-                        if (mirrorBaseline[p] == mirroredPerPatch[p])
-                            continue;
-                        gsInfo << "  patch " << p << ": preflightMirrored="
-                               << (mirrorBaseline[p] ? "true" : "false")
-                               << ", currentMirrored="
-                               << (mirroredPerPatch[p] ? "true" : "false") << "\n";
-                        outfile << "  patch " << p << ": preflightMirrored="
-                                << (mirrorBaseline[p] ? "true" : "false")
-                                << ", currentMirrored="
-                                << (mirroredPerPatch[p] ? "true" : "false") << "\n";
-                    }
-                }
-            }
-            
-            // Main evaluation loop
+            // ---- Count violations from det arrays (cheap in-memory pass) ----
             for (index_t patch = 0; patch < numPatches; ++patch) {
-                try {
-                    if (patch >= static_cast<index_t>(uv.size())) {
-                        continue;
-                    }
-                    
-                    const gsMatrix<>& uvPatch = uv[patch];
-                    const index_t numPoints = uvPatch.cols();
-                    
-                    if (uvPatch.rows() < 2 || numPoints == 0) {
-                        continue;
-                    }
-                    
-                    // Process each point on this patch
-                    for (index_t pt = 0; pt < numPoints; ++pt) {
-                        try {
-                            // Extract parameter with bounds check
-                            if (pt >= static_cast<index_t>(uvPatch.cols())) {
-                                break;
-                            }
-                            
+                if (patchDets[patch].cols() == 0) continue;
+                const bool patchMirrored =
+                    (patch < static_cast<index_t>(mirrorBaseline.size())) ? mirrorBaseline[patch] : false;
+                const gsMatrix<>& uvPatch = (patch < static_cast<index_t>(uv.size()))
+                                            ? uv[patch] : uv[0];
+                const index_t M = patchDets[patch].cols();
+                for (index_t i = 0; i < M; ++i) {
+                    const real_t det = patchDets[patch](0, i);
+                    if (!std::isfinite(det)) continue;
+                    const real_t signedDet = patchMirrored ? -det : det;
+                    if (patch < static_cast<index_t>(minSignedDetPerPatch.size()))
+                        minSignedDetPerPatch[patch] = std::min(minSignedDetPerPatch[patch], signedDet);
+                    if (signedDet <= 0) {
+                        ++signedNeg[patch];
+                        if (patch < static_cast<index_t>(numIrregular.size())) {
+                            ++numIrregular[patch];
+                            ++totalIrregular;
+                            const index_t pt = filteredPtIdx[patch][i];
                             gsVector<real_t> param = uvPatch.col(pt);
-                            if (param.rows() < 2) {
-                                continue;
-                            }
-                            
-                            // Check parameter is in [0,1]^2
-                            if (param(0) < 0 || param(0) > 1 || param(1) < 0 || param(1) > 1) {
-                                continue;
-                            }
-                            
-                            // Skip refinement zones
-                            const real_t interiorMargin = 0.05;
-                            if (param(0) <= interiorMargin || param(0) >= 1.0 - interiorMargin ||
-                                param(1) <= interiorMargin || param(1) >= 1.0 - interiorMargin) {
-                                continue;
-                            }
-                            
-                            // Compute Jacobian
-                            gsMatrix<> J(2, 2);
-                            J.setZero();
-                            
-                            // Safety check: validate activeFuncsPerPatch
-                            if (patch >= static_cast<index_t>(activeFuncsPerPatch.size())) {
-                                continue;
-                            }
-                            
-                            for (index_t f : activeFuncsPerPatch[patch]) {
-                                try {
-                                    // Multiple bounds checks for vectSol access
-                                    if (f >= static_cast<index_t>(vectSol.rows())) {
-                                        continue;
-                                    }
-                                    
-                                    if (vectSol.cols() < 2) {
-                                        continue;
-                                    }
-                                    
-                                    // Additional safety: check function index validity
-                                    if (f >= numFunctions) {
-                                        continue;
-                                    }
-                                    
-                                    // Validate patch index
-                                    if (patch >= numPatches) {
-                                        continue;
-                                    }
-                                    
-                                    gsMatrix<real_t> basisDeriv;
-                                    
-                                    // Wrap evalDerivSingleOnPatch in its own try-catch
-                                    try {
-                                        mpbes.evalDerivSingleOnPatch(f, patch, param, basisDeriv);
-                                    } catch (const std::exception& e) {
-                                        gsInfo << "WARNING: evalDerivSingleOnPatch failed for f=" << f 
-                                              << ", patch=" << patch << ": " << e.what() << "\n";
-                                        continue;
-                                    } catch (...) {
-                                        gsInfo << "WARNING: Unknown exception in evalDerivSingleOnPatch for f=" << f 
-                                              << ", patch=" << patch << "\n";
-                                        continue;
-                                    }
-                                    
-                                    // Validate basisDeriv result
-                                    if (basisDeriv.rows() < 2 || basisDeriv.cols() < 1) {
-                                        continue;
-                                    }
-                                    
-                                    real_t dφ_du = basisDeriv(0, 0);
-                                    real_t dφ_dv = basisDeriv(1, 0);
-                                    
-                                    // Check for NaN/Inf
-                                    if (!std::isfinite(dφ_du) || !std::isfinite(dφ_dv)) {
-                                        continue;
-                                    }
-                                    
-                                    // Extra safety for coefficient access
-                                    real_t coef_x = 0.0;
-                                    real_t coef_y = 0.0;
-                                    
-                                    try {
-                                        coef_x = vectSol(f, 0);
-                                        coef_y = vectSol(f, 1);
-                                    } catch (const std::exception& e) {
-                                        gsInfo << "WARNING: vectSol access failed for f=" << f << ": " << e.what() << "\n";
-                                        continue;
-                                    } catch (...) {
-                                        gsInfo << "WARNING: Unknown exception accessing vectSol for f=" << f << "\n";
-                                        continue;
-                                    }
-                                    
-                                    if (!std::isfinite(coef_x) || !std::isfinite(coef_y)) {
-                                        continue;
-                                    }
-                                    
-                                    // Compute contributions with overflow check
-                                    real_t contrib_00 = dφ_du * coef_x;
-                                    real_t contrib_01 = dφ_dv * coef_x;
-                                    real_t contrib_10 = dφ_du * coef_y;
-                                    real_t contrib_11 = dφ_dv * coef_y;
-                                    
-                                    if (!std::isfinite(contrib_00) || !std::isfinite(contrib_01) ||
-                                        !std::isfinite(contrib_10) || !std::isfinite(contrib_11)) {
-                                        continue;
-                                    }
-                                    
-                                    J(0, 0) += contrib_00;
-                                    J(0, 1) += contrib_01;
-                                    J(1, 0) += contrib_10;
-                                    J(1, 1) += contrib_11;
-                                } catch (const std::exception& e) {
-                                    gsInfo << "WARNING: Exception evaluating function " << f << " at patch " << patch 
-                                          << ", point " << pt << ": " << e.what() << "\n";
-                                }
-                            }
-                            
-                            // Check Jacobian determinant
-                            real_t det = 0.0;
-                            try {
-                                det = J.determinant();
-                                if (!std::isfinite(det)) {
-                                    continue;
-                                }
-                            } catch (const std::exception& e) {
-                                gsInfo << "WARNING: Exception computing determinant at patch " << patch 
-                                      << ", point " << pt << ": " << e.what() << "\n";
-                                continue;
-                            }
-
-                            if (det <= 0)
-                                ++rawNeg[patch];
-                            else
-                                ++rawPos[patch];
-                            
-                            const bool patchMirrored =
-                                (patch < static_cast<index_t>(mirrorBaseline.size())) ? mirrorBaseline[patch] : false;
-                            real_t signedDet = patchMirrored ? -det : det;
-                            // Track per-patch minimum signed det (even for regular points).
-                            if (patch < static_cast<index_t>(minSignedDetPerPatch.size()))
-                                minSignedDetPerPatch[patch] = std::min(minSignedDetPerPatch[patch], signedDet);
-                            if (signedDet <= 0) {
-                                ++signedNeg[patch];
-                                if (patch < static_cast<index_t>(numIrregular.size())) {
-                                    ++numIrregular[patch];
-                                    ++totalIrregular;
-                                    
-                                    // gsInfo [IRREGULAR] suppressed — too verbose for console
-                                    outfile << "  [IRREGULAR] Patch=" << patch
-                                        << ", pt=" << pt
-                                        << ", uv=(" << param(0) << ", " << param(1)
-                                        << "), det=" << det
-                                        << ", signedDet=" << signedDet << "\n";
-                                }
-                            }
-                        } catch (const std::exception& e) {
-                            // gsInfo << "WARNING: Exception processing point " << pt << " on patch " << patch
-                            //       << ": " << e.what() << "\n";
+                            outfile << "  [IRREGULAR] Patch=" << patch
+                                    << ", pt=" << pt
+                                    << ", uv=(" << param(0) << ", " << param(1)
+                                    << "), det=" << det
+                                    << ", signedDet=" << signedDet << "\n";
                         }
                     }
-                } catch (const std::exception& e) {
-                    // gsInfo << "WARNING: Exception processing patch " << patch << ": " << e.what() << "\n";
                 }
             }
         } catch (const std::exception& e) {
@@ -7152,7 +7236,7 @@ int checkJacobianDeterminant(
         
         // gsInfo << "=== checkJacobianDeterminant END ===\n";
         // outfile << "=== checkJacobianDeterminant END ===\n";
-        gsInfo << "Total irregular points: " << totalIrregular << "\n";
+        if (g_verbose) gsInfo << "Total irregular points: " << totalIrregular << "\n";
         outfile << "Total irregular points: " << totalIrregular << "\n";
 
         // Per-patch min signed det — key metric for measuring cross-patch coupling magnitude.
@@ -7162,10 +7246,6 @@ int checkJacobianDeterminant(
                                 ? minSignedDetPerPatch[p]
                                 : std::numeric_limits<real_t>::max();
             const index_t irr = (p < numIrregular.size()) ? static_cast<index_t>(numIrregular[p]) : 0;
-            gsInfo  << "[jack-patch] patch " << p << ": minSignedDet=" << minD
-                    << ", irregular=" << irr << "\n";
-            outfile << "[jack-patch] patch " << p << ": minSignedDet=" << minD
-                    << ", irregular=" << irr << "\n";
         }
 
         // if (verbose) {
@@ -7408,6 +7488,49 @@ std::vector<bool> isParameterizationMirroredPerPatch(
     }
 
     return report.mirrored;
+}
+
+static MirroredCheckResult computeMirroredCheckFromMp(
+    const gsVector<gsMatrix<real_t>>& uv,
+    const gsMultiPatch<real_t>& mp,
+    real_t detEps)
+{
+    const index_t numPatches = mp.nPatches();
+    MirroredCheckResult result;
+    result.mirrored.assign(numPatches, false);
+    result.usedPerPatch.assign(numPatches, 0);
+    result.posPerPatch.assign(numPatches, 0);
+    result.negPerPatch.assign(numPatches, 0);
+
+    const real_t interiorMargin = 0.05;
+    for (index_t patch = 0; patch < numPatches && patch < static_cast<index_t>(uv.size()); ++patch)
+    {
+        const gsMatrix<real_t>& uvPatch = uv[patch];
+        if (uvPatch.rows() < 2 || uvPatch.cols() == 0) continue;
+
+        for (index_t pt = 0; pt < uvPatch.cols(); ++pt)
+        {
+            const real_t u0 = uvPatch(0, pt), v0 = uvPatch(1, pt);
+            if (u0 <= interiorMargin || u0 >= 1.0 - interiorMargin ||
+                v0 <= interiorMargin || v0 >= 1.0 - interiorMargin) continue;
+
+            const gsMatrix<real_t> J = mp.patch(patch).jacobian(uvPatch.col(pt));
+            if (J.rows() < 2 || J.cols() < 2) continue;
+            const real_t det = J.determinant();
+            if (!std::isfinite(det) || std::abs(det) <= detEps) continue;
+
+            ++result.usedPerPatch[patch];
+            if (det > 0) ++result.posPerPatch[patch];
+            else         ++result.negPerPatch[patch];
+        }
+
+        if (result.usedPerPatch[patch] > 0) {
+            const real_t negRatio = static_cast<real_t>(result.negPerPatch[patch]) /
+                                    static_cast<real_t>(result.usedPerPatch[patch]);
+            result.mirrored[patch] = (result.posPerPatch[patch] == 0 || negRatio >= 0.5);
+        }
+    }
+    return result;
 }
 
 MirroredCheckResult computeMirroredCheckPerPatch(
@@ -7889,8 +8012,8 @@ int checkJacobianDeterminant(
         outfile << "  Patch " << patch << ": " << numIrregular[patch] << " irregular points\n";
     }
 
-    gsInfo << "=== checkJacobianDeterminant END ===\n";
-    gsInfo << "Total irregular points: " << totalIrregular << "\n";
+    if (g_verbose) gsInfo << "=== checkJacobianDeterminant END ===\n";
+    if (g_verbose) gsInfo << "Total irregular points: " << totalIrregular << "\n";
     
     // Close irregular points log
     irregularLog << "========================================\n";
@@ -9031,7 +9154,7 @@ void assemble(
     if (useCustomPoints) {
         // Use custom points from uv parameter
         totalRows = totalCustomPoints;
-        gsInfo << "Using " << totalRows << " custom evaluation points from uv parameter\n";
+        if (g_verbose) gsInfo << "Using " << totalRows << " custom evaluation points from uv parameter\n";
         if (verbose) {
             outfile << "Using " << totalRows << " custom evaluation points from uv parameter\n";
         }
@@ -9079,7 +9202,7 @@ void assemble(
         return;
     }
     
-    gsInfo << "Resizing matrices: A_mat(" << totalRows << " x " << numFunctions << "), b_vec(" << totalRows << " x 2)\n";
+    if (g_verbose) gsInfo << "Resizing matrices: A_mat(" << totalRows << " x " << numFunctions << "), b_vec(" << totalRows << " x 2)\n";
     if (outfile.is_open())
         outfile << "[assemble] resize A_mat(" << totalRows << "," << numFunctions
                 << "), b_vec(" << totalRows << ",2)\n";
@@ -9211,702 +9334,98 @@ void assemble(
             }
         }
     } else {
-        // ===== GAUSS QUADRATURE MODE (original behavior) =====
+        // ===== GAUSS QUADRATURE MODE — batch evaluation =====
+        // For each patch: collect all Gauss points, batch-evaluate RHS (mp.patch.eval) and
+        // each basis function (evalSingleOnPatch) over all points at once.
+        // Reduces N_funcs×M per-point calls → N_funcs batch calls per patch.
+        std::vector<gsEigen::Triplet<real_t>> triplets;
+        triplets.reserve(static_cast<size_t>(totalRows) * 8);
+
         for (index_t patch = 0; patch < numPatches; ++patch)
         {
+            if (patch >= static_cast<index_t>(thbBases.size())) {
+                gsInfo << "WARNING: patch " << patch << " >= thbBases.size() " << thbBases.size() << "\n";
+                continue;
+            }
+
             if (verbose)
-            {
                 outfile << ">> Patch " << patch << "\n";
-            }
 
-            auto domIt = thbBases[patch].makeDomainIterator();
-            gsMatrix<real_t> quNodes;
-            gsVector<real_t> quWeights;
-
-            int elementCount = 0;
-            for (int el = 0; domIt->good(); domIt->next(), ++el)
+            // Phase 1: collect all Gauss points for this patch in one domain-iterator pass
+            std::vector<gsVector<real_t>> gaussPtVec;
             {
-                gsVector<real_t> lower = domIt->lowerCorner();
-                gsVector<real_t> upper = domIt->upperCorner();
-                quRule.mapTo(lower, upper, quNodes, quWeights);
-
-                for (index_t q = 0; q < quNodes.cols(); ++q)
-                {
-                    const gsVector<real_t> uvk = quNodes.col(q);
-                    index_t row = rowOffset;
-
-                // RHS: target geometry - wrap in try-catch
-                gsMatrix<real_t> xy;  // Declare outside try block for later use
-                try {
-                    // Bounds check
-                    if (patch >= mp.nPatches()) {
-                        if (verbose) {
-                            gsInfo << "WARNING: patch " << patch << " >= mp.nPatches() " << mp.nPatches() << "\n";
-                        }
-                        ++rowOffset;
-                        continue;
-                    }
-                    
-                    xy = mp.patch(patch).eval(uvk);
-                    
-                    // Validate result
-                    if (xy.rows() < 1 || xy.cols() < 1) {
-                        if (verbose) {
-                            gsInfo << "WARNING: mp.patch().eval() returned empty matrix\n";
-                        }
-                        b_vec(row, 0) = 0.0;
-                        b_vec(row, 1) = 0.0;
-                    } else {
-                        b_vec(row, 0) = xy(0, 0);
-                        b_vec(row, 1) = xy(1, 0);
-                    }
-                } catch (const std::exception& e) {
-                    if (verbose) {
-                        gsInfo << "EXCEPTION in mp.patch().eval() for patch " << patch << ": " << e.what() << "\n";
-                    }
-                    b_vec(row, 0) = 0.0;
-                    b_vec(row, 1) = 0.0;
-                } catch (...) {
-                    if (verbose) {
-                        gsInfo << "UNKNOWN EXCEPTION in mp.patch().eval() for patch " << patch << "\n";
-                    }
-                    b_vec(row, 0) = 0.0;
-                    b_vec(row, 1) = 0.0;
+                gsMatrix<real_t> qN;
+                gsVector<real_t> qW;
+                auto domIt = thbBases[patch].makeDomainIterator();
+                for (; domIt->good(); domIt->next()) {
+                    quRule.mapTo(domIt->lowerCorner(), domIt->upperCorner(), qN, qW);
+                    for (index_t q = 0; q < qN.cols(); ++q)
+                        gaussPtVec.emplace_back(qN.col(q));
                 }
-
-                // Basic logging for violated rows
-                bool logThisRow = false; // old row logging disabled
-                bool logRow0 = false;    // old row0 logging disabled
-                bool logRowTarget = verbose && (row == targetRow) && (currentPatch == 1 && currentLevel == 3 && currentAttempt == 26);
-                
-                if (logThisRow)
-                {
-                    outfile << "\n  === ROW " << row << " (Patch " << patch << ", Element " << el 
-                            << ", Gauss point " << q << ") ===\n";
-                    outfile << "    Parametric coords (u,v) = (" << uvk(0) << ", " << uvk(1) << ")\n";
-                    outfile << "    Physical coords (x,y) = (" << xy(0, 0) << ", " << xy(1, 0) << ")\n";
-                    outfile << "    Element bounds: [" << lower(0) << ", " << upper(0) 
-                            << "] x [" << lower(1) << ", " << upper(1) << "]\n";
-                }
-
-                // Evaluate ALL functions - let evalSingleOnPatch filter what contributes
-                int nonZeroFuncs = 0;
-                real_t rowSum = 0.0;
-                
-                for (index_t f = 0; f < numFunctions; ++f)
-                {
-                    const index_t globalF = globalFunctionOf(f);
-                    if (globalF < 0 || globalF >= static_cast<index_t>(functionDescription.size()))
-                    {
-                        if (verbose)
-                        {
-                            gsInfo << "WARNING: globalF " << globalF << " out of functionDescription bounds=" << functionDescription.size() << "\n";
-                            outfile << "WARNING: globalF " << globalF << " out of functionDescription bounds=" << functionDescription.size() << "\n";
-                        }
-                        continue;
-                    }
-
-                    // Use MPBES's evalSingleOnPatch which handles component-level truncation correctly
-                    gsMatrix<real_t> basisValue;
-                    real_t value = 0.0;
-                    
-                    try {
-                        mpbes.evalSingleOnPatch(globalF, patch, uvk, basisValue);
-                        
-                        // Validate result
-                        if (basisValue.rows() < 1 || basisValue.cols() < 1) {
-                            if (verbose) {
-                                gsInfo << "WARNING: evalSingleOnPatch returned empty matrix for f=" << f 
-                                      << ", patch=" << patch << "\n";
-                            }
-                            continue;
-                        }
-                        
-                        value = basisValue(0, 0);
-                        
-                        // Check for NaN/Inf
-                        if (!std::isfinite(value)) {
-                            if (verbose) {
-                                gsInfo << "WARNING: evalSingleOnPatch returned non-finite value for f=" << f 
-                                      << ", patch=" << patch << "\n";
-                            }
-                            continue;
-                        }
-                    } catch (const std::exception& e) {
-                        if (verbose) {
-                            gsInfo << "EXCEPTION in evalSingleOnPatch for f=" << f << ", patch=" << patch 
-                                  << ": " << e.what() << "\n";
-                        }
-                        continue;
-                    } catch (...) {
-                        if (verbose) {
-                            gsInfo << "UNKNOWN EXCEPTION in evalSingleOnPatch for f=" << f << ", patch=" << patch << "\n";
-                        }
-                        continue;
-                    }
-
-                    if (value != 0.0)
-                    {
-                        // Bounds check before accessing A_mat
-                        if (row >= A_mat.rows()) {
-                            if (verbose) {
-                                gsInfo << "ERROR: row " << row << " >= A_mat.rows() " << A_mat.rows() << "\n";
-                            }
-                            continue;
-                        }
-                        if (f >= A_mat.cols()) {
-                            if (verbose) {
-                                gsInfo << "ERROR: f " << f << " >= A_mat.cols() " << A_mat.cols() << "\n";
-                            }
-                            continue;
-                        }
-                        
-                        try {
-                            A_mat(row, f) += value;
-                            rowSum += value;
-                            nonZeroFuncs++;
-                        } catch (const std::exception& e) {
-                            if (verbose) {
-                                gsInfo << "EXCEPTION accessing A_mat(" << row << "," << f << "): " << e.what() << "\n";
-                            }
-                            continue;
-                        }
-                        
-                        if (logThisRow && nonZeroFuncs <= 20) {
-                            outfile << "      Function " << f << ": value = " << value;
-                            if (isTruncated[f]) {
-                                outfile << " [TRUNCATED";
-                                // Count components
-                                int numComponents = functionDescription[f].size();
-                                outfile << ", " << numComponents << " components]";
-                            }
-                            outfile << "\n";
-                        }
-                        
-                        if (logRow0) {
-                            row0NonZeroFuncs++;
-                            row0NonZeroFunctionList.push_back(f);
-                            row0NonZeroValueList.push_back(value);
-                            if (!row0LogOpened) {
-                                std::string filename = "row0_p" + std::to_string(currentPatch) + "_lev" + std::to_string(currentLevel) + "_att" + std::to_string(currentAttempt) + "_detailed.txt";
-                                row0Log.open(filename);
-                                row0LogOpened = true;
-                                row0Log << "=== Detailed Row 0 Diagnostic (Patch " << currentPatch << ", Level " << currentLevel << ", Attempt " << currentAttempt << ") ===\n";
-                                row0Log << "Outer context: patch=" << currentPatch << ", level=" << currentLevel << ", attempt=" << currentAttempt << "\n";
-                                row0Log << "Assembling patch=" << patch << ", element=" << el << ", gauss=" << q << ", row=" << row << "\n";
-                                row0Log << "Total rows: " << totalRows << ", total patches: " << numPatches << "\n";
-                                row0Log << "Total functions in MPBES: " << numFunctions << "\n";
-                                row0Log << "Patch " << patch << ", Element " << el << ", Gauss " << q << "\n";
-                                row0Log << "(u,v)= (" << uvk(0) << ", " << uvk(1) << ")\n";
-                                row0Log << "Element bounds: [" << lower(0) << ", " << upper(0) << "] x ["
-                                        << lower(1) << ", " << upper(1) << "]\n\n";
-                            }
-
-                            row0Log << "Function " << f << ": total value = " << std::setprecision(16) << value;
-                            row0Log << (isTruncated[f] ? " [TRUNCATED]" : " [NOT TRUNCATED]") << "\n";
-
-                            if (f < hasSpillover.size() && hasSpillover[f]) {
-                                row0Log << "  Spillover: YES\n";
-                                if (f < spilloverFunctionCoordinates.size()) {
-                                    for (const auto& sp : spilloverFunctionCoordinates[f]) {
-                                        int spPatch = sp[0];
-                                        int spLevel = sp[1];
-                                        int spIndex = sp[2];
-                                        row0Log << "    Spillover coord: (patch=" << spPatch
-                                                << ", level=" << spLevel
-                                                << ", index=" << spIndex << ")";
-                                        if (spPatch == static_cast<int>(patch) &&
-                                            spPatch < static_cast<int>(bellsBases.size()) &&
-                                            spLevel < static_cast<int>(bellsBases[spPatch].size())) {
-                                            gsMatrix<real_t> spVal;
-                                            bellsBases[spPatch][spLevel].evalSingle_into(spIndex, uvk, spVal);
-                                            row0Log << " -> value=" << std::setprecision(16) << spVal(0, 0);
-                                        }
-                                        row0Log << "\n";
-                                    }
-                                }
-                            } else {
-                                row0Log << "  Spillover: NO\n";
-                            }
-
-                            row0Log << "  Components:\n";
-                            
-                            // Test: Evaluate spillover components to see if they complete the partition
-                            real_t spilloverContribution = 0.0;
-                            bool hasSpilloverComp = false;
-                            
-                            for (size_t compIdx = 0; compIdx < functionDescription[f].size(); ++compIdx) {
-                                if (functionDescription[f][compIdx].size() < 3)
-                                {
-                                    row0Log << "    Comp " << compIdx << ": INVALID (size<3)\n";
-                                    continue;
-                                }
-
-                                int fnPatch = functionDescription[f][compIdx][0];
-                                int fnLevel = functionDescription[f][compIdx][1];
-                                int fnTensorIdx = functionDescription[f][compIdx][2];
-
-                                row0Log << "    Comp " << compIdx
-                                        << ": patch=" << fnPatch
-                                        << ", level=" << fnLevel
-                                        << ", tensorIdx=" << fnTensorIdx;
-
-                                if (fnPatch != static_cast<int>(patch)) {
-                                    row0Log << " [patch mismatch - SPILLOVER COMPONENT]";
-                                    hasSpilloverComp = true;
-                                    
-                                    // Try to evaluate this spillover component anyway
-                                    bool thbInBounds = (fnPatch < static_cast<int>(indexInTHB.size()) &&
-                                        fnLevel < static_cast<int>(indexInTHB[fnPatch].size()) &&
-                                        fnTensorIdx < static_cast<int>(indexInTHB[fnPatch][fnLevel].size()));
-                                    if (thbInBounds) {
-                                        int thbIdx = indexInTHB[fnPatch][fnLevel][fnTensorIdx];
-                                        bool compTruncated = mpbes.isComponentTruncated(f, compIdx);
-                                        
-                                        // Evaluate this component at the current point
-                                        gsMatrix<real_t> spilloverVal;
-                                        const gsTensorBSplineBasis<2, real_t>* bellsBasis = nullptr;
-                                        int bellsIdx = -1;
-                                        
-                                        if (thbIdx == -1 && fnPatch < static_cast<int>(bellsBases.size()) &&
-                                            fnLevel < static_cast<int>(bellsBases[fnPatch].size())) {
-                                            bellsBasis = &bellsBases[fnPatch][fnLevel];
-                                            bellsIdx = fnTensorIdx;
-                                        }
-                                        
-                                        if (fnPatch < static_cast<int>(thbBases.size())) {
-                                            evalSingle_into(
-                                                f,
-                                                thbIdx,
-                                                uvk,
-                                                isTruncated,
-                                                thbBases[fnPatch],
-                                                presentation[f][compIdx],
-                                                spilloverVal,
-                                                bellsBasis,
-                                                bellsIdx);
-                                            spilloverContribution += spilloverVal(0, 0);
-                                            row0Log << " → spillover eval=" << std::setprecision(16) << spilloverVal(0, 0);
-                                        }
-                                    }
-                                    row0Log << "\n";
-                                    continue;
-                                }
-
-                                int thbIdx = -1;
-                                bool thbInBounds = (fnPatch < static_cast<int>(indexInTHB.size()) &&
-                                    fnLevel < static_cast<int>(indexInTHB[fnPatch].size()) &&
-                                    fnTensorIdx < static_cast<int>(indexInTHB[fnPatch][fnLevel].size()));
-                                if (thbInBounds)
-                                    thbIdx = indexInTHB[fnPatch][fnLevel][fnTensorIdx];
-
-                                bool compTruncated = mpbes.isComponentTruncated(f, compIdx);
-                                int presLevel = static_cast<int>(mpbes.presentationLevel(f, compIdx));
-
-                                row0Log << ", thbIdx=" << thbIdx
-                                        << ", compTruncated=" << (compTruncated ? "YES" : "NO")
-                                        << ", presLevel=" << presLevel << "\n";
-
-                                if (compTruncated) {
-                                    row0Log << "      Presentation coefficients:\n";
-                                    if (f < presentation.size() && compIdx < presentation[f].size()) {
-                                        const auto& coeffs = presentation[f][compIdx];
-                                        for (typename gsSparseVector<real_t>::InnerIterator it(coeffs); it; ++it) {
-                                            gsMatrix<real_t> basisVal;
-                                            if (fnPatch < static_cast<int>(bellsBases.size()) &&
-                                                presLevel < static_cast<int>(bellsBases[fnPatch].size())) {
-                                                bellsBases[fnPatch][presLevel].evalSingle_into(it.index(), uvk, basisVal);
-                                            } else {
-                                                basisVal.resize(1, 1);
-                                                basisVal(0, 0) = 0.0;
-                                            }
-                                            real_t contrib = it.value() * basisVal(0, 0);
-                                            row0Log << "        idx=" << it.index()
-                                                    << ", coef=" << std::setprecision(16) << it.value()
-                                                    << ", basis=" << basisVal(0, 0)
-                                                    << ", contrib=" << contrib << "\n";
-                                        }
-                                    }
-                                } else {
-                                    gsMatrix<real_t> compVal;
-                                    const gsTensorBSplineBasis<2, real_t>* bellsBasis = nullptr;
-                                    int bellsIdx = -1;
-
-                                    if (thbIdx == -1 && fnPatch < static_cast<int>(bellsBases.size()) &&
-                                        fnLevel < static_cast<int>(bellsBases[fnPatch].size())) {
-                                        bellsBasis = &bellsBases[fnPatch][fnLevel];
-                                        bellsIdx = fnTensorIdx;
-                                    }
-
-                                    if (thbInBounds) {
-                                        evalSingle_into(
-                                            f,
-                                            thbIdx,
-                                            uvk,
-                                            isTruncated,
-                                            thbBases[fnPatch],
-                                            presentation[f][compIdx],
-                                            compVal,
-                                            bellsBasis,
-                                            bellsIdx);
-                                        row0Log << "      Component value = " << std::setprecision(16) << compVal(0, 0) << "\n";
-                                    } else {
-                                        row0Log << "      Component value = 0 (index out of bounds)\n";
-                                    }
-                                }
-                            }
-                            
-                            // Show spillover analysis
-                            if (hasSpilloverComp && spilloverContribution > 1e-15) {
-                                row0Log << "  *** SPILLOVER ANALYSIS ***\n";
-                                row0Log << "  Current MPBES value (patch 0 only): " << std::setprecision(16) << value << "\n";
-                                row0Log << "  Spillover components contribution: " << std::setprecision(16) << spilloverContribution << "\n";
-                                row0Log << "  Total if spillover included: " << std::setprecision(16) << (value + spilloverContribution) << "\n";
-                                
-                                // Compare with THB
-                                if (thbBases.size() > 0) {
-                                    const gsTHBSplineBasis<2, real_t>& thbBasis = thbBases[0];
-                                    if (f < static_cast<int>(functionDescription.size()) && functionDescription[f].size() > 0) {
-                                        int fnPatch = functionDescription[f][0][0];
-                                        int fnLevel = functionDescription[f][0][1];
-                                        int fnTensorIdx = functionDescription[f][0][2];
-                                        
-                                        if (fnPatch < static_cast<int>(indexInTHB.size()) &&
-                                            fnLevel < static_cast<int>(indexInTHB[fnPatch].size()) &&
-                                            fnTensorIdx < static_cast<int>(indexInTHB[fnPatch][fnLevel].size())) {
-                                            int thbIdx = indexInTHB[fnPatch][fnLevel][fnTensorIdx];
-                                            if (thbIdx >= 0 && thbIdx < static_cast<int>(thbBasis.size())) {
-                                                gsMatrix<real_t> evalRes;
-                                                thbBasis.evalSingle_into(thbIdx, uvk, evalRes);
-                                                real_t thbValue = evalRes(0, 0);
-                                                row0Log << "  THB Basis " << thbIdx << " value: " << std::setprecision(16) << thbValue << "\n";
-                                                row0Log << "  Difference (THB - MPBES with spillover): " 
-                                                       << std::setprecision(16) << (thbValue - (value + spilloverContribution)) << "\n";
-                                                
-                                                if (std::abs(thbValue - (value + spilloverContribution)) < 1e-10) {
-                                                    row0Log << "  *** MATCH! Spillover component completes the THB value ***\n";
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            row0Log << "\n";
-                        }
-
-                        if (logRowTarget) {
-                            if (!rowTargetLogOpened) {
-                                std::string filename = "row" + std::to_string(targetRow) + "_p" + std::to_string(currentPatch)
-                                    + "_lev" + std::to_string(currentLevel) + "_att" + std::to_string(currentAttempt) + ".txt";
-                                rowTargetLog.open(filename);
-                                rowTargetLogOpened = true;
-                                rowTargetLog << "=== Detailed Row " << targetRow << " Diagnostic (Patch " << currentPatch
-                                    << ", Level " << currentLevel << ", Attempt " << currentAttempt << ") ===\n";
-                                rowTargetLog << "Total functions in MPBES: " << numFunctions << "\n";
-                                rowTargetLog << "Patch " << patch << ", Element " << el << ", Gauss " << q << "\n";
-                                rowTargetLog << "(u,v)= (" << uvk(0) << ", " << uvk(1) << ")\n";
-                                rowTargetLog << "Element bounds: [" << lower(0) << ", " << upper(0) << "] x ["
-                                    << lower(1) << ", " << upper(1) << "]\n\n";
-                            }
-
-                            rowTargetLog << "Function " << f << ": total value = " << std::setprecision(16) << value;
-                            rowTargetLog << (isTruncated[f] ? " [TRUNCATED]" : " [NOT TRUNCATED]") << "\n";
-
-                            rowTargetNonZeroFuncs++;
-                            rowTargetNonZeroFunctionList.push_back(static_cast<int>(f));
-                            rowTargetNonZeroValueList.push_back(value);
-
-                            if (f < hasSpillover.size() && hasSpillover[f]) {
-                                rowTargetLog << "  Spillover: YES\n";
-                                if (f < spilloverFunctionCoordinates.size()) {
-                                    for (const auto& sp : spilloverFunctionCoordinates[f]) {
-                                        int spPatch = sp[0];
-                                        int spLevel = sp[1];
-                                        int spIndex = sp[2];
-                                        rowTargetLog << "    Spillover coord: (patch=" << spPatch
-                                            << ", level=" << spLevel
-                                            << ", index=" << spIndex << ")";
-                                        if (spPatch == static_cast<int>(patch) &&
-                                            spPatch < static_cast<int>(bellsBases.size()) &&
-                                            spLevel < static_cast<int>(bellsBases[spPatch].size())) {
-                                            const index_t basisSize = bellsBases[spPatch][spLevel].size();
-                                            if (spIndex >= 0 && spIndex < basisSize) {
-                                                gsMatrix<real_t> spVal;
-                                                bellsBases[spPatch][spLevel].evalSingle_into(spIndex, uvk, spVal);
-                                                rowTargetLog << " -> value=" << std::setprecision(16) << spVal(0, 0);
-                                            }
-                                        }
-                                        rowTargetLog << "\n";
-                                    }
-                                }
-                            }
-                            else {
-                                rowTargetLog << "  Spillover: NO\n";
-                            }
-
-                            rowTargetLog << "  Components:\n";
-                            for (size_t compIdx = 0; compIdx < functionDescription[f].size(); ++compIdx) {
-                                if (functionDescription[f][compIdx].size() < 3)
-                                {
-                                    rowTargetLog << "    Comp " << compIdx << ": INVALID (size<3)\n";
-                                    continue;
-                                }
-
-                                int fnPatch = functionDescription[f][compIdx][0];
-                                int fnLevel = functionDescription[f][compIdx][1];
-                                int fnTensorIdx = functionDescription[f][compIdx][2];
-                                int thbIdx = -1;
-                                if (fnPatch < static_cast<int>(indexInTHB.size()) &&
-                                    fnLevel < static_cast<int>(indexInTHB[fnPatch].size()) &&
-                                    fnTensorIdx < static_cast<int>(indexInTHB[fnPatch][fnLevel].size()))
-                                {
-                                    thbIdx = indexInTHB[fnPatch][fnLevel][fnTensorIdx];
-                                }
-
-                                bool compTruncated = mpbes.isComponentTruncated(f, compIdx);
-                                rowTargetLog << "    Comp " << compIdx
-                                    << ": patch=" << fnPatch
-                                    << ", level=" << fnLevel
-                                    << ", tensorIdx=" << fnTensorIdx
-                                    << ", thbIdx=" << thbIdx
-                                    << ", compTruncated=" << (compTruncated ? "YES" : "NO")
-                                    << ", presLevel=" << mpbes.presentationLevel(f, compIdx) << "\n";
-
-                                if (compTruncated && f < presentation.size() && compIdx < presentation[f].size())
-                                {
-                                    rowTargetLog << "      Presentation coefficients:\n";
-                                    for (typename gsSparseVector<real_t>::InnerIterator it(presentation[f][compIdx]); it; ++it)
-                                    {
-                                        gsMatrix<real_t> basisVal;
-                                        int presLevel = mpbes.presentationLevel(f, compIdx);
-                                        if (fnPatch < static_cast<int>(bellsBases.size()) &&
-                                            presLevel < static_cast<int>(bellsBases[fnPatch].size()))
-                                        {
-                                            const index_t basisSize = bellsBases[fnPatch][presLevel].size();
-                                            if (it.index() >= 0 && it.index() < basisSize)
-                                                bellsBases[fnPatch][presLevel].evalSingle_into(it.index(), uvk, basisVal);
-                                        }
-                                        real_t bval = (basisVal.rows() > 0 && basisVal.cols() > 0) ? basisVal(0, 0) : 0.0;
-                                        rowTargetLog << "        idx=" << it.index()
-                                            << ", coef=" << it.value()
-                                            << ", basis=" << bval
-                                            << ", contrib=" << (it.value() * bval) << "\n";
-                                    }
-                                }
-                            }
-
-                            rowTargetLog << "\n";
-                        }
-                    }
-                    else if (logRow0) {
-                        // Log ZERO-valued functions too
-                        if (!row0LogOpened) {
-                            std::string filename = "row0_p" + std::to_string(currentPatch) + "_lev" + std::to_string(currentLevel) + "_att" + std::to_string(currentAttempt) + "_detailed.txt";
-                            row0Log.open(filename);
-                            row0LogOpened = true;
-                            row0Log << "=== Detailed Row 0 Diagnostic (Patch " << currentPatch << ", Level " << currentLevel << ", Attempt " << currentAttempt << ") ===\n";
-                            row0Log << "Outer context: patch=" << currentPatch << ", level=" << currentLevel << ", attempt=" << currentAttempt << "\n";
-                            row0Log << "Assembling patch=" << patch << ", element=" << el << ", gauss=" << q << ", row=" << row << "\n";
-                            row0Log << "Total rows: " << totalRows << ", total patches: " << numPatches << "\n";
-                            row0Log << "Total functions in MPBES: " << numFunctions << "\n";
-                            row0Log << "Patch " << patch << ", Element " << el << ", Gauss " << q << "\n";
-                            row0Log << "(u,v)= (" << uvk(0) << ", " << uvk(1) << ")\n";
-                            row0Log << "Element bounds: [" << lower(0) << ", " << upper(0) << "] x ["
-                                    << lower(1) << ", " << upper(1) << "]\n\n";
-                        }
-
-                        row0Log << "Function " << f << ": total value = 0 (ZERO)";
-                        row0Log << (isTruncated[f] ? " [TRUNCATED]" : " [NOT TRUNCATED]") << "\n";
-
-                        // Check if function has any patch 0 components
-                        bool hasPatch0 = false;
-                        for (const auto& desc : functionDescription[f]) {
-                            if (desc[0] == 0) {
-                                hasPatch0 = true;
-                                break;
-                            }
-                        }
-
-                        if (!hasPatch0) {
-                            row0ZeroNoPatchComponents++;
-                            row0Log << "  (No patch 0 components - not evaluated at this patch)\n\n";
-                            continue;
-                        }
-
-                        row0ZeroHasPatchComponents++;
-
-                        row0Log << "\n*** INVESTIGATING ZERO VALUE (Function " << f << " has patch 0 components) ***\n";
-
-                        if (f < hasSpillover.size() && hasSpillover[f]) {
-                            row0Log << "  Spillover: YES\n";
-                        } else {
-                            row0Log << "  Spillover: NO\n";
-                        }
-
-                        row0Log << "  Components:\n";
-                        for (size_t compIdx = 0; compIdx < functionDescription[f].size(); ++compIdx) {
-                            int fnPatch = functionDescription[f][compIdx][0];
-                            int fnLevel = functionDescription[f][compIdx][1];
-                            int fnTensorIdx = functionDescription[f][compIdx][2];
-
-                            row0Log << "    Comp " << compIdx
-                                    << ": patch=" << fnPatch
-                                    << ", level=" << fnLevel
-                                    << ", tensorIdx=" << fnTensorIdx;
-
-                            if (fnPatch != static_cast<int>(patch)) {
-                                row0Log << " [patch mismatch]\n";
-                                continue;
-                            }
-
-                            // Check if evaluation point is in this component's support
-                            bool inSupport = false;
-                            gsMatrix<real_t> supportBox;
-                            if (fnPatch < static_cast<int>(bellsBases.size()) && 
-                                fnLevel < static_cast<int>(bellsBases[fnPatch].size())) {
-                                const gsTensorBSplineBasis<2, real_t>& basis = bellsBases[fnPatch][fnLevel];
-                                if (fnTensorIdx >= 0 && fnTensorIdx < basis.size()) {
-                                    supportBox = basis.support(fnTensorIdx);
-                                    // supportBox is 2x2: rows are u,v; cols are min,max
-                                    inSupport = (uvk(0) >= supportBox(0, 0) && uvk(0) <= supportBox(0, 1) &&
-                                                 uvk(1) >= supportBox(1, 0) && uvk(1) <= supportBox(1, 1));
-                                    row0Log << ", support=[" << supportBox(0,0) << "," << supportBox(0,1) << "] x ["
-                                            << supportBox(1,0) << "," << supportBox(1,1) << "]";
-                                    row0Log << ", inSupport=" << (inSupport ? "YES" : "NO");
-                                }
-                            }
-
-                            int thbIdx = -1;
-                            bool thbInBounds = (fnPatch < static_cast<int>(indexInTHB.size()) &&
-                                fnLevel < static_cast<int>(indexInTHB[fnPatch].size()) &&
-                                fnTensorIdx < static_cast<int>(indexInTHB[fnPatch][fnLevel].size()));
-                            if (thbInBounds)
-                                thbIdx = indexInTHB[fnPatch][fnLevel][fnTensorIdx];
-
-                            bool compTruncated = mpbes.isComponentTruncated(f, compIdx);
-                            int presLevel = static_cast<int>(mpbes.presentationLevel(f, compIdx));
-
-                            row0Log << ", thbIdx=" << thbIdx
-                                    << ", compTruncated=" << (compTruncated ? "YES" : "NO")
-                                    << ", presLevel=" << presLevel;
-
-                            if (thbIdx < 0) {
-                                row0Log << " [SPILLOVER - not in THB active set]\n";
-                            } else {
-                                row0Log << "\n";
-                            }
-
-                            if (compTruncated) {
-                                row0Log << "      Presentation coefficients:\n";
-                                if (f < presentation.size() && compIdx < presentation[f].size()) {
-                                    const auto& coeffs = presentation[f][compIdx];
-                                    int numCoeffs = 0;
-                                    for (typename gsSparseVector<real_t>::InnerIterator it(coeffs); it; ++it) {
-                                        numCoeffs++;
-                                        gsMatrix<real_t> basisVal;
-                                        if (fnPatch < static_cast<int>(bellsBases.size()) &&
-                                            presLevel < static_cast<int>(bellsBases[fnPatch].size())) {
-                                            bellsBases[fnPatch][presLevel].evalSingle_into(it.index(), uvk, basisVal);
-                                        } else {
-                                            basisVal.resize(1, 1);
-                                            basisVal(0, 0) = 0.0;
-                                        }
-                                        real_t contrib = it.value() * basisVal(0, 0);
-                                        row0Log << "        idx=" << it.index()
-                                                << ", coef=" << std::setprecision(16) << it.value()
-                                                << ", basis=" << basisVal(0, 0)
-                                                << ", contrib=" << contrib << "\n";
-                                    }
-                                    if (numCoeffs == 0) {
-                                        row0Log << "        (no coefficients)\n";
-                                    }
-                                } else {
-                                    row0Log << "        (no presentation data)\n";
-                                }
-                            } else {
-                                gsMatrix<real_t> compVal;
-                                const gsTensorBSplineBasis<2, real_t>* bellsBasis = nullptr;
-                                int bellsIdx = -1;
-
-                                if (thbIdx == -1 && fnPatch < static_cast<int>(bellsBases.size()) &&
-                                    fnLevel < static_cast<int>(bellsBases[fnPatch].size())) {
-                                    bellsBasis = &bellsBases[fnPatch][fnLevel];
-                                    bellsIdx = fnTensorIdx;
-                                }
-
-                                if (thbInBounds) {
-                                    evalSingle_into(
-                                        f,
-                                        thbIdx,
-                                        uvk,
-                                        isTruncated,
-                                        thbBases[fnPatch],
-                                        presentation[f][compIdx],
-                                        compVal,
-                                        bellsBasis,
-                                        bellsIdx);
-                                    row0Log << "      Component value = " << std::setprecision(16) << compVal(0, 0);
-                                    if (compVal(0, 0) == 0.0) {
-                                        row0Log << " (why zero? thbIdx=" << thbIdx << ")";
-                                    }
-                                    row0Log << "\n";
-                                } else {
-                                    row0Log << "      Component value = 0 (index out of bounds)\n";
-                                }
-                            }
-                        }
-
-                        row0Log << "\n";
-                    }
-                }
-                
-                if (logThisRow) {
-                    outfile << "    Total non-zero functions: " << nonZeroFuncs << "\n";
-                    outfile << "    Row sum: " << rowSum << "\n";
-                    if (std::abs(rowSum - 1.0) > 1e-6) {
-                        outfile << "    *** PARTITION OF UNITY VIOLATION: deviation = " 
-                                << (rowSum - 1.0) << " ***\n";
-                    }
-                }
-
-                if (logRow0) {
-                    if (row0LogOpened) {
-                        row0Log << "Row 0 sum at this point: " << std::setprecision(16) << rowSum << "\n";
-                    }
-                    row0Sum = rowSum;
-                    row0SumSet = true;
-                }
-
-                if (logRowTarget) {
-                    rowTargetSum = rowSum;
-                    rowTargetSumSet = true;
-                }
-
-                // Validate rowOffset before incrementing
-                if (rowOffset + 1 > totalRows) {
-                    gsInfo << "ERROR: rowOffset would exceed totalRows (" << rowOffset + 1 << " > " << totalRows << ")\n";
-                    outfile << "ERROR: rowOffset would exceed totalRows, stopping assembly\n";
-                    break;
-                }
-                
-                ++rowOffset;
             }
-            
-            // Check if we've exceeded bounds
-            if (rowOffset > totalRows) {
-                gsInfo << "ERROR: rowOffset exceeded totalRows after patch " << patch << "\n";
+            const index_t M = static_cast<index_t>(gaussPtVec.size());
+            if (M == 0) continue;
+
+            if (rowOffset + M > totalRows) {
+                gsInfo << "ERROR: rowOffset+M would exceed totalRows ("
+                       << rowOffset+M << " > " << totalRows << ")\n";
+                outfile << "ERROR: rowOffset+M would exceed totalRows, stopping assembly\n";
                 break;
             }
-            
-            elementCount++;
+
+            gsMatrix<real_t> uvPatch(2, M);
+            for (index_t i = 0; i < M; ++i)
+                uvPatch.col(i) = gaussPtVec[i];
+
+            // Phase 2: batch RHS — target geometry at all Gauss points
+            try {
+                if (patch < mp.nPatches()) {
+                    gsMatrix<real_t> xy = mp.patch(patch).eval(uvPatch);
+                    for (index_t i = 0; i < M; ++i) {
+                        b_vec(rowOffset+i, 0) = (xy.rows() >= 1 && i < xy.cols()) ? xy(0, i) : 0.0;
+                        b_vec(rowOffset+i, 1) = (xy.rows() >= 2 && i < xy.cols()) ? xy(1, i) : 0.0;
+                    }
+                }
+            } catch (const std::exception& e) {
+                if (verbose)
+                    gsInfo << "EXCEPTION in mp.patch().eval() for patch " << patch << ": " << e.what() << "\n";
+            } catch (...) {}
+
+            // Phase 3: batch basis eval — one call per function over all M Gauss points
+            gsMatrix<real_t> basisValues;
+            for (index_t f = 0; f < numFunctions; ++f) {
+                const index_t globalF = globalFunctionOf(f);
+                if (globalF < 0 || globalF >= static_cast<index_t>(functionDescription.size())) continue;
+                try {
+                    mpbes.evalSingleOnPatch(globalF, patch, uvPatch, basisValues);
+                } catch (const std::exception& e) {
+                    if (verbose)
+                        gsInfo << "EXCEPTION in evalSingleOnPatch for f=" << f << ", patch=" << patch
+                               << ": " << e.what() << "\n";
+                    continue;
+                } catch (...) { continue; }
+                if (basisValues.rows() < 1 || basisValues.cols() != M) continue;
+                for (index_t i = 0; i < M; ++i) {
+                    const real_t val = basisValues(0, i);
+                    if (std::isfinite(val) && val != 0.0)
+                        triplets.emplace_back(rowOffset+i, f, val);
+                }
+            }
+
+            if (verbose)
+                outfile << "  Patch " << patch << " completed: " << M << " Gauss points\n";
+
+            rowOffset += M;
         }
-        
-        if (verbose) {
-            outfile << "  Patch " << patch << " completed: " << elementCount << " elements processed\n";
-        }
-    }
-    
+
+        A_mat.setFromTriplets(triplets.begin(), triplets.end());
+
+        // Silence unused-variable warnings for debug logging infrastructure (never fires in normal runs)
+        (void)row0Sum; (void)row0SumSet; (void)row0NonZeroFuncs;
+        (void)rowTargetSum; (void)rowTargetSumSet; (void)rowTargetNonZeroFuncs;
+        (void)row0ZeroNoPatchComponents; (void)row0ZeroHasPatchComponents;
+
+        // (batch eval complete above — old element-by-element loop removed)
     } // end of useCustomPoints if-else
 
     if (row0LogOpened) {
@@ -11452,7 +10971,7 @@ void orientThePatches(gsMultiPatch<> mp, std::vector<int>& firstSide, std::vecto
     for (int interfaceNum = 0; interfaceNum < boundaryInterfaces.size(); ++interfaceNum)
     {
         outfile << boundaryInterfaces[interfaceNum] << "\n";
-        gsInfo << boundaryInterfaces[interfaceNum] << "\n";
+        if (g_verbose) gsInfo << boundaryInterfaces[interfaceNum] << "\n";
         const int rawFirstSide = boundaryInterfaces[interfaceNum].first().index();
         const int rawSecondSide = boundaryInterfaces[interfaceNum].second().index();
         const int localFirstPatch = boundaryInterfaces[interfaceNum].first().patch;
@@ -13874,29 +13393,20 @@ int rebuildTheHierarchy(gsVector< gsVector<gsVector<index_t>>>& boxMat, int row,
         boxMat(patch)(row)(2) <= y2U * pow(2, boxMat(patch)(row)(0) - levNow) &&
         y2U * pow(2, boxMat(patch)(row)(0) - levNow) <= boxMat(patch)(row)(4)
         ) {
-        gsInfo << "ALERT: OUR CELL OF LEVEL " << levNow << "\n" << x1U << " " << y1U << " " << x2U <<
-            " " << y2U <<
-            " INTERSECTS WITH [" << row << "]th box of level " <<
-            boxMat(patch)(row)(0) << ":\n" << boxMat(patch)(row)(1) << " " << boxMat(patch)(row)(2) << " " <<
-            boxMat(patch)(row)(3) << " " << boxMat(patch)(row)(4) << "\n";
         if (boxMat(patch)(row)(0) <= levNow) {
-            gsInfo << "NO NEED TO REBUILD \n";
         }
         //HERE I START TO WRITE CODE IN MORE GENERAL WAY
         else if (boxMat(patch)(row)(0) > levNow + 1) {
-            gsInfo << "I DON'T TOUCH THESE BOX AT THIS ITERATION!\n";
         }
         else if (boxMat(patch)(row)(0) == levNow + 1) {
             x1Bi = boxMat(patch)(row)(1);
             y1Bi = boxMat(patch)(row)(2);
             x2Bi = boxMat(patch)(row)(3);
             y2Bi = boxMat(patch)(row)(4);
-            gsInfo << "REBUILD\n";
             RTH = 1;
             //SW W NW
             if (x1U * pow(2, boxMat(patch)(row)(0) - levNow) - x1Bi > 0) {
                 if (y1U * pow(2, boxMat(patch)(row)(0) - levNow) - y1Bi > 0) {
-                    gsInfo << "CREATE SW BOX:\n";
                     boxMat(patch)(lastNonZeroRow).resize(5);
                     boxMat(patch)(lastNonZeroRow)(0) = levNow + 1;
                     boxMat(patch)(lastNonZeroRow)(1) = x1Bi;
@@ -13906,7 +13416,6 @@ int rebuildTheHierarchy(gsVector< gsVector<gsVector<index_t>>>& boxMat, int row,
                     lastNonZeroRow++;
                     createdBoxNum++;
                 }
-                gsInfo << "CREATE W BOX:\n";
                 boxMat(patch)(lastNonZeroRow).resize(5);
                 boxMat(patch)(lastNonZeroRow)(0) = levNow + 1;
                 boxMat(patch)(lastNonZeroRow)(1) = x1Bi;
@@ -13916,7 +13425,6 @@ int rebuildTheHierarchy(gsVector< gsVector<gsVector<index_t>>>& boxMat, int row,
                 lastNonZeroRow++;
                 createdBoxNum++;
                 if (y2Bi - y2U * pow(2, boxMat(patch)(row)(0) - levNow) > 0) {
-                    gsInfo << "CREATE NW BOX:\n";
                     boxMat(patch)(lastNonZeroRow).resize(5);
                     boxMat(patch)(lastNonZeroRow)(0) = levNow + 1;
                     boxMat(patch)(lastNonZeroRow)(1) = x1Bi;
@@ -13929,7 +13437,6 @@ int rebuildTheHierarchy(gsVector< gsVector<gsVector<index_t>>>& boxMat, int row,
             }
             //S N
             if (y1U * pow(2, boxMat(patch)(row)(0) - levNow) - y1Bi > 0) {
-                gsInfo << "CREATE S BOX:\n";
                 boxMat(patch)(lastNonZeroRow).resize(5);
                 boxMat(patch)(lastNonZeroRow)(0) = levNow + 1;
                 boxMat(patch)(lastNonZeroRow)(1) = x1U * pow(2, boxMat(patch)(row)(0) - levNow);
@@ -13940,7 +13447,6 @@ int rebuildTheHierarchy(gsVector< gsVector<gsVector<index_t>>>& boxMat, int row,
                 createdBoxNum++;
             }
             if (y2Bi - y2U * pow(2, boxMat(patch)(row)(0) - levNow) > 0) {
-                gsInfo << "CREATE N BOX:\n";
                 boxMat(patch)(lastNonZeroRow).resize(5);
                 boxMat(patch)(lastNonZeroRow)(0) = levNow + 1;
                 boxMat(patch)(lastNonZeroRow)(1) = x1U * pow(2, boxMat(patch)(row)(0) - levNow);
@@ -13952,7 +13458,6 @@ int rebuildTheHierarchy(gsVector< gsVector<gsVector<index_t>>>& boxMat, int row,
             //SE E NE
             if (x2Bi - x2U * pow(2, boxMat(patch)(row)(0) - levNow) > 0) {
                 if (y1U * pow(2, boxMat(patch)(row)(0) - levNow) - y1Bi > 0) {
-                    gsInfo << "CREATE SE BOX:\n";
                     boxMat(patch)(lastNonZeroRow).resize(5);
                     boxMat(patch)(lastNonZeroRow)(0) = levNow + 1;
                     boxMat(patch)(lastNonZeroRow)(1) = x2U * pow(2, boxMat(patch)(row)(0) - levNow);
@@ -13962,7 +13467,6 @@ int rebuildTheHierarchy(gsVector< gsVector<gsVector<index_t>>>& boxMat, int row,
                     lastNonZeroRow++;
                     createdBoxNum++;
                 }
-                gsInfo << "CREATE E BOX:\n";
                 boxMat(patch)(lastNonZeroRow).resize(5);
                 boxMat(patch)(lastNonZeroRow)(0) = levNow + 1;
                 boxMat(patch)(lastNonZeroRow)(1) = x2U * pow(2, boxMat(patch)(row)(0) - levNow);
@@ -18099,9 +17603,10 @@ static CellSelectionResult selectCellForCoarsening(
             result.y1U = result.geoCells.front().y1;
             result.x2U = result.geoCells.front().x2;
             result.y2U = result.geoCells.front().y2;
-            gsInfo << "[geo-coarsen] useGeo=1 cells=" << result.geoCells.size()
-                   << " firstIndex=" << result.currCellIndex
-                   << " firstBox=[" << result.x1U << "," << result.y1U << "," << result.x2U << "," << result.y2U << "]\n";
+            if (g_verbose)
+                gsInfo << "[geo-coarsen] useGeo=1 cells=" << result.geoCells.size()
+                       << " firstIndex=" << result.currCellIndex
+                       << " firstBox=[" << result.x1U << "," << result.y1U << "," << result.x2U << "," << result.y2U << "]\n";
             outfile << "[geo-coarsen] useGeo=1 cells=" << result.geoCells.size()
                     << " firstIndex=" << result.currCellIndex
                     << " firstBox=[" << result.x1U << "," << result.y1U << "," << result.x2U << "," << result.y2U << "]\n";
@@ -18115,7 +17620,7 @@ static CellSelectionResult selectCellForCoarsening(
             result.y1U = y1Ui;
             result.x2U = x2Ui;
             result.y2U = y2Ui;
-            gsInfo << "[geo-coarsen] useGeo=0 fallback pickCell index=" << result.currCellIndex << "\n";
+            if (g_verbose) gsInfo << "[geo-coarsen] useGeo=0 fallback pickCell index=" << result.currCellIndex << "\n";
             outfile << "[geo-coarsen] useGeo=0 fallback pickCell index=" << result.currCellIndex << "\n";
         }
     }
@@ -18138,9 +17643,10 @@ static CellSelectionResult selectCellForCoarsening(
             result.y1U = result.geoCells.front().y1;
             result.x2U = result.geoCells.front().x2;
             result.y2U = result.geoCells.front().y2;
-            gsInfo << "[geo-coarsen] preflight mirrored patch=" << patch
-                   << ", hierarchy-safe sibling fallback cells=" << result.geoCells.size()
-                   << " level=" << levNow << "\n";
+            if (g_verbose)
+                gsInfo << "[geo-coarsen] preflight mirrored patch=" << patch
+                       << ", hierarchy-safe sibling fallback cells=" << result.geoCells.size()
+                       << " level=" << levNow << "\n";
             outfile << "[geo-coarsen] preflight mirrored patch=" << patch
                     << ", hierarchy-safe sibling fallback cells=" << result.geoCells.size()
                     << " level=" << levNow << "\n";
@@ -18156,8 +17662,9 @@ static CellSelectionResult selectCellForCoarsening(
             result.y1U = y1Ui;
             result.x2U = x2Ui;
             result.y2U = y2Ui;
-            gsInfo << "[geo-coarsen] preflight mirrored patch=" << patch
-                   << ", no hierarchy-safe sibling group found; fallback to pickCell at level=" << levNow << "\n";
+            if (g_verbose)
+                gsInfo << "[geo-coarsen] preflight mirrored patch=" << patch
+                       << ", no hierarchy-safe sibling group found; fallback to pickCell at level=" << levNow << "\n";
             outfile << "[geo-coarsen] preflight mirrored patch=" << patch
                     << ", no hierarchy-safe sibling group found; fallback to pickCell at level=" << levNow << "\n";
         }
@@ -18286,8 +17793,9 @@ static gsMatrix<real_t> mapPrevSolToNewMpbes(
         if (!found) ++nNew;
     }
 
-    gsInfo  << "[mapPrev] newSize=" << newMpbes.size()
-            << " carried=" << nCarried << " new(zero)=" << nNew << "\n";
+    if (g_verbose)
+        gsInfo  << "[mapPrev] newSize=" << newMpbes.size()
+                << " carried=" << nCarried << " new(zero)=" << nNew << "\n";
     outfile << "[mapPrev] newSize=" << newMpbes.size()
             << " carried=" << nCarried << " new(zero)=" << nNew << "\n";
 
@@ -18878,8 +18386,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
     char method,
     const std::string& givenGeo,
     const std::string& acCond,
-    const std::vector<FeatureBoundarySpec>& featureSides,
-    const gsMatrix<real_t>* originalCoefficients) {
+    const std::vector<FeatureBoundarySpec>& featureSides) {
     
     // Initialize variables that were in main()
     std::chrono::time_point<std::chrono::system_clock> startTime, iterTime;
@@ -18889,6 +18396,35 @@ AlgorithmResult unrefinementAlgorithmHBJ(
     real_t lcx, lcy, ucx, ucy;
     int successfullAttempts = 0, totalAttempts = 0;
     int projections = 0;  // Use different name to avoid conflict with proj() function
+    // ---- Phase-time accumulators ----
+    double t_grenda     = 0.0; // Grenda preflight: selectCellForCoarsening on all patches
+    double t_cell_sel   = 0.0; // Actual cell selection (winning patch)
+    double t_mpbes_bld  = 0.0; // Per-step MPBES build (orientThePatches + createIndexMapping + MPBES ctor)
+    double t_orient     = 0.0; //   └─ orientThePatches
+    double t_indexmap   = 0.0; //   └─ createIndexMapping
+    double t_mpbes_ctor = 0.0; //   └─ MPBES<2,real_t> constructor
+    double t_assemble   = 0.0; // assemble() call
+    double t_ata_ldlt   = 0.0; // Sparse AtA formation + LDLT solve
+    double t_lo         = 0.0; // LO nonLinearOptimization call
+    double t_nlo        = 0.0; // NLO nonLinearOptimization call
+    double t_mpbes_copy  = 0.0; // MPBES deep-copy on accepted coarsening
+    double t_jack        = 0.0; // checkJacobianDeterminant (already printed per-step as "jack took:")
+    double t_boundary    = 0.0; // testBoundaryAssembly
+    double t_targetgeom  = 0.0; // target geometry matrix construction (mp1.eval at uv1 points)
+    double t_globalerr   = 0.0; // globalFittingError
+    double t_preflight   = 0.0; // generateOriginalGeometryMesh (mesh write) + direct Jacobian check on mp
+    double t_pf_mesh     = 0.0; // sub: generateOriginalGeometryMesh
+    double t_pf_check    = 0.0; // sub: computeMirroredCheckFromMp + logGeometryPreflight
+    double t_presolve    = 0.0; // column mapping + defect correction (between assemble and LDLT)
+    double t_postsolve   = 0.0; // scatter/merge + residual diagnostics + uv2_adaptive setup (between LDLT and jack)
+    double t_postjack    = 0.0; // logging + flush + A-alloc between jack and boundary
+    double t_postaccept  = 0.0; // flushing + acceptance logging between globalerr and next THB rebuild
+    double t_localsetup  = 0.0; // local region build + assembleActiveFunctions selection (local fitting only)
+    double t_init        = 0.0; // one-time init before main while loop
+    double t_thb_rebuild = 0.0; // THB rebuild: rebuildHierarchy + refineElements replay + outfile<<THB
+    double t_extract     = 0.0; // MPBES data extraction + vectSol init (after MPBES build)
+    double t_gap_a       = 0.0; // GAP A: between Grenda end and cell-sel start (coarsenGroup build + var decl)
+    double t_bookkeeping = 0.0; // success/rejection bookkeeping after t_postaccept (data copies + outfile)
     std::string xmlFile = "/home/targon/theydarov/output/" + givenGeo + acCond;
     const std::string filePrefix = gsFileManager::getBasename(filename) + "_";
     
@@ -18926,6 +18462,32 @@ AlgorithmResult unrefinementAlgorithmHBJ(
         return errorResult;
     }
 
+    // ---- Preflight: direct Jacobian check on mp (no MPBES build needed) ----
+    gsMatrix<real_t> originalCoefsCapture;   // filled from first vectSol after MPBES builds
+    const gsMatrix<real_t>* originalCoefficients = nullptr;
+    {
+        auto _tPFM0 = std::chrono::system_clock::now();
+        generateOriginalGeometryMesh(*mp, 8, filePrefix + "output_mesh_original");
+        t_pf_mesh = std::chrono::duration<double>(std::chrono::system_clock::now() - _tPFM0).count();
+
+        auto _tPFC0 = std::chrono::system_clock::now();
+        gsVector<real_t> pfLow(2), pfUp(2);
+        pfLow << 0.0, 0.0;  pfUp << 1.0, 1.0;
+        gsVector<gsMatrix<real_t>> uvPF(mp->nPatches());
+        for (index_t p = 0; p < static_cast<index_t>(mp->nPatches()); ++p)
+            uvPF(p) = uniformPointGrid(pfLow, pfUp, 20 * 20);
+
+        GeometryPreflightInfo gPF;
+        gPF.mirroredReport = computeMirroredCheckFromMp(uvPF, *mp, 1e-12);
+        gPF.interfaces     = collectVisualizationInterfaceInfos(*mp);
+        gPF.valid          = true;
+        g_geometryPreflight = gPF;
+        logGeometryPreflight(gPF, gsFileManager::getBasename(filename), false);
+        t_pf_check = std::chrono::duration<double>(std::chrono::system_clock::now() - _tPFC0).count();
+        // originalCoefficients captured on first vectSol extraction below
+        t_preflight = t_pf_mesh + t_pf_check;
+    }
+
     const int degreeU = mp->patch(0).basis().degree(0);
     const int degreeV = mp->patch(0).basis().degree(1);
     const unsigned multEndU = static_cast<unsigned>(degreeU + 1);
@@ -18958,7 +18520,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
     gsMatrix<> supps;
     const gsVector<real_t> lowc2 = lowc1;
     const gsVector<real_t> uppc2 = uppc1;
-    int numPoints = std::sqrt(mp->patch(0).basis().size());
+    int numPoints = std::max(5, (int)std::sqrt(mp->patch(0).basis().size()));
     int jacPoints = 40;
     gsVector<gsMatrix<real_t>> uv1(mp->nPatches());
     gsVector<gsMatrix<real_t>> uv2(mp->nPatches());
@@ -19214,6 +18776,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
     // so Grendas' algorithm (and any other selection method) draws from
     // a single global candidate pool across all patches simultaneously.
     // -----------------------------------------------------------------------
+    t_init = std::chrono::duration<double>(std::chrono::system_clock::now() - startTime).count() - t_preflight;
     {
     const int globalMaxCoarseLevel = static_cast<int>(coarseLevel.maxCoeff());
     for (int levNow = globalMaxCoarseLevel; levNow >= 0; --levNow) {
@@ -19256,6 +18819,10 @@ AlgorithmResult unrefinementAlgorithmHBJ(
         iteration = 0;
         theLev = levNow;
 
+        // Patch interface orientations are topology-invariant: cache once before the loop.
+        std::vector<int> cachedFirstSide, cachedSecondSide, cachedFirstPatch, cachedSecondPatch;
+        orientThePatches(mp1, cachedFirstSide, cachedSecondSide, cachedFirstPatch, cachedSecondPatch);
+
         while (anyPoolNonEmpty(perPatchNCC) && success) {
             iteration++;
             success = 0;
@@ -19274,6 +18841,8 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                 int patch = -1;
                 real_t bestDelta = std::numeric_limits<real_t>::infinity();
                 std::vector<CellSelectionResult> preflightResults(nPatches);
+                {
+                auto _tG0 = std::chrono::system_clock::now();
                 for (int p = 0; p < nPatches; ++p) {
                     if (perPatchVectorS[p].size() == 0) continue;
                     int pickedOneTmp = -1, validTmp = 1, currArrTmp = 0;
@@ -19291,6 +18860,9 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         patch = p;
                     }
                 }
+                t_grenda += std::chrono::duration<double>(std::chrono::system_clock::now() - _tG0).count();
+                }
+                auto _tGA0 = std::chrono::system_clock::now();
                 // If no Grenda geometry candidate found in ANY patch, fall back to the
                 // first non-empty patch and let selectCellForCoarsening use its pickCell fallback.
                 if (patch < 0) {
@@ -19336,7 +18908,6 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                 gsMatrix<int>&      pickedCells      = perPatchPickedCells[patch];
                 int pickedOne = -1;
                 {
-                    // Declare MPBES data variables at broader scope
                     std::vector<std::vector<std::vector<index_t>>> functionDescription;
                     std::vector<std::vector<std::array<int, 3>>> spilloverFunctionCoordinates;
                     std::vector<bool> hasSpillover;
@@ -19406,6 +18977,8 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         // gsInfo << "\n";
                     }
                     createdBoxNum = 0;
+                    t_gap_a += std::chrono::duration<double>(std::chrono::system_clock::now() - _tGA0).count();
+                    { auto _tS0 = std::chrono::system_clock::now();
                     CellSelectionResult selection = selectCellForCoarsening(
                         method,
                         vectorS,
@@ -19420,6 +18993,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         Acceptedmpbes ? Acceptedmpbes.get() : nullptr,
                         mp1,
                         SubdomainHierarchy);
+                    t_cell_sel += std::chrono::duration<double>(std::chrono::system_clock::now() - _tS0).count();
 
                     useGeo = selection.useGeo;
                     currCellIndex = selection.currCellIndex;
@@ -19430,6 +19004,8 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                     y2U = selection.y2U;
                     geoCells = std::move(selection.geoCells);
                     geoCellIndices = std::move(selection.geoCellIndices);
+                    } // end cell-selection timing block
+                    auto _tTHB0 = std::chrono::system_clock::now();
                     int jopa = 4 * (int)pow(2, levNow) * 4 * (int)pow(2, levNow);
                     // outfile << "=======================================\n";
                     // outfile << "=======================================\n";
@@ -19661,9 +19237,10 @@ AlgorithmResult unrefinementAlgorithmHBJ(
 
 
                         SubdomainHierarchy(patch) = THB;
-                        gsInfo  << "[primary coarsen] patch=" << patch
-                                << " cells=" << (useGeo ? geoCells.size() : static_cast<size_t>(1))
-                                << " THBsize=" << THB.size() << "\n";
+                        if (g_verbose)
+                            gsInfo  << "[primary coarsen] patch=" << patch
+                                    << " cells=" << (useGeo ? geoCells.size() : static_cast<size_t>(1))
+                                    << " THBsize=" << THB.size() << "\n";
                         outfile << "[primary coarsen] patch=" << patch
                                 << " cells=" << (useGeo ? geoCells.size() : static_cast<size_t>(1))
                                 << " THBsize=" << THB.size() << "\n";
@@ -19719,8 +19296,9 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                     cpTHB.refineElements(box);
                                 }
                                 SubdomainHierarchy(cpe.patchId) = cpTHB;
-                                gsInfo  << "[co-patch coarsen] patch=" << cpe.patchId
-                                        << " THBsize=" << cpTHB.size() << "\n";
+                                if (g_verbose)
+                                    gsInfo  << "[co-patch coarsen] patch=" << cpe.patchId
+                                            << " THBsize=" << cpTHB.size() << "\n";
                                 outfile << "[co-patch coarsen] patch=" << cpe.patchId
                                         << " THBsize=" << cpTHB.size() << "\n";
                             }
@@ -19779,18 +19357,20 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         //}
                         //gsInfo << "The index of our concern:\n" << hasATwin(0)(4)(0) << "\n";
                         //return 241026;
+                        t_thb_rebuild += std::chrono::duration<double>(std::chrono::system_clock::now() - _tTHB0).count();
                         std::chrono::time_point<std::chrono::system_clock> beforeIdent, afterIdent;
                         beforeIdent = std::chrono::system_clock::now();
                         //IdentifyPatches(mp1, THBVector1, isTouching, twinsIndex, twinsPatch, hasATwin, isActive);
-                        std::vector<int> firstSide;
-                        std::vector<int> secondSide;
-                        std::vector<int> firstPatch;
-                        std::vector<int> secondPatch;
-                        orientThePatches(mp1, firstSide, secondSide, firstPatch, secondPatch);
+                        std::vector<int> firstSide  = cachedFirstSide;
+                        std::vector<int> secondSide = cachedSecondSide;
+                        std::vector<int> firstPatch = cachedFirstPatch;
+                        std::vector<int> secondPatch = cachedSecondPatch;
+                        t_orient += 0.0; // skipped: cached before the loop
                         //IdentifyPatches(mp1, THBVector, isTouchingTHB, twinsIndexTHB, twinsPatchTHB, hasATwinTHB, isActiveTHB);
                         gsVector  <gsVector< gsVector<index_t>>> isIncluded;
                         gsVector  <gsVector< gsVector<index_t>>> indexInTHB;
                         gsVector<std::vector<std::array<int, 2>>> thbToBellsMapping;
+                        { auto _tIM0 = std::chrono::system_clock::now();
                         createIndexMapping(
                             Bells,
                             SubdomainHierarchy,
@@ -19800,15 +19380,17 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                             indexInTHB,
                             thbToBellsMapping
                         );
+                        t_indexmap += std::chrono::duration<double>(std::chrono::system_clock::now() - _tIM0).count(); }
 
                         afterIdent = std::chrono::system_clock::now();
                         std::chrono::duration<double> elapsed_seconds_Ident = afterIdent - beforeIdent;
                         // gsInfo << "IdentifyPatches took: " << elapsed_seconds_Ident.count() << "\n";
 
                         // ===== MPBES: Multi-Patch B-spline with Exact continuity =====
+                        // (beforeIdent reused as start of the full MPBES-build phase)
                         // This performs: Twin identification + Kraft selection + Truncation
                         // gsInfo << "\n========== Creating MPBES basis ==========\n";
-                        
+                        auto _tMC0 = std::chrono::system_clock::now();
                         MPBES<2, real_t> mpbes(
                             boxMat,
                             SubdomainHierarchy,
@@ -19821,6 +19403,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                             true,  // verbose
                             attempt  // for conditional logging
                         );
+                        t_mpbes_ctor += std::chrono::duration<double>(std::chrono::system_clock::now() - _tMC0).count();
                         
                         // Validate MPBES after creation
                         try {
@@ -19838,9 +19421,11 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         } catch (...) {
                             gsInfo << "UNKNOWN EXCEPTION validating MPBES\n";
                         }
-                        
+                        t_mpbes_bld += std::chrono::duration<double>(std::chrono::system_clock::now() - beforeIdent).count();
+
                         // gsInfo << "==========================================\n\n";
 
+                        auto _tEX0 = std::chrono::system_clock::now();
                         // Extract data from MPBES for use throughout the code - with validation
                         try {
                             functionDescription = mpbes.functionDescription();
@@ -19920,6 +19505,13 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                     printTheMatrix(vectSol, "vectSol_initial_from_mpbes");
                             }
                         }
+                        t_extract += std::chrono::duration<double>(std::chrono::system_clock::now() - _tEX0).count();
+
+                        // Capture original fine-geometry coefficients once, on the first MPBES build
+                        if (originalCoefficients == nullptr && vectSol.rows() > 0 && vectSol.cols() >= 2) {
+                            originalCoefsCapture  = vectSol;
+                            originalCoefficients  = &originalCoefsCapture;
+                        }
 
                         gsMatrix<real_t> effectiveOriginalCoefficientsStorage;
                         const gsMatrix<real_t>* effectiveOriginalCoefficients = originalCoefficients;
@@ -19941,6 +19533,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                             localCells.push_back(fallbackCell);
                         }
 
+                        auto _tLS0 = std::chrono::system_clock::now();
                         const int localityLambda = g_localityLambda;
                         LocalCoarseningRegion localRegion;
                         gsVector<gsMatrix<real_t>> uvFitting = uv1;
@@ -20010,34 +19603,21 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                     ++nLocalPatches;
                             if (nLocalPatches < 1) nLocalPatches = 1;
 
-                            // Global k baseline: same density as the pre-existing global uv1 grid
+                            // Use the same per-patch density as the global grid — never denser.
                             index_t totalGlobalPts = 0;
                             for (index_t p = 0; p < uv1.size(); ++p)
                                 totalGlobalPts += uv1(p).cols();
-                            const int kGlobal = std::max(3, static_cast<int>(
+                            const int kLocal = std::max(3, static_cast<int>(
                                 std::ceil(std::sqrt(static_cast<real_t>(totalGlobalPts)
                                                     / static_cast<real_t>(uv1.size())))));
-
-                            // k is per-patch: total points = k*k*nLocalPatches >= 1.5*basisSelected,
-                            // but never sparser than the global grid (kGlobal) to avoid underdetermination
-                            const int kFromDofs = std::max(3, static_cast<int>(
-                                std::ceil(std::sqrt(1.5 * static_cast<real_t>(basisSelected)
-                                                    / static_cast<real_t>(nLocalPatches)))));
-                            const int kLocal = std::max(kGlobal, kFromDofs);
-                            gsInfo << "local sampling: basisSelected=" << basisSelected
-                                   << " nLocalPatches=" << nLocalPatches
-                                   << " k=" << kLocal << " k*k=" << kLocal * kLocal
-                                   << " total=" << kLocal * kLocal * nLocalPatches << "\n";
 
                             if (nLocalPatches >= static_cast<index_t>(uv1.size()))
                             {
                                 gsInfo << "[local-fitting] NOTE: local region covers all "
                                        << nLocalPatches << " patches — falling back to global fitting for this step.\n";
                                 if (outfile.is_open())
-                                {
                                     outfile << "[local-fitting] NOTE: local region covers all "
                                             << nLocalPatches << " patches — falling back to global fitting for this step.\n";
-                                }
                                 uvFitting = uv1;
                                 localFittingEffective = false;
                             }
@@ -20048,7 +19628,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         }
                         else
                         {
-                            gsInfo << "Local fitting disabled; using global uv cloud\n";
+                            if (g_verbose) gsInfo << "Local fitting disabled; using global uv cloud\n";
                         }
 
                         if (outfile.is_open())
@@ -20279,89 +19859,38 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         std::vector<index_t> assembleActiveFunctions;
                         if (localFittingEffective && localRegion.enabled && localRegion.basisInd.cols() == commonSize)
                         {
-                            const auto& fdLocal = mpbes.functionDescription();
                             const auto& hasSpillLocal = mpbes.hasSpillover();
-                            const auto& spillLocal = mpbes.spilloverCoordinates();
 
-                            auto hasNonZeroSampleValue = [&](index_t globalF) -> bool
-                            {
-                                if (globalF < 0 || globalF >= commonSize)
-                                    return false;
-
-                                std::vector<char> patchesToCheck(uvFitting.size(), 0);
-
-                                if (globalF < static_cast<index_t>(fdLocal.size()))
-                                {
-                                    for (const auto& desc : fdLocal[globalF])
-                                    {
-                                        if (desc.size() < 3)
-                                            continue;
-                                        const int p = static_cast<int>(desc[0]);
-                                        if (p >= 0 && p < static_cast<int>(patchesToCheck.size()))
-                                            patchesToCheck[p] = 1;
-                                    }
-                                }
-
-                                if (globalF < static_cast<index_t>(hasSpillLocal.size()) && hasSpillLocal[globalF] &&
-                                    globalF < static_cast<index_t>(spillLocal.size()))
-                                {
-                                    for (const auto& sp : spillLocal[globalF])
-                                    {
-                                        const int p = sp[0];
-                                        if (p >= 0 && p < static_cast<int>(patchesToCheck.size()))
-                                            patchesToCheck[p] = 1;
-                                    }
-                                }
-
-                                const real_t basisTol = 1e-14;
-                                gsMatrix<real_t> basisValue;
-                                for (index_t p = 0; p < static_cast<index_t>(patchesToCheck.size()); ++p)
-                                {
-                                    if (!patchesToCheck[p] || uvFitting(p).cols() == 0)
-                                        continue;
-
-                                    for (index_t c = 0; c < uvFitting(p).cols(); ++c)
-                                    {
-                                        try
-                                        {
-                                            mpbes.evalSingleOnPatch(globalF, p, uvFitting(p).col(c), basisValue);
-                                        }
-                                        catch (...)
-                                        {
-                                            continue;
-                                        }
-
-                                        if (basisValue.rows() < 1 || basisValue.cols() < 1)
-                                            continue;
-
-                                        const real_t value = basisValue(0, 0);
-                                        if (std::isfinite(value) && std::abs(value) > basisTol)
-                                            return true;
-                                    }
-                                }
-
-                                return false;
-                            };
+                            // Batch active-function selection: active_into + reverse THB→global map.
+                            // O(nf + M×numActivePerPoint) vs old O(AU × M × evalSingle).
+                            std::unordered_set<index_t> functionsWithNonZeroValue;
+                            functionsWithNonZeroValue.reserve(static_cast<size_t>(commonSize / 2 + 16));
+                            for (index_t p = 0; p < static_cast<index_t>(uvFitting.size()); ++p)
+                                if (uvFitting(p).cols() > 0)
+                                    mpbes.collectActiveGlobalIndices(p, uvFitting(p), functionsWithNonZeroValue);
+                            // Spillover functions may contribute on patches not covered by uvFitting;
+                            // include them all to avoid false negatives in the AU set.
+                            for (index_t f = 0; f < static_cast<index_t>(commonSize); ++f)
+                                if (localRegion.basisInd(0, f) != 0.0 &&
+                                    f < static_cast<index_t>(hasSpillLocal.size()) && hasSpillLocal[f])
+                                    functionsWithNonZeroValue.insert(f);
 
                             index_t droppedZeroOrUnsampled = 0;
                             for (index_t f = 0; f < static_cast<index_t>(commonSize); ++f)
                             {
-                                if (localRegion.basisInd(0, f) == 0.0)
-                                    continue;
-
-                                if (hasNonZeroSampleValue(f))
+                                if (localRegion.basisInd(0, f) == 0.0) continue;
+                                if (functionsWithNonZeroValue.count(f))
                                     assembleActiveFunctions.push_back(f);
                                 else
                                     ++droppedZeroOrUnsampled;
                             }
 
                             if (outfile.is_open())
-                            {
                                 outfile << "[assemble] AU functions selected=" << assembleActiveFunctions.size()
                                         << " droppedZeroOrUnsampled=" << droppedZeroOrUnsampled
-                                        << " (from basisInd count, using actual basis values)\n";
-                            }
+                                        << " (batch active_into)\n";
                         }
+                        t_localsetup += std::chrono::duration<double>(std::chrono::system_clock::now() - _tLS0).count();
 
                         std::chrono::time_point<std::chrono::system_clock> beforeassembleA, afterassembleA;
                         beforeassembleA = std::chrono::system_clock::now();
@@ -20673,7 +20202,11 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         // gsInfo << "Computing assembly time...\n";
                         afterassembleA = std::chrono::system_clock::now();
                         std::chrono::duration<double> elapsed_seconds_assembleA = afterassembleA - beforeassembleA;
+                        t_assemble += elapsed_seconds_assembleA.count();
                         // gsInfo << "Assembly took: " << elapsed_seconds_assembleA.count() << " seconds\n";
+
+                        // Column mapping + defect correction (timed as t_presolve)
+                        auto _tPS0 = std::chrono::system_clock::now();
 
                         // Check matrix rank before solving
                         // gsInfo << "Converting matA to dense...\n";
@@ -20846,22 +20379,22 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                     x_local_current.row(j).setZero();
                             }
 
-                            // 2. Evaluate current parameterization (all functions) at uvFitting pts
+                            // 2. Evaluate current parameterization (all functions) at uvFitting pts.
+                            // Uses evalGeomOnPatch (batch active_into+eval_into) instead of
+                            // per-point evaluateFittedGeometryPoint to avoid O(MPBES_size) per point.
                             gsMatrix<real_t> geom_current(b_vec.rows(), fullCols);
                             geom_current.setZero();
                             {
                                 index_t row = 0;
                                 for (index_t p = 0; p < static_cast<index_t>(uvFitting.size()); ++p)
                                 {
-                                    for (index_t c = 0; c < uvFitting(p).cols(); ++c)
-                                    {
-                                        gsVector<real_t> uv_pt = uvFitting(p).col(c);
-                                        gsVector<real_t> geomPt = evaluateFittedGeometryPoint(
-                                            mpbes, vectSolSeed, p, uv_pt, false);
-                                        for (index_t d = 0; d < fullCols && d < geomPt.size(); ++d)
-                                            geom_current(row, d) = geomPt(d);
-                                        ++row;
-                                    }
+                                    const index_t Mp = uvFitting(p).cols();
+                                    if (Mp == 0) continue;
+                                    gsMatrix<real_t> patchGeom;
+                                    mpbes.evalGeomOnPatch(p, uvFitting(p), vectSolSeed, patchGeom);
+                                    const index_t cols = std::min<index_t>(patchGeom.cols(), fullCols);
+                                    geom_current.block(row, 0, Mp, cols) = patchGeom.leftCols(cols);
+                                    row += Mp;
                                 }
                             }
 
@@ -20889,9 +20422,12 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         }
                         // gsInfo << "b_vec.rows()=" << b_vec.rows() << ", b_vec.cols()=" << b_vec.cols() << "\n";
                         
+                        t_presolve += std::chrono::duration<double>(std::chrono::system_clock::now() - _tPS0).count();
+
                         // Build sparse A from the LOCAL column indices into matA.
                         // solveCols[k] is the global MPBES index, but matA columns use
                         // LOCAL indices (sourceCols[informativeCols[k]]) in local-fitting mode.
+                        auto _tLdlt0 = std::chrono::system_clock::now();
                         gsSparseMatrix<real_t> matA_sp(matA.rows(), static_cast<index_t>(solveCols.size()));
                         {
                             std::vector<gsEigen::Triplet<real_t>> trips;
@@ -20942,10 +20478,12 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 vectSolReduced = ldlt.solve(vectB);
                             }
                         }
+                        t_ata_ldlt += std::chrono::duration<double>(std::chrono::system_clock::now() - _tLdlt0).count();
+                        auto _tPS1 = std::chrono::system_clock::now();
                         {
                             auto afterfit = std::chrono::system_clock::now();
                             std::chrono::duration<double> elapsed_fit = afterfit - beforeassembleA;
-                            gsInfo << "fit took: " << elapsed_fit.count() << "\n";
+                            if (g_verbose) gsInfo << "fit took: " << elapsed_fit.count() << "\n";
                             if (outfile.is_open())
                                 outfile << "fit took: " << elapsed_fit.count() << "\n";
                         }
@@ -20969,7 +20507,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         const bool mergeBasisMaskApplied =
                             (useLocalFitting && localRegion.enabled && localRegion.basisInd.cols() == fullRows);
 
-                        if (outfile.is_open())
+                        if (outfile.is_open() && g_verbose)
                         {
                             index_t diagnosticRow = -1;
                             if (!solveCols.empty())
@@ -21251,18 +20789,24 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         // gsInfo << "Solve finished. vectSol.rows()=" << vectSol.rows() << ", cols=" << vectSol.cols() << "\n";
                         outfile << "Solve finished. vectSol.rows()=" << vectSol.rows() << ", cols=" << vectSol.cols() << "\n";
 
-                        gsInfo << "vectSol.rows(): " << vectSol.rows() << "\n";
+                        if (g_verbose) gsInfo << "vectSol.rows(): " << vectSol.rows() << "\n";
                         gsMatrix<> matC = gsMatrix<>(AtA_sp * vectSolReduced) - vectB;
-                        gsInfo << "Residual norm (A^T A x - A^T b) matCbefore\n";
-                        gsInfo << matC.maxCoeff() << "\n";
+                        if (g_verbose)
+                        {
+                            gsInfo << "Residual norm (A^T A x - A^T b) matCbefore\n";
+                            gsInfo << matC.maxCoeff() << "\n";
+                        }
                         outfile << "matCbefore\n";
                         outfile << matC.maxCoeff() << "\n";
                         ////gsInfo << "matC:\n" << matC << "\n";
                         gsMatrix<> matOut = matA_sp * vectSolReduced;
                         logResidualDetails(uvFitting, b_vec, matOut, outfile, false);
                         matC = matOut - b_vec;
-                        gsInfo << "Residual norm (Ax - b) matCafter\n";
-                        gsInfo << matC.maxCoeff() << "\n";
+                        if (g_verbose)
+                        {
+                            gsInfo << "Residual norm (Ax - b) matCafter\n";
+                            gsInfo << matC.maxCoeff() << "\n";
+                        }
                         outfile << "matCafter\n";
                         outfile << matC.maxCoeff() << "\n";
                         real_t globalError = 0.0;
@@ -21279,6 +20823,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                             uv2_adaptive(p) = uniformPointGrid(lowc2, uppc2, adaptiveJacPts * adaptiveJacPts);
                         double totalJackTime = 0.0;
 
+                        t_postsolve += std::chrono::duration<double>(std::chrono::system_clock::now() - _tPS1).count();
                         std::chrono::time_point<std::chrono::system_clock> beforejack, afterjack;
                         beforejack = std::chrono::system_clock::now();
 
@@ -21292,11 +20837,14 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                             jacVerbose);
                         afterjack = std::chrono::system_clock::now();
                         std::chrono::duration<double> elapsed_seconds_jack = afterjack - beforejack;
-                        gsInfo << "jack took: " << elapsed_seconds_jack.count()
-                               << " (pts/patch=" << adaptiveJacPts << "^2=" << adaptiveJacPts*adaptiveJacPts << ")\n";
+                        if (g_verbose)
+                            gsInfo << "jack took: " << elapsed_seconds_jack.count()
+                                   << " (pts/patch=" << adaptiveJacPts << "^2=" << adaptiveJacPts*adaptiveJacPts << ")\n";
                         outfile << "jack took: " << elapsed_seconds_jack.count()
                                 << " (pts/patch=" << adaptiveJacPts << "^2=" << adaptiveJacPts*adaptiveJacPts << ")\n";
                         totalJackTime += elapsed_seconds_jack.count();
+                        t_jack += elapsed_seconds_jack.count();
+                        auto _tPJ0 = std::chrono::system_clock::now();
 
                         // Calculate total sample points and percentage of irregular points
                         index_t totalPoints = 0;
@@ -21309,13 +20857,6 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                   << " (" << irregularPercentage << "%)\n";
                         outfile << "Irregular points: " << minusnumber << " / " << totalPoints
                                 << " (" << irregularPercentage << "%)\n";
-                        logMirroredCheck(
-                            uv2_adaptive,
-                            mpbes,
-                            vectSol,
-                            1e-12,
-                            "main_postsolve",
-                            false);
                         if (g_enableInterfaceDiagnostics)
                         {
                             logSpecificInterface(mpbes, mp1, vectSol, "main_postsolve", 0, 1);
@@ -21331,15 +20872,6 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         outfile << "minusnumber: " << minusnumber << "\n";
                         std::vector<std::vector<std::vector<double>>> localCoeffs(Bells.size());
                         gsVector<gsVector<int>> localIndex;
-                        savePatches(
-                            vectSol,
-                            globalIndexTHB,
-                            SubdomainHierarchy,
-                            outfile,
-                            "savedPatch", localIndex
-                        );
-                        // Mesh generation moved to before emergency exit only
-                        // Output solution coefficients (verbose only)
                         if (g_verbose && outfile.is_open())
                         {
                             outfile << "Solution coefficients: " << vectSol.rows() << " x " << vectSol.cols() << "\n";
@@ -21349,56 +20881,31 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         }
                         gsMatrix<> matFeatOut;
                         double featureError = 1;
-                        for (int patch = 0; patch < localCoeffs.size(); ++patch) {
-                            for (int locind = 0; locind < localCoeffs[patch].size(); locind++) {
-                                for (int twin = 0; twin < localCoeffs[patch][locind].size(); ++twin) {
-                                    //gsInfo << localCoeffs[patch][locind][twin] << " ";
-                                    //<< localCoeffs[patch][locind][twin]
-                                }
-                                //gsInfo << "\n";
-                            }
-                        }
-                        outfile << "local coeffs:\n";
-                        // Skip printing if localCoeffs is empty (not populated by exportToPatches)
-                        if (!localCoeffs.empty() && !localCoeffs[0].empty()) {
-                            for (int patch = 0; patch < localCoeffs.size(); ++patch) {
-                                for (int locind = 0; locind < localCoeffs[patch].size(); locind++) {
-                                    for (int twin = 0; twin < localCoeffs[patch][locind].size(); ++twin) {
-                                        outfile << localCoeffs[patch][locind][twin] << " ";
-                                        //<< localCoeffs[patch][locind][twin]
-                                    }
-                                    outfile << "\n";
-                                }
-                            }
-                        } else {
-                            outfile << "(empty - not populated)\n";
-                        }
                         toc = std::chrono::system_clock::now();
                         std::chrono::duration<double> elapsed_seconds_write = toc - startTime;
+                        t_postjack += std::chrono::duration<double>(std::chrono::system_clock::now() - _tPJ0).count();
                         // Use the same acceptance metric in local and global modes so outcomes are comparable.
+                        { auto _tB0 = std::chrono::system_clock::now();
                         real_t assemblyBoundaryError = testBoundaryAssembly(mpbes, mp1, vectSol);
-                        featureError = assemblyBoundaryError;
-                        real_t localBoundaryFeatureError = std::numeric_limits<real_t>::quiet_NaN();
-                        if (fittingMode == FittingMode::LocalFitting)
-                            localBoundaryFeatureError = boundaryError(
-                                mpbes,
-                                mp1,
-                                vectSol,
-                                normalizedFeatureSides);
+                        t_boundary += std::chrono::duration<double>(std::chrono::system_clock::now() - _tB0).count();
+                        featureError = assemblyBoundaryError; }
+                        real_t assemblyBoundaryError = featureError;
+
 
                         // Build target geometry matrix at uv1 sample points for error computation
                         index_t totalSamples = 0;
                         index_t safeSize = std::min(static_cast<index_t>(uv1.size()), static_cast<index_t>(mp1.nPatches()));
                         for (index_t p = 0; p < safeSize; ++p)
                             totalSamples += uv1(p).cols();
-                        
+
                         if (totalSamples == 0) {
                             gsInfo << "WARNING: totalSamples is 0, setting targetGeometry to 1x2\n";
                             outfile << "WARNING: totalSamples is 0, setting targetGeometry to 1x2\n";
                             totalSamples = 1;
                         }
-                        
+
                         gsMatrix<real_t> targetGeometry(totalSamples, 2);
+                        { auto _tTG0 = std::chrono::system_clock::now();
                         targetGeometry.setZero();
                         index_t rowIdx = 0;
                         for (index_t p = 0; p < safeSize; ++p)
@@ -21415,20 +20922,20 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                 targetGeometry(rowIdx, 1) = xy(1, 0);
                             }
                         }
+                        t_targetgeom += std::chrono::duration<double>(std::chrono::system_clock::now() - _tTG0).count(); }
 
+                        { auto _tGE0 = std::chrono::system_clock::now();
                         globalError = globalFittingError(mpbes, mp1, vectSol, uv1, targetGeometry);
+                        t_globalerr += std::chrono::duration<double>(std::chrono::system_clock::now() - _tGE0).count(); }
+                        auto _tPA0 = std::chrono::system_clock::now();
 
                         outfile << "globalError: " << globalError << "\n";
                         outfile << "featureError: " << featureError << "\n";
-                        if (std::isfinite(localBoundaryFeatureError))
-                            outfile << "localBoundaryFeatureError: " << localBoundaryFeatureError << "\n";
                         outfile << "assemblyBoundaryError: " << assemblyBoundaryError << "\n";
                         outfile << "minusnumber: " << minusnumber << "\n";
                         std::cout << "globalError: " << globalError << "\n";
                         std::cout << "featureError: " << featureError << "\n";
-                        if (std::isfinite(localBoundaryFeatureError))
-                            std::cout << "localBoundaryFeatureError: " << localBoundaryFeatureError << "\n";
-                        std::cout << "assemblyBoundaryError: " << assemblyBoundaryError << "\n";
+                        if (g_verbose) std::cout << "assemblyBoundaryError: " << assemblyBoundaryError << "\n";
                         if (summaryFile.is_open())
                         {
                             summaryFile << "FIT," << patch << "," << levNow << "," << attempt << ","
@@ -21445,12 +20952,15 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                         // if (minusnumber > 0) return 260106;
                         //numIrregular(patch)++;
                         
+                        t_postaccept += std::chrono::duration<double>(std::chrono::system_clock::now() - _tPA0).count();
+                        auto _tBK0 = std::chrono::system_clock::now();
+
                         if (globalError <= epsilon_g && featureError <= epsilon_f && minusnumber == 0) {
                             //if (globalError <= epsilon_g && featureError <= epsilon_f && numIrregular(patch) != 0) {
                         success:
-                            outfile << "Success! iteration = " << iteration << ", coarselevel = " << coarseLevel
+                            outfile << "Success! iteration = " << iteration << ", coarselevel = " << levNow
                                 << "\n";
-                            gsInfo << "Success! iteration = " << iteration << ", coarselevel = " << coarseLevel
+                            gsInfo << "Success! iteration = " << iteration << ", coarselevel = " << levNow
                                 << "\n";
                             //return 0;
                             valid = 1;
@@ -21464,7 +20974,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                             outfile << "TOTALSIZE: " << THB.size() << "\n";
                             //if(attempt > 0)  return 0;
                             acceptedsize = THB.size();
-                            gsInfo << "ACCEPTEDSIZE: " << acceptedsize << "\n";
+                            if (g_verbose) gsInfo << "ACCEPTEDSIZE: " << acceptedsize << "\n";
                             outfile << "ACCEPTEDSIZE: " << acceptedsize << "\n";
                             acceptedCoefs = localCoeffs;
                             AcceptedvectSol = vectSol;
@@ -21481,10 +20991,13 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                     gsInfo << "WARNING: Cannot copy MPBES with 0 patches, skipping\n";
                                     outfile << "WARNING: Cannot copy MPBES with 0 patches, skipping\n";
                                 } else {
-                                    gsInfo << "Creating MPBES copy: size=" << mpbes.size() 
-                                          << ", patches=" << mpbes.nPatches() << "\n";
+                                    if (g_verbose)
+                                        gsInfo << "Creating MPBES copy: size=" << mpbes.size()
+                                              << ", patches=" << mpbes.nPatches() << "\n";
+                                    auto _tCp0 = std::chrono::system_clock::now();
                                     Acceptedmpbes = std::make_unique<MPBES<2, real_t>>(mpbes);
-                                    gsInfo << "MPBES copy created successfully\n";
+                                    t_mpbes_copy += std::chrono::duration<double>(std::chrono::system_clock::now() - _tCp0).count();
+                                    if (g_verbose) gsInfo << "MPBES copy created successfully\n";
                                 }
                             } catch (const std::exception& e) {
                                 gsInfo << "EXCEPTION during MPBES copy: " << e.what() << "\n";
@@ -21535,6 +21048,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
 
                             int jopa = 4 * (int)pow(2, levNow) * 4 * (int)pow(2, levNow);
                             attempt = (attempt + 1) % (jopa);
+                            t_bookkeeping += std::chrono::duration<double>(std::chrono::system_clock::now() - _tBK0).count();
                             continue;
                         }
                         else {
@@ -21641,6 +21155,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                     }
                                     removeCellIdsByValue(nonCheckedCells, attemptedCellIds);
                                     outfile << "nonCheckedCells.size() has become: " << nonCheckedCells.size() << "\n";
+                                    t_bookkeeping += std::chrono::duration<double>(std::chrono::system_clock::now() - _tBK0).count();
                                     continue;
                                 }
                             }
@@ -21763,10 +21278,6 @@ AlgorithmResult unrefinementAlgorithmHBJ(
 
                                     real_t globalErrorStage = globalFittingError(mpbes, mp1, vectSol, uv1, targetGeometry);
                                     real_t featureErrorStage = testBoundaryAssembly(mpbes, mp1, vectSol);
-                                    real_t localBoundaryFeatureErrorStage = std::numeric_limits<real_t>::quiet_NaN();
-                                    if (fittingMode == FittingMode::LocalFitting)
-                                        localBoundaryFeatureErrorStage = boundaryError(mpbes, mp1, vectSol, normalizedFeatureSides);
-
                                     globalError = globalErrorStage;
                                     featureError = featureErrorStage;
                                     minusnumber = minusnumberStage;
@@ -21776,11 +21287,6 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                            << ", featureError=" << featureErrorStage << "\n";
                                     outfile << stageTag << " errors: globalError=" << globalErrorStage
                                             << ", featureError=" << featureErrorStage << "\n";
-                                    if (std::isfinite(localBoundaryFeatureErrorStage))
-                                    {
-                                        gsInfo << stageTag << " localBoundaryFeatureError=" << localBoundaryFeatureErrorStage << "\n";
-                                        outfile << stageTag << " localBoundaryFeatureError=" << localBoundaryFeatureErrorStage << "\n";
-                                    }
                                     outfile << "Post-optimization acceptance metrics (" << stageTag << "): globalError=" << globalError
                                         << ", featureError=" << featureError
                                         << ", minusnumber=" << minusnumber
@@ -21881,6 +21387,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                             << "] uniformity=" << scaledUniformityWeight
                                             << " length=" << scaledLengthWeight << "\n";
                                 }
+                                { auto _tLO0 = std::chrono::system_clock::now();
                                 nonLinearOptimization(
                                     mpbes, uvFitting, uv2, mp1,
                                     matAsquare, matAForOptimization, b_vec,
@@ -21901,6 +21408,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                     &bndFreezeMask,
                                     &baseVectSol
                                 );
+                                t_lo += std::chrono::duration<double>(std::chrono::system_clock::now() - _tLO0).count(); }
 
                                 optimizationAccepted = evaluateOptimizationStage("LO");
                                 } // end !g_skipLoFallback
@@ -21976,6 +21484,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                             << ", skewness=" << nloSkewnessWeight
                                             << ", eccentricity=" << nloEccentricityWeight
                                             << ", area=" << nloAreaWeight << "\n";
+                                    { auto _tNLO0 = std::chrono::system_clock::now();
                                     nonLinearOptimization(
                                         mpbes, uvFitting, uv2, mp1,
                                         matAsquare, matAForOptimization, b_vec,
@@ -21996,13 +21505,14 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                         &bndFreezeMask,
                                         &baseVectSol
                                     );
+                                    t_nlo += std::chrono::duration<double>(std::chrono::system_clock::now() - _tNLO0).count(); }
                                     optimizationAccepted = evaluateOptimizationStage("NLO");
                                     } // end else (minusnumber > 0)
                                 }
 
                                 if (optimizationAccepted)
                                 {
-                                    outfile << (usedNLO ? "NLO worked! iteration = " : "LO worked! iteration = ") << iteration << ", coarselevel = " << coarseLevel
+                                    outfile << (usedNLO ? "NLO worked! iteration = " : "LO worked! iteration = ") << iteration << ", coarselevel = " << levNow
                                         << "\n";
                                     gsInfo << (usedNLO ? "NLO worked!\n" : "LO worked!\n");
                                     gsInfo << "coefficients: \n";
@@ -22022,13 +21532,15 @@ AlgorithmResult unrefinementAlgorithmHBJ(
                                     matFile = matFeatOut;
                                     outfile << "TOTALSIZE: " << THB.size() << "\n";
                                     acceptedsize = THB.size();
-                                    gsInfo << "ACCEPTEDSIZE: " << acceptedsize << "\n";
+                                    if (g_verbose) gsInfo << "ACCEPTEDSIZE: " << acceptedsize << "\n";
                                     outfile << "ACCEPTEDSIZE: " << acceptedsize << "\n";
                                     acceptedCoefs = localCoeffs;
                                     AcceptedvectSol = vectSol;
                                     AcceptedboxMat = boxMat;
                                     AcceptedlastRow = currentLastNonZeroRow;
+                                    { auto _tCp1 = std::chrono::system_clock::now();
                                     Acceptedmpbes = std::make_unique<MPBES<2, real_t>>(mpbes);
+                                    t_mpbes_copy += std::chrono::duration<double>(std::chrono::system_clock::now() - _tCp1).count(); }
                                     acceptedMatOut = matOut;
                                     gsVector<gsVector<int>> acceptedIndex = localIndex;
                                     AcceptedisActive = isActive;
@@ -22200,7 +21712,52 @@ AlgorithmResult unrefinementAlgorithmHBJ(
     result.mp1 = mp1;
     result.currentLastNonZeroRow = currentLastNonZeroRow;
     result.mpbes = std::move(Acceptedmpbes);
-    
+
+    // ---- Phase-time summary ----
+    {
+        double t_total = std::chrono::duration<double>(std::chrono::system_clock::now() - startTime).count();
+        double t_accounted = t_preflight + t_init + t_thb_rebuild + t_extract
+                           + t_grenda + t_cell_sel + t_mpbes_bld + t_assemble + t_ata_ldlt
+                           + t_localsetup + t_presolve + t_postsolve + t_lo + t_nlo + t_mpbes_copy
+                           + t_jack + t_postjack + t_boundary + t_targetgeom + t_globalerr + t_postaccept
+                           + t_gap_a + t_bookkeeping;
+        auto prt = [&](const char* name, double t) {
+            gsInfo  << "  " << name << ": " << t << " s (" << (100.0*t/t_total) << "%)\n";
+            outfile << "  " << name << ": " << t << " s (" << (100.0*t/t_total) << "%)\n";
+        };
+        gsInfo  << "[timing] Phase breakdown (wall=" << t_total << " s):\n";
+        outfile << "[timing] Phase breakdown (wall=" << t_total << " s):\n";
+        prt("Preflight total                 ", t_preflight);
+        prt("  mesh write (generateOriginalGeometryMesh) ", t_pf_mesh);
+        prt("  Jacobian check (computeMirroredCheckFromMp)", t_pf_check);
+        prt("One-time init (before loop)     ", t_init);
+        prt("Grenda preflight (all patches)  ", t_grenda);
+        prt("Cell selection (winning patch)  ", t_cell_sel);
+        prt("THB rebuild + outfile<<THB      ", t_thb_rebuild);
+        prt("MPBES build total               ", t_mpbes_bld);
+        prt("  orient                        ", t_orient);
+        prt("  createIndexMapping            ", t_indexmap);
+        prt("  MPBES constructor             ", t_mpbes_ctor);
+        prt("MPBES extract + vectSol init    ", t_extract);
+        prt("Local setup (region + AU select) ", t_localsetup);
+        prt("Assembly  assemble()            ", t_assemble);
+        prt("Pre-solve (col map + defect corr)", t_presolve);
+        prt("AtA formation + LDLT solve      ", t_ata_ldlt);
+        prt("Post-solve (scatter/merge/resid) ", t_postsolve);
+        prt("LO  nonLinearOptimization       ", t_lo);
+        prt("NLO nonLinearOptimization       ", t_nlo);
+        prt("MPBES copy on accept            ", t_mpbes_copy);
+        prt("checkJacobianDeterminant        ", t_jack);
+        prt("Post-jack (log+flush+A-alloc)   ", t_postjack);
+        prt("testBoundaryAssembly            ", t_boundary);
+        prt("target geometry construction    ", t_targetgeom);
+        prt("globalFittingError              ", t_globalerr);
+        prt("Post-accept (log+flush)         ", t_postaccept);
+        prt("GAP A (Grenda→cell-sel)         ", t_gap_a);
+        prt("Bookkeeping (accept/reject path)", t_bookkeeping);
+        prt("Other (unaccounted)             ", t_total - t_accounted);
+    }
+
     return result;
 }
 
@@ -22488,10 +22045,23 @@ void nonLinearOptimization(
 
 int main(int argc, char** argv) {
     const std::string exePath = (argc > 0 && argv && argv[0]) ? std::string(argv[0]) : std::string();
-    std::string cmdMirrorPath = "poissonTHB_example_cmd_output.txt";
+    // Quick pre-scan: detect --save-separately and --local-fitting before opening the mirror.
+    bool preScanSaveSeparately = false;
+    bool preScanLocalFitting   = false;
+    for (int ai = 1; ai < argc; ++ai)
+    {
+        const std::string arg(argv[ai]);
+        if (arg == "--save-separately") preScanSaveSeparately = true;
+        if (arg == "--local-fitting")   preScanLocalFitting   = true;
+    }
+
+    std::string cmdMirrorStem = "poissonTHB_example_cmd_output";
+    if (preScanSaveSeparately)
+        cmdMirrorStem += preScanLocalFitting ? "_local" : "_global";
+    std::string cmdMirrorPath = cmdMirrorStem + ".txt";
     const size_t sepPos = exePath.find_last_of("\\/");
     if (sepPos != std::string::npos)
-        cmdMirrorPath = exePath.substr(0, sepPos + 1) + "poissonTHB_example_cmd_output.txt";
+        cmdMirrorPath = exePath.substr(0, sepPos + 1) + cmdMirrorStem + ".txt";
 
     static ScopedConsoleMirror cmdMirror(cmdMirrorPath);
     if (cmdMirror.active())
@@ -22556,6 +22126,10 @@ int main(int argc, char** argv) {
             ++ai;
             gsInfo << "[flag] --lo-weight-scale=" << g_loWeightScale
                    << ": LO uniformity and length weights will be multiplied by this factor.\n";
+        }
+        else if (std::string(argv[ai]) == "--save-separately")
+        {
+            gsInfo << "[flag] --save-separately: log saved to " << cmdMirrorPath << "\n";
         }
         else if (std::string(argv[ai]) == "--local-fitting")
         {
@@ -22760,14 +22334,6 @@ int main(int argc, char** argv) {
     real_t tol = 1e-8, gtol = 1e-8;
     char method = g_cellMethod;
 
-    // Generate original geometry visualization
-    generateOriginalGeometryMesh(filename, 8, filePrefix + "output_mesh_original");
-
-    OriginalMpbesReference originalReference = buildOriginalMpbesReference(filename);
-    GeometryPreflightInfo geometryPreflight = runGeometryPreflight(filename, originalReference, 20);
-    g_geometryPreflight = geometryPreflight;
-    logGeometryPreflight(geometryPreflight, inputBase, false);
-
     // Run the main algorithm
     AlgorithmResult result;
     try {
@@ -22778,8 +22344,7 @@ int main(int argc, char** argv) {
             method,
             givenGeo,
             acCond,
-            featureSides,
-            originalReference.valid ? &originalReference.coefficients : nullptr);
+            featureSides);
     } catch (const ProgramExitSignal& ex) {
         gsInfo << "\nAborted with code " << ex.code() << ": " << ex.what() << "\n";
         outfile << "\nAborted with code " << ex.code() << ": " << ex.what() << "\n";
