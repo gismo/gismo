@@ -34,6 +34,7 @@ int main(int argc, char *argv[]) {
   std::string geometry(
       "domain2d/2patch/multipatch/weirdo_multivalence_non_bilinear.xml");
   std::string outDir("");
+  index_t degree = 3;
   index_t numGaussPerSpan = 0;
   index_t refinements = 2;
   index_t plot = -1;
@@ -43,6 +44,7 @@ int main(int argc, char *argv[]) {
   cmd.addString("o", "outDir",
                 "Output directory for pvd/vts files (created if needed).",
                 outDir);
+  cmd.addInt("d", "degree", "Target degree (minimum 3).", degree);
   cmd.addInt("n", "numGauss", "Gauss points per knot span (0 = auto).",
              numGaussPerSpan);
   cmd.addInt("r", "refinements", "Uniform refinements before proceeding.",
@@ -80,13 +82,14 @@ int main(int argc, char *argv[]) {
   gsInfo << "Patches: " << mp.nPatches() << "  Interfaces: " << mp.nInterfaces()
          << "\n";
 
-  // ---- Ensure minimum degree 3 ----
+  // ---- Ensure minimum degree ----
+  if (degree < 3) degree = 3;
   const short_t inputDeg = mp.patch(0).basis().degree(0);
-  if (inputDeg < 3) {
-    const short_t elev = 3 - inputDeg;
+  if (inputDeg < degree) {
+    const short_t elev = degree - inputDeg;
     mp.degreeElevate(elev);
     gsInfo << "Input degree " << inputDeg << " → elevated by " << elev
-           << " to degree 3\n";
+           << " to degree " << degree << "\n";
   } else {
     gsInfo << "Input degree " << inputDeg << " (no elevation needed)\n";
   }
@@ -201,20 +204,18 @@ int main(int argc, char *argv[]) {
     // Also match the corners
     std::vector<patchCorner> corners;
     ps1.getContainedCorners(2, corners);
-    GISMO_ASSERT (corners.size() == 2, "Unexpected number of corners");
-    for (index_t i=0; i<2; ++i)
-    {
-        const index_t c1 = corners[i].m_index - 1;
-        const index_t c2 = ifc.mapCorner(corners[i]).m_index - 1;
+    GISMO_ASSERT(corners.size() == 2, "Unexpected number of corners");
+    for (index_t i = 0; i < 2; ++i) {
+      const index_t c1 = corners[i].m_index - 1;
+      const index_t c2 = ifc.mapCorner(corners[i]).m_index - 1;
 
-        const index_t off_corner_1 = sumUntil(argBasis[ps1.patch].sizes, 9 + c1);
-        const index_t off_corner_2 = sumUntil(argBasis[ps2.patch].sizes, 9 + c2);
+      const index_t off_corner_1 = sumUntil(argBasis[ps1.patch].sizes, 9 + c1);
+      const index_t off_corner_2 = sumUntil(argBasis[ps2.patch].sizes, 9 + c2);
 
-        for (index_t i=0; i<6; ++i)
-            mapper.matchDof(ps1.patch, off_corner_1+i, ps2.patch, off_corner_2+i);
-
+      for (index_t i = 0; i < 6; ++i)
+        mapper.matchDof(ps1.patch, off_corner_1 + i, ps2.patch,
+                        off_corner_2 + i);
     }
-
   }
   mapper.finalize();
 
