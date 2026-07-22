@@ -319,7 +319,7 @@ int main(int argc, char *argv[])
     //----------------------------------------------------------------------
     if(L2)
     {
-    mpPsi           = MAE.buildCompMultiPatch(dbasis, quadValue, false);
+    mpPsi           = MAE.buildCompMultiPatch(dbasis, quadValue, true);
     geometryMap GPi = A.getMap(mpPsi);
     // ... Error analysis
     double maxDist = 0.;
@@ -328,6 +328,8 @@ int main(int argc, char *argv[])
     L2Jerror[r]             = abs(ev.integral( jac(GPi).det() - jac(Cmp).det()*jac(PP).det() ) );
     Hdferror[r]             = maxDist;// std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(GPi)) ));
     Bdrerr[r]               = Binf;//math::sqrt(ev.integral((GPi-Cmp).sqNorm()));
+    gsWrite(MAE.MAmapping, "adMAE.xml");
+    gsWrite(mpPsi, "adPsi.xml");
     }
 
     if (colloc){

@@ -106,7 +106,7 @@
   <Basis type="TensorNurbsBasis2">
    <Basis type="TensorBSplineBasis2" parDim="2">
     <Basis type="BSplineBasis" index="0">
-     <KnotVector degree="2">1.00000   1.00000   1.00000   2.00000   2.00000   2.00000</KnotVector>
+     <KnotVector degree="2">0.00000   0.00000   0.00000   1.00000   1.00000   1.00000</KnotVector>
     </Basis>
     <Basis type="BSplineBasis" index="1">
      <KnotVector degree="2">0.00000   0.00000   0.00000   1.00000   1.00000   1.00000</KnotVector>
@@ -130,7 +130,7 @@
   <Basis type="TensorNurbsBasis2">
    <Basis type="TensorBSplineBasis2" parDim="2">
     <Basis type="BSplineBasis" index="0">
-     <KnotVector degree="2">2.00000   2.00000   2.00000   3.00000   3.00000   3.00000</KnotVector>
+     <KnotVector degree="2">0.00000   0.00000   0.00000   1.00000   1.00000   1.00000</KnotVector>
     </Basis>
     <Basis type="BSplineBasis" index="1">
      <KnotVector degree="2">0.00000   0.00000   0.00000   1.00000   1.00000   1.00000</KnotVector>
@@ -154,7 +154,7 @@
   <Basis type="TensorNurbsBasis2">
    <Basis type="TensorBSplineBasis2" parDim="2">
     <Basis type="BSplineBasis" index="0">
-     <KnotVector degree="2">3.00000   3.00000   3.00000   4.00000   4.00000   4.00000</KnotVector>
+     <KnotVector degree="2">0.00000   0.00000   0.00000   1.00000   1.00000   1.00000</KnotVector>
     </Basis>
     <Basis type="BSplineBasis" index="1">
      <KnotVector degree="2">0.00000   0.00000   0.00000   1.00000   1.00000   1.00000</KnotVector>

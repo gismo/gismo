@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot          = false;
-    double Intensity   = 0.;
+    double Intensity   = 9.;
     index_t numRefine  = 3;
     index_t numElevate = 0;
     index_t maxIter    = 50;
@@ -54,12 +54,12 @@ int main(int argc, char *argv[])
     // Specify the file path
     //std::string fn("pde/circle.xml");
     // std::string fn("surfaces/cylinder.xml"); 
-    std::string fn( "pde/solovev_relaxed.xml" );
+    std::string fn( "pde/annulus2d_bvp.xml" );
     // load the file
     gsFileData<> fd(fn);
     gsInfo << "Loaded file "<< fd.lastPath() <<"\n";
     gsMultiPatch<> mpLeft;// = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);// Initial geometry
-    fd.getId(5,mpLeft);
+    fd.getId(0,mpLeft);
     //.. density 
     // std::string frho("density_function.xml");
     // gsFileData<> strho(frho);
