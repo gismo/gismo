@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
   using T = real_t;
 
   std::string geometry(
-      "domain2d/2patch/multipatch/weirdo_multivalence_non_bilinear.xml");
+      "domain2d/2patch/weirdo_multivalence_non_bilinear.xml");
   std::string outDir("");
   index_t degree = 3;
   index_t numGaussPerSpan = 0;
@@ -122,13 +122,10 @@ int main(int argc, char *argv[]) {
 
   // ---- Build per-patch interface-side embeddings ----
   std::vector<gsArgyrisEmbedding<T>> argBasis;
-  gsVector<index_t> patchDofSizes(mp.nPatches());
   for (size_t i = 0; i < mp.nPatches(); ++i) {
     argBasis.push_back(deriveArgyrisBasisEmbedding(
         dynamic_cast<const gsTensorBSplineBasis<2, T> &>(mp.patch(i).basis()),
         gsMatrix<T>(gd.row(i)), mp.patch(i)));
-
-    patchDofSizes[i] = argBasis[i].matrix.cols();
   }
 
   for (size_t i = 0; i < mp.nPatches(); ++i) {
@@ -139,6 +136,7 @@ int main(int argc, char *argv[]) {
   // ====================================================================
   // Setup of gsDofMapper
   // ====================================================================
+<<<<<<< HEAD
 
   /*const index_t nInt1 = argBasis1.sizes[0];
   const index_t nInt2 = argBasis2.sizes[0];
@@ -218,6 +216,9 @@ int main(int argc, char *argv[]) {
     }
   }
   mapper.finalize();
+=======
+  gsDofMapper mapper = makeMapperForArgyrisBasis(mp, argBasis);
+>>>>>>> b20f4a27035e18cb3256a8084589e752abd35372
 
   const index_t nGlobal = mapper.freeSize();
   gsInfo << "\nGlobal DOFs: " << nGlobal << "\n";
@@ -347,84 +348,55 @@ int main(int argc, char *argv[]) {
     else
       gsInfo << "  STATUS: FAIL\n";
   }
-  /*
-         // ====================================================================
-         // Plot global basis functions on both patches
-         // ====================================================================
 
-         // Build a name and category tag for each global DOF
-         // Global layout: [p0_interior | p1_interior | ifc_trace | ifc_dderiv]
-         auto basisName = [&](index_t idx) -> std::string {
-           if (idx < nInt1)
-             return "p" + std::to_string(ps1.patch) + "_int_" +
-       std::to_string(idx); else if (idx < nInt1 + nInt2) return "p" +
-       std::to_string(ps2.patch) + "_int_" + std::to_string(idx - nInt1); else
-     if (idx < nInt1 + nInt2 + nLvl0) return "ifc_trace_" + std::to_string(idx -
-       nInt1 - nInt2); else return "ifc_dderiv_" + std::to_string(idx - nInt1 -
-       nInt2 - nLvl0);
-         };
+  // ====================================================================
+  // Plot global basis functions on both patches
+  // ====================================================================
 
-         // Determine which basis functions to plot
-         std::vector<index_t> toPlot;
-         if (plot == -2) {
-           toPlot.resize(nGlobal);
-           std::iota(toPlot.begin(), toPlot.end(), 0);
-           gsInfo << "\nPlotting all " << nGlobal << " basis functions ...\n";
-         } else if (plot >= 0 && plot < nGlobal) {
-           toPlot.push_back(plot);
-           gsInfo << "\nPlotting global basis function " << plot << " ("
-                  << basisName(plot) << ") ...\n";
-         } else if (plot >= nGlobal) {
-           gsInfo << "\nBasis function index " << plot << " out of range [0, "
-                  << nGlobal - 1 << "].\n";
-         }
+  // Determine which basis functions to plot
+    std::vector<index_t> toPlot;
+    if (plot == -2)
+    {
+        toPlot.resize(nGlobal);
+        std::iota(toPlot.begin(), toPlot.end(), 0);
+        gsInfo << "\nPlotting all " << nGlobal << " basis functions ...\n";
+    }
+    else if (plot >= 0 && plot < nGlobal)
+    {
+        toPlot.push_back(plot);
+        gsInfo << "\nPlotting global basis function " << plot << " ...\n";
+    }
+    else if (plot >= nGlobal)
+    {
+        gsInfo << "\nBasis function index " << plot
+               << " out of range [0, " << nGlobal - 1 << "].\n";
+    }
 
-         for (const index_t idx : toPlot) {
-           gsVector<T> globalVec = gsVector<T>::Zero(nGlobal);
-           globalVec(idx) = T(1);
+    for (const index_t idx : toPlot)
+    {
+        gsVector<T> globalVec = gsVector<T>::Zero(nGlobal);
+        globalVec(idx) = T(1);
 
-           gsVector<T> c1 = G1 * globalVec;
-           gsVector<T> c2 = G2 * globalVec;
+        gsMultiPatch<T> sol;
+        for (std::size_t k=0; k<mp.nPatches(); ++k)
+            sol.addPatch(mp.patch(k).basis().makeGeometry(give(G[k].transpose() * globalVec)));
 
-           gsMatrix<T> coefs1 = c1;
-           gsMatrix<T> coefs2 = c2;
+        gsField<T> field(mp, sol);
 
-           gsMultiPatch<T> sol;
-           sol.addPatch(tb1.makeGeometry(give(coefs1)));
-           sol.addPatch(tb2.makeGeometry(give(coefs2)));
+        std::string fname = outDir + "as_g1_" + std::to_string(idx);
+        gsWriteParaview<>(field, fname, 1000);
+        gsInfo << "  [" << idx << "] " << fname << ".pvd\n";
+    }
 
-           gsField<T> field(mp, sol);
+    // ====================================================================
+    // Print summary information about the global basis
+    // ====================================================================
+    gsInfo << "\n=== Summary ===\n";
+    gsInfo << "\nTo plot basis function k:\n"
+          << "  ./bin/as_g1_multipatch_basis -f <file> -r <ref> -p k\n"
+          << "To plot ALL basis functions:\n"
+          << "  ./bin/as_g1_multipatch_basis -f <file> -r <ref> -p -2\n";
 
-           std::string fname = prefix + "as_g1_" + basisName(idx);
-           gsWriteParaview<>(field, fname, 1000);
-           gsInfo << "  [" << idx << "] " << fname << ".pvd\n";
-         }
-
-         if (!toPlot.empty()) {
-           gsInfo << "\nFile naming convention:\n"
-                  << "  p<N>_int_<K>   = patch N interior DOF K\n"
-                  << "  ifc_trace_<K>  = shared interface trace DOF K\n"
-                  << "  ifc_dderiv_<K> = shared interface d-derivative DOF K\n";
-         }
-
-         // ====================================================================
-         // Print summary information about the global basis
-         // ====================================================================
-         gsInfo << "\n=== Summary ===\n";
-         gsInfo << "  Tensor basis size per patch: " << tb1.size() << "\n";
-         gsInfo << "  Per-patch embedding cols:    " << E1.cols()
-                << " (int=" << nInt1 << " nLvl0=" << nLvl0 << " nLvl1=" << nLvl1
-                << ")\n";
-         gsInfo << "  Global DOFs:                 " << nGlobal << "\n";
-         gsInfo << "    Patch " << ps1.patch << " interior: " << nInt1 << "\n";
-         gsInfo << "    Patch " << ps2.patch << " interior: " << nInt2 << "\n";
-         gsInfo << "    Shared interface trace:     " << nLvl0 << "\n";
-         gsInfo << "    Shared interface d-deriv:   " << nLvl1 << "\n";
-         gsInfo << "\nTo plot basis function k:\n"
-                << "  ./bin/as_g1_two_patch_basis -f <file> -r <ref> -p k\n"
-                << "To plot ALL basis functions:\n"
-                << "  ./bin/as_g1_two_patch_basis -f <file> -r <ref> -p -2\n";
-     */
   gsInfo << "\nDone.\n";
   return 0;
 }

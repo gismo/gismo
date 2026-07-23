@@ -31,11 +31,14 @@ inline gsVector<T> partial(const gsMatrix<T>& d, index_t dir, index_t col)
 }
 
 template <class T>
-std::vector<T> breaksOf(const gsGeometry<T>& geo, short_t dir)
+gsVector<T> breaksOf(const gsGeometry<T>& geo, short_t dir)
 {
     const gsBSplineBasis<T>& bb =
         dynamic_cast<const gsBSplineBasis<T>&>(geo.basis().component(dir));
-    return bb.knots().breaks();
+    const std::vector<T> &brks = bb.knots().breaks();
+    gsVector<T> result(brks.size());
+    result.assign(brks.begin(), brks.end());
+    return result;
 }
 
 /// Sampled determinants on the interface (patch-1 tangential parameter
@@ -44,10 +47,10 @@ template <class T>
 struct InterfaceSamples
 {
     gsVector<T> D1, D2, D3;
-    gsVector<T> t;
-    gsVector<T> w;
+    gsMatrix<T> nodes;
+    gsVector<T> weights;
     index_t size() const { return D1.size(); }
-    T integrate(const gsVector<T>& f) const { return w.dot(f); }
+    T integrate(const gsVector<T>& f) const { return weights.dot(f); }
     bool flipped;
 };
 
@@ -58,6 +61,7 @@ InterfaceSamples<T> sampleInterface(
     const boundaryInterface& interf,
     index_t numGaussPerSpan = 0)
 {
+    InterfaceSamples<T> S;
     const patchSide ps1 = interf.first(), ps2 = interf.second();
     const gsGeometry<T>& g1 = mp.patch(ps1.patch);
     const gsGeometry<T>& g2 = mp.patch(ps2.patch);
@@ -73,46 +77,41 @@ InterfaceSamples<T> sampleInterface(
     const T n1 = sup1(nDir1, par1 ? 1 : 0);
     const T n2 = sup2(nDir2, par2 ? 1 : 0);
 
-    bool tangentialFlipped = !interf.dirOrientation(ps1, tDir1);
+    S.flipped = !interf.dirOrientation(ps1, tDir1);
 
     const T t1a = sup1(tDir1, 0), t1b = sup1(tDir1, 1);
-    const T t2a = sup2(tDir2, 0), t2b = sup2(tDir2, 1);
+    T t2a = sup2(tDir2, 0), t2b = sup2(tDir2, 1);
+    if (S.flipped)
+        std::swap(t2a, t2b);
 
-    std::vector<T> breaks1 = breaksOf(g1, tDir1);
-    std::vector<T> breaks2 = breaksOf(g2, tDir2);
-    for (T& br : breaks2)
-    {
-        T s = (br - t2a) / (t2b - t2a);
-        if (tangentialFlipped) s = T(1) - s;
-        br = t1a + s * (t1b - t1a);
-    }
+    // normalized breakpoints
+    const gsVector<T> breaks1 = (breaksOf(g1, tDir1).array() - t1a) / (t1b - t1a);
+    const gsVector<T> breaks2 = (breaksOf(g2, tDir2).array() - t2a) / (t2b - t2a);
+
+    // merge normalized breakpoints
     std::set<T> merged(breaks1.begin(), breaks1.end());
     merged.insert(breaks2.begin(), breaks2.end());
-    const std::vector<T> brk(merged.begin(), merged.end());
+    const std::vector<T> breaks(merged.begin(), merged.end());
 
+    // derive Gauss nodes
     const short_t deg = std::max(g1.basis().degree(tDir1), g2.basis().degree(tDir2));
     const index_t nGauss = (numGaussPerSpan > 0) ? numGaussPerSpan : 2*deg + 1;
-    gsGaussRule<T> rule(nGauss);
-    gsMatrix<T> nodes; gsVector<T> wts;
-    rule.mapToAll(brk, nodes, wts);
-    const index_t N = nodes.cols();
+    const gsGaussRule<T> rule(nGauss);
+    rule.mapToAll(breaks, S.nodes, S.weights);
 
+    // map nodes back
+    const index_t N = S.nodes.cols();
     gsMatrix<T> pts1(2,N), pts2(2,N);
-    for (index_t i = 0; i < N; ++i)
-    {
-        const T t  = nodes(0,i);
-        const T u  = (t - t1a) / (t1b - t1a);
-        const T u2 = tangentialFlipped ? (T(1)-u) : u;
-        pts1(nDir1,i) = n1;  pts1(tDir1,i) = t;
-        pts2(nDir2,i) = n2;  pts2(tDir2,i) = t2a + u2 * (t2b - t2a);
-    }
-    gsMatrix<T> d1, d2;
-    g1.deriv_into(pts1, d1);
-    g2.deriv_into(pts2, d2);
+    pts1.row(nDir1).setConstant(n1);
+    pts2.row(nDir2).setConstant(n2);
+    pts1.row(tDir1) = t1a + S.nodes.array() * (t1b - t1a);
+    pts2.row(tDir2) = t2a + S.nodes.array() * (t2b - t2a);
 
-    InterfaceSamples<T> S;
-    S.D1.resize(N); S.D2.resize(N); S.D3.resize(N); S.t.resize(N);
-    S.w = wts;
+    // Jacobian of geometry
+    const gsMatrix<T> d1 = g1.deriv(pts1);
+    const gsMatrix<T> d2 = g2.deriv(pts2);
+
+    S.D1.resize(N); S.D2.resize(N); S.D3.resize(N);
     for (index_t i = 0; i < N; ++i)
     {
         const gsVector<T> g1n = partial(d1, nDir1, i);
@@ -122,9 +121,7 @@ InterfaceSamples<T> sampleInterface(
         S.D1(i) = s1      * det2(g1n, g1t);
         S.D2(i) = s2      * det2(g2n, g2t);
         S.D3(i) = s1 * s2 * det2(g1n, g2n);
-        S.t(i)  = (nodes(0,i) - t1a) / (t1b - t1a);
     }
-    S.flipped = tangentialFlipped;
     return S;
 }
 
@@ -133,24 +130,24 @@ InterfaceSamples<T> sampleInterface(
 /// is gauged by integral(alpha_1*beta_1 - alpha_2*beta_2)=0.  Tikhonov
 /// bias resolves null directions (toward constant alpha and beta_1=beta_2).
 template <class T>
-struct SolveResult { T a[4]; T b[4]; T alphaErr; T betaErr; };
+struct SolveResult { gsVector<T> alpha; gsVector<T> beta; };
 
 template <class T>
-SolveResult<T> solveLinearGluing(const InterfaceSamples<T>& S)
+SolveResult<T> solveLinearGluing(const InterfaceSamples<T>& S, real_t eps)
 {
+    SolveResult<T> out;
     const index_t N = S.size();
 
-    gsMatrix<T> Phi(N, 4);
-    for (index_t i = 0; i < N; ++i)
-    {
-        const T p0 = T(1) - S.t(i), p1 = S.t(i);
-        Phi(i,0) = p0 * S.D2(i);
-        Phi(i,1) = p1 * S.D2(i);
-        Phi(i,2) = p0 * S.D1(i);
-        Phi(i,3) = p1 * S.D1(i);
-    }
+    const gsVector<T> p0 = 1 - S.nodes.transpose().array();
+    const gsVector<T> p1 = S.nodes.transpose();
 
-    gsMatrix<T> G = Phi.transpose() * S.w.asDiagonal() * Phi;
+    gsMatrix<T> Phi(N, 4);
+    Phi.col(0) = p0.cwiseProduct(S.D2);
+    Phi.col(1) = p1.cwiseProduct(S.D2);
+    Phi.col(2) = p0.cwiseProduct(S.D1);
+    Phi.col(3) = p1.cwiseProduct(S.D1);
+
+    gsMatrix<T> G = Phi.transpose() * S.weights.asDiagonal() * Phi;
 
     // Tikhonov bias toward constant alpha
     const T tikh = T(1e-10) * G.diagonal().cwiseAbs().maxCoeff();
@@ -159,24 +156,20 @@ SolveResult<T> solveLinearGluing(const InterfaceSamples<T>& S)
 
     gsVector<T> c(4); c.setConstant(T(0.5));
     gsMatrix<T> K(5,5); K.setZero();
-    K.block(0,0,4,4) = T(2) * G;
+    K.block(0,0,4,4) = 2 * G;
     K.block(0,4,4,1) = c;
     K.block(4,0,1,4) = c.transpose();
-    gsVector<T> r(5); r.setZero(); r(4) = T(1);
-    gsVector<T> aSol = K.fullPivLu().solve(r).head(4);
+    gsVector<T> r(5); r.setZero(); r(4) = 1;
+    out.alpha = K.fullPivLu().solve(r).head(4);
 
-    SolveResult<T> out;
-    for (index_t k = 0; k < 4; ++k) out.a[k] = aSol(k);
-    gsVector<T> aRes = Phi * aSol;
-    out.alphaErr = S.integrate(aRes.cwiseProduct(aRes));
+    GISMO_ENSURE (S.integrate((Phi * out.alpha).array().square()) <= eps, "Not AS-G1");
 
     // beta solve: Psi = [(1-t)D2, t*D2, -(1-t)D1, -t*D1]
     gsMatrix<T> Psi = Phi;
-    Psi.col(2) *= T(-1);
-    Psi.col(3) *= T(-1);
+    Psi.rightCols(2) *= -1;
 
-    gsMatrix<T> H = Psi.transpose() * S.w.asDiagonal() * Psi;
-    gsVector<T> d = Psi.transpose() * S.w.asDiagonal() * S.D3;
+    gsMatrix<T> H = Psi.transpose() * S.weights.asDiagonal() * Psi;
+    gsVector<T> d = Psi.transpose() * S.weights.asDiagonal() * S.D3;
 
     // Tikhonov bias toward beta_1 = beta_2
     const T tikhB = T(1e-10) * H.diagonal().cwiseAbs().maxCoeff();
@@ -185,28 +178,24 @@ SolveResult<T> solveLinearGluing(const InterfaceSamples<T>& S)
 
     gsVector<T> e(4);
     {
-        gsVector<T> alpha1(N), alpha2(N);
-        for (index_t i = 0; i < N; ++i)
-        {
-            const T p0 = T(1) - S.t(i), p1 = S.t(i);
-            alpha1(i) = out.a[0]*p0 + out.a[1]*p1;
-            alpha2(i) = out.a[2]*p0 + out.a[3]*p1;
-        }
-        e(0) =  S.integrate(alpha1.cwiseProduct((T(1) - S.t.array()).matrix()));
-        e(1) =  S.integrate(alpha1.cwiseProduct(S.t));
-        e(2) = -S.integrate(alpha2.cwiseProduct((T(1) - S.t.array()).matrix()));
-        e(3) = -S.integrate(alpha2.cwiseProduct(S.t));
+        gsVector<T> alpha1 = out.alpha[0] * p0 + out.alpha[1] * p1;
+        gsVector<T> alpha2 = out.alpha[2] * p0 + out.alpha[3] * p1;
+
+        e(0) =  S.integrate(alpha1.cwiseProduct(p0));
+        e(1) =  S.integrate(alpha1.cwiseProduct(p1));
+        e(2) = -S.integrate(alpha2.cwiseProduct(p0));
+        e(3) = -S.integrate(alpha2.cwiseProduct(p1));
     }
 
     gsMatrix<T> Kb(5,5); Kb.setZero();
-    Kb.block(0,0,4,4) = T(2) * H;
+    Kb.block(0,0,4,4) = 2 * H;
     Kb.block(0,4,4,1) = e;
     Kb.block(4,0,1,4) = e.transpose();
-    gsVector<T> rb(5); rb.head(4) = T(2)*d; rb(4) = T(0);
-    gsVector<T> bSol = Kb.fullPivLu().solve(rb).head(4);
-    for (index_t k = 0; k < 4; ++k) out.b[k] = bSol(k);
-    gsVector<T> bRes = Psi * bSol - S.D3;
-    out.betaErr = S.integrate(bRes.cwiseProduct(bRes));
+    gsVector<T> rb(5); rb.head(4) = 2*d; rb(4) = 0;
+    out.beta = Kb.fullPivLu().solve(rb).head(4);
+
+    GISMO_ENSURE (S.integrate((Psi * out.beta - S.D3).array().square()) <= eps, "Not AS-G1");
+
     return out;
 }
 
@@ -232,13 +221,12 @@ gsVector<T> computeGluingDataForInterface(
     const bool sameSign = (S.D1.minCoeff() * S.D2.minCoeff() > 0);
     if (sameSign) S.D1 = -S.D1;
 
-    SolveResult<T> r = solveLinearGluing(S);
-    GISMO_ENSURE (r.alphaErr <= eps && r.betaErr <= eps, "Not AS-G1");
+    SolveResult<T> r = solveLinearGluing(S, eps);
 
     if (sameSign)
     {
-        r.a[0] = -r.a[0];  r.a[1] = -r.a[1];
-        r.b[2] = -r.b[2];  r.b[3] = -r.b[3];
+        r.alpha.topRows(2) *= -1;
+        r.beta.bottomRows(2) *= -1;
     }
 
     if (S.flipped)
@@ -246,17 +234,17 @@ gsVector<T> computeGluingDataForInterface(
         // Patch-2 tangent is flipped, so we evaluate the patch-2 alpha
         // and beta at the reversed endpoint pairing (a21 at gd-t=0,
         // a20 at gd-t=1).
-        result(0) =  r.a[0]; result(1) =  r.a[1];
-        result(2) =  r.b[0]; result(3) =  r.b[1];
-        result(4) =  r.a[3]; result(5) =  r.a[2];
-        result(6) =  r.b[3]; result(7) =  r.b[2];
+        result[0] =  r.alpha[0]; result[1] =  r.alpha[1];
+        result[2] =  r.beta [0]; result[3] =  r.beta [1];
+        result[4] =  r.alpha[3]; result[5] =  r.alpha[2];
+        result[6] =  r.beta [3]; result[7] =  r.beta [2];
     }
     else
     {
-        result(0) = -r.a[0]; result(1) = -r.a[1];
-        result(2) = -r.b[0]; result(3) = -r.b[1];
-        result(4) =  r.a[2]; result(5) =  r.a[3];
-        result(6) = -r.b[2]; result(7) = -r.b[3];
+        result[0] = -r.alpha[0]; result[1] = -r.alpha[1];
+        result[2] = -r.beta [0]; result[3] = -r.beta [1];
+        result[4] =  r.alpha[2]; result[5] =  r.alpha[3];
+        result[6] = -r.beta [2]; result[7] = -r.beta [3];
     }
 
     // There is another fix to be made: In the paper we have written
@@ -265,13 +253,13 @@ gsVector<T> computeGluingDataForInterface(
     const patchSide ps1 = interf.first(), ps2 = interf.second();
     if (ps1.parameter()!=ps1.direction())
     {
-        result(2) *= -1;
-        result(3) *= -1;
+        result[2] *= -1;
+        result[3] *= -1;
     }
     if (ps2.parameter()!=ps2.direction())
     {
-        result(6) *= -1;
-        result(7) *= -1;
+        result[6] *= -1;
+        result[7] *= -1;
     }
     return result;
 }

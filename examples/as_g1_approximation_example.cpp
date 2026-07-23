@@ -33,7 +33,8 @@ int main(int argc, char *argv[]) {
   std::string outDir("");
   index_t degree = 3;
   index_t numGaussPerSpan = 0;
-  index_t maxRefinements = 3;
+  index_t maxRefinements = 5;
+  bool plot = false;
 
   gsCmdLine cmd("AS-G1 Function Approximation and Convergence Experiment.");
   cmd.addString("f", "file", "Multi-patch geometry XML file.", geometry);
@@ -41,6 +42,7 @@ int main(int argc, char *argv[]) {
   cmd.addInt("d", "degree", "Target degree (minimum 3).", degree);
   cmd.addInt("n", "numGauss", "Gauss points per knot span (0 = auto).", numGaussPerSpan);
   cmd.addInt("r", "refinements", "Maximum uniform refinement levels to test.", maxRefinements);
+  cmd.addSwitch("plot", "Export target function and numerical solution to VTK files.", plot);
 
   try {
     cmd.getValues(argc, argv);
@@ -290,11 +292,18 @@ int main(int argc, char *argv[]) {
     prev_l2 = l2err;
     prev_h1 = h1err;
 
-    // Optional VTK output
-    if (!outDir.empty()) {
+    // Optional VTK output for original target function and approximated solution
+    if (plot || !outDir.empty()) {
       std::string solName = prefix + "as_g1_approx_sol_r" + std::to_string(ref);
-      gsField<T> field(mp, sol);
-      gsWriteParaview<>(field, solName, 1000);
+      std::string exactName = prefix + "as_g1_approx_exact_r" + std::to_string(ref);
+
+      gsField<T> solField(mp, sol);
+      gsWriteParaview<>(solField, solName, 1000);
+
+      gsField<T> exactField(mp, exact_f, false);
+      gsWriteParaview<>(exactField, exactName, 1000);
+
+      gsInfo << " -> Exported VTK plots: " << solName << " & " << exactName << "\n";
     }
     } catch (const std::exception &e) {
       gsInfo << "ERROR: " << e.what() << "\n" << std::flush;

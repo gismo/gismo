@@ -1,0 +1,397 @@
+/** @file as_g1_biharmonic_example.cpp
+
+    @brief Biharmonic solver and convergence test over Analysis-Suitable G1 (AS-G1) multi-patch geometries.
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): F. Hasanova, S. Takacs
+*/
+
+#include <algorithm>
+#include <cmath>
+#include <fstream>
+#include <gismo.h>
+#include <iomanip>
+#include <iostream>
+#include <map>
+#include <numeric>
+#include <set>
+#include <vector>
+
+#include <gsModeling/gsAsG1Basis.hpp>
+#include <gsModeling/gsAsG1Domain.hpp>
+
+using namespace gismo;
+using namespace gismo::expr;
+
+int main(int argc, char *argv[]) {
+  using T = real_t;
+
+  std::string geometry("domain2d/2patch/multipatch/weirdo_multivalence_non_bilinear.xml");
+  std::string outDir("");
+  index_t degree = 3;
+  index_t numGaussPerSpan = 0;
+  index_t maxRefinements = 4;
+  bool plot = false;
+
+  gsCmdLine cmd("AS-G1 Biharmonic Equation Solver and Convergence Experiment.");
+  cmd.addString("f", "file", "Multi-patch geometry XML file.", geometry);
+  cmd.addString("o", "outDir", "Output directory for VTK/PVD files.", outDir);
+  cmd.addInt("d", "degree", "Target degree (minimum 3).", degree);
+  cmd.addInt("n", "numGauss", "Gauss points per knot span (0 = auto).", numGaussPerSpan);
+  cmd.addInt("r", "refinements", "Maximum uniform refinement levels to test.", maxRefinements);
+  cmd.addSwitch("plot", "Export target function and numerical solution to VTK files.", plot);
+
+  try {
+    cmd.getValues(argc, argv);
+  } catch (int rv) {
+    return rv;
+  }
+
+  std::string prefix;
+  if (!outDir.empty()) {
+    if (outDir.back() != '/')
+      outDir += '/';
+    gsFileManager::mkdir(outDir);
+    prefix = outDir;
+    gsInfo << "Output directory: " << outDir << "\n";
+  }
+
+  if (degree < 3)
+    degree = 3;
+
+  gsInfo << "\n======================================================================\n";
+  gsInfo << "AS-G1 Biharmonic Solver (Delta^2 u = f)\n";
+  gsInfo << "Target Exact Function: u(x, y) = sin(pi * x) * cos(pi * y)\n";
+  gsInfo << "======================================================================\n\n";
+
+  // Table header
+  gsInfo << std::setw(5) << "r"
+         << std::setw(12) << "h_max"
+         << std::setw(10) << "N_free"
+         << std::setw(14) << "L2 Error"
+         << std::setw(10) << "L2 Rate"
+         << std::setw(14) << "H1 Error"
+         << std::setw(10) << "H1 Rate"
+         << std::setw(14) << "H2 Error"
+         << std::setw(10) << "H2 Rate"
+         << "\n";
+  gsInfo << std::string(99, '-') << "\n" << std::flush;
+
+  T prev_h = 0;
+  T prev_l2 = 0;
+  T prev_h1 = 0;
+  T prev_h2 = 0;
+
+  for (index_t ref = 0; ref <= maxRefinements; ++ref) {
+    try {
+      // ---- Read geometry ----
+      gsMultiPatch<T>::uPtr mpPtr = gsReadFile<>(geometry);
+      if (!mpPtr) {
+        gsInfo << "Error: Cannot read geometry " << geometry << "\n";
+        return -1;
+      }
+      gsMultiPatch<T> &mp = *mpPtr;
+      mp.computeTopology();
+
+      // ---- Degree Elevation ----
+      const short_t inputDeg = mp.patch(0).basis().degree(0);
+      if (inputDeg < degree) {
+        const short_t elev = degree - inputDeg;
+        mp.degreeElevate(elev);
+      }
+
+      // ---- Refinement ----
+      const short_t deg = mp.patch(0).basis().degree(0);
+      const index_t mult = std::max<index_t>(deg - 1, 1);
+      for (index_t i = 0; i < ref; ++i)
+        mp.uniformRefine(1, mult);
+
+      const T h_max = std::pow(0.5, ref);
+
+      // ---- Compute Gluing Data ----
+      gsMatrix<T> gd = computeGluingData(mp, T(1e-8), numGaussPerSpan);
+
+      // ---- Build per-patch interface embeddings ----
+      std::vector<gsArgyrisEmbedding<T>> argBasis;
+      gsVector<index_t> patchDofSizes(mp.nPatches());
+      for (size_t i = 0; i < mp.nPatches(); ++i) {
+        argBasis.push_back(deriveArgyrisBasisEmbedding(
+            dynamic_cast<const gsTensorBSplineBasis<2, T> &>(mp.patch(i).basis()),
+            gsMatrix<T>(gd.row(i)), mp.patch(i)));
+        patchDofSizes[i] = argBasis[i].matrix.cols();
+      }
+
+      // ---- Set up gsDofMapper ----
+      gsDofMapper mapper(patchDofSizes);
+
+      // Match interface DOFs
+      for (auto it = mp.iBegin(); it != mp.iEnd(); ++it) {
+        const boundaryInterface &ifc = *it;
+        const patchSide ps1 = ifc.first();
+        const patchSide ps2 = ifc.second();
+
+        const index_t nLvl0 = argBasis[ps1.patch].sizes[1 + 2 * (ps1.m_index - 1)];
+        const index_t offLvl0_1 = sumUntil(argBasis[ps1.patch].sizes, 1 + 2 * (ps1.m_index - 1));
+        const index_t offLvl0_2 = sumUntil(argBasis[ps2.patch].sizes, 1 + 2 * (ps2.m_index - 1));
+
+        const index_t nLvl1 = argBasis[ps1.patch].sizes[2 + 2 * (ps1.m_index - 1)];
+        const index_t offLvl1_1 = sumUntil(argBasis[ps1.patch].sizes, 2 + 2 * (ps1.m_index - 1));
+        const index_t offLvl1_2 = sumUntil(argBasis[ps2.patch].sizes, 2 + 2 * (ps2.m_index - 1));
+
+        const short_t tanDir1 = 1 - ps1.direction();
+        const bool flipped = !ifc.dirOrientation(ps1, tanDir1);
+
+        for (index_t j1 = 0; j1 < nLvl0; ++j1) {
+          const index_t j2 = flipped ? nLvl0 - 1 - j1 : j1;
+          mapper.matchDof(ps1.patch, offLvl0_1 + j1, ps2.patch, offLvl0_2 + j2);
+        }
+        for (index_t j1 = 0; j1 < nLvl1; ++j1) {
+          const index_t j2 = flipped ? nLvl1 - 1 - j1 : j1;
+          mapper.matchDof(ps1.patch, offLvl1_1 + j1, ps2.patch, offLvl1_2 + j2);
+        }
+
+        std::vector<patchCorner> corners;
+        ps1.getContainedCorners(2, corners);
+        for (index_t i = 0; i < 2; ++i) {
+          const index_t c1 = corners[i].m_index - 1;
+          const index_t c2 = ifc.mapCorner(corners[i]).m_index - 1;
+
+          const index_t off_corner_1 = sumUntil(argBasis[ps1.patch].sizes, 9 + c1);
+          const index_t off_corner_2 = sumUntil(argBasis[ps2.patch].sizes, 9 + c2);
+
+          for (index_t k = 0; k < 6; ++k)
+            mapper.matchDof(ps1.patch, off_corner_1 + k, ps2.patch, off_corner_2 + k);
+        }
+      }
+
+      // Mark domain boundary DOFs
+      std::set<std::pair<size_t, index_t>> ifcSides;
+      for (auto it = mp.iBegin(); it != mp.iEnd(); ++it) {
+        ifcSides.insert({it->first().patch, it->first().side()});
+        ifcSides.insert({it->second().patch, it->second().side()});
+      }
+
+      for (size_t i = 0; i < mp.nPatches(); ++i) {
+        for (boxSide side = boxSide::getFirst(2); side != boxSide::getEnd(2); ++side) {
+          if (ifcSides.find({i, side.m_index}) != ifcSides.end())
+            continue; // interior interface, skip
+
+          // External boundary side
+          const index_t nLvl0 = argBasis[i].sizes[1 + 2 * (side.m_index - 1)];
+          const index_t offLvl0 = sumUntil(argBasis[i].sizes, 1 + 2 * (side.m_index - 1));
+          for (index_t j = 0; j < nLvl0; ++j)
+            mapper.eliminateDof(offLvl0 + j, i);
+
+          const index_t nLvl1 = argBasis[i].sizes[2 + 2 * (side.m_index - 1)];
+          const index_t offLvl1 = sumUntil(argBasis[i].sizes, 2 + 2 * (side.m_index - 1));
+          for (index_t j = 0; j < nLvl1; ++j)
+            mapper.eliminateDof(offLvl1 + j, i);
+
+          // Contained corners on this boundary side
+          patchSide ps(i, side);
+          std::vector<patchCorner> corners;
+          ps.getContainedCorners(2, corners);
+          for (const auto &c : corners) {
+            const index_t cIdx = c.m_index - 1;
+            const index_t offCorner = sumUntil(argBasis[i].sizes, 9 + cIdx);
+            for (index_t k = 0; k < 6; ++k)
+              mapper.eliminateDof(offCorner + k, i);
+          }
+        }
+      }
+
+      mapper.finalize();
+
+      const index_t nFree = mapper.freeSize();
+      const index_t nBnd = mapper.boundarySize();
+
+      // ---- Build global transformation matrices T_free and T_bnd ----
+      index_t nDisjointBSpline = 0;
+      for (size_t i = 0; i < mp.nPatches(); ++i)
+        nDisjointBSpline += argBasis[i].matrix.rows();
+
+      gsSparseEntries<T> tFreeEntries, tBndEntries, tGlobalEntries;
+      index_t rowOffset = 0;
+
+      for (size_t i = 0; i < mp.nPatches(); ++i) {
+        const gsSparseMatrix<T> &Ai = argBasis[i].matrix; // size: nBSpline_i x nArg_i
+        const index_t patchSize = mapper.patchSize(i);
+
+        for (index_t j = 0; j < patchSize; ++j) {
+          bool isBnd = mapper.is_boundary(j, i);
+          index_t gIdx = isBnd ? mapper.bindex(j, i) : mapper.index(j, i);
+
+          for (typename gsSparseMatrix<T>::InnerIterator it(Ai, j); it; ++it) {
+            const index_t bsplineRow = rowOffset + it.row();
+            const T val = it.value();
+
+            if (isBnd) {
+              tBndEntries.add(bsplineRow, gIdx, val);
+              tGlobalEntries.add(bsplineRow, nFree + gIdx, val);
+            } else {
+              tFreeEntries.add(bsplineRow, gIdx, val);
+              tGlobalEntries.add(bsplineRow, gIdx, val);
+            }
+          }
+        }
+        rowOffset += Ai.rows();
+      }
+
+      gsSparseMatrix<T> T_free(nDisjointBSpline, nFree);
+      T_free.setFrom(tFreeEntries);
+
+      gsSparseMatrix<T> T_bnd(nDisjointBSpline, nBnd);
+      T_bnd.setFrom(tBndEntries);
+
+      gsSparseMatrix<T> T_global(nDisjointBSpline, nFree + nBnd);
+      T_global.setFrom(tGlobalEntries);
+
+      // ---- Evaluate Dirichlet boundary values vector g_bnd ----
+      gsMultiBasis<T> dbasis(mp);
+      gsFunctionExpr<T> exact_u("sin(pi*x)*cos(pi*y)", 2);
+      gsFunctionExpr<T> exact_grad("pi*cos(pi*x)*cos(pi*y)", "-pi*sin(pi*x)*sin(pi*y)", 2);
+
+      gsExprAssembler<T> A_l2(1, 1);
+      A_l2.setIntegrationDomain(dbasis.domain());
+      auto G_map_l2 = A_l2.getMap(mp);
+      auto u_space_l2 = A_l2.getSpace(dbasis);
+      auto u_coeff_l2 = A_l2.getCoeff(exact_u, G_map_l2);
+
+      A_l2.initSystem();
+      A_l2.assemble(u_space_l2 * u_space_l2.tr() * meas(G_map_l2),
+                    u_space_l2 * u_coeff_l2 * meas(G_map_l2));
+
+      gsSparseMatrix<T> M_global = T_global.transpose() * A_l2.matrix() * T_global;
+      gsMatrix<T> F_l2_global = T_global.transpose() * A_l2.rhs();
+
+      gsSparseSolver<T>::LU solver_l2(M_global);
+      gsMatrix<T> c_l2_global = solver_l2.solve(F_l2_global);
+
+      gsMatrix<T> g_bnd = c_l2_global.bottomRows(nBnd);
+
+      // ---- Assemble Disjoint Biharmonic Matrix & RHS ----
+      gsExprAssembler<T> A(1, 1);
+      A.setIntegrationDomain(dbasis.domain());
+
+      auto G_map = A.getMap(mp);
+      auto u_space = A.getSpace(dbasis);
+
+      gsFunctionExpr<T> rhs_f("4*pi^4*sin(pi*x)*cos(pi*y)", 2);
+      auto f_coeff = A.getCoeff(rhs_f, G_map);
+
+      A.initSystem();
+      A.assemble(ilapl(u_space, G_map) * ilapl(u_space, G_map).tr() * meas(G_map),
+                 u_space * f_coeff * meas(G_map));
+
+      const gsSparseMatrix<T> &K_disjoint = A.matrix();
+      const gsMatrix<T> &F_disjoint = A.rhs();
+
+      // ---- Global Linear System Assembly & Solve ----
+      gsSparseMatrix<T> K_free = T_free.transpose() * K_disjoint * T_free;
+      gsMatrix<T> F_free = T_free.transpose() * F_disjoint -
+                           T_free.transpose() * (K_disjoint * (T_bnd * g_bnd));
+
+      gsSparseSolver<T>::LU solver(K_free);
+      gsMatrix<T> c_free = solver.solve(F_free);
+
+      // Reconstruct full global vector c_global
+      gsMatrix<T> c_global(nFree + nBnd, 1);
+      c_global.topRows(nFree) = c_free;
+      c_global.bottomRows(nBnd) = g_bnd;
+
+      gsMatrix<T> c_disjoint = T_global * c_global;
+
+      // Reconstruct multi-patch solution field
+      gsMultiPatch<T> sol;
+      index_t offset = 0;
+      for (size_t i = 0; i < mp.nPatches(); ++i) {
+        const index_t sz = argBasis[i].matrix.rows();
+        gsMatrix<T> ci = c_disjoint.block(offset, 0, sz, 1);
+        offset += sz;
+        const gsTensorBSplineBasis<2, T> &tb =
+            dynamic_cast<const gsTensorBSplineBasis<2, T> &>(mp.patch(i).basis());
+        sol.addPatch(tb.makeGeometry(give(ci)));
+      }
+
+      // ---- Error Evaluation ----
+      gsExprEvaluator<T> ev;
+      ev.setIntegrationDomain(dbasis.domain());
+      auto G_map_ev = ev.getMap(mp);
+
+      gsFunctionExpr<T> exact_hess("-pi^2*sin(pi*x)*cos(pi*y)", "-pi^2*cos(pi*x)*sin(pi*y)",
+                                   "-pi^2*cos(pi*x)*sin(pi*y)", "-pi^2*sin(pi*x)*cos(pi*y)", 2);
+
+      auto u_exact_ev = ev.getVariable(exact_u, G_map_ev);
+      auto grad_exact_ev = ev.getVariable(exact_grad, G_map_ev);
+      auto hess_exact_ev = reshape(ev.getVariable(exact_hess, G_map_ev), 2, 2);
+
+      auto u_sol_ev = ev.getVariable(sol);
+
+      const T l2err = std::sqrt(ev.integral((u_sol_ev - u_exact_ev).sqNorm() * meas(G_map_ev)));
+      const T h1err = std::sqrt(ev.integral((igrad(u_sol_ev, G_map_ev) - grad_exact_ev.tr()).sqNorm() * meas(G_map_ev)));
+      const T h2err = std::sqrt(ev.integral((ihess(u_sol_ev, G_map_ev) - hess_exact_ev).sqNorm() * meas(G_map_ev)));
+
+      // Rates
+      T l2_rate = 0, h1_rate = 0, h2_rate = 0;
+      if (ref > 2 && prev_h > 0) {
+        const T h_ratio = prev_h / h_max;
+        l2_rate = std::log(prev_l2 / l2err) / std::log(h_ratio);
+        h1_rate = std::log(prev_h1 / h1err) / std::log(h_ratio);
+        h2_rate = std::log(prev_h2 / h2err) / std::log(h_ratio);
+      }
+
+      gsInfo << std::setw(5) << ref
+             << std::setw(12) << std::scientific << std::setprecision(4) << h_max
+             << std::setw(10) << nFree
+             << std::setw(14) << std::scientific << std::setprecision(4) << l2err;
+      if (ref > 2)
+        gsInfo << std::setw(10) << std::fixed << std::setprecision(2) << l2_rate;
+      else
+        gsInfo << std::setw(10) << "-";
+
+      gsInfo << std::setw(14) << std::scientific << std::setprecision(4) << h1err;
+      if (ref > 2)
+        gsInfo << std::setw(10) << std::fixed << std::setprecision(2) << h1_rate;
+      else
+        gsInfo << std::setw(10) << "-";
+
+      gsInfo << std::setw(14) << std::scientific << std::setprecision(4) << h2err;
+      if (ref > 2)
+        gsInfo << std::setw(10) << std::fixed << std::setprecision(2) << h2_rate;
+      else
+        gsInfo << std::setw(10) << "-";
+
+      gsInfo << "\n" << std::flush;
+
+      prev_h = h_max;
+      prev_l2 = l2err;
+      prev_h1 = h1err;
+      prev_h2 = h2err;
+
+      // Optional VTK output for solution and original exact function
+      if (plot || !outDir.empty()) {
+        std::string solName = prefix + "as_g1_biharmonic_sol_r" + std::to_string(ref);
+        std::string exactName = prefix + "as_g1_biharmonic_exact_r" + std::to_string(ref);
+
+        gsField<T> solField(mp, sol);
+        gsWriteParaview<>(solField, solName, 1000);
+
+        gsField<T> exactField(mp, exact_u, false);
+        gsWriteParaview<>(exactField, exactName, 1000);
+
+        gsInfo << " -> Exported VTK plots: " << solName << " & " << exactName << "\n";
+      }
+    } catch (const std::exception &e) {
+      gsInfo << "ERROR: " << e.what() << "\n" << std::flush;
+    }
+  }
+
+  gsInfo << std::string(99, '-') << "\n";
+  gsInfo << "Done.\n";
+  return 0;
+}
