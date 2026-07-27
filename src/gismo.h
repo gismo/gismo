@@ -160,7 +160,6 @@ namespace internal
 #include <gsPde/gsPoissonPde.h>
 #include <gsPde/gsStokesPde.h>
 #include <gsPde/gsPointLoads.h>
-//#include <gsPde/gsNewtonIterator.h>
 
 /* ----------- MultiGrid ----------- */
 #include <gsMultiGrid/gsMultiGrid.h>
