@@ -55,7 +55,15 @@ endforeach(file ${FILES})
 foreach(file ${gismo_UNITTESTS})
   get_filename_component(testname ${file} NAME_WE) # name without extension
   add_test(NAME unit_${testname} COMMAND $<TARGET_FILE:unittests> ${testname})
-  set_property(TEST unit_${testname} PROPERTY LABELS unittests)
+  # Submodule-contributed tests additionally get their owning module as a
+  # label (derived from the optional/<module>/ path), so that a submodule's
+  # CI can run only its own tests: ctest -L <module>
+  string(REGEX MATCH "/optional/([^/]+)/" _unused ${file})
+  if(CMAKE_MATCH_1)
+    set_property(TEST unit_${testname} PROPERTY LABELS unittests ${CMAKE_MATCH_1})
+  else()
+    set_property(TEST unit_${testname} PROPERTY LABELS unittests)
+  endif()
 endforeach(file ${FILES})
 
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
