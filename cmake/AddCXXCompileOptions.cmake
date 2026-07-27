@@ -5,7 +5,7 @@
 ## Authors: M. Moeller and A. Mantzaflaris 
 ######################################################################
 
-set(CMAKE_CXX_STANDARD_DEFAULT 14)
+set(CMAKE_CXX_STANDARD_DEFAULT 17)
 set(CMAKE_C_STANDARD           11) #90,99,11,17,23
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "PGI")
@@ -45,12 +45,12 @@ if ((CMAKE_SYSTEM_NAME STREQUAL "Darwin") AND (CMAKE_CXX_COMPILER_ID STREQUAL "A
     if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 6.1)
       set(CMAKE_CXX14_STANDARD_COMPILE_OPTION "-std=c++14")
       set(CMAKE_CXX14_EXTENSION_COMPILE_OPTION "-std=gnu++14")
-      set(CMAKE_CXX_STANDARD_DEFAULT 14)
+      set(CMAKE_CXX_STANDARD_DEFAULT 17)
     elseif(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 5.1)
       # AppleClang 5.0 knows this flag, but does not set a __cplusplus macro greater than 201103L
       set(CMAKE_CXX14_STANDARD_COMPILE_OPTION "-std=c++1y")
       set(CMAKE_CXX14_EXTENSION_COMPILE_OPTION "-std=gnu++1y")
-      set(CMAKE_CXX_STANDARD_DEFAULT 14)
+      set(CMAKE_CXX_STANDARD_DEFAULT 17)
     endif()
         
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
@@ -75,12 +75,12 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     if(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.5)
       set(CMAKE_CXX14_STANDARD_COMPILE_OPTION "-std=c++14")
       set(CMAKE_CXX14_EXTENSION_COMPILE_OPTION "-std=gnu++14")
-      set(CMAKE_CXX_STANDARD_DEFAULT 14)
+      set(CMAKE_CXX_STANDARD_DEFAULT 17)
     elseif(NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 3.4)
       set(CMAKE_CXX14_STANDARD_COMPILE_OPTION "-std=c++1y")
       set(CMAKE_CXX14_EXTENSION_COMPILE_OPTION "-std=gnu++1y")
       # .. additionally requires gnu libstdc++  greater than 4.6
-      # set(CMAKE_CXX_STANDARD_DEFAULT 14)
+      # set(CMAKE_CXX_STANDARD_DEFAULT 17)
       set(CMAKE_CXX_STANDARD_DEFAULT 11)
     endif()
 
@@ -108,11 +108,11 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     if (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.9)
       set(CMAKE_CXX14_STANDARD_COMPILE_OPTION "-std=c++14")
       set(CMAKE_CXX14_EXTENSION_COMPILE_OPTION "-std=gnu++14")
-      set(CMAKE_CXX_STANDARD_DEFAULT 14)
+      set(CMAKE_CXX_STANDARD_DEFAULT 17)
     elseif (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.8)
       set(CMAKE_CXX14_STANDARD_COMPILE_OPTION "-std=c++1y")
       set(CMAKE_CXX14_EXTENSION_COMPILE_OPTION "-std=gnu++1y")
-      set(CMAKE_CXX_STANDARD_DEFAULT 14)
+      set(CMAKE_CXX_STANDARD_DEFAULT 17)
     endif()
    
 elseif ( "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xIntel")
@@ -138,14 +138,14 @@ elseif ( "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xIntel")
       set(CMAKE_CXX14_STANDARD_COMPILE_OPTION "${_std}=c++14")
       # todo: there is no gnu++14 value supported; figure out what to do
       set(CMAKE_CXX14_EXTENSION_COMPILE_OPTION "${_std}=c++14")
-      set(CMAKE_CXX_STANDARD_DEFAULT 14)
+      set(CMAKE_CXX_STANDARD_DEFAULT 17)
     elseif (NOT CMAKE_CXX_COMPILER_VERSION VERSION_LESS 15.0.0)
       set(CMAKE_CXX11_STANDARD_COMPILE_OPTION "${_std}=c++0x")
       set(CMAKE_CXX11_EXTENSION_COMPILE_OPTION "${_std}=${_ext}0x")
       set(CMAKE_CXX14_STANDARD_COMPILE_OPTION "${_std}=c++1y")
       # todo: there is no gnu++14 value supported; figure out what to do
       set(CMAKE_CXX14_EXTENSION_COMPILE_OPTION "${_std}=c++1y")
-      set(CMAKE_CXX_STANDARD_DEFAULT 14)
+      set(CMAKE_CXX_STANDARD_DEFAULT 17)
     endif()
            
     unset(_std)
@@ -166,6 +166,11 @@ endif() # cmake 3.1
 
 if (NOT DEFINED CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD ${CMAKE_CXX_STANDARD_DEFAULT} CACHE INTERNAL "")
+endif()
+
+# G+Smo requires C++17 or newer (see changelog)
+if (CMAKE_CXX_STANDARD EQUAL 98 OR CMAKE_CXX_STANDARD LESS 17)
+  message(FATAL_ERROR "G+Smo requires C++17 or newer; CMAKE_CXX_STANDARD is set to ${CMAKE_CXX_STANDARD}. Remove the setting or choose 17/20/23.")
 endif()
 
 # Apply for Cmake less than 3.1
