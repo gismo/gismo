@@ -305,3 +305,12 @@ v25.07.0 (https://github.com/gismo/gismo/releases/tag/v25.07.0)
 * API:
     - Improving domain iteration -- https://github.com/gismo/gismo/pull/779
     - Follow-up of domain iterations -- https://github.com/gismo/gismo/pull/782
+
+Unreleased (modularization program)
+------
+* API:
+    - The minimum C++ standard is raised from C++11 to C++17
+      (CMAKE_CXX_STANDARD defaults to 17; 98/11/14 are rejected at
+      configure time). Downstream/optional modules should drop any
+      -DCMAKE_CXX_STANDARD=11 from their CI.
+    - The minimum CMake version is raised to 3.12.
