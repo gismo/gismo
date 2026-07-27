@@ -65,6 +65,171 @@ public:
   }
 };
 
+// Compute the largest axis-aligned rectangle inscribed in the multi-patch
+// domain Omega.  The algorithm:
+//   1. Samples external boundary curves to build a polygon approximating dOmega.
+//   2. Uses a grid + ray-casting point-in-polygon test.
+//   3. Greedily shrinks from the bounding box until the rectangle is fully
+//      contained within the domain.
+template <typename T>
+void computeInscribedRectangle(const gsMultiPatch<T>& mp,
+                                T& rect_xmin, T& rect_xmax,
+                                T& rect_ymin, T& rect_ymax)
+{
+    // ---- 1. Identify external boundary sides (not interfaces) ----
+    std::set<std::pair<size_t, index_t>> ifcSides;
+    for (auto it = mp.iBegin(); it != mp.iEnd(); ++it)
+    {
+        ifcSides.insert({it->first().patch, it->first().side()});
+        ifcSides.insert({it->second().patch, it->second().side()});
+    }
+
+    // ---- 2. Sample external boundary curves ----
+    struct BdSeg { std::vector<std::pair<T,T>> pts; };
+    std::vector<BdSeg> segs;
+    const int K = 40; // samples per boundary side
+
+    for (size_t pi = 0; pi < mp.nPatches(); ++pi)
+    {
+        for (boxSide side = boxSide::getFirst(2);
+             side != boxSide::getEnd(2); ++side)
+        {
+            if (ifcSides.count({pi, side.m_index})) continue;
+
+            BdSeg seg;
+            const int si       = side.m_index;
+            const short_t dir  = static_cast<short_t>((si - 1) / 2);
+            const short_t tang = 1 - dir;
+            const T fixedVal   = ((si - 1) % 2) ? T(1) : T(0);
+
+            for (int k = 0; k <= K; ++k)
+            {
+                gsMatrix<T> uv(2, 1);
+                uv(dir,  0) = fixedVal;
+                uv(tang, 0) = T(k) / T(K);
+                gsMatrix<T> xy;
+                mp.patch(pi).eval_into(uv, xy);
+                seg.pts.push_back({xy(0, 0), xy(1, 0)});
+            }
+            segs.push_back(seg);
+        }
+    }
+
+    // Fallback: use bounding box if no external boundary found
+    gsMatrix<T> bbox;
+    mp.boundingBox(bbox);
+    if (segs.empty())
+    {
+        rect_xmin = bbox(0, 0); rect_xmax = bbox(0, 1);
+        rect_ymin = bbox(1, 0); rect_ymax = bbox(1, 1);
+        return;
+    }
+
+    // ---- 3. Order segments into a closed polygon ----
+    auto dsq = [](std::pair<T,T> a, std::pair<T,T> b) -> T {
+        return (a.first-b.first)*(a.first-b.first) +
+               (a.second-b.second)*(a.second-b.second);
+    };
+
+    std::vector<std::pair<T,T>> poly;
+    std::vector<bool> used(segs.size(), false);
+    used[0] = true;
+    for (auto& p : segs[0].pts) poly.push_back(p);
+
+    for (size_t step = 1; step < segs.size(); ++step)
+    {
+        auto last = poly.back();
+        int best = -1;
+        T bestD = T(1e30);
+        bool rev = false;
+        for (size_t k = 0; k < segs.size(); ++k)
+        {
+            if (used[k]) continue;
+            T d0 = dsq(last, segs[k].pts.front());
+            T d1 = dsq(last, segs[k].pts.back());
+            if (d0 < bestD) { bestD = d0; best = (int)k; rev = false; }
+            if (d1 < bestD) { bestD = d1; best = (int)k; rev = true;  }
+        }
+        if (best < 0) break;
+        used[best] = true;
+        auto& pts = segs[best].pts;
+        if (rev)
+            for (int k = (int)pts.size()-2; k >= 0; --k)
+                poly.push_back(pts[k]);
+        else
+            for (size_t k = 1; k < pts.size(); ++k)
+                poly.push_back(pts[k]);
+    }
+
+    // ---- 4. Build containment grid (ray-casting even-odd rule) ----
+    const T xmin = bbox(0, 0), xmax = bbox(0, 1);
+    const T ymin = bbox(1, 0), ymax = bbox(1, 1);
+    const T Lx = xmax - xmin, Ly = ymax - ymin;
+    const index_t N = 80;
+    const T dx = Lx / N, dy = Ly / N;
+
+    auto inPoly = [&](T px, T py) -> bool {
+        bool in = false;
+        for (size_t i = 0, j = poly.size()-1; i < poly.size(); j = i++) {
+            T yi = poly[i].second, yj = poly[j].second;
+            T xi = poly[i].first,  xj = poly[j].first;
+            if (((yi > py) != (yj > py)) &&
+                (px < (xj - xi) * (py - yi) / (yj - yi) + xi))
+                in = !in;
+        }
+        return in;
+    };
+
+    std::vector<std::vector<bool>> grid(N+1, std::vector<bool>(N+1, false));
+    for (index_t i = 0; i <= N; ++i)
+        for (index_t j = 0; j <= N; ++j)
+            grid[i][j] = inPoly(xmin + i*dx, ymin + j*dy);
+
+    // ---- 5. Find inscribed rectangle by greedy shrinking ----
+    index_t il = 0, ir = N, jb = 0, jt = N;
+
+    // Shrink boundary rows/columns that contain outside cells
+    bool chg = true;
+    while (chg && il < ir && jb < jt) {
+        chg = false;
+        for (index_t j = jb; j <= jt; ++j)
+            if (!grid[il][j]) { il++; chg = true; break; }
+        for (index_t j = jb; j <= jt; ++j)
+            if (!grid[ir][j]) { ir--; chg = true; break; }
+        for (index_t i = il; i <= ir; ++i)
+            if (!grid[i][jb]) { jb++; chg = true; break; }
+        for (index_t i = il; i <= ir; ++i)
+            if (!grid[i][jt]) { jt--; chg = true; break; }
+    }
+
+    // Verify entire interior and shrink further if holes remain
+    bool ok = false;
+    while (!ok && il + 1 < ir && jb + 1 < jt) {
+        ok = true;
+        for (index_t i = il; i <= ir && ok; ++i)
+            for (index_t j = jb; j <= jt && ok; ++j)
+                if (!grid[i][j]) {
+                    ok = false;
+                    index_t dl = i - il, dr = ir - i;
+                    index_t db = j - jb, dt = jt - j;
+                    index_t m = std::min({dl, dr, db, dt});
+                    if      (m == dl) il++;
+                    else if (m == dr) ir--;
+                    else if (m == db) jb++;
+                    else              jt--;
+                }
+    }
+
+    // Safety: shrink by one grid cell to account for polygon approximation
+    if (il + 2 < ir) { il++; ir--; }
+    if (jb + 2 < jt) { jb++; jt--; }
+
+    rect_xmin = xmin + il * dx;
+    rect_xmax = xmin + ir * dx;
+    rect_ymin = ymin + jb * dy;
+    rect_ymax = ymin + jt * dy;
+}
+
 int main(int argc, char *argv[]) {
   using T = real_t;
 
@@ -107,6 +272,26 @@ int main(int argc, char *argv[]) {
 
   if (margin <= 0 || margin >= 0.5)
     margin = 0.15;
+
+  // ----- Compute inscribed rectangle (geometry-aware, done once) -----
+  T inscribed_xmin, inscribed_xmax, inscribed_ymin, inscribed_ymax;
+  {
+    gsMultiPatch<T>::uPtr tmpMp = gsReadFile<>(geometry);
+    if (!tmpMp) {
+      gsInfo << "Error: Cannot read geometry " << geometry << "\n";
+      return -1;
+    }
+    tmpMp->computeTopology();
+    gsInfo << "Computing domain-inscribed rectangle for bubble support...\n" << std::flush;
+    computeInscribedRectangle(*tmpMp, inscribed_xmin, inscribed_xmax,
+                               inscribed_ymin, inscribed_ymax);
+    T rLx = inscribed_xmax - inscribed_xmin;
+    T rLy = inscribed_ymax - inscribed_ymin;
+    gsInfo << "  Inscribed rect (before margin): ["
+           << inscribed_xmin << ", " << inscribed_xmax
+           << "] x [" << inscribed_ymin << ", " << inscribed_ymax
+           << "]  (size " << rLx << " x " << rLy << ")\n" << std::flush;
+  }
 
   gsInfo << "\n======================================================================\n";
   gsInfo << "AS-G1 Biharmonic Solver (Delta^2 u = f) with Manufactured Bubble Solution\n";
@@ -340,10 +525,12 @@ int main(int argc, char *argv[]) {
       // ----------------------------------------------------------------
       const index_t p_bubble = (bubbleDegree > 0) ? bubbleDegree : deg;
 
-      const T a_x = x_min + margin * Lx;
-      const T b_x = x_max - margin * Lx;
-      const T a_y = y_min + margin * Ly;
-      const T b_y = y_max - margin * Ly;
+      const T insc_Lx = inscribed_xmax - inscribed_xmin;
+      const T insc_Ly = inscribed_ymax - inscribed_ymin;
+      const T a_x = inscribed_xmin + margin * insc_Lx;
+      const T b_x = inscribed_xmax - margin * insc_Lx;
+      const T a_y = inscribed_ymin + margin * insc_Ly;
+      const T b_y = inscribed_ymax - margin * insc_Ly;
 
       // Pad the outer clamp slightly beyond the bounding box so that
       // quadrature points lying exactly on the boundary never fall outside
