@@ -470,9 +470,9 @@ int main(int argc, char *argv[])
     index_t fdPreconder    = 0;
     index_t fdpfPreconder  = 0;
     index_t fdmgPreconder  = 0;
-    index_t mlluPreconder  = 0;
-    index_t mlmgPreconder  = 0;
-    index_t stmgPreconder  = 1;
+    index_t mlluPreconder  = 1;
+    index_t mlmgPreconder  = 1;
+    index_t stmgPreconder  = 0;
     std::string out;
 
     gsCmdLine cmd("parabolic_ls_example");
@@ -658,7 +658,7 @@ int main(int argc, char *argv[])
     gsSparseMatrix<> time_massL;
     {
         gsExprAssembler<> assembler(2,2);
-        assembler.setIntegrationElements(tb1);
+        assembler.setIntegrationElements(tb2);
         gsExprEvaluator<> ev(assembler);
         gsExprAssembler<>::geometryMap G = assembler.getMap(tp);
         gsExprAssembler<>::space u = assembler.getSpace(tb1,1,0);
@@ -680,7 +680,7 @@ int main(int argc, char *argv[])
     gsSparseMatrix<> time_gradL;
     {
         gsExprAssembler<> assembler(2,2);
-        assembler.setIntegrationElements(tb1);
+        assembler.setIntegrationElements(tb2);
         gsExprEvaluator<> ev(assembler);
         gsExprAssembler<>::geometryMap G = assembler.getMap(tp);
         gsExprAssembler<>::space u = assembler.getSpace(tb1,1,0);
