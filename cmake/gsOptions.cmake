@@ -48,7 +48,9 @@ message ("  GISMO_BUILD_EXAMPLES    ${GISMO_BUILD_EXAMPLES}")
 endif()
 
 option(GISMO_BUILD_LIB           "Build shared library"      true   )
+option(GISMO_BUILD_MODULE_LIB    "Build runtime module libs" false  )
 message ("  GISMO_BUILD_LIB         ${GISMO_BUILD_LIB}")
+message ("  GISMO_BUILD_MODULE_LIB  ${GISMO_BUILD_MODULE_LIB}")
 
 option(GISMO_BUILD_MEX           "Build Mex files"           false  )
 if  (${GISMO_BUILD_MEX})

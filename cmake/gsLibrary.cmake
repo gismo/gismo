@@ -136,6 +136,11 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
   )
   #generate_export_header(${PROJECT_NAME})
 
+  # gsModules runtime loader (dlopen)
+  if (CMAKE_DL_LIBS)
+    target_link_libraries(${PROJECT_NAME} ${CMAKE_DL_LIBS})
+  endif()
+
   if (GISMO_WITH_PYBIND11)
     target_link_libraries(${PROJECT_NAME} pybind11::embed)
   endif()
