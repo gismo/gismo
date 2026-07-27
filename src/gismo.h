@@ -153,6 +153,13 @@ namespace internal
 #include <gsModeling/gsPeriodicOverlap.h>
 #include <gsModeling/gsPeriodicStitch.h>
 
+/* ----------- XML registration (header-only mode registrars; in lib
+   mode registration happens inside libgismo) ----------- */
+#include <gsCore/gsCoreXmlRegistration.h>
+#include <gsNurbs/gsNurbsXmlRegistration.h>
+#include <gsHSplines/gsHSplinesXmlRegistration.h>
+#include <gsModeling/gsModelingXmlRegistration.h>
+
 /* ----------- Pde ----------- */
 #include <gsPde/gsBoundaryConditions.h>
 #include <gsPde/gsConvDiffRePde.h>

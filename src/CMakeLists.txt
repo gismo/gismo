@@ -39,7 +39,10 @@ FOREACH(subdir ${SUBDIRS})
     )
 
   set_target_properties(${GM_NAME} PROPERTIES
-    COMPILE_DEFINITIONS gismo_EXPORTS
+    # GISMO_PRIMARY_INSTANCE marks the real_t=GISMO_COEFF_TYPE build of a
+    # module (extra scalar instances below do not get it); used to emit
+    # process-unique symbols such as the XML-registration anchors
+    COMPILE_DEFINITIONS "gismo_EXPORTS;GISMO_PRIMARY_INSTANCE"
     POSITION_INDEPENDENT_CODE ON
     LINKER_LANGUAGE CXX
     FOLDER "G+Smo modules"

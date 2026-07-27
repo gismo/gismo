@@ -1,4 +1,5 @@
 #include <gsCore/gsTemplateTools.h>
+#include <gsIO/gsXmlRegistry.h>
 
 #include <gsNurbs/gsKnotVector.h>
 
@@ -58,5 +59,10 @@ void pybind11_init_gsBSpline(py::module &m)
 }
 
 #endif
+
+
+// XML dispatch registration (priorities: see gsNurbsXmlRegistration.h)
+GISMO_XML_REGISTER(gsGeometry<real_t>, gsBSpline<real_t>, 100)
+GISMO_XML_REGISTER(gsCurve<real_t>,    gsBSpline<real_t>, 100)
 
 }

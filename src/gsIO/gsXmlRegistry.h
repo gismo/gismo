@@ -188,19 +188,49 @@ struct gsXmlRegisterAs
         return p ? gsXml<Derived>::put(*p, data) : NULL;
     }
 
-    /// Registers the reader (under gsXml<Derived>::type()) and the
-    /// writer at \a putPriority for base \a Base
-    static void enroll(int putPriority)
+    /// Registers the reader for \a Base under gsXml<Derived>::type()
+    static void enrollGet()
     {
-        gsXmlRegistry & r = gsXmlRegistry::get();
-        r.addGet(gsXmlDispatch<Base>::baseId(), gsXml<Derived>::type(),
-                 reinterpret_cast<gsXmlRegistry::AnyFn>(
-                     (typename gsXmlDispatch<Base>::GetFn) &getThunk));
-        r.addPut(gsXmlDispatch<Base>::baseId(), putPriority,
-                 reinterpret_cast<gsXmlRegistry::AnyFn>(
-                     (typename gsXmlDispatch<Base>::PutFn) &tryPutThunk));
+        gsXmlRegistry::get().addGet(
+            gsXmlDispatch<Base>::baseId(), gsXml<Derived>::type(),
+            reinterpret_cast<gsXmlRegistry::AnyFn>(
+                (typename gsXmlDispatch<Base>::GetFn) &getThunk));
     }
+
+    /// Registers the writer for \a Base at \a putPriority
+    static void enrollPut(int putPriority)
+    {
+        gsXmlRegistry::get().addPut(
+            gsXmlDispatch<Base>::baseId(), putPriority,
+            reinterpret_cast<gsXmlRegistry::AnyFn>(
+                (typename gsXmlDispatch<Base>::PutFn) &tryPutThunk));
+    }
+
+    /// Registers both reader and writer (the common case)
+    static void enroll(int putPriority)
+    { enrollGet(); enrollPut(putPriority); }
 };
+
+/*
+  Registration macros for use inside a class's explicit-instantiation
+  translation unit (the *_.cpp that also does CLASS_TEMPLATE_INST
+  internal::gsXml<Derived>), inside namespace gismo. Template arguments
+  containing commas must be wrapped with TMPLA2/TMPLA3 (see gsXml.h).
+  This placement is deliberate: only the instantiation unit may include
+  the class .hpp, so only there are the gsXml specializations visible.
+*/
+#ifndef GISMO_COMMA
+#define GISMO_COMMA ,
+#endif
+#define GISMO_XML_REG_IMPL2(Regcall, id)                                     namespace { struct gsXmlReg_##id                                         { gsXmlReg_##id() { Regcall; } } const gsXmlRegObj_##id; }
+#define GISMO_XML_REG_IMPL(Regcall, id) GISMO_XML_REG_IMPL2(Regcall, id)
+
+/// Registers Derived under Base for reading and writing (put priority p)
+#define GISMO_XML_REGISTER(Base, Derived, p) GISMO_XML_REG_IMPL(              (internal::gsXmlRegisterAs<Base GISMO_COMMA Derived>::enroll(p)), __COUNTER__)
+/// Read-only registration
+#define GISMO_XML_REGISTER_GET(Base, Derived) GISMO_XML_REG_IMPL(             (internal::gsXmlRegisterAs<Base GISMO_COMMA Derived>::enrollGet()), __COUNTER__)
+/// Write-only registration (put priority p)
+#define GISMO_XML_REGISTER_PUT(Base, Derived, p) GISMO_XML_REG_IMPL(          (internal::gsXmlRegisterAs<Base GISMO_COMMA Derived>::enrollPut(p)), __COUNTER__)
 
 } // namespace internal
 } // namespace gismo

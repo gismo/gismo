@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gsIO/gsXmlRegistry.h>
 #include <fstream>
 
 //#include <gsCore/gsForwardDeclarations.h>
@@ -554,72 +555,18 @@ public:
             gsWarn<< "Geometry without a type in the xml file\n";
             return NULL;
         }
-        std::string s = gtype->value() ;
-
-        GSXML_GET_TYPE(gsBSpline<T>)
-        GSXML_GET_TYPE(gsNurbs<T>)
-        GSXML_GET_TYPE(gsTHBSpline<TMPLA2(1,T)>)
-        GSXML_GET_TYPE(gsTHBSpline<TMPLA2(2,T)>)
-        GSXML_GET_TYPE(gsTHBSpline<TMPLA2(3,T)>)
-        GSXML_GET_TYPE(gsHBSpline<TMPLA2(2,T)>)
-        GSXML_GET_TYPE(gsHBSpline<TMPLA2(3,T)>)
-
-        GSXML_GET_TYPE(gsRationalTHBSpline<TMPLA2(1,T)>)
-        GSXML_GET_TYPE(gsRationalTHBSpline<TMPLA2(2,T)>)
-        GSXML_GET_TYPE(gsRationalTHBSpline<TMPLA2(3,T)>)
-
-        GSXML_GET_TYPE(gsTensorBSpline<TMPLA2(1,T)>)
-        GSXML_GET_TYPE(gsTensorBSpline<TMPLA2(2,T)>)
-        GSXML_GET_TYPE(gsTensorBSpline<TMPLA2(3,T)>)
-        GSXML_GET_TYPE(gsTensorBSpline<TMPLA2(4,T)>)
-        GSXML_GET_TYPE(gsTensorNurbs<TMPLA2(2,T)>)
-        GSXML_GET_TYPE(gsTensorNurbs<TMPLA2(3,T)>)
-        GSXML_GET_TYPE(gsTensorNurbs<TMPLA2(4,T)>)
-
-        GSXML_GET_TYPE(gsComposedGeometry<T>)
-
-        //if ( s == "TrimSurface" )
-        //    return gsXml< gsTrimSurface<T> >::get(node);
-
-        //if ( s == "TriangularBezier2" )
-        //    return gsXml< gsTriangularBezier<2,T> >::get(node);
-
-        gsWarn<<"gsXmlUtils: getGeometry: No known geometry \""<<s<<"\". Error.\n";
-        return NULL;
+        // resolved through the runtime registry: each module registers
+        // the concrete types it owns (see gs*XmlRegistration.h)
+        return gsXmlDispatch< gsGeometry<T> >::get(node);
     }
 
 
     static gsXmlNode * put (const gsGeometry<T> & obj,
                             gsXmlTree & data)
 	{
-	    const gsGeometry<T> * ptr = & obj;
-
-        GSXML_PUT_DYNAMIC_CAST(gsBSpline<T>)
-        GSXML_PUT_DYNAMIC_CAST(gsNurbs<T>)
-        GSXML_PUT_DYNAMIC_CAST(gsTensorBSpline<TMPLA2(2, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTensorBSpline<TMPLA2(3, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTensorBSpline<TMPLA2(4, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTensorNurbs<TMPLA2(2, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTensorNurbs<TMPLA2(3, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTensorNurbs<TMPLA2(4, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTHBSpline<TMPLA2(1, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTHBSpline<TMPLA2(2, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTHBSpline<TMPLA2(3, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTrimSurface<T>)
-        GSXML_PUT_DYNAMIC_CAST(gsHBSpline<TMPLA2(1, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsHBSpline<TMPLA2(2, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsHBSpline<TMPLA2(3, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsRationalTHBSpline<TMPLA2(1, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsRationalTHBSpline<TMPLA2(2, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsRationalTHBSpline<TMPLA2(3, T)>)
-        //if ( const gsTriangularBezier<2,T> * g =
-        //     dynamic_cast<const gsTriangularBezier<2,T> *>( ptr ) )
-        //    return gsXml< gsTriangularBezier<2,T> >::put(*g,data);
-
-        GSXML_PUT_DYNAMIC_CAST(gsComposedGeometry<T>)
-
-		gsWarn<<"gsXmlUtils: put Geometry: No known object \""<< obj <<"\". Error.\n";
-        return NULL;
+        // resolved through the runtime registry put-chain, which
+        // reproduces the historical dynamic_cast order via priorities
+        return gsXmlDispatch< gsGeometry<T> >::put(obj, data);
 	}
 
 };
@@ -692,27 +639,18 @@ public:
             gsWarn<< "Geometry without a type in the xml file\n";
             return NULL;
         }
-        std::string s = gtype->value() ;
-
-        GSXML_GET_TYPE(gsBSpline<T>)
-        GSXML_GET_TYPE(gsNurbs<T>)
-
-        gsWarn<<"gsXmlUtils: getCurve: No known curve \""<<s<<"\". Error.\n";
-        return NULL;
+        // resolved through the runtime registry: each module registers
+        // the concrete types it owns (see gs*XmlRegistration.h)
+        return gsXmlDispatch< gsCurve<T> >::get(node);
     }
 
 
     static gsXmlNode * put (const gsCurve<T> & obj,
                             gsXmlTree & data)
 	{
-	    const gsGeometry<T> * ptr = & obj;
-
-        GSXML_PUT_DYNAMIC_CAST(gsBSpline<T>)
-        GSXML_PUT_DYNAMIC_CAST(gsNurbs<T>)
-        GSXML_PUT_DYNAMIC_CAST(gsHBSpline<TMPLA2(1, T)>)
-
-		gsWarn<<"gsXmlUtils: put Curve: No known object "<< obj <<"Error.\n";
-        return NULL;
+        // resolved through the runtime registry put-chain, which
+        // reproduces the historical dynamic_cast order via priorities
+        return gsXmlDispatch< gsCurve<T> >::put(obj, data);
 	}
 
 };
@@ -739,29 +677,17 @@ public:
             gsWarn<< "Geometry without a type in the xml file\n";
             return NULL;
         }
-        std::string s = gtype->value() ;
-
-        GSXML_GET_TYPE(gsTHBSpline<TMPLA2(2,T)>)
-        GSXML_GET_TYPE(gsHBSpline<TMPLA2(2,T)>)
-        GSXML_GET_TYPE(gsTensorBSpline<TMPLA2(2,T)>)
-        GSXML_GET_TYPE(gsTensorNurbs<TMPLA2(2,T)>)
-
-        gsWarn<<"gsXmlUtils: getSurface: No known surface \""<<s<<"\". Error.\n";
-        return NULL;
+        // resolved through the runtime registry: each module registers
+        // the concrete types it owns (see gs*XmlRegistration.h)
+        return gsXmlDispatch< gsSurface<T> >::get(node);
     }
 
     static gsXmlNode * put (const gsSurface<T> & obj,
                             gsXmlTree & data)
 	{
-	    const gsGeometry<T> * ptr = & obj;
-
-        GSXML_PUT_DYNAMIC_CAST(gsTensorBSpline<TMPLA2(2, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTensorNurbs<TMPLA2(2, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsTHBSpline<TMPLA2(2, T)>)
-        GSXML_PUT_DYNAMIC_CAST(gsHBSpline<TMPLA2(2, T)>)
-
-		gsWarn<<"gsXmlUtils: put Geometry: No known object "<< obj <<"Error.\n";
-        return NULL;
+        // resolved through the runtime registry put-chain, which
+        // reproduces the historical dynamic_cast order via priorities
+        return gsXmlDispatch< gsSurface<T> >::put(obj, data);
 	}
 };
 

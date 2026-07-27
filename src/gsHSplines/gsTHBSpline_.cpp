@@ -1,4 +1,5 @@
 #include <gsCore/gsTemplateTools.h>
+#include <gsIO/gsXmlRegistry.h>
 
 #include <gsIO/gsXml.h>
 
@@ -345,5 +346,18 @@ void pybind11_init_gsHBSpline4(py::module &m)
 }
 
 #endif
+
+
+// XML dispatch registration; gsHBSpline<d> = gsTHBSpline<d,T,false>
+// (priorities: see gsHSplinesXmlRegistration.h)
+GISMO_XML_REGISTER(gsGeometry<real_t>, gsTHBSpline<TMPLA3(1,real_t,true)>, 180)
+GISMO_XML_REGISTER(gsGeometry<real_t>, gsTHBSpline<TMPLA3(2,real_t,true)>, 190)
+GISMO_XML_REGISTER(gsGeometry<real_t>, gsTHBSpline<TMPLA3(3,real_t,true)>, 200)
+GISMO_XML_REGISTER_PUT(gsGeometry<real_t>, gsTHBSpline<TMPLA3(1,real_t,false)>, 220) // write-only historically
+GISMO_XML_REGISTER(gsGeometry<real_t>, gsTHBSpline<TMPLA3(2,real_t,false)>, 230)
+GISMO_XML_REGISTER(gsGeometry<real_t>, gsTHBSpline<TMPLA3(3,real_t,false)>, 240)
+GISMO_XML_REGISTER_PUT(gsCurve<real_t>, gsTHBSpline<TMPLA3(1,real_t,false)>, 120) // write-only historically
+GISMO_XML_REGISTER(gsSurface<real_t>, gsTHBSpline<TMPLA3(2,real_t,true)>, 120)
+GISMO_XML_REGISTER(gsSurface<real_t>, gsTHBSpline<TMPLA3(2,real_t,false)>, 130)
 
 }

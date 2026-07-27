@@ -12,6 +12,7 @@
 */
 
 #include <gsCore/gsTemplateTools.h>
+#include <gsIO/gsXmlRegistry.h>
 
 #include <gsHSplines/gsRationalTHBSpline.h>
 #include <gsHSplines/gsRationalTHBSpline.hpp>
@@ -22,5 +23,11 @@ namespace gismo
     CLASS_TEMPLATE_INST internal::gsXml< gsRationalTHBSpline<2,real_t> >;
     CLASS_TEMPLATE_INST internal::gsXml< gsRationalTHBSpline<3,real_t> >;
     CLASS_TEMPLATE_INST internal::gsXml< gsRationalTHBSpline<4,real_t> >;
+
+
+// XML dispatch registration (priorities: see gsHSplinesXmlRegistration.h)
+GISMO_XML_REGISTER(gsGeometry<real_t>, gsRationalTHBSpline<TMPLA2(1,real_t)>, 250)
+GISMO_XML_REGISTER(gsGeometry<real_t>, gsRationalTHBSpline<TMPLA2(2,real_t)>, 260)
+GISMO_XML_REGISTER(gsGeometry<real_t>, gsRationalTHBSpline<TMPLA2(3,real_t)>, 270)
 
 } // namespace gismo
