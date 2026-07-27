@@ -1,6 +1,15 @@
 /** @file as_g1_biharmonic_bubble_example.cpp
 
-    @brief Biharmonic solver with manufactured bubble solution over Analysis-Suitable G1 (AS-G1) multi-patch geometries.
+    @brief Biharmonic solver with a manufactured tensor-product B-spline
+           "bubble" solution over Analysis-Suitable G1 (AS-G1) multi-patch
+           geometries.
+
+    The manufactured solution is a single tensor-product B-spline basis
+    function of degree p supported on a rectangle that is automatically
+    fitted inside the domain (the bounding box shrunk by a margin). Because
+    the bubble and all its derivatives vanish outside that rectangle, the
+    homogeneous biharmonic boundary conditions (u = 0 and grad(u).n = 0) are
+    satisfied exactly on the domain boundary.
 
     This file is part of the G+Smo library.
 
@@ -29,6 +38,33 @@
 using namespace gismo;
 using namespace gismo::expr;
 
+// Scalar function returning the (physical) Laplacian of a wrapped scalar
+// function. Used to build the biharmonic energy-form right-hand side
+//     l(v) = (Delta u_ex, Delta v)
+// with only the *value* of Delta u_ex, which is what the expression
+// assembler can consume from a coefficient function.
+template <typename T>
+class gsLaplacianFunction : public gsFunction<T> {
+  const gsFunction<T> *m_f;
+
+public:
+  explicit gsLaplacianFunction(const gsFunction<T> &f) : m_f(&f) {}
+
+  GISMO_CLONE_FUNCTION(gsLaplacianFunction)
+
+  short_t domainDim() const override { return m_f->domainDim(); }
+  short_t targetDim() const override { return 1; }
+
+  void eval_into(const gsMatrix<T> &u, gsMatrix<T> &result) const override {
+    gsMatrix<T> d2;
+    m_f->deriv2_into(u, d2);
+    // For a scalar function of d variables, deriv2 stores the pure second
+    // derivatives (f_xx, f_yy, ...) in the first d rows.
+    const short_t d = m_f->domainDim();
+    result = d2.topRows(d).colwise().sum();
+  }
+};
+
 int main(int argc, char *argv[]) {
   using T = real_t;
 
@@ -37,16 +73,18 @@ int main(int argc, char *argv[]) {
   index_t degree = 3;
   index_t numGaussPerSpan = 0;
   index_t maxRefinements = 4;
-  index_t bubbleType = 0; // 0: B-spline AS-G1 Bubble, 1: Polynomial Bounding-Box Bubble, 2: Trigonometric Bounding-Box Bubble
+  index_t bubbleDegree = 0; // 0 = use the discretization degree
+  real_t margin = 0.15;     // fractional margin between rectangle and bounding box
   bool plot = false;
 
-  gsCmdLine cmd("AS-G1 Biharmonic Equation Solver with Manufactured Bubble Solution.");
+  gsCmdLine cmd("AS-G1 Biharmonic Equation Solver with a Manufactured Tensor-Product B-spline Bubble Solution.");
   cmd.addString("f", "file", "Multi-patch geometry XML file.", geometry);
   cmd.addString("o", "outDir", "Output directory for VTK/PVD files.", outDir);
-  cmd.addInt("d", "degree", "Target degree (minimum 3).", degree);
+  cmd.addInt("d", "degree", "Target discretization degree (minimum 3).", degree);
   cmd.addInt("n", "numGauss", "Gauss points per knot span (0 = auto).", numGaussPerSpan);
   cmd.addInt("r", "refinements", "Maximum uniform refinement levels to test.", maxRefinements);
-  cmd.addInt("b", "bubble", "Bubble type: 0 = B-spline AS-G1 Vertex Bubble (smooth over internal vertex & domain), 1 = Smooth Trigonometric Physical Bubble (sin^4), 2 = Smooth Polynomial Physical Bubble (t^3(1-t)^3).", bubbleType);
+  cmd.addInt("b", "bubbleDegree", "Degree p of the tensor-product B-spline bubble (0 = use discretization degree).", bubbleDegree);
+  cmd.addReal("m", "margin", "Fractional margin between the bubble rectangle and the domain bounding box (0..0.5).", margin);
   cmd.addSwitch("plot", "Export exact manufactured solution and numerical solution to VTK files.", plot);
 
   try {
@@ -67,14 +105,12 @@ int main(int argc, char *argv[]) {
   if (degree < 3)
     degree = 3;
 
+  if (margin <= 0 || margin >= 0.5)
+    margin = 0.15;
+
   gsInfo << "\n======================================================================\n";
   gsInfo << "AS-G1 Biharmonic Solver (Delta^2 u = f) with Manufactured Bubble Solution\n";
-  if (bubbleType == 0)
-    gsInfo << "Manufactured Solution: B-Spline AS-G1 Internal Vertex Bubble Function\n";
-  else if (bubbleType == 1)
-    gsInfo << "Manufactured Solution: Smooth Trigonometric Physical Bubble (sin^4)\n";
-  else
-    gsInfo << "Manufactured Solution: Smooth Polynomial Physical Bubble (t^3(1-t)^3)\n";
+  gsInfo << "Manufactured Solution: Tensor-Product B-spline Bubble on an interior rectangle\n";
   gsInfo << "Boundary Condition: u = 0 and grad(u).n = 0 (naturally zero on boundary)\n";
   gsInfo << "======================================================================\n\n";
 
@@ -114,7 +150,7 @@ int main(int argc, char *argv[]) {
       gsMultiPatch<T> &mp = *mpPtr;
       mp.computeTopology();
 
-      // Bounding box of geometry for domain scaling
+      // Bounding box of geometry for the interior bubble rectangle
       gsMatrix<T> bbox;
       mp.boundingBox(bbox);
       T x_min = bbox(0, 0);
@@ -277,315 +313,195 @@ int main(int argc, char *argv[]) {
 
       gsMultiBasis<T> dbasis(mp);
 
-      gsMultiPatch<T> sol_exact;
-      gsMatrix<T> F_free;
-
-      if (bubbleType == 0) {
-        // Option 0: Tensor-Product B-Spline AS-G1 Internal Vertex Bubble Solution
-        // Constructed directly in AS-G1 space by placing non-zero weights on internal vertex value DOFs.
-        // By construction of AS-G1 space, this function is GUARANTEED to be:
-        // 1) G1 continuous across all internal patch interfaces.
-        // 2) Smoothly vanishing (value = 0, normal derivative = 0) on all domain boundaries.
-        // 3) A smooth bell-shaped bubble centered around the internal vertex/vertices.
-
-        gsMatrix<T> c_exact_free(nFree, 1);
-        c_exact_free.setZero();
-
-        std::set<index_t> internalVertexDofs;
-        for (size_t i = 0; i < mp.nPatches(); ++i) {
-          for (index_t c = 0; c < 4; ++c) {
-            const index_t off_corner = sumUntil(argBasis[i].sizes, 9 + c);
-            if (!mapper.is_boundary(off_corner, i)) {
-              index_t gIdx = mapper.index(off_corner, i);
-              internalVertexDofs.insert(gIdx);
-            }
-          }
-        }
-
-        if (!internalVertexDofs.empty()) {
-          for (index_t gIdx : internalVertexDofs) {
-            c_exact_free(gIdx, 0) = 1.0;
-          }
-        } else {
-          // Fallback: set middle free DOF to 1.0
-          c_exact_free(nFree / 2, 0) = 1.0;
-        }
-
-        gsMatrix<T> c_global_exact(nFree + nBnd, 1);
-        c_global_exact.topRows(nFree) = c_exact_free;
-        c_global_exact.bottomRows(nBnd).setZero();
-
-        gsMatrix<T> c_disjoint_exact = T_global * c_global_exact;
-
-        index_t offset = 0;
-        for (size_t i = 0; i < mp.nPatches(); ++i) {
-          const index_t sz = argBasis[i].matrix.rows();
-          gsMatrix<T> ci = c_disjoint_exact.block(offset, 0, sz, 1);
-          offset += sz;
-          const gsTensorBSplineBasis<2, T> &tb =
-              dynamic_cast<const gsTensorBSplineBasis<2, T> &>(mp.patch(i).basis());
-          sol_exact.addPatch(tb.makeGeometry(give(ci)));
-        }
-
-        // Assemble Biharmonic Matrix K_disjoint
-        gsExprAssembler<T> A(1, 1);
-        A.setIntegrationDomain(dbasis.domain());
-
-        auto G_map = A.getMap(mp);
-        auto u_space = A.getSpace(dbasis);
-
-        A.initSystem();
-        A.assemble(ilapl(u_space, G_map) * ilapl(u_space, G_map).tr() * meas(G_map));
-
-        const gsSparseMatrix<T> &K_disjoint = A.matrix();
-        gsSparseMatrix<T> K_free = T_free.transpose() * K_disjoint * T_free;
-
-        F_free = K_free * c_exact_free;
-
-        // Solve linear system
-        gsSparseSolver<T>::LU solver(K_free);
-        gsMatrix<T> c_free = solver.solve(F_free);
-
-        gsMatrix<T> c_global(nFree + nBnd, 1);
-        c_global.topRows(nFree) = c_free;
-        c_global.bottomRows(nBnd).setZero();
-
-        gsMatrix<T> c_disjoint = T_global * c_global;
-
-        gsMultiPatch<T> sol;
-        offset = 0;
-        for (size_t i = 0; i < mp.nPatches(); ++i) {
-          const index_t sz = argBasis[i].matrix.rows();
-          gsMatrix<T> ci = c_disjoint.block(offset, 0, sz, 1);
-          offset += sz;
-          const gsTensorBSplineBasis<2, T> &tb =
-              dynamic_cast<const gsTensorBSplineBasis<2, T> &>(mp.patch(i).basis());
-          sol.addPatch(tb.makeGeometry(give(ci)));
-        }
-
-        // Error evaluation between discrete solution and exact B-spline bubble
-        gsExprEvaluator<T> ev;
-        ev.setIntegrationDomain(dbasis.domain());
-        auto G_map_ev = ev.getMap(mp);
-
-        auto u_exact_ev = ev.getVariable(sol_exact);
-        auto u_sol_ev = ev.getVariable(sol);
-
-        const T l2err = std::sqrt(ev.integral((u_sol_ev - u_exact_ev).sqNorm() * meas(G_map_ev)));
-        const T h1err = std::sqrt(ev.integral((igrad(u_sol_ev, G_map_ev) - igrad(u_exact_ev, G_map_ev)).sqNorm() * meas(G_map_ev)));
-        const T h2err = std::sqrt(ev.integral((ihess(u_sol_ev, G_map_ev) - ihess(u_exact_ev, G_map_ev)).sqNorm() * meas(G_map_ev)));
-
-        // Rates
-        T l2_rate = 0, h1_rate = 0, h2_rate = 0;
-        if (ref > 2 && prev_h > 0) {
-          const T h_ratio = prev_h / h_max;
-          l2_rate = std::log(prev_l2 / l2err) / std::log(h_ratio);
-          h1_rate = std::log(prev_h1 / h1err) / std::log(h_ratio);
-          h2_rate = std::log(prev_h2 / h2err) / std::log(h_ratio);
-        }
-
-        gsInfo << std::setw(5) << ref
-               << std::setw(12) << std::scientific << std::setprecision(4) << h_max
-               << std::setw(10) << nFree
-               << std::setw(14) << std::scientific << std::setprecision(4) << l2err;
-        if (ref > 2)
-          gsInfo << std::setw(10) << std::fixed << std::setprecision(2) << l2_rate;
-        else
-          gsInfo << std::setw(10) << "-";
-
-        gsInfo << std::setw(14) << std::scientific << std::setprecision(4) << h1err;
-        if (ref > 2)
-          gsInfo << std::setw(10) << std::fixed << std::setprecision(2) << h1_rate;
-        else
-          gsInfo << std::setw(10) << "-";
-
-        gsInfo << std::setw(14) << std::scientific << std::setprecision(4) << h2err;
-        if (ref > 2)
-          gsInfo << std::setw(10) << std::fixed << std::setprecision(2) << h2_rate;
-        else
-          gsInfo << std::setw(10) << "-";
-
-        gsInfo << "\n" << std::flush;
-
-        prev_h = h_max;
-        prev_l2 = l2err;
-        prev_h1 = h1err;
-        prev_h2 = h2err;
-
-        if (plot || !outDir.empty()) {
-          std::string solName = prefix + "as_g1_biharmonic_bubble_sol_r" + std::to_string(ref);
-          std::string exactName = prefix + "as_g1_biharmonic_bubble_exact_r" + std::to_string(ref);
-
-          gsField<T> solField(mp, sol);
-          gsWriteParaview<>(solField, solName, 1000);
-
-          gsField<T> exactField(mp, sol_exact);
-          gsWriteParaview<>(exactField, exactName, 1000);
-
-          gsInfo << " -> Exported VTK plots: " << solName << " & " << exactName << "\n";
-        }
-
-      } else {
-        // Option 1 & 2: Analytical Bounding-Box Bubble Functions
-        // Option 1: Polynomial Bubble P(t) = t^2 (1-t)^2
-        // Option 2: Trigonometric Bubble Q(t) = sin^2(pi * t)
-        std::ostringstream u_str, grad_x_str, grad_y_str, h_xx_str, h_xy_str, h_yy_str, f_str;
-        std::string x_bar = "( (x - " + std::to_string(x_min) + ") / " + std::to_string(Lx) + " )";
-        std::string y_bar = "( (y - " + std::to_string(y_min) + ") / " + std::to_string(Ly) + " )";
-
-        if (bubbleType == 1) {
-          // Polynomial Bubble: P(t) = t^2 (1-t)^2
-          std::string P_x = "(" + x_bar + "^2 * (1 - " + x_bar + ")^2)";
-          std::string P_y = "(" + y_bar + "^2 * (1 - " + y_bar + ")^2)";
-
-          std::string dP_x = "(2*" + x_bar + " - 6*" + x_bar + "^2 + 4*" + x_bar + "^3)";
-          std::string dP_y = "(2*" + y_bar + " - 6*" + y_bar + "^2 + 4*" + y_bar + "^3)";
-
-          std::string d2P_x = "(2 - 12*" + x_bar + " + 12*" + x_bar + "^2)";
-          std::string d2P_y = "(2 - 12*" + y_bar + " + 12*" + y_bar + "^2)";
-
-          u_str << P_x << " * " << P_y;
-          grad_x_str << "(1 / " << Lx << ") * " << dP_x << " * " << P_y;
-          grad_y_str << "(1 / " << Ly << ") * " << P_x << " * " << dP_y;
-
-          h_xx_str << "(1 / " << (Lx * Lx) << ") * " << d2P_x << " * " << P_y;
-          h_xy_str << "(1 / " << (Lx * Ly) << ") * " << dP_x << " * " << dP_y;
-          h_yy_str << "(1 / " << (Ly * Ly) << ") * " << P_x << " * " << d2P_y;
-
-          f_str << "(24 / " << (Lx * Lx * Lx * Lx) << ") * " << P_y << " + "
-                << "(2 / " << (Lx * Lx * Ly * Ly) << ") * " << d2P_x << " * " << d2P_y << " + "
-                << "(24 / " << (Ly * Ly * Ly * Ly) << ") * " << P_x;
-        } else {
-          // Trigonometric Bubble: Q(t) = sin^2(pi * t)
-          std::string Q_x = "(sin(pi*" + x_bar + ")^2)";
-          std::string Q_y = "(sin(pi*" + y_bar + ")^2)";
-
-          std::string dQ_x = "(pi*sin(2*pi*" + x_bar + "))";
-          std::string dQ_y = "(pi*sin(2*pi*" + y_bar + "))";
-
-          std::string d2Q_x = "(2*pi^2*cos(2*pi*" + x_bar + "))";
-          std::string d2Q_y = "(2*pi^2*cos(2*pi*" + y_bar + "))";
-
-          std::string d4Q_x = "(-8*pi^4*cos(2*pi*" + x_bar + "))";
-          std::string d4Q_y = "(-8*pi^4*cos(2*pi*" + y_bar + "))";
-
-          u_str << Q_x << " * " << Q_y;
-          grad_x_str << "(1 / " << Lx << ") * " << dQ_x << " * " << Q_y;
-          grad_y_str << "(1 / " << Ly << ") * " << Q_x << " * " << dQ_y;
-
-          h_xx_str << "(1 / " << (Lx * Lx) << ") * " << d2Q_x << " * " << Q_y;
-          h_xy_str << "(1 / " << (Lx * Ly) << ") * " << dQ_x << " * " << dQ_y;
-          h_yy_str << "(1 / " << (Ly * Ly) << ") * " << Q_x << " * " << d2Q_y;
-
-          f_str << "(1 / " << (Lx * Lx * Lx * Lx) << ") * " << d4Q_x << " * " << Q_y << " + "
-                << "(2 / " << (Lx * Lx * Ly * Ly) << ") * " << d2Q_x << " * " << d2Q_y << " + "
-                << "(1 / " << (Ly * Ly * Ly * Ly) << ") * " << Q_x << " * " << d4Q_y;
-        }
-
-        gsFunctionExpr<T> exact_u(u_str.str(), 2);
-        gsFunctionExpr<T> exact_grad(grad_x_str.str(), grad_y_str.str(), 2);
-        gsFunctionExpr<T> exact_hess(h_xx_str.str(), h_xy_str.str(), h_xy_str.str(), h_yy_str.str(), 2);
-        gsFunctionExpr<T> rhs_f(f_str.str(), 2);
-
-        // Assemble Disjoint Biharmonic Matrix & RHS
-        gsExprAssembler<T> A(1, 1);
-        A.setIntegrationDomain(dbasis.domain());
-
-        auto G_map = A.getMap(mp);
-        auto u_space = A.getSpace(dbasis);
-        auto f_coeff = A.getCoeff(rhs_f, G_map);
-
-        A.initSystem();
-        A.assemble(ilapl(u_space, G_map) * ilapl(u_space, G_map).tr() * meas(G_map),
-                   u_space * f_coeff * meas(G_map));
-
-        const gsSparseMatrix<T> &K_disjoint = A.matrix();
-        const gsMatrix<T> &F_disjoint = A.rhs();
-
-        gsSparseMatrix<T> K_free = T_free.transpose() * K_disjoint * T_free;
-        F_free = T_free.transpose() * F_disjoint;
-
-        gsSparseSolver<T>::LU solver(K_free);
-        gsMatrix<T> c_free = solver.solve(F_free);
-
-        gsMatrix<T> c_global(nFree + nBnd, 1);
-        c_global.topRows(nFree) = c_free;
-        c_global.bottomRows(nBnd).setZero();
-
-        gsMatrix<T> c_disjoint = T_global * c_global;
-
-        gsMultiPatch<T> sol;
-        index_t offset = 0;
-        for (size_t i = 0; i < mp.nPatches(); ++i) {
-          const index_t sz = argBasis[i].matrix.rows();
-          gsMatrix<T> ci = c_disjoint.block(offset, 0, sz, 1);
-          offset += sz;
-          const gsTensorBSplineBasis<2, T> &tb =
-              dynamic_cast<const gsTensorBSplineBasis<2, T> &>(mp.patch(i).basis());
-          sol.addPatch(tb.makeGeometry(give(ci)));
-        }
-
-        // Error Evaluation
-        gsExprEvaluator<T> ev;
-        ev.setIntegrationDomain(dbasis.domain());
-        auto G_map_ev = ev.getMap(mp);
-
-        auto u_exact_ev = ev.getVariable(exact_u, G_map_ev);
-        auto u_sol_ev = ev.getVariable(sol);
-
-        const T l2err = std::sqrt(ev.integral((u_sol_ev - u_exact_ev).sqNorm() * meas(G_map_ev)));
-        const T h1err = std::sqrt(ev.integral((igrad(u_sol_ev, G_map_ev) - igrad(u_exact_ev, G_map_ev)).sqNorm() * meas(G_map_ev)));
-        const T h2err = std::sqrt(ev.integral((ihess(u_sol_ev, G_map_ev) - ihess(u_exact_ev, G_map_ev)).sqNorm() * meas(G_map_ev)));
-
-        // Rates
-        T l2_rate = 0, h1_rate = 0, h2_rate = 0;
-        if (ref > 2 && prev_h > 0) {
-          const T h_ratio = prev_h / h_max;
-          l2_rate = std::log(prev_l2 / l2err) / std::log(h_ratio);
-          h1_rate = std::log(prev_h1 / h1err) / std::log(h_ratio);
-          h2_rate = std::log(prev_h2 / h2err) / std::log(h_ratio);
-        }
-
-        gsInfo << std::setw(5) << ref
-               << std::setw(12) << std::scientific << std::setprecision(4) << h_max
-               << std::setw(10) << nFree
-               << std::setw(14) << std::scientific << std::setprecision(4) << l2err;
-        if (ref > 2)
-          gsInfo << std::setw(10) << std::fixed << std::setprecision(2) << l2_rate;
-        else
-          gsInfo << std::setw(10) << "-";
-
-        gsInfo << std::setw(14) << std::scientific << std::setprecision(4) << h1err;
-        if (ref > 2)
-          gsInfo << std::setw(10) << std::fixed << std::setprecision(2) << h1_rate;
-        else
-          gsInfo << std::setw(10) << "-";
-
-        gsInfo << std::setw(14) << std::scientific << std::setprecision(4) << h2err;
-        if (ref > 2)
-          gsInfo << std::setw(10) << std::fixed << std::setprecision(2) << h2_rate;
-        else
-          gsInfo << std::setw(10) << "-";
-
-        gsInfo << "\n" << std::flush;
-
-        prev_h = h_max;
-        prev_l2 = l2err;
-        prev_h1 = h1err;
-        prev_h2 = h2err;
-
-        if (plot || !outDir.empty()) {
-          std::string solName = prefix + "as_g1_biharmonic_bubble_sol_r" + std::to_string(ref);
-          std::string exactName = prefix + "as_g1_biharmonic_bubble_exact_r" + std::to_string(ref);
-
-          gsField<T> solField(mp, sol);
-          gsWriteParaview<>(solField, solName, 1000);
-
-          gsField<T> exactField(mp, exact_u, false);
-          gsWriteParaview<>(exactField, exactName, 1000);
-
-          gsInfo << " -> Exported VTK plots: " << solName << " & " << exactName << "\n";
-        }
+      // ----------------------------------------------------------------
+      // Manufactured solution: tensor-product B-spline "bubble".
+      //
+      // We fit a rectangle [a_x,b_x] x [a_y,b_y] inside the domain by
+      // shrinking the bounding box by the requested margin, so the
+      // rectangle covers the majority of the domain while staying clear of
+      // the boundary.
+      //
+      // On this rectangle the bubble is a SINGLE tensor-product B-spline
+      // basis function of degree p_bubble. Following the requested
+      // construction, its (uniform) knots on [a,b] are
+      //     xi_i = a*(p+1-i)/(p+1) + b*i/(p+1),  i = 0..p+1
+      // in each direction, i.e. p+2 simple knots. This single basis
+      // function is C^{p-1} and vanishes together with its derivatives up
+      // to order p-1 at the rectangle edges, so extending it by zero gives
+      // a globally C^{p-1} bubble. Consequently u = 0 and grad(u).n = 0
+      // hold exactly on the domain boundary (for p >= 2).
+      //
+      // To be able to evaluate the bubble at every quadrature point of the
+      // domain, we embed those p+2 bump knots into a clamped knot vector
+      // that spans the whole (slightly padded) bounding box and activate
+      // only the central bump coefficient. The resulting function equals
+      // the desired bump on [a,b] and is identically zero elsewhere, so it
+      // is safe to evaluate anywhere inside the bounding box.
+      // ----------------------------------------------------------------
+      const index_t p_bubble = (bubbleDegree > 0) ? bubbleDegree : deg;
+
+      const T a_x = x_min + margin * Lx;
+      const T b_x = x_max - margin * Lx;
+      const T a_y = y_min + margin * Ly;
+      const T b_y = y_max - margin * Ly;
+
+      // Pad the outer clamp slightly beyond the bounding box so that
+      // quadrature points lying exactly on the boundary never fall outside
+      // the knot domain (which would be an out-of-range B-spline eval).
+      const T pad_x = 0.05 * Lx;
+      const T pad_y = 0.05 * Ly;
+
+      // Clamped knot vector on [lo, hi] of degree p that contains the p+2
+      // uniform bump knots xi_0=a..xi_{p+1}=b as simple interior knots. The
+      // basis function of index p+1 has support exactly [a, b] and is the
+      // requested degree-p bubble.
+      auto makeBubbleKV = [](T lo, T hi, T a, T b, index_t p) {
+        std::vector<T> kn;
+        kn.reserve(3 * p + 4);
+        for (index_t i = 0; i <= p; ++i) // p+1 clamped copies of lo
+          kn.push_back(lo);
+        for (index_t i = 0; i <= p + 1; ++i) // xi_0=a .. xi_{p+1}=b (simple)
+          kn.push_back(a * T(p + 1 - i) / T(p + 1) + b * T(i) / T(p + 1));
+        for (index_t i = 0; i <= p; ++i) // p+1 clamped copies of hi
+          kn.push_back(hi);
+        return gsKnotVector<T>(static_cast<short_t>(p), kn.begin(), kn.end());
+      };
+
+      gsKnotVector<T> kv_x = makeBubbleKV(x_min - pad_x, x_max + pad_x, a_x, b_x, p_bubble);
+      gsKnotVector<T> kv_y = makeBubbleKV(y_min - pad_y, y_max + pad_y, a_y, b_y, p_bubble);
+      gsTensorBSplineBasis<2, T> bubbleBasis(kv_x, kv_y);
+
+      const index_t size0 = kv_x.size() - p_bubble - 1;
+      const index_t bumpIdx = (p_bubble + 1) + (p_bubble + 1) * size0;
+
+      gsMatrix<T> bubbleCoefs(bubbleBasis.size(), 1);
+      bubbleCoefs.setZero();
+      bubbleCoefs(bumpIdx, 0) = 1.0;
+      gsTensorBSpline<2, T> bubble(bubbleBasis, give(bubbleCoefs));
+
+      // Replicate the bubble as one piece per patch so it can be used as a
+      // physical-coordinate coefficient over the whole multi-patch domain.
+      gsPiecewiseFunction<T> bubbleField;
+      for (size_t i = 0; i < mp.nPatches(); ++i)
+        bubbleField.addPiece(bubble);
+
+      // Laplacian of the bubble (as a value coefficient) for the RHS.
+      gsLaplacianFunction<T> bubbleLap(bubble);
+      gsPiecewiseFunction<T> bubbleLapField;
+      for (size_t i = 0; i < mp.nPatches(); ++i)
+        bubbleLapField.addPiece(bubbleLap);
+
+      if (ref == 0) {
+        gsInfo << "Bubble rectangle: [" << a_x << ", " << b_x << "] x [" << a_y
+               << ", " << b_y << "]  (degree " << p_bubble
+               << ", single bump embedded in a " << bubbleBasis.size()
+               << "-function basis)\n\n"
+               << std::flush;
+      }
+
+      // ---- Assemble disjoint biharmonic matrix and energy-form RHS ----
+      // Because the bubble vanishes together with its gradient on the
+      // boundary, the biharmonic weak form reduces to
+      //     a(u, v) = (Delta^2 u_ex, v) = (Delta u_ex, Delta v),
+      // so the right-hand side only requires second derivatives of the
+      // manufactured solution.
+      gsExprAssembler<T> A(1, 1);
+      A.setIntegrationDomain(dbasis.domain());
+
+      auto G_map = A.getMap(mp);
+      auto u_space = A.getSpace(dbasis);
+      auto lap_ex = A.getCoeff(bubbleLapField, G_map);
+
+      A.initSystem();
+      A.assemble(ilapl(u_space, G_map) * ilapl(u_space, G_map).tr() * meas(G_map),
+                 ilapl(u_space, G_map) * lap_ex * meas(G_map));
+
+      const gsSparseMatrix<T> &K_disjoint = A.matrix();
+      const gsMatrix<T> &F_disjoint = A.rhs();
+
+      gsSparseMatrix<T> K_free = T_free.transpose() * K_disjoint * T_free;
+      gsMatrix<T> F_free = T_free.transpose() * F_disjoint;
+
+      gsSparseSolver<T>::LU solver(K_free);
+      gsMatrix<T> c_free = solver.solve(F_free);
+
+      gsMatrix<T> c_global(nFree + nBnd, 1);
+      c_global.topRows(nFree) = c_free;
+      c_global.bottomRows(nBnd).setZero();
+
+      gsMatrix<T> c_disjoint = T_global * c_global;
+
+      gsMultiPatch<T> sol;
+      index_t offset = 0;
+      for (size_t i = 0; i < mp.nPatches(); ++i) {
+        const index_t sz = argBasis[i].matrix.rows();
+        gsMatrix<T> ci = c_disjoint.block(offset, 0, sz, 1);
+        offset += sz;
+        const gsTensorBSplineBasis<2, T> &tb =
+            dynamic_cast<const gsTensorBSplineBasis<2, T> &>(mp.patch(i).basis());
+        sol.addPatch(tb.makeGeometry(give(ci)));
+      }
+
+      // ---- Error Evaluation ----
+      gsExprEvaluator<T> ev;
+      ev.setIntegrationDomain(dbasis.domain());
+      auto G_map_ev = ev.getMap(mp);
+
+      auto u_exact_ev = ev.getVariable(bubbleField, G_map_ev);
+      auto u_sol_ev = ev.getVariable(sol);
+
+      const T l2err = std::sqrt(ev.integral((u_sol_ev - u_exact_ev).sqNorm() * meas(G_map_ev)));
+      const T h1err = std::sqrt(ev.integral((igrad(u_sol_ev, G_map_ev) - igrad(u_exact_ev)).sqNorm() * meas(G_map_ev)));
+      const T h2err = std::sqrt(ev.integral((ihess(u_sol_ev, G_map_ev) - ihess(u_exact_ev)).sqNorm() * meas(G_map_ev)));
+
+      // Rates
+      T l2_rate = 0, h1_rate = 0, h2_rate = 0;
+      if (ref > 2 && prev_h > 0) {
+        const T h_ratio = prev_h / h_max;
+        l2_rate = std::log(prev_l2 / l2err) / std::log(h_ratio);
+        h1_rate = std::log(prev_h1 / h1err) / std::log(h_ratio);
+        h2_rate = std::log(prev_h2 / h2err) / std::log(h_ratio);
+      }
+
+      gsInfo << std::setw(5) << ref
+             << std::setw(12) << std::scientific << std::setprecision(4) << h_max
+             << std::setw(10) << nFree
+             << std::setw(14) << std::scientific << std::setprecision(4) << l2err;
+      if (ref > 2)
+        gsInfo << std::setw(10) << std::fixed << std::setprecision(2) << l2_rate;
+      else
+        gsInfo << std::setw(10) << "-";
+
+      gsInfo << std::setw(14) << std::scientific << std::setprecision(4) << h1err;
+      if (ref > 2)
+        gsInfo << std::setw(10) << std::fixed << std::setprecision(2) << h1_rate;
+      else
+        gsInfo << std::setw(10) << "-";
+
+      gsInfo << std::setw(14) << std::scientific << std::setprecision(4) << h2err;
+      if (ref > 2)
+        gsInfo << std::setw(10) << std::fixed << std::setprecision(2) << h2_rate;
+      else
+        gsInfo << std::setw(10) << "-";
+
+      gsInfo << "\n" << std::flush;
+
+      prev_h = h_max;
+      prev_l2 = l2err;
+      prev_h1 = h1err;
+      prev_h2 = h2err;
+
+      if (plot || !outDir.empty()) {
+        std::string solName = prefix + "as_g1_biharmonic_bubble_sol_r" + std::to_string(ref);
+        std::string exactName = prefix + "as_g1_biharmonic_bubble_exact_r" + std::to_string(ref);
+
+        gsField<T> solField(mp, sol);
+        gsWriteParaview<>(solField, solName, 1000);
+
+        gsField<T> exactField(mp, bubbleField, false);
+        gsWriteParaview<>(exactField, exactName, 1000);
+
+        gsInfo << " -> Exported VTK plots: " << solName << " & " << exactName << "\n";
       }
     } catch (const std::exception &e) {
       gsInfo << "ERROR: " << e.what() << "\n" << std::flush;
