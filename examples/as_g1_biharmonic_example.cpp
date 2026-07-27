@@ -1,6 +1,7 @@
 /** @file as_g1_biharmonic_example.cpp
 
-    @brief Biharmonic solver and convergence test over Analysis-Suitable G1 (AS-G1) multi-patch geometries.
+    @brief Biharmonic solver and convergence test over Analysis-Suitable G1
+   (AS-G1) multi-patch geometries.
 
     This file is part of the G+Smo library.
 
@@ -31,20 +32,33 @@ using namespace gismo::expr;
 int main(int argc, char *argv[]) {
   using T = real_t;
 
-  std::string geometry("domain2d/2patch/multipatch/weirdo_multivalence_non_bilinear.xml");
+  std::string geometry(
+      "domain2d/2patch/multipatch/weirdo_multivalence_non_bilinear.xml");
   std::string outDir("");
   index_t degree = 3;
   index_t numGaussPerSpan = 0;
+  index_t minRefinements = 2;
   index_t maxRefinements = 4;
+  index_t freqA = 1;
   bool plot = false;
 
   gsCmdLine cmd("AS-G1 Biharmonic Equation Solver and Convergence Experiment.");
   cmd.addString("f", "file", "Multi-patch geometry XML file.", geometry);
   cmd.addString("o", "outDir", "Output directory for VTK/PVD files.", outDir);
   cmd.addInt("d", "degree", "Target degree (minimum 3).", degree);
-  cmd.addInt("n", "numGauss", "Gauss points per knot span (0 = auto).", numGaussPerSpan);
-  cmd.addInt("r", "refinements", "Maximum uniform refinement levels to test.", maxRefinements);
-  cmd.addSwitch("plot", "Export target function and numerical solution to VTK files.", plot);
+  cmd.addInt("n", "numGauss", "Gauss points per knot span (0 = auto).",
+             numGaussPerSpan);
+  cmd.addInt("m", "minRefinements",
+             "Minimum uniform refinement level to test (minimum 2 for AS-G1).",
+             minRefinements);
+  cmd.addInt("r", "refinements", "Maximum uniform refinement levels to test.",
+             maxRefinements);
+  cmd.addInt("a", "frequency",
+             "Frequency integer factor 'a' in sin(a*pi*x)*cos(a*pi*y).",
+             freqA);
+  cmd.addSwitch("plot",
+                "Export target function and numerical solution to VTK files.",
+                plot);
 
   try {
     cmd.getValues(argc, argv);
@@ -64,21 +78,26 @@ int main(int argc, char *argv[]) {
   if (degree < 3)
     degree = 3;
 
-  gsInfo << "\n======================================================================\n";
+  if (minRefinements < 2)
+    minRefinements = 2;
+
+  if (freqA < 1)
+    freqA = 1;
+
+  gsInfo << "\n================================================================"
+            "======\n";
   gsInfo << "AS-G1 Biharmonic Solver (Delta^2 u = f)\n";
-  gsInfo << "Target Exact Function: u(x, y) = sin(pi * x) * cos(pi * y)\n";
-  gsInfo << "======================================================================\n\n";
+  gsInfo << "Target Exact Function: u(x, y) = sin(" << freqA << "*pi*x) * cos("
+         << freqA << "*pi*y)\n";
+  gsInfo << "=================================================================="
+            "====\n\n";
 
   // Table header
-  gsInfo << std::setw(5) << "r"
-         << std::setw(12) << "h_max"
-         << std::setw(10) << "N_free"
-         << std::setw(14) << "L2 Error"
-         << std::setw(10) << "L2 Rate"
-         << std::setw(14) << "H1 Error"
-         << std::setw(10) << "H1 Rate"
-         << std::setw(14) << "H2 Error"
-         << std::setw(10) << "H2 Rate"
+  gsInfo << std::setw(5) << "r" << std::setw(12) << "h_max" << std::setw(10)
+         << "N_free" << std::setw(14) << "L2 Error" << std::setw(10)
+         << "L2 Rate" << std::setw(14) << "H1 Error" << std::setw(10)
+         << "H1 Rate" << std::setw(14) << "H2 Error" << std::setw(10)
+         << "H2 Rate"
          << "\n";
   gsInfo << std::string(99, '-') << "\n" << std::flush;
 
@@ -87,7 +106,7 @@ int main(int argc, char *argv[]) {
   T prev_h1 = 0;
   T prev_h2 = 0;
 
-  for (index_t ref = 0; ref <= maxRefinements; ++ref) {
+  for (index_t ref = minRefinements; ref <= maxRefinements; ++ref) {
     try {
       // ---- Read geometry ----
       gsMultiPatch<T>::uPtr mpPtr = gsReadFile<>(geometry);
@@ -121,7 +140,8 @@ int main(int argc, char *argv[]) {
       gsVector<index_t> patchDofSizes(mp.nPatches());
       for (size_t i = 0; i < mp.nPatches(); ++i) {
         argBasis.push_back(deriveArgyrisBasisEmbedding(
-            dynamic_cast<const gsTensorBSplineBasis<2, T> &>(mp.patch(i).basis()),
+            dynamic_cast<const gsTensorBSplineBasis<2, T> &>(
+                mp.patch(i).basis()),
             gsMatrix<T>(gd.row(i)), mp.patch(i)));
         patchDofSizes[i] = argBasis[i].matrix.cols();
       }
@@ -135,13 +155,19 @@ int main(int argc, char *argv[]) {
         const patchSide ps1 = ifc.first();
         const patchSide ps2 = ifc.second();
 
-        const index_t nLvl0 = argBasis[ps1.patch].sizes[1 + 2 * (ps1.m_index - 1)];
-        const index_t offLvl0_1 = sumUntil(argBasis[ps1.patch].sizes, 1 + 2 * (ps1.m_index - 1));
-        const index_t offLvl0_2 = sumUntil(argBasis[ps2.patch].sizes, 1 + 2 * (ps2.m_index - 1));
+        const index_t nLvl0 =
+            argBasis[ps1.patch].sizes[1 + 2 * (ps1.m_index - 1)];
+        const index_t offLvl0_1 =
+            sumUntil(argBasis[ps1.patch].sizes, 1 + 2 * (ps1.m_index - 1));
+        const index_t offLvl0_2 =
+            sumUntil(argBasis[ps2.patch].sizes, 1 + 2 * (ps2.m_index - 1));
 
-        const index_t nLvl1 = argBasis[ps1.patch].sizes[2 + 2 * (ps1.m_index - 1)];
-        const index_t offLvl1_1 = sumUntil(argBasis[ps1.patch].sizes, 2 + 2 * (ps1.m_index - 1));
-        const index_t offLvl1_2 = sumUntil(argBasis[ps2.patch].sizes, 2 + 2 * (ps2.m_index - 1));
+        const index_t nLvl1 =
+            argBasis[ps1.patch].sizes[2 + 2 * (ps1.m_index - 1)];
+        const index_t offLvl1_1 =
+            sumUntil(argBasis[ps1.patch].sizes, 2 + 2 * (ps1.m_index - 1));
+        const index_t offLvl1_2 =
+            sumUntil(argBasis[ps2.patch].sizes, 2 + 2 * (ps2.m_index - 1));
 
         const short_t tanDir1 = 1 - ps1.direction();
         const bool flipped = !ifc.dirOrientation(ps1, tanDir1);
@@ -161,11 +187,14 @@ int main(int argc, char *argv[]) {
           const index_t c1 = corners[i].m_index - 1;
           const index_t c2 = ifc.mapCorner(corners[i]).m_index - 1;
 
-          const index_t off_corner_1 = sumUntil(argBasis[ps1.patch].sizes, 9 + c1);
-          const index_t off_corner_2 = sumUntil(argBasis[ps2.patch].sizes, 9 + c2);
+          const index_t off_corner_1 =
+              sumUntil(argBasis[ps1.patch].sizes, 9 + c1);
+          const index_t off_corner_2 =
+              sumUntil(argBasis[ps2.patch].sizes, 9 + c2);
 
           for (index_t k = 0; k < 6; ++k)
-            mapper.matchDof(ps1.patch, off_corner_1 + k, ps2.patch, off_corner_2 + k);
+            mapper.matchDof(ps1.patch, off_corner_1 + k, ps2.patch,
+                            off_corner_2 + k);
         }
       }
 
@@ -177,18 +206,21 @@ int main(int argc, char *argv[]) {
       }
 
       for (size_t i = 0; i < mp.nPatches(); ++i) {
-        for (boxSide side = boxSide::getFirst(2); side != boxSide::getEnd(2); ++side) {
+        for (boxSide side = boxSide::getFirst(2); side != boxSide::getEnd(2);
+             ++side) {
           if (ifcSides.find({i, side.m_index}) != ifcSides.end())
             continue; // interior interface, skip
 
           // External boundary side
           const index_t nLvl0 = argBasis[i].sizes[1 + 2 * (side.m_index - 1)];
-          const index_t offLvl0 = sumUntil(argBasis[i].sizes, 1 + 2 * (side.m_index - 1));
+          const index_t offLvl0 =
+              sumUntil(argBasis[i].sizes, 1 + 2 * (side.m_index - 1));
           for (index_t j = 0; j < nLvl0; ++j)
             mapper.eliminateDof(offLvl0 + j, i);
 
           const index_t nLvl1 = argBasis[i].sizes[2 + 2 * (side.m_index - 1)];
-          const index_t offLvl1 = sumUntil(argBasis[i].sizes, 2 + 2 * (side.m_index - 1));
+          const index_t offLvl1 =
+              sumUntil(argBasis[i].sizes, 2 + 2 * (side.m_index - 1));
           for (index_t j = 0; j < nLvl1; ++j)
             mapper.eliminateDof(offLvl1 + j, i);
 
@@ -219,7 +251,8 @@ int main(int argc, char *argv[]) {
       index_t rowOffset = 0;
 
       for (size_t i = 0; i < mp.nPatches(); ++i) {
-        const gsSparseMatrix<T> &Ai = argBasis[i].matrix; // size: nBSpline_i x nArg_i
+        const gsSparseMatrix<T> &Ai =
+            argBasis[i].matrix; // size: nBSpline_i x nArg_i
         const index_t patchSize = mapper.patchSize(i);
 
         for (index_t j = 0; j < patchSize; ++j) {
@@ -252,9 +285,30 @@ int main(int argc, char *argv[]) {
       T_global.setFrom(tGlobalEntries);
 
       // ---- Evaluate Dirichlet boundary values vector g_bnd ----
+      const std::string s_a = std::to_string(freqA);
+      const std::string u_expr =
+          "sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+      const std::string grad_x_expr =
+          s_a + "*pi*cos(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+      const std::string grad_y_expr =
+          "-" + s_a + "*pi*sin(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
+      const std::string rhs_expr =
+          std::to_string(4 * freqA * freqA * freqA * freqA) +
+          "*pi^4*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+
+      const std::string hess_xx =
+          "-" + std::to_string(freqA * freqA) + "*pi^2*sin(" + s_a +
+          "*pi*x)*cos(" + s_a + "*pi*y)";
+      const std::string hess_xy =
+          "-" + std::to_string(freqA * freqA) + "*pi^2*cos(" + s_a +
+          "*pi*x)*sin(" + s_a + "*pi*y)";
+      const std::string hess_yy =
+          "-" + std::to_string(freqA * freqA) + "*pi^2*sin(" + s_a +
+          "*pi*x)*cos(" + s_a + "*pi*y)";
+
       gsMultiBasis<T> dbasis(mp);
-      gsFunctionExpr<T> exact_u("sin(pi*x)*cos(pi*y)", 2);
-      gsFunctionExpr<T> exact_grad("pi*cos(pi*x)*cos(pi*y)", "-pi*sin(pi*x)*sin(pi*y)", 2);
+      gsFunctionExpr<T> exact_u(u_expr, 2);
+      gsFunctionExpr<T> exact_grad(grad_x_expr, grad_y_expr, 2);
 
       gsExprAssembler<T> A_l2(1, 1);
       A_l2.setIntegrationDomain(dbasis.domain());
@@ -266,7 +320,8 @@ int main(int argc, char *argv[]) {
       A_l2.assemble(u_space_l2 * u_space_l2.tr() * meas(G_map_l2),
                     u_space_l2 * u_coeff_l2 * meas(G_map_l2));
 
-      gsSparseMatrix<T> M_global = T_global.transpose() * A_l2.matrix() * T_global;
+      gsSparseMatrix<T> M_global =
+          T_global.transpose() * A_l2.matrix() * T_global;
       gsMatrix<T> F_l2_global = T_global.transpose() * A_l2.rhs();
 
       gsSparseSolver<T>::LU solver_l2(M_global);
@@ -281,11 +336,12 @@ int main(int argc, char *argv[]) {
       auto G_map = A.getMap(mp);
       auto u_space = A.getSpace(dbasis);
 
-      gsFunctionExpr<T> rhs_f("4*pi^4*sin(pi*x)*cos(pi*y)", 2);
+      gsFunctionExpr<T> rhs_f(rhs_expr, 2);
       auto f_coeff = A.getCoeff(rhs_f, G_map);
 
       A.initSystem();
-      A.assemble(ilapl(u_space, G_map) * ilapl(u_space, G_map).tr() * meas(G_map),
+      A.assemble(ilapl(u_space, G_map) * ilapl(u_space, G_map).tr() *
+                     meas(G_map),
                  u_space * f_coeff * meas(G_map));
 
       const gsSparseMatrix<T> &K_disjoint = A.matrix();
@@ -314,7 +370,8 @@ int main(int argc, char *argv[]) {
         gsMatrix<T> ci = c_disjoint.block(offset, 0, sz, 1);
         offset += sz;
         const gsTensorBSplineBasis<2, T> &tb =
-            dynamic_cast<const gsTensorBSplineBasis<2, T> &>(mp.patch(i).basis());
+            dynamic_cast<const gsTensorBSplineBasis<2, T> &>(
+                mp.patch(i).basis());
         sol.addPatch(tb.makeGeometry(give(ci)));
       }
 
@@ -323,8 +380,7 @@ int main(int argc, char *argv[]) {
       ev.setIntegrationDomain(dbasis.domain());
       auto G_map_ev = ev.getMap(mp);
 
-      gsFunctionExpr<T> exact_hess("-pi^2*sin(pi*x)*cos(pi*y)", "-pi^2*cos(pi*x)*sin(pi*y)",
-                                   "-pi^2*cos(pi*x)*sin(pi*y)", "-pi^2*sin(pi*x)*cos(pi*y)", 2);
+      gsFunctionExpr<T> exact_hess(hess_xx, hess_xy, hess_xy, hess_yy, 2);
 
       auto u_exact_ev = ev.getVariable(exact_u, G_map_ev);
       auto grad_exact_ev = ev.getVariable(exact_grad, G_map_ev);
@@ -332,9 +388,14 @@ int main(int argc, char *argv[]) {
 
       auto u_sol_ev = ev.getVariable(sol);
 
-      const T l2err = std::sqrt(ev.integral((u_sol_ev - u_exact_ev).sqNorm() * meas(G_map_ev)));
-      const T h1err = std::sqrt(ev.integral((igrad(u_sol_ev, G_map_ev) - grad_exact_ev.tr()).sqNorm() * meas(G_map_ev)));
-      const T h2err = std::sqrt(ev.integral((ihess(u_sol_ev, G_map_ev) - hess_exact_ev).sqNorm() * meas(G_map_ev)));
+      const T l2err = std::sqrt(
+          ev.integral((u_sol_ev - u_exact_ev).sqNorm() * meas(G_map_ev)));
+      const T h1err = std::sqrt(ev.integral(
+          (igrad(u_sol_ev, G_map_ev) - grad_exact_ev.tr()).sqNorm() *
+          meas(G_map_ev)));
+      const T h2err = std::sqrt(
+          ev.integral((ihess(u_sol_ev, G_map_ev) - hess_exact_ev).sqNorm() *
+                      meas(G_map_ev)));
 
       // Rates
       T l2_rate = 0, h1_rate = 0, h2_rate = 0;
@@ -345,24 +406,29 @@ int main(int argc, char *argv[]) {
         h2_rate = std::log(prev_h2 / h2err) / std::log(h_ratio);
       }
 
-      gsInfo << std::setw(5) << ref
-             << std::setw(12) << std::scientific << std::setprecision(4) << h_max
-             << std::setw(10) << nFree
-             << std::setw(14) << std::scientific << std::setprecision(4) << l2err;
+      gsInfo << std::setw(5) << ref << std::setw(12) << std::scientific
+             << std::setprecision(4) << h_max << std::setw(10) << nFree
+             << std::setw(14) << std::scientific << std::setprecision(4)
+             << l2err;
       if (ref > 2)
-        gsInfo << std::setw(10) << std::fixed << std::setprecision(2) << l2_rate;
+        gsInfo << std::setw(10) << std::fixed << std::setprecision(2)
+               << l2_rate;
       else
         gsInfo << std::setw(10) << "-";
 
-      gsInfo << std::setw(14) << std::scientific << std::setprecision(4) << h1err;
+      gsInfo << std::setw(14) << std::scientific << std::setprecision(4)
+             << h1err;
       if (ref > 2)
-        gsInfo << std::setw(10) << std::fixed << std::setprecision(2) << h1_rate;
+        gsInfo << std::setw(10) << std::fixed << std::setprecision(2)
+               << h1_rate;
       else
         gsInfo << std::setw(10) << "-";
 
-      gsInfo << std::setw(14) << std::scientific << std::setprecision(4) << h2err;
+      gsInfo << std::setw(14) << std::scientific << std::setprecision(4)
+             << h2err;
       if (ref > 2)
-        gsInfo << std::setw(10) << std::fixed << std::setprecision(2) << h2_rate;
+        gsInfo << std::setw(10) << std::fixed << std::setprecision(2)
+               << h2_rate;
       else
         gsInfo << std::setw(10) << "-";
 
@@ -375,8 +441,10 @@ int main(int argc, char *argv[]) {
 
       // Optional VTK output for solution and original exact function
       if (plot || !outDir.empty()) {
-        std::string solName = prefix + "as_g1_biharmonic_sol_r" + std::to_string(ref);
-        std::string exactName = prefix + "as_g1_biharmonic_exact_r" + std::to_string(ref);
+        std::string solName =
+            prefix + "as_g1_biharmonic_sol_r" + std::to_string(ref);
+        std::string exactName =
+            prefix + "as_g1_biharmonic_exact_r" + std::to_string(ref);
 
         gsField<T> solField(mp, sol);
         gsWriteParaview<>(solField, solName, 1000);
@@ -384,7 +452,8 @@ int main(int argc, char *argv[]) {
         gsField<T> exactField(mp, exact_u, false);
         gsWriteParaview<>(exactField, exactName, 1000);
 
-        gsInfo << " -> Exported VTK plots: " << solName << " & " << exactName << "\n";
+        gsInfo << " -> Exported VTK plots: " << solName << " & " << exactName
+               << "\n";
       }
     } catch (const std::exception &e) {
       gsInfo << "ERROR: " << e.what() << "\n" << std::flush;
