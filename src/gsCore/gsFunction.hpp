@@ -22,11 +22,8 @@
 
 #ifdef gsHLBFGS_ENABLED
 #include <gsHLBFGS/gsHLBFGS.h>
-#endif
-
-#include <gsOptimizer/gsGradientDescent.h>
-
 #include <gsOptimizer/gsFunctionAdaptor.h>
+#endif
 
 #pragma once
 
