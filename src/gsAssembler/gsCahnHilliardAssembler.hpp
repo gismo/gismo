@@ -22,6 +22,7 @@
 #include <gsCore/gsFunctionExpr.h>
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsPiecewiseFunction.h>
+#include <gsCore/gsStrategy.h>
 
 namespace gismo
 {

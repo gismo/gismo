@@ -15,6 +15,7 @@
 
 #include <gsAssembler/gsAssembler.h>
 #include <gsPde/gsPoissonPde.h>
+#include <gsCore/gsStrategy.h>
 
 
 namespace gismo

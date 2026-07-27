@@ -17,7 +17,8 @@
 #include <gsDomain/gsCompositeDomain.h>
 #include <gsHSplines/gsHTensorBasis.h>
 #include <gsUtils/gsCombinatorics.h>
-#include <gsIO/gsOptionList.h>
+#include <gsPde/gsBoundaryConditions.h>
+#include <gsCore/gsOptionList.h>
 
 namespace gismo
 {

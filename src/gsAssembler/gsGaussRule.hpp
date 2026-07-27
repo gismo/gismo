@@ -15,7 +15,7 @@
 
 #include <gsCore/gsBasis.h>
 #include <gsDomain/gsDomain.h>
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 
 
 namespace

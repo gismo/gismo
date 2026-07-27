@@ -15,7 +15,7 @@
 
 #include <gsDomain/gsDomain.h>
 #include <gsCore/gsBasis.h>
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 
 namespace gismo
 {

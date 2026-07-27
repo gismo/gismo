@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 
 #ifdef gsHLBFGS_ENABLED
 #include <gsHLBFGS/gsHLBFGS.h>

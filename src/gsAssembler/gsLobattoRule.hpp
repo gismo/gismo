@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsCore/gsBasis.h>
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 
 
 namespace

@@ -12,7 +12,7 @@
 */
 #pragma once
 
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 #include <gsSolver/gsLinearOperator.h>
 
 namespace gismo

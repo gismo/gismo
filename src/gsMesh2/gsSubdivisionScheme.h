@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsCore/gsExport.h>
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 #include <gsMesh2/gsSurfMesh.h>
 
 namespace gismo

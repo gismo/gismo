@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 #include <gsHSplines/gsHElement.h>
 #include <gsHSplines/gsHElementHelper.h>
 #include <gsHSplines/gsHTensorBasis.h>

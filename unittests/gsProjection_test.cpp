@@ -20,7 +20,7 @@
 **/
 
 #include "gismo_unittest.h"
-#include <gsUtils/gsProjection.h>
+#include <gsAssembler/gsProjection.h>
 #include <gsSolver/gsSolverUtils.h>
 
 using namespace gismo;

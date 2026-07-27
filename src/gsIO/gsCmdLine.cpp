@@ -23,8 +23,8 @@
 //#include <tclap/MultiSwitchArg.h>
 // --- end External files
 
-#include <gsCore/gsSysInfo.h>
-#include <gsIO/gsOptionList.h>
+#include <gsUtils/gsSysInfo.h>
+#include <gsCore/gsOptionList.h>
 
 namespace gismo
 {

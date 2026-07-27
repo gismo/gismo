@@ -18,6 +18,7 @@
 #include <gsExpressions/gsExprHelper.h>
 #include <gsExpressions/gsFeSpaceData.h>
 #include <gsDomain/gsDomain.h>
+#include <gsCore/gsStrategy.h>
 
 #include <gsAssembler/gsCPPInterface.h>
 

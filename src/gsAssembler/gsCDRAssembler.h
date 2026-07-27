@@ -15,6 +15,7 @@
 
 #include <gsAssembler/gsPoissonAssembler.h>
 #include <gsPde/gsConvDiffRePde.h>
+#include <gsCore/gsStrategy.h>
 
 namespace gismo
 {

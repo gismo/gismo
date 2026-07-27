@@ -1,8 +1,8 @@
 #include <gsCore/gsTemplateTools.h>
 
 // Prerequisites
-#include <gsUtils/gsProjection.h>
-#include <gsUtils/gsProjection.hpp>
+#include <gsAssembler/gsProjection.h>
+#include <gsAssembler/gsProjection.hpp>
 
 namespace gismo
 {

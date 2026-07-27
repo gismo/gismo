@@ -18,7 +18,7 @@
 **/
 
 #include <gismo.h>
-#include <gsUtils/gsProjection.h>
+#include <gsAssembler/gsProjection.h>
 
 using namespace gismo;
 

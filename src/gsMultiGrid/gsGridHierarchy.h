@@ -15,7 +15,7 @@
 
 #include <gsCore/gsDofMapper.h>
 #include <gsNurbs/gsKnotVector.h>
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 
 namespace gismo
 {

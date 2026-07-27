@@ -43,7 +43,7 @@ namespace internal
 // #include <gsCore/gsExport.h>
 // #include <gsCore/gsMemory.h>
 #include <gsCore/gsForwardDeclarations.h>
-//#include <gsCore/gsJITCompiler.h>
+//#include <misc/gsJITCompiler.h>
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsFunctionSet.h>
@@ -78,7 +78,7 @@ namespace internal
 
 #include <gsDomain/gsDomainIterator.h>
 
-#include <gsCore/gsSysInfo.h>
+#include <gsUtils/gsSysInfo.h>
 
 // #include <gsCore/gsTemplateTools.h> // included by gsForwardDeclarations -> gsMemory
 
@@ -160,7 +160,6 @@ namespace internal
 #include <gsPde/gsPoissonPde.h>
 #include <gsPde/gsStokesPde.h>
 #include <gsPde/gsPointLoads.h>
-//#include <gsPde/gsNewtonIterator.h>
 
 /* ----------- MultiGrid ----------- */
 #include <gsMultiGrid/gsMultiGrid.h>
@@ -214,7 +213,7 @@ namespace internal
 #include <gsIeti/gsScaledDirichletPrec.h>
 
 /* ----------- IO ----------- */
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 #include <gsIO/gsCmdLine.h>
 #include <gsIO/gsFileData.h>
 #include <gsIO/gsFileManager.h>
@@ -233,8 +232,8 @@ namespace internal
 //#include <gsUtils/gsUtils.h> - in gsForwardDeclarations.h
 #include <gsUtils/gsStopwatch.h>
 #include <gsUtils/gsFunctionWithDerivatives.h>
-#include <gsUtils/gsQuasiInterpolate.h>
-#include <gsUtils/gsProjection.h>
+#include <gsHSplines/gsQuasiInterpolate.h>
+#include <gsAssembler/gsProjection.h>
 
 /* ----------- Extension ----------- */
 #ifdef GISMO_WITH_ADIFF
