@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 #include "gsPeriodicParametrization.h"
 
 namespace gismo

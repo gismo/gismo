@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 #include <gsUtils/gsMesh/gsHalfEdgeMesh.h>
 
 namespace gismo

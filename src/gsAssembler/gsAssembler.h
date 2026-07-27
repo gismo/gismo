@@ -22,7 +22,7 @@
 #include <gsCore/gsAffineFunction.h>
 #include <gsDomain/gsDomain.h>
 
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 
 #include <gsPde/gsPde.h>
 #include <gsPde/gsBoundaryConditions.h>

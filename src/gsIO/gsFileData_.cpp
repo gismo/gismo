@@ -13,7 +13,7 @@
 
 #include <gsPde/gsBoundaryConditions.h>
 #include <gsCore/gsFunctionExpr.h>
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 #include <gsMatrix/gsSparseMatrix.h>
 #endif
 

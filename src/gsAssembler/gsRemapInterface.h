@@ -17,7 +17,7 @@
 
 #include <gsCore/gsAffineFunction.h>
 #include <gsCore/gsBoundary.h>
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 
 namespace gismo {
 

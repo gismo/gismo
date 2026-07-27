@@ -12,7 +12,7 @@
 
 */
 
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 #include <gsIO/gsWriteParaview.h>
 #include <gsModeling/gsLineSegment.h>
 #include <gsModeling/gsParametrization.h>

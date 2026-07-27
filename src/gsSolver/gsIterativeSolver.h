@@ -15,7 +15,7 @@
 #include <gsCore/gsExport.h>
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsSolver/gsMatrixOp.h>
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 
 namespace gismo
 {

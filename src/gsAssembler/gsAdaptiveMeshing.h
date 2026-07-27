@@ -17,7 +17,7 @@
 #include <iostream>
 #include <gsAssembler/gsAdaptiveRefUtils.h>
 #include <gsAssembler/gsAdaptiveMeshingCompare.h>
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 #include <gsCore/gsMultiPatch.h>
 #include <gsCore/gsMultiBasis.h>
 #include <gsHSplines/gsHBox.h>

@@ -14,7 +14,8 @@
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
+#include <gsIO/gsOptionListXml.h>
 
 namespace gismo
 {

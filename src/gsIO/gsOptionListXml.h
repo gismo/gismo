@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 #include <gsIO/gsXml.h>
 
 namespace gismo

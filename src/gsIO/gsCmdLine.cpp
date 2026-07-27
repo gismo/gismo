@@ -24,7 +24,7 @@
 // --- end External files
 
 #include <gsUtils/gsSysInfo.h>
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 
 namespace gismo
 {

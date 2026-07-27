@@ -15,7 +15,7 @@
 
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsSolver/gsPreconditioner.h>
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 
 namespace gismo
 {

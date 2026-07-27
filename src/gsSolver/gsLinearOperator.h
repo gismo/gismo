@@ -13,7 +13,7 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 
 namespace gismo
 {

@@ -213,7 +213,7 @@ namespace internal
 #include <gsIeti/gsScaledDirichletPrec.h>
 
 /* ----------- IO ----------- */
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 #include <gsIO/gsCmdLine.h>
 #include <gsIO/gsFileData.h>
 #include <gsIO/gsFileManager.h>

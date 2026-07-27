@@ -16,7 +16,7 @@
 #include <gsNurbs/gsKnotVector.h>
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
-#include <gsIO/gsOptionList.h>
+#include <gsCore/gsOptionList.h>
 #include <gsAssembler/gsAssemblerOptions.h>
 #include <gsCore/gsMultiBasis.h>
 
