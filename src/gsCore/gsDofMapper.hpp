@@ -12,6 +12,7 @@
 **/
 
 #include <gsCore/gsMultiBasis.h>
+#include <gsPde/gsBoundaryConditions.h>
 
 namespace gismo
 {

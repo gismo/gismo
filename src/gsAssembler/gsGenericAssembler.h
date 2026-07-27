@@ -15,6 +15,7 @@
 
 #include <gsAssembler/gsAssembler.h>
 #include <gsPde/gsLaplacePde.h>
+#include <gsCore/gsStrategy.h>
 
 #include <gsExpressions/gsExpressions.h>
 #include <gsExpressions/gsExprHelper.h>

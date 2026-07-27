@@ -26,6 +26,7 @@
 #include <gsExpressions/gsExprHelper.h>
 #include <gsAssembler/gsExprEvaluator.h>
 #include <gsAssembler/gsExprAssembler.h>
+#include <gsCore/gsStrategy.h>
 
 
 #ifdef gsHLBFGS_ENABLED

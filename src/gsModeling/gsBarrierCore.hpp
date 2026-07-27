@@ -19,6 +19,7 @@
 #pragma once
 
 #include <gsCore/gsConstantFunction.h>
+#include <gsCore/gsStrategy.h>
 
 namespace gismo {
 

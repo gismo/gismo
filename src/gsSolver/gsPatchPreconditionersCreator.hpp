@@ -18,6 +18,7 @@
 #include <gsSolver/gsMatrixOp.h>
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
+#include <gsCore/gsStrategy.h>
 
 namespace gismo
 {

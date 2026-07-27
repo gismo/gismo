@@ -17,8 +17,9 @@
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsDofMapper.h>
 #include <gsCore/gsBoxTopology.h>
-#include <gsPde/gsBoundaryConditions.h>
-#include <gsAssembler/gsAssemblerOptions.h>
+#include <gsCore/gsStrategy.h>
+// gsBoundaryConditions is forward-declared in gsForwardDeclarations.h and
+// only appears here by reference; the definition is needed in gsMultiBasis.hpp.
 
 
 namespace gismo

@@ -16,6 +16,7 @@
 
 #include <gsAssembler/gsAssembler.h>
 #include <gsPde/gsBiharmonicPde.h>
+#include <gsCore/gsStrategy.h>
 
 
 namespace gismo

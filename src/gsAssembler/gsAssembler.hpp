@@ -17,6 +17,7 @@
 #include <gsDomain/gsDomainIterator.h>
 #include <gsCore/gsField.h>
 #include <gsUtils/gsPointGrid.h>
+#include <gsCore/gsStrategy.h>
 
 #include <gsAssembler/gsVisitorPoisson.h> // Stiffness volume integrals and load vector
 
