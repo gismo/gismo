@@ -78,7 +78,7 @@ namespace internal
 
 #include <gsDomain/gsDomainIterator.h>
 
-#include <gsCore/gsSysInfo.h>
+#include <gsUtils/gsSysInfo.h>
 
 // #include <gsCore/gsTemplateTools.h> // included by gsForwardDeclarations -> gsMemory
 

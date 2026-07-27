@@ -11,7 +11,7 @@
     Author(s): M. Moller
 */
 
-#include <gsCore/gsSysInfo.h>
+#include <gsUtils/gsSysInfo.h>
 #include <gsCore/gsLinearAlgebra.h>
 
 #include <string>
