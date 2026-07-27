@@ -232,8 +232,8 @@ namespace internal
 //#include <gsUtils/gsUtils.h> - in gsForwardDeclarations.h
 #include <gsUtils/gsStopwatch.h>
 #include <gsUtils/gsFunctionWithDerivatives.h>
-#include <gsUtils/gsQuasiInterpolate.h>
-#include <gsUtils/gsProjection.h>
+#include <gsHSplines/gsQuasiInterpolate.h>
+#include <gsAssembler/gsProjection.h>
 
 /* ----------- Extension ----------- */
 #ifdef GISMO_WITH_ADIFF

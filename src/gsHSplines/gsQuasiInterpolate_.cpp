@@ -8,8 +8,8 @@
 #include<gsNurbs/gsBSpline.h>
 #include<gsUtils/gsCombinatorics.h>
 
-#include <gsUtils/gsQuasiInterpolate.h>
-#include <gsUtils/gsQuasiInterpolate.hpp>
+#include <gsHSplines/gsQuasiInterpolate.h>
+#include <gsHSplines/gsQuasiInterpolate.hpp>
 
 namespace gismo
 {
