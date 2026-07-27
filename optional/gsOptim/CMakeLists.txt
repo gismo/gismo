@@ -48,22 +48,28 @@ set(GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${OPTIM_INCLUDE_DIR}
 
 include_directories(${GISMO_INCLUDE_DIRS})
 
-add_library(${PROJECT_NAME} INTERFACE)
-target_sources(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${${PROJECT_NAME}_HEADERS}>)
-add_dependencies(${PROJECT_NAME} optim)
+if(GISMO_BUILD_LIB AND GISMO_BUILD_MODULE_LIB)
 
-# Set standard properties for all G+Smo extensions
-set_target_properties(${PROJECT_NAME} PROPERTIES
-  COMPILE_DEFINITIONS gismo_EXPORTS
-  POSITION_INDEPENDENT_CODE ON
-  LINKER_LANGUAGE CXX
-  #START Export all symbols from this extension
-  CXX_VISIBILITY_PRESET default
-  C_VISIBILITY_PRESET default
-  VISIBILITY_INLINES_HIDDEN 0
-  #END Export all symbols from this extension
-  FOLDER "G+Smo extensions"
-  )
+  # Runtime-loadable module library: gsOptim_module.so with the ABI
+  # handshake entry points; loaded via gsModuleManager
+  include(gsModuleLib)
+  gismo_add_module_lib(${PROJECT_NAME} "1.0.0"
+    ${CMAKE_CURRENT_SOURCE_DIR}/gsOptimModuleEntry.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/gsOptimRegister.cpp)
+
+else()
+
+  # Legacy path: compiled into libgismo; the static registrar in
+  # gsOptimRegister.cpp populates the optimizer registry on load
+  add_library(${PROJECT_NAME} INTERFACE)
+  target_sources(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${${PROJECT_NAME}_HEADERS}>)
+  add_dependencies(${PROJECT_NAME} optim)
+
+  set(gismo_EXTENSIONS ${gismo_EXTENSIONS}
+      ${CMAKE_CURRENT_SOURCE_DIR}/gsOptimRegister.cpp
+      CACHE INTERNAL "Gismo extensions to be included")
+
+endif()
 
 # For gsXmlUtils.h
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/external/optim/header_only_version
@@ -74,10 +80,6 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/external/optim/header_only_version
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
         DESTINATION include/gismo
         FILES_MATCHING PATTERN "gsOptim/*.h")
-
-# # Add gsXBraid extension to the list of G+Smo extensions
-# set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
-#   CACHE INTERNAL "gismo extensions to be included")
 
 # add example files
 #include_directories(${OPTIM_INCLUDE_DIR})
