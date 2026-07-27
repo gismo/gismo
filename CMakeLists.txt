@@ -389,6 +389,9 @@ endif(GISMO_BUILD_UNITTESTS)
 ## #################################################################
 
 # Configure
+# Runtime-module search path baked into gsConfig.h; must agree with the
+# install destination used by gismo_add_module_lib (gsModuleLib.cmake)
+set(GISMO_MODULE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}/gismo/modules")
 configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsConfig.h.in"
                 "${PROJECT_BINARY_DIR}/gsCore/gsConfig.h" )
 configure_file ("${PROJECT_SOURCE_DIR}/src/gsCore/gsExport.h.in"

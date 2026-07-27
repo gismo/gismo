@@ -45,3 +45,5 @@ CMakeFiles/
 #Symbolic link Eigen library
 external/Eigen
 /optional/gsUnitTest/
+/external/optim/
+/external/BaseMatrixOps
