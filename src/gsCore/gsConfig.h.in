@@ -34,6 +34,13 @@
 /** Define default dimension type. */
 #define short_t          @GISMO_SHORT_TYPE@
 
+/** Scalar/index type names, used in the module ABI handshake. */
+#define GISMO_COEFF_TYPE_STR "@GISMO_COEFF_TYPE@"
+#define GISMO_INDEX_TYPE_STR "@GISMO_INDEX_TYPE@"
+
+/** Default runtime-module install location (see gsModules). */
+#define GISMO_MODULE_INSTALL_DIR "@GISMO_MODULE_INSTALL_DIR@"
+
 /** Define the file data directory. */
 #define GISMO_DATA_DIR "@GISMO_DATA_DIR@"
 

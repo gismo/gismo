@@ -1,0 +1,27 @@
+namespace gismo {
+
+/** @defgroup Modules Runtime modules
+
+The gsModules layer loads optional G+Smo modules as shared libraries at
+runtime.
+
+A module library exports two C-linkage entry points:
+
+- \c gismo_module_info() returns a pointer to a gismo_module_info_t used
+  for the ABI handshake: the module's ABI major version must equal the
+  host's, its minor must not be newer, and its \c real_t / \c index_t
+  type names must match the host exactly. Mismatching modules are
+  rejected with a warning.
+- \c gismo_module_register() populates the relevant gsRegistry (for
+  example registering optimizer factories by name).
+
+Modules are built with the \c gismo_add_module_lib() CMake function and
+installed into \c lib/gismo/modules/ ; gsModuleManager::loadAll() scans
+the \c GISMO_MODULE_DIR environment variable (if set) or the compiled-in
+install location. Loaded libraries stay mapped for the process lifetime.
+
+See gsRegistry, gsModuleManager and the gsModuleTemplate repository for
+a worked example.
+*/
+
+}
