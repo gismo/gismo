@@ -15,6 +15,8 @@
 
 #include <gsOptimizer/gsOptProblem.h>
 #include <gsOptimizer/gsGradientDescent.h>
+#include <gsOptimizer/gsOptimizerRegistry.h>
+#include <gsModules/gsModuleManager.h>
 
 #ifdef gsHLBFGS_ENABLED
 #include <gsHLBFGS/gsHLBFGS.h>
@@ -186,13 +188,27 @@ private:
 
 int main(int argc, char* argv[])
 {
+    // Load runtime optimizer modules, if any are installed
+    gsModuleManager::get().loadAll();
+
     //! [Parse command line]
     index_t solver  = 0;
+    std::string byName;
 
     gsCmdLine cmd("Demonstrates the use of optimizers.");
     cmd.addInt( "s", "solver", "Solver used. 0:gsGradientDescent, 1:gsHLBFGS, 2:IpOpt", solver);
+    cmd.addString("n", "name", "Select optimizer by registry name (see --list); overrides -s", byName);
+    bool listOnly = false;
+    cmd.addSwitch("list", "List the optimizers in the registry and exit", listOnly);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+
+    if (listOnly)
+    {
+        gsInfo << "Registered optimizers: "
+               << gsOptimizerRegistry::get().names() << "\n";
+        return EXIT_SUCCESS;
+    }
     //! [Parse command line]
 
 
@@ -207,6 +223,14 @@ int main(int argc, char* argv[])
     gsOptProblemExample<real_t> problem;
 
     gsOptimizer<real_t> * optimizer;
+    gsOptimizerRegistry::BasePtr fromRegistry;
+    if (!byName.empty())
+    {
+        fromRegistry = gsOptimizerRegistry::get().make(byName);
+        fromRegistry->setProblem(&problem);
+        optimizer = fromRegistry.get();
+    }
+    else
     switch (solver)
     {
         case 0 :
@@ -267,6 +291,7 @@ int main(int argc, char* argv[])
     gsInfo << "Final design: " << optimizer->currentDesign().transpose() <<"\n";
     //! [Output]
 
-    delete optimizer;
+    if (!fromRegistry) // registry-made optimizers are owned by their uPtr
+        delete optimizer;
     return EXIT_SUCCESS;
 }
