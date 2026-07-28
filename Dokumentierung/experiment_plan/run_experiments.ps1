@@ -6,7 +6,8 @@ $root     = "C:\Users\heydatey\source\repos\gismo"
 $binary   = "$root\build\bin\Release\poissonTHB_example.exe"
 $joystick = "$root\filedata\generatedMPs\joystick_approximation_fine_L3_NLO.xml"
 $mask     = "$root\filedata\generatedMPs\mask_L3_PatchOnly689_noR.xml"
-$hexagon  = "$root\filedata\generatedMPs\hexagon_wiggly.xml"
+$tv       = "$root\filedata\generatedMPs\tv_approximation_fine_L3.xml"
+$yeti     = "$root\filedata\generatedMPs\yeti_mp2_thb_approximation_fine_L3.xml"
 
 # ---------------------------------------------------------------------------
 # Timestamped root folder for this entire run set
@@ -22,23 +23,23 @@ Write-Host ""
 # Each entry: name, geometry path (for existence check), extra args
 # ---------------------------------------------------------------------------
 $experiments = @(
-    # Class 1 — tolerance variation (hexagon_wiggly: boundary wave eps=0.03, k=5, no interior distortion)
-    # ε_g = 0.10 is loose for the clean interior; ε_f is calibrated to the wave amplitude (0.03).
-    # Tight: ε_f < wave amplitude → boundary cells rejected; Medium: ε_f ≈ amplitude; Loose: ε_f >> amplitude.
-    @{ name="class1_tight";       geo=$hexagon;  args=@("--epsilon-g","0.10","--epsilon-f","0.020",$hexagon) },
-    @{ name="class1_medium";      geo=$hexagon;  args=@("--epsilon-g","0.10","--epsilon-f","0.030",$hexagon) },
-    @{ name="class1_loose_f";     geo=$hexagon;  args=@("--epsilon-g","0.10","--epsilon-f","0.050",$hexagon) },
+    # Class 1 — tolerance variation (tv_approximation_fine_L3.xml)
+    # ε_g is the only active axis; featureError is negligible (max 0.049), so ε_f=0.10 never binds.
+    # Thresholds: lev-2 max globalError=0.075; lev-1=0.376; lev-0 max=0.701.
+    @{ name="class1_tight";  geo=$tv; args=@("--epsilon-g","0.10","--epsilon-f","0.10",$tv) },
+    @{ name="class1_medium"; geo=$tv; args=@("--epsilon-g","0.40","--epsilon-f","0.10",$tv) },
+    @{ name="class1_loose";  geo=$tv; args=@("--epsilon-g","0.75","--epsilon-f","0.10",$tv) },
 
     # Class 2 — projection stage: LS / LO / NLO
     @{ name="class2_ls_only";     geo=$mask;     args=@("--ls-only",$mask) },
     @{ name="class2_lo_only";     geo=$mask;     args=@("--lo-only",$mask) },
     @{ name="class2_full";        geo=$mask;     args=@($mask) },
 
-    # Class 3 — locality parameter lambda, joystick geometry
-    @{ name="class3_joy_global";  geo=$joystick; args=@($joystick) },
-    @{ name="class3_joy_lambda0"; geo=$joystick; args=@("--local-fitting","--lambda","0",$joystick) },
-    @{ name="class3_joy_lambda1"; geo=$joystick; args=@("--local-fitting","--lambda","1",$joystick) },
-    @{ name="class3_joy_lambda2"; geo=$joystick; args=@("--local-fitting","--lambda","2",$joystick) },
+    # Class 3 — locality parameter lambda, yeti L3 geometry (accepted 2026-07-28)
+    @{ name="class3_yeti_global";  geo=$yeti; args=@($yeti) },
+    @{ name="class3_yeti_lambda0"; geo=$yeti; args=@("--local-fitting","--lambda","0",$yeti) },
+    @{ name="class3_yeti_lambda1"; geo=$yeti; args=@("--local-fitting","--lambda","1",$yeti) },
+    @{ name="class3_yeti_lambda2"; geo=$yeti; args=@("--local-fitting","--lambda","2",$yeti) },
 )
 
 # ---------------------------------------------------------------------------
