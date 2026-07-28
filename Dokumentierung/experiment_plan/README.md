@@ -1,7 +1,7 @@
 # Paper Experiment Plan
 ## "An Unrefinement Algorithm for Planar THB-spline Parameterizations"
 
-Last updated: 2026-07-09
+Last updated: 2026-07-28
 
 ---
 
@@ -16,6 +16,8 @@ Last updated: 2026-07-09
 | 3 | λ locality parameter | mask (existing) + joystick (new) | 6 | **global + λ=0 done; λ=1,2 pending** |
 | 4 | Cell selection: Grenda vs lex | `joystick_approximation_fine_L3_NLO.xml` | 2 | **DONE** |
 
+**Geometry conflict:** Classes 3 and 4 both use joystick. Candidate replacement: `yeti_mp2_thb_approximation_fine_L3.xml` — see "Geometry evaluation notes" below.
+
 **Binary state:** Commit `2c926d01` (2026-07-09) changed default algorithm behaviour (Case 3 removed). Binary must be rebuilt before running Classes 2 and 3.
 
 ---
@@ -24,25 +26,31 @@ Last updated: 2026-07-09
 
 **Purpose:** Show how tightening ε_g, ε_f, and the feature set F controls the tradeoff between DoF reduction and approximation quality.
 
-**Geometry:** `filedata/generatedMPs/hexagon_wiggly.xml` — **CREATED 2026-07-21**.
+**Geometry:** `filedata/generatedMPs/hexagon_wiggly.xml` — **RECREATED 2026-07-22**.
 - Base: `hexagon_3p_4l.xml` (3-patch, level-4 THB-spline, degree 1, circumradius 1)
-- Distortion: outer boundary wave, eps=0.03, k=5 periods per side, no interior radial distortion
-- Min det J after distortion: 0.14 (healthy margin)
-- Created by `fitting_mspline.cpp` with `--boundary-wave-eps 0.03 --boundary-wave-k 5 -a 0`
-- Wave k=5 is above level-3 Nyquist (max k=4 for 8 cells), so level-3 coarsening aliases the wave.
-  Feature error per boundary-cell removal ≈ 0.03 (wave amplitude).
+- Distortion: outer boundary wave, eps=0.03, k=9 half-sine half-periods (= 4.5 full oscillations)
+- No interior radial distortion (-a 0)
+- Min det J after distortion: 0.064 (all 6 outer sides pushing outward)
+- Created by `fitting_mspline.cpp` with `-a 0 --boundary-wave-eps 0.03 --boundary-wave-k 9`
+- Wave formula: `sin(k * π * s)` (half-sine). k=9 gives 4.5 full oscillations > level-3 Nyquist (4).
+  The half-sine guarantees both CPs adjacent to each corner have positive (outward) amplitude —
+  no inward dents near vertices. A centroid-based outward-normal check ensures all 6 outer sides
+  are pushed consistently outward (the previous full-sine formula had 2 sides with inverted normals).
 
-**Runs (ε_f calibrated to wave amplitude 0.03):**
+**Runs (ε_f calibrated to the half-sine wave, eps=0.03, k=9):**
+
+The feature error when coarsening a level-3 boundary cell is the L∞ distance between the
+original wave and its piecewise-linear approximation at level 3 (8 cells per side, knots at
+s = 0, 1/8, …, 1). Measured empirically from the summary log.
 
 | Run | ε_g | ε_f | Expected effect |
 |---|---|---|---|
-| 1a tight | 0.10 | 0.020 | ε_f < amplitude → boundary cells rejected |
-| 1b medium | 0.10 | 0.030 | ε_f ≈ amplitude → boundary at threshold |
-| 1c loose_f | 0.10 | 0.050 | ε_f > amplitude → boundary cells accepted |
+| 1a tight | 0.10 | 0.010 | ε_f below feature error → boundary cells rejected |
+| 1b medium | 0.10 | 0.020 | ε_f at or near feature error → boundary at threshold |
+| 1c loose_f | 0.10 | 0.050 | ε_f >> feature error → boundary cells accepted |
 
 **Note:** ε_g = 0.10 is intentionally loose (interior has no radial distortion; interior coarsenings
-produce small errors). The contrast across runs comes from ε_f only. If ε_g also turns out to be
-never binding, a follow-up run with tighter ε_g (e.g. 0.005) can reveal the global-error axis.
+produce small errors). The contrast across runs comes from ε_f only.
 
 **Flags:**
 ```
@@ -125,6 +133,80 @@ within tolerance). Archived in `Dokumentierung/2026-07-09_joystick_local_lambda0
 | Grenda (`--cell-method g`) | 159.2 s | 43 | 585 |
 | Lex (`--cell-method l`) | 3174.7 s | 630 | 585 |
 | **Speedup** | **20×** | — | identical |
+
+---
+
+## Geometry evaluation notes
+
+### Open problem: Classes 3 and 4 both use joystick
+
+Currently `joystick_approximation_fine_L3_NLO.xml` is assigned to both Class 3 (λ locality) and
+Class 4 (Grenda vs lex). Using the same geometry for two different paper sections weakens the
+presentation. A second geometry is needed for one of the two classes.
+
+### Candidate: yeti_mp2_thb_approximation_fine_L3.xml
+
+Run 2026-07-28 (global, unconstrained, no flags):
+- **37 accepted coarsenings**, 18 patches, final `mpbes.size() = 117`, runtime **18.4 s**
+- Log: `yeti_mp2_thb_approximation_fine_L3_summary_log.txt`
+
+```
+Command used:
+poissonTHB_example.exe filedata/generatedMPs/yeti_mp2_thb_approximation_fine_L3.xml
+```
+
+**Why yeti L3 is promising:**
+
+1. **Both ε_g and ε_f are meaningful constraints.** Unlike TV (featureError negligible) and hexagon
+   (featureError dominant), yeti L3 shows genuine two-dimensional sensitivity:
+   - At lev-1: globalErrors (0.018–0.057) > featureErrors (0.013–0.023) → ε_g binds
+   - At lev-0: globalErrors (0.057–0.086) > featureErrors (0.056–0.062) → ε_g still binds, but both
+     are in the same decade — either can be the limiting constraint depending on chosen values
+
+2. **Gradual error profile.** No hard cliff between levels: errors rise monotonically from machine
+   precision (~1e-14) through three distinct non-trivial regimes:
+   - lev-1 steps 1–2: errors 0.013–0.022 (fine discrimination zone)
+   - lev-1 steps 3–5: errors 0.019–0.057 (mid zone)
+   - lev-0 steps 0–15: errors 0.056–0.086 (bulk zone)
+
+3. **ε_g and ε_f act as independent controls.** Seven distinct (ε_g, ε_f) configurations span
+   qualitatively different coarsening outcomes (see epsilon analysis 2026-07-28 in conversation log).
+
+**Epsilon decision thresholds (from log):**
+
+| Threshold | ε_g boundary | ε_f boundary |
+|---|---|---|
+| Below first non-trivial lev-1 | < 0.018 | < 0.013 |
+| Adds lev-1 step 1 | 0.018 | 0.013 |
+| Adds lev-1 step 2 | 0.023 | 0.018 |
+| Adds lev-1 step 3 | 0.052 | 0.019 |
+| Adds all lev-1 (steps 4–5) | 0.057 | 0.023 |
+| Adds lev-0 step 0 (patch 5) | 0.057 | 0.057 |
+| Adds all lev-0 | 0.086 | 0.063 |
+
+**Candidate role:** Class 1 (tolerance variation, replacing hexagon or TV), or Class 3 (λ locality,
+replacing the second joystick use). The 37-step run at 18.4 s is fast enough for multiple λ values.
+
+---
+
+### Rejected candidate: yeti_mp2_thb_approximation_fine_L4.xml
+
+Run 2026-07-28 (global, unconstrained):
+- **~1787 log entries**, runtime unknown (very long)
+- First ~1745 entries: lev-3 cells at machine precision (~1e-14). All trivially accepted.
+- Last 41 entries: lev-1 (20 steps, errors 0.036–0.066) and lev-0 (21 steps, errors 0.058–0.108).
+- **12-order-of-magnitude gap** between trivial and meaningful steps.
+
+**Why L4 is unsuitable:**
+- The 1700+ machine-precision lev-3 coarsenings carry no geometric content — they are meaningless
+  as paper results and inflate runtime dramatically.
+- ε cannot meaningfully distinguish between the trivial and meaningful regimes: any ε above 1e-13
+  accepts all trivial steps; any ε below 0.036 rejects all meaningful steps. There is no useful
+  middle ground.
+- Grenda vs lex comparison is meaningless when almost all steps are trivial (Grenda offers no
+  advantage over lex for machine-precision steps where all cells are geometrically equivalent).
+
+**Verdict: do not use L4 for any paper experiment.**
 
 ---
 
