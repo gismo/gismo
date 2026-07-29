@@ -223,7 +223,7 @@ void computeInscribedRectangle(const gsMultiPatch<T>& mp,
 int main(int argc, char *argv[]) {
   using T = real_t;
 
-  std::string geometry("domain2d/2patch/multipatch/weirdo_multivalence_non_bilinear.xml");
+  std::string geometry("domain2d/2patch/weirdo_multivalence_non_bilinear.xml");
   std::string outDir("");
   index_t degree = 3;
   index_t numGaussPerSpan = 0;
