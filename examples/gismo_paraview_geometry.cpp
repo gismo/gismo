@@ -3,7 +3,7 @@ using namespace gismo;
 
 int main(int argc, char* argv[])
 {
-    std::string filename("domain2d/two_patches_from_gluing_data.xml");
+    std::string filename("domain2d/2patch/weirdo_multivalence.xml");
 
     gsCmdLine cmd("Example for get gluing data.");
     cmd.addString("f", "file", "G+Smo input multi patch file.", filename);
@@ -34,3 +34,4 @@ int main(int argc, char* argv[])
     
     return 0;
 }
+
