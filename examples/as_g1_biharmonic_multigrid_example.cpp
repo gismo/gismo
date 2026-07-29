@@ -224,9 +224,9 @@ int main(int argc, char *argv[]) {
 
             gsConstantFunction<T> zero;
             gsBoundaryConditions<T> bc;
-            for (auto it = mp.bBegin(); it != mp.bEnd(); ++it)
+            for (auto it = mpFine.bBegin(); it != mpFine.bEnd(); ++it)
                 bc.add(it->patch, it->side(), "ValuesAndDerivatives", zero);
-            gsDofMapper mapper = makeMapperForArgyrisBasis(mp, argBasis, bc);
+            gsDofMapper mapper = makeMapperForArgyrisBasis(mpFine, argBasis, bc);
 
             index_t nDisjoint = 0;
             for (size_t i = 0; i < mpFine.nPatches(); ++i) nDisjoint += argBasis[i].matrix.rows();

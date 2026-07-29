@@ -317,13 +317,6 @@ int main(int argc, char *argv[]) {
   T prev_h1 = 0;
   T prev_h2 = 0;
 
-  auto sumUntil = [](const gsVector<index_t, 13> &vec, index_t until) {
-    index_t sum = 0;
-    for (index_t i = 0; i < until; ++i)
-      sum += vec(i);
-    return sum;
-  };
-
   for (index_t ref = 0; ref <= maxRefinements; ++ref) {
     try {
       // ---- Read geometry ----
