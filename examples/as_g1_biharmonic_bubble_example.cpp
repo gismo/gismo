@@ -76,43 +76,33 @@ void computeInscribedRectangle(const gsMultiPatch<T>& mp,
                                 T& rect_xmin, T& rect_xmax,
                                 T& rect_ymin, T& rect_ymax)
 {
-    // ---- 1. Identify external boundary sides (not interfaces) ----
-    std::set<std::pair<size_t, index_t>> ifcSides;
-    for (auto it = mp.iBegin(); it != mp.iEnd(); ++it)
-    {
-        ifcSides.insert({it->first().patch, it->first().side()});
-        ifcSides.insert({it->second().patch, it->second().side()});
-    }
 
     // ---- 2. Sample external boundary curves ----
     struct BdSeg { std::vector<std::pair<T,T>> pts; };
     std::vector<BdSeg> segs;
     const int K = 40; // samples per boundary side
 
-    for (size_t pi = 0; pi < mp.nPatches(); ++pi)
+    for (auto it = mp.bBegin(); it != mp.bEnd(); ++it)
     {
-        for (boxSide side = boxSide::getFirst(2);
-             side != boxSide::getEnd(2); ++side)
+        const boxSide side = it->side();
+        const index_t pi = it->patch;
+
+        BdSeg seg;
+        const int si       = side.m_index;
+        const short_t dir  = static_cast<short_t>((si - 1) / 2);
+        const short_t tang = 1 - dir;
+        const T fixedVal   = ((si - 1) % 2) ? T(1) : T(0);
+
+        for (int k = 0; k <= K; ++k)
         {
-            if (ifcSides.count({pi, side.m_index})) continue;
-
-            BdSeg seg;
-            const int si       = side.m_index;
-            const short_t dir  = static_cast<short_t>((si - 1) / 2);
-            const short_t tang = 1 - dir;
-            const T fixedVal   = ((si - 1) % 2) ? T(1) : T(0);
-
-            for (int k = 0; k <= K; ++k)
-            {
-                gsMatrix<T> uv(2, 1);
-                uv(dir,  0) = fixedVal;
-                uv(tang, 0) = T(k) / T(K);
-                gsMatrix<T> xy;
-                mp.patch(pi).eval_into(uv, xy);
-                seg.pts.push_back({xy(0, 0), xy(1, 0)});
-            }
-            segs.push_back(seg);
+            gsMatrix<T> uv(2, 1);
+            uv(dir,  0) = fixedVal;
+            uv(tang, 0) = T(k) / T(K);
+            gsMatrix<T> xy;
+            mp.patch(pi).eval_into(uv, xy);
+            seg.pts.push_back({xy(0, 0), xy(1, 0)});
         }
+        segs.push_back(seg);
     }
 
     // Fallback: use bounding box if no external boundary found
