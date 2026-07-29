@@ -535,7 +535,8 @@ index_t sumUntil(const gsVector<index_t, 13> &vec, index_t until) {
 
 template<typename T>
 gsDofMapper makeMapperForArgyrisBasis(const gsMultiPatch<T>& mp,
-                                      const std::vector<gsArgyrisEmbedding<T>>& argBasis)
+                                      const std::vector<gsArgyrisEmbedding<T>>& argBasis,
+                                      const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>())
 {
     gsVector<index_t> patchDofSizes(argBasis.size());
     for (size_t i = 0; i < argBasis.size(); ++i)
@@ -600,6 +601,39 @@ gsDofMapper makeMapperForArgyrisBasis(const gsMultiPatch<T>& mp,
 
         }
     }
+
+    // Now, incorporate the boundary conditons
+    // TODO: Proper handling of the corner values
+    // TODO: Implement separate conditions for "Values" and "Derivatives"
+    for (auto it = bc.begin("ValuesAndDerivatives"); it != bc.end("ValuesAndDerivatives"); ++it)
+    {
+        const patchSide &ps = it->ps;
+
+        // External boundary side
+        const index_t nLvl0 = argBasis[ps.patch].sizes[1 + 2 * (ps.m_index - 1)];
+        const index_t offLvl0 = sumUntil(argBasis[ps.patch].sizes, 1 + 2 * (ps.m_index - 1));
+        for (index_t j = 0; j < nLvl0; ++j)
+          mapper.eliminateDof(offLvl0 + j, ps.patch);
+
+        const index_t nLvl1 = argBasis[ps.patch].sizes[2 + 2 * (ps.m_index - 1)];
+        const index_t offLvl1 =
+            sumUntil(argBasis[ps.patch].sizes, 2 + 2 * (ps.m_index - 1));
+        for (index_t j = 0; j < nLvl1; ++j)
+          mapper.eliminateDof(offLvl1 + j, ps.patch);
+
+        // Contained corners on this boundary side
+
+        std::vector<patchCorner> corners;
+        ps.getContainedCorners(2, corners);
+        for (const auto &c : corners)
+        {
+            const index_t cIdx = c.m_index - 1;
+            const index_t offCorner = sumUntil(argBasis[ps.patch].sizes, 9 + cIdx);
+            for (index_t k = 0; k < 6; ++k)
+                mapper.eliminateDof(offCorner + k, ps.patch);
+        }
+    }
+
 
     mapper.finalize();
     return mapper;
