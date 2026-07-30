@@ -107,14 +107,6 @@ int main(int argc, char *argv[]) {
            << " (degree " << deg << ")\n";
   }
 
-  // ---- Identify the interface ----
-  const boundaryInterface &ifc = *mp.iBegin();
-  const patchSide ps1 = ifc.first();
-  const patchSide ps2 = ifc.second();
-
-  gsInfo << "Interface: patch " << ps1.patch << " side " << ps1.side()
-         << " <-> patch " << ps2.patch << " side " << ps2.side() << "\n";
-
   // ---- Compute gluing data for the interface ----
   gsMatrix<T> gd = computeGluingData(mp, T(1e-8), numGaussPerSpan);
 

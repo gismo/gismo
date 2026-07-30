@@ -76,43 +76,33 @@ void computeInscribedRectangle(const gsMultiPatch<T>& mp,
                                 T& rect_xmin, T& rect_xmax,
                                 T& rect_ymin, T& rect_ymax)
 {
-    // ---- 1. Identify external boundary sides (not interfaces) ----
-    std::set<std::pair<size_t, index_t>> ifcSides;
-    for (auto it = mp.iBegin(); it != mp.iEnd(); ++it)
-    {
-        ifcSides.insert({it->first().patch, it->first().side()});
-        ifcSides.insert({it->second().patch, it->second().side()});
-    }
 
     // ---- 2. Sample external boundary curves ----
     struct BdSeg { std::vector<std::pair<T,T>> pts; };
     std::vector<BdSeg> segs;
     const int K = 40; // samples per boundary side
 
-    for (size_t pi = 0; pi < mp.nPatches(); ++pi)
+    for (auto it = mp.bBegin(); it != mp.bEnd(); ++it)
     {
-        for (boxSide side = boxSide::getFirst(2);
-             side != boxSide::getEnd(2); ++side)
+        const boxSide side = it->side();
+        const index_t pi = it->patch;
+
+        BdSeg seg;
+        const int si       = side.m_index;
+        const short_t dir  = static_cast<short_t>((si - 1) / 2);
+        const short_t tang = 1 - dir;
+        const T fixedVal   = ((si - 1) % 2) ? T(1) : T(0);
+
+        for (int k = 0; k <= K; ++k)
         {
-            if (ifcSides.count({pi, side.m_index})) continue;
-
-            BdSeg seg;
-            const int si       = side.m_index;
-            const short_t dir  = static_cast<short_t>((si - 1) / 2);
-            const short_t tang = 1 - dir;
-            const T fixedVal   = ((si - 1) % 2) ? T(1) : T(0);
-
-            for (int k = 0; k <= K; ++k)
-            {
-                gsMatrix<T> uv(2, 1);
-                uv(dir,  0) = fixedVal;
-                uv(tang, 0) = T(k) / T(K);
-                gsMatrix<T> xy;
-                mp.patch(pi).eval_into(uv, xy);
-                seg.pts.push_back({xy(0, 0), xy(1, 0)});
-            }
-            segs.push_back(seg);
+            gsMatrix<T> uv(2, 1);
+            uv(dir,  0) = fixedVal;
+            uv(tang, 0) = T(k) / T(K);
+            gsMatrix<T> xy;
+            mp.patch(pi).eval_into(uv, xy);
+            seg.pts.push_back({xy(0, 0), xy(1, 0)});
         }
+        segs.push_back(seg);
     }
 
     // Fallback: use bounding box if no external boundary found
@@ -233,7 +223,7 @@ void computeInscribedRectangle(const gsMultiPatch<T>& mp,
 int main(int argc, char *argv[]) {
   using T = real_t;
 
-  std::string geometry("domain2d/2patch/multipatch/weirdo_multivalence_non_bilinear.xml");
+  std::string geometry("domain2d/2patch/weirdo_multivalence_non_bilinear.xml");
   std::string outDir("");
   index_t degree = 3;
   index_t numGaussPerSpan = 0;
@@ -317,13 +307,6 @@ int main(int argc, char *argv[]) {
   T prev_h1 = 0;
   T prev_h2 = 0;
 
-  auto sumUntil = [](const gsVector<index_t, 13> &vec, index_t until) {
-    index_t sum = 0;
-    for (index_t i = 0; i < until; ++i)
-      sum += vec(i);
-    return sum;
-  };
-
   for (index_t ref = 0; ref <= maxRefinements; ++ref) {
     try {
       // ---- Read geometry ----
@@ -374,87 +357,14 @@ int main(int argc, char *argv[]) {
         patchDofSizes[i] = argBasis[i].matrix.cols();
       }
 
+      // ---- Boundary conditions ----
+      gsConstantFunction<T> zero;
+      gsBoundaryConditions<T> bc;
+      for (auto it = mp.bBegin(); it != mp.bEnd(); ++it)
+          bc.add(it->patch, it->side(), "ValuesAndDerivatives", zero);
+
       // ---- Set up gsDofMapper ----
-      gsDofMapper mapper(patchDofSizes);
-
-      // Match interface DOFs
-      for (auto it = mp.iBegin(); it != mp.iEnd(); ++it) {
-        const boundaryInterface &ifc = *it;
-        const patchSide ps1 = ifc.first();
-        const patchSide ps2 = ifc.second();
-
-        const index_t nLvl0 = argBasis[ps1.patch].sizes[1 + 2 * (ps1.m_index - 1)];
-        const index_t offLvl0_1 = sumUntil(argBasis[ps1.patch].sizes, 1 + 2 * (ps1.m_index - 1));
-        const index_t offLvl0_2 = sumUntil(argBasis[ps2.patch].sizes, 1 + 2 * (ps2.m_index - 1));
-
-        const index_t nLvl1 = argBasis[ps1.patch].sizes[2 + 2 * (ps1.m_index - 1)];
-        const index_t offLvl1_1 = sumUntil(argBasis[ps1.patch].sizes, 2 + 2 * (ps1.m_index - 1));
-        const index_t offLvl1_2 = sumUntil(argBasis[ps2.patch].sizes, 2 + 2 * (ps2.m_index - 1));
-
-        const short_t tanDir1 = 1 - ps1.direction();
-        const bool flipped = !ifc.dirOrientation(ps1, tanDir1);
-
-        for (index_t j1 = 0; j1 < nLvl0; ++j1) {
-          const index_t j2 = flipped ? nLvl0 - 1 - j1 : j1;
-          mapper.matchDof(ps1.patch, offLvl0_1 + j1, ps2.patch, offLvl0_2 + j2);
-        }
-
-        for (index_t j1 = 0; j1 < nLvl1; ++j1) {
-          const index_t j2 = flipped ? nLvl1 - 1 - j1 : j1;
-          mapper.matchDof(ps1.patch, offLvl1_1 + j1, ps2.patch, offLvl1_2 + j2);
-        }
-
-        std::vector<patchCorner> corners;
-        ps1.getContainedCorners(2, corners);
-        for (index_t i = 0; i < 2; ++i) {
-          const index_t c1 = corners[i].m_index - 1;
-          const index_t c2 = ifc.mapCorner(corners[i]).m_index - 1;
-
-          const index_t off_corner_1 = sumUntil(argBasis[ps1.patch].sizes, 9 + c1);
-          const index_t off_corner_2 = sumUntil(argBasis[ps2.patch].sizes, 9 + c2);
-
-          for (index_t k = 0; k < 6; ++k)
-            mapper.matchDof(ps1.patch, off_corner_1 + k, ps2.patch, off_corner_2 + k);
-        }
-      }
-
-      // Mark domain boundary DOFs (homogeneous Dirichlet)
-      std::set<std::pair<size_t, index_t>> ifcSides;
-      for (auto it = mp.iBegin(); it != mp.iEnd(); ++it) {
-        ifcSides.insert({it->first().patch, it->first().side()});
-        ifcSides.insert({it->second().patch, it->second().side()});
-      }
-
-      for (size_t i = 0; i < mp.nPatches(); ++i) {
-        for (boxSide side = boxSide::getFirst(2); side != boxSide::getEnd(2); ++side) {
-          if (ifcSides.find({i, side.m_index}) != ifcSides.end())
-            continue; // interior interface, skip
-
-          // External boundary side
-          const index_t nLvl0 = argBasis[i].sizes[1 + 2 * (side.m_index - 1)];
-          const index_t offLvl0 = sumUntil(argBasis[i].sizes, 1 + 2 * (side.m_index - 1));
-          for (index_t j = 0; j < nLvl0; ++j)
-            mapper.eliminateDof(offLvl0 + j, i);
-
-          const index_t nLvl1 = argBasis[i].sizes[2 + 2 * (side.m_index - 1)];
-          const index_t offLvl1 = sumUntil(argBasis[i].sizes, 2 + 2 * (side.m_index - 1));
-          for (index_t j = 0; j < nLvl1; ++j)
-            mapper.eliminateDof(offLvl1 + j, i);
-
-          // Contained corners on this boundary side
-          patchSide ps(i, side);
-          std::vector<patchCorner> corners;
-          ps.getContainedCorners(2, corners);
-          for (const auto &c : corners) {
-            const index_t cIdx = c.m_index - 1;
-            const index_t offCorner = sumUntil(argBasis[i].sizes, 9 + cIdx);
-            for (index_t k = 0; k < 6; ++k)
-              mapper.eliminateDof(offCorner + k, i);
-          }
-        }
-      }
-
-      mapper.finalize();
+      gsDofMapper mapper = makeMapperForArgyrisBasis(mp, argBasis, bc);
 
       const index_t nFree = mapper.freeSize();
       const index_t nBnd = mapper.boundarySize();
