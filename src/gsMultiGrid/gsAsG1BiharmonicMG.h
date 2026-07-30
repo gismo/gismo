@@ -36,6 +36,7 @@
 #include <gsCore/gsDofMapper.h>
 #include <gsMatrix/gsSparseMatrix.h>
 #include <gsAssembler/gsExprAssembler.h>
+#include <gsPde/gsBoundaryConditions.h>
 
 #include <gsModeling/gsAsG1Basis.hpp>
 #include <gsModeling/gsAsG1Domain.hpp>
@@ -119,25 +120,59 @@ public:
         return cg.iterations();
     }
 
+    /// Number of eliminated (boundary) DOFs on the finest level.
+    index_t boundaryDofs() const { return m_TbndFine.cols(); }
+
+    /// Finest-level boundary transformation (disjoint B-spline DOFs <- boundary DOFs).
+    const gsSparseMatrix<T>& transformBoundaryFine() const { return m_TbndFine; }
+
+    /// Finest-level interior/boundary coupling block K_fb = T_free^T K T_bnd.
+    const gsSparseMatrix<T>& couplingBlock() const { return m_Kfb; }
+
+    /** @brief Boundary DOF values realising an inhomogeneous clamped condition.
+     *
+     *  Returns the boundary-DOF coefficients of the L2 projection of @a uex
+     *  onto the finest AS-G1 space. These carry the trace and normal-derivative
+     *  data of @a uex and can be prescribed as inhomogeneous boundary values.
+     */
+    gsMatrix<T> projectBoundaryValues(const gsFunction<T>& uex) const
+    {
+        using namespace gismo::expr;
+        const gsMultiPatch<T>& mp = m_mp.back();
+        gsPiecewiseFunction<T> uf;
+        for (size_t i = 0; i < mp.nPatches(); ++i) uf.addPiece(uex);
+
+        gsMultiBasis<T> dbasis(mp);
+        gsExprAssembler<T> A(1, 1);
+        A.setIntegrationDomain(dbasis.domain());
+        auto G = A.getMap(mp);
+        auto u = A.getSpace(dbasis);
+        auto f = A.getCoeff(uf, G);
+        A.initSystem();
+        A.assemble(u * u.tr() * meas(G), u * f * meas(G));
+
+        const gsSparseMatrix<T> Tfull = hconcat(m_Tfree.back(), m_TbndFine);
+        gsSparseMatrix<T> Mfull = Tfull.transpose() * A.matrix() * Tfull;
+        gsMatrix<T> rhs = Tfull.transpose() * A.rhs();
+        typename gsSparseSolver<T>::SimplicialLDLT solver;
+        solver.compute(Mfull);
+        gsMatrix<T> clift = solver.solve(rhs);
+        return clift.bottomRows(m_TbndFine.cols());
+    }
+
+    /// Apply the boundary lifting to a free-DOF right-hand side:
+    /// F_free  ->  F_free - K_fb * cBnd.
+    gsMatrix<T> liftedRhs(const gsMatrix<T>& Ffree, const gsMatrix<T>& cBnd) const
+    { return Ffree - m_Kfb * cBnd; }
+
     /// Reconstruct a multi-patch field from a finest-level free-DOF vector
     /// (boundary DOFs are homogeneous, i.e. zero).
     gsMultiPatch<T> reconstruct(const gsMatrix<T>& cFree) const
-    {
-        const gsMultiPatch<T>& mp = m_mp.back();
-        gsMatrix<T> cDisjoint = m_Tfree.back() * cFree;
-        gsMultiPatch<T> field;
-        index_t offset = 0;
-        for (size_t i = 0; i < mp.nPatches(); ++i)
-        {
-            const index_t sz = m_patchDisjointRows.back()[i];
-            gsMatrix<T> ci = cDisjoint.block(offset, 0, sz, 1);
-            offset += sz;
-            const gsTensorBSplineBasis<2, T>& tb =
-                dynamic_cast<const gsTensorBSplineBasis<2, T>&>(mp.patch(i).basis());
-            field.addPatch(tb.makeGeometry(give(ci)));
-        }
-        return field;
-    }
+    { return reconstructFromDisjoint(m_Tfree.back() * cFree); }
+
+    /// Reconstruct a multi-patch field from free and prescribed boundary DOFs.
+    gsMultiPatch<T> reconstruct(const gsMatrix<T>& cFree, const gsMatrix<T>& cBnd) const
+    { return reconstructFromDisjoint(m_Tfree.back() * cFree + m_TbndFine * cBnd); }
 
     /// Set the number of pre-/post-smoothing steps (helps for the badly
     /// conditioned biharmonic operator).
@@ -152,11 +187,47 @@ public:
 
 private:
 
-    // Build the coupled AS-G1 space of one level and return the transformation
-    // matrix (disjoint B-spline DOFs -> free/interior coupled DOFs).
+    // Reconstruct a multi-patch field from a disjoint (per-patch) coefficient vector.
+    gsMultiPatch<T> reconstructFromDisjoint(const gsMatrix<T>& cDisjoint) const
+    {
+        const gsMultiPatch<T>& mp = m_mp.back();
+        gsMultiPatch<T> field;
+        index_t offset = 0;
+        for (size_t i = 0; i < mp.nPatches(); ++i)
+        {
+            const index_t sz = m_patchDisjointRows.back()[i];
+            gsMatrix<T> ci = cDisjoint.block(offset, 0, sz, 1);
+            offset += sz;
+            const gsTensorBSplineBasis<2, T>& tb =
+                dynamic_cast<const gsTensorBSplineBasis<2, T>&>(mp.patch(i).basis());
+            field.addPatch(tb.makeGeometry(give(ci)));
+        }
+        return field;
+    }
+
+    // Horizontal concatenation of two sparse matrices with equal row count.
+    static gsSparseMatrix<T> hconcat(const gsSparseMatrix<T>& A, const gsSparseMatrix<T>& B)
+    {
+        GISMO_ASSERT(A.rows() == B.rows(), "hconcat: row size mismatch.");
+        gsSparseEntries<T> e;
+        for (index_t k = 0; k < A.outerSize(); ++k)
+            for (typename gsSparseMatrix<T>::InnerIterator it(A, k); it; ++it)
+                e.add(it.row(), it.col(), it.value());
+        for (index_t k = 0; k < B.outerSize(); ++k)
+            for (typename gsSparseMatrix<T>::InnerIterator it(B, k); it; ++it)
+                e.add(it.row(), A.cols() + it.col(), it.value());
+        gsSparseMatrix<T> C(A.rows(), A.cols() + B.cols());
+        C.setFrom(e);
+        return C;
+    }
+
+    // Build the coupled AS-G1 space of one level. Returns the transformation for
+    // the free (interior) DOFs; if @a Tbnd is non-null it also receives the
+    // transformation for the eliminated boundary DOFs.
     gsSparseMatrix<T> buildLevelTransform(const gsMultiPatch<T>& mp,
                                           const gsMatrix<T>& gd,
-                                          std::vector<index_t>& patchRows) const
+                                          std::vector<index_t>& patchRows,
+                                          gsSparseMatrix<T>* Tbnd = nullptr) const
     {
         // Per-patch Argyris embeddings.
         std::vector<gsArgyrisEmbedding<T>> argBasis;
@@ -173,57 +244,26 @@ private:
             nDisjoint += patchRows[i];
         }
 
-        // Interface coupling via the shared helper (no boundary elimination).
-        gsDofMapper mapper = makeMapperForArgyrisBasis(mp, argBasis);
-        const index_t nCoupled = mapper.freeSize();
-
-        // Mark the coupled DOFs sitting on the domain boundary (homogeneous
-        // clamped biharmonic BC: u = 0 and grad(u).n = 0).
+        // Mark all external boundary sides as clamped (u and grad(u).n given).
         std::set<std::pair<size_t, index_t>> ifcSides;
         for (auto it = mp.iBegin(); it != mp.iEnd(); ++it)
         {
             ifcSides.insert({it->first().patch,  it->first().side()});
             ifcSides.insert({it->second().patch, it->second().side()});
         }
-
-        std::vector<char> isBoundary(nCoupled, 0);
-        auto markBoundary = [&](size_t patch, index_t localDof)
-        { isBoundary[mapper.index(localDof, patch)] = 1; };
-
+        gsBoundaryConditions<T> bc;
+        typename gsBoundaryConditions<T>::function_ptr nullFun;
         for (size_t i = 0; i < mp.nPatches(); ++i)
-        {
             for (boxSide side = boxSide::getFirst(2); side != boxSide::getEnd(2); ++side)
-            {
-                if (ifcSides.find({i, side.m_index}) != ifcSides.end())
-                    continue; // interior interface
+                if (ifcSides.find({i, side.m_index}) == ifcSides.end())
+                    bc.add(i, side, "ValuesAndDerivatives", nullFun);
 
-                const index_t nLvl0  = argBasis[i].sizes[1 + 2 * (side.m_index - 1)];
-                const index_t offLvl0 = sumUntil(argBasis[i].sizes, 1 + 2 * (side.m_index - 1));
-                for (index_t j = 0; j < nLvl0; ++j) markBoundary(i, offLvl0 + j);
+        // Interface coupling + boundary elimination via the shared helper.
+        gsDofMapper mapper = makeMapperForArgyrisBasis(mp, argBasis, bc);
+        const index_t nFree = mapper.freeSize();
+        const index_t nBnd  = mapper.boundarySize();
 
-                const index_t nLvl1  = argBasis[i].sizes[2 + 2 * (side.m_index - 1)];
-                const index_t offLvl1 = sumUntil(argBasis[i].sizes, 2 + 2 * (side.m_index - 1));
-                for (index_t j = 0; j < nLvl1; ++j) markBoundary(i, offLvl1 + j);
-
-                patchSide ps(i, side);
-                std::vector<patchCorner> corners;
-                ps.getContainedCorners(2, corners);
-                for (const auto& c : corners)
-                {
-                    const index_t offCorner = sumUntil(argBasis[i].sizes, 9 + (c.m_index - 1));
-                    for (index_t k = 0; k < 6; ++k) markBoundary(i, offCorner + k);
-                }
-            }
-        }
-
-        // Remap coupled -> interior free indices.
-        std::vector<index_t> freeIndex(nCoupled, -1);
-        index_t nFree = 0;
-        for (index_t g = 0; g < nCoupled; ++g)
-            if (!isBoundary[g]) freeIndex[g] = nFree++;
-
-        // Assemble the transformation matrix.
-        gsSparseEntries<T> entries;
+        gsSparseEntries<T> ef, eb;
         index_t rowOffset = 0;
         for (size_t i = 0; i < mp.nPatches(); ++i)
         {
@@ -231,17 +271,24 @@ private:
             const index_t patchSize = mapper.patchSize(i);
             for (index_t j = 0; j < patchSize; ++j)
             {
-                const index_t g = mapper.index(j, i);
-                if (isBoundary[g]) continue;
-                const index_t col = freeIndex[g];
+                const bool isB = mapper.is_boundary(j, i);
+                const index_t g = isB ? mapper.bindex(j, i) : mapper.index(j, i);
                 for (typename gsSparseMatrix<T>::InnerIterator it(Ai, j); it; ++it)
-                    entries.add(rowOffset + it.row(), col, it.value());
+                {
+                    if (isB) eb.add(rowOffset + it.row(), g, it.value());
+                    else     ef.add(rowOffset + it.row(), g, it.value());
+                }
             }
             rowOffset += Ai.rows();
         }
 
         gsSparseMatrix<T> Tfree(nDisjoint, nFree);
-        Tfree.setFrom(entries);
+        Tfree.setFrom(ef);
+        if (Tbnd)
+        {
+            Tbnd->resize(nDisjoint, nBnd);
+            Tbnd->setFrom(eb);
+        }
         return Tfree;
     }
 
@@ -307,7 +354,8 @@ private:
             for (index_t r = 0; r < ref; ++r) mp.uniformRefine(1, mult);
 
             m_mp[l] = mp;
-            m_Tfree[l] = buildLevelTransform(mp, gd, m_patchDisjointRows[l]);
+            m_Tfree[l] = buildLevelTransform(mp, gd, m_patchDisjointRows[l],
+                                             (l == m_numLevels - 1) ? &m_TbndFine : nullptr);
 
             // Normal-equation solver for the exact prolongation.
             gsSparseMatrix<T> StS = m_Tfree[l].transpose() * m_Tfree[l];
@@ -315,11 +363,13 @@ private:
             stsSolvers[l]->compute(StS);
         }
 
-        // Finest-level stiffness matrix.
+        // Finest-level stiffness matrix and interior/boundary coupling block.
         {
             gsSparseMatrix<T> Kdis = assembleDisjointStiffness(m_mp.back());
             m_Kfine = m_Tfree.back().transpose() * Kdis * m_Tfree.back();
             m_Kfine.makeCompressed();
+            m_Kfb = m_Tfree.back().transpose() * Kdis * m_TbndFine;
+            m_Kfb.makeCompressed();
         }
 
         // Inter-level prolongations P_l : level l -> level l+1 (fine <- coarse).
@@ -360,6 +410,8 @@ private:
     std::vector<gsSparseMatrix<T>>  m_Tfree;             // per-level transform
     std::vector<std::vector<index_t>> m_patchDisjointRows;
     gsSparseMatrix<T>               m_Kfine;             // finest stiffness
+    gsSparseMatrix<T>               m_TbndFine;          // finest boundary transform
+    gsSparseMatrix<T>               m_Kfb;               // interior-boundary coupling
 
     typename gsMultiGridOp<T>::Ptr  m_mg;
     typename gsLinearOperator<T>::Ptr m_mgPtr;

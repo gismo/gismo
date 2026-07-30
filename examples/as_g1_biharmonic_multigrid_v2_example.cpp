@@ -259,6 +259,8 @@ int main(int argc, char* argv[])
     index_t numSmooth = 3;
     real_t margin = 0.15;
     bool noCompare = false;
+    std::string outDir("");
+    bool wcycle = false;
 
     gsCmdLine cmd("AS-G1 biharmonic multigrid solver (v2): "
                   "shared DOF mapper + generic gsMultiGridOp preconditioned CG.");
@@ -269,6 +271,8 @@ int main(int argc, char* argv[])
     cmd.addInt("r", "maxRef", "Finest refinement level.", maxRef);
     cmd.addInt("s", "smooth", "Number of pre-/post-smoothing steps.", numSmooth);
     cmd.addReal("g", "margin", "Bubble rectangle margin (0..0.5).", margin);
+    cmd.addString("o", "outDir", "Output folder for PVD/VTK plots (empty = no plotting).", outDir);
+    cmd.addSwitch("wcycle", "Use W-cycles (numCycles = 2) instead of V-cycles.", wcycle);
     cmd.addSwitch("noCompare", "Skip the reference run of the original solver.", noCompare);
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
 
@@ -278,6 +282,11 @@ int main(int argc, char* argv[])
     if (numSmooth < 1) numSmooth = 1;
     if (margin <= 0 || margin >= 0.5) margin = 0.15;
     if (dir.back() != '/') dir += '/';
+    if (!outDir.empty())
+    {
+        if (outDir.back() != '/') outDir += '/';
+        gsFileManager::mkdir(outDir);
+    }
 
     // Geometry list.
     std::vector<std::string> geoms;
@@ -314,9 +323,11 @@ int main(int argc, char* argv[])
     gsInfo << "  DOF coupling : makeMapperForArgyrisBasis + computeGluingData\n";
     gsInfo << "  Solver       : gsMultiGridOp (Galerkin, symmetric Gauss-Seidel, "
            << numSmooth << " smoothing steps) + CG\n";
+    gsInfo << "  Cycle type   : " << (wcycle ? "W-cycle" : "V-cycle") << "\n";
     gsInfo << "  Levels       : r = " << minRef << " .. " << maxRef
            << "   Degree = " << degree << "\n";
     gsInfo << "  Geometries   : " << geoms.size() << "\n";
+    if (!outDir.empty()) gsInfo << "  Plot folder  : " << outDir << "\n";
     gsInfo << "=====================================================================================================\n";
 
     index_t nConverged = 0, nTotal = 0;
@@ -396,6 +407,7 @@ int main(int argc, char* argv[])
             {
                 gsAsG1BiharmonicMG<T> solver(base, degree, minRef, r, numSmooth);
                 solver.setNumSmooth(numSmooth, numSmooth);
+                if (wcycle) solver.setNumCycles(2);
 
                 const gsMultiPatch<T>& mp = solver.fineMultiPatch();
                 gsMultiBasis<T> dbasis(mp);
@@ -454,6 +466,19 @@ int main(int argc, char* argv[])
 
                 ph = h; pl2 = l2; ph1 = h1; ph2 = h2;
                 lastSum = Summary{shortName, iters, relres, h2, (relres < 1e-8)};
+
+                // Optional PVD/VTK export of numerical and exact solutions.
+                if (!outDir.empty())
+                {
+                    std::string stem = shortName;
+                    size_t dot = stem.find_last_of('.');
+                    if (dot != std::string::npos) stem = stem.substr(0, dot);
+                    const std::string base = outDir + "v2_" + stem + "_r" + std::to_string(r);
+                    gsField<T> solPlot(mp, sol);
+                    gsWriteParaview<>(solPlot, base + "_sol", 1000);
+                    gsField<T> exPlot(mp, bubbleField, false);
+                    gsWriteParaview<>(exPlot, base + "_exact", 1000);
+                }
             }
             catch (const std::exception& e)
             {
@@ -473,6 +498,7 @@ int main(int argc, char* argv[])
             {
                 gsAsG1BiharmonicMG<T> newSolver(base, degree, minRef, maxRef, numSmooth);
                 newSolver.setNumSmooth(numSmooth, numSmooth);
+                if (wcycle) newSolver.setNumCycles(2);
                 const gsSparseMatrix<T>& Knew = newSolver.stiffnessMatrix();
                 gsMatrix<T> xref = gsMatrix<T>::Ones(Knew.rows(), 1);
                 gsMatrix<T> bnew = Knew * xref, xnew;
