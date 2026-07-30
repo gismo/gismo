@@ -11,6 +11,8 @@
     Author(s): F. Hasanova, S. Takacs
 */
 
+#pragma once
+
 namespace gismo {
 
 // ====================================================================
