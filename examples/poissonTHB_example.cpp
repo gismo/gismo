@@ -4202,46 +4202,43 @@ void generateOriginalGeometryMesh(
 
     meshOut << "# Original Geometry Mesh\n";
     meshOut << "# Format: x y patch direction\n";
-    meshOut << "# NOTE: Uniform sampling (independent of box hierarchy)\n";
-    meshOut << "# Grid resolution: " << gridResolution << "\n\n";
+    meshOut << "# Grid resolution: " << gridResolution << " (iso-lines at k/" << gridResolution << " — matches element boundaries)\n\n";
+
+    // For degree >= 2 splines, sample at 200 points per line so the smooth
+    // B-spline curve is rendered faithfully rather than as a coarse polygon.
+    const index_t deg = (mp.nPatches() > 0) ? mp.patch(0).basis().degree(0) : 1;
+    const index_t sampleN = (deg >= 2) ? 200 : gridResolution;
+
+    auto writeLine = [&](index_t patch, bool isU, real_t fixedParam)
+    {
+        gsMatrix<> uvLine(2, sampleN + 1);
+        for (int k = 0; k <= sampleN; ++k)
+        {
+            real_t varying = k / (real_t)sampleN;
+            uvLine(0, k) = isU ? fixedParam : varying;
+            uvLine(1, k) = isU ? varying    : fixedParam;
+        }
+        gsMatrix<> xyLine = mp.patch(patch).eval(uvLine);
+        const char* dir = isU ? "u" : "v";
+        for (int k = 0; k <= sampleN; ++k)
+            meshOut << xyLine(0, k) << " " << xyLine(1, k) << " " << patch << " " << dir << "\n";
+        meshOut << "\n";
+    };
 
     for (index_t patch = 0; patch < mp.nPatches(); ++patch)
     {
-        // Generate grid lines in u direction
-        for (int i = 0; i <= gridResolution; ++i)
-        {
-            gsMatrix<> uvLine(2, gridResolution + 1);
-            real_t u = i / (real_t)gridResolution;
-            for (int j = 0; j <= gridResolution; ++j)
-            {
-                uvLine(0, j) = u;
-                uvLine(1, j) = j / (real_t)gridResolution;
-            }
-            gsMatrix<> xyLine = mp.patch(patch).eval(uvLine);
-            for (int j = 0; j <= gridResolution; ++j)
-            {
-                meshOut << xyLine(0, j) << " " << xyLine(1, j) << " " << patch << " u\n";
-            }
-            meshOut << "\n";
-        }
+        // Write boundary iso-lines first (u=0 and u=1), then interior.
+        // This guarantees both patch boundaries are plotted even if the
+        // visualiser drops the last group of each direction block.
+        writeLine(patch, true,  0.0);  // u = 0  (one patch boundary)
+        writeLine(patch, true,  1.0);  // u = 1  (opposite patch boundary)
+        for (int i = 1; i < gridResolution; ++i)
+            writeLine(patch, true, i / (real_t)gridResolution);
 
-        // Generate grid lines in v direction
-        for (int j = 0; j <= gridResolution; ++j)
-        {
-            gsMatrix<> uvLine(2, gridResolution + 1);
-            real_t v = j / (real_t)gridResolution;
-            for (int i = 0; i <= gridResolution; ++i)
-            {
-                uvLine(0, i) = i / (real_t)gridResolution;
-                uvLine(1, i) = v;
-            }
-            gsMatrix<> xyLine = mp.patch(patch).eval(uvLine);
-            for (int i = 0; i <= gridResolution; ++i)
-            {
-                meshOut << xyLine(0, i) << " " << xyLine(1, i) << " " << patch << " v\n";
-            }
-            meshOut << "\n";
-        }
+        writeLine(patch, false, 0.0);  // v = 0
+        writeLine(patch, false, 1.0);  // v = 1
+        for (int j = 1; j < gridResolution; ++j)
+            writeLine(patch, false, j / (real_t)gridResolution);
     }
     
     meshOut.close();
@@ -5314,31 +5311,10 @@ void evaluateGeometryAtPoints(
                 uv,
                 true);
 
-            // Visualization-only seam guard: when sampling exactly on a known
-            // interface side, export the original geometric boundary position.
-            // This avoids plotting artificial C0 seams in exported line meshes.
-            if (g_geometryPreflight.valid)
-            {
-                bool onKnownInterface = false;
-                for (size_t iface = 0; iface < g_geometryPreflight.interfaces.size(); ++iface)
-                {
-                    const GeometryPreflightInterfaceInfo& info = g_geometryPreflight.interfaces[iface];
-                    index_t peerPatch = -1;
-                    gsVector<real_t> peerUv(2);
-                    if (tryMapPeerUv(info, evalPatch, uv, peerPatch, peerUv))
-                    {
-                        onKnownInterface = true;
-                        break;
-                    }
-                }
-
-                if (onKnownInterface)
-                {
-                    const gsMatrix<real_t> xyOrig = mp.patch(evalPatch).eval(uv);
-                    if (xyOrig.rows() == xFit.size() && xyOrig.cols() > 0)
-                        xFit = xyOrig.col(0);
-                }
-            }
+            // Seam guard removed: mixing original geometry at interface endpoints
+            // with fitted geometry at interior points caused kinks up to 120 degrees
+            // (the endpoint snaps to original, the adjacent interior point is at the
+            // fitted position — a jump proportional to the global fitting error ~0.028).
 
             const bool hasNaN = !isFiniteVec(xFit);
 
@@ -18467,7 +18443,7 @@ AlgorithmResult unrefinementAlgorithmHBJ(
     const gsMatrix<real_t>* originalCoefficients = nullptr;
     {
         auto _tPFM0 = std::chrono::system_clock::now();
-        generateOriginalGeometryMesh(*mp, 8, filePrefix + "output_mesh_original");
+        generateOriginalGeometryMesh(*mp, 16, filePrefix + "output_mesh_original");
         t_pf_mesh = std::chrono::duration<double>(std::chrono::system_clock::now() - _tPFM0).count();
 
         auto _tPFC0 = std::chrono::system_clock::now();
