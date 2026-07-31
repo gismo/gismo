@@ -14,13 +14,9 @@
 
 #include <algorithm>
 #include <cmath>
-#include <fstream>
 #include <gismo.h>
 #include <iomanip>
 #include <iostream>
-#include <map>
-#include <numeric>
-#include <set>
 #include <vector>
 
 #include <gsModeling/gsAsG1Basis.hpp>
