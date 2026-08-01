@@ -21,12 +21,12 @@ else()
 
 if(POLICY CMP0048)# CMake 3.0
 cmake_policy(SET CMP0011 NEW)
-cmake_policy(SET CMP0042 OLD)
-cmake_policy(SET CMP0048 OLD)
+cmake_policy(SET CMP0042 NEW)
+cmake_policy(SET CMP0048 NEW)
 endif()
 
 if(POLICY CMP0043)# CMake 3.1
-cmake_policy(SET CMP0043 OLD)
+cmake_policy(SET CMP0043 NEW)
 endif()
 
 project(THBSplines CXX RC)
