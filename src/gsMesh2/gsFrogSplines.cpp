@@ -46,6 +46,54 @@
 namespace gismo
 {
 
+namespace // anonymous namespace for helper functions
+{
+    /// Estimate condition number of a sparse matrix using power iteration
+    real_t estimate_condition_number(const gsSparseMatrix<>& matrix)
+    {
+        const index_t n = matrix.rows();
+        const index_t max_iter = 50;
+        const real_t tol = 1e-6;
+        
+        // Estimate largest singular value via power iteration on A^T*A
+        gsMatrix<> v_max = gsMatrix<>::Random(n, 1);
+        v_max.normalize();
+        real_t sigma_max_sq = 0;
+        for (index_t iter = 0; iter < max_iter; ++iter)
+        {
+            gsMatrix<> w = matrix * v_max;
+            gsMatrix<> v_new = matrix.transpose() * w;
+            sigma_max_sq = v_new.norm();
+            v_new.normalize();
+            if ((v_new - v_max).norm() < tol)
+                break;
+            v_max = v_new;
+        }
+        real_t sigma_max = std::sqrt(sigma_max_sq);
+        
+        // Estimate smallest singular value via inverse iteration
+        gsSparseSolver<real_t>::LU solver_ata;
+        gsSparseMatrix<> ata = matrix.transpose() * matrix;
+        solver_ata.compute(ata);
+        
+        gsMatrix<> v_min = gsMatrix<>::Random(n, 1);
+        v_min.normalize();
+        real_t sigma_min_sq = 0;
+        for (index_t iter = 0; iter < max_iter; ++iter)
+        {
+            gsMatrix<> v_new = solver_ata.solve(v_min);
+            sigma_min_sq = v_min.dot(v_new);
+            v_new.normalize();
+            if ((v_new - v_min).norm() < tol)
+                break;
+            v_min = v_new;
+        }
+        real_t sigma_min = 1.0 / std::sqrt(sigma_min_sq);
+        
+        return sigma_max / sigma_min;
+    }
+} // anonymous namespace
+
 template <size_t N>
 void gsFrogSplines<N>::initialize_data(std::string filepath, size_t D)
 {
@@ -557,7 +605,8 @@ template <size_t N> gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
     gsMultiPatch<> multi_patch;
     gsMultiBasis<> multi_basis;
     gsMappedBasis<2> mapped_basis;
-    this->c1_basis(multi_patch, multi_basis, mapped_basis);
+    gsSparseMatrix<> constraint_matrix_dummy;
+    this->c1_basis(multi_patch, multi_basis, mapped_basis, constraint_matrix_dummy);
 
     // Use CGDiagonal instead of the default SimplicialLDLT direct solver.
     // At fine refinements, SimplicialLDLT produces huge fill-in for systems
@@ -680,7 +729,8 @@ void gsFrogSplines<N>::fit_function(gsFunctionExpr<real_t> function)
     gsMultiPatch<> multi_patch;
     gsMultiBasis<> multi_basis;
     gsMappedBasis<2> mapped_basis;
-    this->c1_basis(multi_patch, multi_basis, mapped_basis);
+    gsSparseMatrix<> constraint_matrix;
+    this->c1_basis(multi_patch, multi_basis, mapped_basis, constraint_matrix);
 
     // Use the expression assembler to build a system
     gsExprAssembler<real_t> A(1, 1);
@@ -695,10 +745,43 @@ void gsFrogSplines<N>::fit_function(gsFunctionExpr<real_t> function)
     // Equation: Int(v * u) = Int(v * f) e.g. u = f
     A.assemble(u * u.tr(), u * ff);
 
-    // Solve this system
+    // Build augmented system with Lagrange multipliers for constraints
+    const index_t n = A.matrix().rows();
+    const index_t m = constraint_matrix.rows();
+
+    gsSparseMatrix<> aug_matrix(n + m, n + m);
+    {
+        gsSparseEntries<> entries;
+        
+        // A block
+        for (int k = 0; k < A.matrix().outerSize(); ++k)
+            for (typename gsSparseMatrix<>::InnerIterator it(A.matrix(), k); it; ++it)
+                entries.add(it.row(), it.col(), it.value());
+        
+        // constraint_matrix and constraint_matrix^T blocks
+        for (int k = 0; k < constraint_matrix.outerSize(); ++k)
+            for (typename gsSparseMatrix<>::InnerIterator it(constraint_matrix, k); it; ++it)
+            {
+                entries.add(it.col(), n + it.row(), it.value());
+                entries.add(n + it.row(), it.col(), it.value());
+            }
+        
+        aug_matrix.setFrom(entries);
+        aug_matrix.makeCompressed();
+    }
+
+    real_t cond_number = estimate_condition_number(aug_matrix);
+    gsInfo << "Augmented system size: " << n + m << " x " << n + m 
+           << ", condition number estimate: " << cond_number << "\n";
+
+    gsMatrix<> aug_rhs(n + m, A.rhs().cols());
+    aug_rhs.topRows(n) = A.rhs();
+    aug_rhs.bottomRows(m).setZero();
+
+    // Solve augmented system
     gsSparseSolver<real_t>::LU solver;
-    solver.compute(A.matrix());
-    gsMatrix<> coefficients = solver.solve(A.rhs());
+    solver.compute(aug_matrix);
+    gsMatrix<> coefficients = solver.solve(aug_rhs).topRows(n);
     auto solution = A.getSolution(u, coefficients);
 
     // Extract the solution into a gsMappedSpline, then export to patches.
@@ -725,7 +808,8 @@ void gsFrogSplines<N>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
     gsMultiPatch<> multi_patch;
     gsMultiBasis<> multi_basis;
     gsMappedBasis<2> mapped_basis;
-    this->c1_basis(multi_patch, multi_basis, mapped_basis);
+    gsSparseMatrix<> constraint_matrix;
+    this->c1_basis(multi_patch, multi_basis, mapped_basis, constraint_matrix);
 
     // Set up the expression assembler.
     gsExprAssembler<> A(1, 1);
@@ -756,10 +840,43 @@ void gsFrogSplines<N>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
         u * ff * meas(G)                          // $\int f \cdot v d\Gamma$
     );
 
-    // Solver and stuff
+    // Build augmented system with Lagrange multipliers for constraints
+    const index_t n = A.matrix().rows();
+    const index_t m = constraint_matrix.rows();
+
+    gsSparseMatrix<> aug_matrix(n + m, n + m);
+    {
+        gsSparseEntries<> entries;
+        
+        // A block
+        for (int k = 0; k < A.matrix().outerSize(); ++k)
+            for (typename gsSparseMatrix<>::InnerIterator it(A.matrix(), k); it; ++it)
+                entries.add(it.row(), it.col(), it.value());
+        
+        // constraint_matrix and constraint_matrix^T blocks
+        for (int k = 0; k < constraint_matrix.outerSize(); ++k)
+            for (typename gsSparseMatrix<>::InnerIterator it(constraint_matrix, k); it; ++it)
+            {
+                entries.add(it.col(), n + it.row(), it.value());
+                entries.add(n + it.row(), it.col(), it.value());
+            }
+        
+        aug_matrix.setFrom(entries);
+        aug_matrix.makeCompressed();
+    }
+
+    real_t cond_number = estimate_condition_number(aug_matrix);
+    gsInfo << "Augmented system size: " << n + m << " x " << n + m 
+           << ", condition number estimate: " << cond_number << "\n";
+
+    gsMatrix<> aug_rhs(n + m, A.rhs().cols());
+    aug_rhs.topRows(n) = A.rhs();
+    aug_rhs.bottomRows(m).setZero();
+
+    // Solve augmented system
     gsSparseSolver<>::CGDiagonal solver;
-    solver.compute(A.matrix());
-    gsMatrix<> solVector = solver.solve(A.rhs());
+    solver.compute(aug_matrix);
+    gsMatrix<> solVector = solver.solve(aug_rhs).topRows(n);
     auto solution = A.getSolution(u, solVector);
 
     // Extract the solution into a gsMappedSpline, then export to patches.
@@ -783,7 +900,8 @@ void gsFrogSplines<N>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
 template <size_t N>
 void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
                                 gsMultiBasis<>& multi_basis,
-                                gsMappedBasis<2>& mapped_basis)
+                                gsMappedBasis<2>& mapped_basis,
+                                gsSparseMatrix<>& constraint_matrix)
 {
     auto& mesh = *m_mesh;
 
@@ -849,6 +967,9 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
     // handled[ldof] becomes true once a mapping has been assigned.
     std::vector<bool> handled(nLocalDofs, false);
 
+    // Track constraints for each EV: (ev_dof_start, constraint_matrix)
+    std::vector<std::pair<index_t, gsMatrix<>>> ev_constraint_list;
+
     // ================================================================
     // Phase 1 — EV vertices
     //
@@ -912,10 +1033,22 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
         auto fitting_fcts = fd.getAll<gsMultiPatch<real_t>>();
         const size_t function_count = fitting_fcts.size();
 
+        // Load constraints for this valence.
+        gsFileData<real_t> fd_constraints(m_options.getString("frog_dir") + 
+                                          "Val" + std::to_string(valence) + 
+                                          "Constraints.xml");
+        gsMatrix<> ev_constraints;
+        if (fd_constraints.has<gsMatrix<>>())
+            ev_constraints = *fd_constraints.getFirst<gsMatrix<>>();
+
         // Reserve contiguous global DOFs for this EV according to the number of
         // frog functions.
         const index_t ev_dof_start = global_dof_count;
         global_dof_count += (index_t)function_count;
+
+        // Store constraint info for this EV.
+        if (ev_constraints.rows() > 0)
+            ev_constraint_list.push_back({ev_dof_start, ev_constraints});
 
         for (size_t p = 0; p < patches_count; ++p)
         {
@@ -1226,6 +1359,35 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
     }
     mapper_mat.makeCompressed();
     mapped_basis.init(multi_basis, mapper_mat);
+
+    // ================================================================
+    // Assemble the constraint matrix (nConstraints x nGlobalDofs).
+    // ================================================================
+    index_t total_constraints = 0;
+    for (const auto& ev_constraint : ev_constraint_list)
+        total_constraints += ev_constraint.second.rows();
+
+    constraint_matrix = gsSparseMatrix<>(total_constraints, global_dof_count);
+    {
+        gsSparseEntries<> entries;
+
+        index_t constraint_row = 0;
+        for (const auto& ev_constraint : ev_constraint_list)
+        {
+            for (index_t i = 0; i < ev_constraint.second.rows(); ++i)
+            {
+                for (index_t j = 0; j < ev_constraint.second.cols(); ++j)
+                    entries.add(constraint_row, ev_constraint.first+ j, ev_constraint.second(i, j));
+                ++constraint_row;
+            }
+        }
+
+        constraint_matrix.setFrom(entries);
+        constraint_matrix.makeCompressed();
+    }
+
+    gsInfo << "Loaded " << total_constraints << " constraints from " 
+           << ev_constraint_list.size() << " EVs\n";
 }
 
 template <size_t N>

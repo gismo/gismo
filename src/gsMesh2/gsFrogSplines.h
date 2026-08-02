@@ -391,8 +391,11 @@ public: // Basises
     /// multi_patch.
     /// \param mapped_basis Output mapped basis that encodes the \f$C^1\f$
     /// coupling relations.
+    /// \param constraint_matrix Output sparse matrix encoding linear
+    /// constraints on global DOFs near extraordinary vertices.
     void c1_basis(gsMultiPatch<>& multi_patch, gsMultiBasis<>& multi_basis,
-                  gsMappedBasis<2>& mapped_basis);
+                  gsMappedBasis<2>& mapped_basis,
+                  gsSparseMatrix<>& constraint_matrix);
 
 public: // errors & output
     /// \brief Computes the approximation error of the patch patches against
