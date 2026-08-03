@@ -113,7 +113,7 @@ real_t estimate_condition_number(const gsSparseMatrix<>& matrix)
             // v_min lies (numerically) in the null space of matrix.
             return std::numeric_limits<real_t>::infinity();
 
-        sigma_min_sq = v_min.dot(x); 
+        sigma_min_sq = v_min.dot(x);
         x /= x_norm;
         const bool converged = (x - v_min).norm() < tol;
         v_min = x;
@@ -641,9 +641,7 @@ template <size_t N> gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
     gsMultiPatch<> multi_patch;
     gsMultiBasis<> multi_basis;
     gsMappedBasis<2> mapped_basis;
-    gsSparseMatrix<> constraint_matrix_dummy;
-    this->c1_basis(multi_patch, multi_basis, mapped_basis,
-                   constraint_matrix_dummy);
+    this->c1_basis(multi_patch, multi_basis, mapped_basis);
 
     // Use CGDiagonal instead of the default SimplicialLDLT direct solver.
     // At fine refinements, SimplicialLDLT produces huge fill-in for systems
@@ -766,8 +764,7 @@ void gsFrogSplines<N>::fit_function(gsFunctionExpr<real_t> function)
     gsMultiPatch<> multi_patch;
     gsMultiBasis<> multi_basis;
     gsMappedBasis<2> mapped_basis;
-    gsSparseMatrix<> constraint_matrix;
-    this->c1_basis(multi_patch, multi_basis, mapped_basis, constraint_matrix);
+    this->c1_basis(multi_patch, multi_basis, mapped_basis, false);
 
     // Use the expression assembler to build a system
     gsExprAssembler<real_t> A(1, 1);
@@ -782,46 +779,14 @@ void gsFrogSplines<N>::fit_function(gsFunctionExpr<real_t> function)
     // Equation: Int(v * u) = Int(v * f) e.g. u = f
     A.assemble(u * u.tr(), u * ff);
 
-    // Build augmented system with Lagrange multipliers for constraints
-    const index_t n = A.matrix().rows();
-    const index_t m = constraint_matrix.rows();
 
-    gsSparseMatrix<> aug_matrix(n + m, n + m);
-    {
-        gsSparseEntries<> entries;
-
-        // A block
-        for (int k = 0; k < A.matrix().outerSize(); ++k)
-            for (typename gsSparseMatrix<>::InnerIterator it(A.matrix(), k); it;
-                 ++it)
-                entries.add(it.row(), it.col(), it.value());
-
-        // constraint_matrix and constraint_matrix^T blocks
-        for (int k = 0; k < constraint_matrix.outerSize(); ++k)
-            for (typename gsSparseMatrix<>::InnerIterator it(constraint_matrix,
-                                                             k);
-                 it; ++it)
-            {
-                entries.add(it.col(), n + it.row(), it.value());
-                entries.add(n + it.row(), it.col(), it.value());
-            }
-
-        aug_matrix.setFrom(entries);
-        aug_matrix.makeCompressed();
-    }
-
-    real_t cond_number = estimate_condition_number(aug_matrix);
-    gsInfo << "Augmented system size: " << n + m << " x " << n + m
-           << ", condition number estimate: " << cond_number << "\n";
-
-    gsMatrix<> aug_rhs(n + m, A.rhs().cols());
-    aug_rhs.topRows(n) = A.rhs();
-    aug_rhs.bottomRows(m).setZero();
+    real_t cond_number = estimate_condition_number(A.matrix());
+    gsInfo << "Condition number estimate: " << cond_number << "\n";
 
     // Solve augmented system
     gsSparseSolver<real_t>::LU solver;
-    solver.compute(aug_matrix);
-    gsMatrix<> coefficients = solver.solve(aug_rhs).topRows(n);
+    solver.compute(A.matrix());
+    gsMatrix<> coefficients = solver.solve(A.rhs());
     auto solution = A.getSolution(u, coefficients);
 
     // Extract the solution into a gsMappedSpline, then export to patches.
@@ -848,8 +813,7 @@ void gsFrogSplines<N>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
     gsMultiPatch<> multi_patch;
     gsMultiBasis<> multi_basis;
     gsMappedBasis<2> mapped_basis;
-    gsSparseMatrix<> constraint_matrix;
-    this->c1_basis(multi_patch, multi_basis, mapped_basis, constraint_matrix);
+    this->c1_basis(multi_patch, multi_basis, mapped_basis, false);
 
     // Set up the expression assembler.
     gsExprAssembler<> A(1, 1);
@@ -881,45 +845,13 @@ void gsFrogSplines<N>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
     );
 
     // Build augmented system with Lagrange multipliers for constraints
-    const index_t n = A.matrix().rows();
-    const index_t m = constraint_matrix.rows();
-
-    gsSparseMatrix<> aug_matrix(n + m, n + m);
-    {
-        gsSparseEntries<> entries;
-
-        // A block
-        for (int k = 0; k < A.matrix().outerSize(); ++k)
-            for (typename gsSparseMatrix<>::InnerIterator it(A.matrix(), k); it;
-                 ++it)
-                entries.add(it.row(), it.col(), it.value());
-
-        // constraint_matrix and constraint_matrix^T blocks
-        for (int k = 0; k < constraint_matrix.outerSize(); ++k)
-            for (typename gsSparseMatrix<>::InnerIterator it(constraint_matrix,
-                                                             k);
-                 it; ++it)
-            {
-                entries.add(it.col(), n + it.row(), it.value());
-                entries.add(n + it.row(), it.col(), it.value());
-            }
-
-        aug_matrix.setFrom(entries);
-        aug_matrix.makeCompressed();
-    }
-
-    real_t cond_number = estimate_condition_number(aug_matrix);
-    gsInfo << "Augmented system size: " << n + m << " x " << n + m
-           << ", condition number estimate: " << cond_number << "\n";
-
-    gsMatrix<> aug_rhs(n + m, A.rhs().cols());
-    aug_rhs.topRows(n) = A.rhs();
-    aug_rhs.bottomRows(m).setZero();
+    real_t cond_number = estimate_condition_number(A.matrix());
+    gsInfo << "Condition number estimate: " << cond_number << "\n";
 
     // Solve augmented system
-    gsSparseSolver<>::CGDiagonal solver;
-    solver.compute(aug_matrix);
-    gsMatrix<> solVector = solver.solve(aug_rhs).topRows(n);
+    gsSparseSolver<>::LU solver;
+    solver.compute(A.matrix());
+    gsMatrix<> solVector = solver.solve(A.rhs());
     auto solution = A.getSolution(u, solVector);
 
     // Extract the solution into a gsMappedSpline, then export to patches.
@@ -944,7 +876,7 @@ template <size_t N>
 void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
                                 gsMultiBasis<>& multi_basis,
                                 gsMappedBasis<2>& mapped_basis,
-                                gsSparseMatrix<>& constraint_matrix)
+                                bool use_generating_system)
 {
     auto& mesh = *m_mesh;
 
@@ -1010,9 +942,6 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
     // handled[ldof] becomes true once a mapping has been assigned.
     std::vector<bool> handled(nLocalDofs, false);
 
-    // Track constraints for each EV: (ev_dof_start, constraint_matrix)
-    std::vector<std::pair<index_t, gsMatrix<>>> ev_constraint_list;
-
     // ================================================================
     // Phase 1 — EV vertices
     //
@@ -1074,24 +1003,94 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
         gsFileData<real_t> fd(m_options.getString("frog_dir") + "Val" +
                               std::to_string(valence) + "Fcts.xml");
         auto fitting_fcts = fd.getAll<gsMultiPatch<real_t>>();
-        const size_t function_count = fitting_fcts.size();
+        const size_t total_function_count = fitting_fcts.size();
 
-        // Load constraints for this valence.
-        gsFileData<real_t> fd_constraints(m_options.getString("frog_dir") +
-                                          "Val" + std::to_string(valence) +
-                                          "Constraints.xml");
-        gsMatrix<> ev_constraints;
-        if (fd_constraints.has<gsMatrix<>>())
-            ev_constraints = *fd_constraints.getFirst<gsMatrix<>>();
+        // Determine which functions to use based on use_generating_system parameter
+        std::vector<size_t> active_functions;
+        size_t function_count = total_function_count;
+        
+        if (!use_generating_system)
+        {
+            // Build coefficient matrix: rows = control points in support, 
+            // columns = fitting functions
+            std::vector<std::vector<real_t>> coeff_rows;
+            
+            for (size_t p = 0; p < patches_count; ++p)
+            {
+                for (size_t ux = 0; ux < N; ++ux)
+                {
+                    for (size_t vx = 0; vx < N; ++vx)
+                    {
+                        // Check if any fitting function is non-zero here
+                        bool in_support = std::any_of(
+                            fitting_fcts.begin(), fitting_fcts.end(),
+                            [&](const auto& ff)
+                            {
+                                return ff->patch(p).coef((index_t)(ux * N + vx), 2) 
+                                       != real_t(0);
+                            });
+                        
+                        if (in_support)
+                        {
+                            std::vector<real_t> row;
+                            for (size_t j = 0; j < total_function_count; ++j)
+                            {
+                                row.push_back(fitting_fcts[j]->patch(p).coef(
+                                    (index_t)(ux * N + vx), 2));
+                            }
+                            coeff_rows.push_back(row);
+                        }
+                    }
+                }
+            }
+            
+            // Perform column-pivoted QR decomposition to identify linearly independent columns
+            const index_t nRows = (index_t)coeff_rows.size();
+            const index_t nCols = (index_t)total_function_count;
+            
+            if (nRows > 0 && nCols > 0)
+            {
+                gsMatrix<> A(nRows, nCols);
+                for (index_t i = 0; i < nRows; ++i)
+                    for (index_t j = 0; j < nCols; ++j)
+                        A(i, j) = coeff_rows[i][j];
+                
+                // Use ColPivHouseholderQR to find rank and independent columns
+                gsEigen::ColPivHouseholderQR<gsMatrix<>> qr(A);
+                qr.setThreshold(1e-10);
+                const index_t rank = qr.rank();
+                
+                // Get the permutation to identify independent columns
+                const auto& perm = qr.colsPermutation();
+                
+                // The first 'rank' columns after permutation are independent
+                active_functions.reserve(rank);
+                for (index_t i = 0; i < rank; ++i)
+                {
+                    active_functions.push_back(perm.indices()(i));
+                }
+                
+                // Sort to maintain original order where possible
+                std::sort(active_functions.begin(), active_functions.end());
+                function_count = active_functions.size();
+                
+                gsInfo << "EV at vertex " << v.idx() << " (valence " << valence 
+                       << "): Using " << function_count << " of " 
+                       << total_function_count << " functions (rank=" << rank << ")\n";
+            }
+        }
+        else
+        {
+            // Use all functions (generating system)
+            active_functions.resize(total_function_count);
+            for (size_t i = 0; i < total_function_count; ++i)
+                active_functions[i] = i;
+        }
 
         // Reserve contiguous global DOFs for this EV according to the number of
-        // frog functions.
+        // active frog functions.
         const index_t ev_dof_start = global_dof_count;
         global_dof_count += (index_t)function_count;
-
-        // Store constraint info for this EV.
-        if (ev_constraints.rows() > 0)
-            ev_constraint_list.push_back({ev_dof_start, ev_constraints});
 
         for (size_t p = 0; p < patches_count; ++p)
         {
@@ -1123,7 +1122,8 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
                         // (the A_control row) to the EV global DOFs.
                         for (size_t j = 0; j < function_count; ++j)
                         {
-                            const real_t coeff = fitting_fcts[j]->patch(p).coef(
+                            const size_t orig_func_idx = active_functions[j];
+                            const real_t coeff = fitting_fcts[orig_func_idx]->patch(p).coef(
                                 (index_t)(ux * N + vx), 2);
                             if (coeff != real_t(0))
                                 pre_mapper[ldof][ev_dof_start + j] = coeff;
@@ -1402,36 +1402,6 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
     }
     mapper_mat.makeCompressed();
     mapped_basis.init(multi_basis, mapper_mat);
-
-    // ================================================================
-    // Assemble the constraint matrix (nConstraints x nGlobalDofs).
-    // ================================================================
-    index_t total_constraints = 0;
-    for (const auto& ev_constraint : ev_constraint_list)
-        total_constraints += ev_constraint.second.rows();
-
-    constraint_matrix = gsSparseMatrix<>(total_constraints, global_dof_count);
-    {
-        gsSparseEntries<> entries;
-
-        index_t constraint_row = 0;
-        for (const auto& ev_constraint : ev_constraint_list)
-        {
-            for (index_t i = 0; i < ev_constraint.second.rows(); ++i)
-            {
-                for (index_t j = 0; j < ev_constraint.second.cols(); ++j)
-                    entries.add(constraint_row, ev_constraint.first + j,
-                                ev_constraint.second(i, j));
-                ++constraint_row;
-            }
-        }
-
-        constraint_matrix.setFrom(entries);
-        constraint_matrix.makeCompressed();
-    }
-
-    gsInfo << "Loaded " << total_constraints << " constraints from "
-           << ev_constraint_list.size() << " EVs\n";
 }
 
 template <size_t N>

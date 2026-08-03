@@ -393,9 +393,11 @@ public: // Basises
     /// coupling relations.
     /// \param constraint_matrix Output sparse matrix encoding linear
     /// constraints on global DOFs near extraordinary vertices.
+    /// \param use_generating_system If true (default), use all fitting functions
+    /// including linearly dependent ones near EVs (generating system). If false,
+    /// remove linearly dependent functions to obtain a proper basis.
     void c1_basis(gsMultiPatch<>& multi_patch, gsMultiBasis<>& multi_basis,
-                  gsMappedBasis<2>& mapped_basis,
-                  gsSparseMatrix<>& constraint_matrix);
+                  gsMappedBasis<2>& mapped_basis, bool use_generating_system = true);
 
 public: // errors & output
     /// \brief Computes the approximation error of the patch patches against
