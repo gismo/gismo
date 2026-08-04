@@ -334,7 +334,9 @@ public: // Fitters
     ///
     /// \param function A real-valued function of the current geometric
     ///                 coordinates.
-    void fit_function(gsFunctionExpr<> function);
+    ///
+    /// \return the condition number of the fit
+    real_t fit_function(gsFunctionExpr<> function);
 
     /// \brief Solves the Laplace-Beltrami problem on the mesh.
     ///
@@ -345,7 +347,9 @@ public: // Fitters
     /// mapping to impose patch-coupling or smoothness constraints.
     ///
     /// \param rhs The right hand side function.
-    void laplace_beltrami(gsFunctionExpr<> rhs);
+    ///
+    /// \return the condition number of the fit
+    real_t laplace_beltrami(gsFunctionExpr<> rhs);
 
 public: // Basises
     /// \brief Builds the mapped \f$C^1\f$ basis used by smoothing and PDE

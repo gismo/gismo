@@ -759,7 +759,7 @@ template <size_t N> gsMatrix<real_t> gsFrogSplines<N>::smooth(size_t degree)
 }
 
 template <size_t N>
-void gsFrogSplines<N>::fit_function(gsFunctionExpr<real_t> function)
+real_t gsFrogSplines<N>::fit_function(gsFunctionExpr<real_t> function)
 {
     gsMultiPatch<> multi_patch;
     gsMultiBasis<> multi_basis;
@@ -805,10 +805,12 @@ void gsFrogSplines<N>::fit_function(gsFunctionExpr<real_t> function)
     }
 
     D++;
+
+    return cond_number;
 }
 
 template <size_t N>
-void gsFrogSplines<N>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
+real_t gsFrogSplines<N>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
 {
     gsMultiPatch<> multi_patch;
     gsMultiBasis<> multi_basis;
@@ -870,6 +872,8 @@ void gsFrogSplines<N>::laplace_beltrami(gsFunctionExpr<real_t> rhs)
     }
 
     D++;
+
+    return cond_number;
 }
 
 template <size_t N>

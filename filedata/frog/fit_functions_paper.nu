@@ -1,0 +1,10 @@
+# A nushell script that run the frog_fitfunc binary for a number of different function, fitting them for error analysis.
+./bin/frog_fitfunc --paraview --cnet --valence 3 --steps 5 --frogdir "frog/lagrange/" --function "(x^2 - y^2)/4" --errors "errors/quadratic3.csv" --condition "errors/cond_quadratic3.csv"
+./bin/frog_fitfunc --paraview --cnet --valence 5 --steps 5 --frogdir "frog/lagrange/" --function "(x^2 - y^2)/4" --errors "errors/quadratic5.csv" --condition "errors/cond_quadratic5.csv"
+./bin/frog_fitfunc --paraview --cnet --valence 6 --steps 5 --frogdir "frog/lagrange/" --function "(x^2 - y^2)/4" --errors "errors/quadratic6.csv" --condition "errors/cond_quadratic6.csv"
+./bin/frog_fitfunc --paraview --cnet --valence 3 --steps 5 --frogdir "frog/lagrange/" --function "(x^3 - y^3)/16" --errors "errors/cubic3.csv" --condition "errors/cond_cubic3.csv"
+./bin/frog_fitfunc --paraview --cnet --valence 5 --steps 5 --frogdir "frog/lagrange/" --function "(x^3 - y^3)/16" --errors "errors/cubic5.csv" --condition "errors/cond_cubic5.csv"
+./bin/frog_fitfunc --paraview --cnet --valence 6 --steps 5 --frogdir "frog/lagrange/" --function "(x^3 - y^3)/16" --errors "errors/cubic6.csv" --condition "errors/cond_cubic6.csv"
+./bin/frog_fitfunc --paraview --cnet --valence 3 --steps 5 --frogdir "frog/lagrange/" --function "sin(x) * cos(y)" --errors "errors/trig3.csv" --condition "errors/cond_trig3.csv"
+./bin/frog_fitfunc --paraview --cnet --valence 5 --steps 5 --frogdir "frog/lagrange/" --function "sin(x) * cos(y)" --errors "errors/trig5.csv" --condition "errors/cond_trig5.csv"
+./bin/frog_fitfunc --paraview --cnet --valence 6 --steps 5 --frogdir "frog/lagrange/" --function "sin(x) * cos(y)" --errors "errors/trig6.csv" --condition "errors/cond_trig6.csv"

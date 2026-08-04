@@ -42,6 +42,8 @@
     - \b -e / \b --errors: if set to a file path, writes the \f$L^\infty\f$
       and \f$L^2\f$ error column vectors to the specified file and outputs
       the error as a paraview patch (if \b --paraview is set).
+    - \b -c / \b --condition: if set to a file path, writes the condition
+   numbers of the fit to the specified file.
     - \b --weighted: if set, weights the least-squares fit around
       extraordinary vertices using a per-sample weight vector loaded from \c
       filedata/frog/val\<v\>_weights.xml.
@@ -77,6 +79,7 @@ int main(int argc, char** argv)
     bool weighted_fit(false);
     bool paraview(false);
     std::string error_path("");
+    std::string condition_path("");
 
     // Inputs
     gsCmdLine cmd("Frog subdivision");
@@ -106,6 +109,9 @@ int main(int argc, char** argv)
                   "outputs the error as a "
                   "paraview patch.",
                   error_path);
+    cmd.addString("c", "condition",
+                  "Writes a condition numbers to a file at the given path.",
+                  condition_path);
     cmd.addSwitch("opt",
                   "During smoothing, selects EV coefficient representatives by "
                   "minimizing the diff functional instead of using "
@@ -140,6 +146,7 @@ int main(int argc, char** argv)
     gsFunctionExpr<real_t> func(function, 2);
 
     gsMatrix<real_t> errors(2, steps);
+    gsMatrix<real_t> condition_numbers(1, steps);
 
     // Single .pvd collection for all steps.
     gsParaviewCollection collection("results/function_fit");
@@ -153,10 +160,13 @@ int main(int argc, char** argv)
         {
             subdiv.subdivide();
         }
-        subdiv.fit_function(func);
+        real_t condition_number = subdiv.fit_function(func);
 
         if (!error_path.empty())
             errors.col(i) = subdiv.error(func, samples);
+
+        if (!condition_path.empty())
+            condition_numbers(0, i) = condition_number;
 
         if (paraview)
         {
@@ -214,6 +224,9 @@ int main(int argc, char** argv)
     // work!
     if (!error_path.empty())
         gsWriteCsv(error_path, errors);
+
+    if (!condition_path.empty())
+        gsWriteCsv(condition_path, condition_numbers);
 
     return 0;
 }

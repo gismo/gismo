@@ -13,9 +13,10 @@
     solution replaces the last coordinate of each patch.
 
     If the exact solution \f$u^*\f$ is known and supplied at ID 2 of the
-    input XML file, the \f$L^\infty\f$ and \f$L^2\f$ approximation errors
-    between the computed solution and \f$u^*\f$ are printed for every
-    refinement level and written as a matrix to \c errors.csv.
+    input XML file and a path for the error file is supplied, the \f$L^\infty\f$
+   and \f$L^2\f$ approximation errors between the computed solution and
+   \f$u^*\f$ are printed for every refinement level and written as a matrix to
+   the error path.
 
     Optionally, each refinement level can also be exported to Paraview (\c .vts
     surface patches, \c .pvd collection, and – if an exact solution is given –
@@ -58,6 +59,11 @@
     - \b --cnet: if set (together with \b --paraview), also writes the Bézier
       control net.
       WARNING: Currently unusable due to a gismo bug.
+    - \b -e / \b --errors: if set to a file path, writes the \f$L^\infty\f$
+      and \f$L^2\f$ error column vectors to the specified file and outputs
+      the error as a paraview patch (if \b --paraview is set).
+    - \b -c / \b --condition: if set to a file path, writes the condition
+   numbers of the fit to the specified file.
 
     Author(s): L. Mussmaecher
 */
@@ -88,6 +94,8 @@ int main(int argc, char** argv)
     index_t steps(2);
     bool control_net(false);
     bool paraview(false);
+    std::string error_path("");
+    std::string condition_path("");
 
     gsCmdLine cmd("Frog subdivision: Laplace-Beltrami PDE solver");
 
@@ -117,6 +125,14 @@ int main(int argc, char** argv)
     // Output modification
     cmd.addSwitch("paraview", "Outputs the results to Paraview.", paraview);
     cmd.addSwitch("cnet", "Shows the control net of the patches.", control_net);
+    cmd.addString("e", "errors",
+                  "Writes an error matrix to a file at the given path and "
+                  "outputs the error as a "
+                  "paraview patch.",
+                  error_path);
+    cmd.addString("c", "condition",
+                  "Writes a condition numbers to a file at the given path.",
+                  condition_path);
 
     try
     {
@@ -179,6 +195,7 @@ int main(int argc, char** argv)
     subdiv.options().setString("frog_dir", model_patch_path);
 
     gsMatrix<real_t> errors(2, steps);
+    gsMatrix<real_t> condition_numbers(1, steps);
 
     gsParaviewCollection collection("results/pde");
     gsParaviewCollection cnet_collection("results/pde_cnet");
@@ -195,9 +212,9 @@ int main(int argc, char** argv)
         // case of an OFF file.
         subdiv.scale(scale);
         subdiv.smooth(1);
-        subdiv.laplace_beltrami(rhs);
+        real_t condition_number = subdiv.laplace_beltrami(rhs);
 
-        if (has_exact)
+        if (has_exact && !error_path.empty())
         {
             errors.col(i) = subdiv.error(exact, 10);
 
@@ -209,6 +226,9 @@ int main(int argc, char** argv)
                                             &error_collection, i + 1);
             }
         }
+
+        if (!condition_path.empty())
+            condition_numbers(0, i) = condition_number;
 
         if (paraview)
         {
@@ -224,17 +244,19 @@ int main(int argc, char** argv)
     if (paraview)
     {
         collection.save();
-        if (has_exact)
+        if (has_exact && !error_path.empty())
             error_collection.save();
         if (control_net)
             cnet_collection.save();
     }
 
-    // The `build/errors/` directory needs to be manually created for this to work!
-    if (has_exact)
-        gsWriteCsv("errors/" + input_path.substr(input_path.find_last_of("/\\") + 1) +
-                       "_errors.csv",
-                   errors);
+    // The `build/errors/` directory needs to be manually created for this to
+    // work!
+    if (has_exact && !error_path.empty())
+        gsWriteCsv(error_path, errors);
+
+    if (!condition_path.empty())
+        gsWriteCsv(condition_path, condition_numbers);
 
     return 0;
 }
