@@ -163,6 +163,7 @@ int main(int argc, char *argv[]) {
       // ---- Build per-patch interface embeddings ----
       std::vector<gsArgyrisEmbedding<T>> argBasis;
       gsVector<index_t> patchDofSizes(mp.nPatches());
+      gsBlockSparseMatrix<T> argBasisGlobalCreator(mp.nPatches(), mp.nPatches());
       for (size_t i = 0; i < mp.nPatches(); ++i)
       {
         argBasis.push_back(deriveArgyrisBasisEmbedding(
@@ -172,59 +173,21 @@ int main(int argc, char *argv[]) {
             mp.patch(i)
         ));
         patchDofSizes[i] = argBasis[i].matrix.cols();
+        argBasisGlobalCreator.set(i,i,argBasis[i].matrix);
       }
+      gsSparseMatrix<T> argBasisGlobal = argBasisGlobalCreator;
 
       // ---- Set up gsDofMapper ----
       gsDofMapper mapper = makeMapperForArgyrisBasis(mp, argBasis, bc, cc);
 
-
-      // TODO: Derive inhomogenous boundary data (edges+vertex) properly
-      const index_t nFree = mapper.freeSize();
-      const index_t nBnd = mapper.boundarySize();
-
       // ---- Build global transformation matrices T_free and T_bnd ----
-      index_t nDisjointBSpline = 0;
-      for (size_t i = 0; i < mp.nPatches(); ++i)
-        nDisjointBSpline += argBasis[i].matrix.rows();
-
-      gsSparseEntries<T> tFreeEntries, tBndEntries, tGlobalEntries;
-      index_t rowOffset = 0;
-
-      for (size_t i = 0; i < mp.nPatches(); ++i) {
-        const gsSparseMatrix<T> &Ai =
-            argBasis[i].matrix; // size: nBSpline_i x nArg_i
-        const index_t patchSize = mapper.patchSize(i);
-
-        for (index_t j = 0; j < patchSize; ++j) {
-          bool isBnd = mapper.is_boundary(j, i);
-          index_t gIdx = isBnd ? mapper.bindex(j, i) : mapper.index(j, i);
-
-          for (typename gsSparseMatrix<T>::InnerIterator it(Ai, j); it; ++it) {
-            const index_t bsplineRow = rowOffset + it.row();
-            const T val = it.value();
-
-            if (isBnd) {
-              tBndEntries.add(bsplineRow, gIdx, val);
-              tGlobalEntries.add(bsplineRow, nFree + gIdx, val);
-            } else {
-              tFreeEntries.add(bsplineRow, gIdx, val);
-              tGlobalEntries.add(bsplineRow, gIdx, val);
-            }
-          }
-        }
-        rowOffset += Ai.rows();
-      }
-
-      gsSparseMatrix<T> T_free(nDisjointBSpline, nFree);
-      T_free.setFrom(tFreeEntries);
-
-      gsSparseMatrix<T> T_bnd(nDisjointBSpline, nBnd);
-      T_bnd.setFrom(tBndEntries);
-
-      gsSparseMatrix<T> T_global(nDisjointBSpline, nFree + nBnd);
-      T_global.setFrom(tGlobalEntries);
+      gsSparseMatrix<T> T_global = argBasisGlobal * asEmbeddingMatrix<T>(mapper.size(), mapper.asVector()).transpose();
+      const index_t nFree = mapper.freeSize(), nBnd = mapper.boundarySize();
+      gsSparseMatrix<T> T_free = T_global.leftCols(nFree);
+      gsSparseMatrix<T> T_bnd = T_global.rightCols(nBnd);
 
       // ---- Evaluate Dirichlet boundary values vector g_bnd ----
+      // TODO: Derive inhomogenous boundary data (edges+vertex) properly
       const std::string s_a = std::to_string(freqA);
       const std::string u_expr =
           "sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
