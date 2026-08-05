@@ -52,9 +52,12 @@ int main(int argc, char *argv[])
 
     gsInfo << "basis before refinement:\n" << thb << std::endl;
 
-    // Export the initial basis to paraview files
-    gsParaview<real_t> pv;
-    pv.write(thb, "thb0_init");
+    if (plot)
+    {
+        // Export the initial basis to paraview files
+        gsParaview<real_t> pv;
+        pv.write(thb, "thb0_init");
+    }
 
     //! [refViaStdVec]
     std::vector<index_t> box;
@@ -67,8 +70,11 @@ int main(int argc, char *argv[])
     thb.refineElements(box);
     //! [refViaStdVec]
 
-    // Export the refined basis to paraview files
-    pv.write(thb, "thb_refined_first");
+    if (plot)
+    {
+        // Export the refined basis to paraview files
+        pv.write(thb, "thb_refined_first");
+    }
     gsInfo << "after refinement," << std::endl;
 
     //! [stdOpsCout]
@@ -161,9 +167,6 @@ int main(int argc, char *argv[])
     gsInfo << "upper corners: " << std::endl << resUpperCorner << std::endl;
     //! [stdOpsHTensTree]
 
-
-
-
     // --------------- 2nd local refinement ---------------
     gsInfo << std::endl << std::endl;
 
@@ -180,7 +183,10 @@ int main(int argc, char *argv[])
     gsInfo << "after 2nd refinement, this basis is:\n" << thb << std::endl;
     //! [refViaStdVec2]
 
-    pv.write(thb, "thb_refined_second");
+    if (plot)
+    {
+        pv.write(thb, "thb_refined_second");
+    }
 
     boxSide side(1);
     gsMatrix<index_t> result = thb.boundaryOffset(1,0);
@@ -192,12 +198,46 @@ int main(int argc, char *argv[])
         gsInfo<<"Basis function index in corner "<<corner<<": "<<thb.functionAtCorner(corner)<<"\n";
     }
 
+    // --------------- Merge with another basis --------------------
+
+    // Create a second THB basis with different refinement pattern
+    gsTHBSplineBasis<2,real_t> thb2(tens);
+    box.clear();
+    box.push_back(1);     // level
+    box.push_back(0);     // lo_x (left side, different from thb)
+    box.push_back(4);     // lo_y (top side, different from thb)
+    box.push_back(4);     // up_x
+    box.push_back(8);     // up_y
+    thb2.refineElements(box);
+
+    gsInfo << "\nBefore merge:\n"
+           << "  thb:  " << thb.size() << " functions, maxLevel = " << thb.maxLevel() << "\n"
+           << "  thb2: " << thb2.size() << " functions, maxLevel = " << thb2.maxLevel() << "\n";
+
+    if (plot)
+    {
+        // Export before merge for visualization
+        gsWriteParaview(thb,  "thb_before_merge");
+        gsWriteParaview(thb2, "thb2_before_merge");
+    }
+
+    // Merge thb2 into thb (mesh union)
+    thb.merge(thb2);
+
+    gsInfo << "After merge:\n"
+           << "  merged: " << thb.size() << " functions, maxLevel = " << thb.maxLevel() << "\n";
+
+    if (plot)
+    {
+        gsWriteParaview(thb, "thb_after_merge");
+    }
+
     // --------------- plot basis after 1 refinement ---------------
     //! [Plot in Paraview]
     if( plot )
     {
-        // Run paraview
-        gsFileManager::open("thb1_refined.pvd");
+        // Run paraview with the merged result
+        gsFileManager::open("thb_after_merge.pvd");
     }
     //! [Plot in Paraview]
     else

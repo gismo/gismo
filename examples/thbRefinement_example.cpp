@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     index_t degree    = 2;
     bool plot     = false;
 
-    gsCmdLine cmd("Create standard refined TH>B meshes.");
+    gsCmdLine cmd("Create standard refined THB meshes.");
     cmd.addInt("l","levels",
                "Number of refinement levels", refLevels);
     cmd.addInt("m","mode",
