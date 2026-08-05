@@ -41,12 +41,12 @@ void pybind11_init_gsNurbsCreator(py::module &m)
 					"The unit square represented as a tensor B-spline of degree deg",
 	    			py::arg("deg"),py::arg("scale")=1)
 	    .def_static("BSplineSquare", py::detail::overload_cast_impl<gsMatrix<real_t> const &>()(&Class::BSplineSquare),
-	    			"Square of side defined by two corners (columsn)")
+	    			"Square of side defined by two corners (columns)")
 	    .def_static("BSplineSquare", py::detail::overload_cast_impl<real_t const &, real_t const &, real_t const &>()(&Class::BSplineSquare),
-	    			"Square of side r, with lower left corner at (x,y)")
+	    			"Square of side r, with lower left corner at (x,y)",py::arg("r")=1,py::arg("x")=0,py::arg("y")=0)
 
 	    .def_static("BSplineCube", py::detail::overload_cast_impl<real_t const &, real_t const &, real_t const &, real_t const &>()(&Class::BSplineCube),
-	    			"Cube of side \a r, with lower left corner at (x,y,z)")
+	    			"Cube of side \a r, with lower left corner at (x,y,z)", py::arg("r")=1, py::arg("x")=0, py::arg("y")=0, py::arg("z")=0)
 	    .def_static("BSplineCube", py::detail::overload_cast_impl<short_t>()(&Class::BSplineCube),
 	    			"The unit cube represented as a tensor B-spline of degree \a deg")
 

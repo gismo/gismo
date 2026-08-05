@@ -1191,9 +1191,8 @@ template<typename T> class gsHTensorBasis<0,T>
   /**
    * @brief Initializes the Python wrapper for the class: gsHTensorBasis
    */
-  void pybind11_init_gsHTensorBasis2(pybind11::module &m);
-  void pybind11_init_gsHTensorBasis3(pybind11::module &m);
-  void pybind11_init_gsHTensorBasis4(pybind11::module &m);
+  template <short_t d>
+  void pybind11_init_gsHTensorBasis(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 
