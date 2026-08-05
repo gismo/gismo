@@ -86,6 +86,10 @@ public:
     void write(const gsMultiPatch<T> & mp,
                const std::string & fn = "multipatch") const;
 
+    /// @brief Export a gsMultiPatch with options to Paraview file
+    void write(const gsMultiPatch<T> & Geo, const std::string & fn,
+               const std::vector<std::string> & props) const;
+
     /// @brief Export a vector of geometries to Paraview file
     void write(std::vector<gsGeometry<T>*> const & geos,
                const std::string & fn = "geometries") const;
@@ -126,6 +130,10 @@ public:
     void write(const gsSurfMesh & mesh,
                const std::string & fn = "surfmesh",
                std::initializer_list<std::string> props = {}) const;
+
+    /// @brief Export a gsMultiPatch in Bezier format to Paraview file
+    void writeBezier(const gsMultiPatch<T> & mp,
+                     const std::string & fn = "multipatch_bezier") const;
 
     /// @brief Export a gsMesh with parameters to Paraview file
     void write(const gsMesh<T> & mesh, const gsMatrix<T> & params,

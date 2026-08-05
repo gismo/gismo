@@ -44,6 +44,7 @@ private:
 
 private:
     std::vector<T> m_elWise;
+    std::vector<T> m_points;
     T              m_value;
 
     gsOptionList m_options;
@@ -101,6 +102,9 @@ public:
 
     /// Returns an std::vector containing the last computed values per element.
     const std::vector<T> & elementwise() const { return m_elWise; }
+
+    gsAsConstMatrix<T> allPoints() const
+    { return gsAsConstMatrix<T>(m_points, 3, m_points.size() / 3); }
 
     /// Returns a vector containing the last computed values per element.
     gsAsConstVector<T> allValues() const { return gsAsConstVector<T>(m_elWise); }
@@ -318,6 +322,10 @@ public:
             const boundaryInterface & ifc);
 
     template<class E>
+    typename util::enable_if<!E::ScalarValued,void>::type
+    evalAtInterface(const expr::_expr<E> & expr, geometryMap G, const intContainer & iFaces);
+        
+    template<class E>
 #ifdef __DOXYGEN__
     gsAsConstMatrix<T>
 #else
@@ -330,7 +338,7 @@ public:
     typename util::enable_if<!E::ScalarValued,gsAsConstMatrix<T> >::type
     evalBdr(const expr::_expr<E> & testExpr, const gsVector<T> & pt,
             const patchSide & ps);
-
+   
     /// Computes value of the expression \a expr at the point \a pt of
     /// patch \a patchId, and displays the result
     template<class E> void
@@ -793,6 +801,72 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr,
         m_elWise.insert(m_elWise.end(), tmp.data(), tmp.data()+tmp.size());
     }
     m_value = 0; // not used
+}
+
+
+template<class T>
+template<class E>
+typename util::enable_if<!E::ScalarValued,void>::type
+gsExprEvaluator<T>::evalAtInterface(const expr::_expr<E> & expr, geometryMap G, const intContainer & iFaces)
+{
+    m_exprdata->parse(expr);
+    //if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
+
+    typename gsQuadRule<T>::uPtr QuRule;
+    // Computed value
+
+    m_elWise.reserve(iFaces.size());
+    m_elWise.clear();
+    m_points.clear();
+    gsMatrix<T> gg, tmp;
+        
+    ifacemap interfaceMap;
+    for (typename gsBoxTopology::const_iiterator iit =
+             iFaces.begin(); iit != iFaces.end(); ++iit)
+    {
+        const boundaryInterface & iFace = *iit;
+        const index_t patch1 = iFace.first().patch;
+        const index_t patch2 = iFace.second().patch;
+
+        if (iFace.type() == interaction::conforming)
+            interfaceMap = gsAffineFunction<T>::make( iFace.dirMap(), iFace.dirOrientation(),
+                                                      m_exprdata->domain().subdomain(patch1)->boundingBox(),
+                                                      m_exprdata->domain().subdomain(patch2)->boundingBox() );
+        else
+            interfaceMap = gsCPPInterface<T>::make(m_exprdata->multiPatch(), iFace);
+
+        // Quadrature rule
+        QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(patch1),m_options, iFace.first().side().direction());
+
+        // Initialize domain element iterator
+        typename gsBasis<T>::domainIter domIt =
+            m_exprdata->domain().subdomain(patch1)->beginBdr(iFace.first().side());
+        typename gsBasis<T>::domainIter domItEnd =
+            m_exprdata->domain().subdomain(patch1)->endBdr(iFace.first().side());
+
+        // Start iteration over elements
+        for (; domIt<domItEnd; ++domIt)
+        {
+            // Map the Quadrature rule to the element
+            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
+                           m_exprdata->points(), m_exprdata->weights());
+            interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
+
+            gg = G.source().piece(domIt.patch()).eval(m_exprdata->points() );
+                            
+            m_points.insert(m_points.end(), gg.data(), gg.data()+gg.size() );
+
+            // Perform required pre-computations on the quadrature nodes
+            m_exprdata->precompute(iFace);
+        
+            // Compute on element
+            for (index_t k = 0; k != m_exprdata->weights().rows(); ++k) // loop over qu-nodes
+            {
+                tmp = expr.eval(0);
+                m_elWise.insert(m_elWise.end(), tmp.data(), tmp.data()+tmp.size());
+            }
+        }
+    }
 }
 
 

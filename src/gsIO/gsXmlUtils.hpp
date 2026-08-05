@@ -275,46 +275,61 @@ private:
 public:
     GSXML_COMMON_FUNCTIONS(gsMesh<T>);
     static std::string tag () { return "Mesh"; }
-    static std::string type () { return "off"; }
+    static std::string type () { return ""; } // no inheritance
 
     static gsMesh<T> * get (gsXmlNode * node)
     {
-        assert( ( !strcmp( node->name(),"Mesh") )
-                &&  ( !strcmp(node->first_attribute("type")->value(),"off") ) );
-
         gsMesh<T> * m = new gsMesh<T>;
-        std::istringstream str;
-        str.str( node->value() );
 
-        unsigned n  = atoi ( node->first_attribute("vertices")->value() ) ;
-        T x,y, z;
-        for (unsigned i=0; i<n; ++i)
+        assert( ( !strcmp( node->name(),"Mesh") ) );
+        if ( !strcmp(node->first_attribute("format")->value(),"off") )
         {
-            gsGetReal(str, x);
-            gsGetReal(str, y);
-            gsGetReal(str, z);
-            m->addVertex(x,y,z);
-        }
+            std::istringstream str;
+            str.str( node->value() );
 
-        n  = atoi ( node->first_attribute("faces")->value() ) ;
-        unsigned c = 0;
-        std::vector<int> face;
-        for (unsigned i=0; i<n; ++i)
-        {
-            gsGetInt(str, c);
-            face.resize(c);
-            for (unsigned j=0; j<c; ++j)
-                gsGetInt(str, face[j]);
-            m->addFace(face);
+            std::string line;
+            getline(str, line);
+            if ( line.compare(0,3,"OFF") != 0)
+                return nullptr;
+
+            std::istringstream lnstream;
+            getline(str, line);
+            lnstream.str(line);
+            unsigned nverts, nfaces, nedges(0);
+            lnstream >> std::ws >>  nverts >> std::ws >> nfaces >> std::ws >> nedges ;
+
+            T x, y, z;
+            for (unsigned i=0; i<nverts; ++i)
+            {
+                gsGetReal(str, x);
+                gsGetReal(str, y);
+                gsGetReal(str, z);
+                m->addVertex(x,y,z);
+            }
+
+            unsigned c = 0;
+            std::vector<int> face;
+            for (unsigned i=0; i<nfaces; ++i)
+            {
+                gsGetInt(str, c);
+                face.resize(c);
+                for (unsigned j=0; j<c; ++j)
+                    gsGetInt(str, face[j]);
+                m->addFace(face);
+            }
+            m->cleanMesh();
+            return m;
         }
-        m->cleanMesh();
+        
+        gsDebug<<"Reader not implemented.\n";
+        gsWarn<<"Problem in reading "<<node->first_attribute("format")->value()<<" file to gsMesh.\n";
         return m;
     }
 
     static gsXmlNode * put (const gsMesh<T> &,
                             gsXmlTree & )
     {
-        return NULL;
+        return nullptr;
     }
 };
 
@@ -362,12 +377,12 @@ public:
 
 
 /// Get a SparseMatrix from XML data
-template<class T>
-class gsXml< gsSparseMatrix<T> >
+template<class T, int _Options, typename _Index>
+class gsXml< gsSparseMatrix<T,_Options,_Index> >
 {
 private:
     gsXml() { }
-    typedef gsSparseMatrix<T> Object;
+    typedef gsSparseMatrix<T,_Options,_Index> Object;
 
 public:
     GSXML_COMMON_FUNCTIONS(Object);
@@ -391,7 +406,7 @@ public:
         obj.setFrom(entries);
     }
 
-    static gsXmlNode * put (const gsSparseMatrix<T> & obj,
+    static gsXmlNode * put (const Object & obj,
                             gsXmlTree & data )
     {
         gsXmlNode * mat_data = putSparseMatrixToXml(obj,data);

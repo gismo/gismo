@@ -378,15 +378,15 @@ template <class T, class U>
 inline void copy_n(T begin, const size_t n, U* result)
 {
     std::copy(begin, begin+n,
-#   ifdef _MSC_VER
+//#   ifdef _MSC_VER
               // Take care of C4996 warning
               //stdext::checked_array_iterator<U*>(result,n));
-              stdext::unchecked_array_iterator<U*>(result));
-#   else
+//              stdext::unchecked_array_iterator<U*>(result));
+//#   else
     result);
 // Note: in C++11 there is:
 // std::copy_n(begin, n, result);
-#   endif
+//#   endif
 }
 
 namespace util
@@ -401,13 +401,13 @@ template <class T, class U>
 inline void copy(T begin, T end, U* result)
 {
     std::copy(begin, end,
-#   ifdef _MSC_VER
+//#   ifdef _MSC_VER
               // Take care of C4996 warning
               //stdext::checked_array_iterator<U*>(result,n));
-              stdext::unchecked_array_iterator<U*>(result));
-#   else
+//              stdext::unchecked_array_iterator<U*>(result));
+//#   else
     result);
-#   endif
+//#   endif
 }
 
 }
