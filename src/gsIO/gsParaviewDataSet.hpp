@@ -26,25 +26,32 @@ namespace gismo
 template <class T>
 unsigned gsParaviewDataSet<T>::getNumPoints(const gsOptionList& opts)
 {
-    const index_t canonical = opts.askInt("numPoints", 1000);
-    const index_t legacy = opts.askInt("plot.npts", 1000);
-    if (canonical != 1000)
-        return static_cast<unsigned>(canonical);
-    if (legacy != 1000)
-        return static_cast<unsigned>(legacy);
-    return 1000u;
+    // "plot.npts" is the preferred option name; "numPoints" is a
+    // deprecated alias kept for backward compatibility.
+    const index_t deprecated = opts.askInt("numPoints", -1);
+    if (deprecated != -1)
+    {
+        gsWarn << "gsParaviewDataSet: option \"numPoints\" is deprecated and "
+                  "will be removed in a future release; use \"plot.npts\" "
+                  "instead.\n";
+        return static_cast<unsigned>(deprecated);
+    }
+    return static_cast<unsigned>(opts.askInt("plot.npts", 1000));
 }
 
 template <class T>
 bool gsParaviewDataSet<T>::getPlotElements(const gsOptionList& opts)
 {
-    const bool canonical = opts.askSwitch("plotElements", false);
-    const bool legacy = opts.askSwitch("plot.elements", false);
-    if (canonical != false)
-        return canonical;
-    if (legacy != false)
-        return legacy;
-    return false;
+    // "plot.elements" is the preferred option name; "plotElements" is a
+    // deprecated alias kept for backward compatibility.
+    if (opts.askSwitch("plotElements", false))
+    {
+        gsWarn << "gsParaviewDataSet: option \"plotElements\" is deprecated and "
+                  "will be removed in a future release; use \"plot.elements\" "
+                  "instead.\n";
+        return true;
+    }
+    return opts.askSwitch("plot.elements", false);
 }
 
 template <class T>

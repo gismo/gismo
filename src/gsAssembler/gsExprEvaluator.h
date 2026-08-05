@@ -81,9 +81,7 @@ public:
         gsOptionList opt;
         opt.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0  );
         opt.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
-        opt.addInt ("numPoints", "Number of sampling points for plotting", 3000 );
         opt.addInt ("plot.npts", "Number of sampling points for plotting", 3000 );
-        opt.addSwitch("plotElements", "Include the element mesh in plot (when applicable)", false);
         opt.addSwitch("plot.elements", "Include the element mesh in plot (when applicable)", false);
         opt.addSwitch("flipSide", "Flip side of interface where evaluation is performed.", false);
         //opt.addSwitch("plot.cnet", "Include the control net in plot (when applicable)", false);
@@ -384,15 +382,28 @@ public:
         const gsMultiPatch<T> & mp =
             static_cast<const gsMultiPatch<T>&>(G.source());
         gsParaviewCollection<T> pc(fn, *this);
-        // Backward compatibility
-        const index_t npts = m_options.exists("numPoints")
-            ? m_options.askInt("numPoints", 1000)
-            : m_options.askInt("plot.npts", 1000);
-        const bool plotElements = m_options.exists("plotElements")
-            ? m_options.askSwitch("plotElements", false)
-            : m_options.askSwitch("plot.elements", false);
-        pc.options().setInt("numPoints", npts);
-        pc.options().setSwitch("plotElements", plotElements);
+        // "plot.npts"/"plot.elements" are the preferred option names;
+        // "numPoints"/"plotElements" are deprecated aliases kept for
+        // backward compatibility.
+        index_t npts = m_options.askInt("plot.npts", 1000);
+        const index_t npts_deprecated = m_options.askInt("numPoints", -1);
+        if (npts_deprecated != -1)
+        {
+            gsWarn << "gsExprEvaluator::writeParaview: option \"numPoints\" is "
+                      "deprecated and will be removed in a future release; "
+                      "use \"plot.npts\" instead.\n";
+            npts = npts_deprecated;
+        }
+        bool plotElements = m_options.askSwitch("plot.elements", false);
+        if (m_options.askSwitch("plotElements", false))
+        {
+            gsWarn << "gsExprEvaluator::writeParaview: option \"plotElements\" is "
+                      "deprecated and will be removed in a future release; "
+                      "use \"plot.elements\" instead.\n";
+            plotElements = true;
+        }
+        pc.options().setInt("plot.npts", npts);
+        pc.options().setSwitch("plot.elements", plotElements);
         pc.newTimeStep(mp);
         pc.addField(expr, "value");
         pc.saveTimeStep();
