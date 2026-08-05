@@ -80,15 +80,26 @@ int main(int argc, char *argv[]) {
   if (freqA < 1)
     freqA = 1;
 
-  gsInfo << "\n================================================================"
-            "======\n";
-  gsInfo << "AS-G1 Biharmonic Solver (Delta^2 u = f)\n";
-  gsInfo << "Target Exact Function: u(x, y) = sin(" << freqA << "*pi*x) * cos("
-         << freqA << "*pi*y)\n";
-  gsInfo << "=================================================================="
-            "====\n\n";
+  // ---- Manifactured Solution ----
+  const std::string s_a = std::to_string(freqA);
+  const std::string u_expr = "sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+  const std::string grad_x_expr =       s_a + "*pi*cos(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+  const std::string grad_y_expr = "-" + s_a + "*pi*sin(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
+  const std::string rhs_expr = std::to_string(4 * freqA * freqA * freqA * freqA) +
+      "*pi^4*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+  const std::string hess_xx = "-" + std::to_string(freqA * freqA) + "*pi^2*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+  const std::string hess_xy = "-" + std::to_string(freqA * freqA) + "*pi^2*cos(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
+  const std::string hess_yy = "-" + std::to_string(freqA * freqA) + "*pi^2*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+  gsFunctionExpr<T> exact_u(u_expr, 2);
+  gsFunctionExpr<T> exact_grad(grad_x_expr, grad_y_expr, 2);
+  gsFunctionExpr<T> exact_hess(hess_xx, hess_xy, hess_xy, hess_yy, 2);
 
-  // Table header
+  gsInfo << "\n======================================================================\n";
+  gsInfo << "AS-G1 Biharmonic Solver (Delta^2 u = f)\n";
+  gsInfo << "Target Exact Function: u(x, y) = " << u_expr << "\n";
+  gsInfo << "======================================================================\n\n";
+
+  // ---- Table header ----
   gsInfo << std::setw(5) << "r" << std::setw(12) << "h_max" << std::setw(10)
          << "N_free" << std::setw(14) << "L2 Error" << std::setw(10)
          << "L2 Rate" << std::setw(14) << "H1 Error" << std::setw(10)
@@ -131,19 +142,7 @@ int main(int argc, char *argv[]) {
 
       const T h_max = std::pow(0.5, ref); //TODO: fixme
 
-      // ---- Manifactured Solution ----
-      const std::string s_a = std::to_string(freqA);
-      const std::string u_expr = "sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-      const std::string grad_x_expr =       s_a + "*pi*cos(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-      const std::string grad_y_expr = "-" + s_a + "*pi*sin(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
-      const std::string rhs_expr = std::to_string(4 * freqA * freqA * freqA * freqA) +
-          "*pi^4*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-      const std::string hess_xx = "-" + std::to_string(freqA * freqA) + "*pi^2*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-      const std::string hess_xy = "-" + std::to_string(freqA * freqA) + "*pi^2*cos(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
-      const std::string hess_yy = "-" + std::to_string(freqA * freqA) + "*pi^2*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-      gsFunctionExpr<T> exact_u(u_expr, 2);
-      gsFunctionExpr<T> exact_grad(grad_x_expr, grad_y_expr, 2);
-      gsFunctionExpr<T> exact_hess(hess_xx, hess_xy, hess_xy, hess_yy, 2);
+
 
       // ---- Define boundary conditions ----
       gsConstantFunction<T> zero;
