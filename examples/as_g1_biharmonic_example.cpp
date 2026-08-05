@@ -77,6 +77,33 @@ int main(int argc, char *argv[]) {
   if (minRefinements < 2)
     minRefinements = 2;
 
+  // ---- Read geometry ----
+  gsMultiPatch<T>::uPtr mpPtr = gsReadFile<>(geometry);
+  if (!mpPtr)
+  {
+      gsInfo << "Error: Cannot read geometry " << geometry << "\n";
+      return -1;
+  }
+  gsMultiPatch<T> &mp = *mpPtr;
+  mp.computeTopology();
+
+  // ---- Degree Elevation ----
+  {
+      const short_t minDeg = gsMultiBasis<T>(mp).minCwiseDegree();
+      const short_t maxDeg = gsMultiBasis<T>(mp).maxCwiseDegree();
+      if (minDeg==maxDeg)
+          gsInfo << "Geometriy has degree " << minDeg<< "\n";
+      else
+          gsInfo << "Geometriy has degree between " << minDeg << " and " << maxDeg << "\n";
+
+      if (minDeg < degree)
+      {
+          const short_t elev = degree - minDeg;
+          gsInfo << "Elevate degree by " << elev << " steps.\n";
+          mp.degreeElevate(elev);
+      }
+  }
+
   // ---- Manifactured Solution ----
   const std::string s_a = std::to_string(freqA);
   const std::string u_expr = "sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
@@ -96,6 +123,38 @@ int main(int argc, char *argv[]) {
   gsInfo << "Target Exact Function: u(x, y) = " << u_expr << "\n";
   gsInfo << "======================================================================\n\n";
 
+  // ---- Define boundary conditions ----
+  gsConstantFunction<T> zero;
+  gsBoundaryConditions<T> bc;
+  for (auto it = mp.bBegin(); it != mp.bEnd(); ++it)
+      bc.add(it->patch, it->side(), "ValuesAndDerivatives", zero);
+
+  // ---- Compute Gluing Data ----
+  gsMatrix<T> gd = computeGluingData(mp, T(1e-8), numGaussPerSpan);
+
+  // ---- Get boundary corners and asociated normals ----
+  std::vector<std::vector<patchCorner>> vertices = getBoundaryVertices(mp, bc, "ValuesAndDerivatives");
+  std::vector<gsVector<T>> normalsAtVertices;
+  std::vector<cornerCondition> cc;
+  gsMatrix<T> normalsForPatches(mp.nPatches(), 2*4);
+  normalsForPatches.setZero();
+  for (size_t i=0; i<vertices.size(); ++i)
+  {
+      gsVector<T> normal = getOuterNormalDerivative(mp, vertices[i]);
+      for (size_t j=0; j<vertices[i].size(); ++j)
+          normalsForPatches.block(vertices[i][j].patch, 2*(vertices[i][j].m_index-1), 1, 2) = normal.transpose();
+      cc.push_back(cornerCondition{vertices[i][0], normal.norm()<1e-6 ? cornerConditionType::all : cornerConditionType::valuesNormals});
+      normalsAtVertices.push_back(give(normal));
+  }
+  // Impose (1,0) as normal vector where we do not have a joint normal vector
+  for (size_t i=0; i<mp.nPatches(); ++i)
+      for (index_t j=0; j<4; ++j)
+          if (normalsForPatches.block(i,2*j,1,2).norm() < 1e-6)
+          {
+              normalsForPatches(i,2*j)=1;
+              normalsForPatches(i,2*j+1)=0;
+          }
+
   // ---- Table header ----
   gsInfo << std::setw(5) << "r" << std::setw(12) << "h_max" << std::setw(10)
          << "N_free" << std::setw(14) << "L2 Error" << std::setw(10)
@@ -112,32 +171,6 @@ int main(int argc, char *argv[]) {
 
   for (index_t ref = minRefinements; ref <= maxRefinements; ++ref)
   {
-      // ---- Read geometry ----
-      gsMultiPatch<T>::uPtr mpPtr = gsReadFile<>(geometry);
-      if (!mpPtr)
-      {
-          gsInfo << "Error: Cannot read geometry " << geometry << "\n";
-          return -1;
-      }
-      gsMultiPatch<T> &mp = *mpPtr;
-      mp.computeTopology();
-
-      // ---- Degree Elevation ----
-      {
-          const short_t minDeg = gsMultiBasis<T>(mp).minCwiseDegree();
-          const short_t maxDeg = gsMultiBasis<T>(mp).maxCwiseDegree();
-          if (minDeg==maxDeg)
-              gsInfo << "Geometriy has degree " << minDeg<< "\n";
-          else
-              gsInfo << "Geometriy has degree between " << minDeg << " and " << maxDeg << "\n";
-
-          if (minDeg < degree)
-          {
-              const short_t elev = degree - minDeg;
-              gsInfo << "Elevate degree by " << elev << " steps.\n";
-              mp.degreeElevate(elev);
-          }
-      }
 
       // ---- Get multi basis ----
       gsMultiBasis<T> dbasis(mp);
@@ -148,38 +181,6 @@ int main(int argc, char *argv[]) {
         dbasis.uniformRefine(1, mult);
 
       const T h_max = std::pow(0.5, ref); //TODO: fixme
-
-      // ---- Define boundary conditions ----
-      gsConstantFunction<T> zero;
-      gsBoundaryConditions<T> bc;
-      for (auto it = mp.bBegin(); it != mp.bEnd(); ++it)
-          bc.add(it->patch, it->side(), "ValuesAndDerivatives", zero);
-
-      // ---- Compute Gluing Data ----
-      gsMatrix<T> gd = computeGluingData(mp, T(1e-8), numGaussPerSpan);
-
-      // ---- Get boundary corners and asociated normals ----
-      std::vector<std::vector<patchCorner>> vertices = getBoundaryVertices(mp, bc, "ValuesAndDerivatives");
-      std::vector<gsVector<T>> normalsAtVertices;
-      std::vector<cornerCondition> cc;
-      gsMatrix<T> normalsForPatches(mp.nPatches(), 2*4);
-      normalsForPatches.setZero();
-      for (size_t i=0; i<vertices.size(); ++i)
-      {
-          gsVector<T> normal = getOuterNormalDerivative(mp, vertices[i]);
-          for (size_t j=0; j<vertices[i].size(); ++j)
-              normalsForPatches.block(vertices[i][j].patch, 2*(vertices[i][j].m_index-1), 1, 2) = normal.transpose();
-          cc.push_back(cornerCondition{vertices[i][0], normal.norm()<1e-6 ? cornerConditionType::all : cornerConditionType::valuesNormals});
-          normalsAtVertices.push_back(give(normal));
-      }
-      // Impose (1,0) as normal vector where we do not have a joint normal vector
-      for (size_t i=0; i<mp.nPatches(); ++i)
-          for (index_t j=0; j<4; ++j)
-              if (normalsForPatches.block(i,2*j,1,2).norm() < 1e-6)
-              {
-                  normalsForPatches(i,2*j)=1;
-                  normalsForPatches(i,2*j+1)=0;
-              }
 
       // ---- Build per-patch interface embeddings ----
       std::vector<gsArgyrisEmbedding<T>> argBasis;
