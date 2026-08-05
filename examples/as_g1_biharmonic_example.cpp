@@ -140,6 +140,7 @@ int main(int argc, char *argv[]) {
       // ---- Get boundary corners and asociated normals ----
       std::vector<std::vector<patchCorner>> vertices = getBoundaryVertices(mp, bc, "ValuesAndDerivatives");
       std::vector<gsVector<T>> normalsAtVertices;
+      std::vector<cornerCondition> cc;
       gsMatrix<T> normalsForPatches(mp.nPatches(), 2*4);
       normalsForPatches.setZero();
       for (size_t i=0; i<vertices.size(); ++i)
@@ -147,12 +148,13 @@ int main(int argc, char *argv[]) {
         gsVector<T> normal = getOuterNormalDerivative(mp, vertices[i]);
         for (size_t j=0; j<vertices[i].size(); ++j)
           normalsForPatches.block(vertices[i][j].patch, 2*(vertices[i][j].m_index-1), 1, 2) = normal.transpose();
+        cc.push_back(cornerCondition{vertices[i][0], normal.norm()<1e-6 ? cornerConditionType::all : cornerConditionType::valuesNormals});
         normalsAtVertices.push_back(give(normal));
       }
       // Impose (1,0) as normal vector where we do not have a joint normal vector
       for (size_t i=0; i<mp.nPatches(); ++i)
         for (index_t j=0; j<4; ++j)
-          if (normalsForPatches(i,2*j)*normalsForPatches(i,2*j) + normalsForPatches(i,2*j+1)*normalsForPatches(i,2*j+1) < 1e-6)
+          if (normalsForPatches.block(i,2*j,1,2).norm() < 1e-6)
           {
             normalsForPatches(i,2*j)=1;
             normalsForPatches(i,2*j+1)=0;
@@ -173,11 +175,10 @@ int main(int argc, char *argv[]) {
       }
 
       // ---- Set up gsDofMapper ----
-      gsDofMapper mapper = makeMapperForArgyrisBasis(mp, argBasis, bc); // TODO incorporate corner conditions here
-      // TODO: derive inhomogenous boundary data (edges+vertex)
-      // step1: projection
-      // step2: associate boundary data
+      gsDofMapper mapper = makeMapperForArgyrisBasis(mp, argBasis, bc, cc);
 
+
+      // TODO: Derive inhomogenous boundary data (edges+vertex) properly
       const index_t nFree = mapper.freeSize();
       const index_t nBnd = mapper.boundarySize();
 
