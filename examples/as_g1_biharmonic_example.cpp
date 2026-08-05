@@ -110,7 +110,8 @@ int main(int argc, char *argv[]) {
   T prev_h1 = 0;
   T prev_h2 = 0;
 
-  for (index_t ref = minRefinements; ref <= maxRefinements; ++ref) {
+  for (index_t ref = minRefinements; ref <= maxRefinements; ++ref)
+  {
       // ---- Read geometry ----
       gsMultiPatch<T>::uPtr mpPtr = gsReadFile<>(geometry);
       if (!mpPtr)
@@ -122,11 +123,20 @@ int main(int argc, char *argv[]) {
       mp.computeTopology();
 
       // ---- Degree Elevation ----
-      const short_t inputDeg = mp.patch(0).basis().degree(0); //TODO: fixme
-      if (inputDeg < degree)
       {
-          const short_t elev = degree - inputDeg;
-          mp.degreeElevate(elev);
+          const short_t minDeg = gsMultiBasis<T>(mp).minCwiseDegree();
+          const short_t maxDeg = gsMultiBasis<T>(mp).maxCwiseDegree();
+          if (minDeg==maxDeg)
+              gsInfo << "Geometriy has degree " << minDeg<< "\n";
+          else
+              gsInfo << "Geometriy has degree between " << minDeg << " and " << maxDeg << "\n";
+
+          if (minDeg < degree)
+          {
+              const short_t elev = degree - minDeg;
+              gsInfo << "Elevate degree by " << elev << " steps.\n";
+              mp.degreeElevate(elev);
+          }
       }
 
       // ---- Get multi basis ----
@@ -138,8 +148,6 @@ int main(int argc, char *argv[]) {
         dbasis.uniformRefine(1, mult);
 
       const T h_max = std::pow(0.5, ref); //TODO: fixme
-
-
 
       // ---- Define boundary conditions ----
       gsConstantFunction<T> zero;
