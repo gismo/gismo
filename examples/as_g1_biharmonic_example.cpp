@@ -121,15 +121,15 @@ int main(int argc, char *argv[]) {
           mp.degreeElevate(elev);
       }
 
+      // ---- Get multi basis ----
+      gsMultiBasis<T> dbasis(mp);
+
       // ---- Refinement ----
       const index_t mult = 2;
       for (index_t i = 0; i < ref; ++i)
-        mp.uniformRefine(1, mult);
+        dbasis.uniformRefine(1, mult);
 
       const T h_max = std::pow(0.5, ref); //TODO: fixme
-
-      // ---- Get multi basis ----
-      gsMultiBasis<T> dbasis(mp);
 
       // ---- Manifactured Solution ----
       const std::string s_a = std::to_string(freqA);
@@ -184,7 +184,7 @@ int main(int argc, char *argv[]) {
       for (size_t i = 0; i < mp.nPatches(); ++i)
       {
         argBasis.push_back(deriveArgyrisBasisEmbedding(
-            dynamic_cast<const gsTensorBSplineBasis<2, T> &>(mp.patch(i).basis()),
+            dynamic_cast<const gsTensorBSplineBasis<2, T> &>(dbasis[i]),
             gsMatrix<T>(gd.row(i)),
             gsMatrix<T>(normalsForPatches.row(i)),
             mp.patch(i)
@@ -263,7 +263,7 @@ int main(int argc, char *argv[]) {
           const index_t sz = argBasis[i].matrix.rows();
           gsMatrix<T> ci = sol_discont.block(offset, 0, sz, 1);
           offset += sz;
-          const gsTensorBSplineBasis<2, T> &tb = dynamic_cast<const gsTensorBSplineBasis<2, T> &>(mp.patch(i).basis());
+          const gsTensorBSplineBasis<2, T> &tb = dynamic_cast<const gsTensorBSplineBasis<2, T> &>(dbasis[i]);
           sol.addPatch(tb.makeGeometry(give(ci)));
       }
 
