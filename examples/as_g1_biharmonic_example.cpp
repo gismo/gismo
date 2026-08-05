@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
   index_t numGaussPerSpan = 0;
   index_t minRefinements = 2;
   index_t maxRefinements = 4;
-  index_t freqA = 1;
+  T freqA = 1;
   bool plot = false;
 
   gsCmdLine cmd("AS-G1 Biharmonic Equation Solver and Convergence Experiment.");
@@ -49,8 +49,8 @@ int main(int argc, char *argv[]) {
              minRefinements);
   cmd.addInt("r", "refinements", "Maximum uniform refinement levels to test.",
              maxRefinements);
-  cmd.addInt("a", "frequency",
-             "Frequency integer factor 'a' in sin(a*pi*x)*cos(a*pi*y).",
+  cmd.addReal("a", "frequency",
+             "Frequency factor 'a' in sin(a*pi*x)*cos(a*pi*y).",
              freqA);
   cmd.addSwitch("plot",
                 "Export target function and numerical solution to VTK files.",
@@ -76,9 +76,6 @@ int main(int argc, char *argv[]) {
 
   if (minRefinements < 2)
     minRefinements = 2;
-
-  if (freqA < 1)
-    freqA = 1;
 
   // ---- Manifactured Solution ----
   const std::string s_a = std::to_string(freqA);
