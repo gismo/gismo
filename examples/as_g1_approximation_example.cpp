@@ -13,12 +13,9 @@
 
 #include <algorithm>
 #include <cmath>
-#include <fstream>
 #include <gismo.h>
 #include <iomanip>
 #include <iostream>
-#include <map>
-#include <numeric>
 #include <vector>
 
 #include <gsModeling/gsAsG1Basis.hpp>
@@ -81,13 +78,6 @@ int main(int argc, char *argv[]) {
   T prev_l2 = 0;
   T prev_h1 = 0;
 
-  auto sumUntil = [](const gsVector<index_t, 13> &vec, index_t until) {
-    index_t sum = 0;
-    for (index_t i = 0; i < until; ++i)
-      sum += vec(i);
-    return sum;
-  };
-
   for (index_t ref = 2; ref <= maxRefinements; ++ref) {
     try {
     // ---- Read geometry ----
@@ -120,94 +110,34 @@ int main(int argc, char *argv[]) {
     // ---- Compute Gluing Data ----
     gsMatrix<T> gd = computeGluingData(mp, T(1e-8), numGaussPerSpan);
 
-    // ---- Build per-patch interface embeddings ----
+    // ---- Build per-patch Argyris embeddings ----
     std::vector<gsArgyrisEmbedding<T>> argBasis;
-    gsVector<index_t> patchDofSizes(mp.nPatches());
-    for (size_t i = 0; i < mp.nPatches(); ++i) {
+    for (size_t i = 0; i < mp.nPatches(); ++i)
       argBasis.push_back(deriveArgyrisBasisEmbedding(
           dynamic_cast<const gsTensorBSplineBasis<2, T> &>(mp.patch(i).basis()),
           gsMatrix<T>(gd.row(i)), mp.patch(i)));
 
-      patchDofSizes[i] = argBasis[i].matrix.cols();
-    }
-
-    // ---- Set up gsDofMapper ----
-    gsDofMapper mapper(patchDofSizes);
-    for (auto it = mp.iBegin(); it != mp.iEnd(); ++it) {
-      const boundaryInterface &ifc = *it;
-      const patchSide ps1 = ifc.first();
-      const patchSide ps2 = ifc.second();
-
-      const index_t nLvl0 = argBasis[ps1.patch].sizes[1 + 2 * (ps1.m_index - 1)];
-      const index_t offLvl0_1 =
-          sumUntil(argBasis[ps1.patch].sizes, 1 + 2 * (ps1.m_index - 1));
-      const index_t offLvl0_2 =
-          sumUntil(argBasis[ps2.patch].sizes, 1 + 2 * (ps2.m_index - 1));
-
-      const index_t nLvl1 = argBasis[ps1.patch].sizes[2 + 2 * (ps1.m_index - 1)];
-      const index_t offLvl1_1 =
-          sumUntil(argBasis[ps1.patch].sizes, 2 + 2 * (ps1.m_index - 1));
-      const index_t offLvl1_2 =
-          sumUntil(argBasis[ps2.patch].sizes, 2 + 2 * (ps2.m_index - 1));
-
-      const short_t tanDir1 = 1 - ps1.direction();
-      const bool flipped = !ifc.dirOrientation(ps1, tanDir1);
-
-      for (index_t j1 = 0; j1 < nLvl0; ++j1) {
-        const index_t j2 = flipped ? nLvl0 - 1 - j1 : j1;
-        mapper.matchDof(ps1.patch, offLvl0_1 + j1, ps2.patch, offLvl0_2 + j2);
-      }
-      for (index_t j1 = 0; j1 < nLvl1; ++j1) {
-        const index_t j2 = flipped ? nLvl1 - 1 - j1 : j1;
-        mapper.matchDof(ps1.patch, offLvl1_1 + j1, ps2.patch, offLvl1_2 + j2);
-      }
-
-      std::vector<patchCorner> corners;
-      ps1.getContainedCorners(2, corners);
-      for (index_t i = 0; i < 2; ++i) {
-        const index_t c1 = corners[i].m_index - 1;
-        const index_t c2 = ifc.mapCorner(corners[i]).m_index - 1;
-
-        const index_t off_corner_1 = sumUntil(argBasis[ps1.patch].sizes, 9 + c1);
-        const index_t off_corner_2 = sumUntil(argBasis[ps2.patch].sizes, 9 + c2);
-
-        for (index_t k = 0; k < 6; ++k)
-          mapper.matchDof(ps1.patch, off_corner_1 + k, ps2.patch,
-                          off_corner_2 + k);
-      }
-    }
-    mapper.finalize();
-
+    // ---- AS-G1 DOF coupling (no boundary conditions for L2 approximation) ----
+    gsDofMapper mapper = makeMapperForArgyrisBasis(mp, argBasis);
     const index_t nGlobal = mapper.freeSize();
 
-    auto embeddingMatrixForPatch = [](const gsDofMapper &mapper, index_t patchIdx) {
-      gsVector<index_t> locals;
-      locals.setLinSpaced(mapper.patchSize(patchIdx), 0,
-                          mapper.patchSize(patchIdx) - 1);
-      gsMatrix<index_t> globals;
-      mapper.localToGlobal(locals, patchIdx, globals);
-      return asEmbeddingMatrix<T>(mapper.freeSize(), globals);
-    };
+    // ---- Stacked transformation matrix (disjoint B-spline DOFs <- global DOFs) ----
+    index_t nDisjoint = 0;
+    for (size_t i = 0; i < mp.nPatches(); ++i)
+      nDisjoint += argBasis[i].matrix.rows();
 
-    std::vector<gsSparseMatrix<T>> G;
-    for (size_t i = 0; i < mp.nPatches(); ++i) {
-      G.push_back(embeddingMatrixForPatch(mapper, i) *
-                  argBasis[i].matrix.transpose());
-    }
-
-    // Build stacked transformation matrix T_global (size: nDisjoint x nGlobal)
     gsSparseEntries<T> tEntries;
     index_t rowOffset = 0;
     for (size_t i = 0; i < mp.nPatches(); ++i) {
-      const gsSparseMatrix<T> Gi_T = G[i].transpose(); // size: nTensorPatch_i x nGlobal
-      for (int k = 0; k < Gi_T.outerSize(); ++k) {
-        for (typename gsSparseMatrix<T>::InnerIterator it(Gi_T, k); it; ++it) {
-          tEntries.add(rowOffset + it.row(), it.col(), it.value());
-        }
+      const gsSparseMatrix<T> &Ai = argBasis[i].matrix;
+      for (index_t j = 0; j < mapper.patchSize(i); ++j) {
+        const index_t gIdx = mapper.index(j, i);
+        for (typename gsSparseMatrix<T>::InnerIterator it(Ai, j); it; ++it)
+          tEntries.add(rowOffset + it.row(), gIdx, it.value());
       }
-      rowOffset += argBasis[i].matrix.rows();
+      rowOffset += Ai.rows();
     }
-    gsSparseMatrix<T> T_global(rowOffset, nGlobal);
+    gsSparseMatrix<T> T_global(nDisjoint, nGlobal);
     T_global.setFrom(tEntries);
 
     // ---- Assemble Patch Mass Matrix & Load Vector ----

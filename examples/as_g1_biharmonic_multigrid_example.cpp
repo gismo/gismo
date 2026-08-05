@@ -1,7 +1,17 @@
 /** @file as_g1_biharmonic_multigrid_example.cpp
  *
- *  @brief Example demonstrating Analysis-Suitable G1 (AS-G1) Multigrid Solver for Biharmonic Equations,
- *         including convergence analysis across refinement levels and timestamped VTK plotting.
+ *  @brief Analysis-Suitable G1 (AS-G1) geometric multigrid solver for the
+ *         biharmonic equation, with convergence analysis across refinement
+ *         levels and timestamped VTK plotting.
+ *
+ *  The manufactured solution is u(x,y) = sin(a*pi*x)*cos(a*pi*y). Since this
+ *  does not vanish on the domain boundary, INHOMOGENEOUS clamped boundary
+ *  conditions (trace u and normal derivative grad(u).n from the exact solution)
+ *  are prescribed via an L2 projection onto the AS-G1 space; the interior
+ *  problem is solved with the generic gsMultiGridOp-preconditioned CG provided
+ *  by gsAsG1BiharmonicMG (gsMultiGrid/gsAsG1BiharmonicMG.h), which reuses the
+ *  shared AS-G1 DOF coupling and gluing-data machinery instead of a
+ *  hand-rolled V-cycle.
  *
  *  This file is part of the G+Smo library.
  *
@@ -9,29 +19,30 @@
  *  License, v. 2.0. If a copy of the MPL was not distributed with this
  *  file, You can obtain one at http://mozilla.org/MPL/2.0/.
  *
- *  Author(s): Antigravity AI, F. Hasanova, S. Takacs
+ *  Author(s): F. Hasanova, S. Takacs
  */
 
-#include <iostream>
-#include <vector>
-#include <cmath>
-#include <iomanip>
 #include <chrono>
+#include <cmath>
 #include <ctime>
+#include <iomanip>
+#include <iostream>
 #include <sstream>
+#include <string>
 
 #include <gismo.h>
-#include <gsMultiGrid/gsAsG1Multigrid.h>
+
+#include <gsMultiGrid/gsAsG1BiharmonicMG.h>
 
 using namespace gismo;
 using namespace gismo::expr;
 
-// Helper to generate ISO-like timestamp string: YYYYMMDD_HHMMSS
-std::string getTimestampString() {
-    auto now = std::chrono::system_clock::now();
-    std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+// ISO-like timestamp string YYYYMMDD_HHMMSS for the default output folder.
+static std::string getTimestampString()
+{
+    std::time_t now_c = std::chrono::system_clock::to_time_t(
+        std::chrono::system_clock::now());
     struct tm *parts = std::localtime(&now_c);
-
     std::ostringstream oss;
     oss << (1900 + parts->tm_year)
         << std::setfill('0') << std::setw(2) << (1 + parts->tm_mon)
@@ -42,60 +53,8 @@ std::string getTimestampString() {
     return oss.str();
 }
 
-template<typename T>
-index_t solvePCG(const gsSparseMatrix<T>& A,
-                 const gsAsG1Multigrid<T>& mg,
-                 const gsMatrix<T>& b,
-                 gsMatrix<T>& x,
-                 index_t maxIter = 100,
-                 T tol = 1e-8,
-                 index_t finestLevel = 1)
+int main(int argc, char *argv[])
 {
-    const index_t n = A.rows();
-    x = gsMatrix<T>::Zero(n, 1);
-
-    gsMatrix<T> r = b - A * x;
-    T r0_norm = r.norm();
-    if (r0_norm < 1e-15) return 0;
-
-    gsMatrix<T> z = gsMatrix<T>::Zero(n, 1);
-    mg.vCycle(finestLevel, z, r, 2, 2);
-
-    gsMatrix<T> p = z;
-    T rz = (r.transpose() * z)(0, 0);
-
-    for (index_t iter = 1; iter <= maxIter; ++iter)
-    {
-        gsMatrix<T> Ap = A * p;
-        T pAp = (p.transpose() * Ap)(0, 0);
-        if (std::abs(pAp) < 1e-18) return iter;
-
-        T alpha = rz / pAp;
-        x += alpha * p;
-        r -= alpha * Ap;
-
-        T r_norm = r.norm();
-        T relRes = r_norm / r0_norm;
-
-        if (relRes < tol)
-        {
-            return iter;
-        }
-
-        gsMatrix<T> z_new = gsMatrix<T>::Zero(n, 1);
-        mg.vCycle(finestLevel, z_new, r, 2, 2);
-
-        T rz_new = (r.transpose() * z_new)(0, 0);
-        T beta = rz_new / rz;
-
-        p = z_new + beta * p;
-        rz = rz_new;
-    }
-
-    return maxIter;
-}
-
-int main(int argc, char *argv[]) {
     using T = real_t;
 
     std::string geometry("domain2d/2patch/weirdo_multivalence_non_bilinear.xml");
@@ -103,8 +62,9 @@ int main(int argc, char *argv[]) {
     index_t degree = 3;
     index_t minRefinements = 2;
     index_t maxRefinements = 4;
+    index_t numSmooth = 3;
     index_t freqA = 1;
-    bool plot = false;
+    bool wcycle = false;
 
     gsCmdLine cmd("AS-G1 Multigrid Biharmonic Convergence & Plotting Tool.");
     cmd.addString("f", "file", "Multi-patch geometry XML file.", geometry);
@@ -112,8 +72,9 @@ int main(int argc, char *argv[]) {
     cmd.addInt("d", "degree", "Target degree (minimum 3).", degree);
     cmd.addInt("m", "minRefinements", "Minimum uniform refinement level (coarsest level, min 2).", minRefinements);
     cmd.addInt("r", "maxRefinements", "Maximum uniform refinement level (finest level).", maxRefinements);
+    cmd.addInt("s", "smooth", "Number of pre-/post-smoothing steps.", numSmooth);
     cmd.addInt("a", "frequency", "Frequency integer factor 'a' in sin(a*pi*x)*cos(a*pi*y).", freqA);
-    cmd.addSwitch("plot", "Export target function and numerical solution to VTK files.", plot);
+    cmd.addSwitch("wcycle", "Use W-cycles (numCycles = 2) instead of V-cycles.", wcycle);
 
     try {
         cmd.getValues(argc, argv);
@@ -121,217 +82,131 @@ int main(int argc, char *argv[]) {
         return rv;
     }
 
-    // Set up output directory inside experiments/
-    if (outDir.empty()) {
+    if (degree < 3) degree = 3;
+    if (minRefinements < 2) minRefinements = 2;
+    if (maxRefinements < minRefinements) maxRefinements = minRefinements;
+    if (numSmooth < 1) numSmooth = 1;
+    if (freqA < 1) freqA = 1;
+
+    if (outDir.empty())
         outDir = "experiments/as_g1_multigrid_" + getTimestampString();
-    }
     if (outDir.back() != '/') outDir += '/';
     gsFileManager::mkdir(outDir);
 
     gsInfo << "\n=========================================================================================================\n";
     gsInfo << "  AS-G1 Geometric Multigrid Biharmonic Convergence & Benchmark Suite\n";
     gsInfo << "  Target Function: u(x, y) = sin(" << freqA << "*pi*x) * cos(" << freqA << "*pi*y)\n";
+    gsInfo << "  Boundary:        inhomogeneous clamped (u and grad(u).n from exact solution)\n";
+    gsInfo << "  Solver:          gsMultiGridOp (Galerkin, symmetric Gauss-Seidel, "
+           << numSmooth << " smoothing steps) + CG, " << (wcycle ? "W-cycle" : "V-cycle") << "\n";
     gsInfo << "  Geometry File:   " << geometry << "\n";
     gsInfo << "  Refinement:      r_min = " << minRefinements << " to r_max = " << maxRefinements << "\n";
     gsInfo << "  Output Dir:      " << outDir << "\n";
     gsInfo << "=========================================================================================================\n\n";
 
-    // Setup Target Exact Functions
+    // Manufactured solution and its (physical) Laplacian.
     const std::string s_a = std::to_string(freqA);
-    const std::string u_expr = "sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-    const std::string grad_x_expr = s_a + "*pi*cos(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-    const std::string grad_y_expr = "-" + s_a + "*pi*sin(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
-    const std::string rhs_expr = std::to_string(4 * freqA * freqA * freqA * freqA) + "*pi^4*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+    gsFunctionExpr<T> exact_u("sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)", 2);
+    gsFunctionExpr<T> lap_u("-2*" + s_a + "^2*pi^2*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)", 2);
 
-    const std::string hess_xx = "-" + std::to_string(freqA * freqA) + "*pi^2*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-    const std::string hess_xy = "-" + std::to_string(freqA * freqA) + "*pi^2*cos(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
-    const std::string hess_yy = "-" + std::to_string(freqA * freqA) + "*pi^2*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+    gsMultiPatch<T>::uPtr basePtr = gsReadFile<>(geometry);
+    if (!basePtr) {
+        gsInfo << "Error: Cannot read geometry " << geometry << "\n";
+        return -1;
+    }
+    gsMultiPatch<T> base = *basePtr;
+    base.computeTopology();
 
-    gsFunctionExpr<T> exact_u(u_expr, 2);
-    gsFunctionExpr<T> exact_grad(grad_x_expr, grad_y_expr, 2);
-    gsFunctionExpr<T> exact_hess(hess_xx, hess_xy, hess_xy, hess_yy, 2);
-    gsFunctionExpr<T> rhs_f(rhs_expr, 2);
-
-    // Table Header
+    // Table header.
     gsInfo << std::setw(5)  << "r"
            << std::setw(12) << "h_max"
            << std::setw(10) << "N_free"
            << std::setw(14) << "L2 Error" << std::setw(9) << "L2 Rate"
            << std::setw(14) << "H1 Error" << std::setw(9) << "H1 Rate"
            << std::setw(14) << "H2 Error" << std::setw(9) << "H2 Rate"
-           << std::setw(10) << "PCG Iters"
+           << std::setw(10) << "MG Iters"
            << std::setw(14) << "Solve Time"
            << "\n";
     gsInfo << std::string(118, '-') << "\n" << std::flush;
 
-    T prev_h = 0;
-    T prev_l2 = 0;
-    T prev_h1 = 0;
-    T prev_h2 = 0;
+    T prev_h = 0, prev_l2 = 0, prev_h1 = 0, prev_h2 = 0;
 
     for (index_t maxRef = minRefinements; maxRef <= maxRefinements; ++maxRef) {
         try {
-            gsMultiPatch<T>::uPtr mpPtr = gsReadFile<>(geometry);
-            if (!mpPtr) {
-                gsInfo << "Error: Cannot read geometry " << geometry << "\n";
-                return -1;
-            }
+            gsAsG1BiharmonicMG<T> solver(base, degree, minRefinements, maxRef, numSmooth);
+            solver.setNumSmooth(numSmooth, numSmooth);
+            if (wcycle) solver.setNumCycles(2);
 
-            // Construct Multigrid solver for level 2 -> maxRef
-            auto t0_setup = std::chrono::high_resolution_clock::now();
-            gsAsG1Multigrid<T> mgSolver(*mpPtr, degree, minRefinements, maxRef);
-            auto t1_setup = std::chrono::high_resolution_clock::now();
-            double setupTime_ms = std::chrono::duration<double, std::milli>(t1_setup - t0_setup).count();
-
-            index_t finestLevel = mgSolver.numLevels() - 1;
-            const gsSparseMatrix<T>& K_fine = mgSolver.stiffnessMatrix(finestLevel);
-            index_t nFree = mgSolver.freeDofs(finestLevel);
+            const gsMultiPatch<T> &mp = solver.fineMultiPatch();
+            gsMultiBasis<T> dbasis(mp);
             const T h_max = std::pow(0.5, maxRef);
 
-            // Re-get finest geometry map & bases
-            gsMultiPatch<T> mpFine = *mpPtr;
-            mpFine.computeTopology();
-            if (mpFine.patch(0).basis().degree(0) < degree) {
-                mpFine.degreeElevate(degree - mpFine.patch(0).basis().degree(0));
+            gsPiecewiseFunction<T> uField, lapField;
+            for (size_t i = 0; i < mp.nPatches(); ++i) {
+                uField.addPiece(exact_u);
+                lapField.addPiece(lap_u);
             }
-            const short_t deg = mpFine.patch(0).basis().degree(0);
-            const index_t mult = std::max<index_t>(deg - 1, 1);
-            for (index_t i = 0; i < maxRef; ++i) mpFine.uniformRefine(1, mult);
 
-            // Assemble RHS vector b_free
-            gsMultiBasis<T> dbasis(mpFine);
+            // Prescribe inhomogeneous boundary values from the exact solution.
+            gsMatrix<T> cBnd = solver.projectBoundaryValues(exact_u);
+
+            // Energy-form RHS on interior test functions: (Delta u_ex, Delta v).
             gsExprAssembler<T> A(1, 1);
             A.setIntegrationDomain(dbasis.domain());
-            auto G_map = A.getMap(mpFine);
+            auto G_map = A.getMap(mp);
             auto u_space = A.getSpace(dbasis);
-            auto f_coeff = A.getCoeff(rhs_f, G_map);
-
+            auto lap_ex = A.getCoeff(lapField, G_map);
             A.initSystem();
-            A.assemble(u_space * f_coeff * meas(G_map));
-            const gsMatrix<T>& F_disjoint = A.rhs();
+            A.assemble(ilapl(u_space, G_map) * lap_ex * meas(G_map));
+            gsMatrix<T> F_free = solver.transformFine().transpose() * A.rhs();
+            gsMatrix<T> F_lifted = solver.liftedRhs(F_free, cBnd);
 
-            // Project RHS to AS-G1 free DOFs
-            gsMatrix<T> gd = computeGluingData(mpFine, T(1e-8), 0);
-            std::vector<gsArgyrisEmbedding<T>> argBasis;
-            gsVector<index_t> patchDofSizes(mpFine.nPatches());
-            for (size_t i = 0; i < mpFine.nPatches(); ++i) {
-                argBasis.push_back(deriveArgyrisBasisEmbedding(
-                    dynamic_cast<const gsTensorBSplineBasis<2, T> &>(mpFine.patch(i).basis()),
-                    gsMatrix<T>(gd.row(i)), mpFine.patch(i)));
-                patchDofSizes[i] = argBasis[i].matrix.cols();
-            }
-
-
-            gsConstantFunction<T> zero;
-            gsBoundaryConditions<T> bc;
-            for (auto it = mpFine.bBegin(); it != mpFine.bEnd(); ++it)
-                bc.add(it->patch, it->side(), "ValuesAndDerivatives", zero);
-            gsDofMapper mapper = makeMapperForArgyrisBasis(mpFine, argBasis, bc);
-
-            index_t nDisjoint = 0;
-            for (size_t i = 0; i < mpFine.nPatches(); ++i) nDisjoint += argBasis[i].matrix.rows();
-
-            gsSparseEntries<T> tFreeEntries;
-            index_t rowOffset = 0;
-            for (size_t i = 0; i < mpFine.nPatches(); ++i) {
-                const gsSparseMatrix<T> &Ai = argBasis[i].matrix;
-                const index_t patchSize = mapper.patchSize(i);
-                for (index_t j = 0; j < patchSize; ++j) {
-                    if (mapper.is_boundary(j, i)) continue;
-                    index_t gIdx = mapper.index(j, i);
-                    for (typename gsSparseMatrix<T>::InnerIterator it(Ai, j); it; ++it) {
-                        tFreeEntries.add(rowOffset + it.row(), gIdx, it.value());
-                    }
-                }
-                rowOffset += Ai.rows();
-            }
-
-            gsSparseMatrix<T> S_fine(nDisjoint, nFree);
-            S_fine.setFrom(tFreeEntries);
-
-            gsMatrix<T> b_free = S_fine.transpose() * F_disjoint;
-
-            // Solve via Multigrid PCG
-            gsMatrix<T> u_pcg(nFree, 1);
+            // Solve interior system via multigrid-preconditioned CG.
+            gsMatrix<T> c_free;
             auto t0_solve = std::chrono::high_resolution_clock::now();
-            index_t pcgIters = solvePCG(K_fine, mgSolver, b_free, u_pcg, 100, 1e-8, finestLevel);
+            index_t mgIters = solver.solve(F_lifted, c_free, 200, T(1e-8));
             auto t1_solve = std::chrono::high_resolution_clock::now();
             double solveTime_ms = std::chrono::duration<double, std::milli>(t1_solve - t0_solve).count();
 
-            // Reconstruct multi-patch field for error analysis & plotting
-            gsMatrix<T> c_disjoint = S_fine * u_pcg;
-            gsMultiPatch<T> solField;
-            index_t cOffset = 0;
-            for (size_t i = 0; i < mpFine.nPatches(); ++i) {
-                const index_t sz = argBasis[i].matrix.rows();
-                gsMatrix<T> ci = c_disjoint.block(cOffset, 0, sz, 1);
-                cOffset += sz;
-                const gsTensorBSplineBasis<2, T> &tb = dynamic_cast<const gsTensorBSplineBasis<2, T> &>(mpFine.patch(i).basis());
-                solField.addPatch(tb.makeGeometry(give(ci)));
-            }
-
-            // Error Evaluation
+            // Reconstruct field (interior + prescribed boundary) and evaluate error.
+            gsMultiPatch<T> solField = solver.reconstruct(c_free, cBnd);
             gsExprEvaluator<T> ev;
             ev.setIntegrationDomain(dbasis.domain());
-            auto G_map_ev = ev.getMap(mpFine);
-
-            auto u_exact_ev = ev.getVariable(exact_u, G_map_ev);
-            auto grad_exact_ev = ev.getVariable(exact_grad, G_map_ev);
-            auto hess_exact_ev = reshape(ev.getVariable(exact_hess, G_map_ev), 2, 2);
+            auto G_map_ev = ev.getMap(mp);
+            auto u_exact_ev = ev.getVariable(uField, G_map_ev);
             auto u_sol_ev = ev.getVariable(solField);
 
             const T l2err = std::sqrt(ev.integral((u_sol_ev - u_exact_ev).sqNorm() * meas(G_map_ev)));
-            const T h1err = std::sqrt(ev.integral((igrad(u_sol_ev, G_map_ev) - grad_exact_ev.tr()).sqNorm() * meas(G_map_ev)));
-            const T h2err = std::sqrt(ev.integral((ihess(u_sol_ev, G_map_ev) - hess_exact_ev).sqNorm() * meas(G_map_ev)));
+            const T h1err = std::sqrt(ev.integral((igrad(u_sol_ev, G_map_ev) - igrad(u_exact_ev)).sqNorm() * meas(G_map_ev)));
+            const T h2err = std::sqrt(ev.integral((ihess(u_sol_ev, G_map_ev) - ihess(u_exact_ev)).sqNorm() * meas(G_map_ev)));
 
-            // Convergence Rates
             T l2_rate = 0, h1_rate = 0, h2_rate = 0;
             if (maxRef > minRefinements && prev_h > 0) {
-                const T h_ratio = prev_h / h_max;
-                l2_rate = std::log(prev_l2 / l2err) / std::log(h_ratio);
-                h1_rate = std::log(prev_h1 / h1err) / std::log(h_ratio);
-                h2_rate = std::log(prev_h2 / h2err) / std::log(h_ratio);
+                const T q = std::log(prev_h / h_max);
+                l2_rate = std::log(prev_l2 / l2err) / q;
+                h1_rate = std::log(prev_h1 / h1err) / q;
+                h2_rate = std::log(prev_h2 / h2err) / q;
             }
 
-            // Print Row
             gsInfo << std::setw(5)  << maxRef
                    << std::setw(12) << std::scientific << std::setprecision(4) << h_max
-                   << std::setw(10) << nFree
+                   << std::setw(10) << solver.freeDofs()
                    << std::setw(14) << std::scientific << std::setprecision(4) << l2err;
-            if (maxRef > minRefinements)
-                gsInfo << std::setw(9) << std::fixed << std::setprecision(2) << l2_rate;
-            else
-                gsInfo << std::setw(9) << "-";
-
+            if (maxRef > minRefinements) gsInfo << std::setw(9) << std::fixed << std::setprecision(2) << l2_rate; else gsInfo << std::setw(9) << "-";
             gsInfo << std::setw(14) << std::scientific << std::setprecision(4) << h1err;
-            if (maxRef > minRefinements)
-                gsInfo << std::setw(9) << std::fixed << std::setprecision(2) << h1_rate;
-            else
-                gsInfo << std::setw(9) << "-";
-
+            if (maxRef > minRefinements) gsInfo << std::setw(9) << std::fixed << std::setprecision(2) << h1_rate; else gsInfo << std::setw(9) << "-";
             gsInfo << std::setw(14) << std::scientific << std::setprecision(4) << h2err;
-            if (maxRef > minRefinements)
-                gsInfo << std::setw(9) << std::fixed << std::setprecision(2) << h2_rate;
-            else
-                gsInfo << std::setw(9) << "-";
-
-            gsInfo << std::setw(10) << pcgIters
+            if (maxRef > minRefinements) gsInfo << std::setw(9) << std::fixed << std::setprecision(2) << h2_rate; else gsInfo << std::setw(9) << "-";
+            gsInfo << std::setw(10) << mgIters
                    << std::setw(14) << std::fixed << std::setprecision(2) << solveTime_ms << " ms\n" << std::flush;
 
-            prev_h = h_max;
-            prev_l2 = l2err;
-            prev_h1 = h1err;
-            prev_h2 = h2err;
+            prev_h = h_max; prev_l2 = l2err; prev_h1 = h1err; prev_h2 = h2err;
 
-            // Export VTK plots to timestamped output folder
-            std::string solName = outDir + "as_g1_multigrid_sol_r" + std::to_string(maxRef);
-            std::string exactName = outDir + "as_g1_multigrid_exact_r" + std::to_string(maxRef);
-
-            gsField<T> solF(mpFine, solField);
-            gsWriteParaview<>(solF, solName, 1000);
-
-            gsField<T> exactF(mpFine, exact_u, false);
-            gsWriteParaview<>(exactF, exactName, 1000);
+            // Export VTK plots to the output folder.
+            gsField<T> solF(mp, solField);
+            gsWriteParaview<>(solF, outDir + "as_g1_multigrid_sol_r" + std::to_string(maxRef), 1000);
+            gsField<T> exactF(mp, uField, false);
+            gsWriteParaview<>(exactF, outDir + "as_g1_multigrid_exact_r" + std::to_string(maxRef), 1000);
 
         } catch (const std::exception &e) {
             gsInfo << "ERROR on level " << maxRef << ": " << e.what() << "\n" << std::flush;
