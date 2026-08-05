@@ -230,6 +230,7 @@ int main(int argc, char *argv[]) {
           sol_bnd = sol_global.bottomRows(nBnd);
       }
 
+
       // ---- Assemble Discontinuous Biharmonic Matrix & RHS ----
       gsSparseMatrix<T> K_discont;
       gsMatrix<T> F_discont;
