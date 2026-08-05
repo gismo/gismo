@@ -583,10 +583,20 @@ index_t sumUntil(const gsVector<index_t, 13> &vec, index_t until) {
     return sum;
 }
 
+enum class cornerConditionType {
+    all = 6,
+    valuesNormals = 5,
+    none = 0
+};
+
+typedef std::pair<patchCorner, cornerConditionType> cornerCondition;
+typedef std::vector<cornerCondition> cornerConditions;
+
 template<typename T>
 gsDofMapper makeMapperForArgyrisBasis(const gsMultiPatch<T>& mp,
                                       const std::vector<gsArgyrisEmbedding<T>>& argBasis,
-                                      const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>())
+                                      const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
+                                      const cornerConditions& cc = cornerConditions())
 {
     gsVector<index_t> patchDofSizes(argBasis.size());
     for (size_t i = 0; i < argBasis.size(); ++i)
@@ -646,8 +656,8 @@ gsDofMapper makeMapperForArgyrisBasis(const gsMultiPatch<T>& mp,
             const index_t off_corner_1 = sumUntil(argBasis[ps1.patch].sizes, 9 + c1);
             const index_t off_corner_2 = sumUntil(argBasis[ps2.patch].sizes, 9 + c2);
 
-            for (index_t i=0; i<6; ++i)
-                mapper.matchDof(ps1.patch, off_corner_1+i, ps2.patch, off_corner_2+i);
+            for (index_t j=0; j<6; ++j)
+                mapper.matchDof(ps1.patch, off_corner_1+j, ps2.patch, off_corner_2+j);
 
         }
     }
@@ -670,18 +680,22 @@ gsDofMapper makeMapperForArgyrisBasis(const gsMultiPatch<T>& mp,
             sumUntil(argBasis[ps.patch].sizes, 2 + 2 * (ps.m_index - 1));
         for (index_t j = 0; j < nLvl1; ++j)
           mapper.eliminateDof(offLvl1 + j, ps.patch);
+    }
 
-        // Contained corners on this boundary side
-
-        std::vector<patchCorner> corners;
-        ps.getContainedCorners(2, corners);
-        for (const auto &c : corners)
-        {
-            const index_t cIdx = c.m_index - 1;
-            const index_t offCorner = sumUntil(argBasis[ps.patch].sizes, 9 + cIdx);
-            for (index_t k = 0; k < 6; ++k)
-                mapper.eliminateDof(offCorner + k, ps.patch);
-        }
+    for (size_t i=0; i<cc.size(); ++i)
+    {
+        const index_t c = cc[i].first.m_index - 1;
+        const index_t off_corner = sumUntil(argBasis[cc[i].first.patch].sizes, 9 + c);
+        if (cc[i].second == cornerConditionType::all)
+            for (index_t j=0; j<6; ++j)
+                mapper.eliminateDof(off_corner+j, cc[i].first.patch);
+        else if (cc[i].second == cornerConditionType::valuesNormals)
+            for (index_t j=0; j<5; ++j)
+                mapper.eliminateDof(off_corner+j, cc[i].first.patch);
+        else if (cc[i].second == cornerConditionType::none)
+            ; // Do nothing
+        else
+            GISMO_ENSURE(false, "Not implemented.");
     }
 
 
