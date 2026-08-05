@@ -252,13 +252,8 @@ int main(int argc, char *argv[]) {
       gsMatrix<T> sol_free;
       makeSparseCholeskySolver(K_free)->apply(F_free, sol_free);
 
-      // Reconstruct full global vector sol_global
-      gsMatrix<T> sol_global(nFree + nBnd, 1);
-      sol_global.topRows(nFree) = sol_free;
-      sol_global.bottomRows(nBnd) = sol_bnd;
-
       // Reconstruct full global vector sol_discont
-      gsMatrix<T> sol_discont = T_global * sol_global;
+      gsMatrix<T> sol_discont = T_free * sol_free + T_bnd * sol_bnd;
 
       // Reconstruct multi-patch solution field
       gsMultiPatch<T> sol;
