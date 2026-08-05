@@ -122,8 +122,7 @@ int main(int argc, char *argv[]) {
       }
 
       // ---- Refinement ----
-      const short_t deg = mp.patch(0).basis().degree(0);
-      const index_t mult = std::max<index_t>(deg - 1, 1);
+      const index_t mult = 2;
       for (index_t i = 0; i < ref; ++i)
         mp.uniformRefine(1, mult);
 
