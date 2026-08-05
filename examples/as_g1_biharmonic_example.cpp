@@ -103,21 +103,22 @@ int main(int argc, char *argv[]) {
   T prev_h2 = 0;
 
   for (index_t ref = minRefinements; ref <= maxRefinements; ++ref) {
-    try {
       // ---- Read geometry ----
       gsMultiPatch<T>::uPtr mpPtr = gsReadFile<>(geometry);
-      if (!mpPtr) {
-        gsInfo << "Error: Cannot read geometry " << geometry << "\n";
-        return -1;
+      if (!mpPtr)
+      {
+          gsInfo << "Error: Cannot read geometry " << geometry << "\n";
+          return -1;
       }
       gsMultiPatch<T> &mp = *mpPtr;
       mp.computeTopology();
 
       // ---- Degree Elevation ----
-      const short_t inputDeg = mp.patch(0).basis().degree(0);
-      if (inputDeg < degree) {
-        const short_t elev = degree - inputDeg;
-        mp.degreeElevate(elev);
+      const short_t inputDeg = mp.patch(0).basis().degree(0); //TODO: fixme
+      if (inputDeg < degree)
+      {
+          const short_t elev = degree - inputDeg;
+          mp.degreeElevate(elev);
       }
 
       // ---- Refinement ----
@@ -126,7 +127,24 @@ int main(int argc, char *argv[]) {
       for (index_t i = 0; i < ref; ++i)
         mp.uniformRefine(1, mult);
 
-      const T h_max = std::pow(0.5, ref);
+      const T h_max = std::pow(0.5, ref); //TODO: fixme
+
+      // ---- Get multi basis ----
+      gsMultiBasis<T> dbasis(mp);
+
+      // ---- Manifactured Solution ----
+      const std::string s_a = std::to_string(freqA);
+      const std::string u_expr = "sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+      const std::string grad_x_expr =       s_a + "*pi*cos(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+      const std::string grad_y_expr = "-" + s_a + "*pi*sin(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
+      const std::string rhs_expr = std::to_string(4 * freqA * freqA * freqA * freqA) +
+          "*pi^4*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+      const std::string hess_xx = "-" + std::to_string(freqA * freqA) + "*pi^2*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+      const std::string hess_xy = "-" + std::to_string(freqA * freqA) + "*pi^2*cos(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
+      const std::string hess_yy = "-" + std::to_string(freqA * freqA) + "*pi^2*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+      gsFunctionExpr<T> exact_u(u_expr, 2);
+      gsFunctionExpr<T> exact_grad(grad_x_expr, grad_y_expr, 2);
+      gsFunctionExpr<T> exact_hess(hess_xx, hess_xy, hess_xy, hess_yy, 2);
 
       // ---- Define boundary conditions ----
       gsConstantFunction<T> zero;
@@ -188,102 +206,77 @@ int main(int argc, char *argv[]) {
 
       // ---- Evaluate Dirichlet boundary values vector g_bnd ----
       // TODO: Derive inhomogenous boundary data (edges+vertex) properly
-      const std::string s_a = std::to_string(freqA);
-      const std::string u_expr =
-          "sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-      const std::string grad_x_expr =
-          s_a + "*pi*cos(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-      const std::string grad_y_expr =
-          "-" + s_a + "*pi*sin(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
-      const std::string rhs_expr =
-          std::to_string(4 * freqA * freqA * freqA * freqA) +
-          "*pi^4*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+      gsMatrix<T> sol_bnd;
+      {
+          gsExprAssembler<T> A(1, 1);
+          A.setIntegrationDomain(dbasis.domain());
+          auto G_map_l2 = A.getMap(mp);
+          auto u_space_l2 = A.getSpace(dbasis);
+          auto u_coeff_l2 = A.getCoeff(exact_u, G_map_l2);
 
-      const std::string hess_xx =
-          "-" + std::to_string(freqA * freqA) + "*pi^2*sin(" + s_a +
-          "*pi*x)*cos(" + s_a + "*pi*y)";
-      const std::string hess_xy =
-          "-" + std::to_string(freqA * freqA) + "*pi^2*cos(" + s_a +
-          "*pi*x)*sin(" + s_a + "*pi*y)";
-      const std::string hess_yy =
-          "-" + std::to_string(freqA * freqA) + "*pi^2*sin(" + s_a +
-          "*pi*x)*cos(" + s_a + "*pi*y)";
+          A.initSystem();
+          A.assemble(u_space_l2 * u_space_l2.tr() * meas(G_map_l2),
+                     u_space_l2 * u_coeff_l2 * meas(G_map_l2));
 
-      gsMultiBasis<T> dbasis(mp);
-      gsFunctionExpr<T> exact_u(u_expr, 2);
-      gsFunctionExpr<T> exact_grad(grad_x_expr, grad_y_expr, 2);
+          gsSparseMatrix<T> M_global = T_global.transpose() * A.matrix() * T_global;
+          gsMatrix<T> F_global = T_global.transpose() * A.rhs();
 
-      gsExprAssembler<T> A_l2(1, 1);
-      A_l2.setIntegrationDomain(dbasis.domain());
-      auto G_map_l2 = A_l2.getMap(mp);
-      auto u_space_l2 = A_l2.getSpace(dbasis);
-      auto u_coeff_l2 = A_l2.getCoeff(exact_u, G_map_l2);
+          gsMatrix<T> sol_global;
+          makeSparseCholeskySolver(M_global)->apply(F_global, sol_global);
+          sol_bnd = sol_global.bottomRows(nBnd);
+      }
 
-      A_l2.initSystem();
-      A_l2.assemble(u_space_l2 * u_space_l2.tr() * meas(G_map_l2),
-                    u_space_l2 * u_coeff_l2 * meas(G_map_l2));
+      // ---- Assemble Discontinuous Biharmonic Matrix & RHS ----
+      gsSparseMatrix<T> K_discont;
+      gsMatrix<T> F_discont;
+      {
+          gsExprAssembler<T> A(1, 1);
+          A.setIntegrationDomain(dbasis.domain());
 
-      gsSparseMatrix<T> M_global =
-          T_global.transpose() * A_l2.matrix() * T_global;
-      gsMatrix<T> F_l2_global = T_global.transpose() * A_l2.rhs();
+          auto G_map = A.getMap(mp);
+          auto u_space = A.getSpace(dbasis);
 
-      gsSparseSolver<T>::LU solver_l2(M_global);
-      gsMatrix<T> c_l2_global = solver_l2.solve(F_l2_global);
+          gsFunctionExpr<T> rhs_f(rhs_expr, 2);
+          auto f_coeff = A.getCoeff(rhs_f, G_map);
 
-      gsMatrix<T> g_bnd = c_l2_global.bottomRows(nBnd);
+          A.initSystem();
+          A.assemble(ilapl(u_space, G_map) * ilapl(u_space, G_map).tr() * meas(G_map),
+                    u_space * f_coeff * meas(G_map));
 
-      // ---- Assemble Disjoint Biharmonic Matrix & RHS ----
-      gsExprAssembler<T> A(1, 1);
-      A.setIntegrationDomain(dbasis.domain());
-
-      auto G_map = A.getMap(mp);
-      auto u_space = A.getSpace(dbasis);
-
-      gsFunctionExpr<T> rhs_f(rhs_expr, 2);
-      auto f_coeff = A.getCoeff(rhs_f, G_map);
-
-      A.initSystem();
-      A.assemble(ilapl(u_space, G_map) * ilapl(u_space, G_map).tr() *
-                     meas(G_map),
-                 u_space * f_coeff * meas(G_map));
-
-      const gsSparseMatrix<T> &K_disjoint = A.matrix();
-      const gsMatrix<T> &F_disjoint = A.rhs();
+          K_discont = give(A.matrix());
+          F_discont = give(A.rhs());
+      }
 
       // ---- Global Linear System Assembly & Solve ----
-      gsSparseMatrix<T> K_free = T_free.transpose() * K_disjoint * T_free;
-      gsMatrix<T> F_free = T_free.transpose() * F_disjoint -
-                           T_free.transpose() * (K_disjoint * (T_bnd * g_bnd));
+      gsSparseMatrix<T> K_free = T_free.transpose() * K_discont * T_free;
+      gsMatrix<T> F_free = T_free.transpose() * (F_discont - K_discont * (T_bnd * sol_bnd));
+      gsMatrix<T> sol_free;
+      makeSparseCholeskySolver(K_free)->apply(F_free, sol_free);
 
-      gsSparseSolver<T>::LU solver(K_free);
-      gsMatrix<T> c_free = solver.solve(F_free);
+      // Reconstruct full global vector sol_global
+      gsMatrix<T> sol_global(nFree + nBnd, 1);
+      sol_global.topRows(nFree) = sol_free;
+      sol_global.bottomRows(nBnd) = sol_bnd;
 
-      // Reconstruct full global vector c_global
-      gsMatrix<T> c_global(nFree + nBnd, 1);
-      c_global.topRows(nFree) = c_free;
-      c_global.bottomRows(nBnd) = g_bnd;
-
-      gsMatrix<T> c_disjoint = T_global * c_global;
+      // Reconstruct full global vector sol_discont
+      gsMatrix<T> sol_discont = T_global * sol_global;
 
       // Reconstruct multi-patch solution field
       gsMultiPatch<T> sol;
       index_t offset = 0;
-      for (size_t i = 0; i < mp.nPatches(); ++i) {
-        const index_t sz = argBasis[i].matrix.rows();
-        gsMatrix<T> ci = c_disjoint.block(offset, 0, sz, 1);
-        offset += sz;
-        const gsTensorBSplineBasis<2, T> &tb =
-            dynamic_cast<const gsTensorBSplineBasis<2, T> &>(
-                mp.patch(i).basis());
-        sol.addPatch(tb.makeGeometry(give(ci)));
+      for (size_t i = 0; i < mp.nPatches(); ++i)
+      {
+          const index_t sz = argBasis[i].matrix.rows();
+          gsMatrix<T> ci = sol_discont.block(offset, 0, sz, 1);
+          offset += sz;
+          const gsTensorBSplineBasis<2, T> &tb = dynamic_cast<const gsTensorBSplineBasis<2, T> &>(mp.patch(i).basis());
+          sol.addPatch(tb.makeGeometry(give(ci)));
       }
 
       // ---- Error Evaluation ----
       gsExprEvaluator<T> ev;
       ev.setIntegrationDomain(dbasis.domain());
       auto G_map_ev = ev.getMap(mp);
-
-      gsFunctionExpr<T> exact_hess(hess_xx, hess_xy, hess_xy, hess_yy, 2);
 
       auto u_exact_ev = ev.getVariable(exact_u, G_map_ev);
       auto grad_exact_ev = ev.getVariable(exact_grad, G_map_ev);
@@ -342,8 +335,9 @@ int main(int argc, char *argv[]) {
       prev_h1 = h1err;
       prev_h2 = h2err;
 
-      // Optional VTK output for solution and original exact function
-      if (plot || !outDir.empty()) {
+      // ---- Optional VTK output for solution and original exact function----
+      if (plot || !outDir.empty())
+      {
         std::string solName =
             prefix + "as_g1_biharmonic_sol_r" + std::to_string(ref);
         std::string exactName =
@@ -358,9 +352,6 @@ int main(int argc, char *argv[]) {
         gsInfo << " -> Exported VTK plots: " << solName << " & " << exactName
                << "\n";
       }
-    } catch (const std::exception &e) {
-      gsInfo << "ERROR: " << e.what() << "\n" << std::flush;
-    }
   }
 
   gsInfo << std::string(99, '-') << "\n";
