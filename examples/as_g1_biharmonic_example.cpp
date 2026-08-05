@@ -162,20 +162,20 @@ int main(int argc, char *argv[]) {
       normalsForPatches.setZero();
       for (size_t i=0; i<vertices.size(); ++i)
       {
-        gsVector<T> normal = getOuterNormalDerivative(mp, vertices[i]);
-        for (size_t j=0; j<vertices[i].size(); ++j)
-          normalsForPatches.block(vertices[i][j].patch, 2*(vertices[i][j].m_index-1), 1, 2) = normal.transpose();
-        cc.push_back(cornerCondition{vertices[i][0], normal.norm()<1e-6 ? cornerConditionType::all : cornerConditionType::valuesNormals});
-        normalsAtVertices.push_back(give(normal));
+          gsVector<T> normal = getOuterNormalDerivative(mp, vertices[i]);
+          for (size_t j=0; j<vertices[i].size(); ++j)
+              normalsForPatches.block(vertices[i][j].patch, 2*(vertices[i][j].m_index-1), 1, 2) = normal.transpose();
+          cc.push_back(cornerCondition{vertices[i][0], normal.norm()<1e-6 ? cornerConditionType::all : cornerConditionType::valuesNormals});
+          normalsAtVertices.push_back(give(normal));
       }
       // Impose (1,0) as normal vector where we do not have a joint normal vector
       for (size_t i=0; i<mp.nPatches(); ++i)
-        for (index_t j=0; j<4; ++j)
-          if (normalsForPatches.block(i,2*j,1,2).norm() < 1e-6)
-          {
-            normalsForPatches(i,2*j)=1;
-            normalsForPatches(i,2*j+1)=0;
-          }
+          for (index_t j=0; j<4; ++j)
+              if (normalsForPatches.block(i,2*j,1,2).norm() < 1e-6)
+              {
+                  normalsForPatches(i,2*j)=1;
+                  normalsForPatches(i,2*j+1)=0;
+              }
 
       // ---- Build per-patch interface embeddings ----
       std::vector<gsArgyrisEmbedding<T>> argBasis;
@@ -209,13 +209,13 @@ int main(int argc, char *argv[]) {
       {
           gsExprAssembler<T> A(1, 1);
           A.setIntegrationDomain(dbasis.domain());
-          auto G_map_l2 = A.getMap(mp);
-          auto u_space_l2 = A.getSpace(dbasis);
-          auto u_coeff_l2 = A.getCoeff(exact_u, G_map_l2);
+          auto G_map = A.getMap(mp);
+          auto u_space = A.getSpace(dbasis);
+          auto u_coeff = A.getCoeff(exact_u, G_map);
 
           A.initSystem();
-          A.assemble(u_space_l2 * u_space_l2.tr() * meas(G_map_l2),
-                     u_space_l2 * u_coeff_l2 * meas(G_map_l2));
+          A.assemble(u_space * u_space.tr() * meas(G_map),
+                     u_space * u_coeff * meas(G_map));
 
           gsSparseMatrix<T> M_global = T_global.transpose() * A.matrix() * T_global;
           gsMatrix<T> F_global = T_global.transpose() * A.rhs();
