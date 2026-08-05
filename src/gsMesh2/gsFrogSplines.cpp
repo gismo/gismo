@@ -779,7 +779,6 @@ real_t gsFrogSplines<N>::fit_function(gsFunctionExpr<real_t> function)
     // Equation: Int(v * u) = Int(v * f) e.g. u = f
     A.assemble(u * u.tr(), u * ff);
 
-
     real_t cond_number = estimate_condition_number(A.matrix());
     gsInfo << "Condition number estimate: " << cond_number << "\n";
 
@@ -1009,79 +1008,38 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
         auto fitting_fcts = fd.getAll<gsMultiPatch<real_t>>();
         const size_t total_function_count = fitting_fcts.size();
 
-        // Determine which functions to use based on use_generating_system parameter
+        // Determine which functions to use based on use_generating_system
+        // parameter
         std::vector<size_t> active_functions;
         size_t function_count = total_function_count;
-        
+
         if (!use_generating_system)
         {
-            // Build coefficient matrix: rows = control points in support, 
-            // columns = fitting functions
-            std::vector<std::vector<real_t>> coeff_rows;
-            
+            // Perform column-pivoted QR decomposition to identify linearly
+            // independent columns
+            gsMatrix<> A(patches_count * N * N, total_function_count);
             for (size_t p = 0; p < patches_count; ++p)
+                for (index_t j = 0; j < total_function_count; ++j)
+                    A.block(p * N * N, j, N * N, 1) =
+                        fitting_fcts[j]->patch(p).coefs().col(2);
+
+            // Use ColPivHouseholderQR to find rank and independent columns
+            gsEigen::ColPivHouseholderQR<gsMatrix<>> qr(A);
+            qr.setThreshold(1e-10);
+            const index_t rank = qr.rank();
+
+            // Get the permutation to identify independent columns
+            const auto& perm = qr.colsPermutation();
+
+            // The first 'rank' columns after permutation are independent
+            active_functions.reserve(rank);
+            for (index_t i = 0; i < rank; ++i)
             {
-                for (size_t ux = 0; ux < N; ++ux)
-                {
-                    for (size_t vx = 0; vx < N; ++vx)
-                    {
-                        // Check if any fitting function is non-zero here
-                        bool in_support = std::any_of(
-                            fitting_fcts.begin(), fitting_fcts.end(),
-                            [&](const auto& ff)
-                            {
-                                return ff->patch(p).coef((index_t)(ux * N + vx), 2) 
-                                       != real_t(0);
-                            });
-                        
-                        if (in_support)
-                        {
-                            std::vector<real_t> row;
-                            for (size_t j = 0; j < total_function_count; ++j)
-                            {
-                                row.push_back(fitting_fcts[j]->patch(p).coef(
-                                    (index_t)(ux * N + vx), 2));
-                            }
-                            coeff_rows.push_back(row);
-                        }
-                    }
-                }
+                active_functions.push_back(perm.indices()(i));
             }
-            
-            // Perform column-pivoted QR decomposition to identify linearly independent columns
-            const index_t nRows = (index_t)coeff_rows.size();
-            const index_t nCols = (index_t)total_function_count;
-            
-            if (nRows > 0 && nCols > 0)
-            {
-                gsMatrix<> A(nRows, nCols);
-                for (index_t i = 0; i < nRows; ++i)
-                    for (index_t j = 0; j < nCols; ++j)
-                        A(i, j) = coeff_rows[i][j];
-                
-                // Use ColPivHouseholderQR to find rank and independent columns
-                gsEigen::ColPivHouseholderQR<gsMatrix<>> qr(A);
-                qr.setThreshold(1e-10);
-                const index_t rank = qr.rank();
-                
-                // Get the permutation to identify independent columns
-                const auto& perm = qr.colsPermutation();
-                
-                // The first 'rank' columns after permutation are independent
-                active_functions.reserve(rank);
-                for (index_t i = 0; i < rank; ++i)
-                {
-                    active_functions.push_back(perm.indices()(i));
-                }
-                
-                // Sort to maintain original order where possible
-                std::sort(active_functions.begin(), active_functions.end());
-                function_count = active_functions.size();
-                
-                gsInfo << "EV at vertex " << v.idx() << " (valence " << valence 
-                       << "): Using " << function_count << " of " 
-                       << total_function_count << " functions (rank=" << rank << ")\n";
-            }
+
+            gsInfo << "Using " << active_functions.size() << " of "
+                   << total_function_count << " functions.\n";
         }
         else
         {
@@ -1127,8 +1085,9 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
                         for (size_t j = 0; j < function_count; ++j)
                         {
                             const size_t orig_func_idx = active_functions[j];
-                            const real_t coeff = fitting_fcts[orig_func_idx]->patch(p).coef(
-                                (index_t)(ux * N + vx), 2);
+                            const real_t coeff =
+                                fitting_fcts[orig_func_idx]->patch(p).coef(
+                                    (index_t)(ux * N + vx), 2);
                             if (coeff != real_t(0))
                                 pre_mapper[ldof][ev_dof_start + j] = coeff;
                         }
