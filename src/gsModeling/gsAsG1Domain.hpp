@@ -302,5 +302,90 @@ gsMatrix<T> computeGluingData(
     return M;
 }
 
+// ====================================================================
+// Code for handling boundary conditions at the corners
+// ====================================================================
+
+
+template <typename T>
+std::vector<std::vector<patchCorner>> getBoundaryVertices(const gsBoxTopology& bt, const gsBoundaryConditions<T>& bc, const std::string& label)
+{
+    const short_t dim = 2;
+    gsSortedVector<std::vector<patchCorner>> result;
+    for (auto it = bc.begin(label); it != bc.end(label); ++it)
+    {
+        std::vector<patchCorner> corners;
+        it->ps.getContainedCorners(dim, corners);
+        for (size_t i=0; i<corners.size(); ++i)
+        {
+            std::vector<patchCorner> cornerGroup;
+            bt.getCornerList(corners[i], cornerGroup);
+            // sort cornerGroup in order to be recognize matching ones
+            std::sort(cornerGroup.begin(), cornerGroup.end());
+            result.push_sorted_unique(cornerGroup);
+        }
+
+    }
+    return result;
+}
+
+template <typename T>
+gsVector<T> getOuterNormalDerivative(const gsMultiPatch<T>& mp, const std::vector<patchCorner>& corners, T eps = 1e-6)
+{
+    const short_t dim = 2;
+    std::vector<gsVector<T>> normals;
+    for (size_t i=0; i<corners.size(); ++i)
+    {
+        const gsGeometry<T>& geo = mp.patch(corners[i].patch);
+
+        // determine coordinates of corner in parameter domain
+        gsMatrix<T> pt(dim,1);
+        {
+            const gsMatrix<T> supp = geo.support();
+            gsVector<bool> parameters = corners[i].parameters(dim);
+            for (short_t d=0; d<dim; ++d)
+                pt(d,0) = parameters[d] ? supp(d,0) : supp(d,1);
+        }
+
+        // determine Jacobian
+        gsMatrix<T> deriv;
+        geo.deriv_into(pt, deriv);
+
+        // determine cofactor matrix of Jacobian
+        gsMatrix<T> jacCf(2,2);
+        jacCf(0,0) =  deriv(3,0); // =  jacobian(1,1)
+        jacCf(1,0) = -deriv(1,0); // = -jacobian(0,1)
+        jacCf(0,1) = -deriv(2,0); // = -jacobian(1,0)
+        jacCf(1,1) =  deriv(0,0); // =  jacobian(0,0)
+
+        // determine sides
+        std::vector<patchSide> sides;
+        corners[i].getContainingSides(dim, sides);
+        for (size_t j=0; j<sides.size(); ++j)
+        {
+            if (mp.isBoundary(sides[j]))
+            {
+                gsVector<T> paramNormal;
+                paramNormal.setZero(dim);
+                paramNormal[sides[j].direction()] = sides[j].parameter() ? 1 : -1;
+                gsVector<T> normal = jacCf * paramNormal * geo.orientation();
+                normal.normalize();
+                normals.push_back(normal);
+            }
+        }
+    }
+    // Now, select one if it fits and return null vector if the normals disagree
+    GISMO_ENSURE (normals.size() == 2, "Expected 2 edges, got "<<normals.size());
+    if ( normals[0].dot(normals[1]) >= 1-eps )
+        return (normals[0]+normals[1])/2;
+    else
+    {
+        gsVector<T> zero(2);
+        zero.setZero();
+        return zero;
+    }
+}
+
+
 
 } // namespace gismo

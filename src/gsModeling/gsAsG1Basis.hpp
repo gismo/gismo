@@ -160,8 +160,35 @@ gsSparseMatrix<T> collocateBoundaryCrossingDerivative(
 template <typename T>
 gsSparseMatrix<T>
 collocateCorners(const gsTensorBSplineBasis<2, T> &tensorBasis,
-                 const gsGeometry<T> &geo)
+                 const gsGeometry<T> &geo,
+                 const gsMatrix<T> &normals)
 {
+    std::vector<gsMatrix<T>> transforms;
+    transforms.reserve(4);
+    std::vector<gsMatrix<T>> transforms2;
+    transforms2.reserve(4);
+    for (index_t i=0; i<4; ++i)
+    {
+        gsMatrix<T> transform(2,2);
+        transform(0,0) = normals(0+2*i);
+        transform(1,0) = normals(1+2*i);
+        transform(0,1) = normals(1+2*i);
+        transform(1,1) = -normals(0+2*i);
+        transforms.push_back(give(transform));
+
+        gsMatrix<T> transform2(3,3);
+        transform2(0,0) = normals(0+2*i)*normals(0+2*i);
+        transform2(1,0) = normals(1+2*i)*normals(1+2*i);
+        transform2(2,0) = normals(0+2*i)*normals(1+2*i);
+        transform2(0,1) = normals(1+2*i)*normals(1+2*i);
+        transform2(1,1) = normals(0+2*i)*normals(0+2*i);
+        transform2(2,1) = -normals(0+2*i)*normals(1+2*i);
+        transform2(0,2) = 2*normals(0+2*i)*normals(1+2*i);
+        transform2(1,2) = 2*normals(0+2*i)*normals(1+2*i);
+        transform2(2,2) = -normals(0+2*i)*normals(0+2*i)+normals(1+2*i)*normals(1+2*i);
+        transforms2.push_back(give(transform2));
+    }
+
     const gsMatrix<T> support = tensorBasis.support();
     gsMatrix<T> corners(2, 4);
     corners(0, 0) = support(0, 0);
@@ -196,6 +223,8 @@ collocateCorners(const gsTensorBSplineBasis<2, T> &tensorBasis,
     {
         gsMatrix<T> tmp;
         transformGradients(md, i, der1, tmp);
+        tmp.resize(der1.rows()/2, 2);
+        tmp = tmp * transforms[i];
         tmp.resize(der1.rows(), 1);
         der1Phys.col(i) = tmp;
     }
@@ -206,6 +235,8 @@ collocateCorners(const gsTensorBSplineBasis<2, T> &tensorBasis,
         gsMatrix<T> tmp;
         transformDeriv2Hgrad(md, i, der1, der2, tmp);
         tmp = tmp.transpose();
+        tmp.resize(der2.rows()/3, 3);
+        tmp = tmp * transforms2[i];
         tmp.resize(der2.rows(), 1);
         der2Phys.col(i) = tmp;
     }
@@ -397,12 +428,13 @@ template <typename T>
 gsSparseMatrix<T>
 deriveCornerEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
                       const gsGeometry<T> &geo,
-                      const gsMatrix<T> &localGluingData)
+                      const gsMatrix<T> &localGluingData,
+                      const gsMatrix<T> &normals)
 {
     index_t rows = tensorBasis.size();
     gsBlockSparseMatrix<T> collocation(6, 5);
 
-    collocation.set(0, 0, collocateCorners(tensorBasis, geo));
+    collocation.set(0, 0, collocateCorners(tensorBasis, geo, normals));
     collocation.set(1, 0, deriveInnerEmbedding(tensorBasis).transpose());
 
     for (boxSide side = boxSide::getFirst(2); side != boxSide::getEnd(2); ++side)
@@ -487,7 +519,9 @@ template <typename T>
 gsArgyrisEmbedding<T>
 deriveArgyrisBasisEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
                             const gsMatrix<T> &localGluingData,
-                            gsGeometry<T> &geo, T eps = 1e-12)
+                            const gsMatrix<T> &normals,
+                            gsGeometry<T> &geo,
+                            T eps = 1e-12)
 {
     gsArgyrisEmbedding<T> result;
     gsBlockSparseMatrix<T> blockMatrix(1, 6);
@@ -515,7 +549,7 @@ deriveArgyrisBasisEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
         result.sizes[2 + 2 * (side.m_index - 1)] = asG1edgeEmbedding.sizes[1] - 4;
     }
 
-    blockMatrix.set(0, 5, deriveCornerEmbedding(tensorBasis, geo, localGluingData));
+    blockMatrix.set(0, 5, deriveCornerEmbedding(tensorBasis, geo, localGluingData, normals));
     result.sizes[9] = 6;
     result.sizes[10] = 6;
     result.sizes[11] = 6;
@@ -524,6 +558,20 @@ deriveArgyrisBasisEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
     result.matrix = blockMatrix;
 
     return result;
+}
+
+template <typename T>
+gsArgyrisEmbedding<T>
+deriveArgyrisBasisEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
+                            const gsMatrix<T> &localGluingData,
+                            gsGeometry<T> &geo,
+                            T eps = 1e-12)
+{
+    gsMatrix<T> normals(1,4*2);
+    normals.setZero();
+    for (index_t j=0; j<4; ++j)
+        normals(0,2*j)=1;
+    return deriveArgyrisBasisEmbedding(tensorBasis, localGluingData, normals, geo, eps);
 }
 
 index_t sumUntil(const gsVector<index_t, 13> &vec, index_t until) {

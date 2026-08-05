@@ -132,28 +132,55 @@ int main(int argc, char *argv[]) {
 
       const T h_max = std::pow(0.5, ref);
 
-      // ---- Compute Gluing Data ----
-      gsMatrix<T> gd = computeGluingData(mp, T(1e-8), numGaussPerSpan);
-
-      // ---- Build per-patch interface embeddings ----
-      std::vector<gsArgyrisEmbedding<T>> argBasis;
-      gsVector<index_t> patchDofSizes(mp.nPatches());
-      for (size_t i = 0; i < mp.nPatches(); ++i) {
-        argBasis.push_back(deriveArgyrisBasisEmbedding(
-            dynamic_cast<const gsTensorBSplineBasis<2, T> &>(
-                mp.patch(i).basis()),
-            gsMatrix<T>(gd.row(i)), mp.patch(i)));
-        patchDofSizes[i] = argBasis[i].matrix.cols();
-      }
-
-      // ---- Boundary conditions ----
+      // ---- Define boundary conditions ----
       gsConstantFunction<T> zero;
       gsBoundaryConditions<T> bc;
       for (auto it = mp.bBegin(); it != mp.bEnd(); ++it)
           bc.add(it->patch, it->side(), "ValuesAndDerivatives", zero);
 
+      // ---- Compute Gluing Data ----
+      gsMatrix<T> gd = computeGluingData(mp, T(1e-8), numGaussPerSpan);
+
+      // ---- Get boundary corners and asociated normals ----
+      std::vector<std::vector<patchCorner>> vertices = getBoundaryVertices(mp, bc, "ValuesAndDerivatives");
+      std::vector<gsVector<T>> normalsAtVertices;
+      gsMatrix<T> normalsForPatches(mp.nPatches(), 2*4);
+      normalsForPatches.setZero();
+      for (size_t i=0; i<vertices.size(); ++i)
+      {
+        gsVector<T> normal = getOuterNormalDerivative(mp, vertices[i]);
+        for (size_t j=0; j<vertices[i].size(); ++j)
+          normalsForPatches.block(vertices[i][j].patch, 2*(vertices[i][j].m_index-1), 1, 2) = normal.transpose();
+        normalsAtVertices.push_back(give(normal));
+      }
+      // Impose (1,0) as normal vector where we do not have a joint normal vector
+      for (size_t i=0; i<mp.nPatches(); ++i)
+        for (index_t j=0; j<4; ++j)
+          if (normalsForPatches(i,2*j)*normalsForPatches(i,2*j) + normalsForPatches(i,2*j+1)*normalsForPatches(i,2*j+1) < 1e-6)
+          {
+            normalsForPatches(i,2*j)=1;
+            normalsForPatches(i,2*j+1)=0;
+          }
+
+      // ---- Build per-patch interface embeddings ----
+      std::vector<gsArgyrisEmbedding<T>> argBasis;
+      gsVector<index_t> patchDofSizes(mp.nPatches());
+      for (size_t i = 0; i < mp.nPatches(); ++i)
+      {
+        argBasis.push_back(deriveArgyrisBasisEmbedding(
+            dynamic_cast<const gsTensorBSplineBasis<2, T> &>(mp.patch(i).basis()),
+            gsMatrix<T>(gd.row(i)),
+            gsMatrix<T>(normalsForPatches.row(i)),
+            mp.patch(i)
+        ));
+        patchDofSizes[i] = argBasis[i].matrix.cols();
+      }
+
       // ---- Set up gsDofMapper ----
-      gsDofMapper mapper = makeMapperForArgyrisBasis(mp, argBasis, bc);
+      gsDofMapper mapper = makeMapperForArgyrisBasis(mp, argBasis, bc); // TODO incorporate corner conditions here
+      // TODO: derive inhomogenous boundary data (edges+vertex)
+      // step1: projection
+      // step2: associate boundary data
 
       const index_t nFree = mapper.freeSize();
       const index_t nBnd = mapper.boundarySize();
