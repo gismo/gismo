@@ -1026,19 +1026,19 @@ void gsFrogSplines<N>::c1_basis(gsMultiPatch<>& multi_patch,
             // Use ColPivHouseholderQR to find rank and independent columns
             gsEigen::ColPivHouseholderQR<gsMatrix<>> qr(A);
             qr.setThreshold(1e-10);
-            const index_t rank = qr.rank();
+            function_count  = qr.rank();
 
             // Get the permutation to identify independent columns
             const auto& perm = qr.colsPermutation();
 
             // The first 'rank' columns after permutation are independent
-            active_functions.reserve(rank);
-            for (index_t i = 0; i < rank; ++i)
+            active_functions.reserve(function_count);
+            for (index_t i = 0; i < function_count; ++i)
             {
                 active_functions.push_back(perm.indices()(i));
             }
 
-            gsInfo << "Using " << active_functions.size() << " of "
+            gsInfo << "Using " << function_count << " of "
                    << total_function_count << " functions.\n";
         }
         else
