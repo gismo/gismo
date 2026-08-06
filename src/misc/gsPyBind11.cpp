@@ -58,6 +58,7 @@ PYBIND11_MODULE(pygismo, m) {
   assembler.doc() = "G+Smo (Geometry + Simulation Modules): Assembler module";
 
   gismo::pybind11_init_gsBiharmonicExprAssembler( assembler );
+  gismo::pybind11_init_gsDofMapperCreator( assembler );
 
 
   py::module core = m.def_submodule("core");
@@ -166,8 +167,6 @@ PYBIND11_MODULE(pygismo, m) {
   multigrid.attr("__name__") = "pygismo.multigrid";
   multigrid.attr("__version__") = GISMO_VERSION;
   multigrid.doc() = "G+Smo (Geometry + Simulation Modules): MultiGrid module";
-
-  gismo::pybind11_init_gsGridHierarchy( multigrid );
 
   py::module nurbs = m.def_submodule("nurbs");
 

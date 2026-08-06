@@ -16,6 +16,7 @@
 #pragma once
 
 #include <gsAssembler/gsBiharmonicExprAssembler.h>
+#include <gsAssembler/gsDofMapperCreator.h>
 #include <gsMSplines/gsMappedBasis.h>
 #include <gsMSplines/gsMappedSpline.h>
 #include <gsPde/gsBoundaryConditions.h>
@@ -563,7 +564,7 @@ void gsBiharmonicExprAssembler<T>::_setMapperForBiharmonic(  const gsBoundaryCon
     }
     else if (const gsMultiBasis<T> * dbasis = dynamic_cast<const gsMultiBasis<T> *>(&spaceBasis))
     {
-        mapper.init(*dbasis);
+        mapper = createMapper(*dbasis, 1, /*conforming=*/false);
 
         for (gsBoxTopology::const_iiterator it = dbasis->topology().iBegin();
              it != dbasis->topology().iEnd(); ++it) // C^0 at the interface
@@ -640,7 +641,7 @@ void gsBiharmonicExprAssembler<T>::_getDirichletNeumannValuesL2Projection(
     else if (dynamic_cast<const gsMultiBasis<T> *>(&spaceBasis)) // assumes spacebasis==dbasis
     {
         gsDofMapper mapper = u.mapper();
-        gsDofMapper mapperBdy(dbasis, u.dim());
+        gsDofMapper mapperBdy = createMapper(dbasis, u.dim(), /*conforming=*/false);
         for (gsBoxTopology::const_iiterator it = dbasis.topology().iBegin();
              it != dbasis.topology().iEnd(); ++it) // C^0 at the interface
         {

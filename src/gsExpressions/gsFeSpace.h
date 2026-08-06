@@ -15,6 +15,7 @@
 #pragma once
 
 #include <gsAssembler/gsDirichletValues.h>
+#include <gsAssembler/gsDofMapperCreator.h>
 #include <gsMSplines/gsMappedBasis.h>
 #include <gsExpressions/gsFeSpaceData.h>
 
@@ -120,8 +121,9 @@ public:
         if (const gsMultiBasis<T> * mb =
             dynamic_cast<const gsMultiBasis<T>*>(&this->source()) )
         {
-            m_sd->mapper = gsDofMapper(*mb, this->dim() );
-            //m_mapper.init(*mb, this->dim()); //bug
+            // Note: conforming=false, the interfaces are matched below by the
+            // caller's own matchInterface loop (when interfaceCont()==0)
+            m_sd->mapper = createMapper(*mb, this->dim(), /*conforming=*/false);
             if ( 0==this->interfaceCont() ) // Conforming boundaries ?
             {
                 for ( gsBoxTopology::const_iiterator it = mb->topology().iBegin();
@@ -150,17 +152,17 @@ public:
         const gsMultiBasis<T> *mb = dynamic_cast<const gsMultiBasis<T> *>(&this->source());
         if (mb != nullptr)
         {
-            m_sd->mapper = gsDofMapper(*mb,bc, dim,this->id(),(0 == this->interfaceCont())); // second to last index assumes the unknown in the BCs is the same as the space ID
+            m_sd->mapper = createMapper(*mb, bc, dim, this->id(), (0 == this->interfaceCont())); // second to last index assumes the unknown in the BCs is the same as the space ID
         }
         else if (const gsBasis<T> *b =
                    dynamic_cast<const gsBasis<T> *>(&this->source()))
         {
-            m_sd->mapper = gsDofMapper(*b,bc, dim,this->id()); // last index assumes the unknown in the BCs is the same as the space ID
+            m_sd->mapper = createMapper(*b, bc, dim, this->id()); // last index assumes the unknown in the BCs is the same as the space ID
         }
         else if (const gsMappedBasis<2, T> *mapb =
                    dynamic_cast<const gsMappedBasis<2, T> *>(&this->source()))
         {
-            m_sd->mapper = gsDofMapper(*mapb, bc, dim, this->id(),false);
+            m_sd->mapper = createMapper(*mapb, bc, dim, this->id(), false);
 
             /* 
              * NOTE (from @hverhelst): In earlier code (before 18-12-2025)

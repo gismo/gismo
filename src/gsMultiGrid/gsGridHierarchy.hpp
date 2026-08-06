@@ -20,31 +20,10 @@
 #include <gsIO/gsOptionList.h>
 #include <gsAssembler/gsAssemblerOptions.h>
 #include <gsCore/gsMultiBasis.h>
+#include <gsAssembler/gsDofMapperCreator.h>
 
 namespace gismo
 {
-
-// Helper function
-template <typename T>
-gsDofMapper getMapper(bool glueInterfaces,
-                      bool eliminateDirichlet,
-                      const gsMultiBasis<T> & basis,
-                      index_t numComponents,
-                      const gsBoundaryConditions<T>& boundaryConditions,
-                      index_t unk
-                      )
-{
-    if (eliminateDirichlet)
-        return gsDofMapper(basis,
-                   boundaryConditions,
-                   numComponents,
-                   unk,
-                   glueInterfaces);
-    else
-        return gsDofMapper(basis,
-                   numComponents,
-                   glueInterfaces);
-}
 
 template <typename T>
 gsGridHierarchy<T> gsGridHierarchy<T>::buildByRefinement(
@@ -102,13 +81,17 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByRefinement(
         result.m_mBases[i] = result.m_mBases[i-1];
         gsMultiBasis<T> & basis = result.m_mBases[i];
         // Store the mapper for the current level
-        coarseMapper = getMapper(glueInterfaces,eliminateDirichlet,basis,numComponents,boundaryConditions,unk);
+        coarseMapper = eliminateDirichlet
+            ? createMapper(basis, boundaryConditions, numComponents, unk, glueInterfaces)
+            : createMapper(basis, numComponents, glueInterfaces);
         coarseMapper.finalize();
         // Refine each base and store the local transfer matrices
         for (size_t j = 0; j < basis.nBases(); ++j)
             basis.basis(j).uniformRefine_withTransfer(localTransferMatrices[j],numberOfKnotsToBeInserted,multiplicityOfKnotsToBeInserted);
         // Store the fine mapper
-        fineMapper = getMapper(glueInterfaces,eliminateDirichlet,basis,numComponents,boundaryConditions,unk);
+        fineMapper = eliminateDirichlet
+            ? createMapper(basis, boundaryConditions, numComponents, unk, glueInterfaces)
+            : createMapper(basis, numComponents, glueInterfaces);
         fineMapper.finalize();
         // Compute the global transfer matrix
         basis.combineTransferMatrices(localTransferMatrices,coarseMapper,fineMapper,result.m_transferMatrices[i-1]);
@@ -188,13 +171,17 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByCoarsening(
         gsSparseMatrix<T, RowMajor> transferMatrix;
         gsMultiBasis<T> coarseMBasis = result.m_mBases[i];
         // Store the mapper for the current level
-        fineMapper = getMapper(glueInterfaces,eliminateDirichlet,coarseMBasis,numComponents,boundaryConditions,unk);
+        fineMapper = eliminateDirichlet
+            ? createMapper(coarseMBasis, boundaryConditions, numComponents, unk, glueInterfaces)
+            : createMapper(coarseMBasis, numComponents, glueInterfaces);
         fineMapper.finalize();
         // Coarsen each base and store the local transfer matrices
         for (size_t j = 0; j < coarseMBasis.nBases(); ++j)
             coarseMBasis.basis(j).uniformCoarsen_withTransfer(localTransferMatrices[j],1);
         // Store the coarse mapper
-        coarseMapper = getMapper(glueInterfaces,eliminateDirichlet,coarseMBasis,numComponents,boundaryConditions,unk);
+        coarseMapper = eliminateDirichlet
+            ? createMapper(coarseMBasis, boundaryConditions, numComponents, unk, glueInterfaces)
+            : createMapper(coarseMBasis, numComponents, glueInterfaces);
         coarseMapper.finalize();
         // Compute the global transfer matrix
         coarseMBasis.combineTransferMatrices(localTransferMatrices,coarseMapper,fineMapper,transferMatrix);
@@ -257,7 +244,9 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByHierarchicalCoarsening(
         gsSparseMatrix<T, RowMajor> transferMatrix;
         gsMultiBasis<T> coarseMBasis = result.m_mBases[i];
         // Store the mapper for the current level
-        fineMapper = getMapper(glueInterfaces,eliminateDirichlet,coarseMBasis,numComponents,boundaryConditions,unk);
+        fineMapper = eliminateDirichlet
+            ? createMapper(coarseMBasis, boundaryConditions, numComponents, unk, glueInterfaces)
+            : createMapper(coarseMBasis, numComponents, glueInterfaces);
         fineMapper.finalize();
         gsDebugVar(fineMapper.freeSize());
         // Coarsen each base and store the local transfer matrices
@@ -274,7 +263,9 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByHierarchicalCoarsening(
                 // This should never happen due to the check above
                 GISMO_ERROR("Basis " << j << " must be hierarchical.");
         // Store the coarse mapper
-        coarseMapper = getMapper(glueInterfaces,eliminateDirichlet,coarseMBasis,numComponents,boundaryConditions,unk);
+        coarseMapper = eliminateDirichlet
+            ? createMapper(coarseMBasis, boundaryConditions, numComponents, unk, glueInterfaces)
+            : createMapper(coarseMBasis, numComponents, glueInterfaces);
         coarseMapper.finalize();
         gsDebugVar(coarseMapper.freeSize());
         // Compute the global transfer matrix

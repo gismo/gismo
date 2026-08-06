@@ -18,6 +18,7 @@
 #include <gsHSplines/gsHTensorBasis.h>
 #include <gsUtils/gsCombinatorics.h>
 #include <gsIO/gsOptionList.h>
+#include <gsAssembler/gsDofMapperCreator.h>
 
 namespace gismo
 {
@@ -211,14 +212,10 @@ void gsMultiBasis<T>::uniformRefine_withTransfer(
         index_t unk)
 {
     // Get coarse mapper
-    gsDofMapper coarseMapper;
-    this->getMapper(
+    gsDofMapper coarseMapper = createMapper(*this, boundaryConditions,
             (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
             (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
-            boundaryConditions,
-            coarseMapper,
-            unk
-    );
+            /*nComp=*/1, unk, /*finalize=*/true);
 
     // Refine
     std::vector< gsSparseMatrix<T, RowMajor> > localTransferMatrices(nBases());
@@ -228,14 +225,10 @@ void gsMultiBasis<T>::uniformRefine_withTransfer(
     }
 
     // Get fine mapper
-    gsDofMapper fineMapper;
-    this->getMapper(
+    gsDofMapper fineMapper = createMapper(*this, boundaryConditions,
             (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
             (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
-            boundaryConditions,
-            fineMapper,
-            unk
-    );
+            /*nComp=*/1, unk, /*finalize=*/true);
 
     // restrict to free dofs
     combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );
@@ -251,14 +244,10 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
         index_t unk)
 {
     // Get fine mapper
-    gsDofMapper fineMapper;
-    this->getMapper(
+    gsDofMapper fineMapper = createMapper(*this, boundaryConditions,
             (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
             (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
-            boundaryConditions,
-            fineMapper,
-            unk
-    );
+            /*nComp=*/1, unk, /*finalize=*/true);
 
     // Refine
     std::vector< gsSparseMatrix<T, RowMajor> > localTransferMatrices(nBases());
@@ -268,14 +257,10 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
     }
 
     // Get coarse mapper
-    gsDofMapper coarseMapper;
-    this->getMapper(
+    gsDofMapper coarseMapper = createMapper(*this, boundaryConditions,
             (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
             (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
-            boundaryConditions,
-            coarseMapper,
-            unk
-    );
+            /*nComp=*/1, unk, /*finalize=*/true);
 
     // restrict to free dofs
     combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );
@@ -391,30 +376,6 @@ short_t gsMultiBasis<T>::minDegree(short_t k) const
         if (m_bases[i]->degree(k) < result )
             result = m_bases[i]->degree(k);
     return result;
-}
-
-template<class T>
-void gsMultiBasis<T>::getMapper(bool conforming,
-                                index_t nComp,
-                                gsDofMapper & mapper,
-                                bool finalize) const
-{
-    mapper = gsDofMapper(*this,this->topology(),nComp);//.init(*this);
-    if (finalize)
-        mapper.finalize();
-}
-
-template<class T>
-void gsMultiBasis<T>::getMapper(bool conforming,
-                                const gsBoundaryConditions<T> & bc,
-                                index_t nComp,
-                                index_t unk,
-                                gsDofMapper & mapper,
-                                bool finalize) const
-{
-    mapper = gsDofMapper(*this, bc, nComp,unk,conforming); //.init(*this, bc, unk);
-    if (finalize)
-        mapper.finalize();
 }
 
 template<class T>

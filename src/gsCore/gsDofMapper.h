@@ -16,8 +16,6 @@
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsBoundary.h>
 #include <gsCore/gsExport.h>
-#include <gsCore/gsBoxTopology.h>
-#include <gsPde/gsBoundaryConditions.h>
 
 namespace gismo
 {
@@ -75,115 +73,6 @@ public:
     gsDofMapper();
 
     /**
-     * @brief construct a dof mapper that identifies the degrees
-     * of freedom in the multibasis
-     * and eliminates the degrees of freedom on the Dirichlet boundary
-     *
-     * @param bases
-     * @param dirichlet
-     * @param unk
-     */
-    /// \deprecated Assumes one component; use the nComp overload instead.
-    GISMO_DEPRECATED
-    template<class T>
-    gsDofMapper(
-        const gsFunctionSet<T>         &bases,
-        const gsBoundaryConditions<T> &dirichlet,
-        int unk = 0
-        ) : m_shift(0), m_bshift(0)
-    {
-        if (const gsMultiBasis<T> * mb = dynamic_cast<const gsMultiBasis<T>*>(&bases))
-            init(bases, 1, true, mb->topology(), dirichlet, unk);
-        else
-            init(bases, 1, true, gsBoxTopology(), dirichlet, unk);
-    }
-
-    /// Full constructor: function set, components, conformity, topology and BCs.
-    template<class T>
-    gsDofMapper(
-        const gsFunctionSet<T>         &bases,
-        index_t nComp,
-        bool conforming,
-        const gsBoxTopology            &topology,
-        const gsBoundaryConditions<T>  &dirichlet,
-        int unk = 0
-        ) : m_shift(0), m_bshift(0)
-    {
-        init(bases, nComp, conforming, topology, dirichlet, unk);
-    }
-
-    /// Construct from a function set (optionally multi-component / conforming).
-    /// If \a bases is a gsMultiBasis, its topology is used for interface matching.
-    template<class T>
-    gsDofMapper(
-        const gsFunctionSet<T>         &bases,
-        index_t nComp = 1,
-        bool conforming = true
-        ) : m_shift(0), m_bshift(0)
-    {
-        if (const gsMultiBasis<T> * mb = dynamic_cast<const gsMultiBasis<T>*>(&bases))
-            init(bases, nComp, conforming, mb->topology());
-        else
-            init(bases, nComp, conforming);
-    }
-
-    /// Construct from a function set with an explicit topology.
-    template<class T>
-    gsDofMapper(
-        const gsFunctionSet<T>         &bases,
-        const gsBoxTopology            &topology,
-        index_t nComp
-        ) : m_shift(0), m_bshift(0)
-    {
-        init(bases, nComp, true, topology);
-    }
-
-    /// Construct from a function set with boundary conditions.
-    /// If \a bases is a gsMultiBasis, its topology is used for interface matching.
-    template<class T>
-    gsDofMapper(
-        const gsFunctionSet<T>         &bases,
-        const gsBoundaryConditions<T> &dirichlet,
-        int nComp,
-        int unk = 0,
-        bool conforming = true
-        ) : m_shift(0), m_bshift(0)
-    {
-        if (const gsMultiBasis<T> * mb = dynamic_cast<const gsMultiBasis<T>*>(&bases))
-            init(bases, nComp, conforming, mb->topology(), dirichlet, unk);
-        else
-            init(bases, nComp, conforming, gsBoxTopology(), dirichlet, unk);
-    }
-
-    /**
-     * @brief construct a dof mapper that identifies the degrees
-     * of freedom for a vector of multibasis
-     *
-     * @param bases
-     */
-    GISMO_DEPRECATED // Use multi-basis instead
-    template<class T>
-    gsDofMapper(
-        std::vector<const gsFunctionSet<T> *> const & bases
-        )
-    {
-        init(bases);
-    }
-
-
-    /**
-     * @brief construct a dof mapper that manages the degrees
-     * of freedom in a gsBasis
-     *
-     * @param basis
-     */
-    template<class T>
-    gsDofMapper(const gsBasis<T> & basis, index_t nComp = 1)
-    {
-      initSingle(basis, nComp);
-    }
-
-    /**
      * @brief construct a dof mapper with a given number of dofs per
      * patch
      *
@@ -193,56 +82,6 @@ public:
     {
         initPatchDofs(patchDofSizes, nComp);
     }
-
-    /// Primary initializer for a (multi-patch) function set.
-    ///
-    /// Optional \a topology and \a dirichlet default to empty objects.
-    /// When \a dirichlet is non-empty, boundary constraints are applied.
-    /// Pass an empty \a topology for single-patch bases or when no
-    /// inter-patch conformity is required.
-    template <typename T>
-    void init(const gsFunctionSet<T>         &bases,
-              index_t                         nComp      = 1,
-              bool                            conforming = true,
-              const gsBoxTopology            &topology   = gsBoxTopology(),
-              const gsBoundaryConditions<T>  &dirichlet  = gsBoundaryConditions<T>(),
-              int                             unk        = 0);
-
-    /// \deprecated Prefer the primary init() signature.
-    /// Initialize by a gsFunctionSet and a topology (forwards to primary init).
-    template <typename T>
-    void init(const gsFunctionSet<T> & bases,
-              const gsBoxTopology    & topology,
-              index_t                  nComp = 1,
-              int                      unk = 0,
-              bool                     conforming = true)
-    {
-        init(bases, nComp, conforming, topology, gsBoundaryConditions<T>(), unk);
-    }
-
-    /// Initialize by a vector of gsFunctionSet (one basis per component).
-    template <typename T>
-    void init( std::vector<const gsFunctionSet<T> *> const & bases);
-
-    /// \deprecated Prefer the primary init() signature.
-    /// Initialize with topology and boundary conditions (forwards to primary init).
-    template<class T>
-    void init(const gsFunctionSet<T>         &basis,
-              const gsBoxTopology            &topology,
-	          const gsBoundaryConditions<T>  &dirichlet,
-              index_t nComp,
-              int unk = 0,
-              bool conforming = true)
-    {
-        init(basis, nComp, conforming, topology, dirichlet, unk);
-    }
-
-    /// Initialize a single-patch basis with boundary conditions.
-    template<class T>
-    void init(const gsBasis<T>              &basis,
-              const gsBoundaryConditions<T> &dirichlet,
-              index_t nComp,
-              int unk = 0);
 
     void swap(gsDofMapper & other)
     {
@@ -259,10 +98,6 @@ public:
     }
 
 private:
-
-    /// Initialize by a single basis patch
-    template <typename T>
-    void initSingle( const gsBasis<T> & basis, index_t nComp = 1);
 
     /// Initialize by vector of DoF indices and dimension
     void initPatchDofs(const gsVector<index_t> & patchDofSizes,
@@ -703,8 +538,3 @@ inline std::ostream& operator<<( std::ostream& os, const gsDofMapper& b )
 #endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
-
-
-#ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsDofMapper.hpp)
-#endif

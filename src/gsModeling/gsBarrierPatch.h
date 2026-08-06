@@ -59,6 +59,7 @@ class gsBarrierPatch
 
  private:
   /// Creates a mapper.
+  GISMO_DEPRECATED
   void _makeMapper();
 
   /// Creates a mapper for a single patch.
@@ -68,6 +69,7 @@ class gsBarrierPatch
   void _makeMapperGlobalPatches();
 
   /// Creates a mapper for local patches.
+  GISMO_DEPRECATED
   void _makeMapperLocalPatches();
 
   /// Log information about the mapper.
