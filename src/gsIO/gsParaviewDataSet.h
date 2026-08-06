@@ -98,7 +98,7 @@ public:
 
     /// @brief Recursive form of addField() for expressions
     template <class E, typename... Rest>
-    void addFields(std::vector<std::string> labels, const expr::_expr<E>& expr, Rest... rest)
+    void addFields(std::vector<std::string> & labels, const expr::_expr<E>& expr, Rest... rest)
     {
         GISMO_ENSURE(sizeof...(Rest) == labels.size() - 1,
                      "The length of labels must match the number of expressions provided");
@@ -109,7 +109,7 @@ public:
 
     /// @brief Evaluates a gsField and writes that data to the vtk files.
     template <class U>
-    void addField(const gsField<U> field, std::string label)
+    void addField(const gsField<U> & field, std::string label)
     {
         GISMO_ENSURE(!m_isSaved,
                      "You cannot add more fields if the gsParaviewDataSet has "
@@ -141,7 +141,7 @@ public:
 
     /// @brief Recursive form of addField() for gsField
     template <class U, typename... Rest>
-    void addFields(std::vector<std::string> labels, const gsField<U> field, Rest... rest)
+    void addFields(std::vector<std::string> & labels, const gsField<U> & field, Rest... rest)
     {
         std::vector<std::string> newlabels(labels.cbegin() + 1, labels.cend());
         addField(field, labels[0]);
