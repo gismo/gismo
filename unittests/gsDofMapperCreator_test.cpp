@@ -67,6 +67,7 @@ TEST(single_basis)
     CHECK_EQUAL(static_cast<index_t>(b.size()*2), m.size());
     CHECK_EQUAL(m.size(), m.freeSize());
     CHECK_EQUAL(0, m.boundarySize());
+    CHECK_EQUAL(0, m.coupledSize());
     CHECK(m.isPermutation());
 
     // Parity with the surviving gsDofMapper constructor
@@ -270,23 +271,7 @@ TEST(mapped_basis_with_bcs)
     CHECK_EQUAL(m.size() - m.boundarySize(), m.freeSize());
 }
 
-// 11. Deprecated vector-of-bases-per-component overload.
-TEST(deprecated_vector_overload)
-{
-    auto geom = gsNurbsCreator<real_t>::BSplineSquare(2);
-    gsMultiBasis<real_t> mb(geom->basis());
-    const gsBasis<real_t> & basis = mb.basis(0);
-
-    const index_t nComp = 2;
-    const index_t sz1 = basis.size();
-    gsDofMapper m = createMapper(basis, nComp);
-
-    CHECK_EQUAL(sz1 * nComp, m.size());
-    CHECK_EQUAL(0, m.boundarySize());
-    CHECK_EQUAL(0, m.coupledSize());
-}
-
-// 12. Primary 7-arg overload called directly with all arguments.
+// 11. Primary 7-arg overload called directly with all arguments.
 TEST(primary_7arg_overload)
 {
     gsMultiBasis<real_t> mb = twoPatchBasis();
