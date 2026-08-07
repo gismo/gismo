@@ -30,6 +30,10 @@
 #include <gsRemappedBasis/src/gsRemappedBasis.h>
 #endif
 
+#ifdef gsCahnHilliard_ENABLED
+#include <gsCahnHilliard/gsCahnHilliardAssembler.h>
+#endif
+
 #ifdef GISMO_WITH_PYBIND11
 
 namespace gismo {
@@ -251,6 +255,18 @@ PYBIND11_MODULE(pygismo, m) {
 
   gismo::pybind11_init_gsStructuralAnalysis( structuralanalysis );
 #endif
+
+#ifdef gsCahnHilliard_ENABLED
+  py::module cahnhilliard = m.def_submodule("cahnhilliard");
+
+  cahnhilliard.attr("__name__") = "pygismo.cahnhilliard";
+  cahnhilliard.attr("__version__") = GISMO_VERSION;
+  cahnhilliard.doc() = "G+Smo (Geometry + Simulation Modules): Cahn--Hilliard module";
+
+  gismo::pybind11_init_gsCahnHilliardAssembler( cahnhilliard );
+#endif
+
+
 }
 
 #endif // GISMO_WITH_PYBIND11

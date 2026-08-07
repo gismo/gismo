@@ -34,9 +34,6 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &bb,
     fev.transposeInPlace();
     tmp = bev.fullPivLu().solve(fev);//solve on element
 
-    gsMatrix<T> interpolatedFev = bev.transpose() * tmp; // interpolated values at quad points
-    gsMatrix<T> error = fev - interpolatedFev; // local error
-   
     // find the i-th BS:
     gsMatrix<index_t> act = bb.active(pts.col(0));
     index_t c = std::lower_bound(act.data(), act.data()+act.size(), i) - act.data();
@@ -155,18 +152,18 @@ void gsQuasiInterpolate<T>::localL2(const gsBasis<T> &b,
 }
 
 template<typename T>
-void gsQuasiInterpolate<T>::Taylor(const gsBasis<T> &bb, const gsFunction<T> &fun, const int &r, gsMatrix<T> & coefs)
+void gsQuasiInterpolate<T>::Taylor(const gsBasis<T> &bb, const gsFunction<T> &fun, const index_t &r, gsMatrix<T> & coefs)
 {
     const gsBSplineBasis<T>*b = dynamic_cast<const gsBSplineBasis<T> *>(&bb); // cast bb to a gsBSplineBasis
     GISMO_ASSERT(b != nullptr, "Basis should be a gsBSplineBasis"); // assertion to ensure that b is a gsBSplineBasis
     // ONLY 1D
 
     const gsKnotVector<T> & kv = b->knots();
-    int deg = b->degree();
+    index_t deg = b->degree();
     gsMatrix<T> xj = b->anchors();
 
-    int n = xj.size();
-    int dim = fun.targetDim();
+    index_t n = xj.size();
+    index_t dim = fun.targetDim();
     coefs.resize(n,dim);
 
     std::vector<gsMatrix<T> > derivs;
@@ -241,7 +238,7 @@ template<typename T>
 template<short_t d>
 gsMatrix<T> gsQuasiInterpolate<T>::localTaylor(const gsTensorBSplineBasis<d,T> &b,
                                               const gsFunction<T> &fun,
-                                              const int &r,
+                                              const index_t &r,
                                               index_t j)
 {
     const index_t dim = fun.targetDim();
@@ -307,7 +304,7 @@ template<typename T>
 template<short_t d>
 gsMatrix<T> gsQuasiInterpolate<T>::localTaylor(const gsHTensorBasis<d,T> &bb,   
                                                 const gsFunction<T>  &fun,
-                                                const int &r,
+                                                const index_t &r,
                                                 index_t i)
 {
     index_t lvl = bb.levelOf(i);
@@ -318,7 +315,7 @@ gsMatrix<T> gsQuasiInterpolate<T>::localTaylor(const gsHTensorBasis<d,T> &bb,
 template<typename T>
 gsMatrix<T> gsQuasiInterpolate<T>::localTaylor(const gsBasis<T> &bb,
                                               const gsFunction<T> &fun,
-                                              const int &r,
+                                              const index_t &r,
                                               index_t i)
 {
     // Hierarchical tensor bases: dispatch on the parameter dimension.
@@ -346,7 +343,7 @@ gsMatrix<T> gsQuasiInterpolate<T>::localTaylor(const gsBasis<T> &bb,
 template<typename T>
 void gsQuasiInterpolate<T>::localTaylor(const gsBasis<T> &b,
                                        const gsFunction<T> &fun,
-                                       const int &r,
+                                       const index_t &r,
                                        gsMatrix<T> & result)
 {
     // GISMO_ASSERT(b.domainDim()==fun.domainDim(),"Domain dimensions should be equal");
@@ -365,7 +362,7 @@ void gsQuasiInterpolate<T>::localTaylor(const gsBasis<T> &b,
 }
 
 template<typename T>
-void gsQuasiInterpolate<T>::Taylor2D(const gsBasis<T> &bb, const gsFunction<T> &fun, const int &r, gsMatrix<T> & coefs)
+void gsQuasiInterpolate<T>::Taylor2D(const gsBasis<T> &bb, const gsFunction<T> &fun, const index_t &r, gsMatrix<T> & coefs)
 {
     // Superseded by the dimension-independent localTaylor. Kept for API
     // compatibility; delegates to the general per-coefficient Taylor QI (which
@@ -393,18 +390,18 @@ void gsQuasiInterpolate<T>::EvalBased(const gsBasis<T> &bb, const gsFunction<T> 
     // ONLY 1D
 
     const gsKnotVector<T> & kv = b->knots();
-    const int n = b->size();
+    const index_t n = b->size();
     //gsDebugVar(kv);
 
     coefs.resize(n, fun.targetDim());
 
     gsMatrix<T> knots(1,kv.size());
-    for(unsigned int i=0; i<kv.size(); i++)
+    for(size_t i=0; i<kv.size(); i++)
         knots(i) = kv[i];
 
     gsMatrix<T> TmpCoefs;
 
-    int type = 0;
+    index_t type = 0;
     if(specialCase)
     {
         type = b->degree();
@@ -425,7 +422,7 @@ void gsQuasiInterpolate<T>::EvalBased(const gsBasis<T> &bb, const gsFunction<T> 
     {
         fun.eval_into(knots, TmpCoefs);
         gsMatrix<T> knotsAvg(1, kv.size()-1);
-        for(unsigned int i=0; i<kv.size()-1; i++)
+        for(size_t i=0; i<kv.size()-1; i++)
             knotsAvg(i) = (kv[i]+kv[i+1]) / (T)(2);
         gsMatrix<T> TmpCoefsAvg;
         fun.eval_into(knotsAvg, TmpCoefsAvg);
@@ -446,7 +443,7 @@ void gsQuasiInterpolate<T>::EvalBased(const gsBasis<T> &bb, const gsFunction<T> 
     {
         fun.eval_into(knots, TmpCoefs);
         gsMatrix<T> knotsAvg(1, kv.size()-1);
-        for(unsigned int i=0; i<kv.size()-1; i++)
+        for(size_t i=0; i<kv.size()-1; i++)
             knotsAvg(i) = (kv[i]+kv[i+1]) / (T)(2);
         gsMatrix<T> TmpCoefsAvg;
         fun.eval_into(knotsAvg, TmpCoefsAvg);
@@ -489,7 +486,7 @@ void gsQuasiInterpolate<T>::EvalBased(const gsBasis<T> &bb, const gsFunction<T> 
         for(int i=0; i<n; i++)
         {
             //look for the greatest subinterval to chose the interpolation points from
-            int gsi = greatestSubInterval(kv, i, i+kv.degree());
+            index_t gsi = greatestSubInterval(kv, i, i+kv.degree());
 
             //compute equally distributed points in greatest subinterval
             distributePoints(kv[gsi], kv[gsi+1], kv.degree()+1, xik);
@@ -507,7 +504,7 @@ void gsQuasiInterpolate<T>::EvalBased(const gsBasis<T> &bb, const gsFunction<T> 
 
 
 template<typename T>
-T gsQuasiInterpolate<T>::derivProd(const std::vector<T> &zeros, const int &order, const T &x)
+T gsQuasiInterpolate<T>::derivProd(const std::vector<T> &zeros, const index_t &order, const T &x)
 {
     if(order == 0) // value
         return (x - gsAsConstMatrix<T,1>(zeros).array()).prod();
@@ -529,7 +526,7 @@ T gsQuasiInterpolate<T>::derivProd(const std::vector<T> &zeros, const int &order
     }
 
     // Reccursion for higher order derivatives
-    const int n = zeros.size();
+    const index_t n = zeros.size();
     T val = 0;
     for(int i=0; i!=n; i++)
     {
@@ -542,7 +539,7 @@ T gsQuasiInterpolate<T>::derivProd(const std::vector<T> &zeros, const int &order
 
 
 template<typename T>
-void gsQuasiInterpolate<T>::distributePoints(T a, T b, int n, gsMatrix<T> &points)
+void gsQuasiInterpolate<T>::distributePoints(T a, T b, index_t n, gsMatrix<T> &points)
 {
     points.resize(1,n);
     for(int k=0; k<n; k++)
@@ -551,9 +548,9 @@ void gsQuasiInterpolate<T>::distributePoints(T a, T b, int n, gsMatrix<T> &point
 
 
 template<typename T>
-void gsQuasiInterpolate<T>::computeWeights(const gsMatrix<T> &points, const gsKnotVector<T> &knots, const int &pos, gsMatrix<T> &weights)
+void gsQuasiInterpolate<T>::computeWeights(const gsMatrix<T> &points, const gsKnotVector<T> &knots, const index_t &pos, gsMatrix<T> &weights)
 {
-    const int deg = knots.degree();
+    const index_t deg = knots.degree();
     weights.resize(1,deg+1);
 
     gsMatrix<T> pointsReduced(1,deg);
@@ -607,11 +604,11 @@ gsMatrix<T> gsQuasiInterpolate<T>::computeControlPoints(const gsMatrix<T> &weigh
 
 
 template<typename T>
-int gsQuasiInterpolate<T>::greatestSubInterval(const gsKnotVector<T> &knots, const int &posStart, const int &posEnd)       //ToDo: move to gsKnotVector
+int gsQuasiInterpolate<T>::greatestSubInterval(const gsKnotVector<T> &knots, const index_t &posStart, const index_t &posEnd)       //ToDo: move to gsKnotVector
 {
-    const int diff = posEnd-posStart;
+    const index_t diff = posEnd-posStart;
     T maxDist=0.0;
-    int maxInd = posStart;
+    index_t maxInd = posStart;
     for(int i=1; i<diff+1; i++)
     {
         const T dist = knots[posStart+i+1] - knots[posStart+i];

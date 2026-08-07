@@ -81,23 +81,23 @@ struct gsQuasiInterpolate
     template<short_t d>
     static gsMatrix<T> localTaylor(const gsTensorBSplineBasis<d,T> &b,
                                   const gsFunction<T> &fun,
-                                  const int &r,
+                                  const index_t &r,
                                   index_t j);
 
     static gsMatrix<T> localTaylor(const gsBasis<T> &b,
                                 const gsFunction<T>  &fun,
-                                const int &r,
+                                const index_t &r,
                                 index_t i);
 
     template<short_t d>
     static gsMatrix<T> localTaylor(const gsHTensorBasis<d,T> &b,
                                 const gsFunction<T>  &fun,
-                                const int &r,
+                                const index_t &r,
                                 index_t i);
 
     static void localTaylor(const gsBasis<T> &b,
                         const gsFunction<T>  &fun,
-                        const int &r,
+                        const index_t &r,
                         gsMatrix<T> & result);    
     
     
@@ -140,7 +140,7 @@ struct gsQuasiInterpolate
      * \param r     an integer in [0,deg] (order of maximal derivatives of the function)
      * \param[out] result   a B-spline function, that approximates the given function
      */
-    static void Taylor(const gsBasis<T> &bb, const gsFunction<T> &fun, const int &r, gsMatrix<T> &result);
+    static void Taylor(const gsBasis<T> &bb, const gsFunction<T> &fun, const index_t &r, gsMatrix<T> &result);
 
      /** \brief A quasi-interpolation scheme based on the tayor expansion of the function to approximate.
      *  See Theorem 8.5 of "Spline methods (Lyche Morken)"
@@ -161,7 +161,7 @@ struct gsQuasiInterpolate
      * \param r     an integer in [0,deg] (order of maximal derivatives of the function)
      * \param[out] result   a B-spline function, that approximates the given function
      */
-    static void Taylor2D(const gsBasis<T> &bb, const gsFunction<T> &fun, const int &r, gsMatrix<T> &result);
+    static void Taylor2D(const gsBasis<T> &bb, const gsFunction<T> &fun, const index_t &r, gsMatrix<T> &result);
 
     /**
      * @brief A quasi-interpolation scheme based on Schoenberg Variation Diminishing Spline Approximation.
@@ -251,7 +251,7 @@ protected:
      * @param x     evaluation point
      * @return      the value of the derivative, at the given point, \f$D^\alpha g(x)\f$, where \f$\alpha\f$ is the given order.
      */
-    static T derivProd(const std::vector<T> &zeros, const int &order, const T &x);
+    static T derivProd(const std::vector<T> &zeros, const index_t &order, const T &x);
 
 
     /**
@@ -299,7 +299,7 @@ protected:
      * @param pos       the index i of the above formula
      * @param[out] weights   the computed weights \f$\omega_{i,k}\f$ of the above formula
      */
-    static void computeWeights(const gsMatrix<T> &points, const gsKnotVector<T> &knots, const int &pos, gsMatrix<T> &weights);
+    static void computeWeights(const gsMatrix<T> &points, const gsKnotVector<T> &knots, const index_t &pos, gsMatrix<T> &weights);
 
 
     /**
@@ -320,7 +320,7 @@ protected:
      * @param posEnd    the index of the right knot of the last interval to be considers
      * @return          the index of the left knot of the largest knot interval
      */
-    static int greatestSubInterval(const gsKnotVector<T> &knots, const int &posStart, const int &posEnd);
+    static int greatestSubInterval(const gsKnotVector<T> &knots, const index_t &posStart, const index_t &posEnd);
 
 
 }; //struct
