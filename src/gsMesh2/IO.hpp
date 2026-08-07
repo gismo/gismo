@@ -23,15 +23,15 @@ bool write_mesh(const gsSurfMesh<Scalar>& mesh, const std::string& filename)
     // extension determines reader
     if (ext == "off")
     {
-        return write_off<Scalar>(mesh, filename);
+        return write_off(mesh, filename);
     }
     else if (ext=="obj")
     {
-        return write_obj<Scalar>(mesh, filename);
+        return write_obj(mesh, filename);
     }
     else if (ext=="stl")
     {
-        return write_stl<Scalar>(mesh, filename);
+        return write_stl(mesh, filename);
     }
 
     // we didn't find a writer module
@@ -40,3 +40,4 @@ bool write_mesh(const gsSurfMesh<Scalar>& mesh, const std::string& filename)
 
 
 }
+

@@ -573,6 +573,262 @@ is_quad_mesh() const
 
     return true;
 }
+void 
+gsSurfMesh::
+mesh_statistics(bool eoc_verbose)
+{
+    unsigned int maxvalEV = 0, minvalEV = 0, maxvalEF = 0, minvalEF = 0, maxvalBoundEV = 0,
+        minvalBoundEV = 0, maxvalBoundEF = 0, minvalBoundEF = 0;
+    int cnt = 0, cntB = 0;
+    int cntf = 0, cntBf = 0;
+
+
+    std::map<index_t, index_t> evInterNum;
+    std::map<index_t, index_t> efInterNum;
+    std::map<index_t, index_t> evBoundNum;
+    std::map<index_t, index_t> efBoundNum;
+    gsInfo << "Mesh statistics..." << "\n";
+    gsInfo << "\n";
+
+    gsInfo << "# of vertices: " << n_vertices() << "\n";
+    gsInfo << "# of faces: " << n_faces() << "\n";
+    gsInfo << "# of edges: " << n_edges() << "\n";
+
+    gsInfo << "\n";
+
+
+    // Checking EVs
+    for (auto vit : vertices())
+    {
+        if (!is_boundary(vit)) // internal vertex
+        {
+            if (valence(vit) != 4)
+            {
+                if (eoc_verbose)
+                {
+                    if (evInterNum.find(valence(vit)) == evInterNum.end())
+                        evInterNum[valence(vit)] = 0;
+                    evInterNum[valence(vit)] += 1;
+                } 
+                if (cnt == 0)
+                {
+                    minvalEV = valence(vit);
+                    maxvalEV = valence(vit);
+                }
+                else
+                {
+                    if (valence(vit) > maxvalEV)
+                        maxvalEV = valence(vit);
+                    else if (valence(vit) < minvalEV)
+                        minvalEV = valence(vit);
+                }
+                cnt++;
+            }
+        }
+        else // boundary vertex
+        {
+            if (valence(vit) != 3)
+            {
+                if (eoc_verbose)
+                {
+                    if (evBoundNum.find(valence(vit)) == evBoundNum.end())
+                        evBoundNum[valence(vit)] = 0;
+                    evBoundNum[valence(vit)] += 1;
+                }
+                if (cntB == 0)
+                {
+                    minvalBoundEV = valence(vit);
+                    maxvalBoundEV = valence(vit);
+                }
+                else
+                {
+                    if (valence(vit) > maxvalBoundEV)
+                        maxvalBoundEV = valence(vit);
+                    else if (valence(vit) < minvalBoundEV)
+                        minvalBoundEV = valence(vit);
+                }
+                cntB++;
+            }
+        }
+
+    }
+
+
+    // Checking EFs
+    for (auto fit : faces())
+    {
+        if (!is_boundary(fit)) // internal faces
+        {
+            if (valence(fit) != 4)
+            {
+                if (eoc_verbose)
+                {
+                    if (efInterNum.find(valence(fit)) == efInterNum.end())
+                        efInterNum[valence(fit)] = 0;
+                    efInterNum[valence(fit)] += 1;
+                }
+                
+                if (cntf == 0)
+                {
+                    minvalEF = valence(fit);
+                    maxvalEF = valence(fit);
+                }
+                else
+                {
+                    if (valence(fit) > maxvalEF)
+                        maxvalEF = valence(fit);
+                    else if (valence(fit) < minvalEF)
+                        minvalEF = valence(fit);
+                }
+                cntf++;
+            }
+        }
+        else // boundary faces
+        {
+            if (valence(fit) != 4)
+            {
+                if (eoc_verbose)
+                {
+                    if (efBoundNum.find(valence(fit)) == efBoundNum.end())
+                        efBoundNum[valence(fit)] = 0;
+                    efBoundNum[valence(fit)] += 1;
+                }
+                if (cntBf == 0)
+                {
+                    minvalBoundEF = valence(fit);
+                    maxvalBoundEF = valence(fit);
+                }
+                else
+                {
+                    if (valence(fit) > maxvalBoundEF)
+                        maxvalBoundEF = valence(fit);
+                    else if (valence(fit) < minvalBoundEF)
+                        minvalBoundEF = valence(fit);
+                }
+                cntBf++;
+            }
+        }
+    }
+
+
+    gsInfo << "Interior: " << "\n";
+    if (cnt != 0)
+        gsInfo << "# of EVs: " << cnt << "\n";
+    if (cntf != 0)
+        gsInfo << "# of EFs: " << cntf << "\n";
+    gsInfo << "Maximum valence in EVs: " << maxvalEV << "\n";
+    gsInfo << "Mimimum valence in EVs: " << minvalEV << "\n";
+    gsInfo << "Maximum valence in EFs: " << maxvalEF << "\n";
+    gsInfo << "Minimum valence in EFs: " << minvalEF << "\n";
+
+    if (eoc_verbose)
+    {
+        for (const auto& evkey : evInterNum)
+        {
+            gsInfo << "# of EV with valence " <<evkey.first<<": " << evkey.second << "\n";
+        }
+        for (const auto& evkey : efInterNum)
+        {
+            gsInfo << "# of EF with valence " << evkey.first << ": " << evkey.second << "\n";
+        }
+
+    }
+
+
+    gsInfo << "Boundary: " << "\n";
+    if (cntB != 0)
+        gsInfo << "# of EVs: " << cntB << "\n";
+    if (cntBf != 0)
+        gsInfo << "# of EFs: " << cntBf << "\n";
+    gsInfo << "Maximum valence in EVs: " << maxvalBoundEV << "\n";
+    gsInfo << "Mimimum valence in EVs: " << minvalBoundEV << "\n";
+    gsInfo << "Maximum valence in EFs: " << maxvalBoundEF << "\n";
+    gsInfo << "Minimum valence in EFs: " << minvalBoundEF << "\n";
+
+    if (eoc_verbose)
+    {
+        for (const auto& evkey : evBoundNum)
+        {
+            gsInfo << "# of EV with valence " << evkey.first << ": " << evkey.second << "\n";
+        }
+        for (const auto& evkey : efBoundNum)
+        {
+            gsInfo << "# of EF with valence " << evkey.first << ": " << evkey.second << "\n";
+        }
+
+    }
+
+
+    gsInfo << "Done statistics..." << "\n";
+
+
+}
+
+real_t gsSurfMesh::
+angle(gsSurfMesh::Halfedge h1, gsSurfMesh::Halfedge h2)
+{
+    real_t result = 0.0;
+    gsVector<> v1 = position(to_vertex(h1)) - position(from_vertex(h1));
+    gsVector<> v2 = position(to_vertex(h2)) - position(from_vertex(h2));
+    result = math::acos(v1.dot(v2)/(v1.norm()*v2.norm()));
+
+    return result;
+}
+
+void gsSurfMesh::
+display_halfedge()
+{
+    Point tmp;
+    auto hpp = add_vertex_property<Point>("v:halfedge", tmp.setZero());
+    Halfedge he;
+    for (auto fit : faces())
+    {
+        he = halfedge(fit);
+        hpp[from_vertex(he)] = (position(to_vertex(he)) -
+                position(from_vertex(he))).normalized();
+    }
+}
+
+void gsSurfMesh::polyhedral_modification_boundary()
+{
+    // Current implementation only for regular boundary (vertex valence = 3) and 
+       // conrners (vertex valence = 2).
+       // TODO: General case for EF in boundary by using Chebysev points (see A.Nashri 1987).
+
+    std::map<Vertex, Point> bvmap; // New positions for boundary vertices
+    Vertex bv;
+    auto pts = points();
+    // Compute the new positions for boundary vertices.
+    for (auto hit : halfedges())
+    {
+        if (touches_boundary(hit))
+        {
+            bv = from_vertex(hit);
+
+            if (valence(bv) == 3) // Regular boundary case
+            {
+                bvmap[bv] = 2 * pts[bv] - pts[from_vertex(prev_halfedge(hit))];
+            }
+            else if (valence(bv) == 2) // Corner boundary case
+            {
+                bvmap[bv] = 4 * pts[bv] - 2 * pts[from_vertex(prev_halfedge(hit))]
+                    - 2 * pts[to_vertex(hit)] + pts[to_vertex(next_halfedge(hit))];
+            }
+            else // irregular case
+            {
+                gsWarn << "Irregular boundary stop process\n";
+                return;
+            }
+
+        }
+    }
+
+    // Modify mesh boundary
+    for (auto vit : vertices())
+        if (is_boundary(vit))
+            position(vit) = bvmap[vit];
+}
+
 
 void
 gsSurfMeshTopology::
@@ -683,6 +939,75 @@ split(Face f, Vertex v)
     set_halfedge(v, hold);
 }
 
+void
+gsSurfMesh::
+split_to_triangles(std::vector<Vertex>& edgeverts, Face f, Vertex v)
+{
+
+    GISMO_ASSERT(valence(f) == edgeverts.size(), "The edgeverts vector needs one vertex per edge\n");
+
+    Halfedge hend = halfedge(f); // find halfedge beginning from first new vertex in an edge
+    do 
+    {
+        hend = next_halfedge(hend);
+    } while (from_vertex(hend) != edgeverts[0]);
+
+
+    Halfedge h = next_halfedge(hend);
+
+    Halfedge hold = new_edge(from_vertex(hend), v); // connect first edge vertex with v
+
+    index_t sz = edgeverts.size();
+    hold = opposite_halfedge(hold);
+    int cnt, count=0;
+    Face fnew;
+    Halfedge hnew, holdinit=hold;
+
+    // circularly make trinagles by connecting inital faces corners and new edge vertices
+    // with v. The halfedge orientation in each trinagle is the same as in the original face.
+    while (h != hend)
+    {
+        cnt = std::count(edgeverts.begin(), edgeverts.end(), to_vertex(h));
+        
+        if (cnt == 0)
+        {
+            h = next_halfedge(h);
+            continue;
+        }
+
+        Halfedge hnext = next_halfedge(h);
+        Halfedge hprev = prev_halfedge(h);
+
+
+        if (count==0)
+            fnew = f;
+        else
+            fnew = new_face();
+        
+        set_halfedge(fnew, h);
+        if (count == sz - 1)
+            hnew = opposite_halfedge(holdinit);
+        else
+            hnew = new_edge(to_vertex(h), v );
+
+
+        set_next_halfedge(hold, hprev);
+        set_next_halfedge(hprev, h);
+        set_next_halfedge(h, hnew);
+        set_next_halfedge(hnew, hold);
+
+        set_face(hnew, fnew);
+        set_face(hold, fnew);
+        set_face(h, fnew);
+        set_face(hprev, fnew);
+        
+        hold = opposite_halfedge(hnew);
+        count++;
+        h = hnext;
+    }
+
+    set_halfedge(v, hold);
+}
 
 void
 gsSurfMeshTopology::
@@ -1525,6 +1850,8 @@ has_flag(Vertex v, const gsSurfMeshTopology::Halfedge_property<bool> & hflag) co
 }
 
 
+    return idmap;
+}
 
 // e(v1,v0): h0(v1->v0) and h1(v0->v1)
 // v0 = vertex(e,0) ==   to_vertex(h0)  == from_vertex(h1)

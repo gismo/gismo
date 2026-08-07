@@ -44,7 +44,6 @@ public:
 
 private: // Helper functions
 
-
 };//namespace internal
 
 } // namespace gismo

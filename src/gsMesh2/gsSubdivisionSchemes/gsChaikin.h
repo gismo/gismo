@@ -41,7 +41,6 @@ public: // Constructors
 public:
   void subdivide_impl() GISMO_OVERRIDE;
 
-
 };//namespace internal
 
 } // namespace gismo

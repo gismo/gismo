@@ -161,7 +161,7 @@ gsFileData<T>::ioError(int lineNumber, const std::string& str)
 {
     gsWarn<<"gsFileData: Problem with file "<<m_lastPath
           <<": IO error near line "<<lineNumber<<std::endl;
-    throw std::runtime_error(str + " failed");
+    GISMO_ERROR(str + " failed");
 }
 
 template<class T>
@@ -1381,7 +1381,6 @@ bool gsFileData<T>::readVtkFile( String const & fn )
     data->appendToRoot(m);
     return true;
 }
-
 template<class T>
 bool gsFileData<T>::readObjFile( String const & fn )
 {

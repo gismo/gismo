@@ -105,15 +105,19 @@ void plot_errors<real_t>(const gsMatrix<real_t>&,
 #define PLOT_PRECISION 12
 
 template<class Scalar>
+void gsWriteParaview(gsSurfMesh<Scalar> const & sm,
+                     std::string const & fn)
+{
+    std::vector<std::string> pname = sm.vertex_properties();
+    gsWriteParaview(sm, fn, pname);
+}
+
+template<class Scalar>
 void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
                      std::string const & fn,
-                     std::initializer_list<std::string> props)
+                     std::vector<std::string> props)
 {
     using MeshT = gsSurfMesh<Scalar>;
-
-    std::vector<std::string> propvec(props);
-    if (propvec.empty())
-        propvec = sm.vertex_properties();
 
     std::string mfn(fn);
     mfn.append(".vtk");
@@ -149,7 +153,7 @@ void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
     file << "\n";
 
     //todo: count props starting with v:, f:, e:
-    if (0!=propvec.size())
+    if (0!=props.size())
         file << "POINT_DATA " << sm.n_vertices() << "\n";//once
     for( auto & pr : propvec )
     {
@@ -218,6 +222,6 @@ void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
 TEMPLATE_INST
 void gsWriteParaview<real_t>(const gsSurfMesh<real_t> &,
                      std::string const &,
-                     std::initializer_list<std::string>);
+                     std::vector<std::string>);
 
 }//namespace gismo

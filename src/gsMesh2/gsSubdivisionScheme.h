@@ -23,7 +23,7 @@ namespace gismo
 /// The abstract base class for subdivision schemes.
 /// Should not be instantiated directly.
 template <class Scalar>
-class GISMO_EXPORT gsSubdivisionScheme
+class gsSubdivisionScheme
 {
 protected: // Type definitions for mesh components.
     typedef typename gsSurfMesh<Scalar>::Point Point;

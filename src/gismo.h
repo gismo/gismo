@@ -234,7 +234,7 @@ namespace internal
 #include <gsUtils/gsStopwatch.h>
 #include <gsUtils/gsFunctionWithDerivatives.h>
 #include <gsUtils/gsQuasiInterpolate.h>
-#include <gsUtils/gsL2Projection.h>
+#include <gsUtils/gsProjection.h>
 
 /* ----------- Extension ----------- */
 #ifdef gsTrilinos_ENABLED

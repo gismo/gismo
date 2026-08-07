@@ -71,7 +71,6 @@ private: // Helper functions
     /// \param hf: Given halfedge. Its start will be the vertex from which we will compute
     /// the image.
     Point ds_image_point_calc_interpolation(Halfedge hf);
-
 };//namespace internal
 
 } // namespace gismo

@@ -98,9 +98,12 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix
 
 template<class Scalar>
 void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
-                     std::string const & fn,
-                     std::initializer_list<std::string> props = {});
+                                  std::string const & fn);
 
+template<class Scalar>
+void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
+                                  std::string const & fn,
+                                  std::vector<std::string> props); //{ }
 
 /// \brief Export a vector of meshes, each mesh in its own file.
 ///
