@@ -439,9 +439,8 @@ protected:
   /**
    * @brief Initializes the Python wrapper for the class: gsMappedBasis
    */
-  // void pybind11_init_gsMappedBasis1(pybind11::module &m);
-  void pybind11_init_gsMappedBasis2(pybind11::module &m);
-  // void pybind11_init_gsMappedBasis3(pybind11::module &m);
+  template <short_t d>
+  void pybind11_init_gsMappedBasis(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

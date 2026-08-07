@@ -417,8 +417,8 @@ void getSparseEntriesFromXml ( gsXmlNode * node,
                                gsSparseEntries<T> & result );
 
 /// Helper to insert sparse matrices into XML
-template<class T, int _Options>
-gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<T,_Options> const & mat,
+template<class T, int _Options, typename _Index>
+gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<T,_Options,_Index> const & mat,
                                    gsXmlTree & data, std::string name = "SparseMatrix");
 
 }// end namespace internal
