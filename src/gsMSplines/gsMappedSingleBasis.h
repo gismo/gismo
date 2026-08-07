@@ -390,9 +390,8 @@ private:
   /**
    * @brief Initializes the Python wrapper for the class: gsMappedSingleBasis
    */
-  // void pybind11_init_gsMappedSingleBasis1(pybind11::module &m);
-  void pybind11_init_gsMappedSingleBasis2(pybind11::module &m);
-  // void pybind11_init_gsMappedSingleBasis3(pybind11::module &m);
+  template <short_t d>
+  void pybind11_init_gsMappedSingleBasis(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

@@ -220,6 +220,24 @@ gsHTree<d, Z>::insertBox ( point const & k1, point const & k2,
         m_maxInsLevel = lvl;
 }
 
+template<short_t d, class Z>
+gsHTree<d,Z> gsHTree<d,Z>::merge(const gsHTree<d,Z>& tree1, const gsHTree<d,Z>& tree2)
+{
+    GISMO_ASSERT( (tree1.m_upperIndex.array() == tree2.m_upperIndex.array()).all(),
+        "gsHTree::merge: trees must have the same domain." );
+    GISMO_ASSERT( tree1.m_indexLevel == tree2.m_indexLevel,
+        "gsHTree::merge: trees must have the same index level." );
+
+    gsHTree<d,Z> result(tree1);
+
+    for (const_literator it = tree2.beginLeafIterator(); it.good(); it.next())
+        if (it.level() > 0)
+            result.insertBox(it.lowerCorner(), it.upperCorner(), it.level());
+
+    result.makeCompressed();
+    return result;
+}
+
 template<short_t d, class Z> void
 gsHTree<d, Z>::clearBox ( point const & k1, point const & k2,
                             int lvl) // CONSTRAINT: lvl is "minimum level"
