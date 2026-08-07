@@ -2,7 +2,6 @@
 
 #define gsTensorNurbsBasis_EXPORT
 #include <gsNurbs/gsTensorNurbsBasis.h>
-#include <gsNurbs/gsTensorNurbsBasis.hpp>
 
 namespace gismo
 {

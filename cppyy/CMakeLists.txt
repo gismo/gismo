@@ -5,10 +5,29 @@
 ## Author: Felix Scholz
 ######################################################################
 
+include(CheckCXXSourceCompiles)
+
 set(GISMO_LIB_DIR  "${PROJECT_BINARY_DIR}/${LIB_INSTALL_DIR}")
 set(PYTHON_PACKAGE_DIR ${PROJECT_BINARY_DIR}/cppyy)
 
 set(PKG_NAME "gismo_cppyy")
+
+# Detect whether the library is compiled with AVX support.
+# cppyy's Cling JIT always auto-detects host CPU features and
+# ignores -mno-avx flags, so when the library lacks AVX we must
+# disable Eigen SIMD in Cling to prevent ABI mismatches.
+check_cxx_source_compiles("
+  #ifndef __AVX__
+  #error \\\"AVX not enabled in current compile flags\\\"
+  #endif
+  int main() { return 0; }
+" GISMO_HAVE_AVX)
+
+if(NOT GISMO_HAVE_AVX)
+  set(GISMO_CLING_FLAGS "-DEIGEN_DONT_VECTORIZE")
+else()
+  set(GISMO_CLING_FLAGS "")
+endif()
 
 configure_file(__init__.py.in ${PYTHON_PACKAGE_DIR}/${PKG_NAME}/__init__.py)
 configure_file(pythonize.py.in ${PYTHON_PACKAGE_DIR}/${PKG_NAME}/pythonize.py)

@@ -19,7 +19,6 @@
 #include <gsCore/gsAffineFunction.h>
 #include <gsUtils/gsCombinatorics.h>
 #include <gsMesh2/gsSurfMesh.h>
-#include <gsMesh2/gsSurfMesh.hpp>
 #include <gsTensor/gsTensorBasis.h>
 #include <gsAssembler/gsQuadrature.h>
 #include <gsDomain/gsCompositeDomain.h>

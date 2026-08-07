@@ -100,7 +100,8 @@ template<class Scalar>
 void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
                      std::string const & fn,
                      std::initializer_list<std::string> props = {});
-    
+
+
 /// \brief Export a vector of meshes, each mesh in its own file.
 ///
 /// \param meshes vector of gsMesh objects
