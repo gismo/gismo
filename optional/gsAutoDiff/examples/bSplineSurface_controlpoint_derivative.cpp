@@ -14,7 +14,7 @@
 
 #include <iostream>
 #include <gismo.h>
-#include <gsAutoDiff/gsAutoDiff2.h>
+#include <gsAutoDiff/gsAutoDiff.h>
 #include <gsTensor/gsTensorBasis.hpp>
 #include <gsNurbs/gsTensorBSplineBasis.hpp>
 

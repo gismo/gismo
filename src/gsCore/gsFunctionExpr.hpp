@@ -17,7 +17,7 @@
 // to ensure Eigen NumTraits specializations are defined before Eigen is used
 #ifdef gsAutoDiff_ENABLED
 #include <gsAutoDiff/gsAutoDiffEigen.h>
-#include <gsAutoDiff/gsAutoDiff2.h>
+#include <gsAutoDiff/gsAutoDiff.h>
 #endif
 
 #include <gsCore/gsLinearAlgebra.h>
@@ -25,7 +25,7 @@
 // Include autodiff types AFTER gsLinearAlgebra.h when autodiff is enabled
 // (gsAutoDiff_ENABLED is defined in gsConfigExt.h which is included via gsLinearAlgebra.h)
 #ifdef gsAutoDiff_ENABLED
-#include <gsAutoDiff/gsAutoDiff2.h>
+#include <gsAutoDiff/gsAutoDiff.h>
 #endif
 
 // Include autodiff type specializations (requires the optional module in include path)

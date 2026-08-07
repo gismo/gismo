@@ -23,7 +23,7 @@
 */
 
 #include <gismo.h>
-#include <gsAutoDiff/gsAutoDiff2.h>
+#include <gsAutoDiff/gsAutoDiff.h>
 #include <gsAutoDiff/gsAutoDiffUtils.h>
 #include <gsAutoDiff/gsAutoDiffEigen.h>
 #include <gsAssembler/gsPoissonAssembler.h>

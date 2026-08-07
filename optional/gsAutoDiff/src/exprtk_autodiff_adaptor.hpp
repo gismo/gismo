@@ -15,7 +15,7 @@
 #pragma once
 
 #include <string>
-#include <gsAutoDiff/gsAutoDiff2.h>
+#include <gsAutoDiff/gsAutoDiff.h>
 
 #include <gsAutoDiff/exprtk_autodiff_forward.hpp>
 #include "exprtk.hpp"

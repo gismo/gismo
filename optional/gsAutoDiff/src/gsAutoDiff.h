@@ -1,4 +1,4 @@
-/** @file gsAutoDiff2.h
+/** @file gsAutoDiff.h
 
     @brief Automatic differentiation data type for C++
 

@@ -1,5 +1,5 @@
 #include "gismo_unittest.h"
-#include <gsAutoDiff/gsAutoDiff2.h>
+#include <gsAutoDiff/gsAutoDiff.h>
 
 // Include implementation files to force instantiation for custom types
 #include <gsCore/gsBasis.hpp>
