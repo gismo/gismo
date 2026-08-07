@@ -40,9 +40,8 @@ gsDofMapper createMapper(const gsFunctionSet<T>        & bases,
 
     gsDofMapper mapper;
 
-    if (hasBCs &&
-        (dynamic_cast<const gsMappedBasis<2,T>*>(&bases) != nullptr ||
-         dynamic_cast<const gsMappedBasis<3,T>*>(&bases) != nullptr))
+    if (dynamic_cast<const gsMappedBasis<2,T>*>(&bases) != nullptr ||
+        dynamic_cast<const gsMappedBasis<3,T>*>(&bases) != nullptr)
     {
         mapper.setIdentity(bases.nPieces(), bases.size(), nComp);
     }

@@ -248,8 +248,11 @@ private:
 
     inline gsExprHelper & iface()
     {
-        if (nullptr==m_mirror )
-            m_mirror = memory::make_shared(new gsExprHelper(this));
+#       pragma omp critical (m_mirror_first_touch)
+        {
+            if (nullptr==m_mirror )
+                m_mirror = memory::make_shared(new gsExprHelper(this));
+        }
         return *m_mirror;
     }
 
