@@ -42,7 +42,7 @@ namespace gismo
     \sa gsSurfMeshTopology
 */
 template <class Scalar>
-class gsSurfMesh : public gsSurfMeshTopology
+class GISMO_EXPORT gsSurfMesh : public gsSurfMeshTopology
 {
 public:
 

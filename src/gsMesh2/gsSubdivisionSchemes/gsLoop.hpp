@@ -134,7 +134,7 @@ void gsLoop<Scalar>::subdivide_impl()
             }
             else
             {  // Loop's original mask (1987)
-                a = (0.625 - (0.375 + 0.25 * math::cos(2 * 3.14159 / (Scalar)n)) * (0.375 + 0.25 * math::cos(2 * 3.14159 / (Scalar)n))) / (Scalar)n;
+                a = (0.625 - (0.375 + 0.25 * math::cos(2 * EIGEN_PI / (Scalar)n)) * (0.375 + 0.25 * math::cos(2 * EIGEN_PI / (Scalar)n))) / (Scalar)n;
             }
             b = a;
             c = 1.0 - a * n;

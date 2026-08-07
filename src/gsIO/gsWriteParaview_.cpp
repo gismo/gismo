@@ -124,11 +124,14 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd);
 TEMPLATE_INST
 void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix<T>& params);
 
-// gsWriteParaview for gsSurfMesh - now templated (see gsWriteParaview.hpp)
+TEMPLATE_INST
+void gsWriteParaview(const gsSurfMesh<T> & sm,
+                     std::string const & fn);
+
 TEMPLATE_INST
 void gsWriteParaview(const gsSurfMesh<T> & sm,
                      std::string const & fn,
-                     std::initializer_list<std::string> props);
+                     std::vector<std::string> props);
 
 TEMPLATE_INST
 void gsWriteParaview(const std::vector<gsMesh<T> >& sl, std::string const & fn);

@@ -1,3 +1,17 @@
+/** @file bSplineSurface_controlpoint_derivative.cpp
+ 
+    @brief Example demonstrating automatic differentiation of B-spline surface evaluations w.r.t. control points
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): H.M. Verhelst
+
+*/
+
 #include <iostream>
 #include <gismo.h>
 #include <gsAutoDiff/gsAutoDiff2.h>
@@ -24,8 +38,8 @@ int main(int argc, char* argv[])
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
     gsInfo << "=== B-spline Surface: Control Point Derivatives ===\n";
-    gsInfo << "Example 1: Forward AD - Many points w.r.t. one control point\n";
-    gsInfo << "Example 2: Reverse AD - One point w.r.t. all control points\n\n";
+    gsInfo << "Forward AD: many points w.r.t. one control point\n";
+    gsInfo << "Reverse AD: one point w.r.t. all control points\n\n";
 
     // Create base surface with real_t
     gsKnotVector<> kvX(0.0, 1.0, nKnotsX-1, degreeX+1);
@@ -42,7 +56,8 @@ int main(int argc, char* argv[])
     ab.col(1).setOnes();
     gsMatrix<> pts = gsPointGrid(ab, nPoints);
 
-    // ===== Example 1: Forward AD - Many points w.r.t. one control point =====
+#ifdef GISMO_AUTODIFF_FORWARD
+    // ===== Forward AD =====
     {
         gsInfo << "\n--- Example 1a: Forward AD - Derivative of surface values at many points w.r.t. CP[0] ---\n";
         
@@ -129,8 +144,12 @@ int main(int argc, char* argv[])
         if (max_error < 1e-4)
             gsInfo << "✓ Forward AD derivatives verified!\n";
     }
+#else
+    gsInfo << "\n--- Forward AD sections skipped (GISMO_AUTODIFF_FORWARD is off) ---\n";
+#endif
 
-    // ===== Example 2: Reverse AD - One point w.r.t. all control points =====
+#ifdef GISMO_AUTODIFF_BACKWARD
+    // ===== Reverse AD =====
     {
         gsInfo << "\n--- Example 2a: Reverse AD - All basis functions at one point ---\n";
         
@@ -172,6 +191,26 @@ int main(int argc, char* argv[])
         gsInfo << "\nBasis function values at (0.3, 0.7) (first 9):\n";
         for (index_t i = 0; i < std::min(index_t(9), numCPs); ++i)
             gsInfo << "  B[" << i << "]: " << basis_evals(i, 0) << "\n";
+
+        // Finite-difference check for one control point / one component.
+        // CP[0,0] should affect only the x-component, with sensitivity B[0](pt).
+        real_t h = 1e-6;
+        gsMatrix<> coefs_plus = surface.coefs();
+        gsMatrix<> coefs_minus = surface.coefs();
+        coefs_plus(0, 0) += h;
+        coefs_minus(0, 0) -= h;
+
+        gsTensorBSpline<2> surface_plus(basis, coefs_plus);
+        gsTensorBSpline<2> surface_minus(basis, coefs_minus);
+        gsMatrix<> val_plus, val_minus;
+        surface_plus.eval_into(pt_real, val_plus);
+        surface_minus.eval_into(pt_real, val_minus);
+
+        real_t deriv_fd = (val_plus(0, 0) - val_minus(0, 0)) / (2.0 * h);
+        real_t deriv_expected = basis_evals(0, 0);
+        gsInfo << "\nFD check d(surface_x)/d(CP[0,0]): " << deriv_fd << "\n";
+        gsInfo << "Expected basis value: " << deriv_expected << "\n";
+        gsInfo << "Abs error: " << math::abs(deriv_fd - deriv_expected) << "\n";
         
         gsInfo << "\nNote: Matrix multiplication with var_t has known issues with derivative propagation.\n";
         gsInfo << "The basis function values above show what the derivatives SHOULD be.\n";
@@ -229,6 +268,9 @@ int main(int argc, char* argv[])
             gsInfo << "  d(||surface||)/d(CP[" << k << ",0]): FD = " << deriv_fd << "\n";
         }
     }
+#else
+    gsInfo << "\n--- Reverse AD sections skipped (GISMO_AUTODIFF_BACKWARD is off) ---\n";
+#endif
 
     gsInfo << "\n=== Summary ===\n";
     gsInfo << "Forward mode (dual_t): Good for derivative of many outputs w.r.t. few inputs\n";

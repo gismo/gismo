@@ -33,10 +33,29 @@ project(gsAutoDiff)
 # Apply G+Smo config
 include(gsConfig)
 
-# Check if AutoDiff was found by dependencies.cmake
+# Check if AutoDiff was found by dependencies.cmake; if not, fetch it
 if(NOT autodiff_FOUND)
-  message(WARNING "AutoDiff not found. Skipping gsAutoDiff module.")
-  return()
+  message(STATUS "AutoDiff not found on system. Fetching from https://github.com/autodiff/autodiff/ ...")
+  include(gsFetch)
+  gismo_fetch_directory(autodiff
+    GIT_REPOSITORY https://github.com/autodiff/autodiff.git
+    GIT_TAG        v1.1.2
+    DESTINATION    external
+  )
+
+  set(AUTODIFF_FETCH_DIR "${gismo_SOURCE_DIR}/external/autodiff")
+  if(EXISTS "${AUTODIFF_FETCH_DIR}/autodiff")
+    if(NOT TARGET autodiff::autodiff)
+      add_library(autodiff::autodiff INTERFACE IMPORTED GLOBAL)
+      target_include_directories(autodiff::autodiff INTERFACE "${AUTODIFF_FETCH_DIR}")
+    endif()
+    set(autodiff_FOUND TRUE)
+    set(autodiff_INCLUDE_DIR "${AUTODIFF_FETCH_DIR}")
+    message(STATUS "AutoDiff fetched successfully: ${AUTODIFF_FETCH_DIR}")
+  else()
+    message(WARNING "Failed to fetch AutoDiff. Skipping gsAutoDiff module.")
+    return()
+  endif()
 endif()
 
 # AutoDiff mode options (only available when gsAutoDiff is enabled)
@@ -67,6 +86,13 @@ if(GISMO_AUTODIFF_BACKWARD)
     set(AUTODIFF_INSTANCES "gismo::var_t")
   endif()
   message(STATUS "gsAutoDiff: Backward mode (var_t) enabled")
+endif()
+
+if(GISMO_AUTODIFF_FORWARD)
+  add_definitions(-DGISMO_AUTODIFF_FORWARD)
+endif()
+if(GISMO_AUTODIFF_BACKWARD)
+  add_definitions(-DGISMO_AUTODIFF_BACKWARD)
 endif()
 
 if(AUTODIFF_INSTANCES)

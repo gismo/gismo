@@ -300,6 +300,10 @@ memory::shared_ptr<T> give(memory::shared_ptr<T> & x)
     std::vector<T> name##_vec(sz); \
     T * name = name##_vec.data();
 #endif
+// NOTE [HMV]: This was 
+// #define STACK_ARRAY( T, name, sz )    T * name = (T*) alloca ( (sz) * sizeof(T) );
+// But if T can be any type (also autodiff types), alloca does not call the constructor of T, which can lead to problems. Therefore, I changed it to a std::vector, which is guaranteed to call the constructor of T. The downside is that this is not on the stack anymore, but on the heap. However, this should be fine for small arrays (which is what this macro is intended for).
+// We could fix this with `constexpr if` in C++17 when we bump version.
 
 
 /// \brief Clones all pointers in the range [\a start \a end) and stores new

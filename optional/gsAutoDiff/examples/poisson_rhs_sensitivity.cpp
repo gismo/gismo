@@ -47,6 +47,7 @@ int main(int argc, char *argv[])
     cmd.addReal("", "fd-eps",  "Finite difference step size",   fd_eps);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
+#ifdef GISMO_AUTODIFF_FORWARD
     // ================================================================
     //  Step 1: Baseline Poisson solve with real_t
     // ================================================================
@@ -178,5 +179,8 @@ int main(int argc, char *argv[])
            << math::abs(dL_dtheta_fd - dL_dtheta_exact) / math::abs(dL_dtheta_exact) << "\n";
 
     gsInfo << "\n=== Done ===\n";
+#else
+    gsInfo << "This example requires GISMO_AUTODIFF_FORWARD.\n";
+#endif
     return 0;
 }

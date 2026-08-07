@@ -1,4 +1,18 @@
 # dependencies.cmake for gsAutoDiff module
+#
+# WHY THIS FILE EXISTS:
+# This file is included by the top-level CMakeLists.txt *before*
+# add_subdirectory() is called for any module. That early inclusion is required
+# for two reasons:
+#
+#   1. C++17 standard: autodiff requires C++17. CMAKE_CXX_STANDARD must be
+#      raised before gsCore and other targets are created; doing so inside the
+#      module's own CMakeLists.txt would be too late.
+#
+#   2. Global scope: autodiff_FOUND and GISMO_INCLUDE_DIRS are set here so
+#      they are visible to all subsequently configured targets, not just to
+#      the gsAutoDiff subdirectory.
+#
 # This file is automatically included by the main CMakeLists.txt
 # when gsAutoDiff is in GISMO_OPTIONAL
 
