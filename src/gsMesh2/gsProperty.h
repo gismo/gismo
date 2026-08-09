@@ -163,9 +163,11 @@ public:
 
     friend class gsProperty_container;
 
-    // gsSurfMeshTopology::assign() copies the raw connectivity arrays, and
+    // gsMeshTopology::assign() copies the raw connectivity arrays, and
     // gsSurfMesh::assign() copies the raw point array, so both need array()
+    friend class gsMeshTopology;
     friend class gsSurfMeshTopology;
+    friend class gsVolMeshTopology;
 
     template <class T_>
     friend class gsSurfMesh;

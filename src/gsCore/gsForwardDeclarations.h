@@ -341,8 +341,11 @@ template <short_t d, class T=real_t>     class gsHElementHelper;
 
 
 class gsParaviewDataSet;
+                                         class gsMeshTopology;
                                          class gsSurfMeshTopology;
+                                         class gsVolMeshTopology;
 template <class Scalar=real_t>           class gsSurfMesh;
+template <class Scalar=real_t>           class gsVolMesh;
 template <class Scalar=real_t>           class gsSubdivisionScheme;
 
 // gsIO
