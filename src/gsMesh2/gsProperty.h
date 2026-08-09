@@ -172,6 +172,9 @@ public:
     template <class T_>
     friend class gsSurfMesh;
 
+    template <class T_>
+    friend class gsVolMesh;
+
 
 public:
 

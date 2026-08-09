@@ -118,6 +118,7 @@ namespace internal
 
 /* ----------- Mesh ----------- */
 #include <gsMesh2/gsSurfMesh.h>
+#include <gsMesh2/gsVolMesh.h>
 
 /* ----------- Mesh subdivision ----------- */
 #include <gsMesh2/gsSubdivisionScheme.h>
