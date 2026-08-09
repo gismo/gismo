@@ -44,3 +44,6 @@ CMakeFiles/
 
 #Symbolic link Eigen library
 external/Eigen
+
+# UnitTest++ clone fetched into the source tree by unittests/CMakeLists.txt
+/optional/gsUnitTest/
