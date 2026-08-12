@@ -1226,6 +1226,19 @@ public:
         return he;
     }
 
+    inline Halfedge ccw_rotated_halfedge(Halfedge h, int r) const
+    {
+        for (int k = 0; k < r; k++)
+            h = ccw_rotated_halfedge(h);
+        return h;
+    }
+
+    inline Halfedge cw_rotated_halfedge(Halfedge h, int r) const
+    {
+        for (int k = 0; k < r; k++)
+            h = cw_rotated_halfedge(h);
+        return h;
+    }
 
 public:
 
