@@ -2149,8 +2149,8 @@ inline void gsWriteHalfedgesParaview(const gsSurfMesh<Scalar>& sm,
 
     const index_t nH = sm.n_faces();
 
-    std::vector<gsSurfMesh::Point> centers;
-    std::vector<gsSurfMesh::Point> directions;
+    std::vector<gsSurfMesh<>::Point> centers;
+    std::vector<gsSurfMesh<>::Point> directions;
 
     centers.reserve(nH);
     directions.reserve(nH);
@@ -2162,13 +2162,13 @@ inline void gsWriteHalfedgesParaview(const gsSurfMesh<Scalar>& sm,
         auto v0 = sm.from_vertex(h);
         auto v1 = sm.to_vertex(h);
 
-        gsSurfMesh::Point p0 = sm.position(v0);
-        gsSurfMesh::Point p1 = sm.position(v1);
+        gsSurfMesh<>::Point p0 = sm.position(v0);
+        gsSurfMesh<>::Point p1 = sm.position(v1);
 
-        gsSurfMesh::Point dir = p1 - p0;
+        gsSurfMesh<>::Point dir = p1 - p0;
         dir.normalize();
 
-        gsSurfMesh::Point center = 0.5 * (p0 + p1);
+        gsSurfMesh<>::Point center = 0.5 * (p0 + p1);
 
         if (!sm.is_boundary(h))
         {
