@@ -287,24 +287,38 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
                 Js.noalias() = Jsigma_flat.col(p).reshaped(dd, dd).transpose();
                 Jg.noalias() = Jgeom_flat.col(p).reshaped(dd, td).transpose();
                 Jc.noalias() = Jg * Js;
-                C.noalias() = Jc.transpose() * Jc;
-                // Tikhonov shift keeps C^{-1} numerically stable (C = J_c^T J_c
-                // is always PSD, but can be ill-conditioned near singularity).
-                C.diagonal().array() += penalty;
-                Cinv.noalias() = C.inverse();
-                // Chi barrier: sign-aware regularization of the Jacobian determinant.
+
+                // T = tr(J_c^T J_c) = ||J_c||_F^2, computed DIRECTLY.
                 //
-                // Planar case (td==dd): use det(J_c) = det(J_g * J_s) — the composed Jacobian.
-                //   chi_c = 0.5*(det_c + sqrt(penalty^2 + det_c^2)) > 0 always.
-                //   When det_c < 0 (folded mesh), chi_c -> 0+, so 1/chi_c^2 -> +inf (fold barrier).
-                //   No-monitor:   tr(C^{-1}) * |det_c|^2 / chi_c^2  (p=2, E ≈ T/g^2)
-                //   With-monitor: m2*tr(C^{-1}) * |det_c|^3 / chi_c^2  (p=3, E ≈ m2*T/g)
+                // The previous formulation evaluated the integrand as
+                //     tr(C^{-1}) * |det|^p / chi^q     with a Tikhonov shift C += penalty*I.
+                // That is NOT a fold barrier: the shift destroys the identity
+                //     tr(C^{-1}) * det^2 == T   (exact for the unshifted C),
+                // so the |det|^p factor is no longer cancelled and the integrand COLLAPSES
+                // TO 0 as det -> 0 -- a degenerate element then costs LESS than a perfect
+                // one and the optimiser is rewarded for collapsing the mesh (observed:
+                // energy 1.71 -> 0.0066 while min det J_sigma -> 6e-12).
                 //
-                // Surface case (td>dd): J_c is rectangular (td x dd), no scalar determinant.
-                //   Use det_s = det(J_s) (sigma Jacobian, dd x dd) as the area element.
-                //   chi_s = 0.5*(det_s + sqrt(penalty^2 + det_s^2))  — fold barrier.
-                //   No-monitor:   tr(C^{-1}) * |det_s|^2 / chi_s^2  (p=2, mirrors planar)
-                //   With-monitor: m2 * tr(C^{-1}) * |det_s|^3 / chi_s^2  (p=3, mirrors planar)
+                // Using T directly removes both the inverse and the shift, and makes the
+                // barrier exact. See the integrand assembly below.
+                const T Tval = Jc.squaredNorm();
+                // CORRECTED fold barrier.  Let g_reg be the REGULARISED composite area
+                // element (always > 0), obtained by replacing the signed determinant by the
+                // Garanzha regulariser chi(x) = 0.5*(x + sqrt(eps^2 + x^2)):
+                //
+                //   Planar  (td==dd): g_reg = chi(det J_c)          [ g_c = |det J_c| ]
+                //   Surface (td> dd): g_reg = chi(det J_s) * g_S    [ g_c = |det J_s| * g_S ]
+                //                     with g_S = sqrt(det(J_g^T J_g)) the SOURCE area element.
+                //
+                // Then, exactly as in the paper (E = int omega * T / g):
+                //
+                //   No-monitor   (omega = 1/g):  integrand = T / g_reg^2
+                //   With-monitor:                integrand = omega * T / g_reg
+                //
+                // As eps -> 0 these reproduce tr(C^{-1}) and omega*T/g_c respectively, but
+                // unlike the old |det|^p/chi^q form they are MONOTONE into degeneracy:
+                // at det = 0 they equal 4T/eps^2 resp. 2*omega*T/eps (huge), and they grow
+                // without bound for det < 0.  Degeneracy is now penalised, not rewarded.
 
                 T integrand;
                 if (td == dd)
@@ -312,7 +326,6 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
                     // Planar case: fold-barrier via composed Jacobian det
                     T det_c = Jc.determinant();
                     T chi_c = T(0.5) * (det_c + math::sqrt(penalty * penalty + det_c * det_c));
-                    T abs_det_c = math::abs(det_c);
 
                     T m2 = T(0);
                     if (hasMonitor)
@@ -337,45 +350,36 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
                             // Paper Eq. (12): omega = 1/sqrt(1+theta*||∇f||^2), so m2 = omega^2 = 1/(1+theta*||∇f||^2)
                             m2 = T(1) / (T(1) + theta * eta2);
                         }
-                        // With-monitor integrand (p=3): omega * tr(C^{-1}) * |det_c|^3 / chi_c^2
-                        // where omega = sqrt(m2) is the monitor weight; m2 = omega^2
-                        // Paper Eq. (18) [surface] / Eq. (17) [planar]: E = int omega * T/g d{hat-Omega}
+                        // With-monitor: omega * T / g_reg,  g_reg = chi_c   (paper E = int omega*T/g)
                         T omega = math::sqrt(m2);
-                        integrand = omega * Cinv.trace() * abs_det_c * abs_det_c * abs_det_c / (chi_c * chi_c);
+                        integrand = omega * Tval / chi_c;
                     }
                     else
                     {
-                        // No-monitor integrand (p=2): tr(C^{-1}) * |det_c|^2 / chi_c^2 ≈ T/g^2
-                        integrand = Cinv.trace() * abs_det_c * abs_det_c / (chi_c * chi_c);
+                        // No-monitor (omega = 1/g): T / g_reg^2,  g_reg = chi_c
+                        integrand = Tval / (chi_c * chi_c);
                     }
                 }
                 else
                 {
                     // Surface case (td>dd): J_c is rectangular (td x dd), so no scalar det(J_c).
-                    // Use det_s = det(J_s) (sigma Jacobian, dd x dd) as the signed area element.
-                    // det_s CAN be negative (fold), so chi_s = 0.5*(det_s + sqrt(pen^2+det_s^2))
-                    // provides a true fold barrier — identical structure to the planar chi_c.
-                    //
-                    // No-monitor:   tr(C^{-1}) * |det_s|^2 / chi_s^2  (p=2): already = T/g_c^2
-                    //               = paper Eq.(14) [omega=1/g_c] => no g_S factor needed.
-                    // With-monitor: omega * tr(C^{-1}) * |det_s|^3 / chi_s^2 * g_S  (p=3)
-                    //   Here g_S = sqrt(det(Cg)) = ||d1 S x d2 S|| is the SURFACE area element.
-                    //   The composite area element is g_c = g_s * g_S, with g_s = |det_s|.
-                    //   tr(C^{-1}) = T/g_c^2 and |det_s|^3/chi_s^2 -> g_s (penalty->0), so
-                    //     omega*tr(C^{-1})*g_s*g_S -> omega*T/g_c = paper Eq.(18). Without the
-                    //   g_S factor the integrand would be off by 1/g_S (J_c is rectangular on a
-                    //   surface, so det_s alone does NOT carry the full area element).
-                    T det_s     = Js.determinant();
+                    // The composite area element factorises as g_c = |det J_s| * g_S, with
+                    //   g_S = sqrt(det(Cg)),  Cg = J_g^T J_g   (the SOURCE surface area element).
+                    // Only det_s = det(J_s) can change sign (a fold of sigma), so the barrier
+                    // acts on it, and the regularised composite area element is
+                    //   g_reg = chi(det_s) * g_S  > 0   (always).
+                    T det_s      = Js.determinant();
                     T sqrt_reg_s = math::sqrt(penalty * penalty + det_s * det_s);
-                    T chi_s     = T(0.5) * (det_s + sqrt_reg_s);
-                    T abs_det_s = math::abs(det_s);
+                    T chi_s      = T(0.5) * (det_s + sqrt_reg_s);
+
+                    // g_S is needed in BOTH branches now (it enters g_reg), not just with a monitor.
+                    Cg.noalias() = Jg.transpose() * Jg;
+                    const T gS    = math::sqrt(math::max(Cg.determinant(), T(0)));
+                    const T g_reg = chi_s * gS;
 
                     T m2 = T(0);
                     if (hasMonitor)
                     {
-                        // Surface area element g_S = sqrt(det(Cg)), Cg = Jg^T Jg.
-                        Cg.noalias() = Jg.transpose() * Jg;
-                        const T gS = math::sqrt(Cg.determinant());
                         if (MODE == ValueBased)
                         {
                             T eta = monVals(0, p);
@@ -395,15 +399,14 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
                             // Paper Eq. (12): omega = 1/sqrt(1+theta*||∇f||^2), so m2 = omega^2 = 1/(1+theta*||∇f||^2)
                             m2 = T(1) / (T(1) + theta * eta2);
                         }
-                        // With-monitor (p=3): omega * tr(C^{-1}) * |det_s|^3 / chi_s^2 * g_S
-                        // where omega = sqrt(m2) is the monitor weight, g_S the surface area element
+                        // With-monitor: omega * T / g_reg   (paper E = int omega*T/g)
                         T omega = math::sqrt(m2);
-                        integrand = omega * Cinv.trace() * abs_det_s * abs_det_s * abs_det_s / (chi_s * chi_s) * gS;
+                        integrand = omega * Tval / g_reg;
                     }
                     else
                     {
-                        // No-monitor (p=2): tr(C^{-1}) * |det_s|^2 / chi_s^2 ≈ T/g^2
-                        integrand = Cinv.trace() * abs_det_s * abs_det_s / (chi_s * chi_s);
+                        // No-monitor (omega = 1/g): T / g_reg^2
+                        integrand = Tval / (g_reg * g_reg);
                     }
                 }
 
@@ -413,6 +416,18 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
 #       pragma omp atomic update
         result += thResult;
     } // omp parallel
+
+    // The line search probes trial designs far from the current one (Moore-Thuente starts
+    // at a unit step). A badly folded trial can drive chi -> 0 or C -> singular, so the
+    // integrand overflows to Inf/NaN. Handing NaN back to the optimiser is fatal: the
+    // cubic interpolation of the line search becomes NaN, it can no longer backtrack, and
+    // it returns a ZERO step -- i.e. the "optimisation" silently leaves sigma at the
+    // identity even though a perfectly good descent direction exists at a smaller step.
+    // Returning a large FINITE value instead lets the line search reject the trial and
+    // backtrack normally.
+    if (!math::isfinite(result))
+        return std::numeric_limits<T>::max() / T(1e6);
+
     return result;
 }
 
@@ -593,6 +608,12 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
         gsVector<T> b_d(dd);
         gsMatrix<T> Cinv_b_all(dd, dd);
         gsVector<T> trCAC(dd);
+        // For the corrected integrand we need dT/d(alpha) with T = tr(C) = ||J_c||_F^2.
+        // Since dC/d(alpha_{k,d}) = A_d * N_k + (b_d gradNk^T + gradNk b_d^T), we get
+        //     dT/d(alpha_{k,d}) = tr(dC) = N_k * tr(A_d) + 2 * (b_d . gradNk).
+        // So we store tr(A_d) and b_d for every direction d.
+        gsVector<T> trA(dd);
+        gsMatrix<T> b_all(dd, dd);
         gsVector<T> mon_scalar_d(dd);
 
         gsQuadRule<T> QuRule;
@@ -643,11 +664,16 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                 Jg.noalias() = Jgeom_flat.col(p).reshaped(dd, td).transpose();
                 Jc.noalias() = Jg * Js;
 
+                // T = tr(C) = ||J_c||_F^2 -- the quantity the CORRECTED integrand uses
+                // directly (see evalObj). C/Cinv below are retained only because A_d and
+                // b_d are built alongside them; the corrected gradient does not use C^{-1}.
+                const T Tval = Jc.squaredNorm();
+
                 C.noalias() = Jc.transpose() * Jc;
-                // Tikhonov shift keeps C^{-1} numerically stable (same shift as evalObj).
+                // Tikhonov shift keeps C^{-1} numerically stable (unused by the corrected
+                // gradient, but harmless and keeps A_d/b_d assembly unchanged).
                 C.diagonal().array() += penalty;
                 Cinv.noalias() = C.inverse();
-                T trCinv = Cinv.trace();
 
                 // Chi barrier: depends on planar (td==dd) vs surface (td>dd).
                 //
@@ -745,16 +771,19 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                 // needed for the paper-exact surface with-monitor area weight (Eq.18).
                 // For GradientBased these are already set above; ensure they exist for
                 // ValueBased too. Planar (td==dd) does not need g_S.
+                // g_S (source surface area element) now enters the REGULARISED area element
+                // g_reg = chi(det J_s) * g_S for BOTH the monitor and the no-monitor surface
+                // integrand, so it must be available whenever td > dd -- not only with a monitor.
                 T gS = T(1);
                 gsVector<T> trCginvE_d;   // tr(Cg^{-1} E_d), E_d = D_d^T Jg + Jg^T D_d (surface only)
-                if (hasMonitor && td > dd)
+                if (td > dd)
                 {
-                    if (MODE == ValueBased)
+                    if (!hasMonitor || MODE == ValueBased)
                     {
                         Cg.noalias()     = Jg.transpose() * Jg;
                         Cg_inv.noalias() = Cg.inverse();
                     }
-                    gS = math::sqrt(Cg.determinant());
+                    gS = math::sqrt(math::max(Cg.determinant(), T(0)));
                     trCginvE_d.setZero(dd);
                 }
 
@@ -805,6 +834,8 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
 
                     A_d.noalias() = Js.transpose() * D_d.transpose() * Jc + JcT * D_d * Js;
                     b_d.noalias() = JcT * Jg.col(d);
+                    trA(d)        = A_d.trace();      // for dT/d(alpha) = Nk*tr(A_d) + 2*(b_d.gradNk)
+                    b_all.col(d)  = b_d;
                     CinvA_d.noalias() = Cinv * A_d;
                     Cinv_b_all.col(d).noalias() = Cinv * b_d;
                     trCAC(d) = (CinvA_d.array() * Cinv.transpose().array()).sum();
@@ -850,7 +881,7 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                     // Surface area-element derivative factor (paper-exact Eq.18):
                     //   d(g_S)/d(alpha_{k,d}) = 0.5 * g_S * tr(Cg^{-1} E_d) * N_k
                     //   E_d = D_d^T Jg + Jg^T D_d   (= d(Cg)/d(xi_d) contracted)
-                    if (hasMonitor && td > dd)
+                    if (td > dd)   // needed for d(g_S)/d(alpha) in BOTH monitor and no-monitor
                     {
                         gsMatrix<T> E_d = D_d.transpose() * Jg + Jg.transpose() * D_d;
                         trCginvE_d(d) = (Cg_inv * E_d).trace();
@@ -910,11 +941,11 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                                  ddet_c_dalpha = trAdjJcDdJs(d) * Nk + term2;
                              }
 
-                            // d(phi_p)/d(alpha) = phi_p * (p/det_c - 2*dchi/chi) * ddet_c_dalpha
-                            T inv_det_c = (det_c != T(0)) ? T(1) / det_c : T(0);
-                            T common_factor = -T(2) * dchi_ddet_c / chi_c;
-                            T dphi_noMon_dalpha = phi_noMon * (T(2)*inv_det_c + common_factor) * ddet_c_dalpha;
-                            T dphi_mon_dalpha   = phi_mon   * (T(3)*inv_det_c + common_factor) * ddet_c_dalpha;
+                            // ---- CORRECTED planar gradient (g_reg = chi_c) -------------------
+                            // dT/d(alpha) = tr(dC) = Nk*tr(A_d) + 2*(b_d . gradNk)
+                            const T dTval        = Nk * trA(d) + T(2) * b_all.col(d).dot(gradNk);
+                            // d(chi_c)/d(alpha) = chi'(det_c) * d(det_c)/d(alpha)
+                            const T dchi_c_dalpha = dchi_ddet_c * ddet_c_dalpha;
 
                             if (hasMonitor)
                             {
@@ -924,17 +955,20 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                                 else
                                     dm2_dalpha = dm2_deta2 * Nk * mon_scalar_d(d);
 
-                                // d/d(alpha) [ omega * tr(C^{-1}) * |det_c|^3 / chi_c^2 ]
-                                // where omega = sqrt(m2), so d(omega)/d(alpha) = dm2_dalpha / (2*omega)
-                                T omega = math::sqrt(m2);
-                                T domega_dalpha = dm2_dalpha / (T(2) * omega);
-                                dE = omega * (-trCinvdCCinv * phi_mon + trCinv * dphi_mon_dalpha)
-                                   + domega_dalpha * trCinv * phi_mon;
+                                // P = omega * T / chi_c
+                                // dP = domega*T/chi + omega*dT/chi - omega*T*dchi/chi^2
+                                const T omega         = math::sqrt(m2);
+                                const T domega_dalpha = dm2_dalpha / (T(2) * omega);
+                                dE = domega_dalpha * Tval / chi_c
+                                   + omega * dTval / chi_c
+                                   - omega * Tval * dchi_c_dalpha / (chi_c * chi_c);
                             }
                             else
                             {
-                                // d/d(alpha) [ tr(C^{-1}) * |det_c| / chi_c^2 ]
-                                dE = -trCinvdCCinv * phi_noMon + trCinv * dphi_noMon_dalpha;
+                                // Q = T / chi_c^2
+                                // dQ = dT/chi^2 - 2*T*dchi/chi^3
+                                dE = dTval / (chi_c * chi_c)
+                                   - T(2) * Tval * dchi_c_dalpha / (chi_c * chi_c * chi_c);
                             }
                         }
                         else
@@ -986,11 +1020,15 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                                 ddet_s_dalpha = det_s * Js.inverse().col(d).dot(gradNk);
                             }
 
-                            T inv_det_s   = (det_s != T(0)) ? T(1) / det_s : T(0);
-                            T inv_chi_s   = (chi_s  > T(0)) ? T(1) / chi_s  : T(0);
-                            T common_s    = -T(2) * dchi_s_ddet_s * inv_chi_s;
-                            T dphi_noMon_s_dalpha = phi_noMon_s * (T(2)*inv_det_s + common_s) * ddet_s_dalpha;
-                            T dphi_mon_s_dalpha   = phi_mon_s   * (T(3)*inv_det_s + common_s) * ddet_s_dalpha;
+                            // ---- CORRECTED surface gradient (g_reg = chi_s * g_S) ------------
+                            // dT/d(alpha) = tr(dC) = Nk*tr(A_d) + 2*(b_d . gradNk)
+                            const T dTval = Nk * trA(d) + T(2) * b_all.col(d).dot(gradNk);
+                            // d(g_S)/d(alpha_{k,d}) = 0.5 * g_S * tr(Cg^{-1} E_d) * N_k
+                            const T dgS_dalpha = T(0.5) * gS * trCginvE_d(d) * Nk;
+                            // g_reg = chi_s * g_S  =>  d(g_reg) = chi'(det_s)*ddet_s*g_S + chi_s*dg_S
+                            const T g_reg      = chi_s * gS;
+                            const T dg_reg     = dchi_s_ddet_s * ddet_s_dalpha * gS
+                                               + chi_s * dgS_dalpha;
 
                             if (hasMonitor)
                             {
@@ -1000,25 +1038,19 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                                 else
                                     dm2_dalpha = dm2_deta2 * Nk * mon_scalar_d(d);
 
-                                // Paper Eq.18 surface integrand: e = A * g_S, where
-                                //   A   = omega * tr(C^{-1}) * |det_s|^3 / chi_s^2   (current factor)
-                                //   g_S = sqrt(det Cg)   (surface area element)
-                                // Product rule: de/dalpha = dA/dalpha * g_S + A * dg_S/dalpha
-                                // with omega = sqrt(m2), d(omega)/d(alpha) = dm2_dalpha/(2*omega)
-                                // and dg_S/dalpha = 0.5 * g_S * tr(Cg^{-1} E_d) * N_k.
-                                T omega = math::sqrt(m2);
-                                T domega_dalpha = dm2_dalpha / (T(2) * omega);
-                                T dA = omega * (-trCinvdCCinv * phi_mon_s + trCinv * dphi_mon_s_dalpha)
-                                     + domega_dalpha * trCinv * phi_mon_s;
-                                T A  = omega * trCinv * phi_mon_s;
-                                T dgS_dalpha = T(0.5) * gS * trCginvE_d(d) * Nk;
-                                dE = dA * gS + A * dgS_dalpha;
+                                // P = omega * T / g_reg
+                                // dP = domega*T/g_reg + omega*dT/g_reg - omega*T*dg_reg/g_reg^2
+                                const T omega         = math::sqrt(m2);
+                                const T domega_dalpha = dm2_dalpha / (T(2) * omega);
+                                dE = domega_dalpha * Tval / g_reg
+                                   + omega * dTval / g_reg
+                                   - omega * Tval * dg_reg / (g_reg * g_reg);
                             }
                             else
                             {
-                                // d/d(alpha) [tr(C^{-1}) * |det_s| / chi_s^2]
-                                dE = -trCinvdCCinv * phi_noMon_s
-                                   + trCinv * dphi_noMon_s_dalpha;
+                                // Q = T / g_reg^2  =>  dQ = dT/g_reg^2 - 2*T*dg_reg/g_reg^3
+                                dE = dTval / (g_reg * g_reg)
+                                   - T(2) * Tval * dg_reg / (g_reg * g_reg * g_reg);
                             }
                         }
 

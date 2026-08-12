@@ -85,6 +85,11 @@ public:
 
     void deriv_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override;
 
+    // Exact second derivative (delegates to the underlying B-spline geometry).
+    // Without this override gsFunction would fall back to finite differences,
+    // which would spoil the second-derivative chain rule of gsComposedBasis.
+    void deriv2_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override;
+
     // /// Sets the controls of the domain (does not override)
     // void setControls(const gsMatrix<T> & coefs)
     // {
