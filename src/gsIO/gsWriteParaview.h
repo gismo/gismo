@@ -105,6 +105,16 @@ void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
                                   std::string const & fn,
                                   std::vector<std::string> props); //{ }
 
+/// \brief Exports a mesh with the halfedge corresponding to each face.
+///
+/// \param sm: mesh pointer.
+/// \param fn: filename.
+/// \param eps: parameter for offset of the halfedges between the edges.
+template<class Scalar>
+void gsWriteHalfedgesParaview(const gsSurfMesh<Scalar>& sm, 
+                              const std::string& fn,
+                              real_t eps = 0.02);
+
 /// \brief Export a vector of meshes, each mesh in its own file.
 ///
 /// \param meshes vector of gsMesh objects
