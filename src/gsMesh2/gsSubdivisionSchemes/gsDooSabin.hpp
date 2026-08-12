@@ -67,6 +67,9 @@ void gsDooSabin<Scalar>::subdivide_impl()
             }
         }
 
+        if (ffv.size() < 2) // corner case
+            continue;
+
         if (ffv.size() == 2)
         {
             new_mesh.add_edge(ffv[0], ffv[1]); // V-Edge in the regular boundary case
