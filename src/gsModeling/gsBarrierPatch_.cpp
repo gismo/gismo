@@ -43,45 +43,26 @@ namespace gismo
 
   namespace py = pybind11;
 
-	void pybind11_init_gsBarrierPatch2(py::module &m)
+	template <short_t d>
+	void pybind11_init_gsBarrierPatch(py::module &m)
 	{
-		using Class = gsBarrierPatch<2,real_t>;
-		py::class_<Class>(m, "gsBarrierPatch2")
+		using Class = gsBarrierPatch<d,real_t>;
+		py::class_<Class>(m, ("gsBarrierPatch" + std::to_string(d)).c_str())
 
-		// Constructors
 		.def(py::init<const gsMultiPatch<real_t> &, const gsDofMapper &>())
 		.def(py::init<const gsMultiPatch<real_t> &>())
 		.def(py::init<const gsMultiPatch<real_t> &, bool>())
-		// HV: how to do optional argument in constructor??		      // py::arg("patchWise") = true) //default arguments
 
-		// Member functions
 		.def("setMapper", &Class::setMapper, "Sets the mapper.")
 		.def("compute", &Class::compute, "Computes analysis-suitable parameterizations using different methods.")
 		.def("result", &Class::result, "Returns the result in a multi-patch format.")
 		.def("options", &Class::options, "Returns the options list.")
 		.def("defaultOptions", &Class::defaultOptions, "Sets the default options.")
 		;
-  }
+	}
 
-	void pybind11_init_gsBarrierPatch3(py::module &m)
-	{
-		using Class = gsBarrierPatch<3,real_t>;
-		py::class_<Class>(m, "gsBarrierPatch3")
-
-	   // Constructors
- 		 .def(py::init<const gsMultiPatch<real_t> &, const gsDofMapper &>())
- 		 .def(py::init<const gsMultiPatch<real_t> &>())
- 		 .def(py::init<const gsMultiPatch<real_t> &, bool>())
-		 // HV: how to do optional argument in constructor??		      // py::arg("patchWise") = true) //default arguments
-
-	   // Member functions
-	   .def("setMapper", &Class::setMapper, "Sets the mapper.")
-	   .def("compute", &Class::compute, "Computes analysis-suitable parameterizations using different methods.")
-	   .def("result", &Class::result, "Returns the result in a multi-patch format.")
-	   .def("options", &Class::options, "Returns the options list.")
-	   .def("defaultOptions", &Class::defaultOptions, "Sets the default options.")
-	   ;
-  }
+	template void pybind11_init_gsBarrierPatch<2>(py::module &m);
+	template void pybind11_init_gsBarrierPatch<3>(py::module &m);
 
 #endif
 } // namespace gismo
