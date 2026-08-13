@@ -542,6 +542,26 @@ public:
     /// \brief Returns all tagged dofs on patch k (local dof indices)
     gsVector<index_t> findTagged(const index_t k) const;
 
+    /// \brief Returns the number of bytes actually allocated (capacity, not
+    /// logical size) by this mapper's containers.
+    inline size_t nBytes() const
+    {
+        size_t bytes = sizeof(*this);
+
+        bytes += m_dofs.capacity() * sizeof(std::vector<index_t>);
+        for (size_t c = 0; c != m_dofs.size(); ++c)
+            bytes += m_dofs[c].capacity() * sizeof(index_t);
+
+        bytes += m_offset.capacity() * sizeof(size_t);
+
+        bytes += m_numFreeDofs.capacity() * sizeof(index_t);
+        bytes += m_numElimDofs.capacity() * sizeof(index_t);
+        bytes += m_numCpldDofs.capacity() * sizeof(index_t);
+        bytes += m_tagged.capacity()      * sizeof(index_t);
+
+        return bytes;
+    }
+
 private:
 
     template<class Predicate, class Iterator>

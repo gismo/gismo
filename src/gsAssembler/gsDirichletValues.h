@@ -265,6 +265,7 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
     // Set up matrix, right-hand-side and solution vector/matrix for
     // the L2-projection
     gsSparseEntries<T> projMatEntries;
+    bool reserved = false;
     gsMatrix<T>        globProjRhs;
     globProjRhs.setZero(u.mapper().boundarySize(), 1 );
 
@@ -272,6 +273,8 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
     gsVector<T> quWeights;
     gsMatrix<T> basisVals, rhsVals;
     gsMatrix<index_t> globIdxAct, globBasisAct;
+    gsMatrix<T> locMat;
+    gsVector<T> locRhs;
 
     gsMapData<T> md(NEED_MEASURE | SAME_ELEMENT);
 
@@ -293,6 +296,13 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
         const int patchIdx   = iter->patch();
         const gsBasis<T> & basis = u.source().basis(patchIdx);
         const gsFunction<T> & patch = gmap.function(patchIdx);
+
+        if (!reserved)
+        {
+            projMatEntries.reserve( mapper.boundarySize() *
+                math::ipow(2*basis.maxDegree()+1, static_cast<unsigned>(basis.dim()-1)) );
+            reserved = true;
+        }
 
         // Set up quadrature to degree+1 Gauss points per direction,
         // all lying on iter->side() except from the direction which
@@ -388,36 +398,57 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
                     "then a scalar function is expected.");
 
                 // Do the actual assembly:
+                const index_t n = static_cast<index_t>(eltBdryFcts.size());
+                if (0 == n) continue;   // nothing to assemble for this (element, r)
+
+                // grow-only: never reallocate once warmed up
+                const index_t nMax = globBasisAct.rows();
+                if (locMat.rows() < nMax) locMat.resize(nMax, nMax);
+                if (locRhs.rows() < nMax) locRhs.resize(nMax);
+                locMat.topLeftCorner(n, n).setZero();
+                locRhs.head(n).setZero();
+
+                // --- accumulate over quadrature points (no push_back here) ---
                 for (index_t k = 0; k < md.points.cols(); k++)
                 {
                     const T weight_k = quWeights[k] * md.measure(k);
 
-                    // Only run through the active boundary functions on the element:
-                    for (size_t i0 = 0; i0 < eltBdryFcts.size(); i0++)
+                    for (index_t i0 = 0; i0 < n; i0++)
                     {
                         // Each active boundary function/DOF in eltBdryFcts has...
                         // ...the above-mentioned "element-wise index"
-                        const index_t i = eltBdryFcts[i0];
-                        // ...the boundary index.
-                        const index_t ii = mapper.global_to_bindex(globIdxAct.at(i));
+                        const index_t i = eltBdryFcts[static_cast<size_t>(i0)];
+                        const T wi = weight_k * basisVals(i, k);
 
-                        for (size_t j0 = 0; j0 < eltBdryFcts.size(); j0++)
+                        for (index_t j0 = 0; j0 < n; j0++)
                         {
-                            const index_t j = eltBdryFcts[j0];
-                            const index_t jj = mapper.global_to_bindex(globIdxAct.at(j));
+                            const index_t j = eltBdryFcts[static_cast<size_t>(j0)];
+                            locMat(i0, j0) += wi * basisVals(j, k);
+                        } // for j0
 
-                            // Use the "element-wise index" to get the needed
-                            // function value.
-                            // Use the boundary index to put the value in the proper
-                            // place in the global projection matrix.
-                            projMatEntries.add(ii, jj, weight_k * basisVals(i, k) * basisVals(j, k));
-                        } // for j
-
-                        globProjRhs.at(ii) += weight_k * basisVals(i, k) * rhsVals( (-1==com?r:0) ,k);
-                        //globProjRhs.at(ii) += weight_k * basisVals(i, k) * rhsVals(r ,k);
-
-                    } // for i
+                        locRhs(i0) += wi * rhsVals( (-1==com?r:0), k );
+                    } // for i0
                 } // for k
+
+                // --- push once per function pair ---
+                for (index_t i0 = 0; i0 < n; i0++)
+                {
+                    // ...the boundary index.
+                    const index_t ii = mapper.global_to_bindex(
+                        globIdxAct.at(eltBdryFcts[static_cast<size_t>(i0)]));
+
+                    for (index_t j0 = 0; j0 < n; j0++)
+                    {
+                        const index_t jj = mapper.global_to_bindex(
+                            globIdxAct.at(eltBdryFcts[static_cast<size_t>(j0)]));
+
+                        // Use the boundary index to put the value in the proper
+                        // place in the global projection matrix.
+                        projMatEntries.add(ii, jj, locMat(i0, j0));
+                    } // for j0
+
+                    globProjRhs.at(ii) += locRhs(i0);
+                } // for i0
             }// for r
         } // bdrIter
     } // boundaryConditions-Iterator

@@ -77,6 +77,7 @@ namespace internal
 #include <gsCore/gsFieldCreator.h>
 
 #include <gsDomain/gsDomainIterator.h>
+#include <gsDomain/gsPartitionedDofMapper.h>
 
 #include <gsCore/gsSysInfo.h>
 
@@ -183,6 +184,8 @@ namespace internal
 
 #include <gsDomain/gsPointDomain.h>
 #include <gsDomain/gsPointDomainIterator.h>
+#include <gsDomain/gsPartitionerBase.h>
+#include <gsDomain/gsGeometricPartitioner.h>
 
 /* ----------- Solver ----------- */
 #include <gsSolver/gsLinearOperator.h>
@@ -231,6 +234,7 @@ namespace internal
 #include <gsUtils/gsFunctionWithDerivatives.h>
 #include <gsUtils/gsQuasiInterpolate.h>
 #include <gsUtils/gsL2Projection.h>
+#include <gsUtils/gsSpaceFillingCurve.h>
 
 /* ----------- Extension ----------- */
 #ifdef GISMO_WITH_ADIFF

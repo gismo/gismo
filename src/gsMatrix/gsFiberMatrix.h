@@ -148,6 +148,32 @@ public:
 
     inline index_t fibers() const { return static_cast<index_t>(m_fibers.size()); }
 
+    /// \brief Bytes held by the fiber POINTER array (capacity, not size).
+    ///
+    /// This is replicated on every MPI rank even in lazy mode, where every
+    /// entry may still be null -- it is a distinct memory hypothesis from the
+    /// fiber payload and is deliberately NOT merged with fiberDataBytes().
+    inline size_t fiberPointerBytes() const
+    { return m_fibers.capacity() * sizeof(Fiber*); }
+
+    /// \brief Bytes held by the fibers themselves (allocated capacity).
+    ///
+    /// For each non-null fiber: the Fiber object plus its allocated compressed
+    /// storage (one value array and one index array, each of
+    /// data().allocatedSize() entries). Null fibers cost nothing here -- their
+    /// 8 B slot is counted by fiberPointerBytes().
+    inline size_t fiberDataBytes() const
+    {
+        typedef typename Fiber::StorageIndex StorageIndex;
+        size_t bytes = 0;
+        for (size_t i = 0; i != m_fibers.size(); ++i)
+            if (m_fibers[i])
+                bytes += sizeof(Fiber)
+                       + static_cast<size_t>(m_fibers[i]->data().allocatedSize())
+                         * (sizeof(T) + sizeof(StorageIndex));
+        return bytes;
+    }
+
     /** \returns the size of the storage major dimension,
      * i.e., the number of columns for a columns major matrix, and the number of rows otherwise */
     inline index_t outerSize() const
