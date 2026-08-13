@@ -17,6 +17,8 @@
 #include <gsCore/gsBoundary.h>
 #include <gsCore/gsExport.h>
 
+#include <unordered_map>
+
 namespace gismo
 {
 
@@ -67,6 +69,32 @@ namespace gismo
 */
 class GISMO_EXPORT gsDofMapper
 {
+private:
+
+    struct DofUnionFind
+    {
+        /// Return the canonical setup-time label for the given value.
+        index_t representative(index_t value);
+
+        /// Merge the equivalence classes containing two labels.
+        void unite(index_t first, index_t second);
+
+        /// Return the allocated storage used by this disjoint-set forest.
+        size_t nBytes() const;
+
+    private:
+        /// Find or create the node corresponding to a setup-time label.
+        index_t nodeFor(index_t value);
+
+        /// Find a forest root and apply path compression.
+        index_t find(index_t node);
+
+        std::unordered_map<index_t,index_t> m_nodes;
+        std::vector<index_t>               m_parent;
+        std::vector<unsigned char>         m_rank;
+        std::vector<index_t>               m_label;
+    };
+
 public:
 
     /// Default empty constructor
@@ -167,6 +195,7 @@ public:
         std::swap(m_numCpldDofs, other.m_numCpldDofs);
         std::swap(m_curElimId  , other.m_curElimId);
         std::swap(m_tagged     , other.m_tagged);
+        m_unionFind.swap(other.m_unionFind);
     }
 
 private:
@@ -559,6 +588,10 @@ public:
         bytes += m_numCpldDofs.capacity() * sizeof(index_t);
         bytes += m_tagged.capacity()      * sizeof(index_t);
 
+        bytes += m_unionFind.capacity() * sizeof(DofUnionFind);
+        for (const DofUnionFind & uf : m_unionFind)
+            bytes += uf.nBytes();
+
         return bytes;
     }
 
@@ -569,12 +602,22 @@ private:
 
     void finalizeComp(const index_t comp);
 
-    // replace all references to oldIdx by newIdx
+    // Merge the equivalence classes represented by oldIdx and newIdx.
     inline void replaceDofGlobally(index_t oldIdx, index_t newIdx);
     inline void replaceDofGlobally(index_t oldIdx, index_t newIdx, index_t comp);
 
     void mergeDofsGlobally(index_t dof1, index_t dof2);
     void mergeDofsGlobally(index_t dof1, index_t dof2, index_t comp);
+
+    /// Return the current representative of a setup-time equivalence label.
+    index_t canonicalDof(index_t dof, index_t comp);
+
+    /// Reset the setup-time union-find state for the requested components.
+    void resetUnionFind(size_t nComp)
+    {
+        m_unionFind.clear();
+        m_unionFind.resize(nComp);
+    }
 
 // Data members
 private:
@@ -615,6 +658,10 @@ private:
 
     /// Stores the tagged indices
     std::vector<index_t> m_tagged;
+
+    /// Setup-time equivalence classes, one disjoint-set forest per component.
+    /// This is released by finalize() after the flat mapper has been relabeled.
+    std::vector<DofUnionFind> m_unionFind;
 
 }; // class gsDofMapper
 

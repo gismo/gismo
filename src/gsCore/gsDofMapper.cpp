@@ -17,6 +17,88 @@
 namespace gismo
 {
 
+index_t gsDofMapper::DofUnionFind::nodeFor(index_t value)
+{
+    const std::unordered_map<index_t,index_t>::const_iterator it =
+        m_nodes.find(value);
+    if (it != m_nodes.end())
+        return it->second;
+
+    const index_t node = static_cast<index_t>(m_parent.size());
+    m_nodes[value] = node;
+    m_parent.push_back(node);
+    m_rank.push_back(0);
+    m_label.push_back(value);
+    return node;
+}
+
+index_t gsDofMapper::DofUnionFind::find(index_t node)
+{
+    if (m_parent[node] != node)
+        m_parent[node] = find(m_parent[node]);
+    return m_parent[node];
+}
+
+index_t gsDofMapper::DofUnionFind::representative(index_t value)
+{
+    return m_label[find(nodeFor(value))];
+}
+
+void gsDofMapper::DofUnionFind::unite(index_t first, index_t second)
+{
+    const index_t firstRoot  = find(nodeFor(first));
+    const index_t secondRoot = find(nodeFor(second));
+    if (firstRoot == secondRoot)
+        return;
+
+    // Preserve the historical representative convention.  This is not
+    // needed for the equivalence relation, but keeps finalized numbering
+    // stable: eliminated labels dominate, and otherwise the smaller label
+    // wins.
+    const index_t firstLabel  = m_label[firstRoot];
+    const index_t secondLabel = m_label[secondRoot];
+    index_t representativeLabel;
+    if (firstLabel < 0 && secondLabel < 0)
+        representativeLabel = std::min(firstLabel, secondLabel);
+    else if (firstLabel < 0)
+        representativeLabel = firstLabel;
+    else if (secondLabel < 0)
+        representativeLabel = secondLabel;
+    else
+        representativeLabel = std::min(firstLabel, secondLabel);
+
+    index_t root = firstRoot;
+    index_t child = secondRoot;
+    if (m_rank[root] < m_rank[child])
+        std::swap(root, child);
+
+    m_parent[child] = root;
+    if (m_rank[root] == m_rank[child])
+        ++m_rank[root];
+    m_label[root] = representativeLabel;
+}
+
+size_t gsDofMapper::DofUnionFind::nBytes() const
+{
+    size_t bytes = 0;
+    bytes += m_nodes.bucket_count() * sizeof(void *);
+    bytes += m_nodes.size() * sizeof(std::pair<const index_t,index_t>);
+    bytes += m_parent.capacity() * sizeof(index_t);
+    bytes += m_rank.capacity()   * sizeof(unsigned char);
+    bytes += m_label.capacity()  * sizeof(index_t);
+    return bytes;
+}
+
+index_t gsDofMapper::canonicalDof(index_t dof, index_t comp)
+{
+    if (dof == 0)
+        return 0;
+
+    GISMO_ASSERT(comp >= 0 && static_cast<size_t>(comp) < m_unionFind.size(),
+                 "Component is invalid");
+    return m_unionFind[comp].representative(dof);
+}
+
 gsDofMapper::gsDofMapper() :
   m_offset(1,0), m_shift(0), m_numFreeDofs(1,0), m_numElimDofs(1,0),
   m_numCpldDofs(1,0), m_curElimId(-1)
@@ -113,8 +195,8 @@ void gsDofMapper::matchDof(index_t u, index_t i,
     GISMO_ASSERT(static_cast<size_t>(u)<numPatches(), "Invalid patch index "<< u <<" >= "<< numPatches() );
     GISMO_ASSERT(static_cast<size_t>(v)<numPatches(), "Invalid patch index "<< v <<" >= "<< numPatches() );
 
-    index_t d1 = MAPPER_PATCH_DOF(i,u,comp);
-    index_t d2 = MAPPER_PATCH_DOF(j,v,comp);
+    index_t d1 = canonicalDof(MAPPER_PATCH_DOF(i,u,comp), comp);
+    index_t d2 = canonicalDof(MAPPER_PATCH_DOF(j,v,comp), comp);
 
     // make sure that d1 <= d2, simplifies implementation
     if (d1 > d2)
@@ -223,7 +305,7 @@ void gsDofMapper::eliminateDof( index_t i, index_t k, index_t comp)
         return;
     }
 
-    const index_t old = MAPPER_PATCH_DOF(i,k,comp);
+    const index_t old = canonicalDof(MAPPER_PATCH_DOF(i,k,comp), comp);
     if (old == 0)       // regular free dof
     {
         --m_numFreeDofs[comp+1];
@@ -266,6 +348,10 @@ void gsDofMapper::finalize()
 
     // Only bigger or equal to zero after finalize is called.
     m_curElimId = m_numFreeDofs.back();
+
+    // Setup-time unions are no longer needed after the flat mapper has been
+    // relabeled.  Release them so nBytes() describes the finalized mapper.
+    std::vector<DofUnionFind>().swap(m_unionFind);
 }
 
 void gsDofMapper::finalizeComp(const index_t comp)
@@ -303,7 +389,7 @@ void gsDofMapper::finalizeComp(const index_t comp)
 
     for (size_t k = 0; k < dofs.size(); ++k)
     {
-        const index_t dofType = dofs[k];
+        const index_t dofType = canonicalDof(dofs[k], comp);
 
         if (dofType == 0)       // standard dof
             dofs[k] = curFreeDof++;
@@ -361,9 +447,10 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
     return os;
 }
 
-  void gsDofMapper::setIdentity(index_t nPatches, size_t nDofs,
-				size_t nComp)
+void gsDofMapper::setIdentity(index_t nPatches, size_t nDofs,
+					size_t nComp)
 {
+    resetUnionFind(nComp);
     m_curElimId   = -1;
     m_shift = m_bshift = 0;
     m_numFreeDofs.assign(nComp+1,nDofs); m_numFreeDofs.front()=0;
@@ -418,8 +505,9 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
 }
 
 
-  void gsDofMapper::initPatchDofs(const gsVector<index_t> & patchDofSizes, index_t nComp)
+void gsDofMapper::initPatchDofs(const gsVector<index_t> & patchDofSizes, index_t nComp)
 {
+    resetUnionFind(nComp);
     m_curElimId   = -1;
     m_shift = m_bshift = 0;
     m_numElimDofs.assign(nComp+1,0);
@@ -445,36 +533,25 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
 void gsDofMapper::replaceDofGlobally(index_t oldIdx, index_t newIdx)
 {
   for(size_t i = 0; i!= m_dofs.size(); ++i)
-    std::replace(m_dofs[i].begin(), m_dofs[i].end(), oldIdx, newIdx );
+    m_unionFind[i].unite(oldIdx, newIdx);
 }
 
   void gsDofMapper::replaceDofGlobally(index_t oldIdx, index_t newIdx, index_t comp)
 {
     GISMO_ASSERT(comp>-1,"Component is invalid");
-    std::vector<index_t> & dofs = m_dofs[comp];
-    std::replace(dofs.begin(), dofs.end(), oldIdx, newIdx );
+    m_unionFind[comp].unite(oldIdx, newIdx);
 }
 
 void gsDofMapper::mergeDofsGlobally(index_t dof1, index_t dof2)
 {
     if (dof1 != dof2)
-    {
-        // replace the larger by the smaller for more consistent numbering.
-        if (dof1 < dof2)
-            std::swap(dof1, dof2);
-
         replaceDofGlobally(dof1, dof2);
-    }
 }
 
   void gsDofMapper::mergeDofsGlobally(index_t dof1, index_t dof2, index_t comp)
 {
     if (dof1 != dof2)
-    {
-        if (dof1 < dof2)
-            std::swap(dof1, dof2);
         replaceDofGlobally(dof1, dof2, comp);
-    }
 }
 
 void gsDofMapper::preImage(const index_t gl,
