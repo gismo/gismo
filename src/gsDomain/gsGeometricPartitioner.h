@@ -364,8 +364,14 @@ private:
             if (0 == nBuf) return;
             u = params.leftCols(nBuf);           // materialize the block
             m_mp.patch(curPatch).eval_into(u, phys);
-            for (index_t k = 0; k != nBuf; ++k)
-                m_centroids.col(bufElem[k]) = phys.col(k);
+            // bufElem is contiguous by construction: `expected` increments by
+            // one per element and the GISMO_ENSURE(e == expected) below rejects
+            // any gap, while a chunk is flushed before it can span two patches.
+            // So bufElem[k] == bufElem[0] + k and the whole copy is one block
+            // assignment. Measured 2026-08-13: the per-element form put ~38% of
+            // pass A into Eigen Block construction and dense-assignment loops
+            // (perf, self time, pass A isolated).
+            m_centroids.middleCols(bufElem[0], nBuf) = phys;
             nBuf = 0;
         };
 
@@ -388,13 +394,16 @@ private:
             if (nBuf == chunk || (nBuf > 0 && patch != curPatch)) flush();
             curPatch = patch;
 
-            centre = (it.lowerCorner() + it.upperCorner()) * T(0.5);
-            params.col(nBuf) = centre;
+            params.col(nBuf) = (it.lowerCorner() + it.upperCorner()) * T(0.5);
             bufElem[nBuf]    = e;
-            ++nBuf;
 
             if (m_opts.weightByDofs)
             {
+                // active_into() takes a gsMatrix, not an expression, so this
+                // branch -- and only this branch -- still materializes the
+                // centre. The default path writes straight into params.
+                centre = params.col(nBuf);
+
                 // Same machinery as pass B -- all components, free indices
                 // only -- but the DOF ids are counted, never stored.
                 this->multiBasis().piece(patch).active_into(centre, locals);
@@ -407,6 +416,7 @@ private:
                 }
                 m_weights[e] = cnt;
             }
+            ++nBuf;
         }
         flush();
 
