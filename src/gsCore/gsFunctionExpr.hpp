@@ -617,13 +617,14 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
                     result(c*stride + m++,p) = Hmat(k,l);
             }
 #           else
+            short_t m = d; // FIX: declare once (was reset inside the k-loop, which
+                           // overwrote/left-unset mixed 2nd derivatives for d>=3)
             for (short_t k = 0; k!=d; ++k)
             {
                 // H_{k,k}
                 result(c*stride + k,p) = exprtk::
                     second_derivative<T>(my->expression[c], my->vars[k], 0.00001);
 
-                short_t m = d;
                 for (short_t l=k+1; l<d; ++l)
                 {
                     // H_{k,l}

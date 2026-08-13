@@ -150,6 +150,12 @@ void gsSquareDomain<T>::deriv_into(const gsMatrix<T> & param, gsMatrix<T> & resu
 }
 
 template <class T>
+void gsSquareDomain<T>::deriv2_into(const gsMatrix<T> & param, gsMatrix<T> & result) const
+{
+    m_domain->deriv2_into(param,result);
+}
+
+template <class T>
 void gsSquareDomain<T>::setControls(const gsVector<T> & controls)
 {
     GISMO_ASSERT((size_t)controls.rows()==m_indices.size(),"Wrong size of controls vector");

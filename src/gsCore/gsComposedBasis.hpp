@@ -217,6 +217,9 @@ void gsComposedBasis<T>::derivSingle_into(index_t i, const gsMatrix<T>& u, gsMat
     coord = fd.values[0];
     compderiv = fd.values[1];
 
+    // Clamp into the basis' support, consistently with the other evaluation routines.
+    this->_applyBounds(coord);
+
     m_basis->derivSingle_into(i,coord,deriv);
 
     result.resize(m_basis->targetDim()*domainDim,u.cols());
@@ -263,33 +266,53 @@ void gsComposedBasis<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) 
     bDomainDim = m_basis->domainDim();
     GISMO_ASSERT(1==m_basis->targetDim(),"The basis should be scalar-valued"); // HMV: I think
 
-    // Compute the composition and its derivatives
-    gsFuncData<T> fd(NEED_VALUE | NEED_DERIV);
+    // The formula above only accounts for the first term of the chain rule,
+    // J_sigma^T (d^2 beta/d xi^2) J_sigma.  The full second derivative of
+    // beta(sigma(u)) also contains the term
+    //     sum_i (d beta/d xi_i) * (d^2 sigma_i/du^2),
+    // which is nonzero whenever the composition sigma is not affine (e.g. the
+    // degree>=2 square-domain map used for re-parameterisation).  Both terms are
+    // now included; this is required for correct curvature/bending (e.g. gsKLShell).
+
+    // Compute the composition and its first AND second derivatives
+    gsFuncData<T> fd(NEED_VALUE | NEED_DERIV | NEED_DERIV2);
     m_composition->compute(u,fd);
 
-    gsMatrix<T> coord, deriv2, tmphess, tmpder2, compderiv, hessMat;
+    gsMatrix<T> coord, deriv2, bderiv, tmphess, tmpder2, compderiv, compderiv2, hessMat;
     coord = fd.values[0];
     compderiv = fd.values[1];
+    compderiv2 = fd.values[2];
 
     this->_applyBounds(coord);
 
-    // Compute the second derivative of the basis
-    // The number of second derivatives per component is d(d+1)/2
-    const index_t numSecDeriv = bDomainDim*(bDomainDim+1)/2;
-    m_basis->deriv2_into(coord,deriv2);
+    // Number of second derivatives per basis function (in xi) and per sigma-component (in u)
+    const index_t numSecDeriv  = bDomainDim*(bDomainDim+1)/2;
+    const index_t numSecDerivC = domainDim*(domainDim+1)/2;
+    m_basis->deriv2_into(coord,deriv2);   // d^2 beta / d xi^2
+    m_basis->deriv_into (coord,bderiv);   // d beta   / d xi   (for the second term)
 
     // Compute for every point for every basis function
     const index_t numAct = deriv2.rows() / numSecDeriv;
     result.resize(numAct*numSecDeriv,u.cols());
+    std::vector<gsMatrix<T> > Hsig(targetDim);   // Hessians d^2 sigma_i / du^2
     for (index_t k = 0; k!=u.cols(); k++)
     {
         gsAsMatrix<T,Dynamic,Dynamic> compderivMat = compderiv.reshapeCol(k,domainDim,targetDim);
+        for (index_t i = 0; i!=targetDim; ++i)
+        {
+            gsMatrix<T> sd = compderiv2.block(i*numSecDerivC,k,numSecDerivC,1);
+            Hsig[i] = util::secDerToHessian(sd,domainDim).reshape(domainDim,domainDim);
+        }
         for (index_t act = 0; act!=numAct; act++)
         {
             tmpder2 = deriv2.block(act*numSecDeriv,k,numSecDeriv,1);
             hessMat = util::secDerToHessian(tmpder2,bDomainDim).reshape(bDomainDim,bDomainDim);
+            // First term:  J_sigma^T (d^2 beta/d xi^2) J_sigma
             tmphess = compderivMat*hessMat*compderivMat.transpose();
-            util::hessianToSecDer(tmphess,bDomainDim,tmpder2);
+            // Second term: sum_i (d beta/d xi_i) * (d^2 sigma_i/du^2)
+            for (index_t i = 0; i!=targetDim; ++i)
+                tmphess += bderiv(act*bDomainDim + i, k) * Hsig[i];
+            util::hessianToSecDer(tmphess,domainDim,tmpder2);
             result.block(act*numSecDeriv,k,numSecDeriv,1) = tmpder2;
         }
     }
@@ -305,18 +328,31 @@ void gsComposedBasis<T>::deriv2Single_into(index_t i, const gsMatrix<T>& u, gsMa
     bTargetDim = m_basis->targetDim();
     GISMO_ASSERT(bTargetDim==1,"The basis should be scalar-valued"); // HMV: I think
 
-    gsFuncData<T> fd(NEED_VALUE | NEED_DERIV);
+    // Full second-derivative chain rule (see deriv2_into for the derivation):
+    // includes both J_sigma^T (d^2 beta/d xi^2) J_sigma and the composition-Hessian
+    // term sum_i (d beta/d xi_i)(d^2 sigma_i/du^2), which is nonzero for non-affine sigma.
+    gsFuncData<T> fd(NEED_VALUE | NEED_DERIV | NEED_DERIV2);
     m_composition->compute(u,fd);
 
-    gsMatrix<T> coord, deriv2, tmphess, tmpder2, compderiv, hessMat;
+    gsMatrix<T> coord, deriv2, bderiv, tmphess, tmpder2, compderiv, compderiv2, hessMat;
     coord = fd.values[0];
     compderiv = fd.values[1];
+    compderiv2 = fd.values[2];
+
+    // Clamp the composition's image into the basis' support, as eval_into(),
+    // evalSingle_into(), deriv_into() and deriv2_into() all do.  Without this a
+    // composition that leaves [0,1]^d by even a round-off (which happens at the
+    // boundary) evaluates the basis outside its support and silently returns garbage.
+    this->_applyBounds(coord);
 
     // Compute the second derivative of the basis
     // The number of second derivatives per component is d(d+1)/2
-    const index_t numSecDeriv = bDomainDim*(bDomainDim+1)/2;
+    const index_t numSecDeriv  = bDomainDim*(bDomainDim+1)/2;
+    const index_t numSecDerivC = domainDim*(domainDim+1)/2;
     m_basis->deriv2Single_into(i,coord,deriv2);
+    m_basis->derivSingle_into (i,coord,bderiv);   // d beta_i / d xi
 
+    std::vector<gsMatrix<T> > Hsig(targetDim);
     result.resize(numSecDeriv,u.cols());
     for (index_t k = 0; k!=u.cols(); k++)
     {
@@ -324,7 +360,13 @@ void gsComposedBasis<T>::deriv2Single_into(index_t i, const gsMatrix<T>& u, gsMa
         gsAsMatrix<T,Dynamic,Dynamic> deriv2Mat = deriv2.reshapeCol(k,numSecDeriv,1);
         hessMat = util::secDerToHessian(deriv2Mat,bDomainDim).reshape(bDomainDim,bDomainDim);
         tmphess = compderivMat*hessMat*compderivMat.transpose();
-        util::hessianToSecDer(tmphess,bDomainDim,tmpder2);
+        for (index_t c = 0; c!=targetDim; ++c)
+        {
+            gsMatrix<T> sd = compderiv2.block(c*numSecDerivC,k,numSecDerivC,1);
+            Hsig[c] = util::secDerToHessian(sd,domainDim).reshape(domainDim,domainDim);
+            tmphess += bderiv(c,k) * Hsig[c];
+        }
+        util::hessianToSecDer(tmphess,domainDim,tmpder2);
         gsAsMatrix<T,Dynamic,Dynamic> resultMat = result.reshapeCol(k,numSecDeriv,1);
         resultMat = tmpder2;
     }
