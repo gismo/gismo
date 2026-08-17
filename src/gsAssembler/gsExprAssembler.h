@@ -1051,44 +1051,49 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
 
     typedef typename gsFunction<T>::uPtr ifacemap;
     const bool flipSide = m_options.askSwitch("flipSide", false);
-#pragma omp parallel
-{
-    auto arg_tpl = std::make_tuple(args...);
-    m_exprdata->parsePattern(arg_tpl);
-    unsigned patchInd(0);
-    _pattern pp(m_fmatrix, m_exprdata->points(), patchInd
-#ifdef _OPENMP
-                , lock
-#endif
-        );
 
-    ifacemap interfaceMap;
-    for (gsBoxTopology::const_iiterator it = iFaces.begin();
-         it != iFaces.end(); ++it )
+    // Interface pattern computation is SERIAL. parsePattern for an interface form
+    // lazily builds the shared interface gsExprHelper (gsExprHelper::iface()), which
+    // is not thread-safe; the previous '#pragma omp parallel' had every thread call
+    // it concurrently, corrupting the heap (intermittent double-free / "unsorted
+    // double linked list corrupted"). The work here is interface sparsity only and the
+    // element loop ran under 'omp single nowait' anyway (one thread per element), so
+    // serial execution is correct and essentially free. (Volume/boundary pattern
+    // computation keep their parallelism — they never touch iface().)
     {
-        // If flipSide switch is enabled, then the integration will be
-        // performed on the opposite side of the interface
-        const boundaryInterface & iFace =  flipSide ? it->getInverse() : *it;
-        const index_t patch1 = iFace.first() .patch;
-        const index_t patch2 = iFace.second().patch;
+        auto arg_tpl = std::make_tuple(args...);
+        m_exprdata->parsePattern(arg_tpl);
+        unsigned patchInd(0);
+        _pattern pp(m_fmatrix, m_exprdata->points(), patchInd
+#ifdef _OPENMP
+                    , lock
+#endif
+            );
 
-        const gsBasis<T> & basis1 = this->trialSpace(0).source().basis(patch1);
-        const gsBasis<T> & basis2 = this->trialSpace(0).source().basis(patch2);
-        if (iFace.type() == interaction::conforming)
-            interfaceMap = gsAffineFunction<T>::make( iFace.dirMap(), iFace.dirOrientation(),
-                                                      basis1.support(),
-                                                      basis2.support() );
-        else
-            interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), iFace);
-
-        typename gsBasis<T>::domainIter domIt = basis1.domain()->beginBdr(iFace.first().side());
-        typename gsBasis<T>::domainIter domItEnd = basis1.domain()->endBdr(iFace.first().side());
-
-        // Start iteration over elements
-        //for ( domIt.next(tid); domIt.good(); domIt.next(nt) )
-        for (; domIt<domItEnd; ++domIt )
+        ifacemap interfaceMap;
+        for (gsBoxTopology::const_iiterator it = iFaces.begin();
+             it != iFaces.end(); ++it )
         {
-#           pragma omp single nowait
+            // If flipSide switch is enabled, then the integration will be
+            // performed on the opposite side of the interface
+            const boundaryInterface & iFace =  flipSide ? it->getInverse() : *it;
+            const index_t patch1 = iFace.first() .patch;
+            const index_t patch2 = iFace.second().patch;
+
+            const gsBasis<T> & basis1 = this->trialSpace(0).source().basis(patch1);
+            const gsBasis<T> & basis2 = this->trialSpace(0).source().basis(patch2);
+            if (iFace.type() == interaction::conforming)
+                interfaceMap = gsAffineFunction<T>::make( iFace.dirMap(), iFace.dirOrientation(),
+                                                          basis1.support(),
+                                                          basis2.support() );
+            else
+                interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), iFace);
+
+            typename gsBasis<T>::domainIter domIt = basis1.domain()->beginBdr(iFace.first().side());
+            typename gsBasis<T>::domainIter domItEnd = basis1.domain()->endBdr(iFace.first().side());
+
+            // Start iteration over elements
+            for (; domIt<domItEnd; ++domIt )
             {
                 m_exprdata->points() = domIt.centerPoint();
                 interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
@@ -1096,7 +1101,6 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
             }
         }
     }
-}//omp parallel
 }
 
 
