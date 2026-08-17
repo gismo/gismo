@@ -50,7 +50,7 @@ public:
                     gsQuadRule<T>    & rule)
     {
         // Setup Quadrature
-        rule = gsQuadrature::get(*basis.domain(), options); // harmless slicing occurs here
+        rule = gsQuadrature::get(basis, options); // harmless slicing occurs here
 
         // Set Geometry evaluation flags
         md.flags = NEED_MEASURE|NEED_GRAD_TRANSFORM;

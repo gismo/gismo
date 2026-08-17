@@ -329,8 +329,9 @@ int main(int argc, char *argv[])
                 if (quRule == gsQuadrature::CutCellRule)
                 {
                     // CutCell: keep only points with non-zero weight (in/out mask result).
-                    gsGaussRule<real_t> baseRule(gsVector<index_t,2>::Constant(deg + 1));
-                    gsCutCellRule<real_t> cutRule(baseRule, impl_fun);
+                    gsCutCellRule<real_t> cutRule(
+                        gsGaussRule<real_t>::make(gsVector<index_t,2>::Constant(deg + 1)),
+                        impl_fun);
 
                     for (auto elem_it = tr_domain->beginAll(); elem_it != tr_domain->endAll(); ++elem_it)
                     {

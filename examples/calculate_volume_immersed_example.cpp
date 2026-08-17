@@ -23,7 +23,7 @@
 
     Usage:
     ./bin/calculate_volume_immersed_example [-f cow.obj] [-o output_cow3d] [-r 3] [-e 0] [--fill 0.9] [--plot]
-    ./build/bin/calculate_volume_immersed_example -f optional/gsGmsh/filedata/spot.obj -o output_spot -r 3 --plot
+    ./build/bin/calculate_volume_immersed_example -f obj/spot.obj -o output_spot -r 3 --plot
 
     This file is part of the G+Smo library.
 
@@ -46,220 +46,6 @@
 
 using namespace gismo;
 
-// =============================================================================
-//  Wavefront .obj loader (vertices + triangulated faces)
-// =============================================================================
-//  Reads "v x y z" vertex lines and "f ..." face lines.  Faces may use the
-//  v, v/vt, v//vn or v/vt/vn notations; only the vertex index is used.  Faces
-//  with more than three corners are triangulated with a simple fan.
-static bool loadObjMesh(const std::string & filename,
-                        std::vector<double> & verts,   // 3 * Nv, row-major (x,y,z)
-                        std::vector<int>    & tris)     // 3 * Nt, zero-based
-{
-    std::ifstream in(filename.c_str());
-    if (!in.is_open())
-        return false;
-
-    verts.clear();
-    tris.clear();
-
-    std::string line;
-    while (std::getline(in, line))
-    {
-        if (line.size() < 2) continue;
-        if (line[0] == 'v' && line[1] == ' ')
-        {
-            std::istringstream ss(line.substr(2));
-            double x, y, z;
-            ss >> x >> y >> z;
-            verts.push_back(x);
-            verts.push_back(y);
-            verts.push_back(z);
-        }
-        else if (line[0] == 'f' && line[1] == ' ')
-        {
-            std::istringstream ss(line.substr(2));
-            std::vector<int> face;
-            std::string tok;
-            while (ss >> tok)
-            {
-                // Keep only the part before the first '/'.
-                const std::size_t slash = tok.find('/');
-                if (slash != std::string::npos)
-                    tok = tok.substr(0, slash);
-                if (tok.empty()) continue;
-                int idx = std::atoi(tok.c_str());
-                if (idx < 0) // negative = relative index
-                    idx = static_cast<int>(verts.size() / 3) + idx;
-                else
-                    idx -= 1; // .obj is 1-based
-                face.push_back(idx);
-            }
-            // Fan triangulation of the (convex) polygon.
-            for (std::size_t k = 2; k < face.size(); ++k)
-            {
-                tris.push_back(face[0]);
-                tris.push_back(face[k - 1]);
-                tris.push_back(face[k]);
-            }
-        }
-    }
-    return !verts.empty() && !tris.empty();
-}
-
-static std::string fileStem(const std::string & filename)
-{
-    const std::size_t slash = filename.find_last_of("/\\");
-    const std::size_t begin = (slash == std::string::npos) ? 0 : slash + 1;
-    const std::size_t dot = filename.find_last_of('.');
-    const std::size_t end = (dot == std::string::npos || dot < begin) ? filename.size() : dot;
-    return filename.substr(begin, end - begin);
-}
-
-// =============================================================================
-//  Geometry helpers (plain doubles)
-// =============================================================================
-typedef std::array<double, 3> Vec3;
-
-static inline Vec3 sub(const Vec3 & a, const Vec3 & b)
-{ return {{a[0] - b[0], a[1] - b[1], a[2] - b[2]}}; }
-static inline double dot(const Vec3 & a, const Vec3 & b)
-{ return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
-static inline Vec3 cross(const Vec3 & a, const Vec3 & b)
-{ return {{a[1] * b[2] - a[2] * b[1],
-           a[2] * b[0] - a[0] * b[2],
-           a[0] * b[1] - a[1] * b[0]}}; }
-static inline double norm(const Vec3 & a) { return std::sqrt(dot(a, a)); }
-
-// Squared distance from point p to triangle (a,b,c) (Ericson, RTCD).
-static double sqDistPointTriangle(const Vec3 & p, const Vec3 & a,
-                                  const Vec3 & b, const Vec3 & c)
-{
-    const Vec3 ab = sub(b, a), ac = sub(c, a), ap = sub(p, a);
-    const double d1 = dot(ab, ap), d2 = dot(ac, ap);
-    if (d1 <= 0.0 && d2 <= 0.0) { const Vec3 d = sub(p, a); return dot(d, d); }
-
-    const Vec3 bp = sub(p, b);
-    const double d3 = dot(ab, bp), d4 = dot(ac, bp);
-    if (d3 >= 0.0 && d4 <= d3) { const Vec3 d = sub(p, b); return dot(d, d); }
-
-    const double vc = d1 * d4 - d3 * d2;
-    if (vc <= 0.0 && d1 >= 0.0 && d3 <= 0.0)
-    {
-        const double v = d1 / (d1 - d3);
-        const Vec3 q = {{a[0] + v * ab[0], a[1] + v * ab[1], a[2] + v * ab[2]}};
-        const Vec3 d = sub(p, q); return dot(d, d);
-    }
-
-    const Vec3 cp = sub(p, c);
-    const double d5 = dot(ab, cp), d6 = dot(ac, cp);
-    if (d6 >= 0.0 && d5 <= d6) { const Vec3 d = sub(p, c); return dot(d, d); }
-
-    const double vb = d5 * d2 - d1 * d6;
-    if (vb <= 0.0 && d2 >= 0.0 && d6 <= 0.0)
-    {
-        const double w = d2 / (d2 - d6);
-        const Vec3 q = {{a[0] + w * ac[0], a[1] + w * ac[1], a[2] + w * ac[2]}};
-        const Vec3 d = sub(p, q); return dot(d, d);
-    }
-
-    const double va = d3 * d6 - d5 * d4;
-    if (va <= 0.0 && (d4 - d3) >= 0.0 && (d5 - d6) >= 0.0)
-    {
-        const double w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
-        const Vec3 bc = sub(c, b);
-        const Vec3 q = {{b[0] + w * bc[0], b[1] + w * bc[1], b[2] + w * bc[2]}};
-        const Vec3 d = sub(p, q); return dot(d, d);
-    }
-
-    const double denom = 1.0 / (va + vb + vc);
-    const double v = vb * denom, w = vc * denom;
-    const Vec3 q = {{a[0] + ab[0] * v + ac[0] * w,
-                     a[1] + ab[1] * v + ac[1] * w,
-                     a[2] + ab[2] * v + ac[2] * w}};
-    const Vec3 d = sub(p, q); return dot(d, d);
-}
-
-// Signed solid angle subtended by triangle (a,b,c) at point p
-// (Van Oosterom & Strackee).  The sum over a closed mesh equals
-// 4*pi * (generalized winding number).
-static double signedSolidAngle(const Vec3 & p, const Vec3 & a,
-                               const Vec3 & b, const Vec3 & c)
-{
-    const Vec3 va = sub(a, p), vb = sub(b, p), vc = sub(c, p);
-    const double la = norm(va), lb = norm(vb), lc = norm(vc);
-    const double numer = dot(va, cross(vb, vc));
-    const double denom = la * lb * lc
-                       + dot(va, vb) * lc
-                       + dot(vb, vc) * la
-                       + dot(vc, va) * lb;
-    return 2.0 * std::atan2(numer, denom);
-}
-
-// =============================================================================
-//  gsMeshSignedDist<T>
-//  Signed-distance level set of a closed triangle mesh.
-//
-//  Convention (matches gsImplicitTrimmedDomain):
-//    phi < 0  ->  inside    (active / interior)
-//    phi > 0  ->  outside
-//    phi = 0  ->  on the surface (cut cell)
-// =============================================================================
-template<class T>
-class gsMeshSignedDist : public gsFunction<T>
-{
-public:
-    GISMO_CLONE_FUNCTION(gsMeshSignedDist)
-
-    gsMeshSignedDist(std::vector<double> verts, std::vector<int> tris,
-                     const gsMatrix<T> & bbox)
-        : m_verts(give(verts)), m_tris(give(tris)), m_bbox(bbox)
-    {}
-
-    short_t     domainDim() const override { return 3; }
-    short_t     targetDim() const override { return 1; }
-    gsMatrix<T> support()   const override { return m_bbox; }
-
-    void eval_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override
-    {
-        const std::size_t nt = m_tris.size() / 3;
-        result.resize(1, u.cols());
-        for (index_t k = 0; k < u.cols(); ++k)
-        {
-            const Vec3 p = {{ static_cast<double>(u(0, k)),
-                              static_cast<double>(u(1, k)),
-                              static_cast<double>(u(2, k)) }};
-
-            double best  = std::numeric_limits<double>::max();
-            double omega = 0.0;
-            for (std::size_t t = 0; t < nt; ++t)
-            {
-                const int ia = m_tris[3 * t + 0];
-                const int ib = m_tris[3 * t + 1];
-                const int ic = m_tris[3 * t + 2];
-                const Vec3 a = {{ m_verts[3 * ia], m_verts[3 * ia + 1], m_verts[3 * ia + 2] }};
-                const Vec3 b = {{ m_verts[3 * ib], m_verts[3 * ib + 1], m_verts[3 * ib + 2] }};
-                const Vec3 c = {{ m_verts[3 * ic], m_verts[3 * ic + 1], m_verts[3 * ic + 2] }};
-
-                const double d2 = sqDistPointTriangle(p, a, b, c);
-                if (d2 < best) best = d2;
-                omega += signedSolidAngle(p, a, b, c);
-            }
-
-            const double pi      = 3.14159265358979323846;
-            const double dist    = std::sqrt(best);
-            const double winding = omega / (4.0 * pi);
-            // |winding| ~ 1 inside, ~ 0 outside (sign-robust to mesh orientation)
-            const bool inside = std::abs(winding) > 0.5;
-            result(0, k) = inside ? -static_cast<T>(dist) : static_cast<T>(dist);
-        }
-    }
-
-private:
-    std::vector<double> m_verts; // 3 * Nv
-    std::vector<int>    m_tris;  // 3 * Nt (zero-based)
-    gsMatrix<T>         m_bbox;  // 3 x 2 : col 0 = lower, col 1 = upper
-};
 
 // =============================================================================
 //  main
@@ -267,7 +53,7 @@ private:
 int main(int argc, char * argv[])
 {
     std::string filename =
-        "/Users/lucasventavinuela/gismo_gmsh/optional/gsGmsh/filedata/cow.obj";
+        "obj/spot.obj";
     std::string out = gsFileManager::getCanonicRepresentation(
         gsFileManager::getPath(std::string(__FILE__), true) + "../output_cow3d");
     index_t numRefine  = 3;
@@ -288,16 +74,15 @@ int main(int argc, char * argv[])
     // -------------------------------------------------------------------------
     // 1. Load the triangle mesh
     // -------------------------------------------------------------------------
-    std::vector<double> verts;
-    std::vector<int>    tris;
-    if (!loadObjMesh(filename, verts, tris))
+    gsSurfMesh mesh;
+    if (!gsReadSurfMesh(filename, mesh))
     {
         gsWarn << "Failed to read a triangle mesh from: " << filename << "\n";
         return EXIT_FAILURE;
     }
-    const std::string outputStem = fileStem(filename);
-    const std::size_t nVert = verts.size() / 3;
-    const std::size_t nTri  = tris.size()  / 3;
+    const std::string outputStem = gsFileManager::getBasename(filename);
+    const std::size_t nVert = mesh.n_vertices();
+    const std::size_t nTri  = mesh.n_faces();
     gsInfo << "Loaded mesh '" << filename << "': "
            << nVert << " vertices, " << nTri << " triangles.\n";
 
@@ -305,29 +90,12 @@ int main(int argc, char * argv[])
     // 2. Rescale / center the mesh into the unit parametric box [0,1]^3
     //    mapped = (p - center) * scale + 0.5,  scale = fill / maxExtent
     // -------------------------------------------------------------------------
-    Vec3 lo = {{ verts[0], verts[1], verts[2] }};
-    Vec3 hi = lo;
-    for (std::size_t i = 0; i < nVert; ++i)
-        for (int d = 0; d < 3; ++d)
-        {
-            lo[d] = std::min(lo[d], verts[3 * i + d]);
-            hi[d] = std::max(hi[d], verts[3 * i + d]);
-        }
-    const Vec3 center = {{ 0.5 * (lo[0] + hi[0]),
-                           0.5 * (lo[1] + hi[1]),
-                           0.5 * (lo[2] + hi[2]) }};
-    const double extent = std::max(hi[0] - lo[0],
-                          std::max(hi[1] - lo[1], hi[2] - lo[2]));
-    const double scale  = fill / extent;
+    const gsMatrix<real_t> physBox = gsSurfMeshBoundingBox(mesh);
+    gsInfo << "Physical bounding box: [" << physBox.col(0).transpose()
+           << "] - [" << physBox.col(1).transpose() << "]\n";
 
-    gsInfo << "Physical bounding box: ["
-           << lo[0] << ", " << lo[1] << ", " << lo[2] << "] - ["
-           << hi[0] << ", " << hi[1] << ", " << hi[2] << "]\n";
+    const real_t scale = gsNormalizeToUnitBox(mesh, fill);
     gsInfo << "Rescaling factor (param/phys): " << scale << "\n";
-
-    for (std::size_t i = 0; i < nVert; ++i)
-        for (int d = 0; d < 3; ++d)
-            verts[3 * i + d] = (verts[3 * i + d] - center[d]) * scale + 0.5;
 
     // -------------------------------------------------------------------------
     // 3. Analytic level set on the rescaled mesh
@@ -335,7 +103,7 @@ int main(int argc, char * argv[])
     gsMatrix<real_t> bbox(3, 2);
     bbox.col(0).setZero();
     bbox.col(1).setOnes();
-    gsMeshSignedDist<real_t> impl_fun(verts, tris, bbox);
+    gsMeshSignedDist<real_t> impl_fun(mesh, bbox);
 
     // -------------------------------------------------------------------------
     // 4. Background box [0,1]^3 (identity map: parameter space == physical space)
@@ -429,7 +197,7 @@ int main(int argc, char * argv[])
 
         if (r == numRefine)
         {
-            const real_t bboxVol = (hi[0] - lo[0]) * (hi[1] - lo[1]) * (hi[2] - lo[2]);
+            const real_t bboxVol = (physBox.col(1) - physBox.col(0)).prod();
             gsInfo << "\n=== Result (finest level) ===\n";
             gsInfo << "Volume of object (parametric [0,1]^3): "
                    << std::fixed << std::setprecision(6) << volume << "\n";
@@ -448,12 +216,7 @@ int main(int argc, char * argv[])
         if (plot && r == numRefine)
         {
             // 7a. Rescaled input geometry as a triangle mesh.
-            gsMesh<real_t> geomMesh;
-            for (std::size_t i = 0; i < nVert; ++i)
-                geomMesh.addVertex(verts[3 * i], verts[3 * i + 1], verts[3 * i + 2]);
-            for (std::size_t t = 0; t < nTri; ++t)
-                geomMesh.addFace(tris[3 * t], tris[3 * t + 1], tris[3 * t + 2]);
-            gsWriteParaview(geomMesh, out + "/" + outputStem + "_geometry");
+            gsWriteParaview(mesh, out + "/" + outputStem + "_geometry");
 
             // 7b. Background grid.
             gsMesh<real_t> bgMesh(dbasis.basis(0));

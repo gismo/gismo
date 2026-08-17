@@ -471,7 +471,8 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
             {
                 QuPatch = elem.patch();
                 // get Degree of the domain
-                QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(QuPatch), m_options);
+                QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(QuPatch), m_options,
+                                               -1, m_exprdata->quadratureDegrees(QuPatch));
             }
 
             // Map the Quadrature rule to the element
@@ -526,7 +527,8 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
              bdrlist.begin(); bit != bdrlist.end(); ++bit)
     {
         // Quadrature rule
-        QuRule = gsQuadrature::get(*m_exprdata->domain().subdomain(bit->patch), m_options,bit->direction());
+        QuRule = gsQuadrature::get(*m_exprdata->domain().subdomain(bit->patch), m_options,bit->direction(),
+                                   m_exprdata->quadratureDegrees(bit->patch));
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
@@ -586,7 +588,8 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
         const boundary_condition<T> * it = &iit->get();
 
         // Quadrature rule
-        QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(it->patch()), m_options, it->side().direction());
+        QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(it->patch()), m_options, it->side().direction(),
+                                      m_exprdata->quadratureDegrees(it->patch()));
 
         // Update boundary function source
         m_exprdata->setMutSource(*it->function());
@@ -658,7 +661,8 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
         //                                 *iit);//,opt
 
         // Quadrature rule
-        QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(patch1),m_options, iFace.first().side().direction());
+        QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(patch1),m_options, iFace.first().side().direction(),
+                                      m_exprdata->quadratureDegrees(patch1));
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =

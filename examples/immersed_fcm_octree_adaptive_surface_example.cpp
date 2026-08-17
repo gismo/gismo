@@ -27,13 +27,20 @@
     This mirrors area_fcm_example.cpp but replaces the analytic level set
     (gsFunctionExpr) with the geometry-based SpainLevelSet.
 
+    The volume (area) rule can optionally be swapped for the moment-fitting
+    rule (--momentFit): the adaptive point cloud of every cut cell is then
+    compressed onto the fixed tensor Gauss grid of that cell, so the number of
+    quadrature points per cut cell no longer depends on the tree depth.  The
+    surface (perimeter) rule is never compressed and is untouched by the flag.
+
     Usage:
       ./immersed_fcm_octree_adaptive_surface_example [-f spain_mesh.msh] [-r 5] [--quadDepth 2]
-                          [-o output_spain_fcm] [--plot]
+                          [-o output_spain_fcm] [--plot] [--momentFit] [--alpha 0]
 
     Examples:
       ./build/bin/immersed_fcm_octree_adaptive_surface_example -r 5 --quadDepth 1 --plot
       ./build/bin/immersed_fcm_octree_adaptive_surface_example -f coastline_points.txt -r 6 --quadDepth 2
+      ./build/bin/immersed_fcm_octree_adaptive_surface_example -f spain_mesh.msh -r 5 --quadDepth 3 --momentFit
 
     This file is part of the G+Smo library.
 
@@ -442,7 +449,7 @@ static void collectAdaptive2D(const gsAlgoimGenericRule<real_t>& volRule,
 int main(int argc, char* argv[])
 {
     std::string file      =
-        "/Users/lucasventavinuela/gismo_gmsh/optional/gsGmsh/filedata/spain_mesh.msh";
+        "spain_mesh.msh";
     std::string outDir    = "output_spain_fcm";
     index_t     numRef    = 5;
     index_t     degree    = 2;
@@ -451,6 +458,8 @@ int main(int argc, char* argv[])
     real_t      indicatorTol = 1e-2;
     real_t      fill      = (real_t)0.9;
     bool        plot      = false;
+    bool        momentFit = false;
+    real_t      alpha     = (real_t)0.0;
 
     gsCmdLine cmd("2D FCM: area and perimeter of the Spain coastline "
                   "(immersed boundary) via adaptive quad-tree + Algoim.");
@@ -465,7 +474,30 @@ int main(int argc, char* argv[])
     cmd.addReal  ("",  "indicatorTol", "integralChange acceptance tolerance",  indicatorTol);
     cmd.addReal  ("",  "fill",      "Fill fraction of [0,1]^2 (0..1)",          fill);
     cmd.addSwitch("plot", "Write ParaView output",                              plot);
+    cmd.addSwitch("momentFit", "Use moment-fitting compression for the volume "
+                               "rule (surface rule unaffected)",                momentFit);
+    cmd.addReal  ("",  "alpha",     "Fictitious-domain weight of the outside "
+                                    "material in the moment-fitting rule "
+                                    "(0 = drop it; only 0 is supported)",       alpha);
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
+
+    // Resolve against the search paths so the bundled data is found
+    // regardless of the working directory.
+    {
+        const std::string resolved = gsFileManager::find(file);
+        GISMO_ENSURE(!resolved.empty(),
+                     "Cannot find '" << file << "' in the search paths ("
+                     << gsFileManager::getSearchPaths() << ").");
+        file = resolved;
+    }
+
+    // Capability regression of the move to the core gsMomentRule: the FCM
+    // blend w <- (1-alpha)w + alpha*w^G needs the analytic full-cell Gauss
+    // weight w^G, which the geometry-free compressor does not have. (Its own
+    // optional alpha is the integrand's material field, a different object.)
+    GISMO_ENSURE(alpha == (real_t)0,
+                 "--alpha (fictitious-domain blend) is not available with the "
+                 "core gsMomentRule; use --alpha 0.");
 
     // -------------------------------------------------------------------------
     // 1. Read the coastline as an ordered closed polygon.
@@ -615,8 +647,40 @@ int main(int argc, char* argv[])
         adaptiveOptions.setInt("nFallback", nFallback);
         adaptiveOptions.setString("indicator", indicator);
         adaptiveOptions.setReal("indicatorTol", indicatorTol);
-        adaptiveOptions.setSwitch("analyticInterior", true);
         gsAlgoimAdaptiveRule<real_t> volumeRule(phi, bkgBasis, adaptiveOptions);
+
+        // Optional replacement of the *volume* rule: the same adaptive rule is
+        // used underneath (identical maxDepth/nFallback/indicator/indicatorTol
+        // and the same midpoint+Lipschitz box classifier), but its cut-cell
+        // point cloud is compressed onto the tensor Gauss grid of the cell by
+        // the core gsMomentRule.
+        // Note: mass is preserved identically by the partition of unity of the
+        // Lagrange basis, so reproducing the area is a wiring check, not an
+        // accuracy check.  Only cut cells reach the rule here (beginBdr).
+        //
+        // The compressor OWNS the adaptive rule (the gsQuadRule hierarchy has
+        // no clone(), so ownership transfer is the only non-slicing option).
+        // A raw observer is kept for the underlying rule's own Stats:
+        // gsMomentRule::underlying() returns a gsQuadRule<T>&, which has no
+        // stats().  It is re-assigned together with the rule at every r.
+        gsMomentRule<real_t>::uPtr           momentFitRule;
+        const gsAlgoimAdaptiveRule<real_t> * mfUnderlying = nullptr;
+        if (momentFit)
+        {
+            // Output points per direction, exactly as the former moment-fitting
+            // rule computed them: n = round(quA*maxDegree) + quB, clamped to 1.
+            const long nRaw = std::lround(adaptiveOptions.askReal("quA", 1.0)
+                                          * static_cast<double>(bkgBasis.maxDegree()))
+                            + static_cast<long>(adaptiveOptions.askInt("quB", 1));
+            const index_t mfOrder1d = nRaw > 0 ? static_cast<index_t>(nRaw) : 1;
+
+            gsAlgoimAdaptiveRule<real_t> * u =
+                new gsAlgoimAdaptiveRule<real_t>(phi, bkgBasis, adaptiveOptions);
+            mfUnderlying  = u;
+            momentFitRule = gsMomentRule<real_t>::make(
+                                gsQuadRule<real_t>::uPtr(u),
+                                gsVector<index_t>::Constant(2, mfOrder1d));
+        }
 
         gsOptionList surfaceOptions = adaptiveOptions;
         surfaceOptions.setInt("dim", 2);
@@ -666,9 +730,20 @@ int main(int argc, char* argv[])
                 return boxClassPhi2D(phi, childLo, childHi);
             };
 
-            volumeRule.mapToSeparated(it.lowerCorner(), it.upperCorner(),
-                                      subIntCtr, subIntArea,
-                                      leafPts, leafWts, classifier);
+            if (momentFit)
+            {
+                // The moment-fitting rule has no separated (interior/cut)
+                // output: it returns one compressed cloud per cell, counted
+                // here as cut-cell points (so quadPts == bdryPts in this mode).
+                momentFitRule->mapTo(it.lowerCorner(), it.upperCorner(),
+                                     leafPts, leafWts);
+            }
+            else
+            {
+                volumeRule.mapToSeparated(it.lowerCorner(), it.upperCorner(),
+                                          subIntCtr, subIntArea,
+                                          leafPts, leafWts, classifier);
+            }
 
             areaCut   += subIntArea.sum() + leafWts.sum();
             nSubInteriorQPs += subIntCtr.cols();
@@ -692,7 +767,8 @@ int main(int argc, char* argv[])
 
         if (plot) appendCloud2D(quadAll, intCtr, intArea);
 
-        nSubBoxes = volumeRule.stats().nSubBoxes;   // accumulated over the loop
+        nSubBoxes = momentFit ? mfUnderlying->stats().nSubBoxes
+                              : volumeRule.stats().nSubBoxes; // accumulated over the loop
         const real_t area = areaInterior + areaCut;
     const index_t nQuadPts = nSubInteriorQPs + nBoundaryQPs;
 
@@ -711,6 +787,24 @@ int main(int argc, char* argv[])
                << std::setw(13) << std::scientific << std::setprecision(2)
                << std::abs(area  - exactArea)
                << std::setw(13) << std::abs(perim - exactPerim) << "\n";
+
+        // -- Moment-fitting compression statistics (this refinement only:
+        //    the rule is rebuilt every r).  outQPs/minW/negW describe the
+        //    compressed cells only; cells whose underlying cloud already fits
+        //    in the output grid are passed through unchanged (passThrough) and
+        //    contribute passQPs.  The honest compression ratio is
+        //    underQPs/emitted, with emitted = outQPs + passQPs.
+        if (momentFit)
+        {
+            const gsMomentRule<real_t>::Stats & mfs = momentFitRule->stats();
+            gsInfo << "momfit: outQPs=" << mfs.nOutputQPs
+                   << " passQPs=" << mfs.nPassThroughQPs
+                   << " emitted=" << (mfs.nOutputQPs + mfs.nPassThroughQPs)
+                   << " underQPs=" << mfs.nUnderlyingQPs
+                   << " passThrough=" << mfs.nPassThroughElements
+                   << " minW=" << mfs.minWeight
+                   << " negW=" << mfs.nNegativeWeights << "\n";
+        }
 
         // -- Results file
         fout   << std::setw(6)  << r

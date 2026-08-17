@@ -56,13 +56,19 @@ int main(int argc, char *argv[])
     index_t numRefine  = 5;
     index_t numElevate = 0;
     index_t octLevels  = 3;
+    index_t quadDepth  = 0;
     real_t  radius     = 0.4;
+    real_t  alpha      = 0.0;
 
     gsCmdLine cmd("Quadrature test: area of an immersed disk in [0,1]^2.");
     cmd.addInt ("e", "degreeElevation", "Number of degree elevation steps", numElevate);
     cmd.addInt ("r", "uniformRefine",   "Number of uniform refinement steps", numRefine);
     cmd.addInt ("L", "octLevels",       "Number of octree subdivision levels", octLevels);
+    cmd.addInt ("d", "quadDepth",       "Adaptive subdivision depth of the moment-fitting "
+                                        "rule (maxDepth)", quadDepth);
     cmd.addReal("R", "radius",          "Disk radius", radius);
+    cmd.addReal("a", "alpha",           "Fictitious-domain weight of the outside material "
+                                        "(moment-fitting rule)", alpha);
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
 
     // Embedding box [0,1]^2 (identity geometry map)
@@ -83,7 +89,8 @@ int main(int argc, char *argv[])
     const std::vector<RuleInfo> rules = {
         { "CutCell", gsQuadrature::CutCellRule },
         { "Algoim ", gsQuadrature::AlgoimRule  },
-        { "Octree ", gsQuadrature::OctreeRule  }
+        { "Octree ", gsQuadrature::OctreeRule  },
+        { "MomFit ", gsQuadrature::MomentFittingRule }
     };
 
     gsInfo << "Disk radius R   = " << radius << "\n";
@@ -113,14 +120,19 @@ int main(int argc, char *argv[])
             options.addInt ("quB", "quB: nodes = quA*deg + quB", 1);
             options.addInt ("octLevels",
                 "Number of octree subdivision levels for OctreeRule", octLevels);
+            options.addReal("alpha",
+                "Fictitious-domain weight of the outside material (MomentFittingRule)", alpha);
+            options.addInt ("maxDepth",
+                "Adaptive subdivision depth for MomentFittingRule", quadDepth);
 
             gsImplicitTrimmedDomain<2,real_t> tr_domain(impl_fun, *tbsPtr);
 
             const real_t area = integrateArea(tr_domain, options);
             err(i, r) = std::abs(area - exactArea);
 
+            // 12 digits: the MomFit/Algoim rows are expected to agree to ~1e-10
             gsInfo << "  " << rules[i].name << "  "
-                   << std::scientific << std::setprecision(8)
+                   << std::scientific << std::setprecision(12)
                    << area << "    " << err(i, r) << "\n";
         }
         gsInfo << "\n";

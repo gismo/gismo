@@ -15,6 +15,8 @@
 
 #include <gsDomain/gsTrimmedDomain.h>
 
+#include <type_traits>
+
 
 namespace gismo
 {
@@ -52,21 +54,43 @@ public:
         this->init(htbasis, samples);
     }
 
-    /// Constructor for bounding-box + uniform grid
+    /// Constructor for bounding-box + uniform grid.
+    /// No basis is involved here, so the degree used for quadrature sizing
+    /// (Base::degree()) is taken from \a deg.
     gsImplicitTrimmedDomain(const gsFunction<T>       & fnc,
                         const gsMatrix<T>            & bbox,
                         const gsVector<index_t,d>    & numCells,
-                        index_t samples = 5) :
+                        index_t samples = 5,
+                        short_t deg     = 1) :
     m_implFunction(memory::make_shared_not_owned(&fnc))
     {
-        this->init(bbox, numCells, samples);
+        this->init(bbox, numCells, samples, deg);
     }
 
-    gsImplicitTrimmedDomain(const gsFunction<T> & fnc)
+    /// Constructor for the size-based adaptive grid (no basis, no bounding box given).
+    /// There is no basis on this path, so the degree used for quadrature sizing
+    /// (Base::degree()) is taken from \a deg.
+    /// \note This requires a level set whose support() returns a finite \c d x 2
+    /// bounding box. gsFunctionExpr and most analytic level sets have unbounded
+    /// support — use gsImplicitTrimmedDomain(fnc, bbox, numCells, samples, deg)
+    /// instead which supplies the box explicitly.
+    gsImplicitTrimmedDomain(const gsFunction<T> & fnc, short_t deg = 1)
     : m_implFunction(memory::make_shared_not_owned(&fnc))
     {
-        this->init();
+        this->init(T(1), T(0.1), 10, deg);
     }
+
+    /// A floating-point degree is always a mistake: gsImplicitTrimmedDomain(phi, 2.9)
+    /// would otherwise compile and silently truncate to degree 2 (parenthesised
+    /// direct-initialisation does not diagnose narrowing, and this build does not
+    /// enable -Wconversion). Deleting it turns the mistake into a compile error.
+    /// NOTE: this MUST stay a constrained template. A plain non-template
+    /// `gsImplicitTrimmedDomain(const gsFunction<T>&, double) = delete;` would make the
+    /// legitimate call `d(phi, 3)` AMBIGUOUS: int->double and int->short_t are both
+    /// standard conversions of the same rank.
+    template<class D,
+             typename std::enable_if<std::is_floating_point<D>::value, int>::type = 0>
+    gsImplicitTrimmedDomain(const gsFunction<T> & fnc, D deg) = delete;
 
     const gsFunction<T> & implicitFunction() const { return *m_implFunction; };
 

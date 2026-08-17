@@ -709,8 +709,17 @@ gsSurfMesh::compute_face_normal(Face f) const
 
     if (next_halfedge(h) == hend) // face is a triangle
     {
+        // p2 and p0 are made RELATIVE to p1 first, so both operands of the
+        // cross product must be the relative ones: (p2-p1) x (p0-p1), which is
+        // exactly what the general-polygon branch below accumulates.
+        //
+        // This used to read p2.cross(p1), crossing the relative p2 with the
+        // still-ABSOLUTE p1. That is not translation invariant -- the normal of
+        // the same triangle changed when the mesh was moved -- and it was also
+        // sign-inverted even at the origin (for the triangle (0,0,0), (1,0,0),
+        // (0,1,0) it returned -z instead of +z).
         p2-=p1; p0-=p1;
-        return p2.cross(p1).normalized();
+        return p2.cross(p0).normalized();
     }
 
     else // face is a general polygon

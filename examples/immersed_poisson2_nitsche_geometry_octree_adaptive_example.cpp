@@ -32,8 +32,35 @@
     This is adaptive QUADRATURE only. The B-spline basis, the trimmed-domain
     classification, the solver, and the Poisson problem are unchanged.
 
+    Optionally (--momentFit) the cut-cell VOLUME rule is replaced by the
+    moment-fitting rule: the adaptive point cloud of every cut cell is
+    compressed onto the fixed tensor Gauss grid of that cell, so the number of
+    volume quadrature points per cut cell no longer depends on the octree
+    depth. The SURFACE (Nitsche) rule is never compressed -- its points live on
+    {phi==0} and cannot be represented on the element grid -- so all Nitsche
+    terms are bit-identical to the non-momentFit run.
+
+    Order caveat (important). Moment fitting reproduces exactly what the nodal
+    Lagrange basis of the output grid interpolates exactly, i.e. tensor degree
+    n-1 per direction, whereas an n-point Gauss rule is exact to degree 2n-1.
+    The output grid has n = quA*p + quB points per direction (quB = 1 here), so
+    the inherited default quA = 1 gives n = p+1 and reproduces only degree p --
+    NOT enough for the stiffness integrand grad(u).grad(v), whose tensor degree
+    reaches 2p. Use --quA 2 (n = 2p+1) for an adequate operator. --quA is
+    applied to the moment-fitting option list only, so it also raises the order
+    of the underlying Algoim rule (the rule has a single quA key for both);
+    with --momentFit off it has no effect at all.
+
+    Diagnostics: --quadStats prints the interior/cut/surface quadrature-point
+    split and the CG iteration count and residual (this build has no PARDISO,
+    so the solve is CGDiagonal, which does NOT throw on an indefinite matrix).
+    --errRefRule computes the error norms with the uncompressed adaptive rule
+    while keeping the compressed rule in the assembly, which separates "the
+    solution got worse" from "the error functional was mis-integrated".
+
     Usage:
-    ./bin/poisson2_nitsche_immersed_geometry_octree_adaptive_example -f spot.obj -r 2 -g 1e3 --quadDepth 2 --plot
+    ./bin/poisson2_nitsche_immersed_geometry_octree_adaptive_example -f obj/spot.obj -r 2 -g 1e3 --quadDepth 2 --plot
+    ./bin/poisson2_nitsche_immersed_geometry_octree_adaptive_example -f obj/spot.obj -r 2 --quadDepth 3 --indicator uniform --momentFit --quA 2
 
     This file is part of the G+Smo library.
 
@@ -45,7 +72,7 @@
 #include <gismo.h>
 #include <gsAlgoim/gsAlgoimRule.h>
 #include <gsAlgoim/gsAlgoimAdaptiveRule.h>
-#include "gsGmsh/gsMeshLevelSet.h"
+#include <gsDomain/gsMeshLevelSet.h>
 
 #include <cmath>
 #include <functional>
@@ -61,7 +88,7 @@ using namespace gismo;
 int main(int argc, char * argv[])
 {
     std::string filename =
-        "/Users/lucasventavinuela/gismo_gmsh/optional/gsGmsh/filedata/spot.obj";
+        "obj/spot.obj";
     std::string out = gsFileManager::getCanonicRepresentation(
         gsFileManager::getPath(std::string(__FILE__), true) + "../output_poisson_immersed3d");
     index_t numRefine  = 3;
@@ -73,6 +100,13 @@ int main(int argc, char * argv[])
     real_t indicatorTol = 1e-2;
     bool    plot       = false;
     bool    noNitsche  = false;
+    bool    momentFit  = false;
+    real_t  alpha      = (real_t)0.0;
+    // Inherited default of gsAlgoimGenericRule: n = quA*deg + quB points per
+    // direction. See the order caveat in the file header.
+    real_t  quA        = (real_t)1.0;
+    bool    quadStats  = false;
+    bool    errRefRule = false;
 
     gsCmdLine cmd("Poisson equation on an immersed 3D .obj domain via the Finite Cell Method (adaptive octree cut-cell quadrature).");
     cmd.addString("f", "file",            "Wavefront .obj mesh file",            filename);
@@ -87,22 +121,45 @@ int main(int argc, char * argv[])
     cmd.addReal  ("",  "indicatorTol",    "integralChange acceptance tolerance", indicatorTol);
     cmd.addSwitch("plot",      "Create ParaView output",                        plot);
     cmd.addSwitch("noNitsche", "Disable the weak/Nitsche BC (interior forcing only)", noNitsche);
+    cmd.addSwitch("momentFit", "Use moment-fitting compression for the cut-cell "
+                               "VOLUME rule (the Nitsche surface rule is never "
+                               "compressed)",                                   momentFit);
+    cmd.addReal  ("",  "alpha",         "Fictitious-domain weight of the outside "
+                                        "material in the moment-fitting rule "
+                                        "(0 = drop it; only 0 is supported)",   alpha);
+    cmd.addReal  ("",  "quA",           "Moment-fitting output order: n = quA*deg + quB "
+                                        "points per direction. quA=1 reproduces only "
+                                        "degree deg; the stiffness integrand needs "
+                                        "quA=2. Applies to --momentFit only.",  quA);
+    cmd.addSwitch("quadStats", "Print the interior/cut/surface quadrature-point split "
+                               "and the CG solver diagnostics",                 quadStats);
+    cmd.addSwitch("errRefRule", "Compute the error norms with the uncompressed adaptive "
+                                "rule even when --momentFit assembles with the "
+                                "compressed one (diagnostic)",                  errRefRule);
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
+    // n = quA*deg + quB is clamped to one node, so a non-positive --quA would
+    // silently degrade the moment-fitting output grid to a single point.
+    GISMO_ENSURE(quA > 0, "--quA must be positive (got " << quA << ").");
+    // Capability regression of the move to the core gsMomentRule: the FCM
+    // blend w <- (1-alpha)w + alpha*w^G needs the analytic full-cell Gauss
+    // weight w^G, which the geometry-free compressor does not have.
+    GISMO_ENSURE(alpha == (real_t)0,
+                 "--alpha (fictitious-domain blend) is not available with the "
+                 "core gsMomentRule; use --alpha 0.");
     out = gsFileManager::getCanonicRepresentation(out);
 
     // -------------------------------------------------------------------------
     // 1. Load the triangle mesh
     // -------------------------------------------------------------------------
-    std::vector<double> verts;
-    std::vector<int>    tris;
-    if (!loadObjMesh(filename, verts, tris))
+    gsSurfMesh mesh;
+    if (!gsReadSurfMesh(filename, mesh))
     {
         gsWarn << "Failed to read a triangle mesh from: " << filename << "\n";
         return EXIT_FAILURE;
     }
-    const std::string outputStem = fileStem(filename);
-    const std::size_t nVert = verts.size() / 3;
-    const std::size_t nTri  = tris.size()  / 3;
+    const std::string outputStem = gsFileManager::getBasename(filename);
+    const std::size_t nVert = mesh.n_vertices();
+    const std::size_t nTri  = mesh.n_faces();
     gsInfo << "Loaded mesh '" << filename << "': "
            << nVert << " vertices, " << nTri << " triangles.\n";
 
@@ -110,23 +167,8 @@ int main(int argc, char * argv[])
     // 2. Rescale / center the mesh into the unit parametric box [0,1]^3
     //    mapped = (p - center) * scale + 0.5,  scale = fill / maxExtent
     // -------------------------------------------------------------------------
-    Vec3 lo = {{ verts[0], verts[1], verts[2] }};
-    Vec3 hi = lo;
-    for (std::size_t i = 0; i < nVert; ++i)
-        for (int d = 0; d < 3; ++d)
-        {
-            lo[d] = std::min(lo[d], verts[3 * i + d]);
-            hi[d] = std::max(hi[d], verts[3 * i + d]);
-        }
-    const Vec3 center = {{ 0.5 * (lo[0] + hi[0]),
-                           0.5 * (lo[1] + hi[1]),
-                           0.5 * (lo[2] + hi[2]) }};
-    const double extent = std::max(hi[0] - lo[0],
-                          std::max(hi[1] - lo[1], hi[2] - lo[2]));
-    const double scale  = fill / extent;
-    for (std::size_t i = 0; i < nVert; ++i)
-        for (int d = 0; d < 3; ++d)
-            verts[3 * i + d] = (verts[3 * i + d] - center[d]) * scale + 0.5;
+    const real_t scale = gsNormalizeToUnitBox(mesh, fill);
+    GISMO_UNUSED(scale);
 
     // -------------------------------------------------------------------------
     // 3. Analytic level set on the rescaled mesh
@@ -134,7 +176,7 @@ int main(int argc, char * argv[])
     gsMatrix<real_t> bbox(3, 2);
     bbox.col(0).setZero();
     bbox.col(1).setOnes();
-    gsMeshSignedDist<real_t> impl_fun(verts, tris, bbox);
+    gsMeshSignedDist<real_t> impl_fun(mesh, bbox);
 
     // -------------------------------------------------------------------------
     // 4. Background box [0,1]^3 (identity map: parameter space == physical space)
@@ -194,12 +236,20 @@ int main(int argc, char * argv[])
         for (std::size_t p = 0; p != dbasis.nBases(); ++p)
             hmax = math::max(hmax, dbasis.basis(p).getMaxCellLength());
 
+        // --- profiling -----------------------------------------------------
+        gsStopwatch swTotal, swPhase;
+        double t_classify = 0, t_ruleSetup = 0, t_reg = 0, t_interior = 0,
+               t_cut = 0, t_nitsche = 0, t_setFrom = 0, t_solve = 0, t_error = 0;
+        // ---------------------------------------------------------------------
+
+        swPhase.restart();
         // Cut-cell classification of the background grid.
         gsImplicitTrimmedDomain<3, real_t> tr_domain(impl_fun, *tbsPtr);
+        t_classify = swPhase.stop();
 
+        swPhase.restart();
         // Quadrature rules -- exactly the same objects as the volume example.
         gsGaussRule<real_t>         gauss(gsVector<index_t, 3>::Constant(deg + 1));
-        gsAlgoimGenericRule<real_t> algoimRule(impl_fun, *tbsPtr); // kept for legacy fallback helper
         gsOptionList adaptiveOptions = gsAlgoimAdaptiveRule<real_t>::defaultOptions();
         adaptiveOptions.setInt("maxDepth", quadDepth);
         adaptiveOptions.setInt("nFallback", nFallback);
@@ -208,61 +258,52 @@ int main(int argc, char * argv[])
         gsAlgoimAdaptiveRule<real_t> volumeRule(impl_fun, *tbsPtr, adaptiveOptions);
         gsOptionList surfaceOptions = adaptiveOptions;
         surfaceOptions.setInt("dim", D);
-        gsAlgoimAdaptiveRule<real_t> surfaceRule(impl_fun, *tbsPtr, surfaceOptions);
+        // NOTE: the surface rule is deliberately built from adaptiveOptions and
+        // is NEVER replaced by moment fitting (its points lie on {phi==0}).
+        // Only the options are kept here: the Nitsche loop is OpenMP-parallel
+        // and builds one rule per thread from them (the rules are not
+        // thread-safe -- see the cut-cell loop).
 
-        // ---------------------------------------------------------------
-        // Per-leaf cut-cell volume quadrature = Algoim rule on a box, with
-        // the same uniform-grid fallback as the volume example when Algoim
-        // returns zero nodes (re-entrant / multi-crossing cells).
-        // ---------------------------------------------------------------
-        auto leafCutCellPoints = [&](const gsVector<real_t> & lo_c, const gsVector<real_t> & hi_c,
-                                     gsMatrix<real_t> & pts, gsVector<real_t> & wts)
+        // Optional replacement of the cut-cell VOLUME rule only: the same
+        // adaptive rule runs underneath (identical maxDepth / nFallback /
+        // indicator / indicatorTol), but its point cloud is compressed onto the
+        // tensor Gauss grid of the cell.  Rebuilt every refinement, so the
+        // statistics printed below refer to this level only.
+        // The rule classifies octree children by the midpoint + Lipschitz test
+        // on phi -- exactly the test boxClass() below performs, so unlike in the
+        // SAT-based volume driver there is no classification mismatch here.
+        // The compressor OWNS its adaptive rule (the gsQuadRule hierarchy has
+        // no clone(), so ownership transfer is the only non-slicing option).
+        // Sets the output grid order AND (single key) the order of the
+        // underlying Algoim rule -- see the order caveat in the header.
+        gsOptionList momentFitOptions = adaptiveOptions;
+        momentFitOptions.setReal("quA", quA);
+
+        // Output points per direction, exactly as the former moment-fitting
+        // rule computed them: n = round(quA*maxDegree) + quB, clamped to 1.
+        const long nRaw = std::lround(momentFitOptions.askReal("quA", 1.0)
+                                      * static_cast<double>(tbsPtr->maxDegree()))
+                        + static_cast<long>(momentFitOptions.askInt("quB", 1));
+        const index_t mfOrder1d = nRaw > 0 ? static_cast<index_t>(nRaw) : 1;
+
+        // Factory rather than a single instance: the cut-cell loop below is
+        // OpenMP-parallel and gsMomentRule is NOT thread-safe (mutable 1D
+        // caches, Lagrange scratch buffers and statistics -- see its members),
+        // so every thread builds and owns one. Same for gsAlgoimAdaptiveRule
+        // (mutable Stats). Construction is cheap: the rules only store the
+        // level set by reference plus their option lists.
+        auto makeMomentRule = [&]() -> gsMomentRule<real_t>::uPtr
         {
-            algoimRule.mapTo(lo_c, hi_c, pts, wts);
-            if (wts.size() > 0) return;
-
-            const index_t nTotal = nFallback * nFallback * nFallback;
-            gsMatrix<real_t> spts(3, nTotal);
-            index_t col = 0;
-            for (index_t ii = 0; ii < nFallback; ++ii)
-            for (index_t jj = 0; jj < nFallback; ++jj)
-            for (index_t kk = 0; kk < nFallback; ++kk, ++col)
-            {
-                spts(0,col) = lo_c[0] + (ii+0.5)/nFallback*(hi_c[0]-lo_c[0]);
-                spts(1,col) = lo_c[1] + (jj+0.5)/nFallback*(hi_c[1]-lo_c[1]);
-                spts(2,col) = lo_c[2] + (kk+0.5)/nFallback*(hi_c[2]-lo_c[2]);
-            }
-            gsMatrix<real_t> fbVals;
-            impl_fun.eval_into(spts, fbVals);
-            std::vector<index_t> insideCols;
-            for (index_t ci = 0; ci < nTotal; ++ci)
-                if (fbVals(0,ci) < 0) insideCols.push_back(ci);
-            if (insideCols.empty()) { pts.resize(3,0); wts.resize(0); return; }
-
-            const real_t cellVol = (hi_c - lo_c).prod();
-            const real_t w = cellVol / static_cast<real_t>(nTotal);
-            pts.resize(3, static_cast<index_t>(insideCols.size()));
-            wts.resize(static_cast<index_t>(insideCols.size()));
-            for (std::size_t ci = 0; ci < insideCols.size(); ++ci)
-            {
-                pts.col(ci) = spts.col(insideCols[ci]);
-                wts[ci] = w;
-            }
+            return gsMomentRule<real_t>::make(
+                gsQuadRule<real_t>::uPtr(
+                    new gsAlgoimAdaptiveRule<real_t>(impl_fun, *tbsPtr, momentFitOptions)),
+                gsVector<index_t>::Constant(D, mfOrder1d));
         };
 
-        // Append a (pts,wts) block to the accumulators.
-        auto appendPoints = [&](gsMatrix<real_t> & ptsAll, gsVector<real_t> & wtsAll,
-                                const gsMatrix<real_t> & ptsNew, const gsVector<real_t> & wtsNew)
-        {
-            if (ptsNew.cols() == 0) return;
-            const index_t oldCols = ptsAll.cols();
-            ptsAll.conservativeResize(3, oldCols + ptsNew.cols());
-            ptsAll.block(0, oldCols, 3, ptsNew.cols()) = ptsNew;
-
-            const index_t oldSize = wtsAll.size();
-            wtsAll.conservativeResize(oldSize + wtsNew.size());
-            wtsAll.segment(oldSize, wtsNew.size()) = wtsNew;
-        };
+        gsMomentRule<real_t>::uPtr momentFitRule;
+        if (momentFit)
+            momentFitRule = makeMomentRule();
+        t_ruleSetup = swPhase.stop();
 
         // Signed-distance box classification (phi is ~1-Lipschitz):
         //   phi(center) < -radius  => box fully inside  {phi<0}
@@ -282,60 +323,25 @@ int main(int argc, char * argv[])
             return 0;                          // cut
         };
 
-        // Adaptive octree over a background cut cell. Children safely inside
-        // get a cheap Gauss rule (-> inside accumulator); children safely
-        // outside are skipped; children still cut are subdivided further, until
-        // quadDepth, where Algoim (+ fallback) is applied on the remaining cut
-        // leaf (-> cut accumulator). quadDepth==0 => Algoim on the whole cell.
-        std::function<void(const gsVector<real_t>&, const gsVector<real_t>&, index_t,
-                           gsMatrix<real_t>&, gsVector<real_t>&,
-                           gsMatrix<real_t>&, gsVector<real_t>&)> collectAdaptive;
-        collectAdaptive = [&](const gsVector<real_t> & lo_c, const gsVector<real_t> & hi_c, index_t depth,
-                              gsMatrix<real_t> & insP, gsVector<real_t> & insW,
-                              gsMatrix<real_t> & cutP, gsVector<real_t> & cutW)
-        {
-            if (depth >= quadDepth)   // still cut at max depth: Algoim leaf
-            {
-                gsMatrix<real_t> p; gsVector<real_t> w;
-                leafCutCellPoints(lo_c, hi_c, p, w);
-                appendPoints(cutP, cutW, p, w);
-                return;
-            }
-
-            const gsVector<real_t> mid = (real_t)0.5 * (lo_c + hi_c);
-            gsVector<real_t> childLo(3), childHi(3);
-            for (int ix = 0; ix < 2; ++ix)
-            for (int iy = 0; iy < 2; ++iy)
-            for (int iz = 0; iz < 2; ++iz)
-            {
-                childLo[0] = ix == 0 ? lo_c[0] : mid[0];
-                childHi[0] = ix == 0 ? mid[0] : hi_c[0];
-                childLo[1] = iy == 0 ? lo_c[1] : mid[1];
-                childHi[1] = iy == 0 ? mid[1] : hi_c[1];
-                childLo[2] = iz == 0 ? lo_c[2] : mid[2];
-                childHi[2] = iz == 0 ? mid[2] : hi_c[2];
-
-                const int cls = boxClass(childLo, childHi);
-                if (cls > 0)                 // outside: skip
-                    continue;
-                if (cls < 0)                 // inside: cheap Gauss
-                {
-                    gsMatrix<real_t> p; gsVector<real_t> w;
-                    gauss.mapTo(childLo, childHi, p, w);
-                    appendPoints(insP, insW, p, w);
-                    continue;
-                }
-                // still cut: subdivide further
-                collectAdaptive(childLo, childHi, depth + 1, insP, insW, cutP, cutW);
-            }
-        };
-
         // Entry point: adaptive octree quadrature for one background cut cell,
         // returning inside (Gauss) and cut (Algoim) points separately.
+        // With \a useMomentFit the whole cell is handled by the moment-fitting
+        // rule, which has no mapToSeparated: it emits a single compressed cloud
+        // (returned in cutP/cutW), so the inside accumulator stays empty and
+        // must be cleared explicitly -- mapTo() never touches it and stale
+        // points from the previous cell would otherwise be re-assembled.
         auto cutCellQuadrature = [&](const gsVector<real_t> & lo_c, const gsVector<real_t> & hi_c,
                                      gsMatrix<real_t> & insP, gsVector<real_t> & insW,
-                                     gsMatrix<real_t> & cutP, gsVector<real_t> & cutW)
+                                     gsMatrix<real_t> & cutP, gsVector<real_t> & cutW,
+                                     bool useMomentFit)
         {
+            if (useMomentFit)
+            {
+                insP.resize(D, 0);
+                insW.resize(0);
+                momentFitRule->mapTo(lo_c, hi_c, cutP, cutW);
+                return;
+            }
             volumeRule.mapToSeparated(lo_c, hi_c, insP, insW, cutP, cutW, boxClass);
         };
 
@@ -385,31 +391,122 @@ int main(int argc, char * argv[])
         // Tiny full-background regularization: keeps K nonsingular for DOFs
         // whose support never touches {phi<0}.
         {
+            swPhase.restart();
             const real_t alpha = 1e-10;
             for (auto it = tbsPtr->domain()->beginAll(); it != tbsPtr->domain()->endAll(); ++it)
             {
                 gauss.mapTo(it.lowerCorner(), it.upperCorner(), pts_tmp, wts_tmp);
                 addVolume(pts_tmp, wts_tmp, alpha, /*withRhs=*/false);
             }
+            t_reg = swPhase.stop();
         }
 
         // Total number of volume quadrature points actually used (cost metric).
-        index_t nQuad = 0;
+        // Split into the fully-interior background cells (plain Gauss, never
+        // touched by moment fitting) and the cut cells (the only part the
+        // moment-fitting rule can compress), so the saving is not diluted by a
+        // term that cannot change.
+        index_t nQuad = 0, nQuadInterior = 0, nQuadCut = 0, nQuadSurf = 0;
+
+        // Statistics of THIS assembly pass only. The assembly pass now tallies
+        // into per-thread rules (reduced into mfs below), so the shared
+        // momentFitRule only ever sees the error loop's and the plot branch's
+        // calls -- but reset it anyway so that a later read of it cannot pick
+        // up a previous refinement level's counts.
+        if (momentFit) momentFitRule->resetStats();
 
         // int_Omega grad(u).grad(v)  and  int_Omega f.v,  Omega = {phi<0}.
+        swPhase.restart();
+        index_t nInteriorCells = 0;
         for (auto it = tr_domain.beginInterior(); it != tr_domain.end<InteriorSign>(); ++it)
         {
             gauss.mapTo(it.lowerCorner(), it.upperCorner(), pts_tmp, wts_tmp);
             addVolume(pts_tmp, wts_tmp);
             nQuad += pts_tmp.cols();
+            nQuadInterior += pts_tmp.cols();
+            ++nInteriorCells;
         }
+        t_interior = swPhase.stop();
+
+        // Cache of this pass's cut-cell quadrature (insP/insW/cutP/cutW per
+        // cell), reused by the error loop below instead of recomputing it: a
+        // cut cell's quadrature is the expensive part (Algoim/moment-fitting
+        // + gsMeshSignedDist queries), and the error loop otherwise reran the
+        // exact same cutCellQuadrature() calls from scratch (measured to cost
+        // as much as the assembly pass itself). Only valid when the error
+        // loop would ask for the SAME rule as assembly, i.e. not when
+        // errRefRule forces the uncompressed rule while momentFit assembled
+        // with the compressed one.
+        struct CutCellQuad { gsMatrix<real_t> insP, cutP; gsVector<real_t> insW, cutW; };
+        std::vector<CutCellQuad> cutCache;
+        const bool cutCacheable = !(momentFit && errRefRule);
+
+        swPhase.restart();
+
+        // Materialize the cut-cell boxes: the domain iterator is not
+        // random-access, so the OpenMP loop below cannot run on it directly.
+        std::vector<std::pair<gsVector<real_t>, gsVector<real_t> > > cutBoxes;
         for (auto it = tr_domain.beginBdr(boundary::none); it != tr_domain.endBdr(boundary::none); ++it)
+            cutBoxes.push_back(std::make_pair(it.lowerCorner(), it.upperCorner()));
+        const index_t nCutCells = static_cast<index_t>(cutBoxes.size());
+
+        // Two-phase, because this loop is the bulk of the runtime and its two
+        // halves have opposite parallel character:
+        //   (1) building a cell's quadrature is a pure function of the cell box
+        //       (level set + Algoim / moment fitting), embarrassingly parallel,
+        //       and is where essentially all of the time goes -- the emitted
+        //       clouds are tiny compared to the octree work behind them;
+        //   (2) scattering it into triplets/F_vec touches shared state, is
+        //       cheap, and must stay in cell order anyway so that the assembled
+        //       matrix -- and hence the CG iterate sequence -- stays
+        //       bit-identical to the serial run.
+        // Phase 1 therefore fills per-cell slots in parallel, phase 2 replays
+        // them serially in cell order.
+        std::vector<CutCellQuad> cutQuad(cutBoxes.size());
+        gsMomentRule<real_t>::Stats mfs;
+#       pragma omp parallel
         {
-            cutCellQuadrature(it.lowerCorner(), it.upperCorner(), insP, insW, cutP, cutW);
-            addVolume(insP, insW);
-            addVolume(cutP, cutW);
-            nQuad += insP.cols() + cutP.cols();
+            // Per-thread rules: both gsMomentRule and gsAlgoimAdaptiveRule keep
+            // mutable per-call scratch and statistics, so sharing one instance
+            // across threads is a data race. See makeMomentRule() above.
+            gsAlgoimAdaptiveRule<real_t> thrVolumeRule(impl_fun, *tbsPtr, adaptiveOptions);
+            gsMomentRule<real_t>::uPtr   thrMomentRule;
+            if (momentFit) thrMomentRule = makeMomentRule();
+
+#           pragma omp for schedule(dynamic)
+            for (index_t c = 0; c < nCutCells; ++c)
+            {
+                CutCellQuad & q = cutQuad[c];
+                if (momentFit)
+                {
+                    // Moment fitting emits one compressed cloud for the whole
+                    // cell (no mapToSeparated), so the inside part stays empty.
+                    q.insP.resize(D, 0);
+                    q.insW.resize(0);
+                    thrMomentRule->mapTo(cutBoxes[c].first, cutBoxes[c].second,
+                                         q.cutP, q.cutW);
+                }
+                else
+                    thrVolumeRule.mapToSeparated(cutBoxes[c].first, cutBoxes[c].second,
+                                                 q.insP, q.insW, q.cutP, q.cutW, boxClass);
+            }
+
+            // Stats are pure sums (and a min for minWeight), so the reduction
+            // reproduces the serial tally exactly, thread count irrespective.
+            if (momentFit)
+#               pragma omp critical
+                mfs += thrMomentRule->stats();
         }
+
+        for (index_t c = 0; c < nCutCells; ++c)
+        {
+            addVolume(cutQuad[c].insP, cutQuad[c].insW);
+            addVolume(cutQuad[c].cutP, cutQuad[c].cutW);
+            nQuad    += cutQuad[c].insP.cols() + cutQuad[c].cutP.cols();
+            nQuadCut += cutQuad[c].insP.cols() + cutQuad[c].cutP.cols();
+        }
+        t_cut = swPhase.stop();
+        if (cutCacheable) cutCache = give(cutQuad);
 
         // ---------------------------------------------------------------
         // 6. Weak (Nitsche) immersed boundary condition on {phi==0}.
@@ -421,22 +518,59 @@ int main(int argc, char * argv[])
         // ---------------------------------------------------------------
         if (!noNitsche)
         {
-            surfaceRule.resetStats();
-            for (auto it = tr_domain.beginBdr(boundary::none); it != tr_domain.endBdr(boundary::none); ++it)
+            swPhase.restart();
+
+            // Same two-phase split as the cut-cell volume loop above: the
+            // surface rule's octree and the finite-difference normals are the
+            // expensive, pure-per-cell part and run in parallel; the assembly
+            // replay stays serial and in cell order.  phi_d is computed here
+            // rather than in phase 2 because gsFunction's central-difference
+            // deriv_into() costs 4 level-set evaluations per direction per
+            // point -- 12 BVH queries for every surface point -- which belongs
+            // on the parallel side.
+            struct SurfCellQuad
             {
-                gsMatrix<real_t> sInterior(3,0), spts(3,0);
-                gsVector<real_t> sInteriorW, swts;
-                surfaceRule.mapToSeparated(it.lowerCorner(), it.upperCorner(),
-                                           sInterior, sInteriorW, spts, swts, boxClass);
+                gsMatrix<real_t> spts, phi_d;
+                gsVector<real_t> swts;
+            };
+            std::vector<SurfCellQuad> surfQuad(cutBoxes.size());
+            gsAlgoimAdaptiveRule<real_t>::Stats surfStats;
+#           pragma omp parallel
+            {
+                gsAlgoimAdaptiveRule<real_t> thrSurfaceRule(impl_fun, *tbsPtr, surfaceOptions);
+
+#               pragma omp for schedule(dynamic)
+                for (index_t c = 0; c < nCutCells; ++c)
+                {
+                    gsMatrix<real_t> sInterior(3,0);
+                    gsVector<real_t> sInteriorW;
+                    SurfCellQuad & s = surfQuad[c];
+                    thrSurfaceRule.mapToSeparated(cutBoxes[c].first, cutBoxes[c].second,
+                                                  sInterior, sInteriorW, s.spts, s.swts,
+                                                  boxClass);
+                    if (s.spts.cols() > 0)
+                        impl_fun.deriv_into(s.spts, s.phi_d);
+                }
+
+#               pragma omp critical
+                surfStats += thrSurfaceRule.stats();
+            }
+
+            for (index_t c = 0; c < nCutCells; ++c)
+            {
+                const gsMatrix<real_t> & spts  = surfQuad[c].spts;
+                const gsVector<real_t> & swts  = surfQuad[c].swts;
+                const gsMatrix<real_t> & phi_d = surfQuad[c].phi_d;
+                if (spts.cols() == 0) continue;
 
                 gsMatrix<index_t> act;
-                gsMatrix<real_t>  bv, bd, phi_d, gDv;
+                gsMatrix<real_t>  bv, bd, gDv;
                 tbsPtr->active_into(spts, act);
                 tbsPtr->eval_into  (spts, bv);
                 tbsPtr->deriv_into (spts, bd);
-                impl_fun.deriv_into(spts, phi_d);   // 3 x numSurfPts (finite differences)
                 u_exact.eval_into  (spts, gDv);      // 1 x numSurfPts
                 const index_t na = act.rows();
+                nQuadSurf += spts.cols();
 
                 for (index_t q = 0; q < spts.cols(); ++q)
                 {
@@ -473,28 +607,45 @@ int main(int argc, char * argv[])
                     }
                 }
             }
-            if (surfaceRule.stats().nZeroSurfaceLeaves > 0)
-                gsInfo << " zeroSurfaceLeaves=" << surfaceRule.stats().nZeroSurfaceLeaves
+            if (surfStats.nZeroSurfaceLeaves > 0)
+                gsInfo << " zeroSurfaceLeaves=" << surfStats.nZeroSurfaceLeaves
                        << " unresolvedSurfaceMeasure~"
-                       << surfaceRule.stats().unresolvedSurfaceMeasure;
+                       << surfStats.unresolvedSurfaceMeasure;
+            t_nitsche = swPhase.stop();
         }
 
         // Assemble sparse matrix and solve.
+        swPhase.restart();
         gsSparseMatrix<real_t> K(nDofs, nDofs);
         K.setFrom(triplets);
         triplets.clear();
+        t_setFrom = swPhase.stop();
 
         gsInfo << nDofs << "." << std::flush;
 
         gsVector<real_t> solVector(nDofs);
+        // Solver health. CGDiagonal does NOT signal failure on an indefinite
+        // matrix (which moment fitting can produce via negative weights): it
+        // just returns a badly converged vector. Record iterations/residual so
+        // a "converged" error norm can never be reported on a junk solve.
+        index_t cgIters = -1;
+        real_t  cgError = -1;
+        bool    solveOk = true;
         {
+            swPhase.restart();
 #           ifdef GISMO_WITH_PARDISO
                 gsSparseSolver<real_t>::PardisoLDLT slvr;
+                slvr.compute(K);
+                solVector = slvr.solve(F_vec);
 #           else
                 gsSparseSolver<real_t>::CGDiagonal slvr;
+                slvr.compute(K);
+                solVector = slvr.solve(F_vec);
+                cgIters = static_cast<index_t>(slvr.iterations());
+                cgError = slvr.error();
+                solveOk = slvr.succeed();
 #           endif
-            slvr.compute(K);
-            solVector = slvr.solve(F_vec);
+            t_solve = swPhase.stop();
         }
         gsInfo << "." << std::flush;
 
@@ -530,20 +681,50 @@ int main(int argc, char * argv[])
             }
         };
 
+        swPhase.restart();
         for (auto it = tr_domain.beginInterior(); it != tr_domain.end<InteriorSign>(); ++it)
         {
             gauss.mapTo(it.lowerCorner(), it.upperCorner(), pts_tmp, wts_tmp);
             addError(pts_tmp, wts_tmp);
         }
-        for (auto it = tr_domain.beginBdr(boundary::none); it != tr_domain.endBdr(boundary::none); ++it)
+        // The error norms are integrated with the SAME rule the assembly used,
+        // so with --momentFit the L2/H1 values are themselves computed on the
+        // compressed cloud: at low quA the error integrand (u_h-u_exact)^2 is
+        // far outside what the output grid interpolates exactly, and the
+        // reported error can move (in either direction) for reasons unrelated
+        // to solution quality. --errRefRule integrates the norms with the
+        // uncompressed adaptive rule instead, which separates the two effects.
+        index_t cutIdx = 0;
+        for (auto it = tr_domain.beginBdr(boundary::none); it != tr_domain.endBdr(boundary::none); ++it, ++cutIdx)
         {
-            cutCellQuadrature(it.lowerCorner(), it.upperCorner(), insP, insW, cutP, cutW);
-            addError(insP, insW);
-            addError(cutP, cutW);
+            if (cutCacheable)
+            {
+                addError(cutCache[cutIdx].insP, cutCache[cutIdx].insW);
+                addError(cutCache[cutIdx].cutP, cutCache[cutIdx].cutW);
+            }
+            else
+            {
+                cutCellQuadrature(it.lowerCorner(), it.upperCorner(), insP, insW, cutP, cutW,
+                                  momentFit && !errRefRule);
+                addError(insP, insW);
+                addError(cutP, cutW);
+            }
         }
+        t_error = swPhase.stop();
         l2err[r] = math::sqrt(l2sq);
         h1err[r] = l2err[r] + math::sqrt(h1sq);
         gsInfo << ". " << std::flush;
+
+        gsInfo << "\nprofile[r=" << r << "]: classify=" << t_classify
+               << "s ruleSetup=" << t_ruleSetup
+               << "s reg=" << t_reg
+               << "s interior(" << nInteriorCells << " cells)=" << t_interior
+               << "s cutVol(" << nCutCells << " cells)=" << t_cut
+               << "s nitsche=" << t_nitsche
+               << "s setFrom=" << t_setFrom
+               << "s solve=" << t_solve
+               << "s error=" << t_error
+               << "s total=" << swTotal.stop() << "s\n";
 
         // ---------------------------------------------------------------
         // 7. ParaView output, one subfolder + .pvd per category:
@@ -594,9 +775,22 @@ int main(int argc, char * argv[])
             };
 
             // Cut cells: inside sub-cells -> interior, Algoim leaves -> cut.
-            for (auto it = tr_domain.beginBdr(boundary::none); it != tr_domain.endBdr(boundary::none); ++it)
+            // This asks for the SAME rule the assembly loop used (momentFit,
+            // not momentFit && !errRefRule as the error loop does), so the
+            // assembly cache applies verbatim under the same cutCacheable
+            // condition -- without it this was a third full recomputation of
+            // every cut cell's quadrature, as expensive as assembly itself.
+            index_t plotIdx = 0;
+            for (auto it = tr_domain.beginBdr(boundary::none); it != tr_domain.endBdr(boundary::none); ++it, ++plotIdx)
             {
-                cutCellQuadrature(it.lowerCorner(), it.upperCorner(), insP, insW, cutP, cutW);
+                if (cutCacheable)
+                {
+                    insP = cutCache[plotIdx].insP; insW = cutCache[plotIdx].insW;
+                    cutP = cutCache[plotIdx].cutP; cutW = cutCache[plotIdx].cutW;
+                }
+                else
+                    cutCellQuadrature(it.lowerCorner(), it.upperCorner(), insP, insW, cutP, cutW,
+                                      momentFit);
                 if (insP.cols() > 0)
                 {
                     mp.patch(0).eval_into(insP, phys);
@@ -655,7 +849,40 @@ int main(int argc, char * argv[])
 
         gsInfo << " (h=" << hmax << ", gamma/h=" << gamma/hmax
                << ", quadPts=" << nQuad << ")\n";
+
+        // Quadrature-point split of the assembly pass. intQPs (fully interior
+        // background cells) and surfQPs (Nitsche points on {phi==0}) are
+        // untouched by moment fitting by construction; only cutQPs can shrink.
+        if (quadStats || momentFit)
+            gsInfo << "quad: intQPs=" << nQuadInterior
+                   << " cutQPs=" << nQuadCut
+                   << " volQPs=" << nQuad
+                   << " surfQPs=" << nQuadSurf
+                   << " | cg: ok=" << (solveOk ? 1 : 0)
+                   << " iters=" << cgIters
+                   << " res=" << std::scientific << std::setprecision(3) << cgError << "\n";
+
+        // -- Moment-fitting compression statistics (this refinement and this
+        //    assembly pass only).  outQPs/minW/negW describe the compressed
+        //    cells only; cells whose underlying cloud already fits in the
+        //    output grid are passed through unchanged (passThrough) and
+        //    contribute passQPs, not outQPs.  The honest emitted point count is
+        //    emitted = outQPs + passQPs (valid at alpha == 0).
+        if (momentFit)
+            gsInfo << "momfit: outQPs=" << mfs.nOutputQPs
+                   << " passQPs=" << mfs.nPassThroughQPs
+                   << " emitted=" << (mfs.nOutputQPs + mfs.nPassThroughQPs)
+                   << " underQPs=" << mfs.nUnderlyingQPs
+                   << " passThrough=" << mfs.nPassThroughElements
+                   << " minW=" << std::scientific << std::setprecision(3) << mfs.minWeight
+                   << " negW=" << mfs.nNegativeWeights << "\n";
+
+        // Restore the stream format so the next level's "(h=..., gamma/h=...)"
+        // line is printed exactly as in the non-momentFit run.
+        if (quadStats || momentFit)
+            gsInfo << std::defaultfloat << std::setprecision(6);
     }
+
 
     gsInfo << "\nL2 error: " << std::scientific << std::setprecision(3) << l2err.transpose() << "\n";
     gsInfo << "H1 error: " << std::scientific << h1err.transpose() << "\n";
@@ -673,12 +900,7 @@ int main(int argc, char * argv[])
     if (plot)
     {
         // Immersed geometry (the input triangle mesh), written once.
-        gsMesh<real_t> geomMesh;
-        for (std::size_t i = 0; i < nVert; ++i)
-            geomMesh.addVertex(verts[3 * i], verts[3 * i + 1], verts[3 * i + 2]);
-        for (std::size_t t = 0; t < nTri; ++t)
-            geomMesh.addFace(tris[3 * t], tris[3 * t + 1], tris[3 * t + 2]);
-        gsWriteParaview(geomMesh, out + "/" + outputStem + "_geometry");
+            gsWriteParaview(mesh, out + "/" + outputStem + "_geometry");
 
         colInterior->save(); colCut->save(); colAll->save();
         colBg->save(); colSol->save(); colExact->save();

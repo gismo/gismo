@@ -22,7 +22,7 @@
     cut cells (beginBdr(boundary::none)) are subdivided.
 
     Usage:
-    ./bin/poisson2_nitsche_immersed_geometry_octree_example -f spot.obj -r 2 -g 1e3 --quadDepth 1 --plot
+    ./bin/poisson2_nitsche_immersed_geometry_octree_example -f obj/spot.obj -r 2 -g 1e3 --quadDepth 1 --plot
 
     This file is part of the G+Smo library.
 
@@ -34,7 +34,7 @@
 #include <gismo.h>
 #include <gsAlgoim/gsAlgoimRule.h>
 #include <gsAlgoim/gsAlgoimAdaptiveRule.h>
-#include "gsGmsh/gsMeshLevelSet.h"
+#include <gsDomain/gsMeshLevelSet.h>
 
 #include <cmath>
 #include <functional>
@@ -50,7 +50,7 @@ using namespace gismo;
 int main(int argc, char * argv[])
 {
     std::string filename =
-        "/Users/lucasventavinuela/gismo_gmsh/optional/gsGmsh/filedata/spot.obj";
+        "obj/spot.obj";
     std::string out = gsFileManager::getCanonicRepresentation(
         gsFileManager::getPath(std::string(__FILE__), true) + "../output_poisson_immersed3d");
     index_t numRefine  = 3;
@@ -77,16 +77,15 @@ int main(int argc, char * argv[])
     // -------------------------------------------------------------------------
     // 1. Load the triangle mesh
     // -------------------------------------------------------------------------
-    std::vector<double> verts;
-    std::vector<int>    tris;
-    if (!loadObjMesh(filename, verts, tris))
+    gsSurfMesh mesh;
+    if (!gsReadSurfMesh(filename, mesh))
     {
         gsWarn << "Failed to read a triangle mesh from: " << filename << "\n";
         return EXIT_FAILURE;
     }
-    const std::string outputStem = fileStem(filename);
-    const std::size_t nVert = verts.size() / 3;
-    const std::size_t nTri  = tris.size()  / 3;
+    const std::string outputStem = gsFileManager::getBasename(filename);
+    const std::size_t nVert = mesh.n_vertices();
+    const std::size_t nTri  = mesh.n_faces();
     gsInfo << "Loaded mesh '" << filename << "': "
            << nVert << " vertices, " << nTri << " triangles.\n";
 
@@ -94,23 +93,8 @@ int main(int argc, char * argv[])
     // 2. Rescale / center the mesh into the unit parametric box [0,1]^3
     //    mapped = (p - center) * scale + 0.5,  scale = fill / maxExtent
     // -------------------------------------------------------------------------
-    Vec3 lo = {{ verts[0], verts[1], verts[2] }};
-    Vec3 hi = lo;
-    for (std::size_t i = 0; i < nVert; ++i)
-        for (int d = 0; d < 3; ++d)
-        {
-            lo[d] = std::min(lo[d], verts[3 * i + d]);
-            hi[d] = std::max(hi[d], verts[3 * i + d]);
-        }
-    const Vec3 center = {{ 0.5 * (lo[0] + hi[0]),
-                           0.5 * (lo[1] + hi[1]),
-                           0.5 * (lo[2] + hi[2]) }};
-    const double extent = std::max(hi[0] - lo[0],
-                          std::max(hi[1] - lo[1], hi[2] - lo[2]));
-    const double scale  = fill / extent;
-    for (std::size_t i = 0; i < nVert; ++i)
-        for (int d = 0; d < 3; ++d)
-            verts[3 * i + d] = (verts[3 * i + d] - center[d]) * scale + 0.5;
+    const real_t scale = gsNormalizeToUnitBox(mesh, fill);
+    GISMO_UNUSED(scale);
 
     // -------------------------------------------------------------------------
     // 3. Analytic level set on the rescaled mesh
@@ -118,7 +102,7 @@ int main(int argc, char * argv[])
     gsMatrix<real_t> bbox(3, 2);
     bbox.col(0).setZero();
     bbox.col(1).setOnes();
-    gsMeshSignedDist<real_t> impl_fun(verts, tris, bbox);
+    gsMeshSignedDist<real_t> impl_fun(mesh, bbox);
 
     // -------------------------------------------------------------------------
     // 4. Background box [0,1]^3 (identity map: parameter space == physical space)
@@ -614,12 +598,7 @@ int main(int argc, char * argv[])
     if (plot)
     {
         // Immersed geometry (the input triangle mesh), written once.
-        gsMesh<real_t> geomMesh;
-        for (std::size_t i = 0; i < nVert; ++i)
-            geomMesh.addVertex(verts[3 * i], verts[3 * i + 1], verts[3 * i + 2]);
-        for (std::size_t t = 0; t < nTri; ++t)
-            geomMesh.addFace(tris[3 * t], tris[3 * t + 1], tris[3 * t + 2]);
-        gsWriteParaview(geomMesh, out + "/" + outputStem + "_geometry");
+            gsWriteParaview(mesh, out + "/" + outputStem + "_geometry");
 
         colInterior->save(); colCut->save(); colAll->save();
         colBg->save(); colSol->save(); colExact->save();

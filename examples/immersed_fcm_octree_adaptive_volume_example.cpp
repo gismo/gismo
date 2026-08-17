@@ -18,6 +18,15 @@
       * Fully-inside sub-cells contribute their exact volume (no quadrature).
       * Cut cells are processed in parallel (OpenMP).
 
+    The cut-cell volume rule can optionally be swapped for the moment-fitting
+    rule (--momentFit): the adaptive point cloud of every cut cell is then
+    compressed onto the fixed tensor Gauss grid of that cell, so the number of
+    quadrature points per cut cell no longer depends on the octree depth.
+    Caveat: this driver installs no BoxClassifier on the underlying adaptive
+    rule, so inside it the octree children are classified by the midpoint +
+    Lipschitz test on phi instead of the SAT test used on the plain adaptive
+    path (the background cells handed to the rule are still selected by SAT).
+
     Outputs (same folder structure as the Poisson adaptive example):
       out/points_interior/  interior box centers (+ .pvd)
       out/points_cutcells/  Algoim cut points    (+ .pvd)
@@ -27,7 +36,8 @@
       out/results/volume.txt computed volume per refinement level
 
     Usage:
-    ./bin/immersed_fcm_octree_adaptive_volume_example -f spot.obj -r 3 --quadDepth 2 --plot
+    ./bin/immersed_fcm_octree_adaptive_volume_example -f obj/spot.obj -r 3 --quadDepth 2 --plot
+    ./bin/immersed_fcm_octree_adaptive_volume_example -f obj/spot.obj -r 3 --quadDepth 2 --momentFit
 
     This file is part of the G+Smo library.
     Mozilla Public License, v. 2.0.
@@ -36,7 +46,7 @@
 #include <gismo.h>
 #include <gsAlgoim/gsAlgoimRule.h>
 #include <gsAlgoim/gsAlgoimAdaptiveRule.h>
-#include "gsGmsh/gsMeshLevelSet.h"
+#include <gsDomain/gsMeshLevelSet.h>
 
 #include <algorithm>
 #include <cmath>
@@ -47,17 +57,21 @@
 
 using namespace gismo;
 
+// This driver runs its own per-triangle geometry (SAT tests below) on the flat
+// soup from gsFlattenSurfMesh(); Vec3 is the mesh's own point type.
+typedef gsSurfMesh::Point Vec3;
+
 // Per-triangle AABB (pre-computed once; used to filter SAT candidates per cell).
-struct TriBBox { double lo[3], hi[3]; };
+struct TriBBox { real_t lo[3], hi[3]; };
 
 // Free helpers (definitions at the end of this file).
 static bool triBoxSAT  (const Vec3& a, const Vec3& b, const Vec3& c,
                         const gsVector<real_t>& lo, const gsVector<real_t>& hi);
-static bool boxHitsMesh(const std::vector<double>& verts, const std::vector<int>& tris,
-                        const std::vector<int>& cIdx,
+static bool boxHitsMesh(const std::vector<real_t>& verts, const std::vector<index_t>& tris,
+                        const std::vector<index_t>& cIdx,
                         const gsVector<real_t>& lo, const gsVector<real_t>& hi);
-static int  boxClassSAT(const std::vector<double>& verts, const std::vector<int>& tris,
-                        const std::vector<int>& cIdx, const gsFunction<real_t>& phi,
+static int  boxClassSAT(const std::vector<real_t>& verts, const std::vector<index_t>& tris,
+                        const std::vector<index_t>& cIdx, const gsFunction<real_t>& phi,
                         const gsVector<real_t>& lo, const gsVector<real_t>& hi);
 static void leafCutCellPoints(const gsAlgoimGenericRule<real_t>& algoim,
                               const gsFunction<real_t>& phi, index_t nFallback,
@@ -65,8 +79,8 @@ static void leafCutCellPoints(const gsAlgoimGenericRule<real_t>& algoim,
                               gsMatrix<real_t>& pts, gsVector<real_t>& wts);
 static void collectAdaptive(const gsAlgoimGenericRule<real_t>& algoim,
                             const gsFunction<real_t>& phi,
-                            const std::vector<double>& verts, const std::vector<int>& tris,
-                            const std::vector<int>& cIdx,
+                            const std::vector<real_t>& verts, const std::vector<index_t>& tris,
+                            const std::vector<index_t>& cIdx,
                             index_t quadDepth, index_t nFallback,
                             const gsVector<real_t>& lo, const gsVector<real_t>& hi,
                             index_t depth,
@@ -78,7 +92,7 @@ static void appendCloud(gsMatrix<real_t>& cloud, const gsMatrix<real_t>& phys,
 int main(int argc, char * argv[])
 {
     std::string filename =
-        "/Users/lucasventavinuela/gismo_gmsh/optional/gsGmsh/filedata/spot.obj";
+        "obj/spot.obj";
     std::string out = "output_volume_adaptive";
     index_t numRefine  = 3;
     real_t  fill       = 0.9;
@@ -86,6 +100,8 @@ int main(int argc, char * argv[])
     std::string indicator = "integralChange";
     real_t  indicatorTol = 1e-2;
     bool    plot       = false;
+    bool    momentFit  = false;
+    real_t  alpha      = (real_t)0.0;
 
     gsCmdLine cmd("Volume of a 3D .obj mesh via FCM + adaptive octree (SAT classification).");
     cmd.addString("f", "file",          "Wavefront .obj mesh file",           filename);
@@ -97,32 +113,44 @@ int main(int argc, char * argv[])
                                         "integralChange",                      indicator);
     cmd.addReal  ("",  "indicatorTol",  "integralChange acceptance tolerance", indicatorTol);
     cmd.addSwitch("plot", "Create ParaView output",                           plot);
+    cmd.addSwitch("momentFit", "Use moment-fitting compression for the volume "
+                               "rule (this driver has no surface rule)",      momentFit);
+    cmd.addReal  ("",  "alpha",         "Fictitious-domain weight of the outside "
+                                        "material in the moment-fitting rule "
+                                        "(0 = drop it; only 0 is supported)", alpha);
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
+
+    // Capability regression of the move to the core gsMomentRule: the FCM
+    // blend w <- (1-alpha)w + alpha*w^G needs the analytic full-cell Gauss
+    // weight w^G, which the geometry-free compressor does not have.
+    GISMO_ENSURE(alpha == (real_t)0,
+                 "--alpha (fictitious-domain blend) is not available with the "
+                 "core gsMomentRule; use --alpha 0.");
 
     // -------------------------------------------------------------------------
     // 1. Load and rescale the mesh into [0,1]^3
     // -------------------------------------------------------------------------
-    std::vector<double> verts;
-    std::vector<int>    tris;
-    if (!loadObjMesh(filename, verts, tris))
+    gsSurfMesh mesh;
+    if (!gsReadSurfMesh(filename, mesh))
     { gsWarn << "Failed to read: " << filename << "\n"; return EXIT_FAILURE; }
 
-    const std::string stem = fileStem(filename);
+    const std::string stem = gsFileManager::getBasename(filename);
+
+    // Physical extent BEFORE normalization: the volume is computed in the unit
+    // box and scaled back by this at the end.
+    const gsMatrix<real_t> physBox = gsSurfMeshBoundingBox(mesh);
+    const real_t bboxVolPhys = (physBox.col(1) - physBox.col(0)).prod();
+
+    const real_t scale = gsNormalizeToUnitBox(mesh, fill);
+
+    // Flat triangle soup for the SAT pre-filter below; the level set keeps its
+    // own copy inside the BVH.
+    std::vector<real_t>  verts;
+    std::vector<index_t> tris;
+    gsFlattenSurfMesh(mesh, verts, tris);
     const std::size_t nVert = verts.size() / 3;
     const std::size_t nTri  = tris.size()  / 3;
     gsInfo << "Loaded '" << filename << "': " << nVert << " verts, " << nTri << " tris.\n";
-
-    Vec3 lo = {{verts[0],verts[1],verts[2]}}, hi = lo;
-    for (std::size_t i = 0; i < nVert; ++i)
-        for (int d = 0; d < 3; ++d)
-        { lo[d] = std::min(lo[d],verts[3*i+d]); hi[d] = std::max(hi[d],verts[3*i+d]); }
-    const Vec3 center = {{0.5*(lo[0]+hi[0]), 0.5*(lo[1]+hi[1]), 0.5*(lo[2]+hi[2])}};
-    const double extent = std::max(hi[0]-lo[0], std::max(hi[1]-lo[1], hi[2]-lo[2]));
-    const double scale  = fill / extent;
-    for (std::size_t i = 0; i < nVert; ++i)
-        for (int d = 0; d < 3; ++d)
-            verts[3*i+d] = (verts[3*i+d] - center[d]) * scale + 0.5;
-    const double bboxVolPhys = (hi[0]-lo[0]) * (hi[1]-lo[1]) * (hi[2]-lo[2]);
 
     // -------------------------------------------------------------------------
     // 2. Pre-compute per-triangle AABBs (done once; filter candidates per cell)
@@ -130,7 +158,7 @@ int main(int argc, char * argv[])
     std::vector<TriBBox> triBBoxes(nTri);
     for (std::size_t t = 0; t < nTri; ++t)
     {
-        const int ia = tris[3*t], ib = tris[3*t+1], ic = tris[3*t+2];
+        const index_t ia = tris[3*t], ib = tris[3*t+1], ic = tris[3*t+2];
         for (int d = 0; d < 3; ++d)
         {
             triBBoxes[t].lo[d] = std::min({verts[3*ia+d], verts[3*ib+d], verts[3*ic+d]});
@@ -142,7 +170,7 @@ int main(int argc, char * argv[])
     // 3. Level set and background B-spline box [0,1]^3
     // -------------------------------------------------------------------------
     gsMatrix<real_t> bbox(3,2); bbox.col(0).setZero(); bbox.col(1).setOnes();
-    gsMeshSignedDist<real_t> impl_fun(verts, tris, bbox);
+    gsMeshSignedDist<real_t> impl_fun(mesh, bbox);
 
     gsMultiPatch<> mp(*gsNurbsCreator<>::BSplineCube((real_t)1));
     gsMultiBasis<> dbasis(mp, true);
@@ -156,7 +184,7 @@ int main(int argc, char * argv[])
            << std::setw(18) << "vol (phys)"
             << std::setw(12) << "quadPts"
             << std::setw(12) << "bdryPts"
-            << std::setw(12) << "subBoxes" << "\n";
+            << std::setw(12) << "intQPs"   << "\n";
 
     const double invScale3 = 1.0 / (scale*scale*scale);
     // ParaView collections spanning all refinement levels (one .pvd each).
@@ -188,8 +216,33 @@ int main(int argc, char * argv[])
         adaptiveOptions.setInt("nFallback", 4);
         adaptiveOptions.setString("indicator", indicator);
         adaptiveOptions.setReal("indicatorTol", indicatorTol);
-        adaptiveOptions.setSwitch("analyticInterior", true);
         gsAlgoimAdaptiveRule<real_t> adaptiveRule(impl_fun, *tbsPtr, adaptiveOptions);
+
+        // Optional replacement of the volume rule: the same adaptive rule runs
+        // underneath (identical maxDepth/nFallback/indicator/indicatorTol), but
+        // the cut-cell point cloud is compressed onto the tensor Gauss grid of
+        // the cell.  Rebuilt every refinement, so the stats printed below refer
+        // to this level only.
+        // Note: total mass is preserved identically by the partition of unity
+        // of the Lagrange basis, so reproducing the volume is a wiring check,
+        // not an accuracy check.
+        // The compressor OWNS its adaptive rule (the gsQuadRule hierarchy has
+        // no clone(), so ownership transfer is the only non-slicing option).
+        gsMomentRule<real_t>::uPtr momentFitRule;
+        if (momentFit)
+        {
+            // Output points per direction, exactly as the former moment-fitting
+            // rule computed them: n = round(quA*maxDegree) + quB, clamped to 1.
+            const long nRaw = std::lround(adaptiveOptions.askReal("quA", 1.0)
+                                          * static_cast<double>(tbsPtr->maxDegree()))
+                            + static_cast<long>(adaptiveOptions.askInt("quB", 1));
+            const index_t mfOrder1d = nRaw > 0 ? static_cast<index_t>(nRaw) : 1;
+
+            momentFitRule = gsMomentRule<real_t>::make(
+                gsQuadRule<real_t>::uPtr(
+                    new gsAlgoimAdaptiveRule<real_t>(impl_fun, *tbsPtr, adaptiveOptions)),
+                gsVector<index_t>::Constant(3, mfOrder1d));
+        }
 
         // Element break-points (unique knot values per direction).
         const std::vector<real_t> bx = tbsPtr->knots(0).breaks();
@@ -201,7 +254,7 @@ int main(int argc, char * argv[])
         gsMatrix<real_t> intCtr(3,0);
         gsVector<real_t> intVol;
         std::vector<gsVector<real_t>> cutLo, cutHi;
-        std::vector<std::vector<int>> cutTris;   // per-cut-cell candidate triangles
+        std::vector<std::vector<index_t>> cutTris;   // per-cut-cell candidate triangles
 
         for (std::size_t i = 0; i+1 < bx.size(); ++i)
         for (std::size_t j = 0; j+1 < by.size(); ++j)
@@ -212,13 +265,13 @@ int main(int argc, char * argv[])
             hi << bx[i+1], by[j+1], bz[k+1];
 
             // AABB pre-filter: only triangles whose bbox overlaps this cell.
-            std::vector<int> cIdx;
+            std::vector<index_t> cIdx;
             cIdx.reserve(32);
             for (std::size_t t = 0; t < nTri; ++t)
                 if (triBBoxes[t].hi[0] >= lo[0] && triBBoxes[t].lo[0] <= hi[0] &&
                     triBBoxes[t].hi[1] >= lo[1] && triBBoxes[t].lo[1] <= hi[1] &&
                     triBBoxes[t].hi[2] >= lo[2] && triBBoxes[t].lo[2] <= hi[2])
-                    cIdx.push_back(static_cast<int>(t));
+                    cIdx.push_back(static_cast<index_t>(t));
 
             const int cls = boxClassSAT(verts, tris, cIdx, impl_fun, lo, hi);
             if (cls > 0) continue;   // outside: skip
@@ -251,19 +304,34 @@ int main(int argc, char * argv[])
         index_t nInteriorSubQuad = 0;
 
 
-#       pragma omp parallel for schedule(dynamic) reduction(+:volCut,nQuad,nBoundaryQuad,nInteriorSubQuad)
+        // The moment-fitting rule keeps mutable scratch state (see its header),
+        // so it must not be shared between threads: the parallel region is
+        // disabled in that mode.  (This build has GISMO_WITH_OPENMP=OFF, so the
+        // clause is a guard, not something exercised here.)
+#       pragma omp parallel for schedule(dynamic) if(!momentFit) \
+                reduction(+:volCut,nQuad,nBoundaryQuad,nInteriorSubQuad)
         for (int i = 0; i < nCut; ++i)
         {
             gsMatrix<real_t> insCtr(3,0), cutP(3,0);
             gsVector<real_t> insVol, cutW;
-            adaptiveRule.mapToSeparated(
-                cutLo[i], cutHi[i], insCtr, insVol, cutP, cutW,
-                [&](const gsVector<real_t> & childLo,
-                    const gsVector<real_t> & childHi) -> int
-                {
-                    return boxClassSAT(verts, tris, cutTris[i], impl_fun,
-                                       childLo, childHi);
-                });
+            if (momentFit)
+            {
+                // One compressed cloud per cell; there is no separated
+                // interior output, so everything is counted as cut-cell
+                // points (quadPts == bdryPts, intQPs == 0 in this mode).
+                momentFitRule->mapTo(cutLo[i], cutHi[i], cutP, cutW);
+            }
+            else
+            {
+                adaptiveRule.mapToSeparated(
+                    cutLo[i], cutHi[i], insCtr, insVol, cutP, cutW,
+                    [&](const gsVector<real_t> & childLo,
+                        const gsVector<real_t> & childHi) -> int
+                    {
+                        return boxClassSAT(verts, tris, cutTris[i], impl_fun,
+                                           childLo, childHi);
+                    });
+            }
 
             volCut += insVol.sum() + cutW.sum();
             nQuad  += insCtr.cols() + cutP.cols();
@@ -297,6 +365,24 @@ int main(int argc, char * argv[])
              << std::setw(12) << nQuad
              << std::setw(12) << nBoundaryQuad
              << std::setw(12) << nInteriorSubQuad << "\n";
+
+        // -- Moment-fitting compression statistics (this refinement only: the
+        //    rule is rebuilt every r).  outQPs/minW/negW describe the
+        //    compressed cells only; cells whose underlying cloud already fits
+        //    in the output grid are passed through unchanged (passThrough) and
+        //    contribute passQPs, not outQPs.  The honest compression ratio is
+        //    underQPs/emitted, with emitted = outQPs + passQPs.
+        if (momentFit)
+        {
+            const gsMomentRule<real_t>::Stats & mfs = momentFitRule->stats();
+            gsInfo << "momfit: outQPs=" << mfs.nOutputQPs
+                   << " passQPs=" << mfs.nPassThroughQPs
+                   << " emitted=" << (mfs.nOutputQPs + mfs.nPassThroughQPs)
+                   << " underQPs=" << mfs.nUnderlyingQPs
+                   << " passThrough=" << mfs.nPassThroughElements
+                   << " minW=" << std::scientific << std::setprecision(3) << mfs.minWeight
+                   << " negW=" << mfs.nNegativeWeights << "\n";
+        }
 
         cellsHist.push_back(cellsPerDim);
         quadHist .push_back(nQuad);
@@ -338,6 +424,16 @@ int main(int argc, char * argv[])
         }
     }
 
+    // Full-precision value of the finest level: the table above is rounded to
+    // 6 digits, which cannot show whether two runs (e.g. with and without
+    // --momentFit) agree to round-off.
+    if (!volParHist.empty())
+        gsInfo << "\nfinal (r=" << numRefine << ")"
+               << (momentFit ? " [momentFit]" : "")
+               << ": vol(param)=" << std::scientific << std::setprecision(16)
+               << volParHist.back()
+               << "  vol(phys)=" << volPhyHist.back() << "\n";
+
     // -------------------------------------------------------------------------
     // 4. Results file
     // -------------------------------------------------------------------------
@@ -352,7 +448,7 @@ int main(int argc, char * argv[])
             << std::setw(20) << "vol(param)" << std::setw(20) << "vol(phys)"
             << std::setw(12) << "quadPts"
             << std::setw(12) << "bdryPts"
-            << std::setw(12) << "subBoxes" << "\n";
+            << std::setw(12) << "intQPs"   << "\n";
         for (std::size_t k = 0; k < volParHist.size(); ++k)
             txt << std::setw(8)  << k << std::setw(10) << cellsHist[k]
                 << std::setw(20) << std::fixed << std::setprecision(8) << volParHist[k]
@@ -360,6 +456,10 @@ int main(int argc, char * argv[])
                 << std::setw(12) << quadHist[k]
                 << std::setw(12) << boundaryQuadHist[k]
                 << std::setw(12) << interiorSubQuadHist[k] << "\n";
+        // Guard: with a negative -r the refinement loop never runs and
+        // size()-1 wraps around (segfault on the indexing below).
+        if (!volParHist.empty())
+        {
         const std::size_t last = volParHist.size() - 1;
         txt << "\n=== Result (finest level r=" << last << ") ===\n";
         txt << "Volume (parametric [0,1]^3): " << std::setprecision(8) << volParHist[last] << "\n";
@@ -367,6 +467,7 @@ int main(int argc, char * argv[])
         txt << "Percentage of [0,1]^3 box:   " << std::setprecision(2) << 100.0*volParHist[last] << " %\n";
         txt << "Percentage of object bbox:   " << std::setprecision(2)
             << 100.0*volPhyHist[last]/bboxVolPhys << " %\n";
+        }
     }
     gsInfo << "\nResults written to: " << out << "/results/volume.txt\n";
 
@@ -375,12 +476,7 @@ int main(int argc, char * argv[])
     // -------------------------------------------------------------------------
     if (plot)
     {
-        gsMesh<real_t> geomMesh;
-        for (std::size_t i = 0; i < nVert; ++i)
-            geomMesh.addVertex(verts[3*i], verts[3*i+1], verts[3*i+2]);
-        for (std::size_t t = 0; t < nTri; ++t)
-            geomMesh.addFace(tris[3*t], tris[3*t+1], tris[3*t+2]);
-        gsWriteParaview(geomMesh, out + "/" + stem + "_geometry");
+            gsWriteParaview(mesh, out + "/" + stem + "_geometry");
 
         colInterior->save(); colCut->save(); colAll->save(); colBg->save();
         gsInfo << "ParaView files written to: " << out << "\n";
@@ -399,8 +495,8 @@ static inline bool satAxis(const Vec3& ax,
                            const Vec3& v0, const Vec3& v1, const Vec3& v2,
                            const Vec3& h)
 {
-    const double p0 = dot(ax,v0), p1 = dot(ax,v1), p2 = dot(ax,v2);
-    const double r  = h[0]*std::abs(ax[0]) + h[1]*std::abs(ax[1]) + h[2]*std::abs(ax[2]);
+    const real_t p0 = ax.dot(v0), p1 = ax.dot(v1), p2 = ax.dot(v2);
+    const real_t r  = h.dot(ax.cwiseAbs());
     return std::min({p0,p1,p2}) > r || std::max({p0,p1,p2}) < -r;
 }
 
@@ -408,39 +504,39 @@ static inline bool satAxis(const Vec3& ax,
 static bool triBoxSAT(const Vec3& a, const Vec3& b, const Vec3& c,
                       const gsVector<real_t>& lo, const gsVector<real_t>& hi)
 {
-    const Vec3 bc = {{0.5*(lo[0]+hi[0]), 0.5*(lo[1]+hi[1]), 0.5*(lo[2]+hi[2])}};
-    const Vec3 h  = {{0.5*(hi[0]-lo[0]), 0.5*(hi[1]-lo[1]), 0.5*(hi[2]-lo[2])}};
-    const Vec3 va = sub(a,bc), vb = sub(b,bc), vc = sub(c,bc);
-    const Vec3 e0 = sub(vb,va), e1 = sub(vc,vb), e2 = sub(va,vc);
+    const Vec3 bc = real_t(0.5) * (lo + hi);
+    const Vec3 h  = real_t(0.5) * (hi - lo);
+    const Vec3 va = a-bc, vb = b-bc, vc = c-bc;
+    const Vec3 e0 = vb-va, e1 = vc-vb, e2 = va-vc;
 
     // 3 AABB face normals.
     for (int d = 0; d < 3; ++d)
-    { Vec3 ax = {{0,0,0}}; ax[d] = 1.0; if (satAxis(ax,va,vb,vc,h)) return false; }
+    { const Vec3 ax = Vec3::Unit(d); if (satAxis(ax,va,vb,vc,h)) return false; }
 
     // Triangle face normal.
-    if (satAxis(cross(e0,e1), va,vb,vc,h)) return false;
+    if (satAxis(e0.cross(e1), va,vb,vc,h)) return false;
 
     // 9 cross products: each box axis × each triangle edge.
-    const Vec3 baxes[3] = {{{1,0,0}}, {{0,1,0}}, {{0,0,1}}};
+    const Vec3 baxes[3] = {Vec3::UnitX(), Vec3::UnitY(), Vec3::UnitZ()};
     const Vec3 edges[3] = {e0, e1, e2};
     for (int ai = 0; ai < 3; ++ai)
         for (int ej = 0; ej < 3; ++ej)
-            if (satAxis(cross(baxes[ai],edges[ej]), va,vb,vc,h)) return false;
+            if (satAxis(baxes[ai].cross(edges[ej]), va,vb,vc,h)) return false;
 
     return true;  // no separating axis found -> intersection
 }
 
 // Returns true if box [lo,hi] intersects any triangle in the candidate list cIdx.
-static bool boxHitsMesh(const std::vector<double>& verts, const std::vector<int>& tris,
-                        const std::vector<int>& cIdx,
+static bool boxHitsMesh(const std::vector<real_t>& verts, const std::vector<index_t>& tris,
+                        const std::vector<index_t>& cIdx,
                         const gsVector<real_t>& lo, const gsVector<real_t>& hi)
 {
-    for (int ti : cIdx)
+    for (index_t ti : cIdx)
     {
-        const int ia = tris[3*ti], ib = tris[3*ti+1], ic = tris[3*ti+2];
-        const Vec3 a = {{verts[3*ia],verts[3*ia+1],verts[3*ia+2]}};
-        const Vec3 b = {{verts[3*ib],verts[3*ib+1],verts[3*ib+2]}};
-        const Vec3 c = {{verts[3*ic],verts[3*ic+1],verts[3*ic+2]}};
+        const index_t ia = tris[3*ti], ib = tris[3*ti+1], ic = tris[3*ti+2];
+        const Vec3 a(verts[3*ia],verts[3*ia+1],verts[3*ia+2]);
+        const Vec3 b(verts[3*ib],verts[3*ib+1],verts[3*ib+2]);
+        const Vec3 c(verts[3*ic],verts[3*ic+1],verts[3*ic+2]);
         if (triBoxSAT(a,b,c,lo,hi)) return true;
     }
     return false;
@@ -458,8 +554,8 @@ static bool boxHitsMesh(const std::vector<double>& verts, const std::vector<int>
 //   Radius alone: misses thin-feature cells whose surface triangles clip a corner
 //              of the cell without the center being close to any triangle.
 //   Combined: SAT catches thin features; radius keeps near-boundary cells honest.
-static int boxClassSAT(const std::vector<double>& verts, const std::vector<int>& tris,
-                       const std::vector<int>& cIdx, const gsFunction<real_t>& phi,
+static int boxClassSAT(const std::vector<real_t>& verts, const std::vector<index_t>& tris,
+                       const std::vector<index_t>& cIdx, const gsFunction<real_t>& phi,
                        const gsVector<real_t>& lo, const gsVector<real_t>& hi)
 {
     if (boxHitsMesh(verts, tris, cIdx, lo, hi)) return 0;   // SAT: definitely cut
@@ -510,8 +606,8 @@ static void leafCutCellPoints(const gsAlgoimGenericRule<real_t>& algoim,
 // cIdx: candidate triangles pre-filtered by the parent cell's AABB.
 static void collectAdaptive(const gsAlgoimGenericRule<real_t>& algoim,
                             const gsFunction<real_t>& phi,
-                            const std::vector<double>& verts, const std::vector<int>& tris,
-                            const std::vector<int>& cIdx,
+                            const std::vector<real_t>& verts, const std::vector<index_t>& tris,
+                            const std::vector<index_t>& cIdx,
                             index_t quadDepth, index_t nFallback,
                             const gsVector<real_t>& lo, const gsVector<real_t>& hi,
                             index_t depth,

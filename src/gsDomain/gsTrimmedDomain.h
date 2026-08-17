@@ -1,6 +1,8 @@
 /** @file gsTrimmedDomain.h
 
-    @brief TODO
+    @brief A basis-independent kd-tree partition of a box into interior,
+           exterior and cut (trimmed) elements, driven by the sign of a
+           level set.
 
     This file is part of the G+Smo library.
 
@@ -20,6 +22,119 @@
 
 namespace gismo
 {
+
+/*
+  ===========================================================================
+   DESIGN OF gsTrimmedDomain
+  ===========================================================================
+
+  WHAT IS STORED
+  --------------
+  Two things, and deliberately nothing else:
+
+    m_tree    a kd-tree (gsKdTree) whose LEAVES are the elements of the
+              domain. Each leaf carries an integer box [lowerCorner,
+              upperCorner), a dyadic level L, and a sign in {-1, 0, +1}.
+    m_breaks  m_breaks[L][j] = the break vector in direction j at level L.
+              Level 0 is the background grid; level L+1 inserts the midpoint
+              of every level-L interval (see _ensureLevel()).
+
+  A leaf's corners are indices into m_breaks[L][j] AT ITS OWN LEVEL L, not
+  into the level-0 grid. That is the key representational choice: it makes
+  the domain SELF-CONTAINED. Once constructed it holds no reference to the
+  basis (if any) it was built from, so the basis may be refined, moved or
+  destroyed without invalidating the partition, and numElements() is a plain
+  span product with no 2^(L*d) correction (see numElements<SignOp>()).
+
+  THE SIGN CONVENTION
+  -------------------
+    -1  interior  (level set negative at every sample point)
+    +1  exterior  (level set positive at every sample point)
+     0  cut       (samples disagree => the surface passes through the cell)
+  Leaves are selected by the predicate functors below (InteriorSign,
+  BoundarySign, ...), which every iterator and count is templated on. Note
+  AllSign is {interior + cut}, i.e. the ACTIVE part of an immersed domain.
+
+  A leaf's sign is a SAMPLED verdict, not an exact one: it is decided from
+  samples^d Lobatto points inside the leaf (_classifyLeaf()). A feature
+  thinner than the sample spacing can therefore be missed. Lobatto rather
+  than Gauss is used on purpose -- it includes the endpoints, so cells whose
+  intersection with the geometry is a corner sliver are still detected.
+  This sampling error is the reason Phase A below refines unconditionally.
+
+  ---------------------------------------------------------------------------
+   CLASSIFICATION PIPELINE
+  ---------------------------------------------------------------------------
+  There are two classifiers, and they differ in one respect only: whether
+  the split decision consumes the leaf's sign.
+
+  (1) _classifyTree(samples)  --  uniform background grid
+      Used by the bbox and the tensor-B-spline init(). The target partition
+      is known in advance: one leaf per level-0 element. The sign plays NO
+      part in deciding where to split, which is what lets the work split
+      into two phases with no interleaving:
+
+        PHASE A  (serial, ZERO level-set evaluations)
+                 Subdivide every leaf that still spans more than one element
+                 until each holds exactly one. Unconditional on sign -- see
+                 "why unconditional" below.
+        PHASE B  (parallel, ALL the level-set evaluations)
+                 Classify the terminal leaves from Phase A. Every iteration
+                 writes only its own leaf's sign and reads nothing mutable,
+                 so this is one flat omp for over independent work: no
+                 rounds, no barriers, no reduction.
+
+      Why the phases exist at all: the two used to be interleaved, so every
+      MULTI-element node was classified and then immediately split -- but a
+      split node is no longer a leaf, and signs are only ever read through
+      leaf iterators. Every one of those classifications was discarded. For
+      a 16^3 grid that is 4095 of 8191 classifications thrown away, at
+      samples^d level-set evaluations each: exactly half the work.
+
+      Why Phase A refines unconditionally: an exterior verdict on a large
+      block may be a sampling accident (all samples happen to miss the
+      surface). Freezing such a block at block resolution would delete real
+      geometry. Splitting regardless of sign costs nothing here, because
+      Phase A evaluates the level set zero times.
+
+  (2) _classifyTreeAdaptive(samples, shouldStop, maxLevel)  --  adaptive
+      Used by the size-based init() and by the HTB init() (there with a
+      shouldStop that always returns true, i.e. classify-only: the HTB tree
+      topology was already mirrored by _mirrorHTBTree()).
+
+      Here the split decision genuinely consumes the sign, so Phase A/Phase B
+      cannot be separated. Instead the traversal runs in LEVEL-SYNCHRONOUS
+      ROUNDS, each round being a small A/B pair:
+
+        per round:  serial   _ensureLevel() up to the round's max level
+                             (it grows m_breaks, so it must not run inside
+                             the parallel region)
+                    PARALLEL classify every pending leaf -- the only step
+                             that touches the level set, hence the only one
+                             worth parallelising
+                    serial   apply shouldStop(), promote survivors to level
+                             L+1 (double the integer corners, ++level) and
+                             split them; their children are the next round
+
+      Every mutation of the tree and of m_breaks stays on one thread. The
+      result is identical to the original depth-first version: each leaf is
+      classified exactly once, shouldStop() is called exactly once per leaf
+      (it is an arbitrary functor -- assume neither purity nor cheapness),
+      and a leaf's fate depends only on its own sign and corners, so
+      breadth-first ordering yields the same tree.
+
+      maxLevel bounds the recursion. Leaves that hit it are counted and
+      reported once at the end rather than warned about individually.
+
+  THREAD SAFETY
+  -------------
+  The parallel steps call the virtual sign() concurrently on distinct
+  leaves. sign() must therefore be thread-safe. It is declared non-const for
+  historical reasons only; that is not licence to make it stateful. Both
+  overrides in the tree are fine (gsTrimmedDomain's is unimplemented,
+  gsImplicitTrimmedDomain's is a const eval() of the level set). Each thread
+  builds its own gsLobattoRule, since mapTo() takes it by non-const ref.
+*/
 
 // Cells with sign 0
 struct BoundarySign { bool operator()(short_t s) const { return s==0; } };
@@ -59,7 +174,40 @@ protected:
     /// for their respective level L, making the domain self-contained and independent of any basis.
     std::vector< std::vector< std::vector<T> > > m_breaks;
 
-    short_t m_deg; // For now: the degree is here: we need somehow to get the quadrature order needed for integrals...
+    /// The polynomial degree used to size quadrature rules over this domain.
+    ///
+    /// \b IMPORTANT \b -- \b THIS \b MEMBER \b SHOULD \b NOT \b EXIST. It is
+    /// the sharpest instance of the design defect documented at
+    /// gsDomain::degree(), and removing it is a high-priority item for the next
+    /// release. Read that note first; the summary is that gsQuadrature asks the
+    /// DOMAIN for a degree that only the BASIS knows, so every domain has to
+    /// carry one whether or not it has any business knowing it.
+    ///
+    /// A trimmed domain is a kd-tree over a box. Two of its four construction
+    /// paths never see a basis at all -- the bounding-box+cell-count init() and
+    /// the element-size init() -- so on those paths the degree cannot be
+    /// derived and must be passed in by the caller. Consequences to be aware of
+    /// while the defect stands:
+    ///
+    ///   - The default is 1. A caller who builds a basis-free trimmed domain and
+    ///     forgets \a deg gets linear-order quadrature silently, and every
+    ///     integral assembled on that domain is under-integrated with no error
+    ///     and no warning at the point of the mistake.
+    ///   - Nothing here checks \a deg against the space actually assembled on
+    ///     this domain. They can disagree without complaint.
+    ///   - One domain cannot serve two spaces of different degree.
+    ///
+    /// When gsQuadrature::numNodes() is changed to take the order as an
+    /// argument, this member, its \a deg parameters, the degree() accessor and
+    /// the invariant below all delete together.
+    ///
+    /// INVARIANT (until then): *every* init() overload must assign m_deg. The
+    /// in-class initialiser guarantees a well-defined value meanwhile. The four
+    /// sites are init(T,T,index_t,short_t) [element-size, from \a deg],
+    /// init(gsMatrix,gsVector,index_t,short_t) [bounding box, from \a deg],
+    /// init(gsTensorBSplineBasis,index_t) [from tbasis.maxDegree()] and
+    /// init(gsHTensorBasis,index_t) [from htbasis.maxDegree()].
+    short_t m_deg = 1;
 
 public: // virtual interface
 
@@ -232,6 +380,16 @@ protected:
 
     /// Evaluates sign at quadrature points within \a node's parametric box and
     /// assigns the result to the node's sign field. Uses \a QuRule for quadrature.
+    ///
+    /// \note Called concurrently from the classification loops below, on
+    /// distinct \a node pointers. It touches no member state other than
+    /// reading m_breaks (via _getParamCorners) and calling the virtual
+    /// sign(), so a derived class whose sign() override mutates its own
+    /// members must synchronise them itself. The two overrides in the tree --
+    /// gsTrimmedDomain's (unimplemented) and gsImplicitTrimmedDomain's (a
+    /// const eval() of the level set) -- are both fine. Note that sign() is
+    /// declared non-const for historical reasons; that is not licence to make
+    /// it stateful.
     void _classifyLeaf(Tree_t * node, gsLobattoRule<T> & QuRule)
     {
         gsVector<T,d>  u1, u2;
@@ -250,10 +408,13 @@ protected:
     /// recursively; single-element mixed leaves are marked as boundary (sign=0).
     void _classifyTree(index_t samples)
     {
-        gsVector<index_t> numNodes(d);
-        numNodes.setConstant(samples);
-        gsLobattoRule<T> QuRule(numNodes);
+        // Two phases, no interleaving -- see "CLASSIFICATION PIPELINE (1)" in
+        // the design block at the top of this file for why the subdivision and
+        // the classification must NOT be merged back together.
 
+        // --- Phase A (serial, no level-set evaluation): subdivide until every
+        // leaf holds a single element, regardless of sign.
+        std::vector<Tree_t*> leaves;
         std::vector<Tree_t*> stack;
         stack.reserve(std::pow(4, d));
         stack.push_back(&m_tree);
@@ -270,22 +431,30 @@ protected:
                 continue;
             }
 
-            _classifyLeaf(cur, QuRule);
-
-            // Always split multi-element leaves regardless of sign so that a
-            // mis-classified exterior block (all sample points outside the
-            // surface by chance) is recursively refined to single-element
-            // resolution before being frozen.
+            const point_t & lc = cur->nodeData().lowerCorner();
+            const point_t & uc = cur->nodeData().upperCorner();
+            if ((uc - lc).prod() > 1)
             {
-                const point_t & lc = cur->nodeData().lowerCorner();
-                const point_t & uc = cur->nodeData().upperCorner();
-                if ((uc - lc).prod() > 1)
-                {
-                    cur->anyMidSplit(1);
-                    stack.push_back(cur->left);
-                    stack.push_back(cur->right);
-                }
+                cur->anyMidSplit(1);
+                stack.push_back(cur->left);
+                stack.push_back(cur->right);
+                continue;
             }
+            leaves.push_back(cur);   // terminal: classified below, never split
+        }
+
+        // --- Phase B (parallel): classify the terminal leaves. Data-race free
+        // given a thread-safe sign(); see "THREAD SAFETY" in the design block.
+        gsVector<index_t> numNodes(d);
+        numNodes.setConstant(samples);
+        const index_t nLeaves = static_cast<index_t>(leaves.size());
+
+#       pragma omp parallel
+        {
+            gsLobattoRule<T> QuRule(numNodes);
+#           pragma omp for schedule(static)
+            for (index_t i = 0; i < nLeaves; ++i)
+                _classifyLeaf(leaves[i], QuRule);
         }
     }
 
@@ -298,39 +467,78 @@ protected:
     ///
     /// \a shouldStop is called as shouldStop(sign, u1, u2) and should return
     /// true when no further refinement is needed for this leaf.
+    /// \a maxLevel caps the recursion depth (refinement halves the leaf volume
+    /// per level, so the default of 20 admits a ~1e-6 reduction of the root box
+    /// while bounding the leaf count at ~1e6).
     template<typename StopPred>
-    void _classifyTreeAdaptive(index_t samples, StopPred shouldStop)
+    void _classifyTreeAdaptive(index_t samples, StopPred shouldStop, unsigned maxLevel = 20)
     {
+        // LEVEL-SYNCHRONOUS ROUNDS: classify a round's leaves in parallel, then
+        // serially apply the predicate and split. See "CLASSIFICATION PIPELINE
+        // (2)" in the design block at the top of this file for why the phases
+        // cannot be separated here as they are in _classifyTree(), and for the
+        // equivalence with the original depth-first traversal.
         gsVector<index_t> numNodes(d);
         numNodes.setConstant(samples);
-        gsLobattoRule<T> QuRule(numNodes);
 
+        std::vector<Tree_t*> pending;
         std::vector<Tree_t*> stack;
         stack.reserve(std::pow(4, d));
         stack.push_back(&m_tree);
-
         while (!stack.empty())
         {
             Tree_t * cur = stack.back();
             stack.pop_back();
-
-            if (!cur->isLeaf())
+            if (cur->isLeaf())
+                pending.push_back(cur);
+            else
             {
                 stack.push_back(cur->left);
                 stack.push_back(cur->right);
-                continue;
+            }
+        }
+
+        index_t nCapped = 0;
+
+        while (!pending.empty())
+        {
+            // Serial: materialise every break level this round will read.
+            // _ensureLevel() grows m_breaks, so it must not run inside the
+            // parallel region -- hoisting it to the round's maximum level is
+            // equivalent, since it fills in all levels up to its argument.
+            index_t maxL = 0;
+            for (size_t i = 0; i < pending.size(); ++i)
+                maxL = std::max(maxL, pending[i]->nodeData().level());
+            _ensureLevel(static_cast<unsigned>(maxL));
+
+            // Parallel: the only part that evaluates the level set.
+            const index_t nPending = static_cast<index_t>(pending.size());
+#           pragma omp parallel
+            {
+                gsLobattoRule<T> QuRule(numNodes);
+#               pragma omp for schedule(static)
+                for (index_t i = 0; i < nPending; ++i)
+                    _classifyLeaf(pending[i], QuRule);
             }
 
-            const index_t L = cur->nodeData().level();
-            _ensureLevel(static_cast<unsigned>(L));
-
-            gsVector<T,d> u1, u2;
-            _getParamCorners(cur, u1, u2);
-            _classifyLeaf(cur, QuRule);
-            const short_t leafSign = cur->nodeData().sign();
-
-            if (!shouldStop(leafSign, u1, u2))
+            // Serial: predicate, promotion and split.
+            std::vector<Tree_t*> next;
+            for (size_t i = 0; i < pending.size(); ++i)
             {
+                Tree_t * cur = pending[i];
+
+                gsVector<T,d> u1, u2;
+                _getParamCorners(cur, u1, u2);
+                if (shouldStop(cur->nodeData().sign(), u1, u2))
+                    continue;
+
+                const index_t L = cur->nodeData().level();
+                if (static_cast<unsigned>(L) >= maxLevel)
+                {
+                    ++nCapped;
+                    continue;
+                }
+
                 const index_t newL = L + 1;
                 _ensureLevel(static_cast<unsigned>(newL));
 
@@ -352,26 +560,54 @@ protected:
                 }
                 Z splitPos = lc[splitAxis] + (uc[splitAxis] - lc[splitAxis]) / 2;
                 cur->split(splitAxis, splitPos);
-                stack.push_back(cur->left);
-                stack.push_back(cur->right);
+                next.push_back(cur->left);
+                next.push_back(cur->right);
             }
+            pending.swap(next);
         }
+
+        if (nCapped)
+            gsWarn << "gsTrimmedDomain: " << nCapped << " leaf/leaves reached the "
+                      "maximum refinement level " << maxLevel << "; refinement stopped "
+                      "there. Increase maxLevel or relax the element-size criterion.\n";
     }
 
     /// Size-based adaptive init. Refines until each leaf has volume <= maxElementSize,
     /// or is a cut cell with volume <= minElementSize. Leaves are tracked at their
     /// current dyadic level; m_breaks is extended on demand via _ensureLevel().
-    void init(T maxElementSize = T(1), T minElementSize = T(0.1), index_t samples = 10)
+    /// Since there is no basis on this path, the polynomial degree used to size
+    /// quadrature rules (see degree()) must be supplied explicitly by \a deg.
+    /// \note This overload expects a \c d x 2 matrix from boundingBox() /
+    /// support(): row j = direction j, column 0 = lower corner, column 1 = upper
+    /// corner. The bbox overload below expects the transpose (2 x d, caller-supplied).
+    void init(T maxElementSize = T(1), T minElementSize = T(0.1),
+              index_t samples  = 10,   short_t deg      = 1)
     {
+        GISMO_ASSERT(deg >= 0, "Polynomial degree must be non-negative, got "
+                     << deg << ".");
+        m_deg = deg;
         gsMatrix<T> bb = this->boundingBox();
+
+        GISMO_ENSURE(bb.size() != 0,
+                     "gsTrimmedDomain: the element-size init() needs a finite bounding "
+                     "box, but boundingBox() returned an empty matrix. For an implicit "
+                     "domain this means the level-set function has no support() (e.g. "
+                     "gsFunctionExpr, whose domain of definition is all of R^d). Use the "
+                     "gsImplicitTrimmedDomain(fnc, bbox, numCells, samples, deg) "
+                     "constructor and supply the box explicitly (bbox is 2 x d: row 0 = "
+                     "lower corners, row 1 = upper corners).");
+        GISMO_ENSURE(bb.rows() == d && bb.cols() == 2,
+                     "gsTrimmedDomain: boundingBox() must be d x 2 (row = direction, "
+                     "col 0/1 = lower/upper corner), got " << bb.rows() << " x "
+                     << bb.cols() << " for d = " << d << ".");
 
         m_breaks.clear();
         m_breaks.resize(1);
         m_breaks[0].resize(d);
         for (short_t j = 0; j < d; ++j)
         {
-            m_breaks[0][j].push_back(static_cast<T>(bb(0, j)));
-            m_breaks[0][j].push_back(static_cast<T>(bb(1, j)));
+            m_breaks[0][j].push_back(static_cast<T>(bb(j, 0)));
+            m_breaks[0][j].push_back(static_cast<T>(bb(j, 1)));
         }
 
         point_t rootUpper;
@@ -392,10 +628,19 @@ protected:
     }
 
     /// Initializes from a bounding box + uniform cell count per direction.
+    /// Since there is no basis on this path, the polynomial degree used to size
+    /// quadrature rules (see degree()) must be supplied explicitly by \a deg.
+    /// \note This overload expects a \c 2 x d matrix (\a bbox): row 0 = lower
+    /// corners, row 1 = upper corners. The element-size init above expects the
+    /// transpose (d x 2, from support()).
     void init(const gsMatrix<T>         & bbox,
               const gsVector<index_t,d> & numCells,
-              index_t samples = 5)
+              index_t samples = 5,
+              short_t deg     = 1)
     {
+        GISMO_ASSERT(deg >= 0, "Polynomial degree must be non-negative, got "
+                     << deg << ".");
+        m_deg = deg;
         m_breaks.clear();
         m_breaks.resize(1);
         m_breaks[0].resize(d);
@@ -560,6 +805,7 @@ protected:
     void init(const gsHTensorBasis<d,T> & htbasis,
               index_t samples = 5)
     {
+        m_deg = htbasis.maxDegree();
         _mirrorHTBTree(htbasis);
         _classifyTreeAdaptive(samples, [](short_t sign, const gsVector<T,d>& u1, const gsVector<T,d>& u2) { return true; });
     }

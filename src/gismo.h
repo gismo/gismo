@@ -94,6 +94,7 @@ namespace internal
 
 // Implicit domain
 #include <gsDomain/gsTrimmedDomainIterator.h>
+#include <gsDomain/gsMeshLevelSet.h>
 
 /* ----------- Nurbs ----------- */
 #include <gsNurbs/gsKnotVector.h>
@@ -121,6 +122,7 @@ namespace internal
 
 /* ----------- Mesh ----------- */
 #include <gsMesh2/gsSurfMesh.h>
+#include <gsMesh2/gsSurfMeshBVH.h>
 
 /* ----------- Subdivision operations ----------- */
 #include <gsMesh2/gsSubdivScheme.h>
@@ -167,6 +169,7 @@ namespace internal
 
 /* ----------- Quadrature ----------- */
 #include <gsAssembler/gsQuadRule.h>
+#include <gsAssembler/gsMomentRule.h>
 #include <gsAssembler/gsQuadrature.h>
 
 /* ----------- Assembler ----------- */

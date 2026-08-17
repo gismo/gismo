@@ -144,6 +144,66 @@ public:
     /// @brief @todo
     const gsDomain<T> & domain() const { return *m_domain; }
 
+    /// \brief Per-direction maximum polynomial degree over all registered
+    /// function sets that are bases, on patch \a patch.
+    ///
+    /// Postcondition: the returned vector is either empty or has exactly
+    /// \c domain().dim() entries -- callers (in particular gsQuadrature,
+    /// whose contract at src/gsAssembler/gsQuadrature.h:315-317 is checked
+    /// only by a debug-only GISMO_ASSERT at :325-329) may rely on this size
+    /// guarantee unconditionally, regardless of \c m_fdata's (pointer-keyed,
+    /// hence heap-address-ordered) iteration order. Registered bases whose
+    /// dim() differs from domain().dim() are ignored rather than allowed to
+    /// fix the result's size.
+    ///
+    /// Returns an empty vector if no registered function set is a basis of
+    /// matching dimension (e.g. only geometry maps / plain functions are
+    /// registered, or \c m_domain is not set); callers then keep the legacy
+    /// gsDomain::degree() fallback of gsQuadrature.
+    /// Geometry maps (m_mdata) and compositions (m_cdata) are not consulted.
+    gsVector<short_t> quadratureDegrees(index_t patch) const
+    {
+        gsVector<short_t> result;
+        if (nullptr == m_domain) return result; // no domain: caller falls back
+        const short_t d = m_domain->dim();
+        if (d <= 0) return result;
+
+        typedef typename FuncData::const_iterator FuncDataConstIt;
+        for (FuncDataConstIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
+        {
+            const gsFunctionSet<T> * fs = it->first;
+            const gsBasis<T> * basis = nullptr;
+
+            if (const gsMultiBasis<T> * mb =
+                    dynamic_cast<const gsMultiBasis<T>*>(fs))
+            {
+                if (patch < 0 || static_cast<size_t>(patch) >= mb->nBases())
+                    continue;
+                basis = &mb->basis(patch);
+            }
+            else
+            {
+                basis = dynamic_cast<const gsBasis<T>*>(fs);
+            }
+
+            if (nullptr == basis || basis->dim() != d)
+                continue; // dimension-safe: never produces a short vector
+
+            if (0 == result.size())
+            {
+                result.setZero(d);
+                for (short_t i = 0; i != d; ++i)
+                    result[i] = basis->degree(i);
+            }
+            else
+            {
+                for (short_t i = 0; i != d; ++i)
+                    result[i] = std::max(result[i], basis->degree(i));
+            }
+        }
+        return result;
+    }
+
     /// @brief @todo
     const gsMultiPatch<T> & multiPatch() const
     {
