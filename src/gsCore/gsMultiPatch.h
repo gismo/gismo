@@ -21,9 +21,6 @@
 namespace gismo
 {
 
-// Forward declaration to use in return types without including full header
-template<class> class gsSurfMesh;
-
 namespace internal
 {
 
@@ -207,6 +204,12 @@ public:
         ptr->setId(pid);
         delete m_patches[pid];
         m_patches[pid] = ptr.release();
+    }
+
+    void removePatch(index_t pid)
+    {
+        delete m_patches[pid];
+        m_patches.erase(m_patches.begin()+pid);
     }
 
     const gsGeometry<T> & piece(const index_t i) const override { return patch(i); }

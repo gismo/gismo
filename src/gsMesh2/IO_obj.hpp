@@ -2,6 +2,10 @@
 #include <gsMesh2/IO.h>
 
 #include <cstdio>
+#include <istream>
+#include <sstream>
+#include <string>
+#include <vector>
 
 namespace gismo {
 
@@ -9,163 +13,131 @@ namespace gismo {
 //== IMPLEMENTATION ===========================================================
 
 template <class Scalar>
-bool read_obj(gsSurfMesh<Scalar>& mesh, const std::string& filename)
+bool read_obj(gsSurfMesh<Scalar>& mesh, std::istream& in)
 {
-    char   s[200];
-    float  x, y, z;
-    std::vector<typename gsSurfMesh<Scalar>::Vertex>  vertices;
-    std::vector<typename gsSurfMesh<Scalar>::Point> all_tex_coords;   //individual texture coordinates
-    std::vector<int> halfedge_tex_idx; //texture coordinates sorted for halfedges
-    typename gsSurfMesh<Scalar>::template Halfedge_property <typename gsSurfMesh<Scalar>::Point> tex_coords =
-        mesh.template halfedge_property<typename gsSurfMesh<Scalar>::Point>("h:texcoord", typename gsSurfMesh<Scalar>::Point(0,0,0));
-    bool with_tex_coord=false;
+    typedef typename gsSurfMesh<Scalar>::Point Point;
 
-    // clear mesh
+    float x, y, z;
+
+    std::vector<typename gsSurfMesh<Scalar>::Vertex> vertices;
+    std::vector<Point> all_tex_coords;
+    std::vector<int> halfedge_tex_idx;
+
+    auto tex_coords =
+        mesh.template halfedge_property<Point>(
+            "h:texcoord",
+            Point(0,0,0));
+
+    bool with_tex_coord = false;
+
     mesh.clear();
 
+    std::string line;
 
-    // open file (in ASCII mode)
-    FILE* in = fopen(filename.c_str(), "r");
-    if (!in) return false;
-
-
-    // clear line once
-    memset(&s, 0, 200);
-
-
-    // parse line by line (currently only supports vertex positions & faces
-    while(in && !feof(in) && fgets(s, 200, in))
+    while (std::getline(in, line))
     {
+        if (line.empty())
+            continue;
+
         // comment
-        if (s[0] == '#' || isspace(s[0])) continue;
+        if (line[0] == '#')
+            continue;
+
+        std::istringstream ls(line);
+
+        std::string tag;
+        ls >> tag;
 
         // vertex
-        else if (strncmp(s, "v ", 2) == 0)
+        if (tag == "v")
         {
-            if (sscanf(s, "v %f %f %f", &x, &y, &z))
+            if (ls >> x >> y >> z)
             {
-                mesh.add_vertex(typename gsSurfMesh<Scalar>::Point(x,y,z));
+                mesh.add_vertex(Point(x,y,z));
             }
         }
-        // normal
-        else if (strncmp(s, "vn ", 3) == 0)
+
+        // normal (currently ignored)
+        else if (tag == "vn")
         {
-          if (sscanf(s, "vn %f %f %f", &x, &y, &z))
-          {
-            // problematic as it can be either a vertex property when interpolated
-            // or a halfedge property for hard edges
-          }
+            ls >> x >> y >> z;
         }
 
         // texture coordinate
-        else if (strncmp(s, "vt ", 3) == 0)
+        else if (tag == "vt")
         {
-          if (sscanf(s, "vt %f %f", &x, &y))
-          {
-            z=1;
-            all_tex_coords.push_back(typename gsSurfMesh<Scalar>::Point(x,y,z));
-          }
+            if (ls >> x >> y)
+            {
+                all_tex_coords.emplace_back(x, y, 1);
+            }
         }
 
         // face
-        else if (strncmp(s, "f ", 2) == 0)
+        else if (tag == "f")
         {
-          int component(0), nV(0);
-          bool endOfVertex(false);
-          char *p0, *p1(s+1);
+            vertices.clear();
+            halfedge_tex_idx.clear();
+            with_tex_coord = false;
 
-          vertices.clear();
-          halfedge_tex_idx.clear();
+            std::string vertexSpec;
 
-          // skip white-spaces
-          while (*p1==' ') ++p1;
-
-          while (p1)
-          {
-            p0 = p1;
-
-            // overwrite next separator
-
-            // skip '/', '\n', ' ', '\0', '\r' <-- don't forget Windows
-            while (*p1!='/' && *p1!='\r' && *p1!='\n' && *p1!=' ' && *p1!='\0') ++p1;
-
-            // detect end of vertex
-            if (*p1 != '/')
+            while (ls >> vertexSpec)
             {
-              endOfVertex = true;
-            }
+                int component = 0;
+                std::stringstream vs(vertexSpec);
+                std::string token;
 
-            // replace separator by '\0'
-            if (*p1 != '\0')
-            {
-              *p1 = '\0';
-              p1++; // point to next token
-            }
-
-            // detect end of line and break
-            if (*p1 == '\0' || *p1 == '\n')
-            {
-              p1 = 0;
-            }
-
-            // read next vertex component
-            if (*p0 != '\0')
-            {
-              switch (component)
-              {
-                case 0: // vertex
+                while (std::getline(vs, token, '/'))
                 {
-                  vertices.push_back( typename gsSurfMesh<Scalar>::Vertex(atoi(p0) - 1) );
-                  break;
+                    if (!token.empty())
+                    {
+                        switch (component)
+                        {
+                            case 0: // vertex index
+                                vertices.push_back(
+                                    typename gsSurfMesh<Scalar>::Vertex(std::stoi(token) - 1));
+                                break;
+
+                            case 1: // texture index
+                                halfedge_tex_idx.push_back(
+                                    std::stoi(token) - 1);
+                                with_tex_coord = true;
+                                break;
+
+                            case 2: // normal index
+                                break;
+                        }
+                    }
+
+                    ++component;
                 }
-                case 1: // texture coord
-                {
-                  int idx = atoi(p0)-1;
-                  halfedge_tex_idx.push_back(idx);
-                  with_tex_coord=true;
-                  break;
-                }
-                case 2: // normal
-                  break;
-              }
             }
 
-            ++component;
+            typename gsSurfMesh<Scalar>::Face f = mesh.add_face(vertices);
 
-            if (endOfVertex)
+            if (with_tex_coord)
             {
-              component = 0;
-              nV++;
-              endOfVertex = false;
+                auto h_fit = mesh.halfedges(f);
+                auto h_end = h_fit;
+
+                unsigned v_idx = 0;
+
+                do
+                {
+                    tex_coords[*h_fit] =
+                        all_tex_coords.at(
+                            halfedge_tex_idx.at(v_idx));
+
+                    ++v_idx;
+                    ++h_fit;
+                }
+                while (h_fit != h_end);
             }
-          }
-
-          typename gsSurfMesh<Scalar>::Face f=mesh.add_face(vertices);
-
-
-          // add texture coordinates
-          if(with_tex_coord)
-          {
-              typename gsSurfMesh<Scalar>::Halfedge_around_face_circulator h_fit = mesh.halfedges(f);
-              typename gsSurfMesh<Scalar>::Halfedge_around_face_circulator h_end = h_fit;
-              unsigned v_idx =0;
-              do
-              {
-                  tex_coords[*h_fit]=all_tex_coords.at(halfedge_tex_idx.at(v_idx));
-                  ++v_idx;
-                  ++h_fit;
-              }
-              while(h_fit!=h_end);
-          }
         }
-        // clear line
-        memset(&s, 0, 200);
     }
 
-    fclose(in);
     return true;
 }
-
 
 //-----------------------------------------------------------------------------
 
@@ -179,7 +151,7 @@ bool write_obj(const gsSurfMesh<Scalar>& mesh, const std::string& filename)
         return false;
 
     // comment
-    fprintf(out, "# OBJ export from gsSurfMesh\n");
+    fprintf(out, "# OBJ export from G+Smo\n");
 
     //vertices
     typename gsSurfMesh<Scalar>::template Vertex_property<Point> points =

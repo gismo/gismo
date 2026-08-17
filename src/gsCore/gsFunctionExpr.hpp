@@ -17,7 +17,7 @@
 // to ensure Eigen NumTraits specializations are defined before Eigen is used
 #ifdef gsAutoDiff_ENABLED
 #include <gsAutoDiff/gsAutoDiffEigen.h>
-#include <gsAutoDiff/gsAutoDiff2.h>
+#include <gsAutoDiff/gsAutoDiff.h>
 #endif
 
 #include <gsCore/gsLinearAlgebra.h>
@@ -25,11 +25,13 @@
 // Include autodiff types AFTER gsLinearAlgebra.h when autodiff is enabled
 // (gsAutoDiff_ENABLED is defined in gsConfigExt.h which is included via gsLinearAlgebra.h)
 #ifdef gsAutoDiff_ENABLED
-#include <gsAutoDiff/gsAutoDiff2.h>
+#include <gsAutoDiff/gsAutoDiff.h>
 #endif
 
-// Include autodiff traits (always available, safe to include unconditionally)
+// Include autodiff type specializations (requires the optional module in include path)
+#ifdef gsAutoDiff_ENABLED
 #include <gsAutoDiff/src/gsAutoDiffTraits.h>
+#endif
 
 /* ExprTk options */
 
@@ -78,12 +80,6 @@
 // file "exprtk.hpp".
 
 // gsAutoDiff_ENABLED uses dual_t/var_t from the autodiff library
-// GISMO_WITH_ADIFF uses the old DScalar from external/gsAutoDiff.h (deprecated)
-#if defined(GISMO_WITH_ADIFF) && !defined(gsAutoDiff_ENABLED)
-#define DScalar gismo::ad::DScalar2<real_t,-1>
-#include <exprtk_ad_forward.hpp>
-#endif
-
 #if defined(gsMpfr_ENABLED)
 #include <exprtk_mpfr_forward.hpp>
 #endif
@@ -104,11 +100,6 @@
 #include <gsAutoDiff/exprtk_autodiff_forward.hpp>
 #endif
 #include <exprtk.hpp>
-
-// Only use old DScalar adaptor when GISMO_WITH_ADIFF is set without gsAutoDiff_ENABLED
-#if defined(GISMO_WITH_ADIFF) && !defined(gsAutoDiff_ENABLED)
-#include <exprtk_ad_adaptor.hpp>
-#endif
 
 #if defined(gsMpfr_ENABLED)
 #include <exprtk_mpfr_adaptor.hpp>
@@ -206,12 +197,9 @@ public:
 
 // Numeric_t selection:
 // - If gsAutoDiff_ENABLED: use dual2nd_t for computing first AND second derivatives via AD
-// - If GISMO_WITH_ADIFF: use old DScalar
 // - Otherwise: use T directly
 #if defined(gsAutoDiff_ENABLED)
     typedef dual2nd_t Numeric_t;
-#elif defined(GISMO_WITH_ADIFF)
-    typedef DScalar Numeric_t;
 #else
     typedef T Numeric_t;
 #endif
@@ -669,8 +657,6 @@ void gsFunctionExpr<T>::eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) con
         for (short_t c = 0; c!= n; ++c) // for all components
 #       if defined(gsAutoDiff_ENABLED)
             result(c,p) = internal::from_dual2nd<T>(my->expression[c].value());
-#       elif defined(GISMO_WITH_ADIFF)
-            result(c,p) = my->expression[c].value().getValue();
 #       else
             result(c,p) = my->expression[c].value();
 #       endif
@@ -699,8 +685,6 @@ void gsFunctionExpr<T>::eval_component_into(const gsMatrix<T>& u, const index_t 
 
 #       if defined(gsAutoDiff_ENABLED)
             result(0,p) = internal::from_dual2nd<T>(my->expression[comp].value());
-#       elif defined(GISMO_WITH_ADIFF)
-            result(0,p) = my->expression[comp].value().getValue();
 #       else
             result(0,p) = my->expression[comp].value();
 #       endif
@@ -742,11 +726,6 @@ void gsFunctionExpr<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) co
                 result(c*d + j, p) = expr_val.grad.val;
             }
         }
-#       elif defined(GISMO_WITH_ADIFF)
-        for (short_t k = 0; k!=d; ++k)
-            my->vars[k].setVariable(k,d,u(k,p));
-        for (short_t c = 0; c!= n; ++c) // for all components
-            my->expression[c].value().gradient_into(result.block(c*d,p,d,1));
 #       else
         copy_n(u.col(p).data(), my->dim, my->vars);
         for (short_t c = 0; c!= n; ++c) // for all components
@@ -804,19 +783,6 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
                     expr_val = my->expression[c].value();
                     result(c*stride + m++, p) = expr_val.grad.grad;
                 }
-            }
-#           elif defined(GISMO_WITH_ADIFF)
-            for (index_t v = 0; v!=d; ++v)
-                my->vars[v].setVariable(v,d,u(v,p));
-            const DScalar &            ads  = my->expression[c].value();
-            const DScalar::Hessian_t & Hmat = ads.getHessian(); // note: can fail
-
-            for ( index_t k=0; k!=d; ++k)
-            {
-                result(c*stride + k,p) = Hmat(k,k);
-                index_t m = d;
-                for ( index_t l=k+1; l<d; ++l)
-                    result(c*stride + m++,p) = Hmat(k,l);
             }
 #           else
             copy_n(u.col(p).data(), my->dim, my->vars);
@@ -885,10 +851,6 @@ gsFunctionExpr<T>::hess(const gsMatrix<T>& u, unsigned coord) const
             res(k,j) = res(j,k) = expr_val.grad.grad;
         }
     }
-#   elif defined(GISMO_WITH_ADIFF)
-    for (index_t v = 0; v!=d; ++v)
-        my->vars[v].setVariable(v, d, u(v,0) );
-    my->expression[coord].value().hessian_into(res);
 #   else
     copy_n(u.data(), my->dim, my->vars);
     for( index_t j=0; j!=d; ++j )
@@ -932,10 +894,6 @@ gsMatrix<T> * gsFunctionExpr<T>::mderiv(const gsMatrix<T> & u,
             }
             dual2nd_t expr_val = my->expression[c].value();
             (*res)(c,p) = expr_val.grad.grad;
-#           elif defined(GISMO_WITH_ADIFF)
-            for (index_t v = 0; v!=my->dim; ++v)
-                my->vars[v].setVariable(v, my->dim, u(v,p) );
-            (*res)(c,p) = my->expression[c].value().getHessian()(k,j); //note: can fail
 #           else
             copy_n(u.col(p).data(), my->dim, my->vars);
             (*res)(c,p) =
@@ -975,10 +933,6 @@ gsMatrix<T> gsFunctionExpr<T>::laplacian(const gsMatrix<T>& u) const
                 dual2nd_t expr_val = my->expression[c].value();
                 val += expr_val.grad.grad;
             }
-#           elif defined(GISMO_WITH_ADIFF)
-            for (index_t v = 0; v!=my->dim; ++v)
-                my->vars[v].setVariable(v, my->dim, u(v,p) );
-            res(c,p) = my->expression[c].value().getHessian().trace();
 #           else
             copy_n(u.col(p).data(), my->dim, my->vars);
             T & val = res(c,p);

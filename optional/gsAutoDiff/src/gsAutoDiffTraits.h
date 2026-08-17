@@ -40,34 +40,6 @@
 #pragma GCC diagnostic pop
 #endif
 
-// Compatibility traits for autodiff types
-
-// ============================================================================
-// Type detection trait for autodiff types (used in compile-time decisions)
-// ============================================================================
-
-namespace gismo {
-
-// Type trait to detect if T is an autodiff type (for compile-time decisions)
-// Base definition: always available and defaults to false for non-autodiff types
-template<typename U>
-struct is_autodiff_type : std::false_type {};
-
-// Specializations for autodiff types (only when autodiff is enabled)
-#if defined(gsAutoDiff_ENABLED)
-
-// Specializations for autodiff::detail::Dual
-template<typename Coeff, typename Grad>
-struct is_autodiff_type<autodiff::detail::Dual<Coeff, Grad>> : std::true_type {};
-
-// Specializations for autodiff::reverse::detail::Variable
-template<typename Coeff>
-struct is_autodiff_type<autodiff::reverse::detail::Variable<Coeff>> : std::true_type {};
-
-#endif // gsAutoDiff_ENABLED
-
-} // namespace gismo
-
 // ============================================================================
 // ExprTk compatibility for autodiff types
 // ============================================================================

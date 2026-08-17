@@ -15,7 +15,7 @@
 **/
 
 #include "gismo_unittest.h"
-#include <gsAutoDiff/gsAutoDiff2.h>
+#include <gsAutoDiff/gsAutoDiff.h>
 #include <gsNurbs/gsTensorBSpline.hpp>
 
 using namespace gismo;

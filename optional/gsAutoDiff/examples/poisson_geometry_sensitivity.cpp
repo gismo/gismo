@@ -23,7 +23,7 @@
 */
 
 #include <gismo.h>
-#include <gsAutoDiff/gsAutoDiff2.h>
+#include <gsAutoDiff/gsAutoDiff.h>
 #include <gsAutoDiff/gsAutoDiffUtils.h>
 #include <gsAutoDiff/gsAutoDiffEigen.h>
 #include <gsAssembler/gsPoissonAssembler.h>
@@ -42,6 +42,7 @@ int main(int argc, char *argv[])
     cmd.addReal("", "fd-eps",  "Finite difference step size",   fd_eps);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
+#ifdef GISMO_AUTODIFF_BACKWARD
     // ================================================================
     //  Step 1: Baseline Poisson solve with real_t
     // ================================================================
@@ -185,5 +186,8 @@ int main(int argc, char *argv[])
     }
 
     gsInfo << "\n=== Done ===\n";
+#else
+    gsInfo << "This example requires GISMO_AUTODIFF_BACKWARD.\n";
+#endif
     return 0;
 }

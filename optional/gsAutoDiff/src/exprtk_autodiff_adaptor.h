@@ -62,7 +62,7 @@ inline unsigned long long to_uint64_impl(const T& v, AUTODIFF_TYPE_TAG)
     return static_cast<unsigned long long int>(autodiff::val(v));
 }
 
-template <typename T> inline T   abs_impl(const T& v, AUTODIFF_TYPE_TAG) { using std::abs; return abs(v); }
+template <typename T> inline T   abs_impl(const T& v, AUTODIFF_TYPE_TAG) { return gismo::math::abs(v); }
 template <typename T> inline T  acos_impl(const T& v, AUTODIFF_TYPE_TAG) { using std::acos; return acos(v); }
 template <typename T> inline T acosh_impl(const T& v, AUTODIFF_TYPE_TAG) {
     // acosh not available for Dual, use the mathematical identity: acosh(x) = log(x + sqrt(x^2 - 1))
@@ -222,10 +222,9 @@ inline T erfc_impl(const T& v, AUTODIFF_TYPE_TAG)
 template <typename T>
 inline T ncdf_impl(const T& v, AUTODIFF_TYPE_TAG)
 {
-    using std::abs;
     using std::erf;
     T cnd = T(0.5) * (T(1) + erf(
-                          abs(v) /
+                          gismo::math::abs(v) /
                           T(exprtk::details::constant_autodiff::sqrt2)));
     // Use if statement to avoid ternary operator type issues
     if (autodiff::val(v) < 0.0)
@@ -260,9 +259,8 @@ inline T logn_impl(const T& v0, const T& v1, AUTODIFF_TYPE_TAG)
 template <typename T>
 inline T sinc_impl(const T& v, AUTODIFF_TYPE_TAG)
 {
-    using std::abs;
     using std::sin;
-    if (abs(v) >= epsilon_type<AUTODIFF_TYPE_TAG>::value())
+    if (gismo::math::abs(v) >= epsilon_type<AUTODIFF_TYPE_TAG>::value())
         return(sin(v) / v);
     else
         return T(1);
@@ -288,11 +286,9 @@ inline T xnor_impl(const T& v0, const T& v1, AUTODIFF_TYPE_TAG)
 template <typename T>
 inline T equal_impl(const T& v0, const T& v1, AUTODIFF_TYPE_TAG)
 {
-    using std::abs;
-    using std::max;
     const T epsilon  = epsilon_type<AUTODIFF_TYPE_TAG>::value();
-    const T eps_norm = (max(T(1),max(abs(v0),abs(v1))) * epsilon);
-    return (abs(T(v0-v1)) <= eps_norm) ? T(1) : T(0);
+    const T eps_norm = (gismo::math::max(T(1),gismo::math::max(gismo::math::abs(v0),gismo::math::abs(v1))) * epsilon);
+    return (gismo::math::abs(T(v0-v1)) <= eps_norm) ? T(1) : T(0);
 }
 
 template <typename T>

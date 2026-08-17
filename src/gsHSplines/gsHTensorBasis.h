@@ -680,6 +680,19 @@ public:
         return *this->m_bases[i];
     }
 
+    /**
+     * @brief Merges \a this basis with an \a other basis
+     * @note Merging bases does not work when `manualLevels` is true for either of the bases.
+     * @note Level 0 of both bases should be the same.
+     */
+    void merge(const gsHTensorBasis<d,T> & other);
+
+    /// Returns a new basis that is the mesh union of \a basis1 and \a basis2.
+    /// Both must share the same level-0 tensor-product basis.
+    /// @note Does not work when manualLevels is true.
+    static uPtr merge(const gsHTensorBasis<d,T> & basis1,
+                      const gsHTensorBasis<d,T> & basis2);
+
     // Refine the basis uniformly by inserting \a numKnots new knots on each knot span
     virtual void uniformRefine(int numKnots = 1, int mul=1, int dir=-1);
 
@@ -1191,9 +1204,8 @@ template<typename T> class gsHTensorBasis<0,T>
   /**
    * @brief Initializes the Python wrapper for the class: gsHTensorBasis
    */
-  void pybind11_init_gsHTensorBasis2(pybind11::module &m);
-  void pybind11_init_gsHTensorBasis3(pybind11::module &m);
-  void pybind11_init_gsHTensorBasis4(pybind11::module &m);
+  template <short_t d>
+  void pybind11_init_gsHTensorBasis(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

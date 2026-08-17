@@ -101,7 +101,4 @@ void plot_errors<real_t>(const gsMatrix<real_t>&,
                          std::string const&); 
 
 
-
-#define PLOT_PRECISION 12
-
 }//namespace gismo

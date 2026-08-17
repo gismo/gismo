@@ -18,7 +18,7 @@
 
 // Note: gsAutoDiffEigen.h should already be included by client code BEFORE this header
 // to ensure Eigen NumTraits specializations are defined before Eigen is used.
-#include <gsAutoDiff/gsAutoDiff2.h>
+#include <gsAutoDiff/gsAutoDiff.h>
 
 typedef GISMO_COEFF_TYPE                                            autodiff_real_t;
 typedef autodiff::detail::Dual<autodiff_real_t,autodiff_real_t>     autodiff_dual_t;

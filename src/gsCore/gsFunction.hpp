@@ -378,8 +378,9 @@ int gsFunction<T>::newtonRaphson_impl(
 
     } while (++iter <= max_loop);
 
-    gsWarn <<"--- Newton method did not converge after "<< max_loop
-           <<" iterations. Residual norm: "<< rnorm[max_loop%2]<<".\n";
+    if (0==mode)
+        gsWarn <<"--- Newton method did not converge after "<< max_loop
+               <<" iterations. Residual norm: "<< rnorm[max_loop%2]<<".\n";
 
     return -1;
 }

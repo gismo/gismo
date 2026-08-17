@@ -639,6 +639,52 @@ private:
 
         void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
 
+        // Helper method to handle atomic/critical selection based on type
+        inline void add_matrix_coeff(index_t i, index_t j, const T& val)
+        { if_autodiff_matrix_update(i, j, val); }
+        template<typename U, typename std::enable_if<gismo::is_autodiff_type<U>::value, int>::type = 0>
+        inline void if_autodiff_matrix_update(index_t i, index_t j, const U& val)
+        { 
+#           pragma omp critical
+            m_fmatrix.coeffRef(i, j) += val;
+        }
+        template<typename U, typename std::enable_if<!gismo::is_autodiff_type<U>::value, int>::type = 0>
+        inline void if_autodiff_matrix_update(index_t i, index_t j, const U& val)
+        { 
+#           pragma omp atomic update
+            m_fmatrix.coeffRef(i, j) += val;
+        }
+
+        inline void subtract_rhs_entry(index_t i, const T& val)
+        { if_autodiff_rhs_subtract(i, val); }
+        template<typename U, typename std::enable_if<gismo::is_autodiff_type<U>::value, int>::type = 0>
+        inline void if_autodiff_rhs_subtract(index_t i, const U& val)
+        { 
+#           pragma omp critical
+            m_rhs.at(i) -= val;
+        }
+        template<typename U, typename std::enable_if<!gismo::is_autodiff_type<U>::value, int>::type = 0>
+        inline void if_autodiff_rhs_subtract(index_t i, const U& val)
+        { 
+#           pragma omp atomic update
+            m_rhs.at(i) -= val;
+        }
+
+        inline void add_rhs_entry(index_t i, index_t a, const T& val)
+        { if_autodiff_rhs_add(i, a, val); }
+        template<typename U, typename std::enable_if<gismo::is_autodiff_type<U>::value, int>::type = 0>
+        inline void if_autodiff_rhs_add(index_t i, index_t a, const U& val)
+        { 
+#           pragma omp critical
+            m_rhs(i, a) += val;
+        }
+        template<typename U, typename std::enable_if<!gismo::is_autodiff_type<U>::value, int>::type = 0>
+        inline void if_autodiff_rhs_add(index_t i, index_t a, const U& val)
+        { 
+#           pragma omp atomic update
+            m_rhs(i, a) += val;
+        }
+
         template<bool isMatrix, bool elim = true>
         void push(const expr::gsFeSpace<T> & v,
                   const expr::gsFeSpace<T> & u, index_t ra = 0, index_t ca = 0)
@@ -693,16 +739,14 @@ private:
                                         // If matrix is symmetric, we could
                                         // store only lower triangular part
                                         //if ( (!symm) || jj <= ii )
-#                                       pragma omp critical
-                                        m_fmatrix.coeffRef(ii, jj) += localMat(rls+i,cls+j);
+                                        add_matrix_coeff(ii, jj, localMat(rls+i,cls+j));
                                     }
                                     else if (elim) // colMap.is_boundary_index(jj) )
                                     {
                                         // Symmetric treatment of eliminated BCs
                                         // GISMO_ASSERT(1==m_rhs.cols(), "-");
-#                                       pragma omp critical
-                                        m_rhs.at(ii) -= localMat(rls+i,cls+j) *
-                                            fixedDofs.at(colMap.global_to_bindex(jj));
+                                        subtract_rhs_entry(ii, localMat(rls+i,cls+j) *
+                                            fixedDofs.at(colMap.global_to_bindex(jj)));
                                     }
                                 }
                             }
@@ -713,8 +757,7 @@ private:
 #ifdef _OPENMP
                             for(index_t a = 0; a!= m_rhs.cols();++a)
                             {
-#                              pragma omp critical
-                                m_rhs(ii,a) += localMat(rls+i,a);
+                                add_rhs_entry(ii, a, localMat(rls+i,a));
                             }
 #else
                             m_rhs.row(ii) += localMat.row(rls+i);

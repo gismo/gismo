@@ -1,5 +1,5 @@
 #include "gismo_unittest.h"
-#include <gsAutoDiff/gsAutoDiff2.h>
+#include <gsAutoDiff/gsAutoDiff.h>
 #include <gsCore/gsLinearAlgebra.h>
 
 using namespace gismo;

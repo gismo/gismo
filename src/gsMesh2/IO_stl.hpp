@@ -175,7 +175,14 @@ bool read_stl(gsSurfMesh<Scalar>& mesh, const std::string& filename)
                     for (c=line; isspace(*c) && *c!='\0'; ++c) {};
 
                     // read x, y, z
-                    sscanf(c+6, "%f %f %f", (float*)&p[0], (float*)&p[1], (float*)&p[2]);
+                    // note: scan into double temporaries. Writing "%f" through
+                    // a (float*) cast of a Scalar (=double) component fills
+                    // only half of it and leaves the rest garbage.
+                    double px(0), py(0), pz(0);
+                    sscanf(c+6, "%lf %lf %lf", &px, &py, &pz);
+                    p[0] = static_cast<Scalar>(px);
+                    p[1] = static_cast<Scalar>(py);
+                    p[2] = static_cast<Scalar>(pz);
 
                     // has vector been referenced before?
                     if ((vMapIt=vMap.find(p)) == vMap.end())

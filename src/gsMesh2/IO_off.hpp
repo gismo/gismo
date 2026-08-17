@@ -29,8 +29,10 @@ struct membuf : std::streambuf
     membuf(const char* begin)
     {
         char* p(const_cast<char*>(begin));
-        auto sz = sizeof(begin)/(strlen(begin)*sizeof(char));
-        this->setg(p, p, p+sz);
+        // note: the buffer length is the string length; computing it as
+        // sizeof(begin)/... would measure the *pointer*, giving 0 and thus an
+        // immediately-empty stream.
+        this->setg(p, p, p + std::strlen(begin));
     }
 };
 
@@ -57,10 +59,8 @@ bool read_off_ascii(gsSurfMesh<Scalar>& mesh,
     gsVector<real_t,2>   t;
     typename gsSurfMesh<Scalar>::Vertex v;
 
-    gsDebugVar( strlen(node) );
     imemstream is(node);
-    gsDebugVar( is.eof() );
-    
+
 /*
     // properties
     typename gsSurfMesh<Scalar>::Vertex_property<Normal>              normals;
@@ -71,15 +71,14 @@ bool read_off_ascii(gsSurfMesh<Scalar>& mesh,
     if (has_colors)    colors    = mesh.template vertex_property<Point>("v:color",Point(0,0,0));
 */
 
-    if ( is.getline (line,200) ) gsDebugVar(std::string(line)); else std::cout<< "error\n";
+    // header: [ST][C][N][4][n]OFF
+    if ( !is.getline(line,200) ) return false;
+    if ( NULL == strstr(line, "OFF") ) return false;
 
     // #Vertice, #Faces, #Edges
-//    items = fscanf(in, "%d %d %d\n", (int*)&nV, (int*)&nF, (int*)&nE);
     is >> nV >> nF >> nE;
-    gsDebugVar(nV);
-    gsDebugVar(nF);
-    gsDebugVar(nE);
-    //(void)items;
+    if ( !is ) return false;
+
     mesh.clear();
     mesh.reserve(nV, std::max(3*nV, nE), nF);
 
@@ -141,21 +140,13 @@ bool read_off_ascii(gsSurfMesh<Scalar>& mesh,
 
         // #vertices
         is >> nV;
-        gsDebugVar(nV);
-        //items = sscanf(lp, "%d%n", (int*)&nV, &nc);
-        //assert(items == 1);
         vertices.resize(nV);
-        //lp += nc;
 
         // indices
         for (j=0; j<nV; ++j)
         {
             is >> idx;
-            gsDebugVar(idx);
-            //items = sscanf(lp, "%d%n", (int*)&idx, &nc);
-            //assert(items == 1);
             vertices[j] = typename gsSurfMesh<Scalar>::Vertex(idx);
-            //lp += nc;
         }
         mesh.add_face(vertices);
     }
@@ -208,16 +199,27 @@ bool read_off_ascii(gsSurfMesh<Scalar>& mesh,
         lp = line;
 
         // position
-        items = sscanf(lp, "%f %f %f%n", (float*)&p[0], (float*)&p[1], (float*)&p[2], &nc);
+        // note: scan into double temporaries. Writing "%f" through a
+        // (float*) cast of a Scalar (=double) component overwrites only half
+        // of it and leaves garbage -- it must not be re-introduced here.
+        double px(0), py(0), pz(0);
+        items = sscanf(lp, "%lf %lf %lf%n", &px, &py, &pz, &nc);
         assert(items==3);
-    v = mesh.add_vertex(p.template cast<Scalar>());
+        p[0] = static_cast<Scalar>(px);
+        p[1] = static_cast<Scalar>(py);
+        p[2] = static_cast<Scalar>(pz);
+        v = mesh.add_vertex(p.template cast<Scalar>());
         lp += nc;
 
         // normal
         if (has_normals)
         {
-            if (sscanf(lp, "%f %f %f%n", (float*)&n[0], (float*)&n[1], (float*)&n[2], &nc) == 3)
+            double nx(0), ny(0), nz(0);
+            if (sscanf(lp, "%lf %lf %lf%n", &nx, &ny, &nz, &nc) == 3)
             {
+                n[0] = static_cast<Scalar>(nx);
+                n[1] = static_cast<Scalar>(ny);
+                n[2] = static_cast<Scalar>(nz);
                 normals[v] = n;
             }
             lp += nc;
@@ -226,8 +228,12 @@ bool read_off_ascii(gsSurfMesh<Scalar>& mesh,
         // color
         if (has_colors)
         {
-            if (sscanf(lp, "%f %f %f%n", (float*)&c[0], (float*)&c[1], (float*)&c[2], &nc) == 3)
+            double cx(0), cy(0), cz(0);
+            if (sscanf(lp, "%lf %lf %lf%n", &cx, &cy, &cz, &nc) == 3)
             {
+                c[0] = static_cast<Scalar>(cx);
+                c[1] = static_cast<Scalar>(cy);
+                c[2] = static_cast<Scalar>(cz);
                 if (c[0]>1.0f || c[1]>1.0f || c[2]>1.0f) c *= (1.0/255.0);
                 colors[v] = c;
             }
@@ -237,8 +243,11 @@ bool read_off_ascii(gsSurfMesh<Scalar>& mesh,
         // tex coord
         if (has_texcoords)
         {
-            items = sscanf(lp, "%f %f%n", (float*)&t[0], (float*)&t[1], &nc);
+            double tx(0), ty(0);
+            items = sscanf(lp, "%lf %lf%n", &tx, &ty, &nc);
             assert(items == 2);
+            t[0] = static_cast<real_t>(tx);
+            t[1] = static_cast<real_t>(ty);
             texcoords[v][0] = t[0];
             texcoords[v][1] = t[1];
             lp += nc;
@@ -424,12 +433,15 @@ bool write_off(const gsSurfMesh<Scalar>& mesh, const std::string& filename)
     bool  has_normals   = false;
     bool  has_texcoords = false;
     bool  has_colors = false;
+    bool  has_sharp = false;
     typename gsSurfMesh<Scalar>::template Vertex_property<Normal> normals = mesh.template get_vertex_property<Normal>("v:normal");
     typename gsSurfMesh<Scalar>::template Vertex_property<Point>  texcoords = mesh.template get_vertex_property<Point>("v:texcoord");
     typename gsSurfMesh<Scalar>::template Vertex_property<Point> colors = mesh.template get_vertex_property<Point>("v:color");
+    typename gsSurfMesh<Scalar>::template Halfedge_property<bool> sharp = mesh.template get_halfedge_property<bool>("h:sharp");
     if (normals)   has_normals = true;
     if (texcoords) has_texcoords = true;
     if (colors) has_colors = true;
+    if (sharp) has_sharp = true;
 
 
     // header
@@ -485,6 +497,22 @@ bool write_off(const gsSurfMesh<Scalar>& mesh, const std::string& filename)
         fprintf(out, "\n");
     }
 
+    // sharp edges 
+    if (has_sharp){
+        for (typename gsSurfMesh<Scalar>::Edge_iterator it = mesh.edges_begin();
+            it != mesh.edges_end();
+            ++it)
+        {
+            auto e = *it;
+            auto v1 = mesh.vertex(e, 0);
+            auto v2 = mesh.vertex(e, 1);
+
+            if (sharp[mesh.halfedge(e, 0)]){
+                fprintf(out, "%d %d\n", v1.idx(), v2.idx());
+            }
+        }
+    }
+    
     fclose(out);
     return true;
 }
