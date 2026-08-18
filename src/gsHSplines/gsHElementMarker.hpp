@@ -105,7 +105,7 @@ namespace gismo
     template <short_t d, class T>
     typename gsHElementMarker<d,T>::HElementContainer gsHElementMarker<d,T>::markCrs(const HElementContainer refined) const
     {
-        switch (m_options.askInt("RefineRule",1))
+        switch (m_options.askInt("CoarsenRule",1))
         {
             case 1: // GARU
                 return _markCrs_threshold(refined);
@@ -114,7 +114,7 @@ namespace gismo
             case 3: // BULK
                 return _markCrs_fraction(refined);
             default:
-                GISMO_ERROR("Unknown refinement rule.");
+                GISMO_ERROR("Unknown coarsening rule.");
         }
     }
 

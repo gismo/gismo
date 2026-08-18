@@ -101,6 +101,12 @@ public:
     ///       - 1: GARU (greatest appearing eRror utilization)
     ///       - 2: PUCA (percentile-utilizing cutoff ascertainment)
     ///       - 3: BULK ("Doerfler-marking")
+    /// @note Behaviour change: until this fix, markCrs() dispatched on the
+    ///       "RefineRule" option instead of "CoarsenRule". Callers that relied
+    ///       on the old behaviour (for example by installing the coarsening
+    ///       rule into "RefineRule" before calling markCrs()) will now select a
+    ///       different coarsening strategy whenever CoarsenRule != RefineRule.
+    ///       Results are unchanged when the two options are equal.
     /// @example
     ///     auto markedElements = marker.markCrs(refinedElements);
     HElementContainer markCrs(const HElementContainer refined = {}) const;
