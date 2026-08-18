@@ -170,25 +170,6 @@ namespace gismo
                 // If any cell in the coarsening extension is overlapped by a
                 // cell that this same step is about to CREATE by refinement,
                 // coarsening \a elem would open a level jump of 2.
-                //
-                // The comparison must happen at the level of the cells that
-                // refinement produces, not at the level of the marked elements
-                // themselves: coarseningElem lives at elem.level()+1, while a
-                // refElem marked at elem.level() only reaches that level once
-                // refined. gsAdaptiveMeshing::gsOverlapCompare gets this right
-                // by intersecting the extension with markedRef.getChildren();
-                // testing contains(coarseningElem, refElem) directly instead
-                // is silently always-false for every refElem at or below
-                // elem.level()+1 -- exactly the same-level neighbours that
-                // matter -- because contains() requires
-                // element1.level() <= element2.level().
-                //
-                // Equivalent formulation without materialising the children:
-                // a refElem produces cells at refElem.level()+1, which can
-                // only reach the extension's level when
-                // refElem.level() >= elem.level(); overlap is then tested in
-                // both directions, since refElem may be coarser or finer than
-                // coarseningElem.
                 for ( const auto & refElem : refined )
                 {
                     if (refElem.level() >= elem.level() &&
