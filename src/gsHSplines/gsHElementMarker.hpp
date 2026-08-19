@@ -167,9 +167,10 @@ namespace gismo
                     break;
                 }
 
-                // If any cell in the coarsening extension is overlapped by a
-                // cell that this same step is about to CREATE by refinement,
-                // coarsening \a elem would open a level jump of 2.
+                // Admissible coarsening needs N_c U N_rc = empty: the coarsening
+                // neighborhood (Carraturo et al., CMAME 348 (2019), Def. 3.5) and
+                // its counterpart over the elements marked for refinement (Verhelst
+                // et al., Eng. Comput. 40 (2024), Eq. (44)), at level l for m = 2.
                 for ( const auto & refElem : refined )
                 {
                     if (refElem.level() >= elem.level() &&
