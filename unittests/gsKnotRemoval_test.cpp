@@ -196,4 +196,130 @@ TEST(InsertThenRemove_Tensor2D_Dir1)
                       orig.coefsSize() * orig.geoDim(), 1e-10);
 }
 
+// ---------------------------------------------------------------------------
+// Tolerance behaviour
+// ---------------------------------------------------------------------------
+
+// The feasibility threshold of Tiller's algorithm is RELATIVE to the largest
+// control-point entry.  A removal that succeeds on an O(1) control net must
+// therefore still succeed after the net is scaled up: the round-off residual
+// scales with the net, so an absolute threshold would reject it.
+TEST(Tolerance_ScaleInvariance_Removable)
+{
+    const real_t scale = 1e9;
+
+    gsBSpline<real_t> small = makeCubicSpline();
+    insertKnot1D(small, 0.5, 1);
+
+    gsBSpline<real_t> big = makeCubicSpline();
+    big.coefs() *= scale;
+    insertKnot1D(big, 0.5, 1);
+
+    CHECK_EQUAL(1, small.removeKnot(0.5, 1));
+    CHECK_EQUAL(1, big.removeKnot(0.5, 1));
+}
+
+// Converse of the above: a relative threshold must not become vacuous on a
+// large control net.  A perturbation that is large RELATIVE to the net must
+// still be rejected, however big the net is.
+TEST(Tolerance_ScaleInvariance_NotRemovable)
+{
+    const real_t scale = 1e9;
+
+    gsBSpline<real_t> big = makeCubicSpline();
+    big.coefs() *= scale;
+    insertKnot1D(big, 0.5, 1);
+    big.coef(3) += gsVector<real_t,2>::Ones() * (scale * 1e-3);
+
+    CHECK_EQUAL(0, big.removeKnot(0.5, 1));
+}
+
+// The tolerance is a parameter, not a hardcoded constant: the same perturbed
+// spline is irremovable at the default tolerance and removable at a loose one.
+TEST(Tolerance_ExplicitArgument)
+{
+    gsBSpline<real_t> perturbed = makeCubicSpline();
+    insertKnot1D(perturbed, 0.5, 1);
+    perturbed.coef(3) += gsVector<real_t,2>::Ones() * 1e-6;
+
+    gsBSpline<real_t> tight = perturbed;
+    gsBSpline<real_t> loose = perturbed;
+
+    CHECK_EQUAL(0, tight.removeKnot(0.5, 1));                    // default 1e-10
+    CHECK_EQUAL(1, loose.removeKnot(0.5, 1, (real_t)1e-3));
+}
+
+// ---------------------------------------------------------------------------
+// Tensor-product (3D) tests
+// ---------------------------------------------------------------------------
+static gsTensorBSpline<3, real_t> makeTrivariatePatch()
+{
+    // degree (2,2,2), knot vectors [0 0 0  0.5  1 1 1] in every direction
+    gsKnotVector<real_t> kv(0, 1, 1, 3);
+    gsTensorBSplineBasis<3, real_t> basis(kv, kv, kv);
+
+    // A mildly distorted identity map, so that no coefficient fiber is
+    // degenerate and the removal has something to reproduce.
+    gsMatrix<real_t> coefs = basis.anchors().transpose();
+    coefs.col(0) += 0.10 * coefs.col(1);
+    coefs.col(1) -= 0.05 * coefs.col(2);
+    coefs.col(2) += 0.07 * coefs.col(0);
+
+    return gsTensorBSpline<3, real_t>(basis, give(coefs));
+}
+
+TEST(InsertThenRemove_Tensor3D_AllDirections)
+{
+    const gsTensorBSpline<3, real_t> orig = makeTrivariatePatch();
+    const real_t knotVal = 0.25;
+
+    for (short_t dir = 0; dir != 3; ++dir)
+    {
+        gsTensorBSpline<3, real_t> spl = orig;
+
+        spl.insertKnot(knotVal, dir, 1);
+        CHECK_EQUAL(orig.coefsSize() + 16, spl.coefsSize()); // 4x4 slab
+
+        const index_t removed = spl.removeKnot(knotVal, dir, 1);
+        CHECK_EQUAL(1, removed);
+
+        CHECK_EQUAL(orig.coefsSize(), spl.coefsSize());
+        CHECK_ARRAY_CLOSE(orig.coefs().data(), spl.coefs().data(),
+                          orig.coefsSize() * orig.geoDim(), 1e-10);
+    }
+}
+
+TEST(InsertThenRemove_Tensor3D_Multiplicity2)
+{
+    const gsTensorBSpline<3, real_t> orig = makeTrivariatePatch();
+    const real_t knotVal = 0.5; // present once; degree 2 allows up to mult 2
+
+    gsTensorBSpline<3, real_t> spl = orig;
+    spl.insertKnot(knotVal, 1, 1);
+
+    CHECK_EQUAL(1, spl.removeKnot(knotVal, 1, 1));
+    CHECK_EQUAL(orig.coefsSize(), spl.coefsSize());
+    CHECK_ARRAY_CLOSE(orig.coefs().data(), spl.coefs().data(),
+                      orig.coefsSize() * orig.geoDim(), 1e-10);
+}
+
+TEST(Tolerance_Tensor3D_ScaleInvariance)
+{
+    const real_t scale = 1e9;
+
+    gsTensorBSpline<3, real_t> big = makeTrivariatePatch();
+    big.coefs() *= scale;
+    big.insertKnot(0.25, 2, 1);
+
+    CHECK_EQUAL(1, big.removeKnot(0.25, 2, 1));
+
+    // ... and a relatively large perturbation is still rejected.
+    gsTensorBSpline<3, real_t> bad = makeTrivariatePatch();
+    bad.coefs() *= scale;
+    bad.insertKnot(0.25, 2, 1);
+    bad.coefs().row(5) += gsVector<real_t,3>::Ones().transpose() * (scale * 1e-3);
+
+    CHECK_EQUAL(0, bad.removeKnot(0.25, 2, 1));
+}
+
 } // SUITE

@@ -58,8 +58,8 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
     GISMO_ASSERT(d==2, "Wrong dimension: tried to make a "<< d<<"D tensor B-spline using 2 knot-vectors.");
 
     std::vector<Family_t*> cbases;
-    const int n1 = KV1.size() - KV1.degree() - 1;
-    const int n2 = KV2.size() - KV2.degree() - 1;
+    const index_t n1 = KV1.size() - KV1.degree() - 1;
+    const index_t n2 = KV2.size() - KV2.degree() - 1;
 
     cbases.push_back(new gsBSplineBasis<T>(give(KV1)) );
     cbases.push_back(new gsBSplineBasis<T>(give(KV2)) );
@@ -72,26 +72,26 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
     gsMatrix<T> pcp (n1*n2, 3);
     // set up CPs on boundary first. The inner CPs on each boundary curve are
     // uniformly linear dependent on the two corner CPs
-    int j=0; // boundary v=0
-    for (int i=0; i<=n1-1; i++)
+    index_t j=0; // boundary v=0
+    for (index_t i=0; i<=n1-1; i++)
     {
-        for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
+        for (index_t xi=0; xi<=2; xi++) //specification of x or y or z
         {
             pcp(i+j*n1,xi)=corner(0,xi) + i/((T)(n1-1))*( corner(1,xi) - corner(0,xi) );
         }
     }
     j=n2-1; // boundary v=1
-    for (int i=0; i<=n1-1; i++)
+    for (index_t i=0; i<=n1-1; i++)
     {
-        for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
+        for (index_t xi=0; xi<=2; xi++) //specification of x or y or z
         {
             pcp(i+j*n1,xi)=corner(3,xi) + i/((T)(n1-1))*( corner(2,xi) - corner(3,xi) );
         }
     }
-    int i=0; // boundary u=0;
+    index_t i=0; // boundary u=0;
     for (j=0; j<=n2-1; j++)
     {
-        for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
+        for (index_t xi=0; xi<=2; xi++) //specification of x or y or z
         {
             pcp(i+j*n1,xi)=corner(0,xi) + j/((T)(n2-1))*( corner(3,xi) - corner(0,xi) );
         }
@@ -99,7 +99,7 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
     i=n1-1; // boundary u=1;
     for (j=0; j<=n2-1; j++)
     {
-        for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
+        for (index_t xi=0; xi<=2; xi++) //specification of x or y or z
         {
             pcp(i+j*n1,xi)=corner(1,xi) + j/((T)(n2-1))*( corner(2,xi) - corner(1,xi) );
         }
@@ -109,7 +109,7 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
     {
         for (i=1; i<=n1-2; i++)
         {
-            for (unsigned int xi=0; xi<=2; xi++) //specification of x or y or z
+            for (index_t xi=0; xi<=2; xi++) //specification of x or y or z
             {
                 pcp(i+j*n1,xi)=pcp(0+j*n1,xi) + i/((T)(n1-1))*( pcp(n1-1+j*n1,xi)-pcp(0+j*n1,xi) );
             }
@@ -140,8 +140,8 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
     }
     else
     {
-        const int mult   = this->basis().knots(dir_fixed).multiplicity(par);
-        const int degree = this->basis().degree(dir_fixed);
+        const index_t mult   = this->basis().knots(dir_fixed).multiplicity(par);
+        const short_t degree = this->basis().degree(dir_fixed);
         index_t index;
         gsMatrix<T> coefs;
         if( mult>=degree )
@@ -165,7 +165,7 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
             this->basis().stride_cwise(intStrides);
             gsTensorBoehm(
                 clone->basis().knots(dir_fixed),clone->coefs(),par,dir_fixed,
-                intStrides.template cast<unsigned>(), degree-mult,true);
+                intStrides.template cast<size_t>(), degree-mult,true);
 
             // extract right ceofficients
             const gsKnotVector<T>& knots = clone->basis().knots(dir_fixed);
@@ -342,7 +342,7 @@ void gsTensorBSpline<d,T>::insertKnot( T knot, int dir, int i)
 
 
 template<short_t d, class T>
-index_t gsTensorBSpline<d,T>::removeKnot( T knot, short_t dir, short_t i)
+index_t gsTensorBSpline<d,T>::removeKnot( T knot, short_t dir, short_t i, T tol)
 {
     GISMO_ASSERT( i > 0, "Must remove at least once.");
     GISMO_ASSERT( dir >= 0 && dir < d,
@@ -361,7 +361,8 @@ index_t gsTensorBSpline<d,T>::removeKnot( T knot, short_t dir, short_t i)
         dir,
         intStrides.template cast<unsigned>(),
         i,
-        true);
+        true,
+        tol);
 }
 
 
@@ -705,7 +706,7 @@ gsTensorBSpline<d,T> gsTensorBSpline<d,T>::toBezier() const
 }
 
 // ----------------------------------------------------------------------------
-//  squared  (Bernstein product formula)
+//  multiply / squared / cubed  (Bernstein product formula)
 // ----------------------------------------------------------------------------
 
 namespace {
@@ -726,103 +727,150 @@ inline index_t binom(index_t n, index_t k)
 } // anonymous namespace
 
 template<short_t d, class T>
-gsTensorBSpline<d,T> gsTensorBSpline<d,T>::squared(bool keepBezier) const
+gsTensorBSpline<d,T> gsTensorBSpline<d,T>::multiply(const gsTensorBSpline<d,T> & A,
+                                                    const gsTensorBSpline<d,T> & B,
+                                                    bool keepBezier)
 {
-    GISMO_ASSERT(this->targetDim() == 1,
-                 "squared() is only implemented for scalar (targetDim==1) splines.");
+    GISMO_ASSERT(A.targetDim() == 1 && B.targetDim() == 1,
+                 "multiply() requires scalar (targetDim==1) splines, got "
+                 << A.targetDim() << " and " << B.targetDim() << ".");
 
-    // 1. Convert to Bézier form (C^{-1})
-    gsTensorBSpline<d,T> bez = this->toBezier();
-
-    // degrees in the Bézier form
-    gsVector<index_t,d> deg;
+    // 1. Breakpoints of the product and the continuity it inherits.
+    //
+    //    Where A is C^a and B is C^b the product AB is C^{min(a,b)}, so the
+    //    minimal space is S(pA+pB, C^{min(a,b)}), i.e. interior multiplicity
+    //    pA+pB-min(a,b).  This has to be read off the ORIGINAL knot vectors:
+    //    the Bézier extraction in step 2 sets every interior multiplicity to
+    //    degree+1 and destroys the continuity information.
+    std::vector< std::vector<T> >   breaks(d);
+    std::vector< std::vector<index_t> > targetMult(d);
     for (short_t k = 0; k < d; ++k)
-        deg[k] = static_cast<index_t>(bez.degree(k));
+    {
+        const KnotVectorType & kvA = A.knots(k);
+        const KnotVectorType & kvB = B.knots(k);
+        GISMO_ASSERT(kvA.first() == kvB.first() && kvA.last() == kvB.last(),
+                     "multiply(): the two factors live on different parametric "
+                     "domains in direction " << k << ".");
 
-    // 2. Build the result knot vectors: each unique Bézier knot gets
-    //    multiplicity 2*p_k+1, giving degree 2*p_k with C^{-1} continuity.
+        const short_t pA = A.degree(k), pB = B.degree(k);
+
+        std::vector<T> & u = breaks[k];
+        for (size_t i = 0; i < kvA.uSize(); ++i)
+        {
+            const T xi = kvA.uValue(i);
+            if (xi > kvA.first() && xi < kvA.last()) u.push_back(xi);
+        }
+        for (size_t i = 0; i < kvB.uSize(); ++i)
+        {
+            const T xi = kvB.uValue(i);
+            if (xi > kvB.first() && xi < kvB.last()) u.push_back(xi);
+        }
+        std::sort(u.begin(), u.end());
+        u.erase(std::unique(u.begin(), u.end()), u.end());
+
+        targetMult[k].reserve(u.size());
+        for (size_t i = 0; i < u.size(); ++i)
+        {
+            const index_t mA = kvA.has(u[i]) ? static_cast<index_t>(kvA.multiplicity(u[i])) : 0;
+            const index_t mB = kvB.has(u[i]) ? static_cast<index_t>(kvB.multiplicity(u[i])) : 0;
+            // A factor with no knot at u[i] is a polynomial across it, hence
+            // C^inf; capping its continuity at its degree instead would
+            // understate the compression whenever the two degrees differ.
+            const index_t cA = (mA == 0) ? pB : pA - mA;
+            const index_t cB = (mB == 0) ? pA : pB - mB;
+            targetMult[k].push_back(pA + pB - std::min(cA, cB));
+        }
+    }
+
+    // 2. Bézier extraction of both factors on the common breakpoint set, so
+    //    that the two coefficient grids have the same element structure.
+    gsTensorBSpline<d,T> bA(A), bB(B);
+    for (short_t k = 0; k < d; ++k)
+    {
+        const index_t pA = bA.degree(k), pB = bB.degree(k);
+        for (size_t i = 0; i < breaks[k].size(); ++i)
+        {
+            const T xi = breaks[k][i];
+            const index_t mA = bA.knots(k).has(xi) ? static_cast<index_t>(bA.knots(k).multiplicity(xi)) : 0;
+            if (pA + 1 - mA > 0) bA.insertKnot(xi, k, pA + 1 - mA);
+            const index_t mB = bB.knots(k).has(xi) ? static_cast<index_t>(bB.knots(k).multiplicity(xi)) : 0;
+            if (pB + 1 - mB > 0) bB.insertKnot(xi, k, pB + 1 - mB);
+        }
+    }
+
+    gsVector<index_t,d> degA, degB, degR;
+    for (short_t k = 0; k < d; ++k)
+    {
+        degA[k] = static_cast<index_t>(bA.degree(k));
+        degB[k] = static_cast<index_t>(bB.degree(k));
+        degR[k] = degA[k] + degB[k];
+    }
+
+    // 3. Result basis: every breakpoint at multiplicity degR+1 (Bézier).
     std::vector<KnotVectorType> kvs_result(d);
     for (short_t k = 0; k < d; ++k)
     {
-        const KnotVectorType & kv = bez.knots(k);
-        const index_t p  = deg[k];
-        const index_t p2 = 2 * p;
+        const KnotVectorType & kv = bA.knots(k);
         std::vector<T> knots_result;
+        knots_result.reserve(kv.uSize() * (degR[k] + 1));
         for (size_t i = 0; i < kv.uSize(); ++i)
         {
             const T xi = kv.uValue(i);
-            for (index_t m = 0; m < p2 + 1; ++m)
+            for (index_t m = 0; m < degR[k] + 1; ++m)
                 knots_result.push_back(xi);
         }
-        kvs_result[k] = KnotVectorType(knots_result, static_cast<short_t>(p2));
+        kvs_result[k] = KnotVectorType(knots_result, static_cast<short_t>(degR[k]));
     }
-
-    // 3. Assemble result basis
     std::vector<Family_t*> cbases;
     cbases.reserve(d);
     for (short_t k = 0; k < d; ++k)
         cbases.push_back(new gsBSplineBasis<T>(kvs_result[k]));
     Basis * result_basis = Basis::New(cbases);
 
-    // 4. Compute result coefficients via the Bernstein product formula.
-    //
-    //    In direction k, c_i^2 has coefficient index running from 0 to 2p_k.
-    //    The formula for c^2 in the Bézier basis (using the product rule for
-    //    Bernstein polynomials) is:
-    //
-    //      q_{k_0,...,k_{d-1}} = sum_{i+j=k (per dim)}
-    //          prod_dim [ C(p_dim, i_dim) * C(p_dim, j_dim) / C(2p_dim, k_dim) ]
-    //          * b_{i_0,...} * b_{j_0,...}
-    //
-    //    We loop over elements (Bézier patches), extract the (p+1)^d local
-    //    coefficients, apply the formula, and write the (2p+1)^d output coefs.
+    // 4. Sizes and strides of the two Bézier grids and of the result.
+    gsVector<index_t,d> szA, szB;
+    bA.basis().size_cwise(szA);
+    bB.basis().size_cwise(szB);
 
-    // sizes of Bézier grid per direction
-    gsVector<index_t,d> bez_sz;
-    bez.basis().size_cwise(bez_sz);
-
-    // number of elements per direction
     gsVector<index_t,d> n_elems;
     for (short_t k = 0; k < d; ++k)
-        n_elems[k] = bez_sz[k] / (deg[k] + 1); // = number of Bézier patches
+    {
+        n_elems[k] = szA[k] / (degA[k] + 1);
+        GISMO_ASSERT(n_elems[k] == szB[k] / (degB[k] + 1),
+                     "multiply(): element counts differ in direction " << k
+                     << " after Bézier extraction (" << n_elems[k] << " vs "
+                     << szB[k] / (degB[k] + 1) << ").");
+    }
 
-    // strides for Bézier coef flat index
-    gsVector<index_t,d> bez_stride;
-    bez_stride[0] = 1;
-    for (short_t k = 1; k < d; ++k)
-        bez_stride[k] = bez_stride[k-1] * bez_sz[k-1];
-
-    // result sizes and strides
-    gsVector<index_t,d> res_sz;
+    gsVector<index_t,d> strA, strB, res_sz, strR;
+    strA[0] = 1; strB[0] = 1; strR[0] = 1;
     for (short_t k = 0; k < d; ++k)
-        res_sz[k] = n_elems[k] * (2*deg[k] + 1);
-
-    gsVector<index_t,d> res_stride;
-    res_stride[0] = 1;
+        res_sz[k] = n_elems[k] * (degR[k] + 1);
     for (short_t k = 1; k < d; ++k)
-        res_stride[k] = res_stride[k-1] * res_sz[k-1];
+    {
+        strA[k] = strA[k-1] * szA[k-1];
+        strB[k] = strB[k-1] * szB[k-1];
+        strR[k] = strR[k-1] * res_sz[k-1];
+    }
 
     gsMatrix<T> res_coefs(res_sz.prod(), 1);
     res_coefs.setZero();
 
-    const gsMatrix<T> & bc = bez.coefs();  // Bézier coefs (n_bez x 1)
+    const gsMatrix<T> & ca = bA.coefs();
+    const gsMatrix<T> & cb = bB.coefs();
 
-    // Iterate over all elements (multi-index of patches)
+    // 5. Element-by-element Bernstein convolution (see the class doc).
     gsVector<index_t,d> elem_idx;
     elem_idx.setZero();
     do
     {
-        // For each element, iterate over result Bernstein index k ∈ [0,2p]^d
         gsVector<index_t,d> k_idx;
         k_idx.setZero();
         do
         {
             T val = T(0);
-            // Accumulate: sum over i where j = k - i, 0 <= i,j <= p (per dim)
-            // Loop over i_idx in [0,p]^d
             gsVector<index_t,d> i_idx;
             i_idx.setZero();
-            // We need j_idx = k_idx - i_idx valid (all entries in [0,p])
             do
             {
                 bool valid = true;
@@ -831,54 +879,48 @@ gsTensorBSpline<d,T> gsTensorBSpline<d,T>::squared(bool keepBezier) const
                 for (short_t kd = 0; kd < d; ++kd)
                 {
                     j_idx[kd] = k_idx[kd] - i_idx[kd];
-                    if (j_idx[kd] < 0 || j_idx[kd] > deg[kd])
+                    if (j_idx[kd] < 0 || j_idx[kd] > degB[kd])
                     { valid = false; break; }
-                    // Bernstein product weight: C(p,i)*C(p,j)/C(2p,k)
-                    weight *= static_cast<T>(binom(deg[kd], i_idx[kd]))
-                            * static_cast<T>(binom(deg[kd], j_idx[kd]))
-                            / static_cast<T>(binom(2*deg[kd], k_idx[kd]));
+                    weight *= static_cast<T>(binom(degA[kd], i_idx[kd]))
+                            * static_cast<T>(binom(degB[kd], j_idx[kd]))
+                            / static_cast<T>(binom(degR[kd], k_idx[kd]));
                 }
                 if (valid)
                 {
-                    // Flat index in Bézier coef array for i and j
                     index_t fi = 0, fj = 0;
                     for (short_t kd = 0; kd < d; ++kd)
                     {
-                        fi += (elem_idx[kd] * (deg[kd]+1) + i_idx[kd]) * bez_stride[kd];
-                        fj += (elem_idx[kd] * (deg[kd]+1) + j_idx[kd]) * bez_stride[kd];
+                        fi += (elem_idx[kd] * (degA[kd]+1) + i_idx[kd]) * strA[kd];
+                        fj += (elem_idx[kd] * (degB[kd]+1) + j_idx[kd]) * strB[kd];
                     }
-                    val += weight * bc(fi, 0) * bc(fj, 0);
+                    val += weight * ca(fi, 0) * cb(fj, 0);
                 }
 
-                // Increment i_idx
                 short_t carry = 0;
                 do
                 {
                     ++i_idx[carry];
-                    if (i_idx[carry] > deg[carry]) { i_idx[carry] = 0; ++carry; }
+                    if (i_idx[carry] > degA[carry]) { i_idx[carry] = 0; ++carry; }
                     else break;
                 } while (carry < d);
                 if (carry == d) break;
             } while (true);
 
-            // Flat index in result coef array
             index_t fr = 0;
             for (short_t kd = 0; kd < d; ++kd)
-                fr += (elem_idx[kd] * (2*deg[kd]+1) + k_idx[kd]) * res_stride[kd];
+                fr += (elem_idx[kd] * (degR[kd]+1) + k_idx[kd]) * strR[kd];
             res_coefs(fr, 0) = val;
 
-            // Increment k_idx
             short_t carry = 0;
             do
             {
                 ++k_idx[carry];
-                if (k_idx[carry] > 2*deg[carry]) { k_idx[carry] = 0; ++carry; }
+                if (k_idx[carry] > degR[carry]) { k_idx[carry] = 0; ++carry; }
                 else break;
             } while (carry < d);
             if (carry == d) break;
         } while (true);
 
-        // Increment elem_idx
         short_t carry = 0;
         do
         {
@@ -889,222 +931,47 @@ gsTensorBSpline<d,T> gsTensorBSpline<d,T>::squared(bool keepBezier) const
         if (carry == d) break;
      } while (true);
 
+    // The geometry constructor clones the basis, so the one built above is
+    // ours to release.
     gsTensorBSpline<d,T> result(*result_basis, give(res_coefs));
+    delete result_basis;
 
+    // 6. Compress back to the minimal space determined in step 1.
     if (!keepBezier)
     {
-        // Remove interior knots to reach minimal space S(2p, C^{p-1}).
-        // In direction k: degree is 2*p_k, target continuity C^{p_k-1}
-        //   ⟹ interior multiplicity = 2*p_k - (p_k - 1) = p_k + 1
         for (short_t k = 0; k < d; ++k)
-        {
-            const int targetMult = static_cast<int>(deg[k]) + 1; // p+1
-            std::vector<T> interior;
+            for (size_t i = 0; i < breaks[k].size(); ++i)
             {
-                const KnotVectorType & kv0 = result.knots(k);
-                const T first = kv0.first(), last = kv0.last();
-                for (size_t i = 0; i < kv0.uSize(); ++i)
-                {
-                    const T xi = kv0.uValue(i);
-                    if (xi > first && xi < last) interior.push_back(xi);
-                }
-            }
-            for (const T xi : interior)
-            {
-                int mult = result.knots(k).multiplicity(xi);
-                while (mult > targetMult)
+                const T xi = breaks[k][i];
+                index_t mult = static_cast<index_t>(result.knots(k).multiplicity(xi));
+                while (mult > targetMult[k][i])
                 {
                     if (result.removeKnot(xi, k, 1) == 0) break;
                     --mult;
                 }
             }
-        }
     }
     return result;
 }
 
-// ----------------------------------------------------------------------------
-//  cubed  (Bernstein triple-product via squared × self)
-// ----------------------------------------------------------------------------
+template<short_t d, class T>
+gsTensorBSpline<d,T> gsTensorBSpline<d,T>::squared(bool keepBezier) const
+{
+    GISMO_ASSERT(this->targetDim() == 1,
+                 "squared() is only implemented for scalar (targetDim==1) splines.");
+    return multiply(*this, *this, keepBezier);
+}
+
 template<short_t d, class T>
 gsTensorBSpline<d,T> gsTensorBSpline<d,T>::cubed(bool keepBezier) const
 {
     GISMO_ASSERT(this->targetDim() == 1,
                  "cubed() is only implemented for scalar (targetDim==1) splines.");
-
-    // c³ = c² × c.  Compute c² in full Bézier (we need to multiply again)
-    // and self in Bézier, then do the Bernstein product.
-    gsTensorBSpline<d,T> c2 = this->squared(true);  // Bézier of c²
-    gsTensorBSpline<d,T> c1 = this->toBezier();     // Bézier of c
-
-    // degrees of c² (= 2*p_k) and c (= p_k)
-    gsVector<index_t,d> deg2, deg1;
-    for (short_t k = 0; k < d; ++k)
-    {
-        deg2[k] = static_cast<index_t>(c2.degree(k));  // = 2*p_k
-        deg1[k] = static_cast<index_t>(c1.degree(k));  // = p_k
-    }
-    // Original degrees
-    gsVector<index_t,d> deg;
-    for (short_t k = 0; k < d; ++k)
-        deg[k] = deg1[k];
-
-    // Build result knot vectors: degree 3*p_k, Bézier (mult 3*p_k+1)
-    std::vector<KnotVectorType> kvs_result(d);
-    for (short_t k = 0; k < d; ++k)
-    {
-        const KnotVectorType & kv = c1.knots(k);
-        const index_t p3 = 3 * deg[k];
-        std::vector<T> knots_result;
-        for (size_t i = 0; i < kv.uSize(); ++i)
-        {
-            const T xi = kv.uValue(i);
-            for (index_t m = 0; m < p3 + 1; ++m)
-                knots_result.push_back(xi);
-        }
-        kvs_result[k] = KnotVectorType(knots_result, static_cast<short_t>(p3));
-    }
-    std::vector<Family_t*> cbases3;
-    cbases3.reserve(d);
-    for (short_t k = 0; k < d; ++k)
-        cbases3.push_back(new gsBSplineBasis<T>(kvs_result[k]));
-    Basis * result_basis3 = Basis::New(cbases3);
-
-    // sizes
-    gsVector<index_t,d> c2_sz, c1_sz;
-    c2.basis().size_cwise(c2_sz);
-    c1.basis().size_cwise(c1_sz);
-
-    // number of elements per direction (same for c2 and c1 since same knot structure)
-    gsVector<index_t,d> n_elems;
-    for (short_t k = 0; k < d; ++k)
-        n_elems[k] = c1_sz[k] / (deg1[k] + 1);
-
-    gsVector<index_t,d> c2_stride, c1_stride;
-    c2_stride[0] = 1; c1_stride[0] = 1;
-    for (short_t k = 1; k < d; ++k)
-    {
-        c2_stride[k] = c2_stride[k-1] * c2_sz[k-1];
-        c1_stride[k] = c1_stride[k-1] * c1_sz[k-1];
-    }
-
-    gsVector<index_t,d> res_sz;
-    for (short_t k = 0; k < d; ++k)
-        res_sz[k] = n_elems[k] * (3*deg[k] + 1);
-    gsVector<index_t,d> res_stride;
-    res_stride[0] = 1;
-    for (short_t k = 1; k < d; ++k)
-        res_stride[k] = res_stride[k-1] * res_sz[k-1];
-
-    gsMatrix<T> res_coefs3(res_sz.prod(), 1);
-    res_coefs3.setZero();
-
-    const gsMatrix<T> & bc2 = c2.coefs();
-    const gsMatrix<T> & bc1 = c1.coefs();
-
-    // Bernstein product: c³_{k} = sum_{i+j=k} C(2p,i)*C(p,j)/C(3p,k) * c²_i * c_j
-    gsVector<index_t,d> elem_idx;
-    elem_idx.setZero();
-    do
-    {
-        gsVector<index_t,d> k_idx;
-        k_idx.setZero();
-        do
-        {
-            T val = T(0);
-            gsVector<index_t,d> i_idx;
-            i_idx.setZero();
-            do
-            {
-                bool valid = true;
-                gsVector<index_t,d> j_idx;
-                T weight = T(1);
-                for (short_t kd = 0; kd < d; ++kd)
-                {
-                    j_idx[kd] = k_idx[kd] - i_idx[kd];
-                    if (j_idx[kd] < 0 || j_idx[kd] > deg1[kd])
-                    { valid = false; break; }
-                    weight *= static_cast<T>(binom(deg2[kd], i_idx[kd]))
-                            * static_cast<T>(binom(deg1[kd], j_idx[kd]))
-                            / static_cast<T>(binom(deg2[kd]+deg1[kd], k_idx[kd]));
-                }
-                if (valid)
-                {
-                    index_t fi = 0, fj = 0;
-                    for (short_t kd = 0; kd < d; ++kd)
-                    {
-                        fi += (elem_idx[kd] * (deg2[kd]+1) + i_idx[kd]) * c2_stride[kd];
-                        fj += (elem_idx[kd] * (deg1[kd]+1) + j_idx[kd]) * c1_stride[kd];
-                    }
-                    val += weight * bc2(fi, 0) * bc1(fj, 0);
-                }
-                short_t carry = 0;
-                do
-                {
-                    ++i_idx[carry];
-                    if (i_idx[carry] > deg2[carry]) { i_idx[carry] = 0; ++carry; }
-                    else break;
-                } while (carry < d);
-                if (carry == d) break;
-            } while (true);
-
-            index_t fr = 0;
-            for (short_t kd = 0; kd < d; ++kd)
-                fr += (elem_idx[kd] * (3*deg[kd]+1) + k_idx[kd]) * res_stride[kd];
-            res_coefs3(fr, 0) = val;
-
-            short_t carry = 0;
-            do
-            {
-                ++k_idx[carry];
-                if (k_idx[carry] > 3*deg[carry]) { k_idx[carry] = 0; ++carry; }
-                else break;
-            } while (carry < d);
-            if (carry == d) break;
-        } while (true);
-
-        short_t carry = 0;
-        do
-        {
-            ++elem_idx[carry];
-            if (elem_idx[carry] >= n_elems[carry]) { elem_idx[carry] = 0; ++carry; }
-            else break;
-        } while (carry < d);
-        if (carry == d) break;
-    } while (true);
-
-    gsTensorBSpline<d,T> result3(*result_basis3, give(res_coefs3));
-
-    if (!keepBezier)
-    {
-        // Remove interior knots to reach minimal space S(3p, C^{p-1}).
-        // Degree is 3*p_k, continuity C^{p_k-1}
-        //   ⟹ interior multiplicity = 3*p_k - (p_k - 1) = 2*p_k + 1
-        for (short_t k = 0; k < d; ++k)
-        {
-            const int targetMult = 2 * static_cast<int>(deg[k]) + 1;
-            std::vector<T> interior;
-            {
-                const KnotVectorType & kv0 = result3.knots(k);
-                const T first = kv0.first(), last = kv0.last();
-                for (size_t i = 0; i < kv0.uSize(); ++i)
-                {
-                    const T xi = kv0.uValue(i);
-                    if (xi > first && xi < last) interior.push_back(xi);
-                }
-            }
-            for (const T xi : interior)
-            {
-                int mult = result3.knots(k).multiplicity(xi);
-                while (mult > targetMult)
-                {
-                    if (result3.removeKnot(xi, k, 1) == 0) break;
-                    --mult;
-                }
-            }
-        }
-    }
-    return result3;
+    // The square is taken in its minimal space rather than in Bézier form:
+    // multiply() derives the continuity of the product from the knot
+    // multiplicities of its arguments, and a Bézier square would advertise
+    // C^{-1} and so block all compression of c³.
+    return multiply(this->squared(false), *this, keepBezier);
 }
 
 // ----------------------------------------------------------------------------
@@ -1193,6 +1060,92 @@ std::vector< gsTensorBSpline<d,T> > gsTensorBSpline<d,T>::grad() const
 }
 
 // ----------------------------------------------------------------------------
+//  makeCompatible / linearCombination — common-space arithmetic
+// ----------------------------------------------------------------------------
+template<short_t d, class T>
+void gsTensorBSpline<d,T>::makeCompatible(std::vector< gsTensorBSpline<d,T> > & splines)
+{
+    if (splines.size() < 2) return;
+
+    for (short_t k = 0; k < d; ++k)
+    {
+        // 1. Common degree.  Elevation has to precede the knot union because
+        //    degreeElevate raises every interior multiplicity by the same
+        //    amount in order to preserve continuity, so a union taken before
+        //    elevation would be undone by it.
+        short_t pmax = 0;
+        for (size_t s = 0; s != splines.size(); ++s)
+            if (splines[s].degree(k) > pmax) pmax = splines[s].degree(k);
+        for (size_t s = 0; s != splines.size(); ++s)
+        {
+            const short_t p = splines[s].degree(k);
+            if (p < pmax) splines[s].degreeElevate(pmax - p, k);
+        }
+
+        // 2. Union of the interior knots, with the maximal multiplicity.
+        const T first = splines[0].knots(k).first();
+        const T last  = splines[0].knots(k).last();
+        std::vector<T> vals;
+        for (size_t s = 0; s != splines.size(); ++s)
+        {
+            const KnotVectorType & kv = splines[s].knots(k);
+            GISMO_ASSERT(kv.first() == first && kv.last() == last,
+                         "makeCompatible(): spline " << s << " lives on a "
+                         "different parametric domain in direction " << k << ".");
+            for (size_t i = 0; i < kv.uSize(); ++i)
+            {
+                const T xi = kv.uValue(i);
+                if (xi > first && xi < last) vals.push_back(xi);
+            }
+        }
+        std::sort(vals.begin(), vals.end());
+        vals.erase(std::unique(vals.begin(), vals.end()), vals.end());
+
+        for (size_t i = 0; i != vals.size(); ++i)
+        {
+            const T xi = vals[i];
+            index_t mmax = 0;
+            for (size_t s = 0; s != splines.size(); ++s)
+            {
+                const KnotVectorType & kv = splines[s].knots(k);
+                const index_t m = kv.has(xi) ? static_cast<index_t>(kv.multiplicity(xi)) : 0;
+                if (m > mmax) mmax = m;
+            }
+            for (size_t s = 0; s != splines.size(); ++s)
+            {
+                const KnotVectorType & kv = splines[s].knots(k);
+                const index_t m = kv.has(xi) ? static_cast<index_t>(kv.multiplicity(xi)) : 0;
+                if (mmax > m) splines[s].insertKnot(xi, k, mmax - m);
+            }
+        }
+    }
+}
+
+template<short_t d, class T>
+gsTensorBSpline<d,T> gsTensorBSpline<d,T>::linearCombination(
+                                    T a, const gsTensorBSpline<d,T> & A,
+                                    T b, const gsTensorBSpline<d,T> & B)
+{
+    GISMO_ASSERT(A.targetDim() == B.targetDim(),
+                 "linearCombination(): target dimensions differ ("
+                 << A.targetDim() << " vs " << B.targetDim() << ").");
+
+    std::vector< gsTensorBSpline<d,T> > v;
+    v.reserve(2);
+    v.push_back(A);
+    v.push_back(B);
+    makeCompatible(v);
+
+    GISMO_ASSERT(v[0].coefs().rows() == v[1].coefs().rows(),
+                 "linearCombination(): coefficient size mismatch after "
+                 "makeCompatible() (" << v[0].coefs().rows() << " vs "
+                 << v[1].coefs().rows() << ").");
+
+    v[0].coefs() = a * v[0].coefs() + b * v[1].coefs();
+    return v[0];
+}
+
+// ----------------------------------------------------------------------------
 //  div() — divergence (for vector-valued splines with targetDim == d)
 // ----------------------------------------------------------------------------
 template<short_t d, class T>
@@ -1204,63 +1157,28 @@ gsTensorBSpline<d,T> gsTensorBSpline<d,T>::div() const
 
     // For each component k, extract column k of coefs → scalar spline,
     // differentiate in direction k, then sum all terms in a common space.
-
-    // Compute all d terms first.
+    //
     // After grad(k), term k has degree p-1 in direction k and p elsewhere.
-    // Degree-elevate direction k by 1 so every term lives in degree (p,...,p).
+    // Degree-elevate direction k by 1 so every term is already at degree
+    // (p,...,p) before makeCompatible(); this also fixes the d==1 case, where
+    // there is nothing for makeCompatible() to elevate against.
     std::vector< gsTensorBSpline<d,T> > terms;
     terms.reserve(d);
     for (short_t k = 0; k < d; ++k)
     {
-        // Extract scalar component k
         gsMatrix<T> col_k = this->m_coefs.col(k);
         gsTensorBSpline<d,T> comp_k(
             static_cast<const Basis&>(this->basis()), col_k);
         gsTensorBSpline<d,T> dk = comp_k.grad(k);
-        dk.degreeElevate(1, k);   // lift dir k back to degree p
-        terms.push_back(dk);
+        dk.degreeElevate(1, k);
+        terms.push_back(give(dk));
     }
 
-    // Bring all terms to a common knot vector by knot insertion.
-    // The common knot vector per direction is the union of all terms' knot vectors.
-    // We do this by inserting missing knots from every term into a running result.
+    makeCompatible(terms);
+
     gsTensorBSpline<d,T> result = terms[0];
-    for (short_t k = 1; k < static_cast<short_t>(d); ++k)
+    for (size_t k = 1; k != terms.size(); ++k)
     {
-        // Insert into result any knots present in terms[k] but missing/lower-mult in result
-        for (short_t dir = 0; dir < d; ++dir)
-        {
-            const KnotVectorType & kv_src = terms[k].knots(dir);
-            const T first = kv_src.first();
-            const T last  = kv_src.last();
-            for (size_t i = 0; i < kv_src.uSize(); ++i)
-            {
-                const T xi = kv_src.uValue(i);
-                if (xi <= first || xi >= last) continue;
-                const int m_src = kv_src.multiplicity(xi);
-                const int m_res = result.knots(dir).has(xi)
-                    ? result.knots(dir).multiplicity(xi) : 0;
-                if (m_src > m_res)
-                    result.insertKnot(xi, dir, m_src - m_res);
-            }
-        }
-        // Also bring terms[k] up to result's knot structure
-        for (short_t dir = 0; dir < d; ++dir)
-        {
-            const KnotVectorType & kv_res = result.knots(dir);
-            const T first = kv_res.first();
-            const T last  = kv_res.last();
-            for (size_t i = 0; i < kv_res.uSize(); ++i)
-            {
-                const T xi = kv_res.uValue(i);
-                if (xi <= first || xi >= last) continue;
-                const int m_res = kv_res.multiplicity(xi);
-                const int m_src = terms[k].knots(dir).has(xi)
-                    ? terms[k].knots(dir).multiplicity(xi) : 0;
-                if (m_res > m_src)
-                    terms[k].insertKnot(xi, dir, m_res - m_src);
-            }
-        }
         GISMO_ASSERT(result.m_coefs.rows() == terms[k].m_coefs.rows(),
                      "div(): coefficient size mismatch after knot equalization ("
                      << result.m_coefs.rows() << " vs " << terms[k].m_coefs.rows() << ")");
@@ -1282,52 +1200,28 @@ gsTensorBSpline<d,T> gsTensorBSpline<d,T>::lapl(bool keepBezier) const
                      "lapl(): degree must be >= 2 in all directions (degree("
                      << k << ")=" << this->degree(k) << ").");
 
-    // We compute D2_k = ∂²c/∂x_k² for each direction k, then bring all terms
-    // to the same B-spline space and sum coefficients.
+    // D2_k = ∂²c/∂x_k² has degree p_k-2 and knot vector kv_k[2:-2] in direction
+    // k, and is unchanged in the other directions.  Every term is elevated back
+    // to degree p in direction k, then all terms are summed in the common space
+    // produced by makeCompatible().
     //
-    // After two differentiations in direction k, D2_k has:
-    //   - degree p_k - 2 in direction k
-    //   - degree p_j in all other directions j
-    //   - knot vector kv_k[2:-2] in direction k (drop 2 from each end)
-    //   - knot vector kv_j unchanged in other directions
+    // keepBezier == false (default): that common space is S(p, C^{p-3}) —
+    //   two differentiations in direction k raise the interior multiplicity
+    //   there by 2, and the union propagates that to the other terms.
     //
-    // keepBezier == false (default, minimal space S(p, C^{p-3})):
-    //   Bring all D2_k terms to the same knot structure by knot union only —
-    //   no degree elevation.  Direction k has degree p-2, continuity C^{p-3};
-    //   other directions j stay at degree p.  Degree-elevate direction k from
-    //   p-2 to p-2... wait, we want the *sum* in a common space.
-    //
-    //   The natural common space for all D2_k is:
-    //     - degree p in every direction
-    //     - interior multiplicity = orig_mult + 2 in the differentiated direction
-    //       (because two differentiations reduce continuity by 2: mult increases by 2)
-    //     - other directions: use knot *union* without extra insertions.
-    //   We achieve this by:
-    //     - For D2_k: degree-elevate direction k by 2 (p-2 → p).
-    //     - For D2_k in other directions j: insert each unique interior knot of
-    //       *only* the D2_j term's direction-j knot vector (which has +2 mult)
-    //       into direction j of D2_k, bringing it up to the union of all terms.
-    //   This gives the minimal space S(p, C^{p-3}).
-    //
-    // keepBezier == true (old over-elevated behaviour):
-    //   Additionally insert each unique interior knot of the original kv_j twice
-    //   in every other direction j ≠ k, then the result is a Bézier (C^{-1}).
-
-    gsTensorBSpline<d,T> result;
-    bool init = false;
+    // keepBezier == true: each unique interior knot of the original basis is
+    //   additionally inserted twice in every direction j != k, which drives the
+    //   union to Bézier (C^{-1}) form.
+    std::vector< gsTensorBSpline<d,T> > terms;
+    terms.reserve(d);
 
     for (short_t k = 0; k < d; ++k)
     {
-        // ∂²c/∂x_k²
         gsTensorBSpline<d,T> D2 = this->grad(k).grad(k);
-
-        // Degree-elevate direction k from p_k-2 back to p_k
         D2.degreeElevate(2, k);
 
         if (keepBezier)
         {
-            // Old behaviour: insert each unique interior knot of the
-            // original basis twice in every other direction j.
             for (short_t j = 0; j < d; ++j)
             {
                 if (j == k) continue;
@@ -1342,64 +1236,63 @@ gsTensorBSpline<d,T> gsTensorBSpline<d,T>::lapl(bool keepBezier) const
                 }
             }
         }
-        // (When keepBezier==false we do NOT do those extra insertions.
-        //  The knot-union step below handles alignment between D2_k terms.)
+        terms.push_back(give(D2));
+    }
 
-        if (!init)
-        {
-            result = give(D2);
-            init   = true;
-        }
-        else
-        {
-            // Bring result and D2 to the same knot structure (union per direction).
-            for (short_t dir = 0; dir < d; ++dir)
-            {
-                // Insert into result knots present in D2 but missing/lower-mult
-                {
-                    const KnotVectorType & kv_src = D2.knots(dir);
-                    const T first = kv_src.first(), last = kv_src.last();
-                    for (size_t i = 0; i < kv_src.uSize(); ++i)
-                    {
-                        const T xi = kv_src.uValue(i);
-                        if (xi <= first || xi >= last) continue;
-                        const int ms = kv_src.multiplicity(xi);
-                        const int mr = result.knots(dir).has(xi)
-                                     ? result.knots(dir).multiplicity(xi) : 0;
-                        if (ms > mr) result.insertKnot(xi, dir, ms - mr);
-                    }
-                }
-                // Insert into D2 knots present in result but missing/lower-mult
-                {
-                    const KnotVectorType & kv_res = result.knots(dir);
-                    const T first = kv_res.first(), last = kv_res.last();
-                    for (size_t i = 0; i < kv_res.uSize(); ++i)
-                    {
-                        const T xi = kv_res.uValue(i);
-                        if (xi <= first || xi >= last) continue;
-                        const int mr = kv_res.multiplicity(xi);
-                        const int ms = D2.knots(dir).has(xi)
-                                     ? D2.knots(dir).multiplicity(xi) : 0;
-                        if (mr > ms) D2.insertKnot(xi, dir, mr - ms);
-                    }
-                }
-            }
-            GISMO_ASSERT(result.m_coefs.rows() == D2.m_coefs.rows(),
-                         "lapl(): coefficient size mismatch between directions ("
-                         << result.m_coefs.rows() << " vs " << D2.m_coefs.rows() << ")");
-            result.m_coefs += D2.m_coefs;
-        }
+    makeCompatible(terms);
+
+    gsTensorBSpline<d,T> result = terms[0];
+    for (size_t k = 1; k != terms.size(); ++k)
+    {
+        GISMO_ASSERT(result.m_coefs.rows() == terms[k].m_coefs.rows(),
+                     "lapl(): coefficient size mismatch between directions ("
+                     << result.m_coefs.rows() << " vs " << terms[k].m_coefs.rows() << ")");
+        result.m_coefs += terms[k].m_coefs;
     }
     return result;
 }
 
 // ----------------------------------------------------------------------------
-//  hess() — placeholder
+//  hess() — Hessian of a scalar spline, stored as a targetDim == d*d spline
 // ----------------------------------------------------------------------------
 template<short_t d, class T>
 gsTensorBSpline<d,T> gsTensorBSpline<d,T>::hess() const
 {
-    GISMO_NO_IMPLEMENTATION;
+    GISMO_ASSERT(this->targetDim() == 1,
+                 "hess() is only implemented for scalar (targetDim==1) splines.");
+    for (short_t k = 0; k < d; ++k)
+        GISMO_ASSERT(this->degree(k) >= 2,
+                     "hess(): degree must be >= 2 in all directions (degree("
+                     << k << ")=" << this->degree(k) << ").");
+
+    // H_ij = ∂²c/∂x_i∂x_j lives in a different space for each (i,j): degree
+    // p-2 in direction i when i==j, p-1 in directions i and j otherwise, with
+    // the interior multiplicities of the input unchanged.  makeCompatible()
+    // elevates every entry back to degree p — which raises the multiplicity in
+    // a differentiated direction by the number of differentiations there — and
+    // then takes the union, so the common space is degree p with interior
+    // multiplicity m+2, i.e. two orders less continuous than the input.
+    // That is exactly the space lapl() sums in, as it must be: the trace of
+    // the Hessian is the Laplacian.
+    std::vector< gsTensorBSpline<d,T> > terms;
+    terms.reserve(d*d);
+    for (short_t i = 0; i < d; ++i)
+        for (short_t j = 0; j < d; ++j)
+            terms.push_back(this->grad(i).grad(j));
+
+    makeCompatible(terms);
+
+    const index_t n = terms[0].coefs().rows();
+    gsMatrix<T> coefs(n, d*d);
+    for (size_t e = 0; e != terms.size(); ++e)
+    {
+        GISMO_ASSERT(terms[e].coefs().rows() == n,
+                     "hess(): coefficient size mismatch after makeCompatible() ("
+                     << terms[e].coefs().rows() << " vs " << n << ").");
+        coefs.col(e) = terms[e].coefs().col(0);
+    }
+
+    return gsTensorBSpline<d,T>(terms[0].basis(), give(coefs));
 }
 
 namespace internal

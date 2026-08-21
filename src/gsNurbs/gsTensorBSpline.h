@@ -181,9 +181,12 @@ public:
     /// Inserts knot \a knot at direction \a dir, \a i times
     void insertKnot( T knot, int dir, int i = 1) override;
 
-    /// Removes knot \a knot from direction \a dir up to \a i times (exact).
+    /// Removes knot \a knot from direction \a dir up to \a i times.
+    /// A removal is accepted when the feasibility residual of Tiller's
+    /// algorithm is below \a tol RELATIVE to the largest control-point entry
+    /// of the coefficient fiber; see gsKnotRemoveSingle().
     /// Returns the number of times the knot was successfully removed.
-    index_t removeKnot( T knot, short_t dir, short_t i = 1);
+    index_t removeKnot( T knot, short_t dir, short_t i = 1, T tol = (T)(1e-10));
 
     // -----------------------------------------------------------------------
     //  Calculus methods
@@ -193,18 +196,52 @@ public:
     /// each interior knot to multiplicity degree+1 in every direction.
     gsTensorBSpline<d,T> toBezier() const;
 
-    /// Returns c² as a new gsTensorBSpline (only for scalar targetDim==1).
-    /// Uses the Bernstein product formula element by element.
-    /// If \a keepBezier is false (default), interior knots are removed to the
-    /// minimal space S(2p, C^{p-1}) (interior multiplicity p+1).
+    /// Returns the pointwise product A·B as a new gsTensorBSpline.
+    /// Both arguments must be scalar (targetDim==1) and live on the same
+    /// parametric domain; their degrees and knot vectors may differ.
+    ///
+    /// Both factors are brought to Bézier form on the union of their
+    /// breakpoints and multiplied element by element with the Bernstein
+    /// product formula
+    /// \f[ (AB)_k = \sum_{i+j=k}
+    ///        \frac{\binom{p_A}{i}\binom{p_B}{j}}{\binom{p_A+p_B}{k}}
+    ///        a_i b_j \f]
+    /// applied per direction, so the result has degree \f$p_A+p_B\f$.
+    ///
+    /// If \a keepBezier is false (default), interior knots are then removed to
+    /// reach the minimal space: where A is \f$C^{a}\f$ and B is \f$C^{b}\f$
+    /// the product is \f$C^{\min(a,b)}\f$, i.e. interior multiplicity
+    /// \f$p_A+p_B-\min(a,b)\f$.  Whether that removal actually succeeds is
+    /// decided by the tolerance of removeKnot().
     /// If \a keepBezier is true, the raw Bézier (C^{-1}) result is returned.
+    ///
+    /// Complexity: O( nel · (p_A+p_B+1)^d · (p_A+1)^d ) for the product.
+    static gsTensorBSpline<d,T> multiply(const gsTensorBSpline<d,T> & A,
+                                         const gsTensorBSpline<d,T> & B,
+                                         bool keepBezier = false);
+
+    /// Brings \a splines to a common tensor-product space, in place, so that
+    /// their coefficient matrices may be combined entry by entry.
+    /// Each spline is first degree-elevated to the per-direction maximum
+    /// degree, then knots are inserted to the per-direction union of the
+    /// interior knots.  Elevation must come first because it raises interior
+    /// multiplicities in order to preserve continuity.
+    /// All splines must live on the same parametric domain.
+    static void makeCompatible(std::vector< gsTensorBSpline<d,T> > & splines);
+
+    /// Returns \a a·A + \a b·B, evaluated in the common space produced by
+    /// makeCompatible().  A and B need not share a basis; they must have the
+    /// same target dimension and parametric domain.
+    static gsTensorBSpline<d,T> linearCombination(
+                                    T a, const gsTensorBSpline<d,T> & A,
+                                    T b, const gsTensorBSpline<d,T> & B);
+
+    /// Returns c² as a new gsTensorBSpline (only for scalar targetDim==1).
+    /// Equivalent to multiply(*this, *this, \a keepBezier).
     gsTensorBSpline<d,T> squared(bool keepBezier = false) const;
 
     /// Returns c³ as a new gsTensorBSpline (only for scalar targetDim==1).
-    /// Computed as squared(true) × self in Bézier form.
-    /// If \a keepBezier is false (default), interior knots are removed to the
-    /// minimal space S(3p, C^{p-1}) (interior multiplicity 2p+1).
-    /// If \a keepBezier is true, the raw Bézier (C^{-1}) result is returned.
+    /// Equivalent to multiply(squared(), *this, \a keepBezier).
     gsTensorBSpline<d,T> cubed(bool keepBezier = false) const;
 
     /// Returns the partial derivative in direction \a dir as a gsTensorBSpline.
@@ -219,13 +256,25 @@ public:
     gsTensorBSpline<d,T> div() const;
 
     /// Returns the Laplacian: for scalar targetDim==1, sum_k ∂²c/∂x_k².
-    /// If \a keepBezier is false (default), the result is the minimal
-    /// S(p, C^{p-3}) space (interior multiplicity p-1, two less than input).
-    /// If \a keepBezier is true, all terms are degree-elevated back to p and
-    /// knots are inserted to Bézier (C^{-1}) form (old behaviour).
+    /// Every term is degree-elevated back to p in the direction it was
+    /// differentiated in, then all terms are summed in their common space.
+    /// The result therefore has degree p and interior multiplicity m+2, where
+    /// m is the input multiplicity — two orders less continuous than the input.
+    ///
+    /// \warning \a keepBezier does NOT reach Bézier form, despite its name.
+    /// It only inserts each interior knot twice more in the directions that
+    /// were not differentiated, which the knot union already supplies, so for
+    /// simple interior knots it returns exactly the same space as the default.
+    /// FIXME: either make it return toBezier() of the result, or drop the
+    /// parameter; see gsSplineFactory_test:lapl_keepBezier_versus_minimal.
     gsTensorBSpline<d,T> lapl(bool keepBezier = false) const;
 
-    /// Hessian: placeholder — not yet implemented.
+    /// Returns the Hessian of a scalar (targetDim==1) spline as a single
+    /// gsTensorBSpline with targetDim() == d*d, where column i*d+j holds
+    /// ∂²c/∂x_i∂x_j.  Requires degree >= 2 in every direction.
+    /// All d² entries are brought to the common space S(p, C^{p-3}) by
+    /// makeCompatible(), so the matrix is stored on one basis; the symmetric
+    /// off-diagonal columns i*d+j and j*d+i are therefore identical.
     gsTensorBSpline<d,T> hess() const;
 
     /// Returns a reference to the knot vector in direction \a i

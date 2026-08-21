@@ -71,6 +71,12 @@ void pybind11_init_gsTensorBSpline(py::module &m)
     .def("degreeElevate", &Class::degreeElevate, "Elevate the degree of the spline")
     // Calculus methods
     .def("toBezier",  &Class::toBezier,  "Convert to Bézier (C^{-1}) form by knot insertion")
+    .def_static("multiply", &Class::multiply,
+         "Return the pointwise product A*B of two scalar splines",
+         py::arg("A"), py::arg("B"), py::arg("keepBezier") = false)
+    .def_static("linearCombination", &Class::linearCombination,
+         "Return a*A + b*B in the common space of A and B",
+         py::arg("a"), py::arg("A"), py::arg("b"), py::arg("B"))
     .def("squared",   &Class::squared,   "Return the algebraic square c² as a spline",
          py::arg("keepBezier") = false)
     .def("cubed",     &Class::cubed,     "Return the algebraic cube c³ as a spline",
@@ -84,7 +90,9 @@ void pybind11_init_gsTensorBSpline(py::module &m)
     .def("div",   &Class::div,  "Return divergence of a vector-valued spline")
     .def("lapl",  &Class::lapl, "Return Laplacian of a scalar spline",
          py::arg("keepBezier") = false)
-    .def("hess",  &Class::hess, "Return Hessian of a scalar spline as a matrix-valued spline")
+    .def("hess",  &Class::hess,
+         "Return the Hessian of a scalar spline as a spline with targetDim d*d "
+         "(column i*d+j is d^2c/dx_i dx_j)")
     ;
 }
 

@@ -214,7 +214,8 @@ bool gsKnotRemoveSingle<T, gsKnotVector<T>, gsMatrix<T> >(
     gsKnotVector<T> & knots,
     gsMatrix<T>     & coefs,
     T                 val,
-    bool              update_knots
+    bool              update_knots,
+    T                 tol
     );
 
 // gsKnotRemove
@@ -225,7 +226,8 @@ int gsKnotRemove<T, gsKnotVector<T>, gsMatrix<T> >(
         gsMatrix<T>     & coefs,
         T                 val,
         int               t,
-        bool              update_knots
+        bool              update_knots,
+        T                 tol
         );
 
 // gsTensorKnotRemove
@@ -238,7 +240,8 @@ int gsTensorKnotRemove<T, gsKnotVector<T>, gsMatrix<T> >(
         int                  direction,
         gsVector<unsigned>   str,
         int                  t,
-        bool                 update_knots);
+        bool                 update_knots,
+        T                    tol);
 
 } // end namespace gismo
 

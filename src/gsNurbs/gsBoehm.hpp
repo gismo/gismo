@@ -811,7 +811,8 @@ bool gsKnotRemoveSingle(
     KnotVectorType & knots,
     Mat            & coefs,
     T                val,
-    bool             update_knots)
+    bool             update_knots,
+    T                tol)
 {
     // Piegl & Tiller, "The NURBS Book" 2nd ed., Algorithm A5.8
     const short_t p = knots.degree();
@@ -855,15 +856,24 @@ bool gsKnotRemoveSingle(
     // that temp[ii-1] == temp[jj+1].  If j >= i a middle point remains: check
     // that coefs[i] lies on the interpolated line between temp[ii-1] and
     // temp[jj+1] (reference: NURBS-Python helpers.py knot_removal, line 698-712).
+    //
+    // Both residuals have the units of a control point, so the threshold is
+    // taken relative to the largest control-point entry: the back-substitution
+    // above amplifies round-off in proportion to the size of the control net,
+    // and an absolute threshold would therefore be direction- and scale-
+    // dependent.  A zero net falls back to an absolute test.
+    const T cmax = coefs.cwiseAbs().maxCoeff();
+    const T ctol = tol * (cmax > (T)0 ? cmax : (T)1);
+
     if (j < i)  // chains crossed — odd number of points in [first,last]
     {
-        if ((temp.row(ii - 1) - temp.row(jj + 1)).norm() > T(1e-10))
+        if ((temp.row(ii - 1) - temp.row(jj + 1)).norm() > ctol)
             return false;
     }
     else  // middle point remains — check interpolation
     {
         const T alfa = (val - knots[i]) / (knots[i + ord] - knots[i]);
-        if ((coefs.row(i) - (alfa * temp.row(ii - 1) + (T(1) - alfa) * temp.row(jj + 1))).norm() > T(1e-10))
+        if ((coefs.row(i) - (alfa * temp.row(ii - 1) + (T(1) - alfa) * temp.row(jj + 1))).norm() > ctol)
             return false;
     }
 
@@ -900,12 +910,13 @@ int gsKnotRemove(
     Mat            & coefs,
     T                val,
     int              t,
-    bool             update_knots)
+    bool             update_knots,
+    T                tol)
 {
     int removed = 0;
     for (int i = 0; i < t; ++i)
     {
-        if (!gsKnotRemoveSingle<T>(knots, coefs, val, update_knots))
+        if (!gsKnotRemoveSingle<T>(knots, coefs, val, update_knots, tol))
             break;
         ++removed;
     }
@@ -921,7 +932,8 @@ int gsTensorKnotRemove(
         int                     direction,
         gsVector<unsigned>      str,
         int                     t,
-        bool                    update_knots)
+        bool                    update_knots,
+        T                       tol)
 {
     GISMO_ASSERT(t >= 1, "Must remove at least once.");
     GISMO_ASSERT(direction < str.size(),
@@ -964,7 +976,7 @@ int gsTensorKnotRemove(
 
             // Attempt removal on fiber (don't update knots yet)
             KnotVectorType knots_copy = knots;
-            if (!gsKnotRemoveSingle<T>(knots_copy, fiber, val, false))
+            if (!gsKnotRemoveSingle<T>(knots_copy, fiber, val, false, tol))
             {
                 all_ok = false;
                 break;
@@ -1026,7 +1038,7 @@ int gsTensorKnotRemove(
 
             // Re-run the (guaranteed) removal to get the compacted fiber
             KnotVectorType knots_dummy = knots;
-            gsKnotRemoveSingle<T>(knots_dummy, fiber, val, false);
+            gsKnotRemoveSingle<T>(knots_dummy, fiber, val, false, tol);
 
             for (index_t i = 0; i < new_num_in_dir; ++i)
                 new_coefs.row(new_ind + i * new_step) = fiber.row(i);

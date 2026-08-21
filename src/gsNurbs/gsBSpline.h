@@ -240,9 +240,12 @@ public:
     /// the curve.
     void insertKnot( T knot, index_t i = 1);
 
-    /// Remove knot \a knot up to \a i times (exact removal only).
+    /// Remove knot \a knot up to \a i times.
+    /// A removal is accepted when the feasibility residual of Tiller's
+    /// algorithm is below \a tol RELATIVE to the largest control-point entry;
+    /// see gsKnotRemoveSingle().
     /// Returns the number of times the knot was successfully removed.
-    index_t removeKnot( T knot, index_t i = 1);
+    index_t removeKnot( T knot, index_t i = 1, T tol = (T)(1e-10));
 private:
     // Resolve hidden overload w.r.t. gsGeometry
     virtual void insertKnot( T knot, index_t dir, index_t i = 1) override;
