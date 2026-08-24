@@ -332,7 +332,7 @@ std::vector<std::vector<patchCorner>> getBoundaryVertices(const gsBoxTopology& b
 }
 
 template <typename T>
-gsVector<T> getOuterNormalDerivative(const gsMultiPatch<T>& mp, const std::vector<patchCorner>& corners, T eps = 1e-6)
+gsVector<T> getOuterNormalDerivative(const gsMultiPatch<T>& mp, const std::vector<patchCorner>& corners, T eps = 1e-4)
 {
     const short_t dim = 2;
     std::vector<gsVector<T>> normals;
@@ -346,7 +346,7 @@ gsVector<T> getOuterNormalDerivative(const gsMultiPatch<T>& mp, const std::vecto
             const gsMatrix<T> supp = geo.support();
             gsVector<bool> parameters = corners[i].parameters(dim);
             for (short_t d=0; d<dim; ++d)
-                pt(d,0) = parameters[d] ? supp(d,0) : supp(d,1);
+                pt(d,0) = parameters[d] ? supp(d,1) : supp(d,0);
         }
 
         // determine Jacobian

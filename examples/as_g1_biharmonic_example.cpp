@@ -205,7 +205,6 @@ int main(int argc, char *argv[])
         gsSparseMatrix<T> T_bnd = T_global.rightCols(nBnd);
 
         // ---- Evaluate Dirichlet boundary values vector g_bnd ----
-        // TODO: Derive inhomogenous boundary data (edges+vertex) properly
         gsMatrix<T> sol_bnd;
         {
             gsExprAssembler<T> A(1, 1);
@@ -214,17 +213,16 @@ int main(int argc, char *argv[])
             auto G_map = A.getMap(mp);
             auto u_space = A.getSpace(dbasis);
             auto u_coeff = A.getCoeff(exact_u, G_map);
+            auto u_grad_coeff = A.getCoeff(exact_grad, G_map);
 
             A.initSystem();
-            A.assemble(u_space * u_space.tr() * meas(G_map),
-                       u_space * u_coeff * meas(G_map));
+            A.assembleBdr(bc.get("ValuesAndDerivatives"),
+                            u_space * u_space.tr() * meas(G_map) + (igrad(u_space, G_map) * unv(G_map)) * (igrad(u_space, G_map) * unv(G_map)).tr() * meas(G_map),
+                            u_space * u_coeff * meas(G_map) + (igrad(u_space, G_map) * unv(G_map)) * (u_grad_coeff.tr() * unv(G_map)) * meas(G_map));
 
-            gsSparseMatrix<T> M_global = T_global.transpose() * A.matrix() * T_global;
-            gsMatrix<T> F_global = T_global.transpose() * A.rhs();
- 
-            gsMatrix<T> sol_global;
-            makeSparseCholeskySolver(M_global)->apply(F_global, sol_global);
-            sol_bnd = sol_global.bottomRows(nBnd);
+            gsSparseMatrix<T> M_bnd = T_bnd.transpose() * A.matrix() * T_bnd;
+            gsMatrix<T> F_bnd = T_bnd.transpose() * A.rhs();
+            makeSparseCholeskySolver(M_bnd)->apply(F_bnd, sol_bnd);
         }
 
         // ---- Assemble Discontinuous Biharmonic Matrix & RHS ----

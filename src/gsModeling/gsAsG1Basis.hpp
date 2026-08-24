@@ -187,7 +187,7 @@ collocateCorners(const gsTensorBSplineBasis<2, T> &tensorBasis,
         transform2(2,1) = -normals(0+2*i)*normals(1+2*i);
         transform2(0,2) = 2*normals(0+2*i)*normals(1+2*i);
         transform2(1,2) = 2*normals(0+2*i)*normals(1+2*i);
-        transform2(2,2) = -normals(0+2*i)*normals(0+2*i)+normals(1+2*i)*normals(1+2*i);
+        transform2(2,2) = normals(0+2*i)*normals(0+2*i)+normals(1+2*i)*normals(1+2*i);
         transforms2.push_back(give(transform2));
     }
 
@@ -225,8 +225,7 @@ collocateCorners(const gsTensorBSplineBasis<2, T> &tensorBasis,
     {
         gsMatrix<T> tmp;
         transformGradients(md, i, der1, tmp);
-        tmp.resize(der1.rows()/2, 2);
-        tmp = tmp * transforms[i];
+        tmp = transforms[i] * tmp;
         tmp.resize(der1.rows(), 1);
         der1Phys.col(i) = tmp;
     }
@@ -236,9 +235,8 @@ collocateCorners(const gsTensorBSplineBasis<2, T> &tensorBasis,
     {
         gsMatrix<T> tmp;
         transformDeriv2Hgrad(md, i, der1, der2, tmp);
-        tmp = tmp.transpose();
-        tmp.resize(der2.rows()/3, 3);
         tmp = tmp * transforms2[i];
+        tmp = tmp.transpose();
         tmp.resize(der2.rows(), 1);
         der2Phys.col(i) = tmp;
     }
@@ -258,7 +256,6 @@ collocateCorners(const gsTensorBSplineBasis<2, T> &tensorBasis,
             result(6 * i + 5, idx(j, i)) = der2Phys(3 * j + 2, i); // dxy u
         }
     }
-
     return result.sparseView(1, 1e-4);
 }
 
@@ -663,7 +660,6 @@ gsDofMapper makeMapperForArgyrisBasis(const gsMultiPatch<T>& mp,
     }
 
     // Now, incorporate the boundary conditons
-    // TODO: Proper handling of the corner values
     // TODO: Implement separate conditions for "Values" and "Derivatives"
     for (auto it = bc.begin("ValuesAndDerivatives"); it != bc.end("ValuesAndDerivatives"); ++it)
     {
@@ -687,17 +683,23 @@ gsDofMapper makeMapperForArgyrisBasis(const gsMultiPatch<T>& mp,
         const index_t c = cc[i].first.m_index - 1;
         const index_t off_corner = sumUntil(argBasis[cc[i].first.patch].sizes, 9 + c);
         if (cc[i].second == cornerConditionType::all)
+        {
             for (index_t j=0; j<6; ++j)
                 mapper.eliminateDof(off_corner+j, cc[i].first.patch);
+        }
         else if (cc[i].second == cornerConditionType::valuesNormals)
-            for (index_t j=0; j<5; ++j)
-                mapper.eliminateDof(off_corner+j, cc[i].first.patch);
+        {
+            for (index_t j=0; j<6; ++j)
+                if (j!=3)
+                    mapper.eliminateDof(off_corner+j, cc[i].first.patch);
+        }
         else if (cc[i].second == cornerConditionType::none)
-            ; // Do nothing
+        {
+            // Do nothing
+        }
         else
             GISMO_ENSURE(false, "Not implemented.");
     }
-
 
     mapper.finalize();
     return mapper;
