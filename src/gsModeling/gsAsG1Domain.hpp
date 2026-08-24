@@ -210,7 +210,7 @@ template <class T>
 gsVector<T> computeGluingDataForInterface(
     const gsMultiPatch<T>& mp,
     const boundaryInterface& interf,
-    const T eps = T(1e-8),
+    const T eps = 1e-8,
     index_t numGaussPerSpan = 0)
 {
     gsVector<T> result(8);
@@ -276,7 +276,9 @@ gsVector<T> computeGluingDataForInterface(
 // ====================================================================
 template <class T>
 gsMatrix<T> computeGluingData(
-    const gsMultiPatch<T>& mp, T eps = T(1e-8), index_t numGaussPerSpan = 0)
+    const gsMultiPatch<T>& mp,
+    T eps = 1e-8,
+    index_t numGaussPerSpan = 0)
 {
     const index_t nP = mp.nPatches();
     gsMatrix<T> M(nP, 16);
@@ -310,7 +312,10 @@ gsMatrix<T> computeGluingData(
 
 
 template <typename T>
-std::vector<std::vector<patchCorner>> getBoundaryVertices(const gsBoxTopology& bt, const gsBoundaryConditions<T>& bc, const std::string& label)
+std::vector<std::vector<patchCorner>> getBoundaryVertices(
+    const gsBoxTopology& bt,
+    const gsBoundaryConditions<T>& bc,
+    const std::string& label)
 {
     const short_t dim = 2;
     gsSortedVector<std::vector<patchCorner>> result;
@@ -332,7 +337,10 @@ std::vector<std::vector<patchCorner>> getBoundaryVertices(const gsBoxTopology& b
 }
 
 template <typename T>
-gsVector<T> getOuterNormalDerivative(const gsMultiPatch<T>& mp, const std::vector<patchCorner>& corners, T eps = 1e-4)
+gsVector<T> getOuterNormalDerivative(
+    const gsMultiPatch<T>& mp,
+    const std::vector<patchCorner>& corners,
+    T eps = 1e-4)
 {
     const short_t dim = 2;
     std::vector<gsVector<T>> normals;

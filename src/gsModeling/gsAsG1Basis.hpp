@@ -20,7 +20,8 @@ namespace gismo {
 // ====================================================================
 
 template <typename T>
-gsSparseMatrix<T> asEmbeddingMatrix(index_t rows, const gsMatrix<index_t> &c) {
+gsSparseMatrix<T> asEmbeddingMatrix(index_t rows, const gsMatrix<index_t> &c)
+{
     index_t cols = c.rows();
     GISMO_ASSERT(c.cols() == 1, "");
     gsSparseEntries<T> se;
@@ -118,10 +119,10 @@ gsSparseMatrix<T> evaluateBasisAtBoundary(const gsBSplineBasis<T> &basis,
 // ====================================================================
 
 template <typename T>
-gsSparseMatrix<T>
-collocateBoundaryValues(const gsTensorBSplineBasis<2, T> &tensorBasis,
-                        boxSide side,
-                        const gsMatrix<T> &pts)
+gsSparseMatrix<T> collocateBoundaryValues(
+    const gsTensorBSplineBasis<2, T> &tensorBasis,
+    boxSide side,
+    const gsMatrix<T> &pts)
 {
     const gsBSplineBasis<T> normalBasis = tensorBasis.component(side.direction());
     const gsBSplineBasis<T> tangentialBasis = *tensorBasis.boundaryBasis(side);
@@ -160,10 +161,10 @@ gsSparseMatrix<T> collocateBoundaryCrossingDerivative(
 }
 
 template <typename T>
-gsSparseMatrix<T>
-collocateCorners(const gsTensorBSplineBasis<2, T> &tensorBasis,
-                 const gsGeometry<T> &geo,
-                 const gsMatrix<T> &normals)
+gsSparseMatrix<T> collocateCorners(
+    const gsTensorBSplineBasis<2, T> &tensorBasis,
+    const gsGeometry<T> &geo,
+    const gsMatrix<T> &normals)
 {
     std::vector<gsMatrix<T>> transforms;
     transforms.reserve(4);
@@ -269,11 +270,11 @@ template <typename T> struct gsEdgeEmbedding {
 };
 
 template <typename T>
-gsEdgeEmbedding<T>
-deriveEdgeEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
-                    const gsMatrix<T> &localGluingData,
-                    boxSide side,
-                    T eps = 1e-4)
+gsEdgeEmbedding<T> deriveEdgeEmbedding(
+    const gsTensorBSplineBasis<2, T> &tensorBasis,
+    const gsMatrix<T> &localGluingData,
+    boxSide side,
+    T eps = 1e-4)
 {
     const gsBSplineBasis<T> sideBasis = *tensorBasis.boundaryBasis(side);
     const gsMatrix<T> greville = sideBasis.anchors();
@@ -305,8 +306,7 @@ deriveEdgeEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
 }
 
 template <typename T>
-gsSparseMatrix<T>
-deriveInnerPortionEdgeEmbedding(const gsEdgeEmbedding<T> &ee)
+gsSparseMatrix<T> deriveInnerPortionEdgeEmbedding(const gsEdgeEmbedding<T> &ee)
 {
     const index_t rows = ee.matrix.cols();
     const index_t cols = ee.sizes[0] + ee.sizes[1] - 10;
@@ -323,8 +323,7 @@ deriveInnerPortionEdgeEmbedding(const gsEdgeEmbedding<T> &ee)
 }
 
 template <typename T>
-gsSparseMatrix<T>
-deriveCornersPortionEdgeEmbedding(const gsEdgeEmbedding<T> &ee)
+gsSparseMatrix<T> deriveCornersPortionEdgeEmbedding(const gsEdgeEmbedding<T> &ee)
 {
     const index_t rows = ee.matrix.cols();
     gsVector<index_t> indices(10);
@@ -344,8 +343,7 @@ deriveCornersPortionEdgeEmbedding(const gsEdgeEmbedding<T> &ee)
 }
 
 template <typename T>
-std::vector<index_t>
-getInteriorDofs(const gsTensorBSplineBasis<2, T> &tensorBasis, boxSide side)
+std::vector<index_t> getInteriorDofs(const gsTensorBSplineBasis<2, T> &tensorBasis, boxSide side)
 {
     std::vector<index_t> removedSet;
     for (index_t i = 0; i < 2; ++i)
@@ -368,9 +366,7 @@ getInteriorDofs(const gsTensorBSplineBasis<2, T> &tensorBasis, boxSide side)
 }
 
 template <typename T>
-gsSparseMatrix<T>
-deriveInnerEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
-                     boxSide side)
+gsSparseMatrix<T> deriveInnerEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis, boxSide side)
 {
     std::vector<index_t> interior = getInteriorDofs(tensorBasis, side);
     // Convert to gsVector
@@ -381,8 +377,7 @@ deriveInnerEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
 }
 
 template <typename T>
-std::vector<index_t>
-getInteriorDofs(const gsTensorBSplineBasis<2, T> &tensorBasis)
+std::vector<index_t> getInteriorDofs(const gsTensorBSplineBasis<2, T> &tensorBasis)
 {
     std::vector<index_t> removedSet;
     for (boxSide side = boxSide::getFirst(2); side != boxSide::getEnd(2); ++side)
@@ -408,8 +403,7 @@ getInteriorDofs(const gsTensorBSplineBasis<2, T> &tensorBasis)
 }
 
 template <typename T>
-gsSparseMatrix<T>
-deriveInnerEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis)
+gsSparseMatrix<T> deriveInnerEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis)
 {
     std::vector<index_t> interior = getInteriorDofs(tensorBasis);
     // Convert to gsVector
@@ -424,11 +418,11 @@ deriveInnerEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis)
 // ====================================================================
 
 template <typename T>
-gsSparseMatrix<T>
-deriveCornerEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
-                      const gsGeometry<T> &geo,
-                      const gsMatrix<T> &localGluingData,
-                      const gsMatrix<T> &normals)
+gsSparseMatrix<T> deriveCornerEmbedding(
+    const gsTensorBSplineBasis<2, T> &tensorBasis,
+    const gsGeometry<T> &geo,
+    const gsMatrix<T> &localGluingData,
+    const gsMatrix<T> &normals)
 {
     index_t rows = tensorBasis.size();
     gsBlockSparseMatrix<T> collocation(6, 5);
@@ -455,7 +449,7 @@ deriveCornerEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
 
     gsMatrix<T> rhs(collocationMatrix.rows(), 24);
     rhs.setZero();
-    for (int i = 0; i < 24; i++)
+    for (index_t i = 0; i < 24; i++)
         rhs(i, i) = 1;
 
     gsMatrix<T> result;
@@ -475,10 +469,11 @@ public:
 };
 
 template <typename T>
-gsAsG1Embedding<T>
-deriveTwoPatchASG1Embedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
-                            boxSide side, const gsMatrix<T> &localGluingData,
-                            T eps = 1e-12)
+gsAsG1Embedding<T> deriveTwoPatchASG1Embedding(
+    const gsTensorBSplineBasis<2, T> &tensorBasis,
+    boxSide side,
+    const gsMatrix<T> &localGluingData,
+    T eps = 1e-12)
 {
     gsAsG1Embedding<T> result;
     index_t rows = tensorBasis.size();
@@ -515,12 +510,12 @@ public:
 };
 
 template <typename T>
-gsArgyrisEmbedding<T>
-deriveArgyrisBasisEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
-                            const gsMatrix<T> &localGluingData,
-                            const gsMatrix<T> &normals,
-                            gsGeometry<T> &geo,
-                            T eps = 1e-12)
+gsArgyrisEmbedding<T> deriveArgyrisBasisEmbedding(
+    const gsTensorBSplineBasis<2, T> &tensorBasis,
+    const gsMatrix<T> &localGluingData,
+    const gsMatrix<T> &normals,
+    gsGeometry<T> &geo,
+    T eps = 1e-12)
 {
     gsArgyrisEmbedding<T> result;
     gsBlockSparseMatrix<T> blockMatrix(1, 6);
@@ -560,11 +555,11 @@ deriveArgyrisBasisEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
 }
 
 template <typename T>
-gsArgyrisEmbedding<T>
-deriveArgyrisBasisEmbedding(const gsTensorBSplineBasis<2, T> &tensorBasis,
-                            const gsMatrix<T> &localGluingData,
-                            gsGeometry<T> &geo,
-                            T eps = 1e-12)
+gsArgyrisEmbedding<T> deriveArgyrisBasisEmbedding(
+    const gsTensorBSplineBasis<2, T> &tensorBasis,
+    const gsMatrix<T> &localGluingData,
+    gsGeometry<T> &geo,
+    T eps = 1e-12)
 {
     gsMatrix<T> normals(1,4*2);
     normals.setZero();
@@ -590,10 +585,11 @@ typedef std::pair<patchCorner, cornerConditionType> cornerCondition;
 typedef std::vector<cornerCondition> cornerConditions;
 
 template<typename T>
-gsDofMapper makeMapperForArgyrisBasis(const gsMultiPatch<T>& mp,
-                                      const std::vector<gsArgyrisEmbedding<T>>& argBasis,
-                                      const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
-                                      const cornerConditions& cc = cornerConditions())
+gsDofMapper makeMapperForArgyrisBasis(
+    const gsMultiPatch<T>& mp,
+    const std::vector<gsArgyrisEmbedding<T>>& argBasis,
+    const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
+    const cornerConditions& cc = cornerConditions())
 {
     gsVector<index_t> patchDofSizes(argBasis.size());
     for (size_t i = 0; i < argBasis.size(); ++i)
@@ -615,10 +611,8 @@ gsDofMapper makeMapperForArgyrisBasis(const gsMultiPatch<T>& mp,
         const index_t offLvl1_1 = sumUntil(sz1, 2 + 2 * (ps1.m_index - 1));
         const index_t offLvl1_2 = sumUntil(sz2, 2 + 2 * (ps2.m_index - 1));
 
-        GISMO_ASSERT(nLvl0 == sz2[1 + 2 * (ps2.m_index - 1)],
-                    "Dimension missmatch.");
-        GISMO_ASSERT(nLvl1 == sz2[2 + 2 * (ps2.m_index - 1)],
-                    "Dimension missmatch.");
+        GISMO_ASSERT (nLvl0 == sz2[1+2*(ps2.m_index-1)], "Dimension missmatch.");
+        GISMO_ASSERT (nLvl1 == sz2[2+2*(ps2.m_index-1)], "Dimension missmatch.");
 
         // Check interface orientation: if the tangential directions
         // run in opposite directions, we need to reverse the DOF mapping
@@ -698,7 +692,9 @@ gsDofMapper makeMapperForArgyrisBasis(const gsMultiPatch<T>& mp,
             // Do nothing
         }
         else
+        {
             GISMO_ENSURE(false, "Not implemented.");
+        }
     }
 
     mapper.finalize();
