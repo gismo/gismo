@@ -1083,15 +1083,19 @@ public:
             gsWarn << "unknown tag in XML multipatch object \n";
         }
 
-        // Read boundary
+        // Read boundary (one <boundary> node per label group, see appendBoxTopology)
         std::vector< patchSide > boundaries;
-        gsXmlNode * tmp = node->first_node("boundary");
-        if (tmp)
-            getBoundaries(tmp, ids, boundaries);
+        for (gsXmlNode * child = node->first_node("boundary"); child;
+                child = child->next_sibling("boundary"))
+        {
+            std::vector< patchSide > tmp_boundaries;
+            getBoundaries(child, ids, tmp_boundaries);
+            boundaries.insert( boundaries.end(), tmp_boundaries.begin(), tmp_boundaries.end() );
+        }
 
         // Read interfaces
         std::vector< boundaryInterface > interfaces;
-        tmp = node->first_node("interfaces");
+        gsXmlNode * tmp = node->first_node("interfaces");
         if (tmp)
             getInterfaces(tmp, d, ids, interfaces);
 

@@ -226,14 +226,41 @@ void appendBoxTopology(const gsBoxTopology& topology,
 
     if ( topology.nBoundary() != 0)
     {
+        // Group boundary sides by label: one <boundary name="L"> node per
+        // distinct non-empty label, plus one unlabelled <boundary> node for
+        // sides whose label is empty. Groups are emitted in first-seen
+        // order (labelOrder) so the output is deterministic across runs.
+        std::vector<std::string> labelOrder;
+        std::map<std::string, std::string> groups;
+        std::string unlabelled;
+
         for ( gsBoxTopology::const_biterator it = topology.bBegin();
               it != topology.bEnd(); ++it )
         {
-            oss << it->patch << " " << int(it->side()) << "\n";
+            std::ostringstream line;
+            line << id_map[it->patch] << " " << int(it->side()) << "\n";
+
+            const std::string & label = it->label();
+            if ( label.empty() )
+                unlabelled += line.str();
+            else
+            {
+                if ( groups.find(label) == groups.end() )
+                    labelOrder.push_back(label);
+                groups[label] += line.str();
+            }
         }
-        node->append_node(internal::makeNode("boundary", oss.str(), data));
-        oss.clear();
-        oss.str("");
+
+        if ( !unlabelled.empty() )
+            node->append_node(internal::makeNode("boundary", unlabelled, data));
+
+        for ( std::vector<std::string>::const_iterator lit = labelOrder.begin();
+              lit != labelOrder.end(); ++lit )
+        {
+            gsXmlNode * bnode = internal::makeNode("boundary", groups[*lit], data);
+            bnode->append_attribute( internal::makeAttribute("name", *lit, data) );
+            node->append_node(bnode);
+        }
     }
 }
 

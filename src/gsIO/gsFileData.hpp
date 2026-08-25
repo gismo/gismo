@@ -95,6 +95,18 @@ gsFileData<T>::addComment(std::string const & message)
 }
 
 template<class T> void
+gsFileData<T>::reserveIds(int base)
+{
+    if (base <= 0) return;
+    GISMO_ENSURE(base-1 >= data->maxId(),
+                 "gsFileData::reserveIds: cannot reserve up to "<<base
+                 <<", ids up to "<<data->maxId()<<" are already in use.");
+    gsXmlNode * dummy = internal::makeNode("string", "", *data);
+    data->appendToRoot(dummy, base-1);      // sets max_Id = base-1
+    data->getRoot()->remove_node(dummy);
+}
+
+template<class T> void
 gsFileData<T>::save(std::string const & fname, bool compress)  const
 {
     gsXmlNode * comment = internal::makeComment("This file was created by G+Smo "

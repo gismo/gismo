@@ -286,6 +286,23 @@ public:
         this->add<Object>(obj);
     }
 
+    /// \brief Reserves XML ids [0, \a base) so that objects added afterwards
+    /// receive ids >= \a base.
+    ///
+    /// Objects inserted by gsXml<...>::put take consecutive auto-assigned ids.
+    /// Reserving a range before adding them keeps a fixed id (e.g. 0 for the
+    /// MultiPatch node, as expected by consumers reading with getId(0,...))
+    /// free for explicit assignment.
+    ///
+    /// \note ids are formatted through (unsigned short) internally, so ids
+    /// above 65535 wrap silently.
+    ///
+    /// \warning The overlap check only sees ids assigned through this object.
+    /// gsXmlTree does not recompute max_Id when parsing, so on a gsFileData read
+    /// from a file maxId() is -1 and the check passes vacuously — reserveIds is
+    /// meaningful on a tree this object built, not on one loaded from disk.
+    void reserveIds(int base);
+
     /// Add the object to the Xml tree, same as <<, but also allows to set the XML id and label attributes
     template<class Object>
     void add (const Object & obj, int id = -1)
