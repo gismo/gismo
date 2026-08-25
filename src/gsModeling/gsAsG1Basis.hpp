@@ -221,15 +221,14 @@ gsSparseMatrix<T> collocateCorners(
         // Transform gradient to phyiscal domain
         gsMatrix<T> der1Phys;
         transformGradients(md, i, der1, der1Phys);
+        der1Phys = der1Phys.transpose();
         // Transform x and y derivatives into derivatives in normal and tangenial direction
         gsMatrix<T> transform(2,2);
         transform(0,0) = normals(0+2*i);
         transform(1,0) = normals(1+2*i);
         transform(0,1) = normals(1+2*i);
         transform(1,1) = -normals(0+2*i);
-        der1Phys = transform * der1Phys;
-        // Transform into uniform shape
-        der1Phys.resize(der1.rows(), 1);
+        der1Phys = der1Phys * transform;
 
         // Transform Hessian to physical domain
         gsMatrix<T> der2Phys;
@@ -239,18 +238,15 @@ gsSparseMatrix<T> collocateCorners(
             der2Phys.row(j) = hessMatrixAsReduced<T>(
                     transform * reducedHessAsMatrix<T>(der2Phys.row(j)) * transform
             );
-        // Transform into uniform shape
-        der2Phys = der2Phys.transpose();
-        der2Phys.resize(der2.rows(), 1);
 
         for (index_t j=0; j<idx.rows(); ++j)
         {
-            result(6*i+0, idx(j, i)) = vals(j, i);            //      u
-            result(6*i+1, idx(j, i)) = der1Phys(2 * j);       // d_n  u
-            result(6*i+2, idx(j, i)) = der1Phys(2 * j + 1);   // d_t  u
-            result(6*i+3, idx(j, i)) = der2Phys(3 * j);       // d_nn u
-            result(6*i+4, idx(j, i)) = der2Phys(3 * j + 1);   // d_tt u
-            result(6*i+5, idx(j, i)) = der2Phys(3 * j + 2);   // d_nt u
+            result(6*i+0, idx(j, i)) = vals(j, i);       //      u
+            result(6*i+1, idx(j, i)) = der1Phys(j, 0);   // d_n  u
+            result(6*i+2, idx(j, i)) = der1Phys(j, 1);   // d_t  u
+            result(6*i+3, idx(j, i)) = der2Phys(j, 0);   // d_nn u
+            result(6*i+4, idx(j, i)) = der2Phys(j, 1);   // d_tt u
+            result(6*i+5, idx(j, i)) = der2Phys(j, 2);   // d_nt u
         }
     }
     return result.sparseView(1, 1e-4);
