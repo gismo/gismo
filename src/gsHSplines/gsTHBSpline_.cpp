@@ -150,6 +150,7 @@ void pybind11_init_gsHTensorBasis(py::module &m)
 {
     using Base  = gsBasis<real_t>;
     using Class = gsHTensorBasis<d,real_t>;
+    using Mat   = gsSparseMatrix<real_t,RowMajor>;
     py::class_<Class,Base>(m, ("gsHTensorBasis" + std::to_string(d)).c_str())
 
     // Accessor methods
@@ -200,8 +201,8 @@ void pybind11_init_gsHTensorBasis(py::module &m)
 
     // withCoefs and withTransfer variants
     .def("uniformRefine_withCoefs",
-         [](Class &self, gsMatrix<real_t> &coefs, int nk, int m, short_t d) {
-           self.uniformRefine_withCoefs(coefs, nk, m, d);
+         [](Class &self, gsMatrix<real_t> &coefs, int nk, int m, short_t dir) {
+           self.uniformRefine_withCoefs(coefs, nk, m, dir);
          },
          py::arg("coefs"), py::arg("numKnots")=1, py::arg("mul")=1, py::arg("dir")=-1,
          "Uniformly refine and update coefficients")
