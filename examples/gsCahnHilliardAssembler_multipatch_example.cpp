@@ -15,7 +15,7 @@
 
 //! [Include namespace]
 #include <gismo.h>
-#include <gsAssembler/gsCahnHilliardAssembler.h>
+#include <gsCahnHilliard/gsCahnHilliardAssembler.h>
 
 using namespace gismo;
 //! [Include namespace]
@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
     real_t Q0norm = 1, Qnorm = 10;
 
     // USE A MESH FOR PLOTTING
-    gsSurfMesh mesh = mp.toMesh();
+    auto mesh = mp.toMesh();
     auto pid = mesh.get_vertex_property<index_t>("v:patch");
     auto aid = mesh.get_vertex_property<index_t>("v:anchor");
     auto field = mesh.add_vertex_property<real_t>("v:field");

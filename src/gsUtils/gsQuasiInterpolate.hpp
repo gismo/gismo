@@ -24,8 +24,9 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &bb,
                                               index_t i,
                                               const gsMatrix<T> &ab)
 {
+    using Real = gsQuadrature::Real;
     gsMatrix<T> bev, fev, pts, tmp;
-    gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,(T)1.0,1);
+    gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,(Real)1.0,1);
     gsQuadRule<T>  qRule     = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,nNodes);
     qRule.mapTo(ab, pts);//map points on element
     bb .eval_into(pts, bev);//evaluate basis
@@ -65,11 +66,11 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &bb,
     if (const gsHTensorBasis<3,T>* b = dynamic_cast<const gsHTensorBasis<3,T>* >(&bb))
         return localIntpl(*b,fun,i);
     if (const gsHTensorBasis<4,T>* b = dynamic_cast<const gsHTensorBasis<4,T>* >(&bb))
-        return localIntpl(*b,fun,i);        
-    // If it is a gsRationalTHBSplineBasis, we check the source
-    if (const gsHTensorBasis<1, T>* b = dynamic_cast<const gsHTensorBasis<1,T>* >(&bb.source())) 
         return localIntpl(*b,fun,i);
-    if (const gsHTensorBasis<2, T>* b = dynamic_cast<const gsHTensorBasis<2,T>* >(&bb.source())) 
+    // If it is a gsRationalTHBSplineBasis, we check the source
+    if (const gsHTensorBasis<1, T>* b = dynamic_cast<const gsHTensorBasis<1,T>* >(&bb.source()))
+        return localIntpl(*b,fun,i);
+    if (const gsHTensorBasis<2, T>* b = dynamic_cast<const gsHTensorBasis<2,T>* >(&bb.source()))
         return localIntpl(*b,fun,i);
     if (const gsHTensorBasis<3, T>* b = dynamic_cast<const gsHTensorBasis<3,T>* >(&bb.source()))
         return localIntpl(*b,fun,i);

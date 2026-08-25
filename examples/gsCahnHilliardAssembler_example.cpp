@@ -15,7 +15,7 @@
 
 //! [Include namespace]
 #include <gismo.h>
-#include <gsAssembler/gsCahnHilliardAssembler.h>
+#include <gsCahnHilliard/gsCahnHilliardAssembler.h>
 
 using namespace gismo;
 //! [Include namespace]

@@ -214,10 +214,10 @@ void gsBiharmonicExprAssembler<T>::assemble()
         index_t i = 0;
         for ( typename gsMultiPatch<T>::const_iiterator it = m_patches.iBegin(); it != m_patches.iEnd(); ++it, ++i)
         {
-            T stab     = 4 * ( m_basis.maxCwiseDegree() + m_basis.dim() ) * ( m_basis.maxCwiseDegree() + 1 );
+            T stab     = 4. * ( m_basis.maxCwiseDegree() + m_basis.dim() ) * ( m_basis.maxCwiseDegree() + 1 );
             T m_h      = m_basis.basis(0).getMinCellLength(); // m_basis.basis(0).getMinCellLength();
-            T mu       = 2 * stab / m_h;
-            T alpha = 1;
+            T mu       = 2. * stab / m_h;
+            T alpha = 1.;
 
             //mu = penalty_init == -1.0 ? mu : penalty_init / m_h;
             if (m_penalty == -1)
@@ -334,10 +334,10 @@ void gsBiharmonicExprAssembler<T>::assembleLHS()
         index_t i = 0;
         for ( typename gsMultiPatch<T>::const_iiterator it = m_patches.iBegin(); it != m_patches.iEnd(); ++it, ++i)
         {
-            T stab     = 4 * ( m_basis.maxCwiseDegree() + m_basis.dim() ) * ( m_basis.maxCwiseDegree() + 1 );
+            T stab     = 4. * ( m_basis.maxCwiseDegree() + m_basis.dim() ) * ( m_basis.maxCwiseDegree() + 1 );
             T m_h      = m_basis.basis(0).getMinCellLength(); // m_basis.basis(0).getMinCellLength();
-            T mu       = 2 * stab / m_h;
-            T alpha = 1;
+            T mu       = 2. * stab / m_h;
+            T alpha = 1.;
 
             //mu = penalty_init == -1.0 ? mu : penalty_init / m_h;
             if (m_penalty == -1)
