@@ -240,7 +240,7 @@ void gsParaview<T>::write(const gsMesh<T> & mesh, const std::string & fn) const
 }
 
 template<class T>
-void gsParaview<T>::write(const gsSurfMesh & mesh, const std::string & fn,
+void gsParaview<T>::write(const gsSurfMesh<T> & mesh, const std::string & fn,
                           std::initializer_list<std::string> props) const
 {
     gsWriteParaview(mesh, fn, props);

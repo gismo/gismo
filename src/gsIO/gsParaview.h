@@ -20,9 +20,6 @@
 namespace gismo
 {
 
-// Forward declaration
-class gsSurfMesh;
-
 /**
     @brief Class for exporting geometry and data to Paraview file format.
 
@@ -127,7 +124,7 @@ public:
                const std::string & fn = "mesh") const;
 
     /// @brief Export a gsSurfMesh to Paraview file
-    void write(const gsSurfMesh & mesh,
+    void write(const gsSurfMesh<T> & mesh,
                const std::string & fn = "surfmesh",
                std::initializer_list<std::string> props = {}) const;
 
