@@ -402,7 +402,7 @@ gsAdaptiveMeshing<_dim,T>::_markFraction_impl( const boxMapType & elements, cons
             _addAndMark(*box,elMarked);
         }
         // return false;
-        return (cummulErrMarked > errorMarkSum);
+        return static_cast<bool>(cummulErrMarked > errorMarkSum);
     };
 
     std::vector<index_t>::const_iterator it = std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
@@ -433,7 +433,7 @@ gsAdaptiveMeshing<_dim,T>::_markFraction_impl( const boxMapType & elements, cons
             _addAndMark(*box,elMarked);
         }
         // return false;
-        return (cummulErrMarked > errorMarkSum);
+        return static_cast<bool>(cummulErrMarked > errorMarkSum);
     };
 
     std::vector<index_t>::const_iterator it = std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
@@ -482,7 +482,7 @@ gsAdaptiveMeshing<_dim,T>::_markFraction_impl( const boxMapType & elements, cons
             _addAndMark(neighborhood,elMarked);
         }
         // return false;
-        return (cummulErrMarked > errorMarkSum);
+        return static_cast<bool>(cummulErrMarked > errorMarkSum);
     };
 
     std::vector<index_t>::const_iterator it = std::find_if(m_refPermutation.cbegin(),m_refPermutation.cend(),loop_action);
@@ -513,7 +513,7 @@ gsAdaptiveMeshing<_dim,T>::_markFraction_impl( const boxMapType & elements, cons
             cummulErrMarked += box->error();
             _addAndMark(*box,elMarked);
         }
-        return (cummulErrMarked > errorMarkSum);
+        return static_cast<bool>(cummulErrMarked > errorMarkSum);
         // return false;
     };
 
@@ -570,7 +570,7 @@ gsAdaptiveMeshing<_dim,T>::_markProjectedFraction_impl( const boxMapType & eleme
         }
 
         // return false;
-        return (projectedError > targetError);
+        return static_cast<bool>(projectedError > targetError);
     };
 
     std::vector<index_t>::const_iterator it = std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
@@ -605,7 +605,7 @@ gsAdaptiveMeshing<_dim,T>::_markProjectedFraction_impl( const boxMapType &, cons
     //         _addAndMark(*box,elMarked);
     //     }
     //     // return false;
-    //     return (projectedError > targetError);
+    //     return static_cast<bool>(projectedError > targetError);
     // };
 
     // std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
@@ -658,7 +658,7 @@ gsAdaptiveMeshing<_dim,T>::_markProjectedFraction_impl( const boxMapType & eleme
             _addAndMark(neighborhood,elMarked);
         }
         // return false;
-        return (projectedError < targetError);
+        return static_cast<bool>(projectedError < targetError);
     };
 
     std::vector<index_t>::const_iterator it = std::find_if(m_refPermutation.cbegin(),m_refPermutation.cend(),loop_action);
@@ -696,7 +696,7 @@ gsAdaptiveMeshing<_dim,T>::_markProjectedFraction_impl( const boxMapType & eleme
             projectedError -= box->projectedImprovement();
             _addAndMark(*box,elMarked);
         }
-        return (projectedError < targetError);
+        return static_cast<bool>(projectedError < targetError);
         // return false;
     };
 
@@ -746,7 +746,7 @@ gsAdaptiveMeshing<_dim,T>::_markPercentage_impl( const boxMapType & elements, co
 
     std::vector<index_t>::const_iterator it = std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
-    if (m_verbose) gsDebug<<"[Mark percentage] Marked "<<elMarked.totalSize()<<", ("<<nmarked<<") elements ("<<(T)nmarked/NE*100<<"%"<<" of NE "<<NE<<") and threshold = "<<NR<<" ("<<m_crsParam*100<<"%)"<<((it==m_crsPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
+    if (m_verbose) gsDebug<<"[Mark percentage] Marked "<<elMarked.totalSize()<<", ("<<nmarked<<") elements ("<<(T)nmarked/((T)(NE*100))<<"%"<<" of NE "<<NE<<") and threshold = "<<NR<<" ("<<m_crsParam*100.<<"%)"<<((it==m_crsPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
 }
 
 template<short_t _dim, class T>
@@ -777,7 +777,7 @@ gsAdaptiveMeshing<_dim,T>::_markPercentage_impl( const boxMapType & elements, co
 
     std::vector<index_t>::const_iterator it = std::find_if(m_crsPermutation.cbegin(),m_crsPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
-    if (m_verbose) gsDebug<<"[Mark percentage] Marked "<<elMarked.totalSize()<<", ("<<nmarked<<") elements ("<<(T)nmarked/NE*100<<"%"<<" of NE "<<NE<<") and threshold = "<<NR<<" ("<<m_crsParam*100<<"%)"<<((it==m_crsPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
+    if (m_verbose) gsDebug<<"[Mark percentage] Marked "<<elMarked.totalSize()<<", ("<<nmarked<<") elements ("<<(T)nmarked/((T)(NE*100))<<"%"<<" of NE "<<NE<<") and threshold = "<<NR<<" ("<<m_crsParam*100.<<"%)"<<((it==m_crsPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
 }
 
 template<short_t _dim, class T>
@@ -815,7 +815,7 @@ gsAdaptiveMeshing<_dim,T>::_markPercentage_impl( const boxMapType & elements, co
 
     std::vector<index_t>::const_iterator it = std::find_if(m_refPermutation.cbegin(),m_refPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
-    if (m_verbose) gsDebug<<"[Mark percentage] Marked "<<elMarked.totalSize()<<", ("<<nmarked<<") elements ("<<(T)nmarked/NE*100<<"%"<<" of NE "<<NE<<") and threshold = "<<NR<<" ("<<m_refParam*100<<"%)"<<((it==m_refPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
+    if (m_verbose) gsDebug<<"[Mark percentage] Marked "<<elMarked.totalSize()<<", ("<<nmarked<<") elements ("<<(T)nmarked/((T)(NE*100))<<"%"<<" of NE "<<NE<<") and threshold = "<<NR<<" ("<<m_refParam*100.<<"%)"<<((it==m_refPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
 }
 
 template<short_t _dim, class T>
@@ -850,7 +850,7 @@ gsAdaptiveMeshing<_dim,T>::_markPercentage_impl( const boxMapType & elements, co
 
     std::vector<index_t>::const_iterator it = std::find_if(m_refPermutation.cbegin(),m_refPermutation.cend(),loop_action);
     elMarked = HBoxUtils::Unique(elMarked);
-    if (m_verbose) gsDebug<<"[Mark percentage] Marked "<<elMarked.totalSize()<<", ("<<nmarked<<") elements ("<<(T)nmarked/NE*100<<"%"<<" of NE "<<NE<<") and threshold = "<<NR<<" ("<<m_refParam*100<<"%)"<<((it==m_refPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
+    if (m_verbose) gsDebug<<"[Mark percentage] Marked "<<elMarked.totalSize()<<", ("<<nmarked<<") elements ("<<(T)nmarked/((T)(NE*100))<<"%"<<" of NE "<<NE<<") and threshold = "<<NR<<" ("<<m_refParam*100.<<"%)"<<((it==m_refPermutation.end()) ? " (maximum number marked)" : "")<<"\n";
 }
 
 template<short_t _dim, class T>
