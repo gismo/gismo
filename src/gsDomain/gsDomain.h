@@ -244,6 +244,11 @@ public: // Domain element iterators
     virtual gsMatrix<T> boundingBox() const
     {GISMO_NO_IMPLEMENTATION}
 
+    /** @brief i-th component domain (e.g. knot vector for a tensor domain)
+    */
+    virtual Ptr component(index_t i) const
+    {GISMO_UNUSED(i); GISMO_NO_IMPLEMENTATION}
+
     /** @brief Mesh of the domain
     */
     virtual gsMesh<T> mesh() const
