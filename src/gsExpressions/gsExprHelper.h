@@ -244,15 +244,19 @@ public:
         // gsInfo<< "-cdata: "<< m_cdata.size()<<std::endl;
     }
 
-private:
-
     inline gsExprHelper & iface()
     {
-#       pragma omp critical (exprhelper_iface_init)
-        if (nullptr==m_mirror )
-            m_mirror = memory::make_shared(new gsExprHelper(this));
-        return *m_mirror;
+        gsExprHelper * mirror;
+#       pragma omp critical (m_mirror_init)
+        {
+            if (nullptr==m_mirror )
+                m_mirror = memory::make_shared(new gsExprHelper(this));
+            mirror = m_mirror.get();
+        }
+        return *mirror;    
     }
+
+private:
 
     template <class E1>
     void _parse(const expr::_expr<E1> & a1)
