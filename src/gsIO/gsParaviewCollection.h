@@ -130,7 +130,7 @@ private:
     std::stringstream mfile;
     std::string m_filename;
     bool m_isSaved;
-    int m_time;
+    real_t m_time;
     gsExprEvaluator<T>* m_evaluator;
     typename gsParaviewDataSet<T>::uPtr m_dataset;
     gsOptionList m_options;

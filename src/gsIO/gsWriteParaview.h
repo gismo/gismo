@@ -98,12 +98,24 @@ void gsWriteParaview(gsFunctionSet<T> const& geom,
 template <class T>
 void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix<T>& params);
 
-GISMO_EXPORT void gsWriteParaview(const gsSurfMesh & sm,
+template<class Scalar>
+void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
                                   std::string const & fn);
 
-GISMO_EXPORT void gsWriteParaview(const gsSurfMesh & sm,
+template<class Scalar>
+void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
                                   std::string const & fn,
                                   std::vector<std::string> props); //{ }
+
+/// \brief Exports a mesh with the halfedge corresponding to each face.
+///
+/// \param sm: mesh pointer.
+/// \param fn: filename.
+/// \param eps: parameter for offset of the halfedges between the edges.
+template<class Scalar>
+void gsWriteHalfedgesParaview(const gsSurfMesh<Scalar>& sm, 
+                              const std::string& fn,
+                              real_t eps = 0.02);
 
 /// \brief Export a vector of meshes, each mesh in its own file.
 ///

@@ -14,7 +14,7 @@
 
 # pragma once
 
-#include <gsCore/gsMath.h>
+#include <gsCore/gsForwardDeclarations.h>
 
 // Eigen linear algebra library (http://eigen.tuxfamily.org)
 
@@ -30,7 +30,15 @@
 #define EIGEN_PLAINOBJECTBASE_PLUGIN <gsMatrix/gsPlainObjectBaseAddons.h>
 #include <gsMatrix/gsEigenDeclarations.h>
 
+// CRITICAL: Include autodiff Eigen support BEFORE Eigen/Core
+// to ensure NumTraits specializations are defined before Eigen is used
+#ifdef gsAutoDiff_ENABLED
+#include <gsAutoDiff/gsAutoDiffEigen.h>
+#endif
+
 #include <gsEigen/Core>
+
+#include <gsCore/gsMath.h>
 
 #if defined(gsMpfr_ENABLED)
 #include <unsupported/Eigen/MPRealSupport>

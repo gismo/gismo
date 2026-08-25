@@ -55,7 +55,7 @@ void gsParaviewCollection<T>::saveTimeStep()
     GISMO_ENSURE(m_dataset && !m_dataset->isEmpty(),
         "The gsParaviewDataSet, stored internally by gsParaviewCollection, is empty! "
         "Try running newTimestep() before saveTimeStep().");
-    addDataSet(*m_dataset, static_cast<T>(m_time));
+    addDataSet(*m_dataset, m_time);
 }
 
 template <class T>
@@ -68,7 +68,7 @@ void gsParaviewCollection<T>::addDataSet(gsParaviewDataSet<T>& dataSet, T time)
         dataSet.save();
     std::vector<std::string> filenames(dataSet.filenames());
 
-    time = (time == static_cast<T>(-1)) ? static_cast<T>(m_time) : time;
+    time = (time == static_cast<T>(-1)) ? m_time : time;
     mfile << "<!-- Time = " << time << " -->\n";
     for (size_t i = 0; i != filenames.size(); ++i)
     {
@@ -98,11 +98,11 @@ void gsParaviewCollection<T>::newTimeStep(const gsMultiPatch<T>& geometry, T tim
     if (time == static_cast<T>(-1))
     {
         m_time += 1.0;
-        time = static_cast<T>(m_time);
+        time = m_time;
     }
     else
     {
-        m_time = cast<T, int>(time);
+        m_time = time;
     }
 
     std::string name;

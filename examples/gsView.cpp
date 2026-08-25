@@ -149,9 +149,9 @@ int main(int argc, char *argv[])
             break;
         }
 
-        if ( filedata.has< gsSurfMesh >() )
+        if ( filedata.has< gsSurfMesh<real_t> >() )
         {
-            auto msh = filedata.getFirst< gsSurfMesh >();
+            auto msh = filedata.getFirst< gsSurfMesh<real_t> >();
             if (msh)
                 gsInfo<< "Got "<< *msh <<"\n";
             else

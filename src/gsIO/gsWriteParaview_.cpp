@@ -2,6 +2,7 @@
 
 #include <gsIO/gsWriteParaview.h>
 #include <gsIO/gsWriteParaview.hpp>
+#include <gsMesh2/gsSurfMesh.h>
 // #include <gsCore/gsMultiPatch.h>
 
 #define T real_t
@@ -127,8 +128,23 @@ void gsWriteParaviewSolid(gsSolid<T> const  & sl,
 TEMPLATE_INST
 void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd);
 
+
 TEMPLATE_INST
 void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix<T>& params);
+
+TEMPLATE_INST
+void gsWriteParaview(const gsSurfMesh<T> & sm,
+                     std::string const & fn);
+
+TEMPLATE_INST
+void gsWriteParaview(const gsSurfMesh<T> & sm,
+                     std::string const & fn,
+                     std::vector<std::string> props);
+
+TEMPLATE_INST
+void gsWriteHalfedgesParaview(const gsSurfMesh<T>& sm, 
+                                    const std::string& fn,
+                                    real_t eps);                     
 
 TEMPLATE_INST
 void gsWriteParaview(const std::vector<gsMesh<T> >& sl, std::string const & fn);

@@ -33,8 +33,8 @@ int main(int argc, char *argv[])
     gsStopwatch time;
     gsFileData<> fd(filename);
 
-    gsSurfMesh HEmesh;
-    fd.getFirst<gsSurfMesh>(HEmesh);
+     gsSurfMesh<> HEmesh;
+    fd.getFirst<gsSurfMesh<>>(HEmesh);
 
     gsMultiPatch<> mp = HEmesh.linear_patches();
 
