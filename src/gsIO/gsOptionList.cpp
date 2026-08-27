@@ -522,11 +522,11 @@ void pybind11_init_gsOptionList(py::module &m) {
     .def("getMultiInt",    &gsOptionList::getMultiInt)
     .def("getMultiReal",   &gsOptionList::getMultiReal)
 
-    .def("askString", (std::string (gsOptionList::*)(const std::string&)) &gsOptionList::askString)
-    .def("askString", (std::string (gsOptionList::*)(const std::string&,
-                                                     const std::string&)) &gsOptionList::askString)
-    .def("askInt",    (std::string (gsOptionList::*)(const std::string&)) &gsOptionList::askInt)
-    .def("askInt",    (std::string (gsOptionList::*)(const std::string&,
+    // Each ask* is a single const member taking a defaulted second argument.
+    // The cast target must match it exactly -- const, return type and both
+    // parameters: on a non-overloaded name a C-style cast degrades to
+    // reinterpret_cast, which accepts a mismatched pointer-to-member without
+    // a diagnostic and makes the call through it undefined.
     .def("askString", (std::string (gsOptionList::*)
                        (const std::string&, const std::string&) const)
                       &gsOptionList::askString,
