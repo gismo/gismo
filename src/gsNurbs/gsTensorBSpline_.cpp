@@ -54,6 +54,39 @@ CLASS_TEMPLATE_INST internal::gsXml< gsTensorBSpline<4,real_t> >;
 
 namespace py = pybind11;
 
+short_t tensor_spline_dimension_from_args(const py::args & args)
+{
+    if (args.size() == 0)
+        throw py::value_error("Cannot infer tensor spline dimension without constructor arguments.");
+
+    const py::handle first = args[0];
+    if (!py::hasattr(first, "dim"))
+        throw py::value_error("Cannot infer tensor spline dimension: first argument has no dim() method.");
+
+    const short_t d = py::cast<short_t>(first.attr("dim")());
+    if (d < 2 || d > 4)
+        throw py::value_error("Expected inferred dimension in [2, 6] for gsTensorBSpline factory.");
+
+    return d;
+}
+
+void pybind11_init_gsTensorBSpline_factory(py::module &m)
+{
+    m.def("gsTensorBSpline", [module = py::module_(m)](py::args args) -> py::object
+    {
+        const short_t d = tensor_spline_dimension_from_args(args);
+        const std::string className = "gsTensorBSpline" + std::to_string(d);
+        py::object ctor = module.attr(className.c_str());
+
+        PyObject * result = PyObject_CallObject(ctor.ptr(), args.ptr());
+        if (!result)
+            throw py::error_already_set();
+
+        return py::reinterpret_steal<py::object>(result);
+    },
+    "Factory constructor that dispatches to gsTensorBSpline2..6 based on inferred dimension");
+}
+
 template <short_t d>
 void pybind11_init_gsTensorBSpline(py::module &m)
 {
@@ -69,30 +102,6 @@ void pybind11_init_gsTensorBSpline(py::module &m)
     .def("insertKnot", &Class::insertKnot, "Insert a knot in the knot vector")
     .def("degree", &Class::degree, "Returns the degree")
     .def("degreeElevate", &Class::degreeElevate, "Elevate the degree of the spline")
-    // Calculus methods
-    .def("toBezier",  &Class::toBezier,  "Convert to Bézier (C^{-1}) form by knot insertion")
-    .def_static("multiply", &Class::multiply,
-         "Return the pointwise product A*B of two scalar splines",
-         py::arg("A"), py::arg("B"), py::arg("keepBezier") = false)
-    .def_static("linearCombination", &Class::linearCombination,
-         "Return a*A + b*B in the common space of A and B",
-         py::arg("a"), py::arg("A"), py::arg("b"), py::arg("B"))
-    .def("squared",   &Class::squared,   "Return the algebraic square c² as a spline",
-         py::arg("keepBezier") = false)
-    .def("cubed",     &Class::cubed,     "Return the algebraic cube c³ as a spline",
-         py::arg("keepBezier") = false)
-    .def("grad",
-         static_cast<Class (Class::*)(short_t) const>(&Class::grad),
-         "Return partial derivative ∂c/∂x_dir as a spline", py::arg("dir"))
-    .def("grad",
-         static_cast<std::vector<Class> (Class::*)() const>(&Class::grad),
-         "Return all partial derivatives as a list of splines")
-    .def("div",   &Class::div,  "Return divergence of a vector-valued spline")
-    .def("lapl",  &Class::lapl, "Return Laplacian of a scalar spline",
-         py::arg("keepBezier") = false)
-    .def("hess",  &Class::hess,
-         "Return the Hessian of a scalar spline as a spline with targetDim d*d "
-         "(column i*d+j is d^2c/dx_i dx_j)")
     ;
 }
 

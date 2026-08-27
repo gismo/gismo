@@ -96,64 +96,27 @@ public:
 #endif
 
     /**
-       \brief Constructs a 2D tensor product B-spline basis. Assumes
-       that the tamplate parameter \a d is equal to 2.
-
-       \param KV1 knot-vector with respect to the first parameter dimension
-       \param KV2 knot-vector with respect to the second parameter dimension
-     */
-    template<typename U>
-    gsTensorBSplineBasis( KnotVectorType KV1, gsKnotVector<U> KV2,
-                          typename util::enable_if<d==2,U>::type * = NULL )
-    : Base( new Basis_t(give(KV1)), new Basis_t(give(KV2)) )
-    { m_isPeriodic = -1; }
-
-    /**
-       \brief Constructs a 3D tensor product B-spline basis. Assumes
-       that the tamplate parameter \a d is equal to 3.
-
-       \param KV1 knot-vector with respect to the first dimension
-       \param KV2 knot-vector with respect to the second dimension
-       \param KV3 knot-vector with respect to the third dimension
-     */
-    gsTensorBSplineBasis( KnotVectorType KV1,
-                          KnotVectorType KV2,
-                          KnotVectorType KV3 )
-    : Base( new Basis_t(give(KV1)), new Basis_t(give(KV2)), new Basis_t(give(KV3)) )
-    { m_isPeriodic = -1; }
-
-    gsTensorBSplineBasis( KnotVectorType KV1,
-                          KnotVectorType KV2,
-                          KnotVectorType KV3,
-                          KnotVectorType KV4)
-    : Base( new Basis_t(give(KV1)), new Basis_t(give(KV2)),
-            new Basis_t(give(KV3)), new Basis_t(give(KV4)) )
-    { m_isPeriodic = -1; }
+        \brief Constructs a d-dimensional tensor product B-spline basis
+               from exactly d knot-vectors.
+    */
+    template<typename... U,
+             typename util::enable_if<(sizeof...(U)==d), int>::type = 0>
+    gsTensorBSplineBasis( gsKnotVector<U>... KV )
+    {
+        std::vector<KnotVectorType> knotVectors{ KnotVectorType(give(KV))... };
+        initFromKnotVectors(give(knotVectors));
+    }
 
     explicit gsTensorBSplineBasis(std::vector<KnotVectorType> KV)
-    {
-        GISMO_ENSURE(d == KV.size(), "Invalid number of knot-vectors given." );
-        for(short_t i = 0; i!=d; ++i)
-            this->m_bases[i] = new Basis_t( give(KV[i]) );
-        m_isPeriodic = -1;
-    }
+    { initFromKnotVectors(give(KV)); }
 
-    gsTensorBSplineBasis( Basis_t* x,  Basis_t*  y) : Base(x,y)
+    template<typename... B,
+             typename util::enable_if<(sizeof...(B)==d), int>::type = 0>
+    gsTensorBSplineBasis( B*... bb ) : Base()
     {
-        GISMO_ENSURE(d==2,"Invalid constructor." );
-        setIsPeriodic();
-    }
-
-    gsTensorBSplineBasis( Basis_t* x,  Basis_t* y, Basis_t* z ) : Base(x,y,z)
-    {
-        GISMO_ENSURE(d==3,"Invalid constructor." );
-        setIsPeriodic();
-
-    }
-
-    gsTensorBSplineBasis( Basis_t* x,  Basis_t* y, Basis_t* z, Basis_t* w ) : Base(x,y,z,w)
-    {
-        GISMO_ENSURE(d==4,"Invalid constructor." );
+        Basis_t * bases[d] = { bb... };
+        for(short_t i = 0; i != d; ++i)
+            this->m_bases[i] = bases[i];
         setIsPeriodic();
     }
 
@@ -493,6 +456,14 @@ public:
 
 private:
 
+    void initFromKnotVectors(std::vector<KnotVectorType> KV)
+    {
+        GISMO_ENSURE(d == KV.size(), "Invalid number of knot-vectors given." );
+        for(short_t i = 0; i!=d; ++i)
+            this->m_bases[i] = new Basis_t( give(KV[i]) );
+        m_isPeriodic = -1;
+    }
+
     /// For each knot span, check if its midpoint is
     /// contained in any of the refinement boxes and returns
     /// The mid-point of that span
@@ -525,11 +496,17 @@ protected:
 
 #ifdef GISMO_WITH_PYBIND11
 
-  /**
-   * @brief Initializes the Python wrapper for the class: gsTensorBSplineBasis
-   */
-  template <short_t d>
-  void pybind11_init_gsTensorBSplineBasis(pybind11::module &m);
+    /**
+     * @brief Initializes the Python wrapper for the class: gsTensorBSplineBasis
+     */
+    template <short_t d>
+    void pybind11_init_gsTensorBSplineBasis(pybind11::module &m);
+
+    /**
+     * @brief Initializes the Python wrapper for the factory constructor of gsTensorBSplineBasis
+     */
+    void pybind11_init_gsTensorBSplineBasis_factory(pybind11::module &m);
+
 
 #endif // GISMO_WITH_PYBIND11
 

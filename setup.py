@@ -112,7 +112,6 @@ class CMakeBuild(build_ext):
             # option flags for gismo
             f"-DCMAKE_BUILD_TYPE=Release",
             f"-DGISMO_WITH_PYBIND11=ON",
-            f"-DGISMO_WITH_OPENMP=ON",
             f"-DGISMO_BUILD_EXAMPLES=OFF",
             f"-DNOSNIPPETS=ON",
             # find_package(pybind11) hint
@@ -237,7 +236,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/gismo/gismo",
-    install_requires=[],
+    install_requires=["numpy", "scipy"],
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
