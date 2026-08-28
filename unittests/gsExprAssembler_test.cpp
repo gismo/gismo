@@ -79,8 +79,9 @@ SUITE(gsExprAssembler_test)
         CHECK(custom.hasCustomQuadrature());
         custom.assemble(uCustom * uCustom.tr());
         const gsSparseMatrix<real_t> Mcustom = custom.matrix();
-
-        CHECK(calls.load() > 0);
+        
+        const index_t current_calls = calls.load();
+        CHECK(current_calls > 0);
         CHECK(contextIsCorrect.load());
         CHECK((Mstandard - Mcustom).norm() > 1e-8);
 
@@ -90,6 +91,7 @@ SUITE(gsExprAssembler_test)
         custom.assemble(uCustom * uCustom.tr());
         const gsSparseMatrix<real_t> Mrestored = custom.matrix();
 
+        CHECK_EQUAL(current_calls, calls.load());
         CHECK_EQUAL(Mstandard.rows(), Mrestored.rows());
         CHECK_EQUAL(Mstandard.cols(), Mrestored.cols());
         CHECK((Mstandard - Mrestored).norm() < 1e-14);

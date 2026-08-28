@@ -23,9 +23,6 @@
 
 #include <gsMatrix/gsFiberMatrix.h>
 
-#include <functional>
-#include <utility>
-
 namespace gismo
 {
 
@@ -154,7 +151,7 @@ public:
     /// quadrature. The factory is invoked only when a new rule is needed, never
     /// in an element or quadrature-point loop.
     void setQuadratureFactory(QuadratureFactory factory)
-    { m_quadratureFactory = std::move(factory); }
+    { m_quadratureFactory = give(factory); }
 
     /// @brief Restores the standard gsQuadrature/options-based rules.
     void clearQuadratureFactory()
