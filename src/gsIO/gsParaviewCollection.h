@@ -19,6 +19,7 @@
 #include <gsIO/gsParaviewDataSet.h>
 
 #include <fstream>
+#include <utility>
 
 namespace gismo
 {
@@ -83,22 +84,22 @@ public:
 
     /// @brief All arguments are forwarded to gsParaviewDataSet::addField().
     template <typename... Rest>
-    void addField(Rest & ... rest)
+    void addField(Rest && ... rest)
     {
         GISMO_ENSURE(m_dataset && !m_dataset->isEmpty(),
             "The gsParaviewDataSet, stored internally by gsParaviewCollection, is empty! "
             "Try running newTimestep() before addField().");
-        m_dataset->addField(rest...);
+        m_dataset->addField(std::forward<Rest>(rest)...);
     }
 
     /// @brief All arguments are forwarded to gsParaviewDataSet::addFields().
     template <typename... Rest>
-    void addFields(Rest & ... rest)
+    void addFields(Rest && ... rest)
     {
         GISMO_ENSURE(m_dataset && !m_dataset->isEmpty(),
             "The gsParaviewDataSet, stored internally by gsParaviewCollection, is empty! "
             "Try running newTimestep() before addFields().");
-        m_dataset->addFields(rest...);
+        m_dataset->addFields(std::forward<Rest>(rest)...);
     }
 
     /// @brief The current timestep is saved and files written to disk.

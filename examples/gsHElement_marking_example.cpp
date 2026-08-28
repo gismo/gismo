@@ -86,9 +86,9 @@ void run(gsTensorBSpline<d,real_t> & spline, index_t degree, index_t m, index_t 
     marker.options().setInt("CoarsenRule",1);
     marker.options().setReal("CoarsenParam",0.1);
 
-    gsParaviewCollection meshes("mesh");
-    gsParaviewCollection refined("markedRef");
-    gsParaviewCollection coarsened("markedCrs");
+    gsParaviewCollection<real_t> meshes("mesh");
+    gsParaviewCollection<real_t> refined("markedRef");
+    gsParaviewCollection<real_t> coarsened("markedCrs");
     gsStopwatch timer;
     gsParaview<real_t> pv;
     for (index_t i = 0; i!=numRef; i++)

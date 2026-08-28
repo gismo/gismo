@@ -407,7 +407,7 @@ User options:
         std::string fileName;
         std::string basename = "MappedBasisSingle";
 
-        gsParaviewCollection collection(basename);
+        gsParaviewCollection<real_t> collection(basename);
         for (index_t i = 0; i < mbasis1.basis(0).size(); i++)
         {
             fileName = basename + "_0_" + util::to_string(i);
@@ -428,7 +428,7 @@ User options:
         std::string fileName;
         std::string basename = "MappedBasisSingle";
 
-        gsParaviewCollection collection(basename);
+        gsParaviewCollection<real_t> collection(basename);
         for (index_t i = 0; i < mbasis2.basis(0).size(); i++) {
             fileName = basename + "_0_" + util::to_string(i);
             gsWriteParaview_basisFnct(i, mbasis2.basis(0), fileName, 1000);
@@ -448,7 +448,7 @@ User options:
         std::string fileName;
         std::string basename = "MappedBasisSingle";
 
-        gsParaviewCollection collection(basename);
+        gsParaviewCollection<real_t> collection(basename);
         for (index_t i = 0; i < mbasis3.basis(0).size(); i++)
         {
             fileName = basename + "_0_" + util::to_string(i);

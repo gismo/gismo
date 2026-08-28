@@ -178,7 +178,7 @@ int main(int argc, char *argv[])
     gsExprEvaluator<> ev;
     ev.setIntegrationElements(dbasis);
     auto c = ev.getVariable(cnew);
-    gsParaviewCollection collection("ParaviewOutput/solution",&ev);
+    gsParaviewCollection<real_t> collection("ParaviewOutput/solution",ev);
     collection.options().setSwitch("plotElements", true);
     collection.options().setInt("plotElements.resolution", 4);
     collection.options().setInt("numPoints",(mp.geoDim()==3) ? 10000 : 5000);
@@ -303,7 +303,7 @@ int main(int argc, char *argv[])
         if (plot && step % plotmod==0)
         {
             assembler.constructSolution(Cnew,  cnew);
-            collection.newTimeStep(&mp);
+            collection.newTimeStep(mp);
             collection.addField(c,"numerical solution");
             collection.saveTimeStep();
         }

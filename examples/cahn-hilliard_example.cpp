@@ -230,7 +230,7 @@ int main(int argc, char *argv[])
     real_t Q0norm = 1, Qnorm = 10;
     real_t tol = TIMEopt.askReal("tol",1e-4);
 
-    gsParaviewCollection collection("ParaviewOutput/solution", &ev);
+    gsParaviewCollection<real_t> collection("ParaviewOutput/solution", ev);
     collection.options().setSwitch("plotElements", true);
     collection.options().setInt("plotElements.resolution", 4);
     collection.options().setInt("numPoints",(mp.geoDim()==3) ? 10000 : 5000);
@@ -376,7 +376,7 @@ int main(int argc, char *argv[])
         {
             Calpha = Cnew;
             // collection.newTimeStep(&mp);
-            collection.newTimeStep(&mp);
+            collection.newTimeStep(mp);
             collection.addField(c,"numerical solution");
             collection.saveTimeStep();
         }
