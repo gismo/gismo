@@ -1,6 +1,6 @@
 /** @file gsView.cpp
 
-    @brief Produce Paraview file output from XML input, fo Visualizing  G+Smo objects
+    @brief Produce Paraview file output from XML input, for visualizing G+Smo objects
 
     This file is part of the G+Smo library.
 
@@ -29,6 +29,7 @@ int main(int argc, char *argv[])
     bool get_basis = false;
     bool get_mesh = false;
     bool get_geo = false;
+    bool show = true;
 
     //! [Parse Command line]
     gsCmdLine cmd("Hi, give me a file (eg: .xml) and I will try to draw it!");
@@ -39,7 +40,8 @@ int main(int argc, char *argv[])
     cmd.addInt   ("s", "samples", "Number of samples to use for viewing", numSamples);
     cmd.addSwitch("element"   , "Plot the element mesh (when applicable)", plot_mesh);
     cmd.addSwitch("controlNet", "Plot the control net (when applicable)", plot_net);
-    cmd.addSwitch("pid"  , "Plot the ID of each patch and boudanries as color", plot_patchid);
+    cmd.addSwitch("pid"  , "Plot the ID of each patch and boundaries as color", plot_patchid);
+    cmd.addSwitch("noshow", "Do not open Paraview after writing", show);
     cmd.addPlainString("filename", "File containing data to draw (.xml or third-party)", fn);
     cmd.addString("o", "oname", "Filename to use for the ParaView output", pname);
 
@@ -67,7 +69,7 @@ int main(int argc, char *argv[])
     pv.options().setInt("numPoints", numSamples);
     pv.options().setSwitch("plotElements", plot_mesh);
     pv.options().setSwitch("plotControlNet", plot_net);
-    pv.options().setSwitch("show", true);
+    pv.options().setSwitch("show", show);
 
     switch ( choice )
     {
@@ -149,9 +151,9 @@ int main(int argc, char *argv[])
             break;
         }
 
-        if ( filedata.has< gsSurfMesh<real_t> >() )
+        if ( filedata.has< gsSurfMesh<> >() )
         {
-            auto msh = filedata.getFirst< gsSurfMesh<real_t> >();
+            auto msh = filedata.getFirst< gsSurfMesh<> >();
             if (msh)
                 gsInfo<< "Got "<< *msh <<"\n";
             else
@@ -162,14 +164,14 @@ int main(int argc, char *argv[])
 
             // gsSurfMesh uses the old free function directly
             gsWriteParaview( *msh, pname);
-            gsFileManager::open(pname+".vtk");
+            if (show)
+                gsFileManager::open(pname+".vtk");
             return EXIT_SUCCESS;
         }
 
         if ( filedata.has< gsBasis<> >() )
         {
             gsBasis<>::uPtr bb = filedata.getFirst< gsBasis<> >();
-            //bb->uniformRefine(3);
 
             if (bb)
                 gsInfo<< "Got "<< *bb <<"\n";
@@ -197,7 +199,6 @@ int main(int argc, char *argv[])
             }
 
             pv.write(*bb, pname);
-            //pv.write(*bb, pname); // alternative with different options
 
             break;
         }
@@ -205,7 +206,6 @@ int main(int argc, char *argv[])
         if ( filedata.has< gsTrimSurface<> >() )
         {
             gsTrimSurface<>::uPtr bb = filedata.getFirst< gsTrimSurface<> >();
-            //bb->uniformRefine(3);
 
             if (bb)
                 gsInfo<< "Got "<< *bb <<"\n";
@@ -223,7 +223,6 @@ int main(int argc, char *argv[])
         if ( filedata.has< gsPlanarDomain<> >() )
         {
             gsPlanarDomain<>::uPtr bb = filedata.getFirst< gsPlanarDomain<> >();
-            //bb->uniformRefine(3);
 
             if (bb)
                 gsInfo<< "Got "<< *bb <<"\n";
@@ -252,9 +251,6 @@ int main(int argc, char *argv[])
         gsInfo<< "Did not find anything to plot in "<<fn<<", quitting."<<"\n";
         return 0;
     }
-
-    // show option is set in gsParaview, so file will be opened automatically
-    // gsFileManager::open(pname+".pvd");
 
     return EXIT_SUCCESS;
 }
