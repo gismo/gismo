@@ -71,6 +71,28 @@ public:
     typedef typename gsExprHelper<T>::space       space;       ///< Space type
     typedef typename expr::gsFeSolution<T>        solution;    ///< Solution type
 
+    typedef typename gsQuadRule<T>::uPtr QuadratureRulePtr;
+
+    /**
+     * @brief Factory for an opt-in custom quadrature rule.
+     *
+     * The factory is called once for every rule instance required by an
+     * assembly operation (in particular, once per OpenMP worker and patch for
+     * volume assembly). It must return a fresh rule and, when OpenMP is enabled,
+     * be safe to call concurrently. @a fixedDirection is -1 for volume
+     * integration and the fixed parametric direction for boundary and interface
+     * integration. Overriding gsQuadRule::mapTo() permits element-dependent
+     * rules.
+     */
+    typedef std::function<QuadratureRulePtr(const gsBasis<T> & basis,
+                                             const gsOptionList & options,
+                                             index_t patch,
+                                             short_t fixedDirection)>
+        QuadratureFactory;
+
+private:
+    QuadratureFactory m_quadratureFactory;
+
 public:
 
     void cleanUp()
@@ -122,6 +144,22 @@ public:
 
     /// Returns a reference to the options structure
     gsOptionList & options() {return m_options;}
+
+    /// @brief Installs a custom quadrature-rule factory.
+    ///
+    /// Passing an empty factory restores the standard option-driven
+    /// quadrature. The factory is invoked only when a new rule is needed, never
+    /// in an element or quadrature-point loop.
+    void setQuadratureFactory(QuadratureFactory factory)
+    { m_quadratureFactory = give(factory); }
+
+    /// @brief Restores the standard gsQuadrature/options-based rules.
+    void clearQuadratureFactory()
+    { m_quadratureFactory = QuadratureFactory(); }
+
+    /// @brief Returns whether a custom quadrature factory is installed.
+    bool hasCustomQuadrature() const
+    { return static_cast<bool>(m_quadratureFactory); }
 
     /// Returns the internally stored sparse fiber matrix
     const FiberMatrix & fiberMatrix() const
@@ -467,6 +505,23 @@ public:
                                                   const expr residual, solution  u);
 
 private:
+
+    QuadratureRulePtr makeQuadratureRule(const gsBasis<T> & basis,
+                                         index_t patch,
+                                         short_t fixedDirection = -1) const
+    {
+        if (m_quadratureFactory)
+        {
+            QuadratureRulePtr rule =
+                m_quadratureFactory(basis, m_options, patch, fixedDirection);
+            GISMO_ENSURE(rule,
+                         "Custom quadrature factory returned a null rule for patch "
+                         << patch << ".");
+            return rule;
+        }
+
+        return gsQuadrature::getPtr(basis, m_options, fixedDirection);
+    }
 
     template<class... expr> void _computePattern(const expr &... args);
     template<class... expr> void _computePatternBdr(const bcRefList & BCs, const expr &... args);
@@ -1184,7 +1239,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
         {
             QuPatch = elem.patch();
             // get Degree of the domain
-            QuRule = gsQuadrature::getPtr<T>(this->trialSpace(0).source().basis(QuPatch), m_options);
+            QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(QuPatch), QuPatch);
         }
 
         // Map the Quadrature rule to the element
@@ -1240,7 +1295,8 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
     {
         const boundary_condition<T> * it = &iit->get();
 
-        QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(it->patch()), m_options, it->side().direction());
+        QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(it->patch()),
+                                    it->patch(), it->side().direction());
 
         // Update boundary function source
         m_exprdata->setMutSource(*it->function());
@@ -1293,8 +1349,8 @@ void gsExprAssembler<T>::assembleBdr(const bContainer & bnd, expr&... args)
     for (gsBoxTopology::const_biterator it = bnd.begin();
          it != bnd.end(); ++it )
     {
-        QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(it->patch),
-                                    m_options, it->side().direction());
+        QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(it->patch),
+                                    it->patch, it->side().direction());
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add it->patch to domainiter ?
@@ -1371,8 +1427,8 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
         else
             interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), iFace);
 
-        QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(patch1),
-                                   m_options, iFace.first().side().direction());
+        QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(patch1),
+                                    patch1, iFace.first().side().direction());
 
         // TODO [later]: Use beginIfc instead of beginBdr
         typename gsBasis<T>::domainIter domIt =
@@ -1435,7 +1491,7 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
         {
             QuPatch = elem.patch();
             // get Degree of the domain
-            QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(QuPatch), m_options);
+            QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(QuPatch), QuPatch);
         }
 
         // Map the Quadrature rule to the element
@@ -1491,8 +1547,8 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
 
         gsCPPInterface<T> interfaceMap(getGeometryMap(), iFace);
 
-        QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(patch1),
-                                   m_options, iFace.first().side().direction());
+        QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(patch1),
+                                    patch1, iFace.first().side().direction());
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patch1 to domainiter ?
@@ -1600,7 +1656,7 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
     {
         auto & bb = this->trialSpace(0).source().basis(patchInd);
 
-        QuRule = gsQuadrature::getPtr(bb, m_options);
+        QuRule = makeQuadratureRule(bb, patchInd);
         const index_t numNodes = QuRule->numNodes();
 
         // @hverhelst: THIS ASSUMES SAME NUMBER OF QUNODES PER ELEMENT
