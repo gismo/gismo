@@ -1,4 +1,4 @@
-/** @file gsSurfMesh.cpp
+/** @file gsSurfMesh.hpp
 
     @brief Half edge mesh structure
 
