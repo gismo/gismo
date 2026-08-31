@@ -18,6 +18,9 @@ namespace gismo
 {
 namespace expr
 {
+    
+template<class T> class onormal_expr;
+template<class T> EIGEN_STRONG_INLINE onormal_expr<T> nv(const gsGeometryMap<T>&);
 
 // Shortcuts for common quantities, for instance function
 // transformations by the geometry map \a G
@@ -47,45 +50,47 @@ namespace expr
     template<class E> EIGEN_STRONG_INLINE                   \
     auto name(const E & u, const gsGeometryMap<typename E::Scalar> & G)  -> decltype(impl) { return impl; }
 
-GISMO_SHORTCUT_VAR_EXPRESSION(  div, jac(u).trace(),
+GISMO_SHORTCUT_VAR_EXPRESSION(  div, gismo::expr::jac(u).trace(),
                                 Divergence of \a u with respect to the parametric domain )
 
-GISMO_SHORTCUT_PHY_EXPRESSION(  idiv, ijac(u,G).trace(),
-                                Divergence of \a u with respect to the physical domain    )
 
-GISMO_SHORTCUT_MAP_EXPRESSION(  unv, nv(G).normalized(),
+
+GISMO_SHORTCUT_MAP_EXPRESSION(  unv, gismo::expr::nv(G).normalized(),
                                 The normalized normal vector on the boundary)
 
-GISMO_SHORTCUT_MAP_EXPRESSION(  usn, sn(G).normalized(),
+GISMO_SHORTCUT_MAP_EXPRESSION(  usn, gismo::expr::sn(G).normalized(),
                                 The normalized surface normal vector)
 
-GISMO_SHORTCUT_VAR_EXPRESSION(  igrad, grad(u),
+GISMO_SHORTCUT_VAR_EXPRESSION(  igrad, gismo::expr::grad(u),
                                 Gradient of \a u with respect to the parametric domain) // u is presumed to be defined over G
 
-GISMO_SHORTCUT_PHY_EXPRESSION(  igrad, grad(u)*jac(G).ginv(),
+GISMO_SHORTCUT_PHY_EXPRESSION(  igrad, gismo::expr::grad(u)*gismo::expr::jac(G).ginv(),
                                 Gradient of \a u with respect to the physical domain ) // transpose() problem ??
 
-GISMO_SHORTCUT_PHY_EXPRESSION(  ijac, jac(u) * jac(G).ginv(),
+GISMO_SHORTCUT_PHY_EXPRESSION(  ijac, gismo::expr::jac(u) * gismo::expr::jac(G).ginv(),
                                 Jacobian of \a u with respect to the physical domain)
 
-GISMO_SHORTCUT_VAR_EXPRESSION(  ihess, hess(u),
+GISMO_SHORTCUT_VAR_EXPRESSION(  ihess, gismo::expr::hess(u),
                                 Hessian of \a u with respect to the parametric domain )
+
+GISMO_SHORTCUT_PHY_EXPRESSION(  idiv, gismo::expr::ijac(u,G).trace(),
+                                Divergence of \a u with respect to the physical domain    )
 
 // @note: does this work for non-scalar solutions? (todo)
 GISMO_SHORTCUT_PHY_EXPRESSION(ihess,
-                              jac(G).ginv().tr()*( hess(u) - summ(igrad(u,G),hess(G)) ) * jac(G).ginv(),
+                              gismo::expr::jac(G).ginv().tr()*( gismo::expr::hess(u) - summ(igrad(u,G),gismo::expr::hess(G)) ) * gismo::expr::jac(G).ginv(),
                               Hessian of \a u with respect to the physical domain)
 
                               GISMO_SHORTCUT_VAR_EXPRESSION(  ilapl, hess(u).trace(),
                                 Hessian of \a u with respect to the parametric domain )
 
-GISMO_SHORTCUT_PHY_EXPRESSION(  ilapl, ihess(u,G).trace(),
+GISMO_SHORTCUT_PHY_EXPRESSION(  ilapl, gismo::expr::ihess(u,G).trace(),
                                 Hessian of \a u with respect to the physical domain   )
 
-GISMO_SHORTCUT_VAR_EXPRESSION(  fform, jac(u).tr()*jac(u),
+GISMO_SHORTCUT_VAR_EXPRESSION(  fform, gismo::expr::jac(u).tr()*gismo::expr::jac(u),
                                 Fundamental form )
 
-GISMO_SHORTCUT_VAR_EXPRESSION(shapeop, fform(u).inv() * fform2nd(u),
+GISMO_SHORTCUT_VAR_EXPRESSION(shapeop, gismo::expr::fform(u).inv() * gismo::expr::fform2nd(u),
                               ?? @note todo )
 
 #undef GISMO_SHORTCUT_PHY_EXPRESSION

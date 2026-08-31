@@ -561,7 +561,7 @@ public:
         m_repKnots.reserve( 2*(m_deg+1) + interior*mult_interior );
         m_multSum .reserve(interior+2);
 
-        const T h = (u1-u0) / (T)(interior+1);
+        const T h = (u1-u0) / T(interior+1);
 
         m_repKnots.insert(m_repKnots.begin(), m_deg+1, u0);
         m_multSum .push_back(m_deg+1);

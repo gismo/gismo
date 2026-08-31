@@ -1447,23 +1447,25 @@ void gsHTensorBasis<d,T>::active_into(const gsMatrix<T> & u, gsMatrix<index_t>& 
 }
 
 template<short_t d, class T>
-gsMatrix<index_t>  gsHTensorBasis<d,T>::allBoundary( ) const
+gsMatrix<index_t> gsHTensorBasis<d,T>::allBoundary() const
 {
     std::vector<index_t> temp;
-    gsVector<index_t, d>  ind;
-    for(size_t i = 0; i != m_xmatrix[i].size(); i++)
+    gsVector<index_t, d> ind;
+
+    for (size_t i = 0; i != m_xmatrix.size(); ++i)
         for (CMatrix::const_iterator it = m_xmatrix[i].begin();
-             it != m_xmatrix[i].end(); it++)
+             it != m_xmatrix[i].end(); ++it)
         {
             ind = this->m_bases[i]->tensorIndex(*it);
-            for (unsigned j=0; j!=d; ++j )
-                if ( (ind[j]==0) || (ind[j]==(this->m_bases[i]->size(j)-1)) )
+            for (unsigned j = 0; j != d; ++j)
+                if ((ind[j] == 0) || (ind[j] == (this->m_bases[i]->size(j) - 1)))
                 {
-                    temp.push_back(m_xmatrix_offset[i] + (it-m_xmatrix[i].begin()) );
+                    temp.push_back(m_xmatrix_offset[i] + (it - m_xmatrix[i].begin()));
                     break;
                 }
         }
-    return makeMatrix<index_t>(temp.begin(),temp.size(),1 );
+
+    return makeMatrix<index_t>(temp.begin(), temp.size(), 1);
 }
 
 template<short_t d, class T>
@@ -1560,6 +1562,34 @@ void gsHTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
 
 }
 */
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::merge(const gsHTensorBasis<d,T> & other)
+{
+    GISMO_ASSERT( this->dim() == other.dim(),
+                      "Cannot merge bases of different dimensions." );
+    GISMO_ASSERT( !this->manualLevels(),"Cannot merge bases with manual levels." );
+    GISMO_ASSERT( !other.manualLevels(),"Cannot merge bases with manual levels." );
+#ifndef NDEBUG
+    for (short_t j=0; j<d; j++)
+        GISMO_ASSERT(this->tensorLevel(0).knots(j).asMatrix() == other.tensorLevel(0).knots(j).asMatrix(),"Root level must have the same root basis, but the knot vector in direction "<<j<<" is different.");
+#endif
+
+    gsHTree<d,index_t> newtree = gsHTree<d,index_t>::merge(m_tree,other.tree());
+    std::swap(m_tree,newtree);
+    needLevel( m_tree.getMaxInsLevel() );
+    update_structure();
+}
+
+template<short_t d, class T>
+typename gsHTensorBasis<d,T>::uPtr
+gsHTensorBasis<d,T>::merge(const gsHTensorBasis<d,T> & basis1,
+                           const gsHTensorBasis<d,T> & basis2)
+{
+    uPtr result = basis1.clone();
+    result->merge(basis2);
+    return result;
+}
 
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul, int dir)

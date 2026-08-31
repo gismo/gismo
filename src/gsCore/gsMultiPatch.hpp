@@ -656,15 +656,16 @@ gsDofMapper gsMultiPatch<T>::getMapper(T tol) const
 }
 
 template<class T>
-gsSurfMesh gsMultiPatch<T>::toMesh() const
+gsSurfMesh<T> gsMultiPatch<T>::toMesh() const
 {
     GISMO_ASSERT(2==parDim(), "Works for surfaces only.");
     gsDofMapper mapper = getMapper((T)1e-7);
-    gsSurfMesh mesh;
-    auto pid = mesh.add_vertex_property<index_t>("v:patch");
-    auto anchor = mesh.add_vertex_property<index_t>("v:anchor");
-    gsSurfMesh::Vertex v;
-    gsSurfMesh::Point pt(0,0,0);
+    gsSurfMesh<T> mesh;
+    auto pid = mesh.template add_vertex_property<index_t>("v:patch");
+    auto anchor = mesh.template add_vertex_property<index_t>("v:anchor");
+    auto dof = mesh.template add_vertex_property<index_t>("v:dof");
+    typename gsSurfMesh<T>::Vertex v;
+    typename gsSurfMesh<T>::Point pt(0,0,0);
     const index_t gd = geoDim();
     std::vector<std::pair<index_t,index_t> > pi = mapper.anyPreImages();
     //std::pair<index_t,index_t> pi;
@@ -672,22 +673,23 @@ gsSurfMesh gsMultiPatch<T>::toMesh() const
     for (index_t j = 0; j!= mapper.size(); ++j)
     {
         //pi = mapper.anyPreImage(j);
-        gsGeometry<> &  pp = patch(pi[j].first);
+        gsGeometry<T> &  pp = patch(pi[j].first);
         pt.topRows(gd) = pp.eval( pp.basis().anchor(pi[j].second) );
         v = mesh.add_vertex( pt );
         pid[v]  = pi[j].first;
         anchor[v] = pi[j].second;
+        dof[v]  = j;
     }
 
     size_t np = nPatches();
-    gsMatrix<> supp, coor;
+    gsMatrix<T> supp, coor;
     gsVector<bool> boxPar(m_dim);
     gsVector<index_t,2>  cur, csize, strides;
     GISMO_ENSURE( dynamic_cast<gsTensorBasis<2>*>(&patch(0).basis()), "Not a tensor basis");
     static_cast<gsTensorBasis<2>&>(patch(0).basis()).stride_cwise(strides);
     static_cast<gsTensorBasis<2>&>(patch(0).basis()).size_cwise  (csize);
     csize.array() -= 2;
-    gsSurfMesh::Vertex v1, v2, v3, v4;
+    typename gsSurfMesh<T>::Vertex v1, v2, v3, v4;
     for (size_t p=0; p<np; ++p)
     {
         // todo: basis->connectivityAtAnchors  ++  basis->controlPolytope
@@ -696,13 +698,13 @@ gsSurfMesh gsMultiPatch<T>::toMesh() const
         do
         {
             index_t ci = pp.index(cur);
-            v1 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            v1 = typename gsSurfMesh<T>::Vertex( mapper.index(ci, p) );
             ci += strides[0];
-            v2 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            v2 = typename gsSurfMesh<T>::Vertex( mapper.index(ci, p) );
             ci += strides[1];
-            v3 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            v3 = typename gsSurfMesh<T>::Vertex( mapper.index(ci, p) );
             ci -= strides[0];
-            v4 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            v4 = typename gsSurfMesh<T>::Vertex( mapper.index(ci, p) );
             mesh.add_quad(v1,v2,v3,v4);
         } while (nextCubePoint(cur, csize));
 
@@ -885,9 +887,9 @@ T gsMultiPatch<T>::closestDistance(const gsVector<T> & pt,
     gsVector<T> tmp;
 
 #ifndef _MSC_VER
-#   pragma omp declare reduction(min : struct __closestPointHelper : omp_out = (omp_in.dist < omp_out.dist ? omp_in : omp_out) )
+#   pragma omp declare reduction(minimum : struct __closestPointHelper : omp_out = (omp_in.dist < omp_out.dist ? omp_in : omp_out) )
     struct __closestPointHelper cph;
-#   pragma omp parallel for default(shared) private(tmp) reduction(min:cph) //OpenMP 4.0, will not work on VS2019
+#   pragma omp parallel for default(shared) private(tmp) reduction(minimum:cph) //OpenMP 4.0, will not work on VS2019
 #else
     struct __closestPointHelper cph;
 #endif
@@ -1028,7 +1030,7 @@ std::map< std::array<size_t, 4>, internal::ElementBlock> gsMultiPatch<T>::Bezier
 
     gsMatrix<T> quPoints, values;
     gsVector<T> quWeights;
-    gsVector<index_t, 2> numNodes;
+    gsVector<index_t> numNodes(2);
     gsMatrix<T> Bd;
     std::array<size_t, 4> key;
     std::vector<gsKnotVector<T> >  kv(domainDim());

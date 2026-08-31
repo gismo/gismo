@@ -41,8 +41,8 @@ namespace internal
  * @var ElementBlock::coefVectors
  * List of Bezier coefficient vectors represented as matrices of real numbers.
  *
- * 
- * 
+ *
+ *
  * @var ElementBlock::PR
  * Polynomial degree in the R direction.
  *
@@ -51,38 +51,38 @@ namespace internal
  *
  * @var ElementBlock::PT
  * Polynomial degree in the T direction.
- * 
+ *
  * Each local bezier operator is constructed as:
- * \f$ 
+ * \f$
  * NN_e = \texttt{size(actives)}\left \{ \begin{bmatrix}
  * N_1 \\ N_2 \\ \vdots \\ N_i
  * \end{bmatrix}\right.
  * =
  * NN_e \left{ \underbrace{
  * \begin{bmatrix}
- * \dots & CV_1 & \dots \\ 
- * \dots & CV_2 & \dots \\ 
- * & \vdots & \\ 
+ * \dots & CV_1 & \dots \\
+ * \dots & CV_2 & \dots \\
+ * & \vdots & \\
  * \dots & CV_i & \dots
  * \end{bmatrix}
  * }_{NCVC_i}
  * \right.
- * 
- * 
+ *
+ *
  * \left. \begin{bmatrix}
  * B_1 \\ B_2 \\ B_3 \\ \vdots \\ B_{j-1} \\ B_j
  * \end{bmatrix}\right \} NCVC_i = \texttt{(PR+1)(PS+1)(PT+1)}
  * \f$
- * 
+ *
  */
 struct ElementBlock
 {
     index_t numElements;    // NE
     std::list<gsMatrix<index_t>> actives;       // Nodes ( size = NE )
     std::list<gsMatrix<real_t>>  coefVectors;   // Bezier Coefficient Vectors ID ( size = NE )
-    index_t PR; // Polynomial degree in R direction  
-    index_t PS; // Polynomial degree in S direction  
-    index_t PT; // Polynomial degree in T direction  
+    index_t PR; // Polynomial degree in R direction
+    index_t PS; // Polynomial degree in S direction
+    index_t PT; // Polynomial degree in T direction
 };
 } // end namespace internal
 
@@ -204,6 +204,12 @@ public:
         ptr->setId(pid);
         delete m_patches[pid];
         m_patches[pid] = ptr.release();
+    }
+
+    void removePatch(index_t pid)
+    {
+        delete m_patches[pid];
+        m_patches.erase(m_patches.begin()+pid);
     }
 
     const gsGeometry<T> & piece(const index_t i) const override { return patch(i); }
@@ -407,8 +413,8 @@ public:
     gsDofMapper getMapper(T tol) const;
 
     /// Creates a surface mesh out of this multipatch
-    gsSurfMesh toMesh() const;
-    
+    gsSurfMesh<T> toMesh() const;
+
     /// Clear (delete) all patches
     void clear()
     {
@@ -525,7 +531,7 @@ public:
      * @note Currently, only bivariate splines are supported.
      */
     gsMultiPatch<T> extractBezier() const;
-    
+
 protected:
 
     void setIds();
@@ -589,4 +595,3 @@ std::ostream& operator<<( std::ostream& os, const gsMultiPatch<T>& b )
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsMultiPatch.hpp)
 #endif
-
