@@ -258,7 +258,7 @@ private:
                 m_mirror = memory::make_shared(new gsExprHelper(this));
             mirror = m_mirror.get();
         }
-        return *mirror;    
+        return *mirror;
     }
 
     template <class E1>

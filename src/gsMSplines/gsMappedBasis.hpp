@@ -40,6 +40,26 @@ gsMappedBasis<d,T>::~gsMappedBasis()
 }
 
 template<short_t d,class T>
+void gsMappedBasis<d,T>::init(gsMultiBasis<T> const & mb, const gsSparseMatrix<T> & m)
+{
+    GISMO_ASSERT(mb.domainDim()==d, "Error in dimensions");
+    m_topol  = mb.topology();
+
+    delete m_mapper;
+    m_mapper = new gsWeightMapper<T>(m);
+
+    freeAll(m_bases);
+    m_bases.reserve(mb.nBases());
+    cloneAll(mb.patchBases(),m_bases);
+    m_sb.clear();
+    m_sb.reserve(m_bases.size());
+    for ( size_t q=0; q!=m_bases.size(); ++q )
+        m_sb.push_back( gsMappedSingleBasis<d,T>(this,q) );
+
+    m_mapper->optimize(gsWeightMapper<T>::optSourceToTarget);
+}
+
+template<short_t d,class T>
 const std::vector<gsBasis<T>*> gsMappedBasis<d,T>::getBases() const
 {
     std::vector<gsBasis<T>*> result;
