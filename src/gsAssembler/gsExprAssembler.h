@@ -1094,6 +1094,8 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
 
     typedef typename gsFunction<T>::uPtr ifacemap;
     const bool flipSide = m_options.askSwitch("flipSide", false);
+    // Call m_exprdata->initializeIface() to initialize the interface data structure
+    m_exprdata->initializeIface();
 #pragma omp parallel
 {
     auto arg_tpl = std::make_tuple(args...);
@@ -1331,6 +1333,9 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
         this->_computePatternIfc(iFaces, args...);
 
 // #pragma omp parallel //TODO
+// NOTE: if this region is re-enabled it needs m_exprdata->ensureIfc() called
+// serially before it, like _computePatternIfc above -- its body reaches
+// pointsIfc(), which would otherwise create the mirror inside the region.
 // {
     typedef typename gsFunction<T>::uPtr ifacemap;
 
