@@ -52,10 +52,10 @@ int main(int argc, char *argv[])
 
     gsInfo << "basis before refinement:\n" << thb << std::endl;
 
+    gsParaview<real_t> pv;
     if (plot)
     {
         // Export the initial basis to paraview files
-        gsParaview<real_t> pv;
         pv.write(thb, "thb0_init");
     }
 
