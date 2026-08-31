@@ -44,3 +44,9 @@ CMakeFiles/
 
 #Symbolic link Eigen library
 external/Eigen
+
+# vscode
+.cache
+
+# usual cmake build directory
+build/

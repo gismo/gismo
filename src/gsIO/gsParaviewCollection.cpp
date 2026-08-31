@@ -11,6 +11,7 @@
     Author(s): A. Mantzaflaris, C. Karampatzakis
 */
 
+#include "gsCore/gsDebug.h"
 #include <gsIO/gsParaviewCollection.h>
 
 
@@ -86,5 +87,13 @@ namespace gismo
        
         m_dataset = gsParaviewDataSet(name, geometry, m_evaluator, m_options);
     }
-}
-
+    void gsParaviewCollection::writeToDisk() const {
+        gsInfo << "Exporting to " << m_filename << "\n";
+      std::ofstream f(m_filename.c_str());
+      GISMO_ASSERT(f.is_open(), "Error creating " << m_filename);
+      f << mfile.str();
+      f << "</Collection>\n";
+      f << "</VTKFile>\n";
+      f.close();
+    }
+} // namespace gismo

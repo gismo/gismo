@@ -28,6 +28,12 @@ TEMPLATE_INST
 void gsWriteParaviewBezier(const gsMultiPatch<real_t> & mPatch, std::string const & filename, bool ctrlNet);
 
 TEMPLATE_INST
+void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch, std::string const & fn, unsigned npts, const bool export_base64);
+
+TEMPLATE_INST
+void gsWriteParaviewUnstructuredGrid(const gsField<T> & field, std::string const & fn, unsigned npts, const bool export_base64);
+
+TEMPLATE_INST
 void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
                      std::string const & fn, unsigned npts);
 

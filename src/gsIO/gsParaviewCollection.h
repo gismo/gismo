@@ -130,6 +130,7 @@ public:
         if (tStep != -1)  mfile << "timestep=\""<< tStep <<"\" ";
         if (name != "") mfile << "name=\"" << name << "\" ";
         mfile << "file=\"" << fn+ext <<"\"/>\n";
+        writeToDisk();
     }
     // CAUTION! 
     // The previous 3 versions of gsParaviewCollection::addPart() have been combined into the one above
@@ -241,6 +242,8 @@ private:
     gsOptionList m_options;
 
     index_t counter;
+
+    void writeToDisk() const;
 
 private:
     // Construction without a filename is not allowed
