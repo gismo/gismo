@@ -2932,7 +2932,8 @@ void gsXml<gsSurfMesh>::get_into(gsXmlNode * node, gsSurfMesh & result)
             {
                 str.clear();
                 str.str( child->value() );
-                auto heprop = result.halfedge_property<gsSurfMesh::Point>( child->first_attribute("name")->value() );
+                auto heprop = result.halfedge_property<gsSurfMesh::Point>( child->first_attribute("name")->value(),
+                                                                            gsSurfMesh::Point(0,0,0) );
                 gsSurfMesh::Halfedge he;
                 for (unsigned i = 0; i!=ne; ++i)
                 {
