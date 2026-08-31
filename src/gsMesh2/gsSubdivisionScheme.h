@@ -22,18 +22,19 @@ namespace gismo
 
 /// The abstract base class for subdivision schemes.
 /// Should not be instantiated directly.
-class GISMO_EXPORT gsSubdivisionScheme
+template <class Scalar>
+class gsSubdivisionScheme
 {
 protected: // Type definitions for mesh components.
-    using Point = gsSurfMesh::Point;
-    using Vertex = gsSurfMesh::Vertex;
-    using Face = gsSurfMesh::Face;
-    using Halfedge = gsSurfMesh::Halfedge;
-    using Edge = gsSurfMesh::Edge;
+    typedef typename gsSurfMesh<Scalar>::Point Point;
+    typedef typename gsSurfMesh<Scalar>::Vertex Vertex;
+    typedef typename gsSurfMesh<Scalar>::Face Face;
+    typedef typename gsSurfMesh<Scalar>::Halfedge Halfedge;
+    typedef typename gsSurfMesh<Scalar>::Edge Edge;
 
 public:
     /// Assign the mesh to be subdivided
-    void assign(gsSurfMesh* mesh) { m_mesh = mesh; }
+    void assign(gsSurfMesh<Scalar>* mesh) { m_mesh = mesh; }
 
 protected: // Constructor
     /// \brief Default constructor without options.
@@ -58,7 +59,7 @@ protected: // Members
     /// Can be set with the constructor, or with certain methods.
     /// This mesh will be referred to as the 'targeted mesh' in further
     /// documentation.
-    gsSurfMesh* m_mesh;
+    gsSurfMesh<Scalar>* m_mesh;
 
 public: // Options
     /// \brief Getter function for option manipulation.
@@ -67,10 +68,10 @@ public: // Options
     gsOptionList& options() { return m_options; }
 
     /// Returns the mesh
-    gsSurfMesh & mesh() { GISMO_ASSERT(nullptr!=m_mesh,"Invalid mesh"); return *m_mesh; }
+    gsSurfMesh<Scalar> & mesh() { GISMO_ASSERT(nullptr!=m_mesh,"Invalid mesh"); return *m_mesh; }
 
     /// Returns the mesh in const context
-    const gsSurfMesh & mesh() const { GISMO_ASSERT(nullptr!=m_mesh,"Invalid mesh"); return *m_mesh; }
+    const gsSurfMesh<Scalar> & mesh() const { GISMO_ASSERT(nullptr!=m_mesh,"Invalid mesh"); return *m_mesh; }
 
 public: // Subdivision method
 
@@ -96,27 +97,27 @@ protected:
 public:
 
     /// Compute vertex limit positions
-    virtual gsSurfMesh::Vertex_property<Point> vertex_limits(std::string label = "v:limit")
+    virtual typename gsSurfMesh<Scalar>::template Vertex_property<Point> vertex_limits(std::string label = "v:limit")
     {GISMO_NO_IMPLEMENTATION}
 
     /// Compute vertex limit normals
-    virtual gsSurfMesh::Vertex_property<Point> vertex_normal_limits(std::string label = "v:normal")
+    virtual typename gsSurfMesh<Scalar>::template Vertex_property<Point> vertex_normal_limits(std::string label = "v:normal")
     {GISMO_NO_IMPLEMENTATION}
 
     /// Compute vertex limit tangent
-    virtual gsSurfMesh::Vertex_property<Point> vertex_tangent_limits(std::string label = "v:tanvec")
+    virtual typename gsSurfMesh<Scalar>::template Vertex_property<Point> vertex_tangent_limits(std::string label = "v:tanvec")
     {GISMO_NO_IMPLEMENTATION}
 
     /// Compute face limit positions
-    virtual gsSurfMesh::Face_property<Point> face_limits(std::string label = "f:limit")
+    virtual typename gsSurfMesh<Scalar>::template Face_property<Point> face_limits(std::string label = "f:limit")
     {GISMO_NO_IMPLEMENTATION}
 
     /// Compute face limit normals
-    virtual gsSurfMesh::Face_property<Point> face_normal_limits(std::string label = "f:normal")
+    virtual typename gsSurfMesh<Scalar>::template Face_property<Point> face_normal_limits(std::string label = "f:normal")
     {GISMO_NO_IMPLEMENTATION}
 
     /// Compute face limit tangent
-    virtual gsSurfMesh::Face_property<Point> face_tangent_limits(std::string label = "f:tanvec")
+    virtual typename gsSurfMesh<Scalar>::template Face_property<Point> face_tangent_limits(std::string label = "f:tanvec")
     {GISMO_NO_IMPLEMENTATION}
 
 public: // Validity
@@ -146,7 +147,7 @@ public: // Validity
     /// This method also changes the targeted mesh to the given mesh.
     ///
     /// \param mesh The mesh we want to apply this algorithm to.
-    gsSubdivisionMeshValidity check_mesh(gsSurfMesh& mesh)
+    gsSubdivisionMeshValidity check_mesh(gsSurfMesh<Scalar>& mesh)
     {
         m_mesh = &mesh;
         return check_mesh();
@@ -172,10 +173,11 @@ public: // Validity
 ///
 /// An 'identity subdivision' that leaves the passed mesh untouched.
 /// Potentially useful for chaining.
-class GISMO_EXPORT gsIdentityScheme : gsSubdivisionScheme
+template <class Scalar=real_t>
+class GISMO_EXPORT gsIdentityScheme : gsSubdivisionScheme<Scalar>
 {
 public:
-    gsIdentityScheme() : gsSubdivisionScheme() {}
+    gsIdentityScheme() : gsSubdivisionScheme<Scalar>() {}
 
 public:
     void subdivide_impl() GISMO_OVERRIDE {}
