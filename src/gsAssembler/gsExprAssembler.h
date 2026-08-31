@@ -1051,8 +1051,8 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
 
     typedef typename gsFunction<T>::uPtr ifacemap;
     const bool flipSide = m_options.askSwitch("flipSide", false);
-    // Call m_exprdata->iface() to initialize the interface data structure
-    m_exprdata->iface();
+    // Call m_exprdata->initializeIface() to initialize the interface data structure
+    m_exprdata->initializeIface();
 #pragma omp parallel
 {
     auto arg_tpl = std::make_tuple(args...);

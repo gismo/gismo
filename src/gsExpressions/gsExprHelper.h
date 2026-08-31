@@ -244,6 +244,11 @@ public:
         // gsInfo<< "-cdata: "<< m_cdata.size()<<std::endl;
     }
 
+    /// @brief Initializes the mirror helper, if it is not already initialized. This is needed for interface evaluation.
+    void initializeIface() { iface(); }
+
+private:
+
     inline gsExprHelper & iface()
     {
         gsExprHelper * mirror;
@@ -255,8 +260,6 @@ public:
         }
         return *mirror;    
     }
-
-private:
 
     template <class E1>
     void _parse(const expr::_expr<E1> & a1)
