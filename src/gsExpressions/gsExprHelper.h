@@ -244,16 +244,21 @@ public:
         // gsInfo<< "-cdata: "<< m_cdata.size()<<std::endl;
     }
 
+    /// @brief Initializes the mirror helper, if it is not already initialized. This is needed for interface evaluation.
+    void initializeIface() { iface(); }
+
 private:
 
     inline gsExprHelper & iface()
     {
-#       pragma omp critical (m_mirror_first_touch)
+        gsExprHelper * mirror;
+#       pragma omp critical (m_mirror_init)
         {
             if (nullptr==m_mirror )
                 m_mirror = memory::make_shared(new gsExprHelper(this));
+            mirror = m_mirror.get();
         }
-        return *m_mirror;
+        return *mirror;
     }
 
     template <class E1>

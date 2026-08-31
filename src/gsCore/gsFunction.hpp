@@ -92,7 +92,6 @@ void gsFunction<T>::div_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 template <class T>
 void gsFunction<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
 {
-
     //gsDebug<< "Using finite differences (gsFunction::deriv_into) for derivatives.\n";
     const index_t parDim = u.rows();                // dimension of domain
     const index_t tarDim = targetDim();             // dimension of codomain
@@ -346,8 +345,8 @@ int gsFunction<T>::newtonRaphson_impl(
             delta.noalias() = jac.colPivHouseholderQr().solve(
                         gsMatrix<T>::Identity(n,n)) * residual;
 
-        const T rr = ( 1==iter ? (T)1.51 : rnorm[(iter-1)%2]/rnorm[iter%2] ); //important to start with small step
-        damping_factor = rr<1.5 ? math::max((T)0.1 + (rr/99),(rr-(T)0.5)*damping_factor) : math::min((T)1,rr*damping_factor);
+        const T rr = ( 1==iter ? (T)1.51 : (T)(rnorm[(iter-1)%2]/rnorm[iter%2]) ); //important to start with small step
+        damping_factor = rr<1.5 ? math::max((T)((T)0.1 + (rr/99)),(T)((rr-(T)0.5)*damping_factor)) : math::min((T)1,(T)(rr*damping_factor));
 
         //Line search
         /*

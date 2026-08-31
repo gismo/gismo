@@ -330,9 +330,9 @@ struct dense_assignment_loop<Kernel, AllAtOnceTraversal, Unrolling>
     //G+Smo
 #ifndef EIGEN_NO_DEBUG
     typedef typename Kernel::DstEvaluatorType::XprType DstXprType;
-#endif
     EIGEN_STATIC_ASSERT(int(DstXprType::SizeAtCompileTime) == 0,
       EIGEN_INTERNAL_ERROR_PLEASE_FILE_A_BUG_REPORT)
+#endif
   }
 };
 

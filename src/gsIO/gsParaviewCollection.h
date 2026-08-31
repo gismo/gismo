@@ -232,7 +232,7 @@ private:
     /// Flag for checking if collection is already saved.
     bool m_isSaved;
 
-    int m_time;
+    real_t m_time;
 
     gsExprEvaluator<> * m_evaluator;
 

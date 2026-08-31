@@ -91,7 +91,6 @@ public:
     /// Default empty constructor
     gsPatchRule()
     :
-    // m_basis(nullptr),
     m_deg(0),
     m_reg(0),
     m_over(false),
@@ -99,33 +98,29 @@ public:
     {};
 
     /**
-     * @brief      Initialize a (tensor-product) patch-rule with based on the \a basis
+     * @brief      Initialize a (tensor-product) patch-rule based on the \a domain
      *
-     * @param[in]  basis          The basis
+     * @param[in]  domain         The domain (must be a gsTensorDomain)
      * @param[in]  degree         The degree of the target space
      * @param[in]  regularity     The regularity of the target space
      * @param[in]  overintegrate  Over-integrate (i.e. add p points in boundary elements) when true
      */
-    // gsPatchRule(const gsBasis<T> & basis,
     gsPatchRule(const gsDomain<T> & domain,
                 const index_t degree,
                 const index_t regularity,
                 const bool overintegrate,
                 const short_t fixDir = -1);
 
-    /// Make function returning a smart pointer
-
     /**
      * @brief      Construct a smart-pointer to the quadrature rule
      *
-     * @param[in]  basis          The basis
+     * @param[in]  domain         The domain (must be a gsTensorDomain)
      * @param[in]  degree         The degree of the target space
      * @param[in]  regularity     The regularity of the target space
      * @param[in]  overintegrate  Over-integrate (i.e. add p points in boundary elements) when true
      *
      * @return     QuadRule pointer
      */
-    // static uPtr make(   const gsBasis<T> & basis,
     static uPtr make(   const gsDomain<T> & domain,
                         const index_t degree,
                         const index_t regularity,
@@ -163,7 +158,7 @@ public:
                    gsMatrix<T> &, gsVector<T> &) const
     { GISMO_NO_IMPLEMENTATION }
 
-    index_t dim() const { return m_domain->dim(); }
+    index_t dim() const { return static_cast<index_t>(m_dim); }
 
     gsVector<T> nodes(const index_t d=0) const { return m_nodes.at(d); }
     gsVector<T> weights(const index_t d=0) const { return m_weights.at(d); }
@@ -241,7 +236,6 @@ protected:
                                                 const T tol = 1e-10) const;
 
 private:
-    const gsTensorDomain<T,2> * m_domain; // change dimension
     const index_t m_deg,m_reg;
     const bool m_over;
     const short_t m_fixDir;
