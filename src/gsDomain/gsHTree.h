@@ -519,8 +519,6 @@ public:
     /// Prints out the leaves of the kd-tree
     void printLeaves() const;
 
-    void printNodes() const;
-
     /** \brief Returns the boxes which make up the hierarchical domain
     * and the respective levels.
     *

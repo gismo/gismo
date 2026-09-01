@@ -752,32 +752,33 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
         for (short_t c = 0; c!= n; ++c) // for all components
         {
 #           if defined(gsAutoDiff_ENABLED)
-            // Using dual2nd_t for second derivatives via AD
-            // For H_{k,l}, we need to seed x_k in grad and x_l in grad.grad
+            // Second derivatives from nested forward duals: seeding x_k in the
+            // outer dual and x_l in the inner one makes the doubly-differentiated
+            // component grad.grad equal to d^2 f / (dx_k dx_l).
+            index_t m = d; // the d(d-1)/2 off-diagonal entries follow the d diagonal ones
             for (short_t k = 0; k!=d; ++k)
             {
-                // H_{k,k} - second derivative d²f/dx_k²
+                // H_{k,k}
                 for (short_t v = 0; v!=d; ++v)
                 {
                     dual2nd_t tmp = internal::to_dual2nd(u(v,p));
-                    my->vars[v].val.val = tmp.val.val;
-                    my->vars[v].val.grad = (v==k ? 1.0 : 0.0);  // seed for inner derivative
-                    my->vars[v].grad.val = (v==k ? 1.0 : 0.0);  // seed for outer derivative  
+                    my->vars[v].val.val  = tmp.val.val;
+                    my->vars[v].val.grad = (v==k ? 1.0 : 0.0);
+                    my->vars[v].grad.val = (v==k ? 1.0 : 0.0);
                     my->vars[v].grad.grad = 0.0;
                 }
                 dual2nd_t expr_val = my->expression[c].value();
                 result(c*stride + k, p) = expr_val.grad.grad;
 
-                short_t m = d;
                 for (short_t l=k+1; l<d; ++l)
                 {
-                    // H_{k,l} - mixed derivative d²f/(dx_k dx_l)
+                    // H_{k,l}
                     for (short_t v = 0; v!=d; ++v)
                     {
                         dual2nd_t tmp = internal::to_dual2nd(u(v,p));
-                        my->vars[v].val.val = tmp.val.val;
-                        my->vars[v].val.grad = (v==l ? 1.0 : 0.0);  // seed x_l for inner
-                        my->vars[v].grad.val = (v==k ? 1.0 : 0.0);  // seed x_k for outer
+                        my->vars[v].val.val  = tmp.val.val;
+                        my->vars[v].val.grad = (v==l ? 1.0 : 0.0);
+                        my->vars[v].grad.val = (v==k ? 1.0 : 0.0);
                         my->vars[v].grad.grad = 0.0;
                     }
                     expr_val = my->expression[c].value();
@@ -786,13 +787,13 @@ void gsFunctionExpr<T>::deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result) c
             }
 #           else
             copy_n(u.col(p).data(), my->dim, my->vars);
+            index_t m = d; // the d(d-1)/2 off-diagonal entries follow the d diagonal ones
             for (short_t k = 0; k!=d; ++k)
             {
                 // H_{k,k}
                 result(c*stride + k,p) = exprtk::
                     second_derivative<T>(my->expression[c], my->vars[k], 0.00001);
 
-                short_t m = d;
                 for (short_t l=k+1; l<d; ++l)
                 {
                     // H_{k,l}

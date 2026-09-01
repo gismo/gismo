@@ -1419,12 +1419,6 @@ inline void gsHTree<d, Z>::printLeaves() const
 }
 
 template<short_t d, class Z>
-inline void gsHTree<d, Z>::printNodes() const
-{
-    nodeSearch< printNodes_visitor >();
-}
-
-template<short_t d, class Z>
 void gsHTree<d, Z>::computeMaxInsLevel()
 {
     m_maxInsLevel = leafSearch< maxLevel_visitor >();
