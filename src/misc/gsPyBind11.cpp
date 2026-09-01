@@ -58,6 +58,7 @@ PYBIND11_MODULE(pygismo, m) {
   assembler.doc() = "G+Smo (Geometry + Simulation Modules): Assembler module";
 
   gismo::pybind11_init_gsBiharmonicExprAssembler( assembler );
+  gismo::pybind11_init_gsDofMapperCreator( assembler );
 
 
   py::module core = m.def_submodule("core");

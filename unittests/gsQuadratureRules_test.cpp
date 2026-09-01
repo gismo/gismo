@@ -208,4 +208,127 @@ real_t calcPoly(gsVector<index_t> const &deg,
 const char *addPlus(const index_t d, index_t i)
 { return (i == d - 1 ? "" : "+"); }
 
+// Integrate f element-by-element over domain using gsPatchRule
+real_t patchIntegrate(const gsDomain<real_t>& domain,
+                      gsPatchRule<real_t>& rule,
+                      const gsFunctionExpr<real_t>& f)
+{
+    gsMatrix<real_t> nodes;
+    gsVector<real_t> weights;
+    real_t result = 0;
+    auto it    = domain.beginAll();
+    auto itEnd = domain.endAll();
+    for (; it < itEnd; ++it)
+    {
+        rule.mapTo(it.lowerCorner(), it.upperCorner(), nodes, weights);
+        if (weights.size() == 0) continue;
+        gsMatrix<real_t> vals = f.eval(nodes);
+        result += weights.dot(vals.row(0).transpose());
+    }
+    return result;
 }
+
+// Integrate f element-by-element over domain using a Gauss-Legendre rule
+real_t gaussIntegrate(const gsDomain<real_t>& domain,
+                      gsGaussRule<real_t>& rule,
+                      const gsFunctionExpr<real_t>& f)
+{
+    gsMatrix<real_t> nodes;
+    gsVector<real_t> weights;
+    real_t result = 0;
+    auto it    = domain.beginAll();
+    auto itEnd = domain.endAll();
+    for (; it < itEnd; ++it)
+    {
+        rule.mapTo(it.lowerCorner(), it.upperCorner(), nodes, weights);
+        gsMatrix<real_t> vals = f.eval(nodes);
+        result += weights.dot(vals.row(0).transpose());
+    }
+    return result;
+}
+
+TEST(patchrule_1d_weight_sum)
+{
+    gsKnotVector<real_t> kv(0, 1, 3, 3, 1); // degree 3, 4 elements
+    gsTensorBSplineBasis<1,real_t> basis(kv);
+    gsPatchRule<real_t> rule(*basis.domain(), 3, 2, false);
+    gsFunctionExpr<real_t> f("1", 1);
+    CHECK_CLOSE(1.0, patchIntegrate(*basis.domain(), rule, f), EPSILON);
+}
+
+TEST(patchrule_1d_polynomial_exactness)
+{
+    gsKnotVector<real_t> kv(0, 1, 3, 3, 1);
+    gsTensorBSplineBasis<1,real_t> basis(kv);
+    gsPatchRule<real_t> rule(*basis.domain(), 3, 2, false);
+    gsFunctionExpr<real_t> f("x^3", 1);
+    CHECK_CLOSE(0.25, patchIntegrate(*basis.domain(), rule, f), EPSILON);
+}
+
+TEST(patchrule_2d_weight_sum)
+{
+    gsKnotVector<real_t> kv(0, 1, 3, 3, 1);
+    gsTensorBSplineBasis<2,real_t> basis(kv, kv);
+    gsPatchRule<real_t> rule(*basis.domain(), 3, 2, false);
+    gsFunctionExpr<real_t> f("1", 2);
+    CHECK_CLOSE(1.0, patchIntegrate(*basis.domain(), rule, f), EPSILON);
+}
+
+TEST(patchrule_2d_polynomial_exactness)
+{
+    gsKnotVector<real_t> kv(0, 1, 3, 3, 1);
+    gsTensorBSplineBasis<2,real_t> basis(kv, kv);
+    gsPatchRule<real_t> rule(*basis.domain(), 3, 2, false);
+    gsFunctionExpr<real_t> f("x^2*y^2", 2);
+    // integral of x^2*y^2 over [0,1]^2 = (1/3)*(1/3) = 1/9
+    CHECK_CLOSE(1.0/9.0, patchIntegrate(*basis.domain(), rule, f), EPSILON);
+}
+
+TEST(patchrule_3d_weight_sum)
+{
+    gsKnotVector<real_t> kv(0, 1, 2, 3, 1); // degree 3, 3 elements
+    gsTensorBSplineBasis<3,real_t> basis(kv, kv, kv);
+    gsPatchRule<real_t> rule(*basis.domain(), 3, 2, false);
+    gsFunctionExpr<real_t> f("1", 3);
+    CHECK_CLOSE(1.0, patchIntegrate(*basis.domain(), rule, f), EPSILON);
+}
+
+TEST(patchrule_3d_polynomial_exactness)
+{
+    gsKnotVector<real_t> kv(0, 1, 2, 3, 1);
+    gsTensorBSplineBasis<3,real_t> basis(kv, kv, kv);
+    gsPatchRule<real_t> rule(*basis.domain(), 3, 2, false);
+    gsFunctionExpr<real_t> f("x^2*y^2*z^2", 3);
+    // integral of x^2*y^2*z^2 over [0,1]^3 = (1/3)^3 = 1/27
+    CHECK_CLOSE(1.0/27.0, patchIntegrate(*basis.domain(), rule, f), EPSILON);
+}
+
+TEST(patchrule_overintegration_2d)
+{
+    gsKnotVector<real_t> kv(0, 1, 3, 3, 1);
+    gsTensorBSplineBasis<2,real_t> basis(kv, kv);
+    gsPatchRule<real_t> rule(*basis.domain(), 3, 2, true);
+    gsFunctionExpr<real_t> f("x^3*y^3", 2);
+    // integral of x^3*y^3 over [0,1]^2 = (1/4)*(1/4) = 1/16
+    CHECK_CLOSE(1.0/16.0, patchIntegrate(*basis.domain(), rule, f), EPSILON);
+}
+
+TEST(patchrule_matches_gauss_on_polynomial)
+{
+    gsKnotVector<real_t> kv(0, 1, 3, 3, 1);
+    gsTensorBSplineBasis<2,real_t> basis(kv, kv);
+    gsPatchRule<real_t> rule(*basis.domain(), 3, 2, false);
+
+    // Gauss rule with 4 pts/direction is exact for degree 7, well above degree 3
+    gsVector<index_t> numPts(2); numPts << 4, 4;
+    gsGaussRule<real_t> gauss(numPts);
+
+    gsFunctionExpr<real_t> f("x^3*y", 2);
+    // analytic: (1/4)*(1/2) = 1/8
+    real_t patchResult = patchIntegrate(*basis.domain(), rule, f);
+    real_t gaussResult = gaussIntegrate(*basis.domain(), gauss, f);
+    CHECK_CLOSE(1.0/8.0, patchResult, EPSILON);
+    CHECK_CLOSE(gaussResult, patchResult, EPSILON);
+}
+
+} // SUITE gsQuadratureRules_test

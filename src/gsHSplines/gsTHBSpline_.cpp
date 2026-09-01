@@ -150,10 +150,106 @@ void pybind11_init_gsHTensorBasis(py::module &m)
 {
     using Base  = gsBasis<real_t>;
     using Class = gsHTensorBasis<d,real_t>;
+    using Mat   = gsSparseMatrix<real_t,RowMajor>;
     py::class_<Class,Base>(m, ("gsHTensorBasis" + std::to_string(d)).c_str())
 
+    // Accessor methods
     .def("tensorLevel",&Class::tensorLevel,"Returns the tensor basis on level i")
     .def("refine", static_cast<void (Class::*)(gsMatrix<real_t> const &)> (&Class::refine), "Refines the basis given a box")
+
+    // Level-based refinement methods
+    .def("refineToLevel", &Class::refineToLevel, py::arg("minLevel"),
+         "Refine the basis uniformly up to minLevel")
+    .def("refineToLevel_withTransfer",
+         [](Class &self, index_t lvl, Mat &T) { self.refineToLevel_withTransfer(lvl, T); },
+         py::arg("minLevel"), py::arg("transfer"),
+         "Refine uniformly to minLevel and return transfer matrix")
+    .def("refineToLevel_withCoefs",
+         [](Class &self, index_t lvl, gsMatrix<real_t> &coefs) { self.refineToLevel_withCoefs(lvl, coefs); },
+         py::arg("minLevel"), py::arg("coefs"),
+         "Refine uniformly to minLevel and update coefficients")
+
+    .def("refineCoarsestLevel", &Class::refineCoarsestLevel,
+         "Refine only the coarsest level by one")
+    .def("refineCoarsestLevel_withTransfer",
+         [](Class &self, Mat &T) { self.refineCoarsestLevel_withTransfer(T); },
+         py::arg("transfer"), "Refine coarsest level with transfer matrix")
+    .def("refineCoarsestLevel_withCoefs",
+         [](Class &self, gsMatrix<real_t> &coefs) { self.refineCoarsestLevel_withCoefs(coefs); },
+         py::arg("coefs"), "Refine coarsest level and update coefficients")
+
+    // Level-based unrefinement methods
+    .def("unrefineToLevel", &Class::unrefineToLevel, py::arg("minLevel"),
+         "Unrefine the basis uniformly down to minLevel")
+    .def("unrefineToLevel_withTransfer",
+         [](Class &self, index_t lvl, Mat &T) { self.unrefineToLevel_withTransfer(lvl, T); },
+         py::arg("minLevel"), py::arg("transfer"),
+         "Unrefine uniformly to minLevel and return transfer matrix")
+    .def("unrefineToLevel_withCoefs",
+         [](Class &self, index_t lvl, gsMatrix<real_t> &coefs) { self.unrefineToLevel_withCoefs(lvl, coefs); },
+         py::arg("minLevel"), py::arg("coefs"),
+         "Unrefine uniformly to minLevel and update coefficients")
+
+    .def("unrefineFinestLevel", &Class::unrefineFinestLevel,
+         "Unrefine only the finest level by one")
+    .def("unrefineFinestLevel_withTransfer",
+         [](Class &self, Mat &T) { self.unrefineFinestLevel_withTransfer(T); },
+         py::arg("transfer"), "Unrefine finest level with transfer matrix")
+    .def("unrefineFinestLevel_withCoefs",
+         [](Class &self, gsMatrix<real_t> &coefs) { self.unrefineFinestLevel_withCoefs(coefs); },
+         py::arg("coefs"), "Unrefine finest level and update coefficients")
+
+    // withCoefs and withTransfer variants
+    .def("uniformRefine_withCoefs",
+         [](Class &self, gsMatrix<real_t> &coefs, int nk, int m, short_t dir) {
+           self.uniformRefine_withCoefs(coefs, nk, m, dir);
+         },
+         py::arg("coefs"), py::arg("numKnots")=1, py::arg("mul")=1, py::arg("dir")=-1,
+         "Uniformly refine and update coefficients")
+    .def("uniformCoarsen_withCoefs",
+         [](Class &self, gsMatrix<real_t> &coefs, int nk) {
+           self.uniformCoarsen_withCoefs(coefs, nk);
+         },
+         py::arg("coefs"), py::arg("numKnots")=1,
+         "Uniformly coarsen and update coefficients")
+
+    .def("refineElements_withCoefs",
+         [](Class &self, gsMatrix<real_t> &coefs, const std::vector<index_t> &boxes) {
+           self.refineElements_withCoefs(coefs, boxes);
+         },
+         py::arg("coefs"), py::arg("boxes"),
+         "Refine elements and update coefficients")
+    .def("refineElements_withTransfer",
+         [](Class &self, const std::vector<index_t> &boxes, Mat &T) {
+           self.refineElements_withTransfer(boxes, T);
+         },
+         py::arg("boxes"), py::arg("transfer"),
+         "Refine elements and return transfer matrix")
+    .def("refineElements_withTransfer2",
+         [](Class &self, const std::vector<index_t> &boxes, Mat &T) {
+           self.refineElements_withTransfer2(boxes, T);
+         },
+         py::arg("boxes"), py::arg("transfer"),
+         "Refine elements (variant 2) and return transfer matrix")
+    .def("refineElements_withCoefs2",
+         [](Class &self, gsMatrix<real_t> &coefs, const std::vector<index_t> &boxes) {
+           self.refineElements_withCoefs2(coefs, boxes);
+         },
+         py::arg("coefs"), py::arg("boxes"),
+         "Refine elements (variant 2) and update coefficients")
+
+    .def("unrefineElements_withCoefs",
+         [](Class &self, gsMatrix<real_t> &coefs, const std::vector<index_t> &boxes) {
+           self.unrefineElements_withCoefs(coefs, boxes);
+         },
+         py::arg("coefs"), py::arg("boxes"),
+         "Unrefine elements and update coefficients")
+    .def("unrefineElements_withTransfer",
+         [](Class &self, const std::vector<index_t> &boxes, Mat &T) {
+           self.unrefineElements_withTransfer(boxes, T);
+         },
+         py::arg("boxes"), py::arg("transfer"),
+         "Unrefine elements and return transfer matrix")
     ;
 }
 
