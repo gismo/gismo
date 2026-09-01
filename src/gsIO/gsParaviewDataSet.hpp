@@ -152,7 +152,7 @@ void gsParaviewDataSet<T>::save()
             }
             if (plotElements)
             {
-                int numPoints = m_options.getInt("plotElements.resolution");
+                int numPoints = m_options.getInt("plot.elements.resolution");
                 if (-1 == numPoints)
                 {
                     const T evalPtsPerElem = 16 * (1.0 / geometry.piece(k).basis().numElements());

@@ -231,9 +231,9 @@ int main(int argc, char *argv[])
     real_t tol = TIMEopt.askReal("tol",1e-4);
 
     gsParaviewCollection<real_t> collection("ParaviewOutput/solution", ev);
-    collection.options().setSwitch("plotElements", true);
-    collection.options().setInt("plotElements.resolution", 4);
-    collection.options().setInt("numPoints",(mp.geoDim()==3) ? 10000 : 5000);
+    collection.options().setSwitch("plot.elements", true);
+    collection.options().setInt("plot.elements.resolution", 4);
+    collection.options().setInt("plot.npts",(mp.geoDim()==3) ? 10000 : 5000);
 
     real_t dt_old = dt;
     // real_t t_rho = TIMEopt.askReal("t_rho",0.9);

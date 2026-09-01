@@ -256,7 +256,7 @@ int main(int argc, char *argv[]) {
 
     gsParaviewCollection<real_t> collection("ParaviewOutput/solution", ev);
     collection.options().setSwitch("plotElements", true);
-    collection.options().setInt("plotElements.resolution", sample_rate);
+    collection.options().setInt("plot.elements.resolution", sample_rate);
     collection.newTimeStep(multi_patch);
     collection.addField(u_solution_expression, "numerical solution");
     if (compute_error) collection.addField(reference_solution - u_solution_expression, "error");

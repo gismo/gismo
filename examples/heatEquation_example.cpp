@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 
     const std::string baseName("heat_eq_solution");
     gsParaviewCollection<real_t> collection(baseName);
-    collection.options().setInt("numPoints", 1000);
+    collection.options().setInt("plot.npts",1000);
     collection.options().setInt("precision", 5);
 
     if ( plot )

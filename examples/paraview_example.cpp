@@ -122,7 +122,7 @@ int main(int argc, char* argv[])
     PVCollection.options().setInt("precision", 5);
     // Plot the element mesh and set it's resolution
     PVCollection.options().setSwitch("plot.elements", false);
-    PVCollection.options().setInt("plotElements.resolution", -1);
+    PVCollection.options().setInt("plot.elements.resolution", -1);
     // Plot the control net
     PVCollection.options().setSwitch("plotControlNet", false);
     // Export the vtk files to a subfolder

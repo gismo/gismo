@@ -49,34 +49,34 @@ void pybind11_init_gsParaview(py::module &m)
                 "Returns the default options")
 
     // Write methods - basic types
-    .def("write", py::overload_cast<const gsGeometry<real_t> &, const std::string &>
-         (&Class::write, py::const_),
+    .def("write", static_cast<void (Class::*)(const gsGeometry<real_t> &, const std::string &) const>
+         (&Class::write),
          py::arg("geo"), py::arg("fn") = "geometry",
          "Export a gsGeometry to Paraview file")
 
-    .def("write", py::overload_cast<const gsMultiPatch<real_t> &, const std::string &>
-         (&Class::write, py::const_),
+    .def("write", static_cast<void (Class::*)(const gsMultiPatch<real_t> &, const std::string &) const>
+         (&Class::write),
          py::arg("mp"), py::arg("fn") = "multipatch",
          "Export a gsMultiPatch to Paraview file")
 
-    .def("write", py::overload_cast<const gsField<real_t> &, const std::string &>
-         (&Class::write, py::const_),
+    .def("write", static_cast<void (Class::*)(const gsField<real_t> &, const std::string &) const>
+         (&Class::write),
          py::arg("field"), py::arg("fn") = "field",
          "Export a gsField to Paraview file")
 
-    .def("write", py::overload_cast<const gsBasis<real_t> &, const std::string &>
-         (&Class::write, py::const_),
+    .def("write", static_cast<void (Class::*)(const gsBasis<real_t> &, const std::string &) const>
+         (&Class::write),
          py::arg("basis"), py::arg("fn") = "basis",
          "Export a gsBasis to Paraview file")
 
-    .def("write", py::overload_cast<const gsMesh<real_t> &, const std::string &>
-         (&Class::write, py::const_),
+    .def("write", static_cast<void (Class::*)(const gsMesh<real_t> &, const std::string &) const>
+         (&Class::write),
          py::arg("mesh"), py::arg("fn") = "mesh",
          "Export a gsMesh to Paraview file")
 
     // Points
-    .def("writePoints", py::overload_cast<const gsMatrix<real_t> &, const std::string &>
-         (&Class::writePoints, py::const_),
+    .def("writePoints", static_cast<void (Class::*)(const gsMatrix<real_t> &, const std::string &) const>
+         (&Class::writePoints),
          py::arg("points"), py::arg("fn") = "points",
          "Export points to Paraview file")
 

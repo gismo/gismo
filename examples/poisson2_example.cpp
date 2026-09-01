@@ -216,7 +216,7 @@ int main(int argc, char *argv[])
         gsParaviewCollection<real_t> collection("ParaviewOutput/solution", ev);
         collection.options().setSwitch("plotElements", true);
         collection.options().setSwitch("base64", export_b64);
-        collection.options().setInt("plotElements.resolution", 16);
+        collection.options().setInt("plot.elements.resolution", 16);
         collection.newTimeStep(mp);
         collection.addField(u_sol,"numerical solution");
         collection.addField(u_ex, "exact solution");
