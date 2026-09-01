@@ -18,6 +18,7 @@
 #include <gsAssembler/gsVisitorPoisson.h>
 #include <gsAssembler/gsVisitorNitsche.h>
 #include <gsAssembler/gsVisitorNeumann.h>
+#include <gsAssembler/gsDofMapperCreator.h>
 
 
 using namespace gismo;
@@ -108,11 +109,11 @@ int main(int argc, char *argv[])
     //! [Assembler]
 
     //! [Dof mapper]
-    gsDofMapper mapper; // Gets the indices mapped from Basis --> Matrix
-
-    splinebasis.getMapper((dirichlet::strategy)opt.getInt("DirichletStrategy"),
+    // Gets the indices mapped from Basis --> Matrix
+    gsDofMapper mapper = createMapper(splinebasis, bcInfo,
+                          (dirichlet::strategy)opt.getInt("DirichletStrategy"),
                           (iFace::    strategy)opt.getInt("InterfaceStrategy"),
-                          bcInfo, mapper, 0);
+                          /*nComp=*/1, /*unk=*/0, /*finalize=*/true);
 
     mapper.print();
     //! [Dof mapper]
