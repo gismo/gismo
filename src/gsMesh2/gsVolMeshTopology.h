@@ -1204,6 +1204,26 @@ public:
     /// the number of vertices of face \c f
     unsigned int n_vertices(Face f) const { return Base::valence(halfface(f,0)); }
 
+    /** @brief the vertices of cell \c c in canonical VTK / Gmsh order.
+
+        The corner ring of a cell is in no particular order, but every file
+        format that names a cell type also fixes the order of its vertices.
+        This recovers that order from the topology, so that the writers do not
+        have to store it.
+
+        The four standard types are recognised by their face structure and are
+        returned in the ordering that add_tet(), add_hex(), add_prism() and
+        add_pyramid() accept -- which is VTK_TETRA / VTK_HEXAHEDRON / VTK_WEDGE
+        / VTK_PYRAMID, and is also Gmsh's ordering for its element types
+        4 / 5 / 6 / 7.  Any other cell yields its vertices in ring order, for
+        which the format has to fall back on a face stream.
+
+        \param c    the cell
+        \param out  receives the vertices, in order
+        \returns the VTK cell type: 10, 12, 13, 14, or 42 (VTK_POLYHEDRON)
+    */
+    int cell_vtk_order(Cell c, std::vector<Vertex>& out) const;
+
     /** Mesh statistics.
 
         Prints the number of vertices, edges, faces, cells and darts, the

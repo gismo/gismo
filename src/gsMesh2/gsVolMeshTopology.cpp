@@ -1072,6 +1072,126 @@ n_edges(Cell c) const
 }
 
 // ===========================================================================
+//  canonical cell ordering
+// ===========================================================================
+
+int
+gsVolMeshTopology::
+cell_vtk_order(Cell c, std::vector<Vertex>& out) const
+{
+    out.clear();
+
+    // classify the cell by its face structure; counting vertices and faces is
+    // not enough, since e.g. a 6-face 8-vertex cell need not be a hexahedron
+    unsigned int ntri = 0, nquad = 0, nother = 0;
+    Halfface tri, quad;
+    for (auto hf : halffaces(c))
+    {
+        const unsigned int k = Base::valence(hf);
+        if      (3 == k) { ++ntri;  if (!tri.is_valid())  tri  = hf; }
+        else if (4 == k) { ++nquad; if (!quad.is_valid()) quad = hf; }
+        else             { ++nother; }
+    }
+
+    const unsigned int nv = n_vertices(c), nf = valence(c);
+
+    const bool is_tet_ = (4==nv && 4==nf && 4==ntri && 0==nquad && 0==nother);
+    const bool is_hex_ = (8==nv && 6==nf && 0==ntri && 6==nquad && 0==nother);
+    const bool is_pri_ = (6==nv && 5==nf && 2==ntri && 3==nquad && 0==nother);
+    const bool is_pyr_ = (5==nv && 5==nf && 4==ntri && 1==nquad && 0==nother);
+
+    if (!is_tet_ && !is_hex_ && !is_pri_ && !is_pyr_)
+    {
+        for (auto cn : corners(c)) out.push_back(cvertex_[cn]);
+        return 42;                                          // VTK_POLYHEDRON
+    }
+
+    // the vertices of a half-face, in its outward cyclic order
+    std::vector<Vertex> loop;
+    const Halfface seed = (is_pyr_ || is_hex_) ? quad : tri;
+    for (auto v : vertices(seed)) loop.push_back(v);
+
+    // vertex -> its corner in this cell, so that the neighbours of a vertex
+    // inside the cell can be walked
+    std::map<int,Corner> cor;
+    for (auto cn : corners(c)) cor[cvertex_[cn].idx()] = cn;
+
+    // the neighbour of \a v inside the cell that is not one of \a skip; for a
+    // corner of a hexahedron, a prism cap or a pyramid base that is the one
+    // edge leaving the seed face
+    struct Local
+    {
+        static Vertex opposite(const gsVolMeshTopology& m,
+                               const std::map<int,Corner>& cor, Vertex v,
+                               const std::vector<Vertex>& skip)
+        {
+            const std::map<int,Corner>::const_iterator it = cor.find(v.idx());
+            if (cor.end() == it) return Vertex();
+            for (auto h : m.Base::halfedges(it->second))
+            {
+                const Vertex w = m.to_vertex(h);
+                if (skip.end() == std::find(skip.begin(), skip.end(), w))
+                    return w;
+            }
+            return Vertex();
+        }
+    };
+
+    if (is_tet_)
+    {
+        // the outward loop of face 0 of the tetrahedron template is (v0,v2,v1)
+        const Vertex v0 = loop[0], v2 = loop[1], v1 = loop[2];
+        Vertex v3;
+        for (auto cn : corners(c))
+        {
+            const Vertex w = cvertex_[cn];
+            if (w!=v0 && w!=v1 && w!=v2) { v3 = w; break; }
+        }
+        out.push_back(v0); out.push_back(v1); out.push_back(v2); out.push_back(v3);
+        return 10;                                               // VTK_TETRA
+    }
+
+    if (is_pyr_)
+    {
+        // the outward loop of the base of the pyramid template is (v0,v3,v2,v1)
+        const Vertex v0 = loop[0], v3 = loop[1], v2 = loop[2], v1 = loop[3];
+        Vertex v4;
+        for (auto cn : corners(c))
+        {
+            const Vertex w = cvertex_[cn];
+            if (w!=v0 && w!=v1 && w!=v2 && w!=v3) { v4 = w; break; }
+        }
+        out.push_back(v0); out.push_back(v1); out.push_back(v2);
+        out.push_back(v3); out.push_back(v4);
+        return 14;                                               // VTK_PYRAMID
+    }
+
+    if (is_pri_)
+    {
+        // the outward loop of the bottom triangle of the prism template is (v0,v2,v1)
+        const Vertex v0 = loop[0], v2 = loop[1], v1 = loop[2];
+        std::vector<Vertex> bottom;
+        bottom.push_back(v0); bottom.push_back(v1); bottom.push_back(v2);
+        out = bottom;
+        out.push_back(Local::opposite(*this, cor, v0, bottom));
+        out.push_back(Local::opposite(*this, cor, v1, bottom));
+        out.push_back(Local::opposite(*this, cor, v2, bottom));
+        return 13;                                               // VTK_WEDGE
+    }
+
+    // the outward loop of the bottom of the hexahedron template is (v0,v3,v2,v1)
+    const Vertex v0 = loop[0], v3 = loop[1], v2 = loop[2], v1 = loop[3];
+    std::vector<Vertex> bottom;
+    bottom.push_back(v0); bottom.push_back(v1); bottom.push_back(v2); bottom.push_back(v3);
+    out = bottom;
+    out.push_back(Local::opposite(*this, cor, v0, bottom));
+    out.push_back(Local::opposite(*this, cor, v1, bottom));
+    out.push_back(Local::opposite(*this, cor, v2, bottom));
+    out.push_back(Local::opposite(*this, cor, v3, bottom));
+    return 12;                                                   // VTK_HEXAHEDRON
+}
+
+// ===========================================================================
 //  collected adjacencies
 // ===========================================================================
 

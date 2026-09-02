@@ -15,6 +15,7 @@
 #pragma once
 
 #include <gsMesh2/gsVolMesh.h>
+#include <gsMesh2/IO_vol.h>
 
 #include <gsCore/gsDebug.h>
 
@@ -280,114 +281,23 @@ cell_mesh(Cell c) const
 template <class Scalar>
 bool
 gsVolMesh<Scalar>::
-write(const std::string& filename) const
+read(const std::string& filename)
 {
-    const std::string::size_type dot = filename.rfind('.');
-    if (std::string::npos == dot)
-    {
-        gsWarn << "gsVolMesh::write: no file extension in \""<<filename<<"\".\n";
-        return false;
-    }
-
-    std::string ext = filename.substr(dot+1);
-    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
-
-    if ("vtu" == ext) return write_vtu(filename);
-
-    // every other format we know describes a surface, so write the boundary
-    return boundary_mesh().write(filename);
+    return read_volmesh(*this, filename);
 }
 
 template <class Scalar>
 bool
 gsVolMesh<Scalar>::
-write_vtu(const std::string& filename) const
+write(const std::string& filename) const
 {
-    std::ofstream out(filename.c_str());
-    if (!out) return false;
+    const std::string ext = internal::volmesh_extension(filename);
 
-    // VTK needs contiguous point ids, which the mesh only has after a garbage
-    // collection; map them explicitly instead of requiring one
-    std::map<int,index_t> vid;
-    index_t nv = 0;
-    for (auto v : vertices()) vid[v.idx()] = nv++;
+    if ("msh" == ext || "vtk" == ext || "vtu" == ext)
+        return write_volmesh(*this, filename);
 
-    std::vector< std::vector<index_t> > conn;
-    std::vector<int> types;
-
-    for (auto c : cells())
-    {
-        std::vector<index_t> ids;
-        for (auto cn : corners(c)) ids.push_back(vid[vertex(cn).idx()]);
-
-        // VTK_TETRA / VTK_PYRAMID / VTK_WEDGE / VTK_HEXAHEDRON expect a fixed
-        // corner ordering that the corner ring does not reproduce, so only the
-        // general polyhedron cell type is emitted here
-        conn.push_back(ids);
-        types.push_back(42); // VTK_POLYHEDRON
-    }
-
-    out << "<?xml version=\"1.0\"?>\n"
-        << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n"
-        << "  <UnstructuredGrid>\n"
-        << "    <Piece NumberOfPoints=\""<<nv<<"\" NumberOfCells=\""<<conn.size()<<"\">\n"
-        << "      <Points>\n"
-        << "        <DataArray type=\"Float64\" NumberOfComponents=\"3\" format=\"ascii\">\n";
-    for (auto v : vertices())
-        out << "          " << vpoint_[v][0] << " " << vpoint_[v][1] << " "
-            << vpoint_[v][2] << "\n";
-    out << "        </DataArray>\n"
-        << "      </Points>\n"
-        << "      <Cells>\n"
-        << "        <DataArray type=\"Int64\" Name=\"connectivity\" format=\"ascii\">\n";
-    for (size_t i=0; i!=conn.size(); ++i)
-    {
-        out << "         ";
-        for (size_t j=0; j!=conn[i].size(); ++j) out << " " << conn[i][j];
-        out << "\n";
-    }
-    out << "        </DataArray>\n"
-        << "        <DataArray type=\"Int64\" Name=\"offsets\" format=\"ascii\">\n         ";
-    {
-        index_t off = 0;
-        for (size_t i=0; i!=conn.size(); ++i) { off += (index_t)conn[i].size(); out << " " << off; }
-    }
-    out << "\n        </DataArray>\n"
-        << "        <DataArray type=\"UInt8\" Name=\"types\" format=\"ascii\">\n         ";
-    for (size_t i=0; i!=types.size(); ++i) out << " " << types[i];
-    out << "\n        </DataArray>\n";
-
-    // VTK_POLYHEDRON additionally needs the face stream of every cell
-    out << "        <DataArray type=\"Int64\" Name=\"faces\" format=\"ascii\">\n";
-    std::vector<index_t> faceoff;
-    index_t stream = 0;
-    for (auto c : cells())
-    {
-        std::ostringstream line;
-        index_t nf = 0;
-        for (auto hf : halffaces(c))
-        {
-            index_t nvf = 0;
-            std::ostringstream lf;
-            for (auto v : vertices(hf)) { lf << " " << vid[v.idx()]; ++nvf; }
-            line << " " << nvf << lf.str();
-            stream += 1 + nvf;
-            ++nf;
-        }
-        out << "          " << nf << line.str() << "\n";
-        stream += 1;
-        faceoff.push_back(stream);
-    }
-    out << "        </DataArray>\n"
-        << "        <DataArray type=\"Int64\" Name=\"faceoffsets\" format=\"ascii\">\n         ";
-    for (size_t i=0; i!=faceoff.size(); ++i) out << " " << faceoff[i];
-    out << "\n        </DataArray>\n"
-        << "      </Cells>\n"
-        << "    </Piece>\n"
-        << "  </UnstructuredGrid>\n"
-        << "</VTKFile>\n";
-
-    return out.good();
+    // every other format we know describes a surface, so write the boundary
+    return boundary_mesh().write(filename);
 }
 
 } // namespace gismo

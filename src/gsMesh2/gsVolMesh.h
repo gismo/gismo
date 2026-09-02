@@ -177,11 +177,24 @@ public:
     /// \name Input / output
     //@{
 
+    /** read the mesh from \c filename; the extension determines the file type.
+
+        Supported: \c .msh (Gmsh, ASCII versions 2.2 and 4.1), \c .vtk (legacy
+        VTK, ASCII unstructured grid) and \c .vtu (VTK XML, inline ASCII).
+        On failure the mesh is left untouched.
+        \sa write(const std::string&)
+    */
+    bool read(const std::string& filename);
+
     /** write the mesh to \c filename; the extension determines the file type.
 
-        Supported: \c .vtu (VTK unstructured grid, ASCII) for the volume mesh
-        itself, and any extension gsSurfMesh can write (\c .off, \c .obj,
-        \c .stl) for its boundary surface.
+        Supported: \c .msh (Gmsh ASCII 2.2), \c .vtk (legacy VTK) and \c .vtu
+        (VTK XML) for the volume mesh itself, and any extension gsSurfMesh can
+        write (\c .off, \c .obj, \c .stl) for its boundary surface.
+
+        Only \c .vtu can express a general polyhedron; the other two formats
+        report the cells they had to leave out.
+        \sa read(const std::string&)
     */
     bool write(const std::string& filename) const;
 
@@ -196,9 +209,6 @@ private:
             " edges, "<<vm.n_faces()<<" faces and "<<vm.n_cells()<<" cells.\n";
         return os;
     }
-
-    /// write a VTK unstructured grid
-    bool write_vtu(const std::string& filename) const;
 
 private:
 

@@ -33,6 +33,8 @@
 
 #include "gismo_unittest.h"
 
+#include <fstream>
+
 SUITE(gsVolMesh_test)
 {
 
@@ -560,6 +562,225 @@ TEST(GarbageCollectionKeepsGeometry)
         const Point & p = m.position(v);
         for (index_t i = 0; i != 3; ++i)
             CHECK_CLOSE(p[i], math::round(p[i]), 1e-15);
+    }
+}
+
+
+//---------------------------------------------------------------------------
+// File I/O.  Every format has to survive a round trip; the ones that cannot
+// express a general polyhedron have to say so instead of writing nonsense.
+//---------------------------------------------------------------------------
+
+// counts, volume and the vertex positions as a set
+inline void sameMesh(const Mesh & a, const Mesh & b)
+{
+    CHECK_EQUAL(a.n_vertices(), b.n_vertices());
+    CHECK_EQUAL(a.n_edges(),    b.n_edges());
+    CHECK_EQUAL(a.n_faces(),    b.n_faces());
+    CHECK_EQUAL(a.n_cells(),    b.n_cells());
+    CHECK_CLOSE(a.volume(), b.volume(), 1e-10);
+    checkValid(b);
+
+    std::vector<real_t> pa, pb;
+    for (auto v : a.vertices()) { const Point & p = a.position(v); pa.push_back(1e4*p[0]+1e2*p[1]+p[2]); }
+    for (auto v : b.vertices()) { const Point & p = b.position(v); pb.push_back(1e4*p[0]+1e2*p[1]+p[2]); }
+    std::sort(pa.begin(), pa.end());
+    std::sort(pb.begin(), pb.end());
+    CHECK_EQUAL(pa.size(), pb.size());
+    for (size_t i = 0; i != std::min(pa.size(), pb.size()); ++i)
+        CHECK_CLOSE(pa[i], pb[i], 1e-10);
+}
+
+// The corner ring of a cell is unordered, so every writer needs the canonical
+// order recovered from the topology.  Feeding it back to the matching
+// constructor has to reproduce the very same cell.
+TEST(CellVtkOrder_RoundTrips)
+{
+    {   Mesh m; const Cell c = unitTet(m);
+        std::vector<Vertex> o;
+        CHECK_EQUAL(10, m.cell_vtk_order(c,o));       // VTK_TETRA
+        CHECK_EQUAL(4u, (unsigned)o.size());
+        Mesh r; std::vector<Vertex> n;
+        for (size_t i=0;i!=o.size();++i) n.push_back(r.add_vertex(m.position(o[i])));
+        CHECK( r.add_tet(n[0],n[1],n[2],n[3]).is_valid() );
+        checkValid(r);
+        CHECK_CLOSE(m.volume(), r.volume(), 1e-12);
+    }
+    {   Mesh m; const Cell c = unitHex(m);
+        std::vector<Vertex> o;
+        CHECK_EQUAL(12, m.cell_vtk_order(c,o));       // VTK_HEXAHEDRON
+        CHECK_EQUAL(8u, (unsigned)o.size());
+        Mesh r; std::vector<Vertex> n;
+        for (size_t i=0;i!=o.size();++i) n.push_back(r.add_vertex(m.position(o[i])));
+        CHECK( r.add_hex(n[0],n[1],n[2],n[3],n[4],n[5],n[6],n[7]).is_valid() );
+        checkValid(r);
+        CHECK_CLOSE(m.volume(), r.volume(), 1e-12);
+    }
+}
+
+TEST(RoundTrip_AllFormats)
+{
+    Mesh m;
+    std::vector<Vertex> ids;
+    hexBlock(m, 2, ids);
+
+    const char * name[3] = { "gsvolmesh_rt.msh", "gsvolmesh_rt.vtk", "gsvolmesh_rt.vtu" };
+    for (index_t i = 0; i != 3; ++i)
+    {
+        CHECK( m.write(name[i]) );
+        Mesh r;
+        CHECK( r.read(name[i]) );
+        sameMesh(m, r);
+    }
+
+    // and across formats: what came out of the .vtu has to write a .msh that
+    // still describes the same mesh
+    Mesh a;  CHECK( a.read(name[2]) );
+    CHECK( a.write("gsvolmesh_cross.msh") );
+    Mesh b;  CHECK( b.read("gsvolmesh_cross.msh") );
+    sameMesh(m, b);
+}
+
+TEST(RoundTrip_Tets)
+{
+    Mesh m;
+    const Vertex v0 = m.add_vertex(Point(0,0,0));
+    const Vertex v1 = m.add_vertex(Point(1,0,0));
+    const Vertex v2 = m.add_vertex(Point(0,1,0));
+    const Vertex v3 = m.add_vertex(Point(0,0,1));
+    const Vertex v4 = m.add_vertex(Point(0,0,-1));
+    m.add_tet(v0,v1,v2,v3);
+    m.add_tet(v0,v2,v1,v4);
+
+    CHECK( m.write("gsvolmesh_tets.msh") );
+    Mesh r;
+    CHECK( r.read("gsvolmesh_tets.msh") );
+    sameMesh(m, r);
+    CHECK( r.is_tet_mesh() );
+}
+
+// An octahedron is none of the four standard types.  Only .vtu can express it,
+// through the face stream; the other two must refuse rather than drop cells
+// quietly.
+TEST(Polyhedron_OnlyVtu)
+{
+    Mesh m;
+    std::vector<Vertex> v;
+    v.push_back(m.add_vertex(Point( 1,0,0)));  v.push_back(m.add_vertex(Point(0, 1,0)));
+    v.push_back(m.add_vertex(Point(-1,0,0)));  v.push_back(m.add_vertex(Point(0,-1,0)));
+    v.push_back(m.add_vertex(Point(0,0, 1)));  v.push_back(m.add_vertex(Point(0,0,-1)));
+
+    const int F[8][3] = { {0,1,4},{1,2,4},{2,3,4},{3,0,4},
+                          {1,0,5},{2,1,5},{3,2,5},{0,3,5} };
+    std::vector< std::vector<Vertex> > faces;
+    for (index_t i = 0; i != 8; ++i)
+    {
+        std::vector<Vertex> loop;
+        for (index_t j = 0; j != 3; ++j) loop.push_back(v[F[i][j]]);
+        faces.push_back(loop);
+    }
+    const Cell c = m.add_cell(faces);
+    CHECK( c.is_valid() );
+    checkValid(m);
+
+    std::vector<Vertex> o;
+    CHECK_EQUAL(42, m.cell_vtk_order(c,o));            // VTK_POLYHEDRON
+
+    CHECK( m.write("gsvolmesh_oct.vtu") );
+    Mesh r;
+    CHECK( r.read("gsvolmesh_oct.vtu") );
+    sameMesh(m, r);
+
+    CHECK( !m.write("gsvolmesh_oct.msh") );
+    CHECK( !m.write("gsvolmesh_oct.vtk") );
+}
+
+// Gmsh files carry line and triangle elements as boundary markers; turning
+// those into cells would silently corrupt the mesh.
+TEST(Gmsh_SkipsMarkersAndReadsV41)
+{
+    {
+        std::ofstream f("gsvolmesh_mixed.msh");
+        f << "$MeshFormat\n2.2 0 8\n$EndMeshFormat\n"
+          << "$Nodes\n4\n1 0 0 0\n2 1 0 0\n3 0 1 0\n4 0 0 1\n$EndNodes\n"
+          << "$Elements\n3\n"
+          << "1 2 2 7 7 1 2 3\n"        // triangle marker
+          << "2 1 2 8 8 1 2\n"          // line marker
+          << "3 4 2 5 5 1 2 3 4\n"      // the tetrahedron
+          << "$EndElements\n";
+    }
+    Mesh m;
+    CHECK( m.read("gsvolmesh_mixed.msh") );
+    CHECK_EQUAL(1u, m.n_cells());
+    CHECK_EQUAL(4u, m.n_vertices());
+    checkValid(m);
+
+    gsVolMesh<real_t>::Cell_property<index_t> tag =
+        m.get_cell_property<index_t>("C:tag");
+    CHECK( tag );
+    if (tag) CHECK_EQUAL(5, tag[Cell(0)]);
+
+    // the blocked 4.1 layout differs substantially from 2.2
+    {
+        std::ofstream f("gsvolmesh_v41.msh");
+        f << "$MeshFormat\n4.1 0 8\n$EndMeshFormat\n"
+          << "$Nodes\n1 4 1 4\n3 1 0 4\n1\n2\n3\n4\n"
+          << "0 0 0\n1 0 0\n0 1 0\n0 0 1\n$EndNodes\n"
+          << "$Elements\n1 1 1 1\n3 1 4 1\n1 1 2 3 4\n$EndElements\n";
+    }
+    Mesh m41;
+    CHECK( m41.read("gsvolmesh_v41.msh") );
+    CHECK_EQUAL(1u, m41.n_cells());
+    CHECK_CLOSE(1.0/6.0, m41.volume(), 1e-12);
+    checkValid(m41);
+}
+
+// A reader that returns true on rubbish is worse than no reader at all.
+TEST(ReadFailuresAreLoud)
+{
+    Mesh m;
+    CHECK( !m.read("gsvolmesh_does_not_exist.vtu") );
+    CHECK( !m.read("gsvolmesh_does_not_exist.msh") );
+
+    { std::ofstream f("gsvolmesh_trunc.vtu");
+      f << "<?xml version=\"1.0\"?>\n<VTKFile type=\"UnstructuredGrid\">\n"; }
+    CHECK( !m.read("gsvolmesh_trunc.vtu") );
+
+    { std::ofstream f("gsvolmesh_bin.vtu");
+      f << "<VTKFile type=\"UnstructuredGrid\"><UnstructuredGrid>"
+           "<Piece NumberOfPoints=\"1\" NumberOfCells=\"0\">"
+           "<Points><DataArray format=\"binary\">AA==</DataArray></Points>"
+           "<Cells></Cells></Piece></UnstructuredGrid></VTKFile>"; }
+    CHECK( !m.read("gsvolmesh_bin.vtu") );
+
+    { std::ofstream f("gsvolmesh_nope.msh"); f << "not a mesh\n"; }
+    CHECK( !m.read("gsvolmesh_nope.msh") );
+}
+
+// The files shipped in filedata/ have to stay readable.
+TEST(ReadSampleFiles)
+{
+    {
+        Mesh m;
+        CHECK( m.read(gsFileManager::findInDataDir("volmesh/two_tets.msh")) );
+        CHECK_EQUAL(2u, m.n_cells());
+        CHECK_EQUAL(5u, m.n_vertices());
+        CHECK_EQUAL(7u, m.n_faces());
+        CHECK( m.is_tet_mesh() );
+        CHECK_CLOSE(1.0/3.0, m.volume(), 1e-12);
+        checkValid(m);
+    }
+    // no .vtk sample is shipped: the repository ignores *.vtk as Paraview
+    // output, and RoundTrip_AllFormats already exercises the legacy reader
+    {
+        Mesh m;
+        CHECK( m.read(gsFileManager::findInDataDir("volmesh/hex_block.vtu")) );
+        CHECK_EQUAL(8u,  m.n_cells());
+        CHECK_EQUAL(27u, m.n_vertices());
+        CHECK_EQUAL(36u, m.n_faces());
+        CHECK( m.is_hex_mesh() );
+        CHECK_CLOSE(8.0, m.volume(), 1e-12);
+        checkValid(m);
     }
 }
 
