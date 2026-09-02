@@ -30,7 +30,8 @@ template<class T> class gsExprHelper;
 */
 namespace expr
 {
-template <typename E, bool = util::is_arithmetic<E>::value >
+//template <typename E, bool = util::is_arithmetic<E>::value >
+template <typename E, bool = util::is_same<E,real_t>::value  >
 class _expr {using E::GISMO_ERROR_expr;};
 
 template<class E> class symbol_expr;
@@ -77,7 +78,6 @@ template<class E1, class E2, bool = E1::ColBlocks && !E1::ScalarValued && !E2::S
 template <typename E> struct expr_traits
 {
 public:
-//    typedef typename E::Scalar Scalar;
     typedef real_t Scalar;//todo
     typedef const E Nested_t;
 };
@@ -113,7 +113,6 @@ public:
 
 // Other
 #include <gsExpressions/_expr.h>
-#include <gsExpressions/_expr_macros.h>
 // A
 #include <gsExpressions/abs_expr.h>
 #include <gsExpressions/add_expr.h>
@@ -192,6 +191,9 @@ public:
 // X
 // Y
 // Z
+
+#include <gsExpressions/_expr_macros.h>
+
 
 #undef MatExprType
 #undef AutoReturn_t

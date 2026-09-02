@@ -119,6 +119,13 @@ namespace internal
 /* ----------- Mesh ----------- */
 #include <gsMesh2/gsSurfMesh.h>
 
+/* ----------- Mesh subdivision ----------- */
+#include <gsMesh2/gsSubdivisionScheme.h>
+#include <gsMesh2/gsSubdivisionSchemes/gsCatmullClark.h>
+#include <gsMesh2/gsSubdivisionSchemes/gsDooSabin.h>
+#include <gsMesh2/gsSubdivisionSchemes/gsLoop.h>
+#include <gsMesh2/gsSubdivisionSchemes/gsChaikin.h>
+
 /* ----------- MSplines ----------- */
 #include <gsMSplines/gsMappedBasis.h>
 #include <gsMSplines/gsMappedSpline.h>
@@ -227,13 +234,9 @@ namespace internal
 #include <gsUtils/gsStopwatch.h>
 #include <gsUtils/gsFunctionWithDerivatives.h>
 #include <gsUtils/gsQuasiInterpolate.h>
-#include <gsUtils/gsL2Projection.h>
+#include <gsUtils/gsProjection.h>
 
 /* ----------- Extension ----------- */
-#ifdef GISMO_WITH_ADIFF
-#include <gsAutoDiff.h>
-#endif
-
 #ifdef gsTrilinos_ENABLED
 #include <gsTrilinos/gsTrilinos.h>
 #endif

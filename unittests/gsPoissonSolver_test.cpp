@@ -8,7 +8,7 @@
     and measure the convergence rate of the L2 error. If the
     convergence rate is not sufficient, the test fails.
 
-    Test inclueds:
+    Test includes:
 
     Inhomogeneous source term (right hand side)
     Inhomogeneous Dirichlet boundary conditions
@@ -93,7 +93,7 @@ void runPoissonSolverTest( dirichlet::strategy Dstrategy, iFace::strategy Istrat
     for (int i = 0; i < numRefine; ++i)
         refine_bases.uniformRefine();
 
-    
+
     // linear solver
     gsSparseSolver<>::CGDiagonal solver;
     gsMatrix<> solVector;
@@ -108,7 +108,7 @@ void runPoissonSolverTest( dirichlet::strategy Dstrategy, iFace::strategy Istrat
         // Initilize Assembler
         gsPoissonAssembler<real_t> poisson(patches,refine_bases,bcInfo,f,Dstrategy,Istrategy);
         //gsPoissonAssembler<> poisson(*patches, bcInfo, refine_bases, f);
-        
+
         // Assemble and solve
         poisson.assemble();
         solVector = solver.compute( poisson.matrix() ).solve( poisson.rhs() );
@@ -167,6 +167,6 @@ SUITE(gsPoissonSolver_test)
         runPoissonSolverTest(dirichlet::nitsche, iFace::dg, 0);
         runPoissonSolverTest(dirichlet::nitsche, iFace::dg, 1);
     }
-    
+
 }
 

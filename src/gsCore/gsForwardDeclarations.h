@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <functional>
 #include <limits>
+#include <type_traits>
 
 #include <gsCore/gsConfig.h>
 #include <gsCore/gsDebug.h>
@@ -303,6 +304,7 @@ template <class T=real_t>                class gsIdentityOp;
 
 template <class T=real_t>                class gsPreconditionerOp;
 template <class T=real_t>                class gsPreconditionerFromOp;
+template <class T=real_t>                class gsPreconditionerWrapper;
 
 template <class T=real_t>                class gsAdditiveOp;
 template <class T=real_t>                class gsSumOp;
@@ -333,8 +335,16 @@ template <short_t d, class T=real_t>     struct gsHBoxEqual;
 template <short_t d, class T=real_t>     class gsHBox;
 template <short_t d, class T=real_t>     class gsHBoxContainer;
 
+template <short_t d, class T=real_t>     class gsElement;
+template <short_t d, class T=real_t>     class gsElementHelper;
+template <short_t d, class T=real_t>     class gsHElement;
+template <short_t d, class T=real_t>     class gsHElementHelper;
+
+
 class gsParaviewDataSet;
-class gsSurfMesh;
+                                         class gsSurfMeshTopology;
+template <class Scalar=real_t>           class gsSurfMesh;
+template <class Scalar=real_t>           class gsSubdivisionScheme;
 
 // gsIO
 
@@ -359,5 +369,12 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd = tru
 /// @endcond
 
 ///@}
+
+// True for any scalar type that is not a built-in arithmetic type (int, float,
+// double, ...).  Such types — autodiff duals, complex numbers, multiprecision
+// reals — cannot use #pragma omp atomic and require #pragma omp critical.
+template<typename U>
+struct is_autodiff_type
+    : std::integral_constant<bool, !std::is_arithmetic<U>::value> {};
 
 } // end namespace gismo

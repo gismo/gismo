@@ -73,64 +73,6 @@ public:
     gsDofMapper();
 
     /**
-     * @brief construct a dof mapper that identifies the degrees
-     * of freedom in the multibasis
-     * and eliminates the degrees of freedom on the Dirichlet boundary
-     *
-     * @param bases
-     * @param dirichlet
-     * @param unk
-     */
-    template<class T>
-    gsDofMapper(
-        const gsMultiBasis<T>         &bases,
-        const gsBoundaryConditions<T> &dirichlet,
-        int unk = 0
-        ) : m_shift(0), m_bshift(0)
-    {
-      init(bases, dirichlet, unk); //obsolete, one component
-    }
-
-    /**
-     * @brief construct a dof mapper that identifies the degrees
-     * of freedom in the multibasis
-     *
-     * @param bases
-     */
-    template<class T>
-    gsDofMapper(const gsMultiBasis<T> & bases, index_t nComp = 1)
-    {
-        init(bases, nComp);
-    }
-
-    /**
-     * @brief construct a dof mapper that identifies the degrees
-     * of freedom for a vector of multibasis
-     *
-     * @param bases
-     */
-    template<class T>
-    gsDofMapper(
-        std::vector<const gsMultiBasis<T> *> const & bases
-        )
-    {
-        init(bases);
-    }
-
-
-    /**
-     * @brief construct a dof mapper that manages the degrees
-     * of freedom in a gsBasis
-     *
-     * @param basis
-     */
-    template<class T>
-    gsDofMapper(const gsBasis<T> & basis, index_t nComp = 1)
-    {
-      initSingle(basis, nComp);
-    }
-
-    /**
      * @brief construct a dof mapper with a given number of dofs per
      * patch
      *
@@ -140,20 +82,6 @@ public:
     {
         initPatchDofs(patchDofSizes, nComp);
     }
-
-    /// Initialize by a gsMultiBasis
-    template <typename T>
-    void init(const gsMultiBasis<T> & bases, index_t nComp = 1);
-
-    /// Initialize by a vector of gsMultiBasis.
-    template <typename T>
-    void init( std::vector<const gsMultiBasis<T> *> const & bases);
-
-    /// Initialize by gsMultiBasis, boundary conditions and the index
-    /// of the unknown to be eliminated
-    template<class T>
-    void init(const gsMultiBasis<T>         &basis,
-	      const gsBoundaryConditions<T> &dirichlet, int unk = 0);
 
     void swap(gsDofMapper & other)
     {
@@ -170,10 +98,6 @@ public:
     }
 
 private:
-
-    /// Initialize by a single basis patch
-    template <typename T>
-    void initSingle( const gsBasis<T> & basis, index_t nComp = 1);
 
     /// Initialize by vector of DoF indices and dimension
     void initPatchDofs(const gsVector<index_t> & patchDofSizes,
@@ -275,7 +199,7 @@ public:
      */
     void localToGlobal(const gsMatrix<index_t>& locals,
                        index_t patchIndex,
-                       gsMatrix<index_t>& globals, 
+                       gsMatrix<index_t>& globals,
 		               index_t comp = 0) const;
 
     /** \brief Computes the global indices of the input local indices
@@ -288,7 +212,7 @@ public:
     void localToGlobal2(const gsMatrix<index_t>& locals,
                         index_t patchIndex,
                         gsMatrix<index_t>& globals,
-                        index_t & numFree, 
+                        index_t & numFree,
 		                index_t comp = 0) const;
 
     /** \brief Returns the index associated to local dof \a i of patch \a k without shifts.
@@ -503,38 +427,44 @@ public:
     /// \brief For all global index, this function assigns
     /// a pair (patch,dof) that maps to that global index
     std::vector<std::pair<index_t,index_t> > anyPreImages(index_t comp = 0) const;
-    
+
     /// \brief Produces the inverse of the mapping on patch \a k
     /// assuming that the map is invertible on that patch
     std::map<index_t,index_t> inverseOnPatch(const index_t k) const;
 
     /// \brief For \a gl being a global index, this function returns
     /// true whenever \a gl corresponds to patch \a k
-    bool indexOnPatch(const index_t gl, const index_t k) const;
+    bool indexOnPatch(const index_t gl, const index_t k, index_t & local) const;
+
+    inline bool indexOnPatch(const index_t gl, const index_t k) const
+    {
+        index_t local;
+        return indexOnPatch(gl, k, local);
+    }
 
     /// \brief For \a n being an index which is already offsetted, it
     /// returns the global index where it is mapped to by the dof
     /// mapper.
-    index_t mapIndex(index_t n) const
+    inline index_t mapIndex(index_t n) const
     {
         return m_dofs[n/m_dofs.front().size()]
             [n%m_dofs.front().size()] + m_shift;
     }
 
-      /// \brief Returns all boundary dofs on patch k (local dof indices)
-     gsVector<index_t> findBoundary(const index_t k) const;
+    /// \brief Returns all boundary dofs on patch k (local dof indices)
+    gsVector<index_t> findBoundary(const index_t k) const;
 
-     /// \brief Returns all free dofs on patch k (local dof indices)
-     gsVector<index_t> findFree(const index_t k) const;
+    /// \brief Returns all free dofs on patch k (local dof indices)
+    gsVector<index_t> findFree(const index_t k) const;
 
-     /// \brief Returns all coupled dofs on patch k (local dof indices)
-     gsVector<index_t> findCoupled(const index_t k, const index_t j = -1) const;
+    /// \brief Returns all coupled dofs on patch k (local dof indices)
+    gsVector<index_t> findCoupled(const index_t k, const index_t j = -1) const;
 
-     /// \brief Returns all free, not coupled dofs on patch k (local dof indices)
-     gsVector<index_t> findFreeUncoupled(const index_t k) const;
+    /// \brief Returns all free, not coupled dofs on patch k (local dof indices)
+    gsVector<index_t> findFreeUncoupled(const index_t k) const;
 
-     /// \brief Returns all tagged dofs on patch k (local dof indices)
-     gsVector<index_t> findTagged(const index_t k) const;
+    /// \brief Returns all tagged dofs on patch k (local dof indices)
+    gsVector<index_t> findTagged(const index_t k) const;
 
 private:
 
@@ -608,8 +538,3 @@ inline std::ostream& operator<<( std::ostream& os, const gsDofMapper& b )
 #endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
-
-
-#ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsDofMapper.hpp)
-#endif

@@ -232,7 +232,7 @@ private:
     /// Flag for checking if collection is already saved.
     bool m_isSaved;
 
-    int m_time;
+    real_t m_time;
 
     gsExprEvaluator<> * m_evaluator;
 
@@ -258,13 +258,16 @@ private:
 inline void makeCollection(std::string const & fn, std::string const & ext, int n = 0)
 {
     gsParaviewCollection pc(fn);
+    // Use only the filename (no directory) so the DataSet path in the .pvd
+    // is relative to the .pvd file itself, not to the working directory.
+    const std::string base = gsFileManager::getFilename(fn);
     if ( n > 0)
     {
         for (int i=0; i<n ; i++)
-            pc.addPart(fn + std::to_string(i) + ext);
+            pc.addPart(base + std::to_string(i) + ext);
     }
     else
-        pc.addPart(fn + ext);
+        pc.addPart(base + ext);
 
     pc.save();
 }

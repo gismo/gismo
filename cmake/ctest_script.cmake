@@ -1,7 +1,7 @@
 ######################################################################
 ## ctest_script.cmake
 ## This file is part of the G+Smo library.
-## https://raw.githubusercontent.com/gismo/gismo/stable/cmake/ctest_script.cmake
+## https://raw.githubusercontent.com/gismo/gismo/dev/cmake/ctest_script.cmake
 ##
 ## Author: Angelos Mantzaflaris
 ######################################################################
@@ -213,8 +213,8 @@ endif()
 #  "MinGW Makefiles", "Visual Studio 12 2013", "Visual Studio 14 2015",
 #  "Visual Studio 14 2015 Win64", and so on)
 if (NOT DEFINED CTEST_CMAKE_GENERATOR)
-  file(WRITE ${CTEST_BINARY_DIRECTORY}/cgtest/CMakeLists.txt "message(\"\${CMAKE_GENERATOR}\")\n")
-  execute_process(COMMAND ${CMAKE_COMMAND} -Wno-dev .
+  file(WRITE ${CTEST_BINARY_DIRECTORY}/cgtest/CMakeLists.txt "if(CMAKE_VERSION VERSION_LESS \"3.19\")\ncmake_minimum_required(VERSION 2.8.12)\nelse()\ncmake_minimum_required(VERSION 3.1...3.10)\nendif()\nproject(cg)\nmessage(\"\${CMAKE_GENERATOR}\")\n")
+  execute_process(COMMAND ${CMAKE_COMMAND} -Wno-author .
     ERROR_VARIABLE CTEST_CMAKE_GENERATOR
     OUTPUT_QUIET
     WORKING_DIRECTORY ${CTEST_BINARY_DIRECTORY}/cgtest/
@@ -287,7 +287,7 @@ if (NOT DEFINED UPDATE_TYPE AND NOT DEFINED KEEPCONFIG)
 endif()
 
 if (NOT DEFINED GISMO_BRANCH) #for initial checkout
-  set(GISMO_BRANCH stable)
+  set(GISMO_BRANCH dev)
 endif()
 
 # For continuous builds, number of seconds to stay alive
@@ -320,7 +320,7 @@ if(NOT EXISTS "${CTEST_SOURCE_DIRECTORY}" AND NOT DEFINED KEEPCONFIG)
     unset(CTEST_CHECKOUT_COMMAND)
 
   elseif("x${UPDATE_TYPE}" STREQUAL "xsvn")
-    if("x${GISMO_BRANCH}" STREQUAL "xstable") # stable
+    if("x${GISMO_BRANCH}" STREQUAL "xdev") # dev
       set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} checkout https://github.com/gismo/gismo.git/trunk ${CTEST_SOURCE_DIRECTORY}")
     else() # branch
       set(CTEST_CHECKOUT_COMMAND "${CTEST_UPDATE_COMMAND} checkout https://github.com/gismo/gismo.git/branches/${GISMO_BRANCH} ${CTEST_SOURCE_DIRECTORY}")
@@ -483,6 +483,7 @@ macro(update_gismo ug_ucount)
     WORKING_DIRECTORY ${CTEST_SOURCE_DIRECTORY}
     RESULT_VARIABLE isdetached)
   if(isdetached EQUAL 0 AND UPDATE_REPO)
+    set(CTEST_UPDATE_VERSION_ONLY ON) #real update was already done before
     ctest_update(SOURCE ${CTEST_SOURCE_DIRECTORY} RETURN_VALUE ${ug_ucount})
     ctest_submit(PARTS Update RETRY_COUNT 3 RETRY_DELAY 3)
   endif()
