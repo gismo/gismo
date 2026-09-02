@@ -27,8 +27,16 @@ template<class T> class gsCompositeDomain;
 
 /**
    @brief A domain typically coming from a multipatch basis/geometry
- */
 
+
+   patchIndex() : The index of the patch where we are at
+   subdomainIndex() : The index of the subdomain where we are at
+   id(): The global element index of the current element
+   localId(): The index of the current element in its containing subdomain
+   
+   
+   side(): The index of side where this elemement lies (if applicable)
+ */
 template <class T>
 class gsCompositeDomainIterator : public gsDomainIterator<T>
 {
@@ -38,8 +46,10 @@ class gsCompositeDomainIterator : public gsDomainIterator<T>
     typedef typename gsDomainIterator<T>::uPtr domainIter;
 
     domainContainer m_domains;
-    std::vector<size_t> m_numEl; //offsets
+    std::vector<size_t> m_numElOffset; //offsets
     gsDomainIteratorWrapper<T> m_cur;
+
+    index_t m_sid; //< Composite (sub-domain) id
 
 public:
     explicit gsCompositeDomainIterator(index_t _id = 0) : Base(_id) { }
@@ -48,10 +58,13 @@ public:
     : Base(), m_domains(give(_dom))
     {
         GISMO_ASSERT(!m_domains.empty(), "Empty..");
-        m_numEl.reserve(m_domains.size()+1);
-        m_numEl.push_back(0);
+        m_numElOffset.reserve(m_domains.size()+1);
+        m_numElOffset.push_back(0);
+        m_sid = 0;
         for( auto & sd : m_domains )
-            m_numEl.push_back(m_numEl.back()+sd->numElements());
+        {
+            m_numElOffset.push_back(m_numElOffset.back()+sd->numElements());
+        }
         m_cur = m_domains.front()->beginAll();
     }
 
@@ -60,20 +73,27 @@ public:
 
     virtual ~gsCompositeDomainIterator() { }
 
-private:
+    
+    index_t subdomainIndex() const override { return m_sid; }
 
     virtual size_t localId() const { return m_cur.id(); }
 
+    index_t patchIndex() const override { return m_cur.patchIndex(); }
+    
+private:
+
     void next() override
     {
+        // previous
         //note: we cannot rely on this->id()
-        if (m_cur.id() + 1 == m_numEl[this->patch()+1]-m_numEl[this->patch()])
+        //if (m_cur.id() + 1 == m_numEl[m_sid+1]-m_numEl[m_sid])
+
+        if ( this->id() + 1 == m_numElOffset[m_sid+1])
         {
-            ++this->patch();
-            if ((size_t)this->patch()<m_domains.size())
+            ++m_sid;
+            if ((size_t)m_sid<m_domains.size())
             {
-                m_cur = m_domains[this->patch()]->beginAll();
-                //m_cur->get()->patch() = this->patch(); // not needed
+                m_cur = m_domains[m_sid]->beginAll();
             }
             else
                 return;
@@ -87,17 +107,17 @@ private:
     void next(index_t increment) override
     {
         const size_t pos = this->id() + increment;
-        if ( pos < m_numEl[this->patch()+1])
+        if ( pos < m_numElOffset[m_sid+1])
         {
             m_cur += increment;
             return;
         }
 
-        //note: could end at min( --m_numEl.end(), m_numEl.begin() + increment)
-        auto it = --std::upper_bound(m_numEl.begin()+this->patch(), --m_numEl.end(), pos);
-        this->patch() = it - m_numEl.begin();
-        m_cur  = m_domains[this->patch()]->beginAll();
-        m_cur +=  pos - m_numEl[this->patch()];
+        //note: could end at min( --m_numElOffset.end(), m_numElOffset.begin() + increment)
+        auto it = --std::upper_bound(m_numElOffset.begin()+m_sid, --m_numElOffset.end(), pos);
+        m_sid = it - m_numElOffset.begin();
+        m_cur  = m_domains[m_sid]->beginAll();
+        m_cur +=  pos - m_numElOffset[m_sid];
         return;
     }
 
@@ -134,7 +154,10 @@ public:
     : Base(), m_domains(multiBasis.nPieces()), m_topology(&multiBasis.topology())
     {
         for (index_t i = 0; i != multiBasis.nPieces(); ++i)
+        {
             m_domains[i] = multiBasis.basis(i).domain();
+            m_domains[i]->setPatchIndex(i);
+        }
     }
 
     /** @brief Constructor from a \ref gsMultipatch.
@@ -146,8 +169,16 @@ public:
     : Base(), m_domains(mp.nPieces()), m_topology(&mp.topology())
     {
         for (index_t i = 0; i != mp.nPieces(); ++i)
+        {
             m_domains[i] = mp.patch(i).basis().domain();
+            m_domains[i]->setPatchIndex(i);
+        }
     }
+
+    // Caller is responsible for tagging patch indices on the supplied domains
+    // via setPatchIndex(); untagged domains default to patchIndex()==0.
+    gsCompositeDomain(domainContainer domains)
+    : Base(), m_domains(give(domains)) { }
 
     // void insert(Ptr other);
 
