@@ -179,10 +179,54 @@ to declared types and making local topological edits hard. That trade was consid
 declined; the public API (β₁/β₂/β₃ accessors and orbit traversals, no index arithmetic
 exposed) leaves room for such a back-end later.
 
-## 10. Not done yet
+## 10. File I/O
 
-* Reading volume meshes. `gsVolMesh::write` emits VTK `.vtu` (as `VTK_POLYHEDRON`, with the
-  face stream) and delegates surface formats to `boundary_mesh()`; there is no reader yet.
+Three formats, read and write, laid out like the surface mesh's `IO_off` / `IO_obj` / `IO_stl`:
+`IO_msh.hpp` (Gmsh, ASCII 2.2 and 4.1 in, 2.2 out), `IO_vtk.hpp` (legacy VTK) and `IO_vtu.hpp`
+(VTK XML, inline ASCII). `IO_vol.h` declares them and dispatches on the extension.
+
+The four standard cell types already take their vertices in VTK_TETRA / VTK_HEXAHEDRON /
+VTK_WEDGE / VTK_PYRAMID order, which is exactly Gmsh's order for element types 4/5/6/7, so all
+three readers share one `add_typed_cell()` and need no permutation table. Writing needs the
+reverse — the corner ring is unordered — which is what `gsVolMeshTopology::cell_vtk_order()`
+recovers, recognising a type from its face structure (counting vertices and faces is not enough:
+a 6-face 8-vertex cell need not be a hexahedron) and falling back to `VTK_POLYHEDRON`.
+
+Only `.vtu` can express a general polyhedron, through the `faces`/`faceoffsets` stream. `.msh`
+and `.vtk` say what they had to leave out rather than writing something wrong. Every failure —
+missing or truncated file, binary or appended `.vtu`, unknown Gmsh version — returns `false` with
+a message; readers also report cells of non-positive volume instead of silently reordering them,
+since that would hide a broken input.
+
+## 11. Volumetric Catmull–Clark
+
+`gsVolCatmullClark`, on the `gsVolSubdivisionScheme` base that mirrors `gsSubdivisionScheme`.
+Every (cell, corner) pair becomes one cell: walking the darts around a corner gives the cyclic
+edges `e_i` and faces `f_i`, with `f_i` bounded by `e_i` and `e_{i+1}`, and the new cell is bounded
+by *k* quads `(V, E_i, F_i, E_{i+1})` around the vertex and *k* quads `(E_i, F_{i-1}, C, F_i)`
+around the cell point. Every directed edge in that list occurs once in each direction, which is
+exactly what `add_cell()` verifies.
+
+Unlike the surface schemes it does not edit in place: a 3-map cannot be refined by local surgery,
+so the refined mesh is built and moved over the target. No new topological operation was needed —
+the corner ring, `edge(Halfedge)`, `halfface(Halfedge)` and polygonal `add_cell` already cover it.
+
+**A corner of valence *k* yields a cell whose vertex point and cell point again have valence *k*.**
+Non-trivalent corners are therefore *not* repaired by refining further; they persist as two poles.
+Tetrahedra, hexahedra and prisms are trivalent everywhere and become hexahedral after one step; a
+pyramid apex has four faces and never does.
+
+Interior geometry uses the MacCracken–Joy masks (cell point = centroid; face point = its vertices
+plus the adjacent cell points; edge point = its endpoints plus incident face and cell points;
+vertex point = `(A + 3B + 3C + V)/8`).
+
+## 12. Not done yet
+
+* **Boundary masks for the subdivision.** Boundary entities currently use the interior masks, so
+  the boundary shrinks and does not match `gsCatmullClark` applied to `boundary_mesh()`. The
+  published scheme applies the surface Catmull–Clark masks there. This is pinned by a test so the
+  day it changes is a deliberate one.
+* A `gsGmsh`-backed `.msh` path behind `#ifdef gsGmsh_ENABLED`, for binary files and for meshing
+  CAD geometry straight into a `gsVolMesh`.
 * `close()` / boundary cells, i.e. a total β₃.
-* Volumetric subdivision and trivariate patch extraction, which are the reason the
-  structure exists.
+* Trivariate patch extraction.

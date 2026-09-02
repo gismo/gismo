@@ -13,16 +13,22 @@
 */
 
 #include <gismo.h>
+#include <gsMesh2/gsSubdivisionSchemes/gsVolCatmullClark.h>
 
 using namespace gismo;
 
 int main(int argc, char *argv[])
 {
     index_t n = 2;
+    index_t levels = 0;
+    std::string input;
     std::string output = "volmesh";
 
     gsCmdLine cmd("Half-face volume mesh (gsVolMesh) example.");
     cmd.addInt("n", "cells", "Number of cells per direction", n);
+    cmd.addInt("s", "subdivide", "Levels of volumetric Catmull-Clark subdivision", levels);
+    cmd.addString("i", "input", "Read the mesh from this file (.msh, .vtk, .vtu) "
+                  "instead of building a block", input);
     cmd.addString("o", "output", "Base name of the output files", output);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
 
@@ -37,9 +43,22 @@ int main(int argc, char *argv[])
     // automatically, so the block below ends up with one geometric face per
     // interior interface, not two.
     Mesh mesh;
+    index_t s = n+1;
+    std::vector<Vertex> id;
 
-    const index_t s = n+1;
-    std::vector<Vertex> id(s*s*s);
+    if (!input.empty())
+    {
+        if (!mesh.read(input))
+        {
+            gsWarn << "Could not read \"" << input << "\".\n";
+            return EXIT_FAILURE;
+        }
+        gsInfo << "Read " << input << "\n";
+    }
+    else
+    {
+
+    id.resize(s*s*s);
     for (index_t i = 0; i != s; ++i)
         for (index_t j = 0; j != s; ++j)
             for (index_t k = 0; k != s; ++k)
@@ -55,6 +74,18 @@ int main(int argc, char *argv[])
                              ID(i+1,j+1,k+1), ID(i  ,j+1,k+1));
 #   undef ID
 
+    }
+
+    if (0 != levels)
+    {
+        gsInfo << "\nApplying " << levels << " level(s) of volumetric "
+                  "Catmull-Clark ...\n";
+        gsVolCatmullClark<real_t>::apply(mesh, (size_t)levels);
+        gsInfo << "Note: the boundary masks are not implemented yet, so the "
+                  "interior rules\n      are used on the boundary too and the "
+                  "mesh visibly shrinks.\n";
+    }
+
     gsInfo << mesh;
     mesh.mesh_statistics();
 
@@ -68,7 +99,7 @@ int main(int argc, char *argv[])
     // Everything volumetric comes out of beta3: mate() takes a dart across a
     // face into the neighbouring cell, and composing it with the inherited
     // beta2 rotates around a geometric edge, one step per incident cell.
-    if (n > 1)
+    if (input.empty() && n > 1)
     {
         const Vertex centre = id[((n/2*s + n/2)*s) + n/2];
         gsInfo << "\nAround the interior vertex " << centre << ":\n"
