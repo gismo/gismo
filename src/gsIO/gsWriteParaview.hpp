@@ -2135,6 +2135,83 @@ inline void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
     //makeCollection(fn, ".vtk"); // legacy inside pvd seems to not work
 }
 
+template<class Scalar>
+inline void gsWriteHalfedgesParaview(const gsSurfMesh<Scalar>& sm, 
+                                    const std::string& fn,
+                                    real_t eps)
+{
+    std::ofstream file(fn + ".vtk");
+
+    file << "# vtk DataFile Version 4.2\n";
+    file << "Halfedge glyphs\n";
+    file << "ASCII\n";
+    file << "DATASET POLYDATA\n";
+
+    const index_t nH = sm.n_faces();
+
+    std::vector<gsSurfMesh<>::Point> centers;
+    std::vector<gsSurfMesh<>::Point> directions;
+
+    centers.reserve(nH);
+    directions.reserve(nH);
+
+    for (auto f : sm.faces())
+    {
+        auto h = sm.halfedge(f);
+
+        auto v0 = sm.from_vertex(h);
+        auto v1 = sm.to_vertex(h);
+
+        gsSurfMesh<>::Point p0 = sm.position(v0);
+        gsSurfMesh<>::Point p1 = sm.position(v1);
+
+        gsSurfMesh<>::Point dir = p1 - p0;
+        dir.normalize();
+
+        gsSurfMesh<>::Point center = 0.5 * (p0 + p1);
+
+        if (!sm.is_boundary(h))
+        {
+            auto n = sm.compute_face_normal(f);
+            center += eps * n.cross(dir);
+        }
+
+        centers.push_back(center);
+        directions.push_back(dir);
+    }
+
+    // Add points (halfedges)
+
+    file << "POINTS " << nH << " float\n";
+
+    for (auto const& p : centers)
+        file << p.transpose() << "\n";
+
+    file << "\n";
+
+    // One vertex cell per point
+
+    file << "VERTICES " << nH << " " << 2 * nH << "\n";
+
+    for (index_t i = 0; i < nH; ++i)
+        file << "1 " << i << "\n";
+
+    file << "\n";
+
+    // Direction vectors
+
+    file << "POINT_DATA " << nH << "\n";
+
+    file << "VECTORS direction float\n";
+
+    for (auto const& d : directions)
+        file << d.transpose() << "\n";
+
+    file << "\n";
+
+    file.close();
+}
+
 template <typename T>
 void gsWriteParaview(const std::vector<gsMesh<T> >& meshes,
                      const std::string& fn)

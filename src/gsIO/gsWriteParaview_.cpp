@@ -134,6 +134,11 @@ void gsWriteParaview(const gsSurfMesh<T> & sm,
                      std::vector<std::string> props);
 
 TEMPLATE_INST
+void gsWriteHalfedgesParaview(const gsSurfMesh<T>& sm, 
+                                    const std::string& fn,
+                                    real_t eps);                     
+
+TEMPLATE_INST
 void gsWriteParaview(const std::vector<gsMesh<T> >& sl, std::string const & fn);
 
 //TEMPLATE_INST

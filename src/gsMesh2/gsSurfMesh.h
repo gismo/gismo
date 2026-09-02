@@ -174,6 +174,9 @@ public:
     /// close to vertices not on vertices, to be shown on face.
     void display_halfedge();
 
+    /// Flips halfedge orientation i.e., if it is CW, becomes CCW.
+    Self flip_orientation();
+
 public:  // mesh operations related to subdivision schemes
 
     /// Augment mesh boundaries for boundary control on dual subdivision schemes.

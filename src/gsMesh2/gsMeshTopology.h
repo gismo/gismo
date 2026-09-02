@@ -1243,6 +1243,24 @@ public:
         return he;
     }
 
+    /// returns the halfedge obtained by rotating \c h counter-clockwise \c r
+    /// times around its start vertex
+    inline Halfedge ccw_rotated_halfedge(Halfedge h, int r) const
+    {
+        for (int k = 0; k < r; k++)
+            h = ccw_rotated_halfedge(h);
+        return h;
+    }
+
+    /// returns the halfedge obtained by rotating \c h clockwise \c r times
+    /// around its start vertex
+    inline Halfedge cw_rotated_halfedge(Halfedge h, int r) const
+    {
+        for (int k = 0; k < r; k++)
+            h = cw_rotated_halfedge(h);
+        return h;
+    }
+
 
 public:
 
