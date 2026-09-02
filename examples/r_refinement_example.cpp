@@ -168,6 +168,8 @@ int main(int argc, char *argv[])
     index_t numElevate     = 0;
     index_t maxIter        = 50;
     index_t elevDegree     = 0; // degree elevation for the composition of geometry maps
+    index_t id_mp          = 1; // id of the geometry in the xml file
+    index_t id_rho         = 2003; // id of the density function in the xml file
     double IntensityMAE    = 9.;
     double quadValue       = 2.0;
     bool bs_nrbs           = false;
@@ -183,10 +185,9 @@ int main(int argc, char *argv[])
     // std::string fn("pde/example3D.xml");
     // std::string fn("volumes/GshapedVolume.xml");
     // Specify the file path
-    std::string fn("pde/bsimple.xml");
     // std::string fn("pde/infinit_plate.xml");
     // std::string fn("pde/circle.xml");
-    // std::string fn("surfaces/egg.xml"); 
+    std::string fn("surfaces/egg.xml"); 
     // std::string fn("domain2d/lake.xml");
     // std::string fn("surfaces/cylinder.xml");
 
@@ -213,6 +214,10 @@ int main(int argc, char *argv[])
                 quadValue);
     cmd.addString( "d", "file", "Input XML file data", 
                 fn );
+    cmd.addInt("a", "id_mp", "ID of the geometry in the XML file", 
+                id_mp);
+    cmd.addInt("b", "id_rho", "ID of the density function in the XML file", 
+                id_rho);
     cmd.addInt("quRule", "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
                 1);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", 
@@ -235,7 +240,7 @@ int main(int argc, char *argv[])
     gsFileData<> fd(fn);
     // ...
     gsMultiPatch<> mpLeft, mpPsi;// Initial geometry and the resluted adaptive mapping
-    fd.getId(1,mpLeft);
+    fd.getId(id_mp,mpLeft);
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
     // gsMultiPatch<> mpLeft; mpLeft.addPatch( gsNurbsCreator<>::BSplineCube(1,0,0,0) );
@@ -250,7 +255,7 @@ int main(int argc, char *argv[])
     // Right-hand side function : Analytical density function rho_1
     // Load the file
     gsFunctionExpr<> f;
-    fd.getId(2003, f);
+    fd.getId(id_rho, f);
     gsInfo<<"Density function "<< f << "\n";
 
     //! [Refinement]

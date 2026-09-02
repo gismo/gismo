@@ -58,10 +58,6 @@
 
     ./bin/gsInterpolateMap -d 3 -X "(z+1)*sqrt(1+4*(y-1/2)^2)*cos(2*pi*x)" -Y "(z+1)*4*(y-1/2)" -Z "(z+1)*sqrt(1+4*(y-1/2)^2)*sin(2*pi*x)"  -k 4
 
-    - a ball volume 
-    ./bin/gsInterpolateMap -d 3 -X "0.5*(2.0*x-1.0)*sqrt(1.-0.5*(2.0*y-1.0)**2-0.5*(2.0*z-1.0)**2+(2.0*y-1.0)**2*(2.0*z-1.0)**2/3)" -Y "0.5*(2.0*y-1.0) * sqrt(1.-0.5*(2.0*x-1.0)**2-0.5*(2.0*z-1.0)**2+(2.0*x-1.0)**2*(2.0*z-1.0)**2/3)" -Z "0.5*(2.0*z-1.0) * sqrt(1.-0.5*(2.0*x-1.0)**2-0.5*(2.0*y-1.0)**2+(2.0*x-1.0)**2*(2.0*y-1.0)**2/3)"  -k 4
-
-
     Try more from http://virtualmathmuseum.org/Surface/gallery_o.html
     (take care of the parameter range ;) )
 
@@ -170,4 +166,3 @@ int main(int argc, char* argv[])
 
     return 0;
 }
-

@@ -29,32 +29,23 @@ int main(int argc, char *argv[])
    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
    //! [Parse command line]
 
-   //! [Function data] TEST   2------------------------------------------------------------------ SOLOVEV
-//    gsFunctionExpr<> g("sqrt( 4.*y**2 + ( x**2-1.)**2 )", 2);
-//    // Define source function
-//    gsFunctionExpr<> rhs("-1e0*(( ( (6.0*x**2 + 2.0) / sqrt(4.0*y**2 + (x**2 - 1.0)**2)) - ((4.0*x**2*(x**2 - 1.0)**2 + 16.0*y**2) / (sqrt(4.0*y**2 + (x**2 - 1.0)**2)**3)) ))",2);
+   // --------------- specify exact solution and right-hand-side ---------------
 
-//    // diffusion coefficient:
-//    gsFunctionExpr<> coeff_diff("1e0+(1e+4-1e0)*(y**2)/( y**2 + 0.25 * x**2 * (x**2 - 1.0)**2)",
-//                                "    (1e+4-1e0)*(-0.5 * x * (x**2 - 1.0) * y)/( y**2 + 0.25 * x**2 * (x**2 - 1.0)**2)",
-//                                "    (1e+4-1e0)*(-0.5 * x * (x**2 - 1.0) * y)/( y**2 + 0.25 * x**2 * (x**2 - 1.0)**2)",
-//                                "1e0+(1e+4-1e0)*(0.25 * x**2 * (x**2 - 1.0)**2)/( y**2 + 0.25 * x**2 * (x**2 - 1.0)**2)",2);
-   //! [Function data] TEST   2------------------------------------------------------------------SOVINEC
-   gsFunctionExpr<> g("cos(pi*x)*cos(pi*y)", 2);
+   //! [Function data]
+   // Define exact solution (will be used for specifying Dirichlet boundary conditions
+   //gsFunctionExpr<> g("if( y<-x/2-1/2, 1, 0 )", 2);
+   gsFunctionExpr<> g("if( y>=0, if( x <=-1, 1, 0 ), 0 )", 2);
    // Define source function
-   gsFunctionExpr<> rhs("2*pi*pi*cos(pi*x)*cos(pi*y)",2);
+   gsFunctionExpr<> rhs("0",2);
 
    // diffusion coefficient:
-gsFunctionExpr<> coeff_diff(
-    "if(x**2+y**2 <=1e-16, 1e0, 1e0 + (1e8-1e0)*(cos(pi*x)^2*sin(pi*y)^2)/(sin(pi*x)^2*cos(pi*y)^2 + cos(pi*x)^2*sin(pi*y)^2))",
-    "if(x**2+y**2 <=1e-16, 0,         (1e8-1e0)*(-sin(pi*x)*cos(pi*y)*cos(pi*x)*sin(pi*y))/(sin(pi*x)^2*cos(pi*y)^2 + cos(pi*x)^2*sin(pi*y)^2))",
-    "if(x**2+y**2 <=1e-16, 0,         (1e8-1e0)*(-sin(pi*x)*cos(pi*y)*cos(pi*x)*sin(pi*y))/(sin(pi*x)^2*cos(pi*y)^2 + cos(pi*x)^2*sin(pi*y)^2))",
-    "if(x**2+y**2 <=1e-16, 1e0, 1e0 + (1e8-1e0)*(sin(pi*x)^2*cos(pi*y)^2)/(sin(pi*x)^2*cos(pi*y)^2 + cos(pi*x)^2*sin(pi*y)^2+1e-16))", 2);
-    // convection coefficient:
-   gsFunctionExpr<> coeff_conv("0.","0.",2);
+   gsFunctionExpr<> coeff_diff("0.000001","0","0","0.000001",2);
+   // convection coefficient:
+   gsFunctionExpr<> coeff_conv("3/sqrt(13)","-2/sqrt(13)",2);
    // reaction coefficient:
    gsFunctionExpr<> coeff_reac("0",2);
    //! [Function data]
+
    // Print out source function and solution
    gsInfo<<"Source function " << rhs << "\n";
    gsInfo<<"Dirichlet boundary conditions "  << g << "\n\n";
@@ -65,42 +56,21 @@ gsFunctionExpr<> coeff_diff(
    // Read geometry from file
    //! [GetGeometryData]
    // Read xml and create gsMultiPatch
-//    string fileSrc( "planar/lshape2d_3patches_thb.xml" );
-//    gsMultiPatch<real_t> patches;
-//    gsReadFile<real_t>( fileSrc, patches);
-// Test 2 
-   string fileSrc( "pde/unitsquare.xml" );
-//    string fileSrc( "pde/solovev_relaxed.xml" );
-//    string fileSrc( "pde/solovev_relaxed.xml" );
-//    string fileSrc( "pde/annulus2d_bvp.xml" );
-    gsFileData<> fd(fileSrc);
-    gsMultiPatch<> Psi, patches;
-    fd.getId(1,Psi);
-    if ( Psi.basis(0).weights().any()){
-        gsInfo<<Psi.basis(0).weights().any()<<" Rational mapping \n";
-    for(size_t i =0; i<Psi.nPatches(); ++i)
-        patches.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(Psi.patch(i)) ));
-    }
-    else{
-        gsInfo<<"nonRational mapping \n";
-    for(size_t i =0; i<Psi.nPatches(); ++i)
-        patches.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(Psi.patch(i)) ));            
-    }
+   string fileSrc( "planar/lshape2d_3patches_thb.xml" );
+   gsMultiPatch<real_t> patches;
+   gsReadFile<real_t>( fileSrc, patches);
+   //! [GetGeometryData]
+   gsInfo << "The domain is a "<< patches <<"\n";
+
    //! [computeTopology]
    // Get all interfaces and boundaries:
    patches.computeTopology();
    //! [computeTopology]
 
-   //! [GetGeometryData]
-   gsInfo << "The domain is a "<< patches <<"\n";
-
    // --------------- add bonudary conditions ---------------
    //! [Boundary conditions]
    gsBoundaryConditions<> bcInfo;
 
-    // fd.getId(2, bcInfo); // id=2: boundary conditions
-    // bcInfo.setGeoMap(patches);
-    // gsInfo<<"Boundary conditions:\n"<< bcInfo <<"\n";
    // For simplicity, set Dirichlet boundary conditions
    // given by exact solution g on all boundaries:
    for ( gsMultiPatch<>::const_biterator
@@ -117,51 +87,51 @@ gsFunctionExpr<> coeff_diff(
 
 
    // --------------- set up basis ---------------
-   // Specify cell-marking strategy...
-   MarkingStrategy adaptRefCrit = PUCA;
-   //MarkingStrategy adaptRefCrit = GARU;
-   //MarkingStrategy adaptRefCrit = errorFraction;
 
    //! [GetBasisFromTHB]
    // Copy basis from the geometry
-   gsMultiBasis<> bases( patches , true);
-   bases.uniformRefine(4);
-//    bases.degreeElevate(1);
+   gsMultiBasis<> bases( patches );
    //! [GetBasisFromTHB]
 
 
    //! [initialRefinements]
    // Number of initial uniform refinement steps:
-//    int numInitUniformRefine  = 1;
+   int numInitUniformRefine  = 2;
 
-//    for (int i = 0; i < numInitUniformRefine; ++i){
-//      bases.uniformRefine();
-//     }
+   for (int i = 0; i < numInitUniformRefine; ++i)
+     bases.uniformRefine();
    //! [initialRefinements]
 
 
    // --------------- set up adaptive refinement loop ---------------
+
+   //! [adaptRefSettings]
+   // Number of refinement loops to be done
+   int numRefinementLoops = 3;
+
+   // Specify cell-marking strategy...
+   MarkingStrategy adaptRefCrit = PUCA;
+   //MarkingStrategy adaptRefCrit = GARU;
+   //MarkingStrategy adaptRefCrit = errorFraction;
+
    // ... and parameter.
    const real_t adaptRefParam = 0.7;
 
    //! [adaptRefSettings]
-   // Number of refinement loops to be done
-   int numRefinementLoops = 7;
 
 
    //! [constructAssembler]
    // Construct assembler
    gsCDRAssembler<real_t> cdrAss( cdrPde, bases);
    // Set stabilization flag to 1 = SUPG
-   cdrAss.options().setInt("Stabilization", stabilizerCDR::none);
+   cdrAss.options().setInt("Stabilization", stabilizerCDR::SUPG);
    // Compute Dirichlet values by L2-projection
    // Caution: Interpolation does not work for locally refined (T)HB-splines!
    cdrAss.options().setInt("DirichletValues",dirichlet::l2Projection);
    //! [constructAssembler]
 
    // --------------- adaptive refinement loop ---------------
-    gsVector<>     l2err(numRefinementLoops+1), h1err(numRefinementLoops+1),l1err(numRefinementLoops+1);
-    gsVector<int>  DoFPDE(numRefinementLoops+1);
+
    //! [beginRefLoop]
    for( int refLoop = 0; refLoop <= numRefinementLoops; refLoop++)
    {
@@ -174,10 +144,10 @@ gsFunctionExpr<> coeff_diff(
        //! [solverPart]
        // Generate system matrix and load vector
        cdrAss.assemble();
-        gsInfo << "System matrix has " << cdrAss.matrix().nonZeros() << " non-zero entries.\n";
+
        // Solve the system
        gsMatrix<real_t> solVector =
-           gsSparseSolver<>::CGDiagonal( cdrAss.matrix() ).solve( cdrAss.rhs());
+           gsSparseSolver<>::BiCGSTABILUT( cdrAss.matrix() ).solve( cdrAss.rhs() );
 
        // Construct the solution as a scalar field
        gsField<> solField;
@@ -197,23 +167,12 @@ gsFunctionExpr<> coeff_diff(
        auto ms = ev.getVariable(g, Gm);
 
        // Get the element-wise norms.
-       gsInfo << " error L2 norm: "<< sqrt(ev.integral( (is-ms).sqNorm() )) << "\n";
-       gsInfo << " error H1 seminorm: "<< sqrt(ev.integral( ( igrad(is,Gm) - igrad(ms,Gm)).sqNorm() )) << "\n";
-        //...
-        gsMatrix<> A(2,1);
-        A << 0.5,0.5; // parametric coordinates for the isogeometric solution
-        gsInfo<< ev.eval(ms, A) <<"\n";
-        gsInfo<< ev.eval(is, A, 0) <<"\n";
-        DoFPDE[refLoop]         = cdrAss.multiBasis().totalSize();
-        l1err[refLoop]          = abs(1.-1./ev.eval(is, A).value());
-        l2err[refLoop]          = sqrt(ev.integral( (is-ms).sqNorm() ));
-        h1err[refLoop]          = sqrt(ev.integral( ( igrad(is,Gm) - grad(ms)).sqNorm() ));
-
-       // --------------- adaptive refinement ---------------
-       ev.integralElWise( ( is- ms).sqNorm()*meas(Gm) );
-        //------------------
+       ev.integralElWise( ( igrad(is,Gm) - igrad(ms)).sqNorm()*meas(Gm) );
        const std::vector<real_t> & eltErrs  = ev.elementwise();
        //! [errorComputation]
+
+       // --------------- adaptive refinement ---------------
+
        //! [adaptRefinementPart]
        // Mark elements for refinement, based on the computed local errors and
        // the refinement-criterion and -parameter.
@@ -222,22 +181,18 @@ gsFunctionExpr<> coeff_diff(
        gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
 
        // Refine the marked elements with a 1-ring of cells around marked elements
-        gsRefineMarkedElements( cdrAss.multiBasis(), elMarked, 1 );
-        gsInfo <<"Refined mesh has degrees of freedom.\n";
-        //! [adaptRefinementPart]
+       gsRefineMarkedElements( cdrAss.multiBasis(), elMarked, 1 );
+       //! [adaptRefinementPart]
 
 
-        //! [repairInterfaces]
-        // Call repair interfaces to make sure that the new meshes
-        // match along patch interfaces.
-        // cdrAss.multiBasis().repairInterfaces( patches.interfaces() );
-        //! [repairInterfaces]
-        // gsInfo <<"Refined mesh has degrees of freedom.\n";
+       //! [repairInterfaces]
+       // Call repair interfaces to make sure that the new meshes
+       // match along patch interfaces.
+       cdrAss.multiBasis().repairInterfaces( patches.interfaces() );
+       //! [repairInterfaces]
 
-        //! [refreshAssembler]
-        cdrAss.refresh();
-        gsInfo <<"Refined mesh has degrees of freedom.\n";
-
+       //! [refreshAssembler]
+       cdrAss.refresh();
        //! [refreshAssembler]
 
        //! [Export to Paraview]
@@ -250,43 +205,6 @@ gsFunctionExpr<> coeff_diff(
        //! [Export to Paraview]
 
    }
-    //! [Error and convergence rates]
-    gsInfo<< "\nDoF_PDE = "<<std::scientific<<DoFPDE.transpose()<<"\n";
-    gsInfo<< "L1_error = "<<std::scientific<<std::setprecision(3)<<l1err.transpose()<<"\n";
-    gsInfo<< "L2_error = "<<std::scientific<<std::setprecision(3)<<l2err.transpose()<<"\n";
-    gsInfo<< "H1_error= "<<std::scientific<<std::setprecision(3)<<h1err.transpose()<<"\n";
-    //! [Error and convergence rates]
-    if (numRefinementLoops>0)
-    {
-        gsInfo<< "\nEoC (L1): " << std::fixed<<std::setprecision(2)
-              <<  ( l1err.head(numRefinementLoops).array()  /
-                   l1err.tail(numRefinementLoops).array() ).log().transpose() / std::log(2.0)
-                   <<"\n";
-
-        gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
-              <<  ( l2err.head(numRefinementLoops).array()  /
-                   l2err.tail(numRefinementLoops).array() ).log().transpose() / std::log(2.0)
-                   <<"\n";
-
-        gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
-             <<( h1err.head(numRefinementLoops).array() /
-                  h1err.tail(numRefinementLoops).array() ).log().transpose() / std::log(2.0) <<"\n";
-    }
-    // Assuming DoFPDE, l2err, and h1err are gsMatrix or similar types
-    std::ofstream outFile("error_analysis.txt", std::ios::app); // Open file in append mode
-    if (outFile.is_open())
-    {
-        outFile << "#DoF_PDE: " << bases.degree(0) << " \n"<< std::scientific << DoFPDE.transpose() << "\n";
-        outFile << "#L1_error: \n" << std::scientific << std::setprecision(3) << l1err.transpose() << "\n";
-        outFile << "#L2_error: \n" << std::scientific << std::setprecision(3) << l2err.transpose() << "\n";
-        outFile << "#H1_error: \n" << std::scientific << std::setprecision(3) << h1err.transpose() << "\n";
-        outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
-        outFile.close(); // Close the file after writing
-    }
-    else
-    {
-        gsInfo << "Error: Unable to open file for writing : error_analysis.txt.\n";
-    }
 
    //! [Plot in Paraview]
    if( plot )
