@@ -195,7 +195,7 @@ public:
     }
 
     // Caller is responsible for tagging patch indices on the supplied domains
-    // via setPatchIndex(); untagged domains keep patchIndex()==-1.
+    // via setPatchIndex(); untagged domains default to patchIndex()==0.
     gsCompositeDomain(domainContainer domains)
     : Base(), m_domains(give(domains)) { buildNumElOffset(); }
 
