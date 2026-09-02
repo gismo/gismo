@@ -84,7 +84,7 @@ class gsDomain
 
     typedef gsDomainIteratorWrapper<T> iterator;
 
-    gsDomain() : m_patch(-1) { }
+    gsDomain() : m_patch(0) { }
 
     virtual ~gsDomain() { }
 
