@@ -147,6 +147,99 @@ void gsAdaptiveParametrizationNewton<T,MODE>::_residual(
 }
 
 // ---------------------------------------------------------------------------
+// Persistent per-thread scratch: sizing matrices that are written wholesale
+// via .noalias() self-size on first use, but are pre-sized here anyway so the
+// very first sweep does not allocate (mirrors gsOptMesh::EvalScratch::init).
+template<class T, enum MonitorMode MODE>
+void gsAdaptiveParametrizationNewton<T,MODE>::EvalScratch::init(index_t dd, index_t td)
+{
+    Js.setZero(dd,dd);  Jg.setZero(td,dd);  Jc.setZero(td,dd);
+    C.setZero(dd,dd);   Cinv.setZero(dd,dd);
+    Cg.setZero(dd,dd);  Cg_inv.setZero(dd,dd);
+    grad_xi_f.setZero(dd,1);
+    ready = true;
+}
+
+template<class T, enum MonitorMode MODE>
+void gsAdaptiveParametrizationNewton<T,MODE>::ResidualScratch::init(index_t dd, index_t td)
+{
+    Js.setZero(dd,dd);  Jg.setZero(td,dd);  Jc.setZero(td,dd);
+    C.setZero(dd,dd);   Q.setZero(dd,dd);
+    D_d.setZero(td,dd); Md.setZero(td,dd); A_d.setZero(dd,dd); QA.setZero(dd,dd);
+    adj.setZero(dd,dd); AdjJg.setZero(dd,dd);
+    b_d.setZero(dd);    Qb.setZero(dd);    Q2b.setZero(dd);
+    Pi.setZero(dd,dd);
+    r.setZero(dd);
+    gA.setZero(dd);     v.setZero(dd);
+    Cg.setZero(dd,dd);  Cg_inv.setZero(dd,dd);
+    gradMon.setZero(dd,1); grad_xi_f.setZero(dd,1); grad_x_f.setZero(td,1);
+    mon_scalar_d.setZero(dd);
+    E_d.setZero(dd,dd); HfJgd.setZero(td,1); Dg_d.setZero(dd,1); JtHJd.setZero(dd,1);
+    vs.setZero(2);
+    dm2coef.setZero(dd);
+    ready = true;
+}
+
+template<class T, enum MonitorMode MODE>
+void gsAdaptiveParametrizationNewton<T,MODE>::HessianScratch::init(index_t dd, index_t td)
+{
+    Js.setZero(dd,dd);  Jg.setZero(td,dd);  Jc.setZero(td,dd);
+    C.setZero(dd,dd);   Q.setZero(dd,dd);
+    Cg.setZero(dd,dd);  Cg_inv.setZero(dd,dd);
+
+    D.resize(dd); Md.resize(dd); A.resize(dd); QAQ.resize(dd);
+    b.resize(dd); Qb.resize(dd); Q2b.resize(dd);
+    trCAC.setZero(dd); ad.setZero(dd);
+    AdjJg.setZero(dd,dd);
+    T3.resize(dd); E3.resize(dd);
+    Ddm.resize(dd); cdm.resize(dd); Q2c.resize(dd);
+    edm.resize(dd); amg.resize(dd); adjD.resize(dd);
+    E1.resize(dd); gfm.resize(dd);
+    for (index_t d = 0; d != dd; ++d)
+    {
+        D[d].setZero(td,dd); Md[d].setZero(td,dd); A[d].setZero(dd,dd);
+        QAQ[d].setZero(dd,dd);
+        b[d].setZero(dd); Qb[d].setZero(dd); Q2b[d].setZero(dd);
+        T3[d].resize(dd); E3[d].resize(dd);
+        Ddm[d].resize(dd); cdm[d].resize(dd); Q2c[d].resize(dd);
+        edm[d].resize(dd); amg[d].resize(dd); adjD[d].resize(dd);
+        for (index_t m = 0; m != dd; ++m)
+        {
+            T3[d][m].setZero(td,dd); E3[d][m].setZero(dd,dd);
+            Ddm[d][m].setZero(td); cdm[d][m].setZero(dd); Q2c[d][m].setZero(dd);
+            edm[d][m].setZero(dd); amg[d][m].setZero(dd); adjD[d][m].setZero(dd);
+        }
+        E1[d].setZero(dd,dd);
+        gfm[d].setZero(dd);
+    }
+    M2.setZero(dd,dd); trQHQ.setZero(dd,dd); S1.setZero(dd,dd); Ss2.setZero(dd,dd);
+    cJg.setZero(dd,dd); tT.setZero(dd,dd); bdMM.setZero(dd,dd);
+    adj.setZero(dd,dd); adjMd.setZero(dd,dd); tmpM.setZero(td,dd);
+    Htmp.setZero(dd,dd); QQ.setZero(dd,dd);
+    gA.setZero(dd); gB.setZero(dd); qA.setZero(dd); qB.setZero(dd);
+    v.setZero(dd); v_m.setZero(dd);
+    gradMon.setZero(dd,1); grad_xi_f.setZero(dd,1); grad_x_f.setZero(td,1);
+    ms.setZero(dd);
+    dms.setZero(dd,dd); hEta.setZero(dd,dd);
+    dgf.setZero(dd);
+    dHxf.setZero(td,td);
+    trCginvEd_vec.setZero(dd);
+    trCginvEdm_mat.setZero(dd,dd); trCginvEmCginvEd_mat.setZero(dd,dd);
+    dm2coef.setZero(dd); d2m2coef.setZero(dd,dd);
+    ready = true;
+}
+
+template<class T, enum MonitorMode MODE>
+void gsAdaptiveParametrizationNewton<T,MODE>::PicardScratch::init(index_t dd, index_t td)
+{
+    Js.setZero(dd,dd);  Jg.setZero(td,dd);  Jc.setZero(td,dd);
+    C.setZero(dd,dd);   Q.setZero(dd,dd);
+    Cg.setZero(dd,dd);  Cg_inv.setZero(dd,dd);  Bc.setZero(dd,dd);
+    grad_xi_f.setZero(dd,1);
+    gA.setZero(dd); gB.setZero(dd); BcgB.setZero(dd);
+    ready = true;
+}
+
 // _evalObjAndMinJ: fused single-sweep energy + min sigma-Jacobian.
 //
 // One OpenMP element pass computing simultaneously
@@ -199,7 +292,15 @@ void gsAdaptiveParametrizationNewton<T,MODE>::_evalObjAndMinJ(
         T thEnergy = T(0);
         T thMin    = std::numeric_limits<T>::max();
 
-        gsFuncData<T> compData, geomData, funData;
+        // Persistent per-thread scratch (see EvalScratch in the header):
+        // buffers, gsFuncData and the Gauss rule are allocated on the first
+        // call and reused by every later evaluation of this solve.
+        EvalScratch & sc = m_evalScratch.mine();
+        if (!sc.ready) sc.init(dd, td);
+
+        gsFuncData<T> & compData = sc.compData;
+        gsFuncData<T> & geomData = sc.geomData;
+        gsFuncData<T> & funData  = sc.funData;
         compData.flags = NEED_VALUE | NEED_DERIV;
         geomData.flags = NEED_VALUE | NEED_DERIV;
         if (hasMonitor)
@@ -208,25 +309,24 @@ void gsAdaptiveParametrizationNewton<T,MODE>::_evalObjAndMinJ(
             else /* GradientBased */        funData.flags = NEED_VALUE | NEED_DERIV;
         }
 
-        gsMatrix<T> Js(dd,dd), Jg(td,dd), Jc(td,dd);
-        gsMatrix<T> C(dd,dd), Cinv(dd,dd), Cg(dd,dd), Cg_inv(dd,dd);
-        gsMatrix<T> grad_xi_f(dd,1);
+        gsMatrix<T> & Js = sc.Js, & Jg = sc.Jg, & Jc = sc.Jc;
+        gsMatrix<T> & C = sc.C, & Cinv = sc.Cinv, & Cg = sc.Cg, & Cg_inv = sc.Cg_inv;
+        gsMatrix<T> & grad_xi_f = sc.grad_xi_f;
 
-        gsQuadRule<T> QuRule;
-        index_t QuPatch = -1;
-
-        gsMatrix<T> uvPoints, Jsigma_flat, Jgeom_flat, monVals, monDerivs;
-        gsVector<T> tmpWeights;
+        gsMatrix<T> & uvPoints = sc.uvPoints;
+        gsMatrix<T> & Jsigma_flat = sc.Jsigma_flat, & Jgeom_flat = sc.Jgeom_flat;
+        gsMatrix<T> & monVals = sc.monVals, & monDerivs = sc.monDerivs;
+        gsVector<T> & tmpWeights = sc.tmpWeights;
 
         for (auto & elem : dom->allElements())
         {
-            if (QuPatch != elem.patch())
+            if (sc.QuPatch != elem.patch())
             {
-                QuPatch = elem.patch();
-                QuRule = gsQuadrature::get(m_ib->basis(QuPatch), quadOptions);
+                sc.QuPatch = elem.patch();
+                sc.QuRule = gsQuadrature::get(m_ib->basis(sc.QuPatch), quadOptions);
             }
 
-            QuRule.mapTo(elem.lowerCorner(), elem.upperCorner(), uvPoints, tmpWeights);
+            sc.QuRule.mapTo(elem.lowerCorner(), elem.upperCorner(), uvPoints, tmpWeights);
 
             m_comp->compute(uvPoints, compData);
             Jsigma_flat = compData.values[1];
@@ -414,12 +514,14 @@ index_t gsAdaptiveParametrizationNewton<T,MODE>::_fpatternPos(index_t ii, index_
     GISMO_ASSERT(local < vdata.size() && vdata.index(local) == ii,
                  "Pattern entry ("<<ii<<","<<jj<<") missing from m_fpattern; "
                  "did _buildPattern() run?");
+    if (local >= vdata.size() || vdata.index(local) != ii)
+        return -1;
     return m_fpatternColOffset[jj] + local;
 }
 
 template<class T, enum MonitorMode MODE>
 void gsAdaptiveParametrizationNewton<T,MODE>::_mergePartialK(
-    const std::vector<gsVector<T> > & partial, gsSparseMatrix<T> & out) const
+    const std::vector<const gsVector<T> *> & partial, gsSparseMatrix<T> & out) const
 {
     const index_t N = m_fpattern.cols();
     for (index_t j = 0; j != N; ++j)
@@ -429,7 +531,7 @@ void gsAdaptiveParametrizationNewton<T,MODE>::_mergePartialK(
         if (nzj == 0) continue;
         gsAsVector<T> dst(col.valuePtr(), nzj);
         for (size_t t = 0; t != partial.size(); ++t)
-            dst += partial[t].segment(m_fpatternColOffset[j], nzj);
+            dst += partial[t]->segment(m_fpatternColOffset[j], nzj);
     }
     m_fpattern.toSparseMatrix_into(out);
     out.makeCompressed();
@@ -641,7 +743,14 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleResidual(
         gsVector<T> thR(N);
         thR.setZero();
 
-        gsFuncData<T> geomData, funData, sigmaData, sigmaBasisData;
+        // Persistent per-thread scratch (see ResidualScratch in the header).
+        ResidualScratch & sc = m_residualScratch.mine();
+        if (!sc.ready) sc.init(dd, td);
+
+        gsFuncData<T> & geomData = sc.geomData;
+        gsFuncData<T> & funData  = sc.funData;
+        gsFuncData<T> & sigmaData = sc.sigmaData;
+        gsFuncData<T> & sigmaBasisData = sc.sigmaBasisData;
         geomData.flags = NEED_VALUE | NEED_DERIV | NEED_DERIV2;
         funData.flags  = NEED_VALUE | NEED_DERIV;
         if (hasMonitor && MODE == GradientBased)
@@ -651,40 +760,38 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleResidual(
         // so actives are computed once per element (cf. gsExprAssembler).
         sigmaBasisData.flags = NEED_ACTIVE | NEED_VALUE | NEED_DERIV | SAME_ELEMENT;
 
-        gsQuadRule<T> QuRule;
-        index_t QuPatch = -1;
+        gsMatrix<T> & uvPoints = sc.uvPoints;
+        gsVector<T> & tmpWeights = sc.tmpWeights;
+        gsMatrix<T> & Jsigma_flat = sc.Jsigma_flat, & Jgeom_flat = sc.Jgeom_flat;
+        gsMatrix<T> & deriv2_geom = sc.deriv2_geom;
+        gsMatrix<T> & monVals = sc.monVals, & monDerivs = sc.monDerivs, & monDeriv2 = sc.monDeriv2;
+        gsMatrix<index_t> & actives = sc.actives;
+        gsMatrix<T> & basisVals = sc.basisVals, & basisDerivs = sc.basisDerivs;
 
-        gsMatrix<T> uvPoints;
-        gsVector<T> tmpWeights;
-        gsMatrix<T> Jsigma_flat, Jgeom_flat, deriv2_geom;
-        gsMatrix<T> monVals, monDerivs, monDeriv2;
-        gsMatrix<index_t> actives;
-        gsMatrix<T> basisVals, basisDerivs;
-
-        gsMatrix<T> Js(dd,dd), Jg(td,dd), Jc(td,dd), C(dd,dd), Q(dd,dd);
-        gsMatrix<T> D_d(td,dd), Md(td,dd), A_d(dd,dd), QA(dd,dd);
-        gsMatrix<T> adj(dd,dd), AdjJg(dd,dd);
-        gsVector<T> b_d(dd), Qb(dd), Q2b(dd);
-        gsMatrix<T> Pi(dd,dd);            // flux: column d = Pi_d
-        gsVector<T> r(dd);                // reaction
-        gsVector<T> gA(dd), v(dd);
-        gsMatrix<T> Cg(dd,dd), Cg_inv(dd,dd);
-        gsMatrix<T> gradMon(dd,1), grad_xi_f(dd,1), grad_x_f(td,1);
-        gsMatrix<T> Hess_f;
-        gsVector<T> mon_scalar_d(dd);
+        gsMatrix<T> & Js = sc.Js, & Jg = sc.Jg, & Jc = sc.Jc, & C = sc.C, & Q = sc.Q;
+        gsMatrix<T> & D_d = sc.D_d, & Md = sc.Md, & A_d = sc.A_d, & QA = sc.QA;
+        gsMatrix<T> & adj = sc.adj, & AdjJg = sc.AdjJg;
+        gsVector<T> & b_d = sc.b_d, & Qb = sc.Qb, & Q2b = sc.Q2b;
+        gsMatrix<T> & Pi = sc.Pi;          // flux: column d = Pi_d
+        gsVector<T> & r = sc.r;            // reaction
+        gsVector<T> & gA = sc.gA, & v = sc.v;
+        gsMatrix<T> & Cg = sc.Cg, & Cg_inv = sc.Cg_inv;
+        gsMatrix<T> & gradMon = sc.gradMon, & grad_xi_f = sc.grad_xi_f, & grad_x_f = sc.grad_x_f;
+        gsMatrix<T> & Hess_f = sc.Hess_f;
+        gsVector<T> & mon_scalar_d = sc.mon_scalar_d;
         // GradientBased / surface scratch (reused per quad point)
-        gsMatrix<T> E_d(dd,dd), HfJgd(td,1), Dg_d(dd,1), JtHJd(dd,1);
-        gsVector<T> vs(2);
+        gsMatrix<T> & E_d = sc.E_d, & HfJgd = sc.HfJgd, & Dg_d = sc.Dg_d, & JtHJd = sc.JtHJd;
+        gsVector<T> & vs = sc.vs;
 
         for (auto & elem : dom->allElements())
         {
-            if (QuPatch != elem.patch())
+            if (sc.QuPatch != elem.patch())
             {
-                QuPatch = elem.patch();
-                QuRule = gsQuadrature::get(m_ib->basis(QuPatch), quadOptions);
+                sc.QuPatch = elem.patch();
+                sc.QuRule = gsQuadrature::get(m_ib->basis(sc.QuPatch), quadOptions);
             }
 
-            QuRule.mapTo(elem.lowerCorner(), elem.upperCorner(), uvPoints, tmpWeights);
+            sc.QuRule.mapTo(elem.lowerCorner(), elem.upperCorner(), uvPoints, tmpWeights);
 
             m_comp->compute(uvPoints, sigmaData);
             Jsigma_flat = sigmaData.values[1];
@@ -751,7 +858,7 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleResidual(
                 // Monitor weight m2 = omega^2 and its alpha-derivative coefficient
                 //  omega = 1/sqrt(1+theta*f) => m2 = 1/(1+theta*f)
                 T m2 = T(1);
-                gsVector<T> dm2coef(dd);    // dm2_X = dm2coef(d) * N_A
+                gsVector<T> & dm2coef = sc.dm2coef;    // dm2_X = dm2coef(d) * N_A
                 dm2coef.setZero();
                 if (hasMonitor)
                 {
@@ -1061,14 +1168,25 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleHessian(
 #   else
     const int nThreads = 1;
 #   endif
-    std::vector<gsVector<T> > partialK(nThreads, gsVector<T>::Zero(nnzK));
+    std::vector<const gsVector<T> *> partialK(nThreads, nullptr);
+    std::vector<char> missFlags(nThreads, 0);
 
 #   pragma omp parallel
     {
-        gsVector<T> thPartialK(nnzK);
-        thPartialK.setZero();
+        // Persistent per-thread scratch (see HessianScratch in the header).
+        // thPartialK accumulates this call's contribution and must be
+        // re-zeroed here even though its allocation persists across calls.
+        HessianScratch & sc = m_hessianScratch.mine();
+        if (!sc.ready) sc.init(dd, td);
+        if (sc.thPartialK.size() != nnzK) sc.thPartialK.resize(nnzK);
+        sc.thPartialK.setZero();
+        sc.patternMiss = false;
+        gsVector<T> & thPartialK = sc.thPartialK;
 
-        gsFuncData<T> geomData, funData, sigmaData, sigmaBasisData;
+        gsFuncData<T> & geomData = sc.geomData;
+        gsFuncData<T> & funData  = sc.funData;
+        gsFuncData<T> & sigmaData = sc.sigmaData;
+        gsFuncData<T> & sigmaBasisData = sc.sigmaBasisData;
         geomData.flags = NEED_VALUE | NEED_DERIV | NEED_DERIV2;
         funData.flags  = NEED_VALUE | NEED_DERIV | NEED_DERIV2;
         sigmaData.flags = NEED_VALUE | NEED_DERIV;
@@ -1076,74 +1194,61 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleHessian(
         // so actives are computed once per element (cf. gsExprAssembler).
         sigmaBasisData.flags = NEED_ACTIVE | NEED_VALUE | NEED_DERIV | SAME_ELEMENT;
 
-        gsQuadRule<T> QuRule;
-        index_t QuPatch = -1;
-
-        gsMatrix<T> uvPoints;
-        gsVector<T> tmpWeights;
-        gsMatrix<T> Jsigma_flat, Jgeom_flat, deriv2_geom, deriv3_geom;
-        gsMatrix<T> monVals, monDerivs, monDeriv2, monDeriv3;
-        gsMatrix<index_t> actives;
-        gsMatrix<T> basisVals, basisDerivs;
+        gsMatrix<T> & uvPoints = sc.uvPoints;
+        gsVector<T> & tmpWeights = sc.tmpWeights;
+        gsMatrix<T> & Jsigma_flat = sc.Jsigma_flat, & Jgeom_flat = sc.Jgeom_flat;
+        gsMatrix<T> & deriv2_geom = sc.deriv2_geom, & deriv3_geom = sc.deriv3_geom;
+        gsMatrix<T> & monVals = sc.monVals, & monDerivs = sc.monDerivs,
+                    & monDeriv2 = sc.monDeriv2, & monDeriv3 = sc.monDeriv3;
+        gsMatrix<index_t> & actives = sc.actives;
+        gsMatrix<T> & basisVals = sc.basisVals, & basisDerivs = sc.basisDerivs;
 
         // common per-point
-        gsMatrix<T> Js(dd,dd), Jg(td,dd), Jc(td,dd), C(dd,dd), Q(dd,dd);
-        gsMatrix<T> Cg(dd,dd), Cg_inv(dd,dd);
+        gsMatrix<T> & Js = sc.Js, & Jg = sc.Jg, & Jc = sc.Jc, & C = sc.C, & Q = sc.Q;
+        gsMatrix<T> & Cg = sc.Cg, & Cg_inv = sc.Cg_inv;
         // per-direction d
-        std::vector<gsMatrix<T>> D(dd), Md(dd), A(dd), QAQ(dd);
-        std::vector<gsVector<T>> b(dd), Qb(dd), Q2b(dd);
-        gsVector<T> trCAC(dd), ad(dd);
-        gsMatrix<T> AdjJg(dd,dd);
+        std::vector<gsMatrix<T> > & D = sc.D, & Md = sc.Md, & A = sc.A, & QAQ = sc.QAQ;
+        std::vector<gsVector<T> > & b = sc.b, & Qb = sc.Qb, & Q2b = sc.Q2b;
+        gsVector<T> & trCAC = sc.trCAC, & ad = sc.ad;
+        gsMatrix<T> & AdjJg = sc.AdjJg;
         // per-(d,m)
-        std::vector<std::vector<gsMatrix<T>>> T3(dd), E3(dd);
-        std::vector<std::vector<gsVector<T>>> Ddm(dd), cdm(dd), Q2c(dd),
-                                              edm(dd), amg(dd), adjD(dd);
-        gsMatrix<T> M2(dd,dd), trQHQ(dd,dd), S1(dd,dd), Ss2(dd,dd),
-                    cJg(dd,dd), tT(dd,dd), bdMM(dd,dd);
-        for (index_t d = 0; d != dd; ++d)
-        {
-            D[d].resize(td,dd); Md[d].resize(td,dd); A[d].resize(dd,dd);
-            QAQ[d].resize(dd,dd);
-            b[d].resize(dd); Qb[d].resize(dd); Q2b[d].resize(dd);
-            T3[d].resize(dd); E3[d].resize(dd);
-            Ddm[d].resize(dd); cdm[d].resize(dd); Q2c[d].resize(dd);
-            edm[d].resize(dd); amg[d].resize(dd); adjD[d].resize(dd);
-            for (index_t m = 0; m != dd; ++m)
-            {
-                T3[d][m].resize(td,dd); E3[d][m].resize(dd,dd);
-                Ddm[d][m].resize(td); cdm[d][m].resize(dd); Q2c[d][m].resize(dd);
-                edm[d][m].resize(dd); amg[d][m].resize(dd); adjD[d][m].resize(dd);
-            }
-        }
-        gsMatrix<T> adj(dd,dd), adjMd(dd,dd), tmpM(td,dd), Htmp(dd,dd), QQ(dd,dd);
-        gsVector<T> gA(dd), gB(dd), qA(dd), qB(dd), v(dd), v_m(dd);
-        gsMatrix<T> Hess_f, gradMon(dd,1), grad_xi_f(dd,1), grad_x_f(td,1);
-        gsVector<T> ms(dd);
-        gsMatrix<T> dms(dd,dd), hEta(dd,dd);
-        gsMatrix<T> localK;
+        std::vector<std::vector<gsMatrix<T> > > & T3 = sc.T3, & E3 = sc.E3;
+        std::vector<std::vector<gsVector<T> > > & Ddm = sc.Ddm, & cdm = sc.cdm, & Q2c = sc.Q2c,
+                                                 & edm = sc.edm, & amg = sc.amg, & adjD = sc.adjD;
+        gsMatrix<T> & M2 = sc.M2, & trQHQ = sc.trQHQ, & S1 = sc.S1, & Ss2 = sc.Ss2,
+                    & cJg = sc.cJg, & tT = sc.tT, & bdMM = sc.bdMM;
+        gsMatrix<T> & adj = sc.adj, & adjMd = sc.adjMd, & tmpM = sc.tmpM,
+                    & Htmp = sc.Htmp, & QQ = sc.QQ;
+        gsVector<T> & gA = sc.gA, & gB = sc.gB, & qA = sc.qA, & qB = sc.qB,
+                    & v = sc.v, & v_m = sc.v_m;
+        gsMatrix<T> & Hess_f = sc.Hess_f, & gradMon = sc.gradMon,
+                    & grad_xi_f = sc.grad_xi_f, & grad_x_f = sc.grad_x_f;
+        gsVector<T> & ms = sc.ms;
+        gsMatrix<T> & dms = sc.dms, & hEta = sc.hEta;
+        gsMatrix<T> & localK = sc.localK;
         // GradientBased scratch (reused per quad point)
-        std::vector<gsMatrix<T>> E1(dd);
-        std::vector<gsVector<T>> gfm(dd);
-        gsVector<T> dgf(dd);
-        gsMatrix<T> dHxf(td,td);
+        std::vector<gsMatrix<T> > & E1 = sc.E1;
+        std::vector<gsVector<T> > & gfm = sc.gfm;
+        gsVector<T> & dgf = sc.dgf;
+        gsMatrix<T> & dHxf = sc.dHxf;
         // surface+monitor: gS product-rule scratch.  Initialised to 1 (the
         // planar no-op value) to match assembleResidual's `T gS = T(1)`: it is
         // only ever READ under (hasMonitor && !planar), which is exactly when
         // it is assigned, but gcc cannot prove those two flags invariant
         // between the assignment and the use and warns -Wmaybe-uninitialized.
         T gS = T(1);
-        gsVector<T> trCginvEd_vec(dd);
-        gsMatrix<T> trCginvEdm_mat(dd,dd), trCginvEmCginvEd_mat(dd,dd);
+        gsVector<T> & trCginvEd_vec = sc.trCginvEd_vec;
+        gsMatrix<T> & trCginvEdm_mat = sc.trCginvEdm_mat, & trCginvEmCginvEd_mat = sc.trCginvEmCginvEd_mat;
 
         for (auto & elem : dom->allElements())
         {
-            if (QuPatch != elem.patch())
+            if (sc.QuPatch != elem.patch())
             {
-                QuPatch = elem.patch();
-                QuRule = gsQuadrature::get(m_ib->basis(QuPatch), quadOptions);
+                sc.QuPatch = elem.patch();
+                sc.QuRule = gsQuadrature::get(m_ib->basis(sc.QuPatch), quadOptions);
             }
 
-            QuRule.mapTo(elem.lowerCorner(), elem.upperCorner(), uvPoints, tmpWeights);
+            sc.QuRule.mapTo(elem.lowerCorner(), elem.upperCorner(), uvPoints, tmpWeights);
 
             m_comp->compute(uvPoints, sigmaData);
             Jsigma_flat = sigmaData.values[1];
@@ -1298,8 +1403,8 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleHessian(
 
                 // ---- monitor scalars
                 T m2 = T(1);
-                gsVector<T> dm2coef(dd);   // dm2_X = dm2coef(d) N_A
-                gsMatrix<T> d2m2coef(dd,dd); // d2m2_XY = d2m2coef(d,m) N_A N_B
+                gsVector<T> & dm2coef = sc.dm2coef;   // dm2_X = dm2coef(d) N_A
+                gsMatrix<T> & d2m2coef = sc.d2m2coef; // d2m2_XY = d2m2coef(d,m) N_A N_B
                 dm2coef.setZero(); d2m2coef.setZero();
 
                 if (hasMonitor)
@@ -1482,7 +1587,8 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleHessian(
                             E1[d] += E1[d].transpose().eval();
                         }
                     }
-                    // GradientBased: Cg_inv (line 1240) and E1[d] (lines 1271–1274) already set.
+                    // GradientBased: Cg_inv and E1[d] already set in the GradientBased
+                    // monitor block above.
 
                     for (index_t d = 0; d != dd; ++d)
                         trCginvEd_vec(d) = (Cg_inv * E1[d]).trace();
@@ -1647,19 +1753,33 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleHessian(
                             const index_t jj = mapper.index(kB, 0, m);
                             const T val = localK(d * nAct + lA, m * nAct + lB);
                             if (val == T(0)) continue;
-                            thPartialK[_fpatternPos(ii, jj)] += val;
+                            const index_t pos = _fpatternPos(ii, jj);
+                            if (pos < 0) { sc.patternMiss = true; continue; }
+                            thPartialK[pos] += val;
                         }
                     }
                 }
             }
         } // elements
 
+        // Pointer (not copy): thPartialK aliases the persistent per-thread
+        // scratch buffer; _mergePartialK reads it directly.
+        const int tid =
 #       ifdef _OPENMP
-        partialK[omp_get_thread_num()] = give(thPartialK);
+            omp_get_thread_num();
 #       else
-        partialK[0] = give(thPartialK);
+            0;
 #       endif
+        partialK[tid] = &thPartialK;
+        missFlags[tid] = sc.patternMiss ? 1 : 0;
     } // omp parallel
+
+    bool anyMiss = false;
+    for (char m : missFlags) anyMiss = anyMiss || m;
+    GISMO_ENSURE(!anyMiss, "gsAdaptiveParametrizationNewton: tangent assembly "
+        "hit a (row,col) pair outside the precomputed sparsity pattern; the "
+        "pattern is built from element centre points and the quadrature rule "
+        "must not produce nodes outside that support graph.");
 
     _mergePartialK(partialK, K_out);
 }
@@ -1720,14 +1840,25 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assemblePicard(
 #   else
     const int nThreads = 1;
 #   endif
-    std::vector<gsVector<T> > partialK(nThreads, gsVector<T>::Zero(nnzB));
+    std::vector<const gsVector<T> *> partialK(nThreads, nullptr);
+    std::vector<char> missFlags(nThreads, 0);
 
 #   pragma omp parallel
     {
-        gsVector<T> thPartialK(nnzB);
-        thPartialK.setZero();
+        // Persistent per-thread scratch (see PicardScratch in the header).
+        // thPartialK accumulates this call's contribution and must be
+        // re-zeroed here even though its allocation persists across calls.
+        PicardScratch & sc = m_picardScratch.mine();
+        if (!sc.ready) sc.init(dd, td);
+        if (sc.thPartialK.size() != nnzB) sc.thPartialK.resize(nnzB);
+        sc.thPartialK.setZero();
+        sc.patternMiss = false;
+        gsVector<T> & thPartialK = sc.thPartialK;
 
-        gsFuncData<T> geomData, funData, sigmaData, sigmaBasisData;
+        gsFuncData<T> & geomData = sc.geomData;
+        gsFuncData<T> & funData  = sc.funData;
+        gsFuncData<T> & sigmaData = sc.sigmaData;
+        gsFuncData<T> & sigmaBasisData = sc.sigmaBasisData;
         geomData.flags = NEED_VALUE | NEED_DERIV;
         funData.flags  = NEED_VALUE;
         if (hasMonitor && MODE == GradientBased)
@@ -1737,31 +1868,28 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assemblePicard(
         // so actives are computed once per element (cf. gsExprAssembler).
         sigmaBasisData.flags = NEED_ACTIVE | NEED_VALUE | NEED_DERIV | SAME_ELEMENT;
 
-        gsQuadRule<T> QuRule;
-        index_t QuPatch = -1;
+        gsMatrix<T> & uvPoints = sc.uvPoints;
+        gsVector<T> & tmpWeights = sc.tmpWeights;
+        gsMatrix<T> & Jsigma_flat = sc.Jsigma_flat, & Jgeom_flat = sc.Jgeom_flat;
+        gsMatrix<T> & monVals = sc.monVals, & monDerivs = sc.monDerivs;
+        gsMatrix<index_t> & actives = sc.actives;
+        gsMatrix<T> & basisVals = sc.basisVals, & basisDerivs = sc.basisDerivs;
 
-        gsMatrix<T> uvPoints;
-        gsVector<T> tmpWeights;
-        gsMatrix<T> Jsigma_flat, Jgeom_flat;
-        gsMatrix<T> monVals, monDerivs;
-        gsMatrix<index_t> actives;
-        gsMatrix<T> basisVals, basisDerivs;
-
-        gsMatrix<T> Js(dd,dd), Jg(td,dd), Jc(td,dd), C(dd,dd), Q(dd,dd);
-        gsMatrix<T> Cg(dd,dd), Cg_inv(dd,dd), Bc(dd,dd);
-        gsMatrix<T> grad_xi_f(dd,1);
-        gsVector<T> gA(dd), gB(dd), BcgB(dd);
-        gsMatrix<T> localB;
+        gsMatrix<T> & Js = sc.Js, & Jg = sc.Jg, & Jc = sc.Jc, & C = sc.C, & Q = sc.Q;
+        gsMatrix<T> & Cg = sc.Cg, & Cg_inv = sc.Cg_inv, & Bc = sc.Bc;
+        gsMatrix<T> & grad_xi_f = sc.grad_xi_f;
+        gsVector<T> & gA = sc.gA, & gB = sc.gB, & BcgB = sc.BcgB;
+        gsMatrix<T> & localB = sc.localB;
 
         for (auto & elem : dom->allElements())
         {
-            if (QuPatch != elem.patch())
+            if (sc.QuPatch != elem.patch())
             {
-                QuPatch = elem.patch();
-                QuRule = gsQuadrature::get(m_ib->basis(QuPatch), quadOptions);
+                sc.QuPatch = elem.patch();
+                sc.QuRule = gsQuadrature::get(m_ib->basis(sc.QuPatch), quadOptions);
             }
 
-            QuRule.mapTo(elem.lowerCorner(), elem.upperCorner(), uvPoints, tmpWeights);
+            sc.QuRule.mapTo(elem.lowerCorner(), elem.upperCorner(), uvPoints, tmpWeights);
 
             m_comp->compute(uvPoints, sigmaData);
             Jsigma_flat = sigmaData.values[1];
@@ -1875,19 +2003,33 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assemblePicard(
                             const index_t jj = mapper.index(kB, 0, m);
                             const T val = localB(d * nAct + lA, m * nAct + lB);
                             if (val == T(0)) continue;
-                            thPartialK[_fpatternPos(ii, jj)] += val;
+                            const index_t pos = _fpatternPos(ii, jj);
+                            if (pos < 0) { sc.patternMiss = true; continue; }
+                            thPartialK[pos] += val;
                         }
                     }
                 }
             }
         }
 
+        // Pointer (not copy): thPartialK aliases the persistent per-thread
+        // scratch buffer; _mergePartialK reads it directly.
+        const int tid =
 #       ifdef _OPENMP
-        partialK[omp_get_thread_num()] = give(thPartialK);
+            omp_get_thread_num();
 #       else
-        partialK[0] = give(thPartialK);
+            0;
 #       endif
+        partialK[tid] = &thPartialK;
+        missFlags[tid] = sc.patternMiss ? 1 : 0;
     } // omp parallel
+
+    bool anyMiss = false;
+    for (char m : missFlags) anyMiss = anyMiss || m;
+    GISMO_ENSURE(!anyMiss, "gsAdaptiveParametrizationNewton: tangent assembly "
+        "hit a (row,col) pair outside the precomputed sparsity pattern; the "
+        "pattern is built from element centre points and the quadrature rule "
+        "must not produce nodes outside that support graph.");
 
     _mergePartialK(partialK, B_out);
 }
@@ -1949,6 +2091,12 @@ T gsAdaptiveParametrizationNewton<T,MODE>::_armijoStep(
 
         alpha *= rho;
     }
+    // Line search failed: every trial step above left the controls set to the
+    // last REJECTED trial point (_evalObjAndMinJ calls _setControls on each
+    // candidate). Restore u0 so the caller and any subsequent query
+    // (computeMinJacobian, evalObj, ...) see the last ACCEPTED iterate, not a
+    // rejected/folded one.
+    _setControls(u0);
     return T(0);   // line search failed: no acceptable step
 }
 
@@ -2175,6 +2323,24 @@ index_t gsAdaptiveParametrizationNewton<T,MODE>::_solveLoop(bool useHessian)
         if (logStream.is_open())
             logStream << iter << "," << E << "," << normR << ","
                       << minJ << "," << alpha << "," << t << "\n";
+    }
+
+    // Every branch above that advances u also calls _setControls(u); a total
+    // line-search failure (both Newton and steepest-descent directions
+    // rejected) instead leaves the controls at u0 (restored by _armijoStep).
+    // Re-assert here unconditionally so every return path leaves the domain
+    // holding the accepted iterate u, never a rejected trial point.
+    _setControls(u);
+
+    // Certified (sampling-free) lower bound on det J_sigma of the accepted
+    // iterate; conservative, so a warning here is not proof of a fold, but a
+    // clean pass is a genuine unfolded-ness certificate (see minDetJCoefficient).
+    {
+        const T certJfinal = m_comp->minDetJCoefficient();
+        if (certJfinal <= T(0))
+            gsWarn << "gsAdaptiveParametrizationNewton: certified lower bound on "
+                      "det J_sigma is <= 0 after relocation (bound = " << certJfinal
+                   << "); the map may be folded (the bound is conservative).\n";
     }
 
     // Trim the pre-allocated log to the number of recorded iterations.

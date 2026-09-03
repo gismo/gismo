@@ -13,6 +13,7 @@
 
 //! [Include namespace]
 #include <gismo.h>
+#include <gsAssembler/gsDofMapperCreator.h>
 #include <gsNurbs/gsSquareDomain.h>
 #include <gsHLBFGS/gsHLBFGS.h>
 #include <gsModeling/gsBarrierCore.h>
@@ -179,7 +180,7 @@ public:
     m_eps(eps)
     {
         // Mapper storing control points
-        m_mapper = gsDofMapper(m_geom.basis(),m_geom.targetDim());
+        m_mapper = createMapper(m_geom.basis(), m_geom.targetDim());
 
         gsBoxTopology topology(m_geom.domainDim(),1);
         topology.addAutoBoundaries();

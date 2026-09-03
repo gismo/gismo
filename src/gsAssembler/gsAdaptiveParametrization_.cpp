@@ -28,8 +28,4 @@ TEMPLATE_INST gsTensorBSplineBasis<2,real_t> gsAdaptiveParametrization<real_t,Mo
 TEMPLATE_INST gsTensorBSplineBasis<2,real_t> gsAdaptiveParametrization<real_t,MonitorMode::GradientBased>::makeIntegrationBasis<2>(const gsTensorBSplineBasis<2,real_t> &, const gsTensorBSplineBasis<2,real_t> &);
 TEMPLATE_INST gsBasis<real_t>::uPtr gsAdaptiveParametrization<real_t,MonitorMode::ValueBased>::makeIntegrationBasis<2>(const gsTHBSplineBasis<2,real_t> &, const gsTensorBSplineBasis<2,real_t> &);
 TEMPLATE_INST gsBasis<real_t>::uPtr gsAdaptiveParametrization<real_t,MonitorMode::GradientBased>::makeIntegrationBasis<2>(const gsTHBSplineBasis<2,real_t> &, const gsTensorBSplineBasis<2,real_t> &);
-TEMPLATE_INST bool gsAdaptiveParametrization<real_t,MonitorMode::ValueBased>::sigmaLevelInHierarchy<2>(const gsTHBSplineBasis<2,real_t> &, const gsTensorBSplineBasis<2,real_t> &, index_t &, std::string &);
-TEMPLATE_INST bool gsAdaptiveParametrization<real_t,MonitorMode::GradientBased>::sigmaLevelInHierarchy<2>(const gsTHBSplineBasis<2,real_t> &, const gsTensorBSplineBasis<2,real_t> &, index_t &, std::string &);
-TEMPLATE_INST bool gsAdaptiveParametrization<real_t,MonitorMode::ValueBased>::tensorBasisAdmissible<2>(const gsTensorBSplineBasis<2,real_t> &, const gsTensorBSplineBasis<2,real_t> &);
-TEMPLATE_INST bool gsAdaptiveParametrization<real_t,MonitorMode::GradientBased>::tensorBasisAdmissible<2>(const gsTensorBSplineBasis<2,real_t> &, const gsTensorBSplineBasis<2,real_t> &);
 }

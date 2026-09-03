@@ -22,6 +22,7 @@
 #include <gsUtils/gsPointGrid.h>
 #include <algorithm>
 #include <limits>
+#include <gsAssembler/gsDofMapperCreator.h>
 
 namespace gismo
 {
@@ -461,7 +462,7 @@ T gsSquareDomain<T>::minDetJCoefficient() const
 template <class T>
 void gsSquareDomain<T>::_initMapper(const gsGeometry<T> & domain, gsDofMapper & mapper) const
 {
-    mapper = gsDofMapper(domain.basis(),domain.domainDim());
+    mapper = createMapper(domain.basis(), domain.domainDim());
 
     gsBoxTopology topology(domain.domainDim(),1);
     topology.addAutoBoundaries();

@@ -58,6 +58,184 @@ inline void checkQuadOptions(const gsOptionList & options, const gsBasis<T> & ib
         "direction: " << nn.transpose() << ")");
 }
 
+/// True iff \a candidate is admissible as an integration basis for the
+/// composition basis \a comp, per direction: same parameter range,
+/// degree at least \a comp's, and every interior knot of \a comp
+/// present up to tolerance. Used by the pass-through
+/// (integrationBasisIsFinal_t) constructor. Coverage note: \ref adaptparam_supermesh.
+template <short_t d, class T>
+inline bool tensorBasisAdmissible(const gsTensorBSplineBasis<d,T>  & comp,
+                          const gsTensorBSplineBasis<d,T>  & candidate)
+{
+    // Absolute knot tolerance (comp is always a gsSquareDomain's basis, fixed
+    // domain [0,1]); shared rationale: \ref adaptparam_supermesh.
+    const T tol = 1e-12;
+    for (short_t dir = 0; dir != d; ++dir)
+    {
+        // 1. Parameter range: equality, not containment. A wider integration
+        // domain evaluates sigma outside its own parameter domain
+        // (extrapolation); a narrower one leaves part of the domain
+        // unintegrated. Both are silently wrong.
+        const T compFirst = comp.knots(dir).first(), compLast = comp.knots(dir).last();
+        const T candFirst = candidate.knots(dir).first(), candLast = candidate.knots(dir).last();
+        if (math::abs(candFirst - compFirst) > tol || math::abs(candLast - compLast) > tol)
+        {
+            // Full precision, not the stream's default (6 significant
+            // digits): a mismatch below default precision but above \a tol
+            // would otherwise print as two identical intervals.
+            std::ostringstream oss;
+            oss << std::setprecision(REAL_DIG+1);
+            oss << "tensorBasisAdmissible: parameter range mismatch in direction " << dir
+                << ": sigma is on [" << compFirst << "," << compLast << "], the supplied "
+                << "integration basis is on [" << candFirst << "," << candLast << "]\n";
+            gsWarn << oss.str();
+            return false;
+        }
+
+        // 2. Degree: >=, deliberately not ==, and deliberately not the product
+        // degree p_analysis*p_sigma that makeIntegrationBasis() produces --
+        // over-integration is safe, and the product degree is unknowable here
+        // (this constructor only holds the caller-supplied candidate, not the
+        // analysis basis it may have been built from).
+        if (candidate.degree(dir) < comp.degree(dir))
+        {
+            gsWarn << "tensorBasisAdmissible: degree mismatch in direction " << dir
+                   << ": sigma has degree " << comp.degree(dir) << ", the supplied "
+                   << "integration basis has degree " << candidate.degree(dir) << "\n";
+            return false;
+        }
+
+        // 3. Interior-knot containment.
+        const gsKnotVector<T> & candidateKnots = candidate.knots(dir);
+        for (typename gsKnotVector<T>::uiterator it = std::next(comp.knots(dir).ubegin());
+                                                    it!= std::prev(comp.knots(dir).uend());
+                                                    ++it)
+        {
+            bool found = false;
+            for (typename gsKnotVector<T>::uiterator jt = candidateKnots.ubegin();
+                                                        jt!= candidateKnots.uend();
+                                                        ++jt)
+            {
+                if (math::abs(*it - *jt) <= tol)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+            {
+                // Same precision rationale as the parameter-range warning
+                // above: a near-tolerance mismatch is invisible at the
+                // stream's default precision.
+                std::ostringstream oss;
+                oss << std::setprecision(REAL_DIG+1);
+                oss << "tensorBasisAdmissible: sigma's interior knot " << *it
+                    << " in direction " << dir
+                    << " is not present in the supplied integration basis\n";
+                gsWarn << oss.str();
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+/// True iff sigma's knot mesh (\a comp) is exactly a refinement LEVEL of
+/// the dyadic hierarchy of \a analysis; then \a sigmaLevel is set to that
+/// level, else \a reason receives a human-readable failure cause.
+/// Preconditions and the pass-through-constructor relationship:
+/// \ref adaptparam_supermesh.
+template <short_t d, class T>
+inline bool sigmaLevelInHierarchy(const gsTHBSplineBasis<d,T>      & analysis,
+                          const gsTensorBSplineBasis<d,T>  & comp,
+                          index_t                          & sigmaLevel,
+                          std::string                      & reason)
+{
+    // merge() and the dyadic level-index arithmetic used below both require
+    // automatic (non-manual) levels.
+    if (analysis.manualLevels())
+    {
+        reason = "analysis basis has manual levels (merge and level-index arithmetic require automatic dyadic levels)";
+        return false;
+    }
+
+    const typename gsHTensorBasis<d,T>::tensorBasis & level0 = analysis.tensorLevel(0);
+
+    // Candidate level: per direction, the smallest dyadic refinement of level 0
+    // whose element count is >= comp's element count; clamp at 0 so a coarser
+    // comp does not request a negative level.
+    sigmaLevel = 0;
+    for (short_t dir = 0; dir != d; ++dir)
+    {
+        const index_t N0 = static_cast<index_t>(level0.knots(dir).numElements());
+        const index_t Ns = static_cast<index_t>(comp.knots(dir).numElements());
+        // N <<= 1 does not advance past 0, so N0 == 0 would spin the loop
+        // forever for any Ns > 0. Not reachable for a valid basis
+        // (numElements() >= 1 always), but guarded explicitly rather than
+        // relied upon.
+        if (0 == N0)
+        {
+            std::ostringstream oss;
+            oss << "analysis basis' level-0 tensor mesh has zero elements in direction " << dir;
+            reason = oss.str();
+            return false;
+        }
+        index_t k = 0;
+        for (index_t N = N0; N < Ns; N <<= 1)
+            ++k;
+        sigmaLevel = math::max(sigmaLevel, k);
+    }
+
+    // Containment: every unique interior knot of comp must appear, up to
+    // tolerance, among the unique knots of analysis' tensor level sigmaLevel.
+    // A tolerance (not gsKnotVector::has's exact std::binary_search) is
+    // required because a knot read from an XML file need not be the exactly
+    // representable dyadic value the hierarchy carries internally. An
+    // absolute tolerance is scale-appropriate here (rather than a relative
+    // one) because \a comp is always a gsSquareDomain's basis, on the fixed
+    // interval [0,1]^d -- it would not be on a general parameter domain.
+    // Consequence: a knot that matches within \a tol is treated as present,
+    // and the union mesh then carries the analysis hierarchy's knot value,
+    // not \a comp's -- the element boundary is displaced by O(tol), harmless
+    // at 1e-12 but a real substitution.
+    const T tol = 1e-12;
+    const typename gsHTensorBasis<d,T>::tensorBasis & Lsigma = analysis.tensorLevel(sigmaLevel);
+    for (short_t dir = 0; dir != d; ++dir)
+    {
+        const gsKnotVector<T> & analysisKnots = Lsigma.knots(dir);
+        for (typename gsKnotVector<T>::uiterator it = std::next(comp.knots(dir).ubegin());
+                                                    it!= std::prev(comp.knots(dir).uend());
+                                                    ++it)
+        {
+            bool found = false;
+            for (typename gsKnotVector<T>::uiterator jt = analysisKnots.ubegin();
+                                                        jt!= analysisKnots.uend();
+                                                        ++jt)
+            {
+                if (math::abs(*it - *jt) <= tol)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+            {
+                // Full precision, not the stream's default (6 significant
+                // digits): a near-tolerance mismatch would otherwise print an
+                // indistinguishable knot value. This text reaches the user
+                // directly, via the caller's GISMO_ENSURE appending \a reason.
+                std::ostringstream oss;
+                oss << std::setprecision(REAL_DIG+1);
+                oss << "sigma's interior knot " << *it << " in direction " << dir
+                    << " is not present in the analysis hierarchy at level " << sigmaLevel;
+                reason = oss.str();
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 template<class T>
 gsOptSigma<T>::gsOptSigma()
 : m_domain(nullptr)
@@ -1865,176 +2043,6 @@ gsTensorBSplineBasis<_d,T> gsAdaptiveParametrization<T,MODE>::makeIntegrationBas
 
 template <class T, enum MonitorMode MODE>
 template <short_t d>
-bool gsAdaptiveParametrization<T,MODE>::tensorBasisAdmissible(const gsTensorBSplineBasis<d,T>  & comp,
-                                                               const gsTensorBSplineBasis<d,T>  & candidate)
-{
-    // Absolute knot tolerance (comp is always a gsSquareDomain's basis, fixed
-    // domain [0,1]); shared rationale: \ref adaptparam_supermesh.
-    const T tol = 1e-12;
-    for (short_t dir = 0; dir != d; ++dir)
-    {
-        // 1. Parameter range: equality, not containment. A wider integration
-        // domain evaluates sigma outside its own parameter domain
-        // (extrapolation); a narrower one leaves part of the domain
-        // unintegrated. Both are silently wrong.
-        const T compFirst = comp.knots(dir).first(), compLast = comp.knots(dir).last();
-        const T candFirst = candidate.knots(dir).first(), candLast = candidate.knots(dir).last();
-        if (math::abs(candFirst - compFirst) > tol || math::abs(candLast - compLast) > tol)
-        {
-            // Full precision, not the stream's default (6 significant
-            // digits): a mismatch below default precision but above \a tol
-            // would otherwise print as two identical intervals.
-            std::ostringstream oss;
-            oss << std::setprecision(REAL_DIG+1);
-            oss << "tensorBasisAdmissible: parameter range mismatch in direction " << dir
-                << ": sigma is on [" << compFirst << "," << compLast << "], the supplied "
-                << "integration basis is on [" << candFirst << "," << candLast << "]\n";
-            gsWarn << oss.str();
-            return false;
-        }
-
-        // 2. Degree: >=, deliberately not ==, and deliberately not the product
-        // degree p_analysis*p_sigma that makeIntegrationBasis() produces --
-        // over-integration is safe, and the product degree is unknowable here
-        // (this constructor only holds the caller-supplied candidate, not the
-        // analysis basis it may have been built from).
-        if (candidate.degree(dir) < comp.degree(dir))
-        {
-            gsWarn << "tensorBasisAdmissible: degree mismatch in direction " << dir
-                   << ": sigma has degree " << comp.degree(dir) << ", the supplied "
-                   << "integration basis has degree " << candidate.degree(dir) << "\n";
-            return false;
-        }
-
-        // 3. Interior-knot containment.
-        const gsKnotVector<T> & candidateKnots = candidate.knots(dir);
-        for (typename gsKnotVector<T>::uiterator it = std::next(comp.knots(dir).ubegin());
-                                                    it!= std::prev(comp.knots(dir).uend());
-                                                    ++it)
-        {
-            bool found = false;
-            for (typename gsKnotVector<T>::uiterator jt = candidateKnots.ubegin();
-                                                        jt!= candidateKnots.uend();
-                                                        ++jt)
-            {
-                if (math::abs(*it - *jt) <= tol)
-                {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found)
-            {
-                // Same precision rationale as the parameter-range warning
-                // above: a near-tolerance mismatch is invisible at the
-                // stream's default precision.
-                std::ostringstream oss;
-                oss << std::setprecision(REAL_DIG+1);
-                oss << "tensorBasisAdmissible: sigma's interior knot " << *it
-                    << " in direction " << dir
-                    << " is not present in the supplied integration basis\n";
-                gsWarn << oss.str();
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
-template <class T, enum MonitorMode MODE>
-template <short_t d>
-bool gsAdaptiveParametrization<T,MODE>::sigmaLevelInHierarchy(const gsTHBSplineBasis<d,T>      & analysis,
-                                                               const gsTensorBSplineBasis<d,T>  & comp,
-                                                               index_t                          & sigmaLevel,
-                                                               std::string                      & reason)
-{
-    // merge() and the dyadic level-index arithmetic used below both require
-    // automatic (non-manual) levels.
-    if (analysis.manualLevels())
-    {
-        reason = "analysis basis has manual levels (merge and level-index arithmetic require automatic dyadic levels)";
-        return false;
-    }
-
-    const typename gsHTensorBasis<d,T>::tensorBasis & level0 = analysis.tensorLevel(0);
-
-    // Candidate level: per direction, the smallest dyadic refinement of level 0
-    // whose element count is >= comp's element count; clamp at 0 so a coarser
-    // comp does not request a negative level.
-    sigmaLevel = 0;
-    for (short_t dir = 0; dir != d; ++dir)
-    {
-        const index_t N0 = static_cast<index_t>(level0.knots(dir).numElements());
-        const index_t Ns = static_cast<index_t>(comp.knots(dir).numElements());
-        // N <<= 1 does not advance past 0, so N0 == 0 would spin the loop
-        // forever for any Ns > 0. Not reachable for a valid basis
-        // (numElements() >= 1 always), but guarded explicitly rather than
-        // relied upon.
-        if (0 == N0)
-        {
-            std::ostringstream oss;
-            oss << "analysis basis' level-0 tensor mesh has zero elements in direction " << dir;
-            reason = oss.str();
-            return false;
-        }
-        index_t k = 0;
-        for (index_t N = N0; N < Ns; N <<= 1)
-            ++k;
-        sigmaLevel = math::max(sigmaLevel, k);
-    }
-
-    // Containment: every unique interior knot of comp must appear, up to
-    // tolerance, among the unique knots of analysis' tensor level sigmaLevel.
-    // A tolerance (not gsKnotVector::has's exact std::binary_search) is
-    // required because a knot read from an XML file need not be the exactly
-    // representable dyadic value the hierarchy carries internally. An
-    // absolute tolerance is scale-appropriate here (rather than a relative
-    // one) because \a comp is always a gsSquareDomain's basis, on the fixed
-    // interval [0,1]^d -- it would not be on a general parameter domain.
-    // Consequence: a knot that matches within \a tol is treated as present,
-    // and the union mesh then carries the analysis hierarchy's knot value,
-    // not \a comp's -- the element boundary is displaced by O(tol), harmless
-    // at 1e-12 but a real substitution.
-    const T tol = 1e-12;
-    const typename gsHTensorBasis<d,T>::tensorBasis & Lsigma = analysis.tensorLevel(sigmaLevel);
-    for (short_t dir = 0; dir != d; ++dir)
-    {
-        const gsKnotVector<T> & analysisKnots = Lsigma.knots(dir);
-        for (typename gsKnotVector<T>::uiterator it = std::next(comp.knots(dir).ubegin());
-                                                    it!= std::prev(comp.knots(dir).uend());
-                                                    ++it)
-        {
-            bool found = false;
-            for (typename gsKnotVector<T>::uiterator jt = analysisKnots.ubegin();
-                                                        jt!= analysisKnots.uend();
-                                                        ++jt)
-            {
-                if (math::abs(*it - *jt) <= tol)
-                {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found)
-            {
-                // Full precision, not the stream's default (6 significant
-                // digits): a near-tolerance mismatch would otherwise print an
-                // indistinguishable knot value. This text reaches the user
-                // directly, via the caller's GISMO_ENSURE appending \a reason.
-                std::ostringstream oss;
-                oss << std::setprecision(REAL_DIG+1);
-                oss << "sigma's interior knot " << *it << " in direction " << dir
-                    << " is not present in the analysis hierarchy at level " << sigmaLevel;
-                reason = oss.str();
-                return false;
-            }
-        }
-    }
-    return true;
-}
-
-template <class T, enum MonitorMode MODE>
-template <short_t d>
 typename gsBasis<T>::uPtr
 gsAdaptiveParametrization<T,MODE>::makeIntegrationBasis(const gsTHBSplineBasis<d,T>     & basis1,
                                                          const gsTensorBSplineBasis<d,T> & basis2)
@@ -2134,12 +2142,45 @@ void gsAdaptiveParametrization<T,MODE>::solve()
     m_optProblem.options().setReal("quA",m_options.getReal("quA"));
     m_optProblem.options().setInt ("quB",m_options.getInt ("quB"));
     m_optimizer.setProblem(&m_optProblem);
+
+    // One-off sanity sweep (per solve, not per evaluation): the "Penalty"
+    // option is the Garanzha fold-regulariser radius eps in
+    // chi(x)=0.5*(x+sqrt(eps^2+x^2)); it only acts as a barrier when
+    // eps << |det J_sigma| = O(1). Warn if it is comparable to or larger
+    // than the current min det J_sigma (chi then degenerates towards a
+    // constant and folds go unpenalised), and if it underflows chi(0).
+    {
+        const T penalty = m_options.getReal("Penalty");
+        gsVector<T> controls0 = m_optProblem.composition().getControls();
+        gsAsConstVector<T> u0(controls0.data(), controls0.rows());
+        const T minDet0 = m_optProblem.computeMinJacobian(u0);
+        if (minDet0 > T(0) && penalty >= T(0.1) * minDet0)
+            gsWarn << "gsAdaptiveParametrization: Penalty (Garanzha radius eps="
+                   << penalty << ") is not small compared to min det J_sigma = "
+                   << minDet0 << "; the fold regulariser is then nearly constant "
+                      "and folds are not penalised. Use eps in [1e-3, 1e-2] for a "
+                      "unit-square sigma.\n";
+        if (penalty < T(1e-12))
+            gsWarn << "gsAdaptiveParametrization: Penalty (Garanzha radius eps="
+                   << penalty << ") is smaller than 1e-12; chi(0) underflows and "
+                      "the fold regulariser is effectively disabled.\n";
+    }
+
     // Solve the optimization problem
     gsVector<T> controls = m_optProblem.composition().getControls();
     m_optimizer.solve(controls);
     controls = m_optimizer.currentDesign();
     m_optProblem.composition().setControls(controls);
     gsInfo<<"Finished with objective value: "<<m_optimizer.objective()<<std::endl;
+
+    // Certified (sampling-free) lower bound on det J_sigma of the accepted
+    // design; conservative, so this warning is not proof of a fold, but a
+    // clean pass is a genuine unfolded-ness certificate.
+    const T certJ = m_comp.minDetJCoefficient();
+    if (certJ <= T(0))
+        gsWarn << "gsAdaptiveParametrization: certified lower bound on det J_sigma "
+                  "is <= 0 after relocation (bound = " << certJ << "); the map may "
+                  "be folded (the bound is conservative).\n";
 }
 
 template<class T, enum MonitorMode MODE>

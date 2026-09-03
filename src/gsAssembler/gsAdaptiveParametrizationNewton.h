@@ -23,6 +23,7 @@
 #include <gsCore/gsMultiBasis.h>
 #include <gsAssembler/gsQuadrature.h>
 #include <gsMatrix/gsFiberMatrix.h>
+#include <gsUtils/gsThreaded.h>
 
 namespace gismo
 {
@@ -226,12 +227,18 @@ private:
     // value buffer of size m_fpattern.nonZeros(), laid out column-by-column
     // (matching m_fpattern's ColMajor fiber order) with rows sorted within
     // each column. Valid only after _buildPattern() has inserted (ii,jj).
+    // Returns -1 if (ii,jj) is not in the pattern (GISMO_ASSERT still fires
+    // in Debug); callers running inside an OpenMP region must check this
+    // instead of letting a missing entry silently overrun the value buffer,
+    // since a GISMO_ENSURE cannot be thrown across a parallel region.
     index_t _fpatternPos(index_t ii, index_t jj) const;
 
     // Merge per-thread value buffers (indexed via _fpatternPos, thread-id
     // order) into m_fpattern column by column, then export to \a out.
-    // Shared by assembleHessian and assemblePicard.
-    void _mergePartialK(const std::vector<gsVector<T> > & partial,
+    // Shared by assembleHessian and assemblePicard. Pointers rather than
+    // values: the buffers are the persistent per-thread scratch (thPartialK),
+    // not per-call copies.
+    void _mergePartialK(const std::vector<const gsVector<T> *> & partial,
                          gsSparseMatrix<T> & out) const;
 
     // Third derivatives of the geometry S at (geometry-)parametric points.
@@ -258,6 +265,136 @@ private:
     mutable gsOptMesh<T,MODE>   m_optMesh;
 
     gsOptionList                m_options;
+
+    /** @brief Per-thread scratch space for the _evalObjAndMinJ() element sweep.
+     *   Sibling of gsOptMesh::EvalScratch. Rationale: \ref adaptparam_performance.
+     * @warning Sized with omp_get_max_threads() at construction; raising
+     *   the thread count after this object has been built is not supported.
+     */
+    struct EvalScratch
+    {
+        gsFuncData<T> compData, geomData, funData;
+        gsMatrix<T>   Js, Jg, Jc, C, Cinv, Cg, Cg_inv, grad_xi_f;
+        gsQuadRule<T> QuRule;
+        index_t       QuPatch = -1;
+        gsMatrix<T>   uvPoints, Jsigma_flat, Jgeom_flat, monVals, monDerivs;
+        gsVector<T>   tmpWeights;
+        bool          ready = false;
+
+        void init(index_t dd, index_t td);
+    };
+
+    /// Per-thread scratch space for the assembleResidual() element sweep.
+    /// See EvalScratch for the rationale.
+    struct ResidualScratch
+    {
+        gsFuncData<T> geomData, funData, sigmaData, sigmaBasisData;
+        gsQuadRule<T> QuRule;
+        index_t       QuPatch = -1;
+        gsMatrix<T>   uvPoints;
+        gsVector<T>   tmpWeights;
+        gsMatrix<T>   Jsigma_flat, Jgeom_flat, deriv2_geom;
+        gsMatrix<T>   monVals, monDerivs, monDeriv2;
+        gsMatrix<index_t> actives;
+        gsMatrix<T>   basisVals, basisDerivs;
+        gsMatrix<T>   Js, Jg, Jc, C, Q;
+        gsMatrix<T>   D_d, Md, A_d, QA;
+        gsMatrix<T>   adj, AdjJg;
+        gsVector<T>   b_d, Qb, Q2b;
+        gsMatrix<T>   Pi;
+        gsVector<T>   r;
+        gsVector<T>   gA, v;
+        gsMatrix<T>   Cg, Cg_inv;
+        gsMatrix<T>   gradMon, grad_xi_f, grad_x_f;
+        gsMatrix<T>   Hess_f;
+        gsVector<T>   mon_scalar_d;
+        gsMatrix<T>   E_d, HfJgd, Dg_d, JtHJd;
+        gsVector<T>   vs;
+        gsVector<T>   dm2coef;
+        bool          ready = false;
+
+        void init(index_t dd, index_t td);
+    };
+
+    /// Per-thread scratch space for the assembleHessian() element sweep.
+    /// See EvalScratch for the rationale. \a thPartialK accumulates this
+    /// thread's contribution to the Newton tangent; it is re-zeroed at the
+    /// start of every assembleHessian() call (it must not carry over between
+    /// calls) but its Eigen buffer is kept allocated across calls.
+    struct HessianScratch
+    {
+        gsFuncData<T> geomData, funData, sigmaData, sigmaBasisData;
+        gsQuadRule<T> QuRule;
+        index_t       QuPatch = -1;
+        gsMatrix<T>   uvPoints;
+        gsVector<T>   tmpWeights;
+        gsMatrix<T>   Jsigma_flat, Jgeom_flat, deriv2_geom, deriv3_geom;
+        gsMatrix<T>   monVals, monDerivs, monDeriv2, monDeriv3;
+        gsMatrix<index_t> actives;
+        gsMatrix<T>   basisVals, basisDerivs;
+        gsMatrix<T>   Js, Jg, Jc, C, Q;
+        gsMatrix<T>   Cg, Cg_inv;
+        std::vector<gsMatrix<T> > D, Md, A, QAQ;
+        std::vector<gsVector<T> > b, Qb, Q2b;
+        gsVector<T>   trCAC, ad;
+        gsMatrix<T>   AdjJg;
+        std::vector<std::vector<gsMatrix<T> > > T3, E3;
+        std::vector<std::vector<gsVector<T> > > Ddm, cdm, Q2c, edm, amg, adjD;
+        gsMatrix<T>   M2, trQHQ, S1, Ss2, cJg, tT, bdMM;
+        gsMatrix<T>   adj, adjMd, tmpM, Htmp, QQ;
+        gsVector<T>   gA, gB, qA, qB, v, v_m;
+        gsMatrix<T>   Hess_f, gradMon, grad_xi_f, grad_x_f;
+        gsVector<T>   ms;
+        gsMatrix<T>   dms, hEta;
+        gsMatrix<T>   localK;
+        std::vector<gsMatrix<T> > E1;
+        std::vector<gsVector<T> > gfm;
+        gsVector<T>   dgf;
+        gsMatrix<T>   dHxf;
+        gsVector<T>   trCginvEd_vec;
+        gsMatrix<T>   trCginvEdm_mat, trCginvEmCginvEd_mat;
+        gsVector<T>   dm2coef;
+        gsMatrix<T>   d2m2coef;
+        gsVector<T>   thPartialK;
+        // Set true (per call, per thread) if a scatter target (ii,jj) is not
+        // found in m_fpattern; checked and reported after the parallel region
+        // (see the comment at the two scatter sites in .hpp).
+        bool          patternMiss = false;
+        bool          ready = false;
+
+        void init(index_t dd, index_t td);
+    };
+
+    /// Per-thread scratch space for the assemblePicard() element sweep.
+    /// See HessianScratch for the \a thPartialK re-zeroing rule and the
+    /// \a patternMiss guard.
+    struct PicardScratch
+    {
+        gsFuncData<T> geomData, funData, sigmaData, sigmaBasisData;
+        gsQuadRule<T> QuRule;
+        index_t       QuPatch = -1;
+        gsMatrix<T>   uvPoints;
+        gsVector<T>   tmpWeights;
+        gsMatrix<T>   Jsigma_flat, Jgeom_flat;
+        gsMatrix<T>   monVals, monDerivs;
+        gsMatrix<index_t> actives;
+        gsMatrix<T>   basisVals, basisDerivs;
+        gsMatrix<T>   Js, Jg, Jc, C, Q;
+        gsMatrix<T>   Cg, Cg_inv, Bc;
+        gsMatrix<T>   grad_xi_f;
+        gsVector<T>   gA, gB, BcgB;
+        gsMatrix<T>   localB;
+        gsVector<T>   thPartialK;
+        bool          patternMiss = false;
+        bool          ready = false;
+
+        void init(index_t dd, index_t td);
+    };
+
+    mutable util::gsThreaded<EvalScratch>     m_evalScratch;
+    mutable util::gsThreaded<ResidualScratch> m_residualScratch;
+    mutable util::gsThreaded<HessianScratch>  m_hessianScratch;
+    mutable util::gsThreaded<PicardScratch>   m_picardScratch;
 
     // Iteration log: columns = iterations, rows = [E, ||R||, minDet, alpha, time]
     mutable gsMatrix<T>         m_iterLog;

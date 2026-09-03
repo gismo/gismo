@@ -1190,24 +1190,36 @@ SUITE(gsAdaptiveParametrizatin_test)
 
     TEST(G3_TensorBasisAdmissible_ContainedAndMissing)
     {
+        // Exercises tensorBasisAdmissible() (now an internal helper of
+        // gsAdaptiveParametrization.hpp) only through the public pass-through
+        // (integrationBasisIsFinal_t) constructor, which is its sole caller.
         TestFixture f;
         gsSquareDomain<real_t> sigma(makeSigmaBasis(2, 1), true);
         gsTensorBSplineBasis<2,real_t> sigmaBasis =
             static_cast<const gsTensorBSplineBasis<2,real_t>&>(sigma.domain().basis());
         CHECK(sigmaBasis.numElements() > 1);
 
-        gsTensorBSplineBasis<2,real_t> containing = APV::makeIntegrationBasis(f.tbasis, sigmaBasis);
-        CHECK(APV::tensorBasisAdmissible<2>(sigmaBasis, containing));
+        gsGradientDescent<real_t> optimizer;
 
-        // Missing sigma's interior knot in direction 0 only.
+        // Contains all of sigma's interior knots: accepted.
+        gsTensorBSplineBasis<2,real_t> containing = APV::makeIntegrationBasis(f.tbasis, sigmaBasis);
+        APV probe(sigma, *f.composition, nullptr, containing, optimizer,
+                  /*parametric*/true, integrationBasisIsFinal);
+        CHECK(true);   // reaching here means construction did not throw
+
+        // Missing sigma's interior knot in direction 0 only: rejected.
         gsKnotVector<real_t> kvNoInterior({0,0,0,1,1,1}, 2);
         gsTensorBSplineBasis<2,real_t> missingU(kvNoInterior, sigmaBasis.knots(1));
-        CHECK(!APV::tensorBasisAdmissible<2>(sigmaBasis, missingU));
+        CHECK_THROW(APV(sigma, *f.composition, nullptr, missingU, optimizer,
+                        /*parametric*/true, integrationBasisIsFinal),
+                    std::runtime_error);
 
         // Fine in u, coarse in v: missing sigma's interior knot in
-        // direction 1 only.
+        // direction 1 only: rejected.
         gsTensorBSplineBasis<2,real_t> missingV(sigmaBasis.knots(0), kvNoInterior);
-        CHECK(!APV::tensorBasisAdmissible<2>(sigmaBasis, missingV));
+        CHECK_THROW(APV(sigma, *f.composition, nullptr, missingV, optimizer,
+                        /*parametric*/true, integrationBasisIsFinal),
+                    std::runtime_error);
     }
 
 }

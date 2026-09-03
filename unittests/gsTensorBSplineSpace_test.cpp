@@ -238,8 +238,10 @@ TEST(space_specs_match_existing_factory_bases_2d)
     checkSameBasis(derivativeSpace(s, dx).toBasis(), c.grad(0).basis());
 
     checkSameBasis(laplacianSpace(s).toBasis(), c.lapl(false).basis());
+    // lapl(keepBezier=true) does not reach Bezier form; the Bezier Laplacian
+    // space is the Bezier refinement of the minimal one.
     checkSameBasis(laplacianSpace(s, gsTensorBSplineSpacePolicy::Bezier).toBasis(),
-                   c.lapl(true).basis());
+                   c.lapl(false).toBezier().basis());
 }
 
 TEST(transfer_matrix_reproduces_wrapped_source_function_in_superspace)
@@ -329,7 +331,7 @@ TEST(laplacian_space_matches_lapl_function_interpolation)
 
     const gsTensorBSpline<2,real_t> laplBez = c.lapl(true);
     checkSameBasis(laplacianSpace(s, gsTensorBSplineSpacePolicy::Bezier).toBasis(),
-                   laplBez.basis());
+                   laplMin.toBezier().basis());
     checkSplineMatchesFunction(laplBez, laplFunction, real_t(1e-12));
     checkAnchorInterpolationMatches(laplBez, laplFunction, real_t(1e-10));
 }

@@ -95,7 +95,8 @@ T gsCheckSigmaGradient(gsOptProblem<T> & problem, gsSquareDomain<T> & domain,
  * as options. Carries no additive \a gsFoldBarrier (unlike \a gsOptFit /
  * \a gsOptL2, the D step). Derivation: \ref adaptparam_rstep.
  *
- * \pre "Penalty" > 0 (fold-barrier regularisation).
+ * \pre "Penalty" > 0 (Garanzha fold-regulariser radius eps; larger = weaker
+ *   barrier, must be << typical |det J_sigma|).
  * \pre "Smoothing" (theta) >= 0.
  * \pre With a ValueBased monitor, 1+theta*f > 0 at every quadrature point.
  */
@@ -618,33 +619,16 @@ public:
 
       /// Builds the super mesh on the analysis THB's ACTUAL hierarchical
       /// element partition. \a basis2's knot mesh MUST be exactly a dyadic
-      /// level of \a basis1's hierarchy (see sigmaLevelInHierarchy()) --
-      /// otherwise \c GISMO_ENSURE throws; use the tensor overload above for
-      /// a non-nested pair. Construction and preconditions: \ref adaptparam_supermesh.
+      /// level of \a basis1's hierarchy -- otherwise \c GISMO_ENSURE throws;
+      /// use the tensor overload above for a non-nested pair. The
+      /// nesting/admissibility checks (sigmaLevelInHierarchy(),
+      /// tensorBasisAdmissible()) are internal implementation details of
+      /// gsAdaptiveParametrization.hpp. Construction and preconditions:
+      /// \ref adaptparam_supermesh.
       template <short_t d>
       static typename gsBasis<T>::uPtr
       makeIntegrationBasis(const gsTHBSplineBasis<d,T>     & basis1,
                            const gsTensorBSplineBasis<d,T> & basis2);
-
-      /// True iff sigma's knot mesh (\a comp) is exactly a refinement LEVEL of
-      /// the dyadic hierarchy of \a analysis; then \a sigmaLevel is set to that
-      /// level, else \a reason receives a human-readable failure cause.
-      /// Preconditions and the pass-through-constructor relationship:
-      /// \ref adaptparam_supermesh.
-      template <short_t d>
-      static bool sigmaLevelInHierarchy(const gsTHBSplineBasis<d,T>      & analysis,
-                                        const gsTensorBSplineBasis<d,T>  & comp,
-                                        index_t                          & sigmaLevel,
-                                        std::string                      & reason);
-
-      /// True iff \a candidate is admissible as an integration basis for the
-      /// composition basis \a comp, per direction: same parameter range,
-      /// degree at least \a comp's, and every interior knot of \a comp
-      /// present up to tolerance. Used by the pass-through
-      /// (integrationBasisIsFinal_t) constructor. Coverage note: \ref adaptparam_supermesh.
-      template <short_t d>
-      static bool tensorBasisAdmissible(const gsTensorBSplineBasis<d,T>  & comp,
-                                        const gsTensorBSplineBasis<d,T>  & candidate);
 
 protected:
 

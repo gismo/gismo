@@ -42,7 +42,7 @@
         <bool label="Slide"             desc="" value="1"/>
         <bool label="Parametric"        desc="" value="0"/>
         <real label="Smoothing"         desc="" value="1e-1"/>
-        <real label="Penalty"           desc="" value="1e2"/>
+        <real label="Penalty"           desc="Garanzha regulariser radius; must be small vs det J_sigma" value="1e-2"/>
     </OptionList>
 
     <!-- other options -->

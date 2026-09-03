@@ -128,11 +128,11 @@ RunResult runHLBFGS(gsSquareDomain<real_t> & domain,
 
 int main(int arg, char *argv[])
 {
-    index_t numRefineG=0, numRefineD=0, numElevateG=0, numElevateD=0;
+    index_t numRefineG=0, numRefineD=1, numElevateG=0, numElevateD=1;
     index_t mode = MonitorMode::ValueBased;
     real_t penalty = -1;
     real_t smoothing = -1;
-    std::string input = "domain2d/lake.xml";
+    std::string input = "parametrization/monitor_example_planar.xml";
     std::string output = "output";
     std::string solverName = "all";
 
@@ -165,8 +165,24 @@ int main(int arg, char *argv[])
     gsOptionList     OPToptions;
     gsOptionList     PARoptions;
 
-    fd.getLabel("geometry", geom);
-    fd.getLabel("composition", composition);
+    if (fd.hasLabel("geometry"))
+        fd.getLabel("geometry", geom);
+    else
+    {
+        GISMO_ENSURE(fd.getFirst(geom),
+                     "Input file '" << input << "' has neither a 'geometry'-labelled "
+                     "nor an unlabelled MultiPatch to use as the geometry.");
+        gsInfo << "No 'geometry' label found in " << input
+               << "; using the first MultiPatch in the file.\n";
+    }
+    if (fd.hasLabel("composition"))
+        fd.getLabel("composition", composition);
+    else
+    {
+        gsInfo << "No 'composition' label found in " << input
+               << "; using the geometry basis as the sigma domain.\n";
+        composition = geom;
+    }
     if (fd.hasLabel("function"))
         fd.getLabel("function", function);
     if (fd.hasLabel("optimizer_options"))
@@ -219,6 +235,14 @@ int main(int arg, char *argv[])
     const real_t smth  = (smoothing==-1) ? PARoptions.askReal("Smoothing",1e-2) : smoothing;
 
     gsInfo << "Optimizer DoFs: " << domain.nControls() << "\n";
+    if (domain.nControls() == 0)
+    {
+        gsWarn << "The composition has zero free controls: the sigma domain has "
+                  "no interior control points, so there is nothing to relocate. "
+                  "Increase -R/--numRefD or -E/--numElevD to give the "
+                  "composition interior control points.\n";
+        return 0;
+    }
     gsVector<real_t> u0 = domain.getControls();
 
     std::vector<RunResult> results;

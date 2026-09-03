@@ -200,11 +200,17 @@ public:
         return memory::make_unique( internal::gsXml<Object>::getLabel( getXmlRoot(), name ) );
     }
 
-    /// Searches and fetches the Gismo object with a given label
+    /// Searches and fetches the Gismo object with a given label.
+    /// Aborts with a diagnosable error (naming \a name and the object
+    /// type/tag) if no object with this label exists, rather than
+    /// dereferencing a null pointer.
     template<class Object>
     inline void getLabel(const std::string & name, Object& result)  const
     {
         memory::unique_ptr<Object> obj = getLabel<Object>(name);
+        GISMO_ENSURE(obj, "gsFileData::getLabel: Didn't find an object with label \""
+                     << name << "\" of type " << internal::gsXml<Object>::type()
+                     << " (tag " << internal::gsXml<Object>::tag() << ").");
         result = give(*obj);
     }
 
