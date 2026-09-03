@@ -25,12 +25,16 @@ namespace gismo
     void gsParaviewCollection::addDataSet(gsParaviewDataSet & dataSet, real_t time)
     {
         GISMO_ENSURE(!dataSet.isEmpty(), "The gsParaviewDataSet you are trying to add is empty!");
-        GISMO_ASSERT(time>=0, "Time should be a non-negative real number.");
 
         if (! dataSet.isSaved()) dataSet.save(); // the actual files are written to disk/finalized
         std::vector<std::string> filenames( dataSet.filenames() );
 
         time = time==-1 ? m_time : time;
+        // A fresh collection has m_time==-1 (see gsParaviewCollection.h), so a
+        // dataset added before any newTimeStep() would otherwise still be
+        // negative here; such a dataset belongs at timestep 0.
+        if (time < 0) time = 0;
+        GISMO_ASSERT(time>=0, "Time should be a non-negative real number.");
         mfile << "<!-- Time = " << time << " -->\n";
         for (size_t i=0; i!=filenames.size(); i++)
         {
@@ -64,7 +68,7 @@ namespace gismo
             m_time += 1.0;
             time = m_time;
         }
-        else { m_time = cast<real_t,index_t>( time ); }
+        else { m_time = time; }
 
         std::string name;
         if ( m_options.askSwitch("makeSubfolder",true) )

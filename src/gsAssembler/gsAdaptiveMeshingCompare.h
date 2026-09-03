@@ -150,6 +150,10 @@ public:
 
     bool check(const gsHBox<d,T> & box) const
     {
+        // A level-0 box has no parent, so it cannot be coarsened; guard here rather
+        // than relying on a preceding gsMinLvlCompare in the predicate list.
+        if (box.level() == 0) return false;
+
         // We are going to check if the coarsening extension (closely related to the coarsening neighborhood) of the parent of \a box (since it will be elevated) fulfills the conditions of an empty coarsening neighborhood, as well as the condition of an empty coasening neighborhood provided that there is no element that will be refined herein.
         bool clean = true;
 

@@ -17,6 +17,8 @@
 #include <gsOptim/gsOptim.h>
 #include <gsAssembler/gsAdaptiveParametrization.h>
 
+using namespace gismo;
+
 template <short_t _DIM, class T>
 gsTensorBSplineBasis<_DIM,T> integrationBasis(const gsTensorBSplineBasis<_DIM,T> & basis1,
                                            const gsTensorBSplineBasis<_DIM,T> & basis2)
@@ -184,7 +186,10 @@ int main(int arg, char *argv[])
 
     ev.options().setReal("quA",1.0);
     ev.options().setInt("quB",1);
-    ev.options().setSwitch("SameElement",false);
+    // Note: gsExprEvaluator::defaultOptions() does not define "SameElement"
+    // (unlike gsExprAssembler), but its compute paths askSwitch it with
+    // default true; addSwitch is needed to register and disable it.
+    ev.options().addSwitch("SameElement","Assume all quadrature points lie in the same element (invalid for composed maps)",false);
 
     // Set the geometry map
     geometryMap G = A.getMap(cmp);
@@ -208,7 +213,10 @@ int main(int arg, char *argv[])
     collection.options().setInt("plotElements.resolution", 4);
     collection.options().setInt("numPoints", 10000);
     collection.options().setInt("precision",10);
-    typename gsSparseSolver<>::QR solver;
+    // The Poisson system is SPD (Dirichlet DoFs eliminated): Cholesky (LDLT) is
+    // O(nnz^1.5)-ish vs sparse QR's much larger fill-in — at 17k DoFs this is
+    // ~200s (QR) vs <1s (LDLT), and QR also dominated peak memory (2.2 GB).
+    typename gsSparseSolver<>::SimplicialLDLT solver;
 
     gsVector<> l2err(numRefine+1), h1err(numRefine+1), dofs(numRefine+1), bsize(numRefine+1);
     for (index_t i = 0; i <= numRefine; i++)
@@ -231,20 +239,28 @@ int main(int arg, char *argv[])
         gsInfo<<"Number of analysis degrees of freedom: "<<A.numDofs()<<"\n";
 
         // Compute the system matrix and right-hand side
+        gsStopwatch clock;
         A.computePattern( igrad(u) * igrad(u).tr() );
+        gsInfo<<"[timing] computePattern: "<<clock.stop()<<" s\n";
+        clock.restart();
         A.assemble(
             igrad(u, G) * igrad(u, G).tr() * meas(G) //matrix
             ,
             u * ff * meas(G) //rhs vector
             );
+        gsInfo<<"[timing] assemble:       "<<clock.stop()<<" s\n";
 
+        clock.restart();
         solver.compute( A.matrix() );
         solVector = solver.solve(A.rhs());
+        gsInfo<<"[timing] solve (LDLT):   "<<clock.stop()<<" s\n";
 
         // Compute the L2 and H1 error, based on manufactured solution
+        clock.restart();
         l2err[i]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
         h1err[i]= l2err[i] +
             math::sqrt(ev.integral( ( igrad(u_ex, G) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
+        gsInfo<<"[timing] error eval:     "<<clock.stop()<<" s\n";
         dofs [i]= A.numDofs();
         bsize[i]= cmb_basis.size();
 

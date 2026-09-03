@@ -176,8 +176,14 @@ namespace gismo
                         // Write the actual data
                         + Base64::Encode(copy_of_matrix);
         } else {
-            stream.setf(std::ios::fixed);  // write floating point values in
-                                        // fixed-point notation.
+            // Scientific, not fixed-point: in fixed-point notation every
+            // value below 10^-precision is written as an exact zero, which
+            // silently destroys any exported field whose scale is small --
+            // an L2 error density, a squared residual, a determinant near a
+            // fold. Scientific spends the same number of characters on the
+            // significant digits regardless of the exponent, so `precision`
+            // means significant digits here.
+            stream.setf(std::ios::scientific, std::ios::floatfield);
             stream.precision(precision);
             // Format as vtk xml string
             // stream << "<DataArray type=\"Float32\" format=\"ascii\" ";

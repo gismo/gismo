@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+
+  <!-- Centred circular tanh front on the unit square.  Formerly testCase 0 of
+       poisson_rh_schedule_example (front width w = 0.05, hard-coded here).
+
+         r = sqrt((x-1/2)^2 + (y-1/2)^2),  t = tanh((1/4-r)/w)
+         u = t + 1
+        -Laplace u = (1-t^2) * ( 2*t/w^2 + 1/(w*r) )                        -->
+
+  <!-- Computational domain (id=0) -->
+  <MultiPatch parDim="2" id="0">
+    <patches type="id_range">500 500</patches>
+    <interfaces/>
+    <boundaries name="dirichlet">
+      500 1
+      500 2
+      500 3
+      500 4
+    </boundaries>
+  </MultiPatch>
+
+  <!-- Right-hand side (id=1) -->
+  <Function type="FunctionExpr" id="1" dim="2">((1-(tanh((0.25-sqrt((x-0.5)^2+(y-0.5)^2))/0.05))^2)*(2*(tanh((0.25-sqrt((x-0.5)^2+(y-0.5)^2))/0.05))/0.05^2+1/(0.05*sqrt((x-0.5)^2+(y-0.5)^2))))</Function>
+
+  <!-- Boundary conditions (id=2) -->
+  <boundaryConditions id="2" multipatch="0">
+    <Function type="FunctionExpr" dim="2" index="0">tanh((0.25-sqrt((x-0.5)^2+(y-0.5)^2))/0.05)+1</Function>
+    <bc type="Dirichlet" parametric="false" function="0" unknown="0">
+      0 1
+      0 2
+      0 3
+      0 4
+    </bc>
+  </boundaryConditions>
+
+  <!-- Exact solution (id=3) -->
+  <Function type="FunctionExpr" id="3" dim="2">tanh((0.25-sqrt((x-0.5)^2+(y-0.5)^2))/0.05)+1</Function>
+
+  <!-- Assembler options (id=4).  These drive BOTH the assembler and the error
+       evaluator, so the system and the norm that measures it are integrated
+       consistently.  SameElement MUST stay 0: under the sigma composition the
+       quadrature points of one integration element do not all land in the same
+       element of the analysis basis. -->
+  <OptionList id="4">
+    <int  label="DirichletStrategy" desc="Method for enforcement of Dirichlet BCs [11..14]" value="11"/>
+    <int  label="DirichletValues"   desc="Method for computation of Dirichlet DoF values [100..103]" value="101"/>
+    <int  label="InterfaceStrategy" desc="Method of treatment of patch interfaces [0..3]" value="1"/>
+    <real label="bdA" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="2"/>
+    <int  label="bdB" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="1"/>
+    <real label="bdO" desc="Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]" value="0.333"/>
+    <real label="quA" desc="Number of quadrature points: quA*deg + quB" value="2"/>
+    <int  label="quB" desc="Number of quadrature points: quA*deg + quB" value="2"/>
+    <int  label="quRule" desc="Quadrature rule [1:GaussLegendre,2:GaussLobatto]" value="1"/>
+    <bool label="SameElement" desc="Activates optimization if all quadrature points are located in the same element" value="0"/>
+
+    <!-- 2026-08-19: driver method options (rh-driver-unification's 27-key
+         table), bundled here so -f ALONE (no --options) fully determines
+         a run. MonitorMode=value: the R step's monitor is the discrete
+         solution's VALUE (see poisson_rh_schedule_example.cpp's MonitorMode
+         doc); this centred, radially-symmetric front is well served by a
+         value-based monitor. Values otherwise match the driver's own
+         built-in defaults (poisson_rh_schedule_example.cpp:406-429) -- kept
+         explicit, not omitted, so this file is a complete, readable record
+         of what a run actually used. -->
+    <string label="MonitorMode"    desc="R step monitor: value | gradient" value="gradient"/>
+    <string label="Optimizer"      desc="R-step optimizer backend: gsOptim | HLBFGS" value="HLBFGS"/>
+    <int    label="RefineRule"     desc="gsHElementMarker refinement rule (1=GARU,2=PUCA,3=BULK)" value="3"/>
+    <int    label="CoarsenRule"    desc="gsHElementMarker coarsening rule" value="3"/>
+    <int    label="MaxLevel"       desc="gsHElementMarker level cap" value="10"/>
+    <int    label="MaxRefIt"       desc="H step refinement iterations -- IGNORED, one mark/refine per H letter" value="1"/>
+    <int    label="MaxIterations"  desc="R-step optimizer iterations" value="10000"/>
+    <int    label="Verbose"        desc="R-step optimizer verbosity" value="2"/>
+    <int    label="DirSkip"        desc="D-step direction skip -- IGNORED, no D step in this driver" value="0"/>
+    <real   label="RefineParam"    desc="gsHElementMarker refinement parameter" value="0.5"/>
+    <real   label="CoarsenParam"   desc="gsHElementMarker coarsening parameter" value="0.05"/>
+    <real   label="Smoothing"      desc="R step: Winslow smoothing theta" value="1"/>
+    <real   label="Penalty"        desc="R step: fold penalty" value="0.001"/>
+    <real   label="Target"         desc="H band: target L2 error (&lt;0 disables the band); overridden per run by --target" value="-1"/>
+    <real   label="Band"           desc="H band: dead-zone width factor (&gt;=1)" value="2"/>
+    <real   label="NoCoarsenBelow" desc="H band: below this L2 error, hold; auto-derived from --target as Target/Band^2" value="-1"/>
+    <real   label="OptTol"         desc="R-step optimizer gradient tolerance (unified name)" value="1e-12"/>
+    <real   label="Lambda"         desc="gsFitting smoothing weight -- IGNORED, no gsFitting in this driver" value="1e-06"/>
+    <bool   label="Coarsen"        desc="enable coarsening in the H step; overridden per run by --coarsen" value="0"/>
+    <bool   label="Admissible"     desc="gsHElementMarker admissible closure" value="1"/>
+    <bool   label="Extension"      desc="gsHElementMarker box extension" value="1"/>
+    <bool   label="Slide"          desc="sigma boundary control points may slide" value="1"/>
+  </OptionList>
+
+  <!-- Unit square (id=500).  Degree 1 is exact for the identity; the example
+       raises the ANALYSIS basis to -p / -r itself. -->
+  <Geometry type="TensorBSpline2" id="500">
+    <Basis type="TensorBSplineBasis2">
+      <Basis type="BSplineBasis" index="0">
+        <KnotVector degree="1">0 0 1 1</KnotVector>
+      </Basis>
+      <Basis type="BSplineBasis" index="1">
+        <KnotVector degree="1">0 0 1 1</KnotVector>
+      </Basis>
+    </Basis>
+    <coefs geoDim="2">
+      0 0
+      1 0
+      0 1
+      1 1
+    </coefs>
+  </Geometry>
+
+  <!-- id=5 (composition geometry for sigma) is intentionally absent: the sigma
+       space is a discretisation knob swept from the command line (-E/-R).
+       Supply id=5 only to pin it from the file; it then overrides -E/-R. -->
+
+</xml>

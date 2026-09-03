@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+  <!-- Paraboloid z = 1/2 + 2*x*(1-x) + 2*y*(1-y). -->
+  <!-- id=0 for the poisson2_example / poisson_rh_schedule_example ID scheme;
+       label="geometry" is kept for the monitor_* examples that look it up by
+       label.  Both attributes resolve to the same patch. -->
+  <MultiPatch parDim="2" id="0" label="geometry">
+    <patches type="id_range">500 500</patches>
+    <interfaces/>
+    <boundaries name="dirichlet">
+      500 1
+      500 2
+      500 3
+      500 4
+    </boundaries>
+  </MultiPatch>
+  <!-- Deliberately NOT given id=5: id=5 pins the sigma space from the file,
+       and this degree-1 2x2 identity would override the swept -E/-R sigma and
+       silently cripple the R step.  It exists for the monitor_* examples. -->
+  <MultiPatch parDim="2" label="composition"><patches type="id_range">600 600</patches></MultiPatch>
+
+  <!-- u=x on the physical surface.  With a=z_x=2-4*x,
+       b=z_y=2-4*y and q=sqrt(1+a^2+b^2),
+       -Delta_Gamma x = -4*a*(q^2+1)/q^4. -->
+  <Function type="FunctionExpr" id="3" dim="3">x</Function>
+  <Function type="FunctionExpr" id="1" dim="3">-4*(2-4*x)*((1+(2-4*x)^2+(2-4*y)^2)+1)/(sqrt(1+(2-4*x)^2+(2-4*y)^2)^4)</Function>
+  <Function type="FunctionExpr" label="function" dim="3">1</Function>
+
+  <!-- Boundary conditions (id=2): u = x on all four sides -->
+  <boundaryConditions id="2" multipatch="0">
+    <Function type="FunctionExpr" dim="3" index="0">x</Function>
+    <bc type="Dirichlet" parametric="false" function="0" unknown="0">
+      0 1
+      0 2
+      0 3
+      0 4
+    </bc>
+  </boundaryConditions>
+
+  <!-- Assembler options (id=4); drive both the assembler and the error
+       evaluator.  SameElement must stay 0 for the sigma composition. -->
+  <OptionList id="4">
+    <int  label="DirichletStrategy" desc="Method for enforcement of Dirichlet BCs [11..14]" value="11"/>
+    <int  label="DirichletValues"   desc="Method for computation of Dirichlet DoF values [100..103]" value="101"/>
+    <int  label="InterfaceStrategy" desc="Method of treatment of patch interfaces [0..3]" value="1"/>
+    <real label="bdA" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="2"/>
+    <int  label="bdB" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="1"/>
+    <real label="bdO" desc="Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]" value="0.333"/>
+    <real label="quA" desc="Number of quadrature points: quA*deg + quB" value="2"/>
+    <int  label="quB" desc="Number of quadrature points: quA*deg + quB" value="4"/>
+    <int  label="quRule" desc="Quadrature rule [1:GaussLegendre,2:GaussLobatto]" value="1"/>
+    <bool label="SameElement" desc="Activates optimization if all quadrature points are located in the same element" value="0"/>
+  </OptionList>
+
+  <Geometry type="TensorBSpline2" id="500">
+    <Basis type="TensorBSplineBasis2">
+      <Basis type="BSplineBasis" index="0"><KnotVector degree="2">0 0 0 1 1 1</KnotVector></Basis>
+      <Basis type="BSplineBasis" index="1"><KnotVector degree="2">0 0 0 1 1 1</KnotVector></Basis>
+    </Basis>
+    <coefs geoDim="3">
+      0   0   0.5
+      0.5 0   1.5
+      1   0   0.5
+      0   0.5 1.5
+      0.5 0.5 2.5
+      1   0.5 1.5
+      0   1   0.5
+      0.5 1   1.5
+      1   1   0.5
+      <!-- 0   0   0.0
+      1   0   0.0
+      20   0   0.0
+      0   0.5 0.0
+      1   0.5 0.0
+      20   0.5 0.0
+      0   1   0.0
+      1   1   0.0
+      20   1   0.0 -->
+    </coefs>
+  </Geometry>
+  <Geometry type="TensorBSpline2" id="600">
+    <Basis type="TensorBSplineBasis2">
+      <Basis type="BSplineBasis" index="0"><KnotVector degree="1">0 0 1 1</KnotVector></Basis>
+      <Basis type="BSplineBasis" index="1"><KnotVector degree="1">0 0 1 1</KnotVector></Basis>
+    </Basis>
+    <coefs geoDim="2">0 0  1 0  0 1  1 1</coefs>
+  </Geometry>
+</xml>

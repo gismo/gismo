@@ -302,8 +302,14 @@ typename gsAdaptiveMeshing<_dim,T>::HBox * gsAdaptiveMeshing<_dim,T>::_boxPtr(co
 template<short_t _dim, class T>
 bool gsAdaptiveMeshing<_dim,T>::_checkBox( const HBox & box, const std::vector<gsHBoxCheck<_dim,T> *> predicates) const
 {
+    // The predicates are evaluated in order and the loop STOPS at the first
+    // failure: they are not independent. _crsPredicates_into installs
+    // gsMinLvlCompare(0) as a guard in front of gsOverlapCompare, whose
+    // check() calls gsHBox::getParent() -- which throws (GISMO_ENSURE) on a
+    // level-0 box. Evaluating every predicate unconditionally therefore
+    // aborted the run for any level-0 coarsening candidate.
     bool check = true;
-    for (typename std::vector<gsHBoxCheck<_dim,T>*>::const_iterator errIt = predicates.begin(); errIt!=predicates.end(); errIt++)
+    for (typename std::vector<gsHBoxCheck<_dim,T>*>::const_iterator errIt = predicates.begin(); errIt!=predicates.end() && check; errIt++)
         check &= (*errIt)->check(box);
     return check;
 }
@@ -311,8 +317,10 @@ bool gsAdaptiveMeshing<_dim,T>::_checkBox( const HBox & box, const std::vector<g
 template<short_t _dim, class T>
 bool gsAdaptiveMeshing<_dim,T>::_checkBoxes( const typename HBox::Container & boxes, const std::vector<gsHBoxCheck<_dim,T> *> predicates) const
 {
+    // Stop at the first box that fails, for the same reason as _checkBox: a
+    // later box in the container may not survive predicate evaluation at all.
     bool check = true;
-    for (typename HBox::cIterator it = boxes.begin(); it!=boxes.end(); it++)
+    for (typename HBox::cIterator it = boxes.begin(); it!=boxes.end() && check; it++)
         check &= _checkBox(*it,predicates);
 
     return check;
@@ -1057,7 +1065,7 @@ void gsAdaptiveMeshing<_dim,T>::defaultOptions()
 template<short_t _dim, class T>
 void gsAdaptiveMeshing<_dim,T>::getOptions()
 {
-    switch (m_options.askInt("CoarsenRule",3))
+    switch (m_options.askInt("CoarsenRule",1))
     {
         case 1:
             m_crsRule = GARU;
@@ -1076,7 +1084,7 @@ void gsAdaptiveMeshing<_dim,T>::getOptions()
             break;
     }
 
-    switch (m_options.askInt("RefineRule",3))
+    switch (m_options.askInt("RefineRule",1))
     {
         case 1:
             m_refRule = GARU;

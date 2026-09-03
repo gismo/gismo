@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+
+    <!-- Geometry domain -->
+    <MultiPatch parDim="2" label="geometry">
+        <patches type="id_range">500 500</patches>
+        <!-- <interfaces>
+            500 1 500 2 0 1 1 1
+        </interfaces>
+        <boundary>
+            500 3
+            500 4
+        </boundary> -->
+    </MultiPatch>
+
+    <!-- Composition domain -->
+    <MultiPatch parDim="2" label="composition">
+        <patches type="id_range">600 600</patches>
+    </MultiPatch>
+
+    <!-- Monitor function -->
+
+    <!-- <Function type="FunctionExpr" label="function" dim="3">1</Function> -->
+    <!-- <Function type="FunctionExpr" label="function" dim="3">tanh((0.25-sqrt(x^2+y^2))/0.05)+1</Function> -->
+    <!-- <Function type="FunctionExpr" label="function" dim="3">1 + 5 * exp( -50 * abs( (x-0.5)^2 + (y-0.5)^2 - 0.09 ) ) </Function> -->
+    <!-- <Function type="FunctionExpr" label="function" dim="3">1 /(2 + cos( 8 * pi * (sqrt( (x-0.5)^2 + (y-0.5)^2 )))) </Function> -->
+    <!-- <Function type="FunctionExpr" label="function" dim="3">1 + 9/(1 + ( 10 * (sqrt( (x-0.7)^2 + (y-0.5)^2 )) * cos((atan2((y-0.5),(x-0.7))) - 20 * (sqrt( (x-0.7)^2 + (y-0.5)^2 ))^2 ) )^2)</Function> -->
+
+    <!-- <Function type="FunctionExpr" label="function" dim="3">1 /(2 + cos( 3 * pi * (sqrt( (x-0.5)^2 + (y-0.5)^2 )))) </Function> -->
+
+
+    <!-- Assembler options -->
+    <OptionList label="optimizer_options">
+        <int  label="MaxIterations"     desc="" value="100"/>
+        <int  label="Verbose"           desc="" value="1"/>
+        <real label="GradErrTol"        desc="" value="1e-4"/>
+    </OptionList>
+
+
+    <!-- Assembler options -->
+    <OptionList label="parametrization_options">
+        <bool label="Slide"             desc="" value="1"/>
+        <bool label="Parametric"        desc="" value="0"/>
+        <real label="Smoothing"         desc="" value="1e-4"/>
+        <real label="Penalty"           desc="" value="1e-4"/>
+    </OptionList>
+
+    <!-- other options -->
+
+    <!-- Geometry data -->
+ <Geometry type="TensorBSpline2" id="500">
+  <Basis type="TensorBSplineBasis2">
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="2">0 0 0 0.2 0.35 0.5 0.65 0.8 1 1 1 </KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="2">0 0 0 0.16 0.26 0.36 0.5 0.64 0.74 0.84 1 1 1 </KnotVector>
+   </Basis>
+  </Basis>
+  <coefs geoDim="3">
+   30 80  0
+   92.3 65.09999999999999  0
+   146.8 59  0
+   203.2 51.8  0
+   267.6 35.2  0
+   317.5 20.1  0
+   395.4 13.4  0
+   415 3  0
+   22.8 90.40000000000001  0
+   83.4047613489997 89.66576164070901  0
+   142.6740743432236 86.33413094922  0
+   202.5106689793095 80.90906955300622  0
+   264.5987275880399 72.05431639139674  0
+   326.2758456820594 62.11710623323783  0
+   396.5830853451016 50.00017181422957  0
+   467.1 21.2  0
+   11.3 115.8  0
+   75.84497105277521 116.828915613616  0
+   137.9808670445853 115.7616926031648  0
+   199.5698739859742 113.4478308714081  0
+   262.0083956907908 109.9910897793429  0
+   326.4215697950959 106.313936727325  0
+   397.5564956983469 103.2835810236804  0
+   481.6 103.6  0
+   5.8 146.6  0
+   70.69425581751578 146.0882082105904  0
+   133.8345487963683 146.4358929784151  0
+   195.7795642292113 147.1294715501183  0
+   257.4434113940533 148.1482751272419  0
+   319.8455421091868 149.8639698730389  0
+   385.6213276531899 153.2202155531672  0
+   463.5 160.9  0
+   0.2 172.3  0
+   67.29750342091957 174.4880242503304  0
+   130.8835080941608 176.7641995497869  0
+   192.2704227404495 180.4858872234083  0
+   252.1401435470242 185.6085693064674  0
+   309.895859594408 191.7734520844213  0
+   361.5832728052258 198.8333113159495  0
+   395 205.8  0
+   1.6 203.6  0
+   67.4122497720016 202.7996892409441  0
+   130.1315574189057 205.6469937469938  0
+   190.2784750914018 212.4413084872605  0
+   248.9508804591863 222.0266627907982  0
+   306.0144799161953 232.7879578422296  0
+   355.8159039733052 244.5395776262095  0
+   375.8 261.7  0
+   8 230  0
+   70.61993824818117 227.4637389664523  0
+   131.9519967180584 230.5827777099835  0
+   189.7610397470659 241.6056901878418  0
+   247.3704232821238 257.2688155272352  0
+   309.3952756378816 272.8121388674894  0
+   379.8658631718 284.8370413466591  0
+   480.5 299.5  0
+   13.2 251.9  0
+   75.1155065026647 246.4724889148817  0
+   137.295451458081 247.6146879386462  0
+   189.4432638966794 266.129859026888  0
+   241.3744972843615 292.6307702628115  0
+   304.3303361814072 316.3547407538335  0
+   373.7522730760134 322.4964488929377  0
+   438 327.4  0
+   26 288.6  0
+   79.34663630439661 258.9115287544284  0
+   152.6710387149217 247.2736261028317  0
+   189.3420670972092 282.6682877182524  0
+   224.3539657772357 330.7696657432897  0
+   292.7992987273723 377.4796049920954  0
+   372.8128929508464 361.3940134712583  0
+   434.3 382  0
+   40 292  0
+   63.6 253.3  0
+   204.7 199.9  0
+   190.9 286.5  0
+   173.9 370.3  0
+   269.7 501.4  0
+   390.4 363.6  0
+   445 405  0
+  </coefs>
+ </Geometry>
+    <!-- Composition data -->
+    <Geometry type="TensorBSpline2" id="600">
+        <Basis type="TensorBSplineBasis2">
+            <Basis type="BSplineBasis" index="0">
+                <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+            </Basis>
+            <Basis type="BSplineBasis" index="1">
+                <KnotVector degree="1">0.00000   0.00000   1.00000   1.00000</KnotVector>
+            </Basis>
+        </Basis>
+        <coefs geoDim="2">
+        0 0
+        1 0
+        0 1
+        1 1
+        </coefs>
+    </Geometry>
+
+</xml>

@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+
+  <!-- Computational domain -->
+  <MultiPatch parDim="2" id="0">
+    <patches type="id_range">500 500</patches>
+  </MultiPatch>
+
+  <!-- Right-hand side function -->
+  <Function type="FunctionExpr" id="1" dim="3">2*pi^2*sin(pi*x)*sin(pi*y)</Function>
+  <!-- <Function type="FunctionExpr" id="1" dim="2">((tanh(20*(x^2 + y^2)^(1/2) - 5)^2 - 1)*(20*x^2 + 20*y^2)*(40*tanh(20*(x^2 + y^2)^(1/2) - 5)*(x^2 + y^2)^(1/2) - 1))/(x^2 + y^2)^(3/2)</Function> -->
+  <!-- <Function type="FunctionExpr" id="1" dim="3">-9*pi^2*(2*x - 1.0)^2*cos(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))^2*exp(-162*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)^2)/(2*((x - 0.5)^2 + (y - 0.5)^2)) + 972*sin(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)*(2*x - 1.0)^2*exp(-162*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)^2)*pi*cos(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))/((x - 0.5)^2 + (y - 0.5)^2) + (3*sin(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))*exp(-162*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)^2)*pi*(2*x - 1.0)^2*cos(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6)))/(2*((x - 0.5)^2 + (y - 0.5)^2)^(3/2)) - 12*sin(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))*exp(-162*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)^2)*pi*cos(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))/sqrt((x - 0.5)^2 + (y - 0.5)^2) + 9*sin(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))^2*exp(-162*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)^2)*pi^2*(2*x - 1.0)^2/(2*((x - 0.5)^2 + (y - 0.5)^2)) + 81*sin(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))^2*(2*x - 1.0)^2*exp(-162*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)^2)/((x - 0.5)^2 + (y - 0.5)^2) - 81*sin(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))^2*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)*(2*x - 1.0)^2*exp(-162*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)^2)/((x - 0.5)^2 + (y - 0.5)^2)^(3/2) + 648*sin(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))^2*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)*exp(-162*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)^2)/sqrt((x - 0.5)^2 + (y - 0.5)^2) - 26244*sin(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))^2*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)^2*(2*x - 1.0)^2*exp(-162*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)^2)/((x - 0.5)^2 + (y - 0.5)^2) - 9*pi^2*(2*y - 1.0)^2*cos(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))^2*exp(-162*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)^2)/(2*((x - 0.5)^2 + (y - 0.5)^2)) + 972*sin(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)*(2*y - 1.0)^2*exp(-162*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)^2)*pi*cos(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))/((x - 0.5)^2 + (y - 0.5)^2) + (3*sin(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))*exp(-162*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)^2)*pi*(2*y - 1.0)^2*cos(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6)))/(2*((x - 0.5)^2 + (y - 0.5)^2)^(3/2)) + 9*sin(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))^2*exp(-162*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)^2)*pi^2*(2*y - 1.0)^2/(2*((x - 0.5)^2 + (y - 0.5)^2)) + 81*sin(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))^2*(2*y - 1.0)^2*exp(-162*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)^2)/((x - 0.5)^2 + (y - 0.5)^2) - 81*sin(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))^2*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)*(2*y - 1.0)^2*exp(-162*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)^2)/((x - 0.5)^2 + (y - 0.5)^2)^(3/2) - 26244*sin(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))^2*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)^2*(2*y - 1.0)^2*exp(-162*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)^2)/((x - 0.5)^2 + (y - 0.5)^2)</Function> -->
+
+  <!-- The boundary conditions (multipatch=number of patches)-->
+  <boundaryConditions id="2" multipatch="0">
+    <Function type="FunctionExpr" dim="3" index="0">sin(pi*x) * sin(pi*y)</Function>
+    <!-- <Function type="FunctionExpr" dim="2" index="0">tanh((0.25-sqrt(x^2+y^2))/0.05)+1</Function> -->
+    <!-- <Function type="FunctionExpr" dim="3" index="0">sin(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))^2*exp(-162*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)^2) </Function> -->
+
+    <!-- Dirichlet conditions (patch,side) -->
+    <bc type="Dirichlet" parametric="false" function="0" unknown="0">
+        0 1
+        0 2
+        0 3
+        0 4
+    </bc>
+
+  </boundaryConditions>
+
+  <!-- The manufactured exact solution (for reference) -->
+  <Function type="FunctionExpr" id="3" dim="3">sin(pi*x) * sin(pi*y)</Function>
+  <!-- <Function type="FunctionExpr" id="3" dim="2">tanh((0.25-sqrt(x^2+y^2))/0.05)+1</Function>   -->
+  <!-- <Function type="FunctionExpr" id="3" dim="3">sin(3*pi*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/6))^2*exp(-162*(sqrt((x - 0.5)^2 + (y - 0.5)^2) - 1/3)^2) </Function> -->
+
+  <!-- Assembler options -->
+ <OptionList id="4">
+  <int label="DirichletStrategy" desc="Method for enforcement of Dirichlet BCs [11..14]" value="11"/>
+  <int label="DirichletValues" desc="Method for computation of Dirichlet DoF values [100..103]" value="101"/>
+  <int label="InterfaceStrategy" desc="Method of treatment of patch interfaces [0..3]" value="1"/>
+  <real label="bdA" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="2"/>
+  <int label="bdB" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="1"/>
+  <real label="bdO" desc="Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]" value="0.333"/>
+  <real label="quA" desc="Number of quadrature points: quA*deg + quB" value="4"/>
+  <int  label="quB" desc="Number of quadrature points: quA*deg + quB" value="4"/>
+  <int label="quRule" desc="Quadrature rule [1:GaussLegendre,2:GaussLobatto]" value="1"/>
+  <bool label="SameElement" desc="Activates optimization if all quadrature points are located in the same element" value="0"/>
+ </OptionList>
+
+
+  <!-- other options -->
+
+  <!-- Spline data -->
+<Geometry type="ComposedGeometry" id="500">
+    <Basis type="ComposedBasis" >
+<!-- <Composition>
+    <Geometry type="TensorBSpline2">
+     <Basis type="TensorBSplineBasis2">
+      <Basis type="BSplineBasis" index="0">
+       <KnotVector degree="2">0 0 0 0.25 0.5 0.75 1 1 1 </KnotVector>
+      </Basis>
+      <Basis type="BSplineBasis" index="1">
+       <KnotVector degree="2">0 0 0 0.25 0.5 0.75 1 1 1 </KnotVector>
+      </Basis>
+     </Basis>
+     <coefs geoDim="2">
+      0 0
+      0.1992174155044207 0
+      0.4081854008571013 0
+      0.591790946679291 0
+      0.8007602907419877 0
+      1 0
+      0 0.1992174155131726
+      0.1632085796265836 0.163208579615328
+      0.4526596595015999 0.1705431762293278
+      0.547315251713177 0.1705332174392261
+      0.836768382769947 0.1632093043968915
+      1 0.1992142895665983
+      0 0.4081854008685472
+      0.1705431762099063 0.4526596595137961
+      0.2138447345596869 0.2138447346055158
+      0.786137619417312 0.2138282759016034
+      0.8294533283865955 0.4526544401114825
+      1 0.4081870387498233
+      0 0.5917909467004187
+      0.1705332174615488 0.5473152517263006
+      0.2138282759669083 0.7861376194582876
+      0.7861540895969306 0.7861540895580397
+      0.8294633600255245 0.547320588211435
+      1 0.5917893558439301
+      0 0.8007602907307287
+      0.1632093044243852 0.8367683827813504
+      0.4526544401101479 0.8294533284057476
+      0.5473205882121933 0.829463359995386
+      0.8367677964604517 0.8367677964835976
+      1 0.8007634397603938
+      0 1
+      0.1992142896447674 1
+      0.4081870387527985 1
+      0.5917893558929973 1
+      0.8007634397105218 1
+      1 1
+     </coefs>
+    </Geometry>
+   </Composition> -->
+
+        <!-- <Composition>
+            <Geometry type="TensorBSpline2" id="500">
+                <Basis type="TensorBSplineBasis2">
+                    <Basis type="BSplineBasis" index="0">
+                    <KnotVector degree="2">0.00000   0.00000   0.00000    0.50000   1.00000   1.00000   1.00000</KnotVector>
+                    </Basis>
+                    <Basis type="BSplineBasis" index="1">
+                    <KnotVector degree="2">0.00000   0.00000   0.00000    0.50000   1.00000   1.00000   1.00000</KnotVector>
+                    </Basis>
+                </Basis>
+                <coefs geoDim="2">
+                    0       0
+                    0.25    0
+                    0.75    0
+                    1       0
+                    0       0.25
+                    0.125   0.125
+                    0.375   0.125
+                    1       0.25
+                    0       0.75
+                    0.125   0.375
+                    0.375   0.375
+                    1       0.75
+                    0       1
+                    0.25    1
+                    0.75    1
+                    1       1
+                </coefs>
+            </Geometry>
+        </Composition> -->
+
+        <Composition>
+            <Geometry type="TensorBSpline2" id="500">
+                <Basis type="TensorBSplineBasis2">
+                    <Basis type="BSplineBasis" index="0">
+                    <KnotVector degree="2">0.00000   0.00000   0.00000    0.50000   1.00000   1.00000   1.00000</KnotVector>
+                    </Basis>
+                    <Basis type="BSplineBasis" index="1">
+                    <KnotVector degree="2">0.00000   0.00000   0.00000    0.50000   1.00000   1.00000   1.00000</KnotVector>
+                    </Basis>
+                </Basis>
+                <coefs geoDim="2">
+                    0       0
+                    0.25    0
+                    0.75    0
+                    1       0
+                    0       0.25
+                    0.25    0.25
+                    0.75    0.25
+                    1       0.25
+                    0       0.975
+                    0.25    0.975
+                    0.75    0.975
+                    1       0.975
+                    0       1
+                    0.25    1
+                    0.75    1
+                    1       1
+                </coefs>
+            </Geometry>
+        </Composition>
+
+        <!-- <Composition>
+            <Geometry type="TensorBSpline2" id="500">
+                <Basis type="TensorBSplineBasis2">
+                    <Basis type="BSplineBasis" index="0">
+                    <KnotVector degree="2">0.00000   0.00000    0.00000    0.50000   1.00000   1.00000   1.00000</KnotVector>
+                    </Basis>
+                    <Basis type="BSplineBasis" index="1">
+                    <KnotVector degree="2">0.00000   0.00000    0.00000    0.50000   1.00000   1.00000   1.00000</KnotVector>
+                    </Basis>
+                </Basis>
+                <coefs geoDim="2">
+                    0       0
+                    0.25    0
+                    0.5     0
+                    0.75    0
+                    1       0
+                    0       0.25
+                    0.25    0.25
+                    0.5     0.25
+                    0.75    0.25
+                    1       0.25
+                    0       0.5
+                    0.25    0.5
+                    0.5     0.5
+                    0.75    0.5
+                    1       0.5
+                    0       0.75
+                    0.25    0.75
+                    0.5     0.75
+                    0.75    0.75
+                    1       0.75
+                    0       1
+                    0.25    1
+                    0.5     1
+                    0.75    1
+                    1       1
+                </coefs>
+            </Geometry>
+        </Composition> -->
+        <!-- <Basis>
+            <Basis type="TensorBSplineBasis2">
+                <Basis type="BSplineBasis" index="0">
+                    <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+                </Basis>
+                <Basis type="BSplineBasis" index="1">
+                    <KnotVector degree="2">0 0 0 1 1 1 </KnotVector>
+                </Basis>
+            </Basis>
+        </Basis>
+    </Basis>
+    <coefs geoDim="3">
+        0 0 0.5
+        0.5 0 1
+        1 0 0.5
+        0 0.5 1
+        0.5 0.5 1.5
+        1 0.5 1
+        0 1 0.5
+        0.5 1 1
+        1 1 0.5
+    </coefs> -->
+
+        <Basis>
+            <Basis type="TensorBSplineBasis2">
+                <Basis type="BSplineBasis" index="0">
+                <KnotVector degree="2">0.00000   0.00000   0.00000   1.00000   1.00000   1.00000</KnotVector>
+                </Basis>
+                <Basis type="BSplineBasis" index="1">
+                <KnotVector degree="2">0.00000   0.00000   0.00000   1.00000   1.00000   1.00000</KnotVector>
+                </Basis>
+            </Basis>
+        </Basis>
+    </Basis>
+  <coefs geoDim="3">
+    0 0 0
+    0.5 0 0
+    1.0 0 0
+    0 0.5 0
+    0.5 0.5 0
+    1.0 0.5 0
+    0 1.0 0
+    0.5 1.0 0
+    1.0 1.0 0
+    </coefs>
+ </Geometry>
+
+</xml>

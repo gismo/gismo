@@ -164,21 +164,26 @@ int main(int argc, char *argv[])
         auto g_N = A.getBdrFunction(G);
         A.assembleBdr(bc.get("Neumann"), u * g_N.tr() * nv(G) );
         ma_time += timer.stop();
-        // gsDebugVar(A.matrix().toDense());
-        // gsDebugVar(A.rhs().transpose()   );
+        if (r==0) { gsDebugVar(A.matrix().toDense()); gsDebugVar(A.rhs().transpose()); }
         gsInfo<< "." <<std::flush;// Assemblying done
 
         timer.restart();
         solver.compute( A.matrix() );
         solVector = solver.solve(A.rhs());
         slv_time += timer.stop();
+        if (r==0) { gsDebugVar(solVector.transpose()); gsDebugVar(u.fixedPart().transpose()); }
         gsInfo<< "." <<std::flush; // Linear solving done
 
         timer.restart();
         // Compute the L2 and H1 error, based on manufactured solution
         l2err[r]= math::sqrt( ev.integral( (u_ex - u_sol).sqNorm() * meas(G) ) );
+        // u_ex is bound to G, so igrad(u_ex) is the AMBIENT gradient in R^geoDim.
+        // For embedded geometry (geoDim != parDim) it must be projected onto the
+        // tangent space before comparing with the tangential igrad(u_sol,G);
+        // P = jac(G)*jac(G).ginv() is that (symmetric) projector, and reduces to
+        // the identity whenever geoDim == parDim.
         h1err[r]= l2err[r] +
-            math::sqrt(ev.integral( ( igrad(u_ex) - igrad(u_sol,G) ).sqNorm() * meas(G) ));
+            math::sqrt(ev.integral( ( igrad(u_ex)*jac(G)*jac(G).ginv() - igrad(u_sol,G) ).sqNorm() * meas(G) ));
         err_time += timer.stop();
         gsInfo<< ". " <<std::flush; // Error computations done
 

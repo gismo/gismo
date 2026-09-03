@@ -10,9 +10,11 @@
       element chunks, see gsDomain.h).
     - Two-phase sparse storage: a cached gsFiberMatrix sparsity pattern
       (built once from the sigma-basis support graph), then numeric
-      assembly writes only existing entries with `#pragma omp atomic`
-      (no insertion during the parallel sweep => thread-safe), finally
-      gsFiberMatrix::toSparseMatrix_into. Identical to the
+      assembly accumulates each thread's contributions into a private
+      value buffer (_fpatternPos maps a fixed pattern entry to its flat
+      offset), merged into m_fpattern in THREAD-ID order after the
+      parallel region (_mergePartialK) for bit-reproducibility, finally
+      gsFiberMatrix::toSparseMatrix_into. Identical in spirit to the
       _pattern/_eval idiom of gsExprAssembler.
 
     Complexity per assembly: O(n_qp * (dd*k)^2) local work + scatter,
@@ -178,6 +180,20 @@ void gsAdaptiveParametrizationNewton<T,MODE>::_evalObjAndMinJ(
 
     auto dom = m_mb.domain();
 
+    // DETERMINISTIC reduction -- see gsOptMesh::evalObj (gsAdaptiveParametrization.hpp:425-432).
+    // Per-thread partials are summed in THREAD-ID order, making this routine
+    // bit-reproducible for a fixed thread count. minJ stays a plain
+    // comparison: min is associative/commutative exactly in IEEE arithmetic,
+    // so its reduction order never mattered; it is folded in the same loop
+    // only for uniformity.
+#   ifdef _OPENMP
+    const int nThreads = omp_get_max_threads();
+#   else
+    const int nThreads = 1;
+#   endif
+    std::vector<T> partial(nThreads, T(0));
+    std::vector<T> partialMin(nThreads, std::numeric_limits<T>::max());
+
 #   pragma omp parallel
     {
         T thEnergy = T(0);
@@ -232,7 +248,9 @@ void gsAdaptiveParametrizationNewton<T,MODE>::_evalObjAndMinJ(
                 Jg.noalias() = Jgeom_flat.col(p).reshaped(dd, td).transpose();
                 Jc.noalias() = Jg * Js;
                 C.noalias() = Jc.transpose() * Jc;
-                C.diagonal().array() += penalty;
+                // NO Tikhonov shift on C (matches gsOptMesh's unregularised
+                // energy); C is inverted unregularised, so a folded iterate
+                // returns NaN here. Rationale and the fold hazard: \ref adaptparam_newton.
                 Cinv.noalias() = C.inverse();
 
                 // Fold guard: min sigma-Jacobian det (same quantity as
@@ -241,7 +259,7 @@ void gsAdaptiveParametrizationNewton<T,MODE>::_evalObjAndMinJ(
                 if (detJs < thMin) thMin = detJs;
 
                 // Monitor weight m2 (only when a monitor is present)
-                // Paper Eq. (13) and (12): omega = 1/sqrt(1+theta*f) or 1/sqrt(1+theta*||∇f||^2)
+                // The paper (see the relevant equation): omega = 1/sqrt(1+theta*f) or 1/sqrt(1+theta*||∇f||^2)
                 // so m2 = omega^2 = 1/(1+theta*f) or 1/(1+theta*||∇f||^2)
                 T m2 = T(0);
                 if (hasMonitor)
@@ -249,7 +267,7 @@ void gsAdaptiveParametrizationNewton<T,MODE>::_evalObjAndMinJ(
                     if (MODE == ValueBased)
                     {
                         const T eta = monVals(0, p);
-                        m2 = T(1) / (T(1) + theta * eta);  // Paper Eq. (13)
+                        m2 = T(1) / (T(1) + theta * eta);  // per the value-based weight formula, see \ref adaptparam_rstep
                     }
                     else
                     {
@@ -260,7 +278,7 @@ void gsAdaptiveParametrizationNewton<T,MODE>::_evalObjAndMinJ(
                         else
                             grad_xi_f.noalias() = Jg.transpose() * monDerivs.col(p).reshaped(td, 1);
                         const T eta2 = (grad_xi_f.transpose() * Cg_inv * grad_xi_f)(0,0);
-                        m2 = T(1) / (T(1) + theta * eta2);  // Paper Eq. (12)
+                        m2 = T(1) / (T(1) + theta * eta2);  // per the gradient-based weight formula, see \ref adaptparam_rstep
                     }
                 }
 
@@ -279,10 +297,14 @@ void gsAdaptiveParametrizationNewton<T,MODE>::_evalObjAndMinJ(
                 }
 
                 T integrand;
-                if (hasMonitor)   // p=3 barrier exponent, omega = sqrt(m2)
+                if (hasMonitor)   // omega = sqrt(m2); see q_exp note below
                 {
                     const T omega = math::sqrt(m2);
-                    integrand = omega * Cinv.trace() * abs_det*abs_det*abs_det / (chi*chi);
+                    // q_exp = 1 on chi (monitor branch): with the Tikhonov
+                    // shift gone, tr(Cinv)*det^2 == T exactly, so the barrier
+                    // exponent belongs on chi, not on |det|, to reproduce
+                    // gsOptMesh's omega*T/chi.
+                    integrand = omega * Cinv.trace() * abs_det*abs_det / chi;
                     // Surface (td>dd) paper-exact area weight g_S = sqrt(det Cg) (Eq.18).
                     // Cg already formed above for GradientBased; compute for ValueBased.
                     if (td > dd)
@@ -298,12 +320,20 @@ void gsAdaptiveParametrizationNewton<T,MODE>::_evalObjAndMinJ(
                 thEnergy += tmpWeights[p] * integrand;
             }
         }
-#       pragma omp critical (gsAPN_evalObjAndMinJ)
-        {
-            energy += thEnergy;
-            if (thMin < minJ) minJ = thMin;
-        }
+#       ifdef _OPENMP
+        partial[omp_get_thread_num()]    = thEnergy;
+        partialMin[omp_get_thread_num()] = thMin;
+#       else
+        partial[0]    = thEnergy;
+        partialMin[0] = thMin;
+#       endif
     } // omp parallel
+
+    for (int i = 0; i != nThreads; ++i)
+    {
+        energy += partial[i];
+        if (partialMin[i] < minJ) minJ = partialMin[i];
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -359,7 +389,50 @@ void gsAdaptiveParametrizationNewton<T,MODE>::_buildPattern() const
         }
     }
 
+    // Prefix sum of nonzeros per column, so a fixed pattern entry maps to a
+    // unique offset in a flat per-thread value buffer (see _fpatternPos).
+    const gsVector<index_t> nzPerFiber = m_fpattern.nonZerosPerFiber();
+    m_fpatternColOffset.resize(N);
+    index_t off = 0;
+    for (index_t j = 0; j != N; ++j)
+    {
+        m_fpatternColOffset[j] = off;
+        off += nzPerFiber[j];
+    }
+
     m_patternReady = true;
+}
+
+template<class T, enum MonitorMode MODE>
+index_t gsAdaptiveParametrizationNewton<T,MODE>::_fpatternPos(index_t ii, index_t jj) const
+{
+    // Column-major layout: m_fpattern's fiber jj stores the (sorted) row
+    // indices of column jj; searchLowerIndex is the same lower_bound used
+    // internally by gsFiberMatrix::isExplicitZero.
+    const auto & vdata = m_fpattern.col(jj).data();
+    const index_t local = vdata.searchLowerIndex(ii);
+    GISMO_ASSERT(local < vdata.size() && vdata.index(local) == ii,
+                 "Pattern entry ("<<ii<<","<<jj<<") missing from m_fpattern; "
+                 "did _buildPattern() run?");
+    return m_fpatternColOffset[jj] + local;
+}
+
+template<class T, enum MonitorMode MODE>
+void gsAdaptiveParametrizationNewton<T,MODE>::_mergePartialK(
+    const std::vector<gsVector<T> > & partial, gsSparseMatrix<T> & out) const
+{
+    const index_t N = m_fpattern.cols();
+    for (index_t j = 0; j != N; ++j)
+    {
+        auto & col = m_fpattern.col(j);
+        const index_t nzj = col.nonZeros();
+        if (nzj == 0) continue;
+        gsAsVector<T> dst(col.valuePtr(), nzj);
+        for (size_t t = 0; t != partial.size(); ++t)
+            dst += partial[t].segment(m_fpatternColOffset[j], nzj);
+    }
+    m_fpattern.toSparseMatrix_into(out);
+    out.makeCompressed();
 }
 
 // ---------------------------------------------------------------------------
@@ -535,7 +608,9 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleResidual(
     const T theta   = m_options.getReal("Smoothing");
     const bool hasMonitor = (m_fun != nullptr);
     const bool planar = (td == dd);
-    const T p_exp = hasMonitor ? T(3) : T(2);   // barrier exponent [H-2]
+    // q_exp: barrier exponent on chi (not |det|), reproducing gsOptMesh's
+    // T/chi^2 (no monitor) / omega*T/chi (with monitor). See \ref adaptparam_newton.
+    const T q_exp = hasMonitor ? T(1) : T(2);   // [H-2]
 
     const gsDofMapper & mapper = m_comp->mapper();
     const index_t N = (index_t)m_comp->nControls();
@@ -550,6 +625,16 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleResidual(
     quadOptions.addInt ("quB","",1);
 
     auto dom = m_mb.domain();
+
+    // DETERMINISTIC reduction -- see gsOptMesh::evalObj (gsAdaptiveParametrization.hpp:425-432).
+    // Per-thread partials are summed in THREAD-ID order, making this routine
+    // bit-reproducible for a fixed thread count.
+#   ifdef _OPENMP
+    const int nThreads = omp_get_max_threads();
+#   else
+    const int nThreads = 1;
+#   endif
+    std::vector<gsVector<T> > partial(nThreads, gsVector<T>::Zero(N));
 
 #   pragma omp parallel
     {
@@ -633,7 +718,9 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleResidual(
                 Jc.noalias() = Jg * Js;
 
                 C.noalias() = Jc.transpose() * Jc;
-                C.diagonal().array() += penalty;
+                // NO Tikhonov shift on C (matches gsOptMesh's unregularised
+                // energy); C is inverted unregularised, so a folded iterate
+                // returns NaN here. Rationale and the fold hazard: \ref adaptparam_newton.
                 Q.noalias() = C.inverse();
                 const T trQ = Q.trace();
 
@@ -645,10 +732,12 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleResidual(
                     const T sq = math::sqrt(penalty*penalty + det*det);
                     chi  = T(0.5) * (det + sq);
                     dchi = T(0.5) * (T(1) + det / sq);
-                    const T absdet = math::abs(det);
-                    phi = math::pow(absdet, p_exp) / (chi * chi);
+                    // q_exp is always 1 or 2 (see its definition above); avoid a
+                    // libm pow() call per quadrature point -- hasMonitor is
+                    // loop-invariant, so this branch is predictable and free.
+                    phi = hasMonitor ? (det * det / chi) : (det * det / (chi * chi));
                     const T inv_det = (det != T(0)) ? T(1)/det : T(0);
-                    gamma = p_exp * inv_det - T(2) * dchi / chi;
+                    gamma = T(2) * inv_det - q_exp * dchi / chi;
                 }
 
                 if (planar)
@@ -660,7 +749,7 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleResidual(
                 }
 
                 // Monitor weight m2 = omega^2 and its alpha-derivative coefficient
-                // Paper Eq. (13): omega = 1/sqrt(1+theta*f) => m2 = 1/(1+theta*f)
+                //  omega = 1/sqrt(1+theta*f) => m2 = 1/(1+theta*f)
                 T m2 = T(1);
                 gsVector<T> dm2coef(dd);    // dm2_X = dm2coef(d) * N_A
                 dm2coef.setZero();
@@ -796,7 +885,7 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleResidual(
                         Pi.col(d) += trQ * phi * gamma * vs;
                     }
 
-                    // Paper Eq. (18): integrand = omega * (T/g), where omega = sqrt(m2)
+                    // integrand = omega * (T/g), where omega = sqrt(m2)
                     // So flux and reaction scaled by omega, not m2
                     const T omega = math::sqrt(m2);
                     Pi.col(d) *= omega;
@@ -837,9 +926,15 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleResidual(
             }
         }
 
-#       pragma omp critical
-        R_out += thR;
+#       ifdef _OPENMP
+        partial[omp_get_thread_num()] = thR;
+#       else
+        partial[0] = thR;
+#       endif
     } // omp parallel
+
+    for (int i = 0; i != nThreads; ++i)
+        R_out += partial[i];
 }
 
 // ---------------------------------------------------------------------------
@@ -931,7 +1026,8 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleHessian(
     const T theta   = m_options.getReal("Smoothing");
     const bool hasMonitor = (m_fun != nullptr);
     const bool planar = (td == dd);
-    const T p_exp = hasMonitor ? T(3) : T(2);
+    // q_exp: barrier exponent on chi, see \ref adaptparam_newton.
+    const T q_exp = hasMonitor ? T(1) : T(2);
 
     const gsDofMapper & mapper = m_comp->mapper();
     const gsBasis<T> & sigmaBasis = m_comp->domain().basis();
@@ -955,8 +1051,23 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleHessian(
         _geomDeriv3_into(sd.values[0], dummy);
     }
 
+    // DETERMINISTIC reduction (same invariant as the residual/energy sums
+    // above): each thread accumulates the matrix entries it touches into
+    // its own value buffer, merged in THREAD-ID order after the parallel
+    // region, so K_out is bit-reproducible for a fixed thread count.
+    const index_t nnzK = m_fpattern.nonZeros();
+#   ifdef _OPENMP
+    const int nThreads = omp_get_max_threads();
+#   else
+    const int nThreads = 1;
+#   endif
+    std::vector<gsVector<T> > partialK(nThreads, gsVector<T>::Zero(nnzK));
+
 #   pragma omp parallel
     {
+        gsVector<T> thPartialK(nnzK);
+        thPartialK.setZero();
+
         gsFuncData<T> geomData, funData, sigmaData, sigmaBasisData;
         geomData.flags = NEED_VALUE | NEED_DERIV | NEED_DERIV2;
         funData.flags  = NEED_VALUE | NEED_DERIV | NEED_DERIV2;
@@ -1015,8 +1126,12 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleHessian(
         std::vector<gsVector<T>> gfm(dd);
         gsVector<T> dgf(dd);
         gsMatrix<T> dHxf(td,td);
-        // surface+monitor: gS product-rule scratch
-        T gS;
+        // surface+monitor: gS product-rule scratch.  Initialised to 1 (the
+        // planar no-op value) to match assembleResidual's `T gS = T(1)`: it is
+        // only ever READ under (hasMonitor && !planar), which is exactly when
+        // it is assigned, but gcc cannot prove those two flags invariant
+        // between the assignment and the use and warns -Wmaybe-uninitialized.
+        T gS = T(1);
         gsVector<T> trCginvEd_vec(dd);
         gsMatrix<T> trCginvEdm_mat(dd,dd), trCginvEmCginvEd_mat(dd,dd);
 
@@ -1069,7 +1184,9 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleHessian(
                 Jc.noalias() = Jg * Js;
 
                 C.noalias() = Jc.transpose() * Jc;
-                C.diagonal().array() += penalty;
+                // NO Tikhonov shift on C (matches gsOptMesh's unregularised
+                // energy); C is inverted unregularised, so a folded iterate
+                // returns NaN here. Rationale and the fold hazard: \ref adaptparam_newton.
                 Q.noalias() = C.inverse();
                 QQ.noalias() = Q * Q;
                 const T trQ = Q.trace();
@@ -1084,13 +1201,15 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleHessian(
                     chi   = T(0.5) * (det + sq);
                     chip  = T(0.5) * (T(1) + det / sq);
                     chipp = T(0.5) * penalty * penalty / (sq * sq * sq);
-                    const T absdet = math::abs(det);
-                    phi = math::pow(absdet, p_exp) / (chi * chi);
+                    // q_exp is always 1 or 2 (see its definition above); avoid a
+                    // libm pow() call per quadrature point -- hasMonitor is
+                    // loop-invariant, so this branch is predictable and free.
+                    phi = hasMonitor ? (det * det / chi) : (det * det / (chi * chi));
                     const T inv_det = (det != T(0)) ? T(1)/det : T(0);
-                    gamma  = p_exp * inv_det - T(2) * chip / chi;
-                    // gamma' = d gamma / d det  (sign: see [H-4.1b], corrected)
-                    gammap = -p_exp * inv_det * inv_det
-                             - T(2) * (chipp * chi - chip * chip) / (chi * chi);
+                    gamma  = T(2) * inv_det - q_exp * chip / chi;
+                    // gamma' = d gamma / d det  (sign: see [H-4.1b])
+                    gammap = -T(2) * inv_det * inv_det
+                             - q_exp * (chipp * chi - chip * chip) / (chi * chi);
                 }
 
                 if (planar)
@@ -1188,7 +1307,7 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleHessian(
                     if (MODE == ValueBased)
                     {
                         const T eta = monVals(0, p);
-                        // Paper Eq. (13): omega = 1/sqrt(1+theta*f) => m2 = omega^2 = 1/(1+theta*f)
+                        //  omega = 1/sqrt(1+theta*f) => m2 = omega^2 = 1/(1+theta*f)
                         const T denom = T(1) + theta * eta;
                         m2 = T(1) / denom;
                         const T dm2_deta  = -theta / (denom * denom);            // dm2/df
@@ -1510,7 +1629,8 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleHessian(
                 }
             } // quad points
 
-            // ---- scatter element matrix (atomic add into the fiber matrix)
+            // ---- scatter element matrix into this thread's own value
+            // buffer (accumulate, no cross-thread write) ----
             for (index_t lA = 0; lA != nAct; ++lA)
             {
                 const index_t kA = actives(lA, 0);
@@ -1527,17 +1647,21 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assembleHessian(
                             const index_t jj = mapper.index(kB, 0, m);
                             const T val = localK(d * nAct + lA, m * nAct + lB);
                             if (val == T(0)) continue;
-#                           pragma omp atomic
-                            m_fpattern.coeffRef(ii, jj) += val;
+                            thPartialK[_fpatternPos(ii, jj)] += val;
                         }
                     }
                 }
             }
         } // elements
+
+#       ifdef _OPENMP
+        partialK[omp_get_thread_num()] = give(thPartialK);
+#       else
+        partialK[0] = give(thPartialK);
+#       endif
     } // omp parallel
 
-    m_fpattern.toSparseMatrix_into(K_out);
-    K_out.makeCompressed();
+    _mergePartialK(partialK, K_out);
 }
 
 // ---------------------------------------------------------------------------
@@ -1567,6 +1691,10 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assemblePicard(
     GISMO_ASSERT(dd <= td, "domainDim must be <= targetDim");
 
     const T penalty = m_options.getReal("Penalty");
+    // No chi/phi barrier is assembled in this routine (see the NO-Tikhonov-shift
+    // comment below), so `penalty` has no remaining numerical use here; it is
+    // still read for parity with the other three assembly routines' option handling.
+    GISMO_UNUSED(penalty);
     const T theta   = m_options.getReal("Smoothing");
     const bool hasMonitor = (m_fun != nullptr);
 
@@ -1582,8 +1710,23 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assemblePicard(
 
     auto dom = m_mb.domain();
 
+    // DETERMINISTIC reduction (same invariant as assembleHessian): each
+    // thread accumulates the matrix entries it touches into its own value
+    // buffer, merged in THREAD-ID order after the parallel region, so
+    // B_out is bit-reproducible for a fixed thread count.
+    const index_t nnzB = m_fpattern.nonZeros();
+#   ifdef _OPENMP
+    const int nThreads = omp_get_max_threads();
+#   else
+    const int nThreads = 1;
+#   endif
+    std::vector<gsVector<T> > partialK(nThreads, gsVector<T>::Zero(nnzB));
+
 #   pragma omp parallel
     {
+        gsVector<T> thPartialK(nnzB);
+        thPartialK.setZero();
+
         gsFuncData<T> geomData, funData, sigmaData, sigmaBasisData;
         geomData.flags = NEED_VALUE | NEED_DERIV;
         funData.flags  = NEED_VALUE;
@@ -1653,7 +1796,9 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assemblePicard(
                 Jc.noalias() = Jg * Js;
 
                 C.noalias() = Jc.transpose() * Jc;
-                C.diagonal().array() += penalty;
+                // NO Tikhonov shift on C (matches gsOptMesh's unregularised
+                // energy); C is inverted unregularised, so a folded iterate
+                // returns NaN here. Rationale and the fold hazard: \ref adaptparam_newton.
                 Q.noalias() = C.inverse();
                 Cg.noalias() = Jg.transpose() * Jg;
 
@@ -1671,7 +1816,7 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assemblePicard(
                     const T g_safe = math::max(g_val, T(1e-14));
 
                     // frozen monitor weight w = omega = sqrt(m2) at the current iterate
-                    // Paper Eq.(13)/(12): m2 = 1/(1+theta*f) or 1/(1+theta*||∇f||^2)
+                    // m2 = 1/(1+theta*f) or 1/(1+theta*||∇f||^2)
                     T eta2 = T(0);
                     if (MODE == ValueBased)
                     {
@@ -1713,7 +1858,7 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assemblePicard(
                 }
             }
 
-            // scatter
+            // scatter into this thread's own value buffer
             for (index_t lA = 0; lA != nAct; ++lA)
             {
                 const index_t kA = actives(lA, 0);
@@ -1730,17 +1875,21 @@ void gsAdaptiveParametrizationNewton<T,MODE>::assemblePicard(
                             const index_t jj = mapper.index(kB, 0, m);
                             const T val = localB(d * nAct + lA, m * nAct + lB);
                             if (val == T(0)) continue;
-#                           pragma omp atomic
-                            m_fpattern.coeffRef(ii, jj) += val;
+                            thPartialK[_fpatternPos(ii, jj)] += val;
                         }
                     }
                 }
             }
         }
+
+#       ifdef _OPENMP
+        partialK[omp_get_thread_num()] = give(thPartialK);
+#       else
+        partialK[0] = give(thPartialK);
+#       endif
     } // omp parallel
 
-    m_fpattern.toSparseMatrix_into(B_out);
-    B_out.makeCompressed();
+    _mergePartialK(partialK, B_out);
 }
 
 // ---------------------------------------------------------------------------
@@ -1822,6 +1971,16 @@ index_t gsAdaptiveParametrizationNewton<T,MODE>::_solveLoop(bool useHessian)
     _getControls(u);
     const index_t n = u.size();
 
+    // A positive coefficient bound PROVES sigma is unfolded (non-negative basis,
+    // partition of unity). It is conservative, so a negative value is not proof of
+    // a fold - warn rather than abort, and let the finiteness check below catch an
+    // actual folded start.
+    const T certJ = m_comp->minDetJCoefficient();
+    if (certJ <= T(0))
+        gsWarn << "gsAdaptiveParametrizationNewton: det(J_sigma) coefficient bound is "
+               << certJ << " <= 0. This bound is conservative, so it is not proof of a "
+                  "fold; but if sigma IS folded the assembly below yields NaN.\n";
+
     gsVector<T> R(n);
     gsSparseMatrix<T> K;
 
@@ -1873,6 +2032,13 @@ index_t gsAdaptiveParametrizationNewton<T,MODE>::_solveLoop(bool useHessian)
         sw.restart();
         _residual(u, R);
         t_residual += sw.stop();
+        // Only checked on the starting mesh: the message below names it
+        // explicitly, and a fold introduced by a later step is instead caught
+        // by the line search's own minJ > 0 gate (see _armijoStep).
+        if (iter == 0)
+            GISMO_ENSURE(R.allFinite(),
+                "gsAdaptiveParametrizationNewton: residual is not finite at the starting mesh "
+                "- sigma is folded or the geometry is degenerate.");
         const T normR = R.norm();
 
         // One fused sweep yields both the energy (line-search base f0 + log) and
@@ -1881,6 +2047,18 @@ index_t gsAdaptiveParametrizationNewton<T,MODE>::_solveLoop(bool useHessian)
         T E, minJ;
         _evalObjAndMinJ(u, E, minJ);
         t_eval += sw.stop();
+
+        // A folded start (det J_sigma < 0) gives det C = (det J)^2 > 0, so
+        // C = J^T J stays invertible and R.allFinite() above passes even
+        // though the line search can never make progress: every trial step
+        // is rejected because it cannot improve on an already-inconsistent
+        // gradient, not because of a NaN. Only an EXACTLY singular start
+        // (det J == 0) produces the NaN the allFinite ensure above catches.
+        if (iter == 0 && minJ <= T(0))
+            gsWarn << "gsAdaptiveParametrizationNewton: sigma is folded at the starting "
+                      "mesh (min det J_sigma = " << minJ << "); the line search cannot "
+                      "make progress from a folded start.\n";
+
         const T t = timer.elapsed();
 
         // Record log row (columns pre-allocated)
@@ -1918,7 +2096,18 @@ index_t gsAdaptiveParametrizationNewton<T,MODE>::_solveLoop(bool useHessian)
         if (!analyzed) { solver.analyzePattern(K); analyzed = true; }
         _makeDefinite(K, tau_lm);
         solver.factorize(K);
-        GISMO_ASSERT(solver.info() == 0, "Linear solve factorisation failed");
+        // GISMO_ENSURE, not GISMO_ASSERT: solver.info() reports a RUNTIME
+        // condition (the factorisation of a hard/singular K), not a programmer
+        // error, so it must survive -DNDEBUG.  Compiled out, a failed
+        // factorisation let solver.solve() return garbage or NaN, and the
+        // descent test below (R.dot(delta) >= 0) then ACCEPTS a NaN step,
+        // because every IEEE comparison with NaN is false.
+        GISMO_ENSURE(solver.info() == 0,
+            "gsAdaptiveParametrizationNewton::_solveLoop: linear solve "
+            "factorisation failed (info = " << solver.info() << ") at "
+            "Levenberg shift tau = " << tau_lm << "; the "
+            << (useHessian ? "Newton" : "Picard") << " system matrix is "
+            "singular or not factorisable.");
         gsVector<T> delta = solver.solve(-R);
 
         // Check descent: R·delta should be < 0 for a descent direction.

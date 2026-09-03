@@ -1,6 +1,8 @@
-/** @file gsMultiBasis.h
+/** @file gsSquareDomain.h
 
-    @brief Provides declaration of MultiBasis class.
+    @brief Provides declaration of the gsSquareDomain class, a free-form
+    reparametrization of the [0,1]^2 parameter domain used as the sigma map
+    in composed/relocated-mesh (r-adaptive) discretizations.
 
     This file is part of the G+Smo library.
 
@@ -8,7 +10,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): A. Mantzaflaris
+    Author(s): H.M. Verhelst
 */
 
 #pragma once
@@ -27,31 +29,26 @@ class gsSquareDomain : public gsFunction<T>
     using Base = gsFunction<T> ;
 
 public:
-    // default constructor
-    // gsSquareDomain()
 
     /**
      * @brief      Constructs a new instance.
      *
      * @param[in]  domain  The domain
+     * @param[in]  slide   Value of the "Slide" option (boundary controls
+     *                     slide along the boundary), applied before the dof
+     *                     mapper is built. Default false.
      */
-    gsSquareDomain(const gsGeometry<T> & domain);
+    gsSquareDomain(const gsGeometry<T> & domain, bool slide = false);
 
     /**
      * @brief      Constructs a new instance.
      *
      * @param[in]  basis  The basis
+     * @param[in]  slide  Value of the "Slide" option (boundary controls
+     *                    slide along the boundary), applied before the dof
+     *                    mapper is built. Default false.
      */
-    gsSquareDomain(const gsBasis<T> & basis);
-
-
-    // /**
-    //  * @brief      Constructs a new instance.
-    //  *
-    //  * @param[in]  numElevation  The number elevation
-    //  * @param[in]  numRefine     The number refine
-    //  */
-    // gsSquareDomain(index_t numElevation = 0, index_t numRefine = 0);
+    gsSquareDomain(const gsBasis<T> & basis, bool slide = false);
 
     // Copy constructor
     gsSquareDomain(const gsSquareDomain<T> & other);
@@ -90,13 +87,22 @@ public:
     // which would spoil the second-derivative chain rule of gsComposedBasis.
     void deriv2_into(const gsMatrix<T> & u, gsMatrix<T> & result) const override;
 
-    // /// Sets the controls of the domain (does not override)
-    // void setControls(const gsMatrix<T> & coefs)
-    // {
-    //     GISMO_ASSERT(coefs.rows()==m_domain.coefs().rows() && coefs.cols()==m_domain.coefs().cols(),"Wrong size of controls matrix");
-    //     for (index_t i = 0; i!=m_indices.size(); i++)
-    //         m_domain.coefs()(m_indices[i].first,m_indices[i].second) = coefs(m_indices[i].first,m_indices[i].second);
-    // }
+    /** @brief Evaluates values and derivatives in ONE pass.
+     *
+     * Without this override, gsFunctionSet::compute() falls back to calling
+     * eval_into() / deriv_into() / deriv2_into() in turn, and each of those
+     * delegates to the underlying B-spline geometry SEPARATELY -- so asking for
+     * value+derivative evaluates the sigma basis twice, and
+     * value+derivative+second derivative three times.  Delegating to
+     * gsGeometry::compute() instead runs the basis' evalAllDers_into() once and
+     * contracts each requested order with the control points.
+     *
+     * This matters because gsOptMesh's objective and gradient sweeps call
+     * compute() on this object for every element on every optimizer iteration,
+     * making it a hot-path routine on which redundant basis evaluation is
+     * directly visible in wall time.
+     */
+    void compute(const gsMatrix<T> & u, gsFuncData<T> & out) const override;
 
     /// Sets the controls of the domain
     void setControls(const gsVector<T> & controls);
@@ -105,19 +111,23 @@ public:
     /// NOTE: This makes a copy
     gsVector<T> getControls() const;
 
-    /// Returns the \a i th control of the function
-    // const T & control(index_t i) const;
-    //       T & control(index_t i);
-
-
-    // const gsVector<T> & parameters() const { return m_parameters; };
-    //       gsVector<T> & parameters()       { return m_parameters; };
-
     /// Returns the number of controls of the function
     size_t nControls() const;
 
     /// Returns the control derivative
     virtual void control_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const;
+
+    /// @brief det(J) at each column of \a jacobians, which must be in the
+    ///        component-major (row c*dd+j) layout deriv_into produces.
+    /// @param[in]  jacobians  (dd*dd) x nPoints. Precondition: dd >= 1 and
+    ///                        jacobians.rows() == dd*dd.
+    /// @param[in]  dd         the square Jacobian's dimension
+    /// @param[out] result     1 x nPoints
+    static void detFromJacobian_into(const gsMatrix<T> & jacobians, short_t dd,
+                                     gsMatrix<T> & result);
+
+    /// @brief det(J_sigma) at \a points. Result is 1 x points.cols().
+    void detJacobian_into(const gsMatrix<T> & points, gsMatrix<T> & result) const;
 
     /**
      * @brief Computes the derivative of det(J_sigma) w.r.t. the free controls
@@ -126,16 +136,71 @@ public:
      * J_sigma = d(sigma)/d(xi,eta). This method computes d(det(J_sigma))/d(alpha_i)
      * for each free control alpha_i.
      *
-     * @param[in]  points  The evaluation points in the parameter domain
-     * @param[out] result  A vector of size nControls x nPoints, where
-     *                     result(i, p) = d(det(J_sigma))/d(alpha_i) at point p
+     * @param[in]  points    The evaluation points in the parameter domain
+     * @param[out] result    A vector of size nControls x nPoints, where
+     *                       result(i, p) = d(det(J_sigma))/d(alpha_i) at point p
+     * @param[out] jacobian  Optional: if non-null, also filled with J_sigma at
+     *                       \a points in the same layout as deriv_into's output
+     *                       (component-major: row c*domainDim+j). Computing
+     *                       J_sigma is a byproduct of this method's own basis
+     *                       evaluation, so a caller that needs both J_sigma and
+     *                       this derivative (the common case: a fold-barrier
+     *                       gradient) gets both for the cost of one basis pass
+     *                       instead of two.
      */
-    void control_jacobian_deriv_into(const gsMatrix<T> & points, gsMatrix<T> & result) const;
+    void detJacobianDeriv_into(const gsMatrix<T> & points, gsMatrix<T> & result,
+                               gsMatrix<T> * jacobian = nullptr) const;
 
     /// Perturb the control points by a \a factor
     void perturb(T factor = 1e-3);
 
+    /**
+     * @brief Minimum of det(J_sigma), sampled on an \a nPerElement^d point
+     *        grid PER ELEMENT of sigma's knot mesh. NECESSARY but never
+     *        SUFFICIENT fold check (a fold between sample points is
+     *        invisible to it). Derivation and the certified-bound
+     *        comparison against minDetJCoefficient(): \ref adaptparam_foldcert.
+     *
+     * @param[in] nPerElement  Number of sample points per direction, per
+     *                         element of sigma's knot mesh. Must be >= 2.
+     * @return The minimum sampled value of det(J_sigma) over the domain.
+     */
+    T minJacobian(index_t nPerElement) const;
+
+    /**
+     * @brief Represents det(J_sigma) EXACTLY (to round-off) as a scalar
+     *        tensor B-spline, in the one spline space that actually
+     *        contains it. Bernstein/Leibniz construction: \ref adaptparam_foldcert.
+     *
+     * @param[in] keepBezier  If true, skip the interior-knot compression
+     *                        inside \c gsTensorBSpline::multiply and return
+     *                        the raw Bezier-form product -- the tightest
+     *                        possible coefficient bound for
+     *                        minDetJCoefficient(), at the cost of a larger basis.
+     * @return A scalar (targetDim() == 1) tensor B-spline geometry equal to
+     *         det(J_sigma) to round-off, owned by the caller.
+     */
+    typename gsGeometry<T>::uPtr detJacobianSpline(bool keepBezier = false) const;
+
+    /**
+     * @brief Guaranteed LOWER BOUND on det(J_sigma) over the whole domain,
+     *        computed WITHOUT sampling anywhere: the partition-of-unity
+     *        proof and the certified-vs-sampled ordering
+     *        \code minDetJCoefficient() <= true min_x det(J_sigma) <= minJacobian(nPerElement) \endcode
+     *        are derived in \ref adaptparam_foldcert.
+     *
+     * @return The minimum B-spline coefficient of det(J_sigma)'s exact
+     *         representation -- a certified lower bound, never an
+     *         approximation.
+     */
+    T minDetJCoefficient() const;
+
 private:
+    /// @brief Dimension-generic implementation of detJacobianSpline(),
+    ///        dispatched on the runtime domainDim() by detJacobianSpline().
+    template<short_t d>
+    typename gsGeometry<T>::uPtr _detJacobianSplineImpl(bool keepBezier) const;
+
     /// @brief Initialize the dof mapper
     /// @param domain The domain as a tensor B-spline
     /// @param mapper The dof mapper (output)

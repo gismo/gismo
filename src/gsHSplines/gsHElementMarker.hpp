@@ -105,7 +105,7 @@ namespace gismo
     template <short_t d, class T>
     typename gsHElementMarker<d,T>::HElementContainer gsHElementMarker<d,T>::markCrs(const HElementContainer refined) const
     {
-        switch (m_options.askInt("RefineRule",1))
+        switch (m_options.askInt("CoarsenRule",1))
         {
             case 1: // GARU
                 return _markCrs_threshold(refined);
@@ -114,7 +114,7 @@ namespace gismo
             case 3: // BULK
                 return _markCrs_fraction(refined);
             default:
-                GISMO_ERROR("Unknown refinement rule.");
+                GISMO_ERROR("Unknown coarsening rule.");
         }
     }
 
@@ -167,10 +167,15 @@ namespace gismo
                     break;
                 }
 
-                // If the parents of any cells in the extension overlap with marked refinement cells, coarsening causes a problem
+                // Admissible coarsening needs N_c U N_rc = empty: the coarsening
+                // neighborhood (Carraturo et al., CMAME 348 (2019), Def. 3.5) and
+                // its counterpart over the elements marked for refinement (Verhelst
+                // et al., Eng. Comput. 40 (2024), Eq. (44)), at level l for m = 2.
                 for ( const auto & refElem : refined )
                 {
-                    if (m_helper.contains(coarseningElem, refElem))
+                    if (refElem.level() >= elem.level() &&
+                        (m_helper.contains(coarseningElem, refElem) ||
+                         m_helper.contains(refElem, coarseningElem)))
                     {
                         // If the coarsening element contains a refinement element, the coarsening is not admissible
                         erase = true;
@@ -210,7 +215,7 @@ namespace gismo
                 break;
 
             // If the level of the element is larger than the maximum level, skip it
-            if (it->first.level() >= (level_t)m_options.askInt("MaxLevel",10))
+            if (it->first.level() >= (level_t)m_options.askInt("MaxLevel",3))
                 continue;
 
             // Add the element to the container
@@ -266,7 +271,7 @@ namespace gismo
                 break;
 
             // If the level of the element is larger than the maximum level, skip it
-            if (it->first.level() >= (level_t)m_options.askInt("MaxLevel",10))
+            if (it->first.level() >= (level_t)m_options.askInt("MaxLevel",3))
                 continue;
 
             // Add the element to the container
@@ -326,7 +331,7 @@ namespace gismo
                 break;
 
             // If the level of the element is larger than the maximum level, skip it
-            if (it->first.level() >= (level_t)m_options.askInt("MaxLevel",10))
+            if (it->first.level() >= (level_t)m_options.askInt("MaxLevel",3))
                 continue;
 
             // Add the element to the container

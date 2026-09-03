@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  R/D-step optimizer budget for the rh_*_sweep.sh paper runs.
+
+  Layered on top of the driver's built-in defaults and the case file's id=4
+  via --options, which has per-key precedence, so these two keys are the
+  only thing this file changes.
+
+  Why a budget is needed at all: the R step's default budget
+  (MaxIterations=10000, OptTol=1e-6) is effectively unbounded on a refined
+  mesh. Measured on the surface-paraboloid Poisson case, one R step cost
+  2.6 s at 245 DoFs, 11.5 s at 500 DoFs, and had not converged after 1.9 h
+  at 1565 DoFs -- the iteration count, not the mesh size, is what runs away.
+  Since the sweep applies R at EVERY refinement level (relocation only pays
+  when it is re-applied after each refinement), an unbounded R step makes
+  the r-carrying arms unrunnable.
+
+  The TOLERANCE is what does the work here, not the iteration cap. On a
+  hierarchical mesh at ~1250 DoFs the same step costs 670 s at OptTol=1e-4
+  (which never meets the tolerance and ends on the 1000-iteration cap) and
+  113 s at 1e-2, which ends on the gradient. The cap is kept only as a
+  backstop for the case where even 1e-2 is not reached.
+
+  What the budget costs: the R step stops at a looser stationarity than the
+  driver default, so the relocated mesh is a descent point rather than a
+  converged minimiser. Any figure produced with this file is therefore a
+  LOWER bound on what r-adaptivity can do. Two independent observations say
+  the bound is not tight enough to change the conclusions: on a uniform
+  1156-DoF mesh the post-R error was 3.70e-03 at OptTol=1e-3 and 3.80e-03
+  at 1e-2 (a 3% spread), and in both cases a converged R step made the
+  error WORSE than no relocation at all (1.12e-03).
+-->
+<xml>
+ <OptionList id="0">
+  <int label="MaxIterations" desc="R-step optimizer iterations" value="1000"/>
+  <real label="OptTol" desc="R-step optimizer gradient tolerance (unified name)" value="1e-02"/>
+ </OptionList>
+</xml>

@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+
+  <!-- Hyperbolic paraboloid surface: r(s,t) = (s, t, s^2 - t^2)
+       Manufactured solution: u = 1 - tanh(-5 + 20*sqrt((-1/2 + x)^2 + (-1/2 + y)^2))
+       (x=s, y=t): the SAME tanh front as surfacepoisson_paraboloid_front_bvp.xml,
+       so the two BVPs differ ONLY in geometry.  That isolates the curvature effect:
+       the paraboloid is convex (bowl), the hyperbolic paraboloid is a saddle
+       (Gaussian curvature < 0 everywhere), while the front profile, boundary
+       data and exact solution are byte-identical between the two files.
+
+       The source is -Delta_Gamma u for THIS surface, derived by
+       scripts/derive_surface_rhs.py from the general first-fundamental-form
+       operator Delta_Gamma u = (1/sqrt(g)) d_i( sqrt(g) g^ij d_j u ), which for
+       a graph z(s,t) reduces (checked symbolically by the script) to
+       (1/q) div( q (grad u - (grad z . grad u) grad z / q^2) ), q = sqrt(1+z_s^2+z_t^2).
+       The derivation was checked by reproducing the u = x closed form
+       -4a(q^2+1)/q^4 on the paraboloid, and by comparing against a
+       finite-difference Laplace-Beltrami at 200 random points for this front
+       profile on z = s^2 - t^2 specifically.
+       Do NOT substitute a planar -Delta u here: on a curved surface that is a
+       geometry/source mismatch and the error will stagnate. -->
+
+  <!-- Computational domain (id=0) -->
+  <MultiPatch parDim="2" id="0">
+    <patches type="id_range">500 500</patches>
+    <interfaces/>
+    <boundaries name="dirichlet">
+      500 1
+      500 2
+      500 3
+      500 4
+    </boundaries>
+  </MultiPatch>
+
+  <!-- Right-hand side: -Delta_Gamma u  (id=1, physical coords in R^3) -->
+  <Function type="FunctionExpr" id="1" dim="3">-(-40 - 2560*x^6 - 2560*y^6 - 2240*x^4 - 2240*y^4 - 320*x^2 - 320*y^2 + 40*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 + 80*x + 80*y + 960*x^3 + 960*y^3 + 3200*x^5 + 3200*y^5 - 3200*x^5*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 - 3200*y^5*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 - 2560*x^2*y^3 - 2560*x^3*y^2 - 960*x^3*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 - 960*y^3*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 - 800*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 - 640*x*y^4 - 640*y*x^4 - 320*x*y^2 - 320*y*x^2 - 80*x*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 - 80*y*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 + 160*x*y + 320*x^2*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 + 320*y^2*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 + 640*x*y^3 + 640*y*x^3 + 800*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)) + 1920*x^2*y^2 + 2240*x^4*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 + 2240*y^4*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 + 2560*x^2*y^4 + 2560*x^4*y^2 + 2560*x^6*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 + 2560*y^6*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 - 12800*x^4*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 - 12800*y^4*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 - 6400*x^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 - 6400*x^3*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)) - 6400*y^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 - 6400*y^3*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)) - 2560*x^2*y^4*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 - 2560*x^4*y^2*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 - 1920*x^2*y^2*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 - 1600*x*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)) - 1600*y*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)) - 640*x*y^3*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 - 640*y*x^3*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 - 160*x*y*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 + 320*x*y^2*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 + 320*y*x^2*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 + 640*x*y^4*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 + 640*y*x^4*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 + 1600*x*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 + 1600*y*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 + 2560*x^2*y^3*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 + 2560*x^3*y^2*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^2 + 6400*x^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)) + 6400*x^3*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 + 6400*y^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)) + 6400*y^3*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 + 12800*x^4*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)) + 12800*y^4*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)) - 102400*x^2*y^4*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 - 102400*x^4*y^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 - 51200*x*y^4*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)) - 51200*y*x^4*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)) - 51200*x^2*y^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 - 51200*x^2*y^3*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)) - 51200*x^3*y^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)) - 19200*x*y^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)) - 19200*y*x^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)) - 12800*x*y^3*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 - 12800*y*x^3*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 - 3200*x*y*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 + 3200*x*y*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)) + 12800*x*y^3*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)) + 12800*y*x^3*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)) + 19200*x*y^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 + 19200*y*x^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 + 51200*x*y^4*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 + 51200*y*x^4*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 + 51200*x^2*y^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)) + 51200*x^2*y^3*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 + 51200*x^3*y^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))^3 + 102400*x^2*y^4*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)) + 102400*x^4*y^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)*tanh(-5 + 10*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2)))/(sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) - 32*x^5*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) - 32*y^5*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) - 16*x^3*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) - 16*y^3*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) - 2*x*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) - 2*y*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) + 10*x^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) + 10*y^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) + 32*x^4*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) + 32*x^6*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) + 32*y^4*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) + 32*y^6*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) - 64*x^2*y^3*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) - 64*x^3*y^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) - 32*x*y^4*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) - 32*y*x^4*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) - 16*x*y^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) - 16*y*x^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) + 64*x^2*y^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) + 96*x^2*y^4*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2) + 96*x^4*y^2*sqrt(2 - 4*x - 4*y + 4*x^2 + 4*y^2))</Function>
+
+  <!-- Boundary conditions: the tanh front on all four sides (id=2) -->
+  <boundaryConditions id="2" multipatch="0">
+    <Function type="FunctionExpr" dim="3" index="0">1 - tanh(-5 + 20*sqrt((-1/2 + x)^2 + (-1/2 + y)^2))</Function>
+    <bc type="Dirichlet" function="0" unknown="0">
+      0 1
+      0 2
+      0 3
+      0 4
+    </bc>
+  </boundaryConditions>
+
+  <!-- Exact solution (id=3) -->
+  <Function type="FunctionExpr" id="3" dim="3">1 - tanh(-5 + 20*sqrt((-1/2 + x)^2 + (-1/2 + y)^2))</Function>
+
+  <!-- Assembler options (id=4) -->
+  <OptionList id="4">
+    <int  label="DirichletStrategy" desc="Method for enforcement of Dirichlet BCs [11..14]" value="11"/>
+    <int  label="DirichletValues"   desc="Method for computation of Dirichlet DoF values [100..103]" value="101"/>
+    <int  label="InterfaceStrategy" desc="Method of treatment of patch interfaces [0..3]" value="1"/>
+    <real label="bdA" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="2"/>
+    <int  label="bdB" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="1"/>
+    <real label="bdO" desc="Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]" value="0.333"/>
+    <real label="quA" desc="Number of quadrature points: quA*deg + quB" value="2"/>
+    <int  label="quB" desc="Number of quadrature points: quA*deg + quB" value="4"/>
+    <int  label="quRule" desc="Quadrature rule [1:GaussLegendre,2:GaussLobatto]" value="1"/>
+    <bool label="SameElement" desc="Activates optimization if all quadrature points are located in the same element" value="0"/>
+
+    <!-- 2026-08-19: driver method options (rh-driver-unification's 27-key
+         table), bundled here so -f ALONE (no --options) fully determines a
+         run -- this is now THE poisson example (the user's own call).
+         MonitorMode=value matches the driver's own built-in default. Unlike
+         the plain surfacepoisson_paraboloid_bvp.xml (u=x, degree-2-exact,
+         nothing to chase), this file's circular tanh front is a genuine
+         localised feature outside the discrete space, so the R/H steps
+         have real error to reduce -- see the file header. -->
+    <string label="MonitorMode"    desc="R step monitor: value | gradient" value="gradient"/>
+    <string label="Optimizer"      desc="R-step optimizer backend: gsOptim | HLBFGS" value="gsOptim"/>
+    <int    label="RefineRule"     desc="gsHElementMarker refinement rule (1=GARU,2=PUCA,3=BULK)" value="3"/>
+    <int    label="CoarsenRule"    desc="gsHElementMarker coarsening rule" value="3"/>
+    <int    label="MaxLevel"       desc="gsHElementMarker level cap" value="10"/>
+    <int    label="MaxRefIt"       desc="H step refinement iterations -- IGNORED, one mark/refine per H letter" value="1"/>
+    <int    label="MaxIterations"  desc="R-step optimizer iterations" value="10000"/>
+    <int    label="Verbose"        desc="R-step optimizer verbosity" value="0"/>
+    <int    label="DirSkip"        desc="D-step direction skip -- IGNORED, no D step in this driver" value="0"/>
+    <real   label="RefineParam"    desc="gsHElementMarker refinement parameter" value="0.5"/>
+    <real   label="CoarsenParam"   desc="gsHElementMarker coarsening parameter" value="0.1"/>
+    <real   label="Smoothing"      desc="R step: Winslow smoothing theta" value="1"/>
+    <real   label="Penalty"        desc="R step: fold penalty" value="0.001"/>
+    <real   label="Target"         desc="H band: target L2 error (&lt;0 disables the band); overridden per run by --target" value="-1"/>
+    <real   label="Band"           desc="H band: dead-zone width factor (&gt;=1)" value="2"/>
+    <real   label="NoCoarsenBelow" desc="H band: below this L2 error, hold; auto-derived from --target as Target/Band^2" value="-1"/>
+    <real   label="OptTol"         desc="R-step optimizer gradient tolerance (unified name)" value="1e-6"/>
+    <real   label="Lambda"         desc="gsFitting smoothing weight -- IGNORED, no gsFitting in this driver" value="1e-06"/>
+    <bool   label="Coarsen"        desc="enable coarsening in the H step; overridden per run by --coarsen" value="0"/>
+    <bool   label="Admissible"     desc="gsHElementMarker admissible closure" value="1"/>
+    <bool   label="Extension"      desc="gsHElementMarker box extension" value="1"/>
+    <bool   label="Slide"          desc="sigma boundary control points may slide" value="1"/>
+  </OptionList>
+
+  <!-- Hyperbolic paraboloid geometry: degree-2 TensorBSpline in R^3, z = s^2 - t^2.
+       In the quadratic Bernstein basis, s has coefficients a=(0,1/2,1) and s^2
+       has coefficients (0,0,1): check (1/2)*2s(1-s) + 1*s^2 = s. Since
+       z(s,t) = s^2 - t^2 is a sum of a pure function of s and a pure function
+       of t, and sum_j B_j(t) = 1 (partition of unity), the tensor-product
+       Bezier coefficients are c_ij = a_i - a_j with a = (0,0,1) (the s^2
+       coefficients), independent of the (1/2,1/2,... ) linear term. Corner
+       values: (s,t)=(1,0)->z=1, (0,1)->z=-1, (1,1)->z=0. -->
+  <Geometry type="TensorBSpline2" id="500">
+    <Basis type="TensorBSplineBasis2">
+      <Basis type="BSplineBasis" index="0">
+        <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+      </Basis>
+      <Basis type="BSplineBasis" index="1">
+        <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+      </Basis>
+    </Basis>
+    <coefs geoDim="3">
+      0    0    0
+      0.5  0    0
+      1    0    1
+      0    0.5  0
+      0.5  0.5  0
+      1    0.5  1
+      0    1   -1
+      0.5  1   -1
+      1    1    0
+    </coefs>
+  </Geometry>
+
+</xml>

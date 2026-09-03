@@ -38,6 +38,7 @@ int main(int arg, char *argv[])
     real_t smoothing = -1;
     std::string input = "domain2d/lake.xml";
     std::string output = "output";
+    std::string bvpFile;
 
     gsCmdLine cmd("Tutorial on solving a Poisson problem.");
     cmd.addReal("P","penalty","Override penalty parameter for the monitor function",penalty);
@@ -48,6 +49,7 @@ int main(int arg, char *argv[])
     cmd.addInt("E","numElevD","Number of degree elevation steps to perform for the domain",numElevateD);
     cmd.addString("i", "input", "Input file", input);
     cmd.addString("o", "output", "Output file", output);
+    cmd.addString("b", "bvp", "BVP file (ids 1-4) to pair with the relocated geometry into <output>/composed_bvp.xml", bvpFile);
     cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", plot);
     cmd.addSwitch("gradient", "Use gradient-based monitor", gradient);
     cmd.addInt("n","plotLines","number of isolines to export",nIsolines);
@@ -185,6 +187,46 @@ int main(int arg, char *argv[])
     }
 
     
+
+    // //////////////////////////////////////////////////
+    // // EXPORT A COMPOSED BVP FILE
+    // //////////////////////////////////////////////////
+    // poisson2_composed_example expects the standard 5-id layout with id=0
+    // holding a MultiPatch whose patch(0) is a gsComposedGeometry (see
+    // poisson2_composed_example.cpp:58-62). Ids 1-4 (source, boundary
+    // conditions, reference solution, assembler options) are copied verbatim
+    // from --bvp, so the PDE data is byte-identical to the uniform run and the
+    // only difference between the two is the parameterization.
+    if (!bvpFile.empty())
+    {
+        gsFileData<> bvpIn(bvpFile);
+        GISMO_ENSURE(bvpIn.hasId(1) && bvpIn.hasId(2) && bvpIn.hasId(3),
+                     "The --bvp file must carry ids 1 (source), 2 (bc) and 3 (solution).");
+
+        gsFunctionExpr<>       bvpF, bvpMs;
+        gsBoundaryConditions<> bvpBc;
+        bvpIn.getId(1,bvpF);
+        bvpIn.getId(2,bvpBc);
+        bvpIn.getId(3,bvpMs);
+
+        gsComposedGeometry<real_t> cspline(domain.domain(),gpatch0);
+        gsMultiPatch<> cmp;
+        cmp.addPatch(cspline);
+
+        gsFileData<> bvpOut;
+        bvpOut.add(cmp  ,0);
+        bvpOut.add(bvpF ,1);
+        bvpOut.add(bvpBc,2);
+        bvpOut.add(bvpMs,3);
+        if (bvpIn.hasId(4))
+        {
+            gsOptionList bvpOpt;
+            bvpIn.getId(4,bvpOpt);
+            bvpOut.add(bvpOpt,4);
+        }
+        bvpOut.save(output+"composed_bvp");
+        gsInfo<<"Wrote composed BVP to "<<output<<"composed_bvp.xml\n";
+    }
 
     // //////////////////////////////////////////////////
     // // PLOTTING

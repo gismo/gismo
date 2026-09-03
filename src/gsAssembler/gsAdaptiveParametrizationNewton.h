@@ -217,9 +217,22 @@ private:
 
     // Build (once) and cache the free-DoF sparsity pattern of K/B in
     // m_fpattern: all (ii,jj) pairs of free DoFs sharing an element, all
-    // component pairs (d,m). During numeric assembly only existing entries
-    // are written (atomic add) — no insertion, hence thread-safe.
+    // component pairs (d,m). During numeric assembly each thread only
+    // accumulates into its own value buffer via _fpatternPos (no insertion,
+    // no cross-thread writes), merged deterministically by _mergePartialK.
     void _buildPattern() const;
+
+    // Flat position of the fixed pattern entry (ii,jj) within a per-thread
+    // value buffer of size m_fpattern.nonZeros(), laid out column-by-column
+    // (matching m_fpattern's ColMajor fiber order) with rows sorted within
+    // each column. Valid only after _buildPattern() has inserted (ii,jj).
+    index_t _fpatternPos(index_t ii, index_t jj) const;
+
+    // Merge per-thread value buffers (indexed via _fpatternPos, thread-id
+    // order) into m_fpattern column by column, then export to \a out.
+    // Shared by assembleHessian and assemblePicard.
+    void _mergePartialK(const std::vector<gsVector<T> > & partial,
+                         gsSparseMatrix<T> & out) const;
 
     // Third derivatives of the geometry S at (geometry-)parametric points.
     // out layout matches evalAllDers_into()[3]: row = nC3*a + c1 with
@@ -253,6 +266,12 @@ private:
     // graph of the sigma basis is iteration-independent)
     mutable gsFiberMatrix<T,ColMajor> m_fpattern;
     mutable bool                m_patternReady;
+
+    // Exclusive prefix sum of m_fpattern.nonZerosPerFiber(): column j's
+    // entries occupy [m_fpatternColOffset[j], m_fpatternColOffset[j] +
+    // nonZeros(column j)) in the flat value buffer used by _fpatternPos().
+    // Cached alongside m_fpattern, valid whenever m_patternReady is true.
+    mutable gsVector<index_t>   m_fpatternColOffset;
 
     // -1: unknown (probe on first use), 1: exact evalAllDers(3), 0: FD of deriv2
     mutable short_t             m_geomDeriv3Mode;

@@ -1,0 +1,629 @@
+namespace gismo {
+/**
+
+\page gsAdaptiveParametrization Adaptive parametrization (r-adaptivity via a composed sigma map)
+
+<!-- DRAFT: raw material parked from headers on 2026-09-02; polish after merge to dev -->
+
+\section adaptparam_overview Overview
+
+The composite map is \f$G=S\circ\sigma\f$, with \f$S\f$ a fixed geometry (or
+analytic function) and \f$\sigma:[0,1]^2\to[0,1]^2\f$ a free-form
+reparametrization of the reference square, represented by a \a gsSquareDomain.
+Moving sigma's controls relocates the mesh in the physical domain without
+touching \f$S\f$'s own control net -- this is r-adaptivity.
+
+All optimization problems over sigma's controls derive from \a gsOptSigma,
+which owns the design-variable bookkeeping (composition(), fillCurDesign(),
+setCtrls(), m_domain, m_curDesign/m_numDesignVars) shared by every objective,
+independent of what is being optimised.
+
+Three families of objective build on it:
+- \a gsOptMesh (the R step): a Winslow/monitor-based mesh-relocation energy,
+  with an always-on Garanzha regulariser inside its own denominator. It never
+  builds an additive \a gsFoldBarrier: the barrier was originally added to
+  license coarsening the integration mesh, but the sampling-free coefficient
+  certificate \a gsSquareDomain::minDetJCoefficient() supersedes that
+  argument, and the regulariser already inside the R-step energy is always on.
+- \a gsOptFit and \a gsOptL2 (the D step): a direct point-cloud fit and an
+  L2-projection-error objective respectively, each owning a
+  \c gsFoldBarrier<T> \c m_barrier and forwarding to it from their
+  objective/gradient bodies for the fold term and a soft box penalty on the
+  controls.
+- \a gsAdaptiveParametrization / \a gsAdaptiveParametrizationNewton: drivers
+  that own a \a gsOptMesh and solve it, either via a generic \a gsOptimizer
+  (L-BFGS et al.) or via a hand-rolled Newton/Picard iteration.
+
+"R step"/"D step" are this implementation's own names for these stages, not
+terminology from the paper.
+
+\section adaptparam_rstep R step energy (gsOptMesh)
+
+The domain chain is \f$ \hat\Omega \xrightarrow{\sigma(\cdot;\alpha)}
+\tilde\Omega \xrightarrow{G} \Omega \f$, with composed Jacobian
+\f$ J_c = J_g\,J_\sigma \f$ and metric tensor \f$ C = J_c^\top J_c \f$.
+
+**Without monitor** (\c m_fun == nullptr, \f$\omega=1/g\f$, the paper's
+no-monitor energy):
+\f[
+  E(\alpha) = \int_{\hat\Omega} \operatorname{tr}(C^{-1}) \; d\hat\Omega
+            = \int_{\hat\Omega} \frac{T}{g^2} \; d\hat\Omega
+\f]
+This is the harmonic-map Dirichlet energy of the inverse parameterization
+\f$G^{-1}:\Omega\to\hat\Omega\f$ (Radó–Kneser–Choquet bijectivity theory).
+
+**With monitor** (\c m_fun != nullptr, the paper's monitor-weighted energy,
+surface/planar forms):
+\f[
+  E(\alpha) = \int_{\hat\Omega} \omega(f)\,\frac{T}{g} \; d\hat\Omega
+\f]
+The discrete integrand uses \f$ \omega = \sqrt{m^2} \f$ (the paper's monitor
+weight, NOT \f$m^2\f$): with the fold barrier \f$\chi\f$ and (penalty\f$\to0\f$)
+\f$ |\det|^3/\chi^2 \to g_\sigma \f$ this reads
+\f$ \omega\,\operatorname{tr}(C^{-1})\,|\det|^3/\chi^2 \to \omega\,T/g \f$.
+The weight \f$\omega\f$ depends on the \c MonitorMode:
+- **ValueBased** (see the relevant equation): \f$ \omega = 1/\sqrt{1+\theta f} \f$,
+  i.e. \f$ m^2 = 1/(1+\theta f) \f$ (linear in \f$f\f$, NOT \f$f^2\f$).
+- **GradientBased** (see the relevant equation, implemented form): \f$ \omega =
+  1/\sqrt{1+\theta\,\eta^2} \f$ with \f$ \eta^2 = (\nabla_\xi f)^\top
+  C_g^{-1}\,(\nabla_\xi f) = \|\nabla_x f\|^2 \f$ (squared physical gradient
+  norm), \f$ C_g = J_g^\top J_g \f$.
+
+@note Surface case (td>dd): the integrand carries an extra surface area
+  element \f$ g_S = \sqrt{\det C_g} \f$ so that
+  \f$ \omega\,T/(g_\sigma g_S^2)\cdot g_S = \omega\,T/g_c \f$ matches the
+  surface form exactly (\f$g_c = g_\sigma g_S\f$ is the composite area
+  element). Planar (td==dd) needs no such factor (\f$\det J_c\f$ already
+  carries the full area).
+
+@note The \f$\det^2\f$ (no-monitor) vs \f$\det^3\f$ (with-monitor) exponent
+  tracks MONITOR PRESENCE, not planar-vs-surface.
+
+Discretely, \c evalObj computes \f$T=\operatorname{tr}(J_c^\top J_c) =
+\|J_c\|_F^2\f$ DIRECTLY, not via \f$\operatorname{tr}(C^{-1})\f$ with a
+Tikhonov-shifted \f$C\f$: shifting \f$C \mathrel{+}= \text{penalty}\cdot I\f$
+destroys the exact identity \f$\operatorname{tr}(C^{-1})\det^2 = T\f$, so the
+\f$|\det|^p\f$ factor is no longer cancelled and the integrand COLLAPSES TO 0
+as \f$\det\to0\f$ -- a degenerate element then costs LESS than a perfect one
+and the optimiser is rewarded for collapsing the mesh (observed: energy
+1.71 -> 0.0066 while min det J_sigma -> 6e-12). Using \f$T\f$ directly removes
+both the inverse and the shift, and makes the barrier exact.
+
+The fold barrier instead regularises the composite area element with the
+Garanzha regulariser \f$\chi(x) = 0.5\,(x + \sqrt{\varepsilon^2+x^2})\f$:
+- Planar (td==dd): \f$g_{\mathrm{reg}} = \chi(\det J_c)\f$ (\f$g_c=|\det J_c|\f$).
+- Surface (td>dd): \f$g_{\mathrm{reg}} = \chi(\det J_\sigma)\,g_S\f$
+  (\f$g_c=|\det J_\sigma|\,g_S\f$, \f$g_S=\sqrt{\det(J_g^\top J_g)}\f$ the
+  source area element; only \f$\det J_\sigma\f$ can change sign in the
+  surface case, so the barrier acts on it).
+
+Then \f$E = \int T/g_{\mathrm{reg}}^2\f$ (no monitor) or \f$\int \omega\,T/g_{\mathrm{reg}}\f$
+(with monitor). As \f$\varepsilon\to0\f$ these reproduce
+\f$\operatorname{tr}(C^{-1})\f$ resp. \f$\omega\,T/g_c\f$, but unlike the
+\f$|\det|^p/\chi^q\f$ form they are MONOTONE into degeneracy: at \f$\det=0\f$
+they equal \f$4T/\varepsilon^2\f$ resp. \f$2\,\omega\,T/\varepsilon\f$ (huge),
+and grow without bound for \f$\det<0\f$. Degeneracy is penalised, not rewarded.
+
+The "Penalty" option is this Garanzha regulariser; it is always on (no
+additive fold barrier is layered on top -- see \ref adaptparam_overview).
+
+Per-thread partials in the OpenMP element sweep are summed in THREAD-ID
+order (not as threads finish), making evalObj bit-reproducible for a given
+thread count and hence the whole R step reproducible run-to-run.
+
+\section adaptparam_rgrad R step analytic gradient
+
+Differentiates the integrand of evalObj() with respect to each control
+variable \f$ \alpha_{k,d} \f$ (the \a d-th coordinate of the \a k-th basis
+function coefficient of \f$\sigma\f$).
+
+Notation: \f$\alpha_{k,d}\f$: d-th coordinate of the k-th basis function
+coefficient; \f$N_k\f$: k-th basis function of sigma at the quadrature
+point; \f$\nabla_{\hat u} N_k\f$: gradient of \f$N_k\f$ w.r.t. the reference
+coordinates; \f$\xi=\sigma(\hat u;\alpha)\f$: parametric point in
+\f$\tilde\Omega\f$; \f$G(\xi)\f$: geometry map \f$\tilde\Omega\to\Omega\f$;
+\f$J_\sigma\f$ (dd x dd), \f$J_g\f$ (td x dd), \f$J_c=J_g J_\sigma\f$ (td x
+dd); \f$C=J_c^\top J_c\f$ (dd x dd); \f$C_g=J_g^\top J_g\f$ (dd x dd);
+\f$\det_c=\det(J_c)\f$ (square case td==dd); \f$\chi_c=0.5(\det_c+
+\sqrt{\text{penalty}^2+\det_c^2})\f$.
+
+Kinematic derivatives:
+\f{align*}{
+  \frac{\partial\xi_i}{\partial\alpha_{k,d}} &= N_k\,\delta_{id}, \\
+  \frac{\partial J_\sigma}{\partial\alpha_{k,d}}
+    &= e_d\,(\nabla_{\hat u} N_k)^\top
+    \quad\text{(only row \a d nonzero)}, \\
+  \frac{\partial J_g}{\partial\alpha_{k,d}}(a,j)
+    &= N_k \frac{\partial^2 G_a}{\partial\xi_j\,\partial\xi_d}
+    \quad\text{(second derivative of \f$G\f$, contracted with }d\xi/d\alpha=N_k e_d\text{)}, \\
+  \frac{\partial J_c}{\partial\alpha_{k,d}} &= \frac{\partial J_g}{\partial\alpha_{k,d}} J_\sigma
+    + J_g \frac{\partial J_\sigma}{\partial\alpha_{k,d}}, \\
+  \frac{\partial C}{\partial\alpha_{k,d}} &= \Big(\frac{\partial J_c}{\partial\alpha_{k,d}}\Big)^\top J_c
+    + J_c^\top \frac{\partial J_c}{\partial\alpha_{k,d}}.
+\f}
+
+Determinant derivative (planar, td==dd):
+\f[
+  \frac{\partial \det_c}{\partial\alpha_{k,d}} = \operatorname{tr}\!\Big(\operatorname{adj}(J_c)^\top
+    \frac{\partial J_c}{\partial\alpha_{k,d}}\Big)
+  = N_k\,\operatorname{tr}(\operatorname{adj}(J_c)\,D_d\,J_\sigma)
+  + \operatorname{adj}(J_c)^\top_{\cdot,d}\cdot\nabla_{\hat u}N_k,
+\f]
+with \f$D_d(a,j)=\partial^2 G_a/(\partial\xi_j\partial\xi_d)\f$; the two
+terms come from the \f$\partial J_g\f$ and \f$\partial J_\sigma\f$
+contributions to \f$\partial J_c\f$ respectively.
+
+Objective and integrand: \f$\phi_2=|\det_c|^2/\chi_c^2\f$ (no-monitor
+exponent \f$p=2\f$, \f$E\approx T/g^2\f$), \f$\phi_3=|\det_c|^3/\chi_c^2\f$
+(with-monitor exponent \f$p=3\f$, \f$E\approx m^2 T/g\f$). No-monitor:
+\f$E_{\mathrm{nm}}=\operatorname{tr}(C^{-1})\,\phi_2\f$; with-monitor:
+\f$E_{\mathrm{wm}}=m^2\operatorname{tr}(C^{-1})\,\phi_3\f$. Both integrands
+blow up as \f$\det_c\to0\f$ (fold), providing a fold barrier. (The energy
+actually assembled by evalObj(), \f$T/\chi_c^2\f$ resp. \f$\omega T/\chi_c\f$,
+is the equivalent unshifted form described in \ref adaptparam_rstep; this
+\f$\operatorname{tr}(C^{-1})\phi_p\f$ form is the one this gradient
+differentiates.)
+
+No-monitor integrand derivative:
+\f[
+  dE_{\mathrm{nm}} = -\operatorname{tr}(C^{-1}\,dC\,C^{-1})\,\phi_2
+    + \operatorname{tr}(C^{-1})\,d\phi_2, \qquad
+  d\phi_2 = \phi_2\Big(\frac{2}{\det_c} - \frac{2\,d\chi_c/d\det_c}{\chi_c}\Big)\,d\det_c.
+\f]
+
+With-monitor integrand derivative (both ValueBased and GradientBased):
+\f[
+  dE_{\mathrm{wm}} = dm^2\,\operatorname{tr}(C^{-1})\,\phi_3
+    + m^2\Big(-\operatorname{tr}(C^{-1}\,dC\,C^{-1})\,\phi_3 + \operatorname{tr}(C^{-1})\,d\phi_3\Big),
+  \qquad
+  d\phi_3 = \phi_3\Big(\frac{3}{\det_c} - \frac{2\,d\chi_c/d\det_c}{\chi_c}\Big)\,d\det_c.
+\f]
+
+\f$dm^2 = (dm^2/d\eta^2)(d\eta^2/d\alpha)\f$:
+- **ValueBased**: \f$\eta=f(\xi(\alpha))\f$, \f$m^2=1/(1+\theta\eta^2)\f$,
+  \f$dm^2/d\eta=-2\theta\eta/(1+\theta\eta^2)^2\f$,
+  \f$d\eta/d\alpha_{k,d}=(\nabla_\xi f)_d\,N_k\f$ (chain rule).
+- **GradientBased**: \f$\eta^2=(\nabla_\xi f)^\top C_g^{-1}(\nabla_\xi f)\f$,
+  \f$m^2=1/(1+\theta\eta^2)\f$, \f$dm^2/d(\eta^2)=-\theta/(1+\theta\eta^2)^2\f$.
+  \f$d(\eta^2)/d\alpha_{k,d}\f$ has two terms: from \f$C_g\f$ changing, with
+  \f$v=C_g^{-1}\nabla_\xi f\f$, \f$\text{term}_1=-v^\top dC_g\,v\f$
+  (\f$dC_g = dJ_g^\top J_g + J_g^\top dJ_g\f$); from \f$\nabla_\xi f\f$
+  changing at the moving point, \f$\text{term}_2=2v^\top d(\nabla_\xi f)\f$,
+  with \f$d(\nabla_\xi f)/d\alpha_{k,d}=N_k H_f e_d\f$ if \c parametric
+  (\f$H_f\f$ the dd x dd parametric Hessian of \f$f\f$), or
+  \f$d(\nabla_\xi f)/d\alpha_{k,d}=dJ_g^\top\nabla_x f + N_k J_g^\top H_f
+  J_g e_d\f$ if not (\f$H_f\f$ the td x td physical Hessian, \f$J_g e_d\f$
+  the \a d-th column of \f$J_g\f$).
+
+**Surface case (td>dd)**: \f$J_c\f$ is rectangular, so there is no scalar
+\f$\det(J_c)\f$; the fold barrier instead acts on \f$\det_s=\det(J_\sigma)\f$
+(the only quantity that can change sign, since a fold of sigma is what a
+surface parametrization must forbid), with \f$\chi_s=0.5(\det_s+
+\sqrt{\text{penalty}^2+\det_s^2})\f$ mirroring the planar case, and \f$g_S=
+\sqrt{\det(J_g^\top J_g)}\f$ the SOURCE area element entering both branches
+(not just the monitor branch), since it enters \f$g_{\mathrm{reg}}\f$
+directly. \c gsOptL2's planar/surface gradient keeps the SIGNED
+\f$\det(J_S)\f$ in the planar case and the non-negative area element
+\f$\sqrt{\det(J_S^\top J_S)}\f$ in the surface case; \f$\det(J_\sigma)\f$
+itself stays SIGNED in both cases -- the fold barrier is what keeps it
+positive, not the objective.
+
+\section adaptparam_dstep D step: gsOptFit and gsOptL2
+
+**gsOptFit**: a variable-projection objective with the geometry \f$S\f$
+fixed, minimizing the TRUE least-squares objective
+\f[
+  E(\alpha) = \frac1N \sum_i \| S(\sigma(uv_i;\alpha)) - x_i \|^2
+            + \mu \sum_q w_q \max(0,\varepsilon-\det J_\sigma(u_q))^2
+            + \mu \sum_j \big(\max(0,-\alpha_j)^2+\max(0,\alpha_j-1)^2\big),
+\f]
+where the last two terms (fold barrier, soft box penalty) are supplied by
+\a m_barrier (a \a gsFoldBarrier) via addObj()/addGrad() -- \a gsOptFit adds
+only the data term. Analytic gradient: with \f$r_i = S(\xi_i)-x_i\f$ and free
+control \f$\alpha_{(k,d)}\f$ (per \a gsSquareDomain's mapper),
+\f[
+  \frac{\partial E}{\partial \alpha_{(k,d)}} =
+    \frac2N \sum_i \big(r_i^\top J_S(\xi_i)\big)_d \, N_k(uv_i),
+\f]
+where the collocation values \f$N_k(uv_i)\f$ are fixed throughout the
+optimization and precomputed once as a sparse matrix (m_colloc).
+
+**gsOptL2**: an L2-projection-error objective, with the analysis-space
+(projection) coefficients FROZEN. The geometry map is the composed map
+\f$G=S\circ\sigma\f$ with \a S fixed; the frozen discrete solution \f$u_h\f$
+is a function of the REFERENCE variable \f$v\in\hat\Omega\f$ (i.e. it lives
+on the plain, non-composed analysis/projection basis). This is what makes
+the objective well posed: moving \f$\sigma\f$ genuinely moves the physical
+point \f$G(v)\f$ that \f$u_h(v)\f$ is compared against, while \f$u_h(v)\f$
+itself stays fixed (envelope theorem: the coefficients that minimize the L2
+error do not need to be re-projected for a first-order-accurate gradient of
+the error at the projected optimum).
+
+@warning Had the analysis/projection basis instead been COMPOSED with
+  \f$\sigma\f$ too, a change of variables would make this frozen-coefficient
+  error \f$\sigma\f$-INDEPENDENT and the gradient identically zero -- a
+  silent no-op. \a gsOptL2 exists to avoid exactly that trap.
+
+Objective (mu=0 shown; barrier/box from m_barrier):
+\f[
+  E(\alpha) = \int_{\hat\Omega} \big(u_h(v) - f(G(v;\alpha))\big)^2
+              \, g_S(\xi)\,\det J_\sigma(v;\alpha) \; dv,
+\f]
+with \f$G=S\circ\sigma_\alpha\f$, \f$\xi=\sigma(v)\f$, and \f$g_S\f$ the area
+element of \f$S\f$ at \f$\xi\f$: for a planar \a S (\f$\mathrm{td}=
+\mathrm{dd}=2\f$) \f$g_S=\det J_S(\xi)\f$ (SIGNED); for a surface \a S
+(\f$\mathrm{td}>\mathrm{dd}\f$) \f$g_S=\sqrt{\det(J_S(\xi)^\top J_S(\xi))}
+\ge 0\f$, the usual \f$\sqrt{\det C_g}\f$ surface-measure factor with
+\f$C_g=J_S^\top J_S\f$. At the controls that produced a given
+\a f-projection's coefficients, this \f$E\f$ (mu=0) numerically reproduces
+the value \c gsL2Projection::project returns for the same \a S, sigma,
+\a f, analysis basis and integration basis (planar case).
+
+Analytic gradient: let \f$N_k\f$ be sigma's basis functions,
+\f$\xi=\sigma(v)\f$, \f$J_\sigma\f$, \f$J_S=J_S(\xi)\f$,
+\f$r(v)=u_h(v)-F(\xi)\f$ with \f$F(\xi)=f(S(\xi))\f$ if \c parametric is
+\c false (the default -- \a fun is a function of the PHYSICAL point) or
+\f$F=f\f$ if \c parametric is \c true (\a fun is a function of \f$\xi\f$),
+and \f$w(v)=g_S\,\det(J_\sigma)\f$. Then \f$E=\int r^2 w\,dv\f$ and, with
+\f$d\xi_i/d\alpha_{k,d}=N_k\delta_{id}\f$,
+\f[
+  \frac{\partial E}{\partial\alpha_{k,d}} =
+    \int \Big[ -2\,r\cdot\frac{\partial F}{\partial\xi_d}\,N_k\,w
+               + r^2 \Big( \partial_d(g_S)\,N_k\,\det J_\sigma
+                           + g_S \cdot
+                             \frac{\partial(\det J_\sigma)}{\partial\alpha_{k,d}}
+                    \Big) \Big] \; dv,
+\f]
+where \f$\partial F/\partial\xi = J_S^\top \nabla_x f\f$ (parametric ==
+false) or the direct parametric gradient of \a fun (parametric == true);
+\f$D_d(a,j)=\partial^2 S_a/(\partial\xi_j\partial\xi_d)\f$ (from \a S's
+second derivatives); \f$\partial_d(g_S)\f$ takes two forms:
+- planar: \f$\partial_d(g_S) = \operatorname{tr}(\operatorname{adj}(J_S)\,D_d)\f$;
+- surface: \f$\partial_d(g_S) = \tfrac12\,g_S\,
+  \operatorname{tr}(C_g^{-1} E_d)\f$ with
+  \f$E_d = D_d^\top J_S + J_S^\top D_d\f$;
+
+and \f$\partial(\det J_\sigma)/\partial\alpha_{k,d}\f$ is exactly the
+quantity \a gsSquareDomain::detJacobianDeriv_into computes for the fold
+barrier, already indexed by free control (no further scatter needed for
+that term).
+
+@note \f$\mathrm{dd}=2\f$ is hard-wired for both sweeps (sigma is always the
+  unit square); \a S may be planar (\f$\mathrm{td}=2\f$, SIGNED
+  \f$\det J_S\f$) or a surface (\f$\mathrm{td}>2\f$, non-negative
+  \f$g_S=\sqrt{\det(J_S^\top J_S)}\f$); \f$\det J_\sigma\f$ itself stays
+  SIGNED in both cases -- the fold barrier is what keeps it positive, not
+  this objective.
+
+\section adaptparam_foldbarrier gsFoldBarrier
+
+Owns the sigma map (a non-owning pointer), mu, eps, and whatever per-mode
+data the chosen \a gsFoldBarrierMode needs to evaluate the barrier and its
+analytic gradient without repeating a basis evaluation or a spline-arithmetic
+construction on every optimizer iteration:
+- \a Sampled caches a Gauss rule on sigma's own knot mesh and sigma's basis
+  derivatives at those points.
+- \a Coefficient caches the two EXACT linear operators that extract
+  d(sigma)/du and d(sigma)/dv in full Bezier form from sigma's control
+  coefficients, plus the two binomial weight tables of the Leibniz product
+  det(J_sigma) = d_u(sigma_0) d_v(sigma_1) - d_v(sigma_0) d_u(sigma_1). Both
+  are exact fixed linear maps of sigma's control coefficients (no
+  interpolation solve anywhere); since sigma's basis is a tensor product,
+  each extraction operator itself factors into a Kronecker product of two
+  1-D maps, so the cache holds only the four 1-D factors -- O(nu+nv) storage
+  and setup instead of the O(nu*nv) a directly-formed 2-D operator would
+  need -- and a per-iteration evaluation reduces to a handful of small dense
+  mat-mats and a per-element binomial convolution.
+
+@note Per-call cost: \a Coefficient mode's addObj()/addGrad()/
+  minDetJacobian() never call a basis evaluation, a quadrature rule or any
+  spline-arithmetic factory routine -- everything that needs one is
+  precomputed in initCoefficient(). \a Sampled mode is a verbatim port of the
+  original Gauss-quadrature barrier and is NOT held to that bar: its
+  addGrad() calls \a gsSquareDomain::detJacobianDeriv_into(), which
+  internally does call \c basis().compute() -- unavoidable there, since the
+  barrier points are fixed but sigma's coefficients (and hence the basis
+  contraction) change every iteration.
+
+**Kronecker/Leibniz derivation (Coefficient mode).** With sigma of bidegree
+(p,q), \f$d_u(\sigma_c)\f$ has bidegree (p-1,q) and \f$d_v(\sigma_c)\f$ has
+bidegree (p,q-1). \c grad()+toBezier() are EXACT fixed linear maps of
+sigma's control coefficients, so
+\f[
+  a = A_u X \;(d_u\sigma_0), \quad a' = A_v X \;(d_v\sigma_0), \quad
+  b = A_u Y \;(d_u\sigma_1), \quad b' = A_v Y \;(d_v\sigma_1),
+\f]
+with \f$A_u, A_v\f$ depending only on sigma's knot vectors (independent of
+the current coefficients \f$X\f$=sigma's x-coefficients, \f$Y\f$=sigma's
+y-coefficients). Sigma's basis is a plain tensor product, and both d/du
+(resp. d/dv) and Bezier extraction act direction-by-direction with no
+cross-direction coupling, so each 2-D extraction operator is EXACTLY a
+Kronecker product of two 1-D factors, never formed as a 2-D matrix:
+\f[
+  A_u = E_v \otimes D_u, \qquad A_v = F_v \otimes C_u,
+\f]
+with \f$D_u/F_v\f$ the 1-D differentiate+Bezier-extract factor in u/v and
+\f$C_u/E_v\f$ the 1-D Bezier-extract-only factor in u/v
+(\c gsFoldBarrierDeriv1D/\c gsFoldBarrierBezier1D port \c grad(dir)'s
+formula and \c toBezier()'s knot-insertion loop to a single direction;
+\c gsBSpline<T> itself has no matching grad()/toBezier() pair -- its
+toBezier() returns a gsMultiPatch of split segments, a different
+representation). Each factor has O(nel*deg) rows and O(nu or nv) columns --
+O(n) storage and setup instead of the O(nu*nv) a directly-formed \f$A_u,A_v\f$
+would need.
+
+Applying a Kronecker factor to sigma's nu x nv coefficient grid \f$X_{mat}\f$
+(column-major, u fastest) is TWO small dense products, the Kronecker product
+itself never formed:
+\f[
+  A_{mat} = D_u\,X_{mat}\,E_v^\top \qquad ((\mathrm{nelU}\cdot\mathrm{degU})\times(\mathrm{nelV}\cdot(\mathrm{degV}+1)))
+\f]
+and the adjoint (used by addCoefficientGrad(), \f$(A\otimes B)^\top = A^\top
+\otimes B^\top\f$ combined with \f$\operatorname{vec}(PMQ^\top) = (Q\otimes
+P)\operatorname{vec}(M)\f$) is the same shape transposed:
+\f[
+  G_{mat} = D_u^\top\,M_{u,mat}\,E_v.
+\f]
+computeExtraction()/addCoefficientGrad() apply exactly this.
+
+The Leibniz product \f$\det = a b' - a' b\f$ is the SAME per-element
+Bernstein convolution \c gsTensorBSpline::multiply(.,.,keepBezier=true) uses
+internally, applied directly to the cached \f$a,a',b,b'\f$ fields instead of
+re-deriving them from scratch -- no basis evaluation, no spline arithmetic,
+only small dense products and a small per-element double sum, entirely
+inside addObj()/addGrad()/minDetJacobian().
+
+Every interior knot of a Bezier-form spline sits at multiplicity degree+1,
+so in direction d a spline of degree \f$q_d\f$ over \f$\mathrm{nel}_d\f$
+elements has exactly \f$\mathrm{nel}_d(q_d+1)\f$ coefficients laid out in
+standard tensor lexicographic order (i_0 fastest), with element \f$e_d\f$
+owning the CONTIGUOUS block \f$[e_d(q_d+1),(e_d+1)(q_d+1))\f$ -- exactly the
+layout \c gsTensorBSpline::multiply's own element loop assumes, and exactly
+what column-major reshaping \f$A_{mat}\f$ as a flat vector gives, u fastest.
+This closed-form indexing is what lets the per-element convolution run with
+no lookup structure at all: computeCoefficients()/addCoefficientGrad() are
+UNCHANGED by the Kronecker factorisation, reading m_aFull/m_bFull/m_apFull/
+m_bpFull via this flat index, oblivious to how those buffers were filled.
+
+Member-cache summary (\a Coefficient mode): sigma's degrees and
+per-direction element counts are cached for this closed-form indexing;
+m_Du/m_Ev/m_Cu/m_Fv are the four 1-D Kronecker factors; m_w1u/m_w1v/m_w2u/
+m_w2v are the per-direction binomial weight tables of the Leibniz product's
+two terms (term 1 is \f$ab'\f$, operand bidegrees (degU-1,degV) x
+(degU,degV-1); term 2 is \f$a'b\f$, operand bidegrees (degU,degV-1) x
+(degU-1,degV) -- the SAME pair of bidegrees with the roles swapped, which is
+why the weight differs between the two terms even though both results share
+the bidegree (2degU-1,2degV-1). Reusing one table for both would be a
+silent wrong answer whenever degU != degV or the two directions are refined
+differently).
+
+\section adaptparam_foldcert gsSquareDomain fold certification
+
+**minJacobian(nPerElement)**: minimum of det(J_sigma), sampled on an
+\a nPerElement^d point grid PER ELEMENT of sigma's knot mesh. The sampling
+density is the CALLER's policy, deliberately: this is a reporting/diagnostic
+routine with no library-internal callers, and a single hard-wired grid
+undersamples fine sigma meshes. A density below 2 samples per direction is
+rejected: 0 would sample nothing (returning the numeric_limits sentinel
+unchanged) and 1 degenerates to each element's lower corner, both silently
+plausible-looking wrong minima. This is a NECESSARY but never SUFFICIENT
+fold check: a negative result proves a fold (a sample point saw it), but a
+positive result proves nothing -- a fold hiding between sample points is
+invisible to it.
+
+**detJacobianSpline(keepBezier)**: represents det(J_sigma) EXACTLY (to
+round-off) as a scalar tensor B-spline, in the one spline space that
+actually contains it. Sigma is a tensor B-spline of degree \f$p_d\f$ in
+direction d. Writing \f$J(c,j)=\partial\sigma_c/\partial\xi_j\f$,
+det(J_sigma) is built as the exact Bernstein product of the Jacobian's
+entries: each \f$J(c,j)\f$ is itself a scalar tensor B-spline
+(\c gsTensorBSpline::grad), and det(J_sigma) is their Leibniz expansion,
+formed via \c gsTensorBSpline::multiply and
+\c gsTensorBSpline::linearCombination. The result has degree \f$2p_d-1\f$
+per direction d (domainDim() factors, one differentiated per term). With
+\a keepBezier == false (the default), \c multiply compresses each product to
+its structural minimal continuity space; with \a keepBezier == true the raw
+(uncompressed) Bezier form is returned instead -- the tightest possible
+coefficient bound for minDetJCoefficient(), at the cost of a larger basis.
+Because the construction is exact spline arithmetic (no degree/continuity
+precondition on sigma), this works for a bilinear (\f$p_d=1\f$) sigma as
+well: the product is then a legal, discontinuous (\f$C^{-1}\f$) spline space
+that still contains det(J_sigma) exactly.
+
+**minDetJCoefficient()**: guaranteed LOWER BOUND on det(J_sigma) over the
+whole domain, computed WITHOUT sampling anywhere. The tensor B-spline basis
+is non-negative and forms a partition of unity, so with
+\f$\det(J_\sigma) = \sum_i c_i B_i(x)\f$, \f$B_i(x)\ge0\f$ and
+\f$\sum_i B_i(x)=1\f$ for every x, immediately \f$\det(J_\sigma)(x)\ge\min_i
+c_i\f$ for every x in the domain. This method returns that \f$\min_i c_i\f$,
+i.e. \c detJacobianSpline()->coefs().minCoeff(). Because it is exact and
+needs no evaluation grid, it certifies what a sampled check never can:
+- a **positive** minDetJCoefficient() PROVES sigma is fold-free everywhere,
+  including between any sample points minJacobian(n) might have used;
+- a **negative** minDetJCoefficient() proves NOTHING by itself (the bound
+  may simply be conservative) -- compare against minJacobian(n) or a dense
+  grid to tell an actual fold from conservatism;
+- conversely, a **negative** minJacobian(n) PROVES a fold (a sample point
+  saw it directly);
+- a **positive** minJacobian(n) proves NOTHING (a fold between sample points
+  is invisible to it) -- this is exactly the gap minDetJCoefficient() closes.
+
+Ordering that always holds:
+\code minDetJCoefficient() <= true min_x det(J_sigma) <= minJacobian(nPerElement) \endcode
+
+This is a single-pass compute(): without overriding \c compute(), \c
+gsFunctionSet::compute() falls back to calling eval_into()/deriv_into()/
+deriv2_into() in turn, and each of those delegates to the underlying
+B-spline geometry SEPARATELY -- so asking for value+derivative evaluates the
+sigma basis twice, and value+derivative+second derivative three times.
+Delegating to \c gsGeometry::compute() instead runs the basis'
+evalAllDers_into() once and contracts each requested order with the control
+points. This matters because gsOptMesh's objective and gradient sweeps call
+compute() on this object for every element on every optimizer iteration,
+making it a hot-path routine on which redundant basis evaluation is directly
+visible in wall time.
+
+\section adaptparam_newton Newton relocation
+
+**Why no Tikhonov shift.** As in the R step (\ref adaptparam_rstep), the
+Newton/Picard assembly never shifts \f$C\mathrel{+}=\text{penalty}\cdot I\f$:
+that would destroy the exact identity
+\f$\operatorname{tr}(C^{-1})\det^2 = T\f$ and make the integrand collapse to
+0 as \f$\det\to0\f$, i.e. it would REWARD mesh collapse. \c gsOptMesh
+assembles the same unregularised energy, and this path must match it. Known,
+accepted hazard: \f$C\f$ is inverted unregularised, so at a fold
+(\f$\det(J_c)\le0\f$ somewhere in the mesh) \f$C\f$ becomes numerically
+singular and this path returns NaN residual/Hessian, while \c gsOptMesh
+stays finite (it never inverts \f$C\f$). The Newton driver must therefore
+never be started from, or allowed to step into, a folded iterate.
+
+**q_exp.** With the Tikhonov shift removed, \f$\operatorname{tr}(Q)\det^2=T\f$
+exactly (\f$Q=C^{-1}\f$), so the barrier exponent belongs on \f$\chi\f$ (not
+on \f$|\det|\f$) to reproduce gsOptMesh's \f$T/\chi^2\f$ (no monitor) and
+\f$\omega T/\chi\f$ (with monitor): \f$q_{\mathrm{exp}}=1\f$ with a monitor,
+\f$2\f$ without.
+
+\section adaptparam_supermesh makeIntegrationBasis: the super mesh
+
+**Degree derivation.** The integration basis is the parent (analysis) basis
+with sigma's knots inserted, then degree-raised per direction to
+\f$\mathrm{targetDegree}=p_{\mathrm{analysis}}\cdot p_\sigma\f$. This degree
+is NOT an exact quadrature degree for \f$G(\sigma(u))\f$ in general: sigma
+couples the parametric directions, so substituting \f$x_i=\sigma_i(u)\f$
+into a monomial \f$\prod_i x_i^{a_i}\f$ (\f$a_i\le p_G\f$) contributes to the
+per-direction degree of every \f$u_j\f$ simultaneously, reaching
+\f$d\cdot p_G\cdot p_\sigma\f$ per direction in the worst case, not
+\f$p_G\cdot p_\sigma\f$.
+
+**Counterexample.** \f$N(x,y)=xy\f$, bidegree (1,1) with no interior knots
+(so the domain is already one element for N, and knot insertion changes
+nothing on the analysis side). The minimal gsSquareDomain with a free
+control is bidegree (2,2), no interior knots (a 3x3 net whose only free
+control is the centre, \c gsSquareDomain::_initMapper eliminates every
+boundary control): \f$\sigma_1(u,v)=u+aN_1(u)N_1(v)\f$,
+\f$\sigma_2(u,v)=v+bN_1(u)N_1(v)\f$, with \f$N_1(t)=2t(1-t)\f$ the middle
+quadratic B-spline on \f$\{0,0,0,1,1,1\}\f$ -- the centre control displaced
+from its default (0.5,0.5) to (0.5+a,0.5+b). Here \f$p_G=1\f$, \f$p_\sigma=2\f$,
+so \f$\mathrm{targetDegree}=p_G p_\sigma=2\f$; but
+\f$N(\sigma)=\sigma_1\sigma_2=\dots+ab\,N_1(u)^2N_1(v)^2+\dots\f$, whose
+degree in \f$u\f$ is 4 (from \f$N_1(u)^2\f$), not \f$\mathrm{targetDegree}=2\f$.
+That is \f$d\cdot p_G\cdot p_\sigma=2\cdot1\cdot2=4\f$, the coupled bound,
+attained. The product bound \f$p_G\cdot p_\sigma\f$ is reached only for a
+direction-wise sigma (each \f$\sigma_i\f$ a function of \f$u_i\f$ alone); no
+condition on the analysis basis's own knots restores it, because the
+obstruction is direction coupling in sigma, not knot placement in the
+analysis basis.
+
+**Consequence for quadrature.** Inserting sigma's knots still guarantees
+sigma is a single polynomial piece on each union-mesh element;
+\f$\mathrm{targetDegree}\f$ equals the uncoupled bound \f$p_G p_\sigma\f$
+exactly -- it is the quadrature RULE sized from it that over-integrates: the
+default (quA=1, quB=1) gives \f$n=\mathrm{targetDegree}+1\f$ nodes per
+direction, exact to degree \f$2\,\mathrm{targetDegree}+1\f$. That is
+sufficient in 2D (\f$2\,\mathrm{targetDegree}\le2\,\mathrm{targetDegree}+1\f$)
+but not in 3D once \f$\mathrm{targetDegree}\ge2\f$ (worst-case per-direction
+degree \f$3\,\mathrm{targetDegree}\f$ exceeds \f$2\,\mathrm{targetDegree}+1\f$):
+the default rule is conservative in 2D but not in 3D once
+\f$\mathrm{targetDegree}\ge2\f$. The integrand also carries \f$\det(J)\f$ and
+the monitor function, neither in general polynomial of degree
+\f$p_G p_\sigma\f$ (or polynomial at all), so exactness fails on that count
+too regardless of dimension. In practice this over-integration is an
+approximation with a measured accuracy floor around 1e-5 to 2e-4 for the
+meshes and quadrature settings exercised so far in this codebase;
+differences below that floor are quadrature noise, not results.
+
+**Dyadic hierarchical union (THB overload).** Builds the super mesh on the
+analysis THB's ACTUAL hierarchical element partition: element-wise level
+\f$\max(\mathrm{analysisLevel},L_\sigma)\f$, degree
+\f$p_{\mathrm{analysis}}(dir)\cdot p_\sigma(dir)\f$ per direction. The union
+mesh is built by transplanting both partitions (the analysis hierarchy and
+sigma's own mesh as one dyadic level) onto a SHARED level-0 basis B0 (the
+precondition of \c gsHTensorBasis::merge()): sigma's mesh MUST be exactly a
+dyadic level of the analysis hierarchy, sharing its level 0. B0 is the
+shared level-0 basis, degree-raised per direction to
+\f$p_{\mathrm{analysis}}\cdot p_\sigma\f$ (same target degree and
+non-exactness argument as above); \c degreeIncrease raises the degree but
+leaves the breakpoints -- and hence every dyadic level built on B0 --
+unchanged, so B0 can be shared by the analysis-derived and sigma-derived
+hierarchies. \c sigmaLevelInHierarchy() determines the smallest dyadic
+refinement level of level 0 whose element count is >= sigma's, clamped at 0.
+Its precondition: the analysis basis' level-0 tensor mesh must have at least
+one element in every direction (true for any valid basis; a violation sets
+\a reason and returns \c false rather than looping). A non-nested pair
+(sigma's mesh not a dyadic level of the hierarchy) has no such common root;
+use the tensor overload on the analysis basis's finest level instead.
+
+**Pass-through constructor (integrationBasisIsFinal_t).** Stores a
+caller-supplied \a integrationBasis verbatim as the integration mesh, for a
+caller that already built the union itself (e.g. via the THB overload above)
+and would otherwise have the degree raise applied a SECOND time by the
+ordinary constructors. Validates \a integrationBasis before storing it: its
+\c domainDim() must match sigma's, and -- per direction -- it must share
+sigma's own parameter range exactly, have degree at least sigma's, and
+contain all of sigma's interior knots. Checked for a tensor B-spline/NURBS
+\a integrationBasis, or one deriving from \c gsHTensorBasis -- i.e. any
+\c gsTHBSplineBasis, truncated or not: \c gsHBSplineBasis is the SAME class
+template with \c Trunc=false, not a separate derived type, so this one check
+covers both; \c gsRationalTHBSplineBasis derives from
+\c gsRationalBasis<gsTHBSplineBasis<d,T>> instead and is NOT covered. Any
+other concrete basis type, in 2D or 3D, is accepted with the domainDim check
+only, since there is no cheap generic way to enumerate its degree, parameter
+range or interior knots. A basis coarser than sigma's own knot mesh, of
+lower degree, or on a different parameter range would otherwise be accepted
+silently and then mis-integrate -- under-integrate for a coarser mesh or
+lower degree, extrapolate or leave part of the domain unintegrated for a
+mismatched range. For a hierarchical candidate this is checked against its
+finest tensor level, deliberately NOT via \c sigmaLevelInHierarchy(): the
+THB \c makeIntegrationBasis() overload GISMO_ENSUREs on that helper, i.e.
+rejects any pair that is not a single dyadic level of the hierarchy -- but
+here a hierarchical basis whose finest level resolves sigma is legitimate
+even when it is NOT a single dyadic level of sigma's own ladder, e.g. for a
+manual-levels THB or a level-0 mesh that is not a dyadic ancestor of sigma's,
+even when that THB's finest level DOES contain every one of sigma's knots.
+Reusing the hard check here would reject legitimate caller-supplied bases.
+Checking against the finest tensor level instead is necessary (if a knot is
+missing from the whole hierarchy's finest global grid, it cannot be present
+anywhere) but not sufficient (a knot present in the finest GLOBAL grid does
+not prove the mesh is locally that fine along that knot's entire line, e.g.
+a manual-levels THB refined away from that knot elsewhere).
+
+**Knot tolerance.** Both \c tensorBasisAdmissible() and
+\c sigmaLevelInHierarchy() use an absolute tolerance (1e-12), appropriate
+because sigma's basis always lives on the fixed parameter domain [0,1] in
+every direction. A candidate knot that matches within tolerance is treated
+as present, and the union mesh then carries the candidate's knot value, not
+sigma's -- the element boundary is displaced by O(tol), harmless at 1e-12
+but a real substitution.
+
+\section adaptparam_performance Performance: per-thread scratch and reduction order
+
+**Per-thread gsThreaded scratch.** Declaring the objective/gradient sweeps'
+buffers (several gsFuncData plus a dozen Eigen objects plus a gsQuadRule)
+fresh inside the `#pragma omp parallel` region would reconstruct them on
+every thread on every objective evaluation. An L-BFGS solve makes
+O(100-1000) evaluations and each thread only gets a handful of elements, so
+that reconstruction cost is a real share of the wall time rather than a
+rounding error. Holding it in a \c util::gsThreaded member instead -- the
+same idiom \c gsExprHelper uses for its gsFuncData/gsMapData/points/weights
+-- allocates the buffers once and reuses them for the whole solve. The
+cached gsQuadRule additionally survives across calls, so the Gauss rule is
+built once per patch per solve instead of once per patch per thread per
+call. This rationale is shared by \c gsOptMesh::EvalScratch/GradScratch and
+\c gsOptL2::EvalScratch/GradScratch.
+
+@warning Like gsExprHelper's, each scratch array is sized with
+  omp_get_max_threads() at construction; raising the thread count after the
+  owning optimizer object has been built is not supported.
+
+**Deterministic thread-id-ordered reduction.** Summing per-thread partials
+as they finish (e.g. via `#pragma omp atomic update result += thResult`)
+makes the objective differ in its last bits from run to run. L-BFGS
+amplifies that: on one measured schedule, the SAME binary needed anywhere
+from 198 to 535 iterations and returned min det J_sigma between 9.5e-2 and
+1.9e-1 depending on run. Summing per-thread partials in THREAD-ID order
+instead makes evalObj (and the analogous gradient/Newton assembly sweeps)
+bit-reproducible for a given thread count, hence the whole R step
+reproducible.
+
+*/
+}

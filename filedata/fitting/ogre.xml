@@ -11,4 +11,45 @@
  <Matrix rows="2" cols="1" id="2">969
 64
 </Matrix>
+ <!-- 2026-08-19: driver method options (rh-driver-unification's 27-key
+      table), bundled here (id=4, same convention as the poisson/l2 -f
+      files) so -d ALONE (no --options) fully determines a run's method
+      options for BOTH rh-adaptive_fitting_example (THB) and
+      rh-adaptive_lrfitting_example (LR) -- they share this dataset file
+      and largely share this key table (rh-driver-unification task 18);
+      keys one driver ignores (e.g. CoarsenRule/CoarsenParam for lrfitting,
+      no LR unrefine) are simply IGNORED there, same as always. MonitorMode
+      is declared for key-set parity only -- IGNORED by both, neither has
+      an R step. Target=-1 explicitly overrides lrfitting's own built-in
+      default (1e-2, band ON) to match fitting's (band OFF): a sweep script
+      still drives the band via --target, per-run, on top of this file. -->
+ <OptionList id="4">
+  <string label="MonitorMode"    desc="R step monitor -- IGNORED, no R step in either driver" value="value"/>
+  <string label="Optimizer"      desc="D-step optimizer: gsOptim | HLBFGS" value="HLBFGS"/>
+  <int    label="RefineRule"     desc="Refinement rule: 1=GARU, 2=PUCA, 3=BULK" value="3"/>
+  <int    label="CoarsenRule"    desc="Coarsening rule: 1=GARU, 2=PUCA, 3=BULK -- IGNORED for lrfitting, no LR unrefine" value="3"/>
+  <int    label="MaxLevel"       desc="Maximum THB refinement level -- IGNORED for lrfitting" value="10"/>
+  <int    label="MaxRefIt"       desc="Inner adapt iterations per H step" value="1"/>
+  <int    label="MaxIterations"  desc="Optimizer iteration cap" value="100"/>
+  <int    label="Verbose"        desc="Optimizer/driver verbosity" value="0"/>
+  <int    label="DirSkip"        desc="Skip D steps in the first DirSkip cycles" value="0"/>
+  <real   label="RefineParam"    desc="Refinement rule parameter" value="0.5"/>
+  <real   label="CoarsenParam"   desc="Coarsening rule parameter -- IGNORED for lrfitting, idem" value="0.1"/>
+  <real   label="Smoothing"      desc="R step: Winslow smoothing theta -- IGNORED, no R step in either driver" value="1"/>
+  <real   label="Penalty"        desc="R-step Winslow fold penalty -- IGNORED, no R step in either driver" value="0.001"/>
+  <real   label="Target"         desc="Error band: absolute rmse target (&lt;0 disables the band); overridden per run by --target" value="-1"/>
+  <real   label="Band"           desc="Error band: dead-zone factor &gt;= 1" value="2"/>
+  <real   label="NoCoarsenBelow" desc="Error band: below this rmse, hold; auto-derived from --target as Target/Band^2" value="0"/>
+  <real   label="OptTol"         desc="Optimizer gradient tolerance (unified name)" value="1e-06"/>
+  <real   label="BarrierMu"      desc="D-step fold-barrier weight mu" value="1000"/>
+  <real   label="BarrierEps"     desc="D-step fold barrier: det J_sigma floor" value="0.05"/>
+  <real   label="Lambda"         desc="Fitting smoothing weight" value="1e-06"/>
+  <real   label="quA"            desc="Quadrature: degree factor (projection) -- IGNORED for lrfitting, no projection path" value="1"/>
+  <int    label="quB"            desc="Quadrature: extra nodes (projection and D-step barrier)" value="8"/>
+  <bool   label="Coarsen"        desc="Enable coarsening in the H step; overridden per run by --coarsen -- IGNORED/rejected for lrfitting" value="0"/>
+  <bool   label="Admissible"     desc="Keep the hierarchy admissible -- IGNORED for lrfitting" value="1"/>
+  <bool   label="Extension"      desc="Extend marked element regions -- IGNORED for lrfitting" value="1"/>
+  <bool   label="Slide"          desc="Boundary controls of sigma slide along the boundary" value="1"/>
+  <bool   label="SameElement"    desc="Quadrature: assume points share an element (must be false under a composition) -- IGNORED for lrfitting" value="0"/>
+ </OptionList>
 </xml>

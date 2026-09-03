@@ -15,15 +15,105 @@
 
 
 #include <gsCore/gsComposedFunction.h>
-#include <gsNurbs/gsSquareDomain.h>
 #include <gsExpressions/gsExpressions.h>
 #include <gsExpressions/gsExprHelper.h>
 #include <gsAssembler/gsExprEvaluator.h>
 #include <gsNurbs/gsTensorNurbsBasis.h>
-#include <gsUtils/gsStopwatch.h>
+#include <gsUtils/gsPointGrid.h>
+#include <iomanip>
+#include <sstream>
 
 namespace gismo
 {
+
+/// Validates the "quA"/"quB" element-sweep quadrature options shared by
+/// gsOptMesh, gsOptFit and gsOptL2: per direction i, gsQuadrature builds
+/// nnodes[i] = truncate(quA*deg_i + quB + 0.5) (see gsQuadrature::numNodes()),
+/// a rounding, not a ceiling, cast. A negative value, an all-zero pair, or a
+/// small-enough positive pair (e.g. quA=0.1, quB=0 on a degree-2 basis) can
+/// therefore still truncate to zero nodes in some direction, which silently
+/// makes the element sweep visit zero quadrature points and the integrand
+/// evaluate to exactly 0 rather than raising a diagnosable error. Checked
+/// against the actual integration basis \a ib, so this must run once per
+/// gsBasis in play; a multi-patch \a ib whose patches carry different
+/// degrees is only checked against patch 0.
+template <class T>
+inline void checkQuadOptions(const gsOptionList & options, const gsBasis<T> & ib)
+{
+    const real_t quA = options.getReal("quA");
+    const index_t quB = options.getInt("quB");
+    GISMO_ENSURE(quA >= 0, "quA must be >= 0, got " << quA);
+    GISMO_ENSURE(quB >= 0, "quB must be >= 0, got " << quB);
+    GISMO_ENSURE(quA > 0 || quB > 0,
+        "quA and quB cannot both be zero (quA=" << quA << ", quB=" << quB
+        << "); the element sweep would use zero quadrature points per direction");
+
+    const gsVector<index_t> nn = gsQuadrature::numNodes(ib, quA, quB);
+    index_t worstDir = 0;
+    for (index_t i = 1; i < nn.size(); ++i)
+        if (nn[i] < nn[worstDir]) worstDir = i;
+    GISMO_ENSURE(nn[worstDir] >= 1,
+        "quA=" << quA << ", quB=" << quB << " give a zero-node quadrature rule "
+        "in direction " << worstDir << " on this integration basis (nodes per "
+        "direction: " << nn.transpose() << ")");
+}
+
+template<class T>
+gsOptSigma<T>::gsOptSigma()
+: m_domain(nullptr)
+{}
+
+template<class T>
+gsOptSigma<T>::gsOptSigma(gsSquareDomain<T> & domain)
+: m_domain(&domain)
+{
+    m_numDesignVars = m_domain->nControls();
+    m_curDesign.resize(m_numDesignVars,1);
+}
+
+template<class T>
+gsSquareDomain<T> & gsOptSigma<T>::composition()
+{
+    return *m_domain;
+}
+
+template<class T>
+void gsOptSigma<T>::fillCurDesign()
+{
+    m_curDesign.col(0) = m_domain->getControls();
+}
+
+template<class T>
+void gsOptSigma<T>::setCtrls(const gsAsConstVector<T> & u) const
+{ const gsVector<T> c = u; m_domain->setControls(c); }
+
+template<class T>
+T gsCheckSigmaGradient(gsOptProblem<T> & problem, gsSquareDomain<T> & domain,
+                       T h, T floor)
+{
+    gsVector<T> u = domain.getControls();
+    gsAsConstVector<T> uMap(u.data(), u.rows());
+    gsVector<T> g(u.rows());
+    gsAsVector<T> gMap(g.data(), g.rows());
+    problem.gradObj_into(uMap, gMap);
+    T maxRel = 0;
+    for (index_t j = 0; j != u.rows(); j++)
+    {
+        // Scale the step with the magnitude of the control -- see gradObj_FD_into's
+        // matching convention.
+        const T hj = h * math::max(T(1), math::abs(u[j]));
+        gsVector<T> up = u, um = u;
+        up[j] += hj; um[j] -= hj;
+        const T fd =
+            (problem.evalObj(gsAsConstVector<T>(up.data(), up.rows())) -
+             problem.evalObj(gsAsConstVector<T>(um.data(), um.rows()))) / (T(2) * hj);
+        const T scale = math::max(math::abs(fd), math::abs(g[j]));
+        if (scale > floor)
+            maxRel = math::max(maxRel, math::abs(fd - g[j]) / scale);
+    }
+    domain.setControls(u); // restore
+    return maxRel;
+}
 
 template<class T, enum MonitorMode MODE>
 gsOptMesh<T,MODE>::gsOptMesh()
@@ -44,30 +134,53 @@ gsOptMesh<T,MODE>::gsOptMesh(         gsSquareDomain<T> & composition,
                                 const gsBasis<T>    * integrationBasis,
                                 const bool            parametric)
 :
-m_comp(&composition),
+Base(composition),
 m_geom(&geometry),
 m_fun(fun),
 m_ib(integrationBasis),
 m_mb(*m_ib,true),
-m_cgeom(*m_comp,geometry),
-// THIS DOES NOT WORK FOR PARAMETRIC=FALSE. POINTER IS LOST WHEN ARRIVING IN evalObj
-// m_cfun(parametric ? gsComposedFunction<T>(*m_comp,fun) : gsComposedFunction<T>(m_cgeom,fun)),
+m_cgeom(*m_domain,geometry),
 m_mp(m_cgeom),
 m_parametric(parametric)
 {
-    m_numDesignVars = m_comp->nControls();
-    m_curDesign.resize(m_numDesignVars,1);
     m_controls.resize(m_numDesignVars,1);
-    m_controls.col(0) = m_comp->getControls();
+    m_controls.col(0) = m_domain->getControls();
 
     m_options.addReal("Smoothing","Smoothing parameter for the monitor function",0.1);
     m_options.addReal("Penalty","Penalty parameter for the monitor function",1e-2);
-}
+    // Quadrature of the element sweeps: nodes per direction =
+    // ceil(deg*quA) + quB on each element of the integration basis.  These used
+    // to be hardcoded to (1.0, 1), which left the integration MESH as the only
+    // way to control quadrature accuracy -- and hence tempted callers to hand in
+    // a finely refined analysis basis purely to buy quadrature points.
+    m_options.addReal("quA","Quadrature nodes per direction: deg*quA + quB",1.0);
+    m_options.addInt ("quB","Quadrature nodes per direction: deg*quA + quB",1);
 
-template<class T, enum MonitorMode MODE>
-gsSquareDomain<T> & gsOptMesh<T,MODE>::composition()
-{
-    return *m_comp;
+    // Orientation guard (planar case only, targetDim()==domainDim()): the
+    // evalObj()/gradObj_into() fold barrier regularises det(J_c)=det(J_g)*det(J_sigma)
+    // via chi(x)=0.5*(x+sqrt(pen^2+x^2)), which SILENTLY treats a globally
+    // negative det(J_g) (a negatively oriented input geometry) as one giant
+    // fold: chi stays finite and small, so the optimiser sees a consistent but
+    // wrong energy landscape instead of an error. Sample det(J_g) on a coarse
+    // grid of the geometry's own parameter domain and reject a non-positive
+    // sample up front instead.
+    if (m_geom->targetDim() == m_geom->domainDim())
+    {
+        const index_t gdd = m_geom->domainDim();
+        const gsMatrix<T> support = m_geom->support();
+        gsVector<unsigned> np(gdd);
+        np.setConstant(5);
+        const gsMatrix<T> pts = gsPointGrid<T>(support.col(0), support.col(1), np);
+
+        for (index_t p = 0; p != pts.cols(); ++p)
+        {
+            const T detJg = m_geom->jacobian(pts.col(p)).determinant();
+            GISMO_ENSURE(detJg > 0,
+                "gsOptMesh requires a positively oriented planar geometry: "
+                "det(J_g) = " << detJg << " <= 0 at parameter point "
+                << pts.col(p).transpose());
+        }
+    }
 }
 
 template<class T, enum MonitorMode MODE>
@@ -77,163 +190,95 @@ gsOptionList & gsOptMesh<T,MODE>::options()
 }
 
 
-// // ORIGINAL
-// template<class T, enum MonitorMode MODE>
-// T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
-// {
-//     typedef typename gsExprHelper<T>::geometryMap geometryMap; ///< Geometry map type
-//     gsExprEvaluator<T> evaluator;
+// Size the persistent per-thread scratch.  Matrices that are written
+// ELEMENT-WISE (D_d, gradNk, Hess_f, trA, ...) must be pre-sized here; those
+// assigned wholesale via .noalias() resize themselves, but are sized anyway so
+// that the very first sweep does not allocate.
+template<class T, enum MonitorMode MODE>
+void gsOptMesh<T,MODE>::EvalScratch::init(index_t dd, index_t td)
+{
+    Js.setZero(dd, dd);  Jg.setZero(td, dd);  Jc.setZero(td, dd);
+    Cg.setZero(dd, dd);  Cg_inv.setZero(dd, dd);
+    grad_xi_f.setZero(dd, 1);
+    ready = true;
+}
 
-//     evaluator.setIntegrationElements(m_mb); // does not work when in constructor
-//     m_comp->setControls(u);
+template<class T, enum MonitorMode MODE>
+void gsOptMesh<T,MODE>::GradScratch::init(index_t dd, index_t td,
+                                          bool parametric, index_t nc)
+{
+    Js.setZero(dd, dd);  Jg.setZero(td, dd);
+    Jc.setZero(td, dd);  JcT.setZero(dd, td);
+    Cg.setZero(dd, dd);  Cg_inv.setZero(dd, dd);
+    gradMon.setZero(dd, 1);  grad_xi_f.setZero(dd, 1);  grad_x_f.setZero(td, 1);
+    Hess_f.setZero(parametric ? dd : td, parametric ? dd : td);
+    gradNk.setZero(dd);  v.setZero(dd);
+    D_d.setZero(td, dd); DdJs.setZero(td, dd);
+    b_d.setZero(dd);     trA.setZero(dd);
+    b_all.setZero(dd, dd);
+    mon_scalar_d.setZero(dd);
+    trAdjJcDdJs.setZero(dd);  trCginvE_d.setZero(dd);
+    adjJcT_precomp.setZero(td == dd ? dd : 0, td == dd ? dd : 0);
+    adjJc.setZero(dd, dd);
+    E_d.setZero(dd, dd);
+    HfJgd.setZero(td, 1); Dg_d.setZero(dd, 1); JtHJd.setZero(dd, 1);
+    thResult.setZero(nc);
+    ready = true;
+}
 
-//     // Penalty constant
-//     gsConstantFunction<T> pen(m_options.getReal("Penalty"), m_cgeom.domainDim());
-//     geometryMap G = evaluator.getMap(m_mp);
-//     auto eps = evaluator.getVariable(pen);
-
-//     // auto chi = 0.5 * (jac(G).det() + pow(eps.val() + pow(jac(G).det(), 2.0), 0.5));
-//     // auto invJacMat = jac(G).adj()/chi;
-//     // auto eta = evaluator.getVariable(m_fun);
-//     // return evaluator.integral( (monitor(eta,G).asDiag()*invJacMat).sqNorm()*meas(G));
-
-//     // gsComposedFunction<T> fun(*m_comp,m_fun.function(0));
-//     // gsComposedFunction<T> fun(mpG.patch(0),m_fun.function(0));
-
-
-//     // gsVector<unsigned> np(m_fun.domainDim());
-//     // np.setConstant(m_options.getInt("nSamplingPoints"));
-//     // gsMatrix<T> grid = gsPointGrid<T>(m_cgeom.support().col(0),m_cgeom.support().col(1),np);
-//     if (m_cgeom.domainDim()==m_cgeom.targetDim())
-//     {
-//         auto detG = jac(G).det();
-//         auto chi = 0.5 * (detG + pow(pow(eps.val(),2.0) + pow(detG, 2.0), 0.5));
-//         auto invJacMat = jac(G).adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
-
-//         if (m_fun==nullptr)
-//         {
-//             auto M = 1/detG;
-//             return evaluator.integral( (M*invJacMat).sqNorm()*meas(G));
-//         }
-//         else
-//         {
-//             // TEMPORARY FIX: SEE COMMENT IN CONSTRUCTOR
-//             m_cfun = m_parametric ? gsComposedFunction<T>(*m_comp,*m_fun) : gsComposedFunction<T>(m_cgeom,*m_fun);
-//             auto eta = evaluator.getVariable(m_cfun);
-//             auto M   = gismo::expr::monitor<MODE>(eta,G,m_options.getReal("Smoothing"));
-//             return evaluator.integral( (M*invJacMat).sqNorm()*meas(G));
-//         }
-//     }
-//     else if (m_cgeom.domainDim()<m_cgeom.targetDim())
-//     {
-//         auto fform = jac(G).tr()*jac(G);
-//         // SQUARE ROOT:
-//         auto detG = pow(fform.det().val(),0.5).val(); //jacobian determinant for a surface, i.e. the measure
-//         // SQUARED:
-//         // auto detG = fform.det().val(); //jacobian determinant for a surface, i.e. the measure
-
-//         // OPTION 1
-//         // Compute the chi part
-//         // auto chiPPart = eps * ((detG.val() - eps.val()).exp());
-//         // Ternary operation to compute chi and chip
-//         // auto chi = ternary(eps.val() - detG, chiPPart.val(), detG.val());
-//         // OPTION 2
-//         // auto chi = 0.5 * (detG + pow(pow(eps.val(),2.0) + pow(detG, 2.0), 0.5));
-//         // OPTION 3
-//         auto chi = detG;
-//         // auto chiPPart = -(-2.0 + pow(eps.val(),2) + eps.val())*pow(detG,3)/pow(eps.val(),4) + (- 3.0 + 2.0*pow(eps.val(),2) + 2.0*eps.val())*pow(detG,2)/pow(eps.val(),3) - detG/eps.val() + 1.0/eps.val();
-//         // auto chi = ternary(eps.val() - detG, chiPPart.val(), detG.val());
-//         // SQUARED
-//         //
-//         // auto chi = 0.5 * (pow(detG,0.5) + pow(pow(eps.val(),2.0) + detG, 0.5));
-
-//         // SQUARE ROOT:
-//         auto invJacMat = fform.sqrt().adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
-//         // SQUARED:
-//         // auto invJacMat = fform.adj()/chi; // inverse of jacobian matrix with 'determinant' replaced
-
-//         if (m_fun==nullptr)
-//         {
-//             auto M = 1/detG;
-//             return evaluator.integral( M*(invJacMat).sqNorm()*meas(G));
-//         }
-//         else
-//         {
-//             // TEMPORARY FIX: SEE COMMENT IN CONSTRUCTOR
-//             m_cfun = m_parametric ? gsComposedFunction<T>(*m_comp,*m_fun) : gsComposedFunction<T>(m_cgeom,*m_fun);
-//             auto eta = evaluator.getVariable(m_cfun);
-//             auto M   = gismo::expr::monitor<MODE>(eta,G,m_options.getReal("Smoothing"));
-//             return evaluator.integral( M*(invJacMat).sqNorm()*meas(G));
-//         }
-//     }
-//     else
-//         GISMO_ERROR("Domain dimension must be smaller than or equal to the target dimension, but domainDim = "<<m_cgeom.domainDim()<<" and targetDim = "<<m_cgeom.targetDim());
-// }
-
-
-/// @cond
-//
-// Objective function evaluation.
-//
-// Map chain:   hat{Omega} --sigma(u;alpha)--> tilde{Omega} --G--> Omega
-//
-// Jacobians:   J_sigma (dd x dd),  J_g (td x dd),  J_c = J_g * J_sigma (td x dd)
-// Metric:      C = J_c^T J_c  (dd x dd)
-// Geometry metric: C_g = J_g^T J_g  (dd x dd)
-//
-// WITHOUT monitor (q=2, ω=1/g default, blue form §8 of derivation):
-//   E(alpha) = int  tr(C^{-1})  d hat{Omega}  =  int T/g^2 d hat{Omega}
-//   (harmonic-map Dirichlet energy of the inverse parameterization)
-//
-// WITH monitor (weight m^2 = 1/(1 + theta * eta^2), q=1, blue form):
-//   E(alpha) = int  m^2 * tr(C^{-1}) * sqrt(det C)  d hat{Omega}
-//            = int  m^2 * T/g  d hat{Omega}
-//
-// where eta^2 depends on MonitorMode:
-//
-// ValueBased:
-//   eta = f(xi(alpha))          (monitor value at moving parametric point)
-//   m^2 = 1 / (1 + theta * eta^2)
-//
-// GradientBased:
-//   eta^2 = (nabla_xi f)^T C_g^{-1} (nabla_xi f)
-//         = || nabla_x f ||^2   (squared physical gradient norm, for td == dd)
-//   m^2 = 1 / (1 + theta * eta^2)
-//
-//   For m_parametric=true:   nabla_xi f = deriv of f w.r.t. xi (direct)
-//   For m_parametric=false:  nabla_xi f = J_g^T * nabla_x f  (chain rule)
-//
-//   The C_g^{-1} metric accounts for the coordinate distortion so that
-//   eta^2 measures the physical gradient norm regardless of the
-//   parametric representation.
-//
-/// @endcond
+// Energy formulation (no-monitor / with-monitor, per-mode weight): \ref adaptparam_rstep.
 template<class T, enum MonitorMode MODE>
 T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
 {
-    const index_t dd = m_comp->domainDim();
+    const index_t dd = m_domain->domainDim();
     const index_t td = m_geom->targetDim();
     GISMO_ASSERT(dd <= td, "domainDim must be <= targetDim");
 
-    m_comp->setControls(u);
+    m_domain->setControls(u);
 
     const T theta = m_options.getReal("Smoothing");
     const T penalty = m_options.getReal("Penalty");
+    GISMO_ENSURE(penalty > 0, "Penalty must be > 0, got " << penalty);
+    GISMO_ENSURE(theta >= 0, "Smoothing must be >= 0, got " << theta);
     const bool hasMonitor = (m_fun != nullptr);
 
     T result = T(0);
 
+    checkQuadOptions(m_options, m_ib->basis(0));
     gsOptionList quadOptions;
-    quadOptions.addReal("quA","",1.0);
-    quadOptions.addInt("quB","",1);
+    quadOptions.addReal("quA","",m_options.getReal("quA"));
+    quadOptions.addInt ("quB","",m_options.getInt ("quB"));
 
     auto dom = m_mb.domain();
+
+    // Per-thread partials summed in THREAD-ID order (not as they finish):
+    // makes evalObj bit-reproducible for a given thread count, hence the
+    // whole R step reproducible.
+#   ifdef _OPENMP
+    const int nThreads = omp_get_max_threads();
+#   else
+    const int nThreads = 1;
+#   endif
+    std::vector<T> partial(nThreads, T(0));
+    // Per-thread minimum of (1+theta*f) over the ValueBased monitor: an
+    // exception cannot cross the parallel region below (UB / std::terminate),
+    // so the violation is recorded here and raised once, after the join.
+    std::vector<T> worst(nThreads, std::numeric_limits<T>::infinity());
 
 #   pragma omp parallel
     {
         T thResult = T(0);
+        T thWorst = std::numeric_limits<T>::infinity();
 
-        gsFuncData<T> compData, geomData, funData;
+        // Persistent per-thread scratch (see gsOptMesh::EvalScratch): buffers,
+        // gsFuncData and the Gauss rule are allocated on the first call and
+        // reused by every later objective evaluation of this solve.
+        EvalScratch & sc = m_evalScratch.mine();
+        if (!sc.ready) sc.init(dd, td);
+
+        gsFuncData<T> & compData = sc.compData;
+        gsFuncData<T> & geomData = sc.geomData;
+        gsFuncData<T> & funData  = sc.funData;
         compData.flags = NEED_VALUE | NEED_DERIV;
         geomData.flags = NEED_VALUE | NEED_DERIV;
         if (hasMonitor)
@@ -241,45 +286,45 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
             if (MODE == ValueBased)
                 funData.flags = NEED_VALUE;
             else if (MODE == GradientBased)
-                funData.flags = NEED_VALUE | NEED_DERIV;
+                // eta^2 = (grad f)^T Cg^{-1} (grad f) -- the VALUE is not used.
+                funData.flags = NEED_DERIV;
         }
 
-        gsMatrix<T> Js(dd, dd), Jg(td, dd), Jc(td, dd);
-        gsMatrix<T> C(dd, dd), Cinv(dd, dd);
-        gsMatrix<T> Cg(dd, dd), Cg_inv(dd, dd);
-        gsMatrix<T> grad_xi_f(dd, 1);
-
-        gsQuadRule<T> QuRule;
-        index_t QuPatch = -1;
-
-        gsMatrix<T> uvPoints;
-        gsVector<T> tmpWeights;
-        gsMatrix<T> monVals, monDerivs_eval;
-        gsMatrix<T> Jgeom_flat, Jsigma_flat;
+        gsMatrix<T> & Js = sc.Js, & Jg = sc.Jg, & Jc = sc.Jc;
+        gsMatrix<T> & Cg = sc.Cg, & Cg_inv = sc.Cg_inv;
+        gsMatrix<T> & grad_xi_f = sc.grad_xi_f;
+        gsMatrix<T> & uvPoints  = sc.uvPoints;
+        gsVector<T> & tmpWeights = sc.tmpWeights;
 
         for (auto & elem : dom->allElements())
         {
-            if (QuPatch != elem.patch())
+            if (sc.QuPatch != elem.patch())
             {
-                QuPatch = elem.patch();
-                QuRule = gsQuadrature::get(m_ib->basis(QuPatch), quadOptions);
+                sc.QuPatch = elem.patch();
+                sc.QuRule = gsQuadrature::get(m_ib->basis(sc.QuPatch), quadOptions);
             }
 
-            QuRule.mapTo(elem.lowerCorner(), elem.upperCorner(),
-                         uvPoints, tmpWeights);
+            sc.QuRule.mapTo(elem.lowerCorner(), elem.upperCorner(),
+                            uvPoints, tmpWeights);
 
-            m_comp->compute(uvPoints, compData);
-            Jsigma_flat = compData.values[1];
+            m_domain->compute(uvPoints, compData);
             m_geom->compute(compData.values[0], geomData);
-            Jgeom_flat = geomData.values[1];
 
             if (hasMonitor)
-            {
                 m_fun->compute((m_parametric ? compData.values[0] : geomData.values[0]), funData);
-                monVals = funData.values[0];
-                if (MODE == GradientBased)
-                    monDerivs_eval = funData.values[1];
-            }
+
+            // Alias, do not copy: assigning these into local gsMatrix members
+            // would copy every Jacobian block for every element of every
+            // objective evaluation.
+            const gsMatrix<T> & Jsigma_flat = compData.values[1];
+            const gsMatrix<T> & Jgeom_flat  = geomData.values[1];
+            // (funData.values is left empty when there is no monitor, so it
+            // cannot be indexed; s_noMon keeps the aliases well-formed.)
+            static const gsMatrix<T> s_noMon;
+            const gsMatrix<T> & monVals =
+                (hasMonitor && MODE == ValueBased)    ? funData.values[0] : s_noMon;
+            const gsMatrix<T> & monDerivs_eval =
+                (hasMonitor && MODE == GradientBased) ? funData.values[1] : s_noMon;
 
             const index_t nPts = uvPoints.cols();
             for (index_t p = 0; p != nPts; ++p)
@@ -288,37 +333,15 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
                 Jg.noalias() = Jgeom_flat.col(p).reshaped(dd, td).transpose();
                 Jc.noalias() = Jg * Js;
 
-                // T = tr(J_c^T J_c) = ||J_c||_F^2, computed DIRECTLY.
-                //
-                // The previous formulation evaluated the integrand as
-                //     tr(C^{-1}) * |det|^p / chi^q     with a Tikhonov shift C += penalty*I.
-                // That is NOT a fold barrier: the shift destroys the identity
-                //     tr(C^{-1}) * det^2 == T   (exact for the unshifted C),
-                // so the |det|^p factor is no longer cancelled and the integrand COLLAPSES
-                // TO 0 as det -> 0 -- a degenerate element then costs LESS than a perfect
-                // one and the optimiser is rewarded for collapsing the mesh (observed:
-                // energy 1.71 -> 0.0066 while min det J_sigma -> 6e-12).
-                //
-                // Using T directly removes both the inverse and the shift, and makes the
-                // barrier exact. See the integrand assembly below.
+                // T = tr(J_c^T J_c) = ||J_c||_F^2, computed DIRECTLY (not via
+                // tr(C^{-1}) with a Tikhonov-shifted C -- that shift breaks
+                // the identity tr(C^{-1})*det^2 == T and rewards a collapsing
+                // mesh instead of penalising it). Fold barrier via the
+                // Garanzha regulariser chi(x) = 0.5*(x + sqrt(eps^2+x^2)) on
+                // the regularised composite area element g_reg (planar:
+                // chi(det J_c); surface: chi(det J_s)*g_S). Full derivation
+                // and case analysis: \ref adaptparam_rgrad.
                 const T Tval = Jc.squaredNorm();
-                // CORRECTED fold barrier.  Let g_reg be the REGULARISED composite area
-                // element (always > 0), obtained by replacing the signed determinant by the
-                // Garanzha regulariser chi(x) = 0.5*(x + sqrt(eps^2 + x^2)):
-                //
-                //   Planar  (td==dd): g_reg = chi(det J_c)          [ g_c = |det J_c| ]
-                //   Surface (td> dd): g_reg = chi(det J_s) * g_S    [ g_c = |det J_s| * g_S ]
-                //                     with g_S = sqrt(det(J_g^T J_g)) the SOURCE area element.
-                //
-                // Then, exactly as in the paper (E = int omega * T / g):
-                //
-                //   No-monitor   (omega = 1/g):  integrand = T / g_reg^2
-                //   With-monitor:                integrand = omega * T / g_reg
-                //
-                // As eps -> 0 these reproduce tr(C^{-1}) and omega*T/g_c respectively, but
-                // unlike the old |det|^p/chi^q form they are MONOTONE into degeneracy:
-                // at det = 0 they equal 4T/eps^2 resp. 2*omega*T/eps (huge), and they grow
-                // without bound for det < 0.  Degeneracy is now penalised, not rewarded.
 
                 T integrand;
                 if (td == dd)
@@ -333,7 +356,15 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
                         if (MODE == ValueBased)
                         {
                             T eta = monVals(0, p);
-                            // Paper Eq. (13): omega = 1/sqrt(1+theta*f), so m2 = omega^2 = 1/(1+theta*f)
+                            // value-based weight (\ref adaptparam_rstep): m2 = 1/(1+theta*f).
+                            // The precondition 1+theta*f>0 cannot be enforced by GISMO_ENSURE
+                            // here (inside #pragma omp parallel, an escaping exception is UB);
+                            // instead thWorst records the minimum seen and the aggregate is
+                            // checked once after the region joins. A violation here makes m2
+                            // negative and omega non-finite below, which the exit isfinite
+                            // check at the end of evalObj already turns into a large finite
+                            // value for the line search to reject.
+                            thWorst = math::min(thWorst, T(1) + theta * eta);
                             m2 = T(1) / (T(1) + theta * eta);
                         }
                         else
@@ -347,7 +378,7 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
                                 grad_xi_f.noalias() = Jg.transpose() * monDerivs_eval.col(p).reshaped(td, 1);
 
                             T eta2 = (grad_xi_f.transpose() * Cg_inv * grad_xi_f)(0, 0);
-                            // Paper Eq. (12): omega = 1/sqrt(1+theta*||∇f||^2), so m2 = omega^2 = 1/(1+theta*||∇f||^2)
+                            // gradient-based weight (\ref adaptparam_rstep): m2 = 1/(1+theta*||grad f||^2)
                             m2 = T(1) / (T(1) + theta * eta2);
                         }
                         // With-monitor: omega * T / g_reg,  g_reg = chi_c   (paper E = int omega*T/g)
@@ -373,6 +404,11 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
                     T chi_s      = T(0.5) * (det_s + sqrt_reg_s);
 
                     // g_S is needed in BOTH branches now (it enters g_reg), not just with a monitor.
+                    // A degenerate geometry point (Cg singular, gS==0, or Cg already NaN from an
+                    // upstream fold) is NOT rejected here: it drives g_reg -> 0, the integrand to
+                    // overflow, and is caught once by the non-finite exit at the end of evalObj
+                    // (see its comment) -- the same policy the no-monitor branch above already
+                    // relies on for a degenerate chi_c.
                     Cg.noalias() = Jg.transpose() * Jg;
                     const T gS    = math::sqrt(math::max(Cg.determinant(), T(0)));
                     const T g_reg = chi_s * gS;
@@ -383,7 +419,9 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
                         if (MODE == ValueBased)
                         {
                             T eta = monVals(0, p);
-                            // Paper Eq. (13): omega = 1/sqrt(1+theta*f), so m2 = omega^2 = 1/(1+theta*f)
+                            // value-based weight (\ref adaptparam_rstep): m2 = 1/(1+theta*f);
+                            // see the planar branch above for why the guard is deferred.
+                            thWorst = math::min(thWorst, T(1) + theta * eta);
                             m2 = T(1) / (T(1) + theta * eta);
                         }
                         else
@@ -396,7 +434,7 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
                                 grad_xi_f.noalias() = Jg.transpose() * monDerivs_eval.col(p).reshaped(td, 1);
 
                             T eta2 = (grad_xi_f.transpose() * Cg_inv * grad_xi_f)(0, 0);
-                            // Paper Eq. (12): omega = 1/sqrt(1+theta*||∇f||^2), so m2 = omega^2 = 1/(1+theta*||∇f||^2)
+                            // gradient-based weight (\ref adaptparam_rstep): m2 = 1/(1+theta*||grad f||^2)
                             m2 = T(1) / (T(1) + theta * eta2);
                         }
                         // With-monitor: omega * T / g_reg   (paper E = int omega*T/g)
@@ -413,9 +451,23 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
                 thResult += tmpWeights[p] * integrand;
             }
         }
-#       pragma omp atomic update
-        result += thResult;
+#       ifdef _OPENMP
+        partial[omp_get_thread_num()] = thResult;
+        worst[omp_get_thread_num()] = thWorst;
+#       else
+        partial[0] = thResult;
+        worst[0] = thWorst;
+#       endif
     } // omp parallel
+
+    for (int i = 0; i != nThreads; ++i)
+        result += partial[i];
+
+    T worstAgg = worst[0];
+    for (int i = 1; i != nThreads; ++i)
+        worstAgg = math::min(worstAgg, worst[i]);
+    GISMO_ENSURE(worstAgg > T(0), "ValueBased monitor must satisfy 1+theta*f>0 at every "
+        "quadrature point, min(1+theta*f) = " << worstAgg);
 
     // The line search probes trial designs far from the current one (Moore-Thuente starts
     // at a unit step). A badly folded trial can drive chi -> 0 or C -> singular, so the
@@ -432,231 +484,148 @@ T gsOptMesh<T,MODE>::evalObj(const gsAsConstVector<T> &u) const
 }
 
 
-/// @cond
-//
-// Analytical gradient of the objective function w.r.t. the control
-// variables alpha of the composition sigma.
-//
-// ---------------------------------------------------------------------------
-// Notation
-// ---------------------------------------------------------------------------
-//
-// alpha_{k,d}  : d-th coordinate of the k-th basis function coefficient
-// N_k          : k-th basis function of sigma, evaluated at quadrature point
-// nabla_hat N_k: gradient of N_k w.r.t. hat{u} (the reference coordinates)
-// xi = sigma(hat{u}; alpha)  : parametric point in tilde{Omega}
-// G(xi)        : geometry map  tilde{Omega} -> Omega
-// J_sigma      : Jacobian of sigma  (dd x dd)
-// J_g          : Jacobian of G      (td x dd)
-// J_c = J_g J_sigma : composed Jacobian (td x dd)
-// C = J_c^T J_c     : composed metric   (dd x dd) + penalty*I (Tikhonov shift)
-// C_g = J_g^T J_g   : geometry metric   (dd x dd)
-// det_c = det(J_c)  : composed Jacobian determinant (square case td==dd)
-// chi_c = 0.5*(det_c + sqrt(penalty^2 + det_c^2))  : fold-barrier regularizer
-//
-// ---------------------------------------------------------------------------
-// Kinematic derivatives  (d(...)/d alpha_{k,d})
-// ---------------------------------------------------------------------------
-//
-// d xi_i / d alpha_{k,d}  =  N_k * delta_{id}
-//
-// d J_sigma / d alpha_{k,d}  =:  dJ_s
-//   (dJ_s)_{ij} = delta_{id} * (nabla_hat N_k)_j
-//   i.e. only row d is nonzero, equal to nabla_hat N_k transposed
-//
-// d J_g / d alpha_{k,d}  =:  dJ_g       (td x dd)
-//   (dJ_g)_{a,j} = N_k * d^2 G_a / (d xi_j d xi_d)
-//   This is the second derivative of the geometry map, contracted with
-//   d xi/d alpha = N_k e_d.
-//
-// d J_c / d alpha_{k,d} = dJ_g * J_s + J_g * dJ_s
-// d C   / d alpha_{k,d} = dJ_c^T J_c + J_c^T dJ_c
-//
-// d(det_c)/d(alpha_{k,d}) = tr(adj(J_c)^T * d(J_c)/d(alpha))
-//   Two contributions (since d(J_c) = dJ_g*J_s + J_g*dJ_s):
-//   Term 1 (from dJ_g = N_k * D_d):
-//     N_k * tr(adj(J_c) * D_d * J_s)
-//   Term 2 (from dJ_s = e_d * gradNk^T):
-//     gradNk^T * adj(J_c) * J_g * e_d
-//   Total:  N_k * tr(adj(J_c) * D_d * J_s) + adj(J_c)^T.col(d) . gradNk  [td==dd]
-//
-// ---------------------------------------------------------------------------
-// Objective and integrand
-// ---------------------------------------------------------------------------
-//
-// phi2 = |det_c|^2 / chi_c^2   (no-monitor exponent p=2, E ≈ T/g^2)
-// phi3 = |det_c|^3 / chi_c^2   (with-monitor exponent p=3, E ≈ m^2*T/g)
-//
-// No-monitor:   E_nm = tr(C^{-1}) * phi2
-// With-monitor: E_wm = m^2 * tr(C^{-1}) * phi3
-//
-// Both integrands blow up as det_c -> 0 (fold), providing a fold barrier.
-//
-// ---------------------------------------------------------------------------
-// Integrand derivative  (no monitor)
-// ---------------------------------------------------------------------------
-//
-// dE_nm = d(tr(C^{-1}))/dalpha * phi2 + tr(C^{-1}) * d(phi2)/dalpha
-//       = -trCinvdCCinv * phi2 + tr(C^{-1}) * dphi2_dalpha
-//
-// where trCinvdCCinv = tr(C^{-1} dC C^{-1})  (= -d(tr(C^{-1}))/dalpha)
-//
-// d(phi2)/dalpha = phi2 * (2/det_c - 2*dchi_ddet_c/chi_c) * ddet_c/dalpha
-//
-// ---------------------------------------------------------------------------
-// Integrand derivative  (with monitor, both ValueBased & GradientBased)
-// ---------------------------------------------------------------------------
-//
-// dE_wm = dm^2/dalpha * tr(C^{-1}) * phi3
-//       + m^2 * (-trCinvdCCinv * phi3 + tr(C^{-1}) * dphi3_dalpha)
-//
-// d(phi3)/dalpha = phi3 * (3/det_c - 2*dchi_ddet_c/chi_c) * ddet_c/dalpha
-//
-// dm^2/dalpha = (dm^2/d eta^2) * (d eta^2 / d alpha):
-//
-// ValueBased:
-//   eta = f(xi(alpha))
-//   m^2 = 1/(1 + theta eta^2)
-//   dm^2/deta = -2 theta eta / (1 + theta eta^2)^2
-//   deta/dalpha_{k,d} = (nabla_xi f)_d * N_k
-//     (chain rule: d f(xi(alpha))/dalpha = nabla_xi f . d xi/dalpha)
-//
-// GradientBased:
-//   eta^2 = (nabla_xi f)^T C_g^{-1} (nabla_xi f)
-//   m^2 = 1/(1 + theta eta^2)
-//   dm^2/d(eta^2) = -theta / (1 + theta eta^2)^2
-//
-//   d(eta^2)/dalpha_{k,d} = term1 + term2, where:
-//
-//   Term 1 (from C_g changing):
-//     Using d(M^{-1}) = -M^{-1} dM M^{-1}, let v = C_g^{-1} nabla_xi f:
-//     term1 = -v^T dC_g v
-//     with dC_g = dJ_g^T J_g + J_g^T dJ_g
-//
-//   Term 2 (from nabla_xi f changing at the moving point):
-//     term2 = 2 v^T d(nabla_xi f)/dalpha
-//
-//     For m_parametric=true:
-//       d(nabla_xi f)/dalpha_{k,d} = N_k * H_f * e_d
-//         (H_f is the dd x dd parametric Hessian of f)
-//
-//     For m_parametric=false:
-//       nabla_xi f = J_g^T nabla_x f,  so differentiating:
-//       d(nabla_xi f)/dalpha_{k,d}
-//         = dJ_g^T * nabla_x f
-//         + N_k * J_g^T * H_f * J_g e_d
-//       where H_f is the td x td physical-space Hessian
-//       and J_g e_d is the d-th column of J_g (= d G/d xi_d).
-//
-/// @endcond
+// Full analytic-gradient derivation (kinematic derivatives, integrand
+// derivative per mode, chain rule through the monitor weight): \ref adaptparam_rgrad.
 template<class T, enum MonitorMode MODE>
 void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
 {
     // this->gradObj_FD_into(u, result);
     // return;
 
-    const index_t nc = m_comp->nControls();
-    const index_t dd = m_comp->domainDim();
+    const index_t nc = m_domain->nControls();
+    const index_t dd = m_domain->domainDim();
     const index_t td = m_geom->targetDim();
     GISMO_ASSERT(dd <= td, "domainDim must be <= targetDim");
 
     result.resize(nc);
     result.setZero();
-    m_comp->setControls(u);
+    m_domain->setControls(u);
 
     const T theta = m_options.getReal("Smoothing");
     const T penalty = m_options.getReal("Penalty");
+    GISMO_ENSURE(penalty > 0, "Penalty must be > 0, got " << penalty);
+    GISMO_ENSURE(theta >= 0, "Smoothing must be >= 0, got " << theta);
     const bool hasMonitor = (m_fun != nullptr);
 
-    const gsBasis<T> & sigmaBasis = m_comp->domain().basis();
-    const gsDofMapper & mapper = m_comp->mapper();
+    const gsBasis<T> & sigmaBasis = m_domain->domain().basis();
+    const gsDofMapper & mapper = m_domain->mapper();
     const index_t S = dd * (dd + 1) / 2;
 
+    checkQuadOptions(m_options, m_ib->basis(0));
     gsOptionList quadOptions;
-    quadOptions.addReal("quA","",1.0);
-    quadOptions.addInt("quB","",1);
+    quadOptions.addReal("quA","",m_options.getReal("quA"));
+    quadOptions.addInt ("quB","",m_options.getInt ("quB"));
 
     auto dom = m_mb.domain();
 
+    // DETERMINISTIC reduction -- see the comment in evalObj().  "#pragma omp
+    // critical result += thResult" was order-dependent in exactly the same way.
+#   ifdef _OPENMP
+    const int nThreads = omp_get_max_threads();
+#   else
+    const int nThreads = 1;
+#   endif
+    std::vector<gsVector<T> > partial(nThreads, gsVector<T>::Zero(nc));
+    // Per-thread minimum of (1+theta*f) over the ValueBased monitor -- see the
+    // matching comment in evalObj() for why this cannot be a GISMO_ENSURE
+    // inside the parallel region.
+    std::vector<T> worst(nThreads, std::numeric_limits<T>::infinity());
+
 #   pragma omp parallel
     {
-        gsVector<T> thResult(nc);
-        thResult.setZero();
+        // Persistent per-thread scratch (see gsOptMesh::GradScratch).
+        GradScratch & sc = m_gradScratch.mine();
+        if (!sc.ready) sc.init(dd, td, m_parametric, nc);
 
-        gsFuncData<T> geomData, funData, sigmaData, sigmaBasisData;
+        gsVector<T> & thResult = sc.thResult;
+        thResult.setZero();
+        T thWorst = std::numeric_limits<T>::infinity();
+
+        gsFuncData<T> & geomData       = sc.geomData;
+        gsFuncData<T> & funData        = sc.funData;
+        gsFuncData<T> & sigmaData      = sc.sigmaData;
+        gsFuncData<T> & sigmaBasisData = sc.sigmaBasisData;
         geomData.flags = NEED_VALUE | NEED_DERIV | NEED_DERIV2;
-        funData.flags = NEED_VALUE;
+        // GradientBased never reads the monitor VALUE (only grad f and Hess f
+        // enter eta^2 and its derivative), so do not ask for it -- for an
+        // analytic monitor that is a whole extra function evaluation per
+        // quadrature point.
+        funData.flags = 0;
         if (hasMonitor)
         {
             if (MODE == ValueBased)
-                funData.flags |= NEED_DERIV;
+                funData.flags = NEED_VALUE | NEED_DERIV;
             else
-                funData.flags |= NEED_DERIV | NEED_DERIV2;
+                funData.flags = NEED_DERIV | NEED_DERIV2;
         }
         sigmaData.flags = NEED_VALUE | NEED_DERIV;
         sigmaBasisData.flags = NEED_ACTIVE | NEED_VALUE | NEED_DERIV;
 
-        gsMatrix<T> Js(dd, dd), Jg(td, dd), Jc(td, dd), JcT(dd, td);
-        gsMatrix<T> C(dd, dd), Cinv(dd, dd);
-        gsMatrix<T> Cg(dd, dd), Cg_inv(dd, dd);
-        gsMatrix<T> gradMon(dd, 1), grad_xi_f(dd, 1), grad_x_f(td, 1);
-        gsMatrix<T> Hess_f(m_parametric ? dd : td, m_parametric ? dd : td);
-        gsVector<T> gradNk(dd), Cinv_gradNk(dd);
-        gsVector<T> v(dd);
+        gsMatrix<T> & Js = sc.Js, & Jg = sc.Jg, & Jc = sc.Jc, & JcT = sc.JcT;
+        gsMatrix<T> & Cg = sc.Cg, & Cg_inv = sc.Cg_inv;
+        gsMatrix<T> & gradMon = sc.gradMon, & grad_xi_f = sc.grad_xi_f;
+        gsMatrix<T> & grad_x_f = sc.grad_x_f, & Hess_f = sc.Hess_f;
+        gsVector<T> & gradNk = sc.gradNk, & v = sc.v;
 
-        gsMatrix<T> D_d(td, dd), A_d(dd, dd), CinvA_d(dd, dd);
-        gsVector<T> b_d(dd);
-        gsMatrix<T> Cinv_b_all(dd, dd);
-        gsVector<T> trCAC(dd);
-        // For the corrected integrand we need dT/d(alpha) with T = tr(C) = ||J_c||_F^2.
-        // Since dC/d(alpha_{k,d}) = A_d * N_k + (b_d gradNk^T + gradNk b_d^T), we get
-        //     dT/d(alpha_{k,d}) = tr(dC) = N_k * tr(A_d) + 2 * (b_d . gradNk).
-        // So we store tr(A_d) and b_d for every direction d.
-        gsVector<T> trA(dd);
-        gsMatrix<T> b_all(dd, dd);
-        gsVector<T> mon_scalar_d(dd);
+        // dT/d(alpha_{k,d}) = Nk*tr(A_d) + 2*(b_d.gradNk), where T = tr(C) =
+        // ||J_c||_F^2 (see evalObj) and A_d = Js^T D_d^T J_c + J_c^T D_d Js.
+        // T is available directly as the squared Frobenius norm of J_c, so this
+        // gradient needs no C^{-1} (a dd x dd inversion PER QUADRATURE POINT).
+        //
+        // A_d's two summands are transposes of each other, so
+        //     tr(A_d) = 2*tr(J_c^T D_d Js) = 2 * sum(J_c .* (D_d Js)),
+        // i.e. one (td x dd) product and a Frobenius dot instead of forming
+        // A_d explicitly and reducing it via two (dd x dd) triple products.
+        gsMatrix<T> & D_d = sc.D_d, & DdJs = sc.DdJs;
+        gsVector<T> & b_d = sc.b_d, & trA = sc.trA;
+        gsMatrix<T> & b_all = sc.b_all;
+        gsVector<T> & mon_scalar_d = sc.mon_scalar_d;
 
-        gsQuadRule<T> QuRule;
-        index_t QuPatch = -1;
+        // Member-owned scratch, sized once and reused across the quadrature-point
+        // / active-function loops. Allocating them per iteration instead: for
+        // the default planar dd=2 case, adjJc and adjJcT_gN alone would cost
+        // O(nActive*dd) mallocs per quadrature point -- ~29k allocations per
+        // gradient sweep at -r 2.
+        gsVector<T> & trAdjJcDdJs = sc.trAdjJcDdJs, & trCginvE_d = sc.trCginvE_d;
+        gsMatrix<T> & adjJcT_precomp = sc.adjJcT_precomp, & adjJc = sc.adjJc;
+        gsMatrix<T> & E_d = sc.E_d;
+        gsMatrix<T> & HfJgd = sc.HfJgd, & Dg_d = sc.Dg_d, & JtHJd = sc.JtHJd;
 
-        gsMatrix<T> uvPoints;
-        gsVector<T> tmpWeights;
-        gsMatrix<T> monVals, monDerivs, monDeriv2;
-        gsMatrix<T> Jsigma_flat, Jgeom_flat, deriv2_geom;
-        gsMatrix<index_t> actives;
-        gsMatrix<T> basisVals, basisDerivs;
+        gsMatrix<T> & uvPoints   = sc.uvPoints;
+        gsVector<T> & tmpWeights = sc.tmpWeights;
 
         for (auto & elem : dom->allElements())
         {
-            if (QuPatch != elem.patch())
+            if (sc.QuPatch != elem.patch())
             {
-                QuPatch = elem.patch();
-                QuRule = gsQuadrature::get(m_ib->basis(QuPatch), quadOptions);
+                sc.QuPatch = elem.patch();
+                sc.QuRule = gsQuadrature::get(m_ib->basis(sc.QuPatch), quadOptions);
             }
 
-            QuRule.mapTo(elem.lowerCorner(), elem.upperCorner(),
-                         uvPoints, tmpWeights);
+            sc.QuRule.mapTo(elem.lowerCorner(), elem.upperCorner(),
+                            uvPoints, tmpWeights);
 
-            m_comp->compute(uvPoints, sigmaData);
-            Jsigma_flat = sigmaData.values[1];
-
+            m_domain->compute(uvPoints, sigmaData);
             sigmaBasis.compute(uvPoints, sigmaBasisData);
-            actives = sigmaBasisData.actives;
-            basisVals = sigmaBasisData.values[0];
-            basisDerivs = sigmaBasisData.values[1];
-
             m_geom->compute(sigmaData.values[0], geomData);
-            Jgeom_flat = geomData.values[1];
-            deriv2_geom = geomData.values[2];
 
             if (hasMonitor)
-            {
                 m_fun->compute((m_parametric ? sigmaData.values[0] : geomData.values[0]), funData);
-                monVals = funData.values[0];
-                monDerivs = funData.values[1];
-                if (MODE == GradientBased)
-                    monDeriv2 = funData.values[2];
-            }
+
+            // Alias, do not copy: copying these nine blocks (Jacobian /
+            // second-derivative / basis-value) would happen per element, on
+            // every gradient evaluation.
+            const gsMatrix<T> & Jsigma_flat = sigmaData.values[1];
+            const gsMatrix<T> & Jgeom_flat  = geomData.values[1];
+            const gsMatrix<T> & deriv2_geom = geomData.values[2];
+            const gsMatrix<index_t> & actives = sigmaBasisData.actives;
+            const gsMatrix<T> & basisVals   = sigmaBasisData.values[0];
+            const gsMatrix<T> & basisDerivs = sigmaBasisData.values[1];
+            static const gsMatrix<T> s_noMon;
+            const gsMatrix<T> & monVals   = hasMonitor ? funData.values[0] : s_noMon;
+            const gsMatrix<T> & monDerivs = hasMonitor ? funData.values[1] : s_noMon;
+            const gsMatrix<T> & monDeriv2 =
+                (hasMonitor && MODE == GradientBased) ? funData.values[2] : s_noMon;
             const index_t nPts = uvPoints.cols();
             for (index_t p = 0; p != nPts; ++p)
             {
@@ -669,30 +638,12 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                 // b_d are built alongside them; the corrected gradient does not use C^{-1}.
                 const T Tval = Jc.squaredNorm();
 
-                C.noalias() = Jc.transpose() * Jc;
-                // Tikhonov shift keeps C^{-1} numerically stable (unused by the corrected
-                // gradient, but harmless and keeps A_d/b_d assembly unchanged).
-                C.diagonal().array() += penalty;
-                Cinv.noalias() = C.inverse();
-
                 // Chi barrier: depends on planar (td==dd) vs surface (td>dd).
                 //
-                // Planar (td==dd): use det(J_c) — the composed Jacobian determinant.
-                //   chi_c = 0.5*(det_c + sqrt(penalty^2 + det_c^2))
-                //   phi_noMon = |det_c|^2 / chi_c^2   (no-monitor, exponent p=2, E ≈ T/g^2)
-                //   phi_mon   = |det_c|^3 / chi_c^2   (with-monitor, exponent p=3, E ≈ m^2*T/g)
-                //   d(phi_p)/d(alpha) uses ddet_c/d(alpha) via adj(J_c)
-                //
-                // Surface (td>dd): J_c is rectangular — no scalar determinant.
-                //   Use det_s = det(J_s) as signed area element.
-                //   chi_s = 0.5*(det_s + sqrt(pen^2 + det_s^2)) — fold barrier.
-                //   phi_noMon_s = |det_s|^2 / chi_s^2  (p=2, mirrors planar)
-                //   phi_mon_s   = |det_s|^3 / chi_s^2  (p=3, mirrors planar)
-                //   ddet_s/d(alpha) via adj(J_s) and sigma basis derivatives.
+                // Planar vs surface fold-barrier case analysis: \ref adaptparam_rgrad.
+                // The integrand actually assembled (see evalObj) is omega*T/chi_c
+                // resp. T/chi_c^2, so only chi_c and dchi_ddet_c are needed below.
                 T det_c = T(0), sqrt_reg = T(0), chi_c = T(0), dchi_ddet_c = T(0);
-                // phi_noMon = |det_c|^2 / chi_c^2  (no-monitor integrand factor, exponent p=2, E≈T/g^2)
-                // phi_mon   = |det_c|^3 / chi_c^2  (with-monitor integrand factor, exponent p=3, E≈m^2*T/g)
-                T abs_det_c = T(0), phi_noMon = T(0), phi_mon = T(0);
                 if (td == dd)
                 {
                     det_c     = Jc.determinant();
@@ -700,9 +651,6 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                     chi_c     = T(0.5) * (det_c + sqrt_reg);
                     // d(chi_c)/d(det_c) = 0.5*(1 + det_c/sqrt(penalty^2+det_c^2))
                     dchi_ddet_c = T(0.5) * (T(1) + det_c / sqrt_reg);
-                    abs_det_c = math::abs(det_c);
-                    phi_noMon = abs_det_c * abs_det_c / (chi_c * chi_c);
-                    phi_mon   = abs_det_c * abs_det_c * abs_det_c / (chi_c * chi_c);
                 }
                 // Surface case (td>dd): det_s, chi_s, phi_s are computed per-alpha in the
                 // inner loop (same Js for all active functions, just wastefully recomputed).
@@ -714,8 +662,11 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                     if (MODE == ValueBased)
                     {
                         T eta = monVals(0, p);
-                        // Paper Eq. (13): omega = 1/sqrt(1+theta*f), m2 = omega^2 = 1/(1+theta*f)
+                        // value-based weight (\ref adaptparam_rstep): m2 = 1/(1+theta*f); see
+                        // evalObj()'s matching comment for why the guard is deferred to a
+                        // per-thread minimum checked after the parallel region joins.
                         T denom = T(1) + theta * eta;
+                        thWorst = math::min(thWorst, denom);
                         m2 = T(1) / denom;
                         // d(m2)/d(f) = d(1/(1+theta*f))/d(f) = -theta/(1+theta*f)^2
                         T dm2_deta = -theta / (denom * denom);
@@ -728,6 +679,9 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                     }
                     else
                     {
+                        // No guard on a singular Cg here: a degenerate/near-singular
+                        // geometry point yields a non-finite eta2/gradient contribution
+                        // that the exit isfinite pass at the end of gradObj_into zeroes.
                         Cg.noalias() = Jg.transpose() * Jg;
                         Cg_inv.noalias() = Cg.inverse();
 
@@ -761,6 +715,9 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                         T denom = T(1) + theta * eta2;
                         m2          = T(1) / denom;
                         dm2_deta2   = -theta / (denom * denom);
+                        // eta2 is the quadratic form (grad f)^T Cg^{-1} (grad f) >= 0, so
+                        // denom = 1+theta*eta2 > 0 for theta > 0 -- no guard needed here
+                        // (unlike ValueBased, where the raw monitor value f can be negative).
                     }
                 }
 
@@ -775,7 +732,7 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                 // g_reg = chi(det J_s) * g_S for BOTH the monitor and the no-monitor surface
                 // integrand, so it must be available whenever td > dd -- not only with a monitor.
                 T gS = T(1);
-                gsVector<T> trCginvE_d;   // tr(Cg^{-1} E_d), E_d = D_d^T Jg + Jg^T D_d (surface only)
+                // trCginvE_d = tr(Cg^{-1} E_d), E_d = D_d^T Jg + Jg^T D_d (surface only)
                 if (td > dd)
                 {
                     if (!hasMonitor || MODE == ValueBased)
@@ -783,6 +740,10 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                         Cg.noalias()     = Jg.transpose() * Jg;
                         Cg_inv.noalias() = Cg.inverse();
                     }
+                    // A degenerate/singular Cg here (gS==0 or NaN) is not rejected: it
+                    // propagates to a non-finite gradient component, zeroed by the
+                    // exit isfinite pass at the end of gradObj_into (same policy as
+                    // evalObj's non-finite exit for the matching degenerate point).
                     gS = math::sqrt(math::max(Cg.determinant(), T(0)));
                     trCginvE_d.setZero(dd);
                 }
@@ -791,21 +752,24 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
 
                 // Term1 of d(det_c)/d(alpha) = tr(adj(J_c)^T * D_d * J_s) * N_k  [planar only]
                 // Precomputed per d in outer loop; used in inner k loop.
-                gsVector<T> trAdjJcDdJs;
-                // adj(J_c)^T [pre-computed once per quad point for dd==3]
+                // adj(J_c)^T [pre-computed once per quad point for dd>=3]
                 // avoids O(nActive * dd) redundant matrix inversions in the inner loops.
                 // For dd==3 we compute adj(J_c)^T directly via cofactors (18 mults, cheaper than LU).
                 // adj(A)^T(i,j) = (-1)^{i+j} * minor(A,i,j)
-                gsMatrix<T> adjJcT_precomp;
-                // adj(J_s)^T -- no longer needed (surface gradient now uses C-based formula)
                 if (td == dd)
                 {
-                    trAdjJcDdJs.resize(dd);
-                    if (dd == 3)
+                    if (dd == 2)
+                    {
+                        // adj(J_c) for the 2x2 case, reused by every direction d
+                        // (and, transposed, by every active function below).
+                        // Avoids Jc.inverse() near singularity.
+                        adjJc(0,0) =  Jc(1,1); adjJc(0,1) = -Jc(0,1);
+                        adjJc(1,0) = -Jc(1,0); adjJc(1,1) =  Jc(0,0);
+                    }
+                    else if (dd == 3)
                     {
                         // adj(A)^T(i,j) = (-1)^{i+j} * minor(A, i, j)
                         // minor(A, i, j) = det of A with row i and col j removed.
-                        adjJcT_precomp.resize(3, 3);
                         adjJcT_precomp(0,0) =  Jc(1,1)*Jc(2,2) - Jc(1,2)*Jc(2,1); // +M(0,0)
                         adjJcT_precomp(0,1) = -(Jc(1,0)*Jc(2,2) - Jc(1,2)*Jc(2,0)); // -M(0,1)
                         adjJcT_precomp(0,2) =  Jc(1,0)*Jc(2,1) - Jc(1,1)*Jc(2,0); // +M(0,2)
@@ -832,37 +796,35 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                             D_d(a, j) = deriv2_geom(a * S + hess_idx, p);
                         }
 
-                    A_d.noalias() = Js.transpose() * D_d.transpose() * Jc + JcT * D_d * Js;
-                    b_d.noalias() = JcT * Jg.col(d);
-                    trA(d)        = A_d.trace();      // for dT/d(alpha) = Nk*tr(A_d) + 2*(b_d.gradNk)
+                    DdJs.noalias() = D_d * Js;
+                    b_d.noalias()  = JcT * Jg.col(d);
+                    // tr(A_d) = 2*tr(J_c^T D_d J_s) = 2 * sum(J_c .* (D_d J_s)),
+                    // for dT/d(alpha) = Nk*tr(A_d) + 2*(b_d.gradNk); A_d itself is
+                    // never formed explicitly (see the note at the temporaries above).
+                    trA(d)        = T(2) * (Jc.array() * DdJs.array()).sum();
                     b_all.col(d)  = b_d;
-                    CinvA_d.noalias() = Cinv * A_d;
-                    Cinv_b_all.col(d).noalias() = Cinv * b_d;
-                    trCAC(d) = (CinvA_d.array() * Cinv.transpose().array()).sum();
 
-                         if (td == dd)
-                         {
-                             // trAdjJcDdJs(d) = tr(adj(J_c) * D_d * J_s)  [using non-transposed adj]
-                             if (dd == 2)
-                             {
-                                 // 2x2 special case: avoids Jc.inverse() near singularity.
-                                 // adj(J_c) = [[Jc(1,1), -Jc(0,1)], [-Jc(1,0), Jc(0,0)]]
-                                 // For dd>2 the general branch below is used instead.
-                                 gsMatrix<T> adjJc(2, 2);
-                                 adjJc << Jc(1,1), -Jc(0,1), -Jc(1,0), Jc(0,0);
-                                 trAdjJcDdJs(d) = (adjJc * D_d * Js).trace();
-                             }
-                             else
-                             {
-                                 // General: adj(J_c) = det_c * J_c^{-1} = adjJcT_precomp^T
-                                 // adjJcT_precomp pre-computed once per quad point (avoids O(dd) inversions).
-                                 trAdjJcDdJs(d) = (adjJcT_precomp.transpose() * D_d * Js).trace();
-                             }
-                         }
+                    if (td == dd)
+                    {
+                        // trAdjJcDdJs(d) = tr(adj(J_c) * D_d * J_s)  [using non-transposed adj]
+                        // adjJc / adjJcT_precomp are pre-computed once per quadrature
+                        // point above, so this is one (dd x dd) product per direction.
+                        if (dd == 2)
+                            trAdjJcDdJs(d) = (adjJc * DdJs).trace();
+                        else
+                            // General: adj(J_c) = det_c * J_c^{-1} = adjJcT_precomp^T
+                            trAdjJcDdJs(d) = (adjJcT_precomp.transpose() * DdJs).trace();
+                    }
+
+                    // E_d = D_d^T Jg + Jg^T D_d  (= d(Cg)/d(xi_d) contracted) is needed
+                    // by the GradientBased monitor term AND by the surface area-element
+                    // derivative; form it ONCE when either wants it.
+                    const bool needE_d = (hasMonitor && MODE == GradientBased) || (td > dd);
+                    if (needE_d)
+                        E_d.noalias() = D_d.transpose() * Jg + Jg.transpose() * D_d;
 
                     if (hasMonitor && MODE == GradientBased)
                     {
-                        gsMatrix<T> E_d = D_d.transpose() * Jg + Jg.transpose() * D_d;
                         T vEv_d = (v.transpose() * E_d * v)(0,0);
 
                         if (m_parametric)
@@ -871,21 +833,17 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                         }
                         else
                         {
-                            gsMatrix<T> HfJgd = Hess_f * Jg.col(d);
-                            gsMatrix<T> Dg_d = D_d.transpose() * grad_x_f;
-                            gsMatrix<T> JtHJd = Jg.transpose() * HfJgd;
+                            HfJgd.noalias() = Hess_f * Jg.col(d);
+                            Dg_d.noalias()  = D_d.transpose() * grad_x_f;
+                            JtHJd.noalias() = Jg.transpose() * HfJgd;
                             mon_scalar_d(d) = -vEv_d + T(2) * (v.transpose() * (Dg_d + JtHJd))(0,0);
                         }
                     }
 
                     // Surface area-element derivative factor (paper-exact Eq.18):
                     //   d(g_S)/d(alpha_{k,d}) = 0.5 * g_S * tr(Cg^{-1} E_d) * N_k
-                    //   E_d = D_d^T Jg + Jg^T D_d   (= d(Cg)/d(xi_d) contracted)
                     if (td > dd)   // needed for d(g_S)/d(alpha) in BOTH monitor and no-monitor
-                    {
-                        gsMatrix<T> E_d = D_d.transpose() * Jg + Jg.transpose() * D_d;
                         trCginvE_d(d) = (Cg_inv * E_d).trace();
-                    }
                 }
 
                 const index_t nActive = actives.rows();
@@ -897,20 +855,11 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                     for (index_t j = 0; j != dd; ++j)
                         gradNk(j) = basisDerivs(loc * dd + j, p);
 
-                    Cinv_gradNk.noalias() = Cinv * gradNk;
-
                     for (index_t d = 0; d != dd; ++d)
                     {
                         if (!mapper.is_free(k, 0, d))
                             continue;
                         const index_t ii = mapper.index(k, 0, d);
-
-                        T cb_cgN = Cinv_b_all.col(d).dot(Cinv_gradNk);
-
-                        // trCinvdCCinv = d(tr(C^{-1}))/d(alpha_{k,d})
-                        //              = -tr(C^{-1} dC C^{-1}) where dC = A_d Nk + 2 b_d gradNk^T (sym)
-                        //              = -Nk*tr(C^{-1}A_dC^{-1}) - 2*(C^{-1}b_d).(C^{-1}gradNk)
-                        T trCinvdCCinv = Nk * trCAC(d) + T(2) * cb_cgN;
 
                         // d(det)/d(alpha_{k,d}) and gradient contribution dE
                         T dE;
@@ -927,11 +876,14 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                                 // Term1: trAdjJcDdJs(d) * Nk
                                 // Term2: Jg.col(d) . (adj(J_c)^T * gradNk)
                                 //   adj(J_c)^T = [[Jc(1,1), -Jc(1,0)], [-Jc(0,1), Jc(0,0)]]
-                                // For dd>2 the general branch below is used instead.
-                                gsVector<T> adjJcT_gN(2);
-                                adjJcT_gN(0) =  Jc(1,1)*gradNk(0) - Jc(1,0)*gradNk(1);
-                                adjJcT_gN(1) = -Jc(0,1)*gradNk(0) + Jc(0,0)*gradNk(1);
-                                ddet_c_dalpha = trAdjJcDdJs(d) * Nk + Jg.col(d).dot(adjJcT_gN);
+                                // Kept as two scalars rather than a gsVector: this is
+                                // the innermost loop (nActive * dd per quadrature
+                                // point), where a heap-allocating gsVector would cost
+                                // one malloc per iteration.
+                                const T adjJcT_gN0 =  Jc(1,1)*gradNk(0) - Jc(1,0)*gradNk(1);
+                                const T adjJcT_gN1 = -Jc(0,1)*gradNk(0) + Jc(0,0)*gradNk(1);
+                                ddet_c_dalpha = trAdjJcDdJs(d) * Nk
+                                              + Jg(0,d)*adjJcT_gN0 + Jg(1,d)*adjJcT_gN1;
                             }
                             else
                              {
@@ -993,9 +945,6 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
                             T sqrt_reg_s = math::sqrt(penalty * penalty + det_s * det_s);
                             T chi_s     = T(0.5) * (det_s + sqrt_reg_s);
                             T dchi_s_ddet_s = T(0.5) * (T(1) + det_s / sqrt_reg_s);
-                            T abs_det_s = math::abs(det_s);
-                            T phi_noMon_s = abs_det_s * abs_det_s / (chi_s * chi_s);
-                            T phi_mon_s   = abs_det_s * abs_det_s * abs_det_s / (chi_s * chi_s);
 
                             // d(det_s)/d(alpha_{k,d}) = adj(Js)^T.row(d) . gradNk
                             //   adj(Js)^T_{di} = adj(Js)_{id} = cofactor of Js at (i,d)
@@ -1060,16 +1009,38 @@ void gsOptMesh<T,MODE>::gradObj_into ( const gsAsConstVector<T> & u, gsAsVector<
             }
         }
 
-#       pragma omp critical
-        result += thResult;
+#       ifdef _OPENMP
+        partial[omp_get_thread_num()] = thResult;
+        worst[omp_get_thread_num()] = thWorst;
+#       else
+        partial[0] = thResult;
+        worst[0] = thWorst;
+#       endif
     } // omp parallel
+
+    for (int i = 0; i != nThreads; ++i)
+        result += partial[i];
+
+    T worstAgg = worst[0];
+    for (int i = 1; i != nThreads; ++i)
+        worstAgg = math::min(worstAgg, worst[i]);
+    GISMO_ENSURE(worstAgg > T(0), "ValueBased monitor must satisfy 1+theta*f>0 at every "
+        "quadrature point, min(1+theta*f) = " << worstAgg);
+
+    // Mirrors evalObj()'s non-finite policy: a badly folded trial design can
+    // drive a component to Inf/NaN. Zeroing it lets the objective's own
+    // isfinite check (which returns a large finite value) make the line
+    // search back off, instead of poisoning the whole descent direction with
+    // a single non-finite entry.
+    for (index_t i = 0; i != result.rows(); ++i)
+        if (!math::isfinite(result[i]))
+            result[i] = T(0);
 }
 
 template<class T, enum MonitorMode MODE>
-void gsOptMesh<T,MODE>::gradObj_FD_into( const gsAsConstVector<T> & u, gsAsVector<T> & result) const
+void gsOptMesh<T,MODE>::gradObj_FD_into( const gsAsConstVector<T> & u, gsAsVector<T> & result, T h0) const
 {
     const index_t n = u.rows();
-    const T h = T(1e-7);
     result.resize(n);
 
     gsVector<T> uu = u;
@@ -1078,6 +1049,8 @@ void gsOptMesh<T,MODE>::gradObj_FD_into( const gsAsConstVector<T> & u, gsAsVecto
 
     for (index_t i = 0; i < n; ++i)
     {
+        // Scale the step with the magnitude of the control, as gsCheckSigmaGradient does.
+        const T h = h0 * math::max(T(1), math::abs(u[i]));
         tmp[i] = u[i] + h;
         const T fp = this->evalObj(ctmp);
         tmp[i] = u[i] - h;
@@ -1090,19 +1063,20 @@ void gsOptMesh<T,MODE>::gradObj_FD_into( const gsAsConstVector<T> & u, gsAsVecto
 template<class T, enum MonitorMode MODE>
 T gsOptMesh<T,MODE>::computeMinJacobian(const gsAsConstVector<T> & u) const
 {
-    const index_t dd = m_comp->domainDim();
-    m_comp->setControls(u);
+    const index_t dd = m_domain->domainDim();
+    m_domain->setControls(u);
 
     T minDet = std::numeric_limits<T>::max();
 
+    checkQuadOptions(m_options, m_ib->basis(0));
     gsOptionList quadOptions;
-    quadOptions.addReal("quA","",1.0);
-    quadOptions.addInt("quB","",1);
+    quadOptions.addReal("quA","",m_options.getReal("quA"));
+    quadOptions.addInt ("quB","",m_options.getInt ("quB"));
 
     auto dom = m_mb.domain();
 
     // OpenMP element sweep (mirrors evalObj): gsDomain::allElements() hands each
-    // thread its own element chunk, m_comp->compute is read-only after
+    // thread its own element chunk, m_domain->compute is read-only after
     // setControls (already called concurrently in evalObj). The per-element
     // minima are combined by a min-reduction, which — unlike a sum — is
     // order-independent and exact, so the result is bit-identical to a serial
@@ -1130,7 +1104,7 @@ T gsOptMesh<T,MODE>::computeMinJacobian(const gsAsConstVector<T> & u) const
             }
 
             QuRule.mapTo(elem.lowerCorner(), elem.upperCorner(), uvPoints, tmpWeights);
-            m_comp->compute(uvPoints, compData);
+            m_domain->compute(uvPoints, compData);
 
             const index_t nPts = uvPoints.cols();
             for (index_t p = 0; p != nPts; ++p)
@@ -1147,11 +1121,525 @@ T gsOptMesh<T,MODE>::computeMinJacobian(const gsAsConstVector<T> & u) const
     return minDet;
 }
 
-/*
-TODO:
-ADD constructor in .h file
-delegate construction to a separate (DIM) templated function
- */
+// ---------------------------------------------------------------------------
+// gsOptFit: rebased on gsOptSigma. See the gsOptFit doxygen block in
+// gsAdaptiveParametrization.h for the derivation; det J_sigma is piecewise
+// polynomial on sigma's own knot mesh, so a Gauss rule there resolves it
+// exactly. The fold-barrier/box terms themselves live in m_barrier
+// (gsFoldBarrier::addObj/addGrad); this class adds only the point-cloud data
+// term.
+// ---------------------------------------------------------------------------
+
+template<class T>
+gsOptFit<T>::gsOptFit(      gsSquareDomain<T> & domain,
+                       const gsGeometry<T>     & S,
+                       const gsMatrix<T>       & uv,
+                       const gsMatrix<T>       & xyz,
+                             T mu, T eps, gsFoldBarrierMode mode, index_t quB)
+: Base(domain), m_S(&S), m_uv(uv), m_xyz(xyz)
+{
+    GISMO_ENSURE(domain.domainDim()==2 && domain.targetDim()==2,
+                 "gsOptFit is implemented for a planar (domainDim==targetDim==2) "
+                 "sigma domain only");
+    // The gsFoldBarrier constructor forwards quB straight into
+    // gsQuadrature::get() in Sampled mode, which segfaults (does not throw)
+    // for a negative order -- validate here too, BEFORE constructing
+    // m_barrier, with GISMO_ENSURE (not GISMO_ASSERT) so the check survives
+    // -DNDEBUG release builds, which is exactly where this argument is
+    // reachable from unchecked user input (--dirQuB on the fitting driver).
+    GISMO_ENSURE(quB >= 0, "gsOptFit: barrier quB must be >= 0 (got " << quB << ")");
+    m_barrier = gsFoldBarrier<T>(domain, mu, eps, mode, quB);
+
+    this->fillCurDesign();
+    m_colloc = domain.domain().basis().collocationMatrix(m_uv); // N x nb
+
+    // Cache sigma's own basis evaluation (active functions + basis values)
+    // at the FIXED fitting points m_uv. Only sigma's control coefficients
+    // change per iteration, not these points, so the expensive part of
+    // eval_into -- element lookup and basis evaluation, redone from scratch
+    // on every call otherwise -- needs to happen only once here. Per-iteration
+    // evaluation then reduces to gsBasis::linearCombination_into, a sparse
+    // weighted sum with the CURRENT coefficients (see evalObj/gradObj_into).
+    {
+        const gsBasis<T> & sb = domain.domain().basis();
+        gsFuncData<T> uvData(NEED_VALUE | NEED_ACTIVE);
+        sb.compute(m_uv, uvData);
+        m_uvActives = uvData.actives;
+        m_uvVals    = uvData.values[0];
+    }
+}
+
+template<class T>
+T gsOptFit<T>::evalObj(const gsAsConstVector<T> & u) const
+{
+    // m_barrier.addObj() reads m_domain->domain().coefs() and getControls()
+    // directly (no design-vector argument -- see the gsFoldBarrier class
+    // doc), so it needs sigma's controls in sync with u just like the data
+    // term below does.
+    this->setCtrls(u);
+
+    gsMatrix<T> xi, vals;
+    gsBasis<T>::linearCombination_into(m_domain->domain().coefs(), m_uvActives, m_uvVals, xi);
+    xi = xi.cwiseMax(T(0)).cwiseMin(T(1));
+    m_S->eval_into(xi, vals);
+
+    const index_t N = m_uv.cols();
+    T E = (vals - m_xyz).squaredNorm() / T(N);
+
+    m_barrier.addObj(E);
+
+    if (!math::isfinite(E))
+        return std::numeric_limits<T>::max() / T(1e6);
+
+    return E;
+}
+
+template<class T>
+void gsOptFit<T>::gradObj_into(const gsAsConstVector<T> & u, gsAsVector<T> & result) const
+{
+    this->setCtrls(u);
+
+    const index_t N = m_uv.cols();
+    gsMatrix<T> xi, vals, dS;
+    gsBasis<T>::linearCombination_into(m_domain->domain().coefs(), m_uvActives, m_uvVals, xi);
+    xi = xi.cwiseMax(T(0)).cwiseMin(T(1));
+    // ONE compute() call gets value AND derivative together (shared active
+    // function lookup), instead of eval_into then deriv_into separately
+    // redoing that lookup at the same N points.
+    gsFuncData<T> sData(NEED_VALUE | NEED_DERIV | NEED_ACTIVE);
+    m_S->compute(xi, sData);
+    vals = sData.values[0];
+    dS   = sData.values[1]; // (targetDim*2) x N, row c*2+j: dS_c/dxi_j
+
+    const short_t d = m_S->targetDim();
+    gsMatrix<T> W(N, 2); // W(i,j) = 2/N (r_i^T J_S)_j
+    for (index_t i = 0; i != N; i++)
+        for (short_t j = 0; j != 2; j++)
+        {
+            T s = 0;
+            for (short_t c = 0; c != d; c++)
+                s += (vals(c, i) - m_xyz(c, i)) * dS(c * 2 + j, i);
+            W(i, j) = T(2) * s / T(N);
+        }
+    gsMatrix<T> g = m_colloc.transpose() * W; // nb x 2, g(k,j) per coefficient
+    result.setZero();
+    const gsDofMapper & mapper = m_domain->mapper();
+    for (index_t k = 0; k != g.rows(); k++)
+        for (short_t j = 0; j != 2; j++)
+            if (mapper.is_free(k, 0, j))
+                result[mapper.index(k, 0, j)] += g(k, j);
+
+    m_barrier.addGrad(result);
+
+    // Mirrors evalObj()'s non-finite policy (see gsOptMesh::evalObj's comment).
+    for (index_t i = 0; i != result.rows(); ++i)
+        if (!math::isfinite(result[i]))
+            result[i] = T(0);
+}
+
+// ---------------------------------------------------------------------------
+// gsOptL2: L2-projection-error objective with frozen analysis-space
+// coefficients. See the class doc in gsAdaptiveParametrization.h for the
+// derivation; this is new (no examples-level source to port).
+// ---------------------------------------------------------------------------
+
+template<class T>
+gsOptL2<T>::gsOptL2(      gsSquareDomain<T> & domain,
+                     const gsGeometry<T>     & geometry,
+                     const gsFunction<T>     & solution,
+                     const gsFunction<T>     & fun,
+                     const gsBasis<T>        * integrationBasis,
+                           T mu, T eps, gsFoldBarrierMode mode, index_t quB,
+                     const bool                parametric)
+: Base(domain), m_geom(&geometry), m_solution(&solution), m_fun(&fun),
+  m_ib(integrationBasis), m_mb(*m_ib,true), m_parametric(parametric)
+{
+    // GISMO_ASSERT is INERT in build_rel; the dimension contract below must
+    // hold at run time (fun's dimension mismatch is otherwise a silent
+    // garbage read of funData.values[1] in gradObj_into's chain-rule term),
+    // so it is GISMO_ENSURE -- same reasoning as the quB check right below.
+    GISMO_ENSURE(domain.domainDim()==2 && geometry.domainDim()==2,
+                 "gsOptL2: sigma domain and geometry must both have "
+                 "domainDim()==2 (sigma is the unit square)");
+    GISMO_ENSURE(geometry.targetDim() >= geometry.domainDim(),
+                 "gsOptL2: geometry.targetDim() must be >= geometry.domainDim() "
+                 "(planar ==2, surface >2), got targetDim()="
+                 << geometry.targetDim());
+    GISMO_ENSURE(parametric ? (fun.domainDim() == 2)
+                             : (fun.domainDim() == geometry.targetDim()),
+                 "gsOptL2: fun.domainDim() (" << fun.domainDim() << ") must "
+                 "equal 2 when parametric==true, or geometry.targetDim() ("
+                 << geometry.targetDim() << ") when parametric==false");
+    // See gsOptFit::gsOptFit() for why this is GISMO_ENSURE, not
+    // GISMO_ASSERT, and why it must run BEFORE m_barrier is constructed:
+    // the gsFoldBarrier constructor forwards quB straight into
+    // gsQuadrature::get() in Sampled mode, which segfaults for a negative
+    // value, in release builds too.
+    GISMO_ENSURE(quB >= 0, "gsOptL2: barrier quB must be >= 0 (got " << quB << ")");
+    m_barrier = gsFoldBarrier<T>(domain, mu, eps, mode, quB);
+
+    this->fillCurDesign();
+
+    // Quadrature of the element sweep -- deliberately separate option names
+    // from the barrier's own quB (constructor argument above): this quA/quB
+    // controls the L2-error integral over m_ib, the barrier's controls the
+    // fold quadrature on sigma's own knot mesh. Mirrors gsOptMesh's
+    // constructor (gsAdaptiveParametrization.hpp, gsOptMesh ctor).
+    m_options.addReal("quA","Quadrature nodes per direction: deg*quA + quB (element sweep)",1.0);
+    m_options.addInt ("quB","Quadrature nodes per direction: deg*quA + quB (element sweep)",1);
+}
+
+template<class T>
+void gsOptL2<T>::EvalScratch::init(index_t dd, index_t tdS)
+{
+    Js.setZero(dd, dd);
+    JS.setZero(tdS, dd);
+    Cg.setZero(dd, dd);
+    ready = true;
+}
+
+template<class T>
+void gsOptL2<T>::GradScratch::init(index_t dd, index_t tdS, index_t td_sol, index_t nc)
+{
+    Js.setZero(dd, dd);
+    JS.setZero(tdS, dd);
+    Cg.setZero(dd, dd);      Cg_inv.setZero(dd, dd);
+    adjJS.setZero(dd, dd);
+    D_d.setZero(tdS, dd);
+    E_d.setZero(dd, dd);
+    r.setZero(td_sol);
+    dFdxi.setZero(td_sol, dd);
+    thResult.setZero(nc);
+    ready = true;
+}
+
+template<class T>
+T gsOptL2<T>::evalObj(const gsAsConstVector<T> & u) const
+{
+    // m_barrier.addObj() reads m_domain's CURRENT coefficients/controls
+    // directly (see the gsFoldBarrier class doc), so sync first, same as
+    // the data term below needs.
+    this->setCtrls(u);
+
+    const short_t dd = 2, tdS = m_geom->targetDim();
+    const short_t td_sol = m_solution->targetDim();
+
+    checkQuadOptions(m_options, m_ib->basis(0));
+    gsOptionList quadOptions;
+    quadOptions.addReal("quA","",m_options.getReal("quA"));
+    quadOptions.addInt ("quB","",m_options.getInt ("quB"));
+
+    auto dom = m_mb.domain();
+
+    // DETERMINISTIC reduction -- see the comment in gsOptMesh::evalObj():
+    // per-thread partials are summed in THREAD-ID order, not completion
+    // order, so the objective (and hence anything built on top of it, such
+    // as an L-BFGS iteration count) stays reproducible for a given thread
+    // count.
+#   ifdef _OPENMP
+    const int nThreads = omp_get_max_threads();
+#   else
+    const int nThreads = 1;
+#   endif
+    std::vector<T> partial(nThreads, T(0));
+
+#   pragma omp parallel
+    {
+        T thResult = T(0);
+
+        // Persistent per-thread scratch (see gsOptL2::EvalScratch).
+        EvalScratch & sc = m_evalScratch.mine();
+        if (!sc.ready) sc.init(dd, tdS);
+
+        gsFuncData<T> & compData = sc.compData;
+        gsFuncData<T> & geomData = sc.geomData;
+        gsFuncData<T> & funData  = sc.funData;
+        compData.flags = NEED_VALUE | NEED_DERIV;
+        geomData.flags = NEED_VALUE | NEED_DERIV;
+        funData.flags  = NEED_VALUE;
+
+        gsMatrix<T> & solVals = sc.solVals;
+        gsMatrix<T> & Js = sc.Js, & JS = sc.JS, & Cg = sc.Cg;
+        gsMatrix<T> & uvPoints   = sc.uvPoints;
+        gsVector<T> & tmpWeights = sc.tmpWeights;
+
+        for (auto & elem : dom->allElements())
+        {
+            if (sc.QuPatch != elem.patch())
+            {
+                sc.QuPatch = elem.patch();
+                sc.QuRule = gsQuadrature::get(m_ib->basis(sc.QuPatch), quadOptions);
+            }
+            sc.QuRule.mapTo(elem.lowerCorner(), elem.upperCorner(), uvPoints, tmpWeights);
+
+            m_domain->compute(uvPoints, compData);           // xi = sigma(v), J_sigma
+            m_geom->compute(compData.values[0], geomData);   // S(xi), J_S(xi)
+            m_solution->eval_into(uvPoints, solVals);         // u_h(v) -- does NOT depend on alpha
+            m_fun->compute(m_parametric ? compData.values[0] : geomData.values[0], funData);
+
+            const index_t nPts = uvPoints.cols();
+            for (index_t p = 0; p != nPts; ++p)
+            {
+                Js.noalias() = compData.values[1].col(p).reshaped(dd, dd).transpose();
+                JS.noalias() = geomData.values[1].col(p).reshaped(dd, tdS).transpose();
+                const T detJs = Js.determinant();
+
+                // g_S: planar keeps the SIGNED det(J_S); surface uses the
+                // non-negative area element sqrt(det(J_S^T J_S)) (Cg = J_S^T J_S).
+                // det(J_sigma) stays signed in both cases -- the fold barrier is
+                // what keeps it positive, not this objective.
+                T gS;
+                if (tdS == dd)
+                    gS = JS.determinant();
+                else
+                {
+                    Cg.noalias() = JS.transpose() * JS;
+                    gS = math::sqrt(math::max(Cg.determinant(), T(0)));
+                }
+                const T w = gS * detJs;
+
+                T r2 = T(0);
+                for (short_t c = 0; c != td_sol; ++c)
+                {
+                    const T rc = solVals(c, p) - funData.values[0](c, p);
+                    r2 += rc * rc;
+                }
+
+                thResult += tmpWeights[p] * r2 * w;
+            }
+        }
+
+#       ifdef _OPENMP
+        partial[omp_get_thread_num()] = thResult;
+#       else
+        partial[0] = thResult;
+#       endif
+    } // omp parallel
+
+    T E = T(0);
+    for (int i = 0; i != nThreads; ++i)
+        E += partial[i];
+
+    m_barrier.addObj(E);
+
+    if (!math::isfinite(E))
+        return std::numeric_limits<T>::max() / T(1e6);
+
+    return E;
+}
+
+template<class T>
+void gsOptL2<T>::gradObj_into(const gsAsConstVector<T> & u, gsAsVector<T> & result) const
+{
+    const index_t nc = m_domain->nControls();
+    result.resize(nc);
+    result.setZero();
+    this->setCtrls(u);
+
+    const short_t dd = 2, tdS = m_geom->targetDim();
+    const short_t S2 = dd * (dd + 1) / 2; // = 3, Hessian-triplet stride
+    const short_t td_sol = m_solution->targetDim();
+
+    const gsBasis<T> & sigmaBasis = m_domain->domain().basis();
+    const gsDofMapper & mapper = m_domain->mapper();
+
+    checkQuadOptions(m_options, m_ib->basis(0));
+    gsOptionList quadOptions;
+    quadOptions.addReal("quA","",m_options.getReal("quA"));
+    quadOptions.addInt ("quB","",m_options.getInt ("quB"));
+
+    auto dom = m_mb.domain();
+
+    // DETERMINISTIC reduction -- see the comment in evalObj(). The only
+    // shared write is the per-control result[]; each thread accumulates it
+    // into its own scratch vector, and the partials are summed in
+    // THREAD-ID order afterwards.
+#   ifdef _OPENMP
+    const int nThreads = omp_get_max_threads();
+#   else
+    const int nThreads = 1;
+#   endif
+    std::vector<gsVector<T> > partial(nThreads, gsVector<T>::Zero(nc));
+
+#   pragma omp parallel
+    {
+        // Persistent per-thread scratch (see gsOptL2::GradScratch).
+        GradScratch & sc = m_gradScratch.mine();
+        if (!sc.ready) sc.init(dd, tdS, td_sol, nc);
+
+        gsVector<T> & thResult = sc.thResult;
+        thResult.setZero();
+
+        gsFuncData<T> & compData       = sc.compData;
+        gsFuncData<T> & geomData       = sc.geomData;
+        gsFuncData<T> & sigmaBasisData = sc.sigmaBasisData;
+        gsFuncData<T> & funData        = sc.funData;
+        compData.flags       = NEED_VALUE | NEED_DERIV;
+        geomData.flags       = NEED_VALUE | NEED_DERIV | NEED_DERIV2;
+        sigmaBasisData.flags = NEED_ACTIVE | NEED_VALUE;
+        funData.flags        = NEED_VALUE | NEED_DERIV;
+
+        gsMatrix<T> & solVals = sc.solVals;
+        gsMatrix<T> & dDetJs  = sc.dDetJs; // nc x nPts, d(det J_sigma)/d(alpha_i), free-control indexed
+        gsMatrix<T> & Js = sc.Js, & JS = sc.JS;
+        gsMatrix<T> & Cg = sc.Cg, & Cg_inv = sc.Cg_inv;
+        gsMatrix<T> & adjJS = sc.adjJS, & D_d = sc.D_d, & E_d = sc.E_d;
+        gsVector<T> & r = sc.r;
+        gsMatrix<T> & dFdxi = sc.dFdxi;
+        gsMatrix<T> & uvPoints   = sc.uvPoints;
+        gsVector<T> & tmpWeights = sc.tmpWeights;
+
+        for (auto & elem : dom->allElements())
+        {
+            if (sc.QuPatch != elem.patch())
+            {
+                sc.QuPatch = elem.patch();
+                sc.QuRule = gsQuadrature::get(m_ib->basis(sc.QuPatch), quadOptions);
+            }
+            sc.QuRule.mapTo(elem.lowerCorner(), elem.upperCorner(), uvPoints, tmpWeights);
+
+            m_domain->compute(uvPoints, compData);
+            // d(det J_sigma)/d(alpha_i), already indexed by FREE control i -- the
+            // same call gsFoldBarrier's Sampled mode uses.
+            m_domain->detJacobianDeriv_into(uvPoints, dDetJs);
+            m_geom->compute(compData.values[0], geomData);
+            sigmaBasis.compute(uvPoints, sigmaBasisData);
+            m_solution->eval_into(uvPoints, solVals);
+            m_fun->compute(m_parametric ? compData.values[0] : geomData.values[0], funData);
+
+            const gsMatrix<index_t> & actives = sigmaBasisData.actives;
+            const gsMatrix<T> & basisVals     = sigmaBasisData.values[0];
+            const gsMatrix<T> & deriv2_geom   = geomData.values[2];
+
+            const index_t nPts = uvPoints.cols();
+            for (index_t p = 0; p != nPts; ++p)
+            {
+                Js.noalias() = compData.values[1].col(p).reshaped(dd, dd).transpose();
+                JS.noalias() = geomData.values[1].col(p).reshaped(dd, tdS).transpose();
+                const T detJs = Js.determinant();
+
+                // g_S: planar keeps the SIGNED det(J_S); surface uses the
+                // non-negative area element sqrt(det(Cg)), Cg = J_S^T J_S.
+                // det(J_sigma) stays signed in both cases -- the fold barrier
+                // is what keeps it positive, not this objective.
+                T gS;
+                if (tdS == dd)
+                    gS = JS.determinant();
+                else
+                {
+                    Cg.noalias() = JS.transpose() * JS;
+                    Cg_inv.noalias() = Cg.inverse();
+                    gS = math::sqrt(math::max(Cg.determinant(), T(0)));
+                }
+                const T w = gS * detJs;
+
+                // r(v) = u_h(v) - F(xi), r2 = ||r||^2 (sum over solution components)
+                T r2 = T(0);
+                for (short_t c = 0; c != td_sol; ++c)
+                {
+                    r(c) = solVals(c, p) - funData.values[0](c, p);
+                    r2 += r(c) * r(c);
+                }
+
+                // dF/dxi (td_sol x dd): parametric==true -> fun's own gradient at
+                // xi directly; parametric==false -> chain rule through S, J_f*J_S.
+                if (m_parametric)
+                {
+                    for (short_t c = 0; c != td_sol; ++c)
+                        for (short_t d = 0; d != dd; ++d)
+                            dFdxi(c, d) = funData.values[1](c * dd + d, p);
+                }
+                else
+                {
+                    for (short_t c = 0; c != td_sol; ++c)
+                        for (short_t d = 0; d != dd; ++d)
+                        {
+                            T s = 0;
+                            for (short_t a = 0; a != tdS; ++a)
+                                s += funData.values[1](c * tdS + a, p) * JS(a, d);
+                            dFdxi(c, d) = s;
+                        }
+                }
+
+                // d_d(g_S): planar -- tr(adj(J_S) * D_d), D_d(a,j) = d^2 S_a/(dxi_j
+                // dxi_d) (the same Hessian-slice indexing gsOptMesh::gradObj_into
+                // uses); surface -- 0.5*g_S*tr(Cg^{-1} E_d), E_d = D_d^T J_S +
+                // J_S^T D_d (gsOptMesh's own Eq.18 formula, imitated verbatim --
+                // see gsAdaptiveParametrization.hpp:1061-1072, :1143-1170, :1299).
+                if (tdS == dd)
+                {
+                    adjJS(0,0) =  JS(1,1); adjJS(0,1) = -JS(0,1);
+                    adjJS(1,0) = -JS(1,0); adjJS(1,1) =  JS(0,0);
+                }
+
+                T rDotDF[2] = {T(0), T(0)};
+                T d_d_gS[2] = {T(0), T(0)};
+                for (short_t d = 0; d != dd; ++d)
+                {
+                    for (short_t a = 0; a != tdS; ++a)
+                        for (short_t j = 0; j != dd; ++j)
+                        {
+                            index_t lo = math::min((index_t)d, (index_t)j);
+                            index_t hi = math::max((index_t)d, (index_t)j);
+                            index_t hess_idx = (lo == hi) ? lo : dd + lo * (2 * dd - lo - 3) / 2 + hi - 1;
+                            D_d(a, j) = deriv2_geom(a * S2 + hess_idx, p);
+                        }
+                    if (tdS == dd)
+                        d_d_gS[d] = (adjJS * D_d).trace();
+                    else
+                    {
+                        E_d.noalias() = D_d.transpose() * JS + JS.transpose() * D_d;
+                        d_d_gS[d] = T(0.5) * gS * (Cg_inv * E_d).trace();
+                    }
+
+                    T s = 0;
+                    for (short_t c = 0; c != td_sol; ++c)
+                        s += r(c) * dFdxi(c, d);
+                    rDotDF[d] = s;
+                }
+
+                const T coefA0 = -T(2) * rDotDF[0] * w;
+                const T coefA1 = -T(2) * rDotDF[1] * w;
+                const T coefB0 = r2 * d_d_gS[0] * detJs;
+                const T coefB1 = r2 * d_d_gS[1] * detJs;
+
+                const index_t nActive = actives.rows();
+                for (index_t loc = 0; loc != nActive; ++loc)
+                {
+                    const index_t k = actives(loc, p);
+                    const T Nk = basisVals(loc, p);
+
+                    if (mapper.is_free(k, 0, 0))
+                        thResult(mapper.index(k, 0, 0)) += tmpWeights[p] * Nk * (coefA0 + coefB0);
+                    if (mapper.is_free(k, 0, 1))
+                        thResult(mapper.index(k, 0, 1)) += tmpWeights[p] * Nk * (coefA1 + coefB1);
+                }
+
+                // g_S * d(det J_sigma)/d(alpha_i) -- already indexed by free
+                // control i by detJacobianDeriv_into, so no N_k scatter here.
+                for (index_t i = 0; i != nc; ++i)
+                    thResult(i) += tmpWeights[p] * r2 * gS * dDetJs(i, p);
+            }
+        }
+
+#       ifdef _OPENMP
+        partial[omp_get_thread_num()] = thResult;
+#       else
+        partial[0] = thResult;
+#       endif
+    } // omp parallel
+
+    for (int i = 0; i != nThreads; ++i)
+        result += partial[i];
+
+    m_barrier.addGrad(result);
+
+    // Mirrors evalObj()'s non-finite policy (see gsOptMesh::evalObj's comment).
+    for (index_t i = 0; i != result.rows(); ++i)
+        if (!math::isfinite(result[i]))
+            result[i] = T(0);
+}
+
 template <class T, enum MonitorMode MODE>
 gsAdaptiveParametrization<T,MODE>::gsAdaptiveParametrization(         gsSquareDomain<T> & composition,
                                                                 const gsGeometry<T>     & geometry,
@@ -1213,7 +1701,7 @@ m_optimizer(optimizer)
     if (dd == 2)
     {
         const gsTensorBSplineBasis<2,T> * comp_tbasis_ptr = dynamic_cast<const gsTensorBSplineBasis<2,T> *>(&composition.domain().basis());
-        GISMO_ASSERT(comp_tbasis_ptr,"The composition must be a tensor B-spline or tensor NURBS basis (2D)");
+        GISMO_ENSURE(comp_tbasis_ptr,"The composition must be a tensor B-spline or tensor NURBS basis (2D)");
         const gsTensorBSplineBasis<2,T> & comp_tbasis = *comp_tbasis_ptr;
         if (const gsTensorBSplineBasis<2,T> * tbasis = dynamic_cast<const gsTensorBSplineBasis<2,T> *>(&integrationBasis))
         {
@@ -1225,13 +1713,19 @@ m_optimizer(optimizer)
             gsTensorNurbsBasis<2,T> ibasis = makeIntegrationBasis(nbasis->source(),comp_tbasis);
             m_integrationBasis = memory::make_unique(new gsTensorNurbsBasis<2,T>(ibasis));
         }
+        // gsTensorNurbsBasis derives from gsTensorBSplineBasis (checked above first),
+        // gsTHBSplineBasis does not derive from either, so this arm is disjoint.
+        else if (const gsTHBSplineBasis<2,T> * hbasis = dynamic_cast<const gsTHBSplineBasis<2,T> *>(&integrationBasis))
+        {
+            m_integrationBasis = makeIntegrationBasis<2>(*hbasis,comp_tbasis);
+        }
         else
             GISMO_ERROR("The integration basis must be either a tensor B-spline or a tensor NURBS basis (2D)");
     }
     else if (dd == 3)
     {
         const gsTensorBSplineBasis<3,T> * comp_tbasis_ptr = dynamic_cast<const gsTensorBSplineBasis<3,T> *>(&composition.domain().basis());
-        GISMO_ASSERT(comp_tbasis_ptr,"The composition must be a tensor B-spline basis (3D)");
+        GISMO_ENSURE(comp_tbasis_ptr,"The composition must be a tensor B-spline basis (3D)");
         const gsTensorBSplineBasis<3,T> & comp_tbasis = *comp_tbasis_ptr;
         if (const gsTensorBSplineBasis<3,T> * tbasis = dynamic_cast<const gsTensorBSplineBasis<3,T> *>(&integrationBasis))
         {
@@ -1252,16 +1746,103 @@ m_optimizer(optimizer)
     this->defaultOptions();
 }
 
+// Pass-through constructor (integrationBasisIsFinal_t tag): unlike the
+// dispatching constructor above, this one does NOT insert sigma's knots or
+// raise the degree -- \a integrationBasis IS the integration mesh already,
+// verbatim. No dimension dispatch for BUILDING the basis either: the caller
+// committed to a concrete basis, so there is nothing left to infer. What IS
+// still checked is that the caller's basis is admissible: same domainDim as
+// the composition, and at least as fine as sigma's own knot mesh -- silently
+// accepting a coarser basis would under-integrate without any indication.
+template <class T, enum MonitorMode MODE>
+gsAdaptiveParametrization<T,MODE>::gsAdaptiveParametrization(         gsSquareDomain<T> & composition,
+                                                                const gsGeometry<T>     & geometry,
+                                                                const gsFunction<T>     * function,
+                                                                const gsBasis<T>        & integrationBasis,
+                                                                      gsOptimizer<T>    & optimizer,
+                                                                const bool                parametric,
+                                                                      integrationBasisIsFinal_t)
+:
+m_comp(composition),
+m_geom(geometry),
+m_fun(function),
+m_optimizer(optimizer)
+{
+    GISMO_ENSURE(integrationBasis.domainDim() == composition.domainDim(),
+        "The integration basis has domainDim()="<<integrationBasis.domainDim()
+        <<", but the composition has domainDim()="<<composition.domainDim()<<".");
+
+    // Admissibility check: the supplied basis must have the same parameter
+    // range as sigma, a degree at least sigma's, and all of sigma's interior
+    // knots present. Checked for tensor B-spline/NURBS bases directly and for
+    // gsHTensorBasis-derived hierarchical bases via their finest tensor level;
+    // gsRationalTHBSplineBasis and any other concrete basis type are left
+    // unchecked beyond domainDim. Coverage rationale: \ref adaptparam_supermesh.
+    const index_t dd = composition.domainDim();
+    if (dd == 2)
+    {
+        const gsTensorBSplineBasis<2,T> * comp_tbasis_ptr = dynamic_cast<const gsTensorBSplineBasis<2,T> *>(&composition.domain().basis());
+        GISMO_ENSURE(comp_tbasis_ptr,"The composition must be a tensor B-spline or tensor NURBS basis (2D)");
+        const gsTensorBSplineBasis<2,T> & comp_tbasis = *comp_tbasis_ptr;
+
+        if (const gsTensorBSplineBasis<2,T> * tbasis = dynamic_cast<const gsTensorBSplineBasis<2,T> *>(&integrationBasis))
+            GISMO_ENSURE(tensorBasisAdmissible<2>(comp_tbasis,*tbasis),
+                "The supplied integration basis is not admissible for sigma (see the preceding gsWarn for the offending property).");
+        else if (const gsTensorNurbsBasis<2,T> * nbasis = dynamic_cast<const gsTensorNurbsBasis<2,T> *>(&integrationBasis))
+            GISMO_ENSURE(tensorBasisAdmissible<2>(comp_tbasis,nbasis->source()),
+                "The supplied integration basis is not admissible for sigma (see the preceding gsWarn for the offending property).");
+        else if (const gsHTensorBasis<2,T> * hbasis = dynamic_cast<const gsHTensorBasis<2,T> *>(&integrationBasis))
+            // gsHTensorBasis is the shared base of every hierarchical basis
+            // (gsTHBSplineBasis<2,T,true> and its alias gsHBSplineBasis<2,T>);
+            // checked against the finest tensor level, deliberately not via
+            // sigmaLevelInHierarchy(). Rationale: \ref adaptparam_supermesh.
+            GISMO_ENSURE(tensorBasisAdmissible<2>(comp_tbasis,hbasis->tensorLevel(hbasis->maxLevel())),
+                "The supplied integration basis is not admissible for sigma (see the preceding gsWarn for the offending property).");
+        // else: basis type not covered by a cheap admissibility check -- left
+        // unchecked, see the comment above the domainDim test.
+    }
+    else if (dd == 3)
+    {
+        const gsTensorBSplineBasis<3,T> * comp_tbasis_ptr = dynamic_cast<const gsTensorBSplineBasis<3,T> *>(&composition.domain().basis());
+        GISMO_ENSURE(comp_tbasis_ptr,"The composition must be a tensor B-spline basis (3D)");
+        const gsTensorBSplineBasis<3,T> & comp_tbasis = *comp_tbasis_ptr;
+
+        if (const gsTensorBSplineBasis<3,T> * tbasis = dynamic_cast<const gsTensorBSplineBasis<3,T> *>(&integrationBasis))
+            GISMO_ENSURE(tensorBasisAdmissible<3>(comp_tbasis,*tbasis),
+                "The supplied integration basis is not admissible for sigma (see the preceding gsWarn for the offending property).");
+        else if (const gsTensorNurbsBasis<3,T> * nbasis = dynamic_cast<const gsTensorNurbsBasis<3,T> *>(&integrationBasis))
+            GISMO_ENSURE(tensorBasisAdmissible<3>(comp_tbasis,nbasis->source()),
+                "The supplied integration basis is not admissible for sigma (see the preceding gsWarn for the offending property).");
+        else if (const gsHTensorBasis<3,T> * hbasis = dynamic_cast<const gsHTensorBasis<3,T> *>(&integrationBasis))
+            // Dimension-agnostic check against the finest tensor level, as
+            // the 2D case above; this constructor only CHECKS an
+            // already-built basis, it does not build a 3D hierarchical union.
+            GISMO_ENSURE(tensorBasisAdmissible<3>(comp_tbasis,hbasis->tensorLevel(hbasis->maxLevel())),
+                "The supplied integration basis is not admissible for sigma (see the preceding gsWarn for the offending property).");
+        // else: basis type not covered by a cheap admissibility check (e.g.
+        // gsRationalTHBSplineBasis) -- left unchecked.
+    }
+    else
+        GISMO_ERROR("Only 2D and 3D composition domains are supported");
+
+    m_integrationBasis = integrationBasis.clone();
+    m_optProblem = gsOptMesh<T,MODE>(composition,m_geom,m_fun,m_integrationBasis.get(),parametric);
+    this->defaultOptions();
+}
+
 template <class T, enum MonitorMode MODE>
 template <short_t _d>
 gsTensorBSplineBasis<_d,T> gsAdaptiveParametrization<T,MODE>::makeIntegrationBasis(const gsTensorBSplineBasis<_d,T> & basis1,
                                                                                   const gsTensorBSplineBasis<_d,T> & basis2)
 {
     gsTensorBSplineBasis<_d,T> ibasis(basis1);
-    // Integration basis: parent basis with knots of composition basis inserted.
-    // The integration degree is the product of the two degrees, since G(sigma(u))
-    // has (Bezier) polynomial degree p_G * p_sigma in u.  This is conservative
-    // (over-integrates) but ensures sufficient quadrature accuracy.
+    // Integration basis: parent basis with knots of composition basis
+    // inserted, then degree-raised per direction to
+    // targetDegree = p_analysis * p_sigma. This is the uncoupled bound; the
+    // true per-direction degree of a coupled sigma can reach d*p_G*p_sigma,
+    // so the quadrature rule sized from targetDegree over-integrates rather
+    // than integrates exactly. Full derivation, the N(x,y)=x*y counterexample
+    // and the resulting quadrature-order caveats: \ref adaptparam_supermesh.
     index_t targetDegree;
     for (size_t d = 0; d!=_d; d++)
     {
@@ -1283,6 +1864,252 @@ gsTensorBSplineBasis<_d,T> gsAdaptiveParametrization<T,MODE>::makeIntegrationBas
 }
 
 template <class T, enum MonitorMode MODE>
+template <short_t d>
+bool gsAdaptiveParametrization<T,MODE>::tensorBasisAdmissible(const gsTensorBSplineBasis<d,T>  & comp,
+                                                               const gsTensorBSplineBasis<d,T>  & candidate)
+{
+    // Absolute knot tolerance (comp is always a gsSquareDomain's basis, fixed
+    // domain [0,1]); shared rationale: \ref adaptparam_supermesh.
+    const T tol = 1e-12;
+    for (short_t dir = 0; dir != d; ++dir)
+    {
+        // 1. Parameter range: equality, not containment. A wider integration
+        // domain evaluates sigma outside its own parameter domain
+        // (extrapolation); a narrower one leaves part of the domain
+        // unintegrated. Both are silently wrong.
+        const T compFirst = comp.knots(dir).first(), compLast = comp.knots(dir).last();
+        const T candFirst = candidate.knots(dir).first(), candLast = candidate.knots(dir).last();
+        if (math::abs(candFirst - compFirst) > tol || math::abs(candLast - compLast) > tol)
+        {
+            // Full precision, not the stream's default (6 significant
+            // digits): a mismatch below default precision but above \a tol
+            // would otherwise print as two identical intervals.
+            std::ostringstream oss;
+            oss << std::setprecision(REAL_DIG+1);
+            oss << "tensorBasisAdmissible: parameter range mismatch in direction " << dir
+                << ": sigma is on [" << compFirst << "," << compLast << "], the supplied "
+                << "integration basis is on [" << candFirst << "," << candLast << "]\n";
+            gsWarn << oss.str();
+            return false;
+        }
+
+        // 2. Degree: >=, deliberately not ==, and deliberately not the product
+        // degree p_analysis*p_sigma that makeIntegrationBasis() produces --
+        // over-integration is safe, and the product degree is unknowable here
+        // (this constructor only holds the caller-supplied candidate, not the
+        // analysis basis it may have been built from).
+        if (candidate.degree(dir) < comp.degree(dir))
+        {
+            gsWarn << "tensorBasisAdmissible: degree mismatch in direction " << dir
+                   << ": sigma has degree " << comp.degree(dir) << ", the supplied "
+                   << "integration basis has degree " << candidate.degree(dir) << "\n";
+            return false;
+        }
+
+        // 3. Interior-knot containment.
+        const gsKnotVector<T> & candidateKnots = candidate.knots(dir);
+        for (typename gsKnotVector<T>::uiterator it = std::next(comp.knots(dir).ubegin());
+                                                    it!= std::prev(comp.knots(dir).uend());
+                                                    ++it)
+        {
+            bool found = false;
+            for (typename gsKnotVector<T>::uiterator jt = candidateKnots.ubegin();
+                                                        jt!= candidateKnots.uend();
+                                                        ++jt)
+            {
+                if (math::abs(*it - *jt) <= tol)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+            {
+                // Same precision rationale as the parameter-range warning
+                // above: a near-tolerance mismatch is invisible at the
+                // stream's default precision.
+                std::ostringstream oss;
+                oss << std::setprecision(REAL_DIG+1);
+                oss << "tensorBasisAdmissible: sigma's interior knot " << *it
+                    << " in direction " << dir
+                    << " is not present in the supplied integration basis\n";
+                gsWarn << oss.str();
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+template <class T, enum MonitorMode MODE>
+template <short_t d>
+bool gsAdaptiveParametrization<T,MODE>::sigmaLevelInHierarchy(const gsTHBSplineBasis<d,T>      & analysis,
+                                                               const gsTensorBSplineBasis<d,T>  & comp,
+                                                               index_t                          & sigmaLevel,
+                                                               std::string                      & reason)
+{
+    // merge() and the dyadic level-index arithmetic used below both require
+    // automatic (non-manual) levels.
+    if (analysis.manualLevels())
+    {
+        reason = "analysis basis has manual levels (merge and level-index arithmetic require automatic dyadic levels)";
+        return false;
+    }
+
+    const typename gsHTensorBasis<d,T>::tensorBasis & level0 = analysis.tensorLevel(0);
+
+    // Candidate level: per direction, the smallest dyadic refinement of level 0
+    // whose element count is >= comp's element count; clamp at 0 so a coarser
+    // comp does not request a negative level.
+    sigmaLevel = 0;
+    for (short_t dir = 0; dir != d; ++dir)
+    {
+        const index_t N0 = static_cast<index_t>(level0.knots(dir).numElements());
+        const index_t Ns = static_cast<index_t>(comp.knots(dir).numElements());
+        // N <<= 1 does not advance past 0, so N0 == 0 would spin the loop
+        // forever for any Ns > 0. Not reachable for a valid basis
+        // (numElements() >= 1 always), but guarded explicitly rather than
+        // relied upon.
+        if (0 == N0)
+        {
+            std::ostringstream oss;
+            oss << "analysis basis' level-0 tensor mesh has zero elements in direction " << dir;
+            reason = oss.str();
+            return false;
+        }
+        index_t k = 0;
+        for (index_t N = N0; N < Ns; N <<= 1)
+            ++k;
+        sigmaLevel = math::max(sigmaLevel, k);
+    }
+
+    // Containment: every unique interior knot of comp must appear, up to
+    // tolerance, among the unique knots of analysis' tensor level sigmaLevel.
+    // A tolerance (not gsKnotVector::has's exact std::binary_search) is
+    // required because a knot read from an XML file need not be the exactly
+    // representable dyadic value the hierarchy carries internally. An
+    // absolute tolerance is scale-appropriate here (rather than a relative
+    // one) because \a comp is always a gsSquareDomain's basis, on the fixed
+    // interval [0,1]^d -- it would not be on a general parameter domain.
+    // Consequence: a knot that matches within \a tol is treated as present,
+    // and the union mesh then carries the analysis hierarchy's knot value,
+    // not \a comp's -- the element boundary is displaced by O(tol), harmless
+    // at 1e-12 but a real substitution.
+    const T tol = 1e-12;
+    const typename gsHTensorBasis<d,T>::tensorBasis & Lsigma = analysis.tensorLevel(sigmaLevel);
+    for (short_t dir = 0; dir != d; ++dir)
+    {
+        const gsKnotVector<T> & analysisKnots = Lsigma.knots(dir);
+        for (typename gsKnotVector<T>::uiterator it = std::next(comp.knots(dir).ubegin());
+                                                    it!= std::prev(comp.knots(dir).uend());
+                                                    ++it)
+        {
+            bool found = false;
+            for (typename gsKnotVector<T>::uiterator jt = analysisKnots.ubegin();
+                                                        jt!= analysisKnots.uend();
+                                                        ++jt)
+            {
+                if (math::abs(*it - *jt) <= tol)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+            {
+                // Full precision, not the stream's default (6 significant
+                // digits): a near-tolerance mismatch would otherwise print an
+                // indistinguishable knot value. This text reaches the user
+                // directly, via the caller's GISMO_ENSURE appending \a reason.
+                std::ostringstream oss;
+                oss << std::setprecision(REAL_DIG+1);
+                oss << "sigma's interior knot " << *it << " in direction " << dir
+                    << " is not present in the analysis hierarchy at level " << sigmaLevel;
+                reason = oss.str();
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+template <class T, enum MonitorMode MODE>
+template <short_t d>
+typename gsBasis<T>::uPtr
+gsAdaptiveParametrization<T,MODE>::makeIntegrationBasis(const gsTHBSplineBasis<d,T>     & basis1,
+                                                         const gsTensorBSplineBasis<d,T> & basis2)
+{
+    // Precondition of the gsHTensorBasis::merge() below: sigma's mesh must be a
+    // dyadic refinement level of basis1's hierarchy, sharing its level 0. The
+    // union mesh is built by transplanting both partitions onto that shared
+    // level-0 basis; a non-nested pair has no such common root.
+    index_t sigmaLevel;
+    std::string reason;
+    GISMO_ENSURE(sigmaLevelInHierarchy<d>(basis1,basis2,sigmaLevel,reason),
+        "makeIntegrationBasis: sigma's mesh is not a dyadic level of the analysis "
+        "hierarchy (" << reason << "). Use the tensor overload "
+        "makeIntegrationBasis<d>(basis1.tensorLevel(basis1.maxLevel()),basis2) for a "
+        "non-nested pair.");
+
+    // B0: the shared level-0 basis of both hierarchies, degree-raised per
+    // direction to the product degree p_analysis * p_sigma -- same target
+    // degree and non-exactness argument as the tensor overload above (\ref
+    // adaptparam_supermesh). degreeIncrease raises the degree but leaves the
+    // breakpoints -- and hence every dyadic level built on B0 -- unchanged,
+    // so B0 can be shared by the analysis-derived and sigma-derived hierarchies.
+    gsTensorBSplineBasis<d,T> B0(basis1.tensorLevel(0));
+    for (short_t dir = 0; dir != d; ++dir)
+    {
+        const index_t target = basis1.degree(dir) * basis2.degree(dir);
+        B0.degreeIncrease(target - B0.degree(dir), dir);
+    }
+
+    // H_analysis: the analysis partition transplanted onto B0. Boxes are read
+    // off in each box's own level-index space (getBoxesInLevelIndex).
+    gsMatrix<index_t> b1, b2;
+    gsVector<index_t> lvl;
+    basis1.tree().getBoxesInLevelIndex(b1,b2,lvl);
+
+    std::vector<index_t> boxes;
+    boxes.reserve(b1.rows()*(2*d+1));
+    for (index_t i = 0; i != b1.rows(); ++i)
+    {
+        boxes.push_back(lvl[i]);
+        for (short_t dir = 0; dir != d; ++dir)
+            boxes.push_back(b1(i,dir));
+        for (short_t dir = 0; dir != d; ++dir)
+            boxes.push_back(b2(i,dir));
+    }
+    gsTHBSplineBasis<d,T> Hanalysis(B0,boxes);
+
+    // H_sigma: sigma's own mesh as one level (sigmaLevel) of the same B0
+    // hierarchy. tensorLevel(sigmaLevel) creates the level on demand, so
+    // sigmaLevel may exceed basis1's max level.  uniformRefine is NOT usable
+    // here: it drops level 0 from the hierarchy, destroying the shared root
+    // basis that merge() below requires.
+    gsTHBSplineBasis<d,T> Hsigma(B0);
+    std::vector<index_t> sbox;
+    sbox.push_back(sigmaLevel);
+    for (short_t dir = 0; dir != d; ++dir)
+        sbox.push_back(0);
+    for (short_t dir = 0; dir != d; ++dir)
+        sbox.push_back(static_cast<index_t>(Hsigma.tensorLevel(sigmaLevel).knots(dir).numElements()));
+    Hsigma.refineElements(sbox);
+
+    // Element-wise union of the two partitions == max(analysisLevel,L_sigma).
+    Hanalysis.merge(Hsigma);
+
+    typename gsBasis<T>::uPtr result = memory::make_unique(new gsTHBSplineBasis<d,T>(Hanalysis));
+    gsInfo << "makeIntegrationBasis: hierarchical, L_sigma=" << sigmaLevel
+           << ", maxLevel=" << Hanalysis.maxLevel()
+           << ", elements=" << result->numElements() << ", degree=";
+    for (short_t dir = 0; dir != d; ++dir)
+        gsInfo << Hanalysis.degree(dir) << (dir+1!=d ? "x" : "");
+    gsInfo << "\n";
+    return result;
+}
+
+template <class T, enum MonitorMode MODE>
 gsOptionList & gsAdaptiveParametrization<T,MODE>::options()
 {
     return m_options;
@@ -1294,6 +2121,8 @@ void gsAdaptiveParametrization<T,MODE>::defaultOptions()
     m_options.addReal("Penalty","Penalization coefficient for Jacobian determinant [default=0.01]",1e-2);
     m_options.addReal("Smoothing","Smoothing parameter in the monitor function [default=0.1]",0.1);
     m_options.addInt("Mode","0: Relocate based on f [default]; 1: Relocate based on grad(f)",0);
+    m_options.addReal("quA","Quadrature nodes per direction: deg*quA + quB",1.0);
+    m_options.addInt ("quB","Quadrature nodes per direction: deg*quA + quB",1);
 }
 
 template <class T, enum MonitorMode MODE>
@@ -1302,6 +2131,8 @@ void gsAdaptiveParametrization<T,MODE>::solve()
     // Set the optimization problem
     m_optProblem.options().setReal("Smoothing",m_options.getReal("Smoothing"));
     m_optProblem.options().setReal("Penalty",m_options.getReal("Penalty"));
+    m_optProblem.options().setReal("quA",m_options.getReal("quA"));
+    m_optProblem.options().setInt ("quB",m_options.getInt ("quB"));
     m_optimizer.setProblem(&m_optProblem);
     // Solve the optimization problem
     gsVector<T> controls = m_optProblem.composition().getControls();

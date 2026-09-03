@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--This file was created by G+Smo 0.8.4-->
+<xml>
+ <Geometry type="BSpline" id="0">
+  <Basis type="BSplineBasis">
+   <KnotVector degree="2">0 0 0 0.0667    0.1333    0.2000    0.2667    0.3333    0.4000    0.4667    0.5333    0.6000    0.6667    0.7333    0.8000    0.8667    0.9333 1 1 1 </KnotVector>
+  </Basis>
+  <coefs geoDim="2">
+0 0
+0 0.25
+0 1
+-0.25 2
+-0.75 2
+-1 1
+-2 1
+-2.35 2
+-2.5 3
+-2.35 4
+-2 5
+-1 5
+-0.75 4
+-0.25 4
+0 5
+0 5.75
+0 6
+</coefs>
+ </Geometry>
+ <Geometry type="BSpline" id="1">
+  <Basis type="BSplineBasis">
+   <KnotVector degree="2">0 0 0 0.0667    0.1333    0.2000    0.2667    0.3333    0.4000    0.4667    0.5333    0.6000    0.6667    0.7333    0.8000    0.8667    0.9333 1 1 1 </KnotVector>
+  </Basis>
+  <coefs geoDim="2">
+6 0
+6 0.25
+6 1
+6.25 2
+6.75 2
+7 1
+8 1
+8.35 2
+8.5 3
+8.35 4
+8 5
+7 5
+6.75 4
+6.25 4
+6 5
+6 5.75
+6 6
+</coefs>
+ </Geometry>
+ <Geometry type="BSpline" id="2">
+  <Basis type="BSplineBasis">
+   <KnotVector degree="2">0 0 0 0.0667    0.1333    0.2000    0.2667    0.3333    0.4000    0.4667    0.5333    0.6000    0.6667    0.7333    0.8000    0.8667    0.9333 1 1 1 </KnotVector>
+  </Basis>
+  <coefs geoDim="2">
+0 0
+0.25 0
+1 0
+2 0.25
+2 0.75
+1 1
+1 2
+2 2.35
+3 2.5
+4 2.35
+5 2
+5 1
+4 0.75
+4 0.25
+5 0
+5.75 0
+6 0
+</coefs>
+ </Geometry>
+ <Geometry type="BSpline" id="3">
+  <Basis type="BSplineBasis">
+   <KnotVector degree="2">0 0 0 0.0667    0.1333    0.2000    0.2667    0.3333    0.4000    0.4667    0.5333    0.6000    0.6667    0.7333    0.8000    0.8667    0.9333 1 1 1 </KnotVector>
+  </Basis>
+  <coefs geoDim="2">
+0 6
+0.25 6
+1 6
+2 5.75
+2 5.25
+1 5
+1 4
+2 3.65
+3 3.5
+4 3.65
+5 4
+5 5
+4 5.25
+4 5.75
+5 6
+5.75 6
+6 6
+</coefs>
+ </Geometry>
+ <MultiPatch parDim="1" id="4">
+  <patches type="id_range">0 3</patches>
+ </MultiPatch>
+</xml>
+

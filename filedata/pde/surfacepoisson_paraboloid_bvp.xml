@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+
+  <!-- Paraboloid surface: r(s,t) = (s, t, 1/2 + 2*s*(1-s) + 2*t*(1-t))
+       Manufactured solution: u = x (the physical x-coordinate = s)
+       With a = dz/ds = 2-4s, b = dz/dt = 2-4t, q = sqrt(1+a^2+b^2),
+       the Laplace-Beltrami gives: -Delta_Gamma x = -4*a*(q^2+1) / q^4       -->
+
+  <!-- Computational domain (id=0) -->
+  <MultiPatch parDim="2" id="0">
+    <patches type="id_range">500 500</patches>
+    <interfaces/>
+    <boundaries name="dirichlet">
+      500 1
+      500 2
+      500 3
+      500 4
+    </boundaries>
+  </MultiPatch>
+
+  <!-- Right-hand side: -Delta_Gamma x  (id=1, physical coords in R^3) -->
+  <Function type="FunctionExpr" id="1" dim="3">
+    -4*(2-4*x)*((1+(2-4*x)^2+(2-4*y)^2)+1)/(sqrt(1+(2-4*x)^2+(2-4*y)^2)^4)
+  </Function>
+
+  <!-- Boundary conditions: u = x on all four sides (id=2) -->
+  <boundaryConditions id="2" multipatch="0">
+    <Function type="FunctionExpr" dim="3" index="0">x</Function>
+    <bc type="Dirichlet" function="0" unknown="0">
+      0 1
+      0 2
+      0 3
+      0 4
+    </bc>
+  </boundaryConditions>
+
+  <!-- Exact solution: u = x  (id=3) -->
+  <Function type="FunctionExpr" id="3" dim="3">x</Function>
+
+  <!-- Assembler options (id=4) -->
+  <OptionList id="4">
+    <int  label="DirichletStrategy" desc="Method for enforcement of Dirichlet BCs [11..14]" value="11"/>
+    <int  label="DirichletValues"   desc="Method for computation of Dirichlet DoF values [100..103]" value="101"/>
+    <int  label="InterfaceStrategy" desc="Method of treatment of patch interfaces [0..3]" value="1"/>
+    <real label="bdA" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="2"/>
+    <int  label="bdB" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="1"/>
+    <real label="bdO" desc="Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]" value="0.333"/>
+    <real label="quA" desc="Number of quadrature points: quA*deg + quB" value="2"/>
+    <int  label="quB" desc="Number of quadrature points: quA*deg + quB" value="4"/>
+    <int  label="quRule" desc="Quadrature rule [1:GaussLegendre,2:GaussLobatto]" value="1"/>
+    <bool label="SameElement" desc="Activates optimization if all quadrature points are located in the same element" value="0"/>
+
+    <!-- 2026-08-19: driver method options (rh-driver-unification's 27-key
+         table), bundled here so -f ALONE (no --options) fully determines a
+         run -- this is now THE poisson example (the user's own call).
+         MonitorMode=value matches the driver's own built-in default; this
+         geometry is a degree-2-exact case (u=x is reproduced to machine
+         precision regardless of mesh, see the file header derivation), so
+         the R/H steps have essentially nothing to chase here -- this file
+         exercises the surface (Laplace-Beltrami, curved composed map)
+         machinery rather than demonstrating an adaptivity gain. -->
+    <string label="MonitorMode"    desc="R step monitor: value | gradient" value="value"/>
+    <string label="Optimizer"      desc="R-step optimizer backend: gsOptim | HLBFGS" value="gsOptim"/>
+    <int    label="RefineRule"     desc="gsHElementMarker refinement rule (1=GARU,2=PUCA,3=BULK)" value="3"/>
+    <int    label="CoarsenRule"    desc="gsHElementMarker coarsening rule" value="3"/>
+    <int    label="MaxLevel"       desc="gsHElementMarker level cap" value="10"/>
+    <int    label="MaxRefIt"       desc="H step refinement iterations -- IGNORED, one mark/refine per H letter" value="1"/>
+    <int    label="MaxIterations"  desc="R-step optimizer iterations" value="10000"/>
+    <int    label="Verbose"        desc="R-step optimizer verbosity" value="0"/>
+    <int    label="DirSkip"        desc="D-step direction skip -- IGNORED, no D step in this driver" value="0"/>
+    <real   label="RefineParam"    desc="gsHElementMarker refinement parameter" value="0.5"/>
+    <real   label="CoarsenParam"   desc="gsHElementMarker coarsening parameter" value="0.1"/>
+    <real   label="Smoothing"      desc="R step: Winslow smoothing theta" value="1"/>
+    <real   label="Penalty"        desc="R step: fold penalty" value="0.001"/>
+    <real   label="Target"         desc="H band: target L2 error (&lt;0 disables the band); overridden per run by --target" value="-1"/>
+    <real   label="Band"           desc="H band: dead-zone width factor (&gt;=1)" value="2"/>
+    <real   label="NoCoarsenBelow" desc="H band: below this L2 error, hold; auto-derived from --target as Target/Band^2" value="-1"/>
+    <real   label="OptTol"         desc="R-step optimizer gradient tolerance (unified name)" value="1e-12"/>
+    <real   label="Lambda"         desc="gsFitting smoothing weight -- IGNORED, no gsFitting in this driver" value="1e-06"/>
+    <bool   label="Coarsen"        desc="enable coarsening in the H step; overridden per run by --coarsen" value="0"/>
+    <bool   label="Admissible"     desc="gsHElementMarker admissible closure" value="1"/>
+    <bool   label="Extension"      desc="gsHElementMarker box extension" value="1"/>
+    <bool   label="Slide"          desc="sigma boundary control points may slide" value="1"/>
+  </OptionList>
+
+  <!-- Paraboloid geometry: degree-2 TensorBSpline in R^3
+       z-coefs follow from 2*t*(1-t) = 1*B_1(t) in the quadratic Bernstein
+       basis, i.e. c_ij = 0.5 + p_i + p_j with p = (0,1,0):
+                     (0,0,0.5), (0.5,0,1.5), (1,0,0.5),
+                     (0,0.5,1.5), (0.5,0.5,2.5), (1,0.5,1.5),
+                     (0,1,0.5), (0.5,1,1.5), (1,1,0.5)            -->
+  <Geometry type="TensorBSpline2" id="500">
+    <Basis type="TensorBSplineBasis2">
+      <Basis type="BSplineBasis" index="0">
+        <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+      </Basis>
+      <Basis type="BSplineBasis" index="1">
+        <KnotVector degree="2">0 0 0 1 1 1</KnotVector>
+      </Basis>
+    </Basis>
+    <coefs geoDim="3">
+      0   0   0.5
+      0.5 0   1.5
+      1   0   0.5
+      0   0.5 1.5
+      0.5 0.5 2.5
+      1   0.5 1.5
+      0   1   0.5
+      0.5 1   1.5
+      1   1   0.5
+    </coefs>
+  </Geometry>
+
+</xml>
