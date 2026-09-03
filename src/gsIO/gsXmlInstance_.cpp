@@ -12,8 +12,8 @@ namespace internal
 {
     CLASS_TEMPLATE_INST gsXml< gsMatrix<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsMatrix<index_t> >;
-    CLASS_TEMPLATE_INST gsXml< gsSparseMatrix<real_t, 0, index_t> >;
-    CLASS_TEMPLATE_INST gsXml< gsSparseMatrix<real_t, 1, index_t> >;
+    CLASS_TEMPLATE_INST gsXml< gsSparseMatrix<real_t, RowMajor, index_t> >;
+    CLASS_TEMPLATE_INST gsXml< gsSparseMatrix<real_t, ColMajor, index_t> >;
     // CLASS_TEMPLATE_INST gsXml< gsSparseMatrix<index_t> >;
     // CLASS_TEMPLATE_INST gsXml< gsSparseMatrix<bool> >;
 
@@ -44,6 +44,7 @@ namespace internal
 
     //CLASS_TEMPLATE_INST gsXml< gsBezier<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsMesh<real_t> >;
+    CLASS_TEMPLATE_INST gsXml< gsSurfMesh<real_t> >;
     CLASS_TEMPLATE_INST gsXml< gsCurveFitting<real_t> >;
 
     CLASS_TEMPLATE_INST gsXml< gsPde<real_t>        >;

@@ -547,7 +547,7 @@ void gsRationalBasis<SrcT>::derivSingle_into(index_t i, const gsMatrix<T> & u, g
     m_src->evalFunc_into (u, m_weights,  W);
     m_src->derivFunc_into(u, m_weights, dW);
 
-    gsMatrix<> N, dN;
+    gsMatrix<T> N, dN;
     m_src->evalSingle_into (i, u,  N);  
     m_src->derivSingle_into(i, u, dN);  
 

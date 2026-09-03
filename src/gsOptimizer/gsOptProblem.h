@@ -70,7 +70,6 @@ public:
         }
     }
 
-
     /// \brief Returns values of the constraints at design value \a u
     virtual void evalCon_into ( const gsAsConstVector<T> &, gsAsVector<T> &) const
     {GISMO_NO_IMPLEMENTATION }

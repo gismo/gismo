@@ -281,7 +281,7 @@ public:
     {
         gsMesh<T> * m = new gsMesh<T>;
 
-        assert( ( !strcmp( node->name(),"Mesh") ) );
+        GISMO_ASSERT( ( !strcmp( node->name(),"Mesh") ), "Problem in name of the node." );
         if ( !strcmp(node->first_attribute("format")->value(),"off") )
         {
             std::istringstream str;
