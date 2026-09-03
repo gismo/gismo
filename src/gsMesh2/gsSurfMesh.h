@@ -177,9 +177,6 @@ public:
     /// Flips halfedge orientation i.e., if it is CW, becomes CCW.
     Self flip_orientation();
 
-    /// Flips halfedge orientation i.e., if it is CW, becomes CCW.
-    gsSurfMesh flip_orientation();
-
 public:  // mesh operations related to subdivision schemes
 
     /// Augment mesh boundaries for boundary control on dual subdivision schemes.

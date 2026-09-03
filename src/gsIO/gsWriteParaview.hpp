@@ -2029,9 +2029,9 @@ void gsWriteParaview(gsSurfMesh<Scalar> const & sm,
 }
 
 template<class Scalar>
-inline void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
-                            std::string const & fn,
-                            std::vector<std::string> props)
+void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
+                     std::string const & fn,
+                     std::vector<std::string> props)
 {
     using MeshT = gsSurfMesh<Scalar>;
 
