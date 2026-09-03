@@ -162,6 +162,12 @@ public:
     typedef typename gsProperty_array<T>::const_reference const_reference;
 
     friend class gsProperty_container;
+
+    // gsSurfMeshTopology::assign() copies the raw connectivity arrays, and
+    // gsSurfMesh::assign() copies the raw point array, so both need array()
+    friend class gsSurfMeshTopology;
+
+    template <class T_>
     friend class gsSurfMesh;
 
 

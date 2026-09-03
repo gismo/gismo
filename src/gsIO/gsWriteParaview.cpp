@@ -101,7 +101,6 @@ void plot_errors<real_t>(const gsMatrix<real_t>&,
                          std::string const&); 
 
 
-
 #define PLOT_PRECISION 12
 
 void gsWriteParaview(gsSurfMesh const & sm,
@@ -289,6 +288,5 @@ void gsWriteHalfedgesParaview(const gsSurfMesh& sm, const std::string& fn,
 
     file.close();
 }
-
 
 }//namespace gismo

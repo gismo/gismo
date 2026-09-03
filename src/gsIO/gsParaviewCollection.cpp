@@ -64,7 +64,7 @@ namespace gismo
             m_time += 1.0;
             time = m_time;
         }
-        else { m_time = cast<real_t,int>( time ); }
+        else { m_time = time; }
 
         std::string name;
         if ( m_options.askSwitch("makeSubfolder",true) )

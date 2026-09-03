@@ -68,25 +68,8 @@ public:
 
     virtual ~gsMappedBasis();
 
-    void init(gsMultiBasis<T> const & mb, const gsSparseMatrix<T> & m)
-    {
-        GISMO_ASSERT(mb.domainDim()==d, "Error in dimensions");
-        m_topol  = mb.topology();
-
-        delete m_mapper;
-        m_mapper = new gsWeightMapper<T>(m);
-
-        freeAll(m_bases);
-        m_bases.reserve(mb.nBases());
-        cloneAll(mb.patchBases(),m_bases);
-        m_sb.clear();
-        m_sb.reserve(m_bases.size());
-        for ( size_t q=0; q!=m_bases.size(); ++q )
-            m_sb.push_back( gsMappedSingleBasis<d,T>(this,q) );
-
-        m_mapper->optimize(gsWeightMapper<T>::optSourceToTarget);
-    }
-
+    void init(gsMultiBasis<T> const & mb, const gsSparseMatrix<T> & m);
+    
     index_t nPieces() const override {return m_topol.nBoxes();}
 
 public:
@@ -456,9 +439,8 @@ protected:
   /**
    * @brief Initializes the Python wrapper for the class: gsMappedBasis
    */
-  // void pybind11_init_gsMappedBasis1(pybind11::module &m);
-  void pybind11_init_gsMappedBasis2(pybind11::module &m);
-  // void pybind11_init_gsMappedBasis3(pybind11::module &m);
+  template <short_t d>
+  void pybind11_init_gsMappedBasis(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

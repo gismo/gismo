@@ -281,7 +281,7 @@ public:
     {
         gsMesh<T> * m = new gsMesh<T>;
 
-        assert( ( !strcmp( node->name(),"Mesh") ) );
+        GISMO_ASSERT( ( !strcmp( node->name(),"Mesh") ), "Problem in name of the node." );
         if ( !strcmp(node->first_attribute("format")->value(),"off") )
         {
             std::istringstream str;
@@ -377,12 +377,12 @@ public:
 
 
 /// Get a SparseMatrix from XML data
-template<class T>
-class gsXml< gsSparseMatrix<T> >
+template<class T, int _Options, typename _Index>
+class gsXml< gsSparseMatrix<T,_Options,_Index> >
 {
 private:
     gsXml() { }
-    typedef gsSparseMatrix<T> Object;
+    typedef gsSparseMatrix<T,_Options,_Index> Object;
 
 public:
     GSXML_COMMON_FUNCTIONS(Object);
@@ -406,7 +406,7 @@ public:
         obj.setFrom(entries);
     }
 
-    static gsXmlNode * put (const gsSparseMatrix<T> & obj,
+    static gsXmlNode * put (const Object & obj,
                             gsXmlTree & data )
     {
         gsXmlNode * mat_data = putSparseMatrixToXml(obj,data);

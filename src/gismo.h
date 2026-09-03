@@ -234,13 +234,9 @@ namespace internal
 #include <gsUtils/gsStopwatch.h>
 #include <gsUtils/gsFunctionWithDerivatives.h>
 #include <gsUtils/gsQuasiInterpolate.h>
-#include <gsUtils/gsL2Projection.h>
+#include <gsUtils/gsProjection.h>
 
 /* ----------- Extension ----------- */
-#ifdef GISMO_WITH_ADIFF
-#include <gsAutoDiff.h>
-#endif
-
 #ifdef gsTrilinos_ENABLED
 #include <gsTrilinos/gsTrilinos.h>
 #endif

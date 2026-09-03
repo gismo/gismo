@@ -17,6 +17,7 @@
 #pragma once
 
 #include <gsModeling/gsBarrierCore.h>
+#include <gsAssembler/gsDofMapperCreator.h>
 
 namespace gismo
 {
@@ -41,10 +42,8 @@ gsBarrierPatch<d, T>::gsBarrierPatch(const gsMultiPatch<T> &mp,
     : m_mp(mp), m_mb(mp)
 {
   // Input data sanity check
-  if (mp.empty() || !mapper.freeSize()) {
-    throw std::invalid_argument("Invalid input to gsBarrierPatch constructor");
-  }
-
+  GISMO_ENSURE(!mp.empty() && mapper.freeSize() > 0,
+               "Invalid input to gsBarrierPatch constructor");
   // Set the default options
   this->defaultOptions();
 
@@ -58,9 +57,7 @@ gsBarrierPatch<d, T>::gsBarrierPatch(const gsMultiPatch<T> &mp, bool patchWise)
     : m_mp(mp), m_mb(mp)
 {
   // Input data sanity check
-  if (mp.empty()) {
-    throw std::invalid_argument("Invalid multi-patch input to gsBarrierPatch constructor");
-  }
+  GISMO_ENSURE(!mp.empty(), "Invalid multi-patch input to gsBarrierPatch constructor");
 
   // Set the default options
   this->defaultOptions();
@@ -170,7 +167,7 @@ template<short_t d, typename T>
 void gsBarrierPatch<d, T>::_makeMapper()
 {
   // Initiate the mapper for the design Degrees of Freedom (DoFs)
-  m_mapper.init(m_mb, m_mp.targetDim());
+  m_mapper = createMapper(m_mb, m_mp.targetDim());
 
   // For each patch, we mark the boundary in each target dimension
   for (size_t iptch = 0; iptch != m_mp.nPatches(); iptch++)
@@ -195,7 +192,7 @@ void gsBarrierPatch<d, T>::_makeMapperLocalPatches()
   // Initiate the mapper for the design Degrees of Freedom (DoFs)
   // In this method, we set all the inner control points as optimization variables
   // However, it is also possible to set only a part of them as optimization variables
-  m_mapper.init(m_mb, m_mp.targetDim());
+  m_mapper = createMapper(m_mb, m_mp.targetDim());
 
   // Iterate over each patch to mark the boundary in each target dimension
   for (gsMultiPatch<>::const_biterator bit = m_mp.bBegin();
@@ -220,7 +217,7 @@ void gsBarrierPatch<d, T>::_makeMapperGlobalPatches()
   // Initiate the mapper for the design Degrees of Freedom (DoFs)
   // We're setting all the inner control points as optimization variables
   // However, it's also possible to set only a part of them as optimization variables
-  m_mapper.init(m_mb, m_mp.targetDim());
+  m_mapper = createMapper(m_mb, m_mp.targetDim(), /*conforming=*/false);
 
   // Ensure C^0 continuity at the interface by mapping equivalent degrees of freedom
   for (gsBoxTopology::const_iiterator it = m_mb.topology().iBegin();
@@ -252,9 +249,9 @@ gsDofMapper gsBarrierPatch<d, T>::_makeMapperOnePatch(const gsGeometry<T> &currP
   // Initialize the mapper for the design Degrees of Freedom (DoFs)
   // By default, all the inner control points are set as optimization variables
   // However, it's also possible to set only a part of them as optimization variables
-  gsDofMapper mapper;
   gsMultiBasis<T> mb(currPatch);
-  mapper.init(mb, currPatch.targetDim());
+  // Single patch: there are no interfaces, conforming = false for consistency
+  gsDofMapper mapper = createMapper(mb, currPatch.targetDim(), /*conforming=*/false);
 
   // Mark the boundary in each target dimension
   gsMatrix<index_t> idx = currPatch.basis().allBoundary();

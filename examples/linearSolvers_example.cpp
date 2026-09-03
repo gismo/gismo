@@ -205,6 +205,7 @@ int main(int argc, char *argv[])
     x0 = EigenCGIsolver.solve(rhs);
     gsInfo << "done.\n";
     gsIterativeSolverInfo(EigenCGIsolver, (mat*x0-rhs).norm()/rhs.norm(), clock.stop(), succeeded);
+    gsInfo<<"Iterations: "<<EigenCGIsolver.iterations()<<"\n";
 
     gsSparseSolver<>::CGDiagonal EigenCGDsolver;
     EigenCGDsolver.setMaxIterations(maxIters);
@@ -215,6 +216,19 @@ int main(int argc, char *argv[])
     x0 = EigenCGDsolver.solve(rhs);
     gsInfo << "done.\n";
     gsIterativeSolverInfo(EigenCGDsolver, (mat*x0-rhs).norm()/rhs.norm(), clock.stop(), succeeded);
+    gsInfo<<"Iterations: "<<EigenCGDsolver.iterations()<<"\n";
+
+    gsSparseSolver<>::CGCustom EigenCGCsolver;
+    EigenCGCsolver.setMaxIterations(maxIters);
+    EigenCGCsolver.setTolerance(tol);
+    gsInfo << "\nEigen's CG + custom prec.: Started solving... ";
+    clock.restart();
+    EigenCGCsolver.preconditioner().set(makeJacobiOp(mat));
+    EigenCGCsolver.compute(mat);
+    x0 = EigenCGCsolver.solve(rhs);
+    gsInfo << "done.\n";
+    gsIterativeSolverInfo(EigenCGCsolver, (mat*x0-rhs).norm()/rhs.norm(), clock.stop(), succeeded);
+    gsInfo<<"Iterations: "<<EigenCGCsolver.iterations()<<"\n";
 
     gsSparseSolver<>::BiCGSTABIdentity EigenBCGIsolver;
     EigenBCGIsolver.setMaxIterations(maxIters);
