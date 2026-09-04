@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
     // Specify cell-marking strategy... 
     index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
     real_t  adaptRefParam = 0.7; // ... adapt parameter.
-    real_t  MAERefParam   = 0.9; // ... adapt parameter for MAE
+    real_t  MAERefParam   = 0.5; // ... adapt parameter for MAE
     // Define Stabilization method
     auto Stabilizationtype = stabilizerCDR::SUPG;
 
@@ -102,8 +102,8 @@ int main(int argc, char *argv[])
     ###         and the multipatch adaptive mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefine, maxIter, IntensityMAE,0,1);
-    // while (MAE.DoFs < 1e3)
-    MAE.uniformRefine(5-numRefine);// uniform refine for better accuracy
+    while (MAE.DoFs < 1e3)
+        MAE.uniformRefine();// uniform refine for better accuracy
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 4: Define hierarchical adaptive mapping
@@ -149,8 +149,13 @@ int main(int argc, char *argv[])
    gsMultiBasis<> dbasis( Psi, true );//true: poly-splines (not NURBS)
    //! [GetBasisFromTHB]
 
-    for (int r=0; r<= numRefine; ++r)
+    for (int r=0; r<= numRefine; ++r){
         dbasis.uniformRefine();
+        Psi.uniformRefine();
+    }
+    // make a copy of the basis for the solution space before refinement
+    gsMultiBasis<> Cbasis( Psi, false );
+
     gsInfo << "Patches: "<< Psi.detail() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
 
     // --------------- adaptive refinement loop ---------------
@@ -228,7 +233,7 @@ int main(int argc, char *argv[])
             gsMarkElementsForRef( eltErrs, adaptRefCrit, MAERefParam, eldensityMarked);                 
             auto density   = MAE.buildDensity( dbasis, eldensityMarked, 1, 0);
             MAE.buildMultiPatch(density);// compute Monge-Ampere mapping
-            Psi            = MAE.buildCompMultiPatch(dbasis);// computes the composition mapping mpLeft o MAmapping
+            Psi            = MAE.buildCompMultiPatch(Cbasis);// computes the composition mapping mpLeft o MAmapping
             MAE.NormalProjectPts(Psi);// correct the boundary (square)
             // -----------------
             double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
@@ -253,12 +258,12 @@ int main(int argc, char *argv[])
        // Refine the marked elements with a 1-ring of cells around marked elements
        gsRefineMarkedElements( dbasis, elMarked, NumArMarEl );
        //! [adaptRefinementPart]
-       gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
+    //    gsRefineMarkedElements( Psi, elMarked, NumArMarEl);
 
        //! [repairInterfaces]
        // Call repair interfaces to make sure that the new meshes
        // match along patch interfaces.
-       dbasis.repairInterfaces( Psi.interfaces() );
+    //    dbasis.repairInterfaces( Psi.interfaces() );
        //! [repairInterfaces]
 
        //! [refreshAssembler]

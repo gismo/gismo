@@ -6,14 +6,13 @@
 rm -r ../build/error_analysis.txt
 
 # Build r_refinement_square before running
-make rh_refinement_example -j 2
+make rh_poisson_example -j 2
 # make rh_adaptiveAdvectiondiffusion -j 15
 # make rh_elasticity_example -j 15
 
 # Path to the executable
-EXECUTABLE="./bin/rh_refinement_example"
+EXECUTABLE="./bin/rh_poisson_example"
 # EXECUTABLE="./bin/rh_adaptiveAdvectiondiffusion"
-# EXECUTABLE="./bin/rh_elasticity_example"
 
 # Parameters (tags) to run the executable with -r 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
 TAGS=(
@@ -35,11 +34,6 @@ TAGS=(
     #.. Advection diffusion ... -f 0. : without r-refinement
     # "-r 2 -u 2  -f   0. -l 6 -a 0.7 -c 1 -e 1"
     # "-r 2 -u 2  -f  12. -l 6 -a 0.7 -c 1 -e 1"
-    # .. Elasticity 2D ...
-    #"-r 2 -u 2 -f  0.  -l 6 -a 0.0 -e 0"
-    #"-r 2 -u 2 -f  0.  -l 6 -a 0.7 -e 0"
-    # "-r 2 -u 2 -f  12. -l 3 -a 0.0 -e 0"
-    # "-r 2 -u 2 -f  12. -l 6 -a 0.7  -e 0"
 )
 
 
