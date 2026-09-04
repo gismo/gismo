@@ -3,10 +3,7 @@
 <xml>
   <!-- Manufactured density function : Right-hand side function of MAE : exp(-100 * ( x**2 + y**2-0.75)**2) -->
   <Function type="FunctionExpr" id="2003" dim="3"> 1./cosh( 0.5*(x+y +z + 10.) )</Function>
-  <Function type="FunctionExpr" id="2000" dim="3"> 1./cosh( 0.5*(x+y +z + 10.) )</Function>
-  <Function type="FunctionExpr" id="2001" dim="3"> -1.5*sinh(0.5*x + 0.5*y + 0.5*z + 5.0)**2/cosh(0.5*x + 0.5*y + 0.5*z + 5.0)**3 + 0.75/cosh(0.5*x + 0.5*y + 0.5*z + 5.0) </Function>
-    <!--
-    -->
+
  <Geometry type="TensorNurbs2" id="0">
   <Basis type="TensorNurbsBasis2">
    <Basis type="TensorBSplineBasis2">

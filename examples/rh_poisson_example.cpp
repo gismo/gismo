@@ -34,9 +34,7 @@ int main(int argc, char *argv[])
     real_t  adaptRefParam = 0.; // ... adapt parameter.
     real_t  adaptRefParamMAE = 0.7; // ... adapt parameter for MAE mapping.
     // Specify the file path
-    // std::string fn("pde/quart_annulus.xml");
     std::string fn("pde/circle.xml");
-    // std::string fn("pde/lshape.xml");
     // std::string fn("domain2d/lake.xml");
     // std::string fn("pde/example3D.xml");
     // std::string fn("volumes/GshapedVolume.xml"); 
