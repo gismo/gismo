@@ -55,8 +55,8 @@ public:
         _u.data().flags |= NEED_LAPLACIAN;
     }
 
-    static const gsFeSpace<Scalar> & rowVar() {return E::rowVar();}
-    static const gsFeSpace<Scalar> & colVar() {return gsNullExpr<Scalar>::get();}
+    const gsFeSpace<Scalar> & rowVar() const {return _u.rowVar();}
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
 
     void print(std::ostream &os) const { os << "\u2206("; _u.print(os); os <<")"; } //or \u0394
 };

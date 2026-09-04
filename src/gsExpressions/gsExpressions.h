@@ -134,6 +134,7 @@ public:
 #include <gsExpressions/divide_expr.h>
 #include <gsExpressions/dJacdc_expr.h>
 #include <gsExpressions/dJacG_expr.h>
+#include <gsExpressions/dnk_expr.h>
 // E
 #include <gsExpressions/exp_expr.h>
 // F

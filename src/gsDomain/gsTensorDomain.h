@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsDomain/gsDomain.h>
+#include <gsDomain/gsTensorDomainFaceIterator.h>
 #include <gsNurbs/gsKnotVector.h>
 
 namespace gismo
@@ -53,6 +54,18 @@ public: // iterators
 
     domainIter beginBdr(const boxSide bs) const override
     { return domainIter(new gsTensorDomainBoundaryIterator<T,D,knotIter>(*this, bs)); }
+
+    domainIter beginSkeleton() const override
+    { return domainIter(new gsTensorDomainFaceIterator<T,D,AllFaces>(breakGrid())); }
+
+    size_t numSkeletonFaces() const override
+    { return gsTensorDomainFaceIterator<T,D,AllFaces>::numFaces(breakGrid()); }
+
+    /// A tensor domain carries no trimming information, so its ghost set is empty.
+    domainIter beginGhost() const override
+    { return domainIter(new gsDomainIteratorEnd<T>(0)); }
+
+    size_t numGhostFaces() const override { return 0; }
 
 public: // more members
 
@@ -114,6 +127,22 @@ public:
     typename gsDomain<T>::Ptr component(index_t i) const
     {
         return m_knotVectors[i];
+    }
+
+private:
+    /// Per-direction element boundaries, breaks[j].size() == numElements in j + 1
+    std::vector< std::vector<T> > breakGrid() const
+    {
+        std::vector< std::vector<T> > breaks(D);
+        for (short_t i = 0; i < D; ++i)
+        {
+            const gsKnotVector<T> * kv =
+                dynamic_cast<const gsKnotVector<T>*>(m_knotVectors[i].get());
+            GISMO_ENSURE(nullptr!=kv,
+                         "gsTensorDomain: face iteration requires gsKnotVector components.");
+            breaks[i] = kv->breaks();
+        }
+        return breaks;
     }
 
 protected:

@@ -176,6 +176,37 @@ public: // Domain element iterators
         return iterator(new gsDomainIteratorEnd<T>(this->numElementsBdr(bs)));
     }
 
+    /// Returns an iterator over the interior faces of the skeleton set: all
+    /// faces shared by two elements of this domain.
+    virtual iterator beginSkeleton() const
+    {GISMO_NO_IMPLEMENTATION}
+
+    /// Returns an iterator to the end of the skeleton faces
+    virtual iterator endSkeleton() const
+    {
+        return iterator(new gsDomainIteratorEnd<T>(this->numSkeletonFaces()));
+    }
+
+    /// Number of faces in the skeleton set.
+    /// Implementations compute this by a predicate sweep, i.e. in O(#faces):
+    /// hoist endSkeleton() out of a loop rather than re-evaluating it per step.
+    virtual size_t numSkeletonFaces() const { return 0; }
+
+    /// Returns an iterator over the ghost set: the subset of the skeleton
+    /// faces having at least one cut neighbour. Empty on domains without a
+    /// trimming concept.
+    virtual iterator beginGhost() const
+    {GISMO_NO_IMPLEMENTATION}
+
+    /// Returns an iterator to the end of the ghost faces
+    virtual iterator endGhost() const
+    {
+        return iterator(new gsDomainIteratorEnd<T>(this->numGhostFaces()));
+    }
+
+    /// Number of faces in the ghost set. Same cost note as numSkeletonFaces().
+    virtual size_t numGhostFaces() const { return 0; }
+
     /// Returns a pair of two iterators, that define a chunk (range)
     /// per thread of elements that can be used in a parallel for
     /// loop. If a single thread is available then it returns the pair

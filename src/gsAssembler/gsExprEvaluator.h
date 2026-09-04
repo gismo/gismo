@@ -84,6 +84,8 @@ public:
         opt.addInt ("plot.npts", "Number of sampling points for plotting", 3000 );
         opt.addSwitch("plot.elements", "Include the element mesh in plot (when applicable)", false);
         opt.addSwitch("flipSide", "Flip side of interface where evaluation is performed.", false);
+        opt.addReal("faceShift", "Fraction of the perpendicular cell size by which face "
+                    "quadrature points are moved into the neighbouring elements", 1e-6);
         //opt.addSwitch("plot.cnet", "Include the control net in plot (when applicable)", false);
         return opt;
     }
@@ -210,6 +212,26 @@ public:
     template<class E> // note: elementwise integral not offered
     T integralInterface(const expr::_expr<E> & expr, const intContainer & iFaces)
     { return computeInterface_impl<E,plus_op>(expr, iFaces); }
+
+    /// Calculates the integral of \a expr over the skeleton faces of the
+    /// integration domain (all interior faces between two active elements of
+    /// the same patch). \a expr is evaluated one-sidedly on both faces of a
+    /// jump term via \c .left()/.right(); see \c gsExprAssembler::assembleSkeleton
+    /// for the shift and normal conventions this shares.
+    /// \note One \c elementwise() entry is pushed per face (not per patch, unlike
+    /// \c integralInterface()).
+    template<class E> // note: elementwise integral not offered
+    T integralSkeleton(const expr::_expr<E> & expr)
+    { return computeFaces_impl<E,plus_op>(expr, false); }
+
+    /// Calculates the integral of \a expr over the ghost faces of the
+    /// integration domain (the stabilization face set of ghost-penalty
+    /// methods, cf. \c gsDomain::beginGhost()). Same evaluation and shift
+    /// conventions as \c integralSkeleton().
+    /// \note One \c elementwise() entry is pushed per face.
+    template<class E> // note: elementwise integral not offered
+    T integralGhost(const expr::_expr<E> & expr)
+    { return computeFaces_impl<E,plus_op>(expr, true); }
 
     /// Calculates the maximum value of the expression \a expr by
     /// sampling over a finite number of points
@@ -397,6 +419,9 @@ private:
     template<class E, class _op>
     T computeInterface_impl(const expr::_expr<E> & expr, const intContainer & iFaces);
 
+    template<class E, class _op>
+    T computeFaces_impl(const expr::_expr<E> & expr, bool ghost);
+
     template<class E>
     void computeGrid_impl(const expr::_expr<E> & expr, const index_t patchInd);
 
@@ -449,6 +474,14 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 
     // Optimization for the case when the quadrature rule is the same for all patches
     bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
+
+    {   // Two-sided (jump/avg) symbols are rejected here, outside the OpenMP
+        // region: an exception thrown inside it would terminate the process.
+        auto chk = expr.val();
+        m_exprdata->parse(chk);
+        GISMO_ENSURE(!m_exprdata->hasTwoSided(), "jump()/avg() symbols are only "
+                     "valid in a face loop (integralSkeleton/integralGhost).");
+    }
 
 #pragma omp parallel
 {
@@ -691,6 +724,77 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
         _op::acc(elVal, 1, m_value);
         //if ( storeElWise )
             m_elWise.push_back( elVal );
+    }
+
+    return m_value;
+}
+
+// Shared body of integralSkeleton()/integralGhost(): computeInterface_impl()
+// with the interface loop replaced by the skeleton/ghost face loop of
+// gsExprAssembler::_assembleFaces_impl() (same shift invariant, same plain
+// Gauss-per-direction rule -- a codimension-1 face is outside the domain of
+// the immersed "quRule" options). One elementwise() entry is pushed per face,
+// unlike computeInterface_impl()'s one entry per interface.
+template<class T>
+template<class E, class _op>
+T gsExprEvaluator<T>::computeFaces_impl(const expr::_expr<E> & expr, bool ghost)
+{
+    auto arg_tpl = expr.val();
+    m_exprdata->parse(arg_tpl);
+    if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
+
+    const T shift   = (T)m_options.askReal("faceShift", 1e-6);
+    GISMO_ENSURE(shift > 0, "faceShift must be positive: with shift 0 both sides of a face land on the knot line and every jump term silently vanishes.");
+    const short_t d = m_exprdata->domain().dim();
+
+    std::vector<typename gsQuadRule<T>::uPtr> rules(d);
+    std::vector<boundaryInterface>            faceIfc(d);
+
+    T elVal;
+    m_value = _op::init();
+    m_elWise.clear();
+
+    for (size_t p = 0; p != m_exprdata->domain().nPieces(); ++p)
+    {
+        const typename gsDomain<T>::Ptr dom = m_exprdata->domain().subdomain(p);
+        if (0 == (ghost ? dom->numGhostFaces() : dom->numSkeletonFaces())) continue;
+
+        const gsVector<short_t> degs = m_exprdata->quadratureDegrees(p);
+        for (short_t dir = 0; dir != d; ++dir)
+        {
+            rules[dir] = gsGaussRule<T>::make(
+                gsQuadrature::numNodes(*dom, m_options.getReal("quA"),
+                                       m_options.getInt("quB"), dir, degs));
+            faceIfc[dir] = boundaryInterface(
+                patchSide(static_cast<index_t>(p), boxSide(dir,true)),
+                patchSide(static_cast<index_t>(p), boxSide(dir,false)), d);
+        }
+
+        typename gsDomain<T>::iterator it    = ghost ? dom->beginGhost() : dom->beginSkeleton();
+        typename gsDomain<T>::iterator itEnd = ghost ? dom->endGhost()   : dom->endSkeleton();
+
+        for (; it < itEnd; ++it)
+        {
+            const short_t dir = it.side().direction();
+
+            rules[dir]->mapTo(it.lowerCorner(), it.upperCorner(),
+                              m_exprdata->points(), m_exprdata->weights());
+            if (0 == m_exprdata->points().cols()) continue;
+
+            // See gsExprAssembler::_assembleFaces_impl() for the shift order
+            // invariant and its justification.
+            m_exprdata->pointsIfc() = m_exprdata->points();
+            m_exprdata->points()   .row(dir).array() -= shift * it.getPerpendicularCellSize();
+            m_exprdata->pointsIfc().row(dir).array() += shift * it.getPerpendicularCellSizeRight();
+
+            m_exprdata->precompute(faceIfc[dir]);
+
+            elVal = _op::init();
+            for (index_t k = 0; k != m_exprdata->weights().rows(); ++k)
+                _op::acc(arg_tpl.eval(k), m_exprdata->weights()[k], elVal);
+            _op::acc(elVal, 1, m_value);
+            m_elWise.push_back( elVal );
+        }
     }
 
     return m_value;

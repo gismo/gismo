@@ -17,8 +17,10 @@
 
 #include <gsDomain/gsDomain.h>
 #include <gsDomain/gsCutTreeData.h>
+#include <gsDomain/gsTensorDomainFaceIterator.h>
 #include <gsAssembler/gsQuadrature.h>
 #include <gsHSplines/gsHTensorBasis.h>
+#include <gsUtils/gsCombinatorics.h>
 
 namespace gismo
 {
@@ -147,6 +149,25 @@ struct AllSign      { bool operator()(short_t s) const { return s<=0; } };
 // Cells with any sign
 struct AnySign      { bool operator()(short_t s) const { return true; } };
 
+// Interior faces of the background grid between two ACTIVE elements: the
+// skeleton set F_skel of Hoang et al., CMAME 344 (2019), eq. (9).
+struct SkeletonFace
+{
+    const std::vector<short_t> * s;
+    bool operator()(size_t l, size_t r) const { return (*s)[l]<=0 && (*s)[r]<=0; }
+    short_t sign(size_t f) const { return (*s)[f]; }
+};
+// Skeleton faces with at least one CUT neighbour: the ghost set F_ghost of
+// Hoang et al., CMAME 344 (2019), eq. (10). Note a ghost face need not itself
+// be crossed by the interface.
+struct GhostFace
+{
+    const std::vector<short_t> * s;
+    bool operator()(size_t l, size_t r) const
+    { return (*s)[l]<=0 && (*s)[r]<=0 && ((*s)[l]==0 || (*s)[r]==0); }
+    short_t sign(size_t f) const { return (*s)[f]; }
+};
+
 /**
  * @brief TODO
  *
@@ -208,6 +229,21 @@ protected:
     /// init(gsTensorBSplineBasis,index_t) [from tbasis.maxDegree()] and
     /// init(gsHTensorBasis,index_t) [from htbasis.maxDegree()].
     short_t m_deg = 1;
+
+    /// Sign (-1 interior, 0 cut, +1 exterior) of every level-0 background element,
+    /// flat lexicographic with direction 0 running fastest. Empty means "not built
+    /// yet"; _elementSignGrid() fills it on first use.
+    ///
+    /// INVARIANT: every init() overload rebuilds m_tree and m_breaks and must
+    /// therefore call _clearFaceCache() -- same four sites as the m_deg invariant
+    /// above. The lazy build is not thread-safe: touch the face obtainers once
+    /// before entering a parallel region.
+    mutable std::vector<short_t> m_signGrid;
+    /// Face counts over m_signGrid; (size_t)-1 means "not computed yet". Cached because
+    /// the assembly loops re-evaluate the end sentinel per face, and each count is
+    /// a full sweep of the grid.
+    mutable size_t m_numSkeletonFaces = static_cast<size_t>(-1);
+    mutable size_t m_numGhostFaces    = static_cast<size_t>(-1);
 
 public: // virtual interface
 
@@ -272,6 +308,58 @@ public: // non-virtual interface
     domainIter beginAny() const
     {
         return begin<AnySign>();
+    }
+
+    /// Iterator over F_skel (Hoang et al., CMAME 344 (2019), eq. (9)): the
+    /// interior faces of the level-0 background grid whose two neighbouring
+    /// elements are both active. Not the faces of the cut cells.
+    domainIter beginSkeleton() const override
+    {
+        GISMO_ENSURE(1==numLevels(), "gsTrimmedDomain: skeleton faces are "
+                     "implemented for a single-level background grid only, but "
+                     "this domain has "<<numLevels()<<" levels.");
+        SkeletonFace op; op.s = &_elementSignGrid();
+        return domainIter(new gsTensorDomainFaceIterator<T,d,SkeletonFace>(m_breaks[0], op));
+    }
+
+    /// Number of faces in F_skel, see beginSkeleton().
+    size_t numSkeletonFaces() const override
+    {
+        GISMO_ENSURE(1==numLevels(), "gsTrimmedDomain: skeleton faces are "
+                     "implemented for a single-level background grid only, but "
+                     "this domain has "<<numLevels()<<" levels.");
+        if (static_cast<size_t>(-1)==m_numSkeletonFaces)
+        {
+            SkeletonFace op; op.s = &_elementSignGrid();
+            m_numSkeletonFaces = gsTensorDomainFaceIterator<T,d,SkeletonFace>::numFaces(m_breaks[0], op);
+        }
+        return m_numSkeletonFaces;
+    }
+
+    /// Iterator over F_ghost (Hoang et al., CMAME 344 (2019), eq. (10)): the
+    /// skeleton faces of the level-0 background grid with at least one cut
+    /// neighbour. Not the faces of the cut cells.
+    domainIter beginGhost() const override
+    {
+        GISMO_ENSURE(1==numLevels(), "gsTrimmedDomain: ghost faces are "
+                     "implemented for a single-level background grid only, but "
+                     "this domain has "<<numLevels()<<" levels.");
+        GhostFace op; op.s = &_elementSignGrid();
+        return domainIter(new gsTensorDomainFaceIterator<T,d,GhostFace>(m_breaks[0], op));
+    }
+
+    /// Number of faces in F_ghost, see beginGhost().
+    size_t numGhostFaces() const override
+    {
+        GISMO_ENSURE(1==numLevels(), "gsTrimmedDomain: ghost faces are "
+                     "implemented for a single-level background grid only, but "
+                     "this domain has "<<numLevels()<<" levels.");
+        if (static_cast<size_t>(-1)==m_numGhostFaces)
+        {
+            GhostFace op; op.s = &_elementSignGrid();
+            m_numGhostFaces = gsTensorDomainFaceIterator<T,d,GhostFace>::numFaces(m_breaks[0], op);
+        }
+        return m_numGhostFaces;
     }
 
     template<typename SignOp>
@@ -339,6 +427,81 @@ public: // non-virtual interface
     unsigned numLevels() const { return static_cast<unsigned>(m_breaks.size()); }
 
 protected:
+
+    /// Drops the lazily built element sign grid and the face counts.
+    void _clearFaceCache()
+    {
+        m_signGrid.clear();
+        m_numSkeletonFaces = m_numGhostFaces = static_cast<size_t>(-1);
+    }
+
+    /// Signs of all level-0 background elements, built once from a single leaf
+    /// sweep and cached. A level-L leaf covers 2^L level-L cells per direction
+    /// inside one background element; k >> L is the exact level-0 index because
+    /// _ensureLevel() bisects uniformly. Where several leaves fall in one
+    /// background element (multi-level trees) the coarse verdict is their union:
+    /// disagreeing fine signs mean the interface passes through, i.e. sign 0.
+    /// \note The returned reference is invalidated by any init().
+    const std::vector<short_t> & _elementSignGrid() const
+    {
+        if (!m_signGrid.empty())
+            return m_signGrid;
+
+        std::vector<size_t> n0(d);
+        size_t total = 1;
+        for (short_t j = 0; j < d; ++j)
+        {
+            n0[j] = m_breaks[0][j].size() - 1;
+            total *= n0[j];
+        }
+        // Sentinel outside {-1,0,1}: marks a level-0 cell no leaf has touched
+        // yet, so a surviving sentinel after the sweep flags a coverage gap.
+        m_signGrid.assign(total, short_t(2));
+
+        leafIterator it = m_tree.beginLeafIterator();
+        while (it.good())
+        {
+            const short_t sgn = it.data().sign();
+            GISMO_ASSERT(sgn>=-1 && sgn<=1, "gsTrimmedDomain: leaf carries an "
+                         "unclassified sign "<<sgn<<"; every terminal leaf must "
+                         "be classified before the element sign grid is built.");
+            const index_t L = it.data().level();
+            const point_t & lc = it.data().lowerCorner();
+            const point_t & uc = it.data().upperCorner();
+
+            point_t cur = lc;
+            do
+            {
+                size_t flat = 0, stride = 1;
+                for (short_t j = 0; j < d; ++j)
+                {
+                    const size_t k0 = static_cast<size_t>(cur[j]) >> L;
+                    flat   += k0 * stride;
+                    stride *= n0[j];
+                }
+                short_t & cell = m_signGrid[flat];
+                if (short_t(2)==cell)
+                    cell = sgn;
+                else if (cell!=sgn)
+                    cell = 0;
+            }
+            while (nextLexicographic(cur, lc, uc));
+
+            it.next();
+        }
+
+        GISMO_ASSERT(total == this->template numElements<AnySign>(),
+                     "gsTrimmedDomain: element sign grid size "<<total<<
+                     " disagrees with numElements<AnySign>() "<<
+                     this->template numElements<AnySign>()<<
+                     "; the level-0 grid or the leaf level shift is wrong.");
+        for (size_t k = 0; k < total; ++k)
+            GISMO_ASSERT(short_t(2)!=m_signGrid[k],
+                         "gsTrimmedDomain: level-0 element "<<k<<
+                         " was never covered by a leaf.");
+
+        return m_signGrid;
+    }
 
     /// Dyadically subdivides breaks up to and including \a level.
     /// m_breaks[0] must already be populated; each subsequent level
@@ -583,6 +746,7 @@ protected:
     void init(T maxElementSize = T(1), T minElementSize = T(0.1),
               index_t samples  = 10,   short_t deg      = 1)
     {
+        _clearFaceCache();
         GISMO_ASSERT(deg >= 0, "Polynomial degree must be non-negative, got "
                      << deg << ".");
         m_deg = deg;
@@ -638,6 +802,7 @@ protected:
               index_t samples = 5,
               short_t deg     = 1)
     {
+        _clearFaceCache();
         GISMO_ASSERT(deg >= 0, "Polynomial degree must be non-negative, got "
                      << deg << ".");
         m_deg = deg;
@@ -663,6 +828,7 @@ protected:
     /// Initializes from a tensor B-spline basis (uses its knot vectors as the level-0 grid).
     void init(const gsTensorBSplineBasis<d,T> & tbasis, index_t samples = 5)
     {
+        _clearFaceCache();
         m_deg = tbasis.maxDegree();
         m_breaks.clear();
         m_breaks.resize(1);
@@ -805,6 +971,7 @@ protected:
     void init(const gsHTensorBasis<d,T> & htbasis,
               index_t samples = 5)
     {
+        _clearFaceCache();
         m_deg = htbasis.maxDegree();
         _mirrorHTBTree(htbasis);
         _classifyTreeAdaptive(samples, [](short_t sign, const gsVector<T,d>& u1, const gsVector<T,d>& u2) { return true; });

@@ -19,6 +19,14 @@ namespace gismo
 namespace expr
 {
 
+/// Side tag of a symbol expression on a face or interface.
+/// left/right evaluate one-sidedly; jump/avg are two-sided symbols whose
+/// gsFuncData is the row-wise stack of the two sides (see gsExprHelper).
+struct symbolSide
+{
+    enum mode { left = 0, right = 1, jump = 2, avg = 3 };
+};
+
 /**
  * @brief base expression
  * @todo Documentation
@@ -36,18 +44,26 @@ protected:
     const gsFunctionSet<Scalar> * m_fs; ///< Evaluation source for this FE variable
     const gsFuncData<Scalar>    * m_fd; ///< Temporary variable storing flags and evaluation data
     index_t m_d;                   ///< Dimension of this (scalar or vector) variable
-    bool m_isAcross; ///< true when this expression is evaluated across an interface
+    symbolSide::mode m_side; ///< which side(s) of a face this symbol is evaluated on
 
 public:
 
     /// Returns whether this expression is evaluated across an interface
-    bool isAcross() const { return m_isAcross; }
+    bool isAcross() const { return symbolSide::right == m_side; }
+
+    /// Returns whether this symbol carries data from BOTH sides of a face
+    /// (jump/avg), stacked by gsExprHelper::precompute(const boundaryInterface&)
+    bool isTwoSided() const
+    { return symbolSide::jump == m_side || symbolSide::avg == m_side; }
+
+    /// Returns the side tag (left/right/jump/avg) of this symbol
+    symbolSide::mode sideMode() const { return m_side; }
 
     E right() const
     {
         E ac(this->derived());
         ac.m_fs = m_fs;//needed?
-        ac.m_isAcross = true;
+        ac.m_side = symbolSide::right;
         return ac;
     }
 
@@ -55,7 +71,31 @@ public:
     {
         E ac(this->derived());
         ac.m_fs = m_fs;
-        ac.m_isAcross = false;
+        ac.m_side = symbolSide::left;
+        return ac;
+    }
+
+    /// The jump [[u]] = u_left - u_right of this symbol across a face,
+    /// evaluated by stacking the two sides' gsFuncData row-wise
+    /// (gsExprHelper::precompute(const boundaryInterface&)). Only valid
+    /// inside a face/interface loop (assembleSkeleton/assembleGhost/assembleIfc).
+    E jump() const
+    {
+        E ac(this->derived());
+        ac.m_fs = m_fs;
+        ac.m_side = symbolSide::jump;
+        return ac;
+    }
+
+    /// The average {u} = (u_left + u_right)/2 of this symbol across a face,
+    /// evaluated by stacking the two sides' gsFuncData row-wise
+    /// (gsExprHelper::precompute(const boundaryInterface&)). Only valid
+    /// inside a face/interface loop (assembleSkeleton/assembleGhost/assembleIfc).
+    E avg() const
+    {
+        E ac(this->derived());
+        ac.m_fs = m_fs;
+        ac.m_side = symbolSide::avg;
         return ac;
     }
 
@@ -92,7 +132,7 @@ private:
 
 protected:
     explicit symbol_expr(index_t _d)
-    : m_fs(NULL), m_fd(NULL), m_d(_d), m_isAcross(false) { }
+    : m_fs(NULL), m_fd(NULL), m_d(_d), m_side(symbolSide::left) { }
 
 public:
     bool isValid() const { return NULL!=m_fd && NULL!=m_fs; }

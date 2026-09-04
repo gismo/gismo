@@ -34,7 +34,7 @@ template<class T>
 class gsFeSolution : public _expr<gsFeSolution<T> >
 {
 protected:
-    const gsFeSpace<T> _u;
+    gsFeSpace<T> _u;
     gsMatrix<T> * _Sv; ///< Pointer to a coefficient vector
     bool m_isAcross; ///< true when this expression is evaluated across an interface
 
@@ -44,18 +44,50 @@ public:
 
     bool isAcross() const { return m_isAcross; }
 
+    /// The solution seen from the other side of an interface or face: the
+    /// underlying space is re-tagged so that gsExprHelper evaluates it on the
+    /// mirrored point set (see symbol_expr::right()).
     gsFeSolution right() const
     {
         gsFeSolution ac(*this);
+        ac._u = _u.right();
         ac.m_isAcross = true;
         return ac;
     }
 
-    gsFeSolution left() const { return gsFeSolution(*this); }
+    gsFeSolution left() const
+    {
+        gsFeSolution ac(*this);
+        ac._u = _u.left();
+        ac.m_isAcross = false;
+        return ac;
+    }
 
-    explicit gsFeSolution(const gsFeSpace<T> & u) : _u(u), _Sv(NULL) { }
+    /// The jump [[u]] = u_left - u_right of the solution across a face; see
+    /// symbol_expr::jump(). Not "across" in the isAcross() sense: the space
+    /// carries both sides via stacked gsFuncData, so m_isAcross stays false,
+    /// matching _u.isAcross().
+    gsFeSolution jump() const
+    {
+        gsFeSolution ac(*this);
+        ac._u = _u.jump();
+        ac.m_isAcross = false;
+        return ac;
+    }
 
-    gsFeSolution(const gsFeSpace<T> & u, gsMatrix<T> & Sv) : _u(u), _Sv(&Sv) { }
+    /// The average {u} = (u_left + u_right)/2 of the solution across a face;
+    /// see symbol_expr::avg(). Not "across" in the isAcross() sense; see jump().
+    gsFeSolution avg() const
+    {
+        gsFeSolution ac(*this);
+        ac._u = _u.avg();
+        ac.m_isAcross = false;
+        return ac;
+    }
+
+    explicit gsFeSolution(const gsFeSpace<T> & u) : _u(u), _Sv(NULL), m_isAcross(u.isAcross()) { }
+
+    gsFeSolution(const gsFeSpace<T> & u, gsMatrix<T> & Sv) : _u(u), _Sv(&Sv), m_isAcross(u.isAcross()) { }
 
     const gsFeSpace<T> & space() const {return _u;};
 

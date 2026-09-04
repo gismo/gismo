@@ -414,7 +414,7 @@ protected:
 
 template<class T> inline bool
 operator== (const gsFeSpace<T> & a, const gsFeSpace<T> & b)
-{ return a.id()== b.id() && a.isAcross()==b.isAcross(); }
+{ return a.id()== b.id() && a.sideMode()==b.sideMode(); }
 
 }// namespace expr
 }// namespace gismo

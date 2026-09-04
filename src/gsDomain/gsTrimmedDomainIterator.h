@@ -116,7 +116,7 @@ public:
 
     gsVector<T> upperCorner() const override { return m_upper; }
 
-    short_t sign() const { return m_leaf.data().sign(); }
+    short_t sign() const override { return m_leaf.data().sign(); }
 
 private:
 

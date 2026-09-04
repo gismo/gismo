@@ -201,7 +201,8 @@ public:
 
     gsDomainIterator<T> & operator*() { return *m_domainIter; }
 
-    virtual short_t sign() const { return -1; }
+    short_t sign() const
+    { return m_domainIter->sign(); }
 
 public:
 
@@ -219,6 +220,21 @@ public:
 
     const T getPerpendicularCellSize() const
     { return m_domainIter->getPerpendicularCellSize(); }
+
+    const T getPerpendicularCellSizeRight() const
+    { return m_domainIter->getPerpendicularCellSizeRight(); }
+
+    size_t leftElementId() const
+    { return m_domainIter->leftElementId(); }
+
+    size_t rightElementId() const
+    { return m_domainIter->rightElementId(); }
+
+    short_t leftSign() const
+    { return m_domainIter->leftSign(); }
+
+    short_t rightSign() const
+    { return m_domainIter->rightSign(); }
 
     bool isBoundaryElement() const
     { return m_domainIter->isBoundaryElement(); }
@@ -385,6 +401,30 @@ public:
     {
         GISMO_NO_IMPLEMENTATION
     }
+
+    /// Sign of the element with respect to a trimming level set:
+    /// -1 interior, 0 cut, +1 exterior. Domains with no trimming concept
+    /// report -1, i.e. every element is interior.
+    virtual short_t sign() const { return -1; }
+
+    /// Perpendicular cell size on the right (upper-index) side of a face;
+    /// face iterators only, see gsDomainFaceIterator.
+    virtual const T getPerpendicularCellSizeRight() const
+    { GISMO_NO_IMPLEMENTATION }
+
+    /// Flat element index of the left (lower-index) neighbour of a face
+    virtual size_t leftElementId() const
+    { GISMO_NO_IMPLEMENTATION }
+
+    /// Flat element index of the right (upper-index) neighbour of a face
+    virtual size_t rightElementId() const
+    { GISMO_NO_IMPLEMENTATION }
+
+    /// Sign of the left neighbour of a face, see sign()
+    virtual short_t leftSign() const { return -1; }
+
+    /// Sign of the right neighbour of a face, see sign()
+    virtual short_t rightSign() const { return -1; }
 
     virtual bool isBoundaryElement() const
     {

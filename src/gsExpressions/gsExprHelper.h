@@ -50,11 +50,20 @@ private:
     typedef typename MapData ::iterator MapDataIt;
     typedef typename CFuncData ::iterator CFuncDataIt;
 
+    /// (source, side mode) -- the side mode is a plain short_t (rather than
+    /// symbolSide::mode) so this header never has to name the enum type,
+    /// which is declared in symbol_expr.h, included after this file's first
+    /// user (gsExpressions.h:102-113).
+    typedef std::pair<const gsFunctionSet<T>*,short_t> TwoSidedKey;
+    typedef std::map<TwoSidedKey,thFuncData>           TwoSidedData;
+    typedef typename TwoSidedData::iterator            TwoSidedDataIt;
+
     util::gsThreaded<gsMatrix<T> > m_points;
     util::gsThreaded<gsVector<T> > m_weights;
-    FuncData  m_fdata;///< functions
-    MapData   m_mdata;///< maps
-    CFuncData m_cdata;///< compositions
+    FuncData     m_fdata;///< functions
+    MapData      m_mdata;///< maps
+    CFuncData    m_cdata;///< compositions
+    TwoSidedData m_tsdata;///< stacked two-sided (jump/avg) function data
 
     memory::shared_ptr<gsExprHelper> m_mirror;
 
@@ -120,6 +129,7 @@ public:
             m_mdata.clear();
             m_fdata.clear();
             m_cdata.clear();
+            m_tsdata.clear();
             //mutSrc = nullptr;
             mutMap = nullptr;
             mutData.mine().clear();
@@ -128,6 +138,7 @@ public:
                 m_mirror->m_mdata.clear();
                 m_mirror->m_fdata.clear();
                 m_mirror->m_cdata.clear();
+                m_mirror->m_tsdata.clear();
                 //m_mirror->mutSrc = nullptr;
                 m_mirror->mutMap = nullptr;
                 m_mirror->mutData.mine().clear();
@@ -299,6 +310,8 @@ public:
             it->second.mine().flags |= flg;
         for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
             it->second.mine().flags |= flg;
+        for (TwoSidedDataIt it = m_tsdata.begin(); it != m_tsdata.end(); ++it)
+            it->second.mine().flags |= flg;
         // gsInfo<< "\n-fdata: "<< m_fdata.size()<<"\n";
         // gsInfo<< "-mdata: "<< m_mdata.size()<<"\n";
         // gsInfo<< "-cdata: "<< m_cdata.size()<<std::endl;
@@ -362,6 +375,8 @@ private:
             it->second.mine().flags |= NEED_ACTIVE;
         for (CFuncDataIt it  = m_cdata.begin(); it != m_cdata.end(); ++it)
         it->second.mine().flags |= NEED_ACTIVE;
+        for (TwoSidedDataIt it = m_tsdata.begin(); it != m_tsdata.end(); ++it)
+            it->second.mine().flags |= NEED_ACTIVE;
         //gsInfo<< "\n-fdata: "<< m_fdata.size()<<"\n";
         //gsInfo<< "-mdata: "<< m_mdata.size()<<"\n";
         //gsInfo<< "-cdata: "<< m_cdata.size()<<std::endl;
@@ -400,6 +415,8 @@ public:
         if (isMirrored())
             for (FuncDataIt it = m_mirror->m_fdata.begin(); it != m_mirror->m_fdata.end(); ++it)
                 it->second.mine().flags = NEED_ACTIVE;
+        for (TwoSidedDataIt it = m_tsdata.begin(); it != m_tsdata.end(); ++it)
+            it->second.mine().flags = NEED_ACTIVE;
     }
 
     template<class... expr>
@@ -422,6 +439,8 @@ public:
     void add(const expr::gsComposition<T> & sym)
     {
         //GISMO_ASSERT(NULL!=sym.m_fs, "Composition "<<&sym<<" is invalid");
+        GISMO_ENSURE(!sym.isTwoSided(),
+                     "jump()/avg() on a composition is not supported.");
         add(sym.inner());//the map
         sym.inner().data().flags |= NEED_VALUE;
         if (nullptr==sym.m_fs)
@@ -460,6 +479,30 @@ public:
     template <class E>
     void add(const expr::symbol_expr<E> & sym)
     {
+        if (sym.isTwoSided())
+        {
+            // Row-stacking assumes actives.rows()>1 and symbol_expr::rows()
+            // == m_fs->targetDim(): true for FE spaces (and, through their
+            // space, gsFeSolution), but a function-backed variable's
+            // gsFunctionSet::compute gives actives.rows()==1 with values[0]
+            // rows indexing target components instead -- stacking that would
+            // silently produce a mis-shaped matrix, not a jump.
+            GISMO_ENSURE(0 != E::Space,
+                         "jump()/avg() are supported on FE spaces (and "
+                         "gsFeSolution) only; a function-backed variable's "
+                         "gsFuncData rows index target components, not "
+                         "actives, so row-stacking cannot express its jump.");
+            GISMO_ENSURE(NULL != sym.m_fs, "Symbol is invalid");
+#           pragma omp critical (m_fdata_first_touch)
+            {
+                this->m_fdata[sym.m_fs];          // left  source entry (this helper)
+                this->iface().m_fdata[sym.m_fs];  // right source entry (mirror helper)
+                const_cast<expr::symbol_expr<E>&>(sym)
+                    .setData( m_tsdata[TwoSidedKey(sym.m_fs,(short_t)sym.sideMode())] );
+            }
+            return;
+        }
+
         //parallel: variables become thread-local
         // for each variable we provide a gsFuncData pointer
         // in the same thread this can be the same ptr (as done now)
@@ -502,8 +545,76 @@ public:
         }
     }
 
+    /// True while a jump()/avg() symbol is registered (after parse()).
+    bool hasTwoSided() const { return !m_tsdata.empty(); }
+
+    /// One-sided evaluation. Not valid while a jump()/avg() symbol is
+    /// registered: those need both sides of a face.
     void precompute(const index_t patchIndex = 0,
                     boundary::side bs = boundary::none)
+    {
+        GISMO_ENSURE(m_tsdata.empty(), "A jump()/avg() symbol is registered: "
+                     "two-sided symbols are only valid in a face/interface loop "
+                     "(assembleSkeleton/assembleGhost/assembleIfc).");
+        _precompute(patchIndex, bs);
+    }
+
+    void precompute(const boundaryInterface & iFace)
+    {
+        if (!m_tsdata.empty())
+        {
+            GISMO_ENSURE(isMirrored(), "A jump()/avg() symbol is registered "
+                         "but this helper has no mirror to evaluate the other "
+                         "side of the face.");
+            // gsFuncData carries a single patchId and _eval::push maps the
+            // stacked actives with it: both sides must be the same patch.
+            GISMO_ENSURE(iFace.first().patch == iFace.second().patch,
+                         "jump()/avg() require both sides of the face on the "
+                         "same patch (multipatch DG via jump/avg is not "
+                         "implemented).");
+            // Requests made through the stacked entry (NEED_*, derivOrder and
+            // SAME_ELEMENT) must reach the two entries that are actually
+            // computed -- in particular SAME_ELEMENT, without which the mirror
+            // would produce one actives column per point while this side
+            // produces one in total, and the two could not be stacked.
+            // The union is symmetrised (ld/rd/sd all merged into both ld and
+            // rd), not propagated one-way from sd: a one-sided symbol sharing
+            // the same source (e.g. dnk(u.left(),G,2) alongside dnk(u.jump(),
+            // G,1)) may itself have written extra flags/derivOrder into only
+            // one of ld/rd before this runs, and both sides of a stacked
+            // entry must end up evaluated to the SAME order for
+            // _stackFuncData's per-order layout to line up (its
+            // L.values.size()==R.values.size() guard is exactly this
+            // invariant) -- one-way propagation left that guard able to fire
+            // on valid input whenever the one-sided term asked for more than
+            // the two-sided one.
+            for (TwoSidedDataIt it = m_tsdata.begin(); it != m_tsdata.end(); ++it)
+            {
+                const gsFunctionSet<T> * fs = it->first.first;
+                gsFuncData<T> & sd = it->second.mine();
+                gsFuncData<T> & ld = m_fdata[fs].mine();
+                gsFuncData<T> & rd = m_mirror->m_fdata[fs].mine();
+                const unsigned f = ld.flags | rd.flags | sd.flags;
+                ld.flags = rd.flags = f;
+                const index_t dOrd = math::max(math::max(ld.derivOrder, rd.derivOrder), sd.derivOrder);
+                ld.derivOrder = rd.derivOrder = dOrd;
+            }
+        }
+
+        this->_precompute( iFace.first ().patch, iFace.first().side() );
+        if ( isMirrored() )
+            m_mirror->_precompute(iFace.second().patch, iFace.second().side());
+
+        for (TwoSidedDataIt it = m_tsdata.begin(); it != m_tsdata.end(); ++it)
+            _stackFuncData( m_fdata[it->first.first].mine(),
+                            m_mirror->m_fdata[it->first.first].mine(),
+                            (expr::symbolSide::mode)it->first.second,
+                            it->second.mine() );
+    }
+
+private:
+
+    void _precompute(const index_t patchIndex, boundary::side bs)
     {
         //First compute the maps
         for (MapDataIt it = m_mdata.begin(); it != m_mdata.end(); ++it)
@@ -538,11 +649,99 @@ public:
         }
     }
 
-    void precompute(const boundaryInterface & iFace)
+    /// Fills the two-sided (jump/avg) entry \a S by stacking the already
+    /// computed one-sided entries \a L (left) and \a R (right) row-wise:
+    /// actives are concatenated (no sign, no scale) so that both sides
+    /// scatter through the ordinary one-sided assembly machinery
+    /// (gsExprAssembler::_eval::push, _patternFace); each order's values
+    /// block is concatenated per-active with sign/scale so that an
+    /// expression evaluating row i*bsz+off (i indexing actives) picks up the
+    /// left contribution for i<nL and the (signed, scaled) right one for
+    /// i>=nL -- exactly the layout dnk_expr and symbol_expr::eval read.
+    /// \a mode is expr::symbolSide::jump or expr::symbolSide::avg.
+    static void _stackFuncData(const gsFuncData<T> & L, const gsFuncData<T> & R,
+                                expr::symbolSide::mode mode, gsFuncData<T> & S)
     {
-        this->precompute( iFace.first ().patch, iFace.first().side() );
-        if ( isMirrored() )
-            m_mirror->precompute(iFace.second().patch, iFace.second().side());
+        const index_t nL = L.actives.rows();
+        const index_t nR = R.actives.rows();
+        GISMO_ENSURE(0 != nL && 0 != nR,
+                     "jump()/avg(): actives were not computed on one of the "
+                     "two sides of the face.");
+        GISMO_ENSURE(L.actives.cols() == R.actives.cols(),
+                     "jump()/avg(): the two sides of the face do not agree "
+                     "on the number of quadrature points (SAME_ELEMENT "
+                     "was not propagated to both sides).");
+        GISMO_ENSURE(L.values.size() == R.values.size(),
+                     "jump()/avg(): the two sides of the face do not agree "
+                     "on the number of computed derivative orders.");
+        GISMO_ENSURE(L.patchId == R.patchId,
+                     "jump()/avg() require both sides of the face on the "
+                     "same patch.");
+
+        const T sgnR  = (expr::symbolSide::jump == mode) ? T(-1) : T(1);
+        const T scale = (expr::symbolSide::avg  == mode) ? T(0.5) : T(1);
+
+        S.flags      = L.flags;
+        S.derivOrder = L.derivOrder;
+        S.patchId    = L.patchId;
+        S.dim        = L.dim;
+
+        S.actives.resize(nL+nR, L.actives.cols());
+        S.actives.topRows(nL)    = L.actives;
+        S.actives.bottomRows(nR) = R.actives;
+
+        S.values.resize(L.values.size());
+        for (size_t n = 0; n != L.values.size(); ++n)
+        {
+            const gsMatrix<T> & Ln = L.values[n];
+            const gsMatrix<T> & Rn = R.values[n];
+            if (0 == Ln.rows() && 0 == Rn.rows())
+                continue; // order n not evaluated on either side: leave empty
+            GISMO_ENSURE(Ln.cols() == Rn.cols(),
+                         "jump()/avg(): the two sides of the face do not "
+                         "agree on the number of quadrature points for "
+                         "derivative order "<<n<<".");
+            GISMO_ENSURE(Ln.rows()*nR == Rn.rows()*nL,
+                         "jump()/avg(): the two sides of the face do not "
+                         "agree on the per-active block size for derivative "
+                         "order "<<n<<".");
+            const index_t bsL = Ln.rows()/nL;
+            const index_t bsR = Rn.rows()/nR;
+            gsMatrix<T> & Sn = S.values[n];
+            Sn.resize(nL*bsL + nR*bsR, Ln.cols());
+            Sn.topRows(nL*bsL)    = scale*Ln;
+            Sn.bottomRows(nR*bsR) = scale*sgnR*Rn;
+        }
+
+        const bool curlsOk = (0!=L.curls.rows() && 0!=R.curls.rows());
+        if (curlsOk)
+        {
+            S.curls.resize(L.curls.rows()+R.curls.rows(), L.curls.cols());
+            S.curls.topRows(L.curls.rows())    = scale*L.curls;
+            S.curls.bottomRows(R.curls.rows()) = scale*sgnR*R.curls;
+        }
+        else
+            S.curls.resize(0,0);
+
+        const bool divsOk = (0!=L.divs.rows() && 0!=R.divs.rows());
+        if (divsOk)
+        {
+            S.divs.resize(L.divs.rows()+R.divs.rows(), L.divs.cols());
+            S.divs.topRows(L.divs.rows())    = scale*L.divs;
+            S.divs.bottomRows(R.divs.rows()) = scale*sgnR*R.divs;
+        }
+        else
+            S.divs.resize(0,0);
+
+        const bool laplOk = (0!=L.laplacians.rows() && 0!=R.laplacians.rows());
+        if (laplOk)
+        {
+            S.laplacians.resize(L.laplacians.rows()+R.laplacians.rows(), L.laplacians.cols());
+            S.laplacians.topRows(L.laplacians.rows())    = scale*L.laplacians;
+            S.laplacians.bottomRows(R.laplacians.rows()) = scale*sgnR*R.laplacians;
+        }
+        else
+            S.laplacians.resize(0,0);
     }
 
 };//class gsExprHelper
