@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
     // Specify the file path
     std::string fn("pde/circle.xml");
     // std::string fn("domain2d/lake.xml");
-    // std::string fn("pde/example3D.xml");
+    // std::string fn("pde/Bspline_ball.xml");
     // std::string fn("volumes/GshapedVolume.xml"); 
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");

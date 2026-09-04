@@ -18,7 +18,7 @@
 
 using namespace gismo;
 //! [Include namespace]
-// computes the projection of a composition and return a MultiPatch object :: fitting
+// computes Hausdorff distance and boundary error between two multipatch geometries
 void ComputesErrorGeometry(const gsMultiPatch<> &FF,
                            const gsMultiPatch<> &MAmapping,
                            const gsMultiPatch<> &Apmapping,
@@ -182,10 +182,9 @@ int main(int argc, char *argv[])
     // timer.restart();
 
     // Specify the file path
-    // std::string fn("pde/example3D.xml");
+    // std::string fn("pde/Bspline_ball.xml");
     // std::string fn("volumes/GshapedVolume.xml");
     // Specify the file path
-    // std::string fn("pde/infinit_plate.xml");
     // std::string fn("pde/circle.xml");
     std::string fn("surfaces/egg.xml"); 
     // std::string fn("domain2d/lake.xml");

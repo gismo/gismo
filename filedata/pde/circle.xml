@@ -17,10 +17,9 @@
   <Function type="FunctionExpr" id="2003" dim="2"> exp(-100*abs((x-0.5)**2+(y-0.5)**2-0.09))</Function>
   <Function type="FunctionExpr" id="2003" dim="2">(1.+5.*exp(-50.*abs((x-0.5-0.25*cos(2.*pi*0.25))**2-(y-0.5-0.5 *sin(2.*pi*0.25))**2- 0.01)))</Function>
   <Function type="FunctionExpr" id="2003" dim="2">(1.+5./cosh( 5.*((x-sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2 + 5./cosh( 5.*((x+sqrt(3)/2)**2+(y-0.5)**2 - (pi/2)**2) )**2)</Function>
-
   <Function type="FunctionExpr" id="2003" dim="2">1.+6.*( 1/(1.+exp((y -x  - 0.3)/0.01)) - 1/(1.+exp((y - x  - 0.1)/0.01))  )</Function>
+  -->
 
-    -->
   <!-- For poisson test Circle-->
   <Function type="FunctionExpr" id="2000" dim="2"> 1./(1.+exp(200.*(y-cos(pi*x) )) )</Function>
   <Function type="FunctionExpr" id="2001" dim="2"> 40000.0*pi**2*exp(200.0*y - 200.0*cos(pi*x))*sin(pi*x)**2/(exp(200.0*y - 200.0*cos(pi*x)) + 1.0)**2 + 200.0*pi**2*exp(200.0*y - 200.0*cos(pi*x))*cos(pi*x)/(exp(200.0*y - 200.0*cos(pi*x)) + 1.0)**2 + 40000.0*exp(200.0*y - 200.0*cos(pi*x))/(exp(200.0*y - 200.0*cos(pi*x)) + 1.0)**2 
