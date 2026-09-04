@@ -16,6 +16,7 @@
 #include <iostream>
 #include <time.h>
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 
 
 using namespace gismo;
@@ -121,9 +122,11 @@ int main(int argc, char* argv[])
     if (plot)
     {
         gsInfo << "Plotting in Paraview..." << "\n";
-        gsWriteParaviewPoints(fval, "point_data");
-        gsWriteParaview(surf, "multipatch_spline", np);
-        gsFileManager::open("multipatch_spline.pvd");
+        gsParaview<real_t> pv;
+        pv.options().setInt("numPoints", np);
+        pv.options().setSwitch("show", true);
+        pv.writePoints(fval, "point_data");
+        pv.write(surf, "multipatch_spline");
     }
 
     return EXIT_SUCCESS;

@@ -14,11 +14,11 @@ namespace gismo
 
 TEMPLATE_INST
 void gsWriteParaview(const gsField<T> & field, std::string const & fn,
-                     unsigned npts, bool mesh, const std::string pDelim);
+                     unsigned npts, bool mesh, const std::string pDelim, bool skipPvd);
 
 TEMPLATE_INST
 void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
-                     unsigned npts, bool mesh, bool ctrlNet);
+                     unsigned npts, bool mesh, bool ctrlNet, bool skipPvd);
 
 TEMPLATE_INST
 void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo, std::string const & fn,
@@ -26,6 +26,14 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo, std::string cons
 
 TEMPLATE_INST
 void gsWriteParaviewBezier(const gsMultiPatch<real_t> & mPatch, std::string const & filename, bool ctrlNet);
+
+TEMPLATE_INST
+void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch, std::string const & fn,
+                                     unsigned npts, bool export_base64, bool skipPvd);
+
+TEMPLATE_INST
+void gsWriteParaviewUnstructuredGrid(const gsField<T> & field, std::string const & fn,
+                                     unsigned npts, bool export_base64, bool skipPvd);
 
 TEMPLATE_INST
 void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
@@ -42,20 +50,20 @@ TEMPLATE_INST
 void gsWriteParaview(gsFunctionSet<T> const& func, std::string const & fn, unsigned npts);
 
 TEMPLATE_INST
-void gsWriteParaview(gsFunctionSet<T> const& geo, gsFunctionSet<T> const& func,std::string const & fn, unsigned npts, const std::string pDelim);
+void gsWriteParaview(gsFunctionSet<T> const& geo, gsFunctionSet<T> const& func,std::string const & fn, unsigned npts, const std::string pDelim, bool skipPvd);
 
 TEMPLATE_INST
 void gsWriteParaview(const gsMultiPatch<T> & Geo, std::string const & fn, 
                      unsigned npts, bool mesh, bool ctrlNet, const std::string pDelim);
 
 TEMPLATE_INST
-void gsWriteParaview(gsMappedSpline<2,T> const& mspline, std::string const & fn,unsigned npts);
+void gsWriteParaview(gsMappedSpline<2,T> const& mspline, std::string const & fn,unsigned npts, bool skipPvd);
 
 TEMPLATE_INST
-void gsWriteParaview(gsFunctionSet<T> const& geom, gsMappedBasis<2,T>  const& mbasis,std::string const & fn,unsigned npts,const bool fullsupport, const std::vector<index_t> indices);
+void gsWriteParaview(gsFunctionSet<T> const& geom, gsMappedBasis<2,T>  const& mbasis,std::string const & fn,unsigned npts,const bool fullsupport, const std::vector<index_t> indices, bool skipPvd);
 
 TEMPLATE_INST
-void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,std::string const & fn, unsigned npts);
+void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,std::string const & fn, unsigned npts, bool skipPvd);
 
 TEMPLATE_INST
 void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::string const & fn, unsigned npts, bool graph);
@@ -214,7 +222,8 @@ namespace py = pybind11;
 void pybind11_init_gsWriteParaview(py::module &m)
 {
     m.def("gsWriteParaview",
-            static_cast<void (*)(const gsField<real_t> &, std::string const &, unsigned, bool, const std::string)>(&gsWriteParaview),
+            [](const gsField<real_t> &field, const std::string &filename, unsigned numPoints, bool mesh, const std::string &pDelim)
+            { gsWriteParaview(field, filename, numPoints, mesh, pDelim); },
             "Writes a field to Paraview",
             py::arg("field"),
             py::arg("filename"),
@@ -222,36 +231,43 @@ void pybind11_init_gsWriteParaview(py::module &m)
             py::arg("mesh")=false,
             py::arg("pDelim")="");
     m.def("gsWriteParaview",
-            static_cast<void (*)(const gsGeometry<real_t> &, std::string const &, unsigned, bool, bool)>(&gsWriteParaview),
+            [](const gsGeometry<real_t> &geometry, const std::string &filename, unsigned numPoints, bool mesh, bool ctrlNet, bool skipPvd)
+            { gsWriteParaview(geometry, filename, numPoints, mesh, ctrlNet, skipPvd); },
             "Writes a geometry to Paraview",
             py::arg("geometry"),
             py::arg("filename"),
             py::arg("numPoints")=1000,
             py::arg("mesh")=false,
-            py::arg("controlNet")=false);
+            py::arg("ctrlNet")=false,
+            py::arg("skipPvd")=false);
     m.def("gsWriteParaview",
-            static_cast<void (*)(const gsBasis<real_t> &, std::string const &, unsigned, bool)>(&gsWriteParaview),
+            [](const gsBasis<real_t> &basis, const std::string &filename, unsigned numPoints, bool mesh)
+            { gsWriteParaview(basis, filename, numPoints, mesh); },
             "Writes a basis to Paraview",
             py::arg("basis"),
             py::arg("filename"),
             py::arg("numPoints")=1000,
             py::arg("mesh")=false);
     m.def("gsWriteParaview",
-            static_cast<void (*)(const gsFunctionSet<real_t> &, std::string const &, unsigned)>(&gsWriteParaview),
+            [](const gsFunctionSet<real_t> &function, const std::string &filename, unsigned numPoints)
+            { gsWriteParaview(function, filename, numPoints); },
             "Writes a geometry to Paraview",
             py::arg("function"),
             py::arg("filename"),
             py::arg("numPoints")=1000);
     m.def("gsWriteParaview",
-            static_cast<void (*)(const gsFunctionSet<real_t> &, const gsFunctionSet<real_t> &, std::string const &, unsigned, const std::string)>(&gsWriteParaview),
+            [](const gsFunctionSet<real_t> &geometry, const gsFunctionSet<real_t> &function, const std::string &filename, unsigned numPoints, const std::string &pDelim, bool skipPvd)
+            { gsWriteParaview(geometry, function, filename, numPoints, pDelim, skipPvd); },
             "Writes a geometry to Paraview",
             py::arg("geometry"),
             py::arg("function"),
             py::arg("filename"),
             py::arg("numPoints")=1000,
-            py::arg("pDelim")="");
+            py::arg("pDelim")="",
+            py::arg("skipPvd")=false);
     m.def("gsWriteParaview",
-            static_cast<void (*)(const gsMultiPatch<real_t> &, std::string const &, unsigned, bool, bool, const std::string)>(&gsWriteParaview),
+            [](const gsMultiPatch<real_t> &geometry, const std::string &filename, unsigned numPoints, bool mesh, bool ctrlNet, const std::string &pDelim)
+            { gsWriteParaview(geometry, filename, numPoints, mesh, ctrlNet, pDelim); },
             "Writes a multi-patch to paraview",
             py::arg("geometry"),
             py::arg("filename"),
@@ -260,21 +276,17 @@ void pybind11_init_gsWriteParaview(py::module &m)
             py::arg("controlNet")=false,
             py::arg("delimiter")="_");
 
-    m.def("gsWriteParaviewBezier",
-            static_cast<void (*)(const gsMultiPatch<real_t> &, std::string const &, bool)>(&gsWriteParaviewBezier),
-            "Writes a multi-patch to bezier format",
-            py::arg("geometry"),
-            py::arg("filename"),
-            py::arg("controlNet")=false);
-
     m.def("gsWriteParaviewPoints",
-            static_cast<void (*)(const gsMatrix<real_t> &, const gsMatrix<real_t> &, std::string const &)>(&gsWriteParaviewPoints),
+            [](const gsMatrix<real_t> &X, const gsMatrix<real_t> &Y, const std::string &fn)
+            { gsWriteParaviewPoints(X, Y, fn); },
             "Writes points to Paraview");
     m.def("gsWriteParaviewPoints",
-            static_cast<void (*)(const gsMatrix<real_t> &, const gsMatrix<real_t> &, const gsMatrix<real_t> &,std::string const &)>(&gsWriteParaviewPoints),
+            [](const gsMatrix<real_t> &X, const gsMatrix<real_t> &Y, const gsMatrix<real_t> &ZMat, const std::string &fn)
+            { gsWriteParaviewPoints(X, Y, ZMat, fn); },
             "Writes points to Paraview");
     m.def("gsWriteParaviewPoints",
-            static_cast<void (*)(const gsMatrix<real_t> &, const gsMatrix<real_t> &, const gsMatrix<real_t> &, const gsMatrix<real_t> &,std::string const &)>(&gsWriteParaviewPoints),
+            [](const gsMatrix<real_t> &X, const gsMatrix<real_t> &Y, const gsMatrix<real_t> &ZMat, const gsMatrix<real_t> &V, const std::string &fn)
+            { gsWriteParaviewPoints(X, Y, ZMat, V, fn); },
             "Writes points to Paraview");
 
 }

@@ -156,7 +156,7 @@ def main():
         print("Plotting in Paraview...\n")
         collection = gismo.gsParaviewCollection("ParaviewOutput/solution", ev)
         collection.options().setSwitch("plotElements", True)
-        collection.options().setInt("plotElements.resolution", 16)
+        collection.options().setInt("plot.elements.resolution", 16)
         collection.newTimeStep(geometry)
         collection.addField(u_sol, "numerical solution")
         collection.addField(u_ex, "exact solution")

@@ -12,6 +12,7 @@
 */
 
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -38,7 +39,8 @@ int main(int argc, char *argv[])
     gsMultiPatch<> mp = HEmesh.linear_patches();
 
     gsInfo<<"Reading mesh:\t"<<time.stop()<<" seconds\n";
-    if (plot) gsWriteParaview(HEmesh,"HEmesh");
+    gsParaview<real_t> pv;
+    if (plot) pv.write(HEmesh, "HEmesh");
 
     time.restart();
 
@@ -47,7 +49,9 @@ int main(int argc, char *argv[])
     time.restart();
     if (plot)
     {
-        gsWriteParaview(mp,"mp",1000,true);
+        pv.options().setInt("numPoints", 1000);
+        pv.options().setSwitch("plotElements", true);
+        pv.write(mp, "mp");
         gsInfo<<"Plotting multipatch:\t"<<time.stop()<<" seconds\n";
     }
     time.restart();

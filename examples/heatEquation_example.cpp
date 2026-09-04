@@ -96,8 +96,8 @@ int main(int argc, char *argv[])
     real_t Dt = endTime / numSteps ;
 
     const std::string baseName("heat_eq_solution");
-    gsParaviewCollection collection(baseName);
-    collection.options().setInt("numPoints", 1000);
+    gsParaviewCollection<real_t> collection(baseName);
+    collection.options().setInt("plot.npts",1000);
     collection.options().setInt("precision", 5);
 
     if ( plot )
@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
         //sol = assembler.constructSolution(Sol); // same as next line
         gsField<> sol = stationary.constructSolution(Sol);
 
-        collection.newTimeStep(&patches);
+        collection.newTimeStep(patches);
         collection.addField(sol, "Temperature");
         collection.saveTimeStep();
     }
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
         if ( plot )
         {
             // Plot the snapshot to paraview
-            collection.newTimeStep(&patches);
+            collection.newTimeStep(patches);
             collection.addField(sol, "Temperature");
             collection.saveTimeStep();
         }

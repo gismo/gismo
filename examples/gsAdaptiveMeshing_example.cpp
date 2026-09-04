@@ -14,6 +14,7 @@
 #include <iostream>
 
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -122,7 +123,10 @@ int main(int argc, char *argv[])
     boxes[4] = 14;
     mp.patch(0).refineElements(boxes);
 
-    gsWriteParaview(mp,"init",1,true);
+    gsParaview<real_t> pv;
+    pv.options().setInt("numPoints", 1);
+    pv.options().setSwitch("plotElements", true);
+    pv.write(mp, "init");
 
 
     gsHTensorBasis<2,real_t> * basis = dynamic_cast<gsHTensorBasis<2,real_t> *>(&mp.basis(0));
@@ -145,7 +149,9 @@ int main(int argc, char *argv[])
         std::vector<real_t> tmpErrors(first,last);
         gsElementErrorPlotter<real_t> err_eh(mp.basis(p),tmpErrors);
         const gsField<> elemError_eh( mp.patch(p), err_eh, true );
-        gsWriteParaview<>( elemError_eh, "error_elem_ref" + std::to_string(p), 10000, false);
+        gsParaview<real_t> pvErr;
+        pvErr.options().setInt("numPoints", 10000);
+        pvErr.write(elemError_eh, "error_elem_ref" + std::to_string(p));
     }
 
     gsAdaptiveMeshing<2,real_t> mesher(mp);
@@ -184,15 +190,15 @@ int main(int argc, char *argv[])
 
     gsInfo<<"Cells marked for refinement:\n";
     gsInfo<<refine<<"\n";
-    gsWriteParaview(refine,"marked4ref");
+    pv.write(refine, "marked4ref");
 
     gsInfo<<"Cells marked for coarsening:\n";
     gsInfo<<coarsen<<"\n";
-    gsWriteParaview(coarsen,"marked4crs");
+    pv.write(coarsen, "marked4crs");
 
     mesher.refine(refine);
     mesher.unrefine(coarsen);
-    gsWriteParaview(mp,"end",1,true);
+    pv.write(mp, "end");
 
     return 0;
 }

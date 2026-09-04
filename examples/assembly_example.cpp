@@ -13,6 +13,7 @@
 
 # include <gismo.h>
 
+#include <gsIO/gsParaview.h>
 #include <gsAssembler/gsAssembler.h>      // included here for demonstration
 #include <gsAssembler/gsVisitorPoisson.h>
 #include <gsAssembler/gsVisitorNitsche.h>
@@ -164,12 +165,14 @@ int main(int argc, char *argv[])
         //! [Plot in Paraview]
         // Write approximate and exact solution to paraview files
         gsInfo<<"Plotting in Paraview...\n";
-        gsWriteParaview<>(sol, "poisson2d", 1000);
+        gsParaview<real_t> pv;
+        pv.options().setInt("numPoints", 1000);
+        pv.options().setSwitch("show", true);
+        pv.write(sol, "poisson2d");
         const gsField<> exact( PA.patches(), g, false );
-        gsWriteParaview<>( exact, "poisson2d_exact", 1000);
+        pv.write(exact, "poisson2d_exact");
 
-        // Run paraview
-        gsFileManager::open("poisson2d.pvd");
+        // show option handles opening the file
         //! [Plot in Paraview]
     }
     else

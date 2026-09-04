@@ -13,6 +13,7 @@
 //! [Include namespace]
 #include <iostream>
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 //! [Include namespace]
@@ -156,23 +157,25 @@ int main(int argc, char* argv[])
     if (!output.empty())
     {
         //! [write to paraview]
+        gsParaview<real_t> pv;
+        
         std::string out = output + "Geometry";
         gsInfo << "Writing the geometry to a paraview file: " << out
                   << "\n\n";
 
-        gsWriteParaview(*pGeom, out);
+        pv.write(*pGeom, out);
 
         out = output + "Basis";
         gsInfo << "Writing the basis to a paraview file: " << out
                   << "\n\n";
 
-        gsWriteParaview(basis, out);
+        pv.write(basis, out);
 
         out = output + "ContolNet";
         gsInfo << "Writing the control net to a paraview file: " << out
                   << "\n" << "\n";
 
-        gsWriteParaview(mesh, out);
+        pv.write(mesh, out);
         //! [write to paraview]
     }
     else

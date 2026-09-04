@@ -13,6 +13,7 @@
 
 //! [Include namespace]
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 //! [Include namespace]
@@ -26,7 +27,8 @@ int main(int argc, char *argv[])
     gsInfo<<"The control points of the map are:\n"<<composition->coefs()<<"\n";
 
     // Plot the composition
-    gsWriteParaview(*composition,"composition");
+    gsParaview<real_t> pv;
+    pv.write(*composition, "composition");
 
     // Construct a basis
     gsKnotVector<> kv1({0,0,0,1./3.,2./3.,1,1,1},2);
@@ -37,11 +39,12 @@ int main(int argc, char *argv[])
     gsComposedBasis<> cbasis(*composition,tbasis);
 
     // Plot the basis
-    gsWriteParaview(cbasis,"basis",1000);
+    pv.options().setInt("numPoints", 1000);
+    pv.write(cbasis, "basis");
     // .. and its mesh
     gsMesh<> mesh(tbasis);
     cbasis.mapMesh(mesh);
-    gsWriteParaview(mesh,"mesh");
+    pv.write(mesh, "mesh");
 
     // Construct a random geometry
     gsMatrix<> coefs(cbasis.size(),3);
@@ -53,8 +56,9 @@ int main(int argc, char *argv[])
     gsGeometry<>::uPtr cgeom= cbasis.makeGeometry(coefs);
 
     // Plot the geometries (composed and non-composed)
-    gsWriteParaview(*geom,"geom",1000,true);
-    gsWriteParaview(*cgeom,"cgeom",1000,true);
+    pv.options().setSwitch("plotElements", true);
+    pv.write(*geom, "geom");
+    pv.write(*cgeom, "cgeom");
 
 
     return EXIT_SUCCESS;

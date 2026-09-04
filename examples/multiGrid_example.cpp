@@ -14,7 +14,7 @@
 #include <ctime>
 
 #include <gismo.h>
-#include <gsAssembler/gsDofMapperCreator.h>
+#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -393,8 +393,10 @@ int main(int argc, char *argv[])
 
         // Write solution to paraview files
         gsInfo << "Write Paraview data to file multiGrid_result.pvd\n";
-        gsWriteParaview<>(sol, "multiGrid_result", 1000);
-        gsFileManager::open("multiGrid_result.pvd");
+        gsParaview<real_t> pv;
+        pv.options().setInt("numPoints", 1000);
+        pv.options().setSwitch("show", true);
+        pv.write(sol, "multiGrid_result");
     }
     if (!plot&&out.empty())
     {

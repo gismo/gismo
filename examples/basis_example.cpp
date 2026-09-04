@@ -13,6 +13,7 @@
 
 #include <iostream>
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -184,7 +185,9 @@ int main(int argc, char* argv[])
     {
         gsInfo << "Writing the basis to a paraview file: " << output
                << "\n\n";
-        gsWriteParaview(*pBasis, output, 1000);
+        gsParaview<real_t> pv;
+        pv.options().setInt("numPoints", 1000);
+        pv.write(*pBasis, output);
     }
     else
     {

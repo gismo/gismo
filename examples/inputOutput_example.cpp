@@ -17,6 +17,7 @@
 
 #include <iostream>
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -76,17 +77,19 @@ int main(int argc, char* argv[])
 
     // writing a ParaView file
     const std::string out = output + "Paraview";
+    gsParaview<real_t> pv;
     if (!fileData.has< gsMultiPatch<> >()) 
     {
         if (!bezier)
         {
-            gsWriteParaview(*pGeom, out);
+            pv.write(*pGeom, out);
         }
         else
         {
             gsMultiPatch<> mPatch;
             mPatch.addPatch(*pGeom);
-            gsWriteParaviewBezier(mPatch, out);
+            pv.options().setSwitch("bezier", true);
+            pv.write(mPatch, out);
         }
         gsInfo << "Wrote ParaView files: " << out << ext << ", " << out << ".pvd\n";
     }
@@ -96,11 +99,12 @@ int main(int argc, char* argv[])
         fileData.getFirst(mPatch);
         if (!bezier)
         {
-            gsWriteParaview(mPatch, out);
+            pv.write(mPatch, out);
         }
         else
         {
-            gsWriteParaviewBezier(mPatch, out);
+            pv.options().setSwitch("bezier", true);
+            pv.write(mPatch, out);
         }
         gsInfo << "Wrote ParaView file: " << out << ".pvd\n";
     }

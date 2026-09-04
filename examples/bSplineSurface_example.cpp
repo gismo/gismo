@@ -15,6 +15,7 @@
 #include <iostream>
 
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 
 
 using namespace gismo;
@@ -75,17 +76,20 @@ int main(int argc, char* argv[])
     // 5. saving surface, basis and control net to a file
     if (output != "")
     {
+        gsParaview<real_t> pv;
+        
         std::string out = output + "Geometry";
         gsInfo << "Writing the surface to a paraview file: " << out
                   << "\n\n";
 
-        gsWriteParaview(surface, out, 10000);
+        pv.options().setInt("numPoints", 10000);
+        pv.write(surface, out);
 
         out = output + "Basis";
         gsInfo << "Writing the basis to a paraview file: " << out
                   << "\n\n";
 
-        gsWriteParaview(basis, out);
+        pv.write(basis, out);
 
 
         out = output + "ContolNet";
@@ -94,12 +98,12 @@ int main(int argc, char* argv[])
 
         gsMesh<> mesh;
         surface.controlNet(mesh);
-        gsWriteParaview(mesh, out);
+        pv.write(mesh, out);
 
         out = output + "Coefficients";
         gsMatrix <> coefs = surface.coefs();
         coefs.transposeInPlace();
-        gsWriteParaviewPoints(coefs, out);
+        pv.writePoints(coefs, out);
 
     }
     else

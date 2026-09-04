@@ -16,6 +16,7 @@
 //! [Include namespace]
 #include <string>
 #include <gismo.h>
+#include <gsIO/gsParaview.h>
 //! [Include namespace]
 
 using namespace gismo;
@@ -51,10 +52,11 @@ int main(int argc, char *argv[])
 
     gsInfo << "basis before refinement:\n" << thb << std::endl;
 
+    gsParaview<real_t> pv;
     if (plot)
     {
         // Export the initial basis to paraview files
-        gsWriteParaview(thb, "thb0_init" );
+        pv.write(thb, "thb0_init");
     }
 
     //! [refViaStdVec]
@@ -71,7 +73,7 @@ int main(int argc, char *argv[])
     if (plot)
     {
         // Export the refined basis to paraview files
-        gsWriteParaview(thb, "thb_refined_first" );
+        pv.write(thb, "thb_refined_first");
     }
     gsInfo << "after refinement," << std::endl;
 
@@ -183,7 +185,7 @@ int main(int argc, char *argv[])
 
     if (plot)
     {
-        gsWriteParaview(thb, "thb_refined_second" );
+        pv.write(thb, "thb_refined_second");
     }
 
     boxSide side(1);
