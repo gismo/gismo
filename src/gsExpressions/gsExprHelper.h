@@ -44,10 +44,7 @@ private:
     typedef std::map<const gsFunctionSet<T>*,thFuncData>  FuncData;
     typedef std::map<const gsFunctionSet<T>*,thMapData>  MapData;
     typedef std::pair<const gsFunctionSet<T>*,thMapData*> CFuncKey;
-    typedef std::pair<const gsFunctionSet<T>*,thFuncData*> CFuncKeyAd;
-
     typedef std::map<CFuncKey,thFuncData>  CFuncData;
-    typedef std::map<CFuncKeyAd,thFuncData>  CFuncDataAd;
 
     typedef typename FuncData::iterator FuncDataIt;
     typedef typename MapData ::iterator MapDataIt;
@@ -58,8 +55,6 @@ private:
     FuncData  m_fdata;///< functions
     MapData   m_mdata;///< maps
     CFuncData m_cdata;///< compositions
-    CFuncDataAd m_cdataAd;///< compositions
-
 
     memory::shared_ptr<gsExprHelper> m_mirror;
 
@@ -83,7 +78,6 @@ public:
     typedef const expr::gsFeVariable<T>    variable;
     typedef const expr::gsFeSpace<T>       space;
     typedef const expr::gsComposition<T>   composition;
-    // typedef const expr::gsCompositionAd<T>   compositionAd;
     typedef const expr::gsNullExpr<T>      nullExpr;
 
 public:
@@ -126,7 +120,6 @@ public:
             m_mdata.clear();
             m_fdata.clear();
             m_cdata.clear();
-            m_cdataAd.clear();
             //mutSrc = nullptr;
             mutMap = nullptr;
             mutData.mine().clear();
@@ -135,7 +128,6 @@ public:
                 m_mirror->m_mdata.clear();
                 m_mirror->m_fdata.clear();
                 m_mirror->m_cdata.clear();
-                m_mirror->m_cdataAd.clear();
                 //m_mirror->mutSrc = nullptr;
                 m_mirror->mutMap = nullptr;
                 m_mirror->mutData.mine().clear();
@@ -201,14 +193,6 @@ public:
         var.setSource(mp);
         return var;
     }
-
-    // //// Represents the function:  mp o Gleft o GRight 
-    // compositionAd getVar(const gsFunctionSet<T> & mp, geometryMap & GLeft, geometryMap & GRight)
-    // {
-    //     expr::gsCompositionAd<T> var(GLeft, GRight); // Gleft o GRight
-    //     var.setSource(mp); // outer (on the left) function
-    //     return var;
-    // }
 
     /// @brief @todo
     expr::gsFeSpace<T> getSpace(const gsFunctionSet<T> & mp, index_t dim = 1)
@@ -421,25 +405,6 @@ public:
                 .setData(eh.m_cdata[ give(k) ]);
     }
 
-    // void add(const expr::gsCompositionAd<T> & sym)
-    // {
-    //     gsExprHelper & eh = (sym.isAcross() ? iface() : *this);
-
-    //     // register the innerRight
-    //     add(sym.innerRight());
-    //     sym.innerRight().data().flags |= NEED_VALUE;
-
-    //     // register innerLeft o innerRight as composition
-    //     auto k2 = std::make_pair(sym.innerLeft().m_fs, &eh.m_mdata[sym.innerRight().m_fs]);
-    //     eh.m_cdata[k2].mine().flags |= NEED_VALUE;
-
-    //     // register F o (innerLeft o innerRight) as second-step composition
-    //     auto k3 = std::make_pair(sym.m_fs, &eh.m_cdata[k2]);
-    //     eh.m_cdataAd[k3].mine().flags |= NEED_VALUE;
-    //     const_cast<expr::gsCompositionAd<T>&>(sym)
-    //         .setData( eh.m_cdataAd[ give(k3) ]);
-    // }
-
     template <class E>
     void add(const expr::symbol_expr<E> & sym)
     {
@@ -489,41 +454,27 @@ public:
                     boundary::side bs = boundary::none)
     {
         //First compute the maps
-        for (auto it = m_mdata.begin(); it != m_mdata.end(); ++it)
+        for (MapDataIt it = m_mdata.begin(); it != m_mdata.end(); ++it)
         {
             it->second.mine().points.swap(m_points.mine());//swap
             it->second.mine().side    = bs;
             it->second.mine().patchId = patchIndex;
             it->first->function(patchIndex).computeMap(it->second.mine());
             it->second.mine().points.swap(m_points.mine());
-            //gsInfo << "Points m_mdata "<< it->second.mine().values.size() <<"\n";
         }
 
-        for (auto it = m_fdata.begin(); it != m_fdata.end(); ++it)
+        for (FuncDataIt it = m_fdata.begin(); it != m_fdata.end(); ++it)
         {
             it->second.mine().patchId = patchIndex;
             it->first->piece(patchIndex)
                 .compute(m_points, it->second.mine());
-            //gsInfo << "Points m_fdata "<< it->second.mine().values.size() <<"\n";
         }
 
-        for (auto it = m_cdata.begin(); it != m_cdata.end(); ++it)
+        for (CFuncDataIt it = m_cdata.begin(); it != m_cdata.end(); ++it)
         {
             it->first.first->piece(patchIndex)
                 .compute(it->first.second->mine().values[0], it->second.mine());
             it->second.mine().patchId = patchIndex;
-            //gsInfo << "Points m_cdata "<< it->first.second->mine().values.size() <<"\n";
-        }
-
-        for (auto it = m_cdataAd.begin(); it != m_cdataAd.end(); ++it)
-        {
-            it->first.first->piece(patchIndex)
-                .compute(it->first.second->mine().values[0], it->second.mine());
-            it->second.mine().patchId = patchIndex;
-
-            //gsInfo << "Points m_cdataAd "<< it->first.second->mine().values.size()
-            //       << " evaluated on: "<< it->first.second->mine().values[0].transpose()
-            //       <<"\n";
         }
 
         // Mutable variable to treat BCs
