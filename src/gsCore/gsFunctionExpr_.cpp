@@ -2,6 +2,7 @@
 
 #include <gsCore/gsFunctionExpr.h>
 #include <gsCore/gsFunctionExpr.hpp>
+#include <gsIO/gsXmlRegistry.h>
 
 
 namespace gismo
@@ -41,5 +42,9 @@ void pybind11_init_gsFunctionExpr(py::module &m)
 }
 
 #endif
+
+
+// XML dispatch registration (priorities: see gsCoreXmlRegistration.h)
+GISMO_XML_REGISTER(gsFunction<real_t>, gsFunctionExpr<real_t>, 110)
 
 }

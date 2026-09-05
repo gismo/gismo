@@ -585,34 +585,23 @@ public:
     static gsFunction<T> * get (gsXmlNode * node)
     {
         GISMO_ASSERT( ( !strcmp( node->name(),"Function") ),
-                      "Something went wrong, was waiting for a Function or Geometry tag.\n" );
+                      "Something went wrong, was waiting for a Function tag.\n" );
 
-        gsXmlAttribute * ftype = node->first_attribute("type");
-        if ( ! ftype )
+        gsXmlAttribute * gtype = node->first_attribute("type");
+        if ( ! gtype )
         {
-            gsWarn<< "Object without a type in the xml file\n";
+            gsWarn<< "Function without a type in the xml file\n";
             return NULL;
         }
-        std::string s = ftype->value() ;
-        GSXML_GET_TYPE(gsConstantFunction<T>)
-        GSXML_GET_TYPE(gsFunctionExpr<T>)
-        GSXML_GET_TYPE(gsComposedFunction<T>)
-
-        gsWarn<<"gsXmlUtils: getFunction: No known function \""<<s<<"\". Error.\n";
-        return NULL;
+        // resolved through the runtime registry (see gs*XmlRegistration.h)
+        return gsXmlDispatch< gsFunction<T> >::get(node);
     }
 
     static gsXmlNode * put (const gsFunction<T> & obj,
                             gsXmlTree & data)
 	{
-	    const gsFunction<T> * ptr = & obj;
-
-        GSXML_PUT_DYNAMIC_CAST(gsConstantFunction<T>)
-        GSXML_PUT_DYNAMIC_CAST(gsFunctionExpr<T>)
-        GSXML_PUT_DYNAMIC_CAST(gsComposedFunction<T>)
-
-        gsWarn<<"gsXmlUtils: put Function: No known object \""<< obj <<"\". Error.\n";
-        return NULL;
+        // resolved through the runtime registry put-chain
+        return gsXmlDispatch< gsFunction<T> >::put(obj, data);
 	}
 
 };
