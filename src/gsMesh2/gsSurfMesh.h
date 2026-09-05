@@ -285,3 +285,7 @@ public:
 }//namespace internal
 
 } // namespace gismo
+
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsSurfMesh.hpp)
+#endif
