@@ -145,7 +145,7 @@ public:
                 m->addVolume(volFaces);
             }
         }
-        assert(ntest==n);// check if the number of surfaces in the input file is correct
+        GISMO_ASSERT(ntest==n, "Inconsistent number of faces in the input file!" );// check if the number of surfaces in the input file is correct
 
         return m;
     }
@@ -242,7 +242,7 @@ public:
 
     static gsTrimSurface<T> * get (gsXmlNode * node)
     {
-        assert( !strcmp( node->name(),"TrimSurface") );
+        GISMO_ASSERT( !strcmp( node->name(),"TrimSurface"), "Something went wrong. Expected TrimSurface tag." );
 
         gsXmlNode * tmp = node->first_node("Geometry");
         gsSurface<T> * geo =  gsXml<gsSurface<T> >::get (tmp) ;

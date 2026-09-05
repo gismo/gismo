@@ -96,7 +96,7 @@ public:
 
 private:
 
-    gsEigen::Array<BasePtr, Dynamic, Dynamic> m_blockPrec;
+    Eigen::Array<BasePtr, Dynamic, Dynamic> m_blockPrec;
 
     //Contains the size of the target vector for each block
     gsVector<index_t> m_blockTargetPositions;

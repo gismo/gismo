@@ -267,10 +267,10 @@ void gsMappedBasis<d,T>::deriv2_into(const index_t patch, const gsMatrix<T> & u,
 
     for (unsigned i = 0; i!=sd; ++i)
     {
-        gsEigen::Map<typename gsMatrix<T>::Base, 0, gsEigen::Stride<-1,sd> >
-            s(result.data()+i, nr, nc, gsEigen::Stride<-1,sd>(sd*nr,sd) );
-        gsEigen::Map<typename gsMatrix<T>::Base, 0, gsEigen::Stride<-1,sd> >
-            t(tmp.data()+i, mr, nc, gsEigen::Stride<-1,sd>(sd*mr,sd) );
+        Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,sd> >
+            s(result.data()+i, nr, nc, Eigen::Stride<-1,sd>(sd*nr,sd) );
+        Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,sd> >
+            t(tmp.data()+i, mr, nc, Eigen::Stride<-1,sd>(sd*mr,sd) );
         t = map.transpose() * s; //.noalias() bug
     }
 
@@ -408,10 +408,10 @@ void gsMappedBasis<d,T>::evalAllDers_into(const index_t patch, const gsMatrix<T>
 
         for (index_t i = 0; i!=d; ++i)
         {
-            gsEigen::Map<typename gsMatrix<T>::Base, 0, gsEigen::Stride<-1,d> >
-                s(result[1].data()+i, nr, nc, gsEigen::Stride<-1,d>(d*nr,d) );
-            gsEigen::Map<typename gsMatrix<T>::Base, 0, gsEigen::Stride<-1,d> >
-                t(tmp.data()+i, mr, nc, gsEigen::Stride<-1,d>(d*mr,d) );
+            Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,d> >
+                s(result[1].data()+i, nr, nc, Eigen::Stride<-1,d>(d*nr,d) );
+            Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,d> >
+                t(tmp.data()+i, mr, nc, Eigen::Stride<-1,d>(d*mr,d) );
             t = map.transpose() * s; //.noalias() bug
         }
         result[1].swap(tmp);
@@ -423,10 +423,10 @@ void gsMappedBasis<d,T>::evalAllDers_into(const index_t patch, const gsMatrix<T>
 
             for (index_t i = 0; i!=sd; ++i)
             {
-                gsEigen::Map<typename gsMatrix<T>::Base, 0, gsEigen::Stride<-1,sd> >
-                    s(result[2].data()+i, nr, nc, gsEigen::Stride<-1,sd>(sd*nr,sd) );
-                gsEigen::Map<typename gsMatrix<T>::Base, 0, gsEigen::Stride<-1,sd> >
-                    t(tmp.data()+i, mr, nc, gsEigen::Stride<-1,sd>(sd*mr,sd) );
+                Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,sd> >
+                    s(result[2].data()+i, nr, nc, Eigen::Stride<-1,sd>(sd*nr,sd) );
+                Eigen::Map<typename gsMatrix<T>::Base, 0, Eigen::Stride<-1,sd> >
+                    t(tmp.data()+i, mr, nc, Eigen::Stride<-1,sd>(sd*mr,sd) );
                 t = map.transpose() * s; //.noalias() bug
             }
             result[2].swap(tmp);

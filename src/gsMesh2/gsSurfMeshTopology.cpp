@@ -225,7 +225,7 @@ gsSurfMeshTopology::Halfedge
 gsSurfMeshTopology::
 find_halfedge(Vertex start, Vertex end) const
 {
-    assert(is_valid(start) && is_valid(end));
+    GISMO_ASSERT(is_valid(start) && is_valid(end), "Invalid vertex handle(s) in find_halfedge: " << start << ", " << end);
 
     Halfedge h  = halfedge(start);
     const Halfedge hh = h;
@@ -303,7 +303,7 @@ gsSurfMeshTopology::
 add_face(const std::vector<Vertex>& vertices)
 {
     const unsigned int n(vertices.size());
-    assert (n > 2);
+    GISMO_ASSERT(n > 2, "Polygon needs at least three vertices.");
 
     Vertex        v;
     unsigned int  i, ii, id;
@@ -366,8 +366,8 @@ add_face(const std::vector<Vertex>& vertices)
                 }
                 while (!is_boundary(boundary_prev) || boundary_prev==inner_prev);
                 boundary_next = next_halfedge(boundary_prev);
-                assert(is_boundary(boundary_prev));
-                assert(is_boundary(boundary_next));
+                GISMO_ASSERT(is_boundary(boundary_prev), "Expected boundary halfedge.");
+                GISMO_ASSERT(is_boundary(boundary_next), "Expected boundary halfedge.");
 
 
                 // ok ?
@@ -1178,8 +1178,8 @@ gsSurfMeshTopology::Halfedge
 gsSurfMeshTopology::
 insert_edge(Halfedge h0, Halfedge h1)
 {
-    assert(face(h0) == face(h1));
-    assert(face(h0).is_valid());
+    GISMO_ASSERT(face(h0) == face(h1), "Halfedges do not belong to the same face.");
+    GISMO_ASSERT(face(h0).is_valid(), "Invalid face handle.");
 
     Vertex   v0 = to_vertex(h0);
     Vertex   v1 = to_vertex(h1);
@@ -1246,7 +1246,7 @@ flip(Edge e)
     // whether this operation is allowed or not!
 
     //let's make it sure it is actually checked
-    assert(is_flip_ok(e));
+    GISMO_ASSERT(is_flip_ok(e), "Flipping edge is not allowed.");
 
     Halfedge a0 = halfedge(e, 0);
     Halfedge b0 = halfedge(e, 1);
@@ -1440,7 +1440,7 @@ remove_loop(Halfedge h)
 
 
     // is it a loop ?
-    assert ((next_halfedge(h1) == h0) && (h1 != o0));
+    GISMO_ASSERT((next_halfedge(h1) == h0) && (h1 != o0), "Invalid halfedge configuration in collapse.");
 
 
     // halfedge -> halfedge

@@ -40,11 +40,11 @@ public:
 
     static gsPoissonPde<T> * get (gsXmlNode * node)
     {
-        assert( ( !strcmp( node->name(),"Pde") ) &&
+        GISMO_ASSERT( ( !strcmp( node->name(),"Pde") ) &&
                 ( !(
                     strcmp( node->first_attribute("type")->value(),"PoissonPde")
                     && strcmp( node->first_attribute("type")->value(),"SurfacePoissonPde")
-                     )) );
+                     )), "Something went wrong. Expected Pde tag with type PoissonPde or SurfacePoissonPde." );
 
         // Read the dimension
         GISMO_ASSERT( node->first_attribute("dim"), "xml reader: No dim found" ) ;

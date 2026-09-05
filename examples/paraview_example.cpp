@@ -147,7 +147,7 @@ int main(int argc, char* argv[])
     // be the result of a structural simulation
     for (index_t p=0; p < (index_t)mPatch.nPatches(); ++p)
     {
-        mPatch.patch(p).coefs() +=  gsEigen::MatrixXd::Random(mPatch.patch(p).coefs().rows(), mPatch.patch(p).coefs().cols());
+        mPatch.patch(p).coefs() +=  Eigen::MatrixXd::Random(mPatch.patch(p).coefs().rows(), mPatch.patch(p).coefs().cols());
     }
 
     // Perform the same steps as before for the deformed geometry

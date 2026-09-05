@@ -165,7 +165,7 @@ int gsSolidHalfFace<T>::indexOfEdge(gsSolidHalfEdgeHandle e) const
   {
     tempEdge = tempEdge->next;
     idx++;
-    assert(tempEdge != this->loop[0]); // went round the loop without finding the edge
+    GISMO_ASSERT(tempEdge != this->loop[0], "Failed to find the edge in the face loop."); // went round the loop without finding the edge
   }
   return idx;
 }
@@ -179,7 +179,7 @@ int gsSolidHalfFace<T>::indexOfVertex(gsSolidHeVertexHandle v) const
   {
     tempEdge = tempEdge->next;
     idx++;
-    assert(tempEdge != this->loop[0]); // went round the loop without finding the vertex
+    GISMO_ASSERT(tempEdge != this->loop[0], "Failed to find the vertex in the face loop."); // went round the loop without finding the vertex
   }
   return idx;
 }

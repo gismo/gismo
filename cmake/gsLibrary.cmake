@@ -196,17 +196,22 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
   endif()
 
   if (GISMO_WITH_PARDISO)
-    if (PARDISO_USE_MKL)
-      # Note: Download and install "Intel oneAPI Base Toolkit"
-      # Then source /path-to/intel/oneapi/setvars.sh
-      # use Intel compilers if desired: export CC=icx CXX=icpx
-      # Then run e.g.: make ../  -DGISMO_WITH_PARDISO=ON  -DPARDISO_USE_MKL=ON -DEIGEN_USE_MKL_ALL=ON -DCMAKE_BUILD_TYPE=Release -DGISMO_WITH_OPENMP=ON -DMKL_INTERFACE=lp64
-      find_package(MKL REQUIRED)
-      target_link_libraries(${PROJECT_NAME} MKL::MKL)
-     else()
-       find_package(Pardiso REQUIRED)
-       target_link_libraries(${PROJECT_NAME} Pardiso)
-     endif()
+    # As of the Eigen 5.0 migration, non-MKL PARDISO support was dropped from
+    # upstream Eigen and from G+Smo. PARDISO_USE_MKL is no longer optional.
+    if (NOT PARDISO_USE_MKL)
+      message(FATAL_ERROR
+        "GISMO_WITH_PARDISO=ON now requires PARDISO_USE_MKL=ON. "
+        "Non-MKL PARDISO support was removed in the Eigen 5.0 migration "
+        "(Eigen 5 only ships the MKL variant of PardisoSupport). "
+        "Either set -DPARDISO_USE_MKL=ON and provide Intel MKL, or "
+        "set -DGISMO_WITH_PARDISO=OFF.")
+    endif()
+    # Note: Download and install "Intel oneAPI Base Toolkit"
+    # Then source /path-to/intel/oneapi/setvars.sh
+    # use Intel compilers if desired: export CC=icx CXX=icpx
+    # Then run e.g.: make ../  -DGISMO_WITH_PARDISO=ON  -DPARDISO_USE_MKL=ON -DEIGEN_USE_MKL_ALL=ON -DCMAKE_BUILD_TYPE=Release -DGISMO_WITH_OPENMP=ON -DMKL_INTERFACE=lp64
+    find_package(MKL REQUIRED)
+    target_link_libraries(${PROJECT_NAME} MKL::MKL)
   endif()
 
   if(${PROJECT_NAME}_LINKER)

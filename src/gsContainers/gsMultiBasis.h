@@ -97,7 +97,6 @@ public:
 
     memory::shared_ptr<gsDomain<T> > domain() const;
 
-#if EIGEN_HAS_RVALUE_REFERENCES
     /// Move constructor
     gsMultiBasis(gsMultiBasis&& other) : m_bases(give(other.m_bases)), m_topology(give(other.m_topology)) {}
 
@@ -112,14 +111,6 @@ public:
         m_topology = give(other.m_topology);
         return *this;
     }
-#else
-    /// Assignment operator (uses copy-and-swap idiom)
-    gsMultiBasis& operator= ( gsMultiBasis other )
-    {
-        this->swap( other );
-        return *this;
-    }
-#endif
 
     GISMO_CLONE_FUNCTION(gsMultiBasis)
 

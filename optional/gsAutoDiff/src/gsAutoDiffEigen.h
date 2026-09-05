@@ -26,15 +26,6 @@
 #ifndef EIGEN_MATRIXBASE_PLUGIN
 #define EIGEN_MATRIXBASE_PLUGIN <gsMatrix/gsMatrixAddons.h>
 #endif
-#ifndef EIGEN_PLAINOBJECTBASE_PLUGIN
-#define EIGEN_PLAINOBJECTBASE_PLUGIN <gsMatrix/gsPlainObjectBaseAddons.h>
-#endif
-
-#ifndef Eigen
-#define Eigen gsEigen
-#define GISMO_AUTODIFF_DEFINED_EIGEN
-#endif
-
 #include <Eigen/Core>
 
 // Suppress warnings from autodiff library headers
@@ -51,7 +42,3 @@
 #pragma GCC diagnostic pop
 #endif
 
-#ifdef GISMO_AUTODIFF_DEFINED_EIGEN
-#undef Eigen
-#undef GISMO_AUTODIFF_DEFINED_EIGEN
-#endif

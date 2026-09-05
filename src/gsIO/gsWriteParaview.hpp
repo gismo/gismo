@@ -1346,8 +1346,8 @@ void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,
 template<class T>
 void gsWriteParaviewPoints(gsMatrix<T> const& X, gsMatrix<T> const& Y, std::string const & fn)
 {
-    assert( X.cols() == Y.cols() );
-    assert( X.rows() == 1 && Y.rows() == 1 );
+    GISMO_ASSERT( X.cols() == Y.cols(), "X and Y must have the same number of columns!" );
+    GISMO_ASSERT( X.rows() == 1 && Y.rows() == 1, "X and Y must have only one row!" );
     index_t np = X.cols();
 
     std::string mfn(fn);
