@@ -21,6 +21,9 @@ add_library(${PROJECT_NAME}_static STATIC
   ${${PROJECT_NAME}_EXTENSIONS}
   )
 add_library(${PROJECT_NAME}::${PROJECT_NAME}_static ALIAS ${PROJECT_NAME}_static)
+if(GISMO_EIGEN_SOURCE STREQUAL "installed")
+  target_link_libraries(${PROJECT_NAME}_static INTERFACE Eigen3::Eigen)
+endif()
 
 # Usage requirements for consumers of the exported targets (in-tree
 # targets get the same directories from include_directories)
@@ -160,6 +163,9 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
   )
   #generate_export_header(${PROJECT_NAME})
   add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+  if(GISMO_EIGEN_SOURCE STREQUAL "installed")
+    target_link_libraries(${PROJECT_NAME} INTERFACE Eigen3::Eigen)
+  endif()
 
   target_include_directories(${PROJECT_NAME} INTERFACE
     "$<BUILD_INTERFACE:${GISMO_INCLUDE_DIRS}>"

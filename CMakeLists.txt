@@ -96,21 +96,6 @@ endif()
 ## Cmake Inclusions and configuration options
 ## #################################################################
 
-# Eigen_DIR: path to an external Eigen root (e.g. /path/to/eigen-5.0.0).
-# When empty, the vendored Eigen at external/Eigen is used as a fallback.
-set(Eigen_DIR "" CACHE PATH "Path to external Eigen root (e.g. /path/to/eigen-5.0.0)")
-
-if(Eigen_DIR)
-  if(NOT EXISTS "${Eigen_DIR}/Eigen/Core")
-    message(FATAL_ERROR
-      "Eigen_DIR='${Eigen_DIR}' does not point to a valid Eigen tree "
-      "(expected ${Eigen_DIR}/Eigen/Core).")
-  endif()
-  message(STATUS "Using external Eigen at ${Eigen_DIR}")
-else()
-  message(STATUS "Using vendored Eigen at external/Eigen")
-endif()
-
 set(CMAKE_INSTALL_MESSAGE NEVER)
 
 #Use solution folders for Visual Studio
@@ -194,19 +179,13 @@ unset(gismo_UNITTESTS            CACHE)
 set(${PROJECT_NAME}_optionals ""
     CACHE INTERNAL "${PROJECT_NAME} list of optionals")
 
-if(Eigen_DIR)
-  # When using external Eigen, put ${Eigen_DIR} BEFORE external/ so that
-  # <Eigen/Core> and <unsupported/Eigen/...> resolve to the external Eigen,
-  # not the vendored fallback in external/Eigen/.
-  set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src"
-       "${PROJECT_BINARY_DIR}" "${Eigen_DIR}"
-       "${PROJECT_SOURCE_DIR}/external" "${PROJECT_SOURCE_DIR}/optional"
-       CACHE INTERNAL "${PROJECT_NAME} include directories" )
-else()
-  set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/external"
-       "${PROJECT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/optional"
-       CACHE INTERNAL "${PROJECT_NAME} include directories" )
-endif()
+# Eigen (>= 5.0): Eigen_DIR, an installed Eigen3 package, or the fetched
+# release; see cmake/gsEigen.cmake
+include(gsEigen)
+set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src"
+     "${PROJECT_BINARY_DIR}" "${GISMO_EIGEN_INCLUDE_DIR}"
+     "${PROJECT_SOURCE_DIR}/external" "${PROJECT_SOURCE_DIR}/optional"
+     CACHE INTERNAL "${PROJECT_NAME} include directories" )
 
 # Offer the user the choice of overriding the installation directories
 set(LIB_INSTALL_DIR     lib     CACHE STRING "Installation directory for libraries")
