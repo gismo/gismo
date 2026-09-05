@@ -732,12 +732,8 @@ public:
         GISMO_ASSERT( !strcmp( node->name(),"Pde"),
                       "Something went wrong. Expected Pde tag." );
 
-        std::string s = node->first_attribute("type")->value() ;
-        GSXML_GET_TYPE(gsPoissonPde<T>)
-        GSXML_GET_TYPE(gsSurfacePoissonPde<T>)
-
-        gsWarn<<"gsXmlUtils: getPde: No known Pde \""<<s<<"\". Error.\n";
-        return NULL;
+        // resolved through the runtime registry (see gsPdeXmlRegistration.h)
+        return gsXmlDispatch< gsPde<T> >::get(node);
     }
 
     static gsXmlNode * put (const gsPde<T> &,
