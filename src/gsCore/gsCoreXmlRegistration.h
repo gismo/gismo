@@ -20,6 +20,11 @@
 #include <gsCore/gsFunctionExpr.h>
 #include <gsCore/gsComposedFunction.h>
 
+#ifndef GISMO_BUILD_LIB
+// header-only mode: the specializations must be visible to the registrars
+#include <gsCore/gsCoreXml.hpp>
+#endif
+
 namespace gismo {
 namespace internal {
 

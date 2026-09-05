@@ -1,4 +1,4 @@
-/** @file gsMeshXml.hpp
+/** @file gsXmlMesh.hpp
 
     @brief XML serialization for the gsMesh types (implementation
     header).

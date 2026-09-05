@@ -27,6 +27,11 @@
 #include <gsNurbs/gsTensorBSplineBasis.h>
 #include <gsNurbs/gsTensorNurbsBasis.h>
 
+#ifndef GISMO_BUILD_LIB
+// header-only mode: the specializations must be visible to the registrars
+#include <gsNurbs/gsNurbsXml.hpp>
+#endif
+
 namespace gismo {
 namespace internal {
 

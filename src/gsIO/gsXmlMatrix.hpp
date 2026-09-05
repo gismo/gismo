@@ -1,4 +1,4 @@
-/** @file gsMatrixXml.hpp
+/** @file gsXmlMatrix.hpp
 
     @brief XML serialization for the gsMatrix types (implementation
     header).

@@ -49,5 +49,7 @@ gsXmlNode * putRationalBasisToXml ( Object const & obj, gsXmlTree & data);
 
 #ifndef GISMO_BUILD_LIB
 #include GISMO_HPP_HEADER(gsXmlUtils.hpp)
+#include <gsIO/gsXmlMatrix.hpp>
+#include <gsIO/gsXmlMesh.hpp>
 //#include GISMO_HPP_HEADER(gsXmlGenericUtils.hpp)
 #endif

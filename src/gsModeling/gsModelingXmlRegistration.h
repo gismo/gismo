@@ -16,6 +16,11 @@
 #include <gsIO/gsXmlRegistry.h>
 #include <gsModeling/gsTrimSurface.h>
 
+#ifndef GISMO_BUILD_LIB
+// header-only mode: the specializations must be visible to the registrars
+#include <gsModeling/gsModelingXml.hpp>
+#endif
+
 namespace gismo {
 namespace internal {
 
