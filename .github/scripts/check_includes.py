@@ -33,6 +33,11 @@ def scan(src):
                 fpath = os.path.join(dirpath, fname)
                 with open(fpath, errors='ignore') as f:
                     text = f.read()
+                # forwarding headers left behind by relocations only
+                # redirect to the new location; they are not a dependency
+                # of the old module on the new one
+                if '@brief Forwarding header' in text:
+                    continue
                 for m in INC_RE.finditer(text):
                     parts = m.group(1).split('/')
                     if len(parts) >= 2 and parts[0] in modules \
