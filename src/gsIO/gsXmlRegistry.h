@@ -163,7 +163,7 @@ struct gsXmlDispatch
             if (gsXmlNode * n = reinterpret_cast<PutFn>(chain[i])(obj, data))
                 return n;
         gsWarn << "gsXml: no registered writer accepted an object of base "
-               << typeid(Base).name() << "\n";
+               << baseId() << "\n"; // (mangled; works for incomplete Base)
         return NULL;
     }
 };

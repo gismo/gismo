@@ -16,7 +16,6 @@
 
 #include <gsIO/gsXmlRegistry.h>
 #include <gsPde/gsPoissonPde.h>
-#include <gsPde/gsSurfacePoissonPde.h>
 
 namespace gismo {
 namespace internal {
@@ -25,7 +24,6 @@ template <class T>
 void gsPdeXmlRegisterTypes()
 {
     gsXmlRegisterAs<gsPde<T>, gsPoissonPde<T> >       ::enrollGet();
-    gsXmlRegisterAs<gsPde<T>, gsSurfacePoissonPde<T> >::enrollGet();
 }
 
 #ifndef GISMO_BUILD_LIB

@@ -6,7 +6,7 @@
 namespace gismo
 {
 
-//CLASS_TEMPLATE_INST internal::gsXml< gsNurbsBasis<real_t> >; // at gsXmlUtils
+CLASS_TEMPLATE_INST internal::gsXml< gsNurbsBasis<real_t> >;
 
 /*
 #ifdef GISMO_WITH_PYBIND11

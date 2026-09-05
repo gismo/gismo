@@ -2,10 +2,7 @@
 #include <gsCore/gsLinearAlgebra.h>
 
 #include <gsIO/gsXml.h>
-// gsXml<gsNurbs>/<gsTensorNurbs> still live centrally in gsXmlUtils.hpp
-// (relocated to this module in step A6); that header includes no class
-// .hpp files, so it is safe to include outside the instantiation units.
-#include <gsIO/gsXmlUtils.hpp>
+#include <gsNurbs/gsNurbsXml.hpp>
 #include <gsIO/gsXmlRegistry.h>
 
 namespace gismo
@@ -24,6 +21,18 @@ GISMO_XML_REGISTER(gsBasis<real_t>, gsNurbsBasis<real_t>, 110)
 GISMO_XML_REGISTER(gsBasis<real_t>, gsTensorNurbsBasis<TMPLA2(2,real_t)>, 150)
 GISMO_XML_REGISTER(gsBasis<real_t>, gsTensorNurbsBasis<TMPLA2(3,real_t)>, 160)
 GISMO_XML_REGISTER(gsBasis<real_t>, gsTensorNurbsBasis<TMPLA2(4,real_t)>, 170)
+
+
+// instantiations of the specs defined in gsNurbsXml.hpp
+namespace internal {
+CLASS_TEMPLATE_INST gsXml< gsNurbs<real_t> >;
+CLASS_TEMPLATE_INST gsXml< gsTensorNurbs<2,real_t> >;
+CLASS_TEMPLATE_INST gsXml< gsTensorNurbs<3,real_t> >;
+CLASS_TEMPLATE_INST gsXml< gsTensorNurbs<4,real_t> >;
+CLASS_TEMPLATE_INST gsXml< gsTensorNurbsBasis<2,real_t> >;
+CLASS_TEMPLATE_INST gsXml< gsTensorNurbsBasis<3,real_t> >;
+CLASS_TEMPLATE_INST gsXml< gsTensorNurbsBasis<4,real_t> >;
+}
 
 }
 
