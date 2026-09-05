@@ -1,0 +1,18 @@
+# Interface (.h) include edges outside the declared module graph
+# (gismo_add_module DEPENDS in src/<module>/CMakeLists.txt): the work list.
+# Regenerate with: .github/scripts/check_includes.py --update
+# This list may only shrink; CI fails on edges not listed here.
+gsContainers -> gsMesh2
+gsCore -> gsIO
+gsDomain -> gsAssembler
+gsExpressions -> gsAssembler
+gsHSplines -> gsModeling
+gsIO -> gsAssembler
+gsIO -> gsExpressions
+gsIO -> gsHSplines
+gsIO -> gsMSplines
+gsMatrix -> gsCore
+gsParallel -> gsCore
+gsSolver -> gsAssembler
+gsUtils -> gsCore
+gsUtils -> gsTensor

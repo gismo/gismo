@@ -19,6 +19,12 @@
 ## GISMO_USE_FILE     - the cmake use-file
 ## GISMO_BUILD_TYPE   - the cmake build type used to compile G+Smo
 ##
+## and the imported targets (see cmake/gsModule.cmake)
+## gismo::gismo        - the library (all modules)
+## gismo::gismo_static - the static archive
+## gismo::<module>     - one component per module, e.g. gismo::gsNurbs;
+##                       request them with find_package(gismo COMPONENTS ...)
+##
 ######################################################################
 
 # Compute paths
@@ -64,3 +70,35 @@ elseif(NOT "x${CMAKE_BUILD_TYPE}" STREQUAL "x${GISMO_BUILD_TYPE}")
 endif()
 
 #set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${GISMO_MODULE_PATH})
+
+## Imported targets
+include(CMakeFindDependencyMacro)
+if(@GISMO_WITH_PYBIND11@)
+  find_dependency(pybind11)
+endif()
+if(NOT TARGET gismo::gismo_static)
+  include("${CMAKE_CURRENT_LIST_DIR}/gismoTargets.cmake")
+endif()
+
+## Components: every requested component must be a module target
+foreach(_gismo_comp ${gismo_FIND_COMPONENTS})
+  if(TARGET gismo::${_gismo_comp})
+    set(gismo_${_gismo_comp}_FOUND TRUE)
+  else()
+    set(gismo_${_gismo_comp}_FOUND FALSE)
+    if(gismo_FIND_REQUIRED_${_gismo_comp})
+      set(gismo_NOT_FOUND_MESSAGE "G+Smo has no module ${_gismo_comp} (see gismoTargets.cmake for the available gismo::<module> targets)")
+      set(gismo_FOUND FALSE)
+    endif()
+  endif()
+endforeach()
+
+## The unqualified names used by add_gismo_executable and older projects
+if(NOT TARGET gismo AND TARGET gismo::gismo)
+  add_library(gismo INTERFACE IMPORTED GLOBAL)
+  set_target_properties(gismo PROPERTIES INTERFACE_LINK_LIBRARIES gismo::gismo)
+endif()
+if(NOT TARGET gismo_static)
+  add_library(gismo_static INTERFACE IMPORTED GLOBAL)
+  set_target_properties(gismo_static PROPERTIES INTERFACE_LINK_LIBRARIES gismo::gismo_static)
+endif()

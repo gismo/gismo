@@ -13,7 +13,33 @@ namespace gismo {
 
 /** \defgroup Modules The G+Smo modules
   *
-  * G+Smo is split into different modules
+  * G+Smo is split into different modules. Every module lives in
+  * <tt>src/&lt;module&gt;/</tt> and is declared in its own
+  * <tt>CMakeLists.txt</tt> with
+  *
+  * \code{.cmake}
+  * gismo_add_module(gsNurbs DEPENDS gsCore gsDomain gsTensor gsContainers gsIO gsUtils gsMatrix)
+  * \endcode
+  *
+  * (see <tt>cmake/gsModule.cmake</tt>). The declared dependencies form a
+  * directed acyclic graph that is checked at configure time and by the
+  * include checker <tt>.github/scripts/check_includes.py</tt>: the public
+  * headers of a module may only include modules it depends on. The
+  * modules are compiled into the single library <tt>libgismo</tt>.
+  *
+  * Projects that use G+Smo through CMake can ask for the modules they
+  * need and link the component targets <tt>gismo::&lt;module&gt;</tt>
+  * (or <tt>gismo::gismo</tt> for the whole library):
+  *
+  * \code{.cmake}
+  * find_package(gismo REQUIRED COMPONENTS gsNurbs gsIO)
+  * target_link_libraries(myapp gismo::gsNurbs gismo::gsIO)
+  * \endcode
+  *
+  * A component target links the library and carries the include
+  * directories and the components of its declared dependencies, so a
+  * project keeps working unchanged when the modules become separate
+  * libraries.
   *
   **/
 
