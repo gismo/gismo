@@ -16,8 +16,8 @@
 #include <gsIO/gsFileData.h>
 
 #ifdef GISMO_WITH_PYBIND11
-#include <gsCore/gsMultiPatch.h>
-#include <gsCore/gsMultiBasis.h>
+#include <gsContainers/gsMultiPatch.h>
+#include <gsContainers/gsMultiBasis.h>
 #include <gsNurbs/gsBSpline.h>
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsNurbs/gsBSplineBasis.h>

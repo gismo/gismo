@@ -13,10 +13,10 @@
 
 #pragma once
 
-#include <gsCore/gsBoxTopology.h>
+#include <gsContainers/gsBoxTopology.h>
 #include <gsCore/gsGeometry.h>
 
-#include <gsCore/gsMultiBasis.h>
+#include <gsContainers/gsMultiBasis.h>
 
 namespace gismo
 {

@@ -15,8 +15,8 @@
 
 #include <gsCore/gsFunctionSet.h>
 #include <gsCore/gsGeometry.h>
-#include <gsCore/gsMultiPatch.h>
-#include <gsCore/gsMultiBasis.h>
+#include <gsContainers/gsMultiPatch.h>
+#include <gsContainers/gsMultiBasis.h>
 #include <gsUtils/gsPointGrid.h>
 
 namespace gismo

@@ -15,7 +15,7 @@
 #include <iomanip>      // std::setprecision
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsCore/gsBoxTopology.h>
+#include <gsContainers/gsBoxTopology.h>
 
 #include <gsIO/gsXmlUtils.h>
 

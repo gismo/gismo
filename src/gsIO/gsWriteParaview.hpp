@@ -18,10 +18,10 @@
 
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsGeometrySlice.h>
-#include <gsCore/gsField.h>
+#include <gsContainers/gsField.h>
 #include <gsCore/gsDebug.h>
 
-#include <gsCore/gsMultiPatch.h>
+#include <gsContainers/gsMultiPatch.h>
 #include <gsMSplines/gsMappedSpline.h> // for the gsMappedSpline/Basis writers
 
 #include <gsMesh2/gsSurfMesh.h>

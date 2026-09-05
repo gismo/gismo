@@ -18,8 +18,8 @@
 #include <gsAssembler/gsAdaptiveRefUtils.h>
 #include <gsAssembler/gsAdaptiveMeshingCompare.h>
 #include <gsCore/gsOptionList.h>
-#include <gsCore/gsMultiPatch.h>
-#include <gsCore/gsMultiBasis.h>
+#include <gsContainers/gsMultiPatch.h>
+#include <gsContainers/gsMultiBasis.h>
 #include <gsHSplines/gsHBox.h>
 #include <gsHSplines/gsHBoxContainer.h>
 #include <gsHSplines/gsHBoxUtils.h>

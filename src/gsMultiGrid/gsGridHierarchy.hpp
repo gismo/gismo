@@ -19,7 +19,7 @@
 #include <gsHSplines/gsHTensorBasis.h>
 #include <gsCore/gsOptionList.h>
 #include <gsAssembler/gsAssemblerOptions.h>
-#include <gsCore/gsMultiBasis.h>
+#include <gsContainers/gsMultiBasis.h>
 #include <gsAssembler/gsDofMapperCreator.h>
 
 namespace gismo

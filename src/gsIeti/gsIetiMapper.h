@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsCore/gsMultiBasis.h>
+#include <gsContainers/gsMultiBasis.h>
 #include <gsAssembler/gsExprAssembler.h>
 
 namespace gismo

@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsCore/gsField.h>
+#include <gsContainers/gsField.h>
 
 namespace gismo
 {

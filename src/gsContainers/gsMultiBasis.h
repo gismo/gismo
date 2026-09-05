@@ -16,7 +16,7 @@
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsDofMapper.h>
-#include <gsCore/gsBoxTopology.h>
+#include <gsContainers/gsBoxTopology.h>
 #include <gsCore/gsStrategy.h>
 // gsBoundaryConditions is forward-declared in gsForwardDeclarations.h and
 // only appears here by reference; the definition is needed in gsMultiBasis.hpp.

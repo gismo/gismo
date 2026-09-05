@@ -16,7 +16,7 @@
 
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsDofMapper.h>
-#include <gsCore/gsBoxTopology.h>
+#include <gsContainers/gsBoxTopology.h>
 #include <gsPde/gsBoundaryConditions.h>
 #include <gsAssembler/gsAssemblerOptions.h> // dirichlet::strategy, iFace::strategy
 

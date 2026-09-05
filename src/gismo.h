@@ -68,13 +68,13 @@ namespace internal
 #include <gsCore/gsBasisFun.h>
 #include <gsCore/gsFuncCoordinate.h>
 
-#include <gsCore/gsBoxTopology.h>
-#include <gsCore/gsMultiPatch.h>
-#include <gsCore/gsField.h>
+#include <gsContainers/gsBoxTopology.h>
+#include <gsContainers/gsMultiPatch.h>
+#include <gsContainers/gsField.h>
 
 #include <gsCore/gsBasis.h>
 
-#include <gsCore/gsFieldCreator.h>
+#include <gsContainers/gsFieldCreator.h>
 
 #include <gsDomain/gsDomainIterator.h>
 
@@ -230,6 +230,7 @@ namespace internal
    mode registration happens inside libgismo). Placed after gsXmlUtils.h
    so the centrally-defined gsXml specializations are visible. ----------- */
 #include <gsCore/gsCoreXmlRegistration.h>
+#include <gsContainers/gsContainersXmlRegistration.h>
 #include <gsNurbs/gsNurbsXmlRegistration.h>
 #include <gsHSplines/gsHSplinesXmlRegistration.h>
 #include <gsModeling/gsModelingXmlRegistration.h>

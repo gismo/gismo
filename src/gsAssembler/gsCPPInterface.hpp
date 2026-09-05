@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include <gsCore/gsMultiPatch.h>
+#include <gsContainers/gsMultiPatch.h>
 #include <gsUtils/gsSortedVector.h>
 #include <gsModeling/gsCurveFitting.h>
 

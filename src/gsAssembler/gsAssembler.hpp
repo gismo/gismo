@@ -14,9 +14,9 @@
 #include <gsAssembler/gsAssembler.h>
 #include <gsAssembler/gsGaussRule.h>
 #include <gsAssembler/gsDofMapperCreator.h>
-#include <gsCore/gsMultiBasis.h>
+#include <gsContainers/gsMultiBasis.h>
 #include <gsDomain/gsDomainIterator.h>
-#include <gsCore/gsField.h>
+#include <gsContainers/gsField.h>
 #include <gsUtils/gsPointGrid.h>
 #include <gsCore/gsStrategy.h>
 

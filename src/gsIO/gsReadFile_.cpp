@@ -4,7 +4,7 @@
 #include <gsIO/gsReadFile.h>
 
 #ifdef GISMO_WITH_PYBIND11
-#include <gsCore/gsMultiPatch.h>
+#include <gsContainers/gsMultiPatch.h>
 #endif
 
 

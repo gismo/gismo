@@ -16,7 +16,7 @@
 #include <gsMesh2/gsSurfMesh.h>
 #include <gsMesh2/IO.h>
 
-#include <gsCore/gsMultiPatch.h>
+#include <gsContainers/gsMultiPatch.h>
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsIO/gsXml.h>
 

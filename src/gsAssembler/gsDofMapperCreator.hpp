@@ -17,8 +17,8 @@
 
 #include <gsCore/gsFunctionSet.h>
 #include <gsCore/gsBasis.h>
-#include <gsCore/gsBoxTopology.h>
-#include <gsCore/gsMultiBasis.h>
+#include <gsContainers/gsBoxTopology.h>
+#include <gsContainers/gsMultiBasis.h>
 
 #include <gsMSplines/gsMappedBasis.h>
 

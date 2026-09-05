@@ -16,7 +16,7 @@
 #include <queue>
 #include <set>
 
-#include <gsCore/gsMultiPatch.h>
+#include <gsContainers/gsMultiPatch.h>
 #include <gsModeling/gsCurveLoop.h>
 #include <gsModeling/gsTrimSurface.h>
 #include <gsModeling/gsPlanarDomain.h>
