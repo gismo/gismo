@@ -52,7 +52,6 @@ gsMultiBasis<T>::gsMultiBasis( const gsMultiBasis& other )
     cloneAll( other.m_bases.begin(), other.m_bases.end(), this->m_bases.begin() );
 }
 
-#if EIGEN_HAS_RVALUE_REFERENCES
 template<class T>
 gsMultiBasis<T>& gsMultiBasis<T>::operator= ( const gsMultiBasis& other )
 {
@@ -62,7 +61,6 @@ gsMultiBasis<T>& gsMultiBasis<T>::operator= ( const gsMultiBasis& other )
     m_topology = other.m_topology;
     return *this;
 }
-#endif
 
 template<class T>
 gsMultiBasis<T>::~gsMultiBasis()
@@ -94,7 +92,7 @@ void gsMultiBasis<T>::addBasis( gsBasis<T> * g )
     }
     else
     {
-        assert( g->dim() == m_topology.dim() );
+        GISMO_ASSERT( g->dim() == m_topology.dim(), "Dimensions do not match.");
     }
     m_bases.push_back( g ) ;
     m_topology.addBox();
@@ -122,7 +120,7 @@ int gsMultiBasis<T>::findBasisIndex( gsBasis<T>* g ) const
 {
     typename BasisContainer::const_iterator it
         = std::find( m_bases.begin(), m_bases.end(), g );
-    assert( it != m_bases.end() );
+    GISMO_ASSERT( it != m_bases.end(), "Basis not found.");
     return it - m_bases.begin();
 }
 

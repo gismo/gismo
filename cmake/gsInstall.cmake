@@ -80,10 +80,15 @@ install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsExport.h
         DESTINATION include/${PROJECT_NAME}/gsCore )
 
 # For gsLinearAlgebra.h
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/gsEigen
-        DESTINATION include/${PROJECT_NAME}
-        PATTERN "*.txt" EXCLUDE
-        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+# An installed Eigen3 package is a dependency of the installed gismo
+# (gismoConfig.cmake finds it); a fetched release or an Eigen_DIR tree is
+# installed with the headers so that <Eigen/Core> resolves next to them.
+if(NOT GISMO_EIGEN_SOURCE STREQUAL "installed")
+  install(DIRECTORY ${GISMO_EIGEN_INCLUDE_DIR}/Eigen ${GISMO_EIGEN_INCLUDE_DIR}/unsupported
+          DESTINATION include/${PROJECT_NAME}
+          PATTERN "*.txt" EXCLUDE
+          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+endif()
 
 # For gsCmdLine.h
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/tclap

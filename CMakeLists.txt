@@ -96,11 +96,6 @@ endif()
 ## Cmake Inclusions and configuration options
 ## #################################################################
 
-#Fix for Eigen directory
-if (NOT WIN32 AND NOT EXISTS "${PROJECT_BINARY_DIR}/Eigen")
-  execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/external/gsEigen ${PROJECT_BINARY_DIR}/Eigen)
-endif()
-
 set(CMAKE_INSTALL_MESSAGE NEVER)
 
 #Use solution folders for Visual Studio
@@ -184,8 +179,12 @@ unset(gismo_UNITTESTS            CACHE)
 set(${PROJECT_NAME}_optionals ""
     CACHE INTERNAL "${PROJECT_NAME} list of optionals")
 
-set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/external"
-     "${PROJECT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/optional"
+# Eigen (>= 5.0): Eigen_DIR, an installed Eigen3 package, or the fetched
+# release; see cmake/gsEigen.cmake
+include(gsEigen)
+set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src"
+     "${PROJECT_BINARY_DIR}" "${GISMO_EIGEN_INCLUDE_DIR}"
+     "${PROJECT_SOURCE_DIR}/external" "${PROJECT_SOURCE_DIR}/optional"
      CACHE INTERNAL "${PROJECT_NAME} include directories" )
 
 # Offer the user the choice of overriding the installation directories

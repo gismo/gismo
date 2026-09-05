@@ -507,7 +507,7 @@ void gsFunction<T>::recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k
         if (i<k) ind[i]=i;
         else if (i>k) ind[i-1]=i;
 
-    gsMatrix<T> pt = xyz(ind,gsEigen::all);
+    gsMatrix<T> pt = xyz(ind,Eigen::placeholders::all);
     gsFuncCoordinate<T> fc(*this, give(ind));
 
     //find low accuracy closest point
@@ -533,7 +533,7 @@ void gsFunction<T>::recoverPointGrid(gsGridIterator<T,0> & git,
         if (i<k) ind[i]=i;
         else if (i>k) ind[i-1]=i;
 
-    gsMatrix<T> pt = xyz(ind,gsEigen::all);
+    gsMatrix<T> pt = xyz(ind,Eigen::placeholders::all);
     gsFuncCoordinate<T> fc(*this, give(ind));
 
     fc.invertPointGrid(git,uv,accuracy,false); //true
@@ -592,6 +592,25 @@ gsFunction<T>::hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
     const index_t nd = dim*(dim+1)/2;
     result = util::secDerToHessian(secDers.middleCols(coord*nd,nd), dim);
 }
+
+namespace internal
+{
+// Helper: minor.determinant() where minor's compile-time size may be 0×0.
+// Eigen 5 has a signature-mismatch bug in internal::find_coeff_impl (FindCoeff.h)
+// that is hit when instantiating .determinant() on a fixed 0×0 matrix, even if
+// the call site is runtime-dead (e.g. computeAuxiliaryData<T,1,1>). For that
+// instantiation the minor type is Matrix<T,0,0> and the value is never used —
+// short-circuit to 1 to keep template instantiation clean.
+template<class M>
+inline typename std::enable_if<(M::RowsAtCompileTime != 0 && M::ColsAtCompileTime != 0),
+                               typename M::Scalar>::type
+minorDet(const M& m) { return m.determinant(); }
+
+template<class M>
+inline typename std::enable_if<(M::RowsAtCompileTime == 0 || M::ColsAtCompileTime == 0),
+                               typename M::Scalar>::type
+minorDet(const M& /*m*/) { return typename M::Scalar(1); }
+} // namespace internal
 
 template <typename T, short_t domDim, short_t tarDim>
 inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut, int d, int n)
@@ -663,7 +682,7 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                 for (int i = 0; i != n; ++i) //for all components of the normal
                 {
                     jacT.firstMinor(dir, i, minor);
-                    InOut.outNormals(i,p) = alt_sgn * minor.determinant();
+                    InOut.outNormals(i,p) = alt_sgn * internal::minorDet(minor);
                     alt_sgn  *= -1;
                 }
             }
@@ -681,7 +700,7 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                 for (int i = 0; i != (domDim!=-1?domDim:d); ++i) //for all components of the normal
                 {
                     metric.firstMinor(dir, i, minor);
-                    param(i) = alt_sgn * minor.determinant();
+                    param(i) = alt_sgn * internal::minorDet(minor);
                     alt_sgn  *= -1;
                 }
                 InOut.outNormals.col(p)=jacT.transpose()*param/metric.determinant();
@@ -756,7 +775,7 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
             for (int i = 0; i != tarDim; ++i) //for all components of the normal
             {
                 jacT.colMinor(i, minor);
-                InOut.normals(i,p) = alt_sgn * minor.determinant();
+                InOut.normals(i,p) = alt_sgn * internal::minorDet(minor);
                 alt_sgn = -alt_sgn;
             }
         }

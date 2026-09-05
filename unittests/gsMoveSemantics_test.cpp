@@ -19,7 +19,7 @@
 SUITE(gsMoveSemantics_test)
 {
 
-#if (__cplusplus >= 201103L || _MSC_VER >= 1600) && EIGEN_HAS_RVALUE_REFERENCES
+#if (__cplusplus >= 201103L || _MSC_VER >= 1600) // Eigen 5 has no EIGEN_HAS_RVALUE_REFERENCES
 
 #ifndef _MSC_VER // util::has_move_constructor doesn't work with MSVC
 TEST(gsMatrix_mc) { CHECK(util::has_move_constructor<gismo::gsMatrix<> >::value); }

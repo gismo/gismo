@@ -272,7 +272,7 @@ bool gsFileData<T>::readGismoXmlStream(std::istream & is, bool recursive)
     {
         gsWarn<< "gsFileData: Problem with file "<<m_lastPath
               <<": Invalid XML file, no root tag <xml> found.\n";
-        assert( ln ) ;
+        GISMO_ASSERT( ln, "Invalid XML file, no root tag <xml> found." );
     }
 
     if (recursive)
@@ -1218,7 +1218,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
   if(kind==8) // 4D control points
   {
   gsMatrix<T>  weights =  coefs.row(3);
-  coefs.resize(gsEigen::NoChange,3);
+  coefs.resize(Eigen::NoChange,3);
   gsDebug<<"weights: "<< weights.transpose() <<"\n";
   }
 
@@ -1352,7 +1352,7 @@ bool gsFileData<T>::readStlFile( String const & fn )
             tmp++;
             nvert++;
             size_t pos=str.rfind("vertex")+7;
-            assert(pos!=std::string::npos);
+            GISMO_ASSERT(pos!=std::string::npos, "Invalid vertex format.");
             vertices << str.substr(pos, str.size()-pos) <<"\n";
         }
     }
@@ -2610,7 +2610,8 @@ gsFileData<T>::getFirstNode(const String & name, const String & type) const
     {
         gsWarn<< "gsFileData: Problem with file "<<m_lastPath
               <<": Invalid XML file, no root tag <xml> found.\n";
-        assert( root ) ;
+        GISMO_ASSERT( root , "gsFileData: Problem with file "<<m_lastPath
+                      <<": Invalid XML file, no root tag <xml> found.\n" );
     }
 
     if ( type == "" )
@@ -2630,7 +2631,8 @@ typename gsFileData<T>::gsXmlNode *
 gsFileData<T>::getAnyFirstNode(const String & name, const String & type) const
 {
     gsXmlNode * root = data->first_node("xml");
-    assert( root ) ;
+    GISMO_ASSERT( root , "gsFileData: Problem with file "<<m_lastPath
+                  <<": Invalid XML file, no root tag <xml> found.\n" );
     if ( type == "" )
         // Searching up to third level of the XML tree
         for (gsXmlNode * child = root->first_node() ;

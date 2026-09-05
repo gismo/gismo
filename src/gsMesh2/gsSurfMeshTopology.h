@@ -341,7 +341,7 @@ public:
         Vertex_iterator& operator++()
         {
             ++hnd_.idx_;
-            assert(mesh_);
+            GISMO_ASSERT(mesh_, "Invalid mesh pointer in vertex iterator.");
             while (mesh_->garbage() && mesh_->is_valid(hnd_) && mesh_->is_deleted(hnd_)) ++hnd_.idx_;
             return *this;
         }
@@ -350,7 +350,7 @@ public:
         Vertex_iterator& operator--()
         {
             --hnd_.idx_;
-            assert(mesh_);
+            GISMO_ASSERT(mesh_, "Invalid mesh pointer in vertex iterator.");
             while (mesh_->garbage() && mesh_->is_valid(hnd_) && mesh_->is_deleted(hnd_)) --hnd_.idx_;
             return *this;
         }
@@ -395,7 +395,7 @@ public:
         Halfedge_iterator& operator++()
         {
             ++hnd_.idx_;
-            assert(mesh_);
+            GISMO_ASSERT(mesh_, "Invalid mesh pointer in vertex iterator.");
             while (mesh_->garbage() && mesh_->is_valid(hnd_) && mesh_->is_deleted(hnd_)) ++hnd_.idx_;
             return *this;
         }
@@ -404,7 +404,7 @@ public:
         Halfedge_iterator& operator--()
         {
             --hnd_.idx_;
-            assert(mesh_);
+            GISMO_ASSERT(mesh_, "Invalid mesh pointer in vertex iterator.");
             while (mesh_->garbage() && mesh_->is_valid(hnd_) && mesh_->is_deleted(hnd_)) --hnd_.idx_;
             return *this;
         }
@@ -449,7 +449,7 @@ public:
         Edge_iterator& operator++()
         {
             ++hnd_.idx_;
-            assert(mesh_);
+            GISMO_ASSERT(mesh_, "Invalid mesh pointer in vertex iterator.");
             while (mesh_->garbage() && mesh_->is_valid(hnd_) && mesh_->is_deleted(hnd_)) ++hnd_.idx_;
             return *this;
         }
@@ -458,7 +458,7 @@ public:
         Edge_iterator& operator--()
         {
             --hnd_.idx_;
-            assert(mesh_);
+            GISMO_ASSERT(mesh_, "Invalid mesh pointer in vertex iterator.");
             while (mesh_->garbage() && mesh_->is_valid(hnd_) && mesh_->is_deleted(hnd_)) --hnd_.idx_;
             return *this;
         }
@@ -524,7 +524,7 @@ public:
         Face_iterator& operator++()
         {
             ++hnd_.idx_;
-            assert(mesh_);
+            GISMO_ASSERT(mesh_, "Invalid mesh pointer in vertex iterator.");
             while (mesh_->garbage() && mesh_->is_valid(hnd_) && mesh_->is_deleted(hnd_)) ++hnd_.idx_;
             return *this;
         }
@@ -533,7 +533,7 @@ public:
         Face_iterator& operator--()
         {
             --hnd_.idx_;
-            assert(mesh_);
+            GISMO_ASSERT(mesh_, "Invalid mesh pointer in vertex iterator.");
             while (mesh_->garbage() && mesh_->is_valid(hnd_) && mesh_->is_deleted(hnd_)) --hnd_.idx_;
             return *this;
         }
@@ -629,7 +629,7 @@ public:
         /// are two circulators equal?
         bool operator==(const Vertex_around_vertex_circulator& rhs) const
         {
-            assert(mesh_);
+            GISMO_ASSERT(mesh_, "Invalid mesh pointer in vertex iterator.");
             return (active_ && (mesh_==rhs.mesh_) && (halfedge_==rhs.halfedge_));
         }
 
@@ -642,7 +642,7 @@ public:
         /// pre-increment (rotate counter-clockwise)
         Vertex_around_vertex_circulator& operator++()
         {
-            assert(mesh_);
+            GISMO_ASSERT(mesh_, "Invalid mesh pointer in vertex iterator.");
             halfedge_ = mesh_->ccw_rotated_halfedge(halfedge_);
             active_ = true;
             return *this;
@@ -651,7 +651,7 @@ public:
         /// pre-decrement (rotate clockwise)
         Vertex_around_vertex_circulator& operator--()
         {
-            assert(mesh_);
+            GISMO_ASSERT(mesh_, "Invalid mesh pointer in vertex iterator.");
             halfedge_ = mesh_->cw_rotated_halfedge(halfedge_);
             return *this;
         }
@@ -659,7 +659,7 @@ public:
         /// get the vertex the circulator refers to
         Vertex operator*()  const
         {
-            assert(mesh_);
+            GISMO_ASSERT(mesh_, "Invalid mesh pointer in vertex iterator.");
             return mesh_->to_vertex(halfedge_);
         }
 
@@ -704,7 +704,7 @@ public:
         /// are two circulators equal?
         bool operator==(const Halfedge_around_vertex_circulator& rhs) const
         {
-            assert(mesh_);
+            GISMO_ASSERT(mesh_, "Invalid mesh pointer in vertex iterator.");
             return (active_ && (mesh_==rhs.mesh_) && (halfedge_==rhs.halfedge_));
         }
 
@@ -717,7 +717,7 @@ public:
         /// pre-increment (rotate couter-clockwise)
         Halfedge_around_vertex_circulator& operator++()
         {
-            assert(mesh_);
+            GISMO_ASSERT(mesh_, "Invalid mesh pointer in vertex iterator.");
             halfedge_ = mesh_->ccw_rotated_halfedge(halfedge_);
             active_ = true;
             return *this;
@@ -726,7 +726,7 @@ public:
         /// pre-decrement (rotate clockwise)
         Halfedge_around_vertex_circulator& operator--()
         {
-            assert(mesh_);
+            GISMO_ASSERT(mesh_, "Invalid mesh pointer in vertex iterator.");
             halfedge_ = mesh_->cw_rotated_halfedge(halfedge_);
             return *this;
         }
@@ -774,7 +774,7 @@ public:
         /// are two circulators equal?
         bool operator==(const Face_around_vertex_circulator& rhs) const
         {
-            assert(mesh_);
+            GISMO_ASSERT(mesh_, "Invalid mesh pointer in vertex iterator.");
             return (active_ && (mesh_==rhs.mesh_) && (halfedge_==rhs.halfedge_));
         }
 
@@ -787,7 +787,7 @@ public:
         /// pre-increment (rotates counter-clockwise)
         Face_around_vertex_circulator& operator++()
         {
-            assert(mesh_ && halfedge_.is_valid());
+            GISMO_ASSERT(mesh_ && halfedge_.is_valid(), "Invalid mesh or halfedge in face circulator.");
             do {
                 if (halfedge_ == mesh_->ccw_rotated_halfedge(halfedge_))
                     break;
@@ -800,7 +800,7 @@ public:
         /// pre-decrement (rotate clockwise)
         Face_around_vertex_circulator& operator--()
         {
-            assert(mesh_ && halfedge_.is_valid());
+            GISMO_ASSERT(mesh_ && halfedge_.is_valid(), "Invalid mesh or halfedge in face circulator.");
             do
                 halfedge_ = mesh_->cw_rotated_halfedge(halfedge_);
             while (mesh_->is_boundary(halfedge_));
@@ -810,7 +810,7 @@ public:
         /// get the face the circulator refers to
         Face operator*() const
         {
-            assert(mesh_ && halfedge_.is_valid());
+            GISMO_ASSERT(mesh_ && halfedge_.is_valid(), "Invalid mesh or halfedge in face circulator.");
             return mesh_->face(halfedge_);
         }
 
@@ -851,7 +851,7 @@ public:
         /// are two circulators equal?
         bool operator==(const Vertex_around_face_circulator& rhs) const
         {
-            assert(mesh_);
+            GISMO_ASSERT(mesh_, "Invalid mesh pointer in vertex iterator.");
             return (active_ && (mesh_==rhs.mesh_) && (halfedge_==rhs.halfedge_));
         }
 
@@ -864,7 +864,7 @@ public:
         /// pre-increment (rotates counter-clockwise)
         Vertex_around_face_circulator& operator++()
         {
-            assert(mesh_ && halfedge_.is_valid());
+            GISMO_ASSERT(mesh_ && halfedge_.is_valid(), "Invalid mesh or halfedge in face circulator.");
             halfedge_ = mesh_->next_halfedge(halfedge_);
             active_ = true;
             return *this;
@@ -873,7 +873,7 @@ public:
         /// pre-decrement (rotates clockwise)
         Vertex_around_face_circulator& operator--()
         {
-            assert(mesh_ && halfedge_.is_valid());
+            GISMO_ASSERT(mesh_ && halfedge_.is_valid(), "Invalid mesh or halfedge in face circulator.");
             halfedge_ = mesh_->prev_halfedge(halfedge_);
             return *this;
         }
@@ -881,14 +881,14 @@ public:
         /// get the vertex the circulator refers to
         Vertex operator*() const
         {
-            assert(mesh_ && halfedge_.is_valid());
+            GISMO_ASSERT(mesh_ && halfedge_.is_valid(), "Invalid mesh or halfedge in face circulator.");
             return mesh_->to_vertex(halfedge_);
         }
 
         /// get the halfedge the circulator refers to
         Halfedge he() const
         {
-            assert(mesh_ && halfedge_.is_valid());
+            GISMO_ASSERT(mesh_ && halfedge_.is_valid(), "Invalid mesh or halfedge in face circulator.");
             return halfedge_;
         }
 
@@ -922,7 +922,7 @@ public:
         /// are two circulators equal?
         bool operator==(const Halfedge_around_face_circulator& rhs) const
         {
-            assert(mesh_);
+            GISMO_ASSERT(mesh_, "Invalid mesh pointer in vertex iterator.");
             return (active_ && (mesh_==rhs.mesh_) && (halfedge_==rhs.halfedge_));
         }
 
@@ -935,7 +935,7 @@ public:
         /// pre-increment (rotates counter-clockwise)
         Halfedge_around_face_circulator& operator++()
         {
-            assert(mesh_ && halfedge_.is_valid());
+            GISMO_ASSERT(mesh_ && halfedge_.is_valid(), "Invalid mesh or halfedge in face circulator.");
             halfedge_ = mesh_->next_halfedge(halfedge_);
             active_ = true;
             return *this;
@@ -944,7 +944,7 @@ public:
         /// pre-decrement (rotates clockwise)
         Halfedge_around_face_circulator& operator--()
         {
-            assert(mesh_ && halfedge_.is_valid());
+            GISMO_ASSERT(mesh_ && halfedge_.is_valid(), "Invalid mesh or halfedge in face circulator.");
             halfedge_ = mesh_->prev_halfedge(halfedge_);
             return *this;
         }
@@ -1113,7 +1113,7 @@ public:
     /// returns the \c i'th halfedge of edge \c e. \c i has to be 0 or 1.
     Halfedge halfedge(Edge e, unsigned int i) const
     {
-        assert(i<=1);
+        GISMO_ASSERT(i<=1, "Halfedge index has to be 0 or 1.");
         return Halfedge((e.idx() << 1) + i);
     }
 
@@ -1126,7 +1126,7 @@ public:
     /// returns the \c i'th vertex of edge \c e. \c i has to be 0 or 1.
     Vertex vertex(Edge e, unsigned int i) const
     {
-        assert(i<=1);
+        GISMO_ASSERT(i<=1, "Halfedge index has to be 0 or 1.");
         return to_vertex(halfedge(e, i));
     }
 
@@ -1145,7 +1145,7 @@ public:
     /// returns the face incident to the \c i'th halfedge of edge \c e. \c i has to be 0 or 1.
     Face face(Edge e, unsigned int i) const
     {
-        assert(i<=1);
+        GISMO_ASSERT(i<=1, "Halfedge index has to be 0 or 1.");
         return face(halfedge(e, i));
     }
 
@@ -1723,7 +1723,7 @@ protected:
     /// allocate a new edge, resize edge and halfedge properties accordingly.
     Halfedge new_edge(Vertex start, Vertex end)
     {
-        assert(start != end);
+        GISMO_ASSERT(start != end, "No loops allowed in new_edge().");
 
         eprops_.push_back();
         hprops_.push_back();

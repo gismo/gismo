@@ -13,9 +13,7 @@
 #include <gsCore/gsOptionList.h>
 #include <gsOptimizer/gsOptimizer.h>
 #include <gsOptimizer/gsOptProblem.h>
-#define Eigen gsEigen
 #include "lsqcpp.h"
-#undef Eigen
 
 
 namespace gismo
@@ -24,8 +22,8 @@ namespace gismo
 template<typename T>
 struct gsLevenbergMarquardtObjective
 {
-    typedef gsEigen::Matrix<T, gsEigen::Dynamic, 1> Vector;
-    typedef gsEigen::Matrix<T, gsEigen::Dynamic, gsEigen::Dynamic> Matrix;
+    typedef Eigen::Matrix<T, Eigen::Dynamic, 1> Vector;
+    typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> Matrix;
 
     gsLevenbergMarquardtObjective(gsOptProblem<T>* objective)
     :

@@ -25,7 +25,7 @@ template <typename T> int read_stl_data(FILE* in, T& t)
     size_t n_items(0);
     (void)n_items;
     n_items = fread((char*)&t, 1, sizeof(t), in);
-    assert(n_items > 0);
+    GISMO_ASSERT(n_items > 0, "Failed to read from file.");
     return n_items;
 }
 } // anonymous namespace
@@ -92,7 +92,7 @@ bool read_stl(gsSurfMesh<Scalar>& mesh, const std::string& filename)
 
     // ASCII or binary STL?
     c = fgets(line, 6, in);
-    assert(c != NULL);
+    GISMO_ASSERT(c != NULL, "Failed to read file header.");
     const bool binary = ((strncmp(line, "SOLID", 5) != 0) &&
                          (strncmp(line, "solid", 5) != 0));
 
@@ -107,7 +107,7 @@ bool read_stl(gsSurfMesh<Scalar>& mesh, const std::string& filename)
 
         // skip dummy header
         n_items = fread(line, 1, 80, in);
-        assert(n_items > 0);
+        GISMO_ASSERT(n_items > 0, "Failed to read from file.");
 
         // read number of triangles
         read_stl_data(in, nT);
@@ -117,7 +117,7 @@ bool read_stl(gsSurfMesh<Scalar>& mesh, const std::string& filename)
         {
             // skip triangle normal
             n_items = fread(line, 1, 12, in);
-            assert(n_items > 0);
+            GISMO_ASSERT(n_items > 0, "Failed to read from file.");
             // triangle's vertices
             for (i=0; i<3; ++i)
             {
@@ -145,7 +145,7 @@ bool read_stl(gsSurfMesh<Scalar>& mesh, const std::string& filename)
                 mesh.add_face(vertices);
 
             n_items = fread(line, 1, 2, in);
-            assert(n_items > 0);
+            GISMO_ASSERT(n_items > 0, "Failed to read from file.");
             --nT;
         }
     }
@@ -169,7 +169,7 @@ bool read_stl(gsSurfMesh<Scalar>& mesh, const std::string& filename)
                 {
                     // read line
                     c = fgets(line, 100, in);
-                    assert(c != NULL);
+                    GISMO_ASSERT(c != NULL, "Failed to read file header.");
 
                     // skip white-space
                     for (c=line; isspace(*c) && *c!='\0'; ++c) {};

@@ -215,16 +215,16 @@ gsSparseMatrix<T> gsBasis<T>::collocationMatrix(const gsMatrix<T> & u) const
 
     gsMatrix<T> ev;
     gsMatrix<index_t> act;
-    std::vector<gsEigen::Triplet<T,index_t>> alltriplets;
+    std::vector<Eigen::Triplet<T,index_t>> alltriplets;
     alltriplets.reserve(nact.sum());
 #   pragma omp parallel for default(shared) private(ev, act)
     for (index_t k=0; k<u.cols(); k++)
     {
         eval_into  (u.col(k), ev );
         active_into(u.col(k), act);
-        std::vector<gsEigen::Triplet<T,index_t>>tripletList(act.rows());
+        std::vector<Eigen::Triplet<T,index_t>>tripletList(act.rows());
         for (index_t i=0; i!=act.rows(); ++i)
-            tripletList[i] = gsEigen::Triplet<T,index_t>(k,act.at(i),ev.at(i));
+            tripletList[i] = Eigen::Triplet<T,index_t>(k,act.at(i),ev.at(i));
 
 #       pragma omp critical (collocation)
         alltriplets.insert(alltriplets.end(), tripletList.begin(), tripletList.end());
@@ -765,7 +765,7 @@ gsBasis<T>::collocationMatrixWithDeriv(const gsBasis<T> & b, const gsMatrix<T> &
       // nact[k] = tmp.rows();
     }
 
-    std::vector<std::vector<gsEigen::Triplet<T,index_t>>> alltriplets(2+(dim==2));
+    std::vector<std::vector<Eigen::Triplet<T,index_t>>> alltriplets(2+(dim==2));
 
     for (index_t d=0; d!=2+(dim==2); d++)
     {
@@ -780,16 +780,16 @@ gsBasis<T>::collocationMatrixWithDeriv(const gsBasis<T> & b, const gsMatrix<T> &
         gsMatrix<index_t> act;
         b.evalAllDers_into  (u.col(k), 1, ev );
         b.active_into(u.col(k), act);
-        std::vector<std::vector<gsEigen::Triplet<T,index_t>>> tripletLists(2+(dim==2));
+        std::vector<std::vector<Eigen::Triplet<T,index_t>>> tripletLists(2+(dim==2));
 	    for (index_t d=0; d!=2+(dim==2); d++)
             tripletLists[d].resize(act.rows());
 
     	for (index_t i=0; i!=act.rows(); ++i)
         {
-      	    tripletLists[0][i] = gsEigen::Triplet<T,index_t>(k,act.at(i),ev[0].at(i));
-    	    tripletLists[1][i] = gsEigen::Triplet<T,index_t>(k,act.at(i),ev[1].at(dim*i));
+      	    tripletLists[0][i] = Eigen::Triplet<T,index_t>(k,act.at(i),ev[0].at(i));
+    	    tripletLists[1][i] = Eigen::Triplet<T,index_t>(k,act.at(i),ev[1].at(dim*i));
             if (dim==2)
-                tripletLists[2][i] = gsEigen::Triplet<T,index_t>(k,act.at(i),ev[1].at(dim*i+1));
+                tripletLists[2][i] = Eigen::Triplet<T,index_t>(k,act.at(i),ev[1].at(dim*i+1));
         }
 
 #       pragma omp critical (collocation)

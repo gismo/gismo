@@ -16,10 +16,8 @@
 #include <gsOptimizer/gsOptimizer.h>
 #include <gsOptimizer/gsOptimizerRegistry.h>
 
-#   define Eigen gsEigen
 #define OPTIM_ENABLE_EIGEN_WRAPPERS
 #include <optim/header_only_version/optim.hpp>
-#   undef Eigen
 
 using namespace optim;
 

@@ -173,7 +173,7 @@ void gsBoehmRefine( KnotVectorType & knots,
     GISMO_ASSERT( (*valBegin >= knots[p]), "Value is before first knot: "
                   << *valBegin <<" < " <<knots[p] );
     // && (val[val.size()-1]<=knots[knots.size()-p-1]));
-    //assert( knots[knots.size()-p-1]<=val[val.size()-1] );
+    //GISMO_ASSERT( knots[knots.size()-p-1]<=val[val.size()-1], "Value is after last knot." );
     const int np= coefs.rows();
     const int nk= std::distance( valBegin, valEnd );
     coefs.conservativeResize(np+nk, coefs.cols());

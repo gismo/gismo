@@ -25,9 +25,7 @@ int main(int argc, char**argv)
 #ifdef EIGEN_VECTORIZE
     gsDebug << "Vectorization is enabled in Eigen.\n";
 #endif
-#if EIGEN_HAS_RVALUE_REFERENCES
     gsDebug << "Eigen has rvalue references.\n";
-#endif
 
     gsInfo << "G+Smo uses Eigen v"<< EIGEN_WORLD_VERSION<<"."
            <<EIGEN_MAJOR_VERSION<<"."<<EIGEN_MINOR_VERSION

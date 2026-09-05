@@ -93,7 +93,7 @@ bool createPK_BSURF(const gsTensorBSpline< 2, T> & bsp,
     const int n = bsp.geoDim();
     if ( n < 3 )
     {
-        coefs.conservativeResize(gsEigen::NoChange, 3);
+        coefs.conservativeResize(Eigen::NoChange, 3);
         coefs.rightCols(3-n).setZero();
     }
     coefs.transposeInPlace();
@@ -165,7 +165,7 @@ bool createPK_BCURVE( const gsBSpline<T>& curve,
     const int n = curve.geoDim();
     if (n < 3)
     {
-        coefs.conservativeResize(gsEigen::NoChange, 3);
+        coefs.conservativeResize(Eigen::NoChange, 3);
         coefs.rightCols(3 - n).setZero();
     }
     coefs.transposeInPlace();
