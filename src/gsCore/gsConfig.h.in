@@ -62,6 +62,9 @@
 
 /* Determine if only header files should be used. */
 #cmakedefine GISMO_BUILD_LIB
+
+// The C interface is compiled into the modules (src/<module>/cinterface)
+#cmakedefine GISMO_BUILD_CINTERFACE
 //#cmakedefine GISMO_HAS_EXTERN_TEMPLATES
 
 /* Determine if Python module should be built. */

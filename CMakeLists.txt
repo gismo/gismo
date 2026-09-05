@@ -135,6 +135,15 @@ file(WRITE "${PROJECT_BINARY_DIR}/CTestCustom.cmake" "set(CTEST_SOURCE_DIRECTORY
 
 include(submodules.txt)
 set(GISMO_OPTIONAL ${SUBMODULES_TXT} ${GISMO_OPTIONAL} CACHE STRING "List of optional G+Smo modules" FORCE)
+
+option(GISMO_BUILD_CINTERFACE "Build the C interface (src/<module>/cinterface, <gsCInterface/Cgismo.h>)" OFF)
+# The C interface used to be the optional module gsCInterface
+if (";${GISMO_OPTIONAL};" MATCHES ";gsCInterface;")
+  message(WARNING "gsCInterface is part of G+Smo now (GISMO_BUILD_CINTERFACE); removing it from GISMO_OPTIONAL and switching the option ON")
+  list(REMOVE_ITEM GISMO_OPTIONAL gsCInterface)
+  set(GISMO_OPTIONAL ${GISMO_OPTIONAL} CACHE STRING "List of optional G+Smo modules" FORCE)
+  set(GISMO_BUILD_CINTERFACE ON CACHE BOOL "Build the C interface (src/<module>/cinterface, <gsCInterface/Cgismo.h>)" FORCE)
+endif()
 if (CMAKE_VERSION VERSION_GREATER 3.11.5)
   list(TRANSFORM GISMO_OPTIONAL STRIP)
 endif()
@@ -354,6 +363,10 @@ endif()
 message("  GISMO_OPTIONAL        ${GISMO_OPTIONAL}")
 set(GISMO_OPTIONAL ${GISMO_OPTIONAL}
   CACHE STRING "List of optional G+Smo modules" FORCE)
+
+if(GISMO_BUILD_CINTERFACE)
+  gismo_generate_cinterface_header()
+endif()
 
 ## #################################################################
 ## Shared and static library

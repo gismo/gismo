@@ -3,7 +3,27 @@ namespace gismo {
 
 \page C_interface C interface
 
-The \ref gsCInterface module provides an interface of \gismo from `C++` to `C`. This interface is the enabler for the interfaces to \ref Julia_interface "Julia" and \ref MATLAB_interface "MATLAB".
+The C interface exposes \gismo to `C` (and through it to
+\ref Julia_interface "Julia", \ref MATLAB_interface "MATLAB" and
+Fortran). It is part of the main library: every module keeps its C
+functions in <tt>src/&lt;module&gt;/cinterface/</tt> (for example
+<tt>gsNurbs/cinterface/gsCNurbsCreator.h</tt>), together with an umbrella
+header <tt>Cgismo&lt;Module&gt;.h</tt>, and the type-blind core lives in
+<tt>src/gsCInterface/</tt> (opaque handle types in <tt>gsCTypes.h</tt>,
+the error firewall in <tt>gsCError.h</tt>).
+
+Configure with <tt>GISMO_BUILD_CINTERFACE=ON</tt>: the C functions are
+then compiled into the modules and the generated header
+<tt>&lt;gsCInterface/Cgismo.h&gt;</tt> includes the umbrellas of all
+modules (and of optional modules that ship a <tt>src/cinterface</tt>
+directory). Plain-C programs include that header only; the examples in
+<tt>src/gsCInterface/examples</tt> are built and run as tests with the
+label <tt>gsCInterface</tt>.
+
+C++ exceptions never cross the C boundary: every entry point is wrapped
+in <tt>GISMO_CAPI_BEGIN</tt> / <tt>GISMO_CAPI_END</tt>. On an error the
+function returns a sentinel (NULL, -1, NaN or nothing) and the message
+is available from <tt>gsCLastError()</tt> on the calling thread.
 
 
 

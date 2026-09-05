@@ -20,6 +20,13 @@ add_library(${PROJECT_NAME}_static STATIC
   ${${PROJECT_NAME}_SOURCES}
   ${${PROJECT_NAME}_EXTENSIONS}
   )
+add_library(${PROJECT_NAME}::${PROJECT_NAME}_static ALIAS ${PROJECT_NAME}_static)
+
+# Usage requirements for consumers of the exported targets (in-tree
+# targets get the same directories from include_directories)
+target_include_directories(${PROJECT_NAME}_static INTERFACE
+  "$<BUILD_INTERFACE:${GISMO_INCLUDE_DIRS}>"
+  "$<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}>")
 
 #generate_export_header(${PROJECT_NAME}_static)
 
@@ -36,13 +43,13 @@ if(NOT GISMO_BUILD_LIB)
   # nothing: see above
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   target_link_options(${PROJECT_NAME}_static INTERFACE
-    "/WHOLEARCHIVE:$<TARGET_FILE_NAME:${PROJECT_NAME}_static>")
+    "/WHOLEARCHIVE:$<TARGET_FILE_NAME:$<TARGET_NAME:${PROJECT_NAME}_static>>")
 elseif(APPLE)
   target_link_options(${PROJECT_NAME}_static INTERFACE
-    "LINKER:-force_load,$<TARGET_FILE:${PROJECT_NAME}_static>")
+    "LINKER:-force_load,$<TARGET_FILE:$<TARGET_NAME:${PROJECT_NAME}_static>>")
 else()
   target_link_options(${PROJECT_NAME}_static INTERFACE
-    "LINKER:--whole-archive,$<TARGET_FILE:${PROJECT_NAME}_static>,--no-whole-archive")
+    "LINKER:--whole-archive,$<TARGET_FILE:$<TARGET_NAME:${PROJECT_NAME}_static>>,--no-whole-archive")
 endif()
 
 if(${PROJECT_NAME}_LINKER)
@@ -152,6 +159,11 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
   FOLDER "G+Smo libraries"
   )
   #generate_export_header(${PROJECT_NAME})
+  add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+
+  target_include_directories(${PROJECT_NAME} INTERFACE
+    "$<BUILD_INTERFACE:${GISMO_INCLUDE_DIRS}>"
+    "$<INSTALL_INTERFACE:${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}>")
 
   # gsModules runtime loader (dlopen)
   if (CMAKE_DL_LIBS)
@@ -232,6 +244,11 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
       COMMAND ${CMAKE_COMMAND} -E echo 'The file $<TARGET_FILE:${PROJECT_NAME}> is copied to the bin folder for convenience.' )
     endif()
   endif( WIN32 )
+
+else(GISMO_BUILD_LIB)
+
+  # header-only builds: the umbrella target is the static archive
+  add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME}_static)
 
 endif(GISMO_BUILD_LIB)
 

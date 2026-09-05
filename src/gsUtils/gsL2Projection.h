@@ -1,6 +1,7 @@
 /** @file gsL2Projection.h
 
-    @brief Forwarding header. gsL2Projection moved to gsAssembler/gsL2Projection.h (an expression-assembler client, like gsProjection).
+    @brief Forwarding header. gsL2Projection is an alias of
+    gsProjection<ProjectionNorm::L2, T>, declared in gsAssembler/gsProjection.h.
 
     This file is part of the G+Smo library.
 
@@ -11,4 +12,4 @@
 
 #pragma once
 
-#include <gsAssembler/gsL2Projection.h>
+#include <gsAssembler/gsProjection.h>

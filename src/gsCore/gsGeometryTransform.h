@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gsCore/gsGeometry.h>
 #include <gsCore/gsAffineFunction.h>
 
 namespace gismo {

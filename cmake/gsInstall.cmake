@@ -35,16 +35,11 @@ foreach(p LIB BIN INCLUDE CMAKE)
   endif()
 endforeach()
 
-# Add all targets to the build-tree export set
-if(GISMO_BUILD_LIB)
-export(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_static
-  FILE "${PROJECT_BINARY_DIR}/gismoTargets.cmake" APPEND)
-endif()
-
-#if(GISMO_WITH_other)
-#  export(TARGETS other
-#    FILE "${PROJECT_BINARY_DIR}/gismoTargets.cmake" APPEND)
-#endif()
+# Build-tree export of the gismoTargets export set: gismo::gismo,
+# gismo::gismo_static and the module components gismo::<module>
+# (see cmake/gsModule.cmake)
+export(EXPORT gismoTargets NAMESPACE ${PROJECT_NAME}::
+  FILE "${PROJECT_BINARY_DIR}/gismoTargets.cmake")
 
 # Export the package for use from the build-tree
 # (this registers the build-tree with a global CMake-registry)
@@ -155,8 +150,8 @@ install(FILES
   DESTINATION "${CMAKE_INSTALL_DIR}" COMPONENT devel)
 
 # Install the export set for use with the install-tree
-#install(EXPORT gismoTargets DESTINATION
-#  "${CMAKE_INSTALL_DIR}" COMPONENT devel)
+install(EXPORT gismoTargets NAMESPACE ${PROJECT_NAME}::
+  DESTINATION "${CMAKE_INSTALL_DIR}" COMPONENT devel)
 
 # Produce pkg-config file
 configure_file ("${PROJECT_SOURCE_DIR}/gismo_lib.pc.in"
