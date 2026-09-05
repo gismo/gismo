@@ -13,6 +13,7 @@
 
 #pragma once
 
+#include <gsCore/gsBasis.h>
 #include <gsCore/gsOptionList.h>
 #include <gsAssembler/gsGaussRule.h>
 #include <gsAssembler/gsLobattoRule.h>
