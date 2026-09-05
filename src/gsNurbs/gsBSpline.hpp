@@ -18,7 +18,7 @@
 #include <gsIO/gsXml.h>
 #include <gsIO/gsXmlGenericUtils.hpp>
 
-#include <gsCore/gsMultiPatch.h>
+#include <gsContainers/gsMultiPatch.h>
 #include <gsNurbs/gsCurveCurveIntersection.h>
 
 namespace gismo

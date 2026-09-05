@@ -1,0 +1,112 @@
+file,current_module,target_module,phase,notes
+src/gsCore/gsDebug.h,gsCore,gsCore (foundation),stay,infrastructure
+src/gsCore/gsMemory.h,gsCore,gsCore (foundation),stay,infrastructure
+src/gsCore/gsTemplateTools.h,gsCore,gsCore (foundation),stay,infrastructure
+src/gsCore/gsForwardDeclarations.h,gsCore,gsCore (foundation),stay,infrastructure
+src/gsCore/gsMath.h,gsCore,gsCore (foundation),stay,infrastructure
+src/gsCore/gsLinearAlgebra.h,gsCore,gsCore (foundation),stay,infrastructure
+src/gsCore/gsStdVectorRef.h,gsCore,gsCore (foundation),stay,infrastructure
+src/gsCore/gsRegistry.h,gsCore,gsCore (foundation),stay,infrastructure
+src/gsCore/gsOptionList.h,gsCore,gsCore (foundation),stay,infrastructure
+src/gsCore/gsStrategy.h,gsCore,gsCore (foundation),stay,infrastructure
+src/gsCore/gsConfig.h.in,gsCore,gsCore (foundation),stay,infrastructure
+src/gsCore/gsExport.h.in,gsCore,gsCore (foundation),stay,infrastructure
+src/gsCore/gsSysInfo.h,gsCore,(forwarding header),done-S1,relocated in S1
+src/gsCore/gsJITCompiler.h,gsCore,(forwarding header),done-S1,relocated in S1
+src/gsCore/gsFunctionSet.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsFunction.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsFuncData.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsFuncCoordinate.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsBasis.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsBasisFun.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsBasisRefs.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsRationalBasis.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsConstantBasis.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsGeometry.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsGeometrySlice.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsGeometryTransform.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsCurve.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsSurface.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsVolume.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsBulk.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsGenericGeometry.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsAffineFunction.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsConstantFunction.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsComposedFunction.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsComposedBasis.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsComposedGeometry.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsBoundary.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsPiecewiseFunction.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsPatchwiseFunction.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsCoreXmlRegistration.h,gsCore,gsCore (hierarchy),stay,core abstractions
+src/gsCore/gsDofMapper.h,gsCore,gsCore (hierarchy) - VERIFY,stay?,check dependence on gsMultiBasis after dev refactor (gsDofMapperCreator)
+src/gsCore/gsMultiPatch.h,gsCore,gsContainers (new),S4-a,orchestrate bases/geometries; forwarding headers left at old paths
+src/gsCore/gsMultiBasis.h,gsCore,gsContainers (new),S4-a,orchestrate bases/geometries; forwarding headers left at old paths
+src/gsCore/gsBoxTopology.h,gsCore,gsContainers (new),S4-a,orchestrate bases/geometries; forwarding headers left at old paths
+src/gsCore/gsField.h,gsCore,gsContainers (new),S4-a,orchestrate bases/geometries; forwarding headers left at old paths
+src/gsCore/gsFieldCreator.h,gsCore,gsContainers (new),S4-a,orchestrate bases/geometries; forwarding headers left at old paths
+src/gsCore/gsField.hpp (distance members),gsCore,gsAssembler (gsFieldDistance.h),S4-f,"expression-evaluator distances become free functions distanceL2/H1/H2/DG(field, ...); the gsField members forward to them, so the API is unchanged and gsContainers no longer includes gsExpressions/gsAssembler for them"
+src/gsCore/gsCoreXml.hpp,gsCore,gsContainers (new),S4-a,orchestrate bases/geometries; forwarding headers left at old paths
+src/gsCore/gsFunctionExpr.h,gsCore,gsFunctionExpr (new),S4-b,isolates the vendored exprtk dependency
+src/gsUtils/gsBoundedPriorityQueue.h,gsUtils,gsUtils (foundation),stay,
+src/gsUtils/gsCombinatorics.h,gsUtils,gsUtils (foundation),stay,
+src/gsUtils/gsSortedVector.h,gsUtils,gsUtils (foundation),stay,
+src/gsUtils/gsStopwatch.h,gsUtils,gsUtils (foundation),stay,
+src/gsUtils/gsThreaded.h,gsUtils,gsUtils (foundation),stay,
+src/gsUtils/gsUtils.h,gsUtils,gsUtils (foundation),stay,
+src/gsUtils/gsPointGrid.h,gsUtils,gsUtils (foundation),stay,
+src/gsUtils/gsFunctionWithDerivatives.h,gsUtils,gsUtils (foundation),stay,
+src/gsUtils/gsSysInfo.h,gsUtils,gsUtils (foundation),stay,
+src/gsUtils/gsL2Projection.h,gsUtils,gsAssembler,S4-c,"expression-assembler client, same reason as gsProjection"
+src/gsUtils/gsProjection.h,gsUtils,(forwarding header),done-S1,relocated in S1
+src/gsUtils/gsQuasiInterpolate.h,gsUtils,(forwarding header),done-S1,relocated in S1
+src/gsUtils/gsMesh/gsMesh.h,gsUtils,gsMesh (own module dir),stay,gsUtils/gsMesh already builds as module gsMesh; unification with gsMesh2 = later
+src/gsUtils/gsMesh/gsHalfEdgeMesh.h,gsUtils,gsMesh (own module dir),stay,gsUtils/gsMesh already builds as module gsMesh; unification with gsMesh2 = later
+src/gsDomain/gsDomain.h,gsDomain,gsDomain (tensor part),stay,
+src/gsDomain/gsDomainIterator.h,gsDomain,gsDomain (tensor part),stay,
+src/gsDomain/gsTensorDomain.h,gsDomain,gsDomain (tensor part),stay,
+src/gsDomain/gsTensorDomainIterator.h,gsDomain,gsDomain (tensor part),stay,
+src/gsDomain/gsTensorDomainBoundaryIterator.h,gsDomain,gsDomain (tensor part),stay,
+src/gsDomain/gsKnotDomainIterator.h,gsDomain,gsDomain (tensor part),stay,
+src/gsDomain/gsBreaksIterator.h,gsDomain,gsDomain (tensor part),stay,
+src/gsDomain/gsPointDomain.h,gsDomain,gsDomain (tensor part),stay,
+src/gsDomain/gsPointDomainIterator.h,gsDomain,gsDomain (tensor part),stay,
+src/gsDomain/gsCompositeDomain.h,gsDomain,gsDomain - needs gsQuadrature split,S5/B4,includes gsAssembler/gsGaussRule at header level
+src/gsDomain/gsHDomain.h,gsDomain,gsHSplines,S4-d,hierarchical-domain half belongs with the hierarchical bases
+src/gsDomain/gsHDomainBoundaryIterator.h,gsDomain,gsHSplines,S4-d,hierarchical-domain half belongs with the hierarchical bases
+src/gsDomain/gsHDomainIterator.h,gsDomain,gsHSplines,S4-d,hierarchical-domain half belongs with the hierarchical bases
+src/gsDomain/gsHDomainLeafIter.h,gsDomain,gsHSplines,S4-d,hierarchical-domain half belongs with the hierarchical bases
+src/gsDomain/gsHDomainSliceIter.h,gsDomain,gsHSplines,S4-d,hierarchical-domain half belongs with the hierarchical bases
+src/gsDomain/gsHTree.h,gsDomain,gsHSplines,S4-d,hierarchical-domain half belongs with the hierarchical bases
+src/gsDomain/gsKdNode.h,gsDomain,gsHSplines,S4-d,hierarchical-domain half belongs with the hierarchical bases
+src/gsNurbs/gsKnotVector.h,gsNurbs,gsDomain,S4-e,"1-D breakpoint structure used by gsDomain/gsTensor/gsHSplines; not NURBS-specific. Home corrected from gsTensor to gsDomain during S4-e: it includes only gsDomain/gsDomain.h and gsTensorDomain (gsDomain) needs it, so gsTensor would have created a gsDomain->gsTensor cycle"
+src/gsNurbs/gsKnotIterator.h,gsNurbs,gsDomain,S4-e,moves with gsKnotVector
+src/gsModeling/gsFitting.h,gsModeling,gsFitting (later),post-S4,fitting family (+ gsHFitting from gsHSplines)
+src/gsModeling/gsCurveFitting.h,gsModeling,gsFitting (later),post-S4,fitting family (+ gsHFitting from gsHSplines)
+src/gsModeling/gsCurvatureSmoothing.h,gsModeling,gsFitting (later),post-S4,fitting family (+ gsHFitting from gsHSplines)
+src/gsModeling/gsParametrization.h,gsModeling,gsParametrization (later),post-S4,parameterization & patch generation; gsBarrierCore/Patch need assembler+optimizer (L7)
+src/gsModeling/gsPeriodicParametrization.h,gsModeling,gsParametrization (later),post-S4,parameterization & patch generation; gsBarrierCore/Patch need assembler+optimizer (L7)
+src/gsModeling/gsPeriodicOverlap.h,gsModeling,gsParametrization (later),post-S4,parameterization & patch generation; gsBarrierCore/Patch need assembler+optimizer (L7)
+src/gsModeling/gsPeriodicStitch.h,gsModeling,gsParametrization (later),post-S4,parameterization & patch generation; gsBarrierCore/Patch need assembler+optimizer (L7)
+src/gsModeling/gsSurfaceReparameterization.h,gsModeling,gsParametrization (later),post-S4,parameterization & patch generation; gsBarrierCore/Patch need assembler+optimizer (L7)
+src/gsModeling/gsBarrierCore.h,gsModeling,gsParametrization (later),post-S4,parameterization & patch generation; gsBarrierCore/Patch need assembler+optimizer (L7)
+src/gsModeling/gsBarrierPatch.h,gsModeling,gsParametrization (later),post-S4,parameterization & patch generation; gsBarrierCore/Patch need assembler+optimizer (L7)
+src/gsModeling/gsPatchGenerator.h,gsModeling,gsParametrization (later),post-S4,parameterization & patch generation; gsBarrierCore/Patch need assembler+optimizer (L7)
+src/gsModeling/gsSpringPatch.h,gsModeling,gsParametrization (later),post-S4,parameterization & patch generation; gsBarrierCore/Patch need assembler+optimizer (L7)
+src/gsModeling/gsCoonsPatch.h,gsModeling,gsParametrization (later),post-S4,parameterization & patch generation; gsBarrierCore/Patch need assembler+optimizer (L7)
+src/gsModeling/gsCrossApPatch.h,gsModeling,gsParametrization (later),post-S4,parameterization & patch generation; gsBarrierCore/Patch need assembler+optimizer (L7)
+src/gsModeling/gsLineSegment.h,gsModeling,gsParametrization (later),post-S4,parameterization & patch generation; gsBarrierCore/Patch need assembler+optimizer (L7)
+src/gsModeling/gsSolid.h,gsModeling,gsBRep (later),post-S4,boundary-represented solids and trimming
+src/gsModeling/gsSolidElement.h,gsModeling,gsBRep (later),post-S4,boundary-represented solids and trimming
+src/gsModeling/gsSolidHalfEdge.h,gsModeling,gsBRep (later),post-S4,boundary-represented solids and trimming
+src/gsModeling/gsSolidHalfFace.h,gsModeling,gsBRep (later),post-S4,boundary-represented solids and trimming
+src/gsModeling/gsSolidHeVertex.h,gsModeling,gsBRep (later),post-S4,boundary-represented solids and trimming
+src/gsModeling/gsTrimSurface.h,gsModeling,gsBRep (later),post-S4,boundary-represented solids and trimming
+src/gsModeling/gsPlanarDomain.h,gsModeling,gsBRep (later),post-S4,boundary-represented solids and trimming
+src/gsModeling/gsCurveLoop.h,gsModeling,gsBRep (later),post-S4,boundary-represented solids and trimming
+src/gsModeling/gsVolumeBlock.h,gsModeling,gsBRep (later),post-S4,boundary-represented solids and trimming
+src/gsModeling/gsTriMeshToSolid.h,gsModeling,gsBRep (later),post-S4,boundary-represented solids and trimming
+src/gsModeling/gsTemplate.h,gsModeling,gsBRep (later),post-S4,boundary-represented solids and trimming
+src/gsModeling/gsModelingParaview.h,gsModeling,(follows its types),post-S4,split alongside the three-way move
+src/gsModeling/gsModelingXmlRegistration.h,gsModeling,(follows its types),post-S4,split alongside the three-way move
+src/gsModeling/gsModelingXml.hpp,gsModeling,(follows its types),post-S4,split alongside the three-way move

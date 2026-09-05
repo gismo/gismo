@@ -1,7 +1,7 @@
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsCore/gsMultiPatch.h>
-#include <gsCore/gsMultiPatch.hpp>
+#include <gsContainers/gsMultiPatch.h>
+#include <gsContainers/gsMultiPatch.hpp>
 
 namespace gismo
 {

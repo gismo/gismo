@@ -13,7 +13,7 @@
 
 #include <gsCore/gsConfig.h>
 
-#include <gsCore/gsBoxTopology.h>
+#include <gsContainers/gsBoxTopology.h>
 
 namespace gismo
 {

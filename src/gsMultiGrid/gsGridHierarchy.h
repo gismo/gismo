@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsCore/gsDofMapper.h>
-#include <gsNurbs/gsKnotVector.h>
+#include <gsDomain/gsKnotVector.h>
 #include <gsCore/gsOptionList.h>
 
 namespace gismo

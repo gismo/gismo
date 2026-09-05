@@ -12,7 +12,7 @@
 */
 
 #include <gsIO/gsXml.h>
-#include <gsCore/gsFunctionExpr.h>
+#include <gsFunctionExpr/gsFunctionExpr.h>
 #include <gsCore/gsConstantFunction.h>
 #include <gsUtils/gsSortedVector.h>
 #include <gsIO/gsXmlGenericUtils.hpp>

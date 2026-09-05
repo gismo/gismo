@@ -13,7 +13,7 @@
 
 #include <gsOpenCascade/gsWriteOcct.h>
 #include <gsCore/gsSurface.h>
-#include <gsCore/gsMultiPatch.h>
+#include <gsContainers/gsMultiPatch.h>
 #include <gsNurbs/gsBSplineBasis.h>
 
 #include <TopoDS.hxx>

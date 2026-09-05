@@ -1,7 +1,7 @@
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsDomain/gsHTree.h>
-#include <gsDomain/gsHTree.hpp>
+#include <gsHSplines/gsHTree.h>
+#include <gsHSplines/gsHTree.hpp>
 
 namespace gismo
 {

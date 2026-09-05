@@ -21,7 +21,7 @@
 #include <gsDomain/gsTensorDomainIterator.h>
 #include <gsDomain/gsTensorDomainBoundaryIterator.h>
 
-#include <gsNurbs/gsKnotVector.h>
+#include <gsDomain/gsKnotVector.h>
 
 namespace gismo
 {

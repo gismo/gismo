@@ -16,7 +16,7 @@
 #include <iostream>
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsFunction.h>
-#include <gsCore/gsFunctionExpr.h>
+#include <gsFunctionExpr/gsFunctionExpr.h>
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsUtils/gsPointGrid.h>
 

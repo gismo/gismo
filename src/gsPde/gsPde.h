@@ -15,7 +15,7 @@
 #pragma once
 
 #include <gsPde/gsBoundaryConditions.h>
-#include <gsCore/gsMultiPatch.h>
+#include <gsContainers/gsMultiPatch.h>
 #include <gsCore/gsPiecewiseFunction.h>
 
 namespace gismo

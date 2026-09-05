@@ -13,7 +13,7 @@
 #pragma once
 
 // #include <gsCore/gsForwardDeclarations.h>
-#include<gsCore/gsField.h>
+#include <gsContainers/gsField.h>
 #include <gsMSplines/gsMappedBasis.h>   // Only to make linker happy
 #include <gsCore/gsDofMapper.h>         // Only to make linker happy
 #include <gsCore/gsLinearAlgebra.h>         // Only to make linker happy

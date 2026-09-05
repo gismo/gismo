@@ -4,7 +4,7 @@
 #include <gsNurbs/gsBSplineSolver.h>
 #include <gsNurbs/gsBSplineSolver.hpp>
 
-#include <gsNurbs/gsKnotVector.h>
+#include <gsDomain/gsKnotVector.h>
 
 namespace gismo
 {

@@ -122,6 +122,8 @@ void runPoissonSolverTest( dirichlet::strategy Dstrategy, iFace::strategy Istrat
 
         // Find the l2 error
         real_t l2error = sol.distanceL2(g);
+        // free-function form (gsAssembler/gsFieldDistance.h) must agree
+        CHECK_CLOSE(l2error, distanceL2(sol, g), 1e-14);
         error_list.push_back(l2error);
 
     }

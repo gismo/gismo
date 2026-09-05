@@ -1,4 +1,4 @@
-/** @file gsCoreXml.hpp
+/** @file gsContainersXml.hpp
 
     @brief XML serialization for the gsCore container types (implementation
     header).
@@ -6,7 +6,7 @@
     Moved here from gsIO/gsXmlUtils.hpp: each module owns its gsXml
     specializations (modularization stream S3, step A6).
 
-    ONLY include this file from gsCoreXml_.cpp (lib mode) or through
+    ONLY include this file from gsContainersXml_.cpp (lib mode) or through
     gsCoreXmlRegistration.h in header-only mode - a second inclusion in another
     translation unit of the library would poison the symbol visibility
     of the explicit instantiations.
@@ -22,8 +22,8 @@
 
 #include <gsIO/gsXml.h>
 #include <gsIO/gsXmlGenericUtils.hpp>
-#include <gsCore/gsMultiPatch.h>
-#include <gsCore/gsMultiBasis.h>
+#include <gsContainers/gsMultiPatch.h>
+#include <gsContainers/gsMultiBasis.h>
 
 namespace gismo {
 namespace internal {

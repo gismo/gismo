@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsCore/gsGeometry.h>
-#include <gsCore/gsBoxTopology.h>
+#include <gsContainers/gsBoxTopology.h>
 #include <gsCore/gsBoundary.h>
 #include <gsModeling/gsCurveLoop.h>
 #include <gsUtils/gsPointGrid.h>

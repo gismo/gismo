@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include<gsCore/gsMultiPatch.h>
+#include <gsContainers/gsMultiPatch.h>
 
 namespace gismo
 {

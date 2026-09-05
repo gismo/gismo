@@ -5,7 +5,7 @@
 #include <gsCore/gsBasis.hpp>
 #include <gsCore/gsFunctionSet.hpp>
 #include <gsCore/gsFunction.hpp>
-#include <gsCore/gsFunctionExpr.hpp>
+#include <gsFunctionExpr/gsFunctionExpr.hpp>
 #include <gsCore/gsConstantFunction.hpp>
 #include <gsCore/gsGeometry.hpp>
 #include <gsCore/gsCurve.hpp>
@@ -15,7 +15,7 @@
 #include <gsNurbs/gsBSplineBasis.hpp>
 #include <gsNurbs/gsBSpline.hpp>
 #include <gsNurbs/gsTensorBSpline.hpp>
-#include <gsNurbs/gsKnotVector.hpp>
+#include <gsDomain/gsKnotVector.hpp>
 #include <gsNurbs/gsBoehm.hpp>
 #include <gsNurbs/gsBSplineSolver.hpp>
 #include <gsUtils/gsMesh/gsMesh.hpp>

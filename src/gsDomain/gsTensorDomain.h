@@ -14,7 +14,7 @@
 #pragma once
 
 #include <gsDomain/gsDomain.h>
-#include <gsNurbs/gsKnotVector.h>
+#include <gsDomain/gsKnotVector.h>
 
 namespace gismo
 {

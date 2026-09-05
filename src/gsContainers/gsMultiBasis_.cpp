@@ -1,8 +1,8 @@
 
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsCore/gsMultiBasis.h>
-#include <gsCore/gsMultiBasis.hpp>
+#include <gsContainers/gsMultiBasis.h>
+#include <gsContainers/gsMultiBasis.hpp>
 
 namespace gismo
 {

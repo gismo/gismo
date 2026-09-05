@@ -13,7 +13,7 @@
 
 #pragma once
 #include <gsCore/gsGeometry.h>
-#include <gsCore/gsMultiPatch.h>
+#include <gsContainers/gsMultiPatch.h>
 #include <gsMSplines/gsMappedSingleSpline.h>
 #include <gsMSplines/gsMappedSingleBasis.h>
 #include <gsMSplines/gsMappedBasis.h>

@@ -17,7 +17,7 @@
 #include <gsCore/gsBasisRefs.h>
 #include <gsCore/gsDofMapper.h>
 #include <gsCore/gsStdVectorRef.h>
-#include <gsCore/gsMultiBasis.h>
+#include <gsContainers/gsMultiBasis.h>
 #include <gsDomain/gsDomainIterator.h>
 #include <gsCore/gsAffineFunction.h>
 #include <gsDomain/gsDomain.h>

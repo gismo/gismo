@@ -17,12 +17,10 @@
 #include <gsCore/gsComposedGeometry.h>
 #include <gsCore/gsComposedBasis.h>
 #include <gsCore/gsConstantFunction.h>
-#include <gsCore/gsFunctionExpr.h>
 #include <gsCore/gsComposedFunction.h>
 
 #ifndef GISMO_BUILD_LIB
 // header-only mode: the specializations must be visible to the registrars
-#include <gsCore/gsCoreXml.hpp>
 #endif
 
 namespace gismo {
@@ -36,7 +34,6 @@ void gsCoreXmlRegisterTypes()
     gsXmlRegisterAs<gsBasis<T>, gsComposedBasis<T> >::enroll(900);
 
     gsXmlRegisterAs<gsFunction<T>, gsConstantFunction<T> >::enroll(100);
-    gsXmlRegisterAs<gsFunction<T>, gsFunctionExpr<T> >    ::enroll(110);
     gsXmlRegisterAs<gsFunction<T>, gsComposedFunction<T> >::enroll(120);
 }
 

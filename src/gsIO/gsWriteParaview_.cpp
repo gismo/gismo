@@ -3,7 +3,7 @@
 #include <gsIO/gsWriteParaview.h>
 #include <gsIO/gsWriteParaview.hpp>
 #include <gsMesh2/gsSurfMesh.h>
-// #include <gsCore/gsMultiPatch.h>
+// #include <gsContainers/gsMultiPatch.h>
 
 #define T real_t
 #define uZ unsigned

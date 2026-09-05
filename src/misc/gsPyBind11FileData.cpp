@@ -16,15 +16,15 @@
 #include <gsIO/gsFileData.h>
 
 #ifdef GISMO_WITH_PYBIND11
-#include <gsCore/gsMultiPatch.h>
-#include <gsCore/gsMultiBasis.h>
+#include <gsContainers/gsMultiPatch.h>
+#include <gsContainers/gsMultiBasis.h>
 #include <gsNurbs/gsBSpline.h>
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 
 #include <gsPde/gsBoundaryConditions.h>
-#include <gsCore/gsFunctionExpr.h>
+#include <gsFunctionExpr/gsFunctionExpr.h>
 #include <gsIO/gsOptionList.h>
 #include <gsIO/gsOptionListXml.h>
 #include <gsMatrix/gsSparseMatrix.h>

@@ -16,10 +16,10 @@
 #include <gsParasolid/gsReadParasolid.h>
 #include <gsParasolid/gsPKSession.h>
 
-#include <gsCore/gsMultiPatch.h>
+#include <gsContainers/gsMultiPatch.h>
 #include <gsCore/gsSurface.h>
 
-#include <gsNurbs/gsKnotVector.h>
+#include <gsDomain/gsKnotVector.h>
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsNurbs/gsBSpline.h>

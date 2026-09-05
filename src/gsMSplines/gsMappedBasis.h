@@ -13,8 +13,8 @@
 
 #pragma once
 
-#include <gsCore/gsBoxTopology.h>
-#include <gsCore/gsMultiPatch.h>
+#include <gsContainers/gsBoxTopology.h>
+#include <gsContainers/gsMultiPatch.h>
 
 #include <gsMSplines/gsMappedSingleBasis.h>
 #include <gsMSplines/gsWeightMapper.h>

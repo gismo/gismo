@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsCore/gsMultiPatch.h>
+#include <gsContainers/gsMultiPatch.h>
 #include <gsDomain/gsCompositeDomain.h>
 #include <gsHSplines/gsHTensorBasis.h>
 #include <gsUtils/gsCombinatorics.h>

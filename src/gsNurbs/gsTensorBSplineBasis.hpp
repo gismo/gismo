@@ -16,7 +16,7 @@
 #include <gsCore/gsTemplateTools.h>
 #include <gsTensor/gsTensorTools.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
-#include <gsNurbs/gsKnotVector.h>
+#include <gsDomain/gsKnotVector.h>
 #include <gsNurbs/gsBoehm.h>
 
 #include <gsIO/gsXml.h>

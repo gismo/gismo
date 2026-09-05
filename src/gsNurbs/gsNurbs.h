@@ -17,7 +17,7 @@
 #include <gsCore/gsGeometry.h>
 
 #include <gsNurbs/gsNurbsBasis.h>
-#include <gsNurbs/gsKnotVector.h>
+#include <gsDomain/gsKnotVector.h>
 #include <gsNurbs/gsBoehm.h>
 
 

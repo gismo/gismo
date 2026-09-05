@@ -28,7 +28,13 @@ add_library(${PROJECT_NAME}_static STATIC
 # archive only pulls members it references, so without the following it
 # could silently lose e.g. the THB-spline reader when reading a file
 # through the abstract gsGeometry base. Force every member in.
-if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+# (Library builds only: in header-only mode the registrars are static
+# objects in the consumer's own translation units, and executables link
+# the extension objects directly next to the archive - force-loading it
+# would duplicate them.)
+if(NOT GISMO_BUILD_LIB)
+  # nothing: see above
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   target_link_options(${PROJECT_NAME}_static INTERFACE
     "/WHOLEARCHIVE:$<TARGET_FILE_NAME:${PROJECT_NAME}_static>")
 elseif(APPLE)

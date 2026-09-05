@@ -15,7 +15,7 @@
 
 #include <gsUtils/gsCombinatorics.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
-#include <gsDomain/gsHDomainIterator.h>
+#include <gsHSplines/gsHDomainIterator.h>
 #include <gsHSplines/gsAABB.h>
 
 #include <gsIO/gsXml.h>

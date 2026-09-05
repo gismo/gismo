@@ -1,8 +1,7 @@
 
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsCore/gsField.h>
-#include <gsCore/gsField.hpp>
+#include <gsContainers/gsField.h>
 
 namespace gismo
 {

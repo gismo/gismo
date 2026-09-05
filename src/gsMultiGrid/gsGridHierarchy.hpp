@@ -13,13 +13,13 @@
 
 #pragma once
 
-#include <gsNurbs/gsKnotVector.h>
+#include <gsDomain/gsKnotVector.h>
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 #include <gsHSplines/gsHTensorBasis.h>
 #include <gsCore/gsOptionList.h>
 #include <gsAssembler/gsAssemblerOptions.h>
-#include <gsCore/gsMultiBasis.h>
+#include <gsContainers/gsMultiBasis.h>
 #include <gsAssembler/gsDofMapperCreator.h>
 
 namespace gismo

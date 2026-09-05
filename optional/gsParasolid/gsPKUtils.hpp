@@ -16,7 +16,7 @@
 #include <gsParasolid/gsFrustrum.h>
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsNurbs/gsKnotVector.h>
+#include <gsDomain/gsKnotVector.h>
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsNurbs/gsBSpline.h>
 
