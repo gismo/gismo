@@ -5,4 +5,5 @@
 ## Eigen wrappers, sparse tools
 ######################################################################
 
-gismo_add_module(gsMatrix)
+gismo_add_module(gsMatrix
+  DEPENDS gsCInterface)

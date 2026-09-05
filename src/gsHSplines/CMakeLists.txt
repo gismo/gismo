@@ -6,4 +6,4 @@
 ######################################################################
 
 gismo_add_module(gsHSplines
-  DEPENDS gsCore gsDomain gsTensor gsNurbs gsContainers gsIO gsUtils)
+  DEPENDS gsCore gsDomain gsTensor gsNurbs gsContainers gsIO gsUtils gsCInterface)

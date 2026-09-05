@@ -6,4 +6,4 @@
 ######################################################################
 
 gismo_add_module(gsNurbs
-  DEPENDS gsCore gsDomain gsTensor gsContainers gsIO gsUtils gsMatrix)
+  DEPENDS gsCore gsDomain gsTensor gsContainers gsIO gsUtils gsMatrix gsCInterface)

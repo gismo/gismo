@@ -16,6 +16,7 @@ include(gsModule)
 ## Modules. Each src/<module>/CMakeLists.txt declares the module and its
 ## dependencies with gismo_add_module(); the order below is the
 ## dependency order of the declared graph (checked at the end).
+add_subdirectory(gsCInterface) # type-blind core of the C interface
 add_subdirectory(gsParallel)
 add_subdirectory(gsMatrix)
 add_subdirectory(gsUtils)

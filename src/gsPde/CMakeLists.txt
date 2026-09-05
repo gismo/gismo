@@ -6,4 +6,4 @@
 ######################################################################
 
 gismo_add_module(gsPde
-  DEPENDS gsCore gsContainers gsFunctionExpr gsIO gsUtils)
+  DEPENDS gsCore gsContainers gsFunctionExpr gsIO gsUtils gsCInterface)

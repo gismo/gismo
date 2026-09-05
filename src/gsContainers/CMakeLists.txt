@@ -6,4 +6,4 @@
 ######################################################################
 
 gismo_add_module(gsContainers
-  DEPENDS gsCore gsDomain gsTensor gsIO gsUtils gsMatrix)
+  DEPENDS gsCore gsDomain gsTensor gsIO gsUtils gsMatrix gsCInterface)

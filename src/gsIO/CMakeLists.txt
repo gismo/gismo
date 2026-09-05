@@ -6,4 +6,4 @@
 ######################################################################
 
 gismo_add_module(gsIO
-  DEPENDS gsCore gsMatrix gsUtils)
+  DEPENDS gsCore gsMatrix gsUtils gsCInterface)

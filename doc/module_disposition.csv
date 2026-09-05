@@ -57,7 +57,7 @@ src/gsUtils/gsUtils.h,gsUtils,gsUtils (foundation),stay,
 src/gsUtils/gsPointGrid.h,gsUtils,gsUtils (foundation),stay,
 src/gsUtils/gsFunctionWithDerivatives.h,gsUtils,gsUtils (foundation),stay,
 src/gsUtils/gsSysInfo.h,gsUtils,gsUtils (foundation),stay,
-src/gsUtils/gsL2Projection.h,gsUtils,gsAssembler,S4-c,"expression-assembler client, same reason as gsProjection"
+src/gsUtils/gsL2Projection.h,gsUtils,gsAssembler,S4-c,"expression-assembler client, same reason as gsProjection. Upstream had already emptied the file (gsL2Projection is the alias gsProjection<L2,T> in gsAssembler/gsProjection.h); the empty files are removed and the old path forwards to gsProjection.h"
 src/gsUtils/gsProjection.h,gsUtils,(forwarding header),done-S1,relocated in S1
 src/gsUtils/gsQuasiInterpolate.h,gsUtils,(forwarding header),done-S1,relocated in S1
 src/gsUtils/gsMesh/gsMesh.h,gsUtils,gsMesh (own module dir),stay,gsUtils/gsMesh already builds as module gsMesh; unification with gsMesh2 = later

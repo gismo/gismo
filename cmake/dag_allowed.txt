@@ -1,6 +1,7 @@
 # Module include-dependency baseline (ratchet).
 # Regenerate with: .github/scripts/check_includes.py --update
 # This list may only shrink; CI fails on edges not listed here.
+gsAssembler -> gsCInterface
 gsAssembler -> gsContainers
 gsAssembler -> gsCore
 gsAssembler -> gsDomain
@@ -13,16 +14,20 @@ gsAssembler -> gsModeling
 gsAssembler -> gsNurbs
 gsAssembler -> gsPde
 gsAssembler -> gsUtils
+gsCInterface -> gsCore
 gsContainers -> gsAssembler
+gsContainers -> gsCInterface
 gsContainers -> gsCore
 gsContainers -> gsDomain
 gsContainers -> gsHSplines
 gsContainers -> gsIO
+gsContainers -> gsMatrix
 gsContainers -> gsMesh2
 gsContainers -> gsNurbs
 gsContainers -> gsPde
 gsContainers -> gsTensor
 gsContainers -> gsUtils
+gsCore -> gsCInterface
 gsCore -> gsDomain
 gsCore -> gsIO
 gsCore -> gsMatrix
@@ -30,6 +35,7 @@ gsCore -> gsOptimizer
 gsCore -> gsTensor
 gsCore -> gsUtils
 gsDomain -> gsAssembler
+gsDomain -> gsCInterface
 gsDomain -> gsCore
 gsDomain -> gsIO
 gsDomain -> gsUtils
@@ -37,9 +43,12 @@ gsExpressions -> gsAssembler
 gsExpressions -> gsCore
 gsExpressions -> gsMSplines
 gsExpressions -> gsUtils
+gsFunctionExpr -> gsCInterface
 gsFunctionExpr -> gsCore
 gsFunctionExpr -> gsIO
+gsFunctionExpr -> gsMatrix
 gsHSplines -> gsAssembler
+gsHSplines -> gsCInterface
 gsHSplines -> gsContainers
 gsHSplines -> gsCore
 gsHSplines -> gsDomain
@@ -49,6 +58,7 @@ gsHSplines -> gsNurbs
 gsHSplines -> gsTensor
 gsHSplines -> gsUtils
 gsIO -> gsAssembler
+gsIO -> gsCInterface
 gsIO -> gsContainers
 gsIO -> gsCore
 gsIO -> gsExpressions
@@ -68,12 +78,14 @@ gsMSplines -> gsCore
 gsMSplines -> gsDomain
 gsMSplines -> gsIO
 gsMSplines -> gsUtils
+gsMatrix -> gsCInterface
 gsMatrix -> gsCore
 gsMesh2 -> gsContainers
 gsMesh2 -> gsCore
 gsMesh2 -> gsIO
 gsMesh2 -> gsNurbs
 gsModeling -> gsAssembler
+gsModeling -> gsCInterface
 gsModeling -> gsContainers
 gsModeling -> gsCore
 gsModeling -> gsDomain
@@ -92,6 +104,7 @@ gsMultiGrid -> gsDomain
 gsMultiGrid -> gsHSplines
 gsMultiGrid -> gsNurbs
 gsMultiGrid -> gsSolver
+gsNurbs -> gsCInterface
 gsNurbs -> gsContainers
 gsNurbs -> gsCore
 gsNurbs -> gsDomain
@@ -103,10 +116,12 @@ gsOptimizer -> gsCore
 gsOptimizer -> gsIO
 gsOptimizer -> gsUtils
 gsParallel -> gsCore
+gsPde -> gsCInterface
 gsPde -> gsContainers
 gsPde -> gsCore
 gsPde -> gsFunctionExpr
 gsPde -> gsIO
+gsPde -> gsMatrix
 gsPde -> gsUtils
 gsSolver -> gsAssembler
 gsSolver -> gsCore

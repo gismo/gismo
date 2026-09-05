@@ -41,6 +41,13 @@
 ## In header-only builds (GISMO_BUILD_LIB=OFF) the components link
 ## gismo_static; executables built that way also compile the
 ## non-template sources, see add_gismo_pure_executable in gismoUse.cmake.
+##
+## C interface: a module keeps its C functions in src/<module>/cinterface/
+## (gsC<Class>.h/.cpp and the umbrella Cgismo<Module>.h). With
+## GISMO_BUILD_CINTERFACE=ON they are compiled into the module and the
+## umbrellas are collected into the generated <gsCInterface/Cgismo.h>
+## (gismo_generate_cinterface_header, called from the root CMakeLists
+## after the optional modules).
 ######################################################################
 
 function(gismo_add_module NAME)
@@ -77,6 +84,17 @@ function(gismo_add_module NAME)
       list(APPEND ${NAME}_INS ${_ins})
     endif()
   endforeach()
+
+  ## C interface of the module (primary instance only)
+  if(GISMO_BUILD_CINTERFACE AND IS_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/cinterface)
+    aux_header_directory(${CMAKE_CURRENT_SOURCE_DIR}/cinterface _ch)
+    aux_cpp_directory   (${CMAKE_CURRENT_SOURCE_DIR}/cinterface _ccpp)
+    list(APPEND ${NAME}_H   ${_ch})
+    list(APPEND ${NAME}_CPP ${_ccpp})
+    file(GLOB _umbrellas RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}/..
+      ${CMAKE_CURRENT_SOURCE_DIR}/cinterface/Cgismo*.h)
+    set_property(GLOBAL APPEND PROPERTY GISMO_CINTERFACE_UMBRELLAS ${_umbrellas})
+  endif()
 
   ## Compile the module (linked into libgismo by gsLibrary.cmake)
   add_library(${NAME} OBJECT
@@ -205,4 +223,37 @@ function(gismo_check_module_graph)
   endforeach()
   file(WRITE "${CMAKE_BINARY_DIR}/gismo_module_graph.txt" "${_text}")
   message(STATUS "G+Smo modules (dependency order): ${_order}")
+endfunction()
+
+## Generates <gsCInterface/Cgismo.h> in the build tree from the umbrella
+## headers of all modules (and of optional modules with a src/cinterface
+## directory). Called from the root CMakeLists after the optional modules
+## are known.
+function(gismo_generate_cinterface_header)
+  get_property(_umbrellas GLOBAL PROPERTY GISMO_CINTERFACE_UMBRELLAS)
+  set(gsModule_includes "")
+  foreach(_u ${_umbrellas})
+    string(APPEND gsModule_includes "#include <${_u}>\n")
+  endforeach()
+  set(gsOptional_includes "")
+  foreach(gssm ${GISMO_OPTIONAL})
+    string(STRIP ${gssm} SUBMODULE)
+    if (EXISTS "${gismo_SOURCE_DIR}/optional/${SUBMODULE}/src/cinterface")
+      string(APPEND gsOptional_includes "#ifdef ${SUBMODULE}_ENABLED\n")
+      file(GLOB SUBMODULE_HEADERS ${gismo_SOURCE_DIR}/optional/${SUBMODULE}/src/cinterface/*.h)
+      foreach(HEADER ${SUBMODULE_HEADERS})
+        get_filename_component(HEADER_NAME ${HEADER} NAME)
+        string(APPEND gsOptional_includes "#include <${SUBMODULE}/cinterface/${HEADER_NAME}>\n")
+      endforeach()
+      string(APPEND gsOptional_includes "#endif\n")
+    endif()
+  endforeach()
+  # generated into the build tree (never the source tree); resolves as
+  # <gsCInterface/Cgismo.h> because ${gismo_BINARY_DIR} is an include dir
+  configure_file("${gismo_SOURCE_DIR}/src/gsCInterface/Cgismo.h.in"
+                 "${gismo_BINARY_DIR}/gsCInterface/Cgismo.h" @ONLY)
+  install(FILES "${gismo_BINARY_DIR}/gsCInterface/Cgismo.h"
+          DESTINATION include/${PROJECT_NAME}/gsCInterface)
+  list(LENGTH _umbrellas _n)
+  message(STATUS "C interface: Cgismo.h generated from ${_n} module umbrellas")
 endfunction()

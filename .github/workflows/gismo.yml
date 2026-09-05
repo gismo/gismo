@@ -43,6 +43,18 @@ jobs:
         export GIT_COMMIT=$(git -C gismo rev-parse --short "$GITHUB_SHA")
         ctest -S gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$GITHUB_RUN_NUMBER-downstream-gsKLShell[${{ github.event.number }}]" -D CTEST_SITE="$GIT_BRANCH-$GIT_COMMIT [github]" -D CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE;-DCMAKE_CXX_STANDARD=17" -D GISMO_OPTIONAL="gsKLShell" -D CTEST_TEST_TIMEOUT=100 -D CTEST_BUILD_JOBS=4 -Q
 
+  cinterface:
+    name: "C interface (GISMO_BUILD_CINTERFACE=ON)"
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build with the C interface and run its plain-C examples
+      shell: bash
+      working-directory: ${{runner.workspace}}
+      run: |
+        export GIT_COMMIT=$(git -C gismo rev-parse --short "$GITHUB_SHA")
+        ctest -S gismo/cmake/ctest_script.cmake -D CTEST_BUILD_NAME="$GITHUB_RUN_NUMBER-cinterface[${{ github.event.number }}]" -D CTEST_SITE="$GIT_BRANCH-$GIT_COMMIT [github]" -D CMAKE_ARGS="-DCMAKE_BUILD_TYPE=$BUILD_TYPE;-DCMAKE_CXX_STANDARD=17;-DGISMO_BUILD_CINTERFACE=ON" -D LABELS_FOR_SUBPROJECTS="gsCInterface" -D CTEST_TEST_TIMEOUT=100 -D CTEST_BUILD_JOBS=4 -Q
+
   build:
     name: "Run for ${{ matrix.os }}"
     runs-on: "${{ matrix.os }}"

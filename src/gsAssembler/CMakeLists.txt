@@ -6,4 +6,4 @@
 ######################################################################
 
 gismo_add_module(gsAssembler
-  DEPENDS gsCore gsMatrix gsUtils gsDomain gsIO gsFunctionExpr gsContainers gsNurbs gsHSplines gsMSplines gsPde gsExpressions)
+  DEPENDS gsCore gsMatrix gsUtils gsDomain gsIO gsFunctionExpr gsContainers gsNurbs gsHSplines gsMSplines gsPde gsExpressions gsCInterface)

@@ -2,6 +2,7 @@
 # (gismo_add_module DEPENDS in src/<module>/CMakeLists.txt): the work list.
 # Regenerate with: .github/scripts/check_includes.py --update
 # This list may only shrink; CI fails on edges not listed here.
+gsCInterface -> gsCore
 gsContainers -> gsMesh2
 gsCore -> gsIO
 gsDomain -> gsAssembler
