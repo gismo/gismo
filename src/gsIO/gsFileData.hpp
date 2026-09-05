@@ -19,8 +19,8 @@
 //#include <iostream>
 //#include <fstream>
 
-#include <gsNurbs/gsKnotVector.h>
 
+#include <gsCore/gsLinearAlgebra.h> // gismo cast()
 #include <rapidxml/rapidxml.hpp>       // External file
 #include <rapidxml/rapidxml_print.hpp> // External file
 
@@ -903,7 +903,6 @@ bool gsFileData<T>::readGeompFile( String const & fn )
     //int patch_count(0);
 
     int N,Np,Ni(0),Ns(0);
-    std::vector<gsKnotVector<T> *> knots;
     T tmp;
 
     //Parsing file
