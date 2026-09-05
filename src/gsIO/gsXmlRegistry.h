@@ -50,15 +50,10 @@ public:
     /// Type-erased function pointer (cast back by gsXmlDispatch)
     typedef void (*AnyFn)();
 
-#ifdef GISMO_BUILD_LIB
-    // One instance per process, defined in gsXmlRegistry.cpp inside
-    // libgismo; module libraries resolve the exported symbol
+    // One instance per process, defined in gsXmlRegistry.cpp (compiled in
+    // both library and header-only builds); module libraries resolve the
+    // exported symbol from the host library
     static GISMO_EXPORT gsXmlRegistry & get();
-#else
-    // Header-only mode: single binary, inline local static suffices
-    static gsXmlRegistry & get()
-    { static gsXmlRegistry * r = new gsXmlRegistry; return *r; }
-#endif
 
     /// Registers a reader for objects of \a type under \a baseId
     /// (idempotent: the first registration wins)
