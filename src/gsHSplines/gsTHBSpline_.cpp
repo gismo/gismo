@@ -1,4 +1,5 @@
 #include <gsCore/gsTemplateTools.h>
+#include <gsIO/gsXmlRegistry.h>
 
 #include <gsIO/gsXml.h>
 
@@ -345,5 +346,37 @@ void pybind11_init_gsHBSpline4(py::module &m)
 }
 
 #endif
+
+
+// XML dispatch registration; gsHBSpline<d> = gsTHBSpline<d,T,false>
+// (priorities: see gsHSplinesXmlRegistration.h)
+GISMO_XML_REGISTER(gsGeometry<real_t>, gsTHBSpline<TMPLA3(1,real_t,true)>, 180)
+GISMO_XML_REGISTER(gsGeometry<real_t>, gsTHBSpline<TMPLA3(2,real_t,true)>, 190)
+GISMO_XML_REGISTER(gsGeometry<real_t>, gsTHBSpline<TMPLA3(3,real_t,true)>, 200)
+GISMO_XML_REGISTER_PUT(gsGeometry<real_t>, gsTHBSpline<TMPLA3(1,real_t,false)>, 220) // write-only historically
+GISMO_XML_REGISTER(gsGeometry<real_t>, gsTHBSpline<TMPLA3(2,real_t,false)>, 230)
+GISMO_XML_REGISTER(gsGeometry<real_t>, gsTHBSpline<TMPLA3(3,real_t,false)>, 240)
+GISMO_XML_REGISTER_PUT(gsCurve<real_t>, gsTHBSpline<TMPLA3(1,real_t,false)>, 120) // write-only historically
+GISMO_XML_REGISTER(gsSurface<real_t>, gsTHBSpline<TMPLA3(2,real_t,true)>, 120)
+GISMO_XML_REGISTER(gsSurface<real_t>, gsTHBSpline<TMPLA3(2,real_t,false)>, 130)
+
+
+// Basis family. The gsHTensorBasis put-entries are mid-hierarchy: they
+// catch every THB/HB basis object before the leaf entries, exactly as
+// the historical dynamic_cast chain did.
+GISMO_XML_REGISTER_PUT(gsBasis<real_t>, gsHTensorBasis<TMPLA2(1,real_t)>, 180)
+GISMO_XML_REGISTER_PUT(gsBasis<real_t>, gsHTensorBasis<TMPLA2(2,real_t)>, 190)
+GISMO_XML_REGISTER_PUT(gsBasis<real_t>, gsHTensorBasis<TMPLA2(3,real_t)>, 200)
+GISMO_XML_REGISTER_PUT(gsBasis<real_t>, gsHTensorBasis<TMPLA2(4,real_t)>, 210)
+GISMO_XML_REGISTER_GET(gsBasis<real_t>, gsTHBSplineBasis<TMPLA3(1,real_t,true)>)
+GISMO_XML_REGISTER_GET(gsBasis<real_t>, gsTHBSplineBasis<TMPLA3(2,real_t,true)>)
+GISMO_XML_REGISTER_GET(gsBasis<real_t>, gsTHBSplineBasis<TMPLA3(4,real_t,true)>)
+// dead-in-practice put entry kept for faithfulness (HTensorBasis<3>
+// precedes it in the chain)
+GISMO_XML_REGISTER(gsBasis<real_t>, gsTHBSplineBasis<TMPLA3(3,real_t,true)>, 220)
+GISMO_XML_REGISTER_GET(gsBasis<real_t>, gsTHBSplineBasis<TMPLA3(1,real_t,false)>)
+GISMO_XML_REGISTER_GET(gsBasis<real_t>, gsTHBSplineBasis<TMPLA3(2,real_t,false)>)
+GISMO_XML_REGISTER_GET(gsBasis<real_t>, gsTHBSplineBasis<TMPLA3(3,real_t,false)>)
+GISMO_XML_REGISTER_GET(gsBasis<real_t>, gsTHBSplineBasis<TMPLA3(4,real_t,false)>)
 
 }

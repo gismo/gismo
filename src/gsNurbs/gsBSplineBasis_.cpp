@@ -6,6 +6,7 @@
 #include <gsCore/gsBasisFun.h>
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsNurbs/gsBSplineBasis.hpp> //dependency (otherwise already included)
+#include <gsIO/gsXmlRegistry.h>
 
 namespace gismo
 {
@@ -54,5 +55,9 @@ void pybind11_init_gsBSplineBasis(py::module &m)
 }
 
 #endif
+
+
+// XML dispatch registration (priorities: see gsNurbsXmlRegistration.h)
+GISMO_XML_REGISTER(gsBasis<real_t>, gsBSplineBasis<real_t>, 100)
 
 }

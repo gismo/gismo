@@ -1,5 +1,6 @@
 
 #include <gsCore/gsTemplateTools.h>
+#include <gsIO/gsXmlRegistry.h>
 
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsNurbs/gsTensorBSpline.hpp>
@@ -113,5 +114,13 @@ void pybind11_init_gsTensorBSpline4(py::module &m)
 }
 
 #endif
+
+
+// XML dispatch registration (priorities: see gsNurbsXmlRegistration.h)
+GISMO_XML_REGISTER_GET(gsGeometry<real_t>, gsTensorBSpline<TMPLA2(1,real_t)>) // historically read-only
+GISMO_XML_REGISTER(gsGeometry<real_t>, gsTensorBSpline<TMPLA2(2,real_t)>, 120)
+GISMO_XML_REGISTER(gsGeometry<real_t>, gsTensorBSpline<TMPLA2(3,real_t)>, 130)
+GISMO_XML_REGISTER(gsGeometry<real_t>, gsTensorBSpline<TMPLA2(4,real_t)>, 140)
+GISMO_XML_REGISTER(gsSurface<real_t>,  gsTensorBSpline<TMPLA2(2,real_t)>, 100)
 
 }

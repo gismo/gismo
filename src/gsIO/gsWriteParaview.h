@@ -251,22 +251,10 @@ void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, const gsVe
 template<class T>
 void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, T value);
 
-/// \brief Export gsHBox to paraview files
-///
-/// \param box a gsHBox
-/// \param fn filename where paraview file is written
-/// \param mode controls the output format: 0 (colored by level), 1 (colored by error)
-template<short_t d, class T>
-void gsWriteParaview(const gsHBox<d,T> & box, std::string const & fn, short_t mode = 0);
-
 /// \brief Export gsHBoxContainer to paraview files
 ///
 /// \param box a gsHBoxContainer
 /// \param fn filename where paraview file is written
-
-/// \param mode controls the output format: 0 (colored by level), 1 (colored by error)
-template<short_t d, class T>
-void gsWriteParaview(const gsHBoxContainer<d,T> & box, std::string const & fn, short_t mode = 0);
 
 /// \brief Export 2D Point set to Paraview file
 ///
@@ -323,73 +311,6 @@ void gsWriteParaviewPoints(gsMatrix<T> const& points, std::string const & fn);
 //                           const gsVector<index_t> & np,
 //                           std::string const & fn);
 
-/// \brief Depicting edge graph of each volume of one gsSolid with a segmenting loop
-///
-/// \param sl a gsMesh object
-/// \param fn filename where paraview file is written
-/// \param numPoints_for_eachCurve number of points used for sampling each curve
-/// \param vol_Num ID of face(s), that should be written
-/// \param edgeThick thickness of edges
-/// \param translate "translate" vector, toward the volume is translated
-/// \param color_convex Color, if face is convex and not eloop.
-/// \param color_nonconvex Color, if face is not convex
-/// \param color_eloop Color, if is in heSet and convex
-/// \param eloop     a vector of ID numbers of vertices, often for representing a segmenting loop
-/// \todo please document
-template <class T>
-void gsWriteParaview(gsSolid<T> const& sl, std::string const & fn,
-                     unsigned numPoints_for_eachCurve=50, int vol_Num=0,
-                     T edgeThick=0.01, gsVector3d<T> const & translate=gsVector3d<T>(0,0,0),
-                     int color_convex=0, int color_nonconvex=20, int color_eloop=10,
-                     std::vector<unsigned> const & eloop=std::vector<unsigned>());
-
-/// Export a gsSolid to Paraview file
-template <class T>
-void gsWriteParaviewSolid(gsSolid<T> const& sl,
-                          std::string const & fn,
-                          unsigned numSamples = NS);
-
-/// \brief Visualizing a gsCurveLoop
-///
-/// \param cloop the curve loop
-/// \param fn filename where paraview file is written
-/// \param npts number of points used for sampling each curve
-template<class T>
-void gsWriteParaview(gsCurveLoop<T> const & cloop, std::string const & fn, unsigned npts)
-{
-    std::vector<gsGeometry<T> *> all_curves;
-    for(index_t j =0; j< cloop.numCurves() ; j++)
-        all_curves.push_back( const_cast<gsCurve<T> *>(cloop.curve(j)) );
-
-    gsWriteParaview( all_curves, fn, npts);
-}
-
-/// \brief Visualizing a gsPlanarDomain
-///
-/// \param pdomain the planar domain
-/// \param fn filename where paraview file is written
-/// \param npts number of points used for sampling
-template<class T>
-void gsWriteParaview(gsPlanarDomain<T> const & pdomain,
-                     std::string const & fn, unsigned npts=NS);
-
-/// Visualizing a gsTrimSurface
-template<class T>
-void gsWriteParaview(const gsTrimSurface<T> & ts, std::string const & fn,
-                     unsigned npts=NS, bool trimCurves = false);
-
-/// \brief Export a volumeBlock.
-///
-/// Currently: output file shows boundary curves of this block.
-///
-/// \param volBlock pointer to the volume block
-/// \param fn filename where paraview file is written
-/// \param npts number of points used for sampling of a curve
-template<typename T>
-void gsWriteParaview(const gsVolumeBlock<T>& volBlock,
-                     std::string const & fn,
-                     unsigned npts = NS);
-
 /**
  * @brief      Writes the boundaries of a multipatch to paraview
  *
@@ -426,20 +347,6 @@ void gsWriteParaview(gsMultiPatch<T> const & patches,
                      typename gsBoundaryConditions<T>::bcContainer const & bcs,
                      std::string const & fn, unsigned npts=NS, bool ctrlNet=false);
 
-/// \brief Export a boundary/hole curve in trimmed surface
-///
-/// \param surf trimmed surface
-/// \param idLoop curve loop number of a curve (0 - boundary, > 0 - hole)
-/// \param idCurve curve number in a curve loop
-/// \param fn filename (output paraview file)
-/// \param npts number of points used for sampling a curve
-template<typename T>
-void gsWriteParaviewTrimmedCurve(const gsTrimSurface<T>& surf,
-                                 const unsigned idLoop,
-                                 const unsigned idCurve,
-                                 const std::string fn,
-                                 unsigned npts = NS);
-
 // function to plot a field on a single patch
 template<class T>
 void writeSinglePatchField(const gsFunction<T> & geometry,
@@ -460,10 +367,6 @@ void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
 GISMO_DEPRECATED
 template<class T>
 void writeSingleBox(const gsMatrix<T> & box, std::string const & fn, T value);
-
-/// Export a gsHBox
-template<short_t d, class T>
-void writeSingleHBox(const gsHBox<d,T> & box, std::string const & fn);
 
 /// Export a control net
 template<class T>

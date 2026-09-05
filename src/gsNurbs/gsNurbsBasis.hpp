@@ -53,29 +53,6 @@ gsTensorNurbsBasis<1,T>::create(std::vector<KnotVectorType> cKV, gsMatrix<T> wei
 }
 
 namespace internal {
-/// Get a NurbsBasis from XML data
-template<class T>
-class gsXml< gsNurbsBasis<T> >
-{
-private:
-    gsXml() { }
-public:
-    GSXML_COMMON_FUNCTIONS(gsNurbsBasis<T>);
-    static std::string tag () { return "Basis"; }
-    static std::string type () { return "NurbsBasis"; }
-
-    static gsNurbsBasis<T> * get (gsXmlNode * node)
-    {
-        return getRationalBasisFromXml<gsNurbsBasis<T> >(node);
-    }
-
-    static gsXmlNode * put (const gsNurbsBasis<T> & obj,
-                            gsXmlTree & data )
-    {
-        return putRationalBasisToXml(obj,data);
-    }
-};
-
 }
 
 } // namespace gismo

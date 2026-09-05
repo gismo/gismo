@@ -49,9 +49,6 @@ gsIO -> gsHSplines
 gsIO -> gsMSplines
 gsIO -> gsMatrix
 gsIO -> gsMesh2
-gsIO -> gsModeling
-gsIO -> gsNurbs
-gsIO -> gsPde
 gsIO -> gsUtils
 gsIeti -> gsAssembler
 gsIeti -> gsCore
@@ -63,6 +60,7 @@ gsMSplines -> gsDomain
 gsMSplines -> gsIO
 gsMSplines -> gsUtils
 gsMatrix -> gsCore
+gsMatrix -> gsIO
 gsMesh2 -> gsCore
 gsMesh2 -> gsIO
 gsMesh2 -> gsNurbs
@@ -75,6 +73,7 @@ gsModeling -> gsMSplines
 gsModeling -> gsNurbs
 gsModeling -> gsTensor
 gsModeling -> gsUtils
+gsModules -> gsCore
 gsMultiGrid -> gsAssembler
 gsMultiGrid -> gsCore
 gsMultiGrid -> gsNurbs
@@ -102,7 +101,11 @@ gsUtils -> gsAssembler
 gsUtils -> gsCore
 gsUtils -> gsDomain
 gsUtils -> gsHSplines
+gsUtils -> gsIO
 gsUtils -> gsParallel
 gsUtils -> gsTensor
 misc -> gsCore
 misc -> gsIO
+misc -> gsMatrix
+misc -> gsNurbs
+misc -> gsPde

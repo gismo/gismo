@@ -218,11 +218,22 @@ namespace internal
 #include <gsIO/gsFileData.h>
 #include <gsIO/gsFileManager.h>
 #include <gsIO/gsWriteParaview.h>
+#include <gsModeling/gsModelingParaview.h>
+#include <gsHSplines/gsHSplinesParaview.h>
 #include <gsIO/gsParaviewCollection.h>
 #include <gsIO/gsParaviewDataSet.h>
 #include <gsIO/gsReadFile.h>
 #include <gsUtils/gsPointGrid.h>
 #include <gsIO/gsXmlUtils.h>
+
+/* ----------- XML registration (header-only mode registrars; in lib
+   mode registration happens inside libgismo). Placed after gsXmlUtils.h
+   so the centrally-defined gsXml specializations are visible. ----------- */
+#include <gsCore/gsCoreXmlRegistration.h>
+#include <gsNurbs/gsNurbsXmlRegistration.h>
+#include <gsHSplines/gsHSplinesXmlRegistration.h>
+#include <gsModeling/gsModelingXmlRegistration.h>
+#include <gsPde/gsPdeXmlRegistration.h>
 #include <gsIO/gsCsv.h>
 
 /* ----------- Parallel ----------- */

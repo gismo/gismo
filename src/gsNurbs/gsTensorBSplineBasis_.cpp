@@ -5,6 +5,7 @@
 #include <gsCore/gsBasisFun.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 #include <gsNurbs/gsTensorBSplineBasis.hpp>
+#include <gsIO/gsXmlRegistry.h>
 
 namespace gismo
 {
@@ -148,5 +149,11 @@ void pybind11_init_gsTensorBSplineBasis4(py::module &m)
 }
 
 #endif
+
+
+// XML dispatch registration (priorities: see gsNurbsXmlRegistration.h)
+GISMO_XML_REGISTER(gsBasis<real_t>, gsTensorBSplineBasis<TMPLA2(2,real_t)>, 120)
+GISMO_XML_REGISTER(gsBasis<real_t>, gsTensorBSplineBasis<TMPLA2(3,real_t)>, 130)
+GISMO_XML_REGISTER(gsBasis<real_t>, gsTensorBSplineBasis<TMPLA2(4,real_t)>, 140)
 
 }
