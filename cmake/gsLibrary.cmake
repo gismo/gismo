@@ -23,6 +23,22 @@ add_library(${PROJECT_NAME}_static STATIC
 
 #generate_export_header(${PROJECT_NAME}_static)
 
+# Registrations (XML readers, optimizer factories, runtime modules) are
+# static objects in module translation units. A consumer of the static
+# archive only pulls members it references, so without the following it
+# could silently lose e.g. the THB-spline reader when reading a file
+# through the abstract gsGeometry base. Force every member in.
+if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+  target_link_options(${PROJECT_NAME}_static INTERFACE
+    "/WHOLEARCHIVE:$<TARGET_FILE_NAME:${PROJECT_NAME}_static>")
+elseif(APPLE)
+  target_link_options(${PROJECT_NAME}_static INTERFACE
+    "LINKER:-force_load,$<TARGET_FILE:${PROJECT_NAME}_static>")
+else()
+  target_link_options(${PROJECT_NAME}_static INTERFACE
+    "LINKER:--whole-archive,$<TARGET_FILE:${PROJECT_NAME}_static>,--no-whole-archive")
+endif()
+
 if(${PROJECT_NAME}_LINKER)
   target_link_libraries(${PROJECT_NAME}_static "${${PROJECT_NAME}_LINKER}")
 endif()

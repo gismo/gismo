@@ -4,7 +4,7 @@
 #include <gsCore/gsLinearAlgebra.h>
 
 #include <gsIO/gsXml.h>
-#include <gsUtils/gsMesh/gsMeshXml.hpp>
+#include <gsIO/gsXmlMesh.hpp>
 
 namespace gismo {
 namespace internal {

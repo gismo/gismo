@@ -17,6 +17,11 @@
 #include <gsIO/gsXmlRegistry.h>
 #include <gsPde/gsPoissonPde.h>
 
+#ifndef GISMO_BUILD_LIB
+// header-only mode: the specializations must be visible to the registrars
+#include <gsPde/gsPdeXml.hpp>
+#endif
+
 namespace gismo {
 namespace internal {
 

@@ -313,4 +313,4 @@ Unreleased (modularization program)
       (CMAKE_CXX_STANDARD defaults to 17; 98/11/14 are rejected at
       configure time). Downstream/optional modules should drop any
       -DCMAKE_CXX_STANDARD=11 from their CI.
-    - The minimum CMake version is raised to 3.12.
+    - The minimum CMake version is raised to 3.13.
