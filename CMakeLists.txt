@@ -351,6 +351,11 @@ foreach(gssm ${GISMO_EXTERNALS})
   #message("Fetch ext: ${EXTMOD}")
   set(CONFIGEXT_H "${CONFIGEXT_H}#define ${EXTMOD}_ENABLED\n")
 endforeach()
+# The modules compiled into this library (in-tree, dependency order, then
+# the optional ones): the source of truth for gsC_hasModule() and the
+# language bindings' feature detection
+set(GISMO_MODULES_LIST ${GISMO_MODULE_ORDER} ${GISMO_OPTIONAL})
+set(CONFIGEXT_H "${CONFIGEXT_H}#define GISMO_MODULES \"${GISMO_MODULES_LIST}\"\n")
 file(WRITE ${gismo_BINARY_DIR}/gsCore/gsConfigExt.txt "${CONFIGEXT_H}")
 execute_process( COMMAND ${CMAKE_COMMAND} -E compare_files gsConfigExt.txt gsConfigExt.h
   RESULT_VARIABLE comp_res

@@ -64,6 +64,12 @@ public:
     /// Paths of successfully loaded modules
     const std::vector<std::string> & loaded()   const { return m_loaded;   }
 
+    /// Names (gismo_module_info_t::module_name) of the loaded modules
+    const std::vector<std::string> & loadedNames() const { return m_names; }
+
+    /// True if a runtime module named \a name has been loaded
+    bool isLoaded(const std::string & name) const;
+
     /// Paths of modules that failed the handshake or did not load
     const std::vector<std::string> & rejected() const { return m_rejected; }
 
@@ -72,7 +78,7 @@ private:
     gsModuleManager(const gsModuleManager &);
 
     std::vector<gsDyLib>     m_libs;
-    std::vector<std::string> m_loaded, m_rejected;
+    std::vector<std::string> m_loaded, m_rejected, m_names;
 };
 
 } // namespace gismo
