@@ -6,7 +6,8 @@
 namespace gismo
 {
 
-CLASS_TEMPLATE_INST internal::gsXml< gsNurbsBasis<real_t> >;
+// gsXml<gsNurbsBasis> lives in gsNurbsXml.hpp (alias-overlap with
+// the generic gsTensorNurbsBasis<d> spec; see there)
 
 /*
 #ifdef GISMO_WITH_PYBIND11

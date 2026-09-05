@@ -25,9 +25,38 @@
 #include <gsNurbs/gsNurbs.h>
 #include <gsNurbs/gsTensorNurbs.h>
 #include <gsNurbs/gsTensorNurbsBasis.h>
+#include <gsNurbs/gsNurbsBasis.h>
 
 namespace gismo {
 namespace internal {
+
+/* gsNurbsBasis is an alias of gsTensorNurbsBasis<1,T>; its dedicated
+   specialization must be visible wherever the generic <d,T> partial
+   below is, so that every translation unit agrees on which
+   specialization serves d=1 (ODR). */
+/// Get a NurbsBasis from XML data
+template<class T>
+class gsXml< gsNurbsBasis<T> >
+{
+private:
+    gsXml() { }
+public:
+    GSXML_COMMON_FUNCTIONS(gsNurbsBasis<T>);
+    static std::string tag () { return "Basis"; }
+    static std::string type () { return "NurbsBasis"; }
+
+    static gsNurbsBasis<T> * get (gsXmlNode * node)
+    {
+        return getRationalBasisFromXml<gsNurbsBasis<T> >(node);
+    }
+
+    static gsXmlNode * put (const gsNurbsBasis<T> & obj,
+                            gsXmlTree & data )
+    {
+        return putRationalBasisToXml(obj,data);
+    }
+};
+
 
 template<short_t d, class T>
 class gsXml< gsTensorNurbsBasis<d,T> >

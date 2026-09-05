@@ -218,6 +218,8 @@ namespace internal
 #include <gsIO/gsFileData.h>
 #include <gsIO/gsFileManager.h>
 #include <gsIO/gsWriteParaview.h>
+#include <gsModeling/gsModelingParaview.h>
+#include <gsHSplines/gsHSplinesParaview.h>
 #include <gsIO/gsParaviewCollection.h>
 #include <gsIO/gsParaviewDataSet.h>
 #include <gsIO/gsReadFile.h>
