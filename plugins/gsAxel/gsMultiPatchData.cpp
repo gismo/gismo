@@ -17,7 +17,7 @@
 #include "gsMultiPatchData.h"
 #include "gsGeometryData.h"
 
-#include <gsCore/gsMultiPatch.h>
+#include <gsContainers/gsMultiPatch.h>
 
 #include <QColor>
 

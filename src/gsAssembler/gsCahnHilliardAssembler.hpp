@@ -19,7 +19,7 @@
 #include <gsMSplines/gsMappedBasis.h>
 #include <gsMSplines/gsMappedSpline.h>
 #include <gsPde/gsBoundaryConditions.h>
-#include <gsCore/gsFunctionExpr.h>
+#include <gsFunctionExpr/gsFunctionExpr.h>
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsPiecewiseFunction.h>
 #include <gsCore/gsStrategy.h>

@@ -16,11 +16,11 @@
 
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsCore/gsMultiPatch.h>
+#include <gsContainers/gsMultiPatch.h>
 #include <gsModeling/gsPlanarDomain.h>
 
 #include <gsNurbs/gsBSplineBasis.h>
-#include <gsNurbs/gsKnotVector.h>
+#include <gsDomain/gsKnotVector.h>
 #include <gsUtils/gsMesh/gsMesh.h>
 
 #include <onurbs/opennurbs.h>

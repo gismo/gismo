@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsNurbs/gsKnotVector.h>
+#include <gsDomain/gsKnotVector.h>
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 #include <gsHSplines/gsHTensorBasis.h>

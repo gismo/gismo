@@ -1,7 +1,7 @@
 /* Symbol export for G+Smo shared object */
 
 #define gsKnotVector_EXPORT
-#include <gsNurbs/gsKnotVector.h>
+#include <gsDomain/gsKnotVector.h>
 
 namespace gismo
 {

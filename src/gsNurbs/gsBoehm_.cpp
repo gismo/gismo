@@ -2,7 +2,7 @@
 
 #include <gsNurbs/gsBoehm.h>
 #include <gsNurbs/gsBoehm.hpp>
-#include <gsNurbs/gsKnotVector.h>
+#include <gsDomain/gsKnotVector.h>
 
 #include <gsMatrix/gsFiberMatrix.h>
 

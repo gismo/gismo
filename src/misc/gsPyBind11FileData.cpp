@@ -24,7 +24,7 @@
 #include <gsNurbs/gsTensorBSplineBasis.h>
 
 #include <gsPde/gsBoundaryConditions.h>
-#include <gsCore/gsFunctionExpr.h>
+#include <gsFunctionExpr/gsFunctionExpr.h>
 #include <gsIO/gsOptionList.h>
 #include <gsIO/gsOptionListXml.h>
 #include <gsMatrix/gsSparseMatrix.h>

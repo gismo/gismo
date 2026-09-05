@@ -15,7 +15,7 @@
 
 #include <gsIO/gsBase64.h>
 #include <gsIO/gsXml.h>
-#include <gsNurbs/gsKnotVector.h>
+#include <gsDomain/gsKnotVector.h>
 
 namespace gismo
 {

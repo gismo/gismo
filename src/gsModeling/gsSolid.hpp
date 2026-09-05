@@ -21,7 +21,7 @@
 #include <gsModeling/gsTrimSurface.h>
 #include <gsModeling/gsPlanarDomain.h>
 
-#include <gsNurbs/gsKnotVector.h>
+#include <gsDomain/gsKnotVector.h>
 //#include <gsNurbs/gsBSplineBasis.h>
 #include <gsNurbs/gsTensorBSpline.h>
 

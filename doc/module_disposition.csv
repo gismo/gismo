@@ -78,7 +78,8 @@ src/gsDomain/gsHDomainLeafIter.h,gsDomain,gsHSplines,S4-d,hierarchical-domain ha
 src/gsDomain/gsHDomainSliceIter.h,gsDomain,gsHSplines,S4-d,hierarchical-domain half belongs with the hierarchical bases
 src/gsDomain/gsHTree.h,gsDomain,gsHSplines,S4-d,hierarchical-domain half belongs with the hierarchical bases
 src/gsDomain/gsKdNode.h,gsDomain,gsHSplines,S4-d,hierarchical-domain half belongs with the hierarchical bases
-src/gsNurbs/gsKnotVector.h,gsNurbs,gsTensor,S4-e,1-D breakpoint structure used by gsDomain/gsTensor/gsHSplines; not NURBS-specific
+src/gsNurbs/gsKnotVector.h,gsNurbs,gsDomain,S4-e,"1-D breakpoint structure used by gsDomain/gsTensor/gsHSplines; not NURBS-specific. Home corrected from gsTensor to gsDomain during S4-e: it includes only gsDomain/gsDomain.h and gsTensorDomain (gsDomain) needs it, so gsTensor would have created a gsDomain->gsTensor cycle"
+src/gsNurbs/gsKnotIterator.h,gsNurbs,gsDomain,S4-e,moves with gsKnotVector
 src/gsModeling/gsFitting.h,gsModeling,gsFitting (later),post-S4,fitting family (+ gsHFitting from gsHSplines)
 src/gsModeling/gsCurveFitting.h,gsModeling,gsFitting (later),post-S4,fitting family (+ gsHFitting from gsHSplines)
 src/gsModeling/gsCurvatureSmoothing.h,gsModeling,gsFitting (later),post-S4,fitting family (+ gsHFitting from gsHSplines)

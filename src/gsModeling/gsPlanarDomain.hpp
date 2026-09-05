@@ -25,7 +25,7 @@
 #include <gsModeling/gsTemplate.h>
 
 #include <gsNurbs/gsBSpline.h>
-#include <gsNurbs/gsKnotVector.h>
+#include <gsDomain/gsKnotVector.h>
 
 namespace gismo
 {

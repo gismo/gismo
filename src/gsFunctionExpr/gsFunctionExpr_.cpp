@@ -1,7 +1,7 @@
 #include <gsCore/gsTemplateTools.h>
 
-#include <gsCore/gsFunctionExpr.h>
-#include <gsCore/gsFunctionExpr.hpp>
+#include <gsFunctionExpr/gsFunctionExpr.h>
+#include <gsFunctionExpr/gsFunctionExpr.hpp>
 #include <gsIO/gsXmlRegistry.h>
 
 

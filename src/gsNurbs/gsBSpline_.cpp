@@ -1,7 +1,7 @@
 #include <gsCore/gsTemplateTools.h>
 #include <gsIO/gsXmlRegistry.h>
 
-#include <gsNurbs/gsKnotVector.h>
+#include <gsDomain/gsKnotVector.h>
 
 #include <gsNurbs/gsBSpline.h>
 #include <gsNurbs/gsBSpline.hpp>

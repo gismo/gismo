@@ -23,7 +23,7 @@
 #include <gsIO/gsXml.h>
 #include <gsIO/gsXmlGenericUtils.hpp>
 #include <gsPde/gsPoissonPde.h>
-#include <gsCore/gsFunctionExpr.h>
+#include <gsFunctionExpr/gsFunctionExpr.h>
 
 namespace gismo {
 namespace internal {

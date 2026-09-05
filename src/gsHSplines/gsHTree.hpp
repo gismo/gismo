@@ -13,7 +13,7 @@
 
 #include <gsHSplines/gsAAPolyline.h>
 #include <gsHSplines/gsVSegment.h>
-#include <gsDomain/gsKdNode.h>
+#include <gsHSplines/gsKdNode.h>
 #include <gsCore/gsLinearAlgebra.h>
 
 #include <queue>

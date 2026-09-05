@@ -5,6 +5,7 @@ gsAssembler -> gsContainers
 gsAssembler -> gsCore
 gsAssembler -> gsDomain
 gsAssembler -> gsExpressions
+gsAssembler -> gsFunctionExpr
 gsAssembler -> gsHSplines
 gsAssembler -> gsMSplines
 gsAssembler -> gsMatrix
@@ -31,13 +32,14 @@ gsCore -> gsTensor
 gsCore -> gsUtils
 gsDomain -> gsAssembler
 gsDomain -> gsCore
-gsDomain -> gsHSplines
-gsDomain -> gsNurbs
+gsDomain -> gsIO
 gsDomain -> gsUtils
 gsExpressions -> gsAssembler
 gsExpressions -> gsCore
 gsExpressions -> gsMSplines
 gsExpressions -> gsUtils
+gsFunctionExpr -> gsCore
+gsFunctionExpr -> gsIO
 gsHSplines -> gsAssembler
 gsHSplines -> gsContainers
 gsHSplines -> gsCore
@@ -50,7 +52,6 @@ gsHSplines -> gsUtils
 gsIO -> gsAssembler
 gsIO -> gsContainers
 gsIO -> gsCore
-gsIO -> gsDomain
 gsIO -> gsExpressions
 gsIO -> gsHSplines
 gsIO -> gsMSplines
@@ -78,6 +79,7 @@ gsModeling -> gsContainers
 gsModeling -> gsCore
 gsModeling -> gsDomain
 gsModeling -> gsExpressions
+gsModeling -> gsFunctionExpr
 gsModeling -> gsIO
 gsModeling -> gsMSplines
 gsModeling -> gsNurbs
@@ -87,6 +89,7 @@ gsModules -> gsCore
 gsMultiGrid -> gsAssembler
 gsMultiGrid -> gsContainers
 gsMultiGrid -> gsCore
+gsMultiGrid -> gsDomain
 gsMultiGrid -> gsHSplines
 gsMultiGrid -> gsNurbs
 gsMultiGrid -> gsSolver
@@ -103,6 +106,7 @@ gsOptimizer -> gsUtils
 gsParallel -> gsCore
 gsPde -> gsContainers
 gsPde -> gsCore
+gsPde -> gsFunctionExpr
 gsPde -> gsIO
 gsPde -> gsUtils
 gsSolver -> gsAssembler
@@ -117,6 +121,7 @@ gsUtils -> gsParallel
 gsUtils -> gsTensor
 misc -> gsContainers
 misc -> gsCore
+misc -> gsFunctionExpr
 misc -> gsIO
 misc -> gsMatrix
 misc -> gsNurbs
