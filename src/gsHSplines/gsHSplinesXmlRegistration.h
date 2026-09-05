@@ -21,6 +21,9 @@
 #include <gsCore/gsSurface.h>
 #include <gsHSplines/gsTHBSpline.h> // also provides the gsHBSpline alias
 #include <gsHSplines/gsRationalTHBSpline.h>
+#include <gsHSplines/gsHTensorBasis.h>
+#include <gsHSplines/gsTHBSplineBasis.h>
+#include <gsHSplines/gsRationalTHBSplineBasis.h>
 
 namespace gismo {
 namespace internal {
@@ -47,6 +50,23 @@ void gsHSplinesXmlRegisterTypes()
 
     gsXmlRegisterAs<S, gsTHBSpline<2,T> >         ::enroll(120);
     gsXmlRegisterAs<S, gsHBSpline<2,T> >          ::enroll(130);
+
+    typedef gsBasis<T> B;
+    gsXmlRegisterAs<B, gsHTensorBasis<1,T> >        ::enrollPut(180);
+    gsXmlRegisterAs<B, gsHTensorBasis<2,T> >        ::enrollPut(190);
+    gsXmlRegisterAs<B, gsHTensorBasis<3,T> >        ::enrollPut(200);
+    gsXmlRegisterAs<B, gsHTensorBasis<4,T> >        ::enrollPut(210);
+    gsXmlRegisterAs<B, gsTHBSplineBasis<1,T> >      ::enrollGet();
+    gsXmlRegisterAs<B, gsTHBSplineBasis<2,T> >      ::enrollGet();
+    gsXmlRegisterAs<B, gsTHBSplineBasis<3,T> >      ::enroll(220);
+    gsXmlRegisterAs<B, gsTHBSplineBasis<4,T> >      ::enrollGet();
+    gsXmlRegisterAs<B, gsHBSplineBasis<1,T> >       ::enrollGet();
+    gsXmlRegisterAs<B, gsHBSplineBasis<2,T> >       ::enrollGet();
+    gsXmlRegisterAs<B, gsHBSplineBasis<3,T> >       ::enrollGet();
+    gsXmlRegisterAs<B, gsHBSplineBasis<4,T> >       ::enrollGet();
+    gsXmlRegisterAs<B, gsRationalTHBSplineBasis<1,T> >::enrollGet();
+    gsXmlRegisterAs<B, gsRationalTHBSplineBasis<2,T> >::enrollGet();
+    gsXmlRegisterAs<B, gsRationalTHBSplineBasis<3,T> >::enroll(230);
 }
 
 #ifndef GISMO_BUILD_LIB

@@ -22,6 +22,10 @@
 #include <gsNurbs/gsNurbs.h>
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsNurbs/gsTensorNurbs.h>
+#include <gsNurbs/gsBSplineBasis.h>
+#include <gsNurbs/gsNurbsBasis.h>
+#include <gsNurbs/gsTensorBSplineBasis.h>
+#include <gsNurbs/gsTensorNurbsBasis.h>
 
 namespace gismo {
 namespace internal {
@@ -48,6 +52,16 @@ void gsNurbsXmlRegisterTypes()
 
     gsXmlRegisterAs<S, gsTensorBSpline<2,T> >       ::enroll(100);
     gsXmlRegisterAs<S, gsTensorNurbs<2,T> >         ::enroll(110);
+
+    typedef gsBasis<T> B;
+    gsXmlRegisterAs<B, gsBSplineBasis<T> >          ::enroll(100);
+    gsXmlRegisterAs<B, gsNurbsBasis<T> >            ::enroll(110);
+    gsXmlRegisterAs<B, gsTensorBSplineBasis<2,T> >  ::enroll(120);
+    gsXmlRegisterAs<B, gsTensorBSplineBasis<3,T> >  ::enroll(130);
+    gsXmlRegisterAs<B, gsTensorBSplineBasis<4,T> >  ::enroll(140);
+    gsXmlRegisterAs<B, gsTensorNurbsBasis<2,T> >    ::enroll(150);
+    gsXmlRegisterAs<B, gsTensorNurbsBasis<3,T> >    ::enroll(160);
+    gsXmlRegisterAs<B, gsTensorNurbsBasis<4,T> >    ::enroll(170);
 }
 
 #ifndef GISMO_BUILD_LIB

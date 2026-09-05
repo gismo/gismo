@@ -19,6 +19,12 @@ GISMO_XML_REGISTER(gsGeometry<real_t>, gsTensorNurbs<TMPLA2(3,real_t)>, 160)
 GISMO_XML_REGISTER(gsGeometry<real_t>, gsTensorNurbs<TMPLA2(4,real_t)>, 170)
 GISMO_XML_REGISTER(gsSurface<real_t>,  gsTensorNurbs<TMPLA2(2,real_t)>, 110)
 
+// Basis family (specs also central until step A6)
+GISMO_XML_REGISTER(gsBasis<real_t>, gsNurbsBasis<real_t>, 110)
+GISMO_XML_REGISTER(gsBasis<real_t>, gsTensorNurbsBasis<TMPLA2(2,real_t)>, 150)
+GISMO_XML_REGISTER(gsBasis<real_t>, gsTensorNurbsBasis<TMPLA2(3,real_t)>, 160)
+GISMO_XML_REGISTER(gsBasis<real_t>, gsTensorNurbsBasis<TMPLA2(4,real_t)>, 170)
+
 }
 
 #ifdef GISMO_PRIMARY_INSTANCE

@@ -15,6 +15,7 @@
 
 #include <gsIO/gsXmlRegistry.h>
 #include <gsCore/gsComposedGeometry.h>
+#include <gsCore/gsComposedBasis.h>
 
 namespace gismo {
 namespace internal {
@@ -24,6 +25,7 @@ void gsCoreXmlRegisterTypes()
 {
     // last in the historical put chain (after all concrete spline types)
     gsXmlRegisterAs<gsGeometry<T>, gsComposedGeometry<T> >::enroll(900);
+    gsXmlRegisterAs<gsBasis<T>, gsComposedBasis<T> >::enroll(900);
 }
 
 #ifndef GISMO_BUILD_LIB
