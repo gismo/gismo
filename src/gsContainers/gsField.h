@@ -21,6 +21,27 @@
 
 namespace gismo
 {
+
+/** \name Distances between a field and a function
+    Implemented in gsAssembler (gsFieldDistance.h/.hpp); the
+    gsField::distance* members forward to these. In header-only mode
+    include <gsAssembler/gsFieldDistance.h> (gismo.h does) before
+    calling them.  @{ */
+template<class T> T distanceL2(const gsField<T> & field, const gsField<T> & other);
+template<class T> T distanceL2(const gsField<T> & field, const gsFunctionSet<T> & func,
+                               bool isFunc_param = false);
+template<class T> T distanceL2(const gsField<T> & field, const gsFunctionSet<T> & func,
+                               const gsMultiBasis<T> & B, bool isFunc_param = false);
+template<class T> T distanceH1(const gsField<T> & field, const gsFunctionSet<T> & func,
+                               bool isFunc_param = false);
+template<class T> T distanceH1(const gsField<T> & field, const gsFunctionSet<T> & func,
+                               const gsMultiBasis<T> & B, bool isFunc_param = false);
+template<class T> T distanceH2(const gsField<T> & field, const gsFunctionSet<T> & func,
+                               bool isFunc_param = false);
+template<class T> T distanceDG(const gsField<T> & field, const gsFunctionSet<T> & func,
+                               bool isFunc_param = false);
+/// @}
+
 /**
  * \brief A scalar of vector field defined on a m_parametric geometry.
  *
@@ -135,38 +156,45 @@ public:
     }
 
     /// Computes the L2-distance between the two fields, on the physical domain
-    T distanceL2(gsField<T> const & field) const;
+    T distanceL2(gsField<T> const & field) const
+    { return gismo::distanceL2(*this, field); }
 
     /// Computes the L2-distance between the field and a function \a func on the physical domain
     T distanceL2(gsFunctionSet<T> const & func,
-                 bool isFunc_param = false) const;
+                 bool isFunc_param = false) const
+    { return gismo::distanceL2(*this, func, isFunc_param); }
 
     /// Computes the L2-distance between the field and a function \a
     /// func on the physical domain, using mesh from B
     T distanceL2(gsFunctionSet<T> const & func,
                  gsMultiBasis<T> const & B,
-                 bool isFunc_param = false) const;
+                 bool isFunc_param = false) const
+    { return gismo::distanceL2(*this, func, B, isFunc_param); }
 
     /// Computes the H1-seminorm of the diff. between the field and a function \a
     /// func on the physical domain
     T distanceH1(gsFunctionSet<T> const & func,
-                 bool isFunc_param = false) const;
+                 bool isFunc_param = false) const
+    { return gismo::distanceH1(*this, func, isFunc_param); }
 
     /// Computes the H1-seminorm of the diff. between the field and a function \a
     /// func on the physical domain, using mesh from B
     T distanceH1(gsFunctionSet<T> const & func,
                  gsMultiBasis<T> const & B,
-                 bool isFunc_param = false) const;
+                 bool isFunc_param = false) const
+    { return gismo::distanceH1(*this, func, B, isFunc_param); }
 
     /// Computes the H2-seminorm of the diff. between the field and a function \a
     /// func on the physical domain, using mesh from B
     T distanceH2(gsFunctionSet<T> const & func,
-                 bool isFunc_param = false) const;
+                 bool isFunc_param = false) const
+    { return gismo::distanceH2(*this, func, isFunc_param); }
 
     /// Computes the DG-distance between the field and a function \a
     /// func on the physical domain
     T distanceDG(gsFunctionSet<T> const & func,
-                 bool isFunc_param = false) const;
+                 bool isFunc_param = false) const
+    { return gismo::distanceDG(*this, func, isFunc_param); }
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
@@ -311,7 +339,3 @@ std::ostream &operator<<(std::ostream &os, const gsField<T>& b)
 
 
 } // namespace gismo
-
-#ifndef GISMO_BUILD_LIB
-#include GISMO_HPP_HEADER(gsField.hpp)
-#endif

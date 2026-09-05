@@ -2,7 +2,6 @@
 #include <gsCore/gsTemplateTools.h>
 
 #include <gsContainers/gsField.h>
-#include <gsContainers/gsField.hpp>
 
 namespace gismo
 {

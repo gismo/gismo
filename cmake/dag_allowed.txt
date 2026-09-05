@@ -16,7 +16,6 @@ gsAssembler -> gsUtils
 gsContainers -> gsAssembler
 gsContainers -> gsCore
 gsContainers -> gsDomain
-gsContainers -> gsExpressions
 gsContainers -> gsHSplines
 gsContainers -> gsIO
 gsContainers -> gsMesh2

@@ -45,6 +45,7 @@ src/gsCore/gsMultiBasis.h,gsCore,gsContainers (new),S4-a,orchestrate bases/geome
 src/gsCore/gsBoxTopology.h,gsCore,gsContainers (new),S4-a,orchestrate bases/geometries; forwarding headers left at old paths
 src/gsCore/gsField.h,gsCore,gsContainers (new),S4-a,orchestrate bases/geometries; forwarding headers left at old paths
 src/gsCore/gsFieldCreator.h,gsCore,gsContainers (new),S4-a,orchestrate bases/geometries; forwarding headers left at old paths
+src/gsCore/gsField.hpp (distance members),gsCore,gsAssembler (gsFieldDistance.h),S4-f,"expression-evaluator distances become free functions distanceL2/H1/H2/DG(field, ...); the gsField members forward to them, so the API is unchanged and gsContainers no longer includes gsExpressions/gsAssembler for them"
 src/gsCore/gsCoreXml.hpp,gsCore,gsContainers (new),S4-a,orchestrate bases/geometries; forwarding headers left at old paths
 src/gsCore/gsFunctionExpr.h,gsCore,gsFunctionExpr (new),S4-b,isolates the vendored exprtk dependency
 src/gsUtils/gsBoundedPriorityQueue.h,gsUtils,gsUtils (foundation),stay,

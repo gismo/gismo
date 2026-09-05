@@ -180,6 +180,7 @@ namespace internal
 #include <gsExpressions/gsExprHelper.h>
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsAssembler/gsExprEvaluator.h>
+#include <gsAssembler/gsFieldDistance.h>
 
 #include <gsAssembler/gsAdaptiveMeshing.h>
 #include <gsAssembler/gsAdaptiveMeshingUtils.h>
