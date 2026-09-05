@@ -85,7 +85,7 @@ gsSparseMatrix<T> assembleStiffness(const gsBasis<T>& basis)
     stiff.setIntegrationDomain(basis.domain());
     typename gsExprAssembler<T>::space u = stiff.getSpace(basis);
     stiff.initMatrix();
-    stiff.assemble( grad(u) * grad(u).tr() );
+    stiff.assemble( gismo::expr::grad(u) * gismo::expr::grad(u).tr() );
     gsSparseMatrix<T> result;
     stiff.matrix_into(result);
     return result;

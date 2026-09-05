@@ -20,6 +20,7 @@
 #include <gsExpressions/gsExpressions.h>
 #include <gsExpressions/gsExprHelper.h>
 #include <gsAssembler/gsExprAssembler.h>
+#include <gsAssembler/gsDofMapperCreator.h>
 
 namespace gismo
 {
@@ -80,11 +81,10 @@ public:
     void refresh()
     {
         // Setup sparse system
-        gsDofMapper mapper;
-        m_bases[0].getMapper(
+        gsDofMapper mapper = createMapper(m_bases[0], this->pde().bc(),
             (dirichlet::strategy)(m_options.getInt("DirichletStrategy")),
             (iFace::strategy)(m_options.getInt("InterfaceStrategy")),
-            this->pde().bc(), mapper, 0);
+            1, 0, /*finalize=*/true);
         m_system = gsSparseSystem<T>(mapper);
         //note: no allocation here
         //        const index_t nz = m_options.numColNz(m_bases[0][0]);

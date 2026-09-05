@@ -43,7 +43,7 @@ int main(int argc, char** argv)
       
 
     // Read the mesh
-    gsSurfMesh mesh;
+    gsSurfMesh<> mesh;
     auto _readFile = gsReadFile<>(fn,mesh);
 
     gsInfo << "Input: " << mesh.n_vertices() << " vertices, "
@@ -51,23 +51,23 @@ int main(int argc, char** argv)
 
     // Currently, Catmull-Clark is always chosen.
     // TODO: Fit other schemes into this class hierarchy and implement the example properly.
-    gsSubdivisionScheme* scheme;
+    gsSubdivisionScheme<>* scheme;
 
     if (scheme_name == "Catmull-Clark"){
-            scheme = new gsCatmullClark();
+            scheme = new gsCatmullClark<>();
             gsInfo << "Catmull-Clark subdivision "<< r <<" times.\n";
     } else if (scheme_name == "Doo-Sabin"){
-            scheme = new gsDooSabin();
+            scheme = new gsDooSabin<>();
             scheme->options().setInt("ds.boundaryMask", option); // option on doo-sabin boundary treatment
             gsInfo << "Doo-Sabin subdivision "<< r <<" times.\n";
         }
     else if (scheme_name == "Loop") {
-            scheme = new gsLoop();
+            scheme = new gsLoop<>();
             scheme->options().setInt("loop.maskType", option); // option on loop mask type
             gsInfo << "Loop subdivision "<< r <<" times.\n";
     }
     else {
-            scheme = new gsCatmullClark();
+            scheme = new gsCatmullClark<>();
             gsInfo << "Catmull-Clark subdivision "<< r <<" times.\n";
     }
 

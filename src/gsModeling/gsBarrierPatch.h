@@ -59,6 +59,7 @@ class gsBarrierPatch
 
  private:
   /// Creates a mapper.
+  GISMO_DEPRECATED
   void _makeMapper();
 
   /// Creates a mapper for a single patch.
@@ -68,6 +69,7 @@ class gsBarrierPatch
   void _makeMapperGlobalPatches();
 
   /// Creates a mapper for local patches.
+  GISMO_DEPRECATED
   void _makeMapperLocalPatches();
 
   /// Log information about the mapper.
@@ -97,8 +99,8 @@ class gsBarrierPatch
   /**
    * @brief Initializes the Python wrapper for the class: gsBarrierPatch
    */
-  void pybind11_init_gsBarrierPatch2(pybind11::module &m);
-  void pybind11_init_gsBarrierPatch3(pybind11::module &m);
+  template <short_t d>
+  void pybind11_init_gsBarrierPatch(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

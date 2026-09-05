@@ -13,6 +13,7 @@
 
 #include <gsAssembler/gsAssembler.h>
 #include <gsAssembler/gsGaussRule.h>
+#include <gsAssembler/gsDofMapperCreator.h>
 #include <gsCore/gsMultiBasis.h>
 #include <gsDomain/gsDomainIterator.h>
 #include <gsCore/gsField.h>
@@ -109,11 +110,10 @@ void gsAssembler<T>::scalarProblemGalerkinRefresh()
                                     "for standard scalar Galerkin");
 
     // 1. Obtain a map from basis functions to matrix columns and rows
-    gsDofMapper mapper;
-    m_bases.front().getMapper(
+    gsDofMapper mapper = createMapper(m_bases.front(), this->pde().bc(),
         static_cast<dirichlet::strategy>(m_options.getInt("DirichletStrategy")),
         static_cast<iFace::strategy>(m_options.getInt("InterfaceStrategy")),
-        this->pde().bc(), mapper, 0);
+        /*nComp=*/1, /*unk=*/0, /*finalize=*/true);
 
     if ( 0 == mapper.freeSize() ) // Are there any interior dofs ?
         gsWarn << " No internal DOFs, zero sized system.\n";
@@ -133,9 +133,9 @@ void gsAssembler<T>::penalizeDirichletDofs(short_t unk)
     const gsMultiBasis<T> & mbasis = m_bases[m_system.colBasis(unk)];
     const gsDofMapper     & mapper = m_system.colMapper(unk);
     // Note: dofs in the system, however dof values need to be computed
-    const gsDofMapper & bmap = mbasis.getMapper(dirichlet::elimination,
+    const gsDofMapper bmap = createMapper(mbasis, m_pde_ptr->bc(), dirichlet::elimination,
                        static_cast<iFace::strategy>(m_options.getInt("InterfaceStrategy")),
-                                                m_pde_ptr->bc(), unk) ;
+                                                1, unk, /*finalize=*/true);
 
     GISMO_ENSURE( m_ddof[unk].rows() == mapper.boundarySize() &&
                   m_ddof[unk].cols() == m_pde_ptr->numRhs(),
@@ -182,9 +182,9 @@ void gsAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, short_t unk, s
     const gsMultiBasis<T> & mbasis = m_bases[m_system.colBasis(unk)];
     const gsDofMapper & mapper =
         dirichlet::elimination == dirStr ? m_system.colMapper(unk)
-        : mbasis.getMapper(dirichlet::elimination,
-                           static_cast<iFace::strategy>(m_options.getInt("InterfaceStrategy")),
-                           m_pde_ptr->bc(), unk) ;
+        : createMapper(mbasis, m_pde_ptr->bc(), dirichlet::elimination,
+                       static_cast<iFace::strategy>(m_options.getInt("InterfaceStrategy")),
+                       1, unk, /*finalize=*/true);
 
     GISMO_ASSERT(m_ddof[unk].rows()==mapper.boundarySize() &&
                  m_ddof[unk].cols() == m_pde_ptr->numRhs(),
@@ -251,9 +251,9 @@ void gsAssembler<T>::computeDirichletDofs(short_t unk)
     const gsDofMapper & mapper =
             dirichlet::elimination == m_options.getInt("DirichletStrategy") ?
         m_system.colMapper(unk) :
-        mbasis.getMapper(dirichlet::elimination,
-                         static_cast<iFace::strategy>(m_options.getInt("InterfaceStrategy")),
-                         m_pde_ptr->bc(), unk);
+        createMapper(mbasis, m_pde_ptr->bc(), dirichlet::elimination,
+                     static_cast<iFace::strategy>(m_options.getInt("InterfaceStrategy")),
+                     1, unk, /*finalize=*/true);
 
     //gsDebugVar(m_options.getInt("DirichletAAAStrategy"));
     //gsDebugVar(m_options.getInt("DirichletValues"));

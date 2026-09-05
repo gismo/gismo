@@ -83,19 +83,19 @@ std::ostream & gsFileData<T>::print(std::ostream &os) const
 
 
 template<class T> void
-gsFileData<T>::dump(std::string const & fname)  const
+gsFileData<T>::dump(String const & fname)  const
 { save(fname); }
 
 
 template<class T> void
-gsFileData<T>::addComment(std::string const & message)
+gsFileData<T>::addComment(String const & message)
 {
     gsXmlNode * comment = internal::makeComment(message, *data);
     data->appendToRoot(comment);
 }
 
 template<class T> void
-gsFileData<T>::save(std::string const & fname, bool compress)  const
+gsFileData<T>::save(String const & fname, bool compress)  const
 {
     gsXmlNode * comment = internal::makeComment("This file was created by G+Smo "
                                                 GISMO_VERSION, *data);
@@ -131,7 +131,7 @@ gsFileData<T>::save(std::string const & fname, bool compress)  const
 }
 
 template<class T> void
-gsFileData<T>::saveCompressed(std::string const & fname)  const
+gsFileData<T>::saveCompressed(String const & fname)  const
 {
     String tmp = gsFileManager::getExtension(fname);
     if (tmp != "gz" )
@@ -285,7 +285,7 @@ bool gsFileData<T>::readGismoXmlStream(std::istream & is, bool recursive)
             //ln->remove_node(child);
         }
 
-        std::string cfn = gsFileManager::getPath(m_lastPath);
+        String cfn = gsFileManager::getPath(m_lastPath);
         for (auto & f : ifn)
         {
             readXmlFile(cfn + f);
@@ -301,8 +301,8 @@ bool gsFileData<T>::readGismoXmlStream(std::istream & is, bool recursive)
 }
 
 template<class T>
-void gsFileData<T>::addInclude( const std::string & filename, const real_t & time,
-                                const index_t & id, const std::string & label)
+void gsFileData<T>::addInclude( const String & filename, const real_t & time,
+                                const index_t & id, const String & label)
 {
     GISMO_ASSERT( filename!="", "No filename provided for include!");
     gsXmlNode* node = internal::makeNode("xmlfile", filename, *data);
@@ -313,13 +313,13 @@ void gsFileData<T>::addInclude( const std::string & filename, const real_t & tim
 
 
 template<class T>
-void gsFileData<T>::getInclude(gsFileData<T> & res, index_t id, real_t time, std::string label)
+void gsFileData<T>::getInclude(gsFileData<T> & res, index_t id, real_t time, String label)
 {   
     // Ensures that only one argument is actually provided
     GISMO_ENSURE(( (id!=-1) ^  (time!=-1.) ^  (label!="") ) &&
                 !(id!=-1 && time!=-1. && label!=""),
                 "gsFileData::getInclude("<<id<<","<<time<<","<<label<<"), too many arguments provided!");
-    std::string attr_name, attr_string;
+    String attr_name, attr_string;
 
     // Attribute name and string representation, depending on pprovided input.
     if ( id!=-1 )
@@ -343,7 +343,7 @@ void gsFileData<T>::getInclude(gsFileData<T> & res, index_t id, real_t time, std
     gsXmlNode * nd = internal::searchNode(root, attr_name, attr_string, "xmlfile");
     if (nd)
     {
-        std::string filename = gsFileManager::getPath(m_lastPath) +  nd->value();
+        String filename = gsFileManager::getPath(m_lastPath) +  nd->value();
         res.clear();
         res.read(filename);
         return;
@@ -955,7 +955,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
             continue;
         }
         /* //Note: no need to read topology
-           else if ( line.find("interface")!=String::npos )
+           else if ( line.find("interface")!=std::string::npos )
            {
            while (!file.eof() && getline(file, line))
            if (line[0] != '#') break;
@@ -971,7 +971,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
            ifc.append("\n");
            patch=false;
            }
-           else if ( line.find("boundary")!=String::npos )
+           else if ( line.find("boundary")!=std::string::npos )
            {
            while (!file.eof() && getline(file, line))
            if (line[0] != '#') break;
@@ -990,7 +990,7 @@ bool gsFileData<T>::readGeompFile( String const & fn )
            }
            }
         */
-        else if ( ( line.find("patch")!=String::npos ) || patch==true )
+        else if ( ( line.find("patch")!=std::string::npos ) || patch==true )
         {
             // gsDebug <<"Patch "<<  line <<"\n";
             //GISMO_ASSERT( patch_count++ < Np, "Something went wrong while reading GeoPDEs file." );
@@ -1168,8 +1168,8 @@ bool gsFileData<T>::readGeompFile( String const & fn )
   {
   // skip group ids
   while (!file.eof() && getline(file, line))
-  if ( line.find("group")!=String::npos ||
-  line.find("Group")!=String::npos )
+  if ( line.find("group")!=std::string::npos ||
+  line.find("Group")!=std::string::npos )
   break;
 
   // get kind/type
@@ -1272,9 +1272,9 @@ bool gsFileData<T>::readOffFile( String const & fn )
     //https://stackoverflow.com/questions/38874200/trying-to-replace-scanf-with-sstream
 
     std::ifstream buffer(fn);
-    std::ostringstream bb; bb << buffer.rdbuf();    
+    std::ostringstream bb; bb << buffer.rdbuf();
     gsXmlNode* m = internal::makeNode("Mesh", *data);
-    m->append_attribute( internal::makeAttribute("format", "off", *data) );        
+    m->append_attribute( internal::makeAttribute("format", "off", *data) );
     m->value( internal::makeValue( bb.str(), *data) );
     data->appendToRoot(m);
     return true;
@@ -1303,37 +1303,37 @@ bool gsFileData<T>::readStlFile( String const & fn )
     unsigned nvert(0), nfaces(0), tmp(0);
 
     unsigned lineNumber(0);
-    std::string str;
+    String str;
 
     while( !file.eof() && getline(file, str) )
     {
         std::transform(str.begin(),str.end(),str.begin(),::tolower);
-        if(str.find("solid")!=String::npos && str.find("endsolid")==String::npos)
+        if(str.find("solid")!=std::string::npos && str.find("endsolid")==std::string::npos)
         {
             if(solid) ioError(lineNumber,"startSolid");
             solid=true;
         }
-        else if(str.find("endsolid")!=String::npos)
+        else if(str.find("endsolid")!=std::string::npos)
         {
             if(!solid || facet || loop) ioError(lineNumber,"endSolid");
             solid=false;
         }
-        else if(str.find("facet")!=String::npos && str.find("endfacet")==String::npos)
+        else if(str.find("facet")!=std::string::npos && str.find("endfacet")==std::string::npos)
         {
             if(!solid || facet || loop) ioError(lineNumber,"startFacet");
             facet=true;
         }
-        else if(str.find("endfacet")!=String::npos)
+        else if(str.find("endfacet")!=std::string::npos)
         {
             if(!solid || !facet || loop) ioError(lineNumber,"endFacet");
             facet=false;
         }
-        else if(str.find("outer")!=String::npos)
+        else if(str.find("outer")!=std::string::npos)
         {
             if(!solid || !facet || loop) ioError(lineNumber,"startLoop");
             loop=true;
         }
-        else if(str.find("endloop")!=String::npos)
+        else if(str.find("endloop")!=std::string::npos)
         {
             if(!solid || !facet || !loop )
                 ioError(lineNumber,"endLoop");
@@ -1345,14 +1345,14 @@ bool gsFileData<T>::readStlFile( String const & fn )
             loop=false;
             tmp = 0;
         }
-        else if(str.find("vertex")!=String::npos)
+        else if(str.find("vertex")!=std::string::npos)
         {
             if(!solid || !facet || !loop )
                 ioError(lineNumber,"vertex");
             tmp++;
             nvert++;
             size_t pos=str.rfind("vertex")+7;
-            assert(pos!=String::npos);
+            assert(pos!=std::string::npos);
             vertices << str.substr(pos, str.size()-pos) <<"\n";
         }
     }
@@ -1373,14 +1373,13 @@ template<class T>
 bool gsFileData<T>::readVtkFile( String const & fn )
 {
     std::ifstream buffer(fn);
-    std::ostringstream bb; bb << buffer.rdbuf();    
+    std::ostringstream bb; bb << buffer.rdbuf();
     gsXmlNode* m = internal::makeNode("Mesh", *data);
-    m->append_attribute( internal::makeAttribute("format", "vtk", *data) );        
+    m->append_attribute( internal::makeAttribute("format", "vtk", *data) );
     m->value( internal::makeValue( bb.str(), *data) );
     data->appendToRoot(m);
     return true;
 }
-    
 template<class T>
 bool gsFileData<T>::readObjFile( String const & fn )
 {
@@ -1398,7 +1397,7 @@ bool gsFileData<T>::readObjFile( String const & fn )
     if ( !file.good() )
     { gsWarn<<"gsFileData: Problem with file "<<fn<<": Cannot open file stream.\n"; return false; }
 // -- mesh start
-    std::string s;
+    String s;
     while(file>>s)
    {
          switch(*s.c_str())
@@ -1470,7 +1469,7 @@ bool gsFileData<T>::readObjFile( String const & fn )
             else if (token == "cstype")
             {
                 lnstream >>std::ws >> cstype >> std::ws;
-                std::string t;
+                String t;
                 while (lnstream && !lnstream.eof())
                 {
                     lnstream >> std::ws >> t >> std::ws ;
@@ -1657,7 +1656,7 @@ bool gsFileData<T>::readObjFile( String const & fn )
                 cstype="";
             }
             else { // unknown token
-                std::string message = "ignoring line ‘" + line + "’";
+                String message = "ignoring line ‘" + line + "’";
             }
         }
     }
@@ -2194,7 +2193,7 @@ bool gsFileData<T>::readIgesFile( String const & fn )
         }
 
         std::stringstream ss;
-        std::string token;
+        String token;
 
         switch (entity[emark][E_TYPE])
         {
@@ -2344,7 +2343,7 @@ void gsFileData<T>::addX3dShape(gsXmlNode * shape)
             gsWarn<<"gsFileData: Problem with file "<<m_lastPath
                   <<": Setting knots to [0..1] by default not implemented";
         }
-        gsXmlNode * kv_node = internal::makeNode("KnotVector", String(ch), *data);
+        gsXmlNode * kv_node = internal::makeNode("KnotVector", std::string(ch), *data);
         kv_node->append_attribute( internal::makeAttribute("degree", p, *data) );
         gsXmlNode* bs_node = internal::makeNode("Basis" , *data);
         bs_node->append_attribute( internal::makeAttribute("type", "BSplineBasis", *data) );
@@ -2362,7 +2361,7 @@ void gsFileData<T>::addX3dShape(gsXmlNode * shape)
             gsWarn<<"gsFileData: Problem with file "<<m_lastPath
                   <<": Setting knots to [0..1] by default not implemented";
         }
-        kv_node = internal::makeNode("KnotVector", String(ch), *data);
+        kv_node = internal::makeNode("KnotVector", std::string(ch), *data);
         kv_node->append_attribute( internal::makeAttribute("degree", p, *data) );
         bs_node = internal::makeNode("Basis" , *data);
         bs_node->append_attribute( internal::makeAttribute("type", "BSplineBasis", *data) );
@@ -2383,7 +2382,7 @@ void gsFileData<T>::addX3dShape(gsXmlNode * shape)
             nurbs_node->append_attribute( internal::makeAttribute("type",
                                                                   "TensorNurbsBasis2", *data) );
             nurbs_node->append_node(tp_node);
-            gsXmlNode * weights_node = internal::makeNode("weights",String(ch), *data);
+            gsXmlNode * weights_node = internal::makeNode("weights",std::string(ch), *data);
             nurbs_node->append_node(weights_node);
             patch->append_node(nurbs_node);
         }
@@ -2397,7 +2396,7 @@ void gsFileData<T>::addX3dShape(gsXmlNode * shape)
 
         // Attach the control points to the patch
         ch = node->first_node("Coordinate")->first_attribute("point")->value();
-        gsXmlNode* cp_node = internal::makeNode("coefs",String(ch), *data);
+        gsXmlNode* cp_node = internal::makeNode("coefs",std::string(ch), *data);
         cp_node->append_attribute( internal::makeAttribute("geoDim", 3, *data) );
         patch->append_node( cp_node);
 
@@ -2533,7 +2532,7 @@ bool gsFileData<T>::readCsvFile( String const & fn )
 {
     std::ifstream indata;
     indata.open(fn.c_str());
-    std::string cell, line, mstr;
+    String cell, line, mstr;
     index_t rows = 0, nv = 0;
     std::istringstream lnstream;
     lnstream.unsetf(std::ios_base::skipws);
@@ -2604,7 +2603,7 @@ void gsFileData<T>::deleteXmlSubtree(gsXmlNode * node)
 
 template<class T> inline
 typename gsFileData<T>::gsXmlNode *
-gsFileData<T>::getFirstNode(const std::string & name, const std::string & type) const
+gsFileData<T>::getFirstNode(const String & name, const String & type) const
 {
     gsXmlNode * root = data->first_node("xml");
     if ( ! root )
@@ -2628,7 +2627,7 @@ gsFileData<T>::getFirstNode(const std::string & name, const std::string & type) 
 
 template<class T> inline
 typename gsFileData<T>::gsXmlNode *
-gsFileData<T>::getAnyFirstNode(const std::string & name, const std::string & type) const
+gsFileData<T>::getAnyFirstNode(const String & name, const String & type) const
 {
     gsXmlNode * root = data->first_node("xml");
     assert( root ) ;
@@ -2680,8 +2679,8 @@ gsFileData<T>::getAnyFirstNode(const std::string & name, const std::string & typ
 
 template<class T> inline
 typename gsFileData<T>::gsXmlNode *
-gsFileData<T>::getNextSibling(gsXmlNode* const & node, const std::string & name,
-                              const std::string & type)
+gsFileData<T>::getNextSibling(gsXmlNode* const & node, const String & name,
+                              const String & type)
 {
     if ( type == "" )
         return node->next_sibling( name.c_str() );

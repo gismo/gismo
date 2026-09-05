@@ -67,12 +67,12 @@ public:
     }
 };
 
-template<class T>
-class gsXml< gsSparseMatrix<T> >
+template<class T, int _Options, typename _Index>
+class gsXml< gsSparseMatrix<T,_Options,_Index> >
 {
 private:
     gsXml() { }
-    typedef gsSparseMatrix<T> Object;
+    typedef gsSparseMatrix<T,_Options,_Index> Object;
 
 public:
     GSXML_COMMON_FUNCTIONS(Object);
@@ -96,7 +96,7 @@ public:
         obj.setFrom(entries);
     }
 
-    static gsXmlNode * put (const gsSparseMatrix<T> & obj,
+    static gsXmlNode * put (const Object & obj,
                             gsXmlTree & data )
     {
         gsXmlNode * mat_data = putSparseMatrixToXml(obj,data);
@@ -109,6 +109,5 @@ public:
         return mat_data;
     }
 };
-
 } // namespace internal
 } // namespace gismo

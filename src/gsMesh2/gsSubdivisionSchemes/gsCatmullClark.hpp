@@ -1,4 +1,4 @@
-/** @file gsCatmullClark.cpp
+/** @file gsCatmullClark.hpp
 
     @brief Catmull-Clark subdivision on a  mesh.
 
@@ -11,30 +11,34 @@
     Author(s): A. Mantzaflaris, D. Tolis, L. Mussmaecher
 */
 
+#pragma once
+
 #include <gsMesh2/gsSubdivisionSchemes/gsCatmullClark.h>
 #include <gsMesh2/gsSurfMesh.h>
 
 namespace gismo {
 
-void gsCatmullClark::subdivide_impl()
+template <class Scalar>
+void gsCatmullClark<Scalar>::subdivide_impl()
 {
-    GISMO_ASSERT(nullptr!=m_mesh,"Invalid mesh");
-    gsCatmullClark::apply(*m_mesh);
+    GISMO_ASSERT(nullptr!=this->m_mesh,"Invalid mesh");
+    gsCatmullClark<Scalar>::apply(*this->m_mesh);
 }
 
-void gsCatmullClark::apply(gsSurfMesh& mesh)
+template <class Scalar>
+void gsCatmullClark<Scalar>::apply(gsSurfMesh<Scalar>& mesh)
 {
-    gsSurfMesh::Vertex v;
-    gsSurfMesh::Halfedge he;
+    typename gsSurfMesh<Scalar>::Vertex v;
+    typename gsSurfMesh<Scalar>::Halfedge he;
 
     // reserve vertices, edges, faces
     mesh.reserve(mesh.n_vertices() + mesh.n_edges() + mesh.n_faces(),
                     2 * mesh.n_edges(), 4 * mesh.n_faces());
     std::vector<std::string> he_props = mesh.halfedge_properties();
     const bool do_sharp = std::find(he_props.begin(), he_props.end(), "h:sharp") != he_props.end();
-    gsSurfMesh::Halfedge_property<bool> sharp;
+    typename gsSurfMesh<Scalar>::template Halfedge_property<bool> sharp;
     if (do_sharp)
-        sharp = mesh.get_halfedge_property<bool>("h:sharp");
+        sharp = mesh.template get_halfedge_property<bool>("h:sharp");
 
     index_t env = mesh.n_vertices(); // edge vertices start here
 
@@ -67,7 +71,7 @@ void gsCatmullClark::apply(gsSurfMesh& mesh)
     int i = 0;
     for (auto fit : mesh.faces())
     {
-        v = gsSurfMesh::Vertex(fnv + (i++));//face vertex id ?
+        v = typename gsSurfMesh<Scalar>::Vertex(fnv + (i++));//face vertex id ?
         //Start from an original vertex
         auto fv = mesh.vertices(fit).begin();
         if ((*fv).idx() >= env) ++fv; //todo: add -> operator
@@ -78,7 +82,7 @@ void gsCatmullClark::apply(gsSurfMesh& mesh)
 #   pragma omp parallel for default(shared) private(v,tmp)
     for (i = env; i < fnv; ++i)
     {
-        v = gsSurfMesh::Vertex(i); //edge points
+        v = typename gsSurfMesh<Scalar>::Vertex(i); //edge points
 
         if (do_sharp && mesh.has_flag(v, sharp))
             continue; //remain midpoints
@@ -105,7 +109,7 @@ void gsCatmullClark::apply(gsSurfMesh& mesh)
 #   pragma omp parallel for default(shared) private(v)
     for (i = 0; i < env; ++i)
     {
-        v = gsSurfMesh::Vertex(i); // original vertices
+        v = typename gsSurfMesh<Scalar>::Vertex(i); // original vertices
         auto n = mesh.valence(v);
 
         // Rigid corner ?
@@ -166,17 +170,19 @@ void gsCatmullClark::apply(gsSurfMesh& mesh)
     }
 }
 
-gsSurfMesh::Vertex_property<gsSurfMesh::Point> gsCatmullClark::vertex_limits(std::string label)
+template <class Scalar>
+typename gsSurfMesh<Scalar>::template Vertex_property<typename gsSurfMesh<Scalar>::Point>
+gsCatmullClark<Scalar>::vertex_limits(std::string label)
 {
-    auto points = m_mesh->points();
-    auto limits = m_mesh->add_vertex_property<Point>(
+    auto points = this->m_mesh->points();
+    auto limits = this->m_mesh->template add_vertex_property<Point>(
         (label == "v:point" ? "v:limit_points_2022" : label), Point(0, 0, 0));
-    real_t n;
+    Scalar n;
 #   pragma omp parallel for default(shared) private(n)
-    for (auto vit = m_mesh->vertices_begin(); vit < m_mesh->vertices_end(); ++vit)
+    for (auto vit = this->m_mesh->vertices_begin(); vit < this->m_mesh->vertices_end(); ++vit)
     {
-        n = m_mesh->valence(*vit);
-        if (m_mesh->is_boundary(*vit))
+        n = this->m_mesh->valence(*vit);
+        if (this->m_mesh->is_boundary(*vit))
         {
             gsWarn << "Boundary vertex is ignored.\n";
 
@@ -189,56 +195,58 @@ gsSurfMesh::Vertex_property<gsSurfMesh::Point> gsCatmullClark::vertex_limits(std
 
         auto& pt = limits[*vit];
         pt = n * n * points[*vit];
-        for (auto he : m_mesh->halfedges(*vit))
+        for (auto he : this->m_mesh->halfedges(*vit))
         {
-            if (m_mesh->is_boundary(he))
+            if (this->m_mesh->is_boundary(he))
             {
                 gsWarn << "Boundary halfedge is ignored.\n";
             }
 
-            pt += 4 * points[m_mesh->to_vertex(he)] +
-                points[m_mesh->to_vertex(m_mesh->next_halfedge(he))];
+            pt += 4 * points[this->m_mesh->to_vertex(he)] +
+                points[this->m_mesh->to_vertex(this->m_mesh->next_halfedge(he))];
         }
         pt /= (n * (n + 5));
     }
 
     if (label == "v:point") //vertices are replaced by their limit positions
     {
-        m_mesh->rename_vertex_property(points, "v:point_original");
-        m_mesh->rename_vertex_property(limits, "v:point");
+        this->m_mesh->rename_vertex_property(points, "v:point_original");
+        this->m_mesh->rename_vertex_property(limits, "v:point");
     }
     return limits;
 }
 
-gsSurfMesh::Vertex_property<gsSurfMesh::Point> gsCatmullClark::vertex_normal_limits(std::string label)
+template <class Scalar>
+typename gsSurfMesh<Scalar>::template Vertex_property<typename gsSurfMesh<Scalar>::Point>
+gsCatmullClark<Scalar>::vertex_normal_limits(std::string label)
 {
-    bool normalize = m_options.askSwitch("normalize");
-    auto points = m_mesh->points();
+    bool normalize = this->m_options.askSwitch("normalize");
+    auto points = this->m_mesh->points();
     //todo: check if label exists
-    auto limits = m_mesh->add_vertex_property<Point>(label, Point(0, 0, 0));
+    auto limits = this->m_mesh->template add_vertex_property<Point>(label, Point(0, 0, 0));
     Point t1, t2;
-    real_t c1, c2, cc1, cc2;
+    Scalar c1, c2, cc1, cc2;
     index_t i;
-    gsSurfMesh::Halfedge h2;
+    Halfedge h2;
 #   pragma omp parallel for default(shared) private(h2,t1,t2,c1,c2,cc1,cc2,i)
-    for (auto vit = m_mesh->vertices_begin(); vit < m_mesh->vertices_end(); ++vit)
+    for (auto vit = this->m_mesh->vertices_begin(); vit < this->m_mesh->vertices_end(); ++vit)
     {
-        const real_t n = m_mesh->valence(*vit);
-        const real_t cospin = math::cos(EIGEN_PI / n);
+        const Scalar n = this->m_mesh->valence(*vit);
+        const Scalar cospin = math::cos(EIGEN_PI / n);
         cc2 = 1 / (n * math::sqrt(4 + cospin * cospin));
         cc1 = 1 / n + cospin * cc2;
         t1.setZero();
         t2.setZero();
         i = 0;
-        for (auto he : m_mesh->halfedges(*vit))
+        for (auto he : this->m_mesh->halfedges(*vit))
         {
-            h2 = m_mesh->ccw_rotated_halfedge(he);
+            h2 = this->m_mesh->ccw_rotated_halfedge(he);
             c1 = math::cos(2 * i * EIGEN_PI / n) * cc1;
             c2 = math::cos((2 * i + 1) * EIGEN_PI / n) * cc2;
-            t1 += c1 * points[m_mesh->to_vertex(he)]
-                + c2 * points[m_mesh->to_vertex(m_mesh->next_halfedge(he))];
-            t2 += c1 * points[m_mesh->to_vertex(h2)]
-                + c2 * points[m_mesh->to_vertex(m_mesh->next_halfedge(h2))];
+            t1 += c1 * points[this->m_mesh->to_vertex(he)]
+                + c2 * points[this->m_mesh->to_vertex(this->m_mesh->next_halfedge(he))];
+            t2 += c1 * points[this->m_mesh->to_vertex(h2)]
+                + c2 * points[this->m_mesh->to_vertex(this->m_mesh->next_halfedge(h2))];
             ++i;
         }
         if (normalize)
@@ -249,35 +257,37 @@ gsSurfMesh::Vertex_property<gsSurfMesh::Point> gsCatmullClark::vertex_normal_lim
     return limits;
 }
 
-gsSurfMesh::Vertex_property<gsSurfMesh::Point> gsCatmullClark::vertex_tangent_limits(std::string label)
+template <class Scalar>
+typename gsSurfMesh<Scalar>::template Vertex_property<typename gsSurfMesh<Scalar>::Point>
+gsCatmullClark<Scalar>::vertex_tangent_limits(std::string label)
 {
-    bool normalize = m_options.askSwitch("normalize");
-    gsSurfMesh::Vertex v;
-    gsSurfMesh::Halfedge h2;
+    bool normalize = this->m_options.askSwitch("normalize");
+    typename gsSurfMesh<Scalar>::Vertex v;
+    Halfedge h2;
 
-    auto points = m_mesh->points();
+    auto points = this->m_mesh->points();
     //todo: check if label exists
-    auto limits = m_mesh->add_vertex_property<Point>(label, Point(0, 0, 0));
+    auto limits = this->m_mesh->template add_vertex_property<Point>(label, Point(0, 0, 0));
     Point t1, t2;
-    real_t c1, c2, cc1, cc2;
+    Scalar c1, c2, cc1, cc2;
     index_t i;
 #   pragma omp parallel for default(shared) private(v,h2,t1,t2,c1,c2,cc1,cc2,i)
-    for (auto vit = m_mesh->vertices_begin(); vit < m_mesh->vertices_end(); ++vit)
+    for (auto vit = this->m_mesh->vertices_begin(); vit < this->m_mesh->vertices_end(); ++vit)
     {
-        const real_t n = m_mesh->valence(*vit);
-        const real_t cospin = math::cos(EIGEN_PI / n);
+        const Scalar n = this->m_mesh->valence(*vit);
+        const Scalar cospin = math::cos(EIGEN_PI / n);
         cc2 = 1 / (n * math::sqrt(4 + cospin * cospin));
         cc1 = 1 / n + cospin * cc2;
         t1.setZero();
         t2.setZero();
         i = 0;
-        for (auto he : m_mesh->halfedges(*vit))
+        for (auto he : this->m_mesh->halfedges(*vit))
         {
-            h2 = m_mesh->ccw_rotated_halfedge(he);
+            h2 = this->m_mesh->ccw_rotated_halfedge(he);
             c1 = math::cos(2 * i * EIGEN_PI / n) * cc1;
             c2 = math::cos((2 * i + 1) * EIGEN_PI / n) * cc2;
-            t1 += c1 * points[m_mesh->to_vertex(he)]
-                + c2 * points[m_mesh->to_vertex(m_mesh->next_halfedge(he))];
+            t1 += c1 * points[this->m_mesh->to_vertex(he)]
+                + c2 * points[this->m_mesh->to_vertex(this->m_mesh->next_halfedge(he))];
             ++i;
         }
         if (normalize)
