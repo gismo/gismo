@@ -17,6 +17,7 @@
 #include <gsModules/gsModuleInfo.h>
 
 #include <cstring>
+#include <algorithm>
 #include <cstdlib>
 
 #if defined(_WIN32)
@@ -180,9 +181,15 @@ bool gsModuleManager::load(const std::string & path)
     // The library must stay mapped: registered factories point into it
     m_libs.push_back(give(lib));
     m_loaded.push_back(path);
+    m_names.push_back(info->module_name);
     gsInfo << "gsModuleManager: loaded '" << info->module_name
            << "' v" << info->module_version << " (" << path << ")\n";
     return true;
+}
+
+bool gsModuleManager::isLoaded(const std::string & name) const
+{
+    return std::find(m_names.begin(), m_names.end(), name) != m_names.end();
 }
 
 index_t gsModuleManager::loadAll()

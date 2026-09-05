@@ -6,4 +6,4 @@
 ######################################################################
 
 gismo_add_module(gsModules
-  DEPENDS gsCore)
+  DEPENDS gsCore gsCInterface)

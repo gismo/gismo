@@ -96,6 +96,7 @@ gsModeling -> gsMSplines
 gsModeling -> gsNurbs
 gsModeling -> gsTensor
 gsModeling -> gsUtils
+gsModules -> gsCInterface
 gsModules -> gsCore
 gsMultiGrid -> gsAssembler
 gsMultiGrid -> gsContainers

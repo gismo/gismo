@@ -20,6 +20,12 @@ directory). Plain-C programs include that header only; the examples in
 <tt>src/gsCInterface/examples</tt> are built and run as tests with the
 label <tt>gsCInterface</tt>.
 
+Feature detection: <tt>gsC_hasModule("gsNurbs")</tt> tells whether a
+module was compiled into the library or loaded at runtime,
+<tt>gsC_modules()</tt> lists the compiled-in modules and
+<tt>gsC_loadModules()</tt> loads the runtime modules of the module
+directory (see \ref gsModules).
+
 C++ exceptions never cross the C boundary: every entry point is wrapped
 in <tt>GISMO_CAPI_BEGIN</tt> / <tt>GISMO_CAPI_END</tt>. On an error the
 function returns a sentinel (NULL, -1, NaN or nothing) and the message
