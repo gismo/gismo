@@ -97,6 +97,49 @@ SUITE(gsExprAssembler_test)
         CHECK((Mstandard - Mrestored).norm() < 1e-14);
     }
 
+    TEST(MultiSpaceBlockDims)
+    {
+        // Regression test for a469c2d04: _blockDims/resetDimensions used
+        // dim()*mapper.freeSize() for block sizes, but freeSize() already
+        // includes dim(), so a space with dim>1 doubled up on its own
+        // dimension in the row/col block sizes and in the shift applied to
+        // later blocks. A single space of dim 1 cannot expose this (the
+        // erroneous factor is 1), so this test needs two spaces of
+        // different, non-trivial dimension sharing one assembler, matching
+        // the "vector space v and scalar space q" example from the fix.
+        gsBSplineBasis<real_t> bb(0.0, 1.0, 3, 3);
+        gsMultiBasis<real_t> mb(bb);
+        gsBoundaryConditions<real_t> bcs;
+
+        gsExprAssembler<real_t> A(2, 2);
+        A.setIntegrationElements(mb);
+        auto v = A.getSpace(mb, 3, 0); // vector-valued space, dim 3
+        auto q = A.getSpace(mb, 1, 1); // scalar space, dim 1
+        v.setup(bcs, dirichlet::homogeneous, 0);
+        q.setup(bcs, dirichlet::homogeneous, 0);
+        A.initSystem();
+
+        // Expectation computed directly from the per-space dof mappers,
+        // independent of both _blockDims and numDofs()/matrix() sizing:
+        // freeSize() already reports the total (component-inclusive) dof
+        // count for that space, so the system size is simply their sum.
+        const index_t expected = v.mapper().freeSize() + q.mapper().freeSize();
+
+        // Measured: 28 here (3*7 + 7). Before the fix numDofs() reported 70,
+        // the shift for q's block having been computed as 3*(3*7) instead of
+        // 3*7.
+        CHECK_EQUAL(expected, A.numDofs());
+
+        // matrix().rows()/cols() are deliberately NOT checked. matrix()
+        // returns m_matrix, which initSystem() leaves default-constructed
+        // (0x0) until an assemble() marks the system modified, so those
+        // checks read 0 with and without the fix -- they would fail here
+        // whatever the block sizing did, and pin nothing.
+        //
+        // This leaves _blockDims itself, which feeds blockView(), uncovered;
+        // the check above reaches the same defect through resetDimensions.
+    }
+
     TEST(InterfaceExpression)
     {
         const index_t numRef = 2;
