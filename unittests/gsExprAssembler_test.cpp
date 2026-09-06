@@ -130,14 +130,34 @@ SUITE(gsExprAssembler_test)
         // 3*7.
         CHECK_EQUAL(expected, A.numDofs());
 
-        // matrix().rows()/cols() are deliberately NOT checked. matrix()
-        // returns m_matrix, which initSystem() leaves default-constructed
-        // (0x0) until an assemble() marks the system modified, so those
-        // checks read 0 with and without the fix -- they would fail here
-        // whatever the block sizing did, and pin nothing.
-        //
-        // This leaves _blockDims itself, which feeds blockView(), uncovered;
-        // the check above reaches the same defect through resetDimensions.
+        // The system matrix is sized by MatrixSizedAfterInitSystem below; the
+        // check here is confined to the block arithmetic. _blockDims itself,
+        // which feeds blockView(), stays uncovered -- the check above reaches
+        // the same defect through resetDimensions.
+    }
+
+    // matrix() is `m_modified ? makeMatrix() : m_matrix`, and m_matrix is only
+    // populated from the fiber matrix by makeMatrix(). clearMatrix() must
+    // therefore invalidate the cache on every path, including the one that
+    // resizes rather than zeroes: initSystem() reaches exactly that path, so
+    // without the flag matrix() reports the default-constructed 0x0 m_matrix
+    // for a system whose dimensions are already known.
+    TEST(MatrixSizedAfterInitSystem)
+    {
+        gsBSplineBasis<real_t> bb(0.0, 1.0, 3, 3);
+        gsMultiBasis<real_t> mb(bb);
+        gsBoundaryConditions<real_t> bcs;
+
+        gsExprAssembler<real_t> A(1, 1);
+        A.setIntegrationElements(mb);
+        auto u = A.getSpace(mb, 1, 0);
+        u.setup(bcs, dirichlet::homogeneous, 0);
+        A.initSystem();
+
+        // No assemble() here: sizing must hold from initSystem() alone.
+        CHECK_EQUAL(A.numTestDofs(), A.matrix().rows());
+        CHECK_EQUAL(A.numDofs(),     A.matrix().cols());
+        CHECK(A.matrix().rows() > 0);
     }
 
     TEST(InterfaceExpression)

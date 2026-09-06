@@ -393,7 +393,6 @@ public:
         if (m_fmatrix.nonZeros() && save_sparsety_pattern)
         {
             m_fmatrix.assignZero();
-            m_modified = true;
         }
         else
         {
@@ -418,6 +417,14 @@ public:
                                           cast<T, index_t>(nz * (1.0 + bdO)));
             }
         }
+
+        // Both paths leave m_fmatrix inconsistent with the cached m_matrix --
+        // one zeroes the values, the other resizes and drops the pattern -- so
+        // the cache is invalidated here rather than per branch. matrix() is
+        // `m_modified ? makeMatrix() : m_matrix`, so a path that resizes
+        // without setting this returns the stale m_matrix, still 0x0 on the
+        // first initSystem() since nothing has assembled into it yet.
+        m_modified = true;
     }
 
     /// Initializes the pattern of the sparse matrix
