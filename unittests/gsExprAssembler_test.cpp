@@ -99,41 +99,96 @@ SUITE(gsExprAssembler_test)
 
     TEST(MultiSpaceBlockDims)
     {
-        // Regression test for a469c2d04: _blockDims/resetDimensions used
-        // dim()*mapper.freeSize() for block sizes, but freeSize() already
-        // includes dim(), so a space with dim>1 doubled up on its own
-        // dimension in the row/col block sizes and in the shift applied to
-        // later blocks. A single space of dim 1 cannot expose this (the
-        // erroneous factor is 1), so this test needs two spaces of
-        // different, non-trivial dimension sharing one assembler, matching
-        // the "vector space v and scalar space q" example from the fix.
-        gsBSplineBasis<real_t> bb(0.0, 1.0, 3, 3);
-        gsMultiBasis<real_t> mb(bb);
+        // _blockDims sizes the row/column blocks and resetDimensions sets the
+        // shift applied to later blocks. mapper.freeSize() already reports the
+        // component-inclusive dof count of a space, so multiplying it by that
+        // space's dim counts the dimension twice. A single space of dim 1
+        // cannot expose that -- the erroneous factor is 1 -- so this needs two
+        // spaces of different, non-trivial dimension in one assembler.
+        //
+        // A 2D geometry is required: the assemble() arm below needs meas(G)
+        // to build a genuine bilinear form per space, rather than only
+        // inspecting mappers.
+        gsMultiPatch<real_t> mp(*gsNurbsCreator<real_t>::BSplineSquare());
+        gsMultiBasis<real_t> dbasis(mp);
+        dbasis.degreeElevate(2);
+        dbasis.uniformRefine(5);
         gsBoundaryConditions<real_t> bcs;
+        const index_t n = dbasis.basis(0).size();
 
-        gsExprAssembler<real_t> A(2, 2);
-        A.setIntegrationElements(mb);
-        auto v = A.getSpace(mb, 3, 0); // vector-valued space, dim 3
-        auto q = A.getSpace(mb, 1, 1); // scalar space, dim 1
-        v.setup(bcs, dirichlet::homogeneous, 0);
-        q.setup(bcs, dirichlet::homogeneous, 0);
-        A.initSystem();
+        // Control arm: two SCALAR spaces (dim 1 each). Since dim==1 makes
+        // the erroneous factor in the fixed formula equal to 1, this arm
+        // cannot itself fail on the bug -- it exists to pin that the shift
+        // between blocks is otherwise sane, so a failure in the main arm
+        // below can be attributed to the dim>1 handling rather than to the
+        // fixture or to block bookkeeping in general.
+        {
+            gsExprAssembler<real_t> A(2, 2);
+            A.setIntegrationElements(dbasis);
+            auto u0 = A.getSpace(dbasis, 1, 0);
+            auto u1 = A.getSpace(dbasis, 1, 1);
+            u0.setup(bcs, dirichlet::homogeneous, 0);
+            u1.setup(bcs, dirichlet::homogeneous, 0);
+            A.initSystem();
+            CHECK_EQUAL(2*n, A.numDofs());
+            CHECK_EQUAL(n,   u1.mapper().firstIndex());
+        }
 
-        // Expectation computed directly from the per-space dof mappers,
-        // independent of both _blockDims and numDofs()/matrix() sizing:
-        // freeSize() already reports the total (component-inclusive) dof
-        // count for that space, so the system size is simply their sum.
-        const index_t expected = v.mapper().freeSize() + q.mapper().freeSize();
+        // Main arm: a vector-valued space of dimension d sharing an
+        // assembler with a scalar space. Looping d = 2 and d = 3 is
+        // essential -- the erroneous shift was dim()*(dim()*freeSize())
+        // versus the correct dim()*freeSize(), i.e. an extra factor of
+        // dim(). At a single d, a formula quadratic in dim() is
+        // indistinguishable from a linear one with a different constant;
+        // the pair of values pins the exponent.
+        for (index_t d = 2; d <= 3; ++d)
+        {
+            gsExprAssembler<real_t> A(2, 2);
+            A.setIntegrationElements(dbasis);
+            auto G = A.getMap(mp);
+            auto v = A.getSpace(dbasis, d, 0); // vector-valued space, dim d
+            auto p = A.getSpace(dbasis, 1, 1); // scalar space, dim 1
+            v.setup(bcs, dirichlet::homogeneous, 0);
+            p.setup(bcs, dirichlet::homogeneous, 0);
+            A.initSystem();
 
-        // Measured: 28 here (3*7 + 7). Before the fix numDofs() reported 70,
-        // the shift for q's block having been computed as 3*(3*7) instead of
-        // 3*7.
-        CHECK_EQUAL(expected, A.numDofs());
+            CHECK_EQUAL((d+1)*n, A.numDofs());
+            CHECK_EQUAL(0,       v.mapper().firstIndex());
+            CHECK_EQUAL(d*n,     v.mapper().freeSize());
+            CHECK_EQUAL(d*n,     p.mapper().firstIndex());
+            CHECK_EQUAL(n,       p.mapper().freeSize());
 
-        // The system matrix is sized by MatrixSizedAfterInitSystem below; the
-        // check here is confined to the block arithmetic. _blockDims itself,
-        // which feeds blockView(), stays uncovered -- the check above reaches
-        // the same defect through resetDimensions.
+            // Two distinct-block terms in one assemble() call: this is what
+            // actually writes into both diagonal blocks of the system
+            // matrix, so a wrong offset for p's block (computed pre-fix as
+            // d*(d*n) instead of d*n) would either write out of range or
+            // leave part of v's block untouched.
+            A.assemble(v*v.tr()*meas(G), p*p.tr()*meas(G));
+
+            // Counting entirely-zero rows separates "wrong total" from
+            // "structurally broken": pre-fix, each block was internally
+            // self-consistent and merely sat at the wrong offset, so
+            // numDofs() alone does not reveal that (d^2-d)*n rows exist
+            // that nothing ever writes to.
+            const gsSparseMatrix<real_t> & M = A.matrix();
+            gsVector<bool> rowTouched(M.rows());
+            rowTouched.setZero();
+            for (index_t c = 0; c != M.cols(); ++c)
+                for (gsSparseMatrix<real_t>::InnerIterator it(M, c); it; ++it)
+                    rowTouched(it.row()) = true;
+            const index_t zeroRows = M.rows() - rowTouched.array().count();
+            CHECK_EQUAL(0, zeroRows);
+
+            // matrixBlockView() is the only assertion here reaching
+            // _blockDims directly (numDofs()/firstIndex() above reach the
+            // same defect only through resetDimensions): the block sizes
+            // must match the per-space free dof counts exactly.
+            auto view = A.matrixBlockView();
+            CHECK_EQUAL(d*n, view(0,0).rows());
+            CHECK_EQUAL(d*n, view(0,0).cols());
+            CHECK_EQUAL(n,   view(1,1).rows());
+            CHECK_EQUAL(n,   view(1,1).cols());
+        }
     }
 
     // matrix() is `m_modified ? makeMatrix() : m_matrix`, and m_matrix is only
