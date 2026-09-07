@@ -12,6 +12,7 @@
 */
 
 #include <gismo.h>
+#include <gsAssembler/gsDofMapperCreator.h>
 
 using namespace gismo;
 
@@ -22,7 +23,8 @@ void makeMapper(const gsMultiPatch<T> &mp,
                                                 const typename gsMultiPatch<>::const_biterator &)> getBoundaryIndices) {
 
   gsMultiBasis<T> mb(mp);
-  mapper.init(mb, mp.targetDim());
+  // Interfaces are matched explicitly below, hence conforming = false here
+  mapper = createMapper(mb, mp.targetDim(), /*conforming=*/false);
 
   for (gsBoxTopology::const_iiterator it = mb.topology().iBegin();
        it != mb.topology().iEnd(); ++it) {

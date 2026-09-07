@@ -78,6 +78,7 @@
 #include <gismo.h>
 #include <gsAlgoim/gsAlgoimRule.h>
 #include <gsCore/gsDofMapper.h>
+#include <gsAssembler/gsDofMapperCreator.h>
 
 #include <cmath>
 #include <iomanip>
@@ -294,7 +295,7 @@ bool nitscheTractionCheck(const gsFunctionExpr<real_t> & phi,
 
     geometryMap G = A.getMap(mp);
     space w = A.getSpace(dbasis, 2, 0);
-    gsDofMapper mapper(dbasis, 2); mapper.finalize(); w.setupMapper(mapper);
+    gsDofMapper mapper = createMapper(dbasis, 2, false); mapper.finalize(); w.setupMapper(mapper);
     const_cast<expr::gsFeSpace<real_t>&>(w).fixedPart().setZero(mapper.boundarySize(), 1);
 
     A.setIntegrationElements(dbasis);
@@ -423,8 +424,8 @@ RunResult solveOne(index_t degree, index_t N, real_t L,
 
     // 5. Mappers: exterior elimination (both spaces), strong Dirichlet on
     //    x=0/y=0 (velocity), optional pressure pin.
-    gsDofMapper mapperV(dbasis, 2);
-    gsDofMapper mapperP(dbasis, 1);
+    gsDofMapper mapperV = createMapper(dbasis, 2, false);
+    gsDofMapper mapperP = createMapper(dbasis, 1, false);
     {
         std::vector<bool> keepV(dbasis.basis(0).size(), false);
         std::vector<bool> keepP(dbasis.basis(0).size(), false);

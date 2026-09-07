@@ -32,9 +32,9 @@ m_box2(box2)
     m_trans.resize(dim);
     for (index_t i=0; i<dim; ++i)
     {
-        const T ratio = size1[i]==0 ? (T)(1) : size2(dir[i])/size1[i];
-        m_mat(dir(i),i) = o[i] ? ratio : -ratio;
-        m_trans(dir(i)) = o[i] ? box2(dir[i],0) : box2(dir[i],1);
+        const T ratio = size1[i]==0 ? T(1) : T(size2(dir[i])/size1[i]);
+        m_mat(dir(i),i) = o[i] ? T(ratio) : T(-ratio);
+        m_trans(dir(i)) = o[i] ? T(box2(dir[i],0)) : T(box2(dir[i],1));
     }
     m_trans -= m_mat * box1.col(0);
 }

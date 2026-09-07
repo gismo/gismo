@@ -1,7 +1,7 @@
 /** @file gsSurfMeshBVH.h
 
     @brief A static bounding-volume hierarchy (BVH) over the triangles of a
-           gsSurfMesh, answering the two queries a mesh signed-distance level
+           gsSurfMesh<real_t>, answering the two queries a mesh signed-distance level
            set needs:
              - nearest point on the surface to a query point (for |phi|),
              - generalized winding number (for sign(phi)).
@@ -72,7 +72,7 @@
 namespace gismo
 {
 
-/// A static AABB-tree over the triangles of a gsSurfMesh, answering
+/// A static AABB-tree over the triangles of a gsSurfMesh<real_t>, answering
 /// nearest-point and generalized-winding-number queries in O(log n) amortized
 /// instead of the brute-force O(n).
 ///
@@ -84,17 +84,17 @@ namespace gismo
 class gsSurfMeshBVH
 {
 public:
-    typedef gsSurfMesh::Point Point;   ///< gsVector3d<real_t>
+    typedef gsSurfMesh<real_t>::Point Point;   ///< gsVector3d<real_t>
 
     gsSurfMeshBVH() : m_root(-1) {}
 
     /// Builds the tree from the triangles of \a mesh.
     ///
-    /// \a mesh must be a triangle mesh; call gsSurfMesh::triangulate() first if
+    /// \a mesh must be a triangle mesh; call gsSurfMesh<real_t>::triangulate() first if
     /// it is not. The triangles are copied and, per connected component,
     /// normalized to OUTWARD winding (see _extractOriented) -- everything
     /// downstream may therefore assume triangleNormal() points out of the solid.
-    void build(const gsSurfMesh & mesh)
+    void build(const gsSurfMesh<real_t> & mesh)
     {
         m_nodes.clear();
         m_orderedTris.clear();
@@ -103,7 +103,7 @@ public:
 
         GISMO_ENSURE(mesh.is_triangle_mesh(),
                      "gsSurfMeshBVH: expects a triangle mesh; call "
-                     "gsSurfMesh::triangulate() before building the tree.");
+                     "gsSurfMesh<real_t>::triangulate() before building the tree.");
 
         std::vector<Point>   tri;    // 3 points per triangle, outward-wound
         std::vector<index_t> triV;   // matching corner vertex indices
@@ -589,7 +589,7 @@ private:
     ///
     /// Only the GLOBAL inversion has to be repaired here. Local inconsistency
     /// -- neighbouring faces disagreeing -- cannot occur: a halfedge mesh is
-    /// structurally incapable of representing it, and gsSurfMesh::add_face()
+    /// structurally incapable of representing it, and gsSurfMesh<real_t>::add_face()
     /// rejects such a face outright ("complex edge") rather than storing it.
     /// What remains is a component that is consistently wound but inside-out,
     /// which the signed volume (1/6)*sum dot(a, b x c) detects: it is
@@ -601,7 +601,7 @@ private:
     /// because a signed distance is only meaningful against a closed surface.
     ///
     /// O(nFaces) via one BFS over face adjacency.
-    static void _extractOriented(const gsSurfMesh & mesh, std::vector<Point> & tri,
+    static void _extractOriented(const gsSurfMesh<real_t> & mesh, std::vector<Point> & tri,
                                  std::vector<index_t> & triV)
     {
         const index_t nf = static_cast<index_t>(mesh.n_faces());
@@ -621,9 +621,9 @@ private:
         // silently mismatch the Ericson feature numbering.
         std::vector<index_t> fidx;
         fidx.reserve(static_cast<size_t>(nf));
-        for (gsSurfMesh::Face f : mesh.faces())
+        for (gsSurfMesh<real_t>::Face f : mesh.faces())
         {
-            for (gsSurfMesh::Vertex v : mesh.vertices(f))
+            for (gsSurfMesh<real_t>::Vertex v : mesh.vertices(f))
             { tri.push_back(mesh.position(v)); triV.push_back(v.idx()); }
             fidx.push_back(f.idx());
         }
@@ -650,11 +650,11 @@ private:
             {
                 const index_t s = queue[qi];
                 comp.push_back(s);
-                const gsSurfMesh::Face f(fidx[s]);
-                for (gsSurfMesh::Halfedge h : mesh.halfedges(f))
+                const gsSurfMesh<real_t>::Face f(fidx[s]);
+                for (gsSurfMesh<real_t>::Halfedge h : mesh.halfedges(f))
                 {
-                    const gsSurfMesh::Halfedge o = mesh.opposite_halfedge(h);
-                    const gsSurfMesh::Face     g = mesh.face(o);
+                    const gsSurfMesh<real_t>::Halfedge o = mesh.opposite_halfedge(h);
+                    const gsSurfMesh<real_t>::Face     g = mesh.face(o);
                     if (!g.is_valid()) { closed = false; continue; } // boundary edge
                     const index_t t = slot[g.idx()];
                     if (t < 0 || visited[t]) continue;

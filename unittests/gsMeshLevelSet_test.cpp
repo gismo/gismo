@@ -79,7 +79,7 @@ namespace {
 
 /// Reads a mesh from the data dir, failing the test rather than the process
 /// if it is missing.
-bool loadMesh(const std::string & rel, gsSurfMesh & mesh)
+bool loadMesh(const std::string & rel, gsSurfMesh<real_t> & mesh)
 {
     return gsReadSurfMesh(rel, mesh);
 }
@@ -183,7 +183,7 @@ SUITE(gsMeshLevelSet_test)
 /// guards against a "fix" that perturbs the cases that were always correct.
 TEST(smoothMesh_gradientAgreesWithWindingFD)
 {
-    gsSurfMesh mesh;
+    gsSurfMesh<real_t> mesh;
     if (!loadMesh("obj/spot.obj", mesh))
     { CHECK(false); return; }                 // data file missing
 
@@ -230,7 +230,7 @@ TEST(smoothMesh_gradientAgreesWithWindingFD)
 /// rather than only checking the queries a sample happens to reach.
 TEST(sliverTriangles_produceFiniteNormalsAndCorrectSigns)
 {
-    gsSurfMesh mesh;
+    gsSurfMesh<real_t> mesh;
     if (!loadMesh("obj/sliver.obj", mesh))
     { CHECK(false); return; }
 
@@ -243,7 +243,7 @@ TEST(sliverTriangles_produceFiniteNormalsAndCorrectSigns)
     for (index_t t = 0; t != bvh.numTriangles(); ++t)
         for (short_t f = 0; f != 7; ++f)
         {
-            const gsSurfMesh::Point n = bvh.pseudoNormal(t, f);
+            const gsSurfMesh<real_t>::Point n = bvh.pseudoNormal(t, f);
             if (!(n.array() == n.array()).all()) { ++nBadNormal; continue; }
             if (!n.allFinite()) ++nBadNormal;
         }
@@ -299,7 +299,7 @@ TEST(sliverTriangles_produceFiniteNormalsAndCorrectSigns)
 /// three-face average from any single face normal cleanly.
 TEST(duplicatedVertices_areWeldedForNormalAccumulation)
 {
-    gsSurfMesh mesh;
+    gsSurfMesh<real_t> mesh;
     if (!loadMesh("obj/sliver.obj", mesh))
     { CHECK(false); return; }
 
@@ -331,7 +331,7 @@ TEST(duplicatedVertices_areWeldedForNormalAccumulation)
 /// partial by construction (see the note on welding in this file's header).
 TEST(sharpEdge_gradientOnSurfaceIsTheBisector)
 {
-    gsSurfMesh mesh;
+    gsSurfMesh<real_t> mesh;
     if (!loadMesh("obj/wedge.obj", mesh))
     { CHECK(false); return; }
 
@@ -359,7 +359,7 @@ TEST(sharpEdge_gradientOnSurfaceIsTheBisector)
 /// is a mesh change, not a code change.
 TEST(sharpFeatureCount_isZeroOnSmoothMeshAndPositiveOnSharpOnes)
 {
-    gsSurfMesh smooth, wedge, groove;
+    gsSurfMesh<real_t> smooth, wedge, groove;
     if (!loadMesh("obj/spot.obj",    smooth) ||
         !loadMesh("obj/wedge.obj",   wedge)  ||
         !loadMesh("obj/vgroove.obj", groove))
@@ -394,7 +394,7 @@ TEST(sharpFeatureCount_isZeroOnSmoothMeshAndPositiveOnSharpOnes)
 /// 90 deg away from (p - closest), inverting the sign.
 TEST(sharpConvexEdge_gradientSignIsCorrect)
 {
-    gsSurfMesh mesh;
+    gsSurfMesh<real_t> mesh;
     if (!loadMesh("obj/wedge.obj", mesh))
     { CHECK(false); return; }
 
@@ -429,7 +429,7 @@ TEST(sharpConvexEdge_gradientSignIsCorrect)
 /// would not exercise this at all.
 TEST(sharpConcaveEdge_gradientSignIsCorrect)
 {
-    gsSurfMesh mesh;
+    gsSurfMesh<real_t> mesh;
     if (!loadMesh("obj/vgroove.obj", mesh))
     { CHECK(false); return; }
 

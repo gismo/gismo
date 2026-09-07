@@ -20,28 +20,6 @@ namespace gismo
 {
 
     template <short_t d, class T>
-    bool gsElement<d,T>::Compare::operator()(const gsElement<d,T> & a, const gsElement<d,T> & b) const
-    {
-        return
-         (a.patch() < b.patch())
-        ||
-        ((a.patch() == b.patch()) &&
-         std::lexicographical_compare(  a.lowerCorner().begin(), a.lowerCorner().end(),
-                                        b.lowerCorner().begin(), b.lowerCorner().end())   )
-        ||
-        ((a.patch() == b.patch()) &&
-         (a.lowerCorner() == b.lowerCorner()) &&
-         std::lexicographical_compare(  a.upperCorner().begin(), a.upperCorner().end(),
-                                        b.upperCorner().begin(), b.upperCorner().end())    );
-    };
-
-    template <short_t d, class T>
-    bool gsElement<d,T>::Equal::operator()(const gsElement<d,T> & a, const gsElement<d,T> & b) const
-    {
-        return (a.patch() == b.patch()) && (a.lowerCorner() == b.lowerCorner()) && (a.upperCorner() == b.upperCorner());
-    }
-
-    template <short_t d, class T>
     gsElement<d,T>::gsElement()
     :
     m_low(point_t::Constant(-1)),

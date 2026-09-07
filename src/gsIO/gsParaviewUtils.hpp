@@ -135,8 +135,10 @@ namespace gismo
                 return std::string("Int64");
             } else if (std::is_same<T, unsigned long long int>::value) {
                 return std::string("UInt64");
+            } else {
+                GISMO_ERROR("toDataArray: Unsupported data type for VTK output.");
+                return std::string("UnknownType");
             }
-            else { GISMO_ERROR("vtk typename error"); }
         }();
 
 

@@ -2,12 +2,12 @@
 
     @brief PyBind11 main module file
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): M. Moller
 */
 
@@ -58,6 +58,7 @@ PYBIND11_MODULE(pygismo, m) {
   assembler.doc() = "G+Smo (Geometry + Simulation Modules): Assembler module";
 
   gismo::pybind11_init_gsBiharmonicExprAssembler( assembler );
+  gismo::pybind11_init_gsDofMapperCreator( assembler );
 
 
   py::module core = m.def_submodule("core");
@@ -73,11 +74,13 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsBasis( core );
   gismo::pybind11_init_gsBasisFun( core );
   gismo::pybind11_init_gsFunctionExpr( core );
+  gismo::pybind11_init_gsConstantFunction( core );
   gismo::pybind11_init_gsBoxTopology( core );
   gismo::pybind11_init_gsGeometry( core );
   gismo::pybind11_init_gsMultiPatch( core );
   gismo::pybind11_init_gsMultiBasis( core );
   gismo::pybind11_init_gsDofMapper( core );
+  gismo::pybind11_init_gsField( core );
 
   py::module hsplines = m.def_submodule("hsplines");
 
@@ -85,22 +88,29 @@ PYBIND11_MODULE(pygismo, m) {
   hsplines.attr("__version__") = GISMO_VERSION;
   hsplines.doc() = "G+Smo (Geometry + Simulation Modules): HSplines module";
 
-  gismo::pybind11_init_gsHTensorBasis2( hsplines );
-  gismo::pybind11_init_gsHTensorBasis3( hsplines );
-  gismo::pybind11_init_gsHTensorBasis4( hsplines );
-  gismo::pybind11_init_gsHBSplineBasis2( hsplines );
-  gismo::pybind11_init_gsHBSplineBasis3( hsplines );
-  gismo::pybind11_init_gsHBSplineBasis4( hsplines );
-  gismo::pybind11_init_gsHBSpline2( hsplines );
-  gismo::pybind11_init_gsHBSpline3( hsplines );
-  gismo::pybind11_init_gsHBSpline4( hsplines );
-  gismo::pybind11_init_gsTHBSplineBasis2( hsplines );
-  gismo::pybind11_init_gsTHBSplineBasis3( hsplines );
-  gismo::pybind11_init_gsTHBSplineBasis4( hsplines );
-  gismo::pybind11_init_gsTHBSpline2( hsplines );
-  gismo::pybind11_init_gsTHBSpline3( hsplines );
-  gismo::pybind11_init_gsTHBSpline4( hsplines );
-  
+  gismo::pybind11_init_gsHTensorBasis<1>( hsplines );
+  gismo::pybind11_init_gsHTensorBasis<2>( hsplines );
+  gismo::pybind11_init_gsHTensorBasis<3>( hsplines );
+  gismo::pybind11_init_gsHTensorBasis<4>( hsplines );
+  gismo::pybind11_init_gsTHBSplineBasis<1, true>( hsplines );
+  gismo::pybind11_init_gsTHBSplineBasis<2, true>( hsplines );
+  gismo::pybind11_init_gsTHBSplineBasis<3, true>( hsplines );
+  gismo::pybind11_init_gsTHBSplineBasis<4, true>( hsplines );
+  gismo::pybind11_init_gsTHBSplineBasis<1, false>( hsplines );
+  gismo::pybind11_init_gsTHBSplineBasis<2, false>( hsplines );
+  gismo::pybind11_init_gsTHBSplineBasis<3, false>( hsplines );
+  gismo::pybind11_init_gsTHBSplineBasis<4, false>( hsplines );
+  gismo::pybind11_init_gsTHBSpline<1, true>( hsplines );
+  gismo::pybind11_init_gsTHBSpline<2, true>( hsplines );
+  gismo::pybind11_init_gsTHBSpline<3, true>( hsplines );
+  gismo::pybind11_init_gsTHBSpline<4, true>( hsplines );
+  gismo::pybind11_init_gsTHBSpline<1, false>( hsplines );
+  gismo::pybind11_init_gsTHBSpline<2, false>( hsplines );
+  gismo::pybind11_init_gsTHBSpline<3, false>( hsplines );
+  gismo::pybind11_init_gsTHBSpline<4, false>( hsplines );
+  gismo::pybind11_init_gsTHBSplineBasis_factory( hsplines );
+  gismo::pybind11_init_gsTHBSpline_factory( hsplines );
+
   py::module io = m.def_submodule("io");
 
   io.attr("__name__") = "pygismo.io";
@@ -118,14 +128,15 @@ PYBIND11_MODULE(pygismo, m) {
   matrix.attr("__name__") = "pygismo.matrix";
   matrix.attr("__version__") = GISMO_VERSION;
   matrix.doc() = "G+Smo (Geometry + Simulation Modules): Matrix module";
-  
+
   gismo::pybind11_init_gsVector<real_t>(matrix,"Real"); //gsVectorReal
   gismo::pybind11_init_gsVector<index_t>(matrix,"Int"); //gsVectorInt
   gismo::pybind11_init_gsMatrix<real_t>(matrix,"Real"); //gsMatrixReal
   gismo::pybind11_init_gsMatrix<index_t>(matrix,"Int"); //gsMatrixInt
-  gismo::pybind11_init_gsSparseMatrix<real_t>(matrix,"Real"); //gsSparseMatrixReal
-  gismo::pybind11_init_gsSparseMatrix<index_t>(matrix,"Int"); //gsSparseMatrixInt
-  
+  // gsSparseMatrix is not registered as a pybind11 class: it derives from
+  // Eigen::SparseMatrix, so pybind11/eigen.h converts it to/from scipy.sparse
+  // automatically (see note in gsMatrix/gsSparseMatrix.h).
+
   py::module modelling = m.def_submodule("modelling");
 
   modelling.attr("__name__") = "pygismo.modelling";
@@ -136,33 +147,26 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsFitting( modelling );
   gismo::pybind11_init_gsCoonsPatch( modelling );
   gismo::pybind11_init_gsSpringPatch( modelling );
-  gismo::pybind11_init_gsBarrierPatch2( modelling );
-  gismo::pybind11_init_gsBarrierPatch3( modelling );
+  gismo::pybind11_init_gsBarrierPatch<2>( modelling );
+  gismo::pybind11_init_gsBarrierPatch<3>( modelling );
 
   py::module msplines = m.def_submodule("msplines");
 
-  hsplines.attr("__name__") = "pygismo.msplines";
-  hsplines.attr("__version__") = GISMO_VERSION;
-  hsplines.doc() = "G+Smo (Geometry + Simulation Modules): MSplines module";
+  msplines.attr("__name__") = "pygismo.msplines";
+  msplines.attr("__version__") = GISMO_VERSION;
+  msplines.doc() = "G+Smo (Geometry + Simulation Modules): MSplines module";
 
-  // gismo::pybind11_init_gsMappedSpline( msplines );
-
-  // gismo::pybind11_init_gsMappedBasis1( msplines );
-  gismo::pybind11_init_gsMappedBasis2( msplines );
-  // gismo::pybind11_init_gsMappedBasis3( msplines );
-
-  // gismo::pybind11_init_gsMappedSingleBasis1( msplines );
-  gismo::pybind11_init_gsMappedSingleBasis2( msplines );
-  // gismo::pybind11_init_gsMappedSingleBasis3( msplines );
+  gismo::pybind11_init_gsMappedBasis<2>( msplines );
+  gismo::pybind11_init_gsMappedSingleBasis<2>( msplines );
 
   py::module mpi = m.def_submodule("mpi");
-  
+
   mpi.attr("__name__") = "pygismo.mpi";
   mpi.attr("__version__") = GISMO_VERSION;
   mpi.doc() = "G+Smo (Geometry + Simulation Modules): MPI module";
 
   py::module multigrid = m.def_submodule("multigrid");
-  
+
   multigrid.attr("__name__") = "pygismo.multigrid";
   multigrid.attr("__version__") = GISMO_VERSION;
   multigrid.doc() = "G+Smo (Geometry + Simulation Modules): MultiGrid module";
@@ -176,15 +180,18 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsKnotVector( nurbs );
   gismo::pybind11_init_gsBSpline( nurbs );
   gismo::pybind11_init_gsBSplineBasis( nurbs );
-  gismo::pybind11_init_gsTensorBSpline2( nurbs );
-  gismo::pybind11_init_gsTensorBSpline3( nurbs );
-  gismo::pybind11_init_gsTensorBSpline4( nurbs );
-  gismo::pybind11_init_gsTensorBSplineBasis2( nurbs );
-  gismo::pybind11_init_gsTensorBSplineBasis3( nurbs );
-  gismo::pybind11_init_gsTensorBSplineBasis4( nurbs );
+  gismo::pybind11_init_gsTensorBSpline<2>( nurbs );
+  gismo::pybind11_init_gsTensorBSpline<3>( nurbs );
+  gismo::pybind11_init_gsTensorBSpline<4>( nurbs );
+  gismo::pybind11_init_gsTensorBSpline_factory( nurbs );
+  gismo::pybind11_init_gsTensorBSplineBasis<2>( nurbs );
+  gismo::pybind11_init_gsTensorBSplineBasis<3>( nurbs );
+  gismo::pybind11_init_gsTensorBSplineBasis<4>( nurbs );
+  gismo::pybind11_init_gsTensorBSplineBasis_factory( nurbs );
+  
   gismo::pybind11_init_gsNurbsCreator( nurbs );
 
-  
+
   py::module pde = m.def_submodule("pde");
 
   pde.attr("__name__") = "pygismo.pde";
@@ -212,6 +219,12 @@ PYBIND11_MODULE(pygismo, m) {
   utils.attr("__name__") = "pygismo.utils";
   utils.attr("__version__") = GISMO_VERSION;
   utils.doc() = "G+Smo (Geometry + Simulation Modules): Utils module";
+
+  gismo::pybind11_enum_gsProjectionNorm( utils );
+  gismo::pybind11_init_gsProjection<gismo::L2>( utils );
+  gismo::pybind11_init_gsProjection<gismo::H1>( utils );
+  gismo::pybind11_init_gsProjection<gismo::H2>( utils );
+  gismo::pybind11_init_gsQuasiInterpolate( utils );
 
   gismo::pybind11_init_PPN( m );
 

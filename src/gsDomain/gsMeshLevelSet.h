@@ -52,20 +52,20 @@ template<class T>
 class gsMeshSignedDist : public gsFunction<T>
 {
 public:
-    typedef gsSurfMesh::Point Point;   ///< gsVector3d<real_t>
+    typedef gsSurfMesh<real_t>::Point Point;   ///< gsVector3d<real_t>
 
     GISMO_CLONE_FUNCTION(gsMeshSignedDist)
 
     /// Builds the level set of \a mesh over the bounding box \a bbox.
     ///
-    /// \param mesh  A closed TRIANGLE mesh; call gsSurfMesh::triangulate()
+    /// \param mesh  A closed TRIANGLE mesh; call gsSurfMesh<real_t>::triangulate()
     ///              first if it carries n-gons. Its winding is normalized to
     ///              outward inside the BVH (on a private copy, so \a mesh is
     ///              not modified), and a warning is issued if it is not closed.
     /// \param bbox  3 x 2: column 0 = lower corner, column 1 = upper corner.
     ///              Returned by support(), which is what the basis-free
     ///              gsImplicitTrimmedDomain construction paths read.
-    gsMeshSignedDist(const gsSurfMesh & mesh, const gsMatrix<T> & bbox)
+    gsMeshSignedDist(const gsSurfMesh<real_t> & mesh, const gsMatrix<T> & bbox)
     : m_bbox(bbox)
     {
         GISMO_ASSERT(bbox.rows() == 3 && bbox.cols() == 2,
@@ -252,12 +252,12 @@ private:
 /// the search paths works: the bundled meshes are reached as "obj/spot.obj".
 /// An absolute or explicitly relative path is used as given.
 ///
-/// \note gsSurfMesh::add_face() REJECTS a face that would create a complex
+/// \note gsSurfMesh<real_t>::add_face() REJECTS a face that would create a complex
 /// edge, which is what an inconsistently wound input produces, and reports it
 /// on std::cerr. Such faces are dropped rather than repaired, so a mesh that
 /// triggers those messages is not usable as a level set. The global
 /// inside-out case IS repaired, inside gsSurfMeshBVH::build().
-inline bool gsReadSurfMesh(const std::string & filename, gsSurfMesh & mesh)
+inline bool gsReadSurfMesh(const std::string & filename, gsSurfMesh<real_t> & mesh)
 {
     const std::string fn = gsFileManager::find(filename);
     if (fn.empty())
@@ -276,14 +276,14 @@ inline bool gsReadSurfMesh(const std::string & filename, gsSurfMesh & mesh)
 /// Axis-aligned bounding box of \a mesh, as 3 x 2 (col 0 = lower corner,
 /// col 1 = upper corner) -- the layout gsMeshSignedDist and the basis-free
 /// gsImplicitTrimmedDomain paths expect.
-inline gsMatrix<real_t> gsSurfMeshBoundingBox(const gsSurfMesh & mesh)
+inline gsMatrix<real_t> gsSurfMeshBoundingBox(const gsSurfMesh<real_t> & mesh)
 {
     GISMO_ENSURE(mesh.n_vertices() != 0,
                  "gsSurfMeshBoundingBox: the mesh has no vertices.");
 
-    gsSurfMesh::Point lo = mesh.position(*mesh.vertices().begin());
-    gsSurfMesh::Point hi = lo;
-    for (gsSurfMesh::Vertex v : mesh.vertices())
+    gsSurfMesh<real_t>::Point lo = mesh.position(*mesh.vertices().begin());
+    gsSurfMesh<real_t>::Point hi = lo;
+    for (gsSurfMesh<real_t>::Vertex v : mesh.vertices())
     {
         lo = lo.cwiseMin(mesh.position(v));
         hi = hi.cwiseMax(mesh.position(v));
@@ -307,18 +307,18 @@ inline gsMatrix<real_t> gsSurfMeshBoundingBox(const gsSurfMesh & mesh)
 /// box -- and drivers need it to convert results back: a volume measured in the
 /// unit box is physical when divided by scale^3, an area by scale^2. Call
 /// gsSurfMeshBoundingBox() BEFORE this if the original extent is also wanted.
-inline real_t gsNormalizeToUnitBox(gsSurfMesh & mesh, real_t fill = 0.8)
+inline real_t gsNormalizeToUnitBox(gsSurfMesh<real_t> & mesh, real_t fill = 0.8)
 {
     const gsMatrix<real_t> bb = gsSurfMeshBoundingBox(mesh);
-    const gsSurfMesh::Point lo = bb.col(0), hi = bb.col(1);
+    const gsSurfMesh<real_t>::Point lo = bb.col(0), hi = bb.col(1);
 
-    const gsSurfMesh::Point centre = (lo + hi) / real_t(2);
+    const gsSurfMesh<real_t>::Point centre = (lo + hi) / real_t(2);
     const real_t extent = (hi - lo).maxCoeff();
     const real_t scale  = (extent > 0 ? fill / extent : real_t(1));
 
-    for (gsSurfMesh::Vertex v : mesh.vertices())
+    for (gsSurfMesh<real_t>::Vertex v : mesh.vertices())
         mesh.position(v) = (mesh.position(v) - centre) * scale
-                         + gsSurfMesh::Point::Constant(real_t(0.5));
+                         + gsSurfMesh<real_t>::Point::Constant(real_t(0.5));
 
     return scale;
 }
@@ -334,7 +334,7 @@ inline gsMatrix<real_t> gsUnitBox3()
 }
 
 /// Flattens \a mesh into a triangle soup: \a verts is 3*nV (x,y,z per vertex,
-/// indexed by gsSurfMesh::Vertex::idx()), \a tris is 3*nF zero-based corner
+/// indexed by gsSurfMesh<real_t>::Vertex::idx()), \a tris is 3*nF zero-based corner
 /// indices into it.
 ///
 /// gsMeshSignedDist does NOT need this -- its BVH keeps its own copy. It is
@@ -344,22 +344,22 @@ inline gsMatrix<real_t> gsUnitBox3()
 /// \note Sized by vertices_size() rather than n_vertices() so that idx()
 /// indexes \a verts directly; for a mesh with deleted vertices the gaps are
 /// present but unreferenced.
-inline void gsFlattenSurfMesh(const gsSurfMesh    & mesh,
+inline void gsFlattenSurfMesh(const gsSurfMesh<real_t>    & mesh,
                               std::vector<real_t> & verts,
                               std::vector<index_t> & tris)
 {
     verts.assign(3 * static_cast<size_t>(mesh.vertices_size()), real_t(0));
-    for (gsSurfMesh::Vertex v : mesh.vertices())
+    for (gsSurfMesh<real_t>::Vertex v : mesh.vertices())
     {
-        const gsSurfMesh::Point & p = mesh.position(v);
+        const gsSurfMesh<real_t>::Point & p = mesh.position(v);
         for (index_t c = 0; c != 3; ++c)
             verts[3*static_cast<size_t>(v.idx()) + c] = p[c];
     }
 
     tris.clear();
     tris.reserve(3 * static_cast<size_t>(mesh.n_faces()));
-    for (gsSurfMesh::Face f : mesh.faces())
-        for (gsSurfMesh::Vertex v : mesh.vertices(f))
+    for (gsSurfMesh<real_t>::Face f : mesh.faces())
+        for (gsSurfMesh<real_t>::Vertex v : mesh.vertices(f))
             tris.push_back(static_cast<index_t>(v.idx()));
 }
 

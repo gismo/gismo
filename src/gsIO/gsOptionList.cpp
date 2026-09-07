@@ -565,6 +565,27 @@ void pybind11_init_gsOptionList(py::module &m) {
 
     .def(py::init<>())
     .def("assign", &gsOptionList::operator=)
+    // Constructor from Python dict: converts dict keys/values to gsOptionList entries
+    .def(py::init([](const py::dict& dict_opts) {
+        gsOptionList* opt = new gsOptionList();
+        // Iterate over dict items and try to set them as int, real, or switch
+        for (auto& item : dict_opts)
+        {
+            std::string key = pybind11::cast<std::string>(item.first);
+            py::handle val_handle = item.second;
+            
+            // Prefer exact Python types to avoid bool being treated as int.
+            if (py::isinstance<py::bool_>(val_handle))
+                opt->addSwitch(key, "", py::cast<bool>(val_handle));
+            else if (py::isinstance<py::int_>(val_handle))
+                opt->addInt(key, "", py::cast<int>(val_handle));
+            else if (py::isinstance<py::float_>(val_handle))
+                opt->addReal(key, "", py::cast<real_t>(val_handle));
+            else
+                continue;
+        }
+        return opt;
+    }), "Construct gsOptionList from a Python dictionary")
 
 #if EIGEN_HAS_RVALUE_REFERENCES
     .def(py::init<const gsOptionList&>())

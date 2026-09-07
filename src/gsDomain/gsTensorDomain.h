@@ -124,7 +124,7 @@ public: // more members
 // Specific for gsTensorDomain
 public:
 
-    typename gsDomain<T>::Ptr component(index_t i) const
+    typename gsDomain<T>::Ptr component(index_t i) const override
     {
         return m_knotVectors[i];
     }
