@@ -422,7 +422,7 @@ private:
         template<typename U, typename std::enable_if<gismo::is_autodiff_type<U>::value, int>::type = 0>
         static inline void if_autodiff_use_critical(const U contrib, U & res)
         {
-#           pragma omp critical
+#           pragma omp critical (gsExprEvaluator_plus_acc_global)
             res += contrib;
         }
         // For standard types: use atomic operation
@@ -435,7 +435,12 @@ private:
     };
     struct min_op
     {
-        static inline T init() { return math::numeric_limits<T>::max(); }
+        static inline T init()
+        {
+            GISMO_STATIC_ASSERT(std::numeric_limits<T>::is_specialized,
+            "std::numeric_limits is not specialised for T, so the reduction would be seeded with T() instead of the extreme value.");
+            return math::numeric_limits<T>::max();
+        }
         static inline void acc (const T contrib, const T, T & res)
         {res = math::min(contrib, res);	}
         static inline void acc_global(const T contrib, T & res)
@@ -447,7 +452,12 @@ private:
     };
     struct max_op
     {
-        static inline T init() { return math::numeric_limits<T>::lowest(); }
+        static inline T init()
+        {
+            GISMO_STATIC_ASSERT(std::numeric_limits<T>::is_specialized,
+            "std::numeric_limits is not specialised for T, so the reduction would be seeded with T() instead of the extreme value.");
+            return math::numeric_limits<T>::lowest();
+        }
         static inline void acc (const T contrib, const T, T & res)
         { res = math::max(contrib, res); }
         static inline void acc_global(const T contrib, T & res)
