@@ -12,7 +12,6 @@
 */
 
 #include <gismo.h>
-#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -50,7 +49,7 @@ int main(int argc, char *argv[])
     if (plot)
     {
         pv.options().setInt("numPoints", 1000);
-        pv.options().setSwitch("plotElements", true);
+        pv.options().setSwitch("elements", true);
         pv.write(mp, "mp");
         gsInfo<<"Plotting multipatch:\t"<<time.stop()<<" seconds\n";
     }

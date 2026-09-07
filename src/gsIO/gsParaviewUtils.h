@@ -9,6 +9,10 @@
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Author(s): A. Mantzaflaris, J. Zwar, C. Karampatzakis
+
+    @note This header must not include gsAssembler/gsExprEvaluator.h (directly
+    or transitively): gsExprEvaluator.h includes gsIO/gsParaviewCollection.h,
+    which pulls in this file, so a back-edge here re-forms that include cycle.
 */
 #pragma once
 

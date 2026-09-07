@@ -75,7 +75,7 @@ public:
                      "You cannot add more fields if the gsParaviewDataSet has "
                      "been saved.");
 
-        const unsigned nPts = getNumPoints(m_options);
+        const unsigned nPts = static_cast<unsigned>(m_options.getInt("numPoints"));
         const unsigned precision = static_cast<unsigned>(m_options.askInt("precision", 5));
         const bool export_base64 = m_options.askSwitch("base64", false);
 
@@ -122,7 +122,7 @@ public:
              field.patches().coefsSize() == geometry.coefsSize()),
             "Provided gsField and stored geometry are not compatible!");
 
-        const unsigned nPts = getNumPoints(m_options);
+        const unsigned nPts = static_cast<unsigned>(m_options.getInt("numPoints"));
         const unsigned precision = static_cast<unsigned>(m_options.askInt("precision", 5));
         const bool export_base64 = m_options.askSwitch("base64", false);
 
@@ -160,22 +160,20 @@ public:
     static gsOptionList defaultOptions()
     {
         gsOptionList opt;
-        opt.addInt("plot.npts", "Number of points per-patch.", 1000);
+        opt.addInt("numPoints", "Number of points per-patch.", 1000);
         opt.addInt("precision", "Number of decimal digits.", 5);
-        opt.addInt("plot.elements.resolution", "Drawing resolution for element mesh.", -1);
+        opt.addInt("elementResolution", "Drawing resolution for element mesh.", -1);
         opt.addSwitch("makeSubfolder", "Export vtk files to subfolder ( below the .pvd file ).", true);
         opt.addSwitch("base64", "Export in base64 binary format", false);
         opt.addString("subfolder", "Name of subfolder where the vtk files will be stored.", "");
-        opt.addSwitch("plot.elements", "Controls plotting of element mesh.", false);
-        opt.addSwitch("plotControlNet", "Controls plotting of control point grid.", false);
+        opt.addSwitch("elements", "Controls plotting of element mesh.", false);
+        opt.addSwitch("controlNet", "Controls plotting of control point grid.", false);
         return opt;
     }
 
     gsOptionList& options() { return m_options; }
 
 private:
-    static unsigned getNumPoints(const gsOptionList& opts);
-    static bool getPlotElements(const gsOptionList& opts);
     void initFilenames();
 };
 

@@ -24,6 +24,13 @@
 namespace gismo
 {
 
+/**
+    \brief Writes a time-stepping Paraview (.pvd) collection, via
+    newTimeStep()/addField()/addFields()/saveTimeStep()/save().
+    For a single, one-shot export use gsParaview instead.
+
+    \ingroup IO
+*/
 template <class T>
 class GISMO_EXPORT gsParaviewCollection
 {

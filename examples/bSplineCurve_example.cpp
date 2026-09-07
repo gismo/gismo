@@ -14,7 +14,6 @@
 #include <iostream>
 
 #include <gismo.h>
-#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -54,8 +53,8 @@ int main(int argc, char *argv[])
         pv.options().setInt("numPoints", 100);
         pv.options().setSwitch("show", true);
         pv.write(curve, "bsplinecurve0");
-        pv.options().setSwitch("plotElements", true);
-        pv.options().setSwitch("plotControlNet", true);
+        pv.options().setSwitch("elements", true);
+        pv.options().setSwitch("controlNet", true);
         pv.write(curve, "bsplinecurve");
         pv.writePoints(coefs, "coefficients");
     }

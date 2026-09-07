@@ -13,7 +13,6 @@
 
 
 #include <gismo.h>
-#include <gsIO/gsParaview.h>
 #include <iostream>
 #include <fstream>
 

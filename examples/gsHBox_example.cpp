@@ -14,7 +14,6 @@
 #include <iostream>
 
 #include <gismo.h>
-#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -106,7 +105,7 @@ int main(int argc, char *argv[])
 
     gsParaview<real_t> pv;
     pv.options().setInt("numPoints", 1);
-    pv.options().setSwitch("plotElements", true);
+    pv.options().setSwitch("elements", true);
     pv.write(mp, "init");
     gsInfo<<"Initial basis constructed:\n"<<mp.basis(0)<<"\n";
 

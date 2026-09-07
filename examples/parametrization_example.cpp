@@ -12,7 +12,6 @@
 */
 
 #include <gismo.h>
-#include <gsIO/gsParaview.h>
 
 #include <gsModeling/gsParametrization.h>
 #include <gsModeling/gsPeriodicOverlap.h>

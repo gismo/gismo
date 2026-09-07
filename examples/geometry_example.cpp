@@ -13,7 +13,6 @@
 //! [Include namespace]
 #include <iostream>
 #include <gismo.h>
-#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 //! [Include namespace]

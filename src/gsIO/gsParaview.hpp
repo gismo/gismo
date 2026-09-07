@@ -15,6 +15,7 @@
 
 #include <gsIO/gsParaview.h>
 #include <gsIO/gsWriteParaview.h>
+#include <gsIO/gsParaviewCollection.h>
 
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsGeometrySlice.h>
@@ -53,8 +54,8 @@ gsOptionList gsParaview<T>::defaultOptions()
     opt.addInt   ("numPoints",      "Number of sampling points per patch", 1000);
     opt.addInt   ("precision",      "Output file floating-point precision", 5);
     opt.addString("patchDelimiter", "Delimiter between patch indices in filenames", "_");
-    opt.addSwitch("plotElements",   "Plot the parameter mesh", false);
-    opt.addSwitch("plotControlNet", "Plot the control net", false);
+    opt.addSwitch("elements",       "Plot the parameter mesh", false);
+    opt.addSwitch("controlNet",     "Plot the control net", false);
     opt.addSwitch("show",           "Open Paraview after writing", false);
     opt.addSwitch("bezier",         "Use Bezier elements export for MultiPatch", false);
     opt.addSwitch("boundary",       "Write boundaries for MultiPatch", false);
@@ -87,8 +88,8 @@ void gsParaview<T>::write(const gsGeometry<T> & geo, const std::string & fn) con
 {
     gsWriteParaview(geo, fn,
                     m_options.getInt("numPoints"),
-                    m_options.getSwitch("plotElements"),
-                    m_options.getSwitch("plotControlNet"),
+                    m_options.getSwitch("elements"),
+                    m_options.getSwitch("controlNet"),
                     !m_options.getSwitch("writePvd"));
     openIfRequested(fn);
 }
@@ -97,8 +98,8 @@ template<class T>
 void gsParaview<T>::write(const gsMultiPatch<T> & mp, const std::string & fn) const
 {
     const unsigned npts = m_options.getInt("numPoints");
-    const bool mesh     = m_options.getSwitch("plotElements");
-    const bool ctrlNet  = m_options.getSwitch("plotControlNet");
+    const bool mesh     = m_options.getSwitch("elements");
+    const bool ctrlNet  = m_options.getSwitch("controlNet");
     const std::string pDelim = m_options.getString("patchDelimiter");
     const bool singleFile = m_options.getSwitch("singleFile");
     const bool exportBase64 = m_options.getSwitch("base64");
@@ -112,7 +113,38 @@ void gsParaview<T>::write(const gsMultiPatch<T> & mp, const std::string & fn) co
 
     if (singleFile)
     {
-        gsWriteParaviewUnstructuredGrid(mp, fn, npts, exportBase64, skipPvd);
+        // The unstructured-grid writer emits only the geometry. The element
+        // mesh and the control net are written as one file each, merged over
+        // all patches, so that the file count stays at three regardless of
+        // nPatches(); the .pvd below ties the three together.
+        const bool extras = mesh || ctrlNet;
+        gsWriteParaviewUnstructuredGrid(mp, fn, npts, exportBase64,
+                                        skipPvd || extras);
+
+        if (extras && !skipPvd)
+        {
+            gsParaviewCollection<T> collection(fn);
+            collection.addPart(gsFileManager::getFilename(fn) + ".vtu");
+
+            if (mesh)
+            {
+                const std::string mfn = fn + "_mesh";
+                writeMultiPatchCompMesh(mp, mfn, 8);
+                collection.addPart(gsFileManager::getFilename(mfn) + ".vtp");
+            }
+            if (ctrlNet)
+            {
+                const std::string cfn = fn + "_cnet";
+                writeMultiPatchControlNet(mp, cfn);
+                collection.addPart(gsFileManager::getFilename(cfn) + ".vtp");
+            }
+            collection.save();
+        }
+        else if (extras)
+        {
+            if (mesh)    writeMultiPatchCompMesh(mp, fn + "_mesh", 8);
+            if (ctrlNet) writeMultiPatchControlNet(mp, fn + "_cnet");
+        }
     }
     else if (m_options.getSwitch("bezier"))
     {
@@ -144,8 +176,8 @@ void gsParaview<T>::write(std::vector<gsGeometry<T>*> const & geos, const std::s
 {
     gsWriteParaview(geos, fn,
                     m_options.getInt("numPoints"),
-                    m_options.getSwitch("plotElements"),
-                    m_options.getSwitch("plotControlNet"),
+                    m_options.getSwitch("elements"),
+                    m_options.getSwitch("controlNet"),
                     m_options.getString("patchDelimiter"));
     openIfRequested(fn);
 }
@@ -162,16 +194,50 @@ void gsParaview<T>::write(const gsField<T> & field, const std::string & fn) cons
 
     if (m_options.getSwitch("singleFile"))
     {
-        gsWriteParaviewUnstructuredGrid(field, fn,
-                                        m_options.getInt("numPoints"),
-                                        m_options.getSwitch("base64"),
-                                        !m_options.getSwitch("writePvd"));
+        const unsigned npts = m_options.getInt("numPoints");
+        const bool mesh     = m_options.getSwitch("elements");
+        const bool ctrlNet  = m_options.getSwitch("controlNet");
+        const bool exportBase64 = m_options.getSwitch("base64");
+        const bool skipPvd = !m_options.getSwitch("writePvd");
+
+        // The unstructured-grid writer emits only the geometry. The element
+        // mesh and the control net are written as one file each, merged over
+        // all patches, so that the file count stays at three regardless of
+        // nPieces(); the .pvd below ties the three together.
+        const bool extras = mesh || ctrlNet;
+        gsWriteParaviewUnstructuredGrid(field, fn, npts, exportBase64,
+                                        skipPvd || extras);
+
+        if (extras && !skipPvd)
+        {
+            gsParaviewCollection<T> collection(fn);
+            collection.addPart(gsFileManager::getFilename(fn) + ".vtu");
+
+            if (mesh)
+            {
+                const std::string mfn = fn + "_mesh";
+                writeMultiPatchCompMesh(field.patches(), mfn, 8);
+                collection.addPart(gsFileManager::getFilename(mfn) + ".vtp");
+            }
+            if (ctrlNet)
+            {
+                const std::string cfn = fn + "_cnet";
+                writeMultiPatchControlNet(field.patches(), cfn);
+                collection.addPart(gsFileManager::getFilename(cfn) + ".vtp");
+            }
+            collection.save();
+        }
+        else if (extras)
+        {
+            if (mesh)    writeMultiPatchCompMesh(field.patches(), fn + "_mesh", 8);
+            if (ctrlNet) writeMultiPatchControlNet(field.patches(), fn + "_cnet");
+        }
     }
     else
     {
         gsWriteParaview(field, fn,
                         m_options.getInt("numPoints"),
-                        m_options.getSwitch("plotElements"),
+                        m_options.getSwitch("elements"),
                         m_options.getString("patchDelimiter"),
                         !m_options.getSwitch("writePvd"));
     }
@@ -183,7 +249,7 @@ void gsParaview<T>::write(const gsBasis<T> & basis, const std::string & fn) cons
 {
     gsWriteParaview(basis, fn,
                     m_options.getInt("numPoints"),
-                    m_options.getSwitch("plotElements"));
+                    m_options.getSwitch("elements"));
     openIfRequested(fn);
 }
 
@@ -193,7 +259,7 @@ void gsParaview<T>::write(const gsBasis<T> & basis, const std::vector<index_t> &
 {
     gsWriteParaview(basis, indices, fn,
                     m_options.getInt("numPoints"),
-                    m_options.getSwitch("plotElements"));
+                    m_options.getSwitch("elements"));
     openIfRequested(fn);
 }
 
@@ -344,7 +410,7 @@ void gsParaview<T>::write(const gsMultiPatch<T> & patches,
 {
     gsWriteParaview(patches, bcs, fn,
                     m_options.getInt("numPoints"),
-                    m_options.getSwitch("plotControlNet"));
+                    m_options.getSwitch("controlNet"));
     openIfRequested(fn);
 }
 

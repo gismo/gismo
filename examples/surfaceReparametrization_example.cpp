@@ -12,7 +12,6 @@ Author(s): Y. Ji
 */
 
 #include <gismo.h>
-#include <gsIO/gsParaview.h>
 #include <gsModeling/gsSurfaceReparameterization.h>
 #include <gsOptimizer/gsGradientDescent.h>
 

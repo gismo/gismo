@@ -13,7 +13,6 @@
 
 //! [Include namespace]
 #include <gismo.h>
-#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 //! [Include namespace]
@@ -56,7 +55,7 @@ int main(int argc, char *argv[])
     gsGeometry<>::uPtr cgeom= cbasis.makeGeometry(coefs);
 
     // Plot the geometries (composed and non-composed)
-    pv.options().setSwitch("plotElements", true);
+    pv.options().setSwitch("elements", true);
     pv.write(*geom, "geom");
     pv.write(*cgeom, "cgeom");
 

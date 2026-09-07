@@ -88,11 +88,11 @@ void outputResult(const gsMultiPatch<T> &mp, const std::string &filename) {
                     "If true, plot the control net of the parameterization",
                     false);
   if (mdim == 2)
-    options.addInt("plot.npts",
+    options.addInt("numPoints",
                    "Number of sampling points for plotting",
                    1000);
   else
-    options.addInt("plot.npts",
+    options.addInt("numPoints",
                    "Number of sampling points for plotting",
                    10000);
   ev.options() = options;

@@ -12,7 +12,6 @@
 */
 
 #include <gismo.h>
-#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -325,8 +324,8 @@ int main(int argc, char *argv[])
     if (plot)
     {
         gsInfo<<"Plotting in Paraview..."<<std::flush;
-        pv.options().setSwitch("plotElements", mesh);
-        pv.options().setSwitch("plotControlNet", cnet);
+        pv.options().setSwitch("elements", mesh);
+        pv.options().setSwitch("controlNet", cnet);
         pv.write(mp_res, "final");
         gsInfo<<"Finished\n";
     }

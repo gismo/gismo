@@ -81,8 +81,8 @@ public:
         gsOptionList opt;
         opt.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0  );
         opt.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
-        opt.addInt ("plot.npts", "Number of sampling points for plotting", 3000 );
-        opt.addSwitch("plot.elements", "Include the element mesh in plot (when applicable)", false);
+        opt.addInt ("numPoints", "Number of sampling points for plotting", 3000 );
+        opt.addSwitch("elements", "Include the element mesh in plot (when applicable)", false);
         opt.addSwitch("flipSide", "Flip side of interface where evaluation is performed.", false);
         //opt.addSwitch("plot.cnet", "Include the control net in plot (when applicable)", false);
         return opt;
@@ -382,28 +382,10 @@ public:
         const gsMultiPatch<T> & mp =
             static_cast<const gsMultiPatch<T>&>(G.source());
         gsParaviewCollection<T> pc(fn, *this);
-        // "plot.npts"/"plot.elements" are the preferred option names;
-        // "numPoints"/"plotElements" are deprecated aliases kept for
-        // backward compatibility.
-        index_t npts = m_options.askInt("plot.npts", 1000);
-        const index_t npts_deprecated = m_options.askInt("numPoints", -1);
-        if (npts_deprecated != -1)
-        {
-            gsWarn << "gsExprEvaluator::writeParaview: option \"numPoints\" is "
-                      "deprecated and will be removed in a future release; "
-                      "use \"plot.npts\" instead.\n";
-            npts = npts_deprecated;
-        }
-        bool plotElements = m_options.askSwitch("plot.elements", false);
-        if (m_options.askSwitch("plotElements", false))
-        {
-            gsWarn << "gsExprEvaluator::writeParaview: option \"plotElements\" is "
-                      "deprecated and will be removed in a future release; "
-                      "use \"plot.elements\" instead.\n";
-            plotElements = true;
-        }
-        pc.options().setInt("plot.npts", npts);
-        pc.options().setSwitch("plot.elements", plotElements);
+        const index_t npts = m_options.getInt("numPoints");
+        const bool plotElements = m_options.getSwitch("elements");
+        pc.options().setInt("numPoints", npts);
+        pc.options().setSwitch("elements", plotElements);
         pc.newTimeStep(mp);
         pc.addField(expr, "value");
         pc.saveTimeStep();
@@ -979,12 +961,12 @@ gsExprEvaluator<T>::eval(const expr::_expr<E> & expr, const gsVector<T> & pt,
 
 //         gsMatrix<T> pts, vals, ab;
 
-//         const bool mesh = m_options.askSwitch("plot.elements");
+//         const bool mesh = m_options.askSwitch("elements");
 
 //         for ( index_t i=0; i != n; ++i )
 //         {
 //             fileName = fn + util::to_string(i);
-//             unsigned nPts = m_options.askInt("plot.npts", 1000);
+//             unsigned nPts = m_options.askInt("numPoints", 1000);
 //             ab = m_exprdata->multiBasis().piece(i).support();
 //             gsGridIterator<T,CUBE> pt(ab, nPts);
 //             eval(expr, pt, i);

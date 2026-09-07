@@ -25,6 +25,9 @@ namespace gismo
 
     This class provides an object-oriented interface for Paraview export
     functionality, using gsOptionList to manage all configuration options.
+    It is a one-shot writer: every write() overload is const and
+    self-contained, with no time-stepping state; use gsParaviewCollection
+    for exporting a sequence of timesteps.
 
     Typical usage:
     \verbatim
@@ -33,8 +36,8 @@ namespace gismo
     gsParaview<real_t> pv;
     pv.options().setInt("numPoints", 100);
     pv.options().setInt("precision", 5);
-    pv.options().setSwitch("plotElements", true);
-    pv.options().setSwitch("plotControlNet", true);
+    pv.options().setSwitch("elements", true);
+    pv.options().setSwitch("controlNet", true);
 
     pv.write(mp, "output_file");
     // or with default filename:
@@ -80,6 +83,8 @@ public:
     /// @note If bezier option is true, uses Bezier element export.
     ///       If boundary option is true, also writes boundaries.
     ///       If interfaces option is true, also writes interfaces.
+    /// @note The "writePvd" option is honored only in singleFile mode; the
+    ///       bezier and default per-patch paths ignore it.
     void write(const gsMultiPatch<T> & mp,
                const std::string & fn = "multipatch") const;
 
@@ -92,6 +97,7 @@ public:
                const std::string & fn = "geometries") const;
 
     /// @brief Export a gsField to Paraview file
+    /// @note the mesh and control-net options require a field whose domain is a gsMultiPatch
     void write(const gsField<T> & field,
                const std::string & fn = "field") const;
 

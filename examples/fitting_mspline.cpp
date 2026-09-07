@@ -16,7 +16,6 @@
 #include <iostream>
 #include <time.h>
 #include <gismo.h>
-#include <gsIO/gsParaview.h>
 
 
 using namespace gismo;

@@ -14,7 +14,6 @@
 #include <iostream>
 
 #include <gismo.h>
-#include <gsIO/gsParaview.h>
 #include <gsHSplines/gsHElementMarker.h>
 
 // #include <gsUtils/gsCombinatorics.h>

@@ -14,7 +14,6 @@
 
 #include <iostream>
 #include <gismo.h>
-#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -117,14 +116,14 @@ int main(int argc, char* argv[])
     gsParaviewCollection<real_t> PVCollection(output + "PVCollection.pvd", evaluator);
 
     // Number of evaluation points per patch
-    PVCollection.options().setInt("plot.npts", 1000);
+    PVCollection.options().setInt("numPoints", 1000);
     // Number of decimal points in the output
     PVCollection.options().setInt("precision", 5);
     // Plot the element mesh and set it's resolution
-    PVCollection.options().setSwitch("plot.elements", false);
-    PVCollection.options().setInt("plot.elements.resolution", -1);
+    PVCollection.options().setSwitch("elements", false);
+    PVCollection.options().setInt("elementResolution", -1);
     // Plot the control net
-    PVCollection.options().setSwitch("plotControlNet", false);
+    PVCollection.options().setSwitch("controlNet", false);
     // Export the vtk files to a subfolder
     PVCollection.options().setSwitch("makeSubfolder", true);
     // Name of the subfolder

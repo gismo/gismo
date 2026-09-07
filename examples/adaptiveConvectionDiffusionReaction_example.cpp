@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
            // Write the computed solution to paraview files
            gsParaview<real_t> pv;
            pv.options().setInt("numPoints", 1000);
-           pv.options().setSwitch("plotElements", true);
+           pv.options().setSwitch("elements", true);
            pv.options().setSwitch("show", true);
            pv.write(solField, "adaptRef");
        }

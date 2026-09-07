@@ -14,7 +14,6 @@
 //! [Include namespace]
 
 #include <gismo.h>
-#include <gsIO/gsParaview.h>
 
 namespace gismo{
 namespace expr{
@@ -873,7 +872,7 @@ int main(int argc, char *argv[])
     mp_def = mp;
     gsParaview<real_t> pv;
     pv.options().setInt("numPoints", 1000);
-    pv.options().setSwitch("plotElements", true);
+    pv.options().setSwitch("elements", true);
     pv.write(mp, "mp");
 
     gsMultiBasis<> dbasis(mp);
@@ -1327,7 +1326,7 @@ int main(int argc, char *argv[])
         gsInfo<<"Plotting in Paraview...\n";
         gsParaview<real_t> pvSol;
         pvSol.options().setInt("numPoints", 1000);
-        pvSol.options().setSwitch("plotElements", true);
+        pvSol.options().setSwitch("elements", true);
         pvSol.write(solField, "solution");
         // gsFileManager::open("solution.pvd");
     }

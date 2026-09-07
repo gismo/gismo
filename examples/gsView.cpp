@@ -14,7 +14,6 @@
 #include <iostream>
 
 #include <gismo.h>
-#include <gsIO/gsParaview.h>
 
 using namespace gismo;
 
@@ -67,8 +66,8 @@ int main(int argc, char *argv[])
     // Create gsParaview object and configure options
     gsParaview<real_t> pv;
     pv.options().setInt("numPoints", numSamples);
-    pv.options().setSwitch("plotElements", plot_mesh);
-    pv.options().setSwitch("plotControlNet", plot_net);
+    pv.options().setSwitch("elements", plot_mesh);
+    pv.options().setSwitch("controlNet", plot_net);
     pv.options().setSwitch("show", show);
 
     switch ( choice )
@@ -84,7 +83,7 @@ int main(int argc, char *argv[])
             return 0;
         }
 
-        pv.options().setSwitch("plotElements", true);
+        pv.options().setSwitch("elements", true);
         pv.write(*bb, pname);
 
         break;
@@ -123,6 +122,10 @@ int main(int argc, char *argv[])
             gsMultiPatch<> mp;
             filedata.getFirst(mp);
             gsInfo<< "Got "<< mp <<"\n";
+
+            // Write the whole multipatch (and any field over it) as a single
+            // .vtu rather than one file per patch.
+            pv.options().setSwitch("singleFile", true);
 
             if (plot_patchid)
             {

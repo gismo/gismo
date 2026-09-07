@@ -37,7 +37,7 @@ namespace gismo {
 template<class T>
 void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
                      unsigned npts=NS, bool mesh = false, bool ctrlNet = false,
-                     bool skipPvd = false);
+                     bool skipPvd = false, unsigned precision = 5);
 
 /**
  * @brief      Writes a gsMappedSpline geometry
@@ -49,7 +49,8 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
  */
 template<class T>
 void gsWriteParaview(gsMappedSpline<2,T> const& mspline,
-                     std::string const & fn,unsigned npts = NS, bool skipPvd = false);
+                     std::string const & fn,unsigned npts = NS, bool skipPvd = false,
+                     unsigned precision = 5);
 
 
 
@@ -65,7 +66,8 @@ void gsWriteParaview(gsMappedSpline<2,T> const& mspline,
  */
 template<class T>
 void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,
-                     std::string const & fn, unsigned npts = NS, bool skipPvd = false);
+                     std::string const & fn, unsigned npts = NS, bool skipPvd = false,
+                     unsigned precision = 5);
 
 /**
  * @brief      Writes a gsMappedBasis over a gsMappedSpline geometry
@@ -84,7 +86,7 @@ void gsWriteParaview(gsFunctionSet<T> const& geom,
                      std::string const & fn,unsigned npts = NS,
                      const bool fullsupport = false,
                      const std::vector<index_t> indices = std::vector<index_t>(),
-                     bool skipPvd = false);
+                     bool skipPvd = false, unsigned precision = 5);
 
 /// \brief Export a mesh to paraview file
 ///
@@ -96,16 +98,17 @@ void gsWriteParaview(gsFunctionSet<T> const& geom,
 
 /// \brief Exports a parametrized mesh.
 template <class T>
-void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix<T>& params);
+void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix<T>& params,
+                     unsigned precision = 5);
 
 template<class Scalar>
 void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
-                                  std::string const & fn);
+                                  std::string const & fn, unsigned precision = 5);
 
 template<class Scalar>
 void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
                                   std::string const & fn,
-                                  std::vector<std::string> props); //{ }
+                                  std::vector<std::string> props, unsigned precision = 5); //{ }
 
 /// \brief Exports a mesh with the halfedge corresponding to each face.
 ///
@@ -122,7 +125,8 @@ void gsWriteHalfedgesParaview(const gsSurfMesh<Scalar>& sm,
 /// \param meshes vector of gsMesh objects
 /// \param fn filename
 template <typename T>
-void gsWriteParaview(const std::vector<gsMesh<T> >& meshes, std::string const& fn);
+void gsWriteParaview(const std::vector<gsMesh<T> >& meshes, std::string const& fn,
+                     unsigned precision = 5);
 
 
 /// \brief Write a file containing a solution field (as color on its geometry) to paraview file
@@ -135,7 +139,7 @@ void gsWriteParaview(const std::vector<gsMesh<T> >& meshes, std::string const& f
 template<class T>
 void gsWriteParaview(const gsField<T> & field, std::string const & fn,
                      unsigned npts=NS, bool mesh = false, const std::string pDelim = "",
-                     bool skipPvd = false);
+                     bool skipPvd = false, unsigned precision = 5);
 
 /// \brief Write a file containing a solution \a func (as color on its geometry \a geo), defined using functionsets, to paraview file
 ///
@@ -146,7 +150,7 @@ void gsWriteParaview(const gsField<T> & field, std::string const & fn,
 template<class T>
 void gsWriteParaview(gsFunctionSet<T> const& geo, gsFunctionSet<T> const& func,
                      std::string const & fn, unsigned npts = NS, const std::string pDelim = "",
-                     bool skipPvd = false);
+                     bool skipPvd = false, unsigned precision = 5);
 
 /// \brief Export a multipatch Geometry (without scalar information) to paraview file
 ///
@@ -157,9 +161,10 @@ void gsWriteParaview(gsFunctionSet<T> const& geo, gsFunctionSet<T> const& func,
 /// \param ctrlNet if true, the control net is plotted as well
 template<class T>
 void gsWriteParaview(const gsMultiPatch<T> & Geo, std::string const & fn,
-                     unsigned npts=NS, bool mesh = false, bool ctrlNet = false, const std::string pDelim = "_")
+                     unsigned npts=NS, bool mesh = false, bool ctrlNet = false, const std::string pDelim = "_",
+                     unsigned precision = 5)
 {
-    gsWriteParaview( Geo.patches(), fn, npts, mesh, ctrlNet, pDelim);
+    gsWriteParaview( Geo.patches(), fn, npts, mesh, ctrlNet, pDelim, precision);
 }
 
 /// \brief Export a multipatch Geometry (without scalar information) to paraview file using Bezier elements.
@@ -183,7 +188,8 @@ void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch,
                                      std::string const & fn,
                                      unsigned npts = NS,
                                      bool export_base64 = false,
-                                     bool skipPvd = false);
+                                     bool skipPvd = false,
+                                     unsigned precision = 5);
 
 /// \brief Export a field to a single unstructured-grid .vtu file.
 ///
@@ -197,7 +203,8 @@ void gsWriteParaviewUnstructuredGrid(const gsField<T> & field,
                                      std::string const & fn,
                                      unsigned npts = NS,
                                      bool export_base64 = false,
-                                     bool skipPvd = false);
+                                     bool skipPvd = false,
+                                     unsigned precision = 5);
 
 /// \brief Export a multipatch Geometry (without scalar information) to paraview file
 ///
@@ -209,12 +216,13 @@ void gsWriteParaviewUnstructuredGrid(const gsField<T> & field,
 template<class T>
 void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
                       std::string const & fn, unsigned npts=NS,
-                      bool mesh = false, bool ctrlNet = false, const std::string pDelim = "_");
+                      bool mesh = false, bool ctrlNet = false, const std::string pDelim = "_",
+                      unsigned precision = 5);
 
 /// \brief Export a computational mesh to paraview file
 template<class T>
 void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
-                     std::string const & fn, unsigned npts);
+                     std::string const & fn, unsigned npts, unsigned precision = 5);
 
 /// \brief Export i-th Basis function to paraview file
 ///
@@ -224,7 +232,8 @@ void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
 /// \param npts number of points used for sampling each curve
 template<class T>
 void gsWriteParaview_basisFnct(int i, gsBasis<T> const& basis,
-                               std::string const & fn, unsigned npts =NS);
+                               std::string const & fn, unsigned npts =NS,
+                               unsigned precision = 5);
 
 
 /// \brief Export a Geometry slice to paraview file
@@ -234,7 +243,7 @@ void gsWriteParaview_basisFnct(int i, gsBasis<T> const& basis,
 /// \param npts number of points used for sampling each curve
 template<class T>
 void gsWriteParaview(const gsGeometrySlice<T> & Geo,
-                     std::string const & fn, unsigned npts =NS);
+                     std::string const & fn, unsigned npts =NS, unsigned precision = 5);
 
 /// \brief Export a functionSet plot to paraview file
 ///
@@ -244,7 +253,7 @@ void gsWriteParaview(const gsGeometrySlice<T> & Geo,
 template<class T>
 void gsWriteParaview(gsFunctionSet<T> const& func,
                      std::string const & fn,
-                     unsigned npts =NS);
+                     unsigned npts =NS, unsigned precision = 5);
 
 /// \brief Export a function plot to paraview file
 ///
@@ -259,7 +268,8 @@ void gsWriteParaview(gsFunction<T> const& func,
                      gsMatrix<T> const& supp,
                      std::string const & fn,
                      unsigned npts =NS,
-                     bool graph = true);
+                     bool graph = true,
+                     unsigned precision = 5);
 
 /// \brief Export Basis functions to paraview files
 ///
@@ -269,7 +279,7 @@ void gsWriteParaview(gsFunction<T> const& func,
 /// \param mesh if true, the parameter mesh is plotted as well
 template<class T>
 void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn,
-                     unsigned npts =NS, bool mesh = false);
+                     unsigned npts =NS, bool mesh = false, unsigned precision = 5);
 
 /// \brief Export Basis functions to paraview files
 ///
@@ -281,7 +291,7 @@ template<class T>
 void gsWriteParaview(gsBasis<T> const& basis,
                      std::vector<index_t> const & indices,
                      std::string const & fn,
-                     unsigned npts =NS, bool mesh = false);
+                     unsigned npts =NS, bool mesh = false, unsigned precision = 5);
 
 /// \brief Export elements \a box to paraview files
 ///
@@ -289,11 +299,14 @@ void gsWriteParaview(gsBasis<T> const& basis,
 /// \param fn filename where paraview file is written
 /// \param values a vector of values, each value corresponds to a box
 template<class T>
-void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, const std::vector<T> & values = {});
+void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, const std::vector<T> & values = {},
+                     unsigned precision = 5);
 template<class T>
-void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, const gsVector<T> & values);
+void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, const gsVector<T> & values,
+                     unsigned precision = 5);
 template<class T>
-void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, T value);
+void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, T value,
+                     unsigned precision = 5);
 
 /// \brief Export gsHBox to paraview files
 ///
@@ -320,7 +333,8 @@ void gsWriteParaview(const gsHBoxContainer<d,T> & box, std::string const & fn, s
 template<class T>
 void gsWriteParaviewPoints(gsMatrix<T> const& X,
                            gsMatrix<T> const& Y,
-                           std::string const & fn);
+                           std::string const & fn,
+                           unsigned precision = 5);
 
 /// \brief Export 3D Point set to Paraview file
 ///
@@ -332,7 +346,8 @@ template<class T>
 void gsWriteParaviewPoints(gsMatrix<T> const& X,
                            gsMatrix<T> const& Y,
                            gsMatrix<T> const& Z,
-                           std::string const & fn);
+                           std::string const & fn,
+                           unsigned precision = 5);
 
 /// \brief Export 3D Point set to Paraview file
 ///
@@ -346,14 +361,16 @@ void gsWriteParaviewPoints(gsMatrix<T> const& X,
                            gsMatrix<T> const& Y,
                            gsMatrix<T> const& Z,
                            gsMatrix<T> const& V,
-                           std::string const & fn);
+                           std::string const & fn,
+                           unsigned precision = 5);
 
 /// \brief Export Point set to Paraview file
 ///
 /// \param points matrix that contain 2D or 3D points, points are columns
 /// \param fn filename where paraview file is written
 template<class T>
-void gsWriteParaviewPoints(gsMatrix<T> const& points, std::string const & fn);
+void gsWriteParaviewPoints(gsMatrix<T> const& points, std::string const & fn,
+                           unsigned precision = 5);
 
 /// \brief Export tensor-structured point set with field data to Paraview file
 ///
@@ -385,13 +402,15 @@ void gsWriteParaview(gsSolid<T> const& sl, std::string const & fn,
                      unsigned numPoints_for_eachCurve=50, int vol_Num=0,
                      T edgeThick=0.01, gsVector3d<T> const & translate=gsVector3d<T>(0,0,0),
                      int color_convex=0, int color_nonconvex=20, int color_eloop=10,
-                     std::vector<unsigned> const & eloop=std::vector<unsigned>());
+                     std::vector<unsigned> const & eloop=std::vector<unsigned>(),
+                     unsigned precision = 5);
 
 /// Export a gsSolid to Paraview file
 template <class T>
 void gsWriteParaviewSolid(gsSolid<T> const& sl,
                           std::string const & fn,
-                          unsigned numSamples = NS);
+                          unsigned numSamples = NS,
+                          unsigned precision = 5);
 
 /// \brief Visualizing a gsCurveLoop
 ///
@@ -399,13 +418,14 @@ void gsWriteParaviewSolid(gsSolid<T> const& sl,
 /// \param fn filename where paraview file is written
 /// \param npts number of points used for sampling each curve
 template<class T>
-void gsWriteParaview(gsCurveLoop<T> const & cloop, std::string const & fn, unsigned npts)
+void gsWriteParaview(gsCurveLoop<T> const & cloop, std::string const & fn, unsigned npts,
+                     unsigned precision = 5)
 {
     std::vector<gsGeometry<T> *> all_curves;
     for(index_t j =0; j< cloop.numCurves() ; j++)
         all_curves.push_back( const_cast<gsCurve<T> *>(& cloop.curve(j)) );
 
-    gsWriteParaview( all_curves, fn, npts);
+    gsWriteParaview( all_curves, fn, npts, false, false, "_", precision);
 }
 
 /// \brief Visualizing a gsPlanarDomain
@@ -415,12 +435,12 @@ void gsWriteParaview(gsCurveLoop<T> const & cloop, std::string const & fn, unsig
 /// \param npts number of points used for sampling
 template<class T>
 void gsWriteParaview(gsPlanarDomain<T> const & pdomain,
-                     std::string const & fn, unsigned npts=NS);
+                     std::string const & fn, unsigned npts=NS, unsigned precision = 5);
 
 /// Visualizing a gsTrimSurface
 template<class T>
 void gsWriteParaview(const gsTrimSurface<T> & ts, std::string const & fn,
-                     unsigned npts=NS, bool trimCurves = false);
+                     unsigned npts=NS, bool trimCurves = false, unsigned precision = 5);
 
 /// \brief Export a volumeBlock.
 ///
@@ -432,7 +452,7 @@ void gsWriteParaview(const gsTrimSurface<T> & ts, std::string const & fn,
 template<typename T>
 void gsWriteParaview(const gsVolumeBlock<T>& volBlock,
                      std::string const & fn,
-                     unsigned npts = NS);
+                     unsigned npts = NS, unsigned precision = 5);
 
 /**
  * @brief      Writes the boundaries of a multipatch to paraview
@@ -445,7 +465,7 @@ void gsWriteParaview(const gsVolumeBlock<T>& volBlock,
 template<class T>
 void gsWriteParaviewBdr(gsMultiPatch<T> const & patches,
                      std::string const & fn,
-                     unsigned npts, bool ctrlNet);
+                     unsigned npts, bool ctrlNet, unsigned precision = 5);
 
 /**
  * @brief      Writes the interfaces of a multipatch to paraview
@@ -458,7 +478,7 @@ void gsWriteParaviewBdr(gsMultiPatch<T> const & patches,
 template<class T>
 void gsWriteParaviewIfc(gsMultiPatch<T> const & patches,
                      std::string const & fn,
-                     unsigned npts, bool ctrlNet);
+                     unsigned npts, bool ctrlNet, unsigned precision = 5);
 
 /// \brief Visualizing boundary conditions
 ///
@@ -468,7 +488,8 @@ void gsWriteParaviewIfc(gsMultiPatch<T> const & patches,
 template<class T>
 void gsWriteParaview(gsMultiPatch<T> const & patches,
                      typename gsBoundaryConditions<T>::bcContainer const & bcs,
-                     std::string const & fn, unsigned npts=NS, bool ctrlNet=false);
+                     std::string const & fn, unsigned npts=NS, bool ctrlNet=false,
+                     unsigned precision = 5);
 
 /// \brief Export a boundary/hole curve in trimmed surface
 ///
@@ -482,44 +503,69 @@ void gsWriteParaviewTrimmedCurve(const gsTrimSurface<T>& surf,
                                  const unsigned idLoop,
                                  const unsigned idCurve,
                                  const std::string fn,
-                                 unsigned npts = NS);
+                                 unsigned npts = NS,
+                                 unsigned precision = 5);
 
 // function to plot a field on a single patch
 template<class T>
 void writeSinglePatchField(const gsFunction<T> & geometry,
                            const gsFunction<T> & parField,
                            const bool isParam,
-                           std::string const & fn, unsigned npts);
+                           std::string const & fn, unsigned npts,
+                           unsigned precision = 5);
 
 template<class T>
 void writeSingleBasisMesh(const gsBasis<T> & basis,
-                          std::string const & fn);
+                          std::string const & fn,
+                          unsigned precision = 5);
 
 /// Export a computational mesh
 template<class T>
 void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
-                         std::string const & fn, unsigned resolution = 8);
+                         std::string const & fn, unsigned resolution = 8,
+                         unsigned precision = 5);
 
 /// Export an element \a box
 GISMO_DEPRECATED
 template<class T>
-void writeSingleBox(const gsMatrix<T> & box, std::string const & fn, T value);
+void writeSingleBox(const gsMatrix<T> & box, std::string const & fn, T value,
+                    unsigned precision = 5);
 
 /// Export a gsHBox
 template<short_t d, class T>
-void writeSingleHBox(const gsHBox<d,T> & box, std::string const & fn);
+void writeSingleHBox(const gsHBox<d,T> & box, std::string const & fn,
+                     unsigned precision = 5);
 
 /// Export a control net
 template<class T>
 void writeSingleControlNet(const gsGeometry<T> & Geo,
-                           std::string const & fn);
+                           std::string const & fn,
+                           unsigned precision = 5);
+
+/// \brief Export the computational mesh of a whole multipatch as one file.
+///
+/// The per-patch meshes are concatenated into a single gsMesh, so the output is
+/// one file irrespective of the number of patches. Counterpart of
+/// \ref writeSingleCompMesh for the single-file export path.
+template<class T>
+void writeMultiPatchCompMesh(const gsMultiPatch<T> & mp,
+                             std::string const & fn,
+                             unsigned resolution = 8);
+
+/// \brief Export the control net of a whole multipatch as one file.
+///
+/// As \ref writeMultiPatchCompMesh, but for the control nets.
+template<class T>
+void writeMultiPatchControlNet(const gsMultiPatch<T> & mp,
+                               std::string const & fn);
 
 // Please document
 template <class T>
 void plot_errors(const gsMatrix<T> & orig,
                  const gsMatrix<T> & comp,
                  std::vector<T> const & errors,
-                 std::string const & fn);
+                 std::string const & fn,
+                 unsigned precision = 5);
 
 
 #ifdef GISMO_WITH_PYBIND11

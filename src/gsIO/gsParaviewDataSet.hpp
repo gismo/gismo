@@ -24,37 +24,6 @@ namespace gismo
 {
 
 template <class T>
-unsigned gsParaviewDataSet<T>::getNumPoints(const gsOptionList& opts)
-{
-    // "plot.npts" is the preferred option name; "numPoints" is a
-    // deprecated alias kept for backward compatibility.
-    const index_t deprecated = opts.askInt("numPoints", -1);
-    if (deprecated != -1)
-    {
-        gsWarn << "gsParaviewDataSet: option \"numPoints\" is deprecated and "
-                  "will be removed in a future release; use \"plot.npts\" "
-                  "instead.\n";
-        return static_cast<unsigned>(deprecated);
-    }
-    return static_cast<unsigned>(opts.askInt("plot.npts", 1000));
-}
-
-template <class T>
-bool gsParaviewDataSet<T>::getPlotElements(const gsOptionList& opts)
-{
-    // "plot.elements" is the preferred option name; "plotElements" is a
-    // deprecated alias kept for backward compatibility.
-    if (opts.askSwitch("plotElements", false))
-    {
-        gsWarn << "gsParaviewDataSet: option \"plotElements\" is deprecated and "
-                  "will be removed in a future release; use \"plot.elements\" "
-                  "instead.\n";
-        return true;
-    }
-    return opts.askSwitch("plot.elements", false);
-}
-
-template <class T>
 gsParaviewDataSet<T>::gsParaviewDataSet(std::string basename,
                                         const gsMultiPatch<T>& geometry,
                                         gsOptionList options)
@@ -64,7 +33,7 @@ gsParaviewDataSet<T>::gsParaviewDataSet(std::string basename,
     , m_options(options)
     , m_isSaved(false)
 {
-    const unsigned nPts = getNumPoints(m_options);
+    const unsigned nPts = static_cast<unsigned>(m_options.getInt("numPoints"));
 
     const bool export_base64 = m_options.askSwitch("base64", true);
     const bool is_little_endian = []() -> bool {
@@ -128,10 +97,10 @@ void gsParaviewDataSet<T>::save()
         m_isSaved = true;
         const gsMultiPatch<T>& geometry = *m_geometry;
 
-        const unsigned nPts = getNumPoints(m_options);
+        const unsigned nPts = static_cast<unsigned>(m_options.getInt("numPoints"));
         const unsigned precision = static_cast<unsigned>(m_options.askInt("precision", 5));
-        const bool plotElements = getPlotElements(m_options);
-        const bool plotControlNet = m_options.askSwitch("plotControlNet", false);
+        const bool plotElements = m_options.getSwitch("elements");
+        const bool plotControlNet = m_options.getSwitch("controlNet");
         const bool export_base64 = m_options.askSwitch("base64", false);
 
         const std::vector<std::string> points =
@@ -152,7 +121,7 @@ void gsParaviewDataSet<T>::save()
             }
             if (plotElements)
             {
-                int numPoints = m_options.getInt("plot.elements.resolution");
+                int numPoints = m_options.getInt("elementResolution");
                 if (-1 == numPoints)
                 {
                     const T evalPtsPerElem = 16 * (1.0 / geometry.piece(k).basis().numElements());
