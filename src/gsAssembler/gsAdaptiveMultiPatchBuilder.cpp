@@ -427,7 +427,7 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density,
             Psi.patch(0).coefs().col(Mp) = PsiPsitp_temp.patch(0).coefs().col(0);
         }
     // // ... correct boundary
-    NormalProjectPts(Psi);
+    setBoundaryControlPointsAlongNormal(Psi);
     }
     else
         Psi = MAmapping;
@@ -494,7 +494,7 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density,
     }
     //--------------------
     //correct the boundary
-    NormalProjectPts(Psi);
+    setBoundaryControlPointsAlongNormal(Psi);
     // ...
     }//END for loop
     Psi.computeTopology();
@@ -613,7 +613,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const gsMultiBas
         solver.compute( My );
         solver.setTolerance(1e-30);
         auto x1soly = solver.solve(rhsx1y);
-        CorrecBoundary(Psi, 0, comp_nb, xsoly0, xsoly1, x0soly, x1soly, true);
+        CorrectBoundary(Psi, 0, comp_nb, xsoly0, xsoly1, x0soly, x1soly, true);
     }
     gsInfo << ".";
     }
@@ -812,7 +812,7 @@ void gsAdaptiveMultiPatchBuilder::eliminateDirichlet1D(const gsBoundaryCondition
 }
 
 // Project control points following  normal direction at the boundaries for square domain (Exact square recovery after refinement)
-void gsAdaptiveMultiPatchBuilder::NormalProjectPts(gsMultiPatch<>& Psi) const
+void gsAdaptiveMultiPatchBuilder::setBoundaryControlPointsAlongNormal(gsMultiPatch<>& Psi) const
 {
     // normal Projection of control points (exact geometry)
     for (size_t boxNumber = 0; boxNumber < identity_mp.nPatches(); ++boxNumber)
@@ -839,7 +839,7 @@ void gsAdaptiveMultiPatchBuilder::NormalProjectPts(gsMultiPatch<>& Psi) const
 }
 
 // Correct the control point at the boundary of a final mapping 
-void gsAdaptiveMultiPatchBuilder::CorrecBoundary(gsMultiPatch<>& Psi, const index_t& patchNumber, const index_t& patch_cmp, const gsMatrix<>& xsoly0, const gsMatrix<>& xsoly1, const gsMatrix<>& x0soly, const gsMatrix<>& x1soly, const bool& corners) const
+void gsAdaptiveMultiPatchBuilder::CorrectBoundary(gsMultiPatch<>& Psi, const index_t& patchNumber, const index_t& patch_cmp, const gsMatrix<>& xsoly0, const gsMatrix<>& xsoly1, const gsMatrix<>& x0soly, const gsMatrix<>& x1soly, const bool& corners) const
 {
     // ...
     if (corners){

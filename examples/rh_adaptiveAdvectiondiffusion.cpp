@@ -149,11 +149,14 @@ int main(int argc, char *argv[])
    gsMultiBasis<> dbasis( Psi, true );//true: poly-splines (not NURBS)
    //! [GetBasisFromTHB]
 
+       // Refine the basis uniformly for numRefine times
     for (int r=0; r<= numRefine; ++r){
         dbasis.uniformRefine();
-        Psi.uniformRefine();
     }
-    // make a copy of the basis for the solution space before refinement
+
+    // make a copy of the basis for the composition space before refinement
+    while (Psi.basis(0).size() < 1000)
+        Psi.uniformRefine();
     gsMultiBasis<> Cbasis( Psi, false );
 
     gsInfo << "Patches: "<< Psi.detail() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
@@ -234,7 +237,7 @@ int main(int argc, char *argv[])
             auto density   = MAE.buildDensity( dbasis, eldensityMarked, 1, 0);
             MAE.buildMultiPatch(density);// compute Monge-Ampere mapping
             Psi            = MAE.buildCompMultiPatch(Cbasis);// computes the composition mapping mpLeft o MAmapping
-            MAE.NormalProjectPts(Psi);// correct the boundary (square)
+            MAE.setBoundaryControlPointsAlongNormal(Psi);// correct the boundary (square)
             // -----------------
             double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
             for(size_t i=0; i<eltErrs.size(); ++i)

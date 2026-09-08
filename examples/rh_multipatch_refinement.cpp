@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", maxIter);
     cmd.addInt( "e", "degreeElevation",
                 "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
-    cmd.addInt( "r", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
+    cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  numRefine );
     //cmd.addString( "f", "file", "Input XML file", fn );
     cmd.addInt("quRule",
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
@@ -325,7 +325,22 @@ int main(int argc, char *argv[])
             // ..===================================================================
             // .. correct interfaces to be conforming : C-1-> C0 -> C1
             // ..===================================================================
-        
+            for (auto interface : mpLeft.interfaces() ) {
+                auto firbox = interface.first();
+                auto secbox  = interface.second();
+                gsInfo<< "Correcting interface between patch "<< firbox << " and patch "<< secbox << "  index " << secbox.patch << " nb patches in computational domain " << TargetPsi.nPatches() <<"\n";
+                index_t dim       = 0;
+                if (firbox.index() == 1 || firbox.index() == 2)
+                    dim       = 1;
+                // #pragma omp parallel for
+                for (int i_x =0; i_x < TargetPsi.patch(firbox.patch).basis().boundary(firbox.index()).size(); ++i_x) 
+                {
+                    float_t lVal    = TargetPsi.patch(firbox.patch).coef( TargetPsi.patch(firbox.patch).basis().boundary(secbox.index()).at(i_x) ).array()[dim];
+                    float_t hVal    = TargetPsi.patch(secbox.patch).coef( TargetPsi.patch(secbox.patch).basis().boundary(firbox.index()).at(i_x) ).array()[dim];
+                    TargetPsi.patch(firbox.patch).coef( TargetPsi.patch(firbox.patch).basis().boundary(secbox.index()).at(i_x) ).array()[dim] = 0.5*(lVal+hVal);
+                    TargetPsi.patch(secbox.patch).coef( TargetPsi.patch(secbox.patch).basis().boundary(firbox.index()).at(i_x) ).array()[dim] = 0.5*(lVal+hVal);
+                }
+                }// for interfaces
         // Picard loop
         gsInfo << "Step two in r-refinement" << "\n";
         index_t NiterPicard{0};
@@ -416,10 +431,6 @@ int main(int argc, char *argv[])
                     break;
                     } //
             }//for loop
-            // ..===================================================================
-            // .. correct interfaces to be conforming : C-1-> C0 -> C1
-            // ..===================================================================
-
             // omp_set_dynamic(0);     // Explicitly disable dynamic teams
             // omp_set_num_threads(1); // Use these threads for later parallel regions
 
@@ -431,6 +442,26 @@ int main(int argc, char *argv[])
             gsStopwatch timer;
             timer.restart();
         }   
+
+        // ..===================================================================
+        // .. correct interfaces to be conforming : C-1-> C0 -> G1
+        // ..===================================================================
+        for (auto interface : mpLeft.interfaces() ) {
+            auto firbox = interface.first();
+            auto secbox  = interface.second();
+            gsInfo<< "Correcting interface between patch "<< firbox << " and patch "<< secbox << "  index " << secbox.patch << " nb patches in computational domain " << TargetPsi.nPatches() <<"\n";
+            index_t dim       = 0;
+            if (firbox.index() == 1 || firbox.index() == 2)
+                dim       = 1;
+            // #pragma omp parallel for
+            for (int i_x =0; i_x < TargetPsi.patch(firbox.patch).basis().boundary(firbox.index()).size(); ++i_x) 
+            {
+                float_t lVal    = TargetPsi.patch(firbox.patch).coef( TargetPsi.patch(firbox.patch).basis().boundary(secbox.index()).at(i_x) ).array()[dim];
+                float_t hVal    = TargetPsi.patch(secbox.patch).coef( TargetPsi.patch(secbox.patch).basis().boundary(firbox.index()).at(i_x) ).array()[dim];
+                TargetPsi.patch(firbox.patch).coef( TargetPsi.patch(firbox.patch).basis().boundary(secbox.index()).at(i_x) ).array()[dim] = 0.5*(lVal+hVal);
+                TargetPsi.patch(secbox.patch).coef( TargetPsi.patch(secbox.patch).basis().boundary(firbox.index()).at(i_x) ).array()[dim] = 0.5*(lVal+hVal);
+            }
+            }// for interfaces
     } //for loop
     //! [Solver loop]    
     // ----------------------

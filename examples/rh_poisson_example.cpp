@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
     // --------------- adaptive refinement ---------------
     // Specify cell-marking strategy... 
     index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
-    real_t  adaptRefParam = 0.; // ... adapt parameter.
+    real_t  adaptRefParam = 0.7; // ... adapt parameter.
     real_t  adaptRefParamMAE = 0.7; // ... adapt parameter for MAE mapping.
     // Specify the file path
     std::string fn("pde/circle.xml");
@@ -84,7 +84,6 @@ int main(int argc, char *argv[])
     typedef gsExprAssembler<>::space       space;
     typedef gsExprAssembler<>::solution    solution;
 
-
     //! [Solver loop]
     gsSparseSolver<>::CGDiagonal solver;
 
@@ -133,11 +132,14 @@ int main(int argc, char *argv[])
 
     gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
 
-    for (int r=0; r<numRefine; ++r){
+    // Refine the basis uniformly for numRefine times
+    for (int r=0; r<numRefine; ++r)
         dbasis.uniformRefine();
+
+    // make a copy of the basis for the composition space before refinement
+    while (Psi.basis(0).size() < 1000)
         Psi.uniformRefine();
-    }
-    gsMultiBasis<> Cbasis(Psi, false);//copy of basis for projection of the composition mapping
+    gsMultiBasis<> Cbasis( Psi, false );
 
     gsInfo << "Patches: "<< Psi.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
     gsInfo<<"The PDE domain is "<< Psi.detail() << "\n";

@@ -29,7 +29,7 @@ public:
     * @param IntensityMAE intensity of the density function for the Monge-Ampere problem
     * @param numReduce number of degree reduction steps to perform on the basis before solving
     */
-    // Constructor for one patch compoistion mapping
+    // Constructor for one patch compoosition mapping
     gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> mapping,
                                 index_t numRefine   = 0,
                                 index_t maxIter     = 30,
@@ -40,7 +40,7 @@ public:
     // ... optimal Monge-Ampere (or moving mesh) mapping in square to itself
     mutable gsMultiPatch<> MAmapping;
 
-    // ... containes error values ovr elements, which considered piecewise density function vector
+    // ... containes error values over elements, which considered piecewise density function vector
     mutable gismo::gsMatrix<> errorVector;    
 
     // m_maxIter: max iterations, in moving mesh we want to change max iteration since we start with adaptive mapping
@@ -49,7 +49,7 @@ public:
     // degees of freedom used in the computation
     int DoFs;
 public:
-
+    // Method to perform uniform refinement on the basis
     void uniformRefine(const index_t numRefine = 1);
 
     // Method to build a density function from analytic form: we project first f o F into a spline space (avoid composing three functions)
@@ -67,10 +67,10 @@ public:
     //---------------------------------------------------------------------------------
     //  functions to project the composition of Initial mapping and moving mesh mapping
     //---------------------------------------------------------------------------------
-    // Method to build a multipatch adaptive mapping by projection the composition of geometry maps : L2-projection
+    // Method to build a multipatch adaptive mapping by projection the composition of geometry maps :: L2-projection
     gsMultiPatch<> buildCompMultiPatch(const gsMultiBasis<> Cbasis, const int quadValue = 1, const bool& sepBoundary = false) const;
 
-    // Method to build a multipatch adaptive mapping by projection the composition of geometry maps : fitting (penalized least sqaure)
+    // Method to build a multipatch adaptive mapping by projection the composition of geometry maps :: fitting (penalized least sqaure)
     gsMultiPatch<> buildFitCompMultiPatch(const gsMultiBasis<> Cbasis, const int numElData = 50, const real_t lambda = 0, const bool& sepboundary = false) const;
 
     // computes the projection of a composition and return a MultiPatch object :: Collocation
@@ -89,10 +89,10 @@ public:
     void eliminateDirichlet1D(const gsBoundaryConditions<>& bc, const gsOptionList& opt, gsSparseMatrix<> & result) const;
 
     // ... correct the boundary constrol points only in two dimensions
-    void CorrecBoundary(gsMultiPatch<>& Psi, const index_t& patchNumber, const index_t& patch_cmp, const gsMatrix<>& xsoly0, const gsMatrix<>& xsoly1, const gsMatrix<>& x0soly, const gsMatrix<>& x1soly, const bool& corners = false) const;
+    void CorrectBoundary(gsMultiPatch<>& Psi, const index_t& patchNumber, const index_t& patch_cmp, const gsMatrix<>& xsoly0, const gsMatrix<>& xsoly1, const gsMatrix<>& x0soly, const gsMatrix<>& x1soly, const bool& corners = false) const;
 
     // Project control points following normal direction at the boundaries for square domain for moving mesh mapping
-    void NormalProjectPts(gsMultiPatch<>& Psi) const;
+    void setBoundaryControlPointsAlongNormal(gsMultiPatch<>& Psi) const;
 
     // Method to build a inverse multipatch adaptive mapping by projection the composition of geometry maps : fitting
     //gsMultiPatch<> buildInverseMultiPatch(const gsMultiPatch<> lastMAEmapping, const int numElData = 50, const real_t lambda = 0., const bool UpdateInTime = true) const;
