@@ -527,6 +527,18 @@ public:
     /// done for all directions. Uses \ref gsBasis<T>::degreeDecrease
     virtual void degreeDecrease(short_t const i = 1, short_t const dir = -1);
 
+    /// \brief Set the degree to \a i (elevating or reducing as needed)
+    virtual void setDegree(short_t const i);
+
+    /// \brief Set the degree to \a i while preserving multiplicity
+    virtual void setDegreePreservingMultiplicity(short_t const i);
+
+    /// \brief Elevate continuity (reduce interior knot multiplicity) by \a i
+    virtual void elevateContinuity(int const & i = 1);
+
+    /// \brief Reduce continuity (increase interior knot multiplicity) by \a i
+    virtual void reduceContinuity(int const & i = 1);
+
     /// Compute the Hessian matrix of the coordinate \a coord
     /// evaluated at points \a u
     virtual void hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
@@ -590,7 +602,9 @@ public:
     T closestPointTo(const gsVector<T> & pt,
                         gsVector<T> & result,
                         const T accuracy = 1e-6,
-                        const bool useInitialPoint = false) const;
+                        const bool useInitialPoint = false, 
+                        const index_t maxIterations = 100,
+                        const T relaxation = 1.0) const;
 
     /// Computes the Hausdorff distance in a single direction from *this to \a other.
     /// The Hausdorff distance is computed by taking the maximum of the shortest distances
