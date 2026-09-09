@@ -66,6 +66,8 @@ public:
 
     gsMappedBasis( const gsMappedBasis& other );
 
+    gsMappedBasis<d,T> & operator=( const gsMappedBasis& other );
+
     virtual ~gsMappedBasis();
 
     void init(gsMultiBasis<T> const & mb, const gsSparseMatrix<T> & m)

@@ -23,11 +23,16 @@ namespace expr
 template<class T> class gsFeSpace;
 };
 
+/// \param sameElement asserts that each boundary quadrature batch lies in a single Bezier element of
+/// the geometry map; passing false evaluates the map per point. Read from no option list.
+/// Applies to the \c dirichlet::l2Projection branch only: \c dirichlet::interpolation does not
+/// evaluate the geometry map this way and ignores the argument.
 template<class T>
 void gsDirichletValues(
     const gsBoundaryConditions<T> & bc,
     const index_t dir_values,
-    const expr::gsFeSpace<T> & u)
+    const expr::gsFeSpace<T> & u,
+    const bool sameElement = true)
 {
     if ( bc.container("Dirichlet").empty() && bc.cornerValues().empty()) return;
 
@@ -45,7 +50,7 @@ void gsDirichletValues(
         gsDirichletValuesByTPInterpolation(u,bc);
         break;
     case dirichlet::l2Projection:
-        gsDirichletValuesByL2Projection(u,bc);
+        gsDirichletValuesByL2Projection(u, bc, sameElement);
         break;
     default:
         GISMO_ERROR("Something went wrong with Dirichlet values: "<< dir_values);
@@ -253,9 +258,12 @@ gsDirichletValuesInterpolationTP(const expr::gsFeSpace<T> & u,
 }
 
 
+/// \param sameElement asserts that each boundary quadrature batch lies in a single Bezier element of
+/// the geometry map; passing false evaluates the map per point. Read from no option list.
 template<class T>
 void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
-                                      const gsBoundaryConditions<T> & bc)
+                                      const gsBoundaryConditions<T> & bc,
+                                      const bool sameElement = true)
 {
     const gsFunctionSet<T> & gmap = bc.geoMap();
 
@@ -273,7 +281,9 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
     gsMatrix<T> basisVals, rhsVals;
     gsMatrix<index_t> globIdxAct, globBasisAct;
 
-    gsMapData<T> md(NEED_MEASURE | SAME_ELEMENT);
+    unsigned mapFlags = NEED_MEASURE;
+    if (sameElement) mapFlags |= SAME_ELEMENT;
+    gsMapData<T> md(mapFlags);
 
     // eltBdryFcts stores the row in basisVals/globIdxAct, i.e.,
     // something like a "element-wise index"
