@@ -12,7 +12,6 @@
 */
 
 #include <gsIO/gsWriteParaview.h>
-#include <gsMesh2/gsSurfMesh.h>
 #include <gsIO/gsParaviewCollection.h>
 
 #include <fstream>
