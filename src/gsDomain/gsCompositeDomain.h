@@ -35,7 +35,7 @@ template<class T> class gsCompositeDomain;
    localId(): The index of the current element in its containing subdomain
    
    
-   side(): The index of side where this elemement lies (if applicable)
+   side(): The index of side where this element lies (if applicable)
  */
 template <class T>
 class gsCompositeDomainIterator : public gsDomainIterator<T>
