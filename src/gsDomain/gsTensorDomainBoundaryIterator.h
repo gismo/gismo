@@ -45,6 +45,8 @@ public:
     : gsDomainIterator<T>(0, s),
       d( domain.dim() )
     {
+        this->setPatchIndex(domain.patchIndex());
+
         par = s.parameter();
         dir = s.direction();
         meshStart.resize(d);
