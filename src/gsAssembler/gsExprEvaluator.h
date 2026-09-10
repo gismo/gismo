@@ -445,7 +445,7 @@ private:
         {res = math::min(contrib, res);	}
         static inline void acc_global(const T contrib, T & res)
         {
-#           pragma omp critical (gsExprEvaluator_minmax_acc_global)
+#           pragma omp critical (gsExprEvaluator_min_acc_global)
             res = math::min(contrib, res);
         }
 
@@ -462,7 +462,7 @@ private:
         { res = math::max(contrib, res); }
         static inline void acc_global(const T contrib, T & res)
         {
-#           pragma omp critical (gsExprEvaluator_minmax_acc_global)
+#           pragma omp critical (gsExprEvaluator_max_acc_global)
             res = math::max(contrib, res);
         }
     };
