@@ -144,6 +144,8 @@ public:
 
     /// Returns a reference to the options structure
     gsOptionList & options() {return m_options;}
+    const gsOptionList & options() const {return m_options;}
+
 
     /// @brief Installs a custom quadrature-rule factory.
     ///

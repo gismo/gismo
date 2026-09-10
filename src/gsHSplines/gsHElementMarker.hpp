@@ -59,6 +59,7 @@ namespace gismo
         options.addInt("Admissibility","Admissibility region, 0=T-admissibility (default), 1=H-admissibility",0);
         options.addSwitch("Admissible","Mark the admissible region",true);
         options.addInt("Jump","Jump parameter m",2);
+        options.addSwitch("Absolute","(For GARU marking) Compute threshold based on solution values without error scaling",false); // Computed threshold based on the actual values of the solution --> true if marking is done with absolute error, false if relative error is used
         options.addSwitch("Extension", "Extend marked elements regions", true);
         // options.addInt("Verbose","Verbosity level",0);
         return options;
@@ -207,7 +208,8 @@ namespace gismo
     typename gsHElementMarker<d,T>::HElementContainer gsHElementMarker<d,T>::_markRef_threshold() const
     {
         HElementContainer result;
-        T threshold = m_options.askReal("RefineParam",0.1) * m_elementErrors.back().second;
+        T maxError = m_options.getSwitch("Absolute") ? 1 : m_elementErrors.back().second;
+        T threshold = m_options.askReal("RefineParam",0.1) * maxError;
         for (typename std::vector<std::pair<element_t, error_t>>::const_reverse_iterator it = m_elementErrors.rbegin(); it != m_elementErrors.rend(); ++it)
         {
             // If the error is below the threshold, stop the iteration
@@ -228,7 +230,8 @@ namespace gismo
     typename gsHElementMarker<d,T>::HElementContainer gsHElementMarker<d,T>::_markCrs_threshold(const HElementContainer & refined) const
     {
         HElementContainer result;
-        T threshold = m_options.askReal("CoarsenParam",0.1) * m_elementErrors.back().second;
+        T maxError = m_options.getSwitch("Absolute") ? 1 : m_elementErrors.back().second;
+        T threshold = m_options.askReal("CoarsenParam",0.1) * maxError;
         for (typename std::vector<std::pair<element_t, error_t>>::const_iterator it = m_elementErrors.begin(); it != m_elementErrors.end(); ++it)
         {
             // If the error is above the threshold, stop the iteration
