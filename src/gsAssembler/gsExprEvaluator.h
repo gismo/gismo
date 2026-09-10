@@ -76,7 +76,7 @@ public:
     : m_exprdata(o.exprData()), m_options(defaultOptions())
     { }
 
-    gsOptionList defaultOptions()
+    static gsOptionList defaultOptions()
     {
         gsOptionList opt;
         opt.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0  );
