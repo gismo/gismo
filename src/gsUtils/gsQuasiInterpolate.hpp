@@ -281,16 +281,16 @@ gsMatrix<T> gsQuasiInterpolate<T>::localTaylor(const gsTensorBSplineBasis<d,T> &
     do
     {
         const index_t order = k.sum();
+        const T sign = (0==(order%2)) ? (T)1 : (T)(-1);
 
         T factor1 = (T)1;
         for (short_t dir = 0; dir!=d; ++dir)
             factor1 *= derivProd(knots[dir], deg[dir]-k[dir], point(dir,0));
 
-        const T sign = (0==(order%2)) ? (T)1 : (T)(-1);
         for (index_t i = 0; i!=dim; ++i)
         {
             const T factor2 = derivs[order]( derivRow(k, d, i), 0 );
-            val(i) += sign * factor1 * factor2;
+            val(0,i) += sign * factor1 * factor2;
         }
     } while ( nextLexicographic(k, bound) );
 
