@@ -302,7 +302,6 @@ void pybind11_init_gsWriteParaview(py::module &m)
 
 }
 
-
 #endif
 
 

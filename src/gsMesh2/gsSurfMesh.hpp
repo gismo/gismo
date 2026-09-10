@@ -403,7 +403,7 @@ gsMultiPatch<Scalar> gsSurfMesh<Scalar>::asSpline(int deg) const
             n = valence(v);
 
             he = halfedge(v);
-            
+
             evface = false;
             hh = he;
             // exluding ev faces
@@ -434,7 +434,7 @@ gsMultiPatch<Scalar> gsSurfMesh<Scalar>::asSpline(int deg) const
             for ( auto v : vertices(f) )
             {
                 n = valence(v);
-                                
+
                 if ( n!=4 ) break;
 
                 he = halfedge(v);
@@ -741,7 +741,7 @@ gsSurfMesh<Scalar>::face_barycenter(Face f)
 
 }
 
-    
+
 template <class Scalar>
 void gsSurfMesh<Scalar>::mergeDoubleVertices()
 {
@@ -1082,105 +1082,259 @@ namespace internal
 template <class Scalar>
 void gsXml< gsSurfMesh<Scalar> >::get_into(gsXmlNode * node, gsSurfMesh<Scalar> & result)
 {
+    typedef typename gsSurfMesh<Scalar>::Point  Point;
+    typedef typename gsSurfMesh<Scalar>::Vertex Vertex;
+
     GISMO_ASSERT( !strcmp( node->name(),"SurfMesh") || !strcmp( node->name(),"Mesh"),
-                  "gsXml<gsSurfMesh>: expected a <Mesh> or <SurfMesh> node, got <"
-                  << node->name() << ">." );
+        "Expecting a mesh.");
 
     result = gsSurfMesh<Scalar>();
 
-    // Readers that hand the raw file through verbatim tag the node with a
-    // "format" attribute and store the file contents as the node value.
-    gsXmlAttribute * fmt = node->first_attribute("format");
-    if ( NULL != fmt )
+    if ( !strcmp(node->first_attribute("format")->value(),"surf") )
     {
-        if ( !strcmp(fmt->value(),"off") )
+        std::istringstream str;
+        unsigned nv  = atoi ( node->first_attribute("vertices")->value() ) ;
+        unsigned nf  = atoi ( node->first_attribute("faces")->value() ) ;
+        unsigned ne  = atoi ( node->first_attribute("edges")->value() ) ;
+        result.reserve(nv, std::max(3*nv, ne), nf);
+
+        result.add_batch_vertices(nv);
+
+        gsXmlNode* fn = node->first_node("faces");
+        str.clear();
+        str.str( fn->value() );
+        unsigned k, c = 0;
+        std::vector<Vertex> face(4);
+        std::vector<typename gsSurfMesh<Scalar>::Edge> e(4);
+        for (unsigned i=0; i<nf; ++i)
         {
-            read_off_ascii(result, node->value());
+            gsGetInt(str, c);
+            face.resize(c);
+            for (unsigned j=0; j<c; ++j)
+            {
+                gsGetInt(str, k);
+                face[j] = Vertex(k);
+            }
+            if (c == 4)
+            {
+                for (unsigned j = 0; j < c; ++j)
+                    e[j] = result.find_or_add_edge(face[j], face[(j + 1) % c]);
+                result.add_quad(e[0], e[1], e[2], e[3]);
+            }
+            else
+                result.add_face(face);
+        }
+
+        //for (gsXmlNode * child = node->first_node("mdata");
+        //    child; child = child->next_sibling("mdata") )
+
+        for (gsXmlNode * child = node->first_node("vdata");
+             child; child = child->next_sibling("vdata") )
+        {
+            if ( !strcmp( child->first_attribute("type")->value(), "bool" ) )
+            {
+                str.clear();
+                str.str( child->value() );
+                auto vprop = result.template vertex_property<bool>( child->first_attribute("name")->value() );
+                index_t r;
+                while( (str >> r) )
+                    vprop[Vertex(r)] = true;
+            }
+            else if ( !strcmp( child->first_attribute("type")->value(), "Point" ) )
+            {
+                str.clear();
+                str.str( child->value() );
+                auto vprop = result.template vertex_property<typename gsSurfMesh<Scalar>::Point>( child->first_attribute("name")->value() );
+                for (auto v : result.vertices() )
+                {
+                    gsGetReal(str, vprop[v].x());
+                    gsGetReal(str, vprop[v].y());
+                    gsGetReal(str, vprop[v].z());
+                }
+            }
+            else if ( !strcmp( child->first_attribute("type")->value(), "index" ) )
+            {
+                str.clear();
+                str.str( child->value() );
+                auto vprop = result.template vertex_property<index_t>( child->first_attribute("name")->value() );
+                for (auto v : result.vertices() )
+                    gsGetInt(str, vprop[v]);
+            }
+            else if ( !strcmp( child->first_attribute("type")->value(), "real" ) )
+            {
+                str.clear();
+                str.str( child->value() );
+                auto vprop = result.template vertex_property<real_t>( child->first_attribute("name")->value() );
+                for (auto v : result.vertices() )
+                    gsGetReal(str, vprop[v]);
+            }
+            else
+            {
+                gsInfo <<"Ignored vdata: "<< child->first_attribute("name")->value() <<"\n";
+            }
+        }
+
+        gsXmlNode* en = node->first_node("edges");
+        std::vector<typename gsSurfMesh<Scalar>::Halfedge> hlist;
+        if (nullptr != en)
+        {
+            str.clear();
+            str.str( en->value() );
+            hlist.resize(ne);
+            unsigned k, c = 0;
+            for (unsigned i=0; i<ne; ++i)
+            {
+                gsGetInt(str, c);
+                gsGetInt(str, k);
+                hlist[i] = result.find_halfedge(Vertex(c),Vertex(k));
+            }
+        }
+
+        for (gsXmlNode * child = node->first_node("hedata");
+             child; child = child->next_sibling("hedata") )
+        {
+            if ( !strcmp( child->first_attribute("type")->value(), "bool" ) )
+            {
+                str.clear();
+                str.str( child->value() );
+                auto heprop = result.template halfedge_property<bool>( child->first_attribute("name")->value() );
+                index_t r,c;
+                while( (str >> r) && (str >> c) )
+                    heprop[ result.find_halfedge(Vertex(r),Vertex(c))] = true;
+            }
+            else if ( !strcmp( child->first_attribute("type")->value(), "Point" ) )
+            {
+                str.clear();
+                str.str( child->value() );
+                auto heprop = result.template halfedge_property<Point>( child->first_attribute("name")->value() );
+                typename gsSurfMesh<Scalar>::Halfedge he;
+                for (unsigned i = 0; i!=ne; ++i)
+                {
+                    he = hlist[i];// order in hlist
+                    gsGetReal(str, heprop[he].x());
+                    gsGetReal(str, heprop[he].y());
+                    gsGetReal(str, heprop[he].z());
+                    he = result.opposite_halfedge(he);
+                    gsGetReal(str, heprop[he].x());
+                    gsGetReal(str, heprop[he].y());
+                    gsGetReal(str, heprop[he].z());
+                }
+            }
+            else if ( !strcmp( child->first_attribute("type")->value(), "index" ) )
+            {
+                str.clear();
+                str.str( child->value() );
+                auto heprop = result.template halfedge_property<index_t>( child->first_attribute("name")->value() );
+                typename gsSurfMesh<Scalar>::Halfedge he;
+                for (unsigned i = 0; i!=ne; ++i)
+                {
+                    he = hlist[i];// order in hlist
+                    gsGetInt(str, heprop[he]);
+                    he = result.opposite_halfedge(he);
+                    gsGetInt(str, heprop[he]);
+                }
+            }
+            else if ( !strcmp( child->first_attribute("type")->value(), "real" ) )
+            {
+                str.clear();
+                str.str( child->value() );
+                auto heprop = result.template halfedge_property<real_t>( child->first_attribute("name")->value() );
+                typename gsSurfMesh<Scalar>::Halfedge he;
+                for (unsigned i = 0; i!=ne; ++i)
+                {
+                    he = hlist[i];// order in hlist
+                    gsGetReal(str, heprop[he]);
+                    he = result.opposite_halfedge(he);
+                    gsGetReal(str, heprop[he]);
+                }
+            }
+            else
+            {
+                gsInfo <<"Ignored vdata: "<< child->first_attribute("name")->value() <<"\n";
+            }
+        }
+
+        //to add: edge, face
+    }
+    else if ( !strcmp(node->first_attribute("format")->value(),"off") )
+    {
+        std::istringstream str;
+        str.str( node->value() );
+
+        std::string line;
+        getline(str, line);
+        if ( line.compare(0,3,"OFF") != 0)
             return;
-        }
-        if ( !strcmp(fmt->value(),"obj") )
+
+        std::istringstream lnstream;
+        getline(str, line);
+        lnstream.str(line);
+        unsigned nv, nf, ne(0);
+        lnstream >> std::ws >>  nv >> std::ws >> nf >> std::ws >> ne ;
+
+        result.reserve(nv, std::max(3*nv, ne), nf);
+        real_t x(0), y(0), z(0); // T?
+        for (unsigned i=0; i<nv; ++i)
         {
-            std::istringstream is( node->value() );
-            read_obj(result, is);
-            return;
+            gsGetReal(str, x);
+            gsGetReal(str, y);
+            gsGetReal(str, z);
+            result.add_vertex(Point(x,y,z));
         }
-        GISMO_ERROR("gsXml<gsSurfMesh>: unsupported mesh format \""
-                    << fmt->value() << "\".");
-    }
 
-    // Otherwise the node carries the counts as attributes and the coordinates
-    // and face indices as its value.
-    gsXmlAttribute * av = node->first_attribute("vertices");
-    gsXmlAttribute * af = node->first_attribute("faces");
-    gsXmlAttribute * ae = node->first_attribute("edges");
-    GISMO_ASSERT( av && af && ae, "gsXml<gsSurfMesh>: <Mesh> node has neither a "
-                  "\"format\" attribute nor \"vertices\"/\"faces\"/\"edges\" counts." );
-
-    std::istringstream str;
-    str.str( node->value() );
-
-    unsigned nv  = atoi ( av->value() ) ;
-    unsigned nf  = atoi ( af->value() ) ;
-    unsigned ne  = atoi ( ae->value() ) ;
-    result.reserve(nv, std::max(3*nv, ne), nf);
-    real_t x(0), y(0), z(0); // reading as real_t, cast to Scalar below if needed
-    for (unsigned i=0; i<nv; ++i)
-    {
-        gsGetReal(str, x);
-        gsGetReal(str, y);
-        gsGetReal(str, z);
-        result.add_vertex(typename gsSurfMesh<Scalar>::Point(static_cast<Scalar>(x),static_cast<Scalar>(y),static_cast<Scalar>(z)));
-    }
-
-    /* //Alternative for reading quads only (with complex topolog)
-   unsigned k, c = 0;
-    std::vector<typename gsSurfMesh<Scalar>::Vertex> face(4);
-    std::vector<typename gsSurfMesh<Scalar>::Edge> e(4);
-    for (unsigned i=0; i<nf; ++i)
-    {
-        gsGetInt(str, c);
-        GISMO_ASSERT(4==c, "quads?");
-        for (unsigned j=0; j<c; ++j)
+        unsigned k, c = 0;
+        std::vector<Vertex> face(4);
+        std::vector<typename gsSurfMesh<Scalar>::Edge> e(4);
+        for (unsigned i=0; i<nf; ++i)
         {
-            gsGetInt(str, k);
-            face[j] = typename gsSurfMesh<Scalar>::Vertex(k);
+            gsGetInt(str, c);
+            face.resize(c);
+            for (unsigned j=0; j<c; ++j)
+            {
+                gsGetInt(str, k);
+                face[j] = Vertex(k);
+            }
+            if (c == 4)
+            {
+                for (unsigned j = 0; j < c; ++j)
+                    e[j] = result.find_or_add_edge(face[j], face[(j + 1) % c]);
+                result.add_quad(e[0], e[1], e[2], e[3]);
+            }
+            else
+                result.add_face(face);
         }
-        for (unsigned j=0; j<c; ++j)
-            e[j] = result.find_or_add_edge(face[j],face[(j+1)%c]);
-        result.add_quad(e[0], e[1], e[2], e[3]);
-    }
-    //*/
 
-    unsigned k, c = 0;
-    std::vector<typename gsSurfMesh<Scalar>::Vertex> face;
-    for (unsigned i=0; i<nf; ++i)
-    {
-        gsGetInt(str, c);
-        face.resize(c);
-        for (unsigned j=0; j<c; ++j)
+        if (0!=ne)
         {
-            gsGetInt(str, k);
-            face[j] = typename gsSurfMesh<Scalar>::Vertex(k);
+            typename gsSurfMesh<Scalar>::template Halfedge_property<bool> sharp =
+                result.template add_halfedge_property<bool>("h:sharp");
+            typename gsSurfMesh<Scalar>::Halfedge he;
+            for (unsigned i =0; i < ne
+                     && gsGetInt(str, k) && gsGetInt(str, c)
+                     ; i++)
+            {
+                he = result.find_halfedge(Vertex(k), Vertex(c));
+                sharp[he] = true;
+                he = result.opposite_halfedge(he);
+                sharp[he] = true;
+            }
         }
-        result.add_face(face);
+    }// read off -- TODO...
+    else if ( !strcmp(node->first_attribute("format")->value(),"vtk") )
+    {
+        gsWarn<<"vtk.\n";
     }
-
-    if (0!=ne)
+    else if ( !strcmp(node->first_attribute("format")->value(),"obj") )
     {
-        typename gsSurfMesh<Scalar>::template Halfedge_property<bool> sharp = result.template add_halfedge_property<bool>("h:sharp");
-        face.resize(2);
-        typename gsSurfMesh<Scalar>::Halfedge he;
-        for(unsigned i = 0; i!=ne; ++i)
-        {
-            gsGetInt(str, k);
-            face[0] = typename gsSurfMesh<Scalar>::Vertex(k);
-            gsGetInt(str, k);
-            face[1] = typename gsSurfMesh<Scalar>::Vertex(k);
-            he = result.find_halfedge(face[0], face[1]);
-            sharp[he] = true;
-            he = result.opposite_halfedge(he);
-            sharp[he] = true;
-        }
+        std::istringstream str;
+        str.str( node->value() );
+        read_obj(result,str);
+    }
+    else if ( !strcmp(node->first_attribute("format")->value(),"stl") )
+    {
+        std::istringstream str;
+        str.str( node->value() );
+        //read_stl(result,str);
     }
 }
 
@@ -1188,9 +1342,312 @@ template <class Scalar>
 gsXmlNode *
 gsXml< gsSurfMesh<Scalar> >::put (const gsSurfMesh<Scalar> & obj, gsXmlTree & data)
 {
-    GISMO_UNUSED(obj);
-    GISMO_UNUSED(data);
-    return nullptr;
+    typedef typename gsSurfMesh<Scalar>::Point Point;
+    gsXmlNode* g = internal::makeNode("Mesh", data);
+    g->append_attribute( internal::makeAttribute("type", "", data) ); // no inheritance
+    g->append_attribute( internal::makeAttribute("format", "surf", data) );
+    g->append_attribute( internal::makeAttribute("vertices", obj.n_vertices(), data) );
+    g->append_attribute( internal::makeAttribute("edges", obj.n_edges()      , data) );
+    g->append_attribute( internal::makeAttribute("faces", obj.n_faces()      , data) );
+
+    std::ostringstream tmp;
+
+    gsXmlNode* fn = internal::makeNode("faces", data);
+    g->append_node(fn);
+    tmp<<"\n";
+    for (auto f : obj.faces() )
+    {
+        tmp << obj.valence(f);
+        for (auto v : obj.vertices(f) )
+            tmp <<" "<< v.idx();
+        tmp<<"\n";
+    }
+    fn->value( internal::makeValue( tmp.str(), data) );
+    tmp.clear();
+    tmp.str("");
+
+    std::vector<std::string> pname = obj.mesh_properties(); // TODO
+    for (auto & name : pname)
+    {
+        const std::type_info & ti = obj.get_mesh_property_type(name);
+        gsInfo << ti.name() <<"\n";
+    }
+
+    pname = obj.vertex_properties();
+    for (auto & name : pname)
+    {
+        if (name == "v:connectivity") continue;
+        if (name == "v:deleted") continue;
+
+        const std::type_info & ti = obj.get_vertex_property_type(name);
+        if (ti == typeid(bool)) //sparse
+        {
+            gsXmlNode* pn = internal::makeNode("vdata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "bool", data) );
+            g->append_node(pn);
+            auto vprop = obj.template get_vertex_property<bool>(name);
+            for (auto v : obj.vertices() )
+                if (vprop[v])
+                    tmp <<" "<< v.idx();
+            tmp<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+        }
+        else if (ti == typeid(Point))
+        {
+            gsXmlNode* pn = internal::makeNode("vdata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "Point", data) );
+            g->append_node(pn);
+            auto vprop = obj.template get_vertex_property<Point>(name);
+            tmp<<"\n";
+            for (auto v : obj.vertices() )
+                tmp <<" "<< vprop[v].transpose() <<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+        }
+        else if (ti == typeid(index_t))
+        {
+            gsXmlNode* pn = internal::makeNode("vdata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "index", data) );
+            g->append_node(pn);
+            auto vprop = obj.template get_vertex_property<index_t>(name);
+            for (auto v : obj.vertices() )
+                tmp <<" "<< vprop[v];
+            tmp<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+        }
+        else if (ti == typeid(real_t))
+        {
+            gsXmlNode* pn = internal::makeNode("vdata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "real", data) );
+            g->append_node(pn);
+            auto vprop = obj.template get_vertex_property<real_t>(name);
+            for (auto v : obj.vertices() )
+                tmp <<" "<< vprop[v];
+            tmp<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+        }
+        else
+        {
+            gsInfo <<"Ignored vdata: "<< ti.name() <<"\n";
+        }
+        tmp.clear();
+        tmp.str("");
+    }
+
+    pname = obj.face_properties();
+    for (auto & name : pname)
+    {
+        if (name == "f:connectivity") continue;
+        if (name == "f:deleted") continue;
+
+        const std::type_info & ti = obj.get_face_property_type(name);
+        if (ti == typeid(bool)) //sparse
+        {
+            gsXmlNode* pn = internal::makeNode("fdata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "bool", data) );
+            g->append_node(pn);
+            auto fprop = obj.template get_face_property<bool>(name);
+            for (auto f : obj.faces() )
+                if (fprop[f])
+                    tmp <<" "<< f.idx();
+            tmp<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+        }
+        else if (ti == typeid(Point))
+        {
+            gsXmlNode* pn = internal::makeNode("fdata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "Point", data) );
+            g->append_node(pn);
+            auto fprop = obj.template get_face_property<Point>(name);
+            tmp<<"\n";
+            for (auto f : obj.faces() )
+                tmp <<" "<< fprop[f].transpose() <<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+        }
+        else if (ti == typeid(index_t))
+        {
+            gsXmlNode* pn = internal::makeNode("fdata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "index", data) );
+            g->append_node(pn);
+            auto fprop = obj.template get_face_property<index_t>(name);
+            for (auto f : obj.faces() )
+                tmp <<" "<< fprop[f];
+            tmp<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+        }
+        else if (ti == typeid(real_t))
+        {
+            gsXmlNode* pn = internal::makeNode("fdata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "real", data) );
+            g->append_node(pn);
+            auto fprop = obj.template get_face_property<real_t>(name);
+            for (auto f : obj.faces() )
+                tmp <<" "<< fprop[f];
+            tmp<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+        }
+        else
+        {
+            gsInfo <<"Ignored fdata: "<< ti.name() <<"\n";
+        }
+        tmp.clear();
+        tmp.str("");
+    }
+
+    bool writeEdges(false);
+
+    pname = obj.edge_properties();
+    for (auto & name : pname)
+    {
+        if (name == "e:deleted") continue;
+
+        const std::type_info & ti = obj.get_edge_property_type(name);
+        if (ti == typeid(bool)) //sparse
+        {
+            gsXmlNode* pn = internal::makeNode("edata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "bool", data) );
+            g->append_node(pn);
+            auto eprop = obj.template get_edge_property<bool>(name);
+            tmp<<"\n";
+            for (auto e : obj.edges() )
+                if (eprop[e])
+                    tmp << obj.vertex(e,0).idx() <<" "<<obj.vertex(e,1).idx()<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+        }
+        else if (ti == typeid(Point))
+        {
+            gsXmlNode* pn = internal::makeNode("edata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "Point", data) );
+            g->append_node(pn);
+            auto eprop = obj.template get_edge_property<Point>(name);
+            tmp<<"\n";
+            for (auto e : obj.edges() )
+                tmp <<" "<< eprop[e].transpose()<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+            writeEdges = true;
+        }
+        else if (ti == typeid(index_t))
+        {
+            gsXmlNode* pn = internal::makeNode("edata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "index", data) );
+            g->append_node(pn);
+            auto eprop = obj.template get_edge_property<index_t>(name);
+            for (auto e : obj.edges() )
+                tmp <<" "<< eprop[e];
+            tmp<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+            writeEdges = true;
+        }
+        else if (ti == typeid(real_t))
+        {
+            gsXmlNode* pn = internal::makeNode("edata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "real", data) );
+            g->append_node(pn);
+            auto eprop = obj.template get_edge_property<real_t>(name);
+            for (auto e : obj.edges() )
+                tmp <<" "<< eprop[e];
+            tmp<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+            writeEdges = true;
+        }
+        else
+        {
+            gsInfo <<"Ignore edata"<< ti.name() <<"\n";
+        }
+        tmp.clear();
+        tmp.str("");
+    }
+
+    pname = obj.halfedge_properties();
+    for (auto & name : pname)
+    {
+        if (name == "h:connectivity") continue;
+
+        const std::type_info & ti = obj.get_halfedge_property_type(name);
+        if (ti == typeid(bool)) //sparse
+        {
+            gsXmlNode* pn = internal::makeNode("hedata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "bool", data) );
+            g->append_node(pn);
+            auto eprop = obj.template get_halfedge_property<bool>(name);
+            tmp<<"\n";
+            for (auto h : obj.halfedges() )
+                if (eprop[h])
+                    tmp << obj.from_vertex(h).idx() <<" "<<obj.to_vertex(h).idx()<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+        }
+        else if (ti == typeid(Point))
+        {
+            gsXmlNode* pn = internal::makeNode("hedata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "Point", data) );
+            g->append_node(pn);
+            auto eprop = obj.template get_halfedge_property<Point>(name);
+            tmp<<"\n";
+            for (auto h : obj.halfedges() )
+                tmp <<" "<< eprop[h].transpose()<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+            writeEdges = true;
+        }
+        else if (ti == typeid(index_t))
+        {
+            gsXmlNode* pn = internal::makeNode("hedata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "index", data) );
+            g->append_node(pn);
+            auto eprop = obj.template get_halfedge_property<index_t>(name);
+            for (auto h : obj.halfedges() )
+                tmp <<" "<< eprop[h];
+            tmp<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+            writeEdges = true;
+        }
+        else if (ti == typeid(real_t))
+        {
+            gsXmlNode* pn = internal::makeNode("hedata", data);
+            pn->append_attribute( internal::makeAttribute("name", name, data) );
+            pn->append_attribute( internal::makeAttribute("type", "real", data) );
+            g->append_node(pn);
+            auto eprop = obj.template get_halfedge_property<real_t>(name);
+            for (auto h : obj.halfedges() )
+                tmp <<" "<< eprop[h];
+            tmp<<"\n";
+            pn->value( internal::makeValue( tmp.str(), data) );
+            writeEdges = true;
+        }
+        else
+        {
+            gsInfo <<"Ignore hedata: "<< ti.name() <<"\n";
+        }
+        tmp.clear();
+        tmp.str("");
+    }
+
+    if (writeEdges)
+    {
+        gsXmlNode* en = internal::makeNode("edges", data);
+        g->append_node(en);
+        tmp << "\n";
+        for (auto e : obj.edges() )
+            tmp << obj.vertex(e,0).idx() <<" "<<obj.vertex(e,1).idx()<<"\n";
+        en->value( internal::makeValue( tmp.str(), data) );
+        tmp.clear();
+        tmp.str("");
+    }
+
+    return g;
 };
 
 }//namespace internal
