@@ -158,6 +158,11 @@
     composed map), `sigma` (the sigma map itself), `solution` (one
     gsParaviewCollection, numerical/exact/error fields, one timestep per S
     row of the CSV, in the same order) and `mesh` (the final analysis mesh).
+    It additionally writes `sigma_steps.pvd`/`sigma_steps/` (sigma.domain() at
+    EVERY S step) and `mesh_steps.pvd`/`mesh_steps/` (the analysis mesh, in
+    the PARAMETRIC domain, at every S step), indexed by the same step number
+    as `solution.pvd`'s timesteps, so all three collections' ParaView time
+    sliders line up.
     <output>/options.xml and <output>/convergence.csv are written
     UNCONDITIONALLY, so a run directory is reproducible on its own.
 
@@ -333,6 +338,7 @@ int main(int argc, char** argv)
     index_t degree=2, initialRef=2, iterations=3;
     index_t sigmaDeg=2, sigmaRef=3;
     bool project=false, plot=false, coarsenFlag=false;
+    index_t plotPoints=1000;
     real_t targetCli=std::numeric_limits<real_t>::quiet_NaN();
     std::string schedule="SRHS";
     std::string file="pde/poisson2d_rh_center_bvp.xml";
@@ -343,6 +349,9 @@ int main(int argc, char** argv)
                              "optional id=5 = sigma composition geometry)",file);
     cmd.addString("o","output","output prefix/directory",output);
     cmd.addSwitch("plot","write the ParaView output set",plot);
+    cmd.addInt("","plotPoints","samples per patch for the plotted fields under "
+                               "--plot; raise it for smooth iso-contours in the "
+                               "figures (default 1000)",plotPoints);
     cmd.addInt("p","degree","analysis degree",degree);
     cmd.addInt("r","refine","initial uniform refinements",initialRef);
     cmd.addInt("E","sigmaDeg","degree of the sigma map",sigmaDeg);
@@ -627,13 +636,26 @@ int main(int argc, char** argv)
     fdout.save(output+"options.xml");
 
     std::unique_ptr<gsParaviewCollection> solcol;
+    // Per-S-step sigma/mesh snapshots (sigma_steps.pvd, mesh_steps.pvd), keyed
+    // by the SAME step index as solution.pvd, so a ParaView time slider steps
+    // all three collections in lock-step (D-block above documents the
+    // end-of-run-only geometry/sigma/mesh; these are the per-step siblings).
+    // gsParaviewCollection has no geometry-only timestep entry point, so these
+    // two are hand-written minimal VTKFile Collection XML instead.
+    std::vector<index_t> plotSteps;
     if (plot)
     {
         solcol.reset(new gsParaviewCollection(output+"solution",&pev));
         solcol->options().setSwitch("plotElements", true);
         solcol->options().setInt("plotElements.resolution", 4);
-        solcol->options().setInt("numPoints", 1000);
+        // Samples per patch for the plotted fields.  This also fixes how finely
+        // an iso-contour extracted from the output is resolved: at the default
+        // 1000 a ring contour comes out of ParaView with ~48 segments, which is
+        // visibly polygonal and too coarse to carry a dash pattern.
+        solcol->options().setInt("numPoints", plotPoints);
         solcol->options().setInt("precision", 12);
+        gsFileManager::mkdir(output+"sigma_steps");
+        gsFileManager::mkdir(output+"mesh_steps");
     }
 
     std::ofstream csv(output+"convergence.csv");
@@ -804,6 +826,16 @@ int main(int argc, char** argv)
             gsComposedGeometry<> composed(sigma,physical.patch(0));
             gsMultiPatch<> cmp; cmp.addPatch(composed);
             const index_t step=solveStep++;
+            if (plot)
+            {
+                gsWriteParaview(sigma.domain(),
+                                output+"sigma_steps/sigma_t"+std::to_string(step),
+                                1000, true, true);
+                gsMesh<real_t> stepMsh(active);
+                gsWriteParaview(stepMsh, output+"mesh_steps/mesh_t"+std::to_string(step),
+                                false);
+                plotSteps.push_back(step);
+            }
             SolveResult cres = solve(A,ev,pev,cmp,mb,ib,f,ms,bc,'C',step,solcol.get());
             lastSol=cres.sol;
             haveSolve=true;
@@ -1018,6 +1050,26 @@ int main(int argc, char** argv)
                                          static_cast<const gsBasis<>&>(basis);
         gsMesh<real_t> msh(active);
         gsWriteParaview(msh, output+"mesh", false);
+
+        // sigma_steps.pvd / mesh_steps.pvd: one <DataSet timestep="N".../> per
+        // executed S step, N being the step index shared with solution.pvd's
+        // timesteps, so the three collections' time sliders line up panel for
+        // panel (mesh in the parametric domain; sigma the deformation itself;
+        // solution the numerical field, already written by solcol above).
+        auto writeStepsPvd = [&](const std::string& dirName, const std::string& filePrefix,
+                                  const std::string& fileSuffix)
+        {
+            std::ofstream pvd(output+dirName+".pvd");
+            pvd << "<?xml version=\"1.0\"?>\n"
+                << "<VTKFile type=\"Collection\" version=\"0.1\">\n"
+                << "<Collection>\n";
+            for (index_t s : plotSteps)
+                pvd << "<DataSet timestep=\"" << s << "\" part=\"0\" file=\""
+                    << dirName << "/" << filePrefix << "_t" << s << fileSuffix << "\"/>\n";
+            pvd << "</Collection>\n</VTKFile>\n";
+        };
+        writeStepsPvd("sigma_steps", "sigma", ".vts");
+        writeStepsPvd("mesh_steps", "mesh", ".vtp");
     }
     return 0;
 }
