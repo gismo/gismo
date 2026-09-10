@@ -12,7 +12,6 @@
 */
 
 # include <gismo.h>
-# include <gsIO/gsParaview.h>
 # include <gsAssembler/gsBiharmonicAssembler.h>
 
 using namespace gismo;
