@@ -99,11 +99,19 @@ inline void writeDataArray(std::ostream & stream,
     }
     else
     {
+        // char/unsigned char must be promoted to int, otherwise operator<<
+        // writes them as characters (e.g. the raw byte 0x09) instead of
+        // the decimal text VTK's ASCII parser expects.
+        typedef typename std::conditional<
+            std::is_same<Scalar, char>::value || std::is_same<Scalar, unsigned char>::value
+                || std::is_same<Scalar, signed char>::value,
+            int, Scalar>::type PrintScalar;
+
         stream.setf(std::ios::fixed);
         stream.precision(precision);
         for (index_t j = 0; j < matrix.cols(); ++j)
             for (index_t i = 0; i < matrix.rows(); ++i)
-                stream << matrix(i, j) << " ";
+                stream << static_cast<PrintScalar>(matrix(i, j)) << " ";
         stream << "\n";
     }
 
