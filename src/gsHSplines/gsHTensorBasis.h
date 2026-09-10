@@ -717,13 +717,13 @@ public:
      * two indices of the upper right corner, see gsHTensorBasis::refineElements() for details.
      */
     void refineElements_withCoefs   (gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
-    void refineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T> &transfer);
-    void refineElements_withTransfer2(std::vector<index_t> const & boxes, gsSparseMatrix<T> &transfer);
+    void refineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T,RowMajor> &transfer);
+    void refineElements_withTransfer2(std::vector<index_t> const & boxes, gsSparseMatrix<T,RowMajor> &transfer);
 
     void refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
 
     void unrefineElements_withCoefs   (gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
-    void unrefineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T> &transfer);
+    void unrefineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T,RowMajor> &transfer);
 
     // Coarsens the basis uniformly by removing \a numKnots knots on each knot span
     virtual void uniformCoarsen(int numKnots = 1);
@@ -943,12 +943,41 @@ public:
     virtual void refineElements(std::vector<index_t> const & boxes);
 
     /**
+     * @brief Refines the cells up to level \a minLevel.
+     * All cells on levels coarser than \a minLevel are refined so that
+     * all active cells are at level \a minLevel or finer.
+     */
+    void refineToLevel(index_t minLevel);
+    void refineToLevel_withTransfer(index_t minLevel, gsSparseMatrix<T,RowMajor> &transfer);
+    void refineToLevel_withCoefs(index_t minLevel, gsMatrix<T> & coefs);
+    /**
+     * @brief Refines the cells of the coarsest level.
+     */
+    void refineCoarsestLevel();
+    void refineCoarsestLevel_withTransfer(gsSparseMatrix<T,RowMajor> &transfer);
+    void refineCoarsestLevel_withCoefs(gsMatrix<T> & coefs);
+
+    /**
      * @brief      Clear the given boxes into the quadtree.
      *
      * @param      boxes   See refineElements
      * @param[in]  refExt  See refineElements
      */
     virtual void unrefineElements(std::vector<index_t> const & boxes);
+
+    /**
+     * @brief Unrefines the cells down to level \a minLevel.
+     * All cells on levels finer than \a minLevel are coarsened to level \a minLevel.
+     */
+    void unrefineToLevel(index_t minLevel);
+    void unrefineToLevel_withTransfer(index_t minLevel, gsSparseMatrix<T,RowMajor> &transfer);
+    void unrefineToLevel_withCoefs(index_t minLevel, gsMatrix<T> & coefs);
+    /**
+     * @brief Unrefines the cells of the finest level.
+     */
+    void unrefineFinestLevel();
+    void unrefineFinestLevel_withTransfer(gsSparseMatrix<T,RowMajor> &transfer);
+    void unrefineFinestLevel_withCoefs(gsMatrix<T> & coefs);
 
     /// Refines all the cells on the side \a side up to level \a lvl
     void refineSide(const boxSide side, index_t lvl);
@@ -1164,9 +1193,9 @@ private:
 public:
     /// \brief Returns transfer matrix between the hirarchical spline given
     /// by the characteristic matrix "old" and this
-    void transfer (const std::vector<gsSortedVector<index_t> > &old, gsSparseMatrix<T>& result);
+    void transfer (const std::vector<gsSortedVector<index_t> > &old, gsSparseMatrix<T,RowMajor>& result);
 
-    void transfer2 (const std::vector<gsSortedVector<index_t> > &old, gsSparseMatrix<T>& result);
+    void transfer2 (const std::vector<gsSortedVector<index_t> > &old, gsSparseMatrix<T,RowMajor>& result);
 
     /// \brief Creates characteristic matrices for basis where "level" is the
     /// maximum level i.e. ignoring higher level refinements

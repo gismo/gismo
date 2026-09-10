@@ -225,16 +225,18 @@ protected:
 public:
 
     /**
-     * @brief      Project a geometry onto a basis (multi-patch)
+     * @brief      Project a function set onto a basis, using the same function set as geometry map.
+     *
+     * Restores the behaviour of the removed gsL2Projection::projectGeometry(gsMultiBasis,
+     * gsFunctionSet, gsMatrix&), where the source and the geometry map are the same object.
      *
      * @param[in]  projectionBasis  The basis to project on
-     * @param[in]  geometryMap      The geometry
-     * @param      coefs            The coefficients of the new geometry on \a projectionBasis
-     *
-    * @return     The projection error.
+     * @param[in]  geometryMap      The geometry, used both as geometry map and as source
+     * @param      coefs            The resulting coefficients on \a projectionBasis
+     * @return     The projection error.
      */
     static T project(   const gsMultiBasis<T>         & projectionBasis,
-                        const gsMultiPatch<T>         & geometryMap,
+                        const gsFunctionSet<T>        & geometryMap,
                               gsMatrix<T>             & coefs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
                         const gsOptionList            & options = gsOptionList(),
@@ -244,7 +246,7 @@ public:
     {
         return _project(projectionBasis, projectionBasis, geometryMap, geometryMap, coefs, bc, options, alpha, beta, gamma);
     }
-    
+
     /**
      * @brief      Project a geometry onto a basis (multi-patch)
      *
@@ -257,7 +259,7 @@ public:
      */
     static T project(   const gsFunctionSet<T>        & projectionBasis,
                         const gsMultiBasis<T>         & integrationBasis,
-                        const gsMultiPatch<T>         & geometryMap,
+                        const gsFunctionSet<T>        & geometryMap,
                               gsMatrix<T>             & coefs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
                         const gsOptionList            & options = gsOptionList(),
@@ -328,7 +330,7 @@ public:
      * @return     The projection error.
      */
     static T project(   const gsMultiBasis<T>         & projectionBasis,
-                        const gsMultiPatch<T>         & geometryMap,
+                        const gsFunctionSet<T>        & geometryMap,
                         const gsFunctionSet<T>        & sourceFunction,
                               gsMatrix<T>             & coefs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
@@ -353,7 +355,7 @@ public:
      */
     static T project(   const gsFunctionSet<T>        & projectionBasis,
                         const gsMultiBasis<T>         & integrationBasis,
-                        const gsMultiPatch<T>         & geometryMap,
+                        const gsFunctionSet<T>        & geometryMap,
                         const gsFunctionSet<T>        & sourceFunction,
                               gsMatrix<T>             & coefs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
@@ -433,7 +435,7 @@ public:
      * @param      options          The options that control the projection process
      */
     static void system( const gsMultiBasis<T>         & projectionBasis,
-                        const gsMultiPatch<T>         & geometryMap,
+                        const gsFunctionSet<T>        & geometryMap,
                               gsSparseMatrix<T>       & systemMatrix,
                               gsMatrix<T>             & rhs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
@@ -459,7 +461,7 @@ public:
      */
     static void system( const gsFunctionSet<T>        & projectionBasis,
                         const gsMultiBasis<T>         & integrationBasis,
-                        const gsMultiPatch<T>         & geometryMap,
+                        const gsFunctionSet<T>        & geometryMap,
                               gsSparseMatrix<T>       & systemMatrix,
                               gsMatrix<T>             & rhs,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
@@ -540,7 +542,7 @@ public:
      * @return     Nothing; the assembled data is written to the provided output arguments.
      */
     static void system( const gsMultiBasis<T>         & projectionBasis,
-                        const gsMultiPatch<T>         & geometryMap,
+                        const gsFunctionSet<T>        & geometryMap,
                         const gsFunctionSet<T>        & sourceFunction,
                               gsSparseMatrix<T>       & systemMatrix,
                               gsMatrix<T>             & rhs,
@@ -568,7 +570,7 @@ public:
      */
     static void system( const gsFunctionSet<T>        & projectionBasis,
                         const gsMultiBasis<T>         & integrationBasis,
-                        const gsMultiPatch<T>         & geometryMap,
+                        const gsFunctionSet<T>        & geometryMap,
                         const gsFunctionSet<T>        & sourceFunction,
                               gsSparseMatrix<T>       & systemMatrix,
                               gsMatrix<T>             & rhs,
@@ -655,7 +657,7 @@ public:
      * @return     Nothing; the assembled data is written to the provided output arguments.
      */
     static void matrix( const gsMultiBasis<T>         & projectionBasis,
-                        const gsMultiPatch<T>         & geometryMap,
+                        const gsFunctionSet<T>        & geometryMap,
                               gsSparseMatrix<T>       & systemMatrix,
                               short_t                   targetDim = -1,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
@@ -680,7 +682,7 @@ public:
      */
     static void matrix( const gsFunctionSet<T>        & projectionBasis,
                         const gsMultiBasis<T>         & integrationBasis,
-                        const gsMultiPatch<T>         & geometryMap,
+                        const gsFunctionSet<T>        & geometryMap,
                               gsSparseMatrix<T>       & systemMatrix,
                               short_t                   targetDim = -1,
                         const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
@@ -762,7 +764,7 @@ public:
      * @return     Nothing; the assembled data is written to the provided output arguments.
      */
     static void rhs(const gsMultiBasis<T>         & projectionBasis,
-                    const gsMultiPatch<T>         & geometryMap,
+                    const gsFunctionSet<T>        & geometryMap,
                           gsMatrix<T>             & rhs,
                     const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
                     const gsOptionList            & options = gsOptionList(),
@@ -787,7 +789,7 @@ public:
      */
     static void rhs(const gsFunctionSet<T>        & projectionBasis,
                     const gsMultiBasis<T>         & integrationBasis,
-                    const gsMultiPatch<T>         & geometryMap,
+                    const gsFunctionSet<T>        & geometryMap,
                           gsMatrix<T>             & rhs,
                     const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
                     const gsOptionList            & options = gsOptionList(),
@@ -863,7 +865,7 @@ public:
      * @return     Nothing; the assembled data is written to the provided output arguments.
      */
     static void rhs(const gsMultiBasis<T>         & projectionBasis,
-                    const gsMultiPatch<T>         & geometryMap,
+                    const gsFunctionSet<T>        & geometryMap,
                     const gsFunctionSet<T>        & sourceFunction,
                           gsMatrix<T>             & rhs,
                     const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),
@@ -889,7 +891,7 @@ public:
      */
     static void rhs(const gsFunctionSet<T>        & projectionBasis,
                     const gsMultiBasis<T>         & integrationBasis,
-                    const gsMultiPatch<T>         & geometryMap,
+                    const gsFunctionSet<T>        & geometryMap,
                     const gsFunctionSet<T>        & sourceFunction,
                           gsMatrix<T>             & rhs,
                     const gsBoundaryConditions<T> & bc = gsBoundaryConditions<T>(),

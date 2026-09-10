@@ -2,12 +2,12 @@
 
     @brief This is the main header file that collects wrappers of Eigen for linear algebra.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -161,13 +161,17 @@ public:
     // gsEigen::ConjugateGradient because this preconditionner does not
     // preserve symmetry.
 
-    /// Congugate gradient without preconditioner (identity as preconditioner) 
+    /// Conjugate gradient without preconditioner (identity as preconditioner)
     typedef gsEigen::ConjugateGradient<gsEigen::SparseMatrix<T,0,index_t>,
             gsEigen::Lower|gsEigen::Upper, gsEigen::IdentityPreconditioner> CGIdentity;
 
-    /// Congugate gradient with diagonal (Jacobi) preconditioner
-    typedef gsEigen::ConjugateGradient<gsEigen::SparseMatrix<T,0,index_t>, 
+    /// Conjugate gradient with diagonal (Jacobi) preconditioner
+    typedef gsEigen::ConjugateGradient<gsEigen::SparseMatrix<T,0,index_t>,
             gsEigen::Lower|gsEigen::Upper, gsEigen::DiagonalPreconditioner<T> > CGDiagonal;
+
+    /// Conjugate gradient with custom Gismo preconditioner (gsPreconditionerWrapper)
+    typedef gsEigen::ConjugateGradient<gsEigen::SparseMatrix<T,0,index_t>,
+            gsEigen::Lower|gsEigen::Upper, gsPreconditionerWrapper<T> > CGCustom;
 
     /// BiCGSTAB with Incomplete LU factorization with dual-threshold strategy
     typedef gsEigen::BiCGSTAB<gsEigen::SparseMatrix<T,0,index_t>,
@@ -177,9 +181,13 @@ public:
     typedef gsEigen::BiCGSTAB<gsEigen::SparseMatrix<T,0,index_t>,
                             gsEigen::DiagonalPreconditioner<T> > BiCGSTABDiagonal;
 
-    /// BiCGSTAB without preconditioner (identity as preconditioner) 
+    /// BiCGSTAB without preconditioner (identity as preconditioner)
     typedef gsEigen::BiCGSTAB<gsEigen::SparseMatrix<T,0,index_t>,
                             gsEigen::IdentityPreconditioner > BiCGSTABIdentity;
+
+    /// BiCGSTAB with custom preconditioner (gsPreconditionerWrapper)
+    typedef gsEigen::BiCGSTAB<gsEigen::SparseMatrix<T,0,index_t>,
+                            gsPreconditionerWrapper<T> > BiCGSTABCustom;
 
     /// Direct LDLt factorization
     typedef gsEigen::SimplicialLDLT<gsEigen::SparseMatrix<T,0,index_t> > SimplicialLDLT;
@@ -194,7 +202,7 @@ public:
     /// Sparse QR solver
     typedef gsEigen::SparseQR<gsEigen::SparseMatrix<T,0,index_t>,
                             gsEigen::COLAMDOrdering<index_t> > SparseQR;
-    
+
     #ifdef GISMO_WITH_SUPERLU
     /// SuperLU (if enabled)
     typedef gsEigen::SuperLU<gsEigen::SparseMatrix<T,0,index_t> > SuperLU;

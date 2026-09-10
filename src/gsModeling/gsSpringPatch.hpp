@@ -14,6 +14,7 @@
 #pragma once
 
 #include<gsModeling/gsSpringPatch.h>
+#include<gsAssembler/gsDofMapperCreator.h>
 #include<gsNurbs/gsTensorBSplineBasis.h>
 #include<gsNurbs/gsBSpline.h>
 #include<gsTensor/gsGridIterator.h>
@@ -72,7 +73,7 @@ void gsSpringPatch<T>::compute_impl()
 
     // Initialize mapper
     const int sz  = resultBasis.size();
-    gsDofMapper mapper(resultBasis);
+    gsDofMapper mapper = createMapper(resultBasis);
     // boundary control point indices
     gsMatrix<index_t> bnd = resultBasis.allBoundary();
     mapper.markBoundary(0,bnd);

@@ -13,6 +13,7 @@
 **/
 
 #include "gismo_unittest.h"
+#include <gsAssembler/gsDofMapperCreator.h>
 
 using namespace gismo;
 
@@ -45,14 +46,9 @@ SUITE(gsBasisComponents_test)
 
         // Check indices
         mb.uniformRefine();
-        gsDofMapper dm;
-        mb.getMapper(
-            dirichlet::elimination,
-            iFace::glue,
-            gsBoundaryConditions<>(),
-            dm,
-            0
-        );
+        gsDofMapper dm = createMapper(mb, gsBoundaryConditions<>(),
+                                      dirichlet::elimination, iFace::glue,
+                                      /*nComp=*/1, /*unk=*/0, /*finalize=*/true);
         const index_t nTotalDofs = dm.freeSize();
         CHECK( nTotalDofs == 117 );
         gsMatrix<index_t> globalIndices = gsMatrix<index_t>::Constant(nTotalDofs,1,-1);

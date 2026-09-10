@@ -13,9 +13,90 @@
 
 #include "gismo_unittest.h"
 
+#include <atomic>
+
+namespace
+{
+
+/// Deliberately simple non-G+Smo rule used to verify that the assembler accepts
+/// arbitrary gsQuadRule implementations, rather than merely another quRule
+/// option.
+template <class T>
+class MidpointRule : public gismo::gsQuadRule<T>
+{
+public:
+    explicit MidpointRule(index_t dim)
+    {
+        this->m_nodes.setZero(dim, 1);
+        this->m_weights.resize(1);
+        this->m_weights[0] = T(1);
+        for (index_t i = 0; i < dim; ++i)
+            this->m_weights[0] *= T(2);
+    }
+};
+
+} // anonymous namespace
+
 
 SUITE(gsExprAssembler_test)
 {
+    TEST(CustomQuadratureFactory)
+    {
+        gsBSplineBasis<real_t> bb(0.0, 1.0, 3, 3);
+        gsMultiBasis<real_t> mb(bb);
+        gsBoundaryConditions<real_t> bcs;
+
+        gsExprAssembler<real_t> standard(1, 1);
+        standard.setIntegrationElements(mb);
+        auto uStandard = standard.getSpace(mb);
+        uStandard.setup(bcs, dirichlet::homogeneous, 0);
+        standard.initSystem();
+        standard.assemble(uStandard * uStandard.tr());
+        const gsSparseMatrix<real_t> Mstandard = standard.matrix();
+
+        gsExprAssembler<real_t> custom(1, 1);
+        custom.setIntegrationElements(mb);
+        auto uCustom = custom.getSpace(mb);
+        uCustom.setup(bcs, dirichlet::homogeneous, 0);
+        custom.initSystem();
+
+        std::atomic<index_t> calls(0);
+        std::atomic<bool> contextIsCorrect(true);
+        custom.setQuadratureFactory(
+            [&calls, &contextIsCorrect](const gsBasis<real_t> & basis,
+                                        const gsOptionList &,
+                                        index_t patch,
+                                        short_t fixedDirection)
+                -> gsExprAssembler<real_t>::QuadratureRulePtr
+            {
+                ++calls;
+                if (patch != 0 || fixedDirection != -1)
+                    contextIsCorrect = false;
+                return gsExprAssembler<real_t>::QuadratureRulePtr(
+                    new MidpointRule<real_t>(basis.dim()));
+            });
+
+        CHECK(custom.hasCustomQuadrature());
+        custom.assemble(uCustom * uCustom.tr());
+        const gsSparseMatrix<real_t> Mcustom = custom.matrix();
+        
+        const index_t current_calls = calls.load();
+        CHECK(current_calls > 0);
+        CHECK(contextIsCorrect.load());
+        CHECK((Mstandard - Mcustom).norm() > 1e-8);
+
+        custom.clearQuadratureFactory();
+        CHECK(!custom.hasCustomQuadrature());
+        custom.clearMatrix();
+        custom.assemble(uCustom * uCustom.tr());
+        const gsSparseMatrix<real_t> Mrestored = custom.matrix();
+
+        CHECK_EQUAL(current_calls, calls.load());
+        CHECK_EQUAL(Mstandard.rows(), Mrestored.rows());
+        CHECK_EQUAL(Mstandard.cols(), Mrestored.cols());
+        CHECK((Mstandard - Mrestored).norm() < 1e-14);
+    }
+
     TEST(InterfaceExpression)
     {
         const index_t numRef = 2;

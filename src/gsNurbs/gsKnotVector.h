@@ -182,6 +182,13 @@ public: // iterator ends
 
     short_t dim() const override { return 1; }
 
+    typename gsDomain<T>::Ptr component(index_t i) const override
+    {
+        GISMO_UNUSED(i);
+        GISMO_ASSERT(i==0, "gsKnotVector has only one component (i==0)");
+        return memory::make_shared_not_owned(const_cast<gsKnotVector<T>*>(this));
+    }
+
     gsMatrix<T> boundingBox() const override
     {
         gsMatrix<T> box(1,2);
