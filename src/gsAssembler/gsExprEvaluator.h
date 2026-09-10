@@ -73,7 +73,7 @@ public:
     //gsExprEvaluator(typename gsExprHelper<T> env)
 
     gsExprEvaluator(const gsExprAssembler<T> & o)
-    : m_exprdata(o.exprData()), m_options(defaultOptions())
+    : m_exprdata(o.exprData()), m_options(o.options()) // use same exprData as o and copy options from o
     { }
 
     gsOptionList defaultOptions()
@@ -422,7 +422,7 @@ private:
         template<typename U, typename std::enable_if<gismo::is_autodiff_type<U>::value, int>::type = 0>
         static inline void if_autodiff_use_critical(const U contrib, U & res)
         {
-#           pragma omp critical
+#           pragma omp critical (gsExprEvaluator_plus_acc_global)
             res += contrib;
         }
         // For standard types: use atomic operation
@@ -435,52 +435,34 @@ private:
     };
     struct min_op
     {
-        static inline T init() { return math::limits::max(); }
+        static inline T init()
+        {
+            GISMO_STATIC_ASSERT(std::numeric_limits<T>::is_specialized,
+            "std::numeric_limits is not specialised for T, so the reduction would be seeded with T() instead of the extreme value.");
+            return math::numeric_limits<T>::max();
+        }
         static inline void acc (const T contrib, const T, T & res)
         {res = math::min(contrib, res);	}
         static inline void acc_global(const T contrib, T & res)
         {
-            if_autodiff_use_critical(contrib, res);
-        }
-    private:
-        // For autodiff types: use critical section
-        template<typename U, typename std::enable_if<gismo::is_autodiff_type<U>::value, int>::type = 0>
-        static inline void if_autodiff_use_critical(const U contrib, U & res)
-        {
-#           pragma omp critical
-            res = math::min(contrib, res);
-        }
-        // For standard types: use atomic operation
-        template<typename U, typename std::enable_if<!gismo::is_autodiff_type<U>::value, int>::type = 0>
-        static inline void if_autodiff_use_critical(const U contrib, U & res)
-        {
-#           pragma omp atomic write
+#           pragma omp critical (gsExprEvaluator_min_acc_global)
             res = math::min(contrib, res);
         }
 
     };
     struct max_op
     {
-        static inline T init() { return math::limits::min(); }
+        static inline T init()
+        {
+            GISMO_STATIC_ASSERT(std::numeric_limits<T>::is_specialized,
+            "std::numeric_limits is not specialised for T, so the reduction would be seeded with T() instead of the extreme value.");
+            return math::numeric_limits<T>::lowest();
+        }
         static inline void acc (const T contrib, const T, T & res)
         { res = math::max(contrib, res); }
         static inline void acc_global(const T contrib, T & res)
         {
-            if_autodiff_use_critical(contrib, res);
-        }
-    private:
-        // For autodiff types: use critical section
-        template<typename U, typename std::enable_if<gismo::is_autodiff_type<U>::value, int>::type = 0>
-        static inline void if_autodiff_use_critical(const U contrib, U & res)
-        {
-#           pragma omp critical
-            res = math::max(contrib, res);
-        }
-        // For standard types: use atomic operation
-        template<typename U, typename std::enable_if<!gismo::is_autodiff_type<U>::value, int>::type = 0>
-        static inline void if_autodiff_use_critical(const U contrib, U & res)
-        {
-#           pragma omp atomic write
+#           pragma omp critical (gsExprEvaluator_max_acc_global)
             res = math::max(contrib, res);
         }
     };
@@ -516,9 +498,9 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 
         for ( auto & elem : m_exprdata->domain().allElements() )
         {
-            if (changeQuadrature || QuPatch!=elem.patch())
+            if (changeQuadrature || QuPatch!=elem.patchIndex())
             {
-                QuPatch = elem.patch();
+                QuPatch = elem.patchIndex();
                 // get Degree of the domain
                 QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(QuPatch), m_options);
             }
