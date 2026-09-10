@@ -109,14 +109,34 @@ public:
     void setupMapper(gsDofMapper dofsMapper) const
     {
         GISMO_ASSERT( dofsMapper.isFinalized(), "The provided dof-mapper is not finalized.");
-        GISMO_ASSERT( dofsMapper.mapSize()==static_cast<size_t>(this->source().size()*dofsMapper.numComponents()), "The dof-mapper is not consistent: mapSize()="<<dofsMapper.mapSize()<<"!="<<static_cast<size_t>(this->source().size())<<"=this->source().size()");
+        GISMO_ENSURE( dofsMapper.numComponents()==this->dim(),
+                      "setupMapper: mapper has "<<dofsMapper.numComponents()
+                      <<" components but the space has dim "<<this->dim()<<".");
+        const bool sizeConsistent = !gsFeSpaceData<T>::uniformComponents(dofsMapper) ||
+                      dofsMapper.mapSize()==static_cast<size_t>(this->source().size())*dofsMapper.numComponents();
+        GISMO_ASSERT( sizeConsistent,
+                      "The dof-mapper is not consistent: mapSize()="<<dofsMapper.mapSize()
+                      <<"!="<<static_cast<size_t>(this->source().size())<<"=this->source().size()");
         m_sd->mapper = give(dofsMapper);
+        if (sizeConsistent)
+        {
+            m_sd->mapperInstalled = true;
+            m_sd->installedFs  = &this->source();
+            m_sd->installedDim = this->dim();
+        }
+        else
+        {
+            m_sd->mapperInstalled = false;
+            m_sd->installedFs = nullptr;
+        }
     }
 
     void setup(const index_t _icont = -1) const
     {
         this->setInterfaceCont(_icont);
         m_sd->mapper = gsDofMapper();
+        m_sd->mapperInstalled = false;
+        m_sd->installedFs = nullptr;
 
         if (const gsMultiBasis<T> * mb =
             dynamic_cast<const gsMultiBasis<T>*>(&this->source()) )
@@ -148,6 +168,8 @@ public:
     {
         this->setInterfaceCont(_icont);
         m_sd->mapper = gsDofMapper();
+        m_sd->mapperInstalled = false;
+        m_sd->installedFs = nullptr;
         const index_t dim = this->dim();
         const gsMultiBasis<T> *mb = dynamic_cast<const gsMultiBasis<T> *>(&this->source());
         if (mb != nullptr)

@@ -31,6 +31,15 @@ TEMPLATE_INST gsDofMapper createMapper(const gsFunctionSet<real_t> & bases,
                                        dirichlet::strategy ds, iFace::strategy is,
                                        index_t nComp, index_t unk, bool finalize);
 
+TEMPLATE_INST gsDofMapper createMapper(const std::vector<const gsFunctionSet<real_t>*> & basesPerComp,
+                                       const gsBoxTopology & topology,
+                                       const gsBoundaryConditions<real_t> & bc,
+                                       index_t unk, bool conforming, bool finalize);
+
+TEMPLATE_INST gsDofMapper createMapper(const std::vector<gsMultiBasis<real_t> > & basesPerComp,
+                                       const gsBoundaryConditions<real_t> & bc,
+                                       index_t unk, bool conforming, bool finalize);
+
 #ifdef GISMO_WITH_PYBIND11
 
 namespace py = pybind11;

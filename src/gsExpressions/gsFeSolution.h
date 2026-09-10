@@ -90,7 +90,14 @@ public:
                   <<_Sv->size()<<" != "<<_u.mapper().freeSize() <<". ";
             return false;
         }
-        if((size_t)_u.source().size()*dim()!=_u.mapper().mapSize())
+        if(_u.mapper().numComponents()!=dim())
+        {
+            gsWarn<< "The solution space is inconsistent: the mapper has "
+                  <<_u.mapper().numComponents()<<" components, expected "<<dim()<<". ";
+            return false;
+        }
+        if(gsFeSpaceData<T>::uniformComponents(_u.mapper()) &&
+           (size_t)_u.source().size()*dim()!=_u.mapper().mapSize())
         {
             gsWarn<< "The solution space is inconsistent: "
                   <<_u.source().size()*dim()<<" != "<<_u.mapper().mapSize()<<". ";

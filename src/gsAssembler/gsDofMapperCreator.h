@@ -97,6 +97,50 @@ gsDofMapper createMapper(const gsFunctionSet<T> & bases, const gsBoundaryConditi
                          dirichlet::strategy ds, iFace::strategy is,
                          index_t nComp = 1, index_t unk = 0, bool finalize = false);
 
+/** @brief Ragged factory: builds a gsDofMapper from one basis per component
+    instead of a single basis replicated over all components, so that
+    components may carry different numbers of dofs per patch.
+
+    \param basesPerComp one gsFunctionSet<T> per component; all entries must
+                        report the same gsFunctionSet<T>::nPieces() (the same
+                        patch set), but their bases may otherwise differ in
+                        size per patch
+    \param topology     interface topology between patches, shared by all
+                        components
+    \param bc           boundary conditions; may be empty. A condition whose
+                        unkComponent()/component is -1 applies to every
+                        component; otherwise it applies to that component only,
+                        matched against that component's own basis
+    \param unk          unknown index the conditions are filtered by; -1 accepts all
+    \param conforming   if true, matching dofs across the interfaces of \a topology,
+                        per component, against that component's own basis
+    \param finalize     if true, gsDofMapper::finalize() is called before returning
+
+    \note Interfaces of type interaction::contact are skipped by the conforming
+    loop: matching dofs across a contact interface is wrong (the two sides are
+    physically distinct). This mirrors gsMultiBasis<T>::repairInterfaces and the
+    pre-existing gsFeSpace behaviour.
+
+    \ingroup Assembler
+*/
+template<class T>
+gsDofMapper createMapper(const std::vector<const gsFunctionSet<T>*> & basesPerComp,
+                         const gsBoxTopology           & topology,
+                         const gsBoundaryConditions<T> & bc,
+                         index_t unk, bool conforming, bool finalize = false);
+
+/** @brief Convenience overload of the ragged factory: the topology is taken
+    from \a basesPerComp.front().
+
+    \ingroup Assembler
+    \note Interfaces of type interaction::contact are skipped by the conforming
+    loop; see the primary ragged createMapper overload for details.
+*/
+template<class T>
+gsDofMapper createMapper(const std::vector<gsMultiBasis<T> > & basesPerComp,
+                         const gsBoundaryConditions<T> & bc,
+                         index_t unk = 0, bool conforming = true, bool finalize = false);
+
 #ifdef GISMO_WITH_PYBIND11
 void pybind11_init_gsDofMapperCreator(pybind11::module &m);
 #endif
