@@ -133,7 +133,7 @@ void gsAdaptiveMeshing<_dim,T>::_assignErrors(boxMapType & container, const std:
             it->second->setError(elError[k]);
 
     m_totalError = _totalError(m_boxes);
-    m_maxError = _maxError(m_boxes);
+    m_maxError = m_options.getSwitch("Absolute") ? 1 : _maxError(m_boxes);
     if (m_alpha!=-1 && m_beta!=-1)
     {
         const gsBasis<T> * basis = nullptr;
@@ -1046,6 +1046,8 @@ void gsAdaptiveMeshing<_dim,T>::defaultOptions()
     m_options.addReal("RefineParam","Parameter used for refinement",0.1);
     m_options.addReal("CoarsenParamExtra","Extra parameter used for coarsening",0.1);
     m_options.addReal("RefineParamExtra","Extra parameter used for refinement",0.1);
+
+    m_options.addSwitch("Absolute","(For GARU marking) Compute threshold based on solution values without error scaling",false); // Computed threshold based on the actual values of the solution --> true if marking is done with absolute error, false if relative error is used
 
     m_options.addInt("Convergence_alpha","Estimated convergence parameter of he error, for alpha*p+beta convergence",-1);
     m_options.addInt("Convergence_beta","Estimated convergence parameter of he error, for alpha*p+beta convergence",-1);
