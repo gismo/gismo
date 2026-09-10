@@ -270,7 +270,7 @@ inline gsXmlNode* searchId(const int id, gsXmlNode* root,
 /// \param label the label which is sought for
 /// \param tag_name Limit search to tags named \em tag_name .
 /// \param print_warning Print warning if search was not successful
-inline gsXmlNode* searchLabel(const std::string label, 
+inline gsXmlNode* searchLabel(const std::string label,
                            gsXmlNode* root,
                            const char* tag_name = NULL,
                            const bool print_warning = true) {

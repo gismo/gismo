@@ -77,7 +77,6 @@ void pybind11_init_gsBoundaryConditions(py::module &m)
      },
      "Returns a string with information about the object.")
     ;
-    ;
 }
 
 #endif

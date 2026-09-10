@@ -304,7 +304,7 @@ void gsHTensorBasis<d,T>::refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> cons
 {
     std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
     refine(boxes);
-    gsSparseMatrix<> transf;
+    gsSparseMatrix<T,RowMajor> transf;
     this->transfer(OX, transf);
     coefs = transf*coefs;
 }
@@ -312,14 +312,14 @@ void gsHTensorBasis<d,T>::refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> cons
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes)
 {
-    gsSparseMatrix<> transf;
+    gsSparseMatrix<T,RowMajor> transf;
     this->refineElements_withTransfer(boxes,transf);
     //gsDebug<<"tranf orig:\n"<<transf<<std::endl;
     coefs = transf*coefs;
 }
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::refineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T> & tran)
+void gsHTensorBasis<d,T>::refineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T,RowMajor> & tran)
 {
     std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
     this->refineElements(boxes);
@@ -327,7 +327,7 @@ void gsHTensorBasis<d,T>::refineElements_withTransfer(std::vector<index_t> const
 }
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::refineElements_withTransfer2(std::vector<index_t> const & boxes, gsSparseMatrix<T> & tran)
+void gsHTensorBasis<d,T>::refineElements_withTransfer2(std::vector<index_t> const & boxes, gsSparseMatrix<T,RowMajor> & tran)
 {
     std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
     this->refineElements(boxes);
@@ -339,7 +339,7 @@ void gsHTensorBasis<d,T>::refineElements_withCoefs2(gsMatrix<T> & coefs,std::vec
 {
     std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
     refineElements(boxes);
-    gsSparseMatrix<> transf;
+    gsSparseMatrix<T,RowMajor> transf;
     this->transfer2(OX, transf);
     //gsDebug<<"tranf 2:\n"<<transf<<std::endl;
     coefs = transf*coefs;
@@ -350,7 +350,7 @@ void gsHTensorBasis<d,T>::refineElements_withCoefs2(gsMatrix<T> & coefs,std::vec
 // {
 //     std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
 //     unrefine(boxes);
-//     gsSparseMatrix<> transf;
+//     gsSparseMatrix<T,RowMajor> transf;
 //     this->transfer(OX, transf);
 //     gsDebug<<"tranf orig:\n"<<transf<<std::endl;
 //     coefs = transf*coefs;
@@ -359,7 +359,7 @@ void gsHTensorBasis<d,T>::refineElements_withCoefs2(gsMatrix<T> & coefs,std::vec
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::unrefineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes)
 {
-    gsSparseMatrix<> transf;
+    gsSparseMatrix<T,RowMajor> transf;
     this->unrefineElements_withTransfer(boxes,transf);
     //gsDebug<<"tranf orig:\n"<<transf<<std::endl;
 
@@ -368,7 +368,7 @@ void gsHTensorBasis<d,T>::unrefineElements_withCoefs(gsMatrix<T> & coefs,std::ve
 }
 
 template<short_t d, class T>
-void gsHTensorBasis<d,T>::unrefineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T> & tran)
+void gsHTensorBasis<d,T>::unrefineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T,RowMajor> & tran)
 {
     typename gsHTensorBasis<d,T>::uPtr cp = this->clone();
     this->unrefineElements(boxes);
@@ -861,6 +861,89 @@ void gsHTensorBasis<d,T>::refineElements(std::vector<index_t> const & boxes)
 }
 
 template<short_t d, class T>
+void gsHTensorBasis<d,T>::refineToLevel(index_t minLevel)
+{
+    point i1;
+    point i2;
+
+    GISMO_ASSERT( minLevel >= 0,"The minimum level must be non-negative." );
+    index_t dLevel;
+    auto leafIt = m_tree.beginLeafIterator();
+    std::vector<index_t> boxes;
+    for (; leafIt.good(); leafIt.next())
+    {
+        dLevel = minLevel - leafIt.level();
+        if (dLevel <= 0)
+            continue;
+        else
+        {
+            // we want to refine this leaf
+            boxes.push_back(minLevel);
+
+            for( short_t j = 0; j < d; j++ )
+            {
+                i1[j] = leafIt.lowerCorner()[j] * math::pow(2,dLevel);
+                i2[j] = leafIt.upperCorner()[j] * math::pow(2,dLevel);
+                boxes.push_back(i1[j]);
+            }
+            for( short_t j = 0; j < d; j++ )
+                boxes.push_back(i2[j]);
+        }
+    }
+
+    GISMO_ASSERT( (boxes.size()%(2*d + 1))==0,
+                  "The points did not define boxes properly. The boxes were not added to the basis.");
+
+    this->refineElements(boxes);
+}
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::refineToLevel_withTransfer(index_t minLevel, gsSparseMatrix<T,RowMajor> & tran)
+{
+    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
+    this->refineToLevel(minLevel);
+    this->transfer(OX, tran);
+}
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::refineToLevel_withCoefs(index_t minLevel, gsMatrix<T> & coefs)
+{
+    gsSparseMatrix<T,RowMajor> transf;
+    this->refineToLevel_withTransfer(minLevel,transf);
+    coefs = transf*coefs;
+}
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::refineCoarsestLevel()
+{
+    index_t minLevel = 0;
+    // Find the coarsest (lowest-index) level that has any active basis functions
+    for (size_t level = 0; level != m_xmatrix.size(); ++level)
+        if (m_xmatrix[level].size())
+        {
+            minLevel = static_cast<index_t>(level);
+            break;
+        }
+    this->refineToLevel(minLevel+1);
+}
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::refineCoarsestLevel_withTransfer(gsSparseMatrix<T,RowMajor> &tran)
+{
+    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
+    this->refineCoarsestLevel();
+    this->transfer(OX, tran);
+}
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::refineCoarsestLevel_withCoefs(gsMatrix<T> & coefs)
+{
+    gsSparseMatrix<T,RowMajor> transf;
+    this->refineCoarsestLevel_withTransfer(transf);
+    coefs = transf*coefs;
+}
+
+template<short_t d, class T>
 void gsHTensorBasis<d,T>::unrefineElements(std::vector<index_t> const & boxes)
 {
     point i1;
@@ -895,6 +978,105 @@ void gsHTensorBasis<d,T>::unrefineElements(std::vector<index_t> const & boxes)
     //recompute max-ins-level
     m_tree.computeMaxInsLevel();
     update_structure();
+}
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::unrefineToLevel(index_t minLevel)
+{
+    point i1;
+    point i2;
+
+    index_t maxLevel = m_tree.getMaxInsLevel();
+    GISMO_ASSERT( minLevel >= 0 && minLevel <= maxLevel,
+                  "The minimum level must be between 0 and the current max level ("
+                  <<maxLevel<<")." );
+    index_t dLevel = maxLevel - minLevel;
+    if (dLevel == 0)
+    { return; } // nothing to do
+
+    auto leafIt = m_tree.beginLeafIterator();
+    std::vector<index_t> boxes;
+    for (; leafIt.good(); leafIt.next())
+    {
+        dLevel = leafIt.level() - minLevel;
+        if (dLevel <= 0)
+            continue;
+        else
+        {
+            // we want to unrefine this leaf
+            boxes.push_back(minLevel);
+
+            for( short_t j = 0; j < d; j++ )
+            {
+                i1[j] = leafIt.lowerCorner()[j] / math::pow(2,dLevel);
+                i2[j] = leafIt.upperCorner()[j] / math::pow(2,dLevel) + (index_t)(leafIt.upperCorner()[j]%2!=0);
+                boxes.push_back(i1[j]);
+            }
+            for( short_t j = 0; j < d; j++ )
+                boxes.push_back(i2[j]);
+        }
+    }
+
+    GISMO_ASSERT( (boxes.size()%(2*d + 1))==0,
+                  "The points did not define boxes properly. The boxes were not added to the basis.");
+
+    this->unrefineElements(boxes);
+}
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::unrefineToLevel_withTransfer(index_t minLevel, gsSparseMatrix<T,RowMajor> & tran)
+{
+    typename gsHTensorBasis<d,T>::uPtr cp = this->clone();
+    this->unrefineToLevel(minLevel);
+    cp->transfer(this->m_xmatrix,tran);
+}
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::unrefineToLevel_withCoefs(index_t minLevel, gsMatrix<T> & coefs)
+{
+    gsSparseMatrix<T,RowMajor> transf;
+    this->unrefineToLevel_withTransfer(minLevel,transf);
+    typename gsSparseSolver<T>::QR solver(transf);
+    coefs=solver.solve(coefs);
+}
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::unrefineFinestLevel()
+{
+    // Ensure that at least level 0 exists; unrefinement is defined relative to it.
+    GISMO_ENSURE(!m_xmatrix.empty(), "unrefineFinestLevel expects at least level 0 to exist.");
+
+    index_t minLevel = 0;
+    // Find the finest (highest) non-empty level by iterating backwards over the levels.
+    for (size_t levelIndex = m_xmatrix.size(); levelIndex > 0; --levelIndex)
+    {
+        if (m_xmatrix[levelIndex - 1].size())
+        {
+            minLevel = static_cast<index_t>(levelIndex - 1);
+            break;
+        }
+    }
+    if (minLevel == 0)
+        return; // nothing to do
+
+    this->unrefineToLevel(minLevel-1);
+}
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::unrefineFinestLevel_withTransfer(gsSparseMatrix<T,RowMajor> & tran)
+{
+    typename gsHTensorBasis<d,T>::uPtr cp = this->clone();
+    this->unrefineFinestLevel();
+    cp->transfer(this->m_xmatrix,tran);
+}
+
+template<short_t d, class T>
+void gsHTensorBasis<d,T>::unrefineFinestLevel_withCoefs(gsMatrix<T> & coefs)
+{
+    gsSparseMatrix<T,RowMajor> transf;
+    this->unrefineFinestLevel_withTransfer(transf);
+    typename gsSparseSolver<T>::QR solver(transf);
+    coefs=solver.solve(coefs);
 }
 
 template<short_t d, class T>
@@ -1564,6 +1746,34 @@ void gsHTensorBasis<d,T>::evalAllDers_into(const gsMatrix<T> & u, int n,
 */
 
 template<short_t d, class T>
+void gsHTensorBasis<d,T>::merge(const gsHTensorBasis<d,T> & other)
+{
+    GISMO_ASSERT( this->dim() == other.dim(),
+                      "Cannot merge bases of different dimensions." );
+    GISMO_ASSERT( !this->manualLevels(),"Cannot merge bases with manual levels." );
+    GISMO_ASSERT( !other.manualLevels(),"Cannot merge bases with manual levels." );
+#ifndef NDEBUG
+    for (short_t j=0; j<d; j++)
+        GISMO_ASSERT(this->tensorLevel(0).knots(j).asMatrix() == other.tensorLevel(0).knots(j).asMatrix(),"Root level must have the same root basis, but the knot vector in direction "<<j<<" is different.");
+#endif
+
+    gsHTree<d,index_t> newtree = gsHTree<d,index_t>::merge(m_tree,other.tree());
+    std::swap(m_tree,newtree);
+    needLevel( m_tree.getMaxInsLevel() );
+    update_structure();
+}
+
+template<short_t d, class T>
+typename gsHTensorBasis<d,T>::uPtr
+gsHTensorBasis<d,T>::merge(const gsHTensorBasis<d,T> & basis1,
+                           const gsHTensorBasis<d,T> & basis2)
+{
+    uPtr result = basis1.clone();
+    result->merge(basis2);
+    return result;
+}
+
+template<short_t d, class T>
 void gsHTensorBasis<d,T>::uniformRefine(int numKnots, int mul, int dir)
 {
     GISMO_UNUSED(numKnots);
@@ -1735,7 +1945,7 @@ std::vector< std::vector< std::vector<index_t > > > gsHTensorBasis<d,T>::domainB
 
 
 template<short_t d, class T>
-void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<index_t> >& old, gsSparseMatrix<T>& result)
+void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<index_t> >& old, gsSparseMatrix<T,RowMajor>& result)
 {
     // Note: implementation assumes number of old + 1 m_bases exists in this basis
     needLevel( old.size() );
@@ -1790,7 +2000,7 @@ void  gsHTensorBasis<d,T>::transfer(const std::vector<gsSortedVector<index_t> >&
 }
 
 template<short_t d, class T>
-void  gsHTensorBasis<d,T>::transfer2(const std::vector<gsSortedVector<index_t> >& old, gsSparseMatrix<T>& result)
+void  gsHTensorBasis<d,T>::transfer2(const std::vector<gsSortedVector<index_t> >& old, gsSparseMatrix<T,RowMajor>& result)
 {
     // Note: implementation assumes number of old + 1 m_bases exists in this basis
     needLevel( old.size() );

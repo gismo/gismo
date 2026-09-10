@@ -29,12 +29,20 @@ public:
 
     struct Compare
     {
-        bool operator()(const gsHElement<d,T> & a, const gsHElement<d,T> & b) const;
+        bool operator()(const gsHElement<d,T> & a, const gsHElement<d,T> & b) const
+        {
+            typename Base::Compare compare;
+            return (a.level() < b.level()) || ((a.level() == b.level()) && compare(Base(a), Base(b)));
+        }
     };
 
     struct Equal
     {
-        bool operator()(const gsHElement<d,T> & a, const gsHElement<d,T> & b) const;
+        bool operator()(const gsHElement<d,T> & a, const gsHElement<d,T> & b) const
+        {
+            typename Base::Equal equal;
+            return (a.level() == b.level()) && equal(Base(a), Base(b));
+        }
     };
 
 public:

@@ -22,7 +22,7 @@ void pybind11_init_gsKnotVector(py::module &m)
     // Empty constructor
     .def(py::init<>()) // How to set the degree to -1?
 
-    .def(py::init<std::vector<real_t>, short_t>()) // knot container
+    .def(py::init<std::vector<real_t>, short_t>(), py::arg("knots"), py::arg("degree") = -1) // knot container
 
     // Member functions
     .def("get", &Class::get, "Returns the knot vector data")

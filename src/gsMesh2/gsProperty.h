@@ -162,6 +162,12 @@ public:
     typedef typename gsProperty_array<T>::const_reference const_reference;
 
     friend class gsProperty_container;
+
+    // gsSurfMeshTopology::assign() copies the raw connectivity arrays, and
+    // gsSurfMesh::assign() copies the raw point array, so both need array()
+    friend class gsSurfMeshTopology;
+
+    template <class T_>
     friend class gsSurfMesh;
 
 
@@ -328,7 +334,7 @@ public:
 
     // get the type of property by its name. returns typeid(void) if
     // it does not exist.
-    const std::type_info& get_type(const std::string& name)
+    const std::type_info& get_type(const std::string& name)  const
     {
         for (unsigned int i=0; i<parrays_.size(); ++i)
             if (parrays_[i]->name() == name)

@@ -139,6 +139,11 @@ public:
   template <short_t d, bool Trunc>
   void pybind11_init_gsTHBSpline(pybind11::module &m);
 
+    /**
+     * @brief Initializes the Python wrapper for factory constructors of gsTHBSpline and gsHBSpline
+     */
+    void pybind11_init_gsTHBSpline_factory(pybind11::module &m);
+
 #endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo

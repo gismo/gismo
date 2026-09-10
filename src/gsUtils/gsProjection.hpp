@@ -14,6 +14,7 @@
 #include <gsPde/gsBoundaryConditions.h>
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsAssembler/gsExprEvaluator.h>
+#include <gsMatrix/gsSparseMatrix.h>
 #include <gsMatrix/gsSparseSolver.h>
 #include <gsCore/gsBoundary.h>
 
@@ -34,6 +35,8 @@ void gsProjection<Norm,T>::_matrix(const gsMultiBasis<T>         & integrationBa
     // Clear the result
     systemMatrix.clear();
 
+    const short_t actualTargetDim = (targetDim < 0) ? geometryMap.targetDim() : targetDim;
+
     // Create an assembler
     gsExprAssembler<T> A(1,1);
 
@@ -41,7 +44,7 @@ void gsProjection<Norm,T>::_matrix(const gsMultiBasis<T>         & integrationBa
     A.setIntegrationDomain(integrationBasis.domain());
 
     // Assign the space
-    space u = A.getSpace(projectionBasis,targetDim);
+    space u = A.getSpace(projectionBasis, actualTargetDim);
 
     // Assign the geometry map
     typename gsExprAssembler<T>::geometryMap G = A.getMap(geometryMap);
@@ -52,18 +55,20 @@ void gsProjection<Norm,T>::_matrix(const gsMultiBasis<T>         & integrationBa
     // Initialize the system
     A.initSystem();
 
-    // assemble system
-    if (!options.askSwitch("Lumped",false))
+    gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G,alpha,beta,gamma);
+    const gsSparseMatrix<T> & consistentMatrix = A.matrix();
+    if (options.askSwitch("Lumped",false))
     {
-        gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G,alpha,beta,gamma);
-        A.matrix_into(systemMatrix);
+        gsMatrix<T> ones = gsMatrix<T>::Ones(consistentMatrix.cols(), 1);
+        gsMatrix<T> rowSums = consistentMatrix * ones;
+        gsSparseEntries<T> entries;
+        for (index_t i = 0; i < rowSums.rows(); ++i)
+            entries.add(i, i, rowSums(i,0));
+        systemMatrix.resize(consistentMatrix.rows(), consistentMatrix.cols());
+        systemMatrix.setFrom(entries);
     }
     else
-    {
-        gsInfo<<"Warning: Lumped mass matrix is not implemented for the matrix-only assembly. Falling back to consistent mass matrix."<<std::endl;
-        gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G,alpha,beta,gamma);
         A.matrix_into(systemMatrix);
-    }
 }
 
 template<enum ProjectionNorm Norm, typename T>
@@ -144,17 +149,23 @@ void gsProjection<Norm,T>::_system(const gsMultiBasis<T>         & integrationBa
     // Initialize the system
     A.initSystem();
 
-    // assemble system
-    if (!options.askSwitch("Lumped",false))
+    gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G,alpha,beta,gamma);
+    gsProjection<Norm,T>::template _assembleRhs<Norm>(A,u,f,G,alpha,beta,gamma);
+    if (options.askSwitch("Lumped",false))
     {
-        gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G,alpha,beta,gamma);
-        gsProjection<Norm,T>::template _assembleRhs<Norm>(A,u,f,G,alpha,beta,gamma);
-        A.matrix_into(systemMatrix);
+        gsMatrix<T> ones = gsMatrix<T>::Ones(A.matrix().cols(), 1);
+        gsMatrix<T> rowSums = A.matrix() * ones;
+        gsSparseEntries<T> entries;
+        for (index_t i = 0; i < rowSums.rows(); ++i)
+            entries.add(i, i, rowSums(i,0));
+        systemMatrix.resize(A.matrix().rows(), A.matrix().cols());
+        systemMatrix.setFrom(entries);
         A.rhs_into(rhs);
     }
     else
     {
-        gsInfo<<"Warning: Lumped mass matrix is not implemented for the system assembly. Falling back to consistent mass matrix."<<std::endl;
+        A.matrix_into(systemMatrix);
+        A.rhs_into(rhs);
     }
 }
 
@@ -194,25 +205,28 @@ T gsProjection<Norm,T>::_project(const gsMultiBasis<T>         & integrationBasi
     // Initialize the system
     A.initSystem();
 
-    // assemble system
-    if (!options.askSwitch("Lumped",false))
+    gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G,alpha,beta,gamma);
+    gsProjection<Norm,T>::template _assembleRhs<Norm>(A,u,f,G,alpha,beta,gamma);
+    if (options.askSwitch("Lumped",false))
     {
-        gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G,alpha,beta,gamma);
-        gsProjection<Norm,T>::template _assembleRhs<Norm>(A,u,f,G,alpha,beta,gamma);
+        gsMatrix<T> ones = gsMatrix<T>::Ones(A.matrix().cols(), 1);
+        gsMatrix<T> diagVals = A.matrix() * ones;
+        const gsMatrix<T> & rhsVals = A.rhs();
+        coefs.resize(diagVals.rows(), rhsVals.cols());
+        for (index_t i = 0; i < diagVals.rows(); ++i)
+        {
+            if (diagVals(i,0) != T(0))
+                coefs.row(i) = rhsVals.row(i) / diagVals(i,0);
+            else
+                coefs.row(i).setZero();
+        }
+    }
+    else
+    {
         // Solve the system
         typename gsSparseSolver<T>::uPtr solver = gsSparseSolver<T>::get( options.askString("LinearSolver","SimplicialLDLT") );
         solver->compute(A.matrix());
         coefs = solver->solve(A.rhs());
-    }
-    else
-    {
-        gsProjection<Norm,T>::template _assembleMatrix<Norm>(A,u,G,alpha,beta,gamma);
-        gsProjection<Norm,T>::template _assembleRhs<Norm>(A,u,f,G,alpha,beta,gamma);
-        gsMatrix<> LHS = A.matrix() * gsMatrix<>::Ones(A.matrix().rows(),1);
-        A.clearRhs();
-        gsProjection<Norm,T>::template _assembleRhs<Norm>(A,u,f,G,alpha,beta,gamma);
-        gsMatrix<> RHS = A.rhs();
-        coefs = LHS.cwiseInverse().cwiseProduct(RHS);
     }
 
     if (options.askSwitch("ComputeError",true))

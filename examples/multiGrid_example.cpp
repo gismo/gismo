@@ -14,6 +14,7 @@
 #include <ctime>
 
 #include <gismo.h>
+#include <gsAssembler/gsDofMapperCreator.h>
 
 using namespace gismo;
 
@@ -423,14 +424,10 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
       "Unknown interface strategy." );
 
     // Setup dof mapper
-    gsDofMapper dm;
-    mb.getMapper(
+    gsDofMapper dm = createMapper(mb, bc,
        (dirichlet::strategy)opt.askInt("DirichletStrategy",11),
        iFaceStrategy,
-       bc,
-       dm,
-       0
-    );
+       /*nComp=*/1, /*unk=*/0, /*finalize=*/true);
     const index_t nTotalDofs = dm.freeSize();
 
     // Decompose the whole domain into components

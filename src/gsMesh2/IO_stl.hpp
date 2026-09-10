@@ -18,27 +18,31 @@ namespace gismo {
 //== IMPLEMENTATION ===========================================================
 
 
+namespace {
 // helper function
-template <typename T> void read(FILE* in, T& t)
+template <typename T> int read_stl_data(FILE* in, T& t)
 {
     size_t n_items(0);
     (void)n_items;
     n_items = fread((char*)&t, 1, sizeof(t), in);
     assert(n_items > 0);
+    return n_items;
 }
+} // anonymous namespace
 
 
 //-----------------------------------------------------------------------------
 
 
 // helper class for STL reader
+template <class PointT>
 class CmpVec
 {
 public:
 
     CmpVec(float _eps=FLT_MIN) : eps_(_eps) {}
 
-    bool operator()(const gsSurfMesh::Point& v0, const gsSurfMesh::Point& v1) const
+    bool operator()(const PointT& v0, const PointT& v1) const
     {
         if (math::abs(v0[0] - v1[0]) <= eps_)
         {
@@ -59,21 +63,22 @@ private:
 //-----------------------------------------------------------------------------
 
 
-bool read_stl(gsSurfMesh& mesh, const std::string& filename)
+template <class Scalar>
+bool read_stl(gsSurfMesh<Scalar>& mesh, const std::string& filename)
 {
-    typedef gsSurfMesh::Point Point;
+    typedef typename gsSurfMesh<Scalar>::Point Point;
     
     char                             line[100], *c;
     unsigned int                     i, nT;
-    gsSurfMesh::Point                 p;
-    gsSurfMesh::Vertex               v;
-    std::vector<gsSurfMesh::Vertex>  vertices(3);
+    typename gsSurfMesh<Scalar>::Point                 p;
+    typename gsSurfMesh<Scalar>::Vertex               v;
+    std::vector<typename gsSurfMesh<Scalar>::Vertex>  vertices(3);
     size_t n_items(0);
     (void)n_items;
     
-    CmpVec comp(FLT_MIN);
-    std::map<Point, gsSurfMesh::Vertex, CmpVec>            vMap(comp);
-    std::map<Point, gsSurfMesh::Vertex, CmpVec>::iterator  vMapIt;
+    CmpVec<Point> comp(FLT_MIN);
+    std::map<Point, typename gsSurfMesh<Scalar>::Vertex, CmpVec<Point> >            vMap(comp);
+    typename std::map<Point, typename gsSurfMesh<Scalar>::Vertex, CmpVec<Point> >::iterator  vMapIt;
 
 
     // clear mesh
@@ -105,7 +110,7 @@ bool read_stl(gsSurfMesh& mesh, const std::string& filename)
         assert(n_items > 0);
 
         // read number of triangles
-        read(in, nT);
+        read_stl_data(in, nT);
 
         // read triangles
         while (nT)
@@ -116,13 +121,13 @@ bool read_stl(gsSurfMesh& mesh, const std::string& filename)
             // triangle's vertices
             for (i=0; i<3; ++i)
             {
-                read(in, p);
+                read_stl_data(in, p);
 
                 // has vector been referenced before?
                 if ((vMapIt=vMap.find(p)) == vMap.end())
                 {
                     // No : add vertex and remember idx/vector mapping
-                    v = mesh.add_vertex(p.cast<gsSurfMesh::Scalar>());
+                    v = mesh.add_vertex(p.template cast<Scalar>());
                     vertices[i] = v;
                     vMap[p] = v;
                 }
@@ -170,13 +175,20 @@ bool read_stl(gsSurfMesh& mesh, const std::string& filename)
                     for (c=line; isspace(*c) && *c!='\0'; ++c) {};
 
                     // read x, y, z
-                    sscanf(c+6, "%f %f %f", (float*)&p[0], (float*)&p[1], (float*)&p[2]);
+                    // note: scan into double temporaries. Writing "%f" through
+                    // a (float*) cast of a Scalar (=double) component fills
+                    // only half of it and leaves the rest garbage.
+                    double px(0), py(0), pz(0);
+                    sscanf(c+6, "%lf %lf %lf", &px, &py, &pz);
+                    p[0] = static_cast<Scalar>(px);
+                    p[1] = static_cast<Scalar>(py);
+                    p[2] = static_cast<Scalar>(pz);
 
                     // has vector been referenced before?
                     if ((vMapIt=vMap.find(p)) == vMap.end())
                     {
                         // No : add vertex and remember idx/vector mapping
-                        v = mesh.add_vertex(p.cast<gsSurfMesh::Scalar>());
+                        v = mesh.add_vertex(p.template cast<Scalar>());
                         vertices[i] = v;
                         vMap[p] = v;
                     }
@@ -205,10 +217,11 @@ bool read_stl(gsSurfMesh& mesh, const std::string& filename)
 //-----------------------------------------------------------------------------
 
 
-bool write_stl(const gsSurfMesh& mesh, const std::string& filename)
+template <class Scalar>
+bool write_stl(const gsSurfMesh<Scalar>& mesh, const std::string& filename)
 {
-    typedef gsSurfMesh::Point Point;
-    typedef gsSurfMesh::Normal Normal;
+    typedef typename gsSurfMesh<Scalar>::Point Point;
+    typedef typename gsSurfMesh<Scalar>::Normal Normal;
     
     if (!mesh.is_triangle_mesh())
     {
@@ -216,7 +229,7 @@ bool write_stl(const gsSurfMesh& mesh, const std::string& filename)
         return false;
     }
 
-    auto fnormals = mesh.get_face_property<Normal>("f:normal");
+    auto fnormals = mesh.template get_face_property<Normal>("f:normal");
     if (!fnormals)
     {
         std::cerr << "write_stl: no a face normals present!" << std::endl;
@@ -224,7 +237,7 @@ bool write_stl(const gsSurfMesh& mesh, const std::string& filename)
     }
 
     std::ofstream ofs(filename.c_str());
-    auto points = mesh.get_vertex_property<Point>("v:point");
+    auto points = mesh.template get_vertex_property<Point>("v:point");
 
     ofs << "solid stl" << std::endl;
     Normal n;

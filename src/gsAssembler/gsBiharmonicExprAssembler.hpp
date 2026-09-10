@@ -16,6 +16,7 @@
 #pragma once
 
 #include <gsAssembler/gsBiharmonicExprAssembler.h>
+#include <gsAssembler/gsDofMapperCreator.h>
 #include <gsMSplines/gsMappedBasis.h>
 #include <gsMSplines/gsMappedSpline.h>
 #include <gsPde/gsBoundaryConditions.h>
@@ -214,10 +215,10 @@ void gsBiharmonicExprAssembler<T>::assemble()
         index_t i = 0;
         for ( typename gsMultiPatch<T>::const_iiterator it = m_patches.iBegin(); it != m_patches.iEnd(); ++it, ++i)
         {
-            T stab     = 4 * ( m_basis.maxCwiseDegree() + m_basis.dim() ) * ( m_basis.maxCwiseDegree() + 1 );
+            T stab     = 4. * ( m_basis.maxCwiseDegree() + m_basis.dim() ) * ( m_basis.maxCwiseDegree() + 1 );
             T m_h      = m_basis.basis(0).getMinCellLength(); // m_basis.basis(0).getMinCellLength();
-            T mu       = 2 * stab / m_h;
-            T alpha = 1;
+            T mu       = 2. * stab / m_h;
+            T alpha = 1.;
 
             //mu = penalty_init == -1.0 ? mu : penalty_init / m_h;
             if (m_penalty == -1)
@@ -334,10 +335,10 @@ void gsBiharmonicExprAssembler<T>::assembleLHS()
         index_t i = 0;
         for ( typename gsMultiPatch<T>::const_iiterator it = m_patches.iBegin(); it != m_patches.iEnd(); ++it, ++i)
         {
-            T stab     = 4 * ( m_basis.maxCwiseDegree() + m_basis.dim() ) * ( m_basis.maxCwiseDegree() + 1 );
+            T stab     = 4. * ( m_basis.maxCwiseDegree() + m_basis.dim() ) * ( m_basis.maxCwiseDegree() + 1 );
             T m_h      = m_basis.basis(0).getMinCellLength(); // m_basis.basis(0).getMinCellLength();
-            T mu       = 2 * stab / m_h;
-            T alpha = 1;
+            T mu       = 2. * stab / m_h;
+            T alpha = 1.;
 
             //mu = penalty_init == -1.0 ? mu : penalty_init / m_h;
             if (m_penalty == -1)
@@ -563,7 +564,7 @@ void gsBiharmonicExprAssembler<T>::_setMapperForBiharmonic(  const gsBoundaryCon
     }
     else if (const gsMultiBasis<T> * dbasis = dynamic_cast<const gsMultiBasis<T> *>(&spaceBasis))
     {
-        mapper.init(*dbasis);
+        mapper = createMapper(*dbasis, 1, /*conforming=*/false);
 
         for (gsBoxTopology::const_iiterator it = dbasis->topology().iBegin();
              it != dbasis->topology().iEnd(); ++it) // C^0 at the interface
@@ -640,7 +641,7 @@ void gsBiharmonicExprAssembler<T>::_getDirichletNeumannValuesL2Projection(
     else if (dynamic_cast<const gsMultiBasis<T> *>(&spaceBasis)) // assumes spacebasis==dbasis
     {
         gsDofMapper mapper = u.mapper();
-        gsDofMapper mapperBdy(dbasis, u.dim());
+        gsDofMapper mapperBdy = createMapper(dbasis, u.dim(), /*conforming=*/false);
         for (gsBoxTopology::const_iiterator it = dbasis.topology().iBegin();
              it != dbasis.topology().iEnd(); ++it) // C^0 at the interface
         {

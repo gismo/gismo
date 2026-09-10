@@ -783,6 +783,11 @@ protected:
   template <short_t d, bool Trunc>
   void pybind11_init_gsTHBSplineBasis(pybind11::module &m);
 
+    /**
+     * @brief Initializes the Python wrapper for factory constructors of gsTHBSplineBasis and gsHBSplineBasis
+     */
+    void pybind11_init_gsTHBSplineBasis_factory(pybind11::module &m);
+
 #endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
