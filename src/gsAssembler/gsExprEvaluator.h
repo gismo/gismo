@@ -516,9 +516,9 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 
         for ( auto & elem : m_exprdata->domain().allElements() )
         {
-            if (changeQuadrature || QuPatch!=elem.patch())
+            if (changeQuadrature || QuPatch!=elem.patchIndex())
             {
-                QuPatch = elem.patch();
+                QuPatch = elem.patchIndex();
                 // get Degree of the domain
                 QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(QuPatch), m_options);
             }

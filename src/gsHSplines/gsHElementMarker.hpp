@@ -77,7 +77,7 @@ namespace gismo
         {
             // Create a pair of element and its associated error
             elementLevel = static_cast<const gsHDomainIterator<T,d> *>(it.get())->getLevel();
-            element = m_helper.toElement(it.lowerCorner(), it.upperCorner(), elementLevel, it.patch());
+            element = m_helper.toElement(it.lowerCorner(), it.upperCorner(), elementLevel, it.patchIndex());
             // m_elementErrors[elem] = it.id();
             m_elementErrors[it.id()] = std::make_pair(element, errors[it.id()]);
         }
