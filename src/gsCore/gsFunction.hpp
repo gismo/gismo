@@ -618,7 +618,13 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
 
         if (tarDim!=-1 ? tarDim == domDim : n==d)
         {
-            if ( 1==n ) { InOut.outNormals.setConstant(sgn); return; } // 1D case
+            // 1D: the boundary facet is a point, so the outer normal is just
+            // the side orientation. Do not exit early here -- the measure and
+            // gradient-transform blocks below must still run, or jacInvTr stays
+            // empty and any igrad(.,G) on a 1D boundary reads past its end.
+            if ( 1==n ) InOut.outNormals.setConstant(sgn);
+            else
+            {
 
             T det_sgn = 0;
             typename gsMatrix<T,domDim,tarDim>::FirstMinorMatrixType minor;
@@ -670,6 +676,8 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                     alt_sgn  *= -1;
                 }
             }
+
+            }// 1!=n
         }
         else // lower-dim boundary case, d + 1 == n
         {
@@ -711,9 +719,13 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                                                     .determinant() );
             }
         }
-        else // If on boundary
+        else if (1==d) // If on the boundary of a 1D domain
         {
-            GISMO_ASSERT(d==2, "Only works for boundary curves..");
+            // The facet is a point: its measure is the counting measure, 1.
+            InOut.measures.setOnes(1, numPts);
+        }
+        else if (2==d) // If on the boundary of a 2D domain: a curve
+        {
             const int dir = InOut.side.direction();
             typename gsMatrix<T,domDim,tarDim>::ColMinorMatrixType   minor;
             InOut.measures.resize(1, numPts);
@@ -723,6 +735,41 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                 InOut.measures.at(p) = jacT.row(!dir).norm();
             }
             //InOut.measures = InOut.outNormals.colwise().norm(); // problematic on 3d curve boundary
+        }
+        else if (3==d) // If on the boundary of a 3D domain: a surface
+        {
+            // The facet is spanned by the two tangents dG/dxi_i, i!=dir, and its
+            // measure is their Gram determinant -- NOT the length of either one,
+            // which coincides with the area only when the other edge is unit.
+            // Written out in scalars: the 2x2 Gram determinant in closed form,
+            // so that this branch allocates nothing per element.
+            const int dir = InOut.side.direction();
+            const index_t i0 = (0==dir ? 1 : 0);
+            const index_t i1 = (2==dir ? 1 : 2);
+            for (index_t p = 0; p != numPts; ++p)
+            {
+                const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
+                const T g00 = jacT.row(i0).squaredNorm();
+                const T g11 = jacT.row(i1).squaredNorm();
+                const T g01 = jacT.row(i0).dot(jacT.row(i1));
+                InOut.measures.at(p) = math::sqrt( math::abs(g00*g11 - g01*g01) );
+            }
+        }
+        else // If on the boundary of a domain of dimension 4 or higher
+        {
+            // Same Gram determinant, general d. Allocates, but no G+Smo
+            // assembler instantiates d>3; kept so the formula stays correct.
+            const int dir = InOut.side.direction();
+            gsMatrix<T> tangents(d-1, n), gram(d-1, d-1);
+            for (index_t p = 0; p != numPts; ++p)
+            {
+                const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
+                index_t r = 0;
+                for (index_t i = 0; i != d; ++i)
+                    if (i != dir) tangents.row(r++) = jacT.row(i);
+                gram.noalias() = tangents * tangents.transpose();
+                InOut.measures.at(p) = math::sqrt( math::abs(gram.determinant()) );
+            }
         }
     }
 

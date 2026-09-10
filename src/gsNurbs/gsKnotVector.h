@@ -165,9 +165,9 @@ public: // iterator ends
         return domainIter(new gsKnotDomainIterator<T>(*this));
     }
 
-    domainIter beginBdr(const boxSide   /* bs */) const override
+    domainIter beginBdr(const boxSide bs) const override
     {
-        return domainIter(new gsKnotDomainIterator<T>(*this));
+        return domainIter(new gsKnotDomainBoundaryIterator<T>(*this, bs));
     }
 
     domainIter endAll() const override
@@ -175,9 +175,16 @@ public: // iterator ends
         return domainIter(new gsKnotDomainIterator<T>(*this,false));
     }
 
-    domainIter endBdr(const boxSide   /* bs */) const override
+    domainIter endBdr(const boxSide bs) const override
     {
-        return domainIter(new gsKnotDomainIterator<T>(*this,false));
+        return domainIter(new gsKnotDomainBoundaryIterator<T>(*this, bs, false));
+    }
+
+    /// The boundary of a 1D domain consists of its two endpoints; a single
+    /// side selects one of them.
+    size_t numElementsBdr(boxSide const & s = boundary::all) const override
+    {
+        return (boundary::all == s ? 2 : 1);
     }
 
     short_t dim() const override { return 1; }

@@ -96,4 +96,70 @@ SUITE(gsExprAssembler_test)
         //
         CHECK(math::abs(ev.integral(el.area(G))-2*EIGEN_PI/32) < 1e-10);
     }
+
+    // The boundary facet of a 1D patch is a single point: the quadrature must
+    // sit ON the endpoint (not at an element midpoint) and carry measure 1, and
+    // the map data must still supply jacInvTr there so that igrad(.,G) is
+    // well-defined.
+    TEST(BoundaryIntegral1D)
+    {
+        gsMultiPatch<> mp;
+        mp.addPatch(gsNurbsCreator<>::BSplineUnitInterval(2));
+        mp.computeTopology();
+        gsMultiBasis<> mb(mp);
+        mb.uniformRefine();
+
+        gsExprEvaluator<> ev;
+        ev.setIntegrationDomain(mb.domain());
+        gsExprEvaluator<>::geometryMap G = ev.getMap(mp);
+
+        gsFunctionExpr<> ff("x^2", 1);
+        auto f = ev.getVariable(ff, G);
+
+        // CROSS-CHECK ONLY: |nv| is +-1 per endpoint however the facets are
+        // placed, so this holds on interior midpoints too and cannot detect
+        // either defect on its own.
+        CHECK_CLOSE(2.0, ev.integralBdr(nv(G).norm()), 1e-10);
+
+        // Discriminating: needs jacInvTr on the facet (else it segfaults) AND
+        // facets at the endpoints (on midpoints the two sides cancel to 0).
+        CHECK_CLOSE(2.0, ev.integralBdr(igrad(f,G) * nv(G)), 1e-10);
+
+        // Discriminating on facet placement alone: f(0) + f(1) = 1, whereas
+        // element midpoints give f(0.25) + f(0.75) = 0.625.
+        CHECK_CLOSE(1.0, ev.integralBdr(f), 1e-10);
+    }
+
+    // The measure of a facet of a 3D domain is the Gram determinant of the two
+    // tangents spanning it. The box is fully anisotropic on purpose: with any
+    // two edge lengths equal, taking a single tangent length instead of the
+    // Gram determinant gives the right answer by coincidence.
+    TEST(BoundaryIntegral3D)
+    {
+        gsMultiPatch<> mp;
+        mp.addPatch(gsNurbsCreator<>::BSplineCube(1));
+        gsVector<real_t,3> scaling;
+        scaling << 2, 3, 5;
+        mp.patch(0).scale(scaling);
+        mp.computeTopology();
+        gsMultiBasis<> mb(mp);
+        mb.uniformRefine();
+
+        gsExprEvaluator<> ev;
+        ev.setIntegrationDomain(mb.domain());
+        gsExprEvaluator<>::geometryMap G = ev.getMap(mp);
+
+        // CROSS-CHECK ONLY: an interior integral, unaffected by the boundary
+        // measure. Guards against the geometry itself being wrong.
+        CHECK_CLOSE(30.0, ev.integral(meas(G)), 1e-10);
+
+        // Discriminating: taking a single tangent length instead of the Gram
+        // determinant gives 14 here (and, on a 2x1x1 box, the correct answer).
+        CHECK_CLOSE(62.0, ev.integralBdr(meas(G)), 1e-10);
+
+        // CROSS-CHECK ONLY: |nv| reaches the same number through the cofactor
+        // path, which this fix does not touch -- it pins the expected value,
+        // it does not test the branch.
+        CHECK_CLOSE(62.0, ev.integralBdr(nv(G).norm()), 1e-10);
+    }
 }

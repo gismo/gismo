@@ -332,4 +332,88 @@ SUITE(gsBoundaryConditions_test)
         checkGsBoundaryCondition(sut2);
     }
 
+    /***
+     * Regression test for a label-string mismatch between the two
+     * boundary_condition<T> constructors that derive m_label from a
+     * condition_type::type (src/gsPde/gsBoundaryConditions.h):
+     *
+     * - The 6-argument constructor
+     *     boundary_condition(int p, boxSide s, const function_ptr & f_shptr,
+     *                        condition_type::type t, short_t unknown, bool parametric)
+     *   (around line 131) is never reached through gsBoundaryConditions::addCondition():
+     *   every addCondition() overload also supplies a component index and therefore
+     *   routes to the 7-argument constructor below instead. The only public way to
+     *   exercise the 6-argument constructor is to build a boundary_condition object
+     *   directly and hand it to gsBoundaryConditions::addConditions(bcRefList), which
+     *   files the condition under the label the object itself computed (bc.ctype()).
+     *
+     * - The 7-argument constructor
+     *     boundary_condition(int p, boxSide s, const function_ptr & f_shptr,
+     *                        condition_type::type t, int unknown, int unkcomp, bool parametric)
+     *   (around line 190) is what
+     *   gsBoundaryConditions::addCondition(patch, side, type, function, unknown,
+     *   parametric, comp) reaches internally.
+     *
+     * Before the fix, the 6-argument constructor labelled a weak_clamped condition
+     * "weak Clamped" (lower-case w) while the 7-argument constructor -- and
+     * gsBoundaryConditions::get()/container(), which look conditions up by the
+     * canonical "Weak Clamped" -- used the capitalised form. A condition built
+     * through the 6-argument path was therefore silently invisible to
+     * bc.get("Weak Clamped"), even though it existed in the container.
+     */
+    TEST(weak_clamped_label_is_consistent_across_constructors)
+    {
+        typedef gismo::gsBoundaryConditions<real_t>::bcRefList bcRefList;
+        typedef gismo::boundary_condition<real_t>::function_ptr function_ptr;
+
+        function_ptr func = gismo::memory::make_shared(
+                new gsFunctionExpr<real_t>("0", 2));
+        gismo::boxSide west(boundary::west);
+
+        // --- 6-argument boundary_condition constructor path --------------
+        // Built directly and inserted via addConditions(), the only public
+        // route into this overload.
+        gismo::gsBoundaryConditions<real_t> bc6;
+        gismo::boundary_condition<real_t> cond6(0, west, func,
+                gismo::condition_type::weak_clamped, short_t(0), false);
+        bcRefList refs6;
+        refs6.push_back(cond6);
+        bc6.addConditions(refs6);
+
+        bcRefList found6 = bc6.get("Weak Clamped");
+        CHECK_EQUAL(size_t(1), found6.size());
+        if (found6.size() == 1)
+            CHECK_EQUAL(gismo::condition_type::weak_clamped,
+                    found6.front().get().type());
+
+        // --- 7-argument boundary_condition constructor path --------------
+        // Reached through the public addCondition() API, which always
+        // supplies a component index.
+        gismo::gsBoundaryConditions<real_t> bc7;
+        bc7.addCondition(0, west, gismo::condition_type::weak_clamped, func,
+                short_t(0), false, -1);
+
+        bcRefList found7 = bc7.get("Weak Clamped");
+        CHECK_EQUAL(size_t(1), found7.size());
+        if (found7.size() == 1)
+            CHECK_EQUAL(gismo::condition_type::weak_clamped,
+                    found7.front().get().type());
+
+        // --- control: weak_dirichlet is already labelled consistently in
+        // both constructors, so this shows the harness distinguishes pass
+        // from fail rather than being vacuously true.
+        gismo::gsBoundaryConditions<real_t> bc6d;
+        gismo::boundary_condition<real_t> cond6d(0, west, func,
+                gismo::condition_type::weak_dirichlet, short_t(0), false);
+        bcRefList refs6d;
+        refs6d.push_back(cond6d);
+        bc6d.addConditions(refs6d);
+
+        bcRefList found6d = bc6d.get("Weak Dirichlet");
+        CHECK_EQUAL(size_t(1), found6d.size());
+        if (found6d.size() == 1)
+            CHECK_EQUAL(gismo::condition_type::weak_dirichlet,
+                    found6d.front().get().type());
+    }
+
 }
