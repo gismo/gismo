@@ -73,6 +73,52 @@ struct gsQuasiInterpolate
     static void localIntpl(const gsBasis<T> &b,
                            const gsFunction<T> &fun,
                            gsMatrix<T> &result);
+    
+    /// \brief Dimension-independent per-coefficient Taylor QI on a
+    /// tensor B-spline basis. Computes the \a j-th coefficient as the
+    /// tensor product of the univariate Taylor quasi-interpolants (see
+    /// \ref Taylor). \tparam d is the parameter-domain dimension.
+    template<short_t d>
+    static gsMatrix<T> localTaylor(const gsTensorBSplineBasis<d,T> &b,
+                                  const gsFunction<T> &fun,
+                                  const index_t &r,
+                                  index_t j);
+
+    static gsMatrix<T> localTaylor(const gsBasis<T> &b,
+                                const gsFunction<T>  &fun,
+                                const index_t &r,
+                                index_t i);
+
+    template<short_t d>
+    static gsMatrix<T> localTaylor(const gsHTensorBasis<d,T> &b,
+                                const gsFunction<T>  &fun,
+                                const index_t &r,
+                                index_t i);
+
+    static void localTaylor(const gsBasis<T> &b,
+                        const gsFunction<T>  &fun,
+                        const index_t &r,
+                        gsMatrix<T> & result);    
+    
+    
+    static gsMatrix<T> localL2(const gsBasis<T> &b,   
+                                const gsFunction<T>  &source,                                              
+                                index_t i,
+                                const gsMatrix<T> &ab);
+
+    
+    static gsMatrix<T> localL2(const gsBasis<T> &b,
+                                const gsFunction<T>  &source,
+                                index_t i);
+
+    template<short_t d>
+    static gsMatrix<T> localL2(const gsHTensorBasis<d,T> &b,
+                                const gsFunction<T>  &source,
+                                index_t i);
+
+    static void localL2(const gsBasis<T> &b,
+                        const gsFunction<T>  &source,
+                        gsMatrix<T> & result);
 
 
     /** \brief A quasi-interpolation scheme based on the tayor expansion of the function to approximate.
@@ -94,8 +140,28 @@ struct gsQuasiInterpolate
      * \param r     an integer in [0,deg] (order of maximal derivatives of the function)
      * \param[out] result   a B-spline function, that approximates the given function
      */
-    static void Taylor(const gsBasis<T> &bb, const gsFunction<T> &fun, const int &r, gsMatrix<T> &result);
+    static void Taylor(const gsBasis<T> &bb, const gsFunction<T> &fun, const index_t &r, gsMatrix<T> &result);
 
+     /** \brief A quasi-interpolation scheme based on the tayor expansion of the function to approximate.
+     *  See Theorem 8.5 of "Spline methods (Lyche Morken)"
+     *  Theorem: (Lyche, Morken: Thm 8.5, page 178)
+     *  Let \f$p\f$ and \f$\boldsymbol{\tau}\f$ be the degree and knotvector of the quasi-interpolant, respectively.
+     *   Futhermore let \f$r\f$ be an integer with \f$ 0 \le r \le p \f$ and let \f$x_j\f$ be a number in \f$[\tau_j,
+     *   \tau_{j+p+1}]\f$ for \f$j=1,\dots,n\f$. Consider the quasi-interpolant
+     *   \f[
+     *   Q_{p,r}~f=\sum\limits_{j=1}^n{\lambda_j(f)B_{j,p}}, \quad \text{where} \quad
+     *   \lambda_j(f) = \frac{1}{p!}\sum\limits_{k=0}^r{(-1)^kD^{p-k}\rho_{j,p}(x_j)D^kf(x_j)}
+     *   \f]
+     *   and \f$\rho_{j,p}(y) = (y-\tau_{j+1}) \cdots (y - \tau_{j+p})\f$.
+     *   Then \f$Q_{p,r}\f$ reproduces all polynomials of degree \f$r\f$ and \f$Q_{p,p}\f$ reproduces all splines
+     *   in \f$\mathbb{S}_{p,\tau}\f$.
+     *
+     * \param b     the B-spline basis of the interpolant (knots and degree)
+     * \param fun   a function to approximate
+     * \param r     an integer in [0,deg] (order of maximal derivatives of the function)
+     * \param[out] result   a B-spline function, that approximates the given function
+     */
+    static void Taylor2D(const gsBasis<T> &bb, const gsFunction<T> &fun, const index_t &r, gsMatrix<T> &result);
 
     /**
      * @brief A quasi-interpolation scheme based on Schoenberg Variation Diminishing Spline Approximation.
@@ -185,7 +251,30 @@ protected:
      * @param x     evaluation point
      * @return      the value of the derivative, at the given point, \f$D^\alpha g(x)\f$, where \f$\alpha\f$ is the given order.
      */
-    static T derivProd(const std::vector<T> &zeros, const int &order, const T &x);
+    static T derivProd(const std::vector<T> &zeros, const index_t &order, const T &x);
+
+
+    /**
+     * @brief Row index, within \c derivs[|alpha|] of \ref
+     * gsFunctionSet::evalAllDers_into, of the mixed partial derivative
+     * \f$ \partial^\alpha f^{(comp)} \f$ for a function of domain
+     * dimension \a d.
+     *
+     * Encodes the packing convention of \c evalAllDers_into: per target
+     * component the block holds, for order \f$m=|\alpha|\f$: the value
+     * (m=0); the first derivatives \f$\partial_0,\dots,\partial_{d-1}\f$
+     * (m=1); for m=2 the pure second derivatives
+     * \f$\partial_{00},\dots,\partial_{d-1,d-1}\f$ first, then the mixed
+     * ones \f$\partial_{ab}\f$ (a<b) in lexicographic order; and for
+     * \f$m\ge 3\f$ the derivatives in composition (lexicographic) order,
+     * see \ref nextComposition.
+     *
+     * @param alpha per-direction derivative orders (size \a d)
+     * @param d     domain dimension
+     * @param comp  target component index
+     * @return      the row of \f$\partial^\alpha f^{(comp)}\f$
+     */
+    static index_t derivRow(const gsVector<index_t> &alpha, short_t d, index_t comp);
 
 
     /**
@@ -210,7 +299,7 @@ protected:
      * @param pos       the index i of the above formula
      * @param[out] weights   the computed weights \f$\omega_{i,k}\f$ of the above formula
      */
-    static void computeWeights(const gsMatrix<T> &points, const gsKnotVector<T> &knots, const int &pos, gsMatrix<T> &weights);
+    static void computeWeights(const gsMatrix<T> &points, const gsKnotVector<T> &knots, const index_t &pos, gsMatrix<T> &weights);
 
 
     /**
@@ -231,7 +320,7 @@ protected:
      * @param posEnd    the index of the right knot of the last interval to be considers
      * @return          the index of the left knot of the largest knot interval
      */
-    static int greatestSubInterval(const gsKnotVector<T> &knots, const int &posStart, const int &posEnd);
+    static int greatestSubInterval(const gsKnotVector<T> &knots, const index_t &posStart, const index_t &posEnd);
 
 
 }; //struct
