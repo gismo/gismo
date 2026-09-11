@@ -216,8 +216,8 @@ int main(int argc, char *argv[])
     if (plot)
     {
         // Export before merge for visualization
-        gsWriteParaview(thb,  "thb_before_merge");
-        gsWriteParaview(thb2, "thb2_before_merge");
+        pv.write(thb,  "thb_before_merge");
+        pv.write(thb2, "thb2_before_merge");
     }
 
     // Merge thb2 into thb (mesh union)
@@ -228,7 +228,7 @@ int main(int argc, char *argv[])
 
     if (plot)
     {
-        gsWriteParaview(thb, "thb_after_merge");
+        pv.write(thb, "thb_after_merge");
     }
 
     // --------------- plot basis after 1 refinement ---------------

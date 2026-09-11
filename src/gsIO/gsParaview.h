@@ -128,8 +128,7 @@ public:
 
     /// @brief Export a gsSurfMesh to Paraview file
     void write(const gsSurfMesh<T> & mesh,
-               const std::string & fn = "surfmesh",
-               std::initializer_list<std::string> props = {}) const;
+               const std::string & fn = "surfmesh") const;
 
     /// @brief Export a gsMultiPatch in Bezier format to Paraview file
     void writeBezier(const gsMultiPatch<T> & mp,

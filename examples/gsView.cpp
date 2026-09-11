@@ -172,11 +172,8 @@ int main(int argc, char *argv[])
                 return 0;
             }
 
-            // gsSurfMesh uses the old free function directly
-            gsWriteParaview( *msh, pname);
-            if (show)
-                gsFileManager::open(pname+".vtk");
-            return EXIT_SUCCESS;
+            pv.write(*msh, pname);
+            break;
         }
 
         if ( filedata.has< gsBasis<> >() )
