@@ -1244,18 +1244,23 @@ void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch,
     std::vector<gsVector<unsigned> > patchNp;
     std::vector<index_t> patchPointCounts;
 
+    gsMatrix<T> ab;
+    gsVector<T> a, b;
+    gsVector<unsigned> np;
+    gsMatrix<T> pts, eval_geo;
+
     for (index_t p = 0; p < nPatches; ++p)
     {
         const gsGeometry<T>& geo = mPatch.patch(p);
         const int d = geo.domainDim();
         GISMO_ASSERT(d >= 1 && d <= 3, "Unstructured export supports only 1D/2D/3D patches");
 
-        gsMatrix<T> ab = geo.support();
-        gsVector<T> a = ab.col(0);
-        gsVector<T> b = ab.col(1);
-        gsVector<unsigned> np = uniformSampleCount(a, b, npts);
-        gsMatrix<T> pts = gsPointGrid(a, b, np);
-        gsMatrix<T> eval_geo = geo.eval(pts);
+        ab = geo.support();
+        a = ab.col(0);
+        b = ab.col(1);
+        np = uniformSampleCount(a, b, npts);
+        pts = gsPointGrid(a, b, np);
+        eval_geo = geo.eval(pts);
 
         if (eval_geo.rows() < 3)
             eval_geo.conservativeResizeLike(gsMatrix<T>::Zero(3, eval_geo.cols()));
@@ -1419,6 +1424,10 @@ void gsWriteParaviewUnstructuredGrid(const gsField<T> & field,
     std::vector<gsVector<unsigned> > patchNp;
     std::vector<index_t> patchPointCounts;
 
+    gsMatrix<T> pts, ab, eval_geo, eval_field;
+    gsVector<T> a, b;
+    gsVector<unsigned> np;
+
     for (index_t p = 0; p < nPieces; ++p)
     {
         const gsFunction<T>& geo = field.patch(p);
@@ -1426,13 +1435,13 @@ void gsWriteParaviewUnstructuredGrid(const gsField<T> & field,
         const int d = geo.domainDim();
         GISMO_ASSERT(d >= 1 && d <= 3, "Unstructured export supports only 1D/2D/3D patches");
 
-        gsMatrix<T> ab = geo.support();
-        gsVector<T> a = ab.col(0);
-        gsVector<T> b = ab.col(1);
-        gsVector<unsigned> np = uniformSampleCount(a, b, npts);
-        gsMatrix<T> pts = gsPointGrid(a, b, np);
-        gsMatrix<T> eval_geo = geo.eval(pts);
-        gsMatrix<T> eval_field = field.isParametric() ? func.eval(pts) : func.eval(eval_geo);
+        ab = geo.support();
+        a = ab.col(0);
+        b = ab.col(1);
+        np = uniformSampleCount(a, b, npts);
+        pts = gsPointGrid(a, b, np);
+        eval_geo = geo.eval(pts);
+        eval_field = field.isParametric() ? func.eval(pts) : func.eval(eval_geo);
 
         if (eval_geo.rows() < 3)
             eval_geo.conservativeResizeLike(gsMatrix<T>::Zero(3, eval_geo.cols()));
