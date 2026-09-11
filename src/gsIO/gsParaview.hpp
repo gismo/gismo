@@ -65,7 +65,7 @@ gsOptionList gsParaview<T>::defaultOptions()
     opt.addSwitch("fullSupport",    "Plot basis over whole domain (for mapped basis)", false);
     opt.addInt   ("hboxMode",       "Mode for gsHBox/gsHBoxContainer: 0=level, 1=error, 2=projectedError", 0);
     opt.addSwitch("writePvd",       "Wrap one-shot writes in a .pvd collection file", true);
-    opt.addSwitch("singleFile",     "Write gsMultiPatch/gsField as a single .vtu file", false);
+    opt.addSwitch("multiblock",     "Write gsMultiPatch/gsField as one file per patch; if false, a single .vtu file is written", true);
     opt.addSwitch("base64",         "Write unstructured-grid arrays in base64 binary format", false);
     opt.addSwitch("blockColors",    "Write an extra per-cell BlockColor array (patch index modulo 12), for cyclic patch (block) coloring", true);
     return opt;
@@ -102,7 +102,7 @@ void gsParaview<T>::write(const gsMultiPatch<T> & mp, const std::string & fn) co
     const bool mesh     = m_options.getSwitch("elements");
     const bool ctrlNet  = m_options.getSwitch("controlNet");
     const std::string pDelim = m_options.getString("patchDelimiter");
-    const bool singleFile = m_options.getSwitch("singleFile");
+    const bool singleFile = !m_options.getSwitch("multiblock");
     const bool exportBase64 = m_options.getSwitch("base64");
     const bool blockColors = m_options.getSwitch("blockColors");
     const bool skipPvd = !m_options.getSwitch("writePvd");
@@ -110,7 +110,7 @@ void gsParaview<T>::write(const gsMultiPatch<T> & mp, const std::string & fn) co
     {
         gsWarn << "gsParaview: exporting " << mp.nPatches()
                << " patches as multiple files. Consider setting option "
-                  "\"singleFile\" to true to write a single .vtu file.\n";
+                  "\"multiblock\" to false to write a single .vtu file.\n";
     }
 
     if (singleFile)
@@ -178,14 +178,14 @@ void gsParaview<T>::write(const gsMultiPatch<T> & mp, const std::string & fn) co
 template<class T>
 void gsParaview<T>::write(const gsField<T> & field, const std::string & fn) const
 {
-    if (!m_options.getSwitch("singleFile") && field.nPieces() > 10)
+    if (m_options.getSwitch("multiblock") && field.nPieces() > 10)
     {
         gsWarn << "gsParaview: exporting " << field.nPieces()
                << " field patches as multiple files. Consider setting option "
-                  "\"singleFile\" to true to write a single .vtu file.\n";
+                  "\"multiblock\" to false to write a single .vtu file.\n";
     }
 
-    if (m_options.getSwitch("singleFile"))
+    if (!m_options.getSwitch("multiblock"))
     {
         const unsigned npts = m_options.getInt("numPoints");
         const bool mesh     = m_options.getSwitch("elements");

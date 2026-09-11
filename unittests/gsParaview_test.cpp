@@ -27,7 +27,7 @@ TEST(DefaultOptions)
     CHECK_EQUAL(5,    pv.options().getInt("precision"));
     CHECK(!pv.options().getSwitch("elements"));
     CHECK(!pv.options().getSwitch("controlNet"));
-    CHECK(!pv.options().getSwitch("singleFile"));
+    CHECK(pv.options().getSwitch("multiblock"));
     CHECK(!pv.options().getSwitch("base64"));
     CHECK(!pv.options().getSwitch("show"));
 }
@@ -138,7 +138,7 @@ TEST(WriteSingleFileVTU_smoke)
     {
         const std::string fn = tmp + "gsParaview_mp_singlefile_test";
         gsParaview<real_t> pv;
-        pv.options().setSwitch("singleFile", true);
+        pv.options().setSwitch("multiblock", false);
         pv.write(mp, fn);
 
         CHECK(gsFileManager::fileExists(fn + ".vtu"));
@@ -152,7 +152,7 @@ TEST(WriteSingleFileVTU_smoke)
         const std::string fn = tmp + "gsParaview_field_singlefile_test";
         gsField<> field(mp, mp);
         gsParaview<real_t> pv;
-        pv.options().setSwitch("singleFile", true);
+        pv.options().setSwitch("multiblock", false);
         pv.write(field, fn);
 
         CHECK(gsFileManager::fileExists(fn + ".vtu"));
@@ -187,9 +187,10 @@ TEST(TimeSteppingWorkflow_smoke)
 
 TEST(SingleFileExtras_mergedAcrossPatches)
 {
-    // With "singleFile", the element mesh and the control net are merged over
-    // all patches into one file each, so the output count does not grow with
-    // nPatches(). Two patches must still give exactly one _mesh and one _cnet.
+    // With "multiblock" disabled, the element mesh and the control net are
+    // merged over all patches into one file each, so the output count does not
+    // grow with nPatches(). Two patches must still give exactly one _mesh and
+    // one _cnet.
     const std::string tmp = gsFileManager::getTempPath();
     if (tmp.empty()) return;
 
@@ -211,7 +212,7 @@ TEST(SingleFileExtras_mergedAcrossPatches)
     mp.computeTopology();
 
     gsParaview<real_t> pv;
-    pv.options().setSwitch("singleFile", true);
+    pv.options().setSwitch("multiblock", false);
     pv.options().setSwitch("elements",   true);
     pv.options().setSwitch("controlNet", true);
     pv.write(mp, fn);
@@ -246,7 +247,7 @@ TEST(SingleFileExtras_noPvd)
     mp.computeTopology();
 
     gsParaview<real_t> pv;
-    pv.options().setSwitch("singleFile", true);
+    pv.options().setSwitch("multiblock", false);
     pv.options().setSwitch("elements",   true);
     pv.options().setSwitch("controlNet", true);
     pv.options().setSwitch("writePvd",   false);
@@ -260,7 +261,7 @@ TEST(SingleFileExtras_noPvd)
 
 TEST(SingleFileField_pointDataOnly_withExtras)
 {
-    // A gsField in singleFile mode must write SolutionField exactly once, as
+    // A gsField in single-file mode must write SolutionField exactly once, as
     // PointData, with PatchID as cell data (one tuple per cell) -- and must
     // still produce the merged _mesh.vtp / _cnet.vtp like the gsMultiPatch
     // overload does.
@@ -285,7 +286,7 @@ TEST(SingleFileField_pointDataOnly_withExtras)
     gsField<> field(mp, mp);
 
     gsParaview<real_t> pv;
-    pv.options().setSwitch("singleFile", true);
+    pv.options().setSwitch("multiblock", false);
     pv.options().setSwitch("elements",   true);
     pv.options().setSwitch("controlNet", true);
     pv.write(field, fn);
@@ -392,7 +393,7 @@ TEST(SingleFileField_noPvd)
     gsField<> field(mp, mp);
 
     gsParaview<real_t> pv;
-    pv.options().setSwitch("singleFile",  true);
+    pv.options().setSwitch("multiblock",  false);
     pv.options().setSwitch("elements",    true);
     pv.options().setSwitch("controlNet",  true);
     pv.options().setSwitch("writePvd",    false);

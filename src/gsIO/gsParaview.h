@@ -84,8 +84,9 @@ public:
     /// @note If bezier option is true, uses Bezier element export.
     ///       If boundary option is true, also writes boundaries.
     ///       If interfaces option is true, also writes interfaces.
-    /// @note The "writePvd" option is honored only in singleFile mode; the
-    ///       bezier and default per-patch paths ignore it.
+    /// @note The "writePvd" option is honored only in single-file mode
+    ///       (option "multiblock" set to false); the bezier and default
+    ///       per-patch paths ignore it.
     void write(const gsMultiPatch<T> & mp,
                const std::string & fn = "multipatch") const;
 

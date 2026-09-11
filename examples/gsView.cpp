@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
     bool get_geo = false;
     bool show = true;
 
-    bool single = false;
+    bool multiblock = false;
     //! [Parse Command line]
     gsCmdLine cmd("Hi, give me a file (eg: .xml) and I will try to draw it!");
 
@@ -44,7 +44,7 @@ int main(int argc, char *argv[])
     cmd.addSwitch("noshow", "Do not open Paraview after writing", show);
     cmd.addPlainString("filename", "File containing data to draw (.xml or third-party)", fn);
     cmd.addString("o", "oname", "Filename to use for the ParaView output", pname);
-    cmd.addSwitch("single", "Single file", single);
+    cmd.addSwitch("multiblock", "Use multiblock paraview output files", multiblock);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse Command line]
@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
 
             // Write the whole multipatch (and any field over it) as a single
             // .vtu rather than one file per patch.
-            pv.options().setSwitch("singleFile", single);
+            pv.options().setSwitch("multiblock", multiblock);
 
             if (plot_patchid)
             {
@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
 
             // Write the whole multipatch (and any field over it) as a single
             // .vtu rather than one file per patch.
-            pv.options().setSwitch("singleFile", single);
+            pv.options().setSwitch("multiblock", multiblock);
 
             //TODO pv.options().setSwitch("patchid", plot_patchid);
             pv.write(mp, pname);
