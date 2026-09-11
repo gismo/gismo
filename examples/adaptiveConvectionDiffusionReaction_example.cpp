@@ -200,7 +200,11 @@ int main(int argc, char *argv[])
        if( plot && refLoop == numRefinementLoops )
        {
            // Write the computed solution to paraview files
-           gsWriteParaview<>( solField, "adaptRef", 1000, true);
+           gsParaview<real_t> pv;
+           pv.options().setInt("numPoints", 1000);
+           pv.options().setSwitch("elements", true);
+           pv.options().setSwitch("show", true);
+           pv.write(solField, "adaptRef");
        }
        //! [Export to Paraview]
 
@@ -209,8 +213,7 @@ int main(int argc, char *argv[])
    //! [Plot in Paraview]
    if( plot )
    {
-       // Run paraview
-       gsFileManager::open("adaptRef.pvd");
+       // show option in gsParaview handles opening the file
    }
    //! [Plot in Paraview]
    else
