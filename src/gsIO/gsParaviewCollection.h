@@ -32,14 +32,14 @@ namespace gismo
     \ingroup IO
 */
 template <class T>
-class GISMO_EXPORT gsParaviewCollection
+class gsParaviewCollection
 {
 public:
     typedef memory::unique_ptr<gsParaviewCollection<T> > uPtr;
     typedef std::string String;
 
 public:
-    /// Constructor using a filename.
+/// Constructor using a filename.
     explicit gsParaviewCollection(const String& fn);
 
     /// Constructor using a filename and evaluator (for expression fields).
@@ -47,6 +47,23 @@ public:
 
     ~gsParaviewCollection();
 
+    /// Fast creation of a collection using base filename \a fn and extension \a ext.
+    static void make(std::string const& fn, std::string const& ext, int n = 0)
+    {
+        gsParaviewCollection<T> pc(fn);
+        const std::string base = gsFileManager::getFilename(fn);
+        if (n > 0)
+        {
+            for (int i = 0; i < n; ++i)
+                pc.addPart(base + std::to_string(i) + ext);
+        }
+        else
+            pc.addPart(base + ext);
+        
+        pc.save();
+    }
+
+    
     void addPart(const String& fn, T tStep = -1, std::string name = "", index_t part = -1)
     {
         std::string ext = "";
@@ -147,22 +164,6 @@ private:
 private:
     gsParaviewCollection();
 };
-
-/// Fast creation of a collection using base filename \a fn and extension \a ext.
-inline void makeCollection(std::string const& fn, std::string const& ext, int n = 0)
-{
-    gsParaviewCollection<real_t> pc(fn);
-    const std::string base = gsFileManager::getFilename(fn);
-    if (n > 0)
-    {
-        for (int i = 0; i < n; ++i)
-            pc.addPart(base + std::to_string(i) + ext);
-    }
-    else
-        pc.addPart(base + ext);
-
-    pc.save();
-}
 
 } // end namespace gismo
 

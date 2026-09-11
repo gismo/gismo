@@ -40,7 +40,7 @@ std::vector<std::string> toParaview(const expr::_expr<E>& expr,
     \ingroup IO
 */
 template <class T>
-class GISMO_EXPORT gsParaviewDataSet
+class gsParaviewDataSet
 {
 private:
     std::string m_basename;

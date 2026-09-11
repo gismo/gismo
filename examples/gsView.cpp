@@ -30,6 +30,7 @@ int main(int argc, char *argv[])
     bool get_geo = false;
     bool show = true;
 
+    bool single = false;
     //! [Parse Command line]
     gsCmdLine cmd("Hi, give me a file (eg: .xml) and I will try to draw it!");
 
@@ -43,6 +44,7 @@ int main(int argc, char *argv[])
     cmd.addSwitch("noshow", "Do not open Paraview after writing", show);
     cmd.addPlainString("filename", "File containing data to draw (.xml or third-party)", fn);
     cmd.addString("o", "oname", "Filename to use for the ParaView output", pname);
+    cmd.addSwitch("single", "Single file", single);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     //! [Parse Command line]
@@ -125,7 +127,7 @@ int main(int argc, char *argv[])
 
             // Write the whole multipatch (and any field over it) as a single
             // .vtu rather than one file per patch.
-            pv.options().setSwitch("singleFile", true);
+            pv.options().setSwitch("singleFile", single);
 
             if (plot_patchid)
             {
@@ -141,16 +143,21 @@ int main(int argc, char *argv[])
         }
         if ( filedata.has< gsGeometry<> >() )
         {
-            std::vector<gsGeometry<>::uPtr> geo = filedata.getAll< gsGeometry<> >();
-            if ( ! geo.empty() )
-                gsInfo<< "Got "<< geo.size() <<" patch"<<(geo.size() == 1 ? "." : "es.") <<"\n";
-            else
+            gsMultiPatch<> mp = filedata.getAll< gsGeometry<> >();
+            if ( 1==mp.nPatches() )
             {
-                gsInfo<< "Problem encountered in file "<<fn<<", quitting." <<"\n";
-                return 0;
+                gsInfo<< "Got "<< mp.patch(0) <<"\n";
+                pv.write(mp.patch(0), pname);
             }
+            else
+                gsInfo<< "Got a set of patches "<< mp <<"\n";
 
-            pv.write(memory::get_raw(geo), pname);
+            // Write the whole multipatch (and any field over it) as a single
+            // .vtu rather than one file per patch.
+            pv.options().setSwitch("singleFile", single);
+
+            //TODO pv.options().setSwitch("patchid", plot_patchid);
+            pv.write(mp, pname);
             break;
         }
 

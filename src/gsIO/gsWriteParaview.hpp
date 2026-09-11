@@ -227,7 +227,7 @@ void writeSingleBasisMesh3D(const gsMesh<T> & sl,
     file.close();
 
     //if( pvd ) // make a pvd file
-    //    makeCollection(fn, ".vtp");
+    //    gsParaviewCollection<T>::make(fn, ".vtp");
 }
 
 // Export a 2D parametric mesh -- note: duplicates code from writeSingleBasisMesh3D,
@@ -321,7 +321,7 @@ void writeSingleBasisMesh2D(const gsMesh<T> & sl,
     file.close();
 
     //if( pvd ) // make a pvd file
-    //    makeCollection(fn, ".vtp");
+    //    gsParaviewCollection<T>::make(fn, ".vtp");
 }
 
 
@@ -1132,7 +1132,7 @@ void gsWriteParaview(const gsGeometrySlice<T> & Geo,
     const gsMatrix<T> supp = Geo.parameterRange();
     writeSingleGeometry(Geo, supp, fn, npts, precision);
     // Write out a pvd file
-    makeCollection(fn, ".vts"); // make also a pvd file
+    gsParaviewCollection<T>::make(fn, ".vts"); // make also a pvd file
 }
 
 
@@ -1380,7 +1380,7 @@ void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch,
     file.close();
 
     if (!skipPvd)
-        makeCollection(fn, ".vtu");
+        gsParaviewCollection<T>::make(fn, ".vtu");
 }
 
 template<class T>
@@ -1573,7 +1573,7 @@ void gsWriteParaviewUnstructuredGrid(const gsField<T> & field,
     file.close();
 
     if (!skipPvd)
-        makeCollection(fn, ".vtu");
+        gsParaviewCollection<T>::make(fn, ".vtu");
 }
 
 /// Export i-th Basis function
@@ -2042,7 +2042,7 @@ void gsWriteParaviewPoints(gsMatrix<T> const& X, gsMatrix<T> const& Y, std::stri
     file <<"</VTKFile>\n";
     file.close();
 
-    makeCollection(fn, ".vtp"); // make also a pvd file
+    gsParaviewCollection<T>::make(fn, ".vtp"); // make also a pvd file
 }
 
 template<class T>
@@ -2124,7 +2124,7 @@ void gsWriteParaviewPoints(gsMatrix<T> const& X,
     file <<"</VTKFile>\n";
     file.close();
 
-    makeCollection(fn, ".vtp"); // make also a pvd file
+    gsParaviewCollection<T>::make(fn, ".vtp"); // make also a pvd file
 }
 
 template<class T>
@@ -2213,7 +2213,7 @@ void gsWriteParaviewPoints(gsMatrix<T> const& X,
     file <<"</VTKFile>\n";
     file.close();
 
-    makeCollection(fn, ".vtp"); // make also a pvd file
+    gsParaviewCollection<T>::make(fn, ".vtp"); // make also a pvd file
 }
 
 template<class T>
@@ -2382,7 +2382,7 @@ void gsWriteParaview(gsSolid<T> const& sl, std::string const & fn, unsigned numP
     file <<"</VTKFile>\n";
     file.close();
 
-    makeCollection(fn, ".vtp"); // make also a pvd file
+    gsParaviewCollection<T>::make(fn, ".vtp"); // make also a pvd file
 }
 
 template <class T>
@@ -2528,7 +2528,7 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd)
     file.close();
 
     if( pvd ) // make also a pvd file
-        makeCollection(fn, ".vtp");
+        gsParaviewCollection<T>::make(fn, ".vtp");
 }
 
 template <class T>
@@ -2710,7 +2710,7 @@ inline void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
     }
 
     file.close();
-    //makeCollection(fn, ".vtk"); // legacy inside pvd seems to not work
+    //gsParaviewCollection<T>::make(fn, ".vtk"); // legacy inside pvd seems to not work
 }
 
 template<class Scalar>

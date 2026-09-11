@@ -172,17 +172,6 @@ void gsParaview<T>::write(const gsMultiPatch<T> & mp, const std::string & fn) co
 }
 
 template<class T>
-void gsParaview<T>::write(std::vector<gsGeometry<T>*> const & geos, const std::string & fn) const
-{
-    gsWriteParaview(geos, fn,
-                    m_options.getInt("numPoints"),
-                    m_options.getSwitch("elements"),
-                    m_options.getSwitch("controlNet"),
-                    m_options.getString("patchDelimiter"));
-    openIfRequested(fn);
-}
-
-template<class T>
 void gsParaview<T>::write(const gsField<T> & field, const std::string & fn) const
 {
     if (!m_options.getSwitch("singleFile") && field.nPieces() > 10)

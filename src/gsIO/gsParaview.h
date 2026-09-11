@@ -92,10 +92,6 @@ public:
     void write(const gsMultiPatch<T> & Geo, const std::string & fn,
                const std::vector<std::string> & props) const;
 
-    /// @brief Export a vector of geometries to Paraview file
-    void write(std::vector<gsGeometry<T>*> const & geos,
-               const std::string & fn = "geometries") const;
-
     /// @brief Export a gsField to Paraview file
     /// @note the mesh and control-net options require a field whose domain is a gsMultiPatch
     void write(const gsField<T> & field,
