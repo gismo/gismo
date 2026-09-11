@@ -31,11 +31,13 @@ void gsWriteParaviewBezier(const gsMultiPatch<real_t> & mPatch, std::string cons
 
 TEMPLATE_INST
 void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch, std::string const & fn,
-                                     unsigned npts, bool export_base64, bool skipPvd, unsigned precision);
+                                     unsigned npts, bool export_base64, bool skipPvd, unsigned precision,
+                                     bool blockColors);
 
 TEMPLATE_INST
 void gsWriteParaviewUnstructuredGrid(const gsField<T> & field, std::string const & fn,
-                                     unsigned npts, bool export_base64, bool skipPvd, unsigned precision);
+                                     unsigned npts, bool export_base64, bool skipPvd, unsigned precision,
+                                     bool blockColors);
 
 TEMPLATE_INST
 void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,

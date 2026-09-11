@@ -38,6 +38,7 @@ namespace gismo
     pv.options().setInt("precision", 5);
     pv.options().setSwitch("elements", true);
     pv.options().setSwitch("controlNet", true);
+    pv.options().setSwitch("blockColors", true); // cyclic per-patch color array
 
     pv.write(mp, "output_file");
     // or with default filename:

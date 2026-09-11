@@ -183,13 +183,17 @@ void gsWriteParaviewBezier(const gsMultiPatch<T> & mPatch, std::string const & f
 /// \param npts number of points used for sampling each patch
 /// \param export_base64 if true, exports binary base64 encoded arrays
 /// \param skipPvd if true, skip writing a wrapper .pvd collection
+/// \param blockColors if true, an extra per-cell "BlockColor" array is written,
+///        holding the patch index modulo 12, so that the patches (blocks) can be
+///        colored with a cyclic color table in Paraview
 template<class T>
 void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch,
                                      std::string const & fn,
                                      unsigned npts = NS,
                                      bool export_base64 = false,
                                      bool skipPvd = false,
-                                     unsigned precision = 5);
+                                     unsigned precision = 5,
+                                     bool blockColors = true);
 
 /// \brief Export a field to a single unstructured-grid .vtu file.
 ///
@@ -198,13 +202,17 @@ void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch,
 /// \param npts number of points used for sampling each patch
 /// \param export_base64 if true, exports binary base64 encoded arrays
 /// \param skipPvd if true, skip writing a wrapper .pvd collection
+/// \param blockColors if true, an extra per-cell "BlockColor" array is written,
+///        holding the patch index modulo 12, so that the patches (blocks) can be
+///        colored with a cyclic color table in Paraview
 template<class T>
 void gsWriteParaviewUnstructuredGrid(const gsField<T> & field,
                                      std::string const & fn,
                                      unsigned npts = NS,
                                      bool export_base64 = false,
                                      bool skipPvd = false,
-                                     unsigned precision = 5);
+                                     unsigned precision = 5,
+                                     bool blockColors = true);
 
 /// \brief Export a multipatch Geometry (without scalar information) to paraview file
 ///

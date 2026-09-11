@@ -67,6 +67,7 @@ gsOptionList gsParaview<T>::defaultOptions()
     opt.addSwitch("writePvd",       "Wrap one-shot writes in a .pvd collection file", true);
     opt.addSwitch("singleFile",     "Write gsMultiPatch/gsField as a single .vtu file", false);
     opt.addSwitch("base64",         "Write unstructured-grid arrays in base64 binary format", false);
+    opt.addSwitch("blockColors",    "Write an extra per-cell BlockColor array (patch index modulo 12), for cyclic patch (block) coloring", true);
     return opt;
 }
 
@@ -103,6 +104,7 @@ void gsParaview<T>::write(const gsMultiPatch<T> & mp, const std::string & fn) co
     const std::string pDelim = m_options.getString("patchDelimiter");
     const bool singleFile = m_options.getSwitch("singleFile");
     const bool exportBase64 = m_options.getSwitch("base64");
+    const bool blockColors = m_options.getSwitch("blockColors");
     const bool skipPvd = !m_options.getSwitch("writePvd");
     if (!singleFile && mp.nPatches() > 10)
     {
@@ -119,7 +121,9 @@ void gsParaview<T>::write(const gsMultiPatch<T> & mp, const std::string & fn) co
         // nPatches(); the .pvd below ties the three together.
         const bool extras = mesh || ctrlNet;
         gsWriteParaviewUnstructuredGrid(mp, fn, npts, exportBase64,
-                                        skipPvd || extras);
+                                        skipPvd || extras,
+                                        m_options.getInt("precision"),
+                                        blockColors);
 
         if (extras && !skipPvd)
         {
@@ -187,6 +191,7 @@ void gsParaview<T>::write(const gsField<T> & field, const std::string & fn) cons
         const bool mesh     = m_options.getSwitch("elements");
         const bool ctrlNet  = m_options.getSwitch("controlNet");
         const bool exportBase64 = m_options.getSwitch("base64");
+        const bool blockColors = m_options.getSwitch("blockColors");
         const bool skipPvd = !m_options.getSwitch("writePvd");
 
         // The unstructured-grid writer emits only the geometry. The element
@@ -195,7 +200,9 @@ void gsParaview<T>::write(const gsField<T> & field, const std::string & fn) cons
         // nPieces(); the .pvd below ties the three together.
         const bool extras = mesh || ctrlNet;
         gsWriteParaviewUnstructuredGrid(field, fn, npts, exportBase64,
-                                        skipPvd || extras);
+                                        skipPvd || extras,
+                                        m_options.getInt("precision"),
+                                        blockColors);
 
         if (extras && !skipPvd)
         {

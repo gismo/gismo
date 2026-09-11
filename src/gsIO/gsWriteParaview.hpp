@@ -126,7 +126,8 @@ inline void writeUnstructuredGrid(std::ostream & file,
                                   const gsMatrix<unsigned char> & types,
                                   const gsMatrix<index_t> & patchIds,
                                   bool export_base64,
-                                  unsigned precision)
+                                  unsigned precision,
+                                  bool blockColors)
 {
     file << "<Points>\n";
     writeDataArray(file, allPoints, "", precision, export_base64);
@@ -140,6 +141,15 @@ inline void writeUnstructuredGrid(std::ostream & file,
 
     file << "<CellData Scalars=\"PatchID\">\n";
     writeDataArray(file, patchIds, "PatchID", precision, export_base64);
+    if (blockColors)
+    {
+        // Cyclic color index, so that neighboring patches (blocks) get
+        // distinct colors when the patch count exceeds the color table.
+        gsMatrix<index_t> colors = patchIds;
+        for (index_t i = 0; i != colors.cols(); ++i)
+            colors(0, i) = colors(0, i) % 12;
+        writeDataArray(file, colors, "BlockColor", precision, export_base64);
+    }
     file << "</CellData>\n";
 }
 } // namespace pv_unstructured_detail
@@ -1216,7 +1226,8 @@ void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch,
                                      unsigned npts,
                                      bool export_base64,
                                      bool skipPvd,
-                                     unsigned precision)
+                                     unsigned precision,
+                                     bool blockColors)
 {
     const index_t nPatches = static_cast<index_t>(mPatch.nPatches());
     GISMO_ASSERT(nPatches > 0, "Cannot export empty multipatch");
@@ -1372,7 +1383,7 @@ void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch,
 
     pv_unstructured_detail::writeUnstructuredGrid(
         file, allPoints, connectivity, offsets, types, patchIds,
-        export_base64, precision);
+        export_base64, precision, blockColors);
 
     file << "</Piece>\n";
     file << "</UnstructuredGrid>\n";
@@ -1389,7 +1400,8 @@ void gsWriteParaviewUnstructuredGrid(const gsField<T> & field,
                                      unsigned npts,
                                      bool export_base64,
                                      bool skipPvd,
-                                     unsigned precision)
+                                     unsigned precision,
+                                     bool blockColors)
 {
     const index_t nPieces = static_cast<index_t>(field.nPieces());
     GISMO_ASSERT(nPieces > 0, "Cannot export empty field");
@@ -1565,7 +1577,7 @@ void gsWriteParaviewUnstructuredGrid(const gsField<T> & field,
 
     pv_unstructured_detail::writeUnstructuredGrid(
         file, allPoints, connectivity, offsets, types, patchIds,
-        export_base64, precision);
+        export_base64, precision, blockColors);
 
     file << "</Piece>\n";
     file << "</UnstructuredGrid>\n";
