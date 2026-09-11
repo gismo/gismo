@@ -305,3 +305,55 @@ v25.07.0 (https://github.com/gismo/gismo/releases/tag/v25.07.0)
 * API:
     - Improving domain iteration -- https://github.com/gismo/gismo/pull/779
     - Follow-up of domain iterations -- https://github.com/gismo/gismo/pull/782
+
+v26.09.0 (https://github.com/gismo/gismo/releases/tag/v26.09.0)
+------
+* NEW:
+    - Library-wide automatic differentiation: the former `external/gsAutoDiff.h` becomes the optional module `optional/gsAutoDiff`, with sensitivity examples (B-spline basis/control-point derivatives, Poisson geometry and rhs sensitivities) and unit tests -- https://github.com/gismo/gismo/pull/849
+    - New implementation of admissibility algorithms: `gsElement`, `gsHElement`, `gsElementHelper`, `gsHElementHelper` and `gsHElementMarker`, plus `gsHElement_marking_example.cpp` -- https://github.com/gismo/gismo/pull/838
+    - `gsDofMapperCreator` (degree-of-freedom mapper construction, taken out of `gsMultiBasis`) and `gsGridHierarchy`; enrichment of the sparse solvers and improved multigrid support, including hierarchical splines -- https://github.com/gismo/gismo/pull/839
+    - Subdivision schemes for meshes (Catmull-Clark, Loop, Doo-Sabin, Chaikin) and `subdivSurfaces_example.cpp`; support for unclamped knot vectors -- https://github.com/gismo/gismo/pull/848
+    - `gsProjection` replaces `gsL2Projection` and provides $L_2$, $H_1$ and $H_2$ projections, together with `projection_example.cpp` and a new unit-test suite -- https://github.com/gismo/gismo/pull/882
+    - A new `gsParaview` class that unites the previous free functions for ParaView output: easier to use, more features and more efficient -- https://github.com/gismo/gismo/pull/876
+    - Custom quadrature factory for the expression assembler -- https://github.com/gismo/gismo/pull/893
+    - Sub-domain awareness for domain iterators: `gsDomainIterator::subdomainIndex()`, `localId()` and a virtual `patchIndex()` -- https://github.com/gismo/gismo/pull/894
+    - `merge` function for `gsHTensorBasis` -- https://github.com/gismo/gismo/pull/831
+    - Methods for matrix rotation in `gsMatrix` -- https://github.com/gismo/gismo/pull/869
+    - Closest-point computation in `gsParasolid` (new `gsClosestPoint`/`gsPKUtils`) for parameter correction, with selectable accuracy/speed levels -- https://github.com/gismo/gismo/pull/864
+    - `cahn-hilliard_example.cpp` and accompanying file data, colored console output (`GISMO_WITH_COLORS`), and additions to `gsFuncData` and `gsNurbsCreator` -- https://github.com/gismo/gismo/pull/778
+    - `log_expr` in the expressions module, and unit-test suites for `gsFunctionExpr` and `gsQuasiInterpolate` -- https://github.com/gismo/gismo/pull/872
+
+* IMPROVED:
+    - Enhancement of the Pybind11 interface: trampolines for virtual classes, more default arguments, and more -- https://github.com/gismo/gismo/pull/880
+    - Cleanup of the mesh class, sanitized class members -- https://github.com/gismo/gismo/pull/842
+    - Memory fixes and efficiency improvements, improved quasi-interpolators -- https://github.com/gismo/gismo/pull/872
+    - Option to skip element extensions when marking -- https://github.com/gismo/gismo/pull/852
+    - Clang(d) compatibility: a `.clang-format` file is provided -- https://github.com/gismo/gismo/pull/870
+    - Bump pypa/gh-action-pypi-publish from 1.12.4 to 1.13.0 -- https://github.com/gismo/gismo/pull/833
+
+* FIXED:
+    - Hotfixes: numeric limits and space sizes in `gsExprEvaluator`/`gsExprAssembler` (min/max reductions) -- https://github.com/gismo/gismo/pull/895
+    - Hotfix in admissible coarsening -- https://github.com/gismo/gismo/pull/889
+    - `gsPatchRule` non-dimensionalization (multi-dimensional patch rules) -- https://github.com/gismo/gismo/pull/892
+    - OpenMP critical section to serialize `gsExprHelper` interface initialization -- https://github.com/gismo/gismo/pull/890
+    - Timestep truncation in `gsParaviewCollection` (fractional timesteps) -- https://github.com/gismo/gismo/pull/891
+    - `makeCollection` now uses a relative path -- https://github.com/gismo/gismo/pull/867
+    - Precompiler macro in `AssignEvaluator.h` -- https://github.com/gismo/gismo/pull/888
+    - Segfault in `gsHTensorBasis::allBoundary()` due to a wrong loop bound -- https://github.com/gismo/gismo/pull/879
+    - Bug in the creation of high-dimensional control nets -- https://github.com/gismo/gismo/pull/877
+    - Hotfix issue 862: knot domain iterator fix -- https://github.com/gismo/gismo/pull/865
+    - AVX mismatch in the cppyy bindings -- https://github.com/gismo/gismo/pull/868
+    - Forward declare `nv` to avoid a conflict with the nvidia namespace -- https://github.com/gismo/gismo/pull/873
+    - Missing `<cstdint>` header -- https://github.com/gismo/gismo/pull/871 and https://github.com/gismo/gismo/pull/840
+    - Bug in `gsTensorNurbsBasis::uniformRefine_withCoefs` -- https://github.com/gismo/gismo/pull/841
+    - `gsTensorBasis::degreeReduce` assumed `dir=-1` always -- https://github.com/gismo/gismo/pull/829
+    - Bug in `_expr.npart()` -- https://github.com/gismo/gismo/pull/830
+    - `gsParasolid` examples -- https://github.com/gismo/gismo/pull/857
+    - `gsMakeMultiPatch` example: removed duplicate code block (closes issue #828) -- https://github.com/gismo/gismo/pull/854
+    - Output in `basis_example.cpp` -- https://github.com/gismo/gismo/pull/856
+
+* API:
+    - `gsL2Projection<T>` is replaced by `gsProjection<Norm,T>`, templated on a `ProjectionNorm` (`L2`, `H1`, `H2`); `gsL2Projection::project` becomes `gsProjection<L2,T>::project` -- https://github.com/gismo/gismo/pull/882
+    - `gsMultiBasis::getMapper` is removed; degree-of-freedom mappers are now created through `gsDofMapperCreator` -- https://github.com/gismo/gismo/pull/839
+    - `gsSurfMesh` is templated on the scalar type; the connectivity is factored out into the non-templated base `gsSurfMeshTopology`, and the mesh I/O and subdivision schemes are templated accordingly -- https://github.com/gismo/gismo/pull/849
+    - `gsDomainIterator::patchIndex()` is virtual and `subdomainIndex()` is added; `gsDomainIterator::patch()` usage is replaced by `patchIndex()` -- https://github.com/gismo/gismo/pull/894
