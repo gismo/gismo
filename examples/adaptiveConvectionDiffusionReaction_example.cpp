@@ -13,7 +13,6 @@
 
 //! [Include namespace]
 # include <gismo.h>
-# include <gsIO/gsParaview.h>
 # include <gsAssembler/gsAdaptiveRefUtils.h>
 
 using namespace std;
