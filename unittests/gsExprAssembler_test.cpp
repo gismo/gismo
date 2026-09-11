@@ -13,6 +13,9 @@
 
 #include "gismo_unittest.h"
 
+#include <gsAssembler/gsDofMapperCreator.h>
+#include <gsMSplines/gsMappedBasis.h>
+
 #include <atomic>
 
 namespace
@@ -34,6 +37,17 @@ public:
             this->m_weights[0] *= T(2);
     }
 };
+
+/// 2 unit squares side by side, one interface (patch0 east <-> patch1 west),
+/// biquadratic and refined so that the interface carries several dofs.
+/// Same construction as twoPatchBasis() in gsDofMapperCreator_test.cpp.
+gsMultiBasis<real_t> twoPatchBasis(const gsMultiPatch<real_t> & mp)
+{
+    gsMultiBasis<real_t> mb(mp);
+    mb.degreeElevate(1);   // bilinear -> biquadratic
+    mb.uniformRefine(2);
+    return mb;
+}
 
 } // anonymous namespace
 
@@ -176,5 +190,235 @@ SUITE(gsExprAssembler_test)
         CHECK(math::abs(ev.integralBdr(nv(G).norm())-2*EIGEN_PI) < 1e-10);
         //
         CHECK(math::abs(ev.integral(el.area(G))-2*EIGEN_PI/32) < 1e-10);
+    }
+
+    // Pins: a custom, FINALIZED, patch-concatenated mapper handed to
+    // gsFeSpace::setupMapper survives initSystem() and drives the assembly.
+    //
+    // The mapper used here is *conforming* while the one the assembler builds
+    // for itself (gsFeSpaceData::init) is non-conforming, so the two differ in
+    // size: numDofs()==custom.freeSize() < mb.totalSize() can only hold if the
+    // caller's mapper was really retained.  coupledSize()>0 pins that its
+    // interface identification survived as well.
+    //
+    // Matters because the planned dofmapper update must not turn an accepted uniform
+    // mapper into a rejected or silently replaced one.
+    TEST(CustomUniformMapperRetained)
+    {
+        gsMultiPatch<real_t> mp = gsNurbsCreator<real_t>::BSplineSquareGrid(2,1,1.0);
+        gsMultiBasis<real_t> mb = twoPatchBasis(mp);
+
+        gsDofMapper custom = createMapper(mb, 1, /*conforming=*/true, /*finalize=*/true);
+        const index_t customFree    = custom.freeSize();
+        const index_t customCoupled = custom.coupledSize();
+        const index_t customBdr     = custom.boundarySize();
+
+        // The custom mapper is genuinely different from the assembler default
+        CHECK(customCoupled > 0);
+        CHECK(customFree < static_cast<index_t>(mb.totalSize()));
+
+        gsExprAssembler<real_t> A(1,1);
+        A.setIntegrationElements(mb);
+        auto G = A.getMap(mp);
+        auto u = A.getSpace(mb, 1);
+
+        u.setupMapper(give(custom)); // takes the mapper by value and moves from it
+        const_cast<expr::gsFeSpace<real_t>&>(u).fixedPart()
+            .setZero(u.mapper().boundarySize(), 1);
+
+        A.initSystem();
+
+        // Retained, not rebuilt
+        CHECK_EQUAL(customFree   , A.numDofs()              );
+        CHECK_EQUAL(customFree   , u.mapper().freeSize()    );
+        CHECK_EQUAL(customCoupled, u.mapper().coupledSize() );
+        CHECK_EQUAL(customBdr    , u.mapper().boundarySize());
+        CHECK_EQUAL(1            , u.mapper().numComponents());
+
+        A.assemble(u * u.tr() * meas(G));
+        const gsSparseMatrix<real_t> M = A.matrix();
+
+        CHECK_EQUAL(customFree, M.rows());
+        CHECK_EQUAL(customFree, M.cols());
+        // partition of unity => sum of all mass-matrix entries is the area
+        CHECK_CLOSE(2.0, M.sum(), 1e-10);
+    }
+
+    // Pins: a mapper produced from a gsMappedBasis -- i.e. one built through
+    // gsDofMapper::setIdentity, whose local indices are already global basis
+    // indices rather than patch-concatenated ones -- is accepted by
+    // setupMapper, survives initSystem() and assembles correctly.
+    //
+    // Matters because the global-identity layout is a second, structurally
+    // different mapper layout that must keep working.
+    TEST(MappedBasisIdentityMapperRetained)
+    {
+        gsNurbsCreator<real_t>::TensorBSpline2Ptr geom =
+            gsNurbsCreator<real_t>::BSplineSquare(2); // [0,2]x[0,2], area 4
+        gsMultiPatch<real_t> mp(*geom);
+
+        gsMultiBasis<real_t> mb(mp);
+        mb.basis(0).uniformRefine(2);
+        const index_t sz = mb.basis(0).size();
+
+        // trivial (identity) mapped basis
+        gsSparseMatrix<real_t> ident(sz, sz);
+        ident.setIdentity();
+        gsMappedBasis<2,real_t> mapB(mb, ident);
+        CHECK_EQUAL(sz, static_cast<index_t>(mapB.size()));
+
+        // goes through gsDofMapper::setIdentity
+        gsDofMapper custom = createMapper(mapB, 1, /*conforming=*/false, /*finalize=*/true);
+        CHECK_EQUAL(sz, custom.freeSize());
+        CHECK_EQUAL(0 , custom.boundarySize());
+
+        gsExprAssembler<real_t> A(1,1);
+        A.setIntegrationElements(mb);
+        auto G = A.getMap(mp);
+        auto u = A.getSpace(mapB, 1);
+
+        u.setupMapper(give(custom));
+        const_cast<expr::gsFeSpace<real_t>&>(u).fixedPart()
+            .setZero(u.mapper().boundarySize(), 1);
+
+        A.initSystem();
+
+        CHECK_EQUAL(sz, A.numDofs()          );
+        CHECK_EQUAL(sz, u.mapper().freeSize());
+
+        A.assemble(u * u.tr() * meas(G));
+        const gsSparseMatrix<real_t> M = A.matrix();
+
+        CHECK_EQUAL(sz, M.rows());
+        CHECK_EQUAL(sz, M.cols());
+        CHECK_CLOSE(4.0, M.sum(), 1e-10);
+    }
+
+    // TODO: verify if this is really desirable behavior.
+    //
+    // Pins MAINLINE-PERMITTED behaviour that later work must NOT turn into an
+    // error: installing a mapper whose numComponents() differs from the space
+    // dimension is *accepted*, and the mapper is then silently replaced.
+    //
+    // gsFeSpace::setupMapper only asserts
+    //     mapSize() == source().size()*dofsMapper.numComponents()
+    // which a 3-component mapper over the same basis satisfies, so the install
+    // does not throw.  gsFeSpaceData::valid() however is
+    //     fs->size()*dim == mapper.mapSize()
+    // which is false here, so resetDimensions() calls init() and rebuilds a
+    // default 2-component NON-conforming mapper, discarding the caller's.
+    //
+    // This is exactly the gsBarrierPatch/gsBarrierCore caller convention
+    // (createMapper(mb, targetDim) installed into getSpace(mb, d)).  Both
+    // halves are pinned: no throw, and the silent rebuild.
+    TEST(MapperComponentCountMismatchAccepted)
+    {
+        gsMultiPatch<real_t> mp = gsNurbsCreator<real_t>::BSplineSquareGrid(2,1,1.0);
+        gsMultiBasis<real_t> mb = twoPatchBasis(mp);
+
+        gsExprAssembler<real_t> A(1,1);
+        A.setIntegrationElements(mb);
+        auto G = A.getMap(mp);
+        auto u = A.getSpace(mb, /*dim=*/2);
+
+        // 3 components against a 2-dimensional space
+        gsDofMapper custom = createMapper(mb, /*nComp=*/3, /*conforming=*/true,
+                                          /*finalize=*/true);
+        CHECK_EQUAL(3, custom.numComponents());
+        CHECK(custom.coupledSize() > 0);
+
+        bool threw = false;
+        try { u.setupMapper(give(custom)); }
+        catch (...) { threw = true; }
+        CHECK(!threw);                                  // accepted today
+        CHECK_EQUAL(3, u.mapper().numComponents());     // and really installed
+
+        A.initSystem();
+
+        // ... but silently discarded and rebuilt as the 2-component default
+        CHECK_EQUAL(2, u.mapper().numComponents());
+        CHECK_EQUAL(0, u.mapper().coupledSize());       // default is non-conforming
+        CHECK_EQUAL(2*static_cast<index_t>(mb.totalSize()), A.numDofs());
+        CHECK_EQUAL(2*static_cast<index_t>(mb.totalSize()), u.mapper().freeSize());
+
+        A.assemble(u * u.tr() * meas(G));
+        const gsSparseMatrix<real_t> M = A.matrix();
+        CHECK_EQUAL(2*static_cast<index_t>(mb.totalSize()), M.rows());
+        CHECK_EQUAL(2*static_cast<index_t>(mb.totalSize()), M.cols());
+        // one scalar mass matrix per component
+        CHECK_CLOSE(2.0*2.0, M.sum(), 1e-10);
+    }
+
+    // TODO: check last remark here
+    //
+    // Pins refine-and-reassemble: a basis refined IN PLACE after a custom
+    // mapper was installed invalidates gsFeSpaceData::valid(), so the space's
+    // mapper is rebuilt from scratch and fixedDofs is cleared.  The second
+    // assembly must be identical to a from-scratch assembly on the refined
+    // basis with no custom mapper at all.
+    //
+    // The custom mapper's conforming (coupling) choices are LOST by this --
+    // that is existing behaviour and is pinned here deliberately.
+    TEST(RefineAfterMapperInstallRebuilds)
+    {
+        gsMultiPatch<real_t> mp = gsNurbsCreator<real_t>::BSplineSquareGrid(2,1,1.0);
+        gsMultiBasis<real_t> mb = twoPatchBasis(mp);
+
+        // conforming AND with an eliminated Dirichlet boundary, so that both
+        // kinds of choice a custom mapper can carry are present and can be
+        // observed to disappear
+        gsFunctionExpr<real_t> g("0", 2);
+        gsBoundaryConditions<real_t> bc;
+        bc.addCondition(0, boundary::west, condition_type::dirichlet, &g);
+
+        gsDofMapper custom = createMapper(mb, bc, 1, 0, /*conforming=*/true,
+                                          /*finalize=*/true);
+        const index_t customFree    = custom.freeSize();
+        const index_t customCoupled = custom.coupledSize();
+        const index_t customBdr     = custom.boundarySize();
+        CHECK(customCoupled > 0);
+        CHECK(customBdr     > 0);
+
+        gsExprAssembler<real_t> A(1,1);
+        A.setIntegrationElements(mb);
+        auto G = A.getMap(mp);
+        auto u = A.getSpace(mb, 1);
+
+        u.setupMapper(give(custom));
+        const_cast<expr::gsFeSpace<real_t>&>(u).fixedPart()
+            .setZero(u.mapper().boundarySize(), 1);
+        A.initSystem();
+        CHECK_EQUAL(customFree, A.numDofs());
+        CHECK_EQUAL(customBdr , u.fixedPart().size());
+
+        // refine the very same gsMultiBasis object the space points at
+        mb.uniformRefine();
+        A.setIntegrationElements(mb); // the integration domain must see it too
+        A.initSystem();
+
+        // the custom mapper is gone: rebuilt, non-conforming, no elimination
+        CHECK_EQUAL(static_cast<index_t>(mb.totalSize()), A.numDofs()             );
+        CHECK_EQUAL(static_cast<index_t>(mb.totalSize()), u.mapper().freeSize()   );
+        CHECK_EQUAL(0, u.mapper().coupledSize()  );
+        CHECK_EQUAL(0, u.mapper().boundarySize() );
+        CHECK_EQUAL(0, u.fixedPart().size()      );
+
+        A.assemble(u * u.tr() * meas(G));
+        const gsSparseMatrix<real_t> M = A.matrix();
+
+        // from-scratch reference on the refined basis, no custom mapper
+        gsExprAssembler<real_t> B(1,1);
+        B.setIntegrationElements(mb);
+        auto G2 = B.getMap(mp);
+        auto v = B.getSpace(mb, 1);
+        B.initSystem();
+        B.assemble(v * v.tr() * meas(G2));
+        const gsSparseMatrix<real_t> Mref = B.matrix();
+
+        CHECK_EQUAL(Mref.rows()    , M.rows()    );
+        CHECK_EQUAL(Mref.cols()    , M.cols()    );
+        CHECK_EQUAL(Mref.nonZeros(), M.nonZeros());
+        CHECK((M - Mref).norm() < 1e-14);
+        CHECK_CLOSE(2.0, M.sum(), 1e-10);
     }
 }
