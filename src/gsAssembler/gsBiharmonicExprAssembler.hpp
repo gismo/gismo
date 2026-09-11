@@ -1,6 +1,6 @@
-/** @file gsThinShellAssembler.hpp
+/** @file gsBiharmonicExprAssembler.hpp
 
-    @brief Provides linear and nonlinear assemblers for thin shells
+    @brief Provides assembler for a (planar) Biharmonic equation.
 
     This file is part of the G+Smo library.
 

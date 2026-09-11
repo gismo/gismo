@@ -39,6 +39,10 @@ CMakeFiles/
 *.vts
 *.vtp
 
+# Other output files
+*.csv
+*.log
+
 #Mac OS
 **/.DS_Store
 

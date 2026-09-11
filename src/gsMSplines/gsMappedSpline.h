@@ -42,7 +42,7 @@ private:
 
 public:
     /// Default empty constructor
-    gsMappedSpline() : m_mbases(nullptr) { }
+    gsMappedSpline() { }
 
     /// Construct Geom by multipatch and transformation matrix.
     /// The original coefficients are projected in the gsMappedBasis
@@ -54,9 +54,6 @@ public:
     gsMappedSpline( const gsMappedSpline& other );
 
     gsMappedSpline<d,T> & operator=( const gsMappedSpline& other );
-
-    ~gsMappedSpline()
-    { delete m_mbases; } //destructor
 
     void init(const gsMappedBasis<d,T> & mbasis)
     {
@@ -74,14 +71,13 @@ public:
     {
         GISMO_ASSERT(mbasis.domainDim()==d, "Error in dimensions");
 
-        m_global.clear();
         m_global = coefs;
 
-        m_mbases=mbasis.clone().release();
+        m_mbases = mbasis.clone();
 
         m_ss.clear();
-        m_ss.reserve(mbasis.nPieces());
-        for ( index_t k=0; k!=mbasis.nPieces(); k++ )
+        m_ss.reserve(m_mbases->nPieces());
+        for ( index_t k=0; k!=m_mbases->nPieces(); k++ )
         {
             m_ss.push_back( gsMappedSingleSpline<d,T>(this,k) );
         }
@@ -90,7 +86,7 @@ public:
     void init(const gsMultiPatch<T> & mp, const gsSparseMatrix<T> & m )
     {
         GISMO_ASSERT(mp.nPatches()>0,"MultiPatch is empty?");
-        m_mbases = new gsMappedBasis<d,T>(gsMultiBasis<T>(mp),m);
+        m_mbases.reset(new gsMappedBasis<d,T>(gsMultiBasis<T>(mp),m));
 
         // collect and transform the coefficients
         gsMatrix<T> local = mp.coefs();
@@ -235,7 +231,7 @@ public:
 // Data members
 protected:
     /// Underlying gsMappedBasis
-    gsMappedBasis<d,T> * m_mbases;
+    memory::unique_ptr<gsMappedBasis<d,T> > m_mbases;
     /// Coefficients on the mapped basis
     gsMatrix<T> m_global;
     /// Underlying gsMappedSpline per patch

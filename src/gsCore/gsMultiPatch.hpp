@@ -103,6 +103,15 @@ gsMultiPatch<T>::gsMultiPatch(PatchContainer & patches )
 }
 
 template<class T>
+gsMultiPatch<T>::gsMultiPatch(std::vector<gsGeometry<>::uPtr> patches)
+    : BaseA( patches[0]->parDim(), patches.size() )
+{
+    m_patches = memory::release(patches); // patches are consumed
+    setIds();
+    this->addAutoBoundaries();
+}
+
+template<class T>
 gsMultiPatch<T>::gsMultiPatch( PatchContainer& patches,
                                const std::vector<patchSide>& boundary,
                                const std::vector<boundaryInterface>& interfaces )

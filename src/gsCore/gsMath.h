@@ -37,6 +37,9 @@ namespace gismo {
 */
 namespace math {
 
+/// Numeric limits of \a real_t. For a type other than \a real_t -- in
+/// particular inside a class template parameterised on the scalar type -- use
+/// math::numeric_limits<T> below instead.
 typedef std::numeric_limits<real_t> limits;
 
 // Math functions
@@ -216,8 +219,20 @@ inline sw::universal::posit<nbits,es> nextafter(sw::universal::posit<nbits,es> x
 // }
 
 
-/** Numeric precision (number of exact decimal digits expected) for
-    real_t
+/** Numeric precision and range of the scalar type \a T.
+
+    Wraps std::numeric_limits<T> so that types whose members are functions
+    rather than constants (mpfr::mpreal) can be used through one interface.
+
+    \note For a floating point type, min() is the smallest positive NORMAL
+    value, not the smallest value. Seed a maximum-reduction with lowest(),
+    which is the most negative finite value; min() would make the reduction
+    return a tiny positive number on an everywhere-negative field.
+
+    \note The range accessors are only meaningful where std::numeric_limits
+    is specialised for \a T; the primary standard template returns a
+    value-initialised T. A scalar needing its own mapping must specialise
+    this template, as mpfr::mpreal does below.
 */
 template <typename T>
 struct numeric_limits
@@ -227,6 +242,18 @@ struct numeric_limits
 
     inline static int digits10()
     { return std::numeric_limits<T>::digits10; }
+
+    /// Smallest positive normal value
+    inline static T min()    { return (std::numeric_limits<T>::min)();    }
+
+    /// Largest finite value
+    inline static T max()    { return (std::numeric_limits<T>::max)();    }
+
+    /// Most negative finite value (== -max() for floating point types)
+    inline static T lowest() { return std::numeric_limits<T>::lowest();   }
+
+    /// Difference between 1 and the next representable value
+    inline static T epsilon(){ return std::numeric_limits<T>::epsilon();  }
 };
 
 #ifdef gsMpfr_ENABLED
@@ -238,6 +265,18 @@ struct numeric_limits<mpfr::mpreal>
 
     inline static int digits10()
     { return std::numeric_limits<mpfr::mpreal>::digits10(); }
+
+    inline static mpfr::mpreal min()
+    { return (std::numeric_limits<mpfr::mpreal>::min)(); }
+
+    inline static mpfr::mpreal max()
+    { return (std::numeric_limits<mpfr::mpreal>::max)(); }
+
+    inline static mpfr::mpreal lowest()
+    { return std::numeric_limits<mpfr::mpreal>::lowest(); }
+
+    inline static mpfr::mpreal epsilon()
+    { return std::numeric_limits<mpfr::mpreal>::epsilon(); }
 };
 #endif
 
