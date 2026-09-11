@@ -43,7 +43,9 @@ int main(int argc, char *argv[])
   gsMultiPatch<real_t>::uPtr mp = gsReadFile<>(INPUT_FILE);
   gsInfo << "Loaded geometry: " << *mp << "\n";
 
-  gsWriteParaview(*mp, "input_surface", 1000);
+  gsParaview<real_t> pv;
+  pv.options().setInt("numPoints", 1000);
+  pv.write(*mp, "input_surface");
 
 #ifdef gsHLBFGS_ENABLED
   // Set up the optimizer
@@ -67,7 +69,7 @@ int main(int argc, char *argv[])
   gsMultiPatch<real_t> optSurface = reparam.solve();
 
   // Output the resulting geometry to a Paraview file
-  gsWriteParaview(optSurface, "optimized_surface", 1000);
+  pv.write(optSurface, "optimized_surface");
 
   return EXIT_SUCCESS;
 }

@@ -14,6 +14,15 @@
     Author(s): S. Imperatore
 """
 
+##################################################################
+# This part is needed when pygismo is built inside your build 
+# folder using `make pygismo`
+import os, sys
+gismo_path=os.path.join(os.path.dirname(__file__), "../build/lib")
+print("G+Smo path:",gismo_path,"(change if needed).")
+sys.path.insert(0, gismo_path)
+##################################################################
+
 import pygismo as gs
 import numpy as np
 
@@ -47,7 +56,7 @@ b.eval_into(upts,vals)
 print(f"Evaluation of the Bspline on {u[x] for x in range(len(upts))} with void function:\n", vals)
 """
 
-b.insertKnot(u, 2)
+b.insertKnot(u[0], 2)  # knot value is a scalar (multiplicity 2)
 print("Number of coefficients after knot-insertion:\n", b.numCoefs())
 test_val = np.empty(2)
 b.eval_into(u, test_val)

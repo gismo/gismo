@@ -68,16 +68,16 @@ gsHBoxContainer<d, T>::gsHBoxContainer(const HContainer & boxes)
                 m_boxes[it->level()].push_back(*it);
             }
         }
+    }
 
-        // Find the basis type of the neighborhood in the first non-empty level
-        m_NHtype = gsHNeighborhood::None;
-        for (cHIterator hit = boxes.begin(); hit!=boxes.end(); hit++)
+    // Find the basis type of the neighborhood in the first non-empty level
+    m_NHtype = gsHNeighborhood::None;
+    for (cHIterator hit = boxes.begin(); hit!=boxes.end(); hit++)
+    {
+        if (hit->size()!=0)
         {
-            if (hit->size()!=0)
-            {
-                m_NHtype = gsHBoxUtils<d,T>::neighborhoodType(hit->front());
-                break;
-            }
+            m_NHtype = gsHBoxUtils<d,T>::neighborhoodType(hit->front());
+            break;
         }
     }
 }

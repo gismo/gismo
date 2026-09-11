@@ -19,30 +19,32 @@ namespace gismo
 {
 
 /// class for subdivision schemes in polygonal meshes.
-class GISMO_EXPORT gsChaikin : public gsSubdivisionScheme
+template <class Scalar=real_t>
+class GISMO_EXPORT gsChaikin : public gsSubdivisionScheme<Scalar>
 {
 
 public: // Constructors
   /// \brief Default constructor.
   ///
   /// Default constructor.
-  gsChaikin() : gsSubdivisionScheme(){}
+  gsChaikin() : gsSubdivisionScheme<Scalar>(){}
 
   /// \brief Constructor with a mesh to target.
   ///
   /// Constructor that accepts a mesh to be targeted by this constructor.
-  gsChaikin(gsSurfMesh* mesh) : gsSubdivisionScheme()
+  explicit gsChaikin(gsSurfMesh<Scalar>* mesh) : gsSubdivisionScheme<Scalar>()
   {
-      // Check if we have only curve (at most one face)
-      GISMO_ASSERT(m_mesh->n_faces() <= 1, "For a curve subdivision scheme we need at most one face");
       this->assign(mesh);
+      GISMO_ASSERT(this->m_mesh->n_faces() <= 1, "For a curve subdivision scheme we need at most one face");
   }
 
 public:
   void subdivide_impl() GISMO_OVERRIDE;
 
-  
 };//namespace internal
 
 } // namespace gismo
 
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsChaikin.hpp)
+#endif

@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsTemplateTools.h>
+#include <vector>
 
 #ifdef __MINGW32__
 //#include <malloc/malloc.h> //xcode
@@ -295,8 +296,14 @@ memory::shared_ptr<T> give(memory::shared_ptr<T> & x)
 // Note: VLAs(following line) can be buggy on some compilers/versions,
 // also not nececarily on the stack
 // #define STACK_ARRAY( T, name, sz )    T name[sz];
-#define STACK_ARRAY( T, name, sz )    T * name = (T*) alloca ( (sz) * sizeof(T) );
+#define STACK_ARRAY( T, name, sz ) \
+    std::vector<T> name##_vec(sz); \
+    T * name = name##_vec.data();
 #endif
+// NOTE [HMV]: This was 
+// #define STACK_ARRAY( T, name, sz )    T * name = (T*) alloca ( (sz) * sizeof(T) );
+// But if T can be any type (also autodiff types), alloca does not call the constructor of T, which can lead to problems. Therefore, I changed it to a std::vector, which is guaranteed to call the constructor of T. The downside is that this is not on the stack anymore, but on the heap. However, this should be fine for small arrays (which is what this macro is intended for).
+// We could fix this with `constexpr if` in C++17 when we bump version.
 
 
 /// \brief Clones all pointers in the range [\a start \a end) and stores new

@@ -71,6 +71,28 @@ public:
     typedef typename gsExprHelper<T>::space       space;       ///< Space type
     typedef typename expr::gsFeSolution<T>        solution;    ///< Solution type
 
+    typedef typename gsQuadRule<T>::uPtr QuadratureRulePtr;
+
+    /**
+     * @brief Factory for an opt-in custom quadrature rule.
+     *
+     * The factory is called once for every rule instance required by an
+     * assembly operation (in particular, once per OpenMP worker and patch for
+     * volume assembly). It must return a fresh rule and, when OpenMP is enabled,
+     * be safe to call concurrently. @a fixedDirection is -1 for volume
+     * integration and the fixed parametric direction for boundary and interface
+     * integration. Overriding gsQuadRule::mapTo() permits element-dependent
+     * rules.
+     */
+    typedef std::function<QuadratureRulePtr(const gsBasis<T> & basis,
+                                             const gsOptionList & options,
+                                             index_t patch,
+                                             short_t fixedDirection)>
+        QuadratureFactory;
+
+private:
+    QuadratureFactory m_quadratureFactory;
+
 public:
 
     void cleanUp()
@@ -122,6 +144,24 @@ public:
 
     /// Returns a reference to the options structure
     gsOptionList & options() {return m_options;}
+    const gsOptionList & options() const {return m_options;}
+
+
+    /// @brief Installs a custom quadrature-rule factory.
+    ///
+    /// Passing an empty factory restores the standard option-driven
+    /// quadrature. The factory is invoked only when a new rule is needed, never
+    /// in an element or quadrature-point loop.
+    void setQuadratureFactory(QuadratureFactory factory)
+    { m_quadratureFactory = give(factory); }
+
+    /// @brief Restores the standard gsQuadrature/options-based rules.
+    void clearQuadratureFactory()
+    { m_quadratureFactory = QuadratureFactory(); }
+
+    /// @brief Returns whether a custom quadrature factory is installed.
+    bool hasCustomQuadrature() const
+    { return static_cast<bool>(m_quadratureFactory); }
 
     /// Returns the internally stored sparse fiber matrix
     const FiberMatrix & fiberMatrix() const
@@ -355,7 +395,6 @@ public:
         if (m_fmatrix.nonZeros() && save_sparsety_pattern)
         {
             m_fmatrix.assignZero();
-            m_modified = true;
         }
         else
         {
@@ -380,6 +419,8 @@ public:
                                           cast<T, index_t>(nz * (1.0 + bdO)));
             }
         }
+		
+        m_modified = true;
     }
 
     /// Initializes the pattern of the sparse matrix
@@ -468,6 +509,23 @@ public:
 
 private:
 
+    QuadratureRulePtr makeQuadratureRule(const gsBasis<T> & basis,
+                                         index_t patch,
+                                         short_t fixedDirection = -1) const
+    {
+        if (m_quadratureFactory)
+        {
+            QuadratureRulePtr rule =
+                m_quadratureFactory(basis, m_options, patch, fixedDirection);
+            GISMO_ENSURE(rule,
+                         "Custom quadrature factory returned a null rule for patch "
+                         << patch << ".");
+            return rule;
+        }
+
+        return gsQuadrature::getPtr(basis, m_options, fixedDirection);
+    }
+
     template<class... expr> void _computePattern(const expr &... args);
     template<class... expr> void _computePatternBdr(const bcRefList & BCs, const expr &... args);
     template<class... expr> void _computePatternIfc(const ifContainer & iFaces, expr... args);
@@ -488,10 +546,10 @@ private:
         {
             rowSizes.resize(m_vrow.size());
             for (index_t r = 0; r != rowSizes.size(); ++r) // for all row-blocks
-                rowSizes[r] = m_vrow[r]->dim() * m_vrow[r]->mapper.freeSize();
+                rowSizes[r] = m_vrow[r]->mapper.freeSize();
             colSizes.resize(m_vcol.size());
             for (index_t c = 0; c != colSizes.size(); ++c) // for all col-blocks
-                colSizes[c] = m_vcol[c]->dim() * m_vcol[c]->mapper.freeSize();
+                colSizes[c] = m_vcol[c]->mapper.freeSize();
         }
     }
 
@@ -639,6 +697,52 @@ private:
 
         void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
 
+        // Helper method to handle atomic/critical selection based on type
+        inline void add_matrix_coeff(index_t i, index_t j, const T& val)
+        { if_autodiff_matrix_update(i, j, val); }
+        template<typename U, typename std::enable_if<gismo::is_autodiff_type<U>::value, int>::type = 0>
+        inline void if_autodiff_matrix_update(index_t i, index_t j, const U& val)
+        { 
+#           pragma omp critical
+            m_fmatrix.coeffRef(i, j) += val;
+        }
+        template<typename U, typename std::enable_if<!gismo::is_autodiff_type<U>::value, int>::type = 0>
+        inline void if_autodiff_matrix_update(index_t i, index_t j, const U& val)
+        { 
+#           pragma omp atomic update
+            m_fmatrix.coeffRef(i, j) += val;
+        }
+
+        inline void subtract_rhs_entry(index_t i, const T& val)
+        { if_autodiff_rhs_subtract(i, val); }
+        template<typename U, typename std::enable_if<gismo::is_autodiff_type<U>::value, int>::type = 0>
+        inline void if_autodiff_rhs_subtract(index_t i, const U& val)
+        { 
+#           pragma omp critical
+            m_rhs.at(i) -= val;
+        }
+        template<typename U, typename std::enable_if<!gismo::is_autodiff_type<U>::value, int>::type = 0>
+        inline void if_autodiff_rhs_subtract(index_t i, const U& val)
+        { 
+#           pragma omp atomic update
+            m_rhs.at(i) -= val;
+        }
+
+        inline void add_rhs_entry(index_t i, index_t a, const T& val)
+        { if_autodiff_rhs_add(i, a, val); }
+        template<typename U, typename std::enable_if<gismo::is_autodiff_type<U>::value, int>::type = 0>
+        inline void if_autodiff_rhs_add(index_t i, index_t a, const U& val)
+        { 
+#           pragma omp critical
+            m_rhs(i, a) += val;
+        }
+        template<typename U, typename std::enable_if<!gismo::is_autodiff_type<U>::value, int>::type = 0>
+        inline void if_autodiff_rhs_add(index_t i, index_t a, const U& val)
+        { 
+#           pragma omp atomic update
+            m_rhs(i, a) += val;
+        }
+
         template<bool isMatrix, bool elim = true>
         void push(const expr::gsFeSpace<T> & v,
                   const expr::gsFeSpace<T> & u, index_t ra = 0, index_t ca = 0)
@@ -693,16 +797,14 @@ private:
                                         // If matrix is symmetric, we could
                                         // store only lower triangular part
                                         //if ( (!symm) || jj <= ii )
-#                                       pragma omp atomic
-                                        m_fmatrix.coeffRef(ii, jj) += localMat(rls+i,cls+j);
+                                        add_matrix_coeff(ii, jj, localMat(rls+i,cls+j));
                                     }
                                     else if (elim) // colMap.is_boundary_index(jj) )
                                     {
                                         // Symmetric treatment of eliminated BCs
                                         // GISMO_ASSERT(1==m_rhs.cols(), "-");
-#                                       pragma omp atomic
-                                        m_rhs.at(ii) -= localMat(rls+i,cls+j) *
-                                            fixedDofs.at(colMap.global_to_bindex(jj));
+                                        subtract_rhs_entry(ii, localMat(rls+i,cls+j) *
+                                            fixedDofs.at(colMap.global_to_bindex(jj)));
                                     }
                                 }
                             }
@@ -713,8 +815,7 @@ private:
 #ifdef _OPENMP
                             for(index_t a = 0; a!= m_rhs.cols();++a)
                             {
-#                              pragma omp atomic
-                                m_rhs(ii,a) += localMat(rls+i,a);
+                                add_rhs_entry(ii, a, localMat(rls+i,a));
                             }
 #else
                             m_rhs.row(ii) += localMat.row(rls+i);
@@ -890,13 +991,13 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
     {
         if (!m_vcol[i]->valid()) m_vcol[i]->init();
         m_vcol[i]->mapper.setShift(m_vcol[i-1]->mapper.firstIndex() +
-                                   m_vcol[i-1]->dim*m_vcol[i-1]->mapper.freeSize() );
+                                   m_vcol[i-1]->mapper.freeSize() );
 
         if ( i<m_vrow.size() && m_vcol[i] != m_vrow[i] )
         {
             if (!m_vrow[i]->valid()) m_vrow[i]->init();
             m_vrow[i]->mapper.setShift(m_vrow[i-1]->mapper.firstIndex() +
-                                       m_vrow[i-1]->dim*m_vrow[i-1]->mapper.freeSize() );
+                                       m_vrow[i-1]->mapper.freeSize() );
         }
     }
 }
@@ -948,7 +1049,7 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
     for ( auto & elem : m_exprdata->domain().allElements() )
     {
         m_exprdata->points() = elem.centerPoint();
-        patchInd = elem.patch();
+        patchInd = elem.patchIndex();
         op_tuple(pp, arg_tpl);
     }
 
@@ -1051,6 +1152,8 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
 
     typedef typename gsFunction<T>::uPtr ifacemap;
     const bool flipSide = m_options.askSwitch("flipSide", false);
+    // Call m_exprdata->initializeIface() to initialize the interface data structure
+    m_exprdata->initializeIface();
 #pragma omp parallel
 {
     auto arg_tpl = std::make_tuple(args...);
@@ -1135,11 +1238,11 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 
     for ( auto & elem : m_exprdata->domain().allElements() )
     {
-        if (/*changeQuadrature && */QuPatch!=elem.patch())
+        if (/*changeQuadrature && */QuPatch!=elem.patchIndex())
         {
-            QuPatch = elem.patch();
+            QuPatch = elem.patchIndex();
             // get Degree of the domain
-            QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(QuPatch), m_options);
+            QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(QuPatch), QuPatch);
         }
 
         // Map the Quadrature rule to the element
@@ -1195,7 +1298,8 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
     {
         const boundary_condition<T> * it = &iit->get();
 
-        QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(it->patch()), m_options, it->side().direction());
+        QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(it->patch()),
+                                    it->patch(), it->side().direction());
 
         // Update boundary function source
         m_exprdata->setMutSource(*it->function());
@@ -1248,8 +1352,8 @@ void gsExprAssembler<T>::assembleBdr(const bContainer & bnd, expr&... args)
     for (gsBoxTopology::const_biterator it = bnd.begin();
          it != bnd.end(); ++it )
     {
-        QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(it->patch),
-                                    m_options, it->side().direction());
+        QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(it->patch),
+                                    it->patch, it->side().direction());
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add it->patch to domainiter ?
@@ -1288,6 +1392,9 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
         this->_computePatternIfc(iFaces, args...);
 
 // #pragma omp parallel //TODO
+// NOTE: if this region is re-enabled it needs m_exprdata->ensureIfc() called
+// serially before it, like _computePatternIfc above -- its body reaches
+// pointsIfc(), which would otherwise create the mirror inside the region.
 // {
     typedef typename gsFunction<T>::uPtr ifacemap;
 
@@ -1323,8 +1430,8 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
         else
             interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), iFace);
 
-        QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(patch1),
-                                   m_options, iFace.first().side().direction());
+        QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(patch1),
+                                    patch1, iFace.first().side().direction());
 
         // TODO [later]: Use beginIfc instead of beginBdr
         typename gsBasis<T>::domainIter domIt =
@@ -1383,11 +1490,11 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 
     for ( auto & elem : m_exprdata->domain().allElements() )
     {
-        if (changeQuadrature && QuPatch!=elem.patch())
+        if (changeQuadrature && QuPatch!=elem.patchIndex())
         {
-            QuPatch = elem.patch();
+            QuPatch = elem.patchIndex();
             // get Degree of the domain
-            QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(QuPatch), m_options);
+            QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(QuPatch), QuPatch);
         }
 
         // Map the Quadrature rule to the element
@@ -1443,8 +1550,8 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
 
         gsCPPInterface<T> interfaceMap(getGeometryMap(), iFace);
 
-        QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(patch1),
-                                   m_options, iFace.first().side().direction());
+        QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(patch1),
+                                    patch1, iFace.first().side().direction());
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patch1 to domainiter ?
@@ -1552,7 +1659,7 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
     {
         auto & bb = this->trialSpace(0).source().basis(patchInd);
 
-        QuRule = gsQuadrature::getPtr(bb, m_options);
+        QuRule = makeQuadratureRule(bb, patchInd);
         const index_t numNodes = QuRule->numNodes();
 
         // @hverhelst: THIS ASSUMES SAME NUMBER OF QUNODES PER ELEMENT

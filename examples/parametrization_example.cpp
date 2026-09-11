@@ -193,7 +193,8 @@ int main(int argc, char *argv[])
         gsInfo << "Writing to Paraview.\n";
 
         // .pvd with the flat mesh
-        gsWriteParaview(flatMesh, cmd.getString("filenameOut"));
+        gsParaview<real_t> pv;
+        pv.write(flatMesh, cmd.getString("filenameOut"));
         gsFileManager::open(cmd.getString("filenameOut") + ".pvd");
 
         // .vtk with the vertices coloured according to the parameters
