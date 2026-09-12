@@ -2560,36 +2560,56 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix
                  "Incorrect number of data: "<< params.cols() <<" != "<< sl.numVertices() );
 
     std::string mfn(fn);
-    mfn.append(".vtk");
+    mfn.append(".vtp");
     std::ofstream file(mfn.c_str());
     if ( ! file.is_open() )
         gsWarn<<"gsWriteParaview: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
     file << std::setprecision (precision);
 
-    file << "# vtk DataFile Version 4.2\n";
-    file << "vtk output\n";
-    file << "ASCII\n";
-    file << "DATASET POLYDATA\n";
+    file <<"<?xml version=\"1.0\"?>\n";
+    file <<"<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+    file <<"<PolyData>\n";
+    file <<"<Piece NumberOfPoints=\""<< sl.numVertices() <<"\" NumberOfVerts=\"0\""
+         <<" NumberOfLines=\"0\" NumberOfStrips=\"0\" NumberOfPolys=\""
+         << sl.numFaces() <<"\">\n";
 
     // Vertices
-    file << "POINTS " << sl.numVertices() << " float\n";
-    for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertices().begin(); it!=sl.vertices().end(); ++it)
+    file <<"<Points>\n";
+    file <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+    for (typename std::vector< gsVertex<T>* >::const_iterator it=sl.vertices().begin();
+         it!=sl.vertices().end(); ++it)
     {
         const gsVertex<T>& vertex = **it;
-        file << vertex[0] << " ";
-        file << vertex[1] << " ";
-        file << vertex[2] << " \n";
+        file << vertex[0] << " " << vertex[1] << " " << vertex[2] << "\n";
     }
-    file << "\n";
+    file <<"</DataArray>\n";
+    file <<"</Points>\n";
+
+    // Data
+    const index_t nc = params.rows();
+    // Only arrays of at most 4 components can be the active scalars of a dataset
+    file <<"<PointData";
+    if ( 3 == nc )     file <<" Vectors=\"Data\"";
+    else if ( 4 >= nc) file <<" Scalars=\"Data\"";
+    file <<">\n";
+    file <<"<DataArray type=\"Float32\" Name=\"Data\" NumberOfComponents=\""<< nc
+         <<"\" format=\"ascii\">\n";
+    for(index_t j=0; j<params.cols(); j++)
+    {
+        for(index_t i=0; i<nc; i++)
+            file << params(i,j) << " ";
+        file << "\n";
+    }
+    file <<"</DataArray>\n";
+    file <<"</PointData>\n";
 
     // Triangles or quads
-    file << "POLYGONS " << sl.numFaces() << " " <<
-        (sl.faces().front()->vertices.size()+1) * sl.numFaces() << std::endl;
+    file <<"<Polys>\n";
+    file <<"<DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
     for (typename std::vector< gsFace<T>* >::const_iterator it=sl.faces().begin();
          it!=sl.faces().end(); ++it)
     {
-        file << (*it)->vertices.size() <<" "; //3: triangles, 4: quads
         for (typename std::vector< gsVertex<T>* >::const_iterator vit=
                  (*it)->vertices.begin(); vit!=(*it)->vertices.end(); ++vit)
         {
@@ -2597,23 +2617,22 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix
         }
         file << "\n";
     }
-    file << "\n";
-
-    // Data
-    file << "POINT_DATA " << sl.numVertices() << std::endl;
-    //file << "TEXTURE_COORDINATES parameters "<<params.rows()<<" float\n";
-    if ( 3 == params.rows() )
-        file << "VECTORS Data float\n";
-    else
-        file << "SCALARS Data float "<<params.rows()<<"\nLOOKUP_TABLE default\n";
-
-    for(index_t j=0; j<params.cols(); j++)
+    file <<"</DataArray>\n";
+    file <<"<DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
+    int count = 0;
+    for (typename std::vector< gsFace<T>* >::const_iterator it=sl.faces().begin();
+         it!=sl.faces().end(); ++it)
     {
-        for(index_t i=0; i<params.rows(); i++)
-            file << params(i,j) << " ";
-        file << "\n";
+        count += (*it)->vertices.size();
+        file << count << " ";
     }
+    file << "\n";
+    file <<"</DataArray>\n";
+    file <<"</Polys>\n";
 
+    file <<"</Piece>\n";
+    file <<"</PolyData>\n";
+    file <<"</VTKFile>\n";
     file.close();
 }
 
@@ -2635,41 +2654,20 @@ inline void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
     using MeshT = gsSurfMesh<Scalar>;
 
     std::string mfn(fn);
-    mfn.append(".vtk");
+    mfn.append(".vtp");
     std::ofstream file(mfn.c_str());
     if ( ! file.is_open() )
         gsWarn<<"gsWriteParaview: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
     file << std::setprecision (precision);
 
-    //https://vtk.org/wp-content/uploads/2015/04/file-formats.pdf
-    file << "# vtk DataFile Version 4.2\n";
-    file << "vtk output\n";
-    file << "ASCII\n";
-    file << "DATASET POLYDATA\n";
-
-    // Vertices
-    auto vpt = sm.template get_vertex_property<typename MeshT::Point>("v:point");
-    file << "POINTS " << sm.n_vertices() << " float\n";
-    for (auto v : sm.vertices() )
-        file << vpt[v].transpose() <<"\n";
-    file << "\n";
-
-    // Triangles or quads
-    file << "POLYGONS " << sm.n_faces() << " " <<
-        sm.face_valence_sum() + sm.n_faces() << "\n";
-    for (auto f : sm.faces())
-    {
-        file << sm.valence(f) <<" "; //3: triangles, 4: quads
-        for (auto v : sm.vertices(f))
-            file << v.idx() << " ";
-        file << "\n";
-    }
-    file << "\n";
-
+    //https://vtk.org/wp-content/uploads/2015/04/file-formats.pdf (Sec. XML formats)
     //todo: count props starting with v:, f:, e:
-    if (0!=props.size())
-        file << "POINT_DATA " << sm.n_vertices() << "\n";//once
+    // The active attribute names must be known before <PointData> is opened,
+    // hence the properties are classified first and written afterwards.
+    enum { NORMAL = 0, VECTOR, SCALAR, INDEX, BOOLEAN };
+    std::vector< std::pair<std::string,short_t> > fields;
+    std::string nrmName, vecName, sclName;
     for( auto & pr : props )
     {
         if (pr == "v:connectivity") continue;
@@ -2677,61 +2675,135 @@ inline void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
 
         if (pr == "v:normal")
         {
-            auto vn = sm.template get_vertex_property<typename MeshT::Point>(pr);
-            GISMO_ASSERT(vn,"No normals found");
-            file << "NORMALS "<<pr<<" float\n";
-            for (auto v : sm.vertices() )
-                file << vn[v].transpose() <<"\n";
-            file << "\n";
-            continue;
+            GISMO_ASSERT(sm.template get_vertex_property<typename MeshT::Point>(pr),
+                         "No normals found");
+            fields.push_back( std::make_pair(pr,(short_t)NORMAL) );
+            if (nrmName.empty()) nrmName = pr;
         }
-
-        auto vp = sm.template get_vertex_property<typename MeshT::Point>(pr);
-        if (vp)
+        else if (sm.template get_vertex_property<typename MeshT::Point>(pr))
         {
-            file << "VECTORS "<<pr<<" float\n";
-            for (auto v : sm.vertices() )
-                file << vp[v].transpose() <<"\n";
-            file << "\n";
-            continue;
+            fields.push_back( std::make_pair(pr,(short_t)VECTOR) );
+            if (vecName.empty()) vecName = pr;
         }
-
-        auto vs = sm.template get_vertex_property<Scalar>(pr);
-        if (vs)
+        else if (sm.template get_vertex_property<Scalar>(pr))
         {
-            file << "SCALARS "<<pr<<" float\nLOOKUP_TABLE default\n";
-            for (auto v : sm.vertices() )
-                file << vs[v] <<" ";
-            file << "\n";
-            continue;
+            fields.push_back( std::make_pair(pr,(short_t)SCALAR) );
+            if (sclName.empty()) sclName = pr;
         }
-
-        auto vi = sm.template get_vertex_property<index_t>(pr);
-        if (vi)
+        else if (sm.template get_vertex_property<index_t>(pr))
         {
-            file << "SCALARS "<<pr<<" float\nLOOKUP_TABLE default\n";
-            for (auto v : sm.vertices() )
-                file << vi[v] <<" ";
-            file << "\n";
-            continue;
+            fields.push_back( std::make_pair(pr,(short_t)INDEX) );
+            if (sclName.empty()) sclName = pr;
         }
-
-        auto vb = sm.template get_vertex_property<bool>(pr);
-        if (vb)
+        else if (sm.template get_vertex_property<bool>(pr))
         {
-            file << "SCALARS "<<pr<<" float\nLOOKUP_TABLE default\n";
-            for (auto v : sm.vertices() )
-                file << vb[v] <<" ";
-            file << "\n";
-            continue;
+            fields.push_back( std::make_pair(pr,(short_t)BOOLEAN) );
+            if (sclName.empty()) sclName = pr;
         }
-
-        const std::type_info & ti = sm.get_vertex_property_type(pr);
-        gsWarn<< "gsWriteParaview: Property "<< pr << " ignored, "<<ti.name()<<".\n";
+        else
+        {
+            const std::type_info & ti = sm.get_vertex_property_type(pr);
+            gsWarn<< "gsWriteParaview: Property "<< pr << " ignored, "<<ti.name()<<".\n";
+        }
     }
 
+    file <<"<?xml version=\"1.0\"?>\n";
+    file <<"<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+    file <<"<PolyData>\n";
+    file <<"<Piece NumberOfPoints=\""<< sm.n_vertices() <<"\" NumberOfVerts=\"0\""
+         <<" NumberOfLines=\"0\" NumberOfStrips=\"0\" NumberOfPolys=\""
+         << sm.n_faces() <<"\">\n";
+
+    // Vertices
+    auto vpt = sm.template get_vertex_property<typename MeshT::Point>("v:point");
+    file <<"<Points>\n";
+    file <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+    for (auto v : sm.vertices() )
+        file << vpt[v].transpose() <<"\n";
+    file <<"</DataArray>\n";
+    file <<"</Points>\n";
+
+    // Vertex properties
+    if ( !fields.empty() )
+    {
+        file <<"<PointData";
+        if (!sclName.empty()) file <<" Scalars=\""<< sclName <<"\"";
+        if (!vecName.empty()) file <<" Vectors=\""<< vecName <<"\"";
+        if (!nrmName.empty()) file <<" Normals=\""<< nrmName <<"\"";
+        file <<">\n";
+
+        for( auto & fl : fields )
+        {
+            file <<"<DataArray type=\"Float32\" Name=\""<< fl.first
+                 <<"\" NumberOfComponents=\""<< (VECTOR >= fl.second ? 3 : 1)
+                 <<"\" format=\"ascii\">\n";
+            switch (fl.second)
+            {
+            case NORMAL:
+            case VECTOR:
+            {
+                auto vp = sm.template get_vertex_property<typename MeshT::Point>(fl.first);
+                for (auto v : sm.vertices() )
+                    file << vp[v].transpose() <<"\n";
+                break;
+            }
+            case SCALAR:
+            {
+                auto vs = sm.template get_vertex_property<Scalar>(fl.first);
+                for (auto v : sm.vertices() )
+                    file << vs[v] <<" ";
+                file <<"\n";
+                break;
+            }
+            case INDEX:
+            {
+                auto vi = sm.template get_vertex_property<index_t>(fl.first);
+                for (auto v : sm.vertices() )
+                    file << vi[v] <<" ";
+                file <<"\n";
+                break;
+            }
+            default: //BOOLEAN
+            {
+                auto vb = sm.template get_vertex_property<bool>(fl.first);
+                for (auto v : sm.vertices() )
+                    file << vb[v] <<" ";
+                file <<"\n";
+                break;
+            }
+            }
+            file <<"</DataArray>\n";
+        }
+        file <<"</PointData>\n";
+    }
+
+    // Triangles or quads
+    file <<"<Polys>\n";
+    file <<"<DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
+    for (auto f : sm.faces())
+    {
+        for (auto v : sm.vertices(f))
+            file << v.idx() << " ";
+        file << "\n";
+    }
+    file <<"</DataArray>\n";
+    file <<"<DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
+    index_t count = 0;
+    for (auto f : sm.faces())
+    {
+        count += sm.valence(f); //3: triangles, 4: quads
+        file << count << " ";
+    }
+    file << "\n";
+    file <<"</DataArray>\n";
+    file <<"</Polys>\n";
+
+    file <<"</Piece>\n";
+    file <<"</PolyData>\n";
+    file <<"</VTKFile>\n";
     file.close();
-    //gsParaviewCollection<T>::make(fn, ".vtk"); // legacy inside pvd seems to not work
+
+    gsParaviewCollection<Scalar>::make(fn, ".vtp");
 }
 
 template<class Scalar>
@@ -2739,12 +2811,7 @@ inline void gsWriteHalfedgesParaview(const gsSurfMesh<Scalar>& sm,
                                     const std::string& fn,
                                     real_t eps)
 {
-    std::ofstream file(fn + ".vtk");
-
-    file << "# vtk DataFile Version 4.2\n";
-    file << "Halfedge glyphs\n";
-    file << "ASCII\n";
-    file << "DATASET POLYDATA\n";
+    std::ofstream file(fn + ".vtp");
 
     const index_t nH = sm.n_faces();
 
@@ -2779,35 +2846,46 @@ inline void gsWriteHalfedgesParaview(const gsSurfMesh<Scalar>& sm,
         directions.push_back(dir);
     }
 
+    file <<"<?xml version=\"1.0\"?>\n";
+    file <<"<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
+    file <<"<PolyData>\n";
+    file <<"<Piece NumberOfPoints=\""<< nH <<"\" NumberOfVerts=\""<< nH <<"\""
+         <<" NumberOfLines=\"0\" NumberOfStrips=\"0\" NumberOfPolys=\"0\">\n";
+
     // Add points (halfedges)
-
-    file << "POINTS " << nH << " float\n";
-
+    file <<"<Points>\n";
+    file <<"<DataArray type=\"Float32\" NumberOfComponents=\"3\" format=\"ascii\">\n";
     for (auto const& p : centers)
         file << p.transpose() << "\n";
-
-    file << "\n";
-
-    // One vertex cell per point
-
-    file << "VERTICES " << nH << " " << 2 * nH << "\n";
-
-    for (index_t i = 0; i < nH; ++i)
-        file << "1 " << i << "\n";
-
-    file << "\n";
+    file <<"</DataArray>\n";
+    file <<"</Points>\n";
 
     // Direction vectors
-
-    file << "POINT_DATA " << nH << "\n";
-
-    file << "VECTORS direction float\n";
-
+    file <<"<PointData Vectors=\"direction\">\n";
+    file <<"<DataArray type=\"Float32\" Name=\"direction\""
+         <<" NumberOfComponents=\"3\" format=\"ascii\">\n";
     for (auto const& d : directions)
         file << d.transpose() << "\n";
+    file <<"</DataArray>\n";
+    file <<"</PointData>\n";
 
+    // One vertex cell per point
+    file <<"<Verts>\n";
+    file <<"<DataArray type=\"Int32\" Name=\"connectivity\" format=\"ascii\">\n";
+    for (index_t i = 0; i < nH; ++i)
+        file << i << " ";
     file << "\n";
+    file <<"</DataArray>\n";
+    file <<"<DataArray type=\"Int32\" Name=\"offsets\" format=\"ascii\">\n";
+    for (index_t i = 0; i < nH; ++i)
+        file << i+1 << " ";
+    file << "\n";
+    file <<"</DataArray>\n";
+    file <<"</Verts>\n";
 
+    file <<"</Piece>\n";
+    file <<"</PolyData>\n";
+    file <<"</VTKFile>\n";
     file.close();
 }
 
