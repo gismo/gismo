@@ -59,7 +59,7 @@ void gsDirichletValues(
      // Corner values -- todo
     for ( typename gsBoundaryConditions<T>::const_citerator it = bc.cornerBegin(); it != bc.cornerEnd(); ++it )
     {
-        if(it->unknown != u.id())
+        if(it->unknown!=-1 && it->unknown != u.id())
             continue;
 
         const int k = it->patch;
