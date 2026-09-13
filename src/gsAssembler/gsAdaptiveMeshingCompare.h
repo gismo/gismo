@@ -31,6 +31,8 @@ template <short_t d, class T>
 class gsHBoxCheck
 {
 public:
+    typedef memory::unique_ptr< gsHBoxCheck > uPtr;
+
     virtual ~gsHBoxCheck() {};
 
     virtual bool check(const gsHBox<d,T> & box) const = 0;
@@ -46,6 +48,8 @@ template <short_t d, class T>
 class gsMinLvlCompare : public gsHBoxCheck<d,T>
 {
 public:
+    typedef memory::unique_ptr< gsMinLvlCompare > uPtr;
+
     explicit gsMinLvlCompare(index_t minlevel = 0)
     :
     m_minLevel(minlevel)
@@ -68,6 +72,8 @@ template <short_t d, class T>
 class gsMaxLvlCompare : public gsHBoxCheck<d,T>
 {
 public:
+    typedef memory::unique_ptr< gsMaxLvlCompare > uPtr;
+
     explicit gsMaxLvlCompare(index_t maxLevel)
     :
     m_maxLevel(maxLevel)
@@ -89,6 +95,9 @@ template <short_t d, class T>
 class gsSmallerErrCompare : public gsHBoxCheck<d,T>
 {
 public:
+
+    typedef memory::unique_ptr< gsSmallerErrCompare > uPtr;
+
     gsSmallerErrCompare(const T & threshold)
     :
     m_threshold(threshold)
@@ -110,6 +119,9 @@ template <short_t d, class T>
 class gsLargerErrCompare : public gsHBoxCheck<d,T>
 {
 public:
+
+    typedef memory::unique_ptr< gsLargerErrCompare > uPtr;
+
     gsLargerErrCompare(const T & threshold)
     :
     m_threshold(threshold)
@@ -134,6 +146,9 @@ template <short_t d, class T>
 class gsOverlapCompare : public gsHBoxCheck<d,T>
 {
 public:
+
+    typedef memory::unique_ptr< gsOverlapCompare > uPtr;
+
     /**
      * @brief      Construct a gsOverlapCompare
      *

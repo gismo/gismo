@@ -42,4 +42,33 @@ SUITE(gsGeometry_test)                 // The suite should have the same name as
         CHECK(  (pxy-xyz).norm() < 1e-6 );
     }
 
+    TEST(rotate2D)
+    {
+        gsGeometry<>::uPtr g = gsNurbsCreator<>::BSplineSquare();
+        gsMatrix<> orig = g->coefs();
+        g->rotate(EIGEN_PI / 2);
+        // 90-degree CCW rotation around origin: (x, y) -> (-y, x)
+        for (index_t i = 0; i < orig.rows(); ++i)
+        {
+            CHECK_CLOSE(g->coefs()(i, 0), -orig(i, 1), EPSILON);
+            CHECK_CLOSE(g->coefs()(i, 1),  orig(i, 0), EPSILON);
+        }
+    }
+
+    TEST(rotate3D)
+    {
+        gsGeometry<>::uPtr g = gsNurbsCreator<>::BSplineCube();
+        gsMatrix<> orig = g->coefs();
+        gsVector<real_t, 3> axis;
+        axis << 1, 0, 0;
+        g->rotate(EIGEN_PI / 2, axis);
+        // 90-degree rotation around X-axis: (x, y, z) -> (x, -z, y)
+        for (index_t i = 0; i < orig.rows(); ++i)
+        {
+            CHECK_CLOSE(g->coefs()(i, 0),  orig(i, 0), EPSILON);
+            CHECK_CLOSE(g->coefs()(i, 1), -orig(i, 2), EPSILON);
+            CHECK_CLOSE(g->coefs()(i, 2),  orig(i, 1), EPSILON);
+        }
+    }
+
 }

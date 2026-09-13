@@ -397,12 +397,14 @@ User options:
     if (plot && mb.dim() == 1)
     {
         gsInfo<<"Plotting in Paraview...\n";
-        gsWriteParaview<>( mbasis1.basis(0), "MappedBasis", 1000, false);
+        gsParaview<real_t> pv;
+        pv.options().setInt("numPoints", 1000);
+        pv.write(mbasis1.basis(0), "MappedBasis");
 
         std::string fileName;
         std::string basename = "MappedBasisSingle";
 
-        gsParaviewCollection collection(basename);
+        gsParaviewCollection<real_t> collection(basename);
         for (index_t i = 0; i < mbasis1.basis(0).size(); i++)
         {
             fileName = basename + "_0_" + util::to_string(i);
@@ -411,17 +413,19 @@ User options:
         }
         collection.save();
 
-        gsWriteParaview<>( mspline1, "MappedSpline", 1000);
+        pv.write(mspline1, "MappedSpline");
     }
     else if (plot && mb.dim() == 2)
     {
         gsInfo<<"Plotting in Paraview...\n";
-        gsWriteParaview<>( mbasis2.basis(0), "MappedBasis", 1000, false);
+        gsParaview<real_t> pv;
+        pv.options().setInt("numPoints", 1000);
+        pv.write(mbasis2.basis(0), "MappedBasis");
 
         std::string fileName;
         std::string basename = "MappedBasisSingle";
 
-        gsParaviewCollection collection(basename);
+        gsParaviewCollection<real_t> collection(basename);
         for (index_t i = 0; i < mbasis2.basis(0).size(); i++) {
             fileName = basename + "_0_" + util::to_string(i);
             gsWriteParaview_basisFnct(i, mbasis2.basis(0), fileName, 1000);
@@ -429,17 +433,19 @@ User options:
         }
         collection.save();
 
-        gsWriteParaview<>( mspline2, "MappedSpline", 1000);
+        pv.write(mspline2, "MappedSpline");
     }
     else if (plot && mb.dim() == 3)
     {
         gsInfo<<"Plotting in Paraview...\n";
-        gsWriteParaview<>( mbasis3.basis(0), "MappedBasis", 1000, false);
+        gsParaview<real_t> pv;
+        pv.options().setInt("numPoints", 1000);
+        pv.write(mbasis3.basis(0), "MappedBasis");
 
         std::string fileName;
         std::string basename = "MappedBasisSingle";
 
-        gsParaviewCollection collection(basename);
+        gsParaviewCollection<real_t> collection(basename);
         for (index_t i = 0; i < mbasis3.basis(0).size(); i++)
         {
             fileName = basename + "_0_" + util::to_string(i);
@@ -448,7 +454,7 @@ User options:
         }
         collection.save();
 
-        gsWriteParaview<>( mspline3, "MappedSpline", 1000);
+        pv.write(mspline3, "MappedSpline");
     }
     if (plot) {
         gsInfo << "The mapped basis is plotted to MappedBasis.pvd\n";

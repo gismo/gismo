@@ -2,12 +2,12 @@
 
     @brief Represents a B-spline curve/function with one parameter
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -33,23 +33,23 @@ struct gsCurveIntersectionResult;
 
 namespace gismo
 {
-    
+
 /** \brief
     A B-spline function of one argument, with arbitrary target dimension.
 
     This is the geometry type associated with gsBSplineBasis.
-    
+
     \tparam T coefficient type
 
     \ingroup geometry
     \ingroup Nurbs
 */
-    
-    
+
+
 template<class T>
 class gsBSpline : public gsGeoTraits<1,T>::GeometryBase
 {
-public: 
+public:
     typedef gsKnotVector<T> KnotVectorType;
 
     typedef typename gsGeoTraits<1,T>::GeometryBase Base;
@@ -61,15 +61,15 @@ public:
 
     /// Unique pointer for gsBSpline
     typedef memory::unique_ptr< gsBSpline > uPtr;
-    
+
 public:
-    
+
     /// Default empty constructor.
     gsBSpline() { }
 
     // enable swap
     using gsGeometry<T>::swap;
-    
+
     /// Construct B-Spline by basis and coefficient matrix.
     gsBSpline( const Basis & basis, gsMatrix<T> coefs )
     : Base( basis, give(coefs) )
@@ -77,7 +77,7 @@ public:
         if( this->basis().isPeriodic() )
             this->basis().expandCoefs(m_coefs);
     }
-    
+
     /// Construct B-Spline by a knot vector and coefficient matrix.
     gsBSpline(KnotVectorType KV, gsMatrix<T> coefs, bool periodic = false )
     {
@@ -109,7 +109,7 @@ public:
                 gsWarn << "gsBSpline Warning: #Knots="<< this->knots().size()<< ", #coefs="<< this->m_coefs.rows() <<"\n";
         }
     }
-    
+
 
     /// @brief Construct a B-spline from an interval and knot vector specification.
     /// \param u0 starting parameter
@@ -145,11 +145,11 @@ public:
     }
 
     GISMO_CLONE_FUNCTION(gsBSpline)
-    
-    GISMO_BASIS_ACCESSORS    
-    
+
+    GISMO_BASIS_ACCESSORS
+
 public:
-    
+
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const override
     {
@@ -159,15 +159,15 @@ public:
             os << "Periodic with overlay " << this->basis().numCrossingFunctions() << ".\n";
         return os;
     }
-    
+
     /// Returns the starting value of the domain of the basis
     T domainStart() const { return *this->basis().knots().domainBegin(); }
-    
+
     /// Returns the end value of the domain of the basis
     T domainEnd() const { return *this->basis().knots().domainEnd(); }
-    
+
     /// Returns a reference to the knot vector
-    KnotVectorType & knots(const int i = 0) 
+    KnotVectorType & knots(const int i = 0)
     {
         GISMO_UNUSED(i);
         GISMO_ASSERT( i==0, "Requested knots of invalid direction "<< i );
@@ -175,11 +175,11 @@ public:
     }
 
     /// Returns a (const )reference to the knot vector
-    const KnotVectorType & knots(const int i = 0) const 
+    const KnotVectorType & knots(const int i = 0) const
     {
         GISMO_UNUSED(i);
         GISMO_ASSERT( i==0, "Requested knots of invalid direction "<< i );
-        return this->basis().knots(); 
+        return this->basis().knots();
     }
 
     /// Returns the degree of the B-spline
@@ -187,13 +187,13 @@ public:
     {
         GISMO_UNUSED(i);
         GISMO_ASSERT( i==0, "Requested knots of invalid direction "<< i );
-        return this->basis().degree(); 
+        return this->basis().degree();
     }
-    
+
     // compatible curves: same degree, same first/last p+1 knots
     void isCompatible( gsGeometry<T> * )
     { GISMO_NO_IMPLEMENTATION }
-    
+
     // compatible curves: same degree, same first/last p+1 knots
     void makeCompatible( gsGeometry<T> * )
     { GISMO_NO_IMPLEMENTATION }
@@ -326,9 +326,9 @@ public:
                 tmp(0,0)= *it;
                 this->eval_into(tmp,ev);
                 for (i=1; i!=dim; ++i )
-                    if ( math::abs( ev(i,0) - p(i,0) ) > tol ) 
+                    if ( math::abs( ev(i,0) - p(i,0) ) > tol )
                         break;
-                if (i==dim) 
+                if (i==dim)
                     return true;
             }
             return false;
@@ -336,7 +336,7 @@ public:
 
     /// Sample \a npoints uniformly distributed (in parameter domain) points on the curve.
     gsMatrix<T> sample(int npoints = 50) const
-    {      
+    {
         gsMatrix<T> images;
         gsMatrix<T> interval = this->parameterRange();
         const gsMatrix<T> pts = gsPointGrid(interval, npoints );
@@ -357,10 +357,10 @@ public:
 
 
     /// Returns true if this curve is closed
-    bool isClosed(T tol = 1e-10) const 
-    { 
-        return ( this->basis().isPeriodic() || 
-                 (m_coefs.row(0) - m_coefs.row(m_coefs.rows()-1)).squaredNorm()<tol );  
+    bool isClosed(T tol = 1e-10) const
+    {
+        return ( this->basis().isPeriodic() ||
+                 (m_coefs.row(0) - m_coefs.row(m_coefs.rows()-1)).squaredNorm()<tol );
     }
 
     /// \brief Return true if point \a u is on the curve with
@@ -374,7 +374,7 @@ public:
     /// \brief returns the tensor-index \a curr of the corner control
     /// point \a v, or an invalid index if the corner is not found
     /// within the tolerance \a tol
-    void findCorner(const gsMatrix<T>   & v, 
+    void findCorner(const gsMatrix<T>   & v,
                     gsVector<index_t,1> & curr,
                     T tol = 1e-3);
 
@@ -389,16 +389,16 @@ public:
     void setFurthestCorner(gsMatrix<T> const &v);
 
     void swapDirections(const unsigned i, const unsigned j);
-    
+
 private:
 
     // Avoid hidden overloads w.r.t. gsGeometry
     using Base::insertKnot;
 
 protected:
-    
+
     using Base::m_coefs;
-    
+
     // TODO Check function
     // check function: check the coefficient number, degree, knot vector ...
 }; // class gsBSpline
@@ -417,7 +417,7 @@ protected:
 /*
 // Product of spline functions
 template<class T>
-gsBSpline<T> operator*(const gsBSpline<T> & lhs, const gsBSpline<T> & rhs) 
+gsBSpline<T> operator*(const gsBSpline<T> & lhs, const gsBSpline<T> & rhs)
 {
     // Note: quick-fix implementation. Better algorithms  exist
     gsKnotVector<T> kv = lhs.knots().knotUnion( lhs.knots() );
@@ -426,7 +426,7 @@ gsBSpline<T> operator*(const gsBSpline<T> & lhs, const gsBSpline<T> & rhs)
     gsMatrix<T> pts;
     kv.greville_into(pts);
     const gsMatrix<T> ev = (lhs.eval(pts)).array() * (rhs.eval(pts)).array();
-    
+
     // fixme: avoid temporaries here
     return *(static_cast<gsBSpline<T>*>(gsBSplineBasis<T>(kv).interpolateData(ev,pts)));
 }

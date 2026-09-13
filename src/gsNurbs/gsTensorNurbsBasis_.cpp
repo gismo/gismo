@@ -5,13 +5,4 @@
 
 namespace gismo
 {
-
-/*
-#ifdef GISMO_WITH_PYBIND11
-
-//namespace py = pybind11;
-
-#endif
-*/
-
 }

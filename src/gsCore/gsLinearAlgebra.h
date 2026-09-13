@@ -2,19 +2,19 @@
 
     @brief This is the main header file that collects wrappers of Eigen for linear algebra.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
 
 # pragma once
 
-#include <gsCore/gsMath.h>
+#include <gsCore/gsForwardDeclarations.h>
 
 // Eigen linear algebra library (http://eigen.tuxfamily.org)
 
@@ -36,7 +36,15 @@
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
 
+// CRITICAL: Include autodiff Eigen support BEFORE Eigen/Core
+// to ensure NumTraits specializations are defined before Eigen is used
+#ifdef gsAutoDiff_ENABLED
+#include <gsAutoDiff/gsAutoDiffEigen.h>
+#endif
+
 #include <Eigen/Core>
+
+#include <gsCore/gsMath.h>
 
 #if defined(gsMpfr_ENABLED)
 #include <unsupported/Eigen/MPRealSupport>
@@ -160,13 +168,17 @@ public:
     // Eigen::ConjugateGradient because this preconditionner does not
     // preserve symmetry.
 
-    /// Congugate gradient without preconditioner (identity as preconditioner) 
+    /// Conjugate gradient without preconditioner (identity as preconditioner)
     typedef Eigen::ConjugateGradient<Eigen::SparseMatrix<T,0,index_t>,
             Eigen::Lower|Eigen::Upper, Eigen::IdentityPreconditioner> CGIdentity;
 
-    /// Congugate gradient with diagonal (Jacobi) preconditioner
-    typedef Eigen::ConjugateGradient<Eigen::SparseMatrix<T,0,index_t>, 
+    /// Conjugate gradient with diagonal (Jacobi) preconditioner
+    typedef Eigen::ConjugateGradient<Eigen::SparseMatrix<T,0,index_t>,
             Eigen::Lower|Eigen::Upper, Eigen::DiagonalPreconditioner<T> > CGDiagonal;
+
+    /// Conjugate gradient with custom Gismo preconditioner (gsPreconditionerWrapper)
+    typedef Eigen::ConjugateGradient<Eigen::SparseMatrix<T,0,index_t>,
+            Eigen::Lower|Eigen::Upper, gsPreconditionerWrapper<T> > CGCustom;
 
     /// BiCGSTAB with Incomplete LU factorization with dual-threshold strategy
     typedef Eigen::BiCGSTAB<Eigen::SparseMatrix<T,0,index_t>,
@@ -176,9 +188,13 @@ public:
     typedef Eigen::BiCGSTAB<Eigen::SparseMatrix<T,0,index_t>,
                             Eigen::DiagonalPreconditioner<T> > BiCGSTABDiagonal;
 
-    /// BiCGSTAB without preconditioner (identity as preconditioner) 
+    /// BiCGSTAB without preconditioner (identity as preconditioner)
     typedef Eigen::BiCGSTAB<Eigen::SparseMatrix<T,0,index_t>,
                             Eigen::IdentityPreconditioner > BiCGSTABIdentity;
+
+    /// BiCGSTAB with custom preconditioner (gsPreconditionerWrapper)
+    typedef Eigen::BiCGSTAB<Eigen::SparseMatrix<T,0,index_t>,
+                            gsPreconditionerWrapper<T> > BiCGSTABCustom;
 
     /// Direct LDLt factorization
     typedef Eigen::SimplicialLDLT<Eigen::SparseMatrix<T,0,index_t> > SimplicialLDLT;
@@ -193,7 +209,7 @@ public:
     /// Sparse QR solver
     typedef Eigen::SparseQR<Eigen::SparseMatrix<T,0,index_t>,
                             Eigen::COLAMDOrdering<index_t> > SparseQR;
-    
+
     #ifdef GISMO_WITH_SUPERLU
     /// SuperLU (if enabled)
     typedef Eigen::SuperLU<Eigen::SparseMatrix<T,0,index_t> > SuperLU;

@@ -21,7 +21,7 @@ template<short_t d,class T>
 gsMappedSpline<d,T>::gsMappedSpline( const gsMultiPatch<T> & mp, const gsSparseMatrix<T> & m )
 {
     GISMO_ASSERT(mp.nPatches()>0,"MultiPatch is empty?");
-    m_mbases = new gsMappedBasis<d,T>(gsMultiBasis<T>(mp),m);
+    m_mbases.reset(new gsMappedBasis<d,T>(gsMultiBasis<T>(mp),m));
 
     // collect and transform the coefficients
     gsMatrix<T> local = mp.coefs();
@@ -35,7 +35,7 @@ gsMappedSpline<d,T>::gsMappedSpline( const gsMappedBasis<d,T> & mbases, const gs
 :
 m_global(coefs)
 {
-    m_mbases=mbases.clone().release();
+    m_mbases = mbases.clone();
     init(mbases);
 }
 
@@ -43,17 +43,25 @@ template<short_t d,class T>
 gsMappedSpline<d,T>::gsMappedSpline( const gsMappedSpline& other )
 : gsFunctionSet<T>(), m_global(other.m_global)
 {
-    m_mbases=other.m_mbases->clone().release();
+    m_mbases = other.m_mbases->clone();
+    init(*m_mbases);
 }
 
 template<short_t d,class T>
 gsMappedSpline<d,T> & gsMappedSpline<d,T>::operator=( const gsMappedSpline& other )
 {
-    delete m_mbases;
-    m_mbases=other.m_mbases->clone().release();
+    if (this == &other)
+        return *this;
+
+    m_mbases = other.m_mbases->clone();
     m_global = other.m_global;
-    m_ss = other.m_ss;
-    for (auto & s : m_ss) s.setSource(*this);
+    // Rebuild m_ss rather than assigning the vector: gsMappedSingleSpline has
+    // no operator=, so element-wise vector assignment into a non-empty
+    // m_ss would copy-assign gsGeometry<T>::operator= into pieces whose
+    // inherited m_basis was never set. init() clears m_ss and reconstructs
+    // it from *this, so every piece's back-pointer is correct by
+    // construction (mirrors the copy constructor above).
+    init(*m_mbases);
     return *this;
 }
 

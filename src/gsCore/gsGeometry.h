@@ -397,8 +397,11 @@ public:
         Eigen::Transform<T,3,Eigen::Affine>
             rot( Eigen::AngleAxis<T> (angle,axis.normalized()) );
         // To do: Simpler way to use transforms ?
-        this->m_coefs = (this->m_coefs.rowwise().homogeneous() *
-                         rot.matrix().transpose() ).leftCols(3) ;
+        // this->m_coefs = (this->m_coefs.rowwise().homogeneous() *
+        //                  rot.matrix().transpose() ).leftCols(3) ;
+        // NEW:
+        this->m_coefs = this->m_coefs * rot.linear().transpose();
+        this->m_coefs.rowwise() += rot.translation().transpose();
     }
 
     /// Apply 2D Rotation by \a angle radians
