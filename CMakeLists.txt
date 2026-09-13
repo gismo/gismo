@@ -100,19 +100,17 @@ endif()
 ## Cmake Inclusions and configuration options
 ## #################################################################
 
-# Eigen_DIR: path to an external Eigen root (e.g. /path/to/eigen-5.0.0).
-# When empty, the vendored Eigen at external/Eigen is used as a fallback.
+# Eigen_DIR: hint path to a pre-installed Eigen root (e.g. /path/to/eigen-5.0.0),
+# the directory containing Eigen/Core. Resolved below via cmake/FindEigen.cmake,
+# once GISMO_EIGEN_FETCH (gsOptions.cmake) and gismo_fetch_directory (gsFetch.cmake)
+# are available; falls back to fetching Eigen 5.0.0 into external/Eigen when not
+# found (or when GISMO_EIGEN_FETCH is set).
 set(Eigen_DIR "" CACHE PATH "Path to external Eigen root (e.g. /path/to/eigen-5.0.0)")
 
-if(Eigen_DIR)
-  if(NOT EXISTS "${Eigen_DIR}/Eigen/Core")
-    message(FATAL_ERROR
-      "Eigen_DIR='${Eigen_DIR}' does not point to a valid Eigen tree "
-      "(expected ${Eigen_DIR}/Eigen/Core).")
-  endif()
-  message(STATUS "Using external Eigen at ${Eigen_DIR}")
-else()
-  message(STATUS "Using vendored Eigen at external/Eigen")
+if(Eigen_DIR AND NOT EXISTS "${Eigen_DIR}/Eigen/Core")
+  message(FATAL_ERROR
+    "Eigen_DIR='${Eigen_DIR}' does not point to a valid Eigen tree "
+    "(expected ${Eigen_DIR}/Eigen/Core).")
 endif()
 
 set(CMAKE_INSTALL_MESSAGE NEVER)
@@ -189,19 +187,36 @@ unset(gismo_UNITTESTS            CACHE)
 set(${PROJECT_NAME}_optionals ""
     CACHE INTERNAL "${PROJECT_NAME} list of optionals")
 
-if(Eigen_DIR)
-  # When using external Eigen, put ${Eigen_DIR} BEFORE external/ so that
-  # <Eigen/Core> and <unsupported/Eigen/...> resolve to the external Eigen,
-  # not the vendored fallback in external/Eigen/.
-  set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src"
-       "${PROJECT_BINARY_DIR}" "${Eigen_DIR}"
-       "${PROJECT_SOURCE_DIR}/external" "${PROJECT_SOURCE_DIR}/optional"
-       CACHE INTERNAL "${PROJECT_NAME} include directories" )
-else()
-  set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/external"
-       "${PROJECT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/optional"
-       CACHE INTERNAL "${PROJECT_NAME} include directories" )
+#functions to fetch(download) head revision from git or Subversion
+include(gsFetch)
+
+# Resolve Eigen: search the system / Eigen_DIR unless a fetch is forced, and
+# fetch Eigen 5.0.0 into external/Eigen when not found (or when forced).
+if (NOT GISMO_EIGEN_FETCH)
+  include(FindEigen)
 endif()
+
+if (NOT EIGEN_FOUND OR GISMO_EIGEN_FETCH)
+  gismo_fetch_directory(Eigen
+    GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+    GIT_TAG        5.0.0
+    DESTINATION    external
+  )
+  set(EIGEN_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/external/Eigen CACHE INTERNAL "")
+  set(GISMO_EIGEN_VENDORED TRUE CACHE INTERNAL "Whether Eigen was fetched/vendored by G+Smo")
+  message(STATUS "Using fetched Eigen at ${EIGEN_INCLUDE_DIR}")
+else()
+  set(GISMO_EIGEN_VENDORED FALSE CACHE INTERNAL "Whether Eigen was fetched/vendored by G+Smo")
+  message(STATUS "Using Eigen ${EIGEN_VERSION} at ${EIGEN_INCLUDE_DIR}")
+endif()
+
+# ${EIGEN_INCLUDE_DIR} goes BEFORE external/ so that <Eigen/Core> and
+# <unsupported/Eigen/...> resolve to the resolved Eigen (found or fetched),
+# not any other content that may live under external/.
+set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src"
+     "${PROJECT_BINARY_DIR}" "${EIGEN_INCLUDE_DIR}"
+     "${PROJECT_SOURCE_DIR}/external" "${PROJECT_SOURCE_DIR}/optional"
+     CACHE INTERNAL "${PROJECT_NAME} include directories" )
 
 # Offer the user the choice of overriding the installation directories
 set(LIB_INSTALL_DIR     lib     CACHE STRING "Installation directory for libraries")
@@ -211,9 +226,6 @@ set(INCLUDE_INSTALL_DIR include CACHE STRING "Installation directory for header 
 ## #################################################################
 ## Extensions
 ## #################################################################
-
-#functions to fetch(download) head revision from git or Subversion
-include(gsFetch)
 
 if (EIGEN_USE_MKL_ALL)
   # See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html

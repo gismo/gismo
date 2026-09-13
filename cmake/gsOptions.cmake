@@ -134,6 +134,11 @@ if (EIGEN_USE_MKL_ALL)
 message ("  EIGEN_USE_MKL_ALL       ${EIGEN_USE_MKL_ALL}")
 endif()
 
+option(GISMO_EIGEN_FETCH         "Force fetching Eigen sources instead of using a system/Eigen_DIR install" false  )
+if (GISMO_EIGEN_FETCH)
+message ("  GISMO_EIGEN_FETCH       ${GISMO_EIGEN_FETCH}")
+endif()
+
 option(GISMO_BUILD_CPPLOT        "Build cpplot"                  false  )
 if (GISMO_BUILD_CPPLOT)
 message ("  GISMO_BUILD_CPPLOT      ${GISMO_BUILD_CPPLOT}")
