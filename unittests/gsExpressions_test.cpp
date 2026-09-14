@@ -280,6 +280,21 @@ SUITE(gsExpressions_test)
         gsMultiBasis<real_t> mbFine(mp);
         mbFine.uniformRefine(4); // many elements -> more work per thread
 
+        // The reference is taken on one thread, where acc_global runs once
+        // and no interleaving exists.
+        const int nThreads = omp_get_max_threads();
+
+        // The loop runs on as many threads as the host offers, and never
+        // fewer than four. A host or CI runner pinned to one thread would
+        // otherwise turn this into a serial check that passes while
+        // exercising none of the merge it exists to cover, so the thread
+        // count is asserted rather than assumed. Raised before Aloc is
+        // constructed: the gsThreaded storage it carries is sized at
+        // construction time, so the count it will run at must already be
+        // in force.
+        omp_set_num_threads(nThreads > 4 ? nThreads : 4);
+        CHECK(omp_get_max_threads() > 1);
+
         gsExprAssembler<real_t> Aloc(1,1);
         Aloc.setIntegrationElements(mbFine);
         Aloc.getMap(mp);
@@ -288,10 +303,6 @@ SUITE(gsExpressions_test)
         auto posC = Aloc.getCoeff(posRamp);
         gsExprEvaluator<real_t> evloc(Aloc);
 
-        // The reference is taken on one thread, where acc_global runs once
-        // and no interleaving exists.
-        const int nThreads = omp_get_max_threads();
-
         omp_set_num_threads(1);
         const real_t maxRef = evloc.max(negC.val());
         const real_t minRef = evloc.min(posC.val());
@@ -299,13 +310,10 @@ SUITE(gsExpressions_test)
         CHECK(maxRef < 0.0);
         CHECK(minRef > 0.0);
 
-        // The loop runs on as many threads as the host offers, and never
-        // fewer than four. A host or CI runner pinned to one thread would
-        // otherwise turn this into a serial check that passes while
-        // exercising none of the merge it exists to cover, so the thread
-        // count is asserted rather than assumed.
+        // Re-raise: the reference above was taken serially, but the merge
+        // under test only exercises the race when the loop itself runs on
+        // more than one thread.
         omp_set_num_threads(nThreads > 4 ? nThreads : 4);
-        CHECK(omp_get_max_threads() > 1);
 
         for (int i = 0; i != 20; ++i)
         {
@@ -319,6 +327,61 @@ SUITE(gsExpressions_test)
     }
 
 #endif // _OPENMP
+
+    // gsThreaded has no hard bound of its own: the array is sized once, at
+    // construction, to the thread count then in force, and _slot() is the
+    // sole guarantee against a later, larger team indexing past it. This
+    // raises the team beyond that size and checks the ENSURE fires on
+    // exactly the out-of-range ids, caught on the throwing thread itself --
+    // an uncaught throw inside a parallel region is std::terminate, not a
+    // failed CHECK.
+    TEST(gsThreaded_bound_is_enforced)
+    {
+#ifdef _OPENMP
+        const int nThreads = omp_get_max_threads();
+        util::gsThreaded<int> slot;             // sized max(nThreads, omp_get_num_procs())
+        const int size = std::max(nThreads, omp_get_num_procs());
+
+        omp_set_num_threads(size + 1);          // one more thread than the storage holds
+        int nOk = 0, nCaught = 0, nWrongThrow = 0, teamSize = 0;
+        #pragma omp parallel reduction(+:nOk,nCaught,nWrongThrow)
+        {
+            #pragma omp single
+            teamSize = omp_get_num_threads();
+
+            const int t = omp_get_thread_num();
+            try
+            {
+                slot.mine() = t;
+                if (t < size) ++nOk; else ++nWrongThrow; // an out-of-range id must not get here
+            }
+            catch (const std::runtime_error&)
+            {
+                if (t >= size) ++nCaught; else ++nWrongThrow;
+            }
+        }
+        omp_set_num_threads(nThreads);          // process-wide: restore for later tests
+
+        std::cout << "gsThreaded_bound_is_enforced: team size " << teamSize
+                   << " (storage size " << size << ")\n";
+
+        if (teamSize <= size)
+        {
+            std::cout << "gsThreaded_bound_is_enforced: runtime did not honour "
+                          "size+1 threads, team size " << teamSize
+                       << " <= storage size " << size << "\n";
+            CHECK(false);
+        }
+        else
+        {
+            CHECK_EQUAL(size, nOk);
+            CHECK_EQUAL(1,    nCaught);
+            CHECK_EQUAL(0,    nWrongThrow);
+        }
+#else
+        CHECK(true);
+#endif
+    }
 
     // Test for the positive part of an expression ( Macaulay bracket )
     TEST(ppart_expr)
