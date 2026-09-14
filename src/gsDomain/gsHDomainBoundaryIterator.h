@@ -287,9 +287,7 @@ public:
 
 public:
 
-#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-#   undef Eigen
 
 private:
 

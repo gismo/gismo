@@ -805,7 +805,7 @@ void gsTHBSplineBasis<d,T,Trunc>::getBsplinePatches_trimming(
         {
             gsMatrix<T> bigger;
             int cprows = cp.rows();
-            /*cp.conservativeResize( cp.rows() + temp_cp.rows(), gsEigen::NoChange );
+            /*cp.conservativeResize( cp.rows() + temp_cp.rows(), Eigen::NoChange );
               for( int j=cprows; j < cp.rows(); j++ )
               cp.row(j) = temp2.row(j-cprows);*/
             bigger.resize(cp.rows()+new_cp.rows(), cp.cols());
@@ -1239,7 +1239,7 @@ active_detail(const gsMatrix<T> & u,
 
     // ii =maxLevel;
     // while (offset[ii]==) --ii;
-    // offset.conservativeresize(ii,gsEigen::NoChange);
+    // offset.conservativeresize(ii,Eigen::NoChange);
 
     return offset.sum();
 }
@@ -1316,7 +1316,7 @@ index_t gsTHBSplineBasis<d,T,Trunc>::numActiveMax(const gsMatrix<T> & u,
 
     // ii =maxLevel;
     // while (offset[ii]==) --ii;
-    // offset.conservativeresize(ii,gsEigen::NoChange);
+    // offset.conservativeresize(ii,Eigen::NoChange);
 
     return offset.sum();
 }

@@ -26,8 +26,6 @@
 #include <gsCore/gsConfig.h>
 #include <gsCore/gsLinearAlgebra.h>
 
-#define Eigen gsEigen
-
 #include <Spectra/include/Spectra/SymEigsSolver.h>
 #include <Spectra/include/Spectra/SymEigsShiftSolver.h>
 #include <Spectra/include/Spectra/SymGEigsSolver.h>
@@ -75,7 +73,7 @@ public:
     {
         GISMO_ASSERT(m_mat.rows()!=0 && m_mat.cols()!=0,"The matrix has zero rows or columns. Is the matrix a temporary (e.g. A-B)?");
         gsAsVector<Scalar>(y_out, m_mat.rows()).noalias() =
-            m_mat.template selfadjointView<gsEigen::Lower>() * gsAsConstVector<Scalar>(x_in,  m_mat.cols());
+            m_mat.template selfadjointView<Eigen::Lower>() * gsAsConstVector<Scalar>(x_in,  m_mat.cols());
     }
 };
 
@@ -112,7 +110,7 @@ public:
 
     void set_shift(const Scalar& sigma)
     {
-        MatrixType mat(m_mat.template selfadjointView<gsEigen::Lower>());
+        MatrixType mat(m_mat.template selfadjointView<Eigen::Lower>());
         MatrixType identity(m_n,m_n);
         identity.setIdentity();
 
@@ -124,7 +122,7 @@ public:
 #endif
         m_solver.compute(mat);
 
-        GISMO_ASSERT(m_solver.info() == gsEigen::Success,"SpectraMatShiftSolve: factorization failed with the given shift");
+        GISMO_ASSERT(m_solver.info() == Eigen::Success,"SpectraMatShiftSolve: factorization failed with the given shift");
     }
 };
 
@@ -156,7 +154,7 @@ public:
 
     void set_shift(const Scalar& sigma)
     {
-        m_solver.compute(m_mat, gsEigen::Lower, sigma);
+        m_solver.compute(m_mat, Eigen::Lower, sigma);
         GISMO_ASSERT(m_solver.info() == Spectra::CompInfo::Successful,"SpectraMatShiftSolve: factorization failed with the given shift");
     }
 };
@@ -171,7 +169,7 @@ public:
     NestedMatrix m_mat;
     const index_t m_n;
     // NOTE: Does not work for gsSparseSolver<Scalar>::SimplicialLLT!
-    gsEigen::SimplicialLLT<gsSparseMatrix<Scalar>, gsEigen::Lower> m_solver;
+    Eigen::SimplicialLLT<gsSparseMatrix<Scalar>, Eigen::Lower> m_solver;
 
     Spectra::CompInfo m_info;  // status of the decomposition
 
@@ -184,7 +182,7 @@ public:
         GISMO_ASSERT(m_mat.rows() == m_mat.cols(),"Matrix A must be square!");
 
         m_solver.compute(mat);
-        m_info = (m_solver.info() == gsEigen::Success) ?
+        m_info = (m_solver.info() == Eigen::Success) ?
             Spectra::CompInfo::Successful :
             Spectra::CompInfo::NumericalIssue;
     }
@@ -241,7 +239,7 @@ public:
         GISMO_ASSERT(m_mat.rows() == m_mat.cols(),"Matrix A must be square!");
 
         m_solver.compute(mat);
-        m_info = (m_solver.info() == gsEigen::Success) ?
+        m_info = (m_solver.info() == Eigen::Success) ?
             Spectra::CompInfo::Successful :
             Spectra::CompInfo::NumericalIssue;
     }
@@ -260,7 +258,7 @@ public:
     /// See Spectra/SparseRegularInverse.h for help
     void perform_op(const Scalar* x_in, Scalar* y_out) const
     {
-        gsAsVector<Scalar>(y_out, m_n).noalias() = m_mat.template selfadjointView<gsEigen::Lower>() * gsAsConstVector<Scalar>(x_in,  m_n);
+        gsAsVector<Scalar>(y_out, m_n).noalias() = m_mat.template selfadjointView<Eigen::Lower>() * gsAsConstVector<Scalar>(x_in,  m_n);
     }
 };
 
@@ -299,8 +297,8 @@ public:
 
     void set_shift(const Scalar& sigma)
     {
-        MatrixType matA = m_A.template selfadjointView<gsEigen::Lower>();
-        MatrixType matB = m_B.template selfadjointView<gsEigen::Lower>();
+        MatrixType matA = m_A.template selfadjointView<Eigen::Lower>();
+        MatrixType matB = m_B.template selfadjointView<Eigen::Lower>();
         MatrixType mat = matA - sigma * matB;
 
         #ifndef GISMO_WITH_PARDISO
@@ -309,7 +307,7 @@ public:
         #endif
         #endif
         m_solver.compute(mat);
-        GISMO_ASSERT(m_solver.info()==gsEigen::Success,"Factorization failed");
+        GISMO_ASSERT(m_solver.info()==Eigen::Success,"Factorization failed");
     }
 };
 
@@ -480,6 +478,4 @@ public:
 
 } //namespace gismo
 
-
-#undef Eigen
 

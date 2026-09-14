@@ -64,7 +64,6 @@ public:
     gsTensorBasis( const gsTensorBasis & o);
     gsTensorBasis& operator=( const gsTensorBasis & o);
 
-#if EIGEN_HAS_RVALUE_REFERENCES
     gsTensorBasis(gsTensorBasis&& other)
     {
         util::copy(other.m_bases, other.m_bases+d, m_bases);
@@ -77,7 +76,6 @@ public:
         std::fill (other.m_bases, other.m_bases+d, nullptr);
         return *this;
     }
-#endif
     bool isValid() const { return std::find(m_bases,m_bases+d,
                                             static_cast<Basis_t*>(0)) == m_bases+d; }
 
@@ -693,7 +691,6 @@ public:
         m_address = NULL;
     }
 
-    #if EIGEN_HAS_RVALUE_REFERENCES
     gsTensorBasis(gsTensorBasis&& other)
     { gsTensorBasis::operator=(std::forward<gsTensorBasis>(other)); }
     gsTensorBasis & operator=(gsTensorBasis&&other)
@@ -702,7 +699,6 @@ public:
         other.m_address = nullptr;
         return *this;
     }
-#endif
     bool isValid() const { return static_cast<Basis_t*>(0) != m_address; }
 
     /// \brief Constructor by basis pointers (takes ownership of the

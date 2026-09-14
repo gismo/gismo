@@ -85,10 +85,21 @@ install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsExport.h
         DESTINATION include/${PROJECT_NAME}/gsCore )
 
 # For gsLinearAlgebra.h
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/gsEigen
-        DESTINATION include/${PROJECT_NAME}
-        PATTERN "*.txt" EXCLUDE
-        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+# Only install the vendored/fetched Eigen headers when G+Smo fetched its own
+# copy (GISMO_EIGEN_VENDORED, set in CMakeLists.txt); a found system/Eigen_DIR
+# install is not ours to install. ${EIGEN_INCLUDE_DIR} is the Eigen root
+# (containing the Eigen/ and unsupported/ subfolders), matching how
+# <Eigen/Core> and <unsupported/Eigen/...> are included.
+if(GISMO_EIGEN_VENDORED)
+  install(DIRECTORY ${EIGEN_INCLUDE_DIR}/Eigen
+          DESTINATION include/${PROJECT_NAME}
+          PATTERN "*.txt" EXCLUDE
+          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+  install(DIRECTORY ${EIGEN_INCLUDE_DIR}/unsupported
+          DESTINATION include/${PROJECT_NAME}
+          PATTERN "*.txt" EXCLUDE
+          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+endif()
 
 # For gsCmdLine.h
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/tclap

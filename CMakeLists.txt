@@ -100,9 +100,17 @@ endif()
 ## Cmake Inclusions and configuration options
 ## #################################################################
 
-#Fix for Eigen directory
-if (NOT WIN32 AND NOT EXISTS "${PROJECT_BINARY_DIR}/Eigen")
-  execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/external/gsEigen ${PROJECT_BINARY_DIR}/Eigen)
+# Eigen_DIR: hint path to a pre-installed Eigen root (e.g. /path/to/eigen-5.0.0),
+# the directory containing Eigen/Core. Resolved below via cmake/FindEigen.cmake,
+# once GISMO_EIGEN_FETCH (gsOptions.cmake) and gismo_fetch_directory (gsFetch.cmake)
+# are available; falls back to fetching Eigen 5.0.0 into external/Eigen when not
+# found (or when GISMO_EIGEN_FETCH is set).
+set(Eigen_DIR "" CACHE PATH "Path to external Eigen root (e.g. /path/to/eigen-5.0.0)")
+
+if(Eigen_DIR AND NOT EXISTS "${Eigen_DIR}/Eigen/Core")
+  message(FATAL_ERROR
+    "Eigen_DIR='${Eigen_DIR}' does not point to a valid Eigen tree "
+    "(expected ${Eigen_DIR}/Eigen/Core).")
 endif()
 
 set(CMAKE_INSTALL_MESSAGE NEVER)
@@ -179,8 +187,35 @@ unset(gismo_UNITTESTS            CACHE)
 set(${PROJECT_NAME}_optionals ""
     CACHE INTERNAL "${PROJECT_NAME} list of optionals")
 
-set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/external"
-     "${PROJECT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/optional"
+#functions to fetch(download) head revision from git or Subversion
+include(gsFetch)
+
+# Resolve Eigen: search the system / Eigen_DIR unless a fetch is forced, and
+# fetch Eigen 5.0.0 into external/Eigen when not found (or when forced).
+if (NOT GISMO_EIGEN_FETCH)
+  include(FindEigen)
+endif()
+
+if (NOT EIGEN_FOUND OR GISMO_EIGEN_FETCH)
+  gismo_fetch_directory(Eigen
+    GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+    GIT_TAG        5.0.0
+    DESTINATION    external
+  )
+  set(EIGEN_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/external/Eigen CACHE INTERNAL "")
+  set(GISMO_EIGEN_VENDORED TRUE CACHE INTERNAL "Whether Eigen was fetched/vendored by G+Smo")
+  message(STATUS "Using fetched Eigen at ${EIGEN_INCLUDE_DIR}")
+else()
+  set(GISMO_EIGEN_VENDORED FALSE CACHE INTERNAL "Whether Eigen was fetched/vendored by G+Smo")
+  message(STATUS "Using Eigen ${EIGEN_VERSION} at ${EIGEN_INCLUDE_DIR}")
+endif()
+
+# ${EIGEN_INCLUDE_DIR} goes BEFORE external/ so that <Eigen/Core> and
+# <unsupported/Eigen/...> resolve to the resolved Eigen (found or fetched),
+# not any other content that may live under external/.
+set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src"
+     "${PROJECT_BINARY_DIR}" "${EIGEN_INCLUDE_DIR}"
+     "${PROJECT_SOURCE_DIR}/external" "${PROJECT_SOURCE_DIR}/optional"
      CACHE INTERNAL "${PROJECT_NAME} include directories" )
 
 # Offer the user the choice of overriding the installation directories
@@ -191,9 +226,6 @@ set(INCLUDE_INSTALL_DIR include CACHE STRING "Installation directory for header 
 ## #################################################################
 ## Extensions
 ## #################################################################
-
-#functions to fetch(download) head revision from git or Subversion
-include(gsFetch)
 
 if (EIGEN_USE_MKL_ALL)
   # See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html
@@ -416,6 +448,23 @@ if(GISMO_BUILD_UNITTESTS)
 else()
   add_custom_target(unittests COMMAND "" COMMENT "Set CMake argument GISMO_BUILD_UNITTESTS=ON to enable unittests")
 endif(GISMO_BUILD_UNITTESTS)
+
+## #################################################################
+## CMake dependency-API tests
+## #################################################################
+
+if(BUILD_TESTING)
+  add_test(NAME cmake_dependency_test COMMAND ${CMAKE_COMMAND}
+    -DGISMO_SOURCE_DIR=${PROJECT_SOURCE_DIR}
+    -DSCRATCH_DIR=${PROJECT_BINARY_DIR}/cmake_tests/dependency
+    -DTEST_GENERATOR=${CMAKE_GENERATOR}
+    -DTEST_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+    -DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+    -DTEST_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    -P ${PROJECT_SOURCE_DIR}/cmake/tests/run_dependency_tests.cmake)
+  set_property(TEST cmake_dependency_test PROPERTY LABELS cmake)
+  set_property(TEST cmake_dependency_test PROPERTY TIMEOUT 900)
+endif()
 
 ## #################################################################
 ## Install

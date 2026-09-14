@@ -309,7 +309,7 @@ void gsTraceCurvePart(std::pair<gsFunction<T>*,gsFunction<T>*>  & map,
     }
 
   // gsDebug<< "Size expected:"<< result.cols() <<"\n";
-    result.conservativeResize( gsEigen::NoChange, i);
+    result.conservativeResize( Eigen::NoChange, i);
     //gsDebug<< "Size finally :"<< result.cols()  <<"\n";
 
 
