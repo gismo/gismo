@@ -19,6 +19,8 @@
 #include "gismo_unittest.h"
 #include <gsAssembler/gsDofMapperCreator.h>
 
+#include <limits>
+
 using namespace gismo;
 
 namespace {
@@ -578,6 +580,88 @@ gsDofMapper creatorTwoPatch()
     return createMapper(mb, /*nComp=*/1, /*conforming=*/true, /*finalize=*/true);
 }
 
+// F9: a genuinely ragged patch-concatenated mapper, built through the
+// per-component ragged constructor.  Component 0: patches of size 5,5
+// (total 10).  Component 1: patches of size 2,4 (total 6) -- UNEQUAL to
+// component 0's, on every patch.  hasDistinctComponentSpaces is declared
+// false: the point of this fixture is the ragged per-component *sizes*,
+// independent of the declared-distinct flag.
+gsDofMapper raggedPatchMapper()
+{
+    std::vector<gsVector<index_t> > sz(2);
+    sz[0].resize(2); sz[0][0] = 5; sz[0][1] = 5;
+    sz[1].resize(2); sz[1][0] = 2; sz[1][1] = 4;
+    gsDofMapper m(sz, false);
+    m.finalize();
+    return m;
+}
+
+// F10: a genuinely ragged global-identity/aliased mapper, built through the
+// per-component setIdentity overload.  Component 0 total 7, component 1
+// total 10 -- UNEQUAL, same motivation as F9 for the aliased layout.
+gsDofMapper raggedIdentityMapper()
+{
+    std::vector<size_t> dofsPerComponent;
+    dofsPerComponent.push_back(7);
+    dofsPerComponent.push_back(10);
+    gsDofMapper m;
+    m.setIdentity(3, dofsPerComponent);
+    m.finalize();
+    return m;
+}
+
+// --- the target configuration: the 2D Raviart-Thomas component pair ------
+//
+// One vector variable whose two components live in different tensor-product
+// spline spaces on the same patch and the same mesh, degrees and
+// regularities transposed between them:
+//
+//     component 0 = S^{3,2}_{2,1}      component 1 = S^{2,3}_{1,2}
+//
+// A 1D space of degree p and regularity r over E elements has dimension
+// E(p-r)+r+1, so with p-r==1 in every direction here the component
+// dimensions are (E0+3)(E1+2) and (E0+2)(E1+3).  On an ISOTROPIC mesh those
+// two numbers coincide (4x4: 42 and 42) and only an anisotropic mesh
+// separates them (4x2: 28 and 30).  That is why every fixture below comes in
+// both mesh flavours, and why the distinctness of the component spaces has
+// to be a declared property: on the isotropic mesh -- the default case, a
+// unit square uniformly refined -- an RT mapper is size-indistinguishable
+// from an ordinary uniform one, so no predicate built on cardinalities can
+// tell them apart.
+
+gsTensorBSplineBasis<2,real_t> rtComponentBasis(short_t p0, short_t p1,
+                                                index_t e0, index_t e1)
+{
+    // Maximal regularity (interior multiplicity p-r == 1) in both directions.
+    gsKnotVector<real_t> kv0(0.0, 1.0, e0-1, p0+1, 1, p0);
+    gsKnotVector<real_t> kv1(0.0, 1.0, e1-1, p1+1, 1, p1);
+    return gsTensorBSplineBasis<2,real_t>(kv0, kv1);
+}
+
+// One patch, one size vector per component, sizes taken from the two real
+// bases so the dimension arithmetic above is proven rather than asserted.
+// hasDistinctComponentSpaces is declared true: the components genuinely come
+// from two different basis objects.
+gsDofMapper rtMapper(index_t e0, index_t e1, bool declareDistinct = true)
+{
+    const gsTensorBSplineBasis<2,real_t> b0 = rtComponentBasis(3, 2, e0, e1);
+    const gsTensorBSplineBasis<2,real_t> b1 = rtComponentBasis(2, 3, e0, e1);
+
+    std::vector<gsVector<index_t> > sz(2);
+    sz[0].resize(1); sz[0][0] = b0.size();
+    sz[1].resize(1); sz[1][0] = b1.size();
+
+    gsDofMapper m(sz, declareDistinct);
+    m.finalize();
+    return m;
+}
+
+// F11: the RT pair on an ISOTROPIC 4x4 mesh -- 42 and 42, equal.
+gsDofMapper rtIsotropicMapper() { return rtMapper(4, 4); }
+
+// F12: the RT pair on an ANISOTROPIC 4x2 mesh -- 28 and 30, unequal.
+gsDofMapper rtAnisotropicMapper() { return rtMapper(4, 2); }
+
 } // anonymous namespace
 
 
@@ -626,8 +710,8 @@ TEST(single_patch_plain_counts)
     // Only firstIndex(0) is pinned: for c>=1 firstIndex returns
     // m_numFreeDofs[c]+m_numElimDofs[c]+m_shift, which overshoots the true
     // first index of the component by m_numElimDofs[c] after the re-offset
-    // pass of finalize().  A later commit of this series gives firstIndex a
-    // corrected contract.
+    // pass of finalize().  A later commit gives firstIndex a corrected
+    // contract.
     PIN("f1.firstlast", "first0=0 last=6", dumpFirstLast(m));
 }
 
@@ -651,7 +735,7 @@ TEST(single_patch_plain_coupled_queries)
     // components >= 1 is_coupled_index / cindex / findCoupled /
     // findFreeUncoupled read cumulative prefix totals and last-component
     // thresholds (m_numFreeDofs.back(), m_numCpldDofs.back()) and are
-    // provably wrong there.  A later commit of this series fixes them, so
+    // provably wrong there.  A later commit fixes them, so
     // pinning the component >= 1 answers would create a false conflict.
     PIN("f1.coupled", "flags=...... cidx=[] gflags=...... findCoupled=[] findCoupledPairs=00[] findFreeUncoupled=[0,1,2,3,4,5]", dumpCoupledQueries(m));
 }
@@ -661,8 +745,8 @@ TEST(single_patch_plain_component_and_preimage)
     const gsDofMapper m = singlePatchPlain();
     // componentOf / preImage / anyPreImage are pinned on zero-shift fixtures
     // only: componentOf never subtracts m_shift and preImage subtracts the
-    // global shift from a patch-local index.  A later commit of this series
-    // normalises shift handling.
+    // global shift from a patch-local index.  A later commit normalises
+    // shift handling.
     PIN("f1.componentof", "[0,0,0,0,0,0]", dumpComponentOf(m));
     PIN("f1.preimage", "0[(0,0)] 1[(0,1)] 2[(0,2)] 3[(0,3)] 4[(0,4)] 5[(0,5)]", dumpPreImages(m));
     PIN("f1.anypreimage", "[(0,0),(0,1),(0,2),(0,3),(0,4),(0,5)]", dumpAnyPreImage(m));
@@ -675,7 +759,7 @@ TEST(single_patch_plain_inverses)
     // inverseOnPatch is pinned on the single-patch fixture only.  On a
     // multi-patch mapper it starts at m_offset[k] but iterates m_dofs[c].size()
     // entries, i.e. it runs past the end of the requested patch (and past the
-    // end of the vector).  A later commit of this series fixes that; the
+    // end of the vector).  A later commit fixes that; the
     // defective output is deliberately not pinned.
     std::ostringstream os;
     const std::map<index_t,index_t> inv = m.inverseOnPatch(0);
@@ -687,7 +771,7 @@ TEST(single_patch_plain_inverses)
 
     // inverseAsVector is pinned only here: a permutation, single component,
     // no coupling and no elimination.  Its contract is sharpened by a later
-    // commit of this series.
+    // commit.
     PIN("f1.inverseasvector", "[0,1,2,3,4,5]", join(m.inverseAsVector(0)));
 }
 
@@ -741,13 +825,13 @@ TEST(two_patch_coupled_elim_tagged)
     const gsDofMapper m = twoPatchCoupledElim();
     // Zero-shift fixture: tindex searches m_tagged for the unshifted dof
     // value while markTagged inserts the shifted one, so these are pinned on
-    // zero-shift fixtures only.  A later commit of this series normalises it.
+    // zero-shift fixtures only.  A later commit normalises it.
     PIN("f2.tagged", "tagged=[0,3] n=2 gflags=T..T..... flags=.T....|....T. tindex=2,0,1,1,2,2|2,2,2,2,1,2", dumpTagged(m));
 }
 
 // localToGlobal and localToGlobal2 are the assembly entry points and they
-// expand MAPPER_PATCH_DOF directly, so they are pinned in their own right and
-// not only transitively through index().  F2 carries both free and eliminated
+// are pinned in their own right, not only transitively through index().
+// F2 carries both free and eliminated
 // dofs, so the free-from-the-top / boundary-from-the-bottom packing of
 // localToGlobal2 is actually exercised.
 TEST(two_patch_local_to_global)
@@ -760,9 +844,9 @@ TEST(two_patch_local_to_global)
 // Pre-existing mainline defect, pinned deliberately so that it is not changed
 // by accident: gsDofMapper::findTagged builds the intersection into a local
 // std::list and then returns an untouched default-constructed gsVector, so it
-// is always empty even when the patch carries tagged dofs.  This series does
-// NOT fix it (it is one of the deferred defects of the plan); no later commit
-// of this series is expected to change this expectation.
+// is always empty even when the patch carries tagged dofs.  This is a known,
+// pre-existing defect that is deliberately left alone here; no later commit
+// is expected to change this expectation.
 TEST(find_tagged_returns_empty_defect)
 {
     const gsDofMapper m = twoPatchCoupledElim();
@@ -827,8 +911,7 @@ TEST(three_comp_uniform_component_and_preimage)
 // is_tagged_index all mishandle m_shift today (componentOf never subtracts it,
 // preImage subtracts a global shift from a patch-local index, tindex searches
 // unshifted values while markTagged inserts shifted ones) and a later commit
-// of this series normalises shift handling, so they are deliberately not
-// pinned here.
+// normalises shift handling, so they are deliberately not pinned here.
 TEST(three_comp_shifted)
 {
     const gsDofMapper m = threeCompShifted();
@@ -860,13 +943,36 @@ TEST(three_comp_shifted)
 // F5 -- identity / aliased layout
 // =========================================================================
 
-// EXPECTED TO CHANGE when dofmapper is actually updated as planned
+// UPDATED: gsDofMapper used to model the global-identity/aliased layout
+// that setIdentity() produces by leaving every patch offset at zero and
+// letting only the LAST patch's sentinel carry the component's dof total;
+// patchSize(p,c) therefore reported 0 for every patch except the last, and
+// every API built on top of it (index, indexOnPatch, findFree, findBoundary,
+// preImage/anyPreImage, is_free/is_boundary flags) only ever "saw" the
+// aliased dofs through that one last patch.
 //
-// The pins f5.layout, f5.index, f5.flags, f5.findbf, f5.onpatch, f5.preimage,
-// f5.anypreimage and f5.tagged therefore record TODAY's aliasing, and the
-// storage-and-layout commit is expected to update exactly
-// those literals.  They are recorded precisely on purpose: the point is that
-// the next commit changes them deliberately and not by accident.
+// The aliased layout is now defined explicitly instead of falling out of a
+// coincidental all-zero offset pattern: patchSize(p,c) is now the
+// component-global identity total for EVERY patch, offset(p,c) stays zero
+// for every real patch, and preImage/anyPreImage canonically report patch 0
+// (rather than whichever patch happened to hold the sentinel) as the stored
+// preimage. The eight pins below are exactly the ones that observe
+// patch-dependent aliasing behaviour and therefore change under that
+// redefinition:
+//
+// - f5.layout / f5.index / f5.flags / f5.findbf / f5.onpatch: every patch
+//   now reports the full 7-entry identity range instead of only the last;
+// - f5.preimage / f5.anypreimage: the reported patch is now 0 (canonical),
+//   not 2 (the old "last patch holds the sentinel" artifact);
+// - f5.tagged: its is_tagged/tindex columns are derived from patchSize per
+//   patch (via dumpTagged's per-(component,patch) loop), so they follow the
+//   same three-patches-worth-of-output change as f5.flags, even though no
+//   dof is actually tagged in this fixture.
+//
+// f5.counts, f5.percomp, f5.firstlast, f5.asvector, f5.mapindex,
+// f5.componentof are NOT in this list: they are computed directly from
+// per-component totals/values, never from the per-patch offset pattern, so
+// they stay byte-identical.
 TEST(identity_mapper)
 {
     const gsDofMapper m = identityMapper();
@@ -877,20 +983,20 @@ TEST(identity_mapper)
     PIN("f5.elimdup", "elimdup=7", dumpElimDup(m));
     PIN("f5.counts", "comps=2 ncomp=2 npatch=3 map=14 size=14 free=14 elim=0 cpld=0 tagged=0 allfree=1 perm=1 final=1", dumpCounts(m));
     PIN("f5.percomp", "c0:size=7,free=7,total=7 c1:size=7,free=7,total=7", dumpPerComponent(m));
-    PIN("f5.layout", "off=[0,0,0] ps=c0:[0,0,7] c1:[0,0,7]", dumpLayout(m));
+    PIN("f5.layout", "off=[0,0,0] ps=c0:[7,7,7] c1:[7,7,7]", dumpLayout(m));
     PIN("f5.firstlast", "first0=0 last=14", dumpFirstLast(m));   // firstIndex(0) only, see F1
     PIN("f5.asvector", "c0[0,1,2,3,4,5,6] c1[7,8,9,10,11,12,13]", dumpAsVector(m));
     PIN("f5.mapindex", "[0,1,2,3,4,5,6,7,8,9,10,11,12,13]", dumpMapIndex(m));
-    PIN("f5.index", "c0|||0,1,2,3,4,5,6;c1|||7,8,9,10,11,12,13", dumpIndex(m));
-    PIN("f5.flags", "||FFFFFFF;||FFFFFFF", dumpFreeBoundaryFlags(m));
+    PIN("f5.index", "c0|0,1,2,3,4,5,6|0,1,2,3,4,5,6|0,1,2,3,4,5,6;c1|7,8,9,10,11,12,13|7,8,9,10,11,12,13|7,8,9,10,11,12,13", dumpIndex(m));
+    PIN("f5.flags", "FFFFFFF|FFFFFFF|FFFFFFF;FFFFFFF|FFFFFFF|FFFFFFF", dumpFreeBoundaryFlags(m));
     PIN("f5.bindex", "[]", dumpBindex(m));
     PIN("f5.gflags", "FFFFFFFFFFFFFF gbi=[]", dumpGlobalFlags(m, 0));
-    PIN("f5.findbf", "bnd=[],[],[] free=[],[],[0,1,2,3,4,5,6]", dumpFindBoundaryFree(m));
-    PIN("f5.onpatch", "0:-/-/0 1:-/-/1 2:-/-/2 3:-/-/3 4:-/-/4 5:-/-/5 6:-/-/6 7:-/-/0 8:-/-/1 9:-/-/2 10:-/-/3 11:-/-/4 12:-/-/5 13:-/-/6", dumpIndexOnPatch(m));
+    PIN("f5.findbf", "bnd=[],[],[] free=[0,1,2,3,4,5,6],[0,1,2,3,4,5,6],[0,1,2,3,4,5,6]", dumpFindBoundaryFree(m));
+    PIN("f5.onpatch", "0:0/0/0 1:1/1/1 2:2/2/2 3:3/3/3 4:4/4/4 5:5/5/5 6:6/6/6 7:0/0/0 8:1/1/1 9:2/2/2 10:3/3/3 11:4/4/4 12:5/5/5 13:6/6/6", dumpIndexOnPatch(m));
     PIN("f5.componentof", "[0,0,0,0,0,0,0,1,1,1,1,1,1,1]", dumpComponentOf(m));
-    PIN("f5.preimage", "0[(2,0)] 1[(2,1)] 2[(2,2)] 3[(2,3)] 4[(2,4)] 5[(2,5)] 6[(2,6)] 7[(2,0)] 8[(2,1)] 9[(2,2)] 10[(2,3)] 11[(2,4)] 12[(2,5)] 13[(2,6)]", dumpPreImages(m));
-    PIN("f5.anypreimage", "[(2,0),(2,1),(2,2),(2,3),(2,4),(2,5),(2,6),(2,0),(2,1),(2,2),(2,3),(2,4),(2,5),(2,6)]", dumpAnyPreImage(m));
-    PIN("f5.tagged", "tagged=[] n=0 gflags=.............. flags=||.......;||....... tindex=||0,0,0,0,0,0,0;||0,0,0,0,0,0,0", dumpTagged(m));
+    PIN("f5.preimage", "0[(0,0)] 1[(0,1)] 2[(0,2)] 3[(0,3)] 4[(0,4)] 5[(0,5)] 6[(0,6)] 7[(0,0)] 8[(0,1)] 9[(0,2)] 10[(0,3)] 11[(0,4)] 12[(0,5)] 13[(0,6)]", dumpPreImages(m));
+    PIN("f5.anypreimage", "[(0,0),(0,1),(0,2),(0,3),(0,4),(0,5),(0,6),(0,0),(0,1),(0,2),(0,3),(0,4),(0,5),(0,6)]", dumpAnyPreImage(m));
+    PIN("f5.tagged", "tagged=[] n=0 gflags=.............. flags=.......|.......|.......;.......|.......|....... tindex=0,0,0,0,0,0,0|0,0,0,0,0,0,0|0,0,0,0,0,0,0;0,0,0,0,0,0,0|0,0,0,0,0,0,0|0,0,0,0,0,0,0", dumpTagged(m));
 }
 
 // =========================================================================
@@ -903,14 +1009,15 @@ TEST(identity_mapper)
 // coupled prefix, so coupledSize() grows from 3 to 5 merely by permuting.
 // The plan gives permuteFreeDofs a corrected contract (later prefixes
 // adjusted by SUBTRACTING the former coupled count of the permuted
-// component), so a later commit of this series is expected to change this one
-// number.  The remaining f6 values are ordinary pins.
+// component), so a later commit is expected to change this one number.  The
+// remaining f6 values are ordinary pins.
 //
 // The tagged=[] in f6.tagged is likewise a known-defective value:
 // markCoupledAsTagged tags the indices m_numFreeDofs[c+1]+m_numElimDofs[c]+i,
 // which are disjoint from the actual coupled dofs, and permuteFreeDofs then
-// rebuilds m_tagged from the dofs that really are tagged -- none.  The plan
-// defers that defect explicitly, so this series is not expected to change it.
+// rebuilds m_tagged from the dofs that really are tagged -- none.  This
+// defect is deliberately left alone here, so a later commit is not expected
+// to change it.
 TEST(permuted_mapper)
 {
     const gsDofMapper m = permutedMapper();
@@ -1054,6 +1161,368 @@ TEST(component_major_numbering_oracle)
                 CHECK_EQUAL(base + static_cast<index_t>(m.offset(p)) + i,
                             m.index(i, p, c));
         }
+    }
+}
+
+// =========================================================================
+// F9/F10 -- genuinely ragged mappers (unequal per-component sizes)
+// =========================================================================
+//
+// Regression tests for a bug found by review: indexOnPatch() computed its
+// search-window end from patchSize(k) -- i.e. patchSize(k,0), component 0's
+// size, regardless of which component the queried global dof actually
+// belongs to.  Every other fixture in this file that has more than one
+// component (F3/F4/F6 = threeCompUniform() and its derivatives, F5 =
+// identityMapper()) happens to have EQUAL per-component sizes -- only the
+// coupling/elimination *pattern* differs -- so none of them could have
+// caught this: the bug is only reachable once component sizes genuinely
+// differ, which the ragged constructor and the per-component setIdentity
+// overload now make possible.  Any code that assumes equal component sizes
+// -- whether a compatibility check or, as here, a query's own bookkeeping --
+// is exactly the kind of assumption this class must no longer make.
+
+TEST(ragged_patch_indexOnPatch)
+{
+    const gsDofMapper m = raggedPatchMapper();
+    CHECK_EQUAL(2u, (unsigned)m.componentsSize());
+    CHECK_EQUAL(5u, (unsigned)m.patchSize(0,0));
+    CHECK_EQUAL(5u, (unsigned)m.patchSize(1,0));
+    CHECK_EQUAL(2u, (unsigned)m.patchSize(0,1));
+    CHECK_EQUAL(4u, (unsigned)m.patchSize(1,1));
+
+    // Global numbering (uncoupled, no elimination, component-major order):
+    // component 0 first (patch0 local0-4 -> global0-4,
+    // patch1 local0-4 -> global5-9), then component 1 (patch0 local0-1 ->
+    // global10-11, patch1 local0-3 -> global12-15).
+    index_t local = -12345;
+
+    CHECK(m.indexOnPatch(10, 0, local));
+    CHECK_EQUAL(0, local);
+    CHECK(!m.indexOnPatch(10, 1, local));
+
+    CHECK(m.indexOnPatch(11, 0, local));
+    CHECK_EQUAL(1, local);
+    CHECK(!m.indexOnPatch(11, 1, local));
+
+    // Component 1, patch 1, local 0..3 -> global 12..15.  Before the fix,
+    // the search window on patch 0 was [0, patchSize(0,0)) == [0,5), and on
+    // patch 1 was [offAt(1,1), offAt(1,1)+patchSize(1,0)) ==
+    // component 1's own patch-1 data mis-bounded by component 0's patch-1
+    // size (5) instead of component 1's own (4) -- both wrong in different
+    // ways.  With the fix, each of these must be found on patch 1 only.
+    for (index_t loc = 0; loc != 4; ++loc)
+    {
+        CHECK(!m.indexOnPatch(12+loc, 0, local));
+        CHECK(m.indexOnPatch(12+loc, 1, local));
+        CHECK_EQUAL(loc, local);
+    }
+}
+
+TEST(ragged_identity_indexOnPatch)
+{
+    const gsDofMapper m = raggedIdentityMapper();
+    CHECK_EQUAL(2u, (unsigned)m.componentsSize());
+    CHECK(gsDofMapper::GlobalIdentity == m.layout());
+    CHECK_EQUAL(7u,  (unsigned)m.totalSize(0));
+    CHECK_EQUAL(10u, (unsigned)m.totalSize(1));
+
+    // Component 1, local index 7 (global 14) is beyond component 0's total
+    // (7) dofs.  Before the fix, indexOnPatch's search window was
+    // truncated to patchSize(k,0)==7 regardless of the queried dof's actual
+    // component, so this was a false negative on every patch.  Aliased
+    // layout: must be found -- with the SAME local index -- on every patch.
+    index_t local = -12345;
+    for (index_t k = 0; k != nPatches(m); ++k)
+    {
+        CHECK(m.indexOnPatch(14, k, local));
+        CHECK_EQUAL(7, local);
+    }
+
+    // Sanity: component 0's own range is unaffected by the fix (it was
+    // never ragged relative to itself).
+    for (index_t k = 0; k != nPatches(m); ++k)
+    {
+        CHECK(m.indexOnPatch(0, k, local));
+        CHECK_EQUAL(0, local);
+    }
+}
+
+
+// =========================================================================
+// F11/F12 -- the Raviart-Thomas pair, and the declared-distinctness contract
+// =========================================================================
+
+// Pins the dimension table the whole plan turns on: on an isotropic mesh the
+// two RT component spaces have exactly the same dimension, and only an
+// anisotropic mesh separates them.  If this ever stops holding, the fixtures
+// below stop testing what they claim to test.
+TEST(rt_component_dimensions)
+{
+    CHECK_EQUAL(42, rtComponentBasis(3, 2, 4, 4).size());
+    CHECK_EQUAL(42, rtComponentBasis(2, 3, 4, 4).size());
+
+    CHECK_EQUAL(28, rtComponentBasis(3, 2, 4, 2).size());
+    CHECK_EQUAL(30, rtComponentBasis(2, 3, 4, 2).size());
+}
+
+// The single most important test in this file.  An isotropic-mesh RT mapper
+// has identical per-patch cardinalities in both components, so every
+// size-based predicate reports it "uniform" -- and the uniform evaluator
+// would then assemble it with component 0's basis replicated, silently and
+// with wrong results, on precisely the configuration this feature exists
+// for.  The rejection must therefore come from the declared flag alone.
+TEST(rt_isotropic_rejected_on_the_declared_flag_alone)
+{
+    const gsDofMapper m = rtIsotropicMapper();
+
+    // Size-blind: nothing observable about the storage distinguishes this
+    // mapper from an ordinary uniform two-component one.
+    CHECK_EQUAL(2u, (unsigned)m.componentsSize());
+    CHECK_EQUAL(42u, (unsigned)m.patchSize(0,0));
+    CHECK_EQUAL(42u, (unsigned)m.patchSize(0,1));
+    CHECK_EQUAL(m.patchSize(0,0), m.patchSize(0,1));
+    CHECK_EQUAL(m.totalSize(0), m.totalSize(1));
+
+    CHECK(m.hasDistinctComponentSpaces());
+    CHECK(!m.usableByUniformEvaluator());
+
+    // Control: the very same storage shape, declared NOT distinct, is
+    // accepted.  The two mappers are observably identical apart from the
+    // declaration, which is what proves the rejection is not size-based.
+    const gsDofMapper u = rtMapper(4, 4, /*declareDistinct=*/false);
+    CHECK_EQUAL(m.patchSize(0,0), u.patchSize(0,0));
+    CHECK_EQUAL(m.patchSize(0,1), u.patchSize(0,1));
+    CHECK(!u.hasDistinctComponentSpaces());
+    CHECK(u.usableByUniformEvaluator());
+}
+
+// The anisotropic mesh is rejected twice over: by the declared flag, and --
+// independently -- by the cardinality conjunct, which is what a mapper built
+// from unequal component sizes trips even when nothing was declared.
+TEST(rt_anisotropic_rejected_on_flag_and_on_cardinality)
+{
+    const gsDofMapper m = rtAnisotropicMapper();
+    CHECK_EQUAL(28u, (unsigned)m.patchSize(0,0));
+    CHECK_EQUAL(30u, (unsigned)m.patchSize(0,1));
+    CHECK(m.hasDistinctComponentSpaces());
+    CHECK(!m.usableByUniformEvaluator());
+
+    const gsDofMapper u = rtMapper(4, 2, /*declareDistinct=*/false);
+    CHECK(!u.hasDistinctComponentSpaces());
+    CHECK(!u.usableByUniformEvaluator()); // rejected by cardinality alone
+}
+
+// The full truth table of the compatibility predicate over every fixture in
+// this file.  Everything the current mainline builds must stay accepted --
+// including a default-constructed mapper, which is the normal pre-init state
+// the legacy boundary sees and must not fire on.
+TEST(usable_by_uniform_evaluator_truth_table)
+{
+    const gsDofMapper empty;
+    CHECK(!empty.hasDistinctComponentSpaces());
+    CHECK(empty.usableByUniformEvaluator());
+
+    CHECK(singlePatchPlain()    .usableByUniformEvaluator()); // 1 component
+    CHECK(twoPatchCoupledElim() .usableByUniformEvaluator()); // 1 component
+    CHECK(threeCompUniform()    .usableByUniformEvaluator()); // 3 equal comps
+    CHECK(identityMapper()      .usableByUniformEvaluator()); // uniform alias
+    CHECK(creatorTwoPatch()     .usableByUniformEvaluator()); // creator-built
+
+    // None of the mainline paths declares distinctness.
+    CHECK(!singlePatchPlain()   .hasDistinctComponentSpaces());
+    CHECK(!threeCompUniform()   .hasDistinctComponentSpaces());
+    CHECK(!identityMapper()     .hasDistinctComponentSpaces());
+    CHECK(!creatorTwoPatch()    .hasDistinctComponentSpaces());
+
+    // Ragged cardinalities are rejected under either layout.
+    CHECK(!raggedPatchMapper()   .usableByUniformEvaluator());
+    CHECK(!raggedIdentityMapper().usableByUniformEvaluator());
+}
+
+// A mapper whose components have equal totals but a different per-patch
+// split is uniform by every total-size measure and still unusable: the
+// cardinality conjunct is per patch, not per component total.
+TEST(usable_by_uniform_evaluator_is_per_patch)
+{
+    std::vector<gsVector<index_t> > sz(2);
+    sz[0].resize(2); sz[0][0] = 4; sz[0][1] = 6;
+    sz[1].resize(2); sz[1][0] = 6; sz[1][1] = 4;
+    gsDofMapper m(sz, /*hasDistinctComponentSpaces=*/false);
+    m.finalize();
+
+    CHECK_EQUAL(m.totalSize(0), m.totalSize(1)); // 10 == 10
+    CHECK(!m.usableByUniformEvaluator());
+}
+
+// =========================================================================
+// Metadata carried through swap
+// =========================================================================
+
+TEST(swap_carries_layout_metadata)
+{
+    gsDofMapper a = rtAnisotropicMapper();   // 1 patch, concatenated, distinct
+    gsDofMapper b = raggedIdentityMapper();  // 3 patches, identity, not distinct
+
+    a.swap(b);
+
+    CHECK_EQUAL(3u, (unsigned)a.numPatches());
+    CHECK(gsDofMapper::GlobalIdentity == a.layout());
+    CHECK(!a.hasDistinctComponentSpaces());
+    CHECK_EQUAL(7u,  (unsigned)a.totalSize(0));
+    CHECK_EQUAL(10u, (unsigned)a.totalSize(1));
+
+    CHECK_EQUAL(1u, (unsigned)b.numPatches());
+    CHECK(gsDofMapper::PatchConcatenated == b.layout());
+    CHECK(b.hasDistinctComponentSpaces());
+    CHECK_EQUAL(28u, (unsigned)b.patchSize(0,0));
+    CHECK_EQUAL(30u, (unsigned)b.patchSize(0,1));
+}
+
+// =========================================================================
+// setIdentity() as a reset of an already-populated mapper
+// =========================================================================
+
+// setIdentity() rebuilds the mapping, the counts and the layout, so it must
+// also drop the tag list: its entries are global indices of the numbering
+// being thrown away.  Left behind, they survive into a numbering that does
+// not contain them, and taggedSize()/getTagged()/is_tagged_index() report
+// dofs that do not exist.
+TEST(set_identity_clears_stale_tags)
+{
+    gsDofMapper m = twoPatchCoupledElim();
+    m.markCoupledAsTagged();
+    CHECK(m.taggedSize() > 0);
+    const index_t staleTag = m.getTagged().back();
+
+    m.setIdentity(1, 3, 1);
+    m.finalize();
+
+    CHECK_EQUAL(0, m.taggedSize());
+    CHECK(m.getTagged().empty());
+    CHECK_EQUAL(3, m.size());
+    // The stale tag was an index of the discarded numbering; nothing in the
+    // new one may answer to it.
+    for (index_t gl = 0; gl != m.size(); ++gl)
+        CHECK(!m.is_tagged_index(gl));
+    if (staleTag < m.size())
+        CHECK(!m.is_tagged_index(staleTag));
+}
+
+// Re-initialising a populated mapper with a smaller shape must leave nothing
+// of the old one behind -- the reason every initialiser assigns rather than
+// resizes.
+TEST(set_identity_reinitializes_completely)
+{
+    gsDofMapper m = threeCompUniform();
+    CHECK_EQUAL(3, m.numComponents());
+
+    std::vector<size_t> dofs(2);
+    dofs[0] = 4; dofs[1] = 6;
+    m.setIdentity(2, dofs);
+    m.finalize();
+
+    CHECK_EQUAL(2, m.numComponents());
+    CHECK_EQUAL(2u, (unsigned)m.numPatches());
+    CHECK(gsDofMapper::GlobalIdentity == m.layout());
+    CHECK(!m.hasDistinctComponentSpaces());
+    CHECK_EQUAL(4u, (unsigned)m.totalSize(0));
+    CHECK_EQUAL(6u, (unsigned)m.totalSize(1));
+    CHECK_EQUAL(10u, (unsigned)m.mapSize());
+    CHECK_EQUAL(10, m.size());
+    CHECK_EQUAL(0, m.boundarySize());
+    CHECK(!m.usableByUniformEvaluator()); // ragged identity totals
+}
+
+// =========================================================================
+// Construction-time validation
+// =========================================================================
+
+TEST(ragged_constructor_rejects_invalid_metadata)
+{
+    // No components at all.
+    CHECK_THROW(gsDofMapper(std::vector<gsVector<index_t> >(), false),
+                std::runtime_error);
+
+    // No patches.
+    {
+        std::vector<gsVector<index_t> > sz(1);
+        CHECK_THROW(gsDofMapper(sz, false), std::runtime_error);
+    }
+
+    // Components disagreeing about the patch count: ragged means different
+    // sizes per (component,patch), never different patch sets.
+    {
+        std::vector<gsVector<index_t> > sz(2);
+        sz[0].resize(2); sz[0][0] = 3; sz[0][1] = 3;
+        sz[1].resize(3); sz[1][0] = 3; sz[1][1] = 3; sz[1][2] = 3;
+        CHECK_THROW(gsDofMapper(sz, false), std::runtime_error);
+    }
+
+    // Negative patch size.
+    {
+        std::vector<gsVector<index_t> > sz(1);
+        sz[0].resize(2); sz[0][0] = 3; sz[0][1] = -1;
+        CHECK_THROW(gsDofMapper(sz, false), std::runtime_error);
+    }
+}
+
+TEST(set_identity_rejects_invalid_metadata)
+{
+    gsDofMapper m;
+    CHECK_THROW(m.setIdentity(0, 5, 1), std::runtime_error);   // no patches
+    CHECK_THROW(m.setIdentity(-1, 5, 1), std::runtime_error);  // no patches
+    CHECK_THROW(m.setIdentity(1, 5, 0), std::runtime_error);   // no components
+    CHECK_THROW(m.setIdentity(1, std::vector<size_t>()), std::runtime_error);
+}
+
+// Dof counts are stored, and accumulated across components by finalize(), in
+// index_t -- a build-time configurable type that is plain int by default and
+// may be far narrower than size_t.  A count that overflows it must be
+// rejected against index_t's range, and -- this is the operative part --
+// BEFORE anything is allocated or narrowed: validating after the fact would
+// mean either a wrapped negative count or a multi-gigabyte allocation on the
+// way to the diagnostic.  Every case below therefore must throw without the
+// mapper ever sizing its storage.
+TEST(construction_rejects_counts_beyond_index_range)
+{
+    const size_t imax = static_cast<size_t>(std::numeric_limits<index_t>::max());
+
+    // Cumulative over patches (one component).
+    {
+        gsVector<index_t> sz(2);
+        sz[0] = std::numeric_limits<index_t>::max();
+        sz[1] = std::numeric_limits<index_t>::max();
+        CHECK_THROW(gsDofMapper(sz, 1), std::runtime_error);
+    }
+
+    // Cumulative over components: each component fits on its own, their sum
+    // does not.  This is the case a per-component-only check misses.
+    {
+        gsVector<index_t> sz(1);
+        sz[0] = static_cast<index_t>(imax/2 + 1);
+        CHECK_THROW(gsDofMapper(sz, 2), std::runtime_error);
+    }
+
+    // Same, through the ragged constructor.
+    {
+        std::vector<gsVector<index_t> > sz(2);
+        sz[0].resize(1); sz[0][0] = static_cast<index_t>(imax/2 + 1);
+        sz[1].resize(1); sz[1][0] = static_cast<index_t>(imax/2 + 1);
+        CHECK_THROW(gsDofMapper(sz, false), std::runtime_error);
+    }
+
+    // setIdentity takes size_t counts, so a single component can exceed
+    // index_t's range on its own.  Only meaningful where index_t is no wider
+    // than size_t, which is every supported configuration.
+    if (sizeof(index_t) <= sizeof(size_t))
+    {
+        gsDofMapper m;
+        CHECK_THROW(m.setIdentity(1, std::vector<size_t>(1, imax + 1)),
+                    std::runtime_error);
+
+        std::vector<size_t> dofs(2);
+        dofs[0] = imax; dofs[1] = 1;    // each fits, the sum does not
+        CHECK_THROW(m.setIdentity(1, dofs), std::runtime_error);
     }
 }
 

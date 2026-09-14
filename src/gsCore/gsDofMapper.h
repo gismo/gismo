@@ -20,8 +20,6 @@
 namespace gismo
 {
 
-#define MAPPER_PATCH_DOF(a,b,c) m_dofs[c][m_offset[b]+a]
-
 /** @brief Maintains a mapping from patch-local dofs to global dof indices
     and allows the elimination of individual dofs.
 
@@ -62,12 +60,44 @@ namespace gismo
     The object must be finalized before it is used,
     i.e. gsDofMapper::finalize() has to be called once before use.
 
+    Each component of the mapper carries its own patch-local storage
+    (see initPatchDofs()/the ragged constructor), so the number of
+    local dofs on a given patch may differ from one component to
+    another ("ragged" storage).  Storage is organized as a flat,
+    per-component offset table with an explicit patch count
+    (gsDofMapperLayout, offAt()/offBegin()/offEnd()).  There are two
+    kinds of layout:
+
+    - patch-concatenated: ordinary storage, one contiguous range of
+      local dofs per (patch,component);
+    - global identity / aliased: produced by setIdentity(), where the
+      local index is already a component-global index and does not
+      depend on the patch argument.  See the per-method documentation
+      below for the exact aliased semantics.
+
+    Whether a mapper was built from more than one distinct
+    per-component basis object is a separately \em declared property
+    (hasDistinctComponentSpaces()), never inferred from sizes or
+    offsets: two components can have identical per-patch sizes while
+    still being built from different bases (this is precisely the
+    Raviart-Thomas situation on an isotropic mesh).
+
     \ingroup Core
 
 */
 class GISMO_EXPORT gsDofMapper
 {
 public:
+
+    /// The two ways a mapper's per-(patch,component) storage may be
+    /// laid out.  A mapper never infers which one it has from a
+    /// coincidental offset pattern -- the layout is fixed at
+    /// construction and carried through reset/swap.
+    enum gsDofMapperLayout
+    {
+        PatchConcatenated = 0, ///< ordinary patch-local storage (the default)
+        GlobalIdentity    = 1  ///< setIdentity()-built aliased/global storage
+    };
 
     /// Default empty constructor
     gsDofMapper();
@@ -83,10 +113,39 @@ public:
         initPatchDofs(patchDofSizes, nComp);
     }
 
+    /**
+     * @brief Construct a mapper from one patch-dof-size vector per
+     * component (patch-concatenated layout).  Every component must
+     * report the same number of patches; local sizes may otherwise
+     * differ freely between components and between patches ("ragged"
+     * storage).
+     *
+     * @param patchDofSizes           one entry per component, each a
+     *                                vector of per-patch local dof counts
+     * @param hasDistinctComponentSpaces
+     *                                must be declared explicitly by the
+     *                                caller, never inferred: true when
+     *                                the components were built from
+     *                                genuinely different basis objects
+     *                                (e.g. a Raviart-Thomas component
+     *                                pair), false when they happen to
+     *                                share one basis.  See the class
+     *                                documentation: a square-mesh
+     *                                Raviart-Thomas mapper has identical
+     *                                per-component sizes even though its
+     *                                bases differ, so this cannot be
+     *                                derived from \a patchDofSizes.
+     */
+    gsDofMapper(const std::vector<gsVector<index_t> > & patchDofSizes,
+                bool hasDistinctComponentSpaces);
+
     void swap(gsDofMapper & other)
     {
         m_dofs  .swap(other.m_dofs);
         m_offset.swap(other.m_offset);
+        std::swap(m_nPatches, other.m_nPatches);
+        std::swap(m_layout,   other.m_layout);
+        std::swap(m_hasDistinctComponentSpaces, other.m_hasDistinctComponentSpaces);
 
         std::swap(m_shift      , other.m_shift);
         std::swap(m_bshift     , other.m_bshift);
@@ -102,6 +161,41 @@ private:
     /// Initialize by vector of DoF indices and dimension
     void initPatchDofs(const gsVector<index_t> & patchDofSizes,
 		       index_t nComp = 1);
+
+    /// Initialize by one patch-dof-size vector per component (ragged,
+    /// patch-concatenated layout).
+    void initRaggedPatchDofs(const std::vector<gsVector<index_t> > & patchDofSizes,
+                              bool hasDistinctComponentSpaces);
+
+    // Flat-offset-table accessors (the only way this class touches
+    // m_offset): m_offset is one row of m_nPatches+1 entries per
+    // component, laid out consecutively.
+    size_t offAt(index_t c, index_t k) const
+    { return m_offset[static_cast<size_t>(c)*(m_nPatches+1)+static_cast<size_t>(k)]; }
+
+    std::vector<size_t>::const_iterator offBegin(index_t c) const
+    { return m_offset.begin() + static_cast<size_t>(c)*(m_nPatches+1); }
+
+    std::vector<size_t>::const_iterator offEnd(index_t c) const
+    { return offBegin(c) + (m_nPatches+1); }
+
+    /// Read-write access to the stored value of local dof \a i of patch
+    /// \a k in component \a c (setup-time encoding: 0 = free, negative =
+    /// eliminated, positive = coupling id -- see the m_dofs comment below).
+    /// The only way this class' own code touches m_dofs/m_offset together;
+    /// overloaded on constness instead of macro-expanded so both mutating
+    /// setup code and const query methods can use one accessor.
+    inline index_t & dofAt(index_t i, index_t k, index_t c)
+    { return m_dofs[c][offAt(c,k)+i]; }
+
+    inline index_t dofAt(index_t i, index_t k, index_t c) const
+    { return m_dofs[c][offAt(c,k)+i]; }
+
+    /// Debug-only structural invariant check (GISMO_ASSERT-based, so it
+    /// compiles away entirely under NDEBUG -- this is not a release-mode
+    /// guard).  Invoked after construction/reset and before/after
+    /// finalize().
+    void checkInvariants() const;
 
 public:
 
@@ -168,6 +262,11 @@ public:
     ///\brief Set this mapping to be the identity
     void setIdentity(index_t nPatches, size_t nDofs, size_t nComp = 1);
 
+    ///\brief Set this mapping to be the identity, with a (possibly
+    /// unequal) total dof count per component.  The scalar-size overload
+    /// delegates here by broadcasting one total to every component.
+    void setIdentity(index_t nPatches, const std::vector<size_t> & dofsPerComponent);
+
     ///\brief Set the shift amount for the global numbering
     void setShift(index_t shift);
 
@@ -224,7 +323,7 @@ public:
     inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     {
         GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
-        return MAPPER_PATCH_DOF(i,k,c);
+        return dofAt(i,k,c);
     }
 
     index_t componentOf(index_t gl) const
@@ -249,7 +348,7 @@ public:
     inline index_t index(index_t i, index_t k = 0, index_t c = 0) const
     {
         GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
-        return MAPPER_PATCH_DOF(i,k,c)+m_shift;
+        return dofAt(i,k,c)+m_shift;
     }
 
     /// @brief Returns the boundary index of local dof \a i of patch \a k.
@@ -258,7 +357,7 @@ public:
     inline index_t bindex(index_t i, index_t k = 0, index_t c = 0) const
     {
         GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
-        return MAPPER_PATCH_DOF(i,k,c) - m_numFreeDofs.back()
+        return dofAt(i,k,c) - m_numFreeDofs.back()
             //- m_numElimDofs[c]
             + m_bshift;
     }
@@ -271,7 +370,7 @@ public:
     inline index_t cindex(index_t i, index_t k = 0, index_t c = 0) const
     {
         GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
-        return MAPPER_PATCH_DOF(i,k,c) - m_numFreeDofs[c+1]
+        return dofAt(i,k,c) - m_numFreeDofs[c+1]
 	  + m_numCpldDofs[c+1];
     }
 
@@ -279,7 +378,7 @@ public:
     inline index_t tindex(index_t i, index_t k = 0, index_t c = 0) const
     {
         GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
-        return std::distance(m_tagged.begin(),std::lower_bound(m_tagged.begin(),m_tagged.end(),MAPPER_PATCH_DOF(i,k,c)));
+        return std::distance(m_tagged.begin(),std::lower_bound(m_tagged.begin(),m_tagged.end(),dofAt(i,k,c)));
     }
 
     /// @brief Returns the boundary index of global dof \a gl.
@@ -386,28 +485,63 @@ public:
 
     index_t boundarySizeWithDuplicates() const;
 
-    /// Returns the offset corresponding to patch \a k
-    size_t offset(int k) const {return m_offset[k];}
+    /// Returns the offset corresponding to patch \a k for component \a c.
+    /// Zero for every real patch under the global-identity/aliased layout
+    /// (see gsDofMapperLayout).
+    size_t offset(index_t k, index_t c = 0) const {return offAt(c,k);}
 
     /// Returns the number of patches present underneath the mapper
-    size_t numPatches() const {return m_offset.size();}
+    size_t numPatches() const {return m_nPatches;}
 
     /// \brief Returns the total number of patch-local degrees of
     /// freedom that are being mapped
     size_t mapSize() const
-    { return (m_dofs.empty()?0:m_dofs.size() * m_dofs.front().size()); }
+    {
+        size_t s = 0;
+        for (size_t c = 0; c != m_dofs.size(); ++c)
+            s += m_dofs[c].size();
+        return s;
+    }
 
     size_t componentsSize() const {return m_dofs.size();}
 
+    /// Returns the storage layout of this mapper (see gsDofMapperLayout).
+    /// Declared at construction and never inferred from an observed
+    /// offset pattern.
+    gsDofMapperLayout layout() const { return m_layout; }
+
+    /// Returns true if this mapper was declared, at construction, to
+    /// have been built from more than one distinct per-component basis
+    /// object. This is a DECLARED property, never inferred from sizes
+    /// or offsets: a square-mesh Raviart-Thomas mapper is
+    /// size-indistinguishable from a uniform one, yet its components are
+    /// built from different bases.
+    bool hasDistinctComponentSpaces() const { return m_hasDistinctComponentSpaces; }
+
+    /// \brief Returns true if this mapper can be consumed by the
+    /// expression evaluator's single-basis-per-space assumption: the
+    /// component spaces were not declared distinct, the layout is not
+    /// mixed (a structural invariant already enforced at construction,
+    /// so this conjunct can never actually reject a successfully
+    /// constructed mapper), and every component has the same
+    /// cardinality as component 0, compared under whichever single
+    /// layout this mapper actually has (patchSize(p,c)==patchSize(p,0)
+    /// for every patch under the patch-concatenated layout;
+    /// totalSize(c)==totalSize(0) under the global-identity layout).
+    bool usableByUniformEvaluator() const;
+
     /// \brief Returns the total number of patch-local DoFs
-    /// that live on patch \a k for component \a c
+    /// that live on patch \a k for component \a c.  Under the
+    /// global-identity/aliased layout this is the component-global
+    /// identity total for every patch (see gsDofMapperLayout and
+    /// setIdentity()), not just the last one.
     size_t patchSize(const index_t k, const index_t c = 0) const
     {
-        const size_t k1(k+1);
-        GISMO_ASSERT(k1<=numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
-        if ( 1==m_offset.size() ) return  m_dofs[c].size();
-        else if ( k1==m_offset.size() ) return (m_dofs[c].size() - m_offset.back());
-        else return (m_offset[k1]-m_offset[k]);
+        GISMO_ASSERT(static_cast<size_t>(c)<m_dofs.size(), "Invalid component index "<<c<<" >= "<<m_dofs.size());
+        GISMO_ASSERT(static_cast<size_t>(k)<m_nPatches, "Invalid patch index "<<k<<" >= "<<m_nPatches);
+        if (GlobalIdentity == m_layout)
+            return totalSize(c);
+        return offAt(c,k+1) - offAt(c,k);
     }
 
     size_t totalSize(const index_t c = 0) const
@@ -442,13 +576,20 @@ public:
         return indexOnPatch(gl, k, local);
     }
 
-    /// \brief For \a n being an index which is already offsetted, it
+    /// \brief For \a n being an index which is already offset, it
     /// returns the global index where it is mapped to by the dof
-    /// mapper.
+    /// mapper.  Walks the (small) component list linearly rather than
+    /// assuming every component has the same storage size, which does
+    /// not hold for ragged storage.
     inline index_t mapIndex(index_t n) const
     {
-        return m_dofs[n/m_dofs.front().size()]
-            [n%m_dofs.front().size()] + m_shift;
+        index_t c = 0;
+        while (static_cast<size_t>(n) >= m_dofs[c].size())
+        {
+            n -= static_cast<index_t>(m_dofs[c].size());
+            ++c;
+        }
+        return m_dofs[c][n] + m_shift;
     }
 
     /// \brief Returns all boundary dofs on patch k (local dof indices)
@@ -497,8 +638,23 @@ private:
     // offsets for patch-local indices
     std::vector<std::vector<index_t> >  m_dofs;
 
-    /// Offsets
+    /// Number of patches, shared by all components: ragged storage means
+    /// different sizes per (component,patch), never different patch sets.
+    size_t m_nPatches;
+
+    /// Flat per-component offset table, row stride m_nPatches+1:
+    /// entry [c*(m_nPatches+1)+k] is the start offset of patch k's local
+    /// dofs within m_dofs[c] (k==m_nPatches is the sentinel, equal to
+    /// m_dofs[c].size()).  Touch only through offAt()/offBegin()/offEnd().
     std::vector<size_t> m_offset;
+
+    /// Storage layout (patch-concatenated or global-identity/aliased).
+    /// Declared at construction, never inferred; see gsDofMapperLayout.
+    gsDofMapperLayout m_layout;
+
+    /// Declared (never inferred) at construction: true if this mapper
+    /// was built from more than one distinct per-component basis object.
+    bool m_hasDistinctComponentSpaces;
 
     /// Shifting of the global index (zero by default)
     index_t m_shift;
