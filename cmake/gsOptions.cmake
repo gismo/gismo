@@ -139,6 +139,23 @@ if (GISMO_EIGEN_FETCH)
 message ("  GISMO_EIGEN_FETCH       ${GISMO_EIGEN_FETCH}")
 endif()
 
+# Default resolution mode consumed by gismo_add_dependency() (cmake/gsFetch.cmake).
+# AUTO tries find_package() first and fetches on failure, ALWAYS always fetches/vendors,
+# NEVER never fetches and fails the configure when find_package() does not succeed.
+# This is independent from the legacy boolean GISMO_EIGEN_FETCH above, which
+# gismo_add_dependency() does not consume.
+set(GISMO_DEPENDENCY_FETCH "AUTO" CACHE STRING
+  "Default dependency resolution mode for gismo_add_dependency(): AUTO, ALWAYS or NEVER")
+set_property(CACHE GISMO_DEPENDENCY_FETCH PROPERTY STRINGS AUTO ALWAYS NEVER)
+if(NOT GISMO_DEPENDENCY_FETCH STREQUAL "AUTO" AND
+   NOT GISMO_DEPENDENCY_FETCH STREQUAL "ALWAYS" AND
+   NOT GISMO_DEPENDENCY_FETCH STREQUAL "NEVER")
+  message(FATAL_ERROR "GISMO_DEPENDENCY_FETCH must be one of AUTO, ALWAYS, NEVER (got \"${GISMO_DEPENDENCY_FETCH}\")")
+endif()
+if (NOT GISMO_DEPENDENCY_FETCH STREQUAL "AUTO")
+message ("  GISMO_DEPENDENCY_FETCH  ${GISMO_DEPENDENCY_FETCH}")
+endif()
+
 option(GISMO_BUILD_CPPLOT        "Build cpplot"                  false  )
 if (GISMO_BUILD_CPPLOT)
 message ("  GISMO_BUILD_CPPLOT      ${GISMO_BUILD_CPPLOT}")

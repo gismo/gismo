@@ -50,19 +50,39 @@ endif()
 # 2) Manual header search (Eigen_DIR hint, then system paths), mirroring the
 #    legacy FindEigen3.cmake signature-file heuristic.
 macro(_eigen_check_version)
-  # As of Eigen 5.0, the version macros live in Eigen/Version (included by
-  # Eigen/Core), not in Eigen/src/Core/util/Macros.h.
-  file(READ "${EIGEN_INCLUDE_DIR}/Eigen/Version" _eigen_version_header)
+  # The two version schemes use the same macro names for different fields:
+  #   Eigen >= 5.0: Eigen/Version defines MAJOR.MINOR.PATCH (5.0.0), plus a
+  #                 legacy EIGEN_WORLD_VERSION 3 that must be ignored;
+  #   Eigen 3.x:    Eigen/src/Core/util/Macros.h defines WORLD.MAJOR.MINOR (3.4.0)
+  #                 and there is no Eigen/Version file.
+  # A pre-5.0 Eigen (e.g. a distribution's eigen3 package) must be rejected by
+  # the version check below, not abort the configure by reading a missing file.
+  set(EIGEN_VERSION "")
+  if(EXISTS "${EIGEN_INCLUDE_DIR}/Eigen/Version")
+    file(READ "${EIGEN_INCLUDE_DIR}/Eigen/Version" _eigen_version_header)
+    string(REGEX MATCH "define[ \t]+EIGEN_MAJOR_VERSION[ \t]+([0-9]+)" _eigen_match "${_eigen_version_header}")
+    set(EIGEN_MAJOR_VERSION "${CMAKE_MATCH_1}")
+    string(REGEX MATCH "define[ \t]+EIGEN_MINOR_VERSION[ \t]+([0-9]+)" _eigen_match "${_eigen_version_header}")
+    set(EIGEN_MINOR_VERSION "${CMAKE_MATCH_1}")
+    string(REGEX MATCH "define[ \t]+EIGEN_PATCH_VERSION[ \t]+([0-9]+)" _eigen_match "${_eigen_version_header}")
+    set(EIGEN_PATCH_VERSION "${CMAKE_MATCH_1}")
+    set(EIGEN_VERSION "${EIGEN_MAJOR_VERSION}.${EIGEN_MINOR_VERSION}.${EIGEN_PATCH_VERSION}")
+  elseif(EXISTS "${EIGEN_INCLUDE_DIR}/Eigen/src/Core/util/Macros.h")
+    file(READ "${EIGEN_INCLUDE_DIR}/Eigen/src/Core/util/Macros.h" _eigen_version_header)
+    string(REGEX MATCH "define[ \t]+EIGEN_WORLD_VERSION[ \t]+([0-9]+)" _eigen_match "${_eigen_version_header}")
+    set(_eigen_world "${CMAKE_MATCH_1}")
+    string(REGEX MATCH "define[ \t]+EIGEN_MAJOR_VERSION[ \t]+([0-9]+)" _eigen_match "${_eigen_version_header}")
+    set(_eigen_major "${CMAKE_MATCH_1}")
+    string(REGEX MATCH "define[ \t]+EIGEN_MINOR_VERSION[ \t]+([0-9]+)" _eigen_match "${_eigen_version_header}")
+    set(_eigen_minor "${CMAKE_MATCH_1}")
+    set(EIGEN_VERSION "${_eigen_world}.${_eigen_major}.${_eigen_minor}")
+  endif()
 
-  string(REGEX MATCH "define[ \t]+EIGEN_MAJOR_VERSION[ \t]+([0-9]+)" _eigen_major_version_match "${_eigen_version_header}")
-  set(EIGEN_MAJOR_VERSION "${CMAKE_MATCH_1}")
-  string(REGEX MATCH "define[ \t]+EIGEN_MINOR_VERSION[ \t]+([0-9]+)" _eigen_minor_version_match "${_eigen_version_header}")
-  set(EIGEN_MINOR_VERSION "${CMAKE_MATCH_1}")
-  string(REGEX MATCH "define[ \t]+EIGEN_PATCH_VERSION[ \t]+([0-9]+)" _eigen_patch_version_match "${_eigen_version_header}")
-  set(EIGEN_PATCH_VERSION "${CMAKE_MATCH_1}")
-
-  set(EIGEN_VERSION ${EIGEN_MAJOR_VERSION}.${EIGEN_MINOR_VERSION}.${EIGEN_PATCH_VERSION})
-  if(${EIGEN_VERSION} VERSION_LESS ${Eigen_FIND_VERSION})
+  if(NOT EIGEN_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
+    set(EIGEN_VERSION_OK FALSE)
+    message(STATUS "Could not determine the Eigen version in ${EIGEN_INCLUDE_DIR}; "
+                    "at least version ${Eigen_FIND_VERSION} is required")
+  elseif(EIGEN_VERSION VERSION_LESS Eigen_FIND_VERSION)
     set(EIGEN_VERSION_OK FALSE)
     message(STATUS "Eigen version ${EIGEN_VERSION} found in ${EIGEN_INCLUDE_DIR}, "
                     "but at least version ${Eigen_FIND_VERSION} is required")

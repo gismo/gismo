@@ -450,6 +450,23 @@ else()
 endif(GISMO_BUILD_UNITTESTS)
 
 ## #################################################################
+## CMake dependency-API tests
+## #################################################################
+
+if(BUILD_TESTING)
+  add_test(NAME cmake_dependency_test COMMAND ${CMAKE_COMMAND}
+    -DGISMO_SOURCE_DIR=${PROJECT_SOURCE_DIR}
+    -DSCRATCH_DIR=${PROJECT_BINARY_DIR}/cmake_tests/dependency
+    -DTEST_GENERATOR=${CMAKE_GENERATOR}
+    -DTEST_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+    -DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+    -DTEST_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    -P ${PROJECT_SOURCE_DIR}/cmake/tests/run_dependency_tests.cmake)
+  set_property(TEST cmake_dependency_test PROPERTY LABELS cmake)
+  set_property(TEST cmake_dependency_test PROPERTY TIMEOUT 900)
+endif()
+
+## #################################################################
 ## Install
 ## #################################################################
 
