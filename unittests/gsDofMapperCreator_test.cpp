@@ -460,6 +460,36 @@ TEST(ragged_out_of_range_bc_component_dropped)
     CHECK_EQUAL(nbWest, mInRange.boundarySize());
 }
 
+// 10b. Ragged (per-component) overload: corner conditions with unknown == -1
+// are a wildcard here too, mirroring corner_wildcard_unknown for the primary
+// overload. This overload has its own copy of the corner/coupled filtering
+// loop (gsDofMapperCreator.hpp), so the fix there needs its own regression test.
+TEST(ragged_corner_wildcard_unknown)
+{
+    gsMultiBasis<real_t> mb0 = twoPatchBasis();
+    gsMultiBasis<real_t> mb1 = twoPatchBasis();
+
+    gsBoundaryConditions<real_t> bc;
+    // Wildcard corner (unknown == -1), applied to both components (component == -1 default).
+    bc.addCornerValue(boundary::southwest, 0.5, 0, -1);
+    // Explicit unknown == 1 corner: must be skipped when unk == 0.
+    bc.addCornerValue(boundary::northwest, 0.5, 0, 1);
+
+    std::vector<const gsFunctionSet<real_t>*> basesPerComp(2);
+    basesPerComp[0] = &mb0;
+    basesPerComp[1] = &mb1;
+
+    gsDofMapper m0 = createMapper(basesPerComp, mb0.topology(), bc, /*unk=*/0,
+                                  /*conforming=*/false, /*finalize=*/true);
+    // Only the wildcard corner is eliminated, once per component (2 comps).
+    CHECK_EQUAL(2, m0.boundarySize());
+
+    gsDofMapper m1 = createMapper(basesPerComp, mb0.topology(), bc, /*unk=*/1,
+                                  /*conforming=*/false, /*finalize=*/true);
+    // Wildcard + explicit unk==1 corner, each applied to both components.
+    CHECK_EQUAL(4, m1.boundarySize());
+}
+
 // 11. Primary 7-arg overload called directly with all arguments.
 TEST(primary_7arg_overload)
 {
