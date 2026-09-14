@@ -224,7 +224,8 @@ int main(int argc, char* argv[])
             if (plot && r == numRefine)
             {
                 gsGeometry<>::uPtr sol = mb.basis(0).makeGeometry(give(coefs));
-                gsWriteParaview(*sol, "projection_H2_solution");
+                gsParaview<real_t> pv;
+                pv.write(*sol, "projection_H2_solution");
                 gsInfo << "ParaView output written to projection_H2_solution.vts\n";
             }
         }

@@ -15,6 +15,7 @@
 #pragma once
 
 #include <gsIO/gsParaviewCollection.h>
+#include <gsIO/gsBase64.h>
 
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsGeometrySlice.h>
@@ -30,15 +31,134 @@
 
 #include <gsHSplines/gsHBoxContainer.h>
 
-#define PLOT_PRECISION 12
+#include <type_traits>
 
 namespace gismo
 {
 
+namespace pv_unstructured_detail
+{
+template <typename Scalar>
+inline std::string vtkTypeName()
+{
+    if (std::is_same<Scalar, unsigned char>::value)
+        return "UInt8";
+    if (std::is_same<Scalar, char>::value || std::is_same<Scalar, signed char>::value)
+        return "Int8";
+    if (std::is_same<Scalar, unsigned short>::value)
+        return "UInt16";
+    if (std::is_same<Scalar, short>::value)
+        return "Int16";
+    if (std::is_same<Scalar, unsigned int>::value)
+        return "UInt32";
+    if (std::is_same<Scalar, int>::value)
+        return "Int32";
+    if (std::is_same<Scalar, unsigned long>::value)
+        return sizeof(unsigned long) == 4 ? "UInt32" : "UInt64";
+    if (std::is_same<Scalar, long>::value)
+        return sizeof(long) == 4 ? "Int32" : "Int64";
+    if (std::is_same<Scalar, unsigned long long>::value)
+        return "UInt64";
+    if (std::is_same<Scalar, long long>::value)
+        return "Int64";
+    if (std::is_same<Scalar, float>::value)
+        return "Float32";
+    if (std::is_same<Scalar, double>::value)
+        return "Float64";
+
+    GISMO_ERROR("Unsupported scalar type for VTK DataArray");
+    return "";
+}
+
+template <class MatrixType>
+inline void writeDataArray(std::ostream & stream,
+                           const MatrixType & matrix,
+                           const std::string & name,
+                           unsigned precision,
+                           bool export_base64)
+{
+    typedef typename MatrixType::Scalar Scalar;
+    stream << "<DataArray type=\"" << vtkTypeName<Scalar>()
+           << "\" format=\"" << (export_base64 ? "binary" : "ascii") << "\" ";
+    if (!name.empty())
+        stream << "Name=\"" << name << "\" ";
+    if (matrix.rows() > 1)
+        stream << "NumberOfComponents=\"" << matrix.rows() << "\" ";
+    stream << ">\n";
+
+    if (export_base64)
+    {
+        std::vector<Scalar> values;
+        values.reserve(static_cast<std::size_t>(matrix.rows()) * static_cast<std::size_t>(matrix.cols()));
+        for (index_t j = 0; j < matrix.cols(); ++j)
+            for (index_t i = 0; i < matrix.rows(); ++i)
+                values.push_back(matrix(i, j));
+
+        std::vector<uint64_t> header(1, static_cast<uint64_t>(values.size() * sizeof(Scalar)));
+        stream << Base64::Encode(header) << Base64::Encode(values) << "\n";
+    }
+    else
+    {
+        // char/unsigned char must be promoted to int, otherwise operator<<
+        // writes them as characters (e.g. the raw byte 0x09) instead of
+        // the decimal text VTK's ASCII parser expects.
+        typedef typename std::conditional<
+            std::is_same<Scalar, char>::value || std::is_same<Scalar, unsigned char>::value
+                || std::is_same<Scalar, signed char>::value,
+            int, Scalar>::type PrintScalar;
+
+        stream.setf(std::ios::fixed);
+        stream.precision(precision);
+        for (index_t j = 0; j < matrix.cols(); ++j)
+            for (index_t i = 0; i < matrix.rows(); ++i)
+                stream << static_cast<PrintScalar>(matrix(i, j)) << " ";
+        stream << "\n";
+    }
+
+    stream << "</DataArray>\n";
+}
+
+template <class MatrixType>
+inline void writeUnstructuredGrid(std::ostream & file,
+                                  const MatrixType & allPoints,
+                                  const gsMatrix<index_t> & connectivity,
+                                  const gsMatrix<index_t> & offsets,
+                                  const gsMatrix<unsigned char> & types,
+                                  const gsMatrix<index_t> & patchIds,
+                                  bool export_base64,
+                                  unsigned precision,
+                                  bool blockColors)
+{
+    file << "<Points>\n";
+    writeDataArray(file, allPoints, "", precision, export_base64);
+    file << "</Points>\n";
+
+    file << "<Cells>\n";
+    writeDataArray(file, connectivity, "connectivity", precision, export_base64);
+    writeDataArray(file, offsets, "offsets", precision, export_base64);
+    writeDataArray(file, types, "types", precision, export_base64);
+    file << "</Cells>\n";
+
+    file << "<CellData Scalars=\"PatchID\">\n";
+    writeDataArray(file, patchIds, "PatchID", precision, export_base64);
+    if (blockColors)
+    {
+        // Cyclic color index, so that neighboring patches (blocks) get
+        // distinct colors when the patch count exceeds the color table.
+        gsMatrix<index_t> colors = patchIds;
+        for (index_t i = 0; i != colors.cols(); ++i)
+            colors(0, i) = colors(0, i) % 12;
+        writeDataArray(file, colors, "BlockColor", precision, export_base64);
+    }
+    file << "</CellData>\n";
+}
+} // namespace pv_unstructured_detail
+
 // Export a 3D parametric mesh
 template<class T>
 void writeSingleBasisMesh3D(const gsMesh<T> & sl,
-                            std::string const & fn)
+                            std::string const & fn,
+                            unsigned precision)
 {
     const unsigned numVer = sl.numVertices();
     const unsigned numEl  = numVer / 8;
@@ -48,7 +168,7 @@ void writeSingleBasisMesh3D(const gsMesh<T> & sl,
     if ( ! file.is_open() )
         gsWarn<<"writeSingleBasisMesh3D: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
-    file << std::setprecision (PLOT_PRECISION);
+    file << std::setprecision (precision);
 
     file <<"<?xml version=\"1.0\"?>\n";
     file <<"<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
@@ -117,14 +237,15 @@ void writeSingleBasisMesh3D(const gsMesh<T> & sl,
     file.close();
 
     //if( pvd ) // make a pvd file
-    //    makeCollection(fn, ".vtp");
+    //    gsParaviewCollection<T>::make(fn, ".vtp");
 }
 
 // Export a 2D parametric mesh -- note: duplicates code from writeSingleBasisMesh3D,
 //
 template<class T>
 void writeSingleBasisMesh2D(const gsMesh<T> & sl,
-                            std::string const & fn)
+                            std::string const & fn,
+                            unsigned precision)
 {
     const unsigned numVer = sl.numVertices();
     const unsigned numEl  = numVer / 4; //(1<<dim)
@@ -134,7 +255,7 @@ void writeSingleBasisMesh2D(const gsMesh<T> & sl,
     if ( ! file.is_open() )
         gsWarn<<"writeSingleBasisMesh2D: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
-    file << std::setprecision (PLOT_PRECISION);
+    file << std::setprecision (precision);
 
     file <<"<?xml version=\"1.0\"?>\n";
     file <<"<VTKFile type=\"UnstructuredGrid\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
@@ -210,20 +331,21 @@ void writeSingleBasisMesh2D(const gsMesh<T> & sl,
     file.close();
 
     //if( pvd ) // make a pvd file
-    //    makeCollection(fn, ".vtp");
+    //    gsParaviewCollection<T>::make(fn, ".vtp");
 }
 
 
 /// Export a parametric mesh
 template<class T>
 void writeSingleBasisMesh(const gsBasis<T> & basis,
-                         std::string const & fn)
+                         std::string const & fn,
+                         unsigned precision)
 {
     gsMesh<T> msh(basis, 0);
     if ( basis.dim() == 3)
-        writeSingleBasisMesh3D(msh,fn);
+        writeSingleBasisMesh3D(msh,fn,precision);
     else if ( basis.dim() == 2)
-        writeSingleBasisMesh2D(msh,fn);
+        writeSingleBasisMesh2D(msh,fn,precision);
     else
         gsWriteParaview(msh, fn, false);
 }
@@ -231,7 +353,8 @@ void writeSingleBasisMesh(const gsBasis<T> & basis,
 /// Export a computational mesh
 template<class T>
 void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
-                         std::string const & fn, unsigned resolution)
+                         std::string const & fn, unsigned resolution,
+                         unsigned precision)
 {
     gsMesh<T> msh(basis, resolution);
     Geo.evaluateMesh(msh);
@@ -244,10 +367,64 @@ void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
         gsWriteParaview(msh, fn, false);
 }
 
+namespace pv_mesh_detail {
+
+/// Appends \a src to \a target, shifting the vertex indices of the copied edges
+/// by the number of vertices already in \a target. gsMesh::addVertex assigns
+/// ids sequentially (gsMesh.hpp:134), so a source vertex's shifted index is its
+/// id plus that offset. Both the computational mesh and the control net
+/// populate only edges, never faces, so only vertices and edges are carried
+/// over.
+template<class T>
+void appendMesh(gsMesh<T> & target, const gsMesh<T> & src)
+{
+    const int offset = static_cast<int>(target.numVertices());
+
+    for (size_t i = 0; i != src.numVertices(); ++i)
+    {
+        const gsVertex<T> & v = src.vertex(i);
+        target.addVertex(v[0], v[1], v[2]);
+    }
+
+    for (size_t i = 0; i != src.numEdges(); ++i)
+        target.addEdge(offset + src.edge(i).source->getId(),
+                       offset + src.edge(i).target->getId());
+}
+
+} // namespace pv_mesh_detail
+
+template<class T>
+void writeMultiPatchCompMesh(const gsMultiPatch<T> & mp, std::string const & fn,
+                             unsigned resolution)
+{
+    gsMesh<T> all;
+    for (size_t p = 0; p != mp.nPatches(); ++p)
+    {
+        gsMesh<T> msh(mp.patch(p).basis(), resolution);
+        mp.patch(p).evaluateMesh(msh);
+        pv_mesh_detail::appendMesh(all, msh);
+    }
+    gsWriteParaview(all, fn, false);
+}
+
+template<class T>
+void writeMultiPatchControlNet(const gsMultiPatch<T> & mp, std::string const & fn)
+{
+    gsMesh<T> all;
+    for (size_t p = 0; p != mp.nPatches(); ++p)
+    {
+        gsMesh<T> msh;
+        mp.patch(p).controlNet(msh);
+        pv_mesh_detail::appendMesh(all, msh);
+    }
+    gsWriteParaview(all, fn, false);
+}
+
 /// Export a control net
 template<class T>
 void writeSingleControlNet(const gsGeometry<T> & Geo,
-                           std::string const & fn)
+                           std::string const & fn,
+                           unsigned precision)
 {
     const int d = Geo.parDim();
     const unsigned n = Geo.geoDim();
@@ -259,7 +436,7 @@ void writeSingleControlNet(const gsGeometry<T> & Geo,
         gsDebug << "Fallling back to writing 4-dimensional control net as "
                    "point cloud.\n";
         const gsMatrix<T>& cp = Geo.coefs();
-        gsWriteParaviewPoints<T>(cp.transpose(), fn);
+        gsWriteParaviewPoints<T>(cp.transpose(), fn, precision);
         return;
     }
 
@@ -292,7 +469,8 @@ template<class T>
 void gsWriteParaviewTPgrid(const gsMatrix<T> & eval_geo  ,
                            const gsMatrix<T> & eval_field,
                            const gsVector<index_t> & np,
-                           std::string const & fn)
+                           std::string const & fn,
+                           unsigned precision)
 {
     const int n = eval_geo.rows();
     GISMO_ASSERT(eval_geo.cols()==eval_field.cols()
@@ -303,7 +481,7 @@ void gsWriteParaviewTPgrid(const gsMatrix<T> & eval_geo  ,
     mfn.append(".vts");
     std::ofstream file(mfn.c_str());
     file << std::fixed; // no exponents
-    file << std::setprecision (PLOT_PRECISION);
+    file << std::setprecision (precision);
 
     index_t np1 = (np.size()>1 ? np(1)-1 : 0);
     index_t np2 = (np.size()>2 ? np(2)-1 : 0);
@@ -355,7 +533,8 @@ template<class T>
 void writeSinglePatchField(const gsFunction<T> & geometry,
                            const gsFunction<T> & parField,
                            const bool isParam,
-                           std::string const & fn, unsigned npts)
+                           std::string const & fn, unsigned npts,
+                           unsigned precision)
 {
     const int n = geometry.targetDim();
     const int d = geometry.domainDim();
@@ -397,15 +576,16 @@ void writeSinglePatchField(const gsFunction<T> & geometry,
         eval_field.bottomRows(1).setZero(); // 3-field.dim()
     }
 
-    gsWriteParaviewTPgrid(eval_geo, eval_field, np.template cast<index_t>(), fn);
+    gsWriteParaviewTPgrid(eval_geo, eval_field, np.template cast<index_t>(), fn, precision);
 }
 
 /// Write a file containing a solution field over a single geometry
 template<class T>
 void writeSinglePatchField(const gsField<T> & field, int patchNr,
-                           std::string const & fn, unsigned npts)
+                           std::string const & fn, unsigned npts,
+                           unsigned precision)
 {
-    writeSinglePatchField(field.patch(patchNr), field.function(patchNr), field.isParametric(), fn, npts);
+    writeSinglePatchField(field.patch(patchNr), field.function(patchNr), field.isParametric(), fn, npts, precision);
 /*
     const int n = field.geoDim();
     const int d = field.parDim();
@@ -453,7 +633,7 @@ void writeSinglePatchField(const gsField<T> & field, int patchNr,
     mfn.append(".vts");
     std::ofstream file(mfn.c_str());
     file << std::fixed; // no exponents
-    file << std::setprecision (PLOT_PRECISION);
+    file << std::setprecision (precision);
 
     file <<"<?xml version=\"1.0\"?>\n";
     file <<"<VTKFile type=\"StructuredGrid\" version=\"0.1\">\n";
@@ -485,7 +665,8 @@ void writeSinglePatchField(const gsField<T> & field, int patchNr,
 template<class T>
 void writeSingleGeometry(gsFunction<T> const& func,
                          gsMatrix<T> const& supp,
-                         std::string const & fn, unsigned npts)
+                         std::string const & fn, unsigned npts,
+                         unsigned precision)
 {
     int n = func.targetDim();
     const int d = func.domainDim();
@@ -528,7 +709,7 @@ void writeSingleGeometry(gsFunction<T> const& func,
     if ( ! file.is_open() )
         gsWarn<<"writeSingleGeometry: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
-    file << std::setprecision (PLOT_PRECISION);
+    file << std::setprecision (precision);
     file <<"<?xml version=\"1.0\"?>\n";
     file <<"<VTKFile type=\"StructuredGrid\" version=\"0.1\">\n";
     file <<"<StructuredGrid WholeExtent=\"0 "<<np(0)-1<<" 0 "<<np(1)-1<<" 0 "<<np(2)-1<<"\">\n";
@@ -572,7 +753,8 @@ void writeSingleGeometry(gsFunction<T> const& func,
 template<class T>
 void writeSingleCurve(gsFunction<T> const& func,
                       gsMatrix<T> const& supp,
-                      std::string const & fn, unsigned npts)
+                      std::string const & fn, unsigned npts,
+                      unsigned precision)
 {
     const unsigned n = func.targetDim();
     const unsigned d = func.domainDim();
@@ -607,7 +789,7 @@ void writeSingleCurve(gsFunction<T> const& func,
     if ( ! file.is_open() )
         gsWarn<<"writeSingleCurve: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
-    file << std::setprecision (PLOT_PRECISION);
+    file << std::setprecision (precision);
     file <<"<?xml version=\"1.0\"?>\n";
     file <<"<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
     file <<"<PolyData>\n";
@@ -648,14 +830,16 @@ void writeSingleCurve(gsFunction<T> const& func,
 }
 
 template<class T>
-void writeSingleCurve(const gsGeometry<T> & Geo, std::string const & fn, unsigned npts)
+void writeSingleCurve(const gsGeometry<T> & Geo, std::string const & fn, unsigned npts,
+                      unsigned precision)
 {
     gsMatrix<T> ab = Geo.parameterRange();
-    writeSingleCurve( Geo, ab, fn, npts);
+    writeSingleCurve( Geo, ab, fn, npts, precision);
 }
 
 template<class T>
-void writeSingleGeometry(const gsGeometry<T> & Geo, std::string const & fn, unsigned npts)
+void writeSingleGeometry(const gsGeometry<T> & Geo, std::string const & fn, unsigned npts,
+                         unsigned precision)
 {
     /*
       gsMesh<T> msh;
@@ -664,16 +848,17 @@ void writeSingleGeometry(const gsGeometry<T> & Geo, std::string const & fn, unsi
       return;
     */
     gsMatrix<T> ab = Geo.parameterRange();
-    writeSingleGeometry( Geo, ab, fn, npts);
+    writeSingleGeometry( Geo, ab, fn, npts, precision);
 }
 
 template<class T>
 void writeSingleTrimSurface(const gsTrimSurface<T> & surf,
                             std::string const & fn,
-                            unsigned npts)
+                            unsigned npts,
+                            unsigned precision)
 {
     typename gsMesh<T>::uPtr msh = surf.toMesh(npts);
-    gsWriteParaview( *msh, fn);
+    gsWriteParaview( *msh, fn, false);
 }
 
 /// Write a file containing a solution field over a geometry
@@ -681,7 +866,8 @@ template<class T>
 void gsWriteParaview(const gsField<T> & field,
                      std::string const & fn,
                      unsigned npts, bool mesh,
-                     const std::string pDelim)
+                     const std::string pDelim, bool skipPvd,
+                     unsigned precision)
 {
     /*
     if (mesh && (!field.isParametrized()) )
@@ -692,7 +878,8 @@ void gsWriteParaview(const gsField<T> & field,
     */
 
     const unsigned n = field.nPieces();
-    gsParaviewCollection collection(fn);
+    typename gsParaviewCollection<T>::uPtr collection;
+    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection<T>(fn));
     std::string fileName, fileName_nopath;
 
     for ( unsigned i=0; i < n; ++i )
@@ -702,19 +889,19 @@ void gsWriteParaview(const gsField<T> & field,
 
         fileName = fn + pDelim + util::to_string(i);
         fileName_nopath = gsFileManager::getFilename(fileName);
-        writeSinglePatchField( field, i, fileName, npts );
-        collection.addPart(fileName_nopath + ".vts");
+        writeSinglePatchField( field, i, fileName, npts, precision );
+        if (collection) collection->addPart(fileName_nopath + ".vts");
         if ( mesh )
         {
             fileName+= "_mesh";
             fileName_nopath = gsFileManager::getFilename(fileName);
-            writeSingleCompMesh(dom, field.patch(i), fileName);
+            writeSingleCompMesh(dom, field.patch(i), fileName, 8, precision);
 
-            collection.addPart(fileName_nopath + ".vtp");
+            if (collection) collection->addPart(fileName_nopath + ".vtp");
         }
 
     }
-    collection.save();
+    if (collection) collection->save();
 }
 
 /// Write a file containing a solution field over a geometry
@@ -722,7 +909,8 @@ template<class T>
 void gsWriteParaview(gsFunctionSet<T> const& geo,
                      gsFunctionSet<T> const& func,
                      std::string const & fn,
-                     unsigned npts, const std::string pDelim)
+                     unsigned npts, const std::string pDelim, bool skipPvd,
+                     unsigned precision)
 {
     /*
     if (mesh && (!field.isParametrized()) )
@@ -735,36 +923,39 @@ void gsWriteParaview(gsFunctionSet<T> const& geo,
     GISMO_ASSERT(geo.nPieces()==func.nPieces(),"Function sets must have same number of pieces, but func has "<<func.nPieces()<<" and geo has "<<geo.nPieces());
 
     const unsigned n = geo.nPieces();
-    gsParaviewCollection collection(fn);
+    typename gsParaviewCollection<T>::uPtr collection;
+    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection<T>(fn));
     std::string fileName, fileName_nopath;
 
     for ( unsigned i=0; i < n; ++i )
     {
         fileName = fn + pDelim + util::to_string(i);
         fileName_nopath = gsFileManager::getFilename(fileName);
-        writeSinglePatchField( geo.function(i), func.function(i), true, fileName, npts );
-        collection.addPart(fileName_nopath + ".vts");
+        writeSinglePatchField( geo.function(i), func.function(i), true, fileName, npts, precision );
+        if (collection) collection->addPart(fileName_nopath + ".vts");
     }
-    collection.save();
+    if (collection) collection->save();
 }
 
 /// Write a file containing a solution field over a geometry
 template<class T>
 void gsWriteParaview(gsMappedSpline<2,T> const& mspline,
                      std::string const & fn,
-                     unsigned npts)
+                     unsigned npts, bool skipPvd,
+                     unsigned precision)
 {
-    gsParaviewCollection collection(fn);
+    typename gsParaviewCollection<T>::uPtr collection;
+    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection<T>(fn));
     std::string fileName, fileName_nopath;
     for ( index_t p=0; p < mspline.nPieces(); ++p )
     {
         // Compute the geometry
         fileName = fn + "_" + util::to_string(p);
         fileName_nopath = gsFileManager::getFilename(fileName);
-        writeSingleGeometry(mspline.piece(p),mspline.piece(p).support(),fileName,npts);
-        collection.addPart(fileName_nopath + ".vts",-1,"",p);
+        writeSingleGeometry(mspline.piece(p),mspline.piece(p).support(),fileName,npts,precision);
+        if (collection) collection->addPart(fileName_nopath + ".vts",-1,"",p);
     }
-    collection.save();
+    if (collection) collection->save();
 }
 
 /// Write a file containing a solution field over a geometry
@@ -774,7 +965,9 @@ void gsWriteParaview(gsFunctionSet<T> const& geom,
                      std::string const & fn,
                      unsigned npts,
                      const bool fullsupport,
-                     const std::vector<index_t> indices)
+                     const std::vector<index_t> indices,
+                     bool skipPvd,
+                     unsigned precision)
 {
     /*
         We loop over all global basis functions.
@@ -793,7 +986,8 @@ void gsWriteParaview(gsFunctionSet<T> const& geom,
     else
         plotIndices = indices;
 
-    gsParaviewCollection collection(fn);
+    typename gsParaviewCollection<T>::uPtr collection;
+    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection<T>(fn));
     std::string fileName, fileName_nopath;
     gsMatrix<T> eval_geo, eval_basis, pts, ab;
     gsVector<T> a, b;
@@ -838,9 +1032,9 @@ void gsWriteParaview(gsFunctionSet<T> const& geom,
             fileName_nopath = gsFileManager::getFilename(fileName);
 
             eval_basis = mbasis.piece(p).evalSingle(*i,pts);
-            gsWriteParaviewTPgrid(eval_geo, eval_basis, np.template cast<index_t>(), fileName);
+            gsWriteParaviewTPgrid(eval_geo, eval_basis, np.template cast<index_t>(), fileName, precision);
 
-            collection.addPart(fileName_nopath + ".vts",*i,"",p);
+            if (collection) collection->addPart(fileName_nopath + ".vts",*i,"",p);
         }
         // for (index_t k = 0; k < mbasis.globalSize(); k++)
         // {
@@ -853,27 +1047,29 @@ void gsWriteParaview(gsFunctionSet<T> const& geom,
         //     collection.addPart(fileName_nopath + ".vts",k,"",p);
         // }
     }
-    collection.save();
+    if (collection) collection->save();
 }
 
 /// Export a Geometry without scalar information
 template<class T>
 void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
-                     unsigned npts, bool mesh, bool ctrlNet)
+                     unsigned npts, bool mesh, bool ctrlNet, bool skipPvd,
+                     unsigned precision)
 {
     const bool curve = ( Geo.domainDim() == 1 );
 
-    gsParaviewCollection collection(fn);
+    typename gsParaviewCollection<T>::uPtr collection;
+    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection<T>(fn));
     std::string fn_nopath = gsFileManager::getFilename(fn);
     if ( curve )
     {
-        writeSingleCurve(Geo, fn, npts);
-        collection.addPart(fn_nopath + ".vtp");
+        writeSingleCurve(Geo, fn, npts, precision);
+        if (collection) collection->addPart(fn_nopath + ".vtp");
     }
     else
     {
-        writeSingleGeometry(Geo, fn, npts);
-        collection.addPart(fn_nopath + ".vts");
+        writeSingleGeometry(Geo, fn, npts, precision);
+        if (collection) collection->addPart(fn_nopath + ".vts");
     }
 
     if ( mesh ) // Output the underlying mesh
@@ -900,36 +1096,36 @@ void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
     	    ptsPerEdge = npts;
     	}
 
-        writeSingleCompMesh(Geo.basis(), Geo, fileName, ptsPerEdge);
-        collection.addPart(fileName_nopath + ".vtp");
+        writeSingleCompMesh(Geo.basis(), Geo, fileName, ptsPerEdge, precision);
+        if (collection) collection->addPart(fileName_nopath + ".vtp");
     }
 
     if ( ctrlNet ) // Output the control net
     {
         const std::string fileName = fn + "_cnet";
         std::string fileName_nopath = gsFileManager::getFilename(fileName);
-        writeSingleControlNet(Geo, fileName);
-        collection.addPart(fileName_nopath + ".vtp");
+        writeSingleControlNet(Geo, fileName, precision);
+        if (collection) collection->addPart(fileName_nopath + ".vtp");
     }
 
     // Write out the collection file
-    collection.save();
+    if (collection) collection->save();
 }
 
 // Export a multibasis mesh
 template<class T>
 void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
-                     std::string const & fn, unsigned npts)
+                     std::string const & fn, unsigned npts, unsigned precision)
 {
     // GISMO_ASSERT sizes
 
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection<T> collection(fn);
 
     for (size_t i = 0; i != domain.nPatches(); ++i)
     {
         const std::string fileName = fn + util::to_string(i) + "_mesh";
         const std::string fileName_nopath = gsFileManager::getFilename(fileName);
-        writeSingleCompMesh(mb[i], domain.patch(i), fileName, npts);
+        writeSingleCompMesh(mb[i], domain.patch(i), fileName, npts, precision);
         collection.addPart(fileName_nopath + ".vtp");
     }
 
@@ -941,12 +1137,12 @@ void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
 template<class T>
 void gsWriteParaview(const gsGeometrySlice<T> & Geo,
                      std::string const & fn,
-                     unsigned npts)
+                     unsigned npts, unsigned precision)
 {
     const gsMatrix<T> supp = Geo.parameterRange();
-    writeSingleGeometry(Geo, supp, fn, npts);
+    writeSingleGeometry(Geo, supp, fn, npts, precision);
     // Write out a pvd file
-    makeCollection(fn, ".vts"); // make also a pvd file
+    gsParaviewCollection<T>::make(fn, ".vts"); // make also a pvd file
 }
 
 
@@ -954,11 +1150,12 @@ void gsWriteParaview(const gsGeometrySlice<T> & Geo,
 template<class T>
 void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
                       std::string const & fn,
-                      unsigned npts, bool mesh, bool ctrlNet, const std::string pDelim)
+                      unsigned npts, bool mesh, bool ctrlNet, const std::string pDelim,
+                      unsigned precision)
 {
     const size_t n = Geo.size();
 
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection<T> collection(fn);
     std::string fnBase, fnBase_nopath;
 
     for ( size_t i=0; i<n ; i++)
@@ -968,12 +1165,12 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
 
         if ( Geo.at(i)->domainDim() == 1 )
         {
-            writeSingleCurve(*Geo[i], fnBase, npts);
+            writeSingleCurve(*Geo[i], fnBase, npts, precision);
             collection.addPart(fnBase_nopath + ".vtp");
         }
         else
         {
-            writeSingleGeometry( *Geo[i], fnBase, npts ) ;
+            writeSingleGeometry( *Geo[i], fnBase, npts, precision ) ;
             collection.addPart(fnBase_nopath + ".vts");
         }
 
@@ -981,7 +1178,7 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
         {
             const std::string fileName = fnBase + "_mesh";
             const std::string fileName_nopath = gsFileManager::getFilename(fileName);
-            writeSingleCompMesh(Geo[i]->basis(), *Geo[i], fileName);
+            writeSingleCompMesh(Geo[i]->basis(), *Geo[i], fileName, 8, precision);
             collection.addPart(fileName_nopath + ".vtp");
         }
 
@@ -989,7 +1186,7 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
         {
             const std::string fileName = fnBase + "_cnet";
             const std::string fileName_nopath = gsFileManager::getFilename(fileName);
-            writeSingleControlNet(*Geo[i], fileName);
+            writeSingleControlNet(*Geo[i], fileName, precision);
             collection.addPart(fileName_nopath + ".vtp");
         }
     }
@@ -1009,7 +1206,7 @@ void gsWriteParaviewBezier(const gsMultiPatch<T> & mPatch, std::string const & f
 
     if ( ctrlNet ) // Output the control net
     {
-        gsParaviewCollection collection(filename);
+        gsParaviewCollection<T> collection(filename);
         collection.addPart(gsFileManager::getFilename(filename) + ".vtu");
         for (size_t patch=0; patch<mPatch.nPatches();++patch)
         {
@@ -1023,9 +1220,387 @@ void gsWriteParaviewBezier(const gsMultiPatch<T> & mPatch, std::string const & f
     }
 }
 
+template<class T>
+void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch,
+                                     std::string const & fn,
+                                     unsigned npts,
+                                     bool export_base64,
+                                     bool skipPvd,
+                                     unsigned precision,
+                                     bool blockColors)
+{
+    const index_t nPatches = static_cast<index_t>(mPatch.nPatches());
+    GISMO_ASSERT(nPatches > 0, "Cannot export empty multipatch");
+
+    std::ofstream file((fn + ".vtu").c_str());
+    if ( !file.is_open() )
+        gsWarn << "gsWriteParaviewUnstructuredGrid: Problem opening file \"" << fn << "\"" << std::endl;
+
+    index_t totalPoints = 0;
+    index_t totalCells = 0;
+    index_t totalConnectivityEntries = 0;
+
+    std::vector<gsMatrix<T> > patchPoints;
+    std::vector<gsVector<unsigned> > patchNp;
+    std::vector<index_t> patchPointCounts;
+
+    gsMatrix<T> ab;
+    gsVector<T> a, b;
+    gsVector<unsigned> np;
+    gsMatrix<T> pts, eval_geo;
+
+    for (index_t p = 0; p < nPatches; ++p)
+    {
+        const gsGeometry<T>& geo = mPatch.patch(p);
+        const int d = geo.domainDim();
+        GISMO_ASSERT(d >= 1 && d <= 3, "Unstructured export supports only 1D/2D/3D patches");
+
+        ab = geo.support();
+        a = ab.col(0);
+        b = ab.col(1);
+        np = uniformSampleCount(a, b, npts);
+        pts = gsPointGrid(a, b, np);
+        eval_geo = geo.eval(pts);
+
+        if (eval_geo.rows() < 3)
+            eval_geo.conservativeResizeLike(gsMatrix<T>::Zero(3, eval_geo.cols()));
+
+        index_t cellsInPatch = 1;
+        for (int dim = 0; dim < d; ++dim)
+            cellsInPatch *= (np[dim] - 1);
+
+        const index_t vertsPerCell = (d == 1 ? 2 : (d == 2 ? 4 : 8));
+
+        patchPoints.push_back(eval_geo);
+        patchNp.push_back(np);
+        patchPointCounts.push_back(eval_geo.cols());
+
+        totalPoints += eval_geo.cols();
+        totalCells += cellsInPatch;
+        totalConnectivityEntries += cellsInPatch * vertsPerCell;
+    }
+
+    file << "<?xml version=\"1.0\"?>\n";
+    file << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\"";
+    if (export_base64)
+        file << " byte_order=\"LittleEndian\" header_type=\"UInt64\"";
+    file << ">\n";
+    file << "<UnstructuredGrid>\n";
+    file << "<Piece NumberOfPoints=\"" << totalPoints << "\" NumberOfCells=\"" << totalCells << "\">\n";
+
+    gsMatrix<T> allPoints(3, totalPoints);
+    gsMatrix<index_t> connectivity(1, totalConnectivityEntries);
+    gsMatrix<index_t> offsets(1, totalCells);
+    gsMatrix<unsigned char> types(1, totalCells);
+    gsMatrix<index_t> patchIds(1, totalCells);
+
+    index_t pointOffset = 0;
+    index_t connOffset = 0;
+    index_t cellOffset = 0;
+    index_t runningOffsets = 0;
+
+    for (index_t p = 0; p < nPatches; ++p)
+    {
+        const gsVector<unsigned>& np = patchNp[p];
+        const int d = mPatch.patch(p).domainDim();
+        const index_t nPoints = patchPointCounts[p];
+        const index_t vertsPerCell = (d == 1 ? 2 : (d == 2 ? 4 : 8));
+        const unsigned char cellType = static_cast<unsigned char>(d == 1 ? 3 : (d == 2 ? 9 : 12));
+        const index_t nu = static_cast<index_t>(np[0]);
+        const index_t nv = (np.rows() > 1 ? static_cast<index_t>(np[1]) : 1);
+        const index_t nw = (np.rows() > 2 ? static_cast<index_t>(np[2]) : 1);
+
+        allPoints.block(0, pointOffset, 3, nPoints) = patchPoints[p];
+
+        if (d == 1)
+        {
+            for (index_t i = 0; i < nu - 1; ++i)
+            {
+                connectivity(0, connOffset++) = pointOffset + i;
+                connectivity(0, connOffset++) = pointOffset + i + 1;
+                runningOffsets += vertsPerCell;
+                offsets(0, cellOffset) = runningOffsets;
+                types(0, cellOffset) = cellType;
+                patchIds(0, cellOffset) = p;
+                ++cellOffset;
+            }
+        }
+        else if (d == 2)
+        {
+            for (index_t j = 0; j < nv - 1; ++j)
+            {
+                for (index_t i = 0; i < nu - 1; ++i)
+                {
+                    const index_t i0 = pointOffset + i + j * nu;
+                    const index_t i1 = i0 + 1;
+                    const index_t i2 = i0 + nu + 1;
+                    const index_t i3 = i0 + nu;
+
+                    connectivity(0, connOffset++) = i0;
+                    connectivity(0, connOffset++) = i1;
+                    connectivity(0, connOffset++) = i2;
+                    connectivity(0, connOffset++) = i3;
+                    runningOffsets += vertsPerCell;
+                    offsets(0, cellOffset) = runningOffsets;
+                    types(0, cellOffset) = cellType;
+                    patchIds(0, cellOffset) = p;
+                    ++cellOffset;
+                }
+            }
+        }
+        else
+        {
+            for (index_t k = 0; k < nw - 1; ++k)
+            {
+                for (index_t j = 0; j < nv - 1; ++j)
+                {
+                    for (index_t i = 0; i < nu - 1; ++i)
+                    {
+                        const index_t i0 = pointOffset + i + j * nu + k * nu * nv;
+                        const index_t i1 = i0 + 1;
+                        const index_t i2 = i0 + nu + 1;
+                        const index_t i3 = i0 + nu;
+                        const index_t i4 = i0 + nu * nv;
+                        const index_t i5 = i4 + 1;
+                        const index_t i6 = i4 + nu + 1;
+                        const index_t i7 = i4 + nu;
+
+                        connectivity(0, connOffset++) = i0;
+                        connectivity(0, connOffset++) = i1;
+                        connectivity(0, connOffset++) = i2;
+                        connectivity(0, connOffset++) = i3;
+                        connectivity(0, connOffset++) = i4;
+                        connectivity(0, connOffset++) = i5;
+                        connectivity(0, connOffset++) = i6;
+                        connectivity(0, connOffset++) = i7;
+                        runningOffsets += vertsPerCell;
+                        offsets(0, cellOffset) = runningOffsets;
+                        types(0, cellOffset) = cellType;
+                        patchIds(0, cellOffset) = p;
+                        ++cellOffset;
+                    }
+                }
+            }
+        }
+
+        pointOffset += nPoints;
+    }
+
+    pv_unstructured_detail::writeUnstructuredGrid(
+        file, allPoints, connectivity, offsets, types, patchIds,
+        export_base64, precision, blockColors);
+
+    file << "</Piece>\n";
+    file << "</UnstructuredGrid>\n";
+    file << "</VTKFile>\n";
+    file.close();
+
+    if (!skipPvd)
+        gsParaviewCollection<T>::make(fn, ".vtu");
+}
+
+template<class T>
+void gsWriteParaviewUnstructuredGrid(const gsField<T> & field,
+                                     std::string const & fn,
+                                     unsigned npts,
+                                     bool export_base64,
+                                     bool skipPvd,
+                                     unsigned precision,
+                                     bool blockColors)
+{
+    const index_t nPieces = static_cast<index_t>(field.nPieces());
+    GISMO_ASSERT(nPieces > 0, "Cannot export empty field");
+
+    std::ofstream file((fn + ".vtu").c_str());
+    if ( !file.is_open() )
+        gsWarn << "gsWriteParaviewUnstructuredGrid: Problem opening file \"" << fn << "\"" << std::endl;
+
+    index_t totalPoints = 0;
+    index_t totalCells = 0;
+    index_t totalConnectivityEntries = 0;
+
+    std::vector<gsMatrix<T> > patchPoints;
+    std::vector<gsMatrix<T> > patchFields;
+    std::vector<gsVector<unsigned> > patchNp;
+    std::vector<index_t> patchPointCounts;
+
+    gsMatrix<T> pts, ab, eval_geo, eval_field;
+    gsVector<T> a, b;
+    gsVector<unsigned> np;
+
+    for (index_t p = 0; p < nPieces; ++p)
+    {
+        const gsFunction<T>& geo = field.patch(p);
+        const gsFunction<T>& func = field.function(p);
+        const int d = geo.domainDim();
+        GISMO_ASSERT(d >= 1 && d <= 3, "Unstructured export supports only 1D/2D/3D patches");
+
+        ab = geo.support();
+        a = ab.col(0);
+        b = ab.col(1);
+        np = uniformSampleCount(a, b, npts);
+        pts = gsPointGrid(a, b, np);
+        eval_geo = geo.eval(pts);
+        eval_field = field.isParametric() ? func.eval(pts) : func.eval(eval_geo);
+
+        if (eval_geo.rows() < 3)
+            eval_geo.conservativeResizeLike(gsMatrix<T>::Zero(3, eval_geo.cols()));
+
+        index_t cellsInPatch = 1;
+        for (int dim = 0; dim < d; ++dim)
+            cellsInPatch *= (np[dim] - 1);
+
+        const index_t vertsPerCell = (d == 1 ? 2 : (d == 2 ? 4 : 8));
+
+        patchPoints.push_back(eval_geo);
+        patchFields.push_back(eval_field);
+        patchNp.push_back(np);
+        patchPointCounts.push_back(eval_geo.cols());
+
+        totalPoints += eval_geo.cols();
+        totalCells += cellsInPatch;
+        totalConnectivityEntries += cellsInPatch * vertsPerCell;
+    }
+
+    const index_t fieldRows = patchFields.front().rows();
+    const bool fieldIsVector = (fieldRows > 1 && fieldRows <= 3);
+    const bool padVector = fieldIsVector && fieldRows < 3;
+    const index_t fieldComponents = padVector ? 3 : fieldRows;
+
+    gsMatrix<T> allPoints(3, totalPoints);
+    gsMatrix<T> allField = gsMatrix<T>::Zero(fieldComponents, totalPoints);
+    gsMatrix<index_t> connectivity(1, totalConnectivityEntries);
+    gsMatrix<index_t> offsets(1, totalCells);
+    gsMatrix<unsigned char> types(1, totalCells);
+    gsMatrix<index_t> patchIds(1, totalCells);
+
+    index_t pointOffset = 0;
+    index_t connOffset = 0;
+    index_t cellOffset = 0;
+    index_t runningOffsets = 0;
+
+    for (index_t p = 0; p < nPieces; ++p)
+    {
+        const gsVector<unsigned>& np = patchNp[p];
+        const int d = field.patch(p).domainDim();
+        const index_t nPoints = patchPointCounts[p];
+        const index_t vertsPerCell = (d == 1 ? 2 : (d == 2 ? 4 : 8));
+        const unsigned char cellType = static_cast<unsigned char>(d == 1 ? 3 : (d == 2 ? 9 : 12));
+        const index_t nu = static_cast<index_t>(np[0]);
+        const index_t nv = (np.rows() > 1 ? static_cast<index_t>(np[1]) : 1);
+        const index_t nw = (np.rows() > 2 ? static_cast<index_t>(np[2]) : 1);
+
+        allPoints.block(0, pointOffset, 3, nPoints) = patchPoints[p];
+        allField.block(0, pointOffset, patchFields[p].rows(), nPoints) = patchFields[p];
+
+        if (d == 1)
+        {
+            for (index_t i = 0; i < nu - 1; ++i)
+            {
+                connectivity(0, connOffset++) = pointOffset + i;
+                connectivity(0, connOffset++) = pointOffset + i + 1;
+                runningOffsets += vertsPerCell;
+                offsets(0, cellOffset) = runningOffsets;
+                types(0, cellOffset) = cellType;
+                patchIds(0, cellOffset) = p;
+                ++cellOffset;
+            }
+        }
+        else if (d == 2)
+        {
+            for (index_t j = 0; j < nv - 1; ++j)
+            {
+                for (index_t i = 0; i < nu - 1; ++i)
+                {
+                    const index_t i0 = pointOffset + i + j * nu;
+                    const index_t i1 = i0 + 1;
+                    const index_t i2 = i0 + nu + 1;
+                    const index_t i3 = i0 + nu;
+
+                    connectivity(0, connOffset++) = i0;
+                    connectivity(0, connOffset++) = i1;
+                    connectivity(0, connOffset++) = i2;
+                    connectivity(0, connOffset++) = i3;
+                    runningOffsets += vertsPerCell;
+                    offsets(0, cellOffset) = runningOffsets;
+                    types(0, cellOffset) = cellType;
+                    patchIds(0, cellOffset) = p;
+                    ++cellOffset;
+                }
+            }
+        }
+        else
+        {
+            for (index_t k = 0; k < nw - 1; ++k)
+            {
+                for (index_t j = 0; j < nv - 1; ++j)
+                {
+                    for (index_t i = 0; i < nu - 1; ++i)
+                    {
+                        const index_t i0 = pointOffset + i + j * nu + k * nu * nv;
+                        const index_t i1 = i0 + 1;
+                        const index_t i2 = i0 + nu + 1;
+                        const index_t i3 = i0 + nu;
+                        const index_t i4 = i0 + nu * nv;
+                        const index_t i5 = i4 + 1;
+                        const index_t i6 = i4 + nu + 1;
+                        const index_t i7 = i4 + nu;
+
+                        connectivity(0, connOffset++) = i0;
+                        connectivity(0, connOffset++) = i1;
+                        connectivity(0, connOffset++) = i2;
+                        connectivity(0, connOffset++) = i3;
+                        connectivity(0, connOffset++) = i4;
+                        connectivity(0, connOffset++) = i5;
+                        connectivity(0, connOffset++) = i6;
+                        connectivity(0, connOffset++) = i7;
+                        runningOffsets += vertsPerCell;
+                        offsets(0, cellOffset) = runningOffsets;
+                        types(0, cellOffset) = cellType;
+                        patchIds(0, cellOffset) = p;
+                        ++cellOffset;
+                    }
+                }
+            }
+        }
+
+        pointOffset += nPoints;
+    }
+
+    file << "<?xml version=\"1.0\"?>\n";
+    file << "<VTKFile type=\"UnstructuredGrid\" version=\"0.1\"";
+    if (export_base64)
+        file << " byte_order=\"LittleEndian\" header_type=\"UInt64\"";
+    file << ">\n";
+    file << "<UnstructuredGrid>\n";
+    file << "<Piece NumberOfPoints=\"" << totalPoints << "\" NumberOfCells=\"" << totalCells << "\">\n";
+
+    if (fieldRows == 1)
+        file << "<PointData Scalars=\"SolutionField\">\n";
+    else if (fieldRows > 3)
+        file << "<PointData Tensors=\"SolutionField\">\n";
+    else
+        file << "<PointData Vectors=\"SolutionField\">\n";
+    pv_unstructured_detail::writeDataArray(file, allField, "SolutionField", precision, export_base64);
+    file << "</PointData>\n";
+
+    pv_unstructured_detail::writeUnstructuredGrid(
+        file, allPoints, connectivity, offsets, types, patchIds,
+        export_base64, precision, blockColors);
+
+    file << "</Piece>\n";
+    file << "</UnstructuredGrid>\n";
+    file << "</VTKFile>\n";
+    file.close();
+
+    if (!skipPvd)
+        gsParaviewCollection<T>::make(fn, ".vtu");
+}
+
 /// Export i-th Basis function
 template<class T>
-void gsWriteParaview_basisFnct(int i, gsBasis<T> const& basis, std::string const & fn, unsigned npts)
+void gsWriteParaview_basisFnct(int i, gsBasis<T> const& basis, std::string const & fn, unsigned npts,
+                               unsigned precision)
 {
     // basis.support(i) --> returns a (tight) bounding box for the
     // supp. of i-th basis func.
@@ -1070,7 +1645,7 @@ void gsWriteParaview_basisFnct(int i, gsBasis<T> const& basis, std::string const
     if ( ! file.is_open() )
         gsWarn<<"gsWriteParaview_basisFnct: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
-    file << std::setprecision (PLOT_PRECISION);
+    file << std::setprecision (precision);
     file <<"<?xml version=\"1.0\"?>\n";
     file <<"<VTKFile type=\"StructuredGrid\" version=\"0.1\">\n";
     file <<"<StructuredGrid WholeExtent=\"0 "<<np(0)-1<<" 0 "<<np(1)-1<<" 0 "<<np(2)-1<<"\">\n";
@@ -1103,17 +1678,18 @@ void gsWriteParaview_basisFnct(int i, gsBasis<T> const& basis, std::string const
 
 // Export a functionSet mesh
 template<class T>
-void gsWriteParaview(gsFunctionSet<T> const& func, std::string const & fn, unsigned npts)
+void gsWriteParaview(gsFunctionSet<T> const& func, std::string const & fn, unsigned npts,
+                     unsigned precision)
 {
     // GISMO_ASSERT sizes
 
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection<T> collection(fn);
 
     for (index_t i = 0; i != func.size(); ++i)
     {
         const std::string fileName = fn + util::to_string(i);
         const std::string fileName_nopath = gsFileManager::getFilename(fileName);
-        gsWriteParaview(func.function(i), func.function(i).support(), fileName, npts,false);
+        gsWriteParaview(func.function(i), func.function(i).support(), fileName, npts, false, precision);
         collection.addPart(fileName_nopath + ".vts");
     }
 
@@ -1123,7 +1699,8 @@ void gsWriteParaview(gsFunctionSet<T> const& func, std::string const & fn, unsig
 
 /// Export a function
 template<class T>
-void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::string const & fn, unsigned npts, bool graph)
+void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::string const & fn, unsigned npts, bool graph,
+                     unsigned precision)
 {
     int d = func.domainDim(); // tested for d==2
 
@@ -1147,7 +1724,7 @@ void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::st
     if ( ! file.is_open() )
         gsWarn<<"gsWriteParaview: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
-    file << std::setprecision (PLOT_PRECISION);
+    file << std::setprecision (precision);
     file <<"<?xml version=\"1.0\"?>\n";
     file <<"<VTKFile type=\"StructuredGrid\" version=\"0.1\">\n";
     file <<"<StructuredGrid WholeExtent=\"0 "<<np(0)-1<<" 0 "<<np(1)-1<<" 0 "<<np(2)-1<<"\">\n";
@@ -1193,16 +1770,16 @@ void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::st
 /// Export Basis functions
 template<class T>
 void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn,
-                     unsigned npts, bool mesh)
+                     unsigned npts, bool mesh, unsigned precision)
 {
     const index_t n = basis.size();
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection<T> collection(fn);
 
     for ( index_t i=0; i< n; i++)
     {
         std::string fileName = fn + util::to_string(i);
         std::string fileName_nopath = gsFileManager::getFilename(fileName);
-        gsWriteParaview_basisFnct<T>(i, basis, fileName, npts ) ;
+        gsWriteParaview_basisFnct<T>(i, basis, fileName, npts, precision ) ;
         collection.addPart(fileName_nopath + ".vts");
     }
 
@@ -1210,7 +1787,7 @@ void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn,
     {
         std::string fileName = fn + "_mesh";
         std::string fileName_nopath = gsFileManager::getFilename(fileName);
-        writeSingleBasisMesh(basis, fileName);
+        writeSingleBasisMesh(basis, fileName, precision);
         //collection.addPart(fileName, ".vtp");
         collection.addPart(fileName_nopath + ".vtu");
     }
@@ -1223,9 +1800,9 @@ template<class T>
 void gsWriteParaview(gsBasis<T> const& basis,
                      const std::vector<index_t> & indices,
                      std::string const & fn,
-                     unsigned npts, bool mesh)
+                     unsigned npts, bool mesh, unsigned precision)
 {
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection<T> collection(fn);
 
     for (typename std::vector<index_t>::const_iterator idx = indices.cbegin();
                                                        idx != indices.cend();
@@ -1233,7 +1810,7 @@ void gsWriteParaview(gsBasis<T> const& basis,
     {
         std::string fileName = fn + util::to_string(*idx);
         std::string fileName_nopath = gsFileManager::getFilename(fileName);
-        gsWriteParaview_basisFnct<T>(*idx, basis, fileName, npts ) ;
+        gsWriteParaview_basisFnct<T>(*idx, basis, fileName, npts, precision ) ;
         collection.addPart(fileName_nopath + ".vts");
     }
 
@@ -1241,7 +1818,7 @@ void gsWriteParaview(gsBasis<T> const& basis,
     {
         std::string fileName = fn + "_mesh";
         std::string fileName_nopath = gsFileManager::getFilename(fileName);
-        writeSingleBasisMesh(basis, fileName);
+        writeSingleBasisMesh(basis, fileName, precision);
         //collection.addPart(fileName, ".vtp");
         collection.addPart(fileName_nopath + ".vtu");
     }
@@ -1251,7 +1828,8 @@ void gsWriteParaview(gsBasis<T> const& basis,
 
 /// Writes a single \ref gsHBox \a box to a file with name \a fn
 template<class T>
-void writeSingleBox(const gsMatrix<T> & box, std::string const & fn, T value)
+void writeSingleBox(const gsMatrix<T> & box, std::string const & fn, T value,
+                    unsigned precision)
 {
     gsMatrix<T> points;
     gsVector<unsigned> np(box.rows());
@@ -1264,12 +1842,13 @@ void writeSingleBox(const gsMatrix<T> & box, std::string const & fn, T value)
 
     gsMatrix<T> values(1,np.prod());
     values.setConstant(value);
-    gsWriteParaviewTPgrid(points,values,np2,fn);
+    gsWriteParaviewTPgrid(points,values,np2,fn,precision);
 }
 
 /// Writes \a boxes to a file with name \a fn
 template<class T>
-void gsWriteParaview(const gsMatrix<T> & boxes, std::string const & fn, const std::vector<T> & values)
+void gsWriteParaview(const gsMatrix<T> & boxes, std::string const & fn, const std::vector<T> & values,
+                     unsigned precision)
 {
     GISMO_ASSERT(boxes.cols()/2==(index_t)values.size() || values.size()==0,
         "Values should have size 0 or equal to the number of boxes (i.e., boxes.cols()/2 = " +
@@ -1295,30 +1874,33 @@ void gsWriteParaview(const gsMatrix<T> & boxes, std::string const & fn, const st
     }
 
     if ( boxes.rows() == 3)
-        writeSingleBasisMesh3D(mesh,fn);
+        writeSingleBasisMesh3D(mesh,fn,precision);
     else if ( boxes.rows() == 2)
-        writeSingleBasisMesh2D(mesh,fn);
+        writeSingleBasisMesh2D(mesh,fn,precision);
     else
         gsWriteParaview(mesh, fn, false);
 }
 
 template<class T>
-void gsWriteParaview(const gsMatrix<T> & boxes, std::string const & fn, const gsVector<T> & values)
+void gsWriteParaview(const gsMatrix<T> & boxes, std::string const & fn, const gsVector<T> & values,
+                     unsigned precision)
 {
     std::vector<T> v(values.data(), values.data() + values.size());
-    gsWriteParaview(boxes,fn,v);
+    gsWriteParaview(boxes,fn,v,precision);
 }
 
 template<class T>
-void gsWriteParaview(const gsMatrix<T> & boxes, std::string const & fn, const T value)
+void gsWriteParaview(const gsMatrix<T> & boxes, std::string const & fn, const T value,
+                     unsigned precision)
 {
     std::vector<T> v(boxes.cols()/2,value);
-    gsWriteParaview(boxes,fn,v);
+    gsWriteParaview(boxes,fn,v,precision);
 }
 
 /// Writes a single \ref gsHBox \a box to a file with name \a fn
 template<short_t d, class T>
-void writeSingleHBox(const gsHBox<d,T> & box, std::string const & fn)
+void writeSingleHBox(const gsHBox<d,T> & box, std::string const & fn,
+                     unsigned precision)
 {
     box.computeCoordinates();
     gsVector<index_t,d> np;
@@ -1329,7 +1911,7 @@ void writeSingleHBox(const gsHBox<d,T> & box, std::string const & fn)
     values.row(0).setConstant(box.level());
     values.row(1).setConstant(box.error());
     values.row(2).setConstant(box.projectedErrorRef());
-    gsWriteParaviewTPgrid(points,values,np,fn);
+    gsWriteParaviewTPgrid(points,values,np,fn,precision);
 }
 
 /// Writes a single \ref gsHBox \a box to a file with name \a fn
@@ -1383,11 +1965,13 @@ void gsWriteParaview(const gsHBoxContainer<d,T> & boxes, std::string const & fn,
 /// Export basis functions
 template<class T>
 void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,
-                     std::string const & fn, unsigned npts)
+                     std::string const & fn, unsigned npts, bool skipPvd,
+                     unsigned precision)
 {
     GISMO_ENSURE(mp.nPatches()==mb.nBases(),"Number of bases and patches do not correspond");
 
-    gsParaviewCollection collection(fn);
+    typename gsParaviewCollection<T>::uPtr collection;
+    if (!skipPvd) collection = memory::make_unique(new gsParaviewCollection<T>(fn));
 
     gsMatrix<T> eval_geo, eval_basis, pts, ab;
     gsVector<T> a, b;
@@ -1410,17 +1994,18 @@ void gsWriteParaview(gsMultiPatch<T> const& mp, gsMultiBasis<T> const& mb,
             std::string fileName_nopath = gsFileManager::getFilename(fileName);
 
             eval_basis = mb.basis(p).evalSingle(i,pts);
-            gsWriteParaviewTPgrid(eval_geo, eval_basis, np.template cast<index_t>(), fileName);
+            gsWriteParaviewTPgrid(eval_geo, eval_basis, np.template cast<index_t>(), fileName, precision);
             // gsWriteParaview_basisFnct<T>(i, basis, fileName, npts ) ;
             // collection.addPart(fileName_nopath + ".vts",-1,"",k);
-            collection.addPart(fileName_nopath + ".vts",k);
+            if (collection) collection->addPart(fileName_nopath + ".vts",k);
         }
-    collection.save();
+    if (collection) collection->save();
 }
 
 /// Export Point set to Paraview
 template<class T>
-void gsWriteParaviewPoints(gsMatrix<T> const& X, gsMatrix<T> const& Y, std::string const & fn)
+void gsWriteParaviewPoints(gsMatrix<T> const& X, gsMatrix<T> const& Y, std::string const & fn,
+                           unsigned precision)
 {
     assert( X.cols() == Y.cols() );
     assert( X.rows() == 1 && Y.rows() == 1 );
@@ -1432,7 +2017,7 @@ void gsWriteParaviewPoints(gsMatrix<T> const& X, gsMatrix<T> const& Y, std::stri
     if ( ! file.is_open() )
         gsWarn<<"gsWriteParaviewPoints: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
-    file << std::setprecision (PLOT_PRECISION);
+    file << std::setprecision (precision);
     file <<"<?xml version=\"1.0\"?>\n";
     file <<"<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
     file <<"<PolyData>\n";
@@ -1478,14 +2063,15 @@ void gsWriteParaviewPoints(gsMatrix<T> const& X, gsMatrix<T> const& Y, std::stri
     file <<"</VTKFile>\n";
     file.close();
 
-    makeCollection(fn, ".vtp"); // make also a pvd file
+    gsParaviewCollection<T>::make(fn, ".vtp"); // make also a pvd file
 }
 
 template<class T>
 void gsWriteParaviewPoints(gsMatrix<T> const& X,
                            gsMatrix<T> const& Y,
                            gsMatrix<T> const& Z,
-                           std::string const & fn)
+                           std::string const & fn,
+                           unsigned precision)
 {
     GISMO_ASSERT(X.cols() == Y.cols() && X.cols() == Z.cols(),
                  "X, Y and Z must have the same size of columns!");
@@ -1504,7 +2090,7 @@ void gsWriteParaviewPoints(gsMatrix<T> const& X,
     }
 
     file << std::fixed; // no exponents
-    file << std::setprecision (PLOT_PRECISION);
+    file << std::setprecision (precision);
 
     file <<"<?xml version=\"1.0\"?>\n";
     file <<"<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
@@ -1559,7 +2145,7 @@ void gsWriteParaviewPoints(gsMatrix<T> const& X,
     file <<"</VTKFile>\n";
     file.close();
 
-    makeCollection(fn, ".vtp"); // make also a pvd file
+    gsParaviewCollection<T>::make(fn, ".vtp"); // make also a pvd file
 }
 
 template<class T>
@@ -1567,7 +2153,8 @@ void gsWriteParaviewPoints(gsMatrix<T> const& X,
                            gsMatrix<T> const& Y,
                            gsMatrix<T> const& Z,
                            gsMatrix<T> const& V,
-                           std::string const & fn)
+                           std::string const & fn,
+                           unsigned precision)
 {
     GISMO_ASSERT(X.cols() == Y.cols() && X.cols() == Z.cols(),
                  "X, Y and Z must have the same size of columns!");
@@ -1586,7 +2173,7 @@ void gsWriteParaviewPoints(gsMatrix<T> const& X,
     }
 
     file << std::fixed; // no exponents
-    file << std::setprecision (PLOT_PRECISION);
+    file << std::setprecision (precision);
 
     file <<"<?xml version=\"1.0\"?>\n";
     file <<"<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
@@ -1647,26 +2234,27 @@ void gsWriteParaviewPoints(gsMatrix<T> const& X,
     file <<"</VTKFile>\n";
     file.close();
 
-    makeCollection(fn, ".vtp"); // make also a pvd file
+    gsParaviewCollection<T>::make(fn, ".vtp"); // make also a pvd file
 }
 
 template<class T>
-void gsWriteParaviewPoints(gsMatrix<T> const& points, std::string const & fn)
+void gsWriteParaviewPoints(gsMatrix<T> const& points, std::string const & fn,
+                           unsigned precision)
 {
     const index_t rows = points.rows();
     switch (rows)
     {
     case 1:
-        gsWriteParaviewPoints<T>(points.row(0), gsMatrix<T>::Zero(1, points.cols()), fn);
+        gsWriteParaviewPoints<T>(points.row(0), gsMatrix<T>::Zero(1, points.cols()), fn, precision);
         break;
     case 2:
-        gsWriteParaviewPoints<T>(points.row(0), points.row(1), fn);
+        gsWriteParaviewPoints<T>(points.row(0), points.row(1), fn, precision);
         break;
     case 3:
-        gsWriteParaviewPoints<T>(points.row(0), points.row(1), points.row(2), fn);
+        gsWriteParaviewPoints<T>(points.row(0), points.row(1), points.row(2), fn, precision);
         break;
     case 4:
-        gsWriteParaviewPoints<T>(points.row(0), points.row(1), points.row(2), points.row(3), fn);
+        gsWriteParaviewPoints<T>(points.row(0), points.row(1), points.row(2), points.row(3), fn, precision);
         break;
     default:
         GISMO_ERROR("Point plotting is implemented just for 2D, 3D and 4D (rows== 1, 2, 3 or 4).");
@@ -1679,7 +2267,8 @@ void gsWriteParaviewPoints(gsMatrix<T> const& points, std::string const & fn)
 template <class T>
 void gsWriteParaview(gsSolid<T> const& sl, std::string const & fn, unsigned numPoints_for_eachCurve, int vol_Num,
                      T edgeThick, gsVector3d<T> const & translate, int color_convex,
-                     int color_nonconvex, int color_eloop, std::vector<unsigned> const & eloop)
+                     int color_nonconvex, int color_eloop, std::vector<unsigned> const & eloop,
+                     unsigned precision)
 {
     // options
     int color=color_convex;
@@ -1699,7 +2288,7 @@ void gsWriteParaview(gsSolid<T> const& sl, std::string const & fn, unsigned numP
     if ( ! file.is_open() )
         gsWarn<<"gsWriteParaview: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
-    file << std::setprecision (PLOT_PRECISION);
+    file << std::setprecision (precision);
     file <<"<?xml version=\"1.0\"?>\n";
     file <<"<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
     file <<"<PolyData>\n";
@@ -1814,16 +2403,17 @@ void gsWriteParaview(gsSolid<T> const& sl, std::string const & fn, unsigned numP
     file <<"</VTKFile>\n";
     file.close();
 
-    makeCollection(fn, ".vtp"); // make also a pvd file
+    gsParaviewCollection<T>::make(fn, ".vtp"); // make also a pvd file
 }
 
 template <class T>
 void gsWriteParaviewSolid(gsSolid<T> const& sl,
                           std::string const & fn,
-                          unsigned numSamples)
+                          unsigned numSamples,
+                          unsigned precision)
 {
     const size_t n = sl.numHalfFaces;
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection<T> collection(fn);
 
     // for( typename gsSolid<T>::const_face_iterator it = sl.begin();
     //      it != sl.end(); ++it)
@@ -1832,7 +2422,7 @@ void gsWriteParaviewSolid(gsSolid<T> const& sl,
     {
         std::string fnBase = fn + util::to_string(i);
         std::string fnBase_nopath = gsFileManager::getFilename(fnBase);
-        writeSingleTrimSurface(*sl.face[i]->surf, fnBase, numSamples);
+        writeSingleTrimSurface(*sl.face[i]->surf, fnBase, numSamples, precision);
         collection.addPart(fnBase_nopath + ".vtp");
     }
 
@@ -1842,16 +2432,22 @@ void gsWriteParaviewSolid(gsSolid<T> const& sl,
 
 
 /// Visualizing a mesh
+// Note: no trailing precision parameter here (unlike its siblings) --
+// gsCore/gsForwardDeclarations.h carries an authoritative 3-parameter
+// forward declaration of this overload (gsMesh, fn, bool pvd = true) that
+// is used across the library outside this module; changing its arity
+// would break every caller relying on that declaration alone.
 template <class T>
 void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd)
 {
+    const unsigned precision = 5;
     std::string mfn(fn);
     mfn.append(".vtp");
     std::ofstream file(mfn.c_str());
     if ( ! file.is_open() )
         gsWarn<<"gsWriteParaview: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
-    file << std::setprecision (PLOT_PRECISION);
+    file << std::setprecision (precision);
 
     file <<"<?xml version=\"1.0\"?>\n";
     file <<"<VTKFile type=\"PolyData\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
@@ -1953,11 +2549,12 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd)
     file.close();
 
     if( pvd ) // make also a pvd file
-        makeCollection(fn, ".vtp");
+        gsParaviewCollection<T>::make(fn, ".vtp");
 }
 
 template <class T>
-void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix<T>& params)
+void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix<T>& params,
+                     unsigned precision)
 {
     GISMO_ASSERT((index_t)sl.numVertices()==params.cols(),
                  "Incorrect number of data: "<< params.cols() <<" != "<< sl.numVertices() );
@@ -1968,7 +2565,7 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix
     if ( ! file.is_open() )
         gsWarn<<"gsWriteParaview: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
-    file << std::setprecision (PLOT_PRECISION);
+    file << std::setprecision (precision);
 
     file << "# vtk DataFile Version 4.2\n";
     file << "vtk output\n";
@@ -2022,16 +2619,18 @@ void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, const gsMatrix
 
 template<class Scalar>
 void gsWriteParaview(gsSurfMesh<Scalar> const & sm,
-                     std::string const & fn)
+                     std::string const & fn,
+                     unsigned precision)
 {
     std::vector<std::string> pname = sm.vertex_properties();
-    gsWriteParaview(sm, fn, pname);
+    gsWriteParaview(sm, fn, pname, precision);
 }
 
 template<class Scalar>
-void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
-                     std::string const & fn,
-                     std::vector<std::string> props)
+inline void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
+                            std::string const & fn,
+                            std::vector<std::string> props,
+                            unsigned precision)
 {
     using MeshT = gsSurfMesh<Scalar>;
 
@@ -2041,7 +2640,7 @@ void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
     if ( ! file.is_open() )
         gsWarn<<"gsWriteParaview: Problem opening file \""<<fn<<"\""<<std::endl;
     file << std::fixed; // no exponents
-    file << std::setprecision (PLOT_PRECISION);
+    file << std::setprecision (precision);
 
     //https://vtk.org/wp-content/uploads/2015/04/file-formats.pdf
     file << "# vtk DataFile Version 4.2\n";
@@ -2132,7 +2731,7 @@ void gsWriteParaview(const gsSurfMesh<Scalar> & sm,
     }
 
     file.close();
-    //makeCollection(fn, ".vtk"); // legacy inside pvd seems to not work
+    //gsParaviewCollection<T>::make(fn, ".vtk"); // legacy inside pvd seems to not work
 }
 
 template<class Scalar>
@@ -2214,7 +2813,8 @@ inline void gsWriteHalfedgesParaview(const gsSurfMesh<Scalar>& sm,
 
 template <typename T>
 void gsWriteParaview(const std::vector<gsMesh<T> >& meshes,
-                     const std::string& fn)
+                     const std::string& fn,
+                     unsigned precision)
 {
     for (unsigned index = 0; index < meshes.size(); index++)
     {
@@ -2224,23 +2824,24 @@ void gsWriteParaview(const std::vector<gsMesh<T> >& meshes,
 }
 
 template<class T>
-void gsWriteParaview(gsPlanarDomain<T> const & pdomain, std::string const & fn, unsigned npts)
+void gsWriteParaview(gsPlanarDomain<T> const & pdomain, std::string const & fn, unsigned npts,
+                     unsigned precision)
 {
     std::vector<gsGeometry<T> *> all_curves;
     for(index_t i =0; i<pdomain.numLoops();i++)
         for(index_t j =0; j< pdomain.loop(i).numCurves() ; j++)
             all_curves.push_back( const_cast<gsCurve<T> *>(&pdomain.loop(i).curve(j)) );
 
-    gsWriteParaview( all_curves, fn, npts);
+    gsWriteParaview( all_curves, fn, npts, false, false, "_", precision);
 }
 
 template<class T>
 void gsWriteParaview(const gsTrimSurface<T> & surf, std::string const & fn,
-                     unsigned npts, bool trimCurves)
+                     unsigned npts, bool trimCurves, unsigned precision)
 {
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection<T> collection(fn);
 
-    writeSingleTrimSurface(surf, fn, npts);
+    writeSingleTrimSurface(surf, fn, npts, precision);
     std::string fn_nopath = gsFileManager::getFilename(fn);
     collection.addPart(fn_nopath + ".vtp");
 
@@ -2256,11 +2857,11 @@ void gsWriteParaview(const gsTrimSurface<T> & surf, std::string const & fn,
 template<typename T>
 void gsWriteParaview(const gsVolumeBlock<T>& volBlock,
                      std::string const & fn,
-                     unsigned npts)
+                     unsigned npts, unsigned precision)
 {
     using util::to_string;
 
-    gsParaviewCollection collection(fn);
+    gsParaviewCollection<T> collection(fn);
 
     // for each face
     for (unsigned idFace = 0; idFace != volBlock.face.size(); idFace++)
@@ -2287,7 +2888,7 @@ void gsWriteParaview(const gsVolumeBlock<T>& volBlock,
                             to_string(idCurve);
 
                 gsWriteParaviewTrimmedCurve(*(face->surf), idLoop, idCurve,
-                                            fileName, npts);
+                                            fileName, npts, precision);
 
                 collection.addPart(fileName_nopath + ".vts");
 
@@ -2301,20 +2902,20 @@ void gsWriteParaview(const gsVolumeBlock<T>& volBlock,
 template<typename T>
 void gsWriteParaviewBdr(gsMultiPatch<T> const & patches,
                      std::string const & fn,
-                     unsigned npts, bool ctrlNet)
+                     unsigned npts, bool ctrlNet, unsigned precision)
 {
     typename gsMultiPatch<T>::BoundaryRep const & brep = patches.boundaryRep();
     GISMO_ENSURE(brep.size()!=0,"Boundary representation is empty. Call gsMultiPatch::constructBoundaryRep first!");
     gsMultiPatch<T> bnd_net;
     for (auto it = brep.begin(); it!=brep.end(); ++it)
         bnd_net.addPatch((*it->second));
-    gsWriteParaview<T>(bnd_net,fn,npts,false,ctrlNet);
+    gsWriteParaview<T>(bnd_net,fn,npts,false,ctrlNet,"_",precision);
 }
 
 template<typename T>
 void gsWriteParaviewIfc(gsMultiPatch<T> const & patches,
                      std::string const & fn,
-                     unsigned npts, bool ctrlNet)
+                     unsigned npts, bool ctrlNet, unsigned precision)
 {
 
     typename gsMultiPatch<T>::InterfaceRep const & irep = patches.interfaceRep();
@@ -2322,18 +2923,19 @@ void gsWriteParaviewIfc(gsMultiPatch<T> const & patches,
     gsMultiPatch<T> iface_net;
     for (auto it = irep.begin(); it!=irep.end(); ++it)
         iface_net.addPatch((*it->second));
-    gsWriteParaview<T>(iface_net,fn,npts,false,ctrlNet);
+    gsWriteParaview<T>(iface_net,fn,npts,false,ctrlNet,"_",precision);
 }
 
 template<typename T>
 void gsWriteParaview(gsMultiPatch<T> const & patches,
                      typename gsBoundaryConditions<T>::bcContainer const & bcs,
-                     std::string const & fn, unsigned npts, bool ctrlNet)
+                     std::string const & fn, unsigned npts, bool ctrlNet,
+                     unsigned precision)
 {
     gsMultiPatch<T> bc_net;
     for (typename gsBoundaryConditions<T>::const_iterator bc=bcs.begin(); bc!=bcs.end(); bc++)
         bc_net.addPatch(patches[bc->patch()].boundary(bc->side()));
-    gsWriteParaview<T>(bc_net,fn,npts,false,ctrlNet);
+    gsWriteParaview<T>(bc_net,fn,npts,false,ctrlNet,"_",precision);
 }
 
 template<typename T>
@@ -2341,7 +2943,8 @@ void gsWriteParaviewTrimmedCurve(const gsTrimSurface<T>& surf,
                                  const unsigned idLoop,
                                  const unsigned idCurve,
                                  const std::string fn,
-                                 unsigned npts)
+                                 unsigned npts,
+                                 unsigned precision)
 {
     // computing parameters and points
 
@@ -2377,7 +2980,7 @@ void gsWriteParaviewTrimmedCurve(const gsTrimSurface<T>& surf,
     }
 
     file << std::fixed; // no exponents
-    file << std::setprecision (PLOT_PRECISION);
+    file << std::setprecision (precision);
 
     file << "<?xml version=\"1.0\"?>\n";
     file << "<VTKFile type=\"StructuredGrid\" version=\"0.1\">\n";
@@ -2410,6 +3013,3 @@ void gsWriteParaviewTrimmedCurve(const gsTrimSurface<T>& surf,
 }
 
 } // namespace gismo
-
-
-#undef PLOT_PRECISION

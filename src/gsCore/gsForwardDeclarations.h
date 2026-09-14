@@ -341,7 +341,9 @@ template <short_t d, class T=real_t>     class gsHElement;
 template <short_t d, class T=real_t>     class gsHElementHelper;
 
 
-class gsParaviewDataSet;
+template <class T=real_t>                class gsParaviewDataSet;
+template <class T=real_t>                class gsParaviewCollection;
+
                                          class gsSurfMeshTopology;
 template <class Scalar=real_t>           class gsSurfMesh;
 template <class Scalar=real_t>           class gsSubdivisionScheme;

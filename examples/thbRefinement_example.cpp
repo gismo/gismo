@@ -93,7 +93,12 @@ int main(int argc, char *argv[])
 
     // Output paraview plot of the basis
     if ( plot )
-        gsWriteParaview( thb , "thb_refined", 1000, true);
+    {
+        gsParaview<real_t> pv;
+        pv.options().setInt("numPoints", 1000);
+        pv.options().setSwitch("elements", true);
+        pv.write(thb, "thb_refined");
+    }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";

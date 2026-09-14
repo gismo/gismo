@@ -149,6 +149,9 @@ public:
     /// Create from a vector of patches
     explicit gsMultiPatch( PatchContainer & patches );
 
+    /// Create from a vector of patches (implicit conversion allowed)
+    gsMultiPatch(std::vector<gsGeometry<>::uPtr> patches);
+
     /// Create a single-patch instance
     gsMultiPatch( const gsGeometry<T> & geo );
 

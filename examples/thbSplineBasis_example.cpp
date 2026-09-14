@@ -51,10 +51,11 @@ int main(int argc, char *argv[])
 
     gsInfo << "basis before refinement:\n" << thb << std::endl;
 
+    gsParaview<real_t> pv;
     if (plot)
     {
         // Export the initial basis to paraview files
-        gsWriteParaview(thb, "thb0_init" );
+        pv.write(thb, "thb0_init");
     }
 
     //! [refViaStdVec]
@@ -71,7 +72,7 @@ int main(int argc, char *argv[])
     if (plot)
     {
         // Export the refined basis to paraview files
-        gsWriteParaview(thb, "thb_refined_first" );
+        pv.write(thb, "thb_refined_first");
     }
     gsInfo << "after refinement," << std::endl;
 
@@ -183,7 +184,7 @@ int main(int argc, char *argv[])
 
     if (plot)
     {
-        gsWriteParaview(thb, "thb_refined_second" );
+        pv.write(thb, "thb_refined_second");
     }
 
     boxSide side(1);
@@ -215,8 +216,8 @@ int main(int argc, char *argv[])
     if (plot)
     {
         // Export before merge for visualization
-        gsWriteParaview(thb,  "thb_before_merge");
-        gsWriteParaview(thb2, "thb2_before_merge");
+        pv.write(thb,  "thb_before_merge");
+        pv.write(thb2, "thb2_before_merge");
     }
 
     // Merge thb2 into thb (mesh union)
@@ -227,7 +228,7 @@ int main(int argc, char *argv[])
 
     if (plot)
     {
-        gsWriteParaview(thb, "thb_after_merge");
+        pv.write(thb, "thb_after_merge");
     }
 
     // --------------- plot basis after 1 refinement ---------------

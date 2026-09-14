@@ -321,7 +321,7 @@ int main(int argc, char *argv[])
     {
         // Write approximate and exact solution to paraview files
         gsInfo << "Plotting in Paraview...\n";
-        ev.options().setSwitch("plot.elements", true);
+        ev.options().setSwitch("elements", true);
         ev.writeParaview( u_sol   , G, "solution");
         gsInfo << "Saved with solution.pvd \n";
     }

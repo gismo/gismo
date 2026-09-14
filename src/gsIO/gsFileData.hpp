@@ -1363,7 +1363,7 @@ bool gsFileData<T>::readStlFile( String const & fn )
     vertices << triangles.str() ;
     triangles.clear();
     triangles.str("");
-    triangles << "OFF\n"<< nvert <<" "<< nfaces <<"\n";
+    triangles << "OFF\n"<< nvert <<" "<< nfaces <<" 0\n";
     g->value( internal::makeValue( triangles.str() + vertices.str(), *data) );
 
     return true;
