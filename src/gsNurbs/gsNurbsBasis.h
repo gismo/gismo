@@ -86,10 +86,8 @@ public:
 
     /// Construct NURBS basis by a Bspline basis plus weights
     gsTensorNurbsBasis( gsBSplineBasis<T> bs, gsMatrix<T> w) :
-    Base(new gsBSplineBasis<T>(), give(w))
-    {
-        *this->m_src = give(bs);
-    }
+    Base(new gsBSplineBasis<T>(give(bs)), give(w))
+    { }
 
     /// Construct NURBS basis of a knot vector
     explicit gsTensorNurbsBasis( gsKnotVector<T> KV ) :

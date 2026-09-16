@@ -670,6 +670,28 @@ public:
             _convertToPeriodic();
     }
 
+    /// @brief Sets the number of crossing functions without converting the
+    /// knot vector, unlike setPeriodic().
+    ///
+    /// Precondition (not checked): knots() must already be the post-conversion
+    /// knot vector of a periodic basis that had numCrossingFunctions() == n,
+    /// for example a knot vector and count saved from such a basis. Applied to
+    /// any other knot vector, the result is not a valid periodic basis.
+    ///
+    /// The checked range is 0 <= n <= degree()+1, the range the periodic
+    /// conversion produces, with size() staying non-negative. n == 0 makes
+    /// the basis non-periodic.
+    /// @param n number of crossing functions
+    void setNumCrossingFunctions(const int n)
+    {
+        GISMO_ENSURE(n >= 0 && n <= m_p + 1 &&
+                     n <= static_cast<int>(m_knots.size()) - m_p - 1,
+                     "Invalid number of crossing functions " << n
+                     << " for degree " << m_p << " and " << m_knots.size()
+                     << " knots.");
+        m_periodic = n;
+    }
+
     /// @brief Returns the multiplicity of the first ``significant" knot
     /// (i.e., the m_p+1st). If it is different from the multiplicity
     /// of the corresponding knot at the end, returns zero.

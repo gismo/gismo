@@ -1056,6 +1056,47 @@ void gsTensorBSplineBasis<1,T>::refine_withCoefs(gsMatrix<T>& coefs, const std::
 }
 
 
+/// Build the sparse transfer matrix T with (elevated coefs) = T * (old coefs)
+/// for degree elevation by \a i, storing only the entries of the exact
+/// support-inclusion pattern below.
+///
+/// EXACT PATTERN: write old function N_i in the elevated basis as
+/// N_i = sum_j T(j,i) Ntilde_j. B-splines are locally linearly independent on
+/// every knot span, and N_i is identically zero on every span outside its own
+/// support [knot_i, knot_{i+p_old+1}); therefore any Ntilde_j active on such a
+/// span must have T(j,i) = 0. An elevated function Ntilde_j is active exactly
+/// on the span(s) covering its support [knot_j, knot_{j+p_new+1}), so T(j,i)
+/// can be non-zero only when supp(Ntilde_j) is entirely CONTAINED in
+/// supp(N_i) -- non-strict inclusion of knot values, not mere overlap: a
+/// Ntilde_j whose support only overlaps N_i's (extending past either end)
+/// has spans outside supp(N_i) where it is active, forcing T(j,i) = 0 there
+/// too. `bspline::degreeElevateBSpline`'s Huang recurrence (the Q[] backward
+/// sweep, re-seeded from P[] at each interior knot) computes every entry of
+/// the dense (n_new x n_old) coefficient matrix, including the ones this
+/// theorem guarantees are exactly zero; those entries only ever come out as
+/// exact zero or floating-point round-off of the recurrence's own
+/// subtractions, never a genuine non-zero coefficient -- discarding them
+/// changes nothing mathematically. That recurrence's own rounding error
+/// grows with degree and element count (empirically up to ~1e-8 at degree 5
+/// on 64 elements) and is larger on near-degenerate knot spans;
+/// it is a property of the core recurrence and equally affects
+/// `gsBSpline::degreeElevate`.
+///
+/// No runtime check is performed here that every discarded entry is small:
+/// the pattern above is exact by the theorem, and the recurrence's own
+/// rounding error at high degree/many elements can itself reach O(1e-8),
+/// too large for the routine to distinguish from a *genuine* wrong-pattern
+/// discard with any single library-wide constant. A regression test
+/// (`unittests/gsBSplineBasis_test.cpp`) checks the pattern equals the exact
+/// inclusion count and that transfer*old_coefs reproduces `degreeElevate()`
+/// to round-off, with a negative control that a deliberately wrong pattern
+/// fails that check.
+///
+/// Complexity: O(n_new*n_old) time and memory for the dense intermediate
+/// `coefs` (unavoidable: `bspline::degreeElevateBSpline` computes it), but
+/// the stored transfer has nnz = O(n_old*(p_new+1)): each old function's
+/// support overlaps only the elevated functions active on its own span
+/// range, a count bounded by the elevated degree, independent of refinement.
 template <class T>
 void gsTensorBSplineBasis<1,T>::degreeElevate_withTransfer(
     gsSparseMatrix<T,RowMajor> & transfer, short_t i)
@@ -1069,12 +1110,39 @@ void gsTensorBSplineBasis<1,T>::degreeElevate_withTransfer(
         return;
     }
     // degreeElevateBSpline is linear in coefs; feed the identity to extract
-    // the transfer matrix.  After the call, coefs has shape (n_new x n_old).
+    // the transfer matrix. After the call, coefs has shape (n_new x n_old),
+    // and *this has become the elevated (new) basis -- snapshot the old knot
+    // vector first, since it is what degreeElevateBSpline overwrites in place.
     const index_t n_old = this->size();
+    const short_t p_old = this->degree();
+    const KnotVectorType knots_old(this->knots());
+
     gsMatrix<T> coefs = gsMatrix<T>::Identity(n_old, n_old);
     bspline::degreeElevateBSpline(*this, coefs, i);
-    // coefs is now (n_new x n_old) — convert to sparse
-    transfer = coefs.sparseView();
+    // coefs is now (n_new x n_old).
+
+    const index_t n_new = coefs.rows();
+    const short_t p_new = this->degree();
+    const KnotVectorType & knots_new = this->knots();
+
+    std::vector<gsEigen::Triplet<T,index_t> > trip;
+    trip.reserve(static_cast<size_t>(n_new) * static_cast<size_t>(2 * i + 2));
+    for (index_t c = 0; c < n_old; ++c)
+    {
+        const T lo_i = knots_old[c], hi_i = knots_old[c + p_old + 1];
+        for (index_t r = 0; r < n_new; ++r)
+        {
+            const T v = coefs(r, c);
+            if (v == T(0)) continue;
+            const T lo_j = knots_new[r], hi_j = knots_new[r + p_new + 1];
+            const bool contained = (lo_i <= lo_j) && (hi_j <= hi_i);
+            if (contained)
+                trip.push_back(gsEigen::Triplet<T,index_t>(r, c, v));
+        }
+    }
+
+    transfer.resize(n_new, n_old);
+    transfer.setFromTriplets(trip.begin(), trip.end());
 }
 
 template <class T>

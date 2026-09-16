@@ -436,6 +436,22 @@ public:
             m_isPeriodic = dir;
     }
 
+    /// Sets the value returned by periodicDirection() directly, without
+    /// converting any component. -1 means "no periodic direction" and is a
+    /// legal argument, including when some component is periodic.
+    ///
+    /// Precondition: the components' periodic state (knots and
+    /// numCrossingFunctions()) is set separately, for example with
+    /// component(i).setNumCrossingFunctions().
+    /// \param dir periodic direction, -1 <= dir < d
+    inline void setPeriodicDirection(const int dir)
+    {
+        GISMO_ENSURE(dir >= -1 && dir < static_cast<int>(d),
+                     "Invalid periodic direction " << dir
+                     << " for parametric dimension " << d << ".");
+        m_isPeriodic = static_cast<short_t>(dir);
+    }
+
     /// Sets the coefficients so that the resulting TensorBSpline is periodic in direction dir.
     gsMatrix<T> perCoefs( const gsMatrix<T>& originalCoefs, short_t dir ) const
     {
