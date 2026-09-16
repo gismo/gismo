@@ -1,50 +1,45 @@
-### CMakeLists.txt --- Spectra library
-## Author: Angelos Mantzaflaris
-#
-# The library is header-only, the extra code is downloaded in place of
-# the source folder of G+Smo
-#
+######################################################################
+## CMakeLists.txt --- gsSpectra
+## This file is part of the G+Smo library.
+##
 ######################################################################
 
-## Spectra extension
-project(gsSpectraExtension)
+## gsSpectra module
+project(gsSpectra)
 
-# Collect file names
-aux_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HEADERS)
-#aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_SOURCES)
-#aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME}_HPPFILES)
-
-# Apply same configuration as G+Smo
+# Apply G+Smo config
 include(gsConfig)
 
-include(gsFetch)
-gismo_fetch_directory(Spectra
-  GIT_REPOSITORY http://github.com/yixuan/spectra.git
-  #SVN_REPOSITORY https://github.com/yixuan/spectra/trunk/include
-  #SVN_TRUST_CERT 1
-  DESTINATION external
-)
+## Collect files
+aux_header_directory(${CMAKE_CURRENT_SOURCE_DIR}/src ${PROJECT_NAME}_H)
 
-set(SPECTRA_INCLUDE_DIR ${gismo_SOURCE_DIR}/external/Spectra/include CACHE INTERNAL "")
-set (GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${SPECTRA_INCLUDE_DIR}
-    CACHE INTERNAL "Gismo include directories")
-  
+# Header-only interface library: Spectra is header-only and this module
+# adds no .cpp/.hpp of its own, so an OBJECT library (the gsModuleTemplate
+# default) would carry an empty $<TARGET_OBJECTS:...>, which is not
+# reliably accepted by all generators under this project's CMake floor.
 add_library(${PROJECT_NAME} INTERFACE)
-target_sources(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${${PROJECT_NAME}_HEADERS}>)
+target_sources(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${${PROJECT_NAME}_H}>)
+target_link_libraries(${PROJECT_NAME} INTERFACE Spectra::Spectra)
 
-add_dependencies(${PROJECT_NAME} Spectra)
+#Symlink include dir (in case your headers are in /src)
+execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/${PROJECT_NAME})
 
-install(DIRECTORY ${PROJECT_SOURCE_DIR}
-        DESTINATION include/gismo
-        FILES_MATCHING PATTERN "gsSpectra/*.h")
+# Installed layout mirrors the build-tree symlink, so that
+# #include <gsSpectra/gsSpectra.h> resolves in both cases
+install(FILES ${${PROJECT_NAME}_H}
+  DESTINATION include/gismo/${PROJECT_NAME} )
 
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/external/Spectra
-  DESTINATION include/gismo
-  PATTERN "*/.svn" EXCLUDE
-  )
-      
+# Vendored Spectra headers are only installed when this module fetched
+# them itself; a system Spectra (found branch) is not ours to redistribute.
+if(Spectra_VENDORED)
+  get_target_property(_spectra_inc Spectra::Spectra INTERFACE_INCLUDE_DIRECTORIES)
+  install(DIRECTORY ${_spectra_inc}/Spectra
+          DESTINATION include/gismo
+          PATTERN "*.txt" EXCLUDE
+          PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+endif()
+
 # add example files
-#include_directories(${SPECTRA_INCLUDE_DIR})
 aux_cpp_directory(${CMAKE_CURRENT_SOURCE_DIR}/examples FILES)
 foreach(file ${FILES})
     add_gismo_executable(${file})
@@ -54,7 +49,6 @@ foreach(file ${FILES})
     # install the example executables (optionally)
     install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe OPTIONAL)
 endforeach(file ${FILES})
-
 
 # add unittests
 aux_gs_cpp_directory(${PROJECT_SOURCE_DIR}/unittests unittests_SRCS)

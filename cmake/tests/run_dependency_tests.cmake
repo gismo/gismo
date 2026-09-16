@@ -7,8 +7,11 @@
 ## fixture projects under a scratch directory below the CMake *binary* dir
 ## and asserts specific, individually-checkable observables from the
 ## find-or-fetch contract - target existence/type/include dirs, <Name>_FOUND/
-## _VENDORED, GISMO_INCLUDE_DIRS/gismo_LINKER before-vs-after, and (for the
-## NEVER cases) the exact failure text - never just "the command ran".
+## _VENDORED, GISMO_INCLUDE_DIRS/gismo_LINKER/gismo_EXTENSIONS before-vs-after,
+## <Name>_OBJECTS, the compiled OBJECT library's type/visibility/compile
+## options, exported dynamic symbols (via `nm -D` on a shared library built
+## from those objects), and (for the NEVER cases) the exact failure text -
+## never just "the command ran".
 ##
 ## Every case writes only under ${SCRATCH_DIR}; the containment assertions at
 ## the end of each case additionally check that nothing was written into the
@@ -150,6 +153,48 @@ function(expect_list_contains CASE_ID LABEL EXPECTED_DIR ACTUAL_LIST)
   endforeach()
   if(NOT _found)
     message(STATUS "FAIL ${CASE_ID}/${LABEL}: expected '${EXPECTED_DIR}' got '${ACTUAL_LIST}'")
+    _gsdep_inc(gsdep_fail_count)
+  endif()
+endfunction()
+
+function(expect_not_match CASE_ID LABEL PATTERN ACTUAL)
+  # Same whitespace normalisation as expect_match - FAIL when ACTUAL DOES
+  # match PATTERN, the inverse assertion needed for e.g. "the hidden arm's
+  # dynamic symbol table must not name the dependency's own symbol".
+  string(REGEX REPLACE "[ \t\r\n]+" " " _actual_norm "${ACTUAL}")
+  if("${_actual_norm}" MATCHES "${PATTERN}")
+    message(STATUS "FAIL ${CASE_ID}/${LABEL}: expected NOT '${PATTERN}' got '${ACTUAL}'")
+    _gsdep_inc(gsdep_fail_count)
+  endif()
+endfunction()
+
+## Counts how many of PIPE_LIST's '|'-joined elements are exactly ELEMENT.
+## list(FILTER) is CMake 3.6+, above this suite's 3.1 floor, so a foreach is
+## used instead of relying on it.
+function(gsdep_count_element PIPE_LIST ELEMENT OUT_VAR)
+  string(REPLACE "|" ";" _elems "${PIPE_LIST}")
+  set(_n 0)
+  foreach(_e ${_elems})
+    if("${_e}" STREQUAL "${ELEMENT}")
+      math(EXPR _n "${_n}+1")
+    endif()
+  endforeach()
+  set(${OUT_VAR} "${_n}" PARENT_SCOPE)
+endfunction()
+
+## Builds TARGET in BIN_DIR without running anything - the half of
+## gsdep_build_and_run() the symbol-visibility cases need, since their
+## artifact is a shared library inspected with `nm`, not an executable run
+## for its stdout.
+function(gsdep_build_target CASE_ID BIN_DIR TARGET)
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} --build . --target ${TARGET} --config ${_gsdep_build_config}
+    WORKING_DIRECTORY "${BIN_DIR}"
+    RESULT_VARIABLE _bres
+    OUTPUT_VARIABLE _bout
+    ERROR_VARIABLE _bout)
+  if(NOT _bres EQUAL 0)
+    message(STATUS "FAIL ${CASE_ID}/build_${TARGET}: expected '0' got '${_bres}' (${_bout})")
     _gsdep_inc(gsdep_fail_count)
   endif()
 endfunction()
@@ -333,6 +378,8 @@ else()
   expect_list_contains(${_case} include_dirs_after "${_exp_inc}" "${R_INCLUDE_DIRS_AFTER}")
   expect_str(${_case} include_dirs_before "<unset>" "${R_INCLUDE_DIRS_BEFORE}")
   expect_str(${_case} linker_unchanged "${R_LINKER_BEFORE}" "${R_LINKER_AFTER}")
+  expect_str(${_case} objects_empty "" "${R_OBJECTS}")
+  expect_str(${_case} extensions_after "<unset>" "${R_EXTENSIONS_AFTER}")
   gsdep_build_and_run(${_case} "${_case_dir}/bin" use_header "OK header 42")
 endif()
 gsdep_check_containment(${_case} FakeHdrDep)
@@ -368,6 +415,8 @@ else()
   expect_list_contains(${_case} include_dirs_after "${_exp_inc}" "${R_INCLUDE_DIRS_AFTER}")
   expect_str(${_case} include_dirs_before "<unset>" "${R_INCLUDE_DIRS_BEFORE}")
   expect_str(${_case} linker_unchanged "${R_LINKER_BEFORE}" "${R_LINKER_AFTER}")
+  expect_str(${_case} objects_empty "" "${R_OBJECTS}")
+  expect_str(${_case} extensions_after "<unset>" "${R_EXTENSIONS_AFTER}")
   if(EXISTS "${_case_dir}/sandbox-src/${VENDOR_DEST_SUBDIR}/VendoredHdrDep/VENDOR_FIXTURE_MARKER")
     set(_marker "PRESENT")
   else()
@@ -440,6 +489,8 @@ else()
   expect_str(${_case} include_dirs_before "<unset>" "${R_INCLUDE_DIRS_BEFORE}")
   expect_str(${_case} linker_before "<unset>" "${R_LINKER_BEFORE}")
   expect_match(${_case} linker_after_has_entry "FakeSrcDep|gsdeptest_prebuilt" "${R_LINKER_AFTER}")
+  expect_str(${_case} objects_empty "" "${R_OBJECTS}")
+  expect_str(${_case} extensions_after "<unset>" "${R_EXTENSIONS_AFTER}")
   gsdep_build_and_run(${_case} "${_case_dir}/bin" use_sources "OK sources 4242")
 endif()
 gsdep_check_containment(${_case} FakeSrcDep)
@@ -474,19 +525,290 @@ else()
   expect_list_contains(${_case} target_include "${_exp_inc}" "${R_TARGET_INCLUDE}")
   expect_list_contains(${_case} include_dirs_after "${_exp_inc}" "${R_INCLUDE_DIRS_AFTER}")
   expect_str(${_case} include_dirs_before "<unset>" "${R_INCLUDE_DIRS_BEFORE}")
-  expect_str(${_case} target_type "STATIC_LIBRARY" "${R_TARGET_TYPE}")
-  expect_str_ne(${_case} target_type_not_interface "INTERFACE_LIBRARY" "${R_TARGET_TYPE}")
+  expect_str(${_case} target_type "INTERFACE_LIBRARY" "${R_TARGET_TYPE}")
+  expect_str(${_case} real_target_type "OBJECT_LIBRARY" "${R_REAL_TARGET_TYPE}")
   expect_str(${_case} linker_before "<unset>" "${R_LINKER_BEFORE}")
-  expect_match(${_case} linker_after_has_entry "VendoredSrcDep" "${R_LINKER_AFTER}")
+  expect_str(${_case} linker_after "<unset>" "${R_LINKER_AFTER}")
+  expect_str(${_case} objects "$<TARGET_OBJECTS:gismo_dep_VendoredSrcDep>" "${R_OBJECTS}")
+  expect_str(${_case} extensions_before "<unset>" "${R_EXTENSIONS_BEFORE}")
+  expect_str(${_case} extensions_after "$<TARGET_OBJECTS:gismo_dep_VendoredSrcDep>" "${R_EXTENSIONS_AFTER}")
+  expect_match(${_case} compile_options_suppress_warnings "(^|\\|)(-w|/W0)(\\||$)" "${R_REAL_TARGET_COMPILE_OPTIONS}")
   if(EXISTS "${_case_dir}/sandbox-src/${VENDOR_DEST_SUBDIR}/VendoredSrcDep/VENDOR_FIXTURE_MARKER")
     set(_marker "PRESENT")
   else()
     set(_marker "MISSING")
   endif()
   expect_str(${_case} vendor_marker_survives "PRESENT" "${_marker}")
+  # The consumer links no library directly (the INTERFACE target carries only
+  # the include dir); it can only resolve gsdeptest_lib_answer() because
+  # gismo_EXTENSIONS - which now holds this dependency's objects - is passed
+  # as one of its sources (dependency_project/CMakeLists.txt add_executable call).
   gsdep_build_and_run(${_case} "${_case_dir}/bin" use_sources "OK sources 4242")
 endif()
 gsdep_check_containment(${_case} VendoredSrcDep)
+gsdep_case_end(${_case})
+
+######################################################################
+## case: sources_vendored_twice - same scratch build dir configured TWICE (no
+## file(REMOVE_RECURSE) between), following the found_multi_twice pattern for
+## a vendored OBJECT library: the second configure must find gismo_EXTENSIONS
+## already caching a pre-existing entry plus run 1's own
+## $<TARGET_OBJECTS:...> entry, and dedup against the latter rather than
+## re-appending or overwriting either.
+######################################################################
+set(_case "sources_vendored_twice")
+gsdep_case_begin(${_case})
+set(_case_dir "${SCRATCH_DIR}/${_case}")
+file(REMOVE_RECURSE "${_case_dir}")
+file(MAKE_DIRECTORY "${_case_dir}/sandbox-bin")
+file(MAKE_DIRECTORY "${_case_dir}/sandbox-src/${VENDOR_DEST_SUBDIR}")
+file(COPY "${GSDEP_FIXTURES_DIR}/sources/" DESTINATION "${_case_dir}/sandbox-src/${VENDOR_DEST_SUBDIR}/TwiceSrcDep")
+set(_common_args
+  -DSANDBOX_SRC_DIR=${_case_dir}/sandbox-src
+  -DSANDBOX_BIN_DIR=${_case_dir}/sandbox-bin
+  -DGISMO_CMAKE_DIR=${GISMO_SOURCE_DIR}/cmake
+  -DGSDEP_CONSUMER_DIR=${GSDEP_CONSUMER_DIR}
+  -DCASE=${_case}
+  -DGISMO_DEPENDENCY_FETCH=AUTO)
+gsdep_configure(${_case} "${GSDEP_PROJECT_DIR}" "${_case_dir}/bin" _r1 _o1 ${_common_args}
+  -Dgismo_EXTENSIONS:INTERNAL=${GSDEP_CONSUMER_DIR}/extension_seed.cpp)
+if(NOT _r1 EQUAL 0)
+  message(STATUS "FAIL ${_case}/configure_run1: expected '0' got '${_r1}' (${_o1})")
+  _gsdep_inc(gsdep_fail_count)
+else()
+  gsdep_read_report("${_case_dir}/bin/dep_report.txt" R1)
+  expect_str(${_case} target_exists_run1 "TRUE" "${R1_TARGET_EXISTS}")
+  # Second configure into the SAME build dir, no seed re-passed and no
+  # REMOVE_RECURSE - gismo_EXTENSIONS persists as CACHE INTERNAL from run 1.
+  gsdep_configure(${_case} "${GSDEP_PROJECT_DIR}" "${_case_dir}/bin" _r2 _o2 ${_common_args})
+  if(NOT _r2 EQUAL 0)
+    message(STATUS "FAIL ${_case}/configure_run2: expected '0' got '${_r2}' (${_o2})")
+    _gsdep_inc(gsdep_fail_count)
+  else()
+    gsdep_read_report("${_case_dir}/bin/dep_report.txt" R2)
+    expect_str(${_case} target_exists_run2 "TRUE" "${R2_TARGET_EXISTS}")
+    # Proves run 2 re-entered the function with the run-1 list already in the
+    # cache, so the dedup path was exercised and did not merely append once
+    # to an empty list.
+    expect_str(${_case} extensions_before_run2 "${R1_EXTENSIONS_AFTER}" "${R2_EXTENSIONS_BEFORE}")
+    expect_str(${_case} extensions_after_stable "${R1_EXTENSIONS_AFTER}" "${R2_EXTENSIONS_AFTER}")
+    gsdep_count_element("${R2_EXTENSIONS_AFTER}" "$<TARGET_OBJECTS:gismo_dep_TwiceSrcDep>" _n_objects)
+    expect_str(${_case} extensions_object_count "1" "${_n_objects}")
+    string(REPLACE "|" ";" _r2_ext_elems "${R2_EXTENSIONS_AFTER}")
+    list(LENGTH _r2_ext_elems _n_total)
+    expect_str(${_case} extensions_total_count "2" "${_n_total}")
+    list(GET _r2_ext_elems 0 _r2_ext_first)
+    expect_str(${_case} extensions_seed_first "${GSDEP_CONSUMER_DIR}/extension_seed.cpp" "${_r2_ext_first}")
+    expect_str(${_case} linker_after "<unset>" "${R2_LINKER_AFTER}")
+    expect_str(${_case} real_target_type "OBJECT_LIBRARY" "${R2_REAL_TARGET_TYPE}")
+    expect_str(${_case} objects "$<TARGET_OBJECTS:gismo_dep_TwiceSrcDep>" "${R2_OBJECTS}")
+    gsdep_build_and_run(${_case} "${_case_dir}/bin" use_sources "OK sources 4242")
+  endif()
+endif()
+gsdep_check_containment(${_case} TwiceSrcDep)
+gsdep_case_end(${_case})
+
+######################################################################
+## case: sources_export_symbols - EXPORT_SYMBOLS on a vendored MODE SOURCES
+## dependency must keep its symbols visible in a shared library that links
+## its objects, even under a hidden-by-default preset (the fixture sets
+## CMAKE_CXX_VISIBILITY_PRESET hidden etc. itself, mirroring
+## cmake/gsConfig.cmake:20-22, which this standalone project never includes).
+## ELF dynamic symbol table only - ruled out on Windows/macOS, and needs a
+## toolchain `nm`; `nm -D` rather than a "must fail to link" check, since the
+## latter passes vacuously on any unrelated build error, whereas the anchor
+## symbol (present in the same table in both arms) is a positive control.
+######################################################################
+set(_case "sources_export_symbols")
+set(_case_skipped FALSE)
+gsdep_case_begin(${_case})
+if(CMAKE_HOST_WIN32 OR CMAKE_HOST_APPLE)
+  message(STATUS "SKIP: ${_case} (ELF dynamic symbol table only)")
+  message(STATUS "CASE ${_case} SKIP")
+  _gsdep_inc(gsdep_skip_count)
+  set(_case_skipped TRUE)
+else()
+  set(_case_dir "${SCRATCH_DIR}/${_case}")
+  file(REMOVE_RECURSE "${_case_dir}")
+  file(MAKE_DIRECTORY "${_case_dir}/sandbox-bin")
+  file(MAKE_DIRECTORY "${_case_dir}/sandbox-src/${VENDOR_DEST_SUBDIR}")
+  file(COPY "${GSDEP_FIXTURES_DIR}/sources/" DESTINATION "${_case_dir}/sandbox-src/${VENDOR_DEST_SUBDIR}/ExportSrcDep")
+  gsdep_configure(${_case} "${GSDEP_PROJECT_DIR}" "${_case_dir}/bin" _r _o
+    -DSANDBOX_SRC_DIR=${_case_dir}/sandbox-src
+    -DSANDBOX_BIN_DIR=${_case_dir}/sandbox-bin
+    -DGISMO_CMAKE_DIR=${GISMO_SOURCE_DIR}/cmake
+    -DGSDEP_CONSUMER_DIR=${GSDEP_CONSUMER_DIR}
+    -DCASE=${_case}
+    -DGISMO_DEPENDENCY_FETCH=AUTO)
+  if(NOT _r EQUAL 0)
+    message(STATUS "FAIL ${_case}/configure: expected '0' got '${_r}' (${_o})")
+    _gsdep_inc(gsdep_fail_count)
+  else()
+    gsdep_read_report("${_case_dir}/bin/dep_report.txt" R)
+    if(R_NM STREQUAL "<unset>")
+      message(STATUS "SKIP: ${_case} (no CMAKE_NM in the fixture's toolchain)")
+      message(STATUS "CASE ${_case} SKIP")
+      _gsdep_inc(gsdep_skip_count)
+      set(_case_skipped TRUE)
+    else()
+      expect_str(${_case} real_target_type "OBJECT_LIBRARY" "${R_REAL_TARGET_TYPE}")
+      gsdep_build_target(${_case} "${_case_dir}/bin" gsdeptest_shared)
+      if(NOT EXISTS "${R_SHARED_LIB}")
+        message(STATUS "FAIL ${_case}/shared_lib_exists: expected 'EXISTS' got 'MISSING (${R_SHARED_LIB})'")
+        _gsdep_inc(gsdep_fail_count)
+      else()
+        execute_process(
+          COMMAND "${R_NM}" -D --defined-only "${R_SHARED_LIB}"
+          RESULT_VARIABLE _nm_res
+          OUTPUT_VARIABLE _nm_out
+          ERROR_VARIABLE _nm_out)
+        expect_str(${_case} nm_exit "0" "${_nm_res}")
+        expect_match(${_case} nm_sees_anchor "gsdeptest_shared_anchor" "${_nm_out}")
+        expect_match(${_case} nm_exports_dep_symbol "gsdeptest_lib_answer" "${_nm_out}")
+        expect_str(${_case} real_target_visibility "default|default|OFF" "${R_REAL_TARGET_VISIBILITY}")
+      endif()
+    endif()
+  endif()
+  gsdep_check_containment(${_case} ExportSrcDep)
+endif()
+if(NOT _case_skipped)
+  gsdep_case_end(${_case})
+endif()
+
+######################################################################
+## case: sources_hidden_symbols - the mirror of sources_export_symbols
+## without EXPORT_SYMBOLS: the dependency's own symbol must NOT reach the
+## shared library's dynamic table, while the anchor (a positive control
+## exported unconditionally by the fixture) still does - without that
+## control, an empty `nm -D` output would make this arm pass vacuously.
+######################################################################
+set(_case "sources_hidden_symbols")
+set(_case_skipped FALSE)
+gsdep_case_begin(${_case})
+if(CMAKE_HOST_WIN32 OR CMAKE_HOST_APPLE)
+  message(STATUS "SKIP: ${_case} (ELF dynamic symbol table only)")
+  message(STATUS "CASE ${_case} SKIP")
+  _gsdep_inc(gsdep_skip_count)
+  set(_case_skipped TRUE)
+else()
+  set(_case_dir "${SCRATCH_DIR}/${_case}")
+  file(REMOVE_RECURSE "${_case_dir}")
+  file(MAKE_DIRECTORY "${_case_dir}/sandbox-bin")
+  file(MAKE_DIRECTORY "${_case_dir}/sandbox-src/${VENDOR_DEST_SUBDIR}")
+  file(COPY "${GSDEP_FIXTURES_DIR}/sources/" DESTINATION "${_case_dir}/sandbox-src/${VENDOR_DEST_SUBDIR}/HiddenSrcDep")
+  gsdep_configure(${_case} "${GSDEP_PROJECT_DIR}" "${_case_dir}/bin" _r _o
+    -DSANDBOX_SRC_DIR=${_case_dir}/sandbox-src
+    -DSANDBOX_BIN_DIR=${_case_dir}/sandbox-bin
+    -DGISMO_CMAKE_DIR=${GISMO_SOURCE_DIR}/cmake
+    -DGSDEP_CONSUMER_DIR=${GSDEP_CONSUMER_DIR}
+    -DCASE=${_case}
+    -DGISMO_DEPENDENCY_FETCH=AUTO)
+  if(NOT _r EQUAL 0)
+    message(STATUS "FAIL ${_case}/configure: expected '0' got '${_r}' (${_o})")
+    _gsdep_inc(gsdep_fail_count)
+  else()
+    gsdep_read_report("${_case_dir}/bin/dep_report.txt" R)
+    if(R_NM STREQUAL "<unset>")
+      message(STATUS "SKIP: ${_case} (no CMAKE_NM in the fixture's toolchain)")
+      message(STATUS "CASE ${_case} SKIP")
+      _gsdep_inc(gsdep_skip_count)
+      set(_case_skipped TRUE)
+    else()
+      expect_str(${_case} real_target_type "OBJECT_LIBRARY" "${R_REAL_TARGET_TYPE}")
+      gsdep_build_target(${_case} "${_case_dir}/bin" gsdeptest_shared)
+      if(NOT EXISTS "${R_SHARED_LIB}")
+        message(STATUS "FAIL ${_case}/shared_lib_exists: expected 'EXISTS' got 'MISSING (${R_SHARED_LIB})'")
+        _gsdep_inc(gsdep_fail_count)
+      else()
+        execute_process(
+          COMMAND "${R_NM}" -D --defined-only "${R_SHARED_LIB}"
+          RESULT_VARIABLE _nm_res
+          OUTPUT_VARIABLE _nm_out
+          ERROR_VARIABLE _nm_out)
+        expect_str(${_case} nm_exit "0" "${_nm_res}")
+        expect_match(${_case} nm_sees_anchor "gsdeptest_shared_anchor" "${_nm_out}")
+        expect_not_match(${_case} nm_hides_dep_symbol "gsdeptest_lib_answer" "${_nm_out}")
+        # Only the CXX component is asserted: the C and inlines components of
+        # REAL_TARGET_VISIBILITY depend on property initialisation for a
+        # language (C) this fixture never enables.
+        expect_match(${_case} real_target_visibility_cxx_hidden "^hidden\\|" "${R_REAL_TARGET_VISIBILITY}")
+      endif()
+    endif()
+  endif()
+  gsdep_check_containment(${_case} HiddenSrcDep)
+endif()
+if(NOT _case_skipped)
+  gsdep_case_end(${_case})
+endif()
+
+######################################################################
+## case: header_export_symbols - EXPORT_SYMBOLS combined with MODE
+## HEADER_ONLY is a FATAL_ERROR raised in argument validation: a HEADER_ONLY
+## dependency compiles no code of its own, so there is no target whose
+## symbol visibility could be set. The vendored fixture is present (the same
+## header_only/ copy header_vendored uses), so the only possible source of
+## the failure is the validation itself, not a missing include directory.
+######################################################################
+set(_case "header_export_symbols")
+gsdep_case_begin(${_case})
+set(_case_dir "${SCRATCH_DIR}/${_case}")
+file(REMOVE_RECURSE "${_case_dir}")
+file(MAKE_DIRECTORY "${_case_dir}/sandbox-bin")
+file(MAKE_DIRECTORY "${_case_dir}/sandbox-src/${VENDOR_DEST_SUBDIR}")
+file(COPY "${GSDEP_FIXTURES_DIR}/header_only/" DESTINATION "${_case_dir}/sandbox-src/${VENDOR_DEST_SUBDIR}/ExportHdrDep")
+gsdep_configure(${_case} "${GSDEP_PROJECT_DIR}" "${_case_dir}/bin" _r _o
+  -DSANDBOX_SRC_DIR=${_case_dir}/sandbox-src
+  -DSANDBOX_BIN_DIR=${_case_dir}/sandbox-bin
+  -DGISMO_CMAKE_DIR=${GISMO_SOURCE_DIR}/cmake
+  -DGSDEP_CONSUMER_DIR=${GSDEP_CONSUMER_DIR}
+  -DCASE=${_case}
+  -DGISMO_DEPENDENCY_FETCH=AUTO)
+if(_r EQUAL 0)
+  message(STATUS "FAIL ${_case}/configure: expected 'non-zero' got '0'")
+  _gsdep_inc(gsdep_fail_count)
+else()
+  expect_match(${_case} error_names_dependency "ExportHdrDep" "${_o}")
+  expect_match(${_case} error_names_keyword "EXPORT_SYMBOLS" "${_o}")
+  expect_match(${_case} error_names_mode "HEADER_ONLY" "${_o}")
+endif()
+gsdep_check_containment(${_case} ExportHdrDep)
+gsdep_case_end(${_case})
+
+######################################################################
+## case: sources_found_export_symbols - EXPORT_SYMBOLS on a *found* (not
+## vendored) MODE SOURCES dependency is a documented no-op: whether
+## find_package() succeeds is machine-dependent, and once it has, no
+## gismo_dep_<Name> target exists for this keyword to configure.
+######################################################################
+set(_case "sources_found_export_symbols")
+gsdep_case_begin(${_case})
+set(_case_dir "${SCRATCH_DIR}/${_case}")
+file(REMOVE_RECURSE "${_case_dir}")
+file(MAKE_DIRECTORY "${_case_dir}/sandbox-src")
+file(MAKE_DIRECTORY "${_case_dir}/sandbox-bin")
+gsdep_configure(${_case} "${GSDEP_PROJECT_DIR}" "${_case_dir}/bin" _r _o
+  -DSANDBOX_SRC_DIR=${_case_dir}/sandbox-src
+  -DSANDBOX_BIN_DIR=${_case_dir}/sandbox-bin
+  -DGISMO_CMAKE_DIR=${GISMO_SOURCE_DIR}/cmake
+  -DGSDEP_CONSUMER_DIR=${GSDEP_CONSUMER_DIR}
+  -DCASE=${_case}
+  -DGISMO_DEPENDENCY_FETCH=AUTO
+  -DFakeSrcDep_DIR=${_found_prefix}/FakeSrcDep/lib/cmake/FakeSrcDep)
+if(NOT _r EQUAL 0)
+  message(STATUS "FAIL ${_case}/configure: expected '0' got '${_r}' (${_o})")
+  _gsdep_inc(gsdep_fail_count)
+else()
+  gsdep_read_report("${_case_dir}/bin/dep_report.txt" R)
+  expect_str(${_case} target_exists "TRUE" "${R_TARGET_EXISTS}")
+  expect_bool(${_case} found TRUE "${R_FOUND}")
+  expect_bool(${_case} vendored FALSE "${R_VENDORED}")
+  expect_str(${_case} objects_empty "" "${R_OBJECTS}")
+  expect_str(${_case} extensions_after "<unset>" "${R_EXTENSIONS_AFTER}")
+  expect_str(${_case} real_target_type "<unset>" "${R_REAL_TARGET_TYPE}")
+  expect_match(${_case} linker_after_has_entry "gsdeptest_prebuilt" "${R_LINKER_AFTER}")
+  gsdep_build_and_run(${_case} "${_case_dir}/bin" use_sources "OK sources 4242")
+endif()
+gsdep_check_containment(${_case} FakeSrcDep)
 gsdep_case_end(${_case})
 
 ######################################################################

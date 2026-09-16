@@ -26,12 +26,12 @@
 #include <gsCore/gsConfig.h>
 #include <gsCore/gsLinearAlgebra.h>
 
-#include <Spectra/include/Spectra/SymEigsSolver.h>
-#include <Spectra/include/Spectra/SymEigsShiftSolver.h>
-#include <Spectra/include/Spectra/SymGEigsSolver.h>
-#include <Spectra/include/Spectra/SymGEigsShiftSolver.h>
-#include <Spectra/include/Spectra/GenEigsSolver.h>
-#include <Spectra/include/Spectra/MatOp/SparseSymShiftSolve.h>
+#include <Spectra/SymEigsSolver.h>
+#include <Spectra/SymEigsShiftSolver.h>
+#include <Spectra/SymGEigsSolver.h>
+#include <Spectra/SymGEigsShiftSolver.h>
+#include <Spectra/GenEigsSolver.h>
+#include <Spectra/MatOp/SparseSymShiftSolve.h>
 
 namespace gismo {
 
@@ -477,5 +477,4 @@ public:
 };
 
 } //namespace gismo
-
 

@@ -85,9 +85,9 @@ install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsExport.h
         DESTINATION include/${PROJECT_NAME}/gsCore )
 
 # For gsLinearAlgebra.h
-# Only install the vendored/fetched Eigen headers when G+Smo fetched its own
-# copy (GISMO_EIGEN_VENDORED, set in CMakeLists.txt); a found system/Eigen_DIR
-# install is not ours to install. ${EIGEN_INCLUDE_DIR} is the Eigen root
+# Only install the vendored/fetched Eigen headers when the resolved Eigen is
+# this project's own external/Eigen (GISMO_EIGEN_VENDORED, derived from the
+# path in CMakeLists.txt); a system/Eigen_DIR install is not ours to install. ${EIGEN_INCLUDE_DIR} is the Eigen root
 # (containing the Eigen/ and unsupported/ subfolders), matching how
 # <Eigen/Core> and <unsupported/Eigen/...> are included.
 if(GISMO_EIGEN_VENDORED)

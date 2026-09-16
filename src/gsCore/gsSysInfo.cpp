@@ -43,9 +43,18 @@ namespace gismo
 
   std::string gsSysInfo::getEigenVersion()
   {
+    // Eigen >= 5.0 moved to semantic versioning (MAJOR.MINOR.PATCH) and keeps
+    // EIGEN_WORLD_VERSION pinned at 3 for compatibility; Eigen 3.x has no
+    // EIGEN_PATCH_VERSION and instead uses WORLD.MAJOR.MINOR.
+#ifdef EIGEN_PATCH_VERSION
+    return util::to_string(EIGEN_MAJOR_VERSION)+"."
+      +    util::to_string(EIGEN_MINOR_VERSION)+"."
+      +    util::to_string(EIGEN_PATCH_VERSION);
+#else
     return util::to_string(EIGEN_WORLD_VERSION)+"."
       +    util::to_string(EIGEN_MAJOR_VERSION)+"."
       +    util::to_string(EIGEN_MINOR_VERSION);
+#endif
   }
 
   std::string gsSysInfo::getCompilerVersion()
