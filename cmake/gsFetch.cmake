@@ -97,7 +97,18 @@ endfunction()
 
 # called to fetch/download a submodule form git (working) and svn
 # (ARGV0) SUBMODULE:  name of submodule
-function(gismo_fetch_module SUBMODULE)
+##
+## gismo_fetch_module_source(SUBMODULE): fetch/update/restore a submodule's
+## source tree only - never adds it as a build extension. Runs at most once
+## per configure per module, latched on a GLOBAL property (not a cache
+## variable, so a `cmake .` re-configure still re-runs the git update/restore
+## - the same rationale as the gismo_add_dependency latch below).
+function(gismo_fetch_module_source SUBMODULE)
+  get_property(_gsmod_fetched GLOBAL PROPERTY GISMO_MODULE_FETCHED_${SUBMODULE} SET)
+  if(_gsmod_fetched)
+    return()
+  endif()
+  set_property(GLOBAL PROPERTY GISMO_MODULE_FETCHED_${SUBMODULE} TRUE)
 
   if(EXISTS "${gismo_SOURCE_DIR}/optional/${SUBMODULE}/CMakeLists.txt")
     #Update to current HEAD
@@ -143,7 +154,6 @@ function(gismo_fetch_module SUBMODULE)
     # HERE:
     # add target unshallow_${SUBMODULE}
 
-    gismo_add_extension(${SUBMODULE})
     return()
   endif()
 
@@ -223,8 +233,63 @@ function(gismo_fetch_module SUBMODULE)
       URL https://github.com/gismo/${SUBMODULE}/archive/master.zip
       DESTINATION  optional )
   endif()
+endfunction()
+
+## gismo_fetch_module(SUBMODULE): fetch the module's source
+## (gismo_fetch_module_source, at most once per configure) and add it as a
+## build extension (gismo_add_extension).
+function(gismo_fetch_module SUBMODULE)
+  gismo_fetch_module_source(${SUBMODULE})
   gismo_add_extension(${SUBMODULE})
 endfunction()
+
+## gismo_include_module_dependencies(SUBMODULE): include a module's
+## dependencies.cmake exactly once, in the CALLER's scope. Must be a macro,
+## not a function: a dependencies.cmake file sets plain variables (e.g.
+## optional/gsAutoDiff/dependencies.cmake documents that it sets
+## autodiff_FOUND and GISMO_INCLUDE_DIRS) that later configure logic reads -
+## a function scope would swallow them. Latches only when the file is
+## actually included, so a call made before the module's source exists does
+## not block a later call once it does.
+macro(gismo_include_module_dependencies SUBMODULE)
+  get_property(_gsmod_deps_included GLOBAL PROPERTY GISMO_MODULE_DEPS_INCLUDED_${SUBMODULE} SET)
+  if(NOT _gsmod_deps_included AND EXISTS "${gismo_SOURCE_DIR}/optional/${SUBMODULE}/dependencies.cmake")
+    set_property(GLOBAL PROPERTY GISMO_MODULE_DEPS_INCLUDED_${SUBMODULE} TRUE)
+    message(STATUS "Processing dependencies for optional module: ${SUBMODULE}")
+    include("${gismo_SOURCE_DIR}/optional/${SUBMODULE}/dependencies.cmake")
+  endif()
+  unset(_gsmod_deps_included)
+endmacro()
+
+## gismo_prepare_optional_modules(): strip/dedup/sort GISMO_OPTIONAL, fetch
+## the source of every listed module, then include every module's
+## dependencies.cmake. Every source is fetched before any dependencies.cmake
+## is included - needed when one module's dependencies.cmake reads or
+## expects the source of another listed module, not just its own. Also a
+## macro, so the fetch/include calls above and GISMO_OPTIONAL itself land in
+## the caller's (top-level) scope.
+macro(gismo_prepare_optional_modules)
+  set(_gsmod_list "")
+  foreach(_gsmod_m ${GISMO_OPTIONAL})
+    string(STRIP "${_gsmod_m}" _gsmod_m)
+    if(NOT _gsmod_m STREQUAL "")
+      list(APPEND _gsmod_list "${_gsmod_m}")
+    endif()
+  endforeach()
+  if(_gsmod_list)
+    list(REMOVE_DUPLICATES _gsmod_list)
+    list(SORT _gsmod_list)
+  endif()
+  set(GISMO_OPTIONAL ${_gsmod_list})
+  foreach(_gsmod_m ${GISMO_OPTIONAL})
+    gismo_fetch_module_source(${_gsmod_m})
+  endforeach()
+  foreach(_gsmod_m ${GISMO_OPTIONAL})
+    gismo_include_module_dependencies(${_gsmod_m})
+  endforeach()
+  unset(_gsmod_m)
+  unset(_gsmod_list)
+endmacro()
 
 ######################################################################
 ## gismo_add_dependency: find-or-fetch resolution for an external dependency
@@ -235,6 +300,7 @@ endfunction()
 ##   MODE HEADER_ONLY | SOURCES
 ##   [INCLUDE_SUBDIR <dir>]
 ##   [SOURCE_GLOBS <glob>...]
+##   [EXPORT_SYMBOLS]
 ##   TARGET <Ns>::<Name>)
 ##
 ## Resolution order: if FIND_PACKAGE is given and the effective fetch mode is
@@ -254,16 +320,27 @@ endfunction()
 ## fetches/vendors, skipping find_package(); NEVER never fetches and fails
 ## the configure when find_package() does not succeed (or is not given).
 ## The legacy boolean GISMO_EIGEN_FETCH is a separate knob that this
-## function does not consume.
+## function does not consume. When SOURCE_DIR is given, nothing is fetched
+## regardless of this knob, so the AUTO/ALWAYS/NEVER check below is skipped
+## entirely on that branch - it only guards the GIT_REPOSITORY/URL path.
 ##
-## Two CACHE INTERNAL outputs are set on success:
+## Three CACHE INTERNAL outputs are set on success:
 ##  - <Name>_FOUND        TRUE (every failure path is FATAL_ERROR, so this
 ##                         function either resolves the dependency or stops
 ##                         the configure).
 ##  - <Name>_VENDORED     TRUE when fetched/compiled by G+Smo, FALSE when
-##                         resolved via find_package() - mirrors
-##                         GISMO_EIGEN_VENDORED, which gates header
-##                         installation in cmake/gsInstall.cmake.
+##                         resolved via find_package() - GISMO_EIGEN_VENDORED
+##                         (which gates header installation in
+##                         cmake/gsInstall.cmake) is derived from
+##                         EIGEN_INCLUDE_DIR's resolved path instead, so it no
+##                         longer simply mirrors this flag.
+##  - <Name>_OBJECTS      $<TARGET_OBJECTS:gismo_dep_<Name>> for a vendored
+##                         MODE SOURCES dependency, empty string in every
+##                         other case (found, or vendored HEADER_ONLY). It is
+##                         the handle a per-module shared-library build would
+##                         list among its own sources to receive the compiled
+##                         dependency code, since such a build has no separate
+##                         parameter for it (see the SOURCES bullet below).
 ##
 ## On the find branch (find_package() succeeded) TARGET is always an
 ## `add_library(... INTERFACE IMPORTED GLOBAL)`, regardless of MODE - MODE
@@ -306,21 +383,70 @@ endfunction()
 ## On the fetch/vendored branch the target shape follows MODE:
 ##  - HEADER_ONLY: TARGET is an `add_library(... INTERFACE IMPORTED GLOBAL)`
 ##    with INTERFACE_INCLUDE_DIRECTORIES set to the resolved include directory.
-##  - SOURCES: the real compiled target is a STATIC library named
+##  - SOURCES: the real compiled target is an OBJECT library named
 ##    `gismo_dep_<Name>` (never the caller-visible TARGET name, to avoid
 ##    collisions with module targets and with gismo_fetch_directory's own
-##    naming); TARGET is an ALIAS onto it. SOURCE_GLOBS is expanded with
-##    file(GLOB) at configure time, so new source files added to a vendored
-##    dependency are only picked up on the next `cmake .` re-configure.
+##    naming), with a PRIVATE include dir, POSITION_INDEPENDENT_CODE ON, and
+##    warnings suppressed (`-w` on GNU/Clang/AppleClang, `/W0` on MSVC) -
+##    vendored code is not held to this project's own warning level.
+##    SOURCE_GLOBS is expanded with file(GLOB) at configure time, so new
+##    source files added to a vendored dependency are only picked up on the
+##    next `cmake .` re-configure. Its objects are appended to gismo_EXTENSIONS
+##    (see below) and reported back through <Name>_OBJECTS. TARGET is,
+##    exactly as on the HEADER_ONLY branch, an `add_library(... INTERFACE
+##    IMPORTED GLOBAL)` carrying the include dir - never an ALIAS: an ALIAS of
+##    an OBJECT library, and target_link_libraries() on an OBJECT library,
+##    both need CMake newer than this project's `3.1...3.10` floor
+##    (CMakeLists.txt:9-13). Consumers still write
+##    `target_link_libraries(<module> ... <Ns>::<Name>)` to get the include
+##    dir; the compiled objects themselves arrive separately, through
+##    gismo_EXTENSIONS. Unless EXPORT_SYMBOLS is given (see below), no
+##    visibility property is set on `gismo_dep_<Name>`: it inherits whatever
+##    CMAKE_CXX_VISIBILITY_PRESET/CMAKE_C_VISIBILITY_PRESET/
+##    CMAKE_VISIBILITY_INLINES_HIDDEN are in effect at the call site.
+##
+## Why OBJECT + gismo_EXTENSIONS rather than a separate linked library:
+## gismo_EXTENSIONS entries are sources of both gismo_static
+## (cmake/gsLibrary.cmake:18-22) and shared gismo (:114-118), so the objects
+## are archived into libgismo.a *and* linked into libgismo.so, and they are
+## also sources of every executable in the GISMO_BUILD_LIB=OFF header-only
+## mode (`add_executable(${FNAME} ${FILE} ${gismo_SOURCES} ${gismo_EXTENSIONS}
+## ...)`, cmake/gismoUse.cmake:31). A library reached only through
+## gismo_LINKER's target_link_libraries() would be neither archived into
+## libgismo.a nor exported (`export(TARGETS gismo gismo_static ...)` names
+## only those two targets, cmake/gsInstall.cmake:39-42; `install(EXPORT)` is
+## commented out, :169).
+##
+## EXPORT_SYMBOLS: a no-value keyword. On a vendored MODE SOURCES dependency
+## it sets, on `gismo_dep_<Name>`: CXX_VISIBILITY_PRESET default,
+## C_VISIBILITY_PRESET default, VISIBILITY_INLINES_HIDDEN OFF - overriding
+## the hidden-by-default preset cmake/gsConfig.cmake:18-23 sets for GNU,
+## non-Darwin builds (CMP0063 is NEW, CMakeLists.txt:29-31, so that preset
+## also governs OBJECT libraries). Some vendored code needs its symbols kept
+## visible for consumers of shared libgismo.so to resolve against - e.g. the
+## header-inline `gsHLBFGS<T>` calls the non-template `HLBFGS()`/
+## `INIT_HLBFGS` defined in HLBFGS's own vendored .cpp files. Others must NOT
+## be exported this way - vendored zlib/gzstream symbols exported from
+## libgismo.so can clash with a consumer's own zlib. Combined with
+## MODE HEADER_ONLY, EXPORT_SYMBOLS is a FATAL_ERROR raised in argument
+## validation, before resolution or fetching: a HEADER_ONLY dependency
+## compiles no code of its own, so there is no target whose visibility could
+## be set, and the mismatch is visible in the call itself, independent of the
+## machine it runs on - unlike whether find_package() succeeds. On a found
+## dependency EXPORT_SYMBOLS is a documented no-op: a prebuilt system
+## library's visibility was fixed when it was built, and find_package()
+## success is machine-dependent, so erroring there would make the same
+## declaration valid on one box and invalid on another.
 ## GISMO_INCLUDE_DIRS is appended in every case, each element deduplicated
 ## individually - a resolved include dir or library list can itself hold
 ## several paths, and the body re-runs on every `cmake .` re-configure - so
-## repeated calls/re-configures cannot grow the list. gismo_LINKER (the
-## legacy single-library build's global, folded into libgismo via
-## $<TARGET_OBJECTS:...> which drops target link interfaces) is appended only
-## when there is something to link: the vendored MODE SOURCES static library,
-## or a found (non-vendored) package's reported libraries - a vendored
-## MODE HEADER_ONLY dependency contributes nothing to gismo_LINKER.
+## repeated calls/re-configures cannot grow the list. gismo_EXTENSIONS
+## receives $<TARGET_OBJECTS:gismo_dep_<Name>> only for a vendored MODE
+## SOURCES dependency, deduplicated the same way. gismo_LINKER (the legacy
+## single-library build's global, consumed via target_link_libraries() of
+## `gismo`/`gismo_static`, cmake/gsLibrary.cmake:27,179) receives only a found
+## (non-vendored) package's reported libraries - a vendored dependency, of
+## either MODE, contributes nothing to gismo_LINKER.
 ##
 ## GIT_REPOSITORY and URL must be https:// - CI has no SSH credentials.
 ##
@@ -331,17 +457,25 @@ endfunction()
 ## (currently line 216), which unconditionally overwrites the variable. A
 ## call placed between `include(gsFetch)` (currently line 191) and that
 ## `set()` silently loses its include-dir contribution to GISMO_INCLUDE_DIRS
-## while keeping its gismo_LINKER contribution, since the two globals are
-## appended independently and only one of them is later clobbered.
+## while keeping its gismo_LINKER / gismo_EXTENSIONS contribution, since the
+## globals are appended independently and only GISMO_INCLUDE_DIRS is later
+## clobbered.
 ##
-## Example:
+## Examples:
 ##   gismo_add_dependency(Spectra
-##     FIND_PACKAGE   Spectra
+##     FIND_PACKAGE   spectra
 ##     GIT_REPOSITORY https://github.com/yixuan/spectra.git
-##     GIT_TAG        v1.0.1
+##     GIT_TAG        v1.2.0
 ##     MODE           HEADER_ONLY
 ##     INCLUDE_SUBDIR include
 ##     TARGET         Spectra::Spectra)
+##
+##   gismo_add_dependency(HLBFGS
+##     SOURCE_DIR     "${gismo_SOURCE_DIR}/external"
+##     MODE           SOURCES
+##     SOURCE_GLOBS   HLBFGS/HLBFGS.cpp HLBFGS/HLBFGS_BLAS.cpp HLBFGS/ICFS.cpp HLBFGS/LineSearch.cpp
+##     EXPORT_SYMBOLS
+##     TARGET         HLBFGS::HLBFGS)
 ##
 function(gismo_add_dependency GAD_NAME)
   # Re-entrancy latch: a GLOBAL property (not a cache variable) so that a
@@ -353,7 +487,7 @@ function(gismo_add_dependency GAD_NAME)
     return()
   endif()
 
-  cmake_parse_arguments(GAD ""
+  cmake_parse_arguments(GAD "EXPORT_SYMBOLS"
     "MODE;INCLUDE_SUBDIR;TARGET;GIT_REPOSITORY;GIT_TAG;URL;URL_HASH;SOURCE_DIR"
     "FIND_PACKAGE;SOURCE_GLOBS" ${ARGN})
 
@@ -366,6 +500,9 @@ function(gismo_add_dependency GAD_NAME)
   endif()
   if(NOT GAD_MODE STREQUAL "HEADER_ONLY" AND NOT GAD_MODE STREQUAL "SOURCES")
     message(FATAL_ERROR "gismo_add_dependency(${GAD_NAME}): MODE must be HEADER_ONLY or SOURCES (got \"${GAD_MODE}\")")
+  endif()
+  if(GAD_EXPORT_SYMBOLS AND GAD_MODE STREQUAL "HEADER_ONLY")
+    message(FATAL_ERROR "gismo_add_dependency(${GAD_NAME}): EXPORT_SYMBOLS applies only to MODE SOURCES; a MODE HEADER_ONLY dependency compiles no code whose symbol visibility could be set")
   endif()
   if(NOT DEFINED GAD_TARGET OR GAD_TARGET STREQUAL "")
     message(FATAL_ERROR "gismo_add_dependency(${GAD_NAME}): TARGET is required")
@@ -416,6 +553,7 @@ function(gismo_add_dependency GAD_NAME)
   set(_gad_vendored FALSE)
   set(_gad_include_dir "")
   set(_gad_libs "")
+  set(_gad_objects "")
 
   # --- find_package branch ---------------------------------------------------
   if(DEFINED GAD_FIND_PACKAGE AND NOT _gad_fetch_mode STREQUAL "ALWAYS")
@@ -698,13 +836,26 @@ function(gismo_add_dependency GAD_NAME)
         message(FATAL_ERROR "gismo_add_dependency(${GAD_NAME}): SOURCE_GLOBS (${GAD_SOURCE_GLOBS}) matched no files under \"${_gad_source_dir}\"")
       endif()
       if(NOT TARGET gismo_dep_${GAD_NAME})
-        add_library(gismo_dep_${GAD_NAME} STATIC ${_gad_sources})
-        target_include_directories(gismo_dep_${GAD_NAME} PUBLIC "${_gad_include_dir}")
+        add_library(gismo_dep_${GAD_NAME} OBJECT ${_gad_sources})
+        target_include_directories(gismo_dep_${GAD_NAME} PRIVATE "${_gad_include_dir}")
         set_target_properties(gismo_dep_${GAD_NAME} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+        if(MSVC)
+          target_compile_options(gismo_dep_${GAD_NAME} PRIVATE /W0)
+        elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+          target_compile_options(gismo_dep_${GAD_NAME} PRIVATE -w)
+        endif()
+        if(GAD_EXPORT_SYMBOLS)
+          set_target_properties(gismo_dep_${GAD_NAME} PROPERTIES
+            CXX_VISIBILITY_PRESET default
+            C_VISIBILITY_PRESET default
+            VISIBILITY_INLINES_HIDDEN OFF)
+        endif()
       endif()
       if(NOT TARGET ${GAD_TARGET})
-        add_library(${GAD_TARGET} ALIAS gismo_dep_${GAD_NAME})
+        add_library(${GAD_TARGET} INTERFACE IMPORTED GLOBAL)
+        set_target_properties(${GAD_TARGET} PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${_gad_include_dir}")
       endif()
+      set(_gad_objects "$<TARGET_OBJECTS:gismo_dep_${GAD_NAME}>")
     endif()
 
     set(_gad_vendored TRUE)
@@ -716,16 +867,18 @@ function(gismo_add_dependency GAD_NAME)
   # is a FATAL_ERROR, which stops the configure outright.
   set(${GAD_NAME}_FOUND TRUE CACHE INTERNAL "Whether ${GAD_NAME} was resolved by gismo_add_dependency()")
   set(${GAD_NAME}_VENDORED ${_gad_vendored} CACHE INTERNAL "Whether ${GAD_NAME} was fetched/vendored by G+Smo")
+  set(${GAD_NAME}_OBJECTS "${_gad_objects}" CACHE INTERNAL "Objects of ${GAD_NAME} compiled by G+Smo (empty unless vendored MODE SOURCES)")
 
   # --- legacy single-library build globals --------------------------------
-  # _gad_include_dir / _gad_linker_entry can each be a semicolon-separated
-  # list in their own right (a found package's *_INCLUDE_DIRS / *_LIBRARIES,
-  # or a target's INTERFACE_INCLUDE_DIRECTORIES, routinely hold more than one
-  # path) - list(FIND ...) against the whole value would compare it as a
-  # single element and never match, so dedup element-by-element instead.
-  # CACHE INTERNAL always overwrites regardless of FORCE, so it is safe (and
-  # necessary, since the function body re-runs on every `cmake .`) to just
-  # recompute and re-set the deduplicated list unconditionally.
+  # _gad_include_dir / _gad_linker_entry / _gad_objects can each be a
+  # semicolon-separated list in their own right (a found package's
+  # *_INCLUDE_DIRS / *_LIBRARIES, or a target's INTERFACE_INCLUDE_DIRECTORIES,
+  # routinely hold more than one path) - list(FIND ...) against the whole
+  # value would compare it as a single element and never match, so dedup
+  # element-by-element instead. CACHE INTERNAL always overwrites regardless
+  # of FORCE, so it is safe (and necessary, since the function body re-runs
+  # on every `cmake .`) to just recompute and re-set the deduplicated lists
+  # (GISMO_INCLUDE_DIRS, gismo_LINKER, gismo_EXTENSIONS) unconditionally.
   set(_gad_new_include_dirs "${GISMO_INCLUDE_DIRS}")
   foreach(_gad_one_dir ${_gad_include_dir})
     list(FIND _gad_new_include_dirs "${_gad_one_dir}" _gad_incdir_idx)
@@ -736,9 +889,7 @@ function(gismo_add_dependency GAD_NAME)
   set(GISMO_INCLUDE_DIRS ${_gad_new_include_dirs} CACHE INTERNAL "Gismo include directories")
 
   set(_gad_linker_entry "")
-  if(_gad_vendored AND GAD_MODE STREQUAL "SOURCES")
-    set(_gad_linker_entry "gismo_dep_${GAD_NAME}")
-  elseif(NOT _gad_vendored AND NOT "${_gad_libs}" STREQUAL "")
+  if(NOT _gad_vendored AND NOT "${_gad_libs}" STREQUAL "")
     set(_gad_linker_entry "${_gad_libs}")
   endif()
   if(NOT _gad_linker_entry STREQUAL "")
@@ -750,6 +901,17 @@ function(gismo_add_dependency GAD_NAME)
       endif()
     endforeach()
     set(gismo_LINKER ${_gad_new_linker} CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+  endif()
+
+  if(NOT _gad_objects STREQUAL "")
+    set(_gad_new_extensions "${gismo_EXTENSIONS}")
+    foreach(_gad_one_object ${_gad_objects})
+      list(FIND _gad_new_extensions "${_gad_one_object}" _gad_extensions_idx)
+      if(_gad_extensions_idx EQUAL -1)
+        list(APPEND _gad_new_extensions "${_gad_one_object}")
+      endif()
+    endforeach()
+    set(gismo_EXTENSIONS ${_gad_new_extensions} CACHE INTERNAL "Gismo extensions to be included")
   endif()
 
   set_property(GLOBAL PROPERTY gismo_dependency_${GAD_NAME}_resolved TRUE)

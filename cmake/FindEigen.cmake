@@ -41,9 +41,36 @@ endif()
 if(NOT EIGEN_INCLUDE_DIR AND NOT Eigen_DIR)
   find_package(Eigen3 ${Eigen_FIND_VERSION} CONFIG QUIET)
   if(Eigen3_FOUND AND TARGET Eigen3::Eigen)
-    get_target_property(EIGEN_INCLUDE_DIR Eigen3::Eigen INTERFACE_INCLUDE_DIRECTORIES)
-    set(EIGEN_VERSION ${Eigen3_VERSION})
-    set(EIGEN_VERSION_OK TRUE)
+    get_target_property(_eigen_config_dirs Eigen3::Eigen INTERFACE_INCLUDE_DIRECTORIES)
+    # INTERFACE_INCLUDE_DIRECTORIES is a list and, for a build-tree export,
+    # typically carries $<BUILD_INTERFACE:...>/$<INSTALL_INTERFACE:...>
+    # generator expressions rather than plain paths. Those are evaluated at
+    # CMake's generate step, which runs after this find-module, so they must
+    # be resolved by hand here: unwrap BUILD_INTERFACE, skip INSTALL_INTERFACE
+    # (its path is relative to an install prefix that may not exist yet) and
+    # any entry still carrying "$<" after that, and take the first surviving
+    # entry that is an actual Eigen root (mirrors how _eigen_check_version()
+    # below recognizes one). EIGEN_INCLUDE_DIR/EIGEN_VERSION_OK are left
+    # untouched when nothing qualifies, so the manual header search further
+    # down runs as the fallback.
+    if(_eigen_config_dirs)
+      foreach(_eigen_config_dir IN LISTS _eigen_config_dirs)
+        if(_eigen_config_dir MATCHES "^\\$<BUILD_INTERFACE:(.*)>$")
+          set(_eigen_config_dir "${CMAKE_MATCH_1}")
+        endif()
+        if(_eigen_config_dir MATCHES "\\$<")
+          continue()
+        endif()
+        if(EXISTS "${_eigen_config_dir}/Eigen/Core")
+          set(EIGEN_INCLUDE_DIR "${_eigen_config_dir}")
+          set(EIGEN_VERSION ${Eigen3_VERSION})
+          set(EIGEN_VERSION_OK TRUE)
+          break()
+        endif()
+      endforeach()
+    endif()
+    unset(_eigen_config_dirs)
+    unset(_eigen_config_dir)
   endif()
 endif()
 
@@ -98,9 +125,17 @@ if(NOT EIGEN_INCLUDE_DIR)
     ${CMAKE_INSTALL_PREFIX}/include
     PATH_SUFFIXES eigen3 eigen
   )
-  if(EIGEN_INCLUDE_DIR)
-    _eigen_check_version()
-  endif()
+endif()
+
+# EIGEN_INCLUDE_DIR may already be set here without EIGEN_VERSION_OK having
+# been checked: it is a find_path CACHE variable (survives a re-configure and
+# a user-supplied -DEIGEN_INCLUDE_DIR=...), while EIGEN_VERSION_OK is a plain
+# variable that a fresh CMake process does not see. NOT EIGEN_VERSION_OK also
+# guards the config-package hit above (1), which already set it TRUE together
+# with a single resolved EIGEN_INCLUDE_DIR, so re-deriving the version from
+# headers here would just be redundant.
+if(EIGEN_INCLUDE_DIR AND NOT EIGEN_VERSION_OK)
+  _eigen_check_version()
 endif()
 
 include(FindPackageHandleStandardArgs)

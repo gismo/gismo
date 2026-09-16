@@ -18,6 +18,13 @@ else()
 endif()
 project(gsdeptest CXX)
 
+## Without this, the CMake < 3.19 branch above (cmake_minimum_required 2.8.12)
+## leaves CMP0063 OLD and CMAKE_*_VISIBILITY_PRESET/VISIBILITY_INLINES_HIDDEN
+## are ignored on OBJECT libraries - mirrors CMakeLists.txt:29-31.
+if(POLICY CMP0063)
+  cmake_policy(SET CMP0063 NEW)
+endif()
+
 foreach(_gsdep_required CASE SANDBOX_SRC_DIR SANDBOX_BIN_DIR GISMO_CMAKE_DIR)
   if(NOT DEFINED ${_gsdep_required})
     message(FATAL_ERROR "gsdeptest: -D${_gsdep_required}=... is required")
@@ -70,9 +77,15 @@ if(DEFINED gismo_LINKER)
 else()
   set(_gsdep_before_linker "<unset>")
 endif()
+if(DEFINED gismo_EXTENSIONS)
+  string(REPLACE ";" "|" _gsdep_before_extensions "${gismo_EXTENSIONS}")
+else()
+  set(_gsdep_before_extensions "<unset>")
+endif()
 
 set(_gsdep_name "")
 set(_gsdep_consumer "")
+set(_gsdep_shared FALSE)
 
 if(CASE STREQUAL "header_found")
   set(_gsdep_name FakeHdrDep)
@@ -114,6 +127,62 @@ elseif(CASE STREQUAL "sources_vendored")
     INCLUDE_SUBDIR include
     SOURCE_GLOBS "src/*.cpp"
     TARGET GsDepTest::VendoredSrcDep)
+  set(_gsdep_consumer use_sources)
+
+elseif(CASE STREQUAL "sources_vendored_twice")
+  set(_gsdep_name TwiceSrcDep)
+  gismo_add_dependency(TwiceSrcDep
+    GIT_REPOSITORY https://invalid.invalid/gsdeptest-should-never-be-cloned.git
+    MODE SOURCES
+    INCLUDE_SUBDIR include
+    SOURCE_GLOBS "src/*.cpp"
+    TARGET GsDepTest::TwiceSrcDep)
+  set(_gsdep_consumer use_sources)
+
+elseif(CASE STREQUAL "sources_export_symbols")
+  set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+  set(CMAKE_C_VISIBILITY_PRESET hidden)
+  set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
+  set(_gsdep_name ExportSrcDep)
+  gismo_add_dependency(ExportSrcDep
+    GIT_REPOSITORY https://invalid.invalid/gsdeptest-should-never-be-cloned.git
+    MODE SOURCES
+    INCLUDE_SUBDIR include
+    SOURCE_GLOBS "src/*.cpp"
+    EXPORT_SYMBOLS
+    TARGET GsDepTest::ExportSrcDep)
+  set(_gsdep_shared TRUE)
+
+elseif(CASE STREQUAL "sources_hidden_symbols")
+  set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+  set(CMAKE_C_VISIBILITY_PRESET hidden)
+  set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
+  set(_gsdep_name HiddenSrcDep)
+  gismo_add_dependency(HiddenSrcDep
+    GIT_REPOSITORY https://invalid.invalid/gsdeptest-should-never-be-cloned.git
+    MODE SOURCES
+    INCLUDE_SUBDIR include
+    SOURCE_GLOBS "src/*.cpp"
+    TARGET GsDepTest::HiddenSrcDep)
+  set(_gsdep_shared TRUE)
+
+elseif(CASE STREQUAL "header_export_symbols")
+  set(_gsdep_name ExportHdrDep)
+  gismo_add_dependency(ExportHdrDep
+    GIT_REPOSITORY https://invalid.invalid/gsdeptest-should-never-be-cloned.git
+    MODE HEADER_ONLY
+    INCLUDE_SUBDIR include
+    EXPORT_SYMBOLS
+    TARGET GsDepTest::ExportHdrDep)
+
+elseif(CASE STREQUAL "sources_found_export_symbols")
+  set(_gsdep_name FakeSrcDep)
+  gismo_add_dependency(FakeSrcDep
+    FIND_PACKAGE FakeSrcDep
+    MODE SOURCES
+    SOURCE_GLOBS "src/*.cpp"
+    EXPORT_SYMBOLS
+    TARGET GsDepTest::FakeSrcDep)
   set(_gsdep_consumer use_sources)
 
 elseif(CASE STREQUAL "sources_never")
@@ -192,6 +261,62 @@ if(DEFINED gismo_LINKER)
 else()
   set(_gsdep_after_linker "<unset>")
 endif()
+if(DEFINED gismo_EXTENSIONS)
+  string(REPLACE ";" "|" _gsdep_after_extensions "${gismo_EXTENSIONS}")
+else()
+  set(_gsdep_after_extensions "<unset>")
+endif()
+
+if(DEFINED ${_gsdep_name}_OBJECTS)
+  set(_gsdep_objects_val "${${_gsdep_name}_OBJECTS}")
+else()
+  set(_gsdep_objects_val "<unset>")
+endif()
+
+set(_gsdep_real_target "gismo_dep_${_gsdep_name}")
+if(TARGET ${_gsdep_real_target})
+  get_target_property(_gsdep_real_target_type ${_gsdep_real_target} TYPE)
+  if(NOT _gsdep_real_target_type)
+    set(_gsdep_real_target_type "<unset>")
+  endif()
+
+  get_target_property(_gsdep_real_vis_cxx ${_gsdep_real_target} CXX_VISIBILITY_PRESET)
+  if(NOT _gsdep_real_vis_cxx OR _gsdep_real_vis_cxx STREQUAL "_gsdep_real_vis_cxx-NOTFOUND")
+    set(_gsdep_real_vis_cxx "<unset>")
+  endif()
+  get_target_property(_gsdep_real_vis_c ${_gsdep_real_target} C_VISIBILITY_PRESET)
+  if(NOT _gsdep_real_vis_c OR _gsdep_real_vis_c STREQUAL "_gsdep_real_vis_c-NOTFOUND")
+    set(_gsdep_real_vis_c "<unset>")
+  endif()
+  get_target_property(_gsdep_real_vis_inl ${_gsdep_real_target} VISIBILITY_INLINES_HIDDEN)
+  if(NOT DEFINED _gsdep_real_vis_inl OR _gsdep_real_vis_inl STREQUAL "_gsdep_real_vis_inl-NOTFOUND" OR _gsdep_real_vis_inl STREQUAL "")
+    set(_gsdep_real_vis_inl "<unset>")
+  endif()
+  set(_gsdep_real_target_visibility "${_gsdep_real_vis_cxx}|${_gsdep_real_vis_c}|${_gsdep_real_vis_inl}")
+
+  get_target_property(_gsdep_real_target_opts ${_gsdep_real_target} COMPILE_OPTIONS)
+  if(NOT _gsdep_real_target_opts OR _gsdep_real_target_opts STREQUAL "_gsdep_real_target_opts-NOTFOUND")
+    set(_gsdep_real_target_opts "<unset>")
+  else()
+    string(REPLACE ";" "|" _gsdep_real_target_opts "${_gsdep_real_target_opts}")
+  endif()
+else()
+  set(_gsdep_real_target_type "<unset>")
+  set(_gsdep_real_target_visibility "<unset>")
+  set(_gsdep_real_target_opts "<unset>")
+endif()
+
+if(_gsdep_shared)
+  set(_gsdep_shared_lib "${CMAKE_BINARY_DIR}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}gsdeptest_shared${CMAKE_SHARED_LIBRARY_SUFFIX}")
+else()
+  set(_gsdep_shared_lib "<unset>")
+endif()
+
+if(CMAKE_NM)
+  set(_gsdep_nm "${CMAKE_NM}")
+else()
+  set(_gsdep_nm "<unset>")
+endif()
 
 if(TARGET ${_gsdep_target})
   set(_gsdep_target_exists "TRUE")
@@ -236,21 +361,46 @@ INCLUDE_DIRS_BEFORE=${_gsdep_before_dirs}
 INCLUDE_DIRS_AFTER=${_gsdep_after_dirs}
 LINKER_BEFORE=${_gsdep_before_linker}
 LINKER_AFTER=${_gsdep_after_linker}
+EXTENSIONS_BEFORE=${_gsdep_before_extensions}
+EXTENSIONS_AFTER=${_gsdep_after_extensions}
+OBJECTS=${_gsdep_objects_val}
+REAL_TARGET_TYPE=${_gsdep_real_target_type}
+REAL_TARGET_VISIBILITY=${_gsdep_real_target_visibility}
+REAL_TARGET_COMPILE_OPTIONS=${_gsdep_real_target_opts}
+SHARED_LIB=${_gsdep_shared_lib}
+NM=${_gsdep_nm}
 ")
+
+if(NOT _gsdep_consumer STREQUAL "" OR _gsdep_shared)
+  # Pin the runtime/library output directory to the same path for every
+  # configuration, single- or multi-config generator alike, so the driver
+  # never has to guess a per-config subdirectory when it looks for the
+  # built executable or shared library.
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+  set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+  foreach(_gsdep_cfg Debug Release RelWithDebInfo MinSizeRel)
+    string(TOUPPER "${_gsdep_cfg}" _gsdep_cfg_upper)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${_gsdep_cfg_upper} "${CMAKE_BINARY_DIR}/bin")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${_gsdep_cfg_upper} "${CMAKE_BINARY_DIR}/lib")
+  endforeach()
+endif()
 
 if(NOT _gsdep_consumer STREQUAL "")
   if(NOT DEFINED GSDEP_CONSUMER_DIR)
     message(FATAL_ERROR "gsdeptest: -DGSDEP_CONSUMER_DIR=... is required for CASE=${CASE}")
   endif()
-  # Pin the runtime output directory to the same path for every
-  # configuration, single- or multi-config generator alike, so the driver
-  # never has to guess a per-config subdirectory when it looks for the
-  # built executable.
-  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-  foreach(_gsdep_cfg Debug Release RelWithDebInfo MinSizeRel)
-    string(TOUPPER "${_gsdep_cfg}" _gsdep_cfg_upper)
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${_gsdep_cfg_upper} "${CMAKE_BINARY_DIR}/bin")
-  endforeach()
-  add_executable(${_gsdep_consumer} "${GSDEP_CONSUMER_DIR}/${_gsdep_consumer}.cpp")
+  add_executable(${_gsdep_consumer} "${GSDEP_CONSUMER_DIR}/${_gsdep_consumer}.cpp" ${gismo_EXTENSIONS})
   target_link_libraries(${_gsdep_consumer} PRIVATE ${_gsdep_target})
+endif()
+
+if(_gsdep_shared)
+  if(NOT DEFINED GSDEP_CONSUMER_DIR)
+    message(FATAL_ERROR "gsdeptest: -DGSDEP_CONSUMER_DIR=... is required for CASE=${CASE}")
+  endif()
+  add_library(gsdeptest_shared SHARED "${GSDEP_CONSUMER_DIR}/shared_anchor.cpp" ${${_gsdep_name}_OBJECTS})
+  target_link_libraries(gsdeptest_shared PRIVATE ${_gsdep_target})
+  # The anchor is exported in both the export and hidden arms: it is the
+  # positive control that proves nm actually read the dynamic symbol table,
+  # independent of whatever visibility the vendored dependency itself got.
+  set_target_properties(gsdeptest_shared PROPERTIES CXX_VISIBILITY_PRESET default)
 endif()
