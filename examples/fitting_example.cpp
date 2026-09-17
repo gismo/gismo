@@ -21,6 +21,7 @@ int main(int argc, char *argv[])
 {
     // Options with default values
     bool save     = false;  // save
+    bool fixBdr   = false;  // fixbdr: freeze boundary parameters (no correction at all)
     index_t numURef   = 0;  // r
     index_t numKnots   = 0; // n
     index_t nx   = -1; // a
@@ -33,9 +34,13 @@ int main(int argc, char *argv[])
     real_t threshold = 1e-02; // t
     real_t tolerance = 1e-02; // e
     index_t extension = 2;  // q
+    index_t interiorIdx = 8137; // m: index of the last interior parametric point
     real_t refPercent = 0.1;// p
-    std::string fn = "fitting/deepdrawingC.xml"; // d
+    std::string fn = "../../point_clouds/nefertiti_v9000_comparison/xmlout/d2_ropt_N_72_72_BIDGCN38_data.xml"; // d
+    
 
+    // ./bin/fitting_example -x 2 -y 2 -i 7 -s 2.5e-5 -c 1 -e 1e-3 -r 0 --save 
+    // -d ../../point_clouds/nefertiti_v9000_comparison/xmlout/d2_ropt_N_72_72_BIDGCN38_data.xml
     // Reading options from the command line
     //![Parse command line]
     gsCmdLine cmd("Fit parametrized sample data with a surface patch. Expected input file is an XML "
@@ -43,6 +48,7 @@ int main(int argc, char *argv[])
             "Every column represents a (u,v) parametric coordinate\nMatrix id 1 : contains a "
             "3 x N matrix. Every column represents a point (x,y,z) in space.");
     cmd.addSwitch("save", "Save result in XML format", save);
+    cmd.addSwitch("fixbdr", "Freeze boundary parameters (no correction); default lets them slide along their edge", fixBdr);
     cmd.addInt("c", "parcor", "Steps of parameter correction", maxPcIter);
     cmd.addInt("i", "iter", "number of iterations", iter);
     cmd.addInt("x", "deg_x", "degree in x direction", deg_x);
@@ -51,6 +57,7 @@ int main(int argc, char *argv[])
     cmd.addReal("t", "threshold", "error threshold (special valule -1)", threshold);
     cmd.addReal("p", "refPercent", "percentage of points to refine in each iteration", refPercent);
     cmd.addInt("q", "extension", "extension size", extension);
+    cmd.addInt("m", "interior", "index of the last interior parametric point", interiorIdx);
     cmd.addInt("r", "urefine", "initial uniform refinement steps", numURef);
     cmd.addInt("n", "iknots", "number of interior knots in each direction", numKnots);
     cmd.addInt("a", "uknots", "number of interior knots in u-direction", nx);
@@ -154,7 +161,7 @@ int main(int argc, char *argv[])
         gsInfo<<"Iteration "<<i<<".."<<"\n";
 
         time.restart();
-        ref.nextIteration(tolerance, threshold, maxPcIter);
+        ref.nextIteration_pdm(tolerance, threshold, maxPcIter, interiorIdx, !fixBdr);
         time.stop();
         gsInfo<<"Fitting time: "<< time <<"\n";
 
@@ -162,6 +169,20 @@ int main(int argc, char *argv[])
         gsInfo<<"Min distance : "<< ref.minPointError() <<" / ";
         gsInfo<<"Max distance : "<< ref.maxPointError() <<"\n";
         gsInfo<<"Points below tolerance: "<< 100.0 * ref.numPointsBelow(tolerance)/errors.size()<<"%.\n";
+
+        // Save the (corrected) parametric and point data of this iteration, in the same
+        // layout as the input file: id 0 = 2 x N parameters, id 1 = 3 x N points.
+        if ( save )
+        {
+            gsMatrix<> uv_iter  = ref.returnParamValues();   // 2 x N parameters
+            gsMatrix<> xyz_iter = ref.returnPoints().transpose(); // 3 x N points
+            gsFileData<> fd_iter;
+            fd_iter << uv_iter;  // id 0
+            fd_iter << xyz_iter; // id 1
+            const std::string fn_iter = "fitting_data_iter" + util::to_string(i);
+            fd_iter.dump(fn_iter);
+            gsInfo<<"Saved iteration data to "<< fn_iter <<".xml\n";
+        }
 
         if ( ref.maxPointError() < tolerance )
         {

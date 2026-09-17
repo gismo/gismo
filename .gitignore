@@ -24,6 +24,9 @@ CMakeLists.txt.user
 /build*
 .vscode/
 
+# Claude
+.claude/
+
 # CMake
 CMakeCache.txt
 CMakeFiles/

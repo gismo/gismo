@@ -161,6 +161,22 @@ public:
                           const std::vector<index_t>& interpIdx,
                           bool admissibleRef);
 
+    /**
+     * @brief nextIteration_pdm: perform one iteration of adaptive refinement with PDM fitting,
+     * correcting only the interior parametric values. Interior points (indices [0, interiorIdx])
+     * get a full parameter correction, while boundary points (indices [interiorIdx+1, N)) are
+     * kept fixed: if \a slideBoundary is true they may only slide along their domain edge,
+     * otherwise no parameter correction is applied to them at all.
+     * @param tolerance (>=0) if the maximum error is below the tolerance the refinement stops;
+     * @param err_threshold the same as in \ref iterativeRefine.
+     * @param interiorIdx index of the last interior parametric point;
+     * @param slideBoundary if true, boundary points slide along their edge; if false, they are frozen;
+     * @param admissibleRef if true, the refinement is admissible.
+     */
+    bool nextIteration_pdm(T tolerance, T err_threshold, index_t maxPcIter,
+                           index_t interiorIdx, bool slideBoundary = true,
+                           bool admissibleRef = false);
+
     /// Return the refinement percentage
     T getRefPercentage() const
     {
@@ -392,6 +408,63 @@ bool gsHFitting<d, T>::nextIteration_pdm(T tolerance, T err_threshold,
 
     //spply maxPcIter parameter correction steps separating interior and boundary points
     this->parameterCorrectionSepBoundary_pdm(1e-6, maxPcIter,interpIdx);//closestPoint accuracy, orthogonality tolerance
+
+    // ESTIMATE the point-wise approximation error
+    this->computeErrors();
+
+    return true;
+}
+
+
+//perform one iterazion of adaptive refinement for PDM fitting, keeping the boundary
+//parametric values on the domain boundary (only interior parameters are corrected freely)
+template<short_t d, class T>
+bool gsHFitting<d, T>::nextIteration_pdm(T tolerance, T err_threshold,
+                                         index_t maxPcIter,
+                                         index_t interiorIdx,
+                                         bool slideBoundary,
+                                         bool admissibleRef)
+{
+    // look at iterativeRefine
+    if ( m_pointErrors.size() != 0 )
+    {
+        if ( m_max_error > tolerance )
+        {
+            gsHBoxContainer<2> markedRef;
+            std::vector<index_t> boxes;
+
+            // if err_treshold is -1 we refine the m_ref percent of the whole domain
+            T threshold = (err_threshold >= 0) ? err_threshold : setRefineThreshold(m_pointErrors);
+
+            gsHTensorBasis<d, T>* basis = static_cast<gsHTensorBasis<d,T> *> (this->m_basis);
+
+            if (admissibleRef)
+            {
+                markedRef = getMarkedHBoxesFromBasis_max(*basis, m_pointErrors, m_param_values, threshold, 2.);
+                boxes = markedRef.toRefBoxes();
+            }
+            else
+            {
+                boxes = getBoxes(m_pointErrors, threshold);
+            }
+
+            if(boxes.size()==0)
+                return false;
+
+            basis->refineElements(boxes);
+            m_result->refineElements(boxes);
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    // SOLVE one PDM fitting step
+    this->compute(m_lambda);
+
+    // apply maxPcIter parameter correction steps keeping the boundary parameters fixed
+    this->parameterCorrectionFixedBoundary(1e-6, maxPcIter, interiorIdx, slideBoundary);//closestPoint accuracy
 
     // ESTIMATE the point-wise approximation error
     this->computeErrors();

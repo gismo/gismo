@@ -9,19 +9,25 @@
 
         letter  meaning                                poisson  l2  fitting  lrfitting
         S       solve / project / fit (the primal step)   x      x     x        x
-        R       monitor-driven relocation of sigma        x      x     -        -
+        R       monitor-driven relocation of sigma        x      x     x        -
         D       error-driven relocation of sigma          -      x     x        x
         H       local refinement (THB / LR)                x      x     x        x
         U       uniform refinement                         x      x     x        -
 
-    This driver implements S (fit), D (error-driven relocation of sigma) and
-    H (THB refinement) and U (uniform refinement of the THB basis). It does
-    NOT implement R: for point-cloud fitting the r-adaptivity IS the D step
-    (there is no separate monitor-driven relocation), so R is rejected by
-    name, and so are T (directional tensor refine, removed: THB
-    uniformRefine(dir) is unsafe, see the U-step comment) and the legacy F/P
-    aliases (this shared alphabet has no aliases). Every other letter is
-    rejected too, with a message naming this driver and the reason.
+    This driver implements S (fit), R (monitor-driven relocation of sigma),
+    D (error-driven relocation of sigma), H (THB refinement) and U (uniform
+    refinement of the THB basis). D and R are TWO DIFFERENT relocations of
+    sigma, not aliases: D minimizes the true data-fitting error directly
+    (gsOptFit -- variable projection with S frozen; its only mesh-quality
+    control is the hard fold floor BarrierEps), whereas R minimizes a
+    Winslow/harmonic energy (gsOptMesh) weighted by a MONITOR built from the
+    fitting-error density, with a smooth trade-off (Smoothing = theta)
+    between feature alignment and mesh quality instead of a hard floor -- see
+    the R-step comment below for how the monitor is built. T (directional
+    tensor refine, removed: THB uniformRefine(dir) is unsafe, see the U-step
+    comment) and the legacy F/P aliases (this shared alphabet has no aliases)
+    remain unavailable. Every other letter is rejected, with a message naming
+    this driver and the reason.
 
     CLI (11 flags, identical meaning across all four drivers except D6-amendment
     below):
@@ -29,6 +35,11 @@
         -d, --data      Input point-cloud XML        (default "fitting/face.xml")
         -o, --output    Output directory              (default "rh_fitting_output")
             --plot      Write ParaView files
+            --dumpXml   Write S, sigma and the composed G as G+Smo XML
+                        into <output>/xml/ after every EXECUTED schedule
+                        step (see the output-files section below); off by
+                        default, and OFF changes nothing about today's
+                        stdout/CSV/--plot output
         -p, --degree    Degree of S in both directions (default 2)
         -r, --refine    Initial uniform refinement LEVEL of S (default 2):
                         S starts from gsKnotVector<>(0,1,0,p+1) in both
@@ -36,7 +47,7 @@
                         2^r elements per direction (mirrors sigmaKnots=2^R-1).
         -E, --sigmaDeg  Degree of the sigma map        (default 2)
         -R, --sigmaRef  Refinement LEVEL of sigma's mesh (default 3)
-            --schedule  Cycle string over {S,D,H,U}     (default "SDH")
+            --schedule  Cycle string over {S,R,D,H,U}   (default "SDH")
         -i, --iter      Maximum number of schedule cycles (default 3)
             --project   Also measure the projected (P) path (D8)
             --options   Method option list XML (layered over the driver
@@ -51,13 +62,15 @@
 
     Driver keys carried on the resolved gsOptionList (name / default / use).
     This is one of four rh drivers sharing ONE unified 27-key option table
-    (rh-driver-unification task 18); keys this driver does not implement are
-    still DECLARED, with a "-- IGNORED, <reason>" desc, purely so the four
-    reference XMLs carry the same key set and the "not used by ... (typo?)"
-    warning stays silent across all four. NOTE (task 18): the D-step
-    fold-barrier weight, formerly named "Penalty" here, is now "BarrierMu" --
-    "Penalty" is reserved, across all four drivers, for the R-step Winslow
-    fold penalty (which this driver does not implement, hence IGNORED below).
+    (rh-driver-unification task 18) plus MonitorRef/MonitorDeg (this driver's
+    own R-step monitor-basis keys, added on top of the shared 27); keys this
+    driver does not implement are still DECLARED, with a "-- IGNORED, <reason>"
+    desc, purely so the reference XMLs carry the same shared key set and the
+    "not used by ... (typo?)" warning stays silent across all four. NOTE
+    (task 18): the D-step fold-barrier weight, formerly named "Penalty" here,
+    is now "BarrierMu" -- "Penalty" is reserved, across all four drivers, for
+    the R-step Winslow fold penalty, which THIS driver, unlike l2projection
+    and lrfitting, now implements (see the R-step comment below).
 
         RefineRule      3        gsHElementMarker refinement rule (1=GARU,2=PUCA,3=BULK)
         RefineParam     0.5      refinement parameter
@@ -67,16 +80,23 @@
         MaxLevel        10       gsHElementMarker level cap
         Admissible      true     admissible closure
         Extension       true     marker box extension
-        Lambda          1e-6     fitting smoothing weight (gsFitting::compute)
-        Penalty         1e-3     IGNORED: R-step Winslow fold penalty, no R
-                                  step in this driver (kept for key-set parity)
+        Lambda          1e-6     fitting smoothing weight (gsFitting::compute,
+                                  used by BOTH the S step and the R step's
+                                  monitor fit)
+        Penalty         1e-3     R-step Winslow fold penalty: the Garanzha
+                                  fold-regulariser radius eps in
+                                  chi(x)=0.5*(x+sqrt(eps^2+x^2)) (gsOptMesh);
+                                  must be << the typical |det J_sigma| or the
+                                  regulariser goes nearly constant and folds
+                                  go unpenalised (gsAdaptiveParametrization::
+                                  solve() warns if Penalty >= 0.1*minDetJ)
         BarrierMu       1000     D-step fold-barrier weight mu (renamed from
                                   "Penalty", same value -- task 18)
         Target          -1       error band: absolute rmse target (<0 disables the band)
         Band            2.0      error band: dead-zone factor >= 1
         NoCoarsenBelow  0.0      UNUSED since 2026-08-20 (see the band table)
         MaxRefIt        1        inner adapt iterations per H letter
-        Optimizer       "HLBFGS" D-step optimizer backend: gsOptim | HLBFGS
+        Optimizer       "HLBFGS" D-step AND R-step optimizer backend: gsOptim | HLBFGS
         MaxIterations   100      optimizer iteration cap (see the D-step comment:
                                   large values are COUNTER-PRODUCTIVE here)
         OptTol          1e-6     optimizer gradient tolerance (unified name;
@@ -84,8 +104,61 @@
                                   MinGradLen -- NOT gsHLBFGS's own "GradTol",
                                   which is the line-search curvature constant)
         Verbose         0        optimizer/driver verbosity
-        MonitorMode     "value"  IGNORED: no R step in this driver
-        Smoothing       1.0      IGNORED: no R step in this driver
+        MonitorMode     "value"  R step: "value" weights by the monitor's
+                                  VALUE (m2 = 1/(1+theta*f), gsOptMesh
+                                  ValueBased), "gradient" by ||grad f||^2
+                                  (GradientBased). Default is "value": for
+                                  this driver the monitor IS the localization
+                                  signal already (a fitting-error density),
+                                  unlike a PDE driver's u_h where the gradient
+                                  carries the feature information.
+        MonitorSense    "expand" R step monitor sense. "expand" (DEFAULT): f decreasing in the
+                                  fitting error, so omega is LARGE where the fit is poor and sigma
+                                  EXPANDS the feature across more S elements -- the correct sense
+                                  for this driver, whose analysis basis lives AFTER sigma (sigma is
+                                  applied first, S is fit on top of it, in xi = sigma(uv)).
+                                  "contract": f = e/mean(e), increasing in the error -- the sense
+                                  the Poisson driver needs (its analysis basis lives BEFORE sigma).
+                                  A Poisson driver resolves a feature by making det J_sigma SMALL
+                                  there (concentrating elements of a basis that is later mapped
+                                  THROUGH sigma); this driver resolves a feature by spanning it
+                                  with MANY S elements, which requires det J_sigma LARGE there,
+                                  since S's basis is fixed in xi = sigma(uv) and uv is fixed --
+                                  sigma plays the inverse geometric role. Measured on
+                                  paraboloid_ring_w20.xml (SHSRSH -i 1, theta=100, planar,
+                                  MonitorSense=contract): mean det J_sigma binned by distance from
+                                  the ring at rho=0.25 goes 0.705 (on the ring) up to 1.463 (far
+                                  from it) -- sigma CONTRACTS the ring's neighbourhood and expands
+                                  the smooth regions, the wrong direction for this driver. Kept
+                                  selectable because it documents, reproducibly, why the Poisson
+                                  convention does not transfer; it makes the fit WORSE here.
+        MonitorGeom     "planar" R step geometry: "planar" (identity map of the unit square --
+                                  the classical r-adaptivity setting, monitor-driven) | "surface"
+                                  (the current fitted S -- DOMINATED by S's own metric while S is
+                                  still inaccurate, see the header note). Default "planar": the
+                                  Winslow energy is int omega*T/g_reg with T = ||J_S J_sigma||^2
+                                  when the geometry is S itself, so at low DoFs (S a poor
+                                  approximation of the point cloud) sigma is pulled toward
+                                  harmonicity w.r.t. a WRONG metric even at theta=0, and the
+                                  monitor barely competes (measured on paraboloid_ring_w20.xml,
+                                  SHSRSH -i 1: rmse after R goes 8.41e-01 (theta=0) to 8.03e-01
+                                  (theta=100), a 6x WORSE fit than no relocation at all (SHSH:
+                                  5.56e-02), with theta moving the result only ~5%). Passing a
+                                  planar identity map of [0,1]^2 instead selects gsOptMesh's
+                                  PLANAR branch (targetDim()==domainDim()), whose theta=0
+                                  minimizer is sigma = identity EXACTLY, making the baseline pull
+                                  a no-op and handing 100% of the work to the monitor -- "surface"
+                                  is kept only as the documented counter-example above.
+        Smoothing       1.0      R step: Winslow smoothing theta -- the
+                                  monitor-weight strength, theta=0 recovers
+                                  the unweighted harmonic map (pure mesh
+                                  quality, no feature alignment); larger theta
+                                  concentrates elements where the monitor is
+                                  large at the cost of a lower min det J_sigma
+        MonitorRef      3        R step: refinement LEVEL of the error-density
+                                  monitor basis (2^MonitorRef elements per
+                                  direction, same idiom as the S/sigma bases)
+        MonitorDeg      2        R step: degree of the error-density monitor basis
         Slide           true     sigma boundary controls may slide
         quA             1.0      quadrature degree factor (projection, --project
                                   path only)
@@ -103,6 +176,13 @@
                                   adapting sigma against an S that resolves
                                   none of the features distorts the map and
                                   poisons later cycles
+        RSkip           0        skip R steps in the first RSkip cycles: the
+                                  same hazard DirSkip documents for D applies
+                                  here too -- relocating (even under the
+                                  "planar" geometry, whose MONITOR is still
+                                  fit from S's error density) against an S
+                                  that resolves none of the features wastes
+                                  the step and can distort the map
 
     D9 -- error-band rule for the H step, driven by the rmse of the
     last S step (mirrors l2projection_rh_schedule_example's band):
@@ -152,9 +232,9 @@
     when Target >= 0, else the documented 1e-2 fallback; minDetJsigma is
     domain.minJacobian(), RECOMPUTED on every row (never carried forward).
     The closing "final S step when the schedule ended dirty" row (dirty =
-    the schedule's last letter was D/H/U, not S) is kept, with step = S.
+    the schedule's last letter was R/D/H/U, not S) is kept, with step = S.
     path is 'C' (composed) or 'P' (projected) on S rows only; non-primal rows
-    (D/H/U) are not tied to a solve path and carry the literal '-'.
+    (R/D/H/U) are not tied to a solve path and carry the literal '-'.
 
     --project (D8) additionally, at every S step, L2-projects the composed
     map G = S o sigma onto the SAME THB basis as S (same DoF count -- the
@@ -177,6 +257,27 @@
     point cloud) plus `options.xml` and `convergence.csv`, which are written
     UNCONDITIONALLY so a run directory is reproducible on its own.
 
+    Under --dumpXml the driver additionally writes, into <output>/xml/,
+    three G+Smo XML files after every EXECUTED schedule letter (S, R, D, H
+    and U alike, including the trailing final S run after the loop when the
+    schedule did not end in S -- D13's "closing S" row and this dump are
+    the same event):
+
+        step<NNN>_<letter>_S.xml       S itself (*geom, the THB fitting surface)
+        step<NNN>_<letter>_sigma.xml   sigma's domain geometry (domain.domain())
+        step<NNN>_<letter>_G.xml       the composed G = gsComposedGeometry(domain.domain(), *geom)
+
+    <NNN> is a zero-padded 3-digit counter over EXECUTED letters only (a
+    letter skipped by DirSkip, RSkip or by the "no previous solve" guard consumes
+    no counter value and writes nothing), so the files sort in execution
+    order regardless of which letters a given schedule contains. Before the
+    first S, geom is null: only the _sigma.xml file is written and the
+    _S/_G files are skipped for that step. This is a debugging/inspection
+    aid local to this driver (not part of the shared 10/11-flag CLI core
+    above) and changes nothing else: with --dumpXml omitted (the default),
+    stdout, convergence.csv and the --plot files are byte-identical to a
+    run without this flag.
+
     Expected input (same as fitting_example.cpp): an XML file containing
         Matrix id 0 : 2 x N parameter values (rescaled here to [0,1]^2)
         Matrix id 1 : 3 x N (or 2 x N) point coordinates
@@ -192,6 +293,59 @@
     construction comment below) so the paper's union integration basis stays
     cheap: a non-nested pair costs roughly the SUM of their elements, a
     nested pair only the finer of the two.
+
+    R -- the monitor is the FITTING-ERROR DENSITY, decoupled from the fitting
+    objective (unlike D, which descends on the true LS error directly). At
+    every R step the pointwise errors ||G(uv_i)-x_i|| (already maintained at
+    xi = sigma(uv) by the S/D/H/U steps) are normalized by their mean into
+    etilde = e_i/mean(e), then turned into the monitor input f via
+    MonitorSense (see the option entry above): "expand" (default) sets
+    f = 1/(etilde+delta), delta=1e-2, DECREASING in the error; "contract"
+    sets f = etilde, INCREASING in the error, the sense the Poisson driver
+    needs. Both forms are >= 0 so gsOptMesh's 1+theta*f>0 precondition
+    (below) holds unconditionally regardless of MonitorSense. The reason
+    the two drivers need opposite senses: gsOptMesh's ValueBased weight is
+    omega = 1/(1+theta*f), and a Poisson-style driver's analysis basis
+    lives on the REFERENCE domain BEFORE sigma, so resolving a feature
+    there means det J_sigma SMALL at the feature (omega small there, f
+    increasing in error achieves that); THIS driver's S basis lives in xi,
+    AFTER sigma, with the data parameters uv fixed, so resolving a feature
+    means it must span MANY S-elements, i.e. det J_sigma LARGE at the
+    feature (omega large there, f DECREASING in error achieves that) --
+    sigma plays the inverse geometric role between the two drivers, so the
+    monitor sense that is correct for Poisson is backwards here. Measured
+    evidence (paraboloid_ring_w20.xml, SHSRSH -i 1, theta=100, planar,
+    MonitorSense=contract): mean det J_sigma binned by |rho-0.25| goes
+    0.705 (on the ring) to 0.744, 0.800, 0.874, 0.943, 1.463 (away from
+    it) -- sigma CONTRACTS the ring's neighbourhood, the wrong direction.
+    f is then least-squares fit (gsFitting, same Lambda as the S step)
+    onto a coarse tensor B-spline basis (degree MonitorDeg, 2^MonitorRef
+    elements per direction -- an independent, usually much coarser mesh
+    than S's, since the monitor only needs to localize error, not
+    represent it). That raw fit is wrapped in a small clamp-at-zero
+    gsFunction (see the gsClampedMonitor comment below) before being
+    handed to gsAdaptiveParametrization<...,
+    MonitorMode::ValueBased/GradientBased> as the monitor function, with
+    parametric=true (the monitor lives in S's parametric domain, exactly
+    where xi = sigma(uv) lands). The GEOMETRY argument of that same
+    constructor (gsOptMesh's Winslow map g, distinct from the monitor
+    function above) is controlled by MonitorGeom: "planar" (default) passes
+    a planar identity map of [0,1]^2 onto itself, built ONCE (it never
+    changes) from a tensor B-spline basis at sigma's own resolution/degree
+    with its coefficients set to that basis's Greville abscissae -- a
+    B-spline reproduces linear functions exactly at its own Greville points,
+    so this represents the identity EXACTLY (J_g = I, det J_g = 1
+    identically), landing in gsOptMesh's PLANAR branch (targetDim() ==
+    domainDim()); "surface" instead passes *geom (S itself), landing in the
+    SURFACE branch, which folds S's OWN metric into the energy. See the
+    MonitorGeom option entry above for why "planar" is the default and the
+    measured cost of "surface". gsOptMesh (the R-step objective) then
+    minimizes a Winslow/harmonic energy of sigma weighted by that monitor,
+    NOT the data error -- Smoothing (theta) trades off feature alignment
+    against mesh quality smoothly, in contrast to D's hard BarrierEps floor.
+    Because R never evaluates the true LS objective, unlike D it CAN increase
+    rmse; the same finite/fold guard as D (reject and restore sigma's
+    controls) is the only safety net.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -216,6 +370,8 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <sstream>
+#include <type_traits>
 
 using namespace gismo;
 
@@ -247,6 +403,49 @@ std::unique_ptr<gsOptimizer<real_t> > makeOptimizer(const gsOptionList & o)
     return optimizer;
 }
 
+// R-step monitor wrapper: gsFitting on nonnegative data (the normalized
+// error density) rings NEGATIVE near a sharp feature -- a least-squares fit
+// is not shape-preserving. gsOptMesh's ValueBased weight is
+// m2 = 1/(1+theta*f), and gsAdaptiveParametrization::solve()/evalObj()
+// enforce 1+theta*f>0 at EVERY quadrature point (a GISMO_ENSURE after each
+// objective/gradient sweep in gsAdaptiveParametrization.hpp); clamping the
+// raw fit at zero here makes that precondition hold unconditionally for any
+// theta >= 0, instead of depending on how negative the fit's undershoot
+// happens to be at a given theta. eval_into is max(0,.); deriv_into is the
+// underlying spline's derivative where the value is positive and exactly
+// zero on the clamped set (a valid subgradient of max(0,.)) -- required
+// because gsOptMesh's ValueBased gradObj_into asks for
+// funData.flags = NEED_VALUE | NEED_DERIV (see the "m_fun->compute" call
+// sites in gsAdaptiveParametrization.hpp), which gsFunctionSet::compute's
+// default evalAllDers_into dispatches onto eval_into + deriv_into.
+class gsClampedMonitor : public gismo::gsFunction<real_t>
+{
+public:
+    explicit gsClampedMonitor(const gismo::gsFunction<real_t> & fun) : m_fun(&fun) {}
+
+    short_t domainDim() const override { return m_fun->domainDim(); }
+    short_t targetDim() const override { return 1; }
+
+    void eval_into(const gismo::gsMatrix<real_t> & u, gismo::gsMatrix<real_t> & result) const override
+    {
+        m_fun->eval_into(u, result);
+        result = result.cwiseMax(real_t(0));
+    }
+
+    void deriv_into(const gismo::gsMatrix<real_t> & u, gismo::gsMatrix<real_t> & result) const override
+    {
+        gismo::gsMatrix<real_t> vals;
+        m_fun->eval_into(u, vals);
+        m_fun->deriv_into(u, result);
+        for (index_t i = 0; i != u.cols(); i++)
+            if (vals(0, i) <= real_t(0))
+                result.col(i).setZero();
+    }
+
+private:
+    const gismo::gsFunction<real_t> * m_fun;
+};
+
 } // namespace
 
 int main(int argc, char *argv[])
@@ -257,6 +456,7 @@ int main(int argc, char *argv[])
     std::string dataFile = "fitting/face.xml";
     std::string output   = "rh_fitting_output";
     bool plot = false;
+    bool dumpXml = false;
     index_t degree = 2, initialRef = 2;
     index_t sigmaDeg = 2, sigmaRef = 3;
     std::string schedule = "SDH";
@@ -268,15 +468,17 @@ int main(int argc, char *argv[])
 
     gsCmdLine cmd("Schedule-driven adaptive fitting of a parametrized point cloud "
                   "with a composed THB geometry G = S(sigma(u)). The --schedule "
-                  "string over {S,D,H,U} is repeated up to -i times.");
+                  "string over {S,R,D,H,U} is repeated up to -i times.");
     cmd.addString("d", "data",     "Input point-cloud XML", dataFile);
     cmd.addString("o", "output",   "Output directory", output);
     cmd.addSwitch("",  "plot",     "Write ParaView files", plot);
+    cmd.addSwitch("",  "dumpXml",  "Write S, sigma and the composed G as G+Smo XML "
+                                    "after every executed schedule step", dumpXml);
     cmd.addInt   ("p", "degree",   "Degree of S in both directions", degree);
     cmd.addInt   ("r", "refine",   "Initial uniform refinement LEVEL of S", initialRef);
     cmd.addInt   ("E", "sigmaDeg", "Degree of the sigma map", sigmaDeg);
     cmd.addInt   ("R", "sigmaRef", "Refinement LEVEL of sigma's mesh", sigmaRef);
-    cmd.addString("",  "schedule", "Cycle string over {S,D,H,U}", schedule);
+    cmd.addString("",  "schedule", "Cycle string over {S,R,D,H,U}", schedule);
     cmd.addInt   ("i", "iter",     "Maximum number of schedule cycles", maxIter);
     cmd.addSwitch("",  "project",  "Also measure the projected (P) path", project);
     cmd.addSwitch("",  "coarsen",  "H step: force Coarsen=true regardless of the "
@@ -306,21 +508,21 @@ int main(int argc, char *argv[])
     GISMO_ENSURE(maxIter > 0, "iter must be positive");
 
     // Schedule alphabet (D4): the full shared alphabet is S R D H U; this
-    // driver implements S, D, H, U. R is refused because for point-cloud
-    // fitting the r-adaptivity IS the D step (no separate monitor-driven
-    // relocation exists); T (directional tensor refine) is gone entirely
-    // (see the U-step comment); F/P are not aliases in the shared alphabet.
+    // driver implements all five. R (monitor-driven Winslow relocation) and D
+    // (error-driven/direct relocation) are BOTH present and are NOT aliases
+    // of one another -- see the header's R-step paragraph for the
+    // distinction. T (directional tensor refine) is gone entirely (see the
+    // U-step comment); F/P are not aliases in the shared alphabet.
     std::string schedUp;
     for (char c : schedule)
     {
         const char C = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
-        GISMO_ENSURE(C=='S' || C=='D' || C=='H' || C=='U',
+        GISMO_ENSURE(C=='S' || C=='R' || C=='D' || C=='H' || C=='U',
             "rh-adaptive_fitting_example does not implement schedule step '" << c
-            << "'. This driver implements S (fit), D (error-driven sigma relocation), "
-               "H (THB refinement) and U (uniform refinement). "
-            << (C=='R' ? "R (monitor-driven Winslow relocation) is not available for "
-                         "point-cloud fitting: the fitting r-adaptivity IS the D step. "
-               : C=='T' ? "T (directional tensor refinement) has been removed; use U. "
+            << "'. This driver implements S (fit), R (monitor-driven Winslow sigma "
+               "relocation), D (error-driven sigma relocation), H (THB refinement) "
+               "and U (uniform refinement). "
+            << (C=='T' ? "T (directional tensor refinement) has been removed; use U. "
                : C=='F' ? "F is not an alias for S; the shared alphabet has no aliases. "
                : C=='P' ? "P is not an alias for S; the shared alphabet has no aliases. "
                : "")
@@ -353,7 +555,7 @@ int main(int argc, char *argv[])
     opt.addSwitch("Admissible",     "Keep the hierarchy admissible", true);
     opt.addSwitch("Extension",      "Extend marked element regions", true);
     opt.addReal  ("Lambda",         "Fitting smoothing weight", 1e-6);
-    opt.addReal  ("Penalty",        "R-step Winslow fold penalty -- IGNORED, no R step in this driver", 1e-3);
+    opt.addReal  ("Penalty",        "R-step Winslow fold penalty (Garanzha regulariser radius eps)", 1e-3);
     opt.addReal  ("BarrierMu",      "D-step fold-barrier weight mu (renamed from Penalty, task 18)", 1000.0);
     opt.addInt   ("BarrierMode",    "D-step fold barrier: 0 = sampled Gauss rule on sigma's "
                                      "knot mesh (quB), 1 = Bezier-coefficient barrier (no quadrature)", 0);
@@ -379,8 +581,25 @@ int main(int argc, char *argv[])
                                      "false under a composition)", false);
     opt.addReal  ("BarrierEps",     "D-step fold barrier: det J_sigma floor", 5e-2);
     opt.addInt   ("DirSkip",        "Skip D steps in the first DirSkip cycles", 0);
-    opt.addString("MonitorMode",    "R step monitor -- IGNORED, no R step in this driver", "value");
-    opt.addReal  ("Smoothing",      "R step: Winslow smoothing theta -- IGNORED, no R step in this driver", 1.0);
+    opt.addInt   ("RSkip",          "Skip R steps in the first RSkip cycles", 0);
+    opt.addString("MonitorMode",    "R step monitor weight: value (gsOptMesh ValueBased, "
+                                     "default) | gradient (GradientBased)", "value");
+    opt.addString("MonitorSense",   "R step monitor sense: expand (f=1/(etilde+delta), "
+                                     "decreasing in error -- correct for this driver, whose "
+                                     "analysis basis lives AFTER sigma, default) | contract "
+                                     "(f=etilde, increasing in error -- the Poisson driver's "
+                                     "sense, analysis basis BEFORE sigma; makes the fit WORSE "
+                                     "here, kept only as a documented counter-example)", "expand");
+    opt.addString("MonitorGeom",    "R step geometry: planar (identity map of the unit square "
+                                     "-- the classical r-adaptivity setting, monitor-driven, "
+                                     "default) | surface (the current fitted S -- DOMINATED by "
+                                     "S's own metric while S is still inaccurate, see the header "
+                                     "note)", "planar");
+    opt.addReal  ("Smoothing",      "R step: Winslow smoothing theta (0 = pure harmonic map, "
+                                     "no feature alignment)", 1.0);
+    opt.addInt   ("MonitorRef",     "R step: refinement LEVEL of the error-density monitor "
+                                     "basis (2^MonitorRef elements per direction)", 3);
+    opt.addInt   ("MonitorDeg",     "R step: degree of the error-density monitor basis", 2);
 
     // Every key the driver actually knows about, captured BEFORE the file is
     // layered in, so a typo'd key in the XML can be named instead of silently
@@ -411,10 +630,9 @@ int main(int argc, char *argv[])
                        << " is not used by rh-adaptive_fitting_example (typo?)\n";
         // ignoreIfUnknown: a key from a shared XML that this driver does not
         // declare at all is silently dropped instead of being carried into
-        // the dump as if it did something. Keys the driver does not
-        // IMPLEMENT but is still expected to carry for key-set parity
-        // (MonitorMode, Smoothing, Penalty -- R-step only) are declared
-        // above with an IGNORED desc, so they survive this layering.
+        // the dump as if it did something (e.g. BarrierMode, MonitorRef,
+        // MonitorDeg are declared above and so survive this layering even
+        // when a shared/legacy XML predates them).
         opt.update(fo, gsOptionList::ignoreIfUnknown);
         gsInfo << "Method options from --options: " << fdo.lastPath() << "\n";
     }
@@ -446,6 +664,20 @@ int main(int argc, char *argv[])
     GISMO_ENSURE(opt.getInt("BarrierMode") == 0 || opt.getInt("BarrierMode") == 1,
                  "BarrierMode must be 0 (sampled) or 1 (coefficient), got "
                  << opt.getInt("BarrierMode"));
+    // Validate MonitorGeom HERE too, for the same reason as Optimizer above:
+    // an R-free run (e.g. --schedule SDH) would otherwise never reach rStep
+    // and a typo'd value would complete silently and land in options.xml.
+    {
+        const std::string checkGeom = opt.askString("MonitorGeom", "planar");
+        GISMO_ENSURE(checkGeom == "planar" || checkGeom == "surface",
+                     "Unknown MonitorGeom '" << checkGeom << "' (planar | surface)");
+    }
+    // Validate MonitorSense HERE too, for the same reason as MonitorGeom above.
+    {
+        const std::string checkSense = opt.askString("MonitorSense", "expand");
+        GISMO_ENSURE(checkSense == "expand" || checkSense == "contract",
+                     "Unknown MonitorSense '" << checkSense << "' (expand | contract)");
+    }
 
     gsInfo << opt;
     gsFileData<> fdout; fdout << opt; fdout.save(output + "options");
@@ -502,6 +734,22 @@ int main(int argc, char *argv[])
     gsSquareDomain<real_t> domain(sbasis, opt.getSwitch("Slide"));
     //! [Create bases and sigma]
 
+    //! [Planar identity for MonitorGeom=planar]
+    // R step, MonitorGeom="planar" (default -- see the header's MonitorGeom
+    // entry and R-step paragraph): a planar identity map of [0,1]^2 onto
+    // itself, built ONCE here (it never changes) rather than inside rStep.
+    // Same knot-vector idiom as sbasis above (sigma's own resolution/degree:
+    // ks, sigmaDeg), with coefficients set to that basis's Greville
+    // abscissae -- a B-spline reproduces linear functions exactly at its own
+    // Greville points, so this represents the identity EXACTLY (J_g = I,
+    // det J_g = 1 identically everywhere), which both selects gsOptMesh's
+    // PLANAR branch (targetDim()==domainDim()==2) and satisfies its
+    // positive-orientation guard (detJg > 0,
+    // gsAdaptiveParametrization.hpp:345-356).
+    gsTensorBSplineBasis<2> idBasis(ks, ks);
+    gsTensorBSpline<2> planarIdentity(idBasis, idBasis.anchors().transpose());
+    //! [Planar identity for MonitorGeom=planar]
+
     gsInfo << "----------------\n";
     gsInfo << "Fitting " << N << " samples from " << fd_in.lastPath() << "\n";
     gsInfo << "Schedule           : " << schedUp << " x " << maxIter << "\n";
@@ -512,7 +760,7 @@ int main(int argc, char *argv[])
     gsInfo << "----------------\n";
 
     // ------------------------------------------------------------------
-    // State shared by the S/D/H/U steps
+    // State shared by the S/R/D/H/U steps
     // ------------------------------------------------------------------
     gsGeometry<>::uPtr geom;              // current S
     gsMatrix<> xi;                        // xi_i = sigma(uv_i), 2 x N
@@ -730,6 +978,165 @@ int main(int argc, char *argv[])
             << minDetJ << "," << time << "\n";
     };
 
+    // R: monitor-driven Winslow relocation of sigma (gsOptMesh), decoupled
+    // from the fitting objective -- see the header's R-step paragraph for
+    // the monitor construction and the D/R distinction. Unlike D, R never
+    // evaluates the true LS error, so it CAN make rmse worse; the guard
+    // below (reject and restore sigma's controls on a non-finite design or
+    // a fold) is the only safety net, mirroring dStep's guard exactly.
+    // Returns false when the step could not run at all (monitor undefined,
+    // errors[] degenerate) -- the caller must then skip the CSV row and the
+    // XML dump for it, the same "no previous solve" semantics D/H use.
+    auto rStep = [&](index_t cycle) -> bool
+    {
+        gsStopwatch timer;
+
+        // Monitor = normalized fitting-error density. Normalizing by the
+        // mean makes theta dimensionless and comparable across datasets
+        // (see the header comment); a zero/non-finite mean means the
+        // monitor is undefined (e.g. every point already fits exactly), so
+        // the step is skipped rather than dividing by zero.
+        real_t meanErr = 0;
+        for (real_t e : errors) meanErr += e;
+        meanErr /= static_cast<real_t>(N);
+        if (!(meanErr > 0) || !math::isfinite(meanErr))
+        {
+            gsWarn << "  R | WARNING: mean fitting error is not positive/finite ("
+                   << meanErr << "); the error-density monitor is undefined, skipping.\n";
+            return false;
+        }
+
+        // MonitorSense (validated at startup, see above) selects the
+        // transform applied to etilde = e_i/mean(e): "contract" (the
+        // Poisson-driver sense) leaves f = etilde, increasing in the
+        // error; "expand" (default, correct for THIS driver -- see the
+        // header's R-step paragraph for why) instead sets
+        // f = 1/(etilde+delta), decreasing in the error, so omega =
+        // 1/(1+theta*f) is LARGE where the fit is poor. delta=1e-2 avoids
+        // dividing by zero where the fit is locally exact (etilde -> 0)
+        // and bounds f by 1/delta; both forms are >= 0, so gsOptMesh's
+        // 1+theta*f>0 precondition holds unconditionally either way.
+        const std::string sense = opt.askString("MonitorSense", "expand");
+        const bool expand = (sense == "expand");
+        const real_t delta = 1e-2;
+
+        gsMatrix<real_t> fVals(1, N);
+        for (index_t i = 0; i != N; i++)
+        {
+            const real_t etilde = errors[i] / meanErr;
+            fVals(0, i) = expand ? real_t(1) / (etilde + delta) : etilde;
+        }
+
+        // Monitor fitting basis: coarse tensor B-spline on [0,1]^2, same
+        // knot-vector idiom as the S/sigma bases above (degree MonitorDeg,
+        // 2^MonitorRef elements per direction) -- deliberately an
+        // INDEPENDENT, usually much coarser mesh than S's, since the
+        // monitor only needs to localize error, not represent it.
+        gsKnotVector<> kmon(0, 1, (1 << opt.getInt("MonitorRef")) - 1,
+                             opt.getInt("MonitorDeg") + 1);
+        gsTensorBSplineBasis<2> monBasis(kmon, kmon);
+        gsFitting<real_t> monFitter(xi, fVals, monBasis);
+        monFitter.compute(opt.getReal("Lambda"));
+        GISMO_ENSURE(monFitter.result() != nullptr,
+                     "R step: monitor gsFitting::compute failed (BiCGSTABILUT preconditioner) at "
+                     << monBasis.size() << " DoFs");
+        gsGeometry<real_t>::uPtr monSpline = monFitter.result()->clone();
+        gsClampedMonitor monitorFun(*monSpline);
+
+        // Integration mesh: the FINEST TENSOR level (thb.tensorLevel(maxLevel))
+        // grows like 4^level even when only a handful of THB cells are
+        // actually that fine, which makes the R step's own cost explode with
+        // analysis DoFs. Mirror poisson_rh_schedule_example.cpp's R step:
+        // build BOTH candidate integration bases -- the hierarchical one on
+        // the analysis THB's actual element partition, and the finest tensor
+        // level -- and keep whichever has fewer elements (useHier = nH < nT
+        // is a strict inequality, so a tie keeps the tensor arm). Both arms
+        // are pure knot/box arithmetic (no quadrature, no assembly), so
+        // probing both is negligible against the R step's own MaxIterations
+        // objective+gradient sweeps. The winning basis is handed to the
+        // constructor via the pass-through (integrationBasisIsFinal) overload
+        // below instead of the raw thb/tensor level, which would otherwise
+        // make the constructor rebuild (knot union + degree raise) the very
+        // basis just probed here.
+        gsBasis<real_t>::uPtr hIb =
+            gsAdaptiveParametrization<real_t, MonitorMode::ValueBased>::
+                makeIntegrationBasis<2>(thb, sbasis);
+        gsBasis<real_t>::uPtr tIb = memory::make_unique(new gsTensorBSplineBasis<2>(
+            gsAdaptiveParametrization<real_t, MonitorMode::ValueBased>::
+                makeIntegrationBasis<2>(thb.tensorLevel(thb.maxLevel()), sbasis)));
+        const index_t nH = static_cast<index_t>(hIb->numElements());
+        const index_t nT = static_cast<index_t>(tIb->numElements());
+        const bool useHier = (nH < nT);
+        if (opt.getInt("Verbose") > 0)
+            gsInfo << "  R | integration mesh: " << (useHier ? "hierarchical" : "tensor")
+                   << " | hierarchical elements " << nH
+                   << " | tensor elements " << nT << "\n";
+        gsBasis<real_t>::uPtr ib = useHier ? give(hIb) : give(tIb);
+
+        std::unique_ptr<gsOptimizer<real_t> > optimizer = makeOptimizer(opt);
+        const gsVector<real_t> uPrev = domain.getControls();
+
+        // MonitorGeom (validated at startup, see above): gsOptMesh's
+        // GEOMETRY argument is either the once-built planar identity (the
+        // default -- selects the PLANAR branch, theta=0 minimizer is
+        // exactly sigma=identity) or S itself (the SURFACE branch, DOMINATED
+        // by S's own metric while S is still inaccurate) -- see the header's
+        // MonitorGeom entry and R-step paragraph for the measured contrast.
+        const std::string mg = opt.askString("MonitorGeom", "planar");
+        const gsGeometry<real_t> & rGeom = (mg == "planar")
+            ? static_cast<const gsGeometry<real_t> &>(planarIdentity)
+            : *geom;
+
+        // Generic lambda instantiated at compile time for each MonitorMode
+        // (a non-type template parameter of gsAdaptiveParametrization),
+        // mirroring poisson_rh_schedule_example.cpp's R step.
+        auto relocate = [&](auto mode)
+        {
+            gsAdaptiveParametrization<real_t, mode.value> rel(
+                domain, rGeom, &monitorFun, *ib, *optimizer, /*parametric=*/true,
+                integrationBasisIsFinal);
+            rel.options().setReal("Smoothing", opt.getReal("Smoothing"));
+            rel.options().setReal("Penalty",   opt.getReal("Penalty"));
+            rel.options().setReal("quA",       opt.getReal("quA"));
+            rel.options().setInt ("quB",       opt.getInt ("quB"));
+            rel.solve();
+        };
+
+        // Default "value": for this driver the monitor IS the localization
+        // signal already (a fitting-error density), unlike a PDE driver's
+        // u_h where the gradient carries the feature information.
+        const std::string mm = opt.askString("MonitorMode", "value");
+        if (mm == "gradient")
+            relocate(std::integral_constant<enum MonitorMode, MonitorMode::GradientBased>());
+        else if (mm == "value")
+            relocate(std::integral_constant<enum MonitorMode, MonitorMode::ValueBased>());
+        else
+            GISMO_ERROR("Unknown MonitorMode '" << mm << "' (value | gradient)");
+
+        gsVector<real_t> uNew = domain.getControls();
+        real_t minDetJ = domain.minJacobian(7);
+        if (!uNew.allFinite() || minDetJ <= 0)
+        {
+            gsWarn << "Monitor step rejected (min det Js = " << minDetJ
+                   << "); sigma restored.\n";
+            domain.setControls(uPrev);
+            minDetJ = domain.minJacobian(7);
+        }
+        updateParams();
+        computeErrors();
+        const real_t time = timer.stop();
+
+        gsInfo << "  R | S DoFs: " << std::setw(6) << thb.size()
+               << " | rmse: " << std::scientific << std::setprecision(3) << rmse
+               << " | min det Js: " << std::scientific << std::setprecision(2) << minDetJ
+               << " | " << std::fixed << std::setprecision(2) << time << "s\n"
+               << std::defaultfloat;
+        csv << cycle << ",R,-," << thb.size() << "," << domain.nControls() << ","
+            << minErr << "," << maxErr << "," << rmse << "," << pctBelow(errors) << ","
+            << minDetJ << "," << time << "\n";
+        return true;
+    };
+
     // Maps a point in the S-domain to the (level, cell0, cell1) key of the
     // THB element that currently contains it (finest-level cell index,
     // dropped down to the containing element's own level via query3).
@@ -911,6 +1318,34 @@ int main(int argc, char *argv[])
             << domain.minJacobian(7) << "," << time << "\n";
     };
 
+    // --dumpXml: writes S, sigma and the composed G = gsComposedGeometry(sigma,S)
+    // as G+Smo XML into <output>/xml/, called from ONE place (the main loop,
+    // right after each executed step, plus the trailing final-S call site
+    // after the loop) rather than from inside sStep/dStep/hStep/uStep, so a
+    // schedule letter that SKIPS (DirSkip, RSkip, or no previous solve) never
+    // reaches this lambda and never consumes a counter value. xmlStep counts
+    // only executed letters, so filenames sort in execution order.
+    const std::string xmlDir = output + "xml" + gsFileManager::getNativePathSeparator();
+    if (dumpXml)
+        gsFileManager::mkdir(xmlDir);
+    index_t xmlStep = 0;
+    auto dumpXmlStep = [&](char letter)
+    {
+        if (!dumpXml) return;
+        std::ostringstream ss;
+        ss << xmlDir << "step" << std::setfill('0') << std::setw(3) << xmlStep
+           << "_" << letter << "_";
+        const std::string base = ss.str();
+        gsWrite(domain.domain(), base + "sigma");
+        if (geom)
+        {
+            gsWrite(*geom, base + "S");
+            gsComposedGeometry<real_t> cgeom(domain.domain(), *geom);
+            gsWrite(cgeom, base + "G");
+        }
+        xmlStep++;
+    };
+
     // ------------------------------------------------------------------
     // Adaptive loop
     // ------------------------------------------------------------------
@@ -927,6 +1362,24 @@ int main(int argc, char *argv[])
             {
                 sStep(cyc);
                 dirty = false;
+                dumpXmlStep(C);
+            }
+            else if (C == 'R')
+            {
+                if (cyc < opt.getInt("RSkip"))
+                {
+                    gsInfo << "  R | RSkip active (cycle " << cyc << " < "
+                           << opt.getInt("RSkip") << "), skipping\n";
+                    continue;
+                }
+                if (!geom)
+                {
+                    gsInfo << "  R | no previous solve, skipping\n";
+                    continue;
+                }
+                if (!rStep(cyc)) continue; // monitor undefined (mean error <= 0): no CSV row, no xml dump
+                dirty = true;
+                dumpXmlStep(C);
             }
             else if (C == 'D')
             {
@@ -943,6 +1396,7 @@ int main(int argc, char *argv[])
                 }
                 dStep(cyc);
                 dirty = true;
+                dumpXmlStep(C);
             }
             else if (C == 'H')
             {
@@ -953,11 +1407,13 @@ int main(int argc, char *argv[])
                 }
                 if (hStep(cyc)) converged = true;
                 dirty = true;
+                dumpXmlStep(C);
             }
             else if (C == 'U')
             {
                 uStep(cyc);
                 dirty = true;
+                dumpXmlStep(C);
             }
         }
     }
@@ -973,7 +1429,10 @@ int main(int argc, char *argv[])
     // refine/coarsen at all) merely re-fits an unchanged basis, which is
     // harmless.
     if (dirty)
+    {
         sStep(maxIter);
+        dumpXmlStep('S');
+    }
 
     gsInfo << "----------------\n";
     gsInfo << "Finished: " << (converged ? "error band reached" : "iteration budget spent")

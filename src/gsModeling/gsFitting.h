@@ -130,6 +130,28 @@ public:
      */
     void parameterProjectionSepBoundary(T accuracy,const std::vector<index_t>& interpIdx);
 
+    /** @brief parameterProjectionFixedBoundary: project the points onto the fitted geometry,
+     * correcting only the interior parameters. Interior points (indices [0, interiorIdx])
+     * get a full 2D closest-point projection. Boundary points (indices [interiorIdx+1, N))
+     * are handled according to \a slideBoundary: if true they are allowed to slide along the
+     * domain edge they belong to (their fixed parametric coordinate is left unchanged); if
+     * false no correction is applied to them at all (boundary parameters are frozen).
+     * @param accuracy accuracy of the closest point computation, for the foot-point projection
+     * @param interiorIdx index of the last interior parametric point
+     * @param slideBoundary if true, boundary points slide along their edge; if false, they are frozen
+     */
+    void parameterProjectionFixedBoundary(T accuracy, index_t interiorIdx, bool slideBoundary = true);
+
+    /** @brief parameterCorrectionFixedBoundary: apply \a maxIter steps of PDM parameter
+     * correction while keeping the boundary parameters fixed (see
+     * \ref parameterProjectionFixedBoundary).
+     * @param accuracy accuracy of the closest point computation
+     * @param maxIter maximum number of parameter correction steps
+     * @param interiorIdx index of the last interior parametric point
+     * @param slideBoundary if true, boundary points slide along their edge; if false, they are frozen
+     */
+    void parameterCorrectionFixedBoundary(T accuracy, index_t maxIter, index_t interiorIdx, bool slideBoundary = true);
+
     /** @brief parameterCorrectionSepBoundary_pdm: apply \a maxIter steps of parameter correction for PDM method, separating interior and boundary points
      * @param accuracy accuracy of the closest point computation
      * @param maxIter maximum number of parameter correction steps

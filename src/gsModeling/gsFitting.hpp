@@ -642,6 +642,95 @@ void gsFitting<T>::parameterProjectionSepBoundary(T accuracy,const std::vector<i
 }
 
 
+// project the points onto the fitted geometry, correcting only the interior parameters:
+// interior points are fully projected; boundary points either slide along the domain edge
+// they belong to (slideBoundary == true) or are left completely fixed (slideBoundary == false).
+template <class T>
+void gsFitting<T>::parameterProjectionFixedBoundary(T accuracy, index_t interiorIdx, bool slideBoundary)
+{
+  if ( !m_result )
+  {
+    compute(m_last_lambda);
+  }
+
+  // Parametric domain extremes, used to detect which edge a boundary point lies on.
+  const T u_min = m_param_values.row(0).minCoeff();
+  const T u_max = m_param_values.row(0).maxCoeff();
+  const T v_min = m_param_values.row(1).minCoeff();
+  const T v_max = m_param_values.row(1).maxCoeff();
+  const T tol = 1e-6 * math::max(u_max - u_min, v_max - v_min);
+
+  // Interior points: full 2D closest-point projection.
+  for (index_t i = 0; i <= interiorIdx; ++i)
+  {
+    gsVector<T> newParam;
+    const auto & curr = m_points.row(i).transpose();
+    newParam = m_param_values.col(i);
+    m_result->closestPointTo(curr, newParam, accuracy, true); // true: use initial point
+
+    // Decide whether to accept the correction or to drop it
+    if ((m_result->eval(newParam) - curr).norm()
+            < (m_result->eval(m_param_values.col(i)) - curr).norm())
+    {
+      m_param_values.col(i) = newParam;
+    }
+  }
+
+  // Boundary points: frozen entirely when not sliding.
+  if (!slideBoundary)
+    return;
+
+  // Boundary points: slide along the domain edge, keeping the fixed coordinate unchanged.
+  for (index_t i = interiorIdx + 1; i < m_points.rows(); ++i)
+  {
+    const T u = m_param_values(0, i);
+    const T v = m_param_values(1, i);
+
+    // Determine the edge and the free (sliding) parametric direction.
+    boxSide side;
+    index_t freeDir; // 0: slide in u (row 0); 1: slide in v (row 1)
+    if      (math::abs(v - v_min) <= tol) { side = boundary::south; freeDir = 0; } // (u,0)
+    else if (math::abs(u - u_max) <= tol) { side = boundary::east;  freeDir = 1; } // (1,v)
+    else if (math::abs(v - v_max) <= tol) { side = boundary::north; freeDir = 0; } // (u,1)
+    else if (math::abs(u - u_min) <= tol) { side = boundary::west;  freeDir = 1; } // (0,v)
+    else    continue; // not on any edge: leave untouched
+
+    gsVector<> newParam(1,1);
+    gsVector<> oldParam(1,1);
+    newParam(0,0) = m_param_values(freeDir, i);
+    oldParam(0,0) = m_param_values(freeDir, i);
+    const auto & curr = m_points.row(i).transpose();
+    typename gsGeometry<T>::uPtr b = m_result->boundary(side);
+    b->closestPointTo(curr, newParam, accuracy, true);
+
+    if ((b->eval(newParam) - curr).norm()
+            < (b->eval(oldParam) - curr).norm())
+      m_param_values(freeDir, i) = newParam(0,0);
+  }
+}
+
+
+// apply maxIter steps of PDM parameter correction, correcting only the interior parameters.
+// Boundary parameters either slide along their edge (slideBoundary == true) or are frozen.
+template <class T>
+void gsFitting<T>::parameterCorrectionFixedBoundary(T accuracy,
+                                                    index_t maxIter,
+                                                    index_t interiorIdx,
+                                                    bool slideBoundary)
+{
+    if ( !m_result )
+    {
+      compute(m_last_lambda);
+    }
+
+    for (index_t it = 0; it<maxIter; ++it)
+    {
+      parameterProjectionFixedBoundary(accuracy, interiorIdx, slideBoundary); // project points on the geometry
+      compute(m_last_lambda); // update of the coefficients with PDM
+    }// step of PC
+}
+
+
 // apply maxIter steps of parameter correction for HDM method, separating interior and boundary points
 template <class T>
 void gsFitting<T>::parameterCorrectionSepBoundary_tdm(T accuracy,
