@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <string>
@@ -39,26 +40,21 @@ struct LevelData
     gsDofMapper mapper;
     gsSparseMatrix<T> T_free;
     gsSparseMatrix<T> T_bnd;
-    gsSparseMatrix<T> K_discont;
-    gsMatrix<T> F_discont;
     gsSparseMatrix<T> K_free;
     gsMatrix<T> F_free;
     gsMatrix<T> sol_bnd;
 };
 
-// Assemble system on a single grid level
+// Setup geometry and Argyris C1 embedding on a single grid level (without PDE assembly)
 template <class T>
-LevelData<T> assembleLevel(
+LevelData<T> setupLevelGeometry(
     const gsMultiPatch<T> &mp,
     const gsMatrix<T> &gd,
     const gsMatrix<T> &normalsForPatches,
     const gsBoundaryConditions<T> &bc,
     const std::vector<cornerCondition> &cc,
     index_t ref,
-    const gsFunctionExpr<T> &exact_u,
-    const gsFunctionExpr<T> &exact_grad,
-    const gsFunctionExpr<T> &rhs_f,
-    bool homogeneousBC)
+    bool isFinest)
 {
     LevelData<T> ld;
     ld.ref = ref;
@@ -84,11 +80,31 @@ LevelData<T> assembleLevel(
     gsSparseMatrix<T> T_global = argBasisGlobal * asEmbeddingMatrix<T>(ld.mapper.size(), ld.mapper.asVector()).transpose();
 
     const index_t nFree = ld.mapper.freeSize();
-    const index_t nBnd = ld.mapper.boundarySize();
     ld.T_free = T_global.leftCols(nFree);
-    ld.T_bnd = T_global.rightCols(nBnd);
 
-    // Boundary Dirichlet values
+    if (isFinest)
+    {
+        const index_t nBnd = ld.mapper.boundarySize();
+        ld.T_bnd = T_global.rightCols(nBnd);
+    }
+
+    return ld;
+}
+
+// Assemble biharmonic PDE system and boundary projection ONCE on the finest grid
+template <class T>
+void assembleFinestSystem(
+    const gsMultiPatch<T> &mp,
+    const gsBoundaryConditions<T> &bc,
+    LevelData<T> &ld,
+    const gsFunctionExpr<T> &exact_u,
+    const gsFunctionExpr<T> &exact_grad,
+    const gsFunctionExpr<T> &rhs_f,
+    bool homogeneousBC)
+{
+    const index_t nBnd = ld.mapper.boundarySize();
+
+    // Boundary Dirichlet values projection
     if (!homogeneousBC && nBnd > 0)
     {
         gsExprAssembler<T> A(1, 1);
@@ -112,7 +128,9 @@ LevelData<T> assembleLevel(
         ld.sol_bnd.setZero(nBnd, 1);
     }
 
-    // Biharmonic matrix & RHS
+    // Discontinuous Biharmonic matrix & RHS
+    gsSparseMatrix<T> K_discont;
+    gsMatrix<T> F_discont;
     {
         gsExprAssembler<T> A(1, 1);
         A.setIntegrationDomain(ld.dbasis.domain());
@@ -124,17 +142,15 @@ LevelData<T> assembleLevel(
         A.assemble(ilapl(u_space, G_map) * ilapl(u_space, G_map).tr() * meas(G_map),
                    u_space * f_coeff * meas(G_map));
 
-        ld.K_discont = give(A.matrix());
-        ld.F_discont = give(A.rhs());
+        K_discont = give(A.matrix());
+        F_discont = give(A.rhs());
     }
 
-    ld.K_free = ld.T_free.transpose() * ld.K_discont * ld.T_free;
+    ld.K_free = ld.T_free.transpose() * K_discont * ld.T_free;
     if (!homogeneousBC && nBnd > 0)
-        ld.F_free = ld.T_free.transpose() * (ld.F_discont - ld.K_discont * (ld.T_bnd * ld.sol_bnd));
+        ld.F_free = ld.T_free.transpose() * (F_discont - K_discont * (ld.T_bnd * ld.sol_bnd));
     else
-        ld.F_free = ld.T_free.transpose() * ld.F_discont;
-
-    return ld;
+        ld.F_free = ld.T_free.transpose() * F_discont;
 }
 
 // Compute intergrid prolongation matrix P_{coarse -> fine}
@@ -163,11 +179,43 @@ gsSparseMatrix<T, RowMajor> computeIntergridProlongation(
     gsSparseMatrix<T> RHS_mat = fine.T_free.transpose() * (R_disjoint * coarse.T_free);
 
     auto chol = makeSparseCholeskySolver(M_gram);
-    gsMatrix<T> RHS_dense = RHS_mat.toDense();
-    gsMatrix<T> P_dense;
-    chol->apply(RHS_dense, P_dense);
+    const index_t nFine = fine.T_free.cols();
+    const index_t nCoarse = coarse.T_free.cols();
+    const index_t batchSize = 256;
+    const index_t nBatches = (nCoarse + batchSize - 1) / batchSize;
 
-    gsSparseMatrix<T> P_sparse = P_dense.sparseView(1e-12);
+    std::vector<gsSparseEntries<T>> thread_entries(nBatches);
+
+#pragma omp parallel for schedule(dynamic)
+    for (index_t b = 0; b < nBatches; ++b)
+    {
+        const index_t bStart = b * batchSize;
+        const index_t bCols = std::min(batchSize, nCoarse - bStart);
+        gsMatrix<T> RHS_batch = RHS_mat.middleCols(bStart, bCols).toDense();
+        gsMatrix<T> P_batch;
+        chol->apply(RHS_batch, P_batch);
+        for (index_t c = 0; c < bCols; ++c)
+        {
+            const index_t j = bStart + c;
+            for (index_t i = 0; i < nFine; ++i)
+            {
+                const T val = P_batch(i, c);
+                if (std::abs(val) > 1e-12)
+                    thread_entries[b].add(i, j, val);
+            }
+        }
+    }
+
+    gsSparseEntries<T> entries;
+    size_t total_entries = 0;
+    for (index_t b = 0; b < nBatches; ++b)
+        total_entries += thread_entries[b].size();
+    entries.reserve(total_entries);
+    for (index_t b = 0; b < nBatches; ++b)
+        entries.insert(entries.end(), thread_entries[b].begin(), thread_entries[b].end());
+
+    gsSparseMatrix<T> P_sparse(nFine, nCoarse);
+    P_sparse.setFromTriplets(entries.begin(), entries.end());
     gsSparseMatrix<T, RowMajor> P_rowMajor = P_sparse;
     return P_rowMajor;
 }
@@ -188,7 +236,8 @@ bool runDomainExperiment(
     bool homogeneousBC,
     T freqA,
     bool plot,
-    const std::string &outDir)
+    const std::string &outDir,
+    const std::string &txtOut)
 {
     gsInfo << "\n" << std::string(80, '=') << "\n";
     gsInfo << "Domain: " << geomPath << "\n";
@@ -196,6 +245,7 @@ bool runDomainExperiment(
            << " | Smoother: Symmetric Gauss-Seidel (" << numPreSmooth << " pre, " << numPostSmooth << " post)\n";
     gsInfo << "Solver: " << (solverType == "cg" ? "PCG (Multigrid Preconditioner)" : "Direct Multigrid Iteration")
            << " | Cycles: " << (numCycles == 1 ? "V-cycle" : "W-cycle") << " | Tol = " << tol << "\n";
+    gsInfo << "Boundary condition: " << (homogeneousBC ? "Homogeneous zero Dirichlet" : "Manufactured solution projection") << "\n";
     gsInfo << std::string(80, '=') << "\n";
 
     typename gsMultiPatch<T>::uPtr mpPtr = gsReadFile<>(geomPath);
@@ -271,21 +321,31 @@ bool runDomainExperiment(
                 normalsForPatches(i, 2 * j + 1) = 0;
             }
 
-    // Assemble grid hierarchy from minRef to maxRef
+    // Set up grid hierarchy from minRef to maxRef
     const index_t nLevels = maxRef - minRef + 1;
+    const index_t finest = nLevels - 1;
     std::vector<LevelData<T>> levels(nLevels);
-    gsInfo << "Assembling grid hierarchy (" << nLevels << " levels)...\n";
+    gsInfo << "Setting up grid hierarchy (" << nLevels << " levels)...\n";
+    double totalSetupTime = 0;
     for (index_t l = 0; l < nLevels; ++l)
     {
         const index_t ref = minRef + l;
+        const bool isFinest = (l == finest);
         gsStopwatch timer;
         timer.restart();
-        levels[l] = assembleLevel(mp, gd, normalsForPatches, bc, cc, ref, exact_u, exact_grad, rhs_f, homogeneousBC);
-        const double tAss = timer.stop();
-        gsInfo << "  Level " << l << " (ref=" << ref << "): " << levels[l].K_free.rows() << " DOFs (" << tAss << " s)\n";
+        levels[l] = setupLevelGeometry(mp, gd, normalsForPatches, bc, cc, ref, isFinest);
+        if (isFinest)
+        {
+            assembleFinestSystem(mp, bc, levels[l], exact_u, exact_grad, rhs_f, homogeneousBC);
+        }
+        const double tLevel = timer.stop();
+        totalSetupTime += tLevel;
+        gsInfo << "  Level " << l << " (ref=" << ref << "): " << levels[l].mapper.freeSize() << " DOFs ("
+               << (isFinest ? "Geometry + PDE Assembly: " : "Geometry only: ") << std::fixed << std::setprecision(4) << tLevel << " s)\n";
     }
 
     // Compute intergrid transfer matrices
+    double totalTransferTime = 0;
     std::vector<gsSparseMatrix<T, RowMajor>> transferMatrices(nLevels - 1);
     for (index_t l = 0; l < nLevels - 1; ++l)
     {
@@ -293,12 +353,12 @@ bool runDomainExperiment(
         timer.restart();
         transferMatrices[l] = computeIntergridProlongation(levels[l], levels[l + 1], mp.nPatches());
         const double tTr = timer.stop();
+        totalTransferTime += tTr;
         gsInfo << "  Transfer P[" << l << "->" << l + 1 << "]: " << transferMatrices[l].rows()
-               << " x " << transferMatrices[l].cols() << " (" << tTr << " s)\n";
+               << " x " << transferMatrices[l].cols() << " (" << std::fixed << std::setprecision(4) << tTr << " s)\n";
     }
 
-    // Set up gsMultiGridOp
-    const index_t finest = nLevels - 1;
+    // Set up gsMultiGridOp (algebraic Galerkin coarse grid matrices are computed here automatically)
     typename gsMultiGridOp<T>::uPtr mg = gsMultiGridOp<T>::make(levels[finest].K_free, transferMatrices);
     mg->setNumCycles(numCycles);
     mg->setNumPreSmooth(numPreSmooth);
@@ -359,8 +419,12 @@ bool runDomainExperiment(
     gsInfo << "  Iterations      : " << numIterations << "\n";
     gsInfo << "  Final Rel. Res. : " << std::scientific << std::setprecision(4) << finalRelRes << "\n";
     gsInfo << "  Solve Time      : " << std::fixed << std::setprecision(4) << solveTime << " s\n";
+    gsInfo << "  Setup Time      : " << std::fixed << std::setprecision(4) << totalSetupTime << " s\n";
+    gsInfo << "  Transfer Time   : " << std::fixed << std::setprecision(4) << totalTransferTime << " s\n";
+    gsInfo << "  Total Time      : " << std::fixed << std::setprecision(4) << (totalSetupTime + totalTransferTime + solveTime) << " s\n";
 
     // Error evaluation against exact solution
+    T l2err = 0.0, h1err = 0.0, h2err = 0.0;
     if (!homogeneousBC)
     {
         gsMatrix<T> sol_discont = levels[finest].T_free * sol_free + levels[finest].T_bnd * levels[finest].sol_bnd;
@@ -383,9 +447,9 @@ bool runDomainExperiment(
         auto hess_exact_ev = reshape(ev.getVariable(exact_hess, G_map_ev), 2, 2);
         auto u_sol_ev = ev.getVariable(sol);
 
-        const T l2err = std::sqrt(ev.integral((u_sol_ev - u_exact_ev).sqNorm() * meas(G_map_ev)));
-        const T h1err = std::sqrt(ev.integral((igrad(u_sol_ev, G_map_ev) - grad_exact_ev.tr()).sqNorm() * meas(G_map_ev)));
-        const T h2err = std::sqrt(ev.integral((ihess(u_sol_ev, G_map_ev) - hess_exact_ev).sqNorm() * meas(G_map_ev)));
+        l2err = std::sqrt(ev.integral((u_sol_ev - u_exact_ev).sqNorm() * meas(G_map_ev)));
+        h1err = std::sqrt(ev.integral((igrad(u_sol_ev, G_map_ev) - grad_exact_ev.tr()).sqNorm() * meas(G_map_ev)));
+        h2err = std::sqrt(ev.integral((ihess(u_sol_ev, G_map_ev) - hess_exact_ev).sqNorm() * meas(G_map_ev)));
 
         gsInfo << "  L2 Error        : " << std::scientific << std::setprecision(4) << l2err << "\n";
         gsInfo << "  H1 Error        : " << std::scientific << std::setprecision(4) << h1err << "\n";
@@ -406,6 +470,60 @@ bool runDomainExperiment(
 
     const bool converged = (finalRelRes <= tol);
     gsInfo << "  Status          : " << (converged ? "CONVERGED" : "NOT CONVERGED") << "\n";
+
+    // Text file logging (comparable to parabolic_l2ls_example)
+    if (!txtOut.empty())
+    {
+        const bool exists = gsFileManager::fileExists(txtOut);
+        std::ofstream outfile;
+        outfile.open(txtOut.c_str(), std::ios_base::app);
+
+        if (!exists)
+            outfile << "geometry\t"
+                       "degree\t"
+                       "minRef\t"
+                       "maxRef\t"
+                       "nLevels\t"
+                       "nDOFs\t"
+                       "cycles\t"
+                       "preSmooth\t"
+                       "postSmooth\t"
+                       "solver\t"
+                       "tol\t"
+                       "iter\t"
+                       "relRes\t"
+                       "setupTime\t"
+                       "transferTime\t"
+                       "solveTime\t"
+                       "totalTime\t"
+                       "l2Error\t"
+                       "h1Error\t"
+                       "h2Error\t"
+                       "status\n";
+
+        outfile << geomPath << "\t"
+                << degree << "\t"
+                << minRef << "\t"
+                << maxRef << "\t"
+                << nLevels << "\t"
+                << levels[finest].mapper.freeSize() << "\t"
+                << numCycles << "\t"
+                << numPreSmooth << "\t"
+                << numPostSmooth << "\t"
+                << solverType << "\t"
+                << tol << "\t"
+                << numIterations << "\t"
+                << finalRelRes << "\t"
+                << totalSetupTime << "\t"
+                << totalTransferTime << "\t"
+                << solveTime << "\t"
+                << (totalSetupTime + totalTransferTime + solveTime) << "\t"
+                << l2err << "\t"
+                << h1err << "\t"
+                << h2err << "\t"
+                << (converged ? "CONVERGED" : "FAILED") << "\n";
+    }
+
     return converged;
 }
 
@@ -415,6 +533,7 @@ int main(int argc, char *argv[])
 
     std::string geometry("domain2d/2patch/two_bilinear_patches.xml");
     std::string outDir("");
+    std::string txtOut("");
     std::string solverType("cg");
     index_t degree = 3;
     index_t minRef = 2;
@@ -432,6 +551,7 @@ int main(int argc, char *argv[])
     gsCmdLine cmd("AS-G1 Biharmonic Multigrid Solver with Gauss-Seidel Smoother.");
     cmd.addString("f", "file", "Multi-patch geometry XML file.", geometry);
     cmd.addString("o", "outDir", "Output directory for Paraview VTK files.", outDir);
+    cmd.addString("t", "txtOut", "Filename for tab-separated text results output.", txtOut);
     cmd.addString("s", "solver", "Iterative solver: 'cg' (PCG) or 'mg' (Direct Multigrid Iteration).", solverType);
     cmd.addInt("d", "degree", "Spline degree (minimum 3 for C1 AS-G1).", degree);
     cmd.addInt("m", "minRef", "Coarsest grid refinement level (minimum 2).", minRef);
@@ -440,9 +560,9 @@ int main(int argc, char *argv[])
     cmd.addInt("", "pre", "Number of pre-smoothing steps.", numPreSmooth);
     cmd.addInt("", "post", "Number of post-smoothing steps.", numPostSmooth);
     cmd.addInt("", "maxIt", "Maximum solver iterations.", maxIt);
-    cmd.addReal("t", "tol", "Relative residual tolerance.", tol);
+    cmd.addReal("e", "tol", "Relative residual tolerance.", tol);
     cmd.addReal("a", "frequency", "Frequency factor in manufactured solution.", freqA);
-    cmd.addSwitch("homo", "Use homogeneous Dirichlet boundary conditions (as in Sogn & Takacs 2019).", homogeneousBC);
+    cmd.addSwitch("homo", "Use homogeneous Dirichlet boundary conditions.", homogeneousBC);
     cmd.addSwitch("all", "Run test suite across all multi-patch benchmark domains.", runAll);
     cmd.addSwitch("plot", "Export Paraview visualization.", plot);
 
@@ -467,7 +587,7 @@ int main(int argc, char *argv[])
         runDomainExperiment<T>(
             geometry, degree, minRef, maxRef,
             numCycles, numPreSmooth, numPostSmooth,
-            solverType, tol, maxIt, homogeneousBC, freqA, plot, outDir);
+            solverType, tol, maxIt, homogeneousBC, freqA, plot, outDir, txtOut);
     }
     else
     {
@@ -507,7 +627,7 @@ int main(int argc, char *argv[])
             bool ok = runDomainExperiment<T>(
                 file, degree, minRef, maxRef,
                 numCycles, numPreSmooth, numPostSmooth,
-                solverType, tol, maxIt, homogeneousBC, freqA, false, "");
+                solverType, tol, maxIt, homogeneousBC, freqA, false, "", txtOut);
             if (ok)
                 numPassed++;
             else
