@@ -102,6 +102,15 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
         const int k = it->patch();
         const gsBasis<T> & basis = u.source().basis(k);
 
+        if (dynamic_cast<const gsHTensorBasis<1,T>*>(&basis))
+            GISMO_ERROR("Dirichlet interpolation not implemented for hierarchical tensor bases. Use `dirichlet::l2Projection` instead.");
+        else if (dynamic_cast<const gsHTensorBasis<2,T>*>(&basis))
+            GISMO_ERROR("Dirichlet interpolation not implemented for hierarchical tensor bases. Use `dirichlet::l2Projection` instead.");
+        else if (dynamic_cast<const gsHTensorBasis<3,T>*>(&basis))
+            GISMO_ERROR("Dirichlet interpolation not implemented for hierarchical tensor bases. Use `dirichlet::l2Projection` instead.");
+        else if (dynamic_cast<const gsHTensorBasis<4,T>*>(&basis))
+            GISMO_ERROR("Dirichlet interpolation not implemented for hierarchical tensor bases. Use `dirichlet::l2Projection` instead.");
+
         // Get dofs on this boundary
         boundary = basis.boundary(it->side());
 
