@@ -14,8 +14,12 @@ Author(s): Ye Ji
 #pragma once
 
 #include <gsNurbs/gsMobiusMap.h>
+#include <gsOptimizer/gsOptProblem.h>
+#include <gsOptimizer/gsOptimizer.h>
 
+#ifdef gsHLBFGS_ENABLED
 #include <gsHLBFGS/gsHLBFGS.h>
+#endif
 
 namespace gismo
 {
