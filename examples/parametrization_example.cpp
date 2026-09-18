@@ -191,16 +191,8 @@ int main(int argc, char *argv[])
     if(paraview)
     {
         gsInfo << "Writing to Paraview.\n";
-
-        // .pvd with the flat mesh
-        gsParaview<real_t> pv;
-        pv.write(flatMesh, cmd.getString("filenameOut"));
-        gsFileManager::open(cmd.getString("filenameOut") + ".pvd");
-
-        // .vtk with the vertices coloured according to the parameters
-        // Note: calling gsWriteParaview directly with the uv matrix
-        // would not do, as the vertices are in different order than
         pm->writeTexturedMesh(cmd.getString("filenameOut"));
+        gsFileManager::open(cmd.getString("filenameOut") + ".vtp");
     }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
