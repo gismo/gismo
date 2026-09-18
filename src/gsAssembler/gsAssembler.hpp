@@ -284,7 +284,7 @@ void gsAssembler<T>::computeDirichletDofs(short_t unk)
           it = m_pde_ptr->bc().cornerBegin();
           it != m_pde_ptr->bc().cornerEnd(); ++it )
     {
-        if(it->unknown == unk)
+        if(it->unknown==-1 || it->unknown == unk)
         {
             const index_t i  = mbasis[it->patch].functionAtCorner(it->corner);
             const index_t ii = mapper.bindex( i , it->patch );
