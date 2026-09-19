@@ -15,6 +15,7 @@
 #include <gsCore/gsDofMapper.h>
 #include <gsAssembler/gsAssemblerOptions.h>
 #include <gsPde/gsBoundaryConditions.h>
+#include <gsTensor/gsTensorBasis.h>
 
 namespace gismo {
 
@@ -101,6 +102,12 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
 
         const int k = it->patch();
         const gsBasis<T> & basis = u.source().basis(k);
+
+        GISMO_ENSURE((dynamic_cast<const gsTensorBasis<1,T>*>(&basis) ||
+                      dynamic_cast<const gsTensorBasis<2,T>*>(&basis) ||
+                      dynamic_cast<const gsTensorBasis<3,T>*>(&basis) ||
+                      dynamic_cast<const gsTensorBasis<4,T>*>(&basis)   ),
+                      "Dirichlet interpolation only implemented for tensor bases. Use `dirichlet::l2Projection` instead.");
 
         // Get dofs on this boundary
         boundary = basis.boundary(it->side());
