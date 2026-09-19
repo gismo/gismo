@@ -100,7 +100,7 @@ int main(int argc, char* argv[])
         pv.write(mesh, out);
 
         out = output + "Coefficients";
-        gsMatrix <> coefs = surface.coefs();
+        coefs = surface.coefs();
         coefs.transposeInPlace();
         pv.writePoints(coefs, out);
 

@@ -1301,14 +1301,14 @@ void gsWriteParaviewUnstructuredGrid(const gsMultiPatch<T> & mPatch,
 
     for (index_t p = 0; p < nPatches; ++p)
     {
-        const gsVector<unsigned>& np = patchNp[p];
+        const gsVector<unsigned>& _np = patchNp[p];
         const int d = mPatch.patch(p).domainDim();
         const index_t nPoints = patchPointCounts[p];
         const index_t vertsPerCell = (d == 1 ? 2 : (d == 2 ? 4 : 8));
         const unsigned char cellType = static_cast<unsigned char>(d == 1 ? 3 : (d == 2 ? 9 : 12));
-        const index_t nu = static_cast<index_t>(np[0]);
-        const index_t nv = (np.rows() > 1 ? static_cast<index_t>(np[1]) : 1);
-        const index_t nw = (np.rows() > 2 ? static_cast<index_t>(np[2]) : 1);
+        const index_t nu = static_cast<index_t>(_np[0]);
+        const index_t nv = (_np.rows() > 1 ? static_cast<index_t>(_np[1]) : 1);
+        const index_t nw = (_np.rows() > 2 ? static_cast<index_t>(_np[2]) : 1);
 
         allPoints.block(0, pointOffset, 3, nPoints) = patchPoints[p];
 
@@ -1481,14 +1481,14 @@ void gsWriteParaviewUnstructuredGrid(const gsField<T> & field,
 
     for (index_t p = 0; p < nPieces; ++p)
     {
-        const gsVector<unsigned>& np = patchNp[p];
+        const gsVector<unsigned>& _np = patchNp[p];
         const int d = field.patch(p).domainDim();
         const index_t nPoints = patchPointCounts[p];
         const index_t vertsPerCell = (d == 1 ? 2 : (d == 2 ? 4 : 8));
         const unsigned char cellType = static_cast<unsigned char>(d == 1 ? 3 : (d == 2 ? 9 : 12));
-        const index_t nu = static_cast<index_t>(np[0]);
-        const index_t nv = (np.rows() > 1 ? static_cast<index_t>(np[1]) : 1);
-        const index_t nw = (np.rows() > 2 ? static_cast<index_t>(np[2]) : 1);
+        const index_t nu = static_cast<index_t>(_np[0]);
+        const index_t nv = (_np.rows() > 1 ? static_cast<index_t>(_np[1]) : 1);
+        const index_t nw = (_np.rows() > 2 ? static_cast<index_t>(_np[2]) : 1);
 
         allPoints.block(0, pointOffset, 3, nPoints) = patchPoints[p];
         allField.block(0, pointOffset, patchFields[p].rows(), nPoints) = patchFields[p];

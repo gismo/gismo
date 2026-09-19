@@ -216,14 +216,14 @@ gsGridHierarchy<T> gsGridHierarchy<T>::buildByHierarchicalCoarsening(
     // Check all bases
     index_t maxLevel = 0;
     for (size_t i = 0; i < mBasis.nBases(); ++i)
-        if (gsHTensorBasis<1,T>* basis = dynamic_cast<gsHTensorBasis<1,T>*>(&mBasis.basis(i)))
-            maxLevel = math::max(maxLevel, (index_t)basis->maxLevel());
-        else if (gsHTensorBasis<2,T>* basis = dynamic_cast<gsHTensorBasis<2,T>*>(&mBasis.basis(i)))
-            maxLevel = math::max(maxLevel, (index_t)basis->maxLevel());
-        else if (gsHTensorBasis<3,T>* basis = dynamic_cast<gsHTensorBasis<3,T>*>(&mBasis.basis(i)))
-            maxLevel = math::max(maxLevel, (index_t)basis->maxLevel());
-        else if (gsHTensorBasis<4,T>* basis = dynamic_cast<gsHTensorBasis<4,T>*>(&mBasis.basis(i)))
-            maxLevel = math::max(maxLevel, (index_t)basis->maxLevel());
+        if (gsHTensorBasis<1,T>* basis1 = dynamic_cast<gsHTensorBasis<1,T>*>(&mBasis.basis(i)))
+            maxLevel = math::max(maxLevel, (index_t)basis1->maxLevel());
+        else if (gsHTensorBasis<2,T>* basis2 = dynamic_cast<gsHTensorBasis<2,T>*>(&mBasis.basis(i)))
+            maxLevel = math::max(maxLevel, (index_t)basis2->maxLevel());
+        else if (gsHTensorBasis<3,T>* basis3 = dynamic_cast<gsHTensorBasis<3,T>*>(&mBasis.basis(i)))
+            maxLevel = math::max(maxLevel, (index_t)basis3->maxLevel());
+        else if (gsHTensorBasis<4,T>* basis4 = dynamic_cast<gsHTensorBasis<4,T>*>(&mBasis.basis(i)))
+            maxLevel = math::max(maxLevel, (index_t)basis4->maxLevel());
         else
             GISMO_ERROR("Basis " << i << " must be hierarchical.");
     maxLevel = math::min(maxLevel, (index_t)options.askInt("Levels", 2));

@@ -103,7 +103,7 @@ TEST(stoi)
     CHECK_EQUAL(42, util::stoi(" 42 "));
     CHECK_EQUAL(4, util::stoi(" 4 2 "));
 
-    CHECK_THROW(util::stoi("a1"), std::invalid_argument);
+    CHECK_THROW( (void)util::stoi("a1"), std::invalid_argument);
     CHECK_EQUAL(1, util::stoi("1a"));
     CHECK_EQUAL(0, util::stoi("0x42"));
 }
@@ -121,7 +121,7 @@ TEST(stod)
     CHECK_EQUAL(4.2, util::stod(" 4.2 "));
     CHECK_EQUAL(4., util::stod(" 4 2 "));
 
-    CHECK_THROW(util::stod("a0.5"), std::invalid_argument);
+    CHECK_THROW((void)util::stod("a0.5"), std::invalid_argument);
     CHECK_EQUAL(0.4, util::stod("0.4")); //Note: util::stod("0.4a") fails on C98
 #if !defined(_MSC_VER) || _MSC_VER >= 1900
     CHECK_EQUAL(-255.99609375, util::stod("-0xFF.FF"));
