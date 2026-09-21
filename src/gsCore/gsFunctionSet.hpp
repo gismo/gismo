@@ -11,6 +11,8 @@
     Author(s): A. Bressan
 **/
 
+#pragma once
+
 #include <gsCore/gsFuncData.h>
 #include <gsCore/gsFunction.h>
 #include <gsCore/gsBasis.h>

@@ -61,8 +61,8 @@ if(NOT CMAKE_BUILD_TYPE)
     "RelWithDebInfo" "MinSizeRel")
 endif()
 
-set(gismo_VERSION_MAJOR 25) #year
-set(gismo_VERSION_MINOR 07) #month
+set(gismo_VERSION_MAJOR 26) #year
+set(gismo_VERSION_MINOR 09) #month
 set(gismo_VERSION_PATCH 0 ) #patch
 set(gismo_VERSION
   "${gismo_VERSION_MAJOR}.${gismo_VERSION_MINOR}.${gismo_VERSION_PATCH}" CACHE INTERNAL "gismo version number")
@@ -210,6 +210,24 @@ if (";${GISMO_OPTIONAL};" MATCHES ";gsCoDiPack;")
   gismo_fetch_module(gsCoDiPack)
 endif()
 
+# Ensure AutoDiff includes are available early if the module exists
+if(EXISTS "${CMAKE_SOURCE_DIR}/optional/gsAutoDiff" AND autodiff_FOUND)
+  get_target_property(AUTODIFF_INCLUDE_DIRS autodiff::autodiff INTERFACE_INCLUDE_DIRECTORIES)
+  if(AUTODIFF_INCLUDE_DIRS)
+    set(GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${AUTODIFF_INCLUDE_DIRS}
+      CACHE INTERNAL "Gismo include directories" FORCE)
+  endif()
+endif()
+
+if (";${GISMO_OPTIONAL};" MATCHES ";gsAutoDiff;")
+  string(STRIP "gsAutoDiff" SUBMODULE)
+  if(EXISTS "${PROJECT_SOURCE_DIR}/optional/${SUBMODULE}/dependencies.cmake")
+    message(STATUS "Processing dependencies for optional module: ${SUBMODULE}")
+    include("${PROJECT_SOURCE_DIR}/optional/${SUBMODULE}/dependencies.cmake")
+  endif()
+  gismo_fetch_module(gsAutoDiff)
+endif()
+
 #first time
 include_directories(${GISMO_INCLUDE_DIRS})
 
@@ -259,6 +277,17 @@ if(GISMO_WITH_UMFPACK)
   CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
   #include_directories(SYSTEM ${UMFPACK_INCLUDES})
 endif(GISMO_WITH_UMFPACK)
+
+# Process external dependencies for optional modules BEFORE building sources
+list(REMOVE_DUPLICATES GISMO_OPTIONAL)
+list(SORT GISMO_OPTIONAL)
+foreach(gssm ${GISMO_OPTIONAL})
+  string(STRIP ${gssm} SUBMODULE)
+  if(EXISTS "${PROJECT_SOURCE_DIR}/optional/${SUBMODULE}/dependencies.cmake")
+    message(STATUS "Processing dependencies for optional module: ${SUBMODULE}")
+    include("${PROJECT_SOURCE_DIR}/optional/${SUBMODULE}/dependencies.cmake")
+  endif()
+endforeach()
 
 #second time
 include_directories(${GISMO_INCLUDE_DIRS})

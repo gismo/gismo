@@ -1,4 +1,3 @@
-
 #include <gsCore/gsTemplateTools.h>
 
 #include <gsPde/gsBoundaryConditions.h>
@@ -69,6 +68,14 @@ void pybind11_init_gsBoundaryConditions(py::module &m)
                             )
 
     .def("setGeoMap", &Class::setGeoMap, "Sets the geometry map for the boundary computations")
+
+     .def("__str__", [] (Class & self)
+     {
+         std::ostringstream os;
+         self.print(os);
+         return os.str();
+     },
+     "Returns a string with information about the object.")
     ;
 }
 

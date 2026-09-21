@@ -85,11 +85,6 @@ if  (${GISMO_WITH_XDEBUG})
 message ("  GISMO_WITH_XDEBUG       ${GISMO_WITH_XDEBUG}")
 endif()
 
-option(GISMO_WITH_ADIFF          "With auto-diff"            false  )
-if  (${GISMO_WITH_ADIFF})
-message ("  GISMO_WITH_ADIFF        ${GISMO_WITH_ADIFF}")
-endif()
-
 #option(GISMO_WITH_METIS          "With METIS"                false )
 #if  (${GISMO_WITH_METIS})
 #message ("  GISMO_WITH_METIS        ${GISMO_WITH_METIS}")

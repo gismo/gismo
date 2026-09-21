@@ -16,6 +16,15 @@
 #include <gsCore/gsExport.h>
 #include <utility>
 #include <complex>
+#include <type_traits>
+#include <functional>
+
+// Forward declare autodiff types so we can specialize traits without
+// pulling heavy headers here.
+namespace autodiff {
+namespace detail { template<typename T, typename G> struct Dual; }
+namespace reverse { namespace detail { template<typename T> class Variable; } }
+}
 
 namespace gismo
 {
@@ -49,7 +58,17 @@ using std::false_type;
 using std::integral_constant;
 using std::is_base_of;
 using std::is_integral;
-using std::is_arithmetic;
+// Define our own arithmetic trait in gismo::util rather than aliasing std::is_arithmetic.
+// This allows safe specializations for external numeric types (e.g., autodiff types)
+// without interfering with libraries that rely on std::is_arithmetic.
+template <class E> struct is_arithmetic { enum { value = std::is_arithmetic<E>::value ? 1 : 0 }; };
+// Ensure real_t is considered arithmetic
+template <> struct is_arithmetic<real_t> { enum { value = 1 }; };
+// Treat autodiff numbers as arithmetic for gismo expressions
+template <typename T, typename G>
+struct is_arithmetic<autodiff::detail::Dual<T, G>> { enum { value = 1 }; };
+template <typename T>
+struct is_arithmetic<autodiff::reverse::detail::Variable<T>> { enum { value = 1 }; };
 using std::is_same;
 using std::reference_wrapper;
 using std::remove_const;

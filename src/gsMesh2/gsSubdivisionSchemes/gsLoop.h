@@ -19,7 +19,8 @@ namespace gismo
 {
 
 /// class for subdivision schemes in polygonal meshes.
-class GISMO_EXPORT gsLoop : public gsSubdivisionScheme
+template <class Scalar=real_t>
+class GISMO_EXPORT gsLoop : public gsSubdivisionScheme<Scalar>
 {
 
 public: // Constructors
@@ -28,13 +29,13 @@ public: // Constructors
     ///
     /// Constructor that accepts a mesh to be targeted by this constructor.
     /// Creates the 'loop.maskType' option and initializes it with value `1`.
-    /// 
+    ///
     /// loop.maskType:
-    ///  * 0 - Simplified Loop's scheme. (cf. book Warren, Weimer 2002) 
+    ///  * 0 - Simplified Loop's scheme. (cf. book Warren, Weimer 2002)
     ///  * 1 - Original Loop's scheme.  (cf. book Loop 1987)
-    explicit gsLoop(gsSurfMesh* mesh = nullptr) : gsSubdivisionScheme()
+    explicit gsLoop(gsSurfMesh<Scalar>* mesh = nullptr) : gsSubdivisionScheme<Scalar>()
     {
-        m_options.addInt("loop.maskType", "Option for mask in Loop subdivision scheme",1);
+        this->m_options.addInt("loop.maskType", "Option for mask in Loop subdivision scheme",1);
         this->assign(mesh);
     }
 
@@ -43,9 +44,10 @@ public:
 
 private: // Helper functions
 
-    
-  
 };//namespace internal
 
 } // namespace gismo
 
+#ifndef GISMO_BUILD_LIB
+#include GISMO_HPP_HEADER(gsLoop.hpp)
+#endif

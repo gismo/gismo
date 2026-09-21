@@ -105,6 +105,15 @@ gsMultiPatch<T>::gsMultiPatch(PatchContainer & patches )
 }
 
 template<class T>
+gsMultiPatch<T>::gsMultiPatch(std::vector<gsGeometry<>::uPtr> patches)
+    : BaseA( patches[0]->parDim(), patches.size() )
+{
+    m_patches = memory::release(patches); // patches are consumed
+    setIds();
+    this->addAutoBoundaries();
+}
+
+template<class T>
 gsMultiPatch<T>::gsMultiPatch( PatchContainer& patches,
                                const std::vector<patchSide>& boundary,
                                const std::vector<boundaryInterface>& interfaces )
@@ -690,16 +699,16 @@ gsDofMapper gsMultiPatch<T>::getBoxMapper() const
 }
 
 template<class T>
-gsSurfMesh gsMultiPatch<T>::toMesh() const
+gsSurfMesh<T> gsMultiPatch<T>::toMesh() const
 {
     GISMO_ASSERT(2==parDim(), "Works for surfaces only.");
     gsDofMapper mapper = getMapper((T)1e-7);
-    gsSurfMesh mesh;
-    auto pid = mesh.add_vertex_property<index_t>("v:patch");
-    auto anchor = mesh.add_vertex_property<index_t>("v:anchor");
-    auto dof = mesh.add_vertex_property<index_t>("v:dof");
-    gsSurfMesh::Vertex v;
-    gsSurfMesh::Point pt(0,0,0);
+    gsSurfMesh<T> mesh;
+    auto pid = mesh.template add_vertex_property<index_t>("v:patch");
+    auto anchor = mesh.template add_vertex_property<index_t>("v:anchor");
+    auto dof = mesh.template add_vertex_property<index_t>("v:dof");
+    typename gsSurfMesh<T>::Vertex v;
+    typename gsSurfMesh<T>::Point pt(0,0,0);
     const index_t gd = geoDim();
     std::vector<std::pair<index_t,index_t> > pi = mapper.anyPreImages();
     //std::pair<index_t,index_t> pi;
@@ -707,7 +716,7 @@ gsSurfMesh gsMultiPatch<T>::toMesh() const
     for (index_t j = 0; j!= mapper.size(); ++j)
     {
         //pi = mapper.anyPreImage(j);
-        gsGeometry<> &  pp = patch(pi[j].first);
+        gsGeometry<T> &  pp = patch(pi[j].first);
         pt.topRows(gd) = pp.eval( pp.basis().anchor(pi[j].second) );
         v = mesh.add_vertex( pt );
         pid[v]  = pi[j].first;
@@ -716,14 +725,14 @@ gsSurfMesh gsMultiPatch<T>::toMesh() const
     }
 
     size_t np = nPatches();
-    gsMatrix<> supp, coor;
+    gsMatrix<T> supp, coor;
     gsVector<bool> boxPar(m_dim);
     gsVector<index_t,2>  cur, csize, strides;
     GISMO_ENSURE( dynamic_cast<gsTensorBasis<2>*>(&patch(0).basis()), "Not a tensor basis");
     static_cast<gsTensorBasis<2>&>(patch(0).basis()).stride_cwise(strides);
     static_cast<gsTensorBasis<2>&>(patch(0).basis()).size_cwise  (csize);
     csize.array() -= 2;
-    gsSurfMesh::Vertex v1, v2, v3, v4;
+    typename gsSurfMesh<T>::Vertex v1, v2, v3, v4;
     for (size_t p=0; p<np; ++p)
     {
         // todo: basis->connectivityAtAnchors  ++  basis->controlPolytope
@@ -739,11 +748,11 @@ gsSurfMesh gsMultiPatch<T>::toMesh() const
             //set_halfedge(f, halfedges[n-1]);
             
             index_t ci = pp.index(cur);
-            v1 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            v1 = typename gsSurfMesh<T>::Vertex( mapper.index(ci, p) );
             ci += strides[0];
-            v2 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            v2 = typename gsSurfMesh<T>::Vertex( mapper.index(ci, p) );
             ci += strides[1];
-            v3 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            v3 = typename gsSurfMesh<T>::Vertex( mapper.index(ci, p) );
             ci -= strides[0];
             v4 = gsSurfMesh::Vertex( mapper.index(ci, p) );
             mesh.add_quad(v1,v2,v3,v4); // patch vertices in lex order

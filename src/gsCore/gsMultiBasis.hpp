@@ -18,6 +18,7 @@
 #include <gsHSplines/gsHTensorBasis.h>
 #include <gsUtils/gsCombinatorics.h>
 #include <gsIO/gsOptionList.h>
+#include <gsAssembler/gsDofMapperCreator.h>
 
 namespace gismo
 {
@@ -148,6 +149,11 @@ void gsMultiBasis<T>::combineTransferMatrices(
     gsSparseMatrix<T, RowMajor>& transferMatrix
     )
 {
+    GISMO_ASSERT(coarseMapper.numPatches() == fineMapper.numPatches(),
+                    "Coarse and fine mapper have different number of patches.");
+    GISMO_ASSERT(coarseMapper.componentsSize() == fineMapper.componentsSize(),
+                    "Coarse and fine mapper have different number of components.");
+
     const index_t nBases = localTransferMatrices.size();
 
     index_t nonzeros = 0;
@@ -162,19 +168,31 @@ void gsMultiBasis<T>::combineTransferMatrices(
     }
 
     gsSparseEntries<T> entries;
-    entries.reserve( nonzeros );
+    entries.reserve( nonzeros*coarseMapper.componentsSize() );
 
     for (index_t j=0; j<nBases; ++j)
     {
-        for (index_t k=0; k < localTransferMatrices[j].outerSize(); ++k)
+        for (size_t dim = 0; dim!=coarseMapper.componentsSize(); ++dim)
         {
-            for (typename gsSparseMatrix<T, RowMajor>::iterator it(localTransferMatrices[j],k); it; ++it)
+            GISMO_ASSERT((index_t)coarseMapper.patchSize(j,dim) == localTransferMatrices[j].cols(),
+                        "Full size of the coarse mapper in direction " + std::to_string(dim)
+                        + " does not correspond with number of rows of the full local transfer matrix of patch " + std::to_string(j)
+                        + " (expected " + std::to_string(coarseMapper.patchSize(j,dim))
+                        + ", actual " + std::to_string(localTransferMatrices[j].cols()) + ").");
+            GISMO_ASSERT((index_t)fineMapper.patchSize(j,dim) == localTransferMatrices[j].rows(),
+                        "Full size of the fine mapper in direction " + std::to_string(dim)
+                        + " does not correspond with number of columns of the full local transfer matrix of patch " + std::to_string(j)
+                        + " (expected " + std::to_string(fineMapper.patchSize(j,dim))
+                        + ", actual " + std::to_string(localTransferMatrices[j].rows()) + ").");
+            for (index_t k=0; k < localTransferMatrices[j].outerSize(); ++k)
             {
-                const index_t coarse_dof_idx = coarseMapper.index(it.col(),j);
-                const index_t   fine_dof_idx = fineMapper.index(it.row(),j);
-
-                if (coarseMapper.is_free_index(coarse_dof_idx) && fineMapper.is_free_index(fine_dof_idx))
-                    entries.add(fine_dof_idx, coarse_dof_idx, it.value());
+                for (typename gsSparseMatrix<T, RowMajor>::iterator it(localTransferMatrices[j],k); it; ++it)
+                {
+                    const index_t coarse_dof_idx = coarseMapper.index(it.col(),j,dim);
+                    const index_t   fine_dof_idx = fineMapper.index(it.row(),j,dim);
+                    if (coarseMapper.is_free_index(coarse_dof_idx) && fineMapper.is_free_index(fine_dof_idx))
+                        entries.add(fine_dof_idx, coarse_dof_idx, it.value());
+                }
             }
         }
     }
@@ -194,14 +212,10 @@ void gsMultiBasis<T>::uniformRefine_withTransfer(
         index_t unk)
 {
     // Get coarse mapper
-    gsDofMapper coarseMapper;
-    this->getMapper(
+    gsDofMapper coarseMapper = createMapper(*this, boundaryConditions,
             (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
             (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
-            boundaryConditions,
-            coarseMapper,
-            unk
-    );
+            /*nComp=*/1, unk, /*finalize=*/true);
 
     // Refine
     std::vector< gsSparseMatrix<T, RowMajor> > localTransferMatrices(nBases());
@@ -211,14 +225,10 @@ void gsMultiBasis<T>::uniformRefine_withTransfer(
     }
 
     // Get fine mapper
-    gsDofMapper fineMapper;
-    this->getMapper(
+    gsDofMapper fineMapper = createMapper(*this, boundaryConditions,
             (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
             (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
-            boundaryConditions,
-            fineMapper,
-            unk
-    );
+            /*nComp=*/1, unk, /*finalize=*/true);
 
     // restrict to free dofs
     combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );
@@ -234,14 +244,10 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
         index_t unk)
 {
     // Get fine mapper
-    gsDofMapper fineMapper;
-    this->getMapper(
+    gsDofMapper fineMapper = createMapper(*this, boundaryConditions,
             (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
             (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
-            boundaryConditions,
-            fineMapper,
-            unk
-    );
+            /*nComp=*/1, unk, /*finalize=*/true);
 
     // Refine
     std::vector< gsSparseMatrix<T, RowMajor> > localTransferMatrices(nBases());
@@ -251,14 +257,10 @@ void gsMultiBasis<T>::uniformCoarsen_withTransfer(
     }
 
     // Get coarse mapper
-    gsDofMapper coarseMapper;
-    this->getMapper(
+    gsDofMapper coarseMapper = createMapper(*this, boundaryConditions,
             (dirichlet::strategy)assemblerOptions.askInt("DirichletStrategy",11),
             (iFace    ::strategy)assemblerOptions.askInt("InterfaceStrategy", 1),
-            boundaryConditions,
-            coarseMapper,
-            unk
-    );
+            /*nComp=*/1, unk, /*finalize=*/true);
 
     // restrict to free dofs
     combineTransferMatrices( localTransferMatrices, coarseMapper, fineMapper, transferMatrix );
@@ -374,48 +376,6 @@ short_t gsMultiBasis<T>::minDegree(short_t k) const
         if (m_bases[i]->degree(k) < result )
             result = m_bases[i]->degree(k);
     return result;
-}
-
-template<class T>
-void gsMultiBasis<T>::getMapper(bool conforming,
-                                gsDofMapper & mapper,
-                                bool finalize) const
-{
-    mapper = gsDofMapper(*this);//.init(*this);
-
-    if ( conforming )  // Conforming boundaries ?
-    {
-        for ( gsBoxTopology::const_iiterator it = m_topology.iBegin();
-              it != m_topology.iEnd(); ++it )
-        {
-            matchInterface(*it,mapper);
-        }
-    }
-
-    if (finalize)
-        mapper.finalize();
-}
-
-template<class T>
-void gsMultiBasis<T>::getMapper(bool conforming,
-                                const gsBoundaryConditions<T> & bc,
-                                int unk,
-                                gsDofMapper & mapper,
-                                bool finalize) const
-{
-    mapper = gsDofMapper(*this, bc, unk); //.init(*this, bc, unk);
-
-    if ( conforming ) // Conforming boundaries ?
-    {
-        for ( gsBoxTopology::const_iiterator it = m_topology.iBegin();
-              it != m_topology.iEnd(); ++it )
-        {
-            matchInterface(*it,mapper);
-        }
-    }
-
-    if (finalize)
-        mapper.finalize();
 }
 
 template<class T>

@@ -98,7 +98,7 @@ int main(int argc, char* argv[])
     // We can iterate over all elements in one go
     gsInfo<<"Interior elements of the multi-domain\nID\tpiece\tlower\tupper\n";
     for (auto it = multiDomain2D->beginAll(); it != multiDomain2D->endAll(); ++it)
-        gsInfo<<it.id()<<"\t"<<it.patch()<<"\t"<<it.lowerCorner().transpose()<<"\t"<<it.upperCorner().transpose()<<"\n";
+        gsInfo<<it.id()<<"\t"<<it.patchIndex()<<"\t"<<it.lowerCorner().transpose()<<"\t"<<it.upperCorner().transpose()<<"\n";
 
     // ======================================================================
     // Points as domains

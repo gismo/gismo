@@ -15,11 +15,14 @@
 
 #include <sstream>
 #include <numeric>
+#include <type_traits>
 
 #include <gsCore/gsExport.h>
 #include <gsCore/gsDebug.h>
 #include <gsCore/gsMemory.h>
 #include <gsParallel/gsOpenMP.h>
+// For real_t
+#include <gsCore/gsConfig.h>
 
 #ifdef __GNUC__ 
 #include <cxxabi.h>
@@ -50,15 +53,30 @@ std::string to_string(C (& value)[N])
 }
 #endif
 
-/// \brief Converts value to string, assuming "operator<<" defined on C
+/// \brief Converts value to string, preferring static casting to double when possible
 /// \ingroup Utils
-template<typename C>
+// Prefer printing values using the configured real_t instead of double when
+// possible. Use a SFINAE-friendly overload so that autodiff expression types
+// that are not directly convertible to real_t are handled by other overloads.
+template<typename C, typename std::enable_if<std::is_convertible<C, real_t>::value, int>::type = 0>
+std::string to_string(const C & value)
+{
+    std::ostringstream convert;
+    // For numeric types prefer casting to the configured real_t, which may be
+    // an autodiff type, and rely on specialized overloads that extract the
+    // underlying scalar for expression types.
+    convert << static_cast<real_t>(value);
+    return convert.str();
+}
+
+template<typename C, typename std::enable_if<!std::is_convertible<C, real_t>::value, int>::type = 0>
 std::string to_string(const C & value)
 {
     std::ostringstream convert;
     convert << value;
     return convert.str();
 }
+
 
 /// \brief Checks if a string \a haystack begins with the string \a needle
 /// \ingroup Utils

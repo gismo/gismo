@@ -826,8 +826,9 @@ typename gsHBox<d,T>::RefBox gsHBox<d, T>::toCrsBox(index_t targetLevel) const
     result[0] = this->level() - diff;
     for (index_t i = 0; i!=d; i++)
     {
-        result[i+1] = this->lowerIndex()[i]/std::pow(2,diff);
-        result[d+i+1] = this->upperIndex()[i]/std::pow(2,diff);
+        const index_t den = (index_t)1 << diff; // 2^diff (integer power of two)
+        result[i+1]   = this->lowerIndex()[i] / den;                 // floor: coarse lower index
+        result[d+i+1] = (this->upperIndex()[i] + den - 1) / den;     // ceil : coarse upper index
     }
     return result;
 }

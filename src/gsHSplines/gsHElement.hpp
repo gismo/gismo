@@ -19,20 +19,6 @@ namespace gismo
 {
 
     template <short_t d, class T>
-    bool gsHElement<d,T>::Compare::operator()(const gsHElement<d,T> & a, const gsHElement<d,T> & b) const
-    {
-        typename Base::Compare compare;
-        return (a.level() < b.level()) || ((a.level() == b.level()) && compare(Base(a), Base(b)));
-    };
-
-    template <short_t d, class T>
-    bool gsHElement<d,T>::Equal::operator()(const gsHElement<d,T> & a, const gsHElement<d,T> & b) const
-    {
-        typename Base::Equal equal;
-        return (a.level() == b.level()) && equal(Base(a), Base(b));
-    };
-
-    template <short_t d, class T>
     gsHElement<d,T>::gsHElement()
     :
     Base(),

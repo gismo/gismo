@@ -14,7 +14,6 @@
 
 //! [Include namespace]
 # include <gismo.h>
-# include <gsAssembler/gsAdaptiveRefUtils.h>
 
 using namespace gismo;
 //! [Include namespace]
@@ -211,7 +210,10 @@ int main(int argc, char *argv[])
        if( plot && refLoop == numRefinementLoops )
        {
            // Write the computed solution to paraview files
-           gsWriteParaview<>(solField, "adaptRef", 1000, true);
+           gsParaview<real_t> pv;
+           pv.options().setInt("numPoints", 1000);
+           pv.options().setSwitch("elements", true);
+           pv.write(solField, "adaptRef");
        }
        //! [Export to Paraview]
 

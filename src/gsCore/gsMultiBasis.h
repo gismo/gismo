@@ -95,7 +95,7 @@ public:
     gsMultiBasis( const gsMultiBasis& other );
 
     memory::shared_ptr<gsDomain<T> > domain() const;
-    
+
 #if EIGEN_HAS_RVALUE_REFERENCES
     /// Move constructor
     gsMultiBasis(gsMultiBasis&& other) : m_bases(give(other.m_bases)), m_topology(give(other.m_topology)) {}
@@ -610,60 +610,6 @@ public:
     {
         m_topology = tpl;
     }
-
-
-    void getMapper(bool conforming,
-                   const gsBoundaryConditions<T> & bc,
-                   int unk,
-                   gsDofMapper & mapper,
-                   bool finalize = true) const;
-
-    void getMapper(bool conforming,
-                   const gsBoundaryConditions<T> & bc,
-                   gsDofMapper & mapper,
-                   bool finalize = true) const
-    { getMapper(conforming, bc, 0, mapper, finalize); }
-
-    void getMapper(iFace::strategy is,
-                   const gsBoundaryConditions<T> & bc,
-                   gsDofMapper & mapper,
-                   int unk,
-                   bool finalize = true) const
-    { getMapper(is==iFace::glue, bc, unk, mapper, finalize); }
-
-    void getMapper(dirichlet::strategy ds,
-                   iFace::strategy is,
-                   const gsBoundaryConditions<T> & bc,
-                   gsDofMapper & mapper,
-                   int unk,
-                   bool finalize = true) const
-    {
-        if ( ds == dirichlet::elimination )
-            getMapper(is==iFace::glue, bc, unk, mapper, finalize);
-        else
-            getMapper(is==iFace::glue,        mapper, finalize);
-    }
-
-    gsDofMapper getMapper(dirichlet::strategy ds,
-                          iFace::strategy is,
-                          const gsBoundaryConditions<T> & bc,
-                          int unk,
-                          bool finalize = true) const
-    {
-        gsDofMapper mapper;
-        if ( ds == dirichlet::elimination )
-            getMapper(is==iFace::glue, bc, unk, mapper, finalize);
-        else
-            getMapper(is==iFace::glue,        mapper, finalize);
-        return mapper;
-    }
-
-
-    // to remove
-    void getMapper(bool conforming, gsDofMapper & mapper, bool finalize = true) const;
-
-    void getMapper(iFace::strategy is, gsDofMapper & mapper, bool finalize = true) const
-    { getMapper(is==iFace::glue, mapper, finalize); }
 
 
     //private: // to do

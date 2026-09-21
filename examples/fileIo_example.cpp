@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
   
   lookFor< gsMesh<> > (data) ;
 
-  lookFor< gsSurfMesh > (data) ;
+  lookFor< gsSurfMesh<> > (data) ;
     
   lookFor< gsSolid<> > (data) ;
 

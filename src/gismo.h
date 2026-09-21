@@ -218,9 +218,9 @@ namespace internal
 #include <gsIO/gsCmdLine.h>
 #include <gsIO/gsFileData.h>
 #include <gsIO/gsFileManager.h>
+#include <gsIO/gsParaview.h>
 #include <gsIO/gsWriteParaview.h>
 #include <gsIO/gsParaviewCollection.h>
-#include <gsIO/gsParaviewDataSet.h>
 #include <gsIO/gsReadFile.h>
 #include <gsUtils/gsPointGrid.h>
 #include <gsIO/gsXmlUtils.h>
@@ -237,10 +237,6 @@ namespace internal
 #include <gsUtils/gsProjection.h>
 
 /* ----------- Extension ----------- */
-#ifdef GISMO_WITH_ADIFF
-#include <gsAutoDiff.h>
-#endif
-
 #ifdef gsTrilinos_ENABLED
 #include <gsTrilinos/gsTrilinos.h>
 #endif

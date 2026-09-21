@@ -59,6 +59,7 @@ namespace gismo
         options.addInt("Admissibility","Admissibility region, 0=T-admissibility (default), 1=H-admissibility",0);
         options.addSwitch("Admissible","Mark the admissible region",true);
         options.addInt("Jump","Jump parameter m",2);
+        options.addSwitch("Absolute","(For GARU marking) Compute threshold based on solution values without error scaling",false); // Computed threshold based on the actual values of the solution --> true if marking is done with absolute error, false if relative error is used
         options.addSwitch("Extension", "Extend marked elements regions", true);
         // options.addInt("Verbose","Verbosity level",0);
         return options;
@@ -77,7 +78,7 @@ namespace gismo
         {
             // Create a pair of element and its associated error
             elementLevel = static_cast<const gsHDomainIterator<T,d> *>(it.get())->getLevel();
-            element = m_helper.toElement(it.lowerCorner(), it.upperCorner(), elementLevel, it.patch());
+            element = m_helper.toElement(it.lowerCorner(), it.upperCorner(), elementLevel, it.patchIndex());
             // m_elementErrors[elem] = it.id();
             m_elementErrors[it.id()] = std::make_pair(element, errors[it.id()]);
         }
@@ -105,7 +106,7 @@ namespace gismo
     template <short_t d, class T>
     typename gsHElementMarker<d,T>::HElementContainer gsHElementMarker<d,T>::markCrs(const HElementContainer refined) const
     {
-        switch (m_options.askInt("RefineRule",1))
+        switch (m_options.askInt("CoarsenRule",1))
         {
             case 1: // GARU
                 return _markCrs_threshold(refined);
@@ -114,7 +115,7 @@ namespace gismo
             case 3: // BULK
                 return _markCrs_fraction(refined);
             default:
-                GISMO_ERROR("Unknown refinement rule.");
+                GISMO_ERROR("Unknown coarsening rule.");
         }
     }
 
@@ -167,10 +168,15 @@ namespace gismo
                     break;
                 }
 
-                // If the parents of any cells in the extension overlap with marked refinement cells, coarsening causes a problem
+                // Admissible coarsening needs N_c U N_rc = empty: the coarsening
+                // neighborhood (Carraturo et al., CMAME 348 (2019), Def. 3.5) and
+                // its counterpart over the elements marked for refinement (Verhelst
+                // et al., Eng. Comput. 40 (2024), Eq. (44)), at level l for m = 2.
                 for ( const auto & refElem : refined )
                 {
-                    if (m_helper.contains(coarseningElem, refElem))
+                    if (refElem.level() >= elem.level() &&
+                        (m_helper.contains(coarseningElem, refElem) ||
+                         m_helper.contains(refElem, coarseningElem)))
                     {
                         // If the coarsening element contains a refinement element, the coarsening is not admissible
                         erase = true;
@@ -202,7 +208,8 @@ namespace gismo
     typename gsHElementMarker<d,T>::HElementContainer gsHElementMarker<d,T>::_markRef_threshold() const
     {
         HElementContainer result;
-        T threshold = m_options.askReal("RefineParam",0.1) * m_elementErrors.back().second;
+        T maxError = m_options.getSwitch("Absolute") ? 1 : m_elementErrors.back().second;
+        T threshold = m_options.askReal("RefineParam",0.1) * maxError;
         for (typename std::vector<std::pair<element_t, error_t>>::const_reverse_iterator it = m_elementErrors.rbegin(); it != m_elementErrors.rend(); ++it)
         {
             // If the error is below the threshold, stop the iteration
@@ -223,7 +230,8 @@ namespace gismo
     typename gsHElementMarker<d,T>::HElementContainer gsHElementMarker<d,T>::_markCrs_threshold(const HElementContainer & refined) const
     {
         HElementContainer result;
-        T threshold = m_options.askReal("CoarsenParam",0.1) * m_elementErrors.back().second;
+        T maxError = m_options.getSwitch("Absolute") ? 1 : m_elementErrors.back().second;
+        T threshold = m_options.askReal("CoarsenParam",0.1) * maxError;
         for (typename std::vector<std::pair<element_t, error_t>>::const_iterator it = m_elementErrors.begin(); it != m_elementErrors.end(); ++it)
         {
             // If the error is above the threshold, stop the iteration
