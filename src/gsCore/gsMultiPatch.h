@@ -418,10 +418,10 @@ public:
     gsDofMapper getBoxMapper() const;
 
     /// Creates a surface mesh out of this multipatch
-    gsSurfMesh toMesh() const;
+    gsSurfMesh<T> toMesh() const;
 
     /// returns a mesh with the same patch topology as this multipatch
-    gsSurfMesh topologyToMesh() const;
+    gsSurfMesh<T> topologyToMesh() const;
 
     /// Clear (delete) all patches
     void clear()

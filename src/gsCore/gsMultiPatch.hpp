@@ -754,7 +754,7 @@ gsSurfMesh<T> gsMultiPatch<T>::toMesh() const
             ci += strides[1];
             v3 = typename gsSurfMesh<T>::Vertex( mapper.index(ci, p) );
             ci -= strides[0];
-            v4 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            v4 = typename gsSurfMesh<T>::Vertex( mapper.index(ci, p) );
             mesh.add_quad(v1,v2,v3,v4); // patch vertices in lex order
             //circulate quad and mark half-edges as 0/1 (u or v)
         } while (nextCubePoint(cur, csize));
@@ -765,16 +765,17 @@ gsSurfMesh<T> gsMultiPatch<T>::toMesh() const
 }
 
 template<class T>
-gsSurfMesh gsMultiPatch<T>::topologyToMesh() const
+gsSurfMesh<T> gsMultiPatch<T>::topologyToMesh() const
 {
+    typedef typename gsSurfMesh<T>::Vertex Vertex;
     GISMO_ASSERT(2==parDim(), "Works for surfaces only.");
     gsDofMapper mapper = getBoxMapper();
-    gsSurfMesh mesh;
-    auto pid = mesh.add_vertex_property<index_t>("v:patch");
-    auto anchor = mesh.add_vertex_property<index_t>("v:anchor");
-    auto dof = mesh.add_vertex_property<index_t>("v:dof");
-    gsSurfMesh::Vertex v;
-    gsSurfMesh::Point pt(0,0,0);
+    gsSurfMesh<T> mesh;
+    auto pid = mesh.template add_vertex_property<index_t>("v:patch");
+    auto anchor = mesh.template add_vertex_property<index_t>("v:anchor");
+    auto dof = mesh.template add_vertex_property<index_t>("v:dof");
+    Vertex v;
+    typename gsSurfMesh<T>::Point pt(0,0,0);
     const index_t gd = geoDim();
     std::vector<std::pair<index_t,index_t> > pi = mapper.anyPreImages();
     //std::pair<index_t,index_t> pi;
@@ -798,7 +799,7 @@ gsSurfMesh gsMultiPatch<T>::topologyToMesh() const
     static_cast<gsTensorBasis<2>&>(patch(0).basis()).stride_cwise(strides);
     static_cast<gsTensorBasis<2>&>(patch(0).basis()).size_cwise  (csize);
     csize.array() -= 2;
-    gsSurfMesh::Vertex v1, v2, v3, v4;
+    Vertex v1, v2, v3, v4;
     for (size_t p=0; p<np; ++p)
     {
         // todo: basis->connectivityAtAnchors  ++  basis->controlPolytope
@@ -814,13 +815,13 @@ gsSurfMesh gsMultiPatch<T>::topologyToMesh() const
             //set_halfedge(f, halfedges[n-1]);
             
             index_t ci = pp.index(cur);
-            v1 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            v1 = Vertex( mapper.index(ci, p) );
             ci += strides[0];
-            v2 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            v2 = Vertex( mapper.index(ci, p) );
             ci += strides[1];
-            v3 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            v3 = Vertex( mapper.index(ci, p) );
             ci -= strides[0];
-            v4 = gsSurfMesh::Vertex( mapper.index(ci, p) );
+            v4 = Vertex( mapper.index(ci, p) );
             mesh.add_quad(v1,v2,v3,v4); // patch vertices in lex order
             //circulate quad and mark half-edges as 0/1 (u or v)
         } while (nextCubePoint(cur, csize));
