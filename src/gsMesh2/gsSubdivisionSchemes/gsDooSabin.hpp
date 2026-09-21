@@ -38,13 +38,10 @@ void gsDooSabin<Scalar>::subdivide_impl()
     // Make a map to identify the new vertices
     std::map<Halfedge, Vertex> Map;
 
-    std::vector<Vertex> ffv;
-    
-    // For all faces create F-Faces and assign the new points to a halfedge
-    for (auto f : this->m_mesh->faces())
+    // Create the vertices images and assign them to a halfedge
+    for (auto he : this->m_mesh->halfedges()) // for all halfedges
     {
-        ffv.clear();
-        for (auto he : this->m_mesh->halfedges(f))
+        if (!this->m_mesh->is_boundary(he))
         {
             if (option > 0) // trimmed cases (option = 1).
             {
@@ -52,15 +49,12 @@ void gsDooSabin<Scalar>::subdivide_impl()
             }
             else // interpolatory case (option = 0).
             {
-                Map[he] =
-                    new_mesh.add_vertex(ds_image_point_calc_interpolation(he));
+                Map[he] = new_mesh.add_vertex(ds_image_point_calc_interpolation(he));
             }
-            ffv.push_back(Map[he]);
         }
-        new_mesh.add_face(ffv); // F-face
     }
 
-
+    std::vector<Vertex> ffv;
     // For all vertices create V-faces
     for (auto v : this->m_mesh->vertices())
     {
@@ -68,15 +62,31 @@ void gsDooSabin<Scalar>::subdivide_impl()
         for (auto he : this->m_mesh->halfedges(v))
         {
             if (!this->m_mesh->is_boundary(he))
-            {   
+            {
                 ffv.push_back(Map[he]);
             }
         }
 
-        if (ffv.size() <= 2) // corner case
+        if (ffv.size() < 2) // corner case
             continue;
 
-        new_mesh.add_face(ffv); // V-face
+        if (ffv.size() == 2)
+        {
+            new_mesh.add_edge(ffv[0], ffv[1]); // V-Edge in the regular boundary case
+        }
+        else
+        {
+            new_mesh.add_face(ffv); // V-face
+        }
+    }
+
+    // For all faces create F-Faces
+    for (auto f : this->m_mesh->faces())
+    {
+        ffv.clear();
+        for (auto he : this->m_mesh->halfedges(f))
+            ffv.push_back(Map[he]);
+        new_mesh.add_face(ffv); // F-face
     }
 
     Halfedge h;

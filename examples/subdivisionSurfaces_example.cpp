@@ -86,8 +86,6 @@ int main(int argc, char** argv)
         gsParaview<real_t> pv;
         pv.options().setSwitch("show", true);
         pv.write(mesh, "mesh_out");
-        // plot halfedge (using Glyph arrow in ParaView)
-        gsWriteHalfedgesParaview(mesh, "halfedge_mesh_out", 0.01); 
     }
 
     delete scheme;
