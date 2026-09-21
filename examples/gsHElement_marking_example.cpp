@@ -125,7 +125,7 @@ void run(gsTensorBSpline<d,real_t> & spline, index_t degree, index_t m, index_t 
         //     gsInfo<<elem<<"\n";
 
         gsMatrix<> boxes;
-        gsVector<size_t> levels;
+        gsVector<index_t> levels;
         std::tie(boxes,levels) = marker.helper().toBoxesAndLevels(markedRef);
         pv.writePoints(boxes, "markedRef_"+util::to_string(i), gsVector<real_t>(levels.cast<real_t>()));
         refined.addPart("markedRef_"+util::to_string(i)+".vtu",i,"Solution");
