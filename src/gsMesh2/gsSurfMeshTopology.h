@@ -1120,6 +1120,18 @@ public:
     /// returns a halfedge of face \c f
     Halfedge halfedge(Face f) const { return fconn_[f].halfedge_; }
 
+    /// returns the halfedge that emanates from vertex \c v inside face \c f
+    /// if not found returns invalid halfedge
+    Halfedge halfedge(Vertex v, Face f) const 
+    { 
+        for (auto he : halfedges(f))
+        {
+            if (from_vertex(he) == v)
+                return he;
+        }
+        return Halfedge();
+    }; 
+
     /// return the edge that contains halfedge \c h as one of its two halfedges.
     inline Edge edge(Halfedge h) const { return Edge(h.idx() >> 1); }
 
@@ -1696,6 +1708,10 @@ public:
 
     /// find the edge (a,b)
     Edge find_edge(Vertex a, Vertex b) const;
+
+    /// find the common vertex between two faces f1, f2
+    /// if not vertex is found return invalid vertex
+    Vertex find_common_vertex(Face f1, Face f2) const;
 
     /// deletes the vertex \c v from the mesh
     void delete_vertex(Vertex v);

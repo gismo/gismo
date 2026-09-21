@@ -252,6 +252,20 @@ find_edge(Vertex a, Vertex b) const
     return h.is_valid() ? edge(h) : Edge();
 }
 
+gsSurfMeshTopology::Vertex gsSurfMeshTopology::find_common_vertex(Face f1, Face f2) const
+{
+    for (auto vc : vertices(f1))
+    {
+        for (auto htest : halfedges(vc))
+        {
+            if (face(htest) == f2)
+                return vc;
+        }
+    }
+    return Vertex();
+}
+
+
 void
 gsSurfMeshTopology::
 adjust_outgoing_halfedge(Vertex v)

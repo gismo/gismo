@@ -37,6 +37,11 @@ public: // Constructors
     /// ds.boundaryMask (Boundary treatment):
     ///  * 0 - interpolatory case (cf. Chaikin 1974).
     ///  * 1 - trimmed boundary (cf. Doo-Sabin 1978).
+    /// 
+    /// General scheme properties for current implmentation:
+    ///  1. Each non-boundary halfedge in the step k corresponds to a new vertex in step k+1 (Equality in IDs when mesh is closed).
+    ///  2. In a closed mesh the id of vertex in subdivision step/level k is the same with the id of V-Face in step k+1.
+    ///  3. The #vertices in k+1 step is 2*(# edges) in k step.
     explicit gsDooSabin(gsSurfMesh<Scalar>* mesh = nullptr) : gsSubdivisionScheme<Scalar>()
     {
         this->m_options.addInt("ds.boundaryMask", "Option for boundary masks in Doo-Sabin subdivision scheme",0);
