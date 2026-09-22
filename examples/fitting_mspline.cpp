@@ -28,8 +28,8 @@ using namespace gismo;
 
 gsSparseMatrix<> makeC0basis(const gsMultiBasis<>& mb)
 {
-    gsDofMapper m_dofMapper;
-    mb.getMapper(true, m_dofMapper);
+    gsDofMapper m_dofMapper = createMapper(mb, 1, true, true);
+    //mb.getMapper(true, m_dofMapper);
     index_t m_globals = m_dofMapper.size();
     index_t m_locals = m_dofMapper.mapSize();
     gsSparseMatrix<> matrix(m_locals, m_globals);
