@@ -83,10 +83,8 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
 {
     const index_t parDim = u.source().domainDim();
 
-    std::vector< gsVector<T> > rr;
     gsMatrix<index_t> boundary;
-    gsVector<T> b(1);
-    gsMatrix<T> fpts, tmp;
+    gsMatrix<T> fpts, pts;
 
     gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
     fixedDofs.setZero(u.mapper().boundarySize(), 1 );
@@ -136,33 +134,23 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
             }
 
             // Compute grid of points on the face ("face anchors")
-            rr.clear();
-            rr.reserve( parDim );
-
-            for ( int i=0; i < parDim; ++i)
+            const gsMatrix<T> banchors = h->anchors();
+            pts.resize(parDim, banchors.cols());
+            for (index_t i = 0, j = 0; i != parDim; ++i)
             {
                 if ( i==dir )
-                {
-                    b[0] = ( basis.component(i).support() ) (0, param);
-                    rr.push_back(b);
-                }
+                    pts.row(i).setConstant( basis.support()(dir, param) );
                 else
-                {
-                    rr.push_back( basis.component(i).anchors().transpose() );
-                }
+                    pts.row(i) = banchors.row(j++);
             }
-
-            // GISMO_ASSERT(it->function()->targetDim() == u.dim(),
-            //              "Given Dirichlet boundary function does not match problem dimension."
-            //              <<it->function()->targetDim()<<" != "<<u.dim()<<"\n");
 
             // Compute dirichlet values
             if ( it->parametric() )
-                fpts = it->function()->piece(it->patch()).eval( gsPointGrid<T>( rr ) );
+                fpts = it->function()->piece(it->patch()).eval( pts );
             else
             {
                 const gsFunctionSet<T> & gmap = bc.geoMap();
-                fpts = it->function()->piece(it->patch()).eval(  gmap.piece(it->patch()).eval(  gsPointGrid<T>( rr ) )  );
+                fpts = it->function()->piece(it->patch()).eval(  gmap.piece(it->patch()).eval(  pts )  );
             }
 
             // Interpolate dirichlet boundary
@@ -170,10 +158,14 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
             const gsMatrix<T> & dVals = geo->coefs();
 
             // Save corresponding boundary dofs
+            const index_t cc = (-1==com ? r : 0);
+            GISMO_ENSURE( cc < dVals.cols(),
+                          "Dirichlet function has target dimension "<< dVals.cols()
+                          <<", which cannot supply component "<< cc <<".");
             for (index_t l=0; l!= boundary.size(); ++l)
             {
                 const int ii = u.mapper().bindex( boundary.at(l) , k, r );
-                fixedDofs.at(ii) = dVals.at(l);
+                fixedDofs.at(ii) = dVals(l, cc);
             }
         }
     }
