@@ -67,7 +67,6 @@ public:
         freeAll(m_funcs);
     }
 
-    #if EIGEN_HAS_RVALUE_REFERENCES
     /// Move constructor
     gsPiecewiseFunction(gsPiecewiseFunction&& other)
     : m_funcs(give(other.m_funcs)) {}
@@ -89,14 +88,6 @@ public:
         m_funcs = give(other.m_funcs);
         return *this;
     }
-#else
-    /// Assignment operator (uses copy-and-swap idiom)
-    gsPiecewiseFunction & operator= ( gsPiecewiseFunction other )
-    {
-        this->swap( other );
-        return *this;
-    }
-#endif
 
     /// \brief Swap with another gsPiecewiseFunction
     void swap(gsPiecewiseFunction & other)

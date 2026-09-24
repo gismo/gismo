@@ -72,12 +72,19 @@ public:
     /// Default empty constructor
     gsTensorBSpline() { }
 
+    // Copy and move constructors - use defaults
+    gsTensorBSpline(const gsTensorBSpline & other) = default;
+
+    gsTensorBSpline(gsTensorBSpline && other) noexcept
+    { this->swap(other); }
+
     using gsGeometry<T>::swap;
 
-#if !EIGEN_HAS_RVALUE_REFERENCES
-    gsTensorBSpline & operator=(gsTensorBSpline other)
-    { this->swap(other); return *this;}
-#endif
+    gsTensorBSpline & operator=(const gsTensorBSpline & other)
+    { this->Base::operator=(other); return *this; }
+
+    gsTensorBSpline & operator=(gsTensorBSpline && other) noexcept
+    { this->swap(other); return *this; }
 
     // Construct B-Spline by basis functions and coefficient matrix
     //gsTensorBSpline( const gsConstantBasis<T> & basis, const gsMatrix<T> & coefs )

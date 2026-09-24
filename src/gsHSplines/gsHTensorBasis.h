@@ -208,7 +208,6 @@ public:
     :
     m_manualLevels(false)
     {
-        //assert(boxes.rows() == 2);    //can accept only 2D coordinates- Delete during the generalization of the lac to nD
         GISMO_ASSERT(boxes.rows() == d, "Points in boxes need to be of dimension d.");
         GISMO_ASSERT(boxes.cols()%2 == 0, "Each box needs two corners but you don't provied gsHTensorBasis constructor with them.");
         initialize_class(tbasis);
@@ -303,7 +302,6 @@ public:
         return *this;
     }
 
-#if EIGEN_HAS_RVALUE_REFERENCES
     gsHTensorBasis(gsHTensorBasis&& other)
     {
         this->operator=(other);
@@ -321,7 +319,6 @@ public:
         m_uIndices   = std::move(other.m_uIndices);
         return *this;
     }
-#endif
 
     /// Destructor
     virtual ~gsHTensorBasis()
@@ -396,9 +393,7 @@ protected:
 
 public:
     // Needed since m_tree is 16B aligned
-#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-#   undef Eigen
     protected:
 
     /// \brief Stores the offsets of active functions for all levels
