@@ -339,7 +339,9 @@ template<class T>
 T gsGeometry<T>::closestPointTo(const gsVector<T> & pt,
                                 gsVector<T> & result,
                                 const T accuracy,
-                                const bool useInitialPoint) const
+                                const bool useInitialPoint, 
+                                const index_t maxIterations,
+                                const T relaxation) const
 {
     GISMO_ASSERT( pt.rows() == targetDim(), "Invalid input point." <<
                   pt.rows() <<"!="<< targetDim() );
@@ -349,9 +351,10 @@ T gsGeometry<T>::closestPointTo(const gsVector<T> & pt,
     fmin.solve();
     result = fmin.currentDesign();
 #else
+    gsMatrix<T> tmp;
     gsSquaredDistance<T> dist2(*this, pt);
-    result = useInitialPoint ? dist2.argMin(accuracy*accuracy, 100, result)
-    : dist2.argMin(accuracy*accuracy, 100) ;
+    result = useInitialPoint ? dist2.argMin(accuracy*accuracy, maxIterations, result,relaxation)
+    : dist2.argMin(accuracy*accuracy, maxIterations,tmp,relaxation); ;
 #endif
     return math::sqrt( dist2.eval(result).value() );
 }
@@ -497,6 +500,22 @@ void gsGeometry<T>::degreeDecrease(short_t const i, short_t const dir)
     std::swap(m_basis, g->m_basis);
     g->coefs().swap(this->coefs());
 }
+
+template<class T> void
+gsGeometry<T>::setDegree(short_t const i)
+{ this->basis().setDegree(i); }
+
+template<class T> void
+gsGeometry<T>::setDegreePreservingMultiplicity(short_t const i)
+{ this->basis().setDegreePreservingMultiplicity(i); }
+
+template<class T> void
+gsGeometry<T>::elevateContinuity(int const & i)
+{ this->basis().elevateContinuity(i); }
+
+template<class T> void
+gsGeometry<T>::reduceContinuity(int const & i)
+{ this->basis().reduceContinuity(i); }
 
 template<class T> void
 gsGeometry<T>::hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
