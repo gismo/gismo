@@ -83,8 +83,9 @@ int main(int argc, char** argv)
 
     if (plot)
     {
-        gsWriteParaview(mesh,"mesh_out", { });
-        gsFileManager::open("mesh_out.vtk");
+        gsParaview<real_t> pv;
+        pv.options().setSwitch("show", true);
+        pv.write(mesh, "mesh_out");
     }
 
     delete scheme;

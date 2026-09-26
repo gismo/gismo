@@ -150,6 +150,8 @@ public:
 
     /// Returns a reference to the options structure
     gsOptionList & options() {return m_options;}
+    const gsOptionList & options() const {return m_options;}
+
 
     /// @brief Installs a custom quadrature-rule factory.
     ///
@@ -399,7 +401,6 @@ public:
         if (m_fmatrix.nonZeros() && save_sparsety_pattern)
         {
             m_fmatrix.assignZero();
-            m_modified = true;
         }
         else
         {
@@ -440,6 +441,8 @@ public:
                                           cast<T, index_t>(nz * (1.0 + bdO)));
             }
         }
+		
+        m_modified = true;
     }
 
     /// Initializes the pattern of the sparse matrix
@@ -1134,12 +1137,14 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
     for (size_t i = 1; i!=m_vcol.size(); ++i)
     {
         if (!m_vcol[i]->valid()) m_vcol[i]->init();
-        m_vcol[i]->mapper.setShift(m_vcol[i-1]->mapper.firstIndex() + m_vcol[i-1]->mapper.freeSize() );
+        m_vcol[i]->mapper.setShift(m_vcol[i-1]->mapper.firstIndex() +
+                                   m_vcol[i-1]->mapper.freeSize() );
 
         if ( i<m_vrow.size() && m_vcol[i] != m_vrow[i] )
         {
             if (!m_vrow[i]->valid()) m_vrow[i]->init();
-            m_vrow[i]->mapper.setShift(m_vrow[i-1]->mapper.firstIndex() + m_vrow[i-1]->mapper.freeSize() );
+            m_vrow[i]->mapper.setShift(m_vrow[i-1]->mapper.firstIndex() +
+                                       m_vrow[i-1]->mapper.freeSize() );
         }
     }
 }
@@ -1191,7 +1196,7 @@ void gsExprAssembler<T>::_computePattern(const expr &... args)
     for ( auto & elem : m_exprdata->domain().allElements() )
     {
         m_exprdata->points() = elem.centerPoint();
-        patchInd = elem.patch();
+        patchInd = elem.patchIndex();
         op_tuple(pp, arg_tpl);
     }
 
@@ -1444,9 +1449,9 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 
     for ( auto & elem : m_exprdata->domain().allElements() )
     {
-        if (/*changeQuadrature && */QuPatch!=elem.patch())
+        if (/*changeQuadrature && */QuPatch!=elem.patchIndex())
         {
-            QuPatch = elem.patch();
+            QuPatch = elem.patchIndex();
             // get Degree of the domain
             QuRule = makeQuadratureRule(QuPatch);
         }
@@ -1792,9 +1797,9 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 
     for ( auto & elem : m_exprdata->domain().allElements() )
     {
-        if (changeQuadrature && QuPatch!=elem.patch())
+        if (changeQuadrature && QuPatch!=elem.patchIndex())
         {
-            QuPatch = elem.patch();
+            QuPatch = elem.patchIndex();
             // get Degree of the domain
             QuRule = makeQuadratureRule(QuPatch);
         }
