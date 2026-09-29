@@ -28,6 +28,7 @@
 */
 
 #include "gismo_unittest.h"
+#include <gsMSplines/gsMappedBasis.h>
 
 namespace {
 
@@ -235,6 +236,191 @@ TEST(component_mismatch_throws)
     gsExprAssembler<real_t>::space u = A.getSpace(dbasis, 2);
 
     CHECK_THROW( u.setup(bc, dirichlet::interpolation, 0), std::runtime_error );
+}
+
+// gsDirichletValuesByTPInterpolation's basis guard admits tensor and
+// hierarchical bases and their rational counterparts: the boundary
+// indices, face anchors and interpolateAtAnchors all resolve through
+// gsRationalBasis::source(). Every admitted basis must produce the same
+// prescribed values as an equivalent reference basis; any other basis
+// must be rejected by the guard itself.
+TEST(dirichletInterpolationBasisGuard)
+{
+    // Case 1: genuine NURBS (non-unit weights). A rational basis is a
+    // partition of unity, so interpolating a constant must reproduce it
+    // exactly in every boundary coefficient.
+    {
+        gsMultiPatch<> mp( *gsNurbsCreator<>::NurbsQuarterAnnulus(1,2) );
+        gsMultiBasis<> mb(mp);
+        mb.uniformRefine();
+
+        CHECK(mb.basis(0).isRational());
+        const gsTensorNurbsBasis<2,real_t> * nurbsBasis =
+            dynamic_cast<const gsTensorNurbsBasis<2,real_t>*>(&mb.basis(0));
+        CHECK(nullptr != nurbsBasis);
+
+        if (nurbsBasis != nullptr)
+        {
+            CHECK( (nurbsBasis->weights().array() - 1).abs().maxCoeff() > 1e-3 );
+
+            // The curved side is not known a priori from the construction
+            // alone; find it by scanning the boundary weights instead of
+            // assuming which side is curved.
+            boundary::side chosenSide = boundary::none;
+            real_t chosenDev = 0;
+            for (boundary::side s : {boundary::west, boundary::south})
+            {
+                const gsMatrix<index_t> idx = mb.basis(0).boundary(s);
+                real_t dev = 0;
+                for (index_t i = 0; i != idx.rows(); ++i)
+                    dev = std::max(dev, std::abs(nurbsBasis->weights()(idx(i,0),0) - 1));
+                gsInfo << "[dirichletNurbs] side "<<boxSide(s)<<" weight deviation = "<<dev<<"\n";
+                if (dev > 1e-3 && chosenSide == boundary::none)
+                    chosenSide = s;
+                if (dev > 1e-3 && chosenDev < dev) chosenDev = dev;
+            }
+            gsInfo << "[dirichletNurbs] chosen side = "<<boxSide(chosenSide)
+                   << ", deviation = "<<chosenDev<<"\n";
+            CHECK(chosenSide != boundary::none);
+
+            if (chosenSide != boundary::none)
+            {
+                gsExprAssembler<> A(1,1);
+                A.setIntegrationElements(mb);
+                gsExprAssembler<>::space u = A.getSpace(mb, 1, 0);
+                gsBoundaryConditions<> bc;
+                bc.setGeoMap(mp);
+                gsFunctionExpr<> f("3", 2);
+                bc.addCondition(0, chosenSide, condition_type::dirichlet, &f, 0, false, -1);
+
+                bool threw = false;
+                try { u.setup(bc, dirichlet::interpolation, 0); }
+                catch (const std::runtime_error &) { threw = true; }
+                gsInfo << "[dirichletNurbs] case1 threw = "<<threw<<"\n";
+                CHECK(!threw);
+
+                if (!threw)
+                {
+                    CHECK(u.mapper().boundarySize() > 0);
+                    const gsMatrix<index_t> idx = mb.basis(0).boundary(chosenSide);
+                    for (index_t i = 0; i != idx.rows(); ++i)
+                        CHECK_CLOSE(3.0, u.fixedPart().at( u.mapper().bindex(idx(i,0), 0, 0) ), 1e-8);
+                }
+            }
+        }
+    }
+
+    // Fixture shared by cases 2-5: a plain tensor B-spline basis on the
+    // unit square. The parametric trace of g on the north side, 3+x^2,
+    // is not constant (so a permuted boundary numbering changes the
+    // prescribed values) and lies in every boundary space used here (so
+    // interpolation and L2 projection must agree).
+    gsKnotVector<> kv(0, 1, 3, 3);
+    gsTensorBSplineBasis<2> tb(kv, kv);
+
+    gsMultiPatch<> mp;
+    mp.addPatch( *gsNurbsCreator<>::BSplineSquare(1.0, 0.0, 0.0) );
+    mp.computeTopology();
+
+    gsFunctionExpr<> g("1+x*x+2*y", 2);
+
+    // Prescribed values of g on the north side of mbX with the given
+    // strategy; threw reports whether setup raised.
+    auto northValues = [&](const gsMultiBasis<> & mbX, const index_t method, bool & threw)
+    {
+        gsExprAssembler<> AX(1,1);
+        AX.setIntegrationElements(mbX);
+        gsExprAssembler<>::space uX = AX.getSpace(mbX, 1, 0);
+        gsBoundaryConditions<> bcX;
+        bcX.setGeoMap(mp);
+        bcX.addCondition(0, boundary::north, condition_type::dirichlet, &g, 0, true, -1);
+        threw = false;
+        try { uX.setup(bcX, method, 0); }
+        catch (const std::runtime_error &) { threw = true; }
+        return gsMatrix<>(uX.fixedPart());
+    };
+
+    auto sameValues = [](const gsMatrix<> & a, const gsMatrix<> & b)
+    {
+        return a.rows() == b.rows() && a.cols() == b.cols() &&
+               (a - b).cwiseAbs().maxCoeff() < 1e-8;
+    };
+
+    bool threwB = false;
+    const gsMatrix<> valsB = northValues(gsMultiBasis<>(tb), dirichlet::interpolation, threwB);
+    CHECK(!threwB);
+    CHECK( valsB.size() > 0 && valsB.maxCoeff() - valsB.minCoeff() > 0.1 );
+
+    // Case 2: unit-weight NURBS spans the tensor B-spline space, and
+    // interpolation is unique, so the rational path (generic collocation
+    // + BiCGSTABILUT) must match the tensor path to solver tolerance.
+    {
+        gsTensorNurbsBasis<2> nb(tb);
+        bool threwN = false;
+        const gsMatrix<> valsN = northValues(gsMultiBasis<>(nb), dirichlet::interpolation, threwN);
+        gsInfo << "[dirichletGuard] case2 threwN = "<<threwN<<"\n";
+        CHECK(!threwN);
+        if (!threwB && !threwN) CHECK( sameValues(valsB, valsN) );
+    }
+
+    // Case 3: a single-level THB basis spans the tensor space.
+    gsTHBSplineBasis<2> thb(tb);
+    {
+        bool threwH = false;
+        const gsMatrix<> valsH = northValues(gsMultiBasis<>(thb), dirichlet::interpolation, threwH);
+        gsInfo << "[dirichletGuard] case3 threwH = "<<threwH<<"\n";
+        CHECK(!threwH);
+        if (!threwB && !threwH) CHECK( sameValues(valsB, valsH) );
+    }
+
+    // Case 4: THB refined in [0,0.5]x[0.5,1], so the north boundary basis
+    // is of mixed level. Interpolation must match L2 projection, and the
+    // unit-weight rational THB basis must match the THB basis.
+    thb.refine( (gsMatrix<>(2,2) << 0, 0.5, 0.5, 1).finished() );
+    CHECK( thb.boundaryBasis(boundary::north)->size() > tb.boundaryBasis(boundary::north)->size() );
+    {
+        bool threwI = false, threwL = false, threwR = false;
+        const gsMatrix<> valsI = northValues(gsMultiBasis<>(thb), dirichlet::interpolation, threwI);
+        const gsMatrix<> valsL = northValues(gsMultiBasis<>(thb), dirichlet::l2Projection , threwL);
+        gsRationalTHBSplineBasis<2> rthb(thb);
+        const gsMatrix<> valsR = northValues(gsMultiBasis<>(rthb), dirichlet::interpolation, threwR);
+        gsInfo << "[dirichletGuard] case4 threwI = "<<threwI<<", threwL = "<<threwL
+               << ", threwR = "<<threwR<<"\n";
+        CHECK(!threwI);
+        CHECK(!threwL);
+        CHECK(!threwR);
+        if (!threwI && !threwL) CHECK( sameValues(valsI, valsL) );
+        if (!threwI && !threwR) CHECK( sameValues(valsI, valsR) );
+    }
+
+    // Case 5: a mapped basis is neither tensor nor hierarchical and must
+    // be rejected by the guard, not by some later failure.
+    {
+        gsMultiBasis<> mbM(tb);
+        const index_t sz = mbM.basis(0).size();
+        gsSparseMatrix<> ident(sz, sz);
+        ident.setIdentity();
+        gsMappedBasis<2, real_t> mapB(mbM, ident);
+
+        gsExprAssembler<> AM(1,1);
+        AM.setIntegrationElements(mbM);
+        gsExprAssembler<>::space uM = AM.getSpace(mapB, 1, 0);
+        gsBoundaryConditions<> bcM;
+        bcM.setGeoMap(mp);
+        bcM.addCondition(0, boundary::north, condition_type::dirichlet, &g, 0, true, -1);
+
+        // GISMO_ENSURE throws the literal "GISMO_ENSURE" and writes its
+        // message to std::cerr, so the message is captured there.
+        std::ostringstream err;
+        std::streambuf * cerrBuf = std::cerr.rdbuf(err.rdbuf());
+        bool threwM = false;
+        try { uM.setup(bcM, dirichlet::interpolation, 0); }
+        catch (const std::runtime_error &) { threwM = true; }
+        std::cerr.rdbuf(cerrBuf);
+        gsInfo << "[dirichletGuard] case5 threwM = "<<threwM<<", stderr = "<<err.str()<<"\n";
+        CHECK(threwM);
+        CHECK( err.str().find("only implemented for tensor and hierarchical bases") != std::string::npos );
+    }
 }
 
 }

@@ -16,6 +16,7 @@
 #include <gsAssembler/gsAssemblerOptions.h>
 #include <gsPde/gsBoundaryConditions.h>
 #include <gsTensor/gsTensorBasis.h>
+#include <gsHSplines/gsHTensorBasis.h>
 
 namespace gismo {
 
@@ -101,11 +102,23 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
         const int k = it->patch();
         const gsBasis<T> & basis = u.source().basis(k);
 
-        GISMO_ENSURE((dynamic_cast<const gsTensorBasis<1,T>*>(&basis) ||
-                      dynamic_cast<const gsTensorBasis<2,T>*>(&basis) ||
-                      dynamic_cast<const gsTensorBasis<3,T>*>(&basis) ||
-                      dynamic_cast<const gsTensorBasis<4,T>*>(&basis)   ),
-                      "Dirichlet interpolation only implemented for tensor bases. Use `dirichlet::l2Projection` instead.");
+        // Requirements on the basis: basis.boundary(side) and
+        // basis.boundaryBasis(side) number the side's functions identically,
+        // and the anchors of the boundary basis are unisolvent for it. Tensor
+        // and hierarchical (THB/HB) bases satisfy both. A rational basis
+        // qualifies through its source: boundary indices, face anchors and the
+        // anchors used by interpolateAtAnchors are the source's.
+        // The 1-D case is tested on the basis itself, since gsNurbsBasis has no
+        // boundaryBasis() and would fail after the guard.
+        const gsBasis<T> & srcBasis = basis.source();
+        GISMO_ENSURE((dynamic_cast<const gsTensorBasis<1,T>*>(&basis   ) ||
+                      dynamic_cast<const gsTensorBasis<2,T>*>(&srcBasis) ||
+                      dynamic_cast<const gsTensorBasis<3,T>*>(&srcBasis) ||
+                      dynamic_cast<const gsTensorBasis<4,T>*>(&srcBasis) ||
+                      dynamic_cast<const gsHTensorBasis<2,T>*>(&srcBasis) ||
+                      dynamic_cast<const gsHTensorBasis<3,T>*>(&srcBasis) ||
+                      dynamic_cast<const gsHTensorBasis<4,T>*>(&srcBasis)   ),
+                      "Dirichlet interpolation only implemented for tensor and hierarchical bases and their rational counterparts. Use `dirichlet::l2Projection` instead.");
 
         // Get dofs on this boundary
         boundary = basis.boundary(it->side());
