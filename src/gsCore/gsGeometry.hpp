@@ -321,6 +321,14 @@ void gsGeometry<T>::refineElements( std::vector<index_t> const & boxes )
 }
 
 template<class T>
+void gsGeometry<T>::refineCoeff(index_t i)
+{
+    GISMO_ASSERT(i>=0 && i<this->basis().size(), "Basis function index out of range.");
+    const gsMatrix<T> box = this->basis().support(i);
+    this->basis().refine_withCoefs(this->m_coefs, box);
+}
+
+template<class T>
 void gsGeometry<T>::unrefineElements( std::vector<index_t> const & boxes )
 {
     this->basis().unrefineElements_withCoefs(this->m_coefs, boxes );
