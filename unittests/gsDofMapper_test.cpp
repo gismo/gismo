@@ -319,10 +319,14 @@ std::string dumpFindBoundaryFree(const gsDofMapper & m, const index_t c = 0)
     return os.str();
 }
 
-// indexOnPatch(gl,k,local) over every stored global index and every patch.
-// The loop deliberately runs over the UNSHIFTED range [0,size()) because
-// indexOnPatch compares against the stored (unshifted) dof values.
-std::string dumpIndexOnPatch(const gsDofMapper & m)
+// The digests below that walk the global index range take the mapper's
+// shift and query the shifted indices shift+g, g in [0,size()), but print g.
+// A shifted mapper and its unshifted original therefore produce the same
+// string, which is the whole contract of the shift: it relabels the global
+// indices and changes nothing else.
+
+// indexOnPatch(gl,k,local) over every global index and every patch.
+std::string dumpIndexOnPatch(const gsDofMapper & m, const index_t shift = 0)
 {
     std::ostringstream os;
     for (index_t gl = 0; gl != m.size(); ++gl)
@@ -331,7 +335,7 @@ std::string dumpIndexOnPatch(const gsDofMapper & m)
         for (index_t k = 0; k != nPatches(m); ++k)
         {
             index_t local = -12345;
-            if (m.indexOnPatch(gl, k, local)) os << local;
+            if (m.indexOnPatch(shift + gl, k, local)) os << local;
             else                              os << "-";
             if (k + 1 != nPatches(m)) os << "/";
         }
@@ -345,7 +349,8 @@ std::string dumpIndexOnPatch(const gsDofMapper & m)
 // for component \a c.  The gflags column (is_coupled_index over the whole
 // global range) is component-independent and therefore repeats verbatim for
 // every c; it is kept in so that each component's literal stands on its own.
-std::string dumpCoupledQueries(const gsDofMapper & m, const index_t c = 0)
+std::string dumpCoupledQueries(const gsDofMapper & m, const index_t c = 0,
+                               const index_t shift = 0)
 {
     std::ostringstream os;
     os << "flags=";
@@ -371,7 +376,7 @@ std::string dumpCoupledQueries(const gsDofMapper & m, const index_t c = 0)
     }
     os << "] gflags=";
     for (index_t gl = 0; gl != m.size(); ++gl)
-        os << (m.is_coupled_index(gl) ? 'C' : '.');
+        os << (m.is_coupled_index(shift + gl) ? 'C' : '.');
     os << " findCoupled=";
     for (index_t k = 0; k != nPatches(m); ++k)
         os << (k ? "," : "") << join(m.findCoupled(k, -1, c));
@@ -398,53 +403,54 @@ std::string dumpInverseOnPatch(const gsDofMapper & m, const index_t k)
     return os.str();
 }
 
-// --- component / pre-image queries (zero shift only) ----------------------
+// --- component / pre-image queries ---------------------------------------
 
-std::string dumpComponentOf(const gsDofMapper & m)
+std::string dumpComponentOf(const gsDofMapper & m, const index_t shift = 0)
 {
     std::ostringstream os;
     os << "[";
     for (index_t gl = 0; gl != m.size(); ++gl)
-        os << (gl ? "," : "") << m.componentOf(gl);
+        os << (gl ? "," : "") << m.componentOf(shift + gl);
     os << "]";
     return os.str();
 }
 
-std::string dumpPreImages(const gsDofMapper & m)
+std::string dumpPreImages(const gsDofMapper & m, const index_t shift = 0)
 {
     std::ostringstream os;
     std::vector<std::pair<index_t,index_t> > pre;
     for (index_t gl = 0; gl != m.size(); ++gl)
     {
-        m.preImage(gl, pre);
+        m.preImage(shift + gl, pre);
         os << (gl ? " " : "") << gl << join(pre);
     }
     return os.str();
 }
 
-std::string dumpAnyPreImage(const gsDofMapper & m)
+std::string dumpAnyPreImage(const gsDofMapper & m, const index_t shift = 0)
 {
     std::ostringstream os;
     os << "[";
     for (index_t gl = 0; gl != m.size(); ++gl)
     {
-        const std::pair<index_t,index_t> p = m.anyPreImage(gl);
+        const std::pair<index_t,index_t> p = m.anyPreImage(shift + gl);
         os << (gl ? "," : "") << "(" << p.first << "," << p.second << ")";
     }
     os << "]";
     return os.str();
 }
 
-// --- tagged queries (zero shift only) -------------------------------------
+// --- tagged queries ------------------------------------------------------
 
-std::string dumpTagged(const gsDofMapper & m)
+// getTagged() is printed as stored, i.e. unshifted; see getTagged().
+std::string dumpTagged(const gsDofMapper & m, const index_t shift = 0)
 {
     std::ostringstream os;
     os << "tagged=" << join(m.getTagged())
        << " n=" << m.taggedSize()
        << " gflags=";
     for (index_t gl = 0; gl != m.size(); ++gl)
-        os << (m.is_tagged_index(gl) ? 'T' : '.');
+        os << (m.is_tagged_index(shift + gl) ? 'T' : '.');
     os << " flags=";
     for (index_t c = 0; c != m.numComponents(); ++c)
     {
@@ -750,10 +756,6 @@ TEST(single_patch_plain_coupled_queries)
 TEST(single_patch_plain_component_and_preimage)
 {
     const gsDofMapper m = singlePatchPlain();
-    // componentOf / preImage / anyPreImage are pinned on zero-shift fixtures
-    // only: componentOf never subtracts m_shift and preImage subtracts the
-    // global shift from a patch-local index.  A later commit normalises
-    // shift handling.
     PIN("f1.componentof", "[0,0,0,0,0,0]", dumpComponentOf(m));
     PIN("f1.preimage", "0[(0,0)] 1[(0,1)] 2[(0,2)] 3[(0,3)] 4[(0,4)] 5[(0,5)]", dumpPreImages(m));
     PIN("f1.anypreimage", "[(0,0),(0,1),(0,2),(0,3),(0,4),(0,5)]", dumpAnyPreImage(m));
@@ -808,19 +810,19 @@ TEST(two_patch_coupled_elim_coupled_queries)
 TEST(two_patch_coupled_elim_component_and_preimage)
 {
     const gsDofMapper m = twoPatchCoupledElim();
-    // Zero-shift fixture; see single_patch_plain_component_and_preimage.
     PIN("f2.componentof", "[0,0,0,0,0,0,0,0,0]", dumpComponentOf(m));
     PIN("f2.preimage", "0[(0,1)] 1[(0,2)] 2[(0,3)] 3[(1,4)] 4[(1,5)] 5[(0,4),(1,0)] 6[(0,5),(1,1),(1,2)] 7[(0,0)] 8[(1,3)]", dumpPreImages(m));
     PIN("f2.anypreimage", "[(0,1),(0,2),(0,3),(1,4),(1,5),(0,4),(0,5),(0,0),(1,3)]", dumpAnyPreImage(m));
-    PIN("f2.anypreimages", "[(0,1),(0,2),(0,3),(1,4),(1,5),(0,4),(0,5),(0,0),(1,3),(-1,0),(-1,0),(-1,0)]", join(m.anyPreImages(0)));
+    // UPDATED: anyPreImages used to size its result by the component's
+    // storage size, 12 here, and so carried three trailing (-1,0) entries
+    // that correspond to no global index at all.  It now has exactly one
+    // entry per global index, size() == 9; the nine entries are unchanged.
+    PIN("f2.anypreimages", "[(0,1),(0,2),(0,3),(1,4),(1,5),(0,4),(0,5),(0,0),(1,3)]", join(m.anyPreImages(0)));
 }
 
 TEST(two_patch_coupled_elim_tagged)
 {
     const gsDofMapper m = twoPatchCoupledElim();
-    // Zero-shift fixture: tindex searches m_tagged for the unshifted dof
-    // value while markTagged inserts the shifted one, so these are pinned on
-    // zero-shift fixtures only.  A later commit normalises it.
     PIN("f2.tagged", "tagged=[0,3] n=2 gflags=T..T..... flags=.T....|....T. tindex=2,0,1,1,2,2|2,2,2,2,1,2", dumpTagged(m));
 }
 
@@ -882,7 +884,6 @@ TEST(three_comp_uniform_indices)
 TEST(three_comp_uniform_component_and_preimage)
 {
     const gsDofMapper m = threeCompUniform();
-    // Zero-shift fixture; see single_patch_plain_component_and_preimage.
     PIN("f3.componentof", "[0,0,0,0,0,0,0,1,1,1,1,1,2,2,2,2,2,2,2,2,0,1,1,2]", dumpComponentOf(m));
     PIN("f3.preimage", "0[(0,1)] 1[(0,2)] 2[(1,1)] 3[(1,2)] 4[(1,3)] 5[(1,4)] 6[(0,3),(1,0)] 7[(0,1)] 8[(1,0)] 9[(1,3)] 10[(0,2),(1,1)] 11[(0,3),(1,2)] 12[(0,0)] 13[(0,1)] 14[(0,2)] 15[(0,3)] 16[(1,0)] 17[(1,1)] 18[(1,2)] 19[(1,4)] 20[(0,0)] 21[(0,0)] 22[(1,4)] 23[(1,3)]", dumpPreImages(m));
     PIN("f3.anypreimage", "[(0,1),(0,2),(1,1),(1,2),(1,3),(1,4),(0,3),(0,1),(1,0),(1,3),(0,2),(0,3),(0,0),(0,1),(0,2),(0,3),(1,0),(1,1),(1,2),(1,4),(0,0),(0,0),(1,4),(1,3)]", dumpAnyPreImage(m));
@@ -896,14 +897,21 @@ TEST(three_comp_uniform_component_and_preimage)
 // F4 -- F3 with a global and a boundary shift
 // =========================================================================
 
-// Only the shift behaviours that must not change are pinned on the shifted
-// fixture: asVector (which carries m_shift), index, bindex, global_to_bindex,
-// is_free_index, is_boundary_index, firstIndex(0), lastIndex() and the sizes.
-// componentOf, preImage, anyPreImage, anyPreImages, tindex, is_tagged and
-// is_tagged_index all mishandle m_shift today (componentOf never subtracts it,
-// preImage subtracts a global shift from a patch-local index, tindex searches
-// unshifted values while markTagged inserts shifted ones) and a later commit
-// normalises shift handling, so they are deliberately not pinned here.
+// The shift relabels the global indices and changes nothing else: every
+// query that takes a global index takes the shifted one, and every query that
+// returns patch-local indices, counts or classifications answers exactly as on
+// F3.  That is why the second half of this test pins the shifted mapper with
+// F3's literals, fed shifted indices through the digests' shift argument.
+//
+// UPDATED: componentOf, indexOnPatch, preImage, anyPreImage, is_coupled_index,
+// is_tagged_index and findBoundary/findFree/findCoupled/findFreeUncoupled used
+// to mishandle a nonzero shift -- componentOf never subtracted it, preImage
+// subtracted it from a patch-local index, indexOnPatch compared a shifted
+// index with the unshifted stored values, and the find* queries compared
+// shifted thresholds with them -- so they were not pinned here, and f4.onpatch
+// was fed unshifted indices, which it accepted.  It is now fed the shifted
+// ones; unshifted indices below the shift belong to no patch (see
+// out_of_range_global_indices).
 TEST(three_comp_shifted)
 {
     const gsDofMapper m = threeCompShifted();
@@ -921,12 +929,19 @@ TEST(three_comp_shifted)
     PIN("f4.index", "c0|120,100,101,106|106,102,103,104,105;c1|121,107,110,111|108,110,111,109,122;c2|112,113,114,115|116,117,118,123,119", dumpIndex(m));
     PIN("f4.bindex", "[0:0:0->7,1:0:0->8,1:1:4->9,2:1:3->10]", dumpBindex(m));
     PIN("f4.gflags", "FFFFFFFFFFFFFFFFFFFFBBBB gbi=[120->7,121->8,122->9,123->10]", dumpGlobalFlags(m, 100));
-    // indexOnPatch is pinned on every fixture.  On this one the digest is fed
-    // UNSHIFTED indices on purpose: indexOnPatch ignores m_shift entirely --
-    // it compares gl against the stored, unshifted dof values and dispatches
-    // through componentOf, which never subtracts the shift -- so a shifted
-    // global index finds nothing today.
-    PIN("f4.onpatch", "0:1/- 1:2/- 2:-/1 3:-/2 4:-/3 5:-/4 6:3/0 7:1/- 8:-/0 9:-/3 10:2/1 11:3/2 12:0/- 13:1/- 14:2/- 15:3/- 16:-/0 17:-/1 18:-/2 19:-/4 20:0/- 21:0/- 22:-/4 23:-/3", dumpIndexOnPatch(m));
+
+    // F3's literals, verbatim.
+    PIN("f4.onpatch", "0:1/- 1:2/- 2:-/1 3:-/2 4:-/3 5:-/4 6:3/0 7:1/- 8:-/0 9:-/3 10:2/1 11:3/2 12:0/- 13:1/- 14:2/- 15:3/- 16:-/0 17:-/1 18:-/2 19:-/4 20:0/- 21:0/- 22:-/4 23:-/3", dumpIndexOnPatch(m, 100));
+    PIN("f4.findbf", "bnd=[0],[] free=[1,2,3],[0,1,2,3,4]", dumpFindBoundaryFree(m));
+    PIN("f4.componentof", "[0,0,0,0,0,0,0,1,1,1,1,1,2,2,2,2,2,2,2,2,0,1,1,2]", dumpComponentOf(m, 100));
+    PIN("f4.preimage", "0[(0,1)] 1[(0,2)] 2[(1,1)] 3[(1,2)] 4[(1,3)] 5[(1,4)] 6[(0,3),(1,0)] 7[(0,1)] 8[(1,0)] 9[(1,3)] 10[(0,2),(1,1)] 11[(0,3),(1,2)] 12[(0,0)] 13[(0,1)] 14[(0,2)] 15[(0,3)] 16[(1,0)] 17[(1,1)] 18[(1,2)] 19[(1,4)] 20[(0,0)] 21[(0,0)] 22[(1,4)] 23[(1,3)]", dumpPreImages(m, 100));
+    PIN("f4.anypreimage", "[(0,1),(0,2),(1,1),(1,2),(1,3),(1,4),(0,3),(0,1),(1,0),(1,3),(0,2),(0,3),(0,0),(0,1),(0,2),(0,3),(1,0),(1,1),(1,2),(1,4),(0,0),(0,0),(1,4),(1,3)]", dumpAnyPreImage(m, 100));
+    PIN("f4.coupled.c1",
+        "flags=..CC|.CC.. cidx=[0:2->1,0:3->2,1:1->1,1:2->2]"
+        " gflags=......C...CC............"
+        " findCoupled=[2,3],[1,2] findCoupledPairs=00[],01[2,3],10[1,2],11[]"
+        " findFreeUncoupled=[1],[0,3]",
+        dumpCoupledQueries(m, 1, 100));
 }
 
 // =========================================================================
@@ -1058,11 +1073,11 @@ TEST(collapsed_mapper)
     PIN("f7.findbf", "bnd=[],[] free=[0,1,2,3,4],[0,1,2,3,4]", dumpFindBoundaryFree(m));
     PIN("f7.onpatch", "0:1/- 1:3/- 2:-/0 3:-/1 4:-/2 5:-/3 6:-/4 7:0/-", dumpIndexOnPatch(m));
     PIN("f7.coupled", "flags=C.C.C|..... cidx=[0:0->0,0:2->0,0:4->0] gflags=.......C findCoupled=[0,2,4],[] findCoupledPairs=00[],01[],10[],11[] findFreeUncoupled=[1,3],[0,1,2,3,4]", dumpCoupledQueries(m));
-    // Zero-shift fixture; see single_patch_plain_component_and_preimage.
     PIN("f7.componentof", "[0,0,0,0,0,0,0,0]", dumpComponentOf(m));
     PIN("f7.preimage", "0[(0,1)] 1[(0,3)] 2[(1,0)] 3[(1,1)] 4[(1,2)] 5[(1,3)] 6[(1,4)] 7[(0,0),(0,2),(0,4)]", dumpPreImages(m));
     PIN("f7.anypreimage", "[(0,1),(0,3),(1,0),(1,1),(1,2),(1,3),(1,4),(0,0)]", dumpAnyPreImage(m));
-    PIN("f7.anypreimages", "[(0,1),(0,3),(1,0),(1,1),(1,2),(1,3),(1,4),(0,0),(-1,0),(-1,0)]", join(m.anyPreImages(0)));
+    // UPDATED: exactly size() == 8 entries; see f2.anypreimages.
+    PIN("f7.anypreimages", "[(0,1),(0,3),(1,0),(1,1),(1,2),(1,3),(1,4),(0,0)]", join(m.anyPreImages(0)));
     PIN("f7.tagged", "tagged=[] n=0 gflags=........ flags=.....|..... tindex=0,0,0,0,0|0,0,0,0,0", dumpTagged(m));
 }
 
@@ -1102,11 +1117,11 @@ TEST(creator_two_patch_coupled_queries)
 TEST(creator_two_patch_component_and_preimage)
 {
     const gsDofMapper m = creatorTwoPatch();
-    // Zero-shift fixture; see single_patch_plain_component_and_preimage.
     PIN("f8.componentof", "[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]", dumpComponentOf(m));
     PIN("f8.preimage", "0[(0,0)] 1[(0,1)] 2[(0,2)] 3[(0,3)] 4[(0,5)] 5[(0,6)] 6[(0,7)] 7[(0,8)] 8[(0,10)] 9[(0,11)] 10[(0,12)] 11[(0,13)] 12[(0,15)] 13[(0,16)] 14[(0,17)] 15[(0,18)] 16[(0,20)] 17[(0,21)] 18[(0,22)] 19[(0,23)] 20[(1,1)] 21[(1,2)] 22[(1,3)] 23[(1,4)] 24[(1,6)] 25[(1,7)] 26[(1,8)] 27[(1,9)] 28[(1,11)] 29[(1,12)] 30[(1,13)] 31[(1,14)] 32[(1,16)] 33[(1,17)] 34[(1,18)] 35[(1,19)] 36[(1,21)] 37[(1,22)] 38[(1,23)] 39[(1,24)] 40[(0,4),(1,0)] 41[(0,9),(1,5)] 42[(0,14),(1,10)] 43[(0,19),(1,15)] 44[(0,24),(1,20)]", dumpPreImages(m));
     PIN("f8.anypreimage", "[(0,0),(0,1),(0,2),(0,3),(0,5),(0,6),(0,7),(0,8),(0,10),(0,11),(0,12),(0,13),(0,15),(0,16),(0,17),(0,18),(0,20),(0,21),(0,22),(0,23),(1,1),(1,2),(1,3),(1,4),(1,6),(1,7),(1,8),(1,9),(1,11),(1,12),(1,13),(1,14),(1,16),(1,17),(1,18),(1,19),(1,21),(1,22),(1,23),(1,24),(0,4),(0,9),(0,14),(0,19),(0,24)]", dumpAnyPreImage(m));
-    PIN("f8.anypreimages", "[(0,0),(0,1),(0,2),(0,3),(0,5),(0,6),(0,7),(0,8),(0,10),(0,11),(0,12),(0,13),(0,15),(0,16),(0,17),(0,18),(0,20),(0,21),(0,22),(0,23),(1,1),(1,2),(1,3),(1,4),(1,6),(1,7),(1,8),(1,9),(1,11),(1,12),(1,13),(1,14),(1,16),(1,17),(1,18),(1,19),(1,21),(1,22),(1,23),(1,24),(0,4),(0,9),(0,14),(0,19),(0,24),(-1,0),(-1,0),(-1,0),(-1,0),(-1,0)]", join(m.anyPreImages(0)));
+    // UPDATED: exactly size() == 45 entries; see f2.anypreimages.
+    PIN("f8.anypreimages", "[(0,0),(0,1),(0,2),(0,3),(0,5),(0,6),(0,7),(0,8),(0,10),(0,11),(0,12),(0,13),(0,15),(0,16),(0,17),(0,18),(0,20),(0,21),(0,22),(0,23),(1,1),(1,2),(1,3),(1,4),(1,6),(1,7),(1,8),(1,9),(1,11),(1,12),(1,13),(1,14),(1,16),(1,17),(1,18),(1,19),(1,21),(1,22),(1,23),(1,24),(0,4),(0,9),(0,14),(0,19),(0,24)]", join(m.anyPreImages(0)));
 }
 
 // addShift adds to the current shift instead of replacing it, so after
@@ -1780,24 +1795,33 @@ TEST(inverse_on_patch_is_aliased_under_global_identity)
 // anyPreImages indexes its result by the global dof value, which for every
 // component but the first is larger than that component's own storage size:
 // sizing the result by that storage size is an out-of-bounds write, not
-// merely a wrong answer, and could not be exercised at all before.
-TEST(any_pre_images_agrees_with_any_pre_image)
+// merely a wrong answer.  The result has exactly one entry per global index,
+// and an index of another component carries (-1,-1) -- a -1 in the second
+// slot as well, since 0 is a valid patch-local index.
+namespace {
+void checkAnyPreImagesAgainstAnyPreImage(const gsDofMapper & m, const index_t shift)
 {
-    const gsDofMapper m = threeCompUniform();
-
     for (index_t c = 0; c != m.numComponents(); ++c)
     {
         const std::vector<std::pair<index_t,index_t> > all = m.anyPreImages(c);
-        CHECK(all.size() >= static_cast<size_t>(m.size()));
+        CHECK_EQUAL(static_cast<size_t>(m.size()), all.size());
 
-        for (index_t gl = 0; gl != m.size(); ++gl)
+        for (index_t g = 0; g != m.size(); ++g)
         {
-            if (m.componentOf(gl) == c)
-                CHECK(m.anyPreImage(gl) == all[gl]);
+            if (m.componentOf(shift + g) == c)
+                CHECK(m.anyPreImage(shift + g) == all[g]);
             else
-                CHECK_EQUAL(-1, all[gl].first);   // not in this component
+                CHECK(std::make_pair(index_t(-1), index_t(-1)) == all[g]);
         }
     }
+}
+} // anonymous namespace
+
+TEST(any_pre_images_agrees_with_any_pre_image)
+{
+    checkAnyPreImagesAgainstAnyPreImage(threeCompUniform(), 0);
+    // Positions are unshifted, gl minus the shift, like inverseAsVector's.
+    checkAnyPreImagesAgainstAnyPreImage(threeCompShifted(), 100);
 }
 
 // =========================================================================
@@ -1912,6 +1936,262 @@ TEST(permute_free_dofs_keeps_eliminated_tags)
     m.permuteFreeDofs(perm, 0);
 
     PIN("permtag.elim", "[20]", join(m.getTagged()));
+}
+
+// =========================================================================
+// Global shift
+// =========================================================================
+//
+// Everything a mapper stores -- the dof numbering and the tags -- lives in
+// the unshifted index space.  The shift is added to the global indices a
+// query returns and subtracted from the global indices a query takes, and
+// nothing else sees it.  A shifted mapper must therefore answer every query
+// exactly as its unshifted original does, once the global indices on either
+// side of the call are translated.  Multi-space assemblers shift every space
+// but the first (gsExprAssembler::resetDimensions), so the translation is
+// live, not theoretical.
+
+namespace {
+// Every query of \a s against \a m, translated by \a shift.  \a s must be
+// \a m with setShift(shift) applied and nothing else.
+void checkShiftIsARelabelling(const gsDofMapper & m, const gsDofMapper & s,
+                              const index_t shift)
+{
+    CHECK_EQUAL(m.size(), s.size());
+    std::vector<std::pair<index_t,index_t> > pm, ps;
+    for (index_t g = 0; g != m.size(); ++g)
+    {
+        const index_t gl = shift + g;
+        CHECK_EQUAL(m.is_free_index(g),     s.is_free_index(gl));
+        CHECK_EQUAL(m.is_boundary_index(g), s.is_boundary_index(gl));
+        CHECK_EQUAL(m.is_coupled_index(g),  s.is_coupled_index(gl));
+        CHECK_EQUAL(m.is_tagged_index(g),   s.is_tagged_index(gl));
+        CHECK_EQUAL(m.componentOf(g),       s.componentOf(gl));
+        CHECK(m.anyPreImage(g) == s.anyPreImage(gl));
+        m.preImage(g, pm);
+        s.preImage(gl, ps);
+        CHECK(pm == ps);
+        for (index_t k = 0; k != nPatches(m); ++k)
+        {
+            index_t lm = -1, ls = -2;
+            CHECK_EQUAL(m.indexOnPatch(g, k, lm), s.indexOnPatch(gl, k, ls));
+            if (m.indexOnPatch(g, k)) CHECK_EQUAL(lm, ls);
+        }
+    }
+
+    for (index_t c = 0; c != m.numComponents(); ++c)
+    {
+        CHECK(m.anyPreImages(c) == s.anyPreImages(c));
+        CHECK_EQUAL(m.firstIndex(c) + shift, s.firstIndex(c));
+        for (index_t k = 0; k != nPatches(m); ++k)
+        {
+            CHECK(m.findBoundary(k, c)      == s.findBoundary(k, c));
+            CHECK(m.findFree(k, c)          == s.findFree(k, c));
+            CHECK(m.findFreeUncoupled(k, c) == s.findFreeUncoupled(k, c));
+            for (index_t j = -1; j != nPatches(m); ++j)
+                CHECK(m.findCoupled(k, j, c) == s.findCoupled(k, j, c));
+
+            const index_t n = static_cast<index_t>(m.patchSize(k, c));
+            for (index_t i = 0; i != n; ++i)
+            {
+                CHECK_EQUAL(m.index(i, k, c) + shift, s.index(i, k, c));
+                CHECK_EQUAL(m.tindex(i, k, c),        s.tindex(i, k, c));
+                CHECK_EQUAL(m.is_tagged(i, k, c),     s.is_tagged(i, k, c));
+                CHECK_EQUAL(m.is_coupled(i, k, c),    s.is_coupled(i, k, c));
+            }
+        }
+    }
+
+    // inverseOnPatch is keyed by global index, so its keys carry the shift.
+    for (index_t k = 0; k != nPatches(m); ++k)
+    {
+        const std::map<index_t,index_t> im = m.inverseOnPatch(k);
+        const std::map<index_t,index_t> is = s.inverseOnPatch(k);
+        CHECK_EQUAL(im.size(), is.size());
+        for (std::map<index_t,index_t>::const_iterator it = im.begin();
+             it != im.end(); ++it)
+        {
+            const std::map<index_t,index_t>::const_iterator jt = is.find(it->first + shift);
+            CHECK(jt != is.end());
+            if (jt != is.end()) CHECK_EQUAL(it->second, jt->second);
+        }
+    }
+}
+} // anonymous namespace
+
+TEST(shift_is_a_relabelling)
+{
+    // Coupled, eliminated, three components.
+    checkShiftIsARelabelling(threeCompUniform(), threeCompShifted(), 100);
+
+    // Tags and a single component.
+    gsDofMapper f2 = twoPatchCoupledElim();
+    gsDofMapper f2s = f2;
+    f2s.setShift(40);
+    checkShiftIsARelabelling(f2, f2s, 40);
+
+    // The aliased layout.
+    gsDofMapper f5 = identityMapper();
+    gsDofMapper f5s = f5;
+    f5s.setShift(7);
+    checkShiftIsARelabelling(f5, f5s, 7);
+}
+
+// markTagged, is_tagged_index, tindex and markCoupledAsTagged all agree on a
+// shifted mapper.  markTagged used to store the SHIFTED index while tindex,
+// markCoupledAsTagged and permuteFreeDofs worked with unshifted ones, so on a
+// shifted mapper a markTagged'd dof was not found by tindex and the two ways
+// of tagging produced lists in different index spaces.
+TEST(tags_are_stored_unshifted)
+{
+    gsDofMapper m = threeCompShifted();
+    m.markTagged(1, 0, 1);            // component 1, freeIndex 7, index 107
+    PIN("shift.tagged", "[7]", join(m.getTagged()));
+    CHECK(m.is_tagged(1, 0, 1));
+    CHECK(m.is_tagged_index(107));
+    CHECK(!m.is_tagged_index(7));     // an unshifted index is not a global one
+    CHECK_EQUAL(0, m.tindex(1, 0, 1));
+
+    // The tag stays with its dof when the shift changes afterwards.
+    m.setShift(250);
+    CHECK(m.is_tagged(1, 0, 1));
+    CHECK(m.is_tagged_index(257));
+    CHECK(!m.is_tagged_index(107));
+
+    // markCoupledAsTagged on a shifted mapper tags exactly the coupled dofs,
+    // in the same index space as markTagged.
+    gsDofMapper c = threeCompShifted();
+    c.markCoupledAsTagged();
+    for (index_t gl = 100; gl != 100 + c.size(); ++gl)
+        CHECK_EQUAL(c.is_coupled_index(gl), c.is_tagged_index(gl));
+    PIN("shift.tagcpld", "[6,10,11]", join(c.getTagged()));
+}
+
+// permuteFreeDofs classifies the stored, unshifted values of the permuted
+// component.  Classifying them with is_free_index, which expects a shifted
+// index, counts the stored values of the first `shift` eliminated dofs as
+// free and tries to permute them.  On a shifted mapper the whole F6 workflow
+// must yield F6 plus the shift.
+TEST(permute_free_dofs_on_a_shifted_mapper)
+{
+    gsDofMapper m = threeCompShifted();
+    m.markCoupledAsTagged();
+    gsVector<index_t> perm(7);
+    perm << 3, 0, 6, 1, 5, 2, 4;
+    m.permuteFreeDofs(perm, 0);
+
+    const gsDofMapper f6 = permutedMapper();
+    for (index_t c = 0; c != m.numComponents(); ++c)
+    {
+        const gsVector<index_t> expected = (f6.asVector(c).array() + 100).matrix();
+        CHECK(expected == m.asVector(c));
+    }
+    CHECK(f6.getTagged() == m.getTagged());
+    CHECK_EQUAL(f6.coupledSize(), m.coupledSize());
+    PIN("shift.perm.tagged", dumpTagged(f6), dumpTagged(m, 100));
+}
+
+// A global index outside [shift, shift+size()) belongs to no dof of the
+// mapper: the predicates answer false, and the queries that must return a
+// component or a preimage throw.  is_free_index used to answer true for every
+// index below the shift, is_boundary_index true for every index past the end,
+// and componentOf returned an out-of-range component that is_coupled_index
+// then used as an array index.
+TEST(out_of_range_global_indices)
+{
+    const gsDofMapper m = threeCompShifted();   // global range [100,124)
+    const index_t outside[] = {-1, 0, 23, 99, 124, 1000};
+    for (size_t t = 0; t != sizeof(outside)/sizeof(outside[0]); ++t)
+    {
+        const index_t gl = outside[t];
+        CHECK(!m.is_free_index(gl));
+        CHECK(!m.is_boundary_index(gl));
+        CHECK(!m.is_coupled_index(gl));
+        CHECK(!m.is_tagged_index(gl));
+        for (index_t k = 0; k != nPatches(m); ++k)
+            CHECK(!m.indexOnPatch(gl, k));
+        std::vector<std::pair<index_t,index_t> > pre;
+        // GISMO_ENSURE, so these throw in Release builds too.
+        CHECK_THROW(m.componentOf(gl), std::runtime_error);
+        CHECK_THROW(m.preImage(gl, pre), std::runtime_error);
+        CHECK_THROW(m.anyPreImage(gl), std::runtime_error);
+    }
+
+    // The two ends of the range are inside it.
+    CHECK(m.is_free_index(100));
+    CHECK(m.is_boundary_index(123));
+    CHECK_EQUAL(0, m.componentOf(100));
+    CHECK_EQUAL(2, m.componentOf(123));
+}
+
+// The range checks must hold for every index_t value and every shift,
+// including a negative one: computing gl - shift before checking the range
+// is signed overflow for gl near either end of index_t, which is undefined
+// behaviour rather than a wrong answer, and so is caught by the
+// undefined-behaviour sanitizer rather than by the assertions below.
+namespace {
+void checkExtremesAreOutOfRange(const gsDofMapper & m, const index_t shift)
+{
+    const index_t lo = std::numeric_limits<index_t>::min();
+    const index_t hi = std::numeric_limits<index_t>::max();
+    const index_t probes[] = {lo, lo + 1, hi - 1, hi};
+    for (size_t t = 0; t != sizeof(probes)/sizeof(probes[0]); ++t)
+    {
+        const index_t gl = probes[t];
+        // Every probe is out of range unless the shift puts it inside.
+        // Exact because every shift used here keeps shift+size()
+        // representable, as index() itself requires.
+        const bool inside = gl >= shift && gl < shift + m.size();
+        if (inside) continue;
+        CHECK(!m.is_free_index(gl));
+        CHECK(!m.is_boundary_index(gl));
+        CHECK(!m.is_coupled_index(gl));
+        CHECK(!m.is_tagged_index(gl));
+        for (index_t k = 0; k != nPatches(m); ++k)
+            CHECK(!m.indexOnPatch(gl, k));
+        CHECK_THROW(m.componentOf(gl), std::runtime_error);
+    }
+}
+} // anonymous namespace
+
+TEST(extreme_global_indices_and_shifts)
+{
+    const index_t lo = std::numeric_limits<index_t>::min();
+    const index_t hi = std::numeric_limits<index_t>::max();
+    const gsDofMapper f3 = threeCompUniform();
+    const index_t n = f3.size();
+
+    // Small positive and negative shifts, probed at both ends of index_t.
+    const index_t shifts[] = {1, -1, -50, 0};
+    for (size_t t = 0; t != sizeof(shifts)/sizeof(shifts[0]); ++t)
+    {
+        gsDofMapper s = f3;
+        s.setShift(shifts[t]);
+        checkExtremesAreOutOfRange(s, shifts[t]);
+        checkShiftIsARelabelling(f3, s, shifts[t]);
+    }
+
+    // The largest shift for which every global index is representable: the
+    // last dof sits at index_t max - 1 and max itself is one past the end.
+    {
+        gsDofMapper s = f3;
+        s.setShift(hi - n);
+        checkExtremesAreOutOfRange(s, hi - n);
+        checkShiftIsARelabelling(f3, s, hi - n);
+        CHECK(s.is_boundary_index(hi - 1));
+        CHECK_EQUAL(2, s.componentOf(hi - 1));
+        CHECK(!s.is_boundary_index(hi));
+    }
+
+    // The smallest shift: the first dof is index_t min itself.
+    {
+        gsDofMapper s = f3;
+        s.setShift(lo);
+        checkExtremesAreOutOfRange(s, lo);
+        checkShiftIsARelabelling(f3, s, lo);
+        CHECK(s.is_free_index(lo));
+        CHECK_EQUAL(0, s.componentOf(lo));
+    }
 }
 
 }

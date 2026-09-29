@@ -289,11 +289,16 @@ void gsDofMapper::markCoupled(index_t i, index_t k, index_t comp)
 
 void gsDofMapper::markTagged( index_t i, index_t k, index_t comp)
 {
+    GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(comp>-1,"Component is invalid");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
 
+    // Tags are stored without the shift, like every other stored dof value,
+    // so that markCoupledAsTagged(), permuteFreeDofs(), tindex() and
+    // findTagged() -- which all work on stored values -- agree with it, and
+    // so that a later setShift() does not detach the tags from their dofs.
     //see gsSortedVector::push_sorted_unique
-    index_t t = index(i,k,comp);
+    index_t t = dofAt(i,k,comp);
     std::vector<index_t>::iterator pos = std::lower_bound(m_tagged.begin(), m_tagged.end(), t );
 
     if ( pos == m_tagged.end() || *pos != t )// If not found
@@ -570,8 +575,10 @@ void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation, index_t 
 
     for(index_t i=0; i<(index_t)dofs.size();++i)
     {
+        // idx is a stored, unshifted value, so it is classified against the
+        // unshifted free range; is_free_index() expects a shifted index.
         const index_t idx = dofs[i];
-        if(is_free_index(idx))
+        if(idx < m_curElimId)
         {
             GISMO_ASSERT(idx-base >= 0 && idx-base < nFree,
                          "gsDofMapper::permuteFreeDofs: free index "<<idx
@@ -769,20 +776,24 @@ void gsDofMapper::preImage(const index_t gl,
 {
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     typedef std::vector<index_t>::const_iterator citer;
+    // gl is shifted and the stored values are not, so the search is for the
+    // unshifted value.  The returned dofs are patch-local indices, which the
+    // global shift has no part in.
     const index_t comp = componentOf(gl);
+    const index_t g    = gl - m_shift;
     const std::vector<index_t> & dofs = m_dofs[comp];
     result.clear();
     size_t cur = 0;//local offsetted index
 
     for (citer it = dofs.begin(); it != dofs.end(); ++it, ++cur)
     {
-        if ( *it == gl )
+        if ( *it == g )
         {
             if (GlobalIdentity == m_layout)
             {
                 // Aliased storage: every patch shares the same range;
-                // patch 0 is the canonical stored preimage (sec 3.3).
-                result.push_back( std::make_pair(index_t(0), static_cast<index_t>(cur) - m_shift) );
+                // patch 0 is the canonical stored preimage.
+                result.push_back( std::make_pair(index_t(0), static_cast<index_t>(cur)) );
             }
             else
             {
@@ -791,7 +802,7 @@ void gsDofMapper::preImage(const index_t gl,
                     std::upper_bound(offBegin(comp), offEnd(comp), cur) - offBegin(comp) - 1);
 
                 // Found a patch-dof pair
-                result.push_back( std::make_pair(patch, static_cast<index_t>(cur - offAt(comp,patch)) - m_shift) );
+                result.push_back( std::make_pair(patch, static_cast<index_t>(cur - offAt(comp,patch))) );
             }
         }
     }
@@ -801,23 +812,25 @@ std::pair<index_t,index_t> gsDofMapper::anyPreImage(const index_t gl) const
 {
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     typedef std::vector<index_t>::const_iterator citer;
+    // Same index conventions as preImage().
     const index_t comp = componentOf(gl);
+    const index_t g    = gl - m_shift;
     const std::vector<index_t> & dofs = m_dofs[comp];
     size_t cur = 0;//local offsetted index
 
     for (citer it = dofs.begin(); it != dofs.end(); ++it, ++cur)
     {
-        if ( *it == gl )
+        if ( *it == g )
         {
             if (GlobalIdentity == m_layout)
-                return std::make_pair(index_t(0), static_cast<index_t>(cur) - m_shift);
+                return std::make_pair(index_t(0), static_cast<index_t>(cur));
 
             // Get the patch index of "cur" by "un-offsetting"
             const index_t patch = static_cast<index_t>(
                 std::upper_bound(offBegin(comp), offEnd(comp), cur) - offBegin(comp) - 1);
 
             // Found a patch-dof pair
-            return std::make_pair(patch, static_cast<index_t>(cur - offAt(comp,patch)) - m_shift);
+            return std::make_pair(patch, static_cast<index_t>(cur - offAt(comp,patch)));
         }
     }
     GISMO_ERROR("The global index "<< gl <<" is not valid");
@@ -830,13 +843,13 @@ std::vector<std::pair<index_t,index_t> > gsDofMapper::anyPreImages(index_t comp)
     const std::vector<index_t> & dofs = m_dofs[comp];
     size_t cur = 0;//local offsetted index
 
-    // The result is indexed by the global dof value, which for every
-    // component but the first is unrelated to -- and in general larger than
-    // -- that component's own storage size, so sizing it by dofs.size()
-    // writes out of bounds.  The historical length is kept where it is the
-    // larger of the two.
-    const size_t len = std::max(static_cast<size_t>(size()), dofs.size());
-    std::vector<std::pair<index_t,index_t> > result(len, {-1,0});
+    // One entry per global index, at the unshifted position: the stored
+    // values are exactly the unshifted indices, all of them below size().
+    // The storage size of the component has nothing to do with the result's
+    // length -- it counts local dofs, duplicates included -- and a dof that
+    // this component does not own gets a sentinel in both slots, since 0 is
+    // a valid patch-local index.
+    std::vector<std::pair<index_t,index_t> > result(size(), std::make_pair(index_t(-1),index_t(-1)));
 
     for (citer it = dofs.begin(); it != dofs.end(); ++it, ++cur)
     {
@@ -844,7 +857,7 @@ std::vector<std::pair<index_t,index_t> > gsDofMapper::anyPreImages(index_t comp)
         {
             if (GlobalIdentity == m_layout)
             {
-                result[*it] = std::make_pair(index_t(0), static_cast<index_t>(cur) - m_shift);
+                result[*it] = std::make_pair(index_t(0), static_cast<index_t>(cur));
             }
             else
             {
@@ -853,7 +866,7 @@ std::vector<std::pair<index_t,index_t> > gsDofMapper::anyPreImages(index_t comp)
                     std::upper_bound(offBegin(comp), offEnd(comp), cur) - offBegin(comp) - 1);
 
                 // Found a patch-dof pair
-                result[*it] = std::make_pair(patch, static_cast<index_t>(cur - offAt(comp,patch)) - m_shift);
+                result[*it] = std::make_pair(patch, static_cast<index_t>(cur - offAt(comp,patch)));
             }
         }
     }
@@ -892,10 +905,12 @@ gsDofMapper::inverseOnPatch(const index_t k) const
         // one and, for every patch but the first, reads past the end.  Under
         // the aliased layout patchSize() is the component's global total on
         // every patch, so the same expression yields the complete inverse.
+        //
+        // The keys are global indices, so they carry the shift like index().
         citer it = m_dofs[i].begin() + offAt(c, k);
         const size_t n = patchSize(k, c);
         for(size_t j = 0; j!= n; ++j,++it)
-            inv[*it]=j;
+            inv[*it + m_shift]=j;
     }
     return inv;
 }
@@ -905,11 +920,15 @@ bool gsDofMapper::indexOnPatch(const index_t gl, const index_t k, index_t & loca
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
     typedef std::vector<index_t>::const_iterator citer;
-    const index_t comp = componentOf(gl);
+    // gl is shifted, the stored values are not.  An index outside the
+    // mapper's range lives on no patch at all.
+    if (!shiftedInRange(gl, size())) return false;
+    const index_t g = gl - m_shift;
+    const index_t comp = componentOfUnshifted(g);
     const std::vector<index_t> & dofs = m_dofs[comp];
     const citer istart = dofs.begin() + offAt(comp, k);
     const citer iend   = istart + patchSize(k, comp);
-    auto it = std::find(istart, iend, gl);
+    auto it = std::find(istart, iend, g);
     if (iend==it) return false;
     local = std::distance(istart,it);
     return true;
@@ -977,8 +996,10 @@ gsVector<index_t> gsDofMapper::findBoundary(const index_t k, const index_t comp)
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
     GISMO_ASSERT(comp>-1 && static_cast<size_t>(comp)<componentsSize(), "Invalid component index "<< comp <<" >= "<< componentsSize() );
     // Eliminated dofs of every component are numbered above the free dofs of
-    // all components, so this threshold is component-independent.
-    const index_t s = m_numFreeDofs.back() + m_shift - 1;
+    // all components, so this threshold is component-independent.  Like
+    // every threshold in the find* queries it is compared with the stored,
+    // unshifted values, so the shift has no part in it.
+    const index_t s = m_numFreeDofs.back() - 1;
     typedef std::vector<index_t>::const_iterator citer;
     citer istart = m_dofs[comp].begin() + offAt(comp,k);
     citer iend   = istart + patchSize(k,comp);
@@ -990,7 +1011,7 @@ gsVector<index_t> gsDofMapper::findFree(const index_t k, const index_t comp) con
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
     GISMO_ASSERT(comp>-1 && static_cast<size_t>(comp)<componentsSize(), "Invalid component index "<< comp <<" >= "<< componentsSize() );
-    const index_t s = m_numFreeDofs.back() + m_shift;
+    const index_t s = m_numFreeDofs.back();
     typedef std::vector<index_t>::const_iterator citer;
     citer istart = m_dofs[comp].begin() + offAt(comp,k);
     citer iend   = istart + patchSize(k,comp);
@@ -1023,8 +1044,8 @@ gsVector<index_t> gsDofMapper::findCoupled(const index_t k, const index_t j,
     // free block; both bounds are prefix values of that component, not the
     // last component's totals.
     const index_t nCpld = m_numCpldDofs[comp+1] - m_numCpldDofs[comp];
-    const index_t l = m_numFreeDofs[comp+1]+m_shift-nCpld-1;
-    const index_t u = m_numFreeDofs[comp+1]+m_shift;
+    const index_t l = m_numFreeDofs[comp+1]-nCpld-1;
+    const index_t u = m_numFreeDofs[comp+1];
     if (-1==j)
         return find_impl(istart, iend, _isBetween(l,u) );
     else
@@ -1062,8 +1083,8 @@ gsVector<index_t> gsDofMapper::findFreeUncoupled(const index_t k, const index_t 
     // would also accept every earlier component's free dofs.
     const index_t nCpld = m_numCpldDofs[comp+1] - m_numCpldDofs[comp];
     return find_impl(istart, iend,
-                     _isBetween(m_numFreeDofs[comp]+m_shift-1,
-                                m_numFreeDofs[comp+1]+m_shift-nCpld) );
+                     _isBetween(m_numFreeDofs[comp]-1,
+                                m_numFreeDofs[comp+1]-nCpld) );
 }
 
 gsVector<index_t> gsDofMapper::findTagged(const index_t k, const index_t comp) const

@@ -191,6 +191,33 @@ private:
     inline index_t dofAt(index_t i, index_t k, index_t c) const
     { return m_dofs[c][offAt(c,k)+i]; }
 
+    /// True iff the shifted global index \a gl lies in [m_shift, m_shift+n).
+    /// Written so that nothing overflows for any \a gl and any shift, which
+    /// the obvious "g = gl - m_shift; 0 <= g && g < n" does not: that
+    /// subtraction is signed overflow for \a gl near the bottom of index_t
+    /// with a positive shift, or near the top with a negative one.  Once
+    /// gl >= m_shift the true difference lies in [0, 2^digits), which the
+    /// unsigned subtraction represents exactly.  After it returns true,
+    /// gl - m_shift is in [0,n) and safe to compute.  n < 0 (an unfinalized
+    /// m_curElimId) is an empty range.
+    bool shiftedInRange(index_t gl, index_t n) const
+    {
+        typedef std::make_unsigned<index_t>::type uindex_t;
+        return n > 0 && gl >= m_shift &&
+            static_cast<uindex_t>(gl) - static_cast<uindex_t>(m_shift) < static_cast<uindex_t>(n);
+    }
+
+    /// Component of the UNSHIFTED index \a g, i.e. of a stored dof value,
+    /// which must lie in [0,size()).  After finalize() the free blocks of
+    /// all components come first and their eliminated blocks follow, so
+    /// \a g is looked up in whichever of the two prefix vectors covers it.
+    index_t componentOfUnshifted(index_t g) const
+    {
+        return (g<m_numFreeDofs.back() ?
+                std::distance(m_numFreeDofs.begin(), std::upper_bound(m_numFreeDofs.begin(), m_numFreeDofs.end(), g))
+              : std::distance(m_numElimDofs.begin(),std::upper_bound(m_numElimDofs.begin(), m_numElimDofs.end(), g-m_numFreeDofs.back())) ) - 1;
+    }
+
     /// Debug-only structural invariant check (GISMO_ASSERT-based, so it
     /// compiles away entirely under NDEBUG -- this is not a release-mode
     /// guard).  Invoked after construction/reset and before/after
@@ -206,7 +233,9 @@ public:
 
         The inverse of asVector(\a comp) in the full (unshifted) global
         index space: size() entries, with -1 in every position that is not
-        the image of a local dof of component \a comp.
+        the image of a local dof of component \a comp.  The entry of global
+        index \a gl is at position \a gl minus the shift, as in
+        anyPreImages().
 
         Assumes that the mapper is a permutation
     */
@@ -349,17 +378,17 @@ public:
         return dofAt(i,k,c);
     }
 
+    /// \brief Returns the component that the global dof \a gl belongs to.
+    ///
+    /// \a gl is a global index as returned by index(), i.e. including the
+    /// shift \a s set by setShift(), and must lie in [s, s+size());
+    /// anything else throws.
     index_t componentOf(index_t gl) const
     {
          GISMO_ASSERT(m_curElimId>=0,"finalize() was not called on gsDofMapper");
-         //index_t c = 1; // could do some binary search
-         //in place
-         //while (gl >= m_numFreeDofs[c]+m_numElimDofs[c]) { ++c; }
-         //elim
-         return (gl<m_numFreeDofs.back() ?
-                std::distance(m_numFreeDofs.begin(), std::upper_bound(m_numFreeDofs.begin(), m_numFreeDofs.end(), gl))
-              : std::distance(m_numElimDofs.begin(),std::upper_bound(m_numElimDofs.begin(), m_numElimDofs.end(), gl-m_numFreeDofs.back())) ) - 1;
-         //while (gl >= m_numFreeDofs[c] + m_shift) { ++c; } return c-1;
+         GISMO_ENSURE(shiftedInRange(gl, size()), "gsDofMapper::componentOf(): global index "<<gl
+                      <<" is outside the mapper's range (shift "<<m_shift<<", size "<<size()<<")");
+         return componentOfUnshifted(gl - m_shift);
     }
 
     /** \brief Returns the global dof index associated to local dof \a i of patch \a k.
@@ -404,6 +433,9 @@ public:
     }
 
     /// @brief Returns the tagged dof index
+    ///
+    /// Tags are stored without the shift (see getTagged()), so the stored
+    /// value dofAt() is what is searched for.
     inline index_t tindex(index_t i, index_t k = 0, index_t c = 0) const
     {
         GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
@@ -424,10 +456,15 @@ public:
  	//return gl + m_bshift; // - m_numElimDofs[c]
     }
 
+    // The is_*_index predicates take a shifted global index, as returned by
+    // index(), and answer false for any index outside the shifted range
+    // [m_shift, m_shift+size()) instead of classifying it: an index below
+    // the shift belongs to no dof of this mapper, free or otherwise.
+
     /// Returns true if global dof \a gl is not eliminated.
     inline bool is_free_index(index_t gl) const
     {
-      return gl < m_curElimId + m_shift;
+      return shiftedInRange(gl, m_curElimId);
     }
 
     /// Returns true if local dof \a i of patch \a k is not eliminated.
@@ -436,7 +473,10 @@ public:
 
     /// Returns true if global dof \a gl is eliminated
     inline bool is_boundary_index( index_t gl ) const
-    { return gl >= m_numFreeDofs.back() + m_shift; }
+    {
+      return shiftedInRange(gl, m_numFreeDofs.back() + m_numElimDofs.back()) &&
+          gl - m_shift >= m_numFreeDofs.back();
+    }
 
     /// Returns true if local dof \a i of patch \a k is eliminated.
     inline bool is_boundary(index_t i, index_t k = 0, index_t c = 0) const
@@ -449,8 +489,12 @@ public:
     /// Returns true if \a gl is a coupled dof.
     inline bool is_coupled_index(index_t gl) const
     {
-      const index_t gc = componentOf(gl);
-      const index_t vv = m_numFreeDofs[gc+1] + m_shift;
+      // Coupled dofs are free, so anything outside the free range is
+      // answered here; it also keeps componentOfUnshifted() in range.
+      if (!shiftedInRange(gl, m_numFreeDofs.back())) return false;
+      const index_t g = gl - m_shift;
+      const index_t gc = componentOfUnshifted(g);
+      const index_t vv = m_numFreeDofs[gc+1];
       // The coupled dofs of a component sit at the top of that component's
       // own free block, so the band is that component's own coupled count
       // wide.  m_numCpldDofs is a cumulative prefix sum after finalize(), so
@@ -458,8 +502,8 @@ public:
       // directly widens the band by every preceding component's coupled
       // count and reports free-uncoupled dofs of components >= 1 as coupled.
       const index_t nc = m_numCpldDofs[gc+1] - m_numCpldDofs[gc];
-      return  (gl < vv &&      // is a free dof of component gc, and
-               gl >= vv - nc); // lies in its coupled band
+      return  (g < vv &&      // is a free dof of component gc, and
+               g >= vv - nc); // lies in its coupled band
     }
 
     /// Returns true if local dof \a i of patch \a k is tagged.
@@ -469,7 +513,10 @@ public:
     /// Returns true if \a gl is a tagged dof.
     inline bool is_tagged_index(index_t gl) const
     {
-        return std::binary_search(m_tagged.begin(),m_tagged.end(),gl);
+        // Tags are stored without the shift; see getTagged().  Every tag is
+        // a valid index, so an out-of-range gl is not tagged.
+        return shiftedInRange(gl, m_numFreeDofs.back() + m_numElimDofs.back()) &&
+            std::binary_search(m_tagged.begin(),m_tagged.end(),gl - m_shift);
     }
 
     /// Returns the number of components present in the mapper
@@ -503,7 +550,12 @@ public:
 	(allFree() ? m_numElimDofs[comp+1]-m_numElimDofs[comp] : 0 );
     }
 
-    /// Returns the vector of tagged (not eliminated) dofs.
+    /// \brief Returns the sorted vector of tagged dofs.
+    ///
+    /// The entries are stored WITHOUT the shift, i.e. they are freeIndex()
+    /// values and not index() values, so that tagging is unaffected by a
+    /// later setShift() or addShift().  Add the shift to compare them with
+    /// the global indices returned by index().
     const std::vector<index_t> & getTagged() const { return m_tagged; }
 
     /// Returns the number of coupled (not eliminated) dofs.
@@ -588,28 +640,42 @@ public:
     /// \brief For \a gl being a global index, this function returns a
     /// vector of pairs (patch,dof) that contains all the pairs which
     /// map to \a gl
+    ///
+    /// \a gl includes the shift, as returned by index(), and must be a
+    /// valid index (see componentOf()); the returned dofs are patch-local
+    /// and never shifted.
     void preImage(index_t gl, std::vector<std::pair<index_t,index_t> > & result) const;
 
     /// \brief For \a gl being a global index, this function returns a
     /// pair (patch,dof) that maps to \a gl
+    ///
+    /// Same index conventions as preImage().
     std::pair<index_t,index_t> anyPreImage(index_t gl) const;
 
     /// \brief For all global index, this function assigns
     /// a pair (patch,dof) that maps to that global index
+    ///
+    /// The result has exactly size() entries, one per global index, at
+    /// position \a gl minus the shift.  Entries of global indices that
+    /// belong to another component than \a comp are (-1,-1).
     std::vector<std::pair<index_t,index_t> > anyPreImages(index_t comp = 0) const;
 
     /// \brief Produces the inverse of the mapping on patch \a k
     /// assuming that the map is invertible on that patch
     ///
-    /// The result covers every component, keyed by global index and valued
-    /// by the patch-local index within the component that global index
-    /// belongs to.  Only the dofs that live on patch \a k are considered;
-    /// under the global-identity/aliased layout every patch carries the
-    /// complete inverse, so the result is the same for every patch.
+    /// The result covers every component, keyed by global index (including
+    /// the shift, as returned by index()) and valued by the patch-local
+    /// index within the component that global index belongs to.  Only the
+    /// dofs that live on patch \a k are considered; under the
+    /// global-identity/aliased layout every patch carries the complete
+    /// inverse, so the result is the same for every patch.
     std::map<index_t,index_t> inverseOnPatch(const index_t k) const;
 
     /// \brief For \a gl being a global index, this function returns
     /// true whenever \a gl corresponds to patch \a k
+    ///
+    /// \a gl includes the shift, as returned by index(); an index outside
+    /// the mapper's range corresponds to no patch.
     bool indexOnPatch(const index_t gl, const index_t k, index_t & local) const;
 
     inline bool indexOnPatch(const index_t gl, const index_t k) const
@@ -706,6 +772,12 @@ private:
     bool m_hasDistinctComponentSpaces;
 
     /// Shifting of the global index (zero by default)
+    ///
+    /// Everything stored in this class -- m_dofs, m_tagged, the count
+    /// vectors -- lives in the unshifted index space.  The shift is added
+    /// only to the global indices a public method returns and subtracted
+    /// from the global indices a public method takes, so changing it never
+    /// requires touching the stored state.
     index_t m_shift;
 
     /// Shifting of the boundary index (zero by default)
@@ -722,7 +794,7 @@ private:
     // After finalize() is called m_curElimId takes positive value.
     index_t m_curElimId;
 
-    /// Stores the tagged indices
+    /// Stores the tagged indices, sorted and unshifted
     std::vector<index_t> m_tagged;
 
 }; // class gsDofMapper
