@@ -648,6 +648,9 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
             QuRule->mapTo( elem.lowerCorner(), elem.upperCorner(),
                         m_exprdata->points(), m_exprdata->weights());
 
+            if (m_exprdata->points().cols()==0)
+                continue;
+
             m_exprdata->precompute(QuPatch);
 
             // Compute on element
@@ -710,6 +713,9 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                           m_exprdata->points(), m_exprdata->weights());
+
+            if (m_exprdata->points().cols()==0)
+                continue;
 
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(bit->patch, bit->side() );
@@ -843,6 +849,10 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                            m_exprdata->points(), m_exprdata->weights());
+
+            if (m_exprdata->points().cols()==0)
+                continue;
+
             interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
             // Perform required pre-computations on the quadrature nodes
