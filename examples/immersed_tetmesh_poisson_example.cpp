@@ -31,7 +31,14 @@
         `DEFERRED` for `--mode tchakaloff`, see below), one `GATEDIAG`
         diagnostics row per (case, mode, r), and a final
         `GATE SUMMARY required=<N> pass=<N> fail=<N>` line; the exit
-        code is nonzero iff any required row FAILs.
+        code is nonzero iff any required row FAILs. `fluxmom_global`/
+        `fluxmom_cell` (the vector-moment, divergence-theorem check the
+        Nitsche flux term needs -- scalar-only `moments_vol`/`moments_bdr`
+        cannot see a wrong served normal) are Required for EVERY mode
+        including momrule, so a `--mode all`/`--mode momrule` run's exit
+        code depends on them too: `--mode momrule` FAILs both rows on both
+        `--case sphere` and `--case rotcube` (see `poisson` below for why
+        that does not also block the solve there).
         Tchakaloff's rows are computed and printed exactly like the other
         modes' (value/ref/relerr/tol, failCells, per-cell INFO lines), but
         every otherwise-Required row prints `wouldPass=0|1 DEFERRED`
@@ -46,7 +53,15 @@
       - `poisson`: for each (case, mode, r) with r = 0..rMax, builds the
         mode's quadrature tables (R1), runs the `--study volume` gate (R2)
         on those SAME objects and prints its row (R3); only if the gate
-        passed, solves the 3D immersed Poisson problem
+        passed, solves the 3D immersed Poisson problem. Exception: for
+        `--mode momrule`, a FAIL confined to `fluxmom_global`/`fluxmom_cell`
+        does not withhold the solve (`GATE-NOTE mode=momrule fluxmom=FAIL
+        solve=report` prints instead of `POISSON-SKIP ... reason=gate-FAIL`)
+        -- momrule's served normal is only a pseudonormal at polyhedral
+        edges/vertices, a known, already-documented gap (see the Per-mode
+        list below), not a reason to skip the solve on every case. Any
+        OTHER Required row failing (for momrule or any other mode) still
+        skips it.
 
           -Delta u = f in Omega,  u = g on d(Omega),
 
@@ -129,7 +144,10 @@
         growth factor) predicts the r=3 cost right after the r=2 row.
         `--study poisson` exits nonzero iff a tet-mode gate row FAILed, any
         `zeroRows>0`, any non-finite solve, or an `EOC ... FAIL` line was
-        printed; REPORT/INFO lines never fail it.
+        printed; REPORT/INFO lines never fail it. Exception: for
+        `--mode momrule`, a gate FAIL confined to `fluxmom_global`/
+        `fluxmom_cell` alone does NOT fail the run (see the `poisson` bullet
+        above) -- the solve still runs and is judged on its own rows.
 
     Example command lines:
       ./immersed_tetmesh_poisson_example
@@ -191,6 +209,7 @@ struct Config
     index_t ghostOn    = 1;     // 1 = ghost penalty on, 0 = off      (--study poisson)
     real_t  ghostCoef  = -1;    // ghost penalty gamma_g; <0 -> 10^-(p+1) (--study poisson)
     index_t kappaDense = 6000;  // dense-eigensolver dof threshold    (--study poisson)
+    index_t kappaMaxIt = 500;   // power/inverse iteration cap        (--study poisson)
 };
 
 //----------------------------------------------------------------------------
@@ -1248,6 +1267,8 @@ struct CellLog
             minWBdr = std::numeric_limits<real_t>::infinity(); // over the served weights (+inf if none)
     index_t negWVol = 0, negWBdr = 0;
     real_t  momErrVol = 0, momErrBdr = 0;                 // per-cell Q_2p rel. moment error (compressed modes)
+    real_t  fluxErrBdr = 0;                               // per-cell E_K, gateTetMode's fluxmom_cell row
+    bool    hasFluxErrBdr = false;                        // fluxErrBdr meaningful (clip boundary area > 0)
     real_t  resVol = 0, resBdr = 0;                       // tchakaloff: max over levelResidual
     bool    okVol = true, okBdr = true;                   // tchakaloff: result.ok
     index_t rankVol = -1, rankBdr = -1, levelsVol = 0, levelsBdr = 0;
@@ -1330,12 +1351,118 @@ real_t momentRelErr(const gsVector<real_t> & mIn, const gsVector<real_t> & mOut)
     return maxDiff/maxIn;
 }
 
+/// Value and d/dx of gsTetClip::legendreOrthonormal's basis at \a x: \a vals
+/// as legendreOrthonormal itself; \a derivs(k) = d/dx [sqrt((2k+1)/(b-a)) P_k(t)],
+/// t = (2x-a-b)/(b-a), via the companion three-term recurrence for the
+/// UNNORMALIZED Legendre derivative, P'_{n+1}(t) = P'_{n-1}(t) + (2n+1) P_n(t)
+/// (P'_0 = 0; standard identity (2n+1) P_n = P'_{n+1} - P'_{n-1}), chain-ruled
+/// by dt/dx = 2/(b-a) and scaled by the same normalization constant as \a vals.
+void legendreOrthonormalDeriv(real_t x, real_t a, real_t b, index_t deg,
+                              gsVector<real_t> & vals, gsVector<real_t> & derivs)
+{
+    GISMO_ASSERT(deg >= 0, "legendreOrthonormalDeriv: deg must be >= 0");
+    GISMO_ASSERT(b > a, "legendreOrthonormalDeriv: invalid interval [a,b]");
+
+    const real_t t = (2*x - a - b)/(b - a);
+    const real_t dtdx = 2.0/(b - a);
+    vals.resize(deg+1); derivs.resize(deg+1);
+
+    real_t pnm1 = 0.0, pn = 1.0;      // P_{-1}, P_0
+    real_t dpnm1 = 0.0, dpn = 0.0;    // P'_{-1}, P'_0
+    vals(0) = pn; derivs(0) = dpn;
+    for (index_t j = 0; j != deg; ++j)
+    {
+        const real_t pnm2 = pnm1; pnm1 = pn;
+        pn = (static_cast<real_t>(2*j+1)*t*pnm1 - static_cast<real_t>(j)*pnm2)
+           / static_cast<real_t>(j+1);
+        const real_t dpnm2 = dpnm1; dpnm1 = dpn;
+        dpn = dpnm2 + static_cast<real_t>(2*j+1)*pnm1;
+        vals(j+1) = pn; derivs(j+1) = dpn;
+    }
+
+    for (index_t k = 0; k <= deg; ++k)
+    {
+        const real_t c = std::sqrt(static_cast<real_t>(2*k+1)/(b-a));
+        vals(k) *= c; derivs(k) *= c*dtdx;
+    }
+}
+
+/// d(Q_k)/dx_i moments of a volume quadrature rule (\a nodes, \a weights)
+/// against the SAME tensor Legendre basis \ref cellMoments uses (deg = 2p,
+/// K = (2p+1)^3, index k = kx + (deg+1)*(ky + (deg+1)*kz)), block layout
+/// i*K+k for i = 0,1,2 (dQ_k/dx, dQ_k/dy, dQ_k/dz). Feeds gateTetMode's
+/// fluxmom_global row's divergence-theorem right-hand side. One KahanSum
+/// per entry, same O(N K) discipline as \ref cellMoments.
+void volDerivMoments(const gsMatrix<real_t> & nodes, const gsVector<real_t> & weights,
+                     const gsVector<real_t> & lower, const gsVector<real_t> & upper,
+                     index_t p, gsVector<real_t> & m)
+{
+    const index_t deg = 2*p, n1 = deg+1, K = n1*n1*n1;
+    std::vector<gsTetClip::KahanSum> acc((size_t)(3*K));
+
+    gsVector<real_t> vx(n1), vy(n1), vz(n1), dvx(n1), dvy(n1), dvz(n1);
+    for (index_t c = 0; c != nodes.cols(); ++c)
+    {
+        legendreOrthonormalDeriv(nodes(0,c), lower(0), upper(0), deg, vx, dvx);
+        legendreOrthonormalDeriv(nodes(1,c), lower(1), upper(1), deg, vy, dvy);
+        legendreOrthonormalDeriv(nodes(2,c), lower(2), upper(2), deg, vz, dvz);
+
+        for (index_t kz = 0; kz != n1; ++kz)
+        for (index_t ky = 0; ky != n1; ++ky)
+        for (index_t kx = 0; kx != n1; ++kx)
+        {
+            const index_t k = kx + n1*(ky + n1*kz);
+            const real_t w = weights[c];
+            acc[(size_t)(0*K+k)].add(w*dvx[kx]*vy[ky]*vz[kz]);
+            acc[(size_t)(1*K+k)].add(w*vx[kx]*dvy[ky]*vz[kz]);
+            acc[(size_t)(2*K+k)].add(w*vx[kx]*vy[ky]*dvz[kz]);
+        }
+    }
+
+    m.resize(3*K);
+    for (index_t k = 0; k != 3*K; ++k) m[k] = acc[(size_t)k].value();
+}
+
+/// factor(k) = c(kx,dx)*c(ky,dy)*c(kz,dz), c(j,d) = sqrt((2j+1)/d): the
+/// scale gsTetClip::legendreOrthonormal applies to the RAW Legendre product
+/// P_kx(u)P_ky(v)P_kz(w) (sup norm 1 on the mapped box, since |P_j|<=1 on
+/// [-1,1]) to produce the ORTHONORMAL basis \ref cellMoments and
+/// \ref volDerivMoments actually evaluate. Dividing one of their moment
+/// entries by factor(k) recovers the raw-Legendre moment: ||q||_inf = 1 on
+/// the mapped box, so |int_Gamma q n_i ds| <= area there, independent of
+/// box size. The orthonormal scale itself grows like width^(-3/2) (three
+/// factors of sqrt((2k+1)/width)), so a fixed absolute (rounding-level)
+/// mismatch in an orthonormal moment inflates without bound as the box
+/// shrinks under refinement -- exactly the failure mode this factor
+/// removes. The moments_vol/moments_bdr rows (momentRelErr) do not use this factor: they compare orthonormal
+/// moments relative to the cell's own largest moment, which is already scale-free.
+void legendreRawFactor(const gsVector<real_t> & lower, const gsVector<real_t> & upper,
+                       index_t deg, gsVector<real_t> & factor)
+{
+    const index_t n1 = deg+1, K = n1*n1*n1;
+    gsVector<real_t> cx(n1), cy(n1), cz(n1);
+    for (index_t j = 0; j <= deg; ++j)
+    {
+        cx[j] = math::sqrt(static_cast<real_t>(2*j+1)/(upper(0)-lower(0)));
+        cy[j] = math::sqrt(static_cast<real_t>(2*j+1)/(upper(1)-lower(1)));
+        cz[j] = math::sqrt(static_cast<real_t>(2*j+1)/(upper(2)-lower(2)));
+    }
+    factor.resize(K);
+    for (index_t kz = 0; kz != n1; ++kz)
+    for (index_t ky = 0; ky != n1; ++ky)
+    for (index_t kx = 0; kx != n1; ++kx)
+        factor[kx + n1*(ky + n1*kz)] = cx[kx]*cy[ky]*cz[kz];
+}
+
 /// One omp-parallel pass over the work cells (Cut cells, or cells with a
 /// non-empty triangle bucket). Mode clip: nothing stored. tchakaloff/
 /// momrule: the compressed rules are stored in the tables (Cut-cell volume,
 /// every work cell's boundary). \a phiH is required for momrule (boundary
 /// normals), ignored otherwise. \a momentCheck computes CellLog::momErr*
-/// (compressed modes only). Every exception inside the parallel region is
+/// and CellLog::fluxErrBdr/hasFluxErrBdr (compressed modes only; the latter
+/// is gateTetMode's per-cell fluxmom_cell input, a with-normals moment
+/// comparison independent of momErrBdr's own mode-dependent normal
+/// weighting). Every exception inside the parallel region is
 /// caught into the cell's own CellLog::error: one escaping the `#pragma omp
 /// parallel` region would terminate the process (GISMO_ERROR/ENSURE throw
 /// std::runtime_error).
@@ -1515,18 +1642,56 @@ CellRulePass buildCellRules(const gsTetClip::ClipStreamer & S, const std::string
 
                 if (momentCheck && "clip" != mode)
                 {
-                    gsVector<real_t> mIn, mOut;
+                    // With-normals Q_2p moments of the clip reference (bn/bw/bnrm)
+                    // against the mode's served rule (sn/sw_/snrm): feeds
+                    // fluxErrBdr below for every mode, and IS momErrBdr's own
+                    // comparison for tchakaloff (whose moments_bdr row already
+                    // weights by the served normal).
+                    gsVector<real_t> mInN, mOutN;
+                    cellMoments(bn, bw, &bnrm, lower, upper, p, mInN);
+                    cellMoments(sn, sw_, &snrm, lower, upper, p, mOutN);
+
                     if ("tchakaloff" == mode)
                     {
-                        cellMoments(bn, bw, &bnrm, lower, upper, p, mIn);
-                        cellMoments(sn, sw_, &snrm, lower, upper, p, mOut);
+                        L.momErrBdr = momentRelErr(mInN, mOutN);
                     }
-                    else // momrule: K scalar moments, no normal weighting
+                    else // momrule: K scalar moments, no normal weighting --
+                         // this is exactly the gap fluxErrBdr below closes,
+                         // since momrule's served normal (the mesh level-set
+                         // gradient at an off-surface node, wrong near
+                         // polyhedral edges/vertices) never enters mIn/mOut.
                     {
+                        gsVector<real_t> mIn, mOut;
                         cellMoments(bn, bw, nullptr, lower, upper, p, mIn);
                         cellMoments(sn, sw_, nullptr, lower, upper, p, mOut);
+                        L.momErrBdr = momentRelErr(mIn, mOut);
                     }
-                    L.momErrBdr = momentRelErr(mIn, mOut);
+
+                    // fluxmom_cell (gateTetMode): E_K = max_{q,i} of the
+                    // with-normals block's mismatch, RAW-Legendre-normalized
+                    // (legendreRawFactor -- ||q||_inf = 1 on this cell's own
+                    // box; mInN/mOutN themselves stay orthonormal, the basis
+                    // momErrBdr above compares), divided by the clip
+                    // reference's own boundary area A_K = sum(bw) (not
+                    // sw_'s: A_K must be independent of the mode under test,
+                    // exactly as gateTetMode's fluxmom_global uses the clip
+                    // volume rule for its own reference side).
+                    gsTetClip::KahanSum areaClip;
+                    for (index_t c = 0; c != bw.size(); ++c) areaClip.add(bw[c]);
+                    const real_t A_K = areaClip.value();
+                    if (0.0 != A_K)
+                    {
+                        const index_t deg = 2*p, n1 = deg+1, K = n1*n1*n1;
+                        gsVector<real_t> factor;
+                        legendreRawFactor(lower, upper, deg, factor);
+                        real_t eK = 0;
+                        for (index_t ii = 0; ii != 3; ++ii)
+                            for (index_t kk = 0; kk != K; ++kk)
+                                eK = math::max(eK, math::abs(mOutN[(ii+1)*K+kk]-mInN[(ii+1)*K+kk])
+                                               /(factor[kk]*A_K));
+                        L.fluxErrBdr = eK;
+                        L.hasFluxErrBdr = true;
+                    }
                 }
 
                 L.nBdrOut = sn.cols();
@@ -1658,23 +1823,46 @@ Totals tetModeTotals(const CellRulePass & P, const gsTetClip::ClipStreamer & S, 
 
 /// Gate of a tet mode (clip/tchakaloff/momrule) on the pass \a P built from
 /// \a S. Rows: `volume`, `area`, `flux`, `volume_exact`, `area_exact`
-/// (Report always), `moments_vol`/`moments_bdr` (compressed modes only),
-/// `residual_vol`/`residual_bdr` (tchakaloff only), `minweight_vol`/
-/// `minweight_bdr` (Required/positive for tchakaloff, Report otherwise),
-/// `run`. Tolerances: 1e-13 (clip) / 1e-12 (compressed) for volume/area,
-/// same for flux except it is Report for momrule; moments 1e-12; residuals
-/// 1e-13; `run` requires 0 errored cells.
+/// (Report always), `fluxmom_global` (every mode), `moments_vol`/
+/// `moments_bdr`/`fluxmom_cell` (compressed modes only), `residual_vol`/
+/// `residual_bdr` (tchakaloff only), `minweight_vol`/`minweight_bdr`
+/// (Required/positive for tchakaloff, Report otherwise), `run`. Tolerances:
+/// 1e-13 (clip) / 1e-12 (compressed) for volume/area, same for flux except
+/// it is Report for momrule; moments/fluxmom 1e-12; residuals 1e-13; `run`
+/// requires 0 errored cells.
 ///
 /// Flux identity: for the mesh's closed polyhedral boundary, the
 /// divergence theorem gives `\oint x.n dS = \int div(x) dV = 3 V_mesh`,
 /// which is why the `flux` row's reference is `3*V_mesh` rather than a
 /// quantity computed from the quadrature itself.
 ///
+/// `fluxmom_global`/`fluxmom_cell`: the SCALAR moments `moments_vol`/
+/// `moments_bdr` check (Q_2p Legendre moments, no normal) are exactly what
+/// gsMomentRule reproduces by construction, so momrule cannot fail them;
+/// what a wrong served normal breaks is the Nitsche flux term
+/// `int_Gamma (grad u . n) v ds`, which needs the VECTOR moments
+/// `int_Gamma q n_i ds`. `fluxmom_global` is the Q_2p generalization of the
+/// `flux` row's divergence-theorem identity `int_Gamma q n_i dS =
+/// int_Omega d(q)/dx_i dV`: the left side (B) is built from the mode's own
+/// SERVED boundary rule/normals (what the Nitsche assembly actually uses),
+/// the right side (V) from the clip volume rule -- a REFERENCE rule here,
+/// independent of the mode under test. With the identity background map
+/// used here it integrates polynomials on the polyhedron to degree 6p;
+/// under a non-identity map it is only a reference, not an exact rule.
+/// `fluxmom_cell` is the same identity's per-Cut-cell counterpart, each
+/// mode's served rule against the clip reference on the SAME cell (Q
+/// mapped to that cell's own box, `CellLog::fluxErrBdr`, computed in
+/// \ref buildCellRules) -- it isolates which cells carry the bad normal
+/// instead of only the domain-wide sum.
+///
 /// \c GateRow::kind and \c GateRow::pass are computed identically for
 /// every mode, including tchakaloff: the DEFERRED downgrade of its
 /// Required rows (they print but do not count toward `GATE SUMMARY`) is a
 /// printing/counting policy applied by the caller (\ref printGateRow,
-/// \ref runVolumeStudy), not a change to this function's verdicts.
+/// \ref runVolumeStudy), not a change to this function's verdicts. Both fluxmom
+/// rows count as Required for every mode including momrule; only
+/// \ref runPoissonStudy's solve/skip decision treats a momrule-only
+/// fluxmom failure specially (see its own comment).
 GateResult gateTetMode(const CellRulePass & P, const gsTetClip::ClipStreamer & S, index_t p,
                        real_t V_mesh, real_t A_mesh, real_t V_exact, real_t A_exact,
                        const std::string & caseName, index_t r)
@@ -1712,6 +1900,70 @@ GateResult gateTetMode(const CellRulePass & P, const gsTetClip::ClipStreamer & S
     scalarRow("volume_exact", tot.V, V_exact, 0, GateRow::Report);
     scalarRow("area_exact",   tot.A, A_exact, 0, GateRow::Report);
 
+    // fluxmom_global: max_{q,i} |B_{q,i}-V_{q,i}| / A_mesh, q the tensor
+    // Legendre Q_2p basis mapped to the fixed background box [-1,1]^3 (so
+    // ||q||_inf = 1). B is the mode's own served boundary rule/normals
+    // (bdrSrc); V is the clip reference volume rule (S), independent of
+    // mode -- see the function doxygen above for why this row exists.
+    {
+        const index_t deg = 2*p, n1 = deg+1, K = n1*n1*n1;
+        gsVector<real_t> lo(3), hi(3); lo << -1,-1,-1; hi << 1,1,1;
+        const gsVector<index_t> nG = gsVector<index_t>::Constant(3, p+1);
+
+        const gsTetClip::BdrCellSource * bdrSrc = ("clip" == mode)
+            ? static_cast<const gsTetClip::BdrCellSource*>(&S)
+            : static_cast<const gsTetClip::BdrCellSource*>(P.bdr.get());
+
+        std::vector<gsTetClip::KahanSum> accB((size_t)(4*K)), accV((size_t)(3*K));
+
+        for (size_t id = 0; id != N3; ++id)
+        {
+            index_t i,j,k; idx.ijk(id, i,j,k);
+            gsVector<real_t> lower(3), upper(3);
+            lower << idx.X[i], idx.Y[j], idx.Z[k];
+            upper << idx.X[i+1], idx.Y[j+1], idx.Z[k+1];
+
+            gsMatrix<real_t> bn, bnrm; gsVector<real_t> bw;
+            bdrSrc->bdrRule(id, bn, bw, bnrm);
+            if (bn.cols() > 0)
+            {
+                gsVector<real_t> mCell;
+                cellMoments(bn, bw, &bnrm, lo, hi, p, mCell);
+                for (index_t e = 0; e != 4*K; ++e) accB[(size_t)e].add(mCell[e]);
+            }
+
+            gsMatrix<real_t> nd; gsVector<real_t> w;
+            if (gsTetClip::Cut == idx.status[id])
+                S.volRule(id, nd, w);
+            else if (gsTetClip::Full == idx.status[id])
+                gsGaussRule<real_t>(nG).mapTo(lower, upper, nd, w);
+            if (nd.cols() > 0)
+            {
+                gsVector<real_t> mCell;
+                volDerivMoments(nd, w, lo, hi, p, mCell);
+                for (index_t e = 0; e != 3*K; ++e) accV[(size_t)e].add(mCell[e]);
+            }
+        }
+
+        gsVector<real_t> factor;
+        legendreRawFactor(lo, hi, deg, factor);
+
+        real_t worst = 0;
+        for (index_t ii = 0; ii != 3; ++ii)
+            for (index_t k = 0; k != K; ++k)
+            {
+                const real_t B = accB[(size_t)((ii+1)*K+k)].value();
+                const real_t V = accV[(size_t)(ii*K+k)].value();
+                worst = math::max(worst, math::abs(B-V)/(factor[k]*A_mesh));
+            }
+
+        GateRow row; row.check = "fluxmom_global"; row.value = worst; row.ref = 0;
+        row.tol = tolLoose; row.kind = GateRow::Required; row.relerr = worst;
+        row.pass = (worst <= tolLoose);
+        G.rows.push_back(row);
+        G.requiredPass = G.requiredPass && row.pass;
+    }
+
     if ("clip" != mode)
     {
         // moments_vol: worst-case relative moment error over Cut cells.
@@ -1741,6 +1993,25 @@ GateResult gateTetMode(const CellRulePass & P, const gsTetClip::ClipStreamer & S
                     if (!(e <= tolLoose)) fail.push_back(id);
                 }
             GateRow row; row.check = "moments_bdr"; row.value = worst; row.ref = 0;
+            row.tol = tolLoose; row.kind = GateRow::Required; row.relerr = worst;
+            row.failCells = fail; row.pass = (worst <= tolLoose) && fail.empty();
+            G.rows.push_back(row);
+            G.requiredPass = G.requiredPass && row.pass;
+        }
+        // fluxmom_cell: worst-case E_K (CellLog::fluxErrBdr, computed in
+        // buildCellRules) over Cut cells with a nonzero clip boundary area;
+        // cells with A_K == 0 exactly (CellLog::hasFluxErrBdr false) are
+        // skipped, not counted as pass or fail.
+        {
+            real_t worst = 0; std::vector<size_t> fail;
+            for (size_t id = 0; id != N3; ++id)
+                if (gsTetClip::Cut == idx.status[id] && P.log[id].hasFluxErrBdr)
+                {
+                    const real_t e = P.log[id].fluxErrBdr;
+                    worst = math::max(worst, e);
+                    if (!(e <= tolLoose)) fail.push_back(id);
+                }
+            GateRow row; row.check = "fluxmom_cell"; row.value = worst; row.ref = 0;
             row.tol = tolLoose; row.kind = GateRow::Required; row.relerr = worst;
             row.failCells = fail; row.pass = (worst <= tolLoose) && fail.empty();
             G.rows.push_back(row);
@@ -2069,6 +2340,19 @@ void printMomentResidualFailures(const GateResult & G, const CellRulePass & P, c
     }
 }
 
+/// One INFO line per failing `fluxmom_cell` cell (every one, not just the
+/// first 20 the `GATE` row itself prints): id and E_K
+/// (`CellLog::fluxErrBdr`), so the per-cell distribution of the flux-moment
+/// error can be ranked from a single run.
+void printFluxmomCellFailures(const GateResult & G, const CellRulePass & P, const GateRow & row)
+{
+    if ("fluxmom_cell" != row.check) return;
+    for (size_t id : row.failCells)
+        gsInfo << "INFO case=" << G.caseName << " mode=" << G.mode << " r=" << G.r
+              << " check=fluxmom_cell id=" << id
+              << " E_K=" << gsTetClip::fmtSci(P.log[id].fluxErrBdr) << "  INFO\n";
+}
+
 /// One INFO line per `run`-failure cell (every one, not just the first 5
 /// GATEERR lines below): the input point counts CellLog already recorded
 /// before the exception, so a cell whose own compressor call threw still
@@ -2299,6 +2583,7 @@ bool runVolumeStudy(const Config & cfg)
                     {
                         printGateRow(G, row, deferred);
                         printMomentResidualFailures(G, P, row);
+                        printFluxmomCellFailures(G, P, row);
                         printRunFailureInfo(G, P, row);
                         if (!deferred)
                         {
@@ -2446,6 +2731,7 @@ struct PoissonRunResult
     real_t L2  = std::numeric_limits<real_t>::quiet_NaN();
     real_t H1s = std::numeric_limits<real_t>::quiet_NaN();
     real_t kappa = 0; bool kappaIndef = true;
+    bool kappaConverged = false;                 // dense: always true; iter: both loops converged
     std::string kappaMethod;                    // "dense" | "iter" | "" (not computed)
     long long kItPower = -1, kItInverse = -1;
     real_t lmin = 0, lmax = 0, asym = 0;
@@ -2462,9 +2748,15 @@ struct PoissonRunResult
 /// reference-rule error integrals (the mode's own, finer, reference
 /// geometry). See the file header for the weak form and the ghost-penalty
 /// scaling. Conditioning uses a dense SelfAdjointEigenSolver at N <=
-/// \a kappaDense, else power/inverse iteration from the deterministic start
+/// \a kappaDense (always converged), else power/inverse iteration, each
+/// capped at \a kappaMaxIt steps, from the deterministic start
 /// v_i = 1 + 1e-3*(i mod 7), reusing the primal solve's own LU
-/// factorization for the inverse iteration.
+/// factorization for the inverse iteration. \ref PoissonRunResult::kappaConverged
+/// is true iff BOTH loops exited through their own convergence test rather
+/// than the cap; when false, at least one loop hit the cap, so lmax (a
+/// Rayleigh quotient, <= lambda_max) and/or lmin (>= lambda_min for a
+/// symmetric positive-definite K) may be far from the extreme eigenvalue,
+/// and kappa = lmax/lmin is then an underestimate.
 PoissonRunResult solvePoissonOnDomain(
     const gsMultiPatch<real_t> & mp, gsMultiBasis<real_t> & mb,
     memory::shared_ptr<gsTrimmedDomain<3,real_t> > dom,
@@ -2473,6 +2765,7 @@ PoissonRunResult solvePoissonOnDomain(
     memory::shared_ptr<const gsTetClip::BdrCellSource> bdrSrc,
     gsExprAssembler<real_t>::QuadratureFactory refFactory,
     index_t p, real_t h, real_t gammaEff, real_t gtEff, bool ghostOn, index_t kappaDense,
+    index_t kappaMaxIt,
     const gsFunctionExpr<real_t> & u_exact, const gsFunctionExpr<real_t> & f_rhs)
 {
     typedef gsExprAssembler<real_t>::geometryMap geometryMap;
@@ -2633,6 +2926,7 @@ PoissonRunResult solvePoissonOnDomain(
             R.lmin = es.eigenvalues().minCoeff();
             R.lmax = es.eigenvalues().maxCoeff();
             R.kappaMethod = "dense";
+            R.kappaConverged = true;
         }
         else
         {
@@ -2641,8 +2935,8 @@ PoissonRunResult solvePoissonOnDomain(
             v0 /= v0.norm();
 
             gsVector<real_t> v = v0;
-            real_t lambda = 0; long long itPower = 0;
-            for (; itPower < 500; )
+            real_t lambda = 0; long long itPower = 0; bool powerConverged = false;
+            for (; itPower < kappaMaxIt; )
             {
                 const gsVector<real_t> w = K*v;
                 const real_t nrm = w.norm();
@@ -2653,13 +2947,13 @@ PoissonRunResult solvePoissonOnDomain(
                                       && (math::abs(lambdaNew-lambda) <= 1e-8*math::abs(lambdaNew));
                 lambda = lambdaNew;
                 ++itPower;
-                if (converged) break;
+                if (converged) { powerConverged = true; break; }
             }
             R.lmax = lambda;
 
             v = v0;
-            real_t lambdaMin = 0; long long itInverse = 0;
-            for (; itInverse < 500; )
+            real_t lambdaMin = 0; long long itInverse = 0; bool inverseConverged = false;
+            for (; itInverse < kappaMaxIt; )
             {
                 const gsVector<real_t> w = solver.solve(v);
                 const real_t nrm = w.norm();
@@ -2671,11 +2965,12 @@ PoissonRunResult solvePoissonOnDomain(
                                       && (math::abs(rq-lambdaMin) <= 1e-8*math::abs(rq));
                 lambdaMin = rq;
                 ++itInverse;
-                if (converged) break;
+                if (converged) { inverseConverged = true; break; }
             }
             R.lmin = lambdaMin;
             R.kappaMethod = "iter";
             R.kItPower = itPower; R.kItInverse = itInverse;
+            R.kappaConverged = powerConverged && inverseConverged;
         }
         R.kappaIndef = !(R.lmin > 0);
         R.kappa = R.kappaIndef ? (real_t)0 : R.lmax/R.lmin;
@@ -2693,6 +2988,7 @@ struct PoissonHist
     bool solved = false;
     index_t n = 0, ndof = 0;
     real_t L2 = 0, H1s = 0;
+    real_t kappa = 0; bool kappaIndef = true, kappaConverged = false;
 };
 
 std::string fmtFixed2(real_t v)
@@ -2726,6 +3022,7 @@ void printPoissonRow(const std::string & caseName, const std::string & mode, ind
           << " kappa=" << (R.kappaIndef ? std::string("(indef)") : gsTetClip::fmtSci(R.kappa))
           << " kappaMethod=" << (R.kappaMethod.empty() ? "-" : R.kappaMethod)
           << " kIt=" << kIt
+          << " kConv=" << (R.kappaMethod.empty() ? "-" : (R.kappaConverged ? "1" : "0"))
           << " lmin=" << gsTetClip::fmtSci(R.lmin) << " lmax=" << gsTetClip::fmtSci(R.lmax)
           << " asym=" << gsTetClip::fmtSci(R.asym)
           << " zeroRows=" << R.zeroRows << " finite=" << (R.finite ? 1 : 0)
@@ -2736,15 +3033,23 @@ void printPoissonRow(const std::string & caseName, const std::string & mode, ind
           << " t_wall=" << gsTetClip::fmtSci(t_wall) << "s" << statusSuffix << "\n";
 }
 
-/// Prints the r/n/ndof/L2/eocL2/H1s/eocH1 table of every SOLVED row of
-/// \a hist for one (case, mode), immediately before its `EOC` verdict.
+/// Prints the r/n/ndof/L2/eocL2/H1s/eocH1/kappa/eocK table of every SOLVED
+/// row of \a hist for one (case, mode), immediately before its `EOC`
+/// verdict. eocK_r = log(kappa_r/kappa_{r-1}) / log(h_{r-1}/h_r), which
+/// collapses to log2(kappa_r/kappa_{r-1}) under this table's own uniform-
+/// bisection convention (the same one eocL2/eocH1 already assume); an
+/// h^-2 conditioning growth therefore shows as eocK ~= 2. Left as `-` for
+/// r=0, an indefinite kappa at either endpoint, or either endpoint's
+/// iterative eigenvalue estimate not having converged (kappa would then be
+/// an underestimate, making the ratio meaningless).
 void printPoissonTable(const std::string & caseName, const std::string & mode,
                        const std::vector<PoissonHist> & hist)
 {
     gsInfo << "\n=== Poisson convergence  case=" << caseName << "  mode=" << mode << " ===\n";
     gsInfo << std::right << std::setw(4) << "r" << std::setw(6) << "n" << std::setw(8) << "ndof"
           << std::setw(13) << "L2" << std::setw(8) << "eocL2"
-          << std::setw(13) << "H1s" << std::setw(8) << "eocH1" << "\n";
+          << std::setw(13) << "H1s" << std::setw(8) << "eocH1"
+          << std::setw(13) << "kappa" << std::setw(8) << "eocK" << "\n";
     bool havePrev = false; PoissonHist prev;
     for (size_t r = 0; r != hist.size(); ++r)
     {
@@ -2754,9 +3059,15 @@ void printPoissonTable(const std::string & caseName, const std::string & mode,
             ? fmtFixed2(math::log(prev.L2/h.L2)/math::log((real_t)2)) : "-";
         const std::string eocH1 = (havePrev && prev.solved)
             ? fmtFixed2(math::log(prev.H1s/h.H1s)/math::log((real_t)2)) : "-";
+        const std::string kappaStr = h.kappaIndef ? std::string("(indef)") : gsTetClip::fmtSci(h.kappa,3);
+        const bool haveEocK = havePrev && prev.solved
+            && !prev.kappaIndef && !h.kappaIndef && prev.kappaConverged && h.kappaConverged;
+        const std::string eocK = haveEocK
+            ? fmtFixed2(math::log(h.kappa/prev.kappa)/math::log((real_t)2)) : "-";
         gsInfo << std::setw(4) << r << std::setw(6) << h.n << std::setw(8) << h.ndof
               << std::setw(13) << gsTetClip::fmtSci(h.L2,3) << std::setw(8) << eocL2
-              << std::setw(13) << gsTetClip::fmtSci(h.H1s,3) << std::setw(8) << eocH1 << "\n";
+              << std::setw(13) << gsTetClip::fmtSci(h.H1s,3) << std::setw(8) << eocH1
+              << std::setw(13) << kappaStr << std::setw(8) << eocK << "\n";
         prev = h; havePrev = true;
     }
 }
@@ -2919,7 +3230,30 @@ bool runPoissonStudy(const Config & cfg)
                     for (const GateRow & row : G.rows) printGateRow(G, row, false);
                     t_tab = swTab.stop();
 
-                    if (!G.requiredPass)
+                    // fluxmom_global/fluxmom_cell are Required for every mode
+                    // (gateTetMode), including momrule: they count fully
+                    // toward `--study volume`'s GATE SUMMARY. Here, though,
+                    // momrule solves iff every OTHER Required row passed --
+                    // its served normal is only a pseudonormal at polyhedral
+                    // edges/vertices (buildCellRules), so a fluxmom-only
+                    // failure is the expected, already-documented gap
+                    // (file header), not a reason to withhold the solve.
+                    bool solveGatePass = G.requiredPass;
+                    if (!solveGatePass && "momrule" == mode)
+                    {
+                        bool onlyFluxmomFail = true;
+                        for (const GateRow & row : G.rows)
+                            if (GateRow::Required == row.kind && !row.pass &&
+                                "fluxmom_global" != row.check && "fluxmom_cell" != row.check)
+                                onlyFluxmomFail = false;
+                        if (onlyFluxmomFail)
+                        {
+                            solveGatePass = true;
+                            gsInfo << "GATE-NOTE mode=momrule fluxmom=FAIL solve=report\n";
+                        }
+                    }
+
+                    if (!solveGatePass)
                     {
                         gsInfo << "POISSON-SKIP case=" << caseName << " mode=" << mode << " r=" << r
                               << " n=" << n << " reason=gate-FAIL\n";
@@ -2953,7 +3287,7 @@ bool runPoissonStudy(const Config & cfg)
                         memory::shared_ptr<gsTrimmedDomain<3,real_t> > domBase = tdom;
                         R = solvePoissonOnDomain(mp, mb, domBase, idx, volSrc, bdrSrc, refFactory,
                                                  cfg.p, h, gammaEff, gtEff, ghostOn, cfg.kappaDense,
-                                                 u_exact, f_rhs);
+                                                 cfg.kappaMaxIt, u_exact, f_rhs);
                     }
                 }
                 else
@@ -3095,7 +3429,7 @@ bool runPoissonStudy(const Config & cfg)
                     memory::shared_ptr<gsTrimmedDomain<3,real_t> > domBase = adom;
                     R = solvePoissonOnDomain(mp, mb, domBase, algoimIdxConst, volSrc, bdrSrc, refFactory,
                                              cfg.p, h, gammaEff, gtEff, ghostOn, cfg.kappaDense,
-                                             u_exact, f_rhs);
+                                             cfg.kappaMaxIt, u_exact, f_rhs);
                 }
 
                 const real_t t_wall = swWall.stop();
@@ -3123,11 +3457,16 @@ bool runPoissonStudy(const Config & cfg)
                 }
 
                 printPoissonRow(caseName, mode, r, n, R, nCut, nGhost, stats, prev, t_tab, t_wall);
+                if ("iter" == R.kappaMethod && !R.kappaConverged)
+                    gsWarn << "KAPPA-UNCONVERGED case=" << caseName << " mode=" << mode << " r=" << r
+                          << " kIt=" << R.kItPower << "/" << R.kItInverse << "\n";
                 gsInfo << "POISSON-RSS case=" << caseName << " mode=" << mode << " r=" << r
                       << " vmhwm_kB=" << vmhwm << "\n";
 
                 hist[r].solved = true; hist[r].n = n; hist[r].ndof = R.ndof;
                 hist[r].L2 = R.L2; hist[r].H1s = R.H1s;
+                hist[r].kappa = R.kappa; hist[r].kappaIndef = R.kappaIndef;
+                hist[r].kappaConverged = R.kappaConverged;
                 tAsmHist[r] = R.t_asm; tErrHist[r] = R.t_err; tWallHist[r] = t_wall;
                 nqVolHist[r] = stats.nqVol;
 
@@ -3177,6 +3516,7 @@ int main(int argc, char *argv[])
     index_t ghostOn    = 1;
     real_t  ghostCoef  = -1;
     index_t kappaDense = 6000;
+    index_t kappaMaxIt = 500;
 
     gsCmdLine cmd("Streamed lookup-rule quadrature checks, the volume/area/flux/moment gate, and "
                  "the 3D immersed Poisson solver (symmetric Nitsche + ghost penalty) for the "
@@ -3201,6 +3541,8 @@ int main(int argc, char *argv[])
                   "(--study poisson)", ghostCoef);
     cmd.addInt   ("",  "kappaDense", "Dense-eigensolver dof threshold for the conditioning "
                   "estimate (--study poisson)", kappaDense);
+    cmd.addInt   ("",  "kappaMaxIt", "Power/inverse iteration cap for the iterative conditioning "
+                  "estimate (--study poisson)", kappaMaxIt);
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
 
     if (p < 1)    { gsWarn << "-k/--degree must be >= 1\n"; return EXIT_FAILURE; }
@@ -3220,11 +3562,13 @@ int main(int argc, char *argv[])
     {
         if (0 != ghostOn && 1 != ghostOn) { gsWarn << "--ghost must be 0 or 1\n"; return EXIT_FAILURE; }
         if (kappaDense < 0) { gsWarn << "--kappaDense must be >= 0\n"; return EXIT_FAILURE; }
+        if (kappaMaxIt < 1) { gsWarn << "--kappaMaxIt must be >= 1\n"; return EXIT_FAILURE; }
     }
 
     Config cfg;
     cfg.study = study; cfg.caseName = caseName; cfg.mode = mode; cfg.p = p; cfg.rMax = rMax; cfg.n0 = n0;
     cfg.gamma = gamma; cfg.ghostOn = ghostOn; cfg.ghostCoef = ghostCoef; cfg.kappaDense = kappaDense;
+    cfg.kappaMaxIt = kappaMaxIt;
 
     bool ok = false;
     if ("check" == study)
