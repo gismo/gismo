@@ -19,7 +19,7 @@
 namespace gismo
 {
 
-STRUCT_TEMPLATE_INST gsParaview<real_t>;
+CLASS_TEMPLATE_INST gsParaview<real_t>;
 
 // Explicit instantiation of template member functions for gsHBox (d=2,3 only)
 TEMPLATE_INST void gsParaview<real_t>::write<2>(const gsHBox<2,real_t> &, const std::string &) const;
