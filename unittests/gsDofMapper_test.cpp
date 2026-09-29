@@ -86,10 +86,10 @@ std::string dumpCounts(const gsDofMapper & m)
     return os.str();
 }
 
-// boundarySizeWithDuplicates().  Deliberately kept out of dumpCounts: its
-// multi-component answers are defective, because it counts, per component, the
-// entries above that component's own freeSize(i) instead of the global free
-// count.
+// boundarySizeWithDuplicates().  Kept out of dumpCounts because its
+// multi-component answers used to be defective: it counted, per component,
+// the entries above that component's own freeSize(i) instead of the global
+// free count, so it reported the later components' free dofs as eliminated.
 std::string dumpElimDup(const gsDofMapper & m)
 {
     std::ostringstream os;
@@ -127,8 +127,8 @@ std::string dumpLayout(const gsDofMapper & m)
     return os.str();
 }
 
-// firstIndex(0) and lastIndex().  firstIndex(c) for c>=1 is NOT pinned; see
-// the comment in the tests.
+// firstIndex(0) and lastIndex().  See first_index_is_the_smallest_index_of_
+// the_component for firstIndex(c) with c>=1.
 std::string dumpFirstLast(const gsDofMapper & m)
 {
     std::ostringstream os;
@@ -306,16 +306,16 @@ std::string dumpGlobalFlags(const gsDofMapper & m, const index_t shift)
     return os.str();
 }
 
-// findBoundary(k) and findFree(k) for every patch.
-std::string dumpFindBoundaryFree(const gsDofMapper & m)
+// findBoundary(k,c) and findFree(k,c) for every patch.
+std::string dumpFindBoundaryFree(const gsDofMapper & m, const index_t c = 0)
 {
     std::ostringstream os;
     os << "bnd=";
     for (index_t k = 0; k != nPatches(m); ++k)
-        os << (k ? "," : "") << join(m.findBoundary(k));
+        os << (k ? "," : "") << join(m.findBoundary(k, c));
     os << " free=";
     for (index_t k = 0; k != nPatches(m); ++k)
-        os << (k ? "," : "") << join(m.findFree(k));
+        os << (k ? "," : "") << join(m.findFree(k, c));
     return os.str();
 }
 
@@ -339,30 +339,33 @@ std::string dumpIndexOnPatch(const gsDofMapper & m)
     return os.str();
 }
 
-// --- coupled queries (single component only) ------------------------------
+// --- coupled queries ------------------------------------------------------
 
-// is_coupled / is_coupled_index / cindex / findCoupled / findFreeUncoupled.
-std::string dumpCoupledQueries(const gsDofMapper & m)
+// is_coupled / is_coupled_index / cindex / findCoupled / findFreeUncoupled
+// for component \a c.  The gflags column (is_coupled_index over the whole
+// global range) is component-independent and therefore repeats verbatim for
+// every c; it is kept in so that each component's literal stands on its own.
+std::string dumpCoupledQueries(const gsDofMapper & m, const index_t c = 0)
 {
     std::ostringstream os;
     os << "flags=";
     for (index_t k = 0; k != nPatches(m); ++k)
     {
         if (k) os << "|";
-        const index_t n = static_cast<index_t>(m.patchSize(k, 0));
+        const index_t n = static_cast<index_t>(m.patchSize(k, c));
         for (index_t i = 0; i != n; ++i)
-            os << (m.is_coupled(i, k, 0) ? 'C' : '.');
+            os << (m.is_coupled(i, k, c) ? 'C' : '.');
     }
     os << " cidx=[";
     bool first = true;
     for (index_t k = 0; k != nPatches(m); ++k)
     {
-        const index_t n = static_cast<index_t>(m.patchSize(k, 0));
+        const index_t n = static_cast<index_t>(m.patchSize(k, c));
         for (index_t i = 0; i != n; ++i)
-            if (m.is_coupled(i, k, 0))
+            if (m.is_coupled(i, k, c))
             {
                 os << (first ? "" : ",") << k << ":" << i
-                   << "->" << m.cindex(i, k, 0);
+                   << "->" << m.cindex(i, k, c);
                 first = false;
             }
     }
@@ -371,14 +374,27 @@ std::string dumpCoupledQueries(const gsDofMapper & m)
         os << (m.is_coupled_index(gl) ? 'C' : '.');
     os << " findCoupled=";
     for (index_t k = 0; k != nPatches(m); ++k)
-        os << (k ? "," : "") << join(m.findCoupled(k));
+        os << (k ? "," : "") << join(m.findCoupled(k, -1, c));
     os << " findCoupledPairs=";
     for (index_t k = 0; k != nPatches(m); ++k)
         for (index_t j = 0; j != nPatches(m); ++j)
-            os << ((k || j) ? "," : "") << k << j << join(m.findCoupled(k, j));
+            os << ((k || j) ? "," : "") << k << j << join(m.findCoupled(k, j, c));
     os << " findFreeUncoupled=";
     for (index_t k = 0; k != nPatches(m); ++k)
-        os << (k ? "," : "") << join(m.findFreeUncoupled(k));
+        os << (k ? "," : "") << join(m.findFreeUncoupled(k, c));
+    return os.str();
+}
+
+// inverseOnPatch(k) as a flat string.
+std::string dumpInverseOnPatch(const gsDofMapper & m, const index_t k)
+{
+    const std::map<index_t,index_t> inv = m.inverseOnPatch(k);
+    std::ostringstream os;
+    os << "[";
+    for (std::map<index_t,index_t>::const_iterator it = inv.begin();
+         it != inv.end(); ++it)
+        os << (it == inv.begin() ? "" : ",") << "(" << it->first << "," << it->second << ")";
+    os << "]";
     return os.str();
 }
 
@@ -707,11 +723,6 @@ TEST(single_patch_plain_counts)
     PIN("f1.counts", "comps=1 ncomp=1 npatch=1 map=6 size=6 free=6 elim=0 cpld=0 tagged=0 allfree=1 perm=1 final=1", dumpCounts(m));
     PIN("f1.percomp", "c0:size=6,free=6,total=6", dumpPerComponent(m));
     PIN("f1.layout", "off=[0] ps=c0:[6]", dumpLayout(m));
-    // Only firstIndex(0) is pinned: for c>=1 firstIndex returns
-    // m_numFreeDofs[c]+m_numElimDofs[c]+m_shift, which overshoots the true
-    // first index of the component by m_numElimDofs[c] after the re-offset
-    // pass of finalize().  A later commit gives firstIndex a corrected
-    // contract.
     PIN("f1.firstlast", "first0=0 last=6", dumpFirstLast(m));
 }
 
@@ -731,12 +742,8 @@ TEST(single_patch_plain_indices)
 TEST(single_patch_plain_coupled_queries)
 {
     const gsDofMapper m = singlePatchPlain();
-    // Coupled queries are pinned on single-component fixtures only: for
-    // components >= 1 is_coupled_index / cindex / findCoupled /
-    // findFreeUncoupled read cumulative prefix totals and last-component
-    // thresholds (m_numFreeDofs.back(), m_numCpldDofs.back()) and are
-    // provably wrong there.  A later commit fixes them, so
-    // pinning the component >= 1 answers would create a false conflict.
+    // See three_comp_coupled_queries_per_component for the same digest on a
+    // mapper with more than one component.
     PIN("f1.coupled", "flags=...... cidx=[] gflags=...... findCoupled=[] findCoupledPairs=00[] findFreeUncoupled=[0,1,2,3,4,5]", dumpCoupledQueries(m));
 }
 
@@ -756,22 +763,12 @@ TEST(single_patch_plain_component_and_preimage)
 TEST(single_patch_plain_inverses)
 {
     const gsDofMapper m = singlePatchPlain();
-    // inverseOnPatch is pinned on the single-patch fixture only.  On a
-    // multi-patch mapper it starts at m_offset[k] but iterates m_dofs[c].size()
-    // entries, i.e. it runs past the end of the requested patch (and past the
-    // end of the vector).  A later commit fixes that; the
-    // defective output is deliberately not pinned.
-    std::ostringstream os;
-    const std::map<index_t,index_t> inv = m.inverseOnPatch(0);
-    os << "[";
-    for (std::map<index_t,index_t>::const_iterator it = inv.begin(); it != inv.end(); ++it)
-        os << (it == inv.begin() ? "" : ",") << "(" << it->first << "," << it->second << ")";
-    os << "]";
-    PIN("f1.inverseonpatch", "[(0,0),(1,1),(2,2),(3,3),(4,4),(5,5)]", os.str());
+    PIN("f1.inverseonpatch", "[(0,0),(1,1),(2,2),(3,3),(4,4),(5,5)]",
+        dumpInverseOnPatch(m, 0));
 
-    // inverseAsVector is pinned only here: a permutation, single component,
-    // no coupling and no elimination.  Its contract is sharpened by a later
-    // commit.
+    // A single-component permutation: every position of the result is the
+    // image of a local dof, so no sentinel is visible here.  See
+    // inverse_as_vector_marks_other_components for the sentinel.
     PIN("f1.inverseasvector", "[0,1,2,3,4,5]", join(m.inverseAsVector(0)));
 }
 
@@ -786,7 +783,7 @@ TEST(two_patch_coupled_elim_counts)
     PIN("f2.counts", "comps=1 ncomp=1 npatch=2 map=12 size=9 free=7 elim=2 cpld=2 tagged=2 allfree=0 perm=0 final=1", dumpCounts(m));
     PIN("f2.percomp", "c0:size=9,free=7,total=12", dumpPerComponent(m));
     PIN("f2.layout", "off=[0,6] ps=c0:[6,6]", dumpLayout(m));
-    PIN("f2.firstlast", "first0=0 last=7", dumpFirstLast(m));   // firstIndex(0) only, see F1
+    PIN("f2.firstlast", "first0=0 last=7", dumpFirstLast(m));
 }
 
 TEST(two_patch_coupled_elim_indices)
@@ -805,8 +802,6 @@ TEST(two_patch_coupled_elim_indices)
 TEST(two_patch_coupled_elim_coupled_queries)
 {
     const gsDofMapper m = twoPatchCoupledElim();
-    // Single-component fixture; see the comment in
-    // single_patch_plain_coupled_queries for why components >= 1 are excluded.
     PIN("f2.coupled", "flags=....CC|CCC... cidx=[0:4->0,0:5->1,1:0->0,1:1->1,1:2->1] gflags=.....CC.. findCoupled=[4,5],[0,1,2] findCoupledPairs=00[],01[4,5],10[0,1,2],11[] findFreeUncoupled=[1,2,3],[4,5]", dumpCoupledQueries(m));
 }
 
@@ -862,15 +857,13 @@ TEST(find_tagged_returns_empty_defect)
 TEST(three_comp_uniform_counts)
 {
     const gsDofMapper m = threeCompUniform();
-    // Known-defective value, pinned deliberately: boundarySizeWithDuplicates
-    // compares each component's entries against that component's own
-    // freeSize(i) instead of the global free count, so its answer is
-    // meaningless on a multi-component mapper.
-    PIN("f3.elimdup", "elimdup=19", dumpElimDup(m));
+    // boundarySizeWithDuplicates counts the eliminated dofs with their
+    // multiplicity over patches, so it is bounded below by boundarySize().
+    PIN("f3.elimdup", "elimdup=4", dumpElimDup(m));
     PIN("f3.counts", "comps=3 ncomp=3 npatch=2 map=27 size=24 free=20 elim=4 cpld=3 tagged=0 allfree=0 perm=0 final=1", dumpCounts(m));
     PIN("f3.percomp", "c0:size=8,free=7,total=9 c1:size=7,free=5,total=9 c2:size=9,free=8,total=9", dumpPerComponent(m));
     PIN("f3.layout", "off=[0,4] ps=c0:[4,5] c1:[4,5] c2:[4,5]", dumpLayout(m));
-    PIN("f3.firstlast", "first0=0 last=20", dumpFirstLast(m));   // firstIndex(0) only, see F1
+    PIN("f3.firstlast", "first0=0 last=20", dumpFirstLast(m));
 }
 
 TEST(three_comp_uniform_indices)
@@ -893,10 +886,9 @@ TEST(three_comp_uniform_component_and_preimage)
     PIN("f3.componentof", "[0,0,0,0,0,0,0,1,1,1,1,1,2,2,2,2,2,2,2,2,0,1,1,2]", dumpComponentOf(m));
     PIN("f3.preimage", "0[(0,1)] 1[(0,2)] 2[(1,1)] 3[(1,2)] 4[(1,3)] 5[(1,4)] 6[(0,3),(1,0)] 7[(0,1)] 8[(1,0)] 9[(1,3)] 10[(0,2),(1,1)] 11[(0,3),(1,2)] 12[(0,0)] 13[(0,1)] 14[(0,2)] 15[(0,3)] 16[(1,0)] 17[(1,1)] 18[(1,2)] 19[(1,4)] 20[(0,0)] 21[(0,0)] 22[(1,4)] 23[(1,3)]", dumpPreImages(m));
     PIN("f3.anypreimage", "[(0,1),(0,2),(1,1),(1,2),(1,3),(1,4),(0,3),(0,1),(1,0),(1,3),(0,2),(0,3),(0,0),(0,1),(0,2),(0,3),(1,0),(1,1),(1,2),(1,4),(0,0),(0,0),(1,4),(1,3)]", dumpAnyPreImage(m));
-    // anyPreImages(c) is NOT pinned here: it indexes a result vector of
-    // totalSize(c) entries by the global dof value, which on a
-    // multi-component mapper exceeds that size and writes out of bounds.
-    // See the report accompanying this commit.
+    // See any_pre_images_agrees_with_any_pre_image for anyPreImages(c) on
+    // this fixture; it is checked against anyPreImage rather than pinned as
+    // a literal.
     PIN("f3.tagged", "tagged=[] n=0 gflags=........................ flags=....|.....;....|.....;....|..... tindex=0,0,0,0|0,0,0,0,0;0,0,0,0|0,0,0,0,0;0,0,0,0|0,0,0,0,0", dumpTagged(m));
 }
 
@@ -915,11 +907,9 @@ TEST(three_comp_uniform_component_and_preimage)
 TEST(three_comp_shifted)
 {
     const gsDofMapper m = threeCompShifted();
-    // Known-defective value, pinned deliberately: boundarySizeWithDuplicates
-    // compares each component's entries against that component's own
-    // freeSize(i) instead of the global free count, so its answer is
-    // meaningless on a multi-component mapper. 
-    PIN("f4.elimdup", "elimdup=19", dumpElimDup(m));
+    // See f3.elimdup: same fixture, and the count is taken on the stored
+    // (unshifted) values, so the shift does not enter it.
+    PIN("f4.elimdup", "elimdup=4", dumpElimDup(m));
     PIN("f4.counts", "comps=3 ncomp=3 npatch=2 map=27 size=24 free=20 elim=4 cpld=3 tagged=0 allfree=0 perm=0 final=1", dumpCounts(m));
     PIN("f4.percomp", "c0:size=8,free=7,total=9 c1:size=7,free=5,total=9 c2:size=9,free=8,total=9", dumpPerComponent(m));
     PIN("f4.layout", "off=[0,4] ps=c0:[4,5] c1:[4,5] c2:[4,5]", dumpLayout(m));
@@ -976,15 +966,13 @@ TEST(three_comp_shifted)
 TEST(identity_mapper)
 {
     const gsDofMapper m = identityMapper();
-    // Known-defective value, pinned deliberately: boundarySizeWithDuplicates
-    // compares each component's entries against that component's own
-    // freeSize(i) instead of the global free count, so its answer is
-    // meaningless on a multi-component mapper.
-    PIN("f5.elimdup", "elimdup=7", dumpElimDup(m));
+    // boundarySizeWithDuplicates counts the eliminated dofs with their
+    // multiplicity over patches, so it is bounded below by boundarySize().
+    PIN("f5.elimdup", "elimdup=0", dumpElimDup(m));
     PIN("f5.counts", "comps=2 ncomp=2 npatch=3 map=14 size=14 free=14 elim=0 cpld=0 tagged=0 allfree=1 perm=1 final=1", dumpCounts(m));
     PIN("f5.percomp", "c0:size=7,free=7,total=7 c1:size=7,free=7,total=7", dumpPerComponent(m));
     PIN("f5.layout", "off=[0,0,0] ps=c0:[7,7,7] c1:[7,7,7]", dumpLayout(m));
-    PIN("f5.firstlast", "first0=0 last=14", dumpFirstLast(m));   // firstIndex(0) only, see F1
+    PIN("f5.firstlast", "first0=0 last=14", dumpFirstLast(m));
     PIN("f5.asvector", "c0[0,1,2,3,4,5,6] c1[7,8,9,10,11,12,13]", dumpAsVector(m));
     PIN("f5.mapindex", "[0,1,2,3,4,5,6,7,8,9,10,11,12,13]", dumpMapIndex(m));
     PIN("f5.index", "c0|0,1,2,3,4,5,6|0,1,2,3,4,5,6|0,1,2,3,4,5,6;c1|7,8,9,10,11,12,13|7,8,9,10,11,12,13|7,8,9,10,11,12,13", dumpIndex(m));
@@ -1003,33 +991,38 @@ TEST(identity_mapper)
 // F6 -- F3 with markCoupledAsTagged and a permuted component-0 free block
 // =========================================================================
 
-// The cpld=5 in f6.counts is a known-defective value, pinned deliberately:
-// permuteFreeDofs zeroes the permuted component's coupled prefix and then
-// applies "*s += (*s-1)" (i.e. *s = 2*(*s)-1) to every later cumulative
-// coupled prefix, so coupledSize() grows from 3 to 5 merely by permuting.
-// The plan gives permuteFreeDofs a corrected contract (later prefixes
-// adjusted by SUBTRACTING the former coupled count of the permuted
-// component), so a later commit is expected to change this one number.  The
-// remaining f6 values are ordinary pins.
+// The cpld=2 in f6.counts records the corrected permuteFreeDofs bookkeeping.
+// Permuting a component destroys the ability to track ITS coupled dofs, so
+// that component's own coupled count drops to zero and every later
+// cumulative prefix loses exactly that count: F3 has coupled counts 1, 2, 0
+// per component (cumulative 1, 3, 3), so permuting component 0 leaves
+// cumulative 0, 2, 2 and coupledSize() == 2 -- component 1's two coupled
+// dofs are still tracked.  The earlier revision applied "*s += (*s-1)"
+// (i.e. *s = 2*(*s)-1) here and reported 5, i.e. MORE coupled dofs than
+// before the permutation.  The remaining f6 values are ordinary pins.
 //
-// The tagged=[] in f6.tagged is likewise a known-defective value:
-// markCoupledAsTagged tags the indices m_numFreeDofs[c+1]+m_numElimDofs[c]+i,
-// which are disjoint from the actual coupled dofs, and permuteFreeDofs then
-// rebuilds m_tagged from the dofs that really are tagged -- none.  This
-// defect is deliberately left alone here, so a later commit is not expected
-// to change it.
+// f6.tagged is the composition of the two tag operations, both corrected.
+// markCoupledAsTagged tags F3's real coupled dofs, 6, 10 and 11; permuting
+// component 0 then moves the one inside that component's free block [0,7),
+// 6 -> perm[6] == 4, and leaves 10 and 11 -- which belong to component 1 --
+// where they are.  Both halves used to be wrong and used to cancel: the tags
+// were computed as m_numFreeDofs[c+1]+m_numElimDofs[c]+i, a set disjoint
+// from the coupled dofs whose last entries ran past size() altogether, and
+// permuteFreeDofs then rebuilt m_tagged by walking only the permuted
+// component's storage, deleting every one of them.  The list came out empty,
+// which is why neither defect was visible here.  See
+// mark_coupled_as_tagged_tags_the_coupled_dofs and
+// permute_free_dofs_keeps_other_components_tags.
 TEST(permuted_mapper)
 {
     const gsDofMapper m = permutedMapper();
-    // Known-defective value, pinned deliberately: boundarySizeWithDuplicates
-    // compares each component's entries against that component's own
-    // freeSize(i) instead of the global free count, so its answer is
-    // meaningless on a multi-component mapper.
-    PIN("f6.elimdup", "elimdup=19", dumpElimDup(m));
-    PIN("f6.counts", "comps=3 ncomp=3 npatch=2 map=27 size=24 free=20 elim=4 cpld=5 tagged=0 allfree=0 perm=0 final=1", dumpCounts(m));
+    // boundarySizeWithDuplicates counts the eliminated dofs with their
+    // multiplicity over patches, so it is bounded below by boundarySize().
+    PIN("f6.elimdup", "elimdup=4", dumpElimDup(m));
+    PIN("f6.counts", "comps=3 ncomp=3 npatch=2 map=27 size=24 free=20 elim=4 cpld=2 tagged=3 allfree=0 perm=0 final=1", dumpCounts(m));
     PIN("f6.percomp", "c0:size=8,free=7,total=9 c1:size=7,free=5,total=9 c2:size=9,free=8,total=9", dumpPerComponent(m));
     PIN("f6.layout", "off=[0,4] ps=c0:[4,5] c1:[4,5] c2:[4,5]", dumpLayout(m));
-    PIN("f6.firstlast", "first0=0 last=20", dumpFirstLast(m));   // firstIndex(0) only, see F1
+    PIN("f6.firstlast", "first0=0 last=20", dumpFirstLast(m));
     PIN("f6.asvector", "c0[20,3,0,4,4,6,1,5,2] c1[21,7,10,11,8,10,11,9,22] c2[12,13,14,15,16,17,18,23,19]", dumpAsVector(m));
     PIN("f6.mapindex", "[20,3,0,4,4,6,1,5,2,21,7,10,11,8,10,11,9,22,12,13,14,15,16,17,18,23,19]", dumpMapIndex(m));
     PIN("f6.index", "c0|20,3,0,4|4,6,1,5,2;c1|21,7,10,11|8,10,11,9,22;c2|12,13,14,15|16,17,18,23,19", dumpIndex(m));
@@ -1041,7 +1034,7 @@ TEST(permuted_mapper)
     PIN("f6.componentof", "[0,0,0,0,0,0,0,1,1,1,1,1,2,2,2,2,2,2,2,2,0,1,1,2]", dumpComponentOf(m));
     PIN("f6.preimage", "0[(0,2)] 1[(1,2)] 2[(1,4)] 3[(0,1)] 4[(0,3),(1,0)] 5[(1,3)] 6[(1,1)] 7[(0,1)] 8[(1,0)] 9[(1,3)] 10[(0,2),(1,1)] 11[(0,3),(1,2)] 12[(0,0)] 13[(0,1)] 14[(0,2)] 15[(0,3)] 16[(1,0)] 17[(1,1)] 18[(1,2)] 19[(1,4)] 20[(0,0)] 21[(0,0)] 22[(1,4)] 23[(1,3)]", dumpPreImages(m));
     PIN("f6.anypreimage", "[(0,2),(1,2),(1,4),(0,1),(0,3),(1,3),(1,1),(0,1),(1,0),(1,3),(0,2),(0,3),(0,0),(0,1),(0,2),(0,3),(1,0),(1,1),(1,2),(1,4),(0,0),(0,0),(1,4),(1,3)]", dumpAnyPreImage(m));
-    PIN("f6.tagged", "tagged=[] n=0 gflags=........................ flags=....|.....;....|.....;....|..... tindex=0,0,0,0|0,0,0,0,0;0,0,0,0|0,0,0,0,0;0,0,0,0|0,0,0,0,0", dumpTagged(m));
+    PIN("f6.tagged", "tagged=[4,10,11] n=3 gflags=....T.....TT............ flags=...T|T....;..TT|.TT..;....|..... tindex=3,0,0,0|0,1,0,1,0;3,1,1,2|1,1,2,1,3;3,3,3,3|3,3,3,3,3", dumpTagged(m));
 }
 
 // =========================================================================
@@ -1055,7 +1048,7 @@ TEST(collapsed_mapper)
     PIN("f7.counts", "comps=1 ncomp=1 npatch=2 map=10 size=8 free=8 elim=0 cpld=1 tagged=0 allfree=1 perm=0 final=1", dumpCounts(m));
     PIN("f7.percomp", "c0:size=8,free=8,total=10", dumpPerComponent(m));
     PIN("f7.layout", "off=[0,5] ps=c0:[5,5]", dumpLayout(m));
-    PIN("f7.firstlast", "first0=0 last=8", dumpFirstLast(m));   // firstIndex(0) only, see F1
+    PIN("f7.firstlast", "first0=0 last=8", dumpFirstLast(m));
     PIN("f7.asvector", "c0[7,0,7,1,7,2,3,4,5,6]", dumpAsVector(m));
     PIN("f7.mapindex", "[7,0,7,1,7,2,3,4,5,6]", dumpMapIndex(m));
     PIN("f7.index", "c0|7,0,7,1,7|2,3,4,5,6", dumpIndex(m));
@@ -1064,7 +1057,6 @@ TEST(collapsed_mapper)
     PIN("f7.gflags", "FFFFFFFF gbi=[]", dumpGlobalFlags(m, 0));
     PIN("f7.findbf", "bnd=[],[] free=[0,1,2,3,4],[0,1,2,3,4]", dumpFindBoundaryFree(m));
     PIN("f7.onpatch", "0:1/- 1:3/- 2:-/0 3:-/1 4:-/2 5:-/3 6:-/4 7:0/-", dumpIndexOnPatch(m));
-    // Single-component fixture; see single_patch_plain_coupled_queries.
     PIN("f7.coupled", "flags=C.C.C|..... cidx=[0:0->0,0:2->0,0:4->0] gflags=.......C findCoupled=[0,2,4],[] findCoupledPairs=00[],01[],10[],11[] findFreeUncoupled=[1,3],[0,1,2,3,4]", dumpCoupledQueries(m));
     // Zero-shift fixture; see single_patch_plain_component_and_preimage.
     PIN("f7.componentof", "[0,0,0,0,0,0,0,0]", dumpComponentOf(m));
@@ -1085,7 +1077,7 @@ TEST(creator_two_patch_counts)
     PIN("f8.counts", "comps=1 ncomp=1 npatch=2 map=50 size=45 free=45 elim=0 cpld=5 tagged=0 allfree=1 perm=0 final=1", dumpCounts(m));
     PIN("f8.percomp", "c0:size=45,free=45,total=50", dumpPerComponent(m));
     PIN("f8.layout", "off=[0,25] ps=c0:[25,25]", dumpLayout(m));
-    PIN("f8.firstlast", "first0=0 last=45", dumpFirstLast(m));   // firstIndex(0) only, see F1
+    PIN("f8.firstlast", "first0=0 last=45", dumpFirstLast(m));
 }
 
 TEST(creator_two_patch_indices)
@@ -1104,7 +1096,6 @@ TEST(creator_two_patch_indices)
 TEST(creator_two_patch_coupled_queries)
 {
     const gsDofMapper m = creatorTwoPatch();
-    // Single-component fixture; see single_patch_plain_coupled_queries.
     PIN("f8.coupled", "flags=....C....C....C....C....C|C....C....C....C....C.... cidx=[0:4->0,0:9->1,0:14->2,0:19->3,0:24->4,1:0->0,1:5->1,1:10->2,1:15->3,1:20->4] gflags=........................................CCCCC findCoupled=[4,9,14,19,24],[0,5,10,15,20] findCoupledPairs=00[],01[4,9,14,19,24],10[0,5,10,15,20],11[] findFreeUncoupled=[0,1,2,3,5,6,7,8,10,11,12,13,15,16,17,18,20,21,22,23],[1,2,3,4,6,7,8,9,11,12,13,14,16,17,18,19,21,22,23,24]", dumpCoupledQueries(m));
 }
 
@@ -1252,7 +1243,7 @@ TEST(ragged_identity_indexOnPatch)
 // F11/F12 -- the Raviart-Thomas pair, and the declared-distinctness contract
 // =========================================================================
 
-// Pins the dimension table the whole plan turns on: on an isotropic mesh the
+// Pins the dimension table this whole feature turns on: on an isotropic mesh the
 // two RT component spaces have exactly the same dimension, and only an
 // anisotropic mesh separates them.  If this ever stops holding, the fixtures
 // below stop testing what they claim to test.
@@ -1524,6 +1515,403 @@ TEST(construction_rejects_counts_beyond_index_range)
         dofs[0] = imax; dofs[1] = 1;    // each fits, the sum does not
         CHECK_THROW(m.setIdentity(1, dofs), std::runtime_error);
     }
+}
+
+
+// =========================================================================
+// Per-component prefix queries
+// =========================================================================
+//
+// After finalize() the per-component count vectors m_numFreeDofs,
+// m_numElimDofs and m_numCpldDofs are CUMULATIVE prefix sums, so a
+// component's own count is always a prefix difference.  Reading a prefix
+// where a difference is meant, or the last component's prefix where the
+// queried component's is meant, is correct for component 0 and for a
+// single-component mapper and wrong everywhere else -- which is why every
+// test below needs a fixture with three components and asserts on the
+// components >= 1.
+//
+// F3 (threeCompUniform) has, per component:
+//
+//   component | local storage per patch          | free | cpld | elim
+//   ----------+----------------------------------+------+------+-----
+//       0     | [20,0,1,6]  [6,2,3,4,5]          |   7  |   1  |  1
+//       1     | [21,7,10,11] [8,10,11,9,22]      |   5  |   2  |  2
+//       2     | [12,13,14,15] [16,17,18,23,19]   |   8  |   0  |  1
+//
+// so the free blocks are [0,7), [7,12), [12,20), the coupled dofs sit at the
+// top of each ({6}, {10,11}, {}) and the eliminated ones are 20, {21,22} and
+// 23.  Every literal below is read off that table.
+
+TEST(three_comp_coupled_queries_per_component)
+{
+    const gsDofMapper m = threeCompUniform();
+
+    PIN("f3.coupled.c0",
+        "flags=...C|C.... cidx=[0:3->0,1:0->0] gflags=......C...CC............"
+        " findCoupled=[3],[0] findCoupledPairs=00[],01[3],10[0],11[]"
+        " findFreeUncoupled=[1,2],[1,2,3,4]",
+        dumpCoupledQueries(m, 0));
+
+    PIN("f3.coupled.c1",
+        "flags=..CC|.CC.. cidx=[0:2->1,0:3->2,1:1->1,1:2->2]"
+        " gflags=......C...CC............"
+        " findCoupled=[2,3],[1,2] findCoupledPairs=00[],01[2,3],10[1,2],11[]"
+        " findFreeUncoupled=[1],[0,3]",
+        dumpCoupledQueries(m, 1));
+
+    PIN("f3.coupled.c2",
+        "flags=....|..... cidx=[] gflags=......C...CC............"
+        " findCoupled=[],[] findCoupledPairs=00[],01[],10[],11[]"
+        " findFreeUncoupled=[0,1,2,3],[0,1,2,4]",
+        dumpCoupledQueries(m, 2));
+}
+
+// is_coupled_index, on its own and over the whole global range: exactly the
+// three dofs that really are shared between the two patches, and nothing
+// else.  Taking the cumulative m_numCpldDofs[c+1] as the band width instead
+// of the component's own count widens component 1's band by component 0's
+// one coupled dof and component 2's by all three, so free-uncoupled dofs of
+// the later components are reported coupled.
+TEST(is_coupled_index_uses_the_component_own_coupled_count)
+{
+    const gsDofMapper m = threeCompUniform();
+
+    // Derived independently of the mapper's own bands: a coupled dof is a
+    // free dof with more than one pre-image.
+    std::vector<std::pair<index_t,index_t> > pre;
+    for (index_t gl = 0; gl != m.size(); ++gl)
+    {
+        m.preImage(gl, pre);
+        const bool shared = m.is_free_index(gl) && pre.size() > 1;
+        CHECK_EQUAL(shared, m.is_coupled_index(gl));
+    }
+
+    CHECK_EQUAL(3, m.coupledSize());
+}
+
+TEST(three_comp_find_boundary_free_per_component)
+{
+    const gsDofMapper m = threeCompUniform();
+    PIN("f3.findbf.c0", "bnd=[0],[] free=[1,2,3],[0,1,2,3,4]",   dumpFindBoundaryFree(m, 0));
+    PIN("f3.findbf.c1", "bnd=[0],[4] free=[1,2,3],[0,1,2,3]",    dumpFindBoundaryFree(m, 1));
+    PIN("f3.findbf.c2", "bnd=[],[3] free=[0,1,2,3],[0,1,2,4]",   dumpFindBoundaryFree(m, 2));
+}
+
+// =========================================================================
+// firstIndex(c)
+// =========================================================================
+
+// firstIndex(c) is the smallest global index component c owns.  Checked
+// against the minimum actually taken by index(i,k,c), which is an
+// independent oracle: it never consults the count vectors.
+namespace {
+void checkFirstIndexAgainstMinimum(const gsDofMapper & m)
+{
+    for (index_t c = 0; c != m.numComponents(); ++c)
+    {
+        index_t least = -1;
+        for (index_t k = 0; k != nPatches(m); ++k)
+        {
+            const index_t n = static_cast<index_t>(m.patchSize(k, c));
+            for (index_t i = 0; i != n; ++i)
+            {
+                const index_t gl = m.index(i, k, c);
+                if (least < 0 || gl < least) least = gl;
+            }
+        }
+        // A component with no local dof at all has no index to compare
+        // against; first_index_of_an_empty_component pins that case.
+        if (least >= 0)
+            CHECK_EQUAL(least, m.firstIndex(c));
+    }
+}
+} // anonymous namespace
+
+TEST(first_index_is_the_smallest_index_of_the_component)
+{
+    checkFirstIndexAgainstMinimum(threeCompUniform());
+    checkFirstIndexAgainstMinimum(threeCompShifted());
+    checkFirstIndexAgainstMinimum(identityMapper());
+    checkFirstIndexAgainstMinimum(raggedPatchMapper());
+
+    // The literals for F3: the free block starts, since every component has
+    // free dofs.  m_numFreeDofs[c]+m_numElimDofs[c] -- the pre-renumbering
+    // base -- overshoots them by the eliminated dofs of the earlier
+    // components once finalize() has moved the eliminated blocks above all
+    // the free ones.
+    const gsDofMapper m = threeCompUniform();
+    CHECK_EQUAL(0,  m.firstIndex(0));
+    CHECK_EQUAL(7,  m.firstIndex(1));
+    CHECK_EQUAL(12, m.firstIndex(2));
+}
+
+// A component that owns no dof at all has no index to report.  It must not
+// be confused with an eliminated-only component: "no free dof" alone is not
+// evidence of an eliminated block, and answering with the eliminated-block
+// start pushes an empty component past the whole free range.
+TEST(first_index_of_an_empty_component)
+{
+    std::vector<gsVector<index_t> > sz(3);
+    sz[0].resize(1); sz[0][0] = 2;
+    sz[1].resize(1); sz[1][0] = 0;   // empty component
+    sz[2].resize(1); sz[2][0] = 3;
+    gsDofMapper m(sz, /*hasDistinctComponentSpaces=*/false);
+    m.finalize();
+
+    CHECK_EQUAL(5, m.size());
+    CHECK_EQUAL(5, m.freeSize());
+    CHECK_EQUAL(0, m.boundarySize());
+    CHECK_EQUAL(0, m.size(1));
+
+    CHECK_EQUAL(0, m.firstIndex(0));
+    CHECK_EQUAL(2, m.firstIndex(1));   // the start of its (empty) free block
+    CHECK_EQUAL(2, m.firstIndex(2));
+    checkFirstIndexAgainstMinimum(m);
+}
+
+// A component whose dofs are all eliminated owns no free index at all, so
+// its smallest index is the start of its eliminated block -- which lies
+// above every component's free block.
+TEST(first_index_of_an_eliminated_only_component)
+{
+    gsVector<index_t> sz(1);
+    sz[0] = 3;
+    gsDofMapper m(sz, 2);
+    for (index_t i = 0; i != 3; ++i)
+        m.eliminateDof(i, 0, 0);
+    m.finalize();
+
+    CHECK_EQUAL(3, m.freeSize());
+    CHECK_EQUAL(3, m.boundarySize());
+    CHECK_EQUAL(0, m.freeSize(0));
+    checkFirstIndexAgainstMinimum(m);
+
+    CHECK_EQUAL(3, m.firstIndex(0));   // its eliminated block
+    CHECK_EQUAL(0, m.firstIndex(1));   // its free block
+}
+
+// =========================================================================
+// inverseAsVector(c)
+// =========================================================================
+
+// The inverse of asVector(c) over the whole global index space: every
+// position that is not the image of a local dof of component c carries the
+// -1 sentinel instead of whatever the allocation happened to hold.
+TEST(inverse_as_vector_marks_other_components)
+{
+    gsVector<index_t> sz(2);
+    sz[0] = 3; sz[1] = 4;
+    gsDofMapper m(sz, 2);
+    m.finalize();
+    CHECK(m.isPermutation());
+
+    PIN("inv.c0", "[0,1,2,3,4,5,6,-1,-1,-1,-1,-1,-1,-1]", join(m.inverseAsVector(0)));
+    PIN("inv.c1", "[-1,-1,-1,-1,-1,-1,-1,0,1,2,3,4,5,6]", join(m.inverseAsVector(1)));
+
+    // It really is the inverse of asVector on the component's own block.
+    for (index_t c = 0; c != m.numComponents(); ++c)
+    {
+        const gsVector<index_t> fwd = m.asVector(c);
+        const gsVector<index_t> inv = m.inverseAsVector(c);
+        CHECK_EQUAL(m.size(), inv.size());
+        for (index_t j = 0; j != fwd.size(); ++j)
+            CHECK_EQUAL(j, inv[fwd[j]]);
+    }
+}
+
+// =========================================================================
+// inverseOnPatch(k)
+// =========================================================================
+
+// The inverse on a patch covers exactly the dofs that live on that patch,
+// in every component.  Iterating a whole component vector from the patch
+// offset instead attributes the following patches' dofs to the requested
+// one and, for every patch but the first, reads past the end of the vector.
+TEST(inverse_on_patch_is_bounded_to_the_patch)
+{
+    const gsDofMapper m = threeCompUniform();
+
+    PIN("f3.inverseonpatch.k0",
+        "[(0,1),(1,2),(6,3),(7,1),(10,2),(11,3),(12,0),(13,1),(14,2),(15,3),(20,0),(21,0)]",
+        dumpInverseOnPatch(m, 0));
+    PIN("f3.inverseonpatch.k1",
+        "[(2,1),(3,2),(4,3),(5,4),(6,0),(8,0),(9,3),(10,1),(11,2),(16,0),(17,1),(18,2),(19,4),(22,4),(23,3)]",
+        dumpInverseOnPatch(m, 1));
+
+    // Independent oracle: the result is exactly { index(i,k,c) -> i }.
+    for (index_t k = 0; k != nPatches(m); ++k)
+    {
+        const std::map<index_t,index_t> inv = m.inverseOnPatch(k);
+        size_t expected = 0;
+        for (index_t c = 0; c != m.numComponents(); ++c)
+        {
+            const index_t n = static_cast<index_t>(m.patchSize(k, c));
+            expected += n;
+            for (index_t i = 0; i != n; ++i)
+            {
+                const std::map<index_t,index_t>::const_iterator it =
+                    inv.find(m.index(i, k, c));
+                CHECK(it != inv.end());
+                if (it != inv.end()) CHECK_EQUAL(i, it->second);
+            }
+        }
+        // Coupled dofs appear once per local dof they carry on this patch,
+        // so the map may be smaller than the total, never larger.
+        CHECK(inv.size() <= expected);
+    }
+}
+
+// Under the aliased layout every patch carries the complete inverse, so all
+// patches return identical contents.
+TEST(inverse_on_patch_is_aliased_under_global_identity)
+{
+    const gsDofMapper m = raggedIdentityMapper();
+    const std::string k0 = dumpInverseOnPatch(m, 0);
+    for (index_t k = 1; k != nPatches(m); ++k)
+        PIN("f10.inverseonpatch", k0, dumpInverseOnPatch(m, k));
+    CHECK_EQUAL(static_cast<size_t>(m.size()), m.inverseOnPatch(0).size());
+}
+
+// =========================================================================
+// anyPreImages(c)
+// =========================================================================
+
+// anyPreImages indexes its result by the global dof value, which for every
+// component but the first is larger than that component's own storage size:
+// sizing the result by that storage size is an out-of-bounds write, not
+// merely a wrong answer, and could not be exercised at all before.
+TEST(any_pre_images_agrees_with_any_pre_image)
+{
+    const gsDofMapper m = threeCompUniform();
+
+    for (index_t c = 0; c != m.numComponents(); ++c)
+    {
+        const std::vector<std::pair<index_t,index_t> > all = m.anyPreImages(c);
+        CHECK(all.size() >= static_cast<size_t>(m.size()));
+
+        for (index_t gl = 0; gl != m.size(); ++gl)
+        {
+            if (m.componentOf(gl) == c)
+                CHECK(m.anyPreImage(gl) == all[gl]);
+            else
+                CHECK_EQUAL(-1, all[gl].first);   // not in this component
+        }
+    }
+}
+
+// =========================================================================
+// permuteFreeDofs(permutation, c)
+// =========================================================================
+
+// The permutation is component-local: it has one entry per free dof of the
+// component it is applied to, and it may not move an index out of that
+// component's free block.  Taking its length from the cumulative
+// m_numFreeDofs[c+1] both demands a longer permutation than the component
+// has free dofs and, indexed by an unrebased global index, would permute
+// component c's dofs into its predecessors' bands.
+TEST(permute_free_dofs_is_component_local)
+{
+    gsDofMapper m = threeCompUniform();
+    CHECK_EQUAL(5, m.freeSize(1));
+
+    gsVector<index_t> perm(5);
+    perm << 4, 3, 2, 1, 0;
+    m.permuteFreeDofs(perm, 1);
+
+    // Component 1's free block is [7,12): every free index stays inside it,
+    // and the two eliminated dofs (21 and 22) are untouched.
+    PIN("perm.c1", "[21,11,8,7,10,8,7,9,22]", join(m.asVector(1)));
+
+    // The other components are not touched at all.
+    PIN("perm.c0", "[20,0,1,6,6,2,3,4,5]",          join(m.asVector(0)));
+    PIN("perm.c2", "[12,13,14,15,16,17,18,23,19]",  join(m.asVector(2)));
+
+    // Permuting a component destroys the tracking of ITS coupled dofs only;
+    // component 0's single coupled dof is still counted.
+    CHECK_EQUAL(1, m.coupledSize());
+}
+
+// markCoupledAsTagged tags the top of each component's own free block, which
+// is where finalize() puts that component's coupled dofs.  Taking the band
+// start from m_numFreeDofs[c+1]+m_numElimDofs[c] instead walks off the
+// coupled dofs entirely -- the eliminated blocks are stacked above every
+// component's free block, not interleaved with them -- and taking the band
+// WIDTH from the cumulative m_numCpldDofs[c+1] then overruns, for the last
+// component past size() itself.
+TEST(mark_coupled_as_tagged_tags_the_coupled_dofs)
+{
+    gsDofMapper m = threeCompUniform();
+    CHECK_EQUAL(0, m.taggedSize());       // nothing tagged beforehand
+    m.markCoupledAsTagged();
+
+    PIN("tagcpld.f3", "[6,10,11]", join(m.getTagged()));
+    CHECK_EQUAL(m.coupledSize(), m.taggedSize());
+
+    // The tagged set is now exactly the coupled set, component by component.
+    for (index_t gl = 0; gl != m.size(); ++gl)
+        CHECK_EQUAL(m.is_coupled_index(gl), m.is_tagged_index(gl));
+
+    // Single component, one collapsed group: the one coupled dof, and it is
+    // a valid index -- the old band start, 8, was size() itself.
+    gsDofMapper c = collapsedMapper();
+    c.markCoupledAsTagged();
+    PIN("tagcpld.f7", "[7]", join(c.getTagged()));
+    CHECK(c.getTagged().back() < c.size());
+}
+
+// The coupled dofs are added to whatever is already tagged, not substituted
+// for it.
+TEST(mark_coupled_as_tagged_keeps_existing_tags)
+{
+    gsDofMapper m = twoPatchCoupledElim();   // markTagged'd dofs 0 and 3
+    PIN("tagcpld.before", "[0,3]", join(m.getTagged()));
+    m.markCoupledAsTagged();
+    PIN("tagcpld.after", "[0,3,5,6]", join(m.getTagged()));
+}
+
+// A component-local permutation moves only the tags that lie in that
+// component's free block.  Rebuilding the tag list from the permuted
+// component's storage -- which is the only storage the permutation walks --
+// visits no other component, so every tag of every other component is
+// silently deleted.  That breaks the documented "markCoupledAsTagged(), then
+// permute, then use the tagged queries" workflow, which is the whole reason
+// permuting is allowed to destroy the coupled bookkeeping in the first place.
+TEST(permute_free_dofs_keeps_other_components_tags)
+{
+    gsDofMapper m = threeCompUniform();
+
+    m.markTagged(1, 0, 0);   // component 0, global 0
+    m.markTagged(1, 0, 1);   // component 1, global 7  -- the permuted one
+    m.markTagged(1, 0, 2);   // component 2, global 13
+    PIN("permtag.before", "[0,7,13]", join(m.getTagged()));
+
+    gsVector<index_t> perm(5);
+    perm << 4, 3, 2, 1, 0;
+    m.permuteFreeDofs(perm, 1);
+
+    // Component 1's free block is [7,12), so its tag 7 becomes 7+perm[0]==11.
+    // The other two are outside the block and must be untouched.
+    PIN("permtag.after", "[0,11,13]", join(m.getTagged()));
+    CHECK_EQUAL(3, m.taggedSize());
+    CHECK(m.is_tagged_index(0));
+    CHECK(m.is_tagged_index(11));
+    CHECK(m.is_tagged_index(13));
+    CHECK(!m.is_tagged_index(7));
+}
+
+// An eliminated dof's tag is not in any free block, so it survives a
+// permutation of its own component unchanged.
+TEST(permute_free_dofs_keeps_eliminated_tags)
+{
+    gsDofMapper m = threeCompUniform();
+    m.markTagged(0, 0, 0);   // component 0's eliminated dof, global 20
+
+    gsVector<index_t> perm(7);
+    perm << 3, 0, 6, 1, 5, 2, 4;
+    m.permuteFreeDofs(perm, 0);
+
+    PIN("permtag.elim", "[20]", join(m.getTagged()));
 }
 
 }

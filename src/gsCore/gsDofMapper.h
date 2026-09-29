@@ -204,6 +204,10 @@ public:
 
     /** \brief Returns a vector taking global indices to flat local
 
+        The inverse of asVector(\a comp) in the full (unshifted) global
+        index space: size() entries, with -1 in every position that is not
+        the image of a local dof of component \a comp.
+
         Assumes that the mapper is a permutation
     */
     gsVector<index_t> inverseAsVector(index_t comp = 0) const;
@@ -280,9 +284,28 @@ public:
     /// markCoupledAsTagged() and then use the corresponding functions for tagged dofs.
     void permuteFreeDofs(const gsVector<index_t>& permutation, index_t comp = 0);
 
-    ///\brief Returns the smallest value of the indices for \a comp
+    ///\brief Returns the smallest global index present in component \a comp
+    ///
+    /// After finalize() the free blocks of all components come first,
+    /// component by component, and the eliminated blocks of all components
+    /// follow them.  There are three cases:
+    ///
+    /// - the component has free dofs: the start of its own free block;
+    /// - it has none but has eliminated ones: the start of its own
+    ///   eliminated block, which lies above every component's free block;
+    /// - it owns no dof at all (an empty component, or a mapper that has
+    ///   not been finalized): no index is present, and the start of its
+    ///   free block is reported.  Note that this is NOT the eliminated
+    ///   branch: an empty component must not be pushed past the free range
+    ///   merely for having no free dof.
     index_t firstIndex(index_t comp = 0) const
-    { return m_numFreeDofs[comp] + m_numElimDofs[comp] + m_shift; }
+    {
+        if (static_cast<size_t>(comp)+1 < m_numFreeDofs.size() &&
+            m_numFreeDofs[comp+1] == m_numFreeDofs[comp] &&   // no free dof
+            m_numElimDofs[comp+1] != m_numElimDofs[comp])     // but eliminated ones
+            return m_numFreeDofs.back() + m_numElimDofs[comp] + m_shift;
+        return m_numFreeDofs[comp] + m_shift;
+    }
 
     ///\brief Returns one past the biggest value of the free indices
     index_t lastIndex() const { return m_shift + freeSize(); }
@@ -367,6 +390,12 @@ public:
     { return m_numFreeDofs.back()+m_numElimDofs.back()==m_curElimId; }
 
     /// @brief Returns the coupled dof index
+    ///
+    /// The coupled dofs of component \a c occupy the top of that component's
+    /// own free block, and are numbered consecutively across components, so
+    /// the shift applied here is the CUMULATIVE coupled prefix -- unlike
+    /// is_coupled_index(), which needs the component's own count to locate
+    /// the band.
     inline index_t cindex(index_t i, index_t k = 0, index_t c = 0) const
     {
         GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
@@ -422,8 +451,15 @@ public:
     {
       const index_t gc = componentOf(gl);
       const index_t vv = m_numFreeDofs[gc+1] + m_shift;
-      return  (gl < vv && // is a free dof and
-	      (gl + m_numCpldDofs[gc+1] + 1 > vv) );  // is not standard dof
+      // The coupled dofs of a component sit at the top of that component's
+      // own free block, so the band is that component's own coupled count
+      // wide.  m_numCpldDofs is a cumulative prefix sum after finalize(), so
+      // the own count is the prefix difference: taking m_numCpldDofs[gc+1]
+      // directly widens the band by every preceding component's coupled
+      // count and reports free-uncoupled dofs of components >= 1 as coupled.
+      const index_t nc = m_numCpldDofs[gc+1] - m_numCpldDofs[gc];
+      return  (gl < vv &&      // is a free dof of component gc, and
+               gl >= vv - nc); // lies in its coupled band
     }
 
     /// Returns true if local dof \a i of patch \a k is tagged.
@@ -564,6 +600,12 @@ public:
 
     /// \brief Produces the inverse of the mapping on patch \a k
     /// assuming that the map is invertible on that patch
+    ///
+    /// The result covers every component, keyed by global index and valued
+    /// by the patch-local index within the component that global index
+    /// belongs to.  Only the dofs that live on patch \a k are considered;
+    /// under the global-identity/aliased layout every patch carries the
+    /// complete inverse, so the result is the same for every patch.
     std::map<index_t,index_t> inverseOnPatch(const index_t k) const;
 
     /// \brief For \a gl being a global index, this function returns
@@ -592,20 +634,27 @@ public:
         return m_dofs[c][n] + m_shift;
     }
 
-    /// \brief Returns all boundary dofs on patch k (local dof indices)
-    gsVector<index_t> findBoundary(const index_t k) const;
+    /// \brief Returns all boundary dofs on patch k of component \a comp
+    /// (local dof indices)
+    gsVector<index_t> findBoundary(const index_t k, const index_t comp = 0) const;
 
-    /// \brief Returns all free dofs on patch k (local dof indices)
-    gsVector<index_t> findFree(const index_t k) const;
+    /// \brief Returns all free dofs on patch k of component \a comp
+    /// (local dof indices)
+    gsVector<index_t> findFree(const index_t k, const index_t comp = 0) const;
 
-    /// \brief Returns all coupled dofs on patch k (local dof indices)
-    gsVector<index_t> findCoupled(const index_t k, const index_t j = -1) const;
+    /// \brief Returns all coupled dofs on patch k of component \a comp
+    /// (local dof indices).  If \a j is a patch index, only the dofs that
+    /// patch k shares with patch j are returned.
+    gsVector<index_t> findCoupled(const index_t k, const index_t j = -1,
+                                  const index_t comp = 0) const;
 
-    /// \brief Returns all free, not coupled dofs on patch k (local dof indices)
-    gsVector<index_t> findFreeUncoupled(const index_t k) const;
+    /// \brief Returns all free, not coupled dofs on patch k of component
+    /// \a comp (local dof indices)
+    gsVector<index_t> findFreeUncoupled(const index_t k, const index_t comp = 0) const;
 
-    /// \brief Returns all tagged dofs on patch k (local dof indices)
-    gsVector<index_t> findTagged(const index_t k) const;
+    /// \brief Returns all tagged dofs on patch k of component \a comp
+    /// (local dof indices)
+    gsVector<index_t> findTagged(const index_t k, const index_t comp = 0) const;
 
 private:
 

@@ -311,16 +311,20 @@ void gsDofMapper::markCoupledAsTagged()
 {
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     m_tagged.reserve(m_tagged.size()+m_numCpldDofs.back());
-    std::vector<index_t>::const_iterator fr = m_numFreeDofs.begin()+1;
-    std::vector<index_t>::const_iterator el = m_numElimDofs.begin();
-    for(std::vector<index_t>::const_iterator cp =
-	  m_numCpldDofs.begin()+1;
-	cp!=m_numCpldDofs.end(); ++cp, ++el, ++fr)
-      {
-	const index_t nd = *fr + *el;
-	for(int i=0; i< *cp;++i)
-	  m_tagged.push_back(nd+i);
-      }
+    // The coupled dofs of a component occupy the top of that component's own
+    // free block, [m_numFreeDofs[c+1]-nc, m_numFreeDofs[c+1]), where nc is
+    // the component's own coupled count -- a prefix difference, since
+    // m_numCpldDofs is cumulative after finalize().  This is exactly the band
+    // is_coupled_index() tests.  m_numElimDofs plays no part: the eliminated
+    // blocks sit above every component's free block rather than interleaved
+    // with them, so adding one to the band start walks off the coupled dofs
+    // entirely -- for the last component, past size() altogether.
+    for (size_t c = 0; c+1 != m_numCpldDofs.size(); ++c)
+    {
+        const index_t nc = m_numCpldDofs[c+1] - m_numCpldDofs[c];
+        for (index_t i = 0; i != nc; ++i)
+            m_tagged.push_back(m_numFreeDofs[c+1] - nc + i);
+    }
     //sort and delete the duplicated ones
     std::sort(m_tagged.begin(),m_tagged.end());
     std::vector<index_t>::iterator it = std::unique(m_tagged.begin(),m_tagged.end());
@@ -547,41 +551,62 @@ void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation, index_t 
 {
     GISMO_ASSERT(comp>-1,"Component is invalid");
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
-    GISMO_ASSERT(m_numFreeDofs[comp+1] == permutation.size(), "permutation size does not match number of free dofs");
+    // The permutation is component-local: it permutes component comp's own
+    // free block among itself.  m_numFreeDofs is a cumulative prefix sum
+    // after finalize(), so the block's length is the prefix difference and
+    // its first index is m_numFreeDofs[comp]; indexing the permutation with
+    // an unrebased global index would run off its end and could move a dof
+    // into a neighbouring component's band.
+    const index_t base  = m_numFreeDofs[comp];
+    const index_t nFree = m_numFreeDofs[comp+1] - base;
+    GISMO_ASSERT(nFree == permutation.size(), "permutation size "<<permutation.size()
+                 <<" does not match the number of free dofs "<<nFree
+                 <<" of component "<<comp);
     //GISMO_ASSERT(m_tagged.empty(), "you cannot permute the dofVector twice, combine the permutation");
     //We could check here, that permutation is indeed a permutation
 
     //make a copy of the old ordering, easiest way to implement the permutation. Inplace reordering is quite hard.
     std::vector<index_t> dofs = m_dofs[comp];
-    //first use a tempory coupled vector, other wise is_coupled_index() would not work correctly
-    std::vector<index_t> tagged_permuted;
-    tagged_permuted.reserve(taggedSize()); //reserve enough memory
 
     for(index_t i=0; i<(index_t)dofs.size();++i)
     {
         const index_t idx = dofs[i];
         if(is_free_index(idx))
         {
-            m_dofs[comp][i] = permutation[idx];
-            //fill  bookkeeping for tagged dofs
-            if(is_tagged_index(idx))
-                tagged_permuted.push_back(m_dofs[comp][i]);
+            GISMO_ASSERT(idx-base >= 0 && idx-base < nFree,
+                         "gsDofMapper::permuteFreeDofs: free index "<<idx
+                         <<" is outside component "<<comp<<"'s free block ["
+                         <<base<<","<<base+nFree<<").");
+            GISMO_ASSERT(permutation[idx-base] >= 0 && permutation[idx-base] < nFree,
+                         "gsDofMapper::permuteFreeDofs: permutation value "
+                         <<permutation[idx-base]<<" is out of range [0,"<<nFree<<").");
+            m_dofs[comp][i] = base + permutation[idx-base];
         }
-        else if(is_tagged_index(idx)) //Take care about eliminated tagged dofs
-            tagged_permuted.push_back(idx);
     }
-    m_tagged.swap(tagged_permuted);
+
+    // Tags are global indices, and only the ones inside this component's
+    // free block are moved by a component-local permutation.  Every other
+    // tag -- another component's, or an eliminated dof's -- must survive
+    // untouched, which is why the list is remapped in place rather than
+    // rebuilt from this component's storage: rebuilding visits no other
+    // component and would silently delete their tags.
+    for(std::vector<index_t>::iterator t = m_tagged.begin(); t != m_tagged.end(); ++t)
+        if (*t >= base && *t < base + nFree)
+            *t = base + permutation[*t - base];
 
     //sort and delete the duplicated ones
     std::sort(m_tagged.begin(),m_tagged.end());
     std::vector<index_t>::iterator it = std::unique (m_tagged.begin(),m_tagged.end());
     m_tagged.resize( std::distance(m_tagged.begin(),it) );
 
-    //coupled dofs cannot be tracked anymore on this component
-    m_numCpldDofs[comp+1]=m_numCpldDofs[comp];
+    // The coupled dofs of this component cannot be tracked anymore, so its
+    // own coupled count drops to zero.  m_numCpldDofs is cumulative, so
+    // every later prefix loses exactly that count.
+    const index_t nCpld = m_numCpldDofs[comp+1] - m_numCpldDofs[comp];
+    m_numCpldDofs[comp+1] = m_numCpldDofs[comp];
     for(std::vector<index_t>::iterator s=m_numCpldDofs.begin()+comp+2;
 	s<m_numCpldDofs.end(); ++s)
-      *s += (*s-1);
+      *s -= nCpld;
 }
 
 
@@ -805,7 +830,13 @@ std::vector<std::pair<index_t,index_t> > gsDofMapper::anyPreImages(index_t comp)
     const std::vector<index_t> & dofs = m_dofs[comp];
     size_t cur = 0;//local offsetted index
 
-    std::vector<std::pair<index_t,index_t> > result(dofs.size(), {-1,0});
+    // The result is indexed by the global dof value, which for every
+    // component but the first is unrelated to -- and in general larger than
+    // -- that component's own storage size, so sizing it by dofs.size()
+    // writes out of bounds.  The historical length is kept where it is the
+    // larger of the two.
+    const size_t len = std::max(static_cast<size_t>(size()), dofs.size());
+    std::vector<std::pair<index_t,index_t> > result(len, {-1,0});
 
     for (citer it = dofs.begin(); it != dofs.end(); ++it, ++cur)
     {
@@ -833,7 +864,10 @@ gsVector<index_t> gsDofMapper::inverseAsVector(index_t comp) const
 {
     GISMO_ASSERT(comp>-1,"Component is invalid");
     GISMO_ASSERT(isPermutation(), "This dofMapper is not 1-1");
-    gsVector<index_t> v(size());
+    // Every position that is not the image of a local dof of this component
+    // -- every other component's block, in particular -- must be a defined
+    // sentinel and not whatever the allocation happened to contain.
+    gsVector<index_t> v = gsVector<index_t>::Constant(size(), -1);
       for(size_t j = 0; j!= m_dofs[comp].size(); ++j)
 	v[ m_dofs[comp][j] ] = j;
     return v;
@@ -851,8 +885,16 @@ gsDofMapper::inverseOnPatch(const index_t k) const
 
     for(size_t i = 0; i!= m_dofs.size(); ++i)
     {
-        citer it = m_dofs[i].begin() + offAt(static_cast<index_t>(i), k);
-        for(size_t j = 0; j!= m_dofs[i].size(); ++j,++it)
+        const index_t c = static_cast<index_t>(i);
+        // Only the dofs that live on patch k, and only as many of them as
+        // this component has there: iterating the whole component vector
+        // from the patch offset both attributes other patches' dofs to this
+        // one and, for every patch but the first, reads past the end.  Under
+        // the aliased layout patchSize() is the component's global total on
+        // every patch, so the same expression yields the complete inverse.
+        citer it = m_dofs[i].begin() + offAt(c, k);
+        const size_t n = patchSize(k, c);
+        for(size_t j = 0; j!= n; ++j,++it)
             inv[*it]=j;
     }
     return inv;
@@ -877,11 +919,15 @@ index_t gsDofMapper::boundarySizeWithDuplicates() const
 {
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
 
+    // Eliminated dofs of every component are numbered above the free dofs of
+    // ALL components, so the threshold is the global free count.  Comparing
+    // against a component's own freeSize(i) counts the free dofs of the
+    // later components as eliminated.
+    const index_t s = m_numFreeDofs.back() - 1;
     index_t res = 0;
     for (size_t i = 0; i!= m_dofs.size(); ++i)
       res += std::count_if(m_dofs[i].begin(), m_dofs[i].end(),
-			   GS_BIND2ND(std::greater<index_t>(),
-					freeSize(i) - 1) );
+			   GS_BIND2ND(std::greater<index_t>(), s) );
     return res;
 }
 
@@ -925,25 +971,29 @@ gsVector<index_t> gsDofMapper::find_impl(Iterator istart, Iterator iend, Predica
     return rvo;
 }
 
-gsVector<index_t> gsDofMapper::findBoundary(const index_t k) const
+gsVector<index_t> gsDofMapper::findBoundary(const index_t k, const index_t comp) const
 {
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+    GISMO_ASSERT(comp>-1 && static_cast<size_t>(comp)<componentsSize(), "Invalid component index "<< comp <<" >= "<< componentsSize() );
+    // Eliminated dofs of every component are numbered above the free dofs of
+    // all components, so this threshold is component-independent.
     const index_t s = m_numFreeDofs.back() + m_shift - 1;
     typedef std::vector<index_t>::const_iterator citer;
-    citer istart = m_dofs[0].begin() + offAt(0,k);
-    citer iend   = istart + patchSize(k);
+    citer istart = m_dofs[comp].begin() + offAt(comp,k);
+    citer iend   = istart + patchSize(k,comp);
     return find_impl(istart, iend, GS_BIND2ND(std::greater<index_t>(),s));
 }
 
-gsVector<index_t> gsDofMapper::findFree(const index_t k) const
+gsVector<index_t> gsDofMapper::findFree(const index_t k, const index_t comp) const
 {
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+    GISMO_ASSERT(comp>-1 && static_cast<size_t>(comp)<componentsSize(), "Invalid component index "<< comp <<" >= "<< componentsSize() );
     const index_t s = m_numFreeDofs.back() + m_shift;
     typedef std::vector<index_t>::const_iterator citer;
-    citer istart = m_dofs[0].begin() + offAt(0,k);
-    citer iend   = istart + patchSize(k);
+    citer istart = m_dofs[comp].begin() + offAt(comp,k);
+    citer iend   = istart + patchSize(k,comp);
     return find_impl(istart, iend, GS_BIND2ND(std::less<index_t>(),s));
 }
 
@@ -956,25 +1006,31 @@ struct _isBetween
 };
 } // end anonymous namespace
 
-gsVector<index_t> gsDofMapper::findCoupled(const index_t k, const index_t j) const
+gsVector<index_t> gsDofMapper::findCoupled(const index_t k, const index_t j,
+                                           const index_t comp) const
 {
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+    GISMO_ASSERT(comp>-1 && static_cast<size_t>(comp)<componentsSize(), "Invalid component index "<< comp <<" >= "<< componentsSize() );
 
     if (k==j) return gsVector<index_t>();
 
     typedef std::vector<index_t>::const_iterator citer;
-    citer istart = m_dofs[0].begin() + offAt(0,k);
-    citer iend   = istart + patchSize(k);
+    citer istart = m_dofs[comp].begin() + offAt(comp,k);
+    citer iend   = istart + patchSize(k,comp);
 
-    const index_t l = m_numFreeDofs.back()+m_shift-m_numCpldDofs.back()-1;
-    const index_t u = m_numFreeDofs.back()+m_shift;
+    // The coupled dofs of a component sit at the top of that component's own
+    // free block; both bounds are prefix values of that component, not the
+    // last component's totals.
+    const index_t nCpld = m_numCpldDofs[comp+1] - m_numCpldDofs[comp];
+    const index_t l = m_numFreeDofs[comp+1]+m_shift-nCpld-1;
+    const index_t u = m_numFreeDofs[comp+1]+m_shift;
     if (-1==j)
         return find_impl(istart, iend, _isBetween(l,u) );
     else
     {
-        citer istartj = m_dofs[0].begin() + offAt(0,j);
-        citer iendj   = istartj + patchSize(j);
+        citer istartj = m_dofs[comp].begin() + offAt(comp,j);
+        citer iendj   = istartj + patchSize(j,comp);
         std::list<index_t> v;
         citer cur = std::find_if(istart, iend, _isBetween(l,u));
         while( cur!=iend )
@@ -993,24 +1049,31 @@ gsVector<index_t> gsDofMapper::findCoupled(const index_t k, const index_t j) con
     }
 }
 
-gsVector<index_t> gsDofMapper::findFreeUncoupled(const index_t k) const
+gsVector<index_t> gsDofMapper::findFreeUncoupled(const index_t k, const index_t comp) const
 {
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+    GISMO_ASSERT(comp>-1 && static_cast<size_t>(comp)<componentsSize(), "Invalid component index "<< comp <<" >= "<< componentsSize() );
     typedef std::vector<index_t>::const_iterator citer;
-    const citer istart = m_dofs[0].begin() + offAt(0,k);
-    const citer iend   = istart + patchSize(k);
+    const citer istart = m_dofs[comp].begin() + offAt(comp,k);
+    const citer iend   = istart + patchSize(k,comp);
+    // Below this component's own coupled band and at or above the start of
+    // its own free block: a lower bound taken from the global free range
+    // would also accept every earlier component's free dofs.
+    const index_t nCpld = m_numCpldDofs[comp+1] - m_numCpldDofs[comp];
     return find_impl(istart, iend,
-                     _isBetween(m_shift-1, m_numFreeDofs.back()+m_shift-m_numCpldDofs.back()) );
+                     _isBetween(m_numFreeDofs[comp]+m_shift-1,
+                                m_numFreeDofs[comp+1]+m_shift-nCpld) );
 }
 
-gsVector<index_t> gsDofMapper::findTagged(const index_t k) const
+gsVector<index_t> gsDofMapper::findTagged(const index_t k, const index_t comp) const
 {
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+    GISMO_ASSERT(comp>-1 && static_cast<size_t>(comp)<componentsSize(), "Invalid component index "<< comp <<" >= "<< componentsSize() );
     typedef std::vector<index_t>::const_iterator citer;
-    citer istart = m_dofs[0].begin() + offAt(0,k);
-    citer iend   = istart + patchSize(k);
+    citer istart = m_dofs[comp].begin() + offAt(comp,k);
+    citer iend   = istart + patchSize(k,comp);
     std::list<index_t> si;
     std::set_intersection(istart, iend, m_tagged.begin(),
                           m_tagged.end(), std::back_inserter(si));
