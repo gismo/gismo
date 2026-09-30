@@ -185,11 +185,127 @@ private:
     /// The only way this class' own code touches m_dofs/m_offset together;
     /// overloaded on constness instead of macro-expanded so both mutating
     /// setup code and const query methods can use one accessor.
+    ///
+    /// The bounds check is debug-only.  dofAt() runs once per local dof per
+    /// element in every localToGlobal(), so the per-dof accessors built on
+    /// it (index(), bindex(), cindex(), tindex(), freeIndex()) are not
+    /// checked in Release builds; every other public entry point validates
+    /// its arguments with the ensure*() helpers below before reaching it.
     inline index_t & dofAt(index_t i, index_t k, index_t c)
-    { return m_dofs[c][offAt(c,k)+i]; }
+    {
+        GISMO_ASSERT(validLocal(i,k,c), "gsDofMapper: invalid local dof "<<i<<" of patch "<<k
+                     <<", component "<<c<<localRangeInfo(k,c));
+        return m_dofs[c][offAt(c,k)+i];
+    }
 
     inline index_t dofAt(index_t i, index_t k, index_t c) const
-    { return m_dofs[c][offAt(c,k)+i]; }
+    {
+        GISMO_ASSERT(validLocal(i,k,c), "gsDofMapper: invalid local dof "<<i<<" of patch "<<k
+                     <<", component "<<c<<localRangeInfo(k,c));
+        return m_dofs[c][offAt(c,k)+i];
+    }
+
+    // --- argument validation -------------------------------------------
+    //
+    // The valid*() predicates never touch storage for an invalid argument.
+    // The ensure*() helpers throw std::runtime_error (GISMO_ENSURE) in
+    // Release builds too: they guard memory safety, so they must not
+    // compile away.  \a where names the public method for the message.
+
+    bool validComponent(index_t c) const
+    { return c >= 0 && static_cast<size_t>(c) < m_dofs.size(); }
+
+    bool validPatch(index_t k) const
+    { return k >= 0 && static_cast<size_t>(k) < m_nPatches; }
+
+    /// Number of valid local indices of (patch \a k, component \a c), for
+    /// arguments already known to be valid.  Patch-specific under the
+    /// patch-concatenated layout, so that an oversized local index cannot
+    /// spill into the next patch's storage; the component's global identity
+    /// total on every patch under the aliased layout.
+    size_t localCount(index_t k, index_t c) const
+    {
+        return GlobalIdentity == m_layout ? m_dofs[c].size()
+                                          : offAt(c,k+1) - offAt(c,k);
+    }
+
+    bool validLocal(index_t i, index_t k, index_t c) const
+    {
+        return validComponent(c) && validPatch(k) &&
+            i >= 0 && static_cast<size_t>(i) < localCount(k,c);
+    }
+
+    /// Message tail describing the valid local range of (\a k, \a c), or
+    /// why there is none.
+    std::string localRangeInfo(index_t k, index_t c) const
+    {
+        std::ostringstream os;
+        if (!validComponent(c))
+            os << ": the mapper has " << m_dofs.size() << " components.";
+        else if (!validPatch(k))
+            os << ": the mapper has " << m_nPatches << " patches.";
+        else
+            os << ": the valid range is [0," << localCount(k,c) << ").";
+        return os.str();
+    }
+
+    void ensureComponent(index_t c, const char * where) const
+    {
+        GISMO_ENSURE(validComponent(c), "gsDofMapper::"<<where<<": invalid component "<<c
+                     <<", the mapper has "<<m_dofs.size()<<" components.");
+    }
+
+    /// As ensureComponent(), but also accepts the broadcast value -1.
+    void ensureComponentOrAll(index_t c, const char * where) const
+    {
+        GISMO_ENSURE(-1 == c || validComponent(c), "gsDofMapper::"<<where<<": invalid component "<<c
+                     <<", expected -1 (all) or a value in [0,"<<m_dofs.size()<<").");
+    }
+
+    void ensurePatch(index_t k, const char * where) const
+    {
+        GISMO_ENSURE(validPatch(k), "gsDofMapper::"<<where<<": invalid patch "<<k
+                     <<", the mapper has "<<m_nPatches<<" patches.");
+    }
+
+    /// Local dof \a i of patch \a k must exist in component \a c, or, for
+    /// \a c == -1, in every component: a broadcast is validated for all its
+    /// targets before any of them is touched.
+    void ensureLocal(index_t i, index_t k, index_t c, const char * where) const
+    {
+        if (-1 == c)
+        {
+            for (index_t cc = 0; static_cast<size_t>(cc) != m_dofs.size(); ++cc)
+                ensureLocal(i, k, cc, where);
+            return;
+        }
+        GISMO_ENSURE(validLocal(i,k,c), "gsDofMapper::"<<where<<": invalid local dof "<<i
+                     <<" of patch "<<k<<", component "<<c<<localRangeInfo(k,c));
+    }
+
+    void ensureFinalized(const char * where) const
+    {
+        GISMO_ENSURE(m_curElimId>=0, "gsDofMapper::"<<where<<": finalize() was not called.");
+    }
+
+    /// Setup mutators (matchDof(s), markCoupled, eliminateDof, markBoundary,
+    /// colapseDofs) rewrite the setup-time encoding of m_dofs, which
+    /// finalize() replaces by the final numbering: applied afterwards they
+    /// would misread global indices as coupling or elimination ids.
+    void ensureNotFinalized(const char * where) const
+    {
+        GISMO_ENSURE(m_curElimId<0, "gsDofMapper::"<<where<<": the mapper is already finalized.");
+    }
+
+    /// Validates a new global (\a boundary false) or boundary (\a boundary
+    /// true) shift: every index this mapper hands out, and one past the last
+    /// of them (lastIndex(), firstIndex()+freeSize()), must be representable.
+    /// Before finalize() the final size is unknown; mapSize() bounds it.
+    void ensureShift(index_t shift, bool boundary, const char * where) const;
+
+    /// Single-component setup mutators, for arguments already validated.
+    void matchDofImpl(index_t u, index_t i, index_t v, index_t j, index_t comp);
+    void eliminateDofImpl(index_t i, index_t k, index_t comp);
 
     /// True iff the shifted global index \a gl lies in [m_shift, m_shift+n).
     /// Written so that nothing overflows for any \a gl and any shift, which
@@ -245,6 +361,15 @@ public:
     /// after m_bases have already been set
     void setMatchingInterfaces(const gsBoxTopology & mp);
 
+    // The setup mutators below (colapseDofs, matchDof, matchDofs,
+    // markCoupled, markBoundary, eliminateDof) may only be called before
+    // finalize().  Their component argument is -1 (every component) or a
+    // valid component, and each local dof must lie in [0, patchSize(k,c))
+    // for every component it targets.  All arguments of a call -- every
+    // entry of a batch, every component of a broadcast -- are validated
+    // before the first change, so a call that throws leaves the mapper as
+    // it was.  The checks throw in Release builds too.
+
     /** \brief Calls matchDof() for all dofs on the given patch side
      * \a i ps. Thus, the whole set of dofs collapses to a single
      * global dof
@@ -280,7 +405,8 @@ public:
     void eliminateDof(index_t i, index_t k, index_t comp = 0);
 
     /// \brief Must be called after all boundaries and interfaces have
-    /// been marked to set up the dof numbering.
+    /// been marked to set up the dof numbering.  Must be called exactly
+    /// once; a second call throws.
     void finalize();
 
     /// \brief Checks whether finalize() has been called.
@@ -301,12 +427,21 @@ public:
     void setIdentity(index_t nPatches, const std::vector<size_t> & dofsPerComponent);
 
     ///\brief Set the shift amount for the global numbering
+    ///
+    /// Throws if the shifted indices, up to and including one past the
+    /// last, would not be representable as index_t.  Before finalize() the
+    /// bound is taken from mapSize(), which no final size can exceed.
     void setShift(index_t shift);
 
-    ///\brief Add a shift amount to the global numbering
+    ///\brief Add a shift amount to the global numbering (same bound as
+    /// setShift()).
     void addShift(index_t shift);
 
     /// \brief Permutes the mapped free indices according to permutation, i.e.,  dofs_perm[idx] = dofs_old[permutation[idx]]
+    ///
+    /// \a permutation must be a permutation of [0, n) with n the number of
+    /// free dofs of component \a comp; anything else throws before the
+    /// mapper is changed.
     ///
     /// \warning Applying a permutation makes the functions regarding coupled dofs (cindex, is_coupled_index,.. ) invalid.
     /// The dofs are still coupled, but you have no way of extracting them. If you need this functions, first call
@@ -327,8 +462,15 @@ public:
     ///   free block is reported.  Note that this is NOT the eliminated
     ///   branch: an empty component must not be pushed past the free range
     ///   merely for having no free dof.
+    ///
+    /// \a comp may also equal numComponents(), which reports the end of the
+    /// last component's free block; in particular firstIndex() is valid on
+    /// a default-constructed mapper.
     index_t firstIndex(index_t comp = 0) const
     {
+        GISMO_ENSURE(comp >= 0 && static_cast<size_t>(comp) < m_numFreeDofs.size(),
+                     "gsDofMapper::firstIndex: invalid component "<<comp<<", expected a value in [0,"
+                     <<m_numFreeDofs.size()-1<<"].");
         if (static_cast<size_t>(comp)+1 < m_numFreeDofs.size() &&
             m_numFreeDofs[comp+1] == m_numFreeDofs[comp] &&   // no free dof
             m_numElimDofs[comp+1] != m_numElimDofs[comp])     // but eliminated ones
@@ -339,7 +481,8 @@ public:
     ///\brief Returns one past the biggest value of the free indices
     index_t lastIndex() const { return m_shift + freeSize(); }
 
-    ///\brief Set the shift amount for the boundary numbering
+    ///\brief Set the shift amount for the boundary numbering (same
+    /// bound as setShift(), with boundarySize() in place of size()).
     void setBoundaryShift(index_t shift);
 
     /** \brief Computes the global indices of the input local indices
@@ -395,6 +538,10 @@ public:
      *
      * \note This method only works after all interfaces and boundaries have been
      * marked and finalize() has been called.
+     *
+     * \note Like the other per-dof accessors (bindex(), cindex(), tindex(),
+     * freeIndex()) this checks its arguments in debug builds only: it is on
+     * the assembly hot path.  \a i must lie in [0, patchSize(k,c)).
      */
 
     inline index_t index(index_t i, index_t k = 0, index_t c = 0) const
@@ -534,6 +681,7 @@ public:
     inline index_t size(index_t comp) const
     {
         GISMO_ENSURE(m_curElimId>=0, "finalize() was not called on gsDofMapper");
+        ensureComponent(comp, "size");
         return m_numFreeDofs[comp+1]-m_numFreeDofs[comp]
 	  + m_numElimDofs[comp+1]-m_numElimDofs[comp];
     }
@@ -546,6 +694,7 @@ public:
 
     inline index_t freeSize(index_t comp) const
     {
+      ensureComponent(comp, "freeSize");
       return m_numFreeDofs[comp+1]-m_numFreeDofs[comp] +
 	(allFree() ? m_numElimDofs[comp+1]-m_numElimDofs[comp] : 0 );
     }
@@ -576,7 +725,12 @@ public:
     /// Returns the offset corresponding to patch \a k for component \a c.
     /// Zero for every real patch under the global-identity/aliased layout
     /// (see gsDofMapperLayout).
-    size_t offset(index_t k, index_t c = 0) const {return offAt(c,k);}
+    size_t offset(index_t k, index_t c = 0) const
+    {
+        ensureComponent(c, "offset");
+        ensurePatch(k, "offset");
+        return offAt(c,k);
+    }
 
     /// Returns the number of patches present underneath the mapper
     size_t numPatches() const {return m_nPatches;}
@@ -625,15 +779,14 @@ public:
     /// setIdentity()), not just the last one.
     size_t patchSize(const index_t k, const index_t c = 0) const
     {
-        GISMO_ASSERT(static_cast<size_t>(c)<m_dofs.size(), "Invalid component index "<<c<<" >= "<<m_dofs.size());
-        GISMO_ASSERT(static_cast<size_t>(k)<m_nPatches, "Invalid patch index "<<k<<" >= "<<m_nPatches);
-        if (GlobalIdentity == m_layout)
-            return totalSize(c);
-        return offAt(c,k+1) - offAt(c,k);
+        ensureComponent(c, "patchSize");
+        ensurePatch(k, "patchSize");
+        return localCount(k,c);
     }
 
     size_t totalSize(const index_t c = 0) const
     {
+        ensureComponent(c, "totalSize");
         return m_dofs[c].size();
     }
 
@@ -689,14 +842,22 @@ public:
     /// mapper.  Walks the (small) component list linearly rather than
     /// assuming every component has the same storage size, which does
     /// not hold for ragged storage.
+    ///
+    /// \a n must lie in [0, mapSize()).  The bound is checked by the walk
+    /// itself -- running out of components means \a n was too large -- so
+    /// the check costs nothing beyond the walk.
     inline index_t mapIndex(index_t n) const
     {
-        index_t c = 0;
-        while (static_cast<size_t>(n) >= m_dofs[c].size())
+        const index_t n0 = n;
+        GISMO_ENSURE(n >= 0, "gsDofMapper::mapIndex: negative index "<<n<<".");
+        size_t c = 0;
+        while (c != m_dofs.size() && static_cast<size_t>(n) >= m_dofs[c].size())
         {
             n -= static_cast<index_t>(m_dofs[c].size());
             ++c;
         }
+        GISMO_ENSURE(c != m_dofs.size(), "gsDofMapper::mapIndex: index "<<n0
+                     <<" is outside [0,"<<mapSize()<<").");
         return m_dofs[c][n] + m_shift;
     }
 
@@ -787,7 +948,9 @@ private:
     std::vector<index_t> m_numFreeDofs;
     /// Offsets of eliminated dofs, nComp+1
     std::vector<index_t> m_numElimDofs;
-    /// Offsets of coupled dofs, nComp+1
+    /// Offsets of coupled dofs, nComp+1.  During setup, entry c+1 is instead
+    /// the number of coupling ids handed out in component c; the ids are
+    /// 1..count, so the count never exceeds the component's dof count.
     std::vector<index_t> m_numCpldDofs;
 
     // used during setup: running id for current eliminated dof

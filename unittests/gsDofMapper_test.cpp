@@ -664,7 +664,7 @@ gsTensorBSplineBasis<2,real_t> rtComponentBasis(short_t p0, short_t p1,
 // bases so the dimension arithmetic above is proven rather than asserted.
 // hasDistinctComponentSpaces is declared true: the components genuinely come
 // from two different basis objects.
-gsDofMapper rtMapper(index_t e0, index_t e1, bool declareDistinct = true)
+std::vector<gsVector<index_t> > rtSizes(index_t e0, index_t e1)
 {
     const gsTensorBSplineBasis<2,real_t> b0 = rtComponentBasis(3, 2, e0, e1);
     const gsTensorBSplineBasis<2,real_t> b1 = rtComponentBasis(2, 3, e0, e1);
@@ -672,8 +672,12 @@ gsDofMapper rtMapper(index_t e0, index_t e1, bool declareDistinct = true)
     std::vector<gsVector<index_t> > sz(2);
     sz[0].resize(1); sz[0][0] = b0.size();
     sz[1].resize(1); sz[1][0] = b1.size();
+    return sz;
+}
 
-    gsDofMapper m(sz, declareDistinct);
+gsDofMapper rtMapper(index_t e0, index_t e1, bool declareDistinct = true)
+{
+    gsDofMapper m(rtSizes(e0, e1), declareDistinct);
     m.finalize();
     return m;
 }
@@ -1530,6 +1534,19 @@ TEST(construction_rejects_counts_beyond_index_range)
         dofs[0] = imax; dofs[1] = 1;    // each fits, the sum does not
         CHECK_THROW(m.setIdentity(1, dofs), std::runtime_error);
     }
+
+    // The component count is narrowed to index_t by numComponents() and
+    // passes every dof-count check when the components are empty, so it is
+    // bounded on its own.  Only the scalar overload can be exercised here:
+    // it must reject the count before allocating its per-component vector,
+    // whereas reaching the other two entry points would take a vector of
+    // imax+1 elements.  (On a build with a narrow index_t -- int8_t, 128
+    // components -- those are reachable with ordinary inputs.)
+    if (sizeof(index_t) <= sizeof(size_t))
+    {
+        gsDofMapper m;
+        CHECK_THROW(m.setIdentity(1, 0, imax + 1), std::runtime_error);
+    }
 }
 
 
@@ -2191,6 +2208,583 @@ TEST(extreme_global_indices_and_shifts)
         checkShiftIsARelabelling(f3, s, lo);
         CHECK(s.is_free_index(lo));
         CHECK_EQUAL(0, s.componentOf(lo));
+    }
+}
+
+// =========================================================================
+// Release-safe argument validation
+// =========================================================================
+//
+// Every public entry point that would otherwise read or write outside the
+// mapper's storage validates its arguments with GISMO_ENSURE, which throws
+// std::runtime_error in Release builds as well -- hence plain CHECK_THROW
+// throughout.  The exception is the per-dof accessors on the assembly hot
+// path (index(), bindex(), cindex(), tindex(), freeIndex()), which check
+// the same bounds in debug builds only (see hot_path_accessors_...).
+//
+// Batch and broadcast calls are validated in full before the first change,
+// so a call that throws must leave the mapper exactly as it was.  That is
+// checked by comparing digests of everything observable before and after;
+// for a mapper still in setup, a finalized copy stands in for it.
+
+namespace {
+
+std::string finalDigest(const gsDofMapper & m)
+{
+    return dumpCounts(m) + "|" + dumpPerComponent(m) + "|" + dumpAsVector(m)
+        + "|" + join(m.getTagged()) + "|" + dumpFirstLast(m);
+}
+
+std::string setupDigest(gsDofMapper m)
+{
+    m.finalize();
+    return finalDigest(m);
+}
+
+// F9 before finalize(): component 0 has patches of 5 and 5 local dofs,
+// component 1 patches of 2 and 4.  Local dof 2 of patch 0 in component 1
+// is one past that patch's end, and the flat storage slot it would address
+// is local dof 0 of patch 1.
+gsDofMapper raggedSetup()
+{
+    std::vector<gsVector<index_t> > sz(2);
+    sz[0].resize(2); sz[0][0] = 5; sz[0][1] = 5;
+    sz[1].resize(2); sz[1][0] = 2; sz[1][1] = 4;
+    return gsDofMapper(sz, false);
+}
+
+gsMatrix<index_t> column(index_t a, index_t b)
+{
+    gsMatrix<index_t> m(2, 1);
+    m << a, b;
+    return m;
+}
+
+gsMatrix<unsigned> ucolumn(unsigned a, unsigned b)
+{
+    gsMatrix<unsigned> m(2, 1);
+    m << a, b;
+    return m;
+}
+
+} // anonymous namespace
+
+// A local index must lie in its own patch's range, not merely somewhere in
+// the component's storage: a bound taken from the component total lets an
+// oversized index of one patch silently address the next patch's dofs.
+TEST(oversized_local_index_is_rejected_per_patch)
+{
+    gsDofMapper m = raggedSetup();
+    const std::string before = setupDigest(m);
+
+    // Local 2 of (patch 0, component 1) would be local 0 of patch 1.
+    CHECK_THROW(m.eliminateDof(2, 0, 1), std::runtime_error);
+    CHECK_THROW(m.markCoupled(2, 0, 1), std::runtime_error);
+    CHECK_THROW(m.matchDof(0, 2, 1, 3, 1), std::runtime_error);
+    CHECK_THROW(m.matchDof(1, 3, 0, 2, 1), std::runtime_error);
+    CHECK_THROW(m.markBoundary(0, column(0, 2), 1), std::runtime_error);
+    CHECK_THROW(m.colapseDofs(0, ucolumn(0, 2), 1), std::runtime_error);
+    // Local 5 of (patch 0, component 0) would be local 0 of patch 1.
+    CHECK_THROW(m.eliminateDof(5, 0, 0), std::runtime_error);
+    // One past the last patch, i.e. past the end of the storage.
+    CHECK_THROW(m.eliminateDof(4, 1, 1), std::runtime_error);
+    CHECK_THROW(m.eliminateDof(5, 1, 0), std::runtime_error);
+    // Negative.
+    CHECK_THROW(m.eliminateDof(-1, 0, 0), std::runtime_error);
+    CHECK_THROW(m.matchDof(0, 0, 1, -1, 0), std::runtime_error);
+
+    CHECK_EQUAL(before, setupDigest(m));
+
+    // The last valid local index of every (patch,component) is accepted.
+    m.eliminateDof(4, 0, 0);
+    m.eliminateDof(4, 1, 0);
+    m.eliminateDof(1, 0, 1);
+    m.eliminateDof(3, 1, 1);
+    m.finalize();
+    CHECK_EQUAL(4, m.boundarySize());
+}
+
+// The Raviart-Thomas pair in both mesh flavours.  On the anisotropic mesh
+// the local bound differs between the components (28 and 30 on one patch);
+// on the isotropic mesh it coincides (42 and 42).
+TEST(rt_local_bounds_are_per_component)
+{
+    {
+        gsDofMapper m(rtSizes(4, 2), true);
+        CHECK_EQUAL(28u, (unsigned)m.patchSize(0, 0));
+        CHECK_EQUAL(30u, (unsigned)m.patchSize(0, 1));
+        const std::string before = setupDigest(m);
+        CHECK_THROW(m.eliminateDof(28, 0, 0), std::runtime_error);
+        CHECK_THROW(m.eliminateDof(28, 0, -1), std::runtime_error);
+        CHECK_THROW(m.eliminateDof(30, 0, 1), std::runtime_error);
+        CHECK_EQUAL(before, setupDigest(m));
+        m.eliminateDof(29, 0, 1);
+        m.eliminateDof(27, 0, -1);
+        m.finalize();
+        CHECK_EQUAL(3, m.boundarySize());
+    }
+    {
+        gsDofMapper m(rtSizes(4, 4), true);
+        CHECK_EQUAL(42u, (unsigned)m.patchSize(0, 0));
+        CHECK_EQUAL(42u, (unsigned)m.patchSize(0, 1));
+        const std::string before = setupDigest(m);
+        CHECK_THROW(m.eliminateDof(42, 0, -1), std::runtime_error);
+        CHECK_THROW(m.eliminateDof(42, 0, 1), std::runtime_error);
+        CHECK_EQUAL(before, setupDigest(m));
+        m.eliminateDof(41, 0, -1);
+        m.finalize();
+        CHECK_EQUAL(2, m.boundarySize());
+    }
+}
+
+// Under the aliased layout the local index is component-global: the bound
+// is that component's own total, on every patch alike.
+TEST(identity_local_bound_is_the_component_total)
+{
+    std::vector<size_t> dofs(2);
+    dofs[0] = 7; dofs[1] = 10;
+    gsDofMapper m;
+    m.setIdentity(3, dofs);
+    const std::string before = setupDigest(m);
+
+    CHECK_THROW(m.eliminateDof(7, 0, 0), std::runtime_error);
+    CHECK_THROW(m.eliminateDof(7, 2, 0), std::runtime_error);
+    CHECK_THROW(m.eliminateDof(10, 1, 1), std::runtime_error);
+    CHECK_THROW(m.eliminateDof(9, 0, -1), std::runtime_error);  // 9 >= 7
+    CHECK_THROW(m.eliminateDof(0, 3, 1), std::runtime_error);   // no patch 3
+    CHECK_EQUAL(before, setupDigest(m));
+
+    m.eliminateDof(6, 0, 0);
+    m.eliminateDof(9, 2, 1);    // accepted on any patch
+    m.eliminateDof(9, 0, 1);    // the same dof again: nothing new
+    m.finalize();
+    CHECK_EQUAL(2, m.boundarySize());
+}
+
+TEST(invalid_component_and_patch_identifiers_in_setup)
+{
+    gsDofMapper m = raggedSetup();       // 2 components, 2 patches
+    const std::string before = setupDigest(m);
+    const index_t badComp[]  = {-2, 2, 100};
+    const index_t badPatch[] = {-1, 2, 100};
+
+    for (size_t t = 0; t != 3; ++t)
+    {
+        const index_t c = badComp[t], k = badPatch[t];
+        CHECK_THROW(m.eliminateDof(0, 0, c), std::runtime_error);
+        CHECK_THROW(m.eliminateDof(0, k, 0), std::runtime_error);
+        CHECK_THROW(m.markCoupled(0, 0, c), std::runtime_error);
+        CHECK_THROW(m.markCoupled(0, k, 0), std::runtime_error);
+        CHECK_THROW(m.matchDof(0, 0, 1, 0, c), std::runtime_error);
+        CHECK_THROW(m.matchDof(k, 0, 1, 0, 0), std::runtime_error);
+        CHECK_THROW(m.matchDof(0, 0, k, 0, 0), std::runtime_error);
+        CHECK_THROW(m.matchDofs(0, column(0,1), 1, column(0,1), c), std::runtime_error);
+        CHECK_THROW(m.matchDofs(k, column(0,1), 1, column(0,1), 0), std::runtime_error);
+        CHECK_THROW(m.matchDofs(0, column(0,1), k, column(0,1), 0), std::runtime_error);
+        CHECK_THROW(m.markBoundary(0, column(0,1), c), std::runtime_error);
+        CHECK_THROW(m.markBoundary(k, column(0,1), 0), std::runtime_error);
+        CHECK_THROW(m.colapseDofs(0, ucolumn(0,1), c), std::runtime_error);
+        CHECK_THROW(m.colapseDofs(k, ucolumn(0,1), 0), std::runtime_error);
+    }
+    CHECK_EQUAL(before, setupDigest(m));
+}
+
+TEST(invalid_component_and_patch_identifiers_in_queries)
+{
+    gsDofMapper m = raggedPatchMapper();     // finalized, 2 components, 2 patches
+    const index_t badComp[]  = {-1, 2, 100};
+    const index_t badPatch[] = {-1, 2, 100};
+    gsMatrix<index_t> loc(1, 1), glob;
+    loc << 0;
+    index_t nf = 0;
+
+    for (size_t t = 0; t != 3; ++t)
+    {
+        const index_t c = badComp[t], k = badPatch[t];
+        CHECK_THROW(m.patchSize(0, c), std::runtime_error);
+        CHECK_THROW(m.patchSize(k, 0), std::runtime_error);
+        CHECK_THROW(m.totalSize(c), std::runtime_error);
+        CHECK_THROW(m.offset(0, c), std::runtime_error);
+        CHECK_THROW(m.offset(k, 0), std::runtime_error);
+        CHECK_THROW(m.size(c), std::runtime_error);
+        CHECK_THROW(m.freeSize(c), std::runtime_error);
+        CHECK_THROW(m.asVector(c), std::runtime_error);
+        CHECK_THROW(m.inverseAsVector(c), std::runtime_error);
+        CHECK_THROW(m.anyPreImages(c), std::runtime_error);
+        CHECK_THROW(m.inverseOnPatch(k), std::runtime_error);
+        CHECK_THROW(m.indexOnPatch(0, k), std::runtime_error);
+        CHECK_THROW(m.findBoundary(k, 0), std::runtime_error);
+        CHECK_THROW(m.findBoundary(0, c), std::runtime_error);
+        CHECK_THROW(m.findFree(k, 0), std::runtime_error);
+        CHECK_THROW(m.findFree(0, c), std::runtime_error);
+        CHECK_THROW(m.findCoupled(k, -1, 0), std::runtime_error);
+        CHECK_THROW(m.findCoupled(0, -1, c), std::runtime_error);
+        CHECK_THROW(m.findFreeUncoupled(k, 0), std::runtime_error);
+        CHECK_THROW(m.findFreeUncoupled(0, c), std::runtime_error);
+        CHECK_THROW(m.findTagged(k, 0), std::runtime_error);
+        CHECK_THROW(m.findTagged(0, c), std::runtime_error);
+        CHECK_THROW(m.markTagged(0, 0, c), std::runtime_error);
+        CHECK_THROW(m.markTagged(0, k, 0), std::runtime_error);
+        CHECK_THROW(m.localToGlobal(loc, k, glob, 0), std::runtime_error);
+        CHECK_THROW(m.localToGlobal(loc, 0, glob, c), std::runtime_error);
+        CHECK_THROW(m.localToGlobal2(loc, k, glob, nf, 0), std::runtime_error);
+        CHECK_THROW(m.localToGlobal2(loc, 0, glob, nf, c), std::runtime_error);
+    }
+    // The second patch of findCoupled() is -1 (any) or a real patch.
+    CHECK_THROW(m.findCoupled(0, 2, 0), std::runtime_error);
+    CHECK_THROW(m.findCoupled(0, -2, 0), std::runtime_error);
+    CHECK_EQUAL(0, m.findCoupled(0, 1, 0).size());
+    // markTagged checks the local index against its own patch too.
+    CHECK_THROW(m.markTagged(2, 0, 1), std::runtime_error);
+    // mapIndex() takes a flat index into [0, mapSize()).
+    CHECK_THROW(m.mapIndex(-1), std::runtime_error);
+    CHECK_THROW(m.mapIndex(static_cast<index_t>(m.mapSize())), std::runtime_error);
+    CHECK_EQUAL(15, m.mapIndex(static_cast<index_t>(m.mapSize()) - 1));
+    // firstIndex(c) also accepts c == numComponents(): the end of the last
+    // free block.
+    CHECK_EQUAL(16, m.firstIndex(2));
+    CHECK_THROW(m.firstIndex(3), std::runtime_error);
+    CHECK_THROW(m.firstIndex(-1), std::runtime_error);
+    CHECK_EQUAL(0, m.taggedSize());
+}
+
+// A default-constructed mapper has no components, so every
+// component-indexed query throws; firstIndex() alone stays valid on it.
+TEST(default_constructed_component_queries)
+{
+    const gsDofMapper m;
+    CHECK_EQUAL(0, m.firstIndex());
+    CHECK_THROW(m.freeSize(0), std::runtime_error);
+    CHECK_THROW(m.totalSize(0), std::runtime_error);
+    CHECK_THROW(m.patchSize(0, 0), std::runtime_error);
+    CHECK_THROW(m.offset(0), std::runtime_error);
+    CHECK_THROW(m.asVector(0), std::runtime_error);
+    CHECK_THROW(m.mapIndex(0), std::runtime_error);
+}
+
+// A broadcast (component -1) is validated for every component before any of
+// them is changed.  The discriminating case is a local index that is valid
+// in an EARLIER component and invalid in a LATER one: checking component by
+// component while mutating would eliminate or match in the earlier one and
+// only then throw.
+TEST(broadcast_is_validated_for_every_component_before_mutating)
+{
+    {
+        gsDofMapper m = raggedSetup();   // local 3 of patch 0: comp 0 yes, comp 1 no
+        const std::string before = setupDigest(m);
+        CHECK_THROW(m.eliminateDof(3, 0, -1), std::runtime_error);
+        CHECK_THROW(m.markCoupled(3, 0, -1), std::runtime_error);
+        CHECK_THROW(m.matchDof(0, 3, 1, 0, -1), std::runtime_error);
+        CHECK_THROW(m.matchDof(1, 0, 0, 3, -1), std::runtime_error);
+        CHECK_THROW(m.matchDofs(0, column(0,3), 1, column(0,1), -1), std::runtime_error);
+        CHECK_THROW(m.markBoundary(0, column(0,3), -1), std::runtime_error);
+        CHECK_THROW(m.colapseDofs(0, ucolumn(0,3), -1), std::runtime_error);
+        CHECK_EQUAL(before, setupDigest(m));
+    }
+    {
+        // The RT pair with the mesh transposed puts the larger component
+        // first: 30 and 28 local dofs.
+        gsDofMapper m(rtSizes(2, 4), true);
+        CHECK_EQUAL(30u, (unsigned)m.patchSize(0, 0));
+        CHECK_EQUAL(28u, (unsigned)m.patchSize(0, 1));
+        const std::string before = setupDigest(m);
+        CHECK_THROW(m.eliminateDof(29, 0, -1), std::runtime_error);
+        CHECK_THROW(m.markBoundary(0, column(0,28), -1), std::runtime_error);
+        CHECK_EQUAL(before, setupDigest(m));
+    }
+}
+
+// A batch is validated entry by entry before the first entry is applied: a
+// bad entry at the END is the one that exposes a validate-while-mutating
+// implementation.
+TEST(batch_is_validated_before_mutating)
+{
+    gsDofMapper m = raggedSetup();
+    const std::string before = setupDigest(m);
+
+    gsMatrix<index_t> b1(3, 1), b2(3, 1), bad(3, 1);
+    b1  << 0, 1, 2;
+    b2  << 0, 1, 2;
+    bad << 0, 1, 4;           // 4 is past (patch 0, component 1)
+    CHECK_THROW(m.matchDofs(1, b2, 0, bad, 1), std::runtime_error);
+    CHECK_THROW(m.matchDofs(0, bad, 1, b2, 1), std::runtime_error);
+    CHECK_THROW(m.markBoundary(0, bad, 1), std::runtime_error);
+    {
+        gsMatrix<unsigned> ub(3, 1);
+        ub << 0, 1, 4;
+        CHECK_THROW(m.colapseDofs(0, ub, 1), std::runtime_error);
+    }
+    // Unsigned entries beyond index_t's range are rejected, not narrowed
+    // onto a valid-looking index.
+    CHECK_THROW(m.colapseDofs(0, ucolumn(0, std::numeric_limits<unsigned>::max()), 0),
+                std::runtime_error);
+    // Mismatched lengths, and more than one column (only the first column
+    // is ever read).
+    CHECK_THROW(m.matchDofs(0, b1, 1, column(0,1), 0), std::runtime_error);
+    {
+        gsMatrix<index_t> wide(1, 2);
+        wide << 0, 1;
+        CHECK_THROW(m.matchDofs(0, wide, 1, wide, 0), std::runtime_error);
+        gsMatrix<unsigned> uwide(1, 2);
+        uwide << 0, 1;
+        CHECK_THROW(m.colapseDofs(0, uwide, 0), std::runtime_error);
+    }
+    // Rows but no column: there is no first column to read.  Only a matrix
+    // without rows is empty.
+    CHECK_THROW(m.colapseDofs(0, gsMatrix<unsigned>(2, 0), 0), std::runtime_error);
+    CHECK_THROW(m.markBoundary(0, gsMatrix<index_t>(2, 0), 0), std::runtime_error);
+    // markBoundary() reads rows() entries: a row vector is rejected rather
+    // than silently cut to its first entry.
+    {
+        gsMatrix<index_t> row(1, 2);
+        row << 0, 1;
+        CHECK_THROW(m.markBoundary(0, row, 0), std::runtime_error);
+    }
+    CHECK_EQUAL(before, setupDigest(m));
+
+    // Fewer than two dofs collapse to nothing, and an empty boundary
+    // eliminates nothing.
+    m.markBoundary(0, gsMatrix<index_t>(0, 1), 0);
+    m.markBoundary(0, gsMatrix<index_t>(), 0);
+    m.colapseDofs(0, gsMatrix<unsigned>(), 0);
+    m.colapseDofs(0, gsMatrix<unsigned>(1, 1).setZero(), 0);
+    m.matchDofs(0, gsMatrix<index_t>(), 1, gsMatrix<index_t>(), 0);
+    CHECK_EQUAL(before, setupDigest(m));
+
+    // The valid batches go through.
+    m.matchDofs(0, b1, 1, b2, 0);
+    m.markBoundary(1, b2, 1);
+    m.finalize();
+    CHECK_EQUAL(3, m.coupledSize());
+    CHECK_EQUAL(3, m.boundarySize());
+}
+
+// The setup mutators rewrite the setup-time encoding that finalize()
+// replaces by the final numbering, so they are rejected afterwards -- and
+// finalize() itself runs exactly once.  The post-finalize mutators
+// markTagged(), markCoupledAsTagged() and permuteFreeDofs() are the
+// opposite: they need the final numbering and are rejected before it.
+TEST(setup_mutators_require_an_unfinalized_mapper)
+{
+    gsDofMapper m = twoPatchCoupledElim();
+    const std::string before = finalDigest(m);
+
+    CHECK_THROW(m.matchDof(0, 0, 1, 5), std::runtime_error);
+    CHECK_THROW(m.matchDofs(0, column(0,1), 1, column(4,5), 0), std::runtime_error);
+    CHECK_THROW(m.markCoupled(2, 0), std::runtime_error);
+    CHECK_THROW(m.eliminateDof(2, 0), std::runtime_error);
+    CHECK_THROW(m.markBoundary(0, column(2,3), 0), std::runtime_error);
+    CHECK_THROW(m.colapseDofs(0, ucolumn(2,3), 0), std::runtime_error);
+    CHECK_THROW(m.finalize(), std::runtime_error);
+    CHECK_EQUAL(before, finalDigest(m));
+
+    // Legitimate after finalize().
+    m.markTagged(2, 0);
+    m.markCoupledAsTagged();
+    gsVector<index_t> id(m.freeSize(0));
+    for (index_t i = 0; i != id.size(); ++i) id[i] = i;
+    m.permuteFreeDofs(id, 0);
+
+    gsDofMapper s = raggedSetup();
+    CHECK_THROW(s.markTagged(0, 0, 0), std::runtime_error);
+    CHECK_THROW(s.markCoupledAsTagged(), std::runtime_error);
+    CHECK_THROW(s.permuteFreeDofs(gsVector<index_t>(), 0), std::runtime_error);
+    CHECK_THROW(s.anyPreImages(0), std::runtime_error);
+    CHECK_THROW(s.inverseAsVector(0), std::runtime_error);
+}
+
+// permuteFreeDofs() takes a permutation of [0, freeSize(c)) and nothing
+// else, and rejects anything else before rewriting a single dof.  A value
+// out of range would move a dof out of its component's free block, or out
+// of the mapper; a repeated value would map two dofs onto one index.
+TEST(permute_free_dofs_rejects_non_permutations)
+{
+    gsDofMapper m = threeCompUniform();       // freeSize(0) == 7
+    m.markCoupledAsTagged();
+    const std::string before = finalDigest(m);
+
+    gsVector<index_t> p(7);
+    p << 3, 0, 6, 1, 5, 2, 7;                 // 7 is out of range
+    CHECK_THROW(m.permuteFreeDofs(p, 0), std::runtime_error);
+    p << 3, 0, 6, 1, 5, 2, -1;
+    CHECK_THROW(m.permuteFreeDofs(p, 0), std::runtime_error);
+    p << 3, 0, 6, 1, 5, 2, 3;                 // 3 twice, 4 missing
+    CHECK_THROW(m.permuteFreeDofs(p, 0), std::runtime_error);
+    CHECK_THROW(m.permuteFreeDofs(gsVector<index_t>(6), 0), std::runtime_error);
+    CHECK_THROW(m.permuteFreeDofs(gsVector<index_t>(8), 0), std::runtime_error);
+    p << 3, 0, 6, 1, 5, 2, 4;
+    CHECK_THROW(m.permuteFreeDofs(p, 3), std::runtime_error);
+    CHECK_THROW(m.permuteFreeDofs(p, -1), std::runtime_error);
+    CHECK_EQUAL(before, finalDigest(m));
+
+    m.permuteFreeDofs(p, 0);
+    CHECK_EQUAL(finalDigest(permutedMapper()), finalDigest(m));
+}
+
+// Every index a mapper hands out -- and one past the last, which
+// lastIndex() and firstIndex()+freeSize() compute -- must be representable,
+// so a shift that would push them past index_t's maximum is rejected when it
+// is set rather than overflowing later in index().
+TEST(shift_must_keep_every_index_representable)
+{
+    const index_t lo = std::numeric_limits<index_t>::min();
+    const index_t hi = std::numeric_limits<index_t>::max();
+    gsDofMapper m = threeCompUniform();
+    const index_t n = m.size(), nb = m.boundarySize();
+
+    m.setShift(hi - n);                       // the largest valid shift
+    CHECK_EQUAL(hi, m.firstIndex(0) + m.size());
+    CHECK_THROW(m.setShift(hi - n + 1), std::runtime_error);
+    CHECK_THROW(m.setShift(hi), std::runtime_error);
+    CHECK_THROW(m.addShift(1), std::runtime_error);
+    CHECK_EQUAL(hi - n, m.firstIndex(0));     // unchanged
+    m.addShift(-5);
+    CHECK_EQUAL(hi - n - 5, m.firstIndex(0));
+
+    m.setShift(lo);                           // any negative shift is fine
+    CHECK_THROW(m.addShift(-1), std::runtime_error);
+    CHECK_THROW(m.addShift(lo), std::runtime_error);
+    CHECK_EQUAL(lo, m.firstIndex(0));
+    m.addShift(1);
+    CHECK_EQUAL(lo + 1, m.firstIndex(0));
+
+    m.setBoundaryShift(hi - nb);
+    CHECK_EQUAL(hi - 1, m.bindex(3, 1, 2));   // the last boundary index
+    CHECK_THROW(m.setBoundaryShift(hi - nb + 1), std::runtime_error);
+
+    // Before finalize() the final size is not known yet; mapSize() bounds
+    // it, and a shift accepted against that bound stays valid.
+    gsDofMapper s = raggedSetup();
+    const index_t ms = static_cast<index_t>(s.mapSize());
+    CHECK_THROW(s.setShift(hi - ms + 1), std::runtime_error);
+    s.setShift(hi - ms);
+    s.eliminateDof(0, 0, 0);
+    s.finalize();
+    CHECK_EQUAL(hi - 1, s.index(0, 0, 0));   // the eliminated dof, numbered last
+}
+
+// The per-dof accessors stay unchecked in Release builds (they run once per
+// local dof per element in every assembly), but debug builds apply the same
+// patch-specific bound as the checked entry points.
+TEST(hot_path_accessors_check_local_bounds_in_debug)
+{
+    const gsDofMapper m = raggedPatchMapper();
+    CHECK_EQUAL(15, m.index(3, 1, 1));        // the last valid dof
+#ifndef NDEBUG
+    CHECK_THROW(m.index(2, 0, 1), std::logic_error);   // would be (patch 1, local 0)
+    CHECK_THROW(m.index(5, 0, 0), std::logic_error);
+    CHECK_THROW(m.index(4, 1, 1), std::logic_error);
+    CHECK_THROW(m.index(-1, 0, 0), std::logic_error);
+    CHECK_THROW(m.index(0, 2, 0), std::logic_error);
+    CHECK_THROW(m.index(0, 0, 2), std::logic_error);
+    CHECK_THROW(m.freeIndex(2, 0, 1), std::logic_error);
+    CHECK_THROW(m.bindex(2, 0, 1), std::logic_error);
+    CHECK_THROW(m.cindex(2, 0, 1), std::logic_error);
+    CHECK_THROW(m.tindex(2, 0, 1), std::logic_error);
+    CHECK_THROW(m.is_free(2, 0, 1), std::logic_error);
+    gsMatrix<index_t> loc(2, 1), glob;
+    loc << 1, 2;
+    CHECK_THROW(m.localToGlobal(loc, 0, glob, 1), std::logic_error);
+#endif
+}
+
+// localToGlobal(2) reads locals(i,0) for i < rows(), so they need exactly one
+// column unless there are no rows at all.
+TEST(local_to_global_requires_a_column)
+{
+    const gsDofMapper m = raggedPatchMapper();
+    gsMatrix<index_t> glob;
+    index_t nf = -1;
+    CHECK_THROW(m.localToGlobal(gsMatrix<index_t>(2, 0), 0, glob, 0), std::runtime_error);
+    CHECK_THROW(m.localToGlobal2(gsMatrix<index_t>(2, 0), 0, glob, nf, 0), std::runtime_error);
+    {
+        gsMatrix<index_t> wide(2, 2);
+        wide.setZero();
+        CHECK_THROW(m.localToGlobal(wide, 0, glob, 0), std::runtime_error);
+        CHECK_THROW(m.localToGlobal2(wide, 0, glob, nf, 0), std::runtime_error);
+    }
+    m.localToGlobal(gsMatrix<index_t>(0, 1), 0, glob, 0);
+    CHECK_EQUAL(0, glob.rows());
+    m.localToGlobal2(gsMatrix<index_t>(0, 0), 0, glob, nf, 0);
+    CHECK_EQUAL(0, glob.rows());
+    CHECK_EQUAL(0, nf);
+}
+
+// localToGlobal2 resizes globals to two columns before it reads locals, so
+// passing one matrix as both would destroy the input it is about to read.
+// Rejected in every build, and before anything is written.
+TEST(local_to_global2_rejects_aliased_arguments)
+{
+    const gsDofMapper m = raggedPatchMapper();
+    gsMatrix<index_t> values(3, 1);
+    values << 0, 1, 2;
+    index_t nf = -1;
+    CHECK_THROW(m.localToGlobal2(values, 0, values, nf, 0), std::runtime_error);
+    CHECK_EQUAL(3, values.rows());
+    CHECK_EQUAL(1, values.cols());
+    CHECK_EQUAL(0, values(0,0));
+    CHECK_EQUAL(1, values(1,0));
+    CHECK_EQUAL(2, values(2,0));
+    CHECK_EQUAL(-1, nf);
+}
+
+namespace
+{
+// n dofs on one patch, each in a coupling group of its own: the largest
+// number of coupling ids a component of n dofs can use.
+void checkEveryDofCoupled(const index_t n)
+{
+    gsVector<index_t> sz(1);
+    sz[0] = n;
+    gsDofMapper m(sz, 1);
+    for (index_t i = 0; i != n; ++i)
+        m.markCoupled(i, 0);
+    m.finalize();
+    CHECK_EQUAL(n, m.size());
+    CHECK_EQUAL(n, m.freeSize());
+    CHECK_EQUAL(n, m.coupledSize());
+    CHECK_EQUAL(0, m.boundarySize());
+    for (index_t i = 0; i != n; ++i)
+    {
+        CHECK_EQUAL(i, m.index(i, 0));
+        CHECK(m.is_coupled_index(i));
+    }
+}
+
+// n dofs on one patch, every one eliminated: the largest number of
+// elimination ids a mapper of n dofs can use.
+void checkEveryDofEliminated(const index_t n)
+{
+    gsVector<index_t> sz(1);
+    sz[0] = n;
+    gsDofMapper m(sz, 1);
+    gsMatrix<index_t> all(n, 1);
+    for (index_t i = 0; i != n; ++i)
+        all(i, 0) = i;
+    m.markBoundary(0, all);
+    m.finalize();
+    CHECK_EQUAL(n, m.size());
+    CHECK_EQUAL(0, m.freeSize());
+    CHECK_EQUAL(n, m.boundarySize());
+    for (index_t i = 0; i != n; ++i)
+        CHECK_EQUAL(i, m.bindex(i, 0));
+}
+} // anonymous namespace
+
+// Construction accepts up to max(index_t) dofs, so the ids handed out during
+// setup must be representable up to that count as well.  At the limit itself
+// only a narrow index_t (int8_t, int16_t) is affordable; wider builds check
+// the same property on a small mapper.
+TEST(setup_ids_are_representable_up_to_the_dof_count_limit)
+{
+    checkEveryDofCoupled(5);
+    checkEveryDofEliminated(5);
+
+    const index_t imax = std::numeric_limits<index_t>::max();
+    if (static_cast<size_t>(imax) <= (static_cast<size_t>(1) << 16))
+    {
+        checkEveryDofCoupled(imax);
+        checkEveryDofEliminated(imax);
     }
 }
 
