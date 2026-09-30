@@ -1,4 +1,4 @@
-/** @file gsFeElement.h
+/** @file gsFeSolution.h
 
     @brief Defines an element as an expression
 
@@ -36,7 +36,7 @@ class gsFeSolution : public _expr<gsFeSolution<T> >
 protected:
     const gsFeSpace<T> _u;
     gsMatrix<T> * _Sv; ///< Pointer to a coefficient vector
-    bool m_isAcross; ///< true when this expression is evaluated across an interface
+    bool m_isAcross = false; ///< true when this expression is evaluated across an interface
 
 public:
     typedef T Scalar;
@@ -127,7 +127,6 @@ public:
     const gsDofMapper & mapper() const {return _u.mapper();}
 
     inline const gsMatrix<T> & fixedPart() const {return _u.fixedPart();}
-    gsMatrix<T> & fixedPart() {return _u.fixedPart();}
 
     //gsFuncData<T> & data() {return _u.data();}
     const gsFuncData<T> & data() const {return _u.data();}
