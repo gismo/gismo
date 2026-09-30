@@ -985,6 +985,17 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, short_t un
 
 template<class T> void gsExprAssembler<T>::resetDimensions()
 {
+    // Before the rebuilds below: a mapper installed through
+    // gsFeSpace::mapper() bypasses setupMapper, and an unusable one would
+    // otherwise fail valid() and be replaced without a diagnostic
+    // (a block whose space was never registered is still null)
+    for (size_t i = 0; i!=m_vcol.size(); ++i)
+        if (m_vcol[i])
+            gismo::expr::gsFeSpaceData<T>::ensureUsableByUniformEvaluator(m_vcol[i]->mapper);
+    for (size_t i = 0; i!=m_vrow.size(); ++i)
+        if (m_vrow[i])
+            gismo::expr::gsFeSpaceData<T>::ensureUsableByUniformEvaluator(m_vrow[i]->mapper);
+
     if (!m_vcol.front()->valid()) m_vcol.front()->init();
     if (!m_vrow.front()->valid()) m_vrow.front()->init();
     for (size_t i = 1; i!=m_vcol.size(); ++i)

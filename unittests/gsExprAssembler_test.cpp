@@ -17,6 +17,7 @@
 #include <gsMSplines/gsMappedBasis.h>
 
 #include <atomic>
+#include <sstream>
 
 namespace
 {
@@ -47,6 +48,50 @@ gsMultiBasis<real_t> twoPatchBasis(const gsMultiPatch<real_t> & mp)
     mb.degreeElevate(1);   // bilinear -> biquadratic
     mb.uniformRefine(2);
     return mb;
+}
+
+/// The two components of a 2D Raviart-Thomas pair on the patches of
+/// BSplineSquareGrid(2,1,1.0): component 0 = S^{3,2}_{2,1}, component 1 =
+/// S^{2,3}_{1,2}, maximal regularity, e0 x e1 elements per patch.  Per patch
+/// the components have (e0+3)(e1+2) and (e0+2)(e1+3) dofs: equal on an
+/// isotropic mesh (4x4: 42 and 42), unequal on an anisotropic one (4x2: 28
+/// and 30).  Same construction as rtPair() in gsDofMapperCreator_test.cpp.
+std::vector<gsMultiBasis<real_t> > rtPair(index_t e0, index_t e1)
+{
+    gsMultiPatch<real_t> mp = gsNurbsCreator<real_t>::BSplineSquareGrid(2,1,1.0);
+    std::vector<gsMultiBasis<real_t> > r;
+    for (index_t c = 0; c != 2; ++c)
+    {
+        const short_t p0 = (0 == c ? 3 : 2), p1 = (0 == c ? 2 : 3);
+        gsKnotVector<real_t> kv0(0.0, 1.0, e0-1, p0+1, 1, p0);
+        gsKnotVector<real_t> kv1(0.0, 1.0, e1-1, p1+1, 1, p1);
+        gsMultiBasis<real_t>::BasisContainer bases;
+        bases.push_back(new gsTensorBSplineBasis<2,real_t>(kv0, kv1));
+        bases.push_back(new gsTensorBSplineBasis<2,real_t>(kv0, kv1));
+        r.push_back(gsMultiBasis<real_t>(bases, mp.topology()));
+    }
+    return r;
+}
+
+/// Collects what is written to std::cerr while in scope; GISMO_ENSURE
+/// reports its message there and throws a generic std::runtime_error.
+class CerrCapture
+{
+public:
+    CerrCapture() : m_old(std::cerr.rdbuf(m_buf.rdbuf())) { }
+    ~CerrCapture() { std::cerr.rdbuf(m_old); }
+    bool contains(const std::string & s) const
+    { return std::string::npos != m_buf.str().find(s); }
+private:
+    std::ostringstream m_buf;
+    std::streambuf * m_old;
+};
+
+template <class F> bool throws(F f)
+{
+    try { f(); }
+    catch (...) { return true; }
+    return false;
 }
 
 } // anonymous namespace
@@ -538,5 +583,163 @@ SUITE(gsExprAssembler_test)
         CHECK_EQUAL(Mref.nonZeros(), M.nonZeros());
         CHECK((M - Mref).norm() < 1e-14);
         CHECK_CLOSE(2.0, M.sum(), 1e-10);
+    }
+    // A Raviart-Thomas mapper -- one basis per component, declared distinct
+    // by the per-component creator -- is rejected by setupMapper in every
+    // build type, on the anisotropic mesh (unequal component sizes) and on
+    // the isotropic one.  On the isotropic mesh every size the expression
+    // layer could compare agrees with a uniform 2-component mapper over
+    // component 0's basis, so only the declared flag can reject it.
+    TEST(DistinctComponentMapperRejectedBySetupMapper)
+    {
+        const index_t meshes[2][2] = { {4,2}, {4,4} };
+        for (index_t mesh = 0; mesh != 2; ++mesh)
+        {
+            const std::vector<gsMultiBasis<real_t> > rt =
+                rtPair(meshes[mesh][0], meshes[mesh][1]);
+            const gsDofMapper rtMapper =
+                createMapper(rt, gsBoundaryConditions<real_t>(), 0, true, true);
+            CHECK(rtMapper.hasDistinctComponentSpaces());
+
+            if (meshes[mesh][0] == meshes[mesh][1])
+            {
+                CHECK_EQUAL(rtMapper.patchSize(0,0), rtMapper.patchSize(0,1));
+                CHECK_EQUAL(rtMapper.patchSize(1,0), rtMapper.patchSize(1,1));
+                CHECK_EQUAL(2*rt[0].totalSize(), rtMapper.mapSize());
+            }
+
+            gsExprAssembler<real_t> A(1,1);
+            A.setIntegrationElements(rt[0]);
+            auto u = A.getSpace(rt[0], 2);
+            const size_t before = u.mapper().mapSize();
+
+            CerrCapture err;
+            CHECK_THROW(u.setupMapper(rtMapper), std::runtime_error);
+            CHECK(err.contains("distinct per-component bases"));
+            CHECK_EQUAL(before, u.mapper().mapSize()); // not installed
+            CHECK(!u.mapper().hasDistinctComponentSpaces());
+        }
+    }
+
+    // The same mappers installed through the mutable gsFeSpace::mapper()
+    // reference, which bypasses setupMapper: initSystem() rejects them
+    // before its valid()/init() rebuild instead of silently replacing
+    // (anisotropic) or assembling (isotropic) them.  gsFeSolution::check()
+    // rejects them as well.
+    TEST(DistinctComponentMapperRejectedThroughMutableMapper)
+    {
+        const index_t meshes[2][2] = { {4,2}, {4,4} };
+        for (index_t mesh = 0; mesh != 2; ++mesh)
+        {
+            const std::vector<gsMultiBasis<real_t> > rt =
+                rtPair(meshes[mesh][0], meshes[mesh][1]);
+            const gsDofMapper rtMapper =
+                createMapper(rt, gsBoundaryConditions<real_t>(), 0, true, true);
+
+            gsExprAssembler<real_t> A(1,1);
+            A.setIntegrationElements(rt[0]);
+            auto u = A.getSpace(rt[0], 2);
+            u.mapper() = rtMapper;
+
+            {
+                CerrCapture err;
+                CHECK_THROW(A.initSystem(), std::runtime_error);
+                CHECK(err.contains("distinct per-component bases"));
+            }
+            CHECK(u.mapper().hasDistinctComponentSpaces()); // not replaced
+
+            gsMatrix<real_t> sol(rtMapper.freeSize(), 1);
+            sol.setZero();
+            const expr::gsFeSolution<real_t> s(u, sol);
+            {
+                CerrCapture err;
+                CHECK_THROW(s.check(), std::runtime_error);
+                CHECK(err.contains("distinct per-component bases"));
+            }
+
+            // the same through a separate test space: its mapper is the
+            // only one that is unusable
+            gsExprAssembler<real_t> B(1,1);
+            B.setIntegrationElements(rt[0]);
+            auto w = B.getSpace(rt[0], 2);
+            auto v = B.getTestSpace(w, rt[0]);
+            v.mapper() = rtMapper;
+            {
+                CerrCapture err;
+                CHECK_THROW(B.initSystem(), std::runtime_error);
+                CHECK(err.contains("distinct per-component bases"));
+            }
+            CHECK(v.mapper().hasDistinctComponentSpaces()); // not replaced
+        }
+    }
+
+    // A mapper that was not declared distinct but whose components differ in
+    // size is rejected with the offending component and patch named --
+    // including equal component totals split differently over the patches,
+    // which the mapSize() consistency assert in setupMapper cannot see.
+    TEST(UnequalComponentSizesRejected)
+    {
+        gsMultiPatch<real_t> mp = gsNurbsCreator<real_t>::BSplineSquareGrid(2,1,1.0);
+        gsMultiBasis<real_t> mb = twoPatchBasis(mp);
+
+        gsVector<index_t> sizes0(2), sizes1(2);
+        sizes0 << 4, 6;
+        sizes1 << 6, 4;
+        std::vector<gsVector<index_t> > sizes;
+        sizes.push_back(sizes0);
+        sizes.push_back(sizes1);
+        gsDofMapper split(sizes, /*hasDistinctComponentSpaces=*/false);
+        split.finalize();
+        CHECK_EQUAL(split.totalSize(0), split.totalSize(1));
+
+        gsDofMapper identity;
+        std::vector<size_t> totals(2);
+        totals[0] = 5;
+        totals[1] = 7;
+        identity.setIdentity(2, totals);
+        identity.finalize();
+
+        gsExprAssembler<real_t> A(1,1);
+        A.setIntegrationElements(mb);
+        auto u = A.getSpace(mb, 2);
+        {
+            CerrCapture err;
+            CHECK_THROW(u.setupMapper(split), std::runtime_error);
+            CHECK(err.contains("component 1 has 6 dofs on patch 0, component 0 has 4"));
+        }
+        {
+            CerrCapture err;
+            CHECK_THROW(u.setupMapper(identity), std::runtime_error);
+            CHECK(err.contains("component 1 has 7 dofs, component 0 has 5"));
+        }
+        {
+            u.mapper() = split;
+            CerrCapture err;
+            CHECK_THROW(A.initSystem(), std::runtime_error);
+            CHECK(err.contains("component 1 has 6 dofs on patch 0"));
+        }
+    }
+
+    // The rejection leaves every mapper the single-basis creators produce
+    // alone, including a default-constructed one (the state before the
+    // first initSystem()) and a uniform one whose component count differs
+    // from the space dimension.
+    TEST(UniformMappersNotRejected)
+    {
+        gsMultiPatch<real_t> mp = gsNurbsCreator<real_t>::BSplineSquareGrid(2,1,1.0);
+        gsMultiBasis<real_t> mb = twoPatchBasis(mp);
+
+        typedef expr::gsFeSpaceData<real_t> Data;
+        CHECK(!throws([&]{ Data::ensureUsableByUniformEvaluator(gsDofMapper()); }));
+        for (index_t nComp = 1; nComp != 4; ++nComp)
+            CHECK(!throws([&]{ Data::ensureUsableByUniformEvaluator(
+                                   createMapper(mb, nComp, true, true)); }));
+
+        gsExprAssembler<real_t> A(1,1);
+        A.setIntegrationElements(mb);
+        auto u = A.getSpace(mb, 2);
+        CHECK(!throws([&]{ A.initSystem(); }));
+        CHECK(!throws([&]{ u.setupMapper(createMapper(mb, 2, true, true)); }));
+        CHECK(!throws([&]{ A.initSystem(); }));
     }
 }

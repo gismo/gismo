@@ -108,6 +108,9 @@ public:
 
     void setupMapper(gsDofMapper dofsMapper) const
     {
+        // First, so that a rejected mapper gets its reason in every build
+        // type rather than the size assert below in Debug only
+        gsFeSpaceData<T>::ensureUsableByUniformEvaluator(dofsMapper);
         GISMO_ASSERT( dofsMapper.isFinalized(), "The provided dof-mapper is not finalized.");
         GISMO_ASSERT( dofsMapper.mapSize()==static_cast<size_t>(this->source().size()*dofsMapper.numComponents()), "The dof-mapper is not consistent: mapSize()="<<dofsMapper.mapSize()<<"!="<<static_cast<size_t>(this->source().size())<<"=this->source().size()");
         m_sd->mapper = give(dofsMapper);
