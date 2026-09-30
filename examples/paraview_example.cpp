@@ -78,10 +78,11 @@ int main(int argc, char* argv[])
 
     //! [gsWriteParaview]
     gsMultiBasis<> mBasis(mPatch);
-    gsWriteParaview(mPatch, output+"MultiPatch");
-    gsWriteParaview(mPatch, mBasis, output+"MultiBasis");
+    gsParaview<real_t> pv;
+    pv.write(mPatch, output+"MultiPatch");
+    pv.write(mPatch, mBasis, output+"MultiBasis");
     gsMatrix<> cPoints = mPatch.coefs().transpose();
-    gsWriteParaviewPoints(cPoints, output+"Points");
+    pv.writePoints(cPoints, output+"Points");
     gsInfo << "Wrote " << output+"MultiPatch.pvd, " << output+"MultiPatch_*.vts, "<< output+"MultiBasis.pvd, "<< output+"MultiBasis_*.vts"   << "\n\n";
 
     // Fabricate some data to write to csv file and plot
@@ -112,17 +113,17 @@ int main(int argc, char* argv[])
 
     // Initialize the Paraview Collection  with the desired filename of the .pvd file 
     // and the evaluator that will be used to evaluate the expressions (optionally)
-    gsParaviewCollection PVCollection(output + "PVCollection.pvd", &evaluator);
+    gsParaviewCollection<real_t> PVCollection(output + "PVCollection.pvd", evaluator);
 
     // Number of evaluation points per patch
     PVCollection.options().setInt("numPoints", 1000);
     // Number of decimal points in the output
     PVCollection.options().setInt("precision", 5);
     // Plot the element mesh and set it's resolution
-    PVCollection.options().setSwitch("plotElements", false);
-    PVCollection.options().setInt("plotElements.resolution", -1);
+    PVCollection.options().setSwitch("elements", false);
+    PVCollection.options().setInt("elementResolution", -1);
     // Plot the control net
-    PVCollection.options().setSwitch("plotControlNet", false);
+    PVCollection.options().setSwitch("controlNet", false);
     // Export the vtk files to a subfolder
     PVCollection.options().setSwitch("makeSubfolder", true);
     // Name of the subfolder
@@ -132,7 +133,7 @@ int main(int argc, char* argv[])
 
     // Create a new timestep (e.g for the initial state of the problem)
     // This initialises the appropriate files on disk
-    PVCollection.newTimeStep(&mPatch);
+    PVCollection.newTimeStep(mPatch);
     // Write the measure of the geometry to the files
     PVCollection.addField( meas(geoMap), "Measure");
     // Write the unit surface normal to the files
@@ -151,7 +152,7 @@ int main(int argc, char* argv[])
     }
 
     // Perform the same steps as before for the deformed geometry
-    PVCollection.newTimeStep(&mPatch);
+    PVCollection.newTimeStep(mPatch);
     PVCollection.addField( meas(geoMap), "Measure");
     PVCollection.addField(  usn(geoMap), "Surface normal");
     PVCollection.saveTimeStep();
@@ -164,7 +165,9 @@ int main(int argc, char* argv[])
     //! [Bezier]
     if (bezier) 
     {
-        gsWriteParaviewBezier(mPatch, output+"Bezier");
+        gsParaview<real_t> pvBezier;
+        pvBezier.options().setSwitch("bezier", true);
+        pvBezier.write(mPatch, output+"Bezier");
         gsInfo << "Wrote " << output+"Bezier" << ".vtu" << ", " << output+"Bezier" << ".pvd\n";
     }
     //! [Bezier]

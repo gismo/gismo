@@ -140,7 +140,7 @@ gsDofMapper createMapper(const gsFunctionSet<T>        & bases,
         for (typename gsBoundaryConditions<T>::const_cpliterator
              it = bc.coupledBegin(); it != bc.coupledEnd(); ++it )
         {
-            if (unk!=-1 && it->unknown != unk) continue;
+            if (unk!=-1 && it->unknown!=-1 && it->unknown != unk) continue;
 
             GISMO_ASSERT(static_cast<size_t>(it->ifc.first().patch) < mapper.numPatches(),
                             "Problem: a boundary condition is set on a patch id which does not exist.");
@@ -172,7 +172,7 @@ gsDofMapper createMapper(const gsFunctionSet<T>        & bases,
         for (typename gsBoundaryConditions<T>::const_citerator
                 it = bc.cornerBegin() ; it != bc.cornerEnd(); ++it )
         {
-            if (unk!=-1 && it->unknown != unk) continue;
+            if (unk!=-1 && it->unknown!=-1 && it->unknown != unk) continue;
             for (index_t r = 0; r!=nComp; ++r)
             {
                 if (it->component!=-1 && it->component!=r) continue;

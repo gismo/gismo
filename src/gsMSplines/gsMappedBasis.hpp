@@ -29,7 +29,42 @@ gsMappedBasis<d,T>::gsMappedBasis( const gsMappedBasis& other )
     }
     m_mapper=new gsWeightMapper<T>(*other.m_mapper);
 
-    //m_sb = other.m_sb; //no: other.m_sb refers to other
+    // gsMappedSingleBasis holds a back-pointer to its owner, so the pieces must be
+    // rebuilt against *this; copying other.m_sb would leave them pointing at other.
+    m_sb.reserve(m_bases.size());
+    for ( size_t q=0; q!=m_bases.size(); ++q )
+        m_sb.push_back( gsMappedSingleBasis<d,T>(this,q) );
+}
+
+template<short_t d,class T>
+gsMappedBasis<d,T> & gsMappedBasis<d,T>::operator=( const gsMappedBasis& other )
+{
+    if ( this == &other ) return *this;
+
+    m_topol = other.m_topol;
+
+    // Clone everything before releasing what we own: the sources must stay alive
+    // while they are being read.
+    std::vector<BasisType*> tmpBases;
+    tmpBases.reserve(other.m_bases.size());
+    for(ConstBasisIter it = other.m_bases.begin();it!=other.m_bases.end();++it)
+        tmpBases.push_back( (BasisType*)(*it)->clone().release() );
+    gsWeightMapper<T> * tmpMapper =
+        ( nullptr==other.m_mapper ? nullptr : new gsWeightMapper<T>(*other.m_mapper) );
+
+    freeAll(m_bases);
+    m_bases.swap(tmpBases);
+    delete m_mapper;
+    m_mapper = tmpMapper;
+
+    // gsMappedSingleBasis holds a back-pointer to its owner, so the pieces must be
+    // rebuilt against *this; copying other.m_sb would leave them pointing at other.
+    m_sb.clear();
+    m_sb.reserve(m_bases.size());
+    for ( size_t q=0; q!=m_bases.size(); ++q )
+        m_sb.push_back( gsMappedSingleBasis<d,T>(this,q) );
+
+    return *this;
 }
 
 template<short_t d,class T>

@@ -74,27 +74,13 @@ void outputResult(const gsMultiPatch<T> &mp, const std::string &filename) {
 
   auto mdim = mp.parDim();
 
-  gsOptionList options;
-  options.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0);
-  options.addInt("quB", "Number of quadrature points: quA*deg + quB", 1);
-  options.addInt("quRule",
-                 "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
-                 1);
-  options.addInt("overInt", "Apply over-integration or not?", 0);
-  options.addSwitch("plot.mesh",
-                    "If true, plot the element mesh of the parameterization",
-                    false);
-  options.addSwitch("plot.net",
-                    "If true, plot the control net of the parameterization",
-                    false);
+  gsOptionList options = gsExprEvaluator<>::defaultOptions();
+  options.setSwitch("elements",false);
+  options.setInt("numPoints",(mdim==2) ? 1000 : 10000);
   if (mdim == 2)
-    options.addInt("plot.npts",
-                   "Number of sampling points for plotting",
-                   1000);
+    options.setInt("numPoints",1000);
   else
-    options.addInt("plot.npts",
-                   "Number of sampling points for plotting",
-                   10000);
+    options.setInt("numPoints",10000);
   ev.options() = options;
 
   gsInfo << "\n Parameterization quality info (only values for quadrature "

@@ -90,7 +90,7 @@ public:
     virtual gsMesh<T> createFlatMesh() const;
 
     /**
-     * Writes m_mesh into @a filename.vtk with the vertices coloured
+     * Writes m_mesh into @a filename.vtp with the vertices coloured
      * according to the parameters.
      * @param filename The name of the output file (without extension).
      */
