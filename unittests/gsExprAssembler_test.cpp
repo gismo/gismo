@@ -215,6 +215,24 @@ SUITE(gsExprAssembler_test)
         CHECK(A.matrix().rows() > 0);
     }
 
+    TEST(TestSpaceReRegistrationKeepsItsData)
+    {
+        gsBSplineBasis<real_t> bb(0.0, 1.0, 3, 3);
+        gsMultiBasis<real_t> mb(bb);
+
+        gsExprAssembler<real_t> A(2, 2);
+        auto u0 = A.getSpace(mb, 1, 0);
+        A.getTestSpace(u0, mb);   // distinct test space for unknown 0
+        A.getSpace(mb, 2, 1);     // registers more space data after it
+
+        // Re-registering test space 0 updates its existing data; the
+        // returned handle must refer to that data, not to whichever
+        // space data happened to be registered last (unknown 1).
+        auto v0 = A.getTestSpace(mb, 1, 0);
+        CHECK_EQUAL(0, v0.id());
+        CHECK(&v0.mapper() == &A.testSpace(0).mapper());
+    }
+
     TEST(InterfaceExpression)
     {
         const index_t numRef = 2;
