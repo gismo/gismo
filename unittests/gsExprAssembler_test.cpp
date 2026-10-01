@@ -283,6 +283,39 @@ SUITE(gsExprAssembler_test)
                     ev.integralInterface(s.right() - s.left(), patches.interfaces()), 1e-12);
     }
 
+    // A mapper installed by setupMapper() must be the one initSystem() uses.
+    // initSystem() rebuilds any mapper whose component count differs from the
+    // space dimension, discarding its eliminated dofs, so setupMapper() has to
+    // reject such a mapper instead of accepting it.
+    TEST(SetupMapperComponents)
+    {
+        gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(1,1,1);
+        gsMultiBasis<> mb(patches);
+        mb.uniformRefine();
+
+        const auto boundaryEliminated = [&mb](index_t nComp)
+        {
+            gsDofMapper m = createMapper(mb, nComp);
+            for (index_t c = 0; c != nComp; ++c)
+                m.markBoundary(0, mb.basis(0).allBoundary(), c);
+            m.finalize();
+            return m;
+        };
+
+        gsExprAssembler<> A(1, 1);
+        A.setIntegrationElements(mb);
+        auto u = A.getSpace(mb, 2);
+
+        CHECK_THROW(u.setupMapper(boundaryEliminated(3)), std::runtime_error);
+        CHECK_THROW(u.setupMapper(boundaryEliminated(1)), std::runtime_error);
+
+        const gsDofMapper matching = boundaryEliminated(2);
+        u.setupMapper(matching);
+        A.initSystem();
+        CHECK_EQUAL(matching.freeSize(), u.mapper().freeSize());
+        CHECK_EQUAL(matching.freeSize(), A.numDofs());
+    }
+
     TEST(BoundaryIntegral)
     {
         // Create a circle
