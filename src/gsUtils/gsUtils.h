@@ -53,12 +53,56 @@ std::string to_string(C (& value)[N])
 }
 #endif
 
+/// \brief Whitelist trait: true only for the integral types whose
+/// std::ostream inserter is known to print exact decimal digits
+// Only these integer types have a std::ostream inserter that prints decimal
+// digits. Every other integral type is excluded on purpose: char/signed
+// char/unsigned char stream as a character glyph, not digits; wchar_t/
+// char16_t/char32_t/char8_t stream as their integer code before C++20, but
+// [ostream.inserters.character] (P1423R3) deletes that inserter in C++20, so
+// none of the four may be on this whitelist without breaking a C++20 build;
+// and some integral types (e.g. __int128) have no digit-printing inserter at
+// all. The fast path below is a whitelist rather than an exclusion list: an
+// integral type nobody thought of here keeps its pre-existing real_t-cast
+// behavior instead of breaking the build.
+template<typename C>
+struct is_decimal_integral : std::integral_constant<bool,
+    std::is_same<C, bool>::value ||
+    std::is_same<C, short>::value ||
+    std::is_same<C, unsigned short>::value ||
+    std::is_same<C, int>::value ||
+    std::is_same<C, unsigned int>::value ||
+    std::is_same<C, long>::value ||
+    std::is_same<C, unsigned long>::value ||
+    std::is_same<C, long long>::value ||
+    std::is_same<C, unsigned long long>::value> {};
+
+/// \brief Converts a whitelisted integral value to string, printing its
+/// exact decimal digits
+/// \ingroup Utils
+// Streamed directly, without casting to real_t first: real_t is typically a
+// double, and streaming through it truncates to ostringstream's default
+// 6-significant-digit precision, turning any integer with more digits than
+// that into scientific notation with a truncated mantissa.
+template<typename C, typename std::enable_if<is_decimal_integral<C>::value, int>::type = 0>
+std::string to_string(const C & value)
+{
+    std::ostringstream convert;
+    convert << value;
+    return convert.str();
+}
+
 /// \brief Converts value to string, preferring static casting to double when possible
 /// \ingroup Utils
 // Prefer printing values using the configured real_t instead of double when
 // possible. Use a SFINAE-friendly overload so that autodiff expression types
 // that are not directly convertible to real_t are handled by other overloads.
-template<typename C, typename std::enable_if<std::is_convertible<C, real_t>::value, int>::type = 0>
+// Covers float, double, the char family (char/signed char/unsigned
+// char/wchar_t/char16_t/char32_t/char8_t), autodiff/expression scalars, and
+// any other type convertible to real_t that is not on the decimal-integral
+// whitelist above.
+template<typename C, typename std::enable_if<std::is_convertible<C, real_t>::value
+    && !is_decimal_integral<C>::value, int>::type = 0>
 std::string to_string(const C & value)
 {
     std::ostringstream convert;
@@ -69,7 +113,8 @@ std::string to_string(const C & value)
     return convert.str();
 }
 
-template<typename C, typename std::enable_if<!std::is_convertible<C, real_t>::value, int>::type = 0>
+template<typename C, typename std::enable_if<!std::is_convertible<C, real_t>::value
+    && !is_decimal_integral<C>::value, int>::type = 0>
 std::string to_string(const C & value)
 {
     std::ostringstream convert;

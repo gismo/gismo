@@ -5,54 +5,58 @@
 ## Author: Angelos Mantzaflaris
 ######################################################################
 
-## OpenNurbs extension
+## gsHLBFGS module
 project(gsHLBFGS)
 
-set(HLBFGS_SOURCES
-${gismo_externals}/HLBFGS/HLBFGS.cpp
-${gismo_externals}/HLBFGS/HLBFGS_BLAS.cpp
-${gismo_externals}/HLBFGS/ICFS.cpp
-${gismo_externals}/HLBFGS/LineSearch.cpp
-# ${gismo_externals}/HLBFGS/Lite_Sparse_Matrix.cpp
-)
-
-SET(HLBFGS_HEADERS
-${gismo_externals}/HLBFGS/HLBFGS.h
-${gismo_externals}/HLBFGS/HLBFGS_BLAS.h
-${gismo_externals}/HLBFGS/ICFS.h
-${gismo_externals}/HLBFGS/LineSearch.h
-# ${gismo_externals}/HLBFGS/Lite_Sparse_Matrix.h
-)
-
-# Apply same configuration as G+Smo
+# Apply G+Smo config
 include(gsConfig)
-set(CMAKE_CXX_VISIBILITY_PRESET default)
 
-add_library(${PROJECT_NAME} OBJECT ${HLBFGS_SOURCES} gsHLBFGS.h) #STATIC
-#target_link_libraries(${PROJECT_NAME} Rpcrt4) # Note: linked with gismolib instead
+## Collect files
+aux_header_directory(${CMAKE_CURRENT_SOURCE_DIR}/src ${PROJECT_NAME}_H)
 
-if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
-  set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "/W0")
-elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
-  set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-w")
+# Interface library: the compiled HLBFGS sources come from
+# gismo_add_dependency() in dependencies.cmake, whose objects already
+# land in gismo_EXTENSIONS. This module contributes no .cpp of its own,
+# so an OBJECT library (the gsModuleTemplate default) would carry an
+# empty $<TARGET_OBJECTS:...>, which is not reliably accepted by all
+# generators under this project's CMake floor.
+add_library(${PROJECT_NAME} INTERFACE)
+target_sources(${PROJECT_NAME} INTERFACE $<BUILD_INTERFACE:${${PROJECT_NAME}_H}>)
+target_link_libraries(${PROJECT_NAME} INTERFACE HLBFGS::HLBFGS)
+
+#Symlink include dir (in case your headers are in /src)
+execute_process( COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/${PROJECT_NAME})
+
+# Installed layout mirrors the build-tree symlink, so that
+# #include <gsHLBFGS/gsHLBFGS.h> resolves in both cases
+install(FILES ${${PROJECT_NAME}_H}
+  DESTINATION include/gismo/${PROJECT_NAME} )
+
+# The vendored HLBFGS headers are part of this module's public interface:
+# src/gsHLBFGS.h includes "HLBFGS/HLBFGS.h", which resolves against the
+# consumer's -I<prefix>/include/gismo, so they install beside gsHLBFGS/,
+# not inside it. A non-vendored HLBFGS is not ours to redistribute.
+if(HLBFGS_VENDORED)
+  get_target_property(_hlbfgs_inc HLBFGS::HLBFGS INTERFACE_INCLUDE_DIRECTORIES)
+  install(DIRECTORY ${_hlbfgs_inc}/HLBFGS
+          DESTINATION include/gismo
+          FILES_MATCHING PATTERN "*.h")
 endif()
-#In CMake 2.8.12 the above can be:
-#target_compile_options(${PROJECT_NAME} PRIVATE $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:-w> $<$<CXX_COMPILER_ID:MSVC>: /W0>)
 
-set_target_properties(${PROJECT_NAME}
-PROPERTIES POSITION_INDEPENDENT_CODE ON
-COMPILE_DEFINITIONS gismo_EXPORTS
-FOLDER "G+Smo extensions")
+# add example files
+aux_cpp_directory(${CMAKE_CURRENT_SOURCE_DIR}/examples FILES)
+foreach(file ${FILES})
+    add_gismo_executable(${file})
+    get_filename_component(tarname ${file} NAME_WE) # name without extension
+    set_property(TEST ${tarname} PROPERTY LABELS "${PROJECT_NAME}")
+    set_target_properties(${tarname} PROPERTIES FOLDER "${PROJECT_NAME}")
+    # install the example executables (optionally)
+    install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe OPTIONAL)
+endforeach(file ${FILES})
 
-#SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES VERSION "2010.04.95")
+# add unittests
+aux_gs_cpp_directory(${PROJECT_SOURCE_DIR}/unittests unittests_SRCS)
+set(gismo_UNITTESTS ${gismo_UNITTESTS} ${unittests_SRCS}
+  CACHE INTERNAL "gismo list of unittests")
 
-set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
-    CACHE INTERNAL "Gismo extensions to be included")
-# if ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" )
-# set(gismo_LINKER ${gismo_LINKER} Rpcrt4
-#     CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
-# endif()
-
-install(DIRECTORY ${PROJECT_SOURCE_DIR}
-        DESTINATION include/gismo
-        FILES_MATCHING PATTERN "*.h")
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin/)

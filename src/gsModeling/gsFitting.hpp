@@ -123,7 +123,7 @@ void gsFitting<T>::compute(T lambda)
 
   typename gsSparseSolver<T>::BiCGSTABILUT solver( A_mat );
 
-  if ( solver.preconditioner().info() != gsEigen::Success )
+  if ( solver.preconditioner().info() != Eigen::Success )
   {
       gsWarn<<  "The preconditioner failed. Aborting.\n";
 
@@ -135,7 +135,7 @@ void gsFitting<T>::compute(T lambda)
   x = solver.solve(m_B); //toDense()
 
   // If there were constraints, we obtained too many coefficients.
-  x.conservativeResize(num_basis, gsEigen::NoChange);
+  x.conservativeResize(num_basis, Eigen::NoChange);
 
   //gsMatrix<T> x (m_B.rows(), m_B.cols());
   //x=A_mat.fullPivHouseholderQr().solve( m_B);
@@ -251,7 +251,7 @@ gsMatrix<T> gsFitting<T>::principal_curvatures(const gsMatrix<T> & params)
       pm = params.col(d);
       out = ev.eval( shapeop(G), pm );
 
-      pcs = out.template selfadjointView<gsEigen::Lower>().eigenvalues();
+      pcs = out.template selfadjointView<Eigen::Lower>().eigenvalues();
 
       m_pointCurvature.row(d) = pcs.transpose();
 
@@ -447,7 +447,7 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
 
         // typename gsSparseSolver<T>::QR solver(A_tilde);
         typename gsSparseSolver<T>::BiCGSTABILUT solver( A_tilde );
-        if ( solver.preconditioner().info() != gsEigen::Success )
+        if ( solver.preconditioner().info() != Eigen::Success )
         {
             gsWarn<<  "The preconditioner failed. Aborting.\n";
 
@@ -457,7 +457,7 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
         gsMatrix<T> sol_tilde = solver.solve(rhs);
 
         // If there were constraints, we obtained too many coefficients.
-        sol_tilde.conservativeResize(num_basis * 3, gsEigen::NoChange);
+        sol_tilde.conservativeResize(num_basis * 3, Eigen::NoChange);
 
         gsMatrix<T> coefs_tilde(m_basis->size(), 3);
         for(index_t j=0; j<m_basis->size(); j++)
@@ -998,7 +998,7 @@ void gsFitting<T>::computeMaxNormErrors()
             }
 
             //const T err = (m_points.row(k) - values.col(k).transpose()).cwiseAbs().maxCoeff();
-            const T err = (m_points.row(k) - values.transpose()).template lpNorm<gsEigen::Infinity>();
+            const T err = (m_points.row(k) - values.transpose()).template lpNorm<Eigen::Infinity>();
 
             m_pointErrors.push_back(err);
 
@@ -1078,7 +1078,7 @@ void gsFitting<T>::get_Error(std::vector<T>& errors, int type) const
 
             results.transposeInPlace();
 
-            err = (m_points.row(k) - results).template lpNorm<gsEigen::Infinity>();
+            err = (m_points.row(k) - results).template lpNorm<Eigen::Infinity>();
 
                     switch (type)
                     {

@@ -33,7 +33,7 @@ namespace gismo {
  * @return the position of the first specified index
  */
 
-typedef gsEigen::PermutationMatrix<Dynamic,Dynamic,index_t> gsPermutationMatrix;
+typedef Eigen::PermutationMatrix<Dynamic,Dynamic,index_t> gsPermutationMatrix;
 
 template <class T>
 index_t reorderMapperTarget (gsWeightMapper<T> &mapper, const std::vector<index_t>& permutation, gsPermutationMatrix* permMatrix=NULL);

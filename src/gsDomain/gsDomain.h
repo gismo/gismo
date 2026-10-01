@@ -89,14 +89,6 @@ class gsDomain
     virtual ~gsDomain() { }
 
     index_t patchIndex() const { return m_patch; }
-    
-#if EIGEN_HAS_RVALUE_REFERENCES && EIGEN_GNUC_AT_MOST(4,7) && !EIGEN_COMP_PGI
-    // defaulted declaration required at least in Gcc 4.7.2
-    gsDomain(const gsDomain&) = default;
-    gsDomain(gsDomain&&) = default;
-    gsDomain & operator=(const gsDomain&) = default;
-    gsDomain & operator=(gsDomain&&) = default;
-#endif
 
 public:
 

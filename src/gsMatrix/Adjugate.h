@@ -135,7 +135,7 @@ struct adjugate_impl : public ReturnByValue<adjugate_impl<MatrixType> >
 
     template<typename Dest> inline void evalTo(Dest& dst) const
     {
-        static const int Size = EIGEN_PLAIN_ENUM_MIN(MatrixType::ColsAtCompileTime,Dest::ColsAtCompileTime);
+        static const int Size = plain_enum_min(MatrixType::ColsAtCompileTime,Dest::ColsAtCompileTime);
         EIGEN_ONLY_USED_FOR_DEBUG(Size);
         eigen_assert(( (Size<=1) || (Size>4) || (extract_data(m_matrix)!=extract_data(dst)))
                      && "Aliasing problem detected in adjugate(), you need to do adjugate().eval() here.");
@@ -155,7 +155,7 @@ struct traits<adjugate_impl<MatrixType> >
 
 // ***  Implementation of MatrixBase::adjugate()
 
-/// @memberof gsEigen::MatrixBase
+/// @memberof Eigen::MatrixBase
 template<typename Derived>
 inline const internal::adjugate_impl<Derived>
 MatrixBase<Derived>::adjugate() const
@@ -164,7 +164,7 @@ MatrixBase<Derived>::adjugate() const
     return internal::adjugate_impl<Derived>(derived());
 }
 
-/// @memberof gsEigen::MatrixBase
+/// @memberof Eigen::MatrixBase
 template<typename Derived>
 inline void MatrixBase<Derived>::adjugateInPlace()
 {

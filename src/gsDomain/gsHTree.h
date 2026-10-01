@@ -152,7 +152,6 @@ public:
         return *this;
     }
 
-#if EIGEN_HAS_RVALUE_REFERENCES
     gsHTree(gsHTree&& o) :
     m_root(o.m_root),
     m_upperIndex(std::move(o.m_upperIndex)),
@@ -172,7 +171,6 @@ public:
         m_maxPath     = o.m_maxPath;
         return *this;
     }
-#endif
 
     /// Initialize the tree
     void init(point const & upp, unsigned index_level)

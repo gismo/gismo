@@ -178,7 +178,7 @@ struct unary_evaluator<VecAsSymmMatrix<ArgType, Dim> >
   EIGEN_STRONG_INLINE
   PacketType packet(Index rowId, Index colId) const
   {
-      assert( rowId / m_rows.value() !=  colId / m_cols.value() &&
+      GISMO_ASSERT( rowId / m_rows.value() !=  colId / m_cols.value(),
               "Not implemented");
           
       const Index actual_row  = internal::traits<XprType>::RowsAtCompileTime==1 ? 0
@@ -200,7 +200,7 @@ protected:
 
 } // namespace internal
 
-/** \memberof gsEigen::MatrixBase
+/** \memberof Eigen::MatrixBase
   * \return an expression of the replication of \c *this
   *
   * Example: \include MatrixBase_blockDiag_int_int.cpp

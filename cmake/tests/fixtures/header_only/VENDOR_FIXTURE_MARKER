@@ -1,0 +1,2 @@
+This file marks the pre-populated vendored fixture tree. Its continued
+presence after a test configure proves nothing was re-downloaded over it.

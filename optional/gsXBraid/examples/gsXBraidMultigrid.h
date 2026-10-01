@@ -1,4 +1,5 @@
 #include <gismo.h>
+#include <gsMatrix/gsIncompleteLUT.h>
 #include <gsAssembler/gsDofMapperCreator.h>
 #include <string>
 
@@ -436,10 +437,10 @@ namespace gismo {
     std::vector< std::vector< gsSparseMatrix<T> > > m_ILUT;
 
     /// std::vector of factorized operators
-    std::vector< std::vector < gsEigen::PermutationMatrix<Dynamic,Dynamic,index_t> > > m_P;
+    std::vector< std::vector < Eigen::PermutationMatrix<Dynamic,Dynamic,index_t> > > m_P;
   
     /// std::vector of factorized operators
-    std::vector < std::vector < gsEigen::PermutationMatrix<Dynamic,Dynamic,index_t> > > m_Pinv;
+    std::vector < std::vector < Eigen::PermutationMatrix<Dynamic,Dynamic,index_t> > > m_Pinv;
 
     /// std::vector of SCM smoother object
     std::vector< typename gsPreconditionerOp<T>::Ptr > m_SCMS;
@@ -673,7 +674,7 @@ namespace gismo {
               m_Pinv[i].resize(1);
               if (Base::typeProjection == 2)
                 {
-                  gsEigen::IncompleteLUT<real_t> ilu;
+                  gismo::gsIncompleteLUT<real_t> ilu;
                   ilu.setFillfactor(1);
                   ilu.compute(m_operator[i]);
                   m_ILUT[i][0] = ilu.factors();
@@ -684,7 +685,7 @@ namespace gismo {
                 {
                   if (i == numLevels-1) // Only at finest level
                     {
-                      gsEigen::IncompleteLUT<real_t> ilu;
+                      gismo::gsIncompleteLUT<real_t> ilu;
                       ilu.setFillfactor(1);
                       ilu.compute(m_operator[i]);
                       m_ILUT[i][0] = ilu.factors();
@@ -737,7 +738,7 @@ namespace gismo {
               for(int j = 0 ; j < numPatch ; j++)
                 {
                   const gsSparseMatrix<T> block = m_operator[i].block(shift0,shift0,m_shift[i][j],m_shift[i][j]);
-                  gsEigen::IncompleteLUT<real_t> ilu;
+                  gismo::gsIncompleteLUT<real_t> ilu;
                   ilu.setFillfactor(1);
                   ilu.compute(block);
                   m_ILUT[i][j] = ilu.factors();
@@ -786,8 +787,8 @@ namespace gismo {
                     {
                       gsMatrix<T> Brhs = m_ddC[i][j].col(k);
                       gsMatrix<T> Crhs = m_ddC[i][j].col(k);
-                      m_ddBtilde[i][j].col(k) = m_ILUT[i][j].template triangularView<gsEigen::Upper>().transpose().solve(Brhs);
-                      m_ddCtilde[i][j].col(k) = m_ILUT[i][j].template triangularView<gsEigen::UnitLower>().solve(Crhs);
+                      m_ddBtilde[i][j].col(k) = m_ILUT[i][j].template triangularView<Eigen::Upper>().transpose().solve(Brhs);
+                      m_ddCtilde[i][j].col(k) = m_ILUT[i][j].template triangularView<Eigen::UnitLower>().solve(Crhs);
                     }   
                 }
 
@@ -808,7 +809,7 @@ namespace gismo {
               shift0 = 0;  
         
               // Perform ILUT on the S-matrix!
-              gsEigen::IncompleteLUT<real_t> ilu;
+              gismo::gsIncompleteLUT<real_t> ilu;
               ilu.setFillfactor(1);
               gsSparseMatrix<T> II = m_S[i];
               ilu.compute(II);
@@ -1029,8 +1030,8 @@ namespace gismo {
                   gsMatrix<T> e; 
                   gsMatrix<T> d = rhs-m_operator[numLevels-1]*x;
                   e = m_Pinv[numLevels-1][0]*d;
-                  e = m_ILUT[numLevels-1][0].template triangularView<gsEigen::UnitLower>().solve(e);
-                  e = m_ILUT[numLevels-1][0].template triangularView<gsEigen::Upper>().solve(e);
+                  e = m_ILUT[numLevels-1][0].template triangularView<Eigen::UnitLower>().solve(e);
+                  e = m_ILUT[numLevels-1][0].template triangularView<Eigen::Upper>().solve(e);
                   e = m_P[numLevels-1][0]*e;
                   x = x + e; 
                 }     
@@ -1053,8 +1054,8 @@ namespace gismo {
                 {
                   gsMatrix<T> e; 
                   gsMatrix<T> d = rhs-m_operator[numLevels-1]*x;
-                  e = m_A_aprox[numLevels-1].template triangularView<gsEigen::UnitLower>().solve(d);
-                  e = m_A_aprox[numLevels-1].template triangularView<gsEigen::Upper>().solve(e);
+                  e = m_A_aprox[numLevels-1].template triangularView<Eigen::UnitLower>().solve(d);
+                  e = m_A_aprox[numLevels-1].template triangularView<Eigen::Upper>().solve(e);
                   x = x + e;   
                 }     
             }
@@ -1088,8 +1089,8 @@ namespace gismo {
                   gsMatrix<T> e; 
                   gsMatrix<T> d = rhs-m_operator[numLevels-1]*x;
                   e = m_Pinv[numLevels-1][0]*d;
-                  e = m_ILUT[numLevels-1][0].template triangularView<gsEigen::UnitLower>().solve(e);
-                  e = m_ILUT[numLevels-1][0].template triangularView<gsEigen::Upper>().solve(e);
+                  e = m_ILUT[numLevels-1][0].template triangularView<Eigen::UnitLower>().solve(e);
+                  e = m_ILUT[numLevels-1][0].template triangularView<Eigen::Upper>().solve(e);
                   e = m_P[numLevels-1][0]*e;
                   x = x + e;
                 }
@@ -1112,8 +1113,8 @@ namespace gismo {
                 { 
                   gsMatrix<T> e; 
                   gsMatrix<T> d = rhs-m_operator[numLevels-1]*x;
-                  e = m_A_aprox[numLevels-1].template triangularView<gsEigen::UnitLower>().solve(d);
-                  e = m_A_aprox[numLevels-1].template triangularView<gsEigen::Upper>().solve(e);
+                  e = m_A_aprox[numLevels-1].template triangularView<Eigen::UnitLower>().solve(d);
+                  e = m_A_aprox[numLevels-1].template triangularView<Eigen::Upper>().solve(e);
                   x = x + e;    
                 }
             }  

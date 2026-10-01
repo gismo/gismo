@@ -5,6 +5,7 @@
 #include <string>
 #include <algorithm>
 #include <typeinfo>
+#include <cassert>
 
 namespace gismo {
 
@@ -127,14 +128,14 @@ public:
     /// Access the i'th element. No range check is performed!
     reference operator[](int _idx)
     {
-        assert( size_t(_idx) < data_.size() );
+        GISMO_ASSERT( size_t(_idx) < data_.size(), "Index out of range!" );
         return data_[_idx];
     }
 
     /// Const access to the i'th element. No range check is performed!
     const_reference operator[](int _idx) const
     {
-        assert( size_t(_idx) < data_.size());
+        GISMO_ASSERT( size_t(_idx) < data_.size(), "Index out of range!" );
         return data_[_idx];
     }
 
@@ -149,7 +150,7 @@ template <>
 inline const bool*
 gsProperty_array<bool>::data() const
 {
-    assert(false);
+    GISMO_ASSERT(false, "Cannot return data pointer for bool properties.");
     return NULL;
 }
 
@@ -187,32 +188,32 @@ public:
 
     reference operator[](int i)
     {
-        assert(parray_ != NULL);
+        GISMO_ASSERT(parray_ != NULL, "Invalid property. Make sure to check if the property is valid before accessing it.");
         return (*parray_)[i];
     }
 
     const_reference operator[](int i) const
     {
-        assert(parray_ != NULL);
+        GISMO_ASSERT(parray_ != NULL, "Invalid property. Make sure to check if the property is valid before accessing it.");
         return (*parray_)[i];
     }
 
     const T* data() const
     {
-        assert(parray_ != NULL);
+        GISMO_ASSERT(parray_ != NULL, "Invalid property. Make sure to check if the property is valid before accessing it.");
         return parray_->data();
     }
 
 
     std::vector<T>& vector()
     {
-        assert(parray_ != NULL);
+        GISMO_ASSERT(parray_ != NULL, "Invalid property. Make sure to check if the property is valid before accessing it.");
         return parray_->vector();
     }
 
     const std::vector<T>& vector() const
     {
-        assert(parray_ != NULL);
+        GISMO_ASSERT(parray_ != NULL, "Invalid property. Make sure to check if the property is valid before accessing it.");
         return parray_->vector();
     }
 
@@ -220,13 +221,13 @@ private:
 
     gsProperty_array<T>& array()
     {
-        assert(parray_ != NULL);
+        GISMO_ASSERT(parray_ != NULL, "Invalid property. Make sure to check if the property is valid before accessing it.");
         return *parray_;
     }
 
     const gsProperty_array<T>& array() const
     {
-        assert(parray_ != NULL);
+        GISMO_ASSERT(parray_ != NULL, "Invalid property. Make sure to check if the property is valid before accessing it.");
         return *parray_;
     }
 
