@@ -17,6 +17,7 @@
 #include <gsMSplines/gsMappedBasis.h>
 
 #include <atomic>
+#include <functional>
 #include <sstream>
 
 namespace
@@ -362,10 +363,8 @@ SUITE(gsExprAssembler_test)
     // for itself (gsFeSpaceData::init) is non-conforming, so the two differ in
     // size: numDofs()==custom.freeSize() < mb.totalSize() can only hold if the
     // caller's mapper was really retained.  coupledSize()>0 pins that its
-    // interface identification survived as well.
-    //
-    // Matters because the planned dofmapper update must not turn an accepted uniform
-    // mapper into a rejected or silently replaced one.
+    // interface identification survived as well.  An accepted uniform mapper
+    // must be neither rejected nor silently replaced.
     TEST(CustomUniformMapperRetained)
     {
         gsMultiPatch<real_t> mp = gsNurbsCreator<real_t>::BSplineSquareGrid(2,1,1.0);
@@ -459,9 +458,9 @@ SUITE(gsExprAssembler_test)
 
     // TODO: verify if this is really desirable behavior.
     //
-    // Pins MAINLINE-PERMITTED behaviour that later work must NOT turn into an
-    // error: installing a mapper whose numComponents() differs from the space
-    // dimension is *accepted*, and the mapper is then silently replaced.
+    // Pins accepted behaviour: installing a mapper whose numComponents()
+    // differs from the space dimension is *accepted* rather than an error,
+    // and the mapper is then silently replaced.
     //
     // gsFeSpace::setupMapper only asserts
     //     mapSize() == source().size()*dofsMapper.numComponents()
@@ -670,6 +669,61 @@ SUITE(gsExprAssembler_test)
                 CHECK(err.contains("distinct per-component bases"));
             }
             CHECK(v.mapper().hasDistinctComponentSpaces()); // not replaced
+        }
+    }
+
+    // A mapper replaced through gsFeSpace::mapper() AFTER initSystem() is
+    // rejected by every assembly and pattern call, in every build type.  On
+    // the isotropic mesh the system dimensions still agree, so nothing else
+    // would notice that component 1 is indexed with component 0's basis.
+    TEST(DistinctComponentMapperRejectedAfterInitialization)
+    {
+        const index_t meshes[2][2] = { {4,2}, {4,4} };
+        for (index_t mesh = 0; mesh != 2; ++mesh)
+        {
+            const std::vector<gsMultiBasis<real_t> > rt =
+                rtPair(meshes[mesh][0], meshes[mesh][1]);
+            const gsDofMapper rtMapper =
+                createMapper(rt, gsBoundaryConditions<real_t>(), 0, true, true);
+
+            gsExprAssembler<real_t> A(1,1);
+            A.setIntegrationElements(rt[0]);
+            auto u = A.getSpace(rt[0], 2);
+            A.initSystem();
+            u.mapper() = rtMapper;
+
+            // Each entry point checks before it looks at its arguments, so
+            // empty boundary and interface containers suffice.
+            typedef gsExprAssembler<real_t>::bcRefList bcRefList;
+            typedef gsExprAssembler<real_t>::bContainer bContainer;
+            typedef gsExprAssembler<real_t>::ifContainer ifContainer;
+            auto uu = u * u.tr();
+            gsMatrix<real_t> sol(rtMapper.freeSize(), 1);
+            sol.setZero();
+            expr::gsFeSolution<real_t> s(u, sol);
+
+            const std::vector<std::pair<const char *, std::function<void()> > > entries = {
+                { "computePattern",      [&]{ A.computePattern(uu); } },
+                { "computePatternBdr",   [&]{ A.computePatternBdr(bcRefList(), uu); } },
+                { "computePatternIfc",   [&]{ A.computePatternIfc(ifContainer(), uu); } },
+                { "assemble",            [&]{ A.assemble(uu); } },
+                { "assembleBdr(bc)",     [&]{ A.assembleBdr(bcRefList(), uu); } },
+                { "assembleBdr(sides)",  [&]{ A.assembleBdr(bContainer(), uu); } },
+                { "assembleIfc",         [&]{ A.assembleIfc(ifContainer(), uu); } },
+                { "assembleJacobian",    [&]{ A.assembleJacobian(u, s); } },
+                // assembleJacobianIfc is checked the same way but cannot be
+                // instantiated here: it calls gsDomain::beginAll(boxSide),
+                // which does not exist.
+            };
+            for (size_t e = 0; e != entries.size(); ++e)
+            {
+                CerrCapture err;
+                const bool threw = throws(entries[e].second);
+                CHECK(threw);
+                CHECK(err.contains("distinct per-component bases"));
+                if (!threw || !err.contains("distinct per-component bases"))
+                    gsInfo << "not rejected by " << entries[e].first << "\n";
+            }
         }
     }
 

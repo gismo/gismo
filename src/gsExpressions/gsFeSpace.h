@@ -51,6 +51,9 @@ public:
 
     const gsFeSpace<T> & rowVar() const {return *this;}
 
+    /// A mapper assigned through this reference bypasses setupMapper().
+    /// gsExprAssembler still rejects one it cannot index, at initSystem(),
+    /// initMatrix(), initVector() and at every assembly or pattern call.
     gsDofMapper & mapper()
     {
         GISMO_ASSERT(NULL!=m_sd, "Space/mapper not properly initialized.");
