@@ -245,6 +245,77 @@ SUITE(gsExprAssembler_test)
         CHECK( w*w < 1e-10 );
     }
 
+    // A solution taken with right() must be evaluated on the second patch of
+    // the interface, and left() on the first one
+    TEST(InterfaceSolution)
+    {
+        gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(1,2,1);
+        gsMultiBasis<> mb(patches);
+        mb.uniformRefine();
+
+        gsExprAssembler<> A(1,1);
+        A.setIntegrationElements(mb);
+        auto u = A.getSpace(mb);
+        u.setup(-1); // no coupling: the solution may jump across the interface
+
+        // Partition of unity: the solution equals 1+p on patch p
+        gsMatrix<> solVector = gsMatrix<>::Zero(u.mapper().freeSize(), 1);
+        auto s = A.getSolution(u, solVector);
+        s.setComponent(0, 1.0, 0);
+        s.setComponent(0, 2.0, 1);
+
+        CHECK(1==patches.interfaces().size());
+        const boundaryInterface & iFace = patches.interfaces().front();
+        const real_t first  = 1.0 + iFace.first ().patch;
+        const real_t second = 1.0 + iFace.second().patch;
+
+        CHECK(!s.isAcross());
+        CHECK( s.right().isAcross());
+        CHECK(!s.right().left().isAcross());
+
+        // The interface has parametric length one
+        gsExprEvaluator<> ev(A);
+        CHECK_CLOSE(first , ev.integralInterface(s,                 patches.interfaces()), 1e-12);
+        CHECK_CLOSE(first , ev.integralInterface(s.left(),          patches.interfaces()), 1e-12);
+        CHECK_CLOSE(second, ev.integralInterface(s.right(),         patches.interfaces()), 1e-12);
+        CHECK_CLOSE(first , ev.integralInterface(s.right().left(),  patches.interfaces()), 1e-12);
+        CHECK_CLOSE(second - first,
+                    ev.integralInterface(s.right() - s.left(), patches.interfaces()), 1e-12);
+    }
+
+    // A mapper installed by setupMapper() must be the one initSystem() uses.
+    // initSystem() rebuilds any mapper whose component count differs from the
+    // space dimension, discarding its eliminated dofs, so setupMapper() has to
+    // reject such a mapper instead of accepting it.
+    TEST(SetupMapperComponents)
+    {
+        gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(1,1,1);
+        gsMultiBasis<> mb(patches);
+        mb.uniformRefine();
+
+        const auto boundaryEliminated = [&mb](index_t nComp)
+        {
+            gsDofMapper m = createMapper(mb, nComp);
+            for (index_t c = 0; c != nComp; ++c)
+                m.markBoundary(0, mb.basis(0).allBoundary(), c);
+            m.finalize();
+            return m;
+        };
+
+        gsExprAssembler<> A(1, 1);
+        A.setIntegrationElements(mb);
+        auto u = A.getSpace(mb, 2);
+
+        CHECK_THROW(u.setupMapper(boundaryEliminated(3)), std::runtime_error);
+        CHECK_THROW(u.setupMapper(boundaryEliminated(1)), std::runtime_error);
+
+        const gsDofMapper matching = boundaryEliminated(2);
+        u.setupMapper(matching);
+        A.initSystem();
+        CHECK_EQUAL(matching.freeSize(), u.mapper().freeSize());
+        CHECK_EQUAL(matching.freeSize(), A.numDofs());
+    }
+
     TEST(BoundaryIntegral)
     {
         // Create a circle
