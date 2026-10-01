@@ -18,6 +18,7 @@
 #include <gsCore/gsExport.h>
 
 #include <unordered_map>
+#include <limits>
 
 namespace gismo
 {
@@ -392,7 +393,7 @@ public:
     /// Produces undefined results if dof \a gl does not lie on the boundary.
     inline index_t global_to_bindex(index_t gl) const
     {
-        GISMO_ASSERT( is_boundary_index( gl ),
+        GISMO_ASSERT( is_boundary_index( gl ) && !is_remote_index( gl ),
                       "global_to_bindex(): dof "<<gl<<" is not on the boundary");
         return gl - m_numFreeDofs.back() - m_shift + m_bshift;
     //gl -= m_numFreeDofs.back() + m_shift;
@@ -441,6 +442,39 @@ public:
     {
         return std::binary_search(m_tagged.begin(),m_tagged.end(),gl);
     }
+
+    /**
+       @brief Turns the mapper into a rank-local one.
+
+       The free dofs listed in \a localDofs (indices as returned by
+       index(), sorted ascending, unique) are renumbered to
+       0,...,localDofs.size()-1 (plus the shift), in the given order.
+       All other free dofs become \em remote: index() returns a value
+       for which is_remote_index() is true, and they must not be used
+       for assembly or evaluation. Eliminated dofs keep their boundary
+       numbering, so the fixed (Dirichlet) values remain valid.
+
+       After the call, freeSize() is the number of local dofs, so the
+       matrices, right-hand sides and solution vectors of an assembler
+       using this mapper are rank-local. \a localDofs is the local to
+       global map of the free dofs.
+
+       Typical use: \a localDofs are all free dofs active on the
+       elements of the rank (owned and ghost dofs).
+    */
+    void localize(const std::vector<index_t> & localDofs);
+
+    /// Returns true if global dof \a gl was dropped by localize()
+    inline bool is_remote_index(index_t gl) const
+    { return gl - m_shift >= remoteDof(); }
+
+    /// Returns true if local dof \a i of patch \a k was dropped by localize()
+    inline bool is_remote(index_t i, index_t k = 0, index_t c = 0) const
+    { return is_remote_index( index(i, k, c) ); }
+
+    /// The (shift-less) index stored for dofs dropped by localize()
+    static index_t remoteDof()
+    { return std::numeric_limits<index_t>::max() / 2; }
 
     /// Returns the number of components present in the mapper
     inline index_t numComponents() const

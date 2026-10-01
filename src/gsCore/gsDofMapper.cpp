@@ -12,6 +12,7 @@
 */
 
 #include <gsCore/gsDofMapper.h>
+#include <algorithm>
 
 
 namespace gismo
@@ -427,6 +428,64 @@ void gsDofMapper::finalizeComp(const index_t comp)
     GISMO_ASSERT(curFreeDof + m_numCpldDofs[comp+1] == m_numFreeDofs[comp+1],
                  "gsDofMapper::finalize() - computed number of free dofs "
                  "does not match allocated number");
+}
+
+void gsDofMapper::localize(const std::vector<index_t> & localDofs)
+{
+    GISMO_ENSURE(m_curElimId>=0, "gsDofMapper::localize(): finalize() was not called");
+    const index_t nComp   = numComponents();
+    const index_t oldFree = m_numFreeDofs.back();
+    const index_t remote  = remoteDof();
+
+    // shift-less local -> global map
+    std::vector<index_t> l2g(localDofs.size());
+    for (size_t k = 0; k != localDofs.size(); ++k)
+    {
+        l2g[k] = localDofs[k] - m_shift;
+        GISMO_ENSURE(0 <= l2g[k] && l2g[k] < oldFree,
+                     "gsDofMapper::localize(): "<<localDofs[k]<<" is not a free dof");
+        GISMO_ENSURE(0 == k || l2g[k-1] < l2g[k],
+                     "gsDofMapper::localize(): the local dofs must be sorted and unique");
+    }
+    const auto countBelow = [&l2g](index_t v)
+    { return static_cast<index_t>(std::lower_bound(l2g.begin(), l2g.end(), v) - l2g.begin()); };
+
+    // per-component counters (cumulative); coupled dofs are the last
+    // ones of the free range of each component
+    std::vector<index_t> newFree(nComp+1, 0), newCpld(nComp+1, 0);
+    for (index_t c = 0; c != nComp; ++c)
+    {
+        const index_t endFree = m_numFreeDofs[c+1];
+        const index_t nCpl    = m_numCpldDofs[c+1] - m_numCpldDofs[c];
+        newFree[c+1] = countBelow(endFree);
+        newCpld[c+1] = newCpld[c] + countBelow(endFree) - countBelow(endFree - nCpl);
+    }
+    const index_t newFreeSize = newFree.back();
+
+    const auto remap = [&](index_t x) -> index_t
+    {
+        if (x == remote)  return remote;                    // already remote
+        if (x >= oldFree) return x - oldFree + newFreeSize; // eliminated
+        const index_t pos = countBelow(x);
+        return (pos < static_cast<index_t>(l2g.size()) && l2g[pos] == x) ? pos : remote;
+    };
+
+    for (std::vector<index_t> & dofs : m_dofs)
+        for (index_t & x : dofs)
+            x = remap(x);
+
+    std::vector<index_t> tagged;
+    for (index_t t : m_tagged)
+    {
+        const index_t v = remap(t - m_shift);
+        if (v != remote) tagged.push_back(v + m_shift);
+    }
+    std::sort(tagged.begin(), tagged.end());
+    m_tagged.swap(tagged);
+
+    m_numFreeDofs.swap(newFree);
+    m_numCpldDofs.swap(newCpld);
+    m_curElimId = newFreeSize;
 }
 
 std::ostream& gsDofMapper::print( std::ostream& os ) const
