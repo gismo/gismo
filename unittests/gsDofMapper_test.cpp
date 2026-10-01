@@ -2218,9 +2218,11 @@ TEST(extreme_global_indices_and_shifts)
 // Every public entry point that would otherwise read or write outside the
 // mapper's storage validates its arguments with GISMO_ENSURE, which throws
 // std::runtime_error in Release builds as well -- hence plain CHECK_THROW
-// throughout.  The exception is the per-dof accessors on the assembly hot
-// path (index(), bindex(), cindex(), tindex(), freeIndex()), which check
-// the same bounds in debug builds only (see hot_path_accessors_...).
+// throughout.  The exception is the assembly hot path -- the per-dof
+// accessors index(), bindex(), cindex(), tindex(), freeIndex() and the
+// per-element localToGlobal()/localToGlobal2() -- which check the same
+// bounds in debug builds only (see hot_path_accessors_... and
+// local_to_global_...).
 //
 // Batch and broadcast calls are validated in full before the first change,
 // so a call that throws must leave the mapper exactly as it was.  That is
@@ -2397,6 +2399,7 @@ TEST(invalid_component_and_patch_identifiers_in_queries)
     gsMatrix<index_t> loc(1, 1), glob;
     loc << 0;
     index_t nf = 0;
+    GISMO_UNUSED(nf);   // only read by the debug-only checks
 
     for (size_t t = 0; t != 3; ++t)
     {
@@ -2425,10 +2428,11 @@ TEST(invalid_component_and_patch_identifiers_in_queries)
         CHECK_THROW(m.findTagged(0, c), std::runtime_error);
         CHECK_THROW(m.markTagged(0, 0, c), std::runtime_error);
         CHECK_THROW(m.markTagged(0, k, 0), std::runtime_error);
-        CHECK_THROW(m.localToGlobal(loc, k, glob, 0), std::runtime_error);
-        CHECK_THROW(m.localToGlobal(loc, 0, glob, c), std::runtime_error);
-        CHECK_THROW(m.localToGlobal2(loc, k, glob, nf, 0), std::runtime_error);
-        CHECK_THROW(m.localToGlobal2(loc, 0, glob, nf, c), std::runtime_error);
+        // Assembly hot path: debug-checked only, like index().
+        CHECK_THROW_IN_DEBUG(m.localToGlobal(loc, k, glob, 0), std::logic_error);
+        CHECK_THROW_IN_DEBUG(m.localToGlobal(loc, 0, glob, c), std::logic_error);
+        CHECK_THROW_IN_DEBUG(m.localToGlobal2(loc, k, glob, nf, 0), std::logic_error);
+        CHECK_THROW_IN_DEBUG(m.localToGlobal2(loc, 0, glob, nf, c), std::logic_error);
     }
     // The second patch of findCoupled() is -1 (any) or a real patch.
     CHECK_THROW(m.findCoupled(0, 2, 0), std::runtime_error);
@@ -2670,38 +2674,37 @@ TEST(hot_path_accessors_check_local_bounds_in_debug)
 {
     const gsDofMapper m = raggedPatchMapper();
     CHECK_EQUAL(15, m.index(3, 1, 1));        // the last valid dof
-#ifndef NDEBUG
-    CHECK_THROW(m.index(2, 0, 1), std::logic_error);   // would be (patch 1, local 0)
-    CHECK_THROW(m.index(5, 0, 0), std::logic_error);
-    CHECK_THROW(m.index(4, 1, 1), std::logic_error);
-    CHECK_THROW(m.index(-1, 0, 0), std::logic_error);
-    CHECK_THROW(m.index(0, 2, 0), std::logic_error);
-    CHECK_THROW(m.index(0, 0, 2), std::logic_error);
-    CHECK_THROW(m.freeIndex(2, 0, 1), std::logic_error);
-    CHECK_THROW(m.bindex(2, 0, 1), std::logic_error);
-    CHECK_THROW(m.cindex(2, 0, 1), std::logic_error);
-    CHECK_THROW(m.tindex(2, 0, 1), std::logic_error);
-    CHECK_THROW(m.is_free(2, 0, 1), std::logic_error);
+    CHECK_THROW_IN_DEBUG(m.index(2, 0, 1), std::logic_error);   // would be (patch 1, local 0)
+    CHECK_THROW_IN_DEBUG(m.index(5, 0, 0), std::logic_error);
+    CHECK_THROW_IN_DEBUG(m.index(4, 1, 1), std::logic_error);
+    CHECK_THROW_IN_DEBUG(m.index(-1, 0, 0), std::logic_error);
+    CHECK_THROW_IN_DEBUG(m.index(0, 2, 0), std::logic_error);
+    CHECK_THROW_IN_DEBUG(m.index(0, 0, 2), std::logic_error);
+    CHECK_THROW_IN_DEBUG(m.freeIndex(2, 0, 1), std::logic_error);
+    CHECK_THROW_IN_DEBUG(m.bindex(2, 0, 1), std::logic_error);
+    CHECK_THROW_IN_DEBUG(m.cindex(2, 0, 1), std::logic_error);
+    CHECK_THROW_IN_DEBUG(m.tindex(2, 0, 1), std::logic_error);
+    CHECK_THROW_IN_DEBUG(m.is_free(2, 0, 1), std::logic_error);
     gsMatrix<index_t> loc(2, 1), glob;
     loc << 1, 2;
-    CHECK_THROW(m.localToGlobal(loc, 0, glob, 1), std::logic_error);
-#endif
+    CHECK_THROW_IN_DEBUG(m.localToGlobal(loc, 0, glob, 1), std::logic_error);
 }
 
 // localToGlobal(2) reads locals(i,0) for i < rows(), so they need exactly one
-// column unless there are no rows at all.
+// column unless there are no rows at all.  Checked in debug builds only (the
+// assembly hot path); an empty input is valid in every build.
 TEST(local_to_global_requires_a_column)
 {
     const gsDofMapper m = raggedPatchMapper();
     gsMatrix<index_t> glob;
     index_t nf = -1;
-    CHECK_THROW(m.localToGlobal(gsMatrix<index_t>(2, 0), 0, glob, 0), std::runtime_error);
-    CHECK_THROW(m.localToGlobal2(gsMatrix<index_t>(2, 0), 0, glob, nf, 0), std::runtime_error);
+    CHECK_THROW_IN_DEBUG(m.localToGlobal(gsMatrix<index_t>(2, 0), 0, glob, 0), std::logic_error);
+    CHECK_THROW_IN_DEBUG(m.localToGlobal2(gsMatrix<index_t>(2, 0), 0, glob, nf, 0), std::logic_error);
     {
         gsMatrix<index_t> wide(2, 2);
         wide.setZero();
-        CHECK_THROW(m.localToGlobal(wide, 0, glob, 0), std::runtime_error);
-        CHECK_THROW(m.localToGlobal2(wide, 0, glob, nf, 0), std::runtime_error);
+        CHECK_THROW_IN_DEBUG(m.localToGlobal(wide, 0, glob, 0), std::logic_error);
+        CHECK_THROW_IN_DEBUG(m.localToGlobal2(wide, 0, glob, nf, 0), std::logic_error);
     }
     m.localToGlobal(gsMatrix<index_t>(0, 1), 0, glob, 0);
     CHECK_EQUAL(0, glob.rows());
@@ -2712,20 +2715,23 @@ TEST(local_to_global_requires_a_column)
 
 // localToGlobal2 resizes globals to two columns before it reads locals, so
 // passing one matrix as both would destroy the input it is about to read.
-// Rejected in every build, and before anything is written.
+// Rejected before anything is written; checked in debug builds only (the
+// assembly hot path).
 TEST(local_to_global2_rejects_aliased_arguments)
 {
+#ifndef NDEBUG
     const gsDofMapper m = raggedPatchMapper();
     gsMatrix<index_t> values(3, 1);
     values << 0, 1, 2;
     index_t nf = -1;
-    CHECK_THROW(m.localToGlobal2(values, 0, values, nf, 0), std::runtime_error);
+    CHECK_THROW(m.localToGlobal2(values, 0, values, nf, 0), std::logic_error);
     CHECK_EQUAL(3, values.rows());
     CHECK_EQUAL(1, values.cols());
     CHECK_EQUAL(0, values(0,0));
     CHECK_EQUAL(1, values(1,0));
     CHECK_EQUAL(2, values(2,0));
     CHECK_EQUAL(-1, nf);
+#endif
 }
 
 namespace

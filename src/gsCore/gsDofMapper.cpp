@@ -154,14 +154,17 @@ void gsDofMapper::localToGlobal(const gsMatrix<index_t>& locals,
                                 gsMatrix<index_t>& globals,
                                 index_t comp) const
 {
-    // Checked once per call rather than once per dof: index() itself is
-    // only debug-checked (see dofAt()).
+    // Debug-only, like index() itself (see dofAt()): this runs once per
+    // element and component in every assembler, and even O(1) checks per
+    // call are measurable against a loop over a handful of local dofs.
     // Empty means no rows: the loop below runs over rows(), so an N x 0
     // matrix would be read at (i,0) in storage it does not have.
-    GISMO_ENSURE( locals.cols() == 1 || locals.rows() == 0,
+    GISMO_ASSERT( locals.cols() == 1 || locals.rows() == 0,
                   "localToGlobal: Expecting one column of locals, got " << locals.cols() << ".");
-    ensurePatch(patchIndex, "localToGlobal");
-    ensureComponent(comp, "localToGlobal");
+    GISMO_ASSERT( validPatch(patchIndex), "localToGlobal: invalid patch "<<patchIndex
+                  <<", the mapper has "<<m_nPatches<<" patches.");
+    GISMO_ASSERT( validComponent(comp), "localToGlobal: invalid component "<<comp
+                  <<", the mapper has "<<m_dofs.size()<<" components.");
     const index_t numActive = locals.rows();
     globals.resize(numActive,1);
 
@@ -184,13 +187,16 @@ void gsDofMapper::localToGlobal2(const gsMatrix<index_t>& locals,
                                  index_t & numFree,
                                  index_t comp) const
 {
-    GISMO_ENSURE( locals.cols() == 1 || locals.rows() == 0,
+    // Debug-only, as in localToGlobal().
+    GISMO_ASSERT( locals.cols() == 1 || locals.rows() == 0,
                   "localToGlobal2: Expecting one column of locals, got " << locals.cols() << ".");
     // globals is resized to two columns before locals is read, so an aliased
-    // call would destroy its own input.  Checked once per call, like the rest.
-    GISMO_ENSURE( &locals != &globals, "localToGlobal2: Inplace not supported");
-    ensurePatch(patchIndex, "localToGlobal2");
-    ensureComponent(comp, "localToGlobal2");
+    // call would destroy its own input.
+    GISMO_ASSERT( &locals != &globals, "localToGlobal2: Inplace not supported");
+    GISMO_ASSERT( validPatch(patchIndex), "localToGlobal2: invalid patch "<<patchIndex
+                  <<", the mapper has "<<m_nPatches<<" patches.");
+    GISMO_ASSERT( validComponent(comp), "localToGlobal2: invalid component "<<comp
+                  <<", the mapper has "<<m_dofs.size()<<" components.");
     const index_t numActive = locals.rows();
     globals.resize(numActive, 2);
 
@@ -1238,6 +1244,41 @@ gsVector<index_t> gsDofMapper::findTagged(const index_t k, const index_t comp) c
     si.assign(si.begin(),si.end());
     return rvo;
 }
+
+void gsDofMapper::componentFailed(index_t c, const char * where) const
+{
+    GISMO_ENSURE(validComponent(c), "gsDofMapper::"<<where<<": invalid component "<<c
+                 <<", the mapper has "<<m_dofs.size()<<" components.");
+}
+
+void gsDofMapper::componentOrAllFailed(index_t c, const char * where) const
+{
+    GISMO_ENSURE(-1 == c || validComponent(c), "gsDofMapper::"<<where<<": invalid component "<<c
+                 <<", expected -1 (all) or a value in [0,"<<m_dofs.size()<<").");
+}
+
+void gsDofMapper::patchFailed(index_t k, const char * where) const
+{
+    GISMO_ENSURE(validPatch(k), "gsDofMapper::"<<where<<": invalid patch "<<k
+                 <<", the mapper has "<<m_nPatches<<" patches.");
+}
+
+void gsDofMapper::localFailed(index_t i, index_t k, index_t c, const char * where) const
+{
+    GISMO_ENSURE(validLocal(i,k,c), "gsDofMapper::"<<where<<": invalid local dof "<<i
+                 <<" of patch "<<k<<", component "<<c<<localRangeInfo(k,c));
+}
+
+void gsDofMapper::finalizedFailed(const char * where) const
+{
+    GISMO_ENSURE(m_curElimId>=0, "gsDofMapper::"<<where<<": finalize() was not called.");
+}
+
+void gsDofMapper::notFinalizedFailed(const char * where) const
+{
+    GISMO_ENSURE(m_curElimId<0, "gsDofMapper::"<<where<<": the mapper is already finalized.");
+}
+
 void gsDofMapper::ensureShift(index_t shift, bool boundary, const char * where) const
 {
     // Stored indices lie in [0,n) with n = size() (global) or boundarySize()

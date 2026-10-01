@@ -187,10 +187,12 @@ private:
     /// setup code and const query methods can use one accessor.
     ///
     /// The bounds check is debug-only.  dofAt() runs once per local dof per
-    /// element in every localToGlobal(), so the per-dof accessors built on
-    /// it (index(), bindex(), cindex(), tindex(), freeIndex()) are not
-    /// checked in Release builds; every other public entry point validates
-    /// its arguments with the ensure*() helpers below before reaching it.
+    /// element in every assembler, so the per-dof accessors built on it
+    /// (index(), bindex(), cindex(), tindex(), freeIndex(), and the
+    /// is_free/is_boundary/is_coupled/is_tagged queries taking a local dof)
+    /// and the per-element localToGlobal()/localToGlobal2() are not checked
+    /// in Release builds; every other public entry point validates its
+    /// arguments with the ensure*() helpers below before reaching it.
     inline index_t & dofAt(index_t i, index_t k, index_t c)
     {
         GISMO_ASSERT(validLocal(i,k,c), "gsDofMapper: invalid local dof "<<i<<" of patch "<<k
@@ -249,24 +251,22 @@ private:
         return os.str();
     }
 
+    // Each ensure*() below is an inline O(1) test; the message and the throw
+    // live in the matching *Failed() function in gsDofMapper.cpp, called
+    // only for an invalid argument.  Formatting the message inline makes
+    // the helper too large to inline, so every checked query, including
+    // the inline size()/patchSize()/offset() family, would pay an
+    // out-of-line call for a check that is one comparison.
+
     void ensureComponent(index_t c, const char * where) const
-    {
-        GISMO_ENSURE(validComponent(c), "gsDofMapper::"<<where<<": invalid component "<<c
-                     <<", the mapper has "<<m_dofs.size()<<" components.");
-    }
+    { if (!validComponent(c)) componentFailed(c, where); }
 
     /// As ensureComponent(), but also accepts the broadcast value -1.
     void ensureComponentOrAll(index_t c, const char * where) const
-    {
-        GISMO_ENSURE(-1 == c || validComponent(c), "gsDofMapper::"<<where<<": invalid component "<<c
-                     <<", expected -1 (all) or a value in [0,"<<m_dofs.size()<<").");
-    }
+    { if (-1 != c && !validComponent(c)) componentOrAllFailed(c, where); }
 
     void ensurePatch(index_t k, const char * where) const
-    {
-        GISMO_ENSURE(validPatch(k), "gsDofMapper::"<<where<<": invalid patch "<<k
-                     <<", the mapper has "<<m_nPatches<<" patches.");
-    }
+    { if (!validPatch(k)) patchFailed(k, where); }
 
     /// Local dof \a i of patch \a k must exist in component \a c, or, for
     /// \a c == -1, in every component: a broadcast is validated for all its
@@ -279,23 +279,26 @@ private:
                 ensureLocal(i, k, cc, where);
             return;
         }
-        GISMO_ENSURE(validLocal(i,k,c), "gsDofMapper::"<<where<<": invalid local dof "<<i
-                     <<" of patch "<<k<<", component "<<c<<localRangeInfo(k,c));
+        if (!validLocal(i,k,c)) localFailed(i, k, c, where);
     }
 
     void ensureFinalized(const char * where) const
-    {
-        GISMO_ENSURE(m_curElimId>=0, "gsDofMapper::"<<where<<": finalize() was not called.");
-    }
+    { if (m_curElimId<0) finalizedFailed(where); }
 
     /// Setup mutators (matchDof(s), markCoupled, eliminateDof, markBoundary,
     /// colapseDofs) rewrite the setup-time encoding of m_dofs, which
     /// finalize() replaces by the final numbering: applied afterwards they
     /// would misread global indices as coupling or elimination ids.
     void ensureNotFinalized(const char * where) const
-    {
-        GISMO_ENSURE(m_curElimId<0, "gsDofMapper::"<<where<<": the mapper is already finalized.");
-    }
+    { if (m_curElimId>=0) notFinalizedFailed(where); }
+
+    // Throw for the argument the matching ensure*() rejected.
+    void componentFailed(index_t c, const char * where) const;
+    void componentOrAllFailed(index_t c, const char * where) const;
+    void patchFailed(index_t k, const char * where) const;
+    void localFailed(index_t i, index_t k, index_t c, const char * where) const;
+    void finalizedFailed(const char * where) const;
+    void notFinalizedFailed(const char * where) const;
 
     /// Validates a new global (\a boundary false) or boundary (\a boundary
     /// true) shift: every index this mapper hands out, and one past the last
@@ -490,6 +493,9 @@ public:
      * \param[in] locals a column matrix with the local indices
      * \param[in] patchIndex the index of the patch where the local indices belong to
      * \param[out] globals the global indices of the patch
+     *
+     * \note On the assembly hot path: like index(), its arguments are
+     * checked in debug builds only.
      */
     void localToGlobal(const gsMatrix<index_t>& locals,
                        index_t patchIndex,
@@ -502,6 +508,10 @@ public:
      * \param[in] patchIndex the index of the patch where the local indices belong to
      * \param[out] globals the local-global correspondance
      * \param[out] numFree the number of free indices in \a local
+     *
+     * \note On the assembly hot path: like index(), its arguments are
+     * checked in debug builds only.  \a locals and \a globals must be
+     * distinct objects.
      */
     void localToGlobal2(const gsMatrix<index_t>& locals,
                         index_t patchIndex,
