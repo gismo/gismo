@@ -196,6 +196,13 @@ public:
     /** \returns the number of columns of the matrix */
     inline index_t cols() const { return IsRowMajor ? innerSize() : outerSize(); }
 
+    /// Returns false if fiber \a i is not allocated (lazy mode, never touched)
+    bool isAllocated(index_t i) const
+    {
+        GISMO_ASSERT( i>=0 && i<outerSize(), "Invalid fiber: "<<i);
+        return nullptr != m_fibers[i];
+    }
+
     Fiber& fiber(index_t i)
     {
         GISMO_ASSERT( i>=0 && i<outerSize(), "Invalid fiber: "<<i);

@@ -476,6 +476,40 @@ public:
     template<class... expr> void assembleBdr(const bContainer & bnd, expr&... args);
 
     template<class... expr> void assembleIfc(const ifContainer & iFaces, expr... args);
+
+    /** \brief Assembles the expressions \a args over the integration
+        elements into an external \a sink instead of the internal matrix
+        and right-hand side.
+
+        The sink receives one block per element (and per quadrature
+        point, for expressions that are not element-wise), with the
+        global indices of the assembler's dof mappers:
+        \code
+        void addMatrix(const gsVector<index_t> & rows, const gsVector<index_t> & cols, const gsMatrix<T> & block);
+        void addRhs   (const gsVector<index_t> & rows, const gsMatrix<T> & block);
+        \endcode
+        An index of -1 marks a row/column that is not free (eliminated
+        or fixed); such entries must be ignored by the sink. With the
+        elimination strategy, the contribution of the fixed dofs is
+        passed to addRhs() by the assembler. The sink is called from
+        all OpenMP threads concurrently and must synchronize itself.
+
+        The internal matrix and right-hand side are neither used nor
+        allocated, i.e. initSystem() is not required.
+    */
+    template<class Sink, class... expr> void assemble_into(Sink & sink, const expr &... args);
+
+    /// \brief As assemble_into(), over the boundary parts in \a BCs
+    template<class Sink, class... expr> void assembleBdr_into(Sink & sink, const bcRefList & BCs, expr&... args);
+
+    /** \brief Passes the sparsity pattern of the matrix expressions in \a
+        args to \a sink, one element at a time:
+        \code
+        void addPattern(const gsVector<index_t> & rows, const gsVector<index_t> & cols);
+        \endcode
+        Indices as in assemble_into(). Called from all OpenMP threads.
+    */
+    template<class Sink, class... expr> void computePattern_into(Sink & sink, const expr &... args);
     /*
       template<class... expr> void collocate(expr... args);// eg. collocate(-ilapl(u), f)
     */
@@ -828,6 +862,129 @@ private:
                     }
                 }
         }//push
+    };
+
+    // Global indices of the active functions of space \a v (all
+    // components), -1 for the ones that are not free
+    static void _globalIndices(const expr::gsFeSpace<T> & v,
+                               const gsMatrix<index_t> & act, index_t col,
+                               index_t patch, gsVector<index_t> & idx)
+    {
+        const gsDofMapper & map = v.mapper();
+        const index_t n = act.rows();
+        idx.resize(n * v.dim());
+        for (index_t r = 0; r != v.dim(); ++r)
+            for (index_t i = 0; i != n; ++i)
+            {
+                const index_t ii = map.index(act(i,col), patch, r);
+                idx[r*n+i] = map.is_free_index(ii) ? ii : -1;
+            }
+    }
+
+    // Evaluates expressions and passes element blocks to a sink
+    template<class Sink>
+    struct _evalInto
+    {
+        Sink & m_sink;
+        const gsVector<T> & m_quWeights;
+        bool m_elim;
+        gsMatrix<T> localMat, rhsCorr;
+        gsVector<index_t> rowIdx, colIdx;
+
+        _evalInto(Sink & _sink, const gsVector<T> & _quWeights, bool _elim)
+        : m_sink(_sink), m_quWeights(_quWeights), m_elim(_elim) { }
+
+        template <typename E> void operator() (const gismo::expr::_expr<E> & ee)
+        {
+            GISMO_ASSERT(E::isMatrix() || E::isVector(), "Expecting a matrix or vector expression.");
+            if ((ee.rowVar().data().flags & SAME_ELEMENT) &&
+                ( E::isVector() || (ee.colVar().data().flags & SAME_ELEMENT) ) )
+            {
+                const T * w = m_quWeights.data();
+                localMat.noalias() = (*w) * ee.eval(0);
+                for (index_t k = 1; k != m_quWeights.rows(); ++k)
+                    localMat.noalias() += (*(++w)) * ee.eval(k);
+                push<E::isMatrix()>(ee.rowVar(), ee.colVar(), 0, 0);
+            }
+            else
+            {
+                const bool rowSame = ee.rowVar().data().flags & SAME_ELEMENT;
+                const bool colSame = E::isVector() || (ee.colVar().data().flags & SAME_ELEMENT);
+                const T * w = m_quWeights.data();
+                for (index_t k = 0; k != m_quWeights.rows(); ++k)
+                {
+                    localMat.noalias() = (*(w++)) * ee.eval(k);
+                    push<E::isMatrix()>(ee.rowVar(), ee.colVar(),
+                                        rowSame ? 0 : k, colSame ? 0 : k);
+                }
+            }
+        }
+
+        void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
+
+        template<bool isMatrix>
+        void push(const expr::gsFeSpace<T> & v, const expr::gsFeSpace<T> & u,
+                  index_t ra, index_t ca)
+        {
+            _globalIndices(v, v.data().actives, ra, v.data().patchId, rowIdx);
+            if (!isMatrix)
+            {
+                m_sink.addRhs(rowIdx, localMat);
+                return;
+            }
+            _globalIndices(u, u.data().actives, ca, u.data().patchId, colIdx);
+            GISMO_ASSERT( rowIdx.size()==localMat.rows() && colIdx.size()==localMat.cols(),
+                          "Invalid local matrix");
+            m_sink.addMatrix(rowIdx, colIdx, localMat);
+
+            if (!m_elim) return;
+            // Symmetric treatment of eliminated dofs: rhs -= A_ib * g_b
+            const gsDofMapper & colMap = u.mapper();
+            const gsMatrix<T> & fixedDofs = u.fixedPart();
+            const gsMatrix<index_t> & act = u.data().actives;
+            const index_t nc = act.rows();
+            rhsCorr.setZero(localMat.rows(), 1);
+            bool any = false;
+            for (index_t j = 0; j != colIdx.size(); ++j)
+            {
+                if (-1 != colIdx[j]) continue;
+                const index_t jj = colMap.index(act(j % nc, ca), u.data().patchId, j / nc);
+                if (colMap.is_boundary_index(jj))
+                {
+                    rhsCorr.noalias() -= localMat.col(j) * fixedDofs.at(colMap.global_to_bindex(jj));
+                    any = true;
+                }
+            }
+            if (any) m_sink.addRhs(rowIdx, rhsCorr);
+        }
+    };
+
+    // Passes the element-wise sparsity pattern to a sink
+    template<class Sink>
+    struct _patternInto
+    {
+        Sink & m_sink;
+        const gsMatrix<T> & m_point;
+        const index_t & m_patch;
+        gsMatrix<index_t> rowAct, colAct;
+        gsVector<index_t> rowIdx, colIdx;
+
+        _patternInto(Sink & _sink, const gsMatrix<T> & _point, const index_t & _patch)
+        : m_sink(_sink), m_point(_point), m_patch(_patch) { }
+
+        template <typename E> void operator() (const gismo::expr::_expr<E> & ee)
+        {
+            if (!E::isMatrix()) return;
+            const expr::gsFeSpace<T> & v = ee.rowVar();
+            const expr::gsFeSpace<T> & u = ee.colVar();
+            v.source().piece(m_patch).active_into(m_point, rowAct);
+            u.source().piece(m_patch).active_into(m_point, colAct);
+            _globalIndices(v, rowAct, 0, m_patch, rowIdx);
+            _globalIndices(u, colAct, 0, m_patch, colIdx);
+            m_sink.addPattern(rowIdx, colIdx);
+        }
+
+        void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
     };
 
 }; // gsExprAssembler
@@ -1359,6 +1516,105 @@ void gsExprAssembler<T>::assemble(const expr &... args)
 }//omp parallel
     // Throw something else?? (floating point exception?)
 //    GISMO_ENSURE(!failed,"Assembly failed due to an error");
+}
+
+template<class T>
+template<class Sink, class... expr>
+void gsExprAssembler<T>::assemble_into(Sink & sink, const expr &... args)
+{
+    resetDimensions();
+    const bool elim = (dirichlet::elimination==m_options.getInt("DirichletStrategy"));
+
+#pragma omp parallel
+{
+    auto arg_tpl = std::make_tuple(args...);
+    m_exprdata->parse(arg_tpl);
+    if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
+
+    _evalInto<Sink> ee(sink, m_exprdata->weights(), elim);
+
+    typename gsQuadRule<T>::uPtr QuRule;
+    index_t QuPatch = -1;
+
+    for ( auto & elem : m_exprdata->domain().allElements() )
+    {
+        if (QuPatch!=elem.patchIndex())
+        {
+            QuPatch = elem.patchIndex();
+            QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(QuPatch), m_options);
+        }
+
+        QuRule->mapTo( elem.lowerCorner(), elem.upperCorner(),
+                       m_exprdata->points(), m_exprdata->weights());
+
+        if (m_exprdata->points().cols()==0)
+            continue;
+
+        m_exprdata->precompute( QuPatch );
+        op_tuple(ee, arg_tpl);
+    }
+}//omp parallel
+}
+
+template<class T>
+template<class Sink, class... expr>
+void gsExprAssembler<T>::assembleBdr_into(Sink & sink, const bcRefList & BCs, expr&... args)
+{
+    if ( BCs.empty() ) return;
+    resetDimensions();
+    const bool elim = (dirichlet::elimination==m_options.getInt("DirichletStrategy"));
+
+    m_exprdata->setMutSource(*BCs.front().get().function()); //initialize once
+    auto arg_tpl = std::make_tuple(args...);
+    m_exprdata->parse(arg_tpl);
+    if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
+
+    typename gsQuadRule<T>::uPtr QuRule;
+    _evalInto<Sink> ee(sink, m_exprdata->weights(), elim);
+
+    for (typename bcRefList::const_iterator iit = BCs.begin(); iit!= BCs.end(); ++iit)
+    {
+        const boundary_condition<T> * it = &iit->get();
+        QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(it->patch()), m_options, it->side().direction());
+        m_exprdata->setMutSource(*it->function());
+
+        typename gsBasis<T>::domainIter domIt =
+            m_exprdata->domain().subdomain(it->patch())->beginBdr(it->side());
+        typename gsBasis<T>::domainIter domItEnd =
+            m_exprdata->domain().subdomain(it->patch())->endBdr(it->side());
+
+        for (; domIt < domItEnd; ++domIt )
+        {
+            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
+                           m_exprdata->points(), m_exprdata->weights());
+            if (m_exprdata->points().cols()==0)
+                continue;
+            m_exprdata->precompute(it->patch(), it->side());
+            op_tuple(ee, arg_tpl);
+        }
+    }
+}
+
+template<class T>
+template<class Sink, class... expr>
+void gsExprAssembler<T>::computePattern_into(Sink & sink, const expr &... args)
+{
+    resetDimensions();
+
+#pragma omp parallel
+{
+    auto arg_tpl = std::make_tuple(args...);
+    m_exprdata->parsePattern(arg_tpl);
+    index_t patch = 0;
+    _patternInto<Sink> pp(sink, m_exprdata->points(), patch);
+
+    for ( auto & elem : m_exprdata->domain().allElements() )
+    {
+        m_exprdata->points() = elem.centerPoint();
+        patch = elem.patchIndex();
+        op_tuple(pp, arg_tpl);
+    }
+}//omp parallel
 }
 
 template<class T>
