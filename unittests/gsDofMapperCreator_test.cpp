@@ -20,6 +20,21 @@ using namespace gismo;
 
 namespace {
 
+// GISMO_ENSURE reports its reason on std::cerr and throws a bare
+// std::runtime_error, so a test that cares why a call was rejected reads
+// the stream.
+class CerrCapture
+{
+public:
+    CerrCapture() : m_old(std::cerr.rdbuf(m_buf.rdbuf())) { }
+    ~CerrCapture() { std::cerr.rdbuf(m_old); }
+    bool contains(const std::string & s) const
+    { return std::string::npos != m_buf.str().find(s); }
+private:
+    std::ostringstream m_buf;
+    std::streambuf * m_old;
+};
+
 // 2 unit squares side by side, one interface (patch0 east <-> patch1 west).
 // Degree elevated + refined so that the interface carries several dofs.
 gsMultiBasis<real_t> twoPatchBasis()
@@ -510,7 +525,7 @@ TEST(per_component_rt_isotropic)
     const gsDofMapper m = createMapper(rt, gsBoundaryConditions<real_t>(), 0, true, true);
 
     CHECK(m.hasDistinctComponentSpaces());
-    CHECK(!m.usableByUniformEvaluator());
+    CHECK(!m.hasUniformComponents());
     CHECK_EQUAL(2, m.numComponents());
     CHECK_EQUAL(countMatchedPairs(rt[0], rt[0].topology()), 6);
     CHECK_EQUAL(countMatchedPairs(rt[1], rt[1].topology()), 7);
@@ -531,7 +546,7 @@ TEST(per_component_rt_anisotropic)
                                        gsBoundaryConditions<real_t>(), 0, true, true);
 
     CHECK(m.hasDistinctComponentSpaces());
-    CHECK(!m.usableByUniformEvaluator());
+    CHECK(!m.hasUniformComponents());
     CHECK_EQUAL(28u, m.patchSize(1, 0));
     CHECK_EQUAL(30u, m.patchSize(1, 1));
     for (index_t c = 0; c != 2; ++c)
@@ -588,7 +603,7 @@ TEST(per_component_same_object_delegates)
         CHECK_EQUAL(1 == fin, a.isFinalized());
         if (0 == fin) { a.finalize(); b.finalize(); }
         CHECK(!a.hasDistinctComponentSpaces());
-        CHECK(a.usableByUniformEvaluator());
+        CHECK(a.hasUniformComponents());
         checkSameMapper(a, b);
     }
 
@@ -613,7 +628,7 @@ TEST(per_component_equal_copies_are_declared_distinct)
     const gsDofMapper b = createMapper(mb, 2, true, true);
 
     CHECK(a.hasDistinctComponentSpaces());
-    CHECK(!a.usableByUniformEvaluator());
+    CHECK(!a.hasUniformComponents());
     CHECK(!b.hasDistinctComponentSpaces());
     for (index_t c = 0; c != 2; ++c)
         checkComponentAgainst(a, c, createMapper(mb, 1, true, true));
@@ -769,21 +784,24 @@ TEST(per_component_topologies_must_agree)
     CHECK_THROW(createMapper(v, none, 0, true, true), std::runtime_error);
 }
 
-// References to patches or sides that do not exist are rejected in every
-// build type, by both creators; before, the single-basis one indexed past
-// the function set in a release build.
+// References to patches, sides or corners that do not exist are rejected in
+// every build type, by both creators.
 TEST(creators_reject_missing_patches)
 {
     gsFunctionExpr<real_t> g("0", 2);
     const std::vector<gsMultiBasis<real_t> > rt = rtPair(4, 2);
     gsMultiBasis<real_t> mb = twoPatchBasis();
 
-    gsBoundaryConditions<real_t> bcPatch, bcCorner, bcCoupled;
+    gsBoundaryConditions<real_t> bcPatch, bcCorner, bcCoupled, bcCornerIndex, bcCornerZero;
     bcPatch  .addCondition(2, boundary::west, condition_type::dirichlet, &g);
     bcCorner .addCornerValue(boundary::southwest, 0.0, 7, 0);
     bcCoupled.addCoupled(0, boundary::west, 3, boundary::east, 2, 0);
-    const gsBoundaryConditions<real_t> * bcs[3] = {&bcPatch, &bcCorner, &bcCoupled};
-    for (index_t i = 0; i != 3; ++i)
+    // a 2D patch has the corners 1..4
+    bcCornerIndex.addCornerValue(boxCorner(5), 0.0, 0, 0);
+    bcCornerZero .addCornerValue(boxCorner(0), 0.0, 0, 0);
+    const gsBoundaryConditions<real_t> * bcs[5] =
+        {&bcPatch, &bcCorner, &bcCoupled, &bcCornerIndex, &bcCornerZero};
+    for (index_t i = 0; i != 5; ++i)
     {
         CHECK_THROW(createMapper(rt, *bcs[i], 0, true, true), std::runtime_error);
         CHECK_THROW(createMapper(mb, *bcs[i], 1, 0, true, true), std::runtime_error);
@@ -812,6 +830,53 @@ TEST(per_component_coupled_sides_must_match)
     gsBoundaryConditions<real_t> bc;
     bc.addCoupled(0, boundary::west, 0, boundary::south, 2, 0, 0);
     CHECK_THROW(createMapper(rt, bc, 0, true, true), std::runtime_error);
+}
+
+// Distinct per-component bases are matched component by component, which is
+// undefined across an interface that permutes the parametric directions:
+// with patch 1 attached by its south side to patch 0's east side, the
+// component normal to the interface on patch 0 is tangential on patch 1.
+// Such an interface is rejected by name before any trace is matched.
+TEST(per_component_rejects_interfaces_permuting_directions)
+{
+    const std::vector<gsMultiBasis<real_t> > rt = rtPair(3, 4);
+    gsBoxTopology rotated(2, 2);
+    rotated.addInterface(0, boundary::east, 1, boundary::south);
+    const gsBoundaryConditions<real_t> none;
+    const char * const reason = "requires every interface to keep each direction";
+
+    // Two distinct copies of one basis: under the rotation every
+    // component's traces are equally long (e1+2 == e0+3 == 6), so nothing
+    // but the direction map tells the case apart, and without the check the
+    // interface would be glued without any error.
+    const std::vector<gsMultiBasis<real_t> > copies(2, rt[0]);
+    CHECK_EQUAL(copies[0].basis(0).boundary(boundary::east ).rows(),
+                copies[1].basis(1).boundary(boundary::south).rows());
+    {
+        CerrCapture err;
+        CHECK_THROW(createMapper(pointers(copies), rotated, none, 0, true, true),
+                    std::runtime_error);
+        CHECK(err.contains(reason));
+    }
+
+    // The Raviart-Thomas pair is rejected for the same reason, not for its
+    // component 1 traces differing in size (e1+3 against e0+2).
+    {
+        CerrCapture err;
+        CHECK_THROW(createMapper(pointers(rt), rotated, none, 0, true, true),
+                    std::runtime_error);
+        CHECK(err.contains(reason));
+    }
+
+    // Not visited without the conforming loop.
+    createMapper(pointers(rt), rotated, none, 0, false, true);
+
+    // One shared function set is matched as by the single-basis overload.
+    const std::vector<const gsFunctionSet<real_t>*> shared(2, &rt[0]);
+    const gsDofMapper m = createMapper(shared, rotated, none, 0, true, true);
+    CHECK(!m.hasDistinctComponentSpaces());
+    CHECK(m.coupledSize() > 0);
+    checkSameMapper(m, createMapper(rt[0], rotated, none, 2, 0, true, true));
 }
 
 // Contact interfaces are not glued, and the finalize flag is honoured, as in

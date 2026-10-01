@@ -42,6 +42,13 @@ namespace gismo
     physically distinct). This mirrors gsMultiBasis<T>::repairInterfaces and the
     pre-existing gsFeSpace behaviour.
 
+    Throws in every build type for a Dirichlet condition selecting a component
+    other than -1 or an existing one, for a condition, corner or interface
+    referring to a patch, side or corner that does not exist, and for an
+    interface or coupled condition whose two sides carry different numbers of
+    dofs.  Clamped, Collapsed, coupled and corner conditions whose component
+    selects none of the \a nComp components are skipped.
+
     \ingroup Assembler
 */
 template<class T>
@@ -109,11 +116,24 @@ gsDofMapper createMapper(const gsFunctionSet<T> & bases, const gsBoundaryConditi
     only.
 
     If every entry is the same function-set object (in particular, if there
-    is only one), the result is exactly that of the single-basis
+    is only one), the result is that of the single-basis
     createMapper(*basesPerComp[0], topology, bc, basesPerComp.size(), unk,
-    conforming, finalize).  Otherwise the mapper is declared to have
-    distinct component spaces (gsDofMapper::hasDistinctComponentSpaces()),
-    also when the component sizes happen to coincide.
+    conforming, finalize), for every input this overload accepts: unlike the
+    single-basis overload it rejects a gsMappedBasis, and a Clamped,
+    Collapsed, coupled or corner condition selecting a component that does
+    not exist.  Otherwise the mapper is declared to have distinct component
+    spaces (gsDofMapper::hasDistinctComponentSpaces()), also when the
+    component sizes happen to coincide.
+
+    Component \a c of one patch is matched with component \a c of its
+    neighbour.  This is only meaningful when the interface does not permute
+    the parametric directions: across an interface that maps one patch's
+    first direction onto the other's second (a rotated neighbour), a
+    component normal to the interface on one side is tangential on the
+    other, and the pairing would have to cross components, which
+    gsDofMapper cannot represent.  With distinct function sets and
+    \a conforming set, such an interface throws in every build type; with
+    one shared function set it is matched as by the single-basis overload.
 
     \param basesPerComp one function set per component; none may be null or a
                         gsMappedBasis, and all must have the same number of
@@ -126,8 +146,9 @@ gsDofMapper createMapper(const gsFunctionSet<T> & bases, const gsBoundaryConditi
     \param finalize     if true, gsDofMapper::finalize() is called before returning
 
     Invalid input -- a component selection other than -1 or an existing
-    component, a reference to a patch or side that does not exist, or
-    incompatible function sets -- throws in every build type.
+    component, a reference to a patch, side or corner that does not exist,
+    incompatible function sets, or an interface permuting the parametric
+    directions (see above) -- throws in every build type.
 
     \note Interfaces of type interaction::contact are skipped by the conforming
     loop, as in the single-basis overload.
@@ -144,6 +165,12 @@ gsDofMapper createMapper(const std::vector<const gsFunctionSet<T>*> & basesPerCo
 /// gsMultiBasis per component.  The topology is taken from
 /// \a basesPerComp[0]; every other component's topology must describe the
 /// same patches, boundaries and interfaces, or the call throws.
+///
+/// The entries of \a basesPerComp are distinct objects even when they are
+/// copies of one gsMultiBasis, so with more than one component the mapper is
+/// always declared to have distinct component spaces, and the expression
+/// assembler rejects it. For one space shared by every component use the
+/// single-basis createMapper(bases, topology, bc, nComp, ...).
 /// \ingroup Assembler
 template<class T>
 gsDofMapper createMapper(const std::vector<gsMultiBasis<T> > & basesPerComp,

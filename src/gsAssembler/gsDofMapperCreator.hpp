@@ -111,6 +111,10 @@ void checkConditions(const gsBoundaryConditions<T> & bc, index_t unk,
         GISMO_ENSURE(0 <= it->patch && it->patch < bases.nPieces(),
                      "createMapper: a corner condition is set on patch "<<it->patch
                      <<", but there are "<<bases.nPieces()<<" patches.");
+        const index_t d = bases.basis(it->patch).domainDim();
+        GISMO_ENSURE(1 <= it->corner.m_index && it->corner.m_index <= (index_t(1) << d),
+                     "createMapper: a corner condition is set on corner "<<it->corner.m_index
+                     <<" of patch "<<it->patch<<", which has "<<(index_t(1) << d)<<" corners.");
         if (allComponents)
             checkComponentSelection(it->component, nComp, "a corner condition");
     }
@@ -129,9 +133,34 @@ void checkInterfaces(const gsBoxTopology & topology, const gsFunctionSet<T> & ba
     }
 }
 
+// Component c of one patch is matched with component c of its neighbour,
+// which presumes that the component's parametric direction is the same on
+// both sides.  An interface whose direction map is not the identity (a
+// rotated neighbour) would pair, e.g., a component normal to the interface
+// on one side with one tangential to it on the other.  For distinct
+// per-component bases that pairing is rejected rather than guessed; it is
+// only detected otherwise when the two traces happen to differ in size.
+inline void checkAlignedInterfaces(const gsBoxTopology & topology)
+{
+    for ( gsBoxTopology::const_iiterator it = topology.iBegin();
+          it != topology.iEnd(); ++it )
+    {
+        if (it->type() == interaction::contact) continue;
+        const gsVector<index_t> & dirs = it->dirMap();
+        for (index_t d = 0; d != dirs.size(); ++d)
+            GISMO_ENSURE(dirs[d] == d,
+                         "createMapper: the interface between "<<it->first()<<" and "
+                         <<it->second()<<" maps parametric direction "<<d<<" onto direction "
+                         <<dirs[d]<<".  Distinct per-component bases are matched component by "
+                         "component, which requires every interface to keep each direction.");
+    }
+}
+
 // Glues every conforming interface of \a topology, each component against
 // its own basis: a component's interface trace is determined by that
-// component's knot vectors alone.
+// component's knot vectors alone.  The traces are computed once per run of
+// components sharing one function set, so a single-basis mapper costs one
+// matchWith() per interface whatever its number of components.
 template<class T>
 void matchInterfaces(gsDofMapper & mapper,
                      const std::vector<const gsFunctionSet<T>*> & bases,
@@ -147,13 +176,16 @@ void matchInterfaces(gsDofMapper & mapper,
 
         for (size_t c = 0; c != bases.size(); ++c)
         {
-            const gsBasis<T> & basis1 = bases[c]->basis(it->first().patch);
-            const gsBasis<T> & basis2 = bases[c]->basis(it->second().patch);
-            basis1.matchWith(*it, basis2, b1, b2);
-            GISMO_ENSURE(b1.rows() == b2.rows(),
-                         "createMapper: component "<<c<<" has "<<b1.rows()<<" dofs on side "
-                         <<it->first()<<" but "<<b2.rows()<<" on side "<<it->second()
-                         <<" of the same interface; they cannot be matched.");
+            if (0 == c || bases[c] != bases[c-1])
+            {
+                const gsBasis<T> & basis1 = bases[c]->basis(it->first().patch);
+                const gsBasis<T> & basis2 = bases[c]->basis(it->second().patch);
+                basis1.matchWith(*it, basis2, b1, b2);
+                GISMO_ENSURE(b1.rows() == b2.rows(),
+                             "createMapper: component "<<c<<" has "<<b1.rows()<<" dofs on side "
+                             <<it->first()<<" but "<<b2.rows()<<" on side "<<it->second()
+                             <<" of the same interface; they cannot be matched.");
+            }
             mapper.matchDofs(it->first().patch, b1, it->second().patch, b2, c);
         }
     }
@@ -162,7 +194,9 @@ void matchInterfaces(gsDofMapper & mapper,
 // Applies every boundary-condition kind the mapper knows of to the
 // components each condition selects, taking boundary dofs and corner
 // functions from the selected component's own basis.  Expects
-// checkConditions() to have passed.
+// checkConditions() to have passed.  Within one condition the boundary dofs
+// are extracted again only when the function set changes (\a prev), so the
+// components of a single-basis mapper share one extraction.
 template<class T>
 void applyConditions(gsDofMapper & mapper,
                      const std::vector<const gsFunctionSet<T>*> & bases,
@@ -170,6 +204,7 @@ void applyConditions(gsDofMapper & mapper,
 {
     const index_t nComp = static_cast<index_t>(bases.size());
     gsMatrix<index_t> bnd, bnd1;
+    const gsFunctionSet<T> * prev = nullptr;
 
     // Strong Dirichlet conditions
     for (typename gsBoundaryConditions<T>::const_iterator
@@ -177,10 +212,15 @@ void applyConditions(gsDofMapper & mapper,
     {
         if (unk!=-1 && it->unknown() != unk) continue;
         const index_t cc = it->unkComponent();
+        prev = nullptr;
         for (index_t c = 0; c!=nComp; c++)
         {
             if (c!=cc && cc!=-1) continue;
-            bnd = bases[c]->basis(it->ps.patch).boundary(it->ps.side());
+            if (bases[c] != prev)
+            {
+                prev = bases[c];
+                bnd = prev->basis(it->ps.patch).boundary(it->ps.side());
+            }
             mapper.markBoundary(it->ps.patch, bnd, c);
         }
     }
@@ -191,13 +231,18 @@ void applyConditions(gsDofMapper & mapper,
     {
         if (unk!=-1 && it->unknown() != unk) continue;
         const index_t cc = it->unkComponent();
+        prev = nullptr;
         for (index_t c = 0; c!=nComp; c++)
         {
             if (c!=cc && cc!=-1) continue;
-            bnd = bases[c]->basis(it->ps.patch).boundary(it->ps.side());
-            bnd1= bases[c]->basis(it->ps.patch).boundaryOffset(it->ps.side(), 1);
-            if (!it->ps.parameter())
-                bnd.swap(bnd1);
+            if (bases[c] != prev)
+            {
+                prev = bases[c];
+                bnd = prev->basis(it->ps.patch).boundary(it->ps.side());
+                bnd1= prev->basis(it->ps.patch).boundaryOffset(it->ps.side(), 1);
+                if (!it->ps.parameter())
+                    bnd.swap(bnd1);
+            }
             for (index_t k = 0; k < bnd.size(); ++k)
                 mapper.matchDof(it->ps.patch, (bnd)(k, 0),
                                 it->ps.patch, (bnd1)(k, 0), c);
@@ -210,10 +255,15 @@ void applyConditions(gsDofMapper & mapper,
     {
         if (unk!=-1 && it->unknown() != unk) continue;
         const index_t cc = it->unkComponent();
+        prev = nullptr;
         for (index_t c = 0; c!=nComp; c++)
         {
             if (c!=cc && cc!=-1) continue;
-            bnd = bases[c]->basis(it->ps.patch).boundary(it->ps.side());
+            if (bases[c] != prev)
+            {
+                prev = bases[c];
+                bnd = prev->basis(it->ps.patch).boundary(it->ps.side());
+            }
             // match all DoFs to the first one of the side
             for (index_t k = 0; k < bnd.size() - 1; ++k)
                 mapper.matchDof(it->ps.patch, (bnd)(0, 0),
@@ -227,15 +277,20 @@ void applyConditions(gsDofMapper & mapper,
     {
         if (unk!=-1 && it->unknown!=-1 && it->unknown != unk) continue;
         const index_t cc = it->component;
+        prev = nullptr;
         for (index_t c = 0; c!=nComp; c++)
         {
             if (c!=cc && cc!=-1) continue;
-            bnd = bases[c]->basis(it->ifc.first().patch).boundary(it->ifc.first().side());
-            bnd1= bases[c]->basis(it->ifc.second().patch).boundary(it->ifc.second().side());
-            GISMO_ENSURE(bnd.rows() == bnd1.rows(),
-                         "createMapper: a coupled condition couples "<<bnd.rows()<<" dofs of side "
-                         <<it->ifc.first()<<" with "<<bnd1.rows()<<" dofs of side "
-                         <<it->ifc.second()<<" in component "<<c<<".");
+            if (bases[c] != prev)
+            {
+                prev = bases[c];
+                bnd = prev->basis(it->ifc.first().patch).boundary(it->ifc.first().side());
+                bnd1= prev->basis(it->ifc.second().patch).boundary(it->ifc.second().side());
+                GISMO_ENSURE(bnd.rows() == bnd1.rows(),
+                             "createMapper: a coupled condition couples "<<bnd.rows()<<" dofs of side "
+                             <<it->ifc.first()<<" with "<<bnd1.rows()<<" dofs of side "
+                             <<it->ifc.second()<<" in component "<<c<<".");
+            }
 
             // match all DoFs to the first one of the side
             for (index_t k = 0; k < bnd.size() -1; ++k)
@@ -359,8 +414,6 @@ gsDofMapper createMapper(const std::vector<const gsFunctionSet<T>*> & basesPerCo
 {
     GISMO_ENSURE(!basesPerComp.empty(),
                  "createMapper: expecting one function set per component, got none.");
-    GISMO_ENSURE(basesPerComp.size() <= static_cast<size_t>(std::numeric_limits<index_t>::max()),
-                 "createMapper: "<<basesPerComp.size()<<" components exceed the index type.");
     const index_t nComp = static_cast<index_t>(basesPerComp.size());
 
     for (index_t c = 0; c != nComp; ++c)
@@ -422,7 +475,10 @@ gsDofMapper createMapper(const std::vector<const gsFunctionSet<T>*> & basesPerCo
     gsDofMapper mapper(sz, /*hasDistinctComponentSpaces=*/true);
 
     if (conforming)
+    {
+        internal::checkAlignedInterfaces(topology);
         internal::matchInterfaces(mapper, basesPerComp, topology);
+    }
 
     if (bc.size() != 0)
         internal::applyConditions(mapper, basesPerComp, bc, unk);
