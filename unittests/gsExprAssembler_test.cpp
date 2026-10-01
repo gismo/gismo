@@ -245,6 +245,44 @@ SUITE(gsExprAssembler_test)
         CHECK( w*w < 1e-10 );
     }
 
+    // A solution taken with right() must be evaluated on the second patch of
+    // the interface, and left() on the first one
+    TEST(InterfaceSolution)
+    {
+        gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(1,2,1);
+        gsMultiBasis<> mb(patches);
+        mb.uniformRefine();
+
+        gsExprAssembler<> A(1,1);
+        A.setIntegrationElements(mb);
+        auto u = A.getSpace(mb);
+        u.setup(-1); // no coupling: the solution may jump across the interface
+
+        // Partition of unity: the solution equals 1+p on patch p
+        gsMatrix<> solVector = gsMatrix<>::Zero(u.mapper().freeSize(), 1);
+        auto s = A.getSolution(u, solVector);
+        s.setComponent(0, 1.0, 0);
+        s.setComponent(0, 2.0, 1);
+
+        CHECK(1==patches.interfaces().size());
+        const boundaryInterface & iFace = patches.interfaces().front();
+        const real_t first  = 1.0 + iFace.first ().patch;
+        const real_t second = 1.0 + iFace.second().patch;
+
+        CHECK(!s.isAcross());
+        CHECK( s.right().isAcross());
+        CHECK(!s.right().left().isAcross());
+
+        // The interface has parametric length one
+        gsExprEvaluator<> ev(A);
+        CHECK_CLOSE(first , ev.integralInterface(s,                 patches.interfaces()), 1e-12);
+        CHECK_CLOSE(first , ev.integralInterface(s.left(),          patches.interfaces()), 1e-12);
+        CHECK_CLOSE(second, ev.integralInterface(s.right(),         patches.interfaces()), 1e-12);
+        CHECK_CLOSE(first , ev.integralInterface(s.right().left(),  patches.interfaces()), 1e-12);
+        CHECK_CLOSE(second - first,
+                    ev.integralInterface(s.right() - s.left(), patches.interfaces()), 1e-12);
+    }
+
     TEST(BoundaryIntegral)
     {
         // Create a circle
