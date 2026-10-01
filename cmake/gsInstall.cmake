@@ -66,7 +66,7 @@ file(COPY ${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake DESTINATION ${CMAKE_BINARY_
 # ... for the install tree
 set(CONF_PUBLIC_HEADER "${CMAKE_INSTALL_PREFIX}/${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}/gismo.h")
 set(CONF_INCLUDE_DIRS "${CMAKE_INSTALL_PREFIX}/${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}")
-if(GISMO_Eigen_MIRROR)
+if(GISMO_Eigen_FROM_MIRROR)
   set(CONF_EIGEN_INCLUDE_DIR "${CMAKE_INSTALL_PREFIX}/${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}")
 else()
   set(CONF_EIGEN_INCLUDE_DIR "${EIGEN_INCLUDE_DIR}")
@@ -93,7 +93,7 @@ install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsExport.h
 # For gsLinearAlgebra.h. Only the mirror clone is ours to install; when an
 # external Eigen (Eigen_DIR / system install) was used instead, consumers use
 # that Eigen's own include directory (see CONF_EIGEN_INCLUDE_DIR above).
-if(GISMO_Eigen_MIRROR)
+if(GISMO_Eigen_FROM_MIRROR)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/Eigen/Eigen
         DESTINATION include/${PROJECT_NAME}
         PATTERN "*.txt" EXCLUDE
@@ -173,10 +173,10 @@ install(FILES
 #  "${CMAKE_INSTALL_DIR}" COMPONENT devel)
 
 # Produce pkg-config file
-# When GISMO_Eigen_MIRROR is set, Eigen headers are installed under
+# When Eigen came from the mirror (GISMO_Eigen_FROM_MIRROR), its headers are installed under
 # include/${PROJECT_NAME} (already on the Cflags -I path below); otherwise
 # consumers need the external Eigen's own include directory too.
-if(GISMO_Eigen_MIRROR)
+if(GISMO_Eigen_FROM_MIRROR)
   set(GISMO_PC_EIGEN_CFLAGS "")
 else()
   set(GISMO_PC_EIGEN_CFLAGS "-I${EIGEN_INCLUDE_DIR}")

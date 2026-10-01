@@ -114,7 +114,6 @@ class CMakeBuild(build_ext):
             f"-DGISMO_WITH_PYBIND11=ON",
             f"-DGISMO_BUILD_EXAMPLES=OFF",
             f"-DNOSNIPPETS=ON",
-            f"-DGISMO_Eigen_MIRROR=ON",
             # find_package(pybind11) hint
             f"-Dpybind11_DIR={pybind11.get_cmake_dir()}",
         ]

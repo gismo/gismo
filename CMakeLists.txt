@@ -195,31 +195,30 @@ if("x${CMAKE_CXX_STANDARD}" STREQUAL "x98" OR CMAKE_CXX_STANDARD LESS 14)
   message(FATAL_ERROR "Eigen 5 requires C++14 or newer (CMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD})")
 endif()
 
-if(GISMO_Eigen_MIRROR)
-  # Without a usable clone, reset the fetch: its ExternalProject stamps in the build tree survive a deleted
-  # clone (the re-download is then skipped), and that skipped fetch leaves an empty external/Eigen behind,
-  # which gismo_fetch_directory() treats as present. A non-empty folder is never deleted here.
-  if(NOT EXISTS "${PROJECT_SOURCE_DIR}/external/Eigen/signature_of_eigen3_matrix_library")
-    file(REMOVE_RECURSE "${gismo_BINARY_DIR}/external/Eigen_fetch")
-    file(GLOB _gismo_eigen_clone "${PROJECT_SOURCE_DIR}/external/Eigen/*")
-    if(NOT _gismo_eigen_clone)
-      file(REMOVE_RECURSE "${PROJECT_SOURCE_DIR}/external/Eigen")
-    endif()
-  endif()
-  gismo_fetch_directory(Eigen
-    GIT_REPOSITORY ${GISMO_Eigen_MIRROR_URL}
-    GIT_TAG        5.0.0
-    GIT_SHALLOW    TRUE
-    DESTINATION    external)
-  set(Eigen_DIR "${PROJECT_SOURCE_DIR}/external/Eigen")   # normal variable: shadows a user cache entry, leaves it intact
+# GISMO_Eigen selects where Eigen 5 comes from (see cmake/gsOptions.cmake):
+#   Find   - cmake/FindEigen.cmake: Eigen_DIR exclusively if set, else the usual CMake search
+#   Mirror - clone GISMO_Eigen_MIRROR_URL (tag 5.0.0) into external/Eigen and use that
+#   Auto   - Find; if that yields no Eigen 5.x, Mirror
+# GISMO_Eigen_FROM_MIRROR records the outcome for gsInstall.cmake: only a mirror clone is installed with G+Smo.
+string(TOUPPER "${GISMO_Eigen}" _gismo_eigen_mode)
+if(NOT _gismo_eigen_mode MATCHES "^(FIND|MIRROR|AUTO)$")
+  message(FATAL_ERROR "GISMO_Eigen='${GISMO_Eigen}' is not one of Find, Mirror, Auto.")
 endif()
+if(_gismo_eigen_mode STREQUAL "MIRROR" AND Eigen_DIR)
+  message(WARNING "Eigen_DIR='${Eigen_DIR}' is ignored because GISMO_Eigen=Mirror. Configure with -DGISMO_Eigen=Find (or Auto) to use it, or with -UEigen_DIR to silence this warning.")
+endif()
+set(GISMO_Eigen_FROM_MIRROR OFF)
 
-find_package(Eigen 5.0)                                     # no REQUIRED: our own FATAL_ERROR below names the remedies
-
-if(NOT Eigen_FOUND OR NOT Eigen_VERSION VERSION_LESS 6)
-  if(GISMO_Eigen_MIRROR)
-    message(FATAL_ERROR "G+Smo requires Eigen 5.x, but ${PROJECT_SOURCE_DIR}/external/Eigen (cloned from ${GISMO_Eigen_MIRROR_URL}, tag 5.0.0) does not contain a usable Eigen 5.x. gismo_fetch_directory() never re-fetches an existing directory, so if that clone is missing, partial, or the wrong version, delete ${PROJECT_SOURCE_DIR}/external/Eigen by hand and reconfigure.")
+if(NOT _gismo_eigen_mode STREQUAL "MIRROR")
+  # Auto searches QUIET: a miss there is not an error, and the fallback message below names what was rejected.
+  if(_gismo_eigen_mode STREQUAL "AUTO")
+    set(_gismo_eigen_quiet QUIET)
   else()
+    set(_gismo_eigen_quiet "")
+  endif()
+  find_package(Eigen 5.0 ${_gismo_eigen_quiet})             # no REQUIRED: our own errors below name the remedies
+
+  if(NOT Eigen_FOUND OR NOT Eigen_VERSION VERSION_LESS 6)
     # cmake/FindEigen.cmake sets Eigen_REJECTED_DIR (and unsets EIGEN_INCLUDE_DIR)
     # only when the find failed outright. A too-new Eigen (found, but rejected by
     # the VERSION_LESS 6 test above) leaves EIGEN_INCLUDE_DIR cached and
@@ -239,7 +238,46 @@ if(NOT Eigen_FOUND OR NOT Eigen_VERSION VERSION_LESS 6)
     else()
       set(_gismo_eigen_found_desc "found: '${_gismo_eigen_rejected_dir}'${_gismo_eigen_rejected_version}")
     endif()
-    message(FATAL_ERROR "G+Smo requires Eigen 5.x (${_gismo_eigen_found_desc}). Either pass -DEigen_DIR=<Eigen 5 source tree or install prefix>, or configure with -DGISMO_Eigen_MIRROR=ON to clone Eigen 5.0.0 into external/Eigen.")
+
+    if(_gismo_eigen_mode STREQUAL "FIND")
+      message(FATAL_ERROR "G+Smo requires Eigen 5.x (${_gismo_eigen_found_desc}). Either pass -DEigen_DIR=<Eigen 5 source tree or install prefix>, or configure with -DGISMO_Eigen=Mirror (or Auto) to clone Eigen 5.0.0 into external/Eigen.")
+    endif()
+    # An explicit Eigen_DIR that does not hold Eigen 5.x is likely a mistake: say so louder than a status line.
+    if(Eigen_DIR)
+      set(_gismo_eigen_msg_type WARNING)
+    else()
+      set(_gismo_eigen_msg_type STATUS)
+    endif()
+    message(${_gismo_eigen_msg_type} "GISMO_Eigen=Auto: no usable Eigen 5.x (${_gismo_eigen_found_desc}); falling back to the mirror ${GISMO_Eigen_MIRROR_URL}.")
+    set(GISMO_Eigen_FROM_MIRROR ON)
+  endif()
+else()
+  set(GISMO_Eigen_FROM_MIRROR ON)
+endif()
+
+if(GISMO_Eigen_FROM_MIRROR)
+  # Without a usable clone, reset the fetch: its ExternalProject stamps in the build tree survive a deleted
+  # clone (the re-download is then skipped), and that skipped fetch leaves an empty external/Eigen behind,
+  # which gismo_fetch_directory() treats as present. A non-empty folder is never deleted here.
+  if(NOT EXISTS "${PROJECT_SOURCE_DIR}/external/Eigen/signature_of_eigen3_matrix_library")
+    file(REMOVE_RECURSE "${gismo_BINARY_DIR}/external/Eigen_fetch")
+    file(GLOB _gismo_eigen_clone "${PROJECT_SOURCE_DIR}/external/Eigen/*")
+    if(NOT _gismo_eigen_clone)
+      file(REMOVE_RECURSE "${PROJECT_SOURCE_DIR}/external/Eigen")
+    endif()
+  endif()
+  gismo_fetch_directory(Eigen
+    GIT_REPOSITORY ${GISMO_Eigen_MIRROR_URL}
+    GIT_TAG        5.0.0
+    GIT_SHALLOW    TRUE
+    DESTINATION    external)
+  set(Eigen_DIR "${PROJECT_SOURCE_DIR}/external/Eigen")   # normal variable: shadows a user cache entry, leaves it intact
+  # FindEigen.cmake drops the cached EIGEN_INCLUDE_DIR whenever Eigen_DIR changes, so this call
+  # searches the clone even when an earlier find_package(Eigen) in this configure cached another directory.
+  find_package(Eigen 5.0)
+
+  if(NOT Eigen_FOUND OR NOT Eigen_VERSION VERSION_LESS 6)
+    message(FATAL_ERROR "G+Smo requires Eigen 5.x, but ${PROJECT_SOURCE_DIR}/external/Eigen (cloned from ${GISMO_Eigen_MIRROR_URL}, tag 5.0.0) does not contain a usable Eigen 5.x. gismo_fetch_directory() never re-fetches an existing directory, so if that clone is missing, partial, or the wrong version, delete ${PROJECT_SOURCE_DIR}/external/Eigen by hand and reconfigure.")
   endif()
 endif()
 message(STATUS "Eigen ${Eigen_VERSION}: ${EIGEN_INCLUDE_DIR}")

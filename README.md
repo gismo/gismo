@@ -135,22 +135,21 @@ page is at `./doc/html/index.html`.
 
 ## Eigen
 
-G+Smo requires an external installation of [Eigen](https://eigen.tuxfamily.org) 5.x; other major versions (e.g. a system Eigen 3.4) are rejected at configure time. There are two ways to provide it:
+G+Smo requires [Eigen](https://eigen.tuxfamily.org) 5.x; other major versions (e.g. a system Eigen 3.4) are rejected at configure time. The option `GISMO_Eigen` selects where it comes from:
 
-* Point CMake at an existing Eigen 5 source tree or install prefix, or let CMake fetch Eigen 5.0.0 for you:
+* `Mirror` (default): clone `GISMO_Eigen_MIRROR_URL` (default `https://github.com/gismo/eigen.git`, tag 5.0.0) into `external/Eigen`. The download is skipped when that directory already exists; delete `external/Eigen` to re-fetch.
+* `Find`: search for an installed Eigen 5. When `Eigen_DIR` is given, only that directory is searched; otherwise the usual system/`CMAKE_PREFIX_PATH` search applies. Configuration stops with an error if no Eigen 5.x is found.
+* `Auto`: as `Find`, but fall back to `Mirror` when no Eigen 5.x is found.
 
-  ```bash
-  cmake <gismo-src> -DEigen_DIR=/path/to/eigen
-  cmake <gismo-src> -DGISMO_Eigen_MIRROR=ON
-  ```
+```bash
+cmake <gismo-src>                                  # Mirror
+cmake <gismo-src> -DEigen_DIR=/path/to/eigen       # Find (see below)
+cmake <gismo-src> -DGISMO_Eigen=Auto
+```
 
-  The mirror option clones `GISMO_Eigen_MIRROR_URL` (default `https://github.com/gismo/eigen.git`) into `external/Eigen`, skipping the download when that directory already exists; delete `external/Eigen` to re-fetch.
+`Mirror` does not search the system or `CMAKE_PREFIX_PATH`; to use an Eigen 5 installed there, select `Find` or `Auto`. Passing `Eigen_DIR` on the first configure of a build directory, without `GISMO_Eigen`, selects `Find`. With `GISMO_Eigen=Mirror`, `Eigen_DIR` is ignored with a warning.
 
-  When `Eigen_DIR` is given (directly, or set by the mirror option to `external/Eigen`), only that directory is searched; otherwise the usual system/`CMAKE_PREFIX_PATH` search applies.
-
-If neither option locates an Eigen 5.x, configuration stops with an error naming both options.
-
-Installing: with the mirror, the Eigen headers are installed together with G+Smo. Otherwise, programs built against the installed G+Smo compile against the same external Eigen; its path is recorded in `gismoConfig.cmake` as `GISMO_EIGEN_INCLUDE_DIR` and in `gismo.pc`.
+Installing: when Eigen came from the mirror, its headers are installed together with G+Smo. Otherwise, programs built against the installed G+Smo compile against the same external Eigen; its path is recorded in `gismoConfig.cmake` as `GISMO_EIGEN_INCLUDE_DIR` and in `gismo.pc`.
 
 G+Smo includes Eigen under the namespace `gsEigen` (code using G+Smo spells it `gsEigen::`). Do not include a different Eigen in the same translation unit as `gismo.h`. Eigen's unsupported modules must be included through the G+Smo wrappers `<gsEigen/IterativeSolvers.h>`, `<gsEigen/SparseExtra.h>`, `<gsEigen/KroneckerProduct.h>` and `<gsEigen/MatrixFunctions.h>` (not included by `gismo.h`); a direct `#include <unsupported/Eigen/...>` declares `Eigen::` instead of `gsEigen::` and does not work with `gsMatrix`.
 
@@ -183,15 +182,17 @@ Release, RelWithDebInfo, MinSizeRel.
 
 * Eigen_DIR               *not set*
 
-  Path to an Eigen 5 source tree or install prefix.
+  Path to an Eigen 5 source tree or install prefix, searched when
+GISMO_Eigen is Find or Auto.
 
-* GISMO_Eigen_MIRROR      *OFF*
+* GISMO_Eigen             *Mirror* (*Find* if Eigen_DIR is set on the first configure)
 
-  Clone Eigen 5.0.0 into external/Eigen (once) and use it.
+  Source of Eigen 5: Find (search for an installed Eigen), Mirror (clone
+Eigen 5.0.0 into external/Eigen once and use it), or Auto (Find, else Mirror).
 
 * GISMO_Eigen_MIRROR_URL  *https://github.com/gismo/eigen.git*
 
-  Git repository used by GISMO_Eigen_MIRROR.
+  Git repository cloned when GISMO_Eigen is Mirror or Auto.
 
 * GISMO_COEFF_TYPE        *double*
 

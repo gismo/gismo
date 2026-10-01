@@ -73,15 +73,19 @@ inside the build folder.
 
 -   Eigen_DIR
 
-    Path to an Eigen 5 source tree or install prefix.
+    Path to an Eigen 5 source tree or install prefix, searched when
+    GISMO_Eigen is Find or Auto.
 
--   GISMO_Eigen_MIRROR
+-   GISMO_Eigen
 
-    Clone Eigen 5.0.0 into external/Eigen (once) and use it.
+    Source of Eigen 5: Find (search for an installed Eigen), Mirror
+    (default; clone Eigen 5.0.0 into external/Eigen once and use it), or
+    Auto (Find, else Mirror). Setting Eigen_DIR on the first configure
+    selects Find.
 
 -   GISMO_Eigen_MIRROR_URL
 
-    Git repository used by GISMO_Eigen_MIRROR.
+    Git repository cloned when GISMO_Eigen is Mirror or Auto.
 
 -   CMAKE_INSTALL_PREFIX
 
