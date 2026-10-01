@@ -55,6 +55,7 @@ inline size_t maxComponentCount()
 
 gsDofMapper::gsDofMapper() :
   m_nPatches(1), m_layout(PatchConcatenated), m_hasDistinctComponentSpaces(false),
+  m_uniformComponents(true),
   m_shift(0), m_bshift(0), m_numFreeDofs(1,0), m_numElimDofs(1,0),
   m_numCpldDofs(1,0), m_curElimId(-1)
 {
@@ -104,6 +105,9 @@ void gsDofMapper::checkInvariants() const
         }
     }
 
+    GISMO_ASSERT(m_uniformComponents == computeUniformComponents(),
+                 "gsDofMapper: the cached hasUniformComponents() is stale.");
+
     if (m_curElimId >= 0) // finalized: the count vectors are now cumulative prefix sums
     {
         for (size_t c = 0; c != m_dofs.size(); ++c)
@@ -119,15 +123,10 @@ void gsDofMapper::checkInvariants() const
 #endif // NDEBUG
 }
 
-bool gsDofMapper::usableByUniformEvaluator() const
+bool gsDofMapper::computeUniformComponents() const
 {
     if (m_hasDistinctComponentSpaces)
         return false;
-
-    // A mixed layout cannot occur: a single gsDofMapper instance always
-    // carries exactly one gsDofMapperLayout for all of its components, set
-    // at construction and never inferred, so there is nothing live to check
-    // here beyond that structural invariant.
 
     const index_t nComp = numComponents();
     if (nComp <= 1)
@@ -427,10 +426,7 @@ void gsDofMapper::markCoupledAsTagged()
     // free block, [m_numFreeDofs[c+1]-nc, m_numFreeDofs[c+1]), where nc is
     // the component's own coupled count -- a prefix difference, since
     // m_numCpldDofs is cumulative after finalize().  This is exactly the band
-    // is_coupled_index() tests.  m_numElimDofs plays no part: the eliminated
-    // blocks sit above every component's free block rather than interleaved
-    // with them, so adding one to the band start walks off the coupled dofs
-    // entirely -- for the last component, past size() altogether.
+    // is_coupled_index() tests; the eliminated blocks all sit above it.
     for (size_t c = 0; c+1 != m_numCpldDofs.size(); ++c)
     {
         const index_t nc = m_numCpldDofs[c+1] - m_numCpldDofs[c];
@@ -644,10 +640,7 @@ void gsDofMapper::setIdentity(index_t nPatches, const std::vector<size_t> & dofs
     m_shift = m_bshift = 0;
     // setIdentity() is a full reset of a possibly already-populated mapper,
     // so every derived member has to go -- including the tag list, whose
-    // entries are global indices of the numbering being discarded here.
-    // Left behind, they stay visible through taggedSize()/getTagged() and
-    // make is_tagged_index() answer for indices the new numbering does not
-    // even contain.
+    // entries are indices of the numbering being discarded here.
     m_tagged.clear();
     m_numFreeDofs.assign(nComp+1,0);
     m_numElimDofs.assign(nComp+1,0);
@@ -669,6 +662,7 @@ void gsDofMapper::setIdentity(index_t nPatches, const std::vector<size_t> & dofs
         m_dofs[c].assign(dofsPerComponent[c], 0);
     }
 
+    m_uniformComponents = computeUniformComponents();
     checkInvariants();
 }
 
@@ -679,9 +673,8 @@ void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation, index_t 
     // The permutation is component-local: it permutes component comp's own
     // free block among itself.  m_numFreeDofs is a cumulative prefix sum
     // after finalize(), so the block's length is the prefix difference and
-    // its first index is m_numFreeDofs[comp]; indexing the permutation with
-    // an unrebased global index would run off its end and could move a dof
-    // into a neighbouring component's band.
+    // its first index is m_numFreeDofs[comp], by which the stored values are
+    // rebased before they index the permutation.
     const index_t base  = m_numFreeDofs[comp];
     const index_t nFree = m_numFreeDofs[comp+1] - base;
     GISMO_ENSURE(nFree == permutation.size(), "gsDofMapper::permuteFreeDofs: permutation size "
@@ -724,12 +717,10 @@ void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation, index_t 
         }
     }
 
-    // Tags are global indices, and only the ones inside this component's
-    // free block are moved by a component-local permutation.  Every other
-    // tag -- another component's, or an eliminated dof's -- must survive
-    // untouched, which is why the list is remapped in place rather than
-    // rebuilt from this component's storage: rebuilding visits no other
-    // component and would silently delete their tags.
+    // Only the tags inside this component's free block are moved by a
+    // component-local permutation; every other tag -- another component's,
+    // or an eliminated dof's -- is kept as it is, so the list is remapped in
+    // place rather than rebuilt from this component's storage.
     for(std::vector<index_t>::iterator t = m_tagged.begin(); t != m_tagged.end(); ++t)
         if (*t >= base && *t < base + nFree)
             *t = base + permutation[*t - base];
@@ -799,6 +790,7 @@ void gsDofMapper::initPatchDofs(const gsVector<index_t> & patchDofSizes, index_t
 
     m_dofs.assign(nComp, std::vector<index_t>(row.back(), 0));
 
+    m_uniformComponents = computeUniformComponents();
     checkInvariants();
 }
 
@@ -869,6 +861,7 @@ void gsDofMapper::initRaggedPatchDofs(const std::vector<gsVector<index_t> > & pa
         m_numFreeDofs[c+1] = static_cast<index_t>(rows[c].back());
     }
 
+    m_uniformComponents = computeUniformComponents();
     checkInvariants();
 }
 
@@ -984,10 +977,8 @@ std::vector<std::pair<index_t,index_t> > gsDofMapper::anyPreImages(index_t comp)
 
     // One entry per global index, at the unshifted position: the stored
     // values are exactly the unshifted indices, all of them below size().
-    // The storage size of the component has nothing to do with the result's
-    // length -- it counts local dofs, duplicates included -- and a dof that
-    // this component does not own gets a sentinel in both slots, since 0 is
-    // a valid patch-local index.
+    // A dof that this component does not own gets a sentinel in both slots,
+    // since 0 is a valid patch-local index.
     std::vector<std::pair<index_t,index_t> > result(size(), std::make_pair(index_t(-1),index_t(-1)));
 
     for (citer it = dofs.begin(); it != dofs.end(); ++it, ++cur)
@@ -1018,8 +1009,7 @@ gsVector<index_t> gsDofMapper::inverseAsVector(index_t comp) const
     ensureComponent(comp, "inverseAsVector");
     GISMO_ASSERT(isPermutation(), "This dofMapper is not 1-1");
     // Every position that is not the image of a local dof of this component
-    // -- every other component's block, in particular -- must be a defined
-    // sentinel and not whatever the allocation happened to contain.
+    // -- every other component's block, in particular -- holds -1.
     gsVector<index_t> v = gsVector<index_t>::Constant(size(), -1);
       for(size_t j = 0; j!= m_dofs[comp].size(); ++j)
 	v[ m_dofs[comp][j] ] = j;
@@ -1039,12 +1029,10 @@ gsDofMapper::inverseOnPatch(const index_t k) const
     for(size_t i = 0; i!= m_dofs.size(); ++i)
     {
         const index_t c = static_cast<index_t>(i);
-        // Only the dofs that live on patch k, and only as many of them as
-        // this component has there: iterating the whole component vector
-        // from the patch offset both attributes other patches' dofs to this
-        // one and, for every patch but the first, reads past the end.  Under
-        // the aliased layout patchSize() is the component's global total on
-        // every patch, so the same expression yields the complete inverse.
+        // Only the dofs that live on patch k, as many as this component has
+        // there.  Under the aliased layout patchSize() is the component's
+        // global total on every patch, so the same expression yields the
+        // complete inverse.
         //
         // The keys are global indices, so they carry the shift like index().
         citer it = m_dofs[i].begin() + offAt(c, k);
@@ -1079,9 +1067,7 @@ index_t gsDofMapper::boundarySizeWithDuplicates() const
     ensureFinalized("boundarySizeWithDuplicates");
 
     // Eliminated dofs of every component are numbered above the free dofs of
-    // ALL components, so the threshold is the global free count.  Comparing
-    // against a component's own freeSize(i) counts the free dofs of the
-    // later components as eliminated.
+    // ALL components, so the threshold is the global free count.
     const index_t s = m_numFreeDofs.back() - 1;
     index_t res = 0;
     for (size_t i = 0; i!= m_dofs.size(); ++i)
@@ -1221,8 +1207,7 @@ gsVector<index_t> gsDofMapper::findFreeUncoupled(const index_t k, const index_t 
     const citer istart = m_dofs[comp].begin() + offAt(comp,k);
     const citer iend   = istart + patchSize(k,comp);
     // Below this component's own coupled band and at or above the start of
-    // its own free block: a lower bound taken from the global free range
-    // would also accept every earlier component's free dofs.
+    // its own free block.
     const index_t nCpld = m_numCpldDofs[comp+1] - m_numCpldDofs[comp];
     return find_impl(istart, iend,
                      _isBetween(m_numFreeDofs[comp]-1,
@@ -1379,7 +1364,7 @@ void pybind11_init_gsDofMapper(py::module &m)
     .def("mapSize", &Class::mapSize, "Returns the total number of patch-local degrees of freedom that are being mapped")
     .def("componentsSize", &Class::componentsSize, "Returns the components size")
     .def("hasDistinctComponentSpaces", &Class::hasDistinctComponentSpaces, "Returns whether this mapper was declared to be built from distinct per-component bases")
-    .def("usableByUniformEvaluator", &Class::usableByUniformEvaluator, "Returns whether this mapper can be consumed by the legacy single-basis-per-space evaluator")
+    .def("hasUniformComponents", &Class::hasUniformComponents, "Returns whether every component can be treated as one shared space")
     .def("patchSize", &Class::patchSize, "Returns the total number of patch-local DoFs that live on patch \a k for component \a c")
     .def("totalSize", &Class::totalSize, "Returns the total size of the mapper")
     .def("indexOnPatch", static_cast<bool (Class::*)(index_t,index_t) const > (&Class::indexOnPatch), "For \a gl being a global index, this function returns true whenever \a gl corresponds to patch \a k")

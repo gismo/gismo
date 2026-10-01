@@ -63,10 +63,8 @@ namespace gismo
     Each component of the mapper carries its own patch-local storage
     (see initPatchDofs()/the ragged constructor), so the number of
     local dofs on a given patch may differ from one component to
-    another ("ragged" storage).  Storage is organized as a flat,
-    per-component offset table with an explicit patch count
-    (gsDofMapperLayout, offAt()/offBegin()/offEnd()).  There are two
-    kinds of layout:
+    another ("ragged" storage).  There are two kinds of layout
+    (see layout()):
 
     - patch-concatenated: ordinary storage, one contiguous range of
       local dofs per (patch,component);
@@ -93,7 +91,7 @@ public:
     /// laid out.  A mapper never infers which one it has from a
     /// coincidental offset pattern -- the layout is fixed at
     /// construction and carried through reset/swap.
-    enum gsDofMapperLayout
+    enum Layout
     {
         PatchConcatenated = 0, ///< ordinary patch-local storage (the default)
         GlobalIdentity    = 1  ///< setIdentity()-built aliased/global storage
@@ -146,6 +144,7 @@ public:
         std::swap(m_nPatches, other.m_nPatches);
         std::swap(m_layout,   other.m_layout);
         std::swap(m_hasDistinctComponentSpaces, other.m_hasDistinctComponentSpaces);
+        std::swap(m_uniformComponents, other.m_uniformComponents);
 
         std::swap(m_shift      , other.m_shift);
         std::swap(m_bshift     , other.m_bshift);
@@ -337,6 +336,10 @@ private:
               : std::distance(m_numElimDofs.begin(),std::upper_bound(m_numElimDofs.begin(), m_numElimDofs.end(), g-m_numFreeDofs.back())) ) - 1;
     }
 
+    /// The value hasUniformComponents() caches, computed from the sizes and
+    /// the declared distinctness in O(nPatches*nComp).
+    bool computeUniformComponents() const;
+
     /// Debug-only structural invariant check (GISMO_ASSERT-based, so it
     /// compiles away entirely under NDEBUG -- this is not a release-mode
     /// guard).  Invoked after construction/reset and before/after
@@ -462,9 +465,7 @@ public:
     ///   eliminated block, which lies above every component's free block;
     /// - it owns no dof at all (an empty component, or a mapper that has
     ///   not been finalized): no index is present, and the start of its
-    ///   free block is reported.  Note that this is NOT the eliminated
-    ///   branch: an empty component must not be pushed past the free range
-    ///   merely for having no free dof.
+    ///   free block is reported.
     ///
     /// \a comp may also equal numComponents(), which reports the end of the
     /// last component's free block; in particular firstIndex() is valid on
@@ -654,10 +655,7 @@ public:
       const index_t vv = m_numFreeDofs[gc+1];
       // The coupled dofs of a component sit at the top of that component's
       // own free block, so the band is that component's own coupled count
-      // wide.  m_numCpldDofs is a cumulative prefix sum after finalize(), so
-      // the own count is the prefix difference: taking m_numCpldDofs[gc+1]
-      // directly widens the band by every preceding component's coupled
-      // count and reports free-uncoupled dofs of components >= 1 as coupled.
+      // wide: the difference of the cumulative prefix m_numCpldDofs.
       const index_t nc = m_numCpldDofs[gc+1] - m_numCpldDofs[gc];
       return  (g < vv &&      // is a free dof of component gc, and
                g >= vv - nc); // lies in its coupled band
@@ -734,7 +732,7 @@ public:
 
     /// Returns the offset corresponding to patch \a k for component \a c.
     /// Zero for every real patch under the global-identity/aliased layout
-    /// (see gsDofMapperLayout).
+    /// (see Layout).
     size_t offset(index_t k, index_t c = 0) const
     {
         ensureComponent(c, "offset");
@@ -757,10 +755,10 @@ public:
 
     size_t componentsSize() const {return m_dofs.size();}
 
-    /// Returns the storage layout of this mapper (see gsDofMapperLayout).
+    /// Returns the storage layout of this mapper (see Layout).
     /// Declared at construction and never inferred from an observed
     /// offset pattern.
-    gsDofMapperLayout layout() const { return m_layout; }
+    Layout layout() const { return m_layout; }
 
     /// Returns true if this mapper was declared, at construction, to
     /// have been built from more than one distinct per-component basis
@@ -770,22 +768,23 @@ public:
     /// built from different bases.
     bool hasDistinctComponentSpaces() const { return m_hasDistinctComponentSpaces; }
 
-    /// \brief Returns true if this mapper can be consumed by the
-    /// expression evaluator's single-basis-per-space assumption: the
-    /// component spaces were not declared distinct, the layout is not
-    /// mixed (a structural invariant already enforced at construction,
-    /// so this conjunct can never actually reject a successfully
-    /// constructed mapper), and every component has the same
-    /// cardinality as component 0, compared under whichever single
-    /// layout this mapper actually has (patchSize(p,c)==patchSize(p,0)
-    /// for every patch under the patch-concatenated layout;
-    /// totalSize(c)==totalSize(0) under the global-identity layout).
-    bool usableByUniformEvaluator() const;
+    /// \brief Returns true if every component can be treated as one shared
+    /// space, as a single-basis-per-space evaluator such as the expression
+    /// assembler requires: the component spaces were not declared distinct,
+    /// and every component has the same cardinality as component 0
+    /// (patchSize(p,c)==patchSize(p,0) on every patch under the
+    /// patch-concatenated layout, totalSize(c)==totalSize(0) under the
+    /// global-identity layout).
+    ///
+    /// O(1): component sizes are fixed at construction, so the answer is
+    /// computed there and cached, which lets callers check it on every
+    /// assembly call.
+    bool hasUniformComponents() const { return m_uniformComponents; }
 
     /// \brief Returns the total number of patch-local DoFs
     /// that live on patch \a k for component \a c.  Under the
     /// global-identity/aliased layout this is the component-global
-    /// identity total for every patch (see gsDofMapperLayout and
+    /// identity total for every patch (see Layout and
     /// setIdentity()), not just the last one.
     size_t patchSize(const index_t k, const index_t c = 0) const
     {
@@ -935,12 +934,16 @@ private:
     std::vector<size_t> m_offset;
 
     /// Storage layout (patch-concatenated or global-identity/aliased).
-    /// Declared at construction, never inferred; see gsDofMapperLayout.
-    gsDofMapperLayout m_layout;
+    /// Declared at construction, never inferred; see Layout.
+    Layout m_layout;
 
     /// Declared (never inferred) at construction: true if this mapper
     /// was built from more than one distinct per-component basis object.
     bool m_hasDistinctComponentSpaces;
+
+    /// hasUniformComponents(), cached at construction: nothing changes the
+    /// component sizes or the declared distinctness afterwards.
+    bool m_uniformComponents;
 
     /// Shifting of the global index (zero by default)
     ///

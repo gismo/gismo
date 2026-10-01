@@ -51,14 +51,14 @@ struct gsFeSpaceData
     /// whose components differ in size on some patch, would be indexed
     /// with the wrong local basis functions.
     ///
-    /// The decision is gsDofMapper::usableByUniformEvaluator(), which
+    /// The decision is gsDofMapper::hasUniformComponents(), which
     /// relies on the declared hasDistinctComponentSpaces() rather than
     /// on sizes: a Raviart-Thomas pair on an isotropic mesh has equal
     /// component sizes on every patch.  Mappers from the single-basis
     /// creators and default-constructed ones always pass.
     static void ensureUsableByUniformEvaluator(const gsDofMapper & mapper)
     {
-        if (mapper.usableByUniformEvaluator())
+        if (mapper.hasUniformComponents())
             return;
 
         GISMO_ENSURE(!mapper.hasDistinctComponentSpaces(),
