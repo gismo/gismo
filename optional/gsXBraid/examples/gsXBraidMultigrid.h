@@ -1,4 +1,5 @@
 #include <gismo.h>
+#include <gsMatrix/gsIncompleteLUT.h>
 #include <gsAssembler/gsDofMapperCreator.h>
 #include <string>
 
@@ -673,7 +674,7 @@ namespace gismo {
               m_Pinv[i].resize(1);
               if (Base::typeProjection == 2)
                 {
-                  gsEigen::IncompleteLUT<real_t> ilu;
+                  gismo::gsIncompleteLUT<real_t> ilu;
                   ilu.setFillfactor(1);
                   ilu.compute(m_operator[i]);
                   m_ILUT[i][0] = ilu.factors();
@@ -684,7 +685,7 @@ namespace gismo {
                 {
                   if (i == numLevels-1) // Only at finest level
                     {
-                      gsEigen::IncompleteLUT<real_t> ilu;
+                      gismo::gsIncompleteLUT<real_t> ilu;
                       ilu.setFillfactor(1);
                       ilu.compute(m_operator[i]);
                       m_ILUT[i][0] = ilu.factors();
@@ -737,7 +738,7 @@ namespace gismo {
               for(int j = 0 ; j < numPatch ; j++)
                 {
                   const gsSparseMatrix<T> block = m_operator[i].block(shift0,shift0,m_shift[i][j],m_shift[i][j]);
-                  gsEigen::IncompleteLUT<real_t> ilu;
+                  gismo::gsIncompleteLUT<real_t> ilu;
                   ilu.setFillfactor(1);
                   ilu.compute(block);
                   m_ILUT[i][j] = ilu.factors();
@@ -808,7 +809,7 @@ namespace gismo {
               shift0 = 0;  
         
               // Perform ILUT on the S-matrix!
-              gsEigen::IncompleteLUT<real_t> ilu;
+              gismo::gsIncompleteLUT<real_t> ilu;
               ilu.setFillfactor(1);
               gsSparseMatrix<T> II = m_S[i];
               ilu.compute(II);

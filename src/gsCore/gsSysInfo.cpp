@@ -43,9 +43,9 @@ namespace gismo
 
   std::string gsSysInfo::getEigenVersion()
   {
-    return util::to_string(EIGEN_WORLD_VERSION)+"."
-      +    util::to_string(EIGEN_MAJOR_VERSION)+"."
-      +    util::to_string(EIGEN_MINOR_VERSION);
+    return util::to_string(EIGEN_MAJOR_VERSION)+"."
+      +    util::to_string(EIGEN_MINOR_VERSION)+"."
+      +    util::to_string(EIGEN_PATCH_VERSION);
   }
 
   std::string gsSysInfo::getCompilerVersion()

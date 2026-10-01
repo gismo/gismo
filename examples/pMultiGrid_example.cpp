@@ -737,7 +737,7 @@ gsPreconditionerOp<>::Ptr setupBlockILUT(
     {
         // Diagonal entries
         gsSparseMatrix<> block = A.block(shifts[k],shifts[k],sizes[k],sizes[k]);
-        gsEigen::IncompleteLUT<real_t> ilu;
+        gsIncompleteLUT<real_t> ilu;
         ilu.setFillfactor(1);
         ilu.compute(block);
         P[k] = ilu.fillReducingPermutation();
@@ -763,7 +763,7 @@ gsPreconditionerOp<>::Ptr setupBlockILUT(
     if (sizes[nPatches]>0)
     {
         // Preform ILUT on the S-matrix.
-        gsEigen::IncompleteLUT<real_t> ilu;
+        gsIncompleteLUT<real_t> ilu;
         ilu.setFillfactor(1);
         ilu.compute(S);
         P[nPatches] = ilu.fillReducingPermutation();

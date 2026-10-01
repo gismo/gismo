@@ -12,7 +12,7 @@ imagename: An image name following the naming convention
            where
                    os : is the operating system, e.g. ubuntu20.04
              compiler : is the compiler, e.g. gcc10
-                  cxx : is the C++ standard, e.g. cxx11
+                  cxx : is the C++ standard, e.g. cxx14
            buildstype : is the build type, e.g. release
                   cpu : is the cpu type, e.g. skylake
               optionX : is an optional option, e.g. openmp" 1>&2; exit 1; }

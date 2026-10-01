@@ -58,7 +58,8 @@ source ${BASE_DIR}/hooks/_compiler_settings
 shopt -s extglob;
 case "$IMAGE_NAME" in
     ?(*\-)cxx11?(\-*))
-        CMAKE_CXX_STANDARD=11
+        echo "[***] C++11 is no longer supported: Eigen 5 requires C++14"
+        exit 1
         ;;
     ?(*\-)cxx14?(\-*))
         CMAKE_CXX_STANDARD=14

@@ -94,7 +94,7 @@ void outerNormal(const gsMapData<T> & md, index_t k, boxSide s, gsVector<T> & re
         // fixme: generalize to nD
         normal(md, k, result);
         tmp = result;
-        result = tmp.normalized().cross(sgn * Jk);
+        result = tmp.normalized().cross((sgn * Jk).template head<3>());
 
         /*
           gsDebugVar(result.transpose()); // result 1

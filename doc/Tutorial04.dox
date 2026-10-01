@@ -71,6 +71,22 @@ inside the build folder.
 
     Extension for reading and writing of Rhinoceros' 3DM.
 
+-   Eigen_DIR
+
+    Path to an Eigen 5 source tree or install prefix, searched when
+    GISMO_Eigen is Find or Auto.
+
+-   GISMO_Eigen
+
+    Source of Eigen 5: Find (search for an installed Eigen), Mirror
+    (default; clone Eigen 5.0.0 into external/Eigen once and use it), or
+    Auto (Find, else Mirror). Setting Eigen_DIR on the first configure
+    selects Find.
+
+-   GISMO_Eigen_MIRROR_URL
+
+    Git repository cloned when GISMO_Eigen is Mirror or Auto.
+
 -   CMAKE_INSTALL_PREFIX
 
     The location for installation of the library, e.g. /usr/local on
