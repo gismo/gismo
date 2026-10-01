@@ -161,18 +161,6 @@ public:
     using Base::operator=;
 #endif
 */
-#if !EIGEN_HAS_RVALUE_REFERENCES
-    gsVector & operator=(typename gsEigen::internal::conditional<
-                         -1==_Rows,gsVector, const gsVector &>::type other)
-    {
-        if (-1==_Rows)
-            this->swap(other);
-        else
-            this->Base::operator=(other);
-        return *this;
-    }
-#endif
-
     /// \brief Returns the \a i-th element of the vector
     inline T at(index_t i) const { return *(this->data()+i);}
 
@@ -348,3 +336,35 @@ gsVector3d<T>::gsVector3d(const Base& a): Base(a) { }
 
 
 } // namespace gismo
+
+namespace gsEigen { namespace internal {
+template<class T, int _Rows, int _Options>
+struct traits<gismo::gsVector<T,_Rows,_Options> > :
+gsEigen::internal::traits<gsEigen::Matrix<T,_Rows,1,_Options> > { };
+
+template<class T, int _Rows, int _Options>
+struct evaluator<gismo::gsVector<T,_Rows,_Options> > :
+    evaluator<gsEigen::Matrix<T,_Rows,1,_Options> >
+{
+    typedef gismo::gsVector<T,_Rows,_Options> XprType;
+    typedef evaluator<gsEigen::Matrix<T,_Rows,1,_Options> > Base;
+    EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE constexpr evaluator() = default;
+    EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE constexpr explicit evaluator(const XprType& m)
+        : Base(static_cast<const gsEigen::Matrix<T,_Rows,1,_Options>&>(m)) {}
+};
+
+template<class T>
+struct traits<gismo::gsVector3d<T> > :
+gsEigen::internal::traits<gsEigen::Matrix<T,3,1> > { };
+
+template<class T>
+struct evaluator<gismo::gsVector3d<T> > :
+    evaluator<gsEigen::Matrix<T,3,1> >
+{
+    typedef gismo::gsVector3d<T> XprType;
+    typedef evaluator<gsEigen::Matrix<T,3,1> > Base;
+    EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE constexpr evaluator() = default;
+    EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE constexpr explicit evaluator(const XprType& m)
+        : Base(static_cast<const gsEigen::Matrix<T,3,1>&>(m)) {}
+};
+} }

@@ -83,31 +83,13 @@ public:
     gsSparseVector(const gsEigen::ReturnByValue<OtherDerived>& other)  : Base(other) { } 
     
     ~gsSparseVector() { }
-    
-#if !EIGEN_HAS_RVALUE_REFERENCES
-    // Using the assignment operators of Eigen
-    // Note: using Base::operator=; is ambiguous in MSVC
-#ifdef _MSC_VER
-    template <class EigenExpr>
-    gsSparseVector& operator= (const EigenExpr & other) 
-    {
-        this->Base::operator=(other);
-        return *this;
-    }
-#else
-    using Base::operator=;
-#endif
-    
-#else
-    
-    // Avoid default keyword for MSVC<2013 
-    // https://msdn.microsoft.com/en-us/library/hh567368.aspx
+
     gsSparseVector(const gsSparseVector& other) : Base(other)
     { Base::operator=(other); }
 
     gsSparseVector& operator= (const gsSparseVector & other)
     { Base::operator=(other); return *this; }
-        
+
     gsSparseVector(gsSparseVector&& other)
     { operator=(std::forward<gsSparseVector>(other)); }
 
@@ -116,9 +98,7 @@ public:
         this->swap(other);
         other.clear();
         return *this;
-    }    
-
-#endif
+    }
 
     void clear()
     {
@@ -147,3 +127,20 @@ public:
 
 
 } // namespace gismo
+
+namespace gsEigen { namespace internal {
+template<typename T, int _Options, typename _Index>
+struct traits<gismo::gsSparseVector<T,_Options,_Index> > :
+gsEigen::internal::traits<gsEigen::SparseVector<T,_Options,_Index> > { };
+
+template<typename T, int _Options, typename _Index>
+struct evaluator<gismo::gsSparseVector<T,_Options,_Index> > :
+    evaluator<gsEigen::SparseVector<T,_Options,_Index> >
+{
+    typedef gismo::gsSparseVector<T,_Options,_Index> XprType;
+    typedef evaluator<gsEigen::SparseVector<T,_Options,_Index> > Base;
+    EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE evaluator() = default;
+    EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE explicit evaluator(const XprType& m)
+        : Base(static_cast<const gsEigen::SparseVector<T,_Options,_Index>&>(m)) {}
+};
+} }

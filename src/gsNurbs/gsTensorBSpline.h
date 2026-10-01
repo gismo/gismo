@@ -74,11 +74,6 @@ public:
 
     using gsGeometry<T>::swap;
 
-#if !EIGEN_HAS_RVALUE_REFERENCES
-    gsTensorBSpline & operator=(gsTensorBSpline other)
-    { this->swap(other); return *this;}
-#endif
-
     // Construct B-Spline by basis functions and coefficient matrix
     //gsTensorBSpline( const gsConstantBasis<T> & basis, const gsMatrix<T> & coefs )
     //{ }

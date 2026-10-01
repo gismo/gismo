@@ -27,7 +27,6 @@
 
 // Plugin provides extra members
 #define EIGEN_MATRIXBASE_PLUGIN <gsMatrix/gsMatrixAddons.h>
-#define EIGEN_PLAINOBJECTBASE_PLUGIN <gsMatrix/gsPlainObjectBaseAddons.h>
 #include <gsMatrix/gsEigenDeclarations.h>
 
 // CRITICAL: Include autodiff Eigen support BEFORE Eigen/Core
@@ -36,7 +35,7 @@
 #include <gsAutoDiff/gsAutoDiffEigen.h>
 #endif
 
-#include <gsEigen/Core>
+#include <Eigen/Core>
 
 #include <gsCore/gsMath.h>
 
@@ -45,13 +44,13 @@
 #endif
 
 #if defined(gsGmp_ENABLED)
-#include <unsupported/Eigen/MPQClassSupport>
+#include <gsEigen/MPQClassSupport.h>
 #endif
 
-#include <gsEigen/Dense>
-#include <gsEigen/Sparse>
-#include <gsEigen/StdVector>
-#include <gsEigen/Geometry>
+#include <Eigen/Dense>
+#include <Eigen/Sparse>
+#include <Eigen/StdVector>
+#include <Eigen/Geometry>
 
 // Extra Eigen code
 #include <gsMatrix/Adjugate.h>
@@ -60,27 +59,31 @@
 //#include <gsMatrix/RowSelection.h>
 
 #ifdef GISMO_WITH_SUPERLU
-#include <gsEigen/SuperLUSupport>
+#include <Eigen/SuperLUSupport>
 #endif
 
 #ifdef GISMO_WITH_PARDISO
-#include <gsEigen/PardisoSupport>
+#  ifdef EIGEN_USE_MKL
+#    include <Eigen/PardisoSupport>
+#  else
+#    include <gsEigen/PardisoSupport.h>
+#  endif
 #endif
 
 #ifdef GISMO_WITH_PASTIX
-#include <gsEigen/PaStiXSupport>
+#include <Eigen/PaStiXSupport>
 #endif
 
 // sparsesuite
-//#include <gsEigen/UmfPackSupport>
-//#include <gsEigen/SPQRSupport>
-//#include <gsEigen/CholmodSupport>
+//#include <Eigen/UmfPackSupport>
+//#include <Eigen/SPQRSupport>
+//#include <Eigen/CholmodSupport>
 
 // METIS
-//#include <gsEigen/MetisSupport>
+//#include <Eigen/MetisSupport>
 
 // PaStiX
-//#include <gsEigen/PaStiXSupport>
+//#include <Eigen/PaStiXSupport>
 
 #ifdef GISMO_WITH_PYBIND11
 #include <pybind11/eigen.h>
@@ -89,13 +92,17 @@
 #undef Eigen
 #undef eigen_assert
 #undef EIGEN_MATRIXBASE_PLUGIN
-#undef EIGEN_PLAINOBJECTBASE_PLUGIN
 
 
 namespace gismo
 {
 
 using gsEigen::internal::cast; // from Core/MathFunctions.h
+
+// gsConfig.h sets EIGEN_DEFAULT_DENSE_INDEX_TYPE to index_t; G+Smo mixes
+// index_t loop counters with gsMatrix sizes and indices throughout.
+static_assert(std::is_same<gsEigen::Index, index_t>::value,
+              "Eigen's dense index type must be index_t (EIGEN_DEFAULT_DENSE_INDEX_TYPE)");
 
 /**
    \brief Check if all the entires if the matrix \a x are not NAN (not
@@ -209,10 +216,17 @@ public:
     #endif
 
     #ifdef GISMO_WITH_PARDISO
-    /// Pardiso (if enabled)
+    #  ifdef EIGEN_USE_MKL
+    /// Pardiso via Intel MKL (Eigen's PardisoSupport module)
     typedef gsEigen::PardisoLDLT<gsEigen::SparseMatrix<T,0,int> > PardisoLDLT;
     typedef gsEigen::PardisoLLT <gsEigen::SparseMatrix<T,0,int> > PardisoLLT;
     typedef gsEigen::PardisoLU  <gsEigen::SparseMatrix<T,0,int> > PardisoLU;
+    #  else
+    /// Pardiso via the reference PARDISO library (gsEigen/PardisoSupport.h)
+    typedef gsEigen::gsPardisoLDLT<gsEigen::SparseMatrix<T,0,int> > PardisoLDLT;
+    typedef gsEigen::gsPardisoLLT <gsEigen::SparseMatrix<T,0,int> > PardisoLLT;
+    typedef gsEigen::gsPardisoLU  <gsEigen::SparseMatrix<T,0,int> > PardisoLU;
+    #  endif
     #endif
 
 };
@@ -227,4 +241,5 @@ public:
 #include <gsMatrix/gsSparseMatrix.h>
 #include <gsMatrix/gsSparseVector.h>
 #include <gsMatrix/gsSparseSolver.h>
+#include <gsMatrix/gsIncompleteLUT.h>
 #include <gsMatrix/gsPoint.h>

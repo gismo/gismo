@@ -342,7 +342,7 @@ bool readTopoDS_Shape( const TopoDS_Shape & inputShape, internal::gsXmlTree & da
                 Standard_Real aFirst, aLast;
                 TopoDS_Edge edgeo = TopoDS::Edge(exp_edges.Current().Composed(wire.Orientation()));
                 Handle(Geom2d_Curve) aCurve2d = BRep_Tool::CurveOnSurface(edgeo,faceo, aFirst, aLast);
-                assert( !aCurve2d.IsNull() );
+                GISMO_ASSERT( !aCurve2d.IsNull(), "Failed to get 2D curve on surface." );
                 /*
                 //https://www.opencascade.com/doc/occt-6.9.1/refman/html/_geom_abs___curve_type_8hxx.html#af25c179d5cabd33fddebe5a0dc96971c
                 Geom2dAdaptor_Curve ad (aCurve2d);

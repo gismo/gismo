@@ -36,7 +36,7 @@ project(main)
 include(CTest)
 #set(BUILD_TESTING "Enable testing" ${GISMO_BUILD_UNITTESTS})
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 message(STATUS "CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH}")
 
 # G+Smo

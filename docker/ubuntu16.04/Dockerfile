@@ -42,8 +42,8 @@ ARG CXX=g++-5
 # Fortran compiler        : {gfortran-4.7,gfortran-4.8,gfortran-4.9,gfortran-5}
 ARG FC=na
 
-# CMAKE_CXX_STANDARD      : {11,14,17,20,23}
-ARG CMAKE_CXX_STANDARD=11
+# CMAKE_CXX_STANDARD      : {14,17,20,23}
+ARG CMAKE_CXX_STANDARD=14
 
 # CMAKE_BUILD_TYPE        : {Release,Debug,RelWithDebInfo,MinSizeRel}
 ARG CMAKE_BUILD_TYPE=Release
@@ -393,6 +393,7 @@ RUN cd gismo    && \
     cmake .. \
         -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
         -DCMAKE_CXX_STANDARD=$CMAKE_CXX_STANDARD \
+        -DGISMO_Eigen_MIRROR=ON \
         -DCMAKE_INSTALL_PREFIX=$CMAKE_INSTALL_PREFIX \        
         -DGISMO_BUILD_EXAMPLES=$GISMO_BUILD_EXAMPLES \
         -DGISMO_BUILD_LIB=$GISMO_BUILD_LIB \

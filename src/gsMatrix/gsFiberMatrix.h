@@ -68,7 +68,6 @@ public:
 
     iterator begin(index_t j) const { return iterator(*m_fibers[j]); }
 
-#if EIGEN_HAS_RVALUE_REFERENCES
     gsFiberMatrix(gsFiberMatrix&& other) : m_fibers(give(other.m_fibers)) {}
 
     /// Assignment operator
@@ -88,13 +87,6 @@ public:
         m_fibers = give(other.m_fibers);
         return *this;
     }
-#else
-    gsFiberMatrix& operator= (gsFiberMatrix other)
-    {
-        this->swap( other );
-        return *this;
-    }
-#endif
 
     gsFiberMatrix& operator= (const RowBlockXpr& rowxpr)
     {

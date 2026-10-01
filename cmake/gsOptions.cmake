@@ -134,6 +134,13 @@ if (EIGEN_USE_MKL_ALL)
 message ("  EIGEN_USE_MKL_ALL       ${EIGEN_USE_MKL_ALL}")
 endif()
 
+option(GISMO_Eigen_MIRROR        "Clone Eigen 5 into external/Eigen instead of searching for it" false  )
+set(GISMO_Eigen_MIRROR_URL "https://github.com/gismo/eigen.git" CACHE STRING
+    "Git repository cloned into external/Eigen when GISMO_Eigen_MIRROR is ON")
+if (GISMO_Eigen_MIRROR)
+message ("  GISMO_Eigen_MIRROR      ${GISMO_Eigen_MIRROR} (${GISMO_Eigen_MIRROR_URL})")
+endif()
+
 option(GISMO_BUILD_CPPLOT        "Build cpplot"                  false  )
 if (GISMO_BUILD_CPPLOT)
 message ("  GISMO_BUILD_CPPLOT      ${GISMO_BUILD_CPPLOT}")

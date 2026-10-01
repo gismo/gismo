@@ -71,6 +71,10 @@ or as a tar.gz or zip file:
 
 * Configuration: [CMake 2.8.12](https://cmake.org) or newer.
 
+* [Eigen](https://eigen.tuxfamily.org) 5.x (required; see [Eigen](#eigen) below).
+
+* A C++14 (or newer) compiler.
+
 * Compilers tested include recent versions of
   - [AMD Optimizing C/C++ Compiler](https://developer.amd.com/amd-aocc/)
   - [AppleClang](https://developer.apple.com/documentation/xcode/) see [here](https://mac.r-project.org/openmp/) for OpenMP support
@@ -129,6 +133,27 @@ the system one can execute (eg. on Linux):
 to obtain the Doxygen documentation in HTML format. The main doxygen
 page is at `./doc/html/index.html`.
 
+## Eigen
+
+G+Smo requires an external installation of [Eigen](https://eigen.tuxfamily.org) 5.x; other major versions (e.g. a system Eigen 3.4) are rejected at configure time. There are two ways to provide it:
+
+* Point CMake at an existing Eigen 5 source tree or install prefix, or let CMake fetch Eigen 5.0.0 for you:
+
+  ```bash
+  cmake <gismo-src> -DEigen_DIR=/path/to/eigen
+  cmake <gismo-src> -DGISMO_Eigen_MIRROR=ON
+  ```
+
+  The mirror option clones `GISMO_Eigen_MIRROR_URL` (default `https://github.com/gismo/eigen.git`) into `external/Eigen`, skipping the download when that directory already exists; delete `external/Eigen` to re-fetch.
+
+  When `Eigen_DIR` is given (directly, or set by the mirror option to `external/Eigen`), only that directory is searched; otherwise the usual system/`CMAKE_PREFIX_PATH` search applies.
+
+If neither option locates an Eigen 5.x, configuration stops with an error naming both options.
+
+Installing: with the mirror, the Eigen headers are installed together with G+Smo. Otherwise, programs built against the installed G+Smo compile against the same external Eigen; its path is recorded in `gismoConfig.cmake` as `GISMO_EIGEN_INCLUDE_DIR` and in `gismo.pc`.
+
+G+Smo includes Eigen under the namespace `gsEigen` (code using G+Smo spells it `gsEigen::`). Do not include a different Eigen in the same translation unit as `gismo.h`. Eigen's unsupported modules must be included through the G+Smo wrappers `<gsEigen/IterativeSolvers.h>`, `<gsEigen/SparseExtra.h>`, `<gsEigen/KroneckerProduct.h>` and `<gsEigen/MatrixFunctions.h>` (not included by `gismo.h`); a direct `#include <unsupported/Eigen/...>` declares `Eigen::` instead of `gsEigen::` and does not work with `gsMatrix`.
+
 More information at https://github.com/gismo/gismo/wiki
 
 # Optional modules
@@ -155,6 +180,18 @@ description and default setting follows:
 
   Available values are the standard CMake build configurations: Debug,
 Release, RelWithDebInfo, MinSizeRel.
+
+* Eigen_DIR               *not set*
+
+  Path to an Eigen 5 source tree or install prefix.
+
+* GISMO_Eigen_MIRROR      *OFF*
+
+  Clone Eigen 5.0.0 into external/Eigen (once) and use it.
+
+* GISMO_Eigen_MIRROR_URL  *https://github.com/gismo/eigen.git*
+
+  Git repository used by GISMO_Eigen_MIRROR.
 
 * GISMO_COEFF_TYPE        *double*
 

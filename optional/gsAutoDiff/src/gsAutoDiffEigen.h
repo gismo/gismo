@@ -26,9 +26,6 @@
 #ifndef EIGEN_MATRIXBASE_PLUGIN
 #define EIGEN_MATRIXBASE_PLUGIN <gsMatrix/gsMatrixAddons.h>
 #endif
-#ifndef EIGEN_PLAINOBJECTBASE_PLUGIN
-#define EIGEN_PLAINOBJECTBASE_PLUGIN <gsMatrix/gsPlainObjectBaseAddons.h>
-#endif
 
 #ifndef Eigen
 #define Eigen gsEigen

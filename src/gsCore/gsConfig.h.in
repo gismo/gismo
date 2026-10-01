@@ -99,13 +99,6 @@
 */
 #define EIGEN_DEFAULT_TO_COL_MAJOR
 
-/** Eigen options -- these MUST be defined before Eigen is included.\n
-  See: http://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html
-
-  Compile-time static assertions are replaced by runtime assertions;
-  this saves compilation time. */
-#define EIGEN_NO_STATIC_ASSERT
-
 #ifdef gsAutoDiff_ENABLED
 // Suppress warnings from autodiff library
 #if defined(__GNUC__) || defined(__clang__)

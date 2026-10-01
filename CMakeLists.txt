@@ -100,11 +100,6 @@ endif()
 ## Cmake Inclusions and configuration options
 ## #################################################################
 
-#Fix for Eigen directory
-if (NOT WIN32 AND NOT EXISTS "${PROJECT_BINARY_DIR}/Eigen")
-  execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/external/gsEigen ${PROJECT_BINARY_DIR}/Eigen)
-endif()
-
 set(CMAKE_INSTALL_MESSAGE NEVER)
 
 #Use solution folders for Visual Studio
@@ -194,6 +189,63 @@ set(INCLUDE_INSTALL_DIR include CACHE STRING "Installation directory for header 
 
 #functions to fetch(download) head revision from git or Subversion
 include(gsFetch)
+
+# Eigen 5 requires C++14. "98" needs its own test: it compares numerically greater than 14.
+if("x${CMAKE_CXX_STANDARD}" STREQUAL "x98" OR CMAKE_CXX_STANDARD LESS 14)
+  message(FATAL_ERROR "Eigen 5 requires C++14 or newer (CMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD})")
+endif()
+
+if(GISMO_Eigen_MIRROR)
+  # Without a usable clone, reset the fetch: its ExternalProject stamps in the build tree survive a deleted
+  # clone (the re-download is then skipped), and that skipped fetch leaves an empty external/Eigen behind,
+  # which gismo_fetch_directory() treats as present. A non-empty folder is never deleted here.
+  if(NOT EXISTS "${PROJECT_SOURCE_DIR}/external/Eigen/signature_of_eigen3_matrix_library")
+    file(REMOVE_RECURSE "${gismo_BINARY_DIR}/external/Eigen_fetch")
+    file(GLOB _gismo_eigen_clone "${PROJECT_SOURCE_DIR}/external/Eigen/*")
+    if(NOT _gismo_eigen_clone)
+      file(REMOVE_RECURSE "${PROJECT_SOURCE_DIR}/external/Eigen")
+    endif()
+  endif()
+  gismo_fetch_directory(Eigen
+    GIT_REPOSITORY ${GISMO_Eigen_MIRROR_URL}
+    GIT_TAG        5.0.0
+    GIT_SHALLOW    TRUE
+    DESTINATION    external)
+  set(Eigen_DIR "${PROJECT_SOURCE_DIR}/external/Eigen")   # normal variable: shadows a user cache entry, leaves it intact
+endif()
+
+find_package(Eigen 5.0)                                     # no REQUIRED: our own FATAL_ERROR below names the remedies
+
+if(NOT Eigen_FOUND OR NOT Eigen_VERSION VERSION_LESS 6)
+  if(GISMO_Eigen_MIRROR)
+    message(FATAL_ERROR "G+Smo requires Eigen 5.x, but ${PROJECT_SOURCE_DIR}/external/Eigen (cloned from ${GISMO_Eigen_MIRROR_URL}, tag 5.0.0) does not contain a usable Eigen 5.x. gismo_fetch_directory() never re-fetches an existing directory, so if that clone is missing, partial, or the wrong version, delete ${PROJECT_SOURCE_DIR}/external/Eigen by hand and reconfigure.")
+  else()
+    # cmake/FindEigen.cmake sets Eigen_REJECTED_DIR (and unsets EIGEN_INCLUDE_DIR)
+    # only when the find failed outright. A too-new Eigen (found, but rejected by
+    # the VERSION_LESS 6 test above) leaves EIGEN_INCLUDE_DIR cached and
+    # Eigen_REJECTED_DIR empty, so fall back to it for the message. With Eigen_DIR
+    # searched exclusively (NO_DEFAULT_PATH), an empty/NOTFOUND rejected dir means
+    # nothing was found in Eigen_DIR itself, which the message should name.
+    set(_gismo_eigen_rejected_dir "${Eigen_REJECTED_DIR}")
+    if(NOT _gismo_eigen_rejected_dir)
+      set(_gismo_eigen_rejected_dir "${EIGEN_INCLUDE_DIR}")
+    endif()
+    set(_gismo_eigen_rejected_version "")
+    if(Eigen_VERSION)
+      set(_gismo_eigen_rejected_version " (version '${Eigen_VERSION}')")
+    endif()
+    if((NOT _gismo_eigen_rejected_dir OR _gismo_eigen_rejected_dir MATCHES "-NOTFOUND$") AND Eigen_DIR)
+      set(_gismo_eigen_found_desc "no Eigen found in Eigen_DIR='${Eigen_DIR}'")
+    else()
+      set(_gismo_eigen_found_desc "found: '${_gismo_eigen_rejected_dir}'${_gismo_eigen_rejected_version}")
+    endif()
+    message(FATAL_ERROR "G+Smo requires Eigen 5.x (${_gismo_eigen_found_desc}). Either pass -DEigen_DIR=<Eigen 5 source tree or install prefix>, or configure with -DGISMO_Eigen_MIRROR=ON to clone Eigen 5.0.0 into external/Eigen.")
+  endif()
+endif()
+message(STATUS "Eigen ${Eigen_VERSION}: ${EIGEN_INCLUDE_DIR}")
+
+set(GISMO_INCLUDE_DIRS ${GISMO_INCLUDE_DIRS} ${EIGEN_INCLUDE_DIR}
+  CACHE INTERNAL "${PROJECT_NAME} include directories" FORCE)
 
 if (EIGEN_USE_MKL_ALL)
   # See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html
