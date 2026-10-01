@@ -109,6 +109,7 @@ public:
     void setupMapper(gsDofMapper dofsMapper) const
     {
         GISMO_ASSERT( dofsMapper.isFinalized(), "The provided dof-mapper is not finalized.");
+        GISMO_ENSURE( dofsMapper.numComponents()==this->dim(), "The dof-mapper has "<<dofsMapper.numComponents()<<" components, but the space has dimension "<<this->dim()<<".");
         GISMO_ASSERT( dofsMapper.mapSize()==static_cast<size_t>(this->source().size()*dofsMapper.numComponents()), "The dof-mapper is not consistent: mapSize()="<<dofsMapper.mapSize()<<"!="<<static_cast<size_t>(this->source().size())<<"=this->source().size()");
         m_sd->mapper = give(dofsMapper);
     }
@@ -143,8 +144,10 @@ public:
         m_sd->mapper.finalize();
     }
 
+    /// \param sameElement asserts that each boundary quadrature batch lies in a single Bezier element of
+    /// the geometry map; passing false evaluates the map per point. Read from no option list.
     void setup(const gsBoundaryConditions<T> & bc, const index_t dir_values,
-               const index_t _icont = -1) const
+               const index_t _icont = -1, const bool sameElement = true) const
     {
         this->setInterfaceCont(_icont);
         m_sd->mapper = gsDofMapper();
@@ -183,7 +186,7 @@ public:
             
         m_sd->mapper.finalize();
         // Compute Dirichlet node values
-        gsDirichletValues(bc, dir_values, *this);
+        gsDirichletValues(bc, dir_values, *this, sameElement);
     }
 
     void print(std::ostream &os) const { os << "u"; }

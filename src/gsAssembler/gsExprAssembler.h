@@ -144,6 +144,8 @@ public:
 
     /// Returns a reference to the options structure
     gsOptionList & options() {return m_options;}
+    const gsOptionList & options() const {return m_options;}
+
 
     /// @brief Installs a custom quadrature-rule factory.
     ///
@@ -286,7 +288,7 @@ public:
         }
 
         expr::gsFeSpace<T> s = m_exprdata->getSpace(mp,dim);
-        s.setSpaceData(m_sdata.back());
+        s.setSpaceData(*m_vrow[id]);
         return s;
     }
 
@@ -393,7 +395,6 @@ public:
         if (m_fmatrix.nonZeros() && save_sparsety_pattern)
         {
             m_fmatrix.assignZero();
-            m_modified = true;
         }
         else
         {
@@ -418,6 +419,8 @@ public:
                                           cast<T, index_t>(nz * (1.0 + bdO)));
             }
         }
+		
+        m_modified = true;
     }
 
     /// Initializes the pattern of the sparse matrix
@@ -543,10 +546,10 @@ private:
         {
             rowSizes.resize(m_vrow.size());
             for (index_t r = 0; r != rowSizes.size(); ++r) // for all row-blocks
-                rowSizes[r] = m_vrow[r]->dim() * m_vrow[r]->mapper.freeSize();
+                rowSizes[r] = m_vrow[r]->mapper.freeSize();
             colSizes.resize(m_vcol.size());
             for (index_t c = 0; c != colSizes.size(); ++c) // for all col-blocks
-                colSizes[c] = m_vcol[c]->dim() * m_vcol[c]->mapper.freeSize();
+                colSizes[c] = m_vcol[c]->mapper.freeSize();
         }
     }
 
@@ -988,13 +991,13 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
     {
         if (!m_vcol[i]->valid()) m_vcol[i]->init();
         m_vcol[i]->mapper.setShift(m_vcol[i-1]->mapper.firstIndex() +
-                                   m_vcol[i-1]->dim*m_vcol[i-1]->mapper.freeSize() );
+                                   m_vcol[i-1]->mapper.freeSize() );
 
         if ( i<m_vrow.size() && m_vcol[i] != m_vrow[i] )
         {
             if (!m_vrow[i]->valid()) m_vrow[i]->init();
             m_vrow[i]->mapper.setShift(m_vrow[i-1]->mapper.firstIndex() +
-                                       m_vrow[i-1]->dim*m_vrow[i-1]->mapper.freeSize() );
+                                       m_vrow[i-1]->mapper.freeSize() );
         }
     }
 }

@@ -15,6 +15,7 @@
 #include <gsCore/gsDofMapper.h>
 #include <gsAssembler/gsAssemblerOptions.h>
 #include <gsPde/gsBoundaryConditions.h>
+#include <gsTensor/gsTensorBasis.h>
 
 namespace gismo {
 
@@ -23,11 +24,16 @@ namespace expr
 template<class T> class gsFeSpace;
 };
 
+/// \param sameElement asserts that each boundary quadrature batch lies in a single Bezier element of
+/// the geometry map; passing false evaluates the map per point. Read from no option list.
+/// Applies to the \c dirichlet::l2Projection branch only: \c dirichlet::interpolation does not
+/// evaluate the geometry map this way and ignores the argument.
 template<class T>
 void gsDirichletValues(
     const gsBoundaryConditions<T> & bc,
     const index_t dir_values,
-    const expr::gsFeSpace<T> & u)
+    const expr::gsFeSpace<T> & u,
+    const bool sameElement = true)
 {
     if ( bc.container("Dirichlet").empty() && bc.cornerValues().empty()) return;
 
@@ -45,7 +51,7 @@ void gsDirichletValues(
         gsDirichletValuesByTPInterpolation(u,bc);
         break;
     case dirichlet::l2Projection:
-        gsDirichletValuesByL2Projection(u,bc);
+        gsDirichletValuesByL2Projection(u, bc, sameElement);
         break;
     default:
         GISMO_ERROR("Something went wrong with Dirichlet values: "<< dir_values);
@@ -54,7 +60,7 @@ void gsDirichletValues(
      // Corner values -- todo
     for ( typename gsBoundaryConditions<T>::const_citerator it = bc.cornerBegin(); it != bc.cornerEnd(); ++it )
     {
-        if(it->unknown != u.id())
+        if(it->unknown!=-1 && it->unknown != u.id())
             continue;
 
         const int k = it->patch;
@@ -96,6 +102,12 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
 
         const int k = it->patch();
         const gsBasis<T> & basis = u.source().basis(k);
+
+        GISMO_ENSURE((dynamic_cast<const gsTensorBasis<1,T>*>(&basis) ||
+                      dynamic_cast<const gsTensorBasis<2,T>*>(&basis) ||
+                      dynamic_cast<const gsTensorBasis<3,T>*>(&basis) ||
+                      dynamic_cast<const gsTensorBasis<4,T>*>(&basis)   ),
+                      "Dirichlet interpolation only implemented for tensor bases. Use `dirichlet::l2Projection` instead.");
 
         // Get dofs on this boundary
         boundary = basis.boundary(it->side());
@@ -253,9 +265,12 @@ gsDirichletValuesInterpolationTP(const expr::gsFeSpace<T> & u,
 }
 
 
+/// \param sameElement asserts that each boundary quadrature batch lies in a single Bezier element of
+/// the geometry map; passing false evaluates the map per point. Read from no option list.
 template<class T>
 void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
-                                      const gsBoundaryConditions<T> & bc)
+                                      const gsBoundaryConditions<T> & bc,
+                                      const bool sameElement = true)
 {
     const gsFunctionSet<T> & gmap = bc.geoMap();
 
@@ -273,7 +288,9 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
     gsMatrix<T> basisVals, rhsVals;
     gsMatrix<index_t> globIdxAct, globBasisAct;
 
-    gsMapData<T> md(NEED_MEASURE | SAME_ELEMENT);
+    unsigned mapFlags = NEED_MEASURE;
+    if (sameElement) mapFlags |= SAME_ELEMENT;
+    gsMapData<T> md(mapFlags);
 
     // eltBdryFcts stores the row in basisVals/globIdxAct, i.e.,
     // something like a "element-wise index"
@@ -430,7 +447,11 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
     // The position in the solution vector already corresponds to the
     // numbering by the boundary index. Hence, we can simply take them
     // for the values of the eliminated Dirichlet DOFs.
+#ifdef GISMO_WITH_PARDISO
+    typename gsSparseSolver<T>::PardisoLU solver;
+#else
     typename gsSparseSolver<T>::CGDiagonal solver;
+#endif
     fixedDofs = solver.compute(globProjMat).solve(globProjRhs);
 } // computeDirichletDofsL2Proj
 

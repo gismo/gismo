@@ -398,9 +398,13 @@ public:
         assert( geoDim() == 3 );
         gsEigen::Transform<T,3,gsEigen::Affine>
             rot( gsEigen::AngleAxis<T> (angle,axis.normalized()) );
+        // OLD:
         // To do: Simpler way to use transforms ?
-        this->m_coefs = (this->m_coefs.rowwise().homogeneous() *
-                         rot.matrix().transpose() ).leftCols(3) ;
+        // this->m_coefs = (this->m_coefs.rowwise().homogeneous() *
+        //                  rot.matrix().transpose() ).leftCols(3) ;
+        // NEW:
+        this->m_coefs = this->m_coefs * rot.linear().transpose();
+        this->m_coefs.rowwise() += rot.translation().transpose();
     }
 
     /// Apply 2D Rotation by \a angle radians

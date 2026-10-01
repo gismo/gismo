@@ -12,7 +12,6 @@
 */
 
 #include <gsIO/gsWriteParaview.h>
-#include <gsMesh2/gsSurfMesh.h>
 #include <gsIO/gsParaviewCollection.h>
 
 #include <fstream>
@@ -99,6 +98,5 @@ void plot_errors<real_t>(const gsMatrix<real_t>&,
                          const gsMatrix<real_t>&, 
                          const std::vector<real_t>&,
                          std::string const&); 
-
 
 }//namespace gismo
