@@ -39,11 +39,38 @@ struct dirichlet
     {
         homogeneous   = 100, ///< Assume homogeneous Dirichlet conditions
 
-        interpolation = 101, ///< Compute Dirichlet DoFs by using interpolation on the boundary
+        /// Compute Dirichlet DoFs by interpolation at the anchors (Greville points) of the
+        /// boundary basis, for tensor-product B-spline and NURBS bases (on a one-dimensional patch
+        /// the end DoF is the data value at the end point, for every basis quasiInterpolation
+        /// supports; the knot vector must be open). On patches of dimension >= 2, any other basis
+        /// (hierarchical, mapped, ...) raises an error, as do rational HB and mapped bases in 1-D;
+        /// use quasiInterpolation for hierarchical bases or l2Projection.
+        interpolation = 101,
 
         l2Projection  = 102, ///< Compute Dirichlet DoFs by using L2 projection on the boundary
 
-        user          = 103 ///< User will provide values of the Dirichlet dofs
+        user          = 103, ///< User will provide values of the Dirichlet dofs
+
+        /// Compute Dirichlet DoFs by local quasi-interpolation of the data on each Dirichlet side, in the
+        /// boundary basis (gsQuasiInterpolate::localIntpl): tensor-product B-spline, NURBS, truncated
+        /// hierarchical (THB, also rational THB; H. Speleers, C. Manni, Numer. Math. 132 (2016) 155-184)
+        /// and non-truncated hierarchical (HB) bases. It reproduces exactly any data in the span of the
+        /// boundary basis (physical conditions: the data composed with the geometry map on the side), but
+        /// it is not interpolatory: a DoF shared by two Dirichlet sides, or by Dirichlet sides of two
+        /// patches at an interface, takes the value of the side processed last, on tensor-product
+        /// patches too; for data outside the span the sides differ at the approximation-error level.
+        /// On a one-dimensional patch the end DoF is the data value at the end point. Other bases
+        /// (mapped, rational HB, ...) raise an error; use l2Projection.
+        quasiInterpolation = 104,
+
+        /// Choose per patch of the unknown (the default of the "DirichletValues" option of gsAssembler
+        /// and gsExprAssembler): tensor-product B-spline and NURBS patches by interpolation, truncated
+        /// (also rational) and non-truncated hierarchical patches by quasiInterpolation (see there,
+        /// including the value at shared DoFs). On a one-dimensional patch every supported basis
+        /// takes the end value (the knot vector must be open). If a patch with a Dirichlet side of the
+        /// unknown has a basis supported by neither (mapped, rational HB, ...), the whole unknown is
+        /// computed by l2Projection instead. Prints no warning.
+        automatic = 105
     };
 };
 

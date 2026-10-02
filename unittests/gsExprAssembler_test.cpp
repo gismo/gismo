@@ -384,4 +384,82 @@ SUITE(gsExprAssembler_test)
         //
         CHECK(math::abs(ev.integral(el.area(G))-2*EIGEN_PI/32) < 1e-10);
     }
+
+    // A 1-D Neumann load assembled over a boundary side is the basis evaluated at
+    // the end point: the end function of the side carries the whole load.
+    TEST(BoundaryLoad1D)
+    {
+        gsKnotVector<real_t> kv(0.0, 1.0, 3, 3);
+        gsBSplineBasis<real_t> bs(kv);
+        gsTHBSplineBasis<1,real_t> thb(bs);
+        gsMatrix<real_t> box(1,2);
+        box << 0, 0.25;
+        thb.refine(box);
+
+        gsKnotVector<real_t> gkv(0.0, 1.0, 0, 2);
+        gsBSplineBasis<real_t> gb(gkv);
+        gsMatrix<real_t> c(2,1);
+        c << 0, 1;
+        gsMultiPatch<real_t> mp;
+        mp.addPatch( gsBSpline<real_t>(gb, c) );
+        gsFunctionExpr<real_t> one("1", 1);
+
+        const gsBasis<real_t> * bases[2] = { &bs, &thb };
+        std::vector<real_t> eastEnd, eastSum;
+        index_t runs = 0;
+        for (int k = 0; k != 3; ++k)
+        {
+            const gsBasis<real_t> & basis = *bases[k == 2 ? 0 : k];
+            const bool east = (k != 2);
+            const boxSide side = east ? boundary::east : boundary::west;
+
+            gsMultiBasis<real_t> mb(basis);
+            gsBoundaryConditions<real_t> bc;
+            bc.setGeoMap(mp);
+            bc.addCondition(0, side, condition_type::neumann, &one, 0, false, -1);
+
+            gsExprAssembler<real_t> A(1,1);
+            A.setIntegrationElements(mb);
+            auto G = A.getMap(mp);
+            auto u = A.getSpace(mb, 1, 0);
+            u.setup(bc, dirichlet::homogeneous, 0);
+            auto gg = A.getCoeff(one, G);
+            A.initSystem();
+            A.assembleBdr(bc.get("Neumann"), u * gg.val() * nv(G).norm());
+
+            gsMatrix<real_t> pt(1,1);
+            pt(0,0) = east ? 1.0 : 0.0;
+            const index_t n = basis.size();
+            gsMatrix<real_t> rhs(n,1);
+            real_t sum = 0, err = 0;
+            for (index_t i = 0; i != n; ++i)
+            {
+                rhs(i,0) = A.rhs()(u.mapper().index(i, 0, 0), 0);
+                sum += rhs(i,0);
+                err = math::max(err, math::abs(rhs(i,0) - basis.evalSingle(i, pt)(0,0)));
+            }
+            CHECK( err <= 1e-14 );
+            CHECK( math::abs(sum - 1) <= 1e-14 );
+
+            const index_t last = basis.boundary(side)(0,0);
+            if (k != 1) CHECK_EQUAL( east ? n - 1 : 0, last );
+            CHECK( math::abs(rhs(last,0) - 1) <= 1e-14 );
+            for (index_t i = 0; i != n; ++i)
+                if (i != last) CHECK( math::abs(rhs(i,0)) <= 1e-14 );
+
+            if (east)
+            {
+                eastEnd.push_back(rhs(last,0));
+                eastSum.push_back(sum);
+            }
+            ++runs;
+        }
+        CHECK_EQUAL( 3, runs );
+        CHECK_EQUAL( 2u, eastEnd.size() );
+        if (eastEnd.size() == 2)
+        {
+            CHECK( math::abs(eastEnd[0] - eastEnd[1]) <= 1e-14 );
+            CHECK( math::abs(eastSum[0] - eastSum[1]) <= 1e-14 );
+        }
+    }
 }
