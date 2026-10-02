@@ -137,8 +137,7 @@ public:
     {
         GISMO_ASSERT( m_vcol.back()->mapper.isFinalized(),
                       "gsExprAssembler::numDofs() says: initSystem() has not been called.");
-        return m_vcol.back()->mapper.firstIndex() +
-	  m_vcol.back()->mapper.freeSize();
+        return m_vcol.back()->mapper.lastIndex();
     }
 
     /// Returns the number of test functions (after initialization)
@@ -146,8 +145,7 @@ public:
     {
         GISMO_ASSERT( m_vrow.back()->mapper.isFinalized(),
                       "initSystem() has not been called.");
-        return m_vrow.back()->mapper.firstIndex() +
-	  m_vrow.back()->mapper.freeSize();
+        return m_vrow.back()->mapper.lastIndex();
     }
 
     /// Returns the number of blocks in the matrix, corresponding to
@@ -1103,14 +1101,12 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
     for (size_t i = 1; i!=m_vcol.size(); ++i)
     {
         if (!m_vcol[i]->valid()) m_vcol[i]->init();
-        m_vcol[i]->mapper.setShift(m_vcol[i-1]->mapper.firstIndex() +
-                                   m_vcol[i-1]->mapper.freeSize() );
+        m_vcol[i]->mapper.setShift(m_vcol[i-1]->mapper.lastIndex());
 
         if ( i<m_vrow.size() && m_vcol[i] != m_vrow[i] )
         {
             if (!m_vrow[i]->valid()) m_vrow[i]->init();
-            m_vrow[i]->mapper.setShift(m_vrow[i-1]->mapper.firstIndex() +
-                                       m_vrow[i-1]->mapper.freeSize() );
+            m_vrow[i]->mapper.setShift(m_vrow[i-1]->mapper.lastIndex());
         }
     }
 }
