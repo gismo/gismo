@@ -51,6 +51,9 @@ public:
 
     const gsFeSpace<T> & rowVar() const {return *this;}
 
+    /// A mapper assigned through this reference bypasses setupMapper().
+    /// gsExprAssembler still rejects one it cannot index, at initSystem(),
+    /// initMatrix(), initVector() and at every assembly or pattern call.
     gsDofMapper & mapper()
     {
         GISMO_ASSERT(NULL!=m_sd, "Space/mapper not properly initialized.");
@@ -108,6 +111,9 @@ public:
 
     void setupMapper(gsDofMapper dofsMapper) const
     {
+        // First, so that a rejected mapper gets its reason in every build
+        // type rather than the size assert below in Debug only
+        gsFeSpaceData<T>::ensureUsableByUniformEvaluator(dofsMapper);
         GISMO_ASSERT( dofsMapper.isFinalized(), "The provided dof-mapper is not finalized.");
         GISMO_ENSURE( dofsMapper.numComponents()==this->dim(), "The dof-mapper has "<<dofsMapper.numComponents()<<" components, but the space has dimension "<<this->dim()<<".");
         GISMO_ASSERT( dofsMapper.mapSize()==static_cast<size_t>(this->source().size()*dofsMapper.numComponents()), "The dof-mapper is not consistent: mapSize()="<<dofsMapper.mapSize()<<"!="<<static_cast<size_t>(this->source().size())<<"=this->source().size()");

@@ -85,6 +85,7 @@ public:
     // Performs validity checks for the solution object
     bool check() const
     {
+        gsFeSpaceData<T>::ensureUsableByUniformEvaluator(_u.mapper());
         if ( _Sv->size()!=_u.mapper().freeSize() )
         {
             gsWarn<< "The solution vector has wrong dimensions: "
