@@ -188,7 +188,6 @@ public:
 // U
 // V
 #include <gsExpressions/value_expr.h>
-#include <gsExpressions/voigt_expr.h> // @hverhelst todo: add and replace flat_expr
 // W
 // X
 // Y
