@@ -19,7 +19,8 @@ namespace
 {
 using namespace gismo;
 
-// Records everything a sink receives
+// Records everything a sink receives. The assembler calls a sink from all
+// OpenMP threads concurrently, so every member serialises its updates.
 struct RecordingSink
 {
     std::vector<gsEigen::Triplet<real_t,index_t> > mat;
@@ -29,6 +30,7 @@ struct RecordingSink
     void addMatrix(const gsVector<index_t> & rows, const gsVector<index_t> & cols,
                    const gsMatrix<real_t> & block)
     {
+#       pragma omp critical (RecordingSink)
         for (index_t j = 0; j != cols.size(); ++j)
             for (index_t i = 0; i != rows.size(); ++i)
                 if (rows[i] >= 0 && cols[j] >= 0)
@@ -37,6 +39,7 @@ struct RecordingSink
 
     void addRhs(const gsVector<index_t> & rows, const gsMatrix<real_t> & block)
     {
+#       pragma omp critical (RecordingSink)
         for (index_t i = 0; i != rows.size(); ++i)
             if (rows[i] >= 0)
                 rhs.push_back(std::make_pair(rows[i], block(i,0)));
@@ -44,6 +47,7 @@ struct RecordingSink
 
     void addPattern(const gsVector<index_t> & rows, const gsVector<index_t> & cols)
     {
+#       pragma omp critical (RecordingSink)
         for (index_t j = 0; j != cols.size(); ++j)
             for (index_t i = 0; i != rows.size(); ++i)
                 if (rows[i] >= 0 && cols[j] >= 0)
