@@ -594,7 +594,10 @@ public:
     T closestPointTo(const gsVector<T> & pt,
                         gsVector<T> & result,
                         const T accuracy = 1e-6,
-                        const bool useInitialPoint = false) const;
+                        const bool useInitialPoint = false,
+                        const T maxIter = 100,
+                        const T dampingFactor = 1.0
+                        ) const;
 
     /// Computes the Hausdorff distance in a single direction from *this to \a other.
     /// The Hausdorff distance is computed by taking the maximum of the shortest distances
