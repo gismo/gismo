@@ -291,7 +291,7 @@ template<class T, int _Rows, int _Options> inline
 gsVector<T,_Rows,_Options>::gsVector(index_t dimension): gsBase(dimension,1) { }
 
 template<class T> inline
-gsVector3d<T>::gsVector3d() : Base() { }
+gsVector3d<T>::gsVector3d() : Base() { this->setZero(); }
 
 template<class T> inline
 gsVector3d<T>::gsVector3d(scalar_t x, scalar_t y,scalar_t z )

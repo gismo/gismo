@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     index_t degree    = 2;
     bool plot     = false;
 
-    gsCmdLine cmd("Create standard refined TH>B meshes.");
+    gsCmdLine cmd("Create standard refined THB meshes.");
     cmd.addInt("l","levels",
                "Number of refinement levels", refLevels);
     cmd.addInt("m","mode",
@@ -93,7 +93,12 @@ int main(int argc, char *argv[])
 
     // Output paraview plot of the basis
     if ( plot )
-        gsWriteParaview( thb , "thb_refined", 1000, true);
+    {
+        gsParaview<real_t> pv;
+        pv.options().setInt("numPoints", 1000);
+        pv.options().setSwitch("elements", true);
+        pv.write(thb, "thb_refined");
+    }
     else
         gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
                   "file containing the solution.\n";

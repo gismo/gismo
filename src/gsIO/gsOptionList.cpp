@@ -522,18 +522,27 @@ void pybind11_init_gsOptionList(py::module &m) {
     .def("getMultiInt",    &gsOptionList::getMultiInt)
     .def("getMultiReal",   &gsOptionList::getMultiReal)
 
-    .def("askString", (std::string (gsOptionList::*)(const std::string&)) &gsOptionList::askString)
-    .def("askString", (std::string (gsOptionList::*)(const std::string&,
-                                                     const std::string&)) &gsOptionList::askString)
-    .def("askInt",    (std::string (gsOptionList::*)(const std::string&)) &gsOptionList::askInt)
-    .def("askInt",    (std::string (gsOptionList::*)(const std::string&,
-                                                     const int&))         &gsOptionList::askInt)
-    .def("askReal",   (std::string (gsOptionList::*)(const std::string&)) &gsOptionList::askReal)
-    .def("askReal",   (std::string (gsOptionList::*)(const std::string&,
-                                                     const real_t&))      &gsOptionList::askReal)
-    .def("askSwitch", (std::string (gsOptionList::*)(const std::string&)) &gsOptionList::askSwitch)
-    .def("askSwitch", (std::string (gsOptionList::*)(const std::string&,
-                                                     const bool&))        &gsOptionList::askSwitch)
+    // Each ask* is a single const member taking a defaulted second argument.
+    // The cast target must match it exactly -- const, return type and both
+    // parameters: on a non-overloaded name a C-style cast degrades to
+    // reinterpret_cast, which accepts a mismatched pointer-to-member without
+    // a diagnostic and makes the call through it undefined.
+    .def("askString", (std::string (gsOptionList::*)
+                       (const std::string&, const std::string&) const)
+                      &gsOptionList::askString,
+         py::arg("label"), py::arg("value") = std::string())
+    .def("askInt",    (index_t (gsOptionList::*)
+                       (const std::string&, const index_t&) const)
+                      &gsOptionList::askInt,
+         py::arg("label"), py::arg("value") = index_t(0))
+    .def("askReal",   (gsOptionList::Real (gsOptionList::*)
+                       (const std::string&, const gsOptionList::Real&) const)
+                      &gsOptionList::askReal,
+         py::arg("label"), py::arg("value") = gsOptionList::Real(0))
+    .def("askSwitch", (bool (gsOptionList::*)
+                       (const std::string&, const bool&) const)
+                      &gsOptionList::askSwitch,
+         py::arg("label"), py::arg("value") = false)
 
     .def("setString", &gsOptionList::setString)
     .def("setInt",    &gsOptionList::setInt)
@@ -542,7 +551,9 @@ void pybind11_init_gsOptionList(py::module &m) {
 
     .def("addString", &gsOptionList::addString)
     .def("addInt",    &gsOptionList::addInt)
-    .def("addReal",   &gsOptionList::addReal)
+    .def("addReal",   (void (gsOptionList::*)
+                       (const std::string&, const std::string&, const gsOptionList::Real&))
+                      &gsOptionList::addReal)
     .def("addSwitch", &gsOptionList::addSwitch)
 
     .def("addMultiInt", &gsOptionList::addMultiInt)
@@ -565,6 +576,27 @@ void pybind11_init_gsOptionList(py::module &m) {
 
     .def(py::init<>())
     .def("assign", &gsOptionList::operator=)
+    // Constructor from Python dict: converts dict keys/values to gsOptionList entries
+    .def(py::init([](const py::dict& dict_opts) {
+        gsOptionList* opt = new gsOptionList();
+        // Iterate over dict items and try to set them as int, real, or switch
+        for (auto& item : dict_opts)
+        {
+            std::string key = pybind11::cast<std::string>(item.first);
+            py::handle val_handle = item.second;
+            
+            // Prefer exact Python types to avoid bool being treated as int.
+            if (py::isinstance<py::bool_>(val_handle))
+                opt->addSwitch(key, "", py::cast<bool>(val_handle));
+            else if (py::isinstance<py::int_>(val_handle))
+                opt->addInt(key, "", py::cast<int>(val_handle));
+            else if (py::isinstance<py::float_>(val_handle))
+                opt->addReal(key, "", py::cast<real_t>(val_handle));
+            else
+                continue;
+        }
+        return opt;
+    }), "Construct gsOptionList from a Python dictionary")
 
 #if EIGEN_HAS_RVALUE_REFERENCES
     .def(py::init<const gsOptionList&>())

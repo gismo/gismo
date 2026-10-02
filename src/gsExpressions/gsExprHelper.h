@@ -244,20 +244,16 @@ public:
         // gsInfo<< "-cdata: "<< m_cdata.size()<<std::endl;
     }
 
+    /// @brief Initializes the mirror helper, if it is not already initialized. This is needed for interface evaluation.
+    void initializeIface() { iface(); }
+
 private:
 
     inline gsExprHelper & iface()
     {
-        // Race fix: m_mirror is a lazily-created shared object; the old
-        // unguarded "if null then create" was a classic double-checked-
-        // locking-without-the-locking race -- concurrent threads could both
-        // see nullptr and both assign m_mirror, tearing the shared_ptr and
-        // corrupting the heap (confirmed by TSAN: dozens of cascading races
-        // in ~gsExprHelper/~gsFuncData/~gsThreaded/DenseStorage, all
-        // downstream of this one). Both the check-and-create AND the read
-        // must be inside the same critical section: a thread that only
-        // *reads* here (never creates) still needs a happens-before edge to
-        // whichever thread did create it, which only the shared lock gives.
+        // The check-and-create and the read share one critical section: a
+        // thread that only reads still needs a happens-before edge to the
+        // thread that created m_mirror.
         gsExprHelper * mirror;
 #       pragma omp critical (m_mirror_init)
         {

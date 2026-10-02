@@ -66,11 +66,13 @@ int main(int argc, char *argv[])
 #endif
 
   std::string fn;
+  std::string fn_out("");
   //fn = "basis_thbs_01.xml"; //default example
   
   gsCmdLine cmd("Hi, give me a file (.xml, .txt, .axl) and I will read the contents!");
     cmd.addPlainString("filename", "Filename containing readable data (.xml or third party)", fn); 
-  
+    cmd.addString("o", "output", "Name of output prefix", fn_out);
+
   try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
   
   if (fn.empty() )
@@ -100,6 +102,8 @@ int main(int argc, char *argv[])
   
   lookFor< gsMesh<> > (data) ;
 
+  lookFor< gsSurfMesh<> > (data) ;
+    
   lookFor< gsSolid<> > (data) ;
 
   lookFor< gsKnotVector<> > (data) ;
@@ -141,7 +145,7 @@ int main(int argc, char *argv[])
 
 #ifdef gsOpennurbs_ENABLED
     gsInfo<< "  Write back to pd.3dm\n";
-    extensions::writeON_PlanarDomain(*o,"pd");
+    extensions::writeON_PlanarDomain(*o, fn_out + "pd");
 #endif
   }
 
@@ -157,7 +161,7 @@ int main(int argc, char *argv[])
 
 #ifdef gsOpennurbs_ENABLED
       gsInfo<< "  Write back to mp.3dm\n";
-      extensions::writeON_MultiPatch(*o,"mp");
+      extensions::writeON_MultiPatch(*o,fn_out+"mp");
 #endif
 #ifdef gsOpenCascade_ENABLED
       gsInfo<< "  Write back to mp.igs\n";
@@ -180,7 +184,7 @@ int main(int argc, char *argv[])
           GISMO_UNUSED(srf);
 #ifdef gsOpennurbs_ENABLED
           gsInfo<< "  Write back to geo.3dm\n";
-          extensions::writeON_NurbsSurface(*srf,"geo");
+          extensions::writeON_NurbsSurface(*srf, fn_out + "geo");
 #endif
 #ifdef gsOpenCascade_ENABLED
           gsInfo<< "  Write back to geo.igs\n";
@@ -202,7 +206,7 @@ int main(int argc, char *argv[])
       gsInfo<< "  "<<*o ;
 #ifdef gsOpennurbs_ENABLED
       gsInfo<< "  Write back to mesh.3dm\n";
-      extensions::writeON_Mesh(*o,"mesh");
+      extensions::writeON_Mesh(*o, fn_out + "mesh");
 #endif
   }
 

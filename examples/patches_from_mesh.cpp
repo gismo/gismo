@@ -32,13 +32,14 @@ int main(int argc, char *argv[])
     gsStopwatch time;
     gsFileData<> fd(filename);
 
-    gsSurfMesh HEmesh;
-    fd.getFirst<gsSurfMesh>(HEmesh);
+     gsSurfMesh<> HEmesh;
+    fd.getFirst<gsSurfMesh<>>(HEmesh);
 
     gsMultiPatch<> mp = HEmesh.linear_patches();
 
     gsInfo<<"Reading mesh:\t"<<time.stop()<<" seconds\n";
-    if (plot) gsWriteParaview(HEmesh,"HEmesh");
+    gsParaview<real_t> pv;
+    if (plot) pv.write(HEmesh, "HEmesh");
 
     time.restart();
 
@@ -47,7 +48,9 @@ int main(int argc, char *argv[])
     time.restart();
     if (plot)
     {
-        gsWriteParaview(mp,"mp",1000,true);
+        pv.options().setInt("numPoints", 1000);
+        pv.options().setSwitch("elements", true);
+        pv.write(mp, "mp");
         gsInfo<<"Plotting multipatch:\t"<<time.stop()<<" seconds\n";
     }
     time.restart();

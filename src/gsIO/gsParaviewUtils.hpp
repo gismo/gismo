@@ -16,9 +16,6 @@
 #include<gsCore/gsField.h>
 #include <gsMSplines/gsMappedBasis.h>   // Only to make linker happy
 #include <gsCore/gsDofMapper.h>         // Only to make linker happy
-#include <gsCore/gsLinearAlgebra.h>         // Only to make linker happy
-#include <gsExpressions/gsExprHelper.h>
-#include <gsAssembler/gsExprEvaluator.h>
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsIO/gsBase64.h>
 
@@ -31,7 +28,7 @@
 namespace gismo
 {
     template <class T>
-    std::vector<std::string> toVTK(const gsFunctionSet<T>& funSet,
+    std::vector<std::string> toParaview(const gsFunctionSet<T>& funSet,
                                    unsigned nPts,
                                    unsigned precision,
                                    std::string label,
@@ -68,7 +65,7 @@ namespace gismo
     }
 
     template <class T>
-    std::vector<std::string> toVTK(const gsField<T>& field,
+    std::vector<std::string> toParaview(const gsField<T>& field,
                                    unsigned nPts,
                                    unsigned precision,
                                    std::string label,
@@ -135,8 +132,10 @@ namespace gismo
                 return std::string("Int64");
             } else if (std::is_same<T, unsigned long long int>::value) {
                 return std::string("UInt64");
+            } else {
+                GISMO_ERROR("toDataArray: Unsupported data type for VTK output.");
+                return std::string("UnknownType");
             }
-            else { GISMO_ERROR("vtk typename error"); }
         }();
 
 

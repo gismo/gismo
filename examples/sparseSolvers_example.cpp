@@ -122,6 +122,13 @@ int main(int argc, char** argv)
     gsInfo << "Solve Ax = b with Eigen's CG diagonal preconditioner.\n";
     report( x, x0, succeeded );
 
+    gsSparseSolver<>::CGCustom solverCGC;
+    solverCGC.preconditioner().set(makeJacobiOp(Q));
+    solverCGC.compute(Q);
+    x = solverCGC.solve(b);
+    gsInfo << "Solve Ax = b with Eigen's CG with Gismo diagonal preconditioner.\n";
+    report( x, x0, succeeded );
+
     gsSparseSolver<>::BiCGSTABILUT solverBCGILU;
     solverBCGILU.compute(Q);
     x = solverBCGILU.solve(b);

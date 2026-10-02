@@ -22,7 +22,6 @@ namespace gismo
 {
 
 template<class T>
-// gsPatchRule<T>::gsPatchRule(const gsBasis<T> & basis,
 gsPatchRule<T>::gsPatchRule(const gsDomain<T> & domain,
                             const index_t degree,
                             const index_t regularity,
@@ -30,7 +29,6 @@ gsPatchRule<T>::gsPatchRule(const gsDomain<T> & domain,
                             const short_t fixDir
                             )
                             :
-                            // m_domain(domain),
                             m_deg(degree),
                             m_reg(regularity),
                             m_over(overintegrate),
@@ -38,12 +36,7 @@ gsPatchRule<T>::gsPatchRule(const gsDomain<T> & domain,
 {
     GISMO_ENSURE(m_reg<m_deg,"regularity cannot be greater or equal to the order!");
 
-    GISMO_ASSERT((dynamic_cast<const gsTensorDomain<T,2> *>(&domain)), "gsPatchRule only supports tensor domains");
-    m_domain = static_cast<const gsTensorDomain<T,2> *>(&domain);
-
-    // Initialize some stuff
-    m_dim = m_domain->dim();
-
+    m_dim = domain.dim();
     GISMO_ASSERT( m_fixDir < short_t(m_dim) && m_fixDir>-2, "Invalid input fixDir = "<<m_fixDir);
 
     m_nodes.resize(m_dim);
@@ -53,10 +46,9 @@ gsPatchRule<T>::gsPatchRule(const gsDomain<T> & domain,
     gsKnotVector<T> knots;
     gsMatrix<T> greville;
     gsVector<T> integral;
-    const gsKnotVector<T> * Bbasis;
+    const gsKnotVector<T> * kv;
 
-    // Loop over dimensions of the basis and store the nodes and weights for each dimension
-    m_end = m_domain->boundingBox().col(1);
+    m_end = domain.boundingBox().col(1);
     for (size_t d = 0; d != m_dim; d++)
     {
         if (short_t(d)==m_fixDir && m_fixDir!=-1)
@@ -68,36 +60,15 @@ gsPatchRule<T>::gsPatchRule(const gsDomain<T> & domain,
         }
         else
         {
-            // Construct temporary basis (must be B-spline because we use knots!)
-            // Bbasis = const_cast<gsBSplineBasis<T> *>(static_cast<const gsBSplineBasis<T> * >(&m_basis->component(d)));
-            // Bbasis = const_cast<gsKnotVector<T> *>(static_cast<const gsKnotVector<T> * >(&m_domain->component(d)));
-            Bbasis = static_cast<const gsKnotVector<T> * >(m_domain->component(d).get());
+            kv = static_cast<const gsKnotVector<T>*>(domain.component(d).get());
 
-            // Find the knots
-            knots = this->_init(Bbasis);
-            // Compute exact integrals
-            #if __cplusplus >= 201103L || _MSC_VER >= 1600
-                std::tie(greville,integral) = this->_integrate(knots);
-            #else
-                std::pair< gsMatrix<T>,gsVector<T> > tmp1 = this->_integrate(knots);
-                tmp1.first.swap(greville);
-                tmp1.second.swap(integral);
-            #endif
-
-            // Compute quadrule
-            #if __cplusplus >= 201103L || _MSC_VER >= 1600
-                std::tie(m_nodes[d],m_weights[d]) = this->_compute(knots,greville,integral);
-            #else
-                std::pair< gsVector<T>,gsVector<T> > tmp2 = this->_compute(knots,greville,integral);
-                tmp2.first.swap(m_nodes[d]);
-                tmp2.second.swap(m_weights[d]);
-            #endif
+            knots = this->_init(kv);
+            std::tie(greville,integral) = this->_integrate(knots);
+            std::tie(m_nodes[d],m_weights[d]) = this->_compute(knots,greville,integral);
         }
 
-        // Construct a map with the nodes and the weights
         for (index_t k=0; k!=m_nodes[d].size(); k++)
             m_maps[d][m_nodes[d].at(k)] = m_weights[d].at(k);
-
     }
 }
 
@@ -165,34 +136,31 @@ void gsPatchRule<T>::mapTo( const gsVector<T>& lower,
         k = 0; // reset counter
     }
 
-    // This could work. However, in cases when there are elements which have no quadPoint, it goes wrong
-    // this->computeTensorProductRule_into(elNodes,elWeights,nodes,weights);
-
-    // initialize the number of nodes and weights
-    nodes.resize(m_dim,size);
+    nodes.resize(m_dim, size);
     weights.resize(size);
-    if (size==0)
+    if (size == 0)
         return;
 
-    // Now we fill the matrix with the points and we construct the tensor product (according to the scheme on top)
-    gsMatrix<T> tmpNodes, tmpWeights;
-    gsVector<T> ones;
-    tmpNodes = elNodes[0].transpose();
-    tmpWeights = elWeights[0].transpose();
-    size = 1;
-    for (size_t d = 1; d!=m_dim; d++)
+    // Build the tensor product dimension by dimension, starting from d=0 as
+    // the base case.  snapshots avoid aliasing when the same matrix is source
+    // and destination.
+    index_t nPrev = elNodes[0].size();
+    nodes.row(0).head(nPrev) = elNodes[0].transpose();
+    weights.head(nPrev)      = elWeights[0];
+
+    for (size_t d = 1; d != m_dim; d++)
     {
-        nodes.block( 0, 0, d, tmpNodes.cols()*elNodes[d].size() ) = tmpNodes.replicate(1,elNodes[d].size());
-
-        ones.setOnes(tmpNodes.cols());
-        for (k = 0; k != elNodes[d].size(); k++)
+        const index_t nd   = elNodes[d].size();
+        const index_t nNew = nPrev * nd;
+        const gsMatrix<T> prevNodes   = nodes.topRows(d).leftCols(nPrev);  // snapshot
+        const gsVector<T> prevWeights = weights.head(nPrev);               // snapshot
+        nodes.topRows(d).leftCols(nNew) = prevNodes.replicate(1, nd);
+        for (k = 0; k != nd; k++)
         {
-            nodes.block(d,k*ones.size(),1,ones.size()) = ones.transpose()*elNodes[d].at(k);
-            weights.segment(k*ones.size(),ones.size()) = (ones.transpose()*elWeights[d].at(k)).cwiseProduct(tmpWeights);
+            nodes.row(d).segment(k * nPrev, nPrev).setConstant(elNodes[d][k]);
+            weights.segment(k * nPrev, nPrev) = elWeights[d][k] * prevWeights;
         }
-
-        tmpWeights.transpose() = weights.segment(0,tmpWeights.cols()*elWeights[d].size());
-        tmpNodes = nodes.block( 0, 0, d+1, tmpNodes.cols()*elNodes[d].size() );
+        nPrev = nNew;
     }
 };
 

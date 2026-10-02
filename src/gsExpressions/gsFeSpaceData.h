@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <gsAssembler/gsDofMapperCreator.h>
+
 namespace gismo
 {
 namespace expr
@@ -28,7 +30,7 @@ template<class T>
 struct gsFeSpaceData
 {
     gsFeSpaceData(const gsFunctionSet<T> & _fs, index_t _dim, index_t _id):
-    fs(&_fs), dim(give(_dim)), id(give(_id)) { }
+    fs(&_fs), dim(give(_dim)), id(give(_id)), cont(-1) { }
 
     const gsFunctionSet<T> * fs;
     index_t dim, id;
@@ -47,10 +49,10 @@ struct gsFeSpaceData
         GISMO_ASSERT(nullptr!=fs, "Invalid pointer.");
         if (const gsMultiBasis<T> * mb =
             dynamic_cast<const gsMultiBasis<T>*>(fs) )
-            mapper = gsDofMapper(*mb, dim );
+            mapper = createMapper(*mb, dim, /*conforming=*/false);
         else if (const gsBasis<T> * b =
                  dynamic_cast<const gsBasis<T>*>(fs) )
-            mapper = gsDofMapper(*b, dim );
+            mapper = createMapper(*b, dim, /*conforming=*/false);
         mapper.finalize();
         fixedDofs.clear();
         cont = -1;

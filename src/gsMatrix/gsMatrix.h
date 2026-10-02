@@ -705,7 +705,6 @@ gsMatrix<T,_Rows, _Cols, _Options> * gsMatrix<T,_Rows, _Cols, _Options>::clone()
     .def("size",       &Class::size)
     .def("rows",       &Class::rows)
     .def("cols",       &Class::cols)
-    // .def("transpose",  &Class::transpose)
     ;
   }
 

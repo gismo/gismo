@@ -12,6 +12,7 @@
 */
 
 #include <gismo.h>
+#include <gsAssembler/gsDofMapperCreator.h>
 #include <string>
 
 using namespace gismo;
@@ -635,14 +636,10 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
     const short_t dim = mb.topology().dim();
 
     // Setup dof mapper
-    gsDofMapper dm;
-    mb.getMapper(
+    gsDofMapper dm = createMapper(mb, bc,
        (dirichlet::strategy)opt.getInt("DirichletStrategy"),
        iFace::glue,
-       bc,
-       dm,
-       0
-    );
+       /*nComp=*/1, /*unk=*/0, /*finalize=*/true);
     const index_t nTotalDofs = dm.freeSize();
 
     // Decompose the whole domain into components
@@ -708,14 +705,10 @@ gsPreconditionerOp<>::Ptr setupBlockILUT(
     const index_t nPatches = mb.nPieces();
 
     // Setup dof mapper
-    gsDofMapper dm;
-    mb.getMapper(
+    gsDofMapper dm = createMapper(mb, bc,
        (dirichlet::strategy)opt.getInt("DirichletStrategy"),
        iFace::glue,
-       bc,
-       dm,
-       0
-    );
+       /*nComp=*/1, /*unk=*/0, /*finalize=*/true);
     // Subdivide the overal dofs into
     //   a) the patch-local dofs (l=0,...,nPatches-1)
     //   b) the coupled dofs (l=nPatches)

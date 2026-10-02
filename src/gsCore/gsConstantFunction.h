@@ -165,6 +165,15 @@ private:
     short_t m_domainDim;
 };
 
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsConstantFunction
+   */
+  void pybind11_init_gsConstantFunction(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
+
 } // namespace gismo
 
 #ifndef GISMO_BUILD_LIB

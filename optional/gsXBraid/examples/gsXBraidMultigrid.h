@@ -1,4 +1,5 @@
 #include <gismo.h>
+#include <gsAssembler/gsDofMapperCreator.h>
 #include <string>
 
 namespace gismo {
@@ -1128,14 +1129,10 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(const gsSparseMatri
     const short_t dim = mb.topology().dim();
 
     // Setup dof mapper
-    gsDofMapper dm;
-    mb.getMapper(
+    gsDofMapper dm = createMapper(mb, bc,
        typeBCHandling == 1 ? (dirichlet::strategy)opt.askInt("DirichletStrategy",11) : (dirichlet::strategy)opt.askInt("DirichletStrategy",14),
        (iFace    ::strategy)opt.askInt("InterfaceStrategy", 1),
-       bc,
-       dm,
-       0
-    );
+       1, 0, /*finalize=*/true);
     const index_t nTotalDofs = dm.freeSize();
 
     // Decompose the whole domain into components

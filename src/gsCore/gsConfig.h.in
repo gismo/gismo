@@ -45,7 +45,6 @@
 
 /* Enabled Extensions */
 #include <gsCore/gsConfigExt.h>
-#cmakedefine GISMO_WITH_ADIFF
 #cmakedefine GISMO_WITH_MPI
 #cmakedefine GISMO_WITH_PARDISO
 #cmakedefine GISMO_WITH_PASTIX
@@ -106,6 +105,31 @@
   Compile-time static assertions are replaced by runtime assertions;
   this saves compilation time. */
 #define EIGEN_NO_STATIC_ASSERT
+
+#ifdef gsAutoDiff_ENABLED
+// Suppress warnings from autodiff library
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wparentheses"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
+
+#include <autodiff/forward/dual.hpp>
+#include <autodiff/reverse/var.hpp>
+
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
+
+// Include autodiff compatibility traits (operator<<, isnan, etc.)
+#include <gsAutoDiff/gsAutoDiffTraits.h>
+
+// Define type aliases for autodiff types to avoid template syntax in CMake
+namespace gismo {
+    using dual_t = autodiff::detail::Dual<@GISMO_COEFF_TYPE@, @GISMO_COEFF_TYPE@>;
+    using var_t = autodiff::var;
+}
+#endif
 
 /** Eigen options -- these MUST be defined before Eigen is included.\n
     See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html */

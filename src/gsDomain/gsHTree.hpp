@@ -189,7 +189,7 @@ gsHTree<d, Z>::insertBox ( point const & k1, point const & k2,
             // contained in iBox
             if ( !newLeaf ) //  curNode->isLeaf()
             {
-                // Increase level and reccurse
+                // Increase level and recurse
                 if ( ++curNode->level != lvl)
                     stack.push_back(curNode);
             }
@@ -218,6 +218,24 @@ gsHTree<d, Z>::insertBox ( point const & k1, point const & k2,
     // Update maximum inserted level
     if ( static_cast<unsigned>(lvl) > m_maxInsLevel)
         m_maxInsLevel = lvl;
+}
+
+template<short_t d, class Z>
+gsHTree<d,Z> gsHTree<d,Z>::merge(const gsHTree<d,Z>& tree1, const gsHTree<d,Z>& tree2)
+{
+    GISMO_ASSERT( (tree1.m_upperIndex.array() == tree2.m_upperIndex.array()).all(),
+        "gsHTree::merge: trees must have the same domain." );
+    GISMO_ASSERT( tree1.m_indexLevel == tree2.m_indexLevel,
+        "gsHTree::merge: trees must have the same index level." );
+
+    gsHTree<d,Z> result(tree1);
+
+    for (const_literator it = tree2.beginLeafIterator(); it.good(); it.next())
+        if (it.level() > 0)
+            result.insertBox(it.lowerCorner(), it.upperCorner(), it.level());
+
+    result.makeCompressed();
+    return result;
 }
 
 template<short_t d, class Z> void
@@ -1398,6 +1416,12 @@ template<short_t d, class Z>
 inline void gsHTree<d, Z>::printLeaves() const
 {
     leafSearch< printLeaves_visitor >();
+}
+
+template<short_t d, class Z>
+inline void gsHTree<d, Z>::printNodes() const
+{
+    nodeSearch< printNodes_visitor >();
 }
 
 template<short_t d, class Z>

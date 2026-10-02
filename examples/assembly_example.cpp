@@ -17,6 +17,7 @@
 #include <gsAssembler/gsVisitorPoisson.h>
 #include <gsAssembler/gsVisitorNitsche.h>
 #include <gsAssembler/gsVisitorNeumann.h>
+#include <gsAssembler/gsDofMapperCreator.h>
 
 
 using namespace gismo;
@@ -107,11 +108,11 @@ int main(int argc, char *argv[])
     //! [Assembler]
 
     //! [Dof mapper]
-    gsDofMapper mapper; // Gets the indices mapped from Basis --> Matrix
-
-    splinebasis.getMapper((dirichlet::strategy)opt.getInt("DirichletStrategy"),
+    // Gets the indices mapped from Basis --> Matrix
+    gsDofMapper mapper = createMapper(splinebasis, bcInfo,
+                          (dirichlet::strategy)opt.getInt("DirichletStrategy"),
                           (iFace::    strategy)opt.getInt("InterfaceStrategy"),
-                          bcInfo, mapper, 0);
+                          /*nComp=*/1, /*unk=*/0, /*finalize=*/true);
 
     mapper.print();
     //! [Dof mapper]
@@ -163,12 +164,14 @@ int main(int argc, char *argv[])
         //! [Plot in Paraview]
         // Write approximate and exact solution to paraview files
         gsInfo<<"Plotting in Paraview...\n";
-        gsWriteParaview<>(sol, "poisson2d", 1000);
+        gsParaview<real_t> pv;
+        pv.options().setInt("numPoints", 1000);
+        pv.options().setSwitch("show", true);
+        pv.write(sol, "poisson2d");
         const gsField<> exact( PA.patches(), g, false );
-        gsWriteParaview<>( exact, "poisson2d_exact", 1000);
+        pv.write(exact, "poisson2d_exact");
 
-        // Run paraview
-        gsFileManager::open("poisson2d.pvd");
+        // show option handles opening the file
         //! [Plot in Paraview]
     }
     else
