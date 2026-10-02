@@ -899,7 +899,7 @@ template<class T>
 gsOptionList gsExprAssembler<T>::defaultOptions()
 {
     gsOptionList opt;
-    opt.addInt("DirichletValues"  , "Method for computation of Dirichlet DoF values [100..103]", 101);
+    opt.addInt("DirichletValues"  , "Method for computation of Dirichlet DoF values [100..105]", dirichlet::automatic);
     opt.addInt("DirichletStrategy", "Method for enforcement of Dirichlet BCs [11..14]", 11);
     opt.addReal("quA", "Number of quadrature points: quA*deg + quB; For patchRule: Regularity of the target space", 1.0  );
     opt.addInt ("quB", "Number of quadrature points: quA*deg + quB; For patchRule: Degree of the target space", 1    );

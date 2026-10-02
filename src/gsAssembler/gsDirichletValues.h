@@ -11,12 +11,18 @@
     Author(s): A. Mantzaflaris, H.M. Verhelst
 */
 
+#pragma once
+
 #include <gsUtils/gsPointGrid.h>
 #include <gsCore/gsDofMapper.h>
 #include <gsAssembler/gsAssemblerOptions.h>
 #include <gsPde/gsBoundaryConditions.h>
 #include <gsTensor/gsTensorBasis.h>
 #include <gsHSplines/gsHTensorBasis.h>
+#include <gsHSplines/gsTHBSplineBasis.h>
+#include <gsCore/gsGeometrySlice.h>
+#include <gsCore/gsComposedFunction.h>
+#include <gsUtils/gsQuasiInterpolate.h>
 
 namespace gismo {
 
@@ -25,10 +31,314 @@ namespace expr
 template<class T> class gsFeSpace;
 };
 
+namespace internal {
+
+/// \brief Whether dirichlet::quasiInterpolation applies to \a basis.
+///
+/// - Tensor-product B-spline and NURBS bases (parametric dimension 1 to 4),
+///   through basis.source().
+/// - Truncated hierarchical B-splines (THB) and rational THB (dimension 1 to 4),
+///   through basis.source(). With Q^l a local interpolant reproducing the
+///   level-l tensor space and supported in one level-l element of
+///   \f$\Omega^l\setminus\Omega^{l+1}\f$,
+///   \f$Q(f)=\sum_l\sum_{i\in I_l}\lambda_{i,l}(f)\,T_{i,l}\f$ reproduces the
+///   THB space (preservation of coefficients),
+///   see H. Speleers, C. Manni, Numer. Math. 132 (2016) 155-184.
+/// - Non-truncated hierarchical B-splines (HB, dimension 1 to 4), tested on the
+///   basis itself: the level-by-level residual quasi-interpolation in
+///   gsQuasiInterpolate::localIntpl reproduces the HB space.
+///
+/// Mapped bases, rational HB and any other basis are excluded. For
+/// d >= 2 the boundary basis is quasi-interpolated, and every listed type has a
+/// boundaryBasis of a listed type. For d = 1 the side is a point (see
+/// dirichletSideQuasiInterpolation), so localIntpl is never called; the same
+/// end-point rule serves dirichlet::interpolation and dirichlet::automatic on
+/// 1-D patches.
+template<class T>
+bool dirichletQuasiInterpolationSupported(const gsBasis<T> & basis)
+{
+    const gsBasis<T> & src = basis.source();
+    return dynamic_cast<const gsTensorBasis<1,T>*>(&src)             ||
+           dynamic_cast<const gsTensorBasis<2,T>*>(&src)             ||
+           dynamic_cast<const gsTensorBasis<3,T>*>(&src)             ||
+           dynamic_cast<const gsTensorBasis<4,T>*>(&src)             ||
+           dynamic_cast<const gsTHBSplineBasis<1,T,true>*>(&src)     ||
+           dynamic_cast<const gsTHBSplineBasis<2,T,true>*>(&src)     ||
+           dynamic_cast<const gsTHBSplineBasis<3,T,true>*>(&src)     ||
+           dynamic_cast<const gsTHBSplineBasis<4,T,true>*>(&src)     ||
+           dynamic_cast<const gsTHBSplineBasis<1,T,false>*>(&basis)  ||   // HB: the basis itself, so
+           dynamic_cast<const gsTHBSplineBasis<2,T,false>*>(&basis)  ||   // rational HB is excluded
+           dynamic_cast<const gsTHBSplineBasis<3,T,false>*>(&basis)  ||
+           dynamic_cast<const gsTHBSplineBasis<4,T,false>*>(&basis);
+}
+
+/// \brief Whether dirichlet::interpolation applies to \a basis.
+///
+/// For d >= 2 it is anchor interpolation, the tensor-product branch: tensor-product
+/// B-spline bases interpolate per direction at the Greville points, which are
+/// unisolvent by the Schoenberg-Whitney conditions. Rational tensor bases qualify
+/// through basis.source(), whose indices and anchors they share.
+/// Hierarchical bases are excluded for d >= 2: collocation at the anchors of a
+/// mixed-level boundary basis can be singular, since active functions of
+/// different levels can share a Greville point.
+/// Hierarchical bases use dirichlet::quasiInterpolation instead, see
+/// dirichletQuasiInterpolationSupported.
+/// On a 1-D patch the side is an end point and every basis accepted by
+/// dirichletQuasiInterpolationSupported is accepted (end-point rule, see
+/// dirichletSideQuasiInterpolation).
+template<class T>
+bool dirichletInterpolationSupported(const gsBasis<T> & basis)
+{
+    if ( 1 == basis.domainDim() )
+        return dirichletQuasiInterpolationSupported(basis);
+    const gsBasis<T> & src = basis.source();
+    return dynamic_cast<const gsTensorBasis<2,T>*>(&src)   ||
+           dynamic_cast<const gsTensorBasis<3,T>*>(&src)   ||
+           dynamic_cast<const gsTensorBasis<4,T>*>(&src);
+}
+
+/// \brief Coefficients of the quasi-interpolant of Dirichlet data on side
+/// \a side of the basis \a basis (tensor, NURBS, THB, rational THB or HB).
+///
+/// The data on the side is \a fun (parametric condition, \a geo == nullptr) or
+/// \a fun composed with the geometry map \a geo (condition in physical
+/// coordinates). For d >= 2 it is quasi-interpolated in
+/// basis.boundaryBasis(side) by gsQuasiInterpolate::localIntpl, which reproduces
+/// data in the span of that boundary basis exactly, but is not interpolatory at
+/// points. For d = 1 the side is an end point and the coefficient is the data
+/// value there: with an open knot vector exactly one function is non-zero at
+/// the end point and it equals 1. This d = 1 branch is the end-point rule shared
+/// by dirichlet::interpolation, dirichlet::quasiInterpolation and
+/// dirichlet::automatic.
+///
+/// \param[out] coefs basis.boundary(side).size() x fun.targetDim(); row l is
+/// the coefficient of the patch function basis.boundary(side)(l).
+///
+/// Cost O(n (p+1)^{3(d-1)}) for n side functions of degree p (one dense
+/// (p+1)^{d-1} LU per function), OpenMP-parallel over the functions.
+template<class T>
+void dirichletSideQuasiInterpolation(const gsBasis<T> & basis,
+                                     const boxSide side,
+                                     const gsFunction<T> & fun,
+                                     const gsFunction<T> * geo,
+                                     gsMatrix<T> & coefs)
+{
+    // localIntpl runs an omp parallel for, where a throw aborts: all checks first.
+    GISMO_ENSURE(dirichletQuasiInterpolationSupported(basis),
+                 "Dirichlet quasi-interpolation is not implemented for this basis (supported: tensor-product B-spline, NURBS, THB, rational THB, HB). Use `dirichlet::l2Projection` instead.");
+    const short_t d = basis.domainDim();
+    if ( nullptr == geo )
+    {
+        GISMO_ENSURE(fun.domainDim() == d, "Parametric Dirichlet function has domain dimension "
+                     << fun.domainDim() << ", but the patch has parametric dimension " << d << ".");
+    }
+    else
+    {
+        GISMO_ENSURE(geo->domainDim() == d, "Geometry map has domain dimension "
+                     << geo->domainDim() << ", but the patch has parametric dimension " << d << ".");
+        GISMO_ENSURE(fun.domainDim() == geo->targetDim(), "Dirichlet function has domain dimension "
+                     << fun.domainDim() << ", but the geometry map has target dimension "
+                     << geo->targetDim() << ".");
+    }
+
+    if ( 1 == d )
+    {
+        // The side of a 1-D patch is an end point. With an open (clamped) knot vector exactly one
+        // function, basis.boundary(side)(0), is non-zero there and it equals 1 (also for NURBS and
+        // hierarchical bases: the others vanish, partition of unity); the dof is the data value.
+        const gsMatrix<index_t> bnd = basis.boundary(side);
+        GISMO_ENSURE(1 == bnd.size(), "Boundary of side " << side << " of a 1-D patch has "
+                     << bnd.size() << " functions, but exactly one is expected.");
+        gsMatrix<T> pt(1,1);
+        pt(0,0) = basis.support()(0, side.parameter() ? 1 : 0);
+        GISMO_ENSURE(math::abs(basis.evalSingle(bnd(0,0), pt)(0,0) - (T)1) < (T)1e-10,
+                     "Dirichlet values on a 1-D patch need an open (clamped) knot vector: the end "
+                     "function is not 1 at the end point.");
+        coefs = (nullptr == geo ? fun.eval(pt) : fun.eval(geo->eval(pt))).transpose();   // 1 x targetDim
+        return;
+    }
+
+    const index_t dir = side.direction();
+    const T par = basis.support()(dir, side.parameter() ? 1 : 0);
+    typename gsBasis<T>::uPtr h = basis.boundaryBasis(side);
+    GISMO_ENSURE(basis.boundary(side).size() == h->size(),
+                 "Boundary basis of side " << side << " has " << h->size()
+                 << " functions, but the patch has " << basis.boundary(side).size() << " on it.");
+
+    // Non-owning: onSide and data only point to fun, geo and each other, all alive here.
+    const gsGeometrySlice<T> onSide(nullptr == geo ? &fun : geo, dir, par);
+    if ( nullptr == geo )
+        gsQuasiInterpolate<T>::localIntpl(*h, onSide, coefs);
+    else
+    {
+        const gsComposedFunction<T> data(&onSide, &fun);
+        gsQuasiInterpolate<T>::localIntpl(*h, data, coefs);
+    }
+}
+
+/// \brief Anchor interpolation of the Dirichlet condition \a cond of \a u on a
+/// tensor-product (or rational tensor) patch; writes the entries of
+/// \a fixedDofs belonging to the dofs on cond.side().
+/// Parametric dimension d >= 2 only; 1-D patches use dirichletSideInterpolationDofs.
+template<class T>
+void dirichletSideAnchorInterpolation(const expr::gsFeSpace<T> & u,
+                                      const gsBoundaryConditions<T> & bc,
+                                      const boundary_condition<T> & cond,
+                                      gsMatrix<T> & fixedDofs)
+{
+    const index_t parDim = u.source().domainDim();
+    gsMatrix<T> fpts, pts;
+    const index_t com = cond.unkComponent();
+    const int k = cond.patch();
+    const gsBasis<T> & basis = u.source().basis(k);
+
+    // Get dofs on this boundary
+    const gsMatrix<index_t> boundary = basis.boundary(cond.side());
+
+    // Get the side information
+    const int dir = cond.side().direction( );
+    const index_t param = (cond.side().parameter() ? 1 : 0);
+
+    // Get basis on the boundary
+    typename gsBasis<T>::uPtr h = basis.boundaryBasis(cond.side());
+
+    for (index_t r = 0; r!=u.dim(); ++r)
+    {
+        if (com!=-1 && r!=com) continue;
+
+        // If the condition is homogeneous then fill with zeros
+        if ( cond.isHomogeneous() )
+        {
+            for (index_t i=0; i!= boundary.size(); ++i)
+            {
+                const int ii = u.mapper().bindex( boundary.at(i) , k, r );
+                fixedDofs.at(ii) = 0;
+            }
+            continue;
+        }
+
+        // Compute grid of points on the face ("face anchors")
+        const gsMatrix<T> banchors = h->anchors();
+        pts.resize(parDim, banchors.cols());
+        for (index_t i = 0, j = 0; i != parDim; ++i)
+        {
+            if ( i==dir )
+                pts.row(i).setConstant( basis.support()(dir, param) );
+            else
+                pts.row(i) = banchors.row(j++);
+        }
+
+        // Compute dirichlet values
+        if ( cond.parametric() )
+            fpts = cond.function()->piece(cond.patch()).eval( pts );
+        else
+        {
+            GISMO_ENSURE(bc.hasGeoMap(), "gsDirichletValues: a Dirichlet condition given in "
+                         "physical coordinates needs the geometry map, but the boundary "
+                         "conditions carry none; call bc.setGeoMap(...).");
+            const gsFunctionSet<T> & gmap = bc.geoMap();
+            fpts = cond.function()->piece(cond.patch()).eval(  gmap.piece(cond.patch()).eval(  pts )  );
+        }
+
+        // Interpolate dirichlet boundary
+        typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
+        const gsMatrix<T> & dVals = geo->coefs();
+
+        // Save corresponding boundary dofs
+        const index_t cc = (-1==com ? r : 0);
+        GISMO_ENSURE( cc < dVals.cols(),
+                      "Dirichlet function has target dimension "<< dVals.cols()
+                      <<", which cannot supply component "<< cc <<".");
+        for (index_t l=0; l!= boundary.size(); ++l)
+        {
+            const int ii = u.mapper().bindex( boundary.at(l) , k, r );
+            fixedDofs.at(ii) = dVals(l, cc);
+        }
+    }
+}
+
+/// \brief Quasi-interpolation of the Dirichlet condition \a cond of \a u on a
+/// patch whose basis passed dirichletQuasiInterpolationSupported; writes the
+/// entries of \a fixedDofs belonging to the dofs on cond.side().
+/// The caller checks the support of the basis.
+template<class T>
+void dirichletSideQuasiInterpolationDofs(const expr::gsFeSpace<T> & u,
+                                         const gsBoundaryConditions<T> & bc,
+                                         const boundary_condition<T> & cond,
+                                         gsMatrix<T> & fixedDofs)
+{
+    const index_t k = cond.patch();
+    const gsBasis<T> & basis = u.source().basis(k);
+    const index_t com = cond.unkComponent();
+    const gsMatrix<index_t> boundary = basis.boundary(cond.side());
+
+    if ( cond.isHomogeneous() )
+    {
+        for (index_t r = 0; r!=u.dim(); ++r)
+        {
+            if (com!=-1 && r!=com) continue;
+            for (index_t l=0; l!= boundary.size(); ++l)
+                fixedDofs.at( u.mapper().bindex(boundary.at(l), k, r) ) = 0;
+        }
+        return;
+    }
+
+    const gsFunction<T> * fun =
+        dynamic_cast<const gsFunction<T>*>( &cond.function()->piece(k) );
+    GISMO_ENSURE(nullptr != fun, "Dirichlet data on patch " << k << " is not a gsFunction.");
+
+    const index_t ccMax = (-1==com ? u.dim()-1 : 0);
+    GISMO_ENSURE( ccMax < fun->targetDim(),
+                  "Dirichlet function has target dimension "<< fun->targetDim()
+                  <<", which cannot supply component "<< ccMax <<".");
+
+    const gsFunction<T> * geo = nullptr;
+    if ( !cond.parametric() )
+    {
+        GISMO_ENSURE(bc.hasGeoMap(), "gsDirichletValues: a Dirichlet condition given in "
+                     "physical coordinates needs the geometry map, but the boundary "
+                     "conditions carry none; call bc.setGeoMap(...).");
+        geo = dynamic_cast<const gsFunction<T>*>( &bc.geoMap().piece(k) );
+        GISMO_ENSURE(nullptr != geo, "The geometry map of patch " << k << " is not a gsFunction.");
+    }
+
+    gsMatrix<T> coefs;
+    dirichletSideQuasiInterpolation(basis, cond.side(), *fun, geo, coefs);
+
+    for (index_t r = 0; r!=u.dim(); ++r)
+    {
+        if (com!=-1 && r!=com) continue;
+        const index_t cc = (-1==com ? r : 0);
+        for (index_t l=0; l!= boundary.size(); ++l)
+            fixedDofs.at( u.mapper().bindex(boundary.at(l), k, r) ) = coefs(l, cc);
+    }
+}
+
+/// \brief Dirichlet dofs of the condition \a cond of \a u for dirichlet::interpolation:
+/// anchor interpolation (dirichletSideAnchorInterpolation) on a patch of parametric dimension
+/// d >= 2; on a 1-D patch the side is an end point and the dof is the data value there
+/// (the end-point rule of dirichletSideQuasiInterpolation, open knot vector required).
+/// The caller checks the support of the basis (dirichletInterpolationSupported).
+template<class T>
+void dirichletSideInterpolationDofs(const expr::gsFeSpace<T> & u,
+                                    const gsBoundaryConditions<T> & bc,
+                                    const boundary_condition<T> & cond,
+                                    gsMatrix<T> & fixedDofs)
+{
+    if ( 1 == u.source().basis(cond.patch()).domainDim() )
+        dirichletSideQuasiInterpolationDofs(u, bc, cond, fixedDofs);
+    else
+        dirichletSideAnchorInterpolation(u, bc, cond, fixedDofs);
+}
+
+} // namespace internal
+
+/// \brief Computes the Dirichlet dofs of \a u (its fixedPart()) by the method
+/// \a dir_values (a dirichlet::values) and applies the corner values of \a bc.
 /// \param sameElement asserts that each boundary quadrature batch lies in a single Bezier element of
 /// the geometry map; passing false evaluates the map per point. Read from no option list.
-/// Applies to the \c dirichlet::l2Projection branch only: \c dirichlet::interpolation does not
-/// evaluate the geometry map this way and ignores the argument.
+/// Applies to \c dirichlet::l2Projection, and to \c dirichlet::automatic when that resolves to l2
+/// projection; interpolation and quasi-interpolation ignore it.
 template<class T>
 void gsDirichletValues(
     const gsBoundaryConditions<T> & bc,
@@ -49,7 +359,13 @@ void gsDirichletValues(
         // If we have a homogeneous problem then fill with zeros
         break;
     case dirichlet::interpolation:
-        gsDirichletValuesByTPInterpolation(u,bc);
+        gsDirichletValuesByTPInterpolation(u, bc);
+        break;
+    case dirichlet::quasiInterpolation:
+        gsDirichletValuesByQuasiInterpolation(u, bc);
+        break;
+    case dirichlet::automatic:
+        gsDirichletValuesAutomatic(u, bc, sameElement);
         break;
     case dirichlet::l2Projection:
         gsDirichletValuesByL2Projection(u, bc, sameElement);
@@ -78,15 +394,15 @@ void gsDirichletValues(
     }
 }
 
+/// \brief Computes the Dirichlet dofs of \a u by interpolation at the anchors of the
+/// boundary bases (dirichlet::interpolation). For d >= 2 tensor-product (incl. rational) patches
+/// only: throws on any other basis there. On a 1-D patch (any basis supported by
+/// quasi-interpolation) the end dof is the data value at the end point; the knot vector must be open.
+/// The support of all patches is checked before any dof is written.
 template<class T>
 void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
                                         const gsBoundaryConditions<T> & bc)
 {
-    const index_t parDim = u.source().domainDim();
-
-    gsMatrix<index_t> boundary;
-    gsMatrix<T> fpts, pts;
-
     gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
     fixedDofs.setZero(u.mapper().boundarySize(), 1 );
 
@@ -97,90 +413,56 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
     {
         if( it->unknown()!=u.id() ) continue;
 
-        const index_t com = it->unkComponent();
+        // For d >= 2, basis.boundary(side) and basis.boundaryBasis(side) must number the
+        // side's functions identically and the anchors of the boundary basis
+        // must be unisolvent: true for tensor and rational tensor bases, not
+        // for hierarchical ones. A 1-D side is a point and needs neither.
+        GISMO_ENSURE(internal::dirichletInterpolationSupported(u.source().basis(it->patch())),
+                     "Dirichlet interpolation only implemented for tensor bases. Use `dirichlet::quasiInterpolation` (hierarchical bases) or `dirichlet::l2Projection` instead.");
+    }
 
-        const int k = it->patch();
-        const gsBasis<T> & basis = u.source().basis(k);
+    for ( typename bcList::const_iterator it =  bc.begin("Dirichlet");
+          it != bc.end("Dirichlet") ; ++it )
+    {
+        if( it->unknown()!=u.id() ) continue;
+        internal::dirichletSideInterpolationDofs(u, bc, *it, fixedDofs);
+    }
+}
 
-        // Requirements on the basis: basis.boundary(side) and
-        // basis.boundaryBasis(side) number the side's functions identically,
-        // and the anchors of the boundary basis are unisolvent for it. Tensor
-        // and hierarchical (THB/HB) bases satisfy both. A rational basis
-        // qualifies through its source: boundary indices, face anchors and the
-        // anchors used by interpolateAtAnchors are the source's.
-        // The 1-D case is tested on the basis itself, since gsNurbsBasis has no
-        // boundaryBasis() and would fail after the guard.
-        const gsBasis<T> & srcBasis = basis.source();
-        GISMO_ENSURE((dynamic_cast<const gsTensorBasis<1,T>*>(&basis   ) ||
-                      dynamic_cast<const gsTensorBasis<2,T>*>(&srcBasis) ||
-                      dynamic_cast<const gsTensorBasis<3,T>*>(&srcBasis) ||
-                      dynamic_cast<const gsTensorBasis<4,T>*>(&srcBasis) ||
-                      dynamic_cast<const gsHTensorBasis<2,T>*>(&srcBasis) ||
-                      dynamic_cast<const gsHTensorBasis<3,T>*>(&srcBasis) ||
-                      dynamic_cast<const gsHTensorBasis<4,T>*>(&srcBasis)   ),
-                      "Dirichlet interpolation only implemented for tensor and hierarchical bases and their rational counterparts. Use `dirichlet::l2Projection` instead.");
+/// \brief Computes the Dirichlet dofs of \a u (its fixedPart()) for dirichlet::quasiInterpolation.
+///
+/// Per Dirichlet side of \a u, the side data is quasi-interpolated in the boundary basis
+/// (internal::dirichletSideQuasiInterpolation) of a tensor-product B-spline, NURBS, THB,
+/// rational THB or HB patch. Data in the span of the boundary basis is reproduced exactly.
+/// The result is NOT interpolatory: a dof shared by two Dirichlet sides of a patch, or by
+/// sides of two patches at an interface, keeps the value of the side processed last, on
+/// tensor-product patches too; for data outside the span the sides differ at the
+/// approximation-error level. On a 1-D patch the end dof is the data value at the end point.
+/// Throws if a Dirichlet side of \a u lies on a patch with any other basis (use
+/// dirichlet::l2Projection); the support of all patches is checked before any dof is written.
+template<class T>
+void gsDirichletValuesByQuasiInterpolation(const expr::gsFeSpace<T> & u,
+                                           const gsBoundaryConditions<T> & bc)
+{
+    gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
+    fixedDofs.setZero(u.mapper().boundarySize(), 1 );
 
-        // Get dofs on this boundary
-        boundary = basis.boundary(it->side());
+    typedef gsBoundaryConditions<T> bcList;
+    for ( typename bcList::const_iterator it =  bc.begin("Dirichlet");
+          it != bc.end("Dirichlet") ; ++it )
+    {
+        if( it->unknown()!=u.id() ) continue;
+        GISMO_ENSURE(internal::dirichletQuasiInterpolationSupported(u.source().basis(it->patch())),
+                     "Dirichlet quasi-interpolation is not implemented for the basis of patch "
+                     << it->patch() << " (supported: tensor-product B-spline, NURBS, THB, rational THB, HB). "
+                     "Use `dirichlet::l2Projection` instead.");
+    }
 
-        // Get the side information
-        const int dir = it->side().direction( );
-        const index_t param = (it->side().parameter() ? 1 : 0);
-
-        // Get basis on the boundary
-        typename gsBasis<T>::uPtr h = basis.boundaryBasis(it->side());
-
-        //
-        for (index_t r = 0; r!=u.dim(); ++r)
-        {
-            if (com!=-1 && r!=com) continue;
-
-            // If the condition is homogeneous then fill with zeros
-            if ( it->isHomogeneous() )
-            {
-                for (index_t i=0; i!= boundary.size(); ++i)
-                {
-                    const int ii = u.mapper().bindex( boundary.at(i) , k, r );
-                    fixedDofs.at(ii) = 0;
-                }
-                continue;
-            }
-
-            // Compute grid of points on the face ("face anchors")
-            const gsMatrix<T> banchors = h->anchors();
-            pts.resize(parDim, banchors.cols());
-            for (index_t i = 0, j = 0; i != parDim; ++i)
-            {
-                if ( i==dir )
-                    pts.row(i).setConstant( basis.support()(dir, param) );
-                else
-                    pts.row(i) = banchors.row(j++);
-            }
-
-            // Compute dirichlet values
-            if ( it->parametric() )
-                fpts = it->function()->piece(it->patch()).eval( pts );
-            else
-            {
-                const gsFunctionSet<T> & gmap = bc.geoMap();
-                fpts = it->function()->piece(it->patch()).eval(  gmap.piece(it->patch()).eval(  pts )  );
-            }
-
-            // Interpolate dirichlet boundary
-            typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
-            const gsMatrix<T> & dVals = geo->coefs();
-
-            // Save corresponding boundary dofs
-            const index_t cc = (-1==com ? r : 0);
-            GISMO_ENSURE( cc < dVals.cols(),
-                          "Dirichlet function has target dimension "<< dVals.cols()
-                          <<", which cannot supply component "<< cc <<".");
-            for (index_t l=0; l!= boundary.size(); ++l)
-            {
-                const int ii = u.mapper().bindex( boundary.at(l) , k, r );
-                fixedDofs.at(ii) = dVals(l, cc);
-            }
-        }
+    for ( typename bcList::const_iterator it =  bc.begin("Dirichlet");
+          it != bc.end("Dirichlet") ; ++it )
+    {
+        if( it->unknown()!=u.id() ) continue;
+        internal::dirichletSideQuasiInterpolationDofs(u, bc, *it, fixedDofs);
     }
 }
 
@@ -277,8 +559,6 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
                                       const gsBoundaryConditions<T> & bc,
                                       const bool sameElement = true)
 {
-    const gsFunctionSet<T> & gmap = bc.geoMap();
-
     const gsDofMapper & mapper = u.mapper();
     gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>& >(u).fixedPart();
 
@@ -310,6 +590,11 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
     {
         const int unk = iter->unknown();
         if(unk != u.id()) continue;
+
+        GISMO_ENSURE(bc.hasGeoMap(), "gsDirichletValuesByL2Projection: the boundary conditions "
+                     "carry no geometry map, which the projection needs for the boundary "
+                     "measure; call bc.setGeoMap(...).");
+        const gsFunctionSet<T> & gmap = bc.geoMap();
 
         const index_t com = iter->unkComponent();
         const int patchIdx   = iter->patch();
@@ -459,6 +744,48 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
 #endif
     fixedDofs = solver.compute(globProjMat).solve(globProjRhs);
 } // computeDirichletDofsL2Proj
+
+/// \brief Computes the Dirichlet dofs of \a u (its fixedPart()) for dirichlet::automatic.
+///
+/// If every patch carrying a Dirichlet side of \a u is supported by interpolation or by
+/// quasi-interpolation, then per side: tensor-product/NURBS patch -> anchor interpolation (on a 1-D
+/// patch, of any supported basis, the end-point rule), as
+/// gsDirichletValuesByTPInterpolation (bitwise); other supported patch (THB, rational THB, HB)
+/// -> quasi-interpolation, as gsDirichletValuesByQuasiInterpolation, with its last-write-wins
+/// at shared dofs. Otherwise the whole unknown is computed by gsDirichletValuesByL2Projection
+/// with \a sameElement. Prints nothing.
+template<class T>
+void gsDirichletValuesAutomatic(const expr::gsFeSpace<T> & u,
+                                const gsBoundaryConditions<T> & bc,
+                                const bool sameElement = true)
+{
+    typedef gsBoundaryConditions<T> bcList;
+    for ( typename bcList::const_iterator it =  bc.begin("Dirichlet");
+          it != bc.end("Dirichlet") ; ++it )
+    {
+        if( it->unknown()!=u.id() ) continue;
+        const gsBasis<T> & basis = u.source().basis(it->patch());
+        if ( !internal::dirichletInterpolationSupported(basis) &&
+             !internal::dirichletQuasiInterpolationSupported(basis) )
+        {
+            gsDirichletValuesByL2Projection(u, bc, sameElement);
+            return;
+        }
+    }
+
+    gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
+    fixedDofs.setZero(u.mapper().boundarySize(), 1 );
+
+    for ( typename bcList::const_iterator it =  bc.begin("Dirichlet");
+          it != bc.end("Dirichlet") ; ++it )
+    {
+        if( it->unknown()!=u.id() ) continue;
+        if ( internal::dirichletInterpolationSupported(u.source().basis(it->patch())) )
+            internal::dirichletSideInterpolationDofs(u, bc, *it, fixedDofs);
+        else
+            internal::dirichletSideQuasiInterpolationDofs(u, bc, *it, fixedDofs);
+    }
+}
 
 
 
