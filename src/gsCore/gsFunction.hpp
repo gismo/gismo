@@ -593,7 +593,9 @@ gsFunction<T>::hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
     this->deriv2_into(u, secDers);
     const index_t dim = this->domainDim();
     const index_t nd = dim*(dim+1)/2;
-    result = util::secDerToHessian(secDers.middleCols(coord*nd,nd), dim);
+    result.resize(dim*dim, u.cols());
+    for (index_t pt = 0; pt!=u.cols(); ++pt)
+        result.col(pt) = util::secDerToHessian(secDers.block(coord*nd, pt, nd, 1), dim);
 }
 
 template <typename T, short_t domDim, short_t tarDim>

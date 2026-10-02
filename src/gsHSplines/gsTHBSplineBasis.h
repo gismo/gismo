@@ -534,7 +534,6 @@ public:
    * @param[out] cp control points of the B-spline patch
    * @param[out] k1 knot vector of the B-spline patch (first dimension)
    * @param[out] k2 knot vector of the B-spline patch (second dimension)
-  */
 
     void getBsplinePatchGlobal(gsVector<index_t> b1,
                           gsVector<index_t> b2,
@@ -542,6 +541,7 @@ public:
                           const gsMatrix<T>& geom_coef,
                           gsMatrix<T>& cp, gsKnotVector<T>& k1,
                                gsKnotVector<T>& k2) const;
+  */
 
   /**
    * @brief Return the list of B-spline patches to represent a THB-spline geometry.
@@ -552,13 +552,13 @@ public:
    * @param[out] level levels of the boxes (level[i]: level of the i-th box,)
    * @param[out] nvertices number of control points (nvertices[i,j]: number of control points in j-direction for the i-th box)
   */
-  void getBsplinePatches(const gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsMatrix<index_t>& b1, gsMatrix<index_t>& b2, gsVector<index_t>& level, gsMatrix<index_t>& nvertices) const;
+//  void getBsplinePatches(const gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsMatrix<index_t>& b1, gsMatrix<index_t>& b2, gsVector<index_t>& level, gsMatrix<index_t>& nvertices) const;
 
   /**
    * @brief Return a multipatch structure of B-splines
    * @param geom_coef control points of the THB-spline geometry
   */
-  gsMultiPatch<T> getBsplinePatchesToMultiPatch(const gsMatrix<T>& geom_coef) const;
+//  gsMultiPatch<T> getBsplinePatchesToMultiPatch(const gsMatrix<T>& geom_coef) const;
 
   /**
      * @brief Return the list of B-spline patches to represent a THB-spline geometry.
@@ -570,24 +570,24 @@ public:
      * @param[out] nvertices number of control points (nvertices[i,j]: number of control points in j-direction for the i-th box)
      * @param[out] trim_curves the trimming curves for parasolid vector<connected_component<polylines<segments<T> > > > where the first polyline is the outer curve and the rest are holes
     */
-    void getBsplinePatches_trimming(const gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsMatrix<index_t>& b1, gsMatrix<index_t>& b2, gsVector<index_t>& level, gsMatrix<index_t>& nvertices,
-                           std::vector<std::vector<std::vector< std::vector<T> > > >& trim_curves) const;
+//    void getBsplinePatches_trimming(const gsMatrix<T>& geom_coef, gsMatrix<T>& cp, gsMatrix<index_t>& b1, gsMatrix<index_t>& b2, gsVector<index_t>& level, gsMatrix<index_t>& nvertices,
+//                           std::vector<std::vector<std::vector< std::vector<T> > > >& trim_curves) const;
 
     /**
        * @brief Return a multipatch structure of B-splines
        * @param geom_coef control points of the THB-spline geometry
        * @param[out] trim_curves the trimming curves for parasolid vector<connected_component<polylines<segments<T> > > > where the first polyline is the outer curve and the rest are holes
       */
-    gsMultiPatch<T> getBsplinePatchesToMultiPatch_trimming(
-            const gsMatrix<T>& geom_coef,
-            std::vector<std::vector<std::vector< std::vector<T> > > >& trim_curves) const;
+//    gsMultiPatch<T> getBsplinePatchesToMultiPatch_trimming(
+//            const gsMatrix<T>& geom_coef,
+//            std::vector<std::vector<std::vector< std::vector<T> > > >& trim_curves) const;
 
     /*
        * @brief Return the connected components of domain levels in knot vector indices (the boundary of a CC and the holes in the corresponding component)
        * @param[out] level levels of the boxes (level[i]: level of the i-th box,)
        * @param[out] connectedComponents the connected components in format vector<connected_component<polylines<segments<index_t> > > > where the first polyline is the outer curve and the rest are holes
     */
-    void getConnectedComponents(std::vector<std::vector<std::vector< std::vector<index_t> > > >& connectedComponents, gsVector<index_t>& level) const;
+//    void getConnectedComponents(std::vector<std::vector<std::vector< std::vector<index_t> > > >& connectedComponents, gsVector<index_t>& level) const;
 
 
    /// @brief returns transfer matrices betweend the levels of the given hierarchical spline

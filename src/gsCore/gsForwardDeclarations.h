@@ -87,6 +87,7 @@ enum gsNeedEnum
     NEED_NORMAL            = 1U <<11, ///< Normal vector of the object
     NEED_OUTER_NORMAL      = 1U <<12, ///< Outward normal on the boundary
     NEED_2ND_FFORM         = 1U <<13, ///< Second fundamental form
+    NEED_DERIV_N           = 1U <<14, ///< Derivatives of arbitrary order \a derivOrder (see gsFuncData::derivOrder)
 
     SAME_ELEMENT           = 1U <<15  ///< Enable optimizations based on the assumption that all evaluation points are in the same bezier domain
 };
@@ -117,6 +118,7 @@ struct boxComponent;
 struct patchComponent;
 struct boundaryInterface;
 
+
 template <class T=real_t>                class gsCurve;
 template <class T=real_t>                class gsSurface;
 template <class T=real_t>                class gsVolume;
@@ -128,12 +130,23 @@ template <class T=real_t>                class gsDomainIterator;
 template <class T=real_t>                class gsPointDomain;
 template <class T=real_t>                class gsPointDomainIterator;
 
+template<short_t d, class T, class Z>    class gsTrimmedDomain;
+template<short_t d, class T, class Z>    class gsImplicitTrimmedDomain;
+
+
 template <class T = real_t, int D=-1>    class gsTensorDomainIterator;
 template <class T = real_t, short_t d=-1, class Z=index_t>    class gsHDomainIterator;
+template<typename SignOp, short_t d, class T, class Z = size_t> class gsTrimmedDomainIterator;
+
 
 template <class T, int D=-1, class uiter=typename std::vector<T>::const_iterator>
                                          class gsTensorDomainBoundaryIterator;
 template <class T = real_t, short_t d=-1, class Z=index_t>    class gsHDomainBoundaryIterator;
+
+struct AllFaces;
+template <class T=real_t>                class gsDomainFaceIterator;
+template <class T = real_t, int D=-1, class FaceOp = AllFaces>
+                                         class gsTensorDomainFaceIterator;
 
 template <class T=real_t>                class gsDomain;
 template <class T=real_t>                class gsFunctionSet;

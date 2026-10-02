@@ -103,6 +103,13 @@ private:
         return;
     }
 
+    // Note: assumes that we skip inside the **current** subdomain
+    size_t skipTo(const gsVector<size_t> & elemIndex)
+    {
+        m_cur.skipTo(elemIndex); // skip inside subdomain only
+        return m_numElOffset[m_sid] + m_cur.id();
+    }
+
     /// \brief Proceeds to the next element (skipping \p increment elements).
     void next(index_t increment) override
     {

@@ -90,7 +90,7 @@ public:
         m_side2 = bi.second();
 
         // Setup Quadrature
-        rule = gsQuadrature::get(*basis1.domain(), options, m_side1.direction());
+        rule = gsQuadrature::get(basis1, options, m_side1.direction());
 
         m_penalty     = options.askReal("DG.Penalty",-1);
         // If not given, use default

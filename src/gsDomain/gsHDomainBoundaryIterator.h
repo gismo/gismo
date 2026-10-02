@@ -13,9 +13,8 @@
 
 #pragma once
 
-#include <gsDomain/gsHTree.h>
 #include <gsDomain/gsHDomain.h>
-#include <gsDomain/gsKdNode.h>
+#include <gsDomain/gsKdTree.h>
 #include <gsHSplines/gsHTensorBasis.h>
 
 #include <gsDomain/gsDomainIterator.h>
@@ -42,19 +41,19 @@ class gsHDomainBoundaryIterator: public gsDomainIterator<T>
 {
 public:
 
-    typedef gsKdNode<d,Z> node;
+    // typedef gsKdTree<d,Z,gsHTreeData<d,Z> > node;
+    typedef gsHTree<d,Z> gsHTree_t;
+    // typedef gsKdTree<d,Z,gsHTreeData<d,Z> > gsKdTree_t;
 
-    typedef typename node::point point;
+    typedef typename gsHTree_t::point_t point;
 
     typedef typename std::vector<T>::const_iterator  uiter;
 
-    typedef gsHTree<d,Z> hDomain;
-
-    typedef typename hDomain::const_literator leafIterator;
+    typedef typename gsHTree_t::const_literator leafIterator;
 
 public:
 
-    gsHDomainBoundaryIterator(const gsHTree<d,Z> & tree,
+    gsHDomainBoundaryIterator(const gsHTree_t & tree,
                               const gsHTensorBasis<d,T> & basis,
                               const boxSide & s)
     :
@@ -73,7 +72,7 @@ public:
     {
     }
 
-    void init(const gsHTree<d,Z> & tree, const boxSide & s)
+    void init(const gsHTree_t & tree, const boxSide & s)
     {
         // Initialize mesh data
         m_meshStart.resize(d);
@@ -148,7 +147,7 @@ public:
 
     int getLevel() const
     {
-        return m_leaf.level();
+        return m_leaf.data().level();
     }
 
 private:
@@ -156,7 +155,7 @@ private:
     gsHDomainBoundaryIterator();
 
     /// Navigates to the first leaf on our side
-    void initLeaf(const hDomain & tree_domain)
+    void initLeaf(const gsHTree_t & tree_domain)
     {
         // Get the first leaf
         m_leaf = tree_domain.beginLeafIterator();
@@ -199,21 +198,23 @@ private:
             const gsHTensorBasis<d,T> * hbasis = dynamic_cast<const gsHTensorBasis<d,T> * >(&m_basis);
             if (hbasis->manualLevels() )
             {
-                gsKnotVector<T> kv = hbasis->tensorLevel(m_leaf.level()).knots(dir);
+                gsKnotVector<T> kv = hbasis->tensorLevel(m_leaf.data().level()).knots(dir);
                 index_t start = 0;
                 index_t end  = kv.uSize()-1;
-                hbasis->_knotIndexToDiadicIndex(m_leaf.level(),dir,start);
-                hbasis->_knotIndexToDiadicIndex(m_leaf.level(),dir,end);
+                hbasis->_knotIndexToDiadicIndex(m_leaf.data().level(),dir,start);
+                hbasis->_knotIndexToDiadicIndex(m_leaf.data().level(),dir,end);
                 diadicSize = end - start;
             }
             else
-                diadicSize = hbasis->tensorLevel(m_leaf.level()).knots(dir).uSize() - 1;
+                diadicSize = hbasis->tensorLevel(m_leaf.data().level()).knots(dir).uSize() - 1;
 
-            return static_cast<size_t>(m_leaf.upperCorner().at(dir) ) == diadicSize;// todo: more efficient
+            point upper;
+            m_tree.global2localIndex( m_leaf.data().upperCorner(), m_leaf.data().level(), upper);
+            return static_cast<size_t>(upper[dir] ) == diadicSize;// todo: more efficient
         }
         else
         {
-            return m_leaf.lowerCorner().at(dir) == 0;
+            return m_leaf.data().lowerCorner().at(dir) == 0;
         }
     }
 
@@ -222,12 +223,11 @@ private:
     /// active functions.
     void updateLeaf()
     {
-        const point & lower = m_leaf.lowerCorner();
-        const point & upper = m_leaf.upperCorner();
-        // gsDebug<<"leaf "<<  lower.transpose() <<", "
-        //        << upper.transpose() <<"\n";
+        point lower, upper;
+        m_tree.global2localIndex( m_leaf.data().lowerCorner(), m_leaf.data().level(), lower);
+        m_tree.global2localIndex( m_leaf.data().upperCorner(), m_leaf.data().level(), upper);
 
-        const int level2 = m_leaf.level();
+        const int level2 = m_leaf.data().level();
 
         // Update leaf box
         for (short_t dim = 0; dim < d; ++dim)
@@ -293,7 +293,7 @@ public:
 
 private:
 
-    const gsHTree<d,Z> & m_tree;
+    const gsHTree_t & m_tree;
     const gsHTensorBasis<d,T> & m_basis;
 
     // Boundary parameters

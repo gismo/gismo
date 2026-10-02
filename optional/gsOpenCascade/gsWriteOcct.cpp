@@ -52,7 +52,6 @@
 
 #include <BRepTools.hxx>
 #include <BRep_Tool.hxx>
-#include <BRepMesh.hxx>
 #include <BRepMesh_IncrementalMesh.hxx>
 
 #include <BRepBuilderAPI_Transform.hxx>

@@ -50,7 +50,7 @@ private:
     std::vector<gismo::expr::gsFeSpaceData<T>*> m_vrow;
     std::vector<gismo::expr::gsFeSpaceData<T>*> m_vcol;
 
-    int m_sparsity;//0:unknown, 1:volume, 2:boundary, 4:interface pre-allocated
+    int m_sparsity;//0:unknown, 1:volume, 2:boundary, 4:interface, 8:skeleton, 16:ghost pre-allocated
     mutable bool m_modified;
 
     typedef typename gsExprHelper<T>::nullExpr    nullExpr;
@@ -79,15 +79,21 @@ public:
      * The factory is called once for every rule instance required by an
      * assembly operation (in particular, once per OpenMP worker and patch for
      * volume assembly). It must return a fresh rule and, when OpenMP is enabled,
-     * be safe to call concurrently. @a fixedDirection is -1 for volume
+     * be safe to call concurrently. @a domain and @a degrees are always
+     * available and are what an immersed/cut-cell rule reads the level set and
+     * integration order from; @a basis is a pointer and may be null (an
+     * evaluator with no registered trial space has none), so a factory that
+     * needs a basis must check it. @a fixedDirection is -1 for volume
      * integration and the fixed parametric direction for boundary and interface
      * integration. Overriding gsQuadRule::mapTo() permits element-dependent
      * rules.
      */
-    typedef std::function<QuadratureRulePtr(const gsBasis<T> & basis,
-                                             const gsOptionList & options,
-                                             index_t patch,
-                                             short_t fixedDirection)>
+    typedef std::function<QuadratureRulePtr(const gsDomain<T>       & domain,
+                                             const gsBasis<T>        * basis,
+                                             const gsOptionList      & options,
+                                             index_t                   patch,
+                                             short_t                   fixedDirection,
+                                             const gsVector<short_t> & degrees)>
         QuadratureFactory;
 
 private:
@@ -410,9 +416,25 @@ public:
                 const T bdO = m_options.getReal("bdO");
                 T nz = 1;
                 const short_t dim = m_exprdata->domain().dim();
+                // The reserve is one global per-column estimate, so take the
+                // elementwise maximum over all patches -- matching what the
+                // domain fallback gsCompositeDomain::degree(i) already does.
+                gsVector<short_t> degs;
+                const size_t np = m_exprdata->domain().nPieces();
+                for (size_t p = 0; p != np; ++p)
+                {
+                    const gsVector<short_t> dp =
+                        m_exprdata->quadratureDegrees(static_cast<index_t>(p));
+                    if (dp.size() != dim) continue;
+                    if (0 == degs.size()) degs = dp;
+                    else
+                        for (short_t i = 0; i != dim; ++i)
+                            degs[i] = std::max(degs[i], dp[i]);
+                }
+                const bool useDegs = (degs.size()==dim);
                 for (short_t i = 0; i != dim; ++i)
-                    nz *= bdA * static_cast<T>(
-                                    m_exprdata->domain().degree(i)) +
+                    nz *= bdA * static_cast<T>( useDegs ? degs[i]
+                                    : m_exprdata->domain().degree(i)) +
                           static_cast<T>(bdB);
 
                 m_fmatrix.reservePerColumn(numBlocks() *
@@ -442,6 +464,22 @@ public:
     {
         _computePatternIfc(iFaces, args...);
         m_sparsity |= 4;
+    }
+
+    /// Initializes the pattern of the sparse matrix at the skeleton faces
+    /// (interior faces between two active elements) of the integration domain
+    template<class... expr> void computePatternSkeleton(expr... args)
+    {
+        _computePatternFaces(false, args...);
+        m_sparsity |= 8;
+    }
+
+    /// Initializes the pattern of the sparse matrix at the ghost faces of the
+    /// integration domain (faces used by ghost-penalty stabilization)
+    template<class... expr> void computePatternGhost(expr... args)
+    {
+        _computePatternFaces(true, args...);
+        m_sparsity |= 16;
     }
 
     /// \brief Initializes the right-hand side vector only
@@ -494,6 +532,36 @@ public:
     template<class... expr> void assembleBdr(const bContainer & bnd, expr&... args);
 
     template<class... expr> void assembleIfc(const ifContainer & iFaces, expr... args);
+
+    /// \brief Adds the expressions \a args to the system matrix/rhs, integrated
+    /// over the skeleton faces of the integration domain (all interior faces
+    /// between two active elements of the same patch).
+    ///
+    /// The arguments must be the four separate cross terms of a jump-type
+    /// bilinear form, e.g. for a normal-derivative jump penalty
+    /// \f$ \int_F [\![ \partial_n u ]\!] [\![ \partial_n v ]\!] \f$ the call is
+    /// \c assembleSkeleton(duL*duL.tr(), -duL*duR.tr(), -duR*duL.tr(), duR*duR.tr())
+    /// with \c duL/duR the left/right one-sided normal derivatives: a mixed
+    /// expression such as \c (duL-duR)*(duL-duR).tr() collapses to a single
+    /// operand under \c add_expr::rowVar()/colVar() (\c add_expr.h) and is
+    /// scattered with only one side's active functions, silently dropping the
+    /// cross blocks. See \c gsBiharmonicExprAssembler.hpp for the same
+    /// E11/-E12/-E21/E22 pattern applied at multipatch interfaces.
+    ///
+    /// The normal used on both sides is \c nv(G.left()); face quadrature
+    /// points are evaluated one-sidedly, shifted into the respective
+    /// neighbouring element by the \c "faceShift" option (a fraction of the
+    /// perpendicular cell size), so that \c .left()/.right() see two distinct
+    /// elements rather than the ambiguous knot line itself.
+    template<class... expr> void assembleSkeleton(expr... args);
+
+    /// \brief Adds the expressions \a args to the system matrix/rhs, integrated
+    /// over the ghost faces of the integration domain (the stabilization face
+    /// set of ghost-penalty methods, cf. \c gsDomain::beginGhost()).
+    ///
+    /// Same four-term jump convention, normal and face-shift behaviour as
+    /// \c assembleSkeleton(); see its documentation for details.
+    template<class... expr> void assembleGhost(expr... args);
     /*
       template<class... expr> void collocate(expr... args);// eg. collocate(-ilapl(u), f)
     */
@@ -509,26 +577,42 @@ public:
 
 private:
 
-    QuadratureRulePtr makeQuadratureRule(const gsBasis<T> & basis,
-                                         index_t patch,
+    /// Gathers the domain, basis (possibly null), and integration degrees for
+    /// \a patch and either dispatches to the installed quadrature factory or
+    /// falls back to the standard option-driven rule, sized from the highest
+    /// degree among all registered function sets (\c quadratureDegrees()),
+    /// never from a single trial space.
+    QuadratureRulePtr makeQuadratureRule(index_t patch,
                                          short_t fixedDirection = -1) const
     {
+        const gsDomain<T> & domain = *m_exprdata->domain().subdomain(patch);
+        const gsVector<short_t> degrees = m_exprdata->quadratureDegrees(patch);
+
+        const gsBasis<T> * basis = nullptr;
+        if (!m_vcol.empty() && nullptr != m_vcol[0])
+        {
+            const gsFunctionSet<T> & source = trialSpace(0).source();
+            basis = dynamic_cast<const gsBasis<T> *>(&source.piece(patch));
+        }
+
         if (m_quadratureFactory)
         {
             QuadratureRulePtr rule =
-                m_quadratureFactory(basis, m_options, patch, fixedDirection);
+                m_quadratureFactory(domain, basis, m_options, patch, fixedDirection, degrees);
             GISMO_ENSURE(rule,
                          "Custom quadrature factory returned a null rule for patch "
                          << patch << ".");
             return rule;
         }
 
-        return gsQuadrature::getPtr(basis, m_options, fixedDirection);
+        return gsQuadrature::getPtr(domain, m_options, fixedDirection, degrees);
     }
 
     template<class... expr> void _computePattern(const expr &... args);
     template<class... expr> void _computePatternBdr(const bcRefList & BCs, const expr &... args);
     template<class... expr> void _computePatternIfc(const ifContainer & iFaces, expr... args);
+    template<class... expr> void _computePatternFaces(bool ghost, expr... args);
+    template<class... expr> void _assembleFaces_impl(bool ghost, expr... args);
 
     void _blockDims(gsVector<index_t> & rowSizes,
                     gsVector<index_t> & colSizes)
@@ -893,6 +977,67 @@ private:
         }//push
     };
 
+    // Constructs the sparsity pattern of the global matrix at element faces.
+    // A face couples every basis function active in its left element with every
+    // one active in its right element; neither active set contains the other,
+    // so the pattern is the union block over both sides (all of LL, LR, RL, RR).
+    // This is exact rather than conservative: the four-term face expressions
+    // (+LL, -LR, -RL, +RR) fill precisely those blocks.
+    struct _patternFace
+    {
+        FiberMatrix       & m_fmatrix;
+        const gsMatrix<T> & m_pointL;
+        const gsMatrix<T> & m_pointR;
+        unsigned          & patchid;
+        gsMatrix<index_t> rowInd0, colInd0;
+
+        _patternFace(FiberMatrix & _fmatrix, const gsMatrix<T> & _pointL,
+                     const gsMatrix<T> & _pointR, unsigned & _patchid)
+        : m_fmatrix(_fmatrix), m_pointL(_pointL), m_pointR(_pointR), patchid(_patchid) { }
+
+        template <typename E> void operator() (const gismo::expr::_expr<E> & ee)
+        { if (E::isMatrix()) push(ee.rowVar(), ee.colVar()); }
+
+        void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
+
+        void push(const expr::gsFeSpace<T> & v, const expr::gsFeSpace<T> & u)
+        {
+            GISMO_ASSERT(v.isValid(), "The row space is not valid");
+            GISMO_ASSERT(u.isValid(), "The column space is not valid");
+            const index_t rd            = v.dim();//row
+            const index_t cd            = u.dim();//col
+            const gsDofMapper  & rowMap = v.mapper();
+            const gsDofMapper  & colMap = u.mapper();
+
+            // sr/sc select the LEFT (false) or RIGHT (true) active set on the
+            // row/column side respectively -- the four combinations are
+            // exactly the LL, LR, RL, RR blocks the assembled face fills.
+            for (int sr = 0; sr != 2; ++sr)
+            {
+                rowInd0 = v.source().piece(patchid).active(sr ? m_pointR : m_pointL);
+                for (int sc = 0; sc != 2; ++sc)
+                {
+                    colInd0 = u.source().piece(patchid).active(sc ? m_pointR : m_pointL);
+                    for (index_t c = 0; c != cd; ++c)
+                        for (index_t j = 0; j != colInd0.rows(); ++j)
+                        {
+                            const index_t jj = colMap.index(colInd0.at(j),patchid,c); // N_j
+                            if ( colMap.is_free_index(jj) )
+                            {
+                                for (index_t r = 0; r != rd; ++r)
+                                    for (index_t i = 0; i != rowInd0.rows(); ++i)
+                                    {
+                                        const index_t ii = rowMap.index(rowInd0.at(i),patchid,r); //N_i
+                                        if ( rowMap.is_free_index(ii) )
+                                            m_fmatrix.insertExplicitZero(ii, jj);
+                                    }
+                            }
+                        }
+                }
+            }
+        }//push
+    };
+
 }; // gsExprAssembler
 
 template<class T>
@@ -911,6 +1056,8 @@ gsOptionList gsExprAssembler<T>::defaultOptions()
     opt.addSwitch("flipSide", "Flip side of interface where integration is performed.", false);
     opt.addSwitch("movingInterface", "Used in interface assembly when interface is not stationary.", false);
     opt.addSwitch("SameElement","Activates optimization if all quadrature points are located in the same element", true);
+    opt.addReal("faceShift", "Fraction of the perpendicular cell size by which face "
+                "quadrature points are moved into the neighbouring elements", 1e-6);
     return opt;
 
     /// dirichlet treatment? elimination ????
@@ -1202,12 +1349,76 @@ void gsExprAssembler<T>::_computePatternIfc(const ifContainer & iFaces, expr... 
 }//omp parallel
 }
 
+// Constructs the sparsity pattern of the global matrix at the skeleton
+// (ghost==false) or ghost (ghost==true) faces of the integration domain.
+// Serial: the pattern pass needs no quadrature and is cheap enough that the
+// lock/omp machinery of the volume/interface pattern passes would only add
+// overhead, and _patternFace deliberately carries no lock vector.
+template<class T>
+template<class... expr>
+void gsExprAssembler<T>::_computePatternFaces(bool ghost, expr... args)
+{
+    GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
+    if (0==numDofs()) return;
+
+    bool isMatrix = false;
+    _checkMatrix CM(isMatrix);
+    auto arg_tpl0 = std::make_tuple(args...);
+    op_tuple(CM, arg_tpl0);
+    if (!isMatrix) return;
+
+    auto arg_tpl = std::make_tuple(args...);
+    m_exprdata->parsePattern(arg_tpl);
+
+    unsigned patchInd(0);
+    _patternFace pp(m_fmatrix, m_exprdata->points(), m_exprdata->pointsIfc(), patchInd);
+
+    const T shift = (T)m_options.askReal("faceShift", 1e-6);
+    GISMO_ENSURE(shift > 0, "faceShift must be positive: with shift 0 both sides of a face land on the knot line and every jump term silently vanishes.");
+
+    for (size_t p = 0; p != m_exprdata->domain().nPieces(); ++p)
+    {
+        const typename gsDomain<T>::Ptr dom = m_exprdata->domain().subdomain(p);
+        if (0 == (ghost ? dom->numGhostFaces() : dom->numSkeletonFaces())) continue;
+
+        patchInd = static_cast<unsigned>(p);
+
+        elementIterator it    = ghost ? dom->beginGhost() : dom->beginSkeleton();
+        elementIterator itEnd = ghost ? dom->endGhost()   : dom->endSkeleton();
+
+        for (; it < itEnd; ++it)
+        {
+            const short_t dir = it.side().direction();
+
+            // The pattern pass evaluates at the face center, which lies
+            // exactly on the knot line: gsBasis::active() there returns one
+            // single, side-independent active set, so the LR/RL cross blocks
+            // would silently be missed without the same shift used in
+            // assembly. No quadrature rule is needed here.
+            m_exprdata->points()    = it.centerPoint();
+            m_exprdata->pointsIfc() = m_exprdata->points();
+            m_exprdata->points()   .row(dir).array() -= shift * it.getPerpendicularCellSize();
+            m_exprdata->pointsIfc().row(dir).array() += shift * it.getPerpendicularCellSizeRight();
+
+            op_tuple(pp, arg_tpl);
+        }
+    }
+}
+
 
 template<class T>
 template<class... expr>
 void gsExprAssembler<T>::assemble(const expr &... args)
 {
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized, matrix.cols() = "<<m_fmatrix.cols()<<"!="<<numDofs()<<" = numDofs()");
+
+    {   // Two-sided (jump/avg) symbols are rejected here, outside the OpenMP
+        // region: an exception thrown inside it would terminate the process.
+        auto chk_tpl = std::make_tuple(args...);
+        m_exprdata->parse(chk_tpl);
+        GISMO_ENSURE(!m_exprdata->hasTwoSided(), "jump()/avg() symbols are only "
+                     "valid in a face loop (assembleSkeleton/assembleGhost).");
+    }
 
     if ((m_sparsity & 1) == 0)
         this->_computePattern(args...);
@@ -1242,7 +1453,7 @@ void gsExprAssembler<T>::assemble(const expr &... args)
         {
             QuPatch = elem.patchIndex();
             // get Degree of the domain
-            QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(QuPatch), QuPatch);
+            QuRule = makeQuadratureRule(QuPatch);
         }
 
         // Map the Quadrature rule to the element
@@ -1298,8 +1509,7 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
     {
         const boundary_condition<T> * it = &iit->get();
 
-        QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(it->patch()),
-                                    it->patch(), it->side().direction());
+        QuRule = makeQuadratureRule(it->patch(), it->side().direction());
 
         // Update boundary function source
         m_exprdata->setMutSource(*it->function());
@@ -1352,8 +1562,7 @@ void gsExprAssembler<T>::assembleBdr(const bContainer & bnd, expr&... args)
     for (gsBoxTopology::const_biterator it = bnd.begin();
          it != bnd.end(); ++it )
     {
-        QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(it->patch),
-                                    it->patch, it->side().direction());
+        QuRule = makeQuadratureRule(it->patch, it->side().direction());
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add it->patch to domainiter ?
@@ -1430,8 +1639,7 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
         else
             interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), iFace);
 
-        QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(patch1),
-                                    patch1, iFace.first().side().direction());
+        QuRule = makeQuadratureRule(patch1, iFace.first().side().direction());
 
         // TODO [later]: Use beginIfc instead of beginBdr
         typename gsBasis<T>::domainIter domIt =
@@ -1465,6 +1673,105 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
 // }//omp parallel
 }
 
+// The shared face loop of assembleSkeleton/assembleGhost. Per patch, per
+// face: a plain Gauss rule with a single node across the face (the immersed
+// quadrature rules of the "quRule" option are volume rules and do not apply
+// on a codimension-1 face), evaluated one-sidedly at points shifted into the
+// left/right neighbouring elements so that .left()/.right() see two distinct
+// elements rather than the ambiguous knot line -- see the shift invariant
+// documented at assembleSkeleton(). Kept serial for the same reason
+// assembleIfc() is: the mirror gsExprHelper and its point buffers are not
+// set up for a parallel face loop.
+template<class T> template<class... expr>
+void gsExprAssembler<T>::_assembleFaces_impl(bool ghost, expr... args)
+{
+    GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
+    if (0==numDofs()) return;
+
+    auto arg_tpl = std::make_tuple(args...);
+    m_exprdata->parse(arg_tpl);
+    if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
+
+    _checkMatrix CM(m_modified);
+    op_tuple(CM, arg_tpl);
+    _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
+
+    const T shift   = (T)m_options.askReal("faceShift", 1e-6);
+    GISMO_ENSURE(shift > 0, "faceShift must be positive: with shift 0 both sides of a face land on the knot line and every jump term silently vanishes.");
+    const short_t d = m_exprdata->domain().dim();
+
+    std::vector<typename gsQuadRule<T>::uPtr> rules(d);
+    std::vector<boundaryInterface>            faceIfc(d);
+
+    for (size_t p = 0; p != m_exprdata->domain().nPieces(); ++p)
+    {
+        const typename gsDomain<T>::Ptr dom = m_exprdata->domain().subdomain(p);
+        if (0 == (ghost ? dom->numGhostFaces() : dom->numSkeletonFaces())) continue;
+
+        const gsVector<short_t> degs = m_exprdata->quadratureDegrees(p);
+        for (short_t dir = 0; dir != d; ++dir)
+        {
+            // Plain Gauss with a single node across the face by default: the
+            // immersed quadrature rules of the "quRule" option are volume
+            // rules and do not apply on a codimension-1 face. A caller that
+            // installs a quadrature factory takes over this responsibility
+            // too -- an immersed volume rule handed a face integrates the
+            // wrong manifold silently, so a factory used here must return a
+            // rule that is actually valid on a face.
+            rules[dir] = hasCustomQuadrature()
+                ? makeQuadratureRule(static_cast<index_t>(p), dir)
+                : gsGaussRule<T>::make(
+                      gsQuadrature::numNodes(*dom, m_options.getReal("quA"),
+                                             m_options.getInt("quB"), dir, degs));
+            faceIfc[dir] = boundaryInterface(
+                patchSide(static_cast<index_t>(p), boxSide(dir,true)),
+                patchSide(static_cast<index_t>(p), boxSide(dir,false)), d);
+        }
+
+        elementIterator it    = ghost ? dom->beginGhost() : dom->beginSkeleton();
+        elementIterator itEnd = ghost ? dom->endGhost()   : dom->endSkeleton();
+
+        for (; it < itEnd; ++it)
+        {
+            const short_t dir = it.side().direction();
+
+            rules[dir]->mapTo(it.lowerCorner(), it.upperCorner(),
+                              m_exprdata->points(), m_exprdata->weights());
+            if (0 == m_exprdata->points().cols()) continue;
+
+            // Invariant: unshifted copy into pointsIfc() first, then shift
+            // points() by the LEFT cell size and pointsIfc() by the RIGHT
+            // one, before precompute() consumes both. A face has zero extent
+            // in dir, so evaluating exactly on the knot line would leave a
+            // C^{k-1} spline's k-th derivative one-sided and ambiguous; the
+            // k-th derivative of a degree-k spline is constant along dir
+            // within an element, so any 0 < shift < 1 is exact for that
+            // quantity, and a small shift keeps values, lower derivatives and
+            // Jacobians O(shift)-accurate for other uses.
+            m_exprdata->pointsIfc() = m_exprdata->points();
+            m_exprdata->points()   .row(dir).array() -= shift * it.getPerpendicularCellSize();
+            m_exprdata->pointsIfc().row(dir).array() += shift * it.getPerpendicularCellSizeRight();
+
+            m_exprdata->precompute(faceIfc[dir]);
+            op_tuple(ee, arg_tpl);
+        }
+    }
+}
+
+template<class T> template<class... expr>
+void gsExprAssembler<T>::assembleSkeleton(expr... args)
+{
+    if ((m_sparsity & 8) == 0) this->_computePatternFaces(false, args...);
+    this->_assembleFaces_impl(false, args...);
+}
+
+template<class T> template<class... expr>
+void gsExprAssembler<T>::assembleGhost(expr... args)
+{
+    if ((m_sparsity & 16) == 0) this->_computePatternFaces(true, args...);
+    this->_assembleFaces_impl(true, args...);
+}
+
 template<class T> template<class expr>
 void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 {
@@ -1494,7 +1801,7 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
         {
             QuPatch = elem.patchIndex();
             // get Degree of the domain
-            QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(QuPatch), QuPatch);
+            QuRule = makeQuadratureRule(QuPatch);
         }
 
         // Map the Quadrature rule to the element
@@ -1550,8 +1857,7 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
 
         gsCPPInterface<T> interfaceMap(getGeometryMap(), iFace);
 
-        QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(patch1),
-                                    patch1, iFace.first().side().direction());
+        QuRule = makeQuadratureRule(patch1, iFace.first().side().direction());
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patch1 to domainiter ?
@@ -1659,7 +1965,7 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
     {
         auto & bb = this->trialSpace(0).source().basis(patchInd);
 
-        QuRule = makeQuadratureRule(bb, patchInd);
+        QuRule = makeQuadratureRule(patchInd);
         const index_t numNodes = QuRule->numNodes();
 
         // @hverhelst: THIS ASSUMES SAME NUMBER OF QUNODES PER ELEMENT

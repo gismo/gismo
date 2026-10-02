@@ -88,9 +88,15 @@ namespace internal
 // Tensors
 #include <gsDomain/gsTensorDomainIterator.h>
 #include <gsDomain/gsTensorDomainBoundaryIterator.h>
+#include <gsDomain/gsDomainFaceIterator.h>
+#include <gsDomain/gsTensorDomainFaceIterator.h>
 #include <gsDomain/gsPointDomain.h>
 #include <gsTensor/gsGridIterator.h>
 #include <gsTensor/gsGenericTensorBasis.h>
+
+// Implicit domain
+#include <gsDomain/gsTrimmedDomainIterator.h>
+#include <gsDomain/gsMeshLevelSet.h>
 
 /* ----------- Nurbs ----------- */
 #include <gsNurbs/gsKnotVector.h>
@@ -118,6 +124,7 @@ namespace internal
 
 /* ----------- Mesh ----------- */
 #include <gsMesh2/gsSurfMesh.h>
+#include <gsMesh2/gsSurfMeshBVH.h>
 
 /* ----------- Mesh subdivision ----------- */
 #include <gsMesh2/gsSubdivisionScheme.h>
@@ -168,6 +175,7 @@ namespace internal
 
 /* ----------- Quadrature ----------- */
 #include <gsAssembler/gsQuadRule.h>
+#include <gsAssembler/gsMomentRule.h>
 #include <gsAssembler/gsQuadrature.h>
 
 /* ----------- Assembler ----------- */

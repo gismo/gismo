@@ -72,6 +72,46 @@ public:
         for (index_t i = 0; i < increment; i++)
             isGood = isGood && nextLexicographicIter(curElement, meshEnd);
     }
+private:
+
+    inline gsVector<unsigned, D> tensorIndex(const size_t & m) const
+    {
+        gsVector<unsigned, D> ind;
+        int mm = m;
+        for (short_t i = 0; i<D; ++i )
+        {
+            const size_t sz = (meshEnd[i] - meshStart[i]);
+            ind(i)= mm % sz;
+            mm -= ind(i);
+            mm /= sz;
+        }
+        return ind;
+    }
+
+    inline size_t flatIndex(const gsVector<size_t> & ind) const
+    {
+        size_t m;
+
+        m = ind(D-1);
+        for ( int i=D-2; i>=0; --i )
+            m = m * (meshEnd[i] - meshStart[i]) + ind[i];
+        return m;
+    }
+
+public:
+
+    //Element index is a tensor-product element index
+    size_t skipTo(const gsVector<size_t> & elemIndex)
+    {
+        gsVector<size_t> ii(1);
+        GISMO_ASSERT((index_t)D==elemIndex.size(), "Expecting one element index.");
+        for (int i = 0; i < D; ++i)
+        {
+            ii[0] = elemIndex[i];
+            curElement[i].skipTo(ii);
+        }
+        return flatIndex(elemIndex);
+    }
 
     // Documentation in gsDomainIterator.h
     void reset() override
@@ -85,7 +125,7 @@ public:
     {
         gsVector<unsigned, D> curr_index(D);
         for (int i = 0; i < D; ++i)
-            curr_index[i]  = curElement[i]->index();
+            curr_index[i]  = curElement[i]->id();
         return curr_index;
     }
 
@@ -122,7 +162,7 @@ public:
             upper[i]  = curElement[i].upperCorner().value();
         return upper;
     }
-
+    
     bool isBoundaryElement() const override
     {
         for (int i = 0; i< D; ++i)

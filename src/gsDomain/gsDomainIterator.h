@@ -173,6 +173,12 @@ public:
         return *this;
     }
 
+    void skipTo(const gsVector<size_t> & elemIndex)
+    {
+        const index_t _id = m_domainIter->skipTo(elemIndex);
+        m_domainIter->resetId( _id );
+    }
+
     /// Decrement by a number of steps
     // gsDomainIteratorWrapper operator-(index_t k) const
     // {
@@ -195,6 +201,9 @@ public:
 
     gsDomainIterator<T> & operator*() { return *m_domainIter; }
 
+    short_t sign() const
+    { return m_domainIter->sign(); }
+
 public:
 
     short_t dim() const
@@ -211,6 +220,21 @@ public:
 
     const T getPerpendicularCellSize() const
     { return m_domainIter->getPerpendicularCellSize(); }
+
+    const T getPerpendicularCellSizeRight() const
+    { return m_domainIter->getPerpendicularCellSizeRight(); }
+
+    size_t leftElementId() const
+    { return m_domainIter->leftElementId(); }
+
+    size_t rightElementId() const
+    { return m_domainIter->rightElementId(); }
+
+    short_t leftSign() const
+    { return m_domainIter->leftSign(); }
+
+    short_t rightSign() const
+    { return m_domainIter->rightSign(); }
 
     bool isBoundaryElement() const
     { return m_domainIter->isBoundaryElement(); }
@@ -297,6 +321,11 @@ private:
             this->prev();
     }
 
+    /// Skips to an arbitrary element index, and return the new element ID.
+    /// The index is a vector of ints and is defined in the implementation
+    virtual size_t skipTo(const gsVector<size_t> & elemIndex)
+    { GISMO_NO_IMPLEMENTATION }
+
     /// Resets the iterator so that it points to the first element
     virtual void reset()
     {
@@ -305,7 +334,7 @@ private:
     }
 
 protected:
-    inline void resetId  () { m_id = 0;}
+    inline void resetId  (size_t val = 0) { m_id = val;}
     inline void nextId(index_t _k = 1) { m_id += _k; }
     inline void prevId(index_t _k = 1) { m_id -= _k; }
 
@@ -374,6 +403,30 @@ public:
     {
         GISMO_NO_IMPLEMENTATION
     }
+
+    /// Sign of the element with respect to a trimming level set:
+    /// -1 interior, 0 cut, +1 exterior. Domains with no trimming concept
+    /// report -1, i.e. every element is interior.
+    virtual short_t sign() const { return -1; }
+
+    /// Perpendicular cell size on the right (upper-index) side of a face;
+    /// face iterators only, see gsDomainFaceIterator.
+    virtual const T getPerpendicularCellSizeRight() const
+    { GISMO_NO_IMPLEMENTATION }
+
+    /// Flat element index of the left (lower-index) neighbour of a face
+    virtual size_t leftElementId() const
+    { GISMO_NO_IMPLEMENTATION }
+
+    /// Flat element index of the right (upper-index) neighbour of a face
+    virtual size_t rightElementId() const
+    { GISMO_NO_IMPLEMENTATION }
+
+    /// Sign of the left neighbour of a face, see sign()
+    virtual short_t leftSign() const { return -1; }
+
+    /// Sign of the right neighbour of a face, see sign()
+    virtual short_t rightSign() const { return -1; }
 
     virtual bool isBoundaryElement() const
     {
@@ -446,6 +499,8 @@ public:
         GISMO_NO_IMPLEMENTATION
     }
 
+    virtual size_t skipTo(const gsVector<size_t> & elemId)
+    { GISMO_ERROR("Cannot proceed to skipTo element. End iterator reached."); }
 
 };
 

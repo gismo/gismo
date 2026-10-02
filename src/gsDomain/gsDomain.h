@@ -182,6 +182,37 @@ public: // Domain element iterators
         return iterator(new gsDomainIteratorEnd<T>(this->numElementsBdr(bs)));
     }
 
+    /// Returns an iterator over the interior faces of the skeleton set: all
+    /// faces shared by two elements of this domain.
+    virtual iterator beginSkeleton() const
+    {GISMO_NO_IMPLEMENTATION}
+
+    /// Returns an iterator to the end of the skeleton faces
+    virtual iterator endSkeleton() const
+    {
+        return iterator(new gsDomainIteratorEnd<T>(this->numSkeletonFaces()));
+    }
+
+    /// Number of faces in the skeleton set.
+    /// Implementations compute this by a predicate sweep, i.e. in O(#faces):
+    /// hoist endSkeleton() out of a loop rather than re-evaluating it per step.
+    virtual size_t numSkeletonFaces() const { return 0; }
+
+    /// Returns an iterator over the ghost set: the subset of the skeleton
+    /// faces having at least one cut neighbour. Empty on domains without a
+    /// trimming concept.
+    virtual iterator beginGhost() const
+    {GISMO_NO_IMPLEMENTATION}
+
+    /// Returns an iterator to the end of the ghost faces
+    virtual iterator endGhost() const
+    {
+        return iterator(new gsDomainIteratorEnd<T>(this->numGhostFaces()));
+    }
+
+    /// Number of faces in the ghost set. Same cost note as numSkeletonFaces().
+    virtual size_t numGhostFaces() const { return 0; }
+
     /// Returns a pair of two iterators, that define a chunk (range)
     /// per thread of elements that can be used in a parallel for
     /// loop. If a single thread is available then it returns the pair
@@ -236,6 +267,48 @@ public: // Domain element iterators
     //virtual size_t numBackgroundElements() const;
 
     /** @brief Degree of the domain
+
+    \b IMPORTANT \b -- \b KNOWN \b DESIGN \b DEFECT, \b SCHEDULED \b FOR \b THE
+    \b NEXT \b RELEASE.
+
+    A degree is a property of a discrete SPACE, not of a domain. A domain is a
+    partition of a region into elements; it has a dimension, a bounding box and
+    a element count, and nothing about it determines a polynomial order. This
+    method exists only because gsQuadrature sizes its rules from
+    numNodes(domain, quA, quB, ...) and therefore needs a degree at a point
+    where it has already discarded the basis:
+
+        gsQuadrature::numNodes(const gsBasis<T> & basis, ...)   // HAS the degree
+            -> gsQuadrature::numNodes(*basis.domain(), ...)     // throws it away
+                -> domain.degree()                              // asks for it back
+
+    The round-trip is lossless only when the domain was constructed FROM the
+    basis that is being assembled. That holds for gsTensorDomain and friends,
+    where degree() forwards to the basis. It does NOT hold in general:
+
+      - gsTrimmedDomain (and hence gsImplicitTrimmedDomain) can be built from a
+        bounding box + cell counts, or from a target element size, with no basis
+        anywhere in sight. Those paths must be TOLD a degree; see the note on
+        gsTrimmedDomain::m_deg. Nothing verifies that the number they were told
+        matches the space eventually assembled on them, and the consequence of a
+        mismatch is silent under-integration, not an error.
+      - A single domain used with two spaces of different degree (a mixed
+        formulation, or a Nitsche coupling of unequal orders) has no correct
+        answer to return.
+
+    THE FIX is to thread the degree through the quadrature call rather than
+    through the domain: gsQuadrature::numNodes() should take the order it needs
+    as an argument, supplied by the caller that still holds the basis. That
+    removes degree() from gsDomain entirely, deletes gsTrimmedDomain::m_deg and
+    its four assignment sites, and turns the mismatch above into a non-question.
+    It is an API break for every gsDomain implementor, which is why it is
+    deferred to a release boundary rather than patched in place.
+
+    UNTIL THEN: treat a degree obtained from a domain as a hint, not a
+    guarantee. If you are writing a rule whose accuracy depends on it, validate
+    it against the space you are assembling and diagnose the mismatch loudly --
+    gsQuadrature's MomentFittingRule branch does exactly that, warning when the
+    resulting point count falls below the 2*degree+1 an operator needs.
     */
     virtual short_t degree(short_t i = 0) const
     {GISMO_UNUSED(i); GISMO_NO_IMPLEMENTATION}

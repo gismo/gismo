@@ -13,6 +13,37 @@
 
 #include "gismo_unittest.h"       // Brings in G+Smo and the UnitTest++ framework
 
+#include <gsDomain/gsImplicitTrimmedDomain.h>
+
+namespace {
+
+/// RAII capture of std::cout (gsWarn/gsInfo both write there, gsDebug.h:43,51).
+struct CoutCapture
+{
+    std::ostringstream oss;
+    std::streambuf *   old;
+    CoutCapture() : old(std::cout.rdbuf(oss.rdbuf())) {}
+    ~CoutCapture() { std::cout.rdbuf(old); }
+    std::string str() const { return oss.str(); }
+};
+
+/// A fully-interior gsImplicitTrimmedDomain over the unit square, built with
+/// m_deg == 1 (constant level set -1 everywhere -> no trimming), used by the
+/// explicit-degrees tests (1 and 2) to isolate the "degrees" parameter from
+/// domain.degree() -- both would otherwise be 1 and the tests would not
+/// distinguish the explicit-degrees path from the fallback.
+inline gsImplicitTrimmedDomain<2,real_t> unitSquareDomainDeg1()
+{
+    gsFunctionExpr<real_t> phi("-1", 2);
+    gsMatrix<real_t> bbox(2,2);
+    bbox << 0.0, 0.0,     // lower corners
+            1.0, 1.0;     // upper corners
+    gsVector<index_t,2> nc; nc << 4, 4;
+    return gsImplicitTrimmedDomain<2,real_t>(phi, bbox, nc, 5, /*deg=*/1);
+}
+
+} // anonymous namespace
+
 SUITE(gsQuadratureRules_test)                 // The suite should have the same name as the file
 {
 
@@ -108,6 +139,242 @@ TEST(tensor_quad_22)
 {
     index_t array[] = {22};
     testWork(array, 1);
+}
+
+/// Test 1 -- gsQuadrature::numNodes(domain, quA, quB, fixDir, degrees) uses
+/// the explicitly supplied per-direction degrees and falls back to
+/// domain.degree(i) only when degrees is empty.
+///
+/// The domain is built with m_deg == 1 (domain.degree(i) == 1 for both
+/// directions), so any node count that used the explicit degrees {3,3} or
+/// {3,2} instead of the fallback is unambiguous.
+TEST(explicitDegrees_numNodes)
+{
+    gsImplicitTrimmedDomain<2,real_t> domain = unitSquareDomainDeg1();
+
+    // Sanity: the domain's own guessed degree is 1 in both directions.
+    CHECK_EQUAL((short_t)1, domain.degree(0));
+    CHECK_EQUAL((short_t)1, domain.degree(1));
+
+    // Explicit isotropic degrees {3,3}: quA*deg+quB+0.5 = 1*3+1 = 4.
+    gsVector<short_t> degs33(2); degs33 << 3, 3;
+    gsVector<index_t> nn33 = gsQuadrature::numNodes(domain, 1.0, 1, -1, degs33);
+    CHECK_EQUAL(4, nn33[0]);
+    CHECK_EQUAL(4, nn33[1]);
+
+    // Empty degrees: falls back to domain.degree(i) == 1 -> 1*1+1 = 2.
+    gsVector<index_t> nnEmpty = gsQuadrature::numNodes(domain, 1.0, 1, -1, gsVector<short_t>());
+    CHECK_EQUAL(2, nnEmpty[0]);
+    CHECK_EQUAL(2, nnEmpty[1]);
+
+    // Anisotropic guard: {3,2} -> (4,3). Catches a direction collapse or a
+    // maxCoeff() shortcut leaking into numNodes.
+    gsVector<short_t> degs32(2); degs32 << 3, 2;
+    gsVector<index_t> nn32 = gsQuadrature::numNodes(domain, 1.0, 1, -1, degs32);
+    CHECK_EQUAL(4, nn32[0]);
+    CHECK_EQUAL(3, nn32[1]);
+}
+
+/// Test 2 -- gsQuadrature::getPtr(domain, options, fixDir, degrees) forwards
+/// the same degrees into the constructed rule (node count).
+TEST(explicitDegrees_getPtr)
+{
+    gsImplicitTrimmedDomain<2,real_t> domain = unitSquareDomainDeg1();
+
+    gsOptionList opt;
+    opt.addInt ("quRule", "", gsQuadrature::GaussLegendre);
+    opt.addReal("quA",    "", 1.0);
+    opt.addInt ("quB",    "", 1);
+
+    gsVector<short_t> degs33(2); degs33 << 3, 3;
+    typename gsQuadRule<real_t>::uPtr ruleExplicit =
+        gsQuadrature::getPtr<real_t>(domain, opt, -1, degs33);
+    CHECK_EQUAL(16, ruleExplicit->numNodes()); // 4 x 4
+
+    // Contrast: with empty degrees, the fallback domain.degree(i) == 1 gives
+    // 2 nodes/direction, i.e. 4 total.
+    typename gsQuadRule<real_t>::uPtr ruleFallback =
+        gsQuadrature::getPtr<real_t>(domain, opt, -1, gsVector<short_t>());
+    CHECK_EQUAL(4, ruleFallback->numNodes()); // 2 x 2
+}
+
+/// Test 3 -- numNodes(basis, ...) and numNodes(*basis.domain(), ...) agree
+/// for both gsTensorBSplineBasis and gsTHBSplineBasis: guards the reroute of
+/// the basis overload away from a naive *basis.domain() forward that would
+/// drop the (accurate) per-basis degrees. Anisotropic degrees (2 in x, 3 in
+/// y) so a direction collapse or a maxDegree() shortcut cannot hide.
+TEST(basisDomainDegreeAgreement)
+{
+    gsKnotVector<real_t> kvx(0, 1, 3, 3); // degree 2
+    gsKnotVector<real_t> kvy(0, 1, 3, 4); // degree 3
+    gsTensorBSplineBasis<2,real_t> tb(kvx, kvy);
+    gsTHBSplineBasis<2,real_t> thb(tb);
+
+    CHECK_EQUAL((short_t)2, tb.degree(0));
+    CHECK_EQUAL((short_t)3, tb.degree(1));
+    CHECK_EQUAL((short_t)2, thb.degree(0));
+    CHECK_EQUAL((short_t)3, thb.degree(1));
+
+    {
+        gsVector<index_t> nnBasis  = gsQuadrature::numNodes(tb, 1.0, 1, -1);
+        gsVector<index_t> nnDomain = gsQuadrature::numNodes(*tb.domain(), 1.0, 1, -1);
+        CHECK_EQUAL(nnDomain[0], nnBasis[0]);
+        CHECK_EQUAL(nnDomain[1], nnBasis[1]);
+        CHECK_EQUAL(tb.degree(0) + 1, nnBasis[0]);
+        CHECK_EQUAL(tb.degree(1) + 1, nnBasis[1]);
+    }
+    {
+        gsVector<index_t> nnBasis  = gsQuadrature::numNodes(thb, 1.0, 1, -1);
+        gsVector<index_t> nnDomain = gsQuadrature::numNodes(*thb.domain(), 1.0, 1, -1);
+        CHECK_EQUAL(nnDomain[0], nnBasis[0]);
+        CHECK_EQUAL(nnDomain[1], nnBasis[1]);
+        CHECK_EQUAL(thb.degree(0) + 1, nnBasis[0]);
+        CHECK_EQUAL(thb.degree(1) + 1, nnBasis[1]);
+    }
+}
+
+/// Test 5 -- the moment-fitting exactness guard's verdict (warn / no-warn)
+/// is decided by _maxDegree(domain, degrees) alone: the two arms below use
+/// IDENTICAL quA/quB and differ ONLY in the `degrees` argument, and they are
+/// constructed to land on opposite sides of the `n < 2*deg+1` inequality
+/// because of the degree source alone. If `_maxDegree` ignored `degrees`
+/// (i.e. always returned domain.degree() == 1), both arms would compute the
+/// SAME deg/n and give the SAME verdict, and arm 2's assertion below would
+/// fail -- see the falsification requirement in the task report.
+///
+/// Arithmetic oracle (deg = _maxDegree(domain, degrees), quA=1.0, quB=2,
+/// n = lround(quA*deg) + quB, warn iff n < 2*deg+1):
+///
+/// | arm | degrees | deg | n = lround(1.0*deg)+2 | 2*deg+1 | verdict       |
+/// |-----|---------|-----|------------------------|---------|---------------|
+/// | 1   | empty   |   1 | 1+2 = 3                | 3       | no warning    |
+/// | 2   | {3,3}   |   3 | 3+2 = 5                | 7       | warns         |
+///
+/// Neither arm throws: gsMomentRule's output grid is n per direction
+/// (3 in arm 1, 5 in arm 2), both >= 2, so gsMomentRule.h:228's
+/// `at least 2 output points per direction` guard is satisfied in both
+/// arms and the verdict below is decided by the warning assertion alone,
+/// not by an exception.
+TEST(momentFittingExactnessGuard)
+{
+    gsFunctionExpr<real_t> phi("sqrt(x^2+y^2)-1", 2);
+    gsMatrix<real_t> bbox(2,2);
+    bbox << -1.2, -1.0,
+             1.2,  1.0;
+    gsVector<index_t,2> nc; nc << 5, 4;
+    gsImplicitTrimmedDomain<2,real_t> domain(phi, bbox, nc, 5, /*deg=*/1);
+
+    gsVector<short_t> degs(2); degs << 3, 3;
+    const std::string needle = "moment fitting is exact only up to degree n-1";
+
+    // NOTE on ordering: gsQuadrature::makeMomentFittingPtr guards its warning
+    // behind a one-shot `static bool warned` (gsQuadrature.h:806, accessed via
+    // the public gsQuadrature::momentExactnessWarned() test hook). We reset
+    // that flag immediately before EACH arm below so neither arm depends on
+    // what any other test in the binary did first, but we ALSO keep the
+    // no-warning case FIRST and the warning case SECOND in this same TEST
+    // body: asserting "no warning" only proves something if a warning was
+    // still possible at that point. If the positive (warning) case ran
+    // first, the "no warning" assertion afterwards would be checking a
+    // permanently spent flag and could never fail -- do not reorder these
+    // two blocks.
+
+    // 1) FIRST, must not warn: empty degrees -> deg = domain.degree() = 1,
+    //    n = 3, 2*deg+1 = 3, 3 < 3 is false.
+    {
+        gsQuadrature::momentExactnessWarned() = false;
+
+        gsOptionList opt;
+        opt.addInt ("quRule",             "", gsQuadrature::MomentFittingRule);
+        opt.addInt ("quMomentUnderlying", "", gsQuadrature::CutCellRule);
+        opt.addReal("quA",                "", 1.0);
+        opt.addInt ("quB",                "", 2);
+
+        CoutCapture cap;
+        typename gsQuadRule<real_t>::uPtr rule =
+            gsQuadrature::getPtr<real_t>(domain, opt, -1, gsVector<short_t>());
+        CHECK(cap.str().find(needle) == std::string::npos);
+    }
+
+    // 2) SECOND, must warn: explicit degrees {3,3} -> deg = maxCoeff = 3,
+    //    n = 5, 2*deg+1 = 7, 5 < 7 is true. Same quA/quB as arm 1 -- the
+    //    ONLY difference is the `degrees` argument.
+    {
+        gsQuadrature::momentExactnessWarned() = false;
+
+        gsOptionList opt;
+        opt.addInt ("quRule",             "", gsQuadrature::MomentFittingRule);
+        opt.addInt ("quMomentUnderlying", "", gsQuadrature::CutCellRule);
+        opt.addReal("quA",                "", 1.0);
+        opt.addInt ("quB",                "", 2);
+
+        CoutCapture cap;
+        typename gsQuadRule<real_t>::uPtr rule =
+            gsQuadrature::getPtr<real_t>(domain, opt, -1, degs);
+        CHECK(cap.str().find(needle) != std::string::npos);
+    }
+}
+
+/// Test 6 -- numNodes(domain, quA, quB, fixDir, degrees) and
+/// getPtr(domain, options, fixDir, degrees) with a NON-NEGATIVE fixDir and
+/// an anisotropic explicit `degrees`, pinning that:
+///  (a) the fixed direction is dropped to 1 node, and
+///  (b) each SURVIVING direction uses ITS OWN degree from `degrees`, not
+///      degrees.maxCoeff() and not domain.degree(i).
+///
+/// Domain: unitSquareDomainDeg1(), domain.degree(i) == 1 in both directions.
+/// degs32 = {3,2} is anisotropic on purpose, and degs32[0] == 3 is the
+/// maximum, so fixDir = 0 (which drops direction 0 and keeps direction 1,
+/// whose own degree is 2) separates "per-direction degrees" from
+/// "the maximum": a maxCoeff() shortcut leaking into numNodes would report
+/// 4 nodes in direction 1 instead of 3.
+TEST(explicitDegrees_fixDir)
+{
+    gsImplicitTrimmedDomain<2,real_t> domain = unitSquareDomainDeg1();
+
+    gsVector<short_t> degs32(2); degs32 << 3, 2;
+
+    // numNodes: quA=1.0, quB=1, nnodes[i] = lround(quA*deg_i + quB + 0.5)...
+    // (cast<Real,index_t>(quA*deg_i + quB + 0.5)); fixed direction -> 1 node.
+
+    // fixDir = 0: direction 0 fixed -> 1 node; direction 1 survives with its
+    // OWN degree 2 -> 1*2+1+0.5 -> 3. NOT 4 (which would be maxCoeff()==3
+    // used instead), NOT 2 (which would be the domain.degree() fallback).
+    {
+        gsVector<index_t> nn =
+            gsQuadrature::numNodes(domain, 1.0, 1, /*fixDir=*/0, degs32);
+        CHECK_EQUAL(1, nn[0]);
+        CHECK_EQUAL(3, nn[1]);
+    }
+
+    // fixDir = 1: direction 1 fixed -> 1 node; direction 0 survives with its
+    // OWN degree 3 -> 1*3+1+0.5 -> 4.
+    {
+        gsVector<index_t> nn =
+            gsQuadrature::numNodes(domain, 1.0, 1, /*fixDir=*/1, degs32);
+        CHECK_EQUAL(4, nn[0]);
+        CHECK_EQUAL(1, nn[1]);
+    }
+
+    // Contrast: fixDir = 0 with empty degrees -> direction 1 falls back to
+    // domain.degree(1) == 1 -> 1*1+1+0.5 -> 2 (not 3).
+    {
+        gsVector<index_t> nn =
+            gsQuadrature::numNodes(domain, 1.0, 1, /*fixDir=*/0, gsVector<short_t>());
+        CHECK_EQUAL(1, nn[0]);
+        CHECK_EQUAL(2, nn[1]);
+    }
+
+    // Same, through getPtr -- both quA and quB keys must be present since
+    // getPtr reads them with getReal("quA")/getInt("quB").
+    gsOptionList opt;
+    opt.addInt ("quRule", "", gsQuadrature::GaussLegendre);
+    opt.addReal("quA",    "", 1.0);
+    opt.addInt ("quB",    "", 1);
+
+    CHECK_EQUAL(3, gsQuadrature::getPtr<real_t>(domain, opt, /*fixDir=*/0, degs32)->numNodes()); // 1 x 3
+    CHECK_EQUAL(4, gsQuadrature::getPtr<real_t>(domain, opt, /*fixDir=*/1, degs32)->numNodes()); // 4 x 1
+    CHECK_EQUAL(2, gsQuadrature::getPtr<real_t>(domain, opt, /*fixDir=*/0, gsVector<short_t>())->numNodes()); // 1 x 2 fallback
 }
 
 void testWork(const index_t nodes[], const size_t dim)

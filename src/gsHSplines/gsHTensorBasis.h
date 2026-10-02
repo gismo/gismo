@@ -26,6 +26,8 @@
 
 #include <gsUtils/gsSortedVector.h>
 
+#include <gsHSplines/gsHTree.h>
+
 namespace gismo
 {
 
@@ -84,11 +86,14 @@ public:
 
     typedef T Scalar_t;
 
-    typedef gsHTree<d, index_t> hdomain_type;
+    typedef gsHTree<d,index_t> tree_t;
 
-    typedef typename hdomain_type::point point;
+    typedef tree_t hdomain_type;
 
-    typedef typename hdomain_type::box   box;
+    typedef typename hdomain_type::point_t point;
+
+    typedef typename hdomain_type::data_t  data;
+    typedef typename data::kdBox box;
 
     typedef std::vector< box > boxHistory;
 
@@ -223,7 +228,9 @@ public:
                 k1[j] = this->m_bases.back()->knots(j).uFind(boxes(j,2*i)).uIndex();
                 k2[j] = this->m_bases.back()->knots(j).uFind(boxes(j,2*i+1)).uIndex()+1;
             }
-            int level = m_tree.query3(k1,k2,m_bases.size()-1);
+
+            int level = m_tree.query3(k1, k2, m_bases.size()-1);
+
             for(short_t j = 0; j < d; j++)
             {
                 k1[j] = this->m_bases[level+1]->knots(j).uFind(boxes(j,2*i)).uIndex();
@@ -607,10 +614,10 @@ public:
     }
 
     /// Returns a reference to m_tree
-    const gsHTree<d,index_t> & tree() const { return m_tree; }
+    const tree_t & tree() const { return m_tree; }
 
     /// Returns a reference to m_tree
-    gsHTree<d,index_t> &       tree()       { return m_tree; }
+    tree_t &       tree()       { return m_tree; }
 
     /// Cleans the basis, removing any inactive levels
     void makeCompressed();
@@ -680,19 +687,6 @@ public:
         return *this->m_bases[i];
     }
 
-    /**
-     * @brief Merges \a this basis with an \a other basis
-     * @note Merging bases does not work when `manualLevels` is true for either of the bases.
-     * @note Level 0 of both bases should be the same.
-     */
-    void merge(const gsHTensorBasis<d,T> & other);
-
-    /// Returns a new basis that is the mesh union of \a basis1 and \a basis2.
-    /// Both must share the same level-0 tensor-product basis.
-    /// @note Does not work when manualLevels is true.
-    static uPtr merge(const gsHTensorBasis<d,T> & basis1,
-                      const gsHTensorBasis<d,T> & basis2);
-
     // Refine the basis uniformly by inserting \a numKnots new knots on each knot span
     virtual void uniformRefine(int numKnots = 1, int mul=1, int dir=-1);
 
@@ -717,13 +711,13 @@ public:
      * two indices of the upper right corner, see gsHTensorBasis::refineElements() for details.
      */
     void refineElements_withCoefs   (gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
-    void refineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T,RowMajor> &transfer);
-    void refineElements_withTransfer2(std::vector<index_t> const & boxes, gsSparseMatrix<T,RowMajor> &transfer);
+    void refineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T> &transfer);
+    void refineElements_withTransfer2(std::vector<index_t> const & boxes, gsSparseMatrix<T> &transfer);
 
     void refineElements_withCoefs2(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
 
     void unrefineElements_withCoefs   (gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
-    void unrefineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T,RowMajor> &transfer);
+    void unrefineElements_withTransfer(std::vector<index_t> const & boxes, gsSparseMatrix<T> &transfer);
 
     // Coarsens the basis uniformly by removing \a numKnots knots on each knot span
     virtual void uniformCoarsen(int numKnots = 1);
@@ -943,41 +937,12 @@ public:
     virtual void refineElements(std::vector<index_t> const & boxes);
 
     /**
-     * @brief Refines the cells up to level \a minLevel.
-     * All cells on levels coarser than \a minLevel are refined so that
-     * all active cells are at level \a minLevel or finer.
-     */
-    void refineToLevel(index_t minLevel);
-    void refineToLevel_withTransfer(index_t minLevel, gsSparseMatrix<T,RowMajor> &transfer);
-    void refineToLevel_withCoefs(index_t minLevel, gsMatrix<T> & coefs);
-    /**
-     * @brief Refines the cells of the coarsest level.
-     */
-    void refineCoarsestLevel();
-    void refineCoarsestLevel_withTransfer(gsSparseMatrix<T,RowMajor> &transfer);
-    void refineCoarsestLevel_withCoefs(gsMatrix<T> & coefs);
-
-    /**
      * @brief      Clear the given boxes into the quadtree.
      *
      * @param      boxes   See refineElements
      * @param[in]  refExt  See refineElements
      */
     virtual void unrefineElements(std::vector<index_t> const & boxes);
-
-    /**
-     * @brief Unrefines the cells down to level \a minLevel.
-     * All cells on levels finer than \a minLevel are coarsened to level \a minLevel.
-     */
-    void unrefineToLevel(index_t minLevel);
-    void unrefineToLevel_withTransfer(index_t minLevel, gsSparseMatrix<T,RowMajor> &transfer);
-    void unrefineToLevel_withCoefs(index_t minLevel, gsMatrix<T> & coefs);
-    /**
-     * @brief Unrefines the cells of the finest level.
-     */
-    void unrefineFinestLevel();
-    void unrefineFinestLevel_withTransfer(gsSparseMatrix<T,RowMajor> &transfer);
-    void unrefineFinestLevel_withCoefs(gsMatrix<T> & coefs);
 
     /// Refines all the cells on the side \a side up to level \a lvl
     void refineSide(const boxSide side, index_t lvl);
@@ -1042,7 +1007,7 @@ public:
     /// and where x1, y1, x2 and y2 are parameters (knots).
     /// @return bounding boxes of the polylines in the form
     /// < levels < polylines_in_one_level < x_ll, y_ll, x_ur, y_ur > > >, where "ur" stands for "upper right" and "ll" for "lower left".
-    std::vector< std::vector< std::vector<index_t > > > domainBoundariesParams( std::vector< std::vector< std::vector< std::vector< T > > > >& result) const;
+//    std::vector< std::vector< std::vector<index_t > > > domainBoundariesParams( std::vector< std::vector< std::vector< std::vector< T > > > >& result) const;
 
     /// @brief Gives polylines on the boundaries between different levels of the mesh.
     /// @param result variable where to write the polylines in the form
@@ -1051,7 +1016,7 @@ public:
     /// and where x1, y1, x2 and y2 are indices of the knots with respect to m_maxInsLevel.
     /// @return bounding boxes of the polylines in the form
     /// < levels < polylines_in_one_level < x_ll, y_ll, x_ur, y_ur > > >, where "ur" stands for "upper right" and "ll" for "lower left".
-    std::vector< std::vector< std::vector<index_t > > > domainBoundariesIndices( std::vector< std::vector< std::vector< std::vector<index_t > > > >& result) const;
+//    std::vector< std::vector< std::vector<index_t > > > domainBoundariesIndices( std::vector< std::vector< std::vector< std::vector<index_t > > > >& result) const;
     // TO DO: use gsHDomainLeafIterator for a better implementation
     size_t numElements(boxSide const & s = 0) const
     {
@@ -1186,16 +1151,14 @@ private:
 
     /// \brief Implementation of the features common to domainBoundariesParams and domainBoundariesIndices. It takes both
     /// @param indices and @param params but fills in only one depending on @param indicesFlag (if true, then it returns indices).
-    std::vector< std::vector< std::vector<index_t > > > domainBoundariesGeneric(std::vector< std::vector< std::vector< std::vector<index_t > > > >& indices,
-                                                                                      std::vector< std::vector< std::vector< std::vector< T > > > >& params,
-                                                                                      bool indicesFlag ) const;
+    //std::vector< std::vector< std::vector<index_t > > > domainBoundariesGeneric(std::vector< std::vector< std::vector< std::vector<index_t > > > >& indices, std::vector< std::vector< std::vector< std::vector< T > > > >& params, bool indicesFlag ) const;
 
 public:
     /// \brief Returns transfer matrix between the hirarchical spline given
     /// by the characteristic matrix "old" and this
-    void transfer (const std::vector<gsSortedVector<index_t> > &old, gsSparseMatrix<T,RowMajor>& result);
+    void transfer (const std::vector<gsSortedVector<index_t> > &old, gsSparseMatrix<T>& result);
 
-    void transfer2 (const std::vector<gsSortedVector<index_t> > &old, gsSparseMatrix<T,RowMajor>& result);
+    void transfer2 (const std::vector<gsSortedVector<index_t> > &old, gsSparseMatrix<T>& result);
 
     /// \brief Creates characteristic matrices for basis where "level" is the
     /// maximum level i.e. ignoring higher level refinements
@@ -1233,8 +1196,9 @@ template<typename T> class gsHTensorBasis<0,T>
   /**
    * @brief Initializes the Python wrapper for the class: gsHTensorBasis
    */
-  template <short_t d>
-  void pybind11_init_gsHTensorBasis(pybind11::module &m);
+  void pybind11_init_gsHTensorBasis2(pybind11::module &m);
+  void pybind11_init_gsHTensorBasis3(pybind11::module &m);
+  void pybind11_init_gsHTensorBasis4(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

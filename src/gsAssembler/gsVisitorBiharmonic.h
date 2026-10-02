@@ -71,7 +71,7 @@ public:
                     gsQuadRule<T>    & rule)
     {
         // Setup Quadrature
-        rule = gsQuadrature::get(*basis.domain(), options);
+        rule = gsQuadrature::get(basis, options);
 
         // Set Geometry evaluation flags
         md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM | NEED_2ND_DER;

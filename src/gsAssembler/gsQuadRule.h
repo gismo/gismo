@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsDomain/gsDomainIterator.h>
 
 namespace gismo
 {
@@ -131,6 +132,12 @@ public:
      */
     virtual inline void mapTo( const gsVector<T>& lower, const gsVector<T>& upper,
                        gsMatrix<T> & nodes, gsVector<T> & weights ) const;
+
+    virtual inline void mapTo( const gsDomainIteratorWrapper<T> & element,
+                       gsMatrix<T> & nodes, gsVector<T> & weights ) const
+    {
+        mapTo( element.lowerCorner(), element.upperCorner(), nodes, weights );
+    }
 
     void mapTo(const gsMatrix<T>& ab, gsMatrix<T> & nodes) const;
     

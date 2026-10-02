@@ -69,6 +69,14 @@ public:
         m_it -= decrement;
     }
 
+    // Element index is a unique knot index
+    size_t skipTo(const gsVector<size_t> & elemIndex) override
+    {
+        GISMO_ASSERT(1==elemIndex.size(), "Expecting one element index.");
+        m_it += elemIndex.value() - this->id();
+        return elemIndex.value();
+    }
+
     // Documentation in gsDomainIterator.h
     void reset() override
     {

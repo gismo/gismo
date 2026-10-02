@@ -28,12 +28,12 @@ namespace gismo
 template<short_t d, class T, bool Trunc>
 void gsTHBSpline<d,T,Trunc>::convertToBSpline( gsTensorBSpline<d,T>& result )
 {
-    typedef typename gsHTree<d,index_t>::point point;
+    typedef typename tree_t::point point;
 
-    const gsHTree<d,index_t>& tree = this->basis().tree();
+    const tree_t & tree = this->basis().tree();
 
     // Construct a box covering the whole parameter domain.
-    const point & uCornerGlob = tree.upperCorner();
+    const point & uCornerGlob = tree.upperCornerIndex();
     point uCornerLoc;
 
     index_t maxInsLevel = tree.getMaxInsLevel();
@@ -65,7 +65,7 @@ void gsTHBSpline<d,T,Trunc>::increaseMultiplicity(index_t lvl, int dir, T knotVa
     this->basis().increaseMultiplicity(lvl,dir,knotValue,mult);
     gsDebug<<"increased"<<std::endl;
     // Compute the transfer matrix
-    gsSparseMatrix<T,RowMajor> trMatrix;
+    gsSparseMatrix<T> trMatrix;
     this->basis().transfer(OX, trMatrix);
     gsDebug<<"transfer"<<std::endl;
     // Multiply the coeffs by the transfer matrix

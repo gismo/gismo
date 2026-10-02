@@ -1,4 +1,4 @@
-/** @file gsHDomainLeafIter.h
+/** @file gsKdTreeLeafIter.h
 
     @brief Provides declaration of HDomainLeafIter class.
 
@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include <gsDomain/gsKdNode.h>
+#include <gsDomain/gsKdTree.h>
 #include <gsCore/gsTemplateTools.h>
 
 namespace gismo
@@ -26,14 +26,15 @@ namespace gismo
 */
 
 template<typename node, bool isconst = false>
-class gsHDomainLeafIter
+class gsKdTreeLeafIter
 {
 public:
     //typedef kdnode<d, index_t> node;
     typedef typename util::conditional<isconst, const node&, node&>::type reference;
     typedef typename util::conditional<isconst, const node*, node*>::type pointer;
-
-    typedef typename node::point point;
+    
+    typedef typename node::data_t data_t;
+    typedef typename node::point_t point_t;
 
 public:
     reference operator*() const { return *curNode; }
@@ -41,13 +42,12 @@ public:
 
 public:
 
-    gsHDomainLeafIter() : curNode(0)
+    gsKdTreeLeafIter() : curNode(0)
     { }
 
-    explicit gsHDomainLeafIter( node * const root_node, index_t index_level)
-        : m_index_level(index_level)
+    explicit gsKdTreeLeafIter( const node * root_node) // const node *: treat node as const. node * const: treat pointer const
     {
-        m_stack.push(root_node);
+        m_stack.push(const_cast<node*>(root_node));
 
         // Go to the first leaf
         next();
@@ -87,53 +87,14 @@ public:
         m_stack.push(root_node);
     }
 
-    int level() const { return curNode->level; }
+    data_t & data() const { return *curNode->data; }
 
-    point lowerCorner() const
-    {
-        point result = curNode->box->first;
-        const int lvl = curNode->level;
-
-        //result = result.array() / (1>> (m_index_level-lvl)) ;
-        for ( index_t i = 0; i!= result.size(); ++i )
-            result[i] = result[i] >> (m_index_level-lvl) ;
-
-        return result;
-    }
-
-    point upperCorner() const
-    {
-        point result = curNode->box->second;
-        const int lvl = curNode->level;
-
-        for ( index_t i = 0; i!=result.size(); ++i )
-            result[i] = result[i] >> (m_index_level-lvl) ;
-
-        return result;
-    }
-
-    index_t indexLevel() const {return m_index_level;}
-
-    bool isAligned() const
-    {
-        const unsigned h = 1 << (m_index_level - curNode->level);
-
-        for ( index_t i = 0; i!=curNode->box->first.size(); ++i )
-        {
-            if (curNode->box->second[i] % h != 0 ||
-                curNode->box->first[i]  % h != 0 )
-                return false;
-        }
-        return true;
-    }
+    //index_t indexLevel() const {return m_index_level;}
 
 private:
 
     // current node
     node * curNode;
-
-    /// The level of the box representation
-    index_t m_index_level;
 
     // stack of pointers to tree nodes, used in next()
     std::stack<node*> m_stack; // to do: change type to std::vector

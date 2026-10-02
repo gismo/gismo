@@ -13,10 +13,9 @@
 
 #pragma once
 
-#include <gsDomain/gsHTree.h>
+#include <gsDomain/gsKdTree.h>
+#include <gsHSplines/gsHTreeData.h>
 #include <gsDomain/gsHDomain.h>
-#include <gsDomain/gsKdNode.h>
-
 #include <gsDomain/gsDomainIterator.h>
 
 namespace gismo
@@ -39,20 +38,18 @@ class gsHDomainIterator: public gsDomainIterator<T>
 {
 public:
 
-    typedef gsKdNode<d,Z> node;
+    typedef gsHTree<d,Z> gsHTree_t;
 
-    typedef typename node::point point;
+    typedef typename gsHTree_t::point_t point;
 
     typedef typename std::vector<T>::const_iterator  uiter;
 
-    typedef gsHTree<d,Z> hDomain;
-
-    typedef typename hDomain::const_literator leafIterator;
+    typedef typename gsHTree_t::const_literator leafIterator;
 
     typedef typename gsDomainIterator<T>::uPtr domainIter;
 public:
 
-    gsHDomainIterator(const gsHTree<d,Z> & tree,
+    gsHDomainIterator(const gsHTree_t & tree,
                       const gsHTensorBasis<d,T> & basis)
     :
     gsDomainIterator<T>(),
@@ -74,7 +71,7 @@ public:
     gsHDomainIterator(const gsHDomainIterator & other) = default;
     domainIter clone() const override { return domainIter(new gsHDomainIterator(*this)); }
 
-    leafIterator init(const gsHTree<d,Z> & tree)
+    leafIterator init(const gsHTree_t & tree)
     {
         // Initialize mesh data
         m_meshStart.resize(d);
@@ -143,7 +140,7 @@ public:
 
     int getLevel() const
     {
-        return m_leaf.level();
+        return m_leaf.data().level();
     }
 
     // Returns the element multi-index at the current level
@@ -178,12 +175,11 @@ private:
     /// active functions.
     void updateLeaf()
     {
-        const point & lower = m_leaf.lowerCorner();
-        const point & upper = m_leaf.upperCorner();
-        // gsDebug<<"leaf "<<  lower.transpose() <<", "
-        //        << upper.transpose() <<"\n";
+        point lower, upper;
+        m_tree.global2localIndex( m_leaf.data().lowerCorner(), m_leaf.data().level(), lower);
+        m_tree.global2localIndex( m_leaf.data().upperCorner(), m_leaf.data().level(), upper);
 
-        const int level2 = m_leaf.level();
+        const int level2 = m_leaf.data().level();
 
         // Update leaf box
         for (size_t dim = 0; dim < d; ++dim)
@@ -233,7 +229,7 @@ public:
 
 private:
 
-    const gsHTree<d,Z> & m_tree;
+    const gsHTree_t & m_tree;
     const gsHTensorBasis<d,T> & m_basis;
 
     // The current leaf node of the tree
