@@ -48,10 +48,164 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsHTensorBasis<d,T> &bb,
                                               const gsFunction<T> &fun,
                                               index_t i)
 {
+    if (dynamic_cast<const gsTHBSplineBasis<d,T,false>*>(&bb))
+        GISMO_ERROR("gsQuasiInterpolate::localIntpl(basis, fun, i): non-truncated hierarchical (HB) basis has no per-index quasi-interpolant; use the bulk overload localIntpl(basis, fun, result).");
     index_t lvl = bb.levelOf(i);
     index_t j = bb.flatTensorIndexOf(i);
     return localIntpl(bb.tensorLevel(lvl),fun,j, bb.elementInSupportOf(i)); // uses the H-grid element implementation
     //return localIntpl(bb.tensorLevel(lvl),fun,j); // uses the central element implementation
+}
+
+template<typename T>
+template<short_t d>
+gsMatrix<T> gsQuasiInterpolate<T>::localIntplRational(const gsRationalBasis<gsTHBSplineBasis<d,T> > &b,
+                                                      const gsFunction<T> &fun,
+                                                      index_t i)
+{
+    using Real = gsQuadrature::Real;
+    const gsTHBSplineBasis<d,T> & src = b.source();
+    const gsMatrix<T> & w = b.weights();
+    const index_t lvl = src.levelOf(i);
+    const index_t j   = src.flatTensorIndexOf(i);
+    const gsMatrix<T> ab = src.elementInSupportOf(i);
+    const typename gsHTensorBasis<d,T>::tensorBasis & tb = src.tensorLevel(lvl);
+
+    gsMatrix<T> bev, fev, W, pts, tmp;
+    gsVector<index_t> nNodes = gsQuadrature::numNodes(tb,(Real)1.0,1);
+    gsQuadRule<T>  qRule     = gsQuadrature::get<T>(gsQuadrature::GaussLegendre,nNodes);
+    qRule.mapTo(ab, pts);//map points on element
+    tb .eval_into(pts, bev);//evaluate level-l tensor basis
+    fun.eval_into(pts, fev);//evaluate function (targetDim x npts)
+    // g = f*W is a THB spline with coefficients c_k w_k, so its level-l coefficient
+    // on this cell is c_i w_i. W is the denominator of the FULL hierarchical source.
+    src.evalFunc_into(pts, w, W);
+    fev.array().rowwise() *= W.row(0).array();
+    bev.transposeInPlace();
+    fev.transposeInPlace();
+    tmp = bev.fullPivLu().solve(fev);//solve on element
+
+    // find the j-th level-l BS:
+    gsMatrix<index_t> act = tb.active(pts.col(0));
+    index_t c = std::lower_bound(act.data(), act.data()+act.size(), j) - act.data();
+    GISMO_ASSERT(c<act.size(), "Problem with basis function index");
+    GISMO_ASSERT(0!=w(i,0), "Zero weight in rational basis");
+    return tmp.row(c) / w(i,0);
+}
+
+template<typename T>
+template<short_t d>
+gsMatrix<T> gsQuasiInterpolate<T>::localL2Rational(const gsRationalBasis<gsTHBSplineBasis<d,T> > &b,
+                                                   const gsFunction<T> &fun,
+                                                   index_t i)
+{
+    using Real = gsQuadrature::Real;
+    const gsTHBSplineBasis<d,T> & src = b.source();
+    const gsMatrix<T> & w = b.weights();
+    const index_t lvl = src.levelOf(i);
+    const index_t j   = src.flatTensorIndexOf(i);
+    const gsMatrix<T> ab = src.elementInSupportOf(i);
+    const typename gsHTensorBasis<d,T>::tensorBasis & tb = src.tensorLevel(lvl);
+
+    gsMatrix<T> bev, fev, W, pts, tmp;
+    gsVector<T> qw;
+    gsVector<index_t> nNodes = gsQuadrature::numNodes(tb,(Real)1.0,1);
+    gsQuadRule<T>  qRule     = gsQuadrature::get<T>(gsQuadrature::GaussLobatto,nNodes);
+    qRule.mapTo(ab.col(0), ab.col(1), pts, qw);//map points and weights on element
+    tb .eval_into(pts, bev);//evaluate level-l tensor basis
+    fun.eval_into(pts, fev);//evaluate function (targetDim x npts)
+    // g = f*W is a THB spline with coefficients c_k w_k, so its level-l coefficient
+    // on this cell is c_i w_i. W is the denominator of the FULL hierarchical source.
+    src.evalFunc_into(pts, w, W);
+    fev.array().rowwise() *= W.row(0).array();
+    const gsMatrix<T> M   = bev * qw.asDiagonal() * bev.transpose();
+    const gsMatrix<T> RHS = bev * qw.asDiagonal() * fev.transpose();
+    tmp = M.fullPivLu().solve(RHS);//solve on element
+
+    // find the j-th level-l BS:
+    gsMatrix<index_t> act = tb.active(pts.col(0));
+    index_t c = std::lower_bound(act.data(), act.data()+act.size(), j) - act.data();
+    GISMO_ASSERT(c<act.size(), "Problem with basis function index");
+    GISMO_ASSERT(0!=w(i,0), "Zero weight in rational basis");
+    return tmp.row(c) / w(i,0);
+}
+
+template<typename T>
+template<short_t d, bool L2>
+void gsQuasiInterpolate<T>::localHBLevelLoop(const gsHTensorBasis<d,T> &b,
+                                             const gsFunction<T> &fun,
+                                             gsMatrix<T> & result)
+{
+    using Real = gsQuadrature::Real;
+    result.setZero(b.size(), fun.targetDim());
+
+    for (unsigned lvl = 0; lvl <= b.maxLevel(); ++lvl)
+    {
+        const index_t first = b.offset(lvl);
+        const index_t last  = (lvl < b.maxLevel()) ? b.offset(lvl+1) : b.size();
+        if (first == last)
+            continue;
+
+        // s_{<lvl}: rows of levels >= lvl are still zero here
+        typename gsGeometry<T>::uPtr coarse = b.makeGeometry(result);
+        const typename gsHTensorBasis<d,T>::tensorBasis & tb = b.tensorLevel(lvl);
+        gsVector<index_t> nNodes = gsQuadrature::numNodes(tb,(Real)1.0,1);
+        gsQuadRule<T>  qRule     = gsQuadrature::get<T>(L2 ? gsQuadrature::GaussLobatto : gsQuadrature::GaussLegendre, nNodes);
+
+#       pragma omp parallel for
+        for (index_t i = first; i < last; ++i)
+        {
+            gsMatrix<T> pts, bev, fev, gev, tmp;
+            gsMatrix<index_t> act;
+            const gsMatrix<T> ab = b.elementInSupportOf(i);
+            if (L2)
+            {
+                gsVector<T> qw;
+                qRule.mapTo(ab.col(0), ab.col(1), pts, qw);
+                tb.eval_into(pts, bev);
+                fun.eval_into(pts, fev);
+                coarse->eval_into(pts, gev);
+                fev -= gev;
+                const gsMatrix<T> M   = bev * qw.asDiagonal() * bev.transpose();
+                const gsMatrix<T> RHS = bev * qw.asDiagonal() * fev.transpose();
+                tmp = M.fullPivLu().solve(RHS);
+            }
+            else
+            {
+                qRule.mapTo(ab, pts);
+                tb.eval_into(pts, bev);
+                fun.eval_into(pts, fev);
+                coarse->eval_into(pts, gev);
+                fev -= gev;
+                bev.transposeInPlace();
+                fev.transposeInPlace();
+                tmp = bev.fullPivLu().solve(fev);
+            }
+
+            act = tb.active(pts.col(0));
+            const index_t j = b.flatTensorIndexOf(i);
+            const index_t k = std::lower_bound(act.data(), act.data()+act.size(), j) - act.data();
+            GISMO_ASSERT(k<act.size(), "Problem with basis function index");
+            result.row(i) = tmp.row(k);
+        }
+    }
+}
+
+template<typename T>
+template<short_t d>
+void gsQuasiInterpolate<T>::localIntplHB(const gsHTensorBasis<d,T> &b,
+                                         const gsFunction<T> &fun,
+                                         gsMatrix<T> & result)
+{
+    localHBLevelLoop<d,false>(b, fun, result);
+}
+
+template<typename T>
+template<short_t d>
+void gsQuasiInterpolate<T>::localL2HB(const gsHTensorBasis<d,T> &b,
+                                      const gsFunction<T> &fun,
+                                      gsMatrix<T> & result)
+{
+    localHBLevelLoop<d,true>(b, fun, result);
 }
 
 template<typename T>
@@ -67,15 +221,16 @@ gsMatrix<T> gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &bb,
         return localIntpl(*b,fun,i);
     if (const gsHTensorBasis<4,T>* b = dynamic_cast<const gsHTensorBasis<4,T>* >(&bb))
         return localIntpl(*b,fun,i);
-    // If it is a gsRationalTHBSplineBasis, we check the source
-    if (const gsHTensorBasis<1, T>* b = dynamic_cast<const gsHTensorBasis<1,T>* >(&bb.source()))
-        return localIntpl(*b,fun,i);
-    if (const gsHTensorBasis<2, T>* b = dynamic_cast<const gsHTensorBasis<2,T>* >(&bb.source()))
-        return localIntpl(*b,fun,i);
-    if (const gsHTensorBasis<3, T>* b = dynamic_cast<const gsHTensorBasis<3,T>* >(&bb.source()))
-        return localIntpl(*b,fun,i);
-    else
-        return localIntpl(bb,fun,i,bb.elementInSupportOf(i));
+    // Rational THB: interpolate f*W on the level cell, then divide by w_i (see localIntplRational)
+    if (const gsRationalBasis<gsTHBSplineBasis<1,T> >* b = dynamic_cast<const gsRationalBasis<gsTHBSplineBasis<1,T> >* >(&bb))
+        return localIntplRational<1>(*b,fun,i);
+    if (const gsRationalBasis<gsTHBSplineBasis<2,T> >* b = dynamic_cast<const gsRationalBasis<gsTHBSplineBasis<2,T> >* >(&bb))
+        return localIntplRational<2>(*b,fun,i);
+    if (const gsRationalBasis<gsTHBSplineBasis<3,T> >* b = dynamic_cast<const gsRationalBasis<gsTHBSplineBasis<3,T> >* >(&bb))
+        return localIntplRational<3>(*b,fun,i);
+    if (const gsRationalBasis<gsTHBSplineBasis<4,T> >* b = dynamic_cast<const gsRationalBasis<gsTHBSplineBasis<4,T> >* >(&bb))
+        return localIntplRational<4>(*b,fun,i);
+    return localIntpl(bb,fun,i,bb.elementInSupportOf(i));
 }
 
 template<typename T>
@@ -110,6 +265,8 @@ gsMatrix<T> gsQuasiInterpolate<T>::localL2(const gsHTensorBasis<d,T> &bb,
                                             const gsFunction<T>  &fun,
                                             index_t i)
 {
+    if (dynamic_cast<const gsTHBSplineBasis<d,T,false>*>(&bb))
+        GISMO_ERROR("gsQuasiInterpolate::localL2(basis, fun, i): non-truncated hierarchical (HB) basis has no per-index local L2 projection; use the bulk overload localL2(basis, fun, result).");
     index_t lvl = bb.levelOf(i);
     index_t j = bb.flatTensorIndexOf(i);
     return localL2(bb.tensorLevel(lvl),fun,j,bb.elementInSupportOf(i)); // uses the H-grid element implementation
@@ -128,8 +285,30 @@ gsMatrix<T> gsQuasiInterpolate<T>::localL2(const gsBasis<T> &bb,
         return localL2(*b,fun,i);
     if (const gsHTensorBasis<4,T>* b = dynamic_cast<const gsHTensorBasis<4,T>* >(&bb))
         return localL2(*b,fun,i);
-    else
-        return localL2(bb,fun,i,bb.elementInSupportOf(i));
+    // Rational THB: project f*W on the level cell, then divide by w_i (see localL2Rational)
+    if (const gsRationalBasis<gsTHBSplineBasis<1,T> >* b = dynamic_cast<const gsRationalBasis<gsTHBSplineBasis<1,T> >* >(&bb))
+        return localL2Rational<1>(*b,fun,i);
+    if (const gsRationalBasis<gsTHBSplineBasis<2,T> >* b = dynamic_cast<const gsRationalBasis<gsTHBSplineBasis<2,T> >* >(&bb))
+        return localL2Rational<2>(*b,fun,i);
+    if (const gsRationalBasis<gsTHBSplineBasis<3,T> >* b = dynamic_cast<const gsRationalBasis<gsTHBSplineBasis<3,T> >* >(&bb))
+        return localL2Rational<3>(*b,fun,i);
+    if (const gsRationalBasis<gsTHBSplineBasis<4,T> >* b = dynamic_cast<const gsRationalBasis<gsTHBSplineBasis<4,T> >* >(&bb))
+        return localL2Rational<4>(*b,fun,i);
+    return localL2(bb,fun,i,bb.elementInSupportOf(i));
+}
+
+template<typename T>
+bool gsQuasiInterpolate<T>::isRationalOverHB(const gsBasis<T> &b)
+{
+    return dynamic_cast<const gsRationalBasis<gsTHBSplineBasis<1,T,false> >*>(&b)
+        || dynamic_cast<const gsRationalBasis<gsTHBSplineBasis<2,T,false> >*>(&b)
+        || dynamic_cast<const gsRationalBasis<gsTHBSplineBasis<3,T,false> >*>(&b)
+        || dynamic_cast<const gsRationalBasis<gsTHBSplineBasis<4,T,false> >*>(&b)
+        || ( b.isRational()
+             && ( dynamic_cast<const gsTHBSplineBasis<1,T,false>*>(&b.source())
+               || dynamic_cast<const gsTHBSplineBasis<2,T,false>*>(&b.source())
+               || dynamic_cast<const gsTHBSplineBasis<3,T,false>*>(&b.source())
+               || dynamic_cast<const gsTHBSplineBasis<4,T,false>*>(&b.source()) ) );
 }
 
 template <typename T>
@@ -138,6 +317,16 @@ void gsQuasiInterpolate<T>::localL2(const gsBasis<T> &b,
                                     gsMatrix<T> &result)
 {
     GISMO_ASSERT(b.domainDim()==fun.domainDim(),"Domain dimensions should be equal");
+    if (const gsTHBSplineBasis<1,T,false>* hb = dynamic_cast<const gsTHBSplineBasis<1,T,false>*>(&b))
+    { localL2HB<1>(*hb, fun, result); return; }
+    if (const gsTHBSplineBasis<2,T,false>* hb = dynamic_cast<const gsTHBSplineBasis<2,T,false>*>(&b))
+    { localL2HB<2>(*hb, fun, result); return; }
+    if (const gsTHBSplineBasis<3,T,false>* hb = dynamic_cast<const gsTHBSplineBasis<3,T,false>*>(&b))
+    { localL2HB<3>(*hb, fun, result); return; }
+    if (const gsTHBSplineBasis<4,T,false>* hb = dynamic_cast<const gsTHBSplineBasis<4,T,false>*>(&b))
+    { localL2HB<4>(*hb, fun, result); return; }
+    GISMO_ENSURE(!isRationalOverHB(b),
+                 "gsQuasiInterpolate::localL2: rational basis over a non-truncated hierarchical (HB) basis is not supported.");
     //assert b.domainDim()==fun.domainDim()
     gsMatrix<>  cf;
     index_t n = b.size();
@@ -156,7 +345,7 @@ template<typename T>
 void gsQuasiInterpolate<T>::Taylor(const gsBasis<T> &bb, const gsFunction<T> &fun, const index_t &r, gsMatrix<T> & coefs)
 {
     const gsBSplineBasis<T>*b = dynamic_cast<const gsBSplineBasis<T> *>(&bb); // cast bb to a gsBSplineBasis
-    GISMO_ASSERT(b != nullptr, "Basis should be a gsBSplineBasis"); // assertion to ensure that b is a gsBSplineBasis
+    GISMO_ENSURE(b != nullptr, "gsQuasiInterpolate::Taylor: only a 1-D B-spline basis (gsBSplineBasis) is supported; use gsQuasiInterpolate::localTaylor (tensor B-splines) or gsQuasiInterpolate::localIntpl.");
     // ONLY 1D
 
     const gsKnotVector<T> & kv = b->knots();
@@ -308,9 +497,8 @@ gsMatrix<T> gsQuasiInterpolate<T>::localTaylor(const gsHTensorBasis<d,T> &bb,
                                                 const index_t &r,
                                                 index_t i)
 {
-    index_t lvl = bb.levelOf(i);
-    index_t j = bb.flatTensorIndexOf(i);
-    return localTaylor<d>(bb.tensorLevel(lvl),fun,r,j); // uses the H-grid element implementation
+    GISMO_UNUSED(bb); GISMO_UNUSED(fun); GISMO_UNUSED(r); GISMO_UNUSED(i);
+    GISMO_ERROR("gsQuasiInterpolate::localTaylor: only tensor-product B-spline bases (gsTensorBSplineBasis<d>, d=1..4) are supported; for hierarchical (THB, HB) or rational (NURBS, rational THB) bases use gsQuasiInterpolate::localIntpl.");
 }
 
 template<typename T>
@@ -319,7 +507,7 @@ gsMatrix<T> gsQuasiInterpolate<T>::localTaylor(const gsBasis<T> &bb,
                                               const index_t &r,
                                               index_t i)
 {
-    // Hierarchical tensor bases: dispatch on the parameter dimension.
+    // Hierarchical tensor bases are rejected by the gsHTensorBasis overload.
     if (const gsHTensorBasis<1,T>* b = dynamic_cast<const gsHTensorBasis<1,T>* >(&bb))
         return localTaylor(*b,fun,r,i);
     if (const gsHTensorBasis<2,T>* b = dynamic_cast<const gsHTensorBasis<2,T>* >(&bb))
@@ -337,7 +525,7 @@ gsMatrix<T> gsQuasiInterpolate<T>::localTaylor(const gsBasis<T> &bb,
         return localTaylor<3>(*b,fun,r,i);
     if (const gsTensorBSplineBasis<4,T>* b = dynamic_cast<const gsTensorBSplineBasis<4,T>* >(&bb))
         return localTaylor<4>(*b,fun,r,i);
-    GISMO_ERROR("localTaylor: unsupported basis type/dimension");
+    GISMO_ERROR("gsQuasiInterpolate::localTaylor: only tensor-product B-spline bases (gsTensorBSplineBasis<d>, d=1..4) are supported; for hierarchical (THB, HB) or rational (NURBS, rational THB) bases use gsQuasiInterpolate::localIntpl.");
 }
 
 
@@ -347,8 +535,9 @@ void gsQuasiInterpolate<T>::localTaylor(const gsBasis<T> &b,
                                        const index_t &r,
                                        gsMatrix<T> & result)
 {
-    // GISMO_ASSERT(b.domainDim()==fun.domainDim(),"Domain dimensions should be equal");
-    // //assert b.domainDim()==fun.domainDim()
+    GISMO_ENSURE( ( dynamic_cast<const gsTensorBSplineBasis<1,T>*>(&b) || dynamic_cast<const gsTensorBSplineBasis<2,T>*>(&b)
+                 || dynamic_cast<const gsTensorBSplineBasis<3,T>*>(&b) || dynamic_cast<const gsTensorBSplineBasis<4,T>*>(&b) ),
+                  "gsQuasiInterpolate::localTaylor: only tensor-product B-spline bases (gsTensorBSplineBasis<d>, d=1..4) are supported; for hierarchical (THB, HB) or rational (NURBS, rational THB) bases use gsQuasiInterpolate::localIntpl.");
     gsMatrix<T> cf;
     index_t n = b.size();
     index_t dim = fun.targetDim();
@@ -629,6 +818,24 @@ void gsQuasiInterpolate<T>::localIntpl(const gsBasis<T> &b,
                                        gsMatrix<T> & result)
 {
     GISMO_ASSERT(b.domainDim()==fun.domainDim(),"Domain dimensions should be equal");
+    if (const gsTHBSplineBasis<1,T,false>* hb = dynamic_cast<const gsTHBSplineBasis<1,T,false>*>(&b))
+    { localIntplHB<1>(*hb, fun, result); return; }
+    if (const gsTHBSplineBasis<2,T,false>* hb = dynamic_cast<const gsTHBSplineBasis<2,T,false>*>(&b))
+    { localIntplHB<2>(*hb, fun, result); return; }
+    if (const gsTHBSplineBasis<3,T,false>* hb = dynamic_cast<const gsTHBSplineBasis<3,T,false>*>(&b))
+    { localIntplHB<3>(*hb, fun, result); return; }
+    if (const gsTHBSplineBasis<4,T,false>* hb = dynamic_cast<const gsTHBSplineBasis<4,T,false>*>(&b))
+    { localIntplHB<4>(*hb, fun, result); return; }
+    GISMO_ENSURE( !( dynamic_cast<const gsRationalBasis<gsTHBSplineBasis<1,T,false> >*>(&b)
+                  || dynamic_cast<const gsRationalBasis<gsTHBSplineBasis<2,T,false> >*>(&b)
+                  || dynamic_cast<const gsRationalBasis<gsTHBSplineBasis<3,T,false> >*>(&b)
+                  || dynamic_cast<const gsRationalBasis<gsTHBSplineBasis<4,T,false> >*>(&b)
+                  || ( b.isRational()
+                       && ( dynamic_cast<const gsTHBSplineBasis<1,T,false>*>(&b.source())
+                         || dynamic_cast<const gsTHBSplineBasis<2,T,false>*>(&b.source())
+                         || dynamic_cast<const gsTHBSplineBasis<3,T,false>*>(&b.source())
+                         || dynamic_cast<const gsTHBSplineBasis<4,T,false>*>(&b.source()) ) ) ),
+                  "gsQuasiInterpolate::localIntpl: rational basis over a non-truncated hierarchical (HB) basis is not supported.");
     //assert b.domainDim()==fun.domainDim()
     gsMatrix<T> cf;
     index_t n = b.size();
