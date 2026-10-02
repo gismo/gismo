@@ -36,6 +36,34 @@ public:
     }
 };
 
+/// Rule that maps an element to zero nodes when the midpoint of its
+/// parametric box lies below \a cut in direction \a dir, and to a tensor
+/// Gauss rule otherwise -- models an immersed rule on a fully exterior cell.
+class EmptyBelowRule : public gismo::gsQuadRule<real_t>
+{
+public:
+    EmptyBelowRule(const gsVector<index_t> & numNodes, short_t dir, real_t cut)
+    : m_gauss(numNodes), m_dir(dir), m_cut(cut) { }
+
+    using gismo::gsQuadRule<real_t>::mapTo;
+
+    void mapTo(const gsVector<real_t> & lower, const gsVector<real_t> & upper,
+               gsMatrix<real_t> & nodes, gsVector<real_t> & weights) const override
+    {
+        if (0.5*(lower[m_dir] + upper[m_dir]) < m_cut)
+        {
+            nodes.resize(lower.size(), 0);
+            weights.resize(0);
+            return;
+        }
+        m_gauss.mapTo(lower, upper, nodes, weights);
+    }
+private:
+    gsGaussRule<real_t> m_gauss;
+    short_t m_dir;
+    real_t  m_cut;
+};
+
 } // anonymous namespace
 
 
@@ -478,5 +506,195 @@ SUITE(gsExprAssembler_test)
         // Cheap and strong: partition of unity on the unit square with an
         // identity geometry map -> total mass is the domain area (1.0).
         CHECK_CLOSE(1.0, A_trim.sum(), 1e-12);
+    }
+
+    // An element whose custom quadrature rule has no nodes contributes
+    // nothing and must not be precomputed: compute_impl, reached through
+    // integral()/integralElWise()/min(), is the volume loop that must skip it.
+    TEST(EvaluatorEmptyRuleVolume)
+    {
+        gsMultiPatch<> mp(*gsNurbsCreator<>::BSplineSquare()); // identity map on [0,1]^2
+        gsMultiBasis<> mb(mp);
+        mb.uniformRefine();
+        mb.uniformRefine();
+        CHECK_EQUAL((size_t)16, mb.basis(0).numElements());
+
+        gsExprEvaluator<> ev;
+        ev.setIntegrationElements(mb);
+        gsExprEvaluator<>::geometryMap G = ev.getMap(mp);
+
+        gsFunctionExpr<> fexpr("x^2*y", 2);
+        gsFunctionExpr<> fxexpr("x", 2);
+        auto f  = ev.getVariable(fexpr,  G);
+        auto fx = ev.getVariable(fxexpr, G);
+
+        // Control arm: standard quadrature, no empty elements.
+        CHECK_CLOSE(1.0, ev.integral(meas(G)), 1e-13);
+        CHECK(ev.min(fx) < 0.5);
+
+        std::atomic<index_t> calls(0);
+        std::atomic<bool> contextIsCorrect(true);
+        ev.setQuadratureFactory(
+            [&calls, &contextIsCorrect](const gsDomain<real_t> & domain,
+                                        const gsBasis<real_t>  * basis,
+                                        const gsOptionList &,
+                                        index_t patch,
+                                        short_t fixedDirection,
+                                        const gsVector<short_t> &)
+                -> gsExprEvaluator<real_t>::QuadratureRulePtr
+            {
+                ++calls;
+                if (basis != nullptr || fixedDirection != -1 || patch != 0)
+                    contextIsCorrect = false;
+                gsVector<index_t> nn;
+                nn.setConstant(domain.dim(), 3);
+                if (fixedDirection >= 0) nn[fixedDirection] = 1;
+                return gsExprEvaluator<real_t>::QuadratureRulePtr(
+                    new EmptyBelowRule(nn, 0, 0.5));
+            });
+        CHECK(ev.hasCustomQuadrature());
+
+        // Custom arm: elements with midpoint x in {0.125, 0.375} are empty
+        // (8 of the 16 elements); the rest is a plain 3x3 Gauss rule.
+        CHECK_CLOSE(0.5, ev.integral(meas(G)), 1e-13);
+        CHECK_CLOSE(7.0/48.0, ev.integral(f*meas(G)), 1e-13);
+
+        ev.integralElWise(f*meas(G));
+        CHECK_EQUAL((size_t)16, ev.elementwise().size());
+        index_t zeroCount = 0, positiveCount = 0;
+        real_t sum = 0;
+        for (const real_t & v : ev.elementwise())
+        {
+            if (v == 0.0) ++zeroCount;
+            else if (v > 0.0) ++positiveCount;
+            sum += v;
+        }
+        CHECK_EQUAL(8, zeroCount);
+        CHECK_EQUAL(8, positiveCount);
+        CHECK_CLOSE(7.0/48.0, sum, 1e-13);
+        CHECK_CLOSE(7.0/48.0, ev.value(), 1e-13);
+
+        // Every surviving node has x > 0.5, unlike the control arm's minimum.
+        CHECK(ev.min(fx) > 0.5);
+
+        CHECK(calls.load() >= 1);
+        CHECK(contextIsCorrect.load());
+    }
+
+    // computeBdr_impl, reached through integralBdr(expr, bdrlist), is the
+    // boundary loop that must skip an element whose rule has no nodes.
+    TEST(EvaluatorEmptyRuleBoundary)
+    {
+        gsMultiPatch<> mp(*gsNurbsCreator<>::BSplineSquare());
+        gsMultiBasis<> mb(mp);
+        mb.uniformRefine();
+        mb.uniformRefine();
+        CHECK_EQUAL((size_t)16, mb.basis(0).numElements());
+
+        gsExprEvaluator<> ev;
+        ev.setIntegrationElements(mb);
+        gsExprEvaluator<>::geometryMap G = ev.getMap(mp);
+
+        gsFunctionExpr<> fexpr("x^2*y", 2);
+        auto f = ev.getVariable(fexpr, G);
+
+        gsExprEvaluator<>::bContainer sides;
+        sides.push_back(patchSide(0, boundary::west));
+        sides.push_back(patchSide(0, boundary::east));
+        sides.push_back(patchSide(0, boundary::south));
+        sides.push_back(patchSide(0, boundary::north));
+
+        // Control arm: standard quadrature over all four sides.
+        CHECK_CLOSE(4.0, ev.integralBdr(meas(G), sides), 1e-13);
+
+        std::atomic<index_t> calls(0);
+        std::atomic<bool> contextIsCorrect(true);
+        ev.setQuadratureFactory(
+            [&calls, &contextIsCorrect](const gsDomain<real_t> & domain,
+                                        const gsBasis<real_t>  * basis,
+                                        const gsOptionList &,
+                                        index_t patch,
+                                        short_t fixedDirection,
+                                        const gsVector<short_t> &)
+                -> gsExprEvaluator<real_t>::QuadratureRulePtr
+            {
+                ++calls;
+                if (basis != nullptr || patch != 0 ||
+                    (fixedDirection != 0 && fixedDirection != 1))
+                    contextIsCorrect = false;
+                gsVector<index_t> nn;
+                nn.setConstant(domain.dim(), 3);
+                if (fixedDirection >= 0) nn[fixedDirection] = 1;
+                return gsExprEvaluator<real_t>::QuadratureRulePtr(
+                    new EmptyBelowRule(nn, 0, 0.5));
+            });
+        CHECK(ev.hasCustomQuadrature());
+
+        // West (u=0) is empty on every element, east (u=1) is kept in full,
+        // south/north keep only x in [0.5,1].
+        CHECK_CLOSE(2.0, ev.integralBdr(meas(G), sides), 1e-13);
+        CHECK_EQUAL(4, calls.load());
+
+        CHECK_CLOSE(19.0/24.0, ev.integralBdr(f*meas(G), sides), 1e-13);
+        CHECK_EQUAL(8, calls.load());
+
+        CHECK(contextIsCorrect.load());
+    }
+
+    // computeInterface_impl, reached through integralInterface(expr, iFaces),
+    // is the interface loop that must skip an element whose rule has no
+    // nodes.
+    TEST(EvaluatorEmptyRuleInterface)
+    {
+        gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(2,1,0.5);
+        CHECK(1==mp.interfaces().size());
+
+        gsMultiBasis<> mb(mp);
+        mb.uniformRefine();
+        mb.uniformRefine();
+        CHECK_EQUAL((size_t)16, mb.basis(0).numElements());
+
+        gsExprEvaluator<> ev;
+        ev.setIntegrationElements(mb);
+        gsExprEvaluator<>::geometryMap G = ev.getMap(mp);
+
+        gsFunctionExpr<> oneExpr("1", 2);
+        gsFunctionExpr<> fyExpr ("y", 2);
+        auto one = ev.getVariable(oneExpr, G);
+        auto fy  = ev.getVariable(fyExpr,  G);
+
+        // Control arm: standard quadrature on the single interface.
+        CHECK_CLOSE(1.0,  ev.integralInterface(one.left(), mp.interfaces()), 1e-13);
+        CHECK_CLOSE(0.25, ev.integralInterface(fy.left(),  mp.interfaces()), 1e-13);
+
+        std::atomic<index_t> calls(0);
+        std::atomic<bool> contextIsCorrect(true);
+        ev.setQuadratureFactory(
+            [&calls, &contextIsCorrect](const gsDomain<real_t> & domain,
+                                        const gsBasis<real_t>  * basis,
+                                        const gsOptionList &,
+                                        index_t patch,
+                                        short_t fixedDirection,
+                                        const gsVector<short_t> &)
+                -> gsExprEvaluator<real_t>::QuadratureRulePtr
+            {
+                ++calls;
+                if (basis != nullptr || fixedDirection != 0 ||
+                    (patch != 0 && patch != 1))
+                    contextIsCorrect = false;
+                gsVector<index_t> nn;
+                nn.setConstant(domain.dim(), 3);
+                if (fixedDirection >= 0) nn[fixedDirection] = 1;
+                return gsExprEvaluator<real_t>::QuadratureRulePtr(
+                    new EmptyBelowRule(nn, 1, 0.5));
+            });
+        CHECK(ev.hasCustomQuadrature());
+
+        // Interface elements with v-midpoint in {0.125, 0.375} are empty.
+        CHECK_CLOSE(0.5,    ev.integralInterface(one.left(), mp.interfaces()), 1e-13);
+        CHECK_CLOSE(0.1875, ev.integralInterface(fy.left(),  mp.interfaces()), 1e-13);
+
+        CHECK(calls.load() >= 1);
+        CHECK(contextIsCorrect.load());
     }
 }

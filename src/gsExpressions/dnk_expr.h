@@ -56,9 +56,9 @@ static inline index_t dnk_pureOffset(const index_t k, const short_t d, const sho
     GISMO_ERROR("dnk: pure derivative of order "<<k<<" in direction "<<dir<<" not found");
 }
 
-/// Largest absolute off-diagonal entry of a square matrix; used to assert
-/// that a geometry map's Jacobian is (numerically) diagonal, i.e. that the
-/// map is an axis-aligned affine scaling in the face-normal direction.
+/// Largest absolute off-diagonal entry of a square matrix; used to check
+/// (always, in every build configuration) that a geometry map's Jacobian is
+/// (numerically) diagonal.
 template<class Mat>
 static inline typename Mat::Scalar dnk_offDiagMax(const Mat & J)
 {
@@ -91,9 +91,23 @@ static inline typename Mat::Scalar dnk_offDiagMax(const Mat & J)
  * \f$\partial^k u/\partial n^k = (-1)^k\,\mathrm{dnk}(u,G,k)\f$ there, while
  * on a \c parameter()\c ==true side (east/north) the two agree exactly; for
  * even \a k the sign cancels and the two always agree.
- * The axis-aligned-affine assumption on \a G is checked by a debug-only
- * \c GISMO_ASSERT (compiled out under \c -DNDEBUG, the configuration this
- * expression is normally built in), so it is not enforced in release builds.
+ * At every evaluation point \c eval() checks that the Jacobian @f$J@f$ of
+ * \a G is diagonal there. The check is unconditional: it is active in every
+ * build configuration, including Release (\c -DNDEBUG), and on failure it
+ * throws \c std::runtime_error. The check is pointwise and relative:
+ * @f$ \max_{i\neq j}|J_{ij}| \le 10^{-10}\,(1+\max_i|J_{ii}|) @f$. It only
+ * detects off-diagonal entries, i.e. rotated, sheared or otherwise
+ * non-axis-aligned maps -- it does \em not test whether \a G is affine.
+ * A map whose Jacobian is diagonal at every point but varies in space (a
+ * non-uniform axis-aligned reparametrisation @f$ x_i = g_i(\xi_i) @f$ with
+ * @f$ g_i @f$ nonlinear) therefore passes. Since \c dnk ignores
+ * @f$ \mathrm{hess}(G) @f$ and only divides by @f$ J(dir,dir)^k @f$, such a
+ * map is still exact for @f$ k=1 @f$ (@f$ J^{-T} @f$ is diagonal there, so
+ * @f$ \partial u/\partial x_{dir} = (\partial u/\partial\xi_{dir})/J(dir,dir) @f$)
+ * but wrong for @f$ k\ge2 @f$: e.g. in 1-D
+ * @f$ \partial^2u/\partial x^2 = u_{\xi\xi}/x'^2 - u_\xi\,x''/x'^3 @f$, and
+ * \c dnk returns only the first term. The caller is responsible for ensuring
+ * \a G is axis-aligned affine when @f$ k\ge2 @f$.
  *
  * For a scalar source (\c dim()==1, e.g. a pressure space or a plain
  * \c gsFeVariable) the result is the \f$na\times 1\f$ column of per-active-
@@ -148,8 +162,8 @@ public:
         // Storing the view by value would dangle; in -O3 -DNDEBUG that reads
         // garbage instead of crashing.
         const gsMatrix<Scalar> J = _G.data().jacobian(pt);
-        GISMO_ASSERT( dnk_offDiagMax(J) <= 1e-10 * (1.0 + J.diagonal().cwiseAbs().maxCoeff()),
-                      "dnk assumes an axis-aligned affine geometry map; "
+        GISMO_ENSURE( dnk_offDiagMax(J) <= 1e-10 * (1.0 + J.diagonal().cwiseAbs().maxCoeff()),
+                      "dnk assumes a geometry map with a diagonal Jacobian (axis-aligned); "
                       "the Jacobian has non-negligible off-diagonal entries:\n"<<J );
 
         const Scalar s = math::pow(J(dir,dir), (Scalar)_k);
@@ -257,8 +271,8 @@ public:
         const index_t off = dnk_pureOffset(_k, d, dir);
 
         const gsMatrix<T> J = _G.data().jacobian(pt);
-        GISMO_ASSERT( dnk_offDiagMax(J) <= 1e-10 * (1.0 + J.diagonal().cwiseAbs().maxCoeff()),
-                      "dnk assumes an axis-aligned affine geometry map; "
+        GISMO_ENSURE( dnk_offDiagMax(J) <= 1e-10 * (1.0 + J.diagonal().cwiseAbs().maxCoeff()),
+                      "dnk assumes a geometry map with a diagonal Jacobian (axis-aligned); "
                       "the Jacobian has non-negligible off-diagonal entries:\n"<<J );
         const T s = math::pow(J(dir,dir), (T)_k);
 

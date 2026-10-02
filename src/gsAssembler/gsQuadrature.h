@@ -51,6 +51,11 @@ class gsCutCellSurfaceRule;
 template<class T>
 class gsOctreeCutCellSurfaceRule;
 
+#ifdef gsAlgoim_ENABLED
+template<class T>
+class gsAlgoimAdaptiveDirectRule;
+#endif
+
 /**
  * @file gsQuadrature.h
  * @brief This file contains the definition and implementation of various quadrature rules and methods for constructing quadrature rules based on input options.
@@ -119,9 +124,25 @@ struct gsQuadrature
         CutCellRule   = 11,
         AlgoimRule    = 12,
         OctreeRule    = 13,
-        MomentFittingRule = 14 ///< Solve-free nodal moment fitting (core, see
+        MomentFittingRule = 14, ///< Solve-free nodal moment fitting (core, see
                                ///< gsMomentRule) around the cut-cell rule
                                ///< selected by the option "quMomentUnderlying"
+        AlgoimAdaptiveRule = 15 ///< Adaptive Algoim quadrature (gsAlgoimAdaptiveRule,
+                               ///< default indicator "integralChange"): volume
+                               ///< {phi<0} or surface {phi==0} selected by the
+                               ///< option "quDim". Needs gsAlgoim. Reads the options
+                               ///< "maxDepth", "indicator", "indicatorTol", "nFallback",
+                               ///< "LipschitzConstant", "splitShift" only if the caller
+                               ///< registered them (addInt/addString/addReal) on the
+                               ///< assembler's or evaluator's own list; unregistered
+                               ///< keys silently keep the rule defaults (maxDepth 0).
+                               ///< "indicatorTol" is in physical units; the box
+                               ///< classifier assumes |grad phi| <= "LipschitzConstant".
+                               ///< At maxDepth >= 1 only sub-boxes proven fully inside
+                               ///< use nFallback^D Gauss points; all other sub-boxes
+                               ///< use Algoim at quA*p+quB.
+                               ///< Ghost/skeleton face loops use plain Gauss, not this
+                               ///< rule, unless a quadrature factory is installed.
     };
     /*
     Reference:
@@ -259,6 +280,15 @@ struct gsQuadrature
             // Forward the option list so the immersed boundary assembly can
             // request surface quadrature (dim == D) via the "quDim" option.
             return gsAlgoimGenericRule<T>::make(domain, options, degrees);
+        }
+        else if (qu==AlgoimAdaptiveRule)
+            return makeAlgoimAdaptivePtr<T>(domain, options, quA, quB, fixDir, degrees);
+#else
+        else if (qu==AlgoimAdaptiveRule)
+        {
+            GISMO_ERROR("Quadrature rule AlgoimAdaptiveRule ("<<AlgoimAdaptiveRule<<") requires "
+                        "the optional gsAlgoim module, which is not enabled in this build "
+                        "(gsAlgoim_ENABLED undefined). Use CutCellRule or OctreeRule instead.");
         }
 #endif
         else
@@ -843,7 +873,132 @@ private:
                                      gsVector<index_t>::Constant(domain.dim(), n));
     }
 
+#ifdef gsAlgoim_ENABLED
+    /// \brief Direct adaptive Algoim quadrature (gsAlgoimAdaptiveRule) for
+    /// gsQuadrature::AlgoimAdaptiveRule: volume {phi<0} when "quDim" is
+    /// absent or < 0, surface {phi==0} when "quDim" >= 0. Surface mode
+    /// returns interface points only, see gsAlgoimAdaptiveDirectRule.
+    ///
+    /// Six adaptive-rule options are forwarded from \a options when present:
+    /// "maxDepth", "indicator", "indicatorTol", "nFallback",
+    /// "LipschitzConstant", "splitShift". Callers register these keys on
+    /// their own option list with addInt/addString/addReal first -- setX on
+    /// an unregistered key fails, and the evaluator's option list is separate
+    /// from the assembler's (gsExprAssembler.h vs gsExprEvaluator.h).
+    ///
+    /// "indicatorTol" is a tolerance in PHYSICAL units (see
+    /// gsAlgoimAdaptiveRule.h:27-28), and the built-in box classifier assumes
+    /// |grad phi| <= "LipschitzConstant" (gsAlgoimAdaptiveRule.h:288-305).
+    ///
+    /// Ghost/skeleton face loops never reach this factory: they use plain
+    /// Gauss unless a quadrature factory is installed
+    /// (gsExprAssembler.h:1709-1720).
+    ///
+    /// At "maxDepth" >= 1 with indicator "uniform" or "integralChange" the
+    /// element box itself is never classified (gsAlgoimAdaptiveRule.h:540 ->
+    /// 433-492), so every element is split, uncut ones included ("fallback"
+    /// splits only when Algoim returns no nodes). A child the Lipschitz box
+    /// classifier proves fully inside (phi(centre) < -LipschitzConstant*diag/2)
+    /// receives nFallback^D Gauss points (gsAlgoimAdaptiveRule.h:317-319,
+    /// default degree+1). A child proven outside is skipped. Every child it
+    /// cannot decide either way goes through Algoim at quA*maxDegree+quB.
+    /// At depth >= 1 both nFallback and quA/quB therefore set interior
+    /// accuracy and point count. At depth 0 the leaf goes through Algoim at
+    /// quA*maxDegree+quB.
+    template<class T>
+    static typename gsQuadRule<T>::uPtr
+    makeAlgoimAdaptivePtr(const gsDomain<T> & domain,
+                          const gsOptionList & options,
+                          const Real quA,
+                          const index_t quB,
+                          short_t fixDir,
+                          const gsVector<short_t> & degrees = gsVector<short_t>())
+    {
+        // quDim: -1 = volumetric (phi<0); >=0 = surface (phi==0), see gsAlgoimRule
+        const index_t quDim = options.askInt("quDim", -1);
+
+        const gsFunction<T> * levelSet = nullptr;
+        if (const auto * d1 = dynamic_cast<const gsImplicitTrimmedDomain<1,T>*>(&domain))
+            levelSet = &d1->implicitFunction();
+        else if (const auto * d2 = dynamic_cast<const gsImplicitTrimmedDomain<2,T>*>(&domain))
+            levelSet = &d2->implicitFunction();
+        else if (const auto * d3 = dynamic_cast<const gsImplicitTrimmedDomain<3,T>*>(&domain))
+            levelSet = &d3->implicitFunction();
+
+        if (!levelSet)
+        {
+            GISMO_ENSURE(quDim < 0,
+                "AlgoimAdaptiveRule: surface quadrature (quDim = "<<quDim<<") requested on a "
+                "non-implicit domain. A non-implicit domain has no interface, and returning "
+                "volume Gauss points to a surface integral would be silently wrong.");
+            static bool warned = false;
+            if (!warned)
+            {
+                gsWarn << "AlgoimAdaptiveRule requested on a non-implicit domain; "
+                       << "falling back to GaussRule for this integration context.\n";
+                warned = true;
+            }
+            return gsGaussRule<T>::make(numNodes(domain, quA, quB, fixDir, degrees));
+        }
+
+        // fixDir is never forwarded past this point (except in the
+        // non-implicit fallback above): the rule never sees the element's
+        // side, only its box (mapTo(lower,upper,...)), the same as rule 12
+        // (AlgoimRule).
+        gsOptionList o = gsAlgoimAdaptiveRule<T>::defaultOptions();
+        o.setInt ("dim", quDim < 0 ? -1 : static_cast<index_t>(domain.dim()));
+        o.setReal("quA", options.askReal("quA", quA));
+        o.setInt ("quB", options.askInt ("quB", quB));
+        o.setInt   ("maxDepth",          options.askInt   ("maxDepth",
+                                                            o.getInt   ("maxDepth")));
+        o.setString("indicator",         options.askString("indicator",
+                                                            o.getString("indicator")));
+        o.setReal  ("indicatorTol",      options.askReal  ("indicatorTol",
+                                                            o.getReal  ("indicatorTol")));
+        o.setInt   ("nFallback",         options.askInt   ("nFallback",
+                                                            o.getInt   ("nFallback")));
+        o.setReal  ("LipschitzConstant", options.askReal  ("LipschitzConstant",
+                                                            o.getReal  ("LipschitzConstant")));
+        o.setReal  ("splitShift",        options.askReal  ("splitShift",
+                                                            o.getReal  ("splitShift")));
+
+        return typename gsQuadRule<T>::uPtr(new gsAlgoimAdaptiveDirectRule<T>(
+            *levelSet, _maxDegree(domain, degrees), o));
+    }
+#endif
+
 };
+
+#ifdef gsAlgoim_ENABLED
+/// \brief gsQuadRule adapter returned by gsQuadrature for quRule == AlgoimAdaptiveRule.
+/// Volume mode (option "dim" < 0) forwards to gsAlgoimAdaptiveRule::mapTo. Surface mode
+/// returns ONLY the cut (interface) points: gsAlgoimAdaptiveRule::mapTo also emits the volume
+/// Gauss points of fully-inside sub-boxes, which do not lie on {phi==0}.
+template<class T>
+class gsAlgoimAdaptiveDirectRule GISMO_FINAL : public gsQuadRule<T>
+{
+public:
+    gsAlgoimAdaptiveDirectRule(const gsFunction<T> & levelSet, short_t maxDegree,
+                               const gsOptionList & opt)
+    : m_rule(levelSet, maxDegree, opt), m_surface(opt.askInt("dim", -1) >= 0) { }
+
+    using gsQuadRule<T>::mapTo;
+    void mapTo(const gsVector<T>& lower, const gsVector<T>& upper,
+               gsMatrix<T>& nodes, gsVector<T>& weights) const override
+    {
+        if (!m_surface) { m_rule.mapTo(lower, upper, nodes, weights); return; }
+        gsMatrix<T> interior; gsVector<T> interiorWeights;
+        m_rule.mapToSeparated(lower, upper, interior, interiorWeights, nodes, weights);
+    }
+
+    /// The wrapped adaptive rule (options(), stats()), for tests and diagnostics.
+    const gsAlgoimAdaptiveRule<T> & adaptiveRule() const { return m_rule; }
+    bool isSurface() const { return m_surface; }
+private:
+    gsAlgoimAdaptiveRule<T> m_rule;
+    bool m_surface;
+};
+#endif
 
 /**
     \brief Quadrature wrapper that suppresses contributions where a level-set is negative.
