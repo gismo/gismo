@@ -74,7 +74,7 @@ void outputResult(const gsMultiPatch<T> &mp, const std::string &filename) {
 
   auto mdim = mp.parDim();
 
-  gsOptionList options = gsExprEvaluator<>::defaultOptions();
+  gsOptionList options = ev.defaultOptions();
   options.setSwitch("elements",false);
   options.setInt("numPoints",(mdim==2) ? 1000 : 10000);
   if (mdim == 2)

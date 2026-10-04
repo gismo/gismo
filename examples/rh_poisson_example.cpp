@@ -357,12 +357,12 @@ int main(int argc, char *argv[])
     if (plot)
     {
         gsInfo<<"Plotting in Paraview...\n";
-        gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-        collection.options().setSwitch("plotElements", true);
+        gsParaviewCollection<> collection("ParaviewOutput/solution", ev);
+        collection.options().setSwitch("elements", true);
         collection.options().setSwitch("base64", export_b64);
-        collection.options().setInt("plotElements.resolution", 16);
+        collection.options().setInt("elementResolution", 16);
         collection.options().setInt("numPoints", 10000);
-        collection.newTimeStep(&Psi);
+        collection.newTimeStep(Psi);
         collection.addField(ru_sol,"numerical solution");
         collection.addField(igrad(ru_sol,PP),"gradient_numerical solution");
         collection.addField((  ilapl(ru_sol, PP)+ rhs_f ).sqNorm()*meas(PP),"indecator");

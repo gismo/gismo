@@ -563,12 +563,12 @@ int main(int argc, char *argv[])
 
         //::::::::::::::::::::      end       :::::::::::::::::::::::::
         gsInfo<<"Plotting in Paraview...\n";
-        gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-        collection.options().setSwitch("plotElements", true);
+        gsParaviewCollection<> collection("ParaviewOutput/solution", ev);
+        collection.options().setSwitch("elements", true);
         collection.options().setSwitch("base64", false);
-        collection.options().setInt("plotElements.resolution", 16);
+        collection.options().setInt("elementResolution", 16);
         collection.options().setInt("numPoints", 10000);
-        collection.newTimeStep(&Psi);
+        collection.newTimeStep(Psi);
         collection.addField(ff_TG, "density function");
         collection.addField(jac(PPsi).det(), "Jacobian function");
         collection.saveTimeStep();

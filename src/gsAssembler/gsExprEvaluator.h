@@ -489,6 +489,31 @@ private:
 
 };
 
+// Samples an expression on a cube grid per patch; one <DataArray> string per patch.
+template <class E, class T>
+std::vector<std::string> toParaview(const expr::_expr<E>& expr,
+                                    gsExprEvaluator<T>& evaltr,
+                                    unsigned nPts, unsigned precision,
+                                    std::string label, const bool& export_base64)
+{
+    std::vector<std::string> out;
+    const index_t n = evaltr.exprData()->domain().nPieces();
+    gsMatrix<T> evaluated_values, bounding_box_dimensions;
+    for (index_t i = 0; i != n; ++i)
+    {
+        bounding_box_dimensions = evaltr.exprData()->domain().subdomain(i)->boundingBox();
+        gsGridIterator<T, CUBE> grid_iterator(bounding_box_dimensions, nPts);
+        evaltr.eval(expr, grid_iterator, i);
+        evaluated_values = evaltr.allValues(
+            evaltr.elementwise().size() / grid_iterator.numPoints(), grid_iterator.numPoints());
+        GISMO_ASSERT(evaluated_values.rows() <= 3, "The expression can be scalar or have at most 3 components.");
+        if (evaluated_values.rows() == 2)
+            evaluated_values.conservativeResizeLike(gsMatrix<T>::Zero(3, evaluated_values.cols()));
+        out.push_back(toDataArray(evaluated_values, {{"Name", label}}, precision, export_base64));
+    }
+    return out;
+}
+
 template<class T>
 template<class E, bool storeElWise, class _op>
 T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
@@ -518,9 +543,9 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
 
         for ( auto & elem : m_exprdata->domain().allElements() )
         {
-            if (changeQuadrature || QuPatch!=elem.patch())
+            if (changeQuadrature || QuPatch!=elem.patchIndex())
             {
-                QuPatch = elem.patch();
+                QuPatch = elem.patchIndex();
                 // get Degree of the domain
                 QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(QuPatch), m_options);
             }

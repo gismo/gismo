@@ -254,14 +254,14 @@ int main(int argc, char *argv[])
     rsolVector = solver.solve(A.rhs());
 
     gsInfo<<"Plotting in Paraview...\n";
-    gsParaviewCollection collection("ParaviewOutput/time_solution", &ev);
-    collection.options().setSwitch("plotElements", true);
+    gsParaviewCollection<> collection("ParaviewOutput/time_solution", ev);
+    collection.options().setSwitch("elements", true);
     collection.options().setSwitch("base64", export_b64);
-    collection.options().setInt("plotElements.resolution", 16);
+    collection.options().setInt("elementResolution", 16);
     collection.options().setInt("numPoints", 100000);
     if (plot)
     {
-        collection.newTimeStep(&Psi);
+        collection.newTimeStep(Psi);
         collection.addField(ru_sol, "solution");
         collection.saveTimeStep();
     }
@@ -341,7 +341,7 @@ int main(int argc, char *argv[])
         gsInfo<< "." <<std::flush; // Linear solving done
         if (plot && r%plotNum == 0)
         {
-            collection.newTimeStep(&Psi);
+            collection.newTimeStep(Psi);
             collection.addField(ru_sol, "solution");
             collection.saveTimeStep();
         }

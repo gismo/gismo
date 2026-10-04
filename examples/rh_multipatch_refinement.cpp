@@ -510,12 +510,12 @@ int main(int argc, char *argv[])
 
         auto ff_Psi = A.getCoeff(f, PPFinal);
         gsInfo<<"Plotting in Paraview...\n";
-        gsParaviewCollection collection("ParaviewOutput/solution", &ev);
-        collection.options().setSwitch("plotElements", true);
+        gsParaviewCollection<> collection("ParaviewOutput/solution", ev);
+        collection.options().setSwitch("elements", true);
         collection.options().setSwitch("base64", false);
-        collection.options().setInt("plotElements.resolution", 16);
+        collection.options().setInt("elementResolution", 16);
         collection.options().setInt("numPoints", 100000);
-        collection.newTimeStep(&newLeft);
+        collection.newTimeStep(newLeft);
         collection.addField(ff_Psi, "density function");
         // collection.addField( ff.val()/CoeffDensity*meas(PP), "MAE_rhs");
         collection.saveTimeStep();
