@@ -81,6 +81,9 @@ public:
     //----------------------------------------
     // ... assemble the mass matrix for a given basis in one dimension
     gsSparseMatrix<> assembleMass(const gsBasis<>& basis) const;
+
+    // ... assemble the stiffness matrix for a given basis in one dimension
+    gsSparseMatrix<> assembleStiffness(const gsBasis<>& basis) const;
     
     // ... extract boundary condition for each direction 
     gsBoundaryConditions<> boundaryConditionsForDirection( const gsBoundaryConditions<>& bc, index_t direction ) const;
@@ -120,6 +123,14 @@ public:
                            gsMatrix<double>& rhs) const;
 
 private:
+    // Fast diagonalization solver with Dirichlet conditions on the shared basis
+    gsPatchPreconditionersCreator<double>::Poisson_FastDiag dirichletPoissonSolver() const;
+    // Multipatch version of buildMultiPatch (one mapping of the unit square per patch)
+    void buildMultiPatchMMPDE(const gsMultiPatch<> &density, const double tolMAE) const;
+
+    // 1D problem (w(phi) phi')' = 0 along one side of the unit square; returns the tangential coefficients of the edge mapping
+    gsMatrix<> solveEdgeMapping(const gsFunction<>& rho, const index_t side, const real_t a0, const real_t a1, const real_t Cmax) const;
+
     gsMultiBasis<double> m_basis;
     //... Identity mapping in square to itself
     gsMultiPatch<double> identity_mp; 
@@ -129,6 +140,8 @@ private:
     gsBoundaryConditions<double> bc_mae;
 public:
     gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson;
+    // Dirichlet counterpart of Poisson (used by the multipatch solver)
+    gsPatchPreconditionersCreator<double>::Poisson_FastDiag PoissonDir;
 };
 
 #endif // GS_ADAPTIVE_MULTIPATCH_BUILDER_H
