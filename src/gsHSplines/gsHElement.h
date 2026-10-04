@@ -49,7 +49,7 @@ public:
 
     typedef typename Base::box_t box_t;
     typedef typename Base::point_t point_t;
-    typedef size_t level_t;
+    typedef index_t level_t;
 
 public:
 

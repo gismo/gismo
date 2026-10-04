@@ -24,7 +24,7 @@
 namespace gismo
 {
     TEMPLATE_INST
-    std::vector<std::string> toVTK(const gsFunctionSet<real_t>& funSet,
+    std::vector<std::string> toParaview(const gsFunctionSet<real_t>& funSet,
                                    unsigned nPts,
                                    unsigned precision,
                                    std::string label,
@@ -32,7 +32,7 @@ namespace gismo
 
 
     TEMPLATE_INST
-    std::vector<std::string> toVTK(const gsField<real_t>& field,
+    std::vector<std::string> toParaview(const gsField<real_t>& field,
                                    unsigned nPts,
                                    unsigned precision,
                                    std::string label,
