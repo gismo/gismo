@@ -53,14 +53,24 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
                             index_t maxIter,
                             double IntensityMAE,
                             index_t numReduce,
-                            index_t numElevate)
+                            index_t numElevate,
+                            bool exactGeo)
 {
     gsInfo<<"\n <>r-refinement ";
+    gsInfo<<"\n";
+    gsInfo<<"\n";
+    gsInfo << "/*/*/*/*/*/*/*/*//*/Important:::: Use --exactGeo to keep the exact boundary /*/*/*/*/*/*/*/*/*/*/\n";
+    gsInfo<<"\n";
+    gsInfo<<"\n";
+    // Store the initial mapping
+    this->initial_mapping= mapping; 
+    // basis function for the composition
+    gsMultiBasis<> mapping_basis(mapping, false);
     //-------------------------------------------------------------------------------------
     // Build a (B-spline) multi-basis for the Monge–Ampère solver
     gsMultiBasis<> dbasis(mapping, true);
-    //... refine basis for convergence 
-    for (int r=0; r<numRefine; ++r)
+    //... refine basis for convergence
+    for(index_t i = 0; i < numRefine; ++i)
         dbasis.uniformRefine();
     // Reduce degree if possible while maintaining minimum degree of 1
     if (numReduce > 0){
@@ -71,16 +81,17 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
         // Elevate degree if possible
         dbasis.degreeElevate(numElevate);
     }
-    // Multipatch: all patches share the same basis on the unit square
-    if (mapping.nPatches() > 1)
+    // All patches share one topology-free basis on the unit square (the geometry may glue sides, e.g. closed surfaces)
+    if (mapping.nPatches() > 1 || exactGeo)
         dbasis = gsMultiBasis<>(dbasis.basis(0));
 
     // Store input parameters
     this->m_basis        = dbasis;
+    this->mapping_basis  = mapping_basis;
     this->m_maxIter      = maxIter;
     this->m_IntensityMAE = IntensityMAE;
+    this->m_exactGeo     = exactGeo;
     this->DoFs           = m_basis.size() * mapping.nPatches();
-    this->initial_mapping= mapping; 
 
     gsInfo << "nb patches" << mapping.nPatches() << "Using B-splines of degree " << dbasis.degree() << " DoFs ";
 
@@ -402,7 +413,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Hb
  */
 void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density, const double tolMAE) const
 {
-    if (this->initial_mapping.nPatches() > 1)
+    if (this->m_exactGeo || this->initial_mapping.nPatches() > 1)
     {
         buildMultiPatchMMPDE(density, tolMAE);
         return;
@@ -600,7 +611,7 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density,
 void gsAdaptiveMultiPatchBuilder::buildMultiPatchMMPDE(const gsMultiPatch<> &density, const double tolMAE) const
 {
     const index_t nP = this->initial_mapping.nPatches();
-    GISMO_ENSURE(density.nPatches() == nP, "One density patch per geometry patch is required.");
+    GISMO_ENSURE(static_cast<index_t>(density.nPatches()) == nP, "One density patch per geometry patch is required.");
     gsInfo<<"<> Multipatch Picard iterations";
 
     gsStopwatch timer;
@@ -638,16 +649,34 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatchMMPDE(const gsMultiPatch<> &den
     }
     const real_t CoeffDensity = int_uh_0*rmax + int_uh_1 + 1.;
 
-    // ---- 1D problems on all edges: boundary sides and interfaces (solved once, from the continuous density) ----
-    std::vector<std::array<bool,4> > isSecond(nP);
+    // ---- 1D problems on interfaces (and on boundaries unless exactGeo): solved once, from the continuous density ----
+    std::vector<std::array<bool,4> > isSecond(nP), isInterface(nP);
     for (auto interface : this->initial_mapping.interfaces())
+    {
         isSecond[interface.second().patch][interface.second().index()-1] = true;
+        isInterface[interface.first().patch][interface.first().index()-1] = true;
+        isInterface[interface.second().patch][interface.second().index()-1] = true;
+    }
 
+    // Boundary sides keep the identity distribution when exactGeo is set
+    const gsMatrix<> idCoefs = this->m_basis.basis(0).interpolateData(this->m_basis.basis(0).anchors(), this->m_basis.basis(0).anchors())->coefs();
     std::vector<std::array<gsMatrix<>,4> > edge(nP);
     for (index_t n = 0; n < nP; ++n)
         for (index_t s = 1; s <= 4; ++s)
-            if (!isSecond[n][s-1])
-                edge[n][s-1] = solveEdgeMapping(density.patch(n), s, int_uh_0, int_uh_1, CoeffDensity);
+        {
+            if (isSecond[n][s-1])
+                continue;
+            if (this->m_exactGeo && !isInterface[n][s-1])
+            {
+                const index_t dir = (s <= 2) ? 1 : 0;
+                const gsMatrix<index_t> bnd = this->m_basis.basis(0).boundary(boxSide(s));
+                edge[n][s-1].resize(bnd.size(), 1);
+                for (index_t i = 0; i < bnd.size(); ++i)
+                    edge[n][s-1](i) = idCoefs(bnd(i), dir);
+            }
+            else
+                edge[n][s-1] = solveEdgeMapping(density.patch(n), s);
+        }
 
     // Same distribution on both sides of an interface; reflected if the tangential orientations are opposite
     const gsMatrix<> esup = this->m_basis.basis(0).support();
@@ -789,9 +818,9 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatchMMPDE(const gsMultiPatch<> &den
     gsInfo<<" CPU-time : "<<std::scientific<< timer.stop() <<"<>\n";
 }
 
-// 1D equidistribution (w(phi) phi')' = 0, phi fixed at the ends of the edge, w = a0|rho| + a1.
+// 1D equidistribution (w(phi) phi')' = 0, phi fixed at the ends of the edge, w = a0|rho| + a1 with a0, a1 scaled from the density on the edge.
 // Picard iteration on  -phi_new'' = -((1 - w(phi)/Cmax) phi')'. Returns the coefficients of phi in the tangential 1D basis.
-gsMatrix<> gsAdaptiveMultiPatchBuilder::solveEdgeMapping(const gsFunction<>& rho, const index_t side, const real_t a0, const real_t a1, const real_t Cmax) const
+gsMatrix<> gsAdaptiveMultiPatchBuilder::solveEdgeMapping(const gsFunction<>& rho, const index_t side) const
 {
     const index_t dir     = (side <= 2) ? 1 : 0; // tangential direction
     const gsMatrix<> sup  = this->m_basis.basis(0).support();
@@ -802,6 +831,19 @@ gsMatrix<> gsAdaptiveMultiPatchBuilder::solveEdgeMapping(const gsFunction<>& rho
     const gsBasis<>& b1   = this->m_basis.basis(0).component(dir);
     const index_t n       = b1.size();
     EdgeFunction edgeRho(rho, dir, fixedVal);
+
+    // scaling of the density to [1, m_IntensityMAE] over this edge
+    gsMatrix<> rvals;
+    edgeRho.eval_into(gsPointGrid<real_t>(lo, hi, 20*n), rvals);
+    const real_t rmax = rvals.cwiseAbs().maxCoeff();
+    const real_t rmin = rvals.cwiseAbs().minCoeff();
+    real_t a0 = 0., a1 = 1.;
+    if (rmax - rmin >= 1e-5 && this->m_IntensityMAE > 1.)
+    {
+        a0 = (this->m_IntensityMAE-1.)/(rmax-rmin);
+        a1 = (rmax-this->m_IntensityMAE*rmin)/(rmax-rmin);
+    }
+    const real_t Cmax = a0*rmax + a1 + 1.;
 
     // initial guess: identity
     const gsMatrix<> anch = b1.anchors();
@@ -864,14 +906,17 @@ gsSparseMatrix<> gsAdaptiveMultiPatchBuilder::assembleStiffness(const gsBasis<>&
  *         In 2D, a boundary correction can be applied if the approximation near the
  *         boundary is not sufficiently accurate (currently supported only in the tensor-product case).
  *
- * \param Cbasis Basis functions onto which the composition is projected.
  * \param quadValue Number of quadrature points used to evaluate the composition.
  *                  A recommended choice is degree(initial) * degree(MA mapping) + 1.
  * \param sepBoundary If true, an additional correction is applied at the boundary.
  */
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const gsMultiBasis<> Cbasis, const int quadValue, const bool& sepBoundary) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const int quadValue, const bool& sepBoundary) const 
 {
-
+    if (this->initial_mapping.nPatches() > 1)
+    {
+        gsInfo<<"<Fit> multi-patch case not implemented, calling collocation method instead.\n";
+        return gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch();
+    }
     gsInfo<<"<L2> computes composition";
 
     // target mapping
@@ -887,10 +932,10 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const gsMultiBas
     A.options().setReal("quA", quadValue);
     A.options().setSwitch("SameElement",false); // Very important for the composition of the two mappings
     //...
-    A.setIntegrationElements(Cbasis);
+    A.setIntegrationElements(mapping_basis);
 
     //... 
-    space v        = A.getSpace(Cbasis);
+    space v        = A.getSpace(mapping_basis);
     gsMatrix<> vsolVector;
     solution v_sol = A.getSolution(v, vsolVector);
 
@@ -981,9 +1026,8 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const gsMultiBas
 /**
  * \brief computes the projection of a composition and return a MultiPatch object :: Collocation
  *
- * \param Cbasis Basis functions onto which the composition is projected.
  */
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch(const gsMultiBasis<> Cbasis) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch() const 
 {
 
     gsInfo<<"<Col> computes composition";
@@ -993,14 +1037,40 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch(const gsMulti
     gsStopwatch timer;
     timer.restart();
 
-    gsMatrix<> initialGrid         = Cbasis.basis(0).anchors();
+    gsMatrix<> initialGrid         = mapping_basis.basis(0).anchors();
     for (size_t n = 0; n < this->initial_mapping.nPatches(); ++n)
     {
         // Evaluate f at the Greville points
         gsMatrix<> intervalues         = this->MAmapping.patch(n).eval(initialGrid);
         intervalues                    = intervalues.cwiseMax(0).cwiseMin(1);
         gsMatrix<> finalValues         = this->initial_mapping.patch(n).eval(intervalues);
-        gsGeometry<>::uPtr interpolant = Cbasis.basis(0).interpolateData(finalValues, initialGrid);
+        gsGeometry<>::uPtr interpolant = mapping_basis.basis(0).interpolateData(finalValues, initialGrid);
+        if (this->m_exactGeo)
+        {
+            // Refine the initial patch until it has as many coefficients as the interpolant, then copy its boundary
+            gsGeometry<>::uPtr exact = this->initial_mapping.patch(n).clone();
+            for (index_t d = 0; d < exact->parDim(); ++d)
+            {
+                const index_t dp = interpolant->basis().degree(d) - exact->basis().degree(d);
+                if (dp > 0)
+                    exact->degreeElevate(dp, d);
+            }
+            while (exact->coefsSize() < interpolant->coefsSize())
+                exact->uniformRefine();
+            if (exact->coefsSize() == interpolant->coefsSize())
+            {
+                for (gsMultiPatch<>::const_biterator bit = this->initial_mapping.bBegin(); bit != this->initial_mapping.bEnd(); ++bit)
+                {
+                    if (static_cast<size_t>(bit->patch) != n)
+                        continue;
+                    const gsMatrix<index_t> bnd = interpolant->basis().boundary(bit->side());
+                    for (index_t i = 0; i < bnd.size(); ++i)
+                        interpolant->coefs().row(bnd(i)) = exact->coefs().row(bnd(i));
+                }
+            }
+            else
+                gsWarn << "exactGeo: refined initial patch " << n << " does not match the basis, boundary not corrected.\n";
+        }
         // extract the mapping
         Psi.addPatch(give(interpolant));
     }
@@ -1025,22 +1095,25 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch(const gsMulti
  *         In 2D, a boundary correction can be applied if the approximation near the boundary
  *         is not sufficiently accurate (currently supported only in the tensor-product case).
  *
- * \param Cbasis Basis functions onto which the composition is projected.
  * \param numElData Refinement level of the sampling grid used for the least-squares fitting,
  *                  relative to the identity mapping.
  * \param lambda Regularization (preconditioning) parameter; recommended value is 10^{-6},
  *               or at least smaller than 10^{-3}.
  * \param sepboundary if one want to separate boundary from inner  points in fitting procedure (based on Newton iteration( solve optimization pr))
  */
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const gsMultiBasis<> Cbasis, const int numElData, const real_t lambda, const bool& sepboundary) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const int numElData, const real_t lambda, const bool& sepboundary) const 
 {
-
+    if (this->initial_mapping.nPatches() > 1 || mapping_basis.basis(0).weights().any())
+    {
+        gsInfo<<"<Fit> multi-patch case not implemented, calling collocation method instead.\n";
+        return gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch();
+    }
     gsInfo<<"<Fit> computes composition";
-    assert(Cbasis.dim() == 2 && "Only single patch 2D fitting is implemented so far.");
+    assert(mapping_basis.dim() == 2 && "Only single patch 2D fitting is implemented so far.");
 
     gsMultiPatch<> Psi;    
     // Copy tensor basis
-    gsTHBSplineBasis<2>  THB ( Cbasis.basis(0));
+    gsTHBSplineBasis<2>  THB ( mapping_basis.basis(0));
 
     double slv_time(0);
     gsStopwatch timer;
@@ -1048,16 +1121,16 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const gsMulti
     //...  just to generate grid in the computational domain  (we start from identity as we want tensor grid)
     gsMultiBasis<> T_tbasis(identity_mp, true);
 
-    while ( T_tbasis.basis(0).size() <= std::max(Cbasis.basis(0).size()*30, identity_mp.basis(0).size()*numElData))
+    while ( T_tbasis.basis(0).size() <= std::max(mapping_basis.basis(0).size()*30, identity_mp.basis(0).size()*numElData))
     {
         T_tbasis.uniformRefine();
     }
-    gsInfo<<":gridsize="<<T_tbasis.basis(0).size()<<"/"<<Cbasis.basis(0).size();
+    gsInfo<<":gridsize="<<T_tbasis.basis(0).size()<<"/"<<mapping_basis.basis(0).size();
     gsMatrix<> initialGrid    = T_tbasis.basis(0).anchors();
 
     // ------------------------------
     // ... generate data for fitting
-    // gsMatrix<> initialGrid             = Cbasis.basis(0).anchors();
+    // gsMatrix<> initialGrid             = mapping_basis.basis(0).anchors();
     // Evaluate f at the Greville points
     gsMatrix<> intervalues          = this->MAmapping.patch(0).eval(initialGrid);
     intervalues                     = intervalues.cwiseMax(0).cwiseMin(1);
@@ -1102,7 +1175,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const gsMulti
         interpIdx.push_back(b);
     //... initialization of geometry for fitting
     // gsMultiPatch<> PsiCol = initial_mapping;
-    // while( PsiCol.basis(0).numElements() < Cbasis.basis(0).numElements())   
+    // while( PsiCol.basis(0).numElements() < mapping_basis.basis(0).numElements())   
     //     PsiCol.uniformRefine();
     // ref.initializeGeometry(PsiCol.patch(0).coefs(), initialGrid);
     ref.parameterProjectionSepBoundary(1e-4, interpIdx);

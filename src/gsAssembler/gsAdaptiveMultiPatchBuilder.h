@@ -28,6 +28,8 @@ public:
     * @param maxIter maximum number of iterations for the Picard loop
     * @param IntensityMAE intensity of the density function for the Monge-Ampere problem
     * @param numReduce number of degree reduction steps to perform on the basis before solving
+    * @param exactGeo if true, boundaries are not adapted (only interfaces) and the MMPDE solver is used even for a single patch; collocation then restores the exact boundary control points
+    * @param extraRefCmp number of extra refinement steps for the composition mapping
     */
     // Constructor for one patch compoosition mapping
     gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> mapping,
@@ -35,7 +37,8 @@ public:
                                 index_t maxIter     = 30,
                                 double IntensityMAE = 9.0,
                                 index_t numReduce   = 0,
-                                index_t numElevate  = 0);
+                                index_t numElevate  = 0,
+                                bool exactGeo       = false);
     
     // ... optimal Monge-Ampere (or moving mesh) mapping in square to itself
     mutable gsMultiPatch<> MAmapping;
@@ -62,19 +65,19 @@ public:
     //  functions to build mapping from density
     //-----------------------------------------
     // Method to build a multipatch Monge-Ampere mapping: tolMAE is tolerance in Picard iterations
-    void buildMultiPatch(const gsMultiPatch<> &density, const double tolMAE = 1e-5) const;
+    void buildMultiPatch(const gsMultiPatch<> &density, const double tolMAE = 1e-8) const;
 
     //---------------------------------------------------------------------------------
     //  functions to project the composition of Initial mapping and moving mesh mapping
     //---------------------------------------------------------------------------------
     // Method to build a multipatch adaptive mapping by projection the composition of geometry maps :: L2-projection
-    gsMultiPatch<> buildCompMultiPatch(const gsMultiBasis<> Cbasis, const int quadValue = 1, const bool& sepBoundary = false) const;
+    gsMultiPatch<> buildCompMultiPatch(const int quadValue = 1, const bool& sepBoundary = false) const;
 
     // Method to build a multipatch adaptive mapping by projection the composition of geometry maps :: fitting (penalized least sqaure)
-    gsMultiPatch<> buildFitCompMultiPatch(const gsMultiBasis<> Cbasis, const int numElData = 50, const real_t lambda = 0, const bool& sepboundary = false) const;
+    gsMultiPatch<> buildFitCompMultiPatch(const int numElData = 50, const real_t lambda = 0, const bool& sepboundary = false) const;
 
     // computes the projection of a composition and return a MultiPatch object :: Collocation
-    gsMultiPatch<> buildColCompMultiPatch(const gsMultiBasis<> Cbasis) const;
+    gsMultiPatch<> buildColCompMultiPatch() const;
     
     //----------------------------------------
     // Useful functions for moving mesh
@@ -129,16 +132,19 @@ private:
     void buildMultiPatchMMPDE(const gsMultiPatch<> &density, const double tolMAE) const;
 
     // 1D problem (w(phi) phi')' = 0 along one side of the unit square; returns the tangential coefficients of the edge mapping
-    gsMatrix<> solveEdgeMapping(const gsFunction<>& rho, const index_t side, const real_t a0, const real_t a1, const real_t Cmax) const;
+    gsMatrix<> solveEdgeMapping(const gsFunction<>& rho, const index_t side) const;
 
     gsMultiBasis<double> m_basis;
     //... Identity mapping in square to itself
     gsMultiPatch<double> identity_mp; 
     gsMultiPatch<double> initial_mapping;
     double m_IntensityMAE;
+    bool m_exactGeo;
     gsFunctionExpr<double> neumann_id;
     gsBoundaryConditions<double> bc_mae;
 public:
+    // Public members for the mapping basis and Poisson solvers
+    gsMultiBasis<double> mapping_basis;
     gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson;
     // Dirichlet counterpart of Poisson (used by the multipatch solver)
     gsPatchPreconditionersCreator<double>::Poisson_FastDiag PoissonDir;

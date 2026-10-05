@@ -161,21 +161,22 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot              = false;
     index_t numRefine      = 2;
-    index_t numLRefine     = 1;
+    index_t numLRefine     = 0;
     index_t numRefineMAE   = 3;
     index_t numReduceMAE   = 0;
     index_t numElevateMAE  = 0;
     index_t numElevate     = 0;
-    index_t maxIter        = 50;
+    index_t maxIter        = 100;
     index_t elevDegree     = 0; // degree elevation for the composition of geometry maps
-    index_t id_mp          = 1; // id of the geometry in the xml file
-    index_t id_rho         = 2003; // id of the density function in the xml file
+    index_t id_mp          = 0; // id of the geometry in the xml file
+    index_t id_rho         = 5; // id of the density function in the xml file
     double IntensityMAE    = 9.;
     double quadValue       = 2.0;
     bool bs_nrbs           = false;
     bool last              = true;
     bool colloc            = false;
     bool fit               = false;
+    bool exactGeo          = false;
     bool L2            = true;
 
     // gsStopwatch timer;
@@ -186,11 +187,11 @@ int main(int argc, char *argv[])
     // std::string fn("volumes/GshapedVolume.xml");
     // Specify the file path
     // std::string fn("pde/circle.xml");
-    std::string fn("surfaces/egg.xml"); 
+    // std::string fn("surfaces/egg.xml"); 
     // std::string fn("domain2d/lake.xml");
     // std::string fn("surfaces/cylinder.xml");
     //... multipatch case
-    // std::string fn("pde/annulus2d_bvp.xml");
+    std::string fn("pde/annulus2d_bvp.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", 
@@ -227,8 +228,10 @@ int main(int argc, char *argv[])
                 bs_nrbs);
     cmd.addSwitch("last", "Solve solely for the last level of h-refinement",
                 last);
-    cmd.addSwitch("colloc", "Compute the the compodition using collocation method",
+    cmd.addSwitch("col", "Compute the the compodition using collocation method",
                 colloc);                
+    cmd.addSwitch("exactGeo", "Keep the exact boundary (adapt only interfaces) and use the MMPDE solver",
+                exactGeo);
     cmd.addSwitch("fit", "Use fitting to compute the composition",
                 fit);
     cmd.addSwitch("L2", "Use L2-projection to compute the composition",
@@ -258,14 +261,17 @@ int main(int argc, char *argv[])
     gsFunctionExpr<> f;
     fd.getId(id_rho, f);
     gsInfo<<"Density function "<< f << "\n";
+    typedef gsExprAssembler<>::geometryMap geometryMap;
 
-    //! [Refinement]
-    gsMultiBasis<double> dbasis(mpLeft, bs_nrbs);//true: poly-splines (not NURBS)
-    // Elevate and p-refine the basis to order p + numElevate
-    // where p is the highest degree in the bases
-    dbasis.setDegree( dbasis.maxCwiseDegree() + numElevate);
-    //dbasis.degreeIncrease(numElevate);
-    
+    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    ###                                  Step r* : Computes the density function
+    ###                                     and the multipatch adaptive mapping from a given mesh
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefineMAE, maxIter, IntensityMAE, numReduceMAE, numElevateMAE, exactGeo);
+    auto density        = MAE.buildAnalyticDensity(f); // build the density function (we avoid composing rho o F o Psi here)
+    MAE.buildMultiPatch(density, 1e-8);// build the adaptive mapping
+
+    // //------------------------------------
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
     A.options().setReal("quA", quadValue);
@@ -274,18 +280,8 @@ int main(int argc, char *argv[])
     gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
     // Elements used for numerical integration
-    A.setIntegrationElements(dbasis);
+    A.setIntegrationElements(MAE.mapping_basis);
     gsExprEvaluator<> ev(A);
-
-    typedef gsExprAssembler<>::geometryMap geometryMap;
-
-    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ###                                  Step r* : Computes the density function
-    ###                                     and the multipatch adaptive mapping from a given mesh
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefineMAE, maxIter, IntensityMAE, numReduceMAE, numElevateMAE);
-    auto density        = MAE.buildAnalyticDensity(f); // build the density function (we avoid composing rho o F o Psi here)
-    MAE.buildMultiPatch(density, 1e-8);// build the adaptive mapping
     // //------------------------------------
     geometryMap G       = A.getMap(mpLeft);
     geometryMap PP      = A.getMap(MAE.MAmapping);
@@ -296,7 +292,7 @@ int main(int argc, char *argv[])
     if (last)
     {
         for (int r =0; r < numRefine; ++r){
-            dbasis.uniformRefine();
+            MAE.mapping_basis.uniformRefine();
             numLevels += 1;
         }
         numRefine = 0;
@@ -309,15 +305,15 @@ int main(int argc, char *argv[])
     gsVector<int>  DoFPDE(numRefine+1);
     for (int r=0; r<= numRefine; ++r)
     {
-    dbasis.uniformRefine();
+    MAE.mapping_basis.uniformRefine();
     numLevels += 1;
 
     //... some infos on the computational domain
-    gsInfo << r <<"th iter:{ numElement " << dbasis.basis(0).numElements() << " degree " << dbasis.degree() 
-            <<" dim " <<dbasis.dim()<<" Geodim " << mpLeft.geoDim() 
+    gsInfo << r <<"th iter:{ numElement " << MAE.mapping_basis.basis(0).numElements() << " degree " << MAE.mapping_basis.degree() 
+            <<" dim " <<MAE.mapping_basis.dim()<<" Geodim " << mpLeft.geoDim() 
             <<"}------------------------------------------------------\n";
 
-    DoFPDE[r]               = dbasis.basis(0).size();
+    DoFPDE[r]               = MAE.mapping_basis.basis(0).size();
     CHdferror[r]            = abs(ev.integral( jac(G).det() - jac(Cmp).det()*jac(PP).det() ) );
 
     //----------------------------------------------------------------------
@@ -325,7 +321,7 @@ int main(int argc, char *argv[])
     //----------------------------------------------------------------------
     if(L2)
     {
-    mpPsi           = MAE.buildCompMultiPatch(dbasis, quadValue, true);
+    mpPsi           = MAE.buildCompMultiPatch(quadValue, true);
     geometryMap GPi = A.getMap(mpPsi);
     // ... Error analysis
     double maxDist = 0.;
@@ -342,7 +338,7 @@ int main(int argc, char *argv[])
     //---------------------------------------------------------- 
     //...Interpolation of the mapping by collocation method !
     //----------------------------------------------------------
-    mpPsi                   = MAE.buildColCompMultiPatch(dbasis);
+    mpPsi                   = MAE.buildColCompMultiPatch();
     geometryMap PGI         = A.getMap(mpPsi);
     // ... Error using Interpolation method
     double maxDist = 0.;
@@ -358,7 +354,7 @@ int main(int argc, char *argv[])
     //...Interpolation of the mapping by fitting method !
     //----------------------------------------------------------
     gsInfo<<"Fitting the mapping ++++++" <<numLevels<<"\n";
-    mpPsi                   = MAE.buildFitCompMultiPatch(dbasis, 50, 1e-7);
+    mpPsi                   = MAE.buildFitCompMultiPatch(50, 1e-7);
     geometryMap PGF         = A.getMap(mpPsi);
     // ... Error analysis
     double maxDist = 0.;
@@ -374,7 +370,7 @@ int main(int argc, char *argv[])
     std::ofstream outFile("errorGeometry_analysis.txt", std::ios::app); // Open file in append mode
     if (outFile.is_open())
     {
-        outFile << "#DoF_PDE: q"<< quadValue<<"pPr"<< dbasis.basis(0).maxDegree()<<"pPsi"<< mpLeft.basis(0).maxDegree()-numReduceMAE <<"\n"
+        outFile << "#DoF_PDE: q"<< quadValue<<"pPr"<< MAE.mapping_basis.basis(0).maxDegree()<<"pPsi"<< mpLeft.basis(0).maxDegree()-numReduceMAE <<"\n"
                 << std::scientific << DoFPDE.transpose() << "\n";
         if (L2){
         outFile << "#L2 projection error analysis: \n";
@@ -401,7 +397,7 @@ int main(int argc, char *argv[])
     }
     else
     {
-        gsInfo << "Error: Unable to open file for writing : error_analysis.txt.\n";
+        gsInfo << "Error: Unable to open file for writing : errorGeometry_analysis.txt.\n";
     }
     //--------------------------------------------------------------------------------------------------
     //! [Error and convergence rates]
@@ -494,7 +490,7 @@ int main(int argc, char *argv[])
     if (plot)
     {
         gsMultiPatch<> Psi;
-        if (fit){ // already in THB format
+        if (fit && mpLeft.nPatches() == 1 && !MAE.mapping_basis.basis(0).weights().any()){ // already in THB format
             Psi = mpPsi;
         }
         else{
@@ -537,7 +533,7 @@ int main(int argc, char *argv[])
         MarkingStrategy adaptRefCrit = PUCA;
         //MarkingStrategy adaptRefCrit = GARU;
         //MarkingStrategy adaptRefCrit = errorFraction;
-        real_t adaptRefParam = 0.8;
+        real_t adaptRefParam = 0.7;
 
         for (int r=0; r<=numLRefine; ++r)
         {
@@ -546,10 +542,16 @@ int main(int argc, char *argv[])
                     <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
             // --------------- error estimation/computation ---------------
             // Get the element-wise norms.
-            ev.integralElWise( ff_TG.val() );
-            //ev.integralElWise( 1/jac(GPi).absDet() );
-
-            const std::vector<real_t> eltErrs  = ev.elementwise();
+            // Element-wise density in the element order used by gsRefineMarkedElements (patch by patch);
+            // the evaluator returns patch-0 values on every patch of a multipatch map.!!! TODO
+            std::vector<real_t> eltErrs;
+            for (size_t pn = 0; pn < Psi.nPatches(); ++pn)
+                for (auto it = Psi.basis(pn).domain()->beginAll(); it < Psi.basis(pn).domain()->endAll(); ++it)
+                {
+                    gsMatrix<> val;
+                    f.eval_into(Psi.patch(pn).eval(it.centerPoint()), val);
+                    eltErrs.push_back(std::abs(val(0,0)) * (it.upperCorner()-it.lowerCorner()).prod());
+                }
             //! [errorComputation]
 
             //! [adaptRefinementPart]
