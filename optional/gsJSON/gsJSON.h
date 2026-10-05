@@ -1073,9 +1073,7 @@ public:
     {
         // Open the file
         std::ifstream file(filename);
-        // if (!file.is_open()) {
-        //     throw std::runtime_error("Could not open file: " + filename);
-        // }
+        // GISMO_ASSERT(file.is_open(), "Could not open file: " + filename);
 
         GISMO_ENSURE(file.is_open(), "Could not open file: " + filename);
 

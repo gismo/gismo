@@ -201,6 +201,14 @@ T gsBSpline<T>::pseudoCurvature() const
 }
 
 template<class T>
+index_t gsBSpline<T>::removeKnot( T knot, index_t i, T tol)
+{
+    return static_cast<index_t>(
+        gsKnotRemove<T>(this->basis().knots(), this->coefs(), knot,
+                        static_cast<int>(i), true, tol));
+}
+
+template<class T>
 void gsBSpline<T>::insertKnot( T knot, index_t dir, index_t i)
 {
     GISMO_UNUSED(dir);
