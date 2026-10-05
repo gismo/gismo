@@ -76,6 +76,29 @@ public:
         return m_sd->cont = _r;
     }
 
+    /// Sets the storage mode (gsDofMapper::storage) of the mappers this space
+    /// builds from now on: setup() and the assembler's rebuild through
+    /// gsFeSpaceData::init().  A mapper that already exists is not converted,
+    /// and setupMapper() keeps the storage mode of its argument.
+    ///
+    /// Call it before setup().  On a plain gsBasis source (neither a
+    /// gsMultiBasis nor a gsMappedBasis) the overload setup(const index_t)
+    /// builds no mapper and only finalizes the empty default one;
+    /// setup(bc, dir_values, ...) builds the mapper in the mode set here.
+    /// \param st storage mode of the mappers built later
+    void setMapperStorage(gsDofMapper::storage st) const
+    {
+        GISMO_ASSERT(NULL!=m_sd, "Space/mapper not properly initialized.");
+        m_sd->mapperStorage = st;
+    }
+
+    /// Storage mode used for the mappers this space builds (default: dense).
+    gsDofMapper::storage mapperStorage() const
+    {
+        GISMO_ASSERT(NULL!=m_sd, "Space/mapper not properly initialized.");
+        return m_sd->mapperStorage;
+    }
+
     gsFeSolution<T> function(const gsMatrix<T>& solVector) const
     { return gsFeSolution<T>(*this); }
 
@@ -130,7 +153,8 @@ public:
         {
             // Note: conforming=false, the interfaces are matched below by the
             // caller's own matchInterface loop (when interfaceCont()==0)
-            m_sd->mapper = createMapper(*mb, this->dim(), /*conforming=*/false);
+            m_sd->mapper = createMapper(*mb, this->dim(), /*conforming=*/false,
+                                        /*finalize=*/false, m_sd->mapperStorage);
             if ( 0==this->interfaceCont() ) // Conforming boundaries ?
             {
                 for ( gsBoxTopology::const_iiterator it = mb->topology().iBegin();
@@ -144,7 +168,7 @@ public:
         if (const gsMappedBasis<2,T> * mb =
             dynamic_cast<const gsMappedBasis<2,T>*>(&this->source()) )
         {
-            m_sd->mapper.setIdentity(mb->nPatches(), mb->size() , this->dim());
+            m_sd->mapper.setIdentity(mb->nPatches(), mb->size() , this->dim(), m_sd->mapperStorage);
         }
 
         m_sd->mapper.finalize();
@@ -161,17 +185,20 @@ public:
         const gsMultiBasis<T> *mb = dynamic_cast<const gsMultiBasis<T> *>(&this->source());
         if (mb != nullptr)
         {
-            m_sd->mapper = createMapper(*mb, bc, dim, this->id(), (0 == this->interfaceCont())); // second to last index assumes the unknown in the BCs is the same as the space ID
+            m_sd->mapper = createMapper(*mb, bc, dim, this->id(), (0 == this->interfaceCont()),
+                                        /*finalize=*/false, m_sd->mapperStorage); // second to last index assumes the unknown in the BCs is the same as the space ID
         }
         else if (const gsBasis<T> *b =
                    dynamic_cast<const gsBasis<T> *>(&this->source()))
         {
-            m_sd->mapper = createMapper(*b, bc, dim, this->id()); // last index assumes the unknown in the BCs is the same as the space ID
+            m_sd->mapper = createMapper(*b, bc, dim, this->id(), /*conforming=*/true,
+                                        /*finalize=*/false, m_sd->mapperStorage); // last index assumes the unknown in the BCs is the same as the space ID
         }
         else if (const gsMappedBasis<2, T> *mapb =
                    dynamic_cast<const gsMappedBasis<2, T> *>(&this->source()))
         {
-            m_sd->mapper = createMapper(*mapb, bc, dim, this->id(), false);
+            m_sd->mapper = createMapper(*mapb, bc, dim, this->id(), false,
+                                        /*finalize=*/false, m_sd->mapperStorage);
 
             /* 
              * NOTE (from @hverhelst): In earlier code (before 18-12-2025)

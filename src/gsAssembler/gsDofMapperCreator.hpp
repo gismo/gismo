@@ -358,7 +358,8 @@ gsDofMapper createMapper(const gsFunctionSet<T>        & bases,
                          index_t nComp,
                          index_t unk,
                          bool    conforming,
-                         bool    finalize)
+                         bool    finalize,
+                         gsDofMapper::storage st)
 {
     const bool hasBCs = bc.size() != 0;
 
@@ -369,7 +370,7 @@ gsDofMapper createMapper(const gsFunctionSet<T>        & bases,
     const short_t mappedDim = internal::mappedBasisDim(bases);
     if (2 == mappedDim || 3 == mappedDim)
     {
-        mapper.setIdentity(bases.nPieces(), bases.size(), nComp);
+        mapper.setIdentity(bases.nPieces(), bases.size(), nComp, st);
     }
     else
     {
@@ -382,7 +383,7 @@ gsDofMapper createMapper(const gsFunctionSet<T>        & bases,
         for (index_t k = 0; k != nPatches; ++k)
             sz[k] = bases.basis(k).size();
 
-        mapper = gsDofMapper(sz, nComp);
+        mapper = gsDofMapper(sz, nComp, st);
 
         if (conforming)
         {
@@ -410,7 +411,8 @@ template<class T>
 gsDofMapper createMapper(const std::vector<const gsFunctionSet<T>*> & basesPerComp,
                          const gsBoxTopology           & topology,
                          const gsBoundaryConditions<T> & bc,
-                         index_t unk, bool conforming, bool finalize)
+                         index_t unk, bool conforming, bool finalize,
+                         gsDofMapper::storage st)
 {
     GISMO_ENSURE(!basesPerComp.empty(),
                  "createMapper: expecting one function set per component, got none.");
@@ -460,7 +462,7 @@ gsDofMapper createMapper(const std::vector<const gsFunctionSet<T>*> & basesPerCo
     for (index_t c = 1; c != nComp && shared; ++c)
         shared = (basesPerComp[c] == basesPerComp.front());
     if (shared)
-        return createMapper(first, topology, bc, nComp, unk, conforming, finalize);
+        return createMapper(first, topology, bc, nComp, unk, conforming, finalize, st);
 
     // Distinct function sets: declared distinct even where every size
     // coincides (a Raviart-Thomas pair on a square mesh), because the
@@ -472,7 +474,7 @@ gsDofMapper createMapper(const std::vector<const gsFunctionSet<T>*> & basesPerCo
         for (index_t k = 0; k != nPatches; ++k)
             sz[c][k] = basesPerComp[c]->basis(k).size();
     }
-    gsDofMapper mapper(sz, /*hasDistinctComponentSpaces=*/true);
+    gsDofMapper mapper(sz, /*hasDistinctComponentSpaces=*/true, st);
 
     if (conforming)
     {
@@ -491,7 +493,8 @@ gsDofMapper createMapper(const std::vector<const gsFunctionSet<T>*> & basesPerCo
 template<class T>
 gsDofMapper createMapper(const std::vector<gsMultiBasis<T> > & basesPerComp,
                          const gsBoundaryConditions<T> & bc,
-                         index_t unk, bool conforming, bool finalize)
+                         index_t unk, bool conforming, bool finalize,
+                         gsDofMapper::storage st)
 {
     GISMO_ENSURE(!basesPerComp.empty(),
                  "createMapper: expecting one gsMultiBasis per component, got none.");
@@ -506,52 +509,53 @@ gsDofMapper createMapper(const std::vector<gsMultiBasis<T> > & basesPerComp,
         ptrs[c] = &basesPerComp[c];
     }
 
-    return createMapper(ptrs, basesPerComp.front().topology(), bc, unk, conforming, finalize);
+    return createMapper(ptrs, basesPerComp.front().topology(), bc, unk, conforming, finalize, st);
 }
 
 template<class T>
 gsDofMapper createMapper(const gsFunctionSet<T> & bases,
                          index_t nComp, bool conforming,
-                         bool finalize)
+                         bool finalize, gsDofMapper::storage st)
 {
     if (const gsMultiBasis<T> * mb = dynamic_cast<const gsMultiBasis<T>*>(&bases))
         return createMapper(bases, mb->topology(), gsBoundaryConditions<T>(),
-                            nComp, 0, conforming, finalize);
+                            nComp, 0, conforming, finalize, st);
     else
         return createMapper(bases, gsBoxTopology(), gsBoundaryConditions<T>(),
-                            nComp, 0, conforming, finalize);
+                            nComp, 0, conforming, finalize, st);
 }
 
 template<class T>
 gsDofMapper createMapper(const gsFunctionSet<T> & bases, const gsBoxTopology & topology,
                          index_t nComp, bool conforming,
-                         bool finalize)
+                         bool finalize, gsDofMapper::storage st)
 {
     return createMapper(bases, topology, gsBoundaryConditions<T>(),
-                        nComp, 0, conforming, finalize);
+                        nComp, 0, conforming, finalize, st);
 }
 
 template<class T>
 gsDofMapper createMapper(const gsFunctionSet<T> & bases, const gsBoundaryConditions<T> & bc,
                          index_t nComp, index_t unk, bool conforming,
-                         bool finalize)
+                         bool finalize, gsDofMapper::storage st)
 {
     if (const gsMultiBasis<T> * mb = dynamic_cast<const gsMultiBasis<T>*>(&bases))
-        return createMapper(bases, mb->topology(), bc, nComp, unk, conforming, finalize);
+        return createMapper(bases, mb->topology(), bc, nComp, unk, conforming, finalize, st);
     else
-        return createMapper(bases, gsBoxTopology(), bc, nComp, unk, conforming, finalize);
+        return createMapper(bases, gsBoxTopology(), bc, nComp, unk, conforming, finalize, st);
 }
 
 template<class T>
 gsDofMapper createMapper(const gsFunctionSet<T> & bases, const gsBoundaryConditions<T> & bc,
                          dirichlet::strategy ds, iFace::strategy is,
-                         index_t nComp, index_t unk, bool finalize)
+                         index_t nComp, index_t unk, bool finalize,
+                         gsDofMapper::storage st)
 {
     const bool conforming = (is == iFace::glue);
     if (dirichlet::elimination == ds)
-        return createMapper(bases, bc, nComp, unk, conforming, finalize);
+        return createMapper(bases, bc, nComp, unk, conforming, finalize, st);
     else
-        return createMapper(bases, gsBoundaryConditions<T>(), nComp, unk, conforming, finalize);
+        return createMapper(bases, gsBoundaryConditions<T>(), nComp, unk, conforming, finalize, st);
 }
 
 }//namespace gismo

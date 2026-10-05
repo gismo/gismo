@@ -36,6 +36,8 @@ namespace gismo
     \param unk        unknown index the conditions are filtered by; -1 accepts all
     \param conforming if true, matching dofs across the interfaces of \a topology
     \param finalize   if true, gsDofMapper::finalize() is called before returning
+    \param st         storage mode of the returned mapper (see gsDofMapper::storage);
+                      the dense and the sparse mapper hold the same numbering
 
     \note Interfaces of type interaction::contact are skipped by the conforming
     loop: matching dofs across a contact interface is wrong (the two sides are
@@ -58,37 +60,43 @@ gsDofMapper createMapper(const gsFunctionSet<T>        & bases,
                          index_t nComp,
                          index_t unk,
                          bool    conforming,
-                         bool    finalize = false);
+                         bool    finalize = false,
+                         gsDofMapper::storage st = gsDofMapper::storage::dense);
 
 /// \brief Convenience overload; the topology is taken from \a bases when it is
-/// a gsMultiBasis, otherwise an empty topology is used.
+/// a gsMultiBasis, otherwise an empty topology is used.  \a st is the storage
+/// mode of the returned mapper.
 /// \ingroup Assembler
 template<class T>
 gsDofMapper createMapper(const gsFunctionSet<T> & bases,
                          index_t nComp = 1, bool conforming = true,
-                         bool finalize = false);
+                         bool finalize = false,
+                         gsDofMapper::storage st = gsDofMapper::storage::dense);
 
 /// \brief Convenience overload with an explicit \a topology and no boundary
-/// conditions.
+/// conditions.  \a st is the storage mode of the returned mapper.
 /// \ingroup Assembler
 template<class T>
 gsDofMapper createMapper(const gsFunctionSet<T> & bases, const gsBoxTopology & topology,
                          index_t nComp = 1, bool conforming = true,
-                         bool finalize = false);
+                         bool finalize = false,
+                         gsDofMapper::storage st = gsDofMapper::storage::dense);
 
 /// \brief Convenience overload with boundary conditions; the topology is taken
 /// from \a bases when it is a gsMultiBasis, otherwise an empty topology is used.
+/// \a st is the storage mode of the returned mapper.
 /// \ingroup Assembler
 template<class T>
 gsDofMapper createMapper(const gsFunctionSet<T> & bases, const gsBoundaryConditions<T> & bc,
                          index_t nComp = 1, index_t unk = 0, bool conforming = true,
-                         bool finalize = false);
+                         bool finalize = false,
+                         gsDofMapper::storage st = gsDofMapper::storage::dense);
 
 /** @brief Strategy-enum form; replaces the gsMultiBasis<T>::getMapper family.
 
     The boundary conditions are only taken into account when
     \a ds == dirichlet::elimination; interfaces are glued iff
-    \a is == iFace::glue.
+    \a is == iFace::glue.  \a st is the storage mode of the returned mapper.
 
     \note On the \c multigrid branch the corresponding
     gsMultiBasis<T>::getMapper(dirichlet::strategy,iFace::strategy,...) path was
@@ -102,7 +110,8 @@ gsDofMapper createMapper(const gsFunctionSet<T> & bases, const gsBoundaryConditi
 template<class T>
 gsDofMapper createMapper(const gsFunctionSet<T> & bases, const gsBoundaryConditions<T> & bc,
                          dirichlet::strategy ds, iFace::strategy is,
-                         index_t nComp = 1, index_t unk = 0, bool finalize = false);
+                         index_t nComp = 1, index_t unk = 0, bool finalize = false,
+                         gsDofMapper::storage st = gsDofMapper::storage::dense);
 
 /** @brief Per-component factory: builds a gsDofMapper whose component \a c
     is discretised by the function set \a basesPerComp[c], so that the
@@ -144,6 +153,7 @@ gsDofMapper createMapper(const gsFunctionSet<T> & bases, const gsBoundaryConditi
     \param unk          unknown index the conditions are filtered by; -1 accepts all
     \param conforming   if true, matching dofs across the interfaces of \a topology
     \param finalize     if true, gsDofMapper::finalize() is called before returning
+    \param st           storage mode of the returned mapper (see gsDofMapper::storage)
 
     Invalid input -- a component selection other than -1 or an existing
     component, a reference to a patch, side or corner that does not exist,
@@ -159,7 +169,8 @@ template<class T>
 gsDofMapper createMapper(const std::vector<const gsFunctionSet<T>*> & basesPerComp,
                          const gsBoxTopology           & topology,
                          const gsBoundaryConditions<T> & bc,
-                         index_t unk, bool conforming, bool finalize = false);
+                         index_t unk, bool conforming, bool finalize = false,
+                         gsDofMapper::storage st = gsDofMapper::storage::dense);
 
 /// \brief Convenience overload of the per-component factory, one
 /// gsMultiBasis per component.  The topology is taken from
@@ -170,12 +181,14 @@ gsDofMapper createMapper(const std::vector<const gsFunctionSet<T>*> & basesPerCo
 /// copies of one gsMultiBasis, so with more than one component the mapper is
 /// always declared to have distinct component spaces, and the expression
 /// assembler rejects it. For one space shared by every component use the
-/// single-basis createMapper(bases, topology, bc, nComp, ...).
+/// single-basis createMapper(bases, topology, bc, nComp, ...).  \a st is the
+/// storage mode of the returned mapper.
 /// \ingroup Assembler
 template<class T>
 gsDofMapper createMapper(const std::vector<gsMultiBasis<T> > & basesPerComp,
                          const gsBoundaryConditions<T> & bc,
-                         index_t unk = 0, bool conforming = true, bool finalize = false);
+                         index_t unk = 0, bool conforming = true, bool finalize = false,
+                         gsDofMapper::storage st = gsDofMapper::storage::dense);
 
 #ifdef GISMO_WITH_PYBIND11
 void pybind11_init_gsDofMapperCreator(pybind11::module &m);

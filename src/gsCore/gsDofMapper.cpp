@@ -137,7 +137,7 @@ inline size_t maxComponentCount()
 } // anonymous namespace
 
 gsDofMapper::gsDofMapper() :
-  m_nPatches(1), m_layout(PatchConcatenated), m_hasDistinctComponentSpaces(false),
+  m_storage(storage::dense), m_localizedSparse(false), m_nPatches(1), m_layout(PatchConcatenated), m_hasDistinctComponentSpaces(false),
   m_uniformComponents(true),
   m_shift(0), m_bshift(0), m_numFreeDofs(1,0), m_numElimDofs(1,0),
   m_numCpldDofs(1,0), m_curElimId(-1)
@@ -146,32 +146,149 @@ gsDofMapper::gsDofMapper() :
 }
 
 gsDofMapper::gsDofMapper(const std::vector<gsVector<index_t> > & patchDofSizes,
-                          bool hasDistinctComponentSpaces)
+                          bool hasDistinctComponentSpaces, storage st)
 {
-    initRaggedPatchDofs(patchDofSizes, hasDistinctComponentSpaces);
+    initRaggedPatchDofs(patchDofSizes, hasDistinctComponentSpaces, st);
+}
+
+index_t gsDofMapper::sparseValue(index_t c, size_t p) const
+{
+    const index_t q = static_cast<index_t>(p);
+    if (m_curElimId < 0) // setup: marked positions only, absent means regular
+    {
+        const std::unordered_map<index_t,index_t>::const_iterator it = m_marked[c].find(q);
+        return m_marked[c].end() == it ? 0 : it->second;
+    }
+
+    if (m_localizedSparse)
+        return runValue(c, p);
+
+    const std::vector<index_t> & keys = m_keys[c];
+    const std::vector<index_t>::const_iterator it =
+        std::lower_bound(keys.begin(), keys.end(), q);
+    const index_t r = static_cast<index_t>(it - keys.begin());
+    if (it != keys.end() && *it == q)
+        return m_vals[c][r];
+    return m_regBase[c] + q - r;
+}
+
+template<class F>
+void gsDofMapper::forEachValue(index_t c, size_t pBegin, size_t pEnd, F f) const
+{
+    if (storage::dense == m_storage)
+    {
+        for (size_t p = pBegin; p != pEnd; ++p)
+            if (f(p, m_dofs[c][p])) return;
+        return;
+    }
+    if (m_curElimId < 0)
+    {
+        for (size_t p = pBegin; p != pEnd; ++p)
+            if (f(p, sparseValue(c, p))) return;
+        return;
+    }
+
+    if (m_localizedSparse)
+    {
+        // Merge of the position range with the runs.
+        const std::vector<Run> & runs = m_runs[c];
+        size_t r = std::upper_bound(runs.begin(), runs.end(), static_cast<index_t>(pBegin),
+                                    [](index_t x, const Run & e) { return x < e.start; })
+                   - runs.begin();
+        if (r != 0) --r;
+        for (size_t p = pBegin; p != pEnd; ++p)
+        {
+            const index_t q = static_cast<index_t>(p);
+            while (r != runs.size() && runs[r].start + runs[r].len <= q) ++r;
+            const index_t v = (r != runs.size() && runs[r].start <= q)
+                ? runs[r].val + (q - runs[r].start) : remoteDof();
+            if (f(p, v)) return;
+        }
+        return;
+    }
+
+    // Merge of the position range with the sorted marked positions.
+    const std::vector<index_t> & keys = m_keys[c];
+    const std::vector<index_t> & vals = m_vals[c];
+    const index_t base = m_regBase[c];
+    size_t r = std::lower_bound(keys.begin(), keys.end(),
+                                static_cast<index_t>(pBegin)) - keys.begin();
+    for (size_t p = pBegin; p != pEnd; ++p)
+    {
+        const index_t q = static_cast<index_t>(p);
+        if (r != keys.size() && keys[r] == q)
+        {
+            if (f(p, vals[r])) return;
+            ++r;
+        }
+        else if (f(p, base + q - static_cast<index_t>(r)))
+            return;
+    }
+}
+
+void gsDofMapper::resetStorage(storage st, size_t nComp)
+{
+    m_storage = st;
+    std::vector<std::unordered_map<index_t,index_t> >().swap(m_marked);
+    std::vector<std::vector<index_t> >().swap(m_keys);
+    std::vector<std::vector<index_t> >().swap(m_vals);
+    std::vector<index_t>().swap(m_regBase);
+    std::vector<std::vector<Run> >().swap(m_runs);
+    m_localizedSparse = false;
+    m_dofs.assign(nComp, std::vector<index_t>());
+    if (storage::sparse == st)
+        m_marked.assign(nComp, std::unordered_map<index_t,index_t>());
+}
+
+void gsDofMapper::densify()
+{
+    GISMO_ENSURE(m_curElimId >= 0, "gsDofMapper::densify(): finalize() was not called");
+    if (storage::dense == m_storage) return;
+
+    std::vector<std::vector<index_t> > dofs(numComponents());
+    for (index_t c = 0; c != numComponents(); ++c)
+    {
+        dofs[c].resize(compSize(c));
+        std::vector<index_t> & d = dofs[c];
+        forEachValue(c, 0, d.size(), [&d](size_t p, index_t v) { d[p] = v; return false; });
+    }
+    m_dofs.swap(dofs);
+    std::vector<std::unordered_map<index_t,index_t> >().swap(m_marked);
+    std::vector<std::vector<index_t> >().swap(m_keys);
+    std::vector<std::vector<index_t> >().swap(m_vals);
+    std::vector<index_t>().swap(m_regBase);
+    std::vector<std::vector<Run> >().swap(m_runs);
+    m_localizedSparse = false;
+    m_storage = storage::dense;
 }
 
 void gsDofMapper::checkInvariants() const
 {
 #ifndef NDEBUG
-    GISMO_ASSERT(m_offset.size() == m_dofs.size()*(m_nPatches+1),
+    GISMO_ASSERT(m_offset.size() == static_cast<size_t>(numComponents())*(m_nPatches+1),
                  "gsDofMapper: offset table size "<<m_offset.size()<<" does not match "
-                 <<m_dofs.size()<<" components x "<<(m_nPatches+1)<<" (nPatches+1).");
-    GISMO_ASSERT(m_numFreeDofs.size() == m_dofs.size()+1,
+                 <<static_cast<size_t>(numComponents())<<" components x "<<(m_nPatches+1)<<" (nPatches+1).");
+    GISMO_ASSERT(m_numFreeDofs.size() == static_cast<size_t>(numComponents())+1,
                  "gsDofMapper: m_numFreeDofs has the wrong size.");
-    GISMO_ASSERT(m_numElimDofs.size() == m_dofs.size()+1,
+    GISMO_ASSERT(m_numElimDofs.size() == static_cast<size_t>(numComponents())+1,
                  "gsDofMapper: m_numElimDofs has the wrong size.");
-    GISMO_ASSERT(m_numCpldDofs.size() == m_dofs.size()+1,
+    GISMO_ASSERT(m_numCpldDofs.size() == static_cast<size_t>(numComponents())+1,
                  "gsDofMapper: m_numCpldDofs has the wrong size.");
+    GISMO_ASSERT(m_dofs.size() == static_cast<size_t>(numComponents()),
+                 "gsDofMapper: the outer dof table is not sized to the component count.");
 
-    for (size_t c = 0; c != m_dofs.size(); ++c)
+    for (index_t cc = 0; cc != numComponents(); ++cc)
     {
-        const index_t cc = static_cast<index_t>(c);
+        const size_t c = static_cast<size_t>(cc);
         GISMO_ASSERT(offAt(cc,0) == 0,
                      "gsDofMapper: offset table does not start at 0 for component "<<c<<".");
-        GISMO_ASSERT(offAt(cc, static_cast<index_t>(m_nPatches)) == m_dofs[c].size(),
-                     "gsDofMapper: offset sentinel does not match storage size for component "
-                     <<c<<": "<<offAt(cc, static_cast<index_t>(m_nPatches))<<" != "<<m_dofs[c].size()<<".");
+        if (storage::dense == m_storage)
+            GISMO_ASSERT(compSize(cc) == m_dofs[c].size(),
+                         "gsDofMapper: offset sentinel does not match storage size for component "
+                         <<c<<": "<<compSize(cc)<<" != "<<m_dofs[c].size()<<".");
+        else
+            GISMO_ASSERT(m_dofs[c].empty(),
+                         "gsDofMapper: sparse storage holds a dense table for component "<<c<<".");
 
         if (PatchConcatenated == m_layout)
         {
@@ -188,12 +305,77 @@ void gsDofMapper::checkInvariants() const
         }
     }
 
+    GISMO_ASSERT(!m_localizedSparse || (storage::sparse == m_storage && m_curElimId >= 0),
+                 "gsDofMapper: a localized run table requires finalized sparse storage.");
+    if (!m_localizedSparse)
+        GISMO_ASSERT(m_runs.empty(),
+                     "gsDofMapper: run table present on a mapper that was not localized in sparse storage.");
+
+    if (storage::sparse == m_storage)
+    {
+        if (m_localizedSparse)
+        {
+            GISMO_ASSERT(m_keys.empty() && m_vals.empty() && m_regBase.empty(),
+                         "gsDofMapper: a localized sparse mapper still holds the marked-position tables.");
+            const size_t nc = static_cast<size_t>(numComponents());
+            GISMO_ASSERT(m_runs.size() == nc,
+                         "gsDofMapper: the run table is not sized to the component count.");
+            for (size_t c = 0; c != nc; ++c)
+            {
+                const std::vector<Run> & runs = m_runs[c];
+                for (size_t r = 0; r != runs.size(); ++r)
+                {
+                    GISMO_ASSERT(runs[r].len >= 1 && runs[r].start >= 0 && runs[r].val >= 0 &&
+                                 static_cast<size_t>(runs[r].start) + runs[r].len <= compSize(static_cast<index_t>(c)),
+                                 "gsDofMapper: invalid run in component "<<c<<".");
+                    GISMO_ASSERT(runs[r].val >= m_curElimId || runs[r].val + runs[r].len <= m_curElimId,
+                                 "gsDofMapper: run straddles the free/eliminated boundary in component "<<c<<".");
+                    if (r + 1 != runs.size())
+                    {
+                        GISMO_ASSERT(runs[r].start + runs[r].len <= runs[r+1].start,
+                                     "gsDofMapper: runs overlap or are unsorted in component "<<c<<".");
+                        GISMO_ASSERT(!(runs[r].start + runs[r].len == runs[r+1].start &&
+                                       runs[r].val + runs[r].len == runs[r+1].val &&
+                                       (runs[r+1].val < m_curElimId) == (runs[r].val < m_curElimId)),
+                                     "gsDofMapper: adjacent runs are not maximal in component "<<c<<".");
+                    }
+                }
+            }
+        }
+        else if (m_curElimId < 0)
+        {
+            GISMO_ASSERT(m_marked.size() == m_dofs.size(),
+                         "gsDofMapper: sparse setup maps are not sized to the component count.");
+            for (size_t c = 0; c != m_marked.size(); ++c)
+                for (const std::pair<const index_t,index_t> & kv : m_marked[c])
+                    GISMO_ASSERT(kv.first >= 0 && static_cast<size_t>(kv.first) < compSize(static_cast<index_t>(c))
+                                 && 0 != kv.second,
+                                 "gsDofMapper: invalid marked entry ("<<kv.first<<","<<kv.second
+                                 <<") in component "<<c<<".");
+        }
+        else
+        {
+            GISMO_ASSERT(m_keys.size() == m_dofs.size() && m_vals.size() == m_dofs.size() &&
+                         m_regBase.size() == m_dofs.size(),
+                         "gsDofMapper: sparse finalized tables are not sized to the component count.");
+            for (size_t c = 0; c != m_keys.size(); ++c)
+            {
+                GISMO_ASSERT(m_keys[c].size() == m_vals[c].size(),
+                             "gsDofMapper: keys and values differ in size in component "<<c<<".");
+                for (size_t r = 0; r != m_keys[c].size(); ++r)
+                    GISMO_ASSERT(m_keys[c][r] >= 0 && static_cast<size_t>(m_keys[c][r]) < compSize(static_cast<index_t>(c))
+                                 && (0 == r || m_keys[c][r-1] < m_keys[c][r]),
+                                 "gsDofMapper: marked positions are not strictly increasing and in range in component "<<c<<".");
+            }
+        }
+    }
+
     GISMO_ASSERT(m_uniformComponents == computeUniformComponents(),
                  "gsDofMapper: the cached hasUniformComponents() is stale.");
 
     if (m_curElimId >= 0) // finalized: the count vectors are now cumulative prefix sums
     {
-        for (size_t c = 0; c != m_dofs.size(); ++c)
+        for (index_t c = 0; c != numComponents(); ++c)
         {
             GISMO_ASSERT(m_numFreeDofs[c] <= m_numFreeDofs[c+1],
                          "gsDofMapper: m_numFreeDofs is not monotone after finalize().");
@@ -246,7 +428,7 @@ void gsDofMapper::localToGlobal(const gsMatrix<index_t>& locals,
     GISMO_ASSERT( validPatch(patchIndex), "localToGlobal: invalid patch "<<patchIndex
                   <<", the mapper has "<<m_nPatches<<" patches.");
     GISMO_ASSERT( validComponent(comp), "localToGlobal: invalid component "<<comp
-                  <<", the mapper has "<<m_dofs.size()<<" components.");
+                  <<", the mapper has "<<numComponents()<<" components.");
     const index_t numActive = locals.rows();
     globals.resize(numActive,1);
 
@@ -261,6 +443,118 @@ void gsDofMapper::localToGlobal(const gsMatrix<index_t>& locals,
 
     for (index_t i = 0; i < numActive; ++i)
         globals(i,0) = index(locals(i,0), patchIndex, comp);
+}
+
+namespace
+{
+
+// First index in [lo,hi) at which before(.) is false, before() being true on
+// a prefix.  O(log(hi-lo)).
+template<class Pred>
+inline size_t firstNotBefore(size_t lo, size_t hi, Pred before)
+{
+    while (lo < hi)
+    {
+        const size_t mid = lo + (hi - lo) / 2;
+        if (before(mid)) lo = mid + 1;
+        else             hi = mid;
+    }
+    return lo;
+}
+
+// As firstNotBefore(lo,n,.), assuming before() holds on [0,lo), but
+// doubling the step from lo first: O(log g), g = result - lo.
+template<class Pred>
+inline size_t gallopNotBefore(size_t lo, size_t n, Pred before)
+{
+    size_t hi = lo, step = 1;
+    while (hi < n && before(hi))
+    {
+        lo = hi + 1;
+        hi = lo + step;
+        step <<= 1;
+    }
+    if (hi > n) hi = n;
+    return firstNotBefore(lo, hi, before);
+}
+
+} // namespace
+
+void gsDofMapper::index_into(const gsMatrix<index_t> & act, index_t col,
+                             index_t patch, index_t comp, index_t * out) const
+{
+    GISMO_ASSERT( m_curElimId >= 0, "finalize() was not called on gsDofMapper");
+    GISMO_ASSERT( validPatch(patch), "index_into: invalid patch "<<patch
+                  <<", the mapper has "<<m_nPatches<<" patches.");
+    GISMO_ASSERT( validComponent(comp), "index_into: invalid component "<<comp
+                  <<", the mapper has "<<numComponents()<<" components.");
+    GISMO_ASSERT( col >= 0 && col < act.cols(), "index_into: invalid column "<<col
+                  <<" of a matrix with "<<act.cols()<<" columns.");
+
+    const index_t n = act.rows();
+    const index_t * a = act.data() + static_cast<size_t>(col) * static_cast<size_t>(n);
+    const size_t base = offAt(comp, patch);
+    const index_t shift = m_shift;
+
+    if (storage::dense == m_storage)
+    {
+        const index_t * d = m_dofs[comp].data() + base;
+        for (index_t i = 0; i != n; ++i)
+        {
+            GISMO_ASSERT(validLocal(a[i],patch,comp), "index_into: invalid local dof "<<a[i]
+                         <<" of patch "<<patch<<", component "<<comp<<localRangeInfo(patch,comp));
+            out[i] = d[a[i]] + shift;
+        }
+        return;
+    }
+
+    if (m_localizedSparse)
+    {
+        // r = number of runs with start <= q, monotone in q
+        const std::vector<Run> & runs = m_runs[comp];
+        const size_t R = runs.size();
+        size_t r = 0;
+        index_t prev = 0;
+        for (index_t i = 0; i != n; ++i)
+        {
+            GISMO_ASSERT(validLocal(a[i],patch,comp), "index_into: invalid local dof "<<a[i]
+                         <<" of patch "<<patch<<", component "<<comp<<localRangeInfo(patch,comp));
+            const index_t q = static_cast<index_t>(base) + a[i];
+            auto started = [&](size_t s) { return runs[s].start <= q; };
+            r = (0 == i || q < prev) ? firstNotBefore(0, R, started)
+                                     : gallopNotBefore(r, R, started);
+            prev = q;
+            index_t v = remoteDof();
+            if (r != 0)
+            {
+                const Run & run = runs[r-1];
+                const index_t dd = q - run.start;
+                if (dd < run.len) v = run.val + dd;
+            }
+            out[i] = v + shift;
+        }
+        return;
+    }
+
+    // r = number of marked positions below q, monotone in q
+    const std::vector<index_t> & keys = m_keys[comp];
+    const std::vector<index_t> & vals = m_vals[comp];
+    const size_t K = keys.size();
+    const index_t regBase = m_regBase[comp];
+    size_t r = 0;
+    index_t prev = 0;
+    for (index_t i = 0; i != n; ++i)
+    {
+        GISMO_ASSERT(validLocal(a[i],patch,comp), "index_into: invalid local dof "<<a[i]
+                     <<" of patch "<<patch<<", component "<<comp<<localRangeInfo(patch,comp));
+        const index_t q = static_cast<index_t>(base) + a[i];
+        auto below = [&](size_t s) { return keys[s] < q; };
+        r = (0 == i || q < prev) ? firstNotBefore(0, K, below)
+                                 : gallopNotBefore(r, K, below);
+        prev = q;
+        out[i] = ((r != K && keys[r] == q) ? vals[r]
+                                           : regBase + q - static_cast<index_t>(r)) + shift;
+    }
 }
 
 void gsDofMapper::localToGlobal2(const gsMatrix<index_t>& locals,
@@ -278,7 +572,7 @@ void gsDofMapper::localToGlobal2(const gsMatrix<index_t>& locals,
     GISMO_ASSERT( validPatch(patchIndex), "localToGlobal2: invalid patch "<<patchIndex
                   <<", the mapper has "<<m_nPatches<<" patches.");
     GISMO_ASSERT( validComponent(comp), "localToGlobal2: invalid component "<<comp
-                  <<", the mapper has "<<m_dofs.size()<<" components.");
+                  <<", the mapper has "<<numComponents()<<" components.");
     const index_t numActive = locals.rows();
     globals.resize(numActive, 2);
 
@@ -305,9 +599,10 @@ void gsDofMapper::localToGlobal2(const gsMatrix<index_t>& locals,
 gsVector<index_t> gsDofMapper::asVector(index_t comp) const
 {
     ensureComponent(comp, "asVector");
-  gsVector<index_t> v(m_dofs[comp].size());
-  for(size_t j = 0; j!= m_dofs[comp].size(); ++j)
-    v[j] = m_dofs[comp][j] + m_shift;
+  gsVector<index_t> v(compSize(comp));
+  const index_t shift = m_shift;
+  forEachValue(comp, 0, compSize(comp),
+               [&v, shift](size_t p, index_t val) { v[p] = val + shift; return false; });
   return v;
 }
 
@@ -372,8 +667,8 @@ void gsDofMapper::matchDof(index_t u, index_t i,
 void gsDofMapper::matchDofImpl(index_t u, index_t i,
                                index_t v, index_t j, index_t comp)
 {
-    index_t d1 = canonicalDof(dofAt(i,u,comp), comp);
-    index_t d2 = canonicalDof(dofAt(j,v,comp), comp);
+    index_t d1 = canonicalDof(setupValue(i,u,comp), comp);
+    index_t d2 = canonicalDof(setupValue(j,v,comp), comp);
 
     // make sure that d1 <= d2, simplifies implementation
     if (d1 > d2)
@@ -388,7 +683,7 @@ void gsDofMapper::matchDofImpl(index_t u, index_t i,
         if (d2 < 0)
 	  mergeDofsGlobally(d1, d2, comp);  // both are eliminated, merge their indices
         else if (d2 == 0)
-            dofAt(j,v, comp) = d1;   // second is free, eliminate it along with first
+            setSetupValue(j,v, comp, d1);   // second is free, eliminate it along with first
         else /* d2 > 0*/
             replaceDofGlobally(d2, d1, comp); // second is coupling, eliminate all instances of it
     }
@@ -396,11 +691,14 @@ void gsDofMapper::matchDofImpl(index_t u, index_t i,
     {
         if (d2 == 0)
         {
-            dofAt(i,u,comp) = dofAt(j,v,comp) = ++m_numCpldDofs[1+comp];  // both are free, assign them a new coupling id
+            // both are free, assign them a new coupling id
+            const index_t id = ++m_numCpldDofs[1+comp];
+            setSetupValue(i,u,comp,id);
+            setSetupValue(j,v,comp,id);
             if (u==v && i==j) return;
         }
         else if (d2 > 0)
-            dofAt(i,u,comp) = d2;   // second is coupling, add first to the same coupling group
+            setSetupValue(i,u,comp,d2);   // second is coupling, add first to the same coupling group
         else
             GISMO_ERROR("Something went terribly wrong");
     }
@@ -540,11 +838,11 @@ void gsDofMapper::eliminateDof( index_t i, index_t k, index_t comp)
 
 void gsDofMapper::eliminateDofImpl( index_t i, index_t k, index_t comp)
 {
-    const index_t old = canonicalDof(dofAt(i,k,comp), comp);
+    const index_t old = canonicalDof(setupValue(i,k,comp), comp);
     if (old == 0)       // regular free dof
     {
         --m_numFreeDofs[comp+1];
-        dofAt(i,k,comp) = m_curElimId--;
+        setSetupValue(i,k,comp, m_curElimId--);
     }
     else if (old > 0)   // coupling dof
     {
@@ -559,9 +857,17 @@ void gsDofMapper::finalize()
     GISMO_ENSURE(m_curElimId<0, "Error in gsDofMapper::finalize() called twice.");
     checkInvariants();
 
-    for (size_t c = 0; c!=m_dofs.size(); ++c)
+    const bool sparse = storage::sparse == m_storage;
+    if (sparse)
+    {
+        m_keys.assign(numComponents(), std::vector<index_t>());
+        m_vals.assign(numComponents(), std::vector<index_t>());
+        m_regBase.assign(numComponents(), 0);
+    }
+
+    for (index_t c = 0; c != numComponents(); ++c)
       {
-	finalizeComp(c);
+	if (sparse) finalizeCompSparse(c); else finalizeComp(c);
 
 	//off-set
 	m_numFreeDofs[c+1] += m_numFreeDofs[c];
@@ -569,16 +875,20 @@ void gsDofMapper::finalize()
 	m_numCpldDofs[c+1] += m_numCpldDofs[c];
       }
 
-    if ( 1!=m_dofs.size() )
-      for (size_t c = 0; c!=m_dofs.size(); ++c)
+    if ( 1!=numComponents() )
+      for (index_t c = 0; c != numComponents(); ++c)
 	{
-	  std::vector<index_t> & dofs = m_dofs[c];
+	  // Sparse storage relabels the marked ids only; the regular ids lie in
+	  // the free branch of the relabeling by construction.
+	  std::vector<index_t> & dofs = sparse ? m_vals[c] : m_dofs[c];
 	  for(std::vector<index_t>::iterator j =
 		dofs.begin(); j!= dofs.end(); ++j)
 	    *j =  (*j<m_numFreeDofs[c+1]+m_numElimDofs[c] ?
 		   *j - m_numElimDofs[c]                  :
 		   *j - m_numFreeDofs[c+1] + m_numFreeDofs.back()
 		   );
+	  if (sparse)
+	    m_regBase[c] -= m_numElimDofs[c];
 	}
 
     // Only bigger or equal to zero after finalize is called.
@@ -587,7 +897,83 @@ void gsDofMapper::finalize()
     // Setup-time unions are no longer needed after the flat mapper has been
     // relabeled.  Release them so nBytes() describes the finalized mapper.
     std::vector<DofUnionFind>().swap(m_unionFind);
+    std::vector<std::unordered_map<index_t,index_t> >().swap(m_marked);
     checkInvariants();
+}
+
+/*  Replays the dense numbering of finalizeComp() on the marked positions
+    only.  The regular positions of the component, N_c - M_c of them, take the
+    consecutive ids starting at m_regBase[comp] in position order; the marked
+    positions, visited in increasing position order, take their coupling and
+    elimination ids by first appearance exactly as in the dense walk.
+
+    Complexity: O(M_c log M_c) time (sorting the marked positions), O(M_c)
+    memory.
+*/
+void gsDofMapper::finalizeCompSparse(const index_t comp)
+{
+    const std::unordered_map<index_t,index_t> & marked = m_marked[comp];
+    std::vector<index_t> & keys = m_keys[comp];
+    std::vector<index_t> & vals = m_vals[comp];
+
+    keys.reserve(marked.size());
+    for (std::unordered_map<index_t,index_t>::const_iterator it = marked.begin();
+         it != marked.end(); ++it)
+    {
+        GISMO_ENSURE(0 != it->second, "gsDofMapper::finalize(): position "<<it->first
+                     <<" of component "<<comp<<" is stored as marked with the regular value 0.");
+        keys.push_back(it->first);
+    }
+    std::sort(keys.begin(), keys.end());
+    vals.assign(keys.size(), 0);
+
+    std::vector<index_t> couplingDofs(m_numCpldDofs[comp+1], -1);
+    std::map<index_t,index_t> elimDofs;
+    index_t curFreeDof = m_numFreeDofs[comp]+m_numElimDofs[comp];
+    index_t curElimDof = m_numFreeDofs[comp+1] + curFreeDof;
+
+    // The regular positions are those that are not marked.
+    const index_t nRegular = static_cast<index_t>(compSize(comp) - keys.size());
+    index_t curCplDof = nRegular;
+    m_numCpldDofs[comp+1] = m_numFreeDofs[comp+1] - curCplDof;
+    curCplDof += curFreeDof; //off-set
+
+    m_regBase[comp] = curFreeDof;
+    curFreeDof += nRegular;
+
+    for (size_t r = 0; r != keys.size(); ++r)
+    {
+        const index_t dofType = canonicalDof(marked.find(keys[r])->second, comp);
+        GISMO_ENSURE(0 != dofType, "gsDofMapper::finalize(): marked position "<<keys[r]
+                     <<" of component "<<comp<<" resolves to the regular value 0.");
+
+        if (dofType < 0)        // eliminated dof
+        {
+            const index_t id = -(dofType+1); // dofType may be the lowest index_t
+            if (elimDofs.find(id)==elimDofs.end())
+                elimDofs[id] = curElimDof++;
+            vals[r] = elimDofs[id];
+        }
+        else                    // coupling dof
+        {
+            const index_t id = dofType - 1;
+            if (couplingDofs[id] < 0)
+                couplingDofs[id] = curCplDof++;
+            vals[r] = couplingDofs[id];
+        }
+    }
+
+    m_numElimDofs[comp+1] = curElimDof - curCplDof;
+
+    curCplDof -= m_numFreeDofs[comp]+m_numElimDofs[comp]; //de-off-set
+    GISMO_ASSERT(curCplDof == m_numFreeDofs[1+comp],
+                 "gsDofMapper::finalize() - computed number of coupling "
+                 "dofs does not match allocated number, "<<curCplDof<<"!="<<m_numFreeDofs[comp+1]);
+
+    curFreeDof -= m_numFreeDofs[comp]+m_numElimDofs[comp];//de-off-set
+    GISMO_ASSERT(curFreeDof + m_numCpldDofs[comp+1] == m_numFreeDofs[comp+1],
+                 "gsDofMapper::finalize() - computed number of free dofs "
+                 "does not match allocated number");
 }
 
 void gsDofMapper::finalizeComp(const index_t comp)
@@ -705,9 +1091,108 @@ void gsDofMapper::localize(const std::vector<index_t> & localDofs)
         return (pos < static_cast<index_t>(l2g.size()) && l2g[pos] == x) ? pos : remote;
     };
 
-    for (std::vector<index_t> & dofs : m_dofs)
-        for (index_t & x : dofs)
-            x = remap(x);
+    if (storage::dense == m_storage)
+    {
+        for (std::vector<index_t> & dofs : m_dofs)
+            for (index_t & x : dofs)
+                x = remap(x);
+    }
+    else
+    {
+        // Run table of every component, built from the positions whose new
+        // value is not remote, in increasing position order.
+        std::vector<std::vector<Run> > runs(nComp);
+        for (index_t c = 0; c != nComp; ++c)
+        {
+            std::vector<Run> & rc = runs[c];
+            // Appends the run (p, v, n), extending the last one when the
+            // positions and values continue it within the same class.
+            const auto emit = [&](index_t p, index_t v, index_t n)
+            {
+                if (!rc.empty() && rc.back().start + rc.back().len == p &&
+                    rc.back().val + rc.back().len == v &&
+                    (v < newFreeSize) == (rc.back().val < newFreeSize))
+                    rc.back().len += n;
+                else
+                {
+                    const Run run = {p, n, v};
+                    rc.push_back(run);
+                }
+            };
+
+            if (m_localizedSparse)
+            {
+                // Re-localization: free runs keep the positions whose value is
+                // listed, eliminated runs move down as a whole.
+                const std::vector<Run> & old = m_runs[c];
+                for (size_t r = 0; r != old.size(); ++r)
+                {
+                    if (old[r].val >= oldFree)
+                        emit(old[r].start, old[r].val - oldFree + newFreeSize, old[r].len);
+                    else
+                        for (size_t j = std::lower_bound(l2g.begin(), l2g.end(), old[r].val) - l2g.begin();
+                             j != l2g.size() && l2g[j] < old[r].val + old[r].len; ++j)
+                            emit(old[r].start + (l2g[j] - old[r].val), static_cast<index_t>(j), 1);
+                }
+            }
+            else
+            {
+                // First localization: merge the regular positions, which are
+                // numbered m_regBase[c] + (rank among the regular positions),
+                // with the marked ones.
+                const std::vector<index_t> & keys = m_keys[c];
+                const std::vector<index_t> & vals = m_vals[c];
+                const size_t M = keys.size();
+                const index_t base = m_regBase[c];
+                const index_t R = static_cast<index_t>(compSize(c) - M);
+                size_t j = std::lower_bound(l2g.begin(), l2g.end(), base) - l2g.begin();
+                size_t r = 0;
+                index_t regP = 0;
+                const auto regPos = [&]()
+                {
+                    const index_t q = l2g[j] - base;
+                    regP = q + static_cast<index_t>(r);
+                    while (r != M && keys[r] <= regP)
+                    {
+                        ++r;
+                        regP = q + static_cast<index_t>(r);
+                    }
+                };
+                const auto regLeft = [&]() { return j != l2g.size() && l2g[j] < base + R; };
+                if (regLeft()) regPos();
+                size_t m = 0;
+                index_t mv = remote;
+                const auto markedNext = [&]()
+                {
+                    for (; m != M; ++m)
+                        if (remote != (mv = remap(vals[m]))) return;
+                };
+                markedNext();
+                while (regLeft() || m != M)
+                {
+                    if (regLeft() && (m == M || regP < keys[m]))
+                    {
+                        emit(regP, static_cast<index_t>(j), 1);
+                        ++j;
+                        if (regLeft()) regPos();
+                    }
+                    else
+                    {
+                        emit(keys[m], mv, 1);
+                        ++m;
+                        markedNext();
+                    }
+                }
+            }
+            // exact-capacity copies
+            std::vector<Run>(rc).swap(rc);
+        }
+        m_runs.swap(runs);
+        std::vector<std::vector<index_t> >().swap(m_keys);
+        std::vector<std::vector<index_t> >().swap(m_vals);
+        std::vector<index_t>().swap(m_regBase);
+        m_localizedSparse = true;
+    }
 
     // m_tagged holds shift-less ids, like m_dofs
     std::vector<index_t> tagged;
@@ -722,12 +1207,13 @@ void gsDofMapper::localize(const std::vector<index_t> & localDofs)
     m_numFreeDofs.swap(newFree);
     m_numCpldDofs.swap(newCpld);
     m_curElimId = newFreeSize;
+    checkInvariants();
 }
 
 std::ostream& gsDofMapper::print( std::ostream& os ) const
 {
   os<<" Dofs: "<< this->size()
-    <<"\n components: "<< m_dofs.size()<<"\n";
+    <<"\n components: "<< numComponents()<<"\n";
     os<<" patches: "<< m_nPatches <<"\n";
     os<<" layout: "<< (GlobalIdentity==m_layout ? "global-identity" : "patch-concatenated") <<"\n";
     os<<" distinct component spaces: "<< (m_hasDistinctComponentSpaces ? "yes" : "no") <<"\n";
@@ -735,7 +1221,7 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
     os<<" coupled: "<< this->coupledSize() <<"\n";
     os<<" tagged: "<< this->taggedSize() <<"\n";
     os<<" elim: "<< this->boundarySize() <<"\n";
-    if ( 1!=m_dofs.size() )
+    if ( 1!=numComponents() )
       {
 	os<<" Free per comp: "<< gsAsConstVector<index_t>(m_numFreeDofs).transpose() <<"\n";
 	os<<" Elim per comp: "<< gsAsConstVector<index_t>(m_numElimDofs).transpose() <<"\n";
@@ -745,17 +1231,18 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
     return os;
 }
 
-void gsDofMapper::setIdentity(index_t nPatches, size_t nDofs, size_t nComp)
+void gsDofMapper::setIdentity(index_t nPatches, size_t nDofs, size_t nComp, storage st)
 {
     // Checked here as well as in the overload below, because the vector
     // built for it is allocated first.
     GISMO_ENSURE(nComp <= maxComponentCount(),
                  "setIdentity: "<<nComp<<" components exceed the largest representable "
                  "component count ("<<maxComponentCount()<<").");
-    setIdentity(nPatches, std::vector<size_t>(nComp, nDofs));
+    setIdentity(nPatches, std::vector<size_t>(nComp, nDofs), st);
 }
 
-void gsDofMapper::setIdentity(index_t nPatches, const std::vector<size_t> & dofsPerComponent)
+void gsDofMapper::setIdentity(index_t nPatches, const std::vector<size_t> & dofsPerComponent,
+                              storage st)
 {
     GISMO_ENSURE(nPatches > 0, "setIdentity: Expected at least one patch, got " << nPatches << ".");
     GISMO_ENSURE(!dofsPerComponent.empty(), "setIdentity: Expected at least one component.");
@@ -801,11 +1288,12 @@ void gsDofMapper::setIdentity(index_t nPatches, const std::vector<size_t> & dofs
     // Aliased layout: every real patch offset is zero, only the sentinel
     // (index m_nPatches) carries that component's identity total.
     m_offset.assign(nComp * (np+1), 0);
-    m_dofs.assign(nComp, std::vector<index_t>());
+    resetStorage(st, nComp);
     for (size_t c = 0; c != nComp; ++c)
     {
         m_offset[c*(np+1) + np] = dofsPerComponent[c];
-        m_dofs[c].assign(dofsPerComponent[c], 0);
+        if (storage::dense == st)
+            m_dofs[c].assign(dofsPerComponent[c], 0);
     }
 
     m_uniformComponents = computeUniformComponents();
@@ -844,6 +1332,9 @@ void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation, index_t 
             seen[val] = true;
         }
     }
+
+    if (storage::sparse == m_storage)
+        densify();
 
     //make a copy of the old ordering, easiest way to implement the permutation. Inplace reordering is quite hard.
     std::vector<index_t> dofs = m_dofs[comp];
@@ -887,7 +1378,8 @@ void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation, index_t 
 }
 
 
-void gsDofMapper::initPatchDofs(const gsVector<index_t> & patchDofSizes, index_t nComp)
+void gsDofMapper::initPatchDofs(const gsVector<index_t> & patchDofSizes, index_t nComp,
+                                storage st)
 {
     GISMO_ENSURE( nComp > 0, "initPatchDofs: Expected at least one component, got " << nComp << ".");
 
@@ -935,14 +1427,16 @@ void gsDofMapper::initPatchDofs(const gsVector<index_t> & patchDofSizes, index_t
     m_numFreeDofs.assign(nComp+1, static_cast<index_t>(row.back()));
     m_numFreeDofs.front()=0;
 
-    m_dofs.assign(nComp, std::vector<index_t>(row.back(), 0));
+    resetStorage(st, nComp);
+    if (storage::dense == st)
+        m_dofs.assign(nComp, std::vector<index_t>(row.back(), 0));
 
     m_uniformComponents = computeUniformComponents();
     checkInvariants();
 }
 
 void gsDofMapper::initRaggedPatchDofs(const std::vector<gsVector<index_t> > & patchDofSizes,
-                                       bool hasDistinctComponentSpaces)
+                                       bool hasDistinctComponentSpaces, storage st)
 {
     const size_t nComp = patchDofSizes.size();
     GISMO_ENSURE( nComp > 0, "gsDofMapper: Expected at least one component, got 0.");
@@ -1000,12 +1494,13 @@ void gsDofMapper::initRaggedPatchDofs(const std::vector<gsVector<index_t> > & pa
     m_hasDistinctComponentSpaces = hasDistinctComponentSpaces;
 
     m_offset.assign(nComp * (nPatches+1), 0);
-    m_dofs.assign(nComp, std::vector<index_t>());
+    resetStorage(st, nComp);
     m_numFreeDofs.assign(nComp+1, 0);
     for (size_t c = 0; c != nComp; ++c)
     {
         std::copy(rows[c].begin(), rows[c].end(), m_offset.begin() + c*(nPatches+1));
-        m_dofs[c].assign(rows[c].back(), 0);
+        if (storage::dense == st)
+            m_dofs[c].assign(rows[c].back(), 0);
         m_numFreeDofs[c+1] = static_cast<index_t>(rows[c].back());
     }
 
@@ -1015,7 +1510,7 @@ void gsDofMapper::initRaggedPatchDofs(const std::vector<gsVector<index_t> > & pa
 
 void gsDofMapper::replaceDofGlobally(index_t oldIdx, index_t newIdx)
 {
-  for(size_t i = 0; i!= m_dofs.size(); ++i)
+  for(index_t i = 0; i != numComponents(); ++i)
     m_unionFind[i].unite(oldIdx, newIdx);
 }
 
@@ -1041,19 +1536,17 @@ void gsDofMapper::preImage(const index_t gl,
                            std::vector<std::pair<index_t,index_t> > & result) const
 {
     ensureFinalized("preImage");
-    typedef std::vector<index_t>::const_iterator citer;
     // gl is shifted and the stored values are not, so the search is for the
     // unshifted value.  The returned dofs are patch-local indices, which the
     // global shift has no part in.
     const index_t comp = componentOf(gl);
     const index_t g    = gl - m_shift;
-    const std::vector<index_t> & dofs = m_dofs[comp];
     result.clear();
-    size_t cur = 0;//local offsetted index
 
-    for (citer it = dofs.begin(); it != dofs.end(); ++it, ++cur)
+    forEachValue(comp, 0, compSize(comp),
+                 [&](size_t cur, index_t val)
     {
-        if ( *it == g )
+        if ( val == g )
         {
             if (GlobalIdentity == m_layout)
             {
@@ -1071,60 +1564,66 @@ void gsDofMapper::preImage(const index_t gl,
                 result.push_back( std::make_pair(patch, static_cast<index_t>(cur - offAt(comp,patch))) );
             }
         }
-    }
+        return false;
+    });
 }
 
 std::pair<index_t,index_t> gsDofMapper::anyPreImage(const index_t gl) const
 {
     ensureFinalized("anyPreImage");
-    typedef std::vector<index_t>::const_iterator citer;
     // Same index conventions as preImage().
     const index_t comp = componentOf(gl);
     const index_t g    = gl - m_shift;
-    const std::vector<index_t> & dofs = m_dofs[comp];
-    size_t cur = 0;//local offsetted index
+    bool found = false;
+    std::pair<index_t,index_t> res;
 
-    for (citer it = dofs.begin(); it != dofs.end(); ++it, ++cur)
+    forEachValue(comp, 0, compSize(comp),
+                 [&](size_t cur, index_t val)
     {
-        if ( *it == g )
+        if ( val != g ) return false;
+        found = true;
+        if (GlobalIdentity == m_layout)
         {
-            if (GlobalIdentity == m_layout)
-                return std::make_pair(index_t(0), static_cast<index_t>(cur));
-
-            // Get the patch index of "cur" by "un-offsetting"
-            const index_t patch = static_cast<index_t>(
-                std::upper_bound(offBegin(comp), offEnd(comp), cur) - offBegin(comp) - 1);
-
-            // Found a patch-dof pair
-            return std::make_pair(patch, static_cast<index_t>(cur - offAt(comp,patch)));
+            res = std::make_pair(index_t(0), static_cast<index_t>(cur));
+            return true;
         }
-    }
+
+        // Get the patch index of "cur" by "un-offsetting"
+        const index_t patch = static_cast<index_t>(
+            std::upper_bound(offBegin(comp), offEnd(comp), cur) - offBegin(comp) - 1);
+
+        // Found a patch-dof pair
+        res = std::make_pair(patch, static_cast<index_t>(cur - offAt(comp,patch)));
+        return true;
+    });
+    if (found) return res;
     GISMO_ERROR("The global index "<< gl <<" is not valid");
 }
 
 std::vector<std::pair<index_t,index_t> > gsDofMapper::anyPreImages(index_t comp) const
 {
-    // result[*it] is indexed by stored values, which are indices in
-    // [0,size()) only once finalized.
+    // result[*it] is indexed by stored values, which lie in [0,size())
+    // once finalized, except for the value remoteDof() that a localized
+    // mapper stores at remote positions.
     ensureFinalized("anyPreImages");
     ensureComponent(comp, "anyPreImages");
-    typedef std::vector<index_t>::const_iterator citer;
-    const std::vector<index_t> & dofs = m_dofs[comp];
-    size_t cur = 0;//local offsetted index
 
-    // One entry per global index, at the unshifted position: the stored
-    // values are exactly the unshifted indices, all of them below size().
+    // One entry per global index, at the unshifted position: every stored
+    // value other than remoteDof() is an unshifted index below size().
     // A dof that this component does not own gets a sentinel in both slots,
     // since 0 is a valid patch-local index.
     std::vector<std::pair<index_t,index_t> > result(size(), std::make_pair(index_t(-1),index_t(-1)));
 
-    for (citer it = dofs.begin(); it != dofs.end(); ++it, ++cur)
+    const index_t remote = remoteDof();
+    forEachValue(comp, 0, compSize(comp),
+                 [&](size_t cur, index_t val)
     {
-        if ( -1 == result[*it].first )
+        if (val >= remote) return false; // a remote position has no global index on this rank
+        if ( -1 == result[val].first )
         {
             if (GlobalIdentity == m_layout)
             {
-                result[*it] = std::make_pair(index_t(0), static_cast<index_t>(cur));
+                result[val] = std::make_pair(index_t(0), static_cast<index_t>(cur));
             }
             else
             {
@@ -1133,10 +1632,11 @@ std::vector<std::pair<index_t,index_t> > gsDofMapper::anyPreImages(index_t comp)
                     std::upper_bound(offBegin(comp), offEnd(comp), cur) - offBegin(comp) - 1);
 
                 // Found a patch-dof pair
-                result[*it] = std::make_pair(patch, static_cast<index_t>(cur - offAt(comp,patch)));
+                result[val] = std::make_pair(patch, static_cast<index_t>(cur - offAt(comp,patch)));
             }
         }
-    }
+        return false;
+    });
     return result;
 }
 
@@ -1144,12 +1644,15 @@ gsVector<index_t> gsDofMapper::inverseAsVector(index_t comp) const
 {
     ensureFinalized("inverseAsVector");
     ensureComponent(comp, "inverseAsVector");
-    GISMO_ASSERT(isPermutation(), "This dofMapper is not 1-1");
+    GISMO_ENSURE(isPermutation(), "gsDofMapper::inverseAsVector(): the mapper is not a "
+                 "permutation (size() = " << size() << ", mapSize() = " << mapSize()
+                 << "): several positions share a global index (coupled dofs), or the mapper "
+                 "was localized and has remote positions");
     // Every position that is not the image of a local dof of this component
     // -- every other component's block, in particular -- holds -1.
     gsVector<index_t> v = gsVector<index_t>::Constant(size(), -1);
-      for(size_t j = 0; j!= m_dofs[comp].size(); ++j)
-	v[ m_dofs[comp][j] ] = j;
+    forEachValue(comp, 0, compSize(comp),
+                 [&v](size_t j, index_t val) { v[val] = static_cast<index_t>(j); return false; });
     return v;
 }
 
@@ -1161,21 +1664,24 @@ gsDofMapper::inverseOnPatch(const index_t k) const
 
     std::map<index_t,index_t> inv;
     //inv.reserve(patchSize(k));
-    typedef std::vector<index_t>::const_iterator citer;
 
-    for(size_t i = 0; i!= m_dofs.size(); ++i)
+    for(index_t c = 0; c != numComponents(); ++c)
     {
-        const index_t c = static_cast<index_t>(i);
         // Only the dofs that live on patch k, as many as this component has
         // there.  Under the aliased layout patchSize() is the component's
         // global total on every patch, so the same expression yields the
         // complete inverse.
         //
         // The keys are global indices, so they carry the shift like index().
-        citer it = m_dofs[i].begin() + offAt(c, k);
+        const size_t first = offAt(c, k);
         const size_t n = patchSize(k, c);
-        for(size_t j = 0; j!= n; ++j,++it)
-            inv[*it + m_shift]=j;
+        const index_t shift = m_shift;
+        forEachValue(c, first, first + n,
+                     [&inv, first, shift](size_t p, index_t val)
+        {
+            inv[val + shift] = static_cast<index_t>(p - first);
+            return false;
+        });
     }
     return inv;
 }
@@ -1184,19 +1690,22 @@ bool gsDofMapper::indexOnPatch(const index_t gl, const index_t k, index_t & loca
 {
     ensureFinalized("indexOnPatch");
     ensurePatch(k, "indexOnPatch");
-    typedef std::vector<index_t>::const_iterator citer;
     // gl is shifted, the stored values are not.  An index outside the
     // mapper's range lives on no patch at all.
     if (!shiftedInRange(gl, size())) return false;
     const index_t g = gl - m_shift;
     const index_t comp = componentOfUnshifted(g);
-    const std::vector<index_t> & dofs = m_dofs[comp];
-    const citer istart = dofs.begin() + offAt(comp, k);
-    const citer iend   = istart + patchSize(k, comp);
-    auto it = std::find(istart, iend, g);
-    if (iend==it) return false;
-    local = std::distance(istart,it);
-    return true;
+    const size_t first = offAt(comp, k);
+    bool found = false;
+    forEachValue(comp, first, first + patchSize(k, comp),
+                 [&](size_t p, index_t val)
+    {
+        if (val != g) return false;
+        found = true;
+        local = static_cast<index_t>(p - first);
+        return true;
+    });
+    return found;
 }
 
 index_t gsDofMapper::boundarySizeWithDuplicates() const
@@ -1207,6 +1716,29 @@ index_t gsDofMapper::boundarySizeWithDuplicates() const
     // ALL components, so the threshold is the global free count.
     const index_t s = m_numFreeDofs.back() - 1;
     index_t res = 0;
+    if (m_localizedSparse)
+    {
+        // Eliminated runs plus the positions covered by no run (remote).
+        for (size_t c = 0; c != m_runs.size(); ++c)
+        {
+            size_t covered = 0;
+            for (size_t r = 0; r != m_runs[c].size(); ++r)
+            {
+                covered += m_runs[c][r].len;
+                if (m_runs[c][r].val > s) res += m_runs[c][r].len;
+            }
+            res += static_cast<index_t>(compSize(static_cast<index_t>(c)) - covered);
+        }
+        return res;
+    }
+    if (storage::sparse == m_storage)
+    {
+        // Regular ids are free, so only the marked positions can exceed s.
+        for (size_t i = 0; i!= m_vals.size(); ++i)
+            res += std::count_if(m_vals[i].begin(), m_vals[i].end(),
+                                 GS_BIND2ND(std::greater<index_t>(), s) );
+        return res;
+    }
     for (size_t i = 0; i!= m_dofs.size(); ++i)
       res += std::count_if(m_dofs[i].begin(), m_dofs[i].end(),
 			   GS_BIND2ND(std::greater<index_t>(), s) );
@@ -1253,6 +1785,36 @@ gsVector<index_t> gsDofMapper::find_impl(Iterator istart, Iterator iend, Predica
     return rvo;
 }
 
+namespace {
+gsVector<index_t> asGsVector(const std::vector<index_t> & v)
+{
+    gsVector<index_t> res(v.size());
+    std::copy(v.begin(), v.end(), res.data());
+    return res;
+}
+
+struct _isBetween
+{
+    _isBetween(const index_t l, const index_t u) : _l(l), _u(u) { }
+    index_t _l, _u;
+    bool operator()(const index_t i) { return  (i < _u) && (i > _l); }
+};
+} // end anonymous namespace
+
+template<class Predicate>
+gsVector<index_t> gsDofMapper::findSparse(const index_t k, const index_t comp, Predicate pred) const
+{
+    std::vector<index_t> found;
+    const size_t first = offAt(comp,k);
+    forEachValue(comp, first, first + patchSize(k,comp),
+                 [&](size_t p, index_t val)
+    {
+        if (pred(val)) found.push_back(static_cast<index_t>(p - first));
+        return false;
+    });
+    return asGsVector(found);
+}
+
 gsVector<index_t> gsDofMapper::findBoundary(const index_t k, const index_t comp) const
 {
     ensureFinalized("findBoundary");
@@ -1263,6 +1825,8 @@ gsVector<index_t> gsDofMapper::findBoundary(const index_t k, const index_t comp)
     // every threshold in the find* queries it is compared with the stored,
     // unshifted values, so the shift has no part in it.
     const index_t s = m_numFreeDofs.back() - 1;
+    if (storage::sparse == m_storage)
+        return findSparse(k, comp, GS_BIND2ND(std::greater<index_t>(),s));
     typedef std::vector<index_t>::const_iterator citer;
     citer istart = m_dofs[comp].begin() + offAt(comp,k);
     citer iend   = istart + patchSize(k,comp);
@@ -1275,20 +1839,13 @@ gsVector<index_t> gsDofMapper::findFree(const index_t k, const index_t comp) con
     ensurePatch(k, "findFree");
     ensureComponent(comp, "findFree");
     const index_t s = m_numFreeDofs.back();
+    if (storage::sparse == m_storage)
+        return findSparse(k, comp, GS_BIND2ND(std::less<index_t>(),s));
     typedef std::vector<index_t>::const_iterator citer;
     citer istart = m_dofs[comp].begin() + offAt(comp,k);
     citer iend   = istart + patchSize(k,comp);
     return find_impl(istart, iend, GS_BIND2ND(std::less<index_t>(),s));
 }
-
-namespace {
-struct _isBetween
-{
-    _isBetween(const index_t l, const index_t u) : _l(l), _u(u) { }
-    index_t _l, _u;
-    bool operator()(const index_t i) { return  (i < _u) && (i > _l); }
-};
-} // end anonymous namespace
 
 gsVector<index_t> gsDofMapper::findCoupled(const index_t k, const index_t j,
                                            const index_t comp) const
@@ -1301,16 +1858,67 @@ gsVector<index_t> gsDofMapper::findCoupled(const index_t k, const index_t j,
                  <<", expected -1 (any) or a value in [0,"<<m_nPatches<<").");
     if (k==j) return gsVector<index_t>();
 
-    typedef std::vector<index_t>::const_iterator citer;
-    citer istart = m_dofs[comp].begin() + offAt(comp,k);
-    citer iend   = istart + patchSize(k,comp);
-
     // The coupled dofs of a component sit at the top of that component's own
     // free block; both bounds are prefix values of that component, not the
     // last component's totals.
     const index_t nCpld = m_numCpldDofs[comp+1] - m_numCpldDofs[comp];
     const index_t l = m_numFreeDofs[comp+1]-nCpld-1;
     const index_t u = m_numFreeDofs[comp+1];
+
+    if (storage::sparse == m_storage)
+    {
+        if (-1==j)
+            return findSparse(k, comp, _isBetween(l,u));
+
+        const index_t firstj = static_cast<index_t>(offAt(comp,j));
+        const index_t lastj  = firstj + static_cast<index_t>(patchSize(j,comp));
+        std::vector<index_t> onj;
+        if (m_localizedSparse)
+        {
+            // Coupled ids may share a run with regular ids: clip every run to
+            // patch j and keep the part of its value interval inside (l,u).
+            const std::vector<Run> & runs = m_runs[comp];
+            size_t r = std::upper_bound(runs.begin(), runs.end(), firstj,
+                                        [](index_t x, const Run & e) { return x < e.start; })
+                       - runs.begin();
+            if (r != 0) --r;
+            for (; r != runs.size() && runs[r].start < lastj; ++r)
+            {
+                const index_t pb = (std::max)(runs[r].start, firstj);
+                const index_t pe = (std::min)(runs[r].start + runs[r].len, lastj);
+                if (pb >= pe) continue;
+                const index_t vb = (std::max)(runs[r].val + (pb - runs[r].start), l + 1);
+                const index_t ve = (std::min)(runs[r].val + (pe - runs[r].start), u);
+                for (index_t v = vb; v < ve; ++v) onj.push_back(v);
+            }
+        }
+        else
+        {
+            // Coupled ids are never regular ids, so the ids met on patch j
+            // that can match are among its marked positions.
+            const std::vector<index_t> & keys = m_keys[comp];
+            const std::vector<index_t> & vals = m_vals[comp];
+            onj.assign(vals.begin() + (std::lower_bound(keys.begin(), keys.end(), firstj) - keys.begin()),
+                       vals.begin() + (std::lower_bound(keys.begin(), keys.end(), lastj) - keys.begin()));
+        }
+        std::sort(onj.begin(), onj.end());
+
+        _isBetween inBand(l,u);
+        std::vector<index_t> found;
+        const size_t first = offAt(comp,k);
+        forEachValue(comp, first, first + patchSize(k,comp),
+                     [&](size_t p, index_t val)
+        {
+            if (inBand(val) && std::binary_search(onj.begin(), onj.end(), val))
+                found.push_back(static_cast<index_t>(p - first));
+            return false;
+        });
+        return asGsVector(found);
+    }
+
+    typedef std::vector<index_t>::const_iterator citer;
+    citer istart = m_dofs[comp].begin() + offAt(comp,k);
+    citer iend   = istart + patchSize(k,comp);
     if (-1==j)
         return find_impl(istart, iend, _isBetween(l,u) );
     else
@@ -1340,12 +1948,15 @@ gsVector<index_t> gsDofMapper::findFreeUncoupled(const index_t k, const index_t 
     ensureFinalized("findFreeUncoupled");
     ensurePatch(k, "findFreeUncoupled");
     ensureComponent(comp, "findFreeUncoupled");
-    typedef std::vector<index_t>::const_iterator citer;
-    const citer istart = m_dofs[comp].begin() + offAt(comp,k);
-    const citer iend   = istart + patchSize(k,comp);
     // Below this component's own coupled band and at or above the start of
     // its own free block.
     const index_t nCpld = m_numCpldDofs[comp+1] - m_numCpldDofs[comp];
+    if (storage::sparse == m_storage)
+        return findSparse(k, comp, _isBetween(m_numFreeDofs[comp]-1,
+                                              m_numFreeDofs[comp+1]-nCpld));
+    typedef std::vector<index_t>::const_iterator citer;
+    const citer istart = m_dofs[comp].begin() + offAt(comp,k);
+    const citer iend   = istart + patchSize(k,comp);
     return find_impl(istart, iend,
                      _isBetween(m_numFreeDofs[comp]-1,
                                 m_numFreeDofs[comp+1]-nCpld) );
@@ -1356,6 +1967,8 @@ gsVector<index_t> gsDofMapper::findTagged(const index_t k, const index_t comp) c
     ensureFinalized("findTagged");
     ensurePatch(k, "findTagged");
     ensureComponent(comp, "findTagged");
+    if (storage::sparse == m_storage)
+        return gsVector<index_t>();
     typedef std::vector<index_t>::const_iterator citer;
     citer istart = m_dofs[comp].begin() + offAt(comp,k);
     citer iend   = istart + patchSize(k,comp);
@@ -1370,13 +1983,13 @@ gsVector<index_t> gsDofMapper::findTagged(const index_t k, const index_t comp) c
 void gsDofMapper::componentFailed(index_t c, const char * where) const
 {
     GISMO_ENSURE(validComponent(c), "gsDofMapper::"<<where<<": invalid component "<<c
-                 <<", the mapper has "<<m_dofs.size()<<" components.");
+                 <<", the mapper has "<<numComponents()<<" components.");
 }
 
 void gsDofMapper::componentOrAllFailed(index_t c, const char * where) const
 {
     GISMO_ENSURE(-1 == c || validComponent(c), "gsDofMapper::"<<where<<": invalid component "<<c
-                 <<", expected -1 (all) or a value in [0,"<<m_dofs.size()<<").");
+                 <<", expected -1 (all) or a value in [0,"<<numComponents()<<").");
 }
 
 void gsDofMapper::patchFailed(index_t k, const char * where) const
@@ -1465,8 +2078,12 @@ void pybind11_init_gsDofMapper(py::module &m)
     // per-component totals): explicit casts are required here so that
     // the correct overload is bound -- taking &Class::setIdentity
     // directly is ambiguous once there is more than one overload.
-    .def("setIdentity", static_cast<void (Class::*)(index_t,size_t,size_t)>(&Class::setIdentity), "Set this mapping to be the identity")
-    .def("setIdentity", static_cast<void (Class::*)(index_t,const std::vector<size_t>&)>(&Class::setIdentity), "Set this mapping to be the identity, with a dof total per component")
+    .def("setIdentity", [](Class & self, index_t nPatches, size_t nDofs, size_t nComp)
+         { self.setIdentity(nPatches, nDofs, nComp); },
+         "Set this mapping to be the identity")
+    .def("setIdentity", [](Class & self, index_t nPatches, const std::vector<size_t> & dofsPerComponent)
+         { self.setIdentity(nPatches, dofsPerComponent); },
+         "Set this mapping to be the identity, with a dof total per component")
     .def("setShift", &Class::setShift, "Set the shift amount for the global numbering")
     .def("addShift", &Class::addShift, "Add a shift amount to the global numbering")
 

@@ -10,35 +10,39 @@ TEMPLATE_INST gsDofMapper createMapper(const gsFunctionSet<real_t> & bases,
                                        const gsBoxTopology & topology,
                                        const gsBoundaryConditions<real_t> & bc,
                                        index_t nComp, index_t unk,
-                                       bool conforming, bool finalize);
+                                       bool conforming, bool finalize,
+                                       gsDofMapper::storage st);
 
 TEMPLATE_INST gsDofMapper createMapper(const gsFunctionSet<real_t> & bases,
                                        index_t nComp, bool conforming,
-                                       bool finalize);
+                                       bool finalize, gsDofMapper::storage st);
 
 TEMPLATE_INST gsDofMapper createMapper(const gsFunctionSet<real_t> & bases,
                                        const gsBoxTopology & topology,
                                        index_t nComp, bool conforming,
-                                       bool finalize);
+                                       bool finalize, gsDofMapper::storage st);
 
 TEMPLATE_INST gsDofMapper createMapper(const gsFunctionSet<real_t> & bases,
                                        const gsBoundaryConditions<real_t> & bc,
                                        index_t nComp, index_t unk, bool conforming,
-                                       bool finalize);
+                                       bool finalize, gsDofMapper::storage st);
 
 TEMPLATE_INST gsDofMapper createMapper(const gsFunctionSet<real_t> & bases,
                                        const gsBoundaryConditions<real_t> & bc,
                                        dirichlet::strategy ds, iFace::strategy is,
-                                       index_t nComp, index_t unk, bool finalize);
+                                       index_t nComp, index_t unk, bool finalize,
+                                       gsDofMapper::storage st);
 
 TEMPLATE_INST gsDofMapper createMapper(const std::vector<const gsFunctionSet<real_t>*> & basesPerComp,
                                        const gsBoxTopology & topology,
                                        const gsBoundaryConditions<real_t> & bc,
-                                       index_t unk, bool conforming, bool finalize);
+                                       index_t unk, bool conforming, bool finalize,
+                                       gsDofMapper::storage st);
 
 TEMPLATE_INST gsDofMapper createMapper(const std::vector<gsMultiBasis<real_t> > & basesPerComp,
                                        const gsBoundaryConditions<real_t> & bc,
-                                       index_t unk, bool conforming, bool finalize);
+                                       index_t unk, bool conforming, bool finalize,
+                                       gsDofMapper::storage st);
 
 #ifdef GISMO_WITH_PYBIND11
 
@@ -63,10 +67,10 @@ void pybind11_init_gsDofMapperCreator(py::module &m)
         .export_values();
 
     m.def("createMapper",
-          static_cast<gsDofMapper (*)(const gsFunctionSet<real_t>&,
-                                      const gsBoxTopology&,
-                                      const gsBoundaryConditions<real_t>&,
-                                      index_t, index_t, bool, bool)>(&createMapper),
+          [](const gsFunctionSet<real_t> & bases, const gsBoxTopology & topology,
+             const gsBoundaryConditions<real_t> & bc, index_t nComp, index_t unk,
+             bool conforming, bool finalize)
+          { return createMapper<real_t>(bases, topology, bc, nComp, unk, conforming, finalize); },
           "Create a gsDofMapper (full options)",
           py::arg("bases"),
           py::arg("topology"),
@@ -77,8 +81,8 @@ void pybind11_init_gsDofMapperCreator(py::module &m)
           py::arg("finalize")=false);
 
     m.def("createMapper",
-          static_cast<gsDofMapper (*)(const gsFunctionSet<real_t>&,
-                                      index_t, bool, bool)>(&createMapper),
+          [](const gsFunctionSet<real_t> & bases, index_t nComp, bool conforming, bool finalize)
+          { return createMapper<real_t>(bases, nComp, conforming, finalize); },
           "Create a gsDofMapper (bases only)",
           py::arg("bases"),
           py::arg("nComp")=1,
@@ -86,9 +90,9 @@ void pybind11_init_gsDofMapperCreator(py::module &m)
           py::arg("finalize")=false);
 
     m.def("createMapper",
-          static_cast<gsDofMapper (*)(const gsFunctionSet<real_t>&,
-                                      const gsBoxTopology&,
-                                      index_t, bool, bool)>(&createMapper),
+          [](const gsFunctionSet<real_t> & bases, const gsBoxTopology & topology,
+             index_t nComp, bool conforming, bool finalize)
+          { return createMapper<real_t>(bases, topology, nComp, conforming, finalize); },
           "Create a gsDofMapper (bases + topology)",
           py::arg("bases"),
           py::arg("topology"),
@@ -97,9 +101,9 @@ void pybind11_init_gsDofMapperCreator(py::module &m)
           py::arg("finalize")=false);
 
     m.def("createMapper",
-          static_cast<gsDofMapper (*)(const gsFunctionSet<real_t>&,
-                                      const gsBoundaryConditions<real_t>&,
-                                      index_t, index_t, bool, bool)>(&createMapper),
+          [](const gsFunctionSet<real_t> & bases, const gsBoundaryConditions<real_t> & bc,
+             index_t nComp, index_t unk, bool conforming, bool finalize)
+          { return createMapper<real_t>(bases, bc, nComp, unk, conforming, finalize); },
           "Create a gsDofMapper (bases + boundary conditions)",
           py::arg("bases"),
           py::arg("bc"),
@@ -109,10 +113,10 @@ void pybind11_init_gsDofMapperCreator(py::module &m)
           py::arg("finalize")=false);
 
     m.def("createMapper",
-          static_cast<gsDofMapper (*)(const gsFunctionSet<real_t>&,
-                                      const gsBoundaryConditions<real_t>&,
-                                      dirichlet::strategy, iFace::strategy,
-                                      index_t, index_t, bool)>(&createMapper),
+          [](const gsFunctionSet<real_t> & bases, const gsBoundaryConditions<real_t> & bc,
+             dirichlet::strategy ds, iFace::strategy is,
+             index_t nComp, index_t unk, bool finalize)
+          { return createMapper<real_t>(bases, bc, ds, is, nComp, unk, finalize); },
           "Create a gsDofMapper (bases + boundary conditions + strategies)",
           py::arg("bases"),
           py::arg("bc"),

@@ -17,6 +17,7 @@
 #include <gsCore/gsBoundary.h>
 #include <gsCore/gsExport.h>
 
+#include <algorithm>
 #include <unordered_map>
 #include <limits>
 
@@ -83,12 +84,39 @@ namespace gismo
     still being built from different bases (this is precisely the
     Raviart-Thomas situation on an isotropic mesh).
 
+    Storage modes.  By default (storage::dense) the local-to-global table
+    holds one entry per local dof of every component, i.e. O(N_c) memory
+    for a component with N_c local dofs.  A mapper may instead be created
+    in storage::sparse mode, in which only the \em marked positions
+    (interface, coupled, eliminated and collapsed dofs) are stored and the
+    regular positions are numbered by counting; the memory is then
+    O(M_c), M_c being the number of marked positions of component c.  The
+    mode is chosen at construction or by setIdentity() (a full reset), and
+    permuteFreeDofs() converts a sparse mapper to dense storage.  A sparse
+    mapper returns, for every query, exactly what the dense mapper built by
+    the same calls returns.  A single lookup in sparse mode costs O(log M_c)
+    after finalize(); before finalize() it is one hash-map find (expected
+    O(1)).  After localize() a sparse mapper holds a run table instead:
+    O(#runs) memory, with #runs at most the number of maximal runs of
+    local regular dofs plus M_c, and O(log #runs) lookup.
+
     \ingroup Core
 
 */
 class GISMO_EXPORT gsDofMapper
 {
 private:
+
+    /// One maximal run of a localized sparse component: positions
+    /// [start, start+len) carry the unshifted values [val, val+len).
+    /// Interleaved so that a lookup hit reads a single 3*sizeof(index_t)
+    /// record. A component with R runs answers one position in
+    /// O(log R) (binary search on start) and an ascending batch of n
+    /// positions in O(log R + n) (see index_into).
+    struct Run
+    {
+        index_t start, len, val;
+    };
 
     struct DofUnionFind
     {
@@ -126,6 +154,13 @@ public:
         GlobalIdentity    = 1  ///< setIdentity()-built aliased/global storage
     };
 
+    /// Storage of the local-to-global table (see the class documentation).
+    enum class storage { dense, /**< one stored entry per position, O(N_c) per component */ sparse /**< only marked positions are stored (see the class documentation) */ };
+
+    /// Returns the storage mode fixed at construction (or at the last full
+    /// reset: setIdentity(), or permuteFreeDofs() which densifies).
+    storage storageMode() const { return m_storage; }
+
     /// Default empty constructor
     gsDofMapper();
 
@@ -134,10 +169,13 @@ public:
      * patch
      *
      * @param patchDofSizes
+     * @param nComp number of components
+     * @param st    storage mode of the local-to-global table
      */
-    gsDofMapper(const gsVector<index_t> &patchDofSizes, index_t nComp = 1)
+    gsDofMapper(const gsVector<index_t> &patchDofSizes, index_t nComp = 1,
+                storage st = storage::dense)
     {
-        initPatchDofs(patchDofSizes, nComp);
+        initPatchDofs(patchDofSizes, nComp, st);
     }
 
     /**
@@ -162,13 +200,22 @@ public:
      *                                per-component sizes even though its
      *                                bases differ, so this cannot be
      *                                derived from \a patchDofSizes.
+     * @param st                      storage mode of the local-to-global
+     *                                table
      */
     gsDofMapper(const std::vector<gsVector<index_t> > & patchDofSizes,
-                bool hasDistinctComponentSpaces);
+                bool hasDistinctComponentSpaces, storage st = storage::dense);
 
     void swap(gsDofMapper & other)
     {
         m_dofs  .swap(other.m_dofs);
+        std::swap(m_storage, other.m_storage);
+        m_marked.swap(other.m_marked);
+        m_keys  .swap(other.m_keys);
+        m_vals  .swap(other.m_vals);
+        m_regBase.swap(other.m_regBase);
+        m_runs.swap(other.m_runs);
+        std::swap(m_localizedSparse, other.m_localizedSparse);
         m_offset.swap(other.m_offset);
         std::swap(m_nPatches, other.m_nPatches);
         std::swap(m_layout,   other.m_layout);
@@ -189,12 +236,24 @@ private:
 
     /// Initialize by vector of DoF indices and dimension
     void initPatchDofs(const gsVector<index_t> & patchDofSizes,
-		       index_t nComp = 1);
+                       index_t nComp = 1, storage st = storage::dense);
 
     /// Initialize by one patch-dof-size vector per component (ragged,
     /// patch-concatenated layout).
     void initRaggedPatchDofs(const std::vector<gsVector<index_t> > & patchDofSizes,
-                              bool hasDistinctComponentSpaces);
+                             bool hasDistinctComponentSpaces,
+                             storage st = storage::dense);
+
+    /// Sets the storage mode of a full reset to \a st and empties every
+    /// container of the other mode; for sparse storage the setup maps are
+    /// created empty, one per component (\a nComp of them).  m_dofs is
+    /// left sized to \a nComp with empty inner vectors; dense callers
+    /// size them afterwards.
+    void resetStorage(storage st, size_t nComp);
+
+    /// Converts a sparse mapper to dense storage (O(sum_c N_c) memory).
+    /// Requires a finalized mapper.
+    void densify();
 
     // Flat-offset-table accessors (the only way this class touches
     // m_offset): m_offset is one row of m_nPatches+1 entries per
@@ -208,12 +267,83 @@ private:
     std::vector<size_t>::const_iterator offEnd(index_t c) const
     { return offBegin(c) + (m_nPatches+1); }
 
-    /// Read-write access to the stored value of local dof \a i of patch
-    /// \a k in component \a c (setup-time encoding: 0 = free, negative =
-    /// eliminated, positive = coupling id -- see the m_dofs comment below).
-    /// The only way this class' own code touches m_dofs/m_offset together;
-    /// overloaded on constness instead of macro-expanded so both mutating
-    /// setup code and const query methods can use one accessor.
+    /// Logical number of positions N_c of component \a c, i.e. the end
+    /// sentinel of its offset row.  Valid in both layouts and both storage
+    /// modes, unlike m_dofs[c].size(), which is empty in sparse mode.
+    size_t compSize(index_t c) const
+    { return offAt(c, static_cast<index_t>(m_nPatches)); }
+
+    /// Setup-time value (see the comment on the data members) of local dof
+    /// \a i of patch \a k in component \a c.  In sparse mode this is a
+    /// pure lookup: an absent position reads as 0 and no entry is created.
+    inline index_t setupValue(index_t i, index_t k, index_t c) const
+    {
+        GISMO_ASSERT(validLocal(i,k,c), "gsDofMapper: invalid local dof "<<i<<" of patch "<<k
+                     <<", component "<<c<<localRangeInfo(k,c));
+        const size_t p = offAt(c,k)+i;
+        if (storage::dense == m_storage) return m_dofs[c][p];
+        const std::unordered_map<index_t,index_t>::const_iterator it =
+            m_marked[c].find(static_cast<index_t>(p));
+        return m_marked[c].end() == it ? 0 : it->second;
+    }
+
+    /// Stores the nonzero setup-time value \a v at local dof \a i of patch
+    /// \a k in component \a c.
+    inline void setSetupValue(index_t i, index_t k, index_t c, index_t v)
+    {
+        GISMO_ASSERT(validLocal(i,k,c), "gsDofMapper: invalid local dof "<<i<<" of patch "<<k
+                     <<", component "<<c<<localRangeInfo(k,c));
+        const size_t p = offAt(c,k)+i;
+        if (storage::dense == m_storage) m_dofs[c][p] = v;
+        else m_marked[c][static_cast<index_t>(p)] = v;
+    }
+
+    /// Value stored for position \a p of component \a c in sparse mode.
+    /// Before finalize() this is the setup-time value (0 if absent);
+    /// afterwards a binary search over the marked positions, a hit giving the
+    /// stored final id and a miss the id of the (p - r)-th regular position, r
+    /// being the number of marked positions below \a p.  O(log M_c).  After
+    /// localize() the value comes from the run table through the inline
+    /// runValue(): O(log #runs).  This out-of-line function itself serves the
+    /// setup path and the finalized non-localized path; callers on a hot path
+    /// test m_localizedSparse and call runValue() directly.
+    index_t sparseValue(index_t c, size_t p) const;
+
+    /// Value at position \a p of component \a c of a localized sparse mapper:
+    /// the run with the largest start <= p, remoteDof() if no run covers p.
+    /// O(log #runs).  Requires m_localizedSparse.
+    inline index_t runValue(index_t c, size_t p) const
+    {
+        const index_t q = static_cast<index_t>(p);
+        const std::vector<Run> & runs = m_runs[c];
+        std::vector<Run>::const_iterator it = std::upper_bound(runs.begin(), runs.end(), q,
+            [](index_t x, const Run & r) { return x < r.start; });
+        if (it == runs.begin()) return remoteDof();
+        --it;
+        const index_t d = q - it->start;
+        return d < it->len ? it->val + d : remoteDof();
+    }
+
+    /// Value stored for position \a p of component \a c (either mode).
+    inline index_t valueAtPos(index_t c, size_t p) const
+    {
+        if (storage::dense == m_storage) return m_dofs[c][p];
+        if (m_localizedSparse) return runValue(c, p);
+        return sparseValue(c, p);
+    }
+
+    /// Calls f(p, value) for the positions p in [\a pBegin, \a pEnd) of
+    /// component \a c in increasing order, until f returns true.  Sparse
+    /// finalized storage is walked by merging with the marked positions (or,
+    /// after localize(), with the runs): O(pEnd - pBegin + log M_c)
+    /// (O(pEnd - pBegin + log #runs)), no temporary storage.  Before
+    /// finalize() the walk does one hash lookup per position: O(pEnd - pBegin)
+    /// expected.  Dense storage is a plain loop.
+    template<class F>
+    void forEachValue(index_t c, size_t pBegin, size_t pEnd, F f) const;
+
+    /// Post-finalize read of the stored (unshifted) value of local dof \a i
+    /// of patch \a k in component \a c.
     ///
     /// The bounds check is debug-only.  dofAt() runs once per local dof per
     /// element in every assembler, so the per-dof accessors built on it
@@ -222,18 +352,17 @@ private:
     /// and the per-element localToGlobal()/localToGlobal2() are not checked
     /// in Release builds; every other public entry point validates its
     /// arguments with the ensure*() helpers below before reaching it.
-    inline index_t & dofAt(index_t i, index_t k, index_t c)
-    {
-        GISMO_ASSERT(validLocal(i,k,c), "gsDofMapper: invalid local dof "<<i<<" of patch "<<k
-                     <<", component "<<c<<localRangeInfo(k,c));
-        return m_dofs[c][offAt(c,k)+i];
-    }
-
+    ///
+    /// Cost: dense storage O(1); localized sparse storage O(log #runs),
+    /// inline; finalized non-localized sparse storage O(log M_c), out of line.
     inline index_t dofAt(index_t i, index_t k, index_t c) const
     {
         GISMO_ASSERT(validLocal(i,k,c), "gsDofMapper: invalid local dof "<<i<<" of patch "<<k
                      <<", component "<<c<<localRangeInfo(k,c));
-        return m_dofs[c][offAt(c,k)+i];
+        const size_t p = offAt(c,k)+i;
+        if (storage::dense == m_storage) return m_dofs[c][p];
+        if (m_localizedSparse) return runValue(c, p);
+        return sparseValue(c, p);
     }
 
     // --- argument validation -------------------------------------------
@@ -244,7 +373,7 @@ private:
     // compile away.  \a where names the public method for the message.
 
     bool validComponent(index_t c) const
-    { return c >= 0 && static_cast<size_t>(c) < m_dofs.size(); }
+    { return c >= 0 && c < numComponents(); }
 
     bool validPatch(index_t k) const
     { return k >= 0 && static_cast<size_t>(k) < m_nPatches; }
@@ -256,7 +385,7 @@ private:
     /// total on every patch under the aliased layout.
     size_t localCount(index_t k, index_t c) const
     {
-        return GlobalIdentity == m_layout ? m_dofs[c].size()
+        return GlobalIdentity == m_layout ? compSize(c)
                                           : offAt(c,k+1) - offAt(c,k);
     }
 
@@ -272,7 +401,7 @@ private:
     {
         std::ostringstream os;
         if (!validComponent(c))
-            os << ": the mapper has " << m_dofs.size() << " components.";
+            os << ": the mapper has " << numComponents() << " components.";
         else if (!validPatch(k))
             os << ": the mapper has " << m_nPatches << " patches.";
         else
@@ -304,7 +433,7 @@ private:
     {
         if (-1 == c)
         {
-            for (index_t cc = 0; static_cast<size_t>(cc) != m_dofs.size(); ++cc)
+            for (index_t cc = 0; cc != numComponents(); ++cc)
                 ensureLocal(i, k, cc, where);
             return;
         }
@@ -389,7 +518,13 @@ public:
         index \a gl is at position \a gl minus the shift, as in
         anyPreImages().
 
-        Assumes that the mapper is a permutation
+        Requires isPermutation(); otherwise a std::runtime_error is thrown,
+        e.g. for coupled interfaces, or for a localized mapper with remote
+        positions (see localize()).
+
+        Complexity: O(size() + compSize(\a comp)) for dense storage; sparse
+        storage adds O(log M_c) or O(log #runs) for the walk start, as in
+        forEachValue().
     */
     gsVector<index_t> inverseAsVector(index_t comp = 0) const;
 
@@ -455,12 +590,22 @@ public:
     std::ostream& print( std::ostream& os = gsInfo ) const;
 
     ///\brief Set this mapping to be the identity
-    void setIdentity(index_t nPatches, size_t nDofs, size_t nComp = 1);
+    ///
+    /// This is a full reset: the storage mode becomes \a st, so calling it
+    /// with the default argument on a sparse mapper returns the mapper to
+    /// dense storage.
+    void setIdentity(index_t nPatches, size_t nDofs, size_t nComp = 1,
+                     storage st = storage::dense);
 
     ///\brief Set this mapping to be the identity, with a (possibly
     /// unequal) total dof count per component.  The scalar-size overload
     /// delegates here by broadcasting one total to every component.
-    void setIdentity(index_t nPatches, const std::vector<size_t> & dofsPerComponent);
+    ///
+    /// This is a full reset: the storage mode becomes \a st, so calling it
+    /// with the default argument on a sparse mapper returns the mapper to
+    /// dense storage.
+    void setIdentity(index_t nPatches, const std::vector<size_t> & dofsPerComponent,
+                     storage st = storage::dense);
 
     ///\brief Set the shift amount for the global numbering
     ///
@@ -478,6 +623,10 @@ public:
     /// \a permutation must be a permutation of [0, n) with n the number of
     /// free dofs of component \a comp; anything else throws before the
     /// mapper is changed.
+    ///
+    /// A mapper in sparse storage is converted to dense storage (O(sum_c N_c)
+    /// memory) once the permutation has been validated; storageMode() reports
+    /// storage::dense afterwards.
     ///
     /// \warning Applying a permutation makes the functions regarding coupled dofs (cindex, is_coupled_index,.. ) invalid.
     /// The dofs are still coupled, but you have no way of extracting them. If you need this functions, first call
@@ -532,6 +681,30 @@ public:
                        index_t patchIndex,
                        gsMatrix<index_t>& globals,
 		               index_t comp = 0) const;
+
+    /** \brief Global indices of the local dofs in column \a col of \a act
+     *  (patch \a patch, component \a comp), written to \a out.
+     *
+     *  out[i] == index(act(i,col), patch, comp) for i in [0, act.rows()),
+     *  the shift included and remote dofs reported as remoteDof() plus the
+     *  shift.  finalize() must have been called.  \a out must hold
+     *  act.rows() entries and must not alias \a act.
+     *
+     *  Complexity: O(n) for dense storage, n = act.rows().  For sparse
+     *  storage one binary search locates the first entry, after which a
+     *  cursor into the (sorted) key or run table advances by galloping:
+     *  O(log R + n + sum log g), g being the number of table entries
+     *  skipped between consecutive inputs, which is O(log R + n) for the
+     *  lexicographic actives of a tensor B-spline basis (R = number of
+     *  marked positions before localize(), number of runs after).  Any
+     *  input order is correct; an entry smaller than its predecessor
+     *  restarts the cursor with a binary search, O(log R) extra per descent.
+     *
+     *  \note On the assembly hot path: arguments are checked in debug
+     *  builds only.
+     */
+    void index_into(const gsMatrix<index_t> & act, index_t col,
+                    index_t patch, index_t comp, index_t * out) const;
 
     /** \brief Computes the global indices of the input local indices
      *
@@ -722,6 +895,32 @@ public:
 
        Typical use: \a localDofs are all free dofs active on the
        elements of the rank (owned and ghost dofs).
+
+       The numbering is the same in both storage modes, and localizing an
+       already localized mapper is allowed (the free dofs are then the
+       current local ones).  Remote dofs are treated as follows.
+       - index() returns remoteDof() plus the shift, and is_remote_index()
+         is true for it;
+       - is_free_index(), is_boundary_index(), is_coupled_index() and
+         is_tagged_index() are false for it;
+       - eliminated dofs keep their boundary numbering, moved down to start
+         at the new free size, so global_to_bindex() and the fixed values
+         remain valid;
+       - the whole-array queries that compare stored values with a
+         threshold see remote positions as values above every free id:
+         findBoundary() lists them and boundarySizeWithDuplicates() counts
+         them, whereas findFree(), findFreeUncoupled() and findCoupled()
+         exclude them.
+
+       In sparse storage the result is held as a run table: per component
+       the maximal runs of consecutive positions carrying consecutive local
+       ids, every other position being remote.  Memory is O(#runs), with
+       #runs at most the number of maximal runs of local regular dofs plus
+       M_c, the number of marked positions of component c.  A lookup costs
+       O(log #runs), and no loop runs over all positions.  Time is O(n_c + M_c + M_c log n)
+       for the first localization and O(#runs log n + n) for a repeated one,
+       n being localDofs.size() and n_c the part of it in the regular id
+       range of component c.
     */
     void localize(const std::vector<index_t> & localDofs);
 
@@ -739,7 +938,7 @@ public:
 
     /// Returns the number of components present in the mapper
     inline index_t numComponents() const
-    { return static_cast<index_t>(m_dofs.size()); }
+    { return static_cast<index_t>(m_dofs.size()); }  // m_dofs is sized to the component count in both storage modes
 
     /// Returns the total number of dofs (free and eliminated).
     inline index_t size() const
@@ -811,12 +1010,12 @@ public:
     size_t mapSize() const
     {
         size_t s = 0;
-        for (size_t c = 0; c != m_dofs.size(); ++c)
-            s += m_dofs[c].size();
+        for (index_t c = 0; c != numComponents(); ++c)
+            s += compSize(c);
         return s;
     }
 
-    size_t componentsSize() const {return m_dofs.size();}
+    size_t componentsSize() const { return static_cast<size_t>(numComponents()); }
 
     /// Returns the storage layout of this mapper (see Layout).
     /// Declared at construction and never inferred from an observed
@@ -859,7 +1058,7 @@ public:
     size_t totalSize(const index_t c = 0) const
     {
         ensureComponent(c, "totalSize");
-        return m_dofs[c].size();
+        return compSize(c);
     }
 
     /// \brief For \a gl being a global index, this function returns a
@@ -883,6 +1082,17 @@ public:
     /// The result has exactly size() entries, one per global index, at
     /// position \a gl minus the shift.  Entries of global indices that
     /// belong to another component than \a comp are (-1,-1).
+    ///
+    /// On a localized mapper (see localize()) the result still has size()
+    /// entries, that is, the local free count plus the eliminated count.
+    /// Slot \a gl minus the shift of every local free dof and every
+    /// eliminated dof of \a comp holds a (patch, patch-local index) pair
+    /// that maps to it, the one at the lowest position.  Remote positions are
+    /// skipped and contribute to no slot; a remote dof has no slot, as it has
+    /// no global index on this rank.
+    ///
+    /// Complexity: O(size() + compSize(\a comp) log numPatches()), plus the
+    /// storage-dependent walk start of forEachValue().
     std::vector<std::pair<index_t,index_t> > anyPreImages(index_t comp = 0) const;
 
     /// \brief Produces the inverse of the mapping on patch \a k
@@ -922,15 +1132,15 @@ public:
     {
         const index_t n0 = n;
         GISMO_ENSURE(n >= 0, "gsDofMapper::mapIndex: negative index "<<n<<".");
-        size_t c = 0;
-        while (c != m_dofs.size() && static_cast<size_t>(n) >= m_dofs[c].size())
+        index_t c = 0;
+        while (c != numComponents() && static_cast<size_t>(n) >= compSize(c))
         {
-            n -= static_cast<index_t>(m_dofs[c].size());
+            n -= static_cast<index_t>(compSize(c));
             ++c;
         }
-        GISMO_ENSURE(c != m_dofs.size(), "gsDofMapper::mapIndex: index "<<n0
+        GISMO_ENSURE(c != numComponents(), "gsDofMapper::mapIndex: index "<<n0
                      <<" is outside [0,"<<mapSize()<<").");
-        return m_dofs[c][n] + m_shift;
+        return valueAtPos(c, static_cast<size_t>(n)) + m_shift;
     }
 
     /// \brief Returns all boundary dofs on patch k of component \a comp
@@ -955,8 +1165,11 @@ public:
     /// (local dof indices)
     gsVector<index_t> findTagged(const index_t k, const index_t comp = 0) const;
 
-    /// \brief Returns the number of bytes actually allocated (capacity, not
-    /// logical size) by this mapper's containers.
+    /// \brief Returns the capacity in bytes of this mapper's containers
+    /// (not their logical size).  The hash maps of sparse setup are
+    /// estimated from their bucket count and stored pairs, without node
+    /// links or allocator overhead, so the result is an estimate and not a
+    /// heap measurement.
     inline size_t nBytes() const
     {
         size_t bytes = sizeof(*this);
@@ -964,6 +1177,23 @@ public:
         bytes += m_dofs.capacity() * sizeof(std::vector<index_t>);
         for (size_t c = 0; c != m_dofs.size(); ++c)
             bytes += m_dofs[c].capacity() * sizeof(index_t);
+
+        bytes += m_marked.capacity() * sizeof(std::unordered_map<index_t,index_t>);
+        for (const std::unordered_map<index_t,index_t> & mk : m_marked)
+        {
+            bytes += mk.bucket_count() * sizeof(void *);
+            bytes += mk.size() * sizeof(std::pair<const index_t,index_t>);
+        }
+        bytes += m_keys.capacity() * sizeof(std::vector<index_t>);
+        for (const std::vector<index_t> & v : m_keys)
+            bytes += v.capacity() * sizeof(index_t);
+        bytes += m_vals.capacity() * sizeof(std::vector<index_t>);
+        for (const std::vector<index_t> & v : m_vals)
+            bytes += v.capacity() * sizeof(index_t);
+        bytes += m_regBase.capacity() * sizeof(index_t);
+        bytes += m_runs.capacity() * sizeof(std::vector<Run>);
+        for (const std::vector<Run> & v : m_runs)
+            bytes += v.capacity() * sizeof(Run);
 
         bytes += m_offset.capacity() * sizeof(size_t);
 
@@ -984,7 +1214,17 @@ private:
     template<class Predicate, class Iterator>
       static gsVector<index_t> find_impl(Iterator istart, Iterator iend, Predicate pred);
 
+    /// Local indices on patch \a k of component \a comp whose stored value
+    /// satisfies \a pred; the sparse-storage counterpart of find_impl().
+    template<class Predicate>
+    gsVector<index_t> findSparse(const index_t k, const index_t comp, Predicate pred) const;
+
     void finalizeComp(const index_t comp);
+
+    /// Sparse-storage counterpart of finalizeComp(): replays the dense
+    /// numbering of component \a comp from its marked positions.
+    /// O(M_c log M_c) time and O(M_c) memory.
+    void finalizeCompSparse(const index_t comp);
 
     // Merge the equivalence classes represented by oldIdx and newIdx.
     inline void replaceDofGlobally(index_t oldIdx, index_t newIdx);
@@ -1006,7 +1246,10 @@ private:
 // Data members
 private:
 
-    // m_dofs/m_patchDofs stores for each patch the mapping from local to global dofs.
+    // m_dofs/m_patchDofs stores for each patch the mapping from local to global dofs
+    // (dense storage only; in sparse storage every inner vector is empty, while the
+    // outer vector stays sized to the component count, which is what numComponents()
+    // reports in both modes).
     //
     // During setup, the entries have a different meaning:
     //   0        -- regular free dof
@@ -1019,6 +1262,30 @@ private:
     // Representation of each component as a single vector plus
     // offsets for patch-local indices
     std::vector<std::vector<index_t> >  m_dofs;
+
+    /// Storage mode, fixed by construction or by a full reset.
+    storage m_storage;
+
+    // Sparse storage.  Positions are per component, p = offAt(c,k)+i in [0,N_c).
+    //
+    // During setup, m_marked[c] maps a marked position to its setup-time value
+    // (never 0: an absent position is a regular free dof).  finalize() replaces
+    // it by the sorted marked positions m_keys[c] with their final unshifted
+    // ids m_vals[c], and by m_regBase[c], the id of the first regular position;
+    // the regular positions are numbered consecutively in position order.
+    // m_marked is released by finalize().  localize() releases m_keys, m_vals
+    // and m_regBase in turn and replaces them by a run table.
+    std::vector<std::unordered_map<index_t,index_t> > m_marked;
+    std::vector<std::vector<index_t> >  m_keys, m_vals;
+    std::vector<index_t>                m_regBase;
+
+    // Sparse storage after localize(): per component, maximal runs of
+    // consecutive positions with consecutive values, sorted by start position.
+    // A run never mixes free values (< m_curElimId) with eliminated ones.  A
+    // position covered by no run is remote (remoteDof()).  m_keys, m_vals and
+    // m_regBase are empty in this state.
+    std::vector<std::vector<Run> >      m_runs;
+    bool                                m_localizedSparse;
 
     /// Number of patches, shared by all components: ragged storage means
     /// different sizes per (component,patch), never different patch sets.
