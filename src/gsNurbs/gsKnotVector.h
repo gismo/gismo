@@ -165,9 +165,11 @@ public: // iterator ends
         return domainIter(new gsKnotDomainIterator<T>(*this));
     }
 
-    domainIter beginBdr(const boxSide   /* bs */) const override
+    /// 1-D domain: the boundary side is the end point; one degenerate
+    /// element [x_s, x_s]. A side other than west/east gives an empty range.
+    domainIter beginBdr(const boxSide bs) const override
     {
-        return domainIter(new gsKnotDomainIterator<T>(*this));
+        return domainIter(new gsKnotDomainIterator<T>(*this, bs));
     }
 
     domainIter endAll() const override
@@ -175,9 +177,18 @@ public: // iterator ends
         return domainIter(new gsKnotDomainIterator<T>(*this,false));
     }
 
-    domainIter endBdr(const boxSide   /* bs */) const override
+    /// 1-D domain: the boundary side is the end point; one degenerate
+    /// element [x_s, x_s]. A side other than west/east gives an empty range.
+    domainIter endBdr(const boxSide bs) const override
     {
-        return domainIter(new gsKnotDomainIterator<T>(*this,false));
+        return domainIter(new gsKnotDomainIterator<T>(*this, bs, false));
+    }
+
+    /// 1-D domain: the boundary side is the end point; one degenerate
+    /// element [x_s, x_s]. A side other than west/east has no elements.
+    size_t numElementsBdr(boxSide const & s = boundary::all) const override
+    {
+        return (s.index() == boundary::west || s.index() == boundary::east) ? 1 : 0;
     }
 
     short_t dim() const override { return 1; }

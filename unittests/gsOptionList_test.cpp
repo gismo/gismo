@@ -52,11 +52,11 @@ void saveToFile(std::string& path, gsOptionList& list)
     write.dump(fullPath);
 }
 
-void checkAssemblerOptions(gsOptionList& myList)
+void checkAssemblerOptions(gsOptionList& myList, index_t dirichletValues = 101)
 {
     CHECK_EQUAL(8u, myList.size());
     CHECK_EQUAL(11, myList.getInt("DirichletStrategy"));
-    CHECK_EQUAL(101, myList.getInt("DirichletValues"));
+    CHECK_EQUAL(dirichletValues, myList.getInt("DirichletValues"));
     CHECK_EQUAL(1, myList.getInt("InterfaceStrategy"));
     CHECK_EQUAL(1, myList.getInt("bdB"));
     CHECK_EQUAL(1, myList.getInt("quB"));
@@ -383,7 +383,7 @@ SUITE(gsOptionList_test)
     TEST(test_default_options)
     {
         gsOptionList myList = gsAssembler<real_t>::defaultOptions();
-        checkAssemblerOptions(myList);
+        checkAssemblerOptions(myList, dirichlet::automatic);
     }
 
     /***

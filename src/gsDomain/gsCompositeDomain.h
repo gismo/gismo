@@ -35,7 +35,7 @@ template<class T> class gsCompositeDomain;
    localId(): The index of the current element in its containing subdomain
    
    
-   side(): The index of side where this elemement lies (if applicable)
+   side(): The index of side where this element lies (if applicable)
  */
 template <class T>
 class gsCompositeDomainIterator : public gsDomainIterator<T>
@@ -176,7 +176,7 @@ public:
     }
 
     // Caller is responsible for tagging patch indices on the supplied domains
-    // via setPatchIndex(); untagged domains keep patchIndex()==-1.
+    // via setPatchIndex(); untagged domains default to patchIndex()==0.
     gsCompositeDomain(domainContainer domains)
     : Base(), m_domains(give(domains)) { }
 

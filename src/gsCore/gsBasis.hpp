@@ -241,10 +241,12 @@ template<class T> inline
 memory::unique_ptr<gsGeometry<T> > gsBasis<T>::interpolateData( gsMatrix<T> const& vals,
                                          gsMatrix<T> const& pts) const
 {
-    GISMO_ASSERT (dim()  == pts.rows() , "Wrong dimension of the points("<<
+    GISMO_ENSURE (dim()  == pts.rows() , "Wrong dimension of the points("<<
                   pts.rows()<<", expected "<<dim() <<").");
-    GISMO_ASSERT (this->size() == pts.cols() , "Expecting as many points as the basis functions." );
-    GISMO_ASSERT (this->size() == vals.cols(), "Expecting as many values as the number of points." );
+    GISMO_ENSURE (this->size() == pts.cols() , "Expecting as many points ("<<pts.cols()
+                  <<") as the basis functions ("<<this->size()<<")." );
+    GISMO_ENSURE (this->size() == vals.cols(), "Expecting as many values ("<<vals.cols()
+                  <<") as the number of points ("<<this->size()<<")." );
 
     gsSparseMatrix<T>  Cmat = collocationMatrix(pts);
     gsMatrix<T> x ( this->size(), vals.rows());

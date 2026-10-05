@@ -543,13 +543,39 @@ public:  /* Dirichlet degrees of freedom computation */
 
 protected:  /* Helpers for Dirichlet degrees of freedom computation */
 
-    /// @brief calculates the values of the eliminated dofs based on Interpolation.
+    /// @brief calculates the values of the eliminated dofs based on Interpolation at the anchors (tensor-product and NURBS bases; on a 1-D patch also THB, rational THB and HB through the end value; error otherwise).
     /// \param[in] mapper the dofMapper for the considered unknown
     /// \param[in] mbasis the multipabasis for the considered unknown
     /// \param[in] unk_ the considered unknown
     void computeDirichletDofsIntpl(const gsDofMapper     & mapper,
                                    const gsMultiBasis<T> & mbasis,
                                    const short_t unk_ = 0);
+
+    /// @brief calculates the values of the eliminated dofs based on local quasi-interpolation (tensor-product, NURBS, THB, rational THB and HB bases; error otherwise).
+    /// \param[in] mapper the dofMapper for the considered unknown
+    /// \param[in] mbasis the multipabasis for the considered unknown
+    /// \param[in] unk_ the considered unknown
+    void computeDirichletDofsQuasiIntpl(const gsDofMapper     & mapper,
+                                        const gsMultiBasis<T> & mbasis,
+                                        const short_t unk_ = 0);
+
+    /// @brief calculates the values of the eliminated dofs per patch: interpolation on tensor-product/NURBS patches, quasi-interpolation on THB, rational THB and HB patches; L2 projection of the whole unknown if some patch is supported by neither. On a 1-D patch every basis supported by quasi-interpolation takes the end value.
+    /// \param[in] mapper the dofMapper for the considered unknown
+    /// \param[in] mbasis the multipabasis for the considered unknown
+    /// \param[in] unk_ the considered unknown
+    void computeDirichletDofsAutomatic(const gsDofMapper     & mapper,
+                                       const gsMultiBasis<T> & mbasis,
+                                       const short_t unk_ = 0);
+
+    /// @brief shared implementation of computeDirichletDofsIntpl, computeDirichletDofsQuasiIntpl and computeDirichletDofsAutomatic.
+    /// \param[in] mapper the dofMapper for the considered unknown
+    /// \param[in] mbasis the multipabasis for the considered unknown
+    /// \param[in] unk_ the considered unknown
+    /// \param[in] method one of dirichlet::interpolation, dirichlet::quasiInterpolation, dirichlet::automatic
+    void computeDirichletDofsByMethod(const gsDofMapper     & mapper,
+                                      const gsMultiBasis<T> & mbasis,
+                                      const short_t unk_,
+                                      const index_t method);
 
     /// @brief calculates the values of the eliminated dofs based on L2 Projection.
     /// \param[in] mapper the dofMapper for the considered unknown

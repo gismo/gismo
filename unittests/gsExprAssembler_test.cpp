@@ -97,6 +97,124 @@ SUITE(gsExprAssembler_test)
         CHECK((Mstandard - Mrestored).norm() < 1e-14);
     }
 
+    TEST(MultiSpaceBlockDims)
+    {
+        // _blockDims sizes the row/column blocks and resetDimensions sets the
+        // shift applied to later blocks. mapper.freeSize() already reports the
+        // component-inclusive dof count of a space, so multiplying it by that
+        // space's dim counts the dimension twice. A single space of dim 1
+        // cannot expose that -- the erroneous factor is 1 -- so this needs two
+        // spaces of different, non-trivial dimension in one assembler.
+        //
+        // A 2D geometry is required: the assemble() arm below needs meas(G)
+        // to build a genuine bilinear form per space, rather than only
+        // inspecting mappers.
+        gsMultiPatch<real_t> mp(*gsNurbsCreator<real_t>::BSplineSquare());
+        gsMultiBasis<real_t> dbasis(mp);
+        dbasis.degreeElevate(2);
+        dbasis.uniformRefine(5);
+        gsBoundaryConditions<real_t> bcs;
+        const index_t n = dbasis.basis(0).size();
+
+        // Control arm: two SCALAR spaces (dim 1 each). Since dim==1 makes
+        // the erroneous factor in the fixed formula equal to 1, this arm
+        // cannot itself fail on the bug -- it exists to pin that the shift
+        // between blocks is otherwise sane, so a failure in the main arm
+        // below can be attributed to the dim>1 handling rather than to the
+        // fixture or to block bookkeeping in general.
+        {
+            gsExprAssembler<real_t> A(2, 2);
+            A.setIntegrationElements(dbasis);
+            auto u0 = A.getSpace(dbasis, 1, 0);
+            auto u1 = A.getSpace(dbasis, 1, 1);
+            u0.setup(bcs, dirichlet::homogeneous, 0);
+            u1.setup(bcs, dirichlet::homogeneous, 0);
+            A.initSystem();
+            CHECK_EQUAL(2*n, A.numDofs());
+            CHECK_EQUAL(n,   u1.mapper().firstIndex());
+        }
+
+        // Main arm: a vector-valued space of dimension d sharing an
+        // assembler with a scalar space. Looping d = 2 and d = 3 is
+        // essential -- the erroneous shift was dim()*(dim()*freeSize())
+        // versus the correct dim()*freeSize(), i.e. an extra factor of
+        // dim(). At a single d, a formula quadratic in dim() is
+        // indistinguishable from a linear one with a different constant;
+        // the pair of values pins the exponent.
+        for (index_t d = 2; d <= 3; ++d)
+        {
+            gsExprAssembler<real_t> A(2, 2);
+            A.setIntegrationElements(dbasis);
+            auto G = A.getMap(mp);
+            auto v = A.getSpace(dbasis, d, 0); // vector-valued space, dim d
+            auto p = A.getSpace(dbasis, 1, 1); // scalar space, dim 1
+            v.setup(bcs, dirichlet::homogeneous, 0);
+            p.setup(bcs, dirichlet::homogeneous, 0);
+            A.initSystem();
+
+            CHECK_EQUAL((d+1)*n, A.numDofs());
+            CHECK_EQUAL(0,       v.mapper().firstIndex());
+            CHECK_EQUAL(d*n,     v.mapper().freeSize());
+            CHECK_EQUAL(d*n,     p.mapper().firstIndex());
+            CHECK_EQUAL(n,       p.mapper().freeSize());
+
+            // Two distinct-block terms in one assemble() call: this is what
+            // actually writes into both diagonal blocks of the system
+            // matrix, so a wrong offset for p's block (computed pre-fix as
+            // d*(d*n) instead of d*n) would either write out of range or
+            // leave part of v's block untouched.
+            A.assemble(v*v.tr()*meas(G), p*p.tr()*meas(G));
+
+            // Counting entirely-zero rows separates "wrong total" from
+            // "structurally broken": pre-fix, each block was internally
+            // self-consistent and merely sat at the wrong offset, so
+            // numDofs() alone does not reveal that (d^2-d)*n rows exist
+            // that nothing ever writes to.
+            const gsSparseMatrix<real_t> & M = A.matrix();
+            gsVector<bool> rowTouched(M.rows());
+            rowTouched.setZero();
+            for (index_t c = 0; c != M.cols(); ++c)
+                for (gsSparseMatrix<real_t>::InnerIterator it(M, c); it; ++it)
+                    rowTouched(it.row()) = true;
+            const index_t zeroRows = M.rows() - rowTouched.array().count();
+            CHECK_EQUAL(0, zeroRows);
+
+            // matrixBlockView() is the only assertion here reaching
+            // _blockDims directly (numDofs()/firstIndex() above reach the
+            // same defect only through resetDimensions): the block sizes
+            // must match the per-space free dof counts exactly.
+            auto view = A.matrixBlockView();
+            CHECK_EQUAL(d*n, view(0,0).rows());
+            CHECK_EQUAL(d*n, view(0,0).cols());
+            CHECK_EQUAL(n,   view(1,1).rows());
+            CHECK_EQUAL(n,   view(1,1).cols());
+        }
+    }
+
+    // matrix() is `m_modified ? makeMatrix() : m_matrix`, and m_matrix is only
+    // populated from the fiber matrix by makeMatrix(). clearMatrix() must
+    // therefore invalidate the cache on every path, including the one that
+    // resizes rather than zeroes: initSystem() reaches exactly that path, so
+    // without the flag matrix() reports the default-constructed 0x0 m_matrix
+    // for a system whose dimensions are already known.
+    TEST(MatrixSizedAfterInitSystem)
+    {
+        gsBSplineBasis<real_t> bb(0.0, 1.0, 3, 3);
+        gsMultiBasis<real_t> mb(bb);
+        gsBoundaryConditions<real_t> bcs;
+
+        gsExprAssembler<real_t> A(1, 1);
+        A.setIntegrationElements(mb);
+        auto u = A.getSpace(mb, 1, 0);
+        u.setup(bcs, dirichlet::homogeneous, 0);
+        A.initSystem();
+
+        // No assemble() here: sizing must hold from initSystem() alone.
+        CHECK_EQUAL(A.numTestDofs(), A.matrix().rows());
+        CHECK_EQUAL(A.numDofs(),     A.matrix().cols());
+        CHECK(A.matrix().rows() > 0);
+    }
+
     TEST(InterfaceExpression)
     {
         const index_t numRef = 2;
@@ -176,5 +294,83 @@ SUITE(gsExprAssembler_test)
         CHECK(math::abs(ev.integralBdr(nv(G).norm())-2*EIGEN_PI) < 1e-10);
         //
         CHECK(math::abs(ev.integral(el.area(G))-2*EIGEN_PI/32) < 1e-10);
+    }
+
+    // A 1-D Neumann load assembled over a boundary side is the basis evaluated at
+    // the end point: the end function of the side carries the whole load.
+    TEST(BoundaryLoad1D)
+    {
+        gsKnotVector<real_t> kv(0.0, 1.0, 3, 3);
+        gsBSplineBasis<real_t> bs(kv);
+        gsTHBSplineBasis<1,real_t> thb(bs);
+        gsMatrix<real_t> box(1,2);
+        box << 0, 0.25;
+        thb.refine(box);
+
+        gsKnotVector<real_t> gkv(0.0, 1.0, 0, 2);
+        gsBSplineBasis<real_t> gb(gkv);
+        gsMatrix<real_t> c(2,1);
+        c << 0, 1;
+        gsMultiPatch<real_t> mp;
+        mp.addPatch( gsBSpline<real_t>(gb, c) );
+        gsFunctionExpr<real_t> one("1", 1);
+
+        const gsBasis<real_t> * bases[2] = { &bs, &thb };
+        std::vector<real_t> eastEnd, eastSum;
+        index_t runs = 0;
+        for (int k = 0; k != 3; ++k)
+        {
+            const gsBasis<real_t> & basis = *bases[k == 2 ? 0 : k];
+            const bool east = (k != 2);
+            const boxSide side = east ? boundary::east : boundary::west;
+
+            gsMultiBasis<real_t> mb(basis);
+            gsBoundaryConditions<real_t> bc;
+            bc.setGeoMap(mp);
+            bc.addCondition(0, side, condition_type::neumann, &one, 0, false, -1);
+
+            gsExprAssembler<real_t> A(1,1);
+            A.setIntegrationElements(mb);
+            auto G = A.getMap(mp);
+            auto u = A.getSpace(mb, 1, 0);
+            u.setup(bc, dirichlet::homogeneous, 0);
+            auto gg = A.getCoeff(one, G);
+            A.initSystem();
+            A.assembleBdr(bc.get("Neumann"), u * gg.val() * nv(G).norm());
+
+            gsMatrix<real_t> pt(1,1);
+            pt(0,0) = east ? 1.0 : 0.0;
+            const index_t n = basis.size();
+            gsMatrix<real_t> rhs(n,1);
+            real_t sum = 0, err = 0;
+            for (index_t i = 0; i != n; ++i)
+            {
+                rhs(i,0) = A.rhs()(u.mapper().index(i, 0, 0), 0);
+                sum += rhs(i,0);
+                err = math::max(err, math::abs(rhs(i,0) - basis.evalSingle(i, pt)(0,0)));
+            }
+            CHECK( err <= 1e-14 );
+            CHECK( math::abs(sum - 1) <= 1e-14 );
+
+            const index_t last = basis.boundary(side)(0,0);
+            if (k != 1) CHECK_EQUAL( east ? n - 1 : 0, last );
+            CHECK( math::abs(rhs(last,0) - 1) <= 1e-14 );
+            for (index_t i = 0; i != n; ++i)
+                if (i != last) CHECK( math::abs(rhs(i,0)) <= 1e-14 );
+
+            if (east)
+            {
+                eastEnd.push_back(rhs(last,0));
+                eastSum.push_back(sum);
+            }
+            ++runs;
+        }
+        CHECK_EQUAL( 3, runs );
+        CHECK_EQUAL( 2u, eastEnd.size() );
+        if (eastEnd.size() == 2)
+        {
+            CHECK( math::abs(eastEnd[0] - eastEnd[1]) <= 1e-14 );
+            CHECK( math::abs(eastSum[0] - eastSum[1]) <= 1e-14 );
+        }
     }
 }

@@ -60,19 +60,139 @@ struct gsQuasiInterpolate
                                   index_t i,
                                   const gsMatrix<T> &ab);
 
+    /// Per-index local interpolation. Handles tensor, THB (exact reproduction)
+    /// and rational THB bases. A non-truncated hierarchical (HB) basis has no
+    /// per-index quasi-interpolant and throws: use the bulk overload.
     static gsMatrix<T> localIntpl(const gsBasis<T> &b,
                                   const gsFunction<T> &fun,
                                   index_t i);
 
+    /// Per-index local interpolation on a hierarchical basis. Throws for a
+    /// non-truncated hierarchical (HB) basis: use the bulk overload.
     template<short_t d>
     static gsMatrix<T> localIntpl(const gsHTensorBasis<d,T> &b,
                                   const gsFunction<T> &fun,
                                   index_t i);
 
-
+    /**
+     * @brief Local-interpolation quasi-interpolant of \a fun on the whole basis \a b.
+     *
+     * Tensor, NURBS, THB and rational THB bases use the per-index local
+     * interpolation (for THB: Speleers & Manni, Numer. Math. 132 (2016) 155-184),
+     * evaluated in parallel over the indices. A non-truncated hierarchical (HB)
+     * basis uses the level-by-level residual scheme of \ref localIntplHB, which
+     * is not expressible per index. A rational basis over an HB basis is not
+     * supported and throws.
+     *
+     * @param b      the basis
+     * @param fun    the function to approximate
+     * @param result the coefficients, size b.size() x fun.targetDim()
+     */
     static void localIntpl(const gsBasis<T> &b,
                            const gsFunction<T> &fun,
                            gsMatrix<T> &result);
+    
+    /// \brief Dimension-independent per-coefficient Taylor QI on a
+    /// tensor B-spline basis. Computes the \a j-th coefficient as the
+    /// tensor product of the univariate Taylor quasi-interpolants (see
+    /// \ref Taylor). \tparam d is the parameter-domain dimension.
+    ///
+    /// The supported bases are the tensor B-spline bases
+    /// gsTensorBSplineBasis<d,T>, d = 1..4 (including gsBSplineBasis). The
+    /// per-coefficient Taylor functional of Lyche-Morken Thm 8.5 is defined for a
+    /// single tensor knot vector; applied to the level-l tensor basis of a
+    /// hierarchical function it is not a dual functional of the hierarchical
+    /// basis and gives a wrong result. Every other basis therefore throws, in
+    /// the per-index overloads and in the bulk overload below (which throws
+    /// before its parallel loop); the gsHTensorBasis overload always throws. Use
+    /// localIntpl for hierarchical and rational bases.
+    ///
+    /// Trap: needs derivatives of \a fun of total order
+    /// \f$\sum_{\mathrm{dir}}\min(r,p_{\mathrm{dir}})\f$ at the anchor;
+    /// gsFunctionExpr provides only up to order 2.
+    ///
+    /// Cost per coefficient: one evalAllDers_into at one point plus
+    /// \f$\prod_{\mathrm{dir}}(\min(r,p_{\mathrm{dir}})+1)\f$ terms.
+    template<short_t d>
+    static gsMatrix<T> localTaylor(const gsTensorBSplineBasis<d,T> &b,
+                                  const gsFunction<T> &fun,
+                                  const index_t &r,
+                                  index_t j);
+
+    static gsMatrix<T> localTaylor(const gsBasis<T> &b,
+                                const gsFunction<T>  &fun,
+                                const index_t &r,
+                                index_t i);
+
+    template<short_t d>
+    static gsMatrix<T> localTaylor(const gsHTensorBasis<d,T> &b,
+                                const gsFunction<T>  &fun,
+                                const index_t &r,
+                                index_t i);
+
+    /// \brief Bulk Taylor QI on a tensor B-spline basis, d = 1..4; throws on
+    /// any other basis before the parallel loop (see the per-coefficient
+    /// overload above for the supported bases, the reason and the cost).
+    static void localTaylor(const gsBasis<T> &b,
+                        const gsFunction<T>  &fun,
+                        const index_t &r,
+                        gsMatrix<T> & result);    
+    
+    
+    /// \brief Local L2 projection coefficient of function \a i on the element
+    /// \a ab, with the active functions of \a b.
+    static gsMatrix<T> localL2(const gsBasis<T> &b,   
+                                const gsFunction<T>  &source,                                              
+                                index_t i,
+                                const gsMatrix<T> &ab);
+
+    
+    /// \brief Local L2 projection coefficient of function \a i, dispatching on
+    /// the basis type (tensor, NURBS, THB, rational THB). Throws on a
+    /// non-truncated hierarchical (HB) basis; use the bulk overload.
+    static gsMatrix<T> localL2(const gsBasis<T> &b,
+                                const gsFunction<T>  &source,
+                                index_t i);
+
+    /// \brief Local L2 projection coefficient of function \a i of a
+    /// hierarchical basis, with the level-l tensor basis on
+    /// elementInSupportOf(i). Throws on an HB basis.
+    template<short_t d>
+    static gsMatrix<T> localL2(const gsHTensorBasis<d,T> &b,
+                                const gsFunction<T>  &source,
+                                index_t i);
+
+    /**
+     * @brief Quasi-interpolation by local L2 projection.
+     *
+     * Supported bases and their paths:
+     * - tensor and NURBS: local projection with the active functions on
+     *   elementInSupportOf(i);
+     * - THB: level-l tensor basis on elementInSupportOf(i), as in
+     *   Speleers & Manni, Numer. Math. 132 (2016) 155-184 for the
+     *   interpolation variant;
+     * - rational THB: localL2Rational;
+     * - HB (non-truncated): localL2HB, a level-by-level residual loop;
+     * - rational over HB: throws.
+     *
+     * The local functional is a discrete L2 projection with a Gauss-Lobatto
+     * rule of p+1 nodes per direction. That rule is exact only to degree 2p-1,
+     * so the local mass matrix is not exactly integrated. Reproduction of the
+     * space holds because the \f$(p+1)^d\f$ tensor Lobatto nodes are unisolvent
+     * for the \f$(p+1)^d\f$ local tensor functions: the collocation matrix B is
+     * square and invertible, so \f$M^{-1}BW f^T\f$ equals interpolation at the
+     * Lobatto nodes.
+     *
+     * Cost: per function one dense LU of a \f$(p+1)^d\times(p+1)^d\f$ matrix,
+     * \f$O((p+1)^{3d})\f$.
+     *
+     * @param b      the basis
+     * @param source the function to approximate
+     * @param[out] result the coefficients, size b.size() x source.targetDim()
+     */
+    static void localL2(const gsBasis<T> &b,
+                        const gsFunction<T>  &source,
+                        gsMatrix<T> & result);
 
 
     /** \brief A quasi-interpolation scheme based on the tayor expansion of the function to approximate.
@@ -92,10 +212,36 @@ struct gsQuasiInterpolate
      * \param b     the B-spline basis of the interpolant (knots and degree)
      * \param fun   a function to approximate
      * \param r     an integer in [0,deg] (order of maximal derivatives of the function)
+     *
+     * 1-D gsBSplineBasis only; throws otherwise.
+     *
      * \param[out] result   a B-spline function, that approximates the given function
      */
-    static void Taylor(const gsBasis<T> &bb, const gsFunction<T> &fun, const int &r, gsMatrix<T> &result);
+    static void Taylor(const gsBasis<T> &bb, const gsFunction<T> &fun, const index_t &r, gsMatrix<T> &result);
 
+     /** \brief A quasi-interpolation scheme based on the tayor expansion of the function to approximate.
+     *  See Theorem 8.5 of "Spline methods (Lyche Morken)"
+     *  Theorem: (Lyche, Morken: Thm 8.5, page 178)
+     *  Let \f$p\f$ and \f$\boldsymbol{\tau}\f$ be the degree and knotvector of the quasi-interpolant, respectively.
+     *   Futhermore let \f$r\f$ be an integer with \f$ 0 \le r \le p \f$ and let \f$x_j\f$ be a number in \f$[\tau_j,
+     *   \tau_{j+p+1}]\f$ for \f$j=1,\dots,n\f$. Consider the quasi-interpolant
+     *   \f[
+     *   Q_{p,r}~f=\sum\limits_{j=1}^n{\lambda_j(f)B_{j,p}}, \quad \text{where} \quad
+     *   \lambda_j(f) = \frac{1}{p!}\sum\limits_{k=0}^r{(-1)^kD^{p-k}\rho_{j,p}(x_j)D^kf(x_j)}
+     *   \f]
+     *   and \f$\rho_{j,p}(y) = (y-\tau_{j+1}) \cdots (y - \tau_{j+p})\f$.
+     *   Then \f$Q_{p,r}\f$ reproduces all polynomials of degree \f$r\f$ and \f$Q_{p,p}\f$ reproduces all splines
+     *   in \f$\mathbb{S}_{p,\tau}\f$.
+     *
+     * \param b     the B-spline basis of the interpolant (knots and degree)
+     * \param fun   a function to approximate
+     * \param r     an integer in [0,deg] (order of maximal derivatives of the function)
+     *
+     * Forwards to localTaylor(bb, fun, r, result): tensor B-spline bases only.
+     *
+     * \param[out] result   a B-spline function, that approximates the given function
+     */
+    static void Taylor2D(const gsBasis<T> &bb, const gsFunction<T> &fun, const index_t &r, gsMatrix<T> &result);
 
     /**
      * @brief A quasi-interpolation scheme based on Schoenberg Variation Diminishing Spline Approximation.
@@ -178,6 +324,111 @@ struct gsQuasiInterpolate
 protected:
 
     /**
+     * @brief Level-by-level residual quasi-interpolation on a non-truncated
+     * hierarchical (HB) basis.
+     *
+     * Levels l = 0, 1, ... are processed in ascending order. With \f$s_{<l}\f$
+     * the spline built from the coefficients of levels below l, the level-l
+     * coefficient of function i is obtained by interpolating the residual
+     * \f$f - s_{<l}\f$ with the level-l tensor basis at Gauss points on a
+     * level-l cell Q of \f$\Omega^l\setminus\Omega^{l+1}\f$ inside supp(i).
+     *
+     * On Q every active HB function of level > l vanishes, since it is supported
+     * in \f$\Omega^{l+1}\f$. Hence for f in the HB space,
+     * \f$f - s_{<l}\f$ on Q equals \f$\sum_{\mathrm{level}(j)=l} c_j\beta_j|_Q\f$, a
+     * level-l tensor polynomial on Q, and the local interpolation recovers
+     * \f$c_i\f$ exactly. The operator is therefore a projector onto the HB space.
+     * This scheme is derived here and verified numerically; no literature
+     * reference is attached to it.
+     *
+     * For data outside the space the result coincides with the THB quasi-interpolant
+     * on the same hierarchy; this is a measured fact (<= 3.4e-13 on the tested
+     * hierarchies), not a derived one: two projectors onto the same space need
+     * only agree on that space.
+     *
+     * Cost: per function one dense LU of a \f$(p+1)^d\times(p+1)^d\f$ matrix,
+     * \f$O((p+1)^{3d})\f$, plus evaluations of f, the level-l tensor basis and
+     * \f$s_{<l}\f$ at \f$(p+1)^d\f$ points. Per level one makeGeometry
+     * (\f$O(n\cdot\mathrm{targetDim})\f$ copy and a basis clone). Levels are
+     * sequential, the functions of one level are processed in parallel.
+     */
+    template<short_t d>
+    static void localIntplHB(const gsHTensorBasis<d,T> & b,
+                             const gsFunction<T> & fun,
+                             gsMatrix<T> & result);
+
+    /**
+     * @brief Local interpolation coefficient on a rational THB-spline basis.
+     *
+     * A rational THB spline is \f$s = \sum_k c_k w_k T_k / W\f$ with
+     * \f$W = \sum_k w_k T_k\f$ and T_k the source THB functions. Hence
+     * \f$g = sW = \sum_k (c_k w_k) T_k\f$ is a THB spline, and by preservation of
+     * coefficients its level-l coefficient on a cell in \f$\Omega^l\setminus\Omega^{l+1}\f$
+     * of active function i equals \f$c_i w_i\f$. The function \a fun times \f$W\f$ is
+     * interpolated on that cell with the level-l tensor basis (as in the hierarchical
+     * quasi-interpolant of Speleers & Manni, Numer. Math. 132 (2016) 155-184; see also
+     * Giannelli, Juettler, Speleers 2014) and the result is divided by \f$w_i\f$.
+     * Weights are assumed nonzero.
+     * Accuracy degrades with the spread of the weights, since the coefficient is
+     * obtained by dividing by \f$w_i\f$ (on a p=3 test mesh: max/min weight ratio 10
+     * gives ~1e-12, 100 gives ~6e-11, 1000 gives ~2e-9).
+     */
+    template<short_t d>
+    static gsMatrix<T> localIntplRational(const gsRationalBasis<gsTHBSplineBasis<d,T> > & b,
+                                          const gsFunction<T> & fun,
+                                          index_t i);
+
+    /**
+     * @brief Level-by-level residual loop shared by the HB quasi-interpolants.
+     *
+     * \a L2 = false gives local interpolation (Gauss-Legendre points), \a L2 =
+     * true the local L2 functional (Gauss-Lobatto points). The functions of one
+     * level are processed in parallel, the levels sequentially. See
+     * localIntplHB for the theory.
+     */
+    template<short_t d, bool L2>
+    static void localHBLevelLoop(const gsHTensorBasis<d,T> & b,
+                                 const gsFunction<T> & fun,
+                                 gsMatrix<T> & result);
+
+    /**
+     * @brief Local L2 projection on a non-truncated hierarchical (HB) basis.
+     *
+     * Same scheme as localIntplHB with the local L2 functional of localL2 in
+     * place of local interpolation. On a level-l cell
+     * \f$Q\subset\Omega^l\setminus\Omega^{l+1}\f$ the HB functions of level
+     * > l vanish, so \f$f - s_{<l}\f$ on Q is a level-l tensor polynomial and
+     * the projection recovers \f$c_i\f$. The Lobatto nodes lie on
+     * \f$\partial Q\f$, so the vanishing of the level > l functions there needs
+     * continuity across \f$\partial Q\f$, i.e. p >= 1 in every direction.
+     *
+     * Cost: as localIntplHB.
+     */
+    template<short_t d>
+    static void localL2HB(const gsHTensorBasis<d,T> & b,
+                          const gsFunction<T> & fun,
+                          gsMatrix<T> & result);
+
+    /**
+     * @brief Local L2 projection coefficient on a rational THB-spline basis.
+     *
+     * With \f$W = \sum_k w_k T_k\f$, the function \f$g = sW\f$ is a THB spline
+     * with coefficients \f$c_k w_k\f$, so its level-l coefficient on a cell in
+     * \f$\Omega^l\setminus\Omega^{l+1}\f$ of active function i equals
+     * \f$c_i w_i\f$. \a fun times \f$W\f$ is projected on that cell with the
+     * level-l tensor basis (local L2 functional of localL2) and the result is
+     * divided by \f$w_i\f$. Weights must be nonzero; accuracy degrades with the
+     * weight spread, since the coefficient is obtained by dividing by \f$w_i\f$.
+     */
+    template<short_t d>
+    static gsMatrix<T> localL2Rational(const gsRationalBasis<gsTHBSplineBasis<d,T> > & b,
+                                       const gsFunction<T> & fun,
+                                       index_t i);
+
+    /// True for a rational basis whose source is a non-truncated hierarchical (HB) basis.
+    static bool isRationalOverHB(const gsBasis<T> & b);
+
+    /**
      * @brief Compute the derivative of a certain order of a normalized polynomial (leading coefficient is 1) defined by its roots at a given point.
      *  \f$g(y) = (y-y_1) \cdots (y-y_n)\f$, where \f$y_1,\dots,y_n\f$ are the roots of the polynomial.
      * @param zeros roots of the polynomial
@@ -185,7 +436,30 @@ protected:
      * @param x     evaluation point
      * @return      the value of the derivative, at the given point, \f$D^\alpha g(x)\f$, where \f$\alpha\f$ is the given order.
      */
-    static T derivProd(const std::vector<T> &zeros, const int &order, const T &x);
+    static T derivProd(const std::vector<T> &zeros, const index_t &order, const T &x);
+
+
+    /**
+     * @brief Row index, within \c derivs[|alpha|] of \ref
+     * gsFunctionSet::evalAllDers_into, of the mixed partial derivative
+     * \f$ \partial^\alpha f^{(comp)} \f$ for a function of domain
+     * dimension \a d.
+     *
+     * Encodes the packing convention of \c evalAllDers_into: per target
+     * component the block holds, for order \f$m=|\alpha|\f$: the value
+     * (m=0); the first derivatives \f$\partial_0,\dots,\partial_{d-1}\f$
+     * (m=1); for m=2 the pure second derivatives
+     * \f$\partial_{00},\dots,\partial_{d-1,d-1}\f$ first, then the mixed
+     * ones \f$\partial_{ab}\f$ (a<b) in lexicographic order; and for
+     * \f$m\ge 3\f$ the derivatives in composition (lexicographic) order,
+     * see \ref nextComposition.
+     *
+     * @param alpha per-direction derivative orders (size \a d)
+     * @param d     domain dimension
+     * @param comp  target component index
+     * @return      the row of \f$\partial^\alpha f^{(comp)}\f$
+     */
+    static index_t derivRow(const gsVector<index_t> &alpha, short_t d, index_t comp);
 
 
     /**
@@ -210,7 +484,7 @@ protected:
      * @param pos       the index i of the above formula
      * @param[out] weights   the computed weights \f$\omega_{i,k}\f$ of the above formula
      */
-    static void computeWeights(const gsMatrix<T> &points, const gsKnotVector<T> &knots, const int &pos, gsMatrix<T> &weights);
+    static void computeWeights(const gsMatrix<T> &points, const gsKnotVector<T> &knots, const index_t &pos, gsMatrix<T> &weights);
 
 
     /**
@@ -231,7 +505,7 @@ protected:
      * @param posEnd    the index of the right knot of the last interval to be considers
      * @return          the index of the left knot of the largest knot interval
      */
-    static int greatestSubInterval(const gsKnotVector<T> &knots, const int &posStart, const int &posEnd);
+    static int greatestSubInterval(const gsKnotVector<T> &knots, const index_t &posStart, const index_t &posEnd);
 
 
 }; //struct

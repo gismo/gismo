@@ -1238,8 +1238,6 @@ template<typename E1, typename E2>
 class frprod2_expr;
 template<typename E1, typename E2>
 class frprod3_expr;
-template<class E0, class E1, class E2>
-class ternary_expr; // ternary expression
 template<class E>
 class jacScaledLx_expr;
 template<class E>

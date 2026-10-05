@@ -341,7 +341,9 @@ template <short_t d, class T=real_t>     class gsHElement;
 template <short_t d, class T=real_t>     class gsHElementHelper;
 
 
-class gsParaviewDataSet;
+template <class T=real_t>                class gsParaviewDataSet;
+template <class T=real_t>                class gsParaviewCollection;
+
                                          class gsSurfMeshTopology;
 template <class Scalar=real_t>           class gsSurfMesh;
 template <class Scalar=real_t>           class gsSubdivisionScheme;
@@ -359,7 +361,8 @@ template<class T>
 void gsWriteParaviewTPgrid(gsMatrix<T> const& points,
                            gsMatrix<T> const& data,
                            const gsVector<index_t> & np,
-                           std::string const & fn);
+                           std::string const & fn,
+                           unsigned precision = 5);
 
 template <class T>
 void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd = true);

@@ -204,6 +204,122 @@ SUITE(gsExpressions_test)
 
     }
 
+/*
+    MIN/MAX REDUCTIONS
+*/
+    // Pins gsExprEvaluator::max()/min() against an everywhere-negative /
+    // everywhere-positive constant field, whose true extremum is exact
+    // regardless of quadrature (a constant integrand needs no sampling
+    // accuracy). max_op::init() must start below every attainable value;
+    // starting at the smallest positive normal double instead (the historic
+    // defect) would leave that spurious positive seed as the reported
+    // maximum of an always-negative field, so a positive returned value is
+    // the unmistakable fingerprint of the bug, checked here via CHECK(<0)
+    // in addition to the value.
+    TEST(minmax_reduction_seed)
+    {
+        gsFunctionExpr<real_t> negConst("-1.0", 2);
+        gsFunctionExpr<real_t> posConst("1.0", 2);
+
+        gsExprAssembler<real_t> Aloc(1,1);
+        // max()/min() iterate the integration domain, unlike the pointwise
+        // ev.eval() used elsewhere in this file, so the elements must be set.
+        Aloc.setIntegrationElements(mb);
+        Aloc.getMap(mp);
+        Aloc.getSpace(mb);
+        auto negC = Aloc.getCoeff(negConst);
+        auto posC = Aloc.getCoeff(posConst);
+        gsExprEvaluator<real_t> evloc(Aloc);
+
+        const real_t tol = 1e2 * std::numeric_limits<real_t>::epsilon();
+
+        real_t maxNeg = evloc.max(negC.val());
+        CHECK(maxNeg < 0.0);
+        CHECK_CLOSE(-1.0, maxNeg, tol);
+
+        // mirror case: min_op::init() must start above every attainable
+        // value, pinning the symmetric defect for min() on a positive field
+        real_t minPos = evloc.min(posC.val());
+        CHECK(minPos > 0.0);
+        CHECK_CLOSE(1.0, minPos, tol);
+    }
+
+    // Only meaningful with OpenMP: without it there is one accumulator, the
+    // merge under test never happens, and the test would pass while covering
+    // nothing. Omitted outright rather than left to degenerate silently.
+#ifdef _OPENMP
+
+    // Exercises the merge of the per-thread accumulators in acc_global.
+    //
+    // compute_impl gives every thread its own thValue and merges each one
+    // into m_value exactly once, at the end. A CONSTANT field therefore has
+    // no power here at all: every thread arrives with the same number, so
+    // any interleaving of the merge -- protected or not -- still yields the
+    // correct answer. The field below varies over the domain so that the
+    // thread-local extrema genuinely differ, which is the precondition for a
+    // lost merge to change the result.
+    //
+    // The oracle is the same reduction on a single thread, where acc_global
+    // runs once and no interleaving exists. Both runs sample identical
+    // quadrature points, and min/max is a selection rather than an
+    // arithmetic reduction -- it is associative and returns one of the
+    // sampled values unchanged -- so the comparison is an exact equality.
+    // (That is why byte-identity is legitimate here and is not for a sum,
+    // whose floating point result depends on the order of accumulation.)
+    //
+    // This still cannot prove the absence of a race; only ThreadSanitizer
+    // with libarcher measures that. Unlike a constant field, it can fail
+    // when one occurs.
+    TEST(minmax_reduction_threads)
+    {
+        // Sign-definite on the unit square (ranges [-2,-1] and [1,2]) so the
+        // seed defect above is still caught, but varying across elements.
+        gsFunctionExpr<real_t> negRamp("x - 2.0", 2);
+        gsFunctionExpr<real_t> posRamp("x + 1.0", 2);
+
+        gsMultiBasis<real_t> mbFine(mp);
+        mbFine.uniformRefine(4); // many elements -> more work per thread
+
+        gsExprAssembler<real_t> Aloc(1,1);
+        Aloc.setIntegrationElements(mbFine);
+        Aloc.getMap(mp);
+        Aloc.getSpace(mbFine);
+        auto negC = Aloc.getCoeff(negRamp);
+        auto posC = Aloc.getCoeff(posRamp);
+        gsExprEvaluator<real_t> evloc(Aloc);
+
+        // The reference is taken on one thread, where acc_global runs once
+        // and no interleaving exists.
+        const int nThreads = omp_get_max_threads();
+
+        omp_set_num_threads(1);
+        const real_t maxRef = evloc.max(negC.val());
+        const real_t minRef = evloc.min(posC.val());
+
+        CHECK(maxRef < 0.0);
+        CHECK(minRef > 0.0);
+
+        // The loop runs on as many threads as the host offers, and never
+        // fewer than four. A host or CI runner pinned to one thread would
+        // otherwise turn this into a serial check that passes while
+        // exercising none of the merge it exists to cover, so the thread
+        // count is asserted rather than assumed.
+        omp_set_num_threads(nThreads > 4 ? nThreads : 4);
+        CHECK(omp_get_max_threads() > 1);
+
+        for (int i = 0; i != 20; ++i)
+        {
+            CHECK_EQUAL(maxRef, evloc.max(negC.val()));
+            CHECK_EQUAL(minRef, evloc.min(posC.val()));
+        }
+
+        // Restore: the thread count is process-wide and would otherwise
+        // change how every later test in this binary runs.
+        omp_set_num_threads(nThreads);
+    }
+
+#endif // _OPENMP
+
     // Test for the positive part of an expression ( Macaulay bracket )
     TEST(ppart_expr)
     {

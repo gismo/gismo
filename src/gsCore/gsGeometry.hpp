@@ -339,7 +339,10 @@ template<class T>
 T gsGeometry<T>::closestPointTo(const gsVector<T> & pt,
                                 gsVector<T> & result,
                                 const T accuracy,
-                                const bool useInitialPoint) const
+                                const bool useInitialPoint,
+                                const T maxIter,
+                                const T dampingFactor
+                                ) const
 {
     GISMO_ASSERT( pt.rows() == targetDim(), "Invalid input point." <<
                   pt.rows() <<"!="<< targetDim() );
@@ -350,8 +353,8 @@ T gsGeometry<T>::closestPointTo(const gsVector<T> & pt,
     result = fmin.currentDesign();
 #else
     gsSquaredDistance<T> dist2(*this, pt);
-    result = useInitialPoint ? dist2.argMin(accuracy*accuracy, 100, result)
-    : dist2.argMin(accuracy*accuracy, 100) ;
+    result = useInitialPoint ? dist2.argMin(accuracy*accuracy, maxIter, result, dampingFactor)
+    : dist2.argMin(accuracy*accuracy, maxIter, gsMatrix<T>(), dampingFactor);
 #endif
     return math::sqrt( dist2.eval(result).value() );
 }
