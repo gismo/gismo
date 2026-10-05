@@ -305,7 +305,7 @@ std::ostream &operator<<(std::ostream &os, const gsField<T>& b)
   /**
    * @brief Initializes the Python wrapper for the class: gsField
    */
-  void pybind11_init_gsField(pybind11::module &m);
+  GISMO_EXPORT void pybind11_init_gsField(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

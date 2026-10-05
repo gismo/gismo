@@ -87,7 +87,7 @@ void pybind11_init_gsBasis(py::module &m)
 }
 
 
-void pybind11_init_PPN(pybind11::module &m)
+GISMO_EXPORT void pybind11_init_PPN(pybind11::module &m)
 {
     pybind11::module ppn = m.def_submodule("ppn");
     // .def("dim", &Class::dim, "Returns the dimension of the basis")

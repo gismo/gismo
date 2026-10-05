@@ -302,7 +302,7 @@ private:
   /**
    * @brief Initializes the Python wrapper for the class: gsCmdLine
    */
-  void pybind11_init_gsCmdLine(pybind11::module &m);
+  GISMO_EXPORT void pybind11_init_gsCmdLine(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

@@ -241,7 +241,7 @@ protected:
     /**
      * @brief Initializes the Python wrapper for the class: gsQuasiInterpolate
      */
-    void pybind11_init_gsQuasiInterpolate(pybind11::module &m);
+    GISMO_EXPORT void pybind11_init_gsQuasiInterpolate(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

@@ -495,7 +495,7 @@ void plot_errors(const gsMatrix<T> & orig,
   /**
    * @brief Initializes the Python wrapper for the class: gsWriteParaview
    */
-  void pybind11_init_gsWriteParaview(pybind11::module &m);
+  GISMO_EXPORT void pybind11_init_gsWriteParaview(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

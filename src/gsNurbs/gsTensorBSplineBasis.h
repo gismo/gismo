@@ -492,12 +492,12 @@ protected:
      * @brief Initializes the Python wrapper for the class: gsTensorBSplineBasis
      */
     template <short_t d>
-    void pybind11_init_gsTensorBSplineBasis(pybind11::module &m);
+    GISMO_EXPORT void pybind11_init_gsTensorBSplineBasis(pybind11::module &m);
 
     /**
      * @brief Initializes the Python wrapper for the factory constructor of gsTensorBSplineBasis
      */
-    void pybind11_init_gsTensorBSplineBasis_factory(pybind11::module &m);
+    GISMO_EXPORT void pybind11_init_gsTensorBSplineBasis_factory(pybind11::module &m);
 
 
 #endif // GISMO_WITH_PYBIND11

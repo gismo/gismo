@@ -133,7 +133,7 @@ std::ostream &operator<<(std::ostream &os, const gsPointLoads<T>& pls)
   /**
    * @brief Initializes the Python wrapper for the class: gsPointLoads
    */
-  void pybind11_init_gsPointLoads(pybind11::module &m);
+  GISMO_EXPORT void pybind11_init_gsPointLoads(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

@@ -693,7 +693,7 @@ gsMatrix<T,_Rows, _Cols, _Options> * gsMatrix<T,_Rows, _Cols, _Options>::clone()
    * @brief Initializes the Python wrapper for the class: gsMatrix
    */
   template<typename T>
-  void pybind11_init_gsMatrix(pybind11::module &m, const std::string & typestr)
+  GISMO_EXPORT void pybind11_init_gsMatrix(pybind11::module &m, const std::string & typestr)
   {
     using Class = gsMatrix<T>;
     std::string pyclass_name = std::string("gsMatrix") + typestr;

@@ -311,7 +311,7 @@ inline bool operator< ( const gsOptionList::OptionListEntry& a, const gsOptionLi
   /**
    * @brief Initializes the Python wrapper for the class: gsOptionList
    */
-  void pybind11_init_gsOptionList(pybind11::module &m);
+  GISMO_EXPORT void pybind11_init_gsOptionList(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

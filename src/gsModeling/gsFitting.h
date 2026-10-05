@@ -398,7 +398,7 @@ private:
   /**
    * @brief Initializes the Python wrapper for the class: gsKnotVector
    */
-  void pybind11_init_gsFitting(pybind11::module &m);
+  GISMO_EXPORT void pybind11_init_gsFitting(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

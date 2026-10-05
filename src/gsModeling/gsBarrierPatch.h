@@ -100,7 +100,7 @@ class gsBarrierPatch
    * @brief Initializes the Python wrapper for the class: gsBarrierPatch
    */
   template <short_t d>
-  void pybind11_init_gsBarrierPatch(pybind11::module &m);
+  GISMO_EXPORT void pybind11_init_gsBarrierPatch(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

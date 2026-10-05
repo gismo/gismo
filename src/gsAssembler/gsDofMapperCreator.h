@@ -98,7 +98,7 @@ gsDofMapper createMapper(const gsFunctionSet<T> & bases, const gsBoundaryConditi
                          index_t nComp = 1, index_t unk = 0, bool finalize = false);
 
 #ifdef GISMO_WITH_PYBIND11
-void pybind11_init_gsDofMapperCreator(pybind11::module &m);
+GISMO_EXPORT void pybind11_init_gsDofMapperCreator(pybind11::module &m);
 #endif
 
 } // namespace gismo

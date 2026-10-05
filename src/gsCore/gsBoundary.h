@@ -1094,7 +1094,7 @@ gsMatrix<T> getFace (const boxSide side, const gsMatrix<T> &box)
   /**
    * @brief Initializes the Python wrapper for the class: gsBoundary
    */
-  void pybind11_enum_gsBoundary(pybind11::module &m);
+  GISMO_EXPORT void pybind11_enum_gsBoundary(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

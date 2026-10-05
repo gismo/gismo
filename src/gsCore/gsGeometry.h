@@ -694,7 +694,7 @@ struct gsGeoTraits<4,T>
   /**
    * @brief Initializes the Python wrapper for the class: gsGeometry
    */
-  void pybind11_init_gsGeometry(pybind11::module &m);
+  GISMO_EXPORT void pybind11_init_gsGeometry(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

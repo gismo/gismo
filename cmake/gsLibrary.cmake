@@ -77,8 +77,22 @@ if (GISMO_WITH_PYBIND11)
     target_link_libraries(${PROJECT_NAME}_static pybind11::lto)
   endif()
 
-  # link gismo to pygismo
-  target_link_libraries(py${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_static)
+  # link gismo to pygismo. With the shared library there is a single copy of
+  # G+Smo in the process, shared with separately compiled extension modules
+  # (e.g. gsGalerkin form modules); $ORIGIN lets a wheel ship libgismo next
+  # to pygismo.
+  if (GISMO_BUILD_LIB)
+    target_link_libraries(py${PROJECT_NAME} PRIVATE ${PROJECT_NAME})
+    set_target_properties(py${PROJECT_NAME} PROPERTIES
+      BUILD_RPATH_USE_ORIGIN ON
+      INSTALL_RPATH "$ORIGIN")
+  else()
+    target_link_libraries(py${PROJECT_NAME} PRIVATE ${PROJECT_NAME}_static)
+  endif()
+
+  if (TARGET gsGalerkin_pyforms)
+    add_dependencies(py${PROJECT_NAME} gsGalerkin_pyforms)
+  endif()
 
   pybind11_strip(py${PROJECT_NAME})
   pybind11_extension(py${PROJECT_NAME})

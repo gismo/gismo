@@ -328,7 +328,7 @@ gsVector3d<T>::gsVector3d(const Base& a): Base(a) { }
    * @brief Initializes the Python wrapper for the class: gsVector
    */
   template<typename T>
-  void pybind11_init_gsVector(pybind11::module &m, const std::string & typestr)
+  GISMO_EXPORT void pybind11_init_gsVector(pybind11::module &m, const std::string & typestr)
   {
     using Class = gsVector<T>;
     std::string pyclass_name = std::string("gsVector") + typestr;

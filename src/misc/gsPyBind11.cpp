@@ -34,7 +34,13 @@
 
 namespace gismo {
 
-void pybind11_init_PPN(pybind11::module &m);
+GISMO_EXPORT void pybind11_init_PPN(pybind11::module &m);
+
+#ifdef gsGalerkin_ENABLED
+// Declared here rather than via the header: gsGalerkinAssembler.h needs the
+// Galerkin++ include path, which only the gsGalerkin targets carry.
+GISMO_EXPORT void pybind11_init_gsGalerkinAssembler(pybind11::module &m);
+#endif
 
 }
 
@@ -227,6 +233,29 @@ PYBIND11_MODULE(pygismo, m) {
   gismo::pybind11_init_gsQuasiInterpolate( utils );
 
   gismo::pybind11_init_PPN( m );
+
+#ifdef gsGalerkin_ENABLED
+  py::module galerkin = m.def_submodule("galerkin");
+
+  galerkin.attr("__name__") = "pygismo.galerkin";
+  galerkin.attr("__version__") = GISMO_VERSION;
+  galerkin.doc() = "G+Smo (Geometry + Simulation Modules): Galerkin++ bridge (runtime types only)";
+
+  gismo::pybind11_init_gsGalerkinAssembler( galerkin );
+
+  // pygismo.galerkin.forms is pure Python (gsGalerkin/python/gsgalerkin_forms,
+  // staged as the private package _pygismo_galerkin_forms next to
+  // this module by CMake). A missing or broken package must not break
+  // `import pygismo`; the reason is kept in galerkin.forms_import_error.
+  try
+  {
+    galerkin.attr("forms") = py::module_::import("_pygismo_galerkin_forms");
+  }
+  catch (py::error_already_set & e)
+  {
+    galerkin.attr("forms_import_error") = std::string(e.what());
+  }
+#endif
 
 #ifdef gsRemappedBasis_ENABLED
   py::module rbasis = m.def_submodule("rbasis");

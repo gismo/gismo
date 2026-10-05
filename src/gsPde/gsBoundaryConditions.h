@@ -969,8 +969,8 @@ std::ostream &operator<<(std::ostream &os, const gsBoundaryConditions<T>& bvp)
     /**
      * @brief Initializes the Python wrapper for the class: gsBoundaryConditions
      */
-    void pybind11_init_gsBoundaryConditions(pybind11::module &m);
-    void pybind11_enum_gsBoundaryConditions(pybind11::module &m);
+    GISMO_EXPORT void pybind11_init_gsBoundaryConditions(pybind11::module &m);
+    GISMO_EXPORT void pybind11_enum_gsBoundaryConditions(pybind11::module &m);
 
 #endif
 

@@ -975,13 +975,13 @@ using gsH2Projection = gsProjection<ProjectionNorm::H2, T>;
     /**
      * @brief Initializes the Python wrapper for the ProjectionNorm enum
      */
-    void pybind11_enum_gsProjectionNorm(pybind11::module &m);
+    GISMO_EXPORT void pybind11_enum_gsProjectionNorm(pybind11::module &m);
 
     /**
      * @brief Initializes the Python wrapper for the class: gsProjection
      */
     template<ProjectionNorm Norm>
-    void pybind11_init_gsProjection(pybind11::module &m);
+    GISMO_EXPORT void pybind11_init_gsProjection(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

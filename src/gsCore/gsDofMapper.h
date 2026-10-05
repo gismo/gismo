@@ -533,7 +533,7 @@ inline std::ostream& operator<<( std::ostream& os, const gsDofMapper& b )
   /**
    * @brief Initializes the Python wrapper for the class: gsDofMapper
    */
-  void pybind11_init_gsDofMapper(pybind11::module &m);
+  GISMO_EXPORT void pybind11_init_gsDofMapper(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

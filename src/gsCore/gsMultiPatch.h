@@ -584,7 +584,7 @@ std::ostream& operator<<( std::ostream& os, const gsMultiPatch<T>& b )
   /**
    * @brief Initializes the Python wrapper for the class: gsMultiPatch
    */
-  void pybind11_init_gsMultiPatch(pybind11::module &m);
+  GISMO_EXPORT void pybind11_init_gsMultiPatch(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

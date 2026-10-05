@@ -634,7 +634,7 @@ std::ostream &operator<<(std::ostream &os, const gsFunctionSet<T>& b)
   /**
    * @brief Initializes the Python wrapper for the class: gsFunction
    */
-  void pybind11_init_gsFunctionSet(pybind11::module &m);
+  GISMO_EXPORT void pybind11_init_gsFunctionSet(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

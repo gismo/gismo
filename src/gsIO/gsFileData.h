@@ -609,7 +609,7 @@ std::ostream &operator<<(std::ostream &os, const gsFileData<T> & fd)
   /**
    * @brief Initializes the Python wrapper for the class: gsFileData
    */
-  void pybind11_init_gsFileData(pybind11::module &m);
+  GISMO_EXPORT void pybind11_init_gsFileData(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

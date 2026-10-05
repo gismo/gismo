@@ -663,7 +663,7 @@ std::ostream& operator<<( std::ostream& os, const gsMultiBasis<T>& b )
   /**
    * @brief Initializes the Python wrapper for the class: gsMultiBasis
    */
-  void pybind11_init_gsMultiBasis(pybind11::module &m);
+  GISMO_EXPORT void pybind11_init_gsMultiBasis(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

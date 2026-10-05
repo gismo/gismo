@@ -158,7 +158,7 @@ gsBasisFun<T>::deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result )  const
   /**
    * @brief Initializes the Python wrapper for the class: gsGeometry
    */
-  void pybind11_init_gsBasisFun(pybind11::module &m);
+  GISMO_EXPORT void pybind11_init_gsBasisFun(pybind11::module &m);
 
 #endif // GISMO_WITH_PYBIND11
 

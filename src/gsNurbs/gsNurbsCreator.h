@@ -282,7 +282,7 @@ public:
     /**
      * @brief Initializes the Python wrapper for the class: gsBoundaryConditions
      */
-    void pybind11_init_gsNurbsCreator(pybind11::module &m);
+    GISMO_EXPORT void pybind11_init_gsNurbsCreator(pybind11::module &m);
 
 #endif
 
