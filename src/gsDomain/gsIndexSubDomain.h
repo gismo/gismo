@@ -15,6 +15,7 @@
 
 #include <gsDomain/gsSubDomain.h>
 #include <algorithm>
+#include <functional>
 #include <map>
 #include <tuple>
 
@@ -91,7 +92,8 @@ private:
 
    Constructed from a shared_ptr to a parent gsDomain and a (possibly
    unsorted, possibly duplicate) vector of global element indices.  The
-   constructor sorts and deduplicates the index vector.
+   constructor sorts and deduplicates the index vector; an input that is
+   already strictly increasing is detected in O(n) and kept as is.
 
    The subdomain co-owns the parent via shared_ptr, so the parent lifetime
    is automatically managed — no dangling references.
@@ -201,14 +203,26 @@ public:
                          alive as long as any subdomain references it.
        @param indices    Global element indices (unsorted/duplicate allowed;
                          constructor normalises them).
+
+       Complexity, with n = indices.size() and N = parent number of elements:
+       O(n) when \a indices is strictly increasing, O(n log n) otherwise
+       (sort + unique); plus O(N) box construction when the parent has no
+       elementIndex() fast path; plus, in builds without NDEBUG, an O(N)
+       validation walk over all parent elements.
     */
     gsIndexSubDomain(typename gsDomain<T>::Ptr parentPtr, std::vector<index_t> indices)
     : Base(), m_parentPtr(give(parentPtr)), m_indices(give(indices))
     {
         GISMO_ASSERT(m_parentPtr, "Parent domain pointer must not be null.");
-        std::sort(m_indices.begin(), m_indices.end());
-        m_indices.erase(std::unique(m_indices.begin(), m_indices.end()),
-                        m_indices.end());
+        // Strictly increasing input (the common case, e.g.
+        // gsPartitionerBase::ownedElements) is already sorted and unique.
+        if (std::adjacent_find(m_indices.begin(), m_indices.end(),
+                               std::greater_equal<index_t>()) != m_indices.end())
+        {
+            std::sort(m_indices.begin(), m_indices.end());
+            m_indices.erase(std::unique(m_indices.begin(), m_indices.end()),
+                            m_indices.end());
+        }
         initVolumeLookup();
         // Eagerly pre-populate subdomain() for every patch (Fix 1: makes
         // subdomain() a pure, race-free lookup during assembly).

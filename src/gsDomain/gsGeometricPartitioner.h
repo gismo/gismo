@@ -40,12 +40,14 @@
 #include <gsDomain/gsIndexSubDomain.h>
 #include <gsDomain/gsPartitionedDofMapper.h>
 #include <gsDomain/gsPartitionerBase.h>
+#include <gsParallel/gsMpi.h>
 #include <gsUtils/gsSpaceFillingCurve.h>
 
 #include <algorithm>
 #include <cstdint>
 #include <limits>
 #include <numeric>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -76,6 +78,9 @@ namespace gismo
    obtain bit-identical labels (there is no broadcast of the labelling), so
    every ordering used internally is a strict \em total order: the primary
    key is compared first and every tie is broken on the element id.
+   With the gsMpiComm constructor the per-element centroids and weights are
+   computed on slices of the elements and gathered, but the labelling is still
+   computed independently on every rank from those identical arrays.
 
    \ingroup Domain
 */
@@ -116,8 +121,64 @@ public:
                            const gsDofMapper&     mapper,
                            index_t                nparts,
                            Options                opts = Options{})
-    : Base(mb, mapper, nparts), m_mp(mp), m_opts(opts), m_dom(mb.domain())
+    : Base(mb, mapper, nparts), m_mp(mp), m_opts(opts), m_dom(mb.domain()),
+      m_numElements(static_cast<index_t>(m_dom->numElements()))
     { }
+
+    /**
+       @brief Construct a partitioner whose pass A is distributed over the
+       ranks of \a comm (does not partition yet -- call partition()).
+
+       @param mp      Multi-patch geometry (supplies the physical centroids).
+       @param mb      Multi-patch basis; its domain() is the element mesh.
+       @param mapper  Finalized DOF mapper.
+       @param nparts  Number of partitions (independent of comm.size()).
+       @param comm    Communicator over which pass A is split.
+       @param opts    Optional tuning parameters.
+
+       Parallel part: with P = comm.size() > 1, rank r evaluates the geometry
+       (and, with Options::weightByDofs, counts free DOFs) only on the
+       contiguous element slice [N r/P, N (r+1)/P) of the N elements. This is
+       O(N/P) element visits and evaluations per rank plus one O(N r/P) cheap
+       iterator jump to the slice start.
+
+       Communication: one allgatherv of geoDim*N scalars (the centroids), plus
+       one of N integers if Options::weightByDofs, and at most two one-integer
+       allreduces that make the range and consistency checks collective.
+       Received volume per rank is O(N*geoDim).
+
+       Replicated on every rank: the bounding box, the full per-element arrays
+       (centroids geoDim*8 B, weights 4 B, labels 4 B, RCB order 4 B, i.e.
+       about (geoDim*8+12) B per element, transient; the centroids are released
+       after partition() unless Options::keepCentroids), the labelling (RCB or
+       space-filling curve) and pass B (makeDofMapper()).
+
+       Collective: every rank of \a comm must construct with identical
+       arguments (mp, mb, mapper, nparts, opts) and call partition(). The
+       communicator is copied (a gsMpiComm is a non-owning handle); the
+       underlying MPI communicator must stay alive until partition() returns.
+       A comm with size() <= 1 behaves exactly like the serial constructor and
+       performs no communication.
+
+       The labels are bit-identical across the ranks: the gathered arrays are
+       identical and the labelling is deterministic (strict total orders, no
+       randomness, no OpenMP). They are not guaranteed to be bit-identical to
+       those of the serial constructor, since the evaluation chunk boundaries
+       differ and a batched eval_into() could in principle round differently.
+    */
+    gsGeometricPartitioner(const gsMultiPatch<T>& mp,
+                           const gsMultiBasis<T>& mb,
+                           const gsDofMapper&     mapper,
+                           index_t                nparts,
+                           const gsMpiComm&       comm,
+                           Options                opts = Options{})
+    : Base(mb, mapper, nparts), m_mp(mp), m_opts(opts), m_dom(mb.domain()),
+      m_numElements(static_cast<index_t>(m_dom->numElements())), m_comm(comm)
+    {
+        GISMO_ENSURE(comm.size() >= 1 && comm.rank() >= 0 && comm.rank() < comm.size(),
+                     "gsGeometricPartitioner: invalid communicator (size "
+                     << comm.size() << ", rank " << comm.rank() << ").");
+    }
 
     /// @brief "rcb" | "hilbert" | "morton"; fails on anything else.
     static Strategy strategyFromString(const std::string& s)
@@ -152,7 +213,7 @@ public:
     }
 
     /// @brief Number of elements of the partitioned domain.
-    index_t numElements() const { return static_cast<index_t>(m_dom->numElements()); }
+    index_t numElements() const { return m_numElements; }
 
     /**
        @brief Pass B: graph-free DOF ownership -> gsPartitionedDofMapper.
@@ -249,7 +310,7 @@ protected:
         checkTensorPatches();
         passA();
 
-        const index_t N = static_cast<index_t>(m_dom->numElements());
+        const index_t N = m_numElements;
         std::vector<index_t> labels(N, 0);
 
         // nparts == 1: every element is in part 0 (both strategies below
@@ -305,6 +366,19 @@ private:
         // i.e. single-patch THB / 1-D geometries are correctly permitted.
     }
 
+    /// @brief Agree collectively on a failure that may have occurred on a
+    /// subset of the ranks (\a failure non-null on the failing ranks), so no
+    /// rank is left waiting in a later collective call. Throws on all ranks.
+    void ensureOnAllRanks(const char * failure) const
+    {
+        int bad = failure ? 1 : 0;
+        bad = m_comm.max(bad);
+        if (failure)
+            gsWarn << "gsGeometricPartitioner, rank " << m_comm.rank() << ": " << failure << "\n";
+        GISMO_ENSURE(0 == bad, "gsGeometricPartitioner: a check failed on at least "
+                     "one rank, see the warning of that rank.");
+    }
+
     // ------------------------------------------------------------------
     // Pass A: centroids + weights
     // ------------------------------------------------------------------
@@ -321,10 +395,17 @@ private:
        Iteration is over beginAll()..endAll(), which -- unlike
        gsDomain::allElements() -- carries no OpenMP chunking, so this plain
        serial loop is correct and complete.
+
+       With a communicator of size P > 1 rank r visits only its contiguous
+       slice [N r/P, N (r+1)/P) (O(N/P) evaluations after one iterator jump),
+       the range and element-id checks are agreed on collectively, and the
+       slices are then allgathered so that every rank holds the full,
+       identical centroid array (and weight array, if weightByDofs):
+       O(N*geoDim) received per rank. With P <= 1 no communication occurs.
     */
     void passA()
     {
-        const index_t N      = static_cast<index_t>(m_dom->numElements());
+        const index_t N      = m_numElements;
         const short_t parDim = m_mp.parDim();
         const short_t geoDim = m_mp.geoDim();
         const index_t chunk  = math::min( math::max((index_t)1, m_opts.chunkSize),
@@ -349,6 +430,18 @@ private:
         m_centroids.resize(geoDim, N);   // column e = centroid of element e
         m_weights.assign(N, 1);
 
+        // Element slice [lo, hi) handled by this rank; the whole range when serial.
+        const bool    par = m_comm.size() > 1;
+        const int64_t P   = par ? m_comm.size() : 1;
+        const int64_t r   = par ? m_comm.rank() : 0;
+        const index_t lo  = static_cast<index_t>(static_cast<int64_t>(N) * r / P);
+        const index_t hi  = static_cast<index_t>(static_cast<int64_t>(N) * (r + 1) / P);
+
+        if (par)
+            ensureOnAllRanks(static_cast<int64_t>(geoDim) * N
+                             > static_cast<int64_t>(std::numeric_limits<int>::max())
+                             ? "geoDim*numElements exceeds the MPI int count range" : nullptr);
+
         const gsDofMapper& mapper = this->mapper();
         const index_t      nComp  = mapper.numComponents();
 
@@ -365,7 +458,7 @@ private:
             u = params.leftCols(nBuf);           // materialize the block
             m_mp.patch(curPatch).eval_into(u, phys);
             // bufElem is contiguous by construction: `expected` increments by
-            // one per element and the GISMO_ENSURE(e == expected) below rejects
+            // one per element and the id check below rejects
             // any gap, while a chunk is flushed before it can span two patches.
             // So bufElem[k] == bufElem[0] + k and the whole copy is one block
             // assignment. Measured 2026-08-13: the per-element form put ~38% of
@@ -377,10 +470,22 @@ private:
 
         auto       it  = m_dom->beginAll();
         const auto end = m_dom->endAll();
-        index_t expected = 0;
-        for (; it != end; ++it, ++expected)
+        if (lo > 0 && lo < N) it += lo;
+        index_t expected = lo;
+        std::string failure;
+        for (; it != end && expected < hi; ++it, ++expected)
         {
             const index_t e = static_cast<index_t>(it.id());
+            if (par && e != expected)
+            {
+                // Throwing here would leave the other ranks waiting in the
+                // collective below; the failure is agreed on collectively.
+                std::ostringstream os;
+                os << "domain iterator id() is not contiguous in iteration order (got "
+                   << e << ", expected " << expected << ")";
+                failure = os.str();
+                break;
+            }
             // GISMO_ENSURE, not GISMO_ASSERT: every array here is indexed by
             // id(), and this runs in Release at scale, where a GISMO_ASSERT is
             // compiled out and a non-contiguous id corrupts silently.
@@ -419,6 +524,40 @@ private:
             ++nBuf;
         }
         flush();
+
+        if (par)
+        {
+            if (failure.empty() && expected != hi)
+                failure = "domain iterator ended before the element slice was covered";
+            ensureOnAllRanks(failure.empty() ? nullptr : failure.c_str());
+
+            // Slice q owns elements [N q/P, N (q+1)/P); the counts and
+            // displacements are computed identically on every rank.
+            std::vector<int> cnt(P), dsp(P), wcnt(P), wdsp(P);
+            for (int64_t q = 0; q < P; ++q)
+            {
+                const int64_t lq = static_cast<int64_t>(N) * q / P;
+                const int64_t hq = static_cast<int64_t>(N) * (q + 1) / P;
+                cnt[q]  = static_cast<int>(geoDim * (hq - lq));
+                dsp[q]  = static_cast<int>(geoDim * lq);
+                wcnt[q] = static_cast<int>(hq - lq);
+                wdsp[q] = static_cast<int>(lq);
+            }
+
+            // MPI forbids aliased send/receive buffers, hence the copy.
+            gsMatrix<T> send = m_centroids.middleCols(lo, hi - lo);
+            int rc = m_comm.allgatherv(send.data(), static_cast<int>(geoDim * (hi - lo)),
+                                       m_centroids.data(), cnt.data(), dsp.data());
+            GISMO_ENSURE(0 == rc, "gsGeometricPartitioner: allgatherv of the centroids failed.");
+
+            if (m_opts.weightByDofs)
+            {
+                std::vector<index_t> wsend(m_weights.begin() + lo, m_weights.begin() + hi);
+                rc = m_comm.allgatherv(wsend.data(), static_cast<int>(hi - lo),
+                                       m_weights.data(), wcnt.data(), wdsp.data());
+                GISMO_ENSURE(0 == rc, "gsGeometricPartitioner: allgatherv of the weights failed.");
+            }
+        }
 
         // The box above is the control net's; a rational patch can still
         // evaluate to a non-finite point from a finite net, and such a
@@ -615,6 +754,8 @@ private:
     const gsMultiPatch<T>&    m_mp;
     const Options             m_opts;
     typename gsDomain<T>::Ptr m_dom;
+    index_t                   m_numElements; ///< element count of m_dom, cached (the composite domain recounts in O(nPieces))
+    gsMpiComm                 m_comm;        ///< copy of the pass-A communicator; size() <= 1 means serial
 
     gsMatrix<T>          m_bbox;      ///< geoDim x 2 (lower, upper corner)
     gsMatrix<T>          m_centroids; ///< geoDim x numElements (released after partition())

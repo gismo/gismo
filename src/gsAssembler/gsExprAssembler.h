@@ -731,11 +731,12 @@ private:
         const index_t n = act.rows();
         idx.resize(n * v.dim());
         for (index_t r = 0; r != v.dim(); ++r)
+        {
+            index_t * ir = idx.data() + r*n;
+            map.index_into(act, col, patch, r, ir);
             for (index_t i = 0; i != n; ++i)
-            {
-                const index_t ii = map.index(act(i,col), patch, r);
-                idx[r*n+i] = map.is_free_index(ii) ? ii : -1;
-            }
+                if (!map.is_free_index(ir[i])) ir[i] = -1;
+        }
     }
 
     // The default sink: the internal fiber matrix and right-hand side
@@ -969,19 +970,27 @@ private:
             if (!E::isMatrix()) return;
             const expr::gsFeSpace<T> & v = ee.rowVar();
             const expr::gsFeSpace<T> & u = ee.colVar();
+            // Same mapper, same component count and same actives source:
+            // the column indices equal the row indices.
+            const bool same = &v.mapper() == &u.mapper() && v.dim() == u.dim()
+                && (m_fromData ? &v.data() == &u.data() : &v.source() == &u.source());
             if (m_fromData)
             {
                 _globalIndices(v, v.data().actives, 0, v.data().patchId, rowIdx);
-                _globalIndices(u, u.data().actives, 0, u.data().patchId, colIdx);
+                if (!same)
+                    _globalIndices(u, u.data().actives, 0, u.data().patchId, colIdx);
             }
             else
             {
                 v.source().piece(m_patch).active_into(m_point, rowAct);
-                u.source().piece(m_patch).active_into(m_point, colAct);
                 _globalIndices(v, rowAct, 0, m_patch, rowIdx);
-                _globalIndices(u, colAct, 0, m_patch, colIdx);
+                if (!same)
+                {
+                    u.source().piece(m_patch).active_into(m_point, colAct);
+                    _globalIndices(u, colAct, 0, m_patch, colIdx);
+                }
             }
-            m_sink.addPattern(rowIdx, colIdx);
+            m_sink.addPattern(rowIdx, same ? rowIdx : colIdx);
         }
 
         void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}

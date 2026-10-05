@@ -141,6 +141,9 @@ public:
        ownership) uses, kept in exactly one place
        (gsPartitionedDofMapper::rankOfPart) rather than being re-derived here
        and in DOF ownership separately.
+
+       Complexity: O(N) for N elements, one rankOfPart() modulo per element.
+       The result is strictly increasing.
     */
     std::vector<index_t> ownedElements(index_t rank, index_t nranks) const
     {
@@ -158,6 +161,11 @@ public:
        passed directly to gsExprAssembler::setIntegrationDomain(), replacing
        the hand-rolled ownedElements loop + gsSubDomain downcast a caller
        would otherwise need (see gsMetisPetscAssembly_example.cpp).
+
+       Complexity: O(N) for the ownedElements() scan, plus the
+       gsIndexSubDomain construction cost. The index list is strictly
+       increasing, so the constructor skips its sort. Allocates a fresh
+       composite domain through gsMultiBasis::domain(), O(nPatches).
     */
     typename gsDomain<T>::Ptr subdomainForRank(index_t rank, index_t nranks) const
     {
