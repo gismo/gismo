@@ -90,6 +90,36 @@ struct gsFeSpaceData
         GISMO_ERROR("The dof-mapper cannot be evaluated by the expression assembler.");
     }
 
+    /// Points this space data to a (possibly different) function set and
+    /// dimension, as when a space id is registered again.  A mapper built
+    /// for another dimension has the wrong number of components, so it is
+    /// dropped: init() then builds the default mapper, as for a newly
+    /// registered space, and ensureComponentsMatchDim() only ever sees a
+    /// wrong count that the caller installed.
+    void rebind(const gsFunctionSet<T> & _fs, index_t _dim)
+    {
+        if (dim != _dim)
+            mapper = gsDofMapper();
+        fs  = &_fs;
+        dim = _dim;
+    }
+
+    /// Rejects, in every build type, a mapper whose number of components
+    /// differs from the space dimension.  gsFeSpace::setupMapper() rejects
+    /// such a mapper when it is installed; one assigned through the mutable
+    /// gsFeSpace::mapper() reference instead fails valid(), and init() would
+    /// replace it, discarding the caller's eliminations without a word.  A
+    /// default-constructed mapper has no component: no mapper was set yet,
+    /// and init() builds the default one.
+    void ensureComponentsMatchDim() const
+    {
+        const index_t nComp = mapper.numComponents();
+        GISMO_ENSURE(0 == nComp || dim == nComp,
+                     "The dof-mapper of space "<<id<<" has "<<nComp<<" components, "
+                     "but the space has dimension "<<dim<<".  Install mappers with "
+                     "gsFeSpace::setupMapper(), which checks this.");
+    }
+
     void init()
     {
         GISMO_ASSERT(nullptr!=fs, "Invalid pointer.");

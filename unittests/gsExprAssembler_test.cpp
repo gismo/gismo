@@ -251,6 +251,59 @@ SUITE(gsExprAssembler_test)
         }
     }
 
+    // A space whose first component has no free dof: every dof of component
+    // 0 is eliminated.  firstIndex() of such a mapper reports the start of
+    // component 0's eliminated block, which lies above all free dofs, so
+    // firstIndex()+freeSize() overshoots the end of the space's free block.
+    // numDofs() and the shift of the following space must use the end of
+    // the free block, lastIndex(); with the overshoot, the system is too
+    // large and the second space's block starts past the end of the first.
+    TEST(BlockShiftWithEliminatedOnlyFirstComponent)
+    {
+        gsMultiPatch<real_t> mp(*gsNurbsCreator<real_t>::BSplineSquare());
+        gsMultiBasis<real_t> mb(mp);
+        mb.degreeElevate(1);
+        mb.uniformRefine(2);
+        const index_t n = mb.basis(0).size();
+
+        const gsMatrix<index_t> allDofs = gsVector<index_t>::LinSpaced(n, 0, n-1);
+        gsDofMapper vMapper = createMapper(mb, 2);
+        vMapper.markBoundary(0, allDofs, 0);
+        vMapper.finalize();
+        // the case under test: component 0 has eliminated dofs only, so its
+        // firstIndex() is not where the free block starts
+        CHECK_EQUAL(0, vMapper.freeSize(0));
+        CHECK_EQUAL(n, vMapper.freeSize());
+        CHECK_EQUAL(n, vMapper.firstIndex());
+
+        gsExprAssembler<real_t> A(2, 2);
+        A.setIntegrationElements(mb);
+        auto G = A.getMap(mp);
+        auto v = A.getSpace(mb, 2, 0); // component 0 fully eliminated
+        auto p = A.getSpace(mb, 1, 1);
+        v.setupMapper(vMapper);
+        const_cast<expr::gsFeSpace<real_t>&>(v).fixedPart()
+            .setZero(v.mapper().boundarySize(), 1);
+        A.initSystem();
+
+        CHECK_EQUAL(2*n, A.numDofs());
+        CHECK_EQUAL(2*n, A.numTestDofs());
+        CHECK_EQUAL(n,   p.mapper().firstIndex());
+
+        // Both diagonal blocks land inside the system and fill it: a block
+        // at the wrong offset leaves rows that nothing writes to.
+        A.assemble(v*v.tr()*meas(G), p*p.tr()*meas(G));
+        const gsSparseMatrix<real_t> & M = A.matrix();
+        CHECK_EQUAL(2*n, M.rows());
+        CHECK_EQUAL(2*n, M.cols());
+        gsVector<bool> rowTouched(M.rows());
+        rowTouched.setZero();
+        for (index_t c = 0; c != M.cols(); ++c)
+            for (gsSparseMatrix<real_t>::InnerIterator it(M, c); it; ++it)
+                rowTouched(it.row()) = true;
+        CHECK_EQUAL(M.rows(), rowTouched.array().count());
+    }
+
     // matrix() is `m_modified ? makeMatrix() : m_matrix`, and m_matrix is only
     // populated from the fiber matrix by makeMatrix(). clearMatrix() must
     // therefore invalidate the cache on every path, including the one that
@@ -392,6 +445,84 @@ SUITE(gsExprAssembler_test)
         A.initSystem();
         CHECK_EQUAL(matching.freeSize(), u.mapper().freeSize());
         CHECK_EQUAL(matching.freeSize(), A.numDofs());
+    }
+
+    // The mismatched mappers of SetupMapperComponents, assigned through the
+    // mutable gsFeSpace::mapper() reference, which bypasses setupMapper():
+    // initSystem() must reject them instead of replacing them by a default
+    // mapper, and so must an assembly call after a successful initSystem().
+    TEST(MapperComponentsCheckedThroughMutableMapper)
+    {
+        gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(1,1,1);
+        gsMultiBasis<> mb(patches);
+        mb.uniformRefine();
+        const std::string reason = "components, but the space has dimension 2";
+
+        for (index_t nComp = 1; nComp <= 3; nComp += 2)
+        {
+            gsDofMapper wrong = createMapper(mb, nComp);
+            wrong.finalize();
+
+            gsExprAssembler<> A(1, 1);
+            A.setIntegrationElements(mb);
+            auto u = A.getSpace(mb, 2);
+            u.mapper() = wrong;
+            {
+                CerrCapture err;
+                CHECK_THROW(A.initSystem(), std::runtime_error);
+                CHECK(err.contains(reason));
+            }
+            CHECK_EQUAL(nComp, u.mapper().numComponents()); // not replaced
+
+            gsExprAssembler<> B(1, 1);
+            B.setIntegrationElements(mb);
+            auto w = B.getSpace(mb, 2);
+            B.initSystem();
+            w.mapper() = wrong;
+            {
+                CerrCapture err;
+                CHECK_THROW(B.assemble(w * w.tr()), std::runtime_error);
+                CHECK(err.contains(reason));
+            }
+        }
+    }
+
+    // Registering a space id again with another dimension drops the mapper
+    // built for the old dimension: initSystem() builds the default mapper for
+    // the new one, as for a newly registered space, rather than rejecting a
+    // mapper the caller never installed.
+    TEST(ReRegistrationWithNewDimensionRebuildsMapper)
+    {
+        gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(1,1,1);
+        gsMultiBasis<> mb(patches);
+        mb.uniformRefine();
+        const index_t n = mb.totalSize();
+
+        gsExprAssembler<> A(1, 1);
+        A.setIntegrationElements(mb);
+        A.getSpace(mb, 1);
+        A.initSystem();
+        CHECK_EQUAL(n, A.numDofs());
+
+        auto u = A.getSpace(mb, 2);
+        A.initSystem();
+        CHECK_EQUAL(2,   u.mapper().numComponents());
+        CHECK_EQUAL(2*n, A.numDofs());
+        CHECK_EQUAL(2*n, A.numTestDofs());
+
+        // the same for a distinct test space
+        gsExprAssembler<> B(1, 1);
+        B.setIntegrationElements(mb);
+        auto w = B.getSpace(mb, 1);
+        B.getTestSpace(w, mb);
+        B.initSystem();
+        CHECK_EQUAL(n, B.numTestDofs());
+
+        auto v = B.getTestSpace(mb, 2, 0);
+        B.initSystem();
+        CHECK_EQUAL(2,   v.mapper().numComponents());
+        CHECK_EQUAL(2*n, B.numTestDofs());
+        CHECK_EQUAL(n,   B.numDofs());
     }
 
     TEST(BoundaryIntegral)

@@ -301,7 +301,7 @@ private:
 
     /// Validates a new global (\a boundary false) or boundary (\a boundary
     /// true) shift: every index this mapper hands out, and one past the last
-    /// of them (lastIndex(), firstIndex()+freeSize()), must be representable.
+    /// of them (lastIndex()), must be representable.
     /// Before finalize() the final size is unknown; mapSize() bounds it.
     void ensureShift(index_t shift, bool boundary, const char * where) const;
 

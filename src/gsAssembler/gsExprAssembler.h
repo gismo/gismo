@@ -255,10 +255,7 @@ public:
             if ((size_t)id<m_vrow.size() && nullptr==m_vrow[id]) m_vrow[id]=m_vcol[id];
         }
         else
-        {
-            m_vcol[id]->fs  = &mp;
-            m_vcol[id]->dim = dim;
-        }
+            m_vcol[id]->rebind(mp, dim);
 
         expr::gsFeSpace<T> u = m_exprdata->getSpace(mp,dim);
         u.setSpaceData(*m_vcol[id]);
@@ -280,10 +277,7 @@ public:
             m_vrow[id] = &m_sdata.back();
         }
         else
-        {
-            m_vrow[id]->fs  = &mp;
-            m_vrow[id]->dim = dim;
-        }
+            m_vrow[id]->rebind(mp, dim);
 
         expr::gsFeSpace<T> s = m_exprdata->getSpace(mp,dim);
         s.setSpaceData(*m_vrow[id]);
@@ -558,8 +552,10 @@ private:
     /// Called internally by the init* functions
     void resetDimensions();
 
-    // Rejects, in every build type, a registered space whose mapper the
+    // Rejects, in every build type, a registered space whose mapper has a
+    // component count other than the space dimension, or that the
     // expression evaluator cannot index (see
+    // gsFeSpaceData::ensureComponentsMatchDim and
     // gsFeSpaceData::ensureUsableByUniformEvaluator).  gsFeSpace::mapper()
     // lets a mapper be replaced after initSystem(), so every assembly and
     // pattern entry point calls this, not only resetDimensions(), and before
@@ -999,10 +995,16 @@ template<class T> void gsExprAssembler<T>::_checkSpaceMappers() const
     // A block whose space was never registered is still null.
     for (size_t i = 0; i!=m_vcol.size(); ++i)
         if (m_vcol[i])
+        {
+            m_vcol[i]->ensureComponentsMatchDim();
             gismo::expr::gsFeSpaceData<T>::ensureUsableByUniformEvaluator(m_vcol[i]->mapper);
+        }
     for (size_t i = 0; i!=m_vrow.size(); ++i)
         if (m_vrow[i])
+        {
+            m_vrow[i]->ensureComponentsMatchDim();
             gismo::expr::gsFeSpaceData<T>::ensureUsableByUniformEvaluator(m_vrow[i]->mapper);
+        }
 }
 
 template<class T> void gsExprAssembler<T>::resetDimensions()

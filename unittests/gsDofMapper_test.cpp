@@ -2464,7 +2464,7 @@ TEST(permute_free_dofs_rejects_non_permutations)
 }
 
 // Every index a mapper hands out -- and one past the last, which
-// lastIndex() and firstIndex()+freeSize() compute -- must be representable,
+// lastIndex() computes -- must be representable,
 // so a shift that would push them past index_t's maximum is rejected when it
 // is set rather than overflowing later in index().
 TEST(shift_must_keep_every_index_representable)
