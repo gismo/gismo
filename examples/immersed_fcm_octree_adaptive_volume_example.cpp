@@ -59,7 +59,7 @@ using namespace gismo;
 
 // This driver runs its own per-triangle geometry (SAT tests below) on the flat
 // soup from gsFlattenSurfMesh(); Vec3 is the mesh's own point type.
-typedef gsSurfMesh::Point Vec3;
+typedef gsSurfMesh<real_t>::Point Vec3;
 
 // Per-triangle AABB (pre-computed once; used to filter SAT candidates per cell).
 struct TriBBox { real_t lo[3], hi[3]; };
@@ -188,13 +188,13 @@ int main(int argc, char * argv[])
 
     const double invScale3 = 1.0 / (scale*scale*scale);
     // ParaView collections spanning all refinement levels (one .pvd each).
-    std::unique_ptr<gsParaviewCollection> colInterior, colCut, colAll, colBg;
+    std::unique_ptr<gsParaviewCollection<real_t>> colInterior, colCut, colAll, colBg;
     if (plot)
     {
-        colInterior.reset(new gsParaviewCollection(out + "/points_interior/interior"));
-        colCut     .reset(new gsParaviewCollection(out + "/points_cutcells/cutcells"));
-        colAll     .reset(new gsParaviewCollection(out + "/points_all/all"));
-        colBg      .reset(new gsParaviewCollection(out + "/background/background"));
+        colInterior.reset(new gsParaviewCollection<real_t>(out + "/points_interior/interior"));
+        colCut     .reset(new gsParaviewCollection<real_t>(out + "/points_cutcells/cutcells"));
+        colAll     .reset(new gsParaviewCollection<real_t>(out + "/points_all/all"));
+        colBg      .reset(new gsParaviewCollection<real_t>(out + "/background/background"));
     }
 
     // Per-level history for the results file.

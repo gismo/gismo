@@ -608,17 +608,17 @@ int main(int argc, char* argv[])
          << std::setw(16) << "err_area" << std::setw(16) << "err_perim\n";
 
     // ParaView collections spanning all refinement levels.
-    std::unique_ptr<gsParaviewCollection> colInterior, colCut, colAll, colBg;
+    std::unique_ptr<gsParaviewCollection<real_t>> colInterior, colCut, colAll, colBg;
     if (plot)
     {
         gsFileManager::mkdir(outDir + "/points_interior");
         gsFileManager::mkdir(outDir + "/points_cutcells");
         gsFileManager::mkdir(outDir + "/points_all");
         gsFileManager::mkdir(outDir + "/background");
-        colInterior.reset(new gsParaviewCollection(outDir + "/points_interior/interior"));
-        colCut     .reset(new gsParaviewCollection(outDir + "/points_cutcells/cutcells"));
-        colAll     .reset(new gsParaviewCollection(outDir + "/points_all/all"));
-        colBg      .reset(new gsParaviewCollection(outDir + "/background/background"));
+        colInterior.reset(new gsParaviewCollection<real_t>(outDir + "/points_interior/interior"));
+        colCut     .reset(new gsParaviewCollection<real_t>(outDir + "/points_cutcells/cutcells"));
+        colAll     .reset(new gsParaviewCollection<real_t>(outDir + "/points_all/all"));
+        colBg      .reset(new gsParaviewCollection<real_t>(outDir + "/background/background"));
 
         // Level set field (phi=0 isoline is the coastline).
         gsFileManager::mkdir(outDir + "/levelset");

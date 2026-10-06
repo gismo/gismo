@@ -1085,14 +1085,14 @@ int main(int argc, char * argv[])
            << std::setw(11) << "volPts" << std::setw(11) << "cutCells"
            << std::setw(11) << "srfPts" << std::setw(9) << "stray" << "\n";
 
-    std::unique_ptr<gsParaviewCollection> colInterior, colCut, colSurf, colAll, colBg;
+    std::unique_ptr<gsParaviewCollection<real_t>> colInterior, colCut, colSurf, colAll, colBg;
     if (plot)
     {
-        colInterior.reset(new gsParaviewCollection(out + "/points_interior/interior"));
-        colCut     .reset(new gsParaviewCollection(out + "/points_cutcells/cutcells"));
-        colSurf    .reset(new gsParaviewCollection(out + "/points_surface/surface"));
-        colAll     .reset(new gsParaviewCollection(out + "/points_all/all"));
-        colBg      .reset(new gsParaviewCollection(out + "/background/background"));
+        colInterior.reset(new gsParaviewCollection<real_t>(out + "/points_interior/interior"));
+        colCut     .reset(new gsParaviewCollection<real_t>(out + "/points_cutcells/cutcells"));
+        colSurf    .reset(new gsParaviewCollection<real_t>(out + "/points_surface/surface"));
+        colAll     .reset(new gsParaviewCollection<real_t>(out + "/points_all/all"));
+        colBg      .reset(new gsParaviewCollection<real_t>(out + "/background/background"));
     }
 
     std::vector<index_t> cellsHist, quadHist, bdryHist, subBoxHist,

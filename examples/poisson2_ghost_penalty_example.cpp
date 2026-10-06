@@ -101,6 +101,7 @@
 #include <gismo.h>
 #include <gsAlgoim/gsAlgoimRule.h>
 #include <gsCore/gsDofMapper.h>
+#include <gsAssembler/gsDofMapperCreator.h>
 
 #include <cmath>
 #include <iomanip>
@@ -265,7 +266,7 @@ RunResult solveOne(const std::string & armName,
         // touches. Zero is both the correct extension of the discrete
         // solution outside Omega and what gsFeSpace::getCoeffs needs to
         // reconstruct plotted/evaluated fields correctly.
-        gsDofMapper mapper(dbasis, 1);
+        gsDofMapper mapper = createMapper(dbasis, 1);
         std::vector<bool> keep(dbasis.basis(0).size(), false);
         gsMatrix<real_t> centre(2, 1);
         gsMatrix<index_t> act;

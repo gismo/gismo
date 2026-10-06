@@ -135,16 +135,16 @@ int main(int argc, char * argv[])
     // ParaView collections spanning all refinement levels: each category is
     // written into its own subfolder and gathered by a single .pvd, where the
     // refinement level r plays the role of a time step.
-    std::unique_ptr<gsParaviewCollection> colInterior, colCut, colAll,
+    std::unique_ptr<gsParaviewCollection<real_t>> colInterior, colCut, colAll,
                                           colBg, colSol, colExact;
     if (plot)
     {
-        colInterior.reset(new gsParaviewCollection(out + "/points_interior/interior"));
-        colCut     .reset(new gsParaviewCollection(out + "/points_cutcells/cutcells"));
-        colAll     .reset(new gsParaviewCollection(out + "/points_all/all"));
-        colBg      .reset(new gsParaviewCollection(out + "/background/background"));
-        colSol     .reset(new gsParaviewCollection(out + "/solution/solution"));
-        colExact   .reset(new gsParaviewCollection(out + "/exact/exact"));
+        colInterior.reset(new gsParaviewCollection<real_t>(out + "/points_interior/interior"));
+        colCut     .reset(new gsParaviewCollection<real_t>(out + "/points_cutcells/cutcells"));
+        colAll     .reset(new gsParaviewCollection<real_t>(out + "/points_all/all"));
+        colBg      .reset(new gsParaviewCollection<real_t>(out + "/background/background"));
+        colSol     .reset(new gsParaviewCollection<real_t>(out + "/solution/solution"));
+        colExact   .reset(new gsParaviewCollection<real_t>(out + "/exact/exact"));
     }
 
     // -------------------------------------------------------------------------
