@@ -24,6 +24,7 @@ include(gsConfig)
 ## the cmake package registry entirely.
 set(_occ_system_hints
     /usr/lib/x86_64-linux-gnu/cmake/opencascade
+    /usr/lib64/cmake/opencascade
     /usr/lib/cmake/opencascade
     /usr/local/lib/cmake/opencascade
     /usr/share/opencascade/cmake)
@@ -134,7 +135,15 @@ else()
   set(OCC_INCLUDE_DIR ${OpenCASCADE_INCLUDE_DIR} CACHE INTERNAL "")
 
   # Mirror the same subset of libraries used in the build-from-source path.
-  set(OCC_LIBNAMES TKBO TKBool TKBRep TKernel TKFeat TKFillet TKG2d TKG3d TKGeomAlgo TKGeomBase TKHLR TKIGES TKMath TKMesh TKOffset TKPrim TKShHealing TKSTEP TKSTEPAttr TKSTEPBase TKSTEP209 TKSTL TKTopAlgo TKXSBase TKVRML TKV3d TKService)
+  set(OCC_LIBNAMES TKBO TKBool TKBRep TKernel TKFeat TKFillet TKG2d TKG3d TKGeomAlgo TKGeomBase TKHLR TKMath TKMesh TKOffset TKPrim TKShHealing TKTopAlgo TKXSBase TKV3d TKService)
+  # OCCT 7.8 merged the data-exchange toolkits into TKDE* libraries
+  set(_occ_version "${OpenCASCADE_MAJOR_VERSION}.${OpenCASCADE_MINOR_VERSION}.${OpenCASCADE_MAINTENANCE_VERSION}")
+  if (_occ_version VERSION_LESS "7.8.0")
+    list(APPEND OCC_LIBNAMES TKIGES TKSTEP TKSTEPAttr TKSTEPBase TKSTEP209 TKSTL TKVRML)
+  else()
+    list(APPEND OCC_LIBNAMES TKDE TKDEIGES TKDESTEP TKDESTL TKDEVRML)
+  endif()
+  set(OCC_LIBRARIES "")
   foreach(OCC_LIB ${OCC_LIBNAMES})
     list(APPEND OCC_LIBRARIES ${OpenCASCADE_LIBRARY_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}${OCC_LIB}${CMAKE_SHARED_LIBRARY_SUFFIX})
   endforeach()
