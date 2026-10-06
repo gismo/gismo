@@ -19,6 +19,7 @@
 #include <gsAssembler/gsDofMapperCreator.h>
 
 #include <limits>
+#include <set>
 
 using namespace gismo;
 
@@ -125,12 +126,12 @@ std::string dumpLayout(const gsDofMapper & m)
     return os.str();
 }
 
-// firstIndex(0) and lastIndex().  See first_index_is_the_smallest_index_of_
-// the_component for firstIndex(c) with c>=1.
+// firstFreeIndex(0) and lastIndex().  See
+// first_free_index_bounds_the_free_block_of_each_component for c>=1.
 std::string dumpFirstLast(const gsDofMapper & m)
 {
     std::ostringstream os;
-    os << "first0=" << m.firstIndex(0) << " last=" << m.lastIndex();
+    os << "first0=" << m.firstFreeIndex(0) << " last=" << m.lastIndex();
     return os.str();
 }
 
@@ -867,7 +868,7 @@ TEST(three_comp_uniform)
 TEST(three_comp_shifted)
 {
     const gsDofMapper m = threeCompShifted();
-    PIN("f4.firstlast", "first0=100 last=120", dumpFirstLast(m));   // firstIndex(0) == m_shift
+    PIN("f4.firstlast", "first0=100 last=120", dumpFirstLast(m));   // firstFreeIndex(0) == m_shift
     PIN("f4.asvector", "c0[120,100,101,106,106,102,103,104,105] c1[121,107,110,111,108,110,111,109,122] c2[112,113,114,115,116,117,118,123,119]", dumpAsVector(m));
     // freeIndex(i,k,c) returns the index WITHOUT m_shift; read against
     // f4.index just below, this literal is the pin on that distinction.
@@ -1470,58 +1471,62 @@ TEST(three_comp_find_boundary_free_per_component)
 }
 
 // =========================================================================
-// firstIndex(c)
+// firstFreeIndex(c)
 // =========================================================================
 
-// firstIndex(c) is the smallest global index component c owns.  Checked
-// against the minimum actually taken by index(i,k,c), which is an
-// independent oracle: it never consults the count vectors.
+// firstFreeIndex(c) and firstFreeIndex(c+1) bound the free indices of
+// component c.  Checked against the free indices index(i,k,c) actually
+// hands out, which is an independent oracle: it never consults the count
+// vectors.  The block must contain every one of them and nothing else,
+// and the last bound is the end of the free range, lastIndex().
 namespace {
-void checkFirstIndexAgainstMinimum(const gsDofMapper & m)
+void checkFirstFreeIndexAgainstFreeIndices(const gsDofMapper & m)
 {
     for (index_t c = 0; c != m.numComponents(); ++c)
     {
-        index_t least = -1;
+        std::set<index_t> free;
         for (index_t k = 0; k != nPatches(m); ++k)
         {
             const index_t n = static_cast<index_t>(m.patchSize(k, c));
             for (index_t i = 0; i != n; ++i)
             {
                 const index_t gl = m.index(i, k, c);
-                if (least < 0 || gl < least) least = gl;
+                if (m.is_free_index(gl))
+                    free.insert(gl);
             }
         }
-        // A component with no local dof at all has no index to compare
-        // against; first_index_of_an_empty_component pins that case.
-        if (least >= 0)
-            CHECK_EQUAL(least, m.firstIndex(c));
+        const index_t first = m.firstFreeIndex(c), end = m.firstFreeIndex(c+1);
+        CHECK_EQUAL(static_cast<index_t>(free.size()), end - first);
+        if (!free.empty())
+        {
+            CHECK_EQUAL(first,   *free.begin());
+            CHECK_EQUAL(end - 1, *free.rbegin());
+        }
     }
+    CHECK_EQUAL(m.lastIndex(), m.firstFreeIndex(m.numComponents()));
 }
 } // anonymous namespace
 
-TEST(first_index_is_the_smallest_index_of_the_component)
+TEST(first_free_index_bounds_the_free_block_of_each_component)
 {
-    checkFirstIndexAgainstMinimum(threeCompUniform());
-    checkFirstIndexAgainstMinimum(threeCompShifted());
-    checkFirstIndexAgainstMinimum(identityMapper());
-    checkFirstIndexAgainstMinimum(raggedPatchMapper());
+    checkFirstFreeIndexAgainstFreeIndices(threeCompUniform());
+    checkFirstFreeIndexAgainstFreeIndices(threeCompShifted());
+    checkFirstFreeIndexAgainstFreeIndices(identityMapper());
+    checkFirstFreeIndexAgainstFreeIndices(raggedPatchMapper());
 
-    // The literals for F3: the free block starts, since every component has
-    // free dofs.  m_numFreeDofs[c]+m_numElimDofs[c] -- the pre-renumbering
-    // base -- overshoots them by the eliminated dofs of the earlier
-    // components once finalize() has moved the eliminated blocks above all
-    // the free ones.
+    // The literals for F3.  m_numFreeDofs[c]+m_numElimDofs[c] -- the
+    // pre-renumbering base -- overshoots them by the eliminated dofs of the
+    // earlier components once finalize() has moved the eliminated blocks
+    // above all the free ones.
     const gsDofMapper m = threeCompUniform();
-    CHECK_EQUAL(0,  m.firstIndex(0));
-    CHECK_EQUAL(7,  m.firstIndex(1));
-    CHECK_EQUAL(12, m.firstIndex(2));
+    CHECK_EQUAL(0,  m.firstFreeIndex(0));
+    CHECK_EQUAL(7,  m.firstFreeIndex(1));
+    CHECK_EQUAL(12, m.firstFreeIndex(2));
 }
 
-// A component that owns no dof at all has no index to report.  It must not
-// be confused with an eliminated-only component: "no free dof" alone is not
-// evidence of an eliminated block, and answering with the eliminated-block
-// start pushes an empty component past the whole free range.
-TEST(first_index_of_an_empty_component)
+// A component that owns no dof at all has an empty free block, at the
+// position where its dofs would have been numbered.
+TEST(first_free_index_of_an_empty_component)
 {
     std::vector<gsVector<index_t> > sz(3);
     sz[0].resize(1); sz[0][0] = 2;
@@ -1535,16 +1540,17 @@ TEST(first_index_of_an_empty_component)
     CHECK_EQUAL(0, m.boundarySize());
     CHECK_EQUAL(0, m.size(1));
 
-    CHECK_EQUAL(0, m.firstIndex(0));
-    CHECK_EQUAL(2, m.firstIndex(1));   // the start of its (empty) free block
-    CHECK_EQUAL(2, m.firstIndex(2));
-    checkFirstIndexAgainstMinimum(m);
+    CHECK_EQUAL(0, m.firstFreeIndex(0));
+    CHECK_EQUAL(2, m.firstFreeIndex(1));   // its (empty) free block
+    CHECK_EQUAL(2, m.firstFreeIndex(2));
+    checkFirstFreeIndexAgainstFreeIndices(m);
 }
 
-// A component whose dofs are all eliminated owns no free index at all, so
-// its smallest index is the start of its eliminated block -- which lies
-// above every component's free block.
-TEST(first_index_of_an_eliminated_only_component)
+// A component whose dofs are all eliminated has an empty free block too.
+// For component 0 that block sits at the start of the free range, so
+// firstFreeIndex() is still the shift, not the start of component 0's
+// eliminated block (which lies above every free block).
+TEST(first_free_index_of_an_eliminated_only_component)
 {
     gsVector<index_t> sz(1);
     sz[0] = 3;
@@ -1556,10 +1562,37 @@ TEST(first_index_of_an_eliminated_only_component)
     CHECK_EQUAL(3, m.freeSize());
     CHECK_EQUAL(3, m.boundarySize());
     CHECK_EQUAL(0, m.freeSize(0));
-    checkFirstIndexAgainstMinimum(m);
+    checkFirstFreeIndexAgainstFreeIndices(m);
 
-    CHECK_EQUAL(3, m.firstIndex(0));   // its eliminated block
-    CHECK_EQUAL(0, m.firstIndex(1));   // its free block
+    CHECK_EQUAL(0, m.firstFreeIndex(0));   // empty, at the start
+    CHECK_EQUAL(0, m.firstFreeIndex(1));   // component 1's free block
+    CHECK_EQUAL(3, m.firstFreeIndex(2));
+
+    m.setShift(10);
+    CHECK_EQUAL(10, m.firstFreeIndex());
+    CHECK_EQUAL(13, m.lastIndex());
+}
+
+// The deprecated firstIndex(c) is firstFreeIndex(c).  In particular
+// firstIndex() is the shift even when component 0 has no free dof:
+// callers subtract it from a free index to get a position in the free
+// range.
+TEST(deprecated_first_index_is_first_free_index)
+{
+    gsVector<index_t> sz(1);
+    sz[0] = 3;
+    gsDofMapper m(sz, 2);
+    for (index_t i = 0; i != 3; ++i)
+        m.eliminateDof(i, 0, 0);
+    m.finalize();
+    m.setShift(10);
+
+    CHECK_EQUAL(10, m.firstIndex());
+    for (index_t c = 0; c <= m.numComponents(); ++c)
+        CHECK_EQUAL(m.firstFreeIndex(c), m.firstIndex(c));
+    const gsDofMapper u = threeCompUniform();
+    for (index_t c = 0; c <= u.numComponents(); ++c)
+        CHECK_EQUAL(u.firstFreeIndex(c), u.firstIndex(c));
 }
 
 // =========================================================================
@@ -1838,7 +1871,7 @@ void checkShiftIsARelabelling(const gsDofMapper & m, const gsDofMapper & s,
     for (index_t c = 0; c != m.numComponents(); ++c)
     {
         CHECK(m.anyPreImages(c) == s.anyPreImages(c));
-        CHECK_EQUAL(m.firstIndex(c) + shift, s.firstIndex(c));
+        CHECK_EQUAL(m.firstFreeIndex(c) + shift, s.firstFreeIndex(c));
         for (index_t k = 0; k != nPatches(m); ++k)
         {
             CHECK(m.findBoundary(k, c)      == s.findBoundary(k, c));
@@ -2266,20 +2299,20 @@ TEST(invalid_component_and_patch_identifiers_in_queries)
     CHECK_THROW(m.mapIndex(-1), std::runtime_error);
     CHECK_THROW(m.mapIndex(static_cast<index_t>(m.mapSize())), std::runtime_error);
     CHECK_EQUAL(15, m.mapIndex(static_cast<index_t>(m.mapSize()) - 1));
-    // firstIndex(c) also accepts c == numComponents(): the end of the last
-    // free block.
-    CHECK_EQUAL(16, m.firstIndex(2));
-    CHECK_THROW(m.firstIndex(3), std::runtime_error);
-    CHECK_THROW(m.firstIndex(-1), std::runtime_error);
+    // firstFreeIndex(c) also accepts c == numComponents(): the end of the
+    // last free block.
+    CHECK_EQUAL(16, m.firstFreeIndex(2));
+    CHECK_THROW(m.firstFreeIndex(3), std::runtime_error);
+    CHECK_THROW(m.firstFreeIndex(-1), std::runtime_error);
     CHECK_EQUAL(0, m.taggedSize());
 }
 
 // A default-constructed mapper has no components, so every
-// component-indexed query throws; firstIndex() alone stays valid on it.
+// component-indexed query throws; firstFreeIndex() alone stays valid on it.
 TEST(default_constructed_component_queries)
 {
     const gsDofMapper m;
-    CHECK_EQUAL(0, m.firstIndex());
+    CHECK_EQUAL(0, m.firstFreeIndex());
     CHECK_THROW(m.freeSize(0), std::runtime_error);
     CHECK_THROW(m.totalSize(0), std::runtime_error);
     CHECK_THROW(m.patchSize(0, 0), std::runtime_error);
@@ -2475,20 +2508,20 @@ TEST(shift_must_keep_every_index_representable)
     const index_t n = m.size(), nb = m.boundarySize();
 
     m.setShift(hi - n);                       // the largest valid shift
-    CHECK_EQUAL(hi, m.firstIndex(0) + m.size());
+    CHECK_EQUAL(hi, m.firstFreeIndex(0) + m.size());
     CHECK_THROW(m.setShift(hi - n + 1), std::runtime_error);
     CHECK_THROW(m.setShift(hi), std::runtime_error);
     CHECK_THROW(m.addShift(1), std::runtime_error);
-    CHECK_EQUAL(hi - n, m.firstIndex(0));     // unchanged
+    CHECK_EQUAL(hi - n, m.firstFreeIndex(0));     // unchanged
     m.addShift(-5);
-    CHECK_EQUAL(hi - n - 5, m.firstIndex(0));
+    CHECK_EQUAL(hi - n - 5, m.firstFreeIndex(0));
 
     m.setShift(lo);                           // any negative shift is fine
     CHECK_THROW(m.addShift(-1), std::runtime_error);
     CHECK_THROW(m.addShift(lo), std::runtime_error);
-    CHECK_EQUAL(lo, m.firstIndex(0));
+    CHECK_EQUAL(lo, m.firstFreeIndex(0));
     m.addShift(1);
-    CHECK_EQUAL(lo + 1, m.firstIndex(0));
+    CHECK_EQUAL(lo + 1, m.firstFreeIndex(0));
 
     m.setBoundaryShift(hi - nb);
     CHECK_EQUAL(hi - 1, m.bindex(3, 1, 2));   // the last boundary index

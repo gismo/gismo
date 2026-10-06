@@ -191,7 +191,7 @@ SUITE(gsExprAssembler_test)
             u1.setup(bcs, dirichlet::homogeneous, 0);
             A.initSystem();
             CHECK_EQUAL(2*n, A.numDofs());
-            CHECK_EQUAL(n,   u1.mapper().firstIndex());
+            CHECK_EQUAL(n,   u1.mapper().firstFreeIndex());
         }
 
         // Main arm: a vector-valued space of dimension d sharing an
@@ -213,9 +213,9 @@ SUITE(gsExprAssembler_test)
             A.initSystem();
 
             CHECK_EQUAL((d+1)*n, A.numDofs());
-            CHECK_EQUAL(0,       v.mapper().firstIndex());
+            CHECK_EQUAL(0,       v.mapper().firstFreeIndex());
             CHECK_EQUAL(d*n,     v.mapper().freeSize());
-            CHECK_EQUAL(d*n,     p.mapper().firstIndex());
+            CHECK_EQUAL(d*n,     p.mapper().firstFreeIndex());
             CHECK_EQUAL(n,       p.mapper().freeSize());
 
             // Two distinct-block terms in one assemble() call: this is what
@@ -240,7 +240,7 @@ SUITE(gsExprAssembler_test)
             CHECK_EQUAL(0, zeroRows);
 
             // matrixBlockView() is the only assertion here reaching
-            // _blockDims directly (numDofs()/firstIndex() above reach the
+            // _blockDims directly (numDofs()/firstFreeIndex() above reach the
             // same defect only through resetDimensions): the block sizes
             // must match the per-space free dof counts exactly.
             auto view = A.matrixBlockView();
@@ -252,12 +252,12 @@ SUITE(gsExprAssembler_test)
     }
 
     // A space whose first component has no free dof: every dof of component
-    // 0 is eliminated.  firstIndex() of such a mapper reports the start of
-    // component 0's eliminated block, which lies above all free dofs, so
-    // firstIndex()+freeSize() overshoots the end of the space's free block.
-    // numDofs() and the shift of the following space must use the end of
-    // the free block, lastIndex(); with the overshoot, the system is too
-    // large and the second space's block starts past the end of the first.
+    // 0 is eliminated, so the smallest index component 0 owns is the start
+    // of its eliminated block, above all free dofs.  numDofs() and the shift
+    // of the following space must come from the free range,
+    // [firstFreeIndex(), lastIndex()); an offset taken from where component
+    // 0's own dofs start makes the system too large and puts the second
+    // space's block past the end of the first.
     TEST(BlockShiftWithEliminatedOnlyFirstComponent)
     {
         gsMultiPatch<real_t> mp(*gsNurbsCreator<real_t>::BSplineSquare());
@@ -270,11 +270,11 @@ SUITE(gsExprAssembler_test)
         gsDofMapper vMapper = createMapper(mb, 2);
         vMapper.markBoundary(0, allDofs, 0);
         vMapper.finalize();
-        // the case under test: component 0 has eliminated dofs only, so its
-        // firstIndex() is not where the free block starts
+        // the case under test: component 0 has eliminated dofs only, and
+        // they are numbered after every free dof
         CHECK_EQUAL(0, vMapper.freeSize(0));
         CHECK_EQUAL(n, vMapper.freeSize());
-        CHECK_EQUAL(n, vMapper.firstIndex());
+        CHECK_EQUAL(n, vMapper.index(0, 0, 0));
 
         gsExprAssembler<real_t> A(2, 2);
         A.setIntegrationElements(mb);
@@ -288,7 +288,7 @@ SUITE(gsExprAssembler_test)
 
         CHECK_EQUAL(2*n, A.numDofs());
         CHECK_EQUAL(2*n, A.numTestDofs());
-        CHECK_EQUAL(n,   p.mapper().firstIndex());
+        CHECK_EQUAL(n,   p.mapper().firstFreeIndex());
 
         // Both diagonal blocks land inside the system and fill it: a block
         // at the wrong offset leaves rows that nothing writes to.

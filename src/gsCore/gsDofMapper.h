@@ -454,33 +454,34 @@ public:
     /// markCoupledAsTagged() and then use the corresponding functions for tagged dofs.
     void permuteFreeDofs(const gsVector<index_t>& permutation, index_t comp = 0);
 
-    ///\brief Returns the smallest global index present in component \a comp
+    ///\brief Returns the global index at which the free block of component
+    /// \a comp starts
     ///
     /// After finalize() the free blocks of all components come first,
     /// component by component, and the eliminated blocks of all components
-    /// follow them.  There are three cases:
+    /// follow them.  The free indices of component c are therefore
+    /// [firstFreeIndex(c), firstFreeIndex(c+1)); the range is empty when c
+    /// has no free dof (an empty component, or one whose dofs are all
+    /// eliminated).
     ///
-    /// - the component has free dofs: the start of its own free block;
-    /// - it has none but has eliminated ones: the start of its own
-    ///   eliminated block, which lies above every component's free block;
-    /// - it owns no dof at all (an empty component, or a mapper that has
-    ///   not been finalized): no index is present, and the start of its
-    ///   free block is reported.
-    ///
-    /// \a comp may also equal numComponents(), which reports the end of the
-    /// last component's free block; in particular firstIndex() is valid on
-    /// a default-constructed mapper.
-    index_t firstIndex(index_t comp = 0) const
+    /// \a comp may also equal numComponents(), which gives the end of the
+    /// last free block (lastIndex(), once finalized).  firstFreeIndex() is the start of the
+    /// whole free range, i.e. the shift; it is also valid on a
+    /// default-constructed mapper.
+    index_t firstFreeIndex(index_t comp = 0) const
     {
         GISMO_ENSURE(comp >= 0 && static_cast<size_t>(comp) < m_numFreeDofs.size(),
-                     "gsDofMapper::firstIndex: invalid component "<<comp<<", expected a value in [0,"
+                     "gsDofMapper::firstFreeIndex: invalid component "<<comp<<", expected a value in [0,"
                      <<m_numFreeDofs.size()-1<<"].");
-        if (static_cast<size_t>(comp)+1 < m_numFreeDofs.size() &&
-            m_numFreeDofs[comp+1] == m_numFreeDofs[comp] &&   // no free dof
-            m_numElimDofs[comp+1] != m_numElimDofs[comp])     // but eliminated ones
-            return m_numFreeDofs.back() + m_numElimDofs[comp] + m_shift;
         return m_numFreeDofs[comp] + m_shift;
     }
+
+    ///\brief Returns firstFreeIndex(\a comp)
+    ///
+    /// \deprecated Use firstFreeIndex(), whose name says which block is
+    /// meant.  firstIndex() is the shift, as it always was.
+    GISMO_DEPRECATED index_t firstIndex(index_t comp = 0) const
+    { return firstFreeIndex(comp); }
 
     ///\brief Returns one past the biggest value of the free indices
     index_t lastIndex() const { return m_shift + freeSize(); }
