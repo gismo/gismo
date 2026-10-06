@@ -42,7 +42,6 @@
 #include <gsDomain/gsPartitionerBase.h>
 #include <gsParallel/gsMpi.h>
 #include <gsUtils/gsSpaceFillingCurve.h>
-#include <gsUtils/gsStopwatch.h>
 
 #include <algorithm>
 #include <cstdint>
@@ -50,6 +49,7 @@
 #include <numeric>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace gismo
@@ -75,13 +75,15 @@ namespace gismo
    auto pdm = part.makeDofMapper(nranks);     // graph-free DOF ownership
    \endcode
 
-   \note Every rank is expected to run this partitioner independently and to
-   obtain bit-identical labels (there is no broadcast of the labelling), so
-   every ordering used internally is a strict \em total order: the primary
-   key is compared first and every tie is broken on the element id.
-   With the gsMpiComm constructor the per-element centroids and weights are
-   computed on slices of the elements and gathered, but the labelling is still
-   computed independently on every rank from those identical arrays.
+   \note Every rank is expected to run this partitioner and to obtain
+   bit-identical labels, so every ordering used internally is a strict
+   \em total order: the primary key is compared first and every tie is
+   broken on the element id. With the gsMpiComm constructor the per-element
+   centroids and weights are computed on slices of the elements and gathered.
+   The curve labelling is then computed independently on every rank from those
+   identical arrays; with P > 1 the RCB labelling is computed per rank only
+   for its own leaf (all ranks agree on the splits above it) and the labels
+   are assembled by a gather of the per-rank leaves.
 
    \ingroup Domain
 */
@@ -102,23 +104,6 @@ public:
         index_t  chunkSize     = 4096;  ///< elements per batched geometry evaluation
         bool     keepCentroids = false; ///< retain centroids() after partition() (geoDim*8 B/element)
     };
-
-    // TODO: remove these timings once the partition sub-stage costs are known.
-    /// Per-rank wall seconds of the sub-steps of computeLabels(); the fields
-    /// of the additive chain sum to computeLabelsTotal up to the lap gaps.
-    struct Timings
-    {
-        double tensorGuard = 0, setup = 0, bbox = 0, rangeCheck = 0, sliceJump = 0;
-        double centroidIter = 0, centroidEval = 0, sliceCheck = 0, gatherPrep = 0;
-        double centroidGather = 0, weightGather = 0, finiteCheck = 0, labelsAlloc = 0;
-        double rcbOrder = 0, rcbSplit = 0;
-        double curveSetup = 0, curveKeys = 0, curveSort = 0, curveCut = 0;
-        double setLabels = 0, release = 0;
-        double computeLabelsTotal = 0; ///< independent clock around the whole of computeLabels()
-    };
-
-    /// Per-rank wall seconds of the last partition(); fields of unused steps are 0.
-    const Timings & timings() const { return m_timings; }
 
     /**
        @brief Construct (does not partition yet -- call partition()).
@@ -150,7 +135,8 @@ public:
        @param mp      Multi-patch geometry (supplies the physical centroids).
        @param mb      Multi-patch basis; its domain() is the element mesh.
        @param mapper  Finalized DOF mapper.
-       @param nparts  Number of partitions (independent of comm.size()).
+       @param nparts  Number of partitions; must equal comm.size() when
+       comm.size() > 1, any value otherwise.
        @param comm    Communicator over which pass A is split.
        @param opts    Optional tuning parameters.
 
@@ -163,13 +149,18 @@ public:
        Communication: one allgatherv of geoDim*N scalars (the centroids), plus
        one of N integers if Options::weightByDofs, and at most two one-integer
        allreduces that make the range and consistency checks collective.
-       Received volume per rank is O(N*geoDim).
+       Received volume per rank is O(N*geoDim). The RCB labelling (P > 1)
+       adds one allgather of P integers and one allgatherv receiving the N
+       element ids of all leaves.
 
        Replicated on every rank: the bounding box, the full per-element arrays
        (centroids geoDim*8 B, weights 4 B, labels 4 B, RCB order 4 B, i.e.
        about (geoDim*8+12) B per element, transient; the centroids are released
-       after partition() unless Options::keepCentroids), the labelling (RCB or
-       space-filling curve) and pass B (makeDofMapper()).
+       after partition() unless Options::keepCentroids), the Hilbert/Morton
+       labelling and RCB labelling for P <= 1, and pass B (makeDofMapper()).
+       RCB with P > 1 is instead the own-branch descent of each rank (O(N)
+       expected per rank) plus the gather above, which adds a transient
+       N*sizeof(index_t) id buffer.
 
        Collective: every rank of \a comm must construct with identical
        arguments (mp, mb, mapper, nparts, opts) and call partition(). The
@@ -179,8 +170,10 @@ public:
        performs no communication.
 
        The labels are bit-identical across the ranks: the gathered arrays are
-       identical and the labelling is deterministic (strict total orders, no
-       randomness, no OpenMP). They are not guaranteed to be bit-identical to
+       identical, the curve labelling is deterministic (strict total orders, no
+       randomness, no OpenMP), and the RCB labels (P > 1) are the same gathered
+       array on every rank and equal the replicated recursion on those
+       centroids. They are not guaranteed to be bit-identical to
        those of the serial constructor, since the evaluation chunk boundaries
        differ and a batched eval_into() could in principle round differently.
     */
@@ -196,6 +189,9 @@ public:
         GISMO_ENSURE(comm.size() >= 1 && comm.rank() >= 0 && comm.rank() < comm.size(),
                      "gsGeometricPartitioner: invalid communicator (size "
                      << comm.size() << ", rank " << comm.rank() << ").");
+        if (comm.size() > 1)
+            GISMO_ENSURE(nparts == comm.size(), "gsGeometricPartitioner: with a communicator of size "
+                         << comm.size() << " nparts must equal comm.size() (got " << nparts << ").");
     }
 
     /// @brief "rcb" | "hilbert" | "morton"; fails on anything else.
@@ -325,17 +321,11 @@ protected:
     */
     void computeLabels() override
     {
-        m_timings = Timings();
-        gsStopwatch total, lap;
-
         checkTensorPatches();
-        m_timings.tensorGuard = lap.stop();
         passA();
-        lap.restart();
 
         const index_t N = m_numElements;
         std::vector<index_t> labels(N, 0);
-        m_timings.labelsAlloc = lap.stop();
 
         // nparts == 1: every element is in part 0 (both strategies below
         // would produce exactly this, just less directly).
@@ -350,10 +340,7 @@ protected:
             }
         }
 
-        lap.restart();
         this->setLabels(give(labels));
-        m_timings.setLabels = lap.stop();
-        lap.restart();
 
         // Release the centroids (geoDim*8 B/element: 400 MB at 16M elements
         // in 3D) unless the caller asked to keep them. m_weights (8 B/element)
@@ -363,8 +350,182 @@ protected:
             gsMatrix<T> tmp;
             m_centroids.swap(tmp);
         }
-        m_timings.release = lap.stop();
-        m_timings.computeLabelsTotal = total.stop();
+    }
+
+    /**
+       @brief One bisection step of order[first,last) into \a k parts.
+
+       Chooses the longest axis of the range's bounding box (ties to the
+       lowest axis), reorders order[first,last) in place -- and nothing
+       outside it -- and returns \c mid such that the left child is
+       [first,mid) with kL = (k+1)/2 parts and the right child is [mid,last).
+       With \a weighted the cut is found by a coordinate histogram on the
+       weights; otherwise (or on a degenerate histogram cut) by an exact
+       count-based split.
+
+       Requires k >= 2 and first < last.
+
+       Complexity: O(n) expected, n = last - first (std::nth_element); in the
+       weighted case 1 + 16 O(n) histogram passes plus a std::stable_partition
+       (O(n) with its temporary buffer, O(n log n) if the allocation fails).
+    */
+    static index_t rcbBisect(const gsMatrix<T>& C, const std::vector<index_t>& w, bool weighted,
+                             std::vector<index_t>& order, index_t first, index_t last, index_t k)
+    {
+        GISMO_ASSERT(k >= 2, "gsGeometricPartitioner::rcbBisect: k must be >= 2.");
+        GISMO_ASSERT(first < last, "gsGeometricPartitioner::rcbBisect: empty range.");
+
+        // ceil/floor, so nparts need not be a power of two
+        const index_t kL = (k + 1) / 2;
+        const index_t n = last - first;
+
+        // Longest axis of the bounding box of this range; ties go to the
+        // lowest axis index (strict >).
+        const short_t geoDim = static_cast<short_t>(C.rows());
+        short_t axis  = 0;
+        T       bestE = -1, axLo = 0, axHi = 0;
+        for (short_t d = 0; d != geoDim; ++d)
+        {
+            T lo = C(d, order[first]), hi = lo;
+            for (index_t i = first + 1; i != last; ++i)
+            {
+                const T v = C(d, order[i]);
+                if (v < lo) lo = v;
+                if (v > hi) hi = v;
+            }
+            if (hi - lo > bestE) { bestE = hi - lo; axis = d; axLo = lo; axHi = hi; }
+        }
+
+        index_t mid = first;
+        bool    exactSplit = !weighted;
+
+        if (!exactSplit)
+        {
+            // Coordinate-histogram bisection on the weights: a bounded number
+            // of O(n) passes, instead of an O(n log n) sort per level.
+            int64_t totalW = 0;
+            for (index_t i = first; i != last; ++i)
+                totalW += static_cast<int64_t>(w[order[i]]);
+            const int64_t target = (totalW * static_cast<int64_t>(kL))
+                                 / static_cast<int64_t>(k);
+
+            T lo = axLo, hi = axHi;
+            for (int iter = 0; iter != 16; ++iter)
+            {
+                const T midc = T(0.5) * (lo + hi);
+                int64_t wL = 0;
+                for (index_t i = first; i != last; ++i)
+                    if (C(axis, order[i]) < midc)
+                        wL += static_cast<int64_t>(w[order[i]]);
+                if (wL < target) lo = midc; else hi = midc;
+            }
+            const T cut = T(0.5) * (lo + hi);
+
+            // Order-preserving partition: the outcome then depends on the data
+            // only, never on the incoming order of `order`.
+            typename std::vector<index_t>::iterator pivot =
+                std::stable_partition(order.begin() + first, order.begin() + last,
+                    [&](index_t a) { return C(axis, a) < cut; });
+            mid = static_cast<index_t>(pivot - order.begin());
+
+            // Degenerate split (e.g. every centroid shares this coordinate):
+            // fall back to the exact count-based split, otherwise one part
+            // would swallow the whole range.
+            if ((mid == first || mid == last) && n >= 2) exactSplit = true;
+        }
+
+        if (exactSplit)
+        {
+            int64_t nL64 = (static_cast<int64_t>(n) * static_cast<int64_t>(kL)
+                            + static_cast<int64_t>(k / 2))
+                         / static_cast<int64_t>(k);
+            if (nL64 < 0) nL64 = 0;
+            if (nL64 > static_cast<int64_t>(n)) nL64 = n;
+            const index_t nL = static_cast<index_t>(nL64);
+
+            // Strict TOTAL order: coordinate along `axis`, ties broken on the
+            // element id. std::nth_element is not stable, and the own-branch
+            // descents of different ranks share the upper levels of the
+            // recursion: every rank must agree bit for bit on every split it
+            // evaluates, so a merely weak ordering would be a silent
+            // correctness bug, not a quality nit.
+            const short_t ax = axis;
+            std::nth_element(order.begin() + first, order.begin() + first + nL,
+                             order.begin() + last,
+                [&C, ax](index_t a, index_t b)
+                {
+                    const T ca = C(ax, a), cb = C(ax, b);
+                    return (ca < cb) || (ca == cb && a < b);
+                });
+            mid = first + nL;
+        }
+        return mid;
+    }
+
+    /**
+       @brief Recursive coordinate bisection of order[first,last) into \a k
+       parts labelled label0 .. label0+k-1, written to \a labels.
+
+       Replicated recursion: visits every leaf. Empty ranges leave their
+       parts empty, which is legal (gsIndexSubDomain and PETSc both accept an
+       empty part).
+
+       Complexity: O(n) expected per level (std::nth_element, or ~16 O(n)
+       histogram passes in the weighted case) and O(log k) levels, i.e.
+       O(N log k) expected overall. No sort per level.
+    */
+    static void rcbSplit(const gsMatrix<T>& C, const std::vector<index_t>& w, bool weighted,
+                         std::vector<index_t>& labels, std::vector<index_t>& order,
+                         index_t first, index_t last, index_t k, index_t label0)
+    {
+        if (1 == k)
+        {
+            for (index_t i = first; i != last; ++i) labels[order[i]] = label0;
+            return;
+        }
+
+        const index_t kL = (k + 1) / 2;
+        const index_t kR = k - kL;
+
+        if (first == last) return;
+
+        const index_t mid = rcbBisect(C, w, weighted, order, first, last, k);
+        rcbSplit(C, w, weighted, labels, order, first, mid,  kL, label0);
+        rcbSplit(C, w, weighted, labels, order, mid,   last, kR, label0 + kL);
+    }
+
+    /**
+       @brief The leaf of the RCB recursion that carries label \a part:
+       follows only the child whose label range contains \a part and returns
+       the leaf range [first,last) of \a order. An empty range is legal.
+
+       Precondition: label0 <= part < label0 + k.
+
+       The leaf equals the one rcbSplit() produces for the same inputs:
+       rcbBisect() permutes only order[first,last), so processing the sibling
+       subtree in rcbSplit() never changes the contents or the order of the
+       range descended into here; both recursions call rcbBisect() on
+       identical inputs at every node on the path to \a part.
+
+       Complexity: the sum of the range sizes along one root-to-leaf path,
+       about N + N/2 + ... = 2N element visits for balanced (unweighted)
+       splits, i.e. O(N) per call; worst case O(N ceil(log2 k)) when weighted
+       splits are very unbalanced.
+    */
+    static std::pair<index_t,index_t> rcbOwnLeaf(const gsMatrix<T>& C, const std::vector<index_t>& w,
+                         bool weighted, std::vector<index_t>& order, index_t first, index_t last,
+                         index_t k, index_t label0, index_t part)
+    {
+        GISMO_ASSERT(label0 <= part && part < label0 + k,
+                     "gsGeometricPartitioner::rcbOwnLeaf: part outside the label range.");
+        while (k > 1 && first < last)
+        {
+            const index_t mid = rcbBisect(C, w, weighted, order, first, last, k);
+            const index_t kL  = (k + 1) / 2;
+            if (part < label0 + kL) { last = mid;                k  = kL; }
+            else                    { first = mid; label0 += kL; k -= kL; }
+        }
+        return std::make_pair(first, last);
     }
 
 private:
@@ -439,7 +600,6 @@ private:
         const short_t geoDim = m_mp.geoDim();
         const index_t chunk  = math::min( math::max((index_t)1, m_opts.chunkSize),
                                           math::max((index_t)1, N) );
-        gsStopwatch lap;
 
         // Bounding box of the geometry, computed once here and reused by the
         // space-filling-curve strategies.
@@ -450,14 +610,12 @@ private:
         // 0 and every element is keyed 0 -- with no diagnostic at any level.
         // A non-finite coordinate breaks the RCB median split just as badly,
         // hence the check sits on the shared pass-A path.
-        m_timings.setup += lap.stop(); lap.restart();
         m_mp.boundingBox(m_bbox);
         GISMO_ENSURE(m_bbox.allFinite(),
                      "gsGeometricPartitioner: the multipatch bounding box is not finite ("
                      << m_bbox.transpose() << "). A non-finite extent silently collapses the "
                      "space-filling curve to a single cell (every element keyed 0), so this "
                      "is refused rather than partitioned.");
-        m_timings.bbox = lap.stop(); lap.restart();
 
         m_centroids.resize(geoDim, N);   // column e = centroid of element e
         m_weights.assign(N, 1);
@@ -469,12 +627,10 @@ private:
         const index_t lo  = static_cast<index_t>(static_cast<int64_t>(N) * r / P);
         const index_t hi  = static_cast<index_t>(static_cast<int64_t>(N) * (r + 1) / P);
 
-        m_timings.setup += lap.stop(); lap.restart();
         if (par)
             ensureOnAllRanks(static_cast<int64_t>(geoDim) * N
                              > static_cast<int64_t>(std::numeric_limits<int>::max())
                              ? "geoDim*numElements exceeds the MPI int count range" : nullptr);
-        m_timings.rangeCheck = lap.stop(); lap.restart();
 
         const gsDofMapper& mapper = this->mapper();
         const index_t      nComp  = mapper.numComponents();
@@ -484,13 +640,11 @@ private:
         gsMatrix<index_t>    locals, globals;
 
         index_t curPatch = -1, nBuf = 0;
-        double  evalSeconds = 0;
 
         // One geometry evaluation per (patch, chunk).
         auto flush = [&]()
         {
             if (0 == nBuf) return;
-            gsStopwatch evalWatch;
             u = params.leftCols(nBuf);           // materialize the block
             m_mp.patch(curPatch).eval_into(u, phys);
             // bufElem is contiguous by construction: `expected` increments by
@@ -502,16 +656,13 @@ private:
             // (perf, self time, pass A isolated).
             m_centroids.middleCols(bufElem[0], nBuf) = phys;
             nBuf = 0;
-            evalSeconds += evalWatch.stop();
         };
 
-        m_timings.setup += lap.stop(); lap.restart();
         auto       it  = m_dom->beginAll();
         const auto end = m_dom->endAll();
         if (lo > 0 && lo < N) it += lo;
         index_t expected = lo;
         std::string failure;
-        m_timings.sliceJump = lap.stop(); lap.restart();
         for (; it != end && expected < hi; ++it, ++expected)
         {
             const index_t e = static_cast<index_t>(it.id());
@@ -563,16 +714,12 @@ private:
             ++nBuf;
         }
         flush();
-        m_timings.centroidEval  = evalSeconds;
-        m_timings.centroidIter  = lap.stop() - evalSeconds;
-        lap.restart();
 
         if (par)
         {
             if (failure.empty() && expected != hi)
                 failure = "domain iterator ended before the element slice was covered";
             ensureOnAllRanks(failure.empty() ? nullptr : failure.c_str());
-            m_timings.sliceCheck = lap.stop(); lap.restart();
 
             // Slice q owns elements [N q/P, N (q+1)/P); the counts and
             // displacements are computed identically on every rank.
@@ -589,11 +736,9 @@ private:
 
             // MPI forbids aliased send/receive buffers, hence the copy.
             gsMatrix<T> send = m_centroids.middleCols(lo, hi - lo);
-            m_timings.gatherPrep = lap.stop(); lap.restart();
             int rc = m_comm.allgatherv(send.data(), static_cast<int>(geoDim * (hi - lo)),
                                        m_centroids.data(), cnt.data(), dsp.data());
             GISMO_ENSURE(0 == rc, "gsGeometricPartitioner: allgatherv of the centroids failed.");
-            m_timings.centroidGather = lap.stop(); lap.restart();
 
             if (m_opts.weightByDofs)
             {
@@ -601,7 +746,6 @@ private:
                 rc = m_comm.allgatherv(wsend.data(), static_cast<int>(hi - lo),
                                        m_weights.data(), wcnt.data(), wdsp.data());
                 GISMO_ENSURE(0 == rc, "gsGeometricPartitioner: allgatherv of the weights failed.");
-                m_timings.weightGather = lap.stop(); lap.restart();
             }
         }
 
@@ -612,134 +756,67 @@ private:
         GISMO_ENSURE(m_centroids.allFinite(),
                      "gsGeometricPartitioner: the geometry evaluated to a "
                      "non-finite element centroid; refusing to partition.");
-        m_timings.finiteCheck = lap.stop();
     }
 
     // ------------------------------------------------------------------
     // Label strategy: recursive coordinate bisection
     // ------------------------------------------------------------------
 
+    /**
+       @brief RCB labels. Serial constructor and communicators of size <= 1:
+       the replicated recursion rcbSplit() over all leaves, O(N log nparts).
+
+       With P = m_comm.size() > 1 (hence nparts == P, part = rank): rank r
+       descends only into its own branch (rcbOwnLeaf(), about 2N element
+       visits), and the labels are assembled by one allgather of the P leaf
+       sizes and one allgatherv of the leaf element ids (N index_t received
+       per rank, plus an N*sizeof(index_t) transient id buffer). Every rank
+       reaches both collectives: no data-dependent exit precedes them.
+    */
     void labelsByRcb(std::vector<index_t>& labels) const
     {
-        gsStopwatch lap;
         const index_t N = static_cast<index_t>(labels.size());
         std::vector<index_t> order(N);
         for (index_t i = 0; i != N; ++i) order[i] = i;
-        m_timings.rcbOrder = lap.stop(); lap.restart();
-        rcbSplit(labels, order, 0, N, this->nparts(), 0);
-        m_timings.rcbSplit = lap.stop();
-    }
 
-    /**
-       @brief Recursive coordinate bisection of order[first,last) into \a k
-       parts labelled label0 .. label0+k-1.
-
-       Complexity: O(n) expected per level (std::nth_element, or ~16 O(n)
-       histogram passes in the weighted case) and O(log k) levels, i.e.
-       O(N log k) expected overall. No sort per level.
-    */
-    void rcbSplit(std::vector<index_t>& labels, std::vector<index_t>& order,
-                  index_t first, index_t last, index_t k, index_t label0) const
-    {
-        if (1 == k)
+        if (m_comm.size() <= 1)
         {
-            for (index_t i = first; i != last; ++i) labels[order[i]] = label0;
-            return;
+            rcbSplit(m_centroids, m_weights, m_opts.weightByDofs, labels, order,
+                     0, N, this->nparts(), 0);
         }
-
-        // ceil/floor, so nparts need not be a power of two
-        const index_t kL = (k + 1) / 2;
-        const index_t kR = k - kL;
-
-        // Empty range: parts label0..label0+k-1 simply stay empty, which is
-        // legal (gsIndexSubDomain and PETSc both accept an empty part).
-        if (first == last) return;
-
-        const index_t n = last - first;
-
-        // Longest axis of the bounding box of this range; ties go to the
-        // lowest axis index (strict >).
-        const short_t geoDim = static_cast<short_t>(m_centroids.rows());
-        short_t axis  = 0;
-        T       bestE = -1, axLo = 0, axHi = 0;
-        for (short_t d = 0; d != geoDim; ++d)
+        else
         {
-            T lo = m_centroids(d, order[first]), hi = lo;
-            for (index_t i = first + 1; i != last; ++i)
+            const int P = m_comm.size();
+            const std::pair<index_t,index_t> leaf =
+                rcbOwnLeaf(m_centroids, m_weights, m_opts.weightByDofs, order,
+                           0, N, this->nparts(), 0, m_comm.rank());
+
+            int cnt = static_cast<int>(leaf.second - leaf.first);
+            std::vector<int> counts(P), displ(P);
+            int rc = m_comm.allgather(&cnt, 1, counts.data());
+            GISMO_ENSURE(0 == rc, "gsGeometricPartitioner: allgather of the RCB leaf sizes failed.");
+
+            // counts is identical on every rank, so this check fires on all or none.
+            int64_t total = 0;
+            for (int q = 0; q != P; ++q)
             {
-                const T v = m_centroids(d, order[i]);
-                if (v < lo) lo = v;
-                if (v > hi) hi = v;
+                displ[q] = static_cast<int>(total);
+                total   += counts[q];
             }
-            if (hi - lo > bestE) { bestE = hi - lo; axis = d; axLo = lo; axHi = hi; }
+            GISMO_ENSURE(total == static_cast<int64_t>(N),
+                         "gsGeometricPartitioner: the RCB leaves do not cover the elements ("
+                         << total << " of " << N << ").");
+
+            std::vector<index_t> ids(N);
+            rc = m_comm.allgatherv(order.data() + leaf.first, cnt, ids.data(),
+                                   counts.data(), displ.data());
+            GISMO_ENSURE(0 == rc, "gsGeometricPartitioner: allgatherv of the RCB leaves failed.");
+
+            // ids holds scattered element ids, grouped by source rank.
+            for (int q = 0; q != P; ++q)
+                for (int i = displ[q]; i != displ[q] + counts[q]; ++i)
+                    labels[ids[i]] = static_cast<index_t>(q);
         }
-
-        index_t mid = first;
-        bool    exactSplit = !m_opts.weightByDofs;
-
-        if (!exactSplit)
-        {
-            // Coordinate-histogram bisection on the weights: a bounded number
-            // of O(n) passes, instead of an O(n log n) sort per level.
-            int64_t totalW = 0;
-            for (index_t i = first; i != last; ++i)
-                totalW += static_cast<int64_t>(m_weights[order[i]]);
-            const int64_t target = (totalW * static_cast<int64_t>(kL))
-                                 / static_cast<int64_t>(k);
-
-            T lo = axLo, hi = axHi;
-            for (int iter = 0; iter != 16; ++iter)
-            {
-                const T midc = T(0.5) * (lo + hi);
-                int64_t wL = 0;
-                for (index_t i = first; i != last; ++i)
-                    if (m_centroids(axis, order[i]) < midc)
-                        wL += static_cast<int64_t>(m_weights[order[i]]);
-                if (wL < target) lo = midc; else hi = midc;
-            }
-            const T cut = T(0.5) * (lo + hi);
-
-            // Order-preserving partition: the outcome then depends on the data
-            // only, never on the incoming order of `order`.
-            typename std::vector<index_t>::iterator pivot =
-                std::stable_partition(order.begin() + first, order.begin() + last,
-                    [&](index_t a) { return m_centroids(axis, a) < cut; });
-            mid = static_cast<index_t>(pivot - order.begin());
-
-            // Degenerate split (e.g. every centroid shares this coordinate):
-            // fall back to the exact count-based split, otherwise one part
-            // would swallow the whole range.
-            if ((mid == first || mid == last) && n >= 2) exactSplit = true;
-        }
-
-        if (exactSplit)
-        {
-            int64_t nL64 = (static_cast<int64_t>(n) * static_cast<int64_t>(kL)
-                            + static_cast<int64_t>(k / 2))
-                         / static_cast<int64_t>(k);
-            if (nL64 < 0) nL64 = 0;
-            if (nL64 > static_cast<int64_t>(n)) nL64 = n;
-            const index_t nL = static_cast<index_t>(nL64);
-
-            // Strict TOTAL order: coordinate along `axis`, ties broken on the
-            // element id. std::nth_element is not stable, and there is no
-            // broadcast of the labels -- every rank recomputes this partition
-            // independently and must agree bit for bit, so a merely weak
-            // ordering would be a silent correctness bug, not a quality nit.
-            const gsMatrix<T>& C = m_centroids;
-            const short_t ax = axis;
-            std::nth_element(order.begin() + first, order.begin() + first + nL,
-                             order.begin() + last,
-                [&C, ax](index_t a, index_t b)
-                {
-                    const T ca = C(ax, a), cb = C(ax, b);
-                    return (ca < cb) || (ca == cb && a < b);
-                });
-            mid = first + nL;
-        }
-
-        rcbSplit(labels, order, first, mid,  kL, label0);
-        rcbSplit(labels, order, mid,   last, kR, label0 + kL);
     }
 
     // ------------------------------------------------------------------
@@ -749,7 +826,6 @@ private:
     void labelsByCurve(std::vector<index_t>& labels,
                        gsSpaceFillingCurve::Curve curve) const
     {
-        gsStopwatch lap;
         const index_t N      = static_cast<index_t>(labels.size());
         const short_t geoDim = static_cast<short_t>(m_centroids.rows());
 
@@ -763,14 +839,12 @@ private:
 
         std::vector<uint64_t> keys(N, 0);
         gsVector<real_t>      pt(geoDim);
-        m_timings.curveSetup = lap.stop(); lap.restart();
         for (index_t e = 0; e != N; ++e)
         {
             for (short_t d = 0; d != geoDim; ++d)
                 pt[d] = static_cast<real_t>(m_centroids(d, e));
             keys[e] = sfc.encode(pt);
         }
-        m_timings.curveKeys = lap.stop(); lap.restart();
 
         std::vector<index_t> order(N);
         for (index_t i = 0; i != N; ++i) order[i] = i;
@@ -782,7 +856,6 @@ private:
         std::sort(order.begin(), order.end(),
             [&keys](index_t a, index_t b)
             { return (keys[a] < keys[b]) || (keys[a] == keys[b] && a < b); });
-        m_timings.curveSort = lap.stop(); lap.restart();
 
         // Cut the curve by weighted prefix sum, in exact integer arithmetic
         // (acc * nparts reaches ~2.2e12 at plan scale, hence int64_t).
@@ -801,7 +874,6 @@ private:
             labels[e] = j;                       // non-decreasing along the curve
             acc += static_cast<int64_t>(m_weights[e]);
         }
-        m_timings.curveCut = lap.stop();
     }
 
 private:
@@ -815,7 +887,6 @@ private:
     gsMatrix<T>          m_bbox;      ///< geoDim x 2 (lower, upper corner)
     gsMatrix<T>          m_centroids; ///< geoDim x numElements (released after partition())
     std::vector<index_t> m_weights;   ///< one weight per element
-    mutable Timings      m_timings;   ///< filled by computeLabels() and its helpers
 
 }; // class gsGeometricPartitioner
 
