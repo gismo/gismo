@@ -496,7 +496,7 @@ public:
     /// map to \a gl
     void preImage(index_t gl, std::vector<std::pair<index_t,index_t> > & result) const;
     
-    std::pair<index_t,index_t> anyPreImage(index_t gl) const
+    std::pair<index_t,index_t> anyPreImage2(index_t gl) const
     {
         std::vector<std::pair<index_t,index_t> > result;
         preImage(gl, result);
