@@ -153,6 +153,12 @@ void gsMultiBasis<T>::combineTransferMatrices(
                     "Coarse and fine mapper have different number of patches.");
     GISMO_ASSERT(coarseMapper.componentsSize() == fineMapper.componentsSize(),
                     "Coarse and fine mapper have different number of components.");
+    // One local transfer matrix per patch serves every component, so each
+    // component must be discretized in the patch's one basis.  Equal sizes do
+    // not show this: distinct component spaces can have equal dimensions.
+    GISMO_ENSURE(coarseMapper.hasUniformComponents() && fineMapper.hasUniformComponents(),
+                 "gsMultiBasis::combineTransferMatrices: the mappers must not have distinct "
+                 "per-component bases; one transfer matrix per patch is applied to every component.");
 
     const index_t nBases = localTransferMatrices.size();
 
@@ -381,6 +387,14 @@ short_t gsMultiBasis<T>::minDegree(short_t k) const
 template<class T>
 void gsMultiBasis<T>::matchInterface(const boundaryInterface & bi, gsDofMapper & mapper) const
 {
+    // The interface dofs of this multibasis are matched in every component,
+    // which is only right if every component is discretized in it.  Equal
+    // sizes do not show this: distinct component spaces can have equal
+    // dimensions.
+    GISMO_ENSURE(mapper.hasUniformComponents(),
+                 "gsMultiBasis::matchInterface: the mapper must not have distinct per-component "
+                 "bases; the interface dofs of one basis are matched in every component.");
+
     // should work for all basis which have matchWith() implementeds
     gsMatrix<index_t> b1, b2;
     m_bases[bi.first().patch]->matchWith(bi, *m_bases[bi.second().patch],

@@ -119,8 +119,7 @@ public:
     {
         GISMO_ASSERT( m_vcol.back()->mapper.isFinalized(),
                       "gsExprAssembler::numDofs() says: initSystem() has not been called.");
-        return m_vcol.back()->mapper.firstIndex() +
-	  m_vcol.back()->mapper.freeSize();
+        return m_vcol.back()->mapper.lastIndex();
     }
 
     /// Returns the number of test functions (after initialization)
@@ -128,8 +127,7 @@ public:
     {
         GISMO_ASSERT( m_vrow.back()->mapper.isFinalized(),
                       "initSystem() has not been called.");
-        return m_vrow.back()->mapper.firstIndex() +
-	  m_vrow.back()->mapper.freeSize();
+        return m_vrow.back()->mapper.lastIndex();
     }
 
     /// Returns the number of blocks in the matrix, corresponding to
@@ -257,10 +255,7 @@ public:
             if ((size_t)id<m_vrow.size() && nullptr==m_vrow[id]) m_vrow[id]=m_vcol[id];
         }
         else
-        {
-            m_vcol[id]->fs  = &mp;
-            m_vcol[id]->dim = dim;
-        }
+            m_vcol[id]->rebind(mp, dim);
 
         expr::gsFeSpace<T> u = m_exprdata->getSpace(mp,dim);
         u.setSpaceData(*m_vcol[id]);
@@ -282,10 +277,7 @@ public:
             m_vrow[id] = &m_sdata.back();
         }
         else
-        {
-            m_vrow[id]->fs  = &mp;
-            m_vrow[id]->dim = dim;
-        }
+            m_vrow[id]->rebind(mp, dim);
 
         expr::gsFeSpace<T> s = m_exprdata->getSpace(mp,dim);
         s.setSpaceData(*m_vrow[id]);
@@ -426,6 +418,7 @@ public:
     /// Initializes the pattern of the sparse matrix
     template<class... expr> void computePattern(const expr &... args)
     {
+        _checkSpaceMappers();
         _computePattern(args...);
         m_sparsity |= 1;
     }
@@ -433,6 +426,7 @@ public:
     /// Initializes the pattern of the sparse matrix at boundary integrals
     template<class... expr> void computePatternBdr(const bcRefList & BCs, const expr &... args)
     {
+        _checkSpaceMappers();
         _computePatternBdr(BCs, args...);
         m_sparsity |= 2;
     }
@@ -440,6 +434,7 @@ public:
     /// Initializes the pattern of the sparse matrix at boundary integrals
     template<class... expr> void computePatternIfc(const ifContainer & iFaces, expr... args)
     {
+        _checkSpaceMappers();
         _computePatternIfc(iFaces, args...);
         m_sparsity |= 4;
     }
@@ -556,6 +551,18 @@ private:
     /// \brief Reset the dimensions of all involved spaces.
     /// Called internally by the init* functions
     void resetDimensions();
+
+    // Rejects, in every build type, a registered space whose mapper has a
+    // component count other than the space dimension, or that the
+    // expression evaluator cannot index (see
+    // gsFeSpaceData::ensureComponentsMatchDim and
+    // gsFeSpaceData::ensureUsableByUniformEvaluator).  gsFeSpace::mapper()
+    // lets a mapper be replaced after initSystem(), so every assembly and
+    // pattern entry point calls this, not only resetDimensions(), and before
+    // its own debug checks, which a replaced mapper can trip with a less
+    // specific message.  O(number of blocks):
+    // gsDofMapper::hasUniformComponents() is cached.
+    void _checkSpaceMappers() const;
 
     // Prints the expression to a text stream
     struct __printExpr
@@ -983,21 +990,41 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, short_t un
 } // setFixedDofs
 
 
+template<class T> void gsExprAssembler<T>::_checkSpaceMappers() const
+{
+    // A block whose space was never registered is still null.
+    for (size_t i = 0; i!=m_vcol.size(); ++i)
+        if (m_vcol[i])
+        {
+            m_vcol[i]->ensureComponentsMatchDim();
+            gismo::expr::gsFeSpaceData<T>::ensureUsableByUniformEvaluator(m_vcol[i]->mapper);
+        }
+    for (size_t i = 0; i!=m_vrow.size(); ++i)
+        if (m_vrow[i])
+        {
+            m_vrow[i]->ensureComponentsMatchDim();
+            gismo::expr::gsFeSpaceData<T>::ensureUsableByUniformEvaluator(m_vrow[i]->mapper);
+        }
+}
+
 template<class T> void gsExprAssembler<T>::resetDimensions()
 {
+    // Before the rebuilds below: a mapper installed through
+    // gsFeSpace::mapper() bypasses setupMapper, and an unusable one would
+    // otherwise fail valid() and be replaced without a diagnostic.
+    _checkSpaceMappers();
+
     if (!m_vcol.front()->valid()) m_vcol.front()->init();
     if (!m_vrow.front()->valid()) m_vrow.front()->init();
     for (size_t i = 1; i!=m_vcol.size(); ++i)
     {
         if (!m_vcol[i]->valid()) m_vcol[i]->init();
-        m_vcol[i]->mapper.setShift(m_vcol[i-1]->mapper.firstIndex() +
-                                   m_vcol[i-1]->mapper.freeSize() );
+        m_vcol[i]->mapper.setShift(m_vcol[i-1]->mapper.lastIndex());
 
         if ( i<m_vrow.size() && m_vcol[i] != m_vrow[i] )
         {
             if (!m_vrow[i]->valid()) m_vrow[i]->init();
-            m_vrow[i]->mapper.setShift(m_vrow[i-1]->mapper.firstIndex() +
-                                       m_vrow[i-1]->mapper.freeSize() );
+            m_vrow[i]->mapper.setShift(m_vrow[i-1]->mapper.lastIndex());
         }
     }
 }
@@ -1207,6 +1234,7 @@ template<class T>
 template<class... expr>
 void gsExprAssembler<T>::assemble(const expr &... args)
 {
+    _checkSpaceMappers();
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized, matrix.cols() = "<<m_fmatrix.cols()<<"!="<<numDofs()<<" = numDofs()");
 
     if ((m_sparsity & 1) == 0)
@@ -1268,6 +1296,7 @@ template<class T>
 template<class... expr>
 void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
 {
+    _checkSpaceMappers();
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
 
     if ( BCs.empty() || 0==numDofs() ) return;
@@ -1335,6 +1364,7 @@ template<class T>
 template<class... expr>
 void gsExprAssembler<T>::assembleBdr(const bContainer & bnd, expr&... args)
 {
+    _checkSpaceMappers();
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
 
     if ( bnd.size()==0 || 0==numDofs() ) return;
@@ -1386,6 +1416,7 @@ void gsExprAssembler<T>::assembleBdr(const bContainer & bnd, expr&... args)
 template<class T> template<class... expr>
 void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
 {
+    _checkSpaceMappers();
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
 
     if ((m_sparsity & 4) == 0)
@@ -1468,6 +1499,7 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
 template<class T> template<class expr>
 void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 {
+    _checkSpaceMappers();
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
     GISMO_ASSERT(expr::isVector(), "Expecting a vector expression.");
 
@@ -1522,6 +1554,7 @@ template<class T> template<class expr>
 void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
                                              const expr residual, solution  u)
 {
+    _checkSpaceMappers();
     GISMO_ASSERT(m_fmatrix.cols()==numDofs(), "System not initialized");
     GISMO_ASSERT(expr::isVector(), "Expecting a vector expression.");
 
