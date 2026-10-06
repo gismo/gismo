@@ -35,6 +35,9 @@
   v:=atan2(y,x);w:=atan2(z,sqrt(x^2+y^2)-2.0);sin(3*v)*cos(3*w+v)
   </Function>
 
+  <!-- Manufactured density function : Right-hand side function of MAE : exp(-100 * ( x**2 + y**2-0.75)**2) -->
+  <Function type="FunctionExpr" id="5" dim="3">1./(2.+cos(2.*pi*sqrt((x-0.5-0.25*1.)**2+(y-0.5)**2+(z-0.5)**2)-0.1))</Function>
+  
   <!-- Assembler options -->
  <OptionList id="4">
   <int label="DirichletStrategy" desc="Method for enforcement of Dirichlet BCs [11..14]" value="11"/>

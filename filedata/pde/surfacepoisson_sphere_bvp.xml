@@ -29,6 +29,9 @@
     -(-2*cos(v)*t*(v - 1/2)*exp(-t*(v - 1/2)^2) - 2*sin(v)*t*exp(-t*(v - 1/2)^2) + 4*sin(v)*t^2*(v - 1/2)^2*exp(-t*(v - 1/2)^2))/(w^2*sin(v))
   </Function>
 
+  <!-- Manufactured density function : Right-hand side function of MAE : exp(-100 * ( x**2 + y**2-0.75)**2) -->
+  <Function type="FunctionExpr" id="5" dim="3">1./(2.+cos(2.*pi*sqrt((x-0.5-0.25*1.)**2+(y-0.5)**2+(z-0.5)**2)-0.1))</Function>
+
   <!-- The boundary conditions (multipatch=number of patches)-->
   <boundaryConditions id="2" multipatch="0">
   <!-- Corner values -->

@@ -267,13 +267,19 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Hb
     gsInfo<<"<>density function";
 
     // ... basis_0 of degree 0 to represent error as a piecewise constant function
-    gsMultiBasis<> basis_0 (identity_mp, true); // make a copy of basis before adaptive refinement
+    const size_t nP = this->initial_mapping.nPatches();
+    GISMO_ENSURE(nP == 1 || identity_mp.domainDim() == 2, "Multipatch density is implemented in 2D only.");
+    // one unit-square basis per patch, not coupled across interfaces (piecewise constants are discontinuous)
+    gsMultiBasis<>::BasisContainer bases0;
+    for (size_t pn=0; pn < nP; ++pn)
+        bases0.push_back(identity_mp.basis(0).clone().release());
+    gsMultiBasis<> basis_0(bases0, gsBoxTopology(identity_mp.domainDim(), nP));
     basis_0.uniformRefine(setRhogrid);
-    while (basis_0.size() <= std::min( this->m_basis.size(), Hbasis.size())) // refine until having enough resolution for error representation
-        basis_0.uniformRefine(); // refine to have enough resolution for error representation
+    while (basis_0.basis(0).size() <= std::min<index_t>( this->m_basis.basis(0).size(), Hbasis.size()/static_cast<index_t>(nP))) // refine until having enough resolution for error representation
+        basis_0.uniformRefine();
 
     // ... We want each element to be reprensted by one basis for all patches
-    for (size_t pn=0; pn < this->initial_mapping.nPatches(); ++pn ) 
+    for (size_t pn=0; pn < nP; ++pn ) 
     {
     for( index_t i_dir=0; i_dir<basis_0.dim(); ++i_dir){
        basis_0.basis(pn).degreeDecrease(basis_0.basis(pn).degree(i_dir),i_dir);
@@ -307,20 +313,19 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Hb
     // piecewise density construction from error distribution 
     // globalCount: counter for the current global element index
     int globalCount = 0;
-    #pragma omp parallel for
-    for (size_t pn=0; pn < this->initial_mapping.nPatches(); ++pn )// for all patches
+    const index_t nDofs0 = basis_0.basis(0).size();
+    for (size_t pn=0; pn < nP; ++pn )// for all patches
     {
         // for all elements in patch pn
         typename gsBasis<>::domainIter domIt =  // add patchInd to domainiter ?
             Hbasis.basis(pn).domain()->beginAll();
         typename gsBasis<>::domainIter domItEnd =  // add patchInd to domainiter ?
             Hbasis.basis(pn).domain()->endAll();
-        #pragma omp parallel for
         for (; domIt<domItEnd; ++domIt )
         {
             if( elMarked[ globalCount++ ] ){ // refine this element ?
-                // element index in the basis_0
-                auto gIndex = basis_0.basis(pn).elementIndex(domIt.centerPoint());
+                // dof index in the basis_0 (patches are stored one after another)
+                auto gIndex = static_cast<index_t>(pn)*nDofs0 + basis_0.basis(pn).elementIndex(domIt.centerPoint());
                 if (setRhoZero==0){
                     // add the error value to the density function
                     this->errorVector( gIndex) = 0.75;
@@ -351,13 +356,14 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Hb
     space u             = A.getSpace(this->m_basis);
     // Solution vector and solution variable
     gsMatrix<> densityVector;
-    //...
     solution density_sol = A.getSolution(u, densityVector);
-    //...
-    //u.setup(bc_mae, dirichlet::l2Projection, 0);
+    gsMultiPatch<> density;
+
+    for (size_t pn=0; pn < nP; ++pn)
+    {
     A.initSystem();
 
-    auto rho             = A.getCoeff(error_ml);
+    auto rho             = A.getCoeff(error_ml.patch(pn));
     A.assemble(u * rho); //rhs vector
     //... density function in this case is in adaptive mesh means r o F o Psi
     densityVector        = this->Poisson.L2ProjectScalar(A.rhs());
@@ -369,33 +375,34 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Hb
     // since the initial mapping will be used in the composition.  (r o F o Psi) to (r o F)
     //-------------------------------------------------------------------------------------------------
 
-    const gsKnotVector<double> kv1 =  static_cast<gsTensorNurbs<2> &>( MAmapping.patch(0)).knots(0);
-    const gsKnotVector<double> kv2 =  static_cast<gsTensorNurbs<2> &>( MAmapping.patch(0)).knots(1);
-    const index_t degree1 =  static_cast<gsTensorNurbs<2> &>( MAmapping.patch(0)).degree(0);
-    const index_t degree2 =  static_cast<gsTensorNurbs<2> &>( MAmapping.patch(0)).degree(1);
+    const gsKnotVector<double> kv1 =  static_cast<gsTensorNurbs<2> &>( MAmapping.patch(pn)).knots(0);
+    const gsKnotVector<double> kv2 =  static_cast<gsTensorNurbs<2> &>( MAmapping.patch(pn)).knots(1);
+    const index_t degree1 =  static_cast<gsTensorNurbs<2> &>( MAmapping.patch(pn)).degree(0);
+    const index_t degree2 =  static_cast<gsTensorNurbs<2> &>( MAmapping.patch(pn)).degree(1);
     if (MAmapping.dim()==2){
     gsMatrix<> rhsVector = A.rhs();
     rhsVector.setZero();
     //...
-    assemble_rhsvector_2d(degree1, degree2, kv1, kv2, MAmapping.patch(0).coefs(), densityVector, rhsVector);
+    assemble_rhsvector_2d(degree1, degree2, kv1, kv2, MAmapping.patch(pn).coefs(), densityVector, rhsVector);
     densityVector           = this->Poisson.L2ProjectScalar(rhsVector);
     gsInfo << ".";
     }
     else{
-    const gsKnotVector<double> kv3 =  static_cast<gsTensorNurbs<3> &>( MAmapping.patch(0)).knots(2);
-    const index_t degree3 =  static_cast<gsTensorNurbs<3> &>( MAmapping.patch(0)).degree(2);
+    const gsKnotVector<double> kv3 =  static_cast<gsTensorNurbs<3> &>( MAmapping.patch(pn)).knots(2);
+    const index_t degree3 =  static_cast<gsTensorNurbs<3> &>( MAmapping.patch(pn)).degree(2);
     gsMatrix<> rhsVector = A.rhs();
     rhsVector.setZero();
     //...
-    assemble_rhsvector_3d(degree1, degree2, degree3, kv1, kv2, kv3, MAmapping.patch(0).coefs(), densityVector, rhsVector);
+    assemble_rhsvector_3d(degree1, degree2, degree3, kv1, kv2, kv3, MAmapping.patch(pn).coefs(), densityVector, rhsVector);
     densityVector           = this->Poisson.L2ProjectScalar(rhsVector);
     gsInfo << "..";
     }
     }
     gsInfo <<densityVector.minCoeff()<<"/"<<densityVector.maxCoeff() << ".";
-    //...
-    gsMultiPatch<> density;
-    density_sol.extract(density);
+    gsMultiPatch<> density_n;
+    density_sol.extract(density_n);
+    density.addPatch(density_n.patch(0));
+    }
     gsInfo<<"<>\n";
     return  density;
 }

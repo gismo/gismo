@@ -25,6 +25,7 @@ int main(int argc, char *argv[])
     index_t numElevate    = 0;
     index_t maxIter       = 50;
     index_t NumArMarEl    = 0; // Number of ring of cells around marked elements
+    index_t id_mp          = 0; // id of the geometry in the xml file
     double IntensityMAE   = 10.;
     bool export_b64       = false;
     bool errorsave        = false;
@@ -35,6 +36,7 @@ int main(int argc, char *argv[])
     real_t  adaptRefParamMAE = 0.7; // ... adapt parameter for MAE mapping.
     // Specify the file path
     std::string fn("pde/circle.xml");
+    // std::string fn("pde/annulus2d_bvp.xml");
     // std::string fn("domain2d/lake.xml");
     // std::string fn("pde/Bspline_ball.xml");
     // std::string fn("volumes/GshapedVolume.xml"); 
@@ -50,7 +52,10 @@ int main(int argc, char *argv[])
     cmd.addReal( "p",    "adaptRefParamMAE", "parameter for MAE mapping in local h-refinement loops",                   adaptRefParamMAE );
     cmd.addInt( "r",     "adaptRefCrit",     "Adaptive refinement criterion [1:GARU,2:PUCA,3:BULK,4:PBULK]",            adaptRefCrit );
     cmd.addInt( "u",     "uniformRefine",    "Number of Uniform h-refinement loops",                                    numRefine );
-
+    cmd.addInt( "v",     "degree",           "Degree of the basis functions",                                           numElevate );
+    cmd.addInt( "m",     "id_mp",            "ID of the geometry in the XML file",                                       id_mp );
+    cmd.addSwitch("export_b64",              "Export the solution in a base64 format",                                   export_b64);
+    // cmd.addSwitch("help",                     "Display this help message");
     cmd.addInt("quRule",                     "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",            1);
     cmd.addSwitch("plot",                    "Create a ParaView visualization file with the solution",                  plot);
     cmd.addSwitch("errorsave",               "Create a file in ... and save errors",                                    errorsave);
@@ -62,11 +67,7 @@ int main(int argc, char *argv[])
     gsInfo << "Loaded file " << fd.lastPath() << "\n";
     // Create a gsMultipatch and add the loaded geometry
     gsMultiPatch<> mpLeft;// = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
-    fd.getId(1,mpLeft);
-    // Elevate and p-refine the basis to order p + numElevate
-    // where p is the highest degree in the bases
-    mpLeft.degreeElevate(numElevate);
-    mpLeft.computeTopology();
+    fd.getId(id_mp,mpLeft);
 
     // source term: and manufactured solution
     gsFunctionExpr<> s;
@@ -90,7 +91,8 @@ int main(int argc, char *argv[])
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1 : Initialization for Monge-Ampere mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefine, maxIter, IntensityMAE);
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefine, maxIter, IntensityMAE, true);
+
 
     // ... Define hierarchical mapping
     gsMultiPatch<> Psi;
@@ -115,6 +117,7 @@ int main(int argc, char *argv[])
     }
     }
     Psi.computeTopology();
+    gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
 
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 2: Start r- and h- refinement: Simultaneous
@@ -122,27 +125,22 @@ int main(int argc, char *argv[])
     gsMultiPatch<> sol_restr; // restricted solution
     //boubdary conditions
     gsBoundaryConditions<> bc;
-    bc.setGeoMap(Psi);
+    bc.setGeoMap(mpLeft);
     // For simplicity, set Dirichlet boundary conditions
     for ( gsMultiPatch<>::const_biterator
-            bit = Psi.bBegin(); bit != Psi.bEnd(); ++bit)
+            bit = mpLeft.bBegin(); bit != mpLeft.bEnd(); ++bit)
     {
        bc.addCondition( *bit, condition_type::dirichlet, &s,0, false);
     }
 
-    gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
-
     // Refine the basis uniformly for numRefine times
-    for (int r=0; r<numRefine; ++r)
+    for (int r=0; r<numRefine; ++r){
         dbasis.uniformRefine();
+        MAE.mapping_basis.uniformRefine();
+    }
 
-    // make a copy of the basis for the composition space before refinement
-    while (Psi.basis(0).size() < 1000)
-        Psi.uniformRefine();
-    gsMultiBasis<> Cbasis( Psi, false );
-
-    gsInfo << "Patches: "<< Psi.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
-    gsInfo<<"The PDE domain is "<< Psi.detail() << "\n";
+    gsInfo << "Patches: "<< mpLeft.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
+    gsInfo<<"The PDE domain is "<< mpLeft.detail() << "\n";
     gsInfo<<"Source function is "<< rhs << "\n";
     gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
     //! [Problem setup]
@@ -153,7 +151,7 @@ int main(int argc, char *argv[])
 
     gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
-    geometryMap PP  = A.getMap(Psi);
+    geometryMap PP  = A.getMap(mpLeft);
     
     gsStopwatch timer;
     // Elements used for numerical integration
@@ -211,10 +209,10 @@ int main(int argc, char *argv[])
         std::vector<real_t> eltErrs  = ev.elementwise();            
         // ... compute MAE mapping from a given error distribution
         std::vector<bool> eldensityMarked( eltErrs.size() );
-        gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.85, eldensityMarked);                 
+        gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.7, eldensityMarked);                 
         auto density   = MAE.buildDensity( dbasis, eldensityMarked);
         MAE.buildMultiPatch(density);// compute Monge-Ampere mapping
-        Psi            = MAE.buildCompMultiPatch(Cbasis);// computes the composition mapping mpLeft o MAmapping
+        mpLeft         = MAE.buildCompMultiPatch();// computes the composition mapping mpLeft o MAmapping
     }
 
     for (int r=0; r<=numLRefine; ++r)
@@ -282,7 +280,7 @@ int main(int argc, char *argv[])
                 gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParamMAE, eldensityMarked);                 
                 auto density   = MAE.buildDensity( dbasis, eldensityMarked, r);
                 MAE.buildMultiPatch(density);// compute Monge-Ampere mapping
-                Psi            = MAE.buildCompMultiPatch(Cbasis);// computes the composition mapping mpLeft o MAmapping
+                mpLeft         = MAE.buildCompMultiPatch();// computes the composition mapping mpLeft o MAmapping
                 // -----------------
                 double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
                 for(size_t i=0; i<eltErrs.size(); ++i)
@@ -362,7 +360,7 @@ int main(int argc, char *argv[])
         collection.options().setSwitch("base64", export_b64);
         collection.options().setInt("elementResolution", 16);
         collection.options().setInt("numPoints", 10000);
-        collection.newTimeStep(Psi);
+        collection.newTimeStep(mpLeft);
         collection.addField(ru_sol,"numerical solution");
         collection.addField(igrad(ru_sol,PP),"gradient_numerical solution");
         collection.addField((  ilapl(ru_sol, PP)+ rhs_f ).sqNorm()*meas(PP),"indecator");

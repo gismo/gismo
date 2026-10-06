@@ -39,6 +39,10 @@
   <!-- The manufactured exact solution (for reference) -->
   <Function type="FunctionExpr" id="3" dim="2">exp(0.5*(x**2 + y**2))</Function>
 
+  <!-- For poisson test-->
+  <Function type="FunctionExpr" id="2000" dim="2"> 1./(1.+exp(200.*(y-cos(pi*x) )) )</Function>
+  <Function type="FunctionExpr" id="2001" dim="2"> 40000.0*pi**2*exp(200.0*y - 200.0*cos(pi*x))*sin(pi*x)**2/(exp(200.0*y - 200.0*cos(pi*x)) + 1.0)**2 + 200.0*pi**2*exp(200.0*y - 200.0*cos(pi*x))*cos(pi*x)/(exp(200.0*y - 200.0*cos(pi*x)) + 1.0)**2 + 40000.0*exp(200.0*y - 200.0*cos(pi*x))/(exp(200.0*y - 200.0*cos(pi*x)) + 1.0)**2 
+                                                  - 80000.0*pi**2*exp(400.0*y - 400.0*cos(pi*x))*sin(pi*x)**2/(exp(200.0*y - 200.0*cos(pi*x)) + 1.0)**3 - 80000.0*exp(400.0*y - 400.0*cos(pi*x))/(exp(200.0*y - 200.0*cos(pi*x)) + 1.0)**3 </Function>
   <!-- Right-hand side function : for mesh adaptation technique case use  --> 
   <!--<Function type="FunctionExpr" id="5" dim="2"> (1./(2.+cos(8.*pi*sqrt((x-0.5-0.25*0.)**2+(y-0.5)**2)))) </Function> 
   <Function type="FunctionExpr" id="5" dim="2"> ( 1.+ 9./(1.+(10.*sqrt(x**2+y**2)*cos(atan2(y,x) -20.*(x**2+y**2)))**2)) </Function>-->
