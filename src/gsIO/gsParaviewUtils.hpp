@@ -77,7 +77,14 @@ namespace gismo
         // Loop over all patches
         for ( index_t i=0; i != field.nPieces(); ++i )
         {
-            gsGridIterator<T,CUBE> grid(field.fields().piece(i).support(), nPts);
+            // Non-parametric fields (and functions without a support, e.g.
+            // gsFunctionExpr) are sampled over the parameter domain of the patch
+            gsMatrix<T> ab;
+            if (field.isParametric())
+                ab = field.fields().piece(i).support();
+            if (0 == ab.size())
+                ab = field.patch(i).support();
+            gsGridIterator<T,CUBE> grid(ab, nPts);
 
             // Evaluate the MultiPatch for every parametric point of the grid iterator
             xyzPoints.resize( field.dim(), grid.numPoints());

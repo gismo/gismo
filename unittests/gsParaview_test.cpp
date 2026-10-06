@@ -14,7 +14,10 @@
 #include "gismo_unittest.h"
 #include <gsIO/gsParaviewCollection.h>
 
+#include <algorithm> // std::min_element
 #include <cstdio> // std::remove
+#include <fstream>
+#include <vector>
 #include <sstream> // std::istringstream
 
 SUITE(gsParaview_test)
@@ -426,6 +429,117 @@ TEST(TimeSteppingElementMesh_smoke)
 
     CHECK(gsFileManager::fileExists(fn + ".pvd"));
     CHECK(gsFileManager::fileExists(fn + "_pvd/" + gsFileManager::getBasename(fn) + "_t0.000000_mesh0.vtp"));
+}
+
+// Reads a whole file into a string (empty if it cannot be opened).
+static std::string readFile(const std::string& path)
+{
+    std::ifstream f(path.c_str());
+    return std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+}
+
+// Number of grid points (a+1)(b+1)(c+1) of the WholeExtent="0 a 0 b 0 c" of a .vts file.
+static index_t extentPoints(const std::string& s)
+{
+    const std::string tag = "WholeExtent=\"";
+    const size_t p = s.find(tag);
+    if (p == std::string::npos) return -1;
+    std::istringstream iss(s.substr(p + tag.size(), s.find('"', p + tag.size()) - p - tag.size()));
+    index_t lo, hi, n = 1;
+    for (int d = 0; d < 3; ++d)
+    {
+        iss >> lo >> hi;
+        n *= hi - lo + 1;
+    }
+    return n;
+}
+
+// Values of the ascii DataArray named label; empty if there is none.
+static std::vector<double> dataArrayValues(const std::string& s, const std::string& label)
+{
+    std::vector<double> v;
+    const size_t p = s.find("Name=\"" + label + "\"");
+    if (p == std::string::npos) return v;
+    const size_t b = s.find('>', p) + 1;
+    const size_t e = s.find("</DataArray>", b);
+    std::istringstream iss(s.substr(b, e - b));
+    double x;
+    while (iss >> x) v.push_back(x);
+    return v;
+}
+
+// Writes the field x+2y (or u+2v) on two unit-square patches through a
+// collection and checks the pieces; lo[k], hi[k] are the expected value
+// ranges on patch k.
+static void checkExprFieldCollection(const bool isParam, const std::string& base,
+                                     const std::string& label,
+                                     const double lo[2], const double hi[2])
+{
+    const std::string tmp = gsFileManager::getTempPath();
+    if (tmp.empty()) return;
+
+    const std::string dir = tmp + "gsParaview_exprfield_test/";
+    const std::string fn  = dir + base;
+    const std::string sub = fn + "_pvd/";
+    std::string piece[2];
+    for (int k = 0; k < 2; ++k)
+    {
+        std::ostringstream os;
+        os << sub << base << "_t0.000000_patch" << k << ".vts";
+        piece[k] = os.str();
+        std::remove(piece[k].c_str());
+    }
+    std::remove((fn + ".pvd").c_str());
+
+    gsMultiPatch<> mp;
+    mp.addPatch(gsNurbsCreator<>::BSplineSquare());
+    mp.addPatch(gsNurbsCreator<>::BSplineSquare(1, 1, 0));
+    mp.computeTopology();
+
+    gsFunctionExpr<> f("x + 2*y", 2);
+    gsField<> field(mp, f, isParam);
+
+    gsParaviewCollection<real_t> collection(fn);
+    collection.options().setInt("numPoints", 64);
+    collection.newTimeStep(mp, 0.0);
+    collection.addField(field, label);
+    collection.saveTimeStep();
+    collection.save();
+
+    CHECK(gsFileManager::fileExists(fn + ".pvd"));
+    for (int k = 0; k < 2; ++k)
+    {
+        CHECK(gsFileManager::fileExists(piece[k]));
+        const std::string s = readFile(piece[k]);
+        const std::vector<double> v = dataArrayValues(s, label);
+        CHECK(!v.empty());
+        CHECK_EQUAL(extentPoints(s), static_cast<index_t>(v.size()));
+        if (!v.empty())
+        {
+            CHECK_CLOSE(lo[k], *std::min_element(v.begin(), v.end()), 1e-4);
+            CHECK_CLOSE(hi[k], *std::max_element(v.begin(), v.end()), 1e-4);
+        }
+    }
+
+    for (int k = 0; k < 2; ++k)
+        std::remove(piece[k].c_str());
+    std::remove(sub.c_str());
+    std::remove((fn + ".pvd").c_str());
+    std::remove(dir.c_str());
+}
+
+TEST(CollectionNonParametricExprField)
+{
+    // x+2y over the physical patches [0,1]x[0,1] and [1,2]x[0,1]
+    const double lo[2] = {0.0, 1.0}, hi[2] = {3.0, 4.0};
+    checkExprFieldCollection(false, "nonparam", "nonparam", lo, hi);
+}
+
+TEST(CollectionParametricExprField)
+{
+    // u+2v over the parameter domain [0,1]^2 of both patches
+    const double lo[2] = {0.0, 0.0}, hi[2] = {3.0, 3.0};
+    checkExprFieldCollection(true, "param", "param", lo, hi);
 }
 
 } // SUITE

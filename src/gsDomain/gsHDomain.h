@@ -100,12 +100,14 @@ public:
 
     domainIter beginAll() const override
     {
-        return domainIter(new gsHDomainIterator<T,d,Z>(m_tree,m_basis));
+        return domainIter(new gsHDomainIterator<T,d,Z>(*this,m_basis));
     }
 
     domainIter beginBdr(const boxSide bs) const override
     {
-        return domainIter(new gsHDomainBoundaryIterator<T,d,Z>(m_tree,m_basis, bs));
+        gsHDomainBoundaryIterator<T,d,Z> * it = new gsHDomainBoundaryIterator<T,d,Z>(m_tree,m_basis, bs);
+        it->setPatchIndex(this->patchIndex());
+        return domainIter(it);
     }
 
     size_t numElements() const override
