@@ -275,6 +275,24 @@ SUITE(gsExprAssembler_test)
         CHECK(A.matrix().rows() > 0);
     }
 
+    TEST(TestSpaceReRegistrationKeepsItsData)
+    {
+        gsBSplineBasis<real_t> bb(0.0, 1.0, 3, 3);
+        gsMultiBasis<real_t> mb(bb);
+
+        gsExprAssembler<real_t> A(2, 2);
+        auto u0 = A.getSpace(mb, 1, 0);
+        A.getTestSpace(u0, mb);   // distinct test space for unknown 0
+        A.getSpace(mb, 2, 1);     // registers more space data after it
+
+        // Re-registering test space 0 updates its existing data; the
+        // returned handle must refer to that data, not to whichever
+        // space data happened to be registered last (unknown 1).
+        auto v0 = A.getTestSpace(mb, 1, 0);
+        CHECK_EQUAL(0, v0.id());
+        CHECK(&v0.mapper() == &A.testSpace(0).mapper());
+    }
+
     TEST(InterfaceExpression)
     {
         const index_t numRef = 2;
@@ -303,6 +321,77 @@ SUITE(gsExprAssembler_test)
         ev.integralInterface(f.left() + f.right() , patches.interfaces());
         const real_t w = ev.value();
         CHECK( w*w < 1e-10 );
+    }
+
+    // A solution taken with right() must be evaluated on the second patch of
+    // the interface, and left() on the first one
+    TEST(InterfaceSolution)
+    {
+        gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(1,2,1);
+        gsMultiBasis<> mb(patches);
+        mb.uniformRefine();
+
+        gsExprAssembler<> A(1,1);
+        A.setIntegrationElements(mb);
+        auto u = A.getSpace(mb);
+        u.setup(-1); // no coupling: the solution may jump across the interface
+
+        // Partition of unity: the solution equals 1+p on patch p
+        gsMatrix<> solVector = gsMatrix<>::Zero(u.mapper().freeSize(), 1);
+        auto s = A.getSolution(u, solVector);
+        s.setComponent(0, 1.0, 0);
+        s.setComponent(0, 2.0, 1);
+
+        CHECK(1==patches.interfaces().size());
+        const boundaryInterface & iFace = patches.interfaces().front();
+        const real_t first  = 1.0 + iFace.first ().patch;
+        const real_t second = 1.0 + iFace.second().patch;
+
+        CHECK(!s.isAcross());
+        CHECK( s.right().isAcross());
+        CHECK(!s.right().left().isAcross());
+
+        // The interface has parametric length one
+        gsExprEvaluator<> ev(A);
+        CHECK_CLOSE(first , ev.integralInterface(s,                 patches.interfaces()), 1e-12);
+        CHECK_CLOSE(first , ev.integralInterface(s.left(),          patches.interfaces()), 1e-12);
+        CHECK_CLOSE(second, ev.integralInterface(s.right(),         patches.interfaces()), 1e-12);
+        CHECK_CLOSE(first , ev.integralInterface(s.right().left(),  patches.interfaces()), 1e-12);
+        CHECK_CLOSE(second - first,
+                    ev.integralInterface(s.right() - s.left(), patches.interfaces()), 1e-12);
+    }
+
+    // A mapper installed by setupMapper() must be the one initSystem() uses.
+    // initSystem() rebuilds any mapper whose component count differs from the
+    // space dimension, discarding its eliminated dofs, so setupMapper() has to
+    // reject such a mapper instead of accepting it.
+    TEST(SetupMapperComponents)
+    {
+        gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(1,1,1);
+        gsMultiBasis<> mb(patches);
+        mb.uniformRefine();
+
+        const auto boundaryEliminated = [&mb](index_t nComp)
+        {
+            gsDofMapper m = createMapper(mb, nComp);
+            for (index_t c = 0; c != nComp; ++c)
+                m.markBoundary(0, mb.basis(0).allBoundary(), c);
+            m.finalize();
+            return m;
+        };
+
+        gsExprAssembler<> A(1, 1);
+        A.setIntegrationElements(mb);
+        auto u = A.getSpace(mb, 2);
+
+        CHECK_THROW(u.setupMapper(boundaryEliminated(3)), std::runtime_error);
+        CHECK_THROW(u.setupMapper(boundaryEliminated(1)), std::runtime_error);
+
+        const gsDofMapper matching = boundaryEliminated(2);
+        u.setupMapper(matching);
+        A.initSystem();
+        CHECK_EQUAL(matching.freeSize(), u.mapper().freeSize());
+        CHECK_EQUAL(matching.freeSize(), A.numDofs());
     }
 
     TEST(BoundaryIntegral)
@@ -454,61 +543,6 @@ SUITE(gsExprAssembler_test)
         CHECK_EQUAL(sz, M.rows());
         CHECK_EQUAL(sz, M.cols());
         CHECK_CLOSE(4.0, M.sum(), 1e-10);
-    }
-
-    // TODO: verify if this is really desirable behavior.
-    //
-    // Pins accepted behaviour: installing a mapper whose numComponents()
-    // differs from the space dimension is *accepted* rather than an error,
-    // and the mapper is then silently replaced.
-    //
-    // gsFeSpace::setupMapper only asserts
-    //     mapSize() == source().size()*dofsMapper.numComponents()
-    // which a 3-component mapper over the same basis satisfies, so the install
-    // does not throw.  gsFeSpaceData::valid() however is
-    //     fs->size()*dim == mapper.mapSize()
-    // which is false here, so resetDimensions() calls init() and rebuilds a
-    // default 2-component NON-conforming mapper, discarding the caller's.
-    //
-    // This is exactly the gsBarrierPatch/gsBarrierCore caller convention
-    // (createMapper(mb, targetDim) installed into getSpace(mb, d)).  Both
-    // halves are pinned: no throw, and the silent rebuild.
-    TEST(MapperComponentCountMismatchAccepted)
-    {
-        gsMultiPatch<real_t> mp = gsNurbsCreator<real_t>::BSplineSquareGrid(2,1,1.0);
-        gsMultiBasis<real_t> mb = twoPatchBasis(mp);
-
-        gsExprAssembler<real_t> A(1,1);
-        A.setIntegrationElements(mb);
-        auto G = A.getMap(mp);
-        auto u = A.getSpace(mb, /*dim=*/2);
-
-        // 3 components against a 2-dimensional space
-        gsDofMapper custom = createMapper(mb, /*nComp=*/3, /*conforming=*/true,
-                                          /*finalize=*/true);
-        CHECK_EQUAL(3, custom.numComponents());
-        CHECK(custom.coupledSize() > 0);
-
-        bool threw = false;
-        try { u.setupMapper(give(custom)); }
-        catch (...) { threw = true; }
-        CHECK(!threw);                                  // accepted today
-        CHECK_EQUAL(3, u.mapper().numComponents());     // and really installed
-
-        A.initSystem();
-
-        // ... but silently discarded and rebuilt as the 2-component default
-        CHECK_EQUAL(2, u.mapper().numComponents());
-        CHECK_EQUAL(0, u.mapper().coupledSize());       // default is non-conforming
-        CHECK_EQUAL(2*static_cast<index_t>(mb.totalSize()), A.numDofs());
-        CHECK_EQUAL(2*static_cast<index_t>(mb.totalSize()), u.mapper().freeSize());
-
-        A.assemble(u * u.tr() * meas(G));
-        const gsSparseMatrix<real_t> M = A.matrix();
-        CHECK_EQUAL(2*static_cast<index_t>(mb.totalSize()), M.rows());
-        CHECK_EQUAL(2*static_cast<index_t>(mb.totalSize()), M.cols());
-        // one scalar mass matrix per component
-        CHECK_CLOSE(2.0*2.0, M.sum(), 1e-10);
     }
 
     // TODO: check last remark here

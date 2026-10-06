@@ -30,7 +30,7 @@ template<class T>
 struct gsFeSpaceData
 {
     gsFeSpaceData(const gsFunctionSet<T> & _fs, index_t _dim, index_t _id):
-    fs(&_fs), dim(give(_dim)), id(give(_id)) { }
+    fs(&_fs), dim(give(_dim)), id(give(_id)), cont(-1) { }
 
     const gsFunctionSet<T> * fs;
     index_t dim, id;

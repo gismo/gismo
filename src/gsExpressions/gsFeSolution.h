@@ -1,4 +1,4 @@
-/** @file gsFeElement.h
+/** @file gsFeSolution.h
 
     @brief Defines an element as an expression
 
@@ -36,22 +36,23 @@ class gsFeSolution : public _expr<gsFeSolution<T> >
 protected:
     const gsFeSpace<T> _u;
     gsMatrix<T> * _Sv; ///< Pointer to a coefficient vector
-    bool m_isAcross; ///< true when this expression is evaluated across an interface
+
+    gsFeSolution(const gsFeSpace<T> & u, gsMatrix<T> * Sv) : _u(u), _Sv(Sv) { }
 
 public:
     typedef T Scalar;
     enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
 
-    bool isAcross() const { return m_isAcross; }
+    /// Returns whether this solution is evaluated across an interface.
+    /// The side is that of the underlying space, which is what gets
+    /// registered for evaluation.
+    bool isAcross() const { return _u.isAcross(); }
 
-    gsFeSolution right() const
-    {
-        gsFeSolution ac(*this);
-        ac.m_isAcross = true;
-        return ac;
-    }
+    /// Returns this solution evaluated on the second patch of an interface
+    gsFeSolution right() const { return gsFeSolution(_u.right(), _Sv); }
 
-    gsFeSolution left() const { return gsFeSolution(*this); }
+    /// Returns this solution evaluated on the first patch of an interface
+    gsFeSolution left() const { return gsFeSolution(_u.left(), _Sv); }
 
     explicit gsFeSolution(const gsFeSpace<T> & u) : _u(u), _Sv(NULL) { }
 
@@ -128,7 +129,6 @@ public:
     const gsDofMapper & mapper() const {return _u.mapper();}
 
     inline const gsMatrix<T> & fixedPart() const {return _u.fixedPart();}
-    gsMatrix<T> & fixedPart() {return _u.fixedPart();}
 
     //gsFuncData<T> & data() {return _u.data();}
     const gsFuncData<T> & data() const {return _u.data();}
