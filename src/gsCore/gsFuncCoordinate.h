@@ -55,17 +55,17 @@ public:
 
 public:
 
-    short_t domainDim () const {return m_function->domainDim();}
+    short_t domainDim () const override {return m_function->domainDim();}
 
-    short_t targetDim () const {return (short_t)m_index.size();} // It is a coordinate of a vector function
+    short_t targetDim () const override {return (short_t)m_index.size();} // It is a coordinate of a vector function
 
-    gsMatrix<T> support() const;
+    gsMatrix<T> support() const override;
 
-    void eval_into (const gsMatrix<T>& u, gsMatrix<T>& result ) const;
+    void eval_into (const gsMatrix<T>& u, gsMatrix<T>& result ) const override;
 
-    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result ) const;
+    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result ) const override;
 
-    void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result ) const;
+    void deriv2_into(const gsMatrix<T>& u, gsMatrix<T>& result ) const override;
 
     /// The gsFuncCoordinate points to the i-th coordinate
     /// after calling this setter.
@@ -84,7 +84,7 @@ public:
     index_t index() const { return m_index.value(); }
 
     // // temporary hack
-    virtual const gsFuncCoordinate & piece(const index_t k) const
+    virtual const gsFuncCoordinate & piece(const index_t k) const override
     {
         auto it = m_pieces.find(k);
         if (m_pieces.end()!=it) return it->second;

@@ -14,7 +14,6 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
-#include <gsIO/gsOptionList.h>
 #include <gsOptimizer/gsOptimizer.h>
 #include <gsOptimizer/gsOptProblem.h>
 #define Eigen gsEigen
@@ -75,6 +74,17 @@ class gsGradientDescent : public gsOptimizer<T>
     typedef typename gdc::GradientDescent<T, gsGradientDescentObjective<T>, StepSize, Callback, FiniteDifferences>::Result Result;
 
 public:
+
+    /// @brief default constructor
+    gsGradientDescent()
+    :
+    Base(),
+    m_solver()
+    {
+        this->defaultOptions();
+    }
+
+
     gsGradientDescent(gsOptProblem<T> * problem)
     :
     Base(problem),
@@ -88,6 +98,13 @@ public:
 
 public:
     // const gsMatrix<T> & lambda() const { return m_lambda; }
+
+    void setProblem(gsOptProblem<T> * problem) override
+    {
+        m_op=problem;
+        gsGradientDescentObjective<T> obj(m_op);
+        m_solver.setObjective(obj);
+    }
 
     void minimize(const gsMatrix<T> &initialGuess)
     {
@@ -121,6 +138,7 @@ protected:
 
 public:
 
+    using Base::solve;
     void solve(const gsMatrix<T> &initialGuess)
     {
         this->getOptions();

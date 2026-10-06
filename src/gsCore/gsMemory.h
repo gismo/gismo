@@ -171,6 +171,16 @@ private:
 /// \brief Deleter function that does not delete an object pointer
 template <typename T> void null_deleter(T *) {}
 
+/// \brief Deleter function that prints debug infonrmation
+struct debug_deleter
+{
+    template <typename T> void operator()(T * ptr)
+    {
+        gsInfo<<" debug_deleter: delete "<< ptr << std::flush;
+        delete ptr;
+        gsInfo<<".\n";
+    }
+};
 
 /// Takes a T* and wraps it in a shared_ptr. Useful for avoiding
 /// memory leaks.

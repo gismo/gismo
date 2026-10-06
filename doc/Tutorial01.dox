@@ -463,7 +463,7 @@ party formats can be imported or exported. One such useful format is
 Rhino's 3DM file format (note: the gsOpennurbs submodule must be
 enabled). Also, the Siemens' NX (Parasolid) file format
 is supported, if the Parasolid library is available in the system
-(note: GISMO_WITH_PSOLID compilation parameter). Other formats include
+(note: gsParasolid module). Other formats include
 the GeoPDE (Matlab/octave) text format, the GoTools format and OBJ,
 OFF and STL mesh files. The IGES file format is under development.
 

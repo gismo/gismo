@@ -24,7 +24,7 @@ bool read_mesh(gsSurfMesh& mesh, const std::string& filename)
     std::string::size_type dot(filename.rfind("."));
     if (dot == std::string::npos) return false;
     std::string ext = filename.substr(dot+1, filename.length()-dot-1);
-    std::transform(ext.begin(), ext.end(), ext.begin(), tolower);
+    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
     // extension determines reader
     if (ext == "off")
@@ -58,7 +58,7 @@ bool write_mesh(const gsSurfMesh& mesh, const std::string& filename)
     std::string::size_type dot(filename.rfind("."));
     if (dot == std::string::npos) return false;
     std::string ext = filename.substr(dot+1, filename.length()-dot-1);
-    std::transform(ext.begin(), ext.end(), ext.begin(), tolower);
+    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
 
     // extension determines reader

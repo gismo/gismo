@@ -575,9 +575,9 @@ public:
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
     { 
-        if ( this->size() > 0 )
+        if ( this->nBoxes() > 0 )
         {
-            os << "gsTemplate (" << this->size() << ").\n"; 
+            os << "gsTemplate (" << this->nBoxes() << ").\n"; 
             //os << "First patch: " << this->patch(0) << ").\n"; 
         }
         else
@@ -588,7 +588,7 @@ public:
     short_t parDim() const { return dim(); }
 
     /// Number of patches    
-    index_t nPatches() const { return this->size(); }
+    index_t nPatches() const { return this->nBoxes(); }
 
     void addPatch( gsMatrix<T>* c) 
     { 
@@ -634,7 +634,7 @@ public:
 private:
 
     /// List of corner points
-    gsMatrix<T> * m_corners;
+    std::vector<gsMatrix<T> *> m_corners;
 
     std::vector< gsBSpline<T> * >  m_skeleton; // skeleton represents "segments" inside the template
     

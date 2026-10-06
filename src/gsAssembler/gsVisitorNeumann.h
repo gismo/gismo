@@ -74,7 +74,7 @@ public:
                     gsQuadRule<T>      & rule)
     {
         // Setup Quadrature (harmless slicing occurs)
-        rule = gsQuadrature::get(basis, options, side.direction());
+        rule = gsQuadrature::get(*basis.domain(), options, side.direction());
 
         // Set Geometry evaluation flags
         md.flags = NEED_VALUE | NEED_MEASURE | NEED_GRAD_TRANSFORM;
@@ -106,7 +106,7 @@ public:
     }
 
     /// Assemble on element
-    inline void assemble(gsDomainIterator<T>    & ,
+    inline void assemble(gsDomainIteratorWrapper<T>    & ,
                          const gsVector<T>      & quWeights)
     {
         for (index_t k = 0; k < quWeights.rows(); ++k) // loop over quadrature nodes

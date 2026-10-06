@@ -1,0 +1,44 @@
+namespace gismo {
+/**
+
+\page MATLAB_interface MATLAB interface via \ref gsCInterface
+
+The <a href="https://mathworks.com/products/matlab.html">MATLAB</a> interface of \gismo is enabled via the \ref C_interface of \gismo. The package is available as the \ref gsMatlab module.
+
+<h3>Installation of gsMatlab</h3>
+
+
+<h3>Calling the C interface in MATLAB</h3>
+Inside MATLAB, the \gismo class hierarchy is maintained as much as possible. The \ref gsFunctionSet-equivalent in MATLAB is defined as:
+~~~~{.m}
+classdef gsFunctionSet < handle
+
+    % Class implementations
+
+end
+~~~~
+And, for example, a \ref gsMultiPatch deriving from \ref gsFunctionSet is declared as:
+~~~~{.m}
+classdef gsMultiPatch < gsFunctionSet
+
+    % Class implementations
+
+end
+~~~~
+Within the classes, member functions can be declared, which call their corresponding function from the C interface of \gismo:
+~~~~{.m}
+function varargout = addPatch(this, varargin)
+    if (nargin~=2 || nargout>0)
+        error('Invalid number of input and/or output arguments.')
+    end
+    calllib('gismo','gsMultiPatch_addPatch',this.objectHandle,varargin{1}.ptr());
+end
+~~~~
+
+\note Since MATLAB does not natively offer an interface to Eigen, the \ref gsMatrix is binded to MATLAB using the `EigenMatrix` types. This type can easily convert to a MATLAB matrix and can be given to the C interface of \gismo.
+
+<h3>Further information and examples</h3>
+For further information and examples regarding the MATLAB interface, we refer to the <a href="https://github.com/gismo/gsMatlab">gsMatlab</a> repository.
+*/
+}
+

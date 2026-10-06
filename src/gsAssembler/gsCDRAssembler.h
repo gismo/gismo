@@ -135,6 +135,7 @@ public:
     }
 
     /// Main assembly routine
+    using Base::assemble;
     void assemble();
 
 protected:

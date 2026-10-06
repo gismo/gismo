@@ -8,20 +8,21 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Author(s): J. Speh
+    Author(s): J. Speh, S. Imperatore
 */
 
+//![Include namespace]
 #include <iostream>
 #include <string>
 #include <algorithm>
 #include <gismo.h>
 
 using namespace gismo;
+//![Include namespace]
 
 // forward declaration of some utility functions
 void printKnotVector(const gsKnotVector<>& kv, const std::string& name);
 void printKnotVector(const gsKnotVector<>& kv);
-std::vector<real_t> makeVectorOfKnots();
 void print(const real_t& el);
 
 
@@ -35,95 +36,95 @@ int main(int argc, char* argv[])
     // different construction of a knot vector
     // ======================================================================
 
-    gsInfo << "------------- Constructions -----------------------------\n";
+    gsInfo << "------------- Constructions -------------\n";
 
+    //! [empty initialization]
+    // --- empty constructor
     gsKnotVector<> kv0;
-    printKnotVector(kv0, "kv0");
 
-    // only with degree
+    // --- only with degree
     gsKnotVector<> kv1(3);
+    //! [empty initialization]
+    printKnotVector(kv0, "kv0");
     printKnotVector(kv1, "kv1");
 
-    // interval [0,1], 3 interior knots, multiplicity 3 at the ends (clamped knots).
-    gsKnotVector<> kv2(0,1,3,3);
+    //! [uniform initialization]
+    // --- uniform initialization
+    real_t a = 1; // starting knot
+    real_t b = 3; // ending knot
+    index_t interior = 4; // number of interior knots
+    index_t multEnd = 3; // multiplicity at the two end knots
+
+    gsKnotVector<> kv2(a, b, interior, multEnd);
+
+    index_t multInt = 2; // multiplicity of the interior knots (default = 1)
+    gsKnotVector<> kv3(a, b, interior, multEnd, multInt);
+    
+    index_t degree = 5; // degree of the spline space (default = -1);
+    gsKnotVector<> kv4(a, b, interior, multEnd, multInt, degree);
+    //! [uniform initialization]
     printKnotVector(kv2, "kv2");
-
-    real_t a = 1.0; // starting knot
-    real_t b = 3.0; // ending knot
-    unsigned interior = 4; // number of interior knots
-    unsigned multEnd = 3; // multiplicity at the two end knots
-    gsKnotVector<> kv3(a, b, interior, multEnd);
     printKnotVector(kv3, "kv3");
-
-    std::vector<real_t> knots = makeVectorOfKnots();
-    gsKnotVector<> kv4(knots, 2, 1); // knots, degree, regularity
     printKnotVector(kv4, "kv4");
+    
 
-    gsKnotVector<> kv5(knots, 2); // knots, degree
+    //! [knotContainer initialization]
+    // --- construction from knot container
+    std::vector<real_t> knotContainer;
+    knotContainer.push_back(0);
+    knotContainer.push_back(0.1);
+    knotContainer.push_back(0.5);
+    knotContainer.push_back(0.6);
+    knotContainer.push_back(0.9);
+    knotContainer.push_back(1);
+
+    gsKnotVector<> kv5(knotContainer, 2); // knots, degree
+    //! [knotContainer initialization]
     printKnotVector(kv5, "kv5");
 
+    // --- more initializations
+    //! [more uniform initialization]
     gsKnotVector<> kv6;
     kv6.initUniform(5, 3); // number of knots, multiple ends
     printKnotVector(kv6, "kv6");
+    //! [more uniform initialization]
 
+    //! [clamped initialization]
     gsKnotVector<> kv7;
     kv7.initClamped(a, b, 3, 5); // start, end, degree, number of interior knots
     printKnotVector(kv7, "kv7");
-
-
-    // ======================================================================
-    // looping over knots
-    // ======================================================================
-
-    // looping over all knots
-
-    gsInfo << "\n\n"
-              << "------------- Looping over knots -----------------------\n"
-              << "kv7: \n";
-    for (gsKnotVector<>::iterator it = kv7.begin(); it != kv7.end(); it++)
-    {
-        gsInfo << *it << " ";
-    }
-    gsInfo << "\n\n";
-
-    // looping over unique knots
-    for (gsKnotVector<>::uiterator it = kv7.ubegin(); it != kv7.uend(); it++)
-    {
-        gsInfo << *it << " ";
-    }
-    gsInfo << "\n\n\n";
+    //! [clamped initialization]
 
 
     // ======================================================================
     // some properties
     // ======================================================================
 
-
-    gsInfo << "------------- Some properties    -----------------------\n"
+    gsInfo << "------------- Some properties -------------\n"
               << "kv7: \n\n";
+    
+    printKnotVector(kv7, "kv7");
 
-    printKnotVector(kv7);
-
-    gsInfo << "kv7.size(): " << kv7.size() << "\n\n"
-              << "kv7.findspan(1.5): " << kv7.iFind(1.5) - kv7.begin() << "\n\n"
-              << "kv7.findspan(2): " << kv7.iFind(2) - kv7.begin() << "\n\n"
-              << "kv7.has(2): " << kv7.has(2) << "\n\n"
-              << "kv7.has(2.1): " << kv7.has(2.1) << "\n\n"
-              << "kv7.isUniform(): " << kv7.isUniform() << "\n\n"
-              << "kv7.numKnotSpans(): " << kv7.uSize() - 1 << "\n\n"
-              << "kv7.isOpen(): " << kv7.isOpen() << "\n\n"
-              << "kv7.multiplicity(2): " << kv7.multiplicity(2) << "\n\n"
-              << "kv7.multiplicity(1): " << kv7.multiplicity(1) << "\n\n\n";
-
+    //! [kv properties]
+    gsInfo  << "kv7.size(): "            << kv7.size()                   << "\n"
+            << "kv7.findspan(1.5): "     << kv7.iFind(1.5) - kv7.begin() << "\n"
+            << "kv7.findspan(2): "       << kv7.iFind(2) - kv7.begin()   << "\n"
+            << "kv7.has(2): "            << kv7.has(2)                   << "\n"
+            << "kv7.has(2.1): "          << kv7.has(2.1)                 << "\n"
+            << "kv7.isUniform(): "       << kv7.isUniform()              << "\n"
+            << "kv7.isOpen(): "          << kv7.isOpen()                 << "\n"
+            << "kv7.multiplicity(4/3): " << kv7.multiplicity(4./3)       << "\n"
+            << "kv7.numKnotSpans(): "    << kv7.uSize() - 1              << "\n\n";
+    //! [kv properties]
 
     // ======================================================================
     // some operations
     // ======================================================================
 
-    gsInfo << "------------- Some operations    -----------------------\n";
+    gsInfo << "------------- Some operations -------------\n";
     printKnotVector(kv6, "kv6");
 
-
+    //! [kv operations]
     std::vector<real_t> unique = kv6.unique();
     gsInfo << "\nUnique knots: \n";
     std::for_each(unique.begin(), unique.end(), print);
@@ -145,6 +146,30 @@ int main(int argc, char* argv[])
     gsInfo << "kv6.degreeElevate()\n";
     kv6.degreeElevate();
     printKnotVector(kv6);
+    //! [kv operations]
+
+    // ======================================================================
+    // looping over knots
+    // ======================================================================
+
+    gsInfo << "\n"
+              << "------------- Looping over knots -------------\n"
+              << "kv4: \n";
+    //![kv loop]
+    for (gsKnotVector<>::iterator it = kv4.begin(); it != kv4.end(); it++)
+    {
+        gsInfo << *it << " ";
+    }
+    gsInfo << "\n\n";
+
+    // looping over unique knots
+    for (gsKnotVector<>::uiterator it = kv4.ubegin(); it != kv4.uend(); it++)
+    {
+        gsInfo << *it << " ";
+    }
+    gsInfo << "\n\n";
+    //![kv loop]
+
 
     gsInfo << "For other capabilites of gsKnotVector look at "
         "src/gsNurbs/gsKnotVector.h\n" << "\n";
@@ -161,9 +186,13 @@ void print(const real_t& el)
 void printKnotVector(const gsKnotVector<>& kv,
                      const std::string& name)
 {
-    gsInfo << name << ":\n";
-    kv.print(gsInfo);
-    gsInfo << "\n" << "\n";
+    gsInfo << name << ":\n" << kv << "\n";
+    gsInfo << "knot values:\n";
+    for (gsKnotVector<>::const_iterator it = kv.begin(); it != kv.end(); it++)
+    {
+        gsInfo << *it << " ";
+    }
+    gsInfo << "\n\n";
 }
 
 
@@ -176,17 +205,3 @@ void printKnotVector(const gsKnotVector<>& kv)
     gsInfo << "\n\n";
 }
 
-
-
-std::vector<real_t> makeVectorOfKnots()
-{
-    std::vector<real_t> knots;
-    knots.push_back(0);
-    knots.push_back(0.1);
-    knots.push_back(0.5);
-    knots.push_back(0.6);
-    knots.push_back(0.9);
-    knots.push_back(1);
-
-    return knots;
-}

@@ -24,6 +24,38 @@ inline const BlockTransposeReturnType blockTranspose(Index rowFactor) const;
 template<typename IndicesType>
 const RowSelection<Derived,IndicesType> selectRows(const IndicesType & ind) const;
 
+template<typename Scalar> struct scalar_prune_op {
+    Scalar _tol;
+    scalar_prune_op(Scalar tol) : _tol(tol) { }
+
+    typedef typename NumTraits<Scalar>::Real result_type;
+    EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE const result_type operator() (const Scalar& a) const
+    { return numext::abs(a) > _tol ? a : Scalar(0); }
+
+    template<typename Packet>
+    EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE const Packet packetOp(const Packet& a) const
+    { return internal::pabs(a) > _tol ? a : Scalar(0); }
+};
+
+const class CwiseUnaryOp<scalar_prune_op<Scalar>, const Derived>
+pruned(Scalar tol) const
+{
+    const Derived & M = derived();
+    using std::abs;
+    return M.unaryExpr(scalar_prune_op<Scalar>(tol));
+}
+
+/// Applies Gram-Schmidt orthogonalization of the columns of matrix \a A inplace
+void GramSchmidtInPlace()
+{
+    Derived& A = derived();
+    for (index_t i = 0; i < A.rows(); ++i)
+    {
+        for (index_t j = 0; j < i; ++j) // remove previous components
+            A.col(i).noalias() -= A.col(i).dot(A.col(j)) * A.col(j);
+        A.col(i).normalize();
+    }
+}
 
 /**
   * \brief Simple (inplace) Gauss elimination without any pivoting

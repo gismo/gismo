@@ -11,7 +11,7 @@
     Author(s): A. Mantzaflaris
 */
 
-#include <gsIO/gsXmlUtils.h>
+#include <gsIO/gsXml.h>
 
 #include <gsParasolid/gsPKSession.h>
 

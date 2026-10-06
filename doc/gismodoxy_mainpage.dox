@@ -23,7 +23,11 @@ here.</b></a>
 
 - The full <a href="annotated.html"><b>list of classes</b></a> is available.
 
-- Instructions for using <a href="python.html"><b>\gismo in Python</b></a>.
+- Instructions for using <a href="python.html"><b>\gismo in Python</b></a> via <a href="https://cppyy.readthedocs.io/"><b>cppyy</b></a>.
+
+- The documentation of <a href="pygismo"><b>pygismo</b></a>, compiled via <a href="https://pybind11.readthedocs.io/"><b>pybind11</b></a>.
+
+- The documentation of <a href="julia"><b>\gismo.jl</b></a>
 
 <h2>Wiki pages</h2>
 

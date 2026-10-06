@@ -1,0 +1,67 @@
+# pygismo documentation build configuration file
+
+# If extensions (or modules to document with autodoc) are in another directory,
+# add these directories to sys.path here. If the directory is relative to the
+# documentation root, use os.path.abspath to make it absolute, like shown here.
+import os, sys
+sys.path.append(os.path.abspath('${gismo_BINARY_DIR}/lib'))
+
+# -- General configuration ------------------------------------------------
+
+# needs_sphinx = '1.0'
+extensions = [
+    "sphinx.ext.autodoc",
+    'sphinx.ext.viewcode',
+    'sphinx.ext.napoleon',
+]
+autosummary_generate = True
+templates_path = ["_templates"]
+source_suffix = ".rst"
+master_doc = "index"
+project = "pygismo"
+copyright = "2025, The G+Smo Community"
+author = "The G+Smo Community"
+version = "${GISMO_VERSION}"
+release = "${GISMO_VERSION}"
+add_module_names = True
+pygments_style = "sphinx"
+todo_include_todos = False
+# source_encoding = 'utf-8-sig'
+# language = None
+# today_fmt = '%B %d, %Y'
+#exclude_patterns = [""]
+# default_role = None
+# add_function_parentheses = True
+# show_authors = False
+# modindex_common_prefix = []
+# keep_warnings = False
+
+
+
+# -- Options for HTML output ----------------------------------------------
+
+html_theme = 'sphinx_rtd_theme'
+html_short_title = "pygismo Documentation"
+html_logo = "${CMAKE_CURRENT_SOURCE_DIR}/assets/logo.png"
+html_last_updated_fmt = '%b %d, %Y'
+html_show_sphinx = False
+html_show_copyright = False
+html_search_language = 'en'
+htmlhelp_basename = "pygismodoc"
+# html_theme_options = {}
+# html_theme_path = []
+# html_title = "pygismo"
+# html_favicon = None
+# html_static_path = ["_static"]
+# html_extra_path = []
+# html_use_smartypants = True
+# html_sidebars = {}
+# html_additional_pages = {}
+# html_domain_indices = True
+# html_use_index = True
+# html_split_index = False
+# html_show_sourcelink = True
+# html_use_opensearch = ''
+# html_file_suffix = None
+# html_search_options = {'type': 'default'}
+# html_search_scorer = 'scorer.js'

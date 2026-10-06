@@ -185,21 +185,40 @@ gsXmlNode *  anyByTag(const std::string & tag,
 /// Appends a box topology into node, used for gsMultiPatch and gsMultiBasis.
 void appendBoxTopology(const gsBoxTopology& topology,
                        gsXmlNode* node,
+                       std::map<index_t, index_t> id_map,
                        gsXmlTree& data)
 {
     std::ostringstream oss;
+    std::ostringstream contact_oss;
 
     if ( topology.nInterfaces() != 0 )
     {
         for ( gsBoxTopology::const_iiterator it = topology.iBegin();
               it != topology.iEnd(); ++it )
         {
-            oss << it->first().patch  << " " << int(it->first().side()) << " "
-                << it->second().patch << " " << int(it->second().side()) << " "
-                << it->dirMap().transpose() << " "
-                << it->dirOrientation().transpose() << "\n";
+            if ( it->type() != interaction::contact)
+            {
+                oss << id_map[it->first().patch]  << " " << int(it->first().side()) << " "
+                    << id_map[it->second().patch] << " " << int(it->second().side()) << " "
+                    << it->dirMap().transpose() << " "
+                    << it->dirOrientation().transpose() << "\n";
+            }
+            else
+            {
+                contact_oss << id_map[it->first().patch]  << " " << int(it->first().side()) << " "
+                    << id_map[it->second().patch] << " " << int(it->second().side()) << " "
+                    << it->dirMap().transpose() << " "
+                    << it->dirOrientation().transpose() << "\n";
+            }
         }
-        node->append_node(internal::makeNode("interfaces", oss.str(), data));
+        if (oss.str() != "")  node->append_node(internal::makeNode("interfaces", oss.str(), data));
+        if (contact_oss.str() != "") 
+        {
+            gsXmlNode * contact_node = internal::makeNode("interfaces", contact_oss.str(), data);
+            contact_node->append_attribute( internal::makeAttribute("type","contact",data) );    
+            node->append_node(contact_node);
+        }
+        
         // todo: add export per group of interfaces
         oss.clear();
         oss.str("");
@@ -230,9 +249,12 @@ void getInterfaces(gsXmlNode* node,
     gsVector<index_t> dirMap(d);
     gsVector<bool>    dirOrient(d);
     std::string name;
+    std::string type;
     const gsXmlAttribute * name_att = node->first_attribute("name");
+    const gsXmlAttribute * type_att = node->first_attribute("type");
     if (NULL != name_att)
         name = name_att->value();
+    type = ( NULL == type_att ) ? "" : type_att->value();
 
     std::istringstream iss;
     iss.str( node->value() );
@@ -273,7 +295,7 @@ void getInterfaces(gsXmlNode* node,
         }
         
         result.push_back( boundaryInterface(p, dirMap, dirOrient,name) );
-        
+        if (type == "contact") result.back().setAsContact();
 //            // OLD format: read in Orientation flags
 //            gsVector<bool> orient(d-1);// orientation flags
 //            int k;

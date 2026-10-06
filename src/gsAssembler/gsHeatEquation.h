@@ -18,15 +18,15 @@ namespace gismo
 {
 
 /** \brief Constructs the assembler for the discretized isogeometric heat equation.
-    
+
     Spatial solution is discretized using Galerkin's approach. Time
     integration scheme (method of lines) is controlled by the \a theta
     parameter (to be set in options)t. In particular
-    
+
     - Explicit Euler scheme (theta=0)
     - Crank-Nicolson semi-implicit scheme (theta=0.5)
     - implicit Euler scheme (theta=1)
-    
+
     \ingroup Assembler
 */
 template <class T>
@@ -54,20 +54,21 @@ public:
         m_theta= th;
         m_options.setReal("theta", m_theta);
     }
-    
+
     /// Initial assembly routine.
+    using Base::assemble;
     void assemble()
     {
         // Grab theta once and for all
         m_theta = m_options.getReal("theta");
-        
+
         // Assemble the stationary problem
         m_stationary->assemble();
 
         //copy the Dirichlet values, to enable calling
         // the construct solution functions
         Base::m_ddof = m_stationary->allFixedDofs();
-        
+
         // Assemble mass matrix
         assembleMass();
 
@@ -84,14 +85,14 @@ public:
        \param Dt Length of time interval of the current time step
     */
     void nextTimeStep(const gsMatrix<T> & curSolution, const T Dt);
-    
+
     void nextTimeStep(const gsSparseMatrix<T> & sysMatrix,
                       const gsSparseMatrix<T> & massMatrix,
                       const gsMatrix<T> & rhs0,
-                      const gsMatrix<T> & rhs1,                                  
+                      const gsMatrix<T> & rhs1,
                       const gsMatrix<T> & curSolution,
                       const T Dt);
-    
+
     void nextTimeStepFixedRhs(const gsSparseMatrix<T> & sysMatrix,
                               const gsSparseMatrix<T> & massMatrix,
                               const gsMatrix<T> & rhs,
@@ -101,7 +102,7 @@ public:
     const gsSparseMatrix<T> & mass() const { return m_mass; }
     const gsSparseMatrix<T> & stationaryMatrix() const { return m_stationary->matrix(); }
     const gsSparseMatrix<T> & stationaryRhs() const { return m_stationary->rhs(); }
-    
+
     /// Mass assembly routine
     void assembleMass();
 
@@ -113,13 +114,13 @@ protected:
     using Base::m_system;
 
     gsAssembler<T> * m_stationary;
-    
+
     /// The mass matrix
     gsSparseMatrix<T> m_mass;
-    
+
     /// Theta parameter determining the scheme
     T m_theta;
-    
+
     using Base::m_pde_ptr;
     using Base::m_bases;
 
@@ -150,7 +151,7 @@ void gsHeatEquation<T>::nextTimeStep(const gsMatrix<T> & curSolution, const T Dt
     m_stationary->rhs(m_time);
 
     // note: m_stationary->matrix() assumed constant in time
-        
+
     nextTimeStep(m_stationary->matrix(), m_mass,
                  m_prevRhs, m_stationary->rhs(), curSolution, Dt);
     m_prevRhs.swap(m_stationary->rhs());

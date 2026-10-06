@@ -84,7 +84,7 @@ public:
     { }
 
     /**
-     * @brief gsSparseSystem Constuctor for the sparse System only considering one block (scalar equation),
+     * @brief gsSparseSystem Constructor for the sparse System only considering one block (scalar equation),
      * described by the one DofMapper \a mapper.
      * @param[in] mapper the one DofMapper discribing the discretization.
      */

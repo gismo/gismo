@@ -1,0 +1,10 @@
+namespace gismo {
+
+/** \defgroup Expressions Expressions module
+\ingroup Modules
+
+    This module is responsible for defining evaluatable expressions.
+
+*/
+
+}

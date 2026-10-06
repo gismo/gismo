@@ -1,0 +1,11 @@
+prefix=${pcfiledir}/../..
+exec_prefix=${prefix}
+libdir=${prefix}/@LIB_INSTALL_DIR@
+includedir=${prefix}/@INCLUDE_INSTALL_DIR@
+project_name=@PROJECT_NAME@
+
+Name: G+Smo
+Description: G+Smo (Geometry + Simulation Modules, pronounced "gismo") is an open-source C++ library that brings together mathematical tools for geometric design and numerical simulation.
+URL: https://gismo.github.io/
+Version: @gismo_VERSION@
+Cflags: -I${includedir} -I${includedir}/${project_name}

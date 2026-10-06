@@ -136,7 +136,7 @@
 #  define GISMO_FINAL final
 #  define GISMO_OVERRIDE override
 #elif defined(__clang__ ) && __has_feature(cxx_override_control)
-#  define GISMO_FINAL final
+#  define GISMO_FINAL //final // NOTE: bug with clang 16 and later
 #  define GISMO_OVERRIDE override
 #elif defined(__GNUG__) && __cplusplus >= 201103 && \
     (__GNUC__ * 10000 + __GNUC_MINOR__ * 100) >= 40700

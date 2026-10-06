@@ -22,7 +22,7 @@
 #if defined _WIN32
 #include <windows.h>
 #include <direct.h>
-#include <ShlObj.h>
+#include <shlobj.h>
 #else
 #include <dlfcn.h>
 #include <unistd.h>

@@ -175,13 +175,6 @@ public:
         gsFitting<T> fitting(params, points, basis);
         fitting.compute(lambda);
 
-        // maybee delete
-        std::vector<T> errors;
-        fitting.get_Error(errors, 1);
-        gsDebug << "Maximum error is: " << *std::max_element(errors.begin(),
-                                                               errors.end())
-                  << std::endl;
-
         // note gsFitting deletes the geomety in destructor
         gsGeometry<T>* geo = fitting.result();
 

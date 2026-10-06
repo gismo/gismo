@@ -29,7 +29,7 @@ namespace gismo
     the patch-local stiffness matrices into a global system by various methods
     (see gismo::gsInterfaceStrategy). It can also enforce Dirichlet boundary
     conditions in various ways (see gismo::gsDirichletStrategy).
-    
+
     \ingroup Assembler
 */
 template <class T>
@@ -58,7 +58,7 @@ public:
         Base::initialize(pde, bases, m_options);
     }
 
-    
+
     /** @brief Main Constructor of the assembler object.
 
     \param[in] pde A boundary value Poisson problem
@@ -87,7 +87,7 @@ public:
     \param[in] rhs is the right-hand side of the Poisson equation, \f$\mathbf{f}\f$.
     \param[in] dirStrategy option for the treatment of Dirichlet boundary
     \param[in] intStrategy option for the treatment of patch interfaces
-    
+
     \ingroup Assembler
     */
     gsPoissonAssembler( gsMultiPatch<T> const         & patches,
@@ -109,7 +109,7 @@ public:
     {
         return new gsPoissonAssembler<T>(*this);
     }
-    
+
     virtual gsAssembler<T>* create() const
     {
         return new gsPoissonAssembler<T>();
@@ -119,8 +119,9 @@ public:
     virtual void refresh();
 
     // Main assembly routine
+    using Base::assemble;
     virtual void assemble();
-    
+
     /// Returns an expression of the "full" assembled sparse
     /// matrix. Note that matrix() might return a lower diagonal
     /// matrix, if we exploit possible symmetry during assembly

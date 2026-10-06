@@ -15,7 +15,6 @@
 #include <string>
 
 #include <gismo.h>
-#include <gsIO/gsIOUtils.h>
 
 #include <gsParasolid/gsWriteParasolid.h>
 
@@ -39,10 +38,8 @@ int main(int argc, char *argv[])
 	      << "--------------------------------------------------\n" << std::endl;
     
     gsGeometry<>::uPtr geom = gsReadFile<>(input);
-    
-    gsMesh<> mesh;
-    
-    makeMesh<>( geom->basis(), mesh, 5);
+
+    gsMesh<> mesh (geom->basis(), 5);
     
     geom->evaluateMesh(mesh);
     

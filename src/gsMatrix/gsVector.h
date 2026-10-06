@@ -259,6 +259,9 @@ public:
 #endif
     */
 
+    // Copy constructor
+    gsVector3d(const gsVector3d & other) : Base(other) { }
+
     // implicitly deleted in C++11
     gsVector3d & operator=(const gsVector3d & other)
     {
@@ -324,17 +327,15 @@ gsVector3d<T>::gsVector3d(const Base& a): Base(a) { }
   /**
    * @brief Initializes the Python wrapper for the class: gsVector
    */
-  namespace py = pybind11;
-
   template<typename T>
   void pybind11_init_gsVector(pybind11::module &m, const std::string & typestr)
   {
     using Class = gsVector<T>;
     std::string pyclass_name = std::string("gsVector") + typestr;
-    py::class_<Class>(m, pyclass_name.c_str(), py::buffer_protocol(), py::dynamic_attr())
+    pybind11::class_<Class>(m, pyclass_name.c_str(), pybind11::buffer_protocol(), pybind11::dynamic_attr())
     // Constructors
-    .def(py::init<>())
-    .def(py::init<index_t, index_t>())
+    .def(pybind11::init<>())
+    .def(pybind11::init<index_t, index_t>())
     // Member functions
     .def("size",       &Class::size)
     .def("rows",       &Class::rows)

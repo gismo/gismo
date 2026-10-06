@@ -60,8 +60,8 @@ class GISMO_EXPORT Base64 {
 
     /// Lookup Table for Decoding B64 string
     static unsigned char_decode_table(const unsigned& index) {
-        static const std::array<unsigned, 256> decode_table{
-            ReverseCharEncodeTable_()};
+        static const std::array<unsigned, 256> & decode_table =
+            ReverseCharEncodeTable_();
         GISMO_ASSERT((index < 256),
                      "Requested index out of range. Input invalid");
         GISMO_ASSERT((decode_table[index] != 256),

@@ -92,6 +92,13 @@ public:
     /// to each element side. Cf. gsMesh::addLine(VertexHandle,
     /// VertexHandle, int).
     explicit gsMesh(const gsBasis<T> & basis, int midPts = 0);
+    /// Create a mesh corresponding to the parametric domain of the
+    /// domain \a domain.
+    /// @param domain Basis whose parametric domain should be meshed.
+    /// @param midPts Number of intermediate vertices to be inserted
+    /// to each element side. Cf. gsMesh::addLine(VertexHandle,
+    /// VertexHandle, int).
+    explicit gsMesh(const gsDomain<T> & domain, int midPts = 0);
 
     virtual ~gsMesh();
 

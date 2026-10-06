@@ -176,10 +176,10 @@ public:
 public:
 
     // Look at gsGeometry class for a description
-    void degreeElevate(short_t const i = 1, short_t const dir = -1);
+    void degreeElevate(short_t const i = 1, short_t const dir = -1) override;
 
     /// Inserts knot \a knot at direction \a dir, \a i times
-    void insertKnot( T knot, int dir, int i = 1);
+    void insertKnot( T knot, int dir, int i = 1) override;
 
     /// Returns a reference to the knot vector in direction \a i
     KnotVectorType & knots(const int i) { return this->basis().knots(i); }
@@ -190,7 +190,7 @@ public:
     /*** Virtual member functions required by the base class ***/
 
     /// Prints the object as a string.
-    std::ostream &print(std::ostream &os) const;
+    std::ostream &print(std::ostream &os) const override;
 
     /*** Additional members for tensor B-Splines ***/
 
@@ -205,7 +205,7 @@ public:
     /// Swap directions
     void swapDirections(const unsigned i, const unsigned j);
 
-    void toggleOrientation();
+    void toggleOrientation() override;
 
     /// \brief Return true if point \a u is a corner of
     /// the patch with tolerance \a tol
@@ -251,7 +251,7 @@ public:
     /// Splits the geometry either two parts in direction \a dir, or if \a dir = -1
     /// in 2^d parts, by calling splitAt() for each direction.
     /// The function automatically searches for the midpoint the corresponding knot vector.
-    std::vector<gsGeometry<T>* > uniformSplit(index_t dir = -1) const;
+    std::vector<gsGeometry<T>* > uniformSplit(index_t dir = -1) const override;
 
     /// Split the patch into smaller patches at the position of all
     /// knots with multiplicity at least \a minMult
@@ -263,7 +263,7 @@ public:
     void splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left,  gsTensorBSpline<d,T>& right) const;
 
     typename gsGeometry<T>::uPtr iface(const boundaryInterface & bi,
-                                       const gsGeometry<T> & other) const;
+                                       const gsGeometry<T> & other) const override;
 
 protected:
     // TODO Check function

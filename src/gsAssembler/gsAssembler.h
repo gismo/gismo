@@ -18,8 +18,9 @@
 #include <gsCore/gsDofMapper.h>
 #include <gsCore/gsStdVectorRef.h>
 #include <gsCore/gsMultiBasis.h>
-#include <gsCore/gsDomainIterator.h>
+#include <gsDomain/gsDomainIterator.h>
 #include <gsCore/gsAffineFunction.h>
+#include <gsDomain/gsDomain.h>
 
 #include <gsIO/gsOptionList.h>
 
@@ -695,23 +696,29 @@ void gsAssembler<T>::apply(ElementVisitor & visitor,
     const gsGeometry<T> & patch = m_pde_ptr->patches()[patchIndex];
 
     // Initialize domain element iterator -- using unknown 0
-    typename gsBasis<T>::domainIter domIt = bases[0].makeDomainIterator(side);
+    typename gsBasis<T>::domainIter domIt    = ( side == boundary::none ?
+                                                 bases[0].domain()->beginAll()  :
+                                                 bases[0].domain()->beginBdr(side)) ;
+    typename gsBasis<T>::domainIter domItEnd = ( side == boundary::none ?
+                                                 bases[0].domain()->endAll()  :
+                                                 bases[0].domain()->endBdr(side)) ;
 
     // Start iteration over elements
 #ifdef _OPENMP
-    for ( domIt->next(tid); domIt->good(); domIt->next(nt) )
+    domIt += tid;
+    for (; domIt < domItEnd; domIt+=(nt) )
 #else
-    for (; domIt->good(); domIt->next() )
+    for (; domIt < domItEnd; ++domIt )
 #endif
     {
         // Map the Quadrature rule to the element
-        quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes, quWeights );
+        quRule.mapTo( domIt.lowerCorner(), domIt.upperCorner(), quNodes, quWeights );
 
         // Perform required evaluations on the quadrature nodes
         visitor_.evaluate(bases, patch, quNodes);
 
         // Assemble on element
-        visitor_.assemble(*domIt, quWeights);
+        visitor_.assemble(domIt, quWeights);
 
         // Push to global matrix and right-hand side vector
 #pragma omp critical(localToGlobal)
@@ -737,7 +744,7 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
     gsQuadRule<T> quRule ; // Quadrature rule
     gsMatrix<T> quNodes1, quNodes2;// Mapped nodes
     gsVector<T> quWeights;         // Mapped weights
-    
+
     // Initialize
     visitor.initialize(B1, B2, bi, m_options, quRule);
 
@@ -745,23 +752,24 @@ void gsAssembler<T>::apply(InterfaceVisitor & visitor,
     const gsGeometry<T> & patch2 = m_pde_ptr->patches()[patchIndex2];
 
     // Initialize domain element iterators
-    typename gsBasis<T>::domainIter domIt = interfaceMap.makeDomainIterator();
+    typename gsBasis<T>::domainIter domIt    = interfaceMap.beginAll();
+    typename gsBasis<T>::domainIter domItEnd = interfaceMap.endAll();
     //int count = 0;
 
     // iterate over all boundary grid cells on the "left"
-    for (; domIt->good(); domIt->next() )
+    for (; domIt<domItEnd; ++domIt)
     {
         //count++;
 
         // Compute the quadrature rule on both sides
-        quRule.mapTo( domIt->lowerCorner(), domIt->upperCorner(), quNodes1, quWeights);
+        quRule.mapTo( domIt.lowerCorner(), domIt.upperCorner(), quNodes1, quWeights);
         interfaceMap.eval_into(quNodes1,quNodes2);
 
         // Perform required evaluations on the quadrature nodes
         visitor.evaluate(B1, patch1, B2, patch2, quNodes1, quNodes2);
 
         // Assemble on element
-        visitor.assemble(*domIt,*domIt, quWeights);
+        visitor.assemble(domIt,domIt, quWeights);
 
         // Push to global patch matrix (m_rhs is filled in place)
         visitor.localToGlobal(patchIndex1, patchIndex2, m_ddof, m_system);

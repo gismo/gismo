@@ -116,9 +116,9 @@ public:
 
 public:
 
-    int numDesignVars () const { return m_curDesign.size(); }
+    int numDesignVars () const { return m_numDesignVars; }
 
-    int numConstraints() const { return m_conLowerBounds.size(); }
+    int numConstraints() const { return m_numConstraints; }
 
     int numConJacNonZero() const { return m_numConJacNonZero; }
 

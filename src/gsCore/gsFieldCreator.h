@@ -289,7 +289,7 @@ public:
 
     GISMO_CLONE_FUNCTION(gsPatchIdField)
 
-    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override
     { 
         result.setZero(2, u.cols() );
         result.row(0).setConstant(geo.id());
@@ -308,11 +308,11 @@ public:
         }
     }
 
-    short_t domainDim() const { return geo.domainDim(); }
-    short_t targetDim() const { return 2; }
+    short_t domainDim() const override { return geo.domainDim(); }
+    short_t targetDim() const override { return 2; }
 
     /// Prints the object as a string.
-    std::ostream &print(std::ostream &os) const
+    std::ostream &print(std::ostream &os) const override
     { os << "Boundary side indicator field.\n"; return os; };
 
 private:

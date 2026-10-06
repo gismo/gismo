@@ -74,6 +74,12 @@ inline long long to_int64_impl(const T& v, mpq_type_tag)
     return static_cast<long long int>(v.get_d());
 }
 
+template <typename T>
+inline unsigned long long to_uint64_impl(const T& v, mpq_type_tag)
+{
+    return static_cast<unsigned long long>(v.get_d());
+}
+
 template <typename T> inline T   abs_impl(const T& v, mpq_type_tag) { return abs  (v); }
 template <typename T> inline T  acos_impl(const T& v, mpq_type_tag) { return acos (v); }
 template <typename T> inline T acosh_impl(const T& v, mpq_type_tag) { return acosh(v); }
@@ -89,8 +95,8 @@ template <typename T> inline T floor_impl(const T& v, mpq_type_tag) { return flo
 template <typename T> inline T   log_impl(const T& v, mpq_type_tag) { return log  (v); }
 template <typename T> inline T log10_impl(const T& v, mpq_type_tag) { return log10(v); }
 template <typename T> inline T  log2_impl(const T& v, mpq_type_tag) { return log2 (v); }
-template <typename T> inline T   neg_impl(const T& v, mpq_type_tag) { return -v;             }
-template <typename T> inline T   pos_impl(const T& v, mpq_type_tag) { return  v;             }
+template <typename T> inline T   neg_impl(const T& v, mpq_type_tag) { return -v;       }
+template <typename T> inline T   pos_impl(const T& v, mpq_type_tag) { return  v;       }
 template <typename T> inline T   sin_impl(const T& v, mpq_type_tag) { return sin  (v); }
 template <typename T> inline T  sinh_impl(const T& v, mpq_type_tag) { return sinh (v); }
 template <typename T> inline T  sqrt_impl(const T& v, mpq_type_tag) { return sqrt (v); }
@@ -101,8 +107,8 @@ template <typename T> inline T   sec_impl(const T& v, mpq_type_tag) { return sec
 template <typename T> inline T   csc_impl(const T& v, mpq_type_tag) { return csc  (v); }
 template <typename T> inline T   r2d_impl(const T& v, mpq_type_tag) { return (v  * exprtk::details::constant_gmp::_180_pi); }
 template <typename T> inline T   d2r_impl(const T& v, mpq_type_tag) { return (v  * exprtk::details::constant_gmp::pi_180 ); }
-template <typename T> inline T   d2g_impl(const T& v, mpq_type_tag) { return (v  * mpq_class(20.0/9.0)); }
-template <typename T> inline T   g2d_impl(const T& v, mpq_type_tag) { return (v  * mpq_class(9.0/20.0)); }
+template <typename T> inline T   d2g_impl(const T& v, mpq_type_tag) { return (v  * mpq_class(10.0/9.0)); }
+template <typename T> inline T   g2d_impl(const T& v, mpq_type_tag) { return (v  * mpq_class(9.0/10.0)); }
 template <typename T> inline T  notl_impl(const T& v, mpq_type_tag) { return (v != mpq_class(0) ? mpq_class(0) : mpq_class(1)); }
 template <typename T> inline T  frac_impl(const T& v, mpq_type_tag) { return (v); }
 template <typename T> inline T trunc_impl(const T& v, mpq_type_tag) { return (v); }

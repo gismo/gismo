@@ -55,6 +55,7 @@ public:
     /// using quA *deg_i + quB nodes (direction-wise)
     gsNewtonCotesRule(const gsBasis<T> & basis, const T quA, const index_t quB, short_t fixDir = -1);
     //const unsigned digits = std::numeric_limits<T>::digits10 );
+    gsNewtonCotesRule(const gsDomain<T> & domain, const T quA, const index_t quB, short_t fixDir = -1);
 
     /// Initialize a tensor-product Newton-Cotes quadrature rule for \a basis
     /// using quA *deg_i + quB nodes (direction-wise). Values of quA
@@ -62,20 +63,21 @@ public:
     gsNewtonCotesRule(const gsBasis<T> & basis, const gsOptionList & options, short_t fixDir = -1);
     //const unsigned digits = std::numeric_limits<T>::digits10 );
 
+    gsNewtonCotesRule(const gsDomain<T> & domain, const gsOptionList & options, short_t fixDir = -1);
+
     ~gsNewtonCotesRule() { }
-    
+
 public:
     // see gsQuadRule.h for documentation
-    void setNodes( gsVector<index_t> const & numNodes, 
+    void setNodes( gsVector<index_t> const & numNodes,
                    unsigned digits = 0 );
 
     using gsQuadRule<T>::setNodes; // unhide base
 
 private:
 
-    void init(const gsBasis<T> & basis, const T quA,
-              const index_t quB, short_t fixDir);
-    
+    void init(const gsDomain<T> & domain, const T quA, const index_t quB, short_t fixDir);
+
     /**
      * @brief Computes the Newton-Cotes quadrature rule with \a n
      * nodes in the interval [-1,1].

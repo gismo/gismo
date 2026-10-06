@@ -44,7 +44,7 @@ void pybind11_init_gsBSplineBasis(py::module &m)
     // Inherited from gsBasis
     .def("eval", &Class::eval, "Evaluates points into a matrix")
     // .def("eval_into", &Class::eval_into, "Evaluates points into a matrix")
-    .def("numElements", static_cast<size_t (Class::*)() const> (&Class::numElements), "Returns the number of Elements")
+    .def("numElements", static_cast<size_t (Class::*)(const gismo::boxSide&) const> (&Class::numElements), "Returns the number of Elements")
     .def("function", &Class::function, "Returns the basis function i")
     .def("evalSingle", static_cast<gsMatrix<real_t> (Class::*)(index_t, const gsMatrix<real_t> &                   ) const> (&Class::evalSingle     ), "Evaluates the basis function i")
     .def("evalSingle_into", static_cast<void        (Class::*)(index_t, const gsMatrix<real_t> &, gsMatrix<real_t>&) const> (&Class::evalSingle_into), "Evaluates the basis function i")

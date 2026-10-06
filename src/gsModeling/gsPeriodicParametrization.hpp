@@ -199,6 +199,7 @@ template <class T>
 void gsPeriodicParametrization<T>::restrictMatrices(gsMatrix<T>& uv, const gsMatrix<T>& xyz,
 						    real_t uMin, real_t uMax) const
 {
+    GISMO_UNUSED(xyz);
     real_t uLength = uMax - uMin;
     for(index_t j=0; j<uv.cols(); j++)
     {

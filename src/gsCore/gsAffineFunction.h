@@ -89,14 +89,14 @@ public:
     const gsMatrix<T> & matrix() const { return m_mat; }
     const gsVector<T> & translation() const { return m_trans; }
     
-    virtual short_t domainDim() const;
-    virtual short_t targetDim() const;
-    virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
+    virtual short_t domainDim() const override;
+    virtual short_t targetDim() const override;
+    virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
     virtual void eval_component_into(const gsMatrix<T>& u,
                                      const index_t comp,
-                                     gsMatrix<T>& result) const;
-    virtual void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
-    virtual void deriv2_into( const gsMatrix<T>& u, gsMatrix<T>& result ) const;
+                                     gsMatrix<T>& result) const override;
+    virtual void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override;
+    virtual void deriv2_into( const gsMatrix<T>& u, gsMatrix<T>& result ) const override;
 };
 
 

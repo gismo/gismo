@@ -34,6 +34,12 @@
 using namespace gismo;
 
 const std::string fmatrix = "unittests/matrix.xml";
+const std::string ffuncExpr = "unittests/gsFunctionExpr.xml";
+const std::string fconstFun = "unittests/gsConstantFunction.xml";
+const std::string fspline   = "unittests/gsTensorBSpline.xml";
+const std::string fcspline  = "unittests/gsComposedGeometry.xml";
+const std::string fcbasis   = "unittests/gsComposedBasis.xml";
+const std::string fcfunction= "unittests/gsComposedFunction.xml";
 const std::string f1 = "curves3d/curve_boundary.xml";    // string to existing file with gsMultiPatch
 const std::string f2 = "curves3d/curve_boundary2.xml";   // string to non existing file
 
@@ -84,6 +90,55 @@ TEST(Obj_ref_not_in_file)
     gsMatrix<> basis;
     gsReadFile<>(f1, basis);
     CHECK((basis.size() == 0));
+}
+
+TEST(gsFunctionExpr_ref)
+{
+    gsFunctionExpr<> func;
+    gsReadFile<>(ffuncExpr, func);
+    CHECK(func.expression(0) == "x^2+y^2");
+}
+
+TEST(gsConstantFunction_ref)
+{
+    gsConstantFunction<> cfun;
+    gsReadFile<>(fconstFun, cfun);
+    // CHECK(cfun.value(0) == 1);
+    // CHECK(cfun.value(1) == 2);
+}
+
+TEST(gsComposedGeometry_ref)
+{
+    gsComposedGeometry<> cspline;
+    gsReadFile<>(fcspline, cspline);
+    CHECK(cspline.coefs().rows() == 9);
+    CHECK(cspline.coefs().cols() == 3);
+    CHECK(cspline.basis().size() == 9);
+    CHECK(dynamic_cast<const gsGeometry<real_t>*>(&cspline.composition())->coefs().rows() == 4);
+    CHECK(dynamic_cast<const gsGeometry<real_t>*>(&cspline.composition())->coefs().cols() == 2);
+    CHECK(cspline.composition().domainDim() == 2);
+    CHECK(cspline.composition().targetDim() == 2);
+}
+
+TEST(gsComposedBasis_ref)
+{
+    gsComposedBasis<> cbasis;
+    gsReadFile<>(fcbasis, cbasis);
+    CHECK(cbasis.size() == 9);
+    CHECK(dynamic_cast<const gsGeometry<real_t>*>(&cbasis.composition())->coefs().rows() == 4);
+    CHECK(dynamic_cast<const gsGeometry<real_t>*>(&cbasis.composition())->coefs().cols() == 2);
+    CHECK(cbasis.composition().domainDim() == 2);
+    CHECK(cbasis.composition().targetDim() == 2);
+}
+
+TEST(gsComposedFunction_ref)
+{
+    gsComposedFunction<> cfunction;
+    gsReadFile<>(fcfunction, cfunction);
+    CHECK(dynamic_cast<const gsGeometry<real_t>*>(&cfunction.composition())->coefs().rows() == 4);
+    CHECK(dynamic_cast<const gsGeometry<real_t>*>(&cfunction.composition())->coefs().cols() == 2);
+    CHECK(cfunction.composition().domainDim() == 2);
+    CHECK(cfunction.composition().targetDim() == 2);
 }
 
 // Tests for the constructors that take use of casts

@@ -1232,7 +1232,7 @@ public:
     T min (T& in) const
     {
         T out;
-        allreduce<Min<T> >(&in,&out,1);
+        allreduce<_mpi_Min<T> >(&in,&out,1);
         return out;
     }
 
@@ -1240,7 +1240,7 @@ public:
     template<typename T>
     int min (T* inout, int len) const
     {
-        return allreduce<Min<T> >(inout,len);
+        return allreduce<_mpi_Min<T> >(inout,len);
     }
 
 
@@ -1249,7 +1249,7 @@ public:
     T max (T& in) const
     {
         T out;
-        allreduce<Max<T> >(&in,&out,1);
+        allreduce<_mpi_Max<T> >(&in,&out,1);
         return out;
     }
 
@@ -1257,7 +1257,7 @@ public:
     template<typename T>
     int max (T* inout, int len) const
     {
-        return allreduce<Max<T> >(inout,len);
+        return allreduce<_mpi_Max<T> >(inout,len);
     }
 
     /// @copydoc gsSerialComm::barrier

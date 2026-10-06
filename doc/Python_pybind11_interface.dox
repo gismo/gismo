@@ -1,0 +1,106 @@
+namespace gismo {
+/**
+
+\page Python_pybind11_interface Python via pybind11
+
+The <a href="https://pybind11.readthedocs.io/en/latest/">pybind11</a> bindings are explicitly defined inside \gismo, which are then compiled into a package called \c pygismo. The advantage of pybind11-based bindings compared to the \ref Python_cppyy_interface.
+
+<h3>Obtaining pygismo</h3>
+
+<h4>From pip</h4>
+Since the \gismo pybind11-bindings are compiled into a package, it is simply installed via `pip`. On any system, one can install pygismo as follows:
+~~~~{.sh}
+pip install pygismo
+~~~~
+pygismo is built upon every commit in \gismo's stable branch. However, upon every <b>release</b>, it is uploaded to <a href="https://pypi.org/project/pygismo">PyPi</a>. To obtain the latest version of pygismo, one can download a <i>wheel</i> compiled by <a href="https://github.com/gismo/gismo/actions/workflows/build_wheels.yml">this</a> workflow on GitHub, and install it with pip as follows:
+~~~~{.sh}
+pip install wheel_file.whl
+~~~~
+
+<h4>Compiled from source</h4>
+Alternative to installing pygismo from a pre-compiled wheel via pip, one can compile pygismo locally:
+~~~~{.sh}
+cd /path/to/build
+cmake . -DGISMO_WITH_PYBIND11=ON -Dpybind11_DIR=path/to/pybind11 -DPYBIND11_PYTHON_VERSION=<your python version>
+make pygismo
+~~~~
+Then, in your Python file, you can import pygismo as follows:
+~~~~{.py}
+import os, sys
+# Obtain pygismo
+gismo_path=os.path.join(os.getcwd() , "/path/to/gismo")
+print("G+Smo path:",gismo_path,"(change if needed).")
+sys.path.append(gismo_path+"build/lib")
+
+# Import pygismo
+import pygismo as gs ## If this line gives an error, check your path or check if pygismo is compiled
+~~~~
+
+<h3>Developing pybind11 bindings</h3>
+
+The Python bindings are generated in the file `gsPybind11.cpp`. Inside this file, a Python module is defined as follows:
+~~~~{.cpp}
+PYBIND11_MODULE(pygismo, m)
+{
+    // Some module-related definitions
+    py::module core = m.def_submodule("core");
+    gismo::pybind11_init_gsFunction( core );
+    // ... and other initializers
+}
+~~~~
+As seen in the above snippet, the Python bindings of \ref gsFunction are included by the binding initializer-function `gismo::pybind11_init_gsFunction`. By convention, the initializer function is declared in `gsFunction.h`:
+~~~~{.cpp}
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsFunction
+   */
+  void pybind11_init_gsFunction(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
+~~~~
+The implementation of `pybind11_init_gsFunction` is provided in the file `gsFunction_.cpp`:
+~~~~{.cpp}
+#ifdef GISMO_WITH_PYBIND11
+
+namespace py = pybind11;
+
+void pybind11_init_gsFunction(py::module &m)
+{
+    using Base = gsFunctionSet<real_t>;
+    using Class = gsFunction<real_t>;
+    py::class_<Class, Base>(m, "gsFunction")
+        .def("jacobian",  &Class::jacobian, "Returns the Jacobian")
+        .def("hessian",   &Class::hessian, "Returns the Hessian")
+        .def("laplacian", &Class::laplacian, "Returns the Laplacian")
+        .def("argMin", &Class::argMin, "Returns the position of the minimum",
+             py::arg("accuracy") = 1e-6, py::arg("max_loop") = 100,
+             py::arg("init") = gsMatrix<real_t>(),
+             py::arg("damping_factor") = 1 )
+  ;
+}
+#endif
+~~~~
+In the snippet above, the following principles are followed:
+- <b>Class inheritance</b>: The class `gsFunction` is provided in `pybind11` in the line:
+~~~~{.cpp}
+py::class_<Class, Base>(m, "gsFunction")
+~~~~
+Where the type `Class` is a `gsFunction<real_t>` and the base type `Base` is a `gsFunctionSet<real_t>`. In this way, `pybind11` will be able to call all methods defined in \ref gsFunctionSet on a \ref gsFunction.
+
+- <b>Member function definition</b>: A member function is simply declared by calling, for example:
+~~~~{.cpp}
+.def("argMin", &Class::argMin, "Returns the position of the minimum",
+        py::arg("accuracy") = 1e-6, py::arg("max_loop") = 100,
+        py::arg("init") = gsMatrix<real_t>(),
+        py::arg("damping_factor") = 1 )
+~~~~
+Here, the first argument is the function name declared for `pybind11`, the second argument is the member function to be binded, and the third argument is a doc string. Optionally, more arguments can be given to declare default arguments.
+
+For more advanced bindings, e.g. binding a member function with multiple implementations for a single name, or returning a matrix by reference, we refer to existing bindings, e.g. the ones of \ref gsGeometry or \ref gsTensorBSplineBasis.
+
+<h3>Further information and examples</h3>
+For further information and examples regarding `pygismo`, we refer to the <a href="pygismo">pygismo documentation</a>, and the notebooks in the <a href="https://github.com/gismo/try_gismo">`try_gismo`</a> repository.
+
+*/
+}

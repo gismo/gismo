@@ -19,6 +19,7 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/.git")
   endif()
 endif()
 message ("  CMAKE_BUILD_TYPE        ${CMAKE_BUILD_TYPE}")
+message ("  TARGET_ARCHITECTURE     ${TARGET_ARCHITECTURE}")
 message ("  CMAKE_C_COMPILER        ${CMAKE_C_COMPILER}")
 message ("  CMAKE_CXX_COMPILER      ${CMAKE_CXX_COMPILER}")
 message ("  CMAKE_CXX_STANDARD      ${CMAKE_CXX_STANDARD}")
@@ -30,7 +31,7 @@ message ("  GISMO_SHORT_TYPE        ${GISMO_SHORT_TYPE}")
 ## #################################################################
 ## Options list: Standard options
 ## #################################################################
-  
+
 option(GISMO_OPTIONAL_HEAD "Updates submodules to HEAD (online mode)" false  )
 if  (${GISMO_OPTIONAL_HEAD})
 message ("  GISMO_OPTIONAL_HEAD   ${GISMO_OPTIONAL_HEAD}")
@@ -81,7 +82,7 @@ endif()
 
 option(GISMO_WITH_XDEBUG           "Extra debug features"      false  )
 if  (${GISMO_WITH_XDEBUG})
-message ("  GISMO_WITH_XDEBUG      ${GISMO_EXTRA_XDEBUG}")
+message ("  GISMO_WITH_XDEBUG       ${GISMO_WITH_XDEBUG}")
 endif()
 
 option(GISMO_WITH_ADIFF          "With auto-diff"            false  )
@@ -157,7 +158,12 @@ endif()
 
 option(GISMO_WITH_WARNINGS            "Enable G+Smo related warnings" false  )
 if (GISMO_WITH_WARNINGS)
-message ("  GISMO_WITH_WARNINGS          ${GISMO_WITH_WARNINGS}")
+message ("  GISMO_WITH_WARNINGS     ${GISMO_WITH_WARNINGS}")
+endif()
+
+option(GISMO_WITH_COLORS         "Enable terminal colors (Linux and MacOS only)" false  )
+if  (${GISMO_WITH_COLORS})
+message ("  GISMO_WITH_COLORS       ${GISMO_WITH_COLORS}")
 endif()
 
 option(GISMO_WITH_VTK            "With VTK"                      false  )

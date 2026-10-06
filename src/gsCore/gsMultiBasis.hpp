@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsCore/gsMultiPatch.h>
+#include <gsDomain/gsCompositeDomain.h>
 #include <gsHSplines/gsHTensorBasis.h>
 #include <gsUtils/gsCombinatorics.h>
 #include <gsIO/gsOptionList.h>
@@ -65,6 +66,12 @@ template<class T>
 gsMultiBasis<T>::~gsMultiBasis()
 {
     freeAll(m_bases);
+}
+
+template<class T>
+memory::shared_ptr<gsDomain<T> > gsMultiBasis<T>::domain() const
+{
+    return memory::make_shared( new gsCompositeDomain<T>(*this) );
 }
 
 template<class T>
@@ -507,7 +514,7 @@ bool gsMultiBasis<T>::repairInterfaceFindElements(
 //    GISMO_ASSERT( (d<3) || (upperCorn0[2] == upperCorn1[2]),
 //                  "The meshes are not matching as they should be!");
 
-    // get the box-representation of the gsHDomain on the interface
+    // get the box-representation of the gsHTree on the interface
     bas0->tree().getBoxesOnSide( bi.first().side(),  lo0, up0, level0);
     bas1->tree().getBoxesOnSide( bi.second().side(), lo1, up1, level1);
 
@@ -711,7 +718,7 @@ bool gsMultiBasis<T>::repairInterface2d( const boundaryInterface & bi )
     unsigned indexLevelDiff0 = indexLevelUse - bas0->tree().getIndexLevel();
     unsigned indexLevelDiff1 = indexLevelUse - bas1->tree().getIndexLevel();
 
-    // get the box-representation of the gsHDomain on the interface
+    // get the box-representation of the gsHTree on the interface
     bas0->tree().getBoxesOnSide( bi.first().side(), lo, up, level);
 
     int dir0 = ( bi.first().direction() + 1 ) % 2;
@@ -727,7 +734,7 @@ bool gsMultiBasis<T>::repairInterface2d( const boundaryInterface & bi )
     }
     intfc0.sortByColumn(0);
 
-    // get the box-representation of the gsHDomain on the interface
+    // get the box-representation of the gsHTree on the interface
     bas1->tree().getBoxesOnSide( bi.second().side(), lo, up, level);
     int dir1 = ( bi.second().direction() + 1 ) % 2;
     idxExponent = ( indexLevelUse - bas1->tree().getMaxInsLevel());

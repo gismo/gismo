@@ -40,6 +40,14 @@ void pybind11_init_gsFunctionSet(py::module &m)
   .def("evalAllDers", &Class::evalAllDers, "Evaluates all derivatives upto certien order into a vector of matrices")
   .def("domainDim", &Class::domainDim, "Returns the domain dimension")
   .def("targetDim", &Class::targetDim, "Returns the target dimension")
+  .def("__str__",
+         [] (Class & self)
+        {
+            std::ostringstream os;
+            self.print(os);
+            return os.str();
+        },
+        "Returns a string with information about the object.")
 
   ;
 }

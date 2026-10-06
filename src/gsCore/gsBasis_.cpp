@@ -23,7 +23,7 @@ void pybind11_init_gsBasis(py::module &m)
     .def("support", static_cast<gsMatrix<real_t> (Class::*)(               ) const> (&Class::support), "Get the support of the basis")
     .def("support", static_cast<gsMatrix<real_t> (Class::*)(const index_t &) const> (&Class::support), "Get the support of the basis function with an index i")
 
-    .def("uniformRefine", static_cast<void (Class::*)(int, int, int)> (&Class::uniformRefine), "Refines the basis uniformly",
+    .def("uniformRefine", static_cast<void (Class::*)(int, int, short_t)> (&Class::uniformRefine), "Refines the basis uniformly",
         py::arg("numKnots") = 1, py::arg("mul") = 1, py::arg("dir") = -1) //default arguments
     .def("uniformCoarsen", static_cast<void (Class::*)(int)> (&Class::uniformCoarsen), "Refines the basis uniformly",
         py::arg("numKnots") = 1) //default arguments
@@ -61,7 +61,6 @@ void pybind11_init_gsBasis(py::module &m)
     .def("deriv2Single_into", static_cast<void        (Class::*)(index_t, const gsMatrix<real_t> &, gsMatrix<real_t>&) const> (&Class::deriv2Single_into), "Evaluates the second derivative of basis function i")
 
     .def("numElements", static_cast<size_t (Class::*)(boxSide const & ) const> ( &Class::numElements), "Number of elements")
-    .def("numElements", static_cast<size_t (Class::*)() const> ( &Class::numElements), "Number of elements")
     .def("component", static_cast<gsBasis<real_t> & (Class::*)(short_t ) > ( &Class::component), "Return the basis of component",py::return_value_policy::reference)
     ;
 }

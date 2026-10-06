@@ -57,7 +57,7 @@ struct boundary
     /// Identifiers for topological sides.
     enum side { west  = 1,  east = 2, south = 3, north= 4, front=5, back=6,
                 stime = 7, etime = 8,
-                left  = 1, right = 2, down  = 3, up   = 4 , none = 0 };
+                left  = 1, right = 2, down  = 3, up   = 4 , none = 0, all = 0 };
 
 
     /// Identifiers for topological corners.
@@ -394,7 +394,7 @@ struct patchCorner : public boxCorner
 public:
     index_t patch;
 public:
-    patchCorner() : boxCorner(0) { }
+    patchCorner() : boxCorner(0), patch(0) { }
     patchCorner(index_t p,boundary::corner c)
         : boxCorner(c), patch (p) { }
 
@@ -649,7 +649,7 @@ GISMO_DELETE_COMPARISON_OPERATORS(boxComponent,patchComponent)
 struct GISMO_EXPORT boundaryInterface
 {
 public:
-    boundaryInterface() { }
+    boundaryInterface() : m_type(interaction::conforming) { }
 
     // special constructor for the 2d case
     boundaryInterface(patchSide const & _ps1,

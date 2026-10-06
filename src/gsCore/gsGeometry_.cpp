@@ -35,7 +35,7 @@ void pybind11_init_gsGeometry(py::module &m)
   py::class_<Class, Base>(m, "gsGeometry")
 
   // Member functions
-  .def("parDim", &Class::targetDim, "Gives the parameter dimension")
+  .def("parDim", &Class::parDim,    "Gives the parameter dimension")
   .def("geoDim", &Class::targetDim, "Gives the geometry dimension")
   .def("coefs", static_cast<      gsMatrix<real_t>& (Class::*)()      > (&Class::coefs),
          py::return_value_policy::reference_internal,

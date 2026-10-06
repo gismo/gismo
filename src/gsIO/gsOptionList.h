@@ -4,7 +4,7 @@
     set and accessed easily
 
     This file is part of the G+Smo library.
-    
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -15,12 +15,11 @@
 #pragma once
 
 #include <gsCore/gsForwardDeclarations.h>
-#include <gsIO/gsXml.h>
 
 namespace gismo
 {
 
-/** 
+/**
     @brief Class which holds a list of parameters/options, and
     provides easy access to them.
 
@@ -195,24 +194,24 @@ public:
         return *this;
     }
 
-#if EIGEN_HAS_RVALUE_REFERENCES
-    // Note: functions cannot be defaulted/deleted in VS2013 or older
-
     gsOptionList() {}
 
+    // Copy constructor
     gsOptionList(const gsOptionList & other) :
-        m_strings(other.m_strings), 
-        m_ints(other.m_ints), 
-        m_reals(other.m_reals), 
+        m_strings(other.m_strings),
+        m_ints(other.m_ints),
+        m_reals(other.m_reals),
         m_switches(other.m_switches) { }
 
-    gsOptionList(gsOptionList && other) :
+#if EIGEN_HAS_RVALUE_REFERENCES
+    // Note: functions cannot be defaulted/deleted in VS2013 or older
+    gsOptionList(gsOptionList && other) EIGEN_NOEXCEPT :
         m_strings(std::move(other.m_strings)),
-        m_ints(std::move(other.m_ints)), 
-        m_reals(std::move(other.m_reals)), 
+        m_ints(std::move(other.m_ints)),
+        m_reals(std::move(other.m_reals)),
         m_switches(std::move(other.m_switches)) { }
 
-    gsOptionList& operator=(gsOptionList && other)
+    gsOptionList& operator=(gsOptionList && other) EIGEN_NOEXCEPT
     {
         m_strings  = std::move(other.m_strings);
         m_ints     = std::move(other.m_ints);
@@ -233,7 +232,7 @@ public:
 
 protected:
     index_t & getIntRef(const std::string & label);
-    
+
 private:
 
     /// \brief Gives information regarding the option named \a label
@@ -285,37 +284,15 @@ inline std::ostream &operator<<(std::ostream &os, const gsOptionList::OptionList
 inline bool operator< ( const gsOptionList::OptionListEntry& a, const gsOptionList::OptionListEntry& b )
 { return a.label < b.label; }
 
-
-namespace internal
-{
-
-/** \brief Read OptionList from XML data
-    \ingroup IO
-*/
-template<>
-class GISMO_EXPORT gsXml<gsOptionList>
-{
-private:
-    gsXml();
-public:
-    GSXML_COMMON_FUNCTIONS(gsOptionList)
-    GSXML_GET_POINTER(gsOptionList)
-    static std::string tag () { return "OptionList"; }
-    static std::string type() { return ""; }
-
-    static void get_into(gsXmlNode * node, gsOptionList & result);
-    static gsXmlNode * put (const gsOptionList & obj, gsXmlTree & data);
-};
-
-}
-
 #ifdef GISMO_WITH_PYBIND11
 
   /**
    * @brief Initializes the Python wrapper for the class: gsOptionList
    */
   void pybind11_init_gsOptionList(pybind11::module &m);
-  
+
 #endif // GISMO_WITH_PYBIND11
 
 } // namespace gismo
+
+#include <gsIO/gsOptionListXml.h>

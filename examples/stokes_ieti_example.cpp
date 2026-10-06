@@ -249,7 +249,7 @@ int main(int argc, char *argv[])
         typedef gsExprAssembler<>::solution    solution;
 
         gsExprAssembler<> assembler(dim+1,dim+1);
-        assembler.setIntegrationElements(mb_local[0]);
+        assembler.setIntegrationDomain(mb_local[0].domain());
         gsExprEvaluator<> ev(assembler);
         geometryMap G = assembler.getMap(mp_local);
 
@@ -271,14 +271,14 @@ int main(int argc, char *argv[])
         //! [Assemble]
         for (std::size_t r=0; r<dim; ++r)
         {
-            assembler.assemble( igrad(v[r], G)   * igrad(v[r], G).tr()   * meas(G) );
-            assembler.assemble( igrad(v[r],G)[r] * p.tr()                * meas(G) );
-            assembler.assemble( p                * igrad(v[r],G)[r].tr() * meas(G) );
+            assembler.assemble( igrad(v[r], G)   * igrad(v[r], G).tr()   * meas(G) ,
+                                igrad(v[r],G)[r] * p.tr()                * meas(G) ,
+                                p                * igrad(v[r],G)[r].tr() * meas(G) );
         }
         //! [Assemble]
 
         // Fetch data
-        gsSparseMatrix<>                 localMatrix   = assembler.matrix();
+        gsSparseMatrix<>                 localMatrix  = assembler.matrix();
         gsMatrix<>                       localRhs      = assembler.rhs();
         //! [Jump Matrix]
         gsSparseMatrix<real_t,RowMajor>  jumpMatrix    = combinedJumpMatrix(ietiMapper, k);

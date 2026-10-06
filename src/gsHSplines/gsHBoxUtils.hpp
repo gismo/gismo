@@ -13,7 +13,6 @@
 
 #pragma once
 #include <gsHSplines/gsHBox.h>
-#include <gsHSplines/gsHBSplineBasis.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
 
 namespace gismo {

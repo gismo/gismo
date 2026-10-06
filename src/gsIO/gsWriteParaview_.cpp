@@ -10,25 +10,28 @@
 
 namespace gismo
 {
-  
+
 TEMPLATE_INST
-void gsWriteParaview(const gsField<T> & field, std::string const & fn, 
+void gsWriteParaview(const gsField<T> & field, std::string const & fn,
                      unsigned npts, bool mesh, const std::string pDelim);
 
 TEMPLATE_INST
-void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn, 
+void gsWriteParaview(const gsGeometry<T> & Geo, std::string const & fn,
                      unsigned npts, bool mesh, bool ctrlNet);
 
 TEMPLATE_INST
-void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo, std::string const & fn, 
+void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo, std::string const & fn,
                       unsigned npts, bool mesh, bool ctrlNet, const std::string pDelim);
+
+TEMPLATE_INST
+void gsWriteParaviewBezier(const gsMultiPatch<real_t> & mPatch, std::string const & filename, bool ctrlNet);
 
 TEMPLATE_INST
 void gsWriteParaview(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
                      std::string const & fn, unsigned npts);
 
 TEMPLATE_INST
-void gsWriteParaview_basisFnct(int i, gsBasis<T> const& basis, std::string const & fn, 
+void gsWriteParaview_basisFnct(int i, gsBasis<T> const& basis, std::string const & fn,
                                unsigned npts );
 
 TEMPLATE_INST
@@ -53,14 +56,33 @@ TEMPLATE_INST
 void gsWriteParaview(gsFunction<T> const& func, gsMatrix<T> const& supp, std::string const & fn, unsigned npts, bool graph);
 
 TEMPLATE_INST
-void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn, 
+void gsWriteParaview(gsBasis<T> const& basis, std::string const & fn,
                      unsigned npts, bool mesh);
 
 TEMPLATE_INST
-void gsWriteParaview(gsHBox<2,T> & hbox, std::string const & fn);
+void gsWriteParaview(gsBasis<T> const& basis,
+                     std::vector<index_t> const & indices,
+                     std::string const & fn,
+                     unsigned npts, bool mesh);
 
 TEMPLATE_INST
-void gsWriteParaview(gsHBoxContainer<2,T> & hbox, std::string const & fn);
+void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, const gsVector<T> & values);
+TEMPLATE_INST
+void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, const std::vector<T> & values);
+TEMPLATE_INST
+void gsWriteParaview(const gsMatrix<T> & box, std::string const & fn, T value);
+
+TEMPLATE_INST
+void gsWriteParaview(const gsHBox<2,T> & hbox, std::string const & fn, short_t mode);
+
+TEMPLATE_INST
+void gsWriteParaview(const gsHBox<3,T> & hbox, std::string const & fn, short_t mode);
+
+TEMPLATE_INST
+void gsWriteParaview(const gsHBoxContainer<2,T> & hbox, std::string const & fn, short_t mode);
+
+TEMPLATE_INST
+void gsWriteParaview(const gsHBoxContainer<3,T> & hbox, std::string const & fn, short_t mode);
 
 TEMPLATE_INST
 void gsWriteParaviewPoints(gsMatrix<T> const& X, gsMatrix<T> const& Y, std::string const & fn);
@@ -86,8 +108,8 @@ void gsWriteParaview(gsSolid<T> const& sl, std::string const & fn, unsigned numP
                      int color_nonconvex, int color_eloop, std::vector<unsigned> const & eloop);
 
 TEMPLATE_INST
-void gsWriteParaviewSolid(gsSolid<T> const  & sl, 
-                     std::string const & fn, 
+void gsWriteParaviewSolid(gsSolid<T> const  & sl,
+                     std::string const & fn,
                      unsigned numSamples );
 
 TEMPLATE_INST
@@ -103,11 +125,11 @@ void gsWriteParaview(const std::vector<gsMesh<T> >& sl, std::string const & fn);
 //void gsWriteParaview(gsHeMesh<T> const& sl, std::string const & fn);
 
 TEMPLATE_INST
-void gsWriteParaview(gsPlanarDomain<T> const & pdomain, 
+void gsWriteParaview(gsPlanarDomain<T> const & pdomain,
                      std::string const & fn, unsigned npts);
 
 TEMPLATE_INST
-void gsWriteParaview(const gsTrimSurface<T> & ts, std::string const & fn, 
+void gsWriteParaview(const gsTrimSurface<T> & ts, std::string const & fn,
                      unsigned npts, bool trimCurves);
 
 TEMPLATE_INST
@@ -145,11 +167,20 @@ void writeSinglePatchField(const gsFunction<T> & geometry,
                            std::string const & fn, unsigned npts);
 
 TEMPLATE_INST
+void writeSingleBasisMesh(const gsBasis<T> & basis, std::string const & fn);
+
+TEMPLATE_INST
 void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
                          std::string const & fn, unsigned resolution);
 
 TEMPLATE_INST
-void writeSingleHBox(gsHBox<2,T> & box, std::string const & fn);
+void writeSingleBox(const gsMatrix<T> & box, std::string const & fn, T value);
+
+TEMPLATE_INST
+void writeSingleHBox(const gsHBox<2,T> & box, std::string const & fn);
+
+TEMPLATE_INST
+void writeSingleHBox(const gsHBox<3,T> & box, std::string const & fn);
 
 TEMPLATE_INST
 void writeSingleControlNet(const gsGeometry<T> & Geo, std::string const & fn);

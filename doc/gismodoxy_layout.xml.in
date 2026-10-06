@@ -2,7 +2,7 @@
 <doxygenlayout version="1.0">
   <!-- Navigation index tabs for HTML output -->
   <navindex>
-    <tab type="mainpage" visible="no" title=""/> 
+    <tab type="mainpage" visible="no" title=""/>
 
     <!--
     <tab type="usergroup" title="Modules" intro="A list of available modules:">
@@ -21,8 +21,8 @@
     -->
 
     <tab type="user" visible="yes" url="@ref Modules" title="Modules"/>
-    
-    <tab type="usergroup" title="Groups and hierarchies">    
+
+    <tab type="usergroup" title="Groups and hierarchies">
       <tab type="user" url="@ref geometry" title="Geometries hierarchy"/>
       <tab type="user" url="@ref basis" title="Bases hierarchy"/>
       <tab type="user" url="@ref function" title="Functions hierarchy"/>
@@ -30,10 +30,16 @@
       <tab type="user" url="@ref combinatorics" title="Combinatorics group"/>
       <tab type="user" url="@ref enum" title="Enumeration declarations"/>
     </tab>
-    
+
     <tab type="classlist" visible="yes" title="" intro=""/>
 
-    <tab type="user" url="@ref python" title="Python bindings" />
+    <tab type="usergroup" url="@ref Interfaces" title="Interfaces">
+      <tab type="user" url="@ref Python_cppyy_interface" title="Python via cppyy"/>
+      <tab type="user" url="@ref Python_pybind11_interface" title="Python via pybind11"/>
+      <tab type="user" url="@ref C_interface" title="C"/>
+      <tab type="user" url="@ref Julia_interface" title="Julia via C"/>
+      <tab type="user" url="@ref MATLAB_interface" title="MATLAB via C"/>
+    </tab>
 
     <tab type="user" url="@ref citelist" title="Bibliographic references" />
 
@@ -84,7 +90,7 @@
       <related title="" subtitle=""/>
       <membergroups visible="yes"/>
     </memberdecl>
-    
+
     <memberdef>
       <inlineclasses title=""/>
       <typedefs title=""/>
@@ -178,7 +184,7 @@
       <friends title=""/>
       <membergroups visible="yes"/>
     </memberdecl>
-    
+
     <memberdef>
       <pagedocs/>
       <inlineclasses title=""/>

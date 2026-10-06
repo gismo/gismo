@@ -89,25 +89,26 @@ int main(int argc, char* argv[])
 
     // --------------------------------------------------------------------------------------
 
-    gsBasis<real_t>::domainIter domIt = tbsb2.makeDomainIterator();
+    typename gsBasis<>::domainIter domIt = tbsb2.domain()->beginAll();
+    typename gsBasis<>::domainIter domItEnd = tbsb2.domain()->endAll();
 
     gsMatrix<> GaussRule(tbsb2.dim(),0);
     gsMatrix<> MixedRule(tbsb2.dim(),0);
     gsMatrix<> TensorPatch(tbsb2.dim(),0);
     index_t start;
-    for (; domIt->good(); domIt->next() )
+    for (; domIt<domItEnd; ++domIt )
     {
         if (verbose)
         {
             gsInfo<<"---------------------------------------------------------------------------\n";
             gsInfo  <<"Element with corners (lower) "
-                    <<domIt->lowerCorner().transpose()<<" and (higher) "
-                    <<domIt->upperCorner().transpose()<<" :\n";
+                    <<domIt.lowerCorner().transpose()<<" and (higher) "
+                    <<domIt.upperCorner().transpose()<<" :\n";
         }
 
         //---------------------------------------------------------------------------
         // Gauss-Legendre rule (w/o over-integration)
-        legendre->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+        legendre->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                         points, weights);
         if (verbose)
         {
@@ -121,7 +122,7 @@ int main(int argc, char* argv[])
 
         //---------------------------------------------------------------------------
         // Gauss-Lobatto rule (w/ over-integration)
-        mixedLobatto->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+        mixedLobatto->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                         points, weights);
         if (verbose)
         {
@@ -134,7 +135,7 @@ int main(int argc, char* argv[])
         MixedRule.block(0,start,MixedRule.rows(),points.cols()) = points;
         //---------------------------------------------------------------------------
         //  Patch-rule
-        patchRule->mapTo( domIt->lowerCorner(), domIt->upperCorner(),
+        patchRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                         points, weights);
         if (verbose)
         {
@@ -167,24 +168,25 @@ int main(int argc, char* argv[])
 
 
     boxSide side(4);
-    gsBasis<>::domainIter bIt = tbsb2.makeDomainIterator(side);
+    typename gsBasis<>::domainIter bIt = tbsb2.domain()->beginBdr(side);
+    typename gsBasis<>::domainIter bItEnd = tbsb2.domain()->endBdr(side);
     // Start iteration over elements
     GaussRule.resize(tbsb2.dim(),0);
     MixedRule.resize(tbsb2.dim(),0);
     TensorPatch.resize(tbsb2.dim(),0);
-    for (; bIt->good(); bIt->next() )
+    for (; bIt<bItEnd; ++bIt )
     {
         if (verbose)
         {
             gsInfo<<"---------------------------------------------------------------------------\n";
             gsInfo  <<"Element with corners (lower) "
-                    <<bIt->lowerCorner().transpose()<<" and (higher) "
-                    <<bIt->upperCorner().transpose()<<" :\n";
+                    <<bIt.lowerCorner().transpose()<<" and (higher) "
+                    <<bIt.upperCorner().transpose()<<" :\n";
         }
 
         //---------------------------------------------------------------------------
         // Gauss-Legendre rule (w/o over-integration)
-        legendre->mapTo( bIt->lowerCorner(), bIt->upperCorner(),
+        legendre->mapTo( bIt.lowerCorner(), bIt.upperCorner(),
                         points, weights);
         if (verbose)
         {
@@ -197,7 +199,7 @@ int main(int argc, char* argv[])
         GaussRule.block(0,start,GaussRule.rows(),points.cols()) = points;
         //---------------------------------------------------------------------------
         // Gauss-Lobatto rule (w/ over-integration)
-        mixedLobatto->mapTo( bIt->lowerCorner(), bIt->upperCorner(),
+        mixedLobatto->mapTo( bIt.lowerCorner(), bIt.upperCorner(),
                         points, weights);
         if (verbose)
         {
@@ -210,7 +212,7 @@ int main(int argc, char* argv[])
         MixedRule.block(0,start,MixedRule.rows(),points.cols()) = points;
         //---------------------------------------------------------------------------
         //  Patch-rule
-        patchRule->mapTo( bIt->lowerCorner(), bIt->upperCorner(),
+        patchRule->mapTo( bIt.lowerCorner(), bIt.upperCorner(),
                         points, weights);
         if (verbose)
         {

@@ -2,10 +2,97 @@ namespace gismo {
 /**
 
 \page geometry_example geometry_example.cpp
+In this example we show how to read a geometry from a file, and how to analyze its properties and perform some basic operations.
 
+First we include the library and use the gismo namespace.
 
-<!-- more info on the file examples/geometry_example.cpp go here -->
+\snippet geometry_example.cpp Include namespace
 
+Then we define our command line options. For example, we use the option \c -f to set the path to the file that contains our geometry.
+
+\snippet geometry_example.cpp Parse command line
+
+Then we read the input from the file that contains the geometry. In this example, we use the function gsFileData::getFirst() to read the first gsGeometry contained in the input \c xml file.
+
+\snippet geometry_example.cpp Read input file
+
+We can then video-print the the geometry, together with its basis and coefficients:
+
+\snippet geometry_example.cpp printing the geometry
+
+as well its properties. Among others, we show here how to print the dimenstion of the parameter space, the dimension of the geometry, and the geometry support.
+
+\snippet geometry_example.cpp printing properties
+
+Moreover, we can evaluate the geometry and its 1st and 2nd derivaties at \f$N\f$ given points \f$\mathbf{u}_i\in\mathbb{R}^n\f$ for \f$i = 1, \ldots, N\f$, and print the results.
+Let \f$f: \mathbb{R}^n \to \mathbb{R}^m\f$, and \f$f^{(j)}\f$ be the \f$j\f$-th component of function \f$f\f$, for \f$j = 1, \ldots, m\f$.
+
+The function evaluation format is:
+\f[
+       \left[
+       \begin{array}{ccccc}
+       f^{(1)}(\mathbf{u}_1) & f^{(1)}(\mathbf{u}_2) & \ldots & f^{(1)}(\mathbf{u}_N)\\
+       \vdots     & \vdots     &        & \vdots\\
+       f^{(m)}(\mathbf{u}_1) & f^{(m)}(\mathbf{u}_2) & \ldots & f^{(m)}(\mathbf{u}_N)\\
+       \end{array}
+       \right].
+       \f]
+
+The first derivative format is:
+       \f[
+       \left[
+       \begin{array}{ccccc}
+       \partial_{1}f^{(1)}(\mathbf{u}_1) & \partial_{1}f^{(1)}(\mathbf{u}_2) & \ldots & \partial_{1}f^{(1)}(\mathbf{u}_N)\\
+       \vdots     & \vdots     &        & \vdots\\
+       \partial_{n}f^{(1)}(\mathbf{u}_1) & \partial_{n}f^{(1)}(\mathbf{u}_2) & \ldots & \partial_{n}f^{(1)}(\mathbf{u}_N)\\
+       
+       \partial_{1}f^{(2)}(\mathbf{u}_1) & \partial_{1}f^{(2)}(\mathbf{u}_2) & \ldots & \partial_{1}f^{(2)}(\mathbf{u}_N)\\
+       \vdots     & \vdots     &        & \vdots\\
+       \partial_{n}f^{(2)}(\mathbf{u}_1) & \partial_{n}f^{(2)}(\mathbf{u}_2) & \ldots & \partial_{n}f^{(2)}(\mathbf{u}_N)\\
+       
+       \partial_{1}f^{(m)}(\mathbf{u}_1) & \partial_{1}f^{(m)}(\mathbf{u}_2) & \ldots & \partial_{1}f^{(m)}(\mathbf{u}_N)\\
+       \vdots     & \vdots     &        & \vdots\\
+       \partial_{n}f^{(m)}(\mathbf{u}_1) & \partial_{n}f^{(m)}(\mathbf{u}_2) & \ldots & \partial_{n}f^{(m)}(\mathbf{u}_N)
+       \end{array}
+       \right].
+       \f]
+
+The second derivative format is:
+    \f[
+     \left[
+     \begin{array}{ccccc}
+     \partial_{1}\partial_{1}f^{(1)}(\mathbf{u}_1) & \partial_{1}\partial_{1}f^{(1)}(\mathbf{u}_2) & \ldots & \partial_{1}\partial_{1}f^{(1)}(\mathbf{u}_N)\\
+     \partial_{2}\partial_{2}f^{(1)}(\mathbf{u}_1) & \partial_{2}\partial_{2}f^{(1)}(\mathbf{u}_2) & \ldots & \partial_{2}\partial_{2}f^{(1)}(\mathbf{u}_N)\\
+     \vdots                                    & \vdots                                    &        &         \vdots                           \\
+     \partial_{n}\partial_{n}f^{(1)}(\mathbf{u}_1) & \partial_{n}\partial_{n}f^{(1)}(\mathbf{u}_2) & \ldots & \partial_{n}\partial_{n}f^{(1)}(\mathbf{u}_N)\\
+     \partial_{1}\partial_{2}f^{(1)}(\mathbf{u}_1) & \partial_{1}\partial_{2}f^{(1)}(\mathbf{u}_2) & \ldots & \partial_{1}\partial_{2}f^{(1)}(\mathbf{u}_N)\\
+     \partial_{1}\partial_{3}f^{(1)}(\mathbf{u}_1) & \partial_{1}\partial_{3}f^{(1)}(\mathbf{u}_2) & \ldots & \partial_{1}\partial_{3}f^{(1)}(\mathbf{u}_N)\\
+     \vdots                                    & \vdots                                    &        &          \vdots                          \\
+     \partial_{1}\partial_{n}f^{(1)}(\mathbf{u}_1) & \partial_{1}\partial_{n}f^{(1)}(\mathbf{u}_2) & \ldots & \partial_{1}\partial_{n}f^{(1)}(\mathbf{u}_N)\\
+     \partial_{2}\partial_{3}f^{(1)}(\mathbf{u}_1) & \partial_{2}\partial_{3}f^{(1)}(\mathbf{u}_2) & \ldots & \partial_{2}\partial_{3}f^{(1)}(\mathbf{u}_N)\\
+     \vdots       & \vdots       &        & \vdots\\
+     \partial_{2}\partial_{n}f^{(1)}(\mathbf{u}_1) & \partial_{2}\partial_{n}f^{(1)}(\mathbf{u}_2) & \ldots & \partial_{2}\partial_{n}f^{(1)}(\mathbf{u}_N)\\
+     \partial_{3}\partial_{4}f^{(1)}(\mathbf{u}_1) & \partial_{3}\partial_{4}f^{(1)}(\mathbf{u}_2) & \ldots & \partial_{3}\partial_{4}f^{(1)}(\mathbf{u}_N)\\
+     \vdots                                    & \vdots                                    &        &            \vdots                        \\
+     \partial_{n-1}\partial_{n}f^{(1)}(\mathbf{u}_1) & \partial_{n-1}\partial_{n}f^{(1)}(\mathbf{u}_2) & \ldots & \partial_{n-1}\partial_{n}f^{(1)}(\mathbf{u}_N)\\
+     \vdots                                    & \vdots                                    &        &           \vdots                          \\
+     \partial_{1}\partial_{1}f^{(m)}(\mathbf{u}_1) & \partial_{1}\partial_{1}f^{(m)}(\mathbf{u}_2) & \ldots & \partial_{1}\partial_{1}f^{(m)}(\mathbf{u}_N)\\
+     \vdots                                    & \vdots                                    &        &           \vdots                          \\
+     \partial_{n-1}\partial_{n}f^{(m)}(\mathbf{u}_1) & \partial_{n-1}\partial_{n}f^{(m)}(\mathbf{u}_2) & \ldots & \partial_{n-1}\partial_{n}f^{(m)}(\mathbf{u}_N)\\
+     \end{array}
+     \right].
+     \f]
+       
+\snippet geometry_example.cpp values and derivatives
+
+Finally, we can export tesselations (meshes) as files for
+visualization in Paraview
+
+\snippet geometry_example.cpp control net
+
+and print the files in Paraview.
+
+\snippet geometry_example.cpp write to paraview
 
 \section geometry_exampleAnnotated Annotated source file
 

@@ -49,6 +49,7 @@ using std::false_type;
 using std::integral_constant;
 using std::is_base_of;
 using std::is_integral;
+using std::is_arithmetic;
 using std::is_same;
 using std::reference_wrapper;
 using std::remove_const;
@@ -80,6 +81,9 @@ template<class T>          struct is_same<T, T> { enum { value = 1 }; };
 
 template<typename U> struct is_pointer     { static const bool value = false; };
 template<typename U> struct is_pointer<U*> { static const bool value = true ; };
+
+template <class E> struct is_arithmetic{enum{value=0};};
+template <> struct is_arithmetic<real_t>{enum{value=1};};
 
 template <typename B, typename D> struct Host
 { operator B*() const; operator D*(); };

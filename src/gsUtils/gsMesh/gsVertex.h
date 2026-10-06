@@ -43,24 +43,25 @@ public:
 
     template<typename OtherDerived>
     gsVertex(const gsEigen::MatrixBase<OtherDerived>& other) :
-    MeshElement(), gsVector3d<T>(other) { }
+    MeshElement(), gsVector3d<T>(other),sharp(0), numEdges(0), data()
+    { }
 
     /// @brief Constructor, take 3 scalars.
     /// \param x, y, z Coordinates of position in 3D space.
     gsVertex(scalar_t x, scalar_t y, scalar_t z = 0) :
-        MeshElement(), gsVector3d<T>(x,y,z),sharp(0)
+    MeshElement(), gsVector3d<T>(x,y,z),sharp(0), numEdges(0), data()
     { }
 
     /// @brief Constructor, takes a gsVector3d
     /// \param u the gsVector3d
     gsVertex( gsVector3d<T> const & u) :
-        MeshElement(), gsVector3d<T>(u),sharp(0)
+    MeshElement(), gsVector3d<T>(u),sharp(0), numEdges(0), data()
     { }
 
     /// @brief Constructor, takes a gsVector.
     /// \param u gsVector of dimension 1, 2 or 3. Fills with zero.
     gsVertex( gsVector<T> const & u) :
-        MeshElement(), gsVector3d<T>(),sharp(0)
+    MeshElement(), gsVector3d<T>(),sharp(0),numEdges(0), data()
     {
         // vertex is always a 3-cooordinate vector.
         const index_t r = u.rows();
@@ -72,6 +73,23 @@ public:
         this->head(r) = u;
     }
 
+    // Copy costructor
+    gsVertex(const gsVertex & other) :
+    MeshElement(other), gsVector3d<T>(other), sharp(other.sharp), numEdges(other.numEdges), data(other.data)
+    { }
+
+    // Copy assignment operator
+    gsVertex & operator=(const gsVertex & other)
+    {
+        MeshElement::operator=(other);
+        gsVector3d<T>::operator=(other);
+        sharp = other.sharp;
+        numEdges = other.numEdges;
+        data = other.data;
+        return *this;
+    }
+
+    // Destructor
     virtual ~gsVertex() { };
 
 
@@ -80,12 +98,6 @@ public:
         this->gsVector3d<T>::operator=(coord);
     }
 
-    gsVertex & operator=(const gsVertex & other)
-    {
-        this->gsVector3d<T>::operator=(other);
-        return *this;
-    }
-    
     //GISMO_CLONE_FUNCTION(gsVertex)
     /// @brief Clone Function (deep copy)
     uPtr clone() const { return uPtr(new gsVertex(*this)); }

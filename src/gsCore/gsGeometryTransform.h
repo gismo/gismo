@@ -62,12 +62,12 @@ public:
     virtual short_t targetDim() const { return m_geo->targetDim(); }
 
     gsMatrix<T> support() const { return m_geo->support(); }
-    
+
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
-    
+
     virtual void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const;
-    
-    virtual void deriv2_into( const gsMatrix<T>& u, gsMatrix<T>& result ) const
+
+    virtual void deriv2_into( const gsMatrix<T>& /* u */, gsMatrix<T>& /* result */ ) const
     { GISMO_NO_IMPLEMENTATION }
 };
 

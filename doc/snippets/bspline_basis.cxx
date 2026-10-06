@@ -1,6 +1,6 @@
-    gsKnotVector<>   kv (-1, 0, 3,3, 1 );
-    gsBSplineBasis<> bsp(kv);
-    gsInfo << bsp.detail() << "\n";
+    gsKnotVector<>   kv (-1, 0, 3, 3, 1 );
+    gsBSplineBasis<> basis(kv);
+    gsInfo << basis.detail() << "\n";
 
-    bsp.uniformRefine();
-    gsInfo << bsp.detail() << "\n";
+    basis.uniformRefine();
+    gsInfo << basis.detail() << "\n";

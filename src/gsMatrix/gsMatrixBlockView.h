@@ -120,7 +120,7 @@ public:
         }
     }
 
-    /// Combatibility constuctor giving the \a matrix as a block
+    /// Combatibility constructor giving the \a matrix as a block
     gsMatrixBlockView(const MatrixType & matrix)
     : m_rowSize(1),
       m_colSize(1)

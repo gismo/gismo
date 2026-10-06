@@ -132,7 +132,7 @@ class CompressedStorage
     {
       while(end>start)
       {
-        Index mid = (end+start)>>1;
+	Index mid = start + ((end - start) >> 1); //G+Smo: avoid overflow
         if (m_indices[mid]<key)
           start = mid+1;
         else

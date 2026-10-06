@@ -14,17 +14,13 @@
     Created on: 2016-03-23
 */
 
-
 #pragma once
-
-// #include <functional>
-// #include <algorithm>
 
 namespace gismo
 {
 template<typename Type>
-struct Min
-    : std::binary_function<Type,Type,Type>
+struct _mpi_Min
+//    : std::binary_function<Type,Type,Type>
 {
     Type operator()(const Type& t1, const Type& t2) const
     {
@@ -33,8 +29,8 @@ struct Min
 };
 
 template<typename Type>
-struct Max
-    : std::binary_function<Type,Type,Type>
+struct _mpi_Max
+//    : std::binary_function<Type,Type,Type>
 {
     Type operator()(const Type& t1, const Type& t2) const
     {
@@ -115,29 +111,29 @@ ComposeMPIOp(float, std::multiplies, MPI_PROD);
 ComposeMPIOp(double, std::multiplies, MPI_PROD);
 ComposeMPIOp(long double, std::multiplies, MPI_PROD);
 
-ComposeMPIOp(char, Min, MPI_MIN);
-ComposeMPIOp(unsigned char, Min, MPI_MIN);
-ComposeMPIOp(short, Min, MPI_MIN);
-ComposeMPIOp(unsigned short, Min, MPI_MIN);
-ComposeMPIOp(int, Min, MPI_MIN);
-ComposeMPIOp(unsigned int, Min, MPI_MIN);
-ComposeMPIOp(long, Min, MPI_MIN);
-ComposeMPIOp(unsigned long, Min, MPI_MIN);
-ComposeMPIOp(float, Min, MPI_MIN);
-ComposeMPIOp(double, Min, MPI_MIN);
-ComposeMPIOp(long double, Min, MPI_MIN);
+ComposeMPIOp(char,_mpi_Min, MPI_MIN);
+ComposeMPIOp(unsigned char,_mpi_Min, MPI_MIN);
+ComposeMPIOp(short,_mpi_Min, MPI_MIN);
+ComposeMPIOp(unsigned short,_mpi_Min, MPI_MIN);
+ComposeMPIOp(int,_mpi_Min, MPI_MIN);
+ComposeMPIOp(unsigned int,_mpi_Min, MPI_MIN);
+ComposeMPIOp(long,_mpi_Min, MPI_MIN);
+ComposeMPIOp(unsigned long,_mpi_Min, MPI_MIN);
+ComposeMPIOp(float,_mpi_Min, MPI_MIN);
+ComposeMPIOp(double,_mpi_Min, MPI_MIN);
+ComposeMPIOp(long double,_mpi_Min, MPI_MIN);
 
-ComposeMPIOp(char, Max, MPI_MAX);
-ComposeMPIOp(unsigned char, Max, MPI_MAX);
-ComposeMPIOp(short, Max, MPI_MAX);
-ComposeMPIOp(unsigned short, Max, MPI_MAX);
-ComposeMPIOp(int, Max, MPI_MAX);
-ComposeMPIOp(unsigned int, Max, MPI_MAX);
-ComposeMPIOp(long, Max, MPI_MAX);
-ComposeMPIOp(unsigned long, Max, MPI_MAX);
-ComposeMPIOp(float, Max, MPI_MAX);
-ComposeMPIOp(double, Max, MPI_MAX);
-ComposeMPIOp(long double, Max, MPI_MAX);
+ComposeMPIOp(char,_mpi_Max, MPI_MAX);
+ComposeMPIOp(unsigned char,_mpi_Max, MPI_MAX);
+ComposeMPIOp(short,_mpi_Max, MPI_MAX);
+ComposeMPIOp(unsigned short,_mpi_Max, MPI_MAX);
+ComposeMPIOp(int,_mpi_Max, MPI_MAX);
+ComposeMPIOp(unsigned int,_mpi_Max, MPI_MAX);
+ComposeMPIOp(long,_mpi_Max, MPI_MAX);
+ComposeMPIOp(unsigned long,_mpi_Max, MPI_MAX);
+ComposeMPIOp(float,_mpi_Max, MPI_MAX);
+ComposeMPIOp(double,_mpi_Max, MPI_MAX);
+ComposeMPIOp(long double,_mpi_Max, MPI_MAX);
 
 #undef ComposeMPIOp
 

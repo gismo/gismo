@@ -3,12 +3,12 @@
     @brief Provides declaration of a basis of constant functions,
     consisting of one constant function.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Mantzaflaris
 */
 
@@ -16,12 +16,13 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsConstantFunction.h>
+#include <gsCore/gsBasis.h>
 
 namespace gismo
 {
 
 
-/** 
+/**
     @brief Class defining a dummy basis of constant functions. This is
     used for compatibility reasons.
 
@@ -59,47 +60,47 @@ public:
     GISMO_CLONE_FUNCTION(gsConstantBasis)
 
     static gsConstantBasis * New(std::vector<gsBasis<T>*> & bb )
-    { 
+    {
         return new gsConstantBasis(bb);
     }
 
 public:
 
-    short_t domainDim() const   { return m_domainDim; }
+    short_t domainDim() const override { return m_domainDim; }
 
-    index_t size() const   { return 1; }
+    index_t size() const override  { return 1; }
 
-    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
+    void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const override
     {
         result.setZero(1,u.cols());
     }
 
-    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    void eval_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override
     {
         GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
                                               << ", expected "<< m_domainDim);
         result.setConstant(1, u.cols(), m_val);
     }
 
-    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const
+    void deriv_into(const gsMatrix<T>& u, gsMatrix<T>& result) const override
     {
         GISMO_ASSERT(u.rows() == m_domainDim, "Wrong domain dimension "<< u.rows()
                                               << ", expected "<< m_domainDim);
         result = gsMatrix<T>::Zero(m_domainDim, u.cols() );
     }
 
-    virtual void anchors_into(gsMatrix<T>& result) const
+    virtual void anchors_into(gsMatrix<T>& result) const override
     {
         result.setZero(1,1);
     }
-    
-    std::ostream &print(std::ostream &os) const
+
+    std::ostream &print(std::ostream &os) const override
     {
-        os << m_val; 
-        return os; 
+        os << m_val;
+        return os;
     }
 
-    memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const
+    memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const override
     {
         coefs *= m_val;
         return memory::unique_ptr<gsGeometry<T> >(new gsConstantFunction<T>(coefs.transpose(), m_domainDim));

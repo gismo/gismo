@@ -3,24 +3,17 @@
 
 #include <cstdio>
 
-
-//== NAMESPACES ===============================================================
-
-
 namespace gismo {
-
-
-//== IMPLEMENTATION ===========================================================
-
 
 bool read_obj(gsSurfMesh& mesh, const std::string& filename)
 {
     char   s[200];
     float  x, y, z;
     std::vector<gsSurfMesh::Vertex>  vertices;
-    std::vector<Texture_coordinate> all_tex_coords;   //individual texture coordinates
+    std::vector<gsSurfMesh::Point> all_tex_coords;   //individual texture coordinates
     std::vector<int> halfedge_tex_idx; //texture coordinates sorted for halfedges
-    gsSurfMesh::Halfedge_property <Texture_coordinate> tex_coords = mesh.halfedge_property<Texture_coordinate>("h:texcoord", Texture_coordinate(0,0,0));
+    gsSurfMesh::Halfedge_property <gsSurfMesh::Point> tex_coords =
+        mesh.halfedge_property<gsSurfMesh::Point>("h:texcoord", gsSurfMesh::Point(0,0,0));
     bool with_tex_coord=false;
 
     // clear mesh
@@ -47,7 +40,7 @@ bool read_obj(gsSurfMesh& mesh, const std::string& filename)
         {
             if (sscanf(s, "v %f %f %f", &x, &y, &z))
             {
-                mesh.add_vertex(Point(x,y,z));
+                mesh.add_vertex(gsSurfMesh::Point(x,y,z));
             }
         }
         // normal
@@ -66,7 +59,7 @@ bool read_obj(gsSurfMesh& mesh, const std::string& filename)
           if (sscanf(s, "vt %f %f", &x, &y))
           {
             z=1;
-            all_tex_coords.push_back(Texture_coordinate(x,y,z));
+            all_tex_coords.push_back(gsSurfMesh::Point(x,y,z));
           }
         }
 
@@ -175,6 +168,7 @@ bool read_obj(gsSurfMesh& mesh, const std::string& filename)
 
 bool write_obj(const gsSurfMesh& mesh, const std::string& filename)
 {
+    typedef gsSurfMesh::Point Point;
     FILE* out = fopen(filename.c_str(), "w");
     if (!out)
         return false;
@@ -183,11 +177,12 @@ bool write_obj(const gsSurfMesh& mesh, const std::string& filename)
     fprintf(out, "# OBJ export from gsSurfMesh\n");
 
     //vertices
-    gsSurfMesh::Vertex_property<Point> points = mesh.get_vertex_property<Point>("v:point");
+    gsSurfMesh::Vertex_property<Point> points =
+        mesh.get_vertex_property<Point>("v:point");
     for (gsSurfMesh::Vertex_iterator vit=mesh.vertices_begin(); vit!=mesh.vertices_end(); ++vit)
     {
         const Point& p = points[*vit];
-        fprintf(out, "v %.10f %.10f %.10f\n", cast<real_t,double>(p[0]), cast<real_t,double>(p[1]), cast<real_t,double>(p[2]) );
+        fprintf(out, "v %.10f %.10f %.10f\n", cast<real_t,real_t>(p[0]), cast<real_t,real_t>(p[1]), cast<real_t,real_t>(p[2]) );
     }
 
     //normals
@@ -197,7 +192,7 @@ bool write_obj(const gsSurfMesh& mesh, const std::string& filename)
         for (gsSurfMesh::Vertex_iterator vit=mesh.vertices_begin(); vit!=mesh.vertices_end(); ++vit)
         {
             const Point& p = normals[*vit];
-            fprintf(out, "vn %.10f %.10f %.10f\n", cast<real_t,double>(p[0]), cast<real_t,double>(p[1]), cast<real_t,double>(p[2]) );
+            fprintf(out, "vn %.10f %.10f %.10f\n", cast<real_t,real_t>(p[0]), cast<real_t,real_t>(p[1]), cast<real_t,real_t>(p[2]) );
         }
     }
 
@@ -219,11 +214,11 @@ bool write_obj(const gsSurfMesh& mesh, const std::string& filename)
     //if so then add
     if(with_tex_coord)
     {
-        gsSurfMesh::Halfedge_property<Texture_coordinate> tex_coord = mesh.get_halfedge_property<Texture_coordinate>("h:texcoord");
+        gsSurfMesh::Halfedge_property<Point> tex_coord = mesh.get_halfedge_property<Point>("h:texcoord");
         for (gsSurfMesh::Halfedge_iterator hit=mesh.halfedges_begin(); hit!=mesh.halfedges_end(); ++hit)
         {
-            const Texture_coordinate& pt = tex_coord[*hit];
-            fprintf(out, "vt %.10f %.10f %.10f\n", cast<real_t,double>(pt[0]), cast<real_t,double>(pt[1]), cast<real_t,double>(pt[2]) );
+            const Point& pt = tex_coord[*hit];
+            fprintf(out, "vt %.10f %.10f %.10f\n", cast<real_t,real_t>(pt[0]), cast<real_t,real_t>(pt[1]), cast<real_t,real_t>(pt[2]) );
         }
     }
 
@@ -255,7 +250,4 @@ bool write_obj(const gsSurfMesh& mesh, const std::string& filename)
     return true;
 }
 
-
-//=============================================================================
 } // namespace gismo
-//=============================================================================

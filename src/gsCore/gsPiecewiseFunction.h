@@ -106,8 +106,8 @@ public:
 
     GISMO_CLONE_FUNCTION(gsPiecewiseFunction)
 
-    short_t domainDim () const {return m_funcs.front()->domainDim();};
-    short_t targetDim () const {return m_funcs.front()->targetDim();};
+    short_t domainDim () const override {return m_funcs.front()->domainDim();};
+    short_t targetDim () const override {return m_funcs.front()->targetDim();};
     
     /// Add a piece
     void addPiece(const gsFunction<T> & func)
@@ -125,15 +125,15 @@ public:
         m_funcs.push_back(func.release());
     }
 
-    const gsFunction<T> & piece(const index_t i) const 
+    const gsFunction<T> & piece(const index_t i) const override
     { 
         GISMO_ASSERT(static_cast<size_t>(i) < m_funcs.size(), "Wrong piece index");
         return *m_funcs[i]; 
     }
 
-    index_t size() const {return m_funcs.size();}
+    index_t size() const override {return m_funcs.size();}
 
-    std::ostream &print(std::ostream &os) const
+    std::ostream &print(std::ostream &os) const override
     {
         os << "Piecewise Function with "<<m_funcs.size() <<" pieces.\n";
         return os; 
@@ -151,10 +151,10 @@ public:
         m_funcs.clear();
     }
 
-    void eval_into(const gsMatrix<T>&, gsMatrix<T>&) const
+    void eval_into(const gsMatrix<T>&, gsMatrix<T>&) const override
     { GISMO_NO_IMPLEMENTATION }
 
-    index_t nPieces() const {return m_funcs.size();}
+    index_t nPieces() const override {return m_funcs.size();}
 
 
 protected:

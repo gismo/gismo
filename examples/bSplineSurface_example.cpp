@@ -79,7 +79,7 @@ int main(int argc, char* argv[])
         gsInfo << "Writing the surface to a paraview file: " << out
                   << "\n\n";
 
-        gsWriteParaview(surface, out);
+        gsWriteParaview(surface, out, 10000);
 
         out = output + "Basis";
         gsInfo << "Writing the basis to a paraview file: " << out
@@ -95,6 +95,12 @@ int main(int argc, char* argv[])
         gsMesh<> mesh;
         surface.controlNet(mesh);
         gsWriteParaview(mesh, out);
+
+        out = output + "Coefficients";
+        gsMatrix <> coefs = surface.coefs();
+        coefs.transposeInPlace();
+        gsWriteParaviewPoints(coefs, out);
+
     }
     else
     {
