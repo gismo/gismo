@@ -25,7 +25,8 @@
         exact identity geometry, for sphere/rotcube at r=0..3.
       - `volume`: the volume/area/flux/moment GATE on the streamed clip
         (`--mode clip`), Tchakaloff-compressed (`--mode tchakaloff`),
-        moment-fitted (`--mode momrule`) and Algoim (`--mode algoim`,
+        moment-fitted (`--mode momrule`), NNMF-compressed (`--mode nnmf`)
+        and Algoim (`--mode algoim`,
         sphere-only, also on `--geo affine|bubble` via the pulled-back level
         set phi o G -- see the Curved backgrounds paragraph below) cell
         rules over the same uniform background grid.
@@ -52,6 +53,14 @@
         above `resTol` even though the test itself is satisfied. One
         `GATE-DEFERRED mode=tchakaloff reason=nnls-kkt-stall` line prints
         per (case, r).
+        NNMF rows (`--mode nnmf`, `--geo identity` only) are NOT deferred:
+        every row is Required (`PASS`/`FAIL`), `fluxmom_global`/
+        `fluxmom_cell` (1e-12) and the positive-weight `minweight_vol`/
+        `minweight_bdr` included, and `residual_vol`/`residual_bdr` carry
+        the compressor's own moment error against momTol = 1e-12. Its
+        `GATEDIAG` line additionally prints `keptPts= maxRankVol=
+        maxRankBdr= maxMomErrVol= maxMomErrBdr= maxRoundsVol=
+        maxRoundsBdr= fallbackVol= fallbackBdr=`.
         For `--geo affine|bubble` and `--mode clip`, the rows come from
         `gatePhysical` instead of `gateTetMode`/`tetModeTotals` (see the
         Curved backgrounds paragraph below): `pb_finite`/`pb_residual`/
@@ -67,9 +76,15 @@
         rounding floor there, per the measured sweep documented at
         `BUBBLE_FLUXMOM_TOL_REQUIRED`) and Report below that p (its own
         reference rule is not exact under a curved G, see `gatePhysical`
-        and `BUBBLE_FLUXMOM_TOL`). No `moments_*`/
+        and `BUBBLE_FLUXMOM_TOL`). For `--mode clip` no `moments_*`/
         `fluxmom_cell`/`residual_*`/`minweight_*`/`run` rows exist on this
-        path (clip only, no compressor).
+        path. For `--mode nnmf` the compressor runs on the parametric clip
+        volume rule and on the pulled-back (Nanson) boundary rule, the
+        tables serve the gate and the solve directly, and `gatePhysical`
+        adds the Required rows `cellmom_vol`/`cellmom_bdr` (per-cell Q_2p
+        moment error of the served rule vs. clip, parametric box, tol 1e-12),
+        `minweight_vol`/`minweight_bdr`, `count_vol`/`count_bdr` and `run`;
+        `fluxmom_global` is Report there.
       - `poisson`: for each (case, mode, r) with r = 0..rMax, builds the
         mode's quadrature tables (R1), runs the `--study volume` gate (R2)
         on those SAME objects and prints its row (R3); only if the gate
@@ -91,7 +106,7 @@
         with symmetric Nitsche on the immersed boundary and a ghost penalty
         on the faces of cut cells, on a degree-p Cartesian B-spline
         background over [-1,1]^3 (dofs outside Omega eliminated). Omega is
-        the tet-mesh polyhedron for the tet modes (clip/tchakaloff/momrule)
+        the tet-mesh polyhedron for the tet modes (clip/tchakaloff/momrule/nnmf)
         and the analytic ball `(x-0.03)^2+(y+0.02)^2+(z-0.01)^2=0.3025` for
         `algoim`. Manufactured solution (smooth on R^3, non-polynomial,
         non-symmetric):
@@ -175,6 +190,13 @@
         Algoim's; the resulting per-cell agreement/disagreement counts print
         as one `ALGOIM-CONSISTENCY` line per r (report-only).
 
+        `--errRule nnmf` replaces the tet modes' Cut-cell reference rule by
+        its Q_{2p+2}-exact NNMF compression, built in the same
+        `buildCellRules` pass (parametric for curved G); `both` keeps the
+        clip-reference L2/H1s and appends `L2n`/`H1sn` (nnmf reference) to
+        the POISSON row, plus a `POISSON-ERRRULE` line. An `ERRRULE-TABLE`
+        line reports the error table, and its FAIL fails the study.
+
         Pre-asymptotic note: at r = 0 (n = 4, h = 0.5) the whole sphere
         (R = 0.55) sits in a 3x3x3-ish block of cut cells, with slivers near
         x ~ -0.52 and x ~ 0.58 -- no cell is Full. That regime is
@@ -189,6 +211,8 @@
                         DEFERRED, never PASS): every r prints
                         `POISSON-SKIP ... reason=gate-deferred`, no solve,
                         `EOC ... REPORT`.
+          `nnmf`        solved at every r from its compressed volume and
+                        boundary tables, no EoC bar (`EOC ... REPORT`).
           `momrule`, `algoim`  solved and reported, no EoC bar: the served
                         boundary normal is only a pseudonormal at polyhedral
                         edges for momrule, and the Algoim adaptive rule's
@@ -208,7 +232,13 @@
       (default 0.3, |eps| < 0.5) is the bubble amplitude, used only for
       `--geo bubble`. `--mesh` overrides the case's own mesh file (e.g. for
       a gmsh-refined mesh); `--case` still selects the case's analytic
-      references (V_exact/A_exact, the sphere level set). For a non-identity
+      references (V_exact/A_exact, the sphere level set). `--case mesh`
+      takes an arbitrary MSH 4.1 tet mesh: `--mesh` is required, there are
+      no analytic references (V_exact=n/a A_exact=n/a, no `*_exact` gate
+      rows), it is not part of `--case all`, `--mode algoim` and
+      `--study check` are rejected, and the mesh must lie strictly inside
+      the background box (identity G: makeGrid's ENSURE; curved G: the
+      Required `pb_inside` row). For a non-identity
       G, the mesh is read in PHYSICAL coordinates and pulled back once per
       (case, r) to a PARAMETRIC one (gsTetClip::pullBack) BEFORE any
       ClipStreamer or assembly runs, so that the clip pipeline still clips
@@ -216,10 +246,10 @@
       row reports the pull-back's own acceptance check (max residual vs. a
       mesh-scaled tolerance, no failed/outside/inverted vertex), and a FAIL
       aborts the study with `PULLBACK-ABORT` before anything is assembled.
-      Curved G is supported for `--mode clip` and, `--case sphere` only,
-      `--mode algoim` (below) -- momrule/tchakaloff still assume an identity
-      background and are rejected up front for `--geo != identity`. Clip's
-      own volume/area/flux/moment gate runs in physical space there
+      Curved G is supported for `--mode clip`, `--mode nnmf` and, `--case
+      sphere` only, `--mode algoim` (below) -- momrule/tchakaloff still assume
+      an identity background and are rejected up front for `--geo != identity`.
+      The clip/nnmf volume/area/flux/moment gate runs in physical space there
       (`gatePhysical`, before any assembly):
       pull-back diagnostics (`pb_finite`/`pb_residual`/`pb_inside`/
       `pb_orientation`) and `detJ_min` (det(J) > 0 at every served volume
@@ -235,7 +265,7 @@
       rounding floor there) and Report below that p, where its own
       reference rule is not exact once G is curved (`BUBBLE_FLUXMOM_TOL`).
       Every `GATE` row printed on this path carries ` geo=<g>`
-      right after `mode=clip`; the identity path never does.
+      right after `mode=clip|nnmf`; the identity path never does.
       `--mode algoim` on `--geo affine|bubble` integrates the PULLED-BACK
       level set phi-hat(u) = phi(G(u)) directly in PARAMETER space (no tet
       mesh, no pull-back of a mesh vertex): its surface weights and normals
@@ -260,10 +290,12 @@
       ./immersed_tetmesh_poisson_example --study volume --case all --mode clip -r 3
       ./immersed_tetmesh_poisson_example --study volume --case all --mode tchakaloff -r 3
       ./immersed_tetmesh_poisson_example --study volume --case all --mode momrule -r 3
+      ./immersed_tetmesh_poisson_example --study volume --case all --mode nnmf -r 2
       ( ulimit -v 8000000; ./immersed_tetmesh_poisson_example --study volume \
         --case sphere --mode algoim -r 3 )
       ./immersed_tetmesh_poisson_example --study poisson --case sphere --mode clip -r 3
       ./immersed_tetmesh_poisson_example --study poisson --case rotcube --mode momrule -r 3
+      ./immersed_tetmesh_poisson_example --study volume --case mesh --mesh my.msh --mode clip -r 2
       ( ulimit -v 8000000; ./immersed_tetmesh_poisson_example --study poisson \
         --case sphere --mode algoim -r 3 )
       ./immersed_tetmesh_poisson_example --study poisson --geo affine --mode clip \
@@ -285,6 +317,7 @@
 #include "gsTetClipSignDomain.h"
 #include "gsImmersedPullback.h"
 #include "gsTchakaloffRule.h"
+#include "gsNnmfRule.h"
 #include <gsAlgoim/gsAlgoimRule.h>
 #include <gsAlgoim/gsAlgoimAdaptiveRule.h>
 #include <gsDomain/gsMeshLevelSet.h>
@@ -311,6 +344,7 @@ namespace {
 
 struct Config
 {
+    std::string errRule  = "clip";   // clip|nnmf|both: Cut-cell error reference rule (--study poisson)
     std::string study    = "check";
     std::string caseName = "all";
     std::string mode     = "all";
@@ -370,11 +404,12 @@ void countOutsideBox(const gsMatrix<real_t> & nodes, real_t xL, real_t xR, real_
 }
 
 /// Case name -> ASCII gmsh MSH 4.1 file, gsFileManager-resolved by the
-/// caller.
+/// caller. The case `mesh` has no file of its own: it always takes `--mesh`.
 std::string meshFile(const std::string & caseName)
 {
     if ("sphere"  == caseName) return "volumes/tetmesh_sphere.msh";
     if ("rotcube" == caseName) return "volumes/tetmesh_cube_rotated.msh";
+    if ("mesh"    == caseName) GISMO_ERROR("meshFile: --case mesh requires --mesh");
     GISMO_ERROR("meshFile: unknown case '" << caseName << "'");
 }
 
@@ -1517,22 +1552,38 @@ struct CellLog
     real_t  resVol = 0, resBdr = 0;                       // tchakaloff: max over levelResidual
     bool    okVol = true, okBdr = true;                   // tchakaloff: result.ok
     index_t rankVol = -1, rankBdr = -1, levelsVol = 0, levelsBdr = 0;
+    index_t roundsVol = 0, roundsBdr = 0;                 // nnmf: pool rounds of the compressor
+    bool    fallbackVol = false, fallbackBdr = false;     // nnmf: final round used the whole input as pool
     bool    passThroughVol = false, passThroughBdr = false; // momrule: stats().nPassThroughElements > 0
     real_t  compressSec = 0;                              // time spent in the compressor for this cell
     std::string error;                                    // non-empty iff an exception was caught
+    bool    errBuilt = false;          // error table built for this cell (Cut cell, errTable on)
+    index_t errNIn = 0, errNOut = 0, errRank = -1, errRounds = 0;
+    real_t  errMomErr = 0;             // NnmfResult::momErr of the Q_{2p+2} error rule
+    bool    errOk = true, errFallback = false;
+    real_t  errSec = 0;                // time in the error-table compressor for this cell
+    std::string errError;              // non-empty iff the error-table compression threw
 };
 
 /// Outcome of one `buildCellRules` pass. `vol`/`bdr`, when non-null, hold
 /// the SERVED rule per cell id: `vol->cell[id]` is a `CellRule3` (nodes
 /// 3xm, weights m); `bdr->cell[id]` is a `CellBdrRule3` (nodes 3xm,
-/// weights m, unit outward normals 3xm). All PHYSICAL coordinates. Both
-/// are null in clip mode, where the served rule is the streamer's own
-/// uncompressed clip rule (nothing extra is stored).
+/// weights m, unit outward normals 3xm). All PHYSICAL coordinates, except
+/// for a pass built with a boundary source \a bdrSrc (a
+/// gsTetClip::PullbackBdrSource, curved background map): there the stored
+/// nodes are PARAMETRIC, the boundary weights and normals are PHYSICAL
+/// (Nanson), and the volume weights are PARAMETRIC (the assembler applies
+/// meas(G)). Both tables are null in clip mode, where the served rule is
+/// the streamer's own uncompressed clip rule (nothing extra is stored).
+/// `errVol`, when non-null (every mode, clip included), holds per Cut cell
+/// the Q_{2p+2} NNMF compression of that cell's clip volume rule, in the
+/// streamer's coordinates (parametric for curved G).
 struct CellRulePass
 {
-    std::string mode;                                      // "clip" | "tchakaloff" | "momrule"
+    std::string mode;                                      // "clip" | "tchakaloff" | "momrule" | "nnmf"
     memory::shared_ptr<gsTetClip::VolCellTable> vol;       // null in clip mode; else cell.size()==n^3
     memory::shared_ptr<gsTetClip::BdrCellTable> bdr;       // null in clip mode; else cell.size()==n^3
+    memory::shared_ptr<gsTetClip::VolCellTable> errVol;    // null unless buildCellRules(..., errTable=true); else cell.size()==n^3
     std::vector<size_t> work;                              // processed ids, ascending
     std::vector<CellLog> log;                              // size n^3 (non-work entries default)
     real_t seconds = 0;                                    // wall-clock of the pass
@@ -1701,7 +1752,7 @@ void legendreRawFactor(const gsVector<real_t> & lower, const gsVector<real_t> & 
 
 /// One omp-parallel pass over the work cells (Cut cells, or cells with a
 /// non-empty triangle bucket). Mode clip: nothing stored. tchakaloff/
-/// momrule: the compressed rules are stored in the tables (Cut-cell volume,
+/// momrule/nnmf: the compressed rules are stored in the tables (Cut-cell volume,
 /// every work cell's boundary). \a phiH is required for momrule (boundary
 /// normals), ignored otherwise. \a momentCheck computes CellLog::momErr*
 /// and CellLog::fluxErrBdr/hasFluxErrBdr (compressed modes only; the latter
@@ -1710,19 +1761,31 @@ void legendreRawFactor(const gsVector<real_t> & lower, const gsVector<real_t> & 
 /// weighting). Every exception inside the parallel region is
 /// caught into the cell's own CellLog::error: one escaping the `#pragma omp
 /// parallel` region would terminate the process (GISMO_ERROR/ENSURE throw
-/// std::runtime_error).
+/// std::runtime_error). \a bdrSrc != nullptr (mode nnmf only) replaces the
+/// streamer as the source of every work cell's boundary input (nodes,
+/// weights, normals); it must be safe for concurrent calls. \a errTable
+/// builds `P.errVol` in the same pass, from the same clip rule, in every mode.
+/// Every NNMF call draws its candidate pool per clip piece
+/// (NnmfOptions::blockSize = the clip rule's volume or boundary block size):
+/// a weight-quantile sample of each piece, sized by the piece's weight share.
 ///
-/// Thread-safe: each loop iteration writes only `log[id]`, `vol->cell[id]`
-/// and `bdr->cell[id]`, which are distinct, pre-sized elements -- no two
-/// iterations touch the same memory. Complexity per work cell: one clip of
-/// the cell (the streamer's own cost) plus the compressor (tchakaloff/
-/// momrule only), plus O(N_cell*K) for \a momentCheck's moment comparison
-/// (K = (2p+1)^3, N_cell the cell's input node count).
+/// Thread-safe: each loop iteration writes only `log[id]`, `vol->cell[id]`,
+/// `bdr->cell[id]` and (\a errTable) `errVol->cell[id]`, which are distinct,
+/// pre-sized elements -- no two iterations touch the same memory. Complexity
+/// per work cell: one clip of the cell (the streamer's own cost) plus the
+/// compressor (tchakaloff/momrule/nnmf only), plus, for a Cut cell with
+/// \a errTable, one Q_{2p+2} NNMF compression (K = (2p+3)^3), plus
+/// O(N_cell*K) for \a momentCheck's moment comparison (K = (2p+1)^3, N_cell
+/// the cell's input node count).
 CellRulePass buildCellRules(const gsTetClip::ClipStreamer & S, const std::string & mode, index_t p,
-                            const gsMeshSignedDist<real_t> * phiH, bool momentCheck)
+                            const gsMeshSignedDist<real_t> * phiH, bool momentCheck,
+                            const gsTetClip::BdrCellSource * bdrSrc = nullptr,
+                            bool errTable = false)
 {
-    GISMO_ENSURE("clip" == mode || "tchakaloff" == mode || "momrule" == mode,
-                "buildCellRules: mode must be clip|tchakaloff|momrule, got '" << mode << "'.");
+    GISMO_ENSURE(nullptr == bdrSrc || "nnmf" == mode,
+                "buildCellRules: a boundary source override is only supported for mode nnmf.");
+    GISMO_ENSURE("clip" == mode || "tchakaloff" == mode || "momrule" == mode || "nnmf" == mode,
+                "buildCellRules: mode must be clip|tchakaloff|momrule|nnmf, got '" << mode << "'.");
     GISMO_ENSURE("momrule" != mode || nullptr != phiH,
                 "buildCellRules: momrule mode requires a mesh level set.");
 
@@ -1742,10 +1805,21 @@ CellRulePass buildCellRules(const gsTetClip::ClipStreamer & S, const std::string
         P.vol->cell.resize(N3);
         P.bdr->cell.resize(N3);
     }
+    if (errTable)
+    {
+        P.errVol = memory::make_shared(new gsTetClip::VolCellTable());
+        P.errVol->cell.resize(N3);
+    }
 
     for (size_t id = 0; id != N3; ++id)
         if (gsTetClip::Cut == idx->status[id] || !S.triBuckets()[id].empty())
             P.work.push_back(id);
+
+    // Points per clip piece of the streamer's volume / boundary rule, from the
+    // same functions ClipStreamer uses (p is the clip rule's degree).
+    const index_t volDeg = gsTetClip::volDegree(p), bdrDeg = gsTetClip::bdrDegree(p);
+    const index_t volBlock = gsTetClip::ceilHalf(volDeg+3)*gsTetClip::ceilHalf(volDeg+2)*gsTetClip::ceilHalf(volDeg+1);
+    const index_t bdrBlock = gsTetClip::ceilHalf(bdrDeg+2)*gsTetClip::ceilHalf(bdrDeg+1);
 
     gsStopwatch sw;
     const index_t W = (index_t)P.work.size();
@@ -1767,6 +1841,27 @@ CellRulePass buildCellRules(const gsTetClip::ClipStreamer & S, const std::string
                 gsMatrix<real_t> nd; gsVector<real_t> wt;
                 S.volRule(id, nd, wt);
                 L.nVolIn = nd.cols();
+
+                if (errTable)
+                {
+                    try
+                    {
+                        gsStopwatch esw;
+                        gsTetClip::NnmfResult E;
+                        gsTetClip::NnmfOptions eopt;
+                        eopt.blockSize = volBlock;
+                        gsTetClip::nnmfCompress(nd, wt, lower, upper, p+1, eopt, E);
+                        L.errSec = esw.stop();
+                        gsMatrix<real_t> en(3, (index_t)E.indices.size());
+                        for (size_t c = 0; c != E.indices.size(); ++c)
+                            en.col((index_t)c) = nd.col(E.indices[c]);
+                        L.errNIn = nd.cols(); L.errNOut = en.cols(); L.errRank = E.rank;
+                        L.errMomErr = E.momErr; L.errRounds = E.rounds; L.errFallback = E.fallbackFull;
+                        L.errOk = E.ok; L.errBuilt = true;
+                        P.errVol->cell[id] = gsTetClip::CellRule3{ give(en), give(E.weights) };
+                    }
+                    catch (const std::exception & e) { L.errError = e.what(); L.errBuilt = true; }
+                }
 
                 gsMatrix<real_t> sn; gsVector<real_t> sw_;
                 if ("clip" == mode)
@@ -1790,6 +1885,26 @@ CellRulePass buildCellRules(const gsTetClip::ClipStreamer & S, const std::string
                               : *std::max_element(R.levelResidual.begin(), R.levelResidual.end());
                     L.rankVol   = R.rank;
                     L.levelsVol = R.levels;
+                }
+                else if ("nnmf" == mode)
+                {
+                    gsStopwatch csw;
+                    gsTetClip::NnmfResult R;
+                    gsTetClip::NnmfOptions vopt;
+                    vopt.blockSize = volBlock;
+                    gsTetClip::nnmfCompress(nd, wt, lower, upper, p, vopt, R);
+                    L.compressSec += csw.stop();
+
+                    sn.resize(3, (index_t)R.indices.size());
+                    for (size_t c = 0; c != R.indices.size(); ++c)
+                        sn.col((index_t)c) = nd.col(R.indices[c]);
+                    sw_ = R.weights;
+
+                    L.okVol       = R.ok;
+                    L.resVol      = R.momErr;
+                    L.rankVol     = R.rank;
+                    L.roundsVol   = R.rounds;
+                    L.fallbackVol = R.fallbackFull;
                 }
                 else // momrule
                 {
@@ -1826,7 +1941,8 @@ CellRulePass buildCellRules(const gsTetClip::ClipStreamer & S, const std::string
 
             // --- Boundary, every work id. ---
             gsMatrix<real_t> bn, bnrm; gsVector<real_t> bw;
-            S.bdrRule(id, bn, bw, bnrm);
+            if (nullptr != bdrSrc) bdrSrc->bdrRule(id, bn, bw, bnrm);
+            else                   S.bdrRule(id, bn, bw, bnrm);
             L.nBdrIn = bn.cols();
 
             if (bn.cols() > 0)
@@ -1857,6 +1973,30 @@ CellRulePass buildCellRules(const gsTetClip::ClipStreamer & S, const std::string
                               : *std::max_element(R.levelResidual.begin(), R.levelResidual.end());
                     L.rankBdr   = R.rank;
                     L.levelsBdr = R.levels;
+                }
+                else if ("nnmf" == mode)
+                {
+                    gsStopwatch csw;
+                    gsTetClip::NnmfResult R;
+                    gsTetClip::NnmfOptions bopt;
+                    bopt.blockSize = bdrBlock;
+                    gsTetClip::nnmfCompressBoundary(bn, bw, bnrm, lower, upper, p, bopt, R);
+                    L.compressSec += csw.stop();
+
+                    sn.resize(3, (index_t)R.indices.size());
+                    snrm.resize(3, (index_t)R.indices.size());
+                    for (size_t c = 0; c != R.indices.size(); ++c)
+                    {
+                        sn.col((index_t)c)   = bn.col(R.indices[c]);
+                        snrm.col((index_t)c) = bnrm.col(R.indices[c]);
+                    }
+                    sw_ = R.weights;
+
+                    L.okBdr       = R.ok;
+                    L.resBdr      = R.momErr;
+                    L.rankBdr     = R.rank;
+                    L.roundsBdr   = R.rounds;
+                    L.fallbackBdr = R.fallbackFull;
                 }
                 else // momrule
                 {
@@ -1896,7 +2036,7 @@ CellRulePass buildCellRules(const gsTetClip::ClipStreamer & S, const std::string
                     cellMoments(bn, bw, &bnrm, lower, upper, p, mInN);
                     cellMoments(sn, sw_, &snrm, lower, upper, p, mOutN);
 
-                    if ("tchakaloff" == mode)
+                    if ("tchakaloff" == mode || "nnmf" == mode)
                     {
                         L.momErrBdr = momentRelErr(mInN, mOutN);
                     }
@@ -1949,7 +2089,7 @@ CellRulePass buildCellRules(const gsTetClip::ClipStreamer & S, const std::string
                     if (sw_[c] < 0) ++L.negWBdr;
                 }
                 L.bdrSum  = bsum.value();
-                L.fluxSum = fsum.value();
+                L.fluxSum = fsum.value();   // meaningless with a pull-back bdrSrc (parametric nodes, physical normals); gatePhysical recomputes the flux
 
                 if (compressed)
                     P.bdr->cell[id] = gsTetClip::CellBdrRule3{ give(sn), give(sw_), give(snrm) };
@@ -1963,6 +2103,48 @@ CellRulePass buildCellRules(const gsTetClip::ClipStreamer & S, const std::string
     P.seconds = sw.stop();
 
     return P;
+}
+
+/// Prints one ERRRULE-TABLE line for the error table of \a P (built with
+/// errTable = true) over the Cut cells of \a idx; returns its PASS verdict.
+bool printErrTableDiag(const CellRulePass & P, const gsTetClip::CellIndex & idx,
+                       const std::string & caseName, const std::string & mode,
+                       index_t r, index_t n, index_t p)
+{
+    GISMO_ENSURE(P.errVol, "printErrTableDiag: the pass was built without an error table.");
+    index_t cells = 0, maxKept = 0, maxRank = 0, maxRounds = 0, fallback = 0, notOk = 0,
+            errors = 0, missing = 0;
+    long long kept = 0;
+    real_t maxMomErr = 0, tcpu = 0;
+    std::vector<size_t> errIds;
+    for (size_t id : P.work)
+    {
+        if (gsTetClip::Cut != idx.status[id]) continue;
+        const CellLog & L = P.log[id];
+        ++cells;
+        kept += L.errNOut;
+        maxKept   = math::max(maxKept, L.errNOut);
+        maxRank   = math::max(maxRank, L.errRank);
+        if (!(L.errMomErr <= maxMomErr)) maxMomErr = L.errMomErr;
+        maxRounds = math::max(maxRounds, L.errRounds);
+        if (L.errFallback) ++fallback;
+        if (!L.errOk) ++notOk;
+        if (!L.errError.empty()) { ++errors; errIds.push_back(id); }
+        if (!L.errBuilt) ++missing;
+        tcpu += L.errSec;
+    }
+    const bool pass = (0 == errors && 0 == notOk && 0 == missing
+                       && maxMomErr <= gsTetClip::NnmfOptions().momTol);
+    gsInfo << "ERRRULE-TABLE case=" << caseName << " mode=" << mode << " r=" << r << " n=" << n
+           << " deg=" << 2*p+2 << " cells=" << cells << " kept=" << kept << " maxKept=" << maxKept
+           << " maxRank=" << maxRank << " maxMomErr=" << gsTetClip::fmtSci(maxMomErr)
+           << " maxRounds=" << maxRounds << " fallback=" << fallback << " notOk=" << notOk
+           << " errors=" << errors << " t_cpu=" << gsTetClip::fmtSci(tcpu) << "s "
+           << (pass ? "PASS" : "FAIL") << "\n";
+    for (size_t e = 0; e != errIds.size() && e != 10; ++e)
+        gsInfo << "ERRRULE-TABLE-ERROR case=" << caseName << " mode=" << mode << " r=" << r
+               << " id=" << errIds[e] << " what=" << P.log[errIds[e]].errError << "\n";
+    return pass;
 }
 
 //----------------------------------------------------------------------------
@@ -2067,14 +2249,15 @@ Totals tetModeTotals(const CellRulePass & P, const gsTetClip::ClipStreamer & S, 
     return t;
 }
 
-/// Gate of a tet mode (clip/tchakaloff/momrule) on the pass \a P built from
+/// Gate of a tet mode (clip/tchakaloff/momrule/nnmf) on the pass \a P built from
 /// \a S. Rows: `volume`, `area`, `flux`, `volume_exact`, `area_exact`
-/// (Report always), `fluxmom_global` (every mode), `moments_vol`/
+/// (Report always; absent for `--case mesh`), `fluxmom_global` (every mode), `moments_vol`/
 /// `moments_bdr`/`fluxmom_cell` (compressed modes only), `residual_vol`/
-/// `residual_bdr` (tchakaloff only), `minweight_vol`/`minweight_bdr`
-/// (Required/positive for tchakaloff, Report otherwise), `run`. Tolerances:
+/// `residual_bdr` (tchakaloff and nnmf only), `minweight_vol`/`minweight_bdr`
+/// (Required/positive for tchakaloff and nnmf, Report otherwise), `run`. Tolerances:
 /// 1e-13 (clip) / 1e-12 (compressed) for volume/area, same for flux except
-/// it is Report for momrule; moments/fluxmom 1e-12; residuals 1e-13; `run`
+/// it is Report for momrule; moments/fluxmom 1e-12; residuals 1e-13 (tchakaloff) / 1e-12 (nnmf, the
+/// compressor's momTol, tested on NnmfResult::momErr); `run`
 /// requires 0 errored cells.
 ///
 /// Flux identity: for the mesh's closed polyhedral boundary, the
@@ -2143,8 +2326,11 @@ GateResult gateTetMode(const CellRulePass & P, const gsTetClip::ClipStreamer & S
     scalarRow("area",   tot.A, A_mesh, areaTol, GateRow::Required);
     scalarRow("flux",   tot.F, 3.0*V_mesh, fluxTol,
              fluxRequired ? GateRow::Required : GateRow::Report);
-    scalarRow("volume_exact", tot.V, V_exact, 0, GateRow::Report);
-    scalarRow("area_exact",   tot.A, A_exact, 0, GateRow::Report);
+    if ("mesh" != caseName)
+    {
+        scalarRow("volume_exact", tot.V, V_exact, 0, GateRow::Report);
+        scalarRow("area_exact",   tot.A, A_exact, 0, GateRow::Report);
+    }
 
     // fluxmom_global: max_{q,i} |B_{q,i}-V_{q,i}| / A_mesh, q the tensor
     // Legendre Q_2p basis mapped to the fixed background box [-1,1]^3 (so
@@ -2265,8 +2451,10 @@ GateResult gateTetMode(const CellRulePass & P, const gsTetClip::ClipStreamer & S
         }
     }
 
-    if ("tchakaloff" == mode)
+    if ("tchakaloff" == mode || "nnmf" == mode)
     {
+        const bool isNnmf = ("nnmf" == mode);
+        const real_t resTol = isNnmf ? tolLoose : tolTight;
         // residual_vol
         {
             real_t worst = 0; std::vector<size_t> fail;
@@ -2275,10 +2463,10 @@ GateResult gateTetMode(const CellRulePass & P, const gsTetClip::ClipStreamer & S
                 {
                     const CellLog & L = P.log[id];
                     worst = math::max(worst, L.resVol);
-                    if (!L.okVol || !(L.resVol < tolTight)) fail.push_back(id);
+                    if (!L.okVol || !(isNnmf ? (L.resVol <= resTol) : (L.resVol < tolTight))) fail.push_back(id);
                 }
             GateRow row; row.check = "residual_vol"; row.value = worst; row.ref = 0;
-            row.tol = tolTight; row.kind = GateRow::Required; row.relerr = worst;
+            row.tol = resTol; row.kind = GateRow::Required; row.relerr = worst;
             row.failCells = fail; row.pass = fail.empty();
             G.rows.push_back(row);
             G.requiredPass = G.requiredPass && row.pass;
@@ -2291,17 +2479,17 @@ GateResult gateTetMode(const CellRulePass & P, const gsTetClip::ClipStreamer & S
                 {
                     const CellLog & L = P.log[id];
                     worst = math::max(worst, L.resBdr);
-                    if (!L.okBdr || !(L.resBdr < tolTight)) fail.push_back(id);
+                    if (!L.okBdr || !(isNnmf ? (L.resBdr <= resTol) : (L.resBdr < tolTight))) fail.push_back(id);
                 }
             GateRow row; row.check = "residual_bdr"; row.value = worst; row.ref = 0;
-            row.tol = tolTight; row.kind = GateRow::Required; row.relerr = worst;
+            row.tol = resTol; row.kind = GateRow::Required; row.relerr = worst;
             row.failCells = fail; row.pass = fail.empty();
             G.rows.push_back(row);
             G.requiredPass = G.requiredPass && row.pass;
         }
     }
 
-    // minweight_vol / minweight_bdr: Report except tchakaloff (Req
+    // minweight_vol / minweight_bdr: Report except tchakaloff/nnmf (Req
     // positive). The positivity failCells are read straight from the
     // served tables (`!(w > 0)` per cell, so NaN fails and 0 fails)
     // rather than from CellLog::negW*, which only counts weights < 0
@@ -2319,7 +2507,7 @@ GateResult gateTetMode(const CellRulePass & P, const gsTetClip::ClipStreamer & S
             minVol = math::min(minVol, L.minWVol);
             minBdr = math::min(minBdr, L.minWBdr);
         }
-        const bool positiveMode = ("tchakaloff" == mode);
+        const bool positiveMode = ("tchakaloff" == mode || "nnmf" == mode);
 
         std::vector<size_t> failVol, failBdr;
         if (positiveMode)
@@ -2449,7 +2637,7 @@ struct GatePhysicalCellPartial
     std::exception_ptr err;
 };
 
-/// Physical-space gate for `--mode clip` on a curved background
+/// Physical-space gate for `--mode clip` or `--mode nnmf` on a curved background
 /// (`--geo affine|bubble`): the analogue of \ref gateTetMode for a case
 /// where `CellLog::volSum/bdrSum/fluxSum` (built by \ref buildCellRules
 /// straight from `S.volRule`/`S.bdrRule`) are PARAMETRIC and therefore
@@ -2558,11 +2746,24 @@ struct GatePhysicalCellPartial
 /// count; the per-cell partial storage (\ref GatePhysicalCellPartial) is
 /// O(K) per contributing cell and O(1) for every other cell.
 ///
+/// \a volSrc is the volume rule served to the gate (the streamer itself for
+/// clip, the nnmf volume table otherwise); \a physBdr likewise serves the
+/// boundary (Nanson weights, parametric nodes). \a P == nullptr means clip.
+/// \a P != nullptr (mode nnmf, with \a volSrc/\a physBdr its own tables)
+/// keeps the reference side of fluxmom_global the uncompressed clip rule
+/// and adds the Required rows cellmom_vol/cellmom_bdr (per-cell Q_2p moment
+/// agreement with clip on the parametric box, tol 1e-12), minweight_vol/
+/// minweight_bdr, count_vol/count_bdr and run. fluxmom_global is Report
+/// then: for G != I the moment space is parametric Q_2p, so the Required
+/// check is the per-cell moment agreement.
+///
 /// Driver-level diagnostic: parallel over cells (OpenMP); must not be called from inside a parallel region.
 GateResult gatePhysical(const gsTetClip::PhysTetMesh & phys, const gsTetClip::PullbackStats & st,
                         const gsGeometry<real_t> & Gmap, gsTetClip::BgMapKind kind,
                         const gsTetClip::ClipStreamer & S,
+                        const gsTetClip::VolCellSource & volSrc,
                         const gsTetClip::BdrCellSource & physBdr,
+                        const CellRulePass * P,
                         index_t p, real_t V_exact, real_t A_exact,
                         const std::string & caseName, const std::string & geoName, index_t r)
 {
@@ -2574,8 +2775,18 @@ GateResult gatePhysical(const gsTetClip::PhysTetMesh & phys, const gsTetClip::Pu
     const gsTetClip::CellIndex & idx = *S.index();
     const size_t N3 = (size_t)idx.grid.n*(size_t)idx.grid.n*(size_t)idx.grid.n;
 
+    if (nullptr != P)
+    {
+        GISMO_ENSURE("nnmf" == P->mode, "gatePhysical: a rule pass is only supported for mode nnmf.");
+        GISMO_ENSURE(static_cast<const gsTetClip::VolCellSource *>(P->vol.get()) == &volSrc &&
+                     static_cast<const gsTetClip::BdrCellSource *>(P->bdr.get()) == &physBdr,
+                    "gatePhysical: volSrc/physBdr must be the rule pass's own tables.");
+        GISMO_ENSURE(P->log.size() == N3, "gatePhysical: rule pass does not match the cell grid.");
+    }
+
     GateResult G;
-    G.caseName = caseName; G.mode = "clip"; G.geo = geoName; G.r = r; G.n = idx.grid.n;
+    G.caseName = caseName; G.mode = (nullptr != P) ? P->mode : std::string("clip");
+    G.geo = geoName; G.r = r; G.n = idx.grid.n;
 
     const real_t V_mesh = gsTetClip::meshVolumeExact(phys);
     const real_t A_mesh = gsTetClip::unclippedBoundaryArea(phys);
@@ -2655,13 +2866,13 @@ GateResult gatePhysical(const gsTetClip::PhysTetMesh & phys, const gsTetClip::Pu
             // 1. Served volume rule -> volume total and detJ_min/detFail.
             gsMatrix<real_t> nd; gsVector<real_t> w;
             std::vector<real_t> detJ; gsMatrix<real_t> X;
-            if (isCut)       S.volRule(id, nd, w);
+            if (isCut)       volSrc.volRule(id, nd, w);
             else if (isFull) fullRuleP1.mapTo(lower, upper, nd, w);
 
             if (nd.cols() > 0)
             {
-                if (isCut) gateMapChunked(Gmap, nd, &detJ, &X);
-                else       gateMapChunked(Gmap, nd, &detJ, nullptr);
+                if (isCut && nullptr == P) gateMapChunked(Gmap, nd, &detJ, &X);
+                else                       gateMapChunked(Gmap, nd, &detJ, nullptr);
 
                 gsTetClip::KahanSum cellV;
                 bool cellBad = false;
@@ -2680,17 +2891,30 @@ GateResult gatePhysical(const gsTetClip::PhysTetMesh & phys, const gsTetClip::Pu
             }
 
             // 2. fluxmom V side: a reference rule, NOT the served one (see
-            // the doxygen above for the 3p+1 exactness argument). Cut cells
-            // reuse the same clip rule and det(J)/X already computed in
-            // step 1, by pointer; the clip rule is already exact to total
-            // degree 6p, which dominates.
+            // the doxygen above for the 3p+1 exactness argument). For clip
+            // (P == nullptr) Cut cells reuse the same clip rule and det(J)/X
+            // already computed in step 1, by pointer; for nnmf they refetch
+            // the uncompressed clip rule below. The clip rule is already
+            // exact to total degree 6p, which dominates.
             const gsMatrix<real_t> * ndRefP = nullptr; const gsVector<real_t> * wRefP = nullptr;
             const std::vector<real_t> * detJrefP = nullptr; const gsMatrix<real_t> * XrefP = nullptr;
             gsMatrix<real_t> ndRefFull; gsVector<real_t> wRefFull;
             std::vector<real_t> detJrefFull; gsMatrix<real_t> XrefFull;
-            if (isCut && nd.cols() > 0)
+            if (isCut && nullptr == P && nd.cols() > 0)
             {
                 ndRefP = &nd; wRefP = &w; detJrefP = &detJ; XrefP = &X;
+            }
+            else if (isCut && nullptr != P)
+            {
+                // The served rule is compressed: the reference side stays
+                // the uncompressed clip rule.
+                S.volRule(id, ndRefFull, wRefFull);
+                if (ndRefFull.cols() > 0)
+                {
+                    gateMapChunked(Gmap, ndRefFull, &detJrefFull, &XrefFull);
+                    ndRefP = &ndRefFull; wRefP = &wRefFull;
+                    detJrefP = &detJrefFull; XrefP = &XrefFull;
+                }
             }
             else if (isFull)
             {
@@ -2826,8 +3050,11 @@ GateResult gatePhysical(const gsTetClip::PhysTetMesh & phys, const gsTetClip::Pu
     scalarRow("volume", V, V_mesh, 1e-13, physKind);
     scalarRow("area",   A, A_mesh, 1e-13, physKind);
     scalarRow("flux",   F, 3.0*V_mesh, 1e-13, physKind);
-    scalarRow("volume_exact", V, V_exact, 0, GateRow::Report);
-    scalarRow("area_exact",   A, A_exact, 0, GateRow::Report);
+    if ("mesh" != caseName)
+    {
+        scalarRow("volume_exact", V, V_exact, 0, GateRow::Report);
+        scalarRow("area_exact",   A, A_exact, 0, GateRow::Report);
+    }
 
     {
         gsVector<real_t> factor;
@@ -2851,8 +3078,111 @@ GateResult gatePhysical(const gsTetClip::PhysTetMesh & phys, const gsTetClip::Pu
         const GateRow::Kind fmKind = isAffine ? GateRow::Required
                                     : (bubbleRequired ? GateRow::Required : GateRow::Report);
         GateRow row; row.check = "fluxmom_global"; row.value = worst; row.ref = 0;
-        row.tol = tol; row.kind = fmKind; row.relerr = worst; row.pass = (worst <= tol);
+        row.tol = tol; row.kind = (nullptr != P) ? GateRow::Report : fmKind;
+        row.relerr = worst; row.pass = (worst <= tol);
         push(row);
+    }
+
+    if (nullptr != P)
+    {
+        const real_t tolMom = 1e-12;
+        {
+            real_t worst = 0; std::vector<size_t> fail;
+            for (size_t id = 0; id != N3; ++id)
+                if (gsTetClip::Cut == idx.status[id])
+                {
+                    const real_t e = P->log[id].momErrVol;
+                    if (!(e <= worst)) worst = e;
+                    if (!(e <= tolMom)) fail.push_back(id);
+                }
+            GateRow row; row.check = "cellmom_vol"; row.value = worst; row.ref = 0;
+            row.tol = tolMom; row.kind = GateRow::Required; row.relerr = row.value;
+            row.failCells = fail; row.pass = fail.empty();
+            push(row);
+        }
+        {
+            real_t worst = 0; std::vector<size_t> fail;
+            for (size_t id = 0; id != N3; ++id)
+                if (P->log[id].nBdrIn > 0)
+                {
+                    const real_t e = P->log[id].momErrBdr;
+                    if (!(e <= worst)) worst = e;
+                    if (!(e <= tolMom)) fail.push_back(id);
+                }
+            GateRow row; row.check = "cellmom_bdr"; row.value = worst; row.ref = 0;
+            row.tol = tolMom; row.kind = GateRow::Required; row.relerr = row.value;
+            row.failCells = fail; row.pass = fail.empty();
+            push(row);
+        }
+        {
+            real_t minVol = std::numeric_limits<real_t>::infinity();
+            real_t minBdr = std::numeric_limits<real_t>::infinity();
+            for (size_t w = 0; w != P->work.size(); ++w)
+            {
+                const CellLog & L = P->log[P->work[w]];
+                minVol = math::min(minVol, L.minWVol);
+                minBdr = math::min(minBdr, L.minWBdr);
+            }
+            auto anyNonPositive = [](const gsVector<real_t> & wts) -> bool
+            {
+                for (index_t c = 0; c != wts.size(); ++c)
+                    if (!(wts[c] > 0)) return true;
+                return false;
+            };
+            std::vector<size_t> failVol, failBdr;
+            for (size_t w = 0; w != P->work.size(); ++w)
+            {
+                const size_t id = P->work[w];
+                if (gsTetClip::Cut == idx.status[id] && anyNonPositive(P->vol->cell[id].weights))
+                    failVol.push_back(id);
+                if (anyNonPositive(P->bdr->cell[id].weights))
+                    failBdr.push_back(id);
+            }
+            GateRow rv; rv.check = "minweight_vol"; rv.value = minVol; rv.ref = 0; rv.relerr = 0;
+            rv.kind = GateRow::Required; rv.positive = true;
+            rv.failCells = failVol; rv.pass = failVol.empty();
+            push(rv);
+            GateRow rb; rb.check = "minweight_bdr"; rb.value = minBdr; rb.ref = 0; rb.relerr = 0;
+            rb.kind = GateRow::Required; rb.positive = true;
+            rb.failCells = failBdr; rb.pass = failBdr.empty();
+            push(rb);
+        }
+        {
+            std::vector<size_t> fail;
+            for (size_t id = 0; id != N3; ++id)
+            {
+                const CellLog & L = P->log[id];
+                if (gsTetClip::Cut == idx.status[id] && L.error.empty() &&
+                    (L.rankVol < 0 || L.nVolOut > L.rankVol))
+                    fail.push_back(id);
+            }
+            GateRow row; row.check = "count_vol"; row.value = (real_t)fail.size(); row.ref = 0;
+            row.tol = 0; row.kind = GateRow::Required; row.relerr = row.value;
+            row.failCells = fail; row.pass = fail.empty();
+            push(row);
+        }
+        {
+            std::vector<size_t> fail;
+            for (size_t id = 0; id != N3; ++id)
+            {
+                const CellLog & L = P->log[id];
+                if (L.nBdrIn > 0 && L.error.empty() && (L.rankBdr < 0 || L.nBdrOut > L.rankBdr))
+                    fail.push_back(id);
+            }
+            GateRow row; row.check = "count_bdr"; row.value = (real_t)fail.size(); row.ref = 0;
+            row.tol = 0; row.kind = GateRow::Required; row.relerr = row.value;
+            row.failCells = fail; row.pass = fail.empty();
+            push(row);
+        }
+        {
+            std::vector<size_t> fail;
+            for (size_t id = 0; id != N3; ++id)
+                if (!P->log[id].error.empty()) fail.push_back(id);
+            GateRow row; row.check = "run"; row.value = (real_t)fail.size(); row.ref = 0;
+            row.tol = 0; row.kind = GateRow::Required; row.relerr = row.value;
+            row.failCells = fail; row.pass = fail.empty();
+            push(row);
+        }
     }
 
     gsInfo << "GATEINFO case=" << caseName << " geo=" << geoName << " r=" << r
@@ -3384,6 +3714,7 @@ void printMomentResidualFailures(const GateResult & G, const CellRulePass & P, c
 {
     if (row.failCells.empty()) return;
     if ("moments_vol" != row.check && "moments_bdr" != row.check &&
+        "cellmom_vol" != row.check && "cellmom_bdr" != row.check &&
         "residual_vol" != row.check && "residual_bdr" != row.check) return;
     const bool isVol = (row.check.find("vol") != std::string::npos);
     for (size_t id : row.failCells)
@@ -3440,8 +3771,11 @@ void printRunErrors(const std::string & caseName, const std::string & mode, inde
 
 /// GATEDIAG row for a tet mode: totals in 64-bit (volIn/volOut/bdrIn/bdrOut
 /// reach O(10^8) at r=3, and index_t may be 32-bit). Fields that do not
-/// apply to \a G.mode (rank/twoLevel: tchakaloff only; passThrough: momrule
-/// only) print "na".
+/// apply to \a G.mode (rank: tchakaloff and nnmf; twoLevel: tchakaloff only;
+/// passThrough: momrule only) print "na". For nnmf the line additionally
+/// carries `keptPts maxRankVol maxRankBdr maxMomErrVol maxMomErrBdr
+/// maxRoundsVol maxRoundsBdr fallbackVol fallbackBdr` (maxima and fallback
+/// counts over the Cut cells resp. the cells with boundary input).
 void printGateDiagTet(const GateResult & G, const CellRulePass & P, const gsTetClip::ClipStreamer & S,
                       real_t gateEvalSeconds)
 {
@@ -3450,6 +3784,10 @@ void printGateDiagTet(const GateResult & G, const CellRulePass & P, const gsTetC
     index_t rankVolMin = std::numeric_limits<index_t>::max(), rankVolMax = -1;
     index_t rankBdrMin = std::numeric_limits<index_t>::max(), rankBdrMax = -1;
     index_t twoLevelVol=0, twoLevelBdr=0, passThroughVol=0, passThroughBdr=0;
+    index_t nnmfRankVol = 0, nnmfRankBdr = 0, nnmfRoundsVol = 0, nnmfRoundsBdr = 0;
+    index_t nnmfFallbackVol = 0, nnmfFallbackBdr = 0;
+    real_t  nnmfErrVol = 0, nnmfErrBdr = 0;
+    const bool isNnmf = ("nnmf" == G.mode);
     gsTetClip::KahanSum compressCpu;
 
     for (size_t id = 0; id != P.log.size(); ++id)
@@ -3459,6 +3797,15 @@ void printGateDiagTet(const GateResult & G, const CellRulePass & P, const gsTetC
         if (gsTetClip::Cut == idx.status[id])
         {
             volIn += L.nVolIn; volOut += L.nVolOut; negWVol += L.negWVol;
+            if (isNnmf && L.error.empty())
+            {
+                rankVolMin = math::min(rankVolMin, L.rankVol);
+                rankVolMax = math::max(rankVolMax, L.rankVol);
+                nnmfRankVol   = math::max(nnmfRankVol, L.rankVol);
+                nnmfErrVol    = math::max(nnmfErrVol, L.resVol);
+                nnmfRoundsVol = math::max(nnmfRoundsVol, L.roundsVol);
+                if (L.fallbackVol) ++nnmfFallbackVol;
+            }
             if ("tchakaloff" == G.mode && L.error.empty())
             {
                 rankVolMin = math::min(rankVolMin, L.rankVol);
@@ -3474,6 +3821,15 @@ void printGateDiagTet(const GateResult & G, const CellRulePass & P, const gsTetC
         bdrIn += L.nBdrIn; bdrOut += L.nBdrOut; negWBdr += L.negWBdr;
         if (L.nBdrIn > 0)
         {
+            if (isNnmf && L.error.empty())
+            {
+                rankBdrMin = math::min(rankBdrMin, L.rankBdr);
+                rankBdrMax = math::max(rankBdrMax, L.rankBdr);
+                nnmfRankBdr   = math::max(nnmfRankBdr, L.rankBdr);
+                nnmfErrBdr    = math::max(nnmfErrBdr, L.resBdr);
+                nnmfRoundsBdr = math::max(nnmfRoundsBdr, L.roundsBdr);
+                if (L.fallbackBdr) ++nnmfFallbackBdr;
+            }
             if ("tchakaloff" == G.mode && L.error.empty())
             {
                 rankBdrMin = math::min(rankBdrMin, L.rankBdr);
@@ -3488,7 +3844,7 @@ void printGateDiagTet(const GateResult & G, const CellRulePass & P, const gsTetC
     { return (0 == out) ? "na" : gsTetClip::fmtSci((real_t)in/(real_t)out); };
     auto rankStr = [&](index_t lo, index_t hi) -> std::string
     {
-        if ("tchakaloff" != G.mode || hi < 0) return "na/na";
+        if (("tchakaloff" != G.mode && !isNnmf) || hi < 0) return "na/na";
         std::ostringstream oss; oss << lo << "/" << hi; return oss.str();
     };
     auto countOrNa = [&](const std::string & wantMode, index_t v) -> std::string
@@ -3496,6 +3852,15 @@ void printGateDiagTet(const GateResult & G, const CellRulePass & P, const gsTetC
         if (G.mode != wantMode) return "na";
         std::ostringstream oss; oss << v; return oss.str();
     };
+
+    std::ostringstream nnmfDiag;
+    if (isNnmf)
+        nnmfDiag << " keptPts=" << (volOut + bdrOut)
+                 << " maxRankVol=" << nnmfRankVol << " maxRankBdr=" << nnmfRankBdr
+                 << " maxMomErrVol=" << gsTetClip::fmtSci(nnmfErrVol)
+                 << " maxMomErrBdr=" << gsTetClip::fmtSci(nnmfErrBdr)
+                 << " maxRoundsVol=" << nnmfRoundsVol << " maxRoundsBdr=" << nnmfRoundsBdr
+                 << " fallbackVol=" << nnmfFallbackVol << " fallbackBdr=" << nnmfFallbackBdr;
 
     gsInfo << "GATEDIAG case=" << G.caseName << " mode=" << G.mode << " r=" << G.r << " n=" << G.n
           << " cut=" << S.numCut() << " full=" << S.numFull() << " empty=" << S.numEmpty()
@@ -3508,6 +3873,7 @@ void printGateDiagTet(const GateResult & G, const CellRulePass & P, const gsTetC
           << " twoLevelBdr=" << countOrNa("tchakaloff", twoLevelBdr)
           << " passThroughVol=" << countOrNa("momrule", passThroughVol)
           << " passThroughBdr=" << countOrNa("momrule", passThroughBdr)
+          << (isNnmf ? nnmfDiag.str() : std::string())
           << " compressCpu=" << gsTetClip::fmtSci(compressCpu.value()) << "s"
           << " passTime=" << gsTetClip::fmtSci(P.seconds) << "s"
           << " gateTime=" << gsTetClip::fmtSci(P.seconds + gateEvalSeconds) << "s  INFO\n";
@@ -3533,12 +3899,13 @@ void printGateDiagAlgoim(const AlgoimPass & P, const std::string & caseName, ind
 //----------------------------------------------------------------------------
 
 /// Runs the volume/area/flux/moment gate over `--case`/`--mode`/`-r`. Builds
-/// each (case, r)'s ClipStreamer once and gates clip/tchakaloff/momrule in
+/// each (case, r)'s ClipStreamer once and gates clip/tchakaloff/momrule/nnmf in
 /// turn on it (each CellRulePass goes out of scope before the next mode
 /// starts, so at most one compressed table set is alive at a time), then
 /// the sphere-only Algoim baseline. Returns whether every counted Required
 /// row PASSed over the whole run; `main` maps this to the process exit
-/// code. Tchakaloff's would-be-Required rows print `wouldPass=0|1 DEFERRED`
+/// code. NNMF's rows are Required and counted like clip's. Tchakaloff's
+/// would-be-Required rows print `wouldPass=0|1 DEFERRED`
 /// (see \ref printGateRow) and are excluded from that count and from
 /// `GATE SUMMARY`, because its NNLS compressor's KKT stopping test does
 /// not bound the primal residual (the TODO on `nnlsLawsonHansonImpl` in
@@ -3554,7 +3921,7 @@ bool runVolumeStudy(const Config & cfg)
 
     std::vector<std::string> modes;
     if ("all" == cfg.mode)
-    { modes = { "clip", "tchakaloff", "momrule", "algoim" }; }
+    { modes = { "clip", "tchakaloff", "momrule", "nnmf", "algoim" }; }
     else modes.push_back(cfg.mode);
 
     const bool wantAlgoim  = std::find(modes.begin(), modes.end(), "algoim")    != modes.end();
@@ -3570,15 +3937,21 @@ bool runVolumeStudy(const Config & cfg)
 
         const real_t V_mesh = gsTetClip::meshVolumeExact(phys);
         const real_t A_mesh = gsTetClip::unclippedBoundaryArea(phys);
-        const real_t V_exact = ("sphere" == caseName) ? sphereVolumeExact()  : rotcubeVolumeExact();
-        const real_t A_exact = ("sphere" == caseName) ? sphereAreaExact()    : rotcubeAreaExact();
+        // A general mesh has no analytic reference: NaN, never printed or gated.
+        const real_t nan = std::numeric_limits<real_t>::quiet_NaN();
+        const real_t V_exact = ("sphere" == caseName) ? sphereVolumeExact()
+                             : ("mesh"   == caseName) ? nan : rotcubeVolumeExact();
+        const real_t A_exact = ("sphere" == caseName) ? sphereAreaExact()
+                             : ("mesh"   == caseName) ? nan : rotcubeAreaExact();
 
         gsInfo << "GATEINFO case=" << caseName << " V_mesh=" << gsTetClip::fmtSci(V_mesh)
-              << " A_mesh=" << gsTetClip::fmtSci(A_mesh) << " V_exact=" << gsTetClip::fmtSci(V_exact)
-              << " A_exact=" << gsTetClip::fmtSci(A_exact) << "  INFO\n";
+              << " A_mesh=" << gsTetClip::fmtSci(A_mesh) << " V_exact="
+              << ("mesh" == caseName ? std::string("n/a") : gsTetClip::fmtSci(V_exact))
+              << " A_exact="
+              << ("mesh" == caseName ? std::string("n/a") : gsTetClip::fmtSci(A_exact)) << "  INFO\n";
 
-        if ("rotcube" == caseName && wantAlgoim)
-            gsInfo << "GATEINFO case=rotcube mode=algoim skipped: no analytic level set  INFO\n";
+        if ("sphere" != caseName && wantAlgoim)
+            gsInfo << "GATEINFO case=" << caseName << " mode=algoim skipped: no analytic level set  INFO\n";
 
         memory::shared_ptr<gsMeshSignedDist<real_t> > phiH;
         if (wantMomrule && !tetModes.empty())
@@ -3707,20 +4080,48 @@ bool runVolumeStudy(const Config & cfg)
                 }
                 else
                 {
-                    // Curved background (clip only; main() rejects the other
-                    // modes): the physical-space gate recomputes volume/
+                    // Curved background (clip and nnmf; main() rejects the
+                    // other modes): the physical-space gate recomputes volume/
                     // area/flux/fluxmom_global directly from S and bgMap
                     // (gatePhysical), since CellLog's totals are parametric
                     // here. bdrSrc is the Nanson-mapped boundary source of
-                    // this (case, r).
+                    // this (case, r); nnmf compresses its output and the gate
+                    // evaluates the compressed tables.
                     const gsTetClip::PullbackBdrSource bdrSrc(*S, bgMap);
-                    const GateResult G = gatePhysical(phys, pbStats, bgMap, kind, *S, bdrSrc,
-                                                      cfg.p, V_exact, A_exact, caseName, cfg.geo, r);
-                    for (const GateRow & row : G.rows)
+                    for (const std::string & mode : tetModes)
                     {
-                        printGateRow(G, row);
-                        reqTotal  += (GateRow::Required == row.kind) ? 1 : 0;
-                        passTotal += (GateRow::Required == row.kind && row.pass) ? 1 : 0;
+                        if ("nnmf" != mode)
+                        {
+                            const GateResult G = gatePhysical(phys, pbStats, bgMap, kind, *S, *S, bdrSrc, nullptr,
+                                                              cfg.p, V_exact, A_exact, caseName, cfg.geo, r);
+                            for (const GateRow & row : G.rows)
+                            {
+                                printGateRow(G, row);
+                                reqTotal  += (GateRow::Required == row.kind) ? 1 : 0;
+                                passTotal += (GateRow::Required == row.kind && row.pass) ? 1 : 0;
+                            }
+                            continue;
+                        }
+
+                        const CellRulePass P = buildCellRules(*S, "nnmf", cfg.p, nullptr, true, &bdrSrc);
+                        gsStopwatch gsw;
+                        const GateResult G = gatePhysical(phys, pbStats, bgMap, kind, *S, *P.vol, *P.bdr, &P,
+                                                          cfg.p, V_exact, A_exact, caseName, cfg.geo, r);
+                        const real_t gateEvalSeconds = gsw.stop();
+
+                        std::vector<size_t> runFail; std::vector<std::string> runMsgs;
+                        for (const GateRow & row : G.rows)
+                        {
+                            printGateRow(G, row);
+                            printMomentResidualFailures(G, P, row);
+                            printRunFailureInfo(G, P, row);
+                            reqTotal  += (GateRow::Required == row.kind) ? 1 : 0;
+                            passTotal += (GateRow::Required == row.kind && row.pass) ? 1 : 0;
+                            if ("run" == row.check)
+                                for (size_t id : row.failCells) { runFail.push_back(id); runMsgs.push_back(P.log[id].error); }
+                        }
+                        printRunErrors(caseName, mode, r, runFail, runMsgs);
+                        printGateDiagTet(G, P, *S, gateEvalSeconds);
                     }
                 }
             }
@@ -3771,7 +4172,7 @@ struct PoissonStats
     real_t minw = std::numeric_limits<real_t>::infinity();
 };
 
-/// \ref PoissonStats of a tet-mode pass \a P (clip/tchakaloff/momrule) over
+/// \ref PoissonStats of a tet-mode pass \a P (clip/tchakaloff/momrule/nnmf) over
 /// streamer \a S: \a P.log already carries the served per-cell node counts
 /// and minimum weight from \ref buildCellRules's own loop, for every mode
 /// including clip, so this is a serial O(n^3) read of already-materialized
@@ -3867,6 +4268,10 @@ struct PoissonRunResult
     long long kItPower = -1, kItInverse = -1;
     real_t lmin = 0, lmax = 0, asym = 0;
     real_t t_asm = 0, t_solve = 0, t_err = 0;
+    real_t L2n  = std::numeric_limits<real_t>::quiet_NaN();   // second (nnmf) reference rule, --errRule both
+    real_t H1sn = std::numeric_limits<real_t>::quiet_NaN();
+    bool   hasRef2 = false;                                   // L2n/H1sn computed
+    real_t t_errn = 0;
 };
 
 /// Assembles and solves the symmetric-Nitsche + ghost-penalty immersed
@@ -3898,7 +4303,9 @@ struct PoissonRunResult
 /// value of \a mp's Jacobian, computed by the caller -- see the file
 /// header). The ghost term itself always keeps the parametric \a h. When
 /// \a dumpFile is non-empty, the assembled system (CSC arrays + rhs) is
-/// written to it right after assembly, before the solve.
+/// written to it right after assembly, before the solve. A non-empty
+/// \a refFactory2 adds a second error pass with that rule, stored in
+/// PoissonRunResult::L2n/H1sn (timed in t_errn, not in t_err).
 PoissonRunResult solvePoissonOnDomain(
     const gsMultiPatch<real_t> & mp, gsMultiBasis<real_t> & mb, const gsMultiPatch<real_t> & mpId,
     memory::shared_ptr<gsTrimmedDomain<3,real_t> > dom,
@@ -3909,7 +4316,8 @@ PoissonRunResult solvePoissonOnDomain(
     index_t p, real_t h, real_t hNitsche, real_t gammaEff, real_t gtEff, bool ghostOn,
     bool ghostUsesG, index_t kappaDense, index_t kappaMaxIt,
     const gsFunctionExpr<real_t> & u_exact, const gsFunctionExpr<real_t> & f_rhs,
-    const std::string & dumpFile)
+    const std::string & dumpFile,
+    gsExprAssembler<real_t>::QuadratureFactory refFactory2 = gsExprAssembler<real_t>::QuadratureFactory())
 {
     typedef gsExprAssembler<real_t>::geometryMap geometryMap;
     typedef gsExprAssembler<real_t>::space       space;
@@ -4070,6 +4478,24 @@ PoissonRunResult solvePoissonOnDomain(
         R.H1s = math::sqrt(math::max(h1ssq, (real_t)0));
         R.t_err = swErr.stop();
     }
+    if (refFactory2)
+    {
+        gsStopwatch swErr2;
+        gsExprEvaluator<real_t> ev2(A);
+        auto u_ex2 = ev2.getVariable(u_exact, G);
+        real_t l2sq2, h1ssq2;
+        {
+            gsTetClip::VolumeQuadratureScope<gsExprEvaluator<real_t> > s2(ev2, refFactory2);
+            GISMO_ENSURE(ev2.hasCustomQuadrature(), "solvePoissonOnDomain: second reference-rule "
+                        "scope failed to install its factory.");
+            l2sq2  = ev2.integral((u_ex2 - u_sol).sqNorm() * meas(G));
+            h1ssq2 = ev2.integral((igrad(u_ex2) - igrad(u_sol,G)).sqNorm() * meas(G));
+        }
+        R.L2n  = math::sqrt(math::max(l2sq2,  (real_t)0));
+        R.H1sn = math::sqrt(math::max(h1ssq2, (real_t)0));
+        R.hasRef2 = true;
+        R.t_errn = swErr2.stop();
+    }
 
     // Conditioning estimate.
     {
@@ -4199,7 +4625,10 @@ void printPoissonRow(const std::string & caseName, const std::string & mode, ind
           << " t_asm=" << gsTetClip::fmtSci(R.t_asm) << "s"
           << " t_solve=" << gsTetClip::fmtSci(R.t_solve) << "s"
           << " t_err=" << gsTetClip::fmtSci(R.t_err) << "s"
-          << " t_wall=" << gsTetClip::fmtSci(t_wall) << "s" << statusSuffix << "\n";
+          << " t_wall=" << gsTetClip::fmtSci(t_wall) << "s";
+    if (R.hasRef2)
+        gsInfo << " L2n=" << gsTetClip::fmtSci(R.L2n) << " H1sn=" << gsTetClip::fmtSci(R.H1sn);
+    gsInfo << statusSuffix << "\n";
 }
 
 /// Prints the r/n/ndof/L2/eocL2/H1s/eocH1/kappa/eocK table of every SOLVED
@@ -4304,7 +4733,8 @@ bool printEocVerdict(const std::string & caseName, const std::string & mode, ind
 /// solves the Poisson problem (\ref solvePoissonOnDomain) and prints one
 /// `POISSON` row. See the file header for the per-mode behaviour, the
 /// pre-asymptotic note and the EoC bar; tchakaloff never solves (its
-/// `--study volume` gate rows are DEFERRED, never PASS).
+/// `--study volume` gate rows are DEFERRED, never PASS); nnmf solves at every
+/// r from its compressed tables and prints `EOC ... REPORT`.
 bool runPoissonStudy(const Config & cfg)
 {
     const bool ghostOn = (1 == cfg.ghostOn);
@@ -4313,10 +4743,13 @@ bool runPoissonStudy(const Config & cfg)
     const index_t cap = 3;
     const gsTetClip::BgMapKind kind = geoKind(cfg.geo);
     const bool ghostUsesG = ("G" == cfg.ghostMap);
+    const bool errTab = ("clip" != cfg.errRule);
 
     gsInfo << "POISSON-STUDY p=" << cfg.p << " n0=" << cfg.n0 << " rMax=" << cfg.rMax
           << " gamma=" << gammaEff << " ghost=" << (ghostOn?1:0) << " ghostCoef=" << gtEff
-          << " u=sin(pi*x/2)*cos(pi*y/3)*exp(z/2)\n";
+          << " u=sin(pi*x/2)*cos(pi*y/3)*exp(z/2)";
+    if ("clip" != cfg.errRule) gsInfo << " errRule=" << cfg.errRule;
+    gsInfo << "\n";
     if (gsTetClip::BgMapKind::Identity != kind)
         gsInfo << "POISSON-GEO geo=" << cfg.geo << " eps=" << cfg.eps
               << " ghostMap=" << cfg.ghostMap << " sigmaNPerDir=11\n";
@@ -4330,7 +4763,7 @@ bool runPoissonStudy(const Config & cfg)
     else cases.push_back(cfg.caseName);
 
     std::vector<std::string> modes;
-    if ("all" == cfg.mode) modes = { "clip", "tchakaloff", "momrule", "algoim" };
+    if ("all" == cfg.mode) modes = { "clip", "tchakaloff", "momrule", "nnmf", "algoim" };
     else modes.push_back(cfg.mode);
 
     bool studyOk = true;
@@ -4340,8 +4773,12 @@ bool runPoissonStudy(const Config & cfg)
         const gsTetClip::PhysTetMesh phys = loadPhysMesh(cfg, caseName);
         const real_t V_mesh = gsTetClip::meshVolumeExact(phys);
         const real_t A_mesh = gsTetClip::unclippedBoundaryArea(phys);
-        const real_t V_exact = ("sphere" == caseName) ? sphereVolumeExact()  : rotcubeVolumeExact();
-        const real_t A_exact = ("sphere" == caseName) ? sphereAreaExact()    : rotcubeAreaExact();
+        // A general mesh has no analytic reference: NaN, never printed or gated.
+        const real_t nan = std::numeric_limits<real_t>::quiet_NaN();
+        const real_t V_exact = ("sphere" == caseName) ? sphereVolumeExact()
+                             : ("mesh"   == caseName) ? nan : rotcubeVolumeExact();
+        const real_t A_exact = ("sphere" == caseName) ? sphereAreaExact()
+                             : ("mesh"   == caseName) ? nan : rotcubeAreaExact();
 
         real_t pbScale = 1.0;
         if (gsTetClip::BgMapKind::Identity != kind)
@@ -4351,9 +4788,9 @@ bool runPoissonStudy(const Config & cfg)
 
         for (const std::string & mode : modes)
         {
-            if ("algoim" == mode && "rotcube" == caseName)
+            if ("algoim" == mode && "sphere" != caseName)
             {
-                gsInfo << "POISSON-SKIP case=rotcube mode=algoim reason=sphere-only  INFO\n";
+                gsInfo << "POISSON-SKIP case=" << caseName << " mode=algoim reason=sphere-only  INFO\n";
                 continue;
             }
 
@@ -4451,10 +4888,11 @@ bool runPoissonStudy(const Config & cfg)
                     bool solveGatePass;
                     if (gsTetClip::BgMapKind::Identity == kind)
                     {
-                        P = buildCellRules(*S, mode, cfg.p, phiH.get(), true);
+                        P = buildCellRules(*S, mode, cfg.p, phiH.get(), true, nullptr, errTab);
                         const GateResult G =
                             gateTetMode(P, *S, cfg.p, V_mesh, A_mesh, V_exact, A_exact, caseName, r);
                         for (const GateRow & row : G.rows) printGateRow(G, row, false);
+                        if (errTab && !printErrTableDiag(P, *S->index(), caseName, mode, r, n, cfg.p)) studyOk = false;
                         t_tab = swTab.stop();
 
                         // fluxmom_global/fluxmom_cell are Required for every mode
@@ -4489,20 +4927,34 @@ bool runPoissonStudy(const Config & cfg)
                     }
                     else
                     {
-                        // Curved background: only --mode clip reaches here
-                        // (main() rejects the rest); buildCellRules still runs
-                        // (statsFromTetPass below needs P.log). The physical-
+                        // Curved background: only --mode clip and --mode nnmf
+                        // reach here (main() rejects the rest); buildCellRules
+                        // still runs (statsFromTetPass below needs P.log); for
+                        // nnmf it compresses the pulled-back boundary rule and
+                        // the gate evaluates the compressed tables. The physical-
                         // space gate recomputes volume/area/flux/
                         // fluxmom_global directly from S and bgMap
                         // (gatePhysical), since CellLog's totals are
                         // parametric here; the P1 momrule fluxmom exception
                         // does not apply -- momrule is rejected outright for
                         // a curved G.
-                        P = buildCellRules(*S, "clip", cfg.p, nullptr, true);
-                        const GateResult G = gatePhysical(phys, pbStats, bgMap, kind, *S,
-                                                          *pullbackBdrSrc, cfg.p, V_exact, A_exact,
-                                                          caseName, cfg.geo, r);
+                        GateResult G;
+                        if ("clip" == mode)
+                        {
+                            P = buildCellRules(*S, "clip", cfg.p, nullptr, true, nullptr, errTab);
+                            G = gatePhysical(phys, pbStats, bgMap, kind, *S, *S,
+                                             *pullbackBdrSrc, nullptr, cfg.p, V_exact, A_exact,
+                                             caseName, cfg.geo, r);
+                        }
+                        else
+                        {
+                            P = buildCellRules(*S, "nnmf", cfg.p, nullptr, true, pullbackBdrSrc.get(), errTab);
+                            G = gatePhysical(phys, pbStats, bgMap, kind, *S, *P.vol,
+                                             *P.bdr, &P, cfg.p, V_exact, A_exact,
+                                             caseName, cfg.geo, r);
+                        }
                         for (const GateRow & row : G.rows) printGateRow(G, row, false);
+                        if (errTab && !printErrTableDiag(P, *S->index(), caseName, mode, r, n, cfg.p)) studyOk = false;
                         t_tab = swTab.stop();
                         solveGatePass = G.requiredPass;
                         if (!solveGatePass)
@@ -4537,14 +4989,24 @@ bool runPoissonStudy(const Config & cfg)
                         }
                         else
                         {
-                            volSrc = S;
-                            bdrSrc = pullbackBdrSrc;
+                            if ("clip" == mode) { volSrc = S; bdrSrc = pullbackBdrSrc; }
+                            else                { volSrc = P.vol; bdrSrc = P.bdr; }   // nnmf: table served directly, never re-wrapped
                         }
 
                         gsExprAssembler<real_t>::QuadratureFactory refFactory =
                             gsTetClip::makeVolLookupFactory(idx,
                                 memory::shared_ptr<const gsTetClip::VolCellSource>(S),
                                 gsVector<index_t>::Constant(3, cfg.p+3));
+                        gsExprAssembler<real_t>::QuadratureFactory refFactory2;
+                        if (errTab)
+                        {
+                            gsExprAssembler<real_t>::QuadratureFactory nnmfFactory =
+                                gsTetClip::makeVolLookupFactory(idx,
+                                    memory::shared_ptr<const gsTetClip::VolCellSource>(P.errVol),
+                                    gsVector<index_t>::Constant(3, cfg.p+3));
+                            if ("nnmf" == cfg.errRule) refFactory = nnmfFactory;   // L2/H1s = nnmf reference
+                            else                       refFactory2 = nnmfFactory;  // both: L2n/H1sn
+                        }
 
                         real_t hNitsche = h;
                         if (gsTetClip::BgMapKind::Identity != kind)
@@ -4559,7 +5021,8 @@ bool runPoissonStudy(const Config & cfg)
                         memory::shared_ptr<gsTrimmedDomain<3,real_t> > domBase = tdom;
                         R = solvePoissonOnDomain(mp, mb, mpId, domBase, idx, volSrc, bdrSrc, refFactory,
                                                  cfg.p, h, hNitsche, gammaEff, gtEff, ghostOn, ghostUsesG,
-                                                 cfg.kappaDense, cfg.kappaMaxIt, u_exact, f_rhs, dumpFile);
+                                                 cfg.kappaDense, cfg.kappaMaxIt, u_exact, f_rhs, dumpFile,
+                                                 refFactory2);
                     }
                 }
                 else
@@ -4771,6 +5234,18 @@ bool runPoissonStudy(const Config & cfg)
                 }
 
                 printPoissonRow(caseName, mode, r, n, R, nCut, nGhost, stats, prev, t_tab, t_wall);
+                if (R.hasRef2)
+                {
+                    const real_t dL2  = math::abs(R.L2n/R.L2 - 1);
+                    const real_t dH1s = math::abs(R.H1sn/R.H1s - 1);
+                    gsInfo << "POISSON-ERRRULE case=" << caseName << " mode=" << mode << " r=" << r
+                          << " L2=" << gsTetClip::fmtSci(R.L2) << " L2n=" << gsTetClip::fmtSci(R.L2n)
+                          << " dL2=" << gsTetClip::fmtSci(dL2)
+                          << " H1s=" << gsTetClip::fmtSci(R.H1s) << " H1sn=" << gsTetClip::fmtSci(R.H1sn)
+                          << " dH1s=" << gsTetClip::fmtSci(dH1s)
+                          << " t_err=" << gsTetClip::fmtSci(R.t_err) << "s"
+                          << " t_errn=" << gsTetClip::fmtSci(R.t_errn) << "s REPORT\n";
+                }
                 if ("iter" == R.kappaMethod && !R.kappaConverged)
                     gsWarn << "KAPPA-UNCONVERGED case=" << caseName << " mode=" << mode << " r=" << r
                           << " kIt=" << R.kItPower << "/" << R.kItInverse << "\n";
@@ -4823,6 +5298,7 @@ int main(int argc, char *argv[])
     std::string study    = "check";
     std::string caseName = "all";
     std::string mode     = "all";
+    std::string errRule  = "clip";
     index_t p    = 2;
     index_t rMax = 1;
     index_t n0   = 4;
@@ -4844,12 +5320,17 @@ int main(int argc, char *argv[])
                  "(gsTetMeshClip.h), RAII quadrature-scope save/restore plus a bitwise "
                  "ghost-penalty-matrix equality check, boundary normal-field throw behaviour "
                  "(--study check); a per-mode quadrature gate over the clip/Tchakaloff/"
-                 "moment-fitting/Algoim cell rules (--study volume); and, per (case, mode, r), "
+                 "moment-fitting/NNMF/Algoim cell rules (--study volume); and, per (case, mode, r), "
                  "that same gate followed by a Poisson solve with an EoC table (--study poisson).");
     cmd.addString("", "study", "Study to run: check | volume | poisson", study);
-    cmd.addString("", "case",  "Test case: sphere | rotcube | all (= both, sphere first)", caseName);
+    cmd.addString("", "case",  "Test case: sphere | rotcube | mesh | all (= sphere, rotcube; mesh needs --mesh "
+                  "and has no analytic references)", caseName);
     cmd.addString("", "mode", "Quadrature mode for --study volume|poisson: all|clip|tchakaloff|"
-                  "momrule|algoim (algoim is sphere-only; ignored by --study check)", mode);
+                  "momrule|nnmf|algoim (algoim is sphere-only, rejected for --case mesh; ignored by --study check; "
+                  "--geo affine|bubble supports clip and nnmf, and algoim for --case sphere only)", mode);
+    cmd.addString("", "errRule", "Cut-cell error reference rule (--study poisson; --mode clip|momrule|nnmf): "
+                  "clip (uncompressed clip rule) | nnmf (Q_{2p+2}-exact NNMF compression of it) | "
+                  "both (clip errors plus L2n/H1sn)", errRule);
     cmd.addInt   ("k", "degree", "Background-space degree / clip-rule parameter p", p);
     cmd.addInt   ("r", "refine", "The study runs r = 0..rMax, n = n0*2^r cells per direction", rMax);
     cmd.addInt   ("",  "n0",     "Cells per direction at r = 0", n0);
@@ -4865,8 +5346,8 @@ int main(int argc, char *argv[])
     cmd.addString("",  "geo", "Background map: identity | affine | bubble", geo);
     cmd.addReal  ("",  "eps", "Bubble amplitude, |eps| < 0.5 (--geo bubble)", eps);
     cmd.addString("",  "mesh", "Overrides the case's mesh file (e.g. a gmsh-refined mesh); "
-                  "--case still selects the analytic references (--study volume|poisson, "
-                  "--case sphere|rotcube only)", meshOverride);
+                  "for --case sphere|rotcube, --case still selects the analytic references; "
+                  "--case mesh requires --mesh and has none (--study volume|poisson only)", meshOverride);
     cmd.addString("",  "ghostMap", "(debug) map inside the ghost penalty's dnk: Gid | G", ghostMap);
     cmd.addString("",  "dumpSystem", "(debug, --study poisson) file prefix for a raw binary dump "
                   "of the assembled system; empty writes nothing", dumpSystem);
@@ -4875,10 +5356,33 @@ int main(int argc, char *argv[])
     if (p < 1)    { gsWarn << "-k/--degree must be >= 1\n"; return EXIT_FAILURE; }
     if (rMax < 0) { gsWarn << "-r/--refine must be >= 0\n"; return EXIT_FAILURE; }
     if (n0 < 1)   { gsWarn << "--n0 must be >= 1\n"; return EXIT_FAILURE; }
-    if ("sphere" != caseName && "rotcube" != caseName && "all" != caseName)
-    { gsWarn << "--case must be one of sphere|rotcube|all\n"; return EXIT_FAILURE; }
-    if ("all" != mode && "clip" != mode && "tchakaloff" != mode && "momrule" != mode && "algoim" != mode)
-    { gsWarn << "--mode must be one of all|clip|tchakaloff|momrule|algoim\n"; return EXIT_FAILURE; }
+    if ("sphere" != caseName && "rotcube" != caseName && "mesh" != caseName && "all" != caseName)
+    { gsWarn << "--case must be one of sphere|rotcube|mesh|all\n"; return EXIT_FAILURE; }
+    if ("all" != mode && "clip" != mode && "tchakaloff" != mode && "momrule" != mode && "nnmf" != mode && "algoim" != mode)
+    { gsWarn << "--mode must be one of all|clip|tchakaloff|momrule|nnmf|algoim\n"; return EXIT_FAILURE; }
+    if ("clip" != errRule && "nnmf" != errRule && "both" != errRule)
+    { gsWarn << "--errRule must be one of clip|nnmf|both\n"; return EXIT_FAILURE; }
+    if ("clip" != errRule && "poisson" != study)
+    { gsWarn << "--errRule nnmf|both requires --study poisson\n"; return EXIT_FAILURE; }
+    if ("clip" != errRule && "clip" != mode && "momrule" != mode && "nnmf" != mode)
+    {
+        gsWarn << "--errRule nnmf|both requires --mode clip, momrule or nnmf (the error table "
+                 "compresses the clip rule)\n";
+        return EXIT_FAILURE;
+    }
+    if ("check" == study && "mesh" == caseName)
+    {
+        gsWarn << "--study check does not support --case mesh (its sign-domain checks are "
+                 "hard-coded to sphere/rotcube); use --study volume|poisson\n";
+        return EXIT_FAILURE;
+    }
+    if ("mesh" == caseName && meshOverride.empty())
+    { gsWarn << "--case mesh requires --mesh <file>\n"; return EXIT_FAILURE; }
+    if ("mesh" == caseName && "algoim" == mode)
+    {
+        gsWarn << "--case mesh --mode algoim: a general mesh has no analytic level set\n";
+        return EXIT_FAILURE;
+    }
     if ("volume" == study && "rotcube" == caseName && "algoim" == mode)
     {
         gsWarn << "--study " << study << " --case rotcube --mode algoim: rotcube has no analytic "
@@ -4901,8 +5405,8 @@ int main(int argc, char *argv[])
     {
         if ("volume" != study && "poisson" != study)
         { gsWarn << "--mesh requires --study volume or poisson\n"; return EXIT_FAILURE; }
-        if ("sphere" != caseName && "rotcube" != caseName)
-        { gsWarn << "--mesh requires --case sphere or rotcube\n"; return EXIT_FAILURE; }
+        if ("sphere" != caseName && "rotcube" != caseName && "mesh" != caseName)
+        { gsWarn << "--mesh requires --case sphere, rotcube or mesh\n"; return EXIT_FAILURE; }
         if (gsFileManager::find(meshOverride).empty())
         { gsWarn << "--mesh file '" << meshOverride << "' not found\n"; return EXIT_FAILURE; }
     }
@@ -4923,6 +5427,7 @@ int main(int argc, char *argv[])
     { gsWarn << "--dumpSystem requires --study poisson\n"; return EXIT_FAILURE; }
 
     Config cfg;
+    cfg.errRule = errRule;
     cfg.study = study; cfg.caseName = caseName; cfg.mode = mode; cfg.p = p; cfg.rMax = rMax; cfg.n0 = n0;
     cfg.gamma = gamma; cfg.ghostOn = ghostOn; cfg.ghostCoef = ghostCoef; cfg.kappaDense = kappaDense;
     cfg.kappaMaxIt = kappaMaxIt;

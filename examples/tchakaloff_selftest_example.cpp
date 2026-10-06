@@ -19,6 +19,11 @@
     measures of increasing size, reporting timing, peak RSS and streamed
     moment-reproduction error. See --help for the sweep options.
 
+    With --nnmf, runs a strict PASS/FAIL self-test of the NNMF rule of
+    gsNnmfRule.h instead (the synthetic cases for --pmin..--pmax plus a dense
+    tilted-plane boundary case, and the two real cut cells at p = 2); exit 0
+    iff every case passes.
+
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -27,6 +32,7 @@
 */
 
 #include "gsTchakaloffRule.h"
+#include "gsNnmfRule.h"
 #include "gsImmersedLookupRule.h"
 
 #include <cstdint>
@@ -783,6 +789,324 @@ RealCellSummary runRealCellRegression(bool strict)
     return summary;
 }
 
+// ---------------------------------------------------------------------
+// --nnmf: strict self-test of gsNnmfRule.h.
+// ---------------------------------------------------------------------
+
+/// Adapts an NnmfResult to the TchakaloffResult that
+/// gsTetClip::detail::genericChecks consumes (levelResidual and levelRank
+/// stay empty, so the per-level checks are no-ops).
+gsTetClip::TchakaloffResult asTchakaloffResult(const gsTetClip::NnmfResult& r)
+{
+    gsTetClip::TchakaloffResult t;
+    t.indices.assign(r.indices.begin(), r.indices.end());
+    t.weights = r.weights;
+    t.rank    = r.rank;
+    t.ok      = r.ok;
+    t.levels  = 1;
+    return t;
+}
+
+/// Boundary measure of the tilted-plane patch of
+/// gsTetClip::detail::buildFTilted, sampled on an 8 x 8 subdivision so that
+/// N = 64 (2p+2)^2 exceeds 3K and the pooled (non-fallback) path of
+/// nnmfCompressBoundary is exercised.
+void buildFTiltedDense(const gsVector<real_t>& mid, real_t h, index_t p, gsMatrix<real_t>& nodes,
+                       gsVector<real_t>& weights, gsMatrix<real_t>& normals)
+{
+    gsVector<real_t> n(3);
+    n(0) = 1.0; n(1) = 2.0; n(2) = 3.0;
+    n /= std::sqrt(14.0);
+    gsVector<real_t> ez(3);
+    ez(0) = 0.0; ez(1) = 0.0; ez(2) = 1.0;
+    gsVector<real_t> t1 = gsTetClip::detail::cross3(n, ez);
+    t1.normalize();
+    gsVector<real_t> t2 = gsTetClip::detail::cross3(n, t1);
+
+    gsVector<real_t> lo2(2), hi2(2);
+    lo2(0) = -h / 4.0; lo2(1) = -h / 4.0;
+    hi2(0) =  h / 4.0; hi2(1) =  h / 4.0;
+
+    gsMatrix<real_t> st;
+    gsTetClip::detail::tensorGaussSubdivided(lo2, hi2, 8, 2 * p + 2, st, weights);
+
+    const index_t N = st.cols();
+    nodes.resize(3, N);
+    normals.resize(3, N);
+    for (index_t i = 0; i < N; ++i)
+    {
+        nodes.col(i) = mid + st(0, i) * t1 + st(1, i) * t2;
+        normals.col(i) = n;
+    }
+}
+
+/// Accumulates failing checks of one NNMF case into a single reason string.
+struct NnmfCaseVerdict
+{
+    bool pass = true;
+    std::string reason;
+    void fail(const std::string& msg)
+    {
+        pass = false;
+        if (!reason.empty()) reason += "; ";
+        reason += msg;
+    }
+};
+
+/// Checks common to every NNMF case: res.ok, the header's own moment error,
+/// positive weights, kept <= rank and weight-sum conservation.
+void nnmfCommonChecks(const gsTetClip::NnmfResult& res, const gsVector<real_t>& wIn, NnmfCaseVerdict& v)
+{
+    if (!res.ok)
+        v.fail("res.ok == false");
+    if (!(res.momErr <= 1e-12))
+        v.fail("res.momErr > 1e-12");
+    for (index_t j = 0; j < res.weights.size(); ++j)
+        if (!(res.weights(j) > 0.0))
+        {
+            v.fail("non-positive output weight");
+            break;
+        }
+    if (!(static_cast<index_t>(res.indices.size()) <= res.rank))
+        v.fail("kept > rank");
+    const real_t sumIn = wIn.sum();
+    if (!(std::abs(res.weights.sum() - sumIn) <= 1e-12 * sumIn))
+        v.fail("sum(w_out) != sum(w_in)");
+}
+
+void printNnmfLine(const std::string& label, const std::string& pTag, index_t N, const gsTetClip::NnmfResult& res,
+                   real_t indepMomErr, real_t monErr, bool hasMon, double t, const NnmfCaseVerdict& v)
+{
+    gsInfo << (v.pass ? "PASS" : "FAIL") << "  NNMF  " << label << "  " << pTag << "  N=" << N
+           << "  kept=" << res.indices.size() << "  rank=" << res.rank << "  momErr=" << res.momErr
+           << "  indepMomErr=" << indepMomErr << "  monErr=";
+    if (hasMon) gsInfo << monErr; else gsInfo << "-";
+    gsInfo << "  rounds=" << res.rounds << "  poolSize=" << res.poolSize
+           << "  fallbackFull=" << (res.fallbackFull ? 1 : 0) << "  time=" << t << "\n";
+    if (!v.pass) gsInfo << "  FAILED CHECK: " << v.reason << "\n";
+}
+
+/// Strict PASS/FAIL self-test of gsTetClip::nnmfCompress[Boundary]: the
+/// synthetic cases of gsTetClip::tchakaloffSelfTest (plus a dense tilted-plane
+/// boundary case and an L = 1 spherical-cap case) for p = pmin..pmax, then the
+/// two permanent real cut cells. Returns the process exit code.
+int runNnmfSelfTest(index_t pmin, index_t pmax)
+{
+    using gsTetClip::NnmfOptions;
+    using gsTetClip::NnmfResult;
+    namespace det = gsTetClip::detail;
+
+    index_t nPass = 0, nFail = 0;
+    auto tally = [&nPass, &nFail](const NnmfCaseVerdict& v) { if (v.pass) ++nPass; else ++nFail; };
+
+    std::mt19937 rng(12345);
+    gsVector<real_t> lower(3), upper(3), mid(3);
+    lower(0) = 0.10; lower(1) = -0.20; lower(2) = 0.30;
+    const real_t h = 0.25;
+    for (index_t d = 0; d < 3; ++d)
+    {
+        upper(d) = lower(d) + h;
+        mid(d) = lower(d) + 0.5 * h;
+    }
+    const real_t vol = h * h * h;
+    const real_t area = (h / 2.0) * (h / 2.0);
+
+    for (index_t p = pmin; p <= pmax; ++p)
+    {
+        const index_t deg = 2 * p;
+        const index_t K = (deg + 1) * (deg + 1) * (deg + 1);
+        const std::string pTag = "p=" + std::to_string(p);
+
+        // V-gauss
+        {
+            gsStopwatch sw;
+            gsMatrix<real_t> nodes;
+            gsVector<real_t> weights;
+            det::buildVGauss(lower, upper, p, nodes, weights);
+            NnmfResult res;
+            gsTetClip::nnmfCompress(nodes, weights, lower, upper, p, NnmfOptions(), res);
+            const double t = sw.stop();
+
+            real_t maxMomErr = 0, maxMonErr = 0;
+            NnmfCaseVerdict v;
+            std::string reason;
+            const gsTetClip::TchakaloffResult tr = asTchakaloffResult(res);
+            if (!det::genericChecks(nodes, weights, NULL, lower, upper, mid, h, p, tr, maxMomErr, maxMonErr, reason))
+                v.fail(reason);
+            nnmfCommonChecks(res, weights, v);
+
+            const index_t count = static_cast<index_t>(res.indices.size());
+            gsMatrix<real_t> nodesOut(3, count);
+            bool indicesValid = true;
+            for (index_t j = 0; j < count; ++j)
+            {
+                if (res.indices[j] < 0 || res.indices[j] >= nodes.cols())
+                    indicesValid = false;
+                else
+                    nodesOut.col(j) = nodes.col(res.indices[j]);
+            }
+            if (indicesValid)
+            {
+                gsMatrix<real_t> Vout;
+                gsTetClip::legendreVandermonde(nodesOut, lower, upper, deg, Vout);
+                const gsVector<real_t> momOut = Vout.transpose() * res.weights;
+                const real_t target0 = std::sqrt(vol);
+                if (!(std::abs(momOut(0) - target0) <= 1e-12 * target0))
+                    v.fail("m_0 != sqrt(vol)");
+                bool higherModesZero = true;
+                for (index_t k = 1; k < momOut.size(); ++k)
+                    if (!(std::abs(momOut(k)) <= 1e-12 * target0))
+                        higherModesZero = false;
+                if (!higherModesZero)
+                    v.fail("m_k != 0 for k>0");
+            }
+            else
+                v.fail("analytic moment check skipped: out-of-range index");
+            if (!(std::abs(res.weights.sum() - vol) <= 1e-12 * vol))
+                v.fail("sum(w_out) != vol");
+
+            printNnmfLine("V-gauss", pTag, nodes.cols(), res, maxMomErr, maxMonErr, true, t, v);
+            tally(v);
+        }
+
+        // V-random
+        {
+            gsStopwatch sw;
+            gsMatrix<real_t> nodes;
+            gsVector<real_t> weights;
+            det::buildVRandom(lower, upper, K, vol, rng, nodes, weights);
+            NnmfResult res;
+            gsTetClip::nnmfCompress(nodes, weights, lower, upper, p, NnmfOptions(), res);
+            const double t = sw.stop();
+
+            real_t maxMomErr = 0, maxMonErr = 0;
+            NnmfCaseVerdict v;
+            std::string reason;
+            if (!det::genericChecks(nodes, weights, NULL, lower, upper, mid, h, p, asTchakaloffResult(res),
+                                    maxMomErr, maxMonErr, reason))
+                v.fail(reason);
+            nnmfCommonChecks(res, weights, v);
+
+            printNnmfLine("V-random", pTag, nodes.cols(), res, maxMomErr, maxMonErr, true, t, v);
+            tally(v);
+        }
+
+        // Boundary cases: F-axis, F-tilted, S-cap, S-cap-L1, F-tilted-dense.
+        for (int bc = 0; bc < 5; ++bc)
+        {
+            static const char* const labels[5] = { "F-axis", "F-tilted", "S-cap", "S-cap-L1", "F-tilted-dense" };
+            gsStopwatch sw;
+            gsMatrix<real_t> nodes, normals;
+            gsVector<real_t> weights;
+            NnmfOptions opt;
+            switch (bc)
+            {
+            case 0: det::buildFAxis(mid, h, p, nodes, weights, normals); break;
+            case 1: det::buildFTilted(mid, h, p, nodes, weights, normals); break;
+            case 2: det::buildSCap(mid, p, nodes, weights, normals); break;
+            case 3: det::buildSCap(mid, p, nodes, weights, normals); opt.poolFactor = 1; break;
+            default: buildFTiltedDense(mid, h, p, nodes, weights, normals); break;
+            }
+
+            NnmfCaseVerdict v;
+            if (2 == bc || 3 == bc)
+            {
+                bool insideCell = true;
+                for (index_t i = 0; i < nodes.cols() && insideCell; ++i)
+                    for (index_t d = 0; d < 3; ++d)
+                        if (nodes(d, i) < lower(d) || nodes(d, i) > upper(d))
+                            insideCell = false;
+                if (!insideCell)
+                    v.fail("input nodes outside the cell");
+            }
+
+            NnmfResult res;
+            gsTetClip::nnmfCompressBoundary(nodes, weights, normals, lower, upper, p, opt, res);
+            const double t = sw.stop();
+
+            real_t maxMomErr = 0, maxMonErr = 0;
+            std::string reason;
+            if (!det::genericChecks(nodes, weights, &normals, lower, upper, mid, h, p, asTchakaloffResult(res),
+                                    maxMomErr, maxMonErr, reason))
+                v.fail(reason);
+            nnmfCommonChecks(res, weights, v);
+
+            if (bc <= 1 || 4 == bc)
+                if (!(std::abs(res.weights.sum() - area) <= 1e-12 * area))
+                    v.fail("sum(w_out) != (h/2)^2");
+            if (4 == bc && res.fallbackFull)
+                v.fail("fallbackFull == true (pooled path not exercised)");
+
+            printNnmfLine(labels[bc], pTag, nodes.cols(), res, maxMomErr, maxMonErr, true, t, v);
+            tally(v);
+        }
+    }
+
+    // Real cut cells: sphere, n0 = 4, r = 1, p = 2, volume rule.
+    const std::string resolved = gsFileManager::find(realCellMeshFile("sphere"));
+    if (resolved.empty())
+    {
+        gsInfo << "FAIL  NNMF  REALCELL  case=sphere mesh-not-found\n";
+        nFail += 2;
+    }
+    else
+    {
+        memory::shared_ptr<const gsTetClip::TetMesh> M =
+            memory::make_shared(new gsTetClip::TetMesh(gsTetClip::readMsh41(resolved)));
+        const index_t n0 = 4, r = 1, p = 2;
+        const gsTetClip::Grid3 grid = realCellGrid(n0, r);
+        gsTetClip::ClipStreamer S(M, grid, p);
+        memory::shared_ptr<const gsTetClip::CellIndex> idx = S.index();
+
+        const RealCellCase cases[2] = { {214, 24696}, {172, 203840} };
+        for (int ci = 0; ci < 2; ++ci)
+        {
+            const RealCellCase& cs = cases[ci];
+            gsStopwatch sw;
+            NnmfCaseVerdict v;
+
+            const std::size_t id = static_cast<std::size_t>(cs.cell);
+            index_t i, j, k;
+            idx->ijk(id, i, j, k);
+            gsVector<real_t> lower(3), upper(3);
+            lower << idx->X[i], idx->Y[j], idx->Z[k];
+            upper << idx->X[i + 1], idx->Y[j + 1], idx->Z[k + 1];
+
+            if (gsTetClip::Cut != idx->status[id])
+                v.fail("status != Cut");
+
+            gsMatrix<real_t> nd;
+            gsVector<real_t> wt;
+            S.volRule(id, nd, wt);
+            const index_t nIn = nd.cols();
+            if (nIn != cs.nInAnchor)
+                v.fail("nIn != anchor (a clip change would silently swap the cell)");
+
+            NnmfResult res;
+            gsTetClip::nnmfCompress(nd, wt, lower, upper, p, NnmfOptions(), res);
+            nnmfCommonChecks(res, wt, v);
+
+            const real_t indepMomErr = streamedMaxMomErr(nd, wt, lower, upper, 2 * p, asTchakaloffResult(res));
+            if (!(indepMomErr <= 1e-12))
+                v.fail("indepMomErr > 1e-12");
+            const double t = sw.stop();
+
+            std::ostringstream tag;
+            tag << "case=sphere r=" << r << " cell=" << cs.cell << " p=" << p;
+            gsInfo << (v.pass ? "PASS" : "FAIL") << "  NNMF  REALCELL  " << tag.str() << "  N=" << nIn
+                   << "  kept=" << res.indices.size() << "  rank=" << res.rank << "  momErr=" << res.momErr
+                   << "  indepMomErr=" << indepMomErr << "  rounds=" << res.rounds
+                   << "  poolSize=" << res.poolSize << "  fallbackFull=" << (res.fallbackFull ? 1 : 0)
+                   << "  time=" << t << "\n";
+            if (!v.pass) gsInfo << "  FAILED CHECK: " << v.reason << "\n";
+            tally(v);
+        }
+    }
+
+    gsInfo << "NNMF: " << nPass << " PASS, " << nFail << " FAIL\n";
+    return (0 == nFail) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+
 } // namespace
 
 int main(int argc, char* argv[])
@@ -790,6 +1114,7 @@ int main(int argc, char* argv[])
     index_t pmin = 1;
     index_t pmax = 3;
     bool bench = false;
+    bool nnmf = false;
     std::string benchKind = "all";
     index_t benchP = 0;
     index_t benchN = 0;
@@ -803,6 +1128,7 @@ int main(int argc, char* argv[])
     cmd.addInt("", "pmin", "Smallest polynomial degree parameter p to test", pmin);
     cmd.addInt("", "pmax", "Largest polynomial degree parameter p to test", pmax);
     cmd.addSwitch("bench", "Run the NNLS/reduction benchmark instead of the self-test", bench);
+    cmd.addSwitch("nnmf", "Run the strict NNMF (gsNnmfRule.h) self-test instead of the Tchakaloff self-test", nnmf);
     cmd.addString("", "bench-kind", "Benchmark kind: all|vol|bdr", benchKind);
     cmd.addInt("", "bench-p", "Benchmark p (0 = both {2,3})", benchP);
     cmd.addInt("", "bench-n", "Benchmark N (0 = all of {1000, 10000, 100000, 200000})", benchN);
@@ -825,6 +1151,9 @@ int main(int argc, char* argv[])
 
     if (bench)
         return runBench(benchKind, benchP, benchN);
+
+    if (nnmf)
+        return runNnmfSelfTest(pmin, pmax);
 
     // gsTetClip::tchakaloffSelfTest (gsTchakaloffRule.h) prints one PASS/FAIL
     // line per synthetic case but returns only the aggregate bool, so its
