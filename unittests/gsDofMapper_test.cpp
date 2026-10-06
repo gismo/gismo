@@ -810,17 +810,56 @@ TEST(two_patch_coupled_elim)
     PIN("f2.l2g2", "k0:nfree=5 6x2[(1,0),(2,1),(3,2),(4,5),(5,6),(0,7)] k1:nfree=5 6x2[(0,5),(1,6),(2,6),(4,3),(5,4),(3,8)]", dumpLocalToGlobal2(m, 0));
 }
 
-// Known defect, pinned so that it does not change by accident:
-// gsDofMapper::findTagged builds the intersection into a local std::list and
-// then returns an untouched default-constructed gsVector, so it is always
-// empty even when the patch carries tagged dofs.  Fixing findTagged must
-// replace this test with one of the tagged local dofs.
-TEST(find_tagged_returns_empty_defect)
+// findTagged(k,c) lists the local dofs of patch k whose global index is
+// tagged, in increasing order.  The oracle asks is_tagged() of every local
+// dof, which goes through index() and the shift rather than the stored
+// values findTagged() reads.
+namespace {
+void checkFindTaggedAgainstIsTagged(const gsDofMapper & m)
 {
-    const gsDofMapper m = twoPatchCoupledElim();
-    CHECK(m.taggedSize() > 0);            // the fixture really has tagged dofs
-    CHECK_EQUAL(0, m.findTagged(0).size());
-    CHECK_EQUAL(0, m.findTagged(1).size());
+    for (index_t c = 0; c != m.numComponents(); ++c)
+        for (index_t k = 0; k != nPatches(m); ++k)
+        {
+            std::vector<index_t> expected;
+            const index_t n = static_cast<index_t>(m.patchSize(k, c));
+            for (index_t i = 0; i != n; ++i)
+                if (m.is_tagged(i, k, c))
+                    expected.push_back(i);
+            const gsVector<index_t> found = m.findTagged(k, c);
+            CHECK_EQUAL(static_cast<index_t>(expected.size()), found.size());
+            if (static_cast<index_t>(expected.size()) == found.size())
+                for (size_t j = 0; j != expected.size(); ++j)
+                    CHECK_EQUAL(expected[j], found[j]);
+        }
+}
+} // anonymous namespace
+
+TEST(find_tagged_lists_the_tagged_local_dofs)
+{
+    gsDofMapper m = twoPatchCoupledElim();
+    PIN("f2.findtagged", "[1] [4]", join(m.findTagged(0)) + " " + join(m.findTagged(1)));
+    checkFindTaggedAgainstIsTagged(m);
+
+    // A coupled dof is tagged on every patch that shares it.
+    m.markCoupledAsTagged();
+    PIN("f2.findtagged.cpld", "[1,4,5] [0,1,2,4]",
+        join(m.findTagged(0)) + " " + join(m.findTagged(1)));
+    checkFindTaggedAgainstIsTagged(m);
+
+    // Tags are stored unshifted, so a shift does not change the result.
+    m.setShift(100);
+    PIN("f2.findtagged.shift", "[1,4,5] [0,1,2,4]",
+        join(m.findTagged(0)) + " " + join(m.findTagged(1)));
+    checkFindTaggedAgainstIsTagged(m);
+
+    gsDofMapper three = threeCompUniform();
+    three.markCoupledAsTagged();
+    CHECK(three.taggedSize() > 0);
+    checkFindTaggedAgainstIsTagged(three);
+
+    gsDofMapper ragged = raggedPatchMapper();
+    ragged.markCoupledAsTagged();
+    checkFindTaggedAgainstIsTagged(ragged);
 }
 
 // =========================================================================

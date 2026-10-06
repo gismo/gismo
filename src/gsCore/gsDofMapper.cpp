@@ -1214,20 +1214,28 @@ gsVector<index_t> gsDofMapper::findFreeUncoupled(const index_t k, const index_t 
                                 m_numFreeDofs[comp+1]-nCpld) );
 }
 
+namespace {
+struct _isTagged
+{
+    explicit _isTagged(const std::vector<index_t> & tagged) : _t(tagged) { }
+    const std::vector<index_t> & _t;
+    bool operator()(const index_t i) const
+    { return std::binary_search(_t.begin(), _t.end(), i); }
+};
+} // end anonymous namespace
+
 gsVector<index_t> gsDofMapper::findTagged(const index_t k, const index_t comp) const
 {
     ensureFinalized("findTagged");
     ensurePatch(k, "findTagged");
     ensureComponent(comp, "findTagged");
+    // m_tagged is sorted and, like m_dofs, holds unshifted values, so each
+    // local dof is looked up there directly.  The patch's own values are in
+    // no particular order, which rules out a merge-style intersection.
     typedef std::vector<index_t>::const_iterator citer;
     citer istart = m_dofs[comp].begin() + offAt(comp,k);
     citer iend   = istart + patchSize(k,comp);
-    std::list<index_t> si;
-    std::set_intersection(istart, iend, m_tagged.begin(),
-                          m_tagged.end(), std::back_inserter(si));
-    gsVector<index_t> rvo;
-    si.assign(si.begin(),si.end());
-    return rvo;
+    return find_impl(istart, iend, _isTagged(m_tagged));
 }
 
 void gsDofMapper::componentFailed(index_t c, const char * where) const
