@@ -39,6 +39,12 @@ protected:
 
     gsFeSolution(const gsFeSpace<T> & u, gsMatrix<T> * Sv) : _u(u), _Sv(Sv) { }
 
+    mutable gsMatrix<index_t> _gidx;    ///< Cached global indices, n x dim
+    mutable gsMatrix<index_t> _gidxAct; ///< Actives column the cache was built for, n x 1
+    mutable index_t _gidxPatch = -1;    ///< Patch id the cache was built for
+    mutable std::size_t _gidxGen = 0;   ///< Mapper generation the cache was built for
+    mutable bool _gidxValid = false;    ///< Whether the cache may be used
+
 public:
     typedef T Scalar;
     enum {Space = 0, ScalarValued= 0, ColBlocks= 0};
@@ -60,18 +66,64 @@ public:
 
     const gsFeSpace<T> & space() const {return _u;};
 
+    /// \brief Global indices of the active basis functions of evaluation column \a k,
+    ///        one column per component.
+    ///
+    /// Entry (i,c) equals mapper().index(act(i), data().patchId, c), act being
+    /// column (1==data().actives.cols() ? 0 : k) of data().actives: raw indices,
+    /// free or eliminated alike (test with mapper().is_free_index()).
+    /// The result is cached and reused while the patch id, the full actives
+    /// column and the space's mapperGeneration() equal those of the previous
+    /// call. setup(), setupMapper(), gsFeSpaceData::init() and the assembler's
+    /// shift update in resetDimensions() advance the generation, so a direct
+    /// eval() after any of them, with no re-parse, uses the new mapper.
+    /// A mapper changed in place through the non-const gsFeSpace::mapper()
+    /// reference is NOT detected: after such a change, parse the expression
+    /// again or call resetIndexCache(). parse() and resetIndexCache() still
+    /// invalidate the cache unconditionally.
+    /// Complexity: O(n) per call for the key comparison (n = number of actives)
+    /// plus one integer compare for the generation; on a miss, dim() calls to
+    /// gsDofMapper::index_into, i.e. O(dim*n) for dense storage and
+    /// O(dim*(log R + n)) for sparse storage on tensor actives. No gain is
+    /// promised for dense storage.
+    const gsMatrix<index_t> & activeGlobalIndices(index_t k) const
+    {
+        const gsMatrix<index_t> & actives = _u.data().actives;
+        const index_t col = (1 == actives.cols() ? 0 : k);
+        const index_t patchId = _u.data().patchId;
+        const index_t n = actives.rows();
+        const std::size_t gen = _u.mapperGeneration();
+        if (_gidxValid && _gidxGen == gen && _gidxPatch == patchId && _gidxAct.rows() == n &&
+            (_gidxAct.col(0).array() == actives.col(col).array()).all())
+            return _gidx;
+
+        const gsDofMapper & map = _u.mapper();
+        const index_t d = dim();
+        _gidx.resize(n, d);
+        for (index_t c = 0; c != d; ++c)
+            map.index_into(actives, col, patchId, c, _gidx.data() + c*n);
+        _gidxAct = actives.col(col);
+        _gidxPatch = patchId;
+        _gidxGen = gen;
+        _gidxValid = true;
+        return _gidx;
+    }
+
+    /// \brief Invalidates the cache of activeGlobalIndices(). Frees nothing.
+    void resetIndexCache() const { _gidxValid = false; }
+
     mutable gsMatrix<T> res;
     const gsMatrix<T> & eval(index_t k) const
     {
         GISMO_ASSERT(check(), "Invalid state in gsFeSolution");
         const gsDofMapper & map = _u.mapper();
-        auto & act = _u.data().actives.col(1 == _u.data().actives.cols() ? 0:k );
+        const gsMatrix<index_t> & gidx = activeGlobalIndices(k);
         res.setZero(_u.dim(), 1);
         for (index_t c = 0; c!=_u.dim(); c++) // for all components
         {
             for (index_t i = 0; i!=_u.data().actives.rows(); ++i)
             {
-                const index_t ii = map.index( act[i], _u.data().patchId, c);
+                const index_t ii = gidx(i, c);
                 if ( map.is_free_index(ii) ) // DoF value is in the solVector
                     res.at(c) += _Sv->at(ii) * _u.data().values[0](i,k);
                 else
@@ -113,6 +165,7 @@ public:
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
+        resetIndexCache();
         evList.add(_u);
         _u.data().flags |= NEED_VALUE | NEED_ACTIVE;
     }

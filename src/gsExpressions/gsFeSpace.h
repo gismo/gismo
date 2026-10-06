@@ -54,6 +54,10 @@ public:
     /// A mapper assigned through this reference bypasses setupMapper().
     /// gsExprAssembler still rejects one it cannot index, at initSystem(),
     /// initMatrix(), initVector() and at every assembly or pattern call.
+    /// A change made through this reference does not advance
+    /// mapperGeneration(): cached indices of solution expressions on this
+    /// space stay stale until they are parsed again or
+    /// gsFeSolution::resetIndexCache() is called.
     gsDofMapper & mapper()
     {
         GISMO_ASSERT(NULL!=m_sd, "Space/mapper not properly initialized.");
@@ -99,6 +103,15 @@ public:
         return m_sd->mapperStorage;
     }
 
+    /// Generation of this space's mapper; it changes whenever setup(),
+    /// setupMapper() or the assembler replaces or renumbers the mapper
+    /// (see gsFeSpaceData::mapperGeneration).
+    std::size_t mapperGeneration() const
+    {
+        GISMO_ASSERT(NULL!=m_sd, "Space/mapper not properly initialized.");
+        return m_sd->mapperGeneration;
+    }
+
     gsFeSolution<T> function(const gsMatrix<T>& solVector) const
     { return gsFeSolution<T>(*this); }
 
@@ -141,12 +154,14 @@ public:
         GISMO_ENSURE( dofsMapper.numComponents()==this->dim(), "The dof-mapper has "<<dofsMapper.numComponents()<<" components, but the space has dimension "<<this->dim()<<".");
         GISMO_ASSERT( dofsMapper.mapSize()==static_cast<size_t>(this->source().size()*dofsMapper.numComponents()), "The dof-mapper is not consistent: mapSize()="<<dofsMapper.mapSize()<<"!="<<static_cast<size_t>(this->source().size())<<"=this->source().size()");
         m_sd->mapper = give(dofsMapper);
+        ++m_sd->mapperGeneration;
     }
 
     void setup(const index_t _icont = -1) const
     {
         this->setInterfaceCont(_icont);
         m_sd->mapper = gsDofMapper();
+        ++m_sd->mapperGeneration;
 
         if (const gsMultiBasis<T> * mb =
             dynamic_cast<const gsMultiBasis<T>*>(&this->source()) )
@@ -181,6 +196,7 @@ public:
     {
         this->setInterfaceCont(_icont);
         m_sd->mapper = gsDofMapper();
+        ++m_sd->mapperGeneration;
         const index_t dim = this->dim();
         const gsMultiBasis<T> *mb = dynamic_cast<const gsMultiBasis<T> *>(&this->source());
         if (mb != nullptr)

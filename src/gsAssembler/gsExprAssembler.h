@@ -1111,11 +1111,13 @@ template<class T> void gsExprAssembler<T>::resetDimensions()
     {
         if (!m_vcol[i]->valid()) m_vcol[i]->init();
         m_vcol[i]->mapper.setShift(m_vcol[i-1]->mapper.lastIndex());
+        ++m_vcol[i]->mapperGeneration;
 
         if ( i<m_vrow.size() && m_vcol[i] != m_vrow[i] )
         {
             if (!m_vrow[i]->valid()) m_vrow[i]->init();
             m_vrow[i]->mapper.setShift(m_vrow[i-1]->mapper.lastIndex());
+            ++m_vrow[i]->mapperGeneration;
         }
     }
 }

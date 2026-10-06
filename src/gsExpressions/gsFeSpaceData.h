@@ -31,7 +31,7 @@ struct gsFeSpaceData
 {
     gsFeSpaceData(const gsFunctionSet<T> & _fs, index_t _dim, index_t _id):
     fs(&_fs), dim(give(_dim)), id(give(_id)), cont(-1),
-    mapperStorage(gsDofMapper::storage::dense) { }
+    mapperStorage(gsDofMapper::storage::dense), mapperGeneration(0) { }
 
     const gsFunctionSet<T> * fs;
     index_t dim, id;
@@ -39,6 +39,11 @@ struct gsFeSpaceData
     gsMatrix<T> fixedDofs;
     index_t cont; //int. coupling
     gsDofMapper::storage mapperStorage; ///< storage mode of the mappers built by init()
+    /// Incremented whenever `mapper` is replaced or renumbered (setup(),
+    /// setupMapper(), init(), the assembler's shift update). Caches of
+    /// global indices compare it to detect a rebuilt mapper. A change made
+    /// in place through gsFeSpace::mapper() does not increment it.
+    std::size_t mapperGeneration;
 
     bool valid() const
     {
@@ -95,6 +100,7 @@ struct gsFeSpaceData
     void init()
     {
         GISMO_ASSERT(nullptr!=fs, "Invalid pointer.");
+        ++mapperGeneration;
         if (const gsMultiBasis<T> * mb =
             dynamic_cast<const gsMultiBasis<T>*>(fs) )
             mapper = createMapper(*mb, dim, /*conforming=*/false,

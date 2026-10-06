@@ -14,9 +14,423 @@
 #include "gismo_unittest.h"
 
 
-/* TODO:
-    -[ ] Add gsFeSolution
-*/
+namespace
+{
+
+// Coefficient read of the reference evaluation loops below.
+inline real_t refCoef(const gsMatrix<real_t> & Sv, index_t ii) { return Sv.at(ii); }
+
+// Agreement up to a relative 1e-12, not bitwise: where the compiler contracts
+// a*b+c into an FMA (clang on arm64 by default) the batched and the per-dof
+// loops may round differently. A NaN never agrees.
+const real_t lookupTol = 1e-12;
+
+bool nearlyEqual(real_t a, real_t b)
+{
+    const real_t scale = math::max((real_t)1, math::max(math::abs(a), math::abs(b)));
+    return math::abs(a - b) <= lookupTol * scale;
+}
+
+// Shape included
+bool nearlyEqual(const gsMatrix<real_t> & a, const gsMatrix<real_t> & b)
+{
+    if (a.rows()!=b.rows() || a.cols()!=b.cols())
+        return false;
+    for (index_t i = 0; i != a.size(); ++i)
+        if (!nearlyEqual(a.at(i), b.at(i)))
+            return false;
+    return true;
+}
+
+// Reference evaluations of the solution expressions: one gsDofMapper::index
+// lookup per active function, evaluated on the data of the space u.
+
+gsMatrix<real_t> refValue(const expr::gsFeSpace<real_t> & u, const gsMatrix<real_t> & Sv, index_t k)
+{
+    gsMatrix<real_t> res;
+    const gsDofMapper & map = u.mapper();
+    auto & act = u.data().actives.col(1 == u.data().actives.cols() ? 0:k );
+    res.setZero(u.dim(), 1);
+    for (index_t c = 0; c!=u.dim(); c++) // for all components
+    {
+        for (index_t i = 0; i!=u.data().actives.rows(); ++i)
+        {
+            const index_t ii = map.index( act[i], u.data().patchId, c);
+            if ( map.is_free_index(ii) ) // DoF value is in the solVector
+                res.at(c) += refCoef(Sv, ii) * u.data().values[0](i,k);
+            else
+                res.at(c) += u.data().values[0](i,k) *
+                    u.fixedPart().at( map.global_to_bindex(ii) );
+        }
+    }
+    return res;
+}
+
+gsMatrix<real_t> refGrad(const expr::gsFeSpace<real_t> & u, const gsMatrix<real_t> & Sv, index_t k)
+{
+    gsMatrix<real_t> res;
+    const index_t parDim = u.source().domainDim();
+    const gsDofMapper & map = u.mapper();
+    auto & act = u.data().actives.col(1 == u.data().actives.cols() ? 0:k );
+    res.setZero(u.dim(), parDim);
+    for (index_t c = 0; c!= u.dim(); c++)
+    {
+        for (index_t i = 0; i!=u.data().actives.rows(); ++i)
+        {
+            const index_t ii = map.index(act[i], u.data().patchId, c);
+            if ( map.is_free_index(ii) ) // DoF value is in the solVector
+            {
+                res.row(c) += refCoef(Sv, ii) *
+                    u.data().values[1].col(k).segment(i*parDim, parDim).transpose();
+            }
+            else
+            {
+                res.row(c) +=
+                    u.fixedPart().at( map.global_to_bindex(ii) ) *
+                    u.data().values[1].col(k).segment(i*parDim, parDim).transpose();
+            }
+        }
+    }
+    return res;
+}
+
+gsMatrix<real_t> refLapl(const expr::gsFeSpace<real_t> & u, const gsMatrix<real_t> & Sv, index_t k)
+{
+    gsMatrix<real_t> res;
+    const index_t parDim = u.source().domainDim();
+    const gsDofMapper & map = u.mapper();
+    res.setZero(u.dim(), 1); //  scalar, but per component
+
+    index_t numActs = u.data().values[0].rows();
+    index_t numDers = parDim * (parDim + 1) / 2;
+    gsMatrix<real_t> deriv2;
+
+    auto & act = u.data().actives.col(1 == u.data().actives.cols() ? 0:k );
+    for (index_t c = 0; c!= u.dim(); c++)
+        for (index_t i = 0; i!=numActs; ++i)
+        {
+            const index_t ii = map.index(act[i], u.data().patchId, c);
+            deriv2 = u.data().values[2].block(i*numDers,k,parDim,1);
+            if ( map.is_free_index(ii) ) // DoF value is in the solVector
+                res.at(c) += refCoef(Sv, ii) * deriv2.sum();
+            else
+                res.at(c) +=u.fixedPart().at( map.global_to_bindex(ii) ) * deriv2.sum();
+        }
+    return res;
+}
+
+gsMatrix<real_t> refHess(const expr::gsFeSpace<real_t> & u, const gsMatrix<real_t> & Sv, index_t k)
+{
+    gsMatrix<real_t> deriv2, res;
+    const gsDofMapper & map = u.mapper();
+    const index_t numActs = u.data().values[0].rows();
+    const index_t pdim = u.source().domainDim();
+    index_t numDers = pdim*(pdim+1)/2;
+    auto & act = u.data().actives.col(1 == u.data().actives.cols() ? 0:k );
+
+    if (1==u.dim())
+    {
+        res.setZero(numDers,1);
+        for (index_t i = 0; i!=numActs; ++i)
+        {
+            const index_t ii = map.index(act[i], u.data().patchId, 0);
+            deriv2 = u.data().values[2].block(i*numDers,k,numDers,1);
+            if ( map.is_free_index(ii) ) // DoF value is in the solVector
+                res += refCoef(Sv, ii) * deriv2;
+            else
+                res +=u.fixedPart().at( map.global_to_bindex(ii) ) * deriv2;
+        }
+        expr::secDerToHessian(res, pdim, deriv2);
+        res.swap(deriv2);
+        res.resize(pdim,pdim);
+    }
+    else
+    {
+        res.setZero(u.dim(), numDers);
+        for (index_t c = 0; c != u.dim(); c++)
+            for (index_t i = 0; i != numActs; ++i)
+            {
+                const index_t ii = map.index(act[i], u.data().patchId, c);
+                deriv2 = u.data().values[2].block(i * numDers, k, numDers,
+                                                  1).transpose(); // start row, start col, rows, cols
+                if (map.is_free_index(ii)) // DoF value is in the solVector
+                    res.row(c) += refCoef(Sv, ii) * deriv2;
+                else
+                    res.row(c) += u.fixedPart().at(map.global_to_bindex(ii)) * deriv2;
+            }
+    }
+    return res;
+}
+
+// Counters of one lookup case
+struct LookupCounts
+{
+    bool storageOk = false;
+    index_t nCompared = 0, nMismatch = 0;
+    index_t nEqFirstDiffAct = 0;  ///< consecutive elements: same patch, equal first active, different actives
+    index_t nSameActDiffPatch = 0;///< consecutive elements: identical actives on different patches
+    index_t nFixedUsed = 0;       ///< (active, component) pairs that refer to an eliminated dof
+    index_t nElCompared = 0, nElMismatch = 0;
+};
+
+// Quadrature of one element, as in gsExprEvaluator::compute_impl
+template<class Fn>
+void elementWiseReference(gsExprHelper<real_t> & h, gsExprEvaluator<real_t> & ev, Fn ref,
+                          std::vector<real_t> & out)
+{
+    out.assign(h.domain().numElements(), 0.0);
+    gsQuadRule<real_t>::uPtr rule;
+    index_t patch = -1;
+    for (auto & elem : h.domain().allElements())
+    {
+        if (patch != elem.patchIndex())
+        {
+            patch = elem.patchIndex();
+            rule = gsQuadrature::getPtr(*h.domain().subdomain(patch), ev.options());
+        }
+        rule->mapTo(elem.lowerCorner(), elem.upperCorner(), h.points(), h.weights());
+        h.precompute(patch);
+        real_t elVal = 0;
+        for (index_t k = 0; k != h.weights().rows(); ++k)
+            elVal += h.weights()[k] * ref(k);
+        out[elem.id()] = elVal;
+    }
+}
+
+// Compares ev.integralElWise(e) (OpenMP) with the serial reference, element by
+// element. The reference reads the data of s.space(); e must be built from s.
+template<class E, class Fn>
+void compareElementWise(gsExprAssembler<real_t> & A, gsExprEvaluator<real_t> & ev,
+                        const expr::_expr<E> & e, const expr::gsFeSolution<real_t> & s,
+                        Fn ref, LookupCounts & c)
+{
+    ev.integralElWise(e);
+    const std::vector<real_t> par = ev.elementwise();
+    gsExprHelper<real_t> & h = *A.exprData();
+    h.parse(e, s); // registers s.space(), which the reference reads
+    h.activateFlags(SAME_ELEMENT);
+    std::vector<real_t> ser;
+    elementWiseReference(h, ev, ref, ser);
+    c.nElCompared += (index_t)ser.size();
+    if (par.size() != ser.size())
+    {
+        ++c.nElMismatch;
+        return;
+    }
+    for (size_t i = 0; i != ser.size(); ++i)
+        if (!nearlyEqual(par[i], ser[i]))
+            ++c.nElMismatch;
+}
+
+// Serial loop over all elements through the shared helper; every
+// evaluation point of s, grad(s), lapl(s) and hess(s) is compared with the
+// reference. With sameElement the actives have one column per element.
+template<class S, class G, class L, class H>
+void comparePointWise(gsExprAssembler<real_t> & A, gsExprEvaluator<real_t> & ev,
+                      const expr::gsFeSpace<real_t> & u, const gsMatrix<real_t> & Sv,
+                      const S & s, const G & gs, const L & ls, const H & hs,
+                      bool sameElement, LookupCounts & c)
+{
+    gsExprHelper<real_t> & h = *A.exprData();
+    h.parse(s, gs, ls, hs);
+    if (sameElement) h.activateFlags(SAME_ELEMENT);
+
+    gsQuadRule<real_t>::uPtr rule;
+    index_t patch = -1;
+    gsMatrix<index_t> prevAct;
+    index_t prevPatch = -1;
+    for (auto & elem : h.domain().allElements())
+    {
+        if (patch != elem.patchIndex())
+        {
+            patch = elem.patchIndex();
+            rule = gsQuadrature::getPtr(*h.domain().subdomain(patch), ev.options());
+        }
+        rule->mapTo(elem.lowerCorner(), elem.upperCorner(), h.points(), h.weights());
+        h.precompute(patch);
+
+        const gsMatrix<index_t> & act = u.data().actives;
+        if (sameElement)
+        {
+            if (prevPatch >= 0)
+            {
+                const bool same = prevAct.rows() == act.rows() &&
+                    (prevAct.col(0).array() == act.col(0).array()).all();
+                if (prevPatch == patch && prevAct(0,0) == act(0,0) && !same)
+                    ++c.nEqFirstDiffAct;
+                if (prevPatch != patch && same)
+                    ++c.nSameActDiffPatch;
+            }
+            prevAct = act.col(0);
+            prevPatch = patch;
+        }
+
+        const gsDofMapper & map = u.mapper();
+        for (index_t k = 0; k != h.weights().rows(); ++k)
+        {
+            const index_t col = (1 == act.cols() ? 0 : k);
+            for (index_t i = 0; i != act.rows(); ++i)
+                for (index_t d = 0; d != u.dim(); ++d)
+                    if (!map.is_free_index(map.index(act(i,col), patch, d)))
+                        ++c.nFixedUsed;
+
+            c.nCompared += 4;
+            if (!nearlyEqual(s.eval(k),  refValue(u, Sv, k))) ++c.nMismatch;
+            if (!nearlyEqual(gs.eval(k), refGrad(u, Sv, k)))  ++c.nMismatch;
+            if (!nearlyEqual(ls.eval(k), refLapl(u, Sv, k)))  ++c.nMismatch;
+            if (!nearlyEqual(hs.eval(k), refHess(u, Sv, k)))  ++c.nMismatch;
+        }
+    }
+}
+
+void fillSolution(const gsDofMapper & map, gsMatrix<real_t> & Sv)
+{
+    Sv.resize(map.freeSize(), 1);
+    for (index_t i = 0; i != Sv.rows(); ++i)
+        Sv(i,0) = std::sin(1.0 + i);
+}
+
+// One case: Dirichlet setup with the given mapper storage, then the
+// point-wise comparison (with and without SAME_ELEMENT) and, for scalar
+// spaces, the element-wise integrals of s and lapl(s).
+LookupCounts runLookupCase(const gsMultiBasis<real_t> & mb,
+                           const gsBoundaryConditions<real_t> & bc,
+                           index_t ncomp, gsDofMapper::storage st)
+{
+    LookupCounts c;
+    gsExprAssembler<real_t> A(1,1);
+    A.setIntegrationElements(mb);
+    gsExprEvaluator<real_t> ev(A);
+    auto u = A.getSpace(mb, ncomp);
+    u.setMapperStorage(st);
+    u.setup(bc, dirichlet::l2Projection, 0);
+    c.storageOk = (u.mapper().storageMode() == st);
+
+    gsMatrix<real_t> Sv;
+    fillSolution(u.mapper(), Sv);
+    auto s  = A.getSolution(u, Sv);
+    auto gs = grad(s);
+    auto ls = lapl(s);
+    auto hs = hess(s);
+
+    comparePointWise(A, ev, s.space(), Sv, s, gs, ls, hs, true,  c);
+    comparePointWise(A, ev, s.space(), Sv, s, gs, ls, hs, false, c);
+
+    if (1 == ncomp)
+    {
+        compareElementWise(A, ev, s.val(), s,
+                           [&](index_t k) { return refValue(s.space(), Sv, k)(0,0); }, c);
+        compareElementWise(A, ev, ls.val(), s,
+                           [&](index_t k) { return refLapl(s.space(), Sv, k)(0,0); }, c);
+    }
+    return c;
+}
+
+struct ResetupCounts
+{
+    bool storageOk = false;
+    index_t nCompared = 0, nMismatch = 0;
+    bool sameActives = false;    ///< actives at the point identical before/after
+    bool indexChanged = false;   ///< some global index differs between the mappers
+    bool valueChanged = false;   ///< the reference value differs between the mappers
+    index_t nElCompared = 0, nElMismatch = 0;
+};
+
+// The same expression objects are evaluated, the space is set up again with
+// other boundary conditions, and they are evaluated again at the same point.
+// With reparse the second evaluation goes through gsExprEvaluator::eval
+// (which parses); otherwise through eval(0) directly, without any parse.
+ResetupCounts runResetupCase(const gsMultiBasis<real_t> & mb,
+                             const gsBoundaryConditions<real_t> & bc1,
+                             const gsBoundaryConditions<real_t> & bc2,
+                             gsDofMapper::storage st, bool reparse)
+{
+    ResetupCounts c;
+    gsExprAssembler<real_t> A(1,1);
+    A.setIntegrationElements(mb);
+    gsExprEvaluator<real_t> ev(A);
+    auto u = A.getSpace(mb, 1);
+    u.setMapperStorage(st);
+    u.setup(bc1, dirichlet::l2Projection, 0);
+    c.storageOk = (u.mapper().storageMode() == st);
+
+    gsMatrix<real_t> Sv;
+    fillSolution(u.mapper(), Sv);
+    auto s  = A.getSolution(u, Sv);
+    auto gs = grad(s);
+    auto ls = lapl(s);
+    auto hs = hess(s);
+
+    const expr::gsFeSpace<real_t> & us = s.space();
+    gsVector<real_t> pt(2);
+    pt << 0.05, 0.05;
+
+    gsMatrix<real_t> v = ev.eval(s, pt, 0);
+    gsMatrix<real_t> g = ev.eval(gs, pt, 0);
+    gsMatrix<real_t> l = ev.eval(ls, pt, 0);
+    gsMatrix<real_t> h = ev.eval(hs, pt, 0);
+    const gsMatrix<index_t> act0 = us.data().actives.col(0);
+    const gsMatrix<real_t> refV0 = refValue(us, Sv, 0);
+    gsMatrix<index_t> idx0(act0.rows(), 1);
+    for (index_t i = 0; i != act0.rows(); ++i)
+        idx0(i,0) = u.mapper().index(act0(i,0), 0, 0);
+
+    c.nCompared += 4;
+    c.nMismatch += !nearlyEqual(v, refV0);
+    c.nMismatch += !nearlyEqual(g, refGrad(us, Sv, 0));
+    c.nMismatch += !nearlyEqual(l, refLapl(us, Sv, 0));
+    c.nMismatch += !nearlyEqual(h, refHess(us, Sv, 0));
+
+    u.setup(bc2, dirichlet::l2Projection, 0);
+    fillSolution(u.mapper(), Sv);
+
+    if (reparse)
+    {
+        v = ev.eval(s, pt, 0);
+        g = ev.eval(gs, pt, 0);
+        l = ev.eval(ls, pt, 0);
+        h = ev.eval(hs, pt, 0);
+    }
+    else
+    {
+        v = s.eval(0);
+        g = gs.eval(0);
+        l = ls.eval(0);
+        h = hs.eval(0);
+    }
+
+    const gsMatrix<index_t> & act1 = us.data().actives;
+    c.sameActives = act1.cols() == 1 && act1.rows() == act0.rows() &&
+        (act1.col(0).array() == act0.col(0).array()).all();
+    for (index_t i = 0; i != act0.rows() && i != act1.rows(); ++i)
+        if (u.mapper().index(act1(i,0), 0, 0) != idx0(i,0))
+            c.indexChanged = true;
+    c.valueChanged = !nearlyEqual(refV0, refValue(us, Sv, 0));
+
+    c.nCompared += 4;
+    c.nMismatch += !nearlyEqual(v, refValue(us, Sv, 0));
+    c.nMismatch += !nearlyEqual(g, refGrad(us, Sv, 0));
+    c.nMismatch += !nearlyEqual(l, refLapl(us, Sv, 0));
+    c.nMismatch += !nearlyEqual(h, refHess(us, Sv, 0));
+
+    LookupCounts el;
+    compareElementWise(A, ev, s.val(), s,
+                       [&](index_t k) { return refValue(s.space(), Sv, k)(0,0); }, el);
+    c.nElCompared = el.nElCompared;
+    c.nElMismatch = el.nElMismatch;
+    return c;
+}
+
+gsMultiBasis<real_t> squareBasis()
+{
+    gsMultiPatch<real_t> mp(*gsNurbsCreator<real_t>::BSplineSquare());
+    gsMultiBasis<real_t> mb(mp);
+    mb.degreeElevate(1);
+    mb.uniformRefine(2);
+    return mb;
+}
+
+} // namespace
 
 SUITE(gsExpressions_test)
 {
@@ -350,6 +764,170 @@ SUITE(gsExpressions_test)
         CHECK_EQUAL((ev.eval(f2D.npart(), pt) - neg_result2D).norm(), 0.0);
         CHECK_EQUAL((ev.eval(f1D.npart(), pt) - neg_result1D).norm(), 0.0);
 
+    }
+
+/*
+    SOLUTION EXPRESSIONS: dof lookup
+*/
+
+    TEST(feSolution_lookup_thb)
+    {
+        gsKnotVector<real_t> kv(0, 1, 3, 3);
+        gsTensorBSplineBasis<2,real_t> tbasis(kv, kv);
+        gsTHBSplineBasis<2,real_t> basis(tbasis);
+        basis.refineElements({1, 2, 2, 6, 6});
+        gsMultiBasis<real_t> tmb(basis);
+
+        gsMultiPatch<real_t> geo(*gsNurbsCreator<real_t>::BSplineSquare());
+        gsFunctionExpr<real_t> g("sin(x)+y", 2);
+        gsBoundaryConditions<real_t> bc;
+        bc.setGeoMap(geo);
+        bc.addCondition(0, boundary::west,  condition_type::dirichlet, &g, 0, false, -1);
+        bc.addCondition(0, boundary::south, condition_type::dirichlet, &g, 0, false, -1);
+
+        for (int st = 0; st != 2; ++st)
+        {
+            const LookupCounts c = runLookupCase(tmb, bc, 1,
+                st ? gsDofMapper::storage::sparse : gsDofMapper::storage::dense);
+            CHECK(c.storageOk);
+            CHECK(c.nCompared > 0);
+            CHECK_EQUAL(0, c.nMismatch);
+            CHECK(c.nEqFirstDiffAct > 0);
+            CHECK(c.nFixedUsed > 0);
+            CHECK(c.nElCompared > 0);
+            CHECK_EQUAL(0, c.nElMismatch);
+        }
+    }
+
+    TEST(feSolution_lookup_multipatch_single_element_patches)
+    {
+        gsMultiPatch<real_t> mp = gsNurbsCreator<real_t>::BSplineSquareGrid(4, 4);
+        gsMultiBasis<real_t> mpb(mp);
+        mpb.degreeElevate(1);
+
+        gsFunctionExpr<real_t> g("sin(x)+y", 2);
+        gsBoundaryConditions<real_t> bc;
+        bc.setGeoMap(mp);
+        bc.addCondition(0,  boundary::west,  condition_type::dirichlet, &g, 0, false, -1);
+        bc.addCondition(0,  boundary::south, condition_type::dirichlet, &g, 0, false, -1);
+        bc.addCondition(15, boundary::east,  condition_type::dirichlet, &g, 0, false, -1);
+        bc.addCondition(15, boundary::north, condition_type::dirichlet, &g, 0, false, -1);
+
+        for (int st = 0; st != 2; ++st)
+        {
+            const LookupCounts c = runLookupCase(mpb, bc, 1,
+                st ? gsDofMapper::storage::sparse : gsDofMapper::storage::dense);
+            CHECK(c.storageOk);
+            CHECK(c.nCompared > 0);
+            CHECK_EQUAL(0, c.nMismatch);
+            CHECK(c.nSameActDiffPatch > 0);
+            CHECK(c.nFixedUsed > 0);
+            CHECK(c.nElCompared > 0);
+            CHECK_EQUAL(0, c.nElMismatch);
+        }
+    }
+
+    TEST(feSolution_lookup_multipatch_refined)
+    {
+        gsMultiPatch<real_t> mp = gsNurbsCreator<real_t>::BSplineSquareGrid(4, 4);
+        gsMultiBasis<real_t> mpb(mp);
+        mpb.degreeElevate(1);
+        mpb.uniformRefine(1);
+
+        gsFunctionExpr<real_t> g("sin(x)+y", 2);
+        gsBoundaryConditions<real_t> bc;
+        bc.setGeoMap(mp);
+        bc.addCondition(0,  boundary::west,  condition_type::dirichlet, &g, 0, false, -1);
+        bc.addCondition(0,  boundary::south, condition_type::dirichlet, &g, 0, false, -1);
+        bc.addCondition(15, boundary::east,  condition_type::dirichlet, &g, 0, false, -1);
+        bc.addCondition(15, boundary::north, condition_type::dirichlet, &g, 0, false, -1);
+
+        for (int st = 0; st != 2; ++st)
+        {
+            const LookupCounts c = runLookupCase(mpb, bc, 1,
+                st ? gsDofMapper::storage::sparse : gsDofMapper::storage::dense);
+            CHECK(c.storageOk);
+            CHECK(c.nCompared > 0);
+            CHECK_EQUAL(0, c.nMismatch);
+            CHECK(c.nFixedUsed > 0);
+            CHECK(c.nElCompared > 0);
+            CHECK_EQUAL(0, c.nElMismatch);
+        }
+    }
+
+    TEST(feSolution_lookup_two_components_dirichlet)
+    {
+        gsMultiBasis<real_t> smb = squareBasis();
+        gsMultiPatch<real_t> geo(*gsNurbsCreator<real_t>::BSplineSquare());
+        gsFunctionExpr<real_t> g("sin(x)+y", 2);
+        gsBoundaryConditions<real_t> bc;
+        bc.setGeoMap(geo);
+        bc.addCondition(0, boundary::west,  condition_type::dirichlet, &g, 0, false, 0);
+        bc.addCondition(0, boundary::south, condition_type::dirichlet, &g, 0, false, 1);
+
+        for (int st = 0; st != 2; ++st)
+        {
+            const LookupCounts c = runLookupCase(smb, bc, 2,
+                st ? gsDofMapper::storage::sparse : gsDofMapper::storage::dense);
+            CHECK(c.storageOk);
+            CHECK(c.nCompared > 0);
+            CHECK_EQUAL(0, c.nMismatch);
+            CHECK(c.nFixedUsed > 0);
+        }
+    }
+
+    TEST(feSolution_lookup_resetup_with_reparse)
+    {
+        gsMultiBasis<real_t> smb = squareBasis();
+        gsMultiPatch<real_t> geo(*gsNurbsCreator<real_t>::BSplineSquare());
+        gsFunctionExpr<real_t> g("sin(x)+y", 2);
+        gsBoundaryConditions<real_t> bc1, bc2;
+        bc1.setGeoMap(geo);
+        bc2.setGeoMap(geo);
+        bc1.addCondition(0, boundary::west,  condition_type::dirichlet, &g, 0, false, -1);
+        bc2.addCondition(0, boundary::west,  condition_type::dirichlet, &g, 0, false, -1);
+        bc2.addCondition(0, boundary::south, condition_type::dirichlet, &g, 0, false, -1);
+
+        for (int st = 0; st != 2; ++st)
+        {
+            const ResetupCounts c = runResetupCase(smb, bc1, bc2,
+                st ? gsDofMapper::storage::sparse : gsDofMapper::storage::dense, true);
+            CHECK(c.storageOk);
+            CHECK(c.nCompared > 0);
+            CHECK_EQUAL(0, c.nMismatch);
+            CHECK(c.sameActives);
+            CHECK(c.indexChanged);
+            CHECK(c.valueChanged);
+            CHECK(c.nElCompared > 0);
+            CHECK_EQUAL(0, c.nElMismatch);
+        }
+    }
+
+    TEST(feSolution_lookup_resetup_without_reparse)
+    {
+        gsMultiBasis<real_t> smb = squareBasis();
+        gsMultiPatch<real_t> geo(*gsNurbsCreator<real_t>::BSplineSquare());
+        gsFunctionExpr<real_t> g("sin(x)+y", 2);
+        gsBoundaryConditions<real_t> bc1, bc2;
+        bc1.setGeoMap(geo);
+        bc2.setGeoMap(geo);
+        bc1.addCondition(0, boundary::west,  condition_type::dirichlet, &g, 0, false, -1);
+        bc2.addCondition(0, boundary::west,  condition_type::dirichlet, &g, 0, false, -1);
+        bc2.addCondition(0, boundary::south, condition_type::dirichlet, &g, 0, false, -1);
+
+        for (int st = 0; st != 2; ++st)
+        {
+            const ResetupCounts c = runResetupCase(smb, bc1, bc2,
+                st ? gsDofMapper::storage::sparse : gsDofMapper::storage::dense, false);
+            CHECK(c.storageOk);
+            CHECK(c.nCompared > 0);
+            CHECK_EQUAL(0, c.nMismatch);
+            CHECK(c.sameActives);
+            CHECK(c.indexChanged);
+            CHECK(c.valueChanged);
+            CHECK(c.nElCompared > 0);
+            CHECK_EQUAL(0, c.nElMismatch);
+        }
     }
 
 }

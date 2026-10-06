@@ -145,7 +145,8 @@ public:
         const index_t numActs = _u.data().values[0].rows();
         const index_t pdim = _u.parDim();
         index_t numDers = pdim*(pdim+1)/2;
-        auto & act = _u.data().actives.col(1 == _u.data().actives.cols() ? 0:k );
+        const gsMatrix<index_t> & gidx = _u.activeGlobalIndices(k);
+        GISMO_ASSERT(numActs <= gidx.rows(), "More basis function values than active functions");
 
         // In the scalar case, the hessian is returned as a pdim x pdim matrix
         if (1==_u.dim())
@@ -153,7 +154,7 @@ public:
             res.setZero(numDers,1);
             for (index_t i = 0; i!=numActs; ++i)
             {
-                const index_t ii = map.index(act[i], _u.data().patchId, 0);
+                const index_t ii = gidx(i, 0);
                 deriv2 = _u.data().values[2].block(i*numDers,k,numDers,1);
                 if ( map.is_free_index(ii) ) // DoF value is in the solVector
                     res += _u.coefs().at(ii) * deriv2;
@@ -171,7 +172,7 @@ public:
             for (index_t c = 0; c != _u.dim(); c++)
                 for (index_t i = 0; i != numActs; ++i)
                 {
-                    const index_t ii = map.index(act[i], _u.data().patchId, c);
+                    const index_t ii = gidx(i, c);
                     deriv2 = _u.space().data().values[2].block(i * numDers, k, numDers,
                                                                 1).transpose(); // start row, start col, rows, cols
                     if (map.is_free_index(ii)) // DoF value is in the solVector

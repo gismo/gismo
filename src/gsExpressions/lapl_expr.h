@@ -89,11 +89,12 @@ public:
         index_t numDers = _u.parDim() * (_u.parDim() + 1) / 2;
         gsMatrix<T> deriv2;
 
-        auto & act = _u.data().actives.col(1 == _u.data().actives.cols() ? 0:k );
+        const gsMatrix<index_t> & gidx = _u.activeGlobalIndices(k);
+        GISMO_ASSERT(numActs <= gidx.rows(), "More basis function values than active functions");
         for (index_t c = 0; c!= _u.dim(); c++)
             for (index_t i = 0; i!=numActs; ++i)
             {
-                const index_t ii = map.index(act[i], _u.data().patchId, c);
+                const index_t ii = gidx(i, c);
                 deriv2 = _u.data().values[2].block(i*numDers,k,_u.parDim(),1); // this only takes d11, d22, d33 part. For all the derivatives [d11, d22, d33, d12, d13, d23]: col.block(i*numDers,k,numDers,1)
                 if ( map.is_free_index(ii) ) // DoF value is in the solVector
                     res.at(c) += _u.coefs().at(ii) * deriv2.sum();
@@ -108,6 +109,7 @@ public:
 
     void parse(gsExprHelper<Scalar> & evList) const
     {
+        _u.resetIndexCache();
         evList.add(_u.space());
         _u.data().flags |= NEED_ACTIVE | NEED_DERIV2;
     }

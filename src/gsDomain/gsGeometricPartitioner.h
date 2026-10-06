@@ -42,6 +42,7 @@
 #include <gsDomain/gsPartitionerBase.h>
 #include <gsParallel/gsMpi.h>
 #include <gsUtils/gsSpaceFillingCurve.h>
+#include <gsUtils/gsStopwatch.h>
 
 #include <algorithm>
 #include <cstdint>
@@ -101,6 +102,23 @@ public:
         index_t  chunkSize     = 4096;  ///< elements per batched geometry evaluation
         bool     keepCentroids = false; ///< retain centroids() after partition() (geoDim*8 B/element)
     };
+
+    // TODO: remove these timings once the partition sub-stage costs are known.
+    /// Per-rank wall seconds of the sub-steps of computeLabels(); the fields
+    /// of the additive chain sum to computeLabelsTotal up to the lap gaps.
+    struct Timings
+    {
+        double tensorGuard = 0, setup = 0, bbox = 0, rangeCheck = 0, sliceJump = 0;
+        double centroidIter = 0, centroidEval = 0, sliceCheck = 0, gatherPrep = 0;
+        double centroidGather = 0, weightGather = 0, finiteCheck = 0, labelsAlloc = 0;
+        double rcbOrder = 0, rcbSplit = 0;
+        double curveSetup = 0, curveKeys = 0, curveSort = 0, curveCut = 0;
+        double setLabels = 0, release = 0;
+        double computeLabelsTotal = 0; ///< independent clock around the whole of computeLabels()
+    };
+
+    /// Per-rank wall seconds of the last partition(); fields of unused steps are 0.
+    const Timings & timings() const { return m_timings; }
 
     /**
        @brief Construct (does not partition yet -- call partition()).
@@ -307,11 +325,17 @@ protected:
     */
     void computeLabels() override
     {
+        m_timings = Timings();
+        gsStopwatch total, lap;
+
         checkTensorPatches();
+        m_timings.tensorGuard = lap.stop();
         passA();
+        lap.restart();
 
         const index_t N = m_numElements;
         std::vector<index_t> labels(N, 0);
+        m_timings.labelsAlloc = lap.stop();
 
         // nparts == 1: every element is in part 0 (both strategies below
         // would produce exactly this, just less directly).
@@ -326,7 +350,10 @@ protected:
             }
         }
 
+        lap.restart();
         this->setLabels(give(labels));
+        m_timings.setLabels = lap.stop();
+        lap.restart();
 
         // Release the centroids (geoDim*8 B/element: 400 MB at 16M elements
         // in 3D) unless the caller asked to keep them. m_weights (8 B/element)
@@ -336,6 +363,8 @@ protected:
             gsMatrix<T> tmp;
             m_centroids.swap(tmp);
         }
+        m_timings.release = lap.stop();
+        m_timings.computeLabelsTotal = total.stop();
     }
 
 private:
@@ -410,6 +439,7 @@ private:
         const short_t geoDim = m_mp.geoDim();
         const index_t chunk  = math::min( math::max((index_t)1, m_opts.chunkSize),
                                           math::max((index_t)1, N) );
+        gsStopwatch lap;
 
         // Bounding box of the geometry, computed once here and reused by the
         // space-filling-curve strategies.
@@ -420,12 +450,14 @@ private:
         // 0 and every element is keyed 0 -- with no diagnostic at any level.
         // A non-finite coordinate breaks the RCB median split just as badly,
         // hence the check sits on the shared pass-A path.
+        m_timings.setup += lap.stop(); lap.restart();
         m_mp.boundingBox(m_bbox);
         GISMO_ENSURE(m_bbox.allFinite(),
                      "gsGeometricPartitioner: the multipatch bounding box is not finite ("
                      << m_bbox.transpose() << "). A non-finite extent silently collapses the "
                      "space-filling curve to a single cell (every element keyed 0), so this "
                      "is refused rather than partitioned.");
+        m_timings.bbox = lap.stop(); lap.restart();
 
         m_centroids.resize(geoDim, N);   // column e = centroid of element e
         m_weights.assign(N, 1);
@@ -437,10 +469,12 @@ private:
         const index_t lo  = static_cast<index_t>(static_cast<int64_t>(N) * r / P);
         const index_t hi  = static_cast<index_t>(static_cast<int64_t>(N) * (r + 1) / P);
 
+        m_timings.setup += lap.stop(); lap.restart();
         if (par)
             ensureOnAllRanks(static_cast<int64_t>(geoDim) * N
                              > static_cast<int64_t>(std::numeric_limits<int>::max())
                              ? "geoDim*numElements exceeds the MPI int count range" : nullptr);
+        m_timings.rangeCheck = lap.stop(); lap.restart();
 
         const gsDofMapper& mapper = this->mapper();
         const index_t      nComp  = mapper.numComponents();
@@ -450,11 +484,13 @@ private:
         gsMatrix<index_t>    locals, globals;
 
         index_t curPatch = -1, nBuf = 0;
+        double  evalSeconds = 0;
 
         // One geometry evaluation per (patch, chunk).
         auto flush = [&]()
         {
             if (0 == nBuf) return;
+            gsStopwatch evalWatch;
             u = params.leftCols(nBuf);           // materialize the block
             m_mp.patch(curPatch).eval_into(u, phys);
             // bufElem is contiguous by construction: `expected` increments by
@@ -466,13 +502,16 @@ private:
             // (perf, self time, pass A isolated).
             m_centroids.middleCols(bufElem[0], nBuf) = phys;
             nBuf = 0;
+            evalSeconds += evalWatch.stop();
         };
 
+        m_timings.setup += lap.stop(); lap.restart();
         auto       it  = m_dom->beginAll();
         const auto end = m_dom->endAll();
         if (lo > 0 && lo < N) it += lo;
         index_t expected = lo;
         std::string failure;
+        m_timings.sliceJump = lap.stop(); lap.restart();
         for (; it != end && expected < hi; ++it, ++expected)
         {
             const index_t e = static_cast<index_t>(it.id());
@@ -524,12 +563,16 @@ private:
             ++nBuf;
         }
         flush();
+        m_timings.centroidEval  = evalSeconds;
+        m_timings.centroidIter  = lap.stop() - evalSeconds;
+        lap.restart();
 
         if (par)
         {
             if (failure.empty() && expected != hi)
                 failure = "domain iterator ended before the element slice was covered";
             ensureOnAllRanks(failure.empty() ? nullptr : failure.c_str());
+            m_timings.sliceCheck = lap.stop(); lap.restart();
 
             // Slice q owns elements [N q/P, N (q+1)/P); the counts and
             // displacements are computed identically on every rank.
@@ -546,9 +589,11 @@ private:
 
             // MPI forbids aliased send/receive buffers, hence the copy.
             gsMatrix<T> send = m_centroids.middleCols(lo, hi - lo);
+            m_timings.gatherPrep = lap.stop(); lap.restart();
             int rc = m_comm.allgatherv(send.data(), static_cast<int>(geoDim * (hi - lo)),
                                        m_centroids.data(), cnt.data(), dsp.data());
             GISMO_ENSURE(0 == rc, "gsGeometricPartitioner: allgatherv of the centroids failed.");
+            m_timings.centroidGather = lap.stop(); lap.restart();
 
             if (m_opts.weightByDofs)
             {
@@ -556,6 +601,7 @@ private:
                 rc = m_comm.allgatherv(wsend.data(), static_cast<int>(hi - lo),
                                        m_weights.data(), wcnt.data(), wdsp.data());
                 GISMO_ENSURE(0 == rc, "gsGeometricPartitioner: allgatherv of the weights failed.");
+                m_timings.weightGather = lap.stop(); lap.restart();
             }
         }
 
@@ -566,6 +612,7 @@ private:
         GISMO_ENSURE(m_centroids.allFinite(),
                      "gsGeometricPartitioner: the geometry evaluated to a "
                      "non-finite element centroid; refusing to partition.");
+        m_timings.finiteCheck = lap.stop();
     }
 
     // ------------------------------------------------------------------
@@ -574,10 +621,13 @@ private:
 
     void labelsByRcb(std::vector<index_t>& labels) const
     {
+        gsStopwatch lap;
         const index_t N = static_cast<index_t>(labels.size());
         std::vector<index_t> order(N);
         for (index_t i = 0; i != N; ++i) order[i] = i;
+        m_timings.rcbOrder = lap.stop(); lap.restart();
         rcbSplit(labels, order, 0, N, this->nparts(), 0);
+        m_timings.rcbSplit = lap.stop();
     }
 
     /**
@@ -699,6 +749,7 @@ private:
     void labelsByCurve(std::vector<index_t>& labels,
                        gsSpaceFillingCurve::Curve curve) const
     {
+        gsStopwatch lap;
         const index_t N      = static_cast<index_t>(labels.size());
         const short_t geoDim = static_cast<short_t>(m_centroids.rows());
 
@@ -712,12 +763,14 @@ private:
 
         std::vector<uint64_t> keys(N, 0);
         gsVector<real_t>      pt(geoDim);
+        m_timings.curveSetup = lap.stop(); lap.restart();
         for (index_t e = 0; e != N; ++e)
         {
             for (short_t d = 0; d != geoDim; ++d)
                 pt[d] = static_cast<real_t>(m_centroids(d, e));
             keys[e] = sfc.encode(pt);
         }
+        m_timings.curveKeys = lap.stop(); lap.restart();
 
         std::vector<index_t> order(N);
         for (index_t i = 0; i != N; ++i) order[i] = i;
@@ -729,6 +782,7 @@ private:
         std::sort(order.begin(), order.end(),
             [&keys](index_t a, index_t b)
             { return (keys[a] < keys[b]) || (keys[a] == keys[b] && a < b); });
+        m_timings.curveSort = lap.stop(); lap.restart();
 
         // Cut the curve by weighted prefix sum, in exact integer arithmetic
         // (acc * nparts reaches ~2.2e12 at plan scale, hence int64_t).
@@ -747,6 +801,7 @@ private:
             labels[e] = j;                       // non-decreasing along the curve
             acc += static_cast<int64_t>(m_weights[e]);
         }
+        m_timings.curveCut = lap.stop();
     }
 
 private:
@@ -760,6 +815,7 @@ private:
     gsMatrix<T>          m_bbox;      ///< geoDim x 2 (lower, upper corner)
     gsMatrix<T>          m_centroids; ///< geoDim x numElements (released after partition())
     std::vector<index_t> m_weights;   ///< one weight per element
+    mutable Timings      m_timings;   ///< filled by computeLabels() and its helpers
 
 }; // class gsGeometricPartitioner
 

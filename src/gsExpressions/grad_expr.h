@@ -104,13 +104,13 @@ public:
     {
         GISMO_ASSERT(_u.check(), "Invalid state in gsFeSolution");
         const gsDofMapper & map = _u.mapper();
-        auto & act = _u.data().actives.col(1 == _u.data().actives.cols() ? 0:k );
+        const gsMatrix<index_t> & gidx = _u.activeGlobalIndices(k);
         res.setZero(_u.dim(), _u.parDim());
         for (index_t c = 0; c!= _u.dim(); c++)
         {
             for (index_t i = 0; i!=_u.data().actives.rows(); ++i)
             {
-                const index_t ii = map.index(act[i], _u.data().patchId, c);
+                const index_t ii = gidx(i, c);
                 if ( map.is_free_index(ii) ) // DoF value is in the solVector
                 {
                     res.row(c) += _u.coefs().at(ii) *
