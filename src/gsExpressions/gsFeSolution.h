@@ -195,40 +195,40 @@ public:
 
     /// Extracts ALL the coefficients in a solution vector; including
     /// coupled and boundary DoFs
+    ///
+    /// The result has mapSize() rows, ordered component by component as
+    /// the solution vector is: the coefficients of component c follow those
+    /// of all earlier components, and within component c those of patch p
+    /// start at mapper().offset(p,c).
     void extractFull(gsMatrix<T> & result) const
     {
-        index_t offset;
+        const gsDofMapper & mapper = _u.mapper();
         const index_t dim = _u.dim();
-        const size_t totalSz = _u.mapper().mapSize();
-        result.resize(totalSz, 1);
+        result.resize(mapper.mapSize(), 1);
         // Under the global-identity layout every patch spans all dofs at
         // offset zero, so one patch already fills the whole result
-        const size_t nPatches = _u.mapper().layout() == gsDofMapper::GlobalIdentity
-                                ? 1 : _u.mapper().numPatches();
-        for (size_t p=0; p!=nPatches; ++p)
+        const size_t nPatches = mapper.layout() == gsDofMapper::GlobalIdentity
+                                ? 1 : mapper.numPatches();
+        index_t compStart = 0;
+        for (index_t c = 0; c!=dim; c++) // for all components
         {
-            offset = _u.mapper().offset(p);
-            // Reconstruct solution coefficients on patch p
-
-            for (index_t c = 0; c!=dim; c++) // for all components
+            for (size_t p=0; p!=nPatches; ++p)
             {
-                const index_t sz  = _u.mapper().patchSize(p,c);
+                // Reconstruct the coefficients of component c on patch p
+                const index_t offset = compStart + mapper.offset(p,c);
+                const index_t sz  = mapper.patchSize(p,c);
 
                 // loop over all basis functions (even the eliminated ones)
                 for (index_t i = 0; i < sz; ++i)
                 {
-                    //gsDebugVar(i);
-                    const int ii = _u.mapper().index(i, p, c);
-                    //gsDebugVar(ii);
-                    if ( _u.mapper().is_free_index(ii) ) // DoF value is in the solVector
-                    {
+                    const index_t ii = mapper.index(i, p, c);
+                    if ( mapper.is_free_index(ii) ) // DoF value is in the solVector
                         result(i+offset,0) = _Sv->at(ii);
-                    }
                     else // eliminated DoF: fill with Dirichlet data
-                        result(i+offset,0) =  _u.fixedPart().at( _u.mapper().global_to_bindex(ii) );
+                        result(i+offset,0) =  _u.fixedPart().at( mapper.global_to_bindex(ii) );
                 }
-                offset += sz;
             }
+            compStart += mapper.totalSize(c);
         }
     }
 

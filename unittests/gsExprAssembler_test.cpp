@@ -736,6 +736,61 @@ SUITE(gsExprAssembler_test)
         CHECK(wVec.bottomRows(sz) == gsMatrix<real_t>::Constant(sz, 1, -1.0));
     }
 
+    // gsFeSolution::extractFull() orders the coefficients, eliminated ones
+    // included, component by component: patch k of component c starts at
+    // offset(k,c) after all coefficients of the earlier components.  With
+    // several components on several patches each block must hold exactly the
+    // coefficients extract() reconstructs for that patch, and no block may
+    // overwrite another.  Two coupled patches, two components, with
+    // eliminated dofs in both components and distinct Dirichlet values.
+    TEST(ExtractFullMultiComponentMultiPatch)
+    {
+        gsMultiPatch<real_t> mp = gsNurbsCreator<real_t>::BSplineSquareGrid(2,1,1.0);
+        gsMultiBasis<real_t> mb(mp);
+        mb.uniformRefine();
+        gsFunctionExpr<real_t> g("0", "0", 2);
+        gsBoundaryConditions<real_t> bcs;
+        bcs.addCondition(0, boundary::west , condition_type::dirichlet, &g, 0, false, -1);
+        bcs.addCondition(1, boundary::north, condition_type::dirichlet, &g, 0, false,  1);
+
+        gsExprAssembler<real_t> A(1,1);
+        A.setIntegrationElements(mb);
+        auto u = A.getSpace(mb, 2);
+        u.setup(bcs, dirichlet::homogeneous, 0);
+        const gsDofMapper & m = u.mapper();
+        CHECK(m.coupledSize() > 0);
+        // eliminated dofs in both components, more of them in component 1
+        const index_t elim0 = m.size(0) - m.freeSize(0);
+        const index_t elim1 = m.size(1) - m.freeSize(1);
+        CHECK(elim0 > 0);
+        CHECK(elim1 > elim0);
+
+        gsMatrix<real_t> & fixed = const_cast<expr::gsFeSpace<real_t>&>(u).fixedPart();
+        fixed.resize(m.boundarySize(), 1);
+        for (index_t j = 0; j != fixed.rows(); ++j)
+            fixed(j, 0) = -(j + 1);
+        gsMatrix<real_t> solVector(m.freeSize(), 1);
+        for (index_t i = 0; i != solVector.rows(); ++i)
+            solVector(i, 0) = i + 1;
+        auto s = A.getSolution(u, solVector);
+
+        gsMatrix<real_t> full;
+        s.extractFull(full);
+        CHECK_EQUAL(m.mapSize(), static_cast<size_t>(full.rows()));
+        index_t start = 0;
+        for (index_t c = 0; c != 2; ++c)
+        {
+            for (size_t k = 0; k != m.numPatches(); ++k)
+            {
+                gsMatrix<real_t> coefs;
+                s.extract(coefs, k);
+                const index_t n = m.patchSize(k, c);
+                CHECK(full.middleRows(start + m.offset(k, c), n) == coefs.col(c));
+            }
+            start += m.totalSize(c);
+        }
+    }
+
     // TODO: check last remark here
     //
     // Pins refine-and-reassemble: a basis refined IN PLACE after a custom
