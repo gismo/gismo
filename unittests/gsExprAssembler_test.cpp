@@ -676,6 +676,66 @@ SUITE(gsExprAssembler_test)
         CHECK_CLOSE(4.0, M.sum(), 1e-10);
     }
 
+    // Under the global-identity layout every patch spans the whole dof range,
+    // so gsFeSolution::extractFull() and setComponent() visit a single patch
+    // rather than rewriting everything once per patch.  The result must still
+    // be the patch-concatenated one: an identity-mapped basis over two
+    // patches numbers its functions as the patch-concatenated mapper of the
+    // underlying multibasis does.
+    TEST(IdentityMapperSolutionMatchesPatchConcatenated)
+    {
+        gsMultiPatch<real_t> mp = gsNurbsCreator<real_t>::BSplineSquareGrid(2,1,1.0);
+        gsMultiBasis<real_t> mb(mp);
+        mb.uniformRefine();
+        const index_t sz = mb.totalSize();
+        gsSparseMatrix<real_t> ident(sz, sz);
+        ident.setIdentity();
+        gsMappedBasis<2,real_t> mapB(mb, ident);
+
+        gsExprAssembler<real_t> A(1,1), B(1,1);
+        auto u = A.getSpace(mb);
+        u.setup(-1);
+        auto v = B.getSpace(mapB);
+        v.setupMapper(createMapper(mapB, 1, /*conforming=*/false, /*finalize=*/true));
+        CHECK(u.mapper().layout() == gsDofMapper::PatchConcatenated);
+        CHECK(v.mapper().layout() == gsDofMapper::GlobalIdentity);
+        CHECK_EQUAL(2u, v.mapper().numPatches());
+
+        gsMatrix<real_t> uVec(sz, 1), vVec(sz, 1);
+        for (index_t i = 0; i != sz; ++i)
+            uVec(i, 0) = vVec(i, 0) = i + 1;
+        auto su = A.getSolution(u, uVec);
+        auto sv = B.getSolution(v, vVec);
+
+        gsMatrix<real_t> fullU, fullV;
+        su.extractFull(fullU);
+        sv.extractFull(fullV);
+        CHECK_EQUAL(sz, fullV.rows());
+        CHECK(fullU == fullV);
+        CHECK(fullV == vVec);
+
+        su.setComponent(0, 3.0);
+        sv.setComponent(0, 3.0);
+        CHECK(uVec == vVec);
+        CHECK(vVec == gsMatrix<real_t>::Constant(sz, 1, 3.0));
+
+        // Two components: component c fills the c-th block of the result.
+        gsExprAssembler<real_t> C(1,1);
+        auto w = C.getSpace(mapB, 2);
+        w.setupMapper(createMapper(mapB, 2, /*conforming=*/false, /*finalize=*/true));
+        gsMatrix<real_t> wVec(2*sz, 1);
+        for (index_t i = 0; i != 2*sz; ++i)
+            wVec(i, 0) = i + 1;
+        auto sw = C.getSolution(w, wVec);
+        gsMatrix<real_t> fullW;
+        sw.extractFull(fullW);
+        CHECK(fullW == wVec);
+
+        sw.setComponent(1, -1.0);
+        CHECK(wVec.topRows(sz) == fullW.topRows(sz));
+        CHECK(wVec.bottomRows(sz) == gsMatrix<real_t>::Constant(sz, 1, -1.0));
+    }
+
     // TODO: check last remark here
     //
     // Pins refine-and-reassemble: a basis refined IN PLACE after a custom

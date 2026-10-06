@@ -467,12 +467,17 @@ public:
     /// \a comp may also equal numComponents(), which gives the end of the
     /// last free block (lastIndex(), once finalized).  firstFreeIndex() is the start of the
     /// whole free range, i.e. the shift; it is also valid on a
-    /// default-constructed mapper.
+    /// default-constructed or not yet finalized mapper.  For \a comp > 0 the
+    /// mapper must be finalized: before finalize() the per-component counts
+    /// are not yet accumulated, so there is no block start to report.
     index_t firstFreeIndex(index_t comp = 0) const
     {
         GISMO_ENSURE(comp >= 0 && static_cast<size_t>(comp) < m_numFreeDofs.size(),
                      "gsDofMapper::firstFreeIndex: invalid component "<<comp<<", expected a value in [0,"
                      <<m_numFreeDofs.size()-1<<"].");
+        GISMO_ENSURE(0 == comp || isFinalized(),
+                     "gsDofMapper::firstFreeIndex: component "<<comp<<" requires a finalized "
+                     "mapper; only component 0 starts at the shift before finalize().");
         return m_numFreeDofs[comp] + m_shift;
     }
 

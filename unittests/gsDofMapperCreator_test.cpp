@@ -879,6 +879,92 @@ TEST(per_component_rejects_interfaces_permuting_directions)
     checkSameMapper(m, createMapper(rt[0], rotated, none, 2, 0, true, true));
 }
 
+// An interface joining the same side of both patches keeps every direction,
+// so every component's traces match in size and the interface could be glued
+// without error.  For a Piola-mapped space the normal component would need a
+// sign flip there, which the mapper cannot hold, so distinct per-component
+// bases reject it by name.
+TEST(per_component_rejects_interfaces_joining_the_same_side)
+{
+    const std::vector<gsMultiBasis<real_t> > rt = rtPair(3, 4);
+    gsBoxTopology sameSide(2, 2);
+    sameSide.addInterface(0, boundary::east, 1, boundary::east);
+    const gsBoundaryConditions<real_t> none;
+    for (size_t c = 0; c != rt.size(); ++c)
+        CHECK_EQUAL(rt[c].basis(0).boundary(boundary::east).rows(),
+                    rt[c].basis(1).boundary(boundary::east).rows());
+    {
+        CerrCapture err;
+        CHECK_THROW(createMapper(pointers(rt), sameSide, none, 0, true, true),
+                    std::runtime_error);
+        CHECK(err.contains("joins the same side of both patches"));
+    }
+
+    // Not visited without the conforming loop.
+    createMapper(pointers(rt), sameSide, none, 0, false, true);
+
+    // One shared function set is matched as by the single-basis overload.
+    const std::vector<const gsFunctionSet<real_t>*> shared(2, &rt[0]);
+    const gsDofMapper m = createMapper(shared, sameSide, none, 0, true, true);
+    CHECK(m.coupledSize() > 0);
+    checkSameMapper(m, createMapper(rt[0], sameSide, none, 2, 0, true, true));
+}
+
+// gsMultiBasis::matchInterface and gsMultiBasis::combineTransferMatrices apply
+// one basis' dof indices to every component of the mapper.  A mapper with
+// distinct per-component bases is rejected by both, also on the isotropic
+// mesh, where every component has the same size and nothing else would
+// notice.  A uniform multi-component mapper is still accepted.
+TEST(multibasis_rejects_distinct_component_mappers)
+{
+    const std::vector<gsMultiBasis<real_t> > rt = rtPair(4, 4);
+    const gsBoundaryConditions<real_t> none;
+    const boundaryInterface & iface = rt[0].topology().interfaces().front();
+
+    gsDofMapper distinct = createMapper(pointers(rt), rt[0].topology(), none, 0, false, false);
+    CHECK_EQUAL(distinct.patchSize(0, 0), distinct.patchSize(0, 1));
+    {
+        CerrCapture err;
+        CHECK_THROW(rt[0].matchInterface(iface, distinct), std::runtime_error);
+        CHECK(err.contains("must not have distinct per-component bases"));
+    }
+
+    // Matching the interface by hand reproduces the conforming creator.
+    gsDofMapper uniform = createMapper(rt[0], rt[0].topology(), none, 2, 0, false, false);
+    rt[0].matchInterface(iface, uniform);
+    uniform.finalize();
+    checkSameMapper(uniform, createMapper(rt[0], rt[0].topology(), none, 2, 0, true, true));
+
+    // Transfer between the basis and its refinement, patch by patch.
+    gsMultiBasis<real_t> fine = rt[0];
+    std::vector<gsSparseMatrix<real_t, RowMajor> > transfer(fine.nBases());
+    for (size_t k = 0; k != fine.nBases(); ++k)
+        fine.basis(k).uniformRefine_withTransfer(transfer[k], 1, 1);
+    std::vector<gsMultiBasis<real_t> > rtFine(rt);
+    rtFine[0] = fine;
+
+    gsSparseMatrix<real_t, RowMajor> result;
+    distinct.finalize();
+    const gsDofMapper distinctFine = createMapper(rtFine, none, 0, false, true);
+    {
+        CerrCapture err;
+        CHECK_THROW(gsMultiBasis<real_t>::combineTransferMatrices(transfer, distinct,
+                                                                  distinctFine, result),
+                    std::runtime_error);
+        CHECK(err.contains("must not have distinct per-component bases"));
+    }
+
+    const gsDofMapper coarse2 = createMapper(rt[0], none, 2, 0, false, true);
+    const gsDofMapper fine2   = createMapper(fine , none, 2, 0, false, true);
+    gsMultiBasis<real_t>::combineTransferMatrices(transfer, coarse2, fine2, result);
+    CHECK_EQUAL(fine2.freeSize()  , result.rows());
+    CHECK_EQUAL(coarse2.freeSize(), result.cols());
+    // Partition of unity on both grids: the constant one has all coefficients
+    // equal to one, coarse and fine, in either component.
+    const gsMatrix<real_t> ones = result * gsMatrix<real_t>::Ones(coarse2.freeSize(), 1);
+    CHECK((ones.array() - 1).abs().maxCoeff() < 1e-10);
+}
+
 // Contact interfaces are not glued, and the finalize flag is honoured, as in
 // the single-basis creator.
 TEST(per_component_contact_and_finalize)

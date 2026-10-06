@@ -131,9 +131,13 @@ gsDofMapper createMapper(const gsFunctionSet<T> & bases, const gsBoundaryConditi
     first direction onto the other's second (a rotated neighbour), a
     component normal to the interface on one side is tangential on the
     other, and the pairing would have to cross components, which
-    gsDofMapper cannot represent.  With distinct function sets and
-    \a conforming set, such an interface throws in every build type; with
-    one shared function set it is matched as by the single-basis overload.
+    gsDofMapper cannot represent.  An interface joining the same side of
+    both patches (e.g. east to east) keeps the directions, but there the
+    normal component of a Piola-mapped space such as Raviart-Thomas would
+    have to be identified with a sign flip, which gsDofMapper cannot
+    represent either.  With distinct function sets and \a conforming set,
+    both kinds of interface throw in every build type; with one shared
+    function set they are matched as by the single-basis overload.
 
     \param basesPerComp one function set per component; none may be null or a
                         gsMappedBasis, and all must have the same number of
@@ -148,7 +152,8 @@ gsDofMapper createMapper(const gsFunctionSet<T> & bases, const gsBoundaryConditi
     Invalid input -- a component selection other than -1 or an existing
     component, a reference to a patch, side or corner that does not exist,
     incompatible function sets, or an interface permuting the parametric
-    directions (see above) -- throws in every build type.
+    directions or joining the same side of both patches (see above) --
+    throws in every build type.
 
     \note Interfaces of type interaction::contact are skipped by the conforming
     loop, as in the single-basis overload.

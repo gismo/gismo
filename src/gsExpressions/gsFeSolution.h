@@ -149,7 +149,10 @@ public:
         index_t patchStart, patchEnd;
         if (patch==-1){
             patchStart = 0;
-            patchEnd   = _u.mapper().numPatches();
+            // Under the global-identity layout every patch spans all dofs,
+            // so one patch already visits each of them
+            patchEnd   = mapper.layout() == gsDofMapper::GlobalIdentity
+                         ? 1 : mapper.numPatches();
         }
         else{
             patchStart = patch;
@@ -198,7 +201,11 @@ public:
         const index_t dim = _u.dim();
         const size_t totalSz = _u.mapper().mapSize();
         result.resize(totalSz, 1);
-        for (size_t p=0; p!=_u.mapper().numPatches(); ++p)
+        // Under the global-identity layout every patch spans all dofs at
+        // offset zero, so one patch already fills the whole result
+        const size_t nPatches = _u.mapper().layout() == gsDofMapper::GlobalIdentity
+                                ? 1 : _u.mapper().numPatches();
+        for (size_t p=0; p!=nPatches; ++p)
         {
             offset = _u.mapper().offset(p);
             // Reconstruct solution coefficients on patch p

@@ -1573,6 +1573,27 @@ TEST(first_free_index_of_an_eliminated_only_component)
     CHECK_EQUAL(13, m.lastIndex());
 }
 
+// Before finalize() the per-component free counts are not yet accumulated,
+// so only component 0, whose block starts at the shift, has a defined start.
+// Asking for a later component throws instead of returning the raw count.
+TEST(first_free_index_before_finalize)
+{
+    CHECK_EQUAL(0, gsDofMapper().firstFreeIndex());
+
+    gsVector<index_t> sz(2);
+    sz << 3, 4;
+    gsDofMapper m(sz, 2);
+    m.setShift(10);
+    CHECK_EQUAL(10, m.firstFreeIndex(0));
+    CHECK_THROW(m.firstFreeIndex(1), std::runtime_error);
+    CHECK_THROW(m.firstFreeIndex(2), std::runtime_error);
+
+    m.finalize();
+    CHECK_EQUAL(10, m.firstFreeIndex(0));
+    CHECK_EQUAL(17, m.firstFreeIndex(1));
+    CHECK_EQUAL(24, m.firstFreeIndex(2));
+}
+
 // The deprecated firstIndex(c) is firstFreeIndex(c).  In particular
 // firstIndex() is the shift even when component 0 has no free dof:
 // callers subtract it from a free index to get a position in the free

@@ -140,6 +140,14 @@ void checkInterfaces(const gsBoxTopology & topology, const gsFunctionSet<T> & ba
 // on one side with one tangential to it on the other.  For distinct
 // per-component bases that pairing is rejected rather than guessed; it is
 // only detected otherwise when the two traces happen to differ in size.
+//
+// An interface that joins the same side of both patches (e.g. east to
+// east) keeps every direction, but the two normal parametric directions
+// point opposite ways in physical space.  A plain vector field is matched
+// correctly across it; a Piola-mapped component space such as
+// Raviart-Thomas needs the normal coefficients identified with a sign flip,
+// which a dof mapper cannot express.  Distinct per-component bases are what
+// such spaces are built from, so this pairing is rejected as well.
 inline void checkAlignedInterfaces(const gsBoxTopology & topology)
 {
     for ( gsBoxTopology::const_iiterator it = topology.iBegin();
@@ -153,6 +161,11 @@ inline void checkAlignedInterfaces(const gsBoxTopology & topology)
                          <<it->second()<<" maps parametric direction "<<d<<" onto direction "
                          <<dirs[d]<<".  Distinct per-component bases are matched component by "
                          "component, which requires every interface to keep each direction.");
+        GISMO_ENSURE(it->first().side().index() != it->second().side().index(),
+                     "createMapper: the interface between "<<it->first()<<" and "
+                     <<it->second()<<" joins the same side of both patches.  Distinct "
+                     "per-component bases are matched component by component, without the "
+                     "sign flip of the normal component that a Piola-mapped space needs there.");
     }
 }
 
