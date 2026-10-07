@@ -115,12 +115,14 @@ public:
                      "You cannot add more fields if the gsParaviewDataSet has "
                      "been saved.");
         const gsMultiPatch<T>& geometry = *m_geometry;
-        GISMO_ENSURE(
-            (field.parDim() == geometry.domainDim() &&
-             field.geoDim() == geometry.targetDim() &&
-             field.nPieces() == geometry.nPieces() &&
-             field.patches().coefsSize() == geometry.coefsSize()),
-            "Provided gsField and stored geometry are not compatible!");
+        // patch(k) also works for a field defined on a single gsGeometry
+        bool compatible = field.parDim() == geometry.domainDim() &&
+                          field.geoDim() == geometry.targetDim() &&
+                          field.nPieces() == geometry.nPieces();
+        for (index_t k = 0; compatible && k != geometry.nPieces(); ++k)
+            compatible = field.patch(k).coefsSize() == geometry.patch(k).coefsSize();
+        GISMO_ENSURE(compatible,
+                     "Provided gsField and stored geometry are not compatible!");
 
         const unsigned nPts = static_cast<unsigned>(m_options.getInt("numPoints"));
         const unsigned precision = static_cast<unsigned>(m_options.askInt("precision", 5));

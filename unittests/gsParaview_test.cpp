@@ -542,4 +542,46 @@ TEST(CollectionParametricExprField)
     checkExprFieldCollection(true, "param", "param", lo, hi);
 }
 
+TEST(CollectionFieldOnSingleGeometry)
+{
+    // A gsField built on one gsGeometry (not a gsMultiPatch) is accepted by a
+    // collection whose time step holds that geometry as a one-patch multipatch.
+    const std::string tmp = gsFileManager::getTempPath();
+    if (tmp.empty()) return;
+
+    const std::string dir   = tmp + "gsParaview_geomfield_test/";
+    const std::string fn    = dir + "geom";
+    const std::string sub   = fn + "_pvd/";
+    const std::string piece = sub + "geom_t0.000000_patch0.vts";
+    std::remove(piece.c_str());
+    std::remove((fn + ".pvd").c_str());
+
+    gsMultiPatch<> mp;
+    mp.addPatch(gsNurbsCreator<>::BSplineSquare());
+
+    gsFunctionExpr<> f("x + 2*y", 2);
+    gsField<> field(mp.patch(0), f, false);
+
+    gsParaviewCollection<real_t> collection(fn);
+    collection.options().setInt("numPoints", 64);
+    collection.newTimeStep(mp, 0.0);
+    collection.addField(field, "geom");
+    collection.saveTimeStep();
+    collection.save();
+
+    CHECK(gsFileManager::fileExists(piece));
+    const std::vector<double> v = dataArrayValues(readFile(piece), "geom");
+    CHECK(!v.empty());
+    if (!v.empty())
+    {
+        CHECK_CLOSE(0.0, *std::min_element(v.begin(), v.end()), 1e-4);
+        CHECK_CLOSE(3.0, *std::max_element(v.begin(), v.end()), 1e-4);
+    }
+
+    std::remove(piece.c_str());
+    std::remove(sub.c_str());
+    std::remove((fn + ".pvd").c_str());
+    std::remove(dir.c_str());
+}
+
 } // SUITE
