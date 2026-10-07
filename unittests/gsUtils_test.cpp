@@ -14,6 +14,7 @@
 **/
 
 #include "gismo_unittest.h"
+#include <gsUtils/gsThreaded.h>
 
 SUITE(gsUtils_test)
 {
@@ -294,4 +295,31 @@ TEST(name)
         util::type<gsGenericGeometry<2> >::name());
 #endif
 }
+
+#ifdef _OPENMP
+TEST(gsThreaded_moreThreadsAfterConstruction)
+{
+    // A gsThreaded built while one thread is set has a slot for every thread
+    // of a later region that uses all cores.
+    const int nThreads = omp_get_max_threads();
+    omp_set_num_threads(1);
+    util::gsThreaded<int> a;
+    const int n = omp_get_num_procs();
+    CHECK(a.size() >= static_cast<size_t>(n));
+
+    omp_set_num_threads(n);
+    std::vector<int> seen(n, 0);
+#pragma omp parallel
+    {
+        a.mine() = omp_get_thread_num() + 1;
+        seen[omp_get_thread_num()] = a.mine();
+    }
+    // Restore: the thread count is process-wide.
+    omp_set_num_threads(nThreads);
+
+    for (int i = 0; i != n; ++i)
+        if (seen[i] != 0)
+            CHECK_EQUAL(i + 1, seen[i]);
+}
+#endif
 }
