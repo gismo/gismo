@@ -1087,6 +1087,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch() const
     {
         Psi.interfaces() = this->initial_mapping.interfaces();
         Psi.boundaries() = this->initial_mapping.boundaries();
+        Psi.computeTopology();
     }
     //...
     slv_time += timer.stop();

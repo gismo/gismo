@@ -27,7 +27,9 @@ void ComputesErrorGeometry(const gsMultiPatch<> &FF,
                            double &Binf)
 {
     gsInfo << "<Error> Compute geometric error: ";
-    assert(MAmapping.dim() == 2 && "Only single-patch 2D fitting is implemented so far.");
+    GISMO_ENSURE(MAmapping.dim() == 2, "Geometric error sampling is implemented in 2D only.");
+    GISMO_ENSURE(FF.nPatches() == MAmapping.nPatches() && FF.nPatches() == Apmapping.nPatches(),
+                 "Geometric error sampling requires matching patch counts.");
 
     gsStopwatch timer;
     timer.restart();
@@ -42,20 +44,18 @@ void ComputesErrorGeometry(const gsMultiPatch<> &FF,
     const gsMatrix<> intGrid = Tbasis.basis(0).anchors();
     gsInfo << ": gridsize from= " << Tbasis.basis(0).size()<< " ./. ";
 
-    // --- Evaluate mappings ---------------------------------------------------
-    gsMatrix<> intVals = MAmapping.patch(0).eval(intGrid);
-    gsMatrix<> JVals = MAmapping.patch(0).jacobian(intGrid);// Jacobain of square to square mapping
+    maxDist = 0.0;
+    Binf = 0.0;
+    for (size_t pn = 0; pn < FF.nPatches(); ++pn)
+    {
+    // --- Evaluate the corresponding mappings on each patch -------------------
+    gsMatrix<> intVals = MAmapping.patch(pn).eval(intGrid);
     intVals = intVals.cwiseMax(0).cwiseMin(1);
 
-    const gsMatrix<> XF = FF.patch(0).eval(intVals);     // reference geometry
-    const gsMatrix<> JF = FF.patch(0).jacobian(intVals);     // Jacobian of reference geometry in adapted grids by  MA mapping
-    const gsMatrix<> XG = Apmapping.patch(0).eval(intGrid); // approximate geometry
-    const gsMatrix<> JG = Apmapping.patch(0).jacobian(intGrid); // Jacobain of approximate geometry
+    const gsMatrix<> XF = FF.patch(pn).eval(intVals);     // reference geometry
+    const gsMatrix<> XG = Apmapping.patch(pn).eval(intGrid); // approximate geometry
     const index_t Nf = XF.cols(), Ng = XG.cols();
 
-    // --- Initialize outputs --------------------------------------------------
-    maxDist = 0.0;   // Hausdorff distance
-    Binf    = 0.0;   // boundary max distance
     index_t ngrids = sqrt(intGrid.cols()); // number of grid points in one direction, assuming a square grid.
     const index_t lookAround = 50; // look around 20 points to find the closest point on the other geometry for boundary error estimation
 
@@ -149,6 +149,8 @@ void ComputesErrorGeometry(const gsMultiPatch<> &FF,
         }
         if (minDist > Binf) Binf = minDist;
     }
+
+    } // patches: retain the maximum sampled error over all patches
 
     double cpu = timer.stop();
     gsInfo << "Hausdorff = " << maxDist
@@ -315,7 +317,7 @@ int main(int argc, char *argv[])
             <<" dim " <<MAE.mapping_basis.dim()<<" Geodim " << mpLeft.geoDim() 
             <<"}------------------------------------------------------\n";
 
-    DoFPDE[r]               = MAE.mapping_basis.basis(0).size();
+    DoFPDE[r]               = MAE.mapping_basis.size();
     CHdferror[r]            = abs(ev.integral( jac(G).det() - jac(Cmp).det()*jac(PP).det() ) );
 
     //----------------------------------------------------------------------
@@ -537,23 +539,18 @@ int main(int argc, char *argv[])
         //MarkingStrategy adaptRefCrit = errorFraction;
         real_t adaptRefParam = 0.7;
 
-        for (int r=0; r<=numLRefine; ++r)
+        for (int r=0; r<numLRefine; ++r)
         {
         //! [beginRefLoop]
             gsInfo << "====== Loop " << r << " of "
                     <<numLRefine<< " ====adapt Parameter ="<< adaptRefParam << " ======" << "\n";
             // --------------- error estimation/computation ---------------
             // Get the element-wise norms.
-            // Element-wise density in the element order used by gsRefineMarkedElements (patch by patch);
-            // the evaluator returns patch-0 values on every patch of a multipatch map.!!! TODO
-            std::vector<real_t> eltErrs;
-            for (size_t pn = 0; pn < Psi.nPatches(); ++pn)
-                for (auto it = Psi.basis(pn).domain()->beginAll(); it < Psi.basis(pn).domain()->endAll(); ++it)
-                {
-                    gsMatrix<> val;
-                    f.eval_into(Psi.patch(pn).eval(it.centerPoint()), val);
-                    eltErrs.push_back(std::abs(val(0,0)) * (it.upperCorner()-it.lowerCorner()).prod());
-                }
+            // Integrate density in the patch-by-patch order used for marking.
+            ev.integralElWise( ff_TG.val() );
+            const std::vector<real_t> eltErrs = ev.elementwise();
+            GISMO_ENSURE(eltErrs.size() == basis.totalElements(),
+                         "Density indicators must cover every integration element.");
             //! [errorComputation]
 
             //! [adaptRefinementPart]

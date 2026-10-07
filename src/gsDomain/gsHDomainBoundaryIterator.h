@@ -71,6 +71,7 @@ public:
     :
     gsHDomainBoundaryIterator(domain.tree(),basis,s)
     {
+       this->setPatchIndex(domain.patchIndex());
     }
 
     void init(const gsHTree<d,Z> & tree, const boxSide & s)

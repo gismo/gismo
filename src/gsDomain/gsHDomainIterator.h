@@ -69,6 +69,7 @@ public:
     :
     gsHDomainIterator(domain.tree(),basis)
     {
+        this->setPatchIndex(domain.patchIndex());
     }
 
     gsHDomainIterator(const gsHDomainIterator & other) = default;

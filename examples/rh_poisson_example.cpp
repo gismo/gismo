@@ -35,8 +35,8 @@ int main(int argc, char *argv[])
     real_t  adaptRefParam = 0.7; // ... adapt parameter.
     real_t  adaptRefParamMAE = 0.7; // ... adapt parameter for MAE mapping.
     // Specify the file path
-    std::string fn("pde/circle.xml");
-    // std::string fn("pde/annulus2d_bvp.xml");
+    // std::string fn("pde/circle.xml");
+    std::string fn("pde/annulus2d_bvp.xml");
     // std::string fn("domain2d/lake.xml");
     // std::string fn("pde/Bspline_ball.xml");
     // std::string fn("volumes/GshapedVolume.xml"); 
@@ -302,6 +302,9 @@ int main(int argc, char *argv[])
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
             // Refine the marked elements with a 1-ring of cells around marked elements
             gsRefineMarkedElements( dbasis, elMarked, NumArMarEl);
+            // The conforming PDE mapper requires matching bases on both sides
+            // of every patch interface after local refinement.
+            dbasis.repairInterfaces( dbasis.topology().interfaces() );
             }
     }
     //! [Solver loop]    
