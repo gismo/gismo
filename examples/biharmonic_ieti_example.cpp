@@ -113,7 +113,17 @@ int main(int argc, char *argv[])
             return EXIT_FAILURE;
         }
     }
-    gsInfo << "done.\n";
+    
+    real_t hmax = 0, hmin = 1e99;
+    for ( size_t i = 0; i < mb.nBases(); ++ i )
+    {
+        using std::min;
+        using std::max;
+        hmin = min(hmin, mb[i].getMinCellLength());
+        hmax = max(hmax, mb[i].getMaxCellLength());
+    }
+
+    gsInfo << "done (hmin = "<<hmin<<", hmax = "<<hmax<<").\n";
 
     /*** Setup dofMapper and local basis transformations ****/
 
@@ -369,7 +379,13 @@ int main(int argc, char *argv[])
                     << "Mutiplicity" << "\t"
                     << "Refinements" << "\t"
                     << "ConditionNumber" << "\t"
-                    << "Iter" << "\n";
+                    << "Iter" << "\t"
+                    << "nPrimals" << "\t"
+                    << "nLagrangeMultipliers" << "\t"
+                    << "nGlobalDofs" << "\t"
+                    << "hmin" << "\t"
+                    << "hmax" << "\t"
+                    << "\n";
          }
         outfile << "biharmonic_ieti_example\t"
                 << geometry << "\t"
@@ -381,7 +397,13 @@ int main(int argc, char *argv[])
                 << multiplicity << "\t"
                 << refinements << "\t"
                 << conditionNumber << "\t"
-                << iter << "\n";
+                << iter << "\t"
+                << ietiMapper.nPrimalDofs() << "\t"
+                << lambda.size() << "\t"
+                << globalSol.size() << "\t"
+                << hmin << "\t"
+                << hmax << "\t"
+                << "\n";
 
         gsInfo << "Write solution data to file " << log << "\n";
     }
