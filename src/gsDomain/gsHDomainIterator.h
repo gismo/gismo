@@ -72,7 +72,31 @@ public:
         this->setPatchIndex(domain.patchIndex());
     }
 
-    gsHDomainIterator(const gsHDomainIterator & other) = default;
+    /// Copies the iterator; the mesh-line iterators are moved to the copy's
+    /// own breaks, so the copy stays valid when \a other advances or is destroyed.
+    gsHDomainIterator(const gsHDomainIterator & other)
+    :
+    gsDomainIterator<T>(other),
+    m_tree(other.m_tree),
+    m_basis(other.m_basis),
+    m_leaf(other.m_leaf),
+    m_breaks(other.m_breaks),
+    m_meshStart(other.m_meshStart),
+    m_meshEnd(other.m_meshEnd),
+    m_curElement(other.m_curElement),
+    m_lower(other.m_lower),
+    m_upper(other.m_upper)
+    {
+        for (size_t i = 0; i != m_breaks.size(); ++i)
+        {
+            const uiter src = other.m_breaks[i].begin();
+            const uiter dst = m_breaks[i].cbegin();
+            m_meshStart[i]  = dst + (other.m_meshStart[i]  - src);
+            m_meshEnd[i]    = dst + (other.m_meshEnd[i]    - src);
+            m_curElement[i] = dst + (other.m_curElement[i] - src);
+        }
+    }
+
     domainIter clone() const override { return domainIter(new gsHDomainIterator(*this)); }
 
     leafIterator init(const gsHTree<d,Z> & tree)

@@ -40,6 +40,56 @@ index_t maxLeafLevel(const gsHTensorBasis<2> & basis)
     return maxLvl;
 }
 
+
+// Two THB patches side by side; patch 1 is refined along its west side.
+gsMultiBasis<real_t> twoPatchTHB()
+{
+    gsMultiPatch<real_t> mp = gsNurbsCreator<real_t>::BSplineSquareGrid(2, 1, 1.0);
+    gsMultiBasis<real_t> mbT(mp);
+    mbT.degreeElevate(1);
+    mbT.uniformRefine(1);
+    gsMultiBasis<real_t> mb;
+    for (size_t p = 0; p != mbT.nBases(); ++p)
+        mb.addBasis(new gsTHBSplineBasis<2, real_t>(
+            static_cast<const gsTensorBSplineBasis<2, real_t> &>(mbT.basis(p))));
+    mb.setTopology(mp.topology());
+    std::vector<index_t> box = {1, 0, 0, 2, 4};
+    mb.basis(1).refineElements(box);
+    return mb;
+}
+
+// Lower corners and patch indices from it to end.
+std::vector<std::pair<gsVector<real_t>, index_t> >
+visit(gsDomainIteratorWrapper<real_t> & it, const gsDomainIteratorWrapper<real_t> & end)
+{
+    std::vector<std::pair<gsVector<real_t>, index_t> > out;
+    for (; it != end; ++it)
+        out.emplace_back(it.lowerCorner(), it.patchIndex());
+    return out;
+}
+
+// A copy made partway through must visit the same remaining elements after the
+// original has moved on and been destroyed.
+void checkCopy(gsDomainIteratorWrapper<real_t> it, const gsDomainIteratorWrapper<real_t> & end,
+               index_t patch)
+{
+    ++it;
+    gsDomainIteratorWrapper<real_t> copy(it);
+    std::vector<std::pair<gsVector<real_t>, index_t> > ref;
+    {
+        gsDomainIteratorWrapper<real_t> orig(give(it));
+        ref = visit(orig, end);
+    }
+    const std::vector<std::pair<gsVector<real_t>, index_t> > got = visit(copy, end);
+    CHECK(ref.size() > 1);
+    CHECK_EQUAL(ref.size(), got.size());
+    for (size_t i = 0; i != std::min(ref.size(), got.size()); ++i)
+    {
+        CHECK((ref[i].first - got[i].first).norm() < 1e-14);
+        CHECK_EQUAL(patch, got[i].second);
+    }
+}
+
 } // namespace
 
 SUITE(gsHTensorLevelRefine_test)
@@ -126,5 +176,13 @@ SUITE(gsHTensorLevelRefine_test)
         geomRef.eval_into(pts, vals1);
 
         CHECK((vals0 - vals1).array().abs().maxCoeff() < 1e-10);
+    }
+
+    TEST(hdomain_iterator_copies)
+    {
+        gsMultiBasis<real_t> mb = twoPatchTHB();
+        typename gsDomain<real_t>::Ptr sub = mb.domain()->subdomain(1);
+        checkCopy(sub->beginAll(), sub->endAll(), 1);
+        checkCopy(sub->beginBdr(boundary::west), sub->endBdr(boundary::west), 1);
     }
 }
