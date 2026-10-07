@@ -48,6 +48,26 @@ index_t countMatchedPairs(const gsMultiBasis<real_t> & mb, const gsBoxTopology &
     return nMatched;
 }
 
+
+// Two-patch THB basis whose first patch is refined along the interface only,
+// so the hierarchical meshes on the two sides of the interface differ.
+gsMultiBasis<real_t> twoPatchTHBRefinedOnOneSide()
+{
+    gsMultiPatch<real_t> mp = gsNurbsCreator<real_t>::BSplineSquareGrid(2, 1, 1.0);
+    gsMultiBasis<real_t> mbT(mp);
+    mbT.degreeElevate(1);
+    mbT.uniformRefine(1);
+    gsMultiBasis<real_t> mb;
+    for (size_t p = 0; p != mbT.nBases(); ++p)
+        mb.addBasis(new gsTHBSplineBasis<2, real_t>(
+            static_cast<const gsTensorBSplineBasis<2, real_t> &>(mbT.basis(p))));
+    mb.setTopology(mp.topology());
+    // level-1 box in the east half of patch 0, touching the interface
+    std::vector<index_t> box = {1, 2, 0, 4, 4};
+    mb.basis(0).refineElements(box);
+    return mb;
+}
+
 } // anonymous namespace
 
 
@@ -345,6 +365,25 @@ TEST(strategy_overload_honours_interface_strategy)
     CHECK_EQUAL(glueElim.boundarySize(), dgElim.boundarySize());
     CHECK(glueElim.size() < dgElim.size());
     CHECK_EQUAL(0, dgElim.coupledSize());
+}
+
+// THB patches refined differently along an interface cannot be glued one to
+// one: matchWith reports it (it used to glue wrong functions or pass -1 on);
+// after repairInterfaces() the meshes match and every pair is found.
+TEST(thb_interface_refined_on_one_side)
+{
+    gsMultiBasis<real_t> mb = twoPatchTHBRefinedOnOneSide();
+    const boundaryInterface & bi = *mb.topology().iBegin();
+    gsMatrix<index_t> b1, b2;
+    CHECK_THROW(mb.basis(bi.first().patch).matchWith(bi, mb.basis(bi.second().patch), b1, b2),
+                std::runtime_error);
+
+    mb.repairInterfaces(mb.topology().interfaces());
+    mb.basis(bi.first().patch).matchWith(bi, mb.basis(bi.second().patch), b1, b2);
+    CHECK_EQUAL(b1.rows(), b2.rows());
+    CHECK(b2.minCoeff() >= 0);
+    gsDofMapper m = createMapper(mb, 1, /*conforming=*/true, /*finalize=*/true);
+    CHECK_EQUAL(static_cast<index_t>(mb.totalSize()) - b1.rows(), m.size());
 }
 
 }

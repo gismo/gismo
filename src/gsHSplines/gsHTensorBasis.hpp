@@ -1113,9 +1113,12 @@ void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
         // this is only for checking whether, at least, both involved
         // bases have the same number of DOF on the interface.
         bndOther= _other->boundaryOffset( bi.second().side(), offset );
-        GISMO_ASSERT( bndThis.rows() == bndOther.rows(),
-                      "Input error, sizes do not match: "
-                      <<bndThis.rows()<<"!="<<bndOther.rows() );
+        GISMO_ENSURE( bndThis.rows() == bndOther.rows(),
+                      "gsHTensorBasis::matchWith: the hierarchical meshes do not "
+                      "match along the interface ("<<bndThis.rows()<<" functions on patch "
+                      <<bi.first().patch<<", "<<bndOther.rows()<<" on patch "
+                      <<bi.second().patch<<"). Call gsMultiBasis::repairInterfaces() "
+                      "before matching." );
         // bndOther gets overwritten completely, so here is the setZero():
         bndOther.setZero();
 
@@ -1176,6 +1179,12 @@ void gsHTensorBasis<d,T>::matchWith(const boundaryInterface & bi,
             // compute the "continuous" index on second(), i.e., the index
             // in the numbering which is global over all levels.
             cont1 = _other->flatTensorIndexToHierachicalIndex( flat1, L );
+            GISMO_ENSURE( cont1 >= 0,
+                          "gsHTensorBasis::matchWith: an interface function of level "
+                          <<L<<" on patch "<<bi.first().patch<<" is not active on patch "
+                          <<bi.second().patch<<"; the hierarchical meshes do not match "
+                          "along the interface. Call gsMultiBasis::repairInterfaces() "
+                          "before matching." );
             // this is the index that has to be matched with bndThis(i,0)
             bndOther( i, 0 ) = cont1;
         }
