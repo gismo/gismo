@@ -1058,11 +1058,20 @@ T gsKnotVector<T>::greville(int i) const
     GISMO_ASSERT(i>=0 && static_cast<size_t>(i) < size()-m_deg-1,
                  "Index of Greville point is out of range.");
     iterator itr = begin() + 1;
-    return ( m_deg==0 ? *(itr+i-1) :
-             (T)(std::accumulate( itr+i, itr+i+m_deg, (T)(0.0) ) / (T)(m_deg)
-             // Special case C^{-1}
-             - (*(itr+i) == *(itr+i+m_deg) ? 1e-10 : 0 ))
-        );
+    if ( 0 == m_deg )
+        return *(itr+i-1);
+
+    // Last function: the knot mean clamped to the last knot, as in
+    // greville_into (no inward shift).
+    if ( static_cast<size_t>(i) + m_deg + 2 == size() )
+    {
+        const T gr = std::accumulate( itr+i, itr+i+m_deg, (T)(0.0) ) / (T)(m_deg);
+        return ( gr > *(end()-1) ? *(end()-1) : gr );
+    }
+
+    return (T)(std::accumulate( itr+i, itr+i+m_deg, (T)(0.0) ) / (T)(m_deg)
+               // Special case C^{-1}
+               - (*(itr+i) == *(itr+i+m_deg) ? 1e-10 : 0 ));
 }
 
 template <class T>
