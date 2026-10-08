@@ -402,6 +402,38 @@ public:
     /// \param cornersOnly When set to true an interface is accepted
     /// if the patch corners match, even if the parameterization does
     /// not agree
+    ///
+    /// Each side is represented by one key point: the physical image
+    /// of the side centre, or, if \a cornersOnly, the componentwise
+    /// minimum of the physical images of its corners. Two sides are tested for a
+    /// match only if their key points lie in neighbouring cells of a
+    /// regular grid of cell width 2*tol (3^d neighbouring cells in d
+    /// physical dimensions). The candidates are then tested exactly as
+    /// in computeTopologyPairwise(): unless \a cornersOnly, the side
+    /// centres must be closer than \a tol, and in both modes the corners
+    /// of the two sides must admit a one-to-one matching in which every
+    /// matched pair is closer than \a tol (Euclidean norm).
+    ///
+    /// Every accepted pair has key points whose components differ by
+    /// less than tol (for corners: under the matching, each component
+    /// of each corner differs by less than tol, and the minimum over
+    /// the corners is 1-Lipschitz in the max-norm; unlike a sum, it is
+    /// computed exactly and does not depend on the corner order), so
+    /// the cell indices differ by at most one. The cell width 2*tol keeps this true under rounding of the
+    /// division and the floor. The candidates of each side are tested
+    /// in increasing index order, so the interfaces (with their
+    /// direction maps and orientations) and the boundaries are
+    /// identical, in content and in order, to the result of
+    /// computeTopologyPairwise().
+    ///
+    /// Complexity: O(S log S + S 3^d log S) plus the pair tests of all
+    /// candidates, where S = 2*parDim()*nPatches() is the
+    /// number of sides; memory O(d S). The exhaustive search
+    /// computeTopologyPairwise() is O(S^2). The exhaustive search is
+    /// also used if tol is not positive, if the coefficient type is not
+    /// IEEE 754, if a key point is not finite or has a coordinate with
+    /// |x/(2*tol)| >= 1/(16*eps), or if the patches have different
+    /// target dimensions.
     bool computeTopology( T tol = 1e-4, bool cornersOnly = false, bool tjunctions = false);
 
     /// \brief Provides positive orientation for all patches
@@ -539,6 +571,13 @@ protected:
 
     void setIds();
 
+    /// \brief Exhaustive version of computeTopology(): tests all
+    /// O(S^2) pairs of sides, S = 2*parDim()*nPatches(). It is the
+    /// reference for the spatially binned search of computeTopology().
+    /// \param tol The tolerance to test for matching points
+    /// \param cornersOnly See computeTopology()
+    bool computeTopologyPairwise(T tol, bool cornersOnly);
+
     // Data members
 private:
 
@@ -549,6 +588,14 @@ private:
 
 private:
     // implementation functions
+
+    // Common implementation of computeTopology() and
+    // computeTopologyPairwise(). With binned == true, candidate pairs
+    // of sides are found by binning key points (one per side, stored
+    // as a d x S matrix, column = side index = patch*2*parDim + side-1)
+    // into cells of width 2*tol; otherwise (or if binning is not
+    // applicable) all pairs are tested. The pair test is shared.
+    bool computeTopologyImpl(T tol, bool cornersOnly, bool binned);
 
     // match the vertices in ci1 starting from start to the end with the vertices
     // in ci2 that are still non matched

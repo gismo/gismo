@@ -385,14 +385,28 @@ gsMultiPatch<T> gsMultiPatch<T>::uniformSplit(index_t dir) const
 }
 
 
+template<class T>
+bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly, bool)
+{
+    return computeTopologyImpl(tol, cornersOnly, true);
+}
+
+template<class T>
+bool gsMultiPatch<T>::computeTopologyPairwise( T tol, bool cornersOnly)
+{
+    return computeTopologyImpl(tol, cornersOnly, false);
+}
+
 /*
   This is based on comparing a set of reference points of the patch
   side and thus it implicitly assumes that the patch faces match
 */
 template<class T>
-bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly, bool)
+bool gsMultiPatch<T>::computeTopologyImpl( T tol, bool cornersOnly, bool binned)
 {
     BaseA::clearTopology();
+    if (m_patches.empty())
+        return true;
 
     const size_t   np    = m_patches.size();
     const index_t  nCorP = 1 << m_dim;     // corners per patch
@@ -460,41 +474,155 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly, bool)
     cId2.reserve(nCorS);
 
     std::set<index_t> found;
-    for (size_t sideind=0; sideind<pSide.size(); ++sideind)
+
+    // Tests the pair (sideind, other), sideind < other, and records the
+    // interface if the two sides match
+    auto testPair = [&](const size_t sideind, const size_t other)
     {
         const patchSide & side = pSide[sideind];
-        for (size_t other=sideind+1; other<pSide.size(); ++other)
+        side        .getContainedCorners(m_dim,cId1);
+        pSide[other].getContainedCorners(m_dim,cId2);
+        matched.setConstant(false);
+
+        // Check whether the side center matches
+        if (!cornersOnly)
+            if ( ( pCorners[side.patch        ].col(nCorP+side-1        ) -
+                   pCorners[pSide[other].patch].col(nCorP+pSide[other]-1)
+                     ).norm() >= tol )
+                return;
+
+        //t-junction
+        // check for matching vertices else
+        // invert the vertices of first side on the second and vise-versa
+        // if at least one vertex is found (at most 2^(d-1)), mark as interface
+
+        // Check whether the vertices match and compute direction
+        // map and orientation
+        if ( matchVerticesOnSide( pCorners[side.patch]        , cId1, 0,
+                                  pCorners[pSide[other].patch], cId2,
+                                  matched, dirMap, dirOr, tol ) )
         {
-            side        .getContainedCorners(m_dim,cId1);
-            pSide[other].getContainedCorners(m_dim,cId2);
-            matched.setConstant(false);
+            dirMap(side.direction()) = pSide[other].direction();
+            dirOr (side.direction()) = !( side.parameter() == pSide[other].parameter() );
+            BaseA::addInterface( boundaryInterface(side, pSide[other], dirMap, dirOr));
+            found.insert(sideind);
+            found.insert(other);
+        }
+    };
 
-            // Check whether the side center matches
-            if (!cornersOnly)
-                if ( ( pCorners[side.patch        ].col(nCorP+side-1        ) -
-                       pCorners[pSide[other].patch].col(nCorP+pSide[other]-1)
-                         ).norm() >= tol )
-                    continue;
+    // Key points (d x S, column = side index) and their cell coordinates
+    // (d x S, floor(key/h)); both empty unless the binned search is usable
+    gsMatrix<T> keys, cells;
+    const T h = T(2) * tol;
+    bool useBins = binned && np > 0 && tol > T(0) &&
+        std::numeric_limits<T>::is_iec559;
 
-            //t-junction
-            // check for matching vertices else
-            // invert the vertices of first side on the second and vise-versa
-            // if at least one vertex is found (at most 2^(d-1)), mark as interface
+    if (useBins)
+    {
+        const index_t d = pCorners[0].rows();
+        const index_t S = static_cast<index_t>(pSide.size());
+        const T L = T(1) / (T(16) * std::numeric_limits<T>::epsilon());
 
-            // Check whether the vertices match and compute direction
-            // map and orientation
-            if ( matchVerticesOnSide( pCorners[side.patch]        , cId1, 0,
-                                      pCorners[pSide[other].patch], cId2,
-                                      matched, dirMap, dirOr, tol ) )
+        for (size_t p=0; p<np && useBins; ++p)
+            useBins = ( pCorners[p].rows() == d );
+
+        if (useBins)
+        {
+            keys.resize(d, S);
+            for (index_t s=0; s<S; ++s)
             {
-                dirMap(side.direction()) = pSide[other].direction();
-                dirOr (side.direction()) = !( side.parameter() == pSide[other].parameter() );
-                BaseA::addInterface( boundaryInterface(side, pSide[other], dirMap, dirOr));
-                found.insert(sideind);
-                found.insert(other);
+                if (cornersOnly)
+                {
+                    // Componentwise minimum: exact and independent of the
+                    // corner order, which differs between the two patches
+                    // of an interface (a rounded corner sum is not).
+                    pSide[s].getContainedCorners(m_dim,cId1);
+                    keys.col(s) = pCorners[pSide[s].patch].col(cId1[0]-1);
+                    for (size_t c=1; c<cId1.size(); ++c)
+                        keys.col(s) = keys.col(s).cwiseMin(
+                            pCorners[pSide[s].patch].col(cId1[c]-1) );
+                }
+                else
+                    keys.col(s) = pCorners[pSide[s].patch].col(nCorP+pSide[s]-1);
+            }
+
+            // Non-finite keys break the ordering; huge keys lose the exactness
+            // of floor(x/h) +- 1. Both are left to the pairwise search.
+            for (index_t j=0; j<S && useBins; ++j)
+                for (index_t k=0; k<d; ++k)
+                {
+                    const T x = keys(k,j) / h;
+                    if ( !math::isfinite(x) || !(math::abs(x) < L) )
+                    {
+                        useBins = false;
+                        break;
+                    }
+                }
+        }
+
+        if (useBins)
+        {
+            cells.resize(d, S);
+            for (index_t j=0; j<S; ++j)
+                for (index_t k=0; k<d; ++k)
+                    cells(k,j) = math::floor(keys(k,j) / h);
+
+            // Lexicographic order on (cell coordinates, side index)
+            struct CellLess
+            {
+                const gsMatrix<T> & c;
+                bool lex(const T * a, const T * b) const
+                {
+                    for (index_t k=0; k<c.rows(); ++k)
+                    {
+                        if (a[k] < b[k]) return true;
+                        if (b[k] < a[k]) return false;
+                    }
+                    return false;
+                }
+                bool operator()(index_t i, index_t j) const
+                { return lex(c.col(i).data(), c.col(j).data()) ||
+                         (!lex(c.col(j).data(), c.col(i).data()) && i < j); }
+                bool operator()(index_t i, const T * p) const
+                { return lex(c.col(i).data(), p); }
+                bool operator()(const T * p, index_t i) const
+                { return lex(p, c.col(i).data()); }
+            };
+            const CellLess cmp{cells};
+
+            std::vector<index_t> order(S);
+            for (index_t j=0; j<S; ++j) order[j] = j;
+            std::sort(order.begin(), order.end(), cmp);
+
+            index_t nOff = 1;
+            for (index_t k=0; k<d; ++k) nOff *= 3;
+            std::vector<T>       probe(d);
+            std::vector<index_t> cand;
+            for (index_t sideind=0; sideind<S; ++sideind)
+            {
+                cand.clear();
+                for (index_t o=0; o<nOff; ++o)
+                {
+                    index_t r = o;
+                    for (index_t k=0; k<d; ++k, r/=3)
+                        probe[k] = cells(k,sideind) + T(r%3 - 1);
+                    auto rg = std::equal_range(order.begin(), order.end(),
+                                               probe.data(), cmp);
+                    for (; rg.first != rg.second; ++rg.first)
+                        if (*rg.first > sideind)
+                            cand.push_back(*rg.first);
+                }
+                std::sort(cand.begin(), cand.end());
+                for (size_t c=0; c<cand.size(); ++c)
+                    testPair(sideind, cand[c]);
             }
         }
     }
+
+    if (!useBins)
+        for (size_t sideind=0; sideind<pSide.size(); ++sideind)
+            for (size_t other=sideind+1; other<pSide.size(); ++other)
+                testPair(sideind, other);
 
     index_t k = 0;
     found.insert(found.end(), pSide.size());
