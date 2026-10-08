@@ -2412,11 +2412,100 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T,Trunc>::coarsening( const std::vector<gsS
     }
     return result;
 }
+
+namespace internal
+{
+
+/// Exact transfer matrix between nested non-truncated hierarchical bases.
+///
+/// Let \f$ \Omega^l_{old} \subseteq \Omega^l_{new} \f$ for all levels l. An
+/// old active function \f$ B^l_j \f$ is then either active in the new basis
+/// (unit column), or supported in \f$ \Omega^{l+1}_{new} \f$. In the latter
+/// case it is replaced by its children through the two-scale relation
+/// \f$ B^l_j = \sum_k C_l(k,j) B^{l+1}_k \f$, where \f$ C_l \f$ is the knot
+/// insertion matrix from level l to l+1 (transfer[l]); children that are not
+/// active in the new basis are expanded further. Contributions reaching the
+/// same function through different paths are summed per level before being
+/// split, and no truncation is applied.
+///
+/// Rows are indexed level-major over n, columns level-major over old.
+///
+/// Complexity: for each old function that is not kept, the sum over the
+/// visited levels of the nonzeros of the touched columns of transfer[l], each
+/// with a binary search in n[l+1]; O(log n[l].size()) for a kept function.
+template<class T>
+gsSparseMatrix<T> hbTransferDirect(const std::vector<gsSortedVector<index_t> > & old,
+                                   const std::vector<gsSortedVector<index_t> > & n,
+                                   const std::vector<gsSparseMatrix<T,RowMajor> > & transfer)
+{
+    GISMO_ASSERT(old.size() < n.size(), "old,n problem in coarsening.");
+
+    std::vector<index_t> nOff(n.size()+1, 0);
+    for (size_t k = 0; k < n.size(); ++k)
+        nOff[k+1] = nOff[k] + n[k].size();
+    index_t size1 = 0;
+    for (size_t k = 0; k < old.size(); ++k)
+        size1 += old[k].size();
+
+    std::vector<gsSparseMatrix<T,ColMajor> > childOf(transfer.size());
+    for (size_t k = 0; k < transfer.size(); ++k)
+        childOf[k] = transfer[k];
+
+    gsSparseEntries<T> entries;
+    index_t col = 0;
+    for (size_t i = 0; i < old.size(); ++i)
+    {
+        for (size_t jj = 0; jj < old[i].size(); ++jj, ++col)
+        {
+            const index_t j = old[i][jj];
+            typename std::vector<index_t>::const_iterator it = n[i].find_it_or_fail(j);
+            if (it != n[i].end())
+            {
+                entries.add(nOff[i] + (it - n[i].begin()), col, (T)1);
+                continue;
+            }
+
+            std::map<index_t,T> cur;
+            cur[j] = (T)1;
+            for (size_t k = i; !cur.empty(); ++k)
+            {
+                GISMO_ASSERT(k < childOf.size() && k+1 < n.size(),
+                             "Old basis is not nested in the new one.");
+                std::map<index_t,T> next;
+                for (typename std::map<index_t,T>::const_iterator p = cur.begin();
+                     p != cur.end(); ++p)
+                    for (typename gsSparseMatrix<T,ColMajor>::InnerIterator c(childOf[k], p->first); c; ++c)
+                        next[c.row()] += c.value() * p->second;
+
+                cur.clear();
+                for (typename std::map<index_t,T>::const_iterator p = next.begin();
+                     p != next.end(); ++p)
+                {
+                    it = n[k+1].find_it_or_fail(p->first);
+                    if (it != n[k+1].end())
+                        entries.add(nOff[k+1] + (it - n[k+1].begin()), col, p->second);
+                    else
+                        cur.insert(*p);
+                }
+            }
+        }
+    }
+
+    gsSparseMatrix<T> result(nOff.back(), size1);
+    result.setFrom(entries);
+    return result;
+}
+
+} // namespace internal
+
 template<short_t d, class T, bool Trunc>
 gsSparseMatrix<T> gsTHBSplineBasis<d,T,Trunc>::coarsening_direct2( const std::vector<gsSortedVector<index_t> >& old,
                                                        const std::vector<gsSortedVector<index_t> >& n,
                                                        const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
 {
+    if (!Trunc)
+        return internal::hbTransferDirect<T>(old, n, transfer);
+
     int size1= 0;int size2 = 0;
     int glob_numb = 0;//continous numbering of hierarchical basis
     for(unsigned int i =0; i< old.size();i++){//count the number of basis functions in old basis
@@ -2594,6 +2683,9 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T,Trunc>::coarsening_direct( const std::vec
                                                       const std::vector<gsSortedVector<index_t> >& n,
                                                       const std::vector<gsSparseMatrix<T,RowMajor> >& transfer) const
 {
+    if (!Trunc)
+        return internal::hbTransferDirect<T>(old, n, transfer);
+
     GISMO_ASSERT(old.size() < n.size(), "old,n problem in coarsening.");
 
     int size1= 0;int size2 = 0;
