@@ -596,6 +596,14 @@ void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, gsMatrix<T>& r
 {
     GISMO_ASSERT( u.rows() == 1 , "gsBSplineBasis accepts points with one coordinate.");
 
+    // Degree 0: the basis functions are piecewise constant, so their first
+    // derivative is identically zero (the jumps at the knots are ignored).
+    if ( 0 == m_p )
+    {
+        result.setZero( 1, u.cols() );
+        return;
+    }
+
     const int pk = m_p-1 ;
     const int p1 = m_p + 1;       // degree plus one
     STACK_ARRAY(T, ndu  , m_p);
