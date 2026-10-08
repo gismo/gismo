@@ -12,6 +12,11 @@
     element ids owned by an MPI rank, the combined per-rank subdomain -- is
     implemented here, once.
 
+    A derived class may instead run distributed: each MPI rank then keeps only
+    the sorted ids of the elements of its own parts (setOwnElements()) and no
+    full label vector. Only ownedElements()/subdomainForRank() for that rank
+    and gatherLabels() are available then.
+
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
@@ -43,6 +48,12 @@ namespace gismo
    a gsPartitionedDofMapper (the way the element -> DOF incidence is obtained
    is partitioner-specific: stored CSR, streamed, ...).
 
+   In distributed mode (distributed() == true) the object holds only the
+   element ids of the parts owned by one rank, ownedElements(rank, nranks) and
+   subdomainForRank(rank, nranks) answer for that (rank, nranks) pair alone,
+   and labels() and subdomains() fail with GISMO_ENSURE; gatherLabels()
+   (collective, derived-class specific) recovers the full labels.
+
    \code
    gsMetisPartitioner<real_t> part(mb, mapper, 8);  // derives from this class
    part.partition();
@@ -66,6 +77,9 @@ public:
        derived class' computeLabels(), and checks that it produced exactly one
        label per element. After this call labels(), subdomains(),
        ownedElements(), subdomainForRank() and makeDofMapper() are valid.
+       In distributed mode there is no full label vector to check; only
+       ownedElements()/subdomainForRank() for the own (rank, nranks) and
+       gatherLabels() are valid afterwards.
 
        The checks are GISMO_ENSURE (not GISMO_ASSERT) on purpose: a bad
        nparts must be caught in Release builds too, since that is the only
@@ -81,42 +95,64 @@ public:
 
         computeLabels();
 
-        GISMO_ENSURE(static_cast<index_t>(m_labels.size()) == N,
-                     "computeLabels() must produce exactly one label per element ("
-                     << m_labels.size() << " labels, " << N << " elements).");
+        if (!m_distributed)
+            GISMO_ENSURE(static_cast<index_t>(m_labels.size()) == N,
+                         "computeLabels() must produce exactly one label per element ("
+                         << m_labels.size() << " labels, " << N << " elements).");
 
-        // NOTE: the per-label range check that used to live here has moved into
-        // setLabels() -- see the rationale there. It was incomplete at this
-        // level: computeLabels() reaches m_labelsReady through setLabels()
-        // before this line runs, so catching the throw and calling subdomains()
-        // still performed the out-of-bounds write, and the external-label path
-        // never passes through partition() at all.
+        // NOTE: no per-label range check here on purpose. It lives in
+        // setLabels(), the one choke point every labelling and external-label
+        // path passes through (rationale there); a check at this level would
+        // run after m_labelsReady is set and would never see the external-label
+        // path. A distributed result is validated in setOwnElements().
         m_labelsReady = true;
     }
 
     /**
        @brief Per-element partition labels (length = numElements).
 
-       Element with global id e belongs to partition labels()[e].
+       Element with global id e belongs to partition labels()[e]. Not
+       available on a distributed partitioner (GISMO_ENSURE): use the
+       collective gatherLabels() there.
     */
     const std::vector<index_t>& labels() const
     {
         requireLabels();
+        GISMO_ENSURE(!m_distributed, "gsPartitionerBase::labels(): this partitioner is distributed (parallel constructor on more than one rank) and keeps only the calling rank's own elements; use gatherLabels() (collective) for the full labels, or the serial constructor.");
         return m_labels;
     }
 
+    /**
+       @brief The full per-element labels (length numElements,
+       labels[e] = part of element e) on every rank.
+
+       Collective in a distributed partitioner: every rank of its communicator
+       must call it. The base default returns a copy of labels(), so
+       partition() must have been called first; O(N) time and memory.
+       Intended for diagnostics, since it materialises all N labels.
+    */
+    virtual std::vector<index_t> gatherLabels() const { return labels(); }
+
     /// @brief Number of partitions requested at construction.
     index_t nparts() const { return m_nparts; }
+
+    /// @brief True when the object keeps only the calling rank's own elements
+    /// and no full label vector. Serial partitioners are never distributed.
+    bool distributed() const { return m_distributed; }
 
     /**
        @brief One gsIndexSubDomain per partition.
 
        The returned shared_ptrs can be passed directly to
        gsExprAssembler::setIntegrationDomain().
+
+       Not available on a distributed partitioner (GISMO_ENSURE); use
+       subdomainForRank() there. Complexity: O(N).
     */
     std::vector<typename gsDomain<T>::Ptr> subdomains() const
     {
         requireLabels();
+        GISMO_ENSURE(!m_distributed, "gsPartitionerBase::subdomains(): this partitioner is distributed (parallel constructor on more than one rank) and has no full labelling; use subdomainForRank(comm.rank(), comm.size()), gatherLabels() (collective), or the serial constructor.");
 
         // Collect element ids per partition
         std::vector<std::vector<index_t>> partElems(m_nparts);
@@ -142,12 +178,22 @@ public:
        (gsPartitionedDofMapper::rankOfPart) rather than being re-derived here
        and in DOF ownership separately.
 
-       Complexity: O(N) for N elements, one rankOfPart() modulo per element.
-       The result is strictly increasing.
+       Complexity: O(N) for N elements, one rankOfPart() modulo per element;
+       O(n_own) copy of the stored list on a distributed partitioner, where
+       only the (rank, nranks) pair the object was distributed over is
+       available (GISMO_ENSURE otherwise). The result is strictly increasing.
     */
     std::vector<index_t> ownedElements(index_t rank, index_t nranks) const
     {
         requireLabels();
+        if (m_distributed)
+        {
+            GISMO_ENSURE(rank == m_ownRank && nranks == m_ownNranks,
+                         "gsPartitionerBase::ownedElements(" << rank << ", " << nranks
+                         << "): only (rank, nranks) = (" << m_ownRank << ", " << m_ownNranks
+                         << ") is available on a distributed partitioner; use gatherLabels() or the serial constructor.");
+            return m_ownElements;
+        }
         std::vector<index_t> result;
         for (index_t e = 0; e < static_cast<index_t>(m_labels.size()); ++e)
             if (gsPartitionedDofMapper::rankOfPart(m_labels[e], nranks) == rank)
@@ -162,7 +208,8 @@ public:
        the hand-rolled ownedElements loop + gsSubDomain downcast a caller
        would otherwise need (see gsMetisPetscAssembly_example.cpp).
 
-       Complexity: O(N) for the ownedElements() scan, plus the
+       Complexity: O(N) for the ownedElements() scan (O(n_own) on a
+       distributed partitioner, for its own (rank, nranks) only), plus the
        gsIndexSubDomain construction cost. The index list is strictly
        increasing, so the constructor skips its sort. Allocates a fresh
        composite domain through gsMultiBasis::domain(), O(nPatches).
@@ -196,7 +243,8 @@ protected:
     gsPartitionerBase(const gsMultiBasis<T>& mb,
                       const gsDofMapper&     mapper,
                       index_t                nparts)
-    : m_mb(mb), m_mapper(mapper), m_nparts(nparts), m_labelsReady(false)
+    : m_mb(mb), m_mapper(mapper), m_nparts(nparts), m_labelsReady(false),
+      m_distributed(false), m_ownRank(-1), m_ownNranks(0)
     { }
 
     /// @brief Fill m_labels with one partition label per element. Called by
@@ -228,6 +276,44 @@ protected:
                          << ").");
         m_labels      = give(labels);
         m_labelsReady = true;
+        std::vector<index_t>().swap(m_ownElements);
+        m_ownRank     = -1;
+        m_ownNranks   = 0;
+        m_distributed = false;
+    }
+
+    /// @brief Switch to distributed mode: keep only \a ids, the sorted global
+    /// ids of the elements of the parts owned by \a rank out of \a nranks
+    /// (gsPartitionedDofMapper::rankOfPart(part, nranks) == rank), and drop the
+    /// full label vector.
+    ///
+    /// Layout: \a ids strictly increasing (hence unique), each in
+    /// [0, numElements). The check is a local GISMO_ENSURE on a post-condition
+    /// of the collective algorithm that produced the ids, not a data-dependent
+    /// failure to be agreed: such an algorithm hands identical decisions to all
+    /// ranks, so a failure here is a bug. Validates BEFORE mutating, like
+    /// setLabels().
+    ///
+    /// Complexity: O(n_loc + nPatches) (the latter for the element count of
+    /// the composite domain).
+    void setOwnElements(std::vector<index_t> ids, index_t rank, index_t nranks)
+    {
+        const index_t N = static_cast<index_t>(m_mb.domain()->numElements());
+        GISMO_ENSURE(nranks >= 1 && rank >= 0 && rank < nranks,
+                     "setOwnElements: invalid (rank, nranks) = (" << rank << ", " << nranks << ").");
+        for (size_t i = 0; i != ids.size(); ++i)
+        {
+            GISMO_ENSURE(ids[i] >= 0 && ids[i] < N,
+                         "setOwnElements: element id " << ids[i] << " not in [0," << N << ").");
+            GISMO_ENSURE(i == 0 || ids[i - 1] < ids[i],
+                         "setOwnElements: element ids must be strictly increasing (position " << i << ").");
+        }
+        m_ownElements = give(ids);
+        m_ownRank     = rank;
+        m_ownNranks   = nranks;
+        std::vector<index_t>().swap(m_labels);
+        m_distributed = true;
+        m_labelsReady = true;
     }
 
     /// @brief Precondition check shared by every label-dependent accessor.
@@ -242,6 +328,10 @@ protected:
     const index_t          m_nparts;
     std::vector<index_t>   m_labels;
     bool                   m_labelsReady;
+    bool                   m_distributed; ///< true when only the calling rank's own elements are kept, with no full label vector
+    std::vector<index_t>   m_ownElements; ///< distributed mode: sorted, unique global ids of the elements of the parts owned by m_ownRank (rankOfPart(part, m_ownNranks) == m_ownRank); empty otherwise
+    index_t                m_ownRank;     ///< distributed mode: the rank m_ownElements belongs to; -1 otherwise
+    index_t                m_ownNranks;   ///< distributed mode: the number of ranks of that ownership; 0 otherwise
 
 }; // class gsPartitionerBase
 
