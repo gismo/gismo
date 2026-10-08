@@ -2602,6 +2602,20 @@ void gsFileData<T>::deleteXmlSubtree(gsXmlNode * node)
     delete node;
 }
 
+namespace internal {
+
+/// True iff \a node has tag \a name and a `type` attribute equal to \a type;
+/// a node without a `type` attribute does not match.
+inline bool gsXmlTypedMatch(const gsXmlNode * node, const std::string & name,
+                            const std::string & type)
+{
+    if ( strcmp( node->name(), name.c_str() ) ) return false;
+    const gsXmlAttribute * tp = node->first_attribute("type");
+    return tp && !strcmp( tp->value(), type.c_str() );
+}
+
+} // namespace internal
+
 template<class T> inline
 typename gsFileData<T>::gsXmlNode *
 gsFileData<T>::getFirstNode(const String & name, const String & type) const
@@ -2620,7 +2634,7 @@ gsFileData<T>::getFirstNode(const String & name, const String & type) const
     {
         for (gsXmlNode * child = root->first_node( name.c_str() ) ;
              child; child = child->next_sibling( name.c_str() ) )
-            if ( !strcmp( child->first_attribute("type")->value(), type.c_str() ) )
+            if ( internal::gsXmlTypedMatch(child, name, type) )
                 return child;
         return NULL;
     }
@@ -2657,21 +2671,18 @@ gsFileData<T>::getAnyFirstNode(const String & name, const String & type) const
         for (gsXmlNode * child = root->first_node() ;
              child; child = child->next_sibling() )
         {
-            if (!strcmp( child->name(), name.c_str() ) &&
-                !strcmp( child->first_attribute("type")->value(), type.c_str() ) )
+            if ( internal::gsXmlTypedMatch(child, name, type) )
                 return child;
             // Level 2
             for (gsXmlNode * child2 = child->first_node() ;
                  child2; child2 = child2->next_sibling() )
             {
-                if ( !strcmp( child2->name(), name.c_str() ) &&
-                     !strcmp( child2->first_attribute("type")->value(), type.c_str() ))
+                if ( internal::gsXmlTypedMatch(child2, name, type) )
                     return child2;
                 // Level 3
                 for (gsXmlNode * child3 = child2->first_node() ;
                      child3; child3 = child3->next_sibling() )
-                    if ( !strcmp( child3->name(), name.c_str() ) &&
-                         !strcmp( child3->first_attribute("type")->value(), type.c_str()))
+                    if ( internal::gsXmlTypedMatch(child3, name, type) )
                         return child3;
             }
         }
@@ -2689,7 +2700,7 @@ gsFileData<T>::getNextSibling(gsXmlNode* const & node, const String & name,
     {
         for (gsXmlNode * next = node->next_sibling( name.c_str() );
              next; next = next->next_sibling( name.c_str() ) )
-            if ( !strcmp( next->first_attribute("type")->value(), type.c_str() ) )
+            if ( internal::gsXmlTypedMatch(next, name, type) )
                 return next;
         return NULL;
     }
