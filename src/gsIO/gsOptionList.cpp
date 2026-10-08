@@ -16,6 +16,7 @@
 #include <cstring>
 #include <string>
 #include <sstream>
+#include <stdexcept>
 
 #include <gsIO/gsOptionList.h>
 
@@ -250,6 +251,38 @@ void gsOptionList::remove(const std::string & label)
 
 void gsOptionList::update(const gsOptionList & other, gsOptionList::updateType type)
 {
+    if (type == errorIfUnknown)
+    {
+        // Validate every entry of other before anything is written, so that a
+        // throw leaves this object unchanged.
+        const gsOptionList & self = *this;
+        auto typeName = [&self](const std::string & l) -> const char *
+        {
+            if (self.isString(l)) return "string";
+            if (self.isInt(l))    return "int";
+            if (self.isReal(l))   return "real";
+            if (self.isSwitch(l)) return "switch";
+            return nullptr;
+        };
+        auto check = [&typeName](const std::string & l, const char * otherType)
+        {
+            const char * mine = typeName(l);
+            if (nullptr == mine)
+                throw std::runtime_error("gsOptionList::update: unknown option '" + l + "'");
+            if (std::strcmp(mine, otherType) != 0)
+                throw std::runtime_error("gsOptionList::update: option '" + l +
+                                         "' has type " + mine + ", not " + otherType);
+        };
+        for ( StringTable::const_iterator it = other.m_strings.begin(); it != other.m_strings.end(); ++it )
+            check(it->first, "string");
+        for ( IntTable::const_iterator it = other.m_ints.begin(); it != other.m_ints.end(); ++it )
+            check(it->first, "int");
+        for ( RealTable::const_iterator it = other.m_reals.begin(); it != other.m_reals.end(); ++it )
+            check(it->first, "real");
+        for ( SwitchTable::const_iterator it = other.m_switches.begin(); it != other.m_switches.end(); ++it )
+            check(it->first, "switch");
+    }
+
     // add strings to list
     for ( StringTable::const_iterator it1 = other.m_strings.begin(); it1 != other.m_strings.end(); it1++ )
     {
@@ -614,6 +647,7 @@ void pybind11_init_gsOptionList(py::module &m) {
   py::enum_<gsOptionList::updateType>(ol, "updateType")
     .value("ignoreIfUnknown", gsOptionList::updateType::ignoreIfUnknown)
     .value("addIfUnknown",    gsOptionList::updateType::addIfUnknown)
+    .value("errorIfUnknown",  gsOptionList::updateType::errorIfUnknown)
     .export_values()
     ;
 
