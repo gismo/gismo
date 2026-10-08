@@ -64,6 +64,8 @@ namespace gismo
   ComposeMPITraits(unsigned int,MPI_UNSIGNED);
   ComposeMPITraits(long,MPI_LONG);
   ComposeMPITraits(unsigned long,MPI_UNSIGNED_LONG);
+  ComposeMPITraits(long long,MPI_LONG_LONG);
+  ComposeMPITraits(unsigned long long,MPI_UNSIGNED_LONG_LONG);
   ComposeMPITraits(float,MPI_FLOAT);
   ComposeMPITraits(double,MPI_DOUBLE);
   ComposeMPITraits(long double,MPI_LONG_DOUBLE);

@@ -671,6 +671,61 @@ public:
     }
 
     /**
+     * @brief Sends one block of data from every task to every task.
+     *
+     * On the single task of a serial communicator the only block is
+     * the self block, which is copied from send to recv.
+     *
+     * @param[in] send The buffer with the data to send; the block for
+     *                 task j starts at send+j*sendcount.
+     * @param[out] recv The receive buffer; the block from task j is
+     *                  stored starting at recv+j*recvcount.
+     * @param[in] sendcount The number of elements sent to each task.
+     * @param[in] recvcount The number of elements received from each task;
+     *                      has to equal sendcount on the self block.
+     *
+     * Cost: O(sendcount).
+     */
+    template<typename T>
+    static int alltoall (T* send, T* recv, int sendcount, int recvcount)
+    {
+        GISMO_UNUSED(recvcount);
+        GISMO_ASSERT(sendcount == recvcount, "alltoall: send and receive counts of the self block differ");
+        std::copy(send, send+sendcount, recv);
+        return 0;
+    }
+
+    /**
+     * @brief Sends blocks of variable length from every task to every task.
+     *
+     * On the single task of a serial communicator the only block is
+     * the self block, which is copied from send+senddispl[0] to
+     * recv+recvdispl[0]. No other element of recv is written.
+     *
+     * @param[in] send The buffer with the data to send.
+     * @param[in] sendcount An array with size equal to the number of processes
+     *                      (1 here); entry j is the number of elements sent to task j.
+     * @param[in] senddispl An array with size equal to the number of processes;
+     *                      the block for task j is read starting at send+senddispl[j].
+     * @param[out] recv The buffer to store the received data in.
+     * @param[in] recvcount An array with size equal to the number of processes;
+     *                      entry j is the number of elements received from task j,
+     *                      which has to equal sendcount[0] on the self block.
+     * @param[in] recvdispl An array with size equal to the number of processes;
+     *                      the block from task j is written starting at recv+recvdispl[j].
+     *
+     * Cost: O(sendcount[0]).
+     */
+    template<typename T>
+    static int alltoallv (T* send, int* sendcount, int* senddispl, T* recv, int* recvcount, int* recvdispl)
+    {
+        GISMO_UNUSED(recvcount);
+        GISMO_ASSERT(sendcount[0] == recvcount[0], "alltoallv: send and receive counts of the self block differ");
+        std::copy(send+senddispl[0], send+senddispl[0]+sendcount[0], recv+recvdispl[0]);
+        return 0;
+    }
+
+    /**
      * @brief Compute something over all processes
      * for each component of an array and return the result
      * in every process.
@@ -1358,8 +1413,20 @@ public:
                             root,m_comm);
     }
 
-    /// @copydoc gsSerialComm::scatter()
-    /// @note out must have space for P*len elements
+    /**
+     * @brief Sends a block of equal size from every task to every task (MPI_Alltoall).
+     *
+     * Every task sends sendcount elements to each of the P tasks of the
+     * communicator: the block for task j is read from send+j*sendcount, and
+     * the block from task j is written to recv+j*recvcount. The sizes have to
+     * agree pairwise, i.e. sendcount on task j equals recvcount on task i for all i, j.
+     *
+     * @param[in] send The send buffer, of size P*sendcount.
+     * @param[out] recv The receive buffer, of size P*recvcount.
+     * @param[in] sendcount The number of elements sent to each task.
+     * @param[in] recvcount The number of elements received from each task.
+     * @note recv must have space for P*recvcount elements
+     */
     template<typename T>
     int alltoall (T* send, T* recv, int sendcount, int recvcount) const
     {
@@ -1368,7 +1435,23 @@ public:
                             m_comm);
     }
 
-    /// @copydoc gsSerialComm::scatterv()
+    /**
+     * @brief Sends blocks of variable length from every task to every task (MPI_Alltoallv).
+     *
+     * The arrays sendcount, senddispl, recvcount and recvdispl have size P, the
+     * number of tasks. Entry j of the send arrays gives the size and the offset
+     * of the block sent to task j (read from send+senddispl[j]). Entry j of the
+     * receive arrays gives the size and the offset of the block received from
+     * task j (written to recv+recvdispl[j]). On task i, recvcount[j] has to equal
+     * sendcount[i] on task j.
+     *
+     * @param[in] send The send buffer.
+     * @param[in] sendcount Number of elements sent to each task.
+     * @param[in] senddispl Offset in send of the block for each task.
+     * @param[out] recv The receive buffer.
+     * @param[in] recvcount Number of elements received from each task.
+     * @param[in] recvdispl Offset in recv of the block from each task.
+     */
     template<typename T>
     int alltoallv (T* send, int* sendcount, int* senddispl, T* recv, int* recvcount, int* recvdispl) const
     {
