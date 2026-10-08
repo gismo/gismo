@@ -76,8 +76,6 @@ private:
     index_t m_fixedParam;
     index_t m_fixedDir;
 
-    std::vector< std::vector<T> > m_breakpoints;  ///< Union of breakpoints of both bases
-
 public:
     /// @Returns default options
     ///
@@ -103,20 +101,12 @@ public:
     /// Returns parameter dimension of the domains
     virtual short_t domainDim() const { return m_slaveGeom->domainDim(); }
 
-
-
-    /// Returns the break points used in domain iteration
-    const std::vector< std::vector<T> > & breakPoints() const { return m_breakpoints; }
-
     /// Prints the state of the object
     virtual std::ostream & print(std::ostream& os) const;
 
 private:
     /// Computes the box which represents the intersection of sides of incoming patches
     void constructInterfaceBox();
-
-    /// Constructs the breakpoints \a m_breakpoints
-    void constructBreaks();
 }; // End gsCPPInterface
 
 
