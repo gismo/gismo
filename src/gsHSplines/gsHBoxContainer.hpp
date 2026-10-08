@@ -371,7 +371,7 @@ typename gsHBoxContainer<d,T>::RefBox gsHBoxContainer<d, T>::toBoxes(const index
 }
 
 template <short_t d, class T>
-typename gsHBoxContainer<d,T>::RefBox gsHBoxContainer<d, T>::toRefBoxes(const index_t patchID) const
+typename gsHBoxContainer<d,T>::RefBox gsHBoxContainer<d, T>::toRefBoxes(const index_t patchID, bool extension) const
 {
     gsHBoxContainer<d,T> patchBoxes = this->patch(patchID);
     size_t N = patchBoxes.totalSize();
@@ -381,7 +381,28 @@ typename gsHBoxContainer<d,T>::RefBox gsHBoxContainer<d, T>::toRefBoxes(const in
     for (cHIterator hit = patchBoxes.begin(); hit!=patchBoxes.end(); hit++)
         for (cIterator it = hit->begin(); it!=hit->end(); it++)
         {
-            box = it->toRefBox();
+            box = it->toRefBox(it->level()+1,extension);
+            for (typename RefBox::const_iterator boxIt = box.begin(); boxIt != box.end(); boxIt++)
+                result.push_back(*boxIt);
+        }
+
+    return result;
+}
+
+template <short_t d, class T>
+typename gsHBoxContainer<d,T>::RefBox gsHBoxContainer<d, T>::toRefBoxes(const gsHBoxContainer<d,T> & noExtension, const index_t patchID) const
+{
+    const SortedContainer skip = gsHBoxUtils<d,T>::Sort(noExtension.toContainer());
+    gsHBoxContainer<d,T> patchBoxes = this->patch(patchID);
+    size_t N = patchBoxes.totalSize();
+    RefBox result;
+    result.reserve(( N * (2*d+1) ));
+    RefBox box;
+    for (cHIterator hit = patchBoxes.begin(); hit!=patchBoxes.end(); hit++)
+        for (cIterator it = hit->begin(); it!=hit->end(); it++)
+        {
+            const bool ext = !std::binary_search(skip.begin(),skip.end(),*it,gsHBoxCompare<d,T>());
+            box = it->toRefBox(it->level()+1,ext);
             for (typename RefBox::const_iterator boxIt = box.begin(); boxIt != box.end(); boxIt++)
                 result.push_back(*boxIt);
         }

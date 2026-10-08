@@ -42,8 +42,11 @@ gsFitting<T>::  gsFitting(gsMatrix<T> const & param_values,
                           gsMatrix<T> const & points,
                           gsBasis<T>  & basis)
 {
-    GISMO_ASSERT(points.cols()==param_values.cols(), "Pointset dimensions problem "<< points.cols() << " != " <<param_values.cols() );
-    GISMO_ASSERT(basis.domainDim()==param_values.rows(), "Parameter values are inconsistent: "<< basis.domainDim() << " != " <<param_values.rows() );
+    // Points and parameters are column-wise (dim x N); a transposed input
+    // silently yields a degenerate fit, so these O(1) checks run in every build.
+    GISMO_ENSURE(points.cols()==param_values.cols(), "Pointset dimensions problem "<< points.cols() << " != " <<param_values.cols()
+                 << " (points and parameters must be dim x N, one point per column)");
+    GISMO_ENSURE(basis.domainDim()==param_values.rows(), "Parameter values are inconsistent: "<< basis.domainDim() << " != " <<param_values.rows() );
 
     m_param_values = param_values;
     m_points = points;
@@ -64,6 +67,9 @@ gsFitting<T>::gsFitting(gsMatrix<T> const& param_values,
                         gsVector<index_t>  offset,
                         gsMappedBasis<2,T> & mbasis)
 {
+    GISMO_ENSURE(points.cols()==param_values.cols(), "Pointset dimensions problem "<< points.cols() << " != " <<param_values.cols()
+                 << " (points and parameters must be dim x N, one point per column)");
+    GISMO_ENSURE(2==param_values.rows(), "Parameter values are inconsistent: 2 != " <<param_values.rows() );
     m_param_values = param_values;
     m_points = points;
     m_result = nullptr;
@@ -82,7 +88,10 @@ void gsFitting<T>::compute(T lambda)
 
   // Wipe out previous result
   if ( m_result!=nullptr )
+  {
       delete m_result;
+      m_result = nullptr;
+  }
 
   const int num_basis = m_basis->size();
   const short_t dimension = m_points.cols();
@@ -125,9 +134,8 @@ void gsFitting<T>::compute(T lambda)
 
   if ( solver.preconditioner().info() != gsEigen::Success )
   {
-      gsWarn<<  "The preconditioner failed. Aborting.\n";
-
-      return;
+      GISMO_ERROR("gsFitting::compute: the ILUT preconditioner of the BiCGSTAB solver failed (Eigen info code "
+                  << (int)solver.preconditioner().info() << ").");
   }
   //Solves for many right hand side  columns
   gsMatrix<T> x;
@@ -166,6 +174,8 @@ void gsFitting<T>::updateGeometry(gsMatrix<T> coefficients,
   {
     this->m_result->coefs() = coefficients;
   }
+  GISMO_ENSURE(parameters.cols()==m_points.rows(), "Number of parameters "<< parameters.cols()
+               << " != number of points " << m_points.rows());
   this->m_param_values = parameters;
   this->computeErrors();
 }
@@ -187,6 +197,8 @@ void gsFitting<T>::initializeGeometry(const gsMatrix<T> & coefficients,
   {
     this->m_result->coefs() = coefficients;
   }
+  GISMO_ENSURE(parameters.cols()==m_points.rows(), "Number of parameters "<< parameters.cols()
+               << " != number of points " << m_points.rows());
   this->m_param_values = parameters;
 }
 
@@ -449,9 +461,8 @@ void gsFitting<T>::compute_tdm(T lambda, T mu, T sigma, const std::vector<index_
         typename gsSparseSolver<T>::BiCGSTABILUT solver( A_tilde );
         if ( solver.preconditioner().info() != gsEigen::Success )
         {
-            gsWarn<<  "The preconditioner failed. Aborting.\n";
-
-            return;
+            GISMO_ERROR("gsFitting::compute_tdm: the ILUT preconditioner of the BiCGSTAB solver failed (Eigen info code "
+                        << (int)solver.preconditioner().info() << ").");
         }
 
         gsMatrix<T> sol_tilde = solver.solve(rhs);
@@ -997,6 +1008,7 @@ void gsFitting<T>::applySmoothing(T lambda, gsSparseMatrix<T> & A_mat)
 template<class T>
 void gsFitting<T>::computeErrors()
 {
+    GISMO_ENSURE(m_result, "gsFitting::computeErrors: no fitted geometry (call compute() first)");
     m_pointErrors.clear();
 
     gsMatrix<T> val_i;
@@ -1018,6 +1030,7 @@ void gsFitting<T>::computeErrors()
 template<class T>
 gsMatrix<T> gsFitting<T>::pointWiseErrors(const gsMatrix<> & parameters,const gsMatrix<> & points)
 {
+  GISMO_ENSURE(m_result, "gsFitting::pointWiseErrors: no fitted geometry (call compute() first)");
 
   gsMatrix<T> eval;
   m_result->eval_into(parameters, eval);
@@ -1035,6 +1048,8 @@ gsMatrix<T> gsFitting<T>::pointWiseErrors(const gsMatrix<> & parameters,const gs
 template<class T>
 std::vector<T> gsFitting<T>::computeErrors(const gsMatrix<> & parameters,const gsMatrix<> & points)
 {
+  GISMO_ENSURE(m_result, "gsFitting::computeErrors: no fitted geometry (call compute() first)");
+
   std::vector<T> min_max_mse;
   gsMatrix<T> eval;
   m_result->eval_into(parameters, eval);

@@ -182,17 +182,105 @@ public:
     /// @return A set of marked elements.
     HElementContainer markAdmissible(const HElementContainer & marked, level_t m) const;
 
+    /// @brief Leaf elements of the hierarchical mesh that violate admissibility of class m.
+    ///
+    /// Let \f$\Omega^0\supseteq\dots\supseteq\Omega^{N-1}\f$ be the hierarchy of
+    /// domains. A leaf element \f$Q\f$ is a cell of level \f$k\f$ with
+    /// \f$Q\subseteq\Omega^k\f$ and \f$Q\not\subseteq\Omega^{k+1}\f$. A basis function
+    /// *acts on* \f$Q\f$ if it is not identically zero on \f$Q\f$. The mesh is
+    /// - T-admissible of class m if, on every leaf, the *truncated* basis functions of
+    ///   the THB-spline basis acting on the leaf belong to at most m successive levels;
+    /// - H-admissible of class m if the same holds for the (untruncated) basis functions
+    ///   of the HB-spline basis.
+    ///
+    /// With \f$\ell_{\min}(Q)\f$ and \f$\ell_{\max}(Q)\f$ the smallest and largest level
+    /// of the functions acting on \f$Q\f$, the leaf is returned iff
+    /// \f$\ell_{\max}-\ell_{\min}+1>m\f$.
+    ///
+    /// Since the support of a truncated function is contained in the support of the
+    /// function it is truncated from, every T-violation is also an H-violation and
+    /// H-admissibility implies T-admissibility on the same mesh.
+    ///
+    /// The refinement closure (markAdmissible) guarantees a strictly admissible mesh,
+    /// which is a sufficient condition. This function tests the definition itself, so it
+    /// may accept meshes that the closure would never construct.
+    ///
+    /// @param m Class of admissibility, m >= 1.
+    /// @param type Kind of admissibility: -1 selects automatically by the basis class
+    ///        (T for gsTHBSplineBasis, H for gsHBSplineBasis), 0 = T-admissibility
+    ///        (only valid for a gsTHBSplineBasis, otherwise GISMO_ERROR), 1 = H-admissibility
+    ///        (valid for both basis classes). Matches the marker's "Admissibility" option.
+    /// @return The violating leaf elements, each at its own level, patch 0.
+    ///
+    /// Complexity: O(N_el * L * (p+1)^d * log n_l), with N_el the number of leaves, L the
+    /// number of levels and n_l the number of active functions per level (binary search
+    /// in the sorted active set); for T plus a merge scan of the sparse presentation of
+    /// every truncated function, O(nnz) per truncated function per leaf. Memory is
+    /// O(size of the returned set).
+    ///
+    /// References: A. Buffa, C. Giannelli, Adaptive isogeometric methods with
+    /// hierarchical splines: error estimator and convergence, M3AS 26(1):1-25 (2016);
+    /// C. Bracco, C. Giannelli, R. Vazquez, Refinement algorithms for adaptive
+    /// isogeometric methods with hierarchical splines, Axioms 7(3):43 (2018).
+    HElementContainer getNonAdmissibleElements(level_t m, index_t type = -1) const;
+
+    /// @brief Check admissibility of class m of the hierarchical mesh.
+    ///
+    /// Same criterion as getNonAdmissibleElements, but stops at the first violating leaf.
+    /// @param m Class of admissibility, m >= 1.
+    /// @param type -1 (automatic), 0 (T-admissibility) or 1 (H-admissibility), see
+    ///        getNonAdmissibleElements.
+    /// @return True iff no leaf element violates admissibility of class m.
+    bool isAdmissible(level_t m, index_t type = -1) const;
+
     /// Convert an element to refinement box indices
     /// @param element The element to convert.
     /// @param targetLevel The target level for the refinement box.
-    /// @param extension If true, element is extended.
+    /// @param extension If true, the box is extended by floor(p/2) target-level
+    ///        knot spans on BOTH sides in every direction (clamped to the
+    ///        domain), p being the degree in that direction.
+    ///
+    /// An interior extended box spans 2 + 2*floor(p/2) >= p + 1 target-level
+    /// spans per direction, so it contains the full support of a target-level
+    /// B-spline and the refinement of an isolated element always activates new
+    /// THB functions. At the boundary the clamped box is shorter, but the open
+    /// knot vector's boundary functions have shorter supports. Boxes snap to
+    /// whole cells of the leaf they hit, one level at a time
+    /// (gsHTree::insertBox), so the region raised to the target level is a
+    /// one-cell ring of the element's level for p = 2..5 and a two-cell ring
+    /// for p = 6, 7 (no extension for p = 1); a coarser neighbour cell is
+    /// first raised to the element's level in full.
+    /// The extended box reaches into neighbouring cells; the admissible
+    /// closure has to see them, see extensionCells.
+    /// @note The box alone, without a closure over the elements and their
+    ///       extensionCells, gives no admissibility guarantee. With such a
+    ///       closure (markAdmissible), the refined mesh stays admissible under
+    ///       the preconditions of gsHElementMarker::markRef(): the mesh was
+    ///       produced by gsHElementMarker. On an externally refined mesh, even
+    ///       an admissible one, the result can be non-admissible (check with
+    ///       isAdmissible()).
     /// @return A vector of indices representing the refinement box at the target level.
     std::vector<index_t> toRefBox(const element_t & element, level_t targetLevel, bool extension = true) const;
     std::vector<index_t> toRefBox(const element_t & element, bool extension = true) const;
 
+    /// Same-level cells reached by the extension of toRefBox of each element,
+    /// without the elements themselves.
+    /// The cells need not be active. Feeding them to markAdmissible together
+    /// with the elements makes the closure cover the whole extended region,
+    /// because the closure only uses the level and position of its input cells.
+    /// @note The closure of the elements plus their extensionCells under
+    ///       markAdmissible keeps the refined mesh admissible under the
+    ///       preconditions of gsHElementMarker::markRef(): the mesh was produced
+    ///       by gsHElementMarker. On an externally refined mesh, even an
+    ///       admissible one, the extended closure can give a non-admissible
+    ///       mesh (check with isAdmissible()).
+    /// @param elements The elements whose extensions are collected.
+    /// @return The set of same-level cells covered partly by the extended boxes.
+    HElementContainer extensionCells(const HElementContainer & elements) const;
+
     /// Convert a set of elements to refinement box indices
     /// @param elements The set of elements to convert.
-    /// @param extension If true, elements are extended.
+    /// @param extension If true, elements are extended; see toRefBox.
     /// @return A vector of indices representing the refinement boxes of the elements.
     std::vector<index_t> toRefBoxes(const HElementContainer & elements, bool extension = true) const;
 
@@ -235,6 +323,14 @@ public:
     bool contains(const element_t & element1, const element_t & element2) const;
 
 protected:
+    /// Resolve the admissibility type (-1, 0, 1) to 0 (T) or 1 (H); raises GISMO_ERROR
+    /// when the type is not available for the basis class.
+    index_t admissibilityType(index_t type) const;
+
+    /// True iff the functions of the given type acting on the leaf of level \a k with
+    /// centre \a c span more than \a m successive levels.
+    bool leafViolates(const gsMatrix<T> & c, level_t k, level_t m, index_t type) const;
+
     const gsHTensorBasis<d,T> & m_basis; ///< The basis of the elements.
 
 };

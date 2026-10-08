@@ -472,8 +472,14 @@ gsAdaptiveMeshing<_dim,T>::_markFraction_impl( const boxMapType & elements, cons
             return false;
         }
 
+        // The seed is one of the cells of its own admissible closure and the
+        // predicates are pure per-cell tests, so a seed that fails them makes
+        // the whole closure fail: skip computing the closure.
+        if (!_checkBox(*box,predicates))
+            return static_cast<bool>(cummulErrMarked > errorMarkSum);
+
         // Get the neighborhoods
-        typename HBox::Container neighborhood = HBoxUtils::toContainer(HBoxUtils::markAdmissible(*box,m_m));
+        typename HBox::Container neighborhood = HBoxUtils::toContainer(HBoxUtils::markAdmissibleExtended(*box,m_m));
         _setContainerProperties(neighborhood);
         T neighborhoodError = std::accumulate(neighborhood.begin(),neighborhood.end(),(T)( 0 ),accumulate_error);
 
@@ -488,6 +494,7 @@ gsAdaptiveMeshing<_dim,T>::_markFraction_impl( const boxMapType & elements, cons
         {
             cummulErrMarked += neighborhoodError;
             _addAndMark(neighborhood,elMarked);
+            m_refSeeds.add(*box);
         }
         // return false;
         return static_cast<bool>(cummulErrMarked > errorMarkSum);
@@ -653,8 +660,14 @@ gsAdaptiveMeshing<_dim,T>::_markProjectedFraction_impl( const boxMapType & eleme
             return false;
         }
 
+        // The seed is one of the cells of its own admissible closure and the
+        // predicates are pure per-cell tests, so a seed that fails them makes
+        // the whole closure fail: skip computing the closure.
+        if (!_checkBox(*box,predicates))
+            return static_cast<bool>(projectedError < targetError);
+
         // Get the neighborhoods
-        typename HBox::Container neighborhood = HBoxUtils::toContainer(HBoxUtils::markAdmissible(*box,m_m));
+        typename HBox::Container neighborhood = HBoxUtils::toContainer(HBoxUtils::markAdmissibleExtended(*box,m_m));
         HBoxContainer neighborhoodtmp = HBoxContainer(neighborhood);
         _setContainerProperties(neighborhood);
         T neighborhoodImprovement = std::accumulate(neighborhood.begin(),neighborhood.end(),(T)( 0 ),accumulate_improvement);
@@ -664,6 +677,7 @@ gsAdaptiveMeshing<_dim,T>::_markProjectedFraction_impl( const boxMapType & eleme
         {
             projectedError -= neighborhoodImprovement;
             _addAndMark(neighborhood,elMarked);
+            m_refSeeds.add(*box);
         }
         // return false;
         return static_cast<bool>(projectedError < targetError);
@@ -810,13 +824,20 @@ gsAdaptiveMeshing<_dim,T>::_markPercentage_impl( const boxMapType & elements, co
         if (_boxPtr(*box)->marked())
             return false;
 
-        typename HBox::Container neighborhood = HBoxUtils::toContainer(HBoxUtils::markAdmissible(*box,m_m));
+        // The seed is one of the cells of its own admissible closure and the
+        // predicates are pure per-cell tests, so a seed that fails them makes
+        // the whole closure fail: skip computing the closure.
+        if (!_checkBox(*box,predicates))
+            return (nmarked > NR);
+
+        typename HBox::Container neighborhood = HBoxUtils::toContainer(HBoxUtils::markAdmissibleExtended(*box,m_m));
         _setContainerProperties(neighborhood);
         // Check all elements in the neighborhood if they satisfy the predicates
         if (_checkBoxes(neighborhood,predicates))
         {
             nmarked += neighborhood.size();
             _addAndMark(neighborhood,elMarked);
+            m_refSeeds.add(*box);
         }
         return (nmarked > NR);
     };
@@ -987,12 +1008,21 @@ gsAdaptiveMeshing<_dim,T>::_markThreshold_impl( const boxMapType & elements, con
             return false;
         }
 
-        typename HBox::Container neighborhood = HBoxUtils::toContainer(HBoxUtils::markAdmissible(*box,m_m));
+        // The seed is one of the cells of its own admissible closure and the
+        // predicates are pure per-cell tests, so a seed that fails them makes
+        // the whole closure fail: skip computing the closure.
+        if (!_checkBox(*box,predicates))
+            return false;
+
+        typename HBox::Container neighborhood = HBoxUtils::toContainer(HBoxUtils::markAdmissibleExtended(*box,m_m));
         _setContainerProperties(neighborhood);
 
         // Check all elements in the neighborhood if they satisfy the predicates
         if (_checkBoxes(neighborhood,predicates))
+        {
             _addAndMark(neighborhood,elMarked);
+            m_refSeeds.add(*box);
+        }
         return false;
     };
 
@@ -1051,7 +1081,7 @@ void gsAdaptiveMeshing<_dim,T>::defaultOptions()
     m_options.addInt("Convergence_beta","Estimated convergence parameter of he error, for alpha*p+beta convergence",-1);
 
     m_options.addInt("CoarsenExtension","Extension coarsening",0);
-    m_options.addInt("RefineExtension","Extension refinement",0);
+    m_options.addInt("RefineExtension","Refinement extension. 0: the refinement box of every marked element is extended by floor(p/2) finer-level spans on both sides (clamped), the admissible closure covers that extension, and boxes added by the closure are not extended. k>0: every box is extended by k cells of its own level, which the admissible closure does not account for.",0);
 
     m_options.addInt("MaxLevel","Maximum refinement level",6);
 
@@ -1136,6 +1166,8 @@ template<short_t _dim, class T>
 void gsAdaptiveMeshing<_dim,T>::markRef_into(const std::vector<T> & elError, HBoxContainer & elMarked)
 {
     elMarked.clear();
+    m_refSeeds.clear();
+    m_closureAdded.clear();
     this->_assignErrors(m_boxes,elError);
     if (m_refRule!=PBULK)
         m_refPermutation = this->_sortPermutation(m_boxes); // Index of the lowest error is first
@@ -1154,7 +1186,10 @@ void gsAdaptiveMeshing<_dim,T>::markRef_into(const std::vector<T> & elError, HBo
     _refPredicates_into(predicates);
 
     if (m_admissible)
+    {
         _markElements<false,true>( elError, m_refRule, predicates, elMarked);//,flag [coarse]);
+        m_closureAdded = HBoxUtils::Difference(HBoxUtils::Unique(elMarked),HBoxUtils::Unique(m_refSeeds));
+    }
     else
         _markElements<false,false>( elError, m_refRule, predicates, elMarked);//,flag [coarse]);
 
@@ -1173,11 +1208,18 @@ void gsAdaptiveMeshing<_dim,T>::markCrs_into(const std::vector<T> & elError, con
     else
         m_crsPermutation = this->_sortPermutationProjectedCrs(m_boxes); // Index of the lowest error is first
 
+    // The refinement boxes of markedRef reach the cells in their extension; the
+    // admissibility predicates must see those cells as refined, too.
+    HBoxContainer markedRefExt = markedRef;
+    for (typename HBoxContainer::cHIterator hit = markedRef.cbegin(); hit!=markedRef.cend(); hit++)
+        for (typename HBox::cIterator it = hit->begin(); it!=hit->end(); it++)
+            markedRefExt.add(it->extensionCells());
+
     std::vector<gsHBoxCheck<_dim,T> *> predicates;
     if (markedRef.totalSize()==0 || !m_admissible)
         _crsPredicates_into(predicates);
     else
-        _crsPredicates_into(markedRef,predicates);
+        _crsPredicates_into(markedRefExt,predicates);
 
     if (m_admissible)
         _markElements<true,true>( elError, m_crsRule, predicates, elMarked);//,flag [coarse]);
@@ -1186,6 +1228,9 @@ void gsAdaptiveMeshing<_dim,T>::markCrs_into(const std::vector<T> & elError, con
 
     for (typename std::vector<gsHBoxCheck<_dim,T>*>::iterator pred=predicates.begin(); pred!=predicates.end(); pred++)
         delete *pred;
+
+    if (markedRef.totalSize()!=0 && elMarked.totalSize()!=0)
+        elMarked = _dropRefinementOverlap(markedRef,elMarked);
 }
 
 template<short_t _dim, class T>
@@ -1232,7 +1277,8 @@ bool gsAdaptiveMeshing<_dim,T>::refineAll()
     for (typename boxMapType::iterator it = m_boxes.begin(); it!=m_boxes.end(); it++)
         ref.add(*it->second);
 
-    this->refine(ref);
+    if (ref.totalSize()>0)
+        _refineMarkedElements(ref,m_refExt,false);
 
     return true;
 }
@@ -1263,7 +1309,8 @@ bool gsAdaptiveMeshing<_dim,T>::unrefineAll()
 
 template<short_t _dim, class T>
 void gsAdaptiveMeshing<_dim,T>::_refineMarkedElements(   const HBoxContainer & markedRef,
-                                                    index_t refExtension)
+                                                    index_t refExtension,
+                                                    bool extension)
 {
     gsBasis<T> * basis = nullptr;
 
@@ -1309,13 +1356,17 @@ void gsAdaptiveMeshing<_dim,T>::_refineMarkedElements(   const HBoxContainer & m
             gsHBoxContainer<_dim,T> container = markedRef.patch(pn);
             container.toUnitBoxes();
             if (refExtension==0)
+            {
+                const std::vector<index_t> refBoxes = extension ? _refBoxes(markedRef,pn) : container.toRefBoxes(pn,false);
                 if (nullptr != (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)))
-                    mp->patch(pn).refineElements( container.toRefBoxes(pn) );
+                    mp->patch(pn).refineElements( refBoxes );
                 else if (nullptr != (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)))
-                    mb->basis( pn).refineElements( container.toRefBoxes(pn) );
+                    mb->basis( pn).refineElements( refBoxes );
                 else
                     GISMO_ERROR("No gsMultiPatch or gsMultiBasis found");
+            }
             else
+            {
                 if (nullptr != (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)))
                 {
                     // Refine all of the found refBoxes in this patch
@@ -1329,9 +1380,77 @@ void gsAdaptiveMeshing<_dim,T>::_refineMarkedElements(   const HBoxContainer & m
                 }
                 else
                     GISMO_ERROR("No gsMultiPatch or gsMultiBasis found");
+            }
         // }
 
     }
+}
+
+template<short_t _dim, class T>
+std::vector<index_t> gsAdaptiveMeshing<_dim,T>::_refBoxes(const HBoxContainer & markedRef, index_t pn) const
+{
+    if (m_refExt==0)
+        return markedRef.patch(pn).toRefBoxes(m_closureAdded,pn);
+
+    gsBasis<T> * basis = nullptr;
+    gsMultiPatch<T> * mp;
+    gsMultiBasis<T> * mb;
+    if ( (mp = dynamic_cast<gsMultiPatch<T>*>(m_input)) != nullptr ) basis = &(mp->basis(pn));
+    if ( (mb = dynamic_cast<gsMultiBasis<T>*>(m_input)) != nullptr ) basis = &(mb->basis(pn));
+    GISMO_ENSURE(basis!=nullptr,"Object is not gsMultiBasis or gsMultiPatch");
+    const gsHTensorBasis<_dim,T> * hb = dynamic_cast<const gsHTensorBasis<_dim,T>*>(basis);
+    GISMO_ENSURE(hb!=nullptr,"Basis is not a gsHTensorBasis");
+    return hb->asElements(markedRef.patch(pn).toCoords(pn),m_refExt);
+}
+
+template<short_t _dim, class T>
+typename gsAdaptiveMeshing<_dim,T>::HBoxContainer gsAdaptiveMeshing<_dim,T>::_dropRefinementOverlap(const HBoxContainer & markedRef, const HBoxContainer & markedCrs) const
+{
+    constexpr index_t stride = 2*_dim+1;
+    std::vector<std::vector<index_t> > refBoxes(m_input->nPieces());
+    for (index_t pn=0; pn!=m_input->nPieces(); ++pn)
+        refBoxes[pn] = _refBoxes(markedRef,pn);
+
+    HBoxContainer result;
+    for (typename HBoxContainer::cHIterator hit = markedCrs.cbegin(); hit!=markedCrs.cend(); hit++)
+        for (typename HBox::cIterator it = hit->begin(); it!=hit->end(); it++)
+        {
+            bool overlap = false;
+            if (it->level()>0 && it->patch()>=0 && it->patch()<m_input->nPieces())
+            {
+                // The coarsening region is the parent cell, and the coarsening target level is its level lc.
+                // A refinement box with target level lr <= lc is satisfied by the coarsened cell, so only boxes
+                // with lr > lc conflict. Boxes are compared on the finest common grid; touching boxes do not overlap.
+                const HBox parent = it->getParent();
+                const index_t lc = parent.level();
+                const std::vector<index_t> & boxes = refBoxes[it->patch()];
+                for (size_t b=0; b+stride<=boxes.size() && !overlap; b+=stride)
+                {
+                    const index_t lr = boxes[b];
+                    if (lc >= lr)
+                        continue;
+                    const index_t lf = std::max(lc,lr);
+                    const index_t sc = index_t(1) << (lf-lc);
+                    const index_t sr = index_t(1) << (lf-lr);
+                    overlap = true;
+                    for (short_t i=0; i!=_dim && overlap; ++i)
+                    {
+                        const index_t lo = std::max(parent.lowerIndex()[i]*sc,boxes[b+1+i]*sr);
+                        const index_t hi = std::min(parent.upperIndex()[i]*sc,boxes[b+1+_dim+i]*sr);
+                        overlap = lo < hi;
+                    }
+                }
+            }
+
+            if (overlap)
+            {
+                if (m_indices.count(*it)) _boxPtr(*it)->unmark();
+            }
+            else
+                result.add(*it);
+        }
+
+    return result;
 }
 
 template<short_t _dim, class T>

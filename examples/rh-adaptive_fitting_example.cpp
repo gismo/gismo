@@ -1194,12 +1194,11 @@ int main(int argc, char *argv[])
     GISMO_ENSURE(!useBand || band >= 1, "Band must be >= 1");
     const bool coarsenOpt = opt.getSwitch("Coarsen");
 
-    // H: gsHElementMarker (task 02: markCrs dispatches on CoarsenRule
-    // directly, no RefineRule save/restore workaround needed). Refining the
-    // basis AND the geometry together keeps G = S o sigma unchanged (and
-    // the cached errors valid) until the next S step. Both box lists are
-    // computed on the SAME pre-update mesh and the two regions are disjoint
-    // by construction.
+    // H: gsHElementMarker. Refining the basis AND the geometry together keeps
+    // G = S o sigma unchanged (and the cached errors valid) until the next S
+    // step. Both box lists are computed on the SAME pre-update mesh; markCrs
+    // keeps coarsening clear of the refinement boxes wherever it would go
+    // below their target level.
     auto hStep = [&](index_t cycle) -> bool
     {
         bool convergedLocal = false;

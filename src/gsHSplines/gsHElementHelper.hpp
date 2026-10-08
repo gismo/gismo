@@ -14,6 +14,7 @@
 #pragma once
 
 #include <gsHSplines/gsHElement.h>
+#include <gsUtils/gsCombinatorics.h>
 #include <gsHSplines/gsTHBSplineBasis.h>
 
 namespace gismo
@@ -466,6 +467,93 @@ namespace gismo
     }
 
     template <short_t d, class T>
+    index_t gsHElementHelper<d,T>::admissibilityType(index_t type) const
+    {
+        GISMO_ENSURE(type >= -1 && type <= 1, "Admissibility type must be -1 (automatic), 0 (T) or 1 (H), got " << type);
+        const bool isTHB = (nullptr != dynamic_cast<const gsTHBSplineBasis<d,T> *>(&m_basis));
+        const bool isHB  = (nullptr != dynamic_cast<const gsHBSplineBasis<d,T> *>(&m_basis));
+        if (type == -1)
+        {
+            if (isTHB) return 0;
+            if (isHB)  return 1;
+            GISMO_ERROR("The basis is neither a THB-spline nor an HB-spline basis. Cannot check admissibility.");
+        }
+        if (type == 0 && !isTHB)
+            GISMO_ERROR("T-admissibility requires a THB-spline basis (truncation is not available).");
+        return type;
+    }
+
+    template <short_t d, class T>
+    bool gsHElementHelper<d,T>::leafViolates(const gsMatrix<T> & c, level_t k, level_t m, index_t type) const
+    {
+        index_t lo = (std::numeric_limits<index_t>::max)(), hi = -1;
+        if (type == 0)
+        {
+            // Truncated functions acting at c: exact, since a truncated function
+            // restricted to a leaf is a single polynomial.
+            gsMatrix<index_t> act;
+            m_basis.active_into(c, act);
+            for (index_t r = 0; r != act.rows(); ++r)
+            {
+                const index_t l = m_basis.levelOf(act(r,0));
+                lo = (std::min)(lo, l);
+                hi = (std::max)(hi, l);
+            }
+        }
+        else
+        {
+            // Untruncated functions: level j acts iff one of its active tensor
+            // B-splines at c is a member of the hierarchical basis. Only levels
+            // <= k can act on a level-k leaf.
+            const index_t top = (std::min)(static_cast<index_t>(k), static_cast<index_t>(m_basis.numLevels()) - 1);
+            gsMatrix<index_t> idx;
+            for (index_t j = 0; j <= top; ++j)
+            {
+                m_basis.tensorLevel(j).active_into(c, idx);
+                for (index_t r = 0; r != idx.rows(); ++r)
+                    if (m_basis.flatTensorIndexToHierachicalIndex(idx(r,0), j) >= 0)
+                    {
+                        lo = (std::min)(lo, j);
+                        hi = (std::max)(hi, j);
+                        break;
+                    }
+            }
+        }
+        return hi >= 0 && hi - lo + 1 > static_cast<index_t>(m);
+    }
+
+    template <short_t d, class T>
+    typename gsHElementHelper<d,T>::HElementContainer gsHElementHelper<d,T>::getNonAdmissibleElements(level_t m, index_t type) const
+    {
+        // level_t is unsigned: a negative argument wraps to a huge value, caught by the index_t cast.
+        GISMO_ENSURE(m >= 1 && static_cast<index_t>(m) >= 1, "Admissibility class must be at least 1, got " << static_cast<index_t>(m));
+        const index_t t = this->admissibilityType(type);
+        HElementContainer result;
+        for (const auto & elem : m_basis.domain()->allElements())
+        {
+            const level_t k = static_cast<const gsHDomainIterator<T,d> *>(&elem)->getLevel();
+            if (this->leafViolates(gsMatrix<T>(elem.centerPoint()), k, m, t))
+                result.insert(this->toElement(elem.lowerCorner(), elem.upperCorner(), k, 0));
+        }
+        return result;
+    }
+
+    template <short_t d, class T>
+    bool gsHElementHelper<d,T>::isAdmissible(level_t m, index_t type) const
+    {
+        // level_t is unsigned: a negative argument wraps to a huge value, caught by the index_t cast.
+        GISMO_ENSURE(m >= 1 && static_cast<index_t>(m) >= 1, "Admissibility class must be at least 1, got " << static_cast<index_t>(m));
+        const index_t t = this->admissibilityType(type);
+        for (const auto & elem : m_basis.domain()->allElements())
+        {
+            const level_t k = static_cast<const gsHDomainIterator<T,d> *>(&elem)->getLevel();
+            if (this->leafViolates(gsMatrix<T>(elem.centerPoint()), k, m, t))
+                return false;
+        }
+        return true;
+    }
+
+    template <short_t d, class T>
     std::vector<index_t> gsHElementHelper<d,T>::toRefBox(const element_t & element, level_t targetLevel, bool extension) const
     {
         GISMO_ASSERT(targetLevel > element.level(),
@@ -486,10 +574,10 @@ namespace gismo
             upperIndex = element.upperCorner()(i)*math::pow(2, diff);
             if (extension)
             {
-                if (degree % 2 == 1 && degree > 1)
-                    ( (lowerIndex < (degree-1)/2-1) ? lowerIndex = 0 : lowerIndex -= (degree-1)/2-1);
-                else
-                    ( (lowerIndex < (degree-1)/2)   ? lowerIndex = 0 : lowerIndex -= (degree-1)/2  );
+                const index_t ext = degree / 2;
+                const index_t nSpans = m_basis.tensorLevel(targetLevel).knots(i).numElements();
+                lowerIndex = (lowerIndex < ext) ? 0 : lowerIndex - ext;
+                upperIndex = (upperIndex + ext > nSpans) ? nSpans : upperIndex + ext;
             }
             result[i+1] = lowerIndex;
             result[d+i+1] = upperIndex;
@@ -502,6 +590,35 @@ namespace gismo
     std::vector<index_t> gsHElementHelper<d,T>::toRefBox(const element_t & element, bool extension) const
     {
         return this->toRefBox(element, element.level() + 1, extension);
+    }
+
+    template <short_t d, class T>
+    typename gsHElementHelper<d,T>::HElementContainer
+    gsHElementHelper<d,T>::extensionCells(const HElementContainer & elements) const
+    {
+        HElementContainer cells;
+        point_t lo, hi, cur, upp;
+        for (const auto & elem : elements)
+        {
+            const level_t lvl = elem.level();
+            for (index_t i = 0; i < d; ++i)
+            {
+                // floor(p/2) target-level spans = ceil(floor(p/2)/2) spans of this level
+                const index_t reach = (m_basis.degree(i) / 2 + 1) / 2;
+                const index_t nSpans = m_basis.tensorLevel(lvl).knots(i).numElements();
+                lo(i) = std::max<index_t>(0, elem.lowerCorner()(i) - reach);
+                hi(i) = std::min<index_t>(nSpans, elem.upperCorner()(i) + reach) - 1;
+            }
+            cur = lo;
+            do
+            {
+                upp = cur.array() + 1;
+                element_t cell(cur, upp, lvl, elem.patch());
+                if (!elements.count(cell))
+                    cells.insert(cell);
+            } while (nextCubePoint(cur, lo, hi));
+        }
+        return cells;
     }
 
     template <short_t d, class T>

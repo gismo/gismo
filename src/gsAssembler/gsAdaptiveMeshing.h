@@ -35,6 +35,16 @@ namespace gismo
  * uses the \ref gsHBox and \ref gsHBoxContainer classes
  * to ensure admissible meshing.
  *
+ * \deprecated Use \ref gsHElementMarker (header gsHSplines/gsHElementMarker.h,
+ * not included by gismo.h) instead: gsHElementMarker::markRef() marks for
+ * refinement, gsHElementMarker::toRefBoxes() converts the marked elements to
+ * refinement boxes for gsHTensorBasis::refineElements, and
+ * gsHElementMarker::markCrs(refined) marks for coarsening, taking the refinement
+ * into account. Not yet available in gsHElementMarker: the PBULK marking rule
+ * (RefineRule / CoarsenRule = 4), multi-patch bases (gsHElementMarker works on a
+ * single basis), and RefineExtension > 0 (the marker only has the switch
+ * Extension, i.e. the floor(p/2) extension of RefineExtension = 0).
+ *
  * @tparam     T     { description }
  */
 template <short_t _dim, class T>
@@ -51,9 +61,9 @@ public:
 
 public:
 
-    gsAdaptiveMeshing();
+    GISMO_DEPRECATED gsAdaptiveMeshing();
 
-    gsAdaptiveMeshing(gsFunctionSet<T> & input);
+    GISMO_DEPRECATED gsAdaptiveMeshing(gsFunctionSet<T> & input);
 
     // ~gsAdaptiveMeshing();
 
@@ -67,14 +77,58 @@ public:
 
     void container_into(const std::vector<T> & elError, HBoxContainer & result);
 
+    /**
+     * @brief      Marks elements for refinement.
+     *
+     * With \c Admissible the marked set contains the admissible closure of
+     * every seed (element selected by the marking rule) over the seed and the
+     * same-level cells that the extended refinement box of the seed reaches
+     * (see \ref gsHBox::extensionCells). The boxes that the closure adds to
+     * the seeds are remembered, see \ref refine.
+     *
+     * @param[in]  elError   The element errors
+     * @param[out] elMarked  The marked elements
+     */
     void markRef_into(const std::vector<T> & elError, HBoxContainer & elMarked);
 
+    /**
+     * @brief      Marks elements for coarsening, taking the refinement into account.
+     *
+     * No returned element has a parent cell that overlaps, with positive
+     * volume, a box that \ref refine(\a markedRef) applies; this holds in
+     * admissible and non-admissible mode. The admissibility predicates see
+     * \a markedRef together with the cells reached by the extended
+     * refinement boxes. The guarantee requires that the state of the last
+     * \ref markRef_into (closure-added boxes) and the mesh are unchanged
+     * between this call and \ref refine.
+     *
+     * @param[in]  elError     The element errors
+     * @param[in]  markedRef   The elements marked for refinement
+     * @param[out] elMarked    The elements marked for coarsening
+     */
     void markCrs_into(const std::vector<T> & elError, const HBoxContainer & markedRef, HBoxContainer & elMarked);
     void markCrs_into(const std::vector<T> & elError, HBoxContainer & elMarked);
 
     void markRef(const std::vector<T> & errors);
     void markCrs(const std::vector<T> & errors);
 
+    /**
+     * @brief      Refines the elements in \a markedRef.
+     *
+     * With \c RefineExtension = 0, the refinement box of every element is
+     * extended by floor(p/2) finer-level spans on both sides (clamped to the
+     * domain), except for the boxes that the admissible closure of the last
+     * \ref markRef_into added to the seeds: those are refined without
+     * extension. An isolated seed therefore always activates new
+     * functions; a box that was first marked by the closure of another seed
+     * stays unextended.
+     * With \c RefineExtension = k > 0, every box is extended by k cells of its
+     * own level, which the admissible closure does not account for.
+     *
+     * @param[in]  markedRef  The marked elements
+     *
+     * @return     True if there was anything to refine
+     */
     bool refine(const HBoxContainer & markedRef);
     bool unrefine(const HBoxContainer & markedCrs);
 
@@ -107,7 +161,18 @@ private:
 
 
     void _refineMarkedElements(     const HBoxContainer & container,
-                                    index_t refExtension = 0);
+                                    index_t refExtension = 0,
+                                    bool extension = true);
+
+    /// Refinement boxes (RefBox format) of patch \a pn that \ref refine applies for \a markedRef
+    std::vector<index_t> _refBoxes(const HBoxContainer & markedRef, index_t pn) const;
+
+    /// Removes the elements of \a markedCrs whose parent cell overlaps a refinement box of \a markedRef
+    /// whose target level exceeds the coarsening target level (the level of the parent cell). Hence, wherever the
+    /// coarsening region of a kept element overlaps a refinement box, the coarsening target level is at least
+    /// the refinement target level.
+    /// Complexity O(|markedCrs|*|refinement boxes|).
+    HBoxContainer _dropRefinementOverlap(const HBoxContainer & markedRef, const HBoxContainer & markedCrs) const;
 
     void _unrefineMarkedElements(   const HBoxContainer & container,
                                     index_t refExtension = 0);
@@ -249,6 +314,10 @@ protected:
     index_t         m_verbose;
 
     HBoxContainer m_markedRef, m_markedCrs;
+    /// Seeds (elements selected by the marking rule) of the last admissible \ref markRef_into
+    mutable HBoxContainer m_refSeeds;
+    /// Elements of the last \ref markRef_into that the admissible closure added to the seeds
+    HBoxContainer m_closureAdded;
     // m_boxes is a container that does not contain patch IDs
 
     indexMapType m_indices;

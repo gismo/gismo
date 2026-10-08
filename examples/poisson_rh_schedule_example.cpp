@@ -42,7 +42,8 @@
 
     Driver keys carried on the resolved gsOptionList (name / default / use).
     This is one of four rh drivers (poisson, l2, fitting, lrfitting) that
-    share ONE unified 27-key option table (rh-driver-unification task 18);
+    share ONE unified 27-key option table (rh-driver-unification task 18),
+    plus the key CoarsenGroupRule, which only this driver declares;
     keys this driver does not implement are still DECLARED, with a
     "-- IGNORED, <reason>" desc, purely so the four reference XMLs carry the
     same key set and the "not used by ... (typo?)" warning stays silent
@@ -52,10 +53,17 @@
       RefineParam      0.5     refinement parameter
       CoarsenRule     3        coarsening rule
       CoarsenParam     0.1     coarsening parameter
+      CoarsenGroupRule 0       coarsening group rule (needs CoarsenRule=1): 0 = a sibling
+                                group merges when ANY child is below the threshold,
+                                1 = when ALL are, 2 = when sqrt(sum of child err^2) is
+                                (assumes a norm-type indicator; here per-element L2)
       Coarsen         false    enable coarsening in the H step
       MaxLevel        10       marker level cap (library default 3 is far too low here)
       Admissible      true     admissible closure
-      Extension       true     marker box extension
+      Extension       true     extend the box of each marked element (not those the
+                                admissible closure adds) by floor(p/2) finer-level spans
+                                on BOTH sides, so an isolated marked element activates THB
+                                functions; in the same H step coarsening keeps refined boxes at or above target level
       MaxRefIt        1        IGNORED: this driver does one mark/refine per H
                                 letter; put more H letters in the schedule
                                 instead
@@ -73,8 +81,23 @@
                                 constant, so the unified key is deliberately
                                 NOT called GradTol)
       Verbose         0        optimizer verbosity
+      RetryOnStall    true     R step: if the first optimisation barely lowers
+                                the objective (a line search killed by a
+                                folded first trial step), retry once from the
+                                same sigma with the first step scaled to
+                                0.5*h_sigma; the rRetry CSV column records it
       MonitorMode     "value"  R step monitor: "value" | "gradient" (string,
                                 unified with the l2/lrfitting drivers)
+      MonitorRes      96       R step: elements per direction of the discrete-
+                                monitor pullback basis used whenever sigma has
+                                moved since the last solve (<=0 -> this
+                                built-in default; see pullBackToSigmaImage()
+                                and its calibration table)
+      FoldCheck       false    R step: print extra sampled/certified min det
+                                J_sigma diagnostic bounds after each
+                                relocation (see the FOLDCHECK block at the
+                                relocate() lambda); off by default, no effect
+                                on any computed quantity
       DirSkip         0        IGNORED: no D step in this driver (D-step
                                 direction skip)
       Lambda          1e-6     IGNORED: no gsFitting in this driver
@@ -133,11 +156,14 @@
     coarsens iff Coarsen is set (unchanged by (b) -- this was already
     unconditional in that case).
     -i/--iter remains a hard cap on the cycle count regardless of the band.
+    --maxDofs N (N > 0) stops the run after the first composed S step whose
+    analysis DoF count exceeds N; it caps runs (e.g. uniform-refinement arms)
+    whose DoF count would otherwise explode within the -i cycles.
 
     D13 -- <output>/convergence.csv, one row per EXECUTED schedule step
     (so an S with --project writes two rows, C then P), frozen header:
 
-      cycle,step,path,dofs,dofs_sigma,minErr,maxErr,err,pctBelowTol,minDetJsigma,time
+      cycle,step,path,dofs,dofs_sigma,minErr,maxErr,err,pctBelowTol,minDetJsigma,time,h1err,rRetry
 
     path is 'C' (composed) or 'P' (projected) on S rows only; non-primal rows
     (R/D/H/U) are not tied to a solve path and carry the literal '-'.
@@ -148,7 +174,15 @@
     driver's formula) = percentage of elements whose per-element error is
     below Target/sqrt(nElements) -- the per-element share of a global target
     under equidistribution, 0 when Target < 0; minDetJsigma =
-    sigma.minJacobian(), RECOMPUTED on every row (not carried forward).
+    sigma.minJacobian(), RECOMPUTED on every row (not carried forward);
+    h1err = ||u - u_h||_0 + |u - u_h|_1 of the same solve as err (so the
+    seminorm is h1err - err), with the exact gradient projected onto the
+    tangent space on surfaces; empty before the first solve and carried
+    forward on non-S rows, like err.
+
+    rRetry = 1 on an R row whose optimisation was retried from the same
+    start on a problem rescaled so the first step has length 0.5*h_sigma
+    (option RetryOnStall), 0 on any other R row, and empty on every non-R row.
 
     --project (D8) additionally solves, at every S step, on the L2 projection
     of the composed geometry onto the active analysis basis, and writes a
@@ -165,6 +199,17 @@
     sliders line up.
     <output>/options.xml and <output>/convergence.csv are written
     UNCONDITIONALLY, so a run directory is reproducible on its own.
+
+    --dumpElements additionally writes <output>/elements/step<k>.csv, header
+    `level,u0,v0,u1,v1`, one row per leaf element of the analysis THB basis
+    (its level and parametric corners; the corners are knot values of that
+    level, printed with 17 significant digits so they round-trip exactly).
+    k=0 is the initial mesh; k>=1 is the mesh after the k-th H row of
+    convergence.csv, counted in file order across all cycles, so the k-th H
+    row and step<k>.csv describe the same mesh (an H step that leaves the
+    mesh unchanged still writes its file). U steps modify the basis without
+    a dump. Without H in --schedule nothing is written, since the THB basis
+    is then not the analysis basis.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -303,6 +348,141 @@ SolveResult solve(gsExprAssembler<>& A, gsExprEvaluator<>& ev,
     return result;
 }
 
+// Pulls a discrete field u_h -- a spline in the ANALYSIS parameter xi_hat of
+// the sigma it was solved on (sigPrev, frozen at that solve) -- back onto the
+// middle-square variable eta: the R step's monitor needs u_h(sigPrev^{-1}(eta))
+// wherever sigPrev is not the identity, not u_h(eta) directly (see the R
+// branch's comment on parametric=true). Builds a degree-deg tensor B-spline
+// basis of nE elements per direction on [0,1]^2, Newton-inverts sigPrev at its
+// anchors (seeded at the identity guess xi=eta), evaluates u_h at the result,
+// and interpolates those values back onto the eta basis.
+//
+// Interpolation degree: callers pass max(analysisDegree+1, 3). MonitorMode=
+// gradient reads Hess f of the returned field (gsAdaptiveParametrization.hpp
+// gradObj_into, NEED_DERIV2); a degree-p spline has a piecewise-degree-(p-2)
+// Hessian that is discontinuous across element boundaries at p=2, which an
+// HLBFGS line search would see as a kink in the analytic gradient. Degree >=3
+// with simple interior knots (this basis) is C^2, so Hess f is continuous.
+//
+// Accuracy and the residual check: gsFunction::newtonRaphson can report
+// success on a small STEP while the residual is still large
+// (gsFunction.hpp's newtonRaphson_impl exits on either test), a gap that
+// widens exactly where sigPrev is most distorted -- min det J_sigma measured
+// 0.004-0.04 in the runs this pullback serves, vs 0.23-0.33 in the
+// ValueBased/ring driver this code was ported from (examples/
+// reproduce_transient_sphere.cpp:143-189), whose looser xi=eta fallback and
+// 1e-6 accuracy were calibrated for that shallower distortion and do not
+// transfer. The residual check below, not the accuracy, is what actually
+// keeps a loose inversion out of the monitor: at 1e-8, Newton occasionally
+// still hits the 250-iteration cap on an isolated anchor (observed at
+// eta = (0.375,0.375) on hypar_w40, with the iterate stalled near
+// xi = (0.255,0.252), close to a crossing of sigma's knot lines) and writes
+// +inf into that column. The neighbour-seeded retry below, not a looser
+// accuracy, recovered every such column in the runs measured (the four A_infty
+// cases and the MonitorRes calibration on hypar_w40), so a cap-hit is an
+// expected, handled event there rather than a failure mode.
+//
+// A bad column (non-finite xi, or residual above 1e-6) is retried once from
+// the nearest already-resolved neighbour's preimage: gsBasis::anchors()
+// returns columns in lexicographic tensor order, so the previous good column
+// is a grid neighbour, and seeding Newton there is far better conditioned
+// than the global xi=eta guess. A column still bad after the retry copies
+// that neighbour's xi outright -- an O(h) error over one element, against the
+// O(||sigma-id||) error xi=eta would substitute over the WHOLE domain, which
+// is why this differs from the port source's fallback (there, sigma sat
+// close to the identity; here it does not).
+static gsGeometry<real_t>::uPtr pullBackToSigmaImage(const gsGeometry<real_t>& uh,
+                                                     const gsGeometry<real_t>& sigPrev,
+                                                     index_t nE, short_t deg,
+                                                     index_t& nFallback, real_t& maxResidual)
+{
+    gsKnotVector<real_t> kv(0,1,nE-1,deg+1);
+    gsTensorBSplineBasis<2> eta(kv,kv);
+    const gsMatrix<real_t> etaPts = eta.anchors();
+    gsMatrix<real_t> xi = etaPts; // initial guess: identity-shaped
+    const real_t invertAccuracy = 1e-8;
+    sigPrev.invertPoints(etaPts, xi, invertAccuracy, /*useInitialPoint=*/true);
+
+    // A failed inversion leaves +inf in its xi column (gsFunction.hpp's
+    // newtonRaphson_impl on a cap-hit); evaluating sigPrev there would probe
+    // outside its knot domain, which is UB in general (a Release build's
+    // gsKnotVector::uFind clamps into the last span and returns garbage, a
+    // Debug build's GISMO_ASSERT(inDomain(u)) aborts). Gather the finite
+    // columns, evaluate once, batched, and scatter the residuals back --
+    // the non-finite columns are treated as failed below without ever being
+    // evaluated.
+    std::vector<index_t> finiteCols;
+    finiteCols.reserve(xi.cols());
+    for (index_t c=0; c<xi.cols(); ++c)
+        if (xi.col(c).allFinite())
+            finiteCols.push_back(c);
+    gsMatrix<real_t> xiFinite(xi.rows(), finiteCols.size());
+    for (size_t k=0; k<finiteCols.size(); ++k)
+        xiFinite.col(k) = xi.col(finiteCols[k]);
+    gsMatrix<real_t> chkFinite;
+    sigPrev.eval_into(xiFinite, chkFinite);
+    gsMatrix<real_t> chk(etaPts.rows(), xi.cols());
+    chk.setConstant(std::numeric_limits<real_t>::infinity());
+    for (size_t k=0; k<finiteCols.size(); ++k)
+        chk.col(finiteCols[k]) = chkFinite.col(k);
+
+    nFallback = 0;
+    maxResidual = 0.0;
+    index_t lastGood = -1;
+    for (index_t c=0; c<xi.cols(); ++c)
+    {
+        const bool finite = xi.col(c).allFinite();
+        const real_t res = finite
+            ? (chk.col(c)-etaPts.col(c)).cwiseAbs().maxCoeff()
+            : std::numeric_limits<real_t>::infinity();
+        if (finite && res<=1e-6)
+        {
+            maxResidual = math::max(maxResidual, res);
+            lastGood = c;
+            continue;
+        }
+        if (lastGood>=0)
+        {
+            gsMatrix<real_t> seed = xi.col(lastGood);
+            gsMatrix<real_t> onePt = etaPts.col(c);
+            sigPrev.invertPoints(onePt, seed, invertAccuracy, /*useInitialPoint=*/true);
+            gsMatrix<real_t> chkRetry;
+            const bool retryFinite = seed.col(0).allFinite();
+            real_t resRetry = std::numeric_limits<real_t>::infinity();
+            if (retryFinite)
+            {
+                sigPrev.eval_into(seed, chkRetry);
+                resRetry = (chkRetry.col(0)-onePt.col(0)).cwiseAbs().maxCoeff();
+            }
+            if (retryFinite && resRetry<=1e-6)
+            {
+                xi.col(c) = seed.col(0);
+                maxResidual = math::max(maxResidual, resRetry);
+                lastGood = c;
+                continue;
+            }
+            xi.col(c) = xi.col(lastGood); // O(h) fallback, see the doc comment above
+            ++nFallback;
+        }
+        else
+        {
+            xi.col(c) = etaPts.col(c); // no resolved neighbour yet
+            ++nFallback;
+        }
+    }
+    if (nFallback>0)
+        gsWarn << "pullBackToSigmaImage: " << nFallback << "/" << xi.cols()
+               << " sigma_prev inversions did not meet the residual tolerance; "
+                  "used a neighbouring anchor's preimage (max residual among "
+                  "resolved columns " << maxResidual << ")\n";
+    GISMO_ENSURE(real_t(nFallback) <= real_t(0.01)*real_t(xi.cols()),
+                 "pullBackToSigmaImage: "<<nFallback<<"/"<<xi.cols()
+                 <<" sigma_prev inversions unresolved (>1%) -- pullback is not meaningful");
+
+    gsMatrix<real_t> vals; uh.eval_into(xi, vals);
+    return eta.interpolateAtAnchors(vals);
+}
+
 // Both backends are reachable; the unified names (MaxIterations/OptTol/
 // Verbose) are mapped onto each backend's own so that the 100-vs-10000
 // default mismatch is visible in the log instead of hidden in a header.
@@ -337,9 +517,11 @@ int main(int argc, char** argv)
 {
     index_t degree=2, initialRef=2, iterations=3;
     index_t sigmaDeg=2, sigmaRef=3;
-    bool project=false, plot=false, coarsenFlag=false;
+    bool project=false, plot=false, coarsenFlag=false, foldCheckFlag=false, dumpElements=false;
     index_t plotPoints=1000;
     real_t targetCli=std::numeric_limits<real_t>::quiet_NaN();
+    index_t monitorResCli=-1;
+    index_t maxDofs=-1;
     std::string schedule="SRHS";
     std::string file="pde/poisson2d_rh_center_bvp.xml";
     std::string options="";
@@ -368,6 +550,19 @@ int main(int argc, char** argv)
                             "regardless of the XML/--options value; NaN (default, omit "
                             "the flag) means 'no override, use the option list'",
                             targetCli);
+    cmd.addInt("","monitorRes","R step: override MonitorRes (elements per direction of "
+                               "the discrete-monitor pullback basis) regardless of the "
+                               "XML/--options value; -1 (default, omit the flag) means "
+                               "'no override, use the option list'",
+                               monitorResCli);
+    cmd.addInt("","maxDofs","stop after the first composed S step whose analysis "
+                             "DoF count exceeds this value; <= 0 (default) disables",
+                             maxDofs);
+    cmd.addSwitch("","dumpElements","write <output>/elements/step<k>.csv (leaf elements of the analysis THB basis) for the initial mesh and after every H step",dumpElements);
+    cmd.addSwitch("","foldCheck","R step: force FoldCheck=true regardless of the XML/"
+                                 "--options value (omit to use whatever the option list "
+                                 "resolves to)",
+                                 foldCheckFlag);
     // ORCHESTRATOR RULING (D6-amendment): --options is the shared "method
     // option list" flag in all four drivers; -f means the PROBLEM only.
     // Poisson resolves options from the built-in defaults, layered with
@@ -450,6 +645,7 @@ int main(int argc, char** argv)
     opt.addReal  ("RefineParam",    "gsHElementMarker refinement parameter", 0.5);
     opt.addInt   ("CoarsenRule",    "gsHElementMarker coarsening rule", 3);
     opt.addReal  ("CoarsenParam",   "gsHElementMarker coarsening parameter", 0.1);
+    opt.addInt   ("CoarsenGroupRule", "gsHElementMarker coarsening group rule (0=any child,1=all children,2=summed; needs CoarsenRule=1)", 0);
     opt.addSwitch("Coarsen",        "enable coarsening in the H step", false);
     opt.addInt   ("MaxLevel",       "gsHElementMarker level cap", 10);
     opt.addSwitch("Admissible",     "gsHElementMarker admissible closure", true);
@@ -464,8 +660,15 @@ int main(int argc, char** argv)
     opt.addString("Optimizer",      "R-step optimizer backend: gsOptim | HLBFGS", "gsOptim");
     opt.addInt   ("MaxIterations",  "R-step optimizer iterations", 10000);
     opt.addReal  ("OptTol",         "R-step optimizer gradient tolerance (unified name)", 1e-12);
+    opt.addSwitch("RetryOnStall",   "R step: retry a failed first optimisation once on a "
+                                     "problem rescaled so the first trial step has length "
+                                     "0.5*h_sigma", true);
     opt.addInt   ("Verbose",        "R-step optimizer verbosity", 0);
     opt.addString("MonitorMode",    "R step monitor: value | gradient", "value");
+    opt.addInt   ("MonitorRes",     "R step: elements per direction of the discrete-monitor "
+                                     "pullback basis (<=0 -> built-in default)", 0);
+    opt.addSwitch("FoldCheck",      "R step: print extra sampled/certified min det J_sigma "
+                                     "diagnostic bounds after each relocation", false);
     opt.addInt   ("DirSkip",        "D-step direction skip -- IGNORED, no D step in this driver", 0);
     opt.addReal  ("Lambda",         "gsFitting smoothing weight -- IGNORED, no gsFitting in this driver", 1e-6);
     opt.addSwitch("Slide",          "sigma boundary control points may slide", true);
@@ -518,6 +721,8 @@ int main(int argc, char** argv)
     {
         opt.setReal("Target", targetCli);
     }
+    if (monitorResCli>=0) opt.setInt("MonitorRes", monitorResCli);
+    if (foldCheckFlag) opt.setSwitch("FoldCheck", true);
     //! [Read input file]
 
     const real_t target=opt.getReal("Target"), band=opt.getReal("Band");
@@ -592,6 +797,11 @@ int main(int argc, char** argv)
         dynamic_cast<const gsTensorBSplineBasis<2>*>(&sigma.domain().basis());
     GISMO_ENSURE(sb, "sigma must carry a tensor-product B-spline basis");
     const gsTensorBSplineBasis<2> & sbasis = *sb;
+    // The identity control net, for the R step's sigma_old == identity test
+    // (gsSquareDomain(const gsBasis<T>&, bool) builds sigma's own identity
+    // exactly this way, gsSquareDomain.hpp:43-45).
+    gsMatrix<real_t> sigIdCoefs = sigma.domain().basis().anchors();
+    sigIdCoefs.transposeInPlace();
     gsInfo << "schedule=" << sched << " project=" << project << " H=" << useH << "\n";
 
     // Persistent assembler and two sharing evaluators (constructed FROM the
@@ -630,6 +840,45 @@ int main(int argc, char** argv)
                   "will cross element boundaries and results will be WRONG. "
                   "Set SameElement=0 in id=4 of -f or in --options.\n";
 
+    // MonitorRes: elements per direction of the R step's discrete-monitor
+    // pullback basis (pullBackToSigmaImage()), resolved here into an
+    // EFFECTIVE value and written straight back into opt so options.xml
+    // records what the run actually used rather than a "0 = default"
+    // placeholder.
+    //
+    // The port source's calibrated 96 (reproduce_transient_sphere.cpp:
+    // 988-1021) does not transfer as a VALUE: that calibration read only
+    // monitor VALUES (MonitorMode=ValueBased) on a sech^2 ring at
+    // min det J_sigma ~ 0.23-0.33, whereas the schedule study's published
+    // cases run MonitorMode=gradient (grad f and Hess f of the interpolant,
+    // far more resolution-sensitive) on a tanh front over a saddle/bowl at
+    // min det J_sigma 0.004-0.04. Re-measured on hypar_w40's A5 arm
+    // ((SRSH)^8, the only arm whose R steps take the pullback path -- R1 runs
+    // at sigma_old=identity, the bypass, hence identical across all three
+    // columns below). Eight min det J_sigma values (R1..R8) and their
+    // relative deviation from the next-finer grid:
+    //
+    //   R#   res=48     |dev 48->96|   res=96      |dev 96->192|   res=192
+    //   1    2.220e-2    0.00%          2.220e-2     0.00%          2.220e-2
+    //   2    6.545e-3    7.02%          6.115e-3     1.56%          6.212e-3
+    //   3    7.845e-3    1.28%          7.947e-3     1.35%          7.841e-3
+    //   4    7.229e-3    1.35%          7.133e-3     3.77%          7.412e-3
+    //   5    7.373e-3    6.57%          6.918e-3     4.64%          7.255e-3
+    //   6    7.510e-3    3.42%          7.776e-3     0.94%          7.850e-3
+    //   7    7.056e-3    9.03%          7.757e-3     0.49%          7.795e-3
+    //   8    6.822e-3    8.30%          6.300e-3     0.40%          6.274e-3
+    //
+    // nFallback = 0 and maxResidual < 3e-8 at every resolution tested -- well
+    // under the 1e-6 residual-check threshold (Newton inversion accuracy is
+    // 1e-8) -- so the choice is decided by min det J_sigma
+    // convergence alone: 48 misses the 5% band against 96 at R2/R5/R7/R8,
+    // while 96 agrees with 192 to within 5% on all eight. 96 is therefore the
+    // SMALLEST resolution meeting the acceptance rule (agrees with the next
+    // finer grid to within 5% everywhere, zero fallbacks) and is the built-in
+    // default.
+    const index_t monitorResEff = opt.getInt("MonitorRes")>0 ? opt.getInt("MonitorRes") : 96;
+    opt.setInt("MonitorRes", monitorResEff);
+
     gsInfo << opt << "\n";
     gsFileData<> fdout;
     fdout.add(opt);
@@ -663,11 +912,23 @@ int main(int argc, char** argv)
     // buffered stream loses every row it has not flushed -- a 2 h run then
     // yields a 0-byte file instead of the convergence history it did earn.
     csv << std::unitbuf;
-    csv << "cycle,step,path,dofs,dofs_sigma,minErr,maxErr,err,pctBelowTol,minDetJsigma,time\n";
+    csv << "cycle,step,path,dofs,dofs_sigma,minErr,maxErr,err,pctBelowTol,minDetJsigma,time,h1err,rRetry\n";
     csv << std::scientific << std::setprecision(8);
 
     gsMultiPatch<> lastSol; bool haveSolve=false;
-    real_t lastMinErr=0, lastMaxErr=0, lastErr=0, lastPctBelowTol=0;
+    // The sigma that was IN FORCE when lastSol was solved (a COPY: sigma
+    // itself is relocated in place by the R step, so a reference to it would
+    // silently track every later relocation instead of freezing the one the
+    // last solve actually ran on). Null until the first solve; sigAtLastSolve
+    // being null and lastSol being empty are the same condition (both are set
+    // together in the S branch), so the R branch's existing
+    // lastSol.nPatches()==0 guard already covers it.
+    gsGeometry<real_t>::uPtr sigAtLastSolve;
+    // Counts actual relocations (relocate() calls); used as the "R#" label
+    // on the FoldCheck diagnostic line below, independent of the FoldCheck
+    // switch itself so the numbering never depends on when it was toggled.
+    index_t relocCount=0;
+    real_t lastMinErr=0, lastMaxErr=0, lastErr=0, lastPctBelowTol=0, lastH1=0;
     // The per-element L2 error vector driving the H-step marker: always the
     // COMPOSED (C) path's, even when --project also computed a P solve (D9:
     // "err is the L2 error of the last S step, the composed path when both
@@ -675,6 +936,7 @@ int main(int argc, char** argv)
     std::vector<real_t> lastElErr;
     index_t solveStep=0;
     bool done=false;
+    if (dumpElements && useH) gsFileManager::mkdir(output+"elements");
     // D13: "Non-S rows repeat the last known error values (empty fields
     // before the first solve)". A literal 0.0 there is indistinguishable
     // from a perfect solve for any downstream harvester, so the four error
@@ -690,6 +952,30 @@ int main(int argc, char** argv)
             << lastPctBelowTol;
         return oss.str();
     };
+    auto h1Field = [&]() -> std::string
+    {
+        if (!haveSolve) return ",";
+        std::ostringstream oss;
+        oss << "," << std::scientific << std::setprecision(8) << lastH1;
+        return oss.str();
+    };
+    // Leaf elements of the analysis THB basis: level and parametric corners,
+    // one row per element, written to <output>/elements/step<k>.csv.
+    index_t hRows=0;
+    auto dumpLeaves = [&](index_t k)
+    {
+        std::ofstream ef((output+"elements/step"+std::to_string(k)+".csv").c_str());
+        ef << std::defaultfloat << std::setprecision(17);
+        ef << "level,u0,v0,u1,v1\n";
+        const auto dom = thb.domain();
+        for (const auto & elem : dom->allElements())
+        {
+            const index_t lvl = static_cast<const gsHDomainIterator<real_t,2> *>(&elem)->getLevel();
+            const gsVector<real_t> lo = elem.lowerCorner(), up = elem.upperCorner();
+            ef << lvl << "," << lo[0] << "," << lo[1] << "," << up[0] << "," << up[1] << "\n";
+        }
+    };
+    if (dumpElements && useH) dumpLeaves(0);
     for (index_t cycle=0;cycle<iterations && !done;++cycle)
     {
         gsInfo << "Cycle " << cycle << " [" << sched << "]\n";
@@ -704,9 +990,10 @@ int main(int argc, char** argv)
 
         if (op=='R')
         {
+            bool rRetry=false;
             // Generic lambda instantiated at compile time for each MonitorMode:
             // the mode is a non-type template parameter of gsAdaptiveParametrization.
-            auto relocate=[&](auto mode) {
+            auto relocate=[&](auto mode, const gsFunction<real_t>* monitor) {
                 gsStopwatch timer;
                 std::unique_ptr<gsOptimizer<real_t> > optimizer = makeOptimizer(opt);
                 const gsTensorBSplineBasis<2>& tb=useH?thb.tensorLevel(thb.maxLevel()):basis;
@@ -754,19 +1041,27 @@ int main(int argc, char** argv)
                         gsAdaptiveParametrization<real_t,MonitorMode::ValueBased>::
                         makeIntegrationBasis(tb,sbasis)));
                 }
-                // parametric=true: the monitor is the discrete solution in the
-                // PARAMETRIC domain (the analysis basis lives on [0,1]^2, and
-                // that is where lastSol is expressed), matching the ctor's
+                // parametric=true: the monitor is a function of the
+                // MIDDLE-SQUARE point eta = sigma(xi_hat) (the ctor's
                 // documented "composition function defined in the parametric
-                // domain" semantics.
+                // domain" semantics), and \a monitor IS that function --
+                // either lastSol directly (only when sigma_old = identity, so
+                // xi_hat and eta coincide) or its pullback through
+                // sigma_old^{-1} (otherwise; see the caller). The physical
+                // alternative (parametric=false) is not available here: the
+                // geometry map S goes 2->3, so inverting S o sigma_old is not
+                // a square Newton solve.
                 gsAdaptiveParametrization<real_t,mode.value> rel(
-                    sigma, physical.patch(0), &lastSol.patch(0), *ib, *optimizer,
+                    sigma, physical.patch(0), monitor, *ib, *optimizer,
                     /*parametric=*/true, integrationBasisIsFinal);
                 rel.options().setReal("Smoothing", opt.getReal("Smoothing"));
                 rel.options().setReal("Penalty",   opt.getReal("Penalty"));
                 rel.options().setReal("quA", opt.getReal("quA"));
                 rel.options().setInt ("quB", opt.getInt ("quB"));
+                rel.options().setReal("OptTol", opt.getReal("OptTol"));
+                rel.options().setSwitch("RetryOnStall", opt.getSwitch("RetryOnStall"));
                 rel.solve();
+                rRetry = rel.retried();
                 const real_t tR=timer.stop();
 
                 gsInfo << "  R | mode "
@@ -777,8 +1072,63 @@ int main(int argc, char** argv)
                        << rel.computeMinJacobian()
                        << " | min det J_sigma (certificate) " << std::scientific
                        << std::setprecision(3) << sigma.minDetJCoefficient();
+                gsInfo << " | retry " << rel.retryStatus();
+                if (rel.retried())
+                    gsInfo << " | alpha " << std::defaultfloat << std::setprecision(6) << rel.retryStepScale();
+                gsInfo << " | f " << std::scientific << std::setprecision(6)
+                       << rel.initialObjective() << " -> " << rel.finalObjective();
                 gsInfo << " | " << std::fixed << std::setprecision(2) << tR << " s\n"
                        << std::defaultfloat;
+
+                ++relocCount;
+                if (opt.getSwitch("FoldCheck"))
+                {
+                    // Opt-in diagnostic (read-only queries on sigma; changes no
+                    // computed number, off by default). minJacobian(n) is a
+                    // NECESSARY-not-SUFFICIENT check: it grids n^2 points per
+                    // element of sigma's knot mesh (gsSquareDomain.hpp:373-385,
+                    // gsPointGrid, endpoints included) and reports the sampled
+                    // minimum -- a fold strictly between two sample points is
+                    // invisible to it, so higher n only shrinks, never
+                    // eliminates, that blind spot. minDetJCoefficient() (cert)
+                    // is a certified lower bound with no such blind spot, but by
+                    // default (keepBezier=false, gsSquareDomain.hpp:457-459) it
+                    // is computed after gsTensorBSpline::multiply's interior-knot
+                    // compression, which can loosen the bound. certBez instead
+                    // uses keepBezier=true (skip that compression -- the
+                    // tightest coefficient bound the raw per-element Bezier
+                    // product form gives, gsSquareDomain.h:175-179); it is exact
+                    // because detJacobianSpline(true) builds det J_sigma via the
+                    // Leibniz expansion from sigma's own exact gradient splines,
+                    // and the Bezier form needs no knot removal to evaluate. Two
+                    // rounds of uniformRefine() (pure knot insertion) then
+                    // tighten it further: a B-spline's minimum coefficient is a
+                    // lower bound on its minimum value (convex hull property),
+                    // and knot insertion replaces every coefficient by a convex
+                    // combination of the old ones, so refinement never LOWERS
+                    // that bound -- certBez0/1/2 is a monotone sequence of
+                    // certified lower bounds, letting a negative certBez0 be
+                    // resolved by whether refinement pushes it positive.
+                    const real_t mj7   = sigma.minJacobian(7);
+                    const real_t mj25  = sigma.minJacobian(25);
+                    const real_t mj100 = sigma.minJacobian(100);
+                    const real_t cert  = sigma.minDetJCoefficient();
+                    typename gsGeometry<real_t>::uPtr detBez = sigma.detJacobianSpline(true);
+                    const real_t certBez0 = detBez->coefs().minCoeff();
+                    detBez->uniformRefine();
+                    const real_t certBez1 = detBez->coefs().minCoeff();
+                    detBez->uniformRefine();
+                    const real_t certBez2 = detBez->coefs().minCoeff();
+                    gsInfo << "FOLDCHECK R# " << relocCount
+                           << " | minJ7 "   << std::scientific << std::setprecision(6) << mj7
+                           << " | minJ25 "  << std::scientific << std::setprecision(6) << mj25
+                           << " | minJ100 " << std::scientific << std::setprecision(6) << mj100
+                           << " | cert "    << std::scientific << std::setprecision(6) << cert
+                           << " | certBez0 " << std::scientific << std::setprecision(6) << certBez0
+                           << " | certBez1 " << std::scientific << std::setprecision(6) << certBez1
+                           << " | certBez2 " << std::scientific << std::setprecision(6) << certBez2
+                           << std::defaultfloat << "\n";
+                }
             };
 
             if (lastSol.nPatches()==0)
@@ -786,18 +1136,75 @@ int main(int argc, char** argv)
             else
             {
                 const std::string mm = opt.askString("MonitorMode","value");
+                // sigAtLastSolve is set in the SAME branch that sets lastSol
+                // (the S step), so lastSol.nPatches()==0 above already is the
+                // null check for it -- never dereferenced outside this else.
+                // The comparison is exact (<=1e-14, a guard against a
+                // recomputed anchors(), not a tolerance on relocation, which
+                // moves control points by O(1e-2)): sigma only ever changes
+                // by the R step's wholesale coefficient assignment, so
+                // "close to identity" and "is identity" coincide here.
+                const bool sigWasIdentity =
+                    (sigAtLastSolve->coefs()-sigIdCoefs).cwiseAbs().maxCoeff() <= 1e-14;
+
+                const gsFunction<real_t>* monitor = &lastSol.patch(0);
+                gsGeometry<real_t>::uPtr etaField;
+                if (sigWasIdentity)
+                {
+                    // xi_hat and eta coincide when sigma_old = identity, so
+                    // lastSol -- already a function of xi_hat -- is already a
+                    // function of eta too: passing it directly introduces no
+                    // interpolation or inversion error, unlike the pullback
+                    // below, which resamples onto a different basis through
+                    // Newton-inverted anchors.
+                    gsInfo << "  R | sigma_old = identity, monitor = discrete solution\n";
+                }
+                else
+                {
+                    gsStopwatch pbTimer;
+                    index_t nFallback=0; real_t maxResidual=0;
+                    const short_t monDeg = math::max<short_t>(degree+1, 3);
+                    const index_t monRes = opt.getInt("MonitorRes");
+                    etaField = pullBackToSigmaImage(lastSol.patch(0), *sigAtLastSolve,
+                                                     monRes, monDeg, nFallback, maxResidual);
+                    monitor = etaField.get();
+                    gsInfo << "  R | monitor pullback | res " << monRes
+                           << " | deg " << monDeg << " | nFallback " << nFallback
+                           << " | maxResidual " << std::scientific << std::setprecision(3)
+                           << maxResidual << std::defaultfloat << " | "
+                           << std::fixed << std::setprecision(3) << pbTimer.stop() << " s\n"
+                           << std::defaultfloat;
+                    // B-spline convex hull: min f over the domain >= min(coefs),
+                    // so this is a conservative (sufficient, not necessary)
+                    // check. ClampedMonitor (reproduce_transient_sphere.cpp:
+                    // 196-216) does not port: MonitorMode=gradient (the
+                    // published mode) reads Hess f (gradObj_into,
+                    // gsAdaptiveParametrization.hpp:737), and a clamp wrapper
+                    // would inherit gsFunction's finite-difference deriv2_into
+                    // across the clamp kink where a bare gsGeometry supplies
+                    // an analytic one; the 1+theta*f>0 guard this replaces
+                    // cannot even fire in gradient mode (thWorst is written
+                    // only in the ValueBased branches, .hpp:545,602). In value
+                    // mode the guard IS live, hence this explicit check.
+                    if (mm=="value")
+                        GISMO_ENSURE(1.0+opt.getReal("Smoothing")*etaField->coefs().minCoeff() > 0,
+                                     "pulled-back monitor violates 1+theta*f>0 (min coef "
+                                     << etaField->coefs().minCoeff() << ", theta "
+                                     << opt.getReal("Smoothing") << ")");
+                }
+
                 if (mm=="gradient")
                     relocate(std::integral_constant<enum MonitorMode,
-                                                    MonitorMode::GradientBased>());
+                                                    MonitorMode::GradientBased>(), monitor);
                 else if (mm=="value")
                     relocate(std::integral_constant<enum MonitorMode,
-                                                    MonitorMode::ValueBased>());
+                                                    MonitorMode::ValueBased>(), monitor);
                 else
                     GISMO_ERROR("Unknown MonitorMode '"<<mm<<"' (value | gradient)");
             }
             const real_t tStep=stepTimer.stop();
             csv << cycle << ",R,-," << dofs << "," << sigma.nControls() << ","
-                << errFields() << "," << sigma.minJacobian(7) << "," << tStep << "\n";
+                << errFields() << "," << sigma.minJacobian(7) << "," << tStep << h1Field() << "," << (rRetry?1:0) << "\n";
         }
         else if (op=='U')
         {
@@ -811,7 +1218,7 @@ int main(int argc, char** argv)
             const real_t tStep=stepTimer.stop();
             csv << cycle << ",U,-," << (useH?thb.size():basis.size()) << ","
                 << sigma.nControls() << "," << errFields() << ","
-                << sigma.minJacobian(7) << "," << tStep << "\n";
+                << sigma.minJacobian(7) << "," << tStep << h1Field() << ",\n";
         }
         else if (op=='S')
         {
@@ -839,6 +1246,12 @@ int main(int argc, char** argv)
             SolveResult cres = solve(A,ev,pev,cmp,mb,ib,f,ms,bc,'C',step,solcol.get());
             lastSol=cres.sol;
             haveSolve=true;
+            // Freeze the sigma this solve ran on (see the member comment):
+            // sigma is not mutated anywhere else in this branch, including
+            // the --project sub-branch below (which overwrites lastSol but
+            // reads sigma only, never writes it), so one clone here is valid
+            // for both possible values of lastSol this S letter can leave.
+            sigAtLastSolve = sigma.domain().clone();
 
             const real_t minC=*std::min_element(cres.elErr.begin(),cres.elErr.end());
             const real_t maxC=*std::max_element(cres.elErr.begin(),cres.elErr.end());
@@ -856,10 +1269,11 @@ int main(int argc, char** argv)
             // This is the state the R/H/U branches and the H-step band rule
             // read: always the COMPOSED path's (see the member comment).
             lastMinErr=minC; lastMaxErr=maxC; lastErr=cres.l2err; lastPctBelowTol=pctC;
+            lastH1=cres.h1err;
             lastElErr=cres.elErr;
             csv << cycle << ",S,C," << active.size() << "," << sigma.nControls() << ","
                 << minC << "," << maxC << "," << cres.l2err << "," << pctC << ","
-                << sigma.minJacobian(7) << "," << stepTimer.stop() << "\n";
+                << sigma.minJacobian(7) << "," << stepTimer.stop() << "," << cres.h1err << ",\n";
 
             if (project)
             {
@@ -889,7 +1303,13 @@ int main(int argc, char** argv)
                 const real_t pctP = useBand ? (100.0*nBelowP/(real_t)pres.elErr.size()) : 0.0;
                 csv << cycle << ",S,P," << active.size() << "," << sigma.nControls() << ","
                     << minP << "," << maxP << "," << pres.l2err << "," << pctP << ","
-                    << sigma.minJacobian(7) << "," << pTimer.stop() << "\n";
+                    << sigma.minJacobian(7) << "," << pTimer.stop() << "," << pres.h1err << ",\n";
+            }
+            if (maxDofs > 0 && (index_t)active.size() > maxDofs)
+            {
+                gsInfo << "  DoF cap reached (" << active.size() << " > " << maxDofs
+                       << "): stopping\n";
+                done=true;
             }
         }
         else if (op=='H')
@@ -907,7 +1327,9 @@ int main(int argc, char** argv)
                 const real_t tStep=stepTimer.stop();
                 csv << cycle << ",H,-," << (useH?thb.size():basis.size()) << ","
                     << sigma.nControls() << "," << errFields() << ","
-                    << sigma.minJacobian(7) << "," << tStep << "\n";
+                    << sigma.minJacobian(7) << "," << tStep << h1Field() << ",\n";
+                ++hRows;
+                if (dumpElements && useH) dumpLeaves(hRows);
                 continue;
             }
             const gsBasis<>& active=useH?static_cast<const gsBasis<>&>(thb):
@@ -981,6 +1403,7 @@ int main(int argc, char** argv)
                 marker.options().setReal  ("RefineParam",  opt.getReal("RefineParam"));
                 marker.options().setInt   ("CoarsenRule",  opt.getInt ("CoarsenRule"));
                 marker.options().setReal  ("CoarsenParam", opt.getReal("CoarsenParam"));
+                marker.options().setInt   ("CoarsenGroupRule", opt.getInt ("CoarsenGroupRule"));
                 marker.options().setInt   ("MaxLevel",     opt.getInt ("MaxLevel"));
                 marker.options().setSwitch("Admissible",   opt.getSwitch("Admissible"));
                 marker.options().setSwitch("Extension",    opt.getSwitch("Extension"));
@@ -1003,10 +1426,16 @@ int main(int argc, char** argv)
                 // Coarsening: elements with the SMALLEST errors are un-refined,
                 // which lets the mesh recover from h-refinement that a later R
                 // step (or a better solution) makes obsolete. markCrs() gets
-                // the CLOSED refined set (elements about to be refined, and
-                // their siblings, must not be coarsened) -- task 02 changed
-                // gsHElementMarker::markCrs to dispatch on "CoarsenRule"
-                // directly, so no save/restore of "RefineRule" is needed here.
+                // the CLOSED refined set; the elements about to be refined and
+                // the cells reached by the extended refinement boxes of the
+                // marked elements count as refined. A candidate that is such a
+                // cell, or a sibling of one, is not coarsened; with "Admissible"
+                // on (the default here) only candidates that are admissible with
+                // respect to those cells are coarsened. Independently of
+                // "Admissible", a candidate that overlaps a refinement box is
+                // dropped when its coarsening target level is below that box's
+                // target level, so every refined region stays at or above its
+                // target level in this H step (see gsHElementMarker::markCrs).
                 if (doCrs)
                 {
                     const gsHElementMarker<2,real_t>::HElementContainer markedCrs =
@@ -1017,8 +1446,11 @@ int main(int argc, char** argv)
             }
 
             // Both box lists are computed on the SAME (pre-update) mesh; the
-            // refined and coarsened regions are disjoint by construction, so
-            // applying them in sequence is safe.
+            // refined and coarsened regions never conflict (markCrs drops every
+            // candidate whose coarsening box overlaps a refinement box of
+            // markedRef, extension included, at a higher target level), so
+            // applying them in sequence leaves each refined region at or above
+            // its target level.
             if (!boxes.empty())    thb.refineElements(boxes);
             if (!crsBoxes.empty()) thb.unrefineElements(crsBoxes);
             const real_t tH=timer.stop();
@@ -1033,7 +1465,9 @@ int main(int argc, char** argv)
                    << std::defaultfloat;
             const real_t tStep=stepTimer.stop();
             csv << cycle << ",H,-," << thb.size() << "," << sigma.nControls() << ","
-                << errFields() << "," << sigma.minJacobian(7) << "," << tStep << "\n";
+                << errFields() << "," << sigma.minJacobian(7) << "," << tStep << h1Field() << ",\n";
+            ++hRows;
+            if (dumpElements && useH) dumpLeaves(hRows);
         }
         }
     }

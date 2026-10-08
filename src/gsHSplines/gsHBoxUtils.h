@@ -179,6 +179,27 @@ public:
     static HContainer markAdmissible(const gsHBox<d,T> & marked, index_t m);
     static HContainer markAdmissible(const HContainer & marked, index_t m);
 
+    /**
+     * @brief      Admissible closure of \a marked together with the cells that
+     *             its extended refinement box reaches.
+     *
+     * Computes the closure over \a marked and \ref gsHBox::extensionCells,
+     * and drops the reached cells that the closure of \a marked alone does not
+     * contain. The result therefore consists of active unit boxes only (when
+     * \a marked is active): \a marked, the cells of the plain closure, and
+     * the reached cells whose refinement the plain closure depends on.
+     * Intended use: refine \a marked with gsHBox::toRefBox(level()+1,true)
+     * and every other returned box with gsHBox::toRefBox(level()+1,false).
+     * For THB bases and \a m = 2 this keeps the refined basis class-2
+     * admissible.
+     *
+     * @param[in]  marked  The marked box
+     * @param[in]  m       The jump parameter
+     *
+     * @return     The resulting hierarchical container of unit boxes.
+     */
+    static HContainer markAdmissibleExtended(const gsHBox<d,T> & marked, index_t m);
+
     static bool allActive(const  Container & elements);
     static bool allActive(const HContainer & elements);
 

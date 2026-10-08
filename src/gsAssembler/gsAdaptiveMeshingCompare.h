@@ -15,6 +15,7 @@
 
 
 #include <iostream>
+#include <map>
 #include <gsHSplines/gsHBoxUtils.h>
 
 namespace gismo
@@ -148,44 +149,57 @@ public:
         m_markedRefChildren = gsHBoxUtils<d,T>::Unique(tmp.getChildren());
     }
 
+    /**
+     * @brief      Checks if the coarsening neighborhood of the parent of \a box is clean
+     *
+     * The result depends on \a box only through its parent and on the mesh, so it
+     * is cached per parent and a box and its siblings share one evaluation.
+     * Precondition: the mesh (basis) does not change while the predicate is
+     * alive; construct a new predicate after refining or coarsening. The cache is
+     * not thread-safe.
+     */
     bool check(const gsHBox<d,T> & box) const
     {
         // A level-0 box has no parent, so it cannot be coarsened; guard here rather
         // than relying on a preceding gsMinLvlCompare in the predicate list.
         if (box.level() == 0) return false;
 
-        // We are going to check if the coarsening extension (closely related to the coarsening neighborhood) of the parent of \a box (since it will be elevated) fulfills the conditions of an empty coarsening neighborhood, as well as the condition of an empty coasening neighborhood provided that there is no element that will be refined herein.
-        bool clean = true;
-
-        // if (m_m>=2) // admissiblity part
-        // {
-            // 1) Check if the coarsening neighborhood is empty
-            gsHBox<d,T> parent = box.getParent();
-            typename gsHBox<d,T>::Container Cextension = parent.getCextension(m_m);
-            Cextension = gsHBoxUtils<d,T>::Unique(Cextension);
-
-            for (typename gsHBox<d,T>::Iterator it = Cextension.begin(); it != Cextension.end() && clean; it++)
-            {
-                it->computeCenter();
-                clean &=
-                        // the level is even larger (i.e. even higher decendant); then it is not clean
-                            (!((it->levelInCenter()>=it->level()))
-                        )
-                        ;
-            }
-
-            if (!clean) return clean;
-        // }
-
-        // 2) Now we check if the parents of any of the cells in the extensions overlap with the marked cells. If so, it would cause a problem with the coarsening.
-        typename gsHBox<d,T>::Container  intersection = gsHBoxUtils<d,T>::ContainedIntersection(Cextension,m_markedRefChildren);
-        clean = intersection.size()==0;
-        return clean;
+        gsHBox<d,T> parent = box.getParent();
+        typename Cache::const_iterator hit = m_cache.find(parent);
+        if (hit != m_cache.end()) return hit->second;
+        return m_cache.insert(typename Cache::value_type(parent,_check(parent))).first->second;
     }
 
 protected:
+    // Checks the coarsening extension (closely related to the coarsening neighborhood) of \a parent, i.e. the parent of the box that will be elevated.
+    bool _check(gsHBox<d,T> parent) const
+    {
+        // 1) Check if the coarsening neighborhood is empty
+        typename gsHBox<d,T>::Container Cextension = parent.getCextension(m_m);
+        Cextension = gsHBoxUtils<d,T>::Unique(Cextension);
+
+        for (typename gsHBox<d,T>::Iterator it = Cextension.begin(); it != Cextension.end(); it++)
+        {
+            it->computeCenter();
+            // the level is even larger (i.e. even higher decendant); then it is not clean
+            if (it->levelInCenter()>=it->level()) return false;
+        }
+
+        // 2) Now we check if the parents of any of the cells in the extensions overlap with the marked cells. If so, it would cause a problem with the coarsening.
+        // Equivalent to an empty gsHBoxUtils::ContainedIntersection(Cextension,m_markedRefChildren), but stops at the first overlap. O(|Cextension| |m_markedRefChildren|) worst case.
+        gsHBoxContains<d,T> contains;
+        for (typename gsHBox<d,T>::Iterator it = Cextension.begin(); it != Cextension.end(); it++)
+            for (typename gsHBox<d,T>::cIterator ch = m_markedRefChildren.begin(); ch != m_markedRefChildren.end(); ch++)
+                if (contains(*it,*ch)) return false;
+
+        return true;
+    }
+
+    typedef std::map<gsHBox<d,T>,bool,gsHBoxCompare<d,T> > Cache;
+
     typename gsHBox<d,T>::Container m_markedRefChildren;
     index_t m_m;
+    mutable Cache m_cache; ///< result of _check per parent box
 };
 
 

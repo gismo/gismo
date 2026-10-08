@@ -2131,7 +2131,53 @@ void gsAdaptiveParametrization<T,MODE>::defaultOptions()
     m_options.addInt("Mode","0: Relocate based on f [default]; 1: Relocate based on grad(f)",0);
     m_options.addReal("quA","Quadrature nodes per direction: deg*quA + quB",1.0);
     m_options.addInt ("quB","Quadrature nodes per direction: deg*quA + quB",1);
+    m_options.addReal("OptTol","Converged-gradient threshold of the retry's failure test, ||g0|| <= OptTol*max(1,||x0||); pass the optimiser's own gradient tolerance [default=1e-9]",1e-9);
+    m_options.addSwitch("RetryOnStall","Retry a failed first optimisation once on a problem rescaled so the first trial step has length 0.5*h_sigma [default=false]",false);
 }
+
+/**
+ * @brief Affine reparametrisation \f$ y \mapsto f(x_0 + \alpha y) \f$ of a
+ *   gsOptProblem \f$ f \f$, with start \f$ y=0 \f$ and gradient
+ *   \f$ \alpha\,\nabla f(x_0+\alpha y) \f$.
+ *
+ * A line-search optimiser's first trial step has unit Euclidean length in the
+ * design variables, which for the controls of a sigma map is far longer than
+ * an element; the rescaling makes that trial step have length \f$\alpha\f$.
+ * The wrapped problem is referenced, not copied, and must outlive this object.
+ * Evaluations are those of the wrapped problem, so they share its side
+ * effects (sigma's controls are overwritten by every evaluation).
+ */
+template <class T>
+class gsOptAffineRescaled : public gsOptProblem<T>
+{
+public:
+    gsOptAffineRescaled(const gsOptProblem<T> & base, const gsVector<T> & x0, const T alpha)
+    : m_base(base), m_x0(x0), m_alpha(alpha), m_x(x0)
+    {
+        this->m_numDesignVars   = base.numDesignVars();
+        this->m_numConstraints  = 0;
+        this->m_numConJacNonZero = 0;
+    }
+
+    T evalObj(const gsAsConstVector<T> & y) const override
+    {
+        m_x = m_x0 + m_alpha * y;
+        return m_base.evalObj(gsAsConstVector<T>(m_x.data(), m_x.rows()));
+    }
+
+    void gradObj_into(const gsAsConstVector<T> & y, gsAsVector<T> & result) const override
+    {
+        m_x = m_x0 + m_alpha * y;
+        m_base.gradObj_into(gsAsConstVector<T>(m_x.data(), m_x.rows()), result);
+        result *= m_alpha;
+    }
+
+private:
+    const gsOptProblem<T> & m_base;
+    gsVector<T>             m_x0;
+    T                       m_alpha;
+    mutable gsVector<T>     m_x;
+};
 
 template <class T, enum MonitorMode MODE>
 void gsAdaptiveParametrization<T,MODE>::solve()
@@ -2169,8 +2215,92 @@ void gsAdaptiveParametrization<T,MODE>::solve()
     // Solve the optimization problem
     gsVector<T> controls = m_optProblem.composition().getControls();
     m_optimizer.solve(controls);
-    controls = m_optimizer.currentDesign();
-    m_optProblem.composition().setControls(controls);
+    gsVector<T> chosen = m_optimizer.currentDesign();
+
+    m_retryStatus      = 0;
+    m_initialObjective = T(0);
+    m_finalObjective   = T(0);
+    m_retryStepScale   = T(0);
+
+    if (m_options.getSwitch("RetryOnStall"))
+    {
+        // Minimum relative objective decrease that counts as progress; a
+        // first attempt that gains less AND ends with a non-converged
+        // gradient is a failed (stalled) optimisation.
+        const T kRetryMinRelDecrease = T(1e-3);
+        // gsOptMesh::evalObj/gradObj_into overwrite sigma's controls, so all
+        // evaluations below run after the first solve, and the accepted
+        // design is the last thing written to sigma.
+        const gsVector<T> x0 = controls;
+        const gsVector<T> x1 = chosen;
+        const index_t n = x0.rows();
+        const T fSentinel = std::numeric_limits<T>::max() / T(1e6);
+        const auto folded = [fSentinel](const T f) { return !(f < fSentinel); };
+        const auto evalAt = [this,n](const gsVector<T> & x)
+        { return m_optProblem.evalObj(gsAsConstVector<T>(x.data(), n)); };
+
+        const T f0 = evalAt(x0);
+        const T f1 = evalAt(x1);
+        T fFinal = f1;
+        bool failed = (f0 - f1) < kRetryMinRelDecrease * math::abs(f0);
+        if (failed)
+        {
+            gsVector<T> g0(n);
+            gsAsVector<T> g0v(g0.data(), n);
+            m_optProblem.gradObj_into(gsAsConstVector<T>(x0.data(), n), g0v);
+            failed = g0.norm() > m_options.getReal("OptTol") * (std::max)(T(1), x0.norm());
+        }
+
+        if (failed)
+        {
+            // h_sigma: smallest knot span of sigma's basis, parameter units.
+            T hSigma = std::numeric_limits<T>::max();
+            if (m_comp.domainDim() == 2)
+            {
+                const gsTensorBSplineBasis<2,T> & tb = dynamic_cast<const gsTensorBSplineBasis<2,T> &>(m_comp.domain().basis());
+                for (short_t k = 0; k < 2; ++k)
+                    hSigma = (std::min)(hSigma, tb.knots(k).minIntervalLength());
+            }
+            else
+            {
+                const gsTensorBSplineBasis<3,T> & tb = dynamic_cast<const gsTensorBSplineBasis<3,T> &>(m_comp.domain().basis());
+                for (short_t k = 0; k < 3; ++k)
+                    hSigma = (std::min)(hSigma, tb.knots(k).minIntervalLength());
+            }
+            const T alpha = T(0.5) * hSigma;
+
+            gsOptAffineRescaled<T> rescaled(m_optProblem, x0, alpha);
+            m_optimizer.setProblem(&rescaled);
+            m_optimizer.solve(gsMatrix<T>::Zero(n, 1));
+            const gsVector<T> y = m_optimizer.currentDesign().col(0);
+            const index_t retryIters = m_optimizer.iterations();
+            m_optimizer.setProblem(&m_optProblem);
+
+            const gsVector<T> x2 = x0 + alpha * y;
+            const T f2 = evalAt(x2);
+
+            if (!folded(f2) && (folded(f1) || f2 < f1))
+            {
+                chosen = x2;
+                fFinal = f2;
+            }
+            if (folded(fFinal))
+            {
+                chosen = x0;
+                fFinal = f0;
+            }
+            m_retryStatus    = ((f0 - fFinal) >= kRetryMinRelDecrease * math::abs(f0)) ? 1 : 2;
+            m_retryStepScale = alpha;
+            gsInfo << "gsAdaptiveParametrization: first optimisation stalled; retry from the same start with h_sigma = "
+                   << hSigma << ", alpha = " << alpha << ", f0 = " << f0 << ", f1 = " << f1
+                   << ", f2 = " << f2 << ", status " << m_retryStatus
+                   << ", retry iterations " << retryIters << std::endl;
+        }
+        m_initialObjective = f0;
+        m_finalObjective   = fFinal;
+    }
+
+    m_optProblem.composition().setControls(chosen);
     gsInfo<<"Finished with objective value: "<<m_optimizer.objective()<<std::endl;
 
     // Certified (sampling-free) lower bound on det J_sigma of the accepted

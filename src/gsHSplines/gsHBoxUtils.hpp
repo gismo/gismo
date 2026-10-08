@@ -527,6 +527,23 @@ typename gsHBoxUtils<d,T>::HContainer gsHBoxUtils<d, T>::markAdmissible(const gs
 }
 
 template <short_t d, class T>
+typename gsHBoxUtils<d,T>::HContainer gsHBoxUtils<d, T>::markAdmissibleExtended(const gsHBox<d,T> & marked, index_t m)
+{
+    const Container cells = marked.extensionCells();
+    if (cells.empty())
+        return gsHBoxUtils<d,T>::markAdmissible(marked,m);
+
+    Container input = marked.toUnitBoxes();
+    input.insert(input.end(),cells.begin(),cells.end());
+
+    const HContainer plain  = gsHBoxUtils<d,T>::markAdmissible(marked,m);
+    const HContainer result = gsHBoxUtils<d,T>::markAdmissible(gsHBoxUtils<d,T>::Container2HContainer(input),m);
+    // Reached cells that the closure of the marked box alone does not contain
+    const Container  drop   = gsHBoxUtils<d,T>::Difference(cells,gsHBoxUtils<d,T>::toContainer(plain));
+    return gsHBoxUtils<d,T>::Difference(result,gsHBoxUtils<d,T>::Container2HContainer(drop));
+}
+
+template <short_t d, class T>
 bool gsHBoxUtils<d, T>::allActive(const Container & elements)
 {
     bool check = true;
@@ -617,11 +634,14 @@ bool gsHBoxContains<d,T>::operator()(const gsHBox<d,T> & a, const gsHBox<d,T> & 
     res &= a.level() <= b.level();
     if (res)
     {
-        // Check if the indices of the ancestor are contained. If yes, the indices of the original box should be contained
+        // Check if the indices of the ancestor are contained. If yes, the indices of the original box should be contained.
+        // The ancestor of b on level a.level() has lower index floor(l/2^k) and upper index ceil(u/2^k), k = b.level()-a.level() (indices are non-negative)
+        const index_t k = b.level() - a.level();
+        const index_t r = (index_t(1) << k) - 1;
         for (index_t i=0; i!=d && res; i++)
         {
-            res &= a.lowerIndex().at(i) >= b.getAncestor(a.level()).lowerIndex().at(i);
-            res &= a.upperIndex().at(i) <= b.getAncestor(a.level()).upperIndex().at(i);
+            res &= a.lowerIndex().at(i) >= (b.lowerIndex().at(i) >> k);
+            res &= a.upperIndex().at(i) <= ((b.upperIndex().at(i) + r) >> k);
         }
     }
     return res;
@@ -650,11 +670,14 @@ bool gsHBoxIsContained<d,T>::operator()(const gsHBox<d,T> & a, const gsHBox<d,T>
     res &= a.level() >= b.level();
     if (res)
     {
-        // Check if the indices of the ancestor are contained. If yes, the indices of the original box should be contained
+        // Check if the indices of the ancestor are contained. If yes, the indices of the original box should be contained.
+        // The ancestor of a on level b.level() has lower index floor(l/2^k) and upper index ceil(u/2^k), k = a.level()-b.level() (indices are non-negative)
+        const index_t k = a.level() - b.level();
+        const index_t r = (index_t(1) << k) - 1;
         for (index_t i=0; i!=d && res; i++)
         {
-            res &= a.getAncestor(b.level()).lowerIndex().at(i) >= b.lowerIndex().at(i);
-            res &= a.getAncestor(b.level()).upperIndex().at(i) <= b.upperIndex().at(i);
+            res &= (a.lowerIndex().at(i) >> k) >= b.lowerIndex().at(i);
+            res &= ((a.upperIndex().at(i) + r) >> k) <= b.upperIndex().at(i);
         }
     }
     return res;

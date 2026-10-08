@@ -15,9 +15,7 @@
 
 #include <gsModeling/gsFitting.h>
 #include <gsHSplines/gsHTensorBasis.h>
-#include <gsHSplines/gsHBox.h>
-#include <gsHSplines/gsHBoxContainer.h>
-#include <gsHSplines/gsHBoxUtils.h>
+#include <gsHSplines/gsHElementMarker.h>
 
 namespace gismo {
 
@@ -219,6 +217,12 @@ protected:
     /// Automatic set the refinement threshold
     T setRefineThreshold(const std::vector<T>& errors);
 
+    /// Refinement boxes of the admissible path. The cells whose maximum point error (over the
+    /// parameters inside the closed cell) reaches \a threshold are marked; the boxes are those of a
+    /// gsHElementMarker (GARU, admissible closure of class 2, extension) up to the maximum index
+    /// level of the tree. Empty when no cell reaches \a threshold.
+    std::vector<index_t> _admissibleRefBoxes(const gsHTensorBasis<d,T> & basis, T threshold);
+
     /// Checks if \a a_cell is already inserted in container \a cells
     static bool isCellAlreadyInserted(const gsVector<index_t, d>& a_cell,
                                       const std::vector<index_t>& cells);
@@ -230,19 +234,6 @@ protected:
         for (index_t col = 0; col != box.rows(); col++)
             boxes.push_back(box[col]);
     }
-
-    /**
-    * @brief getMarkedHBoxesFromBasis_max: returns the markd cells to refine admissibiliy.
-    * @param basis: the hierarchical basis from which we extract the elements of the domain
-    * @param error: the pointwise parameter error
-    * @param parameters: the sites on which the point-wise error is computed
-    * @param threshold: the threshold to mark for refinement.
-    */
-    gsHBoxContainer<d> getMarkedHBoxesFromBasis_max(const gsHTensorBasis<d,T>& basis,
-                                                    const std::vector<T>& errors,
-                                                    const gsMatrix<T>& parameters,
-                                                    T threshold,
-                                                    T extension);
 
 protected:
 
@@ -366,7 +357,6 @@ bool gsHFitting<d, T>::nextIteration_pdm(T tolerance, T err_threshold,
     {
         if ( m_max_error > tolerance )
         {
-            gsHBoxContainer<2> markedRef;
             std::vector<index_t> boxes;
 
             // if err_treshold is -1 we refine the m_ref percent of the whole domain
@@ -376,8 +366,7 @@ bool gsHFitting<d, T>::nextIteration_pdm(T tolerance, T err_threshold,
 
             if (admissibleRef)
             {
-                markedRef = getMarkedHBoxesFromBasis_max(*basis, m_pointErrors, m_param_values, threshold, 2.);
-                boxes = markedRef.toRefBoxes();
+                boxes = _admissibleRefBoxes(*basis, threshold);
             }
             else
             {
@@ -430,7 +419,6 @@ bool gsHFitting<d, T>::nextIteration_pdm(T tolerance, T err_threshold,
     {
         if ( m_max_error > tolerance )
         {
-            gsHBoxContainer<2> markedRef;
             std::vector<index_t> boxes;
 
             // if err_treshold is -1 we refine the m_ref percent of the whole domain
@@ -440,8 +428,7 @@ bool gsHFitting<d, T>::nextIteration_pdm(T tolerance, T err_threshold,
 
             if (admissibleRef)
             {
-                markedRef = getMarkedHBoxesFromBasis_max(*basis, m_pointErrors, m_param_values, threshold, 2.);
-                boxes = markedRef.toRefBoxes();
+                boxes = _admissibleRefBoxes(*basis, threshold);
             }
             else
             {
@@ -486,7 +473,6 @@ bool gsHFitting<d, T>::nextIteration_tdm(T tolerance, T err_threshold,
     if ( m_pointErrors.size() != 0 )
     {
 
-    gsHBoxContainer<2> markedRef;
     std::vector<index_t> boxes;
 
     if ( m_max_error > tolerance )
@@ -500,8 +486,7 @@ bool gsHFitting<d, T>::nextIteration_tdm(T tolerance, T err_threshold,
       // MARK-ADMISSIBLE
       if (admissibleRef)
       {
-        markedRef = getMarkedHBoxesFromBasis_max(*basis, m_pointErrors, m_param_values, threshold, 2.);
-        boxes = markedRef.toRefBoxes();
+        boxes = _admissibleRefBoxes(*basis, threshold);
       }
       else
       {
@@ -556,7 +541,6 @@ bool gsHFitting<d, T>::nextRefinement(T tolerance, T err_threshold,
         if ( m_max_error > tolerance )
         {
             std::vector<index_t> boxes;
-            gsHBoxContainer<2> markedRef;
             // if err_treshold is -1 we refine the m_ref percent of the whole domain
             T threshold = (err_threshold >= 0) ? err_threshold : setRefineThreshold(m_pointErrors);
 
@@ -565,8 +549,7 @@ bool gsHFitting<d, T>::nextRefinement(T tolerance, T err_threshold,
             // MARK
             if (admissibleRef)
             {
-              markedRef = getMarkedHBoxesFromBasis_max(*basis, m_pointErrors, m_param_values, threshold, 2.);
-              boxes = markedRef.toRefBoxes();
+              boxes = _admissibleRefBoxes(*basis, threshold);
             }
             else
             {
@@ -754,16 +737,18 @@ T gsHFitting<d, T>::setRefineThreshold(const std::vector<T>& errors )
 }
 
 
-// Check if a point is inside a cell
+// Check if a point is inside a cell (half-open: lower faces included, upper faces excluded)
 template <class T>
 bool is_point_inside_cell(const gsMatrix<T>& parameter,
                           const gsMatrix<T>& element)
 {
-    const real_t x = parameter(0, 0);
-    const real_t y = parameter(1, 0);
-
-    return element(0, 0) <= x && x < element(0, 1) &&
-           element(1, 0) <= y && y < element(1, 1);
+    for (index_t k = 0; k != element.rows(); ++k)
+    {
+        const T p = parameter(k, 0);
+        if (!(element(k, 0) <= p && p < element(k, 1)))
+            return false;
+    }
+    return true;
 }
 
 // Check if a point is inside a cell
@@ -777,57 +762,63 @@ bool is_point_inside_cell(const T x,
 }
 
 
-// Returns the maximum error at the parameters inside the a cell
+// Returns the maximum error at the parameters inside a cell (closed box, d = a_cell.rows()).
+// Complexity O(N d) for N parameters.
 template<class T>
 T getCellMaxError(const gsMatrix<T>& a_cell,
                   const std::vector<T>& errors,
                   const gsMatrix<T>& parameters){
 
-    std::vector<T> a_cellErrs;
+    GISMO_ASSERT(parameters.rows() == a_cell.rows(),
+                 "Parameter dimension does not match the cell dimension.");
+    GISMO_ASSERT(static_cast<size_t>(parameters.cols()) == errors.size(),
+                 "One error per parameter is required.");
     T cell_max_err = 0;
     for(index_t it=0; it < parameters.cols(); it++){
-        const T xx = parameters.col(it)(0);
-        const T yy = parameters.col(it)(1);
-            if (is_point_inside_cell(xx, yy, a_cell))
-            {
-                a_cellErrs.push_back(errors[it]);
-            }
-        }
-
-    for(typename std::vector<T>::iterator errIt = a_cellErrs.begin(); errIt != a_cellErrs.end(); ++errIt){
-      if (*errIt > cell_max_err){
-        cell_max_err = *errIt;
-      }
+        bool inside = true;
+        for (index_t k = 0; k != a_cell.rows() && inside; ++k)
+            inside = a_cell(k,0) <= parameters(k,it) && parameters(k,it) <= a_cell(k,1);
+        if (inside && errors[it] > cell_max_err)
+            cell_max_err = errors[it];
     }
     return cell_max_err;
 }
 
-// returns the markd cells to refine admissibiliy.
 template <short_t d, class T>
-gsHBoxContainer<d> gsHFitting<d, T>::getMarkedHBoxesFromBasis_max(const gsHTensorBasis<d,T>& basis,
-                                                const std::vector<T>& errors,
-                                                const gsMatrix<T>& parameters,
-                                                T threshold,
-                                                T extension)
+std::vector<index_t> gsHFitting<d, T>::_admissibleRefBoxes(const gsHTensorBasis<d,T> & basis, T threshold)
 {
-    gsHBoxContainer<d> markedHBoxes;
-    typename gsBasis<T>::domainIter domItEnd =  basis.domain()->endAll();
-    for (auto domIt = basis.domain()->beginAll(); domIt<domItEnd; ++domIt )    // loop over all elements
+    // 0/1 indicator indexed by the visiting order of domain()->beginAll(), which is the element id
+    // used by the marker. With RefineParam = 1 the GARU rule selects exactly the cells with
+    // indicator 1; feeding the raw cell maxima with a relative threshold would round-trip t/M*M
+    // and could drop a cell whose maximum equals the threshold.
+    std::vector<T> indicator(basis.numElements(), 0);
+    bool anyMarked = false;
+    typename gsBasis<T>::domainIter domItEnd = basis.domain()->endAll();
+    for (auto domIt = basis.domain()->beginAll(); domIt < domItEnd; ++domIt)
     {
-        gsMatrix<T> elMatrix(d,d);
-        elMatrix.col(0)<< domIt.lowerCorner(); // first column  = lower corner
-        elMatrix.col(1)<< domIt.upperCorner(); // second column = upper corner
-        T cellMaxError = getCellMaxError(elMatrix, errors, parameters);
-        if (cellMaxError >= threshold)
+        gsMatrix<T> elMatrix(d,2);
+        elMatrix.col(0) << domIt.lowerCorner(); // first column  = lower corner
+        elMatrix.col(1) << domIt.upperCorner(); // second column = upper corner
+        if (getCellMaxError(elMatrix, m_pointErrors, m_param_values) >= threshold)
         {
-            gsHDomainIterator<T,d> * domHIt = nullptr;
-            domHIt = dynamic_cast<gsHDomainIterator<T,2> *>(domIt.get());
-            gsHBox<d> a_box(domHIt);
-            gsHBoxContainer<d> tmp(gsHBoxUtils<d,T>::markAdmissible(a_box,extension));
-            markedHBoxes.add(tmp);
+            indicator[domIt.id()] = 1;
+            anyMarked = true;
         }
     }
-    return markedHBoxes;
+    if (!anyMarked)
+        return std::vector<index_t>();
+
+    gsOptionList opts = gsHElementMarker<d,T>::defaultOptions();
+    opts.setInt   ("RefineRule", 1);
+    opts.setReal  ("RefineParam", 1.0);
+    opts.setInt   ("Jump", 2);
+    opts.setSwitch("Admissible", true);
+    opts.setSwitch("Extension", true);
+    // A level-k leaf is refined to level k+1, which must not exceed the tree's index level
+    opts.setInt   ("MaxLevel", static_cast<index_t>(basis.tree().getIndexLevel()));
+    gsHElementMarker<d,T> marker(basis, opts);
+    marker.setErrors(indicator);
+    return marker.toRefBoxes(marker.markRef());
 }
 
 }// namespace gismo

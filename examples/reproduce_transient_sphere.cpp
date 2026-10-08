@@ -39,10 +39,12 @@
 */
 
 #include <gismo.h>
+#include <functional>
 #include <gsNurbs/gsSquareDomain.h>
 #include <gsOptim/gsOptim.h>
 #include <gsHLBFGS/gsHLBFGS.h>
 #include <gsAssembler/gsAdaptiveParametrization.h>
+#include <gsHSplines/gsHElementMarker.h>
 
 using namespace gismo;
 
@@ -115,6 +117,104 @@ public:
     }
 };
 
+// Frozen middle-square field for the discrete ValueBased R monitor
+// (--relocMonitor 1). aleStep solves on cmp = S o sigma, so u_h lives on the
+// fixed analysis basis mb as a function of the hat variable xi_hat; the point
+// of the middle square gsOptMesh samples under parametric=true is
+// eta = sigma(xi_hat) for the sigma UNDER OPTIMISATION, not the sigma_prev
+// that u_h was actually solved on. Composing u_h with the sigma under
+// optimisation would move the monitor with the design (trap (b) below); this
+// interpolates u_h back onto sigma_prev's IMAGE once, up front, so the
+// ClampedMonitor below is a fixed function of eta alone.
+//
+// Traps:
+//  (a) Passing u_h directly with parametric=true evaluates u_h(sigma(xi_hat)),
+//      correct only if sigma_prev = identity. Here minDetJsigma ~ 0.27, so the
+//      monitor would be displaced by a full relocation and nothing would error.
+//  (b) A monitor re-evaluated through the sigma being optimised (instead of
+//      the frozen sigma_prev) moves with the design; its deriv_into no longer
+//      matches gsOptMesh's chain rule, so gradients are silently wrong.
+//  (c) Physical push-forward (parametric=false) is not an option: S o sigma_prev
+//      maps 2->3, so inverting it is not a square Newton solve, and doing so
+//      per quadrature point inside 40 HLBFGS iterations would be prohibitive.
+//  (d) u_h can dip slightly below 0 near the band edge (a discrete undershoot);
+//      ClampedMonitor clamps at 0, the exact solution's own range (sech^2>=0),
+//      so 1+theta*f>0 (gsAdaptiveParametrization.hpp:647) cannot be violated.
+static gsGeometry<real_t>::uPtr pullBackToSigmaImage(const gsGeometry<real_t>& uh,      // spline in xi_hat
+                                                     const gsGeometry<real_t>& sigPrev, // sigma uh was solved on
+                                                     index_t nE, short_t deg)
+{
+    gsKnotVector<> kv(0,1,nE-1,deg+1);             // same construction as tpA at :781
+    gsTensorBSplineBasis<2> eta(kv,kv);
+    const gsMatrix<real_t> etaPts = eta.anchors();
+    gsMatrix<real_t> xi = etaPts;                  // initial guess: sigma_prev ~ identity-shaped
+    // 1e-6, not the default invertPoints accuracy (1e-10): xi feeds a MONITOR
+    // (an optimiser input, smoothed by theta and clamped below -- see
+    // ClampedMonitor), not a solution field, so Newton need not resolve it to
+    // solution-grade precision. Measured at N=24,K=16,monitorRes=96
+    // (--relocMonitor 1 --stepSchedule SRS --arms R, 16 pullback calls): 1e-6
+    // vs 1e-10 moves the R arm's mean L2 by +0.3% and the pulled-back field's
+    // own min/max/mean/norm by <=0.8% at every call, while cutting the
+    // max-over-the-run damped Newton iteration count from 187 to 109 -- a
+    // looser accuracy satisfies both of newtonRaphson_impl's exit tests
+    // sooner (the residual test, gsFunction.hpp:320, and the support-clamped
+    // step-size test, :372). No inversion failed at any of 1e-10/1e-8/1e-6.
+    const real_t invertAccuracy = 1e-6;
+    sigPrev.invertPoints(etaPts, xi, invertAccuracy, true);
+    // A failed column comes back all-+inf (gsFunction.hpp's invertPoints on
+    // newtonRaphson returning -1). xi feeds the same optimiser-input monitor
+    // as above, so a handful of failures are noise: fall back to xi=eta
+    // there, i.e. treat sigma_prev as the identity locally. That is a
+    // bounded, LOCALIZED substitution -- sigma_prev is never far from the
+    // identity in this driver (minDetJsigma measured 0.23-0.33 across the R
+    // steps of the calibration runs above) -- not a wild one. More than 1% of
+    // the anchors failing means sigma_prev is far from invertible somewhere
+    // (near-folded), at which point the pullback is not trustworthy and the
+    // run should stop rather than silently misinform the optimiser
+    // everywhere; a long unattended sweep must not die on a handful of
+    // failures the way GISMO_ENSURE(xi.allFinite()) used to.
+    index_t nFailed = 0;
+    for (index_t c=0; c<xi.cols(); ++c)
+        if (!xi.col(c).allFinite()) { xi.col(c) = etaPts.col(c); ++nFailed; }
+    if (nFailed>0)
+    {
+        gsWarn << "pullBackToSigmaImage: "<<nFailed<<"/"<<xi.cols()
+               <<" sigma_prev inversions failed; falling back to xi=eta there\n";
+        GISMO_ENSURE(real_t(nFailed) <= real_t(0.01)*real_t(xi.cols()),
+                     "pullBackToSigmaImage: "<<nFailed<<"/"<<xi.cols()
+                     <<" sigma_prev inversions failed (>1%) -- pullback is not meaningful");
+    }
+    gsMatrix<real_t> vals; uh.eval_into(xi, vals); // 1 x nAnchors
+    return eta.interpolateAtAnchors(vals);
+}
+
+// Clamps a frozen discrete field at 0 so it can serve as a ValueBased monitor
+// 1+theta*f without violating the >0 precondition on a numerical undershoot
+// (trap (d) above). Const and allocation-local: gsOptMesh's evalObj/gradObj_into
+// call this from inside an OMP parallel region (gsAdaptiveParametrization.hpp:446),
+// so no ENSURE/throw belongs here.
+class ClampedMonitor : public gsFunction<real_t>
+{
+    const gsGeometry<real_t>& m_field;
+public:
+    explicit ClampedMonitor(const gsGeometry<real_t>& field) : m_field(field) {}
+    GISMO_CLONE_FUNCTION(ClampedMonitor)
+    short_t domainDim() const { return 2; }
+    short_t targetDim() const { return 1; }
+    void eval_into(const gsMatrix<real_t>& u, gsMatrix<real_t>& res) const
+    {
+        m_field.eval_into(u, res);
+        res = res.cwiseMax(real_t(0));
+    }
+    void deriv_into(const gsMatrix<real_t>& u, gsMatrix<real_t>& res) const
+    {
+        gsMatrix<real_t> val; m_field.eval_into(u, val);
+        m_field.deriv_into(u, res);
+        for (index_t j=0; j<res.cols(); ++j)
+            if (val(0,j) < 0) res.col(j).setZero();
+    }
+};
+
 static gsGeometry<real_t>::uPtr makeIdentity(index_t d, index_t N)
 {
     gsGeometry<>::uPtr comp = gsNurbsCreator<>::BSplineSquareDeg(d);
@@ -157,14 +257,14 @@ static real_t sampleMinDetJ(const gsGeometry<real_t>& sigma, index_t nPerDir=9)
 // which is 0 exactly when sigma did not move.
 static gsGeometry<real_t>::uPtr relocateFrom(const gsGeometry<real_t>& init, const gsGeometry<real_t>& S,
                                              real_t smoothing, real_t penalty, index_t maxIt,
-                                             real_t* maxDisp=nullptr)
+                                             real_t* maxDisp=nullptr,
+                                             const gsFunction<real_t>* monitor=nullptr)
 {
     gsGeometry<>::uPtr comp = init.clone();
     gsSquareDomain<real_t> dom(*comp);
     dom.options().addSwitch("Slide","",false); dom.applyOptions();   // fixed boundary (Sec.4.3)
     if (dom.nControls()>0)
     {
-        gsFunctionExpr<> indicator(exactStr(), S.targetDim());
         // gsOptim's L-BFGS has been observed to stall silently on this
         // objective -- sigma left at the identity while convergence is
         // reported -- which is why the schedule study switched to HLBFGS
@@ -174,10 +274,27 @@ static gsGeometry<real_t>::uPtr relocateFrom(const gsGeometry<real_t>& init, con
         if (g_hlbfgs) opt.reset(new gsHLBFGS<real_t>());
         else           opt.reset(new gsOptim<real_t>::LBFGS());
         opt->options().setInt("MaxIterations",maxIt);
-        gsAdaptiveParametrization<real_t,MonitorMode::ValueBased> relo(dom,S,indicator,*opt,false);
-        relo.options().setReal("Smoothing",smoothing); relo.options().setReal("Penalty",penalty);
-        relo.solve();
-        const real_t mJ = relo.computeMinJacobian();
+        real_t mJ;
+        if (monitor)
+        {
+            // Discrete monitor (--relocMonitor 1): parametric=true, sampled at
+            // eta=sigma(xi_hat) directly -- see pullBackToSigmaImage/ClampedMonitor.
+            gsAdaptiveParametrization<real_t,MonitorMode::ValueBased> relo(dom,S,*monitor,*opt,true);
+            relo.options().setReal("Smoothing",smoothing); relo.options().setReal("Penalty",penalty);
+            relo.solve();
+            mJ = relo.computeMinJacobian();
+        }
+        else
+        {
+            // Exact monitor: relocateFrom's objective is the exact solution at
+            // the current time, always evaluated at the PHYSICAL point (see the
+            // ctor's trailing `false` = parametric).
+            gsFunctionExpr<> indicator(exactStr(), S.targetDim());
+            gsAdaptiveParametrization<real_t,MonitorMode::ValueBased> relo(dom,S,indicator,*opt,false);
+            relo.options().setReal("Smoothing",smoothing); relo.options().setReal("Penalty",penalty);
+            relo.solve();
+            mJ = relo.computeMinJacobian();
+        }
         GISMO_ENSURE(math::isfinite(mJ)&&mJ>0, "reloc folded (minJ="<<mJ<<")");
     }
     gsGeometry<>::uPtr out = dom.domain().clone();
@@ -352,6 +469,273 @@ static gsMultiBasis<real_t> buildTHBbyError(const gsMultiPatch<real_t>& cmp,
     return mb;
 }
 
+// Element-wise u_ex^2 monitor on the CURRENT mesh, single pass -- the per-step
+// indicator adaptMesh() marks against under --thbMark 0. Same integral as the
+// loop body of buildTHBforFeature, but evaluated once per step against the
+// persistent mesh rather than nPass times against a mesh rebuilt from the
+// coarse base.
+static std::vector<real_t> computeMonitorElErr(const gsMultiPatch<real_t>& cmp, const gsMultiBasis<real_t>& mb)
+{
+    const index_t dim = cmp.patch(0).targetDim();
+    gsFunctionExpr<> uexFun(exactStr(),dim);
+    gsComposedFunction<real_t> cuex(cmp.patch(0), uexFun);
+    gsExprAssembler<> A(1,1); A.setIntegrationElements(mb);
+    A.options().setReal("quA",g_quA); A.options().setInt("quB",2);
+    gsOptionList seOff; seOff.addSwitch("SameElement","",false);
+    A.options().update(seOff, gsOptionList::addIfUnknown);
+    gsExprEvaluator<> ev(A); ev.options().setReal("quA",g_quA); ev.options().setInt("quB",2);
+    ev.options().update(seOff, gsOptionList::addIfUnknown);
+    auto Gm = A.getMap(cmp);
+    auto uex = ev.getVariable(cuex);
+    ev.integralElWise( uex.sqNorm()*meas(Gm) );
+    return ev.elementwise();
+}
+
+// Effective MaxLevel for adaptMesh() on a given arm's basis: the CLI value if
+// the user gave one (>=0), else the arm's OWN initial depth + 1. The initial
+// mb is built by the legacy buildTHBforFeature/buildTHBbyError path (thbPass
+// rounds against the coarse base), so its depth already exceeds 0 in general
+// -- defaulting to a flat 0+1 here would cap refinement below the mesh the
+// persistent loop inherits and block it from step 1 (the MaxLevel trap).
+static index_t maxLevelFor(const gsMultiBasis<real_t>& mb, index_t maxLevelCli)
+{
+    if (maxLevelCli>=0) return maxLevelCli;
+    return static_cast<index_t>(static_cast<const gsHTensorBasis<2,real_t>&>(mb.basis(0)).maxLevel()) + 1;
+}
+
+// Refines and coarsens a PERSISTENT hierarchical basis in place, admissible of
+// class \a opt("jump") (gsHElementMarker's "Jump" option), against an
+// element-wise indicator \a elErr. This replaces the old strategy of rebuilding
+// a fresh gsMultiBasis from the coarse tensor base every step (buildTHBforFeature
+// / buildTHBbyError): those two consequences -- no enforced admissibility, and a
+// ratchet where whatever the first refinement pass committed to is never
+// released -- are exactly what markCrs() here fixes, since coarsening lets the
+// mesh give back cells the moving ring has passed.
+//
+// \a opt carries the CLI-mirrored keys refRule/refParam/crsRule/crsParam/
+// maxLevel/jump (gsHElementMarker::defaultOptions() names RefineRule/
+// RefineParam/CoarsenRule/CoarsenParam/MaxLevel/Jump; Admissible and Extension
+// are left at the marker's own defaults, both true, matching
+// poisson_rh_schedule_example.cpp:979-1013).
+// \a doRef/\a doCrs select which half of the marker to run: with both true
+// (the default) this call sequence and printed line are unchanged from the
+// unconditional version. Returns true iff either box list is non-empty, which
+// is how the band loop below (:target>=0) detects a pass that could not
+// change the mesh (MaxLevel cap on refinement, nothing left to coarsen).
+static bool adaptMesh(gsMultiBasis<real_t> & mb, const std::vector<real_t> & elErr, const gsOptionList & opt,
+                      bool doRef=true, bool doCrs=true)
+{
+    const gsBasis<real_t>& active = mb.basis(0);
+    // setErrors' own size check is a GISMO_ASSERT, which compiles out in
+    // Release: a mismatched indicator (e.g. an elErr vector from a mesh that
+    // has since changed) would otherwise silently mis-mark instead of failing.
+    GISMO_ENSURE(elErr.size()==(size_t)active.numElements(),
+                 "adaptMesh: indicator size "<<elErr.size()<<" != "<<active.numElements()<<" elements");
+
+    typedef gsHElementMarker<2,real_t> marker_t;
+    marker_t marker(active);
+    marker.options().setInt ("RefineRule",   opt.getInt ("refRule"));
+    marker.options().setReal("RefineParam",  opt.getReal("refParam"));
+    marker.options().setInt ("CoarsenRule",  opt.getInt ("crsRule"));
+    marker.options().setReal("CoarsenParam", opt.getReal("crsParam"));
+    marker.options().setInt ("MaxLevel",     opt.getInt ("maxLevel"));
+    marker.options().setInt ("Jump",         opt.getInt ("jump"));
+    marker.setErrors(elErr);
+
+    // When !doRef, markedRef is an empty container (mirrors
+    // l2projection_rh_schedule_example.cpp:1460-1463): markCrs() then has no
+    // refined region to exclude, so a coarsen-only pass considers the whole mesh.
+    const marker_t::HElementContainer markedRef = doRef ? marker.markRef() : marker_t::HElementContainer();
+    const std::vector<index_t> refBoxes = doRef ? marker.toRefBoxes(markedRef) : std::vector<index_t>();
+    const marker_t::HElementContainer markedCrs = doCrs ? marker.markCrs(markedRef) : marker_t::HElementContainer();
+    const std::vector<index_t> crsBoxes = doCrs ? marker.toCrsBoxes(markedCrs) : std::vector<index_t>();
+
+    // Both box lists are computed on the SAME pre-mutation mesh. markCrs drops
+    // every candidate whose coarsening box overlaps a refinement box of
+    // markedRef (extension included) at a higher target level, so applying the
+    // two lists in sequence leaves each refined region at or above its target.
+    if (!refBoxes.empty()) mb.refineElements(0, refBoxes);
+    if (!crsBoxes.empty()) mb.unrefineElements(0, crsBoxes);
+
+    real_t errSum = std::accumulate(elErr.begin(), elErr.end(), real_t(0));
+
+    gsInfo << "    adaptMesh | marked ref " << markedRef.size() << " crs " << markedCrs.size()
+           << " | dofs " << mb.basis(0).size() << " | error " << errSum
+           << " | maxLevel " << static_cast<const gsHTensorBasis<2,real_t>&>(mb.basis(0)).maxLevel() << "\n";
+
+    return !refBoxes.empty() || !crsBoxes.empty();
+}
+
+// Drives one H letter's mesh through the target-error band --target/--band on
+// the persistent mesh, shared by the T and H arms. \a resolve() is that arm's
+// full S-branch body (same ALE state as an ordinary 'S', per the H arm's
+// trap); \a indicator() recomputes the marking indicator fresh EVERY pass, so
+// a discrete indicator (--thbMark 1) always reflects the mesh/solve the
+// previous pass just produced. \a err aliases the arm's eAcc, so it is
+// automatically current after every resolve() -- a value copied out before
+// the loop would silently turn every run into "capped".
+//
+//   crsParam/refParam (the marker's BULK fractions) decide HOW MUCH is marked
+//   in a pass; the band decides WHETHER a pass refines, coarsens, or both.
+//   Below the band, crsParam sets the size of each coarsening pass, and the
+//   band's lower edge target/band is what starts it.
+//
+// The letter OPENS with one refine+coarsen sweep and a re-solve, and then runs
+// the band loop, which ends without touching the mesh again. Both halves are
+// load bearing:
+//
+//   the sweep, because it is the only place a banded H can RELEASE elements.
+//   Coarsening driven by the band alone fires only below target/band, which a
+//   moving feature never reaches: refinement at the feature's new position
+//   holds the error mid-band, so without the sweep the refined region trails
+//   the feature and the mesh only ever grows (measured: 90 refining steps and
+//   0 coarsening steps over 128, the h arm ending above the uniform mesh it is
+//   supposed to undercut);
+//
+//   its position BEFORE the loop, because a sweep after the error that
+//   justified stopping has been measured makes acceptance meaningless: its
+//   coarsening half pushes the error straight back out, and the next step
+//   spends its whole pass budget clawing it back. Measured at K=128,
+//   target 1e-3: a terminal sweep left 74 of 128 steps outside the band and
+//   the mesh oscillating (1675, 1340, 1671, 1607, 1369 degrees of freedom on
+//   consecutive steps). Opening with the sweep instead releases what the
+//   feature has left, and the loop then refines to the target on the swept
+//   mesh, so the accepted solve and the mesh it was taken on agree -- for
+//   every schedule alike, which a terminal sweep does not: with H last (SRSH)
+//   its effect would be deferred to the next step, with a solve after H (SHS,
+//   SHSR) paid immediately, and that asymmetry alone put SHSR at 2/32 steps
+//   in band against SRSH's 32/32 at K=32.
+//
+// \a bandState on return is one of:
+//   "in"        the test after the opening sweep already satisfied
+//               target/band < err <= target*band, so no further pass was needed;
+//   "refined"/"coarsened"  entered the band after >=1 further pass, named by
+//               that last pass's direction;
+//   "capped"    left outside the band: --maxRefIt passes exhausted, or a
+//               refine-only/coarsen-only pass changed nothing (MaxLevel cap,
+//               or nothing left to coarsen). The last solve taken is always
+//               kept -- this loop only ever returns, never aborts.
+static void runBandedH(gsMultiBasis<real_t>& mb, const gsOptionList& adaptOpt,
+                       real_t target, real_t band, index_t maxRefIt,
+                       const std::function<std::vector<real_t>()>& indicator,
+                       const std::function<void()>& resolve,
+                       real_t& err, index_t& innerIt, std::string& bandState)
+{
+    index_t passes=0; bool lastPassWasRefine=false;
+    // Opening sweep: release what the feature has left and refine where it now
+    // is, on the indicator of the solve this letter inherited, then re-solve so
+    // the loop below tests the swept mesh.
+    adaptMesh(mb, indicator(), adaptOpt, true, true); ++innerIt;
+    resolve();
+    while (true)
+    {
+        gsInfo<<"error = "<<err<<"; band=[" << target/band << "," << target*band << "]\n";
+        if (target/band < err && err <= target*band)
+        {
+            bandState = (passes==0) ? "in" : (lastPassWasRefine ? "refined" : "coarsened");
+            return;
+        }
+        if (passes==maxRefIt)
+        {
+            gsWarn << "band capped after maxRefIt passes, err=" << err
+                   << ", band=[" << target/band << "," << target*band << "]\n";
+            bandState = "capped";
+            return;
+        }
+        bool changed;
+        if (err > target*band)
+        {
+            changed = adaptMesh(mb, indicator(), adaptOpt, true, false); ++innerIt;
+            if (!changed)
+            {
+                gsWarn << "above band, refinement marked nothing (MaxLevel?)\n";
+                bandState = "capped"; return;
+            }
+            lastPassWasRefine = true;
+        }
+        else // err <= target/band
+        {
+            changed = adaptMesh(mb, indicator(), adaptOpt, false, true); ++innerIt;
+            if (!changed)
+            {
+                gsWarn << "below band, nothing coarsenable\n";
+                bandState = "capped"; return;
+            }
+            lastPassWasRefine = false;
+        }
+        resolve(); ++passes;
+    }
+}
+
+// Validates a per-time-step schedule word over {S,R,H}: non-empty, contains
+// at least one S, and every letter whose indicator/monitor is a DISCRETE
+// quantity is immediately preceded by a fresh 'S'. The rule is about
+// INDICATOR PROVENANCE, not a blanket ordering:
+//  - 'R' normally relocates sigma against relocateFrom()'s exact-solution
+//    objective (exactStr(), never the discrete solve) and needs no preceding
+//    'S' -- e.g. "RS": relocate to the current time's feature, then solve on
+//    the fresh sigma (the R arm's default). Under --relocMonitor 1, though,
+//    the monitor is the frozen discrete field of the LAST solve
+//    (pullBackToSigmaImage), which does not exist before a solve has produced
+//    it, so \a rDiscrete demands a preceding 'S' too -- the default "RS" is
+//    then invalid; "SRS" is the fix.
+//  - 'H' marks against whatever --thbMark or --target selected. thbMark=1's
+//    indicator is the just-computed discrete element-wise L2 error
+//    (lastElErr/elErrOut); the band (--target>=0) reads `err`, the L2 error of
+//    the immediately preceding solve. Both need a preceding 'S' -- SRH and
+//    SHR, marking on an indicator from the PRE-adapt/PRE-relocation state, are
+//    exactly the two words \a hDiscrete forbids. thbMark=0 with no band reads
+//    only the current geometry (u_ex^2, computeMonitorElErr), no solve, so
+//    'H' may lead too in that case.
+//  - Every word still needs an 'S' somewhere: each arm's step body sets
+//    `un = uAccepted`, where `uAccepted` is default-constructed and only
+//    assigned inside the `c=='S'` branch. A word with no 'S' silently blanks
+//    the accepted solution every step.
+//
+// Structural rules (non-empty, contains 'S', letters subset of {S,R,H}) are
+// always enforced. Provenance rules (the preceding-'S' checks) are bypassed by
+// \a allowInvalid, each violation instead printed as a multi-line gsWarn.
+// Returns true iff any provenance rule was violated (and bypassed).
+static bool validateStepSchedule(const std::string& word, bool hDiscrete, bool rDiscrete, bool allowInvalid)
+{
+    GISMO_ENSURE(!word.empty(), "--stepSchedule: word must be non-empty");
+    GISMO_ENSURE(word.find('S')!=std::string::npos,
+                 "--stepSchedule \""<<word<<"\": must contain at least one 'S' -- the accepted"
+                 " solution of a step IS an S, and a word without one leaves it undefined");
+    for (size_t i=0;i<word.size();++i)
+    {
+        const char c = word[i];
+        GISMO_ENSURE(c=='S'||c=='R'||c=='H',
+                     "--stepSchedule \""<<word<<"\": invalid letter '"<<c<<"' at position "<<i
+                     <<" (only S, R, H are allowed)");
+    }
+
+    bool violated = false;
+    for (size_t i=0;i<word.size();++i)
+    {
+        const char c = word[i];
+        const bool needsFreshS = (c=='H' && hDiscrete) || (c=='R' && rDiscrete);
+        if (!needsFreshS || !(i==0 || word[i-1]!='S')) continue;
+
+        std::ostringstream msg;
+        msg << "--stepSchedule \""<<word<<"\": '"<<c<<"' at position "<<i
+            << " is not immediately preceded by 'S' -- its indicator is a discrete"
+               " quantity from the last solve, which will be STALE (from before this"
+               " letter's predecessor) if used here";
+        if (c=='R')
+            msg << ". Under --relocMonitor 1 the R arm's default word 'RS' is invalid;"
+                   " use --stepSchedule SRS";
+        if (allowInvalid)
+        {
+            gsWarn << msg.str() << " (allowed via --allowInvalidSchedule)\n";
+            violated = true;
+        }
+        else
+            GISMO_ENSURE(false, msg.str());
+    }
+    return violated;
+}
+
 // Per-arm ParaView + per-arm plot CSV output.
 //
 // The directory layout is not free: scripts/render_panels.py::step_files()
@@ -373,25 +757,41 @@ static gsMultiBasis<real_t> buildTHBbyError(const gsMultiPatch<real_t>& cmp,
 struct ArmOut
 {
     bool                                  on;
+    bool                                  extended;
     std::string                           dir;
     gsExprEvaluator<>                     pev;   // persistent: the collection holds &pev
     std::unique_ptr<gsParaviewCollection> sol;
     std::vector<index_t>                  steps;
     std::ofstream                         csv;
 
-    ArmOut() : on(false) {}
+    ArmOut() : on(false), extended(false) {}
 
     /// Opens <base>/<arm>/ and, when \a doPlot, the ParaView collection in it.
     /// The per-arm plot CSV is written either way -- it is the pgfplots input
     /// and costs nothing.
-    void open(const std::string& base, const std::string& arm, bool doPlot, index_t plotPoints)
+    ///
+    /// \a extended appends two trailing columns, `inner_it,band_state` (see
+    /// row()'s doc). It is driven by target>=0 or relocMonitor==1 as well as
+    /// --extendedCSV directly (main() computes the OR), rather than only by
+    /// the switch, because a band or discrete-monitor run has a genuine
+    /// per-step adaptation/relocation cost that the frozen 5-column schema has
+    /// no room for -- silently dropping it would make such a run
+    /// indistinguishable from one where nothing extra happened. A sweep that
+    /// wants one schema across all four arms passes --extendedCSV everywhere.
+    void open(const std::string& base, const std::string& arm, bool doPlot, index_t plotPoints, bool extended_)
     {
+        extended = extended_;
         const std::string sep(1, gsFileManager::getNativePathSeparator());
         dir = base + arm + sep;
         gsFileManager::mkdir(dir);
         csv.open((base+"timeseries_"+arm+".csv").c_str());
-        csv << std::unitbuf << "step,t,dofs,l2,h1\n"
-            << std::scientific << std::setprecision(8);
+        // "solves" appended at the END of the existing step,t,dofs,l2,h1 schema
+        // so a column-name reader (Results_transient_ring_20260910/fig_transient_ring.tex,
+        // which pulls "dofs"/"l2" by name) is unaffected; only a positional reader
+        // of a trailing column would need updating, and none exists.
+        csv << std::unitbuf << "step,t,dofs,l2,h1,solves";
+        if (extended) csv << ",inner_it,band_state";
+        csv << "\n" << std::scientific << std::setprecision(8);
         if (!doPlot) return;
         on = true;
         gsFileManager::mkdir(dir+"sigma_steps");
@@ -403,8 +803,19 @@ struct ArmOut
         sol->options().setInt("precision", 12);
     }
 
-    void row(index_t k, real_t t, index_t dofs, real_t l2, real_t h1)
-    { csv << k << "," << t << "," << dofs << "," << l2 << "," << h1 << "\n"; }
+    /// \a innerIt counts the adaptMesh (or legacy rebuild) calls this step: 0
+    /// on the U and R arms (no mesh), 1 per H letter when the band is off, or
+    /// the number of band passes actually taken on the T/H arms. \a bandState
+    /// is one of off|in|refined|coarsened|capped, taken from the step's LAST
+    /// H letter -- see the band loop's comment for what each value means.
+    /// Both are only written when \a extended is set (see open()).
+    void row(index_t k, real_t t, index_t dofs, real_t l2, real_t h1, index_t solves,
+             index_t innerIt=0, const std::string& bandState="off")
+    {
+        csv << k << "," << t << "," << dofs << "," << l2 << "," << h1 << "," << solves;
+        if (extended) csv << "," << innerIt << "," << bandState;
+        csv << "\n";
+    }
 
     /// One time step: the solution collection entry plus the sigma/mesh
     /// snapshots. \a cmp must outlive the call (newTimeStep takes its address).
@@ -484,6 +895,25 @@ int main(int argc, char** argv)
     index_t p=2, compDeg=2, compN=16, Na=24, K=20, relocIt=40, thbPass=4, Kreloc=1, thbMark=0, thbBase=12;
     bool skipReloc=false, sigmaReset=false, useOptimLBFGS=false, plot=false;
     index_t plotPoints=1000;
+    // gsHElementMarker options for the persistent T/H meshes (adaptMesh above).
+    // crsRule/crsParam=BULK,0.1 match poisson_rh_schedule_example's tuned
+    // H-step defaults (:451-452); that file's RefineParam is 0.5, not what is
+    // set here. refParam=0.30 is instead tuned for THIS driver's persistent
+    // mesh: RefineRule=3 (BULK/Dörfler) marks the elements carrying refParam of
+    // the TOTAL indicator mass every step, and on a mesh that is never rebuilt
+    // from the coarse base that compounds. A refParam sweep at -N16 -K16
+    // (--skipReloc) found a limit cycle onset between 0.30 (mean 1022 DoF,
+    // 620->1452 smooth) and 0.40 (mean 3745 DoF, flaps 659<->7106); 0.85 -- the
+    // legacy per-step rebuild's buildTHBforFeature(cmp, base, thbPass, 0.85, 1,
+    // 3) call at :783-784, harmless there because each step restarted from the
+    // coarse base and stopped after thbPass=4 passes -- drives this persistent
+    // mesh to the level cap (see maxLevelFor below) and a 962<->6464 flap. See
+    // Results_transient_ring_*/README.md for the sweep.
+    // maxLevel<0 means "unset": see maxLevelFor's comment below for the
+    // effective default.
+    index_t refRule=3, crsRule=3, maxLevel=-1, jump=2;
+    real_t refParam=0.30, crsParam=0.1;
+    bool persistent=true;
     // theta=100. The ValueBased monitor is 1+theta*u_ex with u_ex = sech^2(.)
     // bounded by 1, so theta sets the density contrast DIRECTLY: theta=1 asks
     // for a mere 2:1 clustering and barely deforms sigma. Measured on the r arm
@@ -500,6 +930,33 @@ int main(int argc, char** argv)
     real_t smoothing=100.0, penalty=1e-4, T=1.0, c0=0.35, c1=0.70;
     std::string tLayer="0.05";
     std::string output="transient_sphere_output";
+    // Per-arm default schedules. The constraint is indicator PROVENANCE, not
+    // a blanket ordering -- see validateStepSchedule. The R arm's default is
+    // "RS" (relocate to the CURRENT time's feature, then solve on the fresh
+    // sigma): relocateFrom()'s objective is the exact solution unless
+    // --relocMonitor 1 is given (see below), so under the default it needs no
+    // preceding solve, and "SR" (solve, THEN relocate) makes the accepted
+    // solve run on the PREVIOUS step's sigma -- a permanent one-step lag that
+    // regressed the R arm's L2 by ~5.4x at 676 DoFs (monotone climb
+    // 8.1e-3->3.7e-2 instead of the flat ~5.5e-3 band). Empty --stepSchedule
+    // means "use the arm's own default"; non-empty overrides ALL FOUR arms
+    // with the same word (letters an arm has no mechanism for -- R on U/T, H
+    // on U/R -- are no-ops there, so e.g. --stepSchedule SR still runs
+    // cleanly on the T arm as a bare S).
+    std::string stepSchedule="";
+    // Target-error band on the persistent T/H mesh (off by default: target<0).
+    // band and maxRefIt only matter once target>=0 -- see runBandedH's
+    // comment for the decision rule.
+    real_t target=-1.0, band=1.5;
+    index_t maxRefIt=8;
+    // relocMonitor==1 switches the R/H arms' 'R' letter from the exact
+    // monitor to the frozen discrete field of the last solve (see
+    // pullBackToSigmaImage/ClampedMonitor). monitorRes<=0 means "unset": see
+    // its effective-value computation below (a fixed resolution, NOT scaled
+    // with the analysis mesh Na -- see the comment there for why).
+    index_t relocMonitor=0, monitorRes=0;
+    bool allowInvalidSchedule=false, extendedCSV=false;
+    std::string arms="URTH";
     gsCmdLine cmd("Transient moving-front heat equation on the exact sphere patch.");
     cmd.addString("i","input","Sphere-patch xml",input);
     cmd.addString("t","layer","Front width tw",tLayer);
@@ -513,6 +970,22 @@ int main(int argc, char** argv)
     cmd.addInt("","thbPass","THB feature-refinement passes per step",thbPass);
     cmd.addInt("","thbMark","THB/rh marking quantity: 0=u_ex^2 monitor, 1=element-wise discrete L2 error",thbMark);
     cmd.addInt("","thbBase","Elements per direction of the THB/rh coarse base mesh",thbBase);
+    cmd.addInt("","refRule","gsHElementMarker refinement rule for the persistent T/H mesh (1=GARU,2=PUCA,3=BULK)",refRule);
+    cmd.addReal("","refParam","gsHElementMarker refinement parameter",refParam);
+    cmd.addInt("","crsRule","gsHElementMarker coarsening rule (1=GARU,2=PUCA,3=BULK)",crsRule);
+    cmd.addReal("","crsParam","gsHElementMarker coarsening parameter",crsParam);
+    cmd.addInt("","maxLevel","gsHElementMarker level cap on the persistent T/H mesh (<0 -> initial depth + 1)",maxLevel);
+    cmd.addInt("","jump","gsHElementMarker admissibility jump parameter m",jump);
+    cmd.addSwitch("","persistent","Toggle: persistence is ON by default (one admissibly refined/coarsened THB mesh per T/H arm, mutated in place); pass this flag to fall back to the per-step rebuild from the coarse base",persistent);
+    cmd.addString("","stepSchedule","Per-time-step schedule word over {S,R,H}, overriding ALL arms (empty = per-arm default U=S,R=RS,T=SH,H=SRSH); provenance rules depend on --thbMark/--target (H) and --relocMonitor (R) -- see validateStepSchedule",stepSchedule);
+    cmd.addReal("","target","Target L2 error band on the persistent T/H mesh; <0 = off (each H letter runs one refine+coarsen sweep, as today)",target);
+    cmd.addReal("","band","Band half-width factor B: a step's H letter is done once T/B < err <= T*B (ENSURE >=1 when --target>=0)",band);
+    cmd.addInt("","maxRefIt","Max extra refine/coarsen+resolve passes per H letter while chasing --target",maxRefIt);
+    cmd.addInt("","relocMonitor","R/H arms' relocation monitor: 0=exact solution (default), 1=frozen discrete field of the last solve, clamped to its range (needs a preceding 'S' -- see validateStepSchedule)",relocMonitor);
+    cmd.addInt("","monitorRes","Elements per direction of the --relocMonitor 1 pullback basis; <=0 -> 96, a fixed resolution independent of Na/compN (measured converged -- see :980)",monitorRes);
+    cmd.addSwitch("","allowInvalidSchedule","Bypass validateStepSchedule's indicator-provenance rules (structural rules -- non-empty, contains S, letters in {S,R,H} -- are never bypassed); each bypassed violation prints a gsWarn naming the stale indicator it will use",allowInvalidSchedule);
+    cmd.addSwitch("","extendedCSV","Append inner_it,band_state to every timeseries_<arm>.csv row (always on when --target>=0 or --relocMonitor 1)",extendedCSV);
+    cmd.addString("","arms","Run only these arms, a subset of the letters URTH (default: all four)",arms);
     cmd.addSwitch("","plot","Write the ParaView output set (per-arm, in the layout scripts/render_panels.py reads)",plot);
     cmd.addInt("","plotPoints","Samples per patch for the plotted fields under --plot",plotPoints);
     cmd.addSwitch("","optimLBFGS","Use gsOptim L-BFGS for the R step instead of HLBFGS (known to stall silently)",useOptimLBFGS);
@@ -524,6 +997,88 @@ int main(int argc, char** argv)
     cmd.addString("o","output","output prefix/directory",output);
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
     g_t=tLayer; g_hlbfgs = !useOptimLBFGS;
+    GISMO_ENSURE(target<0 || persistent,
+                 "--target requires the persistent mesh (the band's refine/coarsen split has no"
+                 " equivalent in the legacy per-step rebuild) -- do not pass --persistent");
+    GISMO_ENSURE(target<0 || band>=1.0, "--band must be >= 1 when --target>=0 (got "<<band<<")");
+    GISMO_ENSURE(maxRefIt>=1, "--maxRefIt must be >= 1 (got "<<maxRefIt<<")");
+    for (char c : arms)
+        GISMO_ENSURE(c=='U'||c=='R'||c=='T'||c=='H',
+                     "--arms \""<<arms<<"\": invalid letter '"<<c<<"' (only U, R, T, H are allowed)");
+    const bool runU = arms.find('U')!=std::string::npos;
+    const bool runR = !skipReloc && arms.find('R')!=std::string::npos;
+    const bool runT = arms.find('T')!=std::string::npos;
+    const bool runH = !skipReloc && arms.find('H')!=std::string::npos;
+    // Elements per direction of the --relocMonitor 1 pullback basis. This
+    // resolves u_h and sigma_prev onto a common grid to build the monitor; it
+    // has no reason to scale with Na (the FIXED analysis basis u_h already
+    // lives on) or with compN (sigma's own basis) -- 4*Na coupled it to Na
+    // for no accuracy reason, and IS the cost blowup at large Na the task
+    // this comment documents was written to fix (9409 inversions/R-letter at
+    // Na=24, 148k/R-letter at Na=96).
+    //
+    // Calibrated at N=24,K=16 (--relocMonitor 1 --stepSchedule SRS --arms R),
+    // R-arm mean L2 vs a monitorRes=192 reference:
+    //
+    //   monitorRes   24      32      48      64      96      192(ref)
+    //   mean L2    7.25e-3 6.46e-3 6.33e-3 6.33e-3 6.01e-3 6.09e-3
+    //   vs 192      +19.2%  +6.1%   +4.0%   +4.1%   -1.3%    --
+    //   minDetJ(final) --     --    0.3261  0.3259  0.3252  0.3248
+    //
+    // No tested value strictly clears a 1% band -- the R step is a nonlinear
+    // (HLBFGS) optimisation whose accepted trajectory depends weakly and
+    // NON-monotonically on the monitor's discretisation once the front is
+    // resolved at all (per-step deviations up to ~19%, both signs, mostly
+    // concentrated where the ring is still entering the domain in the first
+    // half of the run -- this is deterministic sensitivity to the monitor's
+    // sample grid, not run-to-run noise: OMP_NUM_THREADS=1 makes every run
+    // bit-reproducible). What IS clean is sigma itself: minDetJsigma agrees
+    // to 0.4% from monitorRes=48 up, i.e. the RELOCATION is well converged
+    // long before the discrete-monitor L2 numbers stop wobbling. 96 is taken
+    // as the default: smallest magnitude deviation from the 192 reference
+    // among the tested values, on the converged side of sigma, and -- at
+    // N=24 -- numerically equal to the OLD 4*Na default, so this change is a
+    // no-op there and only decouples cost at larger Na (4x fewer per
+    // direction at N=48, 16x at N=96). Confirmed at N=48,K=16: monitorRes=96
+    // vs monitorRes=192(=4*48) mean L2 differ by -0.25% (smaller than the
+    // N=24 gap) and minDetJ(final) by 0.07% -- Na-independence holds.
+    const index_t monitorResEff = monitorRes>0 ? monitorRes : 96;
+    // A band or discrete-monitor run has a genuine per-step cost the 5-column
+    // schema cannot show, so it is never silently dropped -- see ArmOut::open.
+    const bool extended = extendedCSV || target>=0 || relocMonitor==1;
+    if (allowInvalidSchedule)
+        gsInfo << "################################################################\n"
+                  "# --allowInvalidSchedule: indicator-provenance rules bypassed. #\n"
+                  "# Marks/relocations below may run on a STALE (pre-adapt or     #\n"
+                  "# pre-relocation) indicator -- see the per-violation warnings. #\n"
+                  "################################################################\n";
+    // Per-arm words (indicator-provenance rule: see validateStepSchedule).
+    // wordR default is "RS", not "SR" -- see the comment above stepSchedule's
+    // declaration.
+    const std::string wordU = stepSchedule.empty() ? "S"    : stepSchedule;
+    const std::string wordR = stepSchedule.empty() ? "RS"   : stepSchedule;
+    const std::string wordT = stepSchedule.empty() ? "SH"   : stepSchedule;
+    const std::string wordH = stepSchedule.empty() ? "SRSH" : stepSchedule;
+    // 'H's indicator provenance depends on --thbMark and --target, not on
+    // which arm; 'R's depends on --relocMonitor. All four words are validated
+    // against the same two flags.
+    const bool hDiscrete = (thbMark!=0) || (target>=0);
+    const bool rDiscrete = (relocMonitor==1);
+    validateStepSchedule(wordU, hDiscrete, rDiscrete, allowInvalidSchedule);
+    validateStepSchedule(wordR, hDiscrete, rDiscrete, allowInvalidSchedule);
+    validateStepSchedule(wordT, hDiscrete, rDiscrete, allowInvalidSchedule);
+    validateStepSchedule(wordH, hDiscrete, rDiscrete, allowInvalidSchedule);
+    // maxLevel base (no "maxLevel" key yet): each arm's initial THB basis is
+    // built by the legacy buildTHBforFeature/buildTHBbyError path (thbPass
+    // rounds), so its depth is NOT 0 in general -- the "initial depth" the
+    // MaxLevel trap refers to is that basis's actual depth, computed per arm
+    // below via maxLevelFor(), not a fresh tensor base's depth.
+    gsOptionList adaptOptBase;
+    adaptOptBase.addInt ("refRule",  "", refRule);
+    adaptOptBase.addReal("refParam", "", refParam);
+    adaptOptBase.addInt ("crsRule",  "", crsRule);
+    adaptOptBase.addReal("crsParam", "", crsParam);
+    adaptOptBase.addInt ("jump",     "", jump);
     const real_t Dt=T/K, cdot=(c1-c0)/T;
     { std::ostringstream o; o<<cdot; g_cdot=o.str(); }
     GISMO_ENSURE(gsFileManager::fileExists(input), "Input not found: "<<input);
@@ -545,6 +1100,14 @@ int main(int argc, char** argv)
     opt.addInt("thbPass","THB feature-refinement passes per step",thbPass);
     opt.addInt("thbMark","THB/rh marking quantity",thbMark);
     opt.addInt("thbBase","Elements per direction of the THB/rh coarse base mesh",thbBase);
+    opt.addInt("refRule","gsHElementMarker refinement rule",refRule);
+    opt.addReal("refParam","gsHElementMarker refinement parameter",refParam);
+    opt.addInt("crsRule","gsHElementMarker coarsening rule",crsRule);
+    opt.addReal("crsParam","gsHElementMarker coarsening parameter",crsParam);
+    opt.addInt("maxLevel","gsHElementMarker level cap (<0 -> per-arm initial depth + 1, see maxLevelFor())",maxLevel);
+    opt.addInt("jump","gsHElementMarker admissibility jump m",jump);
+    opt.addSwitch("persistent","Persistent admissibly refined/coarsened T/H mesh",persistent);
+    opt.addString("stepSchedule","Per-time-step schedule word (empty = per-arm default)",stepSchedule);
     opt.addSwitch("plot","Write the ParaView output set",plot);
     opt.addInt("plotPoints","Samples per patch for the plotted fields",plotPoints);
     opt.addSwitch("optimLBFGS","gsOptim L-BFGS R step instead of HLBFGS",useOptimLBFGS);
@@ -553,6 +1116,14 @@ int main(int argc, char** argv)
     opt.addReal("smoothing","Monitor smoothing theta",smoothing);
     opt.addReal("penalty","Fold-barrier penalty",penalty);
     opt.addReal("T","Final time",T);
+    opt.addReal("target","Target L2 error band on the persistent T/H mesh (<0 = off)",target);
+    opt.addReal("band","Band half-width factor B",band);
+    opt.addInt("maxRefIt","Max extra refine/coarsen+resolve passes per H letter",maxRefIt);
+    opt.addInt("relocMonitor","R/H relocation monitor: 0=exact, 1=frozen discrete field",relocMonitor);
+    opt.addInt("monitorRes","Effective elements per direction of the --relocMonitor 1 pullback basis",monitorResEff);
+    opt.addSwitch("allowInvalidSchedule","Bypass validateStepSchedule's provenance rules",allowInvalidSchedule);
+    opt.addSwitch("extendedCSV","Append inner_it,band_state to every timeseries_<arm>.csv row",extendedCSV);
+    opt.addString("arms","Arms run, subset of URTH",arms);
     gsFileData<> fdout; fdout.add(opt); fdout.save(output+"options.xml");
 
     // Per-step machine-readable log. Columns mirror the frozen convergence.csv
@@ -584,11 +1155,14 @@ int main(int argc, char** argv)
     std::vector<index_t> dofT(K,0), dofRH(K,0);
     real_t wallU=0, wallR=0, wallT=0, wallRH=0;
     ArmOut outU, outR, outT, outH;
-    outU.open(output,"U",plot,plotPoints); outT.open(output,"T",plot,plotPoints);
-    if (!skipReloc) { outR.open(output,"R",plot,plotPoints); outH.open(output,"H",plot,plotPoints); }
+    if (runU) outU.open(output,"U",plot,plotPoints,extended);
+    if (runT) outT.open(output,"T",plot,plotPoints,extended);
+    if (runR) outR.open(output,"R",plot,plotPoints,extended);
+    if (runH) outH.open(output,"H",plot,plotPoints,extended);
     const index_t dofFixed=(Na+p)*(Na+p);
 
     // ---------- static uniform (identity sigma, w=0) ----------
+    if (runU)
     {
         gsStopwatch clk;
         gsMultiPatch<> cmp; cmp.addPatch(gsComposedGeometry<real_t>(*sigId,*S));
@@ -598,125 +1172,325 @@ int main(int argc, char** argv)
         for (index_t k=1;k<=K;++k){
             gsStopwatch stepClk;
             const real_t ck=c0+(c1-c0)*real_t(k)/real_t(K); g_c=std::to_string(ck);
-            gsMultiPatch<> unext; real_t e,eh; aleStep(cmp, mb, nullptr, un, Dt, unext, e, eh);
-            errU[k-1]=e; errU1[k-1]=eh; un=unext;
+            // U's word has no sigma/mesh, so only 'S' is meaningful; any R/H in
+            // an overriding --stepSchedule is a no-op here.
+            index_t nSolves=0; gsMultiPatch<> uAccepted; real_t eAcc=0, ehAcc=0;
+            for (char c : wordU) {
+                if (c!='S') continue;
+                gsMultiPatch<> unext; real_t e,eh;
+                aleStep(cmp, mb, nullptr, un, Dt, unext, e, eh);
+                uAccepted=unext; eAcc=e; ehAcc=eh; ++nSolves;
+            }
+            errU[k-1]=eAcc; errU1[k-1]=ehAcc; un=uAccepted;
             const real_t tStep=stepClk.stop();
-            csv<<k<<",S,U,"<<dofFixed<<","<<sigId->coefs().size()<<",,,"<<e<<",0,1.0,"<<tStep<<"\n";
-            outU.row(k, k*Dt, dofFixed, e, eh);
+            csv<<k<<",S,U,"<<dofFixed<<","<<sigId->coefs().size()<<",,,"<<eAcc<<",0,1.0,"<<tStep<<"\n";
+            outU.row(k, k*Dt, dofFixed, eAcc, ehAcc, nSolves);
             outU.step(cmp, mb, un, *sigId, k);
         }
         outU.close(cmp, mb, *sigId);
         wallU=clk.stop();
     }
     // ---------- r-adaptivity (ALE, fixed mesh, relocated sigma) ----------
-    if (!skipReloc)
+    if (runR)
     {
         gsStopwatch clk;
         gsMultiBasis<> mb; mb.addBasis(tpA.clone().release());
         g_c=std::to_string(c0);
         real_t disp0=0;
-        gsGeometry<>::uPtr sigPrev = relocateFrom(*sigId, *S, smoothing, penalty, 250, &disp0);
+        // sigActive is declared at LOOP scope (like sigPrev before it), never
+        // inside a branch: every gsComposedGeometry built from it below stores
+        // a REFERENCE, and a branch-scoped sigma would dangle the moment the
+        // branch exits.
+        gsGeometry<>::uPtr sigActive = relocateFrom(*sigId, *S, smoothing, penalty, 250, &disp0);
         warnIfStalled(disp0, 0);
-        gsMultiPatch<> cmp0; cmp0.addPatch(gsComposedGeometry<real_t>(*sigPrev,*S));
+        gsMultiPatch<> cmp0; cmp0.addPatch(gsComposedGeometry<real_t>(*sigActive,*S));
         gsMultiPatch<> un; projectExact(cmp0, mb, un);
+        // ALE provenance state: sigUn/uLast persist across an
+        // entire time step (constant within it, except uLast/sigLast which
+        // resolve() advances at every solve); movedFromUn/movedSinceLast are
+        // the two flags that decide the mesh-velocity term at the NEXT solve
+        // and the NEXT step's first solve respectively -- see resolve() below.
+        gsGeometry<>::uPtr sigUn   = sigActive->clone();
+        gsGeometry<>::uPtr sigLast = sigActive->clone();
+        gsMultiPatch<> uLast = un;
+        bool movedFromUn=false, movedSinceLast=false;
         for (index_t k=1;k<=K;++k){
             gsStopwatch stepClk;
             const real_t ck=c0+(c1-c0)*real_t(k)/real_t(K); g_c=std::to_string(ck);
-            gsMultiPatch<> unext; real_t e,eh;
-            gsMultiPatch<> cmp;
-            // sigCur is declared at LOOP scope, not inside the branch: cmp's
-            // gsComposedGeometry stores a REFERENCE to it, and everything after
-            // this if/else -- the plot and close calls -- dereferences that
-            // geometry. A sigma scoped to the branch dies first and the
-            // composed basis is then read through a dangling pointer.
-            gsGeometry<>::uPtr sigCur;
-            if ((k-1)%Kreloc==0){
-                real_t disp=0;
-                sigCur = relocateFrom(sigmaReset? *sigId : *sigPrev, *S, smoothing, penalty, relocIt, &disp);
-                warnIfStalled(disp, k);
-                gsComposedGeometry<real_t> Gnew(*sigCur,*S), Gprev(*sigPrev,*S);
-                MeshVel w(Gnew,Gprev,Dt);
-                cmp.addPatch(gsComposedGeometry<real_t>(*sigCur,*S));
-                aleStep(cmp, mb, &w, un, Dt, unext, e, eh);
-                sigPrev = sigCur->clone();
-            } else {
-                sigCur = sigPrev->clone();
-                cmp.addPatch(gsComposedGeometry<real_t>(*sigCur,*S));
-                aleStep(cmp, mb, nullptr, un, Dt, unext, e, eh);
+            // wordR default "RS": relocate sigma to THIS step's feature (g_c is
+            // already ck, set above), then solve with the ALE mesh velocity
+            // between the fresh sigma and sigUn (the previous accepted
+            // step's sigma). Solving before relocating ("SR") would run the
+            // accepted solve on the PREVIOUS step's sigma, a permanent
+            // one-step lag (monotone L2 climb 8.1e-3->3.7e-2 instead of the
+            // flat ~5.5e-3 band). Kreloc still gates 'R': off-cadence steps run
+            // it as a no-op, sigma stays static, and under Kreloc>1 the
+            // relocation that WOULD have run this step is simply skipped (not
+            // deferred to the next 'S') -- 'R' consumes its own step's
+            // solve immediately now, it no longer sets up the step after.
+            index_t nSolves=0;
+            gsMultiPatch<> uAccepted; real_t eAcc=0, ehAcc=0;
+            // Every 'S' -- the literal for-loop case below -- solves from `un`
+            // (this step's u^n, never from `uAccepted`, which would advance two
+            // Dt steps) using the ALE velocity between sigActive and sigUn
+            // whenever sigma has moved at all since the step started
+            // (movedFromUn), and then advances the monitor-provenance state
+            // (uLast/sigLast/movedSinceLast) for the NEXT 'R' or H-band pass.
+            auto resolve = [&](){
+                gsMultiPatch<> cmp; cmp.addPatch(gsComposedGeometry<real_t>(*sigActive,*S));
+                gsMultiPatch<> unext; real_t e,eh;
+                if (movedFromUn) {
+                    gsComposedGeometry<real_t> Gcur(*sigActive,*S), Gprev(*sigUn,*S);
+                    MeshVel w(Gcur,Gprev,Dt);
+                    aleStep(cmp, mb, &w, un, Dt, unext, e, eh);
+                } else {
+                    aleStep(cmp, mb, nullptr, un, Dt, unext, e, eh);
+                }
+                uAccepted=unext; eAcc=e; ehAcc=eh; ++nSolves;
+                uLast=unext; sigLast=sigActive->clone(); movedSinceLast=false;
+            };
+            for (char c : wordR) {
+                if (c=='S') {
+                    resolve();
+                } else if (c=='R' && (k-1)%Kreloc==0) {
+                    real_t disp=0;
+                    gsGeometry<>::uPtr sigNew;
+                    if (relocMonitor==1) {
+                        // Discrete monitor: the frozen field of the LAST solve
+                        // (uLast on sigLast), falling back to the previous
+                        // step's accepted pair when this step has not solved
+                        // yet -- exactly the "RS" case validateStepSchedule's
+                        // rDiscrete rule rejects by default.
+                        gsGeometry<real_t>::uPtr etaField =
+                            pullBackToSigmaImage(uLast.patch(0), *sigLast, monitorResEff, (short_t)p);
+                        ClampedMonitor mon(*etaField);
+                        sigNew = relocateFrom(sigmaReset? *sigId : *sigActive, *S, smoothing, penalty, relocIt, &disp, &mon);
+                    } else {
+                        sigNew = relocateFrom(sigmaReset? *sigId : *sigActive, *S, smoothing, penalty, relocIt, &disp);
+                    }
+                    warnIfStalled(disp, k);
+                    sigActive = sigNew->clone();
+                    movedFromUn = true; movedSinceLast = true;
+                }
+                // 'H' unsupported on the R arm (no mesh to adapt): no-op.
             }
-            errR[k-1]=e; errR1[k-1]=eh; un=unext;
+            errR[k-1]=eAcc; errR1[k-1]=ehAcc; un=uAccepted;
+            sigUn = sigLast->clone(); movedFromUn = movedSinceLast;
             const real_t tStep=stepClk.stop();
-            csv<<k<<",S,R,"<<dofFixed<<","<<sigPrev->coefs().size()<<",,,"<<e<<",0,"
-               <<sampleMinDetJ(*sigPrev)<<","<<tStep<<"\n";
-            outR.row(k, k*Dt, dofFixed, e, eh);
-            outR.step(cmp, mb, un, *sigCur, k);
-            if (k==K) outR.close(cmp, mb, *sigCur);
+            csv<<k<<",S,R,"<<dofFixed<<","<<sigActive->coefs().size()<<",,,"<<eAcc<<",0,"
+               <<sampleMinDetJ(*sigActive)<<","<<tStep<<"\n";
+            outR.row(k, k*Dt, dofFixed, eAcc, ehAcc, nSolves);
+            gsMultiPatch<> cmpOut; cmpOut.addPatch(gsComposedGeometry<real_t>(*sigActive,*S));
+            outR.step(cmpOut, mb, un, *sigActive, k);
+            if (k==K) outR.close(cmpOut, mb, *sigActive);
         }
         wallR=clk.stop();
     }
     // ---------- THB (feature-tracking, re-adapt each step, identity geometry) ----------
+    if (runT)
     {
         gsStopwatch clk;
         gsKnotVector<> kvB(0,1,thbBase-1,p+1); gsTensorBSplineBasis<2> base(kvB,kvB);
         gsMultiPatch<> cmp; cmp.addPatch(gsComposedGeometry<real_t>(*sigId,*S));
         g_c=std::to_string(c0);
-        gsMultiBasis<> mb0 = thbMark ? buildTHBbyError(cmp, base, thbPass, 0.85, 1, 3, nullptr, nullptr, Dt)
+        // `persistent` defaults to true: one gsMultiBasis mutated in place by
+        // adaptMesh() every step (refine + admissible coarsen), instead of
+        // rebuilding from `base` from scratch each step. gsCmdLine switches
+        // TOGGLE the default (gsIO/gsCmdLine.cpp: *switchRes[i] ^= getValue()),
+        // so passing --persistent turns persistence OFF and falls back to the
+        // old rebuild-every-step path as an A/B control -- there is no separate
+        // --no-persistent flag.
+        gsMultiBasis<> mb = thbMark ? buildTHBbyError(cmp, base, thbPass, 0.85, 1, 3, nullptr, nullptr, Dt)
                                      : buildTHBforFeature(cmp, base, thbPass, 0.85, 1, 3);
-        gsMultiPatch<> un; projectExact(cmp, mb0, un);
+        gsOptionList adaptOpt = adaptOptBase;
+        adaptOpt.addInt("maxLevel", "", maxLevelFor(mb, maxLevel));
+        std::vector<real_t> lastElErr;
+        gsMultiPatch<> un; projectExact(cmp, mb, un, thbMark ? &lastElErr : nullptr);
         for (index_t k=1;k<=K;++k){
             gsStopwatch stepClk;
             const real_t ck=c0+(c1-c0)*real_t(k)/real_t(K); g_c=std::to_string(ck);
-            gsMultiBasis<> mb = thbMark ? buildTHBbyError(cmp, base, thbPass, 0.85, 1, 3, nullptr, &un, Dt)
-                                        : buildTHBforFeature(cmp, base, thbPass, 0.85, 1, 3);
-            gsMultiPatch<> unext; real_t e,eh; aleStep(cmp, mb, nullptr, un, Dt, unext, e, eh);
-            errT[k-1]=e; errT1[k-1]=eh; dofT[k-1]=mb.basis(0).size(); un=unext;
+            // wordT default "SH": solve, then adapt the persistent mesh for the
+            // next step's S. When !persistent, 'H' instead triggers the legacy
+            // full rebuild from the coarse base (the legacy per-step A/B control);
+            // 'R' is unsupported on this arm (identity sigma always) and is a
+            // no-op under an overriding --stepSchedule.
+            //
+            // Under --thbMark 0, "SH" has the SAME CLASS of lag the R arm had:
+            // g_c is already ck when H runs, so H marks against time t_k, but
+            // the mesh it produces is only consumed by the solve at t_{k+1} --
+            // one step behind the front, same structural cause as "SR" on the
+            // R arm. Unlike the R arm, this is NOT fixed here: no published
+            // baseline exists for the T arm to verify a flip to "HS" against
+            // (only U and R have Results_transient_ring_20260910/ references),
+            // and the magnitude should differ from the R-arm regression --
+            // BULK h-refinement marks a band of elements straddling the front,
+            // which partially absorbs a one-step shift, whereas sigma
+            // relocation concentrates approximation power tightly onto the
+            // front's current location. Flagged for a follow-up with a
+            // baseline, not changed by rule.
+            index_t nSolves=0, dofsAtLastS=0, innerIt=0;
+            std::string bandState="off";
+            gsMultiPatch<> uAccepted; real_t eAcc=0, ehAcc=0;
+            auto resolve = [&](){
+                gsMultiPatch<> unext; real_t e,eh;
+                aleStep(cmp, mb, nullptr, un, Dt, unext, e, eh, thbMark ? &lastElErr : nullptr);
+                uAccepted=unext; eAcc=e; ehAcc=eh; ++nSolves;
+                dofsAtLastS = mb.basis(0).size();
+            };
+            std::function<std::vector<real_t>()> indicator = [&]() -> std::vector<real_t> {
+                return thbMark ? lastElErr : computeMonitorElErr(cmp, mb);
+            };
+            for (char c : wordT) {
+                if (c=='S') {
+                    resolve();
+                } else if (c=='H') {
+                    if (persistent)
+                    {
+                        if (target>=0)
+                            runBandedH(mb, adaptOpt, target, band, maxRefIt, indicator, resolve, eAcc, innerIt, bandState);
+                        else
+                        {
+                            adaptMesh(mb, indicator(), adaptOpt); ++innerIt; bandState="off";
+                        }
+                    }
+                    else
+                    {
+                        mb = thbMark ? buildTHBbyError(cmp, base, thbPass, 0.85, 1, 3, nullptr, &un, Dt)
+                                     : buildTHBforFeature(cmp, base, thbPass, 0.85, 1, 3);
+                        ++innerIt; bandState="off"; // legacy rebuild predates the band (persistent==false -> target<0, ENSUREd above)
+                    }
+                }
+            }
+            errT[k-1]=eAcc; errT1[k-1]=ehAcc; dofT[k-1]=dofsAtLastS; un=uAccepted;
             const real_t tStep=stepClk.stop();
-            csv<<k<<",S,T,"<<dofT[k-1]<<","<<sigId->coefs().size()<<",,,"<<e<<",0,1.0,"<<tStep<<"\n";
-            outT.row(k, k*Dt, dofT[k-1], e, eh);
+            csv<<k<<",S,T,"<<dofT[k-1]<<","<<sigId->coefs().size()<<",,,"<<eAcc<<",0,1.0,"<<tStep<<"\n";
+            outT.row(k, k*Dt, dofT[k-1], eAcc, ehAcc, nSolves, innerIt, bandState);
             outT.step(cmp, mb, un, *sigId, k);
             if (k==K) outT.close(cmp, mb, *sigId);
         }
         wallT=clk.stop();
     }
     // ---------- rh (relocated sigma + per-step THB, ALE) ----------
-    if (!skipReloc)
+    if (runH)
     {
         gsStopwatch clk;
         gsKnotVector<> kvB(0,1,thbBase-1,p+1); gsTensorBSplineBasis<2> base(kvB,kvB);
         g_c=std::to_string(c0);
         real_t disp0=0;
-        gsGeometry<>::uPtr sigPrev = relocateFrom(*sigId, *S, smoothing, penalty, 250, &disp0);
+        // sigActive at loop scope, never branch scope -- see the R arm's
+        // identical comment; the same dangling-reference hazard applies here.
+        gsGeometry<>::uPtr sigActive = relocateFrom(*sigId, *S, smoothing, penalty, 250, &disp0);
         warnIfStalled(disp0, 0);
-        gsMultiPatch<> cmp0; cmp0.addPatch(gsComposedGeometry<real_t>(*sigPrev,*S));
-        gsMultiBasis<> mb0 = thbMark ? buildTHBbyError(cmp0, base, thbPass, 0.85, 1, 3, nullptr, nullptr, Dt)
+        gsMultiPatch<> cmp0; cmp0.addPatch(gsComposedGeometry<real_t>(*sigActive,*S));
+        gsMultiBasis<> mb = thbMark ? buildTHBbyError(cmp0, base, thbPass, 0.85, 1, 3, nullptr, nullptr, Dt)
                                      : buildTHBforFeature(cmp0, base, thbPass, 0.85, 1, 3);
-        gsMultiPatch<> un; projectExact(cmp0, mb0, un);
+        gsOptionList adaptOpt = adaptOptBase;
+        adaptOpt.addInt("maxLevel", "", maxLevelFor(mb, maxLevel));
+        std::vector<real_t> lastElErr;
+        gsMultiPatch<> un; projectExact(cmp0, mb, un, thbMark ? &lastElErr : nullptr);
+        // ALE provenance state -- identical roles to the R arm's.
+        gsGeometry<>::uPtr sigUn   = sigActive->clone();
+        gsGeometry<>::uPtr sigLast = sigActive->clone();
+        gsMultiPatch<> uLast = un;
+        bool movedFromUn=false, movedSinceLast=false;
         for (index_t k=1;k<=K;++k){
             gsStopwatch stepClk;
             const real_t ck=c0+(c1-c0)*real_t(k)/real_t(K); g_c=std::to_string(ck);
-            gsGeometry<>::uPtr sigCur; bool moved=false;
-            if ((k-1)%Kreloc==0){
-                real_t disp=0;
-                gsGeometry<>::uPtr sigNew = relocateFrom(sigmaReset? *sigId : *sigPrev, *S, smoothing, penalty, relocIt, &disp);
-                warnIfStalled(disp, k);
-                sigCur = sigNew->clone(); moved=true;
-            } else sigCur = sigPrev->clone();
-            gsComposedGeometry<real_t> Gcur(*sigCur,*S), Gprev(*sigPrev,*S);
-            MeshVel w(Gcur,Gprev,Dt);
-            gsMultiPatch<> cmp; cmp.addPatch(gsComposedGeometry<real_t>(*sigCur,*S));
-            gsMultiBasis<> mb = thbMark ? buildTHBbyError(cmp, base, thbPass, 0.85, 1, 3, moved? &w : nullptr, &un, Dt)
-                                        : buildTHBforFeature(cmp, base, thbPass, 0.85, 1, 3);
-            gsMultiPatch<> unext; real_t e,eh;
-            aleStep(cmp, mb, moved? &w : nullptr, un, Dt, unext, e, eh);
-            const real_t detJcur = sampleMinDetJ(*sigCur);
-            if (moved) sigPrev = sigCur->clone();
-            errRH[k-1]=e; errRH1[k-1]=eh; dofRH[k-1]=mb.basis(0).size(); un=unext;
+            // wordH default "SRSH": solve (indicator for R, if thbMark), relocate
+            // sigma, RE-solve on the moved sigma, then adapt on THAT fresh
+            // indicator. This avoids a trap: relocating then adapting on an
+            // indicator/monitor still keyed to the pre-relocation cmp would
+            // mark the WRONG geometry; 'H' here always rebuilds cmpForH from
+            // the CURRENT sigActive (post-any-'R' this word), so even the
+            // thbMark=0 monitor path -- which does not read the discrete
+            // solve at all -- is evaluated on the post-relocation geometry.
+            // This word is NOT the R arm's bug: its accepted solve (the
+            // second S) runs AFTER the R, so it has no relocation lag either.
+            // Under --thbMark 0 "RHS" (relocate, mark on the fresh sigma,
+            // solve once) would be cheaper -- one solve/step instead of two --
+            // and its single accepted S is post-R AND post-H, strictly
+            // better-informed than SRSH's second S (post-R, pre-H). It is not
+            // adopted as the default here: nSolves is a published CSV column
+            // and no baseline exists to confirm SRSH's numbers still hold
+            // under it. Left for a follow-up with a baseline, same reasoning
+            // as the T arm below.
+            index_t nSolves=0, dofsAtLastS=0, innerIt=0;
+            std::string bandState="off";
+            gsMultiPatch<> uAccepted; real_t eAcc=0, ehAcc=0;
+            // Every 'S' and every runBandedH() resolve() -- same body: see the
+            // R arm's identical comment on movedFromUn/sigUn/uLast/sigLast/
+            // movedSinceLast, which this arm shares.
+            auto resolve = [&](){
+                gsMultiPatch<> cmp; cmp.addPatch(gsComposedGeometry<real_t>(*sigActive,*S));
+                gsMultiPatch<> unext; real_t e,eh;
+                std::vector<real_t> elErrOut;
+                if (movedFromUn) {
+                    gsComposedGeometry<real_t> Gcur(*sigActive,*S), Gprev(*sigUn,*S);
+                    MeshVel w(Gcur,Gprev,Dt);
+                    aleStep(cmp, mb, &w, un, Dt, unext, e, eh, thbMark ? &elErrOut : nullptr);
+                } else {
+                    aleStep(cmp, mb, nullptr, un, Dt, unext, e, eh, thbMark ? &elErrOut : nullptr);
+                }
+                uAccepted=unext; eAcc=e; ehAcc=eh; ++nSolves;
+                dofsAtLastS = mb.basis(0).size();
+                if (thbMark) lastElErr = elErrOut;
+                uLast=unext; sigLast=sigActive->clone(); movedSinceLast=false;
+            };
+            std::function<std::vector<real_t>()> indicator = [&]() -> std::vector<real_t> {
+                gsMultiPatch<> cmpForH; cmpForH.addPatch(gsComposedGeometry<real_t>(*sigActive,*S));
+                return thbMark ? lastElErr : computeMonitorElErr(cmpForH, mb);
+            };
+            for (char c : wordH) {
+                if (c=='S') {
+                    resolve();
+                } else if (c=='R' && (k-1)%Kreloc==0) {
+                    real_t disp=0;
+                    gsGeometry<>::uPtr sigNew;
+                    if (relocMonitor==1) {
+                        // Discrete monitor: frozen field of the LAST solve --
+                        // see the R arm's identical branch and
+                        // pullBackToSigmaImage/ClampedMonitor's traps.
+                        gsGeometry<real_t>::uPtr etaField =
+                            pullBackToSigmaImage(uLast.patch(0), *sigLast, monitorResEff, (short_t)p);
+                        ClampedMonitor mon(*etaField);
+                        sigNew = relocateFrom(sigmaReset? *sigId : *sigActive, *S, smoothing, penalty, relocIt, &disp, &mon);
+                    } else {
+                        sigNew = relocateFrom(sigmaReset? *sigId : *sigActive, *S, smoothing, penalty, relocIt, &disp);
+                    }
+                    warnIfStalled(disp, k);
+                    sigActive = sigNew->clone();
+                    movedFromUn = true; movedSinceLast = true;
+                } else if (c=='H') {
+                    if (persistent)
+                    {
+                        if (target>=0)
+                            runBandedH(mb, adaptOpt, target, band, maxRefIt, indicator, resolve, eAcc, innerIt, bandState);
+                        else
+                        {
+                            adaptMesh(mb, indicator(), adaptOpt); ++innerIt; bandState="off";
+                        }
+                    }
+                    else
+                    {
+                        gsMultiPatch<> cmpForH; cmpForH.addPatch(gsComposedGeometry<real_t>(*sigActive,*S));
+                        gsComposedGeometry<real_t> Gh(*sigActive,*S), Ghprev(*sigUn,*S);
+                        MeshVel wH(Gh,Ghprev,Dt);
+                        mb = thbMark ? buildTHBbyError(cmpForH, base, thbPass, 0.85, 1, 3, &wH, &un, Dt)
+                                     : buildTHBforFeature(cmpForH, base, thbPass, 0.85, 1, 3);
+                        ++innerIt; bandState="off"; // legacy rebuild predates the band (persistent==false -> target<0, ENSUREd above)
+                    }
+                }
+            }
+            const real_t detJcur = sampleMinDetJ(*sigActive);
+            errRH[k-1]=eAcc; errRH1[k-1]=ehAcc; dofRH[k-1]=dofsAtLastS; un=uAccepted;
+            sigUn = sigLast->clone(); movedFromUn = movedSinceLast;
             const real_t tStep=stepClk.stop();
-            csv<<k<<",S,H,"<<dofRH[k-1]<<","<<sigCur->coefs().size()<<",,,"<<e<<",0,"
+            csv<<k<<",S,H,"<<dofRH[k-1]<<","<<sigActive->coefs().size()<<",,,"<<eAcc<<",0,"
                <<detJcur<<","<<tStep<<"\n";
-            outH.row(k, k*Dt, dofRH[k-1], e, eh);
-            outH.step(cmp, mb, un, *sigCur, k);
-            if (k==K) outH.close(cmp, mb, *sigCur);
+            outH.row(k, k*Dt, dofRH[k-1], eAcc, ehAcc, nSolves, innerIt, bandState);
+            gsMultiPatch<> cmpOut; cmpOut.addPatch(gsComposedGeometry<real_t>(*sigActive,*S));
+            outH.step(cmpOut, mb, un, *sigActive, k);
+            if (k==K) outH.close(cmpOut, mb, *sigActive);
         }
         wallRH=clk.stop();
     }
@@ -743,5 +1517,26 @@ int main(int argc, char** argv)
           <<",  r(ALE) = "<<mr<<",  THB = "<<mt<<",  rh = "<<mrh<<"\n";
     gsInfo<<std::fixed<<std::setprecision(3)
           <<"wall-clock:  uniform = "<<wallU<<" s,  r(ALE) = "<<wallR<<" s,  THB = "<<wallT<<" s,  rh = "<<wallRH<<" s\n";
+
+    // Only the T/H arms carry the band; U/R never adapt a mesh,
+    // so a band-entry report for them would be vacuous.
+    if (target>=0)
+    {
+        auto reportBand = [&](const char* name, const std::vector<real_t>& errSeries, bool ran){
+            if (!ran) return;
+            index_t enteredAt=-1, reachedAt=-1;
+            for (index_t k=0;k<K;++k)
+            {
+                if (enteredAt<0 && errSeries[k]>target/band && errSeries[k]<=target*band) enteredAt=k+1;
+                if (reachedAt<0 && errSeries[k]<=target*band) reachedAt=k+1;
+            }
+            gsInfo<<name<<" band [" <<target/band<<","<<target*band<<"]: entered band at step "
+                  <<(enteredAt<0? std::string("never") : std::to_string(enteredAt))
+                  <<", reached upper edge at step "
+                  <<(reachedAt<0? std::string("never") : std::to_string(reachedAt))<<"\n";
+        };
+        reportBand("T", errT,  runT);
+        reportBand("H", errRH, runH);
+    }
     return 0;
 }

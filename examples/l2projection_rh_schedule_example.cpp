@@ -1481,8 +1481,9 @@ int main(int argc, char** argv)
                             }
 
                             // Both box lists refer to the SAME (pre-update)
-                            // mesh; the refined and coarsened regions are
-                            // disjoint by construction.
+                            // mesh; markCrs keeps coarsening clear of the
+                            // refinement boxes wherever it would go below
+                            // their target level.
                             const bool changed = !boxes.empty() || !crsBoxes.empty();
                             anyChanged = anyChanged || changed;
                             if (!boxes.empty())    thb.refineElements(boxes);

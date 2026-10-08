@@ -478,15 +478,50 @@ public:
     RefBox toBox() const;
 
     /**
-     * @brief      Returns a box representation of the object on the lower level (needed for refinement).
+     * @brief      Returns the refinement box of the object on level \a targetLevel.
+     *
+     * The box is the element expressed on \a targetLevel. With \a extension
+     * it is enlarged by floor(p_i/2) target-level spans on both sides in
+     * direction i (p_i is the degree), and clamped to the domain. An interior
+     * box then spans 2 + 2*floor(p_i/2) >= p_i+1 target-level spans in
+     * direction i, which contains the support of a target-level B-spline.
+     * Boxes on the boundary are clamped; their boundary functions have shorter
+     * supports.
+     *
+     * Boxes snap to whole cells of the current level when they are inserted
+     * into the hierarchical domain (see gsKdNode::adaptiveAlignedSplit), so
+     * the region that is effectively refined is a one-cell ring around the
+     * element for p=2..5 and a two-cell ring for p=6,7.
+     * The admissible closure must therefore cover those cells, see
+     * \ref extensionCells and \ref gsHBoxUtils::markAdmissibleExtended.
+     *
+     * @param[in]  targetLevel  The level of the box, larger than \ref level()
+     * @param[in]  extension    If false, the plain box of the element is returned
      *
      * @return     Refinement box representation of the object.
      */
-    RefBox toRefBox(index_t targetLevel) const;
+    RefBox toRefBox(index_t targetLevel, bool extension = true) const;
     RefBox toRefBox() const
     {
-        return this->toRefBox(this->level()+1);
+        return this->toRefBox(this->level()+1, true);
     }
+
+    /**
+     * @brief      Returns the cells on the level of the box that are reached
+     *             by the extended refinement box \ref toRefBox(level()+1,true)
+     *
+     * The cells are those within ceil(floor(p_i/2)/2) cells of the box in each
+     * direction i (clamped to the domain), without the cells of the box
+     * itself. Hence the container is empty for p=1, and the reach is one cell
+     * for p=2..5 and two cells for p=6,7.
+     * The cells are purely geometric: they need not be active.
+     * The patch index is that of the box.
+     *
+     * Assumes that the target level of the refinement box is level()+1.
+     *
+     * @return     Unit boxes on level().
+     */
+    Container extensionCells() const;
 
     /**
      * @brief      Returns a box representation of the object on the higher level (needed for coarsening).

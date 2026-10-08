@@ -137,9 +137,31 @@ public:
     /**
      * @brief      Returns refinement box representation of the object.
      *
+     * Only the boxes with patch index \a patchID or -1 are returned
+     * (see \ref patch), so \a patchID = -1 selects the boxes that have no
+     * patch index only.
+     *
+     * @param[in]  patchID    The patch index
+     * @param[in]  extension  Whether the boxes are extended, see \ref gsHBox::toRefBox
+     *
      * @return     Refinement box representation of the object.
      */
-    RefBox toRefBoxes(const index_t patchID=-1) const;
+    RefBox toRefBoxes(const index_t patchID=-1, bool extension = true) const;
+
+    /**
+     * @brief      Returns refinement box representation of the object, where
+     *             the boxes contained in \a noExtension are not extended.
+     *
+     * Every other box is extended, see \ref gsHBox::toRefBox. Boxes are matched
+     * exactly (patch, level and indices). Complexity O(N log M) for N boxes and
+     * M boxes in \a noExtension.
+     *
+     * @param[in]  noExtension  The boxes that are not extended
+     * @param[in]  patchID      The patch index, see \ref toRefBoxes
+     *
+     * @return     Refinement box representation of the object.
+     */
+    RefBox toRefBoxes(const gsHBoxContainer<d,T> & noExtension, const index_t patchID=-1) const;
 
     /**
      * @brief      Returns coarsening box representation of the object.

@@ -611,6 +611,27 @@ public:
 
       T computeMinJacobian() const override;
 
+      /// Outcome of the last solve(): 0 = no retry (first optimisation
+      /// accepted, or "RetryOnStall" disabled); 1 = the retry fired and the
+      /// accepted design meets the decrease test; 2 = the retry fired and the
+      /// accepted design still fails the decrease test (see "RetryOnStall").
+      index_t retryStatus() const { return m_retryStatus; }
+
+      /// True iff the last solve() ran the retry, i.e. retryStatus()!=0.
+      bool retried() const { return m_retryStatus != 0; }
+
+      /// Objective at the starting sigma of the last solve().
+      /// Only defined when "RetryOnStall" is enabled; 0 otherwise.
+      T initialObjective() const { return m_initialObjective; }
+
+      /// Objective of the design accepted by the last solve().
+      /// Only defined when "RetryOnStall" is enabled; 0 otherwise.
+      T finalObjective() const { return m_finalObjective; }
+
+      /// Scale alpha = 0.5*h_sigma of the retry's first step in parameter
+      /// units; 0 when the last solve() did not retry.
+      T retryStepScale() const { return m_retryStepScale; }
+
 public:
 
       template <short_t d>
@@ -640,6 +661,11 @@ protected:
     gsOptimizer<T>            & m_optimizer;
     typename gsBasis<T>::uPtr   m_integrationBasis;
     gsOptionList                m_options;
+
+    index_t m_retryStatus      = 0;
+    T       m_initialObjective = T(0);
+    T       m_finalObjective   = T(0);
+    T       m_retryStepScale   = T(0);
 };
 
 
