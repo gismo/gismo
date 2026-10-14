@@ -365,7 +365,8 @@ void gsWriteParaviewTPgrid(gsMatrix<T> const& points,
                            unsigned precision = 5);
 
 template <class T>
-void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd = true);
+void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd = true,
+                     unsigned precision = 5);
 
 
 

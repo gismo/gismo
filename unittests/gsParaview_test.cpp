@@ -109,6 +109,73 @@ TEST(PrecisionOption_honored)
     CHECK(s12.size() > s3.size());
 }
 
+TEST(PrecisionOption_honored_meshes)
+{
+    // Element meshes, control nets and gsMesh objects go through the gsMesh
+    // writer; the option must reach it on every path, not only the sampled
+    // geometry checked above.
+    const std::string tmp = gsFileManager::getTempPath();
+    if (tmp.empty()) return;
+
+    gsMultiPatch<> mp;
+    mp.addPatch(gsNurbsCreator<>::BSplineSquare());
+
+    std::vector<gsMesh<real_t> > meshes(1);
+    mp.patch(0).controlNet(meshes[0]);
+
+    // Files written by each case, relative to the base name.
+    const char * multiblock[]  = {"_0_mesh.vtp", "_0_cnet.vtp"};
+    const char * singleFile[]  = {"_mesh.vtp", "_cnet.vtp"};
+
+    std::map<std::string, size_t> sizes[2];
+    const index_t precisions[2] = {3, 12};
+    for (int k = 0; k != 2; ++k)
+    {
+        const std::string fn = tmp + "gsParaview_meshprec" +
+            util::to_string(precisions[k]);
+        // getTempPath() may fall back to the working directory, where files
+        // of an earlier run would otherwise be measured.
+        for (const char * suffix : multiblock)
+            std::remove((fn + "_mb" + suffix).c_str());
+        for (const char * suffix : singleFile)
+            std::remove((fn + "_sf" + suffix).c_str());
+        std::remove((fn + "_vecLevel0.vtp").c_str());
+
+        gsParaview<real_t> pv;
+        pv.options().setInt("precision", precisions[k]);
+        pv.options().setSwitch("elements",   true);
+        pv.options().setSwitch("controlNet", true);
+        pv.write(mp, fn + "_mb");
+        pv.options().setSwitch("multiblock", false);
+        pv.write(mp, fn + "_sf");
+        pv.write(meshes, fn + "_vec");
+
+        std::vector<std::string> files;
+        for (const char * suffix : multiblock)
+            files.push_back(fn + "_mb" + suffix);
+        for (const char * suffix : singleFile)
+            files.push_back(fn + "_sf" + suffix);
+        files.push_back(fn + "_vecLevel0.vtp");
+
+        for (size_t f = 0; f != files.size(); ++f)
+        {
+            CHECK(gsFileManager::fileExists(files[f]));
+            std::ifstream in(files[f]);
+            const std::string content((std::istreambuf_iterator<char>(in)),
+                                      std::istreambuf_iterator<char>());
+            sizes[k][files[f].substr(fn.size())] = content.size();
+        }
+    }
+
+    for (const auto & entry : sizes[0])
+    {
+        // Higher precision produces a strictly larger file.
+        if (!(sizes[1][entry.first] > entry.second))
+            gsInfo << "precision ignored for " << entry.first << "\n";
+        CHECK(sizes[1][entry.first] > entry.second);
+    }
+}
+
 TEST(WriteField_smoke)
 {
     const std::string tmp = gsFileManager::getTempPath();

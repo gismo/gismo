@@ -134,21 +134,23 @@ void gsParaview<T>::write(const gsMultiPatch<T> & mp, const std::string & fn) co
             if (mesh)
             {
                 const std::string mfn = fn + "_mesh";
-                writeMultiPatchCompMesh(mp, mfn, 8);
+                writeMultiPatchCompMesh(mp, mfn, 8, m_options.getInt("precision"));
                 collection.addPart(gsFileManager::getFilename(mfn) + ".vtp");
             }
             if (ctrlNet)
             {
                 const std::string cfn = fn + "_cnet";
-                writeMultiPatchControlNet(mp, cfn);
+                writeMultiPatchControlNet(mp, cfn, m_options.getInt("precision"));
                 collection.addPart(gsFileManager::getFilename(cfn) + ".vtp");
             }
             collection.save();
         }
         else if (extras)
         {
-            if (mesh)    writeMultiPatchCompMesh(mp, fn + "_mesh", 8);
-            if (ctrlNet) writeMultiPatchControlNet(mp, fn + "_cnet");
+            if (mesh)    writeMultiPatchCompMesh(mp, fn + "_mesh", 8,
+                                                 m_options.getInt("precision"));
+            if (ctrlNet) writeMultiPatchControlNet(mp, fn + "_cnet",
+                                                   m_options.getInt("precision"));
         }
     }
     else if (m_options.getSwitch("bezier"))
@@ -216,21 +218,23 @@ void gsParaview<T>::write(const gsField<T> & field, const std::string & fn) cons
             if (mesh)
             {
                 const std::string mfn = fn + "_mesh";
-                writeMultiPatchCompMesh(field.patches(), mfn, 8);
+                writeMultiPatchCompMesh(field.patches(), mfn, 8, m_options.getInt("precision"));
                 collection.addPart(gsFileManager::getFilename(mfn) + ".vtp");
             }
             if (ctrlNet)
             {
                 const std::string cfn = fn + "_cnet";
-                writeMultiPatchControlNet(field.patches(), cfn);
+                writeMultiPatchControlNet(field.patches(), cfn, m_options.getInt("precision"));
                 collection.addPart(gsFileManager::getFilename(cfn) + ".vtp");
             }
             collection.save();
         }
         else if (extras)
         {
-            if (mesh)    writeMultiPatchCompMesh(field.patches(), fn + "_mesh", 8);
-            if (ctrlNet) writeMultiPatchControlNet(field.patches(), fn + "_cnet");
+            if (mesh)    writeMultiPatchCompMesh(field.patches(), fn + "_mesh", 8,
+                                                 m_options.getInt("precision"));
+            if (ctrlNet) writeMultiPatchControlNet(field.patches(), fn + "_cnet",
+                                                   m_options.getInt("precision"));
         }
     }
     else
@@ -306,7 +310,7 @@ void gsParaview<T>::write(const gsGeometrySlice<T> & geo, const std::string & fn
 template<class T>
 void gsParaview<T>::write(const gsMesh<T> & mesh, const std::string & fn) const
 {
-    gsWriteParaview(mesh, fn, true);
+    gsWriteParaview(mesh, fn, true, m_options.getInt("precision"));
     openIfRequested(fn);
 }
 

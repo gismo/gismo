@@ -132,7 +132,7 @@ void gsWriteParaviewSolid(gsSolid<T> const  & sl,
                      unsigned numSamples, unsigned precision );
 
 TEMPLATE_INST
-void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd);
+void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd, unsigned precision);
 
 
 TEMPLATE_INST
@@ -221,10 +221,11 @@ void writeSingleControlNet(const gsGeometry<T> & Geo, std::string const & fn, un
 
 TEMPLATE_INST
 void writeMultiPatchCompMesh(const gsMultiPatch<T> & mp, std::string const & fn,
-                             unsigned resolution);
+                             unsigned resolution, unsigned precision);
 
 TEMPLATE_INST
-void writeMultiPatchControlNet(const gsMultiPatch<T> & mp, std::string const & fn);
+void writeMultiPatchControlNet(const gsMultiPatch<T> & mp, std::string const & fn,
+                               unsigned precision);
 
 ///////////////////////////////////////////////////////////////////////
 
