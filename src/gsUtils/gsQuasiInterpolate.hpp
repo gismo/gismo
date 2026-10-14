@@ -84,9 +84,10 @@ gsMatrix<T> gsQuasiInterpolate<T>::localL2(const gsBasis<T> &bb,
                                             index_t i,                                    
                                             const gsMatrix<T> &ab)
 {
+    using Real = gsQuadrature::Real;
     gsMatrix<T> bev, fev, pts, tmp;
     gsVector<T> weights;
-    gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,(T)1.0,1);
+    gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,(Real)1.0,1);
     gsQuadRule<T>  qRule     = gsQuadrature::get<T>(gsQuadrature::GaussLobatto,nNodes);
     qRule.mapTo(ab.col(0),ab.col(1), pts, weights);//map points and weights on element (for quadrature)
 
