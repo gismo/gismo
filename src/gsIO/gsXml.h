@@ -61,7 +61,8 @@ namespace rapidxml
 
 #define GSXML_GET_INTO(obj)          \
     static void get_into (gsXmlNode * node, obj & result) \
-    {   result = *get(node); }
+    {   memory::unique_ptr<obj> tmp(get(node));           \
+        result = *tmp; }
 
 #define TMPLA2(t1,t2)             t1,t2
 #define TMPLA3(t1,t2,t3)          t1,t2,t3
