@@ -94,18 +94,19 @@ TEST(PrecisionOption_honored)
         pv.write(mp, fn12);
     }
 
-    // Higher precision produces a strictly larger file
-    const std::string vts3  = fn3  + "0.vts";
-    const std::string vts12 = fn12 + "0.vts";
+    // Higher precision produces a strictly larger file. The patch index is
+    // appended with the default "patchDelimiter" option, "_".
+    const std::string vts3  = fn3  + "_0.vts";
+    const std::string vts12 = fn12 + "_0.vts";
 
-    if (gsFileManager::fileExists(vts3) && gsFileManager::fileExists(vts12))
-    {
-        std::ifstream f3(vts3);
-        std::ifstream f12(vts12);
-        std::string s3((std::istreambuf_iterator<char>(f3)), std::istreambuf_iterator<char>());
-        std::string s12((std::istreambuf_iterator<char>(f12)), std::istreambuf_iterator<char>());
-        CHECK(s12.size() > s3.size());
-    }
+    CHECK(gsFileManager::fileExists(vts3));
+    CHECK(gsFileManager::fileExists(vts12));
+
+    std::ifstream f3(vts3);
+    std::ifstream f12(vts12);
+    std::string s3((std::istreambuf_iterator<char>(f3)), std::istreambuf_iterator<char>());
+    std::string s12((std::istreambuf_iterator<char>(f12)), std::istreambuf_iterator<char>());
+    CHECK(s12.size() > s3.size());
 }
 
 TEST(WriteField_smoke)

@@ -91,7 +91,8 @@ void gsParaview<T>::write(const gsGeometry<T> & geo, const std::string & fn) con
                     m_options.getInt("numPoints"),
                     m_options.getSwitch("elements"),
                     m_options.getSwitch("controlNet"),
-                    !m_options.getSwitch("writePvd"));
+                    !m_options.getSwitch("writePvd"),
+                    m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -159,17 +160,20 @@ void gsParaview<T>::write(const gsMultiPatch<T> & mp, const std::string & fn) co
         // NOTE: this gsMultiPatch convenience overload has no skipPvd parameter
         // (it forwards to the std::vector<gsGeometry*> overload, which doesn't
         // have one either); "writePvd" is not honored for this write() overload.
-        gsWriteParaview(mp, fn, npts, mesh, ctrlNet, pDelim);
+        gsWriteParaview(mp, fn, npts, mesh, ctrlNet, pDelim,
+                        m_options.getInt("precision"));
     }
 
     if (m_options.getSwitch("boundary"))
     {
-        gsWriteParaviewBdr(mp, fn + "_boundary", npts, ctrlNet);
+        gsWriteParaviewBdr(mp, fn + "_boundary", npts, ctrlNet,
+                           m_options.getInt("precision"));
     }
 
     if (m_options.getSwitch("interfaces"))
     {
-        gsWriteParaviewIfc(mp, fn + "_interfaces", npts, ctrlNet);
+        gsWriteParaviewIfc(mp, fn + "_interfaces", npts, ctrlNet,
+                           m_options.getInt("precision"));
     }
 
     openIfRequested(fn);
@@ -235,7 +239,8 @@ void gsParaview<T>::write(const gsField<T> & field, const std::string & fn) cons
                         m_options.getInt("numPoints"),
                         m_options.getSwitch("elements"),
                         m_options.getString("patchDelimiter"),
-                        !m_options.getSwitch("writePvd"));
+                        !m_options.getSwitch("writePvd"),
+                        m_options.getInt("precision"));
     }
     openIfRequested(fn);
 }
@@ -245,7 +250,8 @@ void gsParaview<T>::write(const gsBasis<T> & basis, const std::string & fn) cons
 {
     gsWriteParaview(basis, fn,
                     m_options.getInt("numPoints"),
-                    m_options.getSwitch("elements"));
+                    m_options.getSwitch("elements"),
+                    m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -255,14 +261,15 @@ void gsParaview<T>::write(const gsBasis<T> & basis, const std::vector<index_t> &
 {
     gsWriteParaview(basis, indices, fn,
                     m_options.getInt("numPoints"),
-                    m_options.getSwitch("elements"));
+                    m_options.getSwitch("elements"),
+                    m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
 template<class T>
 void gsParaview<T>::write(const gsFunctionSet<T> & func, const std::string & fn) const
 {
-    gsWriteParaview(func, fn, m_options.getInt("numPoints"));
+    gsWriteParaview(func, fn, m_options.getInt("numPoints"), m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -272,7 +279,8 @@ void gsParaview<T>::write(const gsFunction<T> & func, const gsMatrix<T> & supp,
 {
     gsWriteParaview(func, supp, fn,
                     m_options.getInt("numPoints"),
-                    m_options.getSwitch("graph"));
+                    m_options.getSwitch("graph"),
+                    m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -283,14 +291,15 @@ void gsParaview<T>::write(const gsFunctionSet<T> & geo, const gsFunctionSet<T> &
     gsWriteParaview(geo, func, fn,
                     m_options.getInt("numPoints"),
                     m_options.getString("patchDelimiter"),
-                    !m_options.getSwitch("writePvd"));
+                    !m_options.getSwitch("writePvd"),
+                    m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
 template<class T>
 void gsParaview<T>::write(const gsGeometrySlice<T> & geo, const std::string & fn) const
 {
-    gsWriteParaview(geo, fn, m_options.getInt("numPoints"));
+    gsWriteParaview(geo, fn, m_options.getInt("numPoints"), m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -304,7 +313,7 @@ void gsParaview<T>::write(const gsMesh<T> & mesh, const std::string & fn) const
 template<class T>
 void gsParaview<T>::write(const gsSurfMesh<T> & mesh, const std::string & fn) const
 {
-    gsWriteParaview(mesh, fn);
+    gsWriteParaview(mesh, fn, m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -312,14 +321,14 @@ template<class T>
 void gsParaview<T>::write(const gsMesh<T> & mesh, const gsMatrix<T> & params,
                           const std::string & fn) const
 {
-    gsWriteParaview(mesh, fn, params);
+    gsWriteParaview(mesh, fn, params, m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
 template<class T>
 void gsParaview<T>::write(const std::vector<gsMesh<T>> & meshes, const std::string & fn) const
 {
-    gsWriteParaview(meshes, fn);
+    gsWriteParaview(meshes, fn, m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -328,35 +337,36 @@ void gsParaview<T>::write(const gsTrimSurface<T> & ts, const std::string & fn) c
 {
     gsWriteParaview(ts, fn,
                     m_options.getInt("numPoints"),
-                    m_options.getSwitch("trimCurves"));
+                    m_options.getSwitch("trimCurves"),
+                    m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
 template<class T>
 void gsParaview<T>::write(const gsPlanarDomain<T> & pdomain, const std::string & fn) const
 {
-    gsWriteParaview(pdomain, fn, m_options.getInt("numPoints"));
+    gsWriteParaview(pdomain, fn, m_options.getInt("numPoints"), m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
 template<class T>
 void gsParaview<T>::write(const gsCurveLoop<T> & cloop, const std::string & fn) const
 {
-    gsWriteParaview(cloop, fn, m_options.getInt("numPoints"));
+    gsWriteParaview(cloop, fn, m_options.getInt("numPoints"), m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
 template<class T>
 void gsParaview<T>::write(const gsVolumeBlock<T> & volBlock, const std::string & fn) const
 {
-    gsWriteParaview(volBlock, fn, m_options.getInt("numPoints"));
+    gsWriteParaview(volBlock, fn, m_options.getInt("numPoints"), m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
 template<class T>
 void gsParaview<T>::write(const gsSolid<T> & solid, const std::string & fn) const
 {
-    gsWriteParaviewSolid(solid, fn, m_options.getInt("numPoints"));
+    gsWriteParaviewSolid(solid, fn, m_options.getInt("numPoints"), m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -365,7 +375,8 @@ void gsParaview<T>::write(const gsMultiPatch<T> & mp, const gsMultiBasis<T> & mb
                           const std::string & fn) const
 {
     gsWriteParaview(mp, mb, fn, m_options.getInt("numPoints"),
-                    !m_options.getSwitch("writePvd"));
+                    !m_options.getSwitch("writePvd"),
+                    m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -373,7 +384,8 @@ template<class T>
 void gsParaview<T>::write(const gsMappedSpline<2,T> & mspline, const std::string & fn) const
 {
     gsWriteParaview(mspline, fn, m_options.getInt("numPoints"),
-                    !m_options.getSwitch("writePvd"));
+                    !m_options.getSwitch("writePvd"),
+                    m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -386,7 +398,8 @@ void gsParaview<T>::write(const gsFunctionSet<T> & geom, const gsMappedBasis<2,T
                     m_options.getInt("numPoints"),
                     m_options.getSwitch("fullSupport"),
                     indices,
-                    !m_options.getSwitch("writePvd"));
+                    !m_options.getSwitch("writePvd"),
+                    m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -394,7 +407,7 @@ template<class T>
 void gsParaview<T>::write(const gsMultiBasis<T> & mb, const gsMultiPatch<T> & domain,
                           const std::string & fn) const
 {
-    gsWriteParaview(mb, domain, fn, m_options.getInt("numPoints"));
+    gsWriteParaview(mb, domain, fn, m_options.getInt("numPoints"), m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -405,7 +418,8 @@ void gsParaview<T>::write(const gsMultiPatch<T> & patches,
 {
     gsWriteParaview(patches, bcs, fn,
                     m_options.getInt("numPoints"),
-                    m_options.getSwitch("controlNet"));
+                    m_options.getSwitch("controlNet"),
+                    m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -417,7 +431,7 @@ template<class T>
 void gsParaview<T>::write(const gsMatrix<T> & boxes, const std::string & fn,
                           const std::vector<T> & values) const
 {
-    gsWriteParaview(boxes, fn, values);
+    gsWriteParaview(boxes, fn, values, m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -425,7 +439,7 @@ template<class T>
 void gsParaview<T>::writeBoxes(const gsMatrix<T> & boxes, const std::string & fn,
                                const std::vector<T> & values) const
 {
-    gsWriteParaview(boxes, fn, values);
+    gsWriteParaview(boxes, fn, values, m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -433,7 +447,7 @@ template<class T>
 void gsParaview<T>::write(const gsMatrix<T> & boxes, const gsVector<T> & values,
                           const std::string & fn) const
 {
-    gsWriteParaview(boxes, fn, values);
+    gsWriteParaview(boxes, fn, values, m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -460,7 +474,7 @@ void gsParaview<T>::write(const gsHBoxContainer<d,T> & boxes, const std::string 
 template<class T>
 void gsParaview<T>::writePoints(const gsMatrix<T> & points, const std::string & fn) const
 {
-    gsWriteParaviewPoints(points, fn);
+    gsWriteParaviewPoints(points, fn, m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -468,7 +482,7 @@ template<class T>
 void gsParaview<T>::writePoints(const gsMatrix<T> & points, const std::string & fn,
                                 const gsVector<T> & values) const
 {
-    gsWriteParaview(points, fn, values);
+    gsWriteParaview(points, fn, values, m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -476,7 +490,7 @@ template<class T>
 void gsParaview<T>::writePoints(const gsMatrix<T> & X, const gsMatrix<T> & Y,
                                 const std::string & fn) const
 {
-    gsWriteParaviewPoints(X, Y, fn);
+    gsWriteParaviewPoints(X, Y, fn, m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -484,7 +498,7 @@ template<class T>
 void gsParaview<T>::writePoints(const gsMatrix<T> & X, const gsMatrix<T> & Y,
                                 const gsMatrix<T> & Z, const std::string & fn) const
 {
-    gsWriteParaviewPoints(X, Y, Z, fn);
+    gsWriteParaviewPoints(X, Y, Z, fn, m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -493,7 +507,7 @@ void gsParaview<T>::writePoints(const gsMatrix<T> & X, const gsMatrix<T> & Y,
                                 const gsMatrix<T> & Z, const gsMatrix<T> & V,
                                 const std::string & fn) const
 {
-    gsWriteParaviewPoints(X, Y, Z, V, fn);
+    gsWriteParaviewPoints(X, Y, Z, V, fn, m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -505,7 +519,8 @@ template<class T>
 void gsParaview<T>::writeBasisFunction(int i, const gsBasis<T> & basis,
                                        const std::string & fn) const
 {
-    gsWriteParaview_basisFnct(i, basis, fn, m_options.getInt("numPoints"));
+    gsWriteParaview_basisFnct(i, basis, fn, m_options.getInt("numPoints"),
+                              m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
@@ -519,7 +534,8 @@ void gsParaview<T>::writeTrimmedCurve(const gsTrimSurface<T> & surf,
                                       const std::string & fn) const
 {
     gsWriteParaviewTrimmedCurve(surf, idLoop, idCurve, fn,
-                                m_options.getInt("numPoints"));
+                                m_options.getInt("numPoints"),
+                                m_options.getInt("precision"));
     openIfRequested(fn);
 }
 
