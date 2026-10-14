@@ -15,7 +15,8 @@
 #include <gsIO/gsParaviewCollection.h>
 
 #include <cstdio> // std::remove
-#include <sstream> // std::istringstream
+#include <fstream> // std::ifstream
+#include <sstream> // std::istringstream, std::stringstream
 
 SUITE(gsParaview_test)
 {
@@ -426,6 +427,45 @@ TEST(TimeSteppingElementMesh_smoke)
 
     CHECK(gsFileManager::fileExists(fn + ".pvd"));
     CHECK(gsFileManager::fileExists(fn + "_pvd/" + gsFileManager::getBasename(fn) + "_t0.000000_mesh0.vtp"));
+}
+
+// gsWriteParaviewTPgrid is reachable through its declaration alone (a
+// library build does not include gsWriteParaview.hpp), with and without
+// the precision.
+TEST(WriteTPgrid_declaredWithPrecision)
+{
+    const std::string tmp = gsFileManager::getTempPath();
+    if (tmp.empty()) return;
+
+    gsVector<real_t> a(2), b(2);
+    a << 0, 0;
+    b << 1, 1;
+    gsVector<unsigned> np(2);
+    np << 2, 2;
+    const gsMatrix<real_t> points = gsPointGrid<real_t>(a, b, np);
+    gsMatrix<real_t> data(1, points.cols());
+    data.setConstant(1.0 / 3);
+    gsVector<index_t> npi(2);
+    npi << 2, 2;
+
+    const std::string fn5 = tmp + "gsParaview_tpgrid_default";
+    const std::string fn3 = tmp + "gsParaview_tpgrid_prec3";
+    gsWriteParaviewTPgrid(points, data, npi, fn5);
+    gsWriteParaviewTPgrid(points, data, npi, fn3, 3);
+
+    const auto contents = [](const std::string & fn)
+    {
+        std::ifstream file(fn);
+        std::stringstream ss;
+        ss << file.rdbuf();
+        return ss.str();
+    };
+    const std::string vts5 = contents(fn5 + ".vts"), vts3 = contents(fn3 + ".vts");
+    CHECK(vts5.find("0.33333 ") != std::string::npos);
+    CHECK(vts3.find("0.333 ") != std::string::npos);
+    CHECK(vts3.find("0.3333") == std::string::npos);
+    std::remove((fn5 + ".vts").c_str());
+    std::remove((fn3 + ".vts").c_str());
 }
 
 } // SUITE
