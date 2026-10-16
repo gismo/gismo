@@ -26,8 +26,8 @@ int main(int argc, char *argv[])
     index_t maxIter       = 50;
     index_t mappingUpdates = 5;
     index_t NumArMarEl    = 0; // Number of ring of cells around marked elements
-    index_t id_mp          = 0; // id of the geometry in the xml file
-    double IntensityMAE   = 10.;
+    index_t id_mp          = 4; // id of the geometry in the xml file
+    double IntensityMAE   = 9.;
     bool export_b64       = false;
     bool errorsave        = false;
     // --------------- adaptive refinement ---------------
@@ -49,13 +49,13 @@ int main(int argc, char *argv[])
     cmd.addInt( "e",     "degreeElevation",  "Number of degree elevation steps to perform before solving",              numElevate );
     cmd.addReal( "f",    "IntensityMAE",     "Intensity of density function",                                           IntensityMAE);
     cmd.addInt("i",      "iter",             "Maximum number of iterations for the iterative Picard",                   maxIter);
-    cmd.addInt("",       "mappingUpdates",  "Picard updates from the previous mapping in each adaptive step",          mappingUpdates);
+    cmd.addInt("m",       "mappingUpdates",  "Picard updates from the previous mapping in each adaptive step",          mappingUpdates);
     cmd.addInt( "l",     "numLRefine",       "Number of local h-refinement loops",                                      numLRefine );
     cmd.addReal( "p",    "adaptRefParamMAE", "parameter for MAE mapping in local h-refinement loops",                   adaptRefParamMAE );
     cmd.addInt( "r",     "adaptRefCrit",     "Adaptive refinement criterion [1:GARU,2:PUCA,3:BULK,4:PBULK]",            adaptRefCrit );
     cmd.addInt( "u",     "uniformRefine",    "Number of Uniform h-refinement loops",                                    numRefine );
     cmd.addInt( "v",     "degree",           "Degree of the basis functions",                                           numElevate );
-    cmd.addInt( "m",     "id_mp",            "ID of the geometry in the XML file",                                       id_mp );
+    cmd.addInt( "x",     "id_mp",            "ID of the geometry in the XML file",                                       id_mp );
     cmd.addSwitch("export_b64",              "Export the solution in a base64 format",                                   export_b64);
     // cmd.addSwitch("help",                     "Display this help message");
     cmd.addInt("quRule",                     "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",            1);
@@ -91,47 +91,53 @@ int main(int argc, char *argv[])
     //! [Solver loop]
     gsSparseSolver<>::CGDiagonal solver;
 
+    // ... Define hierarchical mapping
+    gsMultiPatch<> Psi;
+    // check first if the mapping is already thb-spline
+    if (dynamic_cast<const gsHTensorBasis<2> *>(&mpLeft.basis(0).source()))
+        Psi = mpLeft;
+    else if (dynamic_cast<const gsHTensorBasis<3> *>(&mpLeft.basis(0).source()))
+        Psi = mpLeft;
+    else{
+        if (mpLeft.basis(0).weights().any()){
+        if (mpLeft.dim()== 3){
+        for(size_t i =0; i<mpLeft.nPatches(); ++i)
+            Psi.addPatch(gsRationalTHBSpline<3>( dynamic_cast<const gsTensorNurbs<3>&>(mpLeft.patch(i)) ));
+        }
+        else{
+        for(size_t i =0; i<mpLeft.nPatches(); ++i)
+            Psi.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(mpLeft.patch(i)) ));
+        }
+        }
+        else{
+        if (mpLeft.dim()== 3){
+        for(size_t i =0; i<mpLeft.nPatches(); ++i)
+            Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(mpLeft.patch(i)) ));
+        }
+        else{
+        for(size_t i =0; i<mpLeft.nPatches(); ++i)
+            Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(mpLeft.patch(i)) ));            
+        }
+        }
+    }
+    Psi.computeTopology();
+
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1 : Initialization for Monge-Ampere mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefine, maxIter, IntensityMAE, true);
+    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(Psi, numRefine, maxIter, IntensityMAE, 0, 0, true);
 
-
-    // ... Define hierarchical mapping
-    gsMultiPatch<> Psi;
-    if (mpLeft.basis(0).weights().any()){
-    if (mpLeft.dim()== 3){
-    for(size_t i =0; i<mpLeft.nPatches(); ++i)
-        Psi.addPatch(gsRationalTHBSpline<3>( dynamic_cast<const gsTensorNurbs<3>&>(mpLeft.patch(i)) ));
-    }
-    else{
-    for(size_t i =0; i<mpLeft.nPatches(); ++i)
-        Psi.addPatch(gsRationalTHBSpline<2>( dynamic_cast<const gsTensorNurbs<2>&>(mpLeft.patch(i)) ));
-    }
-    }
-    else{
-    if (mpLeft.dim()== 3){
-    for(size_t i =0; i<mpLeft.nPatches(); ++i)
-        Psi.addPatch(gsTHBSpline<3>( dynamic_cast<const gsTensorBSpline<3>&>(mpLeft.patch(i)) ));
-    }
-    else{
-    for(size_t i =0; i<mpLeft.nPatches(); ++i)
-        Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(mpLeft.patch(i)) ));            
-    }
-    }
-    Psi.computeTopology();
     gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
-
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 2: Start r- and h- refinement: Simultaneous
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsMultiPatch<> sol_restr; // restricted solution
     //boubdary conditions
     gsBoundaryConditions<> bc;
-    bc.setGeoMap(mpLeft);
+    bc.setGeoMap(Psi);
     // For simplicity, set Dirichlet boundary conditions
     for ( gsMultiPatch<>::const_biterator
-            bit = mpLeft.bBegin(); bit != mpLeft.bEnd(); ++bit)
+            bit = Psi.bBegin(); bit != Psi.bEnd(); ++bit)
     {
        bc.addCondition( *bit, condition_type::dirichlet, &s,0, false);
     }
@@ -139,11 +145,10 @@ int main(int argc, char *argv[])
     // Refine the basis uniformly for numRefine times
     for (int r=0; r<numRefine; ++r){
         dbasis.uniformRefine();
-        MAE.mapping_basis.uniformRefine();
     }
 
-    gsInfo << "Patches: "<< mpLeft.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
-    gsInfo<<"The PDE domain is "<< mpLeft.detail() << "\n";
+    gsInfo << "Patches: "<< Psi.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
+    gsInfo<<"The PDE domain is "<< Psi.detail() << "\n";
     gsInfo<<"Source function is "<< rhs << "\n";
     gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
     //! [Problem setup]
@@ -154,7 +159,7 @@ int main(int argc, char *argv[])
 
     gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
-    geometryMap PP  = A.getMap(mpLeft);
+    geometryMap PP  = A.getMap(Psi);
     
     gsStopwatch timer;
     // Elements used for numerical integration
@@ -215,7 +220,7 @@ int main(int argc, char *argv[])
         gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.7, eldensityMarked);                 
         auto density   = MAE.buildDensity( dbasis, eldensityMarked);
         MAE.buildMultiPatch(density);// compute Monge-Ampere mapping
-        mpLeft         = MAE.buildCompMultiPatch();// computes the composition mapping mpLeft o MAmapping
+        Psi            = MAE.buildColCompMultiPatch();// computes the composition mapping Psi o MAmapping
     }
 
     for (int r=0; r<=numLRefine; ++r)
@@ -285,7 +290,7 @@ int main(int argc, char *argv[])
                 // Continue the previous mapping with a short update budget.
                 MAE.m_maxIter = mappingUpdates;
                 MAE.buildMultiPatch(density);// compute Monge-Ampere mapping
-                mpLeft         = MAE.buildCompMultiPatch();// computes the composition mapping mpLeft o MAmapping
+                Psi            = MAE.buildColCompMultiPatch();// computes the composition mapping Psi o MAmapping
                 // -----------------
                 double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
                 for(size_t i=0; i<eltErrs.size(); ++i)
@@ -368,7 +373,7 @@ int main(int argc, char *argv[])
         collection.options().setSwitch("base64", export_b64);
         collection.options().setInt("elementResolution", 16);
         collection.options().setInt("numPoints", 10000);
-        collection.newTimeStep(mpLeft);
+        collection.newTimeStep(Psi);
         collection.addField(ru_sol,"numerical solution");
         collection.addField(igrad(ru_sol,PP),"gradient_numerical solution");
         collection.addField((  ilapl(ru_sol, PP)+ rhs_f ).sqNorm()*meas(PP),"indecator");

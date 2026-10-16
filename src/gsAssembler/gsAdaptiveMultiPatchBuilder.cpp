@@ -115,18 +115,37 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
     gsInfo<<"\n";
     gsInfo<<"\n";
     gsInfo << "/*/*/*/*/*/*/*/*/*/*/Important:::: Use --exactGeo to keep the exact boundary!\n";
-    gsInfo<<"\n";
+    gsInfo<<"for more accuracy refine: DoFs > 10^3\n";
     gsInfo<<"\n";
     // Store the initial mapping
     this->initial_mapping= mapping; 
     // basis function for the composition
     gsMultiBasis<> mapping_basis(mapping, false);
     //-------------------------------------------------------------------------------------
-    // Build a (B-spline) multi-basis for the Monge–Ampère solver
-    gsMultiBasis<> dbasis(mapping, true);
+    // MAE needs tensor B-splines; for a hierarchy, start from its level-0 grid.
+    gsMultiBasis<> dbasis;
+    for (size_t p = 0; p < mapping.nPatches(); ++p)
+    {
+        const gsBasis<> & basis = mapping.basis(p).source(); // Remove rational weights.
+        if (const auto * h = dynamic_cast<const gsHTensorBasis<2> *>(&basis))
+            dbasis.addBasis(h->tensorLevel(0).clone());
+        else if (const auto * h = dynamic_cast<const gsHTensorBasis<3> *>(&basis))
+            dbasis.addBasis(h->tensorLevel(0).clone());
+        else
+        {
+            GISMO_ENSURE(dynamic_cast<const gsTensorBSplineBasis<2> *>(&basis)
+                         || dynamic_cast<const gsTensorBSplineBasis<3> *>(&basis),
+                         "MAE requires a tensor B-spline or hierarchical tensor basis in 2D or 3D.");
+            dbasis.addBasis(basis.clone());
+        }
+    }
+    dbasis.setTopology(mapping.topology());
     //... refine basis for convergence
     for(index_t i = 0; i < numRefine; ++i)
+    {   
         dbasis.uniformRefine();
+        mapping_basis.uniformRefine();
+    }
     // Reduce degree if possible while maintaining minimum degree of 1
     if (numReduce > 0){
         int reduceDegree = std::min(dbasis.degree()-1, numReduce);
@@ -148,7 +167,7 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
     this->m_exactGeo     = exactGeo;
     this->DoFs           = m_basis.size() * mapping.nPatches();
 
-    gsInfo << "nb patches" << mapping.nPatches() << "Using B-splines of degree " << dbasis.degree() << " DoFs ";
+    gsInfo << "nb patches " << mapping.nPatches() << " Using B-splines of degree " << dbasis.degree() << " DoFs ";
 
     //--------------------------------------------------
     // Create parametric identity mapping
@@ -938,130 +957,6 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatchMMPDE(const gsMultiPatch<> &den
 }
 
 /**
- * \brief Compute the L^2-projection of a composition and return it as a MultiPatch object.
- *
- * \remark The composition is projected onto a B-spline space using an L^2 projection.
- *         In 2D, a boundary correction can be applied if the approximation near the
- *         boundary is not sufficiently accurate (currently supported only in the tensor-product case).
- *
- * \param quadValue Number of quadrature points used to evaluate the composition.
- *                  A recommended choice is degree(initial) * degree(MA mapping) + 1.
- * \param sepBoundary If true, an additional correction is applied at the boundary.
- */
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const int quadValue, const bool& sepBoundary) const 
-{
-    if (this->initial_mapping.nPatches() > 1)
-    {
-        gsInfo<<"<Fit> multi-patch case not implemented, calling collocation method instead.\n";
-        return gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch();
-    }
-    gsInfo<<"<L2> computes composition";
-
-    // target mapping
-    gsMultiPatch<> Psi;
-    
-    /// start timing
-    double slv_time(0);
-    gsStopwatch timer;
-    timer.restart();
-
-    //! [Problem setup] assembler 
-    gsExprAssembler<> A(1,1);
-    A.options().setReal("quA", quadValue);
-    A.options().setSwitch("SameElement",false); // Very important for the composition of the two mappings
-    //...
-    A.setIntegrationElements(mapping_basis);
-
-    //... 
-    space v        = A.getSpace(mapping_basis);
-    gsMatrix<> vsolVector;
-    solution v_sol = A.getSolution(v, vsolVector);
-
-    //...
-    geometryMap PP = A.getMap(this->MAmapping);
-    //...
-    A.initSystem();
-    A.assemble(v*v.tr());//Matrix for one component
-    solver.compute( A.matrix() );
-    // ...
-    auto comp      = A.getCoeff(this->initial_mapping, PP);
-
-    A.initSystem(this->initial_mapping.geoDim());
-    A.assemble(v * comp.tr() );// blocked by this one
-    vsolVector     = solver.solve(A.rhs().col(0));
-    v_sol.extract(Psi);
-
-    #pragma omp for
-    for(index_t i=1; i<this->initial_mapping.geoDim(); ++i)
-    {
-        gsMultiPatch<> PsiVec;
-        vsolVector = solver.solve(A.rhs().col(i));
-        v_sol.extract(PsiVec);
-        Psi.embed(i+1);
-        Psi.patch(0).coefs().col(i) = PsiVec.patch(0).coefs();
-    }
-
-    // Correction step
-    if (Psi.dim() == 2 && sepBoundary){
-    // since the initial mapping will be used in the composition.  (F o Psi)
-    const gsKnotVector<double> kv1 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).knots(0);
-    const gsKnotVector<double> kv2 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).knots(1);
-    const index_t degree1 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).degree(0);
-    const index_t degree2 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).degree(1);
-    //...
-    // gsFunctionExpr<> sDir = gsFunctionExpr<>("0",2);
-    // Initialize boundary conditions for Monge-Ampere solver
-    // gsBoundaryConditions<> bc;
-    // bc.setGeoMap(initial_mapping);
-    // for ( gsMultiPatch<>::const_biterator
-    //         bit = initial_mapping.bBegin(); bit != initial_mapping.bEnd(); ++bit)
-    // {
-    //     bc.addCondition( *bit, condition_type::dirichlet, &sDir );
-    // }    
-    gsSparseMatrix<> Mx  = assembleMass(Psi.basis(0).component(0));
-    // eliminateDirichlet1D(boundaryConditionsForDirection(bc,0), A.options(), Mx);
-    gsSparseMatrix<> My  = assembleMass(Psi.basis(0).component(1));
-    // eliminateDirichlet1D(boundaryConditionsForDirection(bc,1), A.options(), My);
-    // componenet by component
-    #pragma omp parallel for
-    for(index_t comp_nb = 0; comp_nb < Psi.geoDim(); ++comp_nb){
-        // y = 0 
-        gsVector<> rhsxy0(Mx.rows());
-        assemble_rhsvector_1d(Psi.basis(0).component(0), degree1, kv1, 0., 1, comp_nb, rhsxy0);
-        solver.compute( Mx );
-        solver.setTolerance(1e-30);
-        auto xsoly0 = solver.solve(rhsxy0);
-        // y = 1
-        gsVector<> rhsxy1(Mx.rows());
-        assemble_rhsvector_1d(Psi.basis(0).component(0), degree1, kv1, 1., 1, comp_nb, rhsxy1);
-        solver.compute( Mx );
-        solver.setTolerance(1e-30);
-        auto xsoly1 = solver.solve(rhsxy1);    
-        // x = 0 
-        gsVector<> rhsx0y(My.rows());
-        assemble_rhsvector_1d(Psi.basis(0).component(1), degree2, kv2, 0., 0, comp_nb, rhsx0y);
-        solver.compute( My );
-        solver.setTolerance(1e-30);
-        auto x0soly = solver.solve(rhsx0y);
-        // x = 1 
-        gsVector<> rhsx1y(My.rows());
-        assemble_rhsvector_1d(Psi.basis(0).component(1), degree2, kv2, 1., 0, comp_nb, rhsx1y);
-        solver.compute( My );
-        solver.setTolerance(1e-30);
-        auto x1soly = solver.solve(rhsx1y);
-        CorrectBoundary(Psi, 0, comp_nb, xsoly0, xsoly1, x0soly, x1soly, true);
-    }
-    gsInfo << ".";
-    }
-    Psi.computeTopology();
-    //...
-    slv_time += timer.stop();
-    timer.stop();
-    gsInfo<<" CPU-time "<< slv_time   <<"<>\n";
-    return Psi;
-};
-
-/**
  * \brief computes the projection of a composition and return a MultiPatch object :: Collocation
  *
  */
@@ -1075,24 +970,23 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch() const
     gsStopwatch timer;
     timer.restart();
 
-    gsMatrix<> initialGrid         = mapping_basis.basis(0).anchors();
     for (size_t n = 0; n < this->initial_mapping.nPatches(); ++n)
     {
+        const gsMatrix<> initialGrid = mapping_basis.basis(n).anchors();
         // Evaluate f at the Greville points
         gsMatrix<> intervalues         = this->MAmapping.patch(n).eval(initialGrid);
         intervalues                    = intervalues.cwiseMax(0).cwiseMin(1);
         gsMatrix<> finalValues         = this->initial_mapping.patch(n).eval(intervalues);
-        gsGeometry<>::uPtr interpolant = mapping_basis.basis(0).interpolateData(finalValues, initialGrid);
+        gsGeometry<>::uPtr interpolant = mapping_basis.basis(n).interpolateData(finalValues, initialGrid);
         if (this->m_exactGeo)
         {
             // Refine the initial patch until it has as many coefficients as the interpolant, then copy its boundary
             gsGeometry<>::uPtr exact = this->initial_mapping.patch(n).clone();
+            GISMO_ENSURE(exact->parDim() == interpolant->parDim(), "Exact geometry and interpolant must have the same parametric dimension.");
+            // Preserve the initial degree in every direction; only h-refine below.
             for (index_t d = 0; d < exact->parDim(); ++d)
-            {
-                const index_t dp = interpolant->basis().degree(d) - exact->basis().degree(d);
-                if (dp > 0)
-                    exact->degreeElevate(dp, d);
-            }
+                GISMO_ENSURE(exact->basis().degree(d) == interpolant->basis().degree(d),
+                             "exactGeo: composition must keep the initial degree in direction " << d << ".");
             while (exact->coefsSize() < interpolant->coefsSize())
                 exact->uniformRefine();
             if (exact->coefsSize() == interpolant->coefsSize())
@@ -1127,108 +1021,61 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch() const
     return Psi;
 };
 
-/**
- * \brief Compute the projection (fitting) of a composition and return it as a MultiPatch object.
- *
- * \remark The composition is approximated in a B-spline space using a least-squares (L^2) fitting approach.
- *         In 2D, a boundary correction can be applied if the approximation near the boundary
- *         is not sufficiently accurate (currently supported only in the tensor-product case).
- *
- * \param numElData Refinement level of the sampling grid used for the least-squares fitting,
- *                  relative to the identity mapping.
- * \param lambda Regularization (preconditioning) parameter; recommended value is 10^{-6},
- *               or at least smaller than 10^{-3}.
- * \param sepboundary if one want to separate boundary from inner  points in fitting procedure (based on Newton iteration( solve optimization pr))
- */
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const int numElData, const real_t lambda, const bool& sepboundary) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildH1CompMultiPatch(const real_t gradientWeight, const real_t quadValue) const
 {
-    if (this->initial_mapping.nPatches() > 1 || mapping_basis.basis(0).weights().any())
+    GISMO_ENSURE(std::isfinite(gradientWeight) && gradientWeight >= 0., "Gradient weight must be finite and non-negative.");
+    GISMO_ENSURE(std::isfinite(quadValue) && quadValue > 0., "Quadrature factor must be finite and positive.");
+
+    // Keep the boundary traces, including the existing exactGeo correction.
+    gsMultiPatch<> Psi = buildColCompMultiPatch();
+    gsBoundaryConditions<> bc;
+    for (auto bit = initial_mapping.bBegin(); bit != initial_mapping.bEnd(); ++bit)
+        bc.addCondition(*bit, condition_type::dirichlet, nullptr);
+
+    // Each physical coordinate solves (M + alpha K)c = b_value + alpha b_gradient.
+    for (index_t c = 0; c < initial_mapping.geoDim(); ++c)
     {
-        gsInfo<<"<Fit> multi-patch case not implemented, calling collocation method instead.\n";
-        return gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch();
+        gsMultiPatch<> target;
+        for (size_t p = 0; p < initial_mapping.nPatches(); ++p)
+        {
+            target.addPatch(gsComposedGeometry<>(MAmapping.patch(p), initial_mapping.patch(p)));
+            target.patch(p).coefs() = initial_mapping.patch(p).coefs().col(c);
+        }
+
+        gsExprAssembler<> A(1,1);
+        A.options().setReal("quA", quadValue);
+        A.options().setSwitch("SameElement", false); // Psi may cross knot spans of F.
+        A.setIntegrationElements(mapping_basis);
+        auto v = A.getSpace(mapping_basis);
+        auto f = A.getCoeff(target); // Includes D(F o Psi) through the chain rule.
+        v.setup(bc, dirichlet::user, 0);
+        const auto & mapper = v.mapper();
+        for (size_t p = 0; p < Psi.nPatches(); ++p)
+            for (index_t i = 0; i < Psi.basis(p).size(); ++i)
+                if (mapper.is_boundary(i, p))
+                    v.fixedPart()(mapper.bindex(i, p)) = Psi.patch(p).coefs()(i, c);
+
+        A.initSystem();
+        if (A.numDofs() == 0)
+            continue;
+        A.assemble(v * v.tr() + gradientWeight * grad(v) * grad(v).tr(),
+                   v * f + gradientWeight * grad(v) * grad(f).tr());
+        gsSparseSolver<>::SimplicialLDLT h1Solver;
+        h1Solver.compute(A.matrix());
+        GISMO_ENSURE(h1Solver.info() == gsEigen::Success, "H1 composition factorization failed.");
+        gsMatrix<> coefficients = h1Solver.solve(A.rhs());
+        GISMO_ENSURE(h1Solver.info() == gsEigen::Success && coefficients.allFinite(), "H1 composition solve failed.");
+        auto approximation = A.getSolution(v, coefficients);
+        for (size_t p = 0; p < Psi.nPatches(); ++p)
+        {
+            gsMatrix<> values;
+            approximation.extract(values, p);
+            Psi.patch(p).coefs().col(c) = values.col(0);
+        }
     }
-    gsInfo<<"<Fit> computes composition";
-    assert(mapping_basis.dim() == 2 && "Only single patch 2D fitting is implemented so far.");
-
-    gsMultiPatch<> Psi;    
-    // Copy tensor basis
-    gsTHBSplineBasis<2>  THB ( mapping_basis.basis(0));
-
-    double slv_time(0);
-    gsStopwatch timer;
-    timer.restart();
-    //...  just to generate grid in the computational domain  (we start from identity as we want tensor grid)
-    gsMultiBasis<> T_tbasis(identity_mp, true);
-
-    while ( T_tbasis.basis(0).size() <= std::max(mapping_basis.basis(0).size()*30, identity_mp.basis(0).size()*numElData))
-    {
-        T_tbasis.uniformRefine();
-    }
-    gsInfo<<":gridsize="<<T_tbasis.basis(0).size()<<"/"<<mapping_basis.basis(0).size();
-    gsMatrix<> initialGrid    = T_tbasis.basis(0).anchors();
-
-    // ------------------------------
-    // ... generate data for fitting
-    // gsMatrix<> initialGrid             = mapping_basis.basis(0).anchors();
-    // Evaluate f at the Greville points
-    gsMatrix<> intervalues          = this->MAmapping.patch(0).eval(initialGrid);
-    intervalues                     = intervalues.cwiseMax(0).cwiseMin(1);
-    gsMatrix<> finalValues           = this->initial_mapping.patch(0).eval(intervalues);
-
-
-    //-----------------------
-    // start fitting
-    //-----------------------
-
-    // Create hierarchical refinement object
-    gsFitting<> ref(initialGrid, finalValues, THB);
-    //... compute coefs
-    ref.compute(lambda);
-
-    if(sepboundary){
-    // number of grid points in one direction, assuming a square grid.
-    index_t ngrids        = sqrt(initialGrid.cols()); 
-    std::vector<index_t> boundaryIdx;
-    for (index_t i = 0; i < ngrids; ++i)
-    {
-        // y = 0 (bottom)
-        boundaryIdx.push_back(i * ngrids + 0);
-        // y = 1 (top)
-        boundaryIdx.push_back(i * ngrids + (ngrids - 1));
-        // x = 0 (left)
-        boundaryIdx.push_back(0 * ngrids + i);
-        // x = 1 (right)
-        boundaryIdx.push_back((ngrids - 1) * ngrids + i);
-    }
-    // Remove duplicates from boundary indices
-    std::sort(boundaryIdx.begin(), boundaryIdx.end());
-    boundaryIdx.erase(std::unique(boundaryIdx.begin(), boundaryIdx.end()),
-                    boundaryIdx.end());
-    // Number of interior points
-    index_t totalPts = ngrids * ngrids;
-    index_t nbInterior = totalPts - boundaryIdx.size();
-    // Combine interior and boundary indices for fitting
-    std::vector<index_t> interpIdx;
-    interpIdx.push_back(nbInterior);
-    for (auto b : boundaryIdx)
-        interpIdx.push_back(b);
-    //... initialization of geometry for fitting
-    // gsMultiPatch<> PsiCol = initial_mapping;
-    // while( PsiCol.basis(0).numElements() < mapping_basis.basis(0).numElements())   
-    //     PsiCol.uniformRefine();
-    // ref.initializeGeometry(PsiCol.patch(0).coefs(), initialGrid);
-    ref.parameterProjectionSepBoundary(1e-4, interpIdx);
-    }
-
-    //! [extract the mapping]
-    Psi.addPatch(give(*ref.result()));
-    Psi.computeTopology();
-    //...
-    slv_time += timer.stop();
-    timer.stop();
-    gsInfo<<" CPU-time "<< slv_time   <<"<>\n";
+    gsInfo << "<H1> composition gradient weight = " << gradientWeight << "\n";
     return Psi;
-};
+}
 
 
 //........................................................................
@@ -1256,20 +1103,6 @@ gsSparseMatrix<> gsAdaptiveMultiPatchBuilder::assembleMass(const gsBasis<>& basi
     mass.assemble( u * u.tr() );
     gsSparseMatrix<> result;
     mass.matrix_into(result);
-    return result;
-}
-
-gsBoundaryConditions<> gsAdaptiveMultiPatchBuilder::boundaryConditionsForDirection( const gsBoundaryConditions<>& bc, index_t direction ) const
-{
-    gsBoundaryConditions<> result;
-
-    for ( index_t i = 1; i <= 2; ++i)
-    {
-        patchSide global(0,i+2*direction), local(0,i);
-        const boundary_condition<double>* cond = bc.getConditionFromSide(global);
-        if (cond)
-            result.addCondition(local,cond->type(),cond->function());
-    }
     return result;
 }
 
@@ -1324,236 +1157,6 @@ void gsAdaptiveMultiPatchBuilder::setBoundaryControlPointsAlongNormal(gsMultiPat
     }
 }
 
-// Correct the control point at the boundary of a final mapping 
-void gsAdaptiveMultiPatchBuilder::CorrectBoundary(gsMultiPatch<>& Psi, const index_t& patchNumber, const index_t& patch_cmp, const gsMatrix<>& xsoly0, const gsMatrix<>& xsoly1, const gsMatrix<>& x0soly, const gsMatrix<>& x1soly, const bool& corners) const
-{
-    // ...
-    if (corners){
-    // update corners
-    for (int i_x =0; i_x < Psi.patch(patchNumber).basis().boundary(1).size(); ++i_x)
-    {
-    // x=0 control points be like (0,:) in this case
-    Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(1).at(i_x) ).array()[patch_cmp] = x0soly(i_x);
-    // x=1 control points be like (1,:) in this case
-    Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(2).at(i_x) ).array()[patch_cmp] = x1soly(i_x);
-    }
-
-    for (int i_x =0; i_x < Psi.patch(patchNumber).basis().boundary(3).size(); ++i_x) 
-    {
-    // y=0 control points be like (:,0) in this case
-    Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(3).at(i_x) ).array()[patch_cmp] = xsoly0(i_x);
-    // y=1 control points be like (:,1) in this case
-    Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(4).at(i_x) ).array()[patch_cmp] = xsoly1(i_x);
-    }
-    }
-    else{
-    for (int i_x =0; i_x < Psi.patch(patchNumber).basis().boundary(1).size()-1; ++i_x)
-    {
-    // x=0 control points be like (0,:) in this case
-    Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(1).at(i_x+1) ).array()[patch_cmp] = x0soly(i_x);
-    // x=1 control points be like (1,:) in this case
-    Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(2).at(i_x+1) ).array()[patch_cmp] = x1soly(i_x);
-    }
-
-    for (int i_x =0; i_x < Psi.patch(patchNumber).basis().boundary(3).size()-1; ++i_x) 
-    {
-    // y=0 control points be like (:,0) in this case
-    Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(3).at(i_x+1) ).array()[patch_cmp] = xsoly0(i_x);
-    // y=1 control points be like (:,1) in this case
-    Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(4).at(i_x+1) ).array()[patch_cmp] = xsoly1(i_x);
-    }        
-    }
-}
-
-// find the knot span index for a given x value
-index_t gsAdaptiveMultiPatchBuilder::find_span(const gsKnotVector<double>& knots, const index_t& degree, const double& x)  const 
-{
-    index_t low = degree;
-    index_t high = knots.size() - 1 - degree;
-    //  Check if point is exactly on left/right boundary, or outside domain
-    if (x <= knots[low]) return low;
-    if (x >= knots[high]) return high - 1;
-    // Binary search for the knot span index
-    index_t mid = (low + high) / 2;
-    while (x < knots[mid] || x >= knots[mid + 1]) {
-        if (x < knots[mid]) high = mid;
-        else low = mid;
-        mid = (low + high) / 2;
-    }
-    return mid;
-};
-
-// compute the basis functions for a given knot span and degree and x value
-void gsAdaptiveMultiPatchBuilder::basis_functions(const gsKnotVector<double>& knots, const index_t& degree, const double& x, index_t& span,
-                     gsVector<double>& dbasis0,
-                     gsVector<double>& dbasis1)  const 
-{
-    index_t minm = std::min(degree,2);// if degree == 1, then all second derivatives are 0
-
-    gsVector<double> left(degree), right(degree);
-    gsMatrix<double> ndu(degree + 1, degree + 1);
-    gsMatrix<double> a(2, degree + 1);
-    gsMatrix<double> ders(3, degree + 1);
-    span     = gsAdaptiveMultiPatchBuilder::find_span(knots, degree, x);
-
-    ndu(0,0)        = 1.0;
-    // computes basis functions
-    // #pragma omp parallel for
-    for (index_t j = 0; j < degree; ++j) {
-        left(j)      = x - knots[span - j];
-        right(j)     = knots[span + j + 1] - x;
-        double saved = 0.0;
-        for (index_t r = 0; r <= j; ++r) {
-            // compute inverse of knot differences and save them into lower triangular part of ndu
-            ndu(j + 1,r)  = 1./(right(r) + left(j - r));
-            //compute basis functions and save them into upper triangular part of ndu
-            double temp   = ndu(r,j) * ndu(j + 1,r);
-            ndu(r,j + 1)  = saved + right(r) * temp;
-            saved         = left(j - r) * temp;
-        }
-        ndu(j + 1, j + 1) = saved;
-    }
-    // compute the derivatives of the basis functions
-    // #pragma omp parallel for
-    for (index_t r = 0; r <= degree; ++r) {
-        ders(0,r) = ndu(r, degree);
-
-        index_t s1 = 0, s2 = 1;
-        a(0, 0)    = 1.0;
-        for (index_t k = 1; k <= minm; ++k) {
-            double d   = 0.0;
-            index_t rk = r - k;
-            index_t pk = degree - k;
-            if (r >= k) {
-                a(s2, 0) = a(s1, 0) * ndu(pk + 1, rk);
-                d        = a(s2, 0) * ndu(rk, pk);
-            }
-            index_t j1 = (rk > -1) ? 1 : -rk;
-            index_t j2 = (r - 1 <= pk) ? k - 1 : degree - r;
-            for (index_t j = j1; j <= j2; ++j)
-                a(s2,j) = (a(s1, j) - a(s1, j - 1)) * ndu(pk + 1, rk + j);
-            for (index_t j = j1; j <= j2; ++j)
-                d += a(s2, j) * ndu(rk + j, pk);
-            if (r <= pk) {
-                a(s2, k) = -a(s1, k - 1) * ndu(pk + 1, r);
-                d += a(s2, k) * ndu(r, pk);
-            }
-            ders(k, r) = d;
-            std::swap(s1, s2);
-        }
-    }
-    for (index_t j = 0; j <= degree; ++j) {
-        dbasis0(j) = ders(0,j);
-        dbasis1(j) = ders(1,j) * degree;
-    }
-};
-
-// compute the right-hand side vector for the composition of Left mapping and Monge-Ampere mapping
-void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_1d(
-    const gsBasis<>& basis,
-    const index_t& p1,
-    const gsKnotVector<double>& knots_1,
-    const double& valpt,
-    const index_t& dir_valpt,
-    const index_t& comp_nb,
-    gsVector<double>& rhs) const 
-{
-    rhs.setZero();
-
-    const double pi = 3.141592653589793;
-    index_t m = 8*p1 + 1;
-    index_t nRoots = (m + 1) / 2;
-
-    static gsVector<double> u, w;
-    static bool initialized = false;
-
-    if (!initialized)
-    {
-        u.resize(m);
-        w.resize(m);
-
-        for (index_t i = 0; i < nRoots; ++i)
-        {
-            double t = std::cos(pi*(i + 0.75)/(m + 0.5));
-
-            for (index_t j = 0; j < 30; ++j)
-            {
-                double p0 = 1.0, p1_ = t;
-
-                for (index_t k = 1; k < m; ++k)
-                {
-                    double pn = ((2.0*k+1.0)*t*p1_ - k*p0)/(k+1.0);
-                    p0 = p1_;
-                    p1_ = pn;
-                }
-
-                double denom = (1.0 - t*t);
-                if (std::abs(denom) < 1e-14) break;
-
-                double dp = m*(p0 - t*p1_)/denom;
-                double dt = -p1_/dp;
-
-                t += dt;
-
-                if (std::abs(dt) < 1e-14)
-                {
-                    u(i) = t;
-                    u(m-i-1) = -t;
-                    w(i) = 2.0/((1.0 - t*t)*dp*dp);
-                    w(m-i-1) = w(i);
-                    break;
-                }
-            }
-        }
-        initialized = true;
-    }
-
-    index_t nb1 = knots_1.size() - p1 - 1;
-    index_t ne1 = nb1 - p1;
-
-    gsVector<double> points_cmp(2);
-    points_cmp(dir_valpt) = valpt;
-    index_t dir_op = 1 - dir_valpt;
-
-    for (index_t ie1 = 0; ie1 < ne1; ++ie1)
-    {
-        double a1 = knots_1[ie1 + p1];
-        double b1 = knots_1[ie1 + p1 + 1];
-
-        if (std::abs(b1 - a1) < 1e-14)
-            continue;
-
-        double c0 = 0.5*(a1 + b1);
-        double c1 = 0.5*(b1 - a1);
-
-        for (index_t g1 = 0; g1 < m; ++g1)
-        {
-            double x1 = c1*u(g1) + c0;
-            double w1 = c1*w(g1);
-
-            index_t span1;
-            gsVector<double> N(p1+1), dN(p1+1);
-
-            basis_functions(knots_1, p1, x1, span1, N, dN);
-
-            points_cmp(dir_op) = x1;
-            // gsInfo << "before :" << points_cmp;
-            gsMatrix<> val_i = MAmapping.patch(0).eval(points_cmp);
-            val_i(dir_valpt) = valpt;
-            val_i.cwiseMax(0).cwiseMin(1);
-            // gsInfo << "after :" << val_i << "---\n";
-            double val_f = initial_mapping.patch(0).eval(val_i)[comp_nb];
-
-            for (index_t i = 0; i <= p1; ++i)
-            {
-                index_t gi = span1 - p1 + i;
-                rhs[gi] += val_f * N(i) * w1;
-            }
-        }
-    }
-};
-// End of the function
-
 // Both routines use the same assembly; only the Jacobian dimension differs.
 void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_2d(const gsBasis<>& basis,
                            const gsMatrix<double>& vector_mp, const gsMatrix<double>& vector_un,
@@ -1568,3 +1171,478 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_3d(const gsBasis<>& basis,
 {
     assembleDensityRhs<3>(basis, vector_mp, vector_un, rhs);
 }
+
+
+
+
+// // find the knot span index for a given x value
+// index_t gsAdaptiveMultiPatchBuilder::find_span(const gsKnotVector<double>& knots, const index_t& degree, const double& x)  const 
+// {
+//     index_t low = degree;
+//     index_t high = knots.size() - 1 - degree;
+//     //  Check if point is exactly on left/right boundary, or outside domain
+//     if (x <= knots[low]) return low;
+//     if (x >= knots[high]) return high - 1;
+//     // Binary search for the knot span index
+//     index_t mid = (low + high) / 2;
+//     while (x < knots[mid] || x >= knots[mid + 1]) {
+//         if (x < knots[mid]) high = mid;
+//         else low = mid;
+//         mid = (low + high) / 2;
+//     }
+//     return mid;
+// };
+
+// // compute the basis functions for a given knot span and degree and x value
+// void gsAdaptiveMultiPatchBuilder::basis_functions(const gsKnotVector<double>& knots, const index_t& degree, const double& x, index_t& span,
+//                      gsVector<double>& dbasis0,
+//                      gsVector<double>& dbasis1)  const 
+// {
+//     index_t minm = std::min(degree,2);// if degree == 1, then all second derivatives are 0
+
+//     gsVector<double> left(degree), right(degree);
+//     gsMatrix<double> ndu(degree + 1, degree + 1);
+//     gsMatrix<double> a(2, degree + 1);
+//     gsMatrix<double> ders(3, degree + 1);
+//     span     = gsAdaptiveMultiPatchBuilder::find_span(knots, degree, x);
+
+//     ndu(0,0)        = 1.0;
+//     // computes basis functions
+//     // #pragma omp parallel for
+//     for (index_t j = 0; j < degree; ++j) {
+//         left(j)      = x - knots[span - j];
+//         right(j)     = knots[span + j + 1] - x;
+//         double saved = 0.0;
+//         for (index_t r = 0; r <= j; ++r) {
+//             // compute inverse of knot differences and save them into lower triangular part of ndu
+//             ndu(j + 1,r)  = 1./(right(r) + left(j - r));
+//             //compute basis functions and save them into upper triangular part of ndu
+//             double temp   = ndu(r,j) * ndu(j + 1,r);
+//             ndu(r,j + 1)  = saved + right(r) * temp;
+//             saved         = left(j - r) * temp;
+//         }
+//         ndu(j + 1, j + 1) = saved;
+//     }
+//     // compute the derivatives of the basis functions
+//     // #pragma omp parallel for
+//     for (index_t r = 0; r <= degree; ++r) {
+//         ders(0,r) = ndu(r, degree);
+
+//         index_t s1 = 0, s2 = 1;
+//         a(0, 0)    = 1.0;
+//         for (index_t k = 1; k <= minm; ++k) {
+//             double d   = 0.0;
+//             index_t rk = r - k;
+//             index_t pk = degree - k;
+//             if (r >= k) {
+//                 a(s2, 0) = a(s1, 0) * ndu(pk + 1, rk);
+//                 d        = a(s2, 0) * ndu(rk, pk);
+//             }
+//             index_t j1 = (rk > -1) ? 1 : -rk;
+//             index_t j2 = (r - 1 <= pk) ? k - 1 : degree - r;
+//             for (index_t j = j1; j <= j2; ++j)
+//                 a(s2,j) = (a(s1, j) - a(s1, j - 1)) * ndu(pk + 1, rk + j);
+//             for (index_t j = j1; j <= j2; ++j)
+//                 d += a(s2, j) * ndu(rk + j, pk);
+//             if (r <= pk) {
+//                 a(s2, k) = -a(s1, k - 1) * ndu(pk + 1, r);
+//                 d += a(s2, k) * ndu(r, pk);
+//             }
+//             ders(k, r) = d;
+//             std::swap(s1, s2);
+//         }
+//     }
+//     for (index_t j = 0; j <= degree; ++j) {
+//         dbasis0(j) = ders(0,j);
+//         dbasis1(j) = ders(1,j) * degree;
+//     }
+// };
+
+// // compute the right-hand side vector for the composition of Left mapping and Monge-Ampere mapping
+// void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_1d(
+//     const gsBasis<>& basis,
+//     const index_t& p1,
+//     const gsKnotVector<double>& knots_1,
+//     const double& valpt,
+//     const index_t& dir_valpt,
+//     const index_t& comp_nb,
+//     gsVector<double>& rhs) const 
+// {
+//     rhs.setZero();
+
+//     const double pi = 3.141592653589793;
+//     index_t m = 8*p1 + 1;
+//     index_t nRoots = (m + 1) / 2;
+
+//     static gsVector<double> u, w;
+//     static bool initialized = false;
+
+//     if (!initialized)
+//     {
+//         u.resize(m);
+//         w.resize(m);
+
+//         for (index_t i = 0; i < nRoots; ++i)
+//         {
+//             double t = std::cos(pi*(i + 0.75)/(m + 0.5));
+
+//             for (index_t j = 0; j < 30; ++j)
+//             {
+//                 double p0 = 1.0, p1_ = t;
+
+//                 for (index_t k = 1; k < m; ++k)
+//                 {
+//                     double pn = ((2.0*k+1.0)*t*p1_ - k*p0)/(k+1.0);
+//                     p0 = p1_;
+//                     p1_ = pn;
+//                 }
+
+//                 double denom = (1.0 - t*t);
+//                 if (std::abs(denom) < 1e-14) break;
+
+//                 double dp = m*(p0 - t*p1_)/denom;
+//                 double dt = -p1_/dp;
+
+//                 t += dt;
+
+//                 if (std::abs(dt) < 1e-14)
+//                 {
+//                     u(i) = t;
+//                     u(m-i-1) = -t;
+//                     w(i) = 2.0/((1.0 - t*t)*dp*dp);
+//                     w(m-i-1) = w(i);
+//                     break;
+//                 }
+//             }
+//         }
+//         initialized = true;
+//     }
+
+//     index_t nb1 = knots_1.size() - p1 - 1;
+//     index_t ne1 = nb1 - p1;
+
+//     gsVector<double> points_cmp(2);
+//     points_cmp(dir_valpt) = valpt;
+//     index_t dir_op = 1 - dir_valpt;
+
+//     for (index_t ie1 = 0; ie1 < ne1; ++ie1)
+//     {
+//         double a1 = knots_1[ie1 + p1];
+//         double b1 = knots_1[ie1 + p1 + 1];
+
+//         if (std::abs(b1 - a1) < 1e-14)
+//             continue;
+
+//         double c0 = 0.5*(a1 + b1);
+//         double c1 = 0.5*(b1 - a1);
+
+//         for (index_t g1 = 0; g1 < m; ++g1)
+//         {
+//             double x1 = c1*u(g1) + c0;
+//             double w1 = c1*w(g1);
+
+//             index_t span1;
+//             gsVector<double> N(p1+1), dN(p1+1);
+
+//             basis_functions(knots_1, p1, x1, span1, N, dN);
+
+//             points_cmp(dir_op) = x1;
+//             // gsInfo << "before :" << points_cmp;
+//             gsMatrix<> val_i = MAmapping.patch(0).eval(points_cmp);
+//             val_i(dir_valpt) = valpt;
+//             val_i.cwiseMax(0).cwiseMin(1);
+//             // gsInfo << "after :" << val_i << "---\n";
+//             double val_f = initial_mapping.patch(0).eval(val_i)[comp_nb];
+
+//             for (index_t i = 0; i <= p1; ++i)
+//             {
+//                 index_t gi = span1 - p1 + i;
+//                 rhs[gi] += val_f * N(i) * w1;
+//             }
+//         }
+//     }
+// };
+// // End of the function
+
+// /**
+//  * \brief Compute the L^2-projection of a composition and return it as a MultiPatch object.
+//  *
+//  * \remark The composition is projected onto a B-spline space using an L^2 projection.
+//  *         In 2D, a boundary correction can be applied if the approximation near the
+//  *         boundary is not sufficiently accurate (currently supported only in the tensor-product case).
+//  *
+//  * \param quadValue Number of quadrature points used to evaluate the composition.
+//  *                  A recommended choice is degree(initial) * degree(MA mapping) + 1.
+//  * \param sepBoundary If true, an additional correction is applied at the boundary.
+//  */
+// gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const int quadValue, const bool& sepBoundary) const 
+// {
+//     if (this->initial_mapping.nPatches() > 1)
+//     {
+//         gsInfo<<"<Fit> multi-patch case not implemented, calling collocation method instead.\n";
+//         return gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch();
+//     }
+//     gsInfo<<"<L2> computes composition";
+
+//     // target mapping
+//     gsMultiPatch<> Psi;
+    
+//     /// start timing
+//     double slv_time(0);
+//     gsStopwatch timer;
+//     timer.restart();
+
+//     //! [Problem setup] assembler 
+//     gsExprAssembler<> A(1,1);
+//     A.options().setReal("quA", quadValue);
+//     A.options().setSwitch("SameElement",false); // Very important for the composition of the two mappings
+//     //...
+//     A.setIntegrationElements(mapping_basis);
+
+//     //... 
+//     space v        = A.getSpace(mapping_basis);
+//     gsMatrix<> vsolVector;
+//     solution v_sol = A.getSolution(v, vsolVector);
+
+//     //...
+//     geometryMap PP = A.getMap(this->MAmapping);
+//     //...
+//     A.initSystem();
+//     A.assemble(v*v.tr());//Matrix for one component
+//     solver.compute( A.matrix() );
+//     // ...
+//     auto comp      = A.getCoeff(this->initial_mapping, PP);
+
+//     A.initSystem(this->initial_mapping.geoDim());
+//     A.assemble(v * comp.tr() );// blocked by this one
+//     vsolVector     = solver.solve(A.rhs().col(0));
+//     v_sol.extract(Psi);
+
+//     #pragma omp for
+//     for(index_t i=1; i<this->initial_mapping.geoDim(); ++i)
+//     {
+//         gsMultiPatch<> PsiVec;
+//         vsolVector = solver.solve(A.rhs().col(i));
+//         v_sol.extract(PsiVec);
+//         Psi.embed(i+1);
+//         Psi.patch(0).coefs().col(i) = PsiVec.patch(0).coefs();
+//     }
+
+//     // Correction step
+//     if (Psi.dim() == 2 && sepBoundary){
+//     // since the initial mapping will be used in the composition.  (F o Psi)
+//     const gsKnotVector<double> kv1 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).knots(0);
+//     const gsKnotVector<double> kv2 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).knots(1);
+//     const index_t degree1 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).degree(0);
+//     const index_t degree2 =  static_cast<gsTensorNurbs<2> &>( Psi.patch(0)).degree(1);
+//     //...
+//     // gsFunctionExpr<> sDir = gsFunctionExpr<>("0",2);
+//     // Initialize boundary conditions for Monge-Ampere solver
+//     // gsBoundaryConditions<> bc;
+//     // bc.setGeoMap(initial_mapping);
+//     // for ( gsMultiPatch<>::const_biterator
+//     //         bit = initial_mapping.bBegin(); bit != initial_mapping.bEnd(); ++bit)
+//     // {
+//     //     bc.addCondition( *bit, condition_type::dirichlet, &sDir );
+//     // }    
+//     gsSparseMatrix<> Mx  = assembleMass(Psi.basis(0).component(0));
+//     // eliminateDirichlet1D(boundaryConditionsForDirection(bc,0), A.options(), Mx);
+//     gsSparseMatrix<> My  = assembleMass(Psi.basis(0).component(1));
+//     // eliminateDirichlet1D(boundaryConditionsForDirection(bc,1), A.options(), My);
+//     // componenet by component
+//     #pragma omp parallel for
+//     for(index_t comp_nb = 0; comp_nb < Psi.geoDim(); ++comp_nb){
+//         // y = 0 
+//         gsVector<> rhsxy0(Mx.rows());
+//         assemble_rhsvector_1d(Psi.basis(0).component(0), degree1, kv1, 0., 1, comp_nb, rhsxy0);
+//         solver.compute( Mx );
+//         solver.setTolerance(1e-30);
+//         auto xsoly0 = solver.solve(rhsxy0);
+//         // y = 1
+//         gsVector<> rhsxy1(Mx.rows());
+//         assemble_rhsvector_1d(Psi.basis(0).component(0), degree1, kv1, 1., 1, comp_nb, rhsxy1);
+//         solver.compute( Mx );
+//         solver.setTolerance(1e-30);
+//         auto xsoly1 = solver.solve(rhsxy1);    
+//         // x = 0 
+//         gsVector<> rhsx0y(My.rows());
+//         assemble_rhsvector_1d(Psi.basis(0).component(1), degree2, kv2, 0., 0, comp_nb, rhsx0y);
+//         solver.compute( My );
+//         solver.setTolerance(1e-30);
+//         auto x0soly = solver.solve(rhsx0y);
+//         // x = 1 
+//         gsVector<> rhsx1y(My.rows());
+//         assemble_rhsvector_1d(Psi.basis(0).component(1), degree2, kv2, 1., 0, comp_nb, rhsx1y);
+//         solver.compute( My );
+//         solver.setTolerance(1e-30);
+//         auto x1soly = solver.solve(rhsx1y);
+//         CorrectBoundary(Psi, 0, comp_nb, xsoly0, xsoly1, x0soly, x1soly, true);
+//     }
+//     gsInfo << ".";
+//     }
+//     Psi.computeTopology();
+//     //...
+//     slv_time += timer.stop();
+//     timer.stop();
+//     gsInfo<<" CPU-time "<< slv_time   <<"<>\n";
+//     return Psi;
+// };
+
+// gsBoundaryConditions<> gsAdaptiveMultiPatchBuilder::boundaryConditionsForDirection( const gsBoundaryConditions<>& bc, index_t direction ) const
+// {
+//     gsBoundaryConditions<> result;
+
+//     for ( index_t i = 1; i <= 2; ++i)
+//     {
+//         patchSide global(0,i+2*direction), local(0,i);
+//         const boundary_condition<double>* cond = bc.getConditionFromSide(global);
+//         if (cond)
+//             result.addCondition(local,cond->type(),cond->function());
+//     }
+//     return result;
+// }
+
+
+// // Correct the control point at the boundary of a final mapping 
+// void gsAdaptiveMultiPatchBuilder::CorrectBoundary(gsMultiPatch<>& Psi, const index_t& patchNumber, const index_t& patch_cmp, const gsMatrix<>& xsoly0, const gsMatrix<>& xsoly1, const gsMatrix<>& x0soly, const gsMatrix<>& x1soly, const bool& corners) const
+// {
+//     // ...
+//     if (corners){
+//     // update corners
+//     for (int i_x =0; i_x < Psi.patch(patchNumber).basis().boundary(1).size(); ++i_x)
+//     {
+//     // x=0 control points be like (0,:) in this case
+//     Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(1).at(i_x) ).array()[patch_cmp] = x0soly(i_x);
+//     // x=1 control points be like (1,:) in this case
+//     Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(2).at(i_x) ).array()[patch_cmp] = x1soly(i_x);
+//     }
+
+//     for (int i_x =0; i_x < Psi.patch(patchNumber).basis().boundary(3).size(); ++i_x) 
+//     {
+//     // y=0 control points be like (:,0) in this case
+//     Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(3).at(i_x) ).array()[patch_cmp] = xsoly0(i_x);
+//     // y=1 control points be like (:,1) in this case
+//     Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(4).at(i_x) ).array()[patch_cmp] = xsoly1(i_x);
+//     }
+//     }
+//     else{
+//     for (int i_x =0; i_x < Psi.patch(patchNumber).basis().boundary(1).size()-1; ++i_x)
+//     {
+//     // x=0 control points be like (0,:) in this case
+//     Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(1).at(i_x+1) ).array()[patch_cmp] = x0soly(i_x);
+//     // x=1 control points be like (1,:) in this case
+//     Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(2).at(i_x+1) ).array()[patch_cmp] = x1soly(i_x);
+//     }
+
+//     for (int i_x =0; i_x < Psi.patch(patchNumber).basis().boundary(3).size()-1; ++i_x) 
+//     {
+//     // y=0 control points be like (:,0) in this case
+//     Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(3).at(i_x+1) ).array()[patch_cmp] = xsoly0(i_x);
+//     // y=1 control points be like (:,1) in this case
+//     Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(4).at(i_x+1) ).array()[patch_cmp] = xsoly1(i_x);
+//     }        
+//     }
+// }
+
+// /**
+//  * \brief Compute the projection (fitting) of a composition and return it as a MultiPatch object.
+//  *
+//  * \remark The composition is approximated in a B-spline space using a least-squares (L^2) fitting approach.
+//  *         In 2D, a boundary correction can be applied if the approximation near the boundary
+//  *         is not sufficiently accurate (currently supported only in the tensor-product case).
+//  *
+//  * \param numElData Refinement level of the sampling grid used for the least-squares fitting,
+//  *                  relative to the identity mapping.
+//  * \param lambda Regularization (preconditioning) parameter; recommended value is 10^{-6},
+//  *               or at least smaller than 10^{-3}.
+//  * \param sepboundary if one want to separate boundary from inner  points in fitting procedure (based on Newton iteration( solve optimization pr))
+//  */
+// gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const int numElData, const real_t lambda, const bool& sepboundary) const 
+// {
+//     if (this->initial_mapping.nPatches() > 1 || mapping_basis.basis(0).weights().any())
+//     {
+//         gsInfo<<"<Fit> multi-patch case not implemented, calling collocation method instead.\n";
+//         return gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch();
+//     }
+//     gsInfo<<"<Fit> computes composition";
+//     assert(mapping_basis.dim() == 2 && "Only single patch 2D fitting is implemented so far.");
+
+//     gsMultiPatch<> Psi;    
+//     // Copy tensor basis
+//     gsTHBSplineBasis<2>  THB ( mapping_basis.basis(0));
+
+//     double slv_time(0);
+//     gsStopwatch timer;
+//     timer.restart();
+//     //...  just to generate grid in the computational domain  (we start from identity as we want tensor grid)
+//     gsMultiBasis<> T_tbasis(identity_mp, true);
+
+//     while ( T_tbasis.basis(0).size() <= std::max(mapping_basis.basis(0).size()*30, identity_mp.basis(0).size()*numElData))
+//     {
+//         T_tbasis.uniformRefine();
+//     }
+//     gsInfo<<":gridsize="<<T_tbasis.basis(0).size()<<"/"<<mapping_basis.basis(0).size();
+//     gsMatrix<> initialGrid    = T_tbasis.basis(0).anchors();
+
+//     // ------------------------------
+//     // ... generate data for fitting
+//     // gsMatrix<> initialGrid             = mapping_basis.basis(0).anchors();
+//     // Evaluate f at the Greville points
+//     gsMatrix<> intervalues          = this->MAmapping.patch(0).eval(initialGrid);
+//     intervalues                     = intervalues.cwiseMax(0).cwiseMin(1);
+//     gsMatrix<> finalValues           = this->initial_mapping.patch(0).eval(intervalues);
+
+
+//     //-----------------------
+//     // start fitting
+//     //-----------------------
+
+//     // Create hierarchical refinement object
+//     gsFitting<> ref(initialGrid, finalValues, THB);
+//     //... compute coefs
+//     ref.compute(lambda);
+
+//     if(sepboundary){
+//     // number of grid points in one direction, assuming a square grid.
+//     index_t ngrids        = sqrt(initialGrid.cols()); 
+//     std::vector<index_t> boundaryIdx;
+//     for (index_t i = 0; i < ngrids; ++i)
+//     {
+//         // y = 0 (bottom)
+//         boundaryIdx.push_back(i * ngrids + 0);
+//         // y = 1 (top)
+//         boundaryIdx.push_back(i * ngrids + (ngrids - 1));
+//         // x = 0 (left)
+//         boundaryIdx.push_back(0 * ngrids + i);
+//         // x = 1 (right)
+//         boundaryIdx.push_back((ngrids - 1) * ngrids + i);
+//     }
+//     // Remove duplicates from boundary indices
+//     std::sort(boundaryIdx.begin(), boundaryIdx.end());
+//     boundaryIdx.erase(std::unique(boundaryIdx.begin(), boundaryIdx.end()),
+//                     boundaryIdx.end());
+//     // Number of interior points
+//     index_t totalPts = ngrids * ngrids;
+//     index_t nbInterior = totalPts - boundaryIdx.size();
+//     // Combine interior and boundary indices for fitting
+//     std::vector<index_t> interpIdx;
+//     interpIdx.push_back(nbInterior);
+//     for (auto b : boundaryIdx)
+//         interpIdx.push_back(b);
+//     //... initialization of geometry for fitting
+//     // gsMultiPatch<> PsiCol = initial_mapping;
+//     // while( PsiCol.basis(0).numElements() < mapping_basis.basis(0).numElements())   
+//     //     PsiCol.uniformRefine();
+//     // ref.initializeGeometry(PsiCol.patch(0).coefs(), initialGrid);
+//     ref.parameterProjectionSepBoundary(1e-4, interpIdx);
+//     }
+
+//     //! [extract the mapping]
+//     Psi.addPatch(give(*ref.result()));
+//     Psi.computeTopology();
+//     //...
+//     slv_time += timer.stop();
+//     timer.stop();
+//     gsInfo<<" CPU-time "<< slv_time   <<"<>\n";
+//     return Psi;
+// };

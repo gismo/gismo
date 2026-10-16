@@ -73,14 +73,12 @@ public:
     //---------------------------------------------------------------------------------
     //  functions to project the composition of Initial mapping and moving mesh mapping
     //---------------------------------------------------------------------------------
-    // Method to build a multipatch adaptive mapping by projection the composition of geometry maps :: L2-projection
-    gsMultiPatch<> buildCompMultiPatch(const int quadValue = 1, const bool& sepBoundary = false) const;
-
-    // Method to build a multipatch adaptive mapping by projection the composition of geometry maps :: fitting (penalized least sqaure)
-    gsMultiPatch<> buildFitCompMultiPatch(const int numElData = 50, const real_t lambda = 0, const bool& sepboundary = false) const;
-
     // computes the projection of a composition and return a MultiPatch object :: Collocation
     gsMultiPatch<> buildColCompMultiPatch() const;
+
+    // Minimize squared value error + gradientWeight * squared reference-gradient error.
+    // Keep collocated boundary traces and enforce C0 continuity at matching interfaces.
+    gsMultiPatch<> buildH1CompMultiPatch(const real_t gradientWeight = 1., const real_t quadValue = 2.) const;
     
     //----------------------------------------
     // Useful functions for moving mesh
@@ -90,33 +88,14 @@ public:
 
     // ... assemble the stiffness matrix for a given basis in one dimension
     gsSparseMatrix<> assembleStiffness(const gsBasis<>& basis) const;
-    
-    // ... extract boundary condition for each direction 
-    gsBoundaryConditions<> boundaryConditionsForDirection( const gsBoundaryConditions<>& bc, index_t direction ) const;
 
     // ... apply dirichlet by elimination
     void eliminateDirichlet1D(const gsBoundaryConditions<>& bc, const gsOptionList& opt, gsSparseMatrix<> & result) const;
 
-    // ... correct the boundary constrol points only in two dimensions
-    void CorrectBoundary(gsMultiPatch<>& Psi, const index_t& patchNumber, const index_t& patch_cmp, const gsMatrix<>& xsoly0, const gsMatrix<>& xsoly1, const gsMatrix<>& x0soly, const gsMatrix<>& x1soly, const bool& corners = false) const;
-
     // Project control points following normal direction at the boundaries for square domain for moving mesh mapping
     void setBoundaryControlPointsAlongNormal(gsMultiPatch<>& Psi) const;
 
-    // Method to build a inverse multipatch adaptive mapping by projection the composition of geometry maps : fitting
-    //gsMultiPatch<> buildInverseMultiPatch(const gsMultiPatch<> lastMAEmapping, const int numElData = 50, const real_t lambda = 0., const bool UpdateInTime = true) const;
-
-    // Method to find the span of a knot vector
-    index_t find_span(const gsKnotVector<double>& knots, const index_t& degree, const double& x) const;
-
-    // Method to compute the basis functions and their derivatives
-    void basis_functions(const gsKnotVector<double>& knots, const index_t& degree, const double& x, index_t& span,
-                     gsVector<double>& d0,
-                     gsVector<double>& d1) const;
-
-    // Method to compute the right-hand side vector for composition of mpLeft and MAE mapping assembly in 1D
-    void assemble_rhsvector_1d(const gsBasis<>& basis, const index_t& p1, const gsKnotVector<double>& knots_1, const double& valpt, const index_t& dir_valpt,  const index_t& comp_nb,
-                           gsVector<double>& rhs) const;
+    
     // Transfer a scalar density using the shared mapping/density basis.
     void assemble_rhsvector_2d(const gsBasis<>& basis,
                            const gsMatrix<double>& vector_mp, const gsMatrix<double>& vector_un,

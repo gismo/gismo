@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--This file was created by G+Smo 24.8.0-->
 <xml>
-  <!-- Manufactured density function : Right-hand side function of MAE : exp(-100 * ( x**2 + y**2-0.75)**2) -->
-  <Function type="FunctionExpr" id="2003" dim="3"> 1./cosh( 0.5*(x+y +z + 10.) )</Function>
-
  <Geometry type="TensorNurbs2" id="0">
   <Basis type="TensorNurbsBasis2">
    <Basis type="TensorBSplineBasis2">
