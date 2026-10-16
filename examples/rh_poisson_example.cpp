@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     index_t numLRefine    = 3;
     index_t numElevate    = 0;
     index_t maxIter       = 50;
-    index_t mappingUpdates = 3;
+    index_t mappingUpdates = 5;
     index_t NumArMarEl    = 0; // Number of ring of cells around marked elements
     index_t id_mp          = 0; // id of the geometry in the xml file
     double IntensityMAE   = 10.;

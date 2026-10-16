@@ -273,8 +273,26 @@ int main(int argc, char *argv[])
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefineMAE, maxIter, IntensityMAE, numReduceMAE, numElevateMAE, exactGeo);
     auto density        = MAE.buildAnalyticDensity(f); // build the density function (we avoid composing rho o F o Psi here)
-    MAE.buildMultiPatch(density, 1e-8);// build the adaptive mapping
+    MAE.buildMultiPatch(density);// build the adaptive mapping
 
+    // Show all patch densities as separate fields on one reference patch.
+    gsMultiPatch<> densityDomain;
+    const gsMatrix<> densityGrid = density.basis(0).anchors();
+    densityDomain.addPatch(density.basis(0).interpolateData(densityGrid, densityGrid));
+    gsParaviewCollection<> densityPlot("ParaviewOutput/density");
+    densityPlot.newTimeStep(densityDomain);
+    for (size_t p = 0; p < density.nPatches(); ++p)
+        densityPlot.addField(gsField<>(densityDomain, density.patch(p), true),
+                             "density_patch" + std::to_string(p + 1));
+    densityPlot.saveTimeStep();
+    densityPlot.save();
+
+    // Export each adaptive reference-square mapping with its element mesh.
+    for (size_t p = 0; p < MAE.MAmapping.nPatches(); ++p)
+        gsWriteParaview(MAE.MAmapping.patch(p),
+                        "ParaviewOutput/MAE_mapping_patch" + std::to_string(p + 1), 1000, true);
+    //... 
+    
     // //------------------------------------
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
@@ -368,6 +386,31 @@ int main(int argc, char *argv[])
     FHdferror[r]            = maxDist;//std::abs(abs(ev.integral( meas(G)  )) - abs( ev.integral(meas(PGF)) ));
     FBdrerr[r]              = Binf;// math::sqrt(ev.integral((PGF-Cmp).sqNorm())); 
     }
+    }
+
+    // Evaluate F(Psi) directly, without projecting it into a spline space.
+    if (mpPsi.nPatches() != 0)
+    {
+        gsMultiPatch<> directComposition;
+        for (size_t p = 0; p < mpLeft.nPatches(); ++p)
+            directComposition.addPatch(gsComposedGeometry<>(MAE.MAmapping.patch(p), mpLeft.patch(p)));
+        geometryMap direct = A.getMap(directComposition);
+        geometryMap approximation = A.getMap(mpPsi);
+        for (const auto * geometry : {&directComposition, &mpPsi})
+        {
+            const std::string name = geometry == &directComposition ? "composition_direct" : "composition_approx";
+            gsParaviewCollection<> comparison("ParaviewOutput/" + name, ev);
+            comparison.options().setSwitch("elements", true);
+            comparison.options().setInt("elementResolution", 8);
+            comparison.options().setInt("numPoints", 10000);
+            comparison.options().setInt("precision", 10);
+            comparison.newTimeStep(*geometry);
+            comparison.addField(jac(direct).det(), "direct_Jacobian");
+            comparison.addField(jac(approximation).det(), "approximated_Jacobian");
+            comparison.addField((approximation - direct).norm(), "composition_error");
+            comparison.saveTimeStep();
+            comparison.save();
+        }
     }
 
     // Assuming DoFPDE, l2err, and h1err are gsMatrix or similar types
@@ -582,8 +625,8 @@ int main(int argc, char *argv[])
         // gsInfo << "Result written in Psi_mapping.xml \n";
     }
     else
-        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
-                  "file containing the solution.\n";
+        gsInfo << "Done. Density, MAE meshes and composition comparison exported to ParaviewOutput/; re-run with --plot "
+                  "to also export the solution.\n";
 
     return EXIT_SUCCESS;
 

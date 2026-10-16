@@ -48,6 +48,9 @@ public:
 
     // m_maxIter: max iterations, in moving mesh we want to change max iteration since we start with adaptive mapping
     index_t m_maxIter;
+    
+    // m_mae: tolerance for the Picard loop in the moving mesh solver
+    double tolMAE = 1e-8;
 
     // degees of freedom used in the computation
     int DoFs;
@@ -65,8 +68,7 @@ public:
     //  functions to build mapping from density
     //-----------------------------------------
     // Reuse MAmapping when available; perform at most m_maxIter Picard updates.
-    // tolMAE is the stopping tolerance for the Picard iterations.
-    void buildMultiPatch(const gsMultiPatch<> &density, const double tolMAE = 1e-8) const;
+    void buildMultiPatch(const gsMultiPatch<> &density) const;
 
     //---------------------------------------------------------------------------------
     //  functions to project the composition of Initial mapping and moving mesh mapping
@@ -115,14 +117,11 @@ public:
     // Method to compute the right-hand side vector for composition of mpLeft and MAE mapping assembly in 1D
     void assemble_rhsvector_1d(const gsBasis<>& basis, const index_t& p1, const gsKnotVector<double>& knots_1, const double& valpt, const index_t& dir_valpt,  const index_t& comp_nb,
                            gsVector<double>& rhs) const;
-    // Method to compute the right-hand side vector for adaptive multi-patch assembly in 2D
-    void assemble_rhsvector_2d(const index_t& p1, const index_t& p2,
-                           const gsKnotVector<double>& knots_1, const gsKnotVector<double>& knots_2,
+    // Transfer a scalar density using the shared mapping/density basis.
+    void assemble_rhsvector_2d(const gsBasis<>& basis,
                            const gsMatrix<double>& vector_mp, const gsMatrix<double>& vector_un,
                            gsMatrix<double>& rhs) const;
-    // Method to compute the right-hand side vector for adaptive multi-patch assembly in 3D
-    void assemble_rhsvector_3d(const index_t& p1, const index_t& p2, const index_t& p3,
-                           const gsKnotVector<double>& knots_1, const gsKnotVector<double>& knots_2, const gsKnotVector<double>& knots_3,
+    void assemble_rhsvector_3d(const gsBasis<>& basis,
                            const gsMatrix<double>& vector_mp, const gsMatrix<double>& vector_un,
                            gsMatrix<double>& rhs) const;
 
@@ -130,12 +129,7 @@ private:
     // Fast diagonalization solver with Dirichlet conditions on the shared basis
     gsPatchPreconditionersCreator<double>::Poisson_FastDiag dirichletPoissonSolver() const;
     // Multipatch version of buildMultiPatch (one mapping of the unit square per patch)
-    void buildMultiPatchMMPDE(const gsMultiPatch<> &density, const double tolMAE) const;
-
-    // 1D equidistribution along an edge. A previous trace uses the same
-    // m_maxIter update budget as the interior; otherwise start from identity.
-    gsMatrix<> solveEdgeMapping(const gsFunction<>& rho, const index_t side,
-                               const gsMatrix<>& initial = gsMatrix<>()) const;
+    void buildMultiPatchMMPDE(const gsMultiPatch<> &density) const;
 
     gsMultiBasis<double> m_basis;
     //... Identity mapping in square to itself
