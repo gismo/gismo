@@ -64,7 +64,8 @@ public:
     //-----------------------------------------
     //  functions to build mapping from density
     //-----------------------------------------
-    // Method to build a multipatch Monge-Ampere mapping: tolMAE is tolerance in Picard iterations
+    // Reuse MAmapping when available; perform at most m_maxIter Picard updates.
+    // tolMAE is the stopping tolerance for the Picard iterations.
     void buildMultiPatch(const gsMultiPatch<> &density, const double tolMAE = 1e-8) const;
 
     //---------------------------------------------------------------------------------
@@ -131,8 +132,10 @@ private:
     // Multipatch version of buildMultiPatch (one mapping of the unit square per patch)
     void buildMultiPatchMMPDE(const gsMultiPatch<> &density, const double tolMAE) const;
 
-    // 1D problem (w(phi) phi')' = 0 along one side of the unit square; returns the tangential coefficients of the edge mapping
-    gsMatrix<> solveEdgeMapping(const gsFunction<>& rho, const index_t side) const;
+    // 1D equidistribution along an edge. A previous trace uses the same
+    // m_maxIter update budget as the interior; otherwise start from identity.
+    gsMatrix<> solveEdgeMapping(const gsFunction<>& rho, const index_t side,
+                               const gsMatrix<>& initial = gsMatrix<>()) const;
 
     gsMultiBasis<double> m_basis;
     //... Identity mapping in square to itself

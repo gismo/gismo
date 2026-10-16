@@ -24,6 +24,7 @@ int main(int argc, char *argv[])
     index_t numLRefine    = 3;
     index_t numElevate    = 0;
     index_t maxIter       = 50;
+    index_t mappingUpdates = 3;
     index_t NumArMarEl    = 0; // Number of ring of cells around marked elements
     index_t id_mp          = 0; // id of the geometry in the xml file
     double IntensityMAE   = 10.;
@@ -48,6 +49,7 @@ int main(int argc, char *argv[])
     cmd.addInt( "e",     "degreeElevation",  "Number of degree elevation steps to perform before solving",              numElevate );
     cmd.addReal( "f",    "IntensityMAE",     "Intensity of density function",                                           IntensityMAE);
     cmd.addInt("i",      "iter",             "Maximum number of iterations for the iterative Picard",                   maxIter);
+    cmd.addInt("",       "mappingUpdates",  "Picard updates from the previous mapping in each adaptive step",          mappingUpdates);
     cmd.addInt( "l",     "numLRefine",       "Number of local h-refinement loops",                                      numLRefine );
     cmd.addReal( "p",    "adaptRefParamMAE", "parameter for MAE mapping in local h-refinement loops",                   adaptRefParamMAE );
     cmd.addInt( "r",     "adaptRefCrit",     "Adaptive refinement criterion [1:GARU,2:PUCA,3:BULK,4:PBULK]",            adaptRefCrit );
@@ -61,6 +63,7 @@ int main(int argc, char *argv[])
     cmd.addSwitch("errorsave",               "Create a file in ... and save errors",                                    errorsave);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+    GISMO_ENSURE(mappingUpdates >= 0, "mappingUpdates must be nonnegative.");
 
     // Load the file
     gsFileData<> fd(fn);
@@ -279,6 +282,8 @@ int main(int argc, char *argv[])
                 std::vector<bool> eldensityMarked( eltErrs.size() );
                 gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParamMAE, eldensityMarked);                 
                 auto density   = MAE.buildDensity( dbasis, eldensityMarked, r);
+                // Continue the previous mapping with a short update budget.
+                MAE.m_maxIter = mappingUpdates;
                 MAE.buildMultiPatch(density);// compute Monge-Ampere mapping
                 mpLeft         = MAE.buildCompMultiPatch();// computes the composition mapping mpLeft o MAmapping
                 // -----------------

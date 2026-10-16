@@ -420,6 +420,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Hb
  */
 void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density, const double tolMAE) const
 {
+    GISMO_ENSURE(m_maxIter >= 0, "Picard update budget must be nonnegative.");
     if (this->m_exactGeo || this->initial_mapping.nPatches() > 1)
     {
         buildMultiPatchMMPDE(density, tolMAE);
@@ -537,7 +538,7 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density,
     // Picard loop
     auto  sv0 = solVector;
     solution u_lsol = A.getSolution(u, sv0);
-    for(int ip{0}; ip<=m_maxIter; ++ip)
+    for(int ip{0}; ip<m_maxIter; ++ip)
     {
         std::cout << "\r" << std::string(20,' ') << "\r<> Picard Iteration: " << ip << std::flush;
         
@@ -573,7 +574,20 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density,
         auto l2Res        = math::sqrt(ev.integral( ( grad(u_sol)-grad(u_lsol)).sqNorm()  ));
         sv0               = solVector;
 
-        if ( l2Res < tolMAE || ip == m_maxIter ){
+        A.initSystem(IGdim);
+        // Apply this Picard update before testing convergence or the iteration limit.
+        A.assemble(u * grad(u_sol));
+        for(index_t Mp=0; Mp<identity_mp.dim(); ++Mp){
+            gsMultiPatch<> PsiPsitp_temp;
+            timer.restart();
+            vsolVector = Poisson.L2ProjectScalar(A.rhs().col(Mp));
+            slv_time  += timer.stop();
+            v_sol.extract(PsiPsitp_temp);
+            Psi.patch(0).coefs().col(Mp) = PsiPsitp_temp.patch(0).coefs().col(0);
+        }
+        setBoundaryControlPointsAlongNormal(Psi);
+
+        if ( l2Res < tolMAE || ip + 1 == m_maxIter ){
             auto L2MAE        = math::sqrt(ev.integral( pow( 1. - (int_uh_0*abs(rho.val()) + int_uh_1)*jac(PP).det()/CoeffDensity,2)  ));
             auto Ddet         = ev.min(jac(PP).det());
             // ! end Picard loop
@@ -583,21 +597,6 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density,
                     << ". max(rho): "<<std::fixed << std::setprecision(2)<<maxrho<<".";
             break;
             } //
-    A.initSystem(IGdim);
-    // Obtain control points for the gradient of Psi
-    A.assemble(u * grad(u_sol));
-    for(index_t Mp=0; Mp<identity_mp.dim(); ++Mp){
-        gsMultiPatch<> PsiPsitp_temp;
-        timer.restart();
-        vsolVector = Poisson.L2ProjectScalar(A.rhs().col(Mp));
-        slv_time  += timer.stop();
-        v_sol.extract(PsiPsitp_temp);
-        Psi.patch(0).coefs().col(Mp) = PsiPsitp_temp.patch(0).coefs().col(0);
-    }
-    //--------------------
-    //correct the boundary
-    setBoundaryControlPointsAlongNormal(Psi);
-    // ...
     }//END for loop
     Psi.computeTopology();
     // ....
@@ -619,11 +618,12 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatchMMPDE(const gsMultiPatch<> &den
 {
     const index_t nP = this->initial_mapping.nPatches();
     GISMO_ENSURE(static_cast<index_t>(density.nPatches()) == nP, "One density patch per geometry patch is required.");
+    const bool reuseMapping = !MAmapping.empty();
+    GISMO_ENSURE(!reuseMapping || static_cast<index_t>(MAmapping.nPatches()) == nP,
+                 "Previous mapping must have one patch per geometry patch.");
     gsInfo<<"<> Multipatch Picard iterations";
 
     gsStopwatch timer;
-
-    gsFunctionExpr<> sx("x",2), sy("y",2);
 
     gsExprAssembler<> A(1,1);
     A.options().setSwitch("SameElement",false);
@@ -631,13 +631,11 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatchMMPDE(const gsMultiPatch<> &den
     gsExprEvaluator<> ev(A);
     geometryMap G = A.getMap(identity_mp);
     space u       = A.getSpace(this->m_basis);
-    auto u_x      = ev.getVariable(sx, G);
-    auto u_y      = ev.getVariable(sy, G);
-
-    gsMatrix<> solVectorx, solVectory, prevx;
+    gsMatrix<> solVectorx, solVectory, prevx, prevy;
     solution u_solx = A.getSolution(u, solVectorx);
     solution u_soly = A.getSolution(u, solVectory);
     solution u_lsol = A.getSolution(u, prevx);
+    solution u_lsoly = A.getSolution(u, prevy);
 
     // ---- scaling of the density to the range [1, m_IntensityMAE] over all patches ----
     real_t rmax = std::numeric_limits<real_t>::lowest();
@@ -682,7 +680,20 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatchMMPDE(const gsMultiPatch<> &den
                     edge[n][s-1](i) = idCoefs(bnd(i), dir);
             }
             else
-                edge[n][s-1] = solveEdgeMapping(density.patch(n), s);
+            {
+                gsMatrix<> previousEdge;
+                if (reuseMapping)
+                {
+                    GISMO_ENSURE(MAmapping.patch(n).coefsSize() == this->m_basis.basis(0).size(),
+                                 "Previous mapping must use the current moving mesh basis.");
+                    const index_t dir = (s <= 2) ? 1 : 0;
+                    const gsMatrix<index_t> bnd = this->m_basis.basis(0).boundary(boxSide(s));
+                    previousEdge.resize(bnd.size(), 1);
+                    for (index_t i = 0; i < bnd.size(); ++i)
+                        previousEdge(i) = MAmapping.patch(n).coefs()(bnd(i), dir);
+                }
+                edge[n][s-1] = solveEdgeMapping(density.patch(n), s, previousEdge);
+            }
         }
 
     // Same distribution on both sides of an interface; reflected if the tangential orientations are opposite
@@ -742,17 +753,43 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatchMMPDE(const gsMultiPatch<> &den
         lifty[n] = A.rhs();
     }
 
-    // Initial guess: identity mapping on each patch
+    // Continue from the previous mapping; identity is only the first-call guess.
     gsMultiPatch<> Psi;
-    gsMatrix<> grid = this->m_basis.basis(0).anchors();
-    for (index_t n = 0; n < nP; ++n)
-        Psi.addPatch(this->m_basis.basis(0).interpolateData(grid, grid));
+    if (reuseMapping)
+        Psi = MAmapping;
+    else
+    {
+        const gsMatrix<> grid = B.anchors();
+        for (index_t n = 0; n < nP; ++n)
+            Psi.addPatch(B.interpolateData(grid, grid));
+    }
 
     std::vector<gsMatrix<> > xs(nP), ys(nP);
+    for (index_t n = 0; n < nP; ++n)
+    {
+        GISMO_ENSURE(Psi.patch(n).coefsSize() == B.size(),
+                     "Previous mapping must use the current moving mesh basis.");
+        u.setup(bc_x[n], dirichlet::interpolation, 0);
+        const gsDofMapper & mapper = u.mapper();
+        xs[n].resize(mapper.freeSize(), 1);
+        ys[n].resize(mapper.freeSize(), 1);
+        for (index_t i = 0; i < B.size(); ++i)
+            if (mapper.is_free(i))
+            {
+                xs[n](mapper.index(i)) = Psi.patch(n).coefs()(i, 0);
+                ys[n](mapper.index(i)) = Psi.patch(n).coefs()(i, 1);
+            }
+            else
+            {
+                // Both components have Dirichlet data on the same patch sides.
+                Psi.patch(n).coefs()(i, 0) = gx[n]->coefs()(i, 0);
+                Psi.patch(n).coefs()(i, 1) = gy[n]->coefs()(i, 0);
+            }
+    }
     gsMultiPatch<> Psix, Psiy;
 
-    // Solves both components on patch n, returns the residual of the first one
-    auto update = [&](const index_t n, const bool first) -> real_t
+    // Solves both components on patch n and monitors both coordinate changes.
+    auto update = [&](const index_t n) -> real_t
     {
         geometryMap PP = A.getMap(Psi.patch(n));
         auto frho      = A.getCoeff(density.patch(n), PP);
@@ -761,32 +798,23 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatchMMPDE(const gsMultiPatch<> &den
         // x direction
         u.setup(bc_x[n], dirichlet::interpolation, 0);
         A.initSystem();
-        if (first)
-            A.assemble( (1.- (int_uh_0*abs(frho.val()) + int_uh_1)/CoeffDensity) * grad(u) * grad(u_x).tr() );
-        else
-        {
-            solVectorx = xs[n];
-            A.assemble( (1.- (int_uh_0*abs(frho.val()) + int_uh_1)/CoeffDensity) * grad(u) * grad(u_solx).tr() );
-        }
+        solVectorx = xs[n];
+        A.assemble( (1.- (int_uh_0*abs(frho.val()) + int_uh_1)/CoeffDensity) * grad(u) * grad(u_solx).tr() );
         prevx      = xs[n];
         solVectorx = this->PoissonDir.solve( gsMatrix<>(A.rhs() + liftx[n]) );
         xs[n]      = solVectorx;
-        if (!first)
-            res = math::sqrt(ev.integral( (u_lsol - u_solx).sqNorm() ));
+        res = math::sqrt(ev.integral( (u_lsol - u_solx).sqNorm() ));
         u_solx.extract(Psix);
 
         // y direction
         u.setup(bc_y[n], dirichlet::interpolation, 0);
         A.initSystem();
-        if (first)
-            A.assemble( (1.- (int_uh_0*abs(frho.val()) + int_uh_1)/CoeffDensity) * grad(u) * grad(u_y).tr() );
-        else
-        {
-            solVectory = ys[n];
-            A.assemble( (1.- (int_uh_0*abs(frho.val()) + int_uh_1)/CoeffDensity) * grad(u) * grad(u_soly).tr() );
-        }
+        solVectory = ys[n];
+        A.assemble( (1.- (int_uh_0*abs(frho.val()) + int_uh_1)/CoeffDensity) * grad(u) * grad(u_soly).tr() );
+        prevy      = ys[n];
         solVectory = this->PoissonDir.solve( gsMatrix<>(A.rhs() + lifty[n]) );
         ys[n]      = solVectory;
+        res = std::max(res, math::sqrt(ev.integral( (u_lsoly - u_soly).sqNorm() )));
         u_soly.extract(Psiy);
 
         Psi.patch(n).coefs().col(0) = Psix.patch(0).coefs();
@@ -794,18 +822,15 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatchMMPDE(const gsMultiPatch<> &den
         return res;
     };
 
-    for (index_t n = 0; n < nP; ++n)
-        update(n, true);
-    gsInfo<< "." <<std::flush;
-
     // Picard loop
     real_t res = 0.;
     index_t ip = 0;
-    for (; ip <= m_maxIter; ++ip)
+    while (ip < m_maxIter)
     {
         res = 0.;
         for (index_t n = 0; n < nP; ++n)
-            res = std::max(res, update(n, false));
+            res = std::max(res, update(n));
+        ++ip;
         if (res < tolMAE)
             break;
     }
@@ -827,7 +852,8 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatchMMPDE(const gsMultiPatch<> &den
 
 // 1D equidistribution (w(phi) phi')' = 0, phi fixed at the ends of the edge, w = a0|rho| + a1 with a0, a1 scaled from the density on the edge.
 // Picard iteration on  -phi_new'' = -((1 - w(phi)/Cmax) phi')'. Returns the coefficients of phi in the tangential 1D basis.
-gsMatrix<> gsAdaptiveMultiPatchBuilder::solveEdgeMapping(const gsFunction<>& rho, const index_t side) const
+gsMatrix<> gsAdaptiveMultiPatchBuilder::solveEdgeMapping(const gsFunction<>& rho, const index_t side,
+                                                       const gsMatrix<>& initial) const
 {
     const index_t dir     = (side <= 2) ? 1 : 0; // tangential direction
     const gsMatrix<> sup  = this->m_basis.basis(0).support();
@@ -852,9 +878,12 @@ gsMatrix<> gsAdaptiveMultiPatchBuilder::solveEdgeMapping(const gsFunction<>& rho
     }
     const real_t Cmax = a0*rmax + a1 + 1.;
 
-    // initial guess: identity
+    // Continue edge adaptation as well, so a short interior update does not
+    // impose a fully relocated boundary or interface in a single call.
     const gsMatrix<> anch = b1.anchors();
-    gsMatrix<> c          = b1.interpolateData(anch, anch)->coefs();
+    gsMatrix<> c = initial.size() ? initial : b1.interpolateData(anch, anch)->coefs();
+    GISMO_ENSURE(c.rows() == n && c.cols() == 1, "Previous edge must use the current edge basis.");
+    const index_t maxIter = initial.size() ? m_maxIter : 300;
 
     const gsSparseMatrix<> K  = assembleStiffness(b1);
     const gsSparseMatrix<> Kff = K.block(1, 1, n-2, n-2);
@@ -868,7 +897,7 @@ gsMatrix<> gsAdaptiveMultiPatchBuilder::solveEdgeMapping(const gsFunction<>& rho
     space u1        = A1.getSpace(b1);
     solution u_sol  = A1.getSolution(u1, c);
 
-    for (index_t it = 0; it < 300; ++it)
+    for (index_t it = 0; it < maxIter; ++it)
     {
         gsGeometry<>::uPtr phi = b1.makeGeometry(c);
         geometryMap PP         = A1.getMap(*phi);
