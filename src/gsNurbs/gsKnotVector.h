@@ -766,7 +766,7 @@ public: // things required by gsKnotVector
 
     /// Returns Greville abscissa of the \a i - the B-spline defined
     /// on the knot vector.
-    T greville(int i) const;
+    T greville(index_t i) const;
 
     /// Get the first knot.
     T first () const

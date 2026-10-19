@@ -1053,7 +1053,7 @@ void gsKnotVector<T>::centers_into(gsMatrix<T> & result) const
 }
 
 template <class T>
-T gsKnotVector<T>::greville(int i) const
+T gsKnotVector<T>::greville(index_t i) const
 {
     GISMO_ASSERT(i>=0 && static_cast<size_t>(i) < size()-m_deg-1,
                  "Index of Greville point is out of range.");

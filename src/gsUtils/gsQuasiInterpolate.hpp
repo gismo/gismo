@@ -254,7 +254,7 @@ gsMatrix<T> gsQuasiInterpolate<T>::localTaylor(const gsTensorBSplineBasis<d,T> &
     for (short_t dir = 0; dir!=d; ++dir)
     {
         deg[dir]  = b.degree(dir);
-        rdir[dir] = math::min(r, static_cast<int>(deg[dir])); // r <= p per direction
+        rdir[dir] = math::min(r, static_cast<index_t>(deg[dir])); // r <= p per direction
         const gsKnotVector<T> & kv = b.knots(dir);
         for (index_t q = jj[dir]+1; q<=jj[dir]+deg[dir]; ++q)
             knots[dir].push_back(kv[q]);

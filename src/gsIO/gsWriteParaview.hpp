@@ -495,7 +495,7 @@ void gsWriteParaviewTPgrid(const gsMatrix<T> & eval_geo  ,
     file <<"<Piece Extent=\"0 "<< np(0)-1<<" 0 "<<np1<<" 0 "
          << np2 <<"\">\n";
     file <<"<PointData "<< ( dd==1 ?"Scalars":(dd>3?"Tensors":"Vectors"))<<"=\"SolutionField\">\n";
-    index_t ncomp = (dd!=1) ? math::max(3,dd) : dd;
+    index_t ncomp = (dd!=1) ? math::max<index_t>(3,dd) : dd;
     file <<"<DataArray type=\"Float32\" Name=\"SolutionField\" format=\"ascii\" NumberOfComponents=\""<< ncomp <<"\">\n";
     if ( dd==1 )
         for ( index_t j=0; j<eval_field.cols(); ++j)
