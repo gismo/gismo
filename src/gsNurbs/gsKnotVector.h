@@ -768,6 +768,13 @@ public: // things required by gsKnotVector
     /// on the knot vector.
     T greville(index_t i) const;
 
+    /// Forwards greville() of any integer type to index_t. Otherwise, the 
+    /// compiler cannot deduce whether to call greville(index_t) or greville(bool).
+    template<class I>
+    typename util::enable_if<std::numeric_limits<I>::is_integer &&
+                             !util::is_same<I,bool>::value, T>::type
+    greville(I i) const { return greville(static_cast<index_t>(i)); }
+
     /// Get the first knot.
     T first () const
     {
