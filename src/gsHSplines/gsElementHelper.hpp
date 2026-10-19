@@ -101,7 +101,7 @@ namespace gismo
             // gsDebug<<"knots = "<<knots.asMatrix()<<", low: "<<low(i)<<", upp: "<<upp(i)
             //        <<", degree = "<<degree<<", support = "<<support<<", halfsupport = "<<halfsupport<<"\n";
 
-            result(i,0) = math::max(0,low(i) - degree);
+            result(i,0) = math::max<index_t>(0,low(i) - degree);
             result(i,1) = math::min((index_t)knots.uSize()-1, upp(i) + degree);
         }
         return result;
