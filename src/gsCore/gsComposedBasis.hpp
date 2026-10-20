@@ -374,6 +374,9 @@ template <class T>
 void gsComposedBasis<T>::anchors_into(gsMatrix<T> & result) const
 {
     gsMatrix<T> anchors = m_basis->anchors();
+    // invertPoints() starts Newton from the columns of result; start from the
+    // anchors themselves (as mapMesh() does), not from whatever result holds
+    result = anchors;
     m_composition->invertPoints(anchors,result,1e-2,true);
 }
 
