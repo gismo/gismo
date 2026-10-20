@@ -246,6 +246,33 @@ SUITE(gsKnotVectors_test)
         CHECK( count == u_knots.numElements() );
     }
 
+    // Threaded assembly loops start thread tid at element tid and advance by
+    // the number of threads, so an iterator is stepped past the end whenever
+    // the domain has fewer elements than threads.
+    TEST(stridedDomainIteration)
+    {
+        gsKnotVector<real_t> kv(0, 1, 1, 3); // 2 elements
+        gsBSplineBasis<real_t> basis(kv);
+        const std::vector<real_t> breaks = kv.breaks();
+        const size_t numEl = basis.domain()->numElements();
+
+        for (index_t nt = 1; nt <= 4; ++nt)
+        {
+            size_t count = 0;
+            for (index_t tid = 0; tid < nt; ++tid)
+            {
+                gsBasis<real_t>::domainIter domIt    = basis.domain()->beginAll();
+                gsBasis<real_t>::domainIter domItEnd = basis.domain()->endAll();
+                for (domIt += tid; domIt < domItEnd; domIt += nt)
+                {
+                    CHECK_CLOSE(breaks[domIt.id()], domIt.lowerCorner()(0), 1e-12);
+                    ++count;
+                }
+            }
+            CHECK_EQUAL(numEl, count);
+        }
+    }
+
     TEST(notClampedTensorDomainIteration)
     {
         std::vector<real_t> knots = {-2, -1.75, -1.5, -1.25, -1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2};

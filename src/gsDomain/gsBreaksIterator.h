@@ -47,7 +47,8 @@ public:
     // Documentation in gsDomainIterator.h
     void next(index_t increment) override
     {
-        m_it += increment;
+        // Do not step a std::vector iterator past the end
+        m_it += std::min<index_t>(increment, m_itEnd - m_it);
     }
 
     // Documentation in gsDomainIterator.h
