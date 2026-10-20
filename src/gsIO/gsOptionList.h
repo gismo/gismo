@@ -61,7 +61,7 @@ public:
     index_t     askInt   (const std::string & label, const index_t &     value = 0     ) const;
     /// @copydoc gsOptionList::askString()
     Real      askReal  (const std::string & label, const Real &      value = 0     ) const;
-#if defined(gsAutoDiff_ENABLED) && defined(GISMO_AUTODIFF_FORWARD)
+#ifdef gsAutoDiff_ENABLED
     /// \brief Reads a real option, discarding the seed of a forward-AD argument.
     ///
     /// An option is configuration, never a differentiated quantity, so only the
@@ -71,8 +71,6 @@ public:
     {
         return this->askReal(label, static_cast<double>(value.val));
     }
-#endif
-#if defined(gsAutoDiff_ENABLED) && defined(GISMO_AUTODIFF_BACKWARD)
     /// @copydoc gsOptionList::askReal()
     template <class T>
     Real      askReal  (const std::string & label, const autodiff::reverse::detail::Variable<T> & value ) const
@@ -125,7 +123,7 @@ public:
     void addInt   (const std::string & label, const std::string & desc, const index_t &     value );
     /// @copydoc gsOptionList::addString()
     void addReal  (const std::string & label, const std::string & desc, const Real &      value );
-#if defined(gsAutoDiff_ENABLED) && defined(GISMO_AUTODIFF_FORWARD)
+#ifdef gsAutoDiff_ENABLED
     /// \brief Adds a real option, discarding the seed of a forward-AD argument.
     ///
     /// An option is configuration, never a differentiated quantity, so only the

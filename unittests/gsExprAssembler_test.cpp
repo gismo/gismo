@@ -191,6 +191,49 @@ SUITE(gsExprAssembler_test)
         }
     }
 
+    // getSolution() takes the solution vector of the whole system. With two
+    // spaces, each space's dofs lie at its mapper's shift in that vector.
+    TEST(SolutionOfShiftedSpace)
+    {
+        gsMultiPatch<> mp(*gsNurbsCreator<>::BSplineSquare());
+        gsMultiBasis<> mb(mp);
+        mb.uniformRefine(2);
+        gsBoundaryConditions<> bcs;
+
+        gsExprAssembler<> A(2,2);
+        A.setIntegrationElements(mb);
+        auto u0 = A.getSpace(mb, 1, 0);
+        auto u1 = A.getSpace(mb, 1, 1);
+        u0.setup(bcs, dirichlet::homogeneous, 0);
+        u1.setup(bcs, dirichlet::homogeneous, 0);
+        A.initSystem();
+        const index_t n = mb.basis(0).size();
+        CHECK_EQUAL(2*n, A.numDofs());
+
+        // Partition of unity: the solutions equal 1 and 2
+        gsMatrix<> solVector = gsMatrix<>::Zero(A.numDofs(), 1);
+        auto s0 = A.getSolution(u0, solVector);
+        auto s1 = A.getSolution(u1, solVector);
+        s0.setComponent(0, 1.0);
+        s1.setComponent(0, 2.0);
+        CHECK(s0.check());
+        CHECK(s1.check());
+
+        // A vector holding only the first space is too short for the second
+        gsMatrix<> firstPart = solVector.topRows(n);
+        CHECK( A.getSolution(u0, firstPart).check());
+        CHECK(!A.getSolution(u1, firstPart).check());
+
+        // eval() asserts check() inside the evaluator's parallel region
+        if (s0.check() && s1.check())
+        {
+            gsExprEvaluator<> ev(A);
+            CHECK_CLOSE(1.0, ev.integral(s0), 1e-12);
+            CHECK_CLOSE(2.0, ev.integral(s1), 1e-12);
+            CHECK_CLOSE(0.0, ev.integral(grad(s1).sqNorm()), 1e-12);
+        }
+    }
+
     // matrix() is `m_modified ? makeMatrix() : m_matrix`, and m_matrix is only
     // populated from the fiber matrix by makeMatrix(). clearMatrix() must
     // therefore invalidate the cache on every path, including the one that
@@ -299,6 +342,37 @@ SUITE(gsExprAssembler_test)
         CHECK_CLOSE(first , ev.integralInterface(s.right().left(),  patches.interfaces()), 1e-12);
         CHECK_CLOSE(second - first,
                     ev.integralInterface(s.right() - s.left(), patches.interfaces()), 1e-12);
+    }
+
+    // assembleJacobianIfc() differentiates an interface residual by finite
+    // differences. For a residual linear in the solution, the Jacobian is the
+    // matrix assembleIfc() builds from the corresponding bilinear form.
+    TEST(InterfaceJacobian)
+    {
+        gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(1,2,1);
+        gsMultiBasis<> mb(patches);
+        mb.degreeElevate(1);
+        mb.uniformRefine(2);
+
+        gsExprAssembler<> A(1,1);
+        A.setIntegrationElements(mb);
+        auto G = A.getMap(patches);
+        auto u = A.getSpace(mb);
+        u.setup(-1);
+        A.initSystem();
+
+        gsMatrix<> solVector = gsMatrix<>::Random(A.numDofs(), 1);
+        auto s = A.getSolution(u, solVector);
+
+        A.assembleJacobianIfc(patches.interfaces(), u * s * nv(G).norm(), s);
+        const gsSparseMatrix<> J = A.matrix();
+
+        A.initSystem();
+        A.assembleIfc(patches.interfaces(), u * u.tr() * nv(G).norm());
+        const gsSparseMatrix<> M = A.matrix();
+
+        CHECK(M.norm() > 0);
+        CHECK((J - M).norm() <= 1e-8 * M.norm());
     }
 
     // A mapper installed by setupMapper() must be the one initSystem() uses.

@@ -85,10 +85,13 @@ public:
     // Performs validity checks for the solution object
     bool check() const
     {
-        if ( _Sv->size()!=_u.mapper().freeSize() )
+        // The vector holds the free dofs of every space of the system (see
+        // gsExprAssembler::getSolution); this space's are those below the
+        // lastIndex() of its mapper, which includes the mapper's shift.
+        if ( _Sv->size() < _u.mapper().lastIndex() )
         {
-            gsWarn<< "The solution vector has wrong dimensions: "
-                  <<_Sv->size()<<" != "<<_u.mapper().freeSize() <<". ";
+            gsWarn<< "The solution vector is too short: "
+                  <<_Sv->size()<<" < "<<_u.mapper().lastIndex() <<". ";
             return false;
         }
         if((size_t)_u.source().size()*dim()!=_u.mapper().mapSize())

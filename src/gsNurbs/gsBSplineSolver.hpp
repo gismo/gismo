@@ -189,9 +189,9 @@ unsigned findHyperPlaneIntersections (
     T newK = NAN; // knot to be insert
 
     // counters
-    int curC = 1; // current coefficient (Control Point)
-    int lstC = 0; // coefficient in which the position became the current one
-    int intB = 0; // we insert a new knot between the Greville abscissas of intB and curC
+    index_t curC = 1; // current coefficient (Control Point)
+    index_t lstC = 0; // coefficient in which the position became the current one
+    index_t intB = 0; // we insert a new knot between the Greville abscissas of intB and curC
     int newK_rep = 0; // number of time we inserted the same knot
     unsigned rootCount = 0; // total number of roots found
 
@@ -260,7 +260,7 @@ unsigned findHyperPlaneIntersections (
             else
             {
                 is_odd = true;
-                intB=math::max(0,lstC-1);
+                intB=math::max<index_t>(0,lstC-1);
             }
             break;
         default:
@@ -311,7 +311,7 @@ unsigned findHyperPlaneIntersections (
             }
         }
         crv.insertKnot(newK);
-        curC = math::max(math::max(curC-deg, lstC-1),0); // incremented by one on end of loop
+        curC = math::max<index_t>(math::max<index_t>(curC-deg, lstC-1),0); // incremented by one on end of loop
         curP = relativePosition(crv.coef(curC).dot(normal), ref, tol);
         oldK = newK;
     }
