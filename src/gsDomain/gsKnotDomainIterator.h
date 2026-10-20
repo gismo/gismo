@@ -54,7 +54,9 @@ public:
     // Documentation in gsDomainIterator.h
     void next(index_t increment) override
     {
-        m_it += increment;
+        // Threaded loops step past the end when there are fewer elements
+        // than threads; stop at the end, as the tensor iterators do.
+        m_it += std::min<index_t>(increment, m_itEnd - m_it);
     }
 
     // Documentation in gsDomainIterator.h
