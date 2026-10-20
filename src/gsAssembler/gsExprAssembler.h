@@ -504,6 +504,12 @@ public:
     // respect to the solution \a u
     template<class expr> void assembleJacobian(const expr residual, solution & u);
 
+    /// \brief Adds the Jacobian of the interface residual \a residual with
+    /// respect to the solution \a u to the system matrix, by finite differences
+    ///
+    /// Only the dofs active on the first side of each interface are
+    /// perturbed, so the dependence of \a residual on <tt>u.right()</tt> is not
+    /// differentiated. The matrix is not cleared first.
     template<class expr> void assembleJacobianIfc(const ifContainer & iFaces,
                                                   const expr residual, solution  u);
 
@@ -1553,11 +1559,11 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
         QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(patch1),
                                     patch1, iFace.first().side().direction());
 
-        // Initialize domain element iterator for current patch
-        typename gsBasis<T>::domainIter domIt =  // add patch1 to domainiter ?
-            m_exprdata->domain().beginAll(iFace.first().side());
-        typename gsBasis<T>::domainIter domItEnd =  // add patch1 to domainiter ?
-            m_exprdata->domain().endAll(iFace.first().side());
+        // Iterate over the elements of patch1 along the interface side
+        typename gsBasis<T>::domainIter domIt =
+            m_exprdata->domain().subdomain(patch1)->beginBdr(iFace.first().side());
+        typename gsBasis<T>::domainIter domItEnd =
+            m_exprdata->domain().subdomain(patch1)->endBdr(iFace.first().side());
 
         // Start iteration over elements
         for (; domIt<domItEnd; ++domIt )

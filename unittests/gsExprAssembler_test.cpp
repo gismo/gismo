@@ -344,6 +344,37 @@ SUITE(gsExprAssembler_test)
                     ev.integralInterface(s.right() - s.left(), patches.interfaces()), 1e-12);
     }
 
+    // assembleJacobianIfc() differentiates an interface residual by finite
+    // differences. For a residual linear in the solution, the Jacobian is the
+    // matrix assembleIfc() builds from the corresponding bilinear form.
+    TEST(InterfaceJacobian)
+    {
+        gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(1,2,1);
+        gsMultiBasis<> mb(patches);
+        mb.degreeElevate(1);
+        mb.uniformRefine(2);
+
+        gsExprAssembler<> A(1,1);
+        A.setIntegrationElements(mb);
+        auto G = A.getMap(patches);
+        auto u = A.getSpace(mb);
+        u.setup(-1);
+        A.initSystem();
+
+        gsMatrix<> solVector = gsMatrix<>::Random(A.numDofs(), 1);
+        auto s = A.getSolution(u, solVector);
+
+        A.assembleJacobianIfc(patches.interfaces(), u * s * nv(G).norm(), s);
+        const gsSparseMatrix<> J = A.matrix();
+
+        A.initSystem();
+        A.assembleIfc(patches.interfaces(), u * u.tr() * nv(G).norm());
+        const gsSparseMatrix<> M = A.matrix();
+
+        CHECK(M.norm() > 0);
+        CHECK((J - M).norm() <= 1e-8 * M.norm());
+    }
+
     // A mapper installed by setupMapper() must be the one initSystem() uses.
     // initSystem() rebuilds any mapper whose component count differs from the
     // space dimension, discarding its eliminated dofs, so setupMapper() has to
