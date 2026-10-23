@@ -14,6 +14,8 @@
 #include <gismo.h>  // Include necessary GISMO headers
 #include "gsAdaptiveMultiPatchBuilder.h"
 
+#include <queue>
+
 typedef gsExprAssembler<>::geometryMap geometryMap;
 typedef gsExprAssembler<>::variable    variable;
 typedef gsExprAssembler<>::space       space;
@@ -98,6 +100,202 @@ private:
     index_t m_dir;
     real_t  m_fixed;
 };
+
+// A trace of a volume monitor in the free coordinates of an edge or face.
+class VolumeTraceDensity : public gsFunction<real_t>
+{
+public:
+    VolumeTraceDensity(const gsFunction<>& density, const std::vector<index_t>& directions,
+                       const std::array<index_t,3>& fixed)
+        : m_density(density), m_directions(directions), m_fixed(fixed) { }
+    short_t domainDim() const { return static_cast<short_t>(m_directions.size()); }
+    short_t targetDim() const { return 1; }
+    void eval_into(const gsMatrix<>& points, gsMatrix<>& result) const
+    {
+        gsMatrix<> embedded(3, points.cols());
+        for (index_t d = 0; d < 3; ++d)
+            embedded.row(d).setConstant(m_fixed[d]);
+        for (size_t d = 0; d < m_directions.size(); ++d)
+            embedded.row(m_directions[d]) = points.row(d);
+        m_density.eval_into(embedded, result);
+    }
+private:
+    const gsFunction<>& m_density;
+    std::vector<index_t> m_directions;
+    std::array<index_t,3> m_fixed;
+};
+
+struct MMPDEMonitorScale
+{
+    real_t a = 0., b = 1., C = 6.;
+    MMPDEMonitorScale(real_t lo, real_t hi, real_t intensity)
+    {
+        if (hi-lo >= 1e-5 && intensity > 1.)
+        {
+            a = (intensity-1.)/(hi-lo);
+            b = 1.-a*lo;
+        }
+        C = a*hi+b+5.;
+    }
+};
+
+// Constant Poisson operator and quadrature shared by all entities of one shape.
+// Free dofs retain tensor lexicographic order, as required by fast diagonalization.
+class MMPDEEntitySolver
+{
+    struct Element
+    {
+        gsMatrix<> points;
+        gsVector<> weights;
+    };
+public:
+    explicit MMPDEEntitySolver(const gsBasis<>& basis) : m_basis(basis)
+    {
+        std::vector<index_t> freeIndex(basis.size(), -1);
+        for (index_t i = 0; i < basis.size(); ++i)
+        {
+            index_t remainder = i;
+            bool boundary = false;
+            for (index_t d = 0; d < basis.dim(); ++d)
+            {
+                const index_t size = basis.component(d).size();
+                const index_t j = remainder % size;
+                remainder /= size;
+                boundary = boundary || j == 0 || j == size-1;
+            }
+            if (!boundary)
+            {
+                freeIndex[i] = static_cast<index_t>(m_free.size());
+                m_free.push_back(i);
+            }
+        }
+        gsExprAssembler<> A(1,1);
+        A.setIntegrationDomain(basis.domain());
+        auto u = A.getSpace(basis);
+        A.initSystem();
+        A.assemble(grad(u)*grad(u).tr());
+        gsSparseEntries<> ff, fb;
+        for (index_t col = 0; col < A.matrix().outerSize(); ++col)
+            for (gsSparseMatrix<>::InnerIterator it(A.matrix(), col); it; ++it)
+                if (freeIndex[it.row()] >= 0)
+                {
+                    if (freeIndex[it.col()] >= 0)
+                        ff.add(freeIndex[it.row()], freeIndex[it.col()], it.value());
+                    else
+                        fb.add(freeIndex[it.row()], it.col(), it.value());
+                }
+        m_lifting.resize(m_free.size(), basis.size());
+        m_lifting.setFrom(fb);
+        if (!m_free.empty())
+        {
+            if (basis.dim() == 1)
+            {
+                gsSparseMatrix<> K(m_free.size(), m_free.size());
+                K.setFrom(ff);
+                m_edgeSolver.compute(K);
+                GISMO_ENSURE(m_edgeSolver.info() == gsEigen::Success, "Edge Poisson factorization failed.");
+            }
+            else
+            {
+                gsBoundaryConditions<> bc;
+                gsFunctionExpr<> zero("0", basis.dim());
+                for (index_t s = 1; s <= 2*basis.dim(); ++s)
+                    bc.addCondition(0, boxSide(s), condition_type::dirichlet, &zero);
+                m_poisson.reset(new gsPatchPreconditionersCreator<>::Poisson_FastDiag(basis, bc, A.options(), 0.));
+            }
+        }
+        gsGaussRule<> rule(basis, 2., 1);
+        const auto domain = basis.domain();
+        for (auto it = domain->beginAll(); it < domain->endAll(); ++it)
+        {
+            m_elements.emplace_back();
+            Element& e = m_elements.back();
+            rule.mapTo(it.lowerCorner(), it.upperCorner(), e.points, e.weights);
+        }
+    }
+
+    std::pair<real_t,real_t> range(const gsFunction<>& density) const
+    {
+        gsMatrix<> values;
+        density.eval_into(m_basis.anchors(), values);
+        real_t lo = values.cwiseAbs().minCoeff(), hi = values.cwiseAbs().maxCoeff();
+        for (const auto& e : m_elements)
+        {
+            density.eval_into(e.points, values);
+            lo = std::min(lo, values.cwiseAbs().minCoeff());
+            hi = std::max(hi, values.cwiseAbs().maxCoeff());
+        }
+        return std::make_pair(lo, hi);
+    }
+
+    // One Picard step for all coordinates, with a common frozen monitor.
+    // Boundary coefficients already contain this sweep's lower-dimensional updates.
+    real_t update(gsMatrix<>& coefficients, const gsFunction<>& density,
+                  const MMPDEMonitorScale& scale) const
+    {
+        if (m_free.empty())
+            return 0.;
+        gsMatrix<> rhs = gsMatrix<>::Zero(m_basis.size(), coefficients.cols());
+        gsMatrix<> local, mapped, values, gradient, contribution;
+        gsFuncData<> data(NEED_VALUE | NEED_DERIV | NEED_ACTIVE | SAME_ELEMENT);
+        for (const auto& e : m_elements)
+        {
+            m_basis.compute(e.points, data);
+            local.resize(data.actives.rows(), coefficients.cols());
+            for (index_t a = 0; a < local.rows(); ++a)
+                local.row(a) = coefficients.row(data.actives(a,0));
+            mapped.noalias() = local.transpose()*data.values[0];
+            density.eval_into(mapped, values);
+            for (index_t q = 0; q < e.points.cols(); ++q)
+            {
+                gradient.noalias() = data.deriv(q)*local;
+                contribution.noalias() = data.deriv(q).transpose()*gradient;
+                contribution *= e.weights(q)*(1.-(scale.a*math::abs(values(0,q))+scale.b)/scale.C);
+                for (index_t a = 0; a < local.rows(); ++a)
+                    rhs.row(data.actives(a,0)) += contribution.row(a);
+            }
+        }
+        gsMatrix<> freeRhs(m_free.size(), coefficients.cols());
+        for (size_t i = 0; i < m_free.size(); ++i)
+            freeRhs.row(i) = rhs.row(m_free[i]);
+        freeRhs.noalias() -= m_lifting*coefficients;
+        gsMatrix<> next = coefficients;
+        for (index_t d = 0; d < coefficients.cols(); ++d)
+        {
+            gsMatrix<> solved;
+            if (m_basis.dim() == 1)
+            {
+                solved = m_edgeSolver.solve(freeRhs.col(d));
+                GISMO_ENSURE(m_edgeSolver.info() == gsEigen::Success, "Edge Poisson solve failed.");
+            }
+            else
+                solved = m_poisson->solve(gsMatrix<>(freeRhs.col(d)));
+            GISMO_ENSURE(solved.allFinite(), "Nonfinite MMPDE coordinate update.");
+            for (size_t i = 0; i < m_free.size(); ++i)
+                next(m_free[i], d) = solved(i);
+        }
+        const gsMatrix<> change = next-coefficients;
+        real_t residualSquared = 0.;
+        for (const auto& e : m_elements)
+        {
+            m_basis.compute(e.points, data);
+            local.resize(data.actives.rows(), change.cols());
+            for (index_t a = 0; a < local.rows(); ++a)
+                local.row(a) = change.row(data.actives(a,0));
+            mapped.noalias() = local.transpose()*data.values[0];
+            residualSquared += mapped.colwise().squaredNorm().dot(e.weights);
+        }
+        coefficients.swap(next);
+        return math::sqrt(residualSquared);
+    }
+private:
+    const gsBasis<>& m_basis;
+    std::vector<index_t> m_free;
+    gsSparseMatrix<> m_lifting;
+    mutable gsSparseSolver<>::SimplicialLDLT m_edgeSolver;
+    std::unique_ptr<gsPatchPreconditionersCreator<>::Poisson_FastDiag> m_poisson;
+    std::vector<Element> m_elements;
+};
 }
 
 
@@ -114,7 +312,12 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
     gsInfo<<"\n <>r-refinement ";
     gsInfo<<"\n";
     gsInfo<<"\n";
-    gsInfo << "/*/*/*/*/*/*/*/*/*/*/Important:::: Use --exactGeo to keep the exact boundary!\n";
+    if (exactGeo)
+        gsInfo << "Exact geometry is used for the boundary of the domain.\n";
+    else{
+        gsInfo << "Exact geometry is NOT used for the boundary of the domain.\n";
+        gsInfo << "/*/*/*/*/*/*/*/*/*/*/Important:::: Use exactGeo = tue to keep the exact boundary!\n";
+    }
     gsInfo<<"for more accuracy refine: DoFs > 10^3\n";
     gsInfo<<"\n";
     // Store the initial mapping
@@ -342,7 +545,6 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Hb
 
     // ... basis_0 of degree 0 to represent error as a piecewise constant function
     const size_t nP = this->initial_mapping.nPatches();
-    GISMO_ENSURE(nP == 1 || identity_mp.domainDim() == 2, "Multipatch density is implemented in 2D only.");
     // one unit-square basis per patch, not coupled across interfaces (piecewise constants are discontinuous)
     gsMultiBasis<>::BasisContainer bases0;
     for (size_t pn=0; pn < nP; ++pn)
@@ -483,7 +685,10 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density)
     GISMO_ENSURE(m_maxIter >= 0, "Picard update budget must be nonnegative.");
     if (this->m_exactGeo || this->initial_mapping.nPatches() > 1)
     {
-        buildMultiPatchMMPDE(density);
+        if (this->m_basis.dim() == 3)
+            buildMultiPatchMMPDE3D(density);
+        else
+            buildMultiPatchMMPDE(density);
         return;
     }
 
@@ -954,6 +1159,332 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatchMMPDE(const gsMultiPatch<> &den
     Psi.boundaries() = this->initial_mapping.boundaries();
     this->MAmapping = Psi;
     gsInfo << " CPU-time : " << std::scientific << timer.stop() << "<>\n";
+}
+
+
+/**
+ * \brief One hierarchical Picard sweep updates 1D edges, 2D faces, then 3D interiors.
+ * Shared entities are solved once in an owner's coordinates and copied with the
+ * interface's signed coordinate permutation. Exterior traces stay at identity
+ * when exactGeo is requested, including edges incident to an exterior face.
+ */
+void gsAdaptiveMultiPatchBuilder::buildMultiPatchMMPDE3D(const gsMultiPatch<> &density) const
+{
+    const auto* tensor = dynamic_cast<const gsTensorBSplineBasis<3>*>(&m_basis.basis(0));
+    GISMO_ENSURE(tensor, "3D MMPDE requires a tensor B-spline basis.");
+    const auto& B = *tensor;
+    const index_t nP = initial_mapping.nPatches();
+    GISMO_ENSURE(static_cast<index_t>(density.nPatches()) == nP,
+                 "One density patch per geometry patch is required.");
+    const gsMatrix<> support = B.support();
+    std::array<index_t,3> sizes;
+    for (index_t d = 0; d < 3; ++d)
+    {
+        sizes[d] = B.component(d).size();
+        GISMO_ENSURE(math::abs(support(d,0)) < 1e-12 && math::abs(support(d,1)-1.) < 1e-12,
+                     "3D MMPDE requires the unit cube as parameter domain.");
+        GISMO_ENSURE(B.degree(d) >= 1 && !B.component(d).isPeriodic(),
+                     "3D MMPDE requires nonperiodic B-splines of degree at least one.");
+        const auto& knots = B.knots(d);
+        for (index_t i = 0; i <= B.degree(d); ++i)
+            GISMO_ENSURE(knots[i] == 0. && knots[knots.size()-1-i] == 1.,
+                         "3D MMPDE requires clamped knot vectors.");
+    }
+    const gsMatrix<> anchors = B.anchors();
+    const gsMatrix<> identity = B.interpolateData(anchors, anchors)->coefs();
+    gsMultiPatch<> Psi;
+    if (MAmapping.empty())
+        for (index_t p = 0; p < nP; ++p)
+            Psi.addPatch(B.makeGeometry(identity));
+    else
+        Psi = MAmapping;
+    GISMO_ENSURE(static_cast<index_t>(Psi.nPatches()) == nP,
+                 "Previous mapping must have one patch per geometry patch.");
+    for (index_t p = 0; p < nP; ++p)
+    {
+        GISMO_ENSURE(Psi.patch(p).parDim() == 3 && Psi.patch(p).targetDim() == 3
+                     && Psi.patch(p).coefsSize() == B.size(),
+                     "Previous mapping must use the current 3D moving mesh basis.");
+        const auto* previousBasis = dynamic_cast<const gsTensorBSplineBasis<3>*>(&Psi.patch(p).basis());
+        GISMO_ENSURE(previousBasis, "Previous mapping must use a tensor B-spline basis.");
+        for (index_t d = 0; d < 3; ++d)
+            GISMO_ENSURE(previousBasis->knots(d) == B.knots(d), "Previous moving mesh knot vectors changed.");
+        GISMO_ENSURE(density.patch(p).domainDim() == 3 && density.patch(p).targetDim() == 1,
+                     "3D MMPDE requires scalar volume densities.");
+    }
+
+    auto flatIndex = [&](const std::array<index_t,3>& ijk)
+    { return ijk[0]+sizes[0]*(ijk[1]+sizes[1]*ijk[2]); };
+    struct Edge
+    {
+        index_t patch, direction;
+        std::array<index_t,3> fixed;
+        std::vector<index_t> indices;
+        bool fixedGeometry = false;
+    };
+    std::vector<std::array<bool,6> > interfaceFace(nP), secondFace(nP);
+    for (const auto& face : initial_mapping.interfaces())
+    {
+        interfaceFace[face.first().patch][face.first().index()-1] = true;
+        interfaceFace[face.second().patch][face.second().index()-1] = true;
+        secondFace[face.second().patch][face.second().index()-1] = true;
+        // Coefficient copying is exact only on matching, oriented trace spaces.
+        for (index_t d = 0; d < 3; ++d)
+        {
+            if (d == face.first().direction())
+                continue;
+            const index_t mapped = face.dirMap(face.first(), d);
+            const auto& from = B.knots(d);
+            const auto& to = B.knots(mapped);
+            GISMO_ENSURE(B.degree(d) == B.degree(mapped) && from.size() == to.size(),
+                         "3D MMPDE requires matching interface trace bases.");
+            for (index_t i = 0; i < static_cast<index_t>(from.size()); ++i)
+            {
+                const real_t value = face.dirOrientation(face.first(), d) ? to[i] : 1.-to[to.size()-1-i];
+                GISMO_ENSURE(math::abs(from[i]-value) < 1e-12,
+                             "3D MMPDE requires matching oriented interface knot vectors.");
+            }
+        }
+    }
+    std::vector<Edge> edges;
+    for (index_t p = 0; p < nP; ++p)
+        for (index_t dir = 0; dir < 3; ++dir)
+            for (index_t mask = 0; mask < 4; ++mask)
+            {
+                Edge edge;
+                edge.patch = p;
+                edge.direction = dir;
+                edge.fixed.fill(0);
+                index_t bit = 0;
+                std::array<index_t,3> ijk;
+                for (index_t d = 0; d < 3; ++d)
+                    if (d != dir)
+                    {
+                        edge.fixed[d] = (mask >> bit++) & 1;
+                        ijk[d] = edge.fixed[d]*(sizes[d]-1);
+                        edge.fixedGeometry = edge.fixedGeometry ||
+                            (m_exactGeo && !interfaceFace[p][2*d+edge.fixed[d]]);
+                    }
+                for (index_t i = 0; i < sizes[dir]; ++i)
+                {
+                    ijk[dir] = i;
+                    edge.indices.push_back(flatIndex(ijk));
+                }
+                edges.push_back(edge);
+            }
+
+    // Connected components include every copy of an edge, even at multi-patch junctions.
+    std::vector<std::vector<std::pair<index_t,bool> > > neighbors(edges.size());
+    for (const auto& face : initial_mapping.interfaces())
+    {
+        const patchSide first = face.first(), second = face.second();
+        for (index_t i = 12*first.patch; i < 12*(first.patch+1); ++i)
+        {
+            const Edge& edge = edges[i];
+            if (edge.direction == first.direction() || edge.fixed[first.direction()] != first.parameter())
+                continue;
+            const index_t dir = face.dirMap(first, edge.direction);
+            std::array<index_t,3> fixed;
+            fixed[second.direction()] = second.parameter();
+            for (index_t d = 0; d < 3; ++d)
+                if (d != first.direction() && d != edge.direction)
+                    fixed[face.dirMap(first,d)] = face.dirOrientation(first,d) ? edge.fixed[d] : 1-edge.fixed[d];
+            index_t mask = 0, bit = 0;
+            for (index_t d = 0; d < 3; ++d)
+                if (d != dir)
+                    mask |= fixed[d] << bit++;
+            const index_t j = 12*second.patch+4*dir+mask;
+            const bool reversed = !face.dirOrientation(first, edge.direction);
+            neighbors[i].emplace_back(j, reversed);
+            neighbors[j].emplace_back(i, reversed);
+        }
+    }
+    std::vector<std::vector<std::pair<index_t,bool> > > edgeGroups;
+    std::vector<index_t> orientation(edges.size(), -1);
+    for (index_t i = 0; i < static_cast<index_t>(edges.size()); ++i)
+    {
+        if (orientation[i] >= 0)
+            continue;
+        edgeGroups.emplace_back();
+        std::queue<index_t> pending;
+        pending.push(i);
+        orientation[i] = 0;
+        while (!pending.empty())
+        {
+            const index_t current = pending.front();
+            pending.pop();
+            edgeGroups.back().emplace_back(current, orientation[current] != 0);
+            for (const auto& next : neighbors[current])
+            {
+                const index_t sign = orientation[current] ^ next.second;
+                if (orientation[next.first] < 0)
+                {
+                    orientation[next.first] = sign;
+                    pending.push(next.first);
+                }
+                else
+                    GISMO_ENSURE(orientation[next.first] == sign, "Inconsistent shared-edge orientations.");
+            }
+        }
+    }
+
+    std::array<std::unique_ptr<MMPDEEntitySolver>,3> edgeSolver, faceSolver;
+    std::array<gsBasis<>::uPtr,3> faceBasis;
+    for (index_t d = 0; d < 3; ++d)
+    {
+        edgeSolver[d].reset(new MMPDEEntitySolver(B.component(d)));
+        faceBasis[d] = B.boundaryBasis(boxSide(2*d+1));
+        faceSolver[d].reset(new MMPDEEntitySolver(*faceBasis[d]));
+    }
+    MMPDEEntitySolver volumeSolver(B);
+    std::vector<MMPDEMonitorScale> edgeScale, faceScale;
+    for (const auto& group : edgeGroups)
+    {
+        const Edge& owner = edges[group.front().first];
+        VolumeTraceDensity rho(density.patch(owner.patch), {owner.direction}, owner.fixed);
+        const auto range = edgeSolver[owner.direction]->range(rho);
+        edgeScale.emplace_back(range.first, range.second, m_IntensityMAE);
+    }
+    real_t lo = std::numeric_limits<real_t>::max(), hi = std::numeric_limits<real_t>::lowest();
+    for (index_t p = 0; p < nP; ++p)
+    {
+        const auto range = volumeSolver.range(density.patch(p));
+        lo = std::min(lo, range.first);
+        hi = std::max(hi, range.second);
+        for (index_t s = 0; s < 6; ++s)
+        {
+            const index_t normal = s/2;
+            std::vector<index_t> directions;
+            for (index_t d = 0; d < 3; ++d)
+                if (d != normal) directions.push_back(d);
+            std::array<index_t,3> fixed = {{0,0,0}};
+            fixed[normal] = s%2;
+            VolumeTraceDensity rho(density.patch(p), directions, fixed);
+            const auto faceRange = faceSolver[normal]->range(rho);
+            faceScale.emplace_back(faceRange.first, faceRange.second, m_IntensityMAE);
+        }
+    }
+    const MMPDEMonitorScale volumeScale(lo, hi, m_IntensityMAE);
+    gsStopwatch timer;
+    timer.restart();
+    real_t edgeRes = 0., faceRes = 0., volumeRes = 0.;
+    index_t iteration = 0;
+    for (; iteration < m_maxIter; )
+    {
+        // 1. One update per global edge; fixed exterior geometry wins at junctions.
+        edgeRes = 0.;
+        for (size_t g = 0; g < edgeGroups.size(); ++g)
+        {
+            const auto& group = edgeGroups[g];
+            const Edge& owner = edges[group.front().first];
+            bool fixed = false;
+            for (const auto& member : group)
+                fixed = fixed || edges[member.first].fixedGeometry;
+            gsMatrix<> c(owner.indices.size(), 1);
+            for (size_t i = 0; i < owner.indices.size(); ++i)
+                c(i) = (fixed ? identity : Psi.patch(owner.patch).coefs())(owner.indices[i], owner.direction);
+            c(0) = 0.;
+            c(c.rows()-1) = 1.;
+            if (!fixed)
+            {
+                VolumeTraceDensity rho(density.patch(owner.patch), {owner.direction}, owner.fixed);
+                edgeRes = std::max(edgeRes, edgeSolver[owner.direction]->update(c, rho, edgeScale[g]));
+            }
+            for (const auto& member : group)
+            {
+                const Edge& edge = edges[member.first];
+                for (size_t i = 0; i < edge.indices.size(); ++i)
+                {
+                    Psi.patch(edge.patch).coefs().row(edge.indices[i]) = identity.row(edge.indices[i]);
+                    Psi.patch(edge.patch).coefs()(edge.indices[i], edge.direction) =
+                        member.second ? 1.-c(c.rows()-1-i) : c(i);
+                }
+            }
+        }
+
+        // 2. One face update with this sweep's edges as Dirichlet data.
+        faceRes = 0.;
+        for (index_t p = 0; p < nP; ++p)
+            for (index_t s = 0; s < 6; ++s)
+            {
+                if (secondFace[p][s])
+                    continue;
+                const index_t normal = s/2;
+                const gsMatrix<index_t> indices = B.boundary(boxSide(s+1));
+                if (m_exactGeo && !interfaceFace[p][s])
+                {
+                    for (index_t i = 0; i < indices.size(); ++i)
+                        Psi.patch(p).coefs().row(indices(i)) = identity.row(indices(i));
+                    continue;
+                }
+                std::vector<index_t> directions;
+                for (index_t d = 0; d < 3; ++d)
+                    if (d != normal) directions.push_back(d);
+                gsMatrix<> c(indices.size(), 2);
+                for (index_t i = 0; i < indices.size(); ++i)
+                    for (index_t d = 0; d < 2; ++d)
+                        c(i,d) = Psi.patch(p).coefs()(indices(i), directions[d]);
+                std::array<index_t,3> fixed = {{0,0,0}};
+                fixed[normal] = s%2;
+                VolumeTraceDensity rho(density.patch(p), directions, fixed);
+                faceRes = std::max(faceRes, faceSolver[normal]->update(c, rho, faceScale[6*p+s]));
+                for (index_t i = 0; i < indices.size(); ++i)
+                {
+                    Psi.patch(p).coefs()(indices(i), normal) = s%2;
+                    for (index_t d = 0; d < 2; ++d)
+                        Psi.patch(p).coefs()(indices(i), directions[d]) = c(i,d);
+                }
+            }
+        for (const auto& face : initial_mapping.interfaces())
+        {
+            const patchSide first = face.first(), second = face.second();
+            const gsMatrix<index_t> indices = B.boundary(first.side());
+            // Snapshot supports interfaces between two sides of the same patch.
+            const gsMatrix<> source = Psi.patch(first.patch).coefs();
+            for (index_t i = 0; i < indices.size(); ++i)
+            {
+                index_t remainder = indices(i);
+                std::array<index_t,3> target;
+                gsVector<> value(3);
+                target[second.direction()] = second.parameter()*(sizes[second.direction()]-1);
+                value(second.direction()) = second.parameter();
+                for (index_t d = 0; d < 3; ++d)
+                {
+                    const index_t j = remainder % sizes[d];
+                    remainder /= sizes[d];
+                    if (d == first.direction()) continue;
+                    const index_t mapped = face.dirMap(first,d);
+                    const bool same = face.dirOrientation(first,d);
+                    target[mapped] = same ? j : sizes[mapped]-1-j;
+                    value(mapped) = same ? source(indices(i),d) : 1.-source(indices(i),d);
+                }
+                Psi.patch(second.patch).coefs().row(flatIndex(target)) = value.transpose();
+            }
+        }
+
+        // 3. Three coordinate solves per volume, with all six faces fixed.
+        volumeRes = 0.;
+        for (index_t p = 0; p < nP; ++p)
+            volumeRes = std::max(volumeRes, volumeSolver.update(Psi.patch(p).coefs(), density.patch(p), volumeScale));
+        ++iteration;
+        if (std::max(edgeRes, std::max(faceRes, volumeRes)) < tolMAE)
+            break;
+    }
+    gsExprAssembler<> A(1,1);
+    A.setIntegrationElements(m_basis);
+    gsExprEvaluator<> ev(A);
+    real_t minJac = std::numeric_limits<real_t>::max();
+    for (index_t p = 0; p < nP; ++p)
+    {
+        auto map = A.getMap(Psi.patch(p));
+        minJac = std::min(minJac, ev.min(jac(map).det()));
+    }
+    Psi.interfaces() = initial_mapping.interfaces();
+    Psi.boundaries() = initial_mapping.boundaries();
+    MAmapping = Psi;
+    gsInfo << "<> 3D MMPDE Niter: " << iteration << ". edge_res: " << edgeRes
+           << ". face_res: " << faceRes << ". L2_res: " << volumeRes
+           << ". min(Jac): " << minJac << ". CPU-time: " << timer.stop() << "<>\n";
 }
 
 /**

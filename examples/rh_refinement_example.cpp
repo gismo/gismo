@@ -28,19 +28,25 @@ void ComputesErrorGeometry(const gsMultiPatch<> &FF,
                            double &Binf,
                            double &Ginf)
 {
-    GISMO_ENSURE(numElData > 0 && MAmapping.dim() == 2,
-                 "Use a positive sampling factor and a 2D parameter domain.");
+    const index_t dim = MAmapping.dim();
+    GISMO_ENSURE(numElData > 0 && (dim == 2 || dim == 3),
+                 "Use a positive sampling factor and a 2D or 3D parameter domain.");
     GISMO_ENSURE(FF.nPatches() > 0 && FF.nPatches() == MAmapping.nPatches()
                  && FF.nPatches() == Apmapping.nPatches()
+                 && FF.dim() == dim && Apmapping.dim() == dim
+                 && MAmapping.geoDim() == dim
                  && FF.geoDim() == Apmapping.geoDim(), "Composition dimensions must match.");
     gsStopwatch timer;
     timer.restart();
 
     // Keep the previous sampling resolution, independently of the fitted basis.
-    gsMultiPatch<> square;
-    square.addPatch(gsNurbsCreator<>::BSplineRectangle(0., 0., 1., 1.));
-    gsMultiBasis<> sampling(square, true);
-    while (sampling.basis(0).size() <= square.basis(0).size() * numElData)
+    gsMultiPatch<> samplingDomain;
+    if (dim == 2)
+        samplingDomain.addPatch(gsNurbsCreator<>::BSplineRectangle(0., 0., 1., 1.));
+    else
+        samplingDomain.addPatch(gsNurbsCreator<>::BSplineCube(1., 0., 0., 0.));
+    gsMultiBasis<> sampling(samplingDomain, true);
+    while (sampling.basis(0).size() <= samplingDomain.basis(0).size() * numElData)
         sampling.uniformRefine();
     const gsMatrix<> unitGrid = sampling.basis(0).anchors();
 
@@ -49,13 +55,13 @@ void ComputesErrorGeometry(const gsMultiPatch<> &FF,
     {
         const gsMatrix<> support = MAmapping.basis(p).support();
         gsMatrix<> grid = unitGrid;
-        for (index_t d = 0; d < 2; ++d)
+        for (index_t d = 0; d < dim; ++d)
             grid.row(d) = support(d,0) + (support(d,1)-support(d,0)) * unitGrid.row(d).array();
 
         gsMatrix<> mapped = MAmapping.patch(p).eval(grid);
         const gsMatrix<> bounds = FF.basis(p).support();
         // Correct roundoff at endpoints, but do not hide a map leaving its domain.
-        for (index_t d = 0; d < 2; ++d)
+        for (index_t d = 0; d < dim; ++d)
         {
             GISMO_ENSURE(mapped.row(d).minCoeff() >= bounds(d,0)-1e-10
                          && mapped.row(d).maxCoeff() <= bounds(d,1)+1e-10,
@@ -72,8 +78,8 @@ void ComputesErrorGeometry(const gsMultiPatch<> &FF,
         const gsVector<> positionError = (approx-exact).colwise().norm().transpose();
         maxDist = std::max(maxDist, positionError.maxCoeff());
         for (index_t q = 0; q < grid.cols(); ++q)
-            Ginf = std::max(Ginf, (Dapprox.middleCols(2*q,2)
-                         - DF.middleCols(2*q,2) * DPsi.middleCols(2*q,2)).norm());
+            Ginf = std::max(Ginf, (Dapprox.middleCols(dim*q,dim)
+                         - DF.middleCols(dim*q,dim) * DPsi.middleCols(dim*q,dim)).norm());
 
         // Compare corresponding boundary points, excluding internal interfaces.
         for (auto bit = FF.bBegin(); bit != FF.bEnd(); ++bit)
@@ -92,7 +98,7 @@ int main(int argc, char *argv[])
     //! [Parse command line]
     bool plot              = false;
     index_t numRefine      = 0;
-    index_t numLRefine     = 0;
+    index_t numLRefine     = 1;
     index_t numRefineMAE   = 4;
     index_t numReduceMAE   = 0;
     index_t numElevateMAE  = 0;

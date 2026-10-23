@@ -34,7 +34,7 @@ public:
     // Constructor for one patch compoosition mapping
     gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> mapping,
                                 index_t numRefine   = 0,
-                                index_t maxIter     = 30,
+                                index_t maxIter     = 100,
                                 double IntensityMAE = 9.0,
                                 index_t numReduce   = 0,
                                 index_t numElevate  = 0,
@@ -109,6 +109,8 @@ private:
     gsPatchPreconditionersCreator<double>::Poisson_FastDiag dirichletPoissonSolver() const;
     // Multipatch version of buildMultiPatch (one mapping of the unit square per patch)
     void buildMultiPatchMMPDE(const gsMultiPatch<> &density) const;
+    // Hierarchical 3D sweep: shared edges, shared faces, then volume interiors.
+    void buildMultiPatchMMPDE3D(const gsMultiPatch<> &density) const;
 
     gsMultiBasis<double> m_basis;
     //... Identity mapping in square to itself
