@@ -24,9 +24,9 @@ void ComputesErrorGeometry(const gsMultiPatch<> &FF,
                            const gsMultiPatch<> &MAmapping,
                            const gsMultiPatch<> &Apmapping,
                            const int numElData,
-                           double &maxDist,
-                           double &Binf,
-                           double &Ginf)
+                           real_t &maxDist,
+                           real_t &Binf,
+                           real_t &Ginf)
 {
     const index_t dim = MAmapping.dim();
     GISMO_ENSURE(numElData > 0 && (dim == 2 || dim == 3),
@@ -97,6 +97,7 @@ int main(int argc, char *argv[])
 {
     //! [Parse command line]
     bool plot              = false;
+    bool noOpen            = false;
     index_t numRefine      = 0;
     index_t numLRefine     = 1;
     index_t numRefineMAE   = 4;
@@ -107,8 +108,8 @@ int main(int argc, char *argv[])
     index_t elevDegree     = 0; // degree elevation for the composition of geometry maps
     index_t id_mp          = 4; // id of the geometry in the xml file
     index_t id_rho         = 1942; // id of the density function in the xml file
-    double IntensityMAE    = 9.;
-    double quadValue       = 2.0;
+    real_t IntensityMAE    = 9.;
+    real_t quadValue       = 2.0;
     bool bs_nrbs           = false;
     bool last              = true;
     bool exactGeo          = false;
@@ -123,7 +124,7 @@ int main(int argc, char *argv[])
     // std::string fn("volumes/GshapedVolume.xml");
     // Specify the file path
     // std::string fn("pde/circle.xml");
-    // std::string fn("surfaces/egg.xml"); 
+    // std::string fn("surfaces/egg.xml");
     // std::string fn("domain2d/lake.xml");
     // std::string fn("surfaces/cylinder.xml");
     //... multipatch case
@@ -132,36 +133,37 @@ int main(int argc, char *argv[])
     // std::string fn("pde/surfacepoisson_torus_bvp.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
-    cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard", 
+    cmd.addInt("i", "iter", "Maximum number of iterations for the iterative Picard",
                 maxIter);
-    cmd.addInt( "e", "degreeElevation", "Number of degree Elevation steps to perform before solving (0: equalize degree in all directions)", 
+    cmd.addInt( "e", "degreeElevation", "Number of degree Elevation steps to perform before solving (0: equalize degree in all directions)",
                 numElevate );
-    cmd.addInt( "v", "elevDegree", "Number of degree Elevation steps to perform fro the composition (0: equalize degree in all directions)", 
+    cmd.addInt( "v", "elevDegree", "Number of degree Elevation steps to perform fro the composition (0: equalize degree in all directions)",
                 elevDegree );
-    cmd.addInt( "r", "degreeRedution", "Number of degree Reduction steps to perform before solving MAE", 
+    cmd.addInt( "r", "degreeRedution", "Number of degree Reduction steps to perform before solving MAE",
                 numReduceMAE );
-    cmd.addInt( "s", "degreeMAEElevation", "Number of degree Elevation steps to perform before solving MAE", 
+    cmd.addInt( "s", "degreeMAEElevation", "Number of degree Elevation steps to perform before solving MAE",
                 numElevateMAE );
-    cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",  
+    cmd.addInt( "u", "uniformRefine", "Number of Uniform h-refinement loops",
                 numRefine );
-    cmd.addInt( "m", "uniformRefineMAE", "Number of Uniform h-refinement loops for MAE mapping",  
+    cmd.addInt( "m", "uniformRefineMAE", "Number of Uniform h-refinement loops for MAE mapping",
                 numRefineMAE );
-    cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",  
+    cmd.addInt( "l", "numLRefine", "Number of local h-refinement loops",
                 numLRefine );
-    cmd.addReal( "f", "IntensityMAE", "Intensity of density function",  
+    cmd.addReal( "f", "IntensityMAE", "Intensity of density function",
                 IntensityMAE);
-    cmd.addReal("q","quadValue", "Quadrature rule number of  points in each direction", 
+    cmd.addReal("q","quadValue", "Quadrature rule number of  points in each direction",
                 quadValue);
-    cmd.addString( "d", "file", "Input XML file data", 
+    cmd.addString( "d", "file", "Input XML file data",
                 fn );
-    cmd.addInt("a", "id_mp", "ID of the geometry in the XML file", 
+    cmd.addInt("a", "id_mp", "ID of the geometry in the XML file",
                 id_mp);
-    cmd.addInt("b", "id_rho", "ID of the density function in the XML file", 
+    cmd.addInt("b", "id_rho", "ID of the density function in the XML file",
                 id_rho);
     cmd.addInt("quRule", "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
                 1);
-    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution", 
+    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution",
                 plot);
+    cmd.addSwitch("no-open", "Write visualization files without opening an external viewer", noOpen);
     cmd.addSwitch("nrb", "basis use nrubs or bspline format",
                 bs_nrbs);
     cmd.addSwitch("last", "Solve solely for the last level of h-refinement",
@@ -187,7 +189,7 @@ int main(int argc, char *argv[])
     // Elevate and p-refine the basis to order p + numElevate
     // where p is the highest degree in the bases
     mpLeft.computeTopology();
-    
+
     // Right-hand side function : Analytical density function rho_1 ----- //
     // Load the file
     std::string fnDensity("pde/circle.xml");
@@ -221,8 +223,16 @@ int main(int argc, char *argv[])
     for (size_t p = 0; p < MAE.MAmapping.nPatches(); ++p)
         gsWriteParaview(MAE.MAmapping.patch(p),
                         "ParaviewOutput/MAE_mapping_patch" + std::to_string(p + 1), 1000, true);
-    //... 
-    
+
+    // Keep the exact composition alive for every integration and export level.
+    gsMultiPatch<> directComposition;
+    for (size_t p = 0; p < mpLeft.nPatches(); ++p)
+        directComposition.addPatch(gsComposedGeometry<>(MAE.MAmapping.patch(p), mpLeft.patch(p)));
+    directComposition.interfaces() = mpLeft.interfaces();
+    directComposition.boundaries() = mpLeft.boundaries();
+    const bool embedded = mpLeft.dim() < mpLeft.geoDim();
+    //...
+
     // //------------------------------------
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
@@ -236,8 +246,7 @@ int main(int argc, char *argv[])
     gsExprEvaluator<> ev(A);
     // //------------------------------------
     geometryMap G       = A.getMap(mpLeft);
-    geometryMap PP      = A.getMap(MAE.MAmapping);
-    auto Cmp            = A.getCoeff(mpLeft, PP);
+    geometryMap direct  = A.getMap(directComposition);
 
     // h-refine each basis
     index_t numLevels = 0;
@@ -249,7 +258,7 @@ int main(int argc, char *argv[])
         }
         numRefine = 0;
     }
-    // ... 
+    // ...
     gsVector<>  CHdferror(numRefine+1)
                 , IBdrerr(numRefine+1), IPosError(numRefine+1), IGradError(numRefine+1), IL2Jerror(numRefine+1);
     gsVector<int>  DoFPDE(numRefine+1);
@@ -259,25 +268,30 @@ int main(int argc, char *argv[])
         MAE.mapping_basis.uniformRefine();
     numLevels += 1;
     //... some infos on the computational domain
-    gsInfo << r <<"th iter:{ numElement " << MAE.mapping_basis.basis(0).numElements() << " degree " << MAE.mapping_basis.degree() 
-            <<" dim " <<MAE.mapping_basis.dim()<<" Geodim " << mpLeft.geoDim() 
+    gsInfo << r <<"th iter:{ numElement " << MAE.mapping_basis.basis(0).numElements() << " degree " << MAE.mapping_basis.degree()
+            <<" dim " <<MAE.mapping_basis.dim()<<" Geodim " << mpLeft.geoDim()
             <<"}------------------------------------------------------\n";
 
     DoFPDE[r]               = MAE.mapping_basis.size();
-    CHdferror[r]            = abs(ev.integral( jac(G).det() - jac(Cmp).det()*jac(PP).det() ) );
+    // Embedded surfaces have a rectangular Jacobian: use sqrt(det(J^T J)).
+    CHdferror[r] = embedded
+        ? math::abs(ev.integral(meas(G) - meas(direct)))
+        : math::abs(ev.integral(jac(G).det() - jac(direct).det()));
 
-    //---------------------------------------------------------- 
+    //----------------------------------------------------------
     //...Interpolation of the mapping by collocation method !
     //----------------------------------------------------------
     mpPsi = H1 ? MAE.buildH1CompMultiPatch(gradientWeight, quadValue)
            : MAE.buildColCompMultiPatch();
     geometryMap PGI         = A.getMap(mpPsi);
     // ... Error using Interpolation method
-    double maxDist = 0.;
-    double Binf = 0.;
-    double Ginf = 0.;
+    real_t maxDist = 0.;
+    real_t Binf = 0.;
+    real_t Ginf = 0.;
     ComputesErrorGeometry(mpLeft, MAE.MAmapping, mpPsi, 200, maxDist, Binf, Ginf);
-    IL2Jerror[r]            = abs(ev.integral( jac(PGI).det() - jac(Cmp).det()*jac(PP).det() ) );
+    IL2Jerror[r] = embedded
+        ? math::abs(ev.integral(meas(PGI) - meas(direct)))
+        : math::abs(ev.integral(jac(PGI).det() - jac(direct).det()));
     IPosError[r]           = maxDist;
     IGradError[r]          = Ginf;
     IBdrerr[r]             = Binf;
@@ -285,10 +299,6 @@ int main(int argc, char *argv[])
     // Evaluate F(Psi) directly, without projecting it into a spline space.
     if (mpPsi.nPatches() != 0)
     {
-        gsMultiPatch<> directComposition;
-        for (size_t p = 0; p < mpLeft.nPatches(); ++p)
-            directComposition.addPatch(gsComposedGeometry<>(MAE.MAmapping.patch(p), mpLeft.patch(p)));
-        geometryMap direct = A.getMap(directComposition);
         geometryMap approximation = A.getMap(mpPsi);
         for (const auto * geometry : {&directComposition, &mpPsi})
         {
@@ -299,8 +309,16 @@ int main(int argc, char *argv[])
             comparison.options().setInt("numPoints", 10000);
             comparison.options().setInt("precision", 10);
             comparison.newTimeStep(*geometry);
-            comparison.addField(jac(direct).det(), "direct_Jacobian");
-            comparison.addField(jac(approximation).det(), "approximated_Jacobian");
+            if (embedded)
+            {
+                comparison.addField(meas(direct), "direct_Jacobian");
+                comparison.addField(meas(approximation), "approximated_Jacobian");
+            }
+            else
+            {
+                comparison.addField(jac(direct).det(), "direct_Jacobian");
+                comparison.addField(jac(approximation).det(), "approximated_Jacobian");
+            }
             comparison.addField((approximation - direct).norm(), "composition_error");
             comparison.addField((jac(approximation) - jac(direct)).norm(), "gradient_error");
             comparison.saveTimeStep();
@@ -333,7 +351,7 @@ int main(int argc, char *argv[])
     }
     //--------------------------------------------------------------------------------------------------
     //! [Error and convergence rates]
-    //--------------------------------------------------------------------------------------------------    
+    //--------------------------------------------------------------------------------------------------
     // --- Print header ---
     gsInfo << std::setw(12) << "DoFs" << " & "
          << std::setw(13) << "Boundary"  << " & "
@@ -374,7 +392,7 @@ int main(int argc, char *argv[])
              << std::setw(12) <<std::setprecision(3)<<std::scientific<< IL2Jerror[i] << " & "
              << std::setw(12) <<std::fixed<<std::setprecision(2)<< orderofConvL2[i-1] << "\\\\ \n";
             }
-    //! [Export visualization in ParaView] 
+    //! [Export visualization in ParaView]
     if (plot)
     {
         gsMultiPatch<> Psi;
@@ -404,7 +422,7 @@ int main(int argc, char *argv[])
             }
             else{
             for(size_t i =0; i<mpPsi.nPatches(); ++i)
-                Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(mpPsi.patch(i)) ));            
+                Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(mpPsi.patch(i)) ));
             }
             }
         }
@@ -460,11 +478,15 @@ int main(int argc, char *argv[])
         collection.options().setInt("numPoints", 10000);
         collection.newTimeStep(Psi);
         collection.addField(ff_TG, "density function");
-        collection.addField(jac(PPsi).det(), "Jacobian function");
+        if (embedded)
+            collection.addField(meas(PPsi), "Jacobian function");
+        else
+            collection.addField(jac(PPsi).det(), "Jacobian function");
         collection.saveTimeStep();
         collection.save();
 
-        gsFileManager::open("ParaviewOutput/solution.pvd");
+        if (!noOpen)
+            gsFileManager::open("ParaviewOutput/solution.pvd");
         // gsWrite(Psi, "Psi_mapping");
         // gsInfo << "Result written in Psi_mapping.xml \n";
     }

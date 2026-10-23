@@ -400,7 +400,7 @@ gsPatchPreconditionersCreator<T>::Poisson_FastDiag::Poisson_FastDiag(const gsBas
 // Computes the approximate solution of ∫-\nabla u *\nabla v + eps * u *v = ∫(funct * v) as input,
 // where funct is the input function, and v is the test function.
 template<typename T>
-gsMatrix<T> gsPatchPreconditionersCreator<T>::Poisson_FastDiag::solve(const gsMatrix<T>& b) const 
+gsMatrix<T> gsPatchPreconditionersCreator<T>::Poisson_FastDiag::solve(const gsMatrix<T>& b) const
 {
     // Factorizations are shared, but every concurrent call owns its work matrix.
     gsMatrix<T> s_tilde;
@@ -454,7 +454,7 @@ gsMatrix<T> gsPatchPreconditionersCreator<T>::Poisson_FastDiag::solve(const gsMa
 // where funct is the input function, and v is the test function.
 // (A\otimesB)x = vec(BXA^T)
 template<typename T>
-gsMatrix<T> gsPatchPreconditionersCreator<T>::Poisson_FastDiag::L2ProjectScalar(const gsMatrix<T>& b) const 
+gsMatrix<T> gsPatchPreconditionersCreator<T>::Poisson_FastDiag::L2ProjectScalar(const gsMatrix<T>& b) const
 {
     // Factorizations are shared, but every concurrent call owns its work matrix.
     gsMatrix<T> s_tilde;

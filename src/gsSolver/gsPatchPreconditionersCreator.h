@@ -163,7 +163,7 @@ public:
         const gsOptionList& opt = gsAssembler<T>::defaultOptions()
     );
 
-    // This nested class implements the fast diagonalization algorithm 
+    // This nested class implements the fast diagonalization algorithm
     // described in the paper: https://doi.org/10.1016/j.cma.2023.116570
     ///----- @ M. BAHARI
     /// The stiffness matrix represents

@@ -27,11 +27,11 @@ int main(int argc, char *argv[])
     index_t mappingUpdates = 5;
     index_t NumArMarEl    = 0; // Number of ring of cells around marked elements
     index_t id_mp          = 4; // id of the geometry in the xml file
-    double IntensityMAE   = 9.;
+    real_t IntensityMAE   = 9.;
     bool export_b64       = false;
     bool errorsave        = false;
     // --------------- adaptive refinement ---------------
-    // Specify cell-marking strategy... 
+    // Specify cell-marking strategy...
     index_t adaptRefCrit  = 2;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
     real_t  adaptRefParam = 0.7; // ... adapt parameter.
     real_t  adaptRefParamMAE = 0.7; // ... adapt parameter for MAE mapping.
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     std::string fn("pde/annulus2d_bvp.xml");
     // std::string fn("domain2d/lake.xml");
     // std::string fn("pde/Bspline_ball.xml");
-    // std::string fn("volumes/GshapedVolume.xml"); 
+    // std::string fn("volumes/GshapedVolume.xml");
 
     gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
     cmd.addReal( "a",    "adaptRefParam",    "parameter for local h-refinement loops",                                  adaptRefParam );
@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
         }
         else{
         for(size_t i =0; i<mpLeft.nPatches(); ++i)
-            Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(mpLeft.patch(i)) ));            
+            Psi.addPatch(gsTHBSpline<2>( dynamic_cast<const gsTensorBSpline<2>&>(mpLeft.patch(i)) ));
         }
         }
     }
@@ -165,11 +165,11 @@ int main(int argc, char *argv[])
     gsInfo<<"Active options:\n"<< A.options() <<"\n";
 
     geometryMap PP  = A.getMap(Psi);
-    
+
     gsStopwatch timer;
     // Elements used for numerical integration
     A.setIntegrationElements(dbasis);
-    
+
     // Set the discretization space // different boundary condition !
     space ru        = A.getSpace(dbasis);
 
@@ -219,7 +219,7 @@ int main(int argc, char *argv[])
         ev.integralElWise( (  ilapl(ru_sol, PP) + rhs_f ).sqNorm() );
 
         //! [errorComputation]
-        std::vector<real_t> eltErrs  = ev.elementwise();            
+        std::vector<real_t> eltErrs  = ev.elementwise();
         // ... compute MAE mapping from a given error distribution
         std::vector<bool> eldensityMarked( eltErrs.size() );
         gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParamMAE, eldensityMarked);
@@ -280,7 +280,7 @@ int main(int argc, char *argv[])
             // ev.integralElWise( (  igrad(ru_sol, PP) ).sqNorm() );
             ev.integralElWise( (  ilapl(ru_sol, PP) + rhs_f ).sqNorm() );
             //! [errorComputation]
-            std::vector<real_t> eltErrs  = ev.elementwise();            
+            std::vector<real_t> eltErrs  = ev.elementwise();
             // /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             std::vector<bool> elMarked( eltErrs.size() );
             // //! [adaptRefinementPart]
@@ -292,7 +292,7 @@ int main(int argc, char *argv[])
                 // if (MAE.DoFs < 2e3)
                 //     MAE.uniformRefine();
                 std::vector<bool> eldensityMarked( eltErrs.size() );
-                gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParamMAE, eldensityMarked);                 
+                gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParamMAE, eldensityMarked);
                 //! [Mesh update]
                 auto density   = MAE.buildDensity( dbasis, eldensityMarked, r);
                 // Continue the previous mapping with a short update budget.
@@ -301,7 +301,7 @@ int main(int argc, char *argv[])
                 Psi            = MAE.buildColCompMultiPatch();// computes the composition mapping Psi o MAmapping
                 //! [Mesh update]
                 // -----------------
-                double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
+                real_t Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());
                 for(size_t i=0; i<eltErrs.size(); ++i)
                 {
                     if (elMarked[i] == true and Minvalue > eltErrs[i]) // Avoid numerical issues
@@ -328,7 +328,7 @@ int main(int argc, char *argv[])
             //! [Local refinement]
             }
     }
-    //! [Solver loop]    
+    //! [Solver loop]
 
 
     timer.stop();
@@ -337,7 +337,7 @@ int main(int argc, char *argv[])
     gsInfo<<"  Assembly: "<< ma_time    <<"\n";
     gsInfo<<"   Solving: "<< slv_time   <<"\n";
     gsInfo<<"     Norms: "<< err_time   <<"\n";
-    
+
 
     //! [Error and convergence rates]
     gsInfo<< "\nDoF_PDE = "<<std::scientific<<DoFPDE.transpose()<<"\n";

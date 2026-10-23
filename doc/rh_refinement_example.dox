@@ -156,6 +156,7 @@ density:
 \code{.sh}
 ./bin/rh_refinement_example
 ./bin/rh_refinement_example -d surfaces/cylinder.xml -a 1 -b 1954
+./bin/rh_refinement_example -d pde/surfacepoisson_sphere_bvp.xml -a 0 -b 1958
 \endcode
 
 Compare collocation and H1 composition on the cylinder using a fixed exterior

@@ -34,7 +34,7 @@
   <Function type="FunctionExpr" id="3" dim="3">
   v:=atan2(y,x);w:=atan2(z,sqrt(x^2+y^2)-2.0);sin(3*v)*cos(3*w+v)
   </Function>
-  
+
   <!-- Assembler options -->
  <OptionList id="4">
   <int label="DirichletStrategy" desc="Method for enforcement of Dirichlet BCs [11..14]" value="11"/>

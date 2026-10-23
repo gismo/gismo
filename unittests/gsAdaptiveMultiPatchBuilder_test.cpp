@@ -137,6 +137,42 @@ void checkParallelInteriors(index_t dim)
 
 SUITE(gsAdaptiveMultiPatchBuilder_test)
 {
+    TEST(SinglePatchNormalBoundaryCorrectionIsThreadSafe)
+    {
+        InteriorThreadSettings settings;
+        for (index_t dim : {2,3})
+        {
+            const gsMultiPatch<> reference = dim == 2
+                ? gsNurbsCreator<>::BSplineSquareGrid(1,1,1.)
+                : gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,-.5,-.5,-.5);
+            gsAdaptiveMultiPatchBuilder builder(reference,1,0);
+            const gsBasis<>& basis = builder.mapping_basis.basis(0);
+            const gsMatrix<> points = basis.anchors();
+            gsMatrix<> perturbed = basis.interpolateData(points,points)->coefs();
+            perturbed.array() += static_cast<real_t>(0.125);
+            gsMatrix<> expected = perturbed;
+            for (index_t d=0; d<dim; ++d)
+                for (index_t end=0; end<2; ++end)
+                {
+                    const gsMatrix<index_t> boundary = basis.boundary(boxSide(2*d+end+1));
+                    for (index_t i=0; i<boundary.size(); ++i)
+                        expected(boundary(i),d) = end;
+                }
+            for (int threads : {1,4})
+            {
+#ifdef _OPENMP
+                omp_set_num_threads(threads);
+#else
+                (void)threads;
+#endif
+                gsMultiPatch<> mapping;
+                mapping.addPatch(basis.makeGeometry(perturbed));
+                builder.setBoundaryControlPointsAlongNormal(mapping);
+                CHECK((mapping.patch(0).coefs()-expected).norm() < 1e-11);
+            }
+        }
+    }
+
     // Compare with independently assembled operators; exercise OpenMP slices when enabled.
     TEST(FastDiagonalization3DMatchesAssembledOperators)
     {
@@ -173,8 +209,8 @@ SUITE(gsAdaptiveMultiPatchBuilder_test)
             if (!boundary) free.push_back(i);
         }
         gsMatrix<> rhs(free.size(),1), density(B.size(),1);
-        for (index_t i=0; i<rhs.rows(); ++i) rhs(i)=std::sin(real_t(i+1));
-        for (index_t i=0; i<density.rows(); ++i) density(i)=std::cos(real_t(i+1));
+        for (index_t i=0; i<rhs.rows(); ++i) rhs(i)=math::sin(static_cast<real_t>(i+1));
+        for (index_t i=0; i<density.rows(); ++i) density(i)=math::cos(static_cast<real_t>(i+1));
         gsSparseEntries<> entries;
         for (size_t i=0; i<free.size(); ++i)
             for (size_t j=0; j<free.size(); ++j)
@@ -205,23 +241,23 @@ SUITE(gsAdaptiveMultiPatchBuilder_test)
             {
                 const gsMatrix<> solution = poisson.solve(rhs);
                 const gsMatrix<> projected = projector.L2ProjectScalar(density);
-                CHECK((solution-expected).norm()<1e-10*std::max(real_t(1),expected.norm()));
-                CHECK((projected-expectedMass).norm()<1e-10*std::max(real_t(1),expectedMass.norm()));
+                CHECK((solution-expected).norm()<1e-10*std::max(static_cast<real_t>(1),expected.norm()));
+                CHECK((projected-expectedMass).norm()<1e-10*std::max(static_cast<real_t>(1),expectedMass.norm()));
             }
         }
         std::vector<gsMatrix<> > solutions(16), projections(16);
         #pragma omp parallel for num_threads(4)
         for (index_t i=0; i<16; ++i)
         {
-            const real_t factor = 1.+real_t(i)/10.;
+            const real_t factor = 1.+static_cast<real_t>(i)/10.;
             solutions[i] = poisson.solve(gsMatrix<>(factor*rhs));
             projections[i] = projector.L2ProjectScalar(gsMatrix<>(factor*density));
         }
         for (index_t i=0; i<16; ++i)
         {
-            const real_t factor = 1.+real_t(i)/10.;
-            CHECK((solutions[i]-factor*expected).norm()<1e-10*std::max(real_t(1),factor*expected.norm()));
-            CHECK((projections[i]-factor*expectedMass).norm()<1e-10*std::max(real_t(1),factor*expectedMass.norm()));
+            const real_t factor = 1.+static_cast<real_t>(i)/10.;
+            CHECK((solutions[i]-factor*expected).norm()<1e-10*std::max(static_cast<real_t>(1),factor*expected.norm()));
+            CHECK((projections[i]-factor*expectedMass).norm()<1e-10*std::max(static_cast<real_t>(1),factor*expectedMass.norm()));
         }
 #ifdef _OPENMP
         omp_set_num_threads(originalThreads);
@@ -322,7 +358,7 @@ SUITE(gsAdaptiveMultiPatchBuilder_test)
         neighbor.patch(0).coefs().col(2) = original.col(0);
         reference.addPatch(neighbor.patch(0));
         reference.computeTopology();
-        CHECK_EQUAL(1, reference.nInterfaces());
+        CHECK_EQUAL(size_t(1), reference.nInterfaces());
         gsAdaptiveMultiPatchBuilder builder(reference, 2, 1, 4.);
         builder.buildMultiPatch(builder.buildAnalyticDensity(gsFunctionExpr<>("1+x+2*y+3*z",3)));
         checkInterfaces(reference,builder.MAmapping);

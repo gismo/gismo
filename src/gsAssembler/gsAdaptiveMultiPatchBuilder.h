@@ -35,22 +35,22 @@ public:
     gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> mapping,
                                 index_t numRefine   = 0,
                                 index_t maxIter     = 100,
-                                double IntensityMAE = 9.0,
+                                real_t IntensityMAE = 9.0,
                                 index_t numReduce   = 0,
                                 index_t numElevate  = 0,
                                 bool exactGeo       = false);
-    
+
     // ... optimal Monge-Ampere (or moving mesh) mapping in square to itself
     mutable gsMultiPatch<> MAmapping;
 
     // ... containes error values over elements, which considered piecewise density function vector
-    mutable gismo::gsMatrix<> errorVector;    
+    mutable gismo::gsMatrix<> errorVector;
 
     // m_maxIter: max iterations, in moving mesh we want to change max iteration since we start with adaptive mapping
     index_t m_maxIter;
-    
+
     // m_mae: tolerance for the Picard loop in the moving mesh solver
-    double tolMAE = 1e-8;
+    real_t tolMAE = 1e-8;
 
     // degees of freedom used in the computation
     int DoFs;
@@ -79,7 +79,7 @@ public:
     // Minimize squared value error + gradientWeight * squared reference-gradient error.
     // Keep collocated boundary traces and enforce C0 continuity at matching interfaces.
     gsMultiPatch<> buildH1CompMultiPatch(const real_t gradientWeight = 1., const real_t quadValue = 2.) const;
-    
+
     //----------------------------------------
     // Useful functions for moving mesh
     //----------------------------------------
@@ -95,37 +95,37 @@ public:
     // Project control points following normal direction at the boundaries for square domain for moving mesh mapping
     void setBoundaryControlPointsAlongNormal(gsMultiPatch<>& Psi) const;
 
-    
+
     // Transfer a scalar density using the shared mapping/density basis.
     void assemble_rhsvector_2d(const gsBasis<>& basis,
-                           const gsMatrix<double>& vector_mp, const gsMatrix<double>& vector_un,
-                           gsMatrix<double>& rhs) const;
+                           const gsMatrix<>& vector_mp, const gsMatrix<>& vector_un,
+                           gsMatrix<>& rhs) const;
     void assemble_rhsvector_3d(const gsBasis<>& basis,
-                           const gsMatrix<double>& vector_mp, const gsMatrix<double>& vector_un,
-                           gsMatrix<double>& rhs) const;
+                           const gsMatrix<>& vector_mp, const gsMatrix<>& vector_un,
+                           gsMatrix<>& rhs) const;
 
 private:
     // Fast diagonalization solver with Dirichlet conditions on the shared basis
-    gsPatchPreconditionersCreator<double>::Poisson_FastDiag dirichletPoissonSolver() const;
+    gsPatchPreconditionersCreator<>::Poisson_FastDiag dirichletPoissonSolver() const;
     // Multipatch version of buildMultiPatch (one mapping of the unit square per patch)
     void buildMultiPatchMMPDE(const gsMultiPatch<> &density) const;
     // Hierarchical 3D sweep: shared edges, shared faces, then volume interiors.
     void buildMultiPatchMMPDE3D(const gsMultiPatch<> &density) const;
 
-    gsMultiBasis<double> m_basis;
+    gsMultiBasis<> m_basis;
     //... Identity mapping in square to itself
-    gsMultiPatch<double> identity_mp; 
-    gsMultiPatch<double> initial_mapping;
-    double m_IntensityMAE;
+    gsMultiPatch<> identity_mp;
+    gsMultiPatch<> initial_mapping;
+    real_t m_IntensityMAE;
     bool m_exactGeo;
-    gsFunctionExpr<double> neumann_id;
-    gsBoundaryConditions<double> bc_mae;
+    gsFunctionExpr<> neumann_id;
+    gsBoundaryConditions<> bc_mae;
 public:
     // Public members for the mapping basis and Poisson solvers
-    gsMultiBasis<double> mapping_basis;
-    gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson;
+    gsMultiBasis<> mapping_basis;
+    gsPatchPreconditionersCreator<>::Poisson_FastDiag Poisson;
     // Dirichlet counterpart of Poisson (used by the multipatch solver)
-    gsPatchPreconditionersCreator<double>::Poisson_FastDiag PoissonDir;
+    gsPatchPreconditionersCreator<>::Poisson_FastDiag PoissonDir;
 };
 
 #endif // GS_ADAPTIVE_MULTIPATCH_BUILDER_H

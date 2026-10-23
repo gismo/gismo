@@ -24,7 +24,6 @@ typedef gsExprAssembler<>::geometryMap geometryMap;
 typedef gsExprAssembler<>::variable    variable;
 typedef gsExprAssembler<>::space       space;
 typedef gsExprAssembler<>::solution    solution;
-gsSparseSolver<>::CGDiagonal solver; // ... for the composition
 
 namespace {
 // Lower-dimensional traces have settled before entering this loop. Each task
@@ -383,7 +382,7 @@ private:
 gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> mapping,
                             index_t numRefine,
                             index_t maxIter,
-                            double IntensityMAE,
+                            real_t IntensityMAE,
                             index_t numReduce,
                             index_t numElevate,
                             bool exactGeo)
@@ -400,7 +399,7 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
     gsInfo<<"for more accuracy refine: DoFs > 10^3\n";
     gsInfo<<"\n";
     // Store the initial mapping
-    this->initial_mapping= mapping; 
+    this->initial_mapping= mapping;
     // basis function for the composition
     gsMultiBasis<> mapping_basis(mapping, false);
     //-------------------------------------------------------------------------------------
@@ -424,13 +423,13 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
     dbasis.setTopology(mapping.topology());
     //... refine basis for convergence
     for(index_t i = 0; i < numRefine; ++i)
-    {   
+    {
         dbasis.uniformRefine();
         mapping_basis.uniformRefine();
     }
     // Reduce degree if possible while maintaining minimum degree of 1
     if (numReduce > 0){
-        int reduceDegree = std::min(dbasis.degree()-1, numReduce);
+        const index_t reduceDegree = std::min<index_t>(dbasis.degree()-1, numReduce);
         dbasis.degreeDecrease(reduceDegree);
     }
     else if (numElevate > 0){
@@ -478,7 +477,7 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
 
     //::::::::::::::::::::      Poisson fast diagonalization solver         :::::::::::::::::::::::::
     gsExprAssembler<> A(1,1);
-    gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(dbasis.basis(0), this->bc_mae, A.options(), 1e-6);  
+    gsPatchPreconditionersCreator<>::Poisson_FastDiag Poisson(dbasis.basis(0), this->bc_mae, A.options(), 1e-6);
 
     // Store input parameters
     this->Poisson        = Poisson;
@@ -489,7 +488,7 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
 
 // Fast diagonalization solver for the Poisson problem with homogeneous Dirichlet conditions (multipatch case);
 // the Neumann version used for Monge-Ampere is `Poisson`.
-gsPatchPreconditionersCreator<double>::Poisson_FastDiag gsAdaptiveMultiPatchBuilder::dirichletPoissonSolver() const
+gsPatchPreconditionersCreator<>::Poisson_FastDiag gsAdaptiveMultiPatchBuilder::dirichletPoissonSolver() const
 {
     gsFunctionExpr<> zero("0.", identity_mp.domainDim());
     gsBoundaryConditions<> bc;
@@ -497,7 +496,7 @@ gsPatchPreconditionersCreator<double>::Poisson_FastDiag gsAdaptiveMultiPatchBuil
     for (gsMultiPatch<>::const_biterator bit = identity_mp.bBegin(); bit != identity_mp.bEnd(); ++bit)
         bc.addCondition(*bit, condition_type::dirichlet, &zero);
     gsExprAssembler<> A(1,1);
-    return gsPatchPreconditionersCreator<double>::Poisson_FastDiag(this->m_basis.basis(0), bc, A.options(), 0.);
+    return gsPatchPreconditionersCreator<>::Poisson_FastDiag(this->m_basis.basis(0), bc, A.options(), 0.);
 }
 
 
@@ -516,24 +515,24 @@ void gsAdaptiveMultiPatchBuilder::uniformRefine(const index_t numRefine)
     //------------
     // update DoFs
     this->DoFs      = m_basis.size() * initial_mapping.nPatches();
-    
+
     //! [Problem setup]
     gsExprAssembler<> A(1,1);
-    
+
     //::::::::::::::::::::      Poisson fast diagonalization solver         :::::::::::::::::::::::::
-    gsPatchPreconditionersCreator<double>::Poisson_FastDiag Poisson(this->m_basis.basis(0), bc_mae, A.options(), 1e-6);  
+    gsPatchPreconditionersCreator<>::Poisson_FastDiag Poisson(this->m_basis.basis(0), bc_mae, A.options(), 1e-6);
     this->Poisson   = Poisson;
     this->PoissonDir = dirichletPoissonSolver();
     gsInfo << "<>"<< this->DoFs <<" DoFs after uniRefine <>\n";
 }
 
 
-/** \brief Build and return a density as a MultiPatch object from analytical function 
+/** \brief Build and return a density as a MultiPatch object from analytical function
  * \remark (we avoid three compositions (r o F o Psi) here to be r o Psi)
  * \remark In the multipatch case one density patch (on the unit square) is built per geometry patch.
  * \param f density function defined on the physical domaine.
  */
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildAnalyticDensity(const gsFunctionExpr<>   &f) const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildAnalyticDensity(const gsFunctionExpr<>   &f) const
 {
     gsInfo<<"<>density function: ";
 
@@ -611,15 +610,15 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildAnalyticDensity(const gsFunctio
  * \brief Build and return a density as a MultiPatch object from a solution vector using local h-refinement strategies.
  *
  * \remark We construct a new basis for the density function in order to control the mesh distribution over the computational domain.
- * If a given density is defined on an adaptive mesh, it must first be projected to a uniform mesh 
+ * If a given density is defined on an adaptive mesh, it must first be projected to a uniform mesh
  * since the initial mapping will be used in the composition.  (r o F o Psi) to (r o F)
  * \param Hbasis Basis functions where the PDE solution is defined.
  * \param elMarked Vector containing the marked elements.
  * \param setRhogrid If 0, the density is reset to zero before adding the error distribution; otherwise, the error is accumulated.
  * \param setRhoZero Density initialization flag: if 0, the density is set to zero; otherwise, it is set to a user-defined value (fixed here to 0.75).
  */
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Hbasis, const  std::vector<bool> elMarked, const index_t setRhogrid, const index_t setRhoZero) const 
-{   
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Hbasis, const  std::vector<bool> elMarked, const index_t setRhogrid, const index_t setRhoZero) const
+{
     gsInfo<<"<>density function";
 
     // ... basis_0 of degree 0 to represent error as a piecewise constant function
@@ -634,7 +633,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Hb
         basis_0.uniformRefine();
 
     // ... We want each element to be reprensted by one basis for all patches
-    for (size_t pn=0; pn < nP; ++pn ) 
+    for (size_t pn=0; pn < nP; ++pn )
     {
     for( index_t i_dir=0; i_dir<basis_0.dim(); ++i_dir){
        basis_0.basis(pn).degreeDecrease(basis_0.basis(pn).degree(i_dir),i_dir);
@@ -644,7 +643,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Hb
     // ...
     gsExprAssembler<> A_0(1,1);
     // Elements used for numerical integration
-    A_0.setIntegrationElements(basis_0);    
+    A_0.setIntegrationElements(basis_0);
     // Set the discretization space
     space u_0          = A_0.getSpace(basis_0);
     A_0.initSystem();
@@ -665,7 +664,7 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildDensity(const gsMultiBasis<> Hb
     solution error_sol = A_0.getSolution(u_0, errorVector);
 
     //------------------------------------------------------
-    // piecewise density construction from error distribution 
+    // piecewise density construction from error distribution
     // globalCount: counter for the current global element index
     int globalCount = 0;
     const index_t nDofs0 = basis_0.basis(0).size();
@@ -811,8 +810,8 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density)
     // ---- manipulation of density function ----
     auto rho         = A.getCoeff(density);
     auto empldensity = (ev.max(abs(rho.val()))-ev.min(abs(rho.val())));
-    double  int_uh_0 = 0.;
-    double  int_uh_1 = 1.;
+    real_t  int_uh_0 = 0.;
+    real_t  int_uh_1 = 1.;
 
     if (empldensity < 1e-5|| this->m_IntensityMAE <= 1. )
     {
@@ -822,7 +821,7 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density)
         int_uh_0     = (this->m_IntensityMAE-1.)/empldensity;
         int_uh_1     = (ev.max(abs(rho.val()))-this->m_IntensityMAE*ev.min(abs(rho.val())))/empldensity;
     }
-    double maxrho    = ev.max(int_uh_0*abs(rho.val()) + int_uh_1);
+    real_t maxrho    = ev.max(int_uh_0*abs(rho.val()) + int_uh_1);
     // ......... End initialization for density.........
 
     // Initialize the system :  identity mapping as initial guess
@@ -830,7 +829,7 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density)
 
     // Compute the Neumann terms defined on physical space
     auto g_N         = A.getBdrFunction(G);
-    
+
     //.. for compatibility: induced from laplace with pure Neumann boundary conditions
     auto Neumann_Int = ev.integralBdrBc(bc_mae.get("Neumann"), g_N.tr() * nv(G) );
 
@@ -885,7 +884,7 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatch(const gsMultiPatch<> &density)
     for(int ip{0}; ip<m_maxIter; ++ip)
     {
         std::cout << "\r" << std::string(20,' ') << "\r<> Picard Iteration: " << ip << std::flush;
-        
+
         //.. geometry map under update
         geometryMap PP    = A.getMap(Psi);
 
@@ -1501,12 +1500,12 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatchMMPDE3D(const gsMultiPatch<> &d
  * \brief computes the projection of a composition and return a MultiPatch object :: Collocation
  *
  */
-gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch() const 
+gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch() const
 {
 
     gsInfo<<"<Col> computes composition";
 
-    gsMultiPatch<> Psi; 
+    gsMultiPatch<> Psi;
     double slv_time(0);
     gsStopwatch timer;
     timer.restart();
@@ -1564,8 +1563,8 @@ gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildColCompMultiPatch() const
 
 gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildH1CompMultiPatch(const real_t gradientWeight, const real_t quadValue) const
 {
-    GISMO_ENSURE(std::isfinite(gradientWeight) && gradientWeight >= 0., "Gradient weight must be finite and non-negative.");
-    GISMO_ENSURE(std::isfinite(quadValue) && quadValue > 0., "Quadrature factor must be finite and positive.");
+    GISMO_ENSURE(math::isfinite(gradientWeight) && gradientWeight >= 0., "Gradient weight must be finite and non-negative.");
+    GISMO_ENSURE(math::isfinite(quadValue) && quadValue > 0., "Quadrature factor must be finite and positive.");
 
     // Keep the boundary traces, including the existing exactGeo correction.
     gsMultiPatch<> Psi = buildColCompMultiPatch();
@@ -1677,17 +1676,17 @@ void gsAdaptiveMultiPatchBuilder::setBoundaryControlPointsAlongNormal(gsMultiPat
     // normal Projection of control points (exact geometry)
     for (size_t boxNumber = 0; boxNumber < identity_mp.nPatches(); ++boxNumber)
     {
-        index_t bndIter  = 1;
         #pragma omp parallel for
         for (index_t dim = 0; dim < Psi.dim(); ++dim){
-            float_t lVal    = identity_mp.patch(boxNumber).coef( identity_mp.patch(boxNumber).basis().boundary(bndIter).at(0) ).array()[dim];
+            index_t bndIter = 2 * dim + 1;
+            real_t lVal    = identity_mp.patch(boxNumber).coef( identity_mp.patch(boxNumber).basis().boundary(bndIter).at(0) ).array()[dim];
             // x=0 control points be like (0,:) in this case
-            for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(bndIter).size(); ++i_x) 
+            for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(bndIter).size(); ++i_x)
             {
                 Psi.patch(boxNumber).coef( Psi.patch(boxNumber).basis().boundary(bndIter).at(i_x) ).array()[dim] = lVal;
             }
             bndIter ++;
-            float_t hVal    = identity_mp.patch(boxNumber).coef( identity_mp.patch(boxNumber).basis().boundary(bndIter).at(0) ).array()[dim];
+            real_t hVal    = identity_mp.patch(boxNumber).coef( identity_mp.patch(boxNumber).basis().boundary(bndIter).at(0) ).array()[dim];
             // x=1 control points be like (1,:) in this case
             for (int i_x =0; i_x < Psi.patch(boxNumber).basis().boundary(bndIter).size(); ++i_x)
             {
@@ -1700,15 +1699,15 @@ void gsAdaptiveMultiPatchBuilder::setBoundaryControlPointsAlongNormal(gsMultiPat
 
 // Both routines use the same assembly; only the Jacobian dimension differs.
 void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_2d(const gsBasis<>& basis,
-                           const gsMatrix<double>& vector_mp, const gsMatrix<double>& vector_un,
-                           gsMatrix<double>& rhs) const
+                           const gsMatrix<>& vector_mp, const gsMatrix<>& vector_un,
+                           gsMatrix<>& rhs) const
 {
     assembleDensityRhs<2>(basis, vector_mp, vector_un, rhs);
 }
 
 void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_3d(const gsBasis<>& basis,
-                           const gsMatrix<double>& vector_mp, const gsMatrix<double>& vector_un,
-                           gsMatrix<double>& rhs) const
+                           const gsMatrix<>& vector_mp, const gsMatrix<>& vector_un,
+                           gsMatrix<>& rhs) const
 {
     assembleDensityRhs<3>(basis, vector_mp, vector_un, rhs);
 }
@@ -1717,7 +1716,7 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_3d(const gsBasis<>& basis,
 
 
 // // find the knot span index for a given x value
-// index_t gsAdaptiveMultiPatchBuilder::find_span(const gsKnotVector<double>& knots, const index_t& degree, const double& x)  const 
+// index_t gsAdaptiveMultiPatchBuilder::find_span(const gsKnotVector<double>& knots, const index_t& degree, const double& x)  const
 // {
 //     index_t low = degree;
 //     index_t high = knots.size() - 1 - degree;
@@ -1737,7 +1736,7 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_3d(const gsBasis<>& basis,
 // // compute the basis functions for a given knot span and degree and x value
 // void gsAdaptiveMultiPatchBuilder::basis_functions(const gsKnotVector<double>& knots, const index_t& degree, const double& x, index_t& span,
 //                      gsVector<double>& dbasis0,
-//                      gsVector<double>& dbasis1)  const 
+//                      gsVector<double>& dbasis1)  const
 // {
 //     index_t minm = std::min(degree,2);// if degree == 1, then all second derivatives are 0
 
@@ -1807,7 +1806,7 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_3d(const gsBasis<>& basis,
 //     const double& valpt,
 //     const index_t& dir_valpt,
 //     const index_t& comp_nb,
-//     gsVector<double>& rhs) const 
+//     gsVector<double>& rhs) const
 // {
 //     rhs.setZero();
 
@@ -1916,7 +1915,7 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_3d(const gsBasis<>& basis,
 //  *                  A recommended choice is degree(initial) * degree(MA mapping) + 1.
 //  * \param sepBoundary If true, an additional correction is applied at the boundary.
 //  */
-// gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const int quadValue, const bool& sepBoundary) const 
+// gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildCompMultiPatch(const int quadValue, const bool& sepBoundary) const
 // {
 //     if (this->initial_mapping.nPatches() > 1)
 //     {
@@ -1927,20 +1926,20 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_3d(const gsBasis<>& basis,
 
 //     // target mapping
 //     gsMultiPatch<> Psi;
-    
+
 //     /// start timing
 //     double slv_time(0);
 //     gsStopwatch timer;
 //     timer.restart();
 
-//     //! [Problem setup] assembler 
+//     //! [Problem setup] assembler
 //     gsExprAssembler<> A(1,1);
 //     A.options().setReal("quA", quadValue);
 //     A.options().setSwitch("SameElement",false); // Very important for the composition of the two mappings
 //     //...
 //     A.setIntegrationElements(mapping_basis);
 
-//     //... 
+//     //...
 //     space v        = A.getSpace(mapping_basis);
 //     gsMatrix<> vsolVector;
 //     solution v_sol = A.getSolution(v, vsolVector);
@@ -1985,7 +1984,7 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_3d(const gsBasis<>& basis,
 //     //         bit = initial_mapping.bBegin(); bit != initial_mapping.bEnd(); ++bit)
 //     // {
 //     //     bc.addCondition( *bit, condition_type::dirichlet, &sDir );
-//     // }    
+//     // }
 //     gsSparseMatrix<> Mx  = assembleMass(Psi.basis(0).component(0));
 //     // eliminateDirichlet1D(boundaryConditionsForDirection(bc,0), A.options(), Mx);
 //     gsSparseMatrix<> My  = assembleMass(Psi.basis(0).component(1));
@@ -1993,7 +1992,7 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_3d(const gsBasis<>& basis,
 //     // componenet by component
 //     #pragma omp parallel for
 //     for(index_t comp_nb = 0; comp_nb < Psi.geoDim(); ++comp_nb){
-//         // y = 0 
+//         // y = 0
 //         gsVector<> rhsxy0(Mx.rows());
 //         assemble_rhsvector_1d(Psi.basis(0).component(0), degree1, kv1, 0., 1, comp_nb, rhsxy0);
 //         solver.compute( Mx );
@@ -2004,14 +2003,14 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_3d(const gsBasis<>& basis,
 //         assemble_rhsvector_1d(Psi.basis(0).component(0), degree1, kv1, 1., 1, comp_nb, rhsxy1);
 //         solver.compute( Mx );
 //         solver.setTolerance(1e-30);
-//         auto xsoly1 = solver.solve(rhsxy1);    
-//         // x = 0 
+//         auto xsoly1 = solver.solve(rhsxy1);
+//         // x = 0
 //         gsVector<> rhsx0y(My.rows());
 //         assemble_rhsvector_1d(Psi.basis(0).component(1), degree2, kv2, 0., 0, comp_nb, rhsx0y);
 //         solver.compute( My );
 //         solver.setTolerance(1e-30);
 //         auto x0soly = solver.solve(rhsx0y);
-//         // x = 1 
+//         // x = 1
 //         gsVector<> rhsx1y(My.rows());
 //         assemble_rhsvector_1d(Psi.basis(0).component(1), degree2, kv2, 1., 0, comp_nb, rhsx1y);
 //         solver.compute( My );
@@ -2044,7 +2043,7 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_3d(const gsBasis<>& basis,
 // }
 
 
-// // Correct the control point at the boundary of a final mapping 
+// // Correct the control point at the boundary of a final mapping
 // void gsAdaptiveMultiPatchBuilder::CorrectBoundary(gsMultiPatch<>& Psi, const index_t& patchNumber, const index_t& patch_cmp, const gsMatrix<>& xsoly0, const gsMatrix<>& xsoly1, const gsMatrix<>& x0soly, const gsMatrix<>& x1soly, const bool& corners) const
 // {
 //     // ...
@@ -2058,7 +2057,7 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_3d(const gsBasis<>& basis,
 //     Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(2).at(i_x) ).array()[patch_cmp] = x1soly(i_x);
 //     }
 
-//     for (int i_x =0; i_x < Psi.patch(patchNumber).basis().boundary(3).size(); ++i_x) 
+//     for (int i_x =0; i_x < Psi.patch(patchNumber).basis().boundary(3).size(); ++i_x)
 //     {
 //     // y=0 control points be like (:,0) in this case
 //     Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(3).at(i_x) ).array()[patch_cmp] = xsoly0(i_x);
@@ -2075,13 +2074,13 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_3d(const gsBasis<>& basis,
 //     Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(2).at(i_x+1) ).array()[patch_cmp] = x1soly(i_x);
 //     }
 
-//     for (int i_x =0; i_x < Psi.patch(patchNumber).basis().boundary(3).size()-1; ++i_x) 
+//     for (int i_x =0; i_x < Psi.patch(patchNumber).basis().boundary(3).size()-1; ++i_x)
 //     {
 //     // y=0 control points be like (:,0) in this case
 //     Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(3).at(i_x+1) ).array()[patch_cmp] = xsoly0(i_x);
 //     // y=1 control points be like (:,1) in this case
 //     Psi.patch(patchNumber).coef( Psi.patch(patchNumber).basis().boundary(4).at(i_x+1) ).array()[patch_cmp] = xsoly1(i_x);
-//     }        
+//     }
 //     }
 // }
 
@@ -2098,7 +2097,7 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_3d(const gsBasis<>& basis,
 //  *               or at least smaller than 10^{-3}.
 //  * \param sepboundary if one want to separate boundary from inner  points in fitting procedure (based on Newton iteration( solve optimization pr))
 //  */
-// gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const int numElData, const real_t lambda, const bool& sepboundary) const 
+// gsMultiPatch<> gsAdaptiveMultiPatchBuilder::buildFitCompMultiPatch(const int numElData, const real_t lambda, const bool& sepboundary) const
 // {
 //     if (this->initial_mapping.nPatches() > 1 || mapping_basis.basis(0).weights().any())
 //     {
@@ -2108,7 +2107,7 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_3d(const gsBasis<>& basis,
 //     gsInfo<<"<Fit> computes composition";
 //     assert(mapping_basis.dim() == 2 && "Only single patch 2D fitting is implemented so far.");
 
-//     gsMultiPatch<> Psi;    
+//     gsMultiPatch<> Psi;
 //     // Copy tensor basis
 //     gsTHBSplineBasis<2>  THB ( mapping_basis.basis(0));
 
@@ -2145,7 +2144,7 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_3d(const gsBasis<>& basis,
 
 //     if(sepboundary){
 //     // number of grid points in one direction, assuming a square grid.
-//     index_t ngrids        = sqrt(initialGrid.cols()); 
+//     index_t ngrids        = sqrt(initialGrid.cols());
 //     std::vector<index_t> boundaryIdx;
 //     for (index_t i = 0; i < ngrids; ++i)
 //     {
@@ -2172,7 +2171,7 @@ void gsAdaptiveMultiPatchBuilder::assemble_rhsvector_3d(const gsBasis<>& basis,
 //         interpIdx.push_back(b);
 //     //... initialization of geometry for fitting
 //     // gsMultiPatch<> PsiCol = initial_mapping;
-//     // while( PsiCol.basis(0).numElements() < mapping_basis.basis(0).numElements())   
+//     // while( PsiCol.basis(0).numElements() < mapping_basis.basis(0).numElements())
 //     //     PsiCol.uniformRefine();
 //     // ref.initializeGeometry(PsiCol.patch(0).coefs(), initialGrid);
 //     ref.parameterProjectionSepBoundary(1e-4, interpIdx);
