@@ -310,7 +310,7 @@ int main(int argc, char *argv[])
 
     } // All refinement levels are complete before writing the error vectors.
 
-    std::ofstream outFile("errorGeometry_analysis.txt", std::ios::app); // Open file in append mode
+    std::ofstream outFile("../build/errorGeometry_analysis.txt", std::ios::app); // Open file in append mode
     if (outFile.is_open())
     {
         outFile << "#DoF_PDE: q"<< quadValue<<"pPr"<< MAE.mapping_basis.basis(0).maxDegree()<<"pPsi"<< mpLeft.basis(0).maxDegree()-numReduceMAE <<"\n"
