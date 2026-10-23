@@ -1,6 +1,5 @@
-/** @file rh_refinement_example.cpp
-
-    @brief Tutorial on how to use expression assembler to solve a parabolic PDE with adaptive r-refinement
+/** @file r_allen_cahn_example.cpp
+    @brief Allen-Cahn equation on a moving spline mesh using an ALE formulation.
 
     This file is part of the G+Smo library.
 
@@ -11,409 +10,357 @@
     Author(s): M. BAHARI
 */
 
-//! [Include namespace]
 #include <gismo.h>
-#include <fstream> // For file operations
-#include <gsAssembler/gsAdaptiveMultiPatchBuilder.h>  // Include the new class of r_refinement
+#include <gsAssembler/gsAdaptiveMultiPatchBuilder.h>
+#include <fstream>
+#include <iomanip>
+#include <numeric>
+#include <sstream>
 
+using namespace gismo;
 
 int main(int argc, char *argv[])
 {
-    //! [Parse command line]
-    bool plot             = false;
-    index_t numRefine     = 4;
-    index_t numLRefine    = 3;
-    index_t numElevate    = 0;
-    index_t maxIter       = 25;
-    double IntensityMAE   = 12.;
-    bool export_b64       = false;
-    bool errorsave        = false;
-    // --------------- adaptive refinement ---------------
-    // Specify cell-marking strategy...
-    index_t adaptRefCrit  = 1;  // 1: GARU, 2: PUCA, 3: BULK, 4: PBULK
-    real_t  adaptRefParam = 0.5; // ... adapt parameter.
-    index_t FactRefPar    = 0;  // ... adapt parameter : adaptRefParam += FactRefPar in each iter
-    double dt             = 1e-5;
-    index_t plotNum       = 1e-4/dt; // plot every 1e-4/dt iterations 10 iterations 
-    gsInfo << "plotNun = " << plotNum << " " << 5%plotNum<< " " << 10%plotNum << "\n";
-    double epsilon        = 0.007389228264793657;
+    bool plot = false, errorsave = false, export_b64 = false, manufactured = false;
+    index_t numRefine = 6, numElevate = 1, numSteps = 30, maxIter = 25, legacySteps = -1;
+    index_t mappingUpdates = 3, adaptRefCrit = 1, initialId = 1995, plotEvery = 0;
+    real_t intensity = 12., adaptRefParam = .5, dt = 1e-5;
+    real_t epsilon = 0.007389228264793657, meshRelax = .25, meshCfl = .25, meshTimeScale = 1e-4;
+    std::string filename, initialExpression;
 
-    // Specify the file path
-    std::string fn("pde/bsimple.xml");
+    gsCmdLine cmd("Allen-Cahn: u_t = Delta u - (u^3-u)/epsilon^2, with homogeneous Neumann boundaries.");
+    cmd.addInt("u", "uniformRefine", "Uniform refinements of the solution and moving-mesh bases", numRefine);
+    cmd.addInt("e", "degreeElevation", "Degree elevation before refinement", numElevate);
+    cmd.addInt("l", "numLRefine", "Number of physical time steps (no h-refinement in time)", legacySteps);
+    cmd.addInt("", "steps", "Number of physical time steps", numSteps);
+    cmd.addInt("i", "iter", "Initial MMPDE iteration budget", maxIter);
+    cmd.addInt("m", "mappingUpdates", "Warm-started MMPDE updates per time step (0: freeze the mesh)", mappingUpdates);
+    cmd.addInt("r", "adaptRefCrit", "Marking criterion [1:GARU,2:PUCA,3:BULK,4:PBULK]", adaptRefCrit);
+    cmd.addReal("a", "adaptRefParam", "Marking parameter for the gradient indicator", adaptRefParam);
+    cmd.addReal("f", "IntensityMAE", "Monitor intensity (1: fixed uniform mesh)", intensity);
+    cmd.addReal("t", "dt", "Physical time step", dt);
+    cmd.addReal("", "epsilon", "Diffuse-interface width", epsilon);
+    cmd.addReal("", "meshRelax", "Maximum fraction of the proposed mesh update", meshRelax);
+    cmd.addReal("", "meshTimeScale", "Physical relaxation time used to scale mesh motion with dt", meshTimeScale);
+    cmd.addReal("", "meshCfl", "Maximum mesh displacement relative to the smallest sampled element altitude", meshCfl);
+    cmd.addString("d", "file", "Optional XML file containing the initial condition", filename);
+    cmd.addInt("", "initialId", "Initial-condition function ID in the optional XML file", initialId);
+    cmd.addString("", "initial", "Initial condition as a function of x,y; default: a circular phase field", initialExpression);
+    cmd.addInt("", "plotEvery", "Output interval in steps (0: approximately every 1e-4 physical time units)", plotEvery);
+    cmd.addSwitch("manufactured", "Stationary cosine solution with matching forcing, for verification", manufactured);
+    cmd.addSwitch("plot", "Write a ParaView time series", plot);
+    cmd.addSwitch("export_b64", "Use base64 encoding for ParaView", export_b64);
+    cmd.addSwitch("errorsave", "Save energy, mesh and nonlinear-solver diagnostics to CSV", errorsave);
+    try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
+    if (legacySteps >= 0) numSteps = legacySteps;
 
-    gsCmdLine cmd("Tutorial on solving a non-linear Monge-Ampere problem.");
-    cmd.addReal(  "a", "adaptRefParam",   "parameter for local h-refinement loops",                                                            adaptRefParam );
-    cmd.addString("d", "file",            "Input XML file data",                                                                               fn );
-    cmd.addInt(   "e", "degreeElevation", "Number of degree elevation steps to perform before solving (0: equalize degree in all directions)", numElevate );
-    cmd.addReal(  "f", "IntensityMAE",    "Intensity of density function",                                                                     IntensityMAE);
-    cmd.addInt(   "i", "iter",            "Maximum number of iterations for the iterative Picard",                                             maxIter);
-    cmd.addInt(   "l", "numLRefine",      "Number of local h-refinement loops",                                                                numLRefine );
-    cmd.addInt(   "p", "FactRefPar",      "augement adaptRefParam with such quantity in local h-refinement loops",                             FactRefPar );
-    cmd.addInt(   "r", "adaptRefCrit",    "Adaptive refinement criterion [1:GARU,2:PUCA,3:BULK,4:PBULK]",                                      adaptRefCrit );
-    cmd.addReal( "t",  "dt",              "time step",                                                                                         dt);
-    cmd.addInt(  "u",  "uniformRefine",   "Number of Uniform h-refinement loops",                                                              numRefine );
-    cmd.addInt("quRule", "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",                                                       1);
-    cmd.addSwitch("plot", "Create a ParaView visualization file with the solution",                                                            plot);
-    cmd.addSwitch("errorsave", "Create a file in ... and save errors",                                                                         errorsave);
+    GISMO_ENSURE(std::isfinite(dt) && dt > 0. && std::isfinite(epsilon) && epsilon > 0.,
+                 "dt and epsilon must be finite and positive.");
+    GISMO_ENSURE(numRefine >= 0 && numElevate >= 0 && numSteps >= 0 && maxIter >= 0
+                 && mappingUpdates >= 0 && plotEvery >= 0 && legacySteps >= -1, "Iteration and refinement counts must be nonnegative.");
+    GISMO_ENSURE(std::isfinite(intensity) && intensity >= 1. && meshRelax >= 0. && meshRelax <= 1.
+                 && meshCfl > 0. && std::isfinite(meshCfl) && meshTimeScale > 0. && std::isfinite(meshTimeScale),
+                 "Use intensity >= 1, meshRelax in [0,1], and finite meshCfl, meshTimeScale > 0.");
+    if (plotEvery == 0)
+        plotEvery = std::max<index_t>(1, static_cast<index_t>(std::ceil(1e-4 / dt)));
 
-    try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
+    std::ostringstream width;
+    width << std::setprecision(17) << epsilon;
+    gsFunctionExpr<> initial, forcing("0", 2);
+    if (manufactured)
+    {
+        initialExpression = "0.25*cos(pi*x)*cos(pi*y)";
+        const std::string u = "(" + initialExpression + ")";
+        forcing = gsFunctionExpr<>("2*pi*pi*" + u + "+(" + u + "*" + u + "*" + u + "-" + u
+                                    + ")/(" + width.str() + "*" + width.str() + ")", 2);
+    }
+    if (!initialExpression.empty())
+        initial = gsFunctionExpr<>(initialExpression, 2);
+    else if (!filename.empty())
+        gsFileData<>(filename).getId(initialId, initial);
+    else
+        // initial = gsFunctionExpr<>("tanh((0.2-sqrt((x-0.5)^2+(y-0.5)^2))/(sqrt(2)*" + width.str() + "))", 2);
+        initial = gsFunctionExpr<>("-1.+ tanh( ( 0.4 - sqrt((x-0.5)**2+ (y-0.5)**2))/(sqrt(2)*" + width.str() + ")) - tanh( ( 0.3 - sqrt((x-0.5)**2+ (y-0.5)**2))/(sqrt(2)*" + width.str() + "))", 2);
+    GISMO_ENSURE(initial.domainDim() == 2 && initial.targetDim() == 1, "The initial condition must be a scalar function of x,y.");
 
-    // Load the file
-    gsFileData<> fd(fn);
-    gsInfo << "Loaded file " << fd.lastPath() << "\n";
-    // Create a gsMultipatch and add the loaded geometry
-    gsMultiPatch<> mpLeft = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
-    // fd.getId(1,mpLeft);
-    // Elevate and p-refine the basis to order p + numElevate
-    // where p is the highest degree in the bases
-    mpLeft.degreeElevate(numElevate);
-    mpLeft.computeTopology();
+    // The physical domain is the unit square; r-refinement moves only its interior.
+    gsMultiPatch<> reference = gsNurbsCreator<>::BSplineSquareGrid(1, 1);
+    reference.degreeElevate(numElevate);
+    reference.computeTopology();
+    gsMultiPatch<> Psi = reference;
+    for (index_t r = 0; r < numRefine; ++r)
+        Psi.uniformRefine();
+    GISMO_ENSURE(Psi.basis(0).component(0).size() > 2 && Psi.basis(0).component(1).size() > 2,
+                 "Increase uniformRefine or degreeElevation to provide interior mesh coefficients.");
+    gsMultiBasis<> basis(Psi, true);
+    // /***********************************************************************************************  **/
+    // The moving-mesh basis is a copy of the solution basis, but with the boundary control points fixed.
+    gsAdaptiveMultiPatchBuilder MAE(reference, numRefine, maxIter, intensity, 0, 0, true);
 
-    //..... Test 1
-    // convection coefficient:
-    // gsFunctionExpr<> coeff_conv("cos(pi/4)","sin(pi/4)",2);
-    gsFunctionExpr<> NmHomogen("0.","0.",2);
-    // convection coefficient:
-    // gsMatrix<> coeff_conv{1,2};
-    // diffusion coefficient:
-    //double coeff_diff = 1.;
-    // reaction coefficient:
-    //double coeff_reac = 0.;
-
-    // source term: and manufactured solution
-    gsFunctionExpr<> s;
-    fd.getId(1995, s);
-    gsFunctionExpr<> rhs;
-    fd.getId(1996, rhs);
-
-    //! [Refinement]
-    gsMultiBasis<double> dbasis(mpLeft, true);//true: poly-splines (not NURBS)
-
-    gsInfo << "Patches: "<< mpLeft.nPatches() <<", degree: "<< dbasis.minCwiseDegree() <<"\n";
-#ifdef _OPENMP
-    gsInfo<< "Available threads: "<< omp_get_max_threads() <<"\n";
-#endif
-    //! [Problem setup]
     gsExprAssembler<> A(1,1);
-    //A.setOptions(Aopt);
-    gsInfo<<"Active options:\n"<< A.options() <<"\n";
-
-    A.setIntegrationElements(dbasis);
+    A.options().setSwitch("SameElement", false);
+    A.options().setReal("quA", 2.);
+    A.setIntegrationElements(basis);
     gsExprEvaluator<> ev(A);
+    auto v = A.getSpace(basis);
+    gsBoundaryConditions<> bc; // Natural zero Neumann data require no boundary load.
+    v.setup(bc, dirichlet::homogeneous, 0);
+    auto G = A.getMap(Psi);
+    auto initialValue = A.getCoeff(initial, G);
+    auto source = A.getCoeff(forcing, G);
+    gsMatrix<> coefficients;
+    auto u = A.getSolution(v, coefficients);
 
-    typedef gsExprAssembler<>::geometryMap geometryMap;
-    typedef gsExprAssembler<>::variable    variable;
-    typedef gsExprAssembler<>::space       space;
-    typedef gsExprAssembler<>::solution    solution;
-
-    //! [Solver loop]
-    gsSparseSolver<>::CGDiagonal solver;
-
-    for (int r=0; r< numRefine; ++r)
+    auto projectInitial = [&]()
     {
-        dbasis.uniformRefine();
-    }
-    gsBoundaryConditions<> bc;
-    bc.setGeoMap(mpLeft);
-    // Set Neumann boundary conditions
-    for ( gsMultiPatch<>::const_biterator
-            bit = mpLeft.bBegin(); bit != mpLeft.bEnd(); ++bit)
+        A.initSystem();
+        A.assemble(v * v.tr() * meas(G), v * initialValue * meas(G));
+        gsSparseSolver<>::SimplicialLDLT massSolver;
+        massSolver.compute(A.matrix());
+        GISMO_ENSURE(massSolver.info() == gsEigen::Success, "Initial projection factorization failed.");
+        coefficients = massSolver.solve(A.rhs());
+        GISMO_ENSURE(massSolver.info() == gsEigen::Success && coefficients.allFinite(), "Initial projection failed.");
+    };
+
+    auto updateMonitor = [&]()
     {
-       bc.addCondition( *bit, condition_type::neumann, &NmHomogen,0, false);
-    }
-    geometryMap GLeft = A.getMap(mpLeft);
-    gsStopwatch timer;
+        ev.integralElWise(igrad(u, G).sqNorm() * meas(G));
+        const std::vector<real_t> indicators = ev.elementwise();
+        // A spatially constant phase should not move the mesh due to roundoff.
+        if (std::accumulate(indicators.begin(), indicators.end(), real_t(0))
+            <= 1e-24 * std::max(real_t(1), coefficients.squaredNorm()))
+            return false;
+        std::vector<bool> marked(indicators.size());
+        gsMarkElementsForRef(indicators, adaptRefCrit, adaptRefParam, marked);
+        MAE.buildMultiPatch(MAE.buildDensity(basis, marked));
+        return true;
+    };
 
-    // Set the discretization space // different boundary condition !
-    space ru = A.getSpace(dbasis);
-
-    // Set the source term for Poisson equation
-    // auto SFunc      = A.getCoeff(rhs, GLeft);
-    auto sol_0      = A.getCoeff(s, GLeft);
-
-    // Solution vector and solution variable
-    gsMatrix<> rsolVector;
-
-    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ###   Step 0: Computes the initial solution of the PDEs
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    ru.setup(bc, dirichlet::l2Projection, 0);
-    // Initialize the system
-    A.initSystem();
-    gsInfo<< "Solving PDEs " <<std::flush;
-    gsInfo<< A.numDofs() <<std::flush;
-    // ...
-    timer.restart();
-    A.assemble(
-    ru * ru.tr() * meas(GLeft) //matrix
-    ,
-    ru * sol_0 * meas(GLeft) //rhs vector
-    );
-    gsInfo<< "." <<std::flush;// Assemblying done
-    timer.restart();
-    solver.compute( A.matrix() );
-    rsolVector = solver.solve(A.rhs());
-    solution u_sol = A.getSolution(ru, rsolVector);
-    ev.integralElWise( igrad(u_sol, GLeft).sqNorm() );
-    auto elwise = ev.elementwise();
-
-    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ###   Step 1-2 : Computes the density function
-    ###         and the multipatch adaptive mapping
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefine, maxIter, IntensityMAE);
-    std::vector<bool> elMarked( elwise.size() );
-    gsMarkElementsForRef( elwise, adaptRefCrit, adaptRefParam, elMarked);
-    auto density   = MAE.buildDensity(dbasis, elMarked);
-    MAE.buildMultiPatch(density);
-    auto Psi       = MAE.MAmapping;//MAE.buildCompMultiPatch(dbasis);//compute the compostion
-
-    // .. to stor the previous mapping
-    gsMultiPatch<> Psilast;
-
-    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ###   Step 3: Start hierarchical refinement
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    //::::::::::::::::::::   Poisson equation - (manufactured exact solution)         :::::::::::::::::::::::::
-    if (true){
-    gsBoundaryConditions<> bc;
-    bc.setGeoMap(Psi);
-    // For simplicity, set Dirichlet boundary conditions
-    for ( gsMultiPatch<>::const_biterator
-            bit = Psi.bBegin(); bit != Psi.bEnd(); ++bit)
+    // Sample each knot span at endpoints and midpoints. This is a quality check,
+    // not an algebraic certificate of bijectivity.
+    gsVector<index_t> counts(2);
+    counts << 2*basis.basis(0).component(0).numElements()+1,
+              2*basis.basis(0).component(1).numElements()+1;
+    const gsMatrix<> meshGrid = gsGridIterator<real_t,CUBE>(basis.basis(0).support(), counts).toMatrix();
+    auto meshQuality = [&](const gsMultiPatch<> & mesh)
     {
-       bc.addCondition( *bit, condition_type::neumann, &NmHomogen,0, false);
+        const gsMatrix<> J = mesh.patch(0).jacobian(meshGrid);
+        real_t minJac = std::numeric_limits<real_t>::infinity();
+        real_t minSize = minJac;
+        for (index_t q = 0; q < meshGrid.cols(); ++q)
+        {
+            const gsMatrix<> block = J.middleCols(2*q,2);
+            const real_t det = block.determinant();
+            if (!block.allFinite() || det <= 0.)
+                return std::make_pair(real_t(-1), real_t(0));
+            minJac = std::min(minJac, det);
+            minSize = std::min(minSize, det / block.col(1).norm()
+                              / basis.basis(0).component(0).numElements());
+            minSize = std::min(minSize, det / block.col(0).norm()
+                              / basis.basis(0).component(1).numElements());
+        }
+        return std::make_pair(minJac, minSize);
+    };
+
+    auto acceptMesh = [&](const gsMultiPatch<> & candidate, real_t fraction, bool limitDisplacement)
+    {
+        const gsMatrix<> previous = Psi.patch(0).coefs();
+        GISMO_ENSURE(candidate.patch(0).coefs().rows() == previous.rows(), "Moving-mesh basis changed during time integration.");
+        const gsMatrix<> increment = candidate.patch(0).coefs() - previous;
+        const real_t displacement = (candidate.patch(0).eval(meshGrid)-Psi.patch(0).eval(meshGrid)).colwise().norm().maxCoeff();
+        const auto quality = meshQuality(Psi);
+        GISMO_ENSURE(quality.first > 0., "The current mesh is invalid.");
+        if (limitDisplacement && displacement > 0.)
+            fraction = std::min(fraction, meshCfl * quality.second / displacement);
+        bool accepted = false;
+        for (index_t k = 0; k < 24; ++k)
+        {
+            Psi.patch(0).coefs() = previous + fraction * increment;
+            if (meshQuality(Psi).first >= .05 * quality.first)
+            {
+                accepted = true;
+                break;
+            }
+            fraction *= .5;
+        }
+        if (!accepted)
+        {
+            Psi.patch(0).coefs() = previous;
+            fraction = 0.;
+        }
+        MAE.MAmapping = Psi; // The next MMPDE update starts from the accepted mesh.
+        return fraction;
+    };
+
+    projectInitial();
+    if (intensity > 1. && meshRelax > 0.)
+    {
+        if (updateMonitor())
+        {
+            acceptMesh(MAE.MAmapping, 1., false);
+            projectInitial(); // Initial data are known analytically, so reproject once.
+        }
     }
-    gsInfo<<"The PDE domain is "<< Psi.detail() << "\n";
-    gsInfo<<"Source function is "<< rhs << "\n";
-    gsInfo<<"Boundary conditions:\n"<< bc <<"\n";
+    MAE.MAmapping = Psi;
+    MAE.m_maxIter = mappingUpdates;
 
-    dbasis.clear();
-    gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
+    // These objects stay alive and nonempty: expression handles reference them.
+    gsMultiPatch<> previousMesh = Psi;
+    gsMatrix<> previousCoefficients = coefficients;
+    auto Gold = A.getMap(previousMesh);
+    auto uold = A.getSolution(v, previousCoefficients);
+    const real_t reactionScale = dt / (epsilon*epsilon);
+    // Backward Euler in moving coordinates:
+    // U_t - w.grad(u) = Delta(u) - (u^3-u)/epsilon^2 + f,
+    // with dt*w = X_new-X_old. U_old uses the OLD coefficients at the SAME xi.
+    auto residual = (v * (u-uold) + dt * igrad(v,G) * igrad(u,G).tr()
+                    + reactionScale * v * (u*u*u-u).val()
+                    - v * (igrad(u,G) * (G-Gold)).tr() - dt * v * source) * meas(G);
+    auto jacobian = (v * v.tr() + dt * igrad(v,G) * igrad(v,G).tr()
+                    + reactionScale * v * v.tr() * (3.*(u*u).val()-1.)
+                    - v * (igrad(v,G) * (G-Gold)).tr()) * meas(G);
 
-    geometryMap PP    = A.getMap(Psi);
-    geometryMap PPlst = A.getMap(Psilast);
-
-
-    gsStopwatch timer;
-    // Elements used for numerical integration
-    A.setIntegrationElements(dbasis);
-
-    // Set the discretization space // different boundary condition !
-    space ru          = A.getSpace(dbasis);
-
-    // Recover manufactured solution for Poisson equation
-    auto u_ex         = ev.getVariable(s, PP);
-
-    // Solution vector and solution variable
-    gsMatrix<> rsolVector;
-    solution ru_sol   = A.getSolution(ru, rsolVector);
-
-    /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    ###   Step 0: Computes the initial solution of the PDEs in adapted mesh
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-    ru.setup(bc, dirichlet::l2Projection, 0);
-    // Initialize the system
-    A.initSystem();
-    gsInfo<< "Solving PDEs " <<std::flush;
-    gsInfo<< A.numDofs() <<std::flush;
-    // ...
-    timer.restart();
-    A.assemble(
-    ru * ru.tr() * meas(PP) //matrix
-    ,
-    ru * u_ex.tr() * meas(PP) //rhs vector
-    );
-    gsInfo<< ".+" <<std::flush;// Assemblying done
-    timer.restart();
-    solver.compute( A.matrix() );
-    rsolVector = solver.solve(A.rhs());
-
-
-    // ... We want to work with a mesh with small displacement in each step -----
-    ev.integralElWise( igrad(ru_sol,PP).sqNorm() );
-    elwise = ev.elementwise();
-    std::vector<bool> elMarked( elwise.size() );
-    gsMarkElementsForRef( elwise, adaptRefCrit, adaptRefParam, elMarked);
-    density        = MAE.buildDensity(dbasis, elMarked);
-    MAE.buildMultiPatch(density);
-    Psi  = MAE.MAmapping;
-    // ....
-    ru.setup(bc, dirichlet::l2Projection, 0);
-    // Initialize the system
-    A.initSystem();
-    timer.restart();
-    A.assemble(
-    ru * ru.tr() * meas(PP) //matrix
-    ,
-    ru * u_ex.tr() * meas(PP) //rhs vector
-    );
-    gsInfo<< ".+" <<std::flush;// Assemblying done
-    timer.restart();
-    solver.compute( A.matrix() );
-    rsolVector = solver.solve(A.rhs());
-
-    gsInfo<<"Plotting in Paraview...\n";
-    gsParaviewCollection<> collection("ParaviewOutput/time_solution", ev);
-    collection.options().setSwitch("elements", true);
-    collection.options().setSwitch("base64", export_b64);
-    collection.options().setInt("elementResolution", 16);
-    collection.options().setInt("numPoints", 100000);
+    gsParaviewCollection<>::uPtr collection;
     if (plot)
     {
-        collection.newTimeStep(Psi);
-        collection.addField(ru_sol, "solution");
-        collection.saveTimeStep();
+        collection.reset(new gsParaviewCollection<>("ParaviewOutput/time_solution", ev));
+        collection->options().setSwitch("elements", true);
+        collection->options().setSwitch("base64", export_b64);
+        collection->options().setInt("elementResolution", 8);
+        collection->options().setInt("numPoints", 10000);
     }
-
-
-    gsVector<>  h1err(numLRefine+1), l2err(numLRefine+1);
-    gsVector<int>  DoFPDE(numLRefine+1);
-    //adapt_parameter << 0,0,0,0,0;
-    gsInfo<< "(dot1=assembled, dot2=solved)\n";
-    double setup_time(0), ma_time(0), slv_time(0), err_time(0);
-    MAE.m_maxIter = 3;
-    for (int r=0; r<=numLRefine; ++r)
+    auto writeSnapshot = [&](real_t time)
     {
-        // ... update the mapping
-        Psilast.swap(Psi);
-        /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        ###   Step in time : Computes the density function
-        ###         and the multipatch adaptove mapping
-        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
-        ev.integralElWise( igrad(ru_sol,PP).sqNorm() );
-        auto elwise = ev.elementwise();
-        std::vector<bool> elMarked( elwise.size() );
-        gsMarkElementsForRef( elwise, adaptRefCrit, adaptRefParam, elMarked);
-        auto density        = MAE.buildDensity(dbasis, elMarked);
-        MAE.buildMultiPatch(density);
-        gsMultiPatch<> Psi  = MAE.MAmapping;
-        
-        //...............................................................
-        // Non linear solver for Allen-Cahn equation
-        //...............................................................
-        // Initialize the system
-        gsMatrix<> nsolVector;
-        nsolVector.swap(rsolVector);
-        solution u_sol        = A.getSolution(ru, nsolVector); // for nonlinear unkown
-        //! Newton method
-        A.options().setInt("DirichletStrategy", 0);// swich off elimination
-        auto residual =  ru * (u_sol -ru_sol).tr() * meas(PP)
-            +igrad(ru,PP) * igrad(u_sol, PP).tr() *dt * meas(PP)
-            + ru * ((u_sol*u_sol*u_sol-u_sol).val()) /(epsilon*epsilon) * dt * meas(PP)
-            - ru * (igrad(u_sol, PP) * (PP-PPlst) ).tr() * meas(PP) //matrix quasi-Lagrangian
-            ;
+        if (!plot) return;
+        collection->newTimeStep(Psi, time);
+        collection->addField(u, "solution");
+        collection->addField(jac(G).det(), "Jacobian");
+        collection->saveTimeStep();
+    };
 
-        for (index_t l = 0; l<100; ++l)
-        {
-            timer.restart();
-            // Precomputed Jacobian
-            A.clearMatrix();
-            A.clearRhs();
-            A.assemble(
-                ru * ru.tr() * meas(PP)
-                + igrad(ru,PP) * igrad(ru, PP).tr() *dt * meas(PP)
-                + ru * ru.tr() * 3.*(u_sol*u_sol).val() /(epsilon*epsilon) * dt * meas(PP)
-                - ru * ru.tr() /(epsilon*epsilon) * dt * meas(PP)
-                - ru * (igrad(ru, PP) *(PP-PPlst) ).tr() * meas(PP) //matrix quasi-Lagrangian
-                ,
-                residual );
-            // Compute the Neumann terms defined on physical space
-            auto g_N = A.getBdrFunction(PP);
-            A.assembleBdr(bc.get("Neumann"), ru * g_N.tr() * nv(PP) );
-
-            //else // TODO:  Jacobian using automatic differentiation
-            ma_time += timer.stop();
-
-            timer.restart();
-            solver.compute( A.matrix() );
-            auto du     = solver.solve(A.rhs());
-            nsolVector -= du;
-            slv_time   += timer.stop();
-            gsInfo<<'.'<<du.norm()<< "." <<std::flush; // Non-linear iteration done
-            if ( du.norm() < 1e-10 ) break;
-        }
-        rsolVector.swap(nsolVector);
-        //... End of Non linear solver for Allen-Cahn equation
-
-        slv_time += timer.stop();
-
-        gsInfo<< "." <<std::flush; // Linear solving done
-        if (plot && r%plotNum == 0)
-        {
-            collection.newTimeStep(Psi);
-            collection.addField(ru_sol, "solution");
-            collection.saveTimeStep();
-        }
-
-        // Compute the global error indicators.
-        DoFPDE[r] = A.numDofs();
-        timer.restart();
-        l2err[r]= math::sqrt( ev.integral( (u_ex - ru_sol).sqNorm() * meas(PP) ) );
-        h1err[r]= math::sqrt(ev.integral( ( igrad(u_ex) - igrad(ru_sol,PP) ).sqNorm() * meas(PP) ));
-        err_time += timer.stop();
-        gsInfo<< ". " <<std::flush; // Error computations done
-        gsInfo<< "-->time : (" << (r+1)*dt <<"s)"<<std::flush; // Error computations done
-
-    }
-    //! [Solver loop]
-
-
-    timer.stop();
-    gsInfo<<"\n\nTotal time: "<< setup_time+ma_time+slv_time+err_time <<"\n";
-    gsInfo<<"     Setup: "<< setup_time <<"\n";
-    gsInfo<<"  Assembly: "<< ma_time    <<"\n";
-    gsInfo<<"   Solving: "<< slv_time   <<"\n";
-    gsInfo<<"     Norms: "<< err_time   <<"\n";
-    
+    std::ofstream diagnostics;
     if (errorsave)
     {
-    // Assuming DoFPDE, l2err, and h1err are gsMatrix or similar types
-    std::ofstream outFile("error_analysis.txt", std::ios::app); // Open file in append mode
-    if (outFile.is_open())
+        diagnostics.open("allen_cahn_diagnostics.csv");
+        GISMO_ENSURE(diagnostics.is_open(), "Cannot open allen_cahn_diagnostics.csv.");
+        diagnostics << "time,energy,min_u,max_u,min_jacobian,newton_iterations,residual,mesh_fraction";
+        if (manufactured) diagnostics << ",L2_error";
+        diagnostics << "\n" << std::setprecision(17);
+    }
+    auto freeEnergy = [&]()
     {
-        outFile << "#DoF_PDE: " << adaptRefParam <<" " << IntensityMAE << " \n"<< std::scientific << DoFPDE.transpose() << "\n";
-        outFile << "#L2_error: \n" << std::scientific << std::setprecision(3) << l2err.transpose() << "\n";
-        outFile << "#H1_error: \n" << std::scientific << std::setprecision(3) << h1err.transpose() << "\n";
-        outFile << "#-------------------------------------------------------------------------------\n"; // Optional separator for readability
-        outFile.close(); // Close the file after writing
-    }
-    else
+        return ev.integral((.5*igrad(u,G).sqNorm()
+                                + pow((u*u).val()-1., 2.)/(4.*epsilon*epsilon)) * meas(G));
+    };
+    auto report = [&](real_t time, index_t iterations, real_t norm, real_t meshFraction)
     {
-        gsInfo << "Error: Unable to open file for writing : error_analysis.txt.\n";
-    }
-    }
-    else
-    {
-        gsInfo << "Errors are not saved. To save them, try with --errorsave.\n";
-    }
+        const real_t energy = freeEnergy();
+        const real_t lo = ev.min(u), hi = ev.max(u), minJ = meshQuality(Psi).first;
+        GISMO_ENSURE(std::isfinite(energy) && minJ > 0., "Invalid solution or mesh.");
+        gsInfo << std::scientific << "t=" << time << " energy=" << energy << " u=[" << lo << "," << hi
+               << "] minJ=" << minJ << " Newton=" << iterations << " residual=" << norm
+               << " mesh_fraction=" << meshFraction;
+        if (errorsave)
+            diagnostics << time << "," << energy << "," << lo << "," << hi << "," << minJ
+                        << "," << iterations << "," << norm << "," << meshFraction;
+        if (manufactured)
+        {
+            const real_t error = math::sqrt(ev.integral((u-initialValue).sqNorm()*meas(G)));
+            gsInfo << " L2_error=" << error;
+            if (errorsave) diagnostics << "," << error;
+        }
+        gsInfo << "\n";
+        if (errorsave) diagnostics << "\n";
+    };
 
-    //! [Error and convergence rates]
-    if (numLRefine>0 && false)
+    report(0., 0, 0., 0.);
+    writeSnapshot(0.);
+    for (index_t step = 1; step <= numSteps; ++step)
     {
-        gsInfo<< "\nEoC (L2): " << std::fixed<<std::setprecision(2)
-              <<  ( l2err.head(numRefine).array()  /
-                   l2err.tail(numRefine).array() ).log().transpose() / std::log(2.0)
-                   <<"\n";
+        const real_t oldEnergy = freeEnergy();
+        previousMesh = Psi;
+        previousCoefficients = coefficients;
+        real_t meshFraction = 0.;
+        if (intensity > 1. && mappingUpdates > 0 && meshRelax > 0.)
+        {
+            // Evaluate the old solution on its old physical mesh.
+            if (updateMonitor())
+            {
+                // Scaling with dt avoids an unbounded mesh velocity as dt tends to zero.
+                const real_t fraction = meshRelax * std::min(real_t(1), dt/meshTimeScale);
+                meshFraction = acceptMesh(MAE.MAmapping, fraction, true);
+            }
+        }
 
-        gsInfo<<   "EoC (H1): "<< std::fixed<<std::setprecision(2)
-              <<( h1err.head(numRefine).array() /
-                  h1err.tail(numRefine).array() ).log().transpose() / std::log(2.0) <<"\n";
+        const gsMultiPatch<> proposedMesh = Psi;
+        const real_t proposedFraction = meshFraction;
+        real_t norm = 0., tolerance = 0.;
+        index_t iteration = 0;
+        bool stepAccepted = false;
+        for (index_t retry = 0; retry <= 10; ++retry)
+        {
+            if (retry > 0)
+            {
+                // Retry the entire ALE step from the unchanged old state.
+                coefficients = previousCoefficients;
+                Psi = previousMesh;
+                const real_t blend = retry < 10 ? std::pow(.5, retry) : 0.;
+                meshFraction = proposedFraction * acceptMesh(proposedMesh, blend, false);
+            }
+            iteration = 0;
+            for (; iteration < 30; ++iteration)
+            {
+                A.initSystem();
+                A.assemble(jacobian, residual);
+                norm = A.rhs().norm();
+                if (iteration == 0) tolerance = 1e-10 + 1e-8 * norm;
+                if (norm <= tolerance) break;
+
+                // Mesh advection makes the ALE matrix nonsymmetric.
+                gsSparseSolver<>::LU newtonSolver;
+                newtonSolver.compute(A.matrix());
+                GISMO_ENSURE(newtonSolver.info() == gsEigen::Success, "Newton factorization failed.");
+                const gsMatrix<> correction = newtonSolver.solve(A.rhs());
+                GISMO_ENSURE(newtonSolver.info() == gsEigen::Success && correction.allFinite(), "Newton solve failed.");
+                const gsMatrix<> iterate = coefficients;
+                real_t damping = 1.;
+                bool accepted = false;
+                for (index_t backtrack = 0; backtrack < 20; ++backtrack)
+                {
+                    coefficients = iterate - damping * correction;
+                    A.clearRhs();
+                    A.assemble(residual);
+                    const real_t trialNorm = A.rhs().norm();
+                    if (std::isfinite(trialNorm) && trialNorm <= (1.-1e-4*damping)*norm)
+                    {
+                        accepted = true;
+                        norm = trialNorm;
+                        break;
+                    }
+                    damping *= .5;
+                }
+                GISMO_ENSURE(accepted, "Newton line search failed; reduce dt or meshRelax.");
+            }
+            GISMO_ENSURE(norm <= tolerance, "Newton did not converge; reduce dt or meshRelax.");
+            // The unforced Neumann problem dissipates energy. Reduce mesh motion
+            // if its first-order transport approximation introduces energy gain.
+            if (manufactured || freeEnergy() <= oldEnergy + 1e-10*std::max(real_t(1), oldEnergy))
+            {
+                stepAccepted = true;
+                break;
+            }
+            if (meshFraction == 0.) break;
+        }
+        GISMO_ENSURE(stepAccepted, "Energy increased even on a fixed mesh; reduce dt.");
+        const real_t time = step * dt;
+        report(time, iteration, norm, meshFraction);
+        if (step % plotEvery == 0 || step == numSteps)
+            writeSnapshot(time);
     }
-    //! [Error and convergence rates]
-    //! [Export visualization in ParaView]
     if (plot)
     {
-        collection.save();
-        gsFileManager::open("ParaviewOutput/time_solution.pvd");
+        collection->save();
+        gsInfo << "ParaView time series: ParaviewOutput/time_solution.pvd\n";
     }
-    else
-        gsInfo << "Done. No output created, re-run with --plot to get a ParaView "
-                  "file containing the time_solution.\n";
-    //! [Export visualization in ParaView]
-    }
-
     return EXIT_SUCCESS;
-
-
-}// end main
+}

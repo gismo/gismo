@@ -236,7 +236,7 @@ int main(int argc, char *argv[])
             gsMarkElementsForRef( eltErrs, adaptRefCrit, MAERefParam, eldensityMarked);                 
             auto density   = MAE.buildDensity( dbasis, eldensityMarked, 1, 0);
             MAE.buildMultiPatch(density);// compute Monge-Ampere mapping
-            Psi            = MAE.buildCompMultiPatch(Cbasis);// computes the composition mapping mpLeft o MAmapping
+            Psi            = MAE.buildColCompMultiPatch();// computes the composition mapping mpLeft o MAmapping
             MAE.setBoundaryControlPointsAlongNormal(Psi);// correct the boundary (square)
             // -----------------
             double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
