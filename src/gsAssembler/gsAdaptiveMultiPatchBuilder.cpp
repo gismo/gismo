@@ -15,6 +15,10 @@
 #include "gsAdaptiveMultiPatchBuilder.h"
 
 #include <queue>
+#include <exception>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 typedef gsExprAssembler<>::geometryMap geometryMap;
 typedef gsExprAssembler<>::variable    variable;
@@ -23,6 +27,52 @@ typedef gsExprAssembler<>::solution    solution;
 gsSparseSolver<>::CGDiagonal solver; // ... for the composition
 
 namespace {
+// Lower-dimensional traces have settled before entering this loop. Each task
+// owns one patch's coefficients; all factorizations and quadrature are read-only.
+index_t interiorWorkers(const index_t patches)
+{
+#ifdef _OPENMP
+    if (!omp_in_parallel())
+        return std::min<index_t>(patches, omp_get_max_threads());
+#endif
+    return 1;
+}
+
+template <class Update>
+real_t updatePatchInteriors(const index_t patches, const index_t workers, const Update& update)
+{
+#ifdef _OPENMP
+    if (workers > 1 && !omp_in_parallel())
+    {
+        real_t residual = 0.;
+        std::vector<std::exception_ptr> failures(patches);
+        #pragma omp parallel for schedule(static) num_threads(workers) reduction(max:residual)
+        for (index_t p = 0; p < patches; ++p)
+        {
+            try
+            {
+                residual = std::max(residual, update(p, omp_get_thread_num()));
+            }
+            catch (...)
+            {
+                // Exceptions must not escape an OpenMP structured block.
+                failures[p] = std::current_exception();
+            }
+        }
+        for (const auto& failure : failures)
+            if (failure)
+                std::rethrow_exception(failure);
+        return residual;
+    }
+#else
+    (void)workers;
+#endif
+    real_t residual = 0.;
+    for (index_t p = 0; p < patches; ++p)
+        residual = std::max(residual, update(p, 0));
+    return residual;
+}
+
 // Transfer the density to the uniform mesh using
 // rhs_i = integral rho(xi) B_i(Psi(xi)) |det(DPsi(xi))| dxi.
 template <short_t d>
@@ -149,7 +199,18 @@ class MMPDEEntitySolver
         gsVector<> weights;
     };
 public:
-    explicit MMPDEEntitySolver(const gsBasis<>& basis) : m_basis(basis)
+    // Interior workers retain their assembly buffers across patches and sweeps.
+    struct Workspace
+    {
+        gsMatrix<> rhs, local, mapped, values, gradient, contribution, freeRhs, next, change;
+        gsVector<> residualSquared;
+        gsFuncData<> data;
+        Workspace() : data(NEED_VALUE | NEED_DERIV | NEED_ACTIVE | SAME_ELEMENT) { }
+    };
+
+    explicit MMPDEEntitySolver(const gsBasis<>& basis, real_t quadratureFactor = 2.,
+        const gsPatchPreconditionersCreator<>::Poisson_FastDiag* sharedPoisson = nullptr)
+        : m_basis(basis), m_sharedPoisson(sharedPoisson)
     {
         std::vector<index_t> freeIndex(basis.size(), -1);
         for (index_t i = 0; i < basis.size(); ++i)
@@ -195,7 +256,7 @@ public:
                 m_edgeSolver.compute(K);
                 GISMO_ENSURE(m_edgeSolver.info() == gsEigen::Success, "Edge Poisson factorization failed.");
             }
-            else
+            else if (!m_sharedPoisson)
             {
                 gsBoundaryConditions<> bc;
                 gsFunctionExpr<> zero("0", basis.dim());
@@ -204,7 +265,7 @@ public:
                 m_poisson.reset(new gsPatchPreconditionersCreator<>::Poisson_FastDiag(basis, bc, A.options(), 0.));
             }
         }
-        gsGaussRule<> rule(basis, 2., 1);
+        gsGaussRule<> rule(basis, quadratureFactor, 1);
         const auto domain = basis.domain();
         for (auto it = domain->beginAll(); it < domain->endAll(); ++it)
         {
@@ -231,13 +292,26 @@ public:
     // One Picard step for all coordinates, with a common frozen monitor.
     // Boundary coefficients already contain this sweep's lower-dimensional updates.
     real_t update(gsMatrix<>& coefficients, const gsFunction<>& density,
-                  const MMPDEMonitorScale& scale) const
+                  const MMPDEMonitorScale& scale, bool maxCoordinateResidual = false) const
+    {
+        Workspace workspace;
+        return update(coefficients, density, scale, workspace, maxCoordinateResidual);
+    }
+
+    real_t update(gsMatrix<>& coefficients, const gsFunction<>& density,
+                  const MMPDEMonitorScale& scale, Workspace& workspace,
+                  bool maxCoordinateResidual = false) const
     {
         if (m_free.empty())
             return 0.;
-        gsMatrix<> rhs = gsMatrix<>::Zero(m_basis.size(), coefficients.cols());
-        gsMatrix<> local, mapped, values, gradient, contribution;
-        gsFuncData<> data(NEED_VALUE | NEED_DERIV | NEED_ACTIVE | SAME_ELEMENT);
+        gsMatrix<>& rhs = workspace.rhs;
+        rhs.setZero(m_basis.size(), coefficients.cols());
+        gsMatrix<>& local = workspace.local;
+        gsMatrix<>& mapped = workspace.mapped;
+        gsMatrix<>& values = workspace.values;
+        gsMatrix<>& gradient = workspace.gradient;
+        gsMatrix<>& contribution = workspace.contribution;
+        gsFuncData<>& data = workspace.data;
         for (const auto& e : m_elements)
         {
             m_basis.compute(e.points, data);
@@ -255,11 +329,13 @@ public:
                     rhs.row(data.actives(a,0)) += contribution.row(a);
             }
         }
-        gsMatrix<> freeRhs(m_free.size(), coefficients.cols());
+        gsMatrix<>& freeRhs = workspace.freeRhs;
+        freeRhs.resize(m_free.size(), coefficients.cols());
         for (size_t i = 0; i < m_free.size(); ++i)
             freeRhs.row(i) = rhs.row(m_free[i]);
         freeRhs.noalias() -= m_lifting*coefficients;
-        gsMatrix<> next = coefficients;
+        gsMatrix<>& next = workspace.next;
+        next = coefficients;
         for (index_t d = 0; d < coefficients.cols(); ++d)
         {
             gsMatrix<> solved;
@@ -269,13 +345,15 @@ public:
                 GISMO_ENSURE(m_edgeSolver.info() == gsEigen::Success, "Edge Poisson solve failed.");
             }
             else
-                solved = m_poisson->solve(gsMatrix<>(freeRhs.col(d)));
+                solved = (m_sharedPoisson ? m_sharedPoisson : m_poisson.get())->solve(gsMatrix<>(freeRhs.col(d)));
             GISMO_ENSURE(solved.allFinite(), "Nonfinite MMPDE coordinate update.");
             for (size_t i = 0; i < m_free.size(); ++i)
                 next(m_free[i], d) = solved(i);
         }
-        const gsMatrix<> change = next-coefficients;
-        real_t residualSquared = 0.;
+        gsMatrix<>& change = workspace.change;
+        change = next-coefficients;
+        gsVector<>& residualSquared = workspace.residualSquared;
+        residualSquared.setZero(coefficients.cols());
         for (const auto& e : m_elements)
         {
             m_basis.compute(e.points, data);
@@ -283,10 +361,10 @@ public:
             for (index_t a = 0; a < local.rows(); ++a)
                 local.row(a) = change.row(data.actives(a,0));
             mapped.noalias() = local.transpose()*data.values[0];
-            residualSquared += mapped.colwise().squaredNorm().dot(e.weights);
+            residualSquared.noalias() += mapped.cwiseProduct(mapped)*e.weights;
         }
         coefficients.swap(next);
-        return math::sqrt(residualSquared);
+        return math::sqrt(maxCoordinateResidual ? residualSquared.maxCoeff() : residualSquared.sum());
     }
 private:
     const gsBasis<>& m_basis;
@@ -294,6 +372,7 @@ private:
     gsSparseMatrix<> m_lifting;
     mutable gsSparseSolver<>::SimplicialLDLT m_edgeSolver;
     std::unique_ptr<gsPatchPreconditionersCreator<>::Poisson_FastDiag> m_poisson;
+    const gsPatchPreconditionersCreator<>::Poisson_FastDiag* m_sharedPoisson;
     std::vector<Element> m_elements;
 };
 }
@@ -894,13 +973,6 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatchMMPDE(const gsMultiPatch<> &den
     A.setIntegrationElements(this->m_basis);
     gsExprEvaluator<> ev(A);
     geometryMap G = A.getMap(identity_mp);
-    space u       = A.getSpace(this->m_basis);
-    gsMatrix<> solVectorx, solVectory, prevx, prevy;
-    solution u_solx = A.getSolution(u, solVectorx);
-    solution u_soly = A.getSolution(u, solVectory);
-    solution u_lsol = A.getSolution(u, prevx);
-    solution u_lsoly = A.getSolution(u, prevy);
-
     // ---- scaling of the density to the range [1, m_IntensityMAE] over all patches ----
     real_t rmax = std::numeric_limits<real_t>::lowest();
     real_t rmin = std::numeric_limits<real_t>::max();
@@ -1023,79 +1095,14 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatchMMPDE(const gsMultiPatch<> &den
         return change;
     };
 
-    // Keep these geometries alive; boundary conditions refer to their coefficients.
-    std::vector<gsGeometry<>::uPtr> gx(nP), gy(nP);
-    std::vector<gsBoundaryConditions<> > bc_x(nP), bc_y(nP);
-    for (index_t n = 0; n < nP; ++n)
-    {
-        gx[n] = B.makeGeometry(gsMatrix<>(Psi.patch(n).coefs().col(0)));
-        gy[n] = B.makeGeometry(gsMatrix<>(Psi.patch(n).coefs().col(1)));
-        bc_x[n].setGeoMap(identity_mp);
-        bc_y[n].setGeoMap(identity_mp);
-        for (index_t s = 1; s <= 4; ++s)
-        {
-            bc_x[n].addCondition(0, boxSide(s), condition_type::dirichlet, gx[n].get(), 0, true);
-            bc_y[n].addCondition(0, boxSide(s), condition_type::dirichlet, gy[n].get(), 0, true);
-        }
-    }
-
-    // Precompute the lifting operator -K_free,boundary. New Dirichlet values
-    // then require only a matrix-vector product, not a stiffness reassembly.
-    u.setup(bc_x[0], dirichlet::interpolation, 0);
-    const gsDofMapper mapper = u.mapper();
-    const gsSparseMatrix<> stiffness = assembleStiffness(B);
-    gsSparseEntries<> entries;
-    for (index_t col = 0; col < stiffness.outerSize(); ++col)
-        for (gsSparseMatrix<>::InnerIterator it(stiffness, col); it; ++it)
-            if (mapper.is_free(it.row()) && mapper.is_boundary(it.col()))
-                entries.add(mapper.index(it.row()), mapper.bindex(it.col()), -it.value());
-    gsSparseMatrix<> boundaryLifting(mapper.freeSize(), mapper.boundarySize());
-    boundaryLifting.setFrom(entries);
-
-    std::vector<gsMatrix<> > xs(nP), ys(nP);
-    for (index_t n = 0; n < nP; ++n)
-    {
-        xs[n].resize(mapper.freeSize(), 1);
-        ys[n].resize(mapper.freeSize(), 1);
-        for (index_t i = 0; i < B.size(); ++i)
-            if (mapper.is_free(i))
-            {
-                xs[n](mapper.index(i)) = Psi.patch(n).coefs()(i, 0);
-                ys[n](mapper.index(i)) = Psi.patch(n).coefs()(i, 1);
-            }
-    }
-    gsMultiPatch<> Psix, Psiy;
-
-    // One interior update, using the edge values from the current sweep.
-    auto updateInterior = [&](const index_t n) -> real_t
-    {
-        geometryMap PP = A.getMap(Psi.patch(n));
-        auto frho = A.getCoeff(density.patch(n), PP);
-
-        u.setup(bc_x[n], dirichlet::interpolation, 0);
-        A.initSystem();
-        solVectorx = xs[n];
-        A.assemble((1.-(int_uh_0*abs(frho.val())+int_uh_1)/CoeffDensity) * grad(u) * grad(u_solx).tr());
-        prevx = xs[n];
-        solVectorx = this->PoissonDir.solve(gsMatrix<>(A.rhs() + boundaryLifting*u.fixedPart()));
-        xs[n] = solVectorx;
-        real_t res = math::sqrt(ev.integral((u_lsol-u_solx).sqNorm()));
-        u_solx.extract(Psix);
-
-        u.setup(bc_y[n], dirichlet::interpolation, 0);
-        A.initSystem();
-        solVectory = ys[n];
-        A.assemble((1.-(int_uh_0*abs(frho.val())+int_uh_1)/CoeffDensity) * grad(u) * grad(u_soly).tr());
-        prevy = ys[n];
-        solVectory = this->PoissonDir.solve(gsMatrix<>(A.rhs() + boundaryLifting*u.fixedPart()));
-        ys[n] = solVectory;
-        res = std::max(res, math::sqrt(ev.integral((u_lsoly-u_soly).sqNorm())));
-        u_soly.extract(Psiy);
-
-        Psi.patch(n).coefs().col(0) = Psix.patch(0).coefs();
-        Psi.patch(n).coefs().col(1) = Psiy.patch(0).coefs();
-        return res;
-    };
+    // Match the expression assembler's original p+1 Gauss rule and coordinate-
+    // wise residual, while keeping all interior assembly buffers local to a task.
+    MMPDEEntitySolver interiorSolver(B, A.options().getReal("quA"), &PoissonDir);
+    std::vector<MMPDEEntitySolver::Workspace> interiorWorkspace(interiorWorkers(nP));
+    MMPDEMonitorScale interiorScale(rmin, rmax, m_IntensityMAE);
+    interiorScale.a = int_uh_0;
+    interiorScale.b = int_uh_1;
+    interiorScale.C = CoeffDensity;
 
     real_t res = 0., edgeRes = 0.;
     index_t ip = 0;
@@ -1129,17 +1136,17 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatchMMPDE(const gsMultiPatch<> &den
                 const gsMatrix<index_t> bnd = B.boundary(boxSide(s));
                 for (index_t i = 0; i < bnd.size(); ++i)
                 {
-                    gx[n]->coefs()(bnd(i)) = (dir == 0) ? edge[n][s-1](i) : normal;
-                    gy[n]->coefs()(bnd(i)) = (dir == 1) ? edge[n][s-1](i) : normal;
-                    Psi.patch(n).coefs()(bnd(i), 0) = gx[n]->coefs()(bnd(i));
-                    Psi.patch(n).coefs()(bnd(i), 1) = gy[n]->coefs()(bnd(i));
+                    Psi.patch(n).coefs()(bnd(i), 0) = (dir == 0) ? edge[n][s-1](i) : normal;
+                    Psi.patch(n).coefs()(bnd(i), 1) = (dir == 1) ? edge[n][s-1](i) : normal;
                 }
             }
 
         // 4. Move each interior once; stop only when edges and interiors settle.
-        res = 0.;
-        for (index_t n = 0; n < nP; ++n)
-            res = std::max(res, updateInterior(n));
+        res = updatePatchInteriors(nP, interiorWorkspace.size(), [&](index_t n, index_t worker)
+        {
+            return interiorSolver.update(Psi.patch(n).coefs(), density.patch(n), interiorScale,
+                                         interiorWorkspace[worker], true);
+        });
         ++ip;
         if (std::max(res, edgeRes) < tolMAE)
             break;
@@ -1337,6 +1344,7 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatchMMPDE3D(const gsMultiPatch<> &d
         faceSolver[d].reset(new MMPDEEntitySolver(*faceBasis[d]));
     }
     MMPDEEntitySolver volumeSolver(B);
+    std::vector<MMPDEEntitySolver::Workspace> interiorWorkspace(interiorWorkers(nP));
     std::vector<MMPDEMonitorScale> edgeScale, faceScale;
     for (const auto& group : edgeGroups)
     {
@@ -1463,9 +1471,11 @@ void gsAdaptiveMultiPatchBuilder::buildMultiPatchMMPDE3D(const gsMultiPatch<> &d
         }
 
         // 3. Three coordinate solves per volume, with all six faces fixed.
-        volumeRes = 0.;
-        for (index_t p = 0; p < nP; ++p)
-            volumeRes = std::max(volumeRes, volumeSolver.update(Psi.patch(p).coefs(), density.patch(p), volumeScale));
+        volumeRes = updatePatchInteriors(nP, interiorWorkspace.size(), [&](index_t p, index_t worker)
+        {
+            return volumeSolver.update(Psi.patch(p).coefs(), density.patch(p), volumeScale,
+                                       interiorWorkspace[worker]);
+        });
         ++iteration;
         if (std::max(edgeRes, std::max(faceRes, volumeRes)) < tolMAE)
             break;

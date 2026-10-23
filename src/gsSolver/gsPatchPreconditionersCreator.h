@@ -182,6 +182,7 @@ public:
                             const gsOptionList& opt,
                             T tau = 0.0);
 
+            // Concurrent calls share only read-only eigenvectors and eigenvalues.
             gsMatrix<T> solve(const gsMatrix<T>& b) const;
             gsMatrix<T> L2ProjectScalar(const gsMatrix<T>& b) const;
 
@@ -191,9 +192,6 @@ public:
             int _rdim;
             T _tau;
 
-            mutable gsMatrix<T> s_tilde;
-            mutable gsMatrix<T> r_tilde;
-            mutable gsMatrix<T> t_tilde;
         };
     };
 

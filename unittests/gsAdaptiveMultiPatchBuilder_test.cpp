@@ -39,17 +39,18 @@ void checkInterfaces(const gsMultiPatch<>& reference, const gsMultiPatch<>& mapp
     for (const auto& face : reference.interfaces())
     {
         const auto first = face.first(), second = face.second();
-        gsVector<index_t> counts(3);
+        const index_t dim = mapping.dim();
+        gsVector<index_t> counts(dim);
         counts.setConstant(5);
         counts(first.direction()) = 1;
-        gsMatrix<> box(3,2);
+        gsMatrix<> box(dim,2);
         box.col(0).setZero();
         box.col(1).setOnes();
         box.row(first.direction()).setConstant(first.parameter());
         const gsMatrix<> points = gsGridIterator<real_t,CUBE>(box, counts).toMatrix();
-        gsMatrix<> target(3, points.cols());
+        gsMatrix<> target(dim, points.cols());
         target.row(second.direction()).setConstant(second.parameter());
-        for (index_t d = 0; d < 3; ++d)
+        for (index_t d = 0; d < dim; ++d)
             if (d != first.direction())
             {
                 const index_t mapped = face.dirMap(first,d);
@@ -64,16 +65,74 @@ void checkInterfaces(const gsMultiPatch<>& reference, const gsMultiPatch<>& mapp
 
 void checkPositiveJacobian(const gsMultiPatch<>& mapping)
 {
-    gsVector<index_t> counts(3);
+    const index_t dim = mapping.dim();
+    gsVector<index_t> counts(dim);
     counts.setConstant(7);
     for (size_t p = 0; p < mapping.nPatches(); ++p)
     {
         const gsMatrix<> points = gsGridIterator<real_t,CUBE>(mapping.basis(p).support(), counts).toMatrix();
         const gsMatrix<> J = mapping.patch(p).jacobian(points);
         for (index_t q = 0; q < points.cols(); ++q)
-            CHECK(J.middleCols(3*q,3).determinant() > 0.);
+            CHECK(J.middleCols(dim*q,dim).determinant() > 0.);
     }
 }
+struct InteriorThreadSettings
+{
+#ifdef _OPENMP
+    int threads = omp_get_max_threads();
+    int dynamic = omp_get_dynamic();
+    InteriorThreadSettings() { omp_set_dynamic(0); omp_set_num_threads(1); }
+    ~InteriorThreadSettings() { omp_set_num_threads(threads); omp_set_dynamic(dynamic); }
+#endif
+};
+
+void checkParallelInteriors(index_t dim)
+{
+    InteriorThreadSettings settings;
+#ifdef _OPENMP
+    const std::vector<int> counts = {1,2,4};
+#else
+    const std::vector<int> counts = {1};
+#endif
+    for (bool fixed : {false,true})
+    {
+        gsMultiPatch<> reference;
+        if (dim == 2)
+            reference = gsNurbsCreator<>::BSplineSquareGrid(2,2,.5);
+        else
+            reference = gsNurbsCreator<>::BSplineCubeGrid(2,2,1,1.,-.5,-.5,-.5);
+        reference.degreeElevate(1);
+        gsMultiPatch<> density, expected, expectedWarm;
+        for (int threads : counts)
+        {
+#ifdef _OPENMP
+            omp_set_num_threads(threads);
+#else
+            (void)threads;
+#endif
+            gsAdaptiveMultiPatchBuilder builder(reference,2,4,4.,0,0,fixed);
+            if (density.empty())
+                density = builder.buildAnalyticDensity(gsFunctionExpr<>(dim==2 ? "1+x+2*y" : "1+x+2*y+3*z",dim));
+            builder.buildMultiPatch(density);
+            if (expected.empty()) expected = builder.MAmapping;
+            for (size_t p=0; p<expected.nPatches(); ++p)
+                CHECK((expected.patch(p).coefs()-builder.MAmapping.patch(p).coefs()).norm() < 2e-11);
+            checkInterfaces(reference,builder.MAmapping);
+            checkPositiveJacobian(builder.MAmapping);
+            if (fixed) checkExterior(reference,builder.MAmapping);
+
+            builder.m_maxIter = 1;
+            builder.buildMultiPatch(density);
+            if (expectedWarm.empty()) expectedWarm = builder.MAmapping;
+            for (size_t p=0; p<expectedWarm.nPatches(); ++p)
+                CHECK((expectedWarm.patch(p).coefs()-builder.MAmapping.patch(p).coefs()).norm() < 2e-11);
+            checkInterfaces(reference,builder.MAmapping);
+            checkPositiveJacobian(builder.MAmapping);
+            if (fixed) checkExterior(reference,builder.MAmapping);
+        }
+    }
+}
+
 }
 
 SUITE(gsAdaptiveMultiPatchBuilder_test)
@@ -150,10 +209,57 @@ SUITE(gsAdaptiveMultiPatchBuilder_test)
                 CHECK((projected-expectedMass).norm()<1e-10*std::max(real_t(1),expectedMass.norm()));
             }
         }
+        std::vector<gsMatrix<> > solutions(16), projections(16);
+        #pragma omp parallel for num_threads(4)
+        for (index_t i=0; i<16; ++i)
+        {
+            const real_t factor = 1.+real_t(i)/10.;
+            solutions[i] = poisson.solve(gsMatrix<>(factor*rhs));
+            projections[i] = projector.L2ProjectScalar(gsMatrix<>(factor*density));
+        }
+        for (index_t i=0; i<16; ++i)
+        {
+            const real_t factor = 1.+real_t(i)/10.;
+            CHECK((solutions[i]-factor*expected).norm()<1e-10*std::max(real_t(1),factor*expected.norm()));
+            CHECK((projections[i]-factor*expectedMass).norm()<1e-10*std::max(real_t(1),factor*expectedMass.norm()));
+        }
 #ifdef _OPENMP
         omp_set_num_threads(originalThreads);
         omp_set_dynamic(originalDynamic);
 #endif
+    }
+
+    TEST(ParallelPatchInteriors2DMatchSerial)
+    {
+        checkParallelInteriors(2);
+    }
+
+    TEST(ParallelPatchInteriors3DMatchSerial)
+    {
+        checkParallelInteriors(3);
+    }
+
+    TEST(InteriorFailurePropagatesToCaller)
+    {
+        InteriorThreadSettings settings;
+#ifdef _OPENMP
+        omp_set_num_threads(2);
+#endif
+        // Disconnected cubes keep every face fixed, so the invalid monitor is
+        // first used by a volume solve inside the parallel interior stage.
+        gsMultiPatch<> reference = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,-.5,-.5,-.5);
+        gsGeometry<>::uPtr other = reference.patch(0).clone();
+        other->coefs().col(0).array() += 2.;
+        reference.addPatch(give(other));
+        reference.computeTopology();
+        gsAdaptiveMultiPatchBuilder builder(reference,1,1,2.,0,0,true);
+        gsMultiPatch<> density = builder.buildAnalyticDensity(gsFunctionExpr<>("1",3));
+        density.patch(1).coefs().setConstant(std::numeric_limits<real_t>::quiet_NaN());
+        bool failed = false;
+        try { builder.buildMultiPatch(density); }
+        catch (const std::exception&) { failed = true; }
+        CHECK(failed);
+        CHECK(builder.MAmapping.empty());
     }
 
     TEST(ConstantVolumeMonitorPreservesIdentity)

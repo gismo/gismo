@@ -13,6 +13,9 @@
 #pragma once
 
 #include <gsSolver/gsSumOp.h>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 #include <gsSolver/gsProductOp.h>
 #include <gsSolver/gsKroneckerOp.h>
 #include <gsSolver/gsMatrixOp.h>
@@ -399,13 +402,15 @@ gsPatchPreconditionersCreator<T>::Poisson_FastDiag::Poisson_FastDiag(const gsBas
 template<typename T>
 gsMatrix<T> gsPatchPreconditionersCreator<T>::Poisson_FastDiag::solve(const gsMatrix<T>& b) const 
 {
+    // Factorizations are shared, but every concurrent call owns its work matrix.
+    gsMatrix<T> s_tilde;
     if (_rdim == 2) {
         index_t n1 = ds[0].rows();
         index_t n2 = ds[1].rows();
 
         s_tilde = b.reshape(n1,n2);
         s_tilde = Us[0].transpose()*s_tilde*Us[1];
-        #pragma omp parallel for
+        #pragma omp parallel for if(!omp_in_parallel())
         for (index_t i1 = 0; i1 < n1; ++i1) {
             for (index_t i2 = 0; i2 < n2; ++i2) {
                 s_tilde(i1, i2) = s_tilde(i1, i2) / (ds[0](i1,0) + ds[1](i2,0) + _tau);
@@ -423,7 +428,7 @@ gsMatrix<T> gsPatchPreconditionersCreator<T>::Poisson_FastDiag::solve(const gsMa
         s_tilde = b.reshape(n1,n2*n3);
         s_tilde = s_tilde.transpose() * Us[0];
         // matrix become (n2*n3, n1)
-        #pragma omp parallel for
+        #pragma omp parallel for if(!omp_in_parallel())
         for (index_t i1 = 0; i1 < n1; ++i1) {
             // Each OpenMP iteration owns its slice of the tensor transform.
             gsMatrix<T> slice = s_tilde.col(i1);
@@ -451,6 +456,8 @@ gsMatrix<T> gsPatchPreconditionersCreator<T>::Poisson_FastDiag::solve(const gsMa
 template<typename T>
 gsMatrix<T> gsPatchPreconditionersCreator<T>::Poisson_FastDiag::L2ProjectScalar(const gsMatrix<T>& b) const 
 {
+    // Factorizations are shared, but every concurrent call owns its work matrix.
+    gsMatrix<T> s_tilde;
     if(_rdim == 2){
         index_t n1 = ds[0].rows();
         index_t n2 = ds[1].rows();
@@ -469,7 +476,7 @@ gsMatrix<T> gsPatchPreconditionersCreator<T>::Poisson_FastDiag::L2ProjectScalar(
         s_tilde = b.reshape(n1,n2*n3);
         s_tilde = s_tilde.transpose() * Us[0];
         // matrix become (n2*n3, n1)
-        #pragma omp parallel for
+        #pragma omp parallel for if(!omp_in_parallel())
         for (index_t i1 = 0; i1 < n1; ++i1) {
             // Each OpenMP iteration owns its slice of the tensor transform.
             gsMatrix<T> slice = s_tilde.col(i1);

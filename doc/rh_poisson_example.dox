@@ -70,6 +70,13 @@ five. In two dimensions, a sweep updates edges and then patch interiors. In
 three dimensions, it updates edges, faces, and then volume interiors. Shared
 entities are synchronized with their interface orientations.
 
+With \c GISMO_WITH_OPENMP enabled, patch interiors are updated concurrently after
+the edge and face stages have completed. Set \c OMP_NUM_THREADS to control the
+thread limit; the interior stage uses at most one worker per patch. Its
+quadrature buffers belong to individual workers, while the Poisson
+factorizations are shared read-only. Edges, faces, and interface synchronization
+remain sequential. Single-patch interiors use the serial path.
+
 Mapping coefficients use a common tensor B-spline basis on the parameter domain.
 Shared traces must match after tangential direction permutations and reversals.
 The three-dimensional implementation requires clamped, nonperiodic bases.
