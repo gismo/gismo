@@ -1,6 +1,6 @@
-/** @file rh_refinement_example.cpp
+/** @file rh_poisson_example.cpp
 
-    @brief Tutorial on how to use expression assembler to solve a Ellepitc PDE with adaptive rh-refinement
+    @brief Poisson equation on an adaptive multipatch spline mesh using rh-refinement.
 
     This file is part of the G+Smo library.
 
@@ -54,7 +54,6 @@ int main(int argc, char *argv[])
     cmd.addReal( "p",    "adaptRefParamMAE", "parameter for MAE mapping in local h-refinement loops",                   adaptRefParamMAE );
     cmd.addInt( "r",     "adaptRefCrit",     "Adaptive refinement criterion [1:GARU,2:PUCA,3:BULK,4:PBULK]",            adaptRefCrit );
     cmd.addInt( "u",     "uniformRefine",    "Number of Uniform h-refinement loops",                                    numRefine );
-    cmd.addInt( "v",     "degree",           "Degree of the basis functions",                                           numElevate );
     cmd.addInt( "x",     "id_mp",            "ID of the geometry in the XML file",                                       id_mp );
     cmd.addSwitch("export_b64",              "Export the solution in a base64 format",                                   export_b64);
     // cmd.addSwitch("help",                     "Display this help message");
@@ -63,7 +62,9 @@ int main(int argc, char *argv[])
     cmd.addSwitch("errorsave",               "Create a file in ... and save errors",                                    errorsave);
 
     try { cmd.getValues(argc,argv); } catch (int rv) { return rv; }
-    GISMO_ENSURE(mappingUpdates >= 0, "mappingUpdates must be nonnegative.");
+    GISMO_ENSURE(numRefine >= 0 && numLRefine >= 0 && numElevate >= 0
+                 && maxIter >= 0 && mappingUpdates >= 0 && NumArMarEl >= 0,
+                 "Refinement counts and iteration budgets must be nonnegative.");
 
     // Load the file
     gsFileData<> fd(fn);
@@ -71,6 +72,8 @@ int main(int argc, char *argv[])
     // Create a gsMultipatch and add the loaded geometry
     gsMultiPatch<> mpLeft;// = gsNurbsCreator<>::BSplineSquareGrid(1,1,1, 0.0, 0.0);
     fd.getId(id_mp,mpLeft);
+    if (numElevate > 0)
+        mpLeft.degreeElevate(numElevate);
 
     // source term: and manufactured solution
     gsFunctionExpr<> s;
@@ -125,7 +128,9 @@ int main(int argc, char *argv[])
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     ###   Step 1 : Initialization for Monge-Ampere mapping
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
+    //! [Moving mesh setup]
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(Psi, numRefine, maxIter, IntensityMAE, 0, 0, true);
+    //! [Moving mesh setup]
 
     gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
     /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -217,7 +222,7 @@ int main(int argc, char *argv[])
         std::vector<real_t> eltErrs  = ev.elementwise();            
         // ... compute MAE mapping from a given error distribution
         std::vector<bool> eldensityMarked( eltErrs.size() );
-        gsMarkElementsForRef( eltErrs, adaptRefCrit, 0.7, eldensityMarked);                 
+        gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParamMAE, eldensityMarked);
         auto density   = MAE.buildDensity( dbasis, eldensityMarked);
         MAE.buildMultiPatch(density);// compute Monge-Ampere mapping
         Psi            = MAE.buildColCompMultiPatch();// computes the composition mapping Psi o MAmapping
@@ -237,11 +242,13 @@ int main(int argc, char *argv[])
         gsInfo<< A.numDofs() <<std::flush;
 
         timer.restart();
+        //! [Poisson weak form]
         A.assemble(
         igrad(ru, PP) * igrad(ru, PP).tr() * meas(PP) //matrix
         ,
         ru * rhs_f * meas(PP) //rhs vector
         );
+        //! [Poisson weak form]
 
         ma_time += timer.stop();
 
@@ -286,11 +293,13 @@ int main(int argc, char *argv[])
                 //     MAE.uniformRefine();
                 std::vector<bool> eldensityMarked( eltErrs.size() );
                 gsMarkElementsForRef( eltErrs, adaptRefCrit, adaptRefParamMAE, eldensityMarked);                 
+                //! [Mesh update]
                 auto density   = MAE.buildDensity( dbasis, eldensityMarked, r);
                 // Continue the previous mapping with a short update budget.
                 MAE.m_maxIter = mappingUpdates;
                 MAE.buildMultiPatch(density);// compute Monge-Ampere mapping
                 Psi            = MAE.buildColCompMultiPatch();// computes the composition mapping Psi o MAmapping
+                //! [Mesh update]
                 // -----------------
                 double Minvalue     = *std::max_element(eltErrs.begin(), eltErrs.end());                
                 for(size_t i=0; i<eltErrs.size(); ++i)
@@ -311,10 +320,12 @@ int main(int argc, char *argv[])
             }
             gsInfo <<"Marked "<< std::count(elMarked.begin(), elMarked.end(), true) <<" elements.\n";
             // Refine the marked elements with a 1-ring of cells around marked elements
+            //! [Local refinement]
             gsRefineMarkedElements( dbasis, elMarked, NumArMarEl);
             // The conforming PDE mapper requires matching bases on both sides
             // of every patch interface after local refinement.
             dbasis.repairInterfaces( dbasis.topology().interfaces() );
+            //! [Local refinement]
             }
     }
     //! [Solver loop]    

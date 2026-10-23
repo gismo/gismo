@@ -28,8 +28,8 @@ public:
     * @param maxIter maximum number of iterations for the Picard loop
     * @param IntensityMAE intensity of the density function for the Monge-Ampere problem
     * @param numReduce number of degree reduction steps to perform on the basis before solving
+    * @param numElevate number of degree elevation steps for the moving mesh basis, used when numReduce is zero
     * @param exactGeo if true, boundaries are not adapted (only interfaces) and the MMPDE solver is used even for a single patch; collocation then restores the exact boundary control points
-    * @param extraRefCmp number of extra refinement steps for the composition mapping
     */
     // Constructor for one patch compoosition mapping
     gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> mapping,

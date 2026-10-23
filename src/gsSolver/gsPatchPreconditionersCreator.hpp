@@ -425,17 +425,18 @@ gsMatrix<T> gsPatchPreconditionersCreator<T>::Poisson_FastDiag::solve(const gsMa
         // matrix become (n2*n3, n1)
         #pragma omp parallel for
         for (index_t i1 = 0; i1 < n1; ++i1) {
-            r_tilde         = s_tilde.col(i1);
-            r_tilde         = r_tilde.reshape(n2, n3);
-            r_tilde         = Us[1].transpose() * r_tilde * Us[2];
+            // Each OpenMP iteration owns its slice of the tensor transform.
+            gsMatrix<T> slice = s_tilde.col(i1);
+            slice = slice.reshape(n2, n3);
+            slice = Us[1].transpose() * slice * Us[2];
             //...
             for (index_t i2 = 0; i2 < n2; ++i2) {
                 for (index_t i3 = 0; i3 < n3; ++i3) {
-                    r_tilde(i2, i3) = r_tilde(i2, i3) / (ds[0](i1,0) + ds[1](i2,0) + ds[2](i3,0) + _tau);
+                    slice(i2, i3) = slice(i2, i3) / (ds[0](i1,0) + ds[1](i2,0) + ds[2](i3,0) + _tau);
                 }
             }
-            r_tilde         = Us[1] * r_tilde * Us[2].transpose();
-            s_tilde.col(i1) = r_tilde.reshape(n2*n3,1);
+            slice = Us[1] * slice * Us[2].transpose();
+            s_tilde.col(i1) = slice.reshape(n2*n3,1);
         }
         s_tilde = Us[0] * s_tilde.transpose();
 
@@ -470,12 +471,13 @@ gsMatrix<T> gsPatchPreconditionersCreator<T>::Poisson_FastDiag::L2ProjectScalar(
         // matrix become (n2*n3, n1)
         #pragma omp parallel for
         for (index_t i1 = 0; i1 < n1; ++i1) {
-            r_tilde         = s_tilde.col(i1);
-            r_tilde         = r_tilde.reshape(n2, n3);
-            r_tilde         = Us[1].transpose() * r_tilde * Us[2];
+            // Each OpenMP iteration owns its slice of the tensor transform.
+            gsMatrix<T> slice = s_tilde.col(i1);
+            slice = slice.reshape(n2, n3);
+            slice = Us[1].transpose() * slice * Us[2];
             //...
-            r_tilde         = Us[1] * r_tilde * Us[2].transpose();
-            s_tilde.col(i1) = r_tilde.reshape(n2*n3,1);
+            slice = Us[1] * slice * Us[2].transpose();
+            s_tilde.col(i1) = slice.reshape(n2*n3,1);
         }
         s_tilde = Us[0] * s_tilde.transpose();
         s_tilde = s_tilde.reshape(n1*n2*n3, 1);

@@ -6,6 +6,9 @@
     */
 #include "gismo_unittest.h"
 #include <gsAssembler/gsAdaptiveMultiPatchBuilder.h>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 namespace
 {
@@ -75,6 +78,84 @@ void checkPositiveJacobian(const gsMultiPatch<>& mapping)
 
 SUITE(gsAdaptiveMultiPatchBuilder_test)
 {
+    // Compare with independently assembled operators; exercise OpenMP slices when enabled.
+    TEST(FastDiagonalization3DMatchesAssembledOperators)
+    {
+        gsMultiPatch<> cube = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,1.,-.5,-.5,-.5);
+        cube.degreeElevate(2);
+        cube.uniformRefine();
+        cube.uniformRefine();
+        const gsBasis<>& B = cube.basis(0);
+        gsBoundaryConditions<> bc, empty;
+        gsFunctionExpr<> zero("0",3);
+        for (index_t s=1; s<=6; ++s)
+            bc.addCondition(0,boxSide(s),condition_type::dirichlet,&zero);
+        gsExprAssembler<> A(1,1);
+        A.setIntegrationDomain(B.domain());
+        auto v = A.getSpace(B);
+        A.initSystem();
+        A.assemble(grad(v)*grad(v).tr());
+        const gsSparseMatrix<> K = A.matrix();
+        A.initSystem();
+        A.assemble(v*v.tr());
+        gsSparseSolver<>::SimplicialLDLT mass;
+        mass.compute(A.matrix());
+        std::vector<index_t> free;
+        for (index_t i=0; i<B.size(); ++i)
+        {
+            index_t remainder=i;
+            bool boundary=false;
+            for (index_t d=0; d<3; ++d)
+            {
+                const index_t size=B.component(d).size(), j=remainder%size;
+                remainder/=size;
+                boundary=boundary||j==0||j==size-1;
+            }
+            if (!boundary) free.push_back(i);
+        }
+        gsMatrix<> rhs(free.size(),1), density(B.size(),1);
+        for (index_t i=0; i<rhs.rows(); ++i) rhs(i)=std::sin(real_t(i+1));
+        for (index_t i=0; i<density.rows(); ++i) density(i)=std::cos(real_t(i+1));
+        gsSparseEntries<> entries;
+        for (size_t i=0; i<free.size(); ++i)
+            for (size_t j=0; j<free.size(); ++j)
+                if (K.coeff(free[i],free[j])!=0.) entries.add(i,j,K.coeff(free[i],free[j]));
+        gsSparseMatrix<> Kff(free.size(),free.size());
+        Kff.setFrom(entries);
+        gsSparseSolver<>::SimplicialLDLT stiffness;
+        stiffness.compute(Kff);
+        const gsMatrix<> expected = stiffness.solve(rhs), expectedMass = mass.solve(density);
+        gsPatchPreconditionersCreator<>::Poisson_FastDiag poisson(B,bc,A.options(),0.);
+        gsPatchPreconditionersCreator<>::Poisson_FastDiag projector(B,empty,A.options(),0.);
+#ifdef _OPENMP
+        const int originalThreads = omp_get_max_threads();
+        const int originalDynamic = omp_get_dynamic();
+        omp_set_dynamic(0);
+        const std::vector<int> threadCounts = {1,4};
+#else
+        const std::vector<int> threadCounts = {1};
+#endif
+        for (int threads : threadCounts)
+        {
+#ifdef _OPENMP
+            omp_set_num_threads(threads);
+#else
+            (void)threads;
+#endif
+            for (int repeat=0; repeat<10; ++repeat)
+            {
+                const gsMatrix<> solution = poisson.solve(rhs);
+                const gsMatrix<> projected = projector.L2ProjectScalar(density);
+                CHECK((solution-expected).norm()<1e-10*std::max(real_t(1),expected.norm()));
+                CHECK((projected-expectedMass).norm()<1e-10*std::max(real_t(1),expectedMass.norm()));
+            }
+        }
+#ifdef _OPENMP
+        omp_set_num_threads(originalThreads);
+        omp_set_dynamic(originalDynamic);
+#endif
+    }
+
     TEST(ConstantVolumeMonitorPreservesIdentity)
     {
         const gsMultiPatch<> reference = gsNurbsCreator<>::BSplineCubeGrid(2,1,1,1.,-.5,-.5,-.5);
