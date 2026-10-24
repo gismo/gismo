@@ -204,6 +204,9 @@ int main(int argc, char *argv[])
     ###                                     and the multipatch adaptive mapping from a given mesh
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(mpLeft, numRefineMAE, maxIter, IntensityMAE, numReduceMAE, numElevateMAE, exactGeo);
+    // Work with F o A on [0,1]^d, including direct composition and gradients.
+    // The input XML and its original knot domains are preserved by the builder.
+    mpLeft = MAE.normalizedGeometry();
     auto density        = MAE.buildAnalyticDensity(f); // build the density function (we avoid composing rho o F o Psi here)
     MAE.buildMultiPatch(density);// build the adaptive mapping
 

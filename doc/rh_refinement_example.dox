@@ -25,8 +25,17 @@ must accept physical coordinates of the geometry: two coordinates for a planar
 domain, or three for a surface in space or a volume. For example, density 1954
 is a function of \f$(x,y,z)\f$ and can be used with the cylinder surface.
 
-Writing \f$F_p\f$ for the initial geometry of patch \f$p\f$, the builder first
-projects \f$f\circ F_p\f$ into its moving mesh spline space. For multiple
+Input knot intervals need not be \f$[0,1]\f$. For the original patch
+\f$F_p^{\mathrm{xml}}\f$ with parameter box \f$\prod_j[a_{pj},b_{pj}]\f$,
+the builder stores the affine conversion
+\f$A_p(\eta)_j=a_{pj}+(b_{pj}-a_{pj})\eta_j\f$ in
+\c parameterConversion(). It normalizes a copy of every knot vector, including
+all stored hierarchical levels, while retaining control coefficients and NURBS
+weights. The input geometry and XML are unchanged.
+
+Writing \f$F_p=F_p^{\mathrm{xml}}\circ A_p\f$ for this exact normalized
+geometry, available through \c normalizedGeometry(), the builder first projects
+\f$f\circ F_p\f$ into its moving mesh spline space. For multiple
 patches this projection couples matching interfaces continuously. The moving
 mesh solver scales the projected monitor using \c --IntensityMAE and constructs
 a parameter map
@@ -37,6 +46,10 @@ a parameter map
 The map \f$T\f$ is stored in \c MAE.MAmapping. The physical composition is
 \f$X_p=F_p\circ T_p\f$; it remains a surface when \f$d=2\f$ and
 \f$F_p\f$ has three physical coordinates.
+The example uses \c normalizedGeometry() for direct composition, error
+evaluation, and integration, so all reference derivatives include the affine
+conversion. Composition and moving mesh bases are defined on unit boxes;
+marked-element bases passed to \c buildDensity must use the same coordinates.
 
 \section rh_refinement_mapping Moving mesh and boundary treatment
 
@@ -151,11 +164,11 @@ cmake --build build --target rh_refinement_example -j 2
 cd build
 \endcode
 
-Run the default annulus, or the cylinder surface with a three-coordinate
+Run the default annulus, or the egg surface with a three-coordinate
 density:
 \code{.sh}
 ./bin/rh_refinement_example
-./bin/rh_refinement_example -d surfaces/cylinder.xml -a 1 -b 1954
+./bin/rh_refinement_example -d surfaces/egg.xml -a 0 -b 1956 --exactGeo --plot
 ./bin/rh_refinement_example -d pde/surfacepoisson_sphere_bvp.xml -a 0 -b 1958
 \endcode
 

@@ -36,7 +36,14 @@ uniform refinement.
 
 \section rh_poisson_maps Geometry and moving mesh
 
-Let \f$F_p^0\f$ denote the initial geometry of patch \f$p\f$. The builder computes
+Let \f$F_p^0\f$ denote the initial geometry of patch \f$p\f$ expressed on a
+unit parameter box. For arbitrary XML knot intervals, the builder stores an
+affine conversion \f$A_p\f$ in \c parameterConversion() and represents
+\f$F_p^0=F_p^{\mathrm{xml}}\circ A_p\f$ exactly by normalizing a copy's knots,
+preserving its coefficients and weights. The example obtains this copy from
+\c normalizedGeometry() before constructing the PDE basis, so marked-element
+coordinates and moving mesh coordinates agree. The input XML is unchanged.
+The builder computes
 a parameter mapping \f$T_p:\hat\Omega\rightarrow\hat\Omega\f$, where
 \f$\hat\Omega=(0,1)^d\f$, and constructs an approximation of
 \f[

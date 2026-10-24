@@ -31,7 +31,7 @@
   <Function type="FunctionExpr" id="1958" dim="3">1./(2.+cos(2.*pi*sqrt((x-0.5-0.25*1.)**2+(y-0.5)**2+(z-0.5)**2)-0.1))</Function>
   <!-- surfacepoisson_sphere_bvp.xml -->
   <Function type="FunctionExpr" id="5" dim="3">1./(2.+cos(2.*pi*sqrt((x-0.5-0.25*1.)**2+(y-0.5)**2+(z-0.5)**2)-0.1))</Function>
-  <!-- Bsplineèball.xml    exp(-50*abs(x**2+y**2+z-0.1))-->
+  <!-- Bspline_ball.xml    exp(-50*abs(x**2+y**2+z-0.1))-->
   <Function type="FunctionExpr" id="1959" dim="3">exp(-50*abs(x**2+y**2+0.5*z**3-0.1))</Function>
   <Function type="FunctionExpr" id="1960" dim="3"> tanh(100.*( 0.1-x**2 - y**2 - z))</Function>
   <Function type="FunctionExpr" id="1961" dim="3"> -80000.0*x**2*(1 - tanh(100.0*x**2 + 100.0*y**2 + 100.0*z - 10.0)**2)*tanh(100.0*x**2 + 100.0*y**2 + 100.0*z - 10.0) - 80000.0*y**2*(1 - tanh(100.0*x**2 + 100.0*y**2 + 100.0*z - 10.0)**2)*tanh(100.0*x**2 + 100.0*y**2 + 100.0*z - 10.0) - 100.0*(200.0 - 200.0*tanh(100.0*x**2 + 100.0*y**2 + 100.0*z - 10.0)**2)*tanh(100.0*x**2 + 100.0*y**2 + 100.0*z - 10.0) - 400.0*tanh(100.0*x**2 + 100.0*y**2 + 100.0*z - 10.0)**2 + 400.0</Function>

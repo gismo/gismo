@@ -23,7 +23,7 @@ class GISMO_EXPORT gsAdaptiveMultiPatchBuilder
 public:
 
     /** @brief gsAdaptiveMultiPatchBuilder: Main constructor of the r-refinement class
-    * @param mapping initial geometry mapping
+    * @param mapping initial geometry mapping, with arbitrary finite parameter boxes
     * @param numRefine number of uniform refinement steps to perform on the basis before solving
     * @param maxIter maximum number of iterations for the Picard loop
     * @param IntensityMAE intensity of the density function for the Monge-Ampere problem
@@ -40,8 +40,15 @@ public:
                                 index_t numElevate  = 0,
                                 bool exactGeo       = false);
 
-    // ... optimal Monge-Ampere (or moving mesh) mapping in square to itself
+    // Optimal Monge-Ampere (or moving mesh) mapping [0,1]^d -> [0,1]^d.
     mutable gsMultiPatch<> MAmapping;
+
+    // A_p : [0,1]^d -> the original parameter box of patch p.
+    const gsMultiPatch<> & parameterConversion() const { return m_parameterConversion; }
+
+    // F_p o A_p, represented exactly by reparameterizing a copy of the input.
+    // Use this geometry with MAmapping for direct composition and evaluation.
+    const gsMultiPatch<> & normalizedGeometry() const { return initial_mapping; }
 
     // ... containes error values over elements, which considered piecewise density function vector
     mutable gismo::gsMatrix<> errorVector;
@@ -58,10 +65,10 @@ public:
     // Method to perform uniform refinement on the basis
     void uniformRefine(const index_t numRefine = 1);
 
-    // Method to build a density function from analytic form: we project first f o F into a spline space (avoid composing three functions)
+    // Project f o F_p o A_p into the unit-domain moving mesh spline space.
     gsMultiPatch<> buildAnalyticDensity(const gsFunctionExpr<> &f) const;
 
-    // Build and return a density as a MultiPatch object from marked elements using local h-refinement strategies
+    // Build a density from marked elements of Hbasis, defined on unit parameter boxes.
     gsMultiPatch<> buildDensity(const gsMultiBasis<> Hbasis, const  std::vector<bool> elMarked, const index_t setRhogrid = 0, const  index_t setRhoZero = 0) const;
 
     //-----------------------------------------
@@ -115,13 +122,15 @@ private:
     gsMultiBasis<> m_basis;
     //... Identity mapping in square to itself
     gsMultiPatch<> identity_mp;
+    gsMultiPatch<> m_parameterConversion;
+    // The normalized input geometry F_p o A_p; coefficients and weights are preserved.
     gsMultiPatch<> initial_mapping;
     real_t m_IntensityMAE;
     bool m_exactGeo;
     gsFunctionExpr<> neumann_id;
     gsBoundaryConditions<> bc_mae;
 public:
-    // Public members for the mapping basis and Poisson solvers
+    // Composition bases on [0,1]^d and Poisson solvers.
     gsMultiBasis<> mapping_basis;
     gsPatchPreconditionersCreator<>::Poisson_FastDiag Poisson;
     // Dirichlet counterpart of Poisson (used by the multipatch solver)

@@ -26,6 +26,29 @@ typedef gsExprAssembler<>::space       space;
 typedef gsExprAssembler<>::solution    solution;
 
 namespace {
+// An affine change of knot coordinates leaves coefficients, rational weights,
+// hierarchy indices and truncation coefficients unchanged. Include every stored
+// level, since later refinement can use levels above the currently active ones.
+template <short_t d>
+bool normalizeParameterBasis(gsBasis<>& basis)
+{
+    if (auto* tensor = dynamic_cast<gsTensorBSplineBasis<d>*>(&basis))
+    {
+        for (index_t dir = 0; dir < d; ++dir)
+            if (tensor->component(dir).domainStart() != 0.
+                || tensor->component(dir).domainEnd() != 1.)
+                tensor->knots(dir).affineTransformTo(0., 1.);
+        return true;
+    }
+    if (auto* hierarchy = dynamic_cast<gsHTensorBasis<d>*>(&basis))
+    {
+        for (auto* level : hierarchy->getBases())
+            normalizeParameterBasis<d>(*level);
+        return true;
+    }
+    return false;
+}
+
 // Lower-dimensional traces have settled before entering this loop. Each task
 // owns one patch's coefficients; all factorizations and quadrature are read-only.
 index_t interiorWorkers(const index_t patches)
@@ -398,16 +421,44 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
     }
     gsInfo<<"for more accuracy refine: DoFs > 10^3\n";
     gsInfo<<"\n";
-    // Store the initial mapping
+    GISMO_ENSURE(mapping.nPatches() > 0 && (mapping.dim() == 2 || mapping.dim() == 3),
+                 "Moving mesh construction requires a nonempty 2D or 3D parameter domain.");
+
+    // All computational coordinates are in [0,1]^d. Store A_p explicitly and
+    // represent F_p o A_p exactly by normalizing only a copy's knot coordinates.
+    gsMultiPatch<> mp;
+    if (mapping.dim() == 2)
+        mp.addPatch(gsNurbsCreator<>::BSplineRectangle(0., 0., 1., 1.));
+    else
+        mp.addPatch(gsNurbsCreator<>::BSplineCube(1., 0., 0., 0.));
+    mp.computeTopology();
     this->initial_mapping= mapping;
+    for (size_t p = 0; p < mapping.nPatches(); ++p)
+    {
+        const gsMatrix<> bounds = mapping.basis(p).support();
+        GISMO_ENSURE(bounds.rows() == mapping.dim() && bounds.cols() == 2
+                     && bounds.allFinite() && (bounds.col(1)-bounds.col(0)).minCoeff() > 0.,
+                     "Each input patch must have a finite, nondegenerate parameter box.");
+        auto conversion = mp.patch(0).clone();
+        for (index_t dir = 0; dir < mapping.dim(); ++dir)
+            conversion->coefs().col(dir).array() = bounds(dir,0)
+                + (bounds(dir,1)-bounds(dir,0))*conversion->coefs().col(dir).array();
+        m_parameterConversion.addPatch(give(conversion));
+
+        gsBasis<>& source = initial_mapping.patch(p).basis().source();
+        const bool normalized = mapping.dim() == 2
+            ? normalizeParameterBasis<2>(source) : normalizeParameterBasis<3>(source);
+        GISMO_ENSURE(normalized,
+                     "MAE requires a tensor B-spline or hierarchical tensor basis in 2D or 3D.");
+    }
     // basis function for the composition
-    gsMultiBasis<> mapping_basis(mapping, false);
+    gsMultiBasis<> mapping_basis(initial_mapping, false);
     //-------------------------------------------------------------------------------------
     // MAE needs tensor B-splines; for a hierarchy, start from its level-0 grid.
     gsMultiBasis<> dbasis;
     for (size_t p = 0; p < mapping.nPatches(); ++p)
     {
-        const gsBasis<> & basis = mapping.basis(p).source(); // Remove rational weights.
+        const gsBasis<> & basis = initial_mapping.basis(p).source(); // Remove rational weights.
         if (const auto * h = dynamic_cast<const gsHTensorBasis<2> *>(&basis))
             dbasis.addBasis(h->tensorLevel(0).clone());
         else if (const auto * h = dynamic_cast<const gsHTensorBasis<3> *>(&basis))
@@ -451,19 +502,11 @@ gsAdaptiveMultiPatchBuilder::gsAdaptiveMultiPatchBuilder(const gsMultiPatch<> ma
     gsInfo << "nb patches " << mapping.nPatches() << " Using B-splines of degree " << dbasis.degree() << " DoFs ";
 
     //--------------------------------------------------
-    // Create parametric identity mapping
-    auto corners         = dbasis.basis(0).support();
-    gsMultiPatch<> mp;
-    mp.addPatch(gsNurbsCreator<>::BSplineRectangle(corners.at(0), corners.at(1), corners.at(2), corners.at(3)));
-    // BSplineSquareGrid(1,1,corners.at(2), corners.at(0), corners.at(1));
+    // Parametric identity on the unit square/cube, independent of the input boxes.
     neumann_id = gsFunctionExpr<>("x","y",2);
     if (dbasis.dim() == 3){
-        mp  = gsNurbsCreator<>::BSplineCubeGrid(1,1,1,corners.at(3),corners.at(0)-0.5,corners.at(1)-0.5,corners.at(2)-0.5);
-        // Manufactured identity mapping
         neumann_id = gsFunctionExpr<>("x","y","z",3);
     }
-    // Compute topology for interfaces and boundaries
-    mp.computeTopology();
     this->identity_mp    = mp;
 
     //--------------------------------------------------

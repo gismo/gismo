@@ -12,6 +12,74 @@
 
 namespace
 {
+void checkParameterConversion(const gsMultiPatch<>& original,
+                              const gsAdaptiveMultiPatchBuilder& builder)
+{
+    const index_t dim = original.dim();
+    gsMatrix<> box(dim,2);
+    box.col(0).setZero(); box.col(1).setOnes();
+    gsVector<index_t> counts(dim); counts.setConstant(5);
+    const gsMatrix<> points = gsGridIterator<real_t,CUBE>(box,counts).toMatrix();
+    for (size_t p = 0; p < original.nPatches(); ++p)
+    {
+        const gsMatrix<> bounds = original.basis(p).support();
+        gsMatrix<> native = points;
+        for (index_t d = 0; d < dim; ++d)
+            native.row(d) = (bounds(d,0)+(bounds(d,1)-bounds(d,0))*points.row(d).array())
+                .max(bounds(d,0)).min(bounds(d,1));
+        CHECK((builder.parameterConversion().patch(p).eval(points)-native).norm() < 1e-10);
+        const auto& normalized = builder.normalizedGeometry().patch(p);
+        CHECK((normalized.eval(points)-original.patch(p).eval(native)).norm() < 1e-9);
+        CHECK((normalized.coefs()-original.patch(p).coefs()).norm() == 0.);
+        CHECK((normalized.basis().weights()-original.basis(p).weights()).norm() == 0.);
+        CHECK(normalized.basis().support().col(0).norm() == 0.);
+        CHECK((normalized.basis().support().col(1).array()-1.).matrix().norm() == 0.);
+        const gsMatrix<> derivative = normalized.jacobian(points);
+        gsMatrix<> expected = original.patch(p).jacobian(native);
+        for (index_t q = 0; q < points.cols(); ++q)
+            for (index_t d = 0; d < dim; ++d)
+                expected.col(dim*q+d) *= bounds(d,1)-bounds(d,0);
+        CHECK((derivative-expected).norm() < 1e-8);
+    }
+}
+
+template <short_t d>
+void checkDifferentParameterBoxes()
+{
+    const gsMultiPatch<> unit = d == 2
+        ? gsNurbsCreator<>::BSplineSquareGrid(2,1,1.)
+        : gsNurbsCreator<>::BSplineCubeGrid(2,1,1,1.,-.5,-.5,-.5);
+    gsMultiPatch<> original = unit;
+    for (size_t p = 0; p < original.nPatches(); ++p)
+        for (index_t dir = 0; dir < d; ++dir)
+            dynamic_cast<gsTensorBSplineBasis<d>&>(original.patch(p).basis()).knots(dir)
+                .affineTransformTo(-3.-p-dir, 2.+3.*p+2.*dir);
+    gsAdaptiveMultiPatchBuilder expected(unit,1,2,4.,0,0,true);
+    gsAdaptiveMultiPatchBuilder actual(original,1,2,4.,0,0,true);
+    checkParameterConversion(original,actual);
+    gsFunctionExpr<> f(d == 2 ? "1+x+2*y" : "1+x+2*y+3*z", d);
+    const auto rho = actual.buildAnalyticDensity(f);
+    const auto expectedRho = expected.buildAnalyticDensity(f);
+    for (size_t p = 0; p < original.nPatches(); ++p)
+        CHECK((rho.patch(p).coefs()-expectedRho.patch(p).coefs()).norm() < 1e-10);
+    actual.buildMultiPatch(rho);
+    expected.buildMultiPatch(expectedRho);
+    const auto composition = actual.buildColCompMultiPatch();
+    const auto expectedComposition = expected.buildColCompMultiPatch();
+    for (size_t p = 0; p < original.nPatches(); ++p)
+    {
+        CHECK((actual.MAmapping.patch(p).coefs()-expected.MAmapping.patch(p).coefs()).norm() < 1e-10);
+        CHECK((composition.patch(p).coefs()-expectedComposition.patch(p).coefs()).norm() < 1e-10);
+    }
+    gsMultiBasis<> basis(composition,true);
+    std::vector<bool> marked(basis.totalElements(),false);
+    for (size_t i = 0; i < marked.size(); i += 3) marked[i] = true;
+    const auto markedRho = actual.buildDensity(basis,marked);
+    const auto expectedMarkedRho = expected.buildDensity(basis,marked);
+    for (size_t p = 0; p < original.nPatches(); ++p)
+        CHECK((markedRho.patch(p).coefs()-expectedMarkedRho.patch(p).coefs()).norm() < 1e-10);
+}
+
 void checkIdentity(const gsMultiPatch<>& mapping)
 {
     for (size_t p = 0; p < mapping.nPatches(); ++p)
@@ -137,6 +205,67 @@ void checkParallelInteriors(index_t dim)
 
 SUITE(gsAdaptiveMultiPatchBuilder_test)
 {
+    TEST(NonUnitCylinderMatchesUnitParameterization)
+    {
+        gsMultiPatch<> unit;
+        gsFileData<>("surfaces/cylinder.xml").getId(1,unit);
+        auto& unitBasis = dynamic_cast<gsTensorNurbsBasis<2>&>(unit.patch(0).basis());
+        for (index_t d = 0; d < 2; ++d)
+            unitBasis.source().knots(d).affineTransformTo(0.,1.);
+        gsMultiPatch<> original = unit;
+        auto& nativeBasis = dynamic_cast<gsTensorNurbsBasis<2>&>(original.patch(0).basis());
+        nativeBasis.source().knots(0).affineTransformTo(-2.,46.43999263688814);
+        nativeBasis.source().knots(1).affineTransformTo(3.,23.74557318168491);
+        const gsMatrix<> originalBounds = original.basis(0).support();
+        for (bool fixed : {false,true})
+        {
+            gsAdaptiveMultiPatchBuilder expected(unit,1,4,3.,0,0,fixed);
+            gsAdaptiveMultiPatchBuilder actual(original,1,4,3.,0,0,fixed);
+            CHECK((original.basis(0).support()-originalBounds).norm() == 0.);
+            checkParameterConversion(original,actual);
+            gsFunctionExpr<> f("100+x+2*y+3*z",3);
+            const auto rho = actual.buildAnalyticDensity(f);
+            const auto expectedRho = expected.buildAnalyticDensity(f);
+            CHECK((rho.patch(0).coefs()-expectedRho.patch(0).coefs()).norm() < 1e-9);
+            actual.buildMultiPatch(rho);
+            expected.buildMultiPatch(expectedRho);
+            CHECK((actual.MAmapping.patch(0).coefs()-expected.MAmapping.patch(0).coefs()).norm() < 1e-9);
+            CHECK((actual.buildColCompMultiPatch().patch(0).coefs()
+                  -expected.buildColCompMultiPatch().patch(0).coefs()).norm() < 1e-8);
+            CHECK((actual.buildH1CompMultiPatch(.2).patch(0).coefs()
+                  -expected.buildH1CompMultiPatch(.2).patch(0).coefs()).norm() < 1e-8);
+        }
+    }
+
+    TEST(DifferentPatchParameterBoxes2DAnd3D)
+    {
+        checkDifferentParameterBoxes<2>();
+        checkDifferentParameterBoxes<3>();
+    }
+
+    TEST(HierarchicalParameterConversionPreservesRefinement)
+    {
+        gsMultiPatch<> cylinder;
+        gsFileData<>("surfaces/cylinder.xml").getId(1,cylinder);
+        auto& tensor = dynamic_cast<gsTensorNurbs<2>&>(cylinder.patch(0));
+        tensor.knots(0).affineTransformTo(-4.,19.);
+        tensor.knots(1).affineTransformTo(7.,43.);
+        gsMultiPatch<> original;
+        original.addPatch(gsRationalTHBSpline<2>(tensor));
+        original.uniformRefine();
+        // Refine a corner at the next level, retaining both coarse and fine functions.
+        original.patch(0).refineElements({2,0,0,1,1});
+        original.computeTopology();
+        gsAdaptiveMultiPatchBuilder builder(original,1,0,3.,0,0,true);
+        checkParameterConversion(original,builder);
+        gsMultiPatch<> normalized = builder.normalizedGeometry();
+        original.uniformRefine();
+        normalized.uniformRefine();
+        gsAdaptiveMultiPatchBuilder refined(original,0,0,3.,0,0,true);
+        CHECK((normalized.patch(0).coefs()-refined.normalizedGeometry().patch(0).coefs()).norm() < 1e-9);
+        checkParameterConversion(original,refined);
+    }
+
     TEST(SinglePatchNormalBoundaryCorrectionIsThreadSafe)
     {
         InteriorThreadSettings settings;

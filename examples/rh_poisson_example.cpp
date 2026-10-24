@@ -130,6 +130,8 @@ int main(int argc, char *argv[])
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~*/
     //! [Moving mesh setup]
     gsAdaptiveMultiPatchBuilder MAE = gsAdaptiveMultiPatchBuilder(Psi, numRefine, maxIter, IntensityMAE, 0, 0, true);
+    // Analysis and marked-element coordinates use the same unit boxes as MAE.
+    Psi = MAE.normalizedGeometry();
     //! [Moving mesh setup]
 
     gsMultiBasis<> dbasis(Psi, true);//true: poly-splines (not NURBS)
