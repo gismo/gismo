@@ -766,7 +766,14 @@ public: // things required by gsKnotVector
 
     /// Returns Greville abscissa of the \a i - the B-spline defined
     /// on the knot vector.
-    T greville(int i) const;
+    T greville(index_t i) const;
+
+    // Keep integer indices distinct from the overload returning all anchors.
+    template <class Index>
+    typename std::enable_if<std::is_integral<Index>::value &&
+                            !std::is_same<Index, bool>::value, T>::type
+    greville(Index i) const
+    { return greville(static_cast<index_t>(i)); }
 
     /// Get the first knot.
     T first () const

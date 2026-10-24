@@ -116,7 +116,7 @@ if(DOXYGEN_FOUND)
   endif()
 
   add_custom_target(doc #ALL
-    COMMAND doxygen
+    COMMAND "${DOXYGEN_EXECUTABLE}"
     WORKING_DIRECTORY ${gismo_BINARY_DIR}/doc
     COMMENT "Generating doc: ${gismo_BINARY_DIR}/doc/html/index.html" VERBATIM
     )

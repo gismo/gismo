@@ -1,0 +1,221 @@
+namespace gismo {
+
+/**
+\page rh_refinement_example rh_refinement_example.cpp: moving meshes and geometry composition
+
+This example uses \c gsAdaptiveMultiPatchBuilder to redistribute a spline mesh
+according to an analytic density. It then approximates the composition of the
+initial geometry and the moving parameter map, and measures the approximation
+errors. It supports two-dimensional parameter domains, including surfaces in
+three-dimensional space, and three-dimensional volume domains.
+
+For a PDE-driven rh-adaptive loop, see \ref rh_poisson_example. Here the density
+is prescribed analytically; the example does not solve a PDE.
+
+\section rh_refinement_input Geometry and density
+
+The geometry is read from the XML file selected by \c -d / \c --file, using the
+\c MultiPatch ID selected by \c -a / \c --id_mp. The default is the four-patch
+annulus in \c filedata/pde/annulus2d_bvp.xml, with multipatch ID 4.
+
+The scalar density expression is always read from
+\c filedata/pde/circle.xml, using \c -b / \c --id_rho (default: 1942).
+Changing the geometry file does not change the density file. The expression
+must accept physical coordinates of the geometry: two coordinates for a planar
+domain, or three for a surface in space or a volume. For example, density 1954
+is a function of \f$(x,y,z)\f$ and can be used with the cylinder surface.
+
+Input knot intervals need not be \f$[0,1]\f$. For the original patch
+\f$F_p^{\mathrm{xml}}\f$ with parameter box \f$\prod_j[a_{pj},b_{pj}]\f$,
+the builder stores the affine conversion
+\f$A_p(\eta)_j=a_{pj}+(b_{pj}-a_{pj})\eta_j\f$ in
+\c parameterConversion(). It normalizes a copy of every knot vector, including
+all stored hierarchical levels, while retaining control coefficients and NURBS
+weights. The input geometry and XML are unchanged.
+
+Writing \f$F_p=F_p^{\mathrm{xml}}\circ A_p\f$ for this exact normalized
+geometry, available through \c normalizedGeometry(), the builder first projects
+\f$f\circ F_p\f$ into its moving mesh spline space. For multiple
+patches this projection couples matching interfaces continuously. The moving
+mesh solver scales the projected monitor using \c --IntensityMAE and constructs
+a parameter map
+\f[
+ T_p:\hat\Omega\longrightarrow\hat\Omega,
+ \qquad \hat\Omega=(0,1)^d,\quad d\in\{2,3\}.
+\f]
+The map \f$T\f$ is stored in \c MAE.MAmapping. The physical composition is
+\f$X_p=F_p\circ T_p\f$; it remains a surface when \f$d=2\f$ and
+\f$F_p\f$ has three physical coordinates.
+The example uses \c normalizedGeometry() for direct composition, error
+evaluation, and integration, so all reference derivatives include the affine
+conversion. Composition and moving mesh bases are defined on unit boxes;
+marked-element bases passed to \c buildDensity must use the same coordinates.
+
+\section rh_refinement_mapping Moving mesh and boundary treatment
+
+The \c --uniformRefineMAE option refines the moving mesh and composition bases
+before constructing the map. Degree reduction or elevation of the moving mesh
+basis is controlled by \c --degreeRedution and \c --degreeMAEElevation,
+respectively; a positive reduction takes precedence over elevation.
+
+Multiple patches use the weighted elliptic MMPDE solver. The \c --exactGeo
+switch also selects this solver for a single patch and fixes exterior
+parameter traces at the identity. In two dimensions each sweep updates edges
+and then patch interiors; in three dimensions it updates edges, faces, and
+then volume interiors. Shared traces are synchronized with their interface
+orientations. With \c GISMO_WITH_OPENMP enabled, patch interiors can run
+concurrently after those traces have been synchronized; \c OMP_NUM_THREADS
+controls the thread limit. A single patch without \c --exactGeo uses the
+Monge-Ampere Picard branch.
+
+\section rh_refinement_composition Approximating the composition
+
+By default, \c buildColCompMultiPatch evaluates \f$F_p\circ T_p\f$ at the
+composition basis anchors and interpolates those values. Let \f$X_{h,p}\f$
+denote the resulting spline approximation. With \c --exactGeo, collocation
+also restores the original exterior boundary control coefficients when the
+refined initial geometry matches the composition basis. This correction
+requires preserving the initial geometry degree.
+
+The \c --H1 switch instead calls \c buildH1CompMultiPatch. It minimizes
+\f[
+ \sum_p\int_{\hat\Omega}
+   \|X_{h,p}-F_p\circ T_p\|^2
+   +\alpha\|D_\xi X_{h,p}-D_\xi(F_p\circ T_p)\|_F^2
+   \,d\xi,
+ \qquad \alpha=\texttt{gradientWeight}.
+\f]
+The derivatives are taken in reference coordinates, with
+\f$D_\xi(F_p\circ T_p)=DF_p(T_p)\,DT_p\f$. The projection retains the
+collocated exterior traces and couples matching patch interfaces continuously.
+The weight \c -w / \c --gradientWeight must be finite and non-negative;
+zero gives a value-only projection with the same prescribed boundary traces.
+The quadrature factor \c -q / \c --quadValue must be positive.
+
+\remark For surfaces in three-dimensional space, direct evaluation of
+\f$F_p\circ T_p\f$ using \c gsComposedGeometry preserves the original surface
+exactly, provided \f$T_p\f$ is a bijection of the reference domain onto itself.
+Collocation and H1 fitting can introduce geometric error in the surface
+interior; \c --exactGeo preserves compatible exterior boundary traces only.
+For exact surface preservation, refine the analysis basis and use the direct
+composition as the geometry for assembly.
+
+The moving map is computed once. Later uniform refinement of
+\c MAE.mapping_basis improves the composition approximation without
+recomputing \f$T\f$. By default only the final level selected by
+\c --uniformRefine is measured. Since \c last starts as \c true and switches
+toggle their initial value, passing \c --last enables reporting all levels
+from zero through \c --uniformRefine.
+
+\section rh_refinement_errors Error measures
+
+For each composition level, the example reports:
+
+- \c PositionInf: the sampled maximum of
+  \f$\|X_{h,p}-F_p\circ T_p\|_2\f$ over all patches.
+- \c GradientInf: the sampled maximum of
+  \f$\|D_\xi X_{h,p}-DF_p(T_p)DT_p\|_F\f$.
+- \c Boundary: the sampled position error on exterior patch sides only;
+  internal interfaces are excluded.
+- \c JacInt: the absolute value of the integral of the difference between
+  the approximate and direct composition Jacobian determinants, as evaluated
+  by the expression assembler. This is an integral discrepancy, not an
+  integral of the absolute pointwise error.
+
+Position, gradient, and boundary errors use a separate reference sampling grid
+with sampling factor 200; they are sampled maxima rather than certified
+supremum norms. When multiple uniform levels are reported, the table also
+prints rates \f$\log_2(E_{j-1}/E_j)\f$. Its \c DoFs column counts the scalar
+composition basis functions across patches, not the physical coordinate
+coefficients or unknowns of a PDE.
+
+\section rh_refinement_options Main options
+
+<table>
+<tr><th>Option</th><th>Default</th><th>Meaning</th></tr>
+<tr><td>\c -d / \c --file</td><td>\c pde/annulus2d_bvp.xml</td><td>Geometry XML file.</td></tr>
+<tr><td>\c -a / \c --id_mp</td><td>4</td><td>Multipatch ID in the geometry file.</td></tr>
+<tr><td>\c -b / \c --id_rho</td><td>1942</td><td>Density expression ID in \c pde/circle.xml.</td></tr>
+<tr><td>\c -m / \c --uniformRefineMAE</td><td>4</td><td>Initial uniform refinement steps for the mapping and composition bases.</td></tr>
+<tr><td>\c -i / \c --iter</td><td>100</td><td>Maximum Picard sweeps for mesh redistribution.</td></tr>
+<tr><td>\c -f / \c --IntensityMAE</td><td>9</td><td>Monitor contrast.</td></tr>
+<tr><td>\c -r / \c --degreeRedution</td><td>0</td><td>Moving mesh degree-reduction steps, retaining degree at least one.</td></tr>
+<tr><td>\c -s / \c --degreeMAEElevation</td><td>0</td><td>Moving mesh degree-elevation steps when reduction is zero.</td></tr>
+<tr><td>\c -u / \c --uniformRefine</td><td>0</td><td>Additional uniform refinement steps for composition only.</td></tr>
+<tr><td>\c --last</td><td>last = true</td><td>Toggle final-level-only reporting off to report all uniform levels.</td></tr>
+<tr><td>\c --exactGeo</td><td>false</td><td>Fix exterior parameter traces and restore compatible composition boundary coefficients.</td></tr>
+<tr><td>\c --H1</td><td>false</td><td>Use value and reference-gradient projection instead of collocation.</td></tr>
+<tr><td>\c -w / \c --gradientWeight</td><td>1</td><td>Gradient weight in H1 composition.</td></tr>
+<tr><td>\c -q / \c --quadValue</td><td>2</td><td>Quadrature factor for error integration and H1 composition.</td></tr>
+<tr><td>\c --plot</td><td>false</td><td>Run local h-refinement and export an additional physical geometry collection.</td></tr>
+<tr><td>\c -l / \c --numLRefine</td><td>1</td><td>Local h-refinement steps in the optional plotting stage.</td></tr>
+</table>
+
+The legacy options \c --degreeElevation, \c --elevDegree, and \c --nrb are
+parsed but do not change the current computation. The internal
+\c quRule option is not applied; this example uses Gauss-Legendre rules.
+
+\section rh_refinement_run Building and running
+
+From the repository root:
+\code{.sh}
+cmake -S . -B build -DGISMO_BUILD_EXAMPLES=ON
+cmake --build build --target rh_refinement_example -j 2
+cd build
+\endcode
+
+Run the default annulus, or the egg surface with a three-coordinate
+density:
+\code{.sh}
+./bin/rh_refinement_example
+./bin/rh_refinement_example -d surfaces/egg.xml -a 0 -b 1956 --exactGeo --plot
+./bin/rh_refinement_example -d pde/surfacepoisson_sphere_bvp.xml -a 0 -b 1958
+\endcode
+
+Compare collocation and H1 composition on the cylinder using a fixed exterior
+boundary:
+\code{.sh}
+./bin/rh_refinement_example -d surfaces/cylinder.xml -a 1 -b 1954 --exactGeo
+./bin/rh_refinement_example -d surfaces/cylinder.xml -a 1 -b 1954 --exactGeo --H1 -w 1
+\endcode
+
+To report three composition levels while keeping the moving map unchanged:
+\code{.sh}
+./bin/rh_refinement_example -m 2 -i 20 -u 2 --last
+\endcode
+
+\section rh_refinement_output Output and optional local refinement
+
+Even without \c --plot, the example writes these ParaView outputs relative to
+the working directory:
+
+- \c ParaviewOutput/density.pvd: all patch densities as separate fields on one
+  reference patch.
+- \c ParaviewOutput/MAE_mapping_patchN: each moving parameter map and its
+  element mesh.
+- \c ParaviewOutput/composition_direct.pvd and
+  \c ParaviewOutput/composition_approx.pvd: the directly evaluated composition
+  and its spline approximation, including Jacobians, position error, gradient
+  error, and element meshes.
+
+The composition collections are rewritten at each reported level, so their
+final contents correspond to the last level. Error vectors are appended to
+\c ../build/errorGeometry_analysis.txt; running from the build directory as
+above places this file in that directory.
+
+With \c --plot, the final approximate physical geometry is converted to a
+hierarchical representation where necessary. The example integrates the
+analytic density over each parameter element, marks cells using PUCA with
+parameter 0.7, and refines with one ring of neighboring cells for
+\c --numLRefine steps. This stage refines the representation of the computed
+geometry; it does not recompute the moving map or repeat the composition error
+analysis. The result is written to \c ParaviewOutput/solution.pvd with density
+and Jacobian fields, and the example requests opening it in the local viewer.
+
+\section rh_refinement_source Source
+
+\include rh_refinement_example.cpp
+
+*/
+
+}

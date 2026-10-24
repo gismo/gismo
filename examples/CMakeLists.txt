@@ -47,6 +47,20 @@ foreach(file ${FILES})
   install(TARGETS ${tarname} DESTINATION "${BIN_INSTALL_DIR}" COMPONENT exe OPTIONAL)
 endforeach(file ${FILES})
 
+if(GISMO_BUILD_UNITTESTS AND TARGET rh_refinement_example)
+  # Keep generated files separate from other examples and avoid launching a viewer.
+  set(rh_surface_test_dir "${CMAKE_CURRENT_BINARY_DIR}/rh_refinement_sphere_surface/build")
+  file(MAKE_DIRECTORY "${rh_surface_test_dir}")
+  add_test(NAME rh_refinement_sphere_surface
+    COMMAND $<TARGET_FILE:rh_refinement_example>
+      -d pde/surfacepoisson_sphere_bvp.xml -a 0 -b 1958
+      -m 1 -i 2 --plot --exactGeo --no-open)
+  set_tests_properties(rh_refinement_sphere_surface PROPERTIES
+    WORKING_DIRECTORY "${rh_surface_test_dir}"
+    LABELS "examples;regression"
+    TIMEOUT 60)
+endif()
+
 list(LENGTH FILES len)
 message(STATUS "Number of examples to compile: ${len}")
 

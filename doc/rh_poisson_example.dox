@@ -1,0 +1,199 @@
+namespace gismo {
+
+/**
+\page rh_poisson_example rh_poisson_example.cpp: adaptive rh-refinement
+
+This example solves the Poisson equation on a spline multipatch domain while
+combining mesh redistribution (r-refinement) with local hierarchical
+h-refinement. It extends the ideas in \ref poisson_example and
+\ref adaptRefinementThb_example using \c gsAdaptiveMultiPatchBuilder.
+
+\section rh_poisson_problem Problem and input data
+
+The manufactured boundary value problem is
+\f[
+    -\Delta u=f \quad\hbox{in }\Omega,
+    \qquad u=u_{\mathrm{ex}} \quad\hbox{on }\partial\Omega.
+\f]
+Dirichlet conditions are prescribed on exterior patch sides. Internal patch
+interfaces are coupled conformingly; they are not Dirichlet boundaries.
+
+The default input, \c filedata/pde/annulus2d_bvp.xml, contains four NURBS patches
+forming an annulus. The selected XML file must contain:
+
+- A \c MultiPatch with the ID selected by \c --id_mp (default: 4).
+- A scalar \c FunctionExpr with ID 2000, defining \f$u_{\mathrm{ex}}\f$.
+- A scalar \c FunctionExpr with ID 2001, defining \f$f=-\Delta u_{\mathrm{ex}}\f$.
+
+Both functions are defined in physical coordinates. For a volume problem,
+provide a three-dimensional multipatch and functions with domain dimension
+three. A geometry-only XML file is insufficient for this example.
+
+Tensor B-spline and NURBS patches are converted to hierarchical geometries;
+existing hierarchical patches are retained. The solution basis is polynomial,
+even when the geometry is rational. Degree elevation precedes the initial
+uniform refinement.
+
+\section rh_poisson_maps Geometry and moving mesh
+
+Let \f$F_p^0\f$ denote the initial geometry of patch \f$p\f$ expressed on a
+unit parameter box. For arbitrary XML knot intervals, the builder stores an
+affine conversion \f$A_p\f$ in \c parameterConversion() and represents
+\f$F_p^0=F_p^{\mathrm{xml}}\circ A_p\f$ exactly by normalizing a copy's knots,
+preserving its coefficients and weights. The example obtains this copy from
+\c normalizedGeometry() before constructing the PDE basis, so marked-element
+coordinates and moving mesh coordinates agree. The input XML is unchanged.
+The builder computes
+a parameter mapping \f$T_p:\hat\Omega\rightarrow\hat\Omega\f$, where
+\f$\hat\Omega=(0,1)^d\f$, and constructs an approximation of
+\f[
+    X_p=F_p^0\circ T_p.
+\f]
+The builder stores \f$T\f$ in \c MAmapping; the example stores the resulting
+physical geometry \f$X\f$ in \c Psi. The moving mesh basis and the locally refined
+PDE basis are separate: subsequent h-refinement changes \c dbasis without
+increasing the moving mesh iteration budget or refining its basis.
+
+\snippet rh_poisson_example.cpp Moving mesh setup
+
+The final constructor argument is \c true, enabling \c exactGeo. Thus this
+example uses the weighted elliptic MMPDE branch even for a single patch.
+Exterior parameter traces stay at the identity, while shared interfaces may
+redistribute. Composition by collocation restores the initial exterior boundary
+control coefficients when the composition basis matches the refined geometry.
+The interior composition is an approximation.
+
+The monitor is scaled to approximately \f$[1,I]\f$, where
+\f$I=\texttt{IntensityMAE}\f$. For each mapping coordinate \f$q\f$, one Picard
+update has the form
+\f[
+ \int_{\hat E}\nabla v\cdot\nabla q^{k+1}
+ =\int_{\hat E}\left(1-\frac{\rho(T^k)}{C}\right)
+                      \nabla v\cdot\nabla q^k,
+\f]
+with the appropriate monitor trace on \f$\hat E\f$ and Dirichlet data from its
+boundary. The normalization \f$C\f$ is the sampled scaled monitor maximum plus
+five. In two dimensions, a sweep updates edges and then patch interiors. In
+three dimensions, it updates edges, faces, and then volume interiors. Shared
+entities are synchronized with their interface orientations.
+
+With \c GISMO_WITH_OPENMP enabled, patch interiors are updated concurrently after
+the edge and face stages have completed. Set \c OMP_NUM_THREADS to control the
+thread limit; the interior stage uses at most one worker per patch. Its
+quadrature buffers belong to individual workers, while the Poisson
+factorizations are shared read-only. Edges, faces, and interface synchronization
+remain sequential. Single-patch interiors use the serial path.
+
+Mapping coefficients use a common tensor B-spline basis on the parameter domain.
+Shared traces must match after tangential direction permutations and reversals.
+The three-dimensional implementation requires clamped, nonperiodic bases.
+The reported minimum Jacobian is a diagnostic, not a proof of bijectivity.
+
+\section rh_poisson_solve Solving Poisson on the current mesh
+
+The expression assembler uses the current physical geometry to assemble
+\f[
+    \int_\Omega\nabla v_h\cdot\nabla u_h
+      =\int_\Omega v_h f.
+\f]
+Boundary values are imposed by L2 projection, and the linear system is solved
+using conjugate gradients with diagonal preconditioning.
+
+\snippet rh_poisson_example.cpp Poisson weak form
+
+The example reports the physical L2 error and H1 seminorm error:
+\f[
+ \|u_{\mathrm{ex}}-u_h\|_{L^2(\Omega)},
+ \qquad \|\nabla u_{\mathrm{ex}}-\nabla u_h\|_{L^2(\Omega)}.
+\f]
+
+\section rh_poisson_adapt Adaptive loop
+
+If \c IntensityMAE is greater than one, an initial Poisson solve supplies the
+first monitor. The initial mesh uses at most \c --iter Picard sweeps. Each
+subsequent adaptive level performs the following steps:
+
+1. Solve Poisson and measure the errors on the current geometry and PDE basis.
+2. Compute patch-by-patch, elementwise squared strong residuals
+   \f$(\Delta_x u_h+f)^2\f$. The current indicator integrates in parameter
+   coordinates; it does not include a physical measure factor, interface flux
+   jumps, or mesh-size weights. It is used for marking rather than presented as
+   a complete residual error estimator.
+3. Mark cells separately for h-refinement and monitor construction. The latter
+   produces a piecewise constant density and projects it into the moving mesh
+   spline space. An existing parameter mapping is used to transfer the density
+   back to the initial parameter domain.
+4. Reuse the previous \c MAmapping for at most \c --mappingUpdates sweeps and
+   rebuild the physical composition. When r-refinement is enabled, the example
+   also broadens h-marking using its dof-dependent residual threshold.
+5. Refine the marked PDE cells and repair patch interfaces before the next solve.
+
+\snippet rh_poisson_example.cpp Mesh update
+
+\snippet rh_poisson_example.cpp Local refinement
+
+The final level is solved and measured without another refinement. There are
+\c numLRefine+1 reported levels, plus the preliminary solve when r-refinement
+is enabled. As this is a sequence of stationary solves, the PDE solution is
+recomputed after changing the mesh.
+
+\section rh_poisson_options Main options
+
+<table>
+<tr><th>Option</th><th>Default</th><th>Meaning</th></tr>
+<tr><td>\c -d / \c --file</td><td>\c pde/annulus2d_bvp.xml</td><td>Geometry and manufactured problem data.</td></tr>
+<tr><td>\c -x / \c --id_mp</td><td>4</td><td>Multipatch ID in the XML file.</td></tr>
+<tr><td>\c -e / \c --degreeElevation</td><td>0</td><td>Extra degree-elevation steps before refinement.</td></tr>
+<tr><td>\c -u / \c --uniformRefine</td><td>4</td><td>Initial uniform refinement steps for the solution and mapping bases.</td></tr>
+<tr><td>\c -l / \c --numLRefine</td><td>3</td><td>Number of local h-refinement steps.</td></tr>
+<tr><td>\c -i / \c --iter</td><td>50</td><td>Initial moving mesh sweep budget.</td></tr>
+<tr><td>\c -m / \c --mappingUpdates</td><td>5</td><td>Warm-started moving mesh sweep budget per adaptive level.</td></tr>
+<tr><td>\c -f / \c --IntensityMAE</td><td>9</td><td>Monitor contrast; use 1 for h-refinement without mesh redistribution.</td></tr>
+<tr><td>\c -r / \c --adaptRefCrit</td><td>2</td><td>Marking strategy: 1 GARU, 2 PUCA, 3 BULK, 4 PBULK.</td></tr>
+<tr><td>\c -a / \c --adaptRefParam</td><td>0.7</td><td>h-refinement marking parameter.</td></tr>
+<tr><td>\c -p / \c --adaptRefParamMAE</td><td>0.7</td><td>Monitor marking parameter, including initial adaptation.</td></tr>
+<tr><td>\c -c / \c --NumArMarEl</td><td>0</td><td>Additional rings around marked cells.</td></tr>
+</table>
+
+Setting \c --mappingUpdates to zero retains the initially adapted parameter
+mapping during later h-refinement; it does not disable the initial adaptation.
+The legacy \c -v / \c --degree option is an alias for additional degree-elevation
+steps, not an absolute target degree.
+
+\section rh_poisson_run Building and running
+
+From the repository root, configure and build the example:
+\code{.sh}
+cmake -S . -B build -DGISMO_BUILD_EXAMPLES=ON
+cmake --build build --target rh_poisson_example -j 2
+\endcode
+
+A small run on the four-patch annulus is:
+\code{.sh}
+./build/bin/rh_poisson_example -u 2 -l 1 -i 8 -m 2
+\endcode
+
+For an h-only comparison with the same initial PDE resolution:
+\code{.sh}
+./build/bin/rh_poisson_example -u 2 -l 1 -f 1
+\endcode
+
+To retain the initially adapted mesh during subsequent h-refinement:
+\code{.sh}
+./build/bin/rh_poisson_example -u 2 -l 1 -i 8 -m 0
+\endcode
+
+\c --errorsave appends dof counts and L2/H1 errors to \c error_analysis.txt.
+\c --plot writes \c ParaviewOutput/solution.pvd and patch files containing the
+solution, its physical gradient, the residual indicator, the Jacobian, and the
+manufactured solution. \c --export_b64 selects base64 output for that collection.
+The example also requests opening the collection in the local viewer when
+\c --plot is used.
+
+\section rh_poisson_source Annotated source
+
+\include rh_poisson_example.cpp
+
+*/
+
+}

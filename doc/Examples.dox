@@ -66,6 +66,10 @@ In the gismo/examples sub-directory we find:
 
 - \subpage poissonTHB_example
 
+- \subpage rh_poisson_example
+
+- \subpage rh_refinement_example
+
 - \subpage sparseSolvers_example
 
 - \subpage stokes_ieti_example

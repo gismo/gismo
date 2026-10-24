@@ -13,6 +13,9 @@
 #pragma once
 
 #include <gsSolver/gsSumOp.h>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 #include <gsSolver/gsProductOp.h>
 #include <gsSolver/gsKroneckerOp.h>
 #include <gsSolver/gsMatrixOp.h>
@@ -358,6 +361,137 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         gsKroneckerOp<T>::make(Qop)
         );
 }
+
+//-------------------------@ M. BAHARI
+template<typename T>
+gsPatchPreconditionersCreator<T>::Poisson_FastDiag::Poisson_FastDiag(const gsBasis<T>& basis,
+            const gsBoundaryConditions<T>& bc,
+            const gsOptionList& opt,
+            T tau)
+        : _tau(tau)
+{
+    const index_t rdim = basis.dim();
+
+    // Assemble univariate local stiff matrix
+    std::vector< gsSparseMatrix<T> > Ks = assembleTensorStiffness(basis, bc, opt);
+    // Assemble univariate local mass matrix
+    std::vector< gsSparseMatrix<T> > Ms  = assembleTensorMass(basis, bc, opt);
+
+    typedef typename gsMatrix<T>::GenSelfAdjEigenSolver EVSolver;
+    EVSolver es;
+
+    for (index_t i = 0; i < rdim; ++i) {
+        /*
+        We first consider the generalized eigendecompositions problems
+        𝐾1 𝑈1 = 𝑀1𝑈1d1, 𝐾2𝑈2 = 𝑀2𝑈2d2, 𝐾3𝑈3 = 𝑀3𝑈3d3,
+        where d1, d2 and d3 are diagonal matrices such that 𝑈1, 𝑈2 and 𝑈3 fulfills
+        𝑈^𝑇𝑀_1𝑈_1 = 𝐼1, 𝑈^𝑇𝑀_2𝑈_2 = 𝐼_2, 𝑈^𝑇𝑀_3𝑈_3 = 𝐼_3
+        */
+        //gsEigen::GeneralizedSelfAdjointEigenSolver<gsSparseMatrix<T>> es(Ks[i], Ms[i]);
+        es.compute(Ks[rdim-1-i], Ms[rdim-i-1], gsEigen::ComputeEigenvectors);
+
+        ds.push_back(es.eigenvalues());
+        Us.push_back(es.eigenvectors());
+    }
+    // dimension of paraemtric space
+    this->_rdim = rdim;
+}
+
+// Computes the approximate solution of ∫-\nabla u *\nabla v + eps * u *v = ∫(funct * v) as input,
+// where funct is the input function, and v is the test function.
+template<typename T>
+gsMatrix<T> gsPatchPreconditionersCreator<T>::Poisson_FastDiag::solve(const gsMatrix<T>& b) const
+{
+    // Factorizations are shared, but every concurrent call owns its work matrix.
+    gsMatrix<T> s_tilde;
+    if (_rdim == 2) {
+        index_t n1 = ds[0].rows();
+        index_t n2 = ds[1].rows();
+
+        s_tilde = b.reshape(n1,n2);
+        s_tilde = Us[0].transpose()*s_tilde*Us[1];
+        #pragma omp parallel for if(!omp_in_parallel())
+        for (index_t i1 = 0; i1 < n1; ++i1) {
+            for (index_t i2 = 0; i2 < n2; ++i2) {
+                s_tilde(i1, i2) = s_tilde(i1, i2) / (ds[0](i1,0) + ds[1](i2,0) + _tau);
+            }
+        }
+        s_tilde = Us[0]*s_tilde * Us[1].transpose();
+        s_tilde = s_tilde.reshape(n1*n2, 1);
+        return s_tilde;
+    } else {
+        //...
+        index_t n1 = ds[0].rows();
+        index_t n2 = ds[1].rows();
+        index_t n3 = ds[2].rows();
+
+        s_tilde = b.reshape(n1,n2*n3);
+        s_tilde = s_tilde.transpose() * Us[0];
+        // matrix become (n2*n3, n1)
+        #pragma omp parallel for if(!omp_in_parallel())
+        for (index_t i1 = 0; i1 < n1; ++i1) {
+            // Each OpenMP iteration owns its slice of the tensor transform.
+            gsMatrix<T> slice = s_tilde.col(i1);
+            slice = slice.reshape(n2, n3);
+            slice = Us[1].transpose() * slice * Us[2];
+            //...
+            for (index_t i2 = 0; i2 < n2; ++i2) {
+                for (index_t i3 = 0; i3 < n3; ++i3) {
+                    slice(i2, i3) = slice(i2, i3) / (ds[0](i1,0) + ds[1](i2,0) + ds[2](i3,0) + _tau);
+                }
+            }
+            slice = Us[1] * slice * Us[2].transpose();
+            s_tilde.col(i1) = slice.reshape(n2*n3,1);
+        }
+        s_tilde = Us[0] * s_tilde.transpose();
+
+        s_tilde = s_tilde.reshape(n1*n2*n3, 1);
+        return s_tilde;
+    }
+}
+
+// Computes the L2-projection of a function using ∫(funct * v) as input,
+// where funct is the input function, and v is the test function.
+// (A\otimesB)x = vec(BXA^T)
+template<typename T>
+gsMatrix<T> gsPatchPreconditionersCreator<T>::Poisson_FastDiag::L2ProjectScalar(const gsMatrix<T>& b) const
+{
+    // Factorizations are shared, but every concurrent call owns its work matrix.
+    gsMatrix<T> s_tilde;
+    if(_rdim == 2){
+        index_t n1 = ds[0].rows();
+        index_t n2 = ds[1].rows();
+
+        s_tilde = b.reshape(n1,n2);
+        s_tilde = Us[0].transpose()*s_tilde*Us[1];
+        //...
+        s_tilde = Us[0]*s_tilde * Us[1].transpose();
+        s_tilde = s_tilde.reshape(n1*n2, 1);
+    } else{
+        //...
+        index_t n1 = ds[0].rows();
+        index_t n2 = ds[1].rows();
+        index_t n3 = ds[2].rows();
+
+        s_tilde = b.reshape(n1,n2*n3);
+        s_tilde = s_tilde.transpose() * Us[0];
+        // matrix become (n2*n3, n1)
+        #pragma omp parallel for if(!omp_in_parallel())
+        for (index_t i1 = 0; i1 < n1; ++i1) {
+            // Each OpenMP iteration owns its slice of the tensor transform.
+            gsMatrix<T> slice = s_tilde.col(i1);
+            slice = slice.reshape(n2, n3);
+            slice = Us[1].transpose() * slice * Us[2];
+            //...
+            slice = Us[1] * slice * Us[2].transpose();
+            s_tilde.col(i1) = slice.reshape(n2*n3,1);
+        }
+        s_tilde = Us[0] * s_tilde.transpose();
+        s_tilde = s_tilde.reshape(n1*n2*n3, 1);
+    }
+    return s_tilde;
+}
+//----------------------@ M. BAHARI : The end
 
 namespace {
 
