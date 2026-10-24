@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--This file was created by G+Smo 24.8.0-->
 <xml>
  <Geometry type="TensorBSpline3" id="0">
     <Basis type="TensorBSplineBasis3">
@@ -98,15 +97,6 @@
     0.492 0.505 1.0
 </coefs>
  </Geometry>
-  <MultiPatch parDim="3" id="1">
-  <patches type="id_range">0 0</patches>
-  <boundary>0 1
-   0 2
-   0 3
-   0 4
-   0 5
-   0 6
-  </boundary>
- </MultiPatch>
 </xml>
+
  
