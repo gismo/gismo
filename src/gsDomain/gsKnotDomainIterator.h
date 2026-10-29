@@ -102,5 +102,66 @@ public:
 
 }; // class gsKnotDomainIterator
 
+/**
+ * @brief Iterator over the boundary of a knot-vector domain on side
+ * west or east: one element, the end point of the domain on that side.
+ *
+ * The element has zero length (lowerCorner() == upperCorner()), like the
+ * fixed direction of gsTensorDomainBoundaryIterator in higher dimensions;
+ * gsQuadRule::mapTo maps a rule with one node in that direction onto the
+ * point with weight 1.
+ */
+template<class T>
+class gsKnotDomainBoundaryIterator : public gsDomainIterator<T>
+{
+private:
+    typedef typename gsDomainIterator<T>::uPtr domainIter;
+
+    // Data members
+    T m_point; // end knot of the domain on the side
+    T m_width; // length of the knot span next to it
+
+public:
+
+    gsKnotDomainBoundaryIterator(const gsKnotVector<T> & _knots, const boxSide & s)
+    : gsDomainIterator<T>(0, s)
+    {
+        GISMO_ENSURE(s == boundary::west || s == boundary::east,
+                     "A knot vector domain has the boundary sides west and east, got "<< s);
+        if (s.parameter())
+        {
+            m_point = *_knots.domainUEnd();
+            m_width = m_point - *(_knots.domainUEnd() - 1);
+        }
+        else
+        {
+            m_point = *_knots.domainUBegin();
+            m_width = *(_knots.domainUBegin() + 1) - m_point;
+        }
+    }
+
+    gsKnotDomainBoundaryIterator(const gsKnotDomainBoundaryIterator & other) = default;
+    domainIter clone() const override { return domainIter(new gsKnotDomainBoundaryIterator(*this)); }
+
+    // A single element: the loops compare element ids with endBdr(), so
+    // stepping changes the id only
+    void next() override { }
+    void next(index_t) override { }
+    void prev() override { }
+    void prev(index_t) override { }
+    void reset() override { }
+
+    gsVector<T> lowerCorner() const override
+    { return gsVector<T>::Constant(1, m_point); }
+
+    gsVector<T> upperCorner() const override
+    { return gsVector<T>::Constant(1, m_point); }
+
+    const T getPerpendicularCellSize() const override { return m_width; }
+
+    bool isBoundaryElement() const override { return true; }
+
+}; // class gsKnotDomainBoundaryIterator
+
 
 } // namespace gismo
