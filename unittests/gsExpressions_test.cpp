@@ -171,6 +171,16 @@ SUITE(gsExpressions_test)
 
         CHECK_EQUAL((ev.eval(grad(f2D/2),pt)  -grad_func2D/2).norm(), 0.0);
 
+        // The gradient of a vector-valued function is its Jacobian, also in
+        // its dimensions, so it combines with other matrices of that size
+        CHECK_EQUAL(1, grad(f1D).rows());
+        CHECK_EQUAL(2, grad(f2D).rows());
+        CHECK_EQUAL(2, grad(f2D).cols());
+        CHECK_EQUAL((ev.eval(grad(f2D) - jac(f2D),pt)).norm(), 0.0);
+        auto f2Dphys = ev.getVariable(func2D, G);
+        CHECK_EQUAL(2, grad(f2Dphys).rows());
+        CHECK((ev.eval(grad(f2Dphys) - jac(f2D),pt)).norm() < 1e-12);
+
         // Space gradient
         CHECK_EQUAL((ev.eval(grad(u),pt)-grad_mb).norm(), 0.0);
 
