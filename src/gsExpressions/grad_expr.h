@@ -43,6 +43,9 @@ public:
     grad_expr(const E & u) : _u(u)
     { GISMO_ASSERT(1==u.dim(),"grad(.) requires 1D variable, use jac(.) instead.");}
 
+    // tmp is scratch space of eval(); a copy starts without it
+    grad_expr(const grad_expr & other) : _expr<grad_expr<E> >(), _u(other._u) { }
+
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
         // Assumes: derivatives are in _u.data().values[1]
