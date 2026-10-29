@@ -362,4 +362,145 @@ SUITE(gsExpressions_test)
 
     }
 
+/*
+    FROBENIUS PRODUCT
+*/
+    // jac(u) of a space with dim() components on a d-dimensional parameter
+    // domain has one dim() x d block per basis function (row = component),
+    // and jac(u).cwisetr() % jac(v).tr() multiplies whole blocks: it is the
+    // gradient product sum_ij d_j u_i d_j v_i, i.e. the scalar stiffness
+    // matrix grad(s) * grad(t).tr() in each diagonal component block and
+    // zero between components.  The blocks are square only if dim() == d;
+    // here a surface in 3D with three components and a curve in 2D with two.
+    TEST(frprod_nonsquare_blocks)
+    {
+        for (index_t c = 0; c != 2; ++c)
+        {
+            gsMultiPatch<real_t> mp;
+            if (0 == c)
+            {
+                mp.addPatch(gsNurbsCreator<real_t>::BSplineSquare(1.0));
+                mp.embed(3);
+                mp.degreeElevate(1);
+                mp.patch(0).coefs()(4,2) = 0.5; // lift the middle control point
+            }
+            else
+            {
+                gsKnotVector<real_t> kv(0, 1, 1, 3);
+                gsMatrix<real_t> coefs(4,2);
+                coefs << 0,0, 1,0.5, 2,0.2, 3,1;
+                mp.addPatch(gsBSpline<real_t>(gsBSplineBasis<real_t>(kv), coefs));
+            }
+            const index_t dim = mp.targetDim();
+            gsMultiBasis<real_t> mb(mp);
+            mb.uniformRefine();
+            const index_t n = mb.basis(0).size();
+            gsBoundaryConditions<real_t> bc;
+
+            gsExprAssembler<real_t> A(1,1);
+            A.setIntegrationElements(mb);
+            auto G = A.getMap(mp);
+            auto u = A.getSpace(mb, dim);
+            u.setup(bc, dirichlet::homogeneous, 0);
+            A.initSystem();
+            A.assemble(jac(u).cwisetr() % jac(u).tr() * meas(G));
+            const gsMatrix<real_t> M = A.matrix().toDense();
+
+            gsExprAssembler<real_t> B(1,1);
+            B.setIntegrationElements(mb);
+            auto H = B.getMap(mp);
+            auto s = B.getSpace(mb);
+            s.setup(bc, dirichlet::homogeneous, 0);
+            B.initSystem();
+            B.assemble(grad(s) * grad(s).tr() * meas(H));
+            const gsMatrix<real_t> K = B.matrix().toDense();
+
+            CHECK_EQUAL(dim*n, M.rows());
+            real_t err = 0;
+            for (index_t a = 0; a != dim; ++a)
+                for (index_t b = 0; b != dim; ++b)
+                    for (index_t i = 0; i != n; ++i)
+                        for (index_t j = 0; j != n; ++j)
+                        {
+                            const real_t Kij = (a == b ? K(s.mapper().index(i), s.mapper().index(j)) : 0);
+                            err = math::max(err, math::abs(M(u.mapper().index(i,0,a), u.mapper().index(j,0,b)) - Kij));
+                        }
+            CHECK(err < 1e-12 * K.lpNorm<gsEigen::Infinity>());
+        }
+    }
+
+    // The same product between a test and a trial space with different
+    // numbers of basis functions (degree p and p+1 on the same elements):
+    // the result has one row per test and one column per trial function.
+    TEST(frprod_distinct_spaces)
+    {
+        gsMultiPatch<real_t> mp(*gsNurbsCreator<real_t>::BSplineFatQuarterAnnulus());
+        gsMultiBasis<real_t> mb(mp), mb2(mp);
+        mb.uniformRefine();
+        mb2.uniformRefine();
+        mb2.degreeElevate(1);
+        const index_t dim = 2, n = mb.basis(0).size(), n2 = mb2.basis(0).size();
+        gsBoundaryConditions<real_t> bc;
+
+        gsExprAssembler<real_t> A(2,2);
+        A.setIntegrationElements(mb);
+        auto G = A.getMap(mp);
+        auto u = A.getSpace(mb,  dim, 0);
+        auto v = A.getSpace(mb2, dim, 1);
+        u.setup(bc, dirichlet::homogeneous, 0);
+        v.setup(bc, dirichlet::homogeneous, 0);
+        A.initSystem();
+        A.assemble(jac(u).cwisetr() % jac(v).tr() * meas(G));
+        const gsMatrix<real_t> M = A.matrix().toDense();
+
+        gsExprAssembler<real_t> B(2,2);
+        B.setIntegrationElements(mb);
+        auto H = B.getMap(mp);
+        auto s = B.getSpace(mb,  1, 0);
+        auto t = B.getSpace(mb2, 1, 1);
+        s.setup(bc, dirichlet::homogeneous, 0);
+        t.setup(bc, dirichlet::homogeneous, 0);
+        B.initSystem();
+        B.assemble(grad(s) * grad(t).tr() * meas(H));
+        const gsMatrix<real_t> K = B.matrix().toDense();
+
+        CHECK_EQUAL(dim*(n+n2), M.rows());
+        real_t err = 0;
+        for (index_t a = 0; a != dim; ++a)
+            for (index_t b = 0; b != dim; ++b)
+                for (index_t i = 0; i != n; ++i)
+                    for (index_t j = 0; j != n2; ++j)
+                    {
+                        const real_t Kij = (a == b ? K(s.mapper().index(i), t.mapper().index(j)) : 0);
+                        err = math::max(err, math::abs(M(u.mapper().index(i,0,a), v.mapper().index(j,0,b)) - Kij));
+                    }
+        CHECK(err < 1e-12 * K.lpNorm<gsEigen::Infinity>());
+    }
+
+    // Without a space on either side, A % B is a single scalar, also when
+    // A and B are not square (here the 3 x 2 Jacobian of a surface in 3D)
+    TEST(frprod_nonsquare_variables)
+    {
+        gsMultiPatch<real_t> mp;
+        mp.addPatch(gsNurbsCreator<real_t>::BSplineSquare(1.0));
+        mp.embed(3);
+        mp.degreeElevate(1);
+        mp.patch(0).coefs()(4,2) = 0.5; // lift the middle control point
+        gsMultiBasis<real_t> mb(mp);
+
+        gsExprEvaluator<real_t> ev;
+        ev.setIntegrationElements(mb);
+        auto G = ev.getMap(mp);
+        CHECK_EQUAL(1, (jac(G) % jac(G)).rows());
+        CHECK_EQUAL(1, (jac(G) % jac(G)).cols());
+
+        gsVector<real_t> pt(2);
+        pt << 0.3, 0.6;
+        const gsMatrix<real_t> J = mp.patch(0).jacobian(pt);
+        const gsMatrix<real_t> v = ev.eval(jac(G) % jac(G), pt);
+        CHECK_EQUAL(1, v.rows());
+        CHECK_EQUAL(1, v.cols());
+        CHECK_CLOSE(J.squaredNorm(), v(0,0), 1e-12);
+    }
+
 }
