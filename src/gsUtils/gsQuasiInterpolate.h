@@ -285,7 +285,7 @@ protected:
      * @param n number of points
      * @param[out] computed points
      */
-    static void distributePoints(T a, T b, int n, gsMatrix<T> &points);
+    static void distributePoints(T a, T b, index_t n, gsMatrix<T> &points);
 
 
     /**

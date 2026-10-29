@@ -179,7 +179,7 @@ public:
     void degreeElevate(short_t const i = 1, short_t const dir = -1) override;
 
     /// Inserts knot \a knot at direction \a dir, \a i times
-    void insertKnot( T knot, int dir, int i = 1) override;
+    void insertKnot( T knot, index_t dir, index_t i = 1) override;
 
     /// Returns a reference to the knot vector in direction \a i
     KnotVectorType & knots(const int i) { return this->basis().knots(i); }
