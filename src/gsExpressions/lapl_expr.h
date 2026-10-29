@@ -33,7 +33,8 @@ public:
     typedef typename E::Scalar Scalar;
     enum {Space = E::Space, ScalarValued= 0, ColBlocks= 0};
 
-    lapl_expr(const E & u) : _u(u) { }
+    lapl_expr(const E & u) : _u(u)
+    { GISMO_ASSERT(0==Space || 1==u.dim(), "lapl(.) requires a scalar space (dim 1)"); }
 
     auto eval(const index_t k) const -> decltype(_u.data().laplacians.col(k))
     {
@@ -44,7 +45,9 @@ public:
         // ..nabla2.sum()
     }
 
-    index_t rows() const { return _u.data().laplacians.rows(); }
+    // Per basis function for a space (eval() stacks one row per active
+    // function), as for hess(u).trace()
+    index_t rows() const { return 0==Space ? _u.data().laplacians.rows() : 1; }
     index_t cols() const { return 1; }
 
     index_t cardinality_impl() const { return _u.cardinality_impl(); }
@@ -55,8 +58,8 @@ public:
         _u.data().flags |= NEED_LAPLACIAN;
     }
 
-    static const gsFeSpace<Scalar> & rowVar() {return E::rowVar();}
-    static const gsFeSpace<Scalar> & colVar() {return gsNullExpr<Scalar>::get();}
+    const gsFeSpace<Scalar> & rowVar() const {return _u.rowVar();}
+    const gsFeSpace<Scalar> & colVar() const {return gsNullExpr<Scalar>::get();}
 
     void print(std::ostream &os) const { os << "\u2206("; _u.print(os); os <<")"; } //or \u0394
 };

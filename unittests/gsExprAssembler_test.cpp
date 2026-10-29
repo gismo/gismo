@@ -258,6 +258,40 @@ SUITE(gsExprAssembler_test)
         CHECK(A.matrix().rows() > 0);
     }
 
+    // lapl(u) of a space must be usable in an assembled form; it is the
+    // parametric Laplacian, i.e. hess(u).trace()
+    TEST(LaplacianOfSpace)
+    {
+        gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(2,1,1.0);
+        gsMultiBasis<> mb(mp);
+        mb.degreeElevate(2);
+        mb.uniformRefine(1);
+        gsFunctionExpr<> ff("sin(x)*y", 2);
+
+        gsExprAssembler<> A(1,1);
+        A.setIntegrationElements(mb);
+        auto G = A.getMap(mp);
+        auto u = A.getSpace(mb);
+        auto f = A.getCoeff(ff, G);
+        u.setup(0);
+
+        A.initSystem();
+        A.assemble(lapl(u) * lapl(u).tr() * meas(G) + (lapl(u) + u) * u.tr() * meas(G),
+                   lapl(u) * f * meas(G));
+        const gsSparseMatrix<> M = A.matrix();
+        const gsMatrix<>       b = A.rhs();
+
+        A.initSystem();
+        A.assemble(hess(u).trace() * hess(u).trace().tr() * meas(G)
+                   + (hess(u).trace() + u) * u.tr() * meas(G),
+                   hess(u).trace() * f * meas(G));
+
+        CHECK(M.norm() > 1);
+        CHECK(b.norm() > 1e-3);
+        CHECK((M - A.matrix()).norm() <= 1e-12 * M.norm());
+        CHECK((b - A.rhs()).norm()    <= 1e-12 * b.norm());
+    }
+
     TEST(TestSpaceReRegistrationKeepsItsData)
     {
         gsBSplineBasis<real_t> bb(0.0, 1.0, 3, 3);
