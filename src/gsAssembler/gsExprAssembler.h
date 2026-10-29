@@ -507,9 +507,11 @@ public:
     /// \brief Adds the Jacobian of the interface residual \a residual with
     /// respect to the solution \a u to the system matrix, by finite differences
     ///
-    /// Only the dofs active on the first side of each interface are
-    /// perturbed, so the dependence of \a residual on <tt>u.right()</tt> is not
-    /// differentiated. The matrix is not cleared first.
+    /// The dofs active on the first side of each interface are perturbed,
+    /// and those active on the second side too if \a residual is evaluated
+    /// across the interface (e.g. through <tt>u.right()</tt>). With the
+    /// option movingInterface, only the dofs of the side of the test
+    /// functions are perturbed. The matrix is not cleared first.
     template<class expr> void assembleJacobianIfc(const ifContainer & iFaces,
                                                   const expr residual, solution  u);
 
@@ -660,45 +662,60 @@ private:
         template <typename E> void diff(const gismo::expr::_expr<E> & ee,
                                         solution & u)
         {
+            std::vector<index_t> done;
+            diff(ee, u, u.space(), done);
+        }
+
+        // Adds the Jacobian of \a ee with respect to the free dofs of \a u
+        // active on \a space (a side of u.space()), by finite differences.
+        // A global dof is perturbed once: those in \a done are skipped, the
+        // perturbed ones are appended to it.
+        template <typename E> void diff(const gismo::expr::_expr<E> & ee,
+                                        solution & u,
+                                        const expr::gsFeSpace<T> & space,
+                                        std::vector<index_t> & done)
+        {
             GISMO_ASSERT(E::isVector(), "Expecting a vector expression.");
             static const T delta = 0.00001;
 
-            const index_t sz = u.space().cardinality();
-            localMat.setZero(sz, sz);
+            const gsMatrix<index_t> & act = space.data().actives;
+            const index_t patch = space.data().patchId;
+            localMat.setZero(ee.rowVar().cardinality(), u.dim() * act.rows());
 
             for ( index_t c=0; c!= u.dim(); c++)
             {
-                const index_t rls = c * u.data().actives.rows();     //local stride
-                for ( index_t j = 0; j != sz/u.dim(); j++ )     // for all basis functions (col(j))
+                const index_t rls = c * act.rows();     //local stride
+                for ( index_t j = 0; j != act.rows(); j++ )     // for all basis functions (col(j))
                 {
-                    const index_t jj = u.mapper().index(u.data().actives.at(j),
-                                                        u.space().data().patchId, c);
-                    if (u.mapper().is_free_index(jj) )
+                    const index_t jj = u.mapper().index(act.at(j), patch, c);
+                    if (u.mapper().is_free_index(jj) &&
+                        done.end() == std::find(done.begin(), done.end(), jj) )
                     {
+                        done.push_back(jj);
                         //todo: take local copy of local solution u
 
                         //Perturb \a u
-                        u.perturbLocal( delta  , jj, u.space().data().patchId);
+                        u.perturbLocal( delta  , jj, patch);
                         quadrature(ee, aux);
                         localMat.col(rls+j) += 8 * aux;
-                        u.perturbLocal( delta  , jj, u.space().data().patchId);
+                        u.perturbLocal( delta  , jj, patch);
                         quadrature(ee, aux);
                         localMat.col(rls+j) -= aux;
-                        u.perturbLocal(-3*delta, jj, u.space().data().patchId);
+                        u.perturbLocal(-3*delta, jj, patch);
                         quadrature(ee, aux);
                         localMat.col(rls+j) -= 8 * aux;
-                        u.perturbLocal( -delta , jj, u.space().data().patchId);
+                        u.perturbLocal( -delta , jj, patch);
                         quadrature(ee, aux);
                         localMat.col(rls+j) += aux;
                         localMat.col(rls+j) /= 12*delta;
                         //Unperturb \a u
-                        u.perturbLocal(2*delta, jj, u.space().data().patchId);
+                        u.perturbLocal(2*delta, jj, patch);
                     }
                 }
             }
 
             //  ------- Accumulate  -------
-            push<true,false>(ee.rowVar(), ee.rowVar());
+            push<true,false>(ee.rowVar(), space);
         }
 
         void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
@@ -1534,10 +1551,17 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
     // clearMatrix();
 
     m_exprdata->parse(residual, u);
+    // The solution on the second side, for the derivatives with respect to
+    // its dofs; only if the residual is evaluated there
+    solution uRight = u.right();
+    const bool across = m_exprdata->parsedAcross();
+    if (across)
+        uRight.parse(*m_exprdata);
     if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
+    std::vector<index_t> done;
 
     // check if matrix is modified
     m_modified = true;
@@ -1582,7 +1606,10 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
             // ee(residual);
             if (!movingInterface)
             {
-                ee.diff(residual, u);
+                done.clear();
+                ee.diff(residual, u, u.space(), done);
+                if (across)
+                    ee.diff(residual, u, uRight.space(), done);
             }
             else // For Moving Geometry Maps
             {

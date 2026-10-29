@@ -375,6 +375,129 @@ SUITE(gsExprAssembler_test)
         CHECK((J - M).norm() <= 1e-8 * M.norm());
     }
 
+    // The interface Jacobian also differentiates with respect to the
+    // solution on the second side (s.right()), and has the rows of the test
+    // functions of either side: compared with assembleIfc() of the
+    // linearized forms, for unglued patches and for a C0 interface whose
+    // dofs both sides share.
+    TEST(InterfaceJacobianBothSides)
+    {
+        gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(1,2,1);
+        gsMultiBasis<> mb(patches);
+        mb.degreeElevate(1);
+        mb.uniformRefine(2);
+
+        for (index_t glued = 0; glued != 2; ++glued)
+        {
+            gsExprAssembler<> A(1,1);
+            A.setIntegrationElements(mb);
+            auto G = A.getMap(patches);
+            auto u = A.getSpace(mb);
+            if (glued)
+                u.setup(gsBoundaryConditions<>(), dirichlet::homogeneous, 0);
+            else
+                u.setup(-1);
+            A.initSystem();
+
+            gsMatrix<> solVector = gsMatrix<>::Random(A.numDofs(), 1);
+            auto s = A.getSolution(u, solVector);
+
+            // J of the residual minus M of the linearized form, relative to M
+            gsSparseMatrix<> J, M;
+            auto relErr = [&]() { return (J - M).norm() / M.norm(); };
+
+            A.initSystem();
+            A.assembleJacobianIfc(patches.interfaces(), u * s.right() * nv(G).norm(), s);
+            J = A.matrix();
+            A.initSystem();
+            A.assembleIfc(patches.interfaces(), u * u.right().tr() * nv(G).norm());
+            M = A.matrix();
+            CHECK(relErr() <= 1e-8);
+
+            A.initSystem();
+            A.assembleJacobianIfc(patches.interfaces(), u.right() * s * nv(G).norm(), s);
+            J = A.matrix();
+            A.initSystem();
+            A.assembleIfc(patches.interfaces(), u.right() * u.tr() * nv(G).norm());
+            M = A.matrix();
+            CHECK(relErr() <= 1e-8);
+
+            // nonlinear: d/ds (u s_R^2) = 2 s_R u u_R^T
+            A.initSystem();
+            A.assembleJacobianIfc(patches.interfaces(),
+                                  u * (s.right() * s.right()) * nv(G).norm(), s);
+            J = A.matrix();
+            A.initSystem();
+            A.assembleIfc(patches.interfaces(),
+                          2 * u * s.right() * u.right().tr() * nv(G).norm());
+            M = A.matrix();
+            CHECK(relErr() <= 1e-8);
+
+            // the normal derivative from the second side also depends on its
+            // dofs off the interface, glued or not
+            A.initSystem();
+            A.assembleJacobianIfc(patches.interfaces(),
+                                  u * (igrad(s.right(), G.right()) * nv(G)), s);
+            J = A.matrix();
+            A.initSystem();
+            A.assembleIfc(patches.interfaces(),
+                          u * (igrad(u.right(), G.right()) * nv(G)).tr());
+            M = A.matrix();
+            CHECK(relErr() <= 1e-8);
+        }
+    }
+
+    // Whether assembleJacobianIfc() perturbs the dofs of the second side
+    // depends on the residual only, not on the interface operations the
+    // assembler did before. For a residual on the first side, perturbing the
+    // second side's dofs leaves finite-difference round-off at structurally
+    // zero positions, so the sparsity would change between calls.
+    TEST(InterfaceJacobianRepeatable)
+    {
+        gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(1,2,1);
+        gsMultiBasis<> mb(patches);
+        mb.degreeElevate(1);
+        mb.uniformRefine(2);
+
+        gsMatrix<> solVector;
+        // The Jacobian of u * s from the last of \a calls calls on a new
+        // assembler, after an assembleIfc() if \a ifcFirst. Each call starts
+        // from the same solution vector, as the perturbations leave
+        // round-off in it.
+        const auto jacobian = [&](index_t calls, bool ifcFirst)
+        {
+            gsExprAssembler<> A(1,1);
+            A.setIntegrationElements(mb);
+            auto G = A.getMap(patches);
+            auto u = A.getSpace(mb);
+            u.setup(-1);
+            A.initSystem();
+            if (0 == solVector.size())
+                solVector = gsMatrix<>::Random(A.numDofs(), 1);
+            gsMatrix<> sol = solVector;
+            auto s = A.getSolution(u, sol);
+
+            if (ifcFirst)
+                A.assembleIfc(patches.interfaces(), u * u.tr() * nv(G).norm());
+            for (index_t k = 0; k != calls; ++k)
+            {
+                sol = solVector;
+                A.initSystem();
+                A.assembleJacobianIfc(patches.interfaces(), u * s * nv(G).norm(), s);
+            }
+            return gsSparseMatrix<>(A.matrix());
+        };
+
+        const gsSparseMatrix<> J1 = jacobian(1, false);
+        CHECK(J1.norm() > 0);
+        const gsSparseMatrix<> later[2] = {jacobian(2, false), jacobian(1, true)};
+        for (const gsSparseMatrix<> & J : later)
+        {
+            CHECK_EQUAL(J1.nonZeros(), J.nonZeros());
+            CHECK((J - J1).norm() <= 1e-12 * J1.norm());
+        }
+    }
+
     // A mapper installed by setupMapper() must be the one initSystem() uses.
     // initSystem() rebuilds any mapper whose component count differs from the
     // space dimension, discarding its eliminated dofs, so setupMapper() has to
