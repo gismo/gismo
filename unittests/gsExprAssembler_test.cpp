@@ -276,6 +276,75 @@ SUITE(gsExprAssembler_test)
         CHECK(&v0.mapper() == &A.testSpace(0).mapper());
     }
 
+    // For a space of dimension d, a Dirichlet condition with d-component
+    // data must give component r of the space the r-th data component (also
+    // when the condition constrains a single component), and scalar data
+    // must be applied to every component the condition constrains. The
+    // oracle is the same set of conditions split into one scalar condition
+    // per component, in the same order (later conditions overwrite shared
+    // corner dofs the same way).
+    TEST(DirichletValuesVectorData)
+    {
+        gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(2,1,1.0);
+        gsMultiBasis<> mb(mp);
+        mb.degreeElevate(1);
+        mb.uniformRefine(1);
+
+        gsFunctionExpr<> g ("sin(1.5*x) + y", "x*y - cos(y)", 2);
+        gsFunctionExpr<> g0("sin(1.5*x) + y", 2);
+        gsFunctionExpr<> g1("x*y - cos(y)", 2);
+        gsFunctionExpr<> h ("x + 2*y*y", 2);
+
+        gsBoundaryConditions<> bcs, split;
+        bcs.setGeoMap(mp);
+        split.setGeoMap(mp);
+        // vector data, all components
+        bcs  .addCondition(0, boundary::west , condition_type::dirichlet, &g , 0, false, -1);
+        split.addCondition(0, boundary::west , condition_type::dirichlet, &g0, 0, false,  0);
+        split.addCondition(0, boundary::west , condition_type::dirichlet, &g1, 0, false,  1);
+        // vector data, component 1 only
+        bcs  .addCondition(1, boundary::south, condition_type::dirichlet, &g , 0, false,  1);
+        split.addCondition(1, boundary::south, condition_type::dirichlet, &g1, 0, false,  1);
+        // scalar data, all components
+        bcs  .addCondition(1, boundary::east , condition_type::dirichlet, &h , 0, false, -1);
+        split.addCondition(1, boundary::east , condition_type::dirichlet, &h , 0, false,  0);
+        split.addCondition(1, boundary::east , condition_type::dirichlet, &h , 0, false,  1);
+        // scalar data, component 0 only
+        bcs  .addCondition(0, boundary::north, condition_type::dirichlet, &h , 0, false,  0);
+        split.addCondition(0, boundary::north, condition_type::dirichlet, &h , 0, false,  0);
+
+        const index_t methods[2] = {dirichlet::interpolation, dirichlet::l2Projection};
+        for (index_t m = 0; m != 2; ++m)
+        {
+            gsExprAssembler<> A(1,1), B(1,1);
+            A.setIntegrationElements(mb);
+            B.setIntegrationElements(mb);
+            auto u = A.getSpace(mb, 2);
+            auto w = B.getSpace(mb, 2);
+            u.setup(bcs,   methods[m], 0);
+            w.setup(split, methods[m], 0);
+            CHECK_EQUAL(w.mapper().boundarySize(), u.mapper().boundarySize());
+
+            real_t maxDiff = 0, maxVal = 0;
+            index_t numFixed = 0;
+            for (size_t k = 0; k != mp.nPatches(); ++k)
+                for (index_t i = 0; i != mb.basis(k).size(); ++i)
+                    for (index_t r = 0; r != 2; ++r)
+                    {
+                        CHECK_EQUAL(w.mapper().is_boundary(i,k,r), u.mapper().is_boundary(i,k,r));
+                        if (!u.mapper().is_boundary(i,k,r)) continue;
+                        const real_t a = u.fixedPart().at(u.mapper().bindex(i,k,r));
+                        const real_t b = w.fixedPart().at(w.mapper().bindex(i,k,r));
+                        maxDiff = math::max(maxDiff, math::abs(a-b));
+                        maxVal  = math::max(maxVal , math::abs(b));
+                        ++numFixed;
+                    }
+            CHECK(numFixed > 0);
+            CHECK(maxVal > 0.5);
+            CHECK(maxDiff <= 1e-10 * maxVal);
+        }
+    }
+
     TEST(InterfaceExpression)
     {
         const index_t numRef = 2;
