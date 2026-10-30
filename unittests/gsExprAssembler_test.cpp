@@ -601,6 +601,101 @@ SUITE(gsExprAssembler_test)
         }
     }
 
+    // On a non-matching interface, the quadrature points of one element of
+    // the first side lie in several elements of the second side, so the
+    // functions active there differ between the points. The interface
+    // Jacobian has the union of them as columns (for the dofs of the second
+    // side) and as rows (for test functions on the second side): compared
+    // with assembleIfc() of the linearized forms, for scalar and vector
+    // valued spaces.
+    TEST(InterfaceJacobianNonMatching)
+    {
+        gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(1,2,1);
+        CHECK(1==patches.interfaces().size());
+        const boundaryInterface & iFace = patches.interfaces().front();
+        gsMultiBasis<> mb(patches);
+        mb.degreeElevate(1);
+        mb.uniformRefine();
+        // refine the second side along the interface only
+        const short_t along = 1 - iFace.second().side().direction();
+        mb.basis(iFace.second().patch).uniformRefine(1, 1, along);
+        CHECK(mb.basis(iFace.second().patch).component(along).numElements() >
+              mb.basis(iFace.first ().patch).component(along).numElements());
+
+        // The number of columns of \a m above \a tol; finite differences
+        // leave round-off in the columns of dofs the residual does not
+        // depend on
+        const auto usedCols = [](const gsSparseMatrix<> & m, real_t tol)
+        {
+            index_t n = 0;
+            for (index_t j = 0; j != m.cols(); ++j)
+                n += (m.col(j).norm() > tol);
+            return n;
+        };
+
+        for (index_t dim = 1; dim != 3; ++dim)
+        {
+            gsExprAssembler<> A(1,1);
+            A.setIntegrationElements(mb);
+            auto G = A.getMap(patches);
+            auto u = A.getSpace(mb, dim);
+            u.setup(-1);
+            A.initSystem();
+
+            gsMatrix<> solVector = gsMatrix<>::Random(A.numDofs(), 1);
+            auto s = A.getSolution(u, solVector);
+
+            // J of the residual minus M of the linearized form, relative to M
+            gsSparseMatrix<> J, M;
+            const auto check = [&]()
+            {
+                CHECK(M.norm() > 0);
+                CHECK((J - M).norm() <= 1e-8 * M.norm());
+                CHECK_EQUAL(usedCols(M, 1e-8 * M.norm()), usedCols(J, 1e-8 * M.norm()));
+            };
+
+            A.initSystem();
+            A.assembleJacobianIfc(patches.interfaces(), u * s.right() * nv(G).norm(), s);
+            J = A.matrix();
+            A.initSystem();
+            A.assembleIfc(patches.interfaces(), u * u.right().tr() * nv(G).norm());
+            M = A.matrix();
+            check();
+
+            A.initSystem();
+            A.assembleJacobianIfc(patches.interfaces(), u.right() * s * nv(G).norm(), s);
+            J = A.matrix();
+            A.initSystem();
+            A.assembleIfc(patches.interfaces(), u.right() * u.tr() * nv(G).norm());
+            M = A.matrix();
+            check();
+
+            A.initSystem();
+            A.assembleJacobianIfc(patches.interfaces(),
+                                  u.right() * (s - s.right()) * nv(G).norm(), s);
+            J = A.matrix();
+            A.initSystem();
+            A.assembleIfc(patches.interfaces(),
+                          u.right() * u.tr() * nv(G).norm(),
+                          (-1) * u.right() * u.right().tr() * nv(G).norm());
+            M = A.matrix();
+            check();
+
+            if (1 != dim) continue;
+            // the normal derivative from the second side, which depends on
+            // its dofs off the interface too
+            A.initSystem();
+            A.assembleJacobianIfc(patches.interfaces(),
+                                  u.right() * (igrad(s.right(), G.right()) * nv(G)), s);
+            J = A.matrix();
+            A.initSystem();
+            A.assembleIfc(patches.interfaces(),
+                          u.right() * (igrad(u.right(), G.right()) * nv(G)).tr());
+            M = A.matrix();
+            check();
+        }
+    }
+
     // A mapper installed by setupMapper() must be the one initSystem() uses.
     // initSystem() rebuilds any mapper whose component count differs from the
     // space dimension, discarding its eliminated dofs, so setupMapper() has to
