@@ -58,6 +58,10 @@ public:
 
     gsFeSolution(const gsFeSpace<T> & u, gsMatrix<T> & Sv) : _u(u), _Sv(&Sv) { }
 
+    // res is scratch space of eval(); a copy starts without it
+    gsFeSolution(const gsFeSolution & other)
+    : _expr<gsFeSolution<T> >(), _u(other._u), _Sv(other._Sv) { }
+
     const gsFeSpace<T> & space() const {return _u;};
 
     mutable gsMatrix<T> res;
