@@ -102,6 +102,17 @@ public:
     /// @brief @todo
     bool isMirrored() const { return nullptr!=m_mirror; }
 
+    /// @brief Whether the expressions parsed last are evaluated on the
+    /// second side of an interface (e.g. through <tt>u.right()</tt>).
+    /// Unlike isMirrored(), this does not stay true once any interface
+    /// evaluation has created the mirror.
+    bool parsedAcross() const
+    {
+        return isMirrored() && !( m_mirror->m_mdata.empty() &&
+                                  m_mirror->m_fdata.empty() &&
+                                  m_mirror->m_cdata.empty() );
+    }
+
     /// @brief @todo
     static uPtr make() { return uPtr(new gsExprHelper()); }
 

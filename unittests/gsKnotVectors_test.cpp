@@ -246,6 +246,33 @@ SUITE(gsKnotVectors_test)
         CHECK( count == u_knots.numElements() );
     }
 
+    // Threaded assembly loops start thread tid at element tid and advance by
+    // the number of threads, so an iterator is stepped past the end whenever
+    // the domain has fewer elements than threads.
+    TEST(stridedDomainIteration)
+    {
+        gsKnotVector<real_t> kv(0, 1, 1, 3); // 2 elements
+        gsBSplineBasis<real_t> basis(kv);
+        const std::vector<real_t> breaks = kv.breaks();
+        const size_t numEl = basis.domain()->numElements();
+
+        for (index_t nt = 1; nt <= 4; ++nt)
+        {
+            size_t count = 0;
+            for (index_t tid = 0; tid < nt; ++tid)
+            {
+                gsBasis<real_t>::domainIter domIt    = basis.domain()->beginAll();
+                gsBasis<real_t>::domainIter domItEnd = basis.domain()->endAll();
+                for (domIt += tid; domIt < domItEnd; domIt += nt)
+                {
+                    CHECK_CLOSE(breaks[domIt.id()], domIt.lowerCorner()(0), 1e-12);
+                    ++count;
+                }
+            }
+            CHECK_EQUAL(numEl, count);
+        }
+    }
+
     TEST(notClampedTensorDomainIteration)
     {
         std::vector<real_t> knots = {-2, -1.75, -1.5, -1.25, -1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2};
@@ -1372,6 +1399,86 @@ SUITE(gsKnotVectors_test_gsKnotIterator)
             CHECK( breaks.size() == 2 );
             for( size_t i = 0; i < 6; ++i )
                 CHECK( unique[i] == corrUnique[i] );
+        }
+    }
+
+    // The boundary of a one-dimensional domain on side west or east is the
+    // end point of the domain on that side: one element of zero length.
+    TEST(boundaryDomainIteration)
+    {
+        gsKnotVector<real_t> kv(0.5, 2, 3, 3); // degree 2, 4 spans of 0.375
+        gsBSplineBasis<real_t> basis(kv);
+        const boxSide sides[2] = {boundary::west, boundary::east};
+        const real_t  ends [2] = {0.5, 2};
+
+        for (index_t i = 0; i != 2; ++i)
+        {
+            CHECK_EQUAL(1u, basis.domain()->numElementsBdr(sides[i]));
+            size_t count = 0;
+            gsBasis<real_t>::domainIter domIt    = basis.domain()->beginBdr(sides[i]);
+            gsBasis<real_t>::domainIter domItEnd = basis.domain()->endBdr(sides[i]);
+            for (; domIt < domItEnd; ++domIt, ++count)
+            {
+                CHECK(sides[i] == domIt.side());
+                CHECK_EQUAL(1, domIt.lowerCorner().size());
+                CHECK_CLOSE(ends[i], domIt.lowerCorner()(0), 1e-14);
+                CHECK_CLOSE(ends[i], domIt.upperCorner()(0), 1e-14);
+                CHECK_CLOSE(0.375, domIt.getPerpendicularCellSize(), 1e-14);
+            }
+            CHECK_EQUAL(1u, count);
+        }
+    }
+
+    // Neumann data on a curve is a point value at the end of the curve.
+    // -u'' = 0 on x in (0,2) with u = c at one end and du/dn = g at the
+    // other has a linear solution, which the discretization reproduces.
+    TEST(neumannAtCurveEnd)
+    {
+        gsKnotVector<real_t> kv(0, 1, 3, 3);
+        gsBSplineBasis<real_t> basis(kv);
+        gsMultiPatch<real_t> mp;
+        gsMatrix<real_t> coefs = 2 * basis.anchors().transpose(); // x = 2t
+        mp.addPatch(gsBSpline<real_t>(basis, coefs));
+        gsMultiBasis<real_t> mb(mp);
+        const index_t n = basis.size();
+
+        const real_t g = 1.5, c = 0.25;
+        gsConstantFunction<real_t> gN(g, 1), gD(c, 1);
+        gsFunctionExpr<real_t> exactEast("0.25 + 1.5*x", 1), exactWest("0.25 + 1.5*(2-x)", 1);
+
+        const boxSide sides[2] = {boundary::west, boundary::east};
+        for (index_t i = 0; i != 2; ++i)
+        {
+            const boxSide neu = sides[i], dir = sides[1-i];
+            gsBoundaryConditions<real_t> bc;
+            bc.addCondition(0, neu, condition_type::neumann,   &gN);
+            bc.addCondition(0, dir, condition_type::dirichlet, &gD);
+            bc.setGeoMap(mp);
+
+            gsExprAssembler<real_t> A(1,1);
+            A.setIntegrationElements(mb);
+            auto G = A.getMap(mp);
+            auto u = A.getSpace(mb);
+            auto h = A.getBdrFunction(G);
+            u.setup(bc, dirichlet::l2Projection, 0);
+            A.initSystem();
+
+            // g v at the end point: g times the end basis function, which is
+            // the only one not vanishing there
+            A.assembleBdr(bc.get("Neumann"), u * h * nv(G).norm());
+            gsMatrix<real_t> expected = gsMatrix<real_t>::Zero(A.numDofs(), 1);
+            expected(u.mapper().index(boundary::west == neu ? 0 : n-1, 0), 0) = g;
+            CHECK((A.rhs() - expected).norm() < 1e-13);
+
+            A.assemble(igrad(u, G) * igrad(u, G).tr() * meas(G));
+            gsSparseSolver<real_t>::LU solver;
+            solver.compute(A.matrix());
+            gsMatrix<real_t> solVector = solver.solve(A.rhs());
+
+            gsExprEvaluator<real_t> ev(A);
+            auto s  = A.getSolution(u, solVector);
+            auto ex = ev.getVariable(boundary::east == neu ? exactEast : exactWest, G);
+            CHECK(math::sqrt(ev.integral((s - ex).sqNorm() * meas(G))) < 1e-12);
         }
     }
 }

@@ -73,21 +73,31 @@ public:
 
     const gsMatrix<Scalar> & eval(const index_t k) const //todo: specialize for nb==1
     {
-        // assert _u.size()==_v.size()
-        const index_t rb = _u.rows();
+        // The blocks are cols() wide, which differs from rows() unless
+        // they are square (e.g. jac(u) of a space whose dim() is not the
+        // parametric dimension), and the two sides may have different
+        // numbers of blocks (test and trial spaces)
+        const index_t cb = _u.cols();
         const index_t nb = _u.cardinality();
+        const index_t nbv = _v.cardinality();
         auto A = _u.eval(k);
         auto B = _v.eval(k);
-        res.resize(nb, nb);
+        GISMO_ASSERT(A.cols()==cb*nb && B.cols()==_v.cols()*nbv,
+                     "Dimension error in % operation");
+        GISMO_ASSERT(A.rows()==B.rows() && cb==_v.cols(), "Wrong block dimensions "
+                     <<A.rows()<<"x"<<cb<<" and "<<B.rows()<<"x"<<_v.cols()<<" in % operation");
+        res.resize(nb, nbv);
         for (index_t i = 0; i!=nb; ++i) // all with all
-            for (index_t j = 0; j!=nb; ++j)
+            for (index_t j = 0; j!=nbv; ++j)
                 res(i,j) =
-                    (A.middleCols(i*rb,rb).array() * B.middleCols(j*rb,rb).array()).sum();
+                    (A.middleCols(i*cb,cb).array() * B.middleCols(j*cb,cb).array()).sum();
         return res;
     }
 
-    index_t rows() const { return _u.cols() / _u.rows(); }
-    index_t cols() const { return _u.cols() / _u.rows(); }
+    // One scalar per pair of basis functions, and a single scalar if
+    // neither side is a space (eval() is 1 x 1 then)
+    index_t rows() const { return 1; }
+    index_t cols() const { return 1; }
 
     void parse(gsExprHelper<Scalar> & evList) const
     { _u.parse(evList); _v.parse(evList); }
@@ -134,19 +144,22 @@ public:
 
     const gsMatrix<Scalar> & eval(const index_t k) const //todo: specialize for nb==1
     {
-        // assert _u.size()==_v.size()
         auto A = _u.eval(k);
         auto B = _v.eval(k);
-        const index_t rb = A.rows(); //==cb
+        const index_t cb = _u.cols(); // block width, see above
         const index_t nb = _u.cardinality();
+        GISMO_ASSERT(A.cols()==cb*nb, "Dimension error in % operation");
+        GISMO_ASSERT(A.rows()==B.rows() && cb==B.cols(), "Wrong block dimensions "
+                     <<A.rows()<<"x"<<cb<<" and "<<B.rows()<<"x"<<B.cols()<<" in % operation");
         res.resize(nb, 1);
         for (index_t i = 0; i!=nb; ++i) // all with all
             res(i,0) =
-                (A.middleCols(i*rb,rb).array() * B.array()).sum();
+                (A.middleCols(i*cb,cb).array() * B.array()).sum();
         return res;
     }
 
-    index_t rows() const { return _u.cols() / _u.rows(); }
+    // One scalar per basis function, or a single scalar (see above)
+    index_t rows() const { return 1; }
     index_t cols() const { return 1; }
 
     void parse(gsExprHelper<Scalar> & evList) const

@@ -41,6 +41,9 @@ public:
 
     ppart_expr(_expr<E> const& u) : _u(u) { }
 
+    // res is scratch space of eval(); a copy starts without it
+    ppart_expr(const ppart_expr & other) : _expr<ppart_expr<E> >(), _u(other._u) { }
+
     const gsMatrix<Scalar> & eval(index_t k) const
     {
         res = _u.eval(k).cwiseMax(0.0); // component-wise maximum with zero
