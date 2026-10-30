@@ -379,6 +379,55 @@ SUITE(gsExprAssembler_test)
         }
     }
 
+    // The side of a curve is its end point, where the L2 projection of
+    // Dirichlet data reduces to the value there: the dof of the end basis
+    // function takes the data value, whatever the tangent of the curve.
+    // G(t) = t^2, on the line and as a curve in the plane, has a vanishing
+    // tangent at t = 0; x = 2t is a regular curve. Both the expression
+    // assembler and gsAssembler project.
+    TEST(DirichletL2ProjectionAtCurveEnd)
+    {
+        const real_t gW = 0.75, gE = -1.25;
+        gsKnotVector<> kv(0, 1, 0, 3); // degree 2, one span
+        gsMatrix<> cps[3];
+        cps[0].resize(3, 1); cps[0] << 0, 0, 1;           // x = t^2
+        cps[1].resize(3, 2); cps[1] << 0, 0,  0, 0,  1, 2; // (t^2, 2t^2)
+        cps[2].resize(3, 1); cps[2] << 0, 1, 2;           // x = 2t
+        for (index_t c = 0; c != 3; ++c)
+        {
+            gsMultiPatch<> mp;
+            mp.addPatch(gsBSpline<>(kv, cps[c]));
+            gsMultiBasis<> mb(mp);
+            mb.uniformRefine(2);
+            const index_t n = mb.basis(0).size();
+            const short_t dim = mp.geoDim();
+
+            gsConstantFunction<> fW(gW, dim), fE(gE, dim);
+            gsBoundaryConditions<> bc;
+            bc.addCondition(0, boundary::west, condition_type::dirichlet, &fW);
+            bc.addCondition(0, boundary::east, condition_type::dirichlet, &fE);
+            bc.setGeoMap(mp);
+
+            gsExprAssembler<> A(1,1);
+            A.setIntegrationElements(mb);
+            auto u = A.getSpace(mb);
+            u.setup(bc, dirichlet::l2Projection, 0);
+            CHECK_EQUAL(2, u.mapper().boundarySize());
+            CHECK_CLOSE(gW, u.fixedPart().at(u.mapper().bindex(0  , 0)), 1e-10);
+            CHECK_CLOSE(gE, u.fixedPart().at(u.mapper().bindex(n-1, 0)), 1e-10);
+
+            if (1 != dim) continue;
+            gsConstantFunction<> f(0, 1);
+            gsPoissonAssembler<> P(mp, mb, bc, f);
+            P.options().setInt("DirichletValues", dirichlet::l2Projection);
+            P.computeDirichletDofs();
+            const gsDofMapper & m = P.system().colMapper(0);
+            CHECK_EQUAL(2, m.boundarySize());
+            CHECK_CLOSE(gW, P.fixedDofs().at(m.bindex(0  , 0)), 1e-10);
+            CHECK_CLOSE(gE, P.fixedDofs().at(m.bindex(n-1, 0)), 1e-10);
+        }
+    }
+
     TEST(InterfaceExpression)
     {
         const index_t numRef = 2;
