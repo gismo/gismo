@@ -220,14 +220,38 @@ public:
 public: // inserting and removing
 
     /// Inserts knot \a knot into the knot vector with multiplicity \a mult.
+    ///
+    /// On a periodic knot vector, \a knot is first reduced into the
+    /// period: values in (a-L,a) and (b,b+L) are shifted by +-L, the
+    /// period part is refined and the stretched knots are regenerated.
+    /// A \a knot on the seam (a, b or a congruent value) or farther than
+    /// one period away is refused, and so is a negative \a mult; the
+    /// vector is then unchanged.
+    /// Complexity O(K) (K = number of knots), one regeneration.
     void insert(T knot, mult_t mult = 1 );
 
     /// Inserts each knot between ibeg and iend with multiplicity 1.
     /// Knots can be repeated in the sequence but they must be sorted.
     /// The complexity is size() + (iend-ibeg) comparisons
+    ///
+    /// On a periodic knot vector, each value is reduced into the period
+    /// as in insert(T,mult_t) (the first invalid value refuses the whole
+    /// call), then the values are sorted and merged into the period part
+    /// and the stretched knots are regenerated once.
+    /// Complexity O(K + r log r) for r inserted knots.
     template<typename iterType>
     void insert( iterType ibeg, iterType iend )
     {
+        if (m_periodic)
+        {
+            knotContainer reduced;
+            reduced.reserve(iend-ibeg);
+            for (iterType it = ibeg; it != iend; ++it)
+                reduced.push_back( _reduceToPeriod(*it) );
+            _periodicInsert( give(reduced) );
+            return;
+        }
+
         //size_t numKnots = size() + (iend - ibeg);
         // GISMO_ENSURE( numKnots < std::numeric_limits<mult_t>::max(),
         //               "Too many knots." );
@@ -246,9 +270,23 @@ public: // inserting and removing
     /// Decreases multiplicity of the knot pointed by \a uit by \a
     /// mult; removes it altogether, should its multiplicity be
     /// decreased to zero.
+    ///
+    /// On a periodic knot vector, the knot is reduced into the period
+    /// (a ghost iterator's value is shifted by +-L and compared exactly
+    /// with the period knots; if round-off makes the shifted value differ
+    /// from its twin, nothing is removed), the period part is
+    /// reduced and the stretched knots are regenerated. The seam and
+    /// a negative \a mult are refused; the result must stay a valid
+    /// periodic vector (at least p+1 periodic knots).
+    /// Complexity O(K).
     void remove( uiterator uit, mult_t mult = 1 );
 
     /// Decreases multiplicity of the knot \a knot by \a mult.
+    ///
+    /// On a periodic knot vector: as remove(uiterator,mult_t), i.e. a
+    /// \a knot on the seam or farther than one period away is refused;
+    /// a value inside the period that is not a knot is ignored.
+    /// Complexity O(K).
     void remove( const T knot, mult_t mult = 1 );
 
     //TODO: remove with two iterators.
@@ -279,7 +317,54 @@ public: // modifiers
 
     /// Scales and translates the knot vector so that its new
     /// endpoints are \a newBeg and \a newEnd.
+    ///
+    /// On a periodic knot vector, the period part is transformed and the
+    /// stretched knots are regenerated; the period becomes
+    /// \a newEnd - \a newBeg.
+    /// Complexity O(K).
     void affineTransformTo( T newBeg, T newEnd );
+
+public: // periodicity
+
+    /// True iff this is a periodic (stretched) knot vector. O(1).
+    ///
+    /// A periodic knot vector of degree p stores the stretched knots
+    /// t_0..t_{K-1}, K = n+m+p+1, of domain [a,b] = [t_p, t_{K-p-1}] and
+    /// period L = b-a. The period part s_0..s_{n-1} are the knots t with
+    /// a <= t < b (counted with multiplicity); a appears mu times first
+    /// and m = p+1-mu is the number of crossing functions. The stretched
+    /// knots are generated from the period part by
+    /// t_k = s_{(k-m) mod n} + L floor((k-m)/n), and the copies of b are
+    /// stored as b. The vector must satisfy 1 <= mu <= p and n >= p+1.
+    /// Read-only members keep their raw meaning on the stretched knots.
+    bool isPeriodic() const { return 0 != m_periodic; }
+
+    /// Number m = p+1-mu of crossing functions; 0 when not periodic. O(1).
+    mult_t numCrossingFunctions() const { return m_periodic; }
+
+    /// Number of B-splines modulo periodicity:
+    /// size()-degree()-1-numCrossingFunctions()
+    /// (n on a periodic vector, the ordinary function count otherwise). O(1).
+    index_t periodicSize() const
+    { return static_cast<index_t>(size()) - m_deg - 1 - m_periodic; }
+
+    /// Length b-a of the domain (the period L on a periodic vector). O(1).
+    T period() const { return *domainEnd() - *domainBegin(); }
+
+    /// Converts to a periodic knot vector (\a flag = true) or drops the
+    /// periodic flag, keeping the stretched knots (\a flag = false).
+    ///
+    /// A clamped (open) vector is wrapped with seam multiplicity mu = p
+    /// (one crossing function). Otherwise the stretched knots are
+    /// validated as they are: 1 <= mu <= p, size() = n+m+p+1, the last
+    /// copy of a at index p, equal multiplicities of a and b, and the seam
+    /// condition t_{k+n} = t_k + L (k = 0..m+p) up to
+    /// 1e-12 max(|a|,|b|,L). A vector that fails (also n < p+1 or p < 1)
+    /// is refused and left unchanged. The ghost knots are regenerated from
+    /// the period part. Calling it on a periodic vector with
+    /// \a flag = true does nothing.
+    /// Complexity O(K).
+    void setPeriodic(bool flag = true);
 
 public: // queries
 
@@ -425,13 +510,16 @@ public: // miscellaneous
         // return u >= m_repKnots[m_deg] && u <= m_repKnots.end()[-m_deg-1];
     }
 
-    /// Removes the knots in the range [first,last)
+    /// Removes the knots in the range [first,last).
+    /// Not defined on a periodic knot vector (refused).
     void erase(const mult_t first, const mult_t last);
 
-    /// Removes the left-most \a numKnots from the knot-vector
+    /// Removes the left-most \a numKnots from the knot-vector.
+    /// Not defined on a periodic knot vector (refused).
     void trimLeft (const mult_t numKnots);
 
-    /// Removes the right-most \a numKnots from the knot-vector
+    /// Removes the right-most \a numKnots from the knot-vector.
+    /// Not defined on a periodic knot vector (refused).
     void trimRight(const mult_t numKnots);
 
     /// Computes the number of left ghosts, i.e., of the knots to the
@@ -458,18 +546,62 @@ public:
     static bool isConsistent(const knotContainer & repKnots,
                              const multContainer & multSums);
 
-    /// Compare with another knot vector.
+    /// Compare with another knot vector (knots, degree and periodicity).
+    ///
+    /// Equality is exact. Two mathematically equal periodic vectors
+    /// built by different routes can compare unequal, because
+    /// regeneration recomputes the ghost knots as s+qL (round-off).
     inline bool operator== (const gsKnotVector<T>& other) const
     {
         return (m_repKnots == other.m_repKnots) &&
                (m_multSum  == other.m_multSum ) &&
-               (m_deg == other.m_deg);
+               (m_deg == other.m_deg) &&
+               (m_periodic == other.m_periodic);
     }
 
 private: // internals
 
     // Creates a vector of multiplicity sums from a scratch and m_repKnots.
     void rebuildMultSum();
+
+    // Knots t with a <= t < b (a, b = domain ends), i.e. the period part
+    // of a periodic knot vector. O(K).
+    knotContainer _periodPart() const;
+
+    // The closed period of a periodic knot vector: its period part
+    // followed by mu copies of b, as a clamped knot vector of degree mu-1
+    // on exactly [a,b]. Having no ghosts, the non-periodic members
+    // (which trim ghosts) act on [a,b] only; its unique span e is domain
+    // element e of *this. The result is not periodic. O(K).
+    gsKnotVector _closedPeriod() const;
+
+    // Knots of the closed period W that lie below its last knot, i.e.
+    // the new period part after W has been modified. O(K).
+    static knotContainer _periodOf(const gsKnotVector & W);
+
+    // Maps x in (a-L,a) u (a,b) u (b,b+L) into (a,b) by one shift of
+    // +-L; refuses (GISMO_ERROR) everything else, in particular the seam.
+    T _reduceToPeriod(T x) const;
+
+    // Single commit point of every periodic mutation: rebuilds the
+    // stretched knots of degree p and domain [a,b] from the period part
+    // s (sorted, s.front()==a, all < b) by
+    //   t_k = s_{(k-m) mod n} + L floor((k-m)/n),  k = 0..n+m+p,
+    // with floored division. Validates 1 <= mu <= p, n >= p+1 and that no
+    // ghost knot rounds onto a or b, and modifies *this only after all of
+    // it succeeded. O(K).
+    void _regeneratePeriodic(const knotContainer & s, short_t p, T a, T b);
+
+    // Inserts the already reduced values (see _reduceToPeriod) into the
+    // period part and regenerates once. O(K + r log r).
+    void _periodicInsert(knotContainer reduced);
+
+    // Decreases the multiplicity of the (reduced) knot in the period
+    // part by mult and regenerates. O(K).
+    void _periodicRemove(T knot, mult_t mult);
+
+    // Translates the period part by amount and regenerates. O(K).
+    void _periodicTranslate(T amount);
 
 private: // members
 
@@ -478,6 +610,12 @@ private: // members
 
     // m_multSum[i] = cardinality of { knots <= unique knot [i] }.
     multContainer m_multSum;
+
+    // Number m of crossing functions of a periodic knot vector; 0 = not periodic.
+    mult_t m_periodic = 0;
+
+    // Degree.
+    short_t m_deg;
 
 
 
@@ -528,7 +666,8 @@ public:
     /// Resets the knot vector so that it has \a interior knots
     /// between \a first and \a last, each of them repeated \a
     /// mult_interior times (and the endpoints repeated \a mult_ends
-    /// times) and the degree is equal to \a degree
+    /// times) and the degree is equal to \a degree.
+    /// The result is not periodic.
     void initUniform( T first,
                       T last,
                       unsigned interior,
@@ -559,9 +698,11 @@ public:
     }
 
     /// Resets the knot vector so that its knots are graded.
+    /// The result is not periodic.
     void initGraded(T u0, T u1, unsigned interior, int degree,
                     T grading, unsigned mult_interior = 1)
     {
+        m_periodic = 0;
         GISMO_ASSERT(u0<u1,"Knot vector must be an interval.");
 
         m_deg = degree;
@@ -664,20 +805,51 @@ public:
     gsKnotVector knotIntersection(const gsKnotVector & b) const;
 
     /// Better directly use affineTransformTo.
+    ///
+    /// On a periodic knot vector the domain [a,b] is kept: the period
+    /// part is reflected, s -> a+b-s, and the stretched knots are
+    /// regenerated. Complexity O(K).
     void reverse();
 
     /// @brief Insert knots into the knot vector.
     /// \param knots parameter values of the new knots, stored in a std::vector
     /// \param mult multiplicity of the new knots
+    ///
+    /// On a periodic knot vector, every knot is reduced into the period
+    /// as in insert(T,mult_t) and the stretched knots are regenerated
+    /// once (not \a mult times); a negative \a mult is refused.
+    /// Complexity O(K + r mult log(r mult)) for r knots.
     void insert( const knotContainer &knots, int mult = 1 )
     {
+        if (m_periodic)
+        {
+            GISMO_ENSURE(mult >= 0, "insert: negative multiplicity.");
+            knotContainer reduced;
+            reduced.reserve(knots.size()*mult);
+            for (typename knotContainer::const_iterator it = knots.begin();
+                 it != knots.end(); ++it)
+                reduced.insert(reduced.end(), mult, _reduceToPeriod(*it));
+            _periodicInsert( give(reduced) );
+            return;
+        }
+
         for( int i = 0; i < mult; ++i)
             insert( knots.begin(), knots.end() ); // inefficient
     }
 
     /// Sets the degree to \a p.
+    ///
+    /// On a periodic knot vector, the period part is kept and the
+    /// stretched knots are regenerated for degree \a p (the number of
+    /// crossing functions becomes p+1-mu); a degree with mu > p or
+    /// n < p+1 is refused. Complexity O(K).
     void set_degree(short_t p)
     {
+        if (m_periodic)
+        {
+            _regeneratePeriodic(_periodPart(), p, *domainBegin(), *domainEnd());
+            return;
+        }
         m_deg = p;
     }
 
@@ -688,12 +860,37 @@ public:
 
     /// Inserts \a numKnots (and each of them \a mult - times) between
     /// each two knots.
+    ///
+    /// On a periodic knot vector, the spans of the domain [a,b] are
+    /// refined (ghost spans are regenerated) and \a mult must not
+    /// exceed p+1. Complexity O(K) plus the number of inserted knots,
+    /// one regeneration.
     void uniformRefine( mult_t numKnots = 1, mult_t mult = 1);
 
     /// Inserts \a knotsPerSpan knots between each two knots between \a begin and \a end.
+    ///
+    /// On a periodic knot vector the indices are domain element
+    /// indices (element e is the e-th span of [a,b]), each must lie in
+    /// [0, numElements()), and the stretched knots are regenerated once.
+    /// Complexity O(K + r k log(r k)) for r indices, k = \a knotsPerSpan.
     template<typename iterType>
     void refineSpans( iterType begin, iterType end, mult_t knotsPerSpan )
     {
+        if (m_periodic)
+        {
+            multContainer elems;
+            elems.insert(elems.begin(), begin, end);
+            std::sort(elems.begin(), elems.end());
+            GISMO_ENSURE( elems.empty() ||
+                          (0 <= elems.front() &&
+                           static_cast<size_t>(elems.back()) < numElements()),
+                          "refineSpans: element index out of range.");
+            gsKnotVector W = _closedPeriod();
+            W.refineSpans(elems.begin(), elems.end(), knotsPerSpan);
+            _regeneratePeriodic(_periodOf(W), m_deg, W.first(), W.last());
+            return;
+        }
+
         // We sort the input to be on the safe side.
         multContainer input;
         input.insert(input.begin(), begin, end); // Pitfall: using std::copy requires reserve or somesuch beforehand.
@@ -719,9 +916,16 @@ public:
     }
 
     /// Adds \a amount to all the knots.
+    ///
+    /// On a periodic knot vector, the period part is translated and the
+    /// stretched knots are regenerated. Complexity O(K).
     void addConstant( T amount );
 
     /// Adds \a amount to all the knots, starting at knot \a start.
+    ///
+    /// On a periodic knot vector only \a start <= first() (a translation
+    /// of all the knots, as addConstant(T)) is defined; a larger \a start
+    /// is refused. Complexity O(K).
     void addConstant( T start, T amount );
 
 public: // things required by gsKnotVector
@@ -807,8 +1011,21 @@ public: // things required by gsKnotVector
 
     /// Increase the degree keeping interior knots intact (add clamped knots only).
     /// Cf. degreeElevate.
+    ///
+    /// On a periodic knot vector, the period part is kept and the stretched
+    /// knots are regenerated for degree p+i (crossing functions m+i); a
+    /// negative \a i, or p+i >= n, is refused. Complexity O(K).
     void degreeIncrease(int const & i = 1)
     {
+        if (m_periodic)
+        {
+            GISMO_ENSURE(i >= 0, "degreeIncrease: negative increment.");
+            if (0 == i) return;
+            _regeneratePeriodic(_periodPart(), static_cast<short_t>(m_deg+i),
+                                *domainBegin(), *domainEnd());
+            return;
+        }
+
         // update knots
         m_repKnots.reserve(size()+2*i);
         m_repKnots.insert(m_repKnots.begin(), i, m_repKnots.front() );
@@ -823,8 +1040,40 @@ public: // things required by gsKnotVector
     }
 
     /// Inverse of degreeIncrease.
+    ///
+    /// On a periodic knot vector, the seam multiplicity mu is kept and
+    /// the stretched knots are regenerated for degree p-i (crossing
+    /// functions m-i); if \a updateInterior, interior breakpoints of the
+    /// period with multiplicity above p-i are reduced to p-i. A negative
+    /// \a i, or p-i < mu, is refused. Complexity O(K).
     void degreeDecrease(int const & i = 1, bool updateInterior = false)
     {
+        if (m_periodic)
+        {
+            GISMO_ENSURE(i >= 0, "degreeDecrease: negative decrement.");
+            if (0 == i) return;
+            const short_t pn = static_cast<short_t>(m_deg - i);
+            const T a = *domainBegin(), b = *domainEnd();
+            knotContainer s = _periodPart();
+            if (updateInterior)
+            {
+                knotContainer r;
+                r.reserve(s.size());
+                for (size_t j = 0; j < s.size(); )
+                {
+                    size_t e = j;
+                    while (e < s.size() && s[e] == s[j]) ++e;
+                    const size_t cnt = (s[j] == a) ? e-j
+                        : (std::min)(e-j, static_cast<size_t>(pn < 0 ? 0 : pn));
+                    r.insert(r.end(), cnt, s[j]);
+                    j = e;
+                }
+                s.swap(r);
+            }
+            _regeneratePeriodic(s, pn, a, b);
+            return;
+        }
+
         remove( ubegin()  , i );
         remove( uend() - 1, i );
         m_deg -= i;
@@ -842,16 +1091,29 @@ public: // things required by gsKnotVector
 
     /// Increase the multiplicity of all the knots by \a i. If \a
     /// boundary is set to \em false, the boundary knots are not adjusted
+    ///
+    /// On a periodic knot vector, \a boundary is ignored (the seam is an
+    /// interior knot of the period): interior breakpoints of the period
+    /// get multiplicity min(p+1, mult+i), the seam min(p, mu+i), and the
+    /// stretched knots are regenerated. A negative \a i is refused.
+    /// Complexity O(K).
     void increaseMultiplicity(const mult_t i = 1, bool boundary = false);
 
     /// Reduce the multiplicity of all knots by \a i. If \a boundary
     /// is set to \em false, the boundary knots are not adjusted
+    ///
+    /// On a periodic knot vector, \a boundary is ignored: interior
+    /// breakpoints of the period lose \a i (removed at multiplicity <= 0),
+    /// the seam gets max(1, mu-i), and the stretched knots are regenerated.
+    /// A negative \a i is refused. Complexity O(K).
     void reduceMultiplicity(const mult_t i = 1, bool boundary = false);
 
     /// Adds the knots between \a begin and \a end to the knot vector.
+    /// Not defined on a periodic knot vector (refused): use insert.
     template<typename iterType>
     void append ( iterType begin, iterType end )
     {
+        GISMO_ENSURE(!isPeriodic(), "append: not defined on a periodic knot vector");
         insert( begin, end );
     }
 
@@ -969,9 +1231,19 @@ public: // others
 
     /// Elevate the degree. I.e., increase the multiplicity of all the
     /// knots by one and increment the degree.
+    ///
+    /// On a periodic knot vector, every breakpoint of [a,b), the seam
+    /// included, gains \a i and the stretched knots are regenerated
+    /// (mu+i, crossing functions m unchanged). A negative \a i is refused.
+    /// Complexity O(K).
     void degreeElevate(const short_t & i = 1);
 
     /// Converse to degreeElevate.
+    ///
+    /// On a periodic knot vector, interior breakpoints lose \a i (removed
+    /// at multiplicity <= 0), the seam becomes max(1, mu-i), the degree
+    /// becomes p-i and the stretched knots are regenerated; a result
+    /// with mu > p-i is refused, as is a negative \a i. Complexity O(K).
     void degreeReduce(const short_t & i);
 
     /// Coarsen the knot vector: for each group of \a knotRemove
@@ -982,12 +1254,13 @@ public: // others
     /// @param knotRemove    Number of consecutive knots to remove
     /// @param knotSkip      Number of consecutive knots which stay untouched in between
     /// @param mul           Multiplicity drop for each processed knot (or -1, full remove)
+    ///
+    /// On a periodic knot vector the interior breakpoints of the period
+    /// are processed, the stretched knots are regenerated, and the
+    /// returned knots are those removed from the period part (no
+    /// translates). Complexity O(K).
     std::vector<T> coarsen(index_t knotRemove = 1, index_t knotSkip = 1, mult_t  mul = -1);
 
-public: // members
-
-    // TODO remove!
-    short_t m_deg;
 };
 
 template<typename T>

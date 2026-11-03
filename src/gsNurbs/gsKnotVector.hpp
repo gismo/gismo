@@ -99,7 +99,7 @@ public:
         gsXmlNode * tmp = internal::makeNode("KnotVector", str.str(), data);
         // Append the degree attribure
         str.str(std::string());// clean the ostream
-        str<< obj.m_deg;
+        str<< obj.degree();
         tmp->append_attribute( makeAttribute("degree", str.str(),data) );
 
         return tmp;
@@ -304,8 +304,183 @@ void gsKnotVector<T>::swap( gsKnotVector& other )
     m_repKnots.swap( other.m_repKnots );
     m_multSum.swap( other.m_multSum );
     std::swap( m_deg, other.m_deg );
+    std::swap( m_periodic, other.m_periodic );
 
     GISMO_ASSERT(check(), "Unsorted knots or invalid multiplicities.");
+}
+
+template<typename T>
+void gsKnotVector<T>::setPeriodic(bool flag)
+{
+    if (!flag)
+    {
+        m_periodic = 0;
+        return;
+    }
+    if (m_periodic) return;
+
+    const short_t p = m_deg;
+    if (p < 1 || size() <= static_cast<size_t>(2*p+1))
+        GISMO_ERROR("setPeriodic: need degree >= 1 and more than 2p+1 knots.");
+    const T a = *domainBegin(), b = *domainEnd();
+    if (!(a < b))
+        GISMO_ERROR("setPeriodic: empty domain.");
+
+    knotContainer s = _periodPart();
+    if (isOpen())
+    {
+        // Clamped route: p+1 copies of a become mu = p (m = 1).
+        s.erase(s.begin());
+    }
+    else
+    {
+        const index_t n  = static_cast<index_t>(s.size());
+        index_t mu = 0;
+        while (mu < n && s[mu] == a) ++mu;
+        const index_t m = p + 1 - mu;
+        if (mu < 1 || mu > p)
+            GISMO_ERROR("setPeriodic: seam multiplicity must be in [1,p].");
+        if (static_cast<index_t>(size()) != n + m + p + 1)
+            GISMO_ERROR("setPeriodic: knot count is not n+m+p+1.");
+        if (m_repKnots[p+1] == a)
+            GISMO_ERROR("setPeriodic: the last copy of a must sit at index p.");
+        if (multiplicity(b) != mu)
+            GISMO_ERROR("setPeriodic: the seam multiplicities of a and b differ.");
+        const T L   = b - a;
+        const T tol = T(1e-12) * (std::max)( (std::max)(math::abs(a), math::abs(b)), L );
+        for (index_t k = 0; k <= m + p; ++k)
+            if (math::abs(m_repKnots[k+n] - (m_repKnots[k] + L)) > tol)
+                GISMO_ERROR("setPeriodic: knots violate t_{k+n} = t_k + L.");
+    }
+    _regeneratePeriodic(s, p, a, b);
+}
+
+template<typename T>
+typename gsKnotVector<T>::knotContainer gsKnotVector<T>::_periodPart() const
+{
+    const T a = *domainBegin(), b = *domainEnd();
+    return knotContainer(std::lower_bound(m_repKnots.begin(), m_repKnots.end(), a),
+                         std::lower_bound(m_repKnots.begin(), m_repKnots.end(), b));
+}
+
+template<typename T>
+gsKnotVector<T> gsKnotVector<T>::_closedPeriod() const
+{
+    GISMO_ASSERT(m_periodic, "The closed period needs a periodic knot vector.");
+    const index_t mu = m_deg + 1 - m_periodic;
+    knotContainer w = _periodPart();
+    w.insert(w.end(), mu, *domainEnd());
+    return gsKnotVector( give(w), static_cast<short_t>(mu-1) );
+}
+
+template<typename T>
+typename gsKnotVector<T>::knotContainer
+gsKnotVector<T>::_periodOf(const gsKnotVector & W)
+{
+    return knotContainer(W.m_repKnots.begin(),
+                         std::lower_bound(W.m_repKnots.begin(), W.m_repKnots.end(),
+                                          W.m_repKnots.back()));
+}
+
+template<typename T>
+T gsKnotVector<T>::_reduceToPeriod(T x) const
+{
+    const T a = *domainBegin(), b = *domainEnd();
+    if (x < a)
+        x += b - a;
+    else if (x > b)
+        x -= b - a;
+    if (!(a < x && x < b))
+        GISMO_ERROR("Knot " << x << " is not in the open period (" << a << ","
+                    << b << ") after reduction (seam or out of range).");
+    return x;
+}
+
+template<typename T>
+void gsKnotVector<T>::_regeneratePeriodic(const knotContainer & s, short_t p, T a, T b)
+{
+    const index_t n = static_cast<index_t>(s.size());
+    GISMO_ENSURE(a < b && n > 0 && s.front() == a && s.back() < b &&
+                 std::is_sorted(s.begin(), s.end()),
+                 "Periodic knots: the period part must be sorted, start at a and lie in [a,b).");
+    index_t mu = 0;
+    while (mu < n && s[mu] == a) ++mu;
+    GISMO_ENSURE(1 <= mu && mu <= p,
+                 "Periodic knots: seam multiplicity "<<mu<<" must be in [1,"<<p<<"].");
+    GISMO_ENSURE(n >= p + 1,
+                 "Periodic knots: need at least p+1 = "<<p+1<<" periodic knots, got "<<n<<".");
+
+    const index_t m = p + 1 - mu;
+    const index_t K = n + m + p + 1;
+    const T L = b - a;
+
+    // Floored division: k-m is negative for the left ghosts and C++ '/'
+    // and '%' truncate toward zero. Since n > m, q is -1, 0 or 1.
+    knotContainer t(K);
+    for (index_t k = 0; k < K; ++k)
+    {
+        const index_t j = k - m;
+        index_t q = j / n;
+        index_t r = j - q * n;
+        if (r < 0) { r += n; --q; }
+        // The copies of b are stored as b itself: a+(b-a) need not
+        // equal b, and the domain end must stay bit-exact.
+        t[k] = (1 == q && r < mu) ? b : s[r] + T(q) * L;
+    }
+    GISMO_ENSURE(std::is_sorted(t.begin(), t.end()),
+                 "Periodic knots: regenerated knots are not sorted (round-off).");
+    // The copies of a sit at t_m..t_p and those of b at t_{n+m}..t_{n+p};
+    // a ghost rounding onto a or b would change the seam multiplicity.
+    GISMO_ENSURE(t[m-1] < a && b < t[n+p+1],
+                 "Periodic knots: a ghost knot rounds onto the seam (round-off).");
+
+    multContainer ms;
+    for (index_t k = 1; k <= K; ++k)
+        if (K == k || t[k] != t[k-1])
+            ms.push_back(k);
+
+    // All checks passed: commit.
+    m_repKnots.swap(t);
+    m_multSum.swap(ms);
+    m_deg      = p;
+    m_periodic = m;
+
+    GISMO_ASSERT( check(), "Unsorted knots or invalid multiplicities." );
+}
+
+template<typename T>
+void gsKnotVector<T>::_periodicInsert(knotContainer reduced)
+{
+    if (reduced.empty()) return;
+    std::sort(reduced.begin(), reduced.end());
+    gsKnotVector W = _closedPeriod();
+    W.insert(reduced.begin(), reduced.end());
+    for (typename knotContainer::const_iterator it = reduced.begin();
+         it != reduced.end(); ++it)
+        if (W.multiplicity(*it) > m_deg + 1)
+            GISMO_ERROR("insert: multiplicity of knot " << *it
+                        << " would exceed p+1 = " << m_deg + 1 << ".");
+    _regeneratePeriodic(_periodOf(W), m_deg, W.first(), W.last());
+}
+
+template<typename T>
+void gsKnotVector<T>::_periodicRemove(T knot, mult_t mult)
+{
+    const T x = _reduceToPeriod(knot);
+    GISMO_ENSURE(mult >= 0, "remove: negative multiplicity.");
+    if (0 == mult) return;
+    gsKnotVector W = _closedPeriod();
+    if (0 == W.multiplicity(x)) return; // not a knot, nothing to remove
+    W.remove(x, mult);
+    _regeneratePeriodic(_periodOf(W), m_deg, W.first(), W.last());
+}
+
+template<typename T>
+void gsKnotVector<T>::_periodicTranslate(T amount)
+{
+    gsKnotVector W = _closedPeriod();
+    W.addConstant(amount);
+    _regeneratePeriodic(_periodOf(W), m_deg, W.first(), W.last());
 }
 
 template<typename T>
@@ -324,6 +499,15 @@ gsKnotVector<T>* gsKnotVector<T>::clone() const
 template<typename T>
 void gsKnotVector<T>::insert( T knot, mult_t mult )
 {
+    if (m_periodic)
+    {
+        GISMO_ENSURE(mult >= 0, "insert: negative multiplicity.");
+        if (0 == mult) return;
+        _periodicInsert( knotContainer(static_cast<size_t>(mult),
+                                       _reduceToPeriod(knot)) );
+        return;
+    }
+
     //size_t numKnots = size()+mult;
     // GISMO_ENSURE( numKnots < std::numeric_limits<mult_t>::max(),
     //               "Too many knots." );
@@ -361,6 +545,12 @@ void gsKnotVector<T>::remove( uiterator uit, mult_t mult )
     GISMO_ASSERT( uit.m_mlt == multSumData(),
                   "The iterator is invalid for this knot vector." );
 
+    if (m_periodic)
+    {
+        _periodicRemove(*uit, mult);
+        return;
+    }
+
     mult_t knotMult = uit.multiplicity();
     mult_t toRemove = (std::min<mult_t>)(mult, knotMult);
     nonConstMultIterator upos = m_multSum.begin()  + uit.uCardinalIndex();
@@ -377,6 +567,12 @@ void gsKnotVector<T>::remove( uiterator uit, mult_t mult )
 template<typename T>
 void gsKnotVector<T>::remove( const T knot, mult_t mult )
 {
+    if (m_periodic)
+    {
+        _periodicRemove(knot, mult);
+        return;
+    }
+
     uiterator uit = std::lower_bound( ubegin(), uend(), knot );
     if( uit != uend() && *uit == knot ) // value found ?
         remove( uit, mult );
@@ -387,6 +583,7 @@ void gsKnotVector<T>::remove( const T knot, mult_t mult )
 template<typename T>
 void gsKnotVector<T>::erase(const mult_t first, const mult_t last)
 {
+    GISMO_ENSURE(!isPeriodic(), "erase: not defined on a periodic knot vector");
     m_repKnots.erase(m_repKnots.begin()+first, m_repKnots.begin()+last);
     nonConstMultIterator fpos =
         std::lower_bound(m_multSum.begin(), m_multSum.end(), first);
@@ -401,6 +598,7 @@ void gsKnotVector<T>::erase(const mult_t first, const mult_t last)
 template<typename T>
 void gsKnotVector<T>::trimLeft(const mult_t numKnots)
 {
+    GISMO_ENSURE(!isPeriodic(), "trimLeft: not defined on a periodic knot vector");
     // equiv:
     //erase(0, numKnots);
     //return;
@@ -414,6 +612,7 @@ void gsKnotVector<T>::trimLeft(const mult_t numKnots)
 template<typename T>
 void gsKnotVector<T>::trimRight(const mult_t numKnots)
 {
+    GISMO_ENSURE(!isPeriodic(), "trimRight: not defined on a periodic knot vector");
     // equiv:
     //erase(m_multSum.back()-numKnots, m_multSum.back());
     //return;
@@ -464,6 +663,14 @@ void gsKnotVector<T>::affineTransformTo(T newBeg, T newEnd)
     GISMO_ASSERT(newEnd > newBeg+0.00001,
                  "Cannot transform the knot-vector to invalid interval ["<<newBeg<<","<<newEnd<<"].\n");
 
+    if (m_periodic)
+    {
+        gsKnotVector W = _closedPeriod();
+        W.affineTransformTo(newBeg, newEnd);
+        _regeneratePeriodic(_periodOf(W), m_deg, W.first(), W.last());
+        return;
+    }
+
     const T obeg = *domainBegin();
     const T oend = *domainEnd();
     const T rr = (newEnd - newBeg) / (oend - obeg);
@@ -479,6 +686,24 @@ void gsKnotVector<T>::affineTransformTo(T newBeg, T newEnd)
 template<typename T>
 void gsKnotVector<T>::reverse()
 {
+    if (m_periodic)
+    {
+        const T a = *domainBegin(), b = *domainEnd();
+        const knotContainer s = _periodPart();
+        const index_t mu = m_deg + 1 - m_periodic;
+        // mu copies of a, then the interior breakpoints reflected about
+        // the midpoint of [a,b]; the ends are the stored a and b since
+        // (a+b)-b need not equal a in floating point.
+        knotContainer r;
+        r.reserve(s.size());
+        r.insert(r.end(), mu, a);
+        for (typename knotContainer::const_reverse_iterator it = s.rbegin();
+             it != s.rend() - mu; ++it)
+            r.push_back(a + b - *it);
+        _regeneratePeriodic(r, m_deg, a, b);
+        return;
+    }
+
     // Not implemented using affineTransformTo() because of efficiency
     // and also to prevent accidental reversing.
 
@@ -659,6 +884,7 @@ void gsKnotVector<T>::initUniform( T first,
                                    unsigned mult_interior,
                                    short_t degree)
 {
+    m_periodic = 0;
     m_deg = (degree == - 1 ? mult_ends-1 : degree);
 
     const size_t nKnots = 2 * mult_ends + interior*mult_interior;
@@ -828,6 +1054,17 @@ void gsKnotVector<T>::uniformRefine( mult_t numKnots, mult_t mult )
     //GISMO_ASSERT( numKnots>=0, "Expecting non-negative number");
     if( numKnots <= 0 ) return;
 
+    if (m_periodic)
+    {
+        GISMO_ENSURE(0 <= mult && mult <= m_deg+1,
+                     "uniformRefine: multiplicity out of range [0,p+1].");
+        if (0 == mult) return;
+        gsKnotVector W = _closedPeriod();
+        W.uniformRefine(numKnots, mult);
+        _regeneratePeriodic(_periodOf(W), m_deg, W.first(), W.last());
+        return;
+    }
+
     const mult_t l = ( domainUBegin() - ubegin() ) * numKnots * mult;
     const mult_t r = (uend() - domainUEnd() - 1  ) * numKnots * mult;
 
@@ -844,6 +1081,12 @@ void gsKnotVector<T>::uniformRefine( mult_t numKnots, mult_t mult )
 template<typename T>
 void gsKnotVector<T>::addConstant( T amount )
 {
+    if (m_periodic)
+    {
+        _periodicTranslate(amount);
+        return;
+    }
+
     // TODO add test
     // With C++11, you can use:
     // std::for_each( m_repKnots.begin(), m_repKnots.end(),  [amount](T& k){ k+= amount;} );
@@ -855,6 +1098,15 @@ void gsKnotVector<T>::addConstant( T amount )
 template<typename T>
 void gsKnotVector<T>::addConstant(T start, T amount)
 {
+    if (m_periodic)
+    {
+        GISMO_ENSURE(start <= first(),
+                     "addConstant(start,amount) with start > first(): "
+                     "not defined on a periodic knot vector");
+        _periodicTranslate(amount);
+        return;
+    }
+
     typename std::vector<T>::iterator beg   = m_repKnots.begin();
     while (*beg < start)
         beg++;
@@ -879,6 +1131,26 @@ void gsKnotVector<T>::addConstant(T start, T amount)
 template<typename T>
 void gsKnotVector<T>::increaseMultiplicity(const mult_t i, bool boundary)
 {
+    if (m_periodic)
+    {
+        GISMO_ENSURE(i >= 0, "increaseMultiplicity: negative increment.");
+        const T a = *domainBegin(), b = *domainEnd();
+        const mult_t p = m_deg;
+        const knotContainer s = _periodPart();
+        knotContainer r;
+        r.reserve(s.size());
+        for (size_t j = 0; j < s.size(); )
+        {
+            size_t e = j;
+            while (e < s.size() && s[e] == s[j]) ++e;
+            const mult_t cap = (s[j] == a) ? p : p+1; // seam: mu <= p
+            r.insert(r.end(), (std::min<mult_t>)(cap, static_cast<mult_t>(e-j)+i), s[j]);
+            j = e;
+        }
+        _regeneratePeriodic(r, m_deg, a, b);
+        return;
+    }
+
     GISMO_ASSERT( i>=0, "Expecting non-negative number");
     const mult_t lg = (domainUBegin() - ubegin()) * i;
     const mult_t rg = (uend() - domainUEnd() - 1) * i;
@@ -913,6 +1185,15 @@ void gsKnotVector<T>::increaseMultiplicity(const mult_t i, bool boundary)
 template<typename T>
 void gsKnotVector<T>::reduceMultiplicity(const mult_t i, bool boundary)
 {
+    if (m_periodic)
+    {
+        GISMO_ENSURE(i >= 0, "reduceMultiplicity: negative decrement.");
+        gsKnotVector W = _closedPeriod();
+        W.reduceMultiplicity(i, true);
+        _regeneratePeriodic(_periodOf(W), m_deg, W.first(), W.last());
+        return;
+    }
+
     GISMO_ASSERT( i>=0, "Expecting non-negative number");
     knotContainer ktmp;
     multContainer mtmp;
@@ -947,6 +1228,19 @@ void gsKnotVector<T>::reduceMultiplicity(const mult_t i, bool boundary)
 template<typename T>
 void gsKnotVector<T>::degreeElevate(const short_t & i)
 {
+    if (m_periodic)
+    {
+        GISMO_ENSURE(i >= 0, "degreeElevate: negative increment.");
+        if (0 == i) return;
+        // W.increaseMultiplicity (not this->, which caps) raises the
+        // multiplicity of every breakpoint of [a,b), the seam included.
+        gsKnotVector W = _closedPeriod();
+        W.increaseMultiplicity(i, true);
+        _regeneratePeriodic(_periodOf(W), static_cast<short_t>(m_deg+i),
+                            W.first(), W.last());
+        return;
+    }
+
     increaseMultiplicity(i,true);
     m_deg += i;
 }
@@ -954,6 +1248,17 @@ void gsKnotVector<T>::degreeElevate(const short_t & i)
 template<typename T>
 void gsKnotVector<T>::degreeReduce(const short_t & i)
 {
+    if (m_periodic)
+    {
+        GISMO_ENSURE(i >= 0, "degreeReduce: negative decrement.");
+        if (0 == i) return;
+        gsKnotVector W = _closedPeriod();
+        W.reduceMultiplicity(i, true);
+        _regeneratePeriodic(_periodOf(W), static_cast<short_t>(m_deg-i),
+                            W.first(), W.last());
+        return;
+    }
+
     reduceMultiplicity(i,true);
     m_deg -= i;
 }
@@ -963,6 +1268,18 @@ std::vector<T> gsKnotVector<T>::
 coarsen(index_t knotRemove, index_t knotSkip, mult_t mul)
 {
     GISMO_ASSERT(knotRemove>=0 && knotSkip>0, "Invalid parameters to knot-coarsening.");
+
+    if (m_periodic)
+    {
+        if (0 == knotRemove) return std::vector<T>();
+        // The default -1 means "remove completely", i.e. p+1 of the
+        // periodic vector; on the closed period W it would be mu.
+        if (-1 == mul) mul = m_deg + 1;
+        gsKnotVector W = _closedPeriod();
+        std::vector<T> removed = W.coarsen(knotRemove, knotSkip, mul);
+        _regeneratePeriodic(_periodOf(W), m_deg, W.first(), W.last());
+        return removed;
+    }
 
     // Special value -1
     if (-1==mul) mul = m_deg+1;
@@ -1009,7 +1326,10 @@ void gsKnotVector<T>::greville_into(gsMatrix<T> & result, bool clamp) const
     
     if (clamp && ((lg != 0) || (rg != 0)))
     {
+        // The ghost-clamping inserts hit the seam, which a periodic
+        // vector refuses; the copy is a plain stretched knot vector.
         gsKnotVector tmp(*this);
+        tmp.m_periodic = 0;
         tmp.insert(*domainBegin(), lg);
         tmp.insert(*domainEnd(),rg);
         tmp.greville_into(result);
