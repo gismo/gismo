@@ -703,6 +703,8 @@ public:
                     T grading, unsigned mult_interior = 1)
     {
         m_periodic = 0;
+        m_repKnots.clear();
+        m_multSum.clear();
         GISMO_ASSERT(u0<u1,"Knot vector must be an interval.");
 
         m_deg = degree;

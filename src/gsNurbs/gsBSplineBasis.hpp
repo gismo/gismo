@@ -101,7 +101,7 @@ void gsTensorBSplineBasis<1,T>::connectivity(const gsMatrix<T> & nodes,
         mesh.addEdge( i-1, i );
     }
 
-    if ( m_periodic )
+    if ( isPeriodic() )
         mesh.addEdge( sz-1, 0);
 }
 
@@ -129,7 +129,7 @@ void gsTensorBSplineBasis<1,T>::active_into(const gsMatrix<T>& u,
 {
     result.resize(m_p+1, u.cols());
 
-    if ( m_periodic )
+    if ( isPeriodic() )
     {
         // We want to keep the non-periodic case unaffected wrt
         // complexity, therefore we keep the modulo operation of the
@@ -164,7 +164,7 @@ bool gsTensorBSplineBasis<1,T>::isActive(const index_t i, const gsVector<T>& u) 
 template <class T>
 gsMatrix<index_t> gsTensorBSplineBasis<1,T>::allBoundary() const
 {
-    if( m_periodic ) // Periodic basis does not have such things as boundaries.
+    if ( isPeriodic() ) // Periodic basis does not have such things as boundaries.
     {
         gsWarn << "Periodic basis does not have such things as boundaries.\n";
         // return NULL;
@@ -185,7 +185,7 @@ template <class T>
 gsMatrix<index_t> gsTensorBSplineBasis<1,T>::boundaryOffset(boxSide const & s,
                                                                index_t offset ) const
 {
-    if( m_periodic )
+    if ( isPeriodic() )
         gsWarn << "Periodic basis does not have such things as boundaries.\n";
 
     gsMatrix<index_t> res(1,1);
@@ -228,7 +228,7 @@ template <class T>
 gsMatrix<T> gsTensorBSplineBasis<1,T>::support(const index_t & i) const
 {
     // Note: in the periodic case last index is
-    // m_knots.size() - m_p - 1 - m_periodic
+    // m_knots.size() - m_p - 1 - numCrossingFunctions()
     // but we may still accept the original index of the basis function.
     // One issue is that in the periodic case the basis function
     // support has two connected components, so probably one should
@@ -246,12 +246,13 @@ gsMatrix<T> gsTensorBSplineBasis<1,T>::support(const index_t & i) const
 template <class T>
 index_t gsTensorBSplineBasis<1,T>::twin(index_t i) const
 {
-    if( m_periodic == 0 )
+    const index_t m = numCrossingFunctions();
+    if( m == 0 )
         return i;
     const index_t s = size();
-    if ( i < static_cast<index_t>(m_periodic) )
+    if ( i < m )
         i += s;
-    else if ( i > s )
+    else if ( i >= s )
         i -= s;
     return i;
 }
@@ -380,6 +381,7 @@ void gsTensorBSplineBasis<1,T>::evalSingle_into(index_t i,
 {
     GISMO_ASSERT( static_cast<size_t>(i) < m_knots.size()-m_p-1,"Invalid index of basis function." );
 
+    const index_t m = numCrossingFunctions();
     result.resize(1, u.cols() );
     STACK_ARRAY(T, N, m_p + 1);
 
@@ -389,10 +391,10 @@ void gsTensorBSplineBasis<1,T>::evalSingle_into(index_t i,
 
         // Periodic basis ?
         // Note: for periodic, i is understood modulo the basis size
-        if( m_periodic )
+        if( m )
         {
             // Basis is periodic and i could be among the crossing functions.
-            if( static_cast<int>(i) <= m_periodic )
+            if( static_cast<int>(i) <= m )
             {
                 gsMatrix<T> supp = support(i);
                 if( u(0,s) < supp(0) || u(0,s) > supp(1)) // u is outside the support of B_i
@@ -461,6 +463,7 @@ void gsTensorBSplineBasis<1,T>::evalDerSingle_into(index_t i,
 {
     GISMO_ASSERT( u.rows() == 1 , "gsBSplineBasis accepts points with one coordinate.");
     // This is a copy of the interior of evalAllDerSingle_into() except for the last for cycle with k.
+    const index_t m = numCrossingFunctions();
 
     // Notation from the NURBS book:
     // p - degree
@@ -485,7 +488,7 @@ void gsTensorBSplineBasis<1,T>::evalDerSingle_into(index_t i,
     {
         // Special cases
         // Periodic basis
-        if( (int)(i) <= m_periodic ) // Basis is periodic and i could be among the crossing functions.
+        if( (int)(i) <= m ) // Basis is periodic and i could be among the crossing functions.
         {
             gsMatrix<T> supp = support(i);
             if( u(0,s) < supp(0) || u(0,s) > supp(1)) // u is outside the support of B_i
@@ -581,7 +584,7 @@ void gsTensorBSplineBasis<1,T>::evalFunc_into(const gsMatrix<T> &u,
 {
     GISMO_ASSERT( u.rows() == 1 , "gsBSplineBasis accepts points with one coordinate (got "
                   <<u.rows()<<").");
-    if( m_periodic == 0 )
+    if ( !isPeriodic() )
         gsDeboor(u, m_knots, m_p, coefs, result); // De Boor's algorithm
     else
     {
@@ -700,6 +703,7 @@ gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(index_t i,
     // i - id of the basis function (hopefully the same ;)
     // u - parameter (where to evaluate)
 
+    const index_t m = numCrossingFunctions();
     T saved, Uleft, Uright, temp;
     const unsigned int p1 = m_p + 1;
     // Note that N[i][k] = N[ i*p1 + k ].
@@ -712,7 +716,7 @@ gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(index_t i,
     for( index_t s = 0; s < u.cols(); s++ )
     {
         // Periodic basis
-        if( (int)(i) <= m_periodic ) // Basis is periodic and i could be among the crossing functions.
+        if( (int)(i) <= m ) // Basis is periodic and i could be among the crossing functions.
         {
             gsMatrix<T> supp = support(i);
             if( u(0,s) < supp(0) || u(0,s) > supp(1)) // u is outside the support of B_i
@@ -802,7 +806,7 @@ template <class T> inline
 void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const
 {
     // TO DO specialized computation for gsBSplineBasis
-    if( m_periodic == 0 )
+    if ( !isPeriodic() )
         gsBasis<T>::derivFunc_into(u, coefs, result);
     else
         gsBasis<T>::derivFunc_into(u, perCoefs(coefs), result);
@@ -812,7 +816,7 @@ template <class T> inline
 void gsTensorBSplineBasis<1,T>::deriv2_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const
 {
     // TO DO specialized computation for gsBSplineBasis
-    if( m_periodic == 0 )
+    if ( !isPeriodic() )
         gsBasis<T>::deriv2Func_into(u, coefs, result);
     else
         gsBasis<T>::deriv2Func_into(u, perCoefs(coefs), result);
@@ -1108,8 +1112,8 @@ std::ostream & gsTensorBSplineBasis<1,T>::print(std::ostream &os) const
     os << "BSplineBasis: deg=" <<degree()
        << ", size="<< size() << ", knot vector:\n";
     os << this->knots();
-    if( m_periodic > 0 )
-        os << ",\n m_periodic= " << m_periodic;
+    if ( isPeriodic() )
+        os << ",\n periodic, crossing functions= " << numCrossingFunctions();
     return os;
 }
 template <class T>
@@ -1119,8 +1123,8 @@ std::string gsTensorBSplineBasis<1,T>::detail() const
     os << "BSplineBasis: deg=" <<degree()
        << ", size="<< size() << ", knot vector:\n";
     os << this->knots().detail();
-    if( m_periodic > 0 )
-        os << ",\n m_periodic= " << m_periodic;
+    if ( isPeriodic() )
+        os << ",\n periodic, crossing functions= " << numCrossingFunctions();
     return os.str();
 }
 
@@ -1128,6 +1132,9 @@ std::string gsTensorBSplineBasis<1,T>::detail() const
 template<class T>
 void gsTensorBSplineBasis<1,T>::enforceOuterKnotsPeriodic()
 {
+    if ( m_knots.isPeriodic() )
+        return;
+
     int borderKnotMult = this->borderKnotMult(); // Otherwise complains that error: 'borderKnotMult' cannot be used as a function
     std::vector<T> newKnots(m_knots.begin(), m_knots.end());
     for( int i = 0; i <= m_p - borderKnotMult; i++ )
@@ -1139,48 +1146,11 @@ void gsTensorBSplineBasis<1,T>::enforceOuterKnotsPeriodic()
 }
 
 template <class T>
-void gsTensorBSplineBasis<1,T>::_convertToPeriodic()
-{
-    gsWarn << "gsBSplineBasis: Converting basis to periodic"<< *this<< "\n";
-
-    int borderKnotMult = this->borderKnotMult();
-    if( m_knots.size() < static_cast<size_t>(2 * m_p + 2) ) // We need at least one internal knot span.
-    {
-        gsWarn << "Your basis cannot be changed into periodic:\n Not enough internal control points for our construction of periodic basis.\n";
-        m_periodic = 0;
-    }
-
-    else if( isClamped() )
-    {
-        // Clamped knots are OK, if BOTH of them are clamped.
-        _stretchEndKnots();
-        m_periodic = m_p + 2 - borderKnotMult; // +2 and not +1 because borderKnotMult has been computed before stretching
-    }
-
-    else
-    {
-        m_periodic = m_p + 1 - borderKnotMult; // We suppose it will be possible to convert the basis to periodic.
-
-        T i1, i2;
-        for( int i = 2; i <= 2 * m_p + 1 - borderKnotMult; i ++ )
-        {
-            // Compare the knot intervals in the beginning with the corresponding knot intervals at the end.
-            i1 = m_knots[i] - m_knots[i-1];
-            i2 = m_knots[m_knots.size() - (2*m_p) + i - 2 + borderKnotMult] - m_knots[m_knots.size() - (2*m_p) + i - 3 + borderKnotMult];
-            if( math::abs( i1 - i2 ) > (T)(1e-8) )
-            {
-                gsWarn << "Your basis cannot be changed into periodic:\n Trouble stretching interior knots.\n";
-                //std::cerr << "i: " << i << ", i1: " << i1 << ", i2: " << i2 << std::endl;
-                m_periodic = 0;
-                return;
-            }
-        }
-    }
-}
-
-template <class T>
 int gsTensorBSplineBasis<1,T>::borderKnotMult() const
 {
+    if ( m_knots.isPeriodic() )
+        return m_p + 1 - m_knots.numCrossingFunctions();
+
     // Terminology: Blue knots are the m_p + 1st from the beginning and from the end of knot vector.
     if( isClamped() )
         return m_p + 1;
@@ -1216,13 +1186,34 @@ int gsTensorBSplineBasis<1,T>::borderKnotMult() const
 }
 
 template <class T>
-void gsTensorBSplineBasis<1,T>::_stretchEndKnots()
+std::vector<T> gsTensorBSplineBasis<1,T>::_periodicKnots(const T u0, const T u1,
+                                                         const unsigned interior,
+                                                         const int degree,
+                                                         const unsigned mult)
 {
-    GISMO_ASSERT( isClamped(), "_stretchEndKnots() is intended for use only to knot vectors with clamped end knots.");
-    T curFirst=m_knots[0];
-    T curLast=m_knots[m_knots.size() - 1];
-    m_knots.remove(curFirst); m_knots.insert(m_knots[m_knots.size() - m_p - 2] - _activeLength());
-    m_knots.remove(curLast);  m_knots.insert(m_knots[m_p + 1] + _activeLength());
+    const index_t N = interior + 1;
+    const index_t n = N * mult;
+    const index_t m = degree + 1 - mult;
+    const T L = u1 - u0;
+
+    // Period part: breakpoints x_j = u0 + L*j/N, each repeated mult times
+    std::vector<T> s(n);
+    for ( index_t j = 0; j < N; ++j )
+        std::fill( s.begin() + j*mult, s.begin() + (j+1)*mult,
+                   j == 0 ? u0 : u0 + L * T(j) / T(N) );
+
+    // t_k = s_{(k-m) mod n} + L*floor((k-m)/n), with floored division
+    std::vector<T> t(n + m + degree + 1);
+    for ( index_t k = 0; k < static_cast<index_t>(t.size()); ++k )
+    {
+        const index_t q = k - m;
+        index_t w = q / n;
+        index_t r = q % n;
+        if ( r < 0 ) { r += n; --w; }
+        // the copies of the right end b are written as u1 exactly
+        t[k] = ( r < static_cast<index_t>(mult) && w == 1 ) ? u1 : s[r] + L * T(w);
+    }
+    return t;
 }
 
 /* ********************************************** */

@@ -103,10 +103,9 @@ public:
     {
         m_p = 0;
         m_knots.initClamped(0);
-        m_periodic = 0;
 
         if( periodic )
-            this->_convertToPeriodic();
+            m_knots.setPeriodic(true);
 
         if( ! this->check() )
             gsWarn << "Warning: Inconsistent "<< *this<< "\n";
@@ -117,10 +116,9 @@ public:
     {
         m_p        = KV.degree();
         m_knots.swap(KV);
-        m_periodic = 0;
 
         if( periodic )
-            this->_convertToPeriodic();
+            m_knots.setPeriodic(true);
 
         if( ! this->check() )
             gsWarn << "Warning: Insconsistent "<< *this<< "\n";
@@ -134,7 +132,6 @@ public:
 
         m_p        = KV.front().degree();
         m_knots.swap(KV.front());
-        m_periodic = 0;
     }
 
     /// @brief Construct a BSpline basis
@@ -144,16 +141,37 @@ public:
     /// @param degree degree of the spline space
     /// @param mult_interior multiplicity at the interior knots
     /// @param periodic specifies if basis is periodic or not
+    ///
+    /// If \a periodic, the space is the periodic spline space with
+    /// interior+1 breakpoints per period, all of multiplicity
+    /// \a mult_interior (also at the seam), i.e. C^{degree-mult_interior}
+    /// continuity, with size() == (interior+1)*mult_interior functions and
+    /// numCrossingFunctions() == degree+1-mult_interior.
+    /// Refused with GISMO_ERROR unless 1 <= mult_interior <= degree and
+    /// (interior+1)*mult_interior >= degree+1.
     gsTensorBSplineBasis(const T u0, const T u1, const unsigned interior,
                    const int degree, const unsigned mult_interior=1,
                    const bool periodic = false )
     {
-        m_p = degree;
-        m_knots.initUniform(u0, u1, interior, m_p+1, mult_interior, m_p);
-        m_periodic = 0;
+        if ( periodic )
+        {
+            GISMO_ENSURE( mult_interior >= 1,
+                "Periodic basis: the multiplicity must be at least 1." );
+            GISMO_ENSURE( degree >= 1 && mult_interior <= static_cast<unsigned>(degree),
+                "Periodic basis: the multiplicity must be at most the degree." );
+            GISMO_ENSURE( (interior+1)*static_cast<index_t>(mult_interior) >= degree+1,
+                "Periodic basis: the number of functions must be at least degree+1." );
 
-        if( periodic )
-            this->_convertToPeriodic();
+            m_p = degree;
+            KnotVectorType kv( _periodicKnots(u0, u1, interior, degree, mult_interior), degree );
+            kv.setPeriodic(true);
+            m_knots.swap(kv);
+        }
+        else
+        {
+            m_p = degree;
+            m_knots.initUniform(u0, u1, interior, m_p+1, mult_interior, m_p);
+        }
 
         if( ! this->check() )
             gsWarn << "Warning: Insconsistent "<< *this<< "\n";
@@ -164,6 +182,10 @@ public:
     static typename gsBasis<T>::uPtr create(KnotVectorType KV, short_t dim)
     {
         typedef typename gsBasis<T>::uPtr basisPtr;
+
+        if ( dim > 1 && KV.isPeriodic() )
+            GISMO_ERROR("gsBSplineBasis::create: a periodic knot vector would be periodic in every direction; "
+                        "periodicity in one direction of a tensor basis is not supported.");
 
         switch (dim)
         {
@@ -231,7 +253,6 @@ public:
     void swap(gsTensorBSplineBasis& other)
     {
         std::swap(m_p, other.m_p);
-        std::swap(m_periodic, other.m_periodic);
         m_knots.swap(other.m_knots);
     }
 
@@ -245,7 +266,7 @@ public:
     using Base::size;
 
     // Look at gsBasis class for a description
-    index_t size() const { return m_knots.size() - m_p - 1 - m_periodic; }
+    index_t size() const { return m_knots.size() - m_p - 1 - m_knots.numCrossingFunctions(); }
 
     // Look at gsBasis class for a description
     size_t numElements(boxSide const & s = 0) const { return (0==s?m_knots.numElements():1); }
@@ -365,15 +386,32 @@ public:
     typename gsBasis<T>::uPtr tensorize(const gsBasis<T> & other) const;
 
     /// @brief Check the BSplineBasis for consistency
+    ///
+    /// For a periodic basis it checks that the degrees agree, that
+    /// 1 <= m <= p and n >= p+1, that the seam multiplicity is exactly
+    /// p+1-m, and that the ghost knots satisfy t_{k+n} = t_k + (b-a)
+    /// for k = 0..m+p.
     bool check() const
     {
-        if ( m_periodic > 0 )
+        if ( m_knots.isPeriodic() )
         {
-            // Periodicity check wrt knot values
-            return (
-                m_knots.degree()      == m_p &&
-                (int)m_knots.size()   >  2*m_p+1
-                );
+            if ( m_knots.degree() != m_p )
+                return false;
+            const index_t K = m_knots.size();
+            const index_t m = m_knots.numCrossingFunctions();
+            const index_t n = K - m_p - 1 - m;
+            if ( m < 1 || m > m_p || n < m_p + 1 )
+                return false;
+            const T a = m_knots[m_p];
+            const T b = m_knots[K-m_p-1];
+            const T L = b - a;
+            if ( !( m_knots[m-1] < a ) )
+                return false;
+            const T tol = 1e-12 * (std::max)( (std::max)(math::abs(a), math::abs(b)), math::abs(L) );
+            for ( index_t k = 0; k <= m + m_p; ++k )
+                if ( math::abs( m_knots[k+n] - m_knots[k] - L ) > tol )
+                    return false;
+            return true;
         }
         else
         {
@@ -551,11 +589,14 @@ public:
         // grab unique knots
         const std::vector<T> knots = other.m_knots.unique();
 
+        // Work on a copy: a refusal by the knot vector leaves *this unchanged
+        KnotVectorType kv(m_knots);
         // Increase the degree without adjusting any knot
-        m_p += i;
-        m_knots.set_degree(m_p);
+        kv.set_degree(kv.degree() + i);
         // Adjust (reduce) smoothness to satisfy initial constraint knots
-        m_knots.insert(knots,i);
+        kv.insert(knots,i);
+        m_knots.swap(kv);
+        m_p = m_knots.degree();
     }
 
     /// @brief p-refinement (essentially degree elevation)
@@ -571,7 +612,8 @@ public:
     {
         GISMO_UNUSED(dir);
         GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
-        m_p+=i; m_knots.degreeElevate(i);
+        m_knots.degreeElevate(i);
+        m_p = m_knots.degree();
     }
 
     // Look at gsBasis for documentation
@@ -580,8 +622,8 @@ public:
         GISMO_UNUSED(dir);
         GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
         GISMO_ASSERT( i<=m_p, "Cannot reduce degree to negative");
-        m_p-=i; m_knots.degreeReduce(i);
-        //m_periodic =
+        m_knots.degreeReduce(i);
+        m_p = m_knots.degree();
     }
 
     // Look at gsBasis for documentation
@@ -589,7 +631,8 @@ public:
     {
         GISMO_UNUSED(dir);
         GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
-        m_p+=i; m_knots.degreeIncrease(i);
+        m_knots.degreeIncrease(i);
+        m_p = m_knots.degree();
     }
 
     // Look at gsBasis for documentation
@@ -597,7 +640,8 @@ public:
     {
         GISMO_UNUSED(dir);
         GISMO_ASSERT( dir == -1 || dir == 0, "Invalid direction");
-        m_p-=i; m_knots.degreeDecrease(i);
+        m_knots.degreeDecrease(i);
+        m_p = m_knots.degree();
     }
 
     /// @brief Elevate spline continuity at interior knots by \a i
@@ -620,7 +664,7 @@ public:
     /// @brief Tells, whether the basis is periodic.
     bool isPeriodic() const
     {
-        return (m_periodic > 0);
+        return m_knots.isPeriodic();
     }
 
     // Look at gsBasis class for a description
@@ -629,7 +673,7 @@ public:
     /// @brief Returns number of functions crossing the boundary of the knot vector.
     int numCrossingFunctions () const
     {
-        return m_periodic;
+        return static_cast<int>(m_knots.numCrossingFunctions());
     }
 
     /// @brief Checks, if both endknots have multiplicity m_p + 1.
@@ -646,13 +690,11 @@ public:
     }
 
     /// @brief If flag is true, tries to convert the basis to periodic
-    /// (succeeds only if the knot vector is suitable).
+    /// (GISMO_ERROR, leaving the basis unchanged, if the knot vector is
+    /// not suitable); if false, drops the periodic property.
     void setPeriodic(bool flag = true)
     {
-        if ( flag )
-            _convertToPeriodic();
-        else
-            m_periodic = 0;
+        m_knots.setPeriodic(flag);
     }
 
     // Compatible with tensor B-spline basis
@@ -660,7 +702,7 @@ public:
     {
         GISMO_UNUSED(dir);
         GISMO_ASSERT(dir==0, "Invalid direction");
-            _convertToPeriodic();
+        m_knots.setPeriodic(true);
     }
 
     /// @brief Returns the multiplicity of the first ``significant" knot
@@ -680,7 +722,8 @@ public:
         return m_knots.beginBdr(s);
     }
 
-    /// @brief Moves the knot vectors to enforce periodicity.
+    /// @brief Moves the knot vectors to enforce periodicity. No-op on a
+    /// periodic knot vector, which keeps its ghost knots consistent itself.
     void enforceOuterKnotsPeriodic();
 
     // Look at gsBasis class for a description
@@ -697,11 +740,13 @@ public:
 
 protected:
 
-    /// @brief Tries to convert the basis into periodic
-    void _convertToPeriodic();
-
-    /// @brief Adjusts endknots so that the knot vector can be made periodic.
-    void _stretchEndKnots();
+    /// @brief Stretched knot vector (ghost knots included) of the periodic
+    /// space with \a interior+1 breakpoints per period on [\a u0, \a u1],
+    /// each of multiplicity \a mult, i.e. t_k = s_{(k-m) mod n} + L*floor((k-m)/n)
+    /// for k = 0..n+m+p, with n = (interior+1)*mult, m = degree+1-mult, L = u1-u0.
+    static std::vector<T> _periodicKnots(const T u0, const T u1,
+                                         const unsigned interior,
+                                         const int degree, const unsigned mult);
 
 public:
 
@@ -710,12 +755,13 @@ public:
     /// @param coefs coefficients (control points, one per row) before
     /// converting the basis into periodic.
     ///
-    /// @return copy of coefs with the first m_periodic rows copied to
-    /// the last m_periodic rows.
+    /// @return copy of coefs with the first numCrossingFunctions() rows copied to
+    /// the last numCrossingFunctions() rows.
     gsMatrix<T> perCoefs( const gsMatrix<T>& coefs ) const
     {
+        const index_t m = numCrossingFunctions();
         gsMatrix<T> per_coefs = coefs;
-        per_coefs.bottomRows( m_periodic ) = coefs.topRows( m_periodic );
+        per_coefs.bottomRows( m ) = coefs.topRows( m );
         return per_coefs;
     }
 
@@ -730,9 +776,10 @@ public:
     /// to full coefficients
     void expandCoefs(gsMatrix<T> & coefs) const
     {
+        const index_t m = numCrossingFunctions();
         const index_t sz = coefs.rows();
-        coefs.conservativeResize(sz+m_periodic, gsEigen::NoChange);
-        coefs.bottomRows( m_periodic ) = coefs.topRows( m_periodic );
+        coefs.conservativeResize(sz+m, gsEigen::NoChange);
+        coefs.bottomRows( m ) = coefs.topRows( m );
     }
 
     /// @brief Helper function for transforming full coefficients to
@@ -740,13 +787,13 @@ public:
     void trimCoefs(gsMatrix<T> & coefs) const
     {
         const index_t sz = coefs.rows();
-        coefs.conservativeResize(sz-m_periodic, gsEigen::NoChange);
+        coefs.conservativeResize(sz-numCrossingFunctions(), gsEigen::NoChange);
     }
 
     /// @brief Returns the size of the basis ignoring the bureaucratic way of
     /// turning the basis into periodic.
     int trueSize() const
-    { return this->size() + m_periodic; }
+    { return this->size() + numCrossingFunctions(); }
 
 // Data members
 protected:
@@ -756,9 +803,6 @@ protected:
 
     /// @brief Knot vector
     KnotVectorType m_knots;
-
-    /// @brief Denotes whether the basis is periodic, ( 0 -- non-periodic, >0 -- number of ``crossing" functions)
-    int m_periodic;
 
     /*/// @brief Multiplicity of the p+1st knot from the beginning and from the end.
       int m_bordKnotMulti;*/

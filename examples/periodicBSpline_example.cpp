@@ -14,8 +14,7 @@
       - C2   : periodic basis built from the uniform stretched knot vector
                t_k = k*h - p*h, k = 0,...,N+2p, followed by setPeriodic().
       - base-x, C1-x, C2-x : the same spaces, applied to f(x) = x (1D only).
-    The C1 variants are run only with --withC1 or an explicit
-    --case C1,... / --case C1-x,....
+    The C1 variants run by default; --withC1 skips them.
 
     Source functions:
       - 1D: f(x) = sin(2 pi x) + cos(4 pi x)/2. It is smooth and periodic,
@@ -302,7 +301,7 @@ bool parseCase(const std::string & spec, Case & c)
 int main(int argc, char * argv[])
 {
     index_t pmin = 1, pmax = 3, lmax = 3, N0 = 4;
-    bool with2d = false, withC1 = false;
+    bool with2d = false, withC1 = true;
     std::string caseStr;
 
     gsCmdLine cmd("L2-projection convergence on periodic and non-periodic B-spline spaces.");
@@ -311,7 +310,7 @@ int main(int argc, char * argv[])
     cmd.addInt("", "lmax", "Levels 0..lmax; N = N0*2^level", lmax);
     cmd.addInt("", "N0", "Number of elements at level 0", N0);
     cmd.addSwitch("with2d", "Also run the 2D cases", with2d);
-    cmd.addSwitch("withC1", "Also run the C1 and C1-x variants (periodic constructor)", withC1);
+    cmd.addSwitch("withC1", "Skip the C1 and C1-x variants (periodic constructor), which run by default", withC1);
     cmd.addString("", "case", "Single case '<variant>,<p>,<dim>', e.g. C2,2,1 "
                   "(variant: base, C1, C2, base-x, C1-x, C2-x)", caseStr);
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
