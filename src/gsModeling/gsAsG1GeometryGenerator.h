@@ -1,3 +1,4 @@
+
 /** @file gsAsG1GeometryGenerator.h
     @brief Analysis-Suitable G1 (AS-G1) Multi-Patch Geometry Generator in C++ using G+Smo.
 
@@ -186,6 +187,17 @@ public:
         gsWrite(m_mp, filename);
     }
 
+    // Custom Boundaries from file or external tools (Mathematica designer)
+    void setCustomBoundaryControlPoints(const std::vector<gsMatrix<T>>& eastCP,
+                                       const std::vector<gsMatrix<T>>& northCP) {
+        m_custom_east_cp = eastCP;
+        m_custom_north_cp = northCP;
+    }
+    bool hasCustomBoundaries() const {
+        return !m_custom_east_cp.empty() && !m_custom_north_cp.empty();
+    }
+    bool loadBoundaryDefinition(const std::string& filename);
+
     // Accessors
     const gsMultiPatch<T>& multiPatch() const { return m_mp; }
     const gsMultiPatch<T>& coarseMultiPatch() const { return m_mp_coarse; }
@@ -210,6 +222,8 @@ private:
 
     std::vector<gsVector<T>> m_corners;
     std::vector<gsVector<T>> m_midCorners;
+    std::vector<gsMatrix<T>> m_custom_east_cp;
+    std::vector<gsMatrix<T>> m_custom_north_cp;
 
     gsMultiPatch<T> m_mp_coarse;
     gsMultiPatch<T> m_mp;
@@ -515,8 +529,19 @@ void gsAsG1GeometryGenerator<T>::assembleConstraints(
             };
         }
 
-        gsMatrix<T> P_east  = fitBoundaryCurve(m_basis1d, eastFunc);
-        gsMatrix<T> P_north = fitBoundaryCurve(m_basis1d, northFunc);
+        gsMatrix<T> P_east;
+        if (m_custom_east_cp.size() == static_cast<size_t>(V) && m_custom_east_cp[i].rows() == m_Nv) {
+            P_east = m_custom_east_cp[i];
+        } else {
+            P_east = fitBoundaryCurve(m_basis1d, eastFunc);
+        }
+
+        gsMatrix<T> P_north;
+        if (m_custom_north_cp.size() == static_cast<size_t>(V) && m_custom_north_cp[i].rows() == m_Nu) {
+            P_north = m_custom_north_cp[i];
+        } else {
+            P_north = fitBoundaryCurve(m_basis1d, northFunc);
+        }
 
         for (int iv = 0; iv < m_Nv; ++iv) {
             addConstraintRow({{globalIdx(i, m_Nu - 1, iv), T(1)}}, P_east(iv, 0), P_east(iv, 1));
@@ -755,26 +780,161 @@ bool gsAsG1GeometryGenerator<T>::checkJacobianRegularity(
     bool all_positive = true;
 
     for (int i = 0; i < V; ++i) {
+        T min_det_patch = 1e12;
+        T min_u = 0, min_v = 0;
         for (int iu = 0; iu <= samplesPerDir; ++iu) {
             for (int iv = 0; iv <= samplesPerDir; ++iv) {
+                T u_val = static_cast<T>(iu) / samplesPerDir;
+                T v_val = static_cast<T>(iv) / samplesPerDir;
                 gsMatrix<T> pt(2, 1);
-                pt << static_cast<T>(iu) / samplesPerDir, static_cast<T>(iv) / samplesPerDir;
+                pt << u_val, v_val;
                 gsMatrix<T> d = m_mp.patch(i).deriv(pt);
                 gsVector<T> du(2), dv(2);
                 du << d(0, 0), d(2, 0);
                 dv << d(1, 0), d(3, 0);
                 T detJ = det2D(du, dv);
 
+                if (detJ < min_det_patch) {
+                    min_det_patch = detJ;
+                    min_u = u_val;
+                    min_v = v_val;
+                }
                 if (detJ < min_det_all) min_det_all = detJ;
                 if (detJ > max_det_all) max_det_all = detJ;
                 if (detJ <= T(0)) all_positive = false;
             }
         }
+        std::cout << "  Patch " << i << " min det(J) = " << min_det_patch << " at (u,v)=(" << min_u << "," << min_v << ")" << std::endl;
     }
 
     if (outMinDet) *outMinDet = min_det_all;
     if (outMaxDet) *outMaxDet = max_det_all;
     return all_positive;
+}
+
+template <class T>
+gsMatrix<T> fitBoundarySamplePoints(const gsBSplineBasis<T>& basis, const gsMatrix<T>& samples)
+{
+    const int N = samples.rows();
+    const int nBasis = basis.size();
+    if (N == nBasis) return samples;
+
+    gsMatrix<T> u(1, N);
+    for (int j = 0; j < N; ++j) {
+        u(0, j) = static_cast<T>(j) / (N - 1);
+    }
+    gsMatrix<T> B;
+    basis.eval_into(u, B);
+    gsMatrix<T> A = B * B.transpose();
+    gsMatrix<T> RHS = B * samples;
+    gsMatrix<T> P = A.colPivHouseholderQr().solve(RHS);
+    P.row(0) = samples.row(0);
+    P.row(nBasis - 1) = samples.row(N - 1);
+    return P;
+}
+
+template <class T>
+bool gsAsG1GeometryGenerator<T>::loadBoundaryDefinition(const std::string& filename)
+{
+    std::ifstream in(filename.c_str());
+    if (!in.is_open()) {
+        gsWarn << "Cannot open boundary definition file: " << filename << "\n";
+        return false;
+    }
+
+    std::string token;
+    int V = 0;
+    int deg = m_degree;
+    std::vector<gsVector<T>> corners;
+    std::vector<gsVector<T>> midCorners;
+    std::vector<gsMatrix<T>> customEast;
+    std::vector<gsMatrix<T>> customNorth;
+    int curPatch = -1;
+
+    while (in >> token) {
+        if (token.empty() || token[0] == '#') {
+            std::string line;
+            std::getline(in, line);
+            continue;
+        }
+        if (token == "VALENCE") {
+            in >> V;
+            customEast.resize(V);
+            customNorth.resize(V);
+        } else if (token == "DEGREE") {
+            in >> deg;
+        } else if (token == "CORNERS") {
+            corners.resize(V);
+            for (int i = 0; i < V; ++i) {
+                corners[i].resize(2);
+                in >> corners[i](0) >> corners[i](1);
+            }
+        } else if (token == "MIDCORNERS") {
+            midCorners.resize(V);
+            for (int i = 0; i < V; ++i) {
+                midCorners[i].resize(2);
+                in >> midCorners[i](0) >> midCorners[i](1);
+            }
+        } else if (token == "PATCH") {
+            in >> curPatch;
+        } else if (token == "EAST_CONTROL_POINTS" && curPatch >= 0 && curPatch < V) {
+            int n;
+            in >> n;
+            customEast[curPatch].resize(n, 2);
+            for (int j = 0; j < n; ++j) {
+                in >> customEast[curPatch](j, 0) >> customEast[curPatch](j, 1);
+            }
+        } else if (token == "NORTH_CONTROL_POINTS" && curPatch >= 0 && curPatch < V) {
+            int n;
+            in >> n;
+            customNorth[curPatch].resize(n, 2);
+            for (int j = 0; j < n; ++j) {
+                in >> customNorth[curPatch](j, 0) >> customNorth[curPatch](j, 1);
+            }
+        } else if (token == "EAST_SAMPLES" && curPatch >= 0 && curPatch < V) {
+            int n;
+            in >> n;
+            gsMatrix<T> samples(n, 2);
+            for (int j = 0; j < n; ++j) in >> samples(j, 0) >> samples(j, 1);
+            gsBSplineBasis<T> b1d(gsKnotVector<T>(0.0, 1.0, 0, deg + 1));
+            customEast[curPatch] = fitBoundarySamplePoints(b1d, samples);
+        } else if (token == "NORTH_SAMPLES" && curPatch >= 0 && curPatch < V) {
+            int n;
+            in >> n;
+            gsMatrix<T> samples(n, 2);
+            for (int j = 0; j < n; ++j) in >> samples(j, 0) >> samples(j, 1);
+            gsBSplineBasis<T> b1d(gsKnotVector<T>(0.0, 1.0, 0, deg + 1));
+            customNorth[curPatch] = fitBoundarySamplePoints(b1d, samples);
+        }
+    }
+
+    if (corners.empty() && customEast.size() == static_cast<size_t>(V)) {
+        corners.resize(V);
+        midCorners.resize(V);
+        for (int i = 0; i < V; ++i) {
+            if (customEast[i].rows() > 0) {
+                corners[i].resize(2);
+                corners[i](0) = customEast[i](0, 0);
+                corners[i](1) = customEast[i](0, 1);
+                midCorners[i].resize(2);
+                midCorners[i](0) = customEast[i](customEast[i].rows() - 1, 0);
+                midCorners[i](1) = customEast[i](customEast[i].rows() - 1, 1);
+            }
+        }
+    }
+
+    if (V <= 0 || corners.size() != static_cast<size_t>(V)) {
+        gsWarn << "Invalid boundary file: valence or corners missing!\n";
+        return false;
+    }
+
+    m_valence = V;
+    m_degree = deg;
+    m_corners = corners;
+    m_midCorners = midCorners;
+    m_custom_east_cp = customEast;
+    m_custom_north_cp = customNorth;
+    return true;
 }
 
 } // namespace gismo

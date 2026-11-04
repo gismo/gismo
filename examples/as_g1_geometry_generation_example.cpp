@@ -29,6 +29,7 @@ int main(int argc, char* argv[])
     int seed = 42;
     real_t anglePerturb = 0.15;
     real_t radiusPerturb = 0.2;
+    std::string boundaryFile = "";
 
     gsCmdLine cmd("AS-G1 Multi-Patch Geometry Generator Example.");
     cmd.addInt("v", "valence", "Valence of central extraordinary vertex", valence);
@@ -38,6 +39,7 @@ int main(int argc, char* argv[])
     cmd.addReal("m", "midRadius", "Outer mid-point radius", midRadius);
     cmd.addString("s", "shape", "Boundary shape: curved, polygon, star", shape);
     cmd.addString("o", "output", "Output filename prefix", outPrefix);
+    cmd.addString("b", "boundaryFile", "Path to boundary curves definition file (from Mathematica designer)", boundaryFile);
     cmd.addInt("q", "samples", "Number of test samples per interface", numSamples);
     cmd.addSwitch("w", "write", "Export Paraview and XML files", writeFiles);
     cmd.addSwitch("x", "random", "Generate randomized (asymmetric) geometry with perturbed control points", randomize);
@@ -51,6 +53,20 @@ int main(int argc, char* argv[])
         return 0;
     }
 
+    gsAsG1GeometryGenerator<real_t> generator(valence, degree, numRefine);
+    if (!boundaryFile.empty()) {
+        if (!generator.loadBoundaryDefinition(boundaryFile)) {
+            gsWarn << "Failed to load boundary definition from: " << boundaryFile << "\n";
+            return -1;
+        }
+        valence = generator.valence();
+        degree = generator.degree();
+    } else {
+        generator.setRadius(radius);
+        generator.setMidRadius(midRadius);
+        generator.setRandomize(randomize, anglePerturb, radiusPerturb, seed);
+    }
+
     gsInfo << "==================================================================\n";
     gsInfo << "  Analysis-Suitable G1 (AS-G1) Multi-Patch Geometry Generator    \n";
     gsInfo << "==================================================================\n";
@@ -58,41 +74,42 @@ int main(int argc, char* argv[])
     gsInfo << "  Valence (patches): " << valence << "\n";
     gsInfo << "  B-spline degree:   " << degree << "\n";
     gsInfo << "  Knot refinements:  " << numRefine << " (" << (1 << numRefine) << " span(s) per direction)\n";
-    gsInfo << "  Base radius R:     " << radius << "\n";
-    gsInfo << "  Mid radius R_mid:  " << midRadius << "\n";
-    gsInfo << "  Boundary shape:    " << shape << "\n";
-    gsInfo << "  Symmetry mode:     " << (randomize ? "Randomized / Asymmetric" : "Symmetric") << "\n";
-    if (randomize) {
-        gsInfo << "    Seed:            " << seed << "\n";
-        gsInfo << "    Angle perturb:   " << anglePerturb << "\n";
-        gsInfo << "    Radius perturb:  " << radiusPerturb << "\n";
+    if (!boundaryFile.empty()) {
+        gsInfo << "  Boundary source:   External file (" << boundaryFile << ")\n";
+    } else {
+        gsInfo << "  Base radius R:     " << radius << "\n";
+        gsInfo << "  Mid radius R_mid:  " << midRadius << "\n";
+        gsInfo << "  Boundary shape:    " << shape << "\n";
+        gsInfo << "  Symmetry mode:     " << (randomize ? "Randomized / Asymmetric" : "Symmetric") << "\n";
+        if (randomize) {
+            gsInfo << "    Seed:            " << seed << "\n";
+            gsInfo << "    Angle perturb:   " << anglePerturb << "\n";
+            gsInfo << "    Radius perturb:  " << radiusPerturb << "\n";
+        }
     }
     gsInfo << "  Sample points:     " << numSamples << " per interface\n\n";
-
-    gsAsG1GeometryGenerator<real_t> generator(valence, degree, numRefine);
-    generator.setRadius(radius);
-    generator.setMidRadius(midRadius);
-    generator.setRandomize(randomize, anglePerturb, radiusPerturb, seed);
 
     // Setup custom boundary curves if requested
     std::vector<gsAsG1GeometryGenerator<real_t>::CurveFunction> eastCurves(valence, nullptr);
     std::vector<gsAsG1GeometryGenerator<real_t>::CurveFunction> northCurves(valence, nullptr);
 
-    if (shape == "polygon") {
-        // Straight chords
-        for (int i = 0; i < valence; ++i) {
-            eastCurves[i] = [&generator, i](real_t t) -> gsVector<real_t> {
-                // Linear segment
-                real_t th = 2.0 * M_PI * i / generator.valence();
-                real_t th_mid = 2.0 * M_PI * (i + 0.5) / generator.valence();
-                gsVector<real_t> p0(2), p1(2);
-                p0 << std::cos(th), std::sin(th);
-                p1 << 1.2 * std::cos(th_mid), 1.2 * std::sin(th_mid);
-                return (1.0 - t) * p0 + t * p1;
-            };
+    if (boundaryFile.empty()) {
+        if (shape == "polygon") {
+            // Straight chords
+            for (int i = 0; i < valence; ++i) {
+                eastCurves[i] = [&generator, i](real_t t) -> gsVector<real_t> {
+                    // Linear segment
+                    real_t th = 2.0 * M_PI * i / generator.valence();
+                    real_t th_mid = 2.0 * M_PI * (i + 0.5) / generator.valence();
+                    gsVector<real_t> p0(2), p1(2);
+                    p0 << std::cos(th), std::sin(th);
+                    p1 << 1.2 * std::cos(th_mid), 1.2 * std::sin(th_mid);
+                    return (1.0 - t) * p0 + t * p1;
+                };
+            }
+        } else if (shape == "star") {
+            generator.setMidRadius(1.4 * radius);
         }
-    } else if (shape == "star") {
-        generator.setMidRadius(1.4 * radius);
     }
 
     gsStopwatch timer;
