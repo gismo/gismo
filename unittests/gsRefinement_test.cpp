@@ -12,6 +12,7 @@
 **/
 
 #include "gismo_unittest.h"
+#include <random>
 
 
 using namespace gismo;
@@ -57,8 +58,71 @@ T computeMaximumDistance(const gsFunction<T>& f1, const gsFunction<T>& f2, const
     return (values1 - values2).array().abs().maxCoeff();
 }
 
+// Round-off check of gsBSpline::degreeElevate: the curve error is measured in
+// units of eps * max|c| on 2001 uniform samples of [0,1].
+static real_t degreeElevateRelError(const gsKnotVector<> & kv, const gsMatrix<> & coefs,
+                                    short_t i, bool & shapeOk)
+{
+    gsBSpline<> c(kv, coefs);
+    gsBSpline<> e(c);
+    e.degreeElevate(i);
+
+    gsBSplineBasis<> bref(kv);
+    bref.degreeElevate(i);
+    shapeOk = ( e.degree() == c.degree() + i ) && ( e.basis().size() == bref.size() );
+
+    const real_t eps = std::numeric_limits<real_t>::epsilon();
+    gsVector<> lo(1), up(1);
+    lo[0] = 0; up[0] = 1;
+    const real_t err = computeMaximumDistance<real_t>(c, e, lo, up, 2001);
+    return err / (eps * c.coefs().cwiseAbs().maxCoeff());
+}
+
 SUITE(gsRefinement_test)
 {
+    TEST(testDegreeElevateAccuracy)
+    {
+        std::mt19937 gen(5489u);
+        const real_t bound = 1000;
+        for (short_t p = 0; p <= 6; ++p)
+            for (short_t i = 1; i <= 2; ++i)
+            {
+                const index_t sizes[4] = {p + 1, 20, 100, 400};
+                for (index_t n : sizes)
+                {
+                    gsKnotVector<> kv(0, 1, n - p - 1, p + 1);
+                    gsMatrix<> coefs(n, 2);
+                    for (index_t k = 0; k < coefs.size(); ++k)
+                        coefs(k) = 2.0 * gen() / 4294967295.0 - 1.0;
+                    bool shapeOk = false;
+                    const real_t rel = degreeElevateRelError(kv, coefs, i, shapeOk);
+                    CHECK(shapeOk);
+                    CHECK(rel <= bound);
+                    if (rel > bound)
+                        gsInfo << "p=" << p << " i=" << i << " n=" << n << " err/(eps*max|c|)=" << rel << "\n";
+                }
+            }
+
+        // interior multiplicities cycling 1,..,p
+        const short_t p = 6;
+        for (short_t i = 1; i <= 2; ++i)
+        {
+            gsKnotVector<> kv(0, 1, 18, p + 1);
+            const std::vector<real_t> bp = kv.unique();
+            for (size_t k = 1; k + 1 < bp.size(); ++k)
+                kv.insert(bp[k], static_cast<short_t>((k - 1) % p));
+            gsMatrix<> coefs(kv.size() - p - 1, 2);
+            for (index_t k = 0; k < coefs.size(); ++k)
+                coefs(k) = 2.0 * gen() / 4294967295.0 - 1.0;
+            bool shapeOk = false;
+            const real_t rel = degreeElevateRelError(kv, coefs, i, shapeOk);
+            CHECK(shapeOk);
+            CHECK(rel <= bound);
+            if (rel > bound)
+                gsInfo << "multiplicity case i=" << i << " err/(eps*max|c|)=" << rel << "\n";
+        }
+    }
+
     TEST(testBoehm)
     {
         UnitTest::deactivate_output();

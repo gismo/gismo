@@ -287,8 +287,10 @@ public:
     /// non-periodic pad, elevated by the non-periodic algorithm and the
     /// window of functions active on [a,b] is selected (see the definition
     /// for the argument). The floating-point accuracy is that of
-    /// bspline::degreeElevateBSpline, which loses accuracy as the number
-    /// of knots grows. The curve keeps n' = basis size rows. Cost
+    /// bspline::degreeElevateBSpline: round-off of order
+    /// (p+i)^2 eps max|c| on uniform and quasi-uniform knot vectors,
+    /// independent of the number of knots. The curve
+    /// keeps n' = basis size rows. Cost
     /// O((n+m+p) p i d).
     void degreeElevate(short_t const i = 1, short_t const dir = -1) override;
 

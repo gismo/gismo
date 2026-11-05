@@ -351,8 +351,9 @@ void gsBSpline<T>::degreeElevate(short_t const i, short_t const dir)
 
         // Periodic degree elevation by unwrap, elevate, select. The construction
         // is exact in exact arithmetic; in floating point its accuracy is that
-        // of bspline::degreeElevateBSpline, which loses accuracy as the number
-        // of knots grows.
+        // of bspline::degreeElevateBSpline, round-off of order
+        // (p+i)^2 eps max|c| on quasi-uniform knots, independent of the
+        // number of knots.
         //
         // Let t_0..t_{K-1} be the stretched knots, p the degree, [a,b] the domain,
         // L = b-a, and c_{i mod n} the coefficient of stretched function i
