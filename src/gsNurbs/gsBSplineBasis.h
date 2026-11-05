@@ -277,13 +277,28 @@ public:
     // Same as gsBasis::elementIndex but argument is a value instead of a vector
     size_t elementIndex(T u ) const;
 
-    // Look at gsBasis class for a description
+    /// @brief Returns an element (as a 1x2 matrix of parameter values) inside
+    /// the support of the j-th basis function.
+    ///
+    /// For a crossing function of a periodic basis this is the first element of
+    /// the domain.
     gsMatrix<T> elementInSupportOf(index_t j) const;
 
     /// @brief Returns span (element) indices of the beginning and end
     /// of the support of the i-th basis function.
+    ///
+    /// On a periodic basis a crossing function (i < numCrossingFunctions())
+    /// has two disjoint pieces of support; the result is then the hull,
+    /// the range of all elements [0, numElements()], which is a superset of
+    /// the true support.
     void elementSupport_into(const index_t i, gsMatrix<index_t,1,2>& result) const
     {
+        if ( isPeriodic() && i < static_cast<index_t>(m_knots.numCrossingFunctions()) )
+        {
+            result.resize(1,2);
+            result << 0, static_cast<index_t>(m_knots.numElements());
+            return;
+        }
         gsMatrix<index_t> tmp_vec;
         m_knots.supportIndex_into(i, tmp_vec);
         result = tmp_vec.cwiseMax(0).cwiseMin(m_knots.numElements());
@@ -307,16 +322,43 @@ public:
     memory::unique_ptr<gsGeometry<T> > makeGeometry( gsMatrix<T> coefs ) const;
     
     /// @brief Returns the anchors (greville points) of the basis
+    ///
+    /// On a periodic basis the result holds n = size() anchors: the Greville
+    /// points of the stretched functions 0..n-1, reduced into [a,b) modulo the
+    /// period b-a. They are not sorted. An interior knot of multiplicity p+1
+    /// gives near-duplicate anchors (greville_into perturbs duplicates by
+    /// 1e-9), so a collocation matrix built on them is ill-conditioned rather
+    /// than singular.
     void anchors_into(gsMatrix<T> & result) const override
     {
-        m_knots.greville_into(result);
+        if ( isPeriodic() )
+        {
+            gsMatrix<T> g;
+            m_knots.greville_into(g, false); // clamping would give Greville points of a clamped basis
+            result = g.leftCols(size());
+            for ( index_t k = 0; k != result.cols(); ++k )
+                result(0,k) = _reduceToPeriod(result(0,k));
+        }
+        else
+            m_knots.greville_into(result);
     }
 
-    /// @brief Returns the anchors (greville points) of the basis
+    /// @brief Returns the anchor (greville point) of the i-th basis function
+    ///
+    /// On a periodic basis this is column i of anchors_into(), i.e. reduced
+    /// into [a,b) modulo the period.
     void anchor_into(index_t i, gsMatrix<T> & result) const override
     {
         result.resize(1,1);
-        result(0,0) = m_knots.greville(i);
+        if ( isPeriodic() )
+        {
+            GISMO_ASSERT( i >= 0 && i < size(), "Invalid index of basis function." );
+            gsMatrix<T> g;
+            m_knots.greville_into(g, false);
+            result(0,0) = _reduceToPeriod(g(0,i));
+        }
+        else
+            result(0,0) = m_knots.greville(i);
     }
 
     // Look at gsBasis class for a description
@@ -326,17 +368,23 @@ public:
     // Look at gsBasis class for a description
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const override;
 
-    // Look at gsBasis class for a description
+    /// @brief True iff u lies in the (closed) support of the i-th function.
+    ///
+    /// On a periodic basis all stretched copies of function i are tested, and
+    /// the result is false outside [a,b].
     bool isActive(const index_t i, const gsVector<T> & u) const;
 
-    // Look at gsBasis class for a description
+    /// @brief Indices of the boundary functions. Empty on a periodic basis.
     gsMatrix<index_t> allBoundary( ) const ;
 
-    // Look at gsBasis class for a description
+    /// @brief Indices of the boundary functions at side s and offset.
+    /// Throws (GISMO_ERROR) on a periodic basis, which has no boundary.
     gsMatrix<index_t> boundaryOffset(boxSide const & s,index_t offset) const override;
 
 #ifdef __DOXYGEN__
     /// @brief Gives back the boundary basis at boxSide s
+    ///
+    /// Throws (GISMO_ERROR) on a periodic basis, which has no boundary.
     typename BoundaryBasisType::uPtr boundaryBasis(boxSide const & s);
 #endif
     GISMO_UPTR_FUNCTION_DEC(gsConstantBasis<T>, boundaryBasis, boxSide const &)
@@ -344,7 +392,11 @@ public:
     // Look at gsBasis class for a description
     gsMatrix<T> support() const ;
 
-    // Look at gsBasis class for a description
+    /// @brief Support of the i-th basis function.
+    ///
+    /// On a periodic basis a crossing function (i < numCrossingFunctions()) has
+    /// two pieces of support in the domain, [a, t_{i+p+1}] and [t_{i+n}, b];
+    /// the hull [a,b], a superset of the true support, is returned.
     gsMatrix<T> support(const index_t & i ) const ;
 
     /// @brief Only meaningfull for periodic basis: For basis members that have
@@ -355,7 +407,11 @@ public:
     // Look at gsBasis class for a description
     virtual void eval_into(const gsMatrix<T> & u, gsMatrix<T>& result) const;
 
-    // Look at gsBasis class for a description
+    /// @brief Evaluates the i-th basis function at the points u.
+    ///
+    /// On a periodic basis this is the folded function i (the sum of its
+    /// stretched copies): zero outside [a,b], and the left limit at b. Cost
+    /// O(p^2) per point.
     virtual void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const;
 
     // Look at gsBasis class for a description
@@ -364,7 +420,11 @@ public:
     // Look at gsBasis class for a description
     void deriv_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
 
-    // Look at gsBasis class for a description
+    /// @brief First derivative of the i-th basis function at the points u.
+    ///
+    /// On a periodic basis this is the folded function i (the sum of its
+    /// stretched copies): zero outside [a,b], and the left limit at b. Cost
+    /// O(p^2) per point.
     void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
 
     // Look at gsBasis class for a description
@@ -373,7 +433,11 @@ public:
     // Look at gsBasis class for a description
     void deriv2_into(const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
 
-    // Look at gsBasis class for a description
+    /// @brief Second derivative of the i-th basis function at the points u.
+    ///
+    /// On a periodic basis this is the folded function i (the sum of its
+    /// stretched copies): zero outside [a,b], and the left limit at b. Cost
+    /// O(p^2) per point.
     void deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
 
     // Look at gsBasis class for a description
@@ -428,7 +492,11 @@ public:
     /// @brief Return a string with detailed information on the basis.
     std::string detail() const;
 
-    // Look at gsBasis class for a description
+    /// @brief The n-th derivative of the i-th basis function at the points u.
+    ///
+    /// On a periodic basis this is the folded function i (the sum of its
+    /// stretched copies): zero outside [a,b], and the left limit at b. Cost
+    /// O(p^2) per point (O(n p) more for derivative order n).
     virtual void evalDerSingle_into(index_t i, const gsMatrix<T> & u,
                                     int n, gsMatrix<T>& result) const;
 
@@ -437,8 +505,12 @@ public:
                                   std::vector<gsMatrix<T> >& result,
                                   bool sameElement = false) const;
 
-    // Look at gsBasis class for a description
     using Base::evalAllDersSingle_into;
+    /// @brief Values and derivatives up to order n of the i-th basis function.
+    ///
+    /// On a periodic basis this is the folded function i (the sum of its
+    /// stretched copies): zero outside [a,b], and the left limit at b. Cost
+    /// O(p^2) per point (O(n p) more for derivative order n).
     GISMO_DEPRECATED
     virtual void evalAllDersSingle_into(index_t i, const gsMatrix<T> & u,
                                         int n, gsMatrix<T>& result) const;
@@ -477,6 +549,17 @@ public:
 
     /// @brief Returns length of the ``active" part of the knot vector.
     T _activeLength() const { return domainEnd() - domainStart(); }
+
+    /// @brief Reduces \a x into [a,b) modulo the period b-a.
+    T _reduceToPeriod(T x) const
+    {
+        const T a = domainStart(), b = domainEnd(), L = b - a;
+        x -= L * math::floor((x - a) / L);
+        // x is now within rounding of [a,b]; a value still outside [a,b) is
+        // the seam point, whose representative is a.
+        if ( x >= b || x < a ) x = a;
+        return x;
+    }
 
     /// @brief Returns the index of the first active (ie. non-zero) basis function at point u
     /// Takes into account non-clamped knots.
@@ -667,7 +750,8 @@ public:
         return m_knots.isPeriodic();
     }
 
-    // Look at gsBasis class for a description
+    /// @brief Index of the function at corner c. Throws (GISMO_ERROR) on a
+    /// periodic basis, which has no boundary.
     index_t functionAtCorner(boxCorner const & c) const;
 
     /// @brief Returns number of functions crossing the boundary of the knot vector.
@@ -729,10 +813,18 @@ public:
     // Look at gsBasis class for a description
     void reverse() { m_knots.reverse(); }
 
+    /// @brief Not available on a periodic basis (throws, a periodic basis has
+    /// no boundary); a no-op otherwise.
     void matchWith(const boundaryInterface &, const gsBasis<T> &,
-                   gsMatrix<index_t> &, gsMatrix<index_t> &, index_t) const { }
+                   gsMatrix<index_t> &, gsMatrix<index_t> &, index_t) const
+    {
+        if ( isPeriodic() )
+            GISMO_ERROR("gsBSplineBasis: a periodic basis has no boundary.");
+    }
 
 
+    /// @brief Matches the boundary functions across an interface. Throws
+    /// (GISMO_ERROR) if this basis or \a other is periodic.
     void matchWith(const boundaryInterface & bi,
                    const gsBasis<T> & other,
                    gsMatrix<index_t> & bndThis,

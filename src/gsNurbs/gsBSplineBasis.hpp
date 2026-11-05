@@ -63,6 +63,15 @@ size_t gsTensorBSplineBasis<1,T>::elementIndex(T u ) const
 template <class T>
 gsMatrix<T> gsTensorBSplineBasis<1,T>::elementInSupportOf(index_t j) const
 {
+    if ( isPeriodic() && j < static_cast<index_t>(numCrossingFunctions()) )
+    {
+        // The first domain element lies in (a, t_{p+1}), inside the support
+        // of the left copy of a crossing function.
+        gsMatrix<T> first(1,2);
+        first << m_knots.uValue(0), m_knots.uValue(1);
+        return first;
+    }
+
     typename KnotVectorType::smart_iterator it = m_knots.sbegin() + j;
     index_t v = ( (it+m_knots.degree()+1).uIndex() - it.uIndex() ) / 2 ;
     it.uAdd(v);
@@ -111,7 +120,11 @@ void gsTensorBSplineBasis<1,T>::matchWith(const boundaryInterface & bi,
                                           gsMatrix<index_t> & bndThis,
                                           gsMatrix<index_t> & bndOther) const
 {
-    if ( const TensorSelf_t * _other = dynamic_cast<const TensorSelf_t*>(&other) )
+    const TensorSelf_t * _other = dynamic_cast<const TensorSelf_t*>(&other);
+    if ( isPeriodic() || ( _other && _other->isPeriodic() ) )
+        GISMO_ERROR("gsBSplineBasis: a periodic basis has no boundary.");
+
+    if ( _other )
     {
         bndThis .resize(1,1);
         bndOther.resize(1,1);
@@ -157,6 +170,19 @@ template <class T>
 bool gsTensorBSplineBasis<1,T>::isActive(const index_t i, const gsVector<T>& u) const
 {
     GISMO_ASSERT( u.rows() == 1, "Invalid input.");
+    if ( isPeriodic() )
+    {
+        GISMO_ASSERT( i >= 0 && i < size(), "Invalid index of basis function." );
+        const T x = u.value();
+        if ( !inDomain(x) )
+            return false;
+        // Every stretched copy i, i+n, ... of the periodic function i
+        const index_t K = static_cast<index_t>(m_knots.size()) - m_p - 1;
+        for ( index_t c = i; c < K; c += size() )
+            if ( x >= m_knots[c] && x <= m_knots[c+m_p+1] )
+                return true;
+        return false;
+    }
     // Note: right end of the support will be considered active
     return( (u.value() >= m_knots[i]) && (u.value() <= m_knots[i+m_p+1]) );
 }
@@ -164,13 +190,8 @@ bool gsTensorBSplineBasis<1,T>::isActive(const index_t i, const gsVector<T>& u) 
 template <class T>
 gsMatrix<index_t> gsTensorBSplineBasis<1,T>::allBoundary() const
 {
-    if ( isPeriodic() ) // Periodic basis does not have such things as boundaries.
-    {
-        gsWarn << "Periodic basis does not have such things as boundaries.\n";
-        // return NULL;
-        gsMatrix<index_t> matrix;
-        return matrix;
-    }
+    if ( isPeriodic() ) // A periodic basis has no boundary
+        return gsMatrix<index_t>();
     else
     {
         gsMatrix<index_t> res(2,1);
@@ -186,7 +207,7 @@ gsMatrix<index_t> gsTensorBSplineBasis<1,T>::boundaryOffset(boxSide const & s,
                                                                index_t offset ) const
 {
     if ( isPeriodic() )
-        gsWarn << "Periodic basis does not have such things as boundaries.\n";
+        GISMO_ERROR("gsBSplineBasis: a periodic basis has no boundary.");
 
     gsMatrix<index_t> res(1,1);
     GISMO_ASSERT(offset+m_p+1 < static_cast<index_t>(m_knots.size()),
@@ -208,6 +229,8 @@ gsMatrix<index_t> gsTensorBSplineBasis<1,T>::boundaryOffset(boxSide const & s,
 template <class T>
 gsConstantBasis<T> * gsTensorBSplineBasis<1,T>::boundaryBasis_impl(boxSide const &) const
 {
+    if ( isPeriodic() )
+        GISMO_ERROR("gsBSplineBasis: a periodic basis has no boundary.");
     return new gsConstantBasis<T>(1.0);
 }
 /// @endcond
@@ -227,12 +250,16 @@ gsMatrix<T> gsTensorBSplineBasis<1,T>::support() const
 template <class T>
 gsMatrix<T> gsTensorBSplineBasis<1,T>::support(const index_t & i) const
 {
-    // Note: in the periodic case last index is
-    // m_knots.size() - m_p - 1 - numCrossingFunctions()
-    // but we may still accept the original index of the basis function.
-    // One issue is that in the periodic case the basis function
-    // support has two connected components, so probably one should
-    // call this function with twice for the two twins
+    if ( isPeriodic() )
+    {
+        GISMO_ASSERT( i >= 0 && i < size(), "Invalid index of basis function." );
+        gsMatrix<T> hull(1,2);
+        if ( i < static_cast<index_t>(numCrossingFunctions()) )
+            hull << domainStart(), domainEnd();
+        else
+            hull << m_knots[i], m_knots[i+m_p+1];
+        return hull;
+    }
 
     GISMO_ASSERT( static_cast<size_t>(i) < m_knots.size()-m_p-1,
                   "Invalid index of basis function." );
@@ -379,29 +406,27 @@ void gsTensorBSplineBasis<1,T>::evalSingle_into(index_t i,
                                                 const gsMatrix<T> & u,
                                                 gsMatrix<T>& result) const
 {
-    GISMO_ASSERT( static_cast<size_t>(i) < m_knots.size()-m_p-1,"Invalid index of basis function." );
+    GISMO_ASSERT( i >= 0 && i < size(), "Invalid index of basis function." );
 
-    const index_t m = numCrossingFunctions();
+    if ( isPeriodic() )
+    {
+        gsMatrix<T> vals;
+        gsMatrix<index_t> act;
+        this->eval_into(u, vals);
+        this->active_into(u, act);
+        result.setZero(1, u.cols());
+        for (index_t c = 0; c < u.cols(); ++c)
+            for (int r = 0; r <= m_p; ++r)
+                if ( act(r,c) == i )
+                    result(0,c) += vals(r,c);
+        return;
+    }
+
     result.resize(1, u.cols() );
     STACK_ARRAY(T, N, m_p + 1);
 
     for (index_t s=0;s<u.cols(); ++s)
     {
-        //Special cases
-
-        // Periodic basis ?
-        // Note: for periodic, i is understood modulo the basis size
-        if( m )
-        {
-            // Basis is periodic and i could be among the crossing functions.
-            if( static_cast<int>(i) <= m )
-            {
-                gsMatrix<T> supp = support(i);
-                if( u(0,s) < supp(0) || u(0,s) > supp(1)) // u is outside the support of B_i
-                    i += size(); // we use the basis function ignored ny the periodic construction
-            }
-        }
-
         // Special case of C^{-1} on right end of support
         if ( (static_cast<size_t>(i) == m_knots.size()-m_p-2) &&
              (u(0,s) == m_knots.last()) &&  (u(0,s)== m_knots[m_knots.size()-m_p-1]) )
@@ -462,8 +487,25 @@ void gsTensorBSplineBasis<1,T>::evalDerSingle_into(index_t i,
                                                    gsMatrix<T>& result) const
 {
     GISMO_ASSERT( u.rows() == 1 , "gsBSplineBasis accepts points with one coordinate.");
+    GISMO_ASSERT( i >= 0 && i < size(), "Invalid index of basis function." );
+
+    if ( isPeriodic() )
+    {
+        result.setZero(1, u.cols());
+        if ( n > m_p ) // derivatives of order > p vanish piecewise
+            return;
+        std::vector<gsMatrix<T> > all;
+        gsMatrix<index_t> act;
+        this->evalAllDers_into(u, n, all);
+        this->active_into(u, act);
+        for (index_t c = 0; c < u.cols(); ++c)
+            for (int r = 0; r <= m_p; ++r)
+                if ( act(r,c) == i )
+                    result(0,c) += all[n](r,c);
+        return;
+    }
+
     // This is a copy of the interior of evalAllDerSingle_into() except for the last for cycle with k.
-    const index_t m = numCrossingFunctions();
 
     // Notation from the NURBS book:
     // p - degree
@@ -486,15 +528,6 @@ void gsTensorBSplineBasis<1,T>::evalDerSingle_into(index_t i,
     // From here on, we follow the book.
     for( index_t s = 0; s < u.cols(); s++ )
     {
-        // Special cases
-        // Periodic basis
-        if( (int)(i) <= m ) // Basis is periodic and i could be among the crossing functions.
-        {
-            gsMatrix<T> supp = support(i);
-            if( u(0,s) < supp(0) || u(0,s) > supp(1)) // u is outside the support of B_i
-                i += size(); // we use the basis function ignored ny the periodic construction
-        }
-
         if( u(0,s) == m_knots.last() )
             gsWarn << "evalDerSingle_into sometimes gives strange results for the last knot.\n";
 
@@ -675,6 +708,21 @@ void gsTensorBSplineBasis<1,T>::derivSingle_into(index_t i,
                                                  gsMatrix<T>& result ) const
 {
     // \todo Redo an efficient implementation p. 76, Alg. A2.5 Nurbs book
+    if ( isPeriodic() )
+    {
+        GISMO_ASSERT( i >= 0 && i < size(), "Invalid index of basis function." );
+        gsMatrix<T> vals;
+        gsMatrix<index_t> act;
+        gsTensorBSplineBasis<1,T>::deriv_into(u, vals);
+        this->active_into(u, act);
+        result.setZero(1, u.cols());
+        for (index_t c = 0; c < u.cols(); ++c)
+            for (int r = 0; r <= m_p; ++r)
+                if ( act(r,c) == i )
+                    result(0,c) += vals(r,c);
+        return;
+    }
+
     result.resize(1, u.cols() );
     gsMatrix<T> tmp;
     gsTensorBSplineBasis<1,T>::deriv_into(u, tmp);
@@ -703,7 +751,24 @@ gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(index_t i,
     // i - id of the basis function (hopefully the same ;)
     // u - parameter (where to evaluate)
 
-    const index_t m = numCrossingFunctions();
+    GISMO_ASSERT( i >= 0 && i < size(), "Invalid index of basis function." );
+
+    if ( isPeriodic() )
+    {
+        result.setZero(n + 1, u.cols());
+        const int nn = ( n>m_p ? m_p : n );
+        std::vector<gsMatrix<T> > all;
+        gsMatrix<index_t> act;
+        this->evalAllDers_into(u, nn, all);
+        this->active_into(u, act);
+        for (index_t c = 0; c < u.cols(); ++c)
+            for (int r = 0; r <= m_p; ++r)
+                if ( act(r,c) == i )
+                    for (int k = 0; k <= nn; ++k)
+                        result(k,c) += all[k](r,c);
+        return;
+    }
+
     T saved, Uleft, Uright, temp;
     const unsigned int p1 = m_p + 1;
     // Note that N[i][k] = N[ i*p1 + k ].
@@ -715,14 +780,6 @@ gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(index_t i,
 
     for( index_t s = 0; s < u.cols(); s++ )
     {
-        // Periodic basis
-        if( (int)(i) <= m ) // Basis is periodic and i could be among the crossing functions.
-        {
-            gsMatrix<T> supp = support(i);
-            if( u(0,s) < supp(0) || u(0,s) > supp(1)) // u is outside the support of B_i
-                i += size(); // we use the basis function ignored ny the periodic construction
-        }
-
         if( u(0,s) < m_knots[i] || u(0,s) >= m_knots[i+m_p+1]) // Local property
             if( u( 0,s ) != m_knots[m_knots.size()-m_p-1] )
                 continue; //zeros
@@ -826,6 +883,21 @@ template <class T>  inline
 void gsTensorBSplineBasis<1,T>::deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const
 {
     // \todo Redo an efficient implementation p. 76, Alg. A2.5 Nurbs book
+    if ( isPeriodic() )
+    {
+        GISMO_ASSERT( i >= 0 && i < size(), "Invalid index of basis function." );
+        gsMatrix<T> vals;
+        gsMatrix<index_t> act;
+        gsTensorBSplineBasis<1,T>::deriv2_into(u, vals);
+        this->active_into(u, act);
+        result.setZero(1, u.cols());
+        for (index_t c = 0; c < u.cols(); ++c)
+            for (int r = 0; r <= m_p; ++r)
+                if ( act(r,c) == i )
+                    result(0,c) += vals(r,c);
+        return;
+    }
+
     result.resize(1, u.cols() );
     gsMatrix<T> tmp;
     gsTensorBSplineBasis<1,T>::deriv2_into(u, tmp);
@@ -1102,6 +1174,8 @@ void gsTensorBSplineBasis<1,T>::uniformCoarsen_withTransfer(gsSparseMatrix<T,Row
 template <class T>
 index_t gsTensorBSplineBasis<1,T>::functionAtCorner(boxCorner const & c) const
 {
+    if ( isPeriodic() )
+        GISMO_ERROR("gsBSplineBasis: a periodic basis has no boundary.");
     GISMO_ASSERT(c<3,"Invalid corner for 1D basis.");
     return ( c == 1 ? 0 : this->size()-1);
 }
