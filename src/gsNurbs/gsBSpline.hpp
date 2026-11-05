@@ -28,6 +28,8 @@ namespace gismo
 template<class T>
 void gsBSpline<T>::merge( gsGeometry<T> * otherG )
 {
+    GISMO_ENSURE( !this->basis().isPeriodic(),
+                  "gsBSpline: merge is not defined on a periodic curve (it has no end point to join)." );
     // See also gsNurbs::merge().
     // check geometric dimension
     GISMO_ASSERT(this->geoDim()==otherG->geoDim(),
@@ -37,11 +39,9 @@ void gsBSpline<T>::merge( gsGeometry<T> * otherG )
     // check if the type of other is BSpline
     gsBSpline *  other = dynamic_cast<gsBSpline *>( otherG );
     GISMO_ASSERT( other!=NULL, "Can only merge with B-spline curves.");
+    GISMO_ENSURE( !other->basis().isPeriodic(),
+                  "gsBSpline: cannot merge a periodic curve (it has no end point to join)." );
     other= other->clone().release();
-
-    GISMO_ASSERT( this ->basis().isPeriodic() == false &&
-                  other->basis().isPeriodic() == false,
-                  "Cannot merge a closed curve with anything." );
 
     // check degree
     const short_t mDeg = this ->basis().degree();
@@ -86,6 +86,8 @@ void gsBSpline<T>::merge( gsGeometry<T> * otherG )
 template<class T>
 gsBSpline<T> gsBSpline<T>::segmentFromTo(T u0, T u1, T tolerance) const
 {
+  GISMO_ENSURE(!this->basis().isPeriodic(),
+               "gsBSpline: segmentFromTo is not defined on a periodic curve (it has no end points); use setPeriodic(false) first.");
 
   GISMO_ASSERT(domainStart()-tolerance < u0 && u0 < domainEnd()+tolerance,
                "starting point "<< u0 <<" not in the knot vector");
@@ -137,6 +139,8 @@ gsBSpline<T> gsBSpline<T>::segmentFromTo(T u0, T u1, T tolerance) const
 template<class T>
 gsMultiPatch<T> gsBSpline<T>::toBezier(T tolerance) const
 {
+    GISMO_ENSURE(!this->basis().isPeriodic(),
+                 "gsBSpline: toBezier is not defined on a periodic curve; use setPeriodic(false) first.");
     gsMultiPatch<T> bezierSegments;
 
     gsBSpline<T> currentSegment(*this);
@@ -157,6 +161,9 @@ std::vector<internal::gsCurveIntersectionResult<T>> gsBSpline<T>::intersect(cons
                                                                             T tolerance,
                                                                             T curvatureTolerance) const
 {
+    GISMO_ENSURE(!this->basis().isPeriodic() && !other.basis().isPeriodic(),
+                 "gsBSpline: intersect is not defined on a periodic curve; use setPeriodic(false) first.");
+
     std::vector<internal::gsBoundingBoxPair<T>> hulls = internal::getPotentialIntersectionRanges<T>(*this, other, curvatureTolerance);
 
     std::vector<internal::gsCurveIntersectionResult<T>> results;
@@ -211,35 +218,12 @@ void gsBSpline<T>::insertKnot( T knot, index_t dir, index_t i)
     //knot with multiplicity:   Oslo algorithm
     if( this->basis().isPeriodic() )
     {
-        int borderKnotMult = this->basis().borderKnotMult();
-        KnotVectorType & knots = this->knots();
-        unsigned deg = this->basis().degree();
-
-        GISMO_ASSERT( knot != knots[deg] && knot != knots[knots.size() - deg - 1],
-                      "You are trying to increase the multiplicity of the p+1st knot but the code is not ready for that.\n");
-
-        // If we would be inserting to "passive" regions, we
-        // rather insert the knot into the mirrored part.
-        // Adjustment of the mirrored knots is then desirable.
-        if( knot < knots[deg - borderKnotMult + 1] )
-        {
-            knot += this->basis()._activeLength();
-        }
-        else if( knot > knots[knots.size() - deg + borderKnotMult - 2] )
-        {
-            knot -= this->basis()._activeLength();
-        }
-        // If necessary, we update the mirrored part of the knot vector.
-        if((knot < knots[2*deg + 1 - borderKnotMult]) || (knot >= knots[knots.size() - 2*deg - 2 + borderKnotMult]))
-            this->basis().enforceOuterKnotsPeriodic();
-
-        // We copy some of the control points to pretend for a while
-        // that the basis is not periodic.
-
-        //gsMatrix<T> trueCoefs = this->basis().perCoefs( this->coefs() );
-        gsBoehm( this->basis().knots(), this->coefs(), knot, i );
-        //this->coefs() = trueCoefs;
-        //this->coefs().conservativeResize( this->basis().size(), this->coefs().cols() );
+        // Pad-and-fold refinement on copies: a refused insertion leaves the curve unchanged.
+        Basis nb(this->basis());
+        gsMatrix<T> c = m_coefs;
+        nb.refine_withCoefs(c, std::vector<T>(i, knot));
+        this->basis().swap(nb);
+        m_coefs.swap(c);
     }
     else // non-periodic
         gsBoehm( this->basis().knots(), this->coefs() , knot, i);
@@ -254,6 +238,8 @@ void gsBSpline<T>::insertKnot( T knot, index_t i)
 template<class T>
 void gsBSpline<T>::splitAt(T u0, gsBSpline<T>& left,  gsBSpline<T>& right, T tolerance) const
 {
+  GISMO_ENSURE(!this->basis().isPeriodic(),
+               "gsBSpline: splitAt is not defined on a periodic curve (it has no end points); use setPeriodic(false) first.");
   GISMO_ASSERT(domainStart()-tolerance < u0 && u0 < domainEnd()+tolerance,
                "splitting point "<< u0 <<" not in the knot vector");
 
@@ -290,6 +276,8 @@ bool gsBSpline<T>::isOn(gsMatrix<T> const &u, T tol) const
 template<class T>    
 bool gsBSpline<T>::isPatchCorner(gsMatrix<T> const &v, T tol) const
 {
+    GISMO_ENSURE(!this->basis().isPeriodic(),
+                 "gsBSpline: a periodic curve has no corners (no end points).");
     return (( v - m_coefs.row(0)       ).squaredNorm() < tol ||
             ( v - m_coefs.bottomRows(1)).squaredNorm() < tol );
 }
@@ -299,6 +287,8 @@ void gsBSpline<T>::findCorner(const gsMatrix<T> & v,
                                              gsVector<index_t,1> & curr,
                                              T tol)
 {
+    GISMO_ENSURE(!this->basis().isPeriodic(),
+                 "gsBSpline: a periodic curve has no corners (no end points).");
     if ((v - m_coefs.row(0)).squaredNorm() < tol)
         curr[0] = 0;
     else if ((v - m_coefs.bottomRows(1)).squaredNorm() < tol)
@@ -314,6 +304,8 @@ void gsBSpline<T>::findCorner(const gsMatrix<T> & v,
 template<class T>    
 void gsBSpline<T>::setOriginCorner(gsMatrix<T> const &v)
 {
+    GISMO_ENSURE(!this->basis().isPeriodic(),
+                 "gsBSpline: a periodic curve has no corners (no end points).");
     if ((v - m_coefs.row(0)).squaredNorm() < (T)(1e-3))
         return;
     else if ((v - m_coefs.bottomRows(1)).squaredNorm() < (T)(1e-3))
@@ -325,6 +317,8 @@ void gsBSpline<T>::setOriginCorner(gsMatrix<T> const &v)
 template<class T>    
 void gsBSpline<T>::setFurthestCorner(gsMatrix<T> const &v)
 {
+    GISMO_ENSURE(!this->basis().isPeriodic(),
+                 "gsBSpline: a periodic curve has no corners (no end points).");
     if ((v - m_coefs.bottomRows(1)).squaredNorm() < (T)(1e-3))
         return;
     else if ((v - m_coefs.row(0)).squaredNorm() < (T)(1e-3))
@@ -350,10 +344,217 @@ void gsBSpline<T>::degreeElevate(short_t const i, short_t const dir)
     GISMO_ASSERT( (dir == -1) || (dir == 0),
                   "Invalid basis component "<< dir <<" requested for degree elevation" );
 
+    if (this->basis().isPeriodic())
+    {
+        if (i == 0)
+            return;
+
+        // Periodic degree elevation by unwrap, elevate, select. The construction
+        // is exact in exact arithmetic; in floating point its accuracy is that
+        // of bspline::degreeElevateBSpline, which loses accuracy as the number
+        // of knots grows.
+        //
+        // Let t_0..t_{K-1} be the stretched knots, p the degree, [a,b] the domain,
+        // L = b-a, and c_{i mod n} the coefficient of stretched function i
+        // (0 <= i < n+m). The curve is the spline sum_i c_{i mod n} B_i on the
+        // stretched knots.
+        //  1. Pad: the clamped knot vector tau = [c^(p+1), t_0..t_{K-1}, e^(p+1)]
+        //     (c < t_0, e > t_{K-1}) contains every stretched B-spline B_i as
+        //     the function p+1+i of tau, on the same knots t_i..t_{i+p+1}. The
+        //     p+1 functions added on each side get coefficient zero; they are
+        //     supported in [c,a] (left pad j <= p ends at t_j <= t_p = a) or in
+        //     [b,e] (right pads start at t_{n+m+r} >= b). Hence the padded
+        //     curve equals the periodic curve on [a,b].
+        //  2. Elevate the padded clamped curve by the non-periodic algorithm,
+        //     which represents the same curve exactly in degree p+i.
+        //  3. Select: the new periodic basis has stretched knots t'_0..t'_{K'-1}
+        //     that raise the multiplicity of every distinct knot t by i, which
+        //     is invariant under translation by L. The functions of the
+        //     elevated padded basis that are nonzero on [a,b] are exactly the n'+m'
+        //     functions o..o+n'+m'-1, o = f-m', f the index of the first knot
+        //     equal to a (the first span after the last copy of a has
+        //     active functions f+mu'-1-p' = f-m'). Their knots are the new
+        //     stretched knots. They are linearly independent on [a,b], so the
+        //     coefficients of the curve in them are unique. The periodic curve
+        //     written in the elevated periodic space, which contains it, is one
+        //     such representation; the selected rows are therefore the new
+        //     periodic coefficients and the ghost rows equal their twins (in
+        //     exact arithmetic).
+        const short_t p = this->basis().degree();
+        const index_t n = this->basis().size();
+        const index_t m = this->basis().numCrossingFunctions();
+        const index_t d = m_coefs.cols();
+        const T a = this->basis().domainStart();
+        const T L = this->basis().domainEnd() - a;
+
+        Basis nb(this->basis());
+        nb.degreeElevate(i);
+        const index_t n1 = nb.size();
+        const index_t m1 = nb.numCrossingFunctions();
+        GISMO_ASSERT( m1 == m, "Degree elevation changed the number of crossing functions." );
+
+        const KnotVectorType & kv = this->basis().knots();
+        std::vector<T> tau;
+        tau.reserve(kv.size() + 2*(p+1));
+        tau.insert(tau.end(), p+1, *kv.begin() - L);
+        tau.insert(tau.end(), kv.begin(), kv.end());
+        tau.insert(tau.end(), p+1, *(kv.end()-1) + L);
+        Basis pb( KnotVectorType(p, tau.begin(), tau.end()) );
+
+        gsMatrix<T> ex = m_coefs;
+        this->basis().expandCoefs(ex);
+        gsMatrix<T> P = gsMatrix<T>::Zero(n+m+2*p+2, d);
+        P.middleRows(p+1, n+m) = ex;
+
+        bspline::degreeElevateBSpline(pb, P, i);
+
+        const KnotVectorType & kp = pb.knots();
+        const index_t f = std::lower_bound(kp.begin(), kp.end(), a) - kp.begin();
+        const index_t o = f - m1;
+        GISMO_ASSERT( o >= 0 && o + n1 + m1 <= P.rows(),
+                      "Degree elevation window out of range: offset " << o << ", rows " << P.rows() << "." );
+
+#ifndef NDEBUG
+        {
+            const T b = a + L;
+            const T knotTol = 50 * std::numeric_limits<T>::epsilon() * math::max(math::max(math::abs(a), math::abs(b)), L);
+            const index_t K1 = n1 + m1 + p + i + 1;
+            GISMO_ASSERT( static_cast<index_t>(nb.knots().size()) == K1 && o + K1 <= static_cast<index_t>(kp.size()),
+                          "Degree elevation: unexpected knot count." );
+            for (index_t k = 0; k < K1; ++k)
+                GISMO_ASSERT( math::abs( *(kp.begin()+o+k) - *(nb.knots().begin()+k) ) <= knotTol,
+                              "Degree elevation: window knot " << k << " differs from the new stretched knot." );
+        }
+#endif
+
+        gsMatrix<T> Cnew = P.middleRows(o, n1);
+        this->basis().swap(nb);
+        m_coefs.swap(Cnew);
+        return;
+    }
+
     if (knots().numLeftGhosts() != 0 || knots().numRightGhosts() != 0)
         gsGeometry<T>::degreeElevate(i);
     else
         bspline::degreeElevateBSpline(this->basis(), this->m_coefs, i);
+}
+
+template<class T>
+void gsBSpline<T>::_periodicDegreeChange(Basis & nb)
+{
+    // The new curve is the interpolant, in the new periodic space, of the
+    // current curve at the n' Greville anchors of the new basis. It equals the
+    // old curve only if the old curve lies in the new space (it does not when
+    // the degree goes down or the continuity at the seam goes up); in general
+    // it is an approximation that agrees with the old curve at the anchors.
+    //
+    // A direct sparse LU is used, not gsBasis::interpolateData (an iterative
+    // solver without convergence check). The LU does not fail on a nearly
+    // singular system, so both the factorization status and the residual are
+    // checked. Periodic Greville interpolation is well posed for simple
+    // uniform knots (Schoenberg's cardinal interpolation) but is not proven
+    // nonsingular in general or for repeated knots; anchors that coincide are
+    // only perturbed by about 1e-9 by gsKnotVector::greville_into(), which makes
+    // the matrix ill-conditioned rather than singular.
+    //
+    // The collocation matrix is cyclic banded, not banded: an anchor near b
+    // sees the crossing functions, whose stretched indices n..n+m-1 fold to
+    // the periodic indices 0..m-1, so its row has entries in the first
+    // columns (and symmetrically for an anchor near a).
+    //
+    // Cost O(n' p) to assemble, O(n' p^2) for the LU (fill in the wrap-around corners).
+    gsMatrix<T> A;
+    nb.anchors_into(A);
+    gsMatrix<T> v;
+    this->eval_into(A, v);
+    gsSparseMatrix<T> C = nb.collocationMatrix(A);
+    C.makeCompressed();
+
+    typename gsSparseSolver<T>::LU solver;
+    solver.compute(C);
+    GISMO_ENSURE( solver.succeed(),
+                  "gsBSpline: LU factorization of the anchor interpolation system failed (info "
+                  << solver.info() << ")." );
+    gsMatrix<T> X = solver.solve(v.transpose());
+
+    // Backward-error test: a direct LU guarantees ||C x - v|| = O(eps (||C|| ||x|| + ||v||)),
+    // not a small residual relative to ||v|| alone.
+    const T resTol = 1000 * std::numeric_limits<T>::epsilon();
+    const T res = (C * X - v.transpose()).cwiseAbs().maxCoeff();
+    const T normC = C.coeffs().cwiseAbs().maxCoeff();
+    const T bound = resTol * (normC * X.cwiseAbs().maxCoeff() + v.cwiseAbs().maxCoeff());
+    GISMO_ENSURE( res <= bound,
+                  "gsBSpline: anchor interpolation system is numerically singular, residual "
+                  << res << " exceeds " << bound << "." );
+
+    this->basis().swap(nb);
+    m_coefs.swap(X);
+}
+
+template<class T>
+void gsBSpline<T>::degreeIncrease(short_t const i, short_t const dir)
+{
+    GISMO_ASSERT( (dir == -1) || (dir == 0),
+                  "Invalid basis component "<< dir <<" requested for degree increase" );
+    if (!this->basis().isPeriodic())
+    {
+        gsGeometry<T>::degreeIncrease(i, dir);
+        return;
+    }
+    Basis nb(this->basis());
+    nb.degreeIncrease(i);
+    _periodicDegreeChange(nb);
+}
+
+template<class T>
+void gsBSpline<T>::degreeDecrease(short_t const i, short_t const dir)
+{
+    GISMO_ASSERT( (dir == -1) || (dir == 0),
+                  "Invalid basis component "<< dir <<" requested for degree decrease" );
+    if (!this->basis().isPeriodic())
+    {
+        gsGeometry<T>::degreeDecrease(i, dir);
+        return;
+    }
+    Basis nb(this->basis());
+    nb.degreeDecrease(i);
+    _periodicDegreeChange(nb);
+}
+
+template<class T>
+void gsBSpline<T>::degreeReduce(short_t const i, short_t const dir)
+{
+    GISMO_ASSERT( (dir == -1) || (dir == 0),
+                  "Invalid basis component "<< dir <<" requested for degree reduction" );
+    if (!this->basis().isPeriodic())
+    {
+        gsGeometry<T>::degreeReduce(i, dir);
+        return;
+    }
+    Basis nb(this->basis());
+    nb.degreeReduce(i);
+    _periodicDegreeChange(nb);
+}
+
+template<class T>
+void gsBSpline<T>::reverse()
+{
+    if (!this->basis().isPeriodic())
+    {
+        gsCurve<T>::reverse();
+        return;
+    }
+
+    // The reversed stretched function j is the old stretched function
+    // n+m-1-j, whose coefficient is c_{(n+m-1-j) mod n} = c_{(m-1-j) mod n}.
+    // A plain row reversal would give the right curve cyclically shifted by m.
+    const index_t n = this->basis().size();
+    const index_t m = this->basis().numCrossingFunctions();
+    gsMatrix<T> c(n, m_coefs.cols());
+    for (index_t j = 0; j < n; ++j)
+        c.row(j) = m_coefs.row( ((m-1-j) % n + n) % n );
+    this->basis().reverse();
+    m_coefs.swap(c);
 }
 
 namespace internal

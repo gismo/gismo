@@ -361,7 +361,10 @@ public:
             result(0,0) = m_knots.greville(i);
     }
 
-    // Look at gsBasis class for a description
+    /// @brief Control net of the spline with coefficient rows \a nodes: one
+    /// vertex per row and the edges (i-1,i). \a nodes has size() rows (n
+    /// rows on a periodic basis, not n+m). On a periodic basis the control
+    /// polygon of the closed curve is closed by the edge (n-1,0).
     void connectivity(const gsMatrix<T> & nodes,
                       gsMesh<T> & mesh) const override;
 
@@ -414,7 +417,12 @@ public:
     /// O(p^2) per point.
     virtual void evalSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result) const;
 
-    // Look at gsBasis class for a description
+    /// @brief Evaluates the spline with coefficient rows \a coefs at the points u.
+    ///
+    /// \a coefs has size() rows; on a periodic basis these are the n
+    /// periodic coefficients (not n+m): they are expanded internally to the
+    /// n+m stretched coefficients for De Boor's algorithm. Cost O(n d)
+    /// for the expansion plus O(p^2) per point.
     virtual void evalFunc_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result) const;
 
     // Look at gsBasis class for a description
@@ -427,7 +435,8 @@ public:
     /// O(p^2) per point.
     void derivSingle_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
 
-    // Look at gsBasis class for a description
+    /// @brief First derivative of the spline with coefficient rows \a coefs.
+    /// \a coefs has size() rows (n rows on a periodic basis, not n+m).
     void deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const ;
 
     // Look at gsBasis class for a description
@@ -440,7 +449,8 @@ public:
     /// O(p^2) per point.
     void deriv2Single_into(index_t i, const gsMatrix<T> & u, gsMatrix<T>& result ) const ;
 
-    // Look at gsBasis class for a description
+    /// @brief Second derivative of the spline with coefficient rows \a coefs.
+    /// \a coefs has size() rows (n rows on a periodic basis, not n+m).
     void deriv2_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const ;
 
     // Look at gsBasis class for a description
@@ -832,11 +842,6 @@ public:
         m_knots.setPeriodic(true);
     }
 
-    /// @brief Returns the multiplicity of the first ``significant" knot
-    /// (i.e., the m_p+1st). If it is different from the multiplicity
-    /// of the corresponding knot at the end, returns zero.
-    int borderKnotMult() const;
-
     GISMO_DEPRECATED
     typename gsBasis<T>::domainIter makeDomainIterator() const
     {
@@ -848,10 +853,6 @@ public:
     {
         return m_knots.beginBdr(s);
     }
-
-    /// @brief Moves the knot vectors to enforce periodicity. No-op on a
-    /// periodic knot vector, which keeps its ghost knots consistent itself.
-    void enforceOuterKnotsPeriodic();
 
     // Look at gsBasis class for a description
     void reverse() { m_knots.reverse(); }
@@ -924,10 +925,11 @@ protected:
 
 public:
 
-    /// @brief Helper function for evaluation with periodic basis.
+    /// @brief Helper for the n+m stretched coefficients of a periodic basis.
     ///
-    /// @param coefs coefficients (control points, one per row) before
-    /// converting the basis into periodic.
+    /// @param coefs the n+m = trueSize() stretched coefficient rows (control
+    /// points, one per row). It must not be called with the n rows of a
+    /// periodic curve: it would overwrite rows n-m..n-1.
     ///
     /// @return copy of coefs with the first numCrossingFunctions() rows copied to
     /// the last numCrossingFunctions() rows.
@@ -946,8 +948,9 @@ public:
         return perCoefs(coefs);
     }
 
-    /// @brief Helper function for transforming periodic coefficients
-    /// to full coefficients
+    /// @brief Expands the n periodic coefficient rows to the n+m stretched
+    /// rows (m = numCrossingFunctions()): the first m rows are appended,
+    /// so that stretched function i takes row i mod n (m <= degree+1 <= n).
     void expandCoefs(gsMatrix<T> & coefs) const
     {
         const index_t m = numCrossingFunctions();
@@ -956,8 +959,9 @@ public:
         coefs.bottomRows( m ) = coefs.topRows( m );
     }
 
-    /// @brief Helper function for transforming full coefficients to
-    /// periodic coefficients
+    /// @brief Drops the last numCrossingFunctions() rows, turning the n+m
+    /// stretched coefficient rows into n periodic rows. The ghost rows are
+    /// not checked against their twins.
     void trimCoefs(gsMatrix<T> & coefs) const
     {
         const index_t sz = coefs.rows();

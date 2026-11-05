@@ -621,7 +621,12 @@ void gsTensorBSplineBasis<1,T>::evalFunc_into(const gsMatrix<T> &u,
         gsDeboor(u, m_knots, m_p, coefs, result); // De Boor's algorithm
     else
     {
-        gsDeboor(u, m_knots, m_p, perCoefs(coefs), result); // Make sure that the ghost coefficients agree with the beginning of the curve.
+        GISMO_ASSERT( coefs.rows() == size(), "A periodic basis expects "<<size()<<" coefficient rows, got "<<coefs.rows()<<".");
+        // De Boor needs the stretched coefficients: row i of the n+m rows is
+        // periodic coefficient i mod n, i.e. the first m rows are repeated.
+        gsMatrix<T> ex = coefs;
+        expandCoefs(ex);
+        gsDeboor(u, m_knots, m_p, ex, result);
     }
     //  return gsBasis<T>::eval(u,coefs); // defalult gsBasis implementation
 }
@@ -866,7 +871,10 @@ void gsTensorBSplineBasis<1,T>::deriv_into(const gsMatrix<T> & u, const gsMatrix
     if ( !isPeriodic() )
         gsBasis<T>::derivFunc_into(u, coefs, result);
     else
-        gsBasis<T>::derivFunc_into(u, perCoefs(coefs), result);
+    {
+        GISMO_ASSERT( coefs.rows() == size(), "A periodic basis expects "<<size()<<" coefficient rows, got "<<coefs.rows()<<".");
+        gsBasis<T>::derivFunc_into(u, coefs, result);
+    }
 }
 
 template <class T> inline
@@ -876,7 +884,10 @@ void gsTensorBSplineBasis<1,T>::deriv2_into(const gsMatrix<T> & u, const gsMatri
     if ( !isPeriodic() )
         gsBasis<T>::deriv2Func_into(u, coefs, result);
     else
-        gsBasis<T>::deriv2Func_into(u, perCoefs(coefs), result);
+    {
+        GISMO_ASSERT( coefs.rows() == size(), "A periodic basis expects "<<size()<<" coefficient rows, got "<<coefs.rows()<<".");
+        gsBasis<T>::deriv2Func_into(u, coefs, result);
+    }
 }
 
 template <class T>  inline
@@ -1343,62 +1354,6 @@ std::string gsTensorBSplineBasis<1,T>::detail() const
     return os.str();
 }
 
-
-template<class T>
-void gsTensorBSplineBasis<1,T>::enforceOuterKnotsPeriodic()
-{
-    if ( m_knots.isPeriodic() )
-        return;
-
-    int borderKnotMult = this->borderKnotMult(); // Otherwise complains that error: 'borderKnotMult' cannot be used as a function
-    std::vector<T> newKnots(m_knots.begin(), m_knots.end());
-    for( int i = 0; i <= m_p - borderKnotMult; i++ )
-    {
-        newKnots[i] = newKnots[ newKnots.size() - 2 * m_p - 2 + i + borderKnotMult ] - _activeLength();
-        newKnots[ newKnots.size() - i - 1 ] = newKnots[ 2 * m_p - borderKnotMult + 1 - i ] + _activeLength();
-    }
-    m_knots=KnotVectorType(m_p, newKnots.begin(), newKnots.end());
-}
-
-template <class T>
-int gsTensorBSplineBasis<1,T>::borderKnotMult() const
-{
-    if ( m_knots.isPeriodic() )
-        return m_p + 1 - m_knots.numCrossingFunctions();
-
-    // Terminology: Blue knots are the m_p + 1st from the beginning and from the end of knot vector.
-    if( isClamped() )
-        return m_p + 1;
-
-    int multiFirst = 0;
-    int multiLast = 0;
-    int lastBlueId = m_knots.size() - m_p - 1; // Index of the m_p + 1st knot from the end.
-
-    for( int i = 0; i < m_p; i++ )
-    {
-        if( m_knots[m_p - i] == m_knots[m_p])
-            multiFirst++;
-        else
-            break;
-    }
-
-    for( int i = 0; i < m_p; i++ )
-    {
-        if( m_knots[lastBlueId + i] == m_knots[ lastBlueId ])
-            multiLast++;
-        else
-            break;
-    }
-
-    if( multiFirst == multiLast )
-        return multiLast;
-    else
-    {
-        gsWarn << "Different multiplicity of the blue knots.\n";
-        return 0;
-    }
-
-}
 
 template <class T>
 std::vector<T> gsTensorBSplineBasis<1,T>::_periodicKnots(const T u0, const T u1,

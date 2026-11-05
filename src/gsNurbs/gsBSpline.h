@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <limits>
+
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsCore/gsGeometry.h>
 
@@ -70,44 +72,39 @@ public:
     // enable swap
     using gsGeometry<T>::swap;
 
-    /// Construct B-Spline by basis and coefficient matrix.
+    /// @brief Construct B-Spline by basis and coefficient matrix.
+    ///
+    /// A curve on a periodic basis stores exactly basis.size() = n
+    /// coefficient rows (one per periodic function). \a coefs may have n
+    /// rows, or n+m rows (m = basis.numCrossingFunctions()) whose ghost
+    /// rows n+j equal their twins j within 100*eps*max|coefs|; the ghost
+    /// rows are then dropped. Any other row count, or a ghost row that
+    /// differs from its twin, raises GISMO_ERROR.
     gsBSpline( const Basis & basis, gsMatrix<T> coefs )
-    : Base( basis, give(coefs) )
-    {
-        if( this->basis().isPeriodic() )
-            this->basis().expandCoefs(m_coefs);
-    }
+    : Base( basis, _reducePeriodicCoefs(basis, give(coefs)) )
+    { }
 
-    /// Construct B-Spline by a knot vector and coefficient matrix.
+    /// @brief Construct B-Spline by a knot vector and coefficient matrix.
+    ///
+    /// If \a periodic is true the knot vector is converted by
+    /// gsKnotVector::setPeriodic() (GISMO_ERROR if it is not suitable). A
+    /// knot vector that is already periodic stays periodic whatever the value of
+    /// \a periodic. On a periodic basis the curve stores n = basis size rows;
+    /// \a coefs may have n or n+m rows, as in gsBSpline(const Basis&,
+    /// gsMatrix<T>). Nothing is stored if a check fails.
     gsBSpline(KnotVectorType KV, gsMatrix<T> coefs, bool periodic = false )
     {
-        this->m_basis = new Basis(give(KV));
-        m_coefs.swap(coefs);
-
+        Basis b(give(KV));
         if( periodic )
-        {
-            const index_t sz = this->basis().size();
+            b.setPeriodic(true);
 
-            this->basis().setPeriodic();
+        if( b.isPeriodic() )
+            coefs = _reducePeriodicCoefs(b, give(coefs));
+        else if( coefs.rows() + b.degree() + 1 != static_cast<index_t>( b.knots().size() ) )
+            gsWarn << "gsBSpline Warning: #Knots="<< b.knots().size()<< ", #coefs="<< coefs.rows() <<"\n";
 
-            if ( m_coefs.rows() == sz )
-            {
-                this->basis().trimCoefs(m_coefs);
-            }
-            else if  ( m_coefs.rows() == this->basis().size() )
-            {
-                this->basis().expandCoefs(m_coefs);
-            }
-            else
-            {
-                GISMO_ERROR("Wrong number of coefficients for periodic basis.");
-            }
-        }
-        else // non-periodic
-        {
-            if( this->m_coefs.rows() + KV.degree() + 1 != static_cast<int>( this->knots().size() ) )
-                gsWarn << "gsBSpline Warning: #Knots="<< this->knots().size()<< ", #coefs="<< this->m_coefs.rows() <<"\n";
-        }
+        this->m_basis = new Basis(give(b));
+        m_coefs.swap(coefs);
     }
 
 
@@ -120,6 +117,11 @@ public:
     /// \param mult_interior multiplicity at the interior knots
     /// \param periodic specifies whether the B-spline is periodic
     ///
+    /// A periodic curve on the basis with (interior+1)*mult_interior
+    /// functions stores that many rows; \a coefs may also carry the ghost rows
+    /// (n+m rows, see gsBSpline(const Basis&, gsMatrix<T>)). Other row counts
+    /// are refused with GISMO_ERROR.
+    ///
     /// \ingroup Nurbs
     gsBSpline(T u0, T u1, unsigned interior, int degree,
               gsMatrix<T> coefs, unsigned mult_interior=1, bool periodic = false)
@@ -127,14 +129,7 @@ public:
         this->m_basis = new Basis(u0, u1, interior, degree, mult_interior, periodic );
         if( periodic )
         {
-            GISMO_ASSERT( this->basis().numCrossingFunctions() == 1,
-                          "Knot vector with clamped knots should lead to m_periodic == 1.");
-
-            this->m_coefs = this->basis().perCoefs(coefs);
-            GISMO_ASSERT( this->m_coefs.rows() >= this->basis().size(),
-                          "You should give at least as many coefficients as the size of the basis after converting to periodic.");
-            if( this->m_coefs.rows() > this->basis().size() )
-                gsWarn << "Some of the last coefficients are going to be lost during conversion to periodic basis.\n";
+            this->m_coefs = _reducePeriodicCoefs(this->basis(), give(coefs));
         }
         else // non-periodic
         {
@@ -150,7 +145,8 @@ public:
 
 public:
 
-    /// Prints the object as a string.
+    /// Prints the object as a string. On a periodic curve the control points
+    /// shown are the first and the last of the n stored rows.
     std::ostream &print(std::ostream &os) const override
     {
         os << "BSpline curve "<< "of degree "<< this->basis().degree()<< ", "<<  this->basis().knots() <<".\n";
@@ -199,31 +195,36 @@ public:
     { GISMO_NO_IMPLEMENTATION }
 
 
-    /// Merge other B-spline into this one.
+    /// Merge other B-spline into this one. Refused (GISMO_ERROR, curve
+    /// unchanged) if this curve or \a other is periodic: a periodic curve has no
+    /// end point to join.
     void merge( gsGeometry<T> * otherG ) override;
 
     /// Segment this BSpline curve between u0 and u1. Either of these values
     /// can be outside the parameter range of the curve, but u1 must be
     /// greater than u0. The degree of the curve is not modified.
+    /// Refused (GISMO_ERROR) on a periodic curve; use setPeriodic(false) first.
     /// \param u0 starting parameter
     /// \param u1 end parameter
     /// \param tolerance proximity of the segment boundaries and B-spline knots to treat them as equal
     gsBSpline<T> segmentFromTo(T u0, T u1, T tolerance=1e-15) const;
 
     /// Split this BSpline curve at u0. This value must be inside the
-    /// parameter range of the curve.
+    /// parameter range of the curve. Refused (GISMO_ERROR) on a periodic curve.
     /// \param u0 split parameter
     /// \param left curve segment from the left of parameter domain to u0
     /// \param right curve segment from u0 to the right of parameter domain
     /// \param tolerance proximity of the segment boundaries and B-spline knots to treat them as equal
     void splitAt(T u0, gsBSpline<T>& left,  gsBSpline<T>& right, T tolerance=1e-15) const;
 
-    /// Convert BSpline curve into Bezier segments
+    /// Convert BSpline curve into Bezier segments. Refused (GISMO_ERROR) on a
+    /// periodic curve.
     /// \param tolerance proximity of the segment boundaries and B-spline knots to treat them as equal
     /// @note: parameter range do NOT change, extra knots().affineTransform() needed
     gsMultiPatch<T> toBezier(T tolerance=1e-15) const;
 
-    /// Compute all intersections with another B-Spline curve
+    /// Compute all intersections with another B-Spline curve. Refused
+    /// (GISMO_ERROR) if either curve is periodic.
     /// \param other the other B-Spline curve
     /// \param tolerance the tolerance for computing the intersection
     /// \param curvatureTolerance the curvature tolerance for the splitting stage
@@ -233,11 +234,21 @@ public:
 
     /// calculates curvature approximation for a B-spline curve by dividing
     /// the total length of the polyline formed by its control points by
-    /// the direct distance between the first and last control point
+    /// the direct distance between the first and last control point.
+    /// On a periodic curve this measures the open polygon c_0..c_{n-1}
+    /// of the n stored rows.
     T pseudoCurvature() const;
 
     /// Insert the given new knot (multiplicity \a i) without changing
     /// the curve.
+    ///
+    /// On a periodic curve the knot is handled by
+    /// gsBSplineBasis::refine_withCoefs(): a value in (a,b) is inserted, a value
+    /// in (a-L,a) or (b,b+L) is inserted as its translate by +-L (L=b-a), and
+    /// the seam values a, b, anything farther, or a multiplicity above
+    /// degree+1 raise GISMO_ERROR. The curve keeps its n rows and is
+    /// unchanged if the insertion is refused. Cost O(K + n p d) for K
+    /// stretched knots and d coordinates.
     void insertKnot( T knot, index_t i = 1);
 private:
     // Resolve hidden overload w.r.t. gsGeometry
@@ -246,6 +257,10 @@ public:
 
     /// Insert the given new knots in the range \a [\em inBegin .. \em inEend )
     /// without changing the curve.
+    ///
+    /// On a periodic curve the knots are accepted and refused as in
+    /// insertKnot(T,index_t), jointly: nothing changes if any of them is
+    /// refused.
     /// \param inBegin iterator pointing to the first knot to be inserted
     /// \param inEnd iterator pointing to one position after the last
     /// knot to be inserted
@@ -254,58 +269,63 @@ public:
     {
         if( this->basis().isPeriodic() )
         {
-            // We assume we got valid (i.e., non-NULL) iterators; I don't think we have a reasonable way to test it in GISMO_ASSERT.
-
-            GISMO_ASSERT( (*inBegin > *(this->knots().begin()))
-                          && (*(inEnd-1) < *(this->knots().end()-1)),
-                          "Please, ask me to insert knots inside the knot interval only." );
-
-            std::vector<T> newKnots(inBegin,inEnd);
-
-            // It can happen that user would ask us to insert knots outside the active range.
-            // Should it happen, we shift the values and then sort the knot vector to remain non-decreasing.
-
-            T activeLength = this->basis()._activeLength();
-            T blue1 = *(this->basis().knots().begin()  + this->degree() );
-            T blue2 = *(this->basis().knots().end()    - this->degree() );
-            typename std::vector<T>::iterator begin = newKnots.begin();
-            typename std::vector<T>::iterator end   = newKnots.end();
-            for( typename std::vector<T>::iterator it = begin; it != end; ++it )
-            {
-                if( *it < blue1 )
-                    *it += activeLength;
-                else if( *it > blue2 )
-                    *it -= activeLength;
-                else if( (*it == blue1) || (*it == blue2) )
-                {
-                    // I would like to erase it and go on but for that the iterator is not enough.
-                    // ANGELOS, wouldn't it be better to put a GISMO_ASSERT here instead? Or throw an exception?
-                    gsWarn << "Interrupting insertKnots(): Cannot insert value equal to the p+1st knot from the beginning or end into a periodic curve.\n";
-                    return;
-                }
-            }
-            /* // This way it would be nicer but it does not cover all the dubious cases.
-            for( It it = begin; *it < blue1; ++it )
-                *it += activeLength;
-            for( It it = end-1; *it > blue2; --it )
-                *it -= activeLength;*/
-
-            std::sort( begin, end );
-
-            // We copy some of the control points to pretend for a while that the basis is not periodic.
-            //gsMatrix<T> trueCoefs = this->basis().perCoefs( this->coefs() );
-            gsBoehmRefine( this->basis().knots(), this->coefs(), this->degree(), begin, end );
-            //this->basis().enforceOuterKnotsPeriodic();
-            //this->coefs() = trueCoefs; // Isn't this memory-leaking?
-            // Periodic basis is restored using the so-called Student's Algorithm: forget as much as possible =).
-            //this->coefs().conservativeResize( this->basis().size(), this->coefs().cols() );
+            const std::vector<T> v(inBegin, inEnd);
+            Basis nb(this->basis());
+            gsMatrix<T> c = m_coefs;
+            nb.refine_withCoefs(c, v);
+            this->basis().swap(nb);
+            m_coefs.swap(c);
         }
         else // non-periodic
             gsBoehmRefine( this->basis().knots(), this->coefs(), this->degree(), inBegin, inEnd);
     }
 
-    // Look at gsGeometry class for a description
+    /// @brief Elevates the degree by \a i, keeping the curve.
+    ///
+    /// On a periodic curve the construction is exact in exact arithmetic
+    /// (no solver): the stretched curve is unwrapped onto a clamped
+    /// non-periodic pad, elevated by the non-periodic algorithm and the
+    /// window of functions active on [a,b] is selected (see the definition
+    /// for the argument). The floating-point accuracy is that of
+    /// bspline::degreeElevateBSpline, which loses accuracy as the number
+    /// of knots grows. The curve keeps n' = basis size rows. Cost
+    /// O((n+m+p) p i d).
     void degreeElevate(short_t const i = 1, short_t const dir = -1) override;
+
+    /// @brief Increases the degree by \a i, in general only approximately.
+    ///
+    /// Non-periodic: as gsGeometry::degreeIncrease(). Periodic: the new
+    /// curve interpolates the old one at the n' Greville anchors of the
+    /// new basis (a direct sparse LU of the n'xn' collocation matrix,
+    /// checked by info() and by a backward-error residual) and is in
+    /// general not equal to it. Refused (GISMO_ERROR, curve unchanged) if
+    /// the basis cannot be increased, e.g. n < p+i+1, or if the
+    /// system is numerically singular. Cost O(n' p^2) for the LU.
+    void degreeIncrease(short_t const i = 1, short_t const dir = -1) override;
+
+    /// @brief Decreases the degree by \a i, in general only approximately.
+    ///
+    /// Non-periodic: as gsGeometry::degreeDecrease(). Periodic: anchor
+    /// interpolation as in degreeIncrease(), with the same complexity
+    /// (the LU of the n'xn' collocation matrix, O(n' p^2)); refused
+    /// (GISMO_ERROR, curve unchanged) if the number of crossing
+    /// functions m <= i.
+    void degreeDecrease(short_t const i = 1, short_t const dir = -1) override;
+
+    /// @brief Reduces the degree by \a i, in general only approximately.
+    ///
+    /// Non-periodic: as gsGeometry::degreeReduce(). Periodic: anchor
+    /// interpolation as in degreeIncrease(), with the same complexity
+    /// (the LU of the n'xn' collocation matrix, O(n' p^2)); refused
+    /// (GISMO_ERROR, curve unchanged) if the reduced basis would have
+    /// fewer than degree+1 functions.
+    void degreeReduce(short_t const i = 1, short_t const dir = -1) override;
+
+    /// @brief Reverses the parameterization, keeping the domain [a,b].
+    ///
+    /// Non-periodic: the coefficient rows are reversed. Periodic: the curve
+    /// keeps its n rows, with c'_j = c_{(m-1-j) mod n}.
+    void reverse() override;
 
     /// @brief Returns true iff the point p is contained (approximately) on
     /// the curve, with the given tolerance.
@@ -344,14 +364,41 @@ public:
         return images;
     }
 
-    /// Tries to convert the curve into periodic.
+    /// @brief Converts the curve to periodic (\a flag true) or back.
+    ///
+    /// flag == true: the knot vector is converted by
+    /// gsKnotVector::setPeriodic() and the n+m coefficient rows are
+    /// compressed to n; the ghost rows n+j must equal their twins j
+    /// within 100*eps*max|coef|, otherwise GISMO_ERROR. A refused
+    /// conversion leaves the curve unchanged. No-op if already periodic.
+    ///
+    /// flag == false: exact unwrapping onto the stretched knots with the
+    /// n+m expanded rows (c_{i mod n} for stretched function i), the same
+    /// curve in a non-periodic basis. No-op if not periodic.
     void setPeriodic(bool flag = true)
     {
-        this->basis().setPeriodic(flag);
-        this->m_coefs = this->basis().perCoefs( this->m_coefs );
+        if( flag == this->basis().isPeriodic() )
+            return;
+
+        if( flag )
+        {
+            Basis nb(this->basis());
+            nb.setPeriodic(true);
+            gsMatrix<T> c = _reducePeriodicCoefs(nb, m_coefs);
+            this->basis().swap(nb);
+            m_coefs.swap(c);
+        }
+        else
+        {
+            gsMatrix<T> c = m_coefs;
+            this->basis().expandCoefs(c);
+            this->basis().setPeriodic(false);
+            m_coefs.swap(c);
+        }
     }
 
-    inline int numCoefs() const { return this->m_coefs.rows() - this->basis().numCrossingFunctions(); }
+    /// Number of coefficient rows (the basis size)
+    inline int numCoefs() const { return this->m_coefs.rows(); }
 
     inline bool isPeriodic() const { return this->basis().isPeriodic(); }
 
@@ -368,24 +415,28 @@ public:
     bool isOn(gsMatrix<T> const &u, T tol = 1e-3) const override;
 
     /// \brief Return true if point \a u is an endpoint (corner) of
-    /// the curve with tolerance \a tol
+    /// the curve with tolerance \a tol. Refused (GISMO_ERROR) on a periodic
+    /// curve, which has no end points.
     bool isPatchCorner(gsMatrix<T> const &v, T tol = 1e-3) const;
 
     /// \brief returns the tensor-index \a curr of the corner control
     /// point \a v, or an invalid index if the corner is not found
-    /// within the tolerance \a tol
+    /// within the tolerance \a tol. Refused (GISMO_ERROR) on a periodic
+    /// curve, which has no corners.
     void findCorner(const gsMatrix<T>   & v,
                     gsVector<index_t,1> & curr,
                     T tol = 1e-3);
 
     /// \brief Modifies the parameterization such that the point \a v
     /// is the starting point of the curve. Assumes that \a v is
-    /// either the starting or the ending point of the curve
+    /// either the starting or the ending point of the curve. Refused
+    /// (GISMO_ERROR) on a periodic curve.
     void setOriginCorner(gsMatrix<T> const &v);
 
     /// \brief Modifies the parameterization such that the point \a v
     /// is the ending point of the curve. Assumes that \a v is
-    /// either the starting or the ending point of the curve
+    /// either the starting or the ending point of the curve. Refused
+    /// (GISMO_ERROR) on a periodic curve.
     void setFurthestCorner(gsMatrix<T> const &v);
 
     void swapDirections(const unsigned i, const unsigned j);
@@ -394,6 +445,47 @@ private:
 
     // Avoid hidden overloads w.r.t. gsGeometry
     using Base::insertKnot;
+
+    /// @brief Coefficients of a curve on basis \a b, reduced to b.size() rows
+    /// if \a b is periodic.
+    ///
+    /// Non-periodic \a b, or b.size() rows: \a coefs is returned unchanged.
+    /// b.size()+m rows (m = b.numCrossingFunctions()): the ghost rows n+j
+    /// must equal their twins j within 100*eps*max|coefs| and are then
+    /// dropped; GISMO_ERROR otherwise. Any other row count: GISMO_ERROR.
+    /// Cost O((n+m) d).
+    static gsMatrix<T> _reducePeriodicCoefs(const Basis & b, gsMatrix<T> coefs)
+    {
+        if( !b.isPeriodic() )
+            return coefs;
+
+        const index_t n = b.size();
+        const index_t m = b.numCrossingFunctions();
+        if( coefs.rows() == n )
+            return coefs;
+
+        GISMO_ENSURE( coefs.rows() == n + m,
+                      "gsBSpline: a periodic basis with n = " << n << " functions and m = "
+                      << m << " crossing functions needs n or n+m coefficient rows, got "
+                      << coefs.rows() << "." );
+
+        const T twinTol = 100 * std::numeric_limits<T>::epsilon();
+        const T scale = coefs.size() == 0 ? T(0) : coefs.cwiseAbs().maxCoeff();
+        for( index_t j = 0; j < m; ++j )
+        {
+            const T diff = (coefs.row(n+j) - coefs.row(j)).cwiseAbs().maxCoeff();
+            GISMO_ENSURE( diff <= twinTol * scale,
+                          "gsBSpline: ghost coefficient row " << n+j << " differs from its twin row "
+                          << j << " by " << diff << "." );
+        }
+        coefs.conservativeResize(n, gsEigen::NoChange);
+        return coefs;
+    }
+
+    /// Replaces the basis by the periodic basis \a nb and the coefficients by
+    /// the interpolant of the current curve at the n' anchors of \a nb.
+    /// Everything is computed on locals; a throw leaves the curve unchanged.
+    void _periodicDegreeChange(Basis & nb);
 
 protected:
 

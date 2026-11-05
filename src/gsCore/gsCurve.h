@@ -67,8 +67,10 @@ public: inline uPtr clone() const { return uPtr(clone_impl()); }
 
     void toMesh(gsMesh<T> & msh, int npoints = 100) const;
 
-    /// Reverse the coefficients
-    void reverse()
+    /// Reverses the parameterization by reversing the coefficients and the
+    /// basis. Curves with a different coefficient layout (e.g. periodic
+    /// storage in gsBSpline) override it.
+    virtual void reverse()
     {
         this->m_coefs = this->m_coefs.colwise().reverse().eval();
         this->basis().reverse();
