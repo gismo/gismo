@@ -40,6 +40,9 @@ gsMultiBasis<T>::gsMultiBasis( const gsBasis<T> & bb, bool NoRational)
 template<class T>
 void gsMultiBasis<T>::excludePeriodicSides()
 {
+    // The excluded set reflects the bases only: drop whatever a passed-in
+    // topology carried before rebuilding it.
+    m_topology.clearExcludedSides();
     for (size_t p = 0; p != m_bases.size(); ++p)
         for (short_t dir = 0; dir != m_bases[p]->dim(); ++dir)
             if (m_bases[p]->isPeriodic(dir))

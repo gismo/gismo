@@ -69,10 +69,17 @@ refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer,
     GISMO_ASSERT( refineKnots.size() == d, "refineKnots vector has wrong size" );
     gsSparseMatrix<T,RowMajor> B[d];
 
-    // refine component bases and obtain their transfer matrices
+    // Refine component bases and obtain their transfer matrices. The
+    // periodic direction goes first: its transfer may refuse (e.g. a knot
+    // at the seam), and a refusal must leave the basis unchanged, which
+    // only holds before any other component is refined.
+    const int pd = periodicDirection();
+    if (-1 != pd)
+        this->component(pd).refine_withTransfer( B[pd], refineKnots[pd] );
     for (unsigned i = 0; i < d; ++i)
     {
-        this->component(i).refine_withTransfer( B[i], refineKnots[i] );
+        if (static_cast<int>(i) != pd)
+            this->component(i).refine_withTransfer( B[i], refineKnots[i] );
     }
 
     tensorCombineTransferMatrices<d, T>( B, transfer );
