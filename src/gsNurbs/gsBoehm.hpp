@@ -34,6 +34,7 @@ void gsBoehm(
     bool update_knots
     )
 {
+    GISMO_ENSURE(!knots.isPeriodic(), "gsBoehm: periodic knot vector; use the periodic transfer of the basis");
 
     GISMO_ASSERT( r >= 1, "Must insert at least one knot." );
     if (r==1)
@@ -99,6 +100,7 @@ void gsBoehmSingle(
     bool update_knots
     )
 {
+    GISMO_ENSURE(!knots.isPeriodic(), "gsBoehmSingle: periodic knot vector; use the periodic transfer of the basis");
 
     GISMO_ASSERT( coefs.rows() == (index_t)(knots.size() - knots.degree()-1),
                   "Incompatible coefficients/knots" ) ;
@@ -166,6 +168,7 @@ void gsBoehmRefine( KnotVectorType & knots,
                     ValIt valBegin, ValIt valEnd, // knot values to insert
                     bool update_knots)
 {
+    GISMO_ENSURE(!knots.isPeriodic(), "gsBoehmRefine: periodic knot vector; use the periodic transfer of the basis");
     if ( valBegin == valEnd ) return;
 
     typedef typename std::iterator_traits<ValIt>::value_type T;
@@ -251,6 +254,7 @@ void gsTensorBoehm(
         int r,
         bool update_knots)
 {
+    GISMO_ENSURE(!knots.isPeriodic(), "gsTensorBoehm: periodic knot vector; use the periodic transfer of the basis");
     GISMO_ASSERT(1 <= r, "Can not make insertion r < 1 times");
     GISMO_ASSERT(direction < str.size(),
                  "We can not insert a knot in a given direction");
@@ -378,6 +382,7 @@ void gsTensorBoehmRefine(
         ValIt valEnd,
         bool update_knots)
 {
+    GISMO_ENSURE(!knots.isPeriodic(), "gsTensorBoehmRefine: periodic knot vector; use the periodic transfer of the basis");
 
     typedef typename std::iterator_traits<ValIt>::value_type T;
 
@@ -509,6 +514,7 @@ void gsTensorBoehmRefineLocal(KnotVectorType& knots,
         ValIt valEnd,
         const bool update_knots)
 {
+    GISMO_ENSURE(!knots.isPeriodic(), "gsTensorBoehmRefineLocal: periodic knot vector; use the periodic transfer of the basis");
 
     if (valBegin==valEnd)
         return;

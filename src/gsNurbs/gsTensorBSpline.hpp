@@ -56,6 +56,8 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
                                       KnotVectorType KV1, KnotVectorType KV2)
 {
     GISMO_ASSERT(d==2, "Wrong dimension: tried to make a "<< d<<"D tensor B-spline using 2 knot-vectors.");
+    GISMO_ENSURE(!KV1.isPeriodic() && !KV2.isPeriodic(),
+                 "gsTensorBSpline: a patch defined by four corners has no periodic meaning.");
 
     std::vector<Family_t*> cbases;
     const int n1 = KV1.size() - KV1.degree() - 1;
@@ -120,26 +122,60 @@ gsTensorBSpline<d,T>::gsTensorBSpline(gsMatrix<T> const & corner,
     this->m_coefs.swap( pcp );
 }
 
-// todo: move to hpp
 template<short_t d, class T>
 void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
                                  BoundaryGeometryType & result) const
 {
     GISMO_ASSERT(d-1>=0,"d must be greater or equal than 1");
     GISMO_ASSERT(dir_fixed>=0 && static_cast<unsigned>(dir_fixed)<d,"cannot fix a dir greater than dim or smaller than 0");
-    // construct the d-1 basis
     boxSide side(dir_fixed,0);
-    typename BoundaryBasisType::uPtr tbasis = this->basis().boundaryBasis(side);
 
     if(d==1)
     {
+        // construct the d-1 basis
+        typename BoundaryBasisType::uPtr tbasis = this->basis().boundaryBasis(side);
         gsMatrix<T> val(1,1),point;
         val(0,0)=par;
         this->eval_into(val,point);
         result = BoundaryGeometryType(*tbasis, point );
     }
+    else if( knots(dir_fixed).isPeriodic() )
+    {
+        // Fixed parameter in the periodic direction. With u = par, the slice is
+        //   s(.) = sum_k N_k(u) c_{k,.},
+        // where k runs over the p+1 functions of the periodic 1D basis that are
+        // active at u (folded indices in [0,n)) and c_{k,.} is the slice k of the
+        // coefficient tensor. The tensor basis is a product, so this contraction
+        // is exact; no knot is inserted. The boundary basis of the periodic side
+        // is not requested (it is refused, a periodic side is no boundary): the
+        // basis is built from the remaining components directly.
+        std::vector<gsBasis<T>*> rr;
+        this->basis().getComponentsForSide(side, rr);
+        typename BoundaryBasisType::uPtr tbasis(BoundaryBasisType::New(rr));
+
+        gsMatrix<T> u(1,1), val;
+        gsMatrix<index_t> act;
+        u(0,0) = par;
+        this->basis().component(dir_fixed).active_into(u, act);
+        this->basis().component(dir_fixed).eval_into(u, val);
+
+        gsVector<index_t,d> sizes;
+        this->basis().size_cwise(sizes);
+        gsMatrix<T> coefs, Sk;
+        for (index_t k = 0; k != act.rows(); ++k)
+        {
+            constructCoefsForSlice<d, T>(dir_fixed, act(k,0), this->coefs(), sizes, Sk);
+            if (0 == k)
+                coefs = val(k,0) * Sk;
+            else
+                coefs += val(k,0) * Sk;
+        }
+        result = BoundaryGeometryType(*tbasis, give(coefs) );
+    }
     else
     {
+        // construct the d-1 basis
+        typename BoundaryBasisType::uPtr tbasis = this->basis().boundaryBasis(side);
         const int mult   = this->basis().knots(dir_fixed).multiplicity(par);
         const int degree = this->basis().degree(dir_fixed);
         index_t index;
@@ -180,8 +216,6 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
         }
 
         // construct the object
-        //result = gsTensorBSpline<static_cast<short_t>(d-1),T>(*tbasis, give(coefs) );
-        //result = BoundaryGeometry(*tbasis, give(coefs) );
         result = BoundaryGeometryType(*tbasis, coefs );
     }
 }
@@ -189,6 +223,16 @@ void gsTensorBSpline<d,T>::slice(index_t dir_fixed,T par,
 template<short_t d, class T>
 void gsTensorBSpline<d,T>::reverse(unsigned k)
 {
+    if (knots(k).isPeriodic())
+    {
+        // The reversed stretched function j is the old stretched function
+        // n+m-1-j, whose coefficient is c_{(n+m-1-j) mod n} = c_{(m-1-j) mod n};
+        // the domain [a,b] is kept. This is the 1D map of gsBSpline::reverse
+        // applied to every iso-curve along k.
+        _alongDirection(static_cast<short_t>(k), [](gsBSpline<T> & c){ c.reverse(); });
+        return;
+    }
+
     gsTensorBSplineBasis<d,T> & tbsbasis = this->basis();
     gsVector<index_t,d> sz;
     tbsbasis.size_cwise(sz);
@@ -216,6 +260,7 @@ void gsTensorBSpline<d,T>::toggleOrientation()
 template<short_t d, class T>
 bool gsTensorBSpline<d,T>::isPatchCorner(gsMatrix<T> const &v, T tol) const
 {
+    GISMO_ENSURE(-1 == _periodicDir(), "gsTensorBSpline: a periodic geometry has no corners.");
     gsVector<index_t,d> str(d), vupp(d), curr = gsVector<index_t,d>::Zero(d);
     this->basis().stride_cwise(str);
     this->basis().size_cwise(vupp);
@@ -236,6 +281,7 @@ void gsTensorBSpline<d,T>::findCorner(const gsMatrix<T> & v,
                                       gsVector<index_t,d> & curr,
                                       T tol)
 {
+    GISMO_ENSURE(-1 == _periodicDir(), "gsTensorBSpline: a periodic geometry has no corners.");
     gsVector<index_t,d> str , // Tensor strides
         vupp; // Furthest corner
 
@@ -260,6 +306,7 @@ void gsTensorBSpline<d,T>::findCorner(const gsMatrix<T> & v,
 template<short_t d, class T>
 void gsTensorBSpline<d,T>::setOriginCorner(gsMatrix<T> const &v)
 {
+    GISMO_ENSURE(-1 == _periodicDir(), "gsTensorBSpline: a periodic geometry has no corners.");
     gsVector<index_t,d> curr;
     findCorner(v, curr);
     if ( curr[0] == this->basis().size(0) )
@@ -272,6 +319,7 @@ void gsTensorBSpline<d,T>::setOriginCorner(gsMatrix<T> const &v)
 template<short_t d, class T>
 void gsTensorBSpline<d,T>::setFurthestCorner(gsMatrix<T> const &v)
 {
+    GISMO_ENSURE(-1 == _periodicDir(), "gsTensorBSpline: a periodic geometry has no corners.");
     gsVector<index_t,d> curr;
     findCorner(v, curr);
     if ( curr[0] == this->basis().size(0) )
@@ -289,6 +337,17 @@ void gsTensorBSpline<d,T>::degreeElevate(short_t const i, short_t const dir)
     {
         for (short_t j = 0; j < d; ++j)
             degreeElevate(i, j);
+        return;
+    }
+
+    if (knots(dir).isPeriodic())
+    {
+        // Exact: the 1D periodic elevation of gsBSpline::degreeElevate (unwrap onto
+        // a padded non-periodic vector, elevate with bspline::degreeElevateBSpline,
+        // select the periodic window; see there for the argument) is exact on
+        // every iso-curve along dir, i.e. for every column of the reshaped
+        // coefficients, hence for the tensor geometry.
+        _alongDirection(dir, [=](gsBSpline<T> & c){ c.degreeElevate(i); });
         return;
     }
 
@@ -325,6 +384,12 @@ void gsTensorBSpline<d,T>::insertKnot( T knot, int dir, int i)
     GISMO_ASSERT( dir >= 0 && static_cast<unsigned>(dir) < d,
                   "Invalid basis component "<< dir <<" requested for degree elevation" );
 
+    if (knots(dir).isPeriodic())
+    {
+        _alongDirection(static_cast<short_t>(dir), [=](gsBSpline<T> & c){ static_cast<gsGeometry<T>&>(c).insertKnot(knot, 0, i); });
+        return;
+    }
+
     const index_t n = this->m_coefs.cols();
 
     gsVector<index_t,d> sz;
@@ -338,6 +403,134 @@ void gsTensorBSpline<d,T>::insertKnot( T knot, int dir, int i)
 
     this->m_coefs.resize( sz.prod(), n );
     swapTensorDirection(0, dir, sz, this->m_coefs);
+}
+
+
+template<short_t d, class T>
+template<class Op>
+void gsTensorBSpline<d,T>::_alongDirection(short_t dir, Op op)
+{
+    GISMO_ASSERT( dir >= 0 && dir < d, "Invalid basis component "<< dir );
+
+    // Reshape (on a copy): after swapping dir to the front, the coefficients
+    // have size(dir) rows, and each column is one fixed multi-index of the
+    // other directions and one geometric coordinate.
+    const index_t gd = m_coefs.cols();
+    gsVector<index_t,d> sz;
+    this->basis().size_cwise(sz);
+    gsMatrix<T> c = m_coefs;
+    swapTensorDirection(0, dir, sz, c);
+    c.resize( sz[0], gd * sz.template tail<static_cast<short_t>(d-1)>().prod() );
+
+    // The 1D operations (knot insertion, elevation, the interpolation-based
+    // degree changes, the reverse permutation) act on the rows and are linear
+    // in the coefficients. Applying one to the reshaped matrix therefore applies
+    // it to every iso-curve along dir at once, which is the tensor-product
+    // operation: the identity in the other directions. The solver, its checks
+    // and the tolerances all live in the 1D code.
+    gsBSpline<T> crv( this->basis().component(dir), give(c) );
+    op(crv);
+
+    // Back to the tensor layout. Nothing of *this was touched until here, so a
+    // refusal in op leaves the geometry unchanged; the commit below only swaps.
+    gsMatrix<T> r;
+    r.swap(crv.coefs());
+    sz[0] = r.rows();
+    r.resize( sz.prod(), gd );
+    swapTensorDirection(0, dir, sz, r);
+
+    this->basis().component(dir).swap(crv.basis());
+    m_coefs.swap(r);
+}
+
+template<short_t d, class T>
+void gsTensorBSpline<d,T>::setPeriodic( int dir )
+{
+    GISMO_ENSURE( dir >= 0 && dir < static_cast<int>(d),
+                  "gsTensorBSpline::setPeriodic: invalid direction "<< dir );
+    if (knots(dir).isPeriodic())
+        return;
+    GISMO_ENSURE( -1 == _periodicDir(),
+                  "gsTensorBSpline::setPeriodic: the geometry is already periodic in another direction." );
+    // The ghost-slice check and the compression to n slices are those of the
+    // 1D conversion, applied to every iso-curve along dir.
+    _alongDirection(static_cast<short_t>(dir), [](gsBSpline<T> & c){ c.setPeriodic(true); });
+}
+
+// The three approximate degree changes share one scheme. On a periodic
+// geometry they are the 1D operations of gsBSpline (see gsBSpline::degreeIncrease)
+// applied along dir: the new periodic curve interpolates the old one at the new
+// periodic anchors, so the result interpolates the geometry on the iso-lines
+// through the 1D anchors and is in general not equal to it. The 1D code solves
+// the collocation system with a direct sparse LU and checks info() and the
+// residual: a direct solver cannot silently return an unconverged iterate on a
+// nearly singular system. The collocation matrix has wrap-around corner entries,
+// because the functions crossing the seam are active at anchors near both ends.
+// The generic gsGeometry path is bypassed because it uses gsBasis::interpolateData,
+// which is non-virtual and solves with BiCGSTAB without a convergence check.
+// In a non-periodic direction of a periodic geometry the temporary curve is
+// non-periodic and takes the generic path in 1D, equivalent to the tensor
+// interpolation in that direction. A geometry without a periodic direction is
+// handled by gsGeometry.
+
+template<short_t d, class T>
+void gsTensorBSpline<d,T>::degreeReduce(short_t const i, short_t const dir)
+{
+    if (-1 == _periodicDir())
+    {
+        gsGeometry<T>::degreeReduce(i, dir);
+        return;
+    }
+    if (-1 == dir)
+    {
+        gsTensorBSpline tmp(*this); // a refusal in a later direction leaves *this unchanged
+        for (short_t j = 0; j < d; ++j)
+            tmp.degreeReduce(i, j);
+        this->swap(tmp);
+        return;
+    }
+    GISMO_ASSERT( dir >= 0 && dir < d, "Invalid basis component "<< dir <<" requested for degree reduction" );
+    _alongDirection(dir, [=](gsBSpline<T> & c){ c.degreeReduce(i); });
+}
+
+template<short_t d, class T>
+void gsTensorBSpline<d,T>::degreeIncrease(short_t const i, short_t const dir)
+{
+    if (-1 == _periodicDir())
+    {
+        gsGeometry<T>::degreeIncrease(i, dir);
+        return;
+    }
+    if (-1 == dir)
+    {
+        gsTensorBSpline tmp(*this);
+        for (short_t j = 0; j < d; ++j)
+            tmp.degreeIncrease(i, j);
+        this->swap(tmp);
+        return;
+    }
+    GISMO_ASSERT( dir >= 0 && dir < d, "Invalid basis component "<< dir <<" requested for degree increase" );
+    _alongDirection(dir, [=](gsBSpline<T> & c){ c.degreeIncrease(i); });
+}
+
+template<short_t d, class T>
+void gsTensorBSpline<d,T>::degreeDecrease(short_t const i, short_t const dir)
+{
+    if (-1 == _periodicDir())
+    {
+        gsGeometry<T>::degreeDecrease(i, dir);
+        return;
+    }
+    if (-1 == dir)
+    {
+        gsTensorBSpline tmp(*this);
+        for (short_t j = 0; j < d; ++j)
+            tmp.degreeDecrease(i, j);
+        this->swap(tmp);
+        return;
+    }
+    GISMO_ASSERT( dir >= 0 && dir < d, "Invalid basis component "<< dir <<" requested for degree decrease" );
+    _alongDirection(dir, [=](gsBSpline<T> & c){ c.degreeDecrease(i); });
 }
 
 
@@ -360,6 +553,27 @@ typename gsGeometry<T>::uPtr gsTensorBSpline<d,T>::localRep(const gsMatrix<T> & 
         kv[i]     = KnotVectorType(deg, span - deg, span + deg + 2);
     }
 
+    // Global coefficient index along each direction of the local functions
+    // cfirst[i]..clast[i]. In a periodic direction the reduced storage has n
+    // slices, so the stretched index is replaced by the folded index of the 1D
+    // basis (active_into, in the order of the stretched functions).
+    gsMatrix<index_t> gidx[d];
+    for(unsigned i = 0; i!=d; ++i)
+    {
+        if ( knots(i).isPeriodic() )
+        {
+            gsMatrix<T> ui(1,1);
+            ui(0,0) = u(i,0);
+            this->basis().component(i).active_into(ui, gidx[i]);
+        }
+        else
+        {
+            gidx[i].resize(degree(i)+1, 1);
+            for(index_t t = 0; t != gidx[i].rows(); ++t)
+                gidx[i](t,0) = cfirst[i] + t;
+        }
+    }
+
     // Collect the local coefficients
     const gsMatrix<T> & allCoefs = this->coefs();
     gsMatrix<T> coefs(sz, allCoefs.cols() );
@@ -367,7 +581,10 @@ typename gsGeometry<T>::uPtr gsTensorBSpline<d,T>::localRep(const gsMatrix<T> & 
     basis().stride_cwise(str);
     index_t r = 0;
     do {
-        coefs.row(r++) = allCoefs.row( cur.dot(str) );
+        index_t g = 0;
+        for(unsigned i = 0; i!=d; ++i)
+            g += gidx[i](cur[i]-cfirst[i],0) * str[i];
+        coefs.row(r++) = allCoefs.row( g );
     } while ( nextCubePoint(cur, cfirst, clast) );
 
     // All set, return the local representation
@@ -454,6 +671,8 @@ std::vector<gsGeometry<T>* > gsTensorBSpline<d,T>::uniformSplit(index_t dir) con
 template<short_t d, class T>
 void gsTensorBSpline<d,T>::splitAt( index_t dir,T xi, gsTensorBSpline<d,T>& left,  gsTensorBSpline<d,T>& right) const
 {
+    GISMO_ENSURE( !knots(dir).isPeriodic(),
+                  "gsTensorBSpline::splitAt: a periodic direction has no end points to split at." );
     GISMO_ASSERT( (dir >= 0) && (dir < static_cast<index_t>(d)),
                   "Invalid basis component "<< dir <<" requested for geometry splitting" );
 
