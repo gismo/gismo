@@ -147,7 +147,7 @@ public:
     /// \a mult_interior (also at the seam), i.e. C^{degree-mult_interior}
     /// continuity, with size() == (interior+1)*mult_interior functions and
     /// numCrossingFunctions() == degree+1-mult_interior.
-    /// Refused with GISMO_ERROR unless 1 <= mult_interior <= degree and
+    /// Refused with GISMO_ERROR unless u0 < u1, 1 <= mult_interior <= degree and
     /// (interior+1)*mult_interior >= degree+1.
     gsTensorBSplineBasis(const T u0, const T u1, const unsigned interior,
                    const int degree, const unsigned mult_interior=1,
@@ -155,6 +155,7 @@ public:
     {
         if ( periodic )
         {
+            GISMO_ENSURE( u0 < u1, "Periodic basis: need u0 < u1." );
             GISMO_ENSURE( mult_interior >= 1,
                 "Periodic basis: the multiplicity must be at least 1." );
             GISMO_ENSURE( degree >= 1 && mult_interior <= static_cast<unsigned>(degree),
@@ -481,7 +482,7 @@ public:
             const T L = b - a;
             if ( !( m_knots[m-1] < a ) )
                 return false;
-            const T tol = 1e-12 * (std::max)( (std::max)(math::abs(a), math::abs(b)), math::abs(L) );
+            const T tol = 100 * std::numeric_limits<T>::epsilon() * (std::max)( (std::max)(math::abs(a), math::abs(b)), math::abs(L) );
             for ( index_t k = 0; k <= m + m_p; ++k )
                 if ( math::abs( m_knots[k+n] - m_knots[k] - L ) > tol )
                     return false;

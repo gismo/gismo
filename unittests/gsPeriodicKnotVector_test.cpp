@@ -828,14 +828,19 @@ TEST(space_NEW_kvSeamTolFar_E6)
     KV kv = kvConvert(d);
     CHECK_EQUAL(std::string(""), kvState(kv, d));
 
-    // The seam tolerance is 1e-12*max(|a|,|b|,L) ~ 1e-6, far above 1e-12*L;
-    // a deviation of 1e-7 in a constrained ghost knot is accepted and the
-    // ghost knot is regenerated, 1e-4 is refused.
+    // The seam tolerance is 100*eps*max(|a|,|b|,L) ~ 2.2e-8 here, far above
+    // 100*eps*L (below one ulp of 1e6): a deviation of 1e-9 in a constrained
+    // ghost knot is accepted and regenerated, 1e-7 and 1e-4 are refused.
     std::vector<real_t> t = stretchedKnots(d);
-    t[0] += 1e-7;
+    t[0] += 1e-9;
     KV near(t, 2);
     near.setPeriodic(true);
     CHECK_EQUAL(std::string(""), kvState(near, d));
+
+    t = stretchedKnots(d);
+    t[0] += 1e-7;
+    KV mid(t, 2);
+    kvRefuse(mid, [](KV & k) { k.setPeriodic(true); }, "delta=1e-7");
 
     t = stretchedKnots(d);
     t[0] += 1e-4;

@@ -271,11 +271,11 @@ public: // inserting and removing
     /// mult; removes it altogether, should its multiplicity be
     /// decreased to zero.
     ///
-    /// On a periodic knot vector, the knot is reduced into the period
-    /// (a ghost iterator's value is shifted by +-L and compared exactly
-    /// with the period knots; if round-off makes the shifted value differ
-    /// from its twin, nothing is removed), the period part is
-    /// reduced and the stretched knots are regenerated. The seam and
+    /// On a periodic knot vector, the period part is reduced and the
+    /// stretched knots are regenerated. A ghost iterator whose first
+    /// stored index is k removes its twin s[(k-m) mod n] in the period
+    /// part (n periodic knots s, m = p+1-mu ghosts per side),
+    /// independently of round-off. The seam and
     /// a negative \a mult are refused; the result must stay a valid
     /// periodic vector (at least p+1 periodic knots).
     /// Complexity O(K).
@@ -359,7 +359,7 @@ public: // periodicity
     /// validated as they are: 1 <= mu <= p, size() = n+m+p+1, the last
     /// copy of a at index p, equal multiplicities of a and b, and the seam
     /// condition t_{k+n} = t_k + L (k = 0..m+p) up to
-    /// 1e-12 max(|a|,|b|,L). A vector that fails (also n < p+1 or p < 1)
+    /// 100 eps max(|a|,|b|,L), eps the machine epsilon of T. A vector that fails (also n < p+1 or p < 1)
     /// is refused and left unchanged. The ghost knots are regenerated from
     /// the period part. Calling it on a periodic vector with
     /// \a flag = true does nothing.
@@ -819,13 +819,15 @@ public:
     ///
     /// On a periodic knot vector, every knot is reduced into the period
     /// as in insert(T,mult_t) and the stretched knots are regenerated
-    /// once (not \a mult times); a negative \a mult is refused.
+    /// once (not \a mult times); a negative \a mult is refused and
+    /// \a mult = 0 does nothing, as in insert(T,mult_t).
     /// Complexity O(K + r mult log(r mult)) for r knots.
     void insert( const knotContainer &knots, int mult = 1 )
     {
         if (m_periodic)
         {
             GISMO_ENSURE(mult >= 0, "insert: negative multiplicity.");
+            if (0 == mult) return;
             knotContainer reduced;
             reduced.reserve(knots.size()*mult);
             for (typename knotContainer::const_iterator it = knots.begin();

@@ -25,6 +25,20 @@ namespace internal
 
 /** \brief Read a KnotVector from XML data
     \ingroup Nurbs
+
+    The optional attribute <c>periodic="1"</c> marks a periodic knot vector
+    (see gsKnotVector::setPeriodic). It is written for a periodic vector,
+    together with the full stored (stretched) knot list, and applied after
+    the vector has been read. With a knot list, setPeriodic(true) is
+    applied to the list as read: a clamped (open) list takes its clamped
+    route (seam multiplicity p); any other list must satisfy
+    t_{k+n} = t_k + L up to 100 eps max(|a|,|b|,L), among setPeriodic's
+    other checks. A list that setPeriodic refuses (e.g. p < 1, or fewer
+    than p+1 period knots) makes reading throw std::runtime_error and
+    leaves the target unchanged. With <c>mode="uniform"</c> the clamped
+    uniform vector on [0,1] with <c>csize</c> coefficients is made
+    periodic, which gives <c>csize-1</c> periodic functions (refused if
+    csize-1 < p+1). Without the attribute the vector is not periodic.
 */
 template<class T>
 class gsXml< gsKnotVector<T> >
@@ -43,6 +57,9 @@ public:
         // TODO: make it unused when possible.
         int p = atoi(node->first_attribute("degree")->value() );
 
+        gsXmlAttribute * per = node->first_attribute("periodic");
+        const bool periodic = per && 0 != atoi(per->value());
+
         typename gsKnotVector<T>::knotContainer knotValues;
 
         gsXmlAttribute * mode = node->first_attribute("mode");
@@ -60,7 +77,9 @@ public:
                 //gsXmlAttribute * mlt = node->first_attribute("mult");
                 //if mlt
 
-                result = gsKnotVector<T>(0.0, 1.0, sz-p-1, p+1, 1, p);
+                gsKnotVector<T> kv(0.0, 1.0, sz-p-1, p+1, 1, p);
+                if (periodic) kv.setPeriodic(true);
+                result.swap(kv);
                 return;
             }
         }
@@ -80,7 +99,9 @@ public:
         } else {
             Base64::DecodeIntoGsType(node->value(), format_flag, knotValues);
         }
-        result = gsKnotVector<T>(give(knotValues), p);
+        gsKnotVector<T> kv(give(knotValues), p);
+        if (periodic) kv.setPeriodic(true);
+        result.swap(kv);
     }
 
     static gsXmlNode * put (const gsKnotVector<T> & obj, gsXmlTree & data)
@@ -101,6 +122,8 @@ public:
         str.str(std::string());// clean the ostream
         str<< obj.degree();
         tmp->append_attribute( makeAttribute("degree", str.str(),data) );
+        if (obj.isPeriodic())
+            tmp->append_attribute( makeAttribute("periodic", "1", data) );
 
         return tmp;
     }
@@ -347,7 +370,7 @@ void gsKnotVector<T>::setPeriodic(bool flag)
         if (multiplicity(b) != mu)
             GISMO_ERROR("setPeriodic: the seam multiplicities of a and b differ.");
         const T L   = b - a;
-        const T tol = T(1e-12) * (std::max)( (std::max)(math::abs(a), math::abs(b)), L );
+        const T tol = 100 * std::numeric_limits<T>::epsilon() * (std::max)( (std::max)(math::abs(a), math::abs(b)), L );
         for (index_t k = 0; k <= m + p; ++k)
             if (math::abs(m_repKnots[k+n] - (m_repKnots[k] + L)) > tol)
                 GISMO_ERROR("setPeriodic: knots violate t_{k+n} = t_k + L.");
@@ -547,7 +570,10 @@ void gsKnotVector<T>::remove( uiterator uit, mult_t mult )
 
     if (m_periodic)
     {
-        _periodicRemove(*uit, mult);
+        const index_t n = periodicSize();
+        index_t r = (static_cast<index_t>(uit.firstAppearance()) - m_periodic) % n;
+        if (r < 0) r += n;
+        _periodicRemove(_periodPart()[r], mult);
         return;
     }
 
