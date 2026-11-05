@@ -803,6 +803,14 @@ public:
         return m_knots.isPeriodic();
     }
 
+    /// @brief Tells, whether the basis is periodic in direction \a dir (must be 0).
+    bool isPeriodic(short_t dir) const override
+    {
+        GISMO_ASSERT(0 == dir, "gsBSplineBasis has only direction 0.");
+        GISMO_UNUSED(dir);
+        return isPeriodic();
+    }
+
     /// @brief Index of the function at corner c. Throws (GISMO_ERROR) on a
     /// periodic basis, which has no boundary.
     index_t functionAtCorner(boxCorner const & c) const;

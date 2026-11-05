@@ -46,6 +46,7 @@ gsMultiPatch<T>::gsMultiPatch(const gsGeometry<T> & geo )
     m_patches.push_back(geo.clone().release());
     //m_patches[0]->setId(0); // Note: for the single-patch constructor the id remains unchanged
     addBox();
+    setPeriodicSides(0);
     this->addAutoBoundaries();//inefficient
 }
 
@@ -99,6 +100,8 @@ gsMultiPatch<T>::gsMultiPatch(PatchContainer & patches )
 {
     m_patches.swap(patches); // patches are consumed
     setIds();
+    for (size_t p = 0; p != m_patches.size(); ++p)
+        setPeriodicSides(p);
     this->addAutoBoundaries();
 }
 
@@ -108,6 +111,8 @@ gsMultiPatch<T>::gsMultiPatch(std::vector<gsGeometry<>::uPtr> patches)
 {
     m_patches = memory::release(patches); // patches are consumed
     setIds();
+    for (size_t p = 0; p != m_patches.size(); ++p)
+        setPeriodicSides(p);
     this->addAutoBoundaries();
 }
 
@@ -119,6 +124,43 @@ gsMultiPatch<T>::gsMultiPatch( PatchContainer& patches,
 {
     m_patches.swap(patches); // patches are consumed
     setIds();
+    for (size_t p = 0; p != m_patches.size(); ++p)
+        setPeriodicSides(p);
+
+    // Sides of periodic directions are neither boundary nor interface
+    for (typename BaseA::bContainer::iterator it = this->m_boundary.begin();
+         it != this->m_boundary.end(); )
+    {
+        if (this->isExcluded(*it))
+        {
+            gsWarn << "gsMultiPatch: boundary " << *it << " lies on a periodic side; dropped.\n";
+            it = this->m_boundary.erase(it);
+        }
+        else
+            ++it;
+    }
+    for (typename BaseA::ifContainer::iterator it = this->m_interfaces.begin();
+         it != this->m_interfaces.end(); )
+    {
+        if (this->isExcluded(it->first()) || this->isExcluded(it->second()))
+        {
+            gsWarn << "gsMultiPatch: interface " << *it << " lies on a periodic side; dropped.\n";
+            it = this->m_interfaces.erase(it);
+        }
+        else
+            ++it;
+    }
+}
+
+template<class T>
+void gsMultiPatch<T>::setPeriodicSides(index_t p)
+{
+    BaseA::removeExcludedSides(p);
+    if (nullptr == m_patches[p]) return;
+    const gsBasis<T> & b = m_patches[p]->basis();
+    for (short_t dir = 0; dir != m_patches[p]->parDim(); ++dir)
+        if (b.isPeriodic(dir))
+            BaseA::excludeDirection(p, dir);
 }
 
 template<class T>
@@ -238,6 +280,7 @@ index_t gsMultiPatch<T>::addPatch(typename gsGeometry<T>::uPtr g)
     g->setId(index);
     m_patches.push_back( g.release() ) ;
     addBox();
+    setPeriodicSides(index);
     return index;
 }
 
@@ -393,8 +436,11 @@ template<class T>
 bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly, bool)
 {
     BaseA::clearTopology();
+    BaseA::clearExcludedSides(); // rebuilt from the current patches below
 
     const size_t   np    = m_patches.size();
+    for (size_t p = 0; p != np; ++p)
+        setPeriodicSides(p);
     const index_t  nCorP = 1 << m_dim;     // corners per patch
     const index_t  nCorS = 1 << (m_dim-1); // corners per side
 
@@ -450,7 +496,8 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly, bool)
 
         // Add all the patchSides of this patch to the candidate list
         for (boxSide bs=boxSide::getFirst(m_dim); bs<boxSide::getEnd(m_dim); ++bs)
-            pSide.push_back(patchSide(p,bs));
+            if (!BaseA::isExcluded(patchSide(p,bs)))
+                pSide.push_back(patchSide(p,bs));
     }
 
     gsVector<index_t>      dirMap(m_dim);

@@ -477,6 +477,14 @@ public:
     /// Tells, whether there is a coordinate direction in which the basis is periodic.
     bool isPeriodic() const { return -1 != periodicDirection(); }
 
+    /// Tells, whether the basis is periodic in direction \a dir.
+    /// Raises GISMO_ENSURE if more than one direction is periodic.
+    bool isPeriodic(short_t dir) const override
+    {
+        GISMO_ASSERT(dir >= 0 && dir < d, "Invalid direction");
+        return static_cast<int>(dir) == periodicDirection();
+    }
+
     /// Makes the \a dir -th component periodic.
     ///
     /// Returns without change if \a dir is already periodic. Throws

@@ -74,6 +74,7 @@ public:
         : m_topology( topology )
     {
         m_bases.swap(bases);// consumes the pointers
+        excludePeriodicSides();
     }
 
     /// Create a single-basis instance
@@ -86,6 +87,7 @@ public:
         : m_topology( bases[0]->dim(), bases.size(), boundary, interfaces )
     {
         m_bases.swap(bases);// consumes the pointers
+        excludePeriodicSides();
     }
 
     /// Destructor
@@ -643,6 +645,11 @@ public:
     void tileParameters();
 
 private:
+
+    /// Excludes the sides of the periodic directions of every basis in
+    /// the topology, and drops (with a warning) the boundaries and
+    /// interfaces that lie on them.
+    void excludePeriodicSides();
 
     BasisContainer m_bases;
 

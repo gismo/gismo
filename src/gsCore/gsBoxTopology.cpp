@@ -76,6 +76,15 @@ std::ostream & gsBoxTopology::print(std::ostream &os) const
     }
     else
         os << " (none)";
+    if ( m_excluded.size() )
+    {
+        os << "\nExcluded sides:";
+        for( std::vector< patchSide >::const_iterator eit =
+                 m_excluded.begin(); eit != m_excluded.end(); ++eit )
+        {
+            os <<"\n"<< *eit <<" ";
+        }
+    }
     return os;
 }
 
@@ -91,7 +100,7 @@ void gsBoxTopology::addAutoBoundaries()
         for (boxSide bs = boxSide::getFirst(m_dim); bs < boxSide::getEnd(m_dim); ++bs)
         {
             patchSide ps(b, bs);
-            if (!isBoundary(ps) && !isInterface(ps))
+            if (!isExcluded(ps) && !isBoundary(ps) && !isInterface(ps))
             {
                 addBoundary(ps);
             }
@@ -121,13 +130,14 @@ void gsBoxTopology::checkConsistency() const
 {
     GISMO_ASSERT(m_dim >= 0, "m_dim asserted to be positive");
     const size_t numSides = nboxes * 2 * m_dim;      // an n-D cube has 2*d sides
-    if ( numSides != 2 * nInterfaces() + nBoundary() ) {
+    if ( numSides != 2 * nInterfaces() + nBoundary() + nExcluded() ) {
         std::cerr << "*** WARNING *** gsBoxTopology has inconsistent interfaces or boundaries!" <<
                      std::endl;
         std::cerr << "                " << nboxes << " patches with " << numSides << " sides" << std::endl;
         std::cerr << "                " << nInterfaces() << " declared interfaces" << std::endl;
         std::cerr << "                " << nBoundary() << " declared boundaries" << std::endl;
-        std::cerr << "                this leaves " << numSides - 2 * nInterfaces() - nBoundary() <<
+        std::cerr << "                " << nExcluded() << " declared excluded (periodic) sides" << std::endl;
+        std::cerr << "                this leaves " << numSides - 2 * nInterfaces() - nBoundary() - nExcluded() <<
                      " sides unaccounted for" << std::endl;
     }
     for ( const_biterator i = bBegin(); i != bEnd(); ++i )

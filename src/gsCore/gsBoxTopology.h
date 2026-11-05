@@ -169,6 +169,7 @@ public:
         clearTopology();
         m_dim  = -1;
         nboxes =  0;
+        m_excluded.clear();
         m_boxProp.clear();
     }
 
@@ -179,6 +180,7 @@ public:
         std::swap( nboxes, other.nboxes );
         m_boundary.swap( other.m_boundary );
         m_interfaces.swap( other.m_interfaces );
+        m_excluded.swap( other.m_excluded );
         std::swap( m_boxProp, other.m_boxProp );
     }
 
@@ -220,6 +222,43 @@ public:
 
     /// Make all patch sides which are not yet declared as interface or boundary to a boundary.
     void addAutoBoundaries();
+
+    /// Marks patch side \a ps as excluded: neither boundary nor interface
+    /// (e.g. a side of a periodic direction). Adding a side twice has no effect.
+    void addExcludedSide(const patchSide & ps)
+    {
+        if (!isExcluded(ps)) m_excluded.push_back(ps);
+    }
+
+    /// Excludes both sides of direction \a dir of box \a box.
+    void excludeDirection(index_t box, short_t dir)
+    {
+        addExcludedSide(patchSide(box, boxSide(dir, false)));
+        addExcludedSide(patchSide(box, boxSide(dir, true )));
+    }
+
+    /// Removes every excluded side of box \a box.
+    void removeExcludedSides(index_t box)
+    {
+        m_excluded.erase(std::remove_if(m_excluded.begin(), m_excluded.end(),
+                                        [box](const patchSide & s) { return s.patch == box; }),
+                         m_excluded.end());
+    }
+
+    /// Is the patch side \a ps excluded?
+    bool isExcluded(const patchSide & ps) const
+    {
+        return std::find(m_excluded.begin(), m_excluded.end(), ps) != m_excluded.end();
+    }
+
+    /// The excluded sides.
+    const bContainer & excludedSides() const { return m_excluded; }
+
+    /// Number of excluded sides.
+    size_t nExcluded() const { return m_excluded.size(); }
+
+    /// Removes all excluded sides.
+    void clearExcludedSides() { m_excluded.clear(); }
 
     /// Is the given patch side \a ps set to a boundary?
     bool isBoundary(const patchSide& ps) const
@@ -386,6 +425,9 @@ protected:
 
     /// List of intefaces between boxes
     ifContainer m_interfaces;
+
+    /// Sides that are neither boundary nor interface (sides of periodic directions)
+    bContainer m_excluded;
 
     /// List of properties for each box
     gsProperty_container m_boxProp;

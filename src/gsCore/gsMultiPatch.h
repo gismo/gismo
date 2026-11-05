@@ -207,6 +207,7 @@ public:
         ptr->setId(pid);
         delete m_patches[pid];
         m_patches[pid] = ptr.release();
+        setPeriodicSides(pid);
     }
 
     void removePatch(index_t pid)
@@ -538,6 +539,10 @@ public:
 protected:
 
     void setIds();
+
+    /// Recomputes the excluded sides of patch \a p from basis().isPeriodic(dir).
+    /// A null patch (after resize) keeps no excluded side.
+    void setPeriodicSides(index_t p);
 
     // Data members
 private:

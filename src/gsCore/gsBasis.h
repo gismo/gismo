@@ -424,6 +424,12 @@ public:
     /// Returns false, since all bases that inherit from gsBasis are not rational.
     virtual bool isRational() const { return false;}
 
+    /// @brief Returns true if the basis is periodic in parametric direction \a dir.
+    ///
+    /// The two sides of a periodic direction are glued to each other: they are
+    /// neither boundary nor interface of a multipatch topology.
+    virtual bool isPeriodic(short_t dir) const { GISMO_UNUSED(dir); return false; }
+
     /**
      * @brief
      * Returns the anchor points that represent the members of the basis.

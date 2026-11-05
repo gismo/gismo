@@ -32,7 +32,37 @@ gsMultiBasis<T>::gsMultiBasis( const gsBasis<T> & bb, bool NoRational)
     else
         m_bases.push_back( bb.clone().release() );
     m_topology.addBox();
+    for (short_t dir = 0; dir != bb.dim(); ++dir)
+        if (bb.isPeriodic(dir)) m_topology.excludeDirection(0, dir);
     m_topology.addAutoBoundaries();
+}
+
+template<class T>
+void gsMultiBasis<T>::excludePeriodicSides()
+{
+    for (size_t p = 0; p != m_bases.size(); ++p)
+        for (short_t dir = 0; dir != m_bases[p]->dim(); ++dir)
+            if (m_bases[p]->isPeriodic(dir))
+                m_topology.excludeDirection(p, dir);
+    if (0 == m_topology.nExcluded()) return;
+
+    const gsBoxTopology::bContainer  bnd = m_topology.boundaries();
+    const gsBoxTopology::ifContainer ifc = m_topology.interfaces();
+    m_topology.clearTopology();
+    for (gsBoxTopology::const_biterator it = bnd.begin(); it != bnd.end(); ++it)
+    {
+        if (m_topology.isExcluded(*it))
+            gsWarn << "gsMultiBasis: boundary " << *it << " lies on a periodic side; dropped.\n";
+        else
+            m_topology.addBoundary(*it);
+    }
+    for (gsBoxTopology::const_iiterator it = ifc.begin(); it != ifc.end(); ++it)
+    {
+        if (m_topology.isExcluded(it->first()) || m_topology.isExcluded(it->second()))
+            gsWarn << "gsMultiBasis: interface " << *it << " lies on a periodic side; dropped.\n";
+        else
+            m_topology.addInterface(*it);
+    }
 }
 
 template<class T>
@@ -97,6 +127,9 @@ void gsMultiBasis<T>::addBasis( gsBasis<T> * g )
     }
     m_bases.push_back( g ) ;
     m_topology.addBox();
+    for (short_t dir = 0; dir != m_bases.back()->dim(); ++dir)
+        if (m_bases.back()->isPeriodic(dir))
+            m_topology.excludeDirection(m_bases.size()-1, dir);
     g = NULL;
 }
 
@@ -114,6 +147,9 @@ void gsMultiBasis<T>::addBasis(typename gsBasis<T>::uPtr g)
 
     m_bases.push_back( g.release() ) ;
     m_topology.addBox();
+    for (short_t dir = 0; dir != m_bases.back()->dim(); ++dir)
+        if (m_bases.back()->isPeriodic(dir))
+            m_topology.excludeDirection(m_bases.size()-1, dir);
 }
 
 template<class T>
