@@ -25,8 +25,8 @@ void pybind11_init_gsBSpline(py::module &m)
 
     // Constructors
       .def(py::init<real_t,real_t,unsigned, int, gsMatrix<real_t>,unsigned,bool>(),
-           py::arg("leftKnot"), py::arg("rightKnot"), py::arg("coefs"),
-           py::arg("interior"), py::arg("degree"),
+           py::arg("leftKnot"), py::arg("rightKnot"),
+           py::arg("interior"), py::arg("degree"), py::arg("coefs"),
            py::arg("mult_interior") = 1, py::arg("periodic") = false)
       .def(py::init<gsBSplineBasis<real_t>, gsMatrix<real_t>>(),
            py::arg("basis"), py::arg("coefs") )
