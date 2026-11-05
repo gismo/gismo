@@ -19,6 +19,8 @@
 #include <gsNurbs/gsKnotVector.h>
 #include <gsNurbs/gsBoehm.h>
 
+#include <set>
+
 #include <gsIO/gsXml.h>
 #include <gsIO/gsXmlGenericUtils.hpp>
 
@@ -33,7 +35,6 @@ gsTensorBSplineBasis<d,T>::gsTensorBSplineBasis(std::vector<typename gsTensorBSp
     GISMO_ASSERT( checkVectorPtrCast<Basis_t>(bb), "Invalid vector of basis pointers.");
     GISMO_ENSURE( d == bb.size(), "Wrong d in the constructor of gsTensorBSplineBasis." );
     bb.clear();
-    setIsPeriodic();
 }
 
 template<short_t d, class T>
@@ -42,7 +43,6 @@ gsTensorBSplineBasis<d,T>::gsTensorBSplineBasis(std::vector<gsBasis<T>*> & bb )
 {
     GISMO_ENSURE( d == bb.size(), "Wrong d in the constructor of gsTensorBSplineBasis." );
     bb.clear();
-    setIsPeriodic();
 }
 
 template<short_t d, class T>
@@ -84,19 +84,35 @@ refine_withCoefs(gsMatrix<T> & coefs,const std::vector< std::vector<T> >& refine
 {
     GISMO_ASSERT( refineKnots.size() == d, "refineKnots vector has wrong size" );
     gsVector<unsigned> strides(d);
-    for (unsigned j = 0; j < d; ++j) //calculate the strides for each direction
+
+    // The periodic direction is refined first: its transfer may refuse
+    // (e.g. a knot at the seam), and a refusal must leave the basis and
+    // coefs unchanged, which only holds before any other direction is touched.
+    const int pd = periodicDirection();
+    if (-1 != pd && refineKnots[pd].size()>0)
     {
-        strides[j]=this->stride(j);
+        // Pad-and-fold transfer of the univariate basis (n' x n on reduced rows).
+        gsVector<index_t,d> sz;
+        this->size_cwise(sz);
+        gsSparseMatrix<T,RowMajor> tr;
+        this->component(pd).refine_withTransfer(tr, refineKnots[pd]);
+        const index_t nc = coefs.cols();
+        swapTensorDirection(0, pd, sz, coefs);
+        coefs.resize(sz[0], nc * sz.template tail<static_cast<short_t>(d-1)>().prod());
+        coefs = tr * coefs;
+        sz[0] = coefs.rows();
+        coefs.resize(sz.prod(), nc);
+        swapTensorDirection(0, pd, sz, coefs);
     }
+
     for (unsigned i = 0; i < d; ++i)
     {
-        if(refineKnots[i].size()>0)
+        if (static_cast<int>(i) != pd && refineKnots[i].size()>0)
         {
+            for (unsigned j = 0; j < d; ++j) // strides after the preceding refinements
+                strides[j]=this->stride(j);
             gsTensorBoehmRefine(this->component(i).knots(), coefs, i, strides,
                                 refineKnots[i].begin(), refineKnots[i].end(), true);
-
-            for (index_t j = i+1; j<strides.rows(); ++j)
-                strides[j]=this->stride(j); //new stride for this direction
         }
     }
 }
@@ -190,28 +206,100 @@ active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const
 
     result.resize( numAct, u.cols() );
 
+    const int pd = periodicDirection();
+
     // Fill with active bases indices
+    if (-1 == pd)
+    {
+        for (index_t j = 0; j < u.cols(); ++j)
+        {
+            // get the active basis indices for the component bases at u(:,j)
+            for (short_t i = 0; i < d; ++i)
+            {
+                firstAct[i] = component(i).firstActive( u(i,j) );
+            }
+
+            // iterate over all tensor product active functions
+            unsigned r = 0;
+            v.setZero();
+            do
+            {
+                index_t gidx = firstAct[d-1] + v(d-1);    //compute global index in the tensor product
+                for ( short_t i=d-2; i>=0; --i )
+                    gidx = gidx * this->size(i) + firstAct[i] + v(i);
+
+                result(r, j) = gidx;
+                ++r ;
+            } while (nextLexicographic(v, size));
+        }
+        return;
+    }
+
+    // Periodic direction: fold the stretched index modulo n.
+    const index_t npd = this->size(pd);
     for (index_t j = 0; j < u.cols(); ++j)
     {
-        // get the active basis indices for the component bases at u(:,j)
         for (short_t i = 0; i < d; ++i)
-        {
             firstAct[i] = component(i).firstActive( u(i,j) );
-        }
 
-        // iterate over all tensor product active functions
         unsigned r = 0;
         v.setZero();
         do
         {
-            index_t gidx = firstAct[d-1] + v(d-1);    //compute global index in the tensor product
+            index_t gidx = firstAct[d-1] + v(d-1);
+            if (d-1 == pd) gidx %= npd;
             for ( short_t i=d-2; i>=0; --i )
-                gidx = gidx * this->size(i) + firstAct[i] + v(i);
+            {
+                index_t gi = firstAct[i] + v(i);
+                if (i == pd) gi %= npd;
+                gidx = gidx * this->size(i) + gi;
+            }
 
             result(r, j) = gidx;
             ++r ;
         } while (nextLexicographic(v, size));
     }
+}
+
+
+template<short_t d, class T>
+gsMatrix<index_t> gsTensorBSplineBasis<d,T>::allBoundary() const
+{
+    const int pd = periodicDirection();
+    if (-1 == pd)
+        return Base::allBoundary();
+
+    gsMatrix<index_t> bd;
+    std::set<index_t> bdofs;
+    for (short_t k = 0; k != d; ++k)
+    {
+        if (k == pd) continue;
+        bd = this->coefSlice(k, 0);
+        for (index_t i = 0; i < bd.size(); ++i)
+            bdofs.insert( bd(i) );
+
+        bd = this->coefSlice(k, this->size(k) - 1);
+        for (index_t i = 0; i < bd.size(); ++i)
+            bdofs.insert( bd(i) );
+    }
+    return makeMatrix<index_t>(bdofs.begin(), static_cast<index_t>(bdofs.size()), 1 );
+}
+
+template<short_t d, class T>
+gsMatrix<index_t> gsTensorBSplineBasis<d,T>::
+boundaryOffset(boxSide const & s, index_t offset) const
+{
+    if (static_cast<int>(s.direction()) == periodicDirection())
+        GISMO_ERROR("gsTensorBSplineBasis::boundaryOffset: the periodic direction has no boundary.");
+    return Base::boundaryOffset(s, offset);
+}
+
+template<short_t d, class T>
+index_t gsTensorBSplineBasis<d,T>::functionAtCorner(boxCorner const & c) const
+{
+    if (isPeriodic())
+        GISMO_ERROR("gsTensorBSplineBasis::functionAtCorner: a periodic basis has no corner functions.");
+    return Base::functionAtCorner(c);
 }
 
 

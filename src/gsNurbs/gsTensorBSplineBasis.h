@@ -80,7 +80,6 @@ public:
     void swap(gsTensorBSplineBasis & other)
     {
         this->Base::swap(static_cast<Base&>(other));
-        std::swap(m_isPeriodic, other.m_isPeriodic);
     }
 
 #if !EIGEN_HAS_RVALUE_REFERENCES
@@ -117,7 +116,6 @@ public:
         Basis_t * bases[d] = { bb... };
         for(short_t i = 0; i != d; ++i)
             this->m_bases[i] = bases[i];
-        setIsPeriodic();
     }
 
     explicit gsTensorBSplineBasis(std::vector< gsBasis<T>*> & bb );
@@ -128,8 +126,12 @@ public:
     /// \brief Returns the boundary basis for side s.
     typename gsBSplineTraits<static_cast<short_t>(d-1),T>::Basis::uPtr boundaryBasis(boxSide const & s);
 #endif
+    /// On a periodic basis the sides of the periodic direction are not
+    /// boundaries: asking for one raises std::runtime_error.
     GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &) override
     {
+        if (static_cast<int>(n1.direction()) == periodicDirection())
+            GISMO_ERROR("gsTensorBSplineBasis::boundaryBasis: the periodic direction has no boundary.");
         std::vector<gsBasis<T>*> rr;
         this->getComponentsForSide(n1,rr);
         return BoundaryBasisType::New(rr);
@@ -172,10 +174,21 @@ public:
         return static_cast<Basis_t &>(Base::component(dir));
     }
 
-    // Look at gsBasis class for a description
+    /// \brief Active functions at the points \a u.
+    ///
+    /// On a periodic basis the index of the periodic direction is folded
+    /// modulo size(pd): function j of that direction is the sum of its
+    /// stretched copies j, j+n, ..., so the indices are unique and lie in
+    /// [0, size()). Cost O(npts (p+1)^d) as for a non-periodic basis, which
+    /// does not evaluate a modulo.
     void active_into(const gsMatrix<T> & u, gsMatrix<index_t>& result) const override;
 
     /// Returns a box with the coordinate-wise active functions
+    ///
+    /// On a periodic basis the box is in raw stretched indices of the
+    /// periodic direction pd (the upper corner may exceed size(pd)-1),
+    /// because folded indices do not form a box; callers that index
+    /// coefficients must reduce modulo size(pd) themselves.
     /// \param u evaluation points
     /// \param low lower left corner of the box
     /// \param upp upper right corner of the box
@@ -186,8 +199,9 @@ public:
     std::ostream &print(std::ostream &os) const override
     {
         os << "TensorBSplineBasis: dim=" << this->dim()<< ", size="<< this->size() <<".";
-        if( m_isPeriodic != -1 )
-            os << "Periodic in " << m_isPeriodic << "-th direction.\n";
+        const int pd = periodicDirection();
+        if( pd != -1 )
+            os << "Periodic in " << pd << "-th direction.\n";
         for ( short_t i = 0; i!=d; ++i )
             os << "\n  Direction "<< i <<": "<< Self_t::component(i).knots() <<" ";
         os << "\n";
@@ -260,12 +274,12 @@ public:
     /// Inserts the knot \em knot with multiplicity \em mult in the knot
     /// vector of direction \a dir.
     void insertKnot(T knot, index_t dir, int mult=1)
-    { this->knots(dir).insert( knot, mult); }
+    { Self_t::component(dir).insertKnot( knot, mult); }
 
     /// Removes the knot \em knot with multiplicity \em mult in the knot
     /// vector of direction \a dir.
     void removeKnot(T knot, index_t dir, int mult=1)
-    { this->knots(dir).remove( knot, mult); }
+    { Self_t::component(dir).removeKnot( knot, mult); }
 
     /**
      * \brief Takes a vector of coordinate wise knot values and
@@ -332,19 +346,20 @@ public:
 
     /// \brief Returns span (element) indices of the beginning and end
     /// of the support of the i-th basis function.
+    ///
+    /// Each direction uses the univariate rule, so along a periodic
+    /// direction the result is clipped to the domain [a,b] (the hull of the
+    /// support of a crossing function) and never contains ghost spans.
     template <int _Rows>
     void elementSupport_into(const index_t i, gsMatrix<index_t, _Rows, 2> & result) const
     {
-        //result.resize(d,2);
-        gsMatrix<index_t> tmp_vec;
+        gsMatrix<index_t,1,2> tmp;
         const gsVector<index_t, d> ti = this->tensorIndex(i);
 
         for (short_t dim = 0; dim < d; ++dim)
         {
-            const gsKnotVector<T> & kv = Self_t::component(dim).knots();
-            kv.supportIndex_into(ti[dim], tmp_vec);
-            result.row(dim).noalias() =
-                tmp_vec.cwiseMax(0).cwiseMin(kv.numElements());
+            Self_t::component(dim).elementSupport_into(ti[dim], tmp);
+            result.row(dim) = tmp;
         }
     }
 
@@ -359,6 +374,9 @@ public:
 
     /// \brief Returns the indices of active basis functions in the
     /// given input element box
+    ///
+    /// On a periodic basis the element indices are domain-relative and the
+    /// indices of the periodic direction are folded modulo size(pd).
     template <int _Rows>
     void elementActive_into(const gsMatrix<index_t,_Rows,2> & box,
                              gsMatrix<index_t> & result) const
@@ -369,20 +387,60 @@ public:
         gsVector<index_t,d> str;
         this->stride_cwise(str);
 
-        for (short_t dm = 0; dm != d; ++dm)
+        const int pd = periodicDirection();
+        if (-1 == pd)
         {
-            tmp(dm,0) = Self_t::component(dm).knots().lastKnotIndex (box(dm,0)) - this->degree(dm);
-            tmp(dm,1) = Self_t::component(dm).knots().firstKnotIndex(box(dm,1)) - 1;
+            for (short_t dm = 0; dm != d; ++dm)
+            {
+                tmp(dm,0) = Self_t::component(dm).knots().lastKnotIndex (box(dm,0)) - this->degree(dm);
+                tmp(dm,1) = Self_t::component(dm).knots().firstKnotIndex(box(dm,1)) - 1;
+            }
+
+            const gsVector<index_t,d> sz = tmp.col(1)- tmp.col(0) + gsVector<index_t,d>::Ones();
+
+            result = gsVector<index_t>::LinSpaced(sz[0], tmp(0,0), tmp(0,1));
+            for (short_t dm = 1; dm != d; ++dm)
+                result = result.replicate(1,sz[dm]) +
+                    gsVector<index_t>::Constant(result.rows(), str[dm] )
+                    * gsVector<index_t>::LinSpaced(sz[dm], tmp(dm,0), tmp(dm,1))
+                    .transpose();
+            return;
         }
 
-        const gsVector<index_t,d> sz = tmp.col(1)- tmp.col(0) + gsVector<index_t,d>::Ones();
+        // One index vector per direction. Element indices count from the
+        // domain start a, the knot indices from the first ghost knot.
+        std::vector< gsVector<index_t> > idx(d);
+        for (short_t dm = 0; dm != d; ++dm)
+        {
+            const gsKnotVector<T> & kv = Self_t::component(dm).knots();
+            if (dm != pd)
+            {
+                const index_t lo = kv.lastKnotIndex (box(dm,0)) - this->degree(dm);
+                const index_t hi = kv.firstKnotIndex(box(dm,1)) - 1;
+                idx[dm] = gsVector<index_t>::LinSpaced(hi-lo+1, lo, hi);
+            }
+            else
+            {
+                const index_t sh = kv.domainUBegin() - kv.ubegin();
+                const index_t lo = kv.lastKnotIndex (box(dm,0)+sh) - this->degree(dm);
+                const index_t hi = kv.firstKnotIndex(box(dm,1)+sh) - 1;
+                const index_t n  = this->size(dm);
+                if (hi-lo+1 >= n)
+                    idx[dm] = gsVector<index_t>::LinSpaced(n, 0, n-1);
+                else
+                {
+                    idx[dm].resize(hi-lo+1);
+                    for (index_t k = 0; k != idx[dm].size(); ++k)
+                        idx[dm][k] = (lo+k) % n;
+                }
+            }
+        }
 
-        result = gsVector<index_t>::LinSpaced(sz[0], tmp(0,0), tmp(0,1));
+        result = idx[0];
         for (short_t dm = 1; dm != d; ++dm)
-            result = result.replicate(1,sz[dm]) +
+            result = result.replicate(1,idx[dm].size()) +
                 gsVector<index_t>::Constant(result.rows(), str[dm] )
-                * gsVector<index_t>::LinSpaced(sz[dm], tmp(dm,0), tmp(dm,1))
-                .transpose();
+                * idx[dm].transpose();
     }
 
     template <int _Rows>
@@ -399,52 +457,74 @@ public:
         return rvo;
     }
 
-    /// Tells, whether there is a coordinate direction in which the basis is periodic.
-    inline bool isPeriodic() const { return m_isPeriodic != -1; }
-
-    /// Gives the value of m_isPeriodic.
-    inline int periodicDirection() const { return m_isPeriodic; }
-
-    /// Converts \param dir -th basis to periodic.
-    inline void setPeriodic( const int dir )
+    /// Index of the periodic direction, or -1 if no component is periodic.
+    ///
+    /// Derived from the components' knot vectors on every call (O(d)), so it
+    /// follows component edits and swapDirections. At most one periodic
+    /// direction is supported; two raise GISMO_ENSURE.
+    int periodicDirection() const
     {
-        Self_t::component(dir).setPeriodic();
-        if( Self_t::component(dir).isPeriodic() ) // Only when succeeded when converting to periodic.
-            m_isPeriodic = dir;
+        int pd = -1;
+        for (short_t i = 0; i != d; ++i)
+            if (Self_t::component(i).isPeriodic())
+            {
+                GISMO_ENSURE(-1 == pd, "gsTensorBSplineBasis: periodicity in more than one direction is not supported.");
+                pd = i;
+            }
+        return pd;
+    }
+
+    /// Tells, whether there is a coordinate direction in which the basis is periodic.
+    bool isPeriodic() const { return -1 != periodicDirection(); }
+
+    /// Makes the \a dir -th component periodic.
+    ///
+    /// Returns without change if \a dir is already periodic. Throws
+    /// std::runtime_error, leaving the basis unchanged, if another
+    /// direction is periodic (checked here) or if the knots of \a dir do
+    /// not admit a periodic basis (refused by the 1D component's
+    /// setPeriodic).
+    void setPeriodic( const int dir )
+    {
+        GISMO_ENSURE(dir >= 0 && dir < d, "Invalid direction");
+        const int pd = periodicDirection();
+        if (pd == dir) return;
+        GISMO_ENSURE(-1 == pd, "gsTensorBSplineBasis::setPeriodic: the basis is already periodic in another direction.");
+        Self_t::component(dir).setPeriodic(true);
     }
 
     /// Sets the coefficients so that the resulting TensorBSpline is periodic in direction dir.
+    ///
+    /// Ghost-layout helper: input and output have trueSize() = n+m slices in
+    /// \a dir (m = numCrossingFunctions()), and ghost slice n+j takes slice j.
+    /// Reduced storage has n slices and needs no such copy. Cost O(rows*cols).
     gsMatrix<T> perCoefs( const gsMatrix<T>& originalCoefs, short_t dir ) const
     {
-        // Identify which coefficients to copy and where to copy them.
-        std::vector<index_t> sourceSliceIndices;
-        std::vector<index_t> targetSliceIndices;
-        index_t numPeriodic = Self_t::component(dir).numCrossingFunctions();
-
-        const index_t sz = this->size(dir) - numPeriodic;
-        for( index_t i = 0; i < numPeriodic; i++ )
-        {
-            gsMatrix<index_t> currentSourceSlice = this->coefSlice(dir,i);
-            gsMatrix<index_t> currentTargetSlice = this->coefSlice(dir, sz  + i );
-
-            for( index_t j = 0; j != currentSourceSlice.size(); j++ )
-            {
-                sourceSliceIndices.push_back( static_cast<index_t>( currentSourceSlice(j) ) );
-                targetSliceIndices.push_back( static_cast<index_t>( currentTargetSlice(j) ) );
-            }
-        }
-
-        // Copy the chosen coefficients.
         gsMatrix<T> result = originalCoefs;
-        for( size_t i = 0; i != sourceSliceIndices.size(); i++ )
-        {
-            //gsDebug << "source: " << sourceSliceIndices[i]  << "\n";
-            //gsDebug << "target: " << targetSliceIndices[i]  << "\n";
-            result.row( targetSliceIndices[ i ] ) = originalCoefs.row( sourceSliceIndices[ i ] );
-        }
-
+        const index_t m = Self_t::component(dir).numCrossingFunctions();
+        if (0 == m) return result;
+        gsVector<index_t,d> sz;
+        this->size_cwise(sz);
+        const index_t n = sz[dir];
+        sz[dir] = n + m;
+        GISMO_ENSURE(originalCoefs.rows() == sz.prod(), "perCoefs expects trueSize() slices in direction dir");
+        index_t str = 1;
+        for (short_t k = 0; k < dir; ++k) str *= sz[k];   // stride of dir in the expanded layout
+        for (index_t r = 0; r != result.rows(); ++r)
+            if ((r / str) % (n + m) >= n)
+                result.row(r) = originalCoefs.row(r - n * str);
         return result;
     }
+
+    /// Indices of the boundary functions. The sides of a periodic direction are not boundaries
+    /// and are omitted.
+    gsMatrix<index_t> allBoundary() const override;
+
+    /// Raises std::runtime_error for a side of the periodic direction.
+    gsMatrix<index_t> boundaryOffset(boxSide const & s, index_t offset) const override;
+
+    /// Raises std::runtime_error on a periodic basis, where every corner touches a periodic side.
+    index_t functionAtCorner(boxCorner const & c) const override;
 
 private:
 
@@ -453,36 +533,12 @@ private:
         GISMO_ENSURE(d == KV.size(), "Invalid number of knot-vectors given." );
         for(short_t i = 0; i!=d; ++i)
             this->m_bases[i] = new Basis_t( give(KV[i]) );
-        m_isPeriodic = -1;
     }
 
     /// For each knot span, check if its midpoint is
     /// contained in any of the refinement boxes and returns
     /// The mid-point of that span
     std::vector<std::vector<T>> _boxToKnots(gsMatrix<T> const & boxes);
-
-    /// Repeated code from the constructors is held here.
-    /// Sets m_isPeriodic to either -1 (if none of the underlying bases is periodic) or the index of the one basis that is periodic.
-    void setIsPeriodic()
-    {
-        m_isPeriodic = -1;
-        for( short_t i = 0; i < this->dim(); i++ )
-        {
-            if( Self_t::component(i).isPeriodic() )
-            {
-                if( m_isPeriodic == -1 )
-                    m_isPeriodic = i;
-                else
-                    gsWarn << "Cannot handle a basis that is periodic in more than one direction.\n";
-            }
-        }
-    }
-
-protected:
-
-    /// Coordinate direction, where the basis is periodic (when equal
-    /// to -1 if there is no such direction).
-    short_t m_isPeriodic;
 
 };
 
