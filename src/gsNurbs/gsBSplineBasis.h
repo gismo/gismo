@@ -610,21 +610,53 @@ public:
     void uniformRefine(int numKnots = 1, int mul=1, int dir=-1)
     { GISMO_UNUSED(dir); m_knots.uniformRefine(numKnots,mul); }
 
-    // Look at gsBasis class for a description
+    /// Look at gsBasis class for a description.
+    ///
+    /// On a periodic basis the knots are inserted in each element of the
+    /// domain [a,b] only (ghost spans contribute none), the same knots as
+    /// uniformRefine(), through refine_withCoefs(); \a coefs must hold
+    /// the n = size() reduced coefficients and are replaced by the n'
+    /// refined ones, T*coefs with the exact n'xn transfer T of
+    /// uniformRefine_withTransfer(). Throws std::runtime_error, leaving the basis and
+    /// \a coefs unchanged, if the knots are refused (multiplicity above
+    /// degree+1) or if \a coefs does not have n rows. Cost as refine_withCoefs().
     void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, short_t const dir = -1);
 
-    // Look at gsBasis class for a description
+    /// Look at gsBasis class for a description.
+    ///
+    /// On a periodic basis the knots are inserted in each element of the
+    /// domain [a,b] only, as in uniformRefine(), through
+    /// refine_withTransfer(); the result is the exact n'xn transfer of
+    /// reduced coefficients. Throws std::runtime_error, leaving the basis
+    /// and \a transfer unchanged, if the knots are refused. Cost as refine_withTransfer().
     void uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1, int mul = 1);
 
     // Look at gsBasis class for a description
     void uniformCoarsen(int numKnots = 1)
     { m_knots.coarsen(numKnots); }
 
-    // Look at gsBasis class for a description
+    /// Look at gsBasis class for a description.
+    ///
+    /// On a periodic basis the removed period knots are re-inserted into
+    /// the coarsened basis by the periodic refine_withTransfer(), so the
+    /// transfer is the exact n x n_c map from the n_c reduced coarse
+    /// coefficients to the n reduced fine ones. Throws std::runtime_error,
+    /// leaving the basis and \a transfer unchanged, if the knot vector
+    /// refuses the coarsening. Cost as refine_withTransfer().
     void uniformCoarsen_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots = 1);
 
     /// @brief Refine the basis by inserting the given knots and perform knot
     /// refinement for the given coefficient matrix.
+    ///
+    /// On a periodic basis the coefficients are the n = size() reduced ones
+    /// (one per row) and are replaced by T*coefs, with T the exact n'xn
+    /// transfer of refine_withTransfer(); it is a GISMO_ENSURE that
+    /// coefs.rows() == size(). A knot in (a,b) is inserted, a knot in
+    /// (a-L,a) or (b,b+L) is inserted as knot+-L, with L = b-a; a knot on
+    /// the seam or outside (a-L,b+L), or one raising an interior
+    /// multiplicity above degree+1, is refused. Every refusal throws
+    /// std::runtime_error and leaves the basis and \a coefs unchanged.
+    /// Cost O((n+p)p + rp) for r inserted knots.
     void refine_withCoefs(gsMatrix<T>& coefs, const std::vector<T>& knots);
     void refine_withCoefs(gsMatrix<T>& /* coefs */, const gsMatrix<T> & /* boxes */)
     {GISMO_NO_IMPLEMENTATION}
@@ -637,6 +669,15 @@ public:
     }
 
     /// @brief Refine the basis by inserting the given knots and produce a sparse matrix which maps coarse coefficient vectors to refined ones.
+    ///
+    /// On a periodic basis with n = size() functions the result is the
+    /// exact n'xn matrix T, n' = n + (number of inserted knots), mapping
+    /// reduced coefficients to reduced coefficients, c' = T*c, and the
+    /// basis then holds the regenerated periodic knot vector. Knots are
+    /// accepted and refused as in refine_withCoefs(); a refusal throws
+    /// std::runtime_error and leaves the basis and \a transfer unchanged.
+    /// The matrix has O(n'p) nonzeros and costs O((n+p)p + rp) for r
+    /// inserted knots. See _periodicRefineTransfer() for the construction.
     void refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector<T>& knots);
     void refine_withTransfer(gsMatrix<T>& /* coefs */, const gsMatrix<T> & /* boxes */)
     {GISMO_NO_IMPLEMENTATION}
@@ -664,6 +705,8 @@ public:
     /// @remarks Not tested yet!
     void refine_k(const TensorSelf_t & other, int const & i = 1)
     {
+        GISMO_ENSURE( !isPeriodic() && !other.isPeriodic(),
+                      "refine_k: not defined for periodic bases (the reference knots contain ghosts and the seam).");
         GISMO_ASSERT( m_p >= other.m_p, "Degree of other knot-vector should be lower.");
         //for (typename std::vector<T>::iterator it =
         //         m_knots.begin(); it != m_knots.end(); ++it)
@@ -831,6 +874,45 @@ public:
                    gsMatrix<index_t> & bndOther) const;
 
 protected:
+
+    /// @brief Periodic knot insertion by pad-and-fold. Does not modify
+    /// *this. Returns in \a transfer the exact n'xn map of reduced
+    /// coefficients and in \a kvNew the refined periodic knot vector.
+    ///
+    /// Let t_0..t_{K-1} be the stretched knots, [a,b] the domain and L = b-a.
+    /// The knot vector is continued periodically by P = 2p+1 knots on
+    /// each side, giving a non-periodic basis whose domain strictly
+    /// contains [a,b] (no knot has multiplicity above p+1, so
+    /// t_{-p-1} < t_0 and t_{K-1} < t_{K+p}). The inserted knots and all
+    /// their translates by multiples of L inside the open padded domain
+    /// are inserted there by Boehm's algorithm.
+    ///
+    /// The periodic curve sum_j c_j P_j equals sum_{i<n+m} c_{i mod n} B_i
+    /// on the stretched basis, i.e. the same function on the padded
+    /// basis with zero padding coefficients (pad functions vanish on
+    /// (a,b)). Knot insertion reproduces it exactly on the padded domain,
+    /// where the window of n'+m' refined functions starting m' functions
+    /// before the first one whose first knot equals a (padded index of
+    /// that knot minus m') is linearly independent and the only one active
+    /// on [a,b]; hence its coefficients are those of the curve in the
+    /// new stretched basis, and by periodicity they repeat with period
+    /// n'. The transfer is T = S_new * T_pad * E_old: E_old embeds the n
+    /// reduced coefficients (stretched, then padded), T_pad is the padded
+    /// Boehm transfer and S_new selects the first n' window rows. In
+    /// the fold, columns i of the stretched block are summed into column
+    /// i mod n (setFrom sums duplicate triplets).
+    ///
+    /// Cost O((n+p)p) for the transfer, O(rp) for r translates, O(K)
+    /// for the copies.
+    void _periodicRefineTransfer(const std::vector<T> & knots,
+                                 gsSparseMatrix<T,RowMajor> & transfer,
+                                 KnotVectorType & kvNew) const;
+
+    /// @brief Knots of uniform refinement (\a numKnots new knots of
+    /// multiplicity \a mul per element) of the domain elements of a
+    /// periodic basis; none for ghost spans.
+    void _domainUniformRefinementKnots(int numKnots, int mul,
+                                       std::vector<T> & newKnots) const;
 
     /// @brief Stretched knot vector (ghost knots included) of the periodic
     /// space with \a interior+1 breakpoints per period on [\a u0, \a u1],

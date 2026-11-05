@@ -1124,10 +1124,122 @@ evalAllDers_into(const gsMatrix<T> & u, int n,
 
 
 template <class T>
+void gsTensorBSplineBasis<1,T>::_periodicRefineTransfer(const std::vector<T> & knots,
+                                                        gsSparseMatrix<T,RowMajor> & transfer,
+                                                        KnotVectorType & kvNew) const
+{
+    const index_t n = this->size();
+    const index_t m = this->numCrossingFunctions();
+    const index_t p = m_p;
+    const index_t K = m_knots.size();
+    kvNew = m_knots;
+
+    if ( knots.empty() )
+    {
+        transfer.resize(n, n);
+        transfer.setIdentity();
+        return;
+    }
+
+    // Validates the knots; throws before anything else is touched
+    kvNew.insert(knots.begin(), knots.end());
+    const index_t n1 = kvNew.periodicSize();
+    const index_t m1 = kvNew.numCrossingFunctions();
+
+    const T a = *m_knots.domainBegin();
+    const T b = *m_knots.domainEnd();
+    const T L = b - a;
+
+    std::vector<T> xr(knots);
+    for (typename std::vector<T>::iterator it = xr.begin(); it != xr.end(); ++it)
+    {
+        if ( *it < a ) *it += L;
+        else if ( *it > b ) *it -= L;
+    }
+    std::sort(xr.begin(), xr.end());
+
+    // Padded knot vector, padded index = k + P
+    const index_t P = 2*p + 1;
+    const index_t Kp = K + 2*P;
+    std::vector<T> tpad(Kp);
+    for (index_t k = 0; k < K; ++k)
+        tpad[k+P] = m_knots[k];
+    for (index_t k = -1; k >= -P; --k)
+        tpad[k+P] = tpad[k+n+P] - L;
+    for (index_t k = K; k < K+P; ++k)
+        tpad[k+P] = tpad[k-n+P] + L;
+    KnotVectorType kvPad(m_p, tpad.begin(), tpad.end());
+
+    // All translates of the inserted knots inside the open padded domain
+    const T lo = tpad[p];
+    const T hi = tpad[Kp-p-1];
+    std::vector<T> translates;
+    for (typename std::vector<T>::const_iterator it = xr.begin(); it != xr.end(); ++it)
+    {
+        translates.push_back(*it);
+        for (index_t k = -1; ; --k)
+        {
+            const T v = *it + (T)(k) * L;
+            if ( !(v > lo) ) break;
+            translates.push_back(v);
+        }
+        for (index_t k = 1; ; ++k)
+        {
+            const T v = *it + (T)(k) * L;
+            if ( !(v < hi) ) break;
+            translates.push_back(v);
+        }
+    }
+    std::sort(translates.begin(), translates.end());
+
+    gsTensorBSplineBasis<1,T> pad(kvPad);
+    gsSparseMatrix<T,RowMajor> Tt;
+    pad.refine_withTransfer(Tt, translates);
+
+    // Window: refined padded function o+j is new stretched function j
+    typename KnotVectorType::const_iterator first =
+        std::lower_bound(pad.knots().begin(), pad.knots().end(), a);
+    GISMO_ASSERT( first != pad.knots().end() && *first == a, "Domain start not found in the padded knots." );
+    const index_t o = (first - pad.knots().begin()) - m1;
+
+#ifndef NDEBUG
+    const T tol = 50 * std::numeric_limits<T>::epsilon() *
+        (std::max)( (std::max)(math::abs(a), math::abs(b)), L );
+    for (index_t k = 0; k < (index_t)kvNew.size(); ++k)
+        GISMO_ASSERT( math::abs(pad.knots()[o+k] - kvNew[k]) <= tol,
+                      "Padded refinement disagrees with the regenerated periodic knots." );
+#endif
+
+    // Fold the window rows onto the reduced coefficients
+    gsSparseEntries<T> entries;
+    for (index_t j = 0; j < n1; ++j)
+        for (typename gsSparseMatrix<T,RowMajor>::InnerIterator it(Tt, o+j); it; ++it)
+        {
+            const index_t c = it.col();
+            if ( c >= P && c < P+n+m )
+                entries.add(j, (c-P) % n, it.value());
+        }
+    transfer.resize(n1, n);
+    transfer.setFrom(entries);
+    transfer.makeCompressed();
+}
+
+
+template <class T>
 void gsTensorBSplineBasis<1,T>::refine_withCoefs(gsMatrix<T>& coefs, const std::vector<T>& knots)
 {
-    // Probably does not work with periodic basis. We would need to shift the knots in the ghost areas by the active length,
-    // sort the knot vector, swap the coefs accordingly, call this with perCoefs (or coefs?) and stretch outer knots.
+    if ( isPeriodic() )
+    {
+        GISMO_ENSURE( coefs.rows() == this->size(),
+                      "refine_withCoefs: a periodic basis needs the reduced coefficients (size() rows).");
+        gsSparseMatrix<T,RowMajor> transfer;
+        KnotVectorType kvNew;
+        _periodicRefineTransfer(knots, transfer, kvNew);
+        gsMatrix<T> tmp = transfer * coefs;
+        m_knots.swap(kvNew);
+        coefs.swap(tmp);
+        return;
+    }
     gsBoehmRefine(this->knots(), coefs, m_p, knots.begin(), knots.end());
 }
 
@@ -1135,7 +1247,15 @@ void gsTensorBSplineBasis<1,T>::refine_withCoefs(gsMatrix<T>& coefs, const std::
 template <class T>
 void gsTensorBSplineBasis<1,T>::refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector<T>& knots)
 {
-    // See remark about periodic basis in refine_withCoefs, please.
+    if ( isPeriodic() )
+    {
+        gsSparseMatrix<T,RowMajor> tmp;
+        KnotVectorType kvNew;
+        _periodicRefineTransfer(knots, tmp, kvNew);
+        m_knots.swap(kvNew);
+        transfer.swap(tmp);
+        return;
+    }
     gsFiberMatrix<T,RowMajor> trans;
     trans.setIdentity( this->size() );
     gsBoehmRefine(this->knots(), trans, m_p, knots.begin(), knots.end());
@@ -1146,9 +1266,11 @@ void gsTensorBSplineBasis<1,T>::refine_withTransfer(gsSparseMatrix<T,RowMajor> &
 template <class T>
 void gsTensorBSplineBasis<1,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots, int mul, int )
 {
-    // See remark about periodic basis in refine_withCoefs, please.
     std::vector<T> newKnots;
-    this->knots().getUniformRefinementKnots(numKnots, newKnots,mul);
+    if ( isPeriodic() )
+        _domainUniformRefinementKnots(numKnots, mul, newKnots);
+    else
+        this->knots().getUniformRefinementKnots(numKnots, newKnots,mul);
     this->refine_withCoefs(coefs, newKnots);
 }
 
@@ -1156,10 +1278,29 @@ void gsTensorBSplineBasis<1,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int 
 template <class T>
 void gsTensorBSplineBasis<1,T>::uniformRefine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, int numKnots, int mul)
 {
-    // See remark about periodic basis in refine_withCoefs, please.
     std::vector<T> newKnots;
-    this->knots().getUniformRefinementKnots(numKnots, newKnots,mul);
+    if ( isPeriodic() )
+        _domainUniformRefinementKnots(numKnots, mul, newKnots);
+    else
+        this->knots().getUniformRefinementKnots(numKnots, newKnots,mul);
     this->refine_withTransfer(transfer, newKnots);
+}
+
+template <class T>
+void gsTensorBSplineBasis<1,T>::_domainUniformRefinementKnots(int numKnots, int mul,
+                                                              std::vector<T> & newKnots) const
+{
+    // Same arithmetic as gsKnotVector::getUniformRefinementKnots, restricted
+    // to the elements of the domain (ghost spans contribute no knots).
+    typename KnotVectorType::uiterator uit = m_knots.domainUBegin();
+    T prev = *uit;
+    for (++uit; uit <= m_knots.domainUEnd(); ++uit)
+    {
+        const T step = (*uit - prev) / (T)(numKnots + 1);
+        for (int i = 1; i <= numKnots; ++i)
+            newKnots.insert(newKnots.end(), mul, prev + (T)(i) * step);
+        prev = *uit;
+    }
 }
 
 template <class T>
