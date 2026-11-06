@@ -32,7 +32,14 @@ namespace gismo
     The topological arrangement is stored as a list of
     boundaryInterface structs, each one defining an interface between
     two patch sides.
-    
+
+    A third list holds the _excluded sides_: sides that are neither
+    boundary nor interface, for example both sides of a periodic direction
+    (gsBasis::isPeriodic()). addAutoBoundaries() skips them,
+    checkConsistency() counts them, and clearTopology() keeps them, because
+    they describe the boxes rather than their connections. clearAll()
+    clears them and swap() exchanges them.
+
     \ingroup Core
 */
 class GISMO_EXPORT gsBoxTopology
@@ -156,7 +163,7 @@ public:
 	biterator bEnd()
 	{ return m_boundary.end(); }
 
-    /// Clear all boundary and interface data.
+    /// Clear all boundary and interface data. The excluded sides are kept.
     void clearTopology()
     {
         m_boundary  .clear();
@@ -221,6 +228,7 @@ public:
     }
 
     /// Make all patch sides which are not yet declared as interface or boundary to a boundary.
+    /// Excluded sides are skipped.
     void addAutoBoundaries();
 
     /// Marks patch side \a ps as excluded: neither boundary nor interface
@@ -306,6 +314,9 @@ public:
     ifContainer selectInterfaces(interaction::type ifc_type) const;
 
     /// Check that boundaries and interfaces are consistent.
+    /// Every side is a boundary, an excluded side or one side of an interface:
+    /// nboxes 2 dim = 2 nInterfaces() + nBoundary() + nExcluded(). A mismatch
+    /// is reported on std::cerr.
     void checkConsistency() const;
 
     /// Access i-th boundary interface

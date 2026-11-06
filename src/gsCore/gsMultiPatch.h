@@ -91,6 +91,16 @@ struct ElementBlock
     topology, that is, the interface connections and outer boundary
     faces.
 
+    The sides of a periodic direction of a patch's basis
+    (gsBasis::isPeriodic()) are excluded sides of the topology: neither
+    boundary nor interface. The boundary list of the topology therefore
+    holds only the real boundary, and boundaryOffset() and boundaryBasis()
+    of the basis throw on an excluded side. Neither gsBoundaryConditions
+    nor addBoundary() checks this: a condition set on such a side is
+    accepted and fails only where those functions are called. The
+    constructors, addPatch() and setPatch() record the excluded sides, and
+    computeTopology() rebuilds them from the current patches.
+
     \tparam T coefficient type
 
     \ingroup Core
@@ -155,7 +165,9 @@ public:
     /// Create a single-patch instance
     gsMultiPatch( const gsGeometry<T> & geo );
 
-    /// Create from patches and boundary/interface information
+    /// Create from patches and boundary/interface information.
+    /// Boundary and interface entries on a side of a periodic direction are
+    /// dropped with a gsWarn.
     gsMultiPatch( PatchContainer & patches,
                   const std::vector<patchSide>& boundary,
                   const std::vector<boundaryInterface>& interfaces );
@@ -403,6 +415,10 @@ public:
     /// \param cornersOnly When set to true an interface is accepted
     /// if the patch corners match, even if the parameterization does
     /// not agree
+    ///
+    /// The excluded sides are first rebuilt from the patches' bases
+    /// (gsBasis::isPeriodic()); sides of periodic directions are neither
+    /// matched nor made boundaries.
     bool computeTopology( T tol = 1e-4, bool cornersOnly = false, bool tjunctions = false);
 
     /// \brief Provides positive orientation for all patches

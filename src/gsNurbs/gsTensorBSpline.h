@@ -37,6 +37,29 @@ void constructCoefsForSlice(index_t dir_fixed, const index_t index,
     \tparam d the parametric dimension of the tensor product
     \tparam T coefficient type
 
+    # Periodic patches #
+
+    A patch whose basis is periodic in direction pd stores n reduced
+    coefficient slices in pd (see gsKnotVector for the notation). That is
+    exactly \c basis().size() rows (I3), before and after every operation.
+    setPeriodic(dir) compresses n+m ghost slices to n.
+
+    Operations along pd reshape the coefficients along pd, apply the 1D
+    gsBSpline operation, and commit only on success, so a refusal leaves the
+    patch unchanged:
+     + insertKnot() (exact);
+     + degreeElevate() (exact in exact arithmetic);
+     + degreeReduce(), degreeIncrease(), degreeDecrease() (anchor
+       interpolation, approximate);
+     + reverse(k) (keeps [a,b]).
+
+    slice() works at a fixed parameter in either direction. At a fixed
+    periodic parameter it is exact, with no knot insertion.
+
+    Refused (std::runtime_error): splitAt(), uniformSplit() and
+    splitAtMult() in pd; the corner functions; the four-corner constructor
+    with periodic knots.
+
     \ingroup geometry
     \ingroup Nurbs
 */
@@ -239,7 +262,7 @@ public:
     /// \todo use flipTensor to generalize to any dimension
     void reverse(unsigned k);
 
-    /// Swap directions
+    /// Swap directions. A periodic direction moves with its component.
     void swapDirections(const unsigned i, const unsigned j);
 
     void toggleOrientation() override;
@@ -283,6 +306,10 @@ public:
     
     /// Returns a local representation of the geometry in the cell
     /// containing the point \a u
+    ///
+    /// In a periodic direction the local coefficients are read from the n
+    /// reduced slices through the folded indices of the 1D basis
+    /// (active_into()); the local knot vectors are not periodic.
     typename gsGeometry<T>::uPtr localRep(const gsMatrix<T> & u) const;
 
 public:

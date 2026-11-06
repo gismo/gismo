@@ -54,6 +54,50 @@ There are three means of iterating through the knots:
    It is closed from left and open from right, except for the interval
    [`*(domainUEnd()-1)`, `*domainUEnd()`], which is considered closed from both sides.
 
+# Periodic knot vectors #
+
+A knot vector may carry a periodic flag (setPeriodic(), isPeriodic()).
+It then stores the stretched knots of a periodic spline space. With
+ + p the degree, [a,b] the domain and L = b-a the period,
+ + the _period part_ s_0..s_{n-1}, the knots t with a <= t < b, with
+   multiplicity (a appears mu times first),
+ + m = p+1-mu the number of crossing functions (numCrossingFunctions()),
+
+the stretched knots are t_0..t_{K-1}, K = n+m+p+1, with
+t_k = s_{(k-m) mod n} + L floor((k-m)/n). The copies of b are stored
+as b. Two invariants hold:
+ + I1: the stretched knots are the ones generated from their own period part;
+ + I2: 1 <= mu <= p and n >= p+1.
+
+Read-only members (size(), the iterators, operator[], domainBegin(),
+domainEnd(), greville(), uFind(), ...) keep their raw meaning on the
+stretched knots. Mutating members follow one of four rules:
+ + _regenerate_: the member acts on the period part and regenerates the
+   ghost knots once per call, O(K). These are insert(), remove(),
+   uniformRefine(), refineSpans() (domain element indices),
+   degreeElevate(), degreeReduce(), degreeIncrease(), degreeDecrease(),
+   increaseMultiplicity(), reduceMultiplicity(), coarsen(), set_degree(),
+   reverse() (reflects the period part about a+b, so [a,b] is kept),
+   affineTransformTo(), transform() and addConstant(T);
+ + _refuse_: the member has no periodic meaning. These are trimLeft(),
+   trimRight(), append(), erase() and addConstant(T,T) with
+   start > first();
+ + _reset_: the init*() members build a non-periodic vector;
+ + _carry_: copy, move, swap() and operator== include the flag.
+
+A refused call throws std::runtime_error and leaves the vector unchanged.
+
+A knot passed to insert() has one insertion domain: a knot in (a-L,a) or
+(b,b+L) is inserted as its translate in (a,b). A knot on the seam (a, b
+or a congruent value), or farther than one period away, is refused.
+
+A clamped vector given to setPeriodic() is wrapped with mu = p: a C^0
+seam with one crossing function. setPeriodic() validates the seam
+condition up to 100 eps max(|a|,|b|,L). Ghost knots are recomputed as
+s+qL, so two mathematically equal periodic vectors built by different
+routes can differ by round-off, and the exact operator== then reports
+them unequal.
+
 # Compatibility notes #
 
 Earlier versions contained several functions that have been removed.

@@ -514,6 +514,7 @@ public:
     /// @}
 
     /// Returns the indices of the basis functions that are nonzero at the domain boundary.
+    /// The sides of a periodic direction (isPeriodic()) are not part of the boundary.
     virtual gsMatrix<index_t> allBoundary( ) const;
 
     /// Returns the indices of the basis functions that are nonzero at the domain boundary.

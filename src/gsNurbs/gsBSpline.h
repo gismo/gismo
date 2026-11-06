@@ -43,6 +43,40 @@ namespace gismo
 
     \tparam T coefficient type
 
+    # Periodic curves #
+
+    A curve on a periodic basis is a closed curve over [a,b] (see
+    gsKnotVector for p, n, m, mu and the period L). It stores reduced
+    coefficients, exactly \c basis().size() = n rows, one per periodic
+    function (I3). Ghost rows of the stretched representation exist only
+    inside an algorithm.
+
+    Construction routes:
+     + the from-scratch constructor with \c periodic = true;
+     + setPeriodic() on a clamped curve whose first and last control points
+       coincide. The curve is kept exactly, with a C^0 seam (the n+m rows of
+       the clamped curve pass the twin check);
+     + any constructor, or setPeriodic(), given n+m rows: accepted when ghost
+       row n+j equals row j within 100 eps max|coefs|, then compressed to n
+       rows. Any other row count is refused.
+
+    setPeriodic(false) unwraps exactly onto the stretched knots.
+
+    Exact operations: knot insertion, degreeElevate() (exact in exact
+    arithmetic) and reverse() (keeps [a,b], c'_j = c_{(m-1-j) mod n}).
+    Approximations: degreeIncrease(), degreeDecrease() and degreeReduce()
+    interpolate the curve at the periodic anchors of the new basis with a
+    direct sparse LU. They are refused when the backward error exceeds
+    1000 eps (||C|| ||x|| + ||v||), where ||.|| is the largest absolute
+    entry (also for C).
+
+    Refused (std::runtime_error, curve unchanged): merge(), segmentFromTo(),
+    splitAt(), toBezier(), intersect(), the corner functions
+    (isPatchCorner(), findCorner(), setOriginCorner(), setFurthestCorner()),
+    and knots on the seam or farther than one period away.
+
+    Evaluation outside [a,b] returns 0 (no wrapping), as for the basis.
+
     \ingroup geometry
     \ingroup Nurbs
 */

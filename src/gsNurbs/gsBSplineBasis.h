@@ -62,6 +62,52 @@ struct gsBSplineTraits<0,T>
     \tparam T coefficient type
     \tparam KnotVectorType the type of knot vector to use
 
+# Periodic bases #
+
+The basis is periodic exactly when its knot vector is (see
+gsKnotVector for the notation p, [a,b], L, n, m, mu and the invariants).
+It stores no periodic state of its own: isPeriodic() returns
+\c m_knots.isPeriodic(). There are n+m stretched functions on the
+stretched knots. Stretched function i is identified with periodic
+function i mod n, so size() = n. Functions 0..m-1 are the crossing
+functions (numCrossingFunctions() = m), whose support wraps around the
+seam. check() validates I1 and I2.
+
+Two construction routes give different sizes on the same breakpoints:
+ + from scratch: the constructor with \c periodic = true has
+   N = interior+1 breakpoints in [a,b), each of multiplicity
+   \c mult_interior (the seam included). Then size() = N*mult_interior
+   and the seam is C^{degree-mult_interior};
+ + conversion: setPeriodic(), or the knot-vector constructor with
+   \c periodic = true, wraps a clamped knot vector with seam
+   multiplicity degree (a C^0 seam). With N elements and simple interior
+   knots, size() = N+degree-1. An unclamped knot vector must already
+   satisfy the seam condition.
+
+A knot vector that is already periodic stays periodic, whatever the
+\c periodic argument of a constructor.
+
+Policies, stated once here (the members give details):
+ + Index map: queries work on the stretched functions and fold indices
+   modulo n. Active indices are unique and numActive() = degree+1.
+ + Outside the domain: evaluation outside [a,b] returns 0, as for any
+   spline; u is not wrapped into the period. At b the left limit is
+   returned.
+ + Support: support(i) and elementSupport_into() of a crossing function
+   return the hull [a,b] of its two pieces.
+ + Boundary: there is none. allBoundary() is empty; boundaryOffset(),
+   boundaryBasis(), functionAtCorner() and matchWith() throw.
+   isPeriodic(0) is true, so multipatch topologies treat both ends as
+   neither boundary nor interface (gsBasis::isPeriodic()).
+ + Anchors: n anchors reduced into [a,b), not sorted, see anchors_into().
+ + Storage: coefficient arguments hold the n reduced rows. perCoefs(),
+   expandCoefs() and trimCoefs() convert to and from the n+m stretched
+   rows.
+ + Refinement: knot insertion, refinement and coarsening transfers are
+   exact (pad-and-fold, see _periodicRefineTransfer()). refine_k() is
+   refused.
+ + Reverse: reverse() keeps [a,b], see gsKnotVector::reverse().
+
     \ingroup basis
     \ingroup Nurbs
 */
@@ -112,6 +158,10 @@ public:
     }
 
     /// @brief Construct BSpline basis of a knot vector
+    ///
+    /// If \a periodic, \a KV is converted by gsKnotVector::setPeriodic()
+    /// (std::runtime_error if it is not suitable). A periodic \a KV gives a
+    /// periodic basis whatever \a periodic.
     explicit gsTensorBSplineBasis(KnotVectorType KV, const bool periodic = false)
     {
         m_p        = KV.degree();
@@ -403,9 +453,9 @@ public:
     /// the hull [a,b], a superset of the true support, is returned.
     gsMatrix<T> support(const index_t & i ) const ;
 
-    /// @brief Only meaningfull for periodic basis: For basis members that have
-    /// a twin, this function returns the other twin index, otherwise it
-    /// returns the same index as the argument
+    /// @brief Twin of stretched function \a i (stretched numbering
+    /// 0..n+m-1): i+n for i < m, i-n for i >= n, i otherwise; \a i itself on
+    /// a non-periodic basis.
     index_t twin(index_t i) const ;
 
     // Look at gsBasis class for a description
@@ -816,7 +866,8 @@ public:
     /// periodic basis, which has no boundary.
     index_t functionAtCorner(boxCorner const & c) const;
 
-    /// @brief Returns number of functions crossing the boundary of the knot vector.
+    /// @brief Number m = degree+1-mu of crossing functions (functions 0..m-1,
+    /// whose support wraps around the seam); 0 when not periodic.
     int numCrossingFunctions () const
     {
         return static_cast<int>(m_knots.numCrossingFunctions());
@@ -843,7 +894,8 @@ public:
         m_knots.setPeriodic(flag);
     }
 
-    // Compatible with tensor B-spline basis
+    /// Converts to periodic, as setPeriodic(true); \a dir must be 0.
+    /// Tensor-basis interface.
     void setPeriodic(int dir)
     {
         GISMO_UNUSED(dir);
@@ -863,7 +915,11 @@ public:
         return m_knots.beginBdr(s);
     }
 
-    // Look at gsBasis class for a description
+    /// Reverses the basis, u -> a+b-u. On a periodic basis the domain [a,b]
+    /// is kept (gsKnotVector::reverse()); function j of the reversed basis is
+    /// the reflection of function (m-1-j) mod n of the original one,
+    /// m = numCrossingFunctions(). gsBSpline::reverse() permutes the
+    /// coefficients accordingly.
     void reverse() { m_knots.reverse(); }
 
     /// @brief Not available on a periodic basis (throws, a periodic basis has
@@ -977,8 +1033,8 @@ public:
         coefs.conservativeResize(sz-numCrossingFunctions(), gsEigen::NoChange);
     }
 
-    /// @brief Returns the size of the basis ignoring the bureaucratic way of
-    /// turning the basis into periodic.
+    /// @brief Number n+m of stretched functions, the row count of the ghost
+    /// layout of perCoefs()/expandCoefs(); size() when not periodic.
     int trueSize() const
     { return this->size() + numCrossingFunctions(); }
 

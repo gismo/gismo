@@ -28,6 +28,29 @@ namespace gismo
     \tparam d dimension of the parameter domain
     \tparam KnotVectorType type of the knot-vector
 
+# Periodic direction #
+
+At most one component may be periodic (see gsKnotVector for the notation
+n, m, [a,b]). periodicDirection() returns its index, or -1. It is
+recomputed from the components on every call, so it follows component
+edits and swapDirections(). Two periodic components make
+periodicDirection(), and every member that calls it, throw.
+Periodicity in two directions is not supported.
+
+In the periodic direction pd:
+ + indices fold modulo size(pd) (active_into(), elementActive_into());
+   active_cwise() keeps the raw stretched index box;
+ + the two sides of pd are neither boundary nor interface. allBoundary()
+   omits them. boundaryOffset(), boundaryBasis(), matchWith() (through
+   boundaryOffset()) and functionAtCorner() throw on them. isPeriodic(pd)
+   is true;
+ + elementSupport() is clipped to [a,b];
+ + coefficients hold n reduced slices in pd (perCoefs() converts from the
+   n+m ghost layout);
+ + refine_withTransfer() and refine_withCoefs() refine pd first, through
+   the exact 1D transfer of the component, so a refusal leaves the basis
+   unchanged.
+
     \ingroup basis
     \ingroup Nurbs
 */
@@ -245,6 +268,11 @@ public:
      * the transfer matrix that transfers coefficients to the new
      * basis.
      *
+     * In a periodic direction the coefficients and the transfer act on the n
+     * reduced slices; that direction is refined first, by the exact 1D
+     * transfer of its component, so a refused knot (e.g. on the seam) leaves
+     * the basis unchanged.
+     *
      * \param[out]  transfer Transfer matrix
      * \param[in] refineKnots Coordinate-wise knot values to be inserted
      */
@@ -259,6 +287,11 @@ public:
      * inserts these values to the basis.
      *
      * Also takes the old coefficients and changes them to reflect the new coefficients.
+     *
+     * In a periodic direction the coefficients and the transfer act on the n
+     * reduced slices; that direction is refined first, by the exact 1D
+     * transfer of its component, so a refused knot (e.g. on the seam) leaves
+     * the basis (and \a coefs) unchanged.
      *
      * \param[out]  coefs new coefficients
      * \param refineKnots Coordinate-wise knot values to be inserted
@@ -546,6 +579,12 @@ private:
     /// For each knot span, check if its midpoint is
     /// contained in any of the refinement boxes and returns
     /// The mid-point of that span
+    ///
+    /// \warning The test runs over all spans of the stored knot vector. In a
+    /// periodic direction these include the ghost spans: a box reaching
+    /// outside [a,b] marks ghost spans, and their midpoints are inserted as
+    /// translates (x +- L) in the period by the 1D insertion. Give boxes
+    /// inside [a,b] in a periodic direction.
     std::vector<std::vector<T>> _boxToKnots(gsMatrix<T> const & boxes);
 
 };
