@@ -18,8 +18,10 @@
 
 #include "gismo_unittest.h"
 #include "gsPeriodicTestUtils.h"
+#include <gsIO/gsBase64.h>
 
 #include <cmath>
+#include <iomanip>
 #include <iterator>
 #include <memory>
 
@@ -767,6 +769,96 @@ void initResets(const KOp & init)
     CHECK(fzB(kv == ref));
 }
 
+// --- ghost removal sweeps and XML ------------------------------------------
+
+/// Periodic knot vector from a raw (clamped) knot list.
+KV periodicFromRaw(const std::vector<real_t> & k, short_t p)
+{
+    KV kv(k, p);
+    kv.setPeriodic();
+    return kv;
+}
+
+/// Removes, on a fresh copy of base, each unique knot of the stretched vector
+/// in turn (ghosts included). The knot acts on its twin in [a,b): a seam twin
+/// is refused, any other twin loses one copy, as in the description d.
+void sweepRemoveEveryIter(const KV & base, const PeriodDesc & d)
+{
+    CHECK_EQUAL(std::string(""), kvState(base, d, false));
+    const index_t nu = static_cast<index_t>(base.uend() - base.ubegin());
+    std::vector<real_t> cand = uniqueSorted(d.s);
+    cand.push_back(d.b);
+    for (index_t i = 0; i != nu; ++i)
+    {
+        KV kv = base;
+        const real_t v = *(kv.ubegin() + i);
+        const real_t r = v - d.L() * math::floor((v - d.a) / d.L());
+        bool found = false;
+        real_t snapped = r;
+        for (size_t c = 0; c != cand.size(); ++c)
+            if (math::abs(cand[c] - r) <= 1e-12)
+            {
+                snapped = cand[c];
+                found = true;
+            }
+        std::ostringstream who;
+        who << d.tag << " i=" << i << " v=" << v;
+        CHECK_EQUAL(std::string(""), found ? std::string() : who.str() + ": twin is no period knot");
+        if (!found)
+            continue;
+        if (snapped == d.a || snapped == d.b)
+            kvRefuse(kv, [=](KV & k) { k.remove(k.ubegin() + i, 1); }, who.str());
+        else
+        {
+            CHECK_EQUAL(std::string(""), thrown([&]() { kv.remove(kv.ubegin() + i, 1); }));
+            CHECK_EQUAL(std::string(""), tagged(who.str(), kvState(kv, opRemove(d, snapped))));
+        }
+    }
+}
+
+/// Reads the KnotVector element in xml into kv (the route of gsFileData,
+/// without the file); throws what the reader throws and leaves kv as the
+/// reader leaves it.
+void kvFromXml(const std::string & xml, KV & kv)
+{
+    std::vector<char> buf(xml.begin(), xml.end());
+    buf.push_back('\0');
+    internal::gsXmlTree data;
+    data.parse<0>(&buf[0]);
+    internal::gsXmlNode * node = data.first_node("KnotVector");
+    internal::gsXml<KV>::get_into(node, kv);
+}
+
+/// <KnotVector degree=".." [periodic="1"]> with an ascii knot list.
+std::string kvListXml(const std::vector<real_t> & t, int degree, bool periodic)
+{
+    std::ostringstream os;
+    os << std::setprecision(17) << "<KnotVector degree=\"" << degree << "\"";
+    if (periodic)
+        os << " periodic=\"1\"";
+    os << ">";
+    for (size_t i = 0; i != t.size(); ++i)
+        os << t[i] << " ";
+    os << "</KnotVector>";
+    return os.str();
+}
+
+/// <KnotVector degree=".." periodic="1" format=".."> with a base64 float64 knot list.
+std::string kvBase64Xml(const std::vector<real_t> & t, int degree, const std::string & format)
+{
+    return "<KnotVector degree=\"" + std::to_string(degree) + "\" periodic=\"1\" format=\"" + format + "\">" +
+           Base64::Encode(std::vector<double>(t.begin(), t.end())) + "</KnotVector>";
+}
+
+const real_t CLAMPED_P2[] = {0, 0, 0, .1, .5, .9, 1, 1, 1};
+const real_t CLAMPED_P3[] = {0, 0, 0, 0, .25, .5, .5, .875, 1, 1, 1, 1};
+
+PeriodDesc descClampedP3()
+{
+    const real_t s[] = {0, 0, 0, .25, .5, .5, .875};
+    return mkDesc("ClampedP3", 3, 0, 1, vec(s, 7));
+}
+
 } // namespace
 
 SUITE(gsPeriodicKnotVector_test)
@@ -1026,6 +1118,135 @@ TEST(ghost_NEW_kvRemoveLeftGhostIter_Clamped)
     CHECK_EQUAL(std::string(""), kvState(kv, d, false));
     CHECK_EQUAL(std::string(""), thrown([&]() { kv.remove(kv.ubegin(), 1); }));
     CHECK_EQUAL(std::string(""), kvState(kv, dp));
+}
+
+TEST(ghost_NEW_kvRemoveRightGhostIter_Clamped)
+{
+    const real_t s0[] = {0, 0, .1, .5, .9}, s1[] = {0, 0, .5, .9};
+    const PeriodDesc d = mkDesc("Clamped", 2, 0, 1, vec(s0, 5));
+    const PeriodDesc dp = mkDesc("Clamped-rghost", 2, 0, 1, vec(s1, 4));
+    KV kv = periodicFromRaw(vec(CLAMPED_P2, 9), 2);
+    CHECK_EQUAL(std::string(""), kvState(kv, d, false));
+    CHECK_EQUAL(std::string(""), thrown([&]() { kv.remove(kv.uend() - 1, 1); }));
+    CHECK_EQUAL(std::string(""), kvState(kv, dp));
+}
+
+TEST(ghost_NEW_kvRemoveEveryIter_ClampedP3)
+{
+    const PeriodDesc d = descClampedP3();
+    const KV base = periodicFromRaw(vec(CLAMPED_P3, 12), 3);
+    sweepRemoveEveryIter(base, d);
+
+    KV kv = base;
+    index_t i = 0;
+    while (*(kv.ubegin() + i) != real_t(.5))
+        ++i;
+    CHECK_EQUAL(std::string(""), thrown([&]() { kv.remove(kv.ubegin() + i, 2); }));
+    CHECK_EQUAL(std::string(""), kvState(kv, opRemove(opRemove(d, .5), .5)));
+}
+
+TEST(ghost_NEW_kvRemoveEveryIter_E2)
+{
+    sweepRemoveEveryIter(kvConvert(caseE2()), caseE2());
+}
+
+TEST(space_NEW_kvInsertVecZeroMultNoop_Clamped)
+{
+    KV kv = periodicFromRaw(vec(CLAMPED_P2, 9), 2);
+    const KvSnap s0 = kvSnap(kv);
+    CHECK_EQUAL(std::string(""), thrown([&]() { kv.insert(std::vector<real_t>(1, real_t(0)), 0); }));
+    CHECK_EQUAL(std::string(""), whyOf(kvUnchanged(s0, kv)));
+    CHECK_EQUAL(std::string(""), thrown([&]() { kv.insert(std::vector<real_t>(1, real_t(1)), 0); }));
+    CHECK_EQUAL(std::string(""), whyOf(kvUnchanged(s0, kv)));
+    CHECK_EQUAL(std::string(""), thrown([&]() { kv.insert(std::vector<real_t>(1, real_t(7)), 0); }));
+    CHECK_EQUAL(std::string(""), whyOf(kvUnchanged(s0, kv)));
+    CHECK_EQUAL(std::string(""), thrown([&]() { kv.insert(std::vector<real_t>(), 0); }));
+    CHECK_EQUAL(std::string(""), whyOf(kvUnchanged(s0, kv)));
+}
+
+TEST(space_NEW_kvInsertVecNegMultRefused_Clamped)
+{
+    const real_t xs[] = {0, 0.3};
+    for (size_t j = 0; j != 2; ++j)
+    {
+        KV kv = periodicFromRaw(vec(CLAMPED_P2, 9), 2);
+        const std::vector<real_t> v(1, xs[j]);
+        kvRefuse(kv, [=](KV & k) { k.insert(v, -1); }, labelOf(xs[j]));
+    }
+}
+
+TEST(space_B21_kvXmlUniform_C1kP2N4)
+{
+    KV kv;
+    CHECK_EQUAL(std::string(""), thrown([&]() {
+        kvFromXml("<KnotVector degree=\"2\" mode=\"uniform\" csize=\"6\" periodic=\"1\"></KnotVector>", kv); }));
+    CHECK_EQUAL(std::string(""), kvState(kv, caseC1k(2, 4)));
+}
+
+TEST(space_B21_kvXmlUniform_C1kP3N4)
+{
+    KV kv;
+    CHECK_EQUAL(std::string(""), thrown([&]() {
+        kvFromXml("<KnotVector degree=\"3\" mode=\"uniform\" csize=\"7\" periodic=\"1\"></KnotVector>", kv); }));
+    CHECK_EQUAL(std::string(""), kvState(kv, caseC1k(3, 4)));
+}
+
+TEST(space_NEW_kvXmlUniformRefused_Csize3)
+{
+    const std::string s = "<KnotVector degree=\"2\" mode=\"uniform\" csize=\"3\" periodic=\"1\"></KnotVector>";
+    KV kv = kvConvert(caseC3n());
+    kvRefuse(kv, [&](KV & k) { kvFromXml(s, k); }, "csize 3");
+}
+
+TEST(space_B21_kvXmlList_C2uP2N4)
+{
+    const PeriodDesc d = caseC2u(2, 4);
+    KV kv;
+    CHECK_EQUAL(std::string(""), thrown([&]() { kvFromXml(kvListXml(stretchedKnots(d), 2, true), kv); }));
+    CHECK_EQUAL(std::string(""), kvState(kv, d));
+}
+
+TEST(space_NEW_kvXmlBadSeamRefused_C2uP2N4)
+{
+    const PeriodDesc d = caseC2u(2, 4);
+    std::vector<real_t> t = stretchedKnots(d);
+    t[0] = real_t(-0.45);
+    const std::string per = kvListXml(t, 2, true), raw = kvListXml(t, 2, false);
+    KV kv = kvConvert(caseC3n());
+    kvRefuse(kv, [&](KV & k) { kvFromXml(per, k); }, "periodic");
+
+    KV plain;
+    CHECK_EQUAL(std::string(""), thrown([&]() { kvFromXml(raw, plain); }));
+    CHECK(fzB(!plain.isPeriodic()));
+    CHECK_EQUAL(std::string(""), whyOf(knotsClose(kvKnots(plain), t, 1)));
+}
+
+TEST(space_NEW_kvXmlDegreeZeroRefused)
+{
+    const std::string s = "<KnotVector degree=\"0\" periodic=\"1\">0 0.5 1</KnotVector>";
+    KV kv = kvConvert(caseC3n());
+    kvRefuse(kv, [&](KV & k) { kvFromXml(s, k); }, "degree 0");
+}
+
+TEST(space_B21_kvXmlBase64_C3n)
+{
+    const PeriodDesc d = caseC3n();
+    const char * formats[] = {"b64float64", "B64Float64"};
+    for (int i = 0; i != 2; ++i)
+    {
+        KV kv;
+        CHECK_EQUAL(std::string(""), thrown([&]() { kvFromXml(kvBase64Xml(stretchedKnots(d), 2, formats[i]), kv); }));
+        CHECK_EQUAL(std::string(""), tagged(formats[i], kvState(kv, d)));
+    }
+}
+
+TEST(space_NEW_kvXmlBase64BadSeamRefused_C3n)
+{
+    std::vector<real_t> t = stretchedKnots(caseC3n());
+    t[0] += real_t(.25);
+    const std::string s = kvBase64Xml(t, 2, "b64float64");
+    KV kv = kvConvert(caseC3n());
+    kvRefuse(kv, [&](KV & k) { kvFromXml(s, k); }, "bad seam");
 }
 
 // ===========================================================================

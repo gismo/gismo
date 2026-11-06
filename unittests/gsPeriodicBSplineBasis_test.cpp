@@ -238,6 +238,15 @@ void probe(const char * name, const PeriodDesc & d)
     }
 }
 
+/// True iff f throws std::runtime_error (any other exception counts as false).
+bool throwsRT(const std::function<void()> & f)
+{
+    try { f(); }
+    catch (std::runtime_error &) { return true; }
+    catch (...) { return false; }
+    return false;
+}
+
 } // namespace
 
 SUITE(gsPeriodicBSplineBasis_test)
@@ -1210,6 +1219,83 @@ TEST(space_B28_matchWithRefused_C2uP2N4)
         gsMatrix<index_t> bt, bo;
         x.matchWith(bi, c6, bt, bo);
     });
+}
+
+TEST(space_B28_matchWithOtherPeriodicRefused_C2uP2N4)
+{
+    const PeriodDesc d = caseC2u(2, 4);
+    const Basis per = convert(d);
+    if (!guardPeriodic(per, d, false))
+    {
+        CHECK_EQUAL(std::string(""), guardMsg("pre-op guard", per, d));
+        return;
+    }
+    Basis x = makeC6();
+    boundaryInterface bi(patchSide(0, boundary::east), patchSide(1, boundary::west),
+                         static_cast<short_t>(1));
+    refuse(x, [&](Basis & y)
+    {
+        gsMatrix<index_t> bt, bo;
+        y.matchWith(bi, per, bt, bo);
+    });
+}
+
+TEST(space_B28_matchWith5ArgRefused_C2uP2N4)
+{
+    const PeriodDesc d = caseC2u(2, 4);
+    Basis b = convert(d);
+    if (!guardPeriodic(b, d, false))
+    {
+        CHECK_EQUAL(std::string(""), guardMsg("pre-op guard", b, d));
+        return;
+    }
+    const Basis c6 = makeC6(), c6b = makeC6();
+    boundaryInterface bi(patchSide(0, boundary::east), patchSide(1, boundary::west),
+                         static_cast<short_t>(1));
+    refuse(b, [&](Basis & y)
+    {
+        gsMatrix<index_t> bt, bo;
+        y.matchWith(bi, c6, bt, bo, 0);
+    });
+    CHECK_EQUAL(fzB(false), throwsRT([&]
+    {
+        gsMatrix<index_t> bt, bo;
+        c6.matchWith(bi, c6b, bt, bo, 0);
+    }));
+}
+
+TEST(space_NEW_ctorRefusedDomain_C1cP2N4)
+{
+    CHECK_THROW((void)Basis(real_t(1), real_t(0), 3u, 2, 1u, true), std::runtime_error);
+    CHECK_EQUAL(fzB(true), throwsRT([&] { (void)Basis(real_t(1), real_t(0), 3u, 2, 1u, true); }));
+    CHECK_THROW((void)Basis(real_t(0), real_t(0), 3u, 2, 1u, true), std::runtime_error);
+    CHECK_EQUAL(fzB(true), throwsRT([&] { (void)Basis(real_t(0), real_t(0), 3u, 2, 1u, true); }));
+
+    const Basis ok(real_t(0), real_t(1), 3u, 2, 1u, true);
+    CHECK_EQUAL(fzB(true), ok.isPeriodic());
+    CHECK_EQUAL(fzN(caseC1c(2, 4).n()), ok.size());
+}
+
+TEST(space_B10_anchorsSeamInDomain_CtorA01B07)
+{
+    const Basis b(real_t(0.1), real_t(0.7), 4u, 3, 1u, true);
+    const bool guarded = b.isPeriodic() && fzN(5) == b.size();
+    CHECK(guarded);
+    if (!guarded)
+        return;
+    const gsMatrix<real_t> A = b.anchors();
+    CHECK_EQUAL(fzN(5), A.cols());
+    if (A.cols() != 5)
+        return;
+    const real_t e[] = {0.58, 0.1, 0.22, 0.34, 0.46};
+    for (index_t j = 0; j != 5; ++j)
+    {
+        CHECK_EQUAL(std::string(""), whyOf(scalarClose(A(0, j), e[j], 0.7)));
+        CHECK(fzB(A(0, j) >= real_t(0.1) && A(0, j) < real_t(0.7)));
+        gsMatrix<real_t> r;
+        b.anchor_into(j, r);
+        CHECK_EQUAL(std::string(""), whyOf(scalarClose(r(0, 0), e[j], 0.7)));
+    }
 }
 
 // =====================================================================
