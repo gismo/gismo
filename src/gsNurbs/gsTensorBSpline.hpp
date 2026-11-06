@@ -612,6 +612,11 @@ std::vector<gsGeometry<T>* > gsTensorBSpline<d,T>::uniformSplit(index_t dir) con
     // 2. recover 2^d patches
     GISMO_ASSERT( (dir > -2) && (dir < static_cast<index_t>(d)),
                   "Invalid basis component "<< dir <<" requested for geometry splitting" );
+    // Refuse before allocating any patch: splitAt refuses a periodic
+    // direction, and a throw after the allocations below would leak them.
+    for (short_t k = 0; k < d; ++k)
+        GISMO_ENSURE( !((-1 == dir || k == dir) && knots(k).isPeriodic()),
+                      "gsTensorBSpline::uniformSplit: a periodic direction has no end points to split at." );
     std::vector<gsGeometry<T>* > result_temp, result;
     gsVector<T> midpoints;
     if(dir==-1)
@@ -763,6 +768,10 @@ gsTensorBSpline<d,T>::splitAtMult(index_t minMult, index_t dir) const
 {
     GISMO_ASSERT( (dir >= -1) && (dir < static_cast<index_t>(d)),
                   "Invalid basis component "<< dir <<" requested for splitting" );
+    // Refuse before allocating any patch (see uniformSplit).
+    for (short_t k = 0; k < d; ++k)
+        GISMO_ENSURE( !((-1 == dir || k == dir) && knots(k).isPeriodic()),
+                      "gsTensorBSpline::splitAtMult: a periodic direction has no end points to split at." );
     std::vector<gsGeometry<T>* > result;
 
     if (-1==dir)
