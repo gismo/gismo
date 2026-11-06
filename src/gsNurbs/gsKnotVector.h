@@ -741,8 +741,10 @@ public:
         initGraded( 0.0, 1.0, numKnots - 2, degree, grading, mult_interior);
     }
 
-    /// Resets the knot vector so that its knots are graded.
-    /// The result is not periodic.
+    /// Resets the knot vector so that its knots on [\a u0, \a u1] are
+    /// graded: interior knot i (1 <= i <= \a interior) is
+    /// u0 + (u1-u0) * (i/(interior+1))^(1/grading), so \a grading < 1
+    /// clusters the knots towards \a u0. The result is not periodic.
     void initGraded(T u0, T u1, unsigned interior, int degree,
                     T grading, unsigned mult_interior = 1)
     {
@@ -755,7 +757,7 @@ public:
         m_repKnots.reserve( 2*(m_deg+1) + interior*mult_interior );
         m_multSum .reserve(interior+2);
 
-        const T h = (u1-u0) / T(interior+1);
+        const T h = T(1) / T(interior+1);
 
         m_repKnots.insert(m_repKnots.begin(), m_deg+1, u0);
         m_multSum .push_back(m_deg+1);
@@ -763,7 +765,7 @@ public:
         for ( unsigned i=1; i<=interior; i++ )
         {
             m_repKnots.insert(m_repKnots.end(), mult_interior,
-                              math::pow(T(i)*h, 1.0/grading) );
+                              u0 + (u1-u0) * math::pow(T(i)*h, T(1)/grading) );
             m_multSum .push_back( mult_interior + m_multSum.back() );
         }
         m_repKnots.insert(m_repKnots.end(), m_deg+1, u1);

@@ -1374,4 +1374,23 @@ SUITE(gsKnotVectors_test_gsKnotIterator)
                 CHECK( unique[i] == corrUnique[i] );
         }
     }
+
+    TEST( initGradedInterval )
+    {
+        // On [u0,u1] the interior knots are u0 + (u1-u0) (i/(N+1))^(1/g);
+        // on [0,1] this reduces to (i/(N+1))^(1/g).
+        gsKnotVector<real_t> kv01, kv;
+        kv01.initGraded(real_t(0), real_t(1), 3, 2, real_t(0.5));
+        kv  .initGraded(real_t(2), real_t(5), 3, 2, real_t(0.5));
+        CHECK_EQUAL( (size_t)9, kv.size() );
+        CHECK_CLOSE( real_t(2), kv.first(), 1e-14 );
+        CHECK_CLOSE( real_t(5), kv.last(),  1e-14 );
+        for (size_t k = 3; k != 6; ++k)
+        {
+            const real_t x = std::pow(real_t(k-2)/real_t(4), 2);
+            CHECK_CLOSE( x, kv01[k], 1e-14 );
+            CHECK_CLOSE( 2 + 3*x, kv[k], 1e-13 );
+        }
+        CHECK( kv.check() );
+    }
 }
