@@ -124,10 +124,10 @@ class GISMO_EXPORT Base64 {
             buffer[0] = buffer_index < minimum_n_bytes_required
                             ? byte_vector_ptr[buffer_index + 0]
                             : 0;
-            buffer[1] = buffer_index < minimum_n_bytes_required
+            buffer[1] = buffer_index + 1 < minimum_n_bytes_required
                             ? byte_vector_ptr[buffer_index + 1]
                             : 0;
-            buffer[2] = buffer_index < minimum_n_bytes_required
+            buffer[2] = buffer_index + 2 < minimum_n_bytes_required
                             ? byte_vector_ptr[buffer_index + 2]
                             : 0;
 
