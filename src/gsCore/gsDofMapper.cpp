@@ -177,7 +177,7 @@ void gsDofMapper::markTagged( index_t i, index_t k, index_t comp)
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
 
     //see gsSortedVector::push_sorted_unique
-    index_t t = index(i,k,comp);
+    index_t t = MAPPER_PATCH_DOF(i,k,comp);
     std::vector<index_t>::iterator pos = std::lower_bound(m_tagged.begin(), m_tagged.end(), t );
 
     if ( pos == m_tagged.end() || *pos != t )// If not found
@@ -389,14 +389,14 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
     for(index_t i=0; i<(index_t)dofs.size();++i)
     {
         const index_t idx = dofs[i];
-        if(is_free_index(idx))
+        if(idx < freeSize())
         {
             m_dofs[comp][i] = permutation[idx];
             //fill  bookkeeping for tagged dofs
-            if(is_tagged_index(idx))
+            if(is_tagged_index(idx + m_shift))
                 tagged_permuted.push_back(m_dofs[comp][i]);
         }
-        else if(is_tagged_index(idx)) //Take care about eliminated tagged dofs
+        else if(is_tagged_index(idx + m_shift)) //Take care about eliminated tagged dofs
             tagged_permuted.push_back(idx);
     }
     m_tagged.swap(tagged_permuted);

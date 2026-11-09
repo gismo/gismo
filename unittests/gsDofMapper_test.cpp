@@ -278,4 +278,42 @@ SUITE(gsDofMapper_test)
         CHECK(!m.is_tagged(1,0,0));
         CHECK_EQUAL(1, m.taggedSize());
     }
+
+    TEST(DofMapperT3_taggedShift)
+    {
+        // Tag first, then shift
+        gsDofMapper m = makeM2();
+        m.markTagged(1,1,1);
+        m.setShift(13);
+        const vec tagM = {12};
+        CHECK(m.is_tagged(1,1,1));
+        CHECK(m.is_tagged(2,1,1));
+        CHECK(m.is_tagged_index(13 + 12));
+        CHECK(!m.is_tagged(3,1,1));
+        CHECK_EQUAL(0, m.tindex(1,1,1));
+        CHECK(m.getTagged() == tagM);
+
+        // Shift first, then tag
+        gsDofMapper f = makeM2();
+        f.setShift(13);
+        f.markTagged(1,1,1);
+        const vec tagF = {12};
+        CHECK(f.getTagged() == tagF);
+        CHECK(f.is_tagged(1,1,1));
+
+        // Shift first, then tag all coupled dofs
+        gsDofMapper g = makeM2();
+        g.setShift(13);
+        g.markCoupledAsTagged();
+        const vec tagG = {6,11,12};
+        CHECK(g.getTagged() == tagG);
+        CHECK(g.is_tagged(3,0,0));
+        CHECK(g.is_tagged(0,1,0));
+        CHECK(g.is_tagged(3,0,1));
+        CHECK(g.is_tagged(0,1,1));
+        CHECK(g.is_tagged(1,1,1));
+        CHECK(g.is_tagged(2,1,1));
+        CHECK(!g.is_tagged(3,1,1));
+        CHECK(!g.is_tagged(1,0,0));
+    }
 }

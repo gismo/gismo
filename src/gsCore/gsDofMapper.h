@@ -71,6 +71,8 @@ namespace gismo
     expects a shifted one. The stored numbering is unshifted: this
     concerns freeIndex(), the positions of anyPreImages() and the keys
     of inverseOnPatch() and inverseAsVector().
+    Tagged dofs are stored unshifted, so getTagged() returns unshifted
+    indices while is_tagged_index() expects a shifted \a gl.
 
     \ingroup Core
 
@@ -346,7 +348,7 @@ public:
     /// Returns true if \a gl is a tagged dof.
     inline bool is_tagged_index(index_t gl) const
     {
-        return std::binary_search(m_tagged.begin(),m_tagged.end(),gl);
+        return std::binary_search(m_tagged.begin(),m_tagged.end(),gl-m_shift);
     }
 
     /// Returns the number of components present in the mapper
