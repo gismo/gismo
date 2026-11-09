@@ -190,7 +190,10 @@ public:
     { _u.getCoeffs(*_Sv, result, p); }
 
     /// Extracts ALL the coefficients in a solution vector; including
-    /// coupled and boundary DoFs
+    /// coupled and boundary DoFs.
+    /// The result has mapper().mapSize() rows, ordered component-major: the
+    /// coefficient of local DoF i of component c on patch p is at row
+    /// sum_{c'<c} totalSize(c') + offset(p) + i.
     void extractFull(gsMatrix<T> & result) const
     {
         index_t offset;
@@ -219,7 +222,7 @@ public:
                     else // eliminated DoF: fill with Dirichlet data
                         result(i+offset,0) =  _u.fixedPart().at( _u.mapper().global_to_bindex(ii) );
                 }
-                offset += sz;
+                offset += static_cast<index_t>(_u.mapper().totalSize(c));
             }
         }
     }
