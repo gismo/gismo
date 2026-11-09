@@ -467,6 +467,17 @@ public:
 
     void unrefineElements( std::vector<index_t> const & boxes );
 
+    /** \brief Refines the support of the \a i-th basis function and
+     * adjusts the coefficients to keep the geometry the same.
+     *
+     * For tensor-product bases (e.g. gsTensorBSpline) knots are
+     * inserted in each component basis, so the refinement is
+     * prolongated along the parametric directions. For hierarchical
+     * bases (e.g. gsTHBSpline) the support is refined locally by one
+     * level. See gsBasis::refine_withCoefs().
+     */
+    void refineCoeff(index_t i);
+
     typename gsGeometry::uPtr coord(const index_t c) const;
 
     /// Embeds coefficients in 3D

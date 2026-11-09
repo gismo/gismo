@@ -505,8 +505,10 @@ public:
     /// @brief Refine the basis by inserting the given knots and perform knot
     /// refinement for the given coefficient matrix.
     void refine_withCoefs(gsMatrix<T>& coefs, const std::vector<T>& knots);
-    void refine_withCoefs(gsMatrix<T>& /* coefs */, const gsMatrix<T> & /* boxes */)
-    {GISMO_NO_IMPLEMENTATION}
+    /// @brief Refine the basis by inserting the midpoints of the knot
+    /// spans lying in \a boxes and perform knot refinement for the
+    /// given coefficient matrix.
+    void refine_withCoefs(gsMatrix<T>& coefs, const gsMatrix<T> & boxes) override;
 
     // compatibility with tensor-bsplines
     void refine_withCoefs(gsMatrix<T> & coefs,

@@ -707,7 +707,7 @@ public:
     void uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKnots = 1, int mul = 1, short_t const dir = -1);
 
     // Refine the basis and adjust the given matrix of coefficients accordingly
-    void refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes);
+    virtual void refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes);
     // void unrefine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes);
 
     /** Refine the basis and adjust the given matrix of coefficients accordingly.
