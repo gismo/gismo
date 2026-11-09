@@ -268,8 +268,9 @@ public:
     index_t componentOf(index_t gl) const
     {
          GISMO_ASSERT(m_curElimId>=0,"finalize() was not called on gsDofMapper");
-         GISMO_ASSERT(gl >= m_shift && gl < m_shift + size(),
-                      "componentOf(): global index "<<gl<<" outside ["<<m_shift<<","<<m_shift+size()<<")");
+         GISMO_ASSERT(gl >= m_shift && gl < m_shift + m_numFreeDofs.back() + m_numElimDofs.back(),
+                      "componentOf(): global index "<<gl<<" outside ["<<m_shift<<","
+                      <<m_shift + m_numFreeDofs.back() + m_numElimDofs.back()<<")");
          //index_t c = 1; // could do some binary search
          //in place
          //while (gl >= m_numFreeDofs[c]+m_numElimDofs[c]) { ++c; }
@@ -347,18 +348,28 @@ public:
     }
 
     /// Returns true if global dof \a gl is not eliminated.
+    /// \a gl must be a global index of this mapper (checked in debug mode).
     inline bool is_free_index(index_t gl) const
     {
-      return gl < m_curElimId + m_shift;
+        GISMO_ASSERT(gl >= m_shift && gl < m_shift + m_numFreeDofs.back() + m_numElimDofs.back(),
+                     "is_free_index(): global index "<<gl<<" outside ["<<m_shift<<","
+                     <<m_shift + m_numFreeDofs.back() + m_numElimDofs.back()<<")");
+        return gl < m_curElimId + m_shift;
     }
 
     /// Returns true if local dof \a i of patch \a k is not eliminated.
     inline bool is_free( index_t i, index_t k = 0, index_t c = 0) const
     { return is_free_index( index(i, k, c) ); }
 
-    /// Returns true if global dof \a gl is eliminated
+    /// Returns true if global dof \a gl is eliminated.
+    /// \a gl must be a global index of this mapper (checked in debug mode).
     inline bool is_boundary_index( index_t gl ) const
-    { return gl >= m_numFreeDofs.back() + m_shift; }
+    {
+        GISMO_ASSERT(gl >= m_shift && gl < m_shift + m_numFreeDofs.back() + m_numElimDofs.back(),
+                     "is_boundary_index(): global index "<<gl<<" outside ["<<m_shift<<","
+                     <<m_shift + m_numFreeDofs.back() + m_numElimDofs.back()<<")");
+        return gl >= m_numFreeDofs.back() + m_shift;
+    }
 
     /// Returns true if local dof \a i of patch \a k is eliminated.
     inline bool is_boundary(index_t i, index_t k = 0, index_t c = 0) const

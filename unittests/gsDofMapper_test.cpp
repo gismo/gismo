@@ -465,7 +465,10 @@ SUITE(gsDofMapper_test)
         std::memset(buf, 0xAB, sizeof buf);
         gsDofMapper * m = new (buf) gsDofMapper();
         m->finalize();
+#ifdef NDEBUG
+        // Index 0 is outside the empty range [0,0) and asserts when NDEBUG is not defined
         CHECK_EQUAL(0, m->global_to_bindex(0));
+#endif
         m->~gsDofMapper();
     }
 
@@ -549,6 +552,69 @@ SUITE(gsDofMapper_test)
         CHECK(inv1 == want1);
     }
 
+#ifndef NDEBUG
+    // GISMO_ASSERT throws std::logic_error only when NDEBUG is not defined
+    TEST(DofMapperA6_isFreeIndexRange)
+    {
+        // Valid global indices of M2 at shift 13 are 13..27; free ones are 13..25
+        gsDofMapper m = makeM2();
+        m.setShift(13);
+        CHECK(m.is_free_index(13));
+        CHECK(m.is_free_index(25));
+        CHECK(!m.is_free_index(26));
+        CHECK(!m.is_free_index(27));
+        CHECK_THROW(m.is_free_index(12), std::logic_error);
+        CHECK_THROW(m.is_free_index(28), std::logic_error);
+    }
+
+    TEST(DofMapperA6_isBoundaryIndexRange)
+    {
+        // Valid global indices of M2 at shift 13 are 13..27; eliminated ones are 26 and 27
+        gsDofMapper m = makeM2();
+        m.setShift(13);
+        CHECK(!m.is_boundary_index(13));
+        CHECK(!m.is_boundary_index(25));
+        CHECK(m.is_boundary_index(26));
+        CHECK(m.is_boundary_index(27));
+        CHECK_THROW(m.is_boundary_index(12), std::logic_error);
+        CHECK_THROW(m.is_boundary_index(28), std::logic_error);
+    }
+
+    TEST(DofMapperA6_globalToBindexRange)
+    {
+        // Eliminated indices 26 and 27 are boundary dofs 0 and 1; 12 and 28 are out of range
+        gsDofMapper m = makeM2();
+        m.setShift(13);
+        CHECK_EQUAL(0, m.global_to_bindex(26));
+        CHECK_EQUAL(1, m.global_to_bindex(27));
+        CHECK_THROW(m.global_to_bindex(12), std::logic_error);
+        CHECK_THROW(m.global_to_bindex(28), std::logic_error);
+    }
+
+    TEST(DofMapperA6_componentOfRange)
+    {
+        // Component 0 owns free 13..19 and eliminated 26; component 1 owns free 20..25 and eliminated 27
+        gsDofMapper m = makeM2();
+        m.setShift(13);
+        CHECK_EQUAL(0, m.componentOf(13));
+        CHECK_EQUAL(1, m.componentOf(25));
+        CHECK_EQUAL(0, m.componentOf(26));
+        CHECK_EQUAL(1, m.componentOf(27));
+        CHECK_THROW(m.componentOf(12), std::logic_error);
+        CHECK_THROW(m.componentOf(28), std::logic_error);
+    }
+
+    TEST(DofMapperA6_emptyMapperRejectsAll)
+    {
+        // A finalized default-constructed mapper has size() == 0, so it has no valid global index
+        gsDofMapper m;
+        m.finalize();
+        CHECK_EQUAL(0, m.size());
+        CHECK_THROW(m.is_free_index(0), std::logic_error);
+        CHECK_THROW(m.is_boundary_index(0), std::logic_error);
+        CHECK_THROW(m.global_to_bindex(0), std::logic_error);
+    }
+#endif
 
     TEST(DofMapperA3_permuteRejectsComponentOne)
     {
