@@ -516,4 +516,33 @@ SUITE(gsDofMapper_test)
         CHECK_EQUAL(5, (index_t)std::count(v0.data(), v0.data()+v0.size(), -1));
         CHECK_EQUAL(5, (index_t)std::count(v1.data(), v1.data()+v1.size(), -1));
     }
+
+    TEST(DofMapperT13_permuteSingleComponent)
+    {
+        gsVector<index_t> sz(1); sz << 4;
+        gsDofMapper m(sz);
+        m.finalize();
+        m.markTagged(1,0);
+        m.setShift(13);
+
+        gsVector<index_t> p(4); p << 3, 2, 1, 0;
+        m.permuteFreeDofs(p, 0);
+
+        CHECK_EQUAL(16, m.index(0,0));
+        CHECK_EQUAL(15, m.index(1,0));
+        CHECK_EQUAL(14, m.index(2,0));
+        CHECK_EQUAL(13, m.index(3,0));
+        CHECK(m.is_tagged(1,0));
+        CHECK_EQUAL(1, m.taggedSize());
+    }
+
+    TEST(DofMapperT13_permuteRejectsMultiComponent)
+    {
+        gsVector<index_t> sz(1); sz << 3;
+        gsDofMapper m(sz, 2);
+        m.finalize();
+
+        gsVector<index_t> p(3); p << 2, 1, 0;
+        CHECK_THROW(m.permuteFreeDofs(p, 0), std::exception);
+    }
 }

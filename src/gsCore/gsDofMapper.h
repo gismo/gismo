@@ -191,7 +191,9 @@ public:
     ///\brief Add a shift amount to the global numbering
     void addShift(index_t shift);
 
-    /// \brief Permutes the mapped free indices according to permutation, i.e.,  dofs_perm[idx] = dofs_old[permutation[idx]]
+    /// \brief Permutes the mapped free indices according to permutation, i.e.,
+    /// new index = permutation[old index] on the free positions 0..freeSize()-1.
+    /// Single-component mappers only.
     ///
     /// \warning Applying a permutation makes the functions regarding coupled dofs (cindex, is_coupled_index,.. ) invalid.
     /// The dofs are still coupled, but you have no way of extracting them. If you need this functions, first call

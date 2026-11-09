@@ -375,6 +375,7 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
 
   void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation, index_t comp)
 {
+    GISMO_ENSURE(numComponents()==1, "permuteFreeDofs supports single-component mappers only");
     GISMO_ASSERT(comp>-1,"Component is invalid");
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(m_numFreeDofs[comp+1] == permutation.size(), "permutation size does not match number of free dofs");
@@ -394,10 +395,10 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
         {
             m_dofs[comp][i] = permutation[idx];
             //fill  bookkeeping for tagged dofs
-            if(is_tagged_index(idx + m_shift))
+            if(std::binary_search(m_tagged.begin(), m_tagged.end(), idx))
                 tagged_permuted.push_back(m_dofs[comp][i]);
         }
-        else if(is_tagged_index(idx + m_shift)) //Take care about eliminated tagged dofs
+        else if(std::binary_search(m_tagged.begin(), m_tagged.end(), idx)) //Take care about eliminated tagged dofs
             tagged_permuted.push_back(idx);
     }
     m_tagged.swap(tagged_permuted);
