@@ -37,6 +37,7 @@ int main(int argc, char *argv[])
     index_t minRefinements = 2;
     index_t maxRefinements = 4;
     T freqA = 1;
+    T eps = 1e-3;
     bool plot = false;
 
     gsCmdLine cmd("AS-G1 Biharmonic Equation Solver and Convergence Experiment.");
@@ -47,6 +48,7 @@ int main(int argc, char *argv[])
     cmd.addInt("m", "minRefinements", "Minimum uniform refinement level to test (minimum 2 for AS-G1).", minRefinements);
     cmd.addInt("r", "refinements", "Maximum uniform refinement levels to test.", maxRefinements);
     cmd.addReal("a", "frequency", "Frequency factor 'a' in sin(a*pi*x)*cos(a*pi*y).", freqA);
+    cmd.addReal("e", "eps", "Tolerance for AS-G1 gluing data.", eps);
     cmd.addSwitch("plot", "Export target function and numerical solution to VTK files.", plot);
 
     try {
@@ -124,7 +126,7 @@ int main(int argc, char *argv[])
         bc.add(it->patch, it->side(), "ValuesAndDerivatives", zero);
 
     // ---- Compute Gluing Data ----
-    gsMatrix<T> gd = computeGluingData(mp, T(1e-8), numGaussPerSpan);
+    gsMatrix<T> gd = computeGluingData(mp, eps, numGaussPerSpan);
 
     // ---- Get boundary corners and asociated normals ----
     std::vector<std::vector<patchCorner>> vertices = getBoundaryVertices(mp, bc, "ValuesAndDerivatives");

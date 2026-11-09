@@ -148,6 +148,7 @@ namespace internal
 #include <gsModeling/gsPeriodicParametrization.h>
 #include <gsModeling/gsPeriodicOverlap.h>
 #include <gsModeling/gsPeriodicStitch.h>
+#include <gsModeling/gsASG1LocalFitter.h>
 
 /* ----------- Pde ----------- */
 #include <gsPde/gsBoundaryConditions.h>
