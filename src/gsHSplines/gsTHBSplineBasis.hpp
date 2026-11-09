@@ -2469,7 +2469,7 @@ gsSparseMatrix<T> hbTransferDirect(const std::vector<gsSortedVector<index_t> > &
             cur[j] = (T)1;
             for (size_t k = i; !cur.empty(); ++k)
             {
-                GISMO_ASSERT(k < childOf.size() && k+1 < n.size(),
+                GISMO_ENSURE(k < childOf.size() && k+1 < n.size(),
                              "Old basis is not nested in the new one.");
                 std::map<index_t,T> next;
                 for (typename std::map<index_t,T>::const_iterator p = cur.begin();
