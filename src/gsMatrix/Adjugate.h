@@ -135,7 +135,7 @@ struct adjugate_impl : public ReturnByValue<adjugate_impl<MatrixType> >
 
     template<typename Dest> inline void evalTo(Dest& dst) const
     {
-        static const int Size = EIGEN_PLAIN_ENUM_MIN(MatrixType::ColsAtCompileTime,Dest::ColsAtCompileTime);
+        static const int Size = plain_enum_min(MatrixType::ColsAtCompileTime,Dest::ColsAtCompileTime);
         EIGEN_ONLY_USED_FOR_DEBUG(Size);
         eigen_assert(( (Size<=1) || (Size>4) || (extract_data(m_matrix)!=extract_data(dst)))
                      && "Aliasing problem detected in adjugate(), you need to do adjugate().eval() here.");

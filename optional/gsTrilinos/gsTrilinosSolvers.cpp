@@ -837,7 +837,7 @@ int BelosSolver::setPreconditioner(
     Teuchos::RCP<Ifpack_Preconditioner> Prec = Teuchos::rcp( Factory.Create
                                              (PrecType, &*AA, OverlapLevel) );
 
-    assert(Prec != Teuchos::null);
+    GISMO_ASSERT(Prec != Teuchos::null, "Failed to create Ifpack preconditioner.");
 
 //    // specify parameters for ICT
 //    myBelos->belosList.set("fact: drop tolerance", 1e-9);

@@ -14,6 +14,7 @@
 ## It defines the following variables
 ## GISMO_VERSION      - version string of G+SMO
 ## GISMO_INCLUDE_DIRS - include directories for G+SMO
+## GISMO_EIGEN_INCLUDE_DIR - Eigen 5 include directory G+Smo was built against
 ## GISMO_LIBRARIES    - libraries to link against
 ## GISMO_MODULE_PATH  - path containing cmake modules
 ## GISMO_USE_FILE     - the cmake use-file
@@ -41,6 +42,13 @@ set(gismo_VERSION_MINOR "@gismo_VERSION_MINOR@")
 set(gismo_VERSION_PATCH "@gismo_VERSION_PATCH@")
 
 set(GISMO_INCLUDE_DIRS "@CONF_INCLUDE_DIRS@")
+set(GISMO_EIGEN_INCLUDE_DIR "@CONF_EIGEN_INCLUDE_DIR@")
+if(GISMO_EIGEN_INCLUDE_DIR)
+  list(FIND GISMO_INCLUDE_DIRS "${GISMO_EIGEN_INCLUDE_DIR}" _gismo_eigen_idx)
+  if(_gismo_eigen_idx EQUAL -1)
+    list(APPEND GISMO_INCLUDE_DIRS "${GISMO_EIGEN_INCLUDE_DIR}")
+  endif()
+endif()
 set(GISMO_PUBLIC_HEADER "@CONF_PUBLIC_HEADER@")
 set(GISMO_LIBRARY_DIR  "@CONF_LIB_DIRS@")
 set(GISMO_LIBRARIES           gismo)

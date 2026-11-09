@@ -83,18 +83,6 @@ public:
         std::swap(m_isPeriodic, other.m_isPeriodic);
     }
 
-#if !EIGEN_HAS_RVALUE_REFERENCES
-    gsTensorBSplineBasis & operator=(gsTensorBSplineBasis other)
-    { gsTensorBSplineBasis::swap(other); return *this;}
-// #else // defined implicitly
-//     gsTensorBSplineBasis(gsTensorBSplineBasis && other) : Base(give(other)) { }
-//     gsTensorBSplineBasis(const gsTensorBSplineBasis &  other) : Base(other) { }
-//     gsTensorBSplineBasis & operator=(gsTensorBSplineBasis&& other)
-//     { return (gsTensorBSplineBasis &)Base::operator=(give(other)); }
-//     gsTensorBSplineBasis & operator=(const gsTensorBSplineBasis& other)
-//     { return (gsTensorBSplineBasis &)Base::operator=(other); }
-#endif
-
     /**
         \brief Constructs a d-dimensional tensor product B-spline basis
                from exactly d knot-vectors.

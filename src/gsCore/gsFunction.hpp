@@ -510,7 +510,7 @@ void gsFunction<T>::recoverPoints(gsMatrix<T> & xyz, gsMatrix<T> & uv, index_t k
         if (i<k) ind[i]=i;
         else if (i>k) ind[i-1]=i;
 
-    gsMatrix<T> pt = xyz(ind,gsEigen::all);
+    gsMatrix<T> pt = xyz(ind,gsEigen::placeholders::all);
     gsFuncCoordinate<T> fc(*this, give(ind));
 
     //find low accuracy closest point
@@ -536,7 +536,7 @@ void gsFunction<T>::recoverPointGrid(gsGridIterator<T,0> & git,
         if (i<k) ind[i]=i;
         else if (i>k) ind[i-1]=i;
 
-    gsMatrix<T> pt = xyz(ind,gsEigen::all);
+    gsMatrix<T> pt = xyz(ind,gsEigen::placeholders::all);
     gsFuncCoordinate<T> fc(*this, give(ind));
 
     fc.invertPointGrid(git,uv,accuracy,false); //true
@@ -595,6 +595,24 @@ gsFunction<T>::hessian_into(const gsMatrix<T>& u, gsMatrix<T> & result,
     const index_t nd = dim*(dim+1)/2;
     result = util::secDerToHessian(secDers.middleCols(coord*nd,nd), dim);
 }
+
+namespace internal
+{
+// determinant() of a fixed-size 0x0 matrix does not instantiate with Eigen 5
+// (internal::find_coeff_impl, Eigen/src/Core/FindCoeff.h). The determinant of
+// an empty matrix is 1 by convention, and that value IS used: in
+// computeAuxiliaryData<T,1,2> (curve in 2D) the lower-dimensional boundary
+// branch takes the 0x0 first minor of the 1x1 metric.
+template<class M>
+inline typename std::enable_if<(M::RowsAtCompileTime != 0 && M::ColsAtCompileTime != 0),
+                               typename M::Scalar>::type
+minorDet(const M& m) { return m.determinant(); }
+
+template<class M>
+inline typename std::enable_if<(M::RowsAtCompileTime == 0 || M::ColsAtCompileTime == 0),
+                               typename M::Scalar>::type
+minorDet(const M& /*m*/) { return typename M::Scalar(1); }
+} // namespace internal
 
 template <typename T, short_t domDim, short_t tarDim>
 inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut, int d, int n)
@@ -666,7 +684,7 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                 for (int i = 0; i != n; ++i) //for all components of the normal
                 {
                     jacT.firstMinor(dir, i, minor);
-                    InOut.outNormals(i,p) = alt_sgn * minor.determinant();
+                    InOut.outNormals(i,p) = alt_sgn * internal::minorDet(minor);
                     alt_sgn  *= -1;
                 }
             }
@@ -684,7 +702,7 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                 for (int i = 0; i != (domDim!=-1?domDim:d); ++i) //for all components of the normal
                 {
                     metric.firstMinor(dir, i, minor);
-                    param(i) = alt_sgn * minor.determinant();
+                    param(i) = alt_sgn * internal::minorDet(minor);
                     alt_sgn  *= -1;
                 }
                 InOut.outNormals.col(p)=jacT.transpose()*param/metric.determinant();
@@ -759,7 +777,7 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
             for (int i = 0; i != tarDim; ++i) //for all components of the normal
             {
                 jacT.colMinor(i, minor);
-                InOut.normals(i,p) = alt_sgn * minor.determinant();
+                InOut.normals(i,p) = alt_sgn * internal::minorDet(minor);
                 alt_sgn = -alt_sgn;
             }
         }

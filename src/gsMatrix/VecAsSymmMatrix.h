@@ -178,7 +178,7 @@ struct unary_evaluator<VecAsSymmMatrix<ArgType, Dim> >
   EIGEN_STRONG_INLINE
   PacketType packet(Index rowId, Index colId) const
   {
-      assert( rowId / m_rows.value() !=  colId / m_cols.value() &&
+      GISMO_ASSERT( rowId / m_rows.value() !=  colId / m_cols.value(),
               "Not implemented");
           
       const Index actual_row  = internal::traits<XprType>::RowsAtCompileTime==1 ? 0

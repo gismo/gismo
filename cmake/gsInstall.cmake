@@ -55,6 +55,7 @@ export(PACKAGE gismo)
 # ... for the build tree
 set(CONF_PUBLIC_HEADER "${PROJECT_SOURCE_DIR}/src/gismo.h")
 set(CONF_INCLUDE_DIRS "${GISMO_INCLUDE_DIRS}")
+set(CONF_EIGEN_INCLUDE_DIR "${EIGEN_INCLUDE_DIR}")
 set(CONF_LIB_DIRS     "${CMAKE_BINARY_DIR}/lib")
 set(CONF_MODULE_PATH  "${gismo_SOURCE_DIR}/cmake")
 set(CONF_USE_FILE     "${CMAKE_BINARY_DIR}/gismoUse.cmake")
@@ -65,6 +66,11 @@ file(COPY ${PROJECT_SOURCE_DIR}/cmake/gismoUse.cmake DESTINATION ${CMAKE_BINARY_
 # ... for the install tree
 set(CONF_PUBLIC_HEADER "${CMAKE_INSTALL_PREFIX}/${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}/gismo.h")
 set(CONF_INCLUDE_DIRS "${CMAKE_INSTALL_PREFIX}/${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}")
+if(GISMO_Eigen_FROM_MIRROR)
+  set(CONF_EIGEN_INCLUDE_DIR "${CMAKE_INSTALL_PREFIX}/${INCLUDE_INSTALL_DIR}/${PROJECT_NAME}")
+else()
+  set(CONF_EIGEN_INCLUDE_DIR "${EIGEN_INCLUDE_DIR}")
+endif()
 set(CONF_LIB_DIRS     "${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}")
 set(CONF_MODULE_PATH  "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DIR}")
 set(CONF_USE_FILE     "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DIR}/gismoUse.cmake")
@@ -84,11 +90,19 @@ set_target_properties(gismo PROPERTIES
 install(FILES ${PROJECT_BINARY_DIR}/gsCore/gsExport.h
         DESTINATION include/${PROJECT_NAME}/gsCore )
 
-# For gsLinearAlgebra.h
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/gsEigen
+# For gsLinearAlgebra.h. Only the mirror clone is ours to install; when an
+# external Eigen (Eigen_DIR / system install) was used instead, consumers use
+# that Eigen's own include directory (see CONF_EIGEN_INCLUDE_DIR above).
+if(GISMO_Eigen_FROM_MIRROR)
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/Eigen/Eigen
         DESTINATION include/${PROJECT_NAME}
         PATTERN "*.txt" EXCLUDE
         PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/Eigen/unsupported/Eigen
+        DESTINATION include/${PROJECT_NAME}/unsupported
+        PATTERN "*.txt" EXCLUDE
+        PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ)
+endif()
 
 # For gsCmdLine.h
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/external/tclap
@@ -159,6 +173,14 @@ install(FILES
 #  "${CMAKE_INSTALL_DIR}" COMPONENT devel)
 
 # Produce pkg-config file
+# When Eigen came from the mirror (GISMO_Eigen_FROM_MIRROR), its headers are installed under
+# include/${PROJECT_NAME} (already on the Cflags -I path below); otherwise
+# consumers need the external Eigen's own include directory too.
+if(GISMO_Eigen_FROM_MIRROR)
+  set(GISMO_PC_EIGEN_CFLAGS "")
+else()
+  set(GISMO_PC_EIGEN_CFLAGS "-I${EIGEN_INCLUDE_DIR}")
+endif()
 configure_file ("${PROJECT_SOURCE_DIR}/gismo_lib.pc.in"
                 "${PROJECT_BINARY_DIR}/gismo.pc" @ONLY)
 

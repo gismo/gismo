@@ -303,7 +303,6 @@ public:
         return *this;
     }
 
-#if EIGEN_HAS_RVALUE_REFERENCES
     gsHTensorBasis(gsHTensorBasis&& other)
     {
         this->operator=(other);
@@ -321,7 +320,6 @@ public:
         m_uIndices   = std::move(other.m_uIndices);
         return *this;
     }
-#endif
 
     /// Destructor
     virtual ~gsHTensorBasis()

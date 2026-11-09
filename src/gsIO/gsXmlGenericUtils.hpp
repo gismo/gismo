@@ -306,8 +306,9 @@ template<class Object>
 Object * getGeometryFromXml ( gsXmlNode * node)
 {
     //gsWarn<<"Reading "<< gsXml<Object>::type() <<" Geometry..\n";
-    assert ( ( !strcmp( node->name(),"Geometry") ) &&
-             ( !strcmp(node->first_attribute("type")->value(), gsXml<Object>::type().c_str() ) ) );
+    GISMO_ASSERT ( ( !strcmp( node->name(),"Geometry") ) &&
+             ( !strcmp(node->first_attribute("type")->value(), gsXml<Object>::type().c_str() ) ),
+             "node must be a Geometry tag of the expected type" );
 
     gsXmlNode * tmp = node->first_node("Basis");
 

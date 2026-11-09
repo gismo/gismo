@@ -134,6 +134,20 @@ if (EIGEN_USE_MKL_ALL)
 message ("  EIGEN_USE_MKL_ALL       ${EIGEN_USE_MKL_ALL}")
 endif()
 
+# An Eigen_DIR given on the first configure means "use this Eigen", so it
+# selects Find; afterwards the cached GISMO_Eigen value is kept as is.
+if (NOT DEFINED GISMO_Eigen AND Eigen_DIR)
+  set(_gismo_eigen_default Find)
+else()
+  set(_gismo_eigen_default Mirror)
+endif()
+set(GISMO_Eigen ${_gismo_eigen_default} CACHE STRING
+    "Source of Eigen 5: Find (search, honours Eigen_DIR), Mirror (clone GISMO_Eigen_MIRROR_URL into external/Eigen) or Auto (Find, else Mirror)")
+set_property(CACHE GISMO_Eigen PROPERTY STRINGS Find Mirror Auto)
+set(GISMO_Eigen_MIRROR_URL "https://github.com/gismo/eigen.git" CACHE STRING
+    "Git repository cloned into external/Eigen when GISMO_Eigen is Mirror or Auto")
+message ("  GISMO_Eigen             ${GISMO_Eigen}")
+
 option(GISMO_BUILD_CPPLOT        "Build cpplot"                  false  )
 if (GISMO_BUILD_CPPLOT)
 message ("  GISMO_BUILD_CPPLOT      ${GISMO_BUILD_CPPLOT}")
