@@ -316,4 +316,33 @@ SUITE(gsDofMapper_test)
         CHECK(!g.is_tagged(3,1,1));
         CHECK(!g.is_tagged(1,0,0));
     }
+
+    TEST(DofMapperT4_shift0)
+    {
+        gsDofMapper m = makeM2();
+        m.markTagged(1,0,0);
+        m.markTagged(2,1,0);
+        m.markCoupledAsTagged();
+
+        // Stored tags are {0,3,6,11,12}
+        const vec t0 = {1,3};
+        const vec t1 = {0,2};
+        CHECK(toVec(m.findTagged(0)) == t0);
+        CHECK(toVec(m.findTagged(1)) == t1);
+    }
+
+    TEST(DofMapperT4_shift13)
+    {
+        gsDofMapper m = makeM2();
+        m.markTagged(1,0,0);
+        m.markTagged(2,1,0);
+        m.markCoupledAsTagged();
+        m.setShift(13);
+
+        // Stored tags are {0,3,6,11,12}
+        const vec t0 = {1,3};
+        const vec t1 = {0,2};
+        CHECK(toVec(m.findTagged(0)) == t0);
+        CHECK(toVec(m.findTagged(1)) == t1);
+    }
 }
