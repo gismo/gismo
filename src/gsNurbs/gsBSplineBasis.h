@@ -295,7 +295,7 @@ public:
     void anchor_into(index_t i, gsMatrix<T> & result) const override
     {
         result.resize(1,1);
-        result(0,0) = m_knots.greville(i);
+        result(0,0) = m_knots.grevilleOf(i);
     }
 
     // Look at gsBasis class for a description
