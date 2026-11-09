@@ -376,6 +376,7 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
   void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation, index_t comp)
 {
     GISMO_ENSURE(numComponents()==1, "permuteFreeDofs supports single-component mappers only");
+    GISMO_ENSURE(comp==0, "permuteFreeDofs: invalid component "<<comp<<", the mapper has a single component 0");
     GISMO_ASSERT(comp>-1,"Component is invalid");
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(m_numFreeDofs[comp+1] == permutation.size(), "permutation size does not match number of free dofs");

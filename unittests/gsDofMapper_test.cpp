@@ -223,8 +223,9 @@ SUITE(gsDofMapper_test)
 
         gsDofMapper t = makeM2();
         t.markCoupledAsTagged();
-        const vec tagged = {6,11,12};
-        CHECK(t.getTagged() == tagged);
+        const bool tagged[15] = {0,0,0,0,0,0,1, 0,0,0,0,1,1, 0,0};
+        for (index_t g = 0; g < 15; ++g)
+            CHECK_EQUAL(tagged[g], t.is_tagged_index(g));
         CHECK_EQUAL(3, t.taggedSize());
         CHECK_EQUAL(3, t.coupledSize());
         CHECK(t.is_tagged(3,0,0));
@@ -288,28 +289,29 @@ SUITE(gsDofMapper_test)
         gsDofMapper m = makeM2();
         m.markTagged(1,1,1);
         m.setShift(13);
-        const vec tagM = {12};
         CHECK(m.is_tagged(1,1,1));
         CHECK(m.is_tagged(2,1,1));
         CHECK(m.is_tagged_index(13 + 12));
         CHECK(!m.is_tagged(3,1,1));
         CHECK_EQUAL(0, m.tindex(1,1,1));
-        CHECK(m.getTagged() == tagM);
+        CHECK_EQUAL(1, m.taggedSize());
 
         // Shift first, then tag
         gsDofMapper f = makeM2();
         f.setShift(13);
         f.markTagged(1,1,1);
-        const vec tagF = {12};
-        CHECK(f.getTagged() == tagF);
+        CHECK_EQUAL(1, f.taggedSize());
+        CHECK(f.is_tagged_index(13 + 12));
         CHECK(f.is_tagged(1,1,1));
 
         // Shift first, then tag all coupled dofs
         gsDofMapper g = makeM2();
         g.setShift(13);
         g.markCoupledAsTagged();
-        const vec tagG = {6,11,12};
-        CHECK(g.getTagged() == tagG);
+        CHECK_EQUAL(3, g.taggedSize());
+        CHECK(g.is_tagged_index(13 + 6));
+        CHECK(g.is_tagged_index(13 + 11));
+        CHECK(g.is_tagged_index(13 + 12));
         CHECK(g.is_tagged(3,0,0));
         CHECK(g.is_tagged(0,1,0));
         CHECK(g.is_tagged(3,0,1));
@@ -547,4 +549,14 @@ SUITE(gsDofMapper_test)
         CHECK(inv1 == want1);
     }
 
+
+    TEST(DofMapperA3_permuteRejectsComponentOne)
+    {
+        gsVector<index_t> sz(1); sz << 4;
+        gsDofMapper m(sz);
+        m.finalize();
+
+        gsVector<index_t> p(4); p << 3, 2, 1, 0;
+        CHECK_THROW(m.permuteFreeDofs(p, 1), std::runtime_error);
+    }
 }

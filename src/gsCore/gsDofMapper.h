@@ -194,7 +194,9 @@ public:
     /// \warning Applying a permutation makes the functions regarding coupled dofs (cindex, is_coupled_index,.. ) invalid.
     /// The dofs are still coupled, but you have no way of extracting them. If you need this functions, first call
     /// markCoupledAsTagged() and then use the corresponding functions for tagged dofs.
-    void permuteFreeDofs(const gsVector<index_t>& permutation, index_t comp = 0);
+    ///
+    /// \deprecated No replacement.
+    GISMO_DEPRECATED void permuteFreeDofs(const gsVector<index_t>& permutation, index_t comp = 0);
 
     ///\brief Returns the smallest (shifted) global index of the free
     ///dofs of component \a comp. Valid after finalize().
@@ -205,7 +207,10 @@ public:
     index_t lastIndex() const { return m_shift + freeSize(); }
 
     ///\brief Set the shift amount for the boundary numbering
-    void setBoundaryShift(index_t shift);
+    ///
+    /// \deprecated No replacement: the boundary numbering of bindex()
+    /// and global_to_bindex() starts at 0.
+    GISMO_DEPRECATED void setBoundaryShift(index_t shift);
 
     /** \brief Computes the global indices of the input local indices
      *
@@ -235,9 +240,12 @@ public:
      *
      * \note This method only works after all interfaces and boundaries have been
      * marked and finalize() has been called.
+     *
+     * \deprecated Use index(). freeIndex() returns the stored value,
+     * i.e. index() minus the shift.
      */
 
-    inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
+    GISMO_DEPRECATED inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
     {
         GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
         return MAPPER_PATCH_DOF(i,k,c);
@@ -388,8 +396,12 @@ public:
 	(allFree() ? m_numElimDofs[comp+1]-m_numElimDofs[comp] : 0 );
     }
 
-    /// Returns the vector of tagged (not eliminated) dofs.
-    const std::vector<index_t> & getTagged() const { return m_tagged; }
+    /// \brief Returns the sorted stored (unshifted) indices of the
+    /// tagged dofs, free or eliminated.
+    ///
+    /// \deprecated Use is_tagged_index() for a shifted global index,
+    /// is_tagged() or findTagged() for patch-local dofs, or taggedSize().
+    GISMO_DEPRECATED const std::vector<index_t> & getTagged() const { return m_tagged; }
 
     /// Returns the number of coupled (not eliminated) dofs.
     index_t coupledSize() const;
