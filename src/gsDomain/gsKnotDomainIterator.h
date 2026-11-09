@@ -13,6 +13,10 @@
 
 #pragma once
 
+// gsKnotVector.h, reached through the includes below, names gsKnotDomainIterator
+// in inline members before this header has defined it.
+namespace gismo { template<class T> class gsKnotDomainIterator; }
+
 #include <gsDomain/gsDomainIterator.h>
 #include <gsDomain/gsTensorDomain.h>
 #include <gsUtils/gsCombinatorics.h>
