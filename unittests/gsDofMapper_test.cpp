@@ -189,4 +189,93 @@ SUITE(gsDofMapper_test)
         CHECK_EQUAL(4, l);
         CHECK(!m.indexOnPatch(13 + 0, 1, l));
     }
+
+    TEST(DofMapperT2_shift0)
+    {
+        gsDofMapper m = makeM2();
+
+        const vec cpl0 = {3};
+        const vec cpl1 = {0};
+        const vec fu0 = {1,2};
+        const vec fu1 = {1,2,3,4};
+        CHECK(toVec(m.findCoupled(0)) == cpl0);
+        CHECK(toVec(m.findCoupled(1)) == cpl1);
+        CHECK(toVec(m.findFreeUncoupled(0)) == fu0);
+        CHECK(toVec(m.findFreeUncoupled(1)) == fu1);
+
+        const bool coupled[15] = {0,0,0,0,0,0,1, 0,0,0,0,1,1, 0,0};
+        for (index_t g = 0; g < 15; ++g)
+            CHECK_EQUAL(coupled[g], m.is_coupled_index(g));
+
+        CHECK(m.is_coupled(3,0,0));
+        CHECK(m.is_coupled(0,1,0));
+        CHECK(m.is_coupled(3,0,1));
+        CHECK(m.is_coupled(0,1,1));
+        CHECK(m.is_coupled(1,1,1));
+        CHECK(m.is_coupled(2,1,1));
+        CHECK(!m.is_coupled(1,0,0));
+        CHECK(!m.is_coupled(3,1,1));
+        CHECK(!m.is_coupled(0,0,0));
+        CHECK(!m.is_coupled(4,1,1));
+
+        gsDofMapper t = makeM2();
+        t.markCoupledAsTagged();
+        const vec tagged = {6,11,12};
+        CHECK(t.getTagged() == tagged);
+        CHECK_EQUAL(3, t.taggedSize());
+        CHECK_EQUAL(3, t.coupledSize());
+        CHECK(t.is_tagged(3,0,0));
+        CHECK(t.is_tagged(0,1,0));
+        CHECK(t.is_tagged(3,0,1));
+        CHECK(t.is_tagged(0,1,1));
+        CHECK(t.is_tagged(1,1,1));
+        CHECK(t.is_tagged(2,1,1));
+        CHECK(!t.is_tagged(3,1,1));
+        CHECK(!t.is_tagged(0,0,0));
+        CHECK(!t.is_tagged(4,1,1));
+    }
+
+    TEST(DofMapperT2_shift13)
+    {
+        gsDofMapper m = makeM2();
+        m.setShift(13);
+
+        const vec cpl0 = {3};
+        const vec cpl1 = {0};
+        const vec fu0 = {1,2};
+        const vec fu1 = {1,2,3,4};
+        CHECK(toVec(m.findCoupled(0)) == cpl0);
+        CHECK(toVec(m.findCoupled(1)) == cpl1);
+        CHECK(toVec(m.findFreeUncoupled(0)) == fu0);
+        CHECK(toVec(m.findFreeUncoupled(1)) == fu1);
+
+        const bool coupled[15] = {0,0,0,0,0,0,1, 0,0,0,0,1,1, 0,0};
+        for (index_t g = 0; g < 15; ++g)
+            CHECK_EQUAL(coupled[g], m.is_coupled_index(13 + g));
+
+        CHECK(m.is_coupled(3,0,0));
+        CHECK(m.is_coupled(0,1,0));
+        CHECK(m.is_coupled(3,0,1));
+        CHECK(m.is_coupled(0,1,1));
+        CHECK(m.is_coupled(1,1,1));
+        CHECK(m.is_coupled(2,1,1));
+        CHECK(!m.is_coupled(1,0,0));
+        CHECK(!m.is_coupled(3,1,1));
+        CHECK(!m.is_coupled(0,0,0));
+        CHECK(!m.is_coupled(4,1,1));
+    }
+
+    TEST(DofMapperT2_oneComponent)
+    {
+        gsVector<index_t> s1(1); s1 << 3;
+        gsDofMapper m(s1);
+        m.markCoupled(2,0);
+        m.finalize();
+        CHECK(m.is_coupled(2,0,0));
+        m.markCoupledAsTagged();
+        CHECK(m.is_tagged(2,0,0));
+        CHECK(!m.is_tagged(0,0,0));
+        CHECK(!m.is_tagged(1,0,0));
+        CHECK_EQUAL(1, m.taggedSize());
+    }
 }

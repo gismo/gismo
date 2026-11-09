@@ -195,15 +195,11 @@ void gsDofMapper::markCoupledAsTagged()
 {
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     m_tagged.reserve(m_tagged.size()+m_numCpldDofs.back());
-    std::vector<index_t>::const_iterator fr = m_numFreeDofs.begin()+1;
-    std::vector<index_t>::const_iterator el = m_numElimDofs.begin();
-    for(std::vector<index_t>::const_iterator cp =
-	  m_numCpldDofs.begin()+1;
-	cp!=m_numCpldDofs.end(); ++cp, ++el, ++fr)
+    for(size_t c = 0; c != m_dofs.size(); ++c)
       {
-	const index_t nd = *fr + *el;
-	for(int i=0; i< *cp;++i)
-	  m_tagged.push_back(nd+i);
+	const index_t cp = m_numCpldDofs[c+1] - m_numCpldDofs[c];
+	for(index_t i = m_numFreeDofs[c+1]-cp; i < m_numFreeDofs[c+1]; ++i)
+	  m_tagged.push_back(i);
       }
     //sort and delete the duplicated ones
     std::sort(m_tagged.begin(),m_tagged.end());
@@ -687,8 +683,8 @@ gsVector<index_t> gsDofMapper::findCoupled(const index_t k, const index_t j) con
     citer istart = m_dofs[0].begin() + m_offset[k];
     citer iend   = istart + patchSize(k);
 
-    const index_t l = m_numFreeDofs.back()+m_shift-m_numCpldDofs.back()-1;
-    const index_t u = m_numFreeDofs.back()+m_shift;
+    const index_t l = m_numFreeDofs[1]-(m_numCpldDofs[1]-m_numCpldDofs[0])-1;
+    const index_t u = m_numFreeDofs[1];
     if (-1==j)
         return find_impl(istart, iend, _isBetween(l,u) );
     else
@@ -721,7 +717,7 @@ gsVector<index_t> gsDofMapper::findFreeUncoupled(const index_t k) const
     const citer istart = m_dofs[0].begin() + m_offset[k];
     const citer iend   = istart + patchSize(k);
     return find_impl(istart, iend,
-                     _isBetween(m_shift-1, m_numFreeDofs.back()+m_shift-m_numCpldDofs.back()) );
+                     _isBetween(-1, m_numFreeDofs[1]-(m_numCpldDofs[1]-m_numCpldDofs[0])) );
 }
 
 gsVector<index_t> gsDofMapper::findTagged(const index_t k) const

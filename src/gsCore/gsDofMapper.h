@@ -334,8 +334,9 @@ public:
     {
       const index_t gc = componentOf(gl);
       const index_t vv = m_numFreeDofs[gc+1] + m_shift;
+      const index_t cp = m_numCpldDofs[gc+1] - m_numCpldDofs[gc];
       return  (gl < vv && // is a free dof and
-	      (gl + m_numCpldDofs[gc+1] + 1 > vv) );  // is not standard dof
+	      (gl + cp + 1 > vv) );  // is not standard dof
     }
 
     /// Returns true if local dof \a i of patch \a k is tagged.
