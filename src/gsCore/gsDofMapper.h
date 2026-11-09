@@ -449,7 +449,12 @@ public:
     std::vector<std::pair<index_t,index_t> > anyPreImages(index_t comp = 0) const;
 
     /// \brief Produces the inverse of the mapping on patch \a k
-    /// assuming that the map is invertible on that patch
+    /// assuming that the map is invertible on that patch.
+    ///
+    /// The keys are (shifted) global indices, the values are the local
+    /// dofs of patch \a k, collected over all components. If several
+    /// local dofs of patch \a k map to the same global index, which of
+    /// them is stored is unspecified.
     std::map<index_t,index_t> inverseOnPatch(const index_t k) const;
 
     /// \brief For \a gl being a global index, this function returns

@@ -30,8 +30,8 @@ typedef std::vector<std::pair<index_t,index_t> > pairs;
   and dof 4 of patch 1 (component 1) are eliminated.
 
   Numbering after finalize() at shift 0. A shift s adds s to every global
-  index; stored values (tags, anyPreImages positions, inverseOnPatch keys)
-  and patch-local indices do not shift.
+  index; stored values (tags, anyPreImages positions) and patch-local
+  indices do not shift.
 
   comp | patch | local dof -> global index           | kind
   -----+-------+-------------------------------------+------------------------------
@@ -427,30 +427,6 @@ SUITE(gsDofMapper_test)
         CHECK(inv1 == want1);
     }
 
-    TEST(DofMapperT7_shift13)
-    {
-        gsDofMapper m = makeM2();
-        m.setShift(13);
-
-        typedef std::map<index_t,index_t> imap;
-        imap inv0 = m.inverseOnPatch(0);
-        imap want0;
-        want0[0] = 1; want0[1] = 2; want0[6] = 3; want0[7] = 0;
-        want0[8] = 1; want0[9] = 2; want0[11] = 3; want0[13] = 0;
-        CHECK(inv0 == want0);
-
-        imap inv1 = m.inverseOnPatch(1);
-        imap want1;
-        want1[2] = 1; want1[3] = 2; want1[4] = 3; want1[5] = 4; want1[6] = 0;
-        want1[10] = 3; want1[11] = 0; want1[14] = 4;
-        CHECK_EQUAL(9, (index_t)inv1.size());
-        // Key 12 is shared by local dofs 1 and 2; which one is reported is unspecified
-        CHECK_EQUAL(1, (index_t)inv1.count(12));
-        CHECK(inv1[12] == 1 || inv1[12] == 2);
-        inv1.erase(12);
-        CHECK(inv1 == want1);
-    }
-
     TEST(DofMapperT8_setIdentityReuse)
     {
         gsDofMapper m = makeM2();
@@ -545,4 +521,30 @@ SUITE(gsDofMapper_test)
         gsVector<index_t> p(3); p << 2, 1, 0;
         CHECK_THROW(m.permuteFreeDofs(p, 0), std::exception);
     }
+
+    TEST(DofMapperA1_inverseOnPatchShift13)
+    {
+        gsDofMapper m = makeM2();
+        m.setShift(13);
+
+        // Keys are shifted global indices, values are local dofs of the given patch
+        typedef std::map<index_t,index_t> imap;
+        imap inv0 = m.inverseOnPatch(0);
+        imap want0;
+        want0[13] = 1; want0[14] = 2; want0[19] = 3; want0[20] = 0;
+        want0[21] = 1; want0[22] = 2; want0[24] = 3; want0[26] = 0;
+        CHECK(inv0 == want0);
+
+        imap inv1 = m.inverseOnPatch(1);
+        imap want1;
+        want1[15] = 1; want1[16] = 2; want1[17] = 3; want1[18] = 4; want1[19] = 0;
+        want1[23] = 3; want1[24] = 0; want1[27] = 4;
+        CHECK_EQUAL(9, (index_t)inv1.size());
+        // Key 25 is shared by local dofs 1 and 2; which one is reported is unspecified
+        CHECK_EQUAL(1, (index_t)inv1.count(25));
+        CHECK(inv1.count(25) == 1 && (inv1[25] == 1 || inv1[25] == 2));
+        inv1.erase(25);
+        CHECK(inv1 == want1);
+    }
+
 }
