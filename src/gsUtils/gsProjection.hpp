@@ -51,7 +51,7 @@ void gsProjection<Norm,T>::_matrix(const gsMultiBasis<T>         & integrationBa
     typename gsExprAssembler<T>::geometryMap G = A.getMap(geometryMap);
 
     // Set up the space
-    u.setup(bc,dirichlet::interpolation,options.askInt("Continuity",-1));
+    u.setup(bc,dirichlet::automatic,options.askInt("Continuity",-1));
 
     // Initialize the system
     A.initSystem();
@@ -104,7 +104,7 @@ void gsProjection<Norm,T>::_rhs(const gsMultiBasis<T>         & integrationBasis
     typename gsExprAssembler<T>::geometryMap G = A.getMap(geometryMap);
 
     // Set up the space
-    u.setup(bc,dirichlet::interpolation,options.askInt("Continuity",-1));
+    u.setup(bc,dirichlet::automatic,options.askInt("Continuity",-1));
 
     // Initialize the system
     A.initSystem();
@@ -147,7 +147,7 @@ void gsProjection<Norm,T>::_system(const gsMultiBasis<T>         & integrationBa
     typename gsExprAssembler<T>::geometryMap G = A.getMap(geometryMap);
 
     // Set up the space
-    u.setup(bc,dirichlet::interpolation,options.askInt("Continuity",-1));
+    u.setup(bc,dirichlet::automatic,options.askInt("Continuity",-1));
 
     // Initialize the system
     A.initSystem();
@@ -204,7 +204,7 @@ T gsProjection<Norm,T>::_project(const gsMultiBasis<T>         & integrationBasi
     typename gsExprAssembler<T>::geometryMap G = A.getMap(geometryMap);
 
     // Set up the space
-    u.setup(bc,dirichlet::interpolation,options.askInt("Continuity",-1));
+    u.setup(bc,dirichlet::automatic,options.askInt("Continuity",-1));
 
     // Initialize the system
     A.initSystem();

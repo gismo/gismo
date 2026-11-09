@@ -112,7 +112,7 @@ public:
 #endif
     GISMO_UPTR_FUNCTION_DEF(BoundaryBasisType, boundaryBasis, boxSide const &) override
     {
-        return basisSlice(n1.direction(),n1.parameter());
+        return basisSlice(n1.direction(), this->support()(n1.direction(), n1.parameter() ? 1 : 0));
     }
 
 public:

@@ -208,4 +208,75 @@ SUITE(gsThbs_geometry_test)
 
     }
 
+
+    // The boundary basis and boundary geometry of a THB basis on the parameter
+    // domain [0,4]^2 live on the side x_dir = support()(dir, 0|1), not on
+    // x_dir = 0|1. East and north are of mixed level, west and south are not.
+    TEST(boundaryBasis_nonUnitDomain)
+    {
+        gsKnotVector<> kv(0.0, 4.0, 3, 4);
+        gsTensorBSplineBasis<2> tb(kv, kv);
+        gsTHBSplineBasis<2> thb(tb);
+        gsMatrix<> box(2,2);
+        box << 2, 4,
+               2, 4;
+        thb.refine(box);
+        box << 3, 4,
+               3, 4;
+        thb.refine(box);
+
+        gsMatrix<> cp(thb.size(), 2);
+        for (index_t i = 0; i != cp.rows(); ++i)
+        {
+            cp(i,0) = math::sin(0.7 * i + 0.3);
+            cp(i,1) = math::sin(1.3 * i + 0.1);
+        }
+        gsTHBSpline<2> geo(thb, cp);
+
+        const gsMatrix<> supp = thb.support();
+        const index_t nPts = 20;
+        for (boxSide s = boxSide::getFirst(2); s < boxSide::getEnd(2); ++s)
+        {
+            const index_t dir = s.direction();
+            const real_t par = supp(dir, s.parameter() ? 1 : 0);
+
+            gsBasis<>::uPtr h = thb.boundaryBasis(s);
+            const gsMatrix<index_t> idx = thb.boundary(s);
+            CHECK_EQUAL( idx.rows(), h->size() );
+
+            // A slice at the side flag 0/1 is a different basis on this domain
+            const gsTHBSplineBasis<2>::BoundaryBasisType * wrong =
+                thb.basisSlice(dir, (real_t)(s.parameter() ? 1 : 0));
+            if (s.parameter())
+                CHECK( wrong->size() != h->size() );
+            delete wrong;
+
+            // Without matching sizes the trace comparison below would index h out of range
+            if (idx.rows() != h->size())
+                continue;
+
+            gsGeometry<>::uPtr bgeo = geo.boundary(s);
+            const gsMatrix<> hs = h->support();
+
+            gsMatrix<> x(1, nPts), lifted(2, nPts);
+            for (index_t k = 0; k != nPts; ++k)
+            {
+                x(0,k) = hs(0,0) + (hs(0,1) - hs(0,0)) * k / (nPts - 1);
+                lifted(dir, k)     = par;
+                lifted(1 - dir, k) = x(0,k);
+            }
+
+            for (index_t l = 0; l != idx.rows(); ++l)
+            {
+                const gsMatrix<> full  = thb.evalSingle(idx(l,0), lifted);
+                const gsMatrix<> trace = h->evalSingle(l, x);
+                CHECK_CLOSE( 0.0, (full - trace).cwiseAbs().maxCoeff(), 1e-14 );
+            }
+
+            const gsMatrix<> gb = bgeo->eval(x);
+            const gsMatrix<> gf = geo.eval(lifted);
+            CHECK_CLOSE( 0.0, (gb - gf).cwiseAbs().maxCoeff(), 1e-13 );
+        }
+    }
+
 }

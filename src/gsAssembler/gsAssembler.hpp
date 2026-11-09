@@ -14,6 +14,7 @@
 #include <gsAssembler/gsAssembler.h>
 #include <gsAssembler/gsGaussRule.h>
 #include <gsAssembler/gsDofMapperCreator.h>
+#include <gsAssembler/gsDirichletValues.h>
 #include <gsCore/gsMultiBasis.h>
 #include <gsDomain/gsDomainIterator.h>
 #include <gsCore/gsField.h>
@@ -32,7 +33,7 @@ gsOptionList gsAssembler<T>::defaultOptions()
 {
     gsOptionList opt;
     opt.addInt("DirichletStrategy", "Method for enforcement of Dirichlet BCs [11..14]", 11 );
-    opt.addInt("DirichletValues"  , "Method for computation of Dirichlet DoF values [100..103]", 101);
+    opt.addInt("DirichletValues"  , "Method for computation of Dirichlet DoF values [100..105]", dirichlet::automatic);
     opt.addInt("InterfaceStrategy", "Method of treatment of patch interfaces [0..3]", 1  );
     opt.addReal("quA", "Number of quadrature points: quA*deg + quB", 1.0  );
     opt.addInt ("quB", "Number of quadrature points: quA*deg + quB", 1    );
@@ -267,6 +268,12 @@ void gsAssembler<T>::computeDirichletDofs(short_t unk)
     case dirichlet::interpolation:
         computeDirichletDofsIntpl(mapper, mbasis,unk);
         break;
+    case dirichlet::quasiInterpolation:
+        computeDirichletDofsQuasiIntpl(mapper, mbasis,unk);
+        break;
+    case dirichlet::automatic:
+        computeDirichletDofsAutomatic(mapper, mbasis,unk);
+        break;
     case dirichlet::l2Projection:
         computeDirichletDofsL2Proj(mapper, mbasis,unk);
         break;
@@ -297,25 +304,56 @@ void gsAssembler<T>::computeDirichletDofs(short_t unk)
 }
 
 
-// SKleiss: Note that this implementation is not useable for (T)HB-Splines!
-//
-// 1. Computation of the Dirichlet values explicitly uses gsPointGrid(rr)
-// Computing a grid of evaluation points does not make sense for any locally
-// refined basis.
-// Also, "component(i)" is used.
-// I'm afraid this makes sense ONLY FOR TENSOR-PRODUCT bases.
-//
-// 2. As of now (16.May 2014), the boundaryBasis of (T)HB-spline basis is not
-// implemented, as far as I know.
-//
-// 3. gsInterpolate uses the anchors of the boundary basis.
-// With truncated hierarchical B-splines, the use of classical anchors does
-// not work, because functions might be truncated to zero at these points.
-template<class T> //
-void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
-                                               const gsMultiBasis<T> & mbasis,
-                                               const short_t unk_)
+// Dirichlet values of the unknown unk_ by one of three methods (\a method):
+// - dirichlet::interpolation: tensor-product (incl. rational) bases for d >= 2, by interpolation at
+//   the anchors (Greville points) of the boundary basis on a point grid of the side;
+//   on a 1-D patch every basis supported by quasi-interpolation, through the end-point rule of
+//   internal::dirichletSideQuasiInterpolation (open knot vector required);
+// - dirichlet::quasiInterpolation: local quasi-interpolation of the side data in the
+//   boundary basis (internal::dirichletSideQuasiInterpolation) on tensor-product, NURBS,
+//   THB, rational THB and HB bases (the 1-D case through the point rule of that function);
+// - dirichlet::automatic: per patch, anchor interpolation on tensor-product/NURBS
+//   patches (d >= 2) and quasi-interpolation on the other supported ones; a 1-D patch of any
+//   supported basis takes the end value (end-point rule, open knot vector required).
+//   Anchor collocation is not used on hierarchical bases, since it can be singular on a
+//   mixed-level boundary basis.
+//   If a patch with a Dirichlet side is supported by neither, the whole unknown is computed
+//   by computeDirichletDofsL2Proj.
+// All support checks run before any dof is written, and before the omp region of the
+// quasi-interpolation.
+template<class T>
+void gsAssembler<T>::computeDirichletDofsByMethod(const gsDofMapper & mapper,
+                                                  const gsMultiBasis<T> & mbasis,
+                                                  const short_t unk_,
+                                                  const index_t method)
 {
+    for ( typename gsBoundaryConditions<T>::const_iterator
+          it = m_pde_ptr->bc().dirichletBegin();
+          it != m_pde_ptr->bc().dirichletEnd(); ++it )
+    {
+        if(it->unknown()!=unk_)
+            continue;
+        const gsBasis<T> & pbasis = mbasis[it->patch()];
+        if ( dirichlet::interpolation == method )
+        {
+            GISMO_ENSURE(internal::dirichletInterpolationSupported(pbasis),
+                         "Dirichlet interpolation only implemented for tensor bases. Use `dirichlet::quasiInterpolation` (hierarchical bases) or `dirichlet::l2Projection` instead.");
+        }
+        else if ( dirichlet::quasiInterpolation == method )
+        {
+            GISMO_ENSURE(internal::dirichletQuasiInterpolationSupported(pbasis),
+                         "Dirichlet quasi-interpolation is not implemented for the basis of patch "
+                         << it->patch() << " (supported: tensor-product B-spline, NURBS, THB, rational THB, HB). "
+                         "Use `dirichlet::l2Projection` instead.");
+        }
+        else if ( !internal::dirichletInterpolationSupported(pbasis) &&
+                  !internal::dirichletQuasiInterpolationSupported(pbasis) )
+        {
+            computeDirichletDofsL2Proj(mapper, mbasis, unk_);
+            return;
+        }
+    }
+
     m_ddof[unk_].resize(mapper.boundarySize(), m_system.unkSize(unk_) * m_pde_ptr->numRhs() );
     // Iterate over all patch-sides with Dirichlet-boundary conditions
     for ( typename gsBoundaryConditions<T>::const_iterator
@@ -338,6 +376,26 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
             {
                 const index_t ii= mapper.bindex( boundary.at(i) , k );
                 m_ddof[unk_].row(ii).setZero();
+            }
+            continue;
+        }
+
+        if ( dirichlet::quasiInterpolation == method || 1 == basis.domainDim() ||
+             (dirichlet::automatic == method && !internal::dirichletInterpolationSupported(basis)) )
+        {
+            const gsFunction<T> * fun = dynamic_cast<const gsFunction<T>*>( it->function().get() );
+            GISMO_ENSURE(nullptr != fun, "Dirichlet data on patch " << k << " is not a gsFunction.");
+            GISMO_ENSURE(fun->targetDim() == m_ddof[unk_].cols(),
+                         "Given Dirichlet boundary function does not match problem dimension: "
+                         << fun->targetDim() << " != " << m_system.unkSize(unk_)
+                         << " * " << m_pde_ptr->numRhs());
+            const gsFunction<T> * geo = it->parametric() ? nullptr : &m_pde_ptr->domain()[k];
+            gsMatrix<T> dVals;
+            internal::dirichletSideQuasiInterpolation(basis, it->side(), *fun, geo, dVals);
+            for (index_t l=0; l!= boundary.size(); ++l)
+            {
+                const index_t ii = mapper.bindex( boundary.at(l) , k );
+                m_ddof[unk_].row(ii) = dVals.row(l);
             }
             continue;
         }
@@ -387,6 +445,30 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
             m_ddof[unk_].row(ii) = dVals.row(l);
         }
     }
+}
+
+template<class T>
+void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
+                                               const gsMultiBasis<T> & mbasis,
+                                               const short_t unk_)
+{
+    computeDirichletDofsByMethod(mapper, mbasis, unk_, dirichlet::interpolation);
+}
+
+template<class T>
+void gsAssembler<T>::computeDirichletDofsQuasiIntpl(const gsDofMapper & mapper,
+                                                    const gsMultiBasis<T> & mbasis,
+                                                    const short_t unk_)
+{
+    computeDirichletDofsByMethod(mapper, mbasis, unk_, dirichlet::quasiInterpolation);
+}
+
+template<class T>
+void gsAssembler<T>::computeDirichletDofsAutomatic(const gsDofMapper & mapper,
+                                                   const gsMultiBasis<T> & mbasis,
+                                                   const short_t unk_)
+{
+    computeDirichletDofsByMethod(mapper, mbasis, unk_, dirichlet::automatic);
 }
 
 template<class T>
@@ -452,7 +534,9 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
             // the values of the boundary condition are stored
             // to rhsVals. Here, "rhs" refers to the right-hand-side
             // of the L2-projection, not of the PDE.
-            rhsVals = iter->function()->eval( m_pde_ptr->domain()[patchIdx].eval( md.points ) );
+            rhsVals = iter->parametric()
+                    ? iter->function()->eval( md.points )
+                    : iter->function()->eval( m_pde_ptr->domain()[patchIdx].eval( md.points ) );
 
             basis.eval_into( md.points, basisVals);
 

@@ -277,6 +277,154 @@ SUITE(gsKnotVectors_test)
         }
         CHECK( count == expectedElements );
     }
+
+    namespace
+    {
+    /// Number of elements visited by the boundary iteration of side \a s of \a dom
+    /// with the `<` loop (\a less) or the `!=` loop.
+    size_t countBdr(const gsDomain<real_t> & dom, const boxSide & s, bool less)
+    {
+        gsBasis<real_t>::domainIter it  = dom.beginBdr(s);
+        gsBasis<real_t>::domainIter end = dom.endBdr(s);
+        size_t count = 0;
+        if (less) for (; it < end;  ++it) ++count;
+        else      for (; it != end; ++it) ++count;
+        return count;
+    }
+    } // anonymous namespace
+
+    // On a 1-D knot-vector domain the boundary iteration of the west and east
+    // side is a single point element at the end of the domain.
+    TEST(boundaryDomainIteration1D)
+    {
+        std::vector<real_t> knots = {-2, -1.75, -1.5, -1.25, -1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2};
+        gsKnotVector<real_t> kvs[2] = { gsKnotVector<real_t>(0.0, 1.0, 3, 3),
+                                        gsKnotVector<real_t>(3, knots.begin(), knots.end()) };
+        gsMatrix<real_t> w(6,1);
+        for (index_t i = 0; i != w.rows(); ++i) w(i,0) = 1 + 0.5*i;
+
+        index_t sides = 0;
+        for (int k = 0; k != 2; ++k)
+        {
+            const gsKnotVector<real_t> & kv = kvs[k];
+            gsBSplineBasis<real_t> basis(kv);
+            const std::shared_ptr<gsDomain<real_t> > dom = basis.domain();
+            for (int e = 0; e != 2; ++e)
+            {
+                const boxSide s = e ? boundary::east : boundary::west;
+                const real_t x = e ? *kv.domainEnd() : *kv.domainBegin();
+                CHECK_EQUAL( 1u, countBdr(*dom, s, true) );
+                CHECK_EQUAL( 1u, countBdr(*dom, s, false) );
+                CHECK_EQUAL( 1u, dom->numElementsBdr(s) );
+
+                gsBasis<real_t>::domainIter it  = dom->beginBdr(s);
+                gsBasis<real_t>::domainIter end = dom->endBdr(s);
+                size_t visited = 0;
+                for (; it != end; ++it)
+                {
+                    CHECK_CLOSE( it.lowerCorner()(0), x, 1e-14 );
+                    CHECK_CLOSE( it.upperCorner()(0), x, 1e-14 );
+                    CHECK_CLOSE( it.centerPoint()(0), x, 1e-14 );
+                    CHECK( it.isBoundaryElement() );
+                    CHECK( it.side() == s );
+                    CHECK_CLOSE( it.getPerpendicularCellSize(), 0.25, 1e-14 );
+                    ++visited;
+                }
+                CHECK_EQUAL( 1u, visited );
+                ++sides;
+            }
+            CHECK_EQUAL( kv.numElements(), dom->numElements() );
+            size_t all = 0;
+            for (gsBasis<real_t>::domainIter it = dom->beginAll(); it != dom->endAll(); ++it) ++all;
+            CHECK_EQUAL( kv.numElements(), all );
+        }
+        CHECK_EQUAL( 4, sides );
+
+        gsNurbsBasis<real_t> nurbs(kvs[0], w);
+        const std::shared_ptr<gsDomain<real_t> > ndom = nurbs.domain();
+        for (int e = 0; e != 2; ++e)
+        {
+            const boxSide s = e ? boundary::east : boundary::west;
+            const real_t x = e ? 1.0 : 0.0;
+            CHECK_EQUAL( 1u, countBdr(*ndom, s, true) );
+            CHECK_EQUAL( 1u, countBdr(*ndom, s, false) );
+            CHECK_EQUAL( 1u, ndom->numElementsBdr(s) );
+            gsBasis<real_t>::domainIter it = ndom->beginBdr(s);
+            CHECK_CLOSE( it.lowerCorner()(0), x, 1e-14 );
+            CHECK_CLOSE( it.upperCorner()(0), x, 1e-14 );
+            CHECK_CLOSE( it.centerPoint()(0), x, 1e-14 );
+            CHECK( it.isBoundaryElement() );
+            CHECK( it.side() == s );
+        }
+    }
+
+    // Any side other than west and east is an empty boundary range on a 1-D
+    // knot-vector domain.
+    TEST(boundaryDomainIteration1D_invalidSide)
+    {
+        gsKnotVector<real_t> kv(0.0, 1.0, 3, 3);
+        gsBSplineBasis<real_t> basis(kv);
+        const std::shared_ptr<gsDomain<real_t> > dom = basis.domain();
+
+        const boxSide sides[5] = { boundary::none, boundary::south, boundary::north,
+                                   boundary::front, boundary::back };
+        index_t checked = 0;
+        for (int i = 0; i != 5; ++i)
+        {
+            const boxSide s = sides[i];
+            CHECK( dom->beginBdr(s) == dom->endBdr(s) );
+            CHECK_EQUAL( 0u, countBdr(*dom, s, true) );
+            CHECK_EQUAL( 0u, countBdr(*dom, s, false) );
+            CHECK_EQUAL( 0u, dom->numElementsBdr(s) );
+            ++checked;
+        }
+        CHECK_EQUAL( 5, checked );
+        CHECK_EQUAL( 0, static_cast<int>(boundary::none) );
+    }
+
+    // On 2-D and 3-D tensor domains the all-element and per-side boundary-element
+    // counts are the products of the knot vectors' element counts.
+    TEST(tensorDomainIterationCounts)
+    {
+        gsKnotVector<real_t> k4(0.0, 1.0, 3, 3), k3(0.0, 1.0, 2, 3), k2(0.0, 1.0, 1, 3);
+        CHECK_EQUAL( 4u, k4.numElements() );
+        CHECK_EQUAL( 3u, k3.numElements() );
+        CHECK_EQUAL( 2u, k2.numElements() );
+
+        gsTensorBSplineBasis<2,real_t> b2(k4, k3);
+        gsTensorBSplineBasis<3,real_t> b3(k4, k3, k2);
+        const std::shared_ptr<gsDomain<real_t> > d2 = b2.domain();
+        const std::shared_ptr<gsDomain<real_t> > d3 = b3.domain();
+        const size_t n2[2] = { 4, 3 }, n3[3] = { 4, 3, 2 };
+
+        size_t all = 0;
+        for (gsBasis<real_t>::domainIter it = d2->beginAll(); it != d2->endAll(); ++it) ++all;
+        CHECK_EQUAL( 12u, all );
+        all = 0;
+        for (gsBasis<real_t>::domainIter it = d3->beginAll(); it != d3->endAll(); ++it) ++all;
+        CHECK_EQUAL( 24u, all );
+
+        index_t sides = 0;
+        for (boxSide s = boxSide::getFirst(2); s < boxSide::getEnd(2); ++s)
+        {
+            const size_t expected = n2[1 - (s.direction())];
+            CHECK_EQUAL( expected, countBdr(*d2, s, true) );
+            CHECK_EQUAL( expected, countBdr(*d2, s, false) );
+            CHECK_EQUAL( expected, d2->numElementsBdr(s) );
+            ++sides;
+        }
+        for (boxSide s = boxSide::getFirst(3); s < boxSide::getEnd(3); ++s)
+        {
+            size_t expected = 1;
+            for (int d = 0; d != 3; ++d)
+                if (d != s.direction()) expected *= n3[d];
+            CHECK_EQUAL( expected, countBdr(*d3, s, true) );
+            CHECK_EQUAL( expected, countBdr(*d3, s, false) );
+            CHECK_EQUAL( expected, d3->numElementsBdr(s) );
+            ++sides;
+        }
+        CHECK_EQUAL( 10, sides );
+    }
 }
 
 SUITE(gsKnotVectors_test_2)
