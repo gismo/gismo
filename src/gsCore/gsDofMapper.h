@@ -131,10 +131,6 @@ public:
     */
     gsVector<index_t> inverseAsVector(index_t comp = 0) const;
 
-    /// Called to initialize the gsDofMapper with matching interfaces
-    /// after m_bases have already been set
-    void setMatchingInterfaces(const gsBoxTopology & mp);
-
     /** \brief Calls matchDof() for all dofs on the given patch side
      * \a i ps. Thus, the whole set of dofs collapses to a single
      * global dof

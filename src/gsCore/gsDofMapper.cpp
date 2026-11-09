@@ -759,8 +759,6 @@ void pybind11_init_gsDofMapper(py::module &m)
     // Member functions
     .def("asVector",                    &Class::asVector,                   "Returns a vector taking flat local indices to global")
     .def("inverseAsVector",             &Class::inverseAsVector,            "Returns a vector taking global indices to flat local")
-    // Following requires binding of gsBoxTopology
-    // .def("setMatchingInterfaces",       &Class::setMatchingInterfaces,      "Called to initialize the gsDofMapper with matching interfaces after m_bases have already been set")
     .def("colapseDofs",                 &Class::colapseDofs,                "Calls matchDof() for all dofs on the given patch side i ps. Thus, the whole set of dofs collapses to a single global dof")
     .def("matchDof", &Class::matchDof, "Couples dof \a i of patch \a u with dof \a j of patch \a v such that they refer to the same global dof at component \a comp.")
     .def("matchDofs", &Class::matchDofs, "Couples dofs \a b1 of patch \a u with dofs \a b2 of patch \a v one by one such that they refer to the same global dof.")
