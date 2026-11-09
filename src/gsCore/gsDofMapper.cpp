@@ -367,9 +367,10 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
     m_numCpldDofs.assign(nComp+1,1); m_numCpldDofs.front()=0;
 
     //todo: check nDofs%nPatches==0 and initialize correctly
-    m_offset.resize(nPatches, 0);
+    m_offset.assign(nPatches, 0);
 
-    m_dofs.resize(nComp, std::vector<index_t>(nDofs, 0));
+    m_dofs.assign(nComp, std::vector<index_t>(nDofs, 0));
+    m_tagged.clear();
 }
 
   void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation, index_t comp)

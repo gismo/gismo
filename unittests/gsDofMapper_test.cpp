@@ -447,4 +447,32 @@ SUITE(gsDofMapper_test)
         inv1.erase(12);
         CHECK(inv1 == want1);
     }
+
+    TEST(DofMapperT8_setIdentityReuse)
+    {
+        gsDofMapper m = makeM2();
+        m.markTagged(1,0,0);
+        m.setIdentity(3,20,2);
+
+        CHECK_EQUAL(0, m.taggedSize());
+        CHECK_EQUAL(2, (index_t)m.numComponents());
+        CHECK_EQUAL(3, (index_t)m.numPatches());
+        CHECK_EQUAL(0, (index_t)m.offset(0));
+        CHECK_EQUAL(0, (index_t)m.offset(1));
+        CHECK_EQUAL(0, (index_t)m.offset(2));
+        CHECK_EQUAL(40, (index_t)m.mapSize());
+        CHECK_EQUAL(20, (index_t)m.totalSize(0));
+        CHECK_EQUAL(20, (index_t)m.totalSize(1));
+        const vec zeros(20, 0);
+        CHECK(toVec(m.asVector(0)) == zeros);
+        CHECK(toVec(m.asVector(1)) == zeros);
+
+        m.finalize();
+        CHECK_EQUAL(40, m.size());
+        CHECK_EQUAL(40, m.freeSize());
+        const vec id0 = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19};
+        const vec id1 = {20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39};
+        CHECK(toVec(m.asVector(0)) == id0);
+        CHECK(toVec(m.asVector(1)) == id1);
+    }
 }
