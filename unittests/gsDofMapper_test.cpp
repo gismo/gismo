@@ -345,4 +345,51 @@ SUITE(gsDofMapper_test)
         CHECK(toVec(m.findTagged(0)) == t0);
         CHECK(toVec(m.findTagged(1)) == t1);
     }
+
+    TEST(DofMapperT5_shift0)
+    {
+        // Same matches as M2 but nothing eliminated: 8 + 7 dofs
+        gsVector<index_t> sz(2); sz << 4, 5;
+        gsDofMapper noElim(sz, 2);
+        noElim.matchDof(0,3, 1,0, 0);
+        noElim.matchDof(0,3, 1,0, 1);
+        noElim.matchDof(1,1, 1,2, 1);
+        noElim.finalize();
+        CHECK_EQUAL(15, (index_t)noElim.anyPreImages(0).size());
+
+        gsDofMapper m = makeM2();
+
+        const pairs want0 = {{0,1},{0,2},{1,1},{1,2},{1,3},{1,4},{0,3},
+                             {-1,0},{-1,0},{-1,0},{-1,0},{-1,0},{-1,0},
+                             {0,0},{-1,0}};
+        const pairs want1 = {{-1,0},{-1,0},{-1,0},{-1,0},{-1,0},{-1,0},{-1,0},
+                             {0,0},{0,1},{0,2},{1,3},{0,3},{1,1},
+                             {-1,0},{1,4}};
+        CHECK(m.anyPreImages(0) == want0);
+        CHECK(m.anyPreImages(1) == want1);
+    }
+
+    TEST(DofMapperT5_shift13)
+    {
+        gsVector<index_t> sz(2); sz << 4, 5;
+        gsDofMapper noElim(sz, 2);
+        noElim.matchDof(0,3, 1,0, 0);
+        noElim.matchDof(0,3, 1,0, 1);
+        noElim.matchDof(1,1, 1,2, 1);
+        noElim.finalize();
+        noElim.setShift(13);
+        CHECK_EQUAL(15, (index_t)noElim.anyPreImages(0).size());
+
+        gsDofMapper m = makeM2();
+        m.setShift(13);
+
+        const pairs want0 = {{0,1},{0,2},{1,1},{1,2},{1,3},{1,4},{0,3},
+                             {-1,0},{-1,0},{-1,0},{-1,0},{-1,0},{-1,0},
+                             {0,0},{-1,0}};
+        const pairs want1 = {{-1,0},{-1,0},{-1,0},{-1,0},{-1,0},{-1,0},{-1,0},
+                             {0,0},{0,1},{0,2},{1,3},{0,3},{1,1},
+                             {-1,0},{1,4}};
+        CHECK(m.anyPreImages(0) == want0);
+        CHECK(m.anyPreImages(1) == want1);
+    }
 }

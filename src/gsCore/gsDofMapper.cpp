@@ -529,7 +529,7 @@ std::vector<std::pair<index_t,index_t> > gsDofMapper::anyPreImages(index_t comp)
     const std::vector<index_t> & dofs = m_dofs[comp];
     size_t cur = 0;//local offsetted index
 
-    std::vector<std::pair<index_t,index_t> > result(dofs.size(), {-1,0});
+    std::vector<std::pair<index_t,index_t> > result(size(), {-1,0});
 
     for (citer it = dofs.begin(); it != dofs.end(); ++it, ++cur)
     {
