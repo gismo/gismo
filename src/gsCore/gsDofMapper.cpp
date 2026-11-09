@@ -569,7 +569,7 @@ gsDofMapper::inverseOnPatch(const index_t k) const
     for(size_t i = 0; i!= m_dofs.size(); ++i)
     {
         citer it = m_dofs[i].begin()+m_offset[k];
-        for(size_t j = 0; j!= m_dofs[i].size(); ++j,++it)
+        for(size_t j = 0; j!= patchSize(k, static_cast<index_t>(i)); ++j,++it)
             inv[*it]=j;
     }
     return inv;

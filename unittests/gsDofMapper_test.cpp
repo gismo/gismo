@@ -399,4 +399,52 @@ SUITE(gsDofMapper_test)
         CHECK_EQUAL(0, m.firstIndex(0));
         CHECK_EQUAL(7, m.firstIndex(1));
     }
+
+    TEST(DofMapperT7_shift0)
+    {
+        gsDofMapper m = makeM2();
+
+        // Keys are global indices, values are local dofs of the given patch
+        typedef std::map<index_t,index_t> imap;
+        imap inv0 = m.inverseOnPatch(0);
+        imap want0;
+        want0[0] = 1; want0[1] = 2; want0[6] = 3; want0[7] = 0;
+        want0[8] = 1; want0[9] = 2; want0[11] = 3; want0[13] = 0;
+        CHECK(inv0 == want0);
+
+        imap inv1 = m.inverseOnPatch(1);
+        imap want1;
+        want1[2] = 1; want1[3] = 2; want1[4] = 3; want1[5] = 4; want1[6] = 0;
+        want1[10] = 3; want1[11] = 0; want1[14] = 4;
+        CHECK_EQUAL(9, (index_t)inv1.size());
+        // Key 12 is shared by local dofs 1 and 2; which one is reported is unspecified
+        CHECK_EQUAL(1, (index_t)inv1.count(12));
+        CHECK(inv1[12] == 1 || inv1[12] == 2);
+        inv1.erase(12);
+        CHECK(inv1 == want1);
+    }
+
+    TEST(DofMapperT7_shift13)
+    {
+        gsDofMapper m = makeM2();
+        m.setShift(13);
+
+        typedef std::map<index_t,index_t> imap;
+        imap inv0 = m.inverseOnPatch(0);
+        imap want0;
+        want0[0] = 1; want0[1] = 2; want0[6] = 3; want0[7] = 0;
+        want0[8] = 1; want0[9] = 2; want0[11] = 3; want0[13] = 0;
+        CHECK(inv0 == want0);
+
+        imap inv1 = m.inverseOnPatch(1);
+        imap want1;
+        want1[2] = 1; want1[3] = 2; want1[4] = 3; want1[5] = 4; want1[6] = 0;
+        want1[10] = 3; want1[11] = 0; want1[14] = 4;
+        CHECK_EQUAL(9, (index_t)inv1.size());
+        // Key 12 is shared by local dofs 1 and 2; which one is reported is unspecified
+        CHECK_EQUAL(1, (index_t)inv1.count(12));
+        CHECK(inv1[12] == 1 || inv1[12] == 2);
+        inv1.erase(12);
+        CHECK(inv1 == want1);
+    }
 }
