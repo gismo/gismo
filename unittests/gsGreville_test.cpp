@@ -23,8 +23,8 @@ SUITE(gsGreville_test)
         kv.greville_into(g);
         CHECK_EQUAL((index_t)(kv.size() - p - 1), g.cols());
         CHECK_EQUAL(1.0, g(0, i));
-        CHECK_EQUAL(1.0, kv.greville(i));
-        CHECK(kv.greville(i) == g(0, i));
+        CHECK_EQUAL(1.0, kv.grevilleOf(i));
+        CHECK(kv.grevilleOf(i) == g(0, i));
     }
 
     TEST(grevLastOpen)
