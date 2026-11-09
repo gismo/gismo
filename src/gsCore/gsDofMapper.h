@@ -122,7 +122,12 @@ public:
 
     /** \brief Returns a vector taking global indices to flat local
 
-        Assumes that the mapper is a permutation
+        Position \a i of the result corresponds to the global index
+        <tt>i + firstIndex(0)</tt>, i.e., global indices minus the shift.
+        The entries are the flat local indices of component \a comp, or -1
+        at positions belonging to other components.
+
+        Requires isPermutation().
     */
     gsVector<index_t> inverseAsVector(index_t comp = 0) const;
 

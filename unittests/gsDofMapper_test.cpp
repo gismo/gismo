@@ -13,6 +13,7 @@
 
 #include "gismo_unittest.h"
 
+#include <algorithm>
 #include <cstring>
 #include <map>
 #include <new>
@@ -488,5 +489,31 @@ SUITE(gsDofMapper_test)
         m->finalize();
         CHECK_EQUAL(0, m->global_to_bindex(0));
         m->~gsDofMapper();
+    }
+
+    TEST(DofMapperT12_inverseAsVectorOtherComp)
+    {
+        // Two patches (2 and 3 dofs), two components, no matching or
+        // elimination: component 0 owns global indices 0-4 and component 1
+        // owns 5-9. Entries of inverseAsVector(c) outside component c's
+        // index block have no preimage and are -1.
+        gsVector<index_t> sz(2); sz << 2, 3;
+        gsDofMapper m(sz, 2);
+        m.finalize();
+
+        CHECK_EQUAL(10, m.size());
+        CHECK_EQUAL(0, m.index(0,0,0));
+        CHECK_EQUAL(4, m.index(2,1,0));
+        CHECK_EQUAL(5, m.index(0,0,1));
+        CHECK_EQUAL(9, m.index(2,1,1));
+
+        const vec want0 = {0,1,2,3,4,-1,-1,-1,-1,-1};
+        const vec want1 = {-1,-1,-1,-1,-1,0,1,2,3,4};
+        const gsVector<index_t> v0 = m.inverseAsVector(0);
+        const gsVector<index_t> v1 = m.inverseAsVector(1);
+        CHECK(toVec(v0) == want0);
+        CHECK(toVec(v1) == want1);
+        CHECK_EQUAL(5, (index_t)std::count(v0.data(), v0.data()+v0.size(), -1));
+        CHECK_EQUAL(5, (index_t)std::count(v1.data(), v1.data()+v1.size(), -1));
     }
 }

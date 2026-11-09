@@ -551,7 +551,8 @@ gsVector<index_t> gsDofMapper::inverseAsVector(index_t comp) const
 {
     GISMO_ASSERT(comp>-1,"Component is invalid");
     GISMO_ASSERT(isPermutation(), "This dofMapper is not 1-1");
-    gsVector<index_t> v(size());
+    gsVector<index_t> v;
+    v.setConstant(size(), -1);
       for(size_t j = 0; j!= m_dofs[comp].size(); ++j)
 	v[ m_dofs[comp][j] ] = j;
     return v;
