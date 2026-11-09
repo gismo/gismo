@@ -85,10 +85,10 @@ public:
     // Performs validity checks for the solution object
     bool check() const
     {
-        if ( _Sv->size()!=_u.mapper().freeSize() )
+        if ( _Sv->size() < _u.mapper().lastIndex() )
         {
-            gsWarn<< "The solution vector has wrong dimensions: "
-                  <<_Sv->size()<<" != "<<_u.mapper().freeSize() <<". ";
+            gsWarn<< "The solution vector is too short for the whole system: "
+                  <<_Sv->size()<<" < "<<_u.mapper().lastIndex() <<". ";
             return false;
         }
         if((size_t)_u.source().size()*dim()!=_u.mapper().mapSize())

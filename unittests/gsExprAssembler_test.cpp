@@ -433,4 +433,35 @@ SUITE(gsExprAssembler_test)
             }
         }
     }
+
+    // getSolution() takes a vector with the structure of the whole system,
+    // so check() must accept it for every space of a multi-space assembler
+    TEST(FeSolutionCheckWholeSystem)
+    {
+        gsMultiPatch<> mp(*gsNurbsCreator<>::BSplineSquare());
+        gsMultiBasis<> mb(mp);
+        mb.uniformRefine();
+        gsBoundaryConditions<> bcs;
+
+        gsExprAssembler<> A(2,2);
+        A.setIntegrationElements(mb);
+        auto u0 = A.getSpace(mb, 1, 0);
+        auto u1 = A.getSpace(mb, 1, 1);
+        u0.setup(bcs, dirichlet::homogeneous, 0);
+        u1.setup(bcs, dirichlet::homogeneous, 0);
+        A.initSystem();
+
+        gsMatrix<> x(A.numDofs(), 1);
+        x.setZero();
+        auto s0 = A.getSolution(u0, x);
+        auto s1 = A.getSolution(u1, x);
+
+        CHECK_EQUAL(2*mb.basis(0).size(), A.numDofs());
+        CHECK(s0.check());
+        CHECK(s1.check());
+
+        gsMatrix<> y(A.numDofs() - 1, 1);
+        auto t1 = A.getSolution(u1, y);
+        CHECK(!t1.check());
+    }
 }
