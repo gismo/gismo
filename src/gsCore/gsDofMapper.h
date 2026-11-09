@@ -62,6 +62,16 @@ namespace gismo
     The object must be finalized before it is used,
     i.e. gsDofMapper::finalize() has to be called once before use.
 
+    The global numbering can be offset with setShift() and
+    addShift(). The functions index(), asVector(), mapIndex(),
+    firstIndex() and lastIndex() return shifted indices, and every
+    function taking a global index \a gl (componentOf(), preImage(),
+    anyPreImage(), indexOnPatch(), is_free_index(),
+    is_boundary_index(), is_coupled_index(), global_to_bindex())
+    expects a shifted one. The stored numbering is unshifted: this
+    concerns freeIndex(), the positions of anyPreImages() and the keys
+    of inverseOnPatch() and inverseAsVector().
+
     \ingroup Core
 
 */
@@ -234,9 +244,10 @@ public:
          //in place
          //while (gl >= m_numFreeDofs[c]+m_numElimDofs[c]) { ++c; }
          //elim
-         return (gl<m_numFreeDofs.back() ?
-                std::distance(m_numFreeDofs.begin(), std::upper_bound(m_numFreeDofs.begin(), m_numFreeDofs.end(), gl))
-              : std::distance(m_numElimDofs.begin(),std::upper_bound(m_numElimDofs.begin(), m_numElimDofs.end(), gl-m_numFreeDofs.back())) ) - 1;
+         const index_t g = gl - m_shift;
+         return (g<m_numFreeDofs.back() ?
+                std::distance(m_numFreeDofs.begin(), std::upper_bound(m_numFreeDofs.begin(), m_numFreeDofs.end(), g))
+              : std::distance(m_numElimDofs.begin(),std::upper_bound(m_numElimDofs.begin(), m_numElimDofs.end(), g-m_numFreeDofs.back())) ) - 1;
          //while (gl >= m_numFreeDofs[c] + m_shift) { ++c; } return c-1;
     }
 

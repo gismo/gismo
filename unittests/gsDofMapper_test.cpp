@@ -1,0 +1,192 @@
+/** @file gsDofMapper_test.cpp
+
+    @brief Tests for gsDofMapper
+
+    This file is part of the G+Smo library.
+
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): H.M. Verhelst
+*/
+
+#include "gismo_unittest.h"
+
+#include <map>
+
+namespace
+{
+typedef std::vector<index_t> vec;
+typedef std::vector<std::pair<index_t,index_t> > pairs;
+
+/*
+  Fixture M2: two patches (4 and 5 local dofs), two components. Both
+  components couple dof 3 of patch 0 with dof 0 of patch 1; component 1
+  additionally couples dofs 1 and 2 of patch 1. Dof 0 of patch 0 (component 0)
+  and dof 4 of patch 1 (component 1) are eliminated.
+
+  Numbering after finalize() at shift 0. A shift s adds s to every global
+  index; stored values (tags, anyPreImages positions, inverseOnPatch keys)
+  and patch-local indices do not shift.
+
+  comp | patch | local dof -> global index           | kind
+  -----+-------+-------------------------------------+------------------------------
+   0   |   0   | 0->13, 1->0, 2->1, 3->6             | 0 eliminated; 3 coupled
+   0   |   1   | 0->6, 1->2, 2->3, 3->4, 4->5        | 0 coupled
+   1   |   0   | 0->7, 1->8, 2->9, 3->11             | 3 coupled
+   1   |   1   | 0->11, 1->12, 2->12, 3->10, 4->14   | 0, 1, 2 coupled; 4 eliminated
+
+  Free indices are 0-12 (component 0 owns 0-6, component 1 owns 7-12);
+  eliminated indices are 13 (component 0) and 14 (component 1). The coupled
+  band is {6} for component 0 and {11,12} for component 1.
+  freeSize() = 13, boundarySize() = 2, size() = 15, coupledSize() = 3,
+  firstIndex(0) = 0, firstIndex(1) = 7.
+*/
+gsDofMapper makeM2()
+{
+    gsVector<index_t> sz(2); sz << 4, 5;
+    gsDofMapper m(sz, 2);
+    m.matchDof(0,3, 1,0, 0);
+    m.matchDof(0,3, 1,0, 1);
+    m.matchDof(1,1, 1,2, 1);
+    m.eliminateDof(0,0, 0);
+    m.eliminateDof(4,1, 1);
+    m.finalize();
+    return m;
+}
+
+vec toVec(const gsVector<index_t> & v) { return vec(v.data(), v.data() + v.size()); }
+} // namespace
+
+SUITE(gsDofMapper_test)
+{
+    TEST(DofMapperT1_shift0)
+    {
+        gsDofMapper m = makeM2();
+
+        const vec as0 = {13,0,1,6, 6,2,3,4,5};
+        const vec as1 = {7,8,9,11, 11,12,12,10,14};
+        CHECK(toVec(m.asVector(0)) == as0);
+        CHECK(toVec(m.asVector(1)) == as1);
+        CHECK_EQUAL(13, m.freeSize());
+        CHECK_EQUAL(15, m.size());
+        CHECK_EQUAL(2, m.boundarySize());
+
+        const index_t comp[15] = {0,0,0,0,0,0,0, 1,1,1,1,1,1, 0,1};
+        bool componentsOk = true;
+        for (index_t g = 0; g < 15; ++g)
+        {
+            const index_t c = m.componentOf(g);
+            CHECK_EQUAL(comp[g], c);
+            componentsOk = componentsOk && (c == comp[g]);
+        }
+
+        const vec free0 = {1,2,3};
+        const vec free1 = {0,1,2,3,4};
+        const vec bnd0 = {0};
+        CHECK(toVec(m.findFree(0)) == free0);
+        CHECK(toVec(m.findFree(1)) == free1);
+        CHECK(toVec(m.findBoundary(0)) == bnd0);
+        CHECK_EQUAL(0, (index_t)m.findBoundary(1).size());
+
+        // preImage(), anyPreImage() and indexOnPatch() search the component reported by componentOf()
+        if (!componentsOk) return;
+
+        const pairs pre[15] = {
+            {{0,1}}, {{0,2}}, {{1,1}}, {{1,2}}, {{1,3}}, {{1,4}}, {{0,3},{1,0}},
+            {{0,0}}, {{0,1}}, {{0,2}}, {{1,3}}, {{0,3},{1,0}}, {{1,1},{1,2}},
+            {{0,0}}, {{1,4}} };
+        for (index_t g = 0; g < 15; ++g)
+        {
+            pairs got;
+            m.preImage(g, got);
+            CHECK(got == pre[g]);
+        }
+
+        const std::pair<index_t,index_t> any0(0,1), any6(0,3), any12(1,1), any13(0,0), any14(1,4);
+        CHECK(m.anyPreImage(0) == any0);
+        CHECK(m.anyPreImage(6) == any6);
+        CHECK(m.anyPreImage(12) == any12);
+        CHECK(m.anyPreImage(13) == any13);
+        CHECK(m.anyPreImage(14) == any14);
+
+        index_t l = -1;
+        CHECK(m.indexOnPatch(6, 0, l));
+        CHECK_EQUAL(3, l);
+        CHECK(m.indexOnPatch(6, 1, l));
+        CHECK_EQUAL(0, l);
+        CHECK(m.indexOnPatch(12, 1, l));
+        CHECK_EQUAL(1, l);
+        CHECK(m.indexOnPatch(13, 0, l));
+        CHECK_EQUAL(0, l);
+        CHECK(m.indexOnPatch(14, 1, l));
+        CHECK_EQUAL(4, l);
+        CHECK(!m.indexOnPatch(0, 1, l));
+    }
+
+    TEST(DofMapperT1_shift13)
+    {
+        gsDofMapper m = makeM2();
+        m.setShift(13);
+
+        const vec as0 = {26,13,14,19, 19,15,16,17,18};
+        const vec as1 = {20,21,22,24, 24,25,25,23,27};
+        CHECK(toVec(m.asVector(0)) == as0);
+        CHECK(toVec(m.asVector(1)) == as1);
+        CHECK_EQUAL(13, m.freeSize());
+        CHECK_EQUAL(15, m.size());
+        CHECK_EQUAL(2, m.boundarySize());
+
+        const index_t comp[15] = {0,0,0,0,0,0,0, 1,1,1,1,1,1, 0,1};
+        bool componentsOk = true;
+        for (index_t g = 0; g < 15; ++g)
+        {
+            const index_t c = m.componentOf(13 + g);
+            CHECK_EQUAL(comp[g], c);
+            componentsOk = componentsOk && (c == comp[g]);
+        }
+
+        const vec free0 = {1,2,3};
+        const vec free1 = {0,1,2,3,4};
+        const vec bnd0 = {0};
+        CHECK(toVec(m.findFree(0)) == free0);
+        CHECK(toVec(m.findFree(1)) == free1);
+        CHECK(toVec(m.findBoundary(0)) == bnd0);
+        CHECK_EQUAL(0, (index_t)m.findBoundary(1).size());
+
+        // preImage(), anyPreImage() and indexOnPatch() search the component reported by componentOf()
+        if (!componentsOk) return;
+
+        const pairs pre[15] = {
+            {{0,1}}, {{0,2}}, {{1,1}}, {{1,2}}, {{1,3}}, {{1,4}}, {{0,3},{1,0}},
+            {{0,0}}, {{0,1}}, {{0,2}}, {{1,3}}, {{0,3},{1,0}}, {{1,1},{1,2}},
+            {{0,0}}, {{1,4}} };
+        for (index_t g = 0; g < 15; ++g)
+        {
+            pairs got;
+            m.preImage(13 + g, got);
+            CHECK(got == pre[g]);
+        }
+
+        const std::pair<index_t,index_t> any0(0,1), any6(0,3), any12(1,1), any13(0,0), any14(1,4);
+        CHECK(m.anyPreImage(13 + 0) == any0);
+        CHECK(m.anyPreImage(13 + 6) == any6);
+        CHECK(m.anyPreImage(13 + 12) == any12);
+        CHECK(m.anyPreImage(13 + 13) == any13);
+        CHECK(m.anyPreImage(13 + 14) == any14);
+
+        index_t l = -1;
+        CHECK(m.indexOnPatch(13 + 6, 0, l));
+        CHECK_EQUAL(3, l);
+        CHECK(m.indexOnPatch(13 + 6, 1, l));
+        CHECK_EQUAL(0, l);
+        CHECK(m.indexOnPatch(13 + 12, 1, l));
+        CHECK_EQUAL(1, l);
+        CHECK(m.indexOnPatch(13 + 13, 0, l));
+        CHECK_EQUAL(0, l);
+        CHECK(m.indexOnPatch(13 + 14, 1, l));
+        CHECK_EQUAL(4, l);
+        CHECK(!m.indexOnPatch(13 + 0, 1, l));
+    }
+}
