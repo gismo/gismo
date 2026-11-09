@@ -193,9 +193,10 @@ public:
     /// markCoupledAsTagged() and then use the corresponding functions for tagged dofs.
     void permuteFreeDofs(const gsVector<index_t>& permutation, index_t comp = 0);
 
-    ///\brief Returns the smallest value of the indices for \a comp
+    ///\brief Returns the smallest (shifted) global index of the free
+    ///dofs of component \a comp. Valid after finalize().
     index_t firstIndex(index_t comp = 0) const
-    { return m_numFreeDofs[comp] + m_numElimDofs[comp] + m_shift; }
+    { return m_numFreeDofs[comp] + m_shift; }
 
     ///\brief Returns one past the biggest value of the free indices
     index_t lastIndex() const { return m_shift + freeSize(); }

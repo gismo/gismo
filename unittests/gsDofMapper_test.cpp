@@ -392,4 +392,11 @@ SUITE(gsDofMapper_test)
         CHECK(m.anyPreImages(0) == want0);
         CHECK(m.anyPreImages(1) == want1);
     }
+
+    TEST(DofMapperT6_firstIndex)
+    {
+        gsDofMapper m = makeM2();
+        CHECK_EQUAL(0, m.firstIndex(0));
+        CHECK_EQUAL(7, m.firstIndex(1));
+    }
 }
