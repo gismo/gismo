@@ -13,7 +13,9 @@
 
 #include "gismo_unittest.h"
 
+#include <cstring>
 #include <map>
+#include <new>
 
 namespace
 {
@@ -474,5 +476,17 @@ SUITE(gsDofMapper_test)
         const vec id1 = {20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39};
         CHECK(toVec(m.asVector(0)) == id0);
         CHECK(toVec(m.asVector(1)) == id1);
+    }
+
+    TEST(DofMapperT11_defaultCtorBoundaryShift)
+    {
+        // Construct in a poisoned buffer so that a member the default
+        // constructor leaves uninitialised reads back as 0xAB bytes
+        alignas(gsDofMapper) unsigned char buf[sizeof(gsDofMapper)];
+        std::memset(buf, 0xAB, sizeof buf);
+        gsDofMapper * m = new (buf) gsDofMapper();
+        m->finalize();
+        CHECK_EQUAL(0, m->global_to_bindex(0));
+        m->~gsDofMapper();
     }
 }

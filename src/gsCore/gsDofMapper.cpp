@@ -18,7 +18,7 @@ namespace gismo
 {
 
 gsDofMapper::gsDofMapper() :
-  m_offset(1,0), m_shift(0), m_numFreeDofs(1,0), m_numElimDofs(1,0),
+  m_offset(1,0), m_shift(0), m_bshift(0), m_numFreeDofs(1,0), m_numElimDofs(1,0),
   m_numCpldDofs(1,0), m_curElimId(-1)
 { }
 
