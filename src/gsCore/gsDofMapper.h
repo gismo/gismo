@@ -243,6 +243,8 @@ public:
     index_t componentOf(index_t gl) const
     {
          GISMO_ASSERT(m_curElimId>=0,"finalize() was not called on gsDofMapper");
+         GISMO_ASSERT(gl >= m_shift && gl < m_shift + size(),
+                      "componentOf(): global index "<<gl<<" outside ["<<m_shift<<","<<m_shift+size()<<")");
          //index_t c = 1; // could do some binary search
          //in place
          //while (gl >= m_numFreeDofs[c]+m_numElimDofs[c]) { ++c; }
