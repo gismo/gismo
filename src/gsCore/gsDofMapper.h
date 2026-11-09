@@ -20,7 +20,7 @@
 namespace gismo
 {
 
-#define MAPPER_PATCH_DOF(a,b,c) m_dofs[c][m_offset[b]+a]
+#define MAPPER_PATCH_DOF(a,b,c) m_dofs[c][patchOffset(b,c)+a]
 
 /** @brief Maintains a mapping from patch-local dofs to global dof indices
     and allows the elimination of individual dofs.
@@ -87,6 +87,7 @@ public:
     {
         m_dofs  .swap(other.m_dofs);
         m_offset.swap(other.m_offset);
+        std::swap(m_nPatches   , other.m_nPatches);
 
         std::swap(m_shift      , other.m_shift);
         std::swap(m_bshift     , other.m_bshift);
@@ -102,6 +103,25 @@ private:
     /// Initialize by vector of DoF indices and dimension
     void initPatchDofs(const gsVector<index_t> & patchDofSizes,
 		       index_t nComp = 1);
+
+    /// Allocates \a nComp components sized by m_offset and resets the numbering
+    void initDofsFromOffsets(index_t nComp);
+
+    /// Start of the offset row of component \a c in m_offset
+    size_t offsetRow(index_t c) const
+    { return static_cast<size_t>(c) * (m_nPatches + 1); }
+
+    /// Offset of patch \a k in m_dofs[c]; \a k = numPatches() gives m_dofs[c].size()
+    size_t patchOffset(index_t k, index_t c) const
+    {
+        GISMO_ASSERT(k >= 0 && static_cast<size_t>(k) <= m_nPatches && c >= 0
+                     && offsetRow(c) + m_nPatches < m_offset.size(),
+                     "Invalid patch "<< k <<" or component "<< c <<" in gsDofMapper");
+        return m_offset[offsetRow(c) + k];
+    }
+
+    /// Patch holding the flat local index \a cur of component \a c
+    index_t patchOf(size_t cur, index_t c) const;
 
 public:
 
@@ -386,11 +406,11 @@ public:
 
     index_t boundarySizeWithDuplicates() const;
 
-    /// Returns the offset corresponding to patch \a k
-    size_t offset(int k) const {return m_offset[k];}
+    /// Returns the offset corresponding to patch \a k (of component 0)
+    size_t offset(int k) const {return patchOffset(k, 0);}
 
     /// Returns the number of patches present underneath the mapper
-    size_t numPatches() const {return m_offset.size();}
+    size_t numPatches() const {return m_nPatches;}
 
     /// \brief Returns the total number of patch-local degrees of
     /// freedom that are being mapped
@@ -403,11 +423,8 @@ public:
     /// that live on patch \a k for component \a c
     size_t patchSize(const index_t k, const index_t c = 0) const
     {
-        const size_t k1(k+1);
-        GISMO_ASSERT(k1<=numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
-        if ( 1==m_offset.size() ) return  m_dofs[c].size();
-        else if ( k1==m_offset.size() ) return (m_dofs[c].size() - m_offset.back());
-        else return (m_offset[k1]-m_offset[k]);
+        GISMO_ASSERT(static_cast<size_t>(k+1)<=numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+        return patchOffset(k+1, c) - patchOffset(k, c);
     }
 
     size_t totalSize(const index_t c = 0) const
@@ -497,8 +514,12 @@ private:
     // offsets for patch-local indices
     std::vector<std::vector<index_t> >  m_dofs;
 
-    /// Offsets
+    /// Offsets: a row of m_nPatches+1 entries per component (at least
+    /// one row), ending with m_dofs[c].size()
     std::vector<size_t> m_offset;
+
+    /// Number of patches
+    size_t m_nPatches;
 
     /// Shifting of the global index (zero by default)
     index_t m_shift;

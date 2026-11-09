@@ -18,8 +18,8 @@ namespace gismo
 {
 
 gsDofMapper::gsDofMapper() :
-  m_offset(1,0), m_shift(0), m_numFreeDofs(1,0), m_numElimDofs(1,0),
-  m_numCpldDofs(1,0), m_curElimId(-1)
+  m_offset(2,0), m_nPatches(1), m_shift(0),
+  m_numFreeDofs(1,0), m_numElimDofs(1,0), m_numCpldDofs(1,0), m_curElimId(-1)
 { }
 
 void gsDofMapper::localToGlobal(const gsMatrix<index_t>& locals,
@@ -364,6 +364,7 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
   void gsDofMapper::setIdentity(index_t nPatches, size_t nDofs,
 				size_t nComp)
 {
+    GISMO_ASSERT(nPatches >= 0, "setIdentity: Invalid number of patches " << nPatches);
     m_curElimId   = -1;
     m_shift = m_bshift = 0;
     m_numFreeDofs.assign(nComp+1,nDofs); m_numFreeDofs.front()=0;
@@ -371,9 +372,25 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
     m_numCpldDofs.assign(nComp+1,1); m_numCpldDofs.front()=0;
 
     //todo: check nDofs%nPatches==0 and initialize correctly
-    m_offset.resize(nPatches, 0);
+    // Existing patches keep component 0's offsets, new ones start at 0;
+    // a moved-from mapper has none
+    std::vector<size_t> patchStart(m_offset.begin(), m_offset.begin()
+                                   + std::min(m_nPatches, m_offset.size()));
+    patchStart.resize(nPatches, 0);
 
     m_dofs.resize(nComp, std::vector<index_t>(nDofs, 0));
+
+    // Every component gets the same row, ending at its own size
+    const size_t np = patchStart.size();
+    const size_t nRows = std::max<size_t>(m_dofs.size(), 1);
+    m_offset.resize(nRows * (np+1));
+    for (size_t r = 0; r != nRows; ++r)
+    {
+        size_t * row = m_offset.data() + r*(np+1);
+        std::copy(patchStart.begin(), patchStart.end(), row);
+        row[np] = (r < m_dofs.size() ? m_dofs[r].size() : nDofs);
+    }
+    m_nPatches = np;
 }
 
   void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation, index_t comp)
@@ -420,28 +437,42 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
 
   void gsDofMapper::initPatchDofs(const gsVector<index_t> & patchDofSizes, index_t nComp)
 {
+    const size_t nPatches = patchDofSizes.size();
+    GISMO_ENSURE( nPatches > 0, "initPatchDofs: Expected at least one patch, got " << nPatches << ".");
+
+    // Initialize offsets, the same row for every component
+    m_nPatches = nPatches;
+    const size_t nRows = std::max<index_t>(nComp, 1);
+    m_offset.resize(nRows * (nPatches+1));
+    for (size_t r = 0; r != nRows; ++r)
+    {
+        size_t * row = m_offset.data() + r*(nPatches+1);
+        row[0] = 0;
+        for (size_t k = 0; k != nPatches; ++k)
+            row[k+1] = row[k] + patchDofSizes[k];
+    }
+
+    initDofsFromOffsets(nComp);
+}
+
+void gsDofMapper::initDofsFromOffsets(index_t nComp)
+{
     m_curElimId   = -1;
     m_shift = m_bshift = 0;
     m_numElimDofs.assign(nComp+1,0);
     m_numCpldDofs.assign(nComp+1,1); m_numCpldDofs.front()=0;
 
-    const size_t nPatches = patchDofSizes.size();
-    GISMO_ENSURE( nPatches > 0, "initPatchDofs: Expected at least one patch, got " << nPatches << ".");
-
-    // Initialize offsets and dof holder
-    m_offset.clear();
-    m_offset.reserve( nPatches );
-    m_offset.push_back(0);
-    for (size_t k = 1; k < nPatches; ++k)
-    {
-        m_offset.push_back( m_offset.back() + patchDofSizes[k-1] );
-    }
-
-    m_numFreeDofs.assign(nComp+1,
-    m_offset.back() + patchDofSizes[nPatches-1]);
+    // Before finalize(), entry c+1 counts the free dofs of component c
+    m_numFreeDofs.resize(nComp+1);
     m_numFreeDofs.front()=0;
 
-    m_dofs.resize(nComp, std::vector<index_t>(m_numFreeDofs.back(), 0));
+    m_dofs.resize(nComp);
+    for (index_t c = 0; c != nComp; ++c)
+    {
+        const size_t nDofs = patchOffset(m_nPatches, c);
+        m_numFreeDofs[c+1] = nDofs;
+        m_dofs[c].assign(nDofs, 0);
+    }
 }
 
 void gsDofMapper::replaceDofGlobally(index_t oldIdx, index_t newIdx)
@@ -484,7 +515,8 @@ void gsDofMapper::preImage(const index_t gl,
 {
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     typedef std::vector<index_t>::const_iterator citer;
-    const std::vector<index_t> & dofs = m_dofs[componentOf(gl)];
+    const index_t c = componentOf(gl);
+    const std::vector<index_t> & dofs = m_dofs[c];
     result.clear();
     size_t cur = 0;//local offsetted index
 
@@ -493,11 +525,10 @@ void gsDofMapper::preImage(const index_t gl,
         if ( *it == gl )
         {
             // Get the patch index of "cur" by "un-offsetting"
-            const index_t patch = std::upper_bound(m_offset.begin(), m_offset.end(), cur)
-                                - m_offset.begin() - 1;
+            const index_t patch = patchOf(cur, c);
 
             // Found a patch-dof pair
-            result.push_back( std::make_pair(patch, cur - m_offset[patch] - m_shift) );
+            result.push_back( std::make_pair(patch, cur - patchOffset(patch,c) - m_shift) );
         }
     }
 }
@@ -506,7 +537,8 @@ std::pair<index_t,index_t> gsDofMapper::anyPreImage(const index_t gl) const
 {
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     typedef std::vector<index_t>::const_iterator citer;
-    const std::vector<index_t> & dofs = m_dofs[componentOf(gl)];
+    const index_t c = componentOf(gl);
+    const std::vector<index_t> & dofs = m_dofs[c];
     size_t cur = 0;//local offsetted index
 
     for (citer it = dofs.begin(); it != dofs.end(); ++it, ++cur)
@@ -514,11 +546,10 @@ std::pair<index_t,index_t> gsDofMapper::anyPreImage(const index_t gl) const
         if ( *it == gl )
         {
             // Get the patch index of "cur" by "un-offsetting"
-            const index_t patch = std::upper_bound(m_offset.begin(), m_offset.end(), cur)
-                                - m_offset.begin() - 1;
+            const index_t patch = patchOf(cur, c);
 
             // Found a patch-dof pair
-            return std::make_pair(patch, cur - m_offset[patch] - m_shift);
+            return std::make_pair(patch, cur - patchOffset(patch,c) - m_shift);
         }
     }
     GISMO_ERROR("The global index "<< gl <<" is not valid");
@@ -538,14 +569,20 @@ std::vector<std::pair<index_t,index_t> > gsDofMapper::anyPreImages(index_t comp)
         if ( -1 == result[*it].first )
         {
             // Get the patch index of "cur" by "un-offsetting"
-            const index_t patch = std::upper_bound(m_offset.begin(), m_offset.end(), cur)
-                - m_offset.begin() - 1;
+            const index_t patch = patchOf(cur, comp);
 
             // Found a patch-dof pair
-            result[*it] = std::make_pair(patch, cur - m_offset[patch] - m_shift);
+            result[*it] = std::make_pair(patch, cur - patchOffset(patch,comp) - m_shift);
         }
     }
     return result;
+}
+
+index_t gsDofMapper::patchOf(const size_t cur, const index_t c) const
+{
+    // Last patch starting at or before cur, so empty patches are skipped
+    const std::vector<size_t>::const_iterator row = m_offset.begin() + offsetRow(c);
+    return std::upper_bound(row, row + m_nPatches, cur) - row - 1;
 }
 
 gsVector<index_t> gsDofMapper::inverseAsVector(index_t comp) const
@@ -570,7 +607,7 @@ gsDofMapper::inverseOnPatch(const index_t k) const
 
     for(size_t i = 0; i!= m_dofs.size(); ++i)
     {
-        citer it = m_dofs[i].begin()+m_offset[k];
+        citer it = m_dofs[i].begin()+patchOffset(k,i);
         for(size_t j = 0; j!= m_dofs[i].size(); ++j,++it)
             inv[*it]=j;
     }
@@ -582,8 +619,9 @@ bool gsDofMapper::indexOnPatch(const index_t gl, const index_t k, index_t & loca
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
     typedef std::vector<index_t>::const_iterator citer;
-    const std::vector<index_t> & dofs = m_dofs[componentOf(gl)];
-    const citer istart = dofs.begin()+m_offset[k];
+    const index_t c = componentOf(gl);
+    const std::vector<index_t> & dofs = m_dofs[c];
+    const citer istart = dofs.begin()+patchOffset(k,c);
     const citer iend   = istart + patchSize(k);
     auto it = std::find(istart, iend, gl);
     if (iend==it) return false;
@@ -649,7 +687,7 @@ gsVector<index_t> gsDofMapper::findBoundary(const index_t k) const
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
     const index_t s = m_numFreeDofs.back() + m_shift - 1;
     typedef std::vector<index_t>::const_iterator citer;
-    citer istart = m_dofs[0].begin() + m_offset[k];
+    citer istart = m_dofs[0].begin() + patchOffset(k,0);
     citer iend   = istart + patchSize(k);
     return find_impl(istart, iend, GS_BIND2ND(std::greater<index_t>(),s));
 }
@@ -660,7 +698,7 @@ gsVector<index_t> gsDofMapper::findFree(const index_t k) const
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
     const index_t s = m_numFreeDofs.back() + m_shift;
     typedef std::vector<index_t>::const_iterator citer;
-    citer istart = m_dofs[0].begin() + m_offset[k];
+    citer istart = m_dofs[0].begin() + patchOffset(k,0);
     citer iend   = istart + patchSize(k);
     return find_impl(istart, iend, GS_BIND2ND(std::less<index_t>(),s));
 }
@@ -682,7 +720,7 @@ gsVector<index_t> gsDofMapper::findCoupled(const index_t k, const index_t j) con
     if (k==j) return gsVector<index_t>();
 
     typedef std::vector<index_t>::const_iterator citer;
-    citer istart = m_dofs[0].begin() + m_offset[k];
+    citer istart = m_dofs[0].begin() + patchOffset(k,0);
     citer iend   = istart + patchSize(k);
 
     const index_t l = m_numFreeDofs.back()+m_shift-m_numCpldDofs.back()-1;
@@ -691,7 +729,7 @@ gsVector<index_t> gsDofMapper::findCoupled(const index_t k, const index_t j) con
         return find_impl(istart, iend, _isBetween(l,u) );
     else
     {
-        citer istartj = m_dofs[0].begin() + m_offset[j];
+        citer istartj = m_dofs[0].begin() + patchOffset(j,0);
         citer iendj   = istartj + patchSize(j);
         std::list<index_t> v;
         citer cur = std::find_if(istart, iend, _isBetween(l,u));
@@ -716,7 +754,7 @@ gsVector<index_t> gsDofMapper::findFreeUncoupled(const index_t k) const
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
     typedef std::vector<index_t>::const_iterator citer;
-    const citer istart = m_dofs[0].begin() + m_offset[k];
+    const citer istart = m_dofs[0].begin() + patchOffset(k,0);
     const citer iend   = istart + patchSize(k);
     return find_impl(istart, iend,
                      _isBetween(m_shift-1, m_numFreeDofs.back()+m_shift-m_numCpldDofs.back()) );
@@ -727,7 +765,7 @@ gsVector<index_t> gsDofMapper::findTagged(const index_t k) const
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
     typedef std::vector<index_t>::const_iterator citer;
-    citer istart = m_dofs[0].begin() + m_offset[k];
+    citer istart = m_dofs[0].begin() + patchOffset(k,0);
     citer iend   = istart + patchSize(k);
     std::list<index_t> si;
     std::set_intersection(istart, iend, m_tagged.begin(),
