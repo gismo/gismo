@@ -34,10 +34,11 @@ namespace gismo
     per-patch local dofs to an enumeration of global dofs.
     Furthermore, dofs can also be marked as eliminated.
 
-    This is a a many-to-one mapping: many patch-local dofs are mapped
-    to a single global dfo (index).
+    This is a many-to-one mapping: many patch-local dofs are mapped
+    to a single global dof (index).
     Every global dof gets a unique number, forming a continuous range
-    starting from 0. This range has length gsDofMapper::size().
+    of length gsDofMapper::size() that starts at firstIndex(0), i.e. at
+    0 unless the numbering is shifted (see below).
     The dofs are numbered in the following order:
 
     - first the standard \em free (non-eliminated) dofs, ie. dofs that
@@ -62,17 +63,30 @@ namespace gismo
     The object must be finalized before it is used,
     i.e. gsDofMapper::finalize() has to be called once before use.
 
-    The global numbering can be offset with setShift() and
-    addShift(). The functions index(), asVector(), mapIndex(),
-    firstIndex() and lastIndex() return shifted indices, and every
-    function taking a global index \a gl (componentOf(), preImage(),
-    anyPreImage(), indexOnPatch(), is_free_index(),
-    is_boundary_index(), is_coupled_index(), global_to_bindex())
-    expects a shifted one. The stored numbering is unshifted: this
-    concerns freeIndex(), the positions of anyPreImages() and the keys
-    of inverseOnPatch() and inverseAsVector().
-    Tagged dofs are stored unshifted, so getTagged() returns unshifted
-    indices while is_tagged_index() expects a shifted \a gl.
+    The global numbering can be offset with setShift() and addShift().
+    A global index is a token valid only for the mapper that produced
+    it: shifted numberings of different mappers overlap (in a block
+    system, the eliminated block of one space overlaps the free block
+    of the next). For a free dof, the shifted index is also its
+    row/column in the block system of the assembler that set the
+    shift; the index of an eliminated dof has no meaning outside its
+    mapper.
+
+    Every function returning a global index (index(), asVector(),
+    mapIndex(), firstIndex(), lastIndex(), the keys of
+    inverseOnPatch()) returns a shifted one, and every function taking
+    a global index \a gl (componentOf(), preImage(), anyPreImage(),
+    indexOnPatch(), is_free_index(), is_boundary_index(),
+    is_coupled_index(), is_tagged_index(), global_to_bindex()) expects
+    a shifted one. Exceptions:
+    - anyPreImages() and inverseAsVector() return dense vectors whose
+      position <tt>gl - firstIndex(0)</tt> holds the entry of \a gl;
+    - permuteFreeDofs() permutes the free positions 0..freeSize()-1;
+    - bindex(), global_to_bindex(), cindex() and tindex() return ranks
+      among the eliminated, coupled and tagged dofs respectively, which
+      do not depend on the shift;
+    - the deprecated freeIndex() and getTagged() return stored,
+      unshifted values.
 
     \ingroup Core
 
@@ -281,6 +295,10 @@ public:
 
     /// @brief Returns the boundary index of local dof \a i of patch \a k.
     ///
+    /// The boundary index is the rank of the dof among the eliminated
+    /// dofs, 0..boundarySize()-1, independent of the shift, plus the
+    /// boundary shift, which is 0 unless the deprecated
+    /// setBoundaryShift() was called.
     /// Produces undefined results if local dof (i,k) does not lie on the boundary.
     inline index_t bindex(index_t i, index_t k = 0, index_t c = 0) const
     {
@@ -294,7 +312,9 @@ public:
     bool allFree() const
     { return m_numFreeDofs.back()+m_numElimDofs.back()==m_curElimId; }
 
-    /// @brief Returns the coupled dof index
+    /// @brief Returns the rank of local dof (i,k,c) among the coupled dofs,
+    /// 0..coupledSize()-1 counted over all components, independent of the shift.
+    /// Produces undefined results if the dof is not coupled.
     inline index_t cindex(index_t i, index_t k = 0, index_t c = 0) const
     {
         GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
@@ -302,7 +322,9 @@ public:
 	  + m_numCpldDofs[c+1];
     }
 
-    /// @brief Returns the tagged dof index
+    /// @brief Returns the rank of local dof (i,k,c) among the tagged dofs,
+    /// 0..taggedSize()-1, independent of the shift. If the dof is not
+    /// tagged, returns the position at which it would be inserted.
     inline index_t tindex(index_t i, index_t k = 0, index_t c = 0) const
     {
         GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
@@ -312,6 +334,7 @@ public:
     /// @brief Returns the boundary index of global dof \a gl.
     ///
     /// Produces undefined results if dof \a gl does not lie on the boundary.
+    /// Same numbering as bindex(): bindex(i,k,c) == global_to_bindex(index(i,k,c)).
     inline index_t global_to_bindex(index_t gl) const
     {
         GISMO_ASSERT( is_boundary_index( gl ),
@@ -456,8 +479,12 @@ public:
     /// pair (patch,dof) that maps to \a gl
     std::pair<index_t,index_t> anyPreImage(index_t gl) const;
 
-    /// \brief For all global index, this function assigns
-    /// a pair (patch,dof) that maps to that global index
+    /// \brief Returns, for every global index of the mapper, a pair
+    /// (patch, local dof) of component \a comp that maps to it.
+    ///
+    /// The vector has size() entries; the entry of global index \a gl
+    /// is at position <tt>gl - firstIndex(0)</tt>. Entries without a
+    /// pre-image in component \a comp are (-1,0).
     std::vector<std::pair<index_t,index_t> > anyPreImages(index_t comp = 0) const;
 
     /// \brief Produces the inverse of the mapping on patch \a k
