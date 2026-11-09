@@ -189,9 +189,9 @@ unsigned findHyperPlaneIntersections (
     T newK = NAN; // knot to be insert
 
     // counters
-    index_t curC = 1; // current coefficient (Control Point)
-    index_t lstC = 0; // coefficient in which the position became the current one
-    index_t intB = 0; // we insert a new knot between the Greville abscissas of intB and curC
+    int curC = 1; // current coefficient (Control Point)
+    int lstC = 0; // coefficient in which the position became the current one
+    int intB = 0; // we insert a new knot between the Greville abscissas of intB and curC
     int newK_rep = 0; // number of time we inserted the same knot
     unsigned rootCount = 0; // total number of roots found
 
@@ -260,14 +260,14 @@ unsigned findHyperPlaneIntersections (
             else
             {
                 is_odd = true;
-                intB=math::max<index_t>(0,lstC-1);
+                intB=math::max(0,lstC-1);
             }
             break;
         default:
             GISMO_ASSERT(false, __FUNCTION__<<"The impossible happened! Check for B..S!!" );
         }
-        const T grevB = crv.knots().greville(intB);
-        const T grevE = crv.knots().greville(curC);
+        const T grevB = crv.knots().grevilleOf(intB);
+        const T grevE = crv.knots().grevilleOf(curC);
         const T coeffB = crv.coef(curC).dot(normal)-ref;
         const T coeffE = ref-crv.coef(intB).dot(normal);
         const T denom  = (crv.coef(curC)-crv.coef(intB)).dot(normal);
@@ -311,7 +311,7 @@ unsigned findHyperPlaneIntersections (
             }
         }
         crv.insertKnot(newK);
-        curC = math::max<index_t>(math::max<index_t>(curC-deg, lstC-1),0); // incremented by one on end of loop
+        curC = math::max(math::max(curC-deg, lstC-1),0); // incremented by one on end of loop
         curP = relativePosition(crv.coef(curC).dot(normal), ref, tol);
         oldK = newK;
     }
