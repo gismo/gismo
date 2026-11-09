@@ -474,7 +474,7 @@ public:
             {
                 ind = m_bases[i]->tensorIndex(*it);
                 for ( short_t r = 0; r!=d; ++r )
-                    result(r,k) = m_bases[i]->knots(r).greville( ind[r] );
+                    result(r,k) = m_bases[i]->knots(r).grevilleOf( ind[r] );
                 k++;
             }
         }
