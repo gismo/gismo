@@ -35,6 +35,8 @@ template <class T>
 class gsASG1LocalFitter
 {
 public:
+    enum class FittingMode { Global, Local };
+
     struct SideInfo {
         short_t nDir, tDir;
         bool par;
@@ -72,6 +74,9 @@ public:
 
     void fit();
 
+    FittingMode mode() const { return m_mode; }
+    void setMode(FittingMode mode) { m_mode = mode; }
+
     const gsMultiPatch<T>& result() const { return m_result; }
     gsMultiPatch<T> giveResult() { return give(m_result); }
 
@@ -96,6 +101,9 @@ public:
                                                index_t derivative = 0);
 
 protected:
+    void fitGlobal();
+    void fitLocal();
+
     void step0_computeGluingFunctions();
     void step1_solveVertexProblems();
     void step2_solveInterfaceProblems();
@@ -123,6 +131,8 @@ private:
 
     mutable T m_max_res_a;
     mutable T m_max_res_b;
+
+    FittingMode m_mode = FittingMode::Global;
 };
 
 } // namespace gismo

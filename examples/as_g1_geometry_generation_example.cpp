@@ -1,14 +1,16 @@
 /** @file as_g1_geometry_generation_example.cpp
-    @brief Example demonstrating the AS-G1 Multi-Patch Geometry Generator in G+Smo.
+    @brief Example demonstrating the AS-G1 Multi-Patch Geometry Generator in G+Smo with Arbitrary Boundary Curve Adapter.
 
-    Implements the "Bilinear Skeleton + Linearized Constrained Optimization" pipeline
-    around an extraordinary vertex (e.g. valence V = 5) with curved outer boundaries.
+    Implements the "Virtual Bilinear Skeleton + Linearized Constrained Optimization" pipeline
+    around an extraordinary vertex (e.g. valence V = 5) for arbitrary admissible closed boundary curves
+    (ellipse, teardrop, bean, closed B-spline, external XML file, star, polygon, curved).
 
     Author(s): F. Hasanova, Antigravity
 */
 
 #include <gismo.h>
 #include <gsModeling/gsAsG1GeometryGenerator.h>
+#include <gsModeling/gsAsG1BoundaryAdapter.h>
 #include <iostream>
 #include <iomanip>
 
@@ -18,10 +20,10 @@ int main(int argc, char* argv[])
 {
     int valence = 5;
     int degree = 3;
-    int numRefine = 0;
+    int numRefine = 1;
     real_t radius = 1.0;
     real_t midRadius = 1.2;
-    std::string shape = "curved";
+    std::string shape = "ellipse";
     std::string outPrefix = "as_g1_patch5";
     int numSamples = 100;
     bool writeFiles = true;
@@ -30,16 +32,18 @@ int main(int argc, char* argv[])
     real_t anglePerturb = 0.15;
     real_t radiusPerturb = 0.2;
     std::string boundaryFile = "";
+    std::string curveFile = "";
 
-    gsCmdLine cmd("AS-G1 Multi-Patch Geometry Generator Example.");
+    gsCmdLine cmd("AS-G1 Multi-Patch Geometry Generator with Arbitrary Boundary Adapter.");
     cmd.addInt("v", "valence", "Valence of central extraordinary vertex", valence);
     cmd.addInt("p", "degree", "B-spline degree (p >= 3)", degree);
     cmd.addInt("r", "refine", "Number of uniform knot refinements", numRefine);
-    cmd.addReal("R", "radius", "Outer corner radius", radius);
-    cmd.addReal("m", "midRadius", "Outer mid-point radius", midRadius);
-    cmd.addString("s", "shape", "Boundary shape: curved, polygon, star", shape);
-    cmd.addString("o", "output", "Output filename prefix", outPrefix);
+    cmd.addReal("R", "radius", "Outer corner radius (for synthetic shapes)", radius);
+    cmd.addReal("m", "midRadius", "Outer mid-point radius (for synthetic shapes)", midRadius);
+    cmd.addString("s", "shape", "Boundary shape: ellipse, teardrop, bean, bspline, file, curved, polygon, star", shape);
+    cmd.addString("c", "curve", "Path to boundary curve XML file (when shape=file)", curveFile);
     cmd.addString("b", "boundaryFile", "Path to boundary curves definition file (from Mathematica designer)", boundaryFile);
+    cmd.addString("o", "output", "Output filename prefix", outPrefix);
     cmd.addInt("q", "samples", "Number of test samples per interface", numSamples);
     cmd.addSwitch("w", "write", "Export Paraview and XML files", writeFiles);
     cmd.addSwitch("x", "random", "Generate randomized (asymmetric) geometry with perturbed control points", randomize);
@@ -53,7 +57,20 @@ int main(int argc, char* argv[])
         return 0;
     }
 
+    gsInfo << "==================================================================\n";
+    gsInfo << "  Analysis-Suitable G1 (AS-G1) Multi-Patch Geometry Generator    \n";
+    gsInfo << "==================================================================\n";
+
     gsAsG1GeometryGenerator<real_t> generator(valence, degree, numRefine);
+    gsAsG1BoundaryAdapter<real_t> adapter;
+    adapter.setValence(valence);
+    adapter.setDegree(degree);
+    adapter.setNumRefine(numRefine);
+
+    bool isAdaptedCurve = false;
+    gsBSpline<real_t> targetBSpline;
+    typename gsCurve<real_t>::uPtr loadedCurvePtr;
+
     if (!boundaryFile.empty()) {
         if (!generator.loadBoundaryDefinition(boundaryFile)) {
             gsWarn << "Failed to load boundary definition from: " << boundaryFile << "\n";
@@ -61,22 +78,54 @@ int main(int argc, char* argv[])
         }
         valence = generator.valence();
         degree = generator.degree();
+        gsInfo << "  Boundary source:   External file (" << boundaryFile << ")\n";
+    } else if (shape == "ellipse" || shape == "teardrop" || shape == "bean" || shape == "bspline" || shape == "file") {
+        isAdaptedCurve = true;
+        if (shape == "ellipse") {
+            gsInfo << "  Boundary shape:    Ellipse (a = 1.5, b = 0.8)\n";
+            targetBSpline = gsAsG1BoundaryAdapter<real_t>::createEllipse(1.5, 0.8, 64);
+            adapter.setBoundaryCurve(targetBSpline);
+        } else if (shape == "teardrop") {
+            gsInfo << "  Boundary shape:    Teardrop\n";
+            targetBSpline = gsAsG1BoundaryAdapter<real_t>::createTeardrop(1.0, 64);
+            adapter.setBoundaryCurve(targetBSpline);
+        } else if (shape == "bean") {
+            gsInfo << "  Boundary shape:    Bean (non-convex, high curvature)\n";
+            targetBSpline = gsAsG1BoundaryAdapter<real_t>::createBean(1.0, 64);
+            adapter.setBoundaryCurve(targetBSpline);
+        } else if (shape == "bspline") {
+            gsInfo << "  Boundary shape:    Arbitrary Closed Cubic B-spline (8 non-symmetric control points)\n";
+            targetBSpline = gsAsG1BoundaryAdapter<real_t>::createArbitraryClosedBSpline();
+            adapter.setBoundaryCurve(targetBSpline);
+        } else if (shape == "file") {
+            if (curveFile.empty()) {
+                gsWarn << "Shape 'file' requested but --curve <file.xml> was not specified!\n";
+                return -1;
+            }
+            gsInfo << "  Boundary source:   XML Curve File (" << curveFile << ")\n";
+            try {
+                loadedCurvePtr = gsReadFile<real_t>(curveFile);
+                if (!loadedCurvePtr) {
+                    gsWarn << "Failed to load gsCurve from: " << curveFile << "\n";
+                    return -1;
+                }
+                adapter.setBoundaryCurve(*loadedCurvePtr);
+            } catch (const std::exception& e) {
+                gsWarn << "Exception while reading curve: " << e.what() << "\n";
+                return -1;
+            }
+        }
+
+        if (!adapter.configureGenerator(generator)) {
+            gsWarn << "Boundary adapter configuration failed!\n";
+            return -1;
+        }
+        valence = generator.valence();
     } else {
+        // Classic synthetic shapes (curved, polygon, star)
         generator.setRadius(radius);
         generator.setMidRadius(midRadius);
         generator.setRandomize(randomize, anglePerturb, radiusPerturb, seed);
-    }
-
-    gsInfo << "==================================================================\n";
-    gsInfo << "  Analysis-Suitable G1 (AS-G1) Multi-Patch Geometry Generator    \n";
-    gsInfo << "==================================================================\n";
-    gsInfo << "Configuration:\n";
-    gsInfo << "  Valence (patches): " << valence << "\n";
-    gsInfo << "  B-spline degree:   " << degree << "\n";
-    gsInfo << "  Knot refinements:  " << numRefine << " (" << (1 << numRefine) << " span(s) per direction)\n";
-    if (!boundaryFile.empty()) {
-        gsInfo << "  Boundary source:   External file (" << boundaryFile << ")\n";
-    } else {
         gsInfo << "  Base radius R:     " << radius << "\n";
         gsInfo << "  Mid radius R_mid:  " << midRadius << "\n";
         gsInfo << "  Boundary shape:    " << shape << "\n";
@@ -87,18 +136,21 @@ int main(int argc, char* argv[])
             gsInfo << "    Radius perturb:  " << radiusPerturb << "\n";
         }
     }
+
+    gsInfo << "Configuration:\n";
+    gsInfo << "  Valence (patches): " << valence << "\n";
+    gsInfo << "  B-spline degree:   " << degree << "\n";
+    gsInfo << "  Knot refinements:  " << numRefine << " (" << (1 << numRefine) << " span(s) per direction)\n";
     gsInfo << "  Sample points:     " << numSamples << " per interface\n\n";
 
-    // Setup custom boundary curves if requested
+    // Setup custom boundary curves for polygon if requested
     std::vector<gsAsG1GeometryGenerator<real_t>::CurveFunction> eastCurves(valence, nullptr);
     std::vector<gsAsG1GeometryGenerator<real_t>::CurveFunction> northCurves(valence, nullptr);
 
-    if (boundaryFile.empty()) {
+    if (!isAdaptedCurve && boundaryFile.empty()) {
         if (shape == "polygon") {
-            // Straight chords
             for (int i = 0; i < valence; ++i) {
                 eastCurves[i] = [&generator, i](real_t t) -> gsVector<real_t> {
-                    // Linear segment
                     real_t th = 2.0 * M_PI * i / generator.valence();
                     real_t th_mid = 2.0 * M_PI * (i + 0.5) / generator.valence();
                     gsVector<real_t> p0(2), p1(2);
@@ -172,6 +224,16 @@ int main(int argc, char* argv[])
         gsInfo << "  [SUCCESS] All patches are strictly regular (det(J) > 0 everywhere)!\n\n";
     } else {
         gsInfo << "  [WARNING] Non-positive Jacobian determinant detected!\n\n";
+    }
+
+    if (isAdaptedCurve) {
+        gsInfo << "--- Boundary Interpolation Verification (L_infty Error) ---\n";
+        real_t bndErr = adapter.computeMaxBoundaryError(generator.multiPatch(), 100);
+        gsInfo << "  Maximum boundary distance error ||G(bnd) - Gamma||_infty = "
+               << std::scientific << std::setprecision(4) << bndErr << "\n";
+        if (bndErr < 1e-3) {
+            gsInfo << "  [SUCCESS] High-precision boundary interpolation conforming to Gamma!\n\n";
+        }
     }
 
     if (writeFiles) {

@@ -137,6 +137,11 @@ public:
     void setBiharmWeight(T w)   { m_biharmWeight = w; }
     void setCenterVertex(const gsVector<T>& x0) { m_x0 = x0; }
 
+    void setUseVirtualParallelogram(bool enable = true) {
+        m_useVirtualParallelogram = enable;
+    }
+    bool useVirtualParallelogram() const { return m_useVirtualParallelogram; }
+
     void setRandomize(bool enable, T anglePerturb = T(0.15), T radiusPerturb = T(0.2), unsigned int seed = 42) {
         m_randomize = enable;
         m_anglePerturb = anglePerturb;
@@ -197,6 +202,7 @@ public:
         return !m_custom_east_cp.empty() && !m_custom_north_cp.empty();
     }
     bool loadBoundaryDefinition(const std::string& filename);
+    bool setBoundaryFromCurve(const gsCurve<T>& boundaryCurve, int valence = 0);
 
     // Accessors
     const gsMultiPatch<T>& multiPatch() const { return m_mp; }
@@ -216,6 +222,7 @@ private:
     gsVector<T> m_x0;
 
     bool m_randomize = false;
+    bool m_useVirtualParallelogram = false;
     T m_anglePerturb = T(0.15);
     T m_radiusPerturb = T(0.2);
     unsigned int m_seed = 42;
@@ -295,6 +302,12 @@ void gsAsG1GeometryGenerator<T>::setupBilinearSkeleton()
                 m_midCorners[i] << m_midRadius * std::cos(th_mid), m_midRadius * std::sin(th_mid);
             }
         }
+    } else if (m_useVirtualParallelogram) {
+        m_midCorners.resize(V);
+        for (int i = 0; i < V; ++i) {
+            int i1 = (i + 1) % V;
+            m_midCorners[i] = m_corners[i] + m_corners[i1] - m_x0;
+        }
     } else if (m_midCorners.size() != static_cast<size_t>(V)) {
         m_midCorners.resize(V);
         for (int i = 0; i < V; ++i) {
@@ -353,16 +366,26 @@ void gsAsG1GeometryGenerator<T>::extractGluingData()
         T D2_1 = det2D(d1G2_1, d2G2_1);
         T C_1  = det2D(d1G1_1, d2G2_1);
 
-        m_gd[i].D1_0 = D1_0; m_gd[i].D1_1 = D1_1;
-        m_gd[i].D2_0 = D2_0; m_gd[i].D2_1 = D2_1;
-
         T denom_0 = D1_0 * D1_0 + D2_0 * D2_0;
-        T denom_1 = D1_1 * D1_1 + D2_1 * D2_1;
 
-        m_gd[i].b1_0 = C_0 * D2_0 / denom_0;
-        m_gd[i].b2_0 = C_0 * D1_0 / denom_0;
-        m_gd[i].b1_1 = C_1 * D2_1 / denom_1;
-        m_gd[i].b2_1 = C_1 * D1_1 / denom_1;
+        if (m_useVirtualParallelogram) {
+            // Parallelogram completion guarantees D1 and D2 are constant on G0,
+            // and setting beta(1) = 0 eliminates outer boundary tangent locking.
+            m_gd[i].D1_0 = D1_0; m_gd[i].D1_1 = D1_0;
+            m_gd[i].D2_0 = D2_0; m_gd[i].D2_1 = D2_0;
+            m_gd[i].b1_0 = C_0 * D2_0 / denom_0;
+            m_gd[i].b2_0 = C_0 * D1_0 / denom_0;
+            m_gd[i].b1_1 = T(0);
+            m_gd[i].b2_1 = T(0);
+        } else {
+            m_gd[i].D1_0 = D1_0; m_gd[i].D1_1 = D1_1;
+            m_gd[i].D2_0 = D2_0; m_gd[i].D2_1 = D2_1;
+            T denom_1 = D1_1 * D1_1 + D2_1 * D2_1;
+            m_gd[i].b1_0 = C_0 * D2_0 / denom_0;
+            m_gd[i].b2_0 = C_0 * D1_0 / denom_0;
+            m_gd[i].b1_1 = C_1 * D2_1 / denom_1;
+            m_gd[i].b2_1 = C_1 * D1_1 / denom_1;
+        }
     }
 }
 
@@ -794,14 +817,18 @@ bool gsAsG1GeometryGenerator<T>::checkJacobianRegularity(
                 dv << d(1, 0), d(3, 0);
                 T detJ = det2D(du, dv);
 
-                if (detJ < min_det_patch) {
-                    min_det_patch = detJ;
-                    min_u = u_val;
-                    min_v = v_val;
+                if (std::isnan(detJ)) {
+                    all_positive = false;
+                } else {
+                    if (detJ < min_det_patch) {
+                        min_det_patch = detJ;
+                        min_u = u_val;
+                        min_v = v_val;
+                    }
+                    if (detJ < min_det_all) min_det_all = detJ;
+                    if (detJ > max_det_all) max_det_all = detJ;
+                    if (detJ <= T(0)) all_positive = false;
                 }
-                if (detJ < min_det_all) min_det_all = detJ;
-                if (detJ > max_det_all) max_det_all = detJ;
-                if (detJ <= T(0)) all_positive = false;
             }
         }
         std::cout << "  Patch " << i << " min det(J) = " << min_det_patch << " at (u,v)=(" << min_u << "," << min_v << ")" << std::endl;

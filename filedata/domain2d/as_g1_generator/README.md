@@ -4,6 +4,10 @@ This folder contains planar multi-patch B-spline geometries generated using the 
 
 All geometries satisfy the AS-$G^1$ interface condition to machine precision ($\sim 10^{-15}$ residual) and have strictly regular Jacobian determinants ($\det \nabla G > 0$) across the entire domain.
 
+> [!NOTE]
+> For a full mathematical derivation, literature background, step-by-step algorithms, and C++ software architecture, see the detailed reference document:
+> **[`ALGORITHM.md`](file:///home/fhasanova/gismo/filedata/domain2d/as_g1_generator/ALGORITHM.md)**.
+
 ---
 
 ## 1. Geometry Inventory
@@ -68,6 +72,24 @@ Both symmetric and randomized geometries can be immediately used in the existing
 ```
 
 Convergence rates on randomized geometries achieve the theoretical optimum:
-- $L^2$ error rate: $\sim 3.8$ to $4.0$ ($O(h^{p+1})$)
-- $H^1$ error rate: $\sim 3.5$
-- $H^2$ error rate: $\sim 2.1$ ($O(h^p)$)
+- $L^2$ error rate: $\sim 3.8$ to $4.7$ ($O(h^{p+1}) = O(h^4)$)
+- $H^1$ error rate: $\sim 3.1$ to $4.0$
+- $H^2$ error rate: $\sim 2.0$ to $3.0$ ($O(h^p) = O(h^2)$)
+
+### Benchmark Summary Across All Geometries
+
+| Geometry | Type | $L^2$ Rate ($r=3 \to 4$) | $H^1$ Rate | $H^2$ Rate | Multigrid V-cycles | Multigrid Solve Time |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| `as_g1_patch3_sym.xml` | Triangle (V=3) | **4.68** | 3.44 | 2.16 | 20 | 0.065 s |
+| `as_g1_patch3_random.xml` | Triangle (V=3) | **4.28** | 3.16 | 2.06 | 39 | 0.150 s |
+| `as_g1_patch4_sym.xml` | Quad (V=4) | **4.41** | 3.89 | 2.55 | 20 | 0.085 s |
+| `as_g1_patch4_random.xml` | Quad (V=4) | **4.50** | 3.49 | 2.14 | 25 | 0.115 s |
+| `as_g1_patch5_sym.xml` | Pentagon (V=5) | **3.94** | 3.99 | 2.94 | 24 | 0.108 s |
+| `as_g1_patch5_random.xml` | Pentagon (V=5) | **3.78** | 3.23 | 2.04 | 28 | 0.109 s |
+| `as_g1_patch5_star_sym.xml` | Star (V=5) | **3.94** | 3.76 | 2.19 | 24 | 0.139 s |
+| `as_g1_patch5_polygon_sym.xml` | Polygon (V=5) | **4.09** | 3.92 | 2.80 | 26 | 0.099 s |
+| `as_g1_patch6_sym.xml` | Hexagon (V=6) | **4.18** | 4.04 | 2.99 | 34 | 0.181 s |
+| `as_g1_patch6_random.xml` | Hexagon (V=6) | **3.75** | 3.20 | 2.06 | 37 | 0.155 s |
+| `as_g1_patch7_sym.xml` | Heptagon (V=7) | **4.34** | 4.00 | 2.51 | 39 | 0.255 s |
+| `as_g1_patch7_random.xml` | Heptagon (V=7) | **3.30** | 3.06 | 2.04 | 42 | 0.305 s |
+

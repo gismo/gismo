@@ -1220,6 +1220,16 @@ void gsASG1LocalFitter<T>::step3_solvePatchInteriors()
 template <class T>
 void gsASG1LocalFitter<T>::fit()
 {
+    if (m_mode == FittingMode::Global) {
+        fitGlobal();
+    } else {
+        fitLocal();
+    }
+}
+
+template <class T>
+void gsASG1LocalFitter<T>::fitLocal()
+{
     // Step 0: Precompute linear gluing functions
     step0_computeGluingFunctions();
 
@@ -1243,6 +1253,295 @@ void gsASG1LocalFitter<T>::fit()
         typename gsGeometry<T>::uPtr patchGeom(new gsTensorBSpline<2, T>(tBasis, m_patchCP[pId]));
         m_result.addPatch(give(patchGeom));
     }
+    for (size_t b = 0; b < m_target.boundaries().size(); ++b)
+        m_result.addBoundary(m_target.boundaries()[b]);
+    for (auto it = m_target.iBegin(); it != m_target.iEnd(); ++it)
+        m_result.addInterface(*it);
+
+    m_result.computeTopology();
+}
+
+template <class T>
+void gsASG1LocalFitter<T>::fitGlobal()
+{
+    // Step 0: Precompute linear gluing functions
+    step0_computeGluingFunctions();
+
+    index_t nP = m_target.nPatches();
+    index_t nI = m_target.nInterfaces();
+
+    // Patch basis: S^{p, r}_k
+    gsBSplineBasis<T> bbasis_p(m_kv);
+    gsTensorBSplineBasis<2, T> tbasis(m_kv, m_kv);
+    index_t m_n = bbasis_p.size();
+    index_t nCP = tbasis.size();
+
+    // Auxiliary f0 basis: S^{p, r+1}_k
+    gsKnotVector<T> kv_0(T(0), T(1), m_k, m_p + 1, m_p - (m_r + 1), m_p);
+    gsBSplineBasis<T> bbasis_0(kv_0);
+    index_t n0 = bbasis_0.size();
+
+    // Auxiliary f1 basis: S^{p-1, r}_k
+    gsKnotVector<T> kv_1(T(0), T(1), m_k, (m_p - 1) + 1, (m_p - 1) - m_r, m_p - 1);
+    gsBSplineBasis<T> bbasis_1(kv_1);
+    index_t n1 = bbasis_1.size();
+
+    T sigma = m_sigma;
+
+    // 1D Gauss quadrature
+    gsGaussRule<T> grule(m_p + 3);
+    gsMatrix<T> qNodes1D;
+    gsVector<T> qWeights1D;
+    grule.mapToAll(m_kv.breaks(), qNodes1D, qWeights1D);
+    int nQ1 = qNodes1D.cols();
+
+    gsMatrix<T> B_val1D(nQ1, m_n), D_val1D(nQ1, m_n);
+    B_val1D.setZero(); D_val1D.setZero();
+    for (int q = 0; q < nQ1; ++q) {
+        gsMatrix<T> pt(1, 1);
+        pt(0, 0) = qNodes1D(0, q);
+        gsMatrix<T> val = bbasis_p.eval(pt);
+        gsMatrix<T> der = bbasis_p.deriv(pt);
+        gsMatrix<index_t> act = bbasis_p.active(pt);
+        for (int i = 0; i < act.rows(); ++i) {
+            B_val1D(q, act(i, 0)) = val(i, 0);
+            D_val1D(q, act(i, 0)) = der(i, 0);
+        }
+    }
+
+    gsMatrix<T> W1D = qWeights1D.asDiagonal();
+    gsMatrix<T> M1D = B_val1D.transpose() * W1D * B_val1D;
+    gsMatrix<T> K1D = D_val1D.transpose() * W1D * D_val1D;
+
+    gsMatrix<T> Q(nCP, nCP); Q.setZero();
+    for (int iv1 = 0; iv1 < m_n; ++iv1) {
+        for (int iu1 = 0; iu1 < m_n; ++iu1) {
+            int a = iu1 + iv1 * m_n;
+            for (int iv2 = 0; iv2 < m_n; ++iv2) {
+                for (int iu2 = 0; iu2 < m_n; ++iu2) {
+                    int b = iu2 + iv2 * m_n;
+                    T val_m = M1D(iu1, iu2) * M1D(iv1, iv2);
+                    T val_ku = K1D(iu1, iu2) * M1D(iv1, iv2);
+                    T val_kv = M1D(iu1, iu2) * K1D(iv1, iv2);
+                    Q(a, b) = val_m + sigma * (val_ku + val_kv);
+                }
+            }
+        }
+    }
+
+    int nQ2 = nQ1 * nQ1;
+    gsMatrix<T> pts2(2, nQ2);
+    gsVector<T> w2(nQ2);
+    for (int iv = 0; iv < nQ1; ++iv) {
+        for (int iu = 0; iu < nQ1; ++iu) {
+            int q = iu + iv * nQ1;
+            pts2(0, q) = qNodes1D(0, iu);
+            pts2(1, q) = qNodes1D(0, iv);
+            w2(q) = qWeights1D(iu) * qWeights1D(iv);
+        }
+    }
+
+    index_t nVar = nP * nCP + nI * (n0 + n1);
+    gsMatrix<T> Q_glob(nVar, nVar); Q_glob.setZero();
+    for (index_t p_idx = 0; p_idx < nP; ++p_idx) {
+        Q_glob.block(p_idx * nCP, p_idx * nCP, nCP, nCP) = Q;
+    }
+
+    gsVector<T> F_x(nVar), F_y(nVar);
+    F_x.setZero(); F_y.setZero();
+
+    for (index_t p_idx = 0; p_idx < nP; ++p_idx) {
+        gsMatrix<T> valS = m_target.patch(p_idx).eval(pts2);
+        gsMatrix<T> derS = m_target.patch(p_idx).deriv(pts2);
+        int off = p_idx * nCP;
+
+        for (int iv = 0; iv < nQ1; ++iv) {
+            for (int iu = 0; iu < nQ1; ++iu) {
+                int q = iu + iv * nQ1;
+                T w = w2(q);
+                T sx = valS(0, q), sy = valS(1, q);
+                T du_sx = derS(0, q), du_sy = derS(2, q);
+                T dv_sx = derS(1, q), dv_sy = derS(3, q);
+
+                for (int jv = 0; jv < m_n; ++jv) {
+                    T bv = B_val1D(iv, jv);
+                    T dv_b = D_val1D(iv, jv);
+                    for (int ju = 0; ju < m_n; ++ju) {
+                        T bu = B_val1D(iu, ju);
+                        T du_b = D_val1D(iu, ju);
+                        int a = off + (ju + jv * m_n);
+
+                        T phi = bu * bv;
+                        T dphi_u = du_b * bv;
+                        T dphi_v = bu * dv_b;
+
+                        F_x(a) += w * (sx * phi + sigma * (du_sx * dphi_u + dv_sx * dphi_v));
+                        F_y(a) += w * (sy * phi + sigma * (du_sy * dphi_u + dv_sy * dphi_v));
+                    }
+                }
+            }
+        }
+    }
+
+    auto getCPIdx = [&](short_t nDir, int nIdx, int tIdx) -> int {
+        return (nDir == 0) ? (nIdx + tIdx * m_n) : (tIdx + nIdx * m_n);
+    };
+
+    gsMatrix<T> greville = bbasis_p.anchors();
+    std::vector<std::vector<std::pair<int, T>>> constr_rows;
+
+    int if_idx = 0;
+    for (auto it = m_target.iBegin(); it != m_target.iEnd(); ++it, ++if_idx) {
+        const auto& bi = *it;
+        const auto& gd = m_gluing[if_idx];
+        patchSide ps1 = bi.first();
+        patchSide ps2 = bi.second();
+        bool reversed2 = gd.reversed2;
+
+        short_t nDir1 = ps1.direction();
+        short_t nDir2 = ps2.direction();
+
+        int bndIdx1 = ps1.parameter() ? (m_n - 1) : 0;
+        int inIdx1  = ps1.parameter() ? (m_n - 2) : 1;
+        int bndIdx2 = ps2.parameter() ? (m_n - 1) : 0;
+        int inIdx2  = ps2.parameter() ? (m_n - 2) : 1;
+
+        T dn_scale1 = m_p / (ps1.parameter() ? (m_kv[m_n + m_p] - m_kv[m_n - 1]) : (m_kv[m_p + 1] - m_kv[1]));
+        T dn_scale2 = m_p / (ps2.parameter() ? (m_kv[m_n + m_p] - m_kv[m_n - 1]) : (m_kv[m_p + 1] - m_kv[1]));
+
+        int f0_offset = nP * nCP + if_idx * (n0 + n1);
+        int f1_offset = f0_offset + n0;
+
+        int p1_off = ps1.patch * nCP;
+        int p2_off = ps2.patch * nCP;
+
+        for (int j = 0; j < m_n; ++j) {
+            T xi = greville(0, j);
+
+            gsMatrix<T> pt_xi(1, 1); pt_xi(0, 0) = xi;
+            gsMatrix<T> v_p1 = bbasis_p.eval(pt_xi);
+            gsMatrix<index_t> act_p1 = bbasis_p.active(pt_xi);
+
+            T xi2 = reversed2 ? (T(1) - xi) : xi;
+            gsMatrix<T> pt_xi2(1, 1); pt_xi2(0, 0) = xi2;
+            gsMatrix<T> v_p2 = bbasis_p.eval(pt_xi2);
+            gsMatrix<index_t> act_p2 = bbasis_p.active(pt_xi2);
+
+            gsMatrix<T> v_0 = bbasis_0.eval(pt_xi);
+            gsMatrix<T> d_0 = bbasis_0.deriv(pt_xi);
+            gsMatrix<index_t> act_0 = bbasis_0.active(pt_xi);
+
+            gsMatrix<T> v_1 = bbasis_1.eval(pt_xi);
+            gsMatrix<index_t> act_1 = bbasis_1.active(pt_xi);
+
+            // Constraint 1: f0^(m, m1)(xi) - f0^(m)(xi) = 0
+            std::vector<std::pair<int, T>> r1;
+            for (int i = 0; i < act_p1.rows(); ++i) {
+                int tIdx1 = act_p1(i, 0);
+                int a1 = p1_off + getCPIdx(nDir1, bndIdx1, tIdx1);
+                r1.push_back({a1, v_p1(i, 0)});
+            }
+            for (int i = 0; i < act_0.rows(); ++i) {
+                int idx0 = act_0(i, 0);
+                r1.push_back({f0_offset + idx0, -v_0(i, 0)});
+            }
+            constr_rows.push_back(r1);
+
+            // Constraint 2: f0^(m, m2)(xi2) - f0^(m)(xi) = 0
+            std::vector<std::pair<int, T>> r2;
+            for (int i = 0; i < act_p2.rows(); ++i) {
+                int tIdx2 = act_p2(i, 0);
+                int a2 = p2_off + getCPIdx(nDir2, bndIdx2, tIdx2);
+                r2.push_back({a2, v_p2(i, 0)});
+            }
+            for (int i = 0; i < act_0.rows(); ++i) {
+                int idx0 = act_0(i, 0);
+                r2.push_back({f0_offset + idx0, -v_0(i, 0)});
+            }
+            constr_rows.push_back(r2);
+
+            // Gluing functions at xi
+            T a1 = gd.alpha1(xi);
+            T a2 = gd.alpha2(xi);
+            T b1 = gd.beta1(xi);
+            T b2 = gd.beta2(xi);
+
+            // Constraint 3: d_in1 - b1 (f0)' - a1 f1 = 0
+            std::vector<std::pair<int, T>> r3;
+            for (int i = 0; i < act_p1.rows(); ++i) {
+                int tIdx1 = act_p1(i, 0);
+                int a1_bnd = p1_off + getCPIdx(nDir1, bndIdx1, tIdx1);
+                int a1_in  = p1_off + getCPIdx(nDir1, inIdx1,  tIdx1);
+                r3.push_back({a1_bnd, -dn_scale1 * v_p1(i, 0)});
+                r3.push_back({a1_in,   dn_scale1 * v_p1(i, 0)});
+            }
+            for (int i = 0; i < act_0.rows(); ++i) {
+                int idx0 = act_0(i, 0);
+                r3.push_back({f0_offset + idx0, -b1 * d_0(i, 0)});
+            }
+            for (int i = 0; i < act_1.rows(); ++i) {
+                int idx1 = act_1(i, 0);
+                r3.push_back({f1_offset + idx1, -a1 * v_1(i, 0)});
+            }
+            constr_rows.push_back(r3);
+
+            // Constraint 4: d_in2 - b2 (f0)' + a2 f1 = 0
+            std::vector<std::pair<int, T>> r4;
+            for (int i = 0; i < act_p2.rows(); ++i) {
+                int tIdx2 = act_p2(i, 0);
+                int a2_bnd = p2_off + getCPIdx(nDir2, bndIdx2, tIdx2);
+                int a2_in  = p2_off + getCPIdx(nDir2, inIdx2,  tIdx2);
+                r4.push_back({a2_bnd, -dn_scale2 * v_p2(i, 0)});
+                r4.push_back({a2_in,   dn_scale2 * v_p2(i, 0)});
+            }
+            for (int i = 0; i < act_0.rows(); ++i) {
+                int idx0 = act_0(i, 0);
+                r4.push_back({f0_offset + idx0, -b2 * d_0(i, 0)});
+            }
+            for (int i = 0; i < act_1.rows(); ++i) {
+                int idx1 = act_1(i, 0);
+                r4.push_back({f1_offset + idx1, a2 * v_1(i, 0)});
+            }
+            constr_rows.push_back(r4);
+        }
+    }
+
+    int numC = constr_rows.size();
+    gsMatrix<T> C_mat(numC, nVar); C_mat.setZero();
+    for (int c = 0; c < numC; ++c) {
+        for (const auto& item : constr_rows[c]) {
+            C_mat(c, item.first) += item.second;
+        }
+    }
+
+    int nTot = nVar + numC;
+    gsMatrix<T> KKT(nTot, nTot); KKT.setZero();
+    KKT.block(0, 0, nVar, nVar) = Q_glob;
+    KKT.block(0, nVar, nVar, numC) = C_mat.transpose();
+    KKT.block(nVar, 0, numC, nVar) = C_mat;
+
+    gsVector<T> rhs_x(nTot), rhs_y(nTot);
+    rhs_x.setZero(); rhs_y.setZero();
+    rhs_x.head(nVar) = F_x;
+    rhs_y.head(nVar) = F_y;
+
+    auto solver = KKT.fullPivLu();
+    gsVector<T> sol_x = solver.solve(rhs_x);
+    gsVector<T> sol_y = solver.solve(rhs_y);
+
+    m_result.clear();
+    for (index_t p_idx = 0; p_idx < nP; ++p_idx) {
+        gsMatrix<T> cp(nCP, 2);
+        for (int a = 0; a < nCP; ++a) {
+            cp(a, 0) = sol_x(p_idx * nCP + a);
+            cp(a, 1) = sol_y(p_idx * nCP + a);
+        }
+        m_patchCP[p_idx] = cp;
+        gsTensorBSplineBasis<2, T> tBasis(m_kv, m_kv);
+        typename gsGeometry<T>::uPtr patchGeom(new gsTensorBSpline<2, T>(tBasis, cp));
+        m_result.addPatch(give(patchGeom));
+    }
+
     for (size_t b = 0; b < m_target.boundaries().size(); ++b)
         m_result.addBoundary(m_target.boundaries()[b]);
     for (auto it = m_target.iBegin(); it != m_target.iEnd(); ++it)

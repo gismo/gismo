@@ -18,10 +18,12 @@ int main(int argc, char* argv[])
     int regularity = 1;
     int knots = 2;
     real_t eps = 1e-4;
+    std::string modeStr = "global";
 
     gsCmdLine cmd("Local Analysis-Suitable G1 (AS-G1) Multi-Patch Spline Surface Fitter.");
     cmd.addString("f", "file", "Input multi-patch geometry XML file.", inputFile);
     cmd.addString("o", "output", "Output fitted AS-G1 multi-patch XML file.", outputFile);
+    cmd.addString("m", "mode", "Fitting mode: 'global' (unified Remark 1 KKT) or 'local' (3-step decoupled).", modeStr);
     cmd.addInt("p", "degree", "Target spline degree p >= 3.", degree);
     cmd.addInt("r", "regularity", "Target interface regularity 1 <= r <= p-2.", regularity);
     cmd.addInt("k", "knots", "Number of inner knot intervals k.", knots);
@@ -54,8 +56,13 @@ int main(int argc, char* argv[])
            << target.nInterfaces() << " interfaces.\n";
 
     gsASG1LocalFitter<real_t> fitter(target, degree, regularity, knots);
+    if (modeStr == "local")
+        fitter.setMode(gsASG1LocalFitter<real_t>::FittingMode::Local);
+    else
+        fitter.setMode(gsASG1LocalFitter<real_t>::FittingMode::Global);
 
-    gsInfo << "Executing local 3-step Lagrange multiplier fitting...\n";
+    gsInfo << "Executing " << (modeStr == "local" ? "local 3-step" : "global Remark 1")
+           << " Lagrange multiplier fitting...\n";
     fitter.fit();
 
     const gsMultiPatch<real_t>& fitted = fitter.result();
