@@ -21,7 +21,7 @@ namespace expr
 
 // Adaptor to compute Hessian
 template <typename Derived>
-void secDerToHessian(const gsEigen::DenseBase<Derived> &  secDers,
+void secDerToHessian(const Eigen::DenseBase<Derived> &  secDers,
                      const index_t dim,
                      gsMatrix<typename Derived::Scalar> & hessian)
 {

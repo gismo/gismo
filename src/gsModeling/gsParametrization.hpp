@@ -148,7 +148,7 @@ void gsParametrization<T>::constructAndSolveEquationSystem(const Neighbourhood &
     }
 
     gsVector<T> u(n), v(n);
-    gsEigen::PartialPivLU<typename gsMatrix<T>::Base> LU = A.partialPivLu();
+    Eigen::PartialPivLU<typename gsMatrix<T>::Base> LU = A.partialPivLu();
     u = LU.solve(b1);
     v = LU.solve(b2);
 
@@ -555,7 +555,7 @@ gsParametrization<T>::LocalParametrization::LocalParametrization(const gsHalfEdg
                 length = (*meshInfo.getVertex(indices.front()) - *meshInfo.getVertex(m_vertexIndex)).norm();
                 //length =  (meshInfo.getVertex(indices.front()) - meshInfo.getVertex(m_vertexIndex) ).norm();
                 nextAngle = angles.front()*thetaInv * (T)(2) * (T)(EIGEN_PI);
-                nextVector = (gsEigen::Rotation2D<T>(nextAngle).operator*(actualVector).normalized()*length) + p;
+                nextVector = (Eigen::Rotation2D<T>(nextAngle).operator*(actualVector).normalized()*length) + p;
                 nextPoint = Point2D(nextVector[0], nextVector[1], indices.front());
                 points.push_back(nextPoint);
                 actualVector = nextPoint - p;

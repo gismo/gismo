@@ -181,7 +181,7 @@ typename gsSolid<T>::gsSolidHalfFaceHandle gsSolid<T>::addFace_PlanarPolygon(std
 {
   // make sure there are at least 3 vertices.
   int faceVerts = V.size();
-  assert(faceVerts >= 3);
+  GISMO_ASSERT(faceVerts >= 3, "A planar polygon must have at least 3 vertices.");
   
   // compute normal to plane and make sure all vertices are in the plane.
   // (find a vertex with minimal x-coordinate, and minimal y in the case of a tie.
@@ -203,13 +203,13 @@ typename gsSolid<T>::gsSolidHalfFaceHandle gsSolid<T>::addFace_PlanarPolygon(std
   while(normal.squaredNorm() == 0)
   {
     nextVertex = (nextVertex + 1) % faceVerts;
-    assert(nextVertex != minVert); // failed to find a vertex that is not collinear with minVert and the one before it.
+    GISMO_ASSERT(nextVertex != minVert, "Failed to find a vertex that is not collinear with minVert and the one before it.");
     normal = (V[nextVertex]->coords - V[minVert]->coords).cross(prevVector);
   }
   normal.normalize();
   for(int i = 3; i < faceVerts; i++)
   {
-    assert((V[i]->coords - V[0]->coords).dot(normal) == 0);
+    GISMO_ASSERT((V[i]->coords - V[0]->coords).dot(normal) == 0, "Vertices are not in the same plane.");
   }
   T normalCoord = normal.dot(V[0]->coords);
   //gsDebug << "\nNormal coefs: " << normal << std::endl << normalCoord;
@@ -355,7 +355,7 @@ std::vector< typename gsSolid<T>::gsSolidHalfEdgeHandle > gsSolid<T>::detectNonC
   // Todo: detect nonconvex edges automatically
   size_t nEdge = ncEdgeV1.size();
   gsSolidHalfEdgeHandle he;
-  assert(nEdge==ncEdgeV2.size());
+  GISMO_ASSERT(nEdge==ncEdgeV2.size(), "Inconsistent vector dimensions.");
   std::vector<gsSolidHalfEdgeHandle> nce;
   for (size_t i=0;i<nEdge;i++)
   {

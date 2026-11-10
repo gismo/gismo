@@ -31,7 +31,7 @@ template<class T>
 void gsWriteCsv(std::string const & filename, const gsMatrix<T> & matrix, const std::vector<std::string> & headers = std::vector<std::string>() )
 {
     // Define format of .csv file.
-    const static gsEigen::IOFormat CSVFormat(gsEigen::FullPrecision, gsEigen::Aligned, ", ", "\n");
+    const static Eigen::IOFormat CSVFormat(Eigen::FullPrecision, Eigen::Aligned, ", ", "\n");
 
     std::ofstream csv_file;
     csv_file.open(filename);

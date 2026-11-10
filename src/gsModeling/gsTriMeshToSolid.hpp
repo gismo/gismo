@@ -790,7 +790,7 @@ void gsTriMeshToSolid<T>::toSolid(gsSolid<T> & sl, std::vector<std::vector<Verte
         // b1, b2 : right hand sides of the linera system ( sums of boundary veterx weights or zeros)
         gsVector<T> u(n) ,v(n) ,b1(n) ,b2(n);
         // Linear system
-        gsEigen::SparseMatrix<T, ColMajor> A(n,n);
+        Eigen::SparseMatrix<T, ColMajor> A(n,n);
         gsSparseEntries<T> coefficients;
         typename gsSparseSolver<T>::LU solver;
 

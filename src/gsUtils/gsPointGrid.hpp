@@ -27,7 +27,7 @@ gsVector<unsigned> uniformSampleCount (const gsVector<T>& lower,
                                        int numPoints)
 {
     const index_t d = lower.rows();
-    assert( d == upper.rows() );
+    GISMO_ASSERT( d == upper.rows(), "Lower and upper bounds have different dimensions." );
 
     // TO do : phys. volume criterion
     gsVector<T> span = upper - lower;
@@ -52,7 +52,7 @@ void uniformIntervals(const gsVector<T>& lower,
                       int numIntervals)
 {
     const int d = lower.rows();
-    assert( d == upper.rows() );
+    GISMO_ASSERT( d == upper.rows(), "Lower and upper bounds have different dimensions." );
 
     gsVector<unsigned> np = uniformSampleCount( lower, upper, numIntervals );
 

@@ -312,7 +312,7 @@ public:
     // Under Construction..( TO DO )
     bool contains( gsMatrix<T> const & p, T const & tol = 1e-6 )
         {
-            assert( p.cols()==1 );
+            GISMO_ASSERT( p.cols()==1, "The point should be given as a column vector." );
             gsBSplineSolver<T> slv;
             std::vector<T> roots;
             short_t dim = this->geoDim();

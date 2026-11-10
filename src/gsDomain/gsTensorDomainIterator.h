@@ -146,9 +146,7 @@ private:
     gsVector<domainIterWrapper, D> meshStart, meshEnd, curElement;
 
 public:
-#   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-#   undef Eigen
 }; // class gsTensorDomainIterator
 
 } // namespace gismo

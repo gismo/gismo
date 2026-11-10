@@ -133,7 +133,7 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
             return false;
         else
         {
-            gsMatrix<real_t> resid = A.template selfadjointView<gsEigen::Lower>() * evecs - evecs * evals.asDiagonal();
+            gsMatrix<real_t> resid = A.template selfadjointView<Eigen::Lower>() * evecs - evecs * evals.asDiagonal();
             const real_t err = resid.array().abs().maxCoeff();
             return math::lessthan(err,tol);
         }
@@ -145,8 +145,8 @@ SUITE(gsSpectra_test)                 // The suite should have the same name as 
             return false;
         else
         {
-            gsMatrix<real_t> resid = A.template selfadjointView<gsEigen::Lower>() * evecs -
-                B.template selfadjointView<gsEigen::Lower>() * evecs * evals.asDiagonal();
+            gsMatrix<real_t> resid = A.template selfadjointView<Eigen::Lower>() * evecs -
+                B.template selfadjointView<Eigen::Lower>() * evecs * evals.asDiagonal();
             const real_t err = resid.array().abs().maxCoeff();
             return math::lessthan(err,tol);
         }

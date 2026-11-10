@@ -21,7 +21,7 @@ namespace gismo
 {
 
 /** @brief
-    Sparse vector class, based on gsEigen::SparseVector.
+    Sparse vector class, based on Eigen::SparseVector.
 
     \tparam T coefficient type
     \tparam _Option zero is ColMajor order.
@@ -31,13 +31,13 @@ namespace gismo
 */
 
 template<typename T, int _Options, typename _Index>
-class gsSparseVector : public gsEigen::SparseVector<T,_Options,_Index>
+class gsSparseVector : public Eigen::SparseVector<T,_Options,_Index>
 {
 public:
 
-    typedef gsEigen::SparseVector<T,_Options,_Index> Base;
+    typedef Eigen::SparseVector<T,_Options,_Index> Base;
 
-    typedef typename gsEigen::SparseVector<T,_Options,_Index>::InnerIterator InnerIterator;
+    typedef typename Eigen::SparseVector<T,_Options,_Index>::InnerIterator InnerIterator;
     
     class iterator : public InnerIterator
     {
@@ -50,7 +50,7 @@ public:
     };
 
     // Type pointing to a block of the sparse vector
-    typedef typename gsEigen::Block<Base> Block;
+    typedef typename Eigen::Block<Base> Block;
     
     // Type pointing to a block view of the sparse vector
     typedef gsMatrixBlockView<Base> BlockView;
@@ -65,60 +65,42 @@ public:
     /// This constructor allows constructing a gsSparseVector from
     /// Eigen expressions
     template<typename OtherDerived>
-    gsSparseVector(const gsEigen::EigenBase<OtherDerived>& other)  : Base(other) { }
+    gsSparseVector(const Eigen::EigenBase<OtherDerived>& other)  : Base(other) { }
 
     /// This constructor allows constructing a gsSparseVector from
     /// another sparse expression
     template<typename OtherDerived> 
-    gsSparseVector(const gsEigen::MatrixBase<OtherDerived>& other)  : Base(other) { } 
+    gsSparseVector(const Eigen::MatrixBase<OtherDerived>& other)  : Base(other) { } 
     
     /// This constructor allows constructing a gsSparseVector from
     /// another sparse expression
     template<typename OtherDerived> 
-    gsSparseVector(const gsEigen::SparseMatrixBase<OtherDerived>& other)  : Base(other) { } 
+    gsSparseVector(const Eigen::SparseMatrixBase<OtherDerived>& other)  : Base(other) { } 
 
     /// This constructor allows constructing a gsSparseVector from
     /// another sparse expression
     template<typename OtherDerived> 
-    gsSparseVector(const gsEigen::ReturnByValue<OtherDerived>& other)  : Base(other) { } 
+    gsSparseVector(const Eigen::ReturnByValue<OtherDerived>& other)  : Base(other) { } 
     
     ~gsSparseVector() { }
     
-#if !EIGEN_HAS_RVALUE_REFERENCES
-    // Using the assignment operators of Eigen
-    // Note: using Base::operator=; is ambiguous in MSVC
-#ifdef _MSC_VER
-    template <class EigenExpr>
-    gsSparseVector& operator= (const EigenExpr & other) 
-    {
-        this->Base::operator=(other);
-        return *this;
-    }
-#else
+    // Copy and move constructors
+    gsSparseVector(const gsSparseVector& other) = default;
+
+    gsSparseVector(gsSparseVector&& other)
+    { this->swap(other); other.clear(); }
+
     using Base::operator=;
-#endif
-    
-#else
-    
-    // Avoid default keyword for MSVC<2013 
-    // https://msdn.microsoft.com/en-us/library/hh567368.aspx
-    gsSparseVector(const gsSparseVector& other) : Base(other)
-    { Base::operator=(other); }
 
     gsSparseVector& operator= (const gsSparseVector & other)
     { Base::operator=(other); return *this; }
         
-    gsSparseVector(gsSparseVector&& other)
-    { operator=(std::forward<gsSparseVector>(other)); }
-
     gsSparseVector & operator=(gsSparseVector&& other)
     {
         this->swap(other);
         other.clear();
         return *this;
-    }    
-
-#endif
+    }
 
     void clear()
     {
@@ -147,3 +129,22 @@ public:
 
 
 } // namespace gismo
+
+namespace Eigen { namespace internal {
+
+template<typename T, int _Options, typename _Index>
+struct traits<gismo::gsSparseVector<T,_Options,_Index> > :
+    Eigen::internal::traits<Eigen::SparseVector<T,_Options,_Index> > { };
+
+template<typename T, int _Options, typename _Index>
+struct evaluator<gismo::gsSparseVector<T,_Options,_Index> > :
+    evaluator<Eigen::SparseVector<T,_Options,_Index> >
+{
+    typedef gismo::gsSparseVector<T,_Options,_Index> XprType;
+    typedef evaluator<Eigen::SparseVector<T,_Options,_Index> > Base;
+    EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE evaluator() = default;
+    EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE explicit evaluator(const XprType& m)
+        : Base(static_cast<const Eigen::SparseVector<T,_Options,_Index>&>(m)) {}
+};
+
+} } // namespace Eigen::internal
