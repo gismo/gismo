@@ -625,4 +625,196 @@ SUITE(gsDofMapper_test)
         gsVector<index_t> p(4); p << 3, 2, 1, 0;
         CHECK_THROW(m.permuteFreeDofs(p, 1), std::runtime_error);
     }
+
+    TEST(DofMapperR1_raggedOracle)
+    {
+        // Two patches, three components with different sizes per patch:
+        //
+        //   size(k,c)    c=0  c=1  c=2
+        //   patch 0       2    5    1
+        //   patch 1       3    1    6
+        //   totalSize     5    6    7     mapSize 18
+        //   offset(1,c)   2    5    1     offset(0,c) = 0
+        //
+        // Component c occupies the flat block that starts at 0, 5, 11.
+        gsMatrix<index_t> M(2,3);
+        M << 2,5,1,
+             3,1,6;
+        const index_t blockStart[3] = {0, 5, 11};
+        gsDofMapper m(M);
+
+        CHECK_EQUAL(2, (index_t)m.numPatches());
+        CHECK_EQUAL(18, (index_t)m.mapSize());
+        CHECK_EQUAL(5, (index_t)m.totalSize(0));
+        CHECK_EQUAL(6, (index_t)m.totalSize(1));
+        CHECK_EQUAL(7, (index_t)m.totalSize(2));
+        for (index_t c = 0; c < 3; ++c)
+        {
+            CHECK_EQUAL(M(0,c), (index_t)m.patchSize(0,c));
+            CHECK_EQUAL(M(1,c), (index_t)m.patchSize(1,c));
+            CHECK_EQUAL(0, (index_t)m.offset(0,c));
+            CHECK_EQUAL(M(0,c), (index_t)m.offset(1,c));
+        }
+
+        // Without conditions the numbering is the concatenation of the blocks
+        gsDofMapper id(M);
+        id.finalize();
+        const vec want0 = {0,1,2,3,4};
+        const vec want1 = {5,6,7,8,9,10};
+        const vec want2 = {11,12,13,14,15,16,17};
+        CHECK(toVec(id.asVector(0)) == want0);
+        CHECK(toVec(id.asVector(1)) == want1);
+        CHECK(toVec(id.asVector(2)) == want2);
+        for (index_t c = 0; c < 3; ++c)
+            for (index_t k = 0; k < 2; ++k)
+                for (index_t i = 0; i < M(k,c); ++i)
+                {
+                    CHECK_EQUAL(blockStart[c] + (index_t)id.offset(k,c) + i, id.index(i,k,c));
+                    CHECK_EQUAL(c, id.componentOf(id.index(i,k,c)));
+                }
+
+        // Eliminating dofs 0 and 4 of component 1 on patch 0 sends them behind
+        // all free dofs: component 1 keeps 4 free dofs numbered 5..8 after
+        // component 0, and component 2 follows with 9..15
+        gsMatrix<index_t> b(2,1);
+        b << 0, 4;
+        m.markBoundary(0, b, 1);
+        m.finalize();
+
+        const vec bnd0 = {0,1,2,3,4};
+        const vec bnd1 = {16,5,6,7,17,8};
+        const vec bnd2 = {9,10,11,12,13,14,15};
+        CHECK(toVec(m.asVector(0)) == bnd0);
+        CHECK(toVec(m.asVector(1)) == bnd1);
+        CHECK(toVec(m.asVector(2)) == bnd2);
+        CHECK_EQUAL(18, m.size());
+        CHECK_EQUAL(16, m.freeSize());
+        CHECK_EQUAL(2, m.boundarySize());
+        CHECK_EQUAL(5, m.freeSize(0));
+        CHECK_EQUAL(4, m.freeSize(1));
+        CHECK_EQUAL(7, m.freeSize(2));
+        CHECK_EQUAL(6, m.size(1));
+        CHECK_EQUAL(0, m.bindex(0,0,1));
+        CHECK_EQUAL(1, m.bindex(4,0,1));
+
+        vec all;
+        for (index_t c = 0; c < 3; ++c)
+        {
+            const vec v = toVec(m.asVector(c));
+            all.insert(all.end(), v.begin(), v.end());
+        }
+        vec sorted = all;
+        std::sort(sorted.begin(), sorted.end());
+        vec range(18);
+        for (index_t n = 0; n < 18; ++n) range[n] = n;
+        CHECK(sorted == range);
+
+        for (index_t c = 0; c < 3; ++c)
+            for (index_t k = 0; k < 2; ++k)
+                for (index_t i = 0; i < M(k,c); ++i)
+                    CHECK_EQUAL(c, m.componentOf(m.index(i,k,c)));
+
+        for (index_t n = 0; n < 18; ++n)
+            CHECK_EQUAL(all[n], m.mapIndex(n));
+    }
+
+    TEST(DofMapperR2_matrixCtorMatchesVectorCtor)
+    {
+        // Two patches of 3 and 2 dofs, three components. The matrix with the
+        // size vector replicated per component describes the same mapper.
+        gsVector<index_t> v(2);
+        v << 3, 2;
+        gsMatrix<index_t> M = v.replicate(1,3);
+        gsDofMapper a(M), b(v, 3);
+
+        gsMatrix<index_t> bd(2,1);
+        bd << 0, 2;
+        gsDofMapper * both[2] = {&a, &b};
+        for (index_t j = 0; j < 2; ++j)
+        {
+            both[j]->markBoundary(0, bd, 1);
+            both[j]->matchDof(0,1, 1,0, 2);
+            both[j]->eliminateDof(1,1, 0);
+            both[j]->finalize();
+        }
+
+        CHECK_EQUAL(14, a.size());
+        CHECK_EQUAL(a.size(), b.size());
+        CHECK_EQUAL(a.freeSize(), b.freeSize());
+        CHECK_EQUAL(a.boundarySize(), b.boundarySize());
+        CHECK_EQUAL(a.coupledSize(), b.coupledSize());
+        CHECK_EQUAL((index_t)a.mapSize(), (index_t)b.mapSize());
+        CHECK_EQUAL((index_t)a.numPatches(), (index_t)b.numPatches());
+        for (index_t c = 0; c < 3; ++c)
+        {
+            CHECK(toVec(a.asVector(c)) == toVec(b.asVector(c)));
+            for (index_t k = 0; k < 2; ++k)
+            {
+                CHECK_EQUAL((index_t)a.patchSize(k,c), (index_t)b.patchSize(k,c));
+                CHECK_EQUAL((index_t)a.offset(k,c), (index_t)b.offset(k,c));
+            }
+        }
+    }
+
+    TEST(DofMapperR3_minusOneComponent)
+    {
+        // Component -1 acts on the same local dof in every component; on a
+        // ragged mapper it is only allowed for patches of equal size in all
+        // components. Patch 0 has 3 dofs in both components, patch 1 has 2 and 4.
+        gsMatrix<index_t> R(2,2);
+        R << 3,3,
+             2,4;
+        {
+            gsDofMapper r(R);
+            CHECK_THROW(r.eliminateDof(0, 1, -1), std::runtime_error);
+        }
+        {
+            gsDofMapper r(R);
+            CHECK_THROW(r.matchDof(0,2, 1,0, -1), std::runtime_error);
+        }
+        {
+            // Component 0 holds patch 0 (dof 0 eliminated, dofs 1 and 2 coupled
+            // into one) and patch 1 (dofs 0,1 free): free 0,1 and coupled 2,
+            // eliminated 8. Component 1 follows: free 3..6, coupled 7,
+            // eliminated 9.
+            gsDofMapper r(R);
+            r.eliminateDof(0, 0, -1);
+            r.matchDof(0,1, 0,2, -1);
+            r.finalize();
+            const vec want0 = {8,2,2,0,1};
+            const vec want1 = {9,7,7,3,4,5,6};
+            CHECK(toVec(r.asVector(0)) == want0);
+            CHECK(toVec(r.asVector(1)) == want1);
+            CHECK_EQUAL(10, r.size());
+            CHECK_EQUAL(8, r.freeSize());
+            CHECK_EQUAL(2, r.boundarySize());
+        }
+
+        // Uniform mapper: component -1 reaches every component
+        gsVector<index_t> v(2);
+        v << 3, 2;
+        gsDofMapper m(v, 2);
+        m.eliminateDof(1,0, -1);
+        m.matchDof(0,2, 1,0, -1);
+        m.finalize();
+        for (index_t c = 0; c < 2; ++c)
+        {
+            CHECK(m.is_boundary(1,0,c));
+            CHECK_EQUAL(m.index(2,0,c), m.index(0,1,c));
+        }
+        CHECK_EQUAL(2, m.boundarySize());
+        CHECK_EQUAL(6, m.freeSize());
+        CHECK_EQUAL(8, m.size());
+    }
+
+    TEST(DofMapperR4_defaultCtorNumPatches)
+    {
+        // Construct in a poisoned buffer so that a member the default
+        // constructor leaves uninitialised reads back as 0xAB bytes
+        alignas(gsDofMapper) unsigned char buf[sizeof(gsDofMapper)];
+        std::memset(buf, 0xAB, sizeof buf);
+        gsDofMapper * m = new (buf) gsDofMapper();
+        CHECK_EQUAL(1, (index_t)m->numPatches());
+        m->~gsDofMapper();
+    }
 }
