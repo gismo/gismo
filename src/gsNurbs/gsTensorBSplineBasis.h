@@ -252,7 +252,7 @@ public:
      * \todo rename to insertKnots_withCoefs
      */
     void refine_withCoefs(gsMatrix<T> & coefs,const std::vector< std::vector<T> >& refineKnots);
-    void refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes)
+    void refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes) override
     {
         this->refine_withCoefs(coefs,this->_boxToKnots(boxes));
     }

@@ -231,6 +231,32 @@ int main(int argc, char *argv[])
         pv.write(thb, "thb_after_merge");
     }
 
+    // --------------- Refine the support of a basis function ---------------
+
+    //! [refineCoeff]
+    // Build a THB-spline geometry on the initial (unrefined) basis
+    gsTHBSplineBasis<2,real_t> thb3(tens);
+    gsTHBSpline<2,real_t> thbGeo(thb3, thb3.anchors().transpose());
+
+    // Refine the support of basis function 12 by one level; only the
+    // elements in its support are refined, the geometry is unchanged
+    gsMatrix<real_t> geoVals = thbGeo.eval(u);
+    const index_t bf = 12;
+    gsInfo << "\nSupport of basis function " << bf << ":\n"
+           << thbGeo.basis().support(bf) << "\n";
+    thbGeo.refineCoeff(bf);
+
+    gsInfo << "After refineCoeff(" << bf << "): "
+           << thbGeo.basis().size() << " functions, maxLevel = "
+           << thbGeo.basis().maxLevel() << ", change in geometry = "
+           << (thbGeo.eval(u) - geoVals).norm() << "\n";
+    //! [refineCoeff]
+
+    if (plot)
+    {
+        pv.write(thbGeo.basis(), "thb_refineCoeff");
+    }
+
     // --------------- plot basis after 1 refinement ---------------
     //! [Plot in Paraview]
     if( plot )

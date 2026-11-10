@@ -620,6 +620,29 @@ SUITE(gsDofMapper_test)
         CHECK(inv1 == want1);
     }
 
+    // Eliminated local dofs, counted once per patch-local occurrence, in all components
+    TEST(DofMapperT14_boundarySizeWithDuplicates)
+    {
+        CHECK_EQUAL(2, makeM2().boundarySizeWithDuplicates());
+
+        // An eliminated dof shared by two patches counts twice
+        gsVector<index_t> sz(2); sz << 4, 5;
+        gsDofMapper m(sz, 2);
+        m.matchDof(0,3, 1,0, 1);
+        m.eliminateDof(3,0, 1);
+        m.finalize();
+        CHECK_EQUAL(1, m.boundarySize());
+        CHECK_EQUAL(2, m.boundarySizeWithDuplicates());
+    }
+
+    // Tags are final dof numbers, which exist only after finalize()
+    TEST(DofMapperT15_markTaggedNeedsFinalize)
+    {
+        gsVector<index_t> sz(2); sz << 4, 5;
+        gsDofMapper m(sz, 2);
+        CHECK_THROW(m.markTagged(1,0,0), std::runtime_error);
+    }
+
     TEST(DofMapperT8_setIdentityReuse)
     {
         gsDofMapper m = makeM2();

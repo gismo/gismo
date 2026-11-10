@@ -47,6 +47,7 @@ void pybind11_init_gsKnotVector(py::module &m)
     .def("inDomain", &Class::inDomain, "Checks, whether the given value is inside the domain")
     .def("greville",static_cast<gsMatrix<real_t>
          (Class::*)(bool) const>(&Class::greville), "Returns the Greville points", py::arg("clamp") = true)
+    .def("grevilleOf", &Class::grevilleOf, "Returns the Greville abscissa of the i-th B-spline", py::arg("i"))
      .def("__str__", [] (Class & self)
      {
          std::ostringstream os;
