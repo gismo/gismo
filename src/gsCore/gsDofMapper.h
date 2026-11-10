@@ -523,7 +523,13 @@ private:
     void finalizeComp(const index_t comp);
 
     /// Position of local dof 0 of patch \a k in m_dofs[\a c]
-    size_t off(index_t k, index_t c) const { return m_offset[c*(m_nPatches+1)+k]; }
+    size_t off(index_t k, index_t c) const
+    {
+        GISMO_ASSERT(k >= 0 && k <= m_nPatches && c >= 0
+                     && static_cast<size_t>(c+1)*(m_nPatches+1) <= m_offset.size(),
+                     "Invalid patch "<< k <<" or component "<< c <<" in gsDofMapper");
+        return m_offset[c*(m_nPatches+1)+k];
+    }
 
     // replace all references to oldIdx by newIdx
     inline void replaceDofGlobally(index_t oldIdx, index_t newIdx);
