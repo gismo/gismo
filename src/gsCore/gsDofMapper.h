@@ -59,6 +59,10 @@ namespace gismo
     numbering. The index of an boundary global dof in this numbering
     can be queried with gsDofMapper::bindex().
 
+    With several components, the free dofs of all components come
+    first, component by component, then the eliminated ones. The
+    constructor from a matrix of sizes lets the components differ.
+
     The object must be finalized before it is used,
     i.e. gsDofMapper::finalize() has to be called once before use.
 
@@ -83,11 +87,33 @@ public:
         initPatchDofs(patchDofSizes, nComp);
     }
 
+    /**
+     * @brief construct a dof mapper whose components may differ in
+     * their number of dofs per patch
+     *
+     * @param patchDofSizes entry (k,c) is the number of dofs of
+     * component \a c on patch \a k. Equal columns v give
+     * gsDofMapper(v, patchDofSizes.cols()); otherwise comp = -1 and
+     * setIdentity() throw. Throws if the matrix is empty, an entry is
+     * negative or the total does not fit in index_t.
+     */
+    // To prevent ambiguity with the constructor that takes a vector:
+    // 1. This is a template over T. Then, only an argument whose type is gsMatrix<T>
+    //    is accepted. Things that are not but could be converted (e.g. expressions, 
+    //    vectors and fixed-size matrices) go to the vector constructor.
+    // 2. Still restrict to index_t with the enable_if, as that's the only valid type.
+    template<class T, typename std::enable_if<std::is_same<T, index_t>::value, int>::type = 0>
+    explicit gsDofMapper(const gsMatrix<T> & patchDofSizes)
+    {
+        initComponentDofs(patchDofSizes);
+    }
+
     void swap(gsDofMapper & other)
     {
         m_dofs  .swap(other.m_dofs);
         m_offset.swap(other.m_offset);
         std::swap(m_nPatches   , other.m_nPatches);
+        std::swap(m_equalComponents, other.m_equalComponents);
 
         std::swap(m_shift      , other.m_shift);
         std::swap(m_bshift     , other.m_bshift);
@@ -103,6 +129,12 @@ private:
     /// Initialize by vector of DoF indices and dimension
     void initPatchDofs(const gsVector<index_t> & patchDofSizes,
 		       index_t nComp = 1);
+
+    /// Initialize by a matrix of dof counts per patch (row) and component (col)
+    void initComponentDofs(const gsMatrix<index_t> & patchDofSizes);
+
+    /// Sets m_equalComponents from the offset rows
+    void updateEqualComponents();
 
     /// Allocates \a nComp components sized by m_offset and resets the numbering
     void initDofsFromOffsets(index_t nComp);
@@ -147,7 +179,8 @@ public:
 
     /// \brief Couples dof \a i of patch \a u with dof \a j of patch
     /// \a v such that they refer to the same global dof at component
-    /// \a comp.
+    /// \a comp, or at every component if \a comp = -1 (needs equal
+    /// components).
     void matchDof( index_t u, index_t i, index_t v, index_t j, index_t comp = 0);
 
     /// \brief Couples dofs \a b1 of patch \a u with dofs \a b2 of patch
@@ -169,7 +202,8 @@ public:
     // to do: put k at the end
     void markBoundary(index_t k, const gsMatrix<index_t> & boundaryDofs, index_t comp = 0);
 
-    /// Mark the local dof \a i of patch \a k as eliminated.
+    /// Mark the local dof \a i of patch \a k as eliminated, at every
+    /// component if \a comp = -1 (needs equal components).
     void eliminateDof(index_t i, index_t k, index_t comp = 0);
 
     /// \brief Must be called after all boundaries and interfaces have
@@ -413,9 +447,14 @@ public:
     size_t numPatches() const {return m_nPatches;}
 
     /// \brief Returns the total number of patch-local degrees of
-    /// freedom that are being mapped
+    /// freedom that are being mapped, over all components
     size_t mapSize() const
-    { return (m_dofs.empty()?0:m_dofs.size() * m_dofs.front().size()); }
+    {
+        size_t n = 0;
+        for (size_t c = 0; c != m_dofs.size(); ++c)
+            n += m_dofs[c].size();
+        return n;
+    }
 
     size_t componentsSize() const {return m_dofs.size();}
 
@@ -461,11 +500,15 @@ public:
 
     /// \brief For \a n being an index which is already offsetted, it
     /// returns the global index where it is mapped to by the dof
-    /// mapper.
+    /// mapper. Offsetted indices run over the components in turn.
     inline index_t mapIndex(index_t n) const
     {
-        return m_dofs[n/m_dofs.front().size()]
-            [n%m_dofs.front().size()] + m_shift;
+        GISMO_ASSERT(n >= 0 && static_cast<size_t>(n) < mapSize(),
+                     "Invalid index "<< n <<" >= "<< mapSize());
+        size_t c = 0;
+        for (; static_cast<size_t>(n) >= m_dofs[c].size(); ++c)
+            n -= static_cast<index_t>(m_dofs[c].size());
+        return m_dofs[c][n] + m_shift;
     }
 
     /// \brief Returns all boundary dofs on patch k (local dof indices)
@@ -520,6 +563,10 @@ private:
 
     /// Number of patches
     size_t m_nPatches;
+
+    /// Whether all components have the same offsets, needed by comp = -1
+    /// and setIdentity()
+    bool m_equalComponents;
 
     /// Shifting of the global index (zero by default)
     index_t m_shift;

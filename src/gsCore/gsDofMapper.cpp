@@ -18,9 +18,60 @@ namespace gismo
 {
 
 gsDofMapper::gsDofMapper() :
-  m_offset(2,0), m_nPatches(1), m_shift(0),
+  m_offset(2,0), m_nPatches(1), m_equalComponents(true), m_shift(0),
   m_numFreeDofs(1,0), m_numElimDofs(1,0), m_numCpldDofs(1,0), m_curElimId(-1)
 { }
+
+void gsDofMapper::initComponentDofs(const gsMatrix<index_t> & patchDofSizes)
+{
+    const index_t nPatches = patchDofSizes.rows();
+    const index_t nComp    = patchDofSizes.cols();
+    GISMO_ENSURE(nPatches > 0, "gsDofMapper: Expected at least one patch (row) of dof sizes, got "
+                 << nPatches << ".");
+    GISMO_ENSURE(nComp > 0, "gsDofMapper: Expected at least one component (column) of dof sizes, got "
+                 << nComp << ".");
+
+    // One below max(): coupling ids run up to the number of dofs plus one
+    const index_t maxDofs = std::numeric_limits<index_t>::max() - 1;
+    index_t nDofs = 0;
+    for (index_t c = 0; c != nComp; ++c)
+        for (index_t k = 0; k != nPatches; ++k)
+        {
+            const index_t n = patchDofSizes(k,c);
+            GISMO_ENSURE(n >= 0, "gsDofMapper: Negative number of dofs " << n
+                         << " on patch " << k << " for component " << c << ".");
+            GISMO_ENSURE(n <= maxDofs - nDofs, "gsDofMapper: The total number of dofs exceeds "
+                         "the range of index_t (" << maxDofs << ").");
+            nDofs += n;
+        }
+
+    m_nPatches = nPatches;
+    m_offset.resize(nComp * (m_nPatches+1));
+    for (index_t c = 0; c != nComp; ++c)
+    {
+        size_t * row = m_offset.data() + offsetRow(c);
+        row[0] = 0;
+        for (index_t k = 0; k != nPatches; ++k)
+            row[k+1] = row[k] + patchDofSizes(k,c);
+    }
+    updateEqualComponents();
+
+    initDofsFromOffsets(nComp);
+}
+
+void gsDofMapper::updateEqualComponents()
+{
+    const size_t rowSize = m_nPatches + 1;
+    for (size_t r = rowSize; r + rowSize <= m_offset.size(); r += rowSize)
+    {
+        if (!std::equal(m_offset.begin() + r, m_offset.begin() + r + rowSize, m_offset.begin()))
+        {
+            m_equalComponents = false; 
+            return; 
+        }
+    }
+    m_equalComponents = true;
+}
 
 void gsDofMapper::localToGlobal(const gsMatrix<index_t>& locals,
                                 index_t patchIndex,
@@ -99,12 +150,10 @@ void gsDofMapper::colapseDofs(index_t k, const gsMatrix<unsigned> & b,
 void gsDofMapper::matchDof(index_t u, index_t i,
 			   index_t v, index_t j, index_t comp)
 {
-    //GISMO_ASSERT(u < m_offset.size() && i< m_offset[u+1] - m_offset[u] ,"Invalid patch-local dof "<<i<<" in matchDof.");
-    //GISMO_ASSERT(v < m_offset.size() && j< m_offset[v+1] - m_offset[v] ,"Invalid patch-local dof "<<i<<" in matchDof.");
-    //TODO: add check for correct range [by adding a last offset = number of total dofs]
-
     if (-1==comp)
     {
+        GISMO_ENSURE(m_equalComponents, "matchDof: comp = -1 needs components with equal dof "
+                     "counts on every patch; call it per component instead.");
         for (index_t c = 0; static_cast<size_t>(c) != componentsSize(); ++c)
             matchDof(u,i,v,j,c);
         return;
@@ -112,6 +161,12 @@ void gsDofMapper::matchDof(index_t u, index_t i,
 
     GISMO_ASSERT(static_cast<size_t>(u)<numPatches(), "Invalid patch index "<< u <<" >= "<< numPatches() );
     GISMO_ASSERT(static_cast<size_t>(v)<numPatches(), "Invalid patch index "<< v <<" >= "<< numPatches() );
+    // Storage bound, not patch bound: identity mappers accept any patch
+    GISMO_ASSERT(static_cast<size_t>(comp)<componentsSize() && i>=0 && j>=0
+                 && patchOffset(u,comp)+i < m_dofs[comp].size()
+                 && patchOffset(v,comp)+j < m_dofs[comp].size(),
+                 "Local dof ("<< i <<","<< u <<") or ("<< j <<","<< v
+                 <<") is beyond the dofs of component "<< comp );
 
     index_t d1 = MAPPER_PATCH_DOF(i,u,comp);
     index_t d2 = MAPPER_PATCH_DOF(j,v,comp);
@@ -127,7 +182,7 @@ void gsDofMapper::matchDof(index_t u, index_t i,
     if (d1 < 0)         // first dof is eliminated
     {
         if (d2 < 0)
-	  mergeDofsGlobally(d1, d2, comp);  // both are eliminated, merge their indices
+	        mergeDofsGlobally(d1, d2, comp);  // both are eliminated, merge their indices
         else if (d2 == 0)
             MAPPER_PATCH_DOF(j,v, comp) = d1;   // second is free, eliminate it along with first
         else /* d2 > 0*/
@@ -218,10 +273,16 @@ void gsDofMapper::eliminateDof( index_t i, index_t k, index_t comp)
 
     if (-1==comp)
     {
+        GISMO_ENSURE(m_equalComponents, "eliminateDof: comp = -1 needs components with equal dof "
+                     "counts on every patch; call it per component instead.");
         for (index_t c = 0; static_cast<size_t>(c) != componentsSize(); ++c)
             eliminateDof(i,k,c);
         return;
     }
+
+    // Storage bound, as in matchDof()
+    GISMO_ASSERT(i>=0 && patchOffset(k,comp)+i < m_dofs[comp].size(),
+                 "Local dof ("<< i <<","<< k <<") is beyond the dofs of component "<< comp );
 
     const index_t old = MAPPER_PATCH_DOF(i,k,comp);
     if (old == 0)       // regular free dof
@@ -365,6 +426,8 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
 				size_t nComp)
 {
     GISMO_ASSERT(nPatches >= 0, "setIdentity: Invalid number of patches " << nPatches);
+    GISMO_ENSURE(m_equalComponents, "setIdentity: The components of the mapper differ in "
+                 "their dof counts.");
     m_curElimId   = -1;
     m_shift = m_bshift = 0;
     m_numFreeDofs.assign(nComp+1,nDofs); m_numFreeDofs.front()=0;
@@ -391,6 +454,7 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
         row[np] = (r < m_dofs.size() ? m_dofs[r].size() : nDofs);
     }
     m_nPatches = np;
+    updateEqualComponents();
 }
 
   void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation, index_t comp)
@@ -442,6 +506,7 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
 
     // Initialize offsets, the same row for every component
     m_nPatches = nPatches;
+    m_equalComponents = true;
     const size_t nRows = std::max<index_t>(nComp, 1);
     m_offset.resize(nRows * (nPatches+1));
     for (size_t r = 0; r != nRows; ++r)
@@ -622,7 +687,7 @@ bool gsDofMapper::indexOnPatch(const index_t gl, const index_t k, index_t & loca
     const index_t c = componentOf(gl);
     const std::vector<index_t> & dofs = m_dofs[c];
     const citer istart = dofs.begin()+patchOffset(k,c);
-    const citer iend   = istart + patchSize(k);
+    const citer iend   = istart + patchSize(k,c);
     auto it = std::find(istart, iend, gl);
     if (iend==it) return false;
     local = std::distance(istart,it);
