@@ -12,6 +12,7 @@
 */
 
 #include <gsCore/gsDofMapper.h>
+#include <limits>
 
 
 namespace gismo
@@ -21,9 +22,6 @@ gsDofMapper::gsDofMapper() :
   m_offset(2,0), m_nPatches(1), m_shift(0), m_numFreeDofs(1,0), m_numElimDofs(1,0),
   m_numCpldDofs(1,0), m_curElimId(-1)
 { }
-
-gsDofMapper::gsDofMapper(const gsMatrix<index_t> & patchDofSizes)
-{ initPatchDofs(patchDofSizes); }
 
 gsDofMapper::gsDofMapper(const gsVector<index_t> & patchDofSizes, index_t nComp)
 {
@@ -400,6 +398,17 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
 
     const index_t nP = sz.rows();
     const index_t nC = sz.cols();
+
+    // Global indices span all components; coupling ids count from 1
+    const index_t maxDofs = std::numeric_limits<index_t>::max() - 1;
+    index_t total = 0;
+    for (index_t c = 0; c != nC; ++c)
+        for (index_t k = 0; k != nP; ++k)
+        {
+            GISMO_ENSURE(sz(k,c) <= maxDofs - total,
+                         "initPatchDofs: The total number of dofs exceeds the range of index_t ("<<maxDofs<<").");
+            total += sz(k,c);
+        }
 
     m_curElimId   = -1;
     m_shift = 0;

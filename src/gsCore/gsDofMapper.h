@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <type_traits>
+
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsBoundary.h>
 #include <gsCore/gsExport.h>
@@ -98,12 +100,16 @@ public:
     /// \brief Constructs a mapper from the per-component patch sizes.
     /// \param patchDofSizes nPatches x nComp matrix; entry (k,c) is the number of DoFs of component c on patch k.
     ///        Components may have different sizes. Requires nPatches>0, nComp>0 and no negative entry.
-    explicit gsDofMapper(const gsMatrix<index_t> & patchDofSizes);
+    ///
+    /// Templated such that it is only selected when giving an argument of type
+    /// gsMatrix<index_t>. Anything else, including things that could be converted to
+    /// a gsMatrix, goes to the "standard" constructor taking a vector.
+    template<class T, typename std::enable_if<std::is_same<T, index_t>::value, int>::type = 0>
+    explicit gsDofMapper(const gsMatrix<T> & patchDofSizes)
+    { initPatchDofs(patchDofSizes); }
 
     /// \brief Uniform case: every one of the \a nComp components has the patch sizes \a patchDofSizes.
     /// Equivalent to gsDofMapper(patchDofSizes.replicate(1,nComp)).
-    /// A single Eigen-expression argument, e.g. gsVector<index_t>::Constant(3,4), is ambiguous
-    /// with the matrix constructor: pass a named gsVector, or write gsDofMapper(expr, 1).
     gsDofMapper(const gsVector<index_t> & patchDofSizes, index_t nComp = 1);
 
     void swap(gsDofMapper & other)
