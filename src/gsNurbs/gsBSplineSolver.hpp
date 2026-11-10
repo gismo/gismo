@@ -266,8 +266,8 @@ unsigned findHyperPlaneIntersections (
         default:
             GISMO_ASSERT(false, __FUNCTION__<<"The impossible happened! Check for B..S!!" );
         }
-        const T grevB = crv.knots().greville(intB);
-        const T grevE = crv.knots().greville(curC);
+        const T grevB = crv.knots().grevilleOf(intB);
+        const T grevE = crv.knots().grevilleOf(curC);
         const T coeffB = crv.coef(curC).dot(normal)-ref;
         const T coeffE = ref-crv.coef(intB).dot(normal);
         const T denom  = (crv.coef(curC)-crv.coef(intB)).dot(normal);

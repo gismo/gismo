@@ -587,8 +587,8 @@ public:
     /// knot vector. Points are clamped if \a clamp is true
     gsMatrix<T> greville(bool clamp = true) const
     {
-        gsMatrix<T> gr( 1,this->size() - m_deg - 1 );
-        this->greville_into(gr);
+        gsMatrix<T> gr;
+        this->greville_into(gr, clamp);
         return gr;
     }
 
@@ -766,7 +766,7 @@ public: // things required by gsKnotVector
 
     /// Returns Greville abscissa of the \a i - the B-spline defined
     /// on the knot vector.
-    T greville(int i) const;
+    T grevilleOf(index_t i) const;
 
     /// Get the first knot.
     T first () const

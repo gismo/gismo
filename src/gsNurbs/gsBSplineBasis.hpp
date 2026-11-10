@@ -1057,6 +1057,28 @@ void gsTensorBSplineBasis<1,T>::refine_withCoefs(gsMatrix<T>& coefs, const std::
 
 
 template <class T>
+void gsTensorBSplineBasis<1,T>::refine_withCoefs(gsMatrix<T>& coefs, const gsMatrix<T> & boxes)
+{
+    GISMO_ASSERT( boxes.rows() == 1, "Refinement boxes must have one row.");
+    GISMO_ASSERT( boxes.cols() % 2 == 0, "Refinement boxes must have even number of columns.");
+
+    const std::vector<T> ukv = m_knots.unique();
+    std::vector<T> newKnots;
+    for (size_t i = 1; i < ukv.size(); ++i)
+    {
+        const T midpt = (ukv[i] + ukv[i-1]) / (T)(2);
+        for (index_t j = 0; j < boxes.cols(); j+=2)
+            if ( boxes(0,j) < midpt && midpt < boxes(0,j+1) )
+            {
+                newKnots.push_back(midpt);
+                break;
+            }
+    }
+    this->refine_withCoefs(coefs, newKnots);
+}
+
+
+template <class T>
 void gsTensorBSplineBasis<1,T>::refine_withTransfer(gsSparseMatrix<T,RowMajor> & transfer, const std::vector<T>& knots)
 {
     // See remark about periodic basis in refine_withCoefs, please.
