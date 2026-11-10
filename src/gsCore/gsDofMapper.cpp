@@ -173,6 +173,8 @@ void gsDofMapper::markCoupled(index_t i, index_t k, index_t comp)
 
 void gsDofMapper::markTagged( index_t i, index_t k, index_t comp)
 {
+    // Before finalize() the stored values are setup ids, not global indices
+    GISMO_ENSURE(m_curElimId>=0, "markTagged: finalize() was not called on gsDofMapper");
     GISMO_ASSERT(comp>-1,"Component is invalid");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
 
@@ -597,11 +599,12 @@ index_t gsDofMapper::boundarySizeWithDuplicates() const
 {
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
 
+    // Eliminated dofs of every component are numbered after the free dofs of all components
+    const index_t s = m_numFreeDofs.back() - 1;
     index_t res = 0;
     for (size_t i = 0; i!= m_dofs.size(); ++i)
       res += std::count_if(m_dofs[i].begin(), m_dofs[i].end(),
-			   GS_BIND2ND(std::greater<index_t>(),
-					freeSize(i) - 1) );
+			   GS_BIND2ND(std::greater<index_t>(), s) );
     return res;
 }
 
