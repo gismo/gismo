@@ -466,6 +466,10 @@ public:
         return patchOffset(k+1, c) - patchOffset(k, c);
     }
 
+    /// Returns true iff all components have the same number of dofs on
+    /// every patch
+    bool hasEqualComponents() const { return m_equalComponents; }
+
     size_t totalSize(const index_t c = 0) const
     {
         return m_dofs[c].size();

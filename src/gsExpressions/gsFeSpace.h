@@ -110,7 +110,22 @@ public:
     {
         GISMO_ASSERT( dofsMapper.isFinalized(), "The provided dof-mapper is not finalized.");
         GISMO_ENSURE( dofsMapper.numComponents()==this->dim(), "The dof-mapper has "<<dofsMapper.numComponents()<<" components, but the space has dimension "<<this->dim()<<".");
-        GISMO_ASSERT( dofsMapper.mapSize()==static_cast<size_t>(this->source().size()*dofsMapper.numComponents()), "The dof-mapper is not consistent: mapSize()="<<dofsMapper.mapSize()<<"!="<<static_cast<size_t>(this->source().size())<<"=this->source().size()");
+        GISMO_ENSURE( dofsMapper.hasEqualComponents(), "The components of the dof-mapper differ in their "
+                      "dofs per patch, but the space uses one basis for all components.");
+#ifndef NDEBUG
+        // Each component uses the basis of its patch: equal totals are not enough
+        if (const gsMultiBasis<T> * mb = dynamic_cast<const gsMultiBasis<T>*>(&this->source()))
+        {
+            GISMO_ASSERT( dofsMapper.numPatches()==mb->nBases(), "The dof-mapper has "<<dofsMapper.numPatches()
+                          <<" patch(es), but the multi-basis has "<<mb->nBases()<<".");
+            for (index_t k = 0; k != mb->nPieces(); ++k)
+                GISMO_ASSERT( dofsMapper.patchSize(k)==static_cast<size_t>(mb->basis(k).size()),
+                              "The dof-mapper has "<<dofsMapper.patchSize(k)<<" dofs on patch "<<k
+                              <<", but the basis of that patch has "<<mb->basis(k).size()<<".");
+        }
+        else
+            GISMO_ASSERT( dofsMapper.mapSize()==static_cast<size_t>(this->source().size()*dofsMapper.numComponents()), "The dof-mapper is not consistent: mapSize()="<<dofsMapper.mapSize()<<"!="<<static_cast<size_t>(this->source().size())<<"=this->source().size()");
+#endif
         m_sd->mapper = give(dofsMapper);
     }
 

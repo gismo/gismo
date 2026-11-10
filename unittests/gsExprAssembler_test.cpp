@@ -334,6 +334,58 @@ SUITE(gsExprAssembler_test)
         CHECK_EQUAL(matching.freeSize(), A.numDofs());
     }
 
+    // setupMapper() rejects a mapper whose components differ in size, and in
+    // Debug one whose sizes per patch differ from the basis
+    TEST(SetupMapperPatchSizes)
+    {
+        gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(2,1,1);
+        gsMultiBasis<> mb(patches);
+        mb.basis(0).uniformRefine();
+        const index_t n0 = mb.basis(0).size(), n1 = mb.basis(1).size();
+        CHECK(n0 != n1);
+
+        const auto finalized = [](gsDofMapper m) { m.finalize(); return m; };
+        gsMatrix<index_t> sizes(2,2);
+
+        gsExprAssembler<> A(1, 1);
+        auto u = A.getSpace(mb, 2);
+
+        // Component 1 has one dof too many on patch 0
+        sizes << n0, n0+1, n1, n1;
+        CHECK_THROW(u.setupMapper(finalized(gsDofMapper(sizes))), std::runtime_error);
+        // Component 1 has the patch sizes swapped, same totals
+        sizes << n0, n1, n1, n0;
+        CHECK_THROW(u.setupMapper(finalized(gsDofMapper(sizes))), std::runtime_error);
+        gsDofMapper identity;
+#ifndef NDEBUG
+        // Equal components, but not sized like the basis: Debug only
+        gsVector<index_t> three(3);
+        three << n0, n1, 1;
+        CHECK_THROW(u.setupMapper(finalized(gsDofMapper(three, 2))), std::logic_error);
+        gsVector<index_t> swapped(2);
+        swapped << n1, n0;
+        CHECK_THROW(u.setupMapper(finalized(gsDofMapper(swapped, 2))), std::logic_error);
+        // An identity mapper maps local dof i of every patch to the same global dof
+        identity.setIdentity(2, n0+n1, 2);
+        CHECK_THROW(u.setupMapper(finalized(identity)), std::logic_error);
+#endif
+
+        // On a single patch the identity mapper is the patch-wise one
+        gsMultiBasis<> single(patches.patch(1));
+        gsExprAssembler<> S(1, 1);
+        auto v = S.getSpace(single, 2);
+        identity = gsDofMapper();
+        identity.setIdentity(1, n1, 2);
+        v.setupMapper(finalized(identity));
+
+        // Correctly sized mappers are accepted
+        gsVector<index_t> perPatch(2);
+        perPatch << n0, n1;
+        u.setupMapper(finalized(gsDofMapper(perPatch, 2)));
+        sizes << n0, n0, n1, n1;
+        u.setupMapper(finalized(gsDofMapper(sizes)));
+    }
+
     TEST(BoundaryIntegral)
     {
         // Create a circle

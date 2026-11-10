@@ -371,4 +371,23 @@ TEST(identity_then_writes)
     CHECK_EQUAL("off=0 0 0 ps=0 0 6;0 0 6 ||0,1,2,3,10,4;||5,9,6,9,7,8", layout(m) + " " + indices(m));
 }
 
+// gsDofMapper::hasEqualComponents() returns true only if all components have the
+// same dof-count on each patch.
+TEST(has_equal_components)
+{
+    gsMatrix<index_t> sizes(2,2);
+    sizes << 3, 3,
+             4, 4;
+    gsVector<index_t> v(2);
+    v << 3, 4;
+    CHECK(gsDofMapper(v, 2).hasEqualComponents());
+    CHECK(gsDofMapper(sizes).hasEqualComponents());
+    sizes << 3, 4,
+             4, 3;
+    CHECK(!gsDofMapper(sizes).hasEqualComponents());
+    gsDofMapper m;
+    m.setIdentity(2, 5, 2);
+    CHECK(m.hasEqualComponents());
+}
+
 }
