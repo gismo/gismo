@@ -457,21 +457,6 @@ SUITE(gsDofMapper_test)
         CHECK(toVec(m.asVector(1)) == id1);
     }
 
-    TEST(DofMapperT11_defaultCtorBoundaryShift)
-    {
-        // Construct in a poisoned buffer so that a member the default
-        // constructor leaves uninitialised reads back as 0xAB bytes
-        alignas(gsDofMapper) unsigned char buf[sizeof(gsDofMapper)];
-        std::memset(buf, 0xAB, sizeof buf);
-        gsDofMapper * m = new (buf) gsDofMapper();
-        m->finalize();
-#ifdef NDEBUG
-        // Index 0 is outside the empty range [0,0) and asserts when NDEBUG is not defined
-        CHECK_EQUAL(0, m->global_to_bindex(0));
-#endif
-        m->~gsDofMapper();
-    }
-
     TEST(DofMapperT12_inverseAsVectorOtherComp)
     {
         // Two patches (2 and 3 dofs), two components, no matching or
@@ -496,35 +481,6 @@ SUITE(gsDofMapper_test)
         CHECK(toVec(v1) == want1);
         CHECK_EQUAL(5, (index_t)std::count(v0.data(), v0.data()+v0.size(), -1));
         CHECK_EQUAL(5, (index_t)std::count(v1.data(), v1.data()+v1.size(), -1));
-    }
-
-    TEST(DofMapperT13_permuteSingleComponent)
-    {
-        gsVector<index_t> sz(1); sz << 4;
-        gsDofMapper m(sz);
-        m.finalize();
-        m.markTagged(1,0);
-        m.setShift(13);
-
-        gsVector<index_t> p(4); p << 3, 2, 1, 0;
-        m.permuteFreeDofs(p, 0);
-
-        CHECK_EQUAL(16, m.index(0,0));
-        CHECK_EQUAL(15, m.index(1,0));
-        CHECK_EQUAL(14, m.index(2,0));
-        CHECK_EQUAL(13, m.index(3,0));
-        CHECK(m.is_tagged(1,0));
-        CHECK_EQUAL(1, m.taggedSize());
-    }
-
-    TEST(DofMapperT13_permuteRejectsMultiComponent)
-    {
-        gsVector<index_t> sz(1); sz << 3;
-        gsDofMapper m(sz, 2);
-        m.finalize();
-
-        gsVector<index_t> p(3); p << 2, 1, 0;
-        CHECK_THROW(m.permuteFreeDofs(p, 0), std::exception);
     }
 
     TEST(DofMapperA1_inverseOnPatchShift13)
@@ -615,16 +571,6 @@ SUITE(gsDofMapper_test)
         CHECK_THROW(m.global_to_bindex(0), std::logic_error);
     }
 #endif
-
-    TEST(DofMapperA3_permuteRejectsComponentOne)
-    {
-        gsVector<index_t> sz(1); sz << 4;
-        gsDofMapper m(sz);
-        m.finalize();
-
-        gsVector<index_t> p(4); p << 3, 2, 1, 0;
-        CHECK_THROW(m.permuteFreeDofs(p, 1), std::runtime_error);
-    }
 
     TEST(DofMapperR1_raggedOracle)
     {
@@ -807,7 +753,7 @@ SUITE(gsDofMapper_test)
         CHECK_EQUAL(8, m.size());
     }
 
-    TEST(DofMapperR4_defaultCtorNumPatches)
+    TEST(DofMapperR4_defaultCtor)
     {
         // Construct in a poisoned buffer so that a member the default
         // constructor leaves uninitialised reads back as 0xAB bytes
@@ -815,6 +761,10 @@ SUITE(gsDofMapper_test)
         std::memset(buf, 0xAB, sizeof buf);
         gsDofMapper * m = new (buf) gsDofMapper();
         CHECK_EQUAL(1, (index_t)m->numPatches());
+        CHECK_EQUAL(0, (index_t)m->offset(0));
+        CHECK_EQUAL(0, (index_t)m->patchSize(0));
+        CHECK_EQUAL(0, m->firstIndex(0));
+        CHECK_EQUAL(0, m->numComponents());
         m->~gsDofMapper();
     }
 }

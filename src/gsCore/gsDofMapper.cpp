@@ -18,7 +18,7 @@ namespace gismo
 {
 
 gsDofMapper::gsDofMapper() :
-  m_offset(), m_nPatches(1), m_shift(0), m_bshift(0), m_numFreeDofs(1,0), m_numElimDofs(1,0),
+  m_offset(2,0), m_nPatches(1), m_shift(0), m_numFreeDofs(1,0), m_numElimDofs(1,0),
   m_numCpldDofs(1,0), m_curElimId(-1)
 { }
 
@@ -377,7 +377,7 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
 				size_t nComp)
 {
     m_curElimId   = -1;
-    m_shift = m_bshift = 0;
+    m_shift = 0;
     m_numFreeDofs.assign(nComp+1,nDofs); m_numFreeDofs.front()=0;
     m_numElimDofs.assign(nComp+1,0);
     m_numCpldDofs.assign(nComp+1,1); m_numCpldDofs.front()=0;
@@ -392,50 +392,6 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
     m_tagged.clear();
 }
 
-  void gsDofMapper::permuteFreeDofs(const gsVector<index_t>& permutation, index_t comp)
-{
-    GISMO_ENSURE(numComponents()==1, "permuteFreeDofs supports single-component mappers only");
-    GISMO_ENSURE(comp==0, "permuteFreeDofs: invalid component "<<comp<<", the mapper has a single component 0");
-    GISMO_ASSERT(comp>-1,"Component is invalid");
-    GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
-    GISMO_ASSERT(m_numFreeDofs[comp+1] == permutation.size(), "permutation size does not match number of free dofs");
-    //GISMO_ASSERT(m_tagged.empty(), "you cannot permute the dofVector twice, combine the permutation");
-    //We could check here, that permutation is indeed a permutation
-
-    //make a copy of the old ordering, easiest way to implement the permutation. Inplace reordering is quite hard.
-    std::vector<index_t> dofs = m_dofs[comp];
-    //first use a tempory coupled vector, other wise is_coupled_index() would not work correctly
-    std::vector<index_t> tagged_permuted;
-    tagged_permuted.reserve(taggedSize()); //reserve enough memory
-
-    for(index_t i=0; i<(index_t)dofs.size();++i)
-    {
-        const index_t idx = dofs[i];
-        if(idx < freeSize())
-        {
-            m_dofs[comp][i] = permutation[idx];
-            //fill  bookkeeping for tagged dofs
-            if(std::binary_search(m_tagged.begin(), m_tagged.end(), idx))
-                tagged_permuted.push_back(m_dofs[comp][i]);
-        }
-        else if(std::binary_search(m_tagged.begin(), m_tagged.end(), idx)) //Take care about eliminated tagged dofs
-            tagged_permuted.push_back(idx);
-    }
-    m_tagged.swap(tagged_permuted);
-
-    //sort and delete the duplicated ones
-    std::sort(m_tagged.begin(),m_tagged.end());
-    std::vector<index_t>::iterator it = std::unique (m_tagged.begin(),m_tagged.end());
-    m_tagged.resize( std::distance(m_tagged.begin(),it) );
-
-    //coupled dofs cannot be tracked anymore on this component
-    m_numCpldDofs[comp+1]=m_numCpldDofs[comp];
-    for(std::vector<index_t>::iterator s=m_numCpldDofs.begin()+comp+2;
-	s<m_numCpldDofs.end(); ++s)
-      *s += (*s-1);
-}
-
-
   void gsDofMapper::initPatchDofs(const gsMatrix<index_t> & sz)
 {
     GISMO_ENSURE(sz.rows()>0 && sz.cols()>0 && sz.minCoeff()>=0,
@@ -446,7 +402,7 @@ std::ostream& gsDofMapper::print( std::ostream& os ) const
     const index_t nC = sz.cols();
 
     m_curElimId   = -1;
-    m_shift = m_bshift = 0;
+    m_shift = 0;
     m_numElimDofs.assign(nC+1,0);
     m_numCpldDofs.assign(nC+1,1); m_numCpldDofs.front()=0;
 
@@ -766,11 +722,6 @@ void gsDofMapper::setShift (index_t shift)
 void gsDofMapper::addShift (index_t shift)
 {
     m_shift+=shift;
-}
-
-void gsDofMapper::setBoundaryShift (index_t shift)
-{
-    m_bshift=shift;
 }
 
 #ifdef GISMO_WITH_PYBIND11
