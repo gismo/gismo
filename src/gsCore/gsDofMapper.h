@@ -531,6 +531,12 @@ private:
         return m_offset[c*(m_nPatches+1)+k];
     }
 
+    /// Number of valid local indices on patch \a k of component \a c: the patch
+    /// size, or every dof of \a c in the layout of setIdentity(), where all dofs
+    /// are on the last patch and are addressed through any patch
+    size_t localBound(index_t k, index_t c) const
+    { return 0 == off(m_nPatches-1, c) ? off(m_nPatches, c) : off(k+1, c) - off(k, c); }
+
     // replace all references to oldIdx by newIdx
     inline void replaceDofGlobally(index_t oldIdx, index_t newIdx);
     inline void replaceDofGlobally(index_t oldIdx, index_t newIdx, index_t comp);

@@ -119,8 +119,8 @@ void gsDofMapper::matchDof(index_t u, index_t i,
         return;
     }
 
-    GISMO_ASSERT(off(u,comp)+i < off(m_nPatches,comp), "Invalid patch-local dof "<<i<<" of patch "<<u<<" in matchDof.");
-    GISMO_ASSERT(off(v,comp)+j < off(m_nPatches,comp), "Invalid patch-local dof "<<j<<" of patch "<<v<<" in matchDof.");
+    GISMO_ASSERT(i >= 0 && static_cast<size_t>(i) < localBound(u,comp), "Invalid patch-local dof "<<i<<" of patch "<<u<<" in matchDof.");
+    GISMO_ASSERT(j >= 0 && static_cast<size_t>(j) < localBound(v,comp), "Invalid patch-local dof "<<j<<" of patch "<<v<<" in matchDof.");
 
     index_t d1 = MAPPER_PATCH_DOF(i,u,comp);
     index_t d2 = MAPPER_PATCH_DOF(j,v,comp);
@@ -231,7 +231,7 @@ void gsDofMapper::eliminateDof( index_t i, index_t k, index_t comp)
         return;
     }
 
-    GISMO_ASSERT(off(k,comp)+i < off(m_nPatches,comp), "Invalid patch-local dof "<<i<<" of patch "<<k<<" in eliminateDof.");
+    GISMO_ASSERT(i >= 0 && static_cast<size_t>(i) < localBound(k,comp), "Invalid patch-local dof "<<i<<" of patch "<<k<<" in eliminateDof.");
 
     const index_t old = MAPPER_PATCH_DOF(i,k,comp);
     if (old == 0)       // regular free dof

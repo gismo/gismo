@@ -1044,7 +1044,7 @@ SUITE(gsDofMapper_test)
     }
 
     // comp = -1 throws on unequal components and leaves the mapper unchanged;
-    // debug builds reject a local dof beyond its component
+    // debug builds reject a local dof beyond its patch
     TEST(matrix_unequal_components_reject_shared_calls)
     {
         gsMatrix<index_t> sizes(2, 2);
@@ -1056,6 +1056,9 @@ SUITE(gsDofMapper_test)
     #ifndef NDEBUG
         CHECK_THROW(m.eliminateDof(6, 1, 1), std::logic_error);
         CHECK_THROW(m.matchDof(1, 6, 0, 0, 1), std::logic_error);
+        // Within the component, beyond the patch
+        CHECK_THROW(m.eliminateDof(3, 0, 1), std::logic_error);
+        CHECK_THROW(m.matchDof(0, 2, 1, 0, 1), std::logic_error);
     #endif
         m.finalize();
         CHECK_EQUAL("off=0 4 ps=4 4;2 6 0,1,2,3|4,5,6,7;8,9|10,11,12,13,14,15", layout(m) + " " + indices(m));
