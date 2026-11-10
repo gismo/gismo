@@ -19,6 +19,7 @@ int main(int argc, char* argv[])
     int knots = 2;
     real_t eps = 1e-4;
     std::string modeStr = "global";
+    bool reorient = true;
 
     gsCmdLine cmd("Local Analysis-Suitable G1 (AS-G1) Multi-Patch Spline Surface Fitter.");
     cmd.addString("f", "file", "Input multi-patch geometry XML file.", inputFile);
@@ -28,6 +29,7 @@ int main(int argc, char* argv[])
     cmd.addInt("r", "regularity", "Target interface regularity 1 <= r <= p-2.", regularity);
     cmd.addInt("k", "knots", "Number of inner knot intervals k.", knots);
     cmd.addReal("e", "eps", "Tolerance for AS-G1 gluing residual check.", eps);
+    cmd.addSwitch("reorient", "Automatically reorient patches with det(J) < 0 to positive orientation", reorient);
 
     try {
         cmd.getValues(argc, argv);
@@ -51,6 +53,12 @@ int main(int argc, char* argv[])
     }
     fd.getFirst(target);
     target.computeTopology();
+
+    if (reorient) {
+        if (gsASG1LocalFitter<real_t>::unifyPatchOrientations(target)) {
+            gsInfo << "Reoriented clockwise patches to enforce det(J) > 0 and recomputed topology.\n";
+        }
+    }
 
     gsInfo << "Target surface has " << target.nPatches() << " patches and "
            << target.nInterfaces() << " interfaces.\n";

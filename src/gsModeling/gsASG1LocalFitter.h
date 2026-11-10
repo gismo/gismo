@@ -77,6 +77,10 @@ public:
     FittingMode mode() const { return m_mode; }
     void setMode(FittingMode mode) { m_mode = mode; }
 
+    /// \brief Normalizes patch orientations so that det(J) > 0 for all patches.
+    /// Reverses the parameter u on any patch where mean det(J) < 0, then calls mp.computeTopology().
+    static bool unifyPatchOrientations(gsMultiPatch<T>& mp);
+
     const gsMultiPatch<T>& result() const { return m_result; }
     gsMultiPatch<T> giveResult() { return give(m_result); }
 

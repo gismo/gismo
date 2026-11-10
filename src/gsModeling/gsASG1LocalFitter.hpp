@@ -1620,5 +1620,71 @@ bool gsASG1LocalFitter<T>::checkASG1(T eps) const
     return all_valid;
 }
 
+template <class T>
+bool gsASG1LocalFitter<T>::unifyPatchOrientations(gsMultiPatch<T>& mp)
+{
+    int flippedCount = 0;
+    for (size_t p = 0; p < mp.nPatches(); ++p) {
+        auto& geom = mp.patch(p);
+        // Compute mean Jacobian determinant
+        T sumDet = 0;
+        int count = 0;
+        for (int i = 0; i <= 2; ++i) {
+            for (int j = 0; j <= 2; ++j) {
+                gsVector<T> u(2);
+                u << i * T(0.5), j * T(0.5);
+                gsMatrix<T> jac;
+                geom.jacobian_into(u, jac);
+                T detJ = jac(0, 0) * jac(1, 1) - jac(0, 1) * jac(1, 0);
+                sumDet += detJ;
+                count++;
+            }
+        }
+        T meanDet = sumDet / count;
+        if (meanDet < T(0)) {
+            // Flip u-direction of patch
+            auto* bsp = dynamic_cast<gsTensorBSpline<2, T>*>(&geom);
+            if (bsp) {
+                int nu = bsp->basis().size(0);
+                int nv = bsp->basis().size(1);
+                gsMatrix<T> coefs = bsp->coefs();
+                gsMatrix<T> new_coefs = coefs;
+                for (int i = 0; i < nu; ++i) {
+                    for (int j = 0; j < nv; ++j) {
+                        new_coefs.row(j * nu + (nu - 1 - i)) = coefs.row(j * nu + i);
+                    }
+                }
+                bsp->setCoefs(new_coefs);
+                flippedCount++;
+            } else {
+                auto* nurbs = dynamic_cast<gsTensorNurbs<2, T>*>(&geom);
+                if (nurbs) {
+                    int nu = nurbs->basis().size(0);
+                    int nv = nurbs->basis().size(1);
+                    gsMatrix<T> coefs = nurbs->coefs();
+                    gsMatrix<T> weights = nurbs->weights();
+                    gsMatrix<T> new_coefs = coefs;
+                    gsMatrix<T> new_weights = weights;
+                    for (int i = 0; i < nu; ++i) {
+                        for (int j = 0; j < nv; ++j) {
+                            int old_idx = j * nu + i;
+                            int new_idx = j * nu + (nu - 1 - i);
+                            new_coefs.row(new_idx) = coefs.row(old_idx);
+                            new_weights(new_idx, 0) = weights(old_idx, 0);
+                        }
+                    }
+                    nurbs->setCoefs(new_coefs);
+                    nurbs->weights() = new_weights;
+                    flippedCount++;
+                }
+            }
+        }
+    }
+    if (flippedCount > 0) {
+        mp.computeTopology();
+    }
+    return flippedCount > 0;
+}
+
 } // namespace gismo
 
