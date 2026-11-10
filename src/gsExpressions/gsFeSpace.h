@@ -110,7 +110,8 @@ public:
     {
         GISMO_ASSERT( dofsMapper.isFinalized(), "The provided dof-mapper is not finalized.");
         GISMO_ENSURE( dofsMapper.numComponents()==this->dim(), "The dof-mapper has "<<dofsMapper.numComponents()<<" components, but the space has dimension "<<this->dim()<<".");
-        GISMO_ASSERT( dofsMapper.mapSize()==static_cast<size_t>(this->source().size()*dofsMapper.numComponents()), "The dof-mapper is not consistent: mapSize()="<<dofsMapper.mapSize()<<"!="<<static_cast<size_t>(this->source().size())<<"=this->source().size()");
+        for (index_t c = 0; c != dofsMapper.numComponents(); ++c)
+            GISMO_ENSURE( dofsMapper.totalSize(c)==static_cast<size_t>(this->source().size()), "The dof-mapper is not consistent: totalSize("<<c<<")="<<dofsMapper.totalSize(c)<<"!="<<this->source().size()<<"=this->source().size()");
         m_sd->mapper = give(dofsMapper);
     }
 
