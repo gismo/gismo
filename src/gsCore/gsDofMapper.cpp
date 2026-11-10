@@ -636,25 +636,27 @@ gsVector<index_t> gsDofMapper::find_impl(Iterator istart, Iterator iend, Predica
     return rvo;
 }
 
-gsVector<index_t> gsDofMapper::findBoundary(const index_t k) const
+gsVector<index_t> gsDofMapper::findBoundary(const index_t k, const index_t c) const
 {
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+    GISMO_ASSERT(c>=0 && c<numComponents(), "Invalid component "<< c <<" of "<< numComponents() );
     const index_t s = m_numFreeDofs.back() - 1;
     typedef std::vector<index_t>::const_iterator citer;
-    citer istart = m_dofs[0].begin() + off(k,0);
-    citer iend   = istart + patchSize(k);
+    citer istart = m_dofs[c].begin() + off(k,c);
+    citer iend   = istart + patchSize(k,c);
     return find_impl(istart, iend, GS_BIND2ND(std::greater<index_t>(),s));
 }
 
-gsVector<index_t> gsDofMapper::findFree(const index_t k) const
+gsVector<index_t> gsDofMapper::findFree(const index_t k, const index_t c) const
 {
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+    GISMO_ASSERT(c>=0 && c<numComponents(), "Invalid component "<< c <<" of "<< numComponents() );
     const index_t s = m_numFreeDofs.back();
     typedef std::vector<index_t>::const_iterator citer;
-    citer istart = m_dofs[0].begin() + off(k,0);
-    citer iend   = istart + patchSize(k);
+    citer istart = m_dofs[c].begin() + off(k,c);
+    citer iend   = istart + patchSize(k,c);
     return find_impl(istart, iend, GS_BIND2ND(std::less<index_t>(),s));
 }
 
@@ -667,25 +669,27 @@ struct _isBetween
 };
 } // end anonymous namespace
 
-gsVector<index_t> gsDofMapper::findCoupled(const index_t k, const index_t j) const
+gsVector<index_t> gsDofMapper::findCoupled(const index_t k, const index_t j, const index_t c) const
 {
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+    GISMO_ASSERT(c>=0 && c<numComponents(), "Invalid component "<< c <<" of "<< numComponents() );
 
     if (k==j) return gsVector<index_t>();
 
     typedef std::vector<index_t>::const_iterator citer;
-    citer istart = m_dofs[0].begin() + off(k,0);
-    citer iend   = istart + patchSize(k);
+    citer istart = m_dofs[c].begin() + off(k,c);
+    citer iend   = istart + patchSize(k,c);
 
-    const index_t l = m_numFreeDofs[1]-(m_numCpldDofs[1]-m_numCpldDofs[0])-1;
-    const index_t u = m_numFreeDofs[1];
+    // The coupled dofs of c are the last ones of its free block
+    const index_t l = m_numFreeDofs[c+1]-(m_numCpldDofs[c+1]-m_numCpldDofs[c])-1;
+    const index_t u = m_numFreeDofs[c+1];
     if (-1==j)
         return find_impl(istart, iend, _isBetween(l,u) );
     else
     {
-        citer istartj = m_dofs[0].begin() + off(j,0);
-        citer iendj   = istartj + patchSize(j);
+        citer istartj = m_dofs[c].begin() + off(j,c);
+        citer iendj   = istartj + patchSize(j,c);
         std::list<index_t> v;
         citer cur = std::find_if(istart, iend, _isBetween(l,u));
         while( cur!=iend )
@@ -704,24 +708,26 @@ gsVector<index_t> gsDofMapper::findCoupled(const index_t k, const index_t j) con
     }
 }
 
-gsVector<index_t> gsDofMapper::findFreeUncoupled(const index_t k) const
+gsVector<index_t> gsDofMapper::findFreeUncoupled(const index_t k, const index_t c) const
 {
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+    GISMO_ASSERT(c>=0 && c<numComponents(), "Invalid component "<< c <<" of "<< numComponents() );
     typedef std::vector<index_t>::const_iterator citer;
-    const citer istart = m_dofs[0].begin() + off(k,0);
-    const citer iend   = istart + patchSize(k);
+    const citer istart = m_dofs[c].begin() + off(k,c);
+    const citer iend   = istart + patchSize(k,c);
     return find_impl(istart, iend,
-                     _isBetween(-1, m_numFreeDofs[1]-(m_numCpldDofs[1]-m_numCpldDofs[0])) );
+                     _isBetween(m_numFreeDofs[c]-1, m_numFreeDofs[c+1]-(m_numCpldDofs[c+1]-m_numCpldDofs[c])) );
 }
 
-gsVector<index_t> gsDofMapper::findTagged(const index_t k) const
+gsVector<index_t> gsDofMapper::findTagged(const index_t k, const index_t c) const
 {
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+    GISMO_ASSERT(c>=0 && c<numComponents(), "Invalid component "<< c <<" of "<< numComponents() );
     typedef std::vector<index_t>::const_iterator citer;
-    citer istart = m_dofs[0].begin() + off(k,0);
-    citer iend   = istart + patchSize(k);
+    citer istart = m_dofs[c].begin() + off(k,c);
+    citer iend   = istart + patchSize(k,c);
     return find_impl(istart, iend,
                      [this](const index_t v)
                      { return std::binary_search(m_tagged.begin(), m_tagged.end(), v); });

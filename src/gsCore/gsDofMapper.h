@@ -500,20 +500,21 @@ public:
         return m_dofs[c][n] + m_shift;
     }
 
-    /// \brief Returns all boundary dofs on patch k (local dof indices)
-    gsVector<index_t> findBoundary(const index_t k) const;
+    /// \brief Returns all boundary dofs of component \a c on patch k (local dof indices)
+    gsVector<index_t> findBoundary(const index_t k, const index_t c = 0) const;
 
-    /// \brief Returns all free dofs on patch k (local dof indices)
-    gsVector<index_t> findFree(const index_t k) const;
+    /// \brief Returns all free dofs of component \a c on patch k (local dof indices)
+    gsVector<index_t> findFree(const index_t k, const index_t c = 0) const;
 
-    /// \brief Returns all coupled dofs on patch k (local dof indices)
-    gsVector<index_t> findCoupled(const index_t k, const index_t j = -1) const;
+    /// \brief Returns all coupled dofs of component \a c on patch k (local dof
+    /// indices); with \a j >= 0 only those coupled with a dof of patch \a j
+    gsVector<index_t> findCoupled(const index_t k, const index_t j = -1, const index_t c = 0) const;
 
-    /// \brief Returns all free, not coupled dofs on patch k (local dof indices)
-    gsVector<index_t> findFreeUncoupled(const index_t k) const;
+    /// \brief Returns all free, not coupled dofs of component \a c on patch k (local dof indices)
+    gsVector<index_t> findFreeUncoupled(const index_t k, const index_t c = 0) const;
 
-    /// \brief Returns all tagged dofs on patch k (local dof indices)
-    gsVector<index_t> findTagged(const index_t k) const;
+    /// \brief Returns all tagged dofs of component \a c on patch k (local dof indices)
+    gsVector<index_t> findTagged(const index_t k, const index_t c = 0) const;
 
 private:
 
