@@ -435,13 +435,7 @@ void gsRemapInterface<T>::eval_into(const gsMatrix<T> & u, gsMatrix<T> & result)
 template <class T>
 gsDomainIteratorWrapper<T> gsRemapInterface<T>::beginAll() const
 {
-    gsTensorDomainBoundaryIterator<T> * tdi = new gsTensorDomainBoundaryIterator<T> (*m_b1, m_bi.first());
-    for (index_t i=0; i<domainDim(); ++i)
-    {
-        if (i!=m_bi.first().direction())
-            tdi->setBreaks(m_breakpoints[i],i);
-    }
-    return gsDomainIteratorWrapper<T>(tdi);
+    return gsDomainIteratorWrapper<T>(new gsTensorDomainBoundaryIterator<T>(m_breakpoints, m_bi.first()));
 }
 
 template <class T>
