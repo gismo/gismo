@@ -1123,4 +1123,63 @@ SUITE(gsDofMapper_test)
         m.finalize();
         CHECK_EQUAL("off=0 0 0 ps=0 0 6;0 0 6 ||0,1,2,3,10,4;||5,9,6,9,7,8", layout(m) + " " + indices(m));
     }
+
+    // Patch-wise queries of a ragged, shifted mapper agree with the per-dof
+    // queries; the find* functions report component 0
+    TEST(matrix_patch_queries_with_shift)
+    {
+        gsMatrix<index_t> sizes(2, 2);
+        sizes << 3, 5,
+                 4, 2;
+        gsDofMapper m(sizes);
+        m.eliminateDof(0, 0, 0);
+        m.matchDof(0, 2, 1, 0, 0);
+        m.matchDof(0, 4, 1, 0, 1);
+        m.eliminateDof(1, 1, 1);
+        m.finalize();
+        m.setShift(7);
+        m.markTagged(1, 0, 0);
+        m.markTagged(1, 1, 1);
+        CHECK_EQUAL(2, m.taggedSize());
+        CHECK(m.is_tagged(1, 1, 1));
+    #ifndef NDEBUG
+        CHECK_THROW(m.patchSize(0, 2), std::logic_error);
+    #endif
+
+        for (index_t k = 0; k != 2; ++k)
+        {
+            const std::map<index_t,index_t> inv = m.inverseOnPatch(k);
+            size_t n = 0;
+            for (index_t c = 0; c != 2; ++c)
+                for (index_t i = 0; i != static_cast<index_t>(m.patchSize(k, c)); ++i, ++n)
+                {
+                    const index_t gl = m.index(i, k, c);
+                    index_t loc = -1;
+                    CHECK(m.indexOnPatch(gl, k, loc) && loc == i);
+                    CHECK_EQUAL(c, m.componentOf(gl));
+                    CHECK(inv.count(gl) && inv.at(gl) == i);
+                }
+            CHECK_EQUAL(n, inv.size());
+
+            vec fr, bd, cp, fu, tg;
+            for (index_t i = 0; i != static_cast<index_t>(m.patchSize(k)); ++i)
+            {
+                (m.is_free(i, k) ? fr : bd).push_back(i);
+                if (m.is_coupled(i, k)) cp.push_back(i);
+                else if (m.is_free(i, k)) fu.push_back(i);
+                if (m.is_tagged(i, k)) tg.push_back(i);
+            }
+            CHECK(fr == toVec(m.findFree(k)));
+            CHECK(bd == toVec(m.findBoundary(k)));
+            CHECK(cp == toVec(m.findCoupled(k)));
+            CHECK(fu == toVec(m.findFreeUncoupled(k)));
+            CHECK(tg == toVec(m.findTagged(k)));
+        }
+        // Patch 0, component 0: dof 0 eliminated, dof 2 coupled with patch 1, dof 1 tagged
+        CHECK(vec({1, 2}) == toVec(m.findFree(0)));
+        CHECK(vec({0}) == toVec(m.findBoundary(0)));
+        CHECK(vec({2}) == toVec(m.findCoupled(0, 1)));
+        CHECK(vec({1}) == toVec(m.findFreeUncoupled(0)));
+        CHECK(vec({1}) == toVec(m.findTagged(0)));
+    }
 }
