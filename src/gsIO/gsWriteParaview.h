@@ -539,8 +539,8 @@ void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
                          unsigned precision = 5);
 
 /// Export an element \a box
-GISMO_DEPRECATED
 template<class T>
+GISMO_DEPRECATED
 void writeSingleBox(const gsMatrix<T> & box, std::string const & fn, T value,
                     unsigned precision = 5);
 
