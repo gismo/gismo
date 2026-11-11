@@ -13,9 +13,8 @@
 
 #pragma once
 
-#include <gsDomain/gsHTree.h>
+#include <gsHSplines/gsHTree.h>
 #include <gsDomain/gsHDomain.h>
-#include <gsDomain/gsKdNode.h>
 #include <gsHSplines/gsHTensorBasis.h>
 
 #include <gsDomain/gsDomainIterator.h>
@@ -42,9 +41,7 @@ class gsHDomainBoundaryIterator: public gsDomainIterator<T>
 {
 public:
 
-    typedef gsKdNode<d,Z> node;
-
-    typedef typename node::point point;
+    typedef typename gsHTree<d,Z>::point point;
 
     typedef typename std::vector<T>::const_iterator  uiter;
 

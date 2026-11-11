@@ -39,4 +39,23 @@ SUITE(gsFixedIssues_test)
         CHECK(upp[1] <= max);
         CHECK(upp[1] == (16 << indexLevel));
     }
+
+    TEST(issue_672_overflow_guard)
+    {
+        gsHTree<2>::point upp;
+        upp << (index_t(1) << 20), 1;
+        gsHTree<2> t(upp);
+        // the fixed legacy index level 13 would overflow index_t here
+        if (std::numeric_limits<index_t>::digits == 31)
+        {
+            CHECK_EQUAL(10u, t.getIndexLevel());
+            CHECK_EQUAL(index_t(1) << 30, t.upperCorner()[0]);
+        }
+        else
+        {
+            const unsigned lvl = t.getIndexLevel();
+            CHECK(lvl <= 13u);
+            CHECK_EQUAL((index_t(1) << 20) << lvl, t.upperCorner()[0]);
+        }
+    }
 }

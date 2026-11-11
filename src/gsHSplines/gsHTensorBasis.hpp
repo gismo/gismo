@@ -417,26 +417,35 @@ void gsHTensorBasis<d,T>::uniformRefine_withCoefs(gsMatrix<T>& coefs, int numKno
 template<short_t d, class T>
 void gsHTensorBasis<d,T>::uniformCoarsen_withCoefs(gsMatrix<T>& coefs, int numKnots)
 {
-    std::vector<gsSortedVector<index_t> > OX = m_xmatrix;
+    // Level L of the current hierarchy is level L+1 of the coarsened one, with
+    // the same level-local index space. Refining a copy of the coarsened basis
+    // to the current leaves, shifted up by one level, reproduces the current
+    // basis whenever the current space contains the coarsened one, and yields
+    // the transfer T (current x coarse); the coarse coefficients are the
+    // least-squares solution of T x = coefs. The ENSURE catches the other case.
     std::vector<index_t> boxes;
-    index_t lvl;
     for ( typename hdomain_type::literator it = m_tree.beginLeafIterator(); it.good(); it.next() )
     {
-        if (it.level() == 0)
-            continue;
-        lvl = it.level() - 1;
         const point & l = it.lowerCorner();
         const point & u = it.upperCorner();
 
-        boxes.push_back(lvl);
+        boxes.push_back(it.level() + 1);
         for( short_t i = 0; i < d; i++)
-            boxes.push_back( l(i) / 2);
+            boxes.push_back( l(i) );
         for( short_t i = 0; i < d; i++)
-            boxes.push_back( u(i)/2 + (index_t)(u(i)%2!=0));
+            boxes.push_back( u(i) );
     }
 
-    this->clone()->unrefineElements_withCoefs(coefs, boxes);
     this->uniformCoarsen(numKnots);
+
+    gsSparseMatrix<T,RowMajor> transf;
+    this->clone()->refineElements_withTransfer(boxes, transf);
+    GISMO_ENSURE(transf.rows() == coefs.rows(),
+                 "uniformCoarsen_withCoefs: the current basis cannot be reproduced from the coarsened one ("
+                 << transf.rows() << " functions vs " << coefs.rows() << " coefficient rows).");
+
+    typename gsSparseSolver<T>::QR solver(transf);
+    coefs = solver.solve(coefs);
 }
 
 
@@ -1009,7 +1018,7 @@ void gsHTensorBasis<d,T>::unrefineToLevel(index_t minLevel)
             for( short_t j = 0; j < d; j++ )
             {
                 i1[j] = leafIt.lowerCorner()[j] / math::pow(2,dLevel);
-                i2[j] = leafIt.upperCorner()[j] / math::pow(2,dLevel) + (index_t)(leafIt.upperCorner()[j]%2!=0);
+                i2[j] = (leafIt.upperCorner()[j] + (index_t(1) << dLevel) - 1) >> dLevel;
                 boxes.push_back(i1[j]);
             }
             for( short_t j = 0; j < d; j++ )

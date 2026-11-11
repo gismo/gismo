@@ -210,14 +210,14 @@ gsXmlNode * putHTensorBasisToXml ( Object const & obj, gsXmlTree & data)
     for( typename Object::hdomain_type::const_literator lIter =
              obj.tree().beginLeafIterator(); lIter.good() ; lIter.next() )
     {
-        if ( lIter->level > 0 )
+        if ( lIter.level() > 0 )
         {
             box.leftCols(d)  = lIter.lowerCorner().transpose();
             box.rightCols(d) = lIter.upperCorner().transpose();
 
             tmp = putMatrixToXml( box, data, "box" );
 
-            tmp->append_attribute( makeAttribute("level", to_string(lIter->level), data ) );
+            tmp->append_attribute( makeAttribute("level", to_string(lIter.level()), data ) );
             tp_node->append_node(tmp);
         }
     }
