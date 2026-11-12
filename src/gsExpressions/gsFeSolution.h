@@ -85,10 +85,10 @@ public:
     // Performs validity checks for the solution object
     bool check() const
     {
-        if ( _Sv->size()!=_u.mapper().freeSize() )
+        if ( _Sv->size() < _u.mapper().lastIndex() )
         {
-            gsWarn<< "The solution vector has wrong dimensions: "
-                  <<_Sv->size()<<" != "<<_u.mapper().freeSize() <<". ";
+            gsWarn<< "The solution vector is too short for the whole system: "
+                  <<_Sv->size()<<" < "<<_u.mapper().lastIndex() <<". ";
             return false;
         }
         if((size_t)_u.source().size()*dim()!=_u.mapper().mapSize())
@@ -190,7 +190,10 @@ public:
     { _u.getCoeffs(*_Sv, result, p); }
 
     /// Extracts ALL the coefficients in a solution vector; including
-    /// coupled and boundary DoFs
+    /// coupled and boundary DoFs.
+    /// The result has mapper().mapSize() rows, ordered component-major: the
+    /// coefficient of local DoF i of component c on patch p is at row
+    /// sum_{c'<c} totalSize(c') + offset(p) + i.
     void extractFull(gsMatrix<T> & result) const
     {
         index_t offset;
@@ -219,7 +222,7 @@ public:
                     else // eliminated DoF: fill with Dirichlet data
                         result(i+offset,0) =  _u.fixedPart().at( _u.mapper().global_to_bindex(ii) );
                 }
-                offset += sz;
+                offset += static_cast<index_t>(_u.mapper().totalSize(c));
             }
         }
     }

@@ -384,4 +384,84 @@ SUITE(gsExprAssembler_test)
         //
         CHECK(math::abs(ev.integral(el.area(G))-2*EIGEN_PI/32) < 1e-10);
     }
+
+    // extractFull() is component-major: rows are ordered by component, then
+    // patch offset, then patch-local index
+    TEST(ExtractFullComponentMajor)
+    {
+        gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(1,2,1);
+        gsMultiBasis<> mb(patches);
+        mb.uniformRefine();
+        gsBoundaryConditions<> bcs;
+        bcs.addCondition(0, boundary::west, condition_type::dirichlet,
+                         static_cast<gsFunctionSet<real_t>*>(nullptr));
+
+        gsExprAssembler<> A(1,1);
+        A.setIntegrationElements(mb);
+        auto u = A.getSpace(mb, 2);
+        u.setup(bcs, dirichlet::homogeneous, 0);
+        const gsDofMapper & dm = u.mapper();
+
+        gsMatrix<> sol(dm.freeSize(), 1);
+        for (index_t j = 0; j < sol.rows(); ++j) sol(j) = 1 + j;
+        for (index_t j = 0; j < (index_t)dm.boundarySize(); ++j) u.fixedPart()(j) = -1 - j;
+
+        auto s = A.getSolution(u, sol);
+        gsMatrix<> full;
+        s.extractFull(full);
+
+        CHECK_EQUAL(2, (index_t)dm.numPatches());
+        CHECK(dm.boundarySize() > 0);
+        CHECK(dm.coupledSize() > 0);
+        CHECK_EQUAL((index_t)dm.mapSize(), full.rows());
+
+        for (index_t p = 0; p < 2; ++p)
+        {
+            gsMatrix<> cf;
+            s.extract(cf, p);
+            for (index_t c = 0; c < 2; ++c)
+            {
+                index_t base = 0;
+                for (index_t q = 0; q < c; ++q) base += (index_t)dm.totalSize(q);
+                for (index_t i = 0; i < (index_t)dm.patchSize(p,c); ++i)
+                {
+                    const index_t row = base + (index_t)dm.offset(p) + i;
+                    CHECK(row < full.rows());
+                    if (row < full.rows())
+                        CHECK_EQUAL(cf(i,c), full(row,0));
+                }
+            }
+        }
+    }
+
+    // getSolution() takes a vector with the structure of the whole system,
+    // so check() must accept it for every space of a multi-space assembler
+    TEST(FeSolutionCheckWholeSystem)
+    {
+        gsMultiPatch<> mp(*gsNurbsCreator<>::BSplineSquare());
+        gsMultiBasis<> mb(mp);
+        mb.uniformRefine();
+        gsBoundaryConditions<> bcs;
+
+        gsExprAssembler<> A(2,2);
+        A.setIntegrationElements(mb);
+        auto u0 = A.getSpace(mb, 1, 0);
+        auto u1 = A.getSpace(mb, 1, 1);
+        u0.setup(bcs, dirichlet::homogeneous, 0);
+        u1.setup(bcs, dirichlet::homogeneous, 0);
+        A.initSystem();
+
+        gsMatrix<> x(A.numDofs(), 1);
+        x.setZero();
+        auto s0 = A.getSolution(u0, x);
+        auto s1 = A.getSolution(u1, x);
+
+        CHECK_EQUAL(2*mb.basis(0).size(), A.numDofs());
+        CHECK(s0.check());
+        CHECK(s1.check());
+
+        gsMatrix<> y(A.numDofs() - 1, 1);
+        auto t1 = A.getSolution(u1, y);
+        CHECK(!t1.check());
+    }
 }
