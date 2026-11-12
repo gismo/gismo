@@ -85,7 +85,7 @@ public:
     {
         gsVector<unsigned, D> curr_index(D);
         for (int i = 0; i < D; ++i)
-            curr_index[i]  = curElement[i]->index();
+            curr_index[i]  = static_cast<unsigned>(curElement[i].id());
         return curr_index;
     }
 

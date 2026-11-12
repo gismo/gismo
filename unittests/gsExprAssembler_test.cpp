@@ -291,6 +291,37 @@ SUITE(gsExprAssembler_test)
         CHECK( w*w < 1e-10 );
     }
 
+    // A vector-valued expression equal to the geometry map must reproduce the
+    // stored physical points node by node
+    TEST(EvaluatorEvalAtInterface)
+    {
+        gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,2,1);
+        gsMultiBasis<> mb(mp);
+        mb.uniformRefine();
+        mb.uniformRefine();
+
+        gsExprEvaluator<> ev;
+        ev.setIntegrationDomain(mb.domain());
+        gsExprEvaluator<>::geometryMap G = ev.getMap(mp);
+
+        CHECK(1==mp.interfaces().size());
+        ev.evalAtInterface(G, G, mp.interfaces());
+
+        // 2 refinements: 4 elements along the interface, 2 Gauss nodes per
+        // direction for degree 1
+        const index_t nElem = 4;
+        const index_t nNodes = 2;
+        const gsMatrix<> pts = ev.allPoints();
+        CHECK_EQUAL(2, pts.rows());
+        CHECK_EQUAL(nElem * nNodes, pts.cols());
+        CHECK_EQUAL((size_t)(2 * nElem * nNodes), ev.nValues());
+        if (2 != pts.rows() || (size_t)pts.size() != ev.nValues())
+            return;
+
+        const gsMatrix<> vals = ev.allValues(2, pts.cols());
+        CHECK_ARRAY_CLOSE(pts.data(), vals.data(), pts.size(), 1e-12);
+    }
+
     // A solution taken with right() must be evaluated on the second patch of
     // the interface, and left() on the first one
     TEST(InterfaceSolution)

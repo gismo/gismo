@@ -46,6 +46,7 @@ private:
 private:
     std::vector<T> m_elWise;
     std::vector<T> m_points;
+    index_t        m_pointDim;
     T              m_value;
 
     gsOptionList m_options;
@@ -93,16 +94,16 @@ private:
 public:
 
     gsExprEvaluator() : m_exprdata(gsExprHelper<T>::make()),
-    m_options(defaultOptions()) { }
+    m_pointDim(0), m_options(defaultOptions()) { }
 
     gsExprEvaluator(typename gsExprHelper<T>::Ptr env)
-    : m_exprdata(env), m_value(-1), m_options(defaultOptions())
+    : m_exprdata(env), m_pointDim(0), m_value(-1), m_options(defaultOptions())
     { }
 
     //gsExprEvaluator(typename gsExprHelper<T> env)
 
     gsExprEvaluator(const gsExprAssembler<T> & o)
-    : m_exprdata(o.exprData()), m_options(o.options()) // use same exprData as o and copy options from o
+    : m_exprdata(o.exprData()), m_pointDim(0), m_options(o.options()) // use same exprData as o and copy options from o
     { }
 
     static gsOptionList defaultOptions()
@@ -148,8 +149,12 @@ public:
     /// Returns an std::vector containing the last computed values per element.
     const std::vector<T> & elementwise() const { return m_elWise; }
 
+    /// Physical points of the last evalAtInterface() call, one per column
     gsAsConstMatrix<T> allPoints() const
-    { return gsAsConstMatrix<T>(m_points, 3, m_points.size() / 3); }
+    {
+        return gsAsConstMatrix<T>(m_points, m_pointDim,
+                                  m_pointDim ? static_cast<index_t>(m_points.size()) / m_pointDim : 0);
+    }
 
     /// Returns a vector containing the last computed values per element.
     gsAsConstVector<T> allValues() const { return gsAsConstVector<T>(m_elWise); }
@@ -993,6 +998,7 @@ gsExprEvaluator<T>::evalAtInterface(const expr::_expr<E> & expr, geometryMap G, 
     m_elWise.reserve(iFaces.size());
     m_elWise.clear();
     m_points.clear();
+    m_pointDim = G.source().targetDim();
     gsMatrix<T> gg, tmp;
         
     ifacemap interfaceMap;
@@ -1031,7 +1037,7 @@ gsExprEvaluator<T>::evalAtInterface(const expr::_expr<E> & expr, geometryMap G, 
 
             interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
-            gg = G.source().piece(domIt.patch()).eval(m_exprdata->points() );
+            gg = G.source().piece(patch1).eval(m_exprdata->points() );
                             
             m_points.insert(m_points.end(), gg.data(), gg.data()+gg.size() );
 
@@ -1041,7 +1047,7 @@ gsExprEvaluator<T>::evalAtInterface(const expr::_expr<E> & expr, geometryMap G, 
             // Compute on element
             for (index_t k = 0; k != m_exprdata->weights().rows(); ++k) // loop over qu-nodes
             {
-                tmp = expr.eval(0);
+                tmp = expr.eval(k);
                 m_elWise.insert(m_elWise.end(), tmp.data(), tmp.data()+tmp.size());
             }
         }

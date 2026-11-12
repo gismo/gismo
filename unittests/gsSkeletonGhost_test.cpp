@@ -955,4 +955,29 @@ TEST(FaceThenVolume_SameInstance)
     CHECK(B.matrix().norm() > 0);
 }
 
+// gsTensorDomainIterator::index() is the lexicographic element index per
+// direction, direction 0 running fastest
+TEST(TensorDomainIteratorIndex)
+{
+    gsKnotVector<real_t> kvx(0.0, 1.0, 2, 2);   // 3 elements
+    gsKnotVector<real_t> kvy(0.0, 1.0, 1, 2);   // 2 elements
+    gsTensorBSplineBasis<2,real_t> tbs(kvx, kvy);
+    gsDomain<real_t>::Ptr dom = tbs.domain();   // non-owning: tbs must outlive dom
+
+    gsDomain<real_t>::iterator it    = dom->beginAll();
+    gsDomain<real_t>::iterator endIt = dom->endAll();
+    unsigned k = 0;
+    for (; it < endIt; ++it, ++k)
+    {
+        const gsTensorDomainIterator<real_t,2> * tit =
+            dynamic_cast<const gsTensorDomainIterator<real_t,2>*>(&*it);
+        CHECK(nullptr != tit);
+        if (!tit) break;
+        const gsVector<unsigned,2> idx = tit->index();
+        CHECK_EQUAL(k % 3, idx[0]);
+        CHECK_EQUAL(k / 3, idx[1]);
+    }
+    CHECK_EQUAL(6u, k);
+}
+
 } // SUITE(gsSkeletonGhost_test)

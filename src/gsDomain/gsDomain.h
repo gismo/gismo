@@ -130,7 +130,7 @@ protected:
 
 
     /*
-        // Taking domain from basis (uses gsHDomain WHICH DOES NOT INHERIT FROM GSDOMAIN)
+        // Taking domain from a THB basis (a gsHDomain)
         gsTHBSplineBasis<d,T> thb;
         gsExprAssembler<> A;
         A.setIntegrationElements(thb.domain());

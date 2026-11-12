@@ -78,7 +78,9 @@ public:
      *
      * The factory is called once for every rule instance required by an
      * assembly operation (in particular, once per OpenMP worker and patch for
-     * volume assembly). It must return a fresh rule and, when OpenMP is enabled,
+     * volume assembly; assembleJacobian with SameQuadrature=false calls it on
+     * every element; the skeleton and ghost face loops never call it). It
+     * must return a fresh rule and, when OpenMP is enabled,
      * be safe to call concurrently. @a fixedDirection is -1 for volume
      * integration and the fixed parametric direction for boundary and interface
      * integration. Overriding gsQuadRule::mapTo() permits element-dependent
@@ -150,8 +152,13 @@ public:
     /// @brief Installs a custom quadrature-rule factory.
     ///
     /// Passing an empty factory restores the standard option-driven
-    /// quadrature. The factory is invoked only when a new rule is needed, never
-    /// in an element or quadrature-point loop.
+    /// quadrature. In the element, boundary and interface loops the factory
+    /// is invoked whenever a new rule is needed: on every patch change in the
+    /// element loops, once per boundary condition or boundary side, once per
+    /// interface, and on every element in assembleJacobian when
+    /// SameQuadrature is false. The skeleton and ghost face loops
+    /// (assembleSkeleton, assembleGhost) never invoke it and use plain Gauss
+    /// rules. It is never invoked in a quadrature-point loop.
     void setQuadratureFactory(QuadratureFactory factory)
     { m_quadratureFactory = give(factory); }
 
