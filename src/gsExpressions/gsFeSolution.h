@@ -54,6 +54,15 @@ public:
     /// Returns this solution evaluated on the first patch of an interface
     gsFeSolution left() const { return gsFeSolution(_u.left(), _Sv); }
 
+    /// The jump [[u]] = u_left - u_right of the solution across a face; see
+    /// symbol_expr::jump(). Not "across" in the isAcross() sense: the space
+    /// carries both sides via stacked gsFuncData.
+    gsFeSolution jump() const { return gsFeSolution(_u.jump(), _Sv); }
+
+    /// The average {u} = (u_left + u_right)/2 of the solution across a face;
+    /// see symbol_expr::avg(). Not "across" in the isAcross() sense; see jump().
+    gsFeSolution avg() const { return gsFeSolution(_u.avg(), _Sv); }
+
     explicit gsFeSolution(const gsFeSpace<T> & u) : _u(u), _Sv(NULL) { }
 
     gsFeSolution(const gsFeSpace<T> & u, gsMatrix<T> & Sv) : _u(u), _Sv(&Sv) { }

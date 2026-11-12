@@ -17,6 +17,7 @@
 #include <fstream>
 #include <gsDomain/gsDomain.h>
 #include <gsAssembler/gsQuadrature.h>
+#include <gsExpressions/gsExprHelper.h>
 #include <gsDomain/gsCompositeDomain.h>
 #include <gsAssembler/gsRemapInterface.h>
 #include <gsAssembler/gsCPPInterface.h>
@@ -61,6 +62,34 @@ public:
 
     typedef typename gsFunction<T>::uPtr ifacemap;
 
+    typedef typename gsQuadRule<T>::uPtr QuadratureRulePtr;
+
+    /**
+     * @brief Factory for an opt-in custom quadrature rule.
+     *
+     * Called with the subdomain of patch @a patch of the integration domain,
+     * the evaluator options, the patch index, and @a fixedDirection: -1 for
+     * volume integration, the fixed parametric direction for boundary and
+     * interface integration. It is called once per patch (volume) -- once per
+     * element if the switch SameQuadrature is set to false --, per
+     * boundary side or per interface, and in compute_impl() once per OpenMP
+     * thread, so it must return a fresh, non-null rule and, when OpenMP is
+     * enabled, be safe to call concurrently. A rule whose mapTo() yields zero
+     * nodes on an element makes the evaluator skip that element; overriding
+     * gsQuadRule::mapTo() permits element-dependent rules.
+     *
+     * The factory is never used by integralSkeleton() or integralGhost():
+     * face integrals always use a plain Gauss rule.
+     */
+    typedef std::function<QuadratureRulePtr(const gsDomain<T>  & domain,
+                                             const gsOptionList & options,
+                                             index_t              patch,
+                                             short_t              fixedDirection)>
+        QuadratureFactory;
+
+private:
+    QuadratureFactory m_quadratureFactory;
+
 public:
 
     gsExprEvaluator() : m_exprdata(gsExprHelper<T>::make()),
@@ -84,11 +113,29 @@ public:
         opt.addInt ("numPoints", "Number of sampling points for plotting", 3000 );
         opt.addSwitch("elements", "Include the element mesh in plot (when applicable)", false);
         opt.addSwitch("flipSide", "Flip side of interface where evaluation is performed.", false);
+        opt.addReal("faceShift", "Fraction of the perpendicular cell size by which face "
+                    "quadrature points are moved into the neighbouring elements, in (0,1)", 1e-6);
         //opt.addSwitch("plot.cnet", "Include the control net in plot (when applicable)", false);
         return opt;
     }
 
     gsOptionList & options() {return m_options;}
+
+    /// @brief Installs a custom quadrature-rule factory.
+    ///
+    /// Passing an empty factory restores the standard option-driven
+    /// quadrature. The factory is invoked only when a new rule is needed, never
+    /// in a quadrature-point loop.
+    void setQuadratureFactory(QuadratureFactory factory)
+    { m_quadratureFactory = give(factory); }
+
+    /// @brief Restores the standard gsQuadrature/options-based rules.
+    void clearQuadratureFactory()
+    { m_quadratureFactory = QuadratureFactory(); }
+
+    /// @brief Returns whether a custom quadrature factory is installed.
+    bool hasCustomQuadrature() const
+    { return static_cast<bool>(m_quadratureFactory); }
 
 public:
 
@@ -213,6 +260,29 @@ public:
     template<class E> // note: elementwise integral not offered
     T integralInterface(const expr::_expr<E> & expr, const intContainer & iFaces)
     { return computeInterface_impl<E,plus_op>(expr, iFaces); }
+
+    /// Calculates the integral of \a expr over the skeleton faces of the
+    /// integration domain (all interior faces between two active elements of
+    /// the same patch). \a expr is evaluated one-sidedly on both faces of a
+    /// jump term via \c .left()/.right(); see \c gsExprAssembler::assembleSkeleton
+    /// for the shift and normal conventions this shares.
+    ///
+    /// Face integrals always use a plain Gauss rule, sized by the options
+    /// quA/quB from the patch domain, and ignore any custom quadrature factory.
+    /// \note One \c elementwise() entry is pushed per face (not per patch, unlike
+    /// \c integralInterface()).
+    template<class E> // note: elementwise integral not offered
+    T integralSkeleton(const expr::_expr<E> & expr)
+    { return computeFaces_impl<E,plus_op>(expr, false); }
+
+    /// Calculates the integral of \a expr over the ghost faces of the
+    /// integration domain (the stabilization face set of ghost-penalty
+    /// methods, cf. \c gsDomain::beginGhost()). Same evaluation and shift
+    /// conventions as \c integralSkeleton().
+    /// \note One \c elementwise() entry is pushed per face.
+    template<class E> // note: elementwise integral not offered
+    T integralGhost(const expr::_expr<E> & expr)
+    { return computeFaces_impl<E,plus_op>(expr, true); }
 
     /// Calculates the maximum value of the expression \a expr by
     /// sampling over a finite number of points
@@ -406,7 +476,24 @@ public:
 
 private:
 
-
+    /// Returns the quadrature rule for \a patch: the installed factory's rule
+    /// if there is one, otherwise the option-driven gsQuadrature rule.
+    /// \a fixedDirection is -1 for volume integration.
+    QuadratureRulePtr makeQuadratureRule(index_t patch,
+                                         short_t fixedDirection = -1) const
+    {
+        const typename gsDomain<T>::Ptr dom = m_exprdata->domain().subdomain(patch);
+        if (m_quadratureFactory)
+        {
+            QuadratureRulePtr rule =
+                m_quadratureFactory(*dom, m_options, patch, fixedDirection);
+            GISMO_ENSURE(rule,
+                         "Custom quadrature factory returned a null rule for patch "
+                         << patch << ".");
+            return rule;
+        }
+        return gsQuadrature::getPtr(*dom, m_options, fixedDirection);
+    }
 
     template<class E, bool storeElWise, class _op>
     T compute_impl(const expr::_expr<E> & expr);
@@ -419,6 +506,9 @@ private:
 
     template<class E, class _op>
     T computeInterface_impl(const expr::_expr<E> & expr, const intContainer & iFaces);
+
+    template<class E, class _op>
+    T computeFaces_impl(const expr::_expr<E> & expr, bool ghost);
 
     template<class E>
     void computeGrid_impl(const expr::_expr<E> & expr, const index_t patchInd);
@@ -524,6 +614,14 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
     // Optimization for the case when the quadrature rule is the same for all patches
     bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
 
+    {   // jump()/avg() would otherwise throw from precompute() inside the
+        // OpenMP region below, where an exception terminates the process.
+        auto chk = expr.val();
+        m_exprdata->parse(chk);
+        GISMO_ENSURE(!m_exprdata->hasTwoSided(), "gsExprEvaluator: jump()/avg() "
+                     "symbols are only valid in a face loop (integralSkeleton/integralGhost).");
+    }
+
 #pragma omp parallel
 {
 #ifdef _OPENMP
@@ -544,13 +642,15 @@ T gsExprEvaluator<T>::compute_impl(const expr::_expr<E> & expr)
             if (changeQuadrature || QuPatch!=elem.patchIndex())
             {
                 QuPatch = elem.patchIndex();
-                // get Degree of the domain
-                QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(QuPatch), m_options);
+                QuRule = makeQuadratureRule(QuPatch);
             }
 
             // Map the Quadrature rule to the element
             QuRule->mapTo( elem.lowerCorner(), elem.upperCorner(),
                         m_exprdata->points(), m_exprdata->weights());
+
+            if (m_exprdata->points().cols()==0)
+                continue;
 
             m_exprdata->precompute(QuPatch);
 
@@ -587,7 +687,7 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
 
     //expr.print(gsInfo);
 
-    gsQuadRule<T> QuRule;  // Quadrature rule
+    typename gsQuadRule<T>::uPtr QuRule;  // Quadrature rule
     auto _arg = expr.val();
     m_exprdata->parse(_arg);
     if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
@@ -600,7 +700,7 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
              bdrlist.begin(); bit != bdrlist.end(); ++bit)
     {
         // Quadrature rule
-        QuRule = gsQuadrature::get(*m_exprdata->domain().subdomain(bit->patch), m_options,bit->direction());
+        QuRule = makeQuadratureRule(bit->patch, bit->direction());
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patchInd to domainiter ?
@@ -612,8 +712,11 @@ T gsExprEvaluator<T>::computeBdr_impl(const expr::_expr<E> & expr,
         for (; domIt<domItEnd; ++domIt )
         {
             // Map the Quadrature rule to the element
-            QuRule.mapTo( domIt.lowerCorner(), domIt.upperCorner(),
-                          m_exprdata->points(), m_exprdata->weights());
+            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
+                           m_exprdata->points(), m_exprdata->weights());
+
+            if (m_exprdata->points().cols()==0)
+                continue;
 
             // Perform required pre-computations on the quadrature nodes
             m_exprdata->precompute(bit->patch, bit->side() );
@@ -660,7 +763,7 @@ T gsExprEvaluator<T>::computeBdrBc_impl(const bcRefList & BCs,
         const boundary_condition<T> * it = &iit->get();
 
         // Quadrature rule
-        QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(it->patch()), m_options, it->side().direction());
+        QuRule = makeQuadratureRule(it->patch(), it->side().direction());
 
         // Update boundary function source
         m_exprdata->setMutSource(*it->function());
@@ -732,7 +835,7 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
         //                                 *iit);//,opt
 
         // Quadrature rule
-        QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(patch1),m_options, iFace.first().side().direction());
+        QuRule = makeQuadratureRule(patch1, iFace.first().side().direction());
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
@@ -747,6 +850,10 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                            m_exprdata->points(), m_exprdata->weights());
+
+            if (m_exprdata->points().cols()==0)
+                continue;
+
             interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
             // Perform required pre-computations on the quadrature nodes
@@ -766,6 +873,57 @@ T gsExprEvaluator<T>::computeInterface_impl(const expr::_expr<E> & expr, const i
     return m_value;
 }
 
+
+// Shared body of integralSkeleton()/integralGhost(): the structure of
+// computeInterface_impl(), looping over the skeleton/ghost faces instead of
+// the patch interfaces, with the same shift invariant as
+// gsExprAssembler::assembleSkeleton() (see internal::shiftFacePoints). One
+// elementwise() entry is pushed per face.
+template<class T>
+template<class E, class _op>
+T gsExprEvaluator<T>::computeFaces_impl(const expr::_expr<E> & expr, bool ghost)
+{
+    const T shift = internal::faceShift<T>(m_options);
+
+    auto arg_tpl = expr.val();
+    m_exprdata->parse(arg_tpl);
+    if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
+
+    std::vector<typename gsQuadRule<T>::uPtr> rules;
+    std::vector<boundaryInterface>            faceIfc;
+
+    T elVal;
+    m_value = _op::init();
+    m_elWise.clear();
+
+    for (size_t p = 0; p != m_exprdata->domain().nPieces(); ++p)
+    {
+        const typename gsDomain<T>::Ptr dom = m_exprdata->domain().subdomain(p);
+        if (0 == (ghost ? dom->numGhostFaces() : dom->numSkeletonFaces())) continue;
+        internal::makeFaceRules(*dom, m_options, static_cast<index_t>(p), rules, faceIfc);
+
+        typename gsDomain<T>::iterator       it    = ghost ? dom->beginGhost() : dom->beginSkeleton();
+        const typename gsDomain<T>::iterator itEnd = ghost ? dom->endGhost()   : dom->endSkeleton();
+
+        for (; it < itEnd; ++it)
+        {
+            const short_t dir = it.side().direction();
+
+            rules[dir]->mapTo(it.lowerCorner(), it.upperCorner(),
+                              m_exprdata->points(), m_exprdata->weights());
+            internal::shiftFacePoints(*m_exprdata, it, shift);
+            m_exprdata->precompute(faceIfc[dir]);
+
+            elVal = _op::init();
+            for (index_t k = 0; k != m_exprdata->weights().rows(); ++k)
+                _op::acc(arg_tpl.eval(k), m_exprdata->weights()[k], elVal);
+            _op::acc(elVal, 1, m_value);
+            m_elWise.push_back( elVal );
+        }
+    }
+
+    return m_value;
+}
 
 template<class T>
 template<class E, int mode, short_t d>
@@ -853,7 +1011,7 @@ gsExprEvaluator<T>::evalAtInterface(const expr::_expr<E> & expr, geometryMap G, 
             interfaceMap = gsCPPInterface<T>::make(m_exprdata->multiPatch(), iFace);
 
         // Quadrature rule
-        QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(patch1),m_options, iFace.first().side().direction());
+        QuRule = makeQuadratureRule(patch1, iFace.first().side().direction());
 
         // Initialize domain element iterator
         typename gsBasis<T>::domainIter domIt =
@@ -867,6 +1025,10 @@ gsExprEvaluator<T>::evalAtInterface(const expr::_expr<E> & expr, geometryMap G, 
             // Map the Quadrature rule to the element
             QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
                            m_exprdata->points(), m_exprdata->weights());
+
+            if (m_exprdata->points().cols()==0)
+                continue;
+
             interfaceMap->eval_into(m_exprdata->points(), m_exprdata->pointsIfc());
 
             gg = G.source().piece(domIt.patch()).eval(m_exprdata->points() );
