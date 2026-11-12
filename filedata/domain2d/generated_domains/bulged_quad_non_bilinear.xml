@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--This file was created by G+Smo 25.7.0-->
+<xml>
+ <PlanarDomain id="0">
+  <CurveLoop index="0">
+   <Geometry type="BSpline" index="0">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     1 0 
+     0.5091666666666668 0.1758333333333334 
+     0.1758333333333335 0.5091666666666667 
+     6.123233995736766e-17 1 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="1">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     6.123233995736766e-17 1 
+     -0.1758333333333333 0.5091666666666668 
+     -0.5091666666666665 0.1758333333333335 
+     -1 1.224646799147353e-16 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="2">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     -1 1.224646799147353e-16 
+     -0.5091666666666667 -0.1758333333333333 
+     -0.1758333333333334 -0.5091666666666667 
+     -1.83697019872103e-16 -1 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="3">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     -1.83697019872103e-16 -1 
+     0.1758333333333332 -0.5091666666666667 
+     0.5091666666666665 -0.1758333333333333 
+     1 0 
+    </coefs>
+   </Geometry>
+  </CurveLoop>
+ </PlanarDomain>
+</xml>
+

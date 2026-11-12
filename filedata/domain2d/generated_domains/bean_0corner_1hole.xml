@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+  <PlanarDomain id="0">
+    <CurveLoop index="0">
+      <Geometry id="0" type="BSpline">
+        <Basis type="BSplineBasis">
+          <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+          </Basis>
+        <coefs geoDim="2">
+1.1 0
+0.967572430932719 0.383342963728069
+0.405572297980137 0.52
+3.18408167778312e-17 0.52
+</coefs>
+        </Geometry>
+      <Geometry id="1" type="BSpline">
+        <Basis type="BSplineBasis">
+          <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+          </Basis>
+        <coefs geoDim="2">
+3.18408167778312e-17 0.52
+-0.405572297980137 0.52
+-0.967572430932719 0.383342963728069
+-1.1 1.34711147906209e-16
+</coefs>
+        </Geometry>
+      <Geometry id="2" type="BSpline">
+        <Basis type="BSplineBasis">
+          <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+          </Basis>
+        <coefs geoDim="2">
+-1.1 1.34711147906209e-16
+-1.28369162548931 -0.531738916775878
+-0.562573451994394 -1.28
+-2.35132185436292e-16 -1.28
+</coefs>
+        </Geometry>
+      <Geometry id="3" type="BSpline">
+        <Basis type="BSplineBasis">
+          <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+          </Basis>
+        <coefs geoDim="2">
+-2.35132185436292e-16 -1.28
+0.562573451994394 -1.28
+1.28369162548883 -0.531738916776044
+1.1 -2.69422295812418e-16
+</coefs>
+        </Geometry>
+      </CurveLoop>
+    <CurveLoop index="1">
+      <Geometry id="0" type="BSpline">
+        <Basis type="BSplineBasis">
+          <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+          </Basis>
+        <coefs geoDim="2">
+0.22 0
+0.22 -0.121502644962775
+0.121502644962775 -0.22
+0 -0.22
+</coefs>
+        </Geometry>
+      <Geometry id="1" type="BSpline">
+        <Basis type="BSplineBasis">
+          <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+          </Basis>
+        <coefs geoDim="2">
+0 -0.22
+-0.121502644962775 -0.22
+-0.22 -0.121502644962775
+-0.22 0
+</coefs>
+        </Geometry>
+      <Geometry id="2" type="BSpline">
+        <Basis type="BSplineBasis">
+          <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+          </Basis>
+        <coefs geoDim="2">
+-0.22 0
+-0.22 0.121502644962775
+-0.121502644962775 0.22
+0 0.22
+</coefs>
+        </Geometry>
+      <Geometry id="3" type="BSpline">
+        <Basis type="BSplineBasis">
+          <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+          </Basis>
+        <coefs geoDim="2">
+0 0.22
+0.121502644962775 0.22
+0.22 0.121502644962775
+0.22 0
+</coefs>
+        </Geometry>
+      </CurveLoop>
+    </PlanarDomain>
+  </xml>

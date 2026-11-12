@@ -1,0 +1,312 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--This file was created by G+Smo 25.7.0-->
+<xml>
+ <PlanarDomain id="0">
+  <CurveLoop index="0">
+   <Geometry type="BSpline" index="0">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     -1.2 0 
+     -0.48 0.36 
+     0.48 0.36 
+     1.2 0 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="1">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     1.2 0 
+     0.6 1.04 
+     -0.6 1.04 
+     -1.2 0 
+    </coefs>
+   </Geometry>
+  </CurveLoop>
+  <CurveLoop index="1">
+   <Geometry type="BSpline" index="0">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     0.2696640937721121 0.02657804458599755 
+     0.2765546979240374 0.02657804458599755 
+     0.2834453020759627 0.02657804458599755 
+     0.290335906227888 0.02657804458599755 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="1">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     0.290335906227888 0.02657804458599755 
+     0.290335906227888 0.02116399846662768 
+     0.290335906227888 0.01574995234725781 
+     0.290335906227888 0.01033590622788794 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="2">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     0.290335906227888 0.01033590622788794 
+     0.2957499523472578 0.01033590622788794 
+     0.3011639984666277 0.01033590622788794 
+     0.3065780445859976 0.01033590622788794 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="3">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     0.3065780445859976 0.01033590622788794 
+     0.3065780445859976 0.003445302075962646 
+     0.3065780445859976 -0.003445302075962645 
+     0.3065780445859976 -0.01033590622788794 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="4">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     0.3065780445859976 -0.01033590622788794 
+     0.3011639984666277 -0.01033590622788794 
+     0.2957499523472578 -0.01033590622788794 
+     0.290335906227888 -0.01033590622788794 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="5">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     0.290335906227888 -0.01033590622788794 
+     0.290335906227888 -0.01574995234725781 
+     0.290335906227888 -0.02116399846662768 
+     0.290335906227888 -0.02657804458599755 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="6">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     0.290335906227888 -0.02657804458599755 
+     0.2834453020759627 -0.02657804458599755 
+     0.2765546979240374 -0.02657804458599755 
+     0.2696640937721121 -0.02657804458599755 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="7">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     0.2696640937721121 -0.02657804458599755 
+     0.2696640937721121 -0.02116399846662768 
+     0.2696640937721121 -0.01574995234725781 
+     0.2696640937721121 -0.01033590622788794 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="8">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     0.2696640937721121 -0.01033590622788794 
+     0.2642500476527422 -0.01033590622788794 
+     0.2588360015333723 -0.01033590622788794 
+     0.2534219554140025 -0.01033590622788794 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="9">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     0.2534219554140025 -0.01033590622788794 
+     0.2534219554140025 -0.003445302075962646 
+     0.2534219554140025 0.003445302075962645 
+     0.2534219554140025 0.01033590622788794 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="10">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     0.2534219554140025 0.01033590622788794 
+     0.2588360015333723 0.01033590622788794 
+     0.2642500476527422 0.01033590622788794 
+     0.2696640937721121 0.01033590622788794 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="11">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     0.2696640937721121 0.01033590622788794 
+     0.2696640937721121 0.01574995234725781 
+     0.2696640937721121 0.02116399846662768 
+     0.2696640937721121 0.02657804458599755 
+    </coefs>
+   </Geometry>
+  </CurveLoop>
+  <CurveLoop index="2">
+   <Geometry type="BSpline" index="0">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     -0.14 0.2720182737107513 
+     -0.1371070032143664 0.2661564219654424 
+     -0.1342140064287329 0.2602945702201335 
+     -0.1313210096430993 0.2544327184748246 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="1">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     -0.1313210096430993 0.2544327184748246 
+     -0.1248520721717343 0.2534927268380338 
+     -0.1183831347003693 0.2525527352012429 
+     -0.1119141972290043 0.2516127435644521 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="2">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     -0.1119141972290043 0.2516127435644521 
+     -0.1165951643575036 0.2470499283120474 
+     -0.1212761314860029 0.2424871130596429 
+     -0.1259570986145021 0.2379242978072382 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="3">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     -0.1259570986145021 0.2379242978072382 
+     -0.1248520721717343 0.2314814992812519 
+     -0.1237470457289665 0.2250387007552657 
+     -0.1226420192861987 0.2185959022292794 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="4">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     -0.1226420192861987 0.2185959022292794 
+     -0.1284280128574657 0.2216377790642158 
+     -0.1342140064287329 0.2246796558991522 
+     -0.14 0.2277215327340887 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="5">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     -0.14 0.2277215327340887 
+     -0.1457859935712671 0.2246796558991522 
+     -0.1515719871425341 0.2216377790642158 
+     -0.1573579807138012 0.2185959022292794 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="6">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     -0.1573579807138012 0.2185959022292794 
+     -0.1562529542710334 0.2250387007552657 
+     -0.1551479278282656 0.2314814992812519 
+     -0.1540429013854978 0.2379242978072382 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="7">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     -0.1540429013854978 0.2379242978072382 
+     -0.1587238685139971 0.2424871130596429 
+     -0.1634048356424964 0.2470499283120474 
+     -0.1680858027709956 0.2516127435644521 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="8">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     -0.1680858027709956 0.2516127435644521 
+     -0.1616168652996306 0.2525527352012429 
+     -0.1551479278282656 0.2534927268380338 
+     -0.1486789903569006 0.2544327184748246 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="9">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     -0.1486789903569006 0.2544327184748246 
+     -0.1457859935712671 0.2602945702201335 
+     -0.1428929967856335 0.2661564219654424 
+     -0.14 0.2720182737107513 
+    </coefs>
+   </Geometry>
+  </CurveLoop>
+  <CurveLoop index="3">
+   <Geometry type="BSpline" index="0">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     -0.1400000000000001 -0.2129559524085344 
+     -0.1314750882243004 -0.2277215327340886 
+     -0.1229501764486006 -0.2424871130596428 
+     -0.1144252646729008 -0.257252693385197 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="1">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     -0.1144252646729008 -0.257252693385197 
+     -0.1314750882243004 -0.257252693385197 
+     -0.1485249117756999 -0.257252693385197 
+     -0.1655747353270994 -0.257252693385197 
+    </coefs>
+   </Geometry>
+   <Geometry type="BSpline" index="2">
+    <Basis type="BSplineBasis">
+     <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+    </Basis>
+    <coefs geoDim="2">
+     -0.1655747353270994 -0.257252693385197 
+     -0.1570498235513997 -0.2424871130596428 
+     -0.1485249117756999 -0.2277215327340886 
+     -0.1400000000000001 -0.2129559524085344 
+    </coefs>
+   </Geometry>
+  </CurveLoop>
+ </PlanarDomain>
+</xml>
+

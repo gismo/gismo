@@ -130,6 +130,7 @@ namespace internal
 #include <gsModeling/gsTrimSurface.h>
 #include <gsModeling/gsCurveLoop.h>
 #include <gsModeling/gsPlanarDomain.h>
+#include <gsModeling/gsPlanarDomainGenerator.h>
 #include <gsModeling/gsSolid.h>
 #include <gsUtils/gsMesh/gsMesh.h>
 #include <gsUtils/gsMesh/gsHalfEdgeMesh.h>

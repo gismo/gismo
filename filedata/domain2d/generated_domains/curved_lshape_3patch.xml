@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--This file was created by G+Smo 25.7.0-->
+<xml>
+ <Geometry type="TensorBSpline2" id="0">
+  <Basis type="TensorBSplineBasis2">
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+   </Basis>
+  </Basis>
+  <coefs geoDim="2">
+   -1 -1 
+   -0.6666666666666667 -0.8700961894323342 
+   -0.3333333333333334 -0.8700961894323342 
+   0 -1 
+   -0.8700961894323342 -0.6666666666666667 
+   -0.5800641262882229 -0.5800641262882229 
+   -0.2900320631441115 -0.5800641262882229 
+   0 -0.6666666666666667 
+   -0.8700961894323342 -0.3333333333333334 
+   -0.5800641262882229 -0.2900320631441115 
+   -0.2900320631441115 -0.2900320631441115 
+   0 -0.3333333333333334 
+   -1 0 
+   -0.6666666666666667 0 
+   -0.3333333333333334 0 
+   0 0 
+  </coefs>
+ </Geometry>
+ <Geometry type="TensorBSpline2" id="1">
+  <Basis type="TensorBSplineBasis2">
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+   </Basis>
+  </Basis>
+  <coefs geoDim="2">
+   0 -1 
+   0.437256381787466 -1 
+   0.7705897151207992 -1 
+   1 -1 
+   0 -0.6666666666666667 
+   0.4026153656360884 -0.6666666666666667 
+   0.7359486989694217 -0.6666666666666667 
+   1 -0.6666666666666667 
+   0 -0.3333333333333334 
+   0.3679743494847109 -0.3333333333333334 
+   0.7013076828180442 -0.3333333333333334 
+   1 -0.3333333333333334 
+   0 0 
+   0.3333333333333333 0 
+   0.6666666666666666 0 
+   1 0 
+  </coefs>
+ </Geometry>
+ <Geometry type="TensorBSpline2" id="2">
+  <Basis type="TensorBSplineBasis2">
+   <Basis type="BSplineBasis" index="0">
+    <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+   </Basis>
+   <Basis type="BSplineBasis" index="1">
+    <KnotVector degree="3">0 0 0 0 1 1 1 1 </KnotVector>
+   </Basis>
+  </Basis>
+  <coefs geoDim="2">
+   -1 0 
+   -0.6666666666666667 0 
+   -0.3333333333333334 0 
+   0 0 
+   -1 0.437256381787466 
+   -0.6666666666666667 0.4026153656360884 
+   -0.3333333333333334 0.3679743494847109 
+   0 0.3333333333333333 
+   -1 0.7705897151207992 
+   -0.6666666666666667 0.7359486989694217 
+   -0.3333333333333334 0.7013076828180442 
+   0 0.6666666666666666 
+   -1 1 
+   -0.6666666666666667 1 
+   -0.3333333333333334 1 
+   0 1 
+  </coefs>
+ </Geometry>
+ <MultiPatch parDim="2" id="3">
+  <patches type="id_range">0 2</patches>
+  <interfaces>0 2 1 1 0 1 0 1
+   0 4 2 3 0 1 1 0
+  </interfaces>
+  <boundary>0 1
+   0 3
+   1 2
+   1 3
+   1 4
+   2 1
+   2 2
+   2 4
+  </boundary>
+ </MultiPatch>
+</xml>
+
