@@ -127,4 +127,32 @@ SUITE(gsHTensorLevelRefine_test)
 
         CHECK((vals0 - vals1).array().abs().maxCoeff() < 1e-10);
     }
+
+    // Refining boxes of a geometry on two levels, as an adaptive loop does:
+    // the coefficients are transferred and the geometry stays the same. In a
+    // build with extra instances (e.g. gsAutoDiff) this failed with
+    // std::bad_alloc while lvl_coef was not a template.
+    TEST(refineElements_withCoefs_preserves_geometry)
+    {
+        gsTHBSplineBasis<2> basis = makeBasis();
+        gsMatrix<> coefs = gsMatrix<>::Random(basis.size(), 2);
+
+        gsTHBSpline<2> geom(basis, coefs);
+        gsMatrix<> pts(2, 5);
+        pts << 0.1, 0.3, 0.5, 0.7, 0.9,
+               0.2, 0.4, 0.6, 0.8, 0.1;
+        gsMatrix<> vals0;
+        geom.eval_into(pts, vals0);
+
+        std::vector<index_t> boxes(5);
+        boxes[0] = 1; boxes[1] = 0; boxes[2] = 0; boxes[3] = 4; boxes[4] = 4;
+        geom.refineElements(boxes);
+        boxes[0] = 2; boxes[1] = 0; boxes[2] = 0; boxes[3] = 4; boxes[4] = 4;
+        geom.refineElements(boxes);
+        CHECK_EQUAL(2, (index_t)geom.basis().maxLevel());
+
+        gsMatrix<> vals1;
+        geom.eval_into(pts, vals1);
+        CHECK((vals0 - vals1).array().abs().maxCoeff() < 1e-10);
+    }
 }
