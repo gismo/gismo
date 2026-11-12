@@ -992,15 +992,43 @@ public:
                 specs.push_back({centers[i], r_hole, get_hole_shape(i)});
             }
         } else if (num_corners == 16 && !star_shaped) {
-            // 4-finger Comb domain
-            T r_hole = std::min(r_base, scale * 0.08);
+            // 4-finger Comb domain: holes placed safely in the solid rectangular backbone
+            T r_hole = std::min(r_base, scale * 0.09);
             std::vector<Point2D> centers = {
-                domain_center + Point2D(-scale * 0.8, scale * 0.3),
-                domain_center + Point2D(-scale * 0.25, scale * 0.3),
-                domain_center + Point2D(scale * 0.3, scale * 0.3),
-                domain_center + Point2D(scale * 0.85, scale * 0.3),
-                domain_center + Point2D(0.0, -scale * 0.4)
+                domain_center + Point2D(-scale * 0.75, -scale * 0.42),
+                domain_center + Point2D(-scale * 0.25, -scale * 0.42),
+                domain_center + Point2D(scale * 0.25, -scale * 0.42),
+                domain_center + Point2D(scale * 0.75, -scale * 0.42),
+                domain_center + Point2D(0.0, -scale * 0.42)
             };
+            for (int i = 0; i < num_holes && i < static_cast<int>(centers.size()); ++i) {
+                specs.push_back({centers[i], r_hole, get_hole_shape(i)});
+            }
+        } else if (num_corners == 2 && !convex) {
+            // Crescent domain: holes placed along the arched crescent centerline
+            T r_hole = std::min(r_base, scale * 0.10);
+            std::vector<Point2D> centers;
+            if (num_holes == 1) {
+                centers = {domain_center + Point2D(0.0, scale * 0.52)};
+            } else if (num_holes == 2) {
+                centers = {
+                    domain_center + Point2D(-scale * 0.35, scale * 0.48),
+                    domain_center + Point2D(scale * 0.35, scale * 0.48)
+                };
+            } else if (num_holes == 3) {
+                centers = {
+                    domain_center + Point2D(-scale * 0.45, scale * 0.46),
+                    domain_center + Point2D(0.0, scale * 0.52),
+                    domain_center + Point2D(scale * 0.45, scale * 0.46)
+                };
+            } else {
+                for (int i = 0; i < num_holes; ++i) {
+                    T frac = (static_cast<T>(i) + 0.5) / static_cast<T>(num_holes);
+                    T x = (-0.6 + frac * 1.2) * scale;
+                    T y = (0.52 - 0.18 * (x / scale) * (x / scale)) * scale;
+                    centers.push_back(domain_center + Point2D(x, y));
+                }
+            }
             for (int i = 0; i < num_holes && i < static_cast<int>(centers.size()); ++i) {
                 specs.push_back({centers[i], r_hole, get_hole_shape(i)});
             }
@@ -1050,13 +1078,15 @@ public:
         // Active safety check against outer boundary
         auto outer_poly = sampleLoop(*outer_loop, 30);
         for (const auto& spec : specs) {
+            if (!internal_earcut::pointInPolygon(spec.center, outer_poly)) continue;
             T safe_r = spec.radius;
+            bool valid = true;
             for (int step = 0; step < 10; ++step) {
                 bool safe = true;
                 int check_pts = 16;
                 for (int k = 0; k < check_pts; ++k) {
                     T th = k * 2.0 * M_PI / static_cast<T>(check_pts);
-                    Point2D pt = spec.center + Point2D((safe_r * 1.25) * std::cos(th), (safe_r * 1.25) * std::sin(th));
+                    Point2D pt = spec.center + Point2D((safe_r * 1.2) * std::cos(th), (safe_r * 1.2) * std::sin(th));
                     if (!internal_earcut::pointInPolygon(pt, outer_poly)) {
                         safe = false;
                         break;
@@ -1064,8 +1094,11 @@ public:
                 }
                 if (safe) break;
                 safe_r *= 0.85;
+                if (safe_r < scale * 0.02) { valid = false; break; }
             }
-            holes.push_back(makeSingleHole(spec.center, safe_r, spec.shape_type, degree));
+            if (valid) {
+                holes.push_back(makeSingleHole(spec.center, safe_r, spec.shape_type, degree));
+            }
         }
 
         return holes;
@@ -1304,12 +1337,14 @@ public:
         } else if (n == "cross_5holes" || n == "bulged_cross_5holes") {
             p.num_corners = 12; p.convex = false; p.star_shaped = false; p.curved = (n.find("bulged") != std::string::npos);
             p.curvature = 0.2; p.num_holes = 5; p.hole_shape = "mixed";
-        } else if (n == "comb_4holes" || n == "comb_16corner_4holes") {
+        } else if (n == "comb_4holes" || n == "comb_16corner_4holes" || n == "comb_16corner_4holes_curved" || n == "curved_comb_4holes") {
             p.num_corners = 16; p.convex = false; p.star_shaped = false; p.num_holes = 4; p.hole_shape = "mixed";
-        } else if (n == "starburst_3holes") {
-            p.num_corners = 12; p.convex = false; p.star_shaped = true; p.num_holes = 3; p.hole_shape = "mixed";
-        } else if (n == "crescent_3holes") {
+            p.curved = (n.find("curved") != std::string::npos);
+            p.curvature = 0.2;
+        } else if (n == "crescent_3holes" || n == "crescent_2corner_3holes") {
             p.num_corners = 2; p.convex = false; p.star_shaped = true; p.num_holes = 3; p.hole_shape = "mixed";
+        } else if (n == "starburst_3holes" || n == "starburst_12corner_3holes") {
+            p.num_corners = 12; p.convex = false; p.star_shaped = true; p.num_holes = 3; p.hole_shape = "mixed";
         } else if (n == "wavy_ring") {
             // Wavy annular domain: 0-corner smooth wavy outer boundary + circular hole
             auto r_func = [scale](T th) { return scale * (1.1 + 0.18 * std::sin(4.0 * th)); };

@@ -1893,16 +1893,42 @@ class PlanarDomainGenerator:
             for idx, c_h in enumerate(centers[:num_holes]):
                 raw_specs.append((c_h, r_hole, get_hole_shape(idx)))
 
-        # Case 4: 4-finger Comb domain (16 corners, non-star)
+        # Case 4: 4-finger Comb domain (16 corners, non-star): placed in solid rectangular backbone
         elif num_corners == 16 and not star_shaped:
-            r_hole = min(r_base, scale * 0.08)
+            r_hole = min(r_base, scale * 0.09)
             centers = [
-                domain_center + Point2D(-scale * 0.8, scale * 0.3),
-                domain_center + Point2D(-scale * 0.25, scale * 0.3),
-                domain_center + Point2D(scale * 0.25, scale * 0.3),
-                domain_center + Point2D(scale * 0.8, scale * 0.3),
-                domain_center + Point2D(0.0, -scale * 0.7)
+                domain_center + Point2D(-scale * 0.75, -scale * 0.42),
+                domain_center + Point2D(-scale * 0.25, -scale * 0.42),
+                domain_center + Point2D(scale * 0.25, -scale * 0.42),
+                domain_center + Point2D(scale * 0.75, -scale * 0.42),
+                domain_center + Point2D(0.0, -scale * 0.42)
             ]
+            for idx, c_h in enumerate(centers[:num_holes]):
+                raw_specs.append((c_h, r_hole, get_hole_shape(idx)))
+
+        # Case 4b: Crescent domain (2 corners, non-convex): placed along arched crescent centerline
+        elif num_corners == 2 and not convex:
+            r_hole = min(r_base, scale * 0.10)
+            if num_holes == 1:
+                centers = [domain_center + Point2D(0.0, scale * 0.52)]
+            elif num_holes == 2:
+                centers = [
+                    domain_center + Point2D(-scale * 0.35, scale * 0.48),
+                    domain_center + Point2D(scale * 0.35, scale * 0.48)
+                ]
+            elif num_holes == 3:
+                centers = [
+                    domain_center + Point2D(-scale * 0.45, scale * 0.46),
+                    domain_center + Point2D(0.0, scale * 0.52),
+                    domain_center + Point2D(scale * 0.45, scale * 0.46)
+                ]
+            else:
+                centers = []
+                for idx in range(num_holes):
+                    frac = (idx + 0.5) / float(num_holes)
+                    x = (-0.6 + frac * 1.2) * scale
+                    y = (0.52 - 0.18 * (x / scale) ** 2) * scale
+                    centers.append(domain_center + Point2D(x, y))
             for idx, c_h in enumerate(centers[:num_holes]):
                 raw_specs.append((c_h, r_hole, get_hole_shape(idx)))
 
@@ -2354,13 +2380,14 @@ class PlanarDomainGenerator:
             return cls.generate(num_corners=12, convex=False, star_shaped=False, num_holes=kwargs.pop("num_holes", 5), hole_shape=kwargs.pop("hole_shape", "mixed"), curved=kwargs.pop("curved", False), degree=degree, scale=scale, **kwargs)
         elif n in ("comb", "comb_16corner"):
             return cls.generate(num_corners=16, convex=False, star_shaped=False, curved=kwargs.pop("curved", False), degree=degree, scale=scale, **kwargs)
-        elif n in ("comb_4holes", "comb_16corner_4holes"):
-            return cls.generate(num_corners=16, convex=False, star_shaped=False, num_holes=kwargs.pop("num_holes", 4), hole_shape=kwargs.pop("hole_shape", "mixed"), curved=kwargs.pop("curved", False), degree=degree, scale=scale, **kwargs)
+        elif n in ("comb_4holes", "comb_16corner_4holes", "comb_16corner_4holes_curved", "curved_comb_4holes"):
+            c_val = kwargs.pop("curved", ("curved" in n))
+            return cls.generate(num_corners=16, convex=False, star_shaped=False, num_holes=kwargs.pop("num_holes", 4), hole_shape=kwargs.pop("hole_shape", "mixed"), curved=c_val, degree=degree, scale=scale, **kwargs)
         elif n in ("starburst", "star12"):
             return cls.generate(num_corners=12, convex=False, star_shaped=True, curved=kwargs.pop("curved", False), degree=degree, scale=scale, **kwargs)
-        elif n in ("starburst_3holes", "star12_3holes"):
+        elif n in ("starburst_3holes", "star12_3holes", "starburst_12corner_3holes"):
             return cls.generate(num_corners=12, convex=False, star_shaped=True, num_holes=kwargs.pop("num_holes", 3), hole_shape=kwargs.pop("hole_shape", "mixed"), curved=kwargs.pop("curved", False), degree=degree, scale=scale, **kwargs)
-        elif n in ("crescent_3holes", "crescent_with_3holes"):
+        elif n in ("crescent_3holes", "crescent_with_3holes", "crescent_2corner_3holes"):
             return cls.generate(num_corners=2, convex=False, star_shaped=True, num_holes=kwargs.pop("num_holes", 3), hole_shape=kwargs.pop("hole_shape", "mixed"), degree=degree, scale=scale, **kwargs)
 
         else:
