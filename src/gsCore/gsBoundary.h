@@ -762,7 +762,8 @@ public:
     {
         return ps1==other.ps1 && ps2==other.ps2
                 && directionMap==other.directionMap
-                && directionOrientation==other.directionOrientation;
+                && directionOrientation==other.directionOrientation
+                && m_type==other.m_type;
     }
 
     inline bool operator< (const boundaryInterface& other) const

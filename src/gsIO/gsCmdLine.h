@@ -55,8 +55,6 @@ class gsCmdLinePrivate;
  */
 class GISMO_EXPORT gsCmdLine : public gsOptionList //TODO: better name: gsCmdOptionList
 {
-    typedef index_t intVal_t;
-
 public:
     ///
     /// @brief Command line constructor. Defines how the arguments will be
@@ -94,13 +92,13 @@ public:
     void addInt(const std::string& flag,
                 const std::string& name,
                 const std::string& desc,
-                intVal_t         & value); //TODO: rename as argInt
+                index_t          & value); //TODO: rename as argInt
 
     /// Second version: unbinded integer command-line argument
     void addNewInt(const std::string& flag,
                    const std::string& name,
                    const std::string& desc,
-                   intVal_t          value) //TODO: rename as addInt
+                   index_t           value) //TODO: rename as addInt
     {
         gsOptionList::addInt(name, desc, value); //add new option
         addInt(flag, name, desc, getIntRef(name) );    //bind cmd arg
@@ -125,7 +123,7 @@ public:
     void addMultiInt(const std::string    & flag,
                      const std::string    & name,
                      const std::string    & desc,
-                     std::vector<intVal_t>& value);
+                     std::vector<index_t> & value);
 
     //using gsOptionList::addMultiInt;
         
