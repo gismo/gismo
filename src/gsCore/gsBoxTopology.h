@@ -92,7 +92,18 @@ public:
     {
         return b.print( os );
     }
-    
+
+    /// Properties and labels are ignored
+    bool operator==(const gsBoxTopology & other) const
+    {
+        return m_dim      == other.m_dim      && nboxes       == other.nboxes &&
+               m_boundary == other.m_boundary && m_interfaces == other.m_interfaces;
+    }
+
+    /// Properties and labels are ignored
+    bool operator!=(const gsBoxTopology & other) const
+    { return !(*this == other); }
+
     /// Number of boxes
     index_t nBoxes() const       { return nboxes; }
 
