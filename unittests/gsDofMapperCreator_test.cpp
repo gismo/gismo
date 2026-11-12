@@ -347,4 +347,103 @@ TEST(strategy_overload_honours_interface_strategy)
     CHECK_EQUAL(0, dgElim.coupledSize());
 }
 
+// 12. Per-component bases: component 0 is bilinear (3x3 = 9 dofs per patch),
+// component 1 biquadratic (4x4 = 16 per patch). Each component must be
+// numbered exactly like the scalar mapper of its own basis.
+TEST(per_component_bases)
+{
+    gsMultiPatch<real_t> mp = gsNurbsCreator<real_t>::BSplineSquareGrid(2, 1, 1.0);
+    gsMultiBasis<real_t> bP(mp);
+    bP.uniformRefine(1);
+    gsMultiBasis<real_t> bQ(mp);
+    bQ.degreeElevate(1);
+    bQ.uniformRefine(1);
+    CHECK_EQUAL(9,  bP.basis(0).size());
+    CHECK_EQUAL(9,  bP.basis(1).size());
+    CHECK_EQUAL(16, bQ.basis(0).size());
+    CHECK_EQUAL(16, bQ.basis(1).size());
+
+    // Dirichlet on patch 0 west and patch 1 north, plus a corner value on the
+    // north-east corner of patch 0, which lies on neither Dirichlet side
+    gsFunctionExpr<real_t> g("0", 2);
+    gsBoundaryConditions<real_t> bc;
+    bc.addCondition(0, boundary::west,  condition_type::dirichlet, &g);
+    bc.addCondition(1, boundary::north, condition_type::dirichlet, &g);
+    bc.addCornerValue(boundary::northeast, 0.0, 0, 0, -1);
+
+    std::vector<const gsFunctionSet<real_t>*> bases;
+    bases.push_back(&bP);
+    bases.push_back(&bQ);
+    gsDofMapper rag = createMapper(bases, bP.topology(), bc, 0, /*conforming=*/false, /*finalize=*/true);
+
+    // Eliminated: 3 + 3 + 1 = 7 of 18 for bP, 4 + 4 + 1 = 9 of 32 for bQ
+    const index_t wantSize[2] = {18, 32};
+    const index_t wantFree[2] = {11, 23};
+    for (index_t c = 0; c < 2; ++c)
+    {
+        gsDofMapper ref = createMapper(*bases[c], bP.topology(), bc, /*nComp=*/1, /*unk=*/0,
+                                       /*conforming=*/false, /*finalize=*/true);
+        CHECK_EQUAL(wantSize[c], rag.size(c));
+        CHECK_EQUAL(wantFree[c], rag.freeSize(c));
+        CHECK_EQUAL(ref.size(), rag.size(c));
+        CHECK_EQUAL(ref.freeSize(), rag.freeSize(c));
+        for (index_t k = 0; k < 2; ++k)
+            for (index_t i = 0; i < bases[c]->basis(k).size(); ++i)
+                CHECK_EQUAL(ref.is_boundary(i,k,0), rag.is_boundary(i,k,c));
+    }
+
+    // The same pointer in every component reproduces the uniform overload
+    std::vector<const gsFunctionSet<real_t>*> same(2, &bQ);
+    gsDofMapper viaList = createMapper(same, bQ.topology(), bc, 0, /*conforming=*/true, /*finalize=*/true);
+    gsDofMapper viaUniform = createMapper(bQ, bQ.topology(), bc, /*nComp=*/2, 0, true, true);
+    CHECK(viaList.asVector(0) == viaUniform.asVector(0));
+    CHECK(viaList.asVector(1) == viaUniform.asVector(1));
+    CHECK_EQUAL(viaUniform.size(), viaList.size());
+    CHECK_EQUAL(viaUniform.freeSize(), viaList.freeSize());
+    CHECK_EQUAL(viaUniform.boundarySize(), viaList.boundarySize());
+    CHECK_EQUAL(viaUniform.coupledSize(), viaList.coupledSize());
+}
+
+// 13. A mapper whose component sizes do not match the space's basis is
+// rejected in every build, even when its total size equals nComp * basis size.
+TEST(setupMapper_rejects_ragged_mapper)
+{
+    gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(1,1,1);
+    gsMultiBasis<> mb(patches);
+    mb.uniformRefine();
+    CHECK_EQUAL(9, mb.basis(0).size());
+    gsExprAssembler<> A(1, 1);
+    A.setIntegrationElements(mb);
+    auto u = A.getSpace(mb, 2);
+
+    gsMatrix<index_t> R(1,2);
+    R << 8, 10;
+    gsDofMapper rag(R);
+    rag.finalize();
+    CHECK_EQUAL(18, (index_t)rag.mapSize());
+    CHECK_THROW(u.setupMapper(rag), std::runtime_error);
+
+    R << 9, 9;
+    gsDofMapper ok(R);
+    ok.finalize();
+    u.setupMapper(ok);
+}
+
+// 14. The per-component createMapper rejects a null basis in any component,
+// including component 0.
+TEST(per_component_createMapper_rejects_null_basis)
+{
+    gsMultiPatch<real_t> mp = gsNurbsCreator<real_t>::BSplineSquareGrid(1, 1, 1.0);
+    gsMultiBasis<real_t> mb(mp);
+    gsBoundaryConditions<real_t> bc;
+
+    std::vector<const gsFunctionSet<real_t>*> nullFirst;
+    nullFirst.push_back(nullptr);
+    nullFirst.push_back(&mb);
+    CHECK_THROW(createMapper(nullFirst, mb.topology(), bc, 0, false), std::runtime_error);
+
+    std::vector<const gsFunctionSet<real_t>*> onlyNull(1, nullptr);
+    CHECK_THROW(createMapper(onlyNull, mb.topology(), bc, 0, false), std::runtime_error);
+}
+
 }

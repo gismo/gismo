@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsDofMapper.h>
 #include <gsCore/gsBoxTopology.h>
@@ -23,8 +25,49 @@
 namespace gismo
 {
 
-/** @brief Primary factory: builds a gsDofMapper for the (possibly
-    multi-patch) function set \a bases.
+/** @brief Builds a gsDofMapper with a possibly different basis per component.
+
+    \param bases      \a bases[c] is the basis of component \a c; \a bases.size()
+                      is the number of components. The pointers are not owned
+                      and must stay valid for the duration of the call.
+    \param topology   interface topology between patches. It is valid to pass
+                      an empty gsBoxTopology() for single-patch bases or when
+                      no inter-patch conformity is required; in that case no
+                      interface matching is performed.
+    \param bc         boundary conditions; may be empty
+    \param unk        unknown index the conditions are filtered by; -1 accepts all
+    \param conforming if true, matching dofs across the interfaces of \a topology
+    \param finalize   if true, gsDofMapper::finalize() is called before returning
+
+    Requirements, all checked with GISMO_ENSURE: \a bases is non-empty, no entry
+    is null, all entries have the same nPieces(), and gsMappedBasis entries are
+    only accepted when all entries are the same pointer.
+
+    Interfaces are matched per component, with that component's own basis.
+    Each component's basis must itself be conforming across the interfaces when
+    \a conforming is true. Vector fields whose components are exchanged across a
+    rotated interface (Piola-type maps) are not supported.
+
+    \note Interfaces of type interaction::contact are skipped by the conforming
+    loop: matching dofs across a contact interface is wrong (the two sides are
+    physically distinct). This mirrors gsMultiBasis<T>::repairInterfaces and the
+    pre-existing gsFeSpace behaviour.
+
+    \ingroup Assembler
+*/
+template<class T>
+gsDofMapper createMapper(const std::vector<const gsFunctionSet<T>*> & bases,
+                         const gsBoxTopology           & topology,
+                         const gsBoundaryConditions<T> & bc,
+                         index_t unk,
+                         bool    conforming,
+                         bool    finalize = false);
+
+/** @brief Builds a gsDofMapper for the (possibly multi-patch) function set
+    \a bases, with the same basis in each of the \a nComp components.
+
+    Equivalent to the per-component overload called with \a nComp copies of
+    \a &bases.
 
     \param bases      the function set; each piece is one patch
     \param topology   interface topology between patches. It is valid to pass

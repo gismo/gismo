@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <type_traits>
+
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsCore/gsBoundary.h>
 #include <gsCore/gsExport.h>
@@ -20,7 +22,7 @@
 namespace gismo
 {
 
-#define MAPPER_PATCH_DOF(a,b,c) m_dofs[c][m_offset[b]+a]
+#define MAPPER_PATCH_DOF(a,b,c) m_dofs[c][off(b,c)+a]
 
 /** @brief Maintains a mapping from patch-local dofs to global dof indices
     and allows the elimination of individual dofs.
@@ -81,12 +83,9 @@ namespace gismo
     a shifted one. Exceptions:
     - anyPreImages() and inverseAsVector() return dense vectors whose
       position <tt>gl - firstIndex(0)</tt> holds the entry of \a gl;
-    - permuteFreeDofs() permutes the free positions 0..freeSize()-1;
     - bindex(), global_to_bindex(), cindex() and tindex() return ranks
       among the eliminated, coupled and tagged dofs respectively, which
-      do not depend on the shift;
-    - the deprecated freeIndex() and getTagged() return stored,
-      unshifted values.
+      do not depend on the shift.
 
     \ingroup Core
 
@@ -98,24 +97,28 @@ public:
     /// Default empty constructor
     gsDofMapper();
 
-    /**
-     * @brief construct a dof mapper with a given number of dofs per
-     * patch
-     *
-     * @param patchDofSizes
-     */
-    gsDofMapper(const gsVector<index_t> &patchDofSizes, index_t nComp = 1)
-    {
-        initPatchDofs(patchDofSizes, nComp);
-    }
+    /// \brief Constructs a mapper from the per-component patch sizes.
+    /// \param patchDofSizes nPatches x nComp matrix; entry (k,c) is the number of DoFs of component c on patch k.
+    ///        Components may have different sizes. Requires nPatches>0, nComp>0 and no negative entry.
+    ///
+    /// Templated such that it is only selected when giving an argument of type
+    /// gsMatrix<index_t>. Anything else, including things that could be converted to
+    /// a gsMatrix, goes to the "standard" constructor taking a vector.
+    template<class T, typename std::enable_if<std::is_same<T, index_t>::value, int>::type = 0>
+    explicit gsDofMapper(const gsMatrix<T> & patchDofSizes)
+    { initPatchDofs(patchDofSizes); }
+
+    /// \brief Uniform case: every one of the \a nComp components has the patch sizes \a patchDofSizes.
+    /// Equivalent to gsDofMapper(patchDofSizes.replicate(1,nComp)).
+    gsDofMapper(const gsVector<index_t> & patchDofSizes, index_t nComp = 1);
 
     void swap(gsDofMapper & other)
     {
         m_dofs  .swap(other.m_dofs);
         m_offset.swap(other.m_offset);
 
+        std::swap(m_nPatches   , other.m_nPatches);
         std::swap(m_shift      , other.m_shift);
-        std::swap(m_bshift     , other.m_bshift);
         std::swap(m_numFreeDofs, other.m_numFreeDofs);
         std::swap(m_numElimDofs, other.m_numElimDofs);
         std::swap(m_numCpldDofs, other.m_numCpldDofs);
@@ -125,9 +128,8 @@ public:
 
 private:
 
-    /// Initialize by vector of DoF indices and dimension
-    void initPatchDofs(const gsVector<index_t> & patchDofSizes,
-		       index_t nComp = 1);
+    /// Initialize from the nPatches x nComp size matrix
+    void initPatchDofs(const gsMatrix<index_t> & patchDofSizes);
 
 public:
 
@@ -155,6 +157,12 @@ public:
     /// \brief Couples dof \a i of patch \a u with dof \a j of patch
     /// \a v such that they refer to the same global dof at component
     /// \a comp.
+    ///
+    /// With <tt>comp == -1</tt> the same local indices are matched in every
+    /// component; this is only valid when the components share one basis.
+    /// A <tt>comp == -1</tt> call throws (GISMO_ENSURE, all builds) if a
+    /// patch involved has a different size in some component; call once per
+    /// component then.
     void matchDof( index_t u, index_t i, index_t v, index_t j, index_t comp = 0);
 
     /// \brief Couples dofs \a b1 of patch \a u with dofs \a b2 of patch
@@ -172,11 +180,17 @@ public:
     /// Mark all coupled dofs as tagged
     void markCoupledAsTagged();
 
-    /// Mark the local dofs \a boundaryDofs of patch \a k as eliminated.
+    /// Mark the local dofs \a boundaryDofs of patch \a k as eliminated (comp = -1: see eliminateDof()).
     // to do: put k at the end
     void markBoundary(index_t k, const gsMatrix<index_t> & boundaryDofs, index_t comp = 0);
 
     /// Mark the local dof \a i of patch \a k as eliminated.
+    ///
+    /// With <tt>comp == -1</tt> the same local index is eliminated in every
+    /// component; this is only valid when the components share one basis.
+    /// A <tt>comp == -1</tt> call throws (GISMO_ENSURE, all builds) if patch
+    /// \a k has a different size in some component; call once per component
+    /// then.
     void eliminateDof(index_t i, index_t k, index_t comp = 0);
 
     /// \brief Must be called after all boundaries and interfaces have
@@ -201,17 +215,6 @@ public:
     ///\brief Add a shift amount to the global numbering
     void addShift(index_t shift);
 
-    /// \brief Permutes the mapped free indices according to permutation, i.e.,
-    /// new index = permutation[old index] on the free positions 0..freeSize()-1.
-    /// Single-component mappers only.
-    ///
-    /// \warning Applying a permutation makes the functions regarding coupled dofs (cindex, is_coupled_index,.. ) invalid.
-    /// The dofs are still coupled, but you have no way of extracting them. If you need this functions, first call
-    /// markCoupledAsTagged() and then use the corresponding functions for tagged dofs.
-    ///
-    /// \deprecated No replacement.
-    GISMO_DEPRECATED void permuteFreeDofs(const gsVector<index_t>& permutation, index_t comp = 0);
-
     ///\brief Returns the smallest (shifted) global index of the free
     ///dofs of component \a comp. Valid after finalize().
     index_t firstIndex(index_t comp = 0) const
@@ -219,12 +222,6 @@ public:
 
     ///\brief Returns one past the biggest value of the free indices
     index_t lastIndex() const { return m_shift + freeSize(); }
-
-    ///\brief Set the shift amount for the boundary numbering
-    ///
-    /// \deprecated No replacement: the boundary numbering of bindex()
-    /// and global_to_bindex() starts at 0.
-    GISMO_DEPRECATED void setBoundaryShift(index_t shift);
 
     /** \brief Computes the global indices of the input local indices
      *
@@ -249,21 +246,6 @@ public:
                         gsMatrix<index_t>& globals,
                         index_t & numFree,
 		                index_t comp = 0) const;
-
-    /** \brief Returns the index associated to local dof \a i of patch \a k without shifts.
-     *
-     * \note This method only works after all interfaces and boundaries have been
-     * marked and finalize() has been called.
-     *
-     * \deprecated Use index(). freeIndex() returns the stored value,
-     * i.e. index() minus the shift.
-     */
-
-    GISMO_DEPRECATED inline index_t freeIndex(index_t i, index_t k = 0, index_t c = 0) const
-    {
-        GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
-        return MAPPER_PATCH_DOF(i,k,c);
-    }
 
     index_t componentOf(index_t gl) const
     {
@@ -297,16 +279,12 @@ public:
     /// @brief Returns the boundary index of local dof \a i of patch \a k.
     ///
     /// The boundary index is the rank of the dof among the eliminated
-    /// dofs, 0..boundarySize()-1, independent of the shift, plus the
-    /// boundary shift, which is 0 unless the deprecated
-    /// setBoundaryShift() was called.
+    /// dofs, 0..boundarySize()-1, independent of the shift.
     /// Produces undefined results if local dof (i,k) does not lie on the boundary.
     inline index_t bindex(index_t i, index_t k = 0, index_t c = 0) const
     {
         GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
-        return MAPPER_PATCH_DOF(i,k,c) - m_numFreeDofs.back()
-            //- m_numElimDofs[c]
-            + m_bshift;
+        return MAPPER_PATCH_DOF(i,k,c) - m_numFreeDofs.back();
     }
 
     /// Returns true iff all DoFs are considered as free
@@ -340,11 +318,7 @@ public:
     {
         GISMO_ASSERT( is_boundary_index( gl ),
                       "global_to_bindex(): dof "<<gl<<" is not on the boundary");
-        return gl - m_numFreeDofs.back() - m_shift + m_bshift;
-    //gl -= m_numFreeDofs.back() + m_shift;
-	//const index_t c = std::distance(m_numElimDofs.begin(),
-    //    std::upper_bound(m_numElimDofs.begin(), m_numElimDofs.end(),gl)) -1;
- 	//return gl + m_bshift; // - m_numElimDofs[c]
+        return gl - m_numFreeDofs.back() - m_shift;
     }
 
     /// Returns true if global dof \a gl is not eliminated.
@@ -430,13 +404,6 @@ public:
 	(allFree() ? m_numElimDofs[comp+1]-m_numElimDofs[comp] : 0 );
     }
 
-    /// \brief Returns the sorted stored (unshifted) indices of the
-    /// tagged dofs, free or eliminated.
-    ///
-    /// \deprecated Use is_tagged_index() for a shifted global index,
-    /// is_tagged() or findTagged() for patch-local dofs, or taggedSize().
-    GISMO_DEPRECATED const std::vector<index_t> & getTagged() const { return m_tagged; }
-
     /// Returns the number of coupled (not eliminated) dofs.
     index_t coupledSize() const;
 
@@ -452,16 +419,23 @@ public:
 
     index_t boundarySizeWithDuplicates() const;
 
-    /// Returns the offset corresponding to patch \a k
-    size_t offset(int k) const {return m_offset[k];}
+    /// \brief Returns the position of local DoF 0 of patch \a k in the
+    /// patch-concatenated local numbering of component \a c (a local
+    /// position, not a global index; no shift).
+    size_t offset(int k, index_t c = 0) const { return off(k,c); }
 
     /// Returns the number of patches present underneath the mapper
-    size_t numPatches() const {return m_offset.size();}
+    size_t numPatches() const {return static_cast<size_t>(m_nPatches);}
 
     /// \brief Returns the total number of patch-local degrees of
     /// freedom that are being mapped
     size_t mapSize() const
-    { return (m_dofs.empty()?0:m_dofs.size() * m_dofs.front().size()); }
+    {
+        size_t n = 0;
+        for (size_t c = 0; c != m_dofs.size(); ++c)
+            n += m_dofs[c].size();
+        return n;
+    }
 
     size_t componentsSize() const {return m_dofs.size();}
 
@@ -469,11 +443,8 @@ public:
     /// that live on patch \a k for component \a c
     size_t patchSize(const index_t k, const index_t c = 0) const
     {
-        const size_t k1(k+1);
-        GISMO_ASSERT(k1<=numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
-        if ( 1==m_offset.size() ) return  m_dofs[c].size();
-        else if ( k1==m_offset.size() ) return (m_dofs[c].size() - m_offset.back());
-        else return (m_offset[k1]-m_offset[k]);
+        GISMO_ASSERT(static_cast<size_t>(k)+1<=numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+        return off(k+1,c) - off(k,c);
     }
 
     size_t totalSize(const index_t c = 0) const
@@ -519,27 +490,31 @@ public:
 
     /// \brief For \a n being an index which is already offsetted, it
     /// returns the global index where it is mapped to by the dof
-    /// mapper.
+    /// mapper. The index \a n runs over the concatenation of the
+    /// components' patch-concatenated local numberings.
     inline index_t mapIndex(index_t n) const
     {
-        return m_dofs[n/m_dofs.front().size()]
-            [n%m_dofs.front().size()] + m_shift;
+        size_t c = 0;
+        while (static_cast<size_t>(n) >= m_dofs[c].size())
+            n -= static_cast<index_t>(m_dofs[c++].size());
+        return m_dofs[c][n] + m_shift;
     }
 
-    /// \brief Returns all boundary dofs on patch k (local dof indices)
-    gsVector<index_t> findBoundary(const index_t k) const;
+    /// \brief Returns all boundary dofs of component \a c on patch k (local dof indices)
+    gsVector<index_t> findBoundary(const index_t k, const index_t c = 0) const;
 
-    /// \brief Returns all free dofs on patch k (local dof indices)
-    gsVector<index_t> findFree(const index_t k) const;
+    /// \brief Returns all free dofs of component \a c on patch k (local dof indices)
+    gsVector<index_t> findFree(const index_t k, const index_t c = 0) const;
 
-    /// \brief Returns all coupled dofs on patch k (local dof indices)
-    gsVector<index_t> findCoupled(const index_t k, const index_t j = -1) const;
+    /// \brief Returns all coupled dofs of component \a c on patch k (local dof
+    /// indices); with \a j >= 0 only those coupled with a dof of patch \a j
+    gsVector<index_t> findCoupled(const index_t k, const index_t j = -1, const index_t c = 0) const;
 
-    /// \brief Returns all free, not coupled dofs on patch k (local dof indices)
-    gsVector<index_t> findFreeUncoupled(const index_t k) const;
+    /// \brief Returns all free, not coupled dofs of component \a c on patch k (local dof indices)
+    gsVector<index_t> findFreeUncoupled(const index_t k, const index_t c = 0) const;
 
-    /// \brief Returns all tagged dofs on patch k (local dof indices)
-    gsVector<index_t> findTagged(const index_t k) const;
+    /// \brief Returns all tagged dofs of component \a c on patch k (local dof indices)
+    gsVector<index_t> findTagged(const index_t k, const index_t c = 0) const;
 
 private:
 
@@ -547,6 +522,21 @@ private:
       static gsVector<index_t> find_impl(Iterator istart, Iterator iend, Predicate pred);
 
     void finalizeComp(const index_t comp);
+
+    /// Position of local dof 0 of patch \a k in m_dofs[\a c]
+    size_t off(index_t k, index_t c) const
+    {
+        GISMO_ASSERT(k >= 0 && k <= m_nPatches && c >= 0
+                     && static_cast<size_t>(c+1)*(m_nPatches+1) <= m_offset.size(),
+                     "Invalid patch "<< k <<" or component "<< c <<" in gsDofMapper");
+        return m_offset[c*(m_nPatches+1)+k];
+    }
+
+    /// Number of valid local indices on patch \a k of component \a c: the patch
+    /// size, or every dof of \a c in the layout of setIdentity(), where all dofs
+    /// are on the last patch and are addressed through any patch
+    size_t localBound(index_t k, index_t c) const
+    { return 0 == off(m_nPatches-1, c) ? off(m_nPatches, c) : off(k+1, c) - off(k, c); }
 
     // replace all references to oldIdx by newIdx
     inline void replaceDofGlobally(index_t oldIdx, index_t newIdx);
@@ -572,14 +562,21 @@ private:
     // offsets for patch-local indices
     std::vector<std::vector<index_t> >  m_dofs;
 
-    /// Offsets
+    /// Per-component patch offsets into m_dofs.
+    ///
+    /// Has nComp*(m_nPatches+1) entries; entry c*(m_nPatches+1)+k (read via
+    /// off(k,c)) is the position of local dof 0 of patch k in m_dofs[c].
+    /// off(0,c)==0, off(.,c) is non-decreasing in k, and the sentinel
+    /// off(m_nPatches,c)==m_dofs[c].size().
+    /// A default-constructed mapper has no component, m_nPatches==1 and
+    /// m_offset=={0,0}, so that offset(0) and patchSize(0) are 0.
     std::vector<size_t> m_offset;
+
+    /// Number of patches
+    index_t m_nPatches;
 
     /// Shifting of the global index (zero by default)
     index_t m_shift;
-
-    /// Shifting of the boundary index (zero by default)
-    index_t m_bshift;
 
     /// Offsets of free dofs, nComp+1
     std::vector<index_t> m_numFreeDofs;

@@ -193,20 +193,20 @@ public:
     /// coupled and boundary DoFs.
     /// The result has mapper().mapSize() rows, ordered component-major: the
     /// coefficient of local DoF i of component c on patch p is at row
-    /// sum_{c'<c} totalSize(c') + offset(p) + i.
+    /// sum_{c'<c} totalSize(c') + offset(p,c) + i.
     void extractFull(gsMatrix<T> & result) const
     {
-        index_t offset;
         const index_t dim = _u.dim();
         const size_t totalSz = _u.mapper().mapSize();
         result.resize(totalSz, 1);
         for (size_t p=0; p!=_u.mapper().numPatches(); ++p)
         {
-            offset = _u.mapper().offset(p);
+            index_t base = 0;
             // Reconstruct solution coefficients on patch p
 
             for (index_t c = 0; c!=dim; c++) // for all components
             {
+                const index_t row0 = base + static_cast<index_t>(_u.mapper().offset(p,c));
                 const index_t sz  = _u.mapper().patchSize(p,c);
 
                 // loop over all basis functions (even the eliminated ones)
@@ -217,12 +217,12 @@ public:
                     //gsDebugVar(ii);
                     if ( _u.mapper().is_free_index(ii) ) // DoF value is in the solVector
                     {
-                        result(i+offset,0) = _Sv->at(ii);
+                        result(i+row0,0) = _Sv->at(ii);
                     }
                     else // eliminated DoF: fill with Dirichlet data
-                        result(i+offset,0) =  _u.fixedPart().at( _u.mapper().global_to_bindex(ii) );
+                        result(i+row0,0) =  _u.fixedPart().at( _u.mapper().global_to_bindex(ii) );
                 }
-                offset += static_cast<index_t>(_u.mapper().totalSize(c));
+                base += static_cast<index_t>(_u.mapper().totalSize(c));
             }
         }
     }
