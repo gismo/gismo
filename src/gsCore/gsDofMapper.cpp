@@ -197,11 +197,11 @@ void gsDofMapper::markCoupledAsTagged()
 {
     GISMO_ASSERT(m_curElimId>=0, "finalize() was not called on gsDofMapper");
     m_tagged.reserve(m_tagged.size()+m_numCpldDofs.back());
-    for(size_t c = 0; c != m_dofs.size(); ++c)
+    for(index_t c = 0; c != numComponents(); ++c)
       {
-	const index_t cp = m_numCpldDofs[c+1] - m_numCpldDofs[c];
-	for(index_t i = m_numFreeDofs[c+1]-cp; i < m_numFreeDofs[c+1]; ++i)
-	  m_tagged.push_back(i);
+        const index_t cp = m_numCpldDofs[c+1] - m_numCpldDofs[c];
+        for(index_t i = m_numFreeDofs[c+1]-cp; i < m_numFreeDofs[c+1]; ++i)
+          m_tagged.push_back(i);
       }
     //sort and delete the duplicated ones
     std::sort(m_tagged.begin(),m_tagged.end());
@@ -575,7 +575,7 @@ gsDofMapper::inverseOnPatch(const index_t k) const
     for(size_t i = 0; i!= m_dofs.size(); ++i)
     {
         citer it = m_dofs[i].begin()+m_offset[k];
-        for(size_t j = 0; j!= patchSize(k, static_cast<index_t>(i)); ++j,++it)
+        for(index_t j = 0; j!= static_cast<index_t>(patchSize(k, static_cast<index_t>(i))); ++j,++it)
             inv[*it + m_shift]=j;
     }
     return inv;
@@ -604,7 +604,7 @@ index_t gsDofMapper::boundarySizeWithDuplicates() const
     index_t res = 0;
     for (size_t i = 0; i!= m_dofs.size(); ++i)
       res += std::count_if(m_dofs[i].begin(), m_dofs[i].end(),
-			   GS_BIND2ND(std::greater<index_t>(), s) );
+                       GS_BIND2ND(std::greater<index_t>(), s) );
     return res;
 }
 
@@ -767,7 +767,7 @@ void pybind11_init_gsDofMapper(py::module &m)
     .def("matchDof", &Class::matchDof, py::arg("u"), py::arg("i"), py::arg("v"), py::arg("j"), py::arg("comp") = 0, "Couples dof \a i of patch \a u with dof \a j of patch \a v such that they refer to the same global dof at component \a comp.")
     .def("matchDofs", &Class::matchDofs, py::arg("u"), py::arg("b1"), py::arg("v"), py::arg("b2"), py::arg("comp") = 0, "Couples dofs \a b1 of patch \a u with dofs \a b2 of patch \a v one by one such that they refer to the same global dof.")
     .def("markCoupled", &Class::markCoupled, py::arg("i"), py::arg("k"), py::arg("comp") = 0, "Mark the local dof \a i of patch \a k as coupled.")
-    .def("markTagged", &Class::markTagged, py::arg("i"), py::arg("k"), py::arg("comp") = 0, "Mark a local dof \a i of patch \a k as tagged")
+    .def("markTagged", &Class::markTagged, py::arg("i"), py::arg("k"), py::arg("comp") = 0, "Mark a local dof i of patch k as tagged. Unlike markCoupled and markBoundary, this may only be called after finalize(); it throws otherwise.")
     .def("markCoupledAsTagged", &Class::markCoupledAsTagged, "Mark all coupled dofs as tagged")
     .def("markBoundary", &Class::markBoundary, py::arg("k"), py::arg("boundaryDofs"), py::arg("comp") = 0, "Mark the local dofs \a boundaryDofs of patch \a k as eliminated. ")
     .def("eliminateDof", &Class::eliminateDof, py::arg("i"), py::arg("k"), py::arg("comp") = 0, "Mark the local dof \a i of patch \a k as eliminated.")

@@ -167,6 +167,9 @@ public:
     void markCoupled(index_t i, index_t k, index_t comp = 0);
 
     /// Mark a local dof \a i of patch \a k as tagged
+    ///
+    /// Unlike markCoupled() and markBoundary(), this function may only be
+    /// called after finalize(); it throws otherwise.
     void markTagged(index_t i, index_t k, index_t comp = 0);
 
     /// Mark all coupled dofs as tagged
@@ -201,7 +204,7 @@ public:
     ///\brief Add a shift amount to the global numbering
     void addShift(index_t shift);
 
-    /// \brief Permutes the mapped free indices according to permutation, i.e.,
+    /// @brief Permutes the mapped free indices according to permutation, i.e.,
     /// new index = permutation[old index] on the free positions 0..freeSize()-1.
     /// Single-component mappers only.
     ///
@@ -209,10 +212,10 @@ public:
     /// The dofs are still coupled, but you have no way of extracting them. If you need this functions, first call
     /// markCoupledAsTagged() and then use the corresponding functions for tagged dofs.
     ///
-    /// \deprecated No replacement.
+    /// @deprecated No replacement.
     GISMO_DEPRECATED void permuteFreeDofs(const gsVector<index_t>& permutation, index_t comp = 0);
 
-    ///\brief Returns the smallest (shifted) global index of the free
+    ///@brief Returns the smallest (shifted) global index of the free
     ///dofs of component \a comp. Valid after finalize().
     index_t firstIndex(index_t comp = 0) const
     { return m_numFreeDofs[comp] + m_shift; }
@@ -222,7 +225,7 @@ public:
 
     ///\brief Set the shift amount for the boundary numbering
     ///
-    /// \deprecated No replacement: the boundary numbering of bindex()
+    /// @deprecated No replacement: the boundary numbering of bindex()
     /// and global_to_bindex() starts at 0.
     GISMO_DEPRECATED void setBoundaryShift(index_t shift);
 
@@ -255,7 +258,7 @@ public:
      * \note This method only works after all interfaces and boundaries have been
      * marked and finalize() has been called.
      *
-     * \deprecated Use index(). freeIndex() returns the stored value,
+     * @deprecated Use index(). freeIndex() returns the stored value,
      * i.e. index() minus the shift.
      */
 
@@ -386,7 +389,7 @@ public:
       const index_t vv = m_numFreeDofs[gc+1] + m_shift;
       const index_t cp = m_numCpldDofs[gc+1] - m_numCpldDofs[gc];
       return  (gl < vv && // is a free dof and
-	      (gl + cp + 1 > vv) );  // is not standard dof
+              (gl + cp + 1 > vv) );  // is not standard dof
     }
 
     /// Returns true if local dof \a i of patch \a k is tagged.
@@ -430,11 +433,13 @@ public:
 	(allFree() ? m_numElimDofs[comp+1]-m_numElimDofs[comp] : 0 );
     }
 
-    /// \brief Returns the sorted stored (unshifted) indices of the
+    /// @brief Returns the sorted stored (unshifted) indices of the
     /// tagged dofs, free or eliminated.
     ///
-    /// \deprecated Use is_tagged_index() for a shifted global index,
-    /// is_tagged() or findTagged() for patch-local dofs, or taggedSize().
+    /// @deprecated Use is_tagged_index() for a shifted global index,
+    /// is_tagged(i, k, c) for patch-local dofs, or taggedSize(). Note that
+    /// findTagged() covers component 0 only; is_tagged(i, k, c) is the
+    /// replacement for patch-local dofs of other components.
     GISMO_DEPRECATED const std::vector<index_t> & getTagged() const { return m_tagged; }
 
     /// Returns the number of coupled (not eliminated) dofs.
@@ -490,7 +495,7 @@ public:
     /// pair (patch,dof) that maps to \a gl
     std::pair<index_t,index_t> anyPreImage(index_t gl) const;
 
-    /// \brief Returns, for every global index of the mapper, a pair
+    /// @brief Returns, for every global index of the mapper, a pair
     /// (patch, local dof) of component \a comp that maps to it.
     ///
     /// The vector has size() entries; the entry of global index \a gl
@@ -538,7 +543,7 @@ public:
     /// \brief Returns all free, not coupled dofs on patch k (local dof indices)
     gsVector<index_t> findFreeUncoupled(const index_t k) const;
 
-    /// \brief Returns all tagged dofs on patch k (local dof indices)
+    /// @brief Returns the tagged dofs of component 0 on patch k (local dof indices)
     gsVector<index_t> findTagged(const index_t k) const;
 
 private:

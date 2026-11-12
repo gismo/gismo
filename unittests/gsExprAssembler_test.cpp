@@ -40,6 +40,11 @@ public:
 
 SUITE(gsExprAssembler_test)
 {
+    // Verifies that a custom quadrature factory is called with the patch and
+    // side context, changes the assembled mass matrix, and that clearing it
+    // restores the default rule. The reference is the matrix assembled
+    // without a factory in the same test; the one-point midpoint rule cannot
+    // integrate the cubic mass matrix exactly, so the matrices must differ.
     TEST(CustomQuadratureFactory)
     {
         gsBSplineBasis<real_t> bb(0.0, 1.0, 3, 3);
@@ -215,6 +220,9 @@ SUITE(gsExprAssembler_test)
         CHECK(A.matrix().rows() > 0);
     }
 
+    // Verifies that re-registering a test space returns a handle to that same
+    // space. The expected id 0 and the mapper identity follow from the
+    // registration order: the test space of unknown 0 was registered first.
     TEST(TestSpaceReRegistrationKeepsItsData)
     {
         gsBSplineBasis<real_t> bb(0.0, 1.0, 3, 3);
@@ -233,6 +241,11 @@ SUITE(gsExprAssembler_test)
         CHECK(&v0.mapper() == &A.testSpace(0).mapper());
     }
 
+    // Verifies the domain and interface integrals of a function with a jump:
+    // f = sign(x) is odd in x and both the domain and the interface are
+    // symmetric about x = 0 (the grid is translated by -0.5), so the exact
+    // integrals of f and of f.left() + f.right() are 0. The tests compare the
+    // squared value with 1e-10.
     TEST(InterfaceExpression)
     {
         const index_t numRef = 2;
@@ -334,6 +347,12 @@ SUITE(gsExprAssembler_test)
         CHECK_EQUAL(matching.freeSize(), A.numDofs());
     }
 
+    // Verifies boundary, area and element-area integrals on the unit disk
+    // (curve and surface in 3D, then the planar disk). The references are the
+    // analytic circumference 2*pi and area pi, and for el.area(G) the integral
+    // over the parameter domain of each element's area, i.e. the disk area pi
+    // times the parametric element size 1/16 (16 elements after two
+    // refinements) = 2*pi/32.
     TEST(BoundaryIntegral)
     {
         // Create a circle
@@ -386,9 +405,13 @@ SUITE(gsExprAssembler_test)
     }
 
     // extractFull() is component-major: rows are ordered by component, then
-    // patch offset, then patch-local index
+    // patch offset, then patch-local index. The expected entries are those of
+    // the per-patch extract() result, which does not depend on the full ordering.
     TEST(ExtractFullComponentMajor)
     {
+        // Two patches, one above the other, with a Dirichlet condition on the west side of patch 0, so the
+        // mapper has coupled and eliminated dofs; a vector-valued space (dimension 2) makes the
+        // component-major order observable
         gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(1,2,1);
         gsMultiBasis<> mb(patches);
         mb.uniformRefine();
@@ -402,6 +425,8 @@ SUITE(gsExprAssembler_test)
         u.setup(bcs, dirichlet::homogeneous, 0);
         const gsDofMapper & dm = u.mapper();
 
+        // Free coefficient j is 1+j and eliminated coefficient j is -1-j: all values are distinct and
+        // free and fixed ones have opposite signs, so a misplaced entry cannot match by accident
         gsMatrix<> sol(dm.freeSize(), 1);
         for (index_t j = 0; j < sol.rows(); ++j) sol(j) = 1 + j;
         for (index_t j = 0; j < (index_t)dm.boundarySize(); ++j) u.fixedPart()(j) = -1 - j;
@@ -410,11 +435,18 @@ SUITE(gsExprAssembler_test)
         gsMatrix<> full;
         s.extractFull(full);
 
+        // The fixture has two patches with both eliminated and coupled dofs, and the full vector has
+        // one row per mapper entry (patch-local dofs of all patches and components)
         CHECK_EQUAL(2, (index_t)dm.numPatches());
         CHECK(dm.boundarySize() > 0);
         CHECK(dm.coupledSize() > 0);
         CHECK_EQUAL((index_t)dm.mapSize(), full.rows());
 
+        // For patch p and component c, row (component block + patch offset + local index) of the full
+        // vector equals column c of the patch-local extraction. The block of component c starts after
+        // the totalSize() rows of components 0..c-1. Both entries are copies of the same stored
+        // coefficient (free solution entry or Dirichlet value), with no arithmetic applied, so they
+        // are compared exactly and not within a tolerance.
         for (index_t p = 0; p < 2; ++p)
         {
             gsMatrix<> cf;
@@ -435,9 +467,13 @@ SUITE(gsExprAssembler_test)
     }
 
     // getSolution() takes a vector with the structure of the whole system,
-    // so check() must accept it for every space of a multi-space assembler
+    // so check() must accept it for every space of a multi-space assembler.
+    // A vector with too few rows must be rejected, also when it has several
+    // columns so that its total entry count still exceeds the system size.
     TEST(FeSolutionCheckWholeSystem)
     {
+        // Two scalar unknowns on one square patch without boundary conditions: each space has all
+        // mb.basis(0).size() basis functions as free dofs
         gsMultiPatch<> mp(*gsNurbsCreator<>::BSplineSquare());
         gsMultiBasis<> mb(mp);
         mb.uniformRefine();
@@ -451,6 +487,8 @@ SUITE(gsExprAssembler_test)
         u1.setup(bcs, dirichlet::homogeneous, 0);
         A.initSystem();
 
+        // Whole-system vector: the unknowns are stacked, so it has numDofs() rows, and numDofs() is
+        // twice the basis size because both spaces use the same basis without eliminated dofs
         gsMatrix<> x(A.numDofs(), 1);
         x.setZero();
         auto s0 = A.getSolution(u0, x);
@@ -460,8 +498,22 @@ SUITE(gsExprAssembler_test)
         CHECK(s0.check());
         CHECK(s1.check());
 
+        // The second space ends at index numDofs(), so numDofs()-1 rows is the longest vector that is
+        // still too short for it. check() reports this through a warning.
         gsMatrix<> y(A.numDofs() - 1, 1);
         auto t1 = A.getSolution(u1, y);
+        UnitTest::deactivate_output();
         CHECK(!t1.check());
+        UnitTest::reactivate_output();
+
+        // Two columns with numDofs()-1 rows hold 2*(numDofs()-1) > numDofs() entries, so only the
+        // row count reveals that the vector is too short
+        gsMatrix<> y2(A.numDofs() - 1, 2);
+        y2.setZero();
+        CHECK(y2.size() > A.numDofs());
+        auto t2 = A.getSolution(u1, y2);
+        UnitTest::deactivate_output();
+        CHECK(!t2.check());
+        UnitTest::reactivate_output();
     }
 }
