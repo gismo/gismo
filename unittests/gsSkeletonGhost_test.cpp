@@ -829,8 +829,6 @@ TEST(Jump_OneSidedLoop_Throws)
     CHECK(throwsWithCerr([&]{ A.assemble(u.jump()*u.jump().tr()); },
                          "gsExprAssembler: jump()/avg()"));
 
-    // assembleJacobian() builds its quadrature rule only when SameQuadrature
-    // is off.
     gsExprAssembler<real_t> B(1,1);
     B.setIntegrationElements(dbasis);
     auto v = B.getSpace(dbasis); v.setup(bc, dirichlet::interpolation, 0);
@@ -838,7 +836,6 @@ TEST(Jump_OneSidedLoop_Throws)
     gsMatrix<real_t> coefsB;
     sinCoefs(coefsB, B.numDofs());
     auto s = B.getSolution(v, coefsB);
-    B.options().addSwitch("SameQuadrature", "", false);
     CHECK(throwsWithCerr([&]{ B.assembleJacobian(v*s.jump(), s); },
                          "gsExprAssembler: jump()/avg()"));
 

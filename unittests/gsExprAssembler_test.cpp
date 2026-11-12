@@ -793,4 +793,45 @@ SUITE(gsExprAssembler_test)
         CHECK_EQUAL(c0, eCalls.load());
         CHECK(eContextIsCorrect.load());
     }
+
+    // assembleJacobian under default options must evaluate each element on
+    // its own patch; the residual is linear in the solution, so its Jacobian
+    // is the stiffness matrix.
+    TEST(JacobianDefaultOptionsMultipatch)
+    {
+        gsMultiPatch<> mp;
+        mp.addPatch(gsNurbsCreator<>::BSplineSquare(1.0, 0.0, 0.0));
+        mp.addPatch(gsNurbsCreator<>::BSplineQuarterAnnulus());
+        gsMultiBasis<> mb(mp);
+        mb.uniformRefine();
+
+        gsExprAssembler<> A(1,1);
+        A.setIntegrationElements(mb);
+        auto G = A.getMap(mp);
+        auto v = A.getSpace(mb);
+        gsBoundaryConditions<> bc;
+        v.setup(bc, dirichlet::interpolation, 0);
+        A.initSystem();
+
+        A.assemble(igrad(v,G)*igrad(v,G).tr()*meas(G));
+        const gsMatrix<> K = A.matrix().toDense();
+        CHECK(K.norm() > 0);
+
+        gsMatrix<> coefs(A.numDofs(), 1);
+        for (index_t i = 0; i != A.numDofs(); ++i)
+            coefs(i,0) = math::sin(1.7*(real_t)i + 0.3);
+        auto s = A.getSolution(v, coefs);
+
+        A.initSystem();
+        A.assembleJacobian(igrad(v,G)*igrad(s,G).tr()*meas(G), s);
+        gsMatrix<> J = A.matrix().toDense();
+        CHECK(K.rows() == J.rows() && K.cols() == J.cols());
+        CHECK((J - K).norm() <= 1e-8 * K.norm());
+
+        A.options().addSwitch("SameQuadrature", "", false);
+        A.initSystem();
+        A.assembleJacobian(igrad(v,G)*igrad(s,G).tr()*meas(G), s);
+        J = A.matrix().toDense();
+        CHECK((J - K).norm() <= 1e-8 * K.norm());
+    }
 }

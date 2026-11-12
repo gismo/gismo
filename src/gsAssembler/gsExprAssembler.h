@@ -1726,7 +1726,7 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 
     for ( auto & elem : m_exprdata->domain().allElements() )
     {
-        if (changeQuadrature && QuPatch!=elem.patchIndex())
+        if (changeQuadrature || QuPatch!=elem.patchIndex())
         {
             QuPatch = elem.patchIndex();
             // get Degree of the domain
