@@ -81,7 +81,7 @@ public:
     gsMultiPatch<T> getBilinearSkeleton() const;
     void configureAsG1Generator(gsAsG1GeometryGenerator<T>& generator) const;
 
-    void exportParaview(const std::string& filename_prefix) const;
+    void exportParaview(const std::string& filename_prefix, unsigned npts = 900) const;
 
     // Additional Accessors
     const SplittingCandidate& bestCandidate() const { return m_bestCandidate; }

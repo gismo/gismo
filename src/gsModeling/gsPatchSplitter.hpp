@@ -330,6 +330,47 @@ struct CurveSeg {
         bsp->splitAt(tSplit, left, right);
         return {CurveSeg(left), CurveSeg(right)};
     }
+
+    std::pair<CurveSeg, CurveSeg> splitAtParam(T tSplit) const {
+        tSplit = std::max(T(1e-4), std::min(T(1) - T(1e-4), tSplit));
+        gsBSpline<T> left, right;
+        bsp->splitAt(tSplit, left, right);
+        return {CurveSeg(left), CurveSeg(right)};
+    }
+
+    T closestParam(const gsPoint2D<T>& q) const {
+        const int nS = 64;
+        T bestU = T(0.5);
+        T bestD2 = std::numeric_limits<T>::max();
+        for (int i = 0; i <= nS; ++i) {
+            T u = static_cast<T>(i) / static_cast<T>(nS);
+            gsPoint2D<T> pt = evalCurvePoint(*bsp, u);
+            T dx = pt.x - q.x, dy = pt.y - q.y;
+            T d2 = dx * dx + dy * dy;
+            if (d2 < bestD2) { bestD2 = d2; bestU = u; }
+        }
+        T du = T(1) / static_cast<T>(nS);
+        T a = std::max(T(0), bestU - du);
+        T b = std::min(T(1), bestU + du);
+        const T phi = T(0.6180339887498949);
+        auto evalD2 = [&](T u) -> T {
+            gsPoint2D<T> pt = evalCurvePoint(*bsp, u);
+            T dx = pt.x - q.x, dy = pt.y - q.y;
+            return dx * dx + dy * dy;
+        };
+        T c1 = b - phi * (b - a), c2 = a + phi * (b - a);
+        T f1 = evalD2(c1), f2 = evalD2(c2);
+        for (int it = 0; it < 30; ++it) {
+            if (f1 < f2) {
+                b = c2; c2 = c1; f2 = f1;
+                c1 = b - phi * (b - a); f1 = evalD2(c1);
+            } else {
+                a = c1; c1 = c2; f1 = f2;
+                c2 = a + phi * (b - a); f2 = evalD2(c2);
+            }
+        }
+        return T(0.5) * (a + b);
+    }
 };
 
 template <class T>
@@ -997,6 +1038,318 @@ gsPatchSplitter<T>::computeHoleFreeStructuralSplitting()
         SplittingCandidate cand;
         if (tryFinalize(mp, "CentroidStarFan", cand)) {
             registerIfBetter(cand);
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // 5c. Generalized Reflex-Sector Star Kite Decomposition
+    //     Connects an interior center C to all reflex vertices; sectors of
+    //     length s=1,2 become single kite quads, and longer sectors subdivide
+    //     via interior spokes to boundary edge midpoints (e.g. 7-star -> 4 quads).
+    // ------------------------------------------------------------------------
+    if (nReflex >= 2) {
+        std::vector<int> rIdx;
+        for (int i = 0; i < K; ++i) {
+            if (isReflex[i]) rIdx.push_back(i);
+        }
+        gsPoint2D<T> rAvg(0, 0);
+        for (int ri : rIdx) {
+            rAvg.x += verts[ri].x;
+            rAvg.y += verts[ri].y;
+        }
+        rAvg.x /= static_cast<T>(rIdx.size());
+        rAvg.y /= static_cast<T>(rIdx.size());
+
+        std::vector<gsPoint2D<T>> starCenters = {rAvg, centroid};
+        for (const auto& ctr : starCenters) {
+            if (!pointInPolyStrict(ctr, outerPoly, T(1e-5))) continue;
+
+            gsMultiPatch<T> mp;
+            bool okStar = true;
+            std::vector<CurveSeg<T>> rSpokes(rIdx.size());
+            for (size_t a = 0; a < rIdx.size(); ++a) {
+                if (!isSegmentInsidePoly(ctr, verts[rIdx[a]], outerPoly)) {
+                    okStar = false;
+                    break;
+                }
+                rSpokes[a] = makeStraightSeg(ctr, verts[rIdx[a]], m_degree);
+            }
+            if (!okStar) continue;
+
+            for (size_t a = 0; a < rIdx.size() && okStar; ++a) {
+                size_t b = (a + 1) % rIdx.size();
+                int rA = rIdx[a];
+                int rB = rIdx[b];
+                int span = (rB - rA + K) % K;
+                if (span == 0) span = K;
+
+                if (span == 1) {
+                    auto sp = origSegs[rA].splitArc(T(0.5));
+                    mp.addPatch(typename gsGeometry<T>::uPtr(
+                        makeCoonsFromCCWCycle(rSpokes[a], sp.first, sp.second, rSpokes[b].reversed(), m_degree)));
+                } else if (span == 2) {
+                    mp.addPatch(typename gsGeometry<T>::uPtr(
+                        makeCoonsFromCCWCycle(rSpokes[a], origSegs[rA], origSegs[(rA + 1) % K], rSpokes[b].reversed(), m_degree)));
+                } else {
+                    // Walk sector in 2-edge steps; if 3 edges remain at end, split middle edge.
+                    int pos = 0;
+                    CurveSeg<T> curSpoke = rSpokes[a];
+                    while (span - pos > 3) {
+                        int e0 = (rA + pos) % K;
+                        int e1 = (rA + pos + 1) % K;
+                        int vNext = (rA + pos + 2) % K;
+                        if (!isSegmentInsidePoly(ctr, verts[vNext], outerPoly)) {
+                            okStar = false;
+                            break;
+                        }
+                        CurveSeg<T> nextSpoke = makeStraightSeg(ctr, verts[vNext], m_degree);
+                        mp.addPatch(typename gsGeometry<T>::uPtr(
+                            makeCoonsFromCCWCycle(curSpoke, origSegs[e0], origSegs[e1], nextSpoke.reversed(), m_degree)));
+                        curSpoke = nextSpoke;
+                        pos += 2;
+                    }
+                    if (!okStar) break;
+                    int rem = span - pos;
+                    if (rem == 2) {
+                        int e0 = (rA + pos) % K;
+                        int e1 = (rA + pos + 1) % K;
+                        mp.addPatch(typename gsGeometry<T>::uPtr(
+                            makeCoonsFromCCWCycle(curSpoke, origSegs[e0], origSegs[e1], rSpokes[b].reversed(), m_degree)));
+                    } else if (rem == 3) {
+                        int e0 = (rA + pos) % K;
+                        int e1 = (rA + pos + 1) % K;
+                        int e2 = (rA + pos + 2) % K;
+                        auto spMid = origSegs[e1].splitArc(T(0.5));
+                        gsPoint2D<T> mPt = spMid.first.p1();
+                        if (!isSegmentInsidePoly(ctr, mPt, outerPoly)) {
+                            okStar = false;
+                            break;
+                        }
+                        CurveSeg<T> mSpoke = makeStraightSeg(ctr, mPt, m_degree);
+                        mp.addPatch(typename gsGeometry<T>::uPtr(
+                            makeCoonsFromCCWCycle(curSpoke, origSegs[e0], spMid.first, mSpoke.reversed(), m_degree)));
+                        mp.addPatch(typename gsGeometry<T>::uPtr(
+                            makeCoonsFromCCWCycle(mSpoke, spMid.second, origSegs[e2], rSpokes[b].reversed(), m_degree)));
+                    } else {
+                        okStar = false;
+                    }
+                }
+            }
+            if (!okStar) continue;
+
+            SplittingCandidate cand;
+            if (tryFinalize(mp, "ReflexStarKites", cand)) {
+                registerIfBetter(cand);
+            }
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // 6. Comb / Fingered-Channel Spine Decomposition
+    //    Detects T-tooth comb domains (K = 4*T, T >= 2) and tries both:
+    //    (a) 3T - 3 conforming patches (diagonal end teeth -> 9 patches for T=4)
+    //    (b) 3T - 1 conforming patches (orthogonal grid -> 11 patches for T=4)
+    // ------------------------------------------------------------------------
+    if (K >= 8 && (K % 4 == 0) && nReflex == 2 * (K / 4 - 1)) {
+        const int Tcnt = K / 4;
+        for (int kBot = 0; kBot < K; ++kBot) {
+            auto idxOf = [&](int off) -> int { return (kBot + off) % K; };
+            bool patOk = !isReflex[idxOf(0)] && !isReflex[idxOf(1)] &&
+                         !isReflex[idxOf(2)] && !isReflex[idxOf(3)];
+            for (int m = 0; m < Tcnt - 1 && patOk; ++m) {
+                int baseOff = 4 + 4 * m;
+                if (!isReflex[idxOf(baseOff)] || !isReflex[idxOf(baseOff + 1)] ||
+                    isReflex[idxOf(baseOff + 2)] || isReflex[idxOf(baseOff + 3)]) {
+                    patOk = false;
+                }
+            }
+            if (!patOk) continue;
+
+            // Collect valley floor points ordered right-to-left (R[t], L[t] for t = 0..Tcnt-2)
+            // and split parameters along bottom curve eBot = origSegs[kBot] (ordered ascending left-to-right).
+            const CurveSeg<T>& eBot = origSegs[idxOf(0)];
+            const CurveSeg<T>& eR   = origSegs[idxOf(1)];
+            const CurveSeg<T>& eL   = origSegs[idxOf(K - 1)];
+
+            std::vector<gsPoint2D<T>> rPts(Tcnt - 1), lPts(Tcnt - 1);
+            std::vector<T> rParams(Tcnt - 1), lParams(Tcnt - 1);
+            for (int t = 0; t < Tcnt - 1; ++t) {
+                rPts[t] = verts[idxOf(4 + 4 * t)];
+                lPts[t] = verts[idxOf(5 + 4 * t)];
+                rParams[t] = eBot.closestParam(rPts[t]);
+                lParams[t] = eBot.closestParam(lPts[t]);
+            }
+
+            // Build ordered valley vertices left-to-right: L_{T-2}, R_{T-2}, ..., L_0, R_0
+            std::vector<gsPoint2D<T>> topNodes;
+            std::vector<T> botSplitU;
+            for (int t = Tcnt - 2; t >= 0; --t) {
+                topNodes.push_back(lPts[t]);
+                botSplitU.push_back(lParams[t]);
+                topNodes.push_back(rPts[t]);
+                botSplitU.push_back(rParams[t]);
+            }
+
+            bool monoU = !botSplitU.empty() && botSplitU.front() > T(0.02) && botSplitU.back() < T(0.98);
+            for (size_t i = 1; i < botSplitU.size() && monoU; ++i) {
+                if (botSplitU[i] <= botSplitU[i - 1] + T(0.02)) monoU = false;
+            }
+            if (!monoU) continue;
+
+            auto splitMulti = [&](const CurveSeg<T>& crv, const std::vector<T>& us) -> std::vector<CurveSeg<T>> {
+                std::vector<CurveSeg<T>> segs;
+                CurveSeg<T> rem = crv;
+                T prevU = T(0);
+                for (T u : us) {
+                    T localU = (u - prevU) / std::max(T(1e-9), T(1) - prevU);
+                    auto sp = rem.splitAtParam(localU);
+                    segs.push_back(sp.first);
+                    rem = sp.second;
+                    prevU = u;
+                }
+                segs.push_back(rem);
+                return segs;
+            };
+
+            // (a) Diagonal-end comb decomposition: 3*Tcnt - 3 patches (no side splits)
+            {
+                std::vector<T> innerU;
+                for (size_t i = 1; i + 1 < botSplitU.size(); ++i)
+                    innerU.push_back(botSplitU[i]);
+                auto botSegs9 = splitMulti(eBot, innerU); // size = 2*Tcnt - 3
+
+                bool diagOk = true;
+                gsPoint2D<T> vBotL = verts[idxOf(0)];
+                gsPoint2D<T> vBotR = verts[idxOf(1)];
+                if (!isSegmentInsidePoly(vBotL, topNodes.front(), outerPoly) ||
+                    !isSegmentInsidePoly(topNodes.back(), vBotR, outerPoly)) {
+                    diagOk = false;
+                }
+                for (size_t i = 1; i + 1 < topNodes.size() && diagOk; ++i) {
+                    if (!isSegmentInsidePoly(botSegs9[i - 1].p1(), topNodes[i], outerPoly))
+                        diagOk = false;
+                }
+
+                if (diagOk) {
+                    gsMultiPatch<T> mp;
+                    CurveSeg<T> diagL = makeStraightSeg(vBotL, topNodes.front(), m_degree);
+                    CurveSeg<T> diagR = makeStraightSeg(topNodes.back(), vBotR, m_degree);
+
+                    // Leftmost tooth (t = Tcnt - 1) and rightmost tooth (t = 0)
+                    mp.addPatch(typename gsGeometry<T>::uPtr(
+                        makeCoonsFromCCWCycle(diagL, origSegs[idxOf(K - 3)], origSegs[idxOf(K - 2)], eL, m_degree)));
+                    mp.addPatch(typename gsGeometry<T>::uPtr(
+                        makeCoonsFromCCWCycle(diagR, eR, origSegs[idxOf(2)], origSegs[idxOf(3)], m_degree)));
+
+                    // Tooth bases left-to-right between topNodes[2*j-1] (= R_{...}) and topNodes[2*j] (= L_{...})
+                    int nMidTop = static_cast<int>(topNodes.size()) - 1; // 2*Tcnt - 3
+                    std::vector<CurveSeg<T>> spineTop(nMidTop);
+                    for (int m = 0; m < nMidTop; ++m) {
+                        if (m % 2 == 0) {
+                            // Valley floor right-to-left index: gapIdx = (Tcnt - 2) - m/2
+                            int gapIdx = (Tcnt - 2) - m / 2;
+                            spineTop[m] = origSegs[idxOf(4 + 4 * gapIdx)].reversed();
+                        } else {
+                            // Middle tooth base across inner tooth t = (Tcnt - 1) - (m + 1)/2
+                            int toothIdx = (Tcnt - 1) - (m + 1) / 2;
+                            spineTop[m] = makeStraightSeg(topNodes[m], topNodes[m + 1], m_degree);
+                            int eDropR = idxOf(3 + 4 * toothIdx);
+                            int eTop   = idxOf(2 + 4 * toothIdx);
+                            int eRiseL = idxOf(5 + 4 * (toothIdx - 1));
+                            mp.addPatch(typename gsGeometry<T>::uPtr(
+                                makeCoonsFromCCWCycle(spineTop[m], origSegs[eRiseL], origSegs[eTop], origSegs[eDropR], m_degree)));
+                        }
+                    }
+
+                    // Spine quads left-to-right (m = 0 .. nMidTop - 1)
+                    std::vector<CurveSeg<T>> pillars(nMidTop + 1);
+                    pillars[0] = diagL.reversed();
+                    for (int m = 1; m < nMidTop; ++m)
+                        pillars[m] = makeStraightSeg(botSegs9[m - 1].p1(), topNodes[m], m_degree);
+                    pillars[nMidTop] = diagR;
+
+                    for (int m = 0; m < nMidTop; ++m) {
+                        mp.addPatch(typename gsGeometry<T>::uPtr(
+                            makeCoonsFromCCWCycle(botSegs9[m], pillars[m + 1], spineTop[m].reversed(), pillars[m].reversed(), m_degree)));
+                    }
+
+                    SplittingCandidate cand;
+                    if (tryFinalize(mp, "CombDiagonal", cand)) {
+                        registerIfBetter(cand);
+                    }
+                }
+            }
+
+            // (b) Orthogonal-spine comb decomposition: 3*Tcnt - 1 patches
+            {
+                T uL = eL.closestParam(topNodes.front());
+                T uR = eR.closestParam(topNodes.back());
+                if (uL > T(0.05) && uL < T(0.95) && uR > T(0.05) && uR < T(0.95)) {
+                    auto spL = eL.splitAtParam(uL); // spL.first: v(K-1)->midL, spL.second: midL->v(0)
+                    auto spR = eR.splitAtParam(uR); // spR.first: v(1)->midR, spR.second: midR->v(2)
+                    auto botSegs11 = splitMulti(eBot, botSplitU); // size = 2*Tcnt - 1
+
+                    gsPoint2D<T> midL = spL.first.p1();
+                    gsPoint2D<T> midR = spR.first.p1();
+
+                    std::vector<gsPoint2D<T>> allTopNodes;
+                    allTopNodes.push_back(midL);
+                    allTopNodes.insert(allTopNodes.end(), topNodes.begin(), topNodes.end());
+                    allTopNodes.push_back(midR);
+
+                    int nCols = 2 * Tcnt - 1;
+                    bool gridOk = isSegmentInsidePoly(midL, topNodes.front(), outerPoly) &&
+                                  isSegmentInsidePoly(topNodes.back(), midR, outerPoly);
+                    for (int m = 1; m < nCols && gridOk; ++m) {
+                        if (!isSegmentInsidePoly(botSegs11[m - 1].p1(), allTopNodes[m], outerPoly))
+                            gridOk = false;
+                    }
+
+                    if (gridOk) {
+                        gsMultiPatch<T> mp;
+                        std::vector<CurveSeg<T>> spineTop(nCols);
+                        for (int m = 0; m < nCols; ++m) {
+                            if (m % 2 == 1) {
+                                int gapIdx = (Tcnt - 2) - (m - 1) / 2;
+                                spineTop[m] = origSegs[idxOf(4 + 4 * gapIdx)].reversed();
+                            } else {
+                                spineTop[m] = makeStraightSeg(allTopNodes[m], allTopNodes[m + 1], m_degree);
+                                int toothIdx = (Tcnt - 1) - m / 2;
+                                if (toothIdx == Tcnt - 1) {
+                                    mp.addPatch(typename gsGeometry<T>::uPtr(
+                                        makeCoonsFromCCWCycle(spineTop[m], origSegs[idxOf(K - 3)], origSegs[idxOf(K - 2)], spL.first, m_degree)));
+                                } else if (toothIdx == 0) {
+                                    mp.addPatch(typename gsGeometry<T>::uPtr(
+                                        makeCoonsFromCCWCycle(spineTop[m], spR.second, origSegs[idxOf(2)], origSegs[idxOf(3)], m_degree)));
+                                } else {
+                                    int eDropR = idxOf(3 + 4 * toothIdx);
+                                    int eTop   = idxOf(2 + 4 * toothIdx);
+                                    int eRiseL = idxOf(5 + 4 * (toothIdx - 1));
+                                    mp.addPatch(typename gsGeometry<T>::uPtr(
+                                        makeCoonsFromCCWCycle(spineTop[m], origSegs[eRiseL], origSegs[eTop], origSegs[eDropR], m_degree)));
+                                }
+                            }
+                        }
+
+                        std::vector<CurveSeg<T>> pillars(nCols + 1);
+                        pillars[0] = spL.second.reversed();
+                        for (int m = 1; m < nCols; ++m)
+                            pillars[m] = makeStraightSeg(botSegs11[m - 1].p1(), allTopNodes[m], m_degree);
+                        pillars[nCols] = spR.first;
+
+                        for (int m = 0; m < nCols; ++m) {
+                            mp.addPatch(typename gsGeometry<T>::uPtr(
+                                makeCoonsFromCCWCycle(botSegs11[m], pillars[m + 1], spineTop[m].reversed(), pillars[m].reversed(), m_degree)));
+                        }
+
+                        SplittingCandidate cand;
+                        if (tryFinalize(mp, "CombOrthogonal", cand)) {
+                            registerIfBetter(cand);
+                        }
+                    }
+                }
+            }
+            break;
         }
     }
 
@@ -2407,10 +2760,10 @@ void gsPatchSplitter<T>::configureAsG1Generator(gsAsG1GeometryGenerator<T>& gene
 }
 
 template <class T>
-void gsPatchSplitter<T>::exportParaview(const std::string& filename_prefix) const
+void gsPatchSplitter<T>::exportParaview(const std::string& filename_prefix, unsigned npts) const
 {
     if (m_bestCandidate.multiPatch.nPatches() > 0) {
-        gsWriteParaview(m_bestCandidate.multiPatch, filename_prefix, 25, true);
+        gsWriteParaview(m_bestCandidate.multiPatch, filename_prefix, npts, true);
     }
 }
 
