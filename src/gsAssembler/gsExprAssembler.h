@@ -504,6 +504,14 @@ public:
     // respect to the solution \a u
     template<class expr> void assembleJacobian(const expr residual, solution & u);
 
+    /// \brief Adds the Jacobian of the interface residual \a residual with
+    /// respect to the solution \a u to the system matrix, by finite differences
+    ///
+    /// The dofs active on the first side of each interface are perturbed,
+    /// and those active on the second side too if \a residual is evaluated
+    /// across the interface (e.g. through <tt>u.right()</tt>). With the
+    /// option movingInterface, only the dofs of the side of the test
+    /// functions are perturbed. The matrix is not cleared first.
     template<class expr> void assembleJacobianIfc(const ifContainer & iFaces,
                                                   const expr residual, solution  u);
 
@@ -600,6 +608,11 @@ private:
         bool m_elim;
         gsMatrix<T>         localMat;
         gsMatrix<T>         aux;
+        // Scratch of diff() for the second side of a non-matching
+        // interface, where the active functions differ between quadrature
+        // points
+        gsMatrix<index_t>   m_rowInd, m_rowPos, m_colInd;
+        gsMatrix<T>         m_pointVal;
 
         _eval(FiberMatrix & _fmatrix,
               gsMatrix<T>       & _rhs,
@@ -654,45 +667,137 @@ private:
         template <typename E> void diff(const gismo::expr::_expr<E> & ee,
                                         solution & u)
         {
+            std::vector<index_t> done;
+            diff(ee, u, u.space(), done);
+        }
+
+        // Adds the Jacobian of \a ee with respect to the free dofs of \a u
+        // active on \a space (a side of u.space()), by finite differences.
+        // A global dof is perturbed once: those in \a done are skipped, the
+        // perturbed ones are appended to it.
+        //
+        // On the second side of an interface the active functions are
+        // computed per quadrature point. If the interface is non-matching,
+        // the points of one element of the first side lie in several
+        // elements of the second side, so the active functions there differ
+        // between the points, both for \a space and for the test functions
+        // (ee.rowVar()); the Jacobian then has the union of the active
+        // functions of all points as rows and as columns.
+        template <typename E> void diff(const gismo::expr::_expr<E> & ee,
+                                        solution & u,
+                                        const expr::gsFeSpace<T> & space,
+                                        std::vector<index_t> & done)
+        {
             GISMO_ASSERT(E::isVector(), "Expecting a vector expression.");
             static const T delta = 0.00001;
 
-            const index_t sz = u.space().cardinality();
-            localMat.setZero(sz, sz);
+            const expr::gsFeSpace<T> & v = ee.rowVar();
+            const bool rowsVary = !sameActives(v.data().actives);
+            if (rowsVary)
+                activeUnion(v.data().actives, m_rowInd, &m_rowPos);
+            const gsMatrix<index_t> & rowInd = (rowsVary ? m_rowInd : v.data().actives);
+
+            const bool colsVary = !sameActives(space.data().actives);
+            if (colsVary)
+                activeUnion(space.data().actives, m_colInd);
+            const gsMatrix<index_t> & act = (colsVary ? m_colInd : space.data().actives);
+
+            const index_t patch = space.data().patchId;
+            localMat.setZero(v.dim() * rowInd.rows(), u.dim() * act.rows());
 
             for ( index_t c=0; c!= u.dim(); c++)
             {
-                const index_t rls = c * u.data().actives.rows();     //local stride
-                for ( index_t j = 0; j != sz/u.dim(); j++ )     // for all basis functions (col(j))
+                const index_t rls = c * act.rows();     //local stride
+                for ( index_t j = 0; j != act.rows(); j++ )     // for all basis functions (col(j))
                 {
-                    const index_t jj = u.mapper().index(u.data().actives.at(j),
-                                                        u.space().data().patchId, c);
-                    if (u.mapper().is_free_index(jj) )
+                    const index_t jj = u.mapper().index(act.at(j), patch, c);
+                    if (u.mapper().is_free_index(jj) &&
+                        done.end() == std::find(done.begin(), done.end(), jj) )
                     {
+                        done.push_back(jj);
                         //todo: take local copy of local solution u
 
                         //Perturb \a u
-                        u.perturbLocal( delta  , jj, u.space().data().patchId);
-                        quadrature(ee, aux);
+                        u.perturbLocal( delta  , jj, patch);
+                        residual(ee, rowsVary, rowInd.rows());
                         localMat.col(rls+j) += 8 * aux;
-                        u.perturbLocal( delta  , jj, u.space().data().patchId);
-                        quadrature(ee, aux);
+                        u.perturbLocal( delta  , jj, patch);
+                        residual(ee, rowsVary, rowInd.rows());
                         localMat.col(rls+j) -= aux;
-                        u.perturbLocal(-3*delta, jj, u.space().data().patchId);
-                        quadrature(ee, aux);
+                        u.perturbLocal(-3*delta, jj, patch);
+                        residual(ee, rowsVary, rowInd.rows());
                         localMat.col(rls+j) -= 8 * aux;
-                        u.perturbLocal( -delta , jj, u.space().data().patchId);
-                        quadrature(ee, aux);
+                        u.perturbLocal( -delta , jj, patch);
+                        residual(ee, rowsVary, rowInd.rows());
                         localMat.col(rls+j) += aux;
                         localMat.col(rls+j) /= 12*delta;
                         //Unperturb \a u
-                        u.perturbLocal(2*delta, jj, u.space().data().patchId);
+                        u.perturbLocal(2*delta, jj, patch);
                     }
                 }
             }
 
             //  ------- Accumulate  -------
-            push<true,false>(ee.rowVar(), ee.rowVar());
+            push<true,false>(v, space, rowInd, act);
+        }
+
+        // Integrates the vector expression \a ee into \a aux. If \a rowsVary,
+        // the test functions active at each point differ: the value at
+        // point k is added to the rows of m_rowPos.col(k), out of \a nr
+        // local functions per component.
+        template <typename E>
+        inline void residual(const gismo::expr::_expr<E> & ee,
+                             bool rowsVary, index_t nr)
+        {
+            if (!rowsVary)
+            {
+                quadrature(ee, aux);
+                return;
+            }
+            const index_t na = m_rowPos.rows();
+            const index_t rd = ee.rowVar().dim();
+            const T * w = m_quWeights.data();
+            for (index_t k = 0; k != m_quWeights.rows(); ++k)
+            {
+                m_pointVal.noalias() = (*(w++)) * ee.eval(k);
+                if (0 == k)
+                    aux.setZero(rd * nr, m_pointVal.cols());
+                for (index_t r = 0; r != rd; ++r)
+                    for (index_t i = 0; i != na; ++i)
+                        aux.row(r * nr + m_rowPos(i,k)) += m_pointVal.row(r * na + i);
+            }
+        }
+
+        // Whether all the columns of \a act (the functions active at each
+        // evaluation point) are equal
+        static bool sameActives(const gsMatrix<index_t> & act)
+        {
+            for (index_t k = 1; k < act.cols(); ++k)
+                if (act.col(k) != act.col(0))
+                    return false;
+            return true;
+        }
+
+        // The union of the columns of \a act, in the order of first
+        // appearance, to the column \a un; if \a pos is given, the position
+        // in \a un of each entry of \a act to it
+        static void activeUnion(const gsMatrix<index_t> & act,
+                                gsMatrix<index_t> & un,
+                                gsMatrix<index_t> * pos = nullptr)
+        {
+            std::vector<index_t> all;
+            if (pos)
+                pos->resize(act.rows(), act.cols());
+            for (index_t k = 0; k != act.cols(); ++k)
+                for (index_t i = 0; i != act.rows(); ++i)
+                {
+                    const auto it = std::find(all.begin(), all.end(), act(i,k));
+                    if (pos)
+                        (*pos)(i,k) = static_cast<index_t>(it - all.begin());
+                    if (all.end() == it)
+                        all.push_back(act(i,k));
+                }
+            un = gsAsConstMatrix<index_t>(all, static_cast<index_t>(all.size()), 1);
         }
 
         void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
@@ -747,6 +852,20 @@ private:
         void push(const expr::gsFeSpace<T> & v,
                   const expr::gsFeSpace<T> & u, index_t ra = 0, index_t ca = 0)
         {
+            push<isMatrix,elim>(v, u, v.data().actives,
+                                (isMatrix ? u.data().actives : v.data().actives), ra, ca);
+        }
+
+        // Adds localMat to the system, its rows for the functions of \a v
+        // with local indices rowInd0.col(ra), its columns for those of
+        // \a u with local indices colInd0.col(ca)
+        template<bool isMatrix, bool elim = true>
+        void push(const expr::gsFeSpace<T> & v,
+                  const expr::gsFeSpace<T> & u,
+                  const gsMatrix<index_t> & rowInd0,
+                  const gsMatrix<index_t> & colInd0,
+                  index_t ra = 0, index_t ca = 0)
+        {
             GISMO_ASSERT(v.isValid(), "The row space is not valid");
             GISMO_ASSERT(!isMatrix || u.isValid(), "The column space is not valid");
             //GISMO_ASSERT(isMatrix || (numDofs()==m_rhs.size()), "The right-hand side vector is not initialized");
@@ -757,8 +876,6 @@ private:
             //const index_t cp            = (isMatrix ? u.data().patchId : 0);
             const gsDofMapper  & rowMap = v.mapper();
             const gsDofMapper  & colMap = (isMatrix ? u.mapper() : rowMap);
-            gsMatrix<index_t> & rowInd0 = const_cast<gsMatrix<index_t>&>(v.data().actives);
-            gsMatrix<index_t> & colInd0 = (isMatrix ? const_cast<gsMatrix<index_t>&>(u.data().actives) : rowInd0);
             const gsMatrix<T> & fixedDofs = (isMatrix ? u.fixedPart() : gsMatrix<T>());
 
             if (isMatrix)
@@ -1528,10 +1645,17 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
     // clearMatrix();
 
     m_exprdata->parse(residual, u);
+    // The solution on the second side, for the derivatives with respect to
+    // its dofs; only if the residual is evaluated there
+    solution uRight = u.right();
+    const bool across = m_exprdata->parsedAcross();
+    if (across)
+        uRight.parse(*m_exprdata);
     if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
 
     typename gsQuadRule<T>::uPtr QuRule; // Quadrature rule
+    std::vector<index_t> done;
 
     // check if matrix is modified
     m_modified = true;
@@ -1553,11 +1677,11 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
         QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(patch1),
                                     patch1, iFace.first().side().direction());
 
-        // Initialize domain element iterator for current patch
-        typename gsBasis<T>::domainIter domIt =  // add patch1 to domainiter ?
-            m_exprdata->domain().beginAll(iFace.first().side());
-        typename gsBasis<T>::domainIter domItEnd =  // add patch1 to domainiter ?
-            m_exprdata->domain().endAll(iFace.first().side());
+        // Iterate over the elements of patch1 along the interface side
+        typename gsBasis<T>::domainIter domIt =
+            m_exprdata->domain().subdomain(patch1)->beginBdr(iFace.first().side());
+        typename gsBasis<T>::domainIter domItEnd =
+            m_exprdata->domain().subdomain(patch1)->endBdr(iFace.first().side());
 
         // Start iteration over elements
         for (; domIt<domItEnd; ++domIt )
@@ -1576,7 +1700,10 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
             // ee(residual);
             if (!movingInterface)
             {
-                ee.diff(residual, u);
+                done.clear();
+                ee.diff(residual, u, u.space(), done);
+                if (across)
+                    ee.diff(residual, u, uRight.space(), done);
             }
             else // For Moving Geometry Maps
             {

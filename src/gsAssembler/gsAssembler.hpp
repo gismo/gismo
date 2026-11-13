@@ -431,6 +431,12 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
 
         const gsGeometry<T> & patch = m_pde_ptr->patches()[patchIdx];
 
+        // The side of a curve is its end point, where the measure is 1. The
+        // interior measure |G'| there would vanish with the tangent of the
+        // curve, and so would the projection. For d >= 2 the quadrature
+        // points stay weighted by the interior measure.
+        md.side = (1 == patch.domainDim() ? iter->side() : boxSide(boundary::none));
+
         // Set up quadrature to degree+1 Gauss points per direction,
         // all lying on iter->side() except from the direction which
         // is NOT along the element

@@ -603,7 +603,8 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
     const index_t numPts = InOut.points.cols();
 
     // If the measure on a boundary is requested, calculate the outer normal vector as well
-    if ( InOut.side!=boundary::none && (InOut.flags & NEED_MEASURE) ) InOut.flags|=NEED_OUTER_NORMAL;
+    // (except at the end point of a curve, whose measure is 1 whatever its tangent)
+    if ( InOut.side!=boundary::none && (InOut.flags & NEED_MEASURE) && 1!=d ) InOut.flags|=NEED_OUTER_NORMAL;
 
     // Outer normal vector
     if ( InOut.flags & NEED_OUTER_NORMAL)
@@ -616,10 +617,32 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
         const int dir = InOut.side.direction();
         InOut.outNormals.resize(n,numPts);
 
-        if (tarDim!=-1 ? tarDim == domDim : n==d)
+        if ( 1==d ) // end point of a curve: the unit tangent, pointing outwards
         {
-            if ( 1==n ) { InOut.outNormals.setConstant(sgn); return; } // 1D case
-
+            for (index_t p=0;  p!=numPts; ++p)
+            {
+                const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
+                const T len = jacT.row(0).norm();
+                if (0 != len)
+                    InOut.outNormals.col(p) = (sgn / len) * jacT.row(0).transpose();
+                else
+                {
+                    // A vanishing tangent has no direction in 2D or 3D. In 1D
+                    // the outer normal is +-1 by the orientation of the map:
+                    // take the sign of the derivative at the centre of the
+                    // parameter interval (the side is the end point itself),
+                    // as the d == n branch does with the Jacobian determinant.
+                    GISMO_ENSURE(1 == n, "The tangent of the curve vanishes at its end point, "
+                                 "so it has no outer normal there.\n" << InOut.points);
+                    const T dx = src.jacobian(src.parameterCenter())(0,0);
+                    GISMO_ENSURE(0 != dx, "The derivative of the map vanishes at the end point "
+                                 "and at the centre, so its orientation is unknown.\n" << InOut.points);
+                    InOut.outNormals(0,p) = dx < 0 ? -sgn : sgn;
+                }
+            }
+        }
+        else if (tarDim!=-1 ? tarDim == domDim : n==d)
+        {
             T det_sgn = 0;
             typename gsMatrix<T,domDim,tarDim>::FirstMinorMatrixType minor;
             // Determine Jacobian determinant's sign, assume constant along boundary
@@ -711,6 +734,8 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                                                     .determinant() );
             }
         }
+        else if (1==d) // The boundary of a curve is a point
+            InOut.measures.setOnes();
         else // If on boundary
         {
             GISMO_ASSERT(d==2, "Only works for boundary curves..");

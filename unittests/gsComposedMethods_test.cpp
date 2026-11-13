@@ -104,4 +104,27 @@ SUITE(gsComposedMethods_test)                 // The suite should have the same 
         gsMatrix<index_t> cact= cbasis.active(par);
         CHECK_CLOSE(0.0, (act-cact).norm(), 1e-10);
     }
+
+    // anchors_into() inverts the composition by Newton's method; the result
+    // must not depend on what the output matrix held before the call.
+    TEST(gsComposedBasis_anchors)
+    {
+        gsGeometry<>::uPtr com = gsNurbsCreator<>::BSplineSquareDeg(2);
+        com->coefs().row(4).setConstant(0.9);
+
+        gsKnotVector<> kv1({0,0,0,1./3.,2./3.,1,1,1},2);
+        gsKnotVector<> kv2({0,0,0,0.25,0.50,0.75,1,1,1},2);
+        gsTensorBSplineBasis<2> tbasis(kv1,kv2);
+        gsComposedBasis<> cbasis(*com,tbasis);
+
+        gsMatrix<> anchors(2, cbasis.size());
+        anchors.setConstant(std::numeric_limits<real_t>::quiet_NaN());
+        cbasis.anchors_into(anchors);
+        CHECK(anchors.allFinite());
+        if (anchors.allFinite())
+        {
+            const gsMatrix<> mapped = com->eval(anchors);
+            CHECK((mapped - tbasis.anchors()).cwiseAbs().maxCoeff() <= 1e-2);
+        }
+    }
 }

@@ -169,11 +169,17 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
             typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
             const gsMatrix<T> & dVals = geo->coefs();
 
+            // One column per data component; scalar data apply to every
+            // component the condition constrains
+            GISMO_ASSERT(1==dVals.cols() || r<dVals.cols(),
+                         "Dirichlet data has "<<dVals.cols()<<" components, expected 1 or "<<u.dim());
+            const index_t dc = (1==dVals.cols() ? 0 : r);
+
             // Save corresponding boundary dofs
             for (index_t l=0; l!= boundary.size(); ++l)
             {
                 const int ii = u.mapper().bindex( boundary.at(l) , k, r );
-                fixedDofs.at(ii) = dVals.at(l);
+                fixedDofs.at(ii) = dVals(l, dc);
             }
         }
     }
@@ -311,6 +317,12 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
         const gsBasis<T> & basis = u.source().basis(patchIdx);
         const gsFunction<T> & patch = gmap.function(patchIdx);
 
+        // The side of a curve is its end point, where the measure is 1. The
+        // interior measure |G'| there would vanish with the tangent of the
+        // curve, and so would the projection. For d >= 2 the quadrature
+        // points stay weighted by the interior measure.
+        md.side = (1 == patch.domainDim() ? iter->side() : boxSide(boundary::none));
+
         // Set up quadrature to degree+1 Gauss points per direction,
         // all lying on iter->side() except from the direction which
         // is NOT along the element
@@ -397,12 +409,11 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
                   }
                 }
 
-                GISMO_ASSERT((com!=-1) || rhsVals.rows() == u.dim(),
-                    "If no component is specified for Dirichlet boundary, "
-                    "target dimension must match field dimension.");
-                GISMO_ASSERT((com==-1) || rhsVals.rows() == 1,
-                    "If the component is specified for Dirichlet boundary, "
-                    "then a scalar function is expected.");
+                // One row per data component; scalar data apply to every
+                // component the condition constrains
+                GISMO_ASSERT(1==rhsVals.rows() || r<rhsVals.rows(),
+                    "Dirichlet data has "<<rhsVals.rows()<<" components, expected 1 or "<<u.dim());
+                const index_t dc = (1==rhsVals.rows() ? 0 : r);
 
                 // Do the actual assembly:
                 for (index_t k = 0; k < md.points.cols(); k++)
@@ -430,7 +441,7 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
                             projMatEntries.add(ii, jj, weight_k * basisVals(i, k) * basisVals(j, k));
                         } // for j
 
-                        globProjRhs.at(ii) += weight_k * basisVals(i, k) * rhsVals( (-1==com?r:0) ,k);
+                        globProjRhs.at(ii) += weight_k * basisVals(i, k) * rhsVals(dc, k);
                         //globProjRhs.at(ii) += weight_k * basisVals(i, k) * rhsVals(r ,k);
 
                     } // for i
