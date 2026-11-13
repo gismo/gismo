@@ -175,6 +175,9 @@ public:
     void markCoupled(index_t i, index_t k, index_t comp = 0);
 
     /// Mark a local dof \a i of patch \a k as tagged
+    ///
+    /// Unlike markCoupled() and markBoundary(), this function may only be
+    /// called after finalize(); it throws otherwise.
     void markTagged(index_t i, index_t k, index_t comp = 0);
 
     /// Mark all coupled dofs as tagged
@@ -215,7 +218,7 @@ public:
     ///\brief Add a shift amount to the global numbering
     void addShift(index_t shift);
 
-    ///\brief Returns the smallest (shifted) global index of the free
+    /// @brief Returns the smallest (shifted) global index of the free
     ///dofs of component \a comp. Valid after finalize().
     index_t firstIndex(index_t comp = 0) const
     { return m_numFreeDofs[comp] + m_shift; }
@@ -360,7 +363,7 @@ public:
       const index_t vv = m_numFreeDofs[gc+1] + m_shift;
       const index_t cp = m_numCpldDofs[gc+1] - m_numCpldDofs[gc];
       return  (gl < vv && // is a free dof and
-	      (gl + cp + 1 > vv) );  // is not standard dof
+              (gl + cp + 1 > vv) );  // is not standard dof
     }
 
     /// Returns true if local dof \a i of patch \a k is tagged.
@@ -461,7 +464,7 @@ public:
     /// pair (patch,dof) that maps to \a gl
     std::pair<index_t,index_t> anyPreImage(index_t gl) const;
 
-    /// \brief Returns, for every global index of the mapper, a pair
+    /// @brief Returns, for every global index of the mapper, a pair
     /// (patch, local dof) of component \a comp that maps to it.
     ///
     /// The vector has size() entries; the entry of global index \a gl
@@ -513,7 +516,7 @@ public:
     /// \brief Returns all free, not coupled dofs of component \a c on patch k (local dof indices)
     gsVector<index_t> findFreeUncoupled(const index_t k, const index_t c = 0) const;
 
-    /// \brief Returns all tagged dofs of component \a c on patch k (local dof indices)
+    /// @brief Returns all tagged dofs of component \a c on patch k (local dof indices)
     gsVector<index_t> findTagged(const index_t k, const index_t c = 0) const;
 
 private:
