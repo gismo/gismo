@@ -69,6 +69,95 @@ void checkAssemblerOptions(gsOptionList& myList)
     CHECK_EQUAL(1.0, myList.getReal("quA"));
 }
 
+// Target list of the update() tests: entries in all four tables, with two ints
+// so that an unknown/mismatching int label sorts between valid int labels.
+static gsOptionList makeUpdateTarget()
+{
+    gsOptionList T;
+    T.addString("S_a", "dS_a", "alpha");
+    T.addInt   ("N_a", "dN_a", 1);
+    T.addInt   ("N_z", "dN_z", 3);
+    T.addReal  ("N_m", "dN_m", 2.25);
+    T.addReal  ("R_a", "dR_a", 0.5);
+    T.addSwitch("B_a", "dB_a", false);
+    return T;
+}
+
+// Changes matching makeUpdateTarget() in label and type, in all four tables;
+// all values and descriptions differ from the target's.
+static gsOptionList makeValidChanges()
+{
+    gsOptionList V;
+    V.addString("S_a", "other", "beta");
+    V.addInt   ("N_a", "other", 10);
+    V.addInt   ("N_z", "other", 30);
+    V.addReal  ("R_a", "other", 0.75);
+    V.addSwitch("B_a", "other", true);
+    return V;
+}
+
+static bool hasLabel(const gsOptionList & list, const std::string & label)
+{
+    const std::vector<gsOptionList::OptionListEntry> e = list.getAllEntries();
+    for (size_t i = 0; i != e.size(); ++i)
+        if (e[i].label == label)
+            return true;
+    return false;
+}
+
+// Entry of the list with the given label (the label must exist).
+static gsOptionList::OptionListEntry entryOf(const gsOptionList & list, const std::string & label)
+{
+    const std::vector<gsOptionList::OptionListEntry> e = list.getAllEntries();
+    for (size_t i = 0; i != e.size(); ++i)
+        if (e[i].label == label)
+            return e[i];
+    CHECK(false);
+    return gsOptionList::OptionListEntry();
+}
+
+// Checks that two lists agree in size and, entry by entry, in type, label,
+// description and exact value. Values are read through the typed getters, since
+// getAllEntries() keeps only a truncated string of them.
+static void checkListsEqual(const gsOptionList & a, const gsOptionList & b)
+{
+    CHECK_EQUAL(a.size(), b.size());
+    const std::vector<gsOptionList::OptionListEntry> ea = a.getAllEntries();
+    const std::vector<gsOptionList::OptionListEntry> eb = b.getAllEntries();
+    CHECK_EQUAL(ea.size(), eb.size());
+    for (size_t i = 0; i < ea.size() && i < eb.size(); ++i)
+    {
+        CHECK_EQUAL(ea[i].type,  eb[i].type);
+        CHECK_EQUAL(ea[i].label, eb[i].label);
+        CHECK_EQUAL(ea[i].desc,  eb[i].desc);
+        const std::string & l = ea[i].label;
+        if (ea[i].type == "string")
+            CHECK_EQUAL(a.getString(l), b.getString(l));
+        else if (ea[i].type == "int")
+            CHECK_EQUAL(a.getInt(l), b.getInt(l));
+        else if (ea[i].type == "real")
+            CHECK_EQUAL(a.getReal(l), b.getReal(l));
+        else if (ea[i].type == "bool")
+            CHECK_EQUAL(a.getSwitch(l), b.getSwitch(l));
+        else
+            CHECK(false);
+    }
+}
+
+// Runs T.update(other, mode) with the test output silenced; returns whether a
+// runtime_error was thrown and stores its what() in msg.
+static bool updateThrows(gsOptionList & T, const gsOptionList & other,
+                         gsOptionList::updateType mode, std::string & msg)
+{
+    bool thrown = false;
+    msg.clear();
+    UnitTest::deactivate_output();
+    try { T.update(other, mode); }
+    catch (const std::runtime_error & e) { thrown = true; msg = e.what(); }
+    UnitTest::reactivate_output();
+    return thrown;
+}
+
 SUITE(gsOptionList_test)
 {
 
@@ -535,5 +624,439 @@ SUITE(gsOptionList_test)
 
     }
 
+    /***
+     * update() with ignoreIfUnknown (explicit and default argument): unknown
+     * labels are skipped, known labels of the same type are applied
+     */
+    TEST(update_ignore_skips_unknown_label)
+    {
+        gsOptionList other;
+        other.addString("S_a",   "other", "beta");
+        other.addString("X_new", "other", "x");
+
+        gsOptionList T1 = makeUpdateTarget();
+        gsOptionList T2 = makeUpdateTarget();
+        T1.update(other);
+        T2.update(other, gsOptionList::ignoreIfUnknown);
+
+        CHECK(!hasLabel(T1, "X_new"));
+        CHECK(!hasLabel(T2, "X_new"));
+        CHECK_EQUAL(size_t(6), T1.size());
+        CHECK_EQUAL(size_t(6), T2.size());
+        CHECK_EQUAL("beta", T1.getString("S_a"));
+        CHECK_EQUAL("beta", T2.getString("S_a"));
+    }
+
+    /***
+     * update() with ignoreIfUnknown: a label that exists under a different type
+     * is not skipped but throws
+     */
+    TEST(update_ignore_throws_on_type_mismatch)
+    {
+        gsOptionList T = makeUpdateTarget();
+        gsOptionList other;
+        other.addInt("N_m", "other", 7);
+        UnitTest::deactivate_output();
+        CHECK_THROW(T.update(other, gsOptionList::ignoreIfUnknown), std::runtime_error);
+        UnitTest::reactivate_output();
+    }
+
+    /***
+     * update() with addIfUnknown: unknown labels are added together with their
+     * description, known labels are applied
+     */
+    TEST(update_add_adds_unknown_label)
+    {
+        gsOptionList other;
+        other.addReal  ("R_new", "dR_new", 1.5);
+        other.addString("S_a",   "other",  "beta");
+
+        gsOptionList T = makeUpdateTarget();
+        T.update(other, gsOptionList::addIfUnknown);
+
+        CHECK_EQUAL(1.5, T.getReal("R_new"));
+        CHECK(hasLabel(T, "R_new"));
+        if (hasLabel(T, "R_new"))
+        {
+            const gsOptionList::OptionListEntry e = entryOf(T, "R_new");
+            CHECK_EQUAL("dR_new", e.desc);
+            CHECK_EQUAL("real", e.type);
+        }
+        CHECK_EQUAL(size_t(7), T.size());
+        CHECK_EQUAL("beta", T.getString("S_a"));
+    }
+
+    /***
+     * update() with errorIfUnknown: an unknown label throws a runtime_error
+     * whose message names the label
+     */
+    TEST(update_error_unknown_label_throws_naming_label)
+    {
+        gsOptionList T = makeUpdateTarget();
+        gsOptionList other = makeValidChanges();
+        other.addInt("N_q", "other", 5);
+
+        bool thrown = false;
+        std::string msg;
+        UnitTest::deactivate_output();
+        try { T.update(other, gsOptionList::errorIfUnknown); }
+        catch (const std::runtime_error & e) { thrown = true; msg = e.what(); }
+        UnitTest::reactivate_output();
+
+        CHECK(thrown);
+        CHECK(msg.find("N_q") != std::string::npos);
+    }
+
+    /***
+     * update() with errorIfUnknown: a label present under another type throws
+     * a runtime_error whose message names the label and both types
+     */
+    TEST(update_error_type_mismatch_throws_naming_label)
+    {
+        gsOptionList T = makeUpdateTarget();
+        gsOptionList other = makeValidChanges();
+        other.addInt("N_m", "other", 7);
+
+        bool thrown = false;
+        std::string msg;
+        UnitTest::deactivate_output();
+        try { T.update(other, gsOptionList::errorIfUnknown); }
+        catch (const std::runtime_error & e) { thrown = true; msg = e.what(); }
+        UnitTest::reactivate_output();
+
+        CHECK(thrown);
+        CHECK(msg.find("N_m")  != std::string::npos);
+        CHECK(msg.find("real") != std::string::npos);
+        CHECK(msg.find("int")  != std::string::npos);
+    }
+
+    /***
+     * update() with errorIfUnknown: when an unknown label makes it throw, no
+     * valid change has been applied
+     */
+    TEST(update_error_unknown_label_leaves_list_unchanged)
+    {
+        gsOptionList T = makeUpdateTarget();
+        gsOptionList other = makeValidChanges();
+        other.addInt("N_q", "other", 5);
+        const gsOptionList before = T;
+
+        bool thrown = false;
+        UnitTest::deactivate_output();
+        try { T.update(other, gsOptionList::errorIfUnknown); }
+        catch (const std::runtime_error &) { thrown = true; }
+        UnitTest::reactivate_output();
+
+        CHECK(thrown);
+        checkListsEqual(before, T);
+    }
+
+    /***
+     * update() with errorIfUnknown: when a type mismatch makes it throw, no
+     * valid change has been applied
+     */
+    TEST(update_error_type_mismatch_leaves_list_unchanged)
+    {
+        gsOptionList T = makeUpdateTarget();
+        gsOptionList other = makeValidChanges();
+        other.addInt("N_m", "other", 7);
+        const gsOptionList before = T;
+
+        bool thrown = false;
+        UnitTest::deactivate_output();
+        try { T.update(other, gsOptionList::errorIfUnknown); }
+        catch (const std::runtime_error &) { thrown = true; }
+        UnitTest::reactivate_output();
+
+        CHECK(thrown);
+        checkListsEqual(before, T);
+    }
+
+    /***
+     * update() with errorIfUnknown: a bad entry in any of the four tables
+     * (unknown string/real/switch label, or a real label given as int) throws
+     * naming the label, and leaves the target unchanged although `other`
+     * also carries valid changes in every table
+     */
+    TEST(update_error_rejects_bad_entries_in_every_table)
+    {
+        // Runs one case: the update must throw a runtime_error whose message
+        // contains every word of `needles`, and must not modify the target.
+        auto expectRejected = [](const gsOptionList & other,
+                                 const std::vector<std::string> & needles)
+        {
+            gsOptionList T = makeUpdateTarget();
+            const gsOptionList snapshot = T;
+
+            UnitTest::deactivate_output();
+            CHECK_THROW(T.update(other, gsOptionList::errorIfUnknown), std::runtime_error);
+
+            std::string msg;
+            try { T.update(other, gsOptionList::errorIfUnknown); }
+            catch (const std::runtime_error & e) { msg = e.what(); }
+            UnitTest::reactivate_output();
+
+            for (size_t i = 0; i != needles.size(); ++i)
+                CHECK(msg.find(needles[i]) != std::string::npos);
+            checkListsEqual(T, snapshot);
+        };
+
+        {   // unknown string label
+            gsOptionList other = makeValidChanges();
+            other.addString("S_zz", "other", "x");
+            expectRejected(other, {"S_zz"});
+        }
+        {   // unknown real label
+            gsOptionList other = makeValidChanges();
+            other.addReal("R_zz", "other", 1.5);
+            expectRejected(other, {"R_zz"});
+        }
+        {   // unknown switch label
+            gsOptionList other = makeValidChanges();
+            other.addSwitch("B_zz", "other", true);
+            expectRejected(other, {"B_zz"});
+        }
+        {   // R_a is a real in the target, an int in other (a label is unique
+            // across the tables of one list, so other cannot start from
+            // makeValidChanges(), which holds R_a as a real)
+            gsOptionList other;
+            other.addString("S_a", "other", "beta");
+            other.addInt   ("N_a", "other", 10);
+            other.addInt   ("R_a", "other", 7);
+            other.addReal  ("N_m", "other", 3.5);
+            other.addSwitch("B_a", "other", true);
+            expectRejected(other, {"R_a", "real", "int"});
+        }
+    }
+
+    /***
+     * update() with errorIfUnknown: a fully valid list applies every value of
+     * every type and leaves descriptions and size of the target untouched
+     */
+    TEST(update_error_valid_update_applies_all)
+    {
+        gsOptionList T = makeUpdateTarget();
+        gsOptionList other = makeValidChanges();
+        other.addReal("N_m", "other", 3.5);
+        const gsOptionList before = T;
+
+        // Every value of other differs from the target's
+        CHECK(before.getString("S_a") != other.getString("S_a"));
+        CHECK(before.getInt("N_a")    != other.getInt("N_a"));
+        CHECK(before.getInt("N_z")    != other.getInt("N_z"));
+        CHECK(before.getReal("N_m")   != other.getReal("N_m"));
+        CHECK(before.getReal("R_a")   != other.getReal("R_a"));
+        CHECK(before.getSwitch("B_a") != other.getSwitch("B_a"));
+
+        T.update(other, gsOptionList::errorIfUnknown);
+
+        CHECK_EQUAL("beta", T.getString("S_a"));
+        CHECK_EQUAL(10, T.getInt("N_a"));
+        CHECK_EQUAL(30, T.getInt("N_z"));
+        CHECK_EQUAL(3.5,  T.getReal("N_m"));
+        CHECK_EQUAL(0.75, T.getReal("R_a"));
+        CHECK_EQUAL(true, T.getSwitch("B_a"));
+
+        CHECK_EQUAL(before.size(), T.size());
+        const std::vector<gsOptionList::OptionListEntry> eb = before.getAllEntries();
+        const std::vector<gsOptionList::OptionListEntry> et = T.getAllEntries();
+        CHECK_EQUAL(eb.size(), et.size());
+        for (size_t i = 0; i < eb.size() && i < et.size(); ++i)
+        {
+            CHECK_EQUAL(eb[i].type,  et[i].type);
+            CHECK_EQUAL(eb[i].label, et[i].label);
+            CHECK_EQUAL(eb[i].desc,  et[i].desc);
+        }
+    }
+
+    /***
+     * update() from an empty list changes nothing, in every mode
+     */
+    TEST(update_empty_other_all_modes)
+    {
+        const gsOptionList other;
+        const gsOptionList::updateType modes[3] =
+            { gsOptionList::ignoreIfUnknown, gsOptionList::addIfUnknown,
+              gsOptionList::errorIfUnknown };
+        for (int i = 0; i < 3; ++i)
+        {
+            gsOptionList T = makeUpdateTarget();
+            T.update(other, modes[i]);
+            checkListsEqual(T, makeUpdateTarget());
+        }
+    }
+
+    /***
+     * update() into an empty list with ignoreIfUnknown (explicit and default)
+     * adds nothing
+     */
+    TEST(update_into_empty_target_ignore)
+    {
+        const gsOptionList other = makeValidChanges();
+        gsOptionList T;
+        T.update(other, gsOptionList::ignoreIfUnknown);
+        CHECK_EQUAL(size_t(0), T.size());
+        T.update(other);
+        CHECK_EQUAL(size_t(0), T.size());
+    }
+
+    /***
+     * update() into an empty list with addIfUnknown copies the other list,
+     * descriptions included
+     */
+    TEST(update_into_empty_target_add)
+    {
+        const gsOptionList other = makeValidChanges();
+        gsOptionList T;
+        T.update(other, gsOptionList::addIfUnknown);
+        checkListsEqual(T, other);
+    }
+
+    /***
+     * update() into an empty list with errorIfUnknown throws on the first
+     * validated label (the only string of other) and leaves the target empty
+     */
+    TEST(update_into_empty_target_error)
+    {
+        const gsOptionList other = makeValidChanges();
+        gsOptionList T;
+        std::string msg;
+        CHECK(updateThrows(T, other, gsOptionList::errorIfUnknown, msg));
+        CHECK(msg.find("unknown option") != std::string::npos);
+        CHECK(msg.find("S_a") != std::string::npos);
+        CHECK_EQUAL(size_t(0), T.size());
+    }
+
+    /***
+     * Updating a list from itself is safe and a no-op in every mode: all labels
+     * of other exist in the target, so nothing is inserted while iterating
+     */
+    TEST(update_self_all_modes)
+    {
+        const gsOptionList::updateType modes[3] =
+            { gsOptionList::ignoreIfUnknown, gsOptionList::addIfUnknown,
+              gsOptionList::errorIfUnknown };
+        for (int i = 0; i < 3; ++i)
+        {
+            gsOptionList T = makeUpdateTarget();
+            T.update(T, modes[i]);
+            checkListsEqual(T, makeUpdateTarget());
+        }
+    }
+
+    /***
+     * update() with grouped (dotted) labels in all three modes
+     */
+    TEST(update_group_labels_all_modes)
+    {
+        gsOptionList base;
+        base.addInt   ("Name", "dName", 1);
+        base.addSwitch("Flag", "dFlag", false);
+        const gsOptionList target = base.wrapIntoGroup("Group");
+
+        gsOptionList o;
+        o.addInt ("Name",  "other", 5);
+        o.addReal("Extra", "other", 2.5);
+        const gsOptionList other = o.wrapIntoGroup("Group");
+        CHECK(hasLabel(other, "Group.Extra"));
+
+        {   // ignoreIfUnknown
+            gsOptionList T = target;
+            T.update(other, gsOptionList::ignoreIfUnknown);
+            CHECK_EQUAL(5, T.getInt("Group.Name"));
+            CHECK(!hasLabel(T, "Group.Extra"));
+            CHECK_EQUAL(size_t(2), T.size());
+        }
+        {   // addIfUnknown
+            gsOptionList T = target;
+            T.update(other, gsOptionList::addIfUnknown);
+            CHECK_EQUAL(5, T.getInt("Group.Name"));
+            CHECK_EQUAL(2.5, T.getReal("Group.Extra"));
+            CHECK_EQUAL(size_t(3), T.size());
+            CHECK(T.hasGroup("Group"));
+            if (T.hasGroup("Group"))
+                CHECK_EQUAL(5, T.getGroup("Group").getInt("Name"));
+        }
+        {   // errorIfUnknown with an unknown dotted label
+            gsOptionList T = target;
+            std::string msg;
+            CHECK(updateThrows(T, other, gsOptionList::errorIfUnknown, msg));
+            CHECK(msg.find("Group.Extra") != std::string::npos);
+            checkListsEqual(T, target);
+        }
+        {   // errorIfUnknown with a valid list applies
+            gsOptionList v;
+            v.addInt("Name", "other", 5);
+            const gsOptionList valid = v.wrapIntoGroup("Group");
+            gsOptionList T = target;
+            T.update(valid, gsOptionList::errorIfUnknown);
+            CHECK_EQUAL(5, T.getInt("Group.Name"));
+        }
+    }
+
+    /***
+     * update() without a mode behaves as ignoreIfUnknown: unknown labels are
+     * neither added nor rejected
+     */
+    TEST(update_default_mode_is_ignore)
+    {
+        gsOptionList other = makeValidChanges();
+        other.addInt("N_q", "other", 5);
+
+        gsOptionList A = makeUpdateTarget();
+        gsOptionList B = makeUpdateTarget();
+        A.update(other);
+        B.update(other, gsOptionList::ignoreIfUnknown);
+        CHECK(!hasLabel(A, "N_q"));
+        checkListsEqual(A, B);
+    }
+
+    /***
+     * errorIfUnknown: a switch of the target given as a string in other is
+     * rejected with a message naming the label and both types ("switch")
+     */
+    TEST(update_string_vs_switch_mismatch)
+    {
+        const gsOptionList target = makeUpdateTarget();
+        gsOptionList other;
+        other.addString("B_a", "other", "yes");
+        other.addInt   ("N_a", "other", 10);
+
+        std::string msg;
+        {
+            gsOptionList T = target;
+            CHECK(updateThrows(T, other, gsOptionList::ignoreIfUnknown, msg));
+        }
+        gsOptionList T = target;
+        CHECK(updateThrows(T, other, gsOptionList::errorIfUnknown, msg));
+        CHECK(msg.find("B_a") != std::string::npos);
+        CHECK(msg.find("has type switch, not string") != std::string::npos);
+        CHECK(msg.find("bool") == std::string::npos);
+        checkListsEqual(T, target);
+    }
+
+    /***
+     * errorIfUnknown: a string of the target given as a switch in other is
+     * rejected with a message naming the label and both types ("switch")
+     */
+    TEST(update_switch_vs_string_mismatch)
+    {
+        const gsOptionList target = makeUpdateTarget();
+        gsOptionList other;
+        other.addSwitch("S_a", "other", true);
+        other.addInt   ("N_a", "other", 10);
+
+        std::string msg;
+        {
+            gsOptionList T = target;
+            CHECK(updateThrows(T, other, gsOptionList::ignoreIfUnknown, msg));
+        }
+        gsOptionList T = target;
+        CHECK(updateThrows(T, other, gsOptionList::errorIfUnknown, msg));
+        CHECK(msg.find("S_a") != std::string::npos);
+        CHECK(msg.find("has type string, not switch") != std::string::npos);
+        CHECK(msg.find("bool") == std::string::npos);
+        checkListsEqual(T, target);
+    }
 
 }

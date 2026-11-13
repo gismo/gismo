@@ -155,16 +155,33 @@ public:
 
     /// \brief Options for gsOptionList::update
     enum updateType {
-        ignoreIfUnknown = 0,
-        addIfUnknown = 1
+        ignoreIfUnknown = 0, ///< options of \a other unknown to this are skipped
+        addIfUnknown = 1,    ///< options of \a other unknown to this are added
+        errorIfUnknown = 2   ///< unknown or type-mismatching options throw, nothing is written
     };
 
     /// \brief Updates the object using the data from \a other.
     ///
     /// Options which do not exist in \a other, are kept unchanged.
     /// Options in \a other which do not exist in this, are kept unchanged if
-    /// \a type is set to gsOptionList::ignoreIfUnknown (default) or are added
-    /// if \a type is set to gsOptionList::addIfUnknown.
+    /// \a type is set to gsOptionList::ignoreIfUnknown (default), are added
+    /// if \a type is set to gsOptionList::addIfUnknown, or are rejected if
+    /// \a type is set to gsOptionList::errorIfUnknown.
+    ///
+    /// With gsOptionList::errorIfUnknown, all entries of \a other are
+    /// validated before any value is written. The function throws
+    /// std::runtime_error with the message
+    /// "gsOptionList::update: unknown option '<label>'" if a label of
+    /// \a other does not exist in this, and with the message
+    /// "gsOptionList::update: option '<label>' has type <X>, not <Y>" if it
+    /// exists in this with a different type (\<X\> is the type in this, \<Y\>
+    /// the type in \a other, each one of string, int, real, switch). In both
+    /// cases this object is left unchanged. Otherwise all values of \a other
+    /// are written, descriptions of this are kept.
+    ///
+    /// With the other two modes, a label which exists in this under a
+    /// different type is not validated up front: the type mismatch is
+    /// detected when it is reached, after earlier entries were written.
     void update(const gsOptionList& other, updateType type = ignoreIfUnknown);
 
     /// \brief Creates a new gsOptionList where all labels are wrapped into a groupname \a gn.
