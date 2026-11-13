@@ -1,0 +1,39 @@
+# AS-G1 Biharmonic Solver Convergence Summary (Hole-Free Split Geometries, r=2..4, p=3)
+
+| Suite | Geometry | P | IF | N_free(r=4) | L2(r=2) | L2(r=4) | L2 Rate (r=3/r=4) | H1 Rate (r=3/r=4) | H2 Rate (r=3/r=4) | Status |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| benchmark_6 | circle | 5 | 8 | 44936 | 2.2800e-04 | 2.1411e-06 | 3.85 / 2.89 | 2.86 / 2.07 | 1.99 / 1.56 | PASS |
+| benchmark_6 | curved_lshape | 3 | 2 | 26692 | 4.2434e-05 | 2.4642e-06 | 3.83 / 0.28 | 3.37 / 0.10 | 2.16 / -0.30 | PASS |
+| benchmark_6 | curved_quad | 1 | 0 | 8836 | 5.8344e-05 | 1.5088e-07 | 4.50 / 4.10 | 3.23 / 3.05 | 2.09 / 2.02 | PASS |
+| benchmark_6 | lshape | 3 | 2 | 26692 | 7.6109e-06 | 2.8112e-08 | 4.06 / 4.02 | 3.02 / 3.01 | 2.05 / 2.02 | PASS |
+| benchmark_6 | quad | 1 | 0 | 8836 | 6.6410e-05 | 2.5837e-07 | 4.01 / 4.00 | 3.00 / 3.00 | 2.00 / 2.00 | PASS |
+| comb_no_holes | comb | 11 | 10 | 98114 | 1.9485e-06 | 7.9848e-08 | 3.73 / 0.88 | 3.05 / 2.96 | 2.10 / 2.05 | PASS |
+| comb_no_holes | curved_comb | 11 | 10 | 98114 | 1.9495e-05 | 4.4048e-06 | 1.16 / 0.99 | 1.42 / -0.72 | 0.60 / -1.16 | STALLED |
+| 1to7corners | bulged_quad_non_bilinear | 1 | 0 | 8836 | 5.2894e-05 | 1.4454e-07 | 4.47 / 4.05 | 3.27 / 3.05 | 2.15 / 2.05 | PASS |
+| 1to7corners | concave_heptagon_7corner_nonconvex | 6 | 7 | 53668 | 1.7249e-04 | 1.2532e-02 | 3.44 / -9.62 | 1.43 / -5.74 | -0.05 / -1.22 | STALLED |
+| 1to7corners | concave_pentagon_5corner_nonconvex | 5 | 5 | 44646 | 4.4724e-06 | 3.3504e-08 | 3.86 / 3.20 | 2.86 / 2.27 | 1.93 / 1.52 | PASS |
+| 1to7corners | concave_quad_4corner_nonconvex | 1 | 0 | 8836 | 5.8344e-05 | 1.5088e-07 | 4.50 / 4.10 | 3.23 / 3.05 | 2.09 / 2.02 | PASS |
+| 1to7corners | concave_triangle_3corner_nonconvex | 3 | 3 | 26790 | 1.4123e-05 | 4.0437e-07 | 2.91 / 2.22 | 1.96 / 1.24 | 1.79 / 0.66 | PASS |
+| 1to7corners | crescent_2corner | 4 | 5 | 35815 | 3.1773e-05 | 3.0607e-07 | 3.89 / 2.80 | 2.86 / 1.77 | 2.02 / 0.96 | PASS |
+| 1to7corners | curved_heptagon_7corner_convex | 6 | 7 | 53668 | 6.1360e-04 | 2.4336e-06 | 4.26 / 3.72 | 2.65 / 1.22 | 0.54 / 0.02 | PASS |
+| 1to7corners | curved_hexagon_6corner_convex | 2 | 1 | 17763 | 7.1762e-04 | 1.5579e-06 | 4.42 / 4.43 | 3.50 / 3.22 | 2.14 / 2.03 | PASS |
+| 1to7corners | curved_lshape_non_bilinear | 2 | 1 | 17763 | 1.6514e-04 | 6.8383e-07 | 4.59 / 3.33 | 3.45 / 2.68 | 2.24 / 2.03 | PASS |
+| 1to7corners | curved_pentagon_5corner_convex | 5 | 5 | 44646 | 6.6213e-06 | 9.8211e-08 | 3.66 / 2.42 | 2.66 / 1.48 | 1.84 / 0.85 | PASS |
+| 1to7corners | curved_quad_4corner_convex | 1 | 0 | 8836 | 1.4481e-04 | 4.3867e-07 | 4.24 / 4.13 | 3.07 / 3.04 | 2.01 / 2.01 | PASS |
+| 1to7corners | curved_triangle_3corner_convex | 3 | 3 | 26790 | 1.1732e-05 | 4.7914e-08 | 4.14 / 3.79 | 3.10 / 2.83 | 2.04 / 1.93 | PASS |
+| 1to7corners | heart_1corner_nonconvex | 5 | 8 | 44935 | 3.8320e-04 | 1.8376e-06 | 4.20 / 3.50 | 3.11 / 2.39 | 1.99 / 1.70 | PASS |
+| 1to7corners | heart_2corner_nonconvex | 5 | 8 | 44934 | 5.9993e-04 | 2.6594e-06 | 4.10 / 3.72 | 3.28 / 2.92 | 2.31 / 1.76 | PASS |
+| 1to7corners | lens_2corner_convex | 4 | 5 | 35815 | 2.9156e-05 | 1.1318e-07 | 4.06 / 3.95 | 3.02 / 2.93 | 1.99 / 1.95 | PASS |
+| 1to7corners | star_heptagon_7corner_nonconvex | 4 | 4 | 35715 | 1.0639e-04 | 1.6902e-06 | 3.47 / 2.51 | 2.04 / 1.19 | 1.23 / 0.22 | PASS |
+| 1to7corners | star_hexagon_6corner_nonconvex | 3 | 3 | 26787 | 7.7752e-05 | 5.3735e-07 | 3.62 / 3.56 | 3.08 / 1.77 | 1.98 / 1.01 | PASS |
+| 1to7corners | star_pentagon_5corner_nonconvex | 5 | 6 | 44741 | 6.6469e-02 | 6.7956e-02 | 0.08 / -0.11 | 0.08 / -0.04 | -0.07 / 0.06 | STALLED |
+| 1to7corners | star_quad_4corner_nonconvex | 1 | 0 | 8836 | 3.7367e-05 | 8.1621e-08 | 4.44 / 4.40 | 3.15 / 3.09 | 2.07 / 2.03 | PASS |
+| 1to7corners | star_triangle_3corner_nonconvex | 3 | 3 | 26790 | 1.3995e-05 | 2.0222e-06 | 2.49 / 0.30 | 2.05 / 0.42 | 1.61 / -0.83 | PASS |
+| 1to7corners | teardrop_1corner_convex | 4 | 5 | 35815 | 3.0226e-05 | 1.0778e-07 | 4.16 / 3.98 | 3.10 / 2.98 | 2.05 / 1.99 | PASS |
+| noHolesCounterExamples | 01_dart_4corner_nonconvex | 6 | 8 | 53766 | 3.5560e-05 | 2.3309e-07 | 4.03 / 3.22 | 3.38 / 3.14 | 2.20 / 2.12 | PASS |
+| noHolesCounterExamples | 02_serpentine_s_duct | 1 | 0 | 8836 | 3.5057e-01 | 3.2227e-03 | 3.28 / 3.49 | 2.01 / 2.54 | 0.76 / 1.27 | PASS |
+| noHolesCounterExamples | 03_filleted_u_bracket | 11 | 15 | 98601 | 8.7481e-05 | 2.6479e-06 | 2.97 / 2.07 | 2.13 / 1.07 | 1.39 / 0.10 | PASS |
+| noHolesCounterExamples | 04_heptagon_7corner_convex | 6 | 7 | 53668 | 3.8950e-04 | 3.2712e-03 | 3.01 / -6.08 | 2.83 / -5.07 | 1.63 / -3.87 | STALLED |
+| noHolesCounterExamples | 05_hourglass_pinch | 1 | 0 | 8836 | 3.3814e-03 | 3.4000e-06 | 5.46 / 4.50 | 3.54 / 3.13 | 1.93 / 2.13 | PASS |
+| noHolesCounterExamples | 06_y_junction_3way | 4 | 3 | 35621 | 1.9044e-04 | 1.3355e-06 | 4.20 / 2.95 | 3.16 / 2.30 | 2.11 / 1.77 | PASS |
+| noHolesCounterExamples | 07_asymmetric_staircase_8corner | 3 | 2 | 26690 | 2.9003e-03 | 2.2514e-05 | 3.82 / 3.19 | 3.21 / 3.03 | 2.07 / 2.05 | PASS |
