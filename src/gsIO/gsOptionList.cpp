@@ -255,13 +255,12 @@ void gsOptionList::update(const gsOptionList & other, gsOptionList::updateType t
     {
         // Validate every entry of other before anything is written, so that a
         // throw leaves this object unchanged.
-        const gsOptionList & self = *this;
-        auto typeName = [&self](const std::string & l) -> const char *
+        auto typeName = [this](const std::string & l) -> const char *
         {
-            if (self.isString(l)) return "string";
-            if (self.isInt(l))    return "int";
-            if (self.isReal(l))   return "real";
-            if (self.isSwitch(l)) return "switch";
+            if (isString(l)) return "string";
+            if (isInt(l))    return "int";
+            if (isReal(l))   return "real";
+            if (isSwitch(l)) return "switch";
             return nullptr;
         };
         auto check = [&typeName](const std::string & l, const char * otherType)
@@ -592,9 +591,14 @@ void pybind11_init_gsOptionList(py::module &m) {
     .def("addMultiInt", &gsOptionList::addMultiInt)
 
     .def("remove",     &gsOptionList::remove)
-    .def("update",     (void (gsOptionList::*)(const gsOptionList&)) &gsOptionList::update)
-    .def("update",     (void (gsOptionList::*)(const gsOptionList&,
-                                               gsOptionList::updateType)) &gsOptionList::update)
+    // update() is one member with a defaulted second argument; a default is not
+    // part of the function type, so a cast to a one-argument member pointer would
+    // be a reinterpret_cast. Each arity is bound through a lambda instead.
+    .def("update", [](gsOptionList & self, const gsOptionList & other)
+                   { self.update(other); })
+    .def("update", [](gsOptionList & self, const gsOptionList & other,
+                      gsOptionList::updateType type)
+                   { self.update(other, type); })
     .def("hasGlobals", &gsOptionList::hasGlobals)
 
     .def("wrapIntoGroup", &gsOptionList::wrapIntoGroup)
@@ -608,7 +612,7 @@ void pybind11_init_gsOptionList(py::module &m) {
     .def("getAllEntries", &gsOptionList::getAllEntries)
 
     .def(py::init<>())
-    .def("assign", &gsOptionList::operator=)
+    .def("assign", static_cast<gsOptionList& (gsOptionList::*)(const gsOptionList&)>(&gsOptionList::operator=))
     // Constructor from Python dict: converts dict keys/values to gsOptionList entries
     .def(py::init([](const py::dict& dict_opts) {
         gsOptionList* opt = new gsOptionList();
@@ -633,7 +637,6 @@ void pybind11_init_gsOptionList(py::module &m) {
 
 #if EIGEN_HAS_RVALUE_REFERENCES
     .def(py::init<const gsOptionList&>())
-    .def(py::init<gsOptionList&&>())
 #endif
 
     .def("__repr__",
