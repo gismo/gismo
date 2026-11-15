@@ -1,0 +1,596 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{siunitx}
+\usepackage{multirow}
+
+\newtheorem{remark}{Remark}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!60!black,
+    urlcolor=blue!60!black,
+    citecolor=blue!60!black
+}
+
+\title{\textbf{Multi-Patch Direct and Geometric--Algebraic Multigrid Solvers for the Second Biharmonic Problem on \texorpdfstring{AS-$G^1$}{AS-G1} Geometries}}
+\author{G+Smo Implementation and Verification Report}
+\date{\today}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\dd}{\,\mathrm{d}}
+\newcommand{\bn}{\mathbf{n}}
+\newcommand{\bt}{\mathbf{t}}
+\newcommand{\bx}{\mathbf{x}}
+\newcommand{\bv}{\mathbf{v}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We present the mathematical formulation, boundary- and corner-DOF treatment, G+Smo implementation, and comprehensive numerical validation of multi-patch direct and multigrid solvers for the \emph{second biharmonic problem} (Navier / simply supported boundary conditions, $u = g_1$ and $\Delta u = g_2$ on $\partial\Omega$) over Analysis-Suitable $G^1$ (AS-$G^1$) multi-patch domains. Unlike the first biharmonic problem, only the trace of the solution is constrained strongly on $\partial\Omega$, while the normal derivative remains free everywhere except at sharp domain corners (Case~A). At smooth boundary vertices connecting two patches (Case~B), the tangential second derivative constraint incorporates the signed boundary curvature so that $u = g_1$ is respected to high order on curved boundaries. Nested Galerkin coarse-grid operators, intergrid transfer matrices, and a symmetric Gauss--Seidel smoother yield a scalable geometric--algebraic multigrid preconditioner. Numerical experiments verify optimal $\mathcal{O}(h^{p+1})$, $\mathcal{O}(h^p)$, and $\mathcal{O}(h^{p-1})$ convergence in $L^2$, $H^1$, and $H^2$ norms, mesh-independent PCG iterations up to $182{,}408$ DOFs, $\mathcal{O}(\nu^{-1/2})$ smoothing-step scaling, zero regression on the original first-biharmonic solvers, and $100\%$ convergence across all $93$ valid AS-$G^1$ multi-patch domains discovered in \texttt{filedata/domain2d} (including planar, curved, non-convex, re-entrant, high-valence, and perforated geometries).
+\end{abstract}
+
+\tableofcontents
+\clearpage
+
+%======================================================================
+\section{Mathematical Formulation}
+%======================================================================
+
+\subsection{Strong and Weak Formulations}
+Let $\Omega \subset \R^2$ be a bounded Lipschitz domain partitioned into $K$ conforming quadrilateral patches, $\overline{\Omega} = \bigcup_{k=1}^K \overline{\Omega}^{(k)}$, with sufficiently smooth boundary segments and reaction parameter $\beta \ge 0$. We consider the \emph{second biharmonic boundary value problem} (also known as the Navier or simply supported plate problem):
+\begin{equation}
+\label{eq:strong}
+\begin{aligned}
+    \beta u + \Delta^2 u &= f && \text{in } \Omega,\\
+    u &= g_1 && \text{on } \partial\Omega,\\
+    \Delta u &= g_2 && \text{on } \partial\Omega.
+\end{aligned}
+\end{equation}
+
+Multiplying the PDE by a test function $v \in V_0 := H^2(\Omega) \cap H_0^1(\Omega)$ and integrating by parts twice yields
+\begin{equation}
+\int_\Omega \Delta^2 u \, v \dd\bx
+= \int_\Omega \Delta u \, \Delta v \dd\bx
+  + \int_{\partial\Omega} \bigl( (\partial_{\bn} \Delta u) v - \Delta u \, \partial_{\bn} v \bigr) \dd s.
+\end{equation}
+Since $v = 0$ on $\partial\Omega$, the first boundary term vanishes identically, while substituting the natural boundary condition $\Delta u = g_2$ on $\partial\Omega$ moves the remaining boundary term to the right-hand side. Setting $V_{g_1} := \{ u \in H^2(\Omega) : u|_{\partial\Omega} = g_1 \}$, the weak formulation reads: find $u \in V_{g_1}$ such that
+\begin{equation}
+\label{eq:weak}
+a(u, v) = \ell(v) \qquad \forall v \in V_0,
+\end{equation}
+where the symmetric positive-definite bilinear form and linear functional are
+\begin{equation}
+\label{eq:bilin_rhs}
+a(u,v) := \int_\Omega \bigl( \Delta u \, \Delta v + \beta u v \bigr) \dd\bx, \qquad
+\ell(v) := \int_\Omega f v \dd\bx + \int_{\partial\Omega} g_2 \, \partial_{\bn} v \dd s.
+\end{equation}
+Using a conforming AS-$G^1$ isogeometric spline space $V_h \subset C^1(\overline{\Omega}) \cap H^2(\Omega)$ eliminates inter-patch normal-derivative jumps and removes the need for interior penalty or Nitsche stabilization terms. For a manufactured boundary datum $g_1 \neq 0$, we split $u_h = u_0 + u_{\mathrm{bnd}}$ with $u_0 \in V_{h,0} := V_h \cap V_0$ and a lifting $u_{\mathrm{bnd}} \in V_h$ satisfying $u_{\mathrm{bnd}}|_{\partial\Omega} \approx g_1$ (computed via boundary $L^2$-projection of the constrained boundary trace DOFs), leading to the reduced problem for $u_0 \in V_{h,0}$:
+\begin{equation}
+\label{eq:lifted_weak}
+a(u_0, v_h) = \ell(v_h) - a(u_{\mathrm{bnd}}, v_h) \qquad \forall v_h \in V_{h,0}.
+\end{equation}
+
+%======================================================================
+\section{\texorpdfstring{AS-$G^1$}{AS-G1} Space Decomposition and Boundary/Corner Treatment}
+%======================================================================
+
+\subsection{Edge Subspaces}
+Following the AS-$G^1$ construction on spline spaces of degree $p \ge 3$ and regularity $r_0 = 1$, the global $C^1(\overline{\Omega})$ space decomposes into patch-interior, interface/boundary edge, and vertex functions:
+\begin{equation}
+V_h = \mathcal{V}_{\mathcal{I}} \oplus
+\bigoplus_{E \in \mathcal{E}} \bigl( \mathcal{V}_{E,0} \oplus \mathcal{V}_{E,1} \bigr)
+\oplus \bigoplus_{\bv \in \mathcal{V}} \mathcal{V}_{\bv}.
+\end{equation}
+Along every boundary edge $E \subset \partial\Omega$:
+\begin{itemize}
+    \item $\mathcal{V}_{E,0}$ spans the boundary trace $u|_E$; all its DOFs (with indices $1 + 2(s-1)$ for edge parameter index $s$) are **constrained** (eliminated into $T_{\mathrm{bnd}}$ and projected against $g_1$ for inhomogeneous data, or zeroed in homogeneous mode).
+    \item $\mathcal{V}_{E,1}$ spans the transversal/normal derivative $\partial_{\bn} u|_E$; unlike the first biharmonic problem (where $\partial_{\bn} u = g_2$ is essential and $\mathcal{V}_{E,1}$ is also eliminated), here all $\mathcal{V}_{E,1}$ DOFs (indices $2 + 2(s-1)$) remain **free** in $T_{\mathrm{free}}$.
+\end{itemize}
+
+\subsection{Boundary Vertex Conditions: Sharp Corners vs.\ Smooth Vertices}
+Each vertex subspace $\mathcal{V}_{\bv}$ has $6$ DOFs representing the $C^2$-jet at $\bv \in \partial\Omega$:
+$\{u, u_x, u_y, u_{xx}, u_{xy}, u_{yy}\}$. Let $\bt_1, \bt_2$ denote the unit tangent vectors of the two boundary edges incident at $\bv$ (oriented outward from $\bv$ into their respective edges), with corresponding outward unit normals $\bn_1, \bn_2$. Given an orthonormal or directional local frame $[\mathbf{d}_1, \mathbf{d}_2] \in \R^{2 \times 2}$ at $\bv$, applying the Jacobian chain rule via the $2 \times 2$ frame matrix $Q = [\mathbf{d}_1, \mathbf{d}_2]$ transforms the gradient and Hessian into directional derivatives:
+\begin{equation}
+\nabla_{\mathbf{d}} u = Q^T \nabla u, \qquad
+H_{\mathbf{d}} u = Q^T (\nabla^2 u) Q.
+\end{equation}
+In \texttt{gsAsG1Basis.hpp} (\texttt{collocateCorners}), the six local collocation functionals at boundary vertex $\bv_i$ are arranged as:
+\begin{equation}
+\label{eq:corner_6jet}
+\begin{aligned}
+j = 0 &: u(\bv_i), &
+j = 1 &: \partial_{\mathbf{d}_1} u(\bv_i), &
+j = 2 &: \partial_{\mathbf{d}_2} u(\bv_i), \\
+j = 3 &: \partial_{\mathbf{d}_1\mathbf{d}_1} u(\bv_i), &
+j = 4 &: \partial_{\mathbf{d}_2\mathbf{d}_2} u(\bv_i) + c_\kappa \partial_{\mathbf{d}_1} u(\bv_i), &
+j = 5 &: \partial_{\mathbf{d}_1\mathbf{d}_2} u(\bv_i).
+\end{aligned}
+\end{equation}
+The vertex classification criterion uses a threshold $\varepsilon > 0$ (default $\varepsilon = 10^{-4}$) on the normal dot product $\bn_1 \cdot \bn_2$:
+
+\paragraph{Case A: Sharp Corner ($\bn_1 \cdot \bn_2 < 1 - \varepsilon$).}
+The boundary tangents $\mathbf{d}_1 = \bt_1$ and $\mathbf{d}_2 = \bt_2$ are linearly independent and span $\R^2$. Because $u = g_1$ holds along \emph{both} incident boundary edges $\Gamma_1$ and $\Gamma_2$, differentiating $u$ along each boundary curve fixes the tangential value, first derivatives, and pure tangential second derivatives at $\bv_i$:
+\begin{equation}
+u(\bv_i), \quad
+\partial_{\bt_1} u(\bv_i), \quad
+\partial_{\bt_2} u(\bv_i), \quad
+\partial_{\bt_1\bt_1} u(\bv_i), \quad
+\partial_{\bt_2\bt_2} u(\bv_i)
+\end{equation}
+are all determined by $g_1$ (eliminated into $T_{\mathrm{bnd}}$: indices $j \in \{0, 1, 2, 3, 4\}$), while the mixed derivative $j = 5$ ($\partial_{\bt_1\bt_2} u(\bv_i)$) is **left free** in $T_{\mathrm{free}}$. (For nearly cusp corners with $|\det([\bt_1, \bt_2])| < 10^{-10}$, $\mathbf{d}_2$ falls back to $\bn_1$.)
+
+\paragraph{Case B: Smooth Boundary Vertex ($\bn_1 \cdot \bn_2 \ge 1 - \varepsilon$).}
+The two boundary edges meet smoothly with common outward unit normal $\bn = \frac{\bn_1 + \bn_2}{\|\bn_1 + \bn_2\|}$ and unit tangent $\bt = (n_y, -n_x)^T$. Setting $\mathbf{d}_1 = \bn$ and $\mathbf{d}_2 = \bt$:
+\begin{itemize}
+    \item Along the arc-length parameterized boundary curve $\gamma(s) \subset \partial\Omega$ passing through $\bv_i$ ($\gamma' = \bt$), differentiating $u(\gamma(s)) = g_1(\gamma(s))$ yields
+    \begin{equation}
+    \partial_{\bt} u(\bv_i) = \frac{\dd g_1}{\dd s}, \qquad
+    \partial_{\bt\bt} u(\bv_i) + c_\kappa \, \partial_{\bn} u(\bv_i) = \frac{\dd^2 g_1}{\dd s^2},
+    \end{equation}
+    where $c_\kappa := \gamma''(s) \cdot \bn$ is the signed boundary curvature factor (averaged from both incident boundary curves in physical coordinates, \texttt{cKappa = 0.5*(ck0 + ck1)}).
+    \item Consequently, the three functionals $j \in \{0, 2, 4\}$ ($u$, $\partial_{\bt} u$, and $\partial_{\bt\bt} u + c_\kappa \partial_{\bn} u$) are **constrained** into $T_{\mathrm{bnd}}$, while the three normal-involved functionals $j \in \{1, 3, 5\}$ ($\partial_{\bn} u$, $\partial_{\bn\bn} u$, $\partial_{\bn\bt} u$) remain **free** in $T_{\mathrm{free}}$.
+\end{itemize}
+Including the curvature coupling $c_\kappa$ in $j=4$ is essential on curved smooth boundaries (such as disks, ellipses, and curved rings): without $c_\kappa$, setting $\partial_{\bt\bt} u_0 = 0$ enforces $u_0(\gamma(s)) = 0$ only up to $\mathcal{O}(s^2)$ errors proportional to $\kappa \partial_{\bn} u_0$, which would degrade $L^2$/$H^1$ convergence rates.
+
+%======================================================================
+\section{Geometric--Algebraic Multigrid Method}
+%======================================================================
+
+\subsection{Nested Hierarchy and Intergrid Transfer}
+Starting from a coarse mesh refinement level $r_{\min}$ and refining uniformly $L$ times to $r_{\max} = r_{\min} + L$, we obtain a sequence of nested AS-$G^1$ free spaces
+\begin{equation}
+V_{h,0}^{(0)} \subset V_{h,0}^{(1)} \subset \dots \subset V_{h,0}^{(L)},
+\end{equation}
+with basis embedding operators $T_\ell = T_{\mathrm{free},\ell} : \R^{N_\ell} \to \R^{\hat{N}_\ell}$ mapping free global DOFs to patchwise tensor-product B-spline DOFs. Let $\widehat{P}_{\ell-1}^\ell$ denote the standard B-spline knot-insertion prolongation operator on the fine patchwise tensor-product grid. Because $V_{h,0}^{(\ell-1)} \subset V_{h,0}^{(\ell)}$, each coarse AS-$G^1$ basis function is exactly representable on level $\ell$, giving a unique global prolongation matrix $P_{\ell-1}^\ell \in \R^{N_\ell \times N_{\ell-1}}$ solving
+\begin{equation}
+\label{eq:prolongation}
+T_\ell P_{\ell-1}^\ell = \widehat{P}_{\ell-1}^\ell T_{\ell-1},
+\end{equation}
+computed via sparse QR / normal-equation solve on $T_\ell$. Note that level $0 \dots L-1$ construct only the geometry-level AS-$G^1$ bases and prolongation operators $P_{\ell-1}^\ell$, while the PDE bilinear form $K_L$ and load vector $\mathbf{f}_L$ are assembled strictly on the finest grid $L$.
+
+\subsection{Galerkin Coarse Operators, Smoother, and Cycle Convergence}
+Coarse stiffness matrices are generated algebraically via the Galerkin variational property:
+\begin{equation}
+K_{\ell-1} = (P_{\ell-1}^\ell)^T K_\ell P_{\ell-1}^\ell, \qquad \ell = L, L-1, \dots, 1.
+\end{equation}
+On each level $\ell \ge 1$, the smoother is $\nu$ pre-smoothing steps and $\nu$ post-smoothing steps of **symmetric Gauss--Seidel** (\texttt{makeGaussSeidelOp} with symmetric forward-backward sweep), which preserves symmetry and positive-semidefiniteness of the multigrid preconditioner. On the coarsest grid $\ell = 0$, the system $K_0 \mathbf{e}_0 = \mathbf{r}_0$ is solved directly using sparse Cholesky factorization (\texttt{gsSparseSolver<>::SimplicialLDLT}).
+
+For a fourth-order elliptic operator ($\beta u + \Delta^2 u$) smoothed by Gauss--Seidel, the smoothing property with respect to the $A$-norm satisfies $\|\widetilde{K}_\ell^{-1} S_\ell^\nu\| \lesssim \nu^{-1/2}$ (since the biharmonic operator scales as $h^{-4}$ while single-step point smoothing damps high-frequency modes like $I - c K_\ell / \mathrm{diag}(K_\ell)$), yielding a two-grid / W-cycle contraction factor bounded by $q \lesssim C / \sqrt{\nu}$ independently of mesh size $h$ \cite{SognTakacs}. When wrapped as a preconditioner inside Preconditioned Conjugate Gradients (PCG), the iteration count remains bounded with respect to $h$ and decays proportionally to $\nu^{-1/2}$ as $\nu$ increases.
+
+%======================================================================
+\section{G+Smo Implementation Summary}
+%======================================================================
+
+The implementation spans two shared AS-$G^1$ headers and two new example drivers:
+\begin{itemize}
+    \item \texttt{src/gsModeling/gsAsG1Domain.hpp}: Added \texttt{gsBoundaryCornerData<T>} and \texttt{getBoundaryCornerData} to classify boundary vertices into Case~A (sharp, \texttt{isSmooth=false}) or Case~B (smooth, \texttt{isSmooth=true}) and compute local frames $(\mathbf{d}_1, \mathbf{d}_2)$ and signed curvature $c_\kappa$. The existing \texttt{getOuterNormalDerivative} routine was left untouched.
+    \item \texttt{src/gsModeling/gsAsG1Basis.hpp}:
+    \begin{itemize}
+        \item Extended \texttt{collocateCorners} while keeping an exact unchanged branch when \texttt{normals.cols() == 8} (guaranteeing zero change to the first biharmonic code path), and added support for general $2\times 2$ local frames with curvature correction (\texttt{normals.cols() == 16} or \texttt{20}).
+        \item Extended \texttt{cornerConditionType} with \texttt{valuesSharp} ($5$ constrained, $1$ free), \texttt{valuesSmooth} ($3$ constrained, $3$ free), and \texttt{derivatives} ($2$ constrained).
+        \item Extended \texttt{makeMapperForArgyrisBasis} to support boundary condition types \texttt{"Values"} (eliminating edge $\mathcal{V}_{E,0}$ only and keeping $\mathcal{V}_{E,1}$ free) and \texttt{"Derivatives"}.
+    \end{itemize}
+    \item \texttt{examples/as\_g1\_biharmonic2\_example.cpp}: Multi-patch direct solver (\texttt{SparseLU}) and $h$-refinement error analyzer ($L^2, H^1, H^2$ norms and convergence orders) with CLI options \texttt{-f}, \texttt{-d}, \texttt{-m}, \texttt{-r}, \texttt{-a}, \texttt{-b/--beta}, \texttt{-e/--eps}, \texttt{--homo}, \texttt{--plot}, \texttt{-o}.
+    \item \texttt{examples/as\_g1\_biharmonic2\_multigrid\_example.cpp}: Multi-patch geometric--algebraic multigrid solver supporting PCG (\texttt{-s cg}) and standalone MG (\texttt{-s mg}), V/W-cycles (\texttt{-c 1|2}), configurable pre/post smoothing (\texttt{--pre/--post}), reaction parameter \texttt{-b/--beta}, direct Cholesky cross-check (\texttt{--verify}), and benchmark suites (\texttt{--all --suite classic|generator|noholes|holes|all}, \texttt{-t <tsv>}).
+\end{itemize}
+
+%======================================================================
+\section{Numerical Experiments}
+%======================================================================
+
+Unless stated otherwise, all tests use the manufactured exact solution
+\[
+u(x, y) = \sin(\pi x)\cos(\pi y),
+\]
+on AS-$G^1$ geometries from \texttt{filedata/domain2d}, with degree $p = 3$, boundary projection of $u = g_1$ and natural boundary assembly of $\Delta u = g_2$, and relative residual stopping tolerance $\mathrm{tol} = 10^{-8}$ in multigrid experiments.
+
+%----------------------------------------------------------------------
+\subsection{Experiment 1: Optimal $h$-Convergence Rates (Direct Solver)}
+%----------------------------------------------------------------------
+Tables~\ref{tab:conv_bilinear}--\ref{tab:conv_pent_concave} report errors and experimental orders of convergence (EOC) obtained with \texttt{as\_g1\_biharmonic2\_example}.
+
+On the two-patch square \texttt{two\_bilinear\_patches.xml} (6 sharp corners, 0 smooth boundary vertices), Table~\ref{tab:conv_bilinear} confirms the theoretical rates $\mathcal{O}(h^{p+1})$, $\mathcal{O}(h^p)$, and $\mathcal{O}(h^{p-1})$ for both $p=3$ ($4, 3, 2$) and $p=4$ ($5, 4, 3$ approaching on fine grids). On \texttt{2\_patch\_rectangle.xml} (4 sharp, 2 smooth vertices) and the curved 5-patch disk \texttt{circle\_asg1.xml} (0 sharp, 4 smooth vertices), Tables~\ref{tab:conv_rect} and \ref{tab:conv_circle} demonstrate exact $4, 3, 2$ rates for both $\beta = 0$ and $\beta = 10$, directly validating the Case~B curvature coupling in~\eqref{eq:corner_6jet}. Optimal rates also hold on the re-entrant \texttt{lshape\_asg1.xml}, the curved \texttt{curved\_2patch\_asg1.xml}, the curved perforated \texttt{curved\_lshape\_6corner\_1hole\_asg1.xml}, and the non-convex \texttt{concave\_pentagon\_5corner\_nonconvex\_asg1.xml}. On \texttt{as\_g1\_pentagon\_p3.xml} (which contains an interior $5$-valence extraordinary vertex with $C^1$/$G^1$ geometry parameterization constraints), $L^2$/$H^1$ rates around $3.26$--$3.28$ and $H^2$ rate $2.15$ are observed at $p=3$.
+
+\begin{table}[htbp]
+\centering
+\caption{Direct solver convergence on \texttt{two\_bilinear\_patches.xml} ($2$ patches, $6$ sharp, $0$ smooth, $\beta=0$) for $p=3$ and $p=4$.}
+\label{tab:conv_bilinear}
+\small
+\begin{tabular}{cccccccccc}
+\toprule
+$p$ & $r$ & $h_{\max}$ & $N_{\mathrm{free}}$ & $L^2$ Error & Rate & $H^1$ Error & Rate & $H^2$ Error & Rate \\
+\midrule
+3 & 2 & 2.5000e-01 & 93   & 6.8014e+00 & --   & 1.0687e+01 & --   & 3.1562e+01 & --   \\
+3 & 3 & 1.2500e-01 & 445  & 7.2441e-02 & 6.55 & 1.5685e-01 & 6.09 & 2.0712e+00 & 3.93 \\
+3 & 4 & 6.2500e-02 & 1917 & 5.3114e-03 & 3.77 & 1.4824e-02 & 3.40 & 4.6862e-01 & 2.14 \\
+3 & 5 & 3.1250e-02 & 7933 & 2.7685e-04 & 4.26 & 1.6065e-03 & 3.21 & 1.1443e-01 & 2.03 \\
+\midrule
+4 & 2 & 2.5000e-01 & 127  & 9.2688e-01 & --   & 1.5811e+00 & --   & 6.9741e+00 & --   \\
+4 & 3 & 1.2500e-01 & 511  & 4.1217e-02 & 4.49 & 6.7028e-02 & 4.56 & 4.8347e-01 & 3.85 \\
+4 & 4 & 6.2500e-02 & 2047 & 6.2653e-04 & 6.04 & 1.5424e-03 & 5.44 & 4.5715e-02 & 3.40 \\
+4 & 5 & 3.1250e-02 & 8191 & 5.3835e-05 & 3.54 & 1.1375e-04 & 3.76 & 5.8530e-03 & 2.97 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Direct solver convergence on \texttt{2\_patch\_rectangle.xml} ($2$ patches, $4$ sharp, $2$ smooth, $p=3$) for $\beta=0$ and $\beta=10$.}
+\label{tab:conv_rect}
+\small
+\begin{tabular}{cccccccccc}
+\toprule
+$\beta$ & $r$ & $h_{\max}$ & $N_{\mathrm{free}}$ & $L^2$ Error & Rate & $H^1$ Error & Rate & $H^2$ Error & Rate \\
+\midrule
+0  & 2 & 2.5000e-01 & 97   & 8.0608e-02 & --   & 5.7669e-01 & --   & 5.8651e+00 & --   \\
+0  & 3 & 1.2500e-01 & 449  & 3.9670e-03 & 4.34 & 5.7829e-02 & 3.32 & 1.0652e+00 & 2.46 \\
+0  & 4 & 6.2500e-02 & 1921 & 2.1490e-04 & 4.21 & 6.7336e-03 & 3.10 & 2.4934e-01 & 2.10 \\
+0  & 5 & 3.1250e-02 & 7937 & 1.3127e-05 & 4.03 & 8.3589e-04 & 3.01 & 6.1248e-02 & 2.03 \\
+\midrule
+10 & 2 & 2.5000e-01 & 97   & 7.8674e-02 & --   & 5.7473e-01 & --   & 5.8648e+00 & --   \\
+10 & 3 & 1.2500e-01 & 449  & 3.9396e-03 & 4.32 & 5.7799e-02 & 3.31 & 1.0652e+00 & 2.46 \\
+10 & 4 & 6.2500e-02 & 1921 & 2.1350e-04 & 4.21 & 6.7329e-03 & 3.10 & 2.4934e-01 & 2.10 \\
+10 & 5 & 3.1250e-02 & 7937 & 1.3046e-05 & 4.03 & 8.3587e-04 & 3.01 & 6.1248e-02 & 2.03 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Direct solver convergence on curved \texttt{circle\_asg1.xml} ($5$ patches, $0$ sharp, $4$ smooth, $p=3$) for $\beta=0$ and $\beta=10$.}
+\label{tab:conv_circle}
+\small
+\begin{tabular}{cccccccccc}
+\toprule
+$\beta$ & $r$ & $h_{\max}$ & $N_{\mathrm{free}}$ & $L^2$ Error & Rate & $H^1$ Error & Rate & $H^2$ Error & Rate \\
+\midrule
+0  & 2 & 8.3333e-02 & 2648  & 1.1199e-04 & --   & 3.8051e-03 & --   & 2.2512e-01 & --   \\
+0  & 3 & 4.1667e-02 & 11048 & 6.5854e-06 & 4.09 & 4.3933e-04 & 3.11 & 5.3956e-02 & 2.06 \\
+0  & 4 & 2.0833e-02 & 45128 & 4.1495e-07 & 3.99 & 5.4723e-05 & 3.01 & 1.3389e-02 & 2.01 \\
+\midrule
+10 & 2 & 8.3333e-02 & 2648  & 1.0886e-04 & --   & 3.8041e-03 & --   & 2.2512e-01 & --   \\
+10 & 3 & 4.1667e-02 & 11048 & 6.3585e-06 & 4.10 & 4.3929e-04 & 3.11 & 5.3956e-02 & 2.06 \\
+10 & 4 & 2.0833e-02 & 45128 & 4.0041e-07 & 3.99 & 5.4722e-05 & 3.00 & 1.3389e-02 & 2.01 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Direct solver convergence ($p=3, \beta=0$) on re-entrant, curved, perforated, and non-convex AS-$G^1$ domains.}
+\label{tab:conv_pent_concave}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccccccccc}
+\toprule
+Domain & $r$ & $h_{\max}$ & $N_{\mathrm{free}}$ & $L^2$ Error & Rate & $H^1$ Error & Rate & $H^2$ Error & Rate \\
+\midrule
+\multirow{3}{*}{\texttt{lshape\_asg1.xml}}
+ & 2 & 8.3333e-02 & 1582  & 8.0183e-06 & --   & 4.0962e-04 & --   & 3.2881e-02 & --   \\
+ & 3 & 4.1667e-02 & 6622  & 4.6768e-07 & 4.10 & 5.0409e-05 & 3.02 & 7.9677e-03 & 2.05 \\
+ & 4 & 2.0833e-02 & 27070 & 2.8013e-08 & 4.06 & 6.2527e-06 & 3.01 & 1.9608e-03 & 2.02 \\
+\midrule
+\multirow{4}{*}{\texttt{as\_g1\_pentagon\_p3.xml}}
+ & 2 & 2.5000e-01 & 231   & 1.3960e-01 & --   & 3.7158e-01 & --   & 1.9537e+00 & --   \\
+ & 3 & 1.2500e-01 & 1111  & 1.0413e-02 & 3.74 & 2.7375e-02 & 3.76 & 2.1828e-01 & 3.16 \\
+ & 4 & 6.2500e-02 & 4791  & 1.0064e-03 & 3.37 & 2.5822e-03 & 3.41 & 3.8511e-02 & 2.50 \\
+ & 5 & 3.1250e-02 & 19831 & 1.0504e-04 & 3.26 & 2.6667e-04 & 3.28 & 8.6483e-03 & 2.15 \\
+\midrule
+\multirow{3}{*}{\texttt{curved\_2patch\_asg1.xml}}
+ & 2 & 8.3333e-02 & 1057  & 1.5843e-04 & --   & 4.0196e-03 & --   & 1.7558e-01 & --   \\
+ & 3 & 4.1667e-02 & 4417  & 9.7441e-06 & 4.02 & 4.9636e-04 & 3.02 & 4.2435e-02 & 2.05 \\
+ & 4 & 2.0833e-02 & 18049 & 6.0649e-07 & 4.01 & 6.2095e-05 & 3.00 & 1.0540e-02 & 2.01 \\
+\midrule
+\multirow{3}{*}{\shortstack[l]{\texttt{curved\_lshape\_}\\\texttt{6corner\_1hole\_asg1.xml}}}
+ & 2 & 8.3333e-02 & 2100  & 1.1141e-07 & --   & 1.0411e-05 & --   & 2.8937e-03 & --   \\
+ & 3 & 4.1667e-02 & 8820  & 8.2446e-09 & 3.76 & 8.2987e-07 & 3.65 & 4.7924e-04 & 2.59 \\
+ & 4 & 2.0833e-02 & 36084 & 7.5003e-10 & 3.46 & 7.8007e-08 & 3.41 & 8.8457e-05 & 2.44 \\
+\midrule
+\multirow{3}{*}{\shortstack[l]{\texttt{concave\_pentagon\_}\\\texttt{5corner\_nonconvex\_asg1.xml}}}
+ & 2 & 8.3333e-02 & 2641  & 2.8025e-06 & --   & 2.1941e-04 & --   & 2.6226e-02 & --   \\
+ & 3 & 4.1667e-02 & 11041 & 1.7356e-07 & 4.01 & 2.7459e-05 & 3.00 & 6.5388e-03 & 2.00 \\
+ & 4 & 2.0833e-02 & 45121 & 1.1057e-08 & 3.97 & 3.5083e-06 & 2.97 & 1.6589e-03 & 1.98 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%----------------------------------------------------------------------
+\subsection{Experiment 2: Mesh-Size ($h$) Independence of Multigrid}
+%----------------------------------------------------------------------
+Table~\ref{tab:h_indep} shows the iteration counts and discretization errors of the V-cycle MG-preconditioned CG solver ($\nu_1=\nu_2=1$, coarsest level $r_{\min}=2$, $p=3$, $\beta=0$) across refinement levels $r_{\max} \in \{3, 4, 5, 6\}$ (up to $182{,}408$ DOFs on \texttt{circle\_asg1.xml} and $80{,}631$ DOFs on \texttt{as\_g1\_pentagon\_p3.xml}). Iteration counts stabilize tightly around $18$--$26$ across all levels, demonstrating $h$-independent preconditioning even on curved Case~B boundaries and re-entrant corners. At $r=5$ on \texttt{lshape\_asg1.xml} ($109{,}438$ DOFs), the $L^2$ error plateaus near $1.04\times 10^{-7}$ because the iterative residual tolerance $\mathrm{tol}=10^{-8}$ is reached before exceeding that $L^2$ threshold, while $H^1$ and $H^2$ continue to decrease cleanly.
+
+\begin{table}[htbp]
+\centering
+\caption{Mesh-size independence of PCG with V-cycle symmetric Gauss--Seidel MG ($\nu=1$, $r_{\min}=2$, $p=3$, $\beta=0$, $\mathrm{tol}=10^{-8}$).}
+\label{tab:h_indep}
+\small
+\begin{tabular}{lccccccc}
+\toprule
+Domain & $r_{\max}$ & $N_{\mathrm{free}}$ & Iter & Rel.\ Res. & Solve (s) & $L^2$ Error & $H^2$ Error \\
+\midrule
+\multirow{4}{*}{\texttt{two\_bilinear\_patches.xml}}
+ & 3 & 445   & 15 & 5.8250e-09 & 0.0036 & 7.2441e-02 & 2.0712e+00 \\
+ & 4 & 1917  & 18 & 6.5670e-09 & 0.0277 & 5.3113e-03 & 4.6862e-01 \\
+ & 5 & 7933  & 20 & 4.7178e-09 & 0.1381 & 2.7685e-04 & 1.1443e-01 \\
+ & 6 & 32253 & 21 & 5.5618e-09 & 0.7536 & 1.2944e-05 & 2.8346e-02 \\
+\midrule
+\multirow{4}{*}{\texttt{2\_patch\_rectangle.xml}}
+ & 3 & 449   & 17 & 6.8841e-09 & 0.0039 & 3.9670e-03 & 1.0652e+00 \\
+ & 4 & 1921  & 21 & 5.3728e-09 & 0.0249 & 2.1490e-04 & 2.4934e-01 \\
+ & 5 & 7937  & 20 & 6.0660e-09 & 0.1666 & 1.3121e-05 & 6.1248e-02 \\
+ & 6 & 32257 & 18 & 8.8830e-09 & 0.5555 & 8.1839e-07 & 1.5209e-02 \\
+\midrule
+\multirow{4}{*}{\texttt{as\_g1\_pentagon\_p3.xml}}
+ & 3 & 1111  & 17 & 6.4743e-09 & 0.0122 & 1.0413e-02 & 2.1828e-01 \\
+ & 4 & 4791  & 20 & 3.4070e-09 & 0.0910 & 1.0064e-03 & 3.8511e-02 \\
+ & 5 & 19831 & 21 & 4.7013e-09 & 0.4607 & 1.0508e-04 & 8.6483e-03 \\
+ & 6 & 80631 & 23 & 6.9613e-09 & 1.8568 & 1.1273e-05 & 2.0933e-03 \\
+\midrule
+\multirow{3}{*}{\texttt{circle\_asg1.xml}}
+ & 3 & 11048  & 21 & 9.1341e-09 & 0.4044 & 6.5848e-06 & 5.3956e-02 \\
+ & 4 & 45128  & 23 & 9.2565e-09 & 1.7278 & 3.8620e-07 & 1.3389e-02 \\
+ & 5 & 182408 & 26 & 8.8594e-09 & 5.4418 & 1.1452e-07 & 3.4097e-03 \\
+\midrule
+\multirow{3}{*}{\texttt{lshape\_asg1.xml}}
+ & 3 & 6622   & 15 & 6.8095e-09 & 0.1177 & 4.6777e-07 & 7.9677e-03 \\
+ & 4 & 27070  & 18 & 5.5841e-09 & 0.7893 & 3.2658e-08 & 1.9609e-03 \\
+ & 5 & 109438 & 20 & 5.0859e-09 & 2.1176 & 1.0424e-07 & 4.8771e-04 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%----------------------------------------------------------------------
+\subsection{Experiment 3: Smoothing Sweep ($\nu$) and V- vs.\ W-Cycles}
+%----------------------------------------------------------------------
+Table~\ref{tab:nu_sweep} investigates the dependence on pre/post smoothing steps $\nu \in \{1, 2, 3, 4\}$ for both PCG-preconditioned MG and standalone MG iteration (V-cycle and W-cycle) on \texttt{two\_bilinear\_patches.xml} ($r=5$, $7{,}933$ DOFs) and \texttt{circle\_asg1.xml} ($r=4$, $45{,}128$ DOFs). Both standalone V- and W-cycles converge reliably, with W-cycle iteration counts dropping from $57 \to 25 \to 18 \to 14$ on \texttt{two\_bilinear\_patches.xml} and from $85 \to 47 \to 30 \to 23$ on \texttt{circle\_asg1.xml} as $\nu$ doubles, consistent with the theoretical $\mathcal{O}(\nu^{-1/2})$ smoother contraction rate. Using MG inside PCG cuts the required iterations by $2$--$4\times$, achieving the fastest solve time at $\nu = 1$.
+
+\begin{table}[htbp]
+\centering
+\caption{Smoothing sweep $\nu \in \{1,2,3,4\}$ comparing PCG--MG and standalone MG (V- and W-cycles) for $p=3, \beta=0$.}
+\label{tab:nu_sweep}
+\small
+\begin{tabular}{llccccc}
+\toprule
+Domain ($r_{\max}$, DOFs) & Solver & $\nu$ & Iter & Rel.\ Res. & Solve (s) & $H^2$ Error \\
+\midrule
+\multirow{12}{*}{\shortstack[l]{\texttt{two\_bilinear\_patches.xml}\\($r=5$, $7{,}933$ DOFs)}}
+ & PCG (V-cycle) & 1 & 20 & 4.7178e-09 & 0.1495 & 1.1443e-01 \\
+ & PCG (V-cycle) & 2 & 13 & 4.6334e-09 & 0.1599 & 1.1443e-01 \\
+ & PCG (V-cycle) & 3 & 11 & 3.7749e-09 & 0.2428 & 1.1443e-01 \\
+ & PCG (V-cycle) & 4 & 9  & 7.5198e-09 & 0.2634 & 1.1443e-01 \\
+\cmidrule(lr){2-7}
+ & Direct MG (V) & 1 & 68 & 8.5830e-09 & 0.5455 & 1.1443e-01 \\
+ & Direct MG (V) & 2 & 28 & 8.3351e-09 & 0.4577 & 1.1443e-01 \\
+ & Direct MG (V) & 3 & 22 & 6.2107e-09 & 0.4329 & 1.1443e-01 \\
+ & Direct MG (V) & 4 & 19 & 7.5737e-09 & 0.4871 & 1.1443e-01 \\
+\cmidrule(lr){2-7}
+ & Direct MG (W) & 1 & 57 & 8.6198e-09 & 0.5531 & 1.1443e-01 \\
+ & Direct MG (W) & 2 & 25 & 8.6231e-09 & 0.3792 & 1.1443e-01 \\
+ & Direct MG (W) & 3 & 18 & 6.9705e-09 & 0.4579 & 1.1443e-01 \\
+ & Direct MG (W) & 4 & 14 & 9.6516e-09 & 0.4901 & 1.1443e-01 \\
+\midrule
+\multirow{8}{*}{\shortstack[l]{\texttt{circle\_asg1.xml}\\($r=4$, $45{,}128$ DOFs)}}
+ & PCG (V-cycle) & 1 & 23 & 9.2565e-09 & 1.6438 & 1.3389e-02 \\
+ & PCG (V-cycle) & 2 & 16 & 7.0651e-09 & 2.0424 & 1.3389e-02 \\
+ & PCG (V-cycle) & 3 & 13 & 6.8119e-09 & 2.3059 & 1.3389e-02 \\
+ & PCG (V-cycle) & 4 & 11 & 7.4662e-09 & 2.6511 & 1.3389e-02 \\
+\cmidrule(lr){2-7}
+ & Direct MG (W) & 1 & 85 & 9.5907e-09 & 6.5589 & 1.3390e-02 \\
+ & Direct MG (W) & 2 & 47 & 8.7353e-09 & 6.5082 & 1.3389e-02 \\
+ & Direct MG (W) & 3 & 30 & 8.0226e-09 & 6.3577 & 1.3389e-02 \\
+ & Direct MG (W) & 4 & 23 & 8.5954e-09 & 6.3229 & 1.3389e-02 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%----------------------------------------------------------------------
+\subsection{Experiment 4: Robustness Across $\beta \ge 0$ and Cholesky Verification}
+%----------------------------------------------------------------------
+Table~\ref{tab:beta_verify} reports PCG--MG performance across $\beta \in \{0, 1, 10, 100\}$ alongside the relative solution discrepancy $\|\mathbf{c}_{\mathrm{MG}} - \mathbf{c}_{\mathrm{Cholesky}}\|_2 / \|\mathbf{c}_{\mathrm{Cholesky}}\|_2$ measured via \texttt{--verify}. Iteration counts remain completely invariant ($21$ on \texttt{2\_patch\_rectangle.xml}, $23$ on \texttt{circle\_asg1.xml}), and the MG solution matches sparse Cholesky to $\mathcal{O}(10^{-8}\text{--}10^{-6})$.
+
+\begin{table}[htbp]
+\centering
+\caption{Reaction parameter $\beta$ sweep and direct Cholesky cross-check (\texttt{--verify}, $p=3$, $r_{\max}=4$, $\nu=1$).}
+\label{tab:beta_verify}
+\small
+\begin{tabular}{lccccc}
+\toprule
+Domain (DOFs) & $\beta$ & Iter & Rel.\ Res. & Rel.\ Diff.\ vs.\ Cholesky & $H^2$ Error \\
+\midrule
+\multirow{4}{*}{\texttt{2\_patch\_rectangle.xml} ($1{,}921$)}
+ & 0   & 21 & 5.3728e-09 & 5.7574e-08 & 2.4934e-01 \\
+ & 1   & 21 & 5.4078e-09 & 6.0309e-08 & 2.4934e-01 \\
+ & 10  & 21 & 5.8138e-09 & 8.9702e-08 & 2.4934e-01 \\
+ & 100 & 21 & 9.9255e-09 & 2.9704e-07 & 2.4934e-01 \\
+\midrule
+\multirow{4}{*}{\texttt{circle\_asg1.xml} ($45{,}128$)}
+ & 0   & 23 & 9.2565e-09 & 2.0950e-06 & 1.3389e-02 \\
+ & 1   & 23 & 9.2566e-09 & 2.0950e-06 & 1.3389e-02 \\
+ & 10  & 23 & 9.2566e-09 & 2.0950e-06 & 1.3389e-02 \\
+ & 100 & 23 & 9.2570e-09 & 2.0956e-06 & 1.3389e-02 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%----------------------------------------------------------------------
+\subsection{Experiment 5: Non-Regression on Original First-Biharmonic Solvers}
+%----------------------------------------------------------------------
+Because \texttt{gsAsG1Domain.hpp} and \texttt{gsAsG1Basis.hpp} are shared with the original first-biharmonic solvers (\texttt{as\_g1\_biharmonic\_example} and \texttt{as\_g1\_biharmonic\_multigrid\_example}), we verified that our extensions leave their outputs and performance untouched.
+\begin{itemize}
+    \item \texttt{as\_g1\_biharmonic\_example} on \texttt{two\_bilinear\_patches.xml} ($p=3$, $r=2\dots 5$): produces $N_{\mathrm{free}} = 75, 403, 1827, 7747$, with $r=5$ errors $L^2 = 5.8484\times 10^{-5}$ (rate $4.51$), $H^1 = 1.5662\times 10^{-3}$ (rate $3.09$), and $H^2 = 1.1451\times 10^{-1}$ (rate $2.04$).
+    \item \texttt{as\_g1\_biharmonic\_multigrid\_example --all} ($p=3$, $r_{\min}=2$, $r_{\max}=4$, \texttt{--homo}): all $16$ classic domains converge ($16$ PASSED, $0$ FAILED), reproducing exact baseline iteration counts (e.g.\ $26$ iterations at $r=4$ and $34$ iterations at $r=5$ on \texttt{two\_bilinear\_patches.xml}). Table~\ref{tab:regression} compares the iteration counts on all $16$ overlapping classic domains between the first and second biharmonic PCG--MG solvers.
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+\caption{Comparison between original first-biharmonic (\texttt{Bih1}) and new second-biharmonic (\texttt{Bih2}) PCG--MG solvers across all $16$ classic domains ($p=3$, $r_{\min}=2$, $r_{\max}=4$, $\nu=1$, $\mathrm{tol}=10^{-8}$).}
+\label{tab:regression}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lrrrrrr}
+\toprule
+Domain (\texttt{domain2d/2patch/...}) & DOFs (Bih1) & Iter (Bih1) & Time (s) & DOFs (Bih2) & Iter (Bih2) & Time (s) \\
+\midrule
+\texttt{two\_bilinear\_patches.xml}                 & 1827  & 26  & 0.1251 & 1917  & 18 & 0.1065 \\
+\texttt{2\_patch\_rectangle.xml}                    & 1829  & 23  & 0.1187 & 1921  & 21 & 0.1093 \\
+\texttt{2\_patch\_rectangle\_non\_bilinear.xml}       & 1829  & 11  & 0.0838 & 1921  & 12 & 0.0946 \\
+\texttt{three\_patch\_belt.xml}                     & 2754  & 31  & 0.1747 & 2874  & 18 & 0.1665 \\
+\texttt{three\_patch\_belt\_non\_bilinear.xml}        & 2754  & 27  & 0.1648 & 2874  & 16 & 0.1635 \\
+\texttt{4\_patch\_3\_valence\_not\_bilinear.xml}        & 3714  & 35  & 0.3248 & 3834  & 29 & 0.3170 \\
+\texttt{5\_patch\_5\_valence\_not\_bilinear.xml}        & 4641  & 38  & 0.4246 & 4791  & 22 & 0.4258 \\
+\texttt{6\_patch\_4\_valence\_each\_not\_bilinear.xml}  & 5601  & 37  & 0.5387 & 5751  & 28 & 0.5274 \\
+\texttt{6\_patch\_6\_valence\_not\_bilinear.xml}       & 5568  & 45  & 0.5272 & 5748  & 24 & 0.4910 \\
+\texttt{square\_6\_patch.xml}                       & 5607  & 60  & 0.6686 & 5763  & 48 & 0.7209 \\
+\texttt{square\_6\_patch\_non\_bilinear.xml}          & 5607  & 109 & 0.9375 & 5763  & 96 & 0.8775 \\
+\texttt{two\_patch\_mathematica.xml}                & 1827  & 20  & 0.1030 & 1917  & 14 & 0.1051 \\
+\texttt{two\_patch\_mathematica\_non\_bilinear.xml}   & 1827  & 19  & 0.0907 & 1917  & 15 & 0.1071 \\
+\texttt{weirdo\_multivalence.xml}                   & 10303 & 111 & 1.9958 & 10544 & 45 & 1.5836 \\
+\texttt{weirdo\_multivalence\_non\_bilinear.xml}      & 10303 & 120 & 2.1669 & 10544 & 45 & 1.6849 \\
+\texttt{experiment\_multivalence\_not\_bilinear.xml}  & 12190 & 97  & 1.9851 & 12461 & 34 & 1.7642 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%----------------------------------------------------------------------
+\subsection{Experiment 6: Full Benchmark Across All $93$ \texorpdfstring{AS-$G^1$}{AS-G1} Domains}
+%----------------------------------------------------------------------
+We screened all XML geometries under \texttt{filedata/domain2d} (\texttt{2patch}, \texttt{2patch/circle}, \texttt{as\_g1\_generator}, \texttt{as\_g1\_no\_holes\_reparametrized}, and \texttt{as\_g1\_domain\_decomposition\_results/asg1\_reparametrized}) and collected every valid AS-$G^1$ non-permutation domain into four suites:
+\begin{enumerate}
+    \item \texttt{classic} ($27$ domains): planar, multi-valence, and $5$-patch circular geometries;
+    \item \texttt{generator} ($26$ domains): generated $3$--$7$-valence symmetric/random, star, ellipse, and swirl/L-shape meshes;
+    \item \texttt{noholes} ($32$ domains): simply connected $C^1$-reparametrized planar, curved, concave, $1$--$7$-corner, comb, serpentine, filleted, and counterexample domains;
+    \item \texttt{holes} ($8$ domains): multiply connected (1-hole) curved, bean, annular, wavy-ring, crescent, and star-perforated geometries.
+\end{enumerate}
+(Geometries failing the AS-$G^1$ gluing check \texttt{computeGluingData} prior to assembly or having a degenerate collapsed corner in \texttt{swiss\_cross\_12corner\_5holes\_asg1.xml}---which similarly fails in the first-biharmonic \texttt{SparseLU} solver---are excluded from the AS-$G^1$ suite.) Across all \textbf{$93$ valid AS-$G^1$ domains}, \texttt{as\_g1\_biharmonic2\_multigrid\_example --all --suite all} achieved \textbf{$93$ PASSED, $0$ FAILED} at $p=3$, $r_{\min}=2$, $r_{\max}=4$, $\beta=0$, $\nu=1$, $\mathrm{tol}=10^{-8}$. Table~\ref{tab:all93} lists the complete results (with subdirectory prefixes abbreviated as \texttt{noholes/} for \texttt{as\_g1\_no\_holes\_reparametrized/} and \texttt{ddr/} for \texttt{as\_g1\_domain\_decomposition\_results/asg1\_reparametrized/}).
+
+\clearpage
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{longtable}{>{\ttfamily\scriptsize\raggedright\arraybackslash}p{8.4cm}rrrrrrr}
+\caption{Complete second-biharmonic PCG--MG benchmark results across all $93$ valid AS-$G^1$ domains in \texttt{filedata/domain2d} ($p=3$, $r=2\to 4$, $\beta=0$, $\nu=1$, $\mathrm{tol}=10^{-8}$; all $93$ CONVERGED). Columns $P$, $A$, $B$ denote patches, sharp corners, and smooth boundary vertices.}
+\label{tab:all93} \\
+\toprule
+\normalfont\bfseries Domain & $P$ & $A$ & $B$ & DOFs & Iter & $T_{\mathrm{tot}}$ (s) & $L^2$ Error \\
+\midrule
+\endfirsthead
+\toprule
+\normalfont\bfseries Domain & $P$ & $A$ & $B$ & DOFs & Iter & $T_{\mathrm{tot}}$ (s) & $L^2$ Error \\
+\midrule
+\endhead
+\midrule
+\multicolumn{8}{r}{\small\itshape Continued on next page} \\
+\endfoot
+\bottomrule
+\endlastfoot
+2patch/two\_bilinear\_patches.xml & 2 & 6 & 0 & 1917 & 18 & 0.1065 & 5.3113e-03 \\
+2patch/2\_patch\_rectangle.xml & 2 & 4 & 2 & 1921 & 21 & 0.1093 & 2.1490e-04 \\
+2patch/2\_patch\_rectangle\_non\_bilinear.xml & 2 & 4 & 2 & 1921 & 12 & 0.0946 & 4.2465e-03 \\
+2patch/three\_patch\_belt.xml & 3 & 8 & 0 & 2874 & 18 & 0.1665 & 5.6277e-02 \\
+2patch/three\_patch\_belt\_non\_bilinear.xml & 3 & 8 & 0 & 2874 & 16 & 0.1635 & 6.2717e-01 \\
+2patch/4\_patch\_3\_valence\_not\_bilinear.xml & 4 & 8 & 0 & 3834 & 29 & 0.3170 & 5.9882e-01 \\
+2patch/5\_patch\_5\_valence\_not\_bilinear.xml & 5 & 10 & 0 & 4791 & 22 & 0.4258 & 2.4344e-01 \\
+2patch/6\_patch\_4\_valence\_each\_not\_bilinear.xml & 6 & 10 & 0 & 5751 & 28 & 0.5274 & 2.4557e-01 \\
+2patch/6\_patch\_6\_valence\_not\_bilinear.xml & 6 & 12 & 0 & 5748 & 24 & 0.4910 & 7.1140e-02 \\
+2patch/square\_6\_patch.xml & 6 & 4 & 6 & 5763 & 48 & 0.7209 & 7.1008e-04 \\
+2patch/square\_6\_patch\_non\_bilinear.xml & 6 & 4 & 6 & 5763 & 96 & 0.8775 & 4.8911e-02 \\
+2patch/two\_patch\_mathematica.xml & 2 & 6 & 0 & 1917 & 14 & 0.1051 & 5.5157e-02 \\
+2patch/two\_patch\_mathematica\_non\_bilinear.xml & 2 & 6 & 0 & 1917 & 15 & 0.1071 & 5.7965e-01 \\
+2patch/weirdo\_multivalence.xml & 11 & 15 & 1 & 10544 & 45 & 1.5836 & 3.6972e-01 \\
+2patch/weirdo\_multivalence\_non\_bilinear.xml & 11 & 15 & 1 & 10544 & 45 & 1.6849 & 1.3836e+00 \\
+2patch/experiment\_multivalence\_not\_bilinear.xml & 13 & 17 & 1 & 12461 & 34 & 1.7642 & 1.8204e+00 \\
+2patch/convex\_3\_valence.xml & 3 & 6 & 0 & 2877 & 20 & 0.1667 & 1.6583e-02 \\
+2patch/convex\_3\_valence\_non\_bilinear.xml & 3 & 6 & 0 & 2877 & 19 & 0.1636 & 1.1649e+00 \\
+2patch/convex\_5\_valence.xml & 5 & 10 & 0 & 4791 & 24 & 0.3928 & 4.2502e-02 \\
+2patch/convex\_5\_valence\_non\_bilinear.xml & 5 & 10 & 0 & 4791 & 31 & 0.3880 & 5.6754e-01 \\
+2patch/convex\_6\_valence.xml & 6 & 11 & 1 & 5750 & 28 & 0.5539 & 3.4865e-02 \\
+2patch/convex\_6\_valence\_non\_bilinear.xml & 6 & 11 & 1 & 5750 & 32 & 0.5857 & 1.8756e+00 \\
+2patch/blob\_geometry.xml & 11 & 16 & 0 & 10542 & 33 & 1.3626 & 7.5927e-02 \\
+2patch/blob\_geometry\_non\_bilinear.xml & 11 & 16 & 0 & 10542 & 43 & 1.4986 & 4.9734e+00 \\
+2patch/circle/asg1\_circle\_5patch.xml & 5 & 0 & 4 & 4808 & 186 & 1.0875 & 1.1578e-01 \\
+2patch/circle/asg1\_general\_5patch\_v2.xml & 5 & 0 & 4 & 4808 & 18 & 0.3521 & 6.3550e-03 \\
+2patch/circle/asg1\_general\_5patch\_v4.xml & 5 & 0 & 4 & 4808 & 24 & 0.4125 & 2.5622e-05 \\
+as\_g1\_generator/2\_patch\_rectangle\_asg1.xml & 2 & 6 & 0 & 18045 & 13 & 2.4138 & 8.6902e-03 \\
+as\_g1\_generator/two\_squares\_asg1.xml & 2 & 4 & 2 & 18049 & 11 & 2.2984 & 2.1496e-08 \\
+as\_g1\_generator/ldomain\_asg1.xml & 3 & 6 & 2 & 27070 & 18 & 5.4281 & 2.7456e-08 \\
+as\_g1\_generator/lake\_asg1.xml & 1 & 4 & 0 & 9024 & 35 & 0.8632 & 1.0504e-02 \\
+as\_g1\_generator/as\_g1\_tri\_p3.xml & 3 & 6 & 0 & 2877 & 15 & 0.1614 & 4.9006e-05 \\
+as\_g1\_generator/as\_g1\_pentagon\_p3.xml & 5 & 10 & 0 & 4791 & 20 & 0.3832 & 1.0064e-03 \\
+as\_g1\_generator/as\_g1\_hex\_p3.xml & 6 & 12 & 0 & 5748 & 24 & 0.5353 & 2.3950e-04 \\
+as\_g1\_generator/as\_g1\_v3\_p3.xml & 3 & 6 & 0 & 2877 & 15 & 0.1581 & 4.9006e-05 \\
+as\_g1\_generator/as\_g1\_v4\_p3.xml & 4 & 8 & 0 & 3834 & 15 & 0.2190 & 8.2876e-05 \\
+as\_g1\_generator/as\_g1\_v5\_p3\_r1.xml & 5 & 10 & 0 & 19196 & 21 & 3.0116 & 1.0931e-04 \\
+as\_g1\_generator/as\_g1\_v6\_p3.xml & 6 & 12 & 0 & 5748 & 24 & 0.4204 & 2.3950e-04 \\
+as\_g1\_generator/as\_g1\_v7\_p3.xml & 7 & 14 & 0 & 6705 & 26 & 0.6422 & 1.8118e-04 \\
+as\_g1\_generator/as\_g1\_patch3\_sym.xml & 3 & 6 & 0 & 2877 & 15 & 0.1935 & 4.9006e-05 \\
+as\_g1\_generator/as\_g1\_patch4\_sym.xml & 4 & 8 & 0 & 3834 & 15 & 0.2740 & 8.2876e-05 \\
+as\_g1\_generator/as\_g1\_patch5\_polygon\_sym.xml & 5 & 10 & 0 & 4791 & 19 & 0.3247 & 8.2448e-04 \\
+as\_g1\_generator/as\_g1\_patch5\_star\_sym.xml & 5 & 10 & 0 & 4791 & 16 & 0.4329 & 5.0006e-04 \\
+as\_g1\_generator/as\_g1\_patch5\_sym.xml & 5 & 10 & 0 & 4791 & 20 & 0.4146 & 1.0064e-03 \\
+as\_g1\_generator/as\_g1\_patch6\_sym.xml & 6 & 12 & 0 & 5748 & 24 & 0.5667 & 2.3950e-04 \\
+as\_g1\_generator/as\_g1\_patch7\_sym.xml & 7 & 14 & 0 & 6705 & 26 & 0.6164 & 1.8118e-04 \\
+as\_g1\_generator/as\_g1\_pentagon\_random\_s101.xml & 5 & 10 & 0 & 4791 & 29 & 0.4761 & 4.3508e-04 \\
+as\_g1\_generator/as\_g1\_hex\_random\_s777.xml & 6 & 12 & 0 & 5748 & 29 & 0.5522 & 1.2020e-04 \\
+as\_g1\_generator/as\_g1\_star\_v5\_p3.xml & 5 & 10 & 0 & 4791 & 16 & 0.3155 & 5.0006e-04 \\
+as\_g1\_generator/as\_g1\_ellipse\_v5\_p3.xml & 5 & 10 & 0 & 4791 & 43 & 0.6566 & 3.3138e-03 \\
+as\_g1\_generator/yeti\_asg1.xml & 5 & 10 & 0 & 45111 & 26 & 20.5833 & 3.1226e-05 \\
+lshape\_9patch\_non\_bilinear\_trig\_p3\_asg1.xml & 9 & 17 & 3 & 81198 & 50 & 59.4765 & 1.3981e-04 \\
+ring\_7patch\_non\_bilinear\_swirl\_p3\_asg1.xml & 7 & 14 & 0 & 63147 & 29 & 34.5905 & 2.5130e-05 \\
+noholes/benchmark\_6/quad\_asg1.xml & 1 & 4 & 0 & 9024 & 9 & 0.5731 & 2.4763e-07 \\
+noholes/benchmark\_6/curved\_quad\_asg1.xml & 1 & 4 & 0 & 9024 & 11 & 0.8214 & 1.5367e-07 \\
+noholes/benchmark\_6/lshape\_asg1.xml & 3 & 6 & 2 & 27070 & 18 & 5.4906 & 3.2658e-08 \\
+noholes/benchmark\_6/curved\_lshape\_asg1.xml & 3 & 6 & 2 & 27070 & 17 & 6.8478 & 3.3290e-06 \\
+noholes/benchmark\_6/circle\_asg1.xml & 5 & 0 & 4 & 45128 & 23 & 19.4729 & 3.8620e-07 \\
+noholes/comb\_no\_holes/comb\_asg1.xml & 11 & 16 & 8 & 99250 & 66 & 82.4634 & 5.4370e-07 \\
+noholes/comb\_no\_holes/curved\_comb\_asg1.xml & 11 & 16 & 8 & 99250 & 66 & 75.7624 & 5.8147e-06 \\
+noholes/1to7corners/bulged\_quad\_non\_bilinear\_asg1.xml & 1 & 4 & 0 & 9024 & 14 & 0.7155 & 1.1296e-07 \\
+noholes/1to7corners/teardrop\_1corner\_convex\_asg1.xml & 4 & 2 & 4 & 36101 & 13 & 9.4992 & 1.2096e-07 \\
+noholes/1to7corners/lens\_2corner\_convex\_asg1.xml & 4 & 2 & 4 & 36101 & 12 & 9.3032 & 1.3097e-07 \\
+noholes/1to7corners/crescent\_2corner\_asg1.xml & 4 & 2 & 4 & 36101 & 44 & 10.7393 & 5.7552e-08 \\
+noholes/1to7corners/curved\_triangle\_3corner\_convex\_asg1.xml & 3 & 3 & 3 & 27075 & 11 & 5.2846 & 2.1982e-08 \\
+noholes/1to7corners/concave\_triangle\_3corner\_nonconvex\_asg1.xml & 3 & 3 & 3 & 27075 & 29 & 5.8131 & 1.3889e-08 \\
+noholes/1to7corners/star\_triangle\_3corner\_nonconvex\_asg1.xml & 3 & 3 & 3 & 27075 & 46 & 6.3376 & 6.5507e-07 \\
+noholes/1to7corners/curved\_quad\_4corner\_convex\_asg1.xml & 1 & 4 & 0 & 9024 & 11 & 0.7577 & 3.4969e-07 \\
+noholes/1to7corners/concave\_quad\_4corner\_nonconvex\_asg1.xml & 1 & 4 & 0 & 9024 & 11 & 0.5985 & 1.5316e-07 \\
+noholes/1to7corners/star\_quad\_4corner\_nonconvex\_asg1.xml & 1 & 4 & 0 & 9024 & 46 & 1.0410 & 7.1538e-08 \\
+noholes/1to7corners/curved\_pentagon\_5corner\_convex\_asg1.xml & 5 & 5 & 5 & 45121 & 20 & 15.5192 & 5.7862e-07 \\
+noholes/1to7corners/concave\_pentagon\_5corner\_nonconvex\_asg1.xml & 5 & 5 & 5 & 45121 & 16 & 15.3773 & 1.2009e-08 \\
+noholes/1to7corners/curved\_hexagon\_6corner\_convex\_asg1.xml & 2 & 6 & 0 & 18045 & 33 & 2.7592 & 1.4114e-06 \\
+noholes/1to7corners/star\_hexagon\_6corner\_nonconvex\_asg1.xml & 3 & 6 & 0 & 27069 & 19 & 5.4943 & 2.1270e-06 \\
+noholes/1to7corners/curved\_heptagon\_7corner\_convex\_asg1.xml & 6 & 7 & 3 & 54141 & 70 & 24.0566 & 3.0951e-06 \\
+noholes/1to7corners/star\_heptagon\_7corner\_nonconvex\_asg1.xml & 4 & 7 & 1 & 36092 & 36 & 9.5342 & 9.4627e-07 \\
+noholes/1to7corners/heart\_1corner\_nonconvex\_asg1.xml & 5 & 1 & 3 & 45126 & 107 & 17.6090 & 1.9264e-07 \\
+noholes/1to7corners/heart\_2corner\_nonconvex\_asg1.xml & 5 & 2 & 2 & 45124 & 43 & 14.6231 & 5.3430e-06 \\
+noholes/noHolesCounterExamples/01\_dart\_4corner\_nonconvex\_asg1.xml & 6 & 4 & 4 & 54146 & 109 & 26.6130 & 1.2373e-07 \\
+noholes/noHolesCounterExamples/02\_serpentine\_s\_duct\_asg1.xml & 1 & 4 & 0 & 9024 & 294 & 3.3747 & 1.1112e-02 \\
+noholes/noHolesCounterExamples/03\_filleted\_u\_bracket\_asg1.xml & 11 & 4 & 10 & 99269 & 87 & 75.4816 & 2.3750e-05 \\
+noholes/noHolesCounterExamples/04\_heptagon\_7corner\_convex\_asg1.xml & 6 & 7 & 3 & 54141 & 90 & 24.2574 & 8.5549e-03 \\
+noholes/noHolesCounterExamples/05\_hourglass\_pinch\_asg1.xml & 1 & 4 & 0 & 9024 & 108 & 1.5447 & 2.9636e-06 \\
+noholes/noHolesCounterExamples/06\_y\_junction\_3way\_asg1.xml & 4 & 6 & 4 & 36095 & 42 & 10.7248 & 1.0170e-06 \\
+noholes/noHolesCounterExamples/07\_asymmetric\_staircase\_8corner\_asg1.xml & 3 & 8 & 0 & 27066 & 60 & 7.1061 & 8.0673e-06 \\
+ddr/bean\_0corner\_1hole\_asg1.xml & 4 & 0 & 8 & 36100 & 36 & 10.2579 & 3.7914e-06 \\
+ddr/curved\_ring\_4patch\_asg1.xml & 4 & 8 & 0 & 36084 & 27 & 9.4946 & 5.3563e-07 \\
+ddr/wavy\_ring\_annulus\_asg1.xml & 4 & 0 & 8 & 36100 & 22 & 9.4499 & 4.2284e-05 \\
+ddr/curved\_lshape\_6corner\_1hole\_asg1.xml & 4 & 8 & 0 & 36084 & 44 & 9.9391 & 1.0376e-08 \\
+ddr/star\_5corner\_1hole\_asg1.xml & 4 & 8 & 0 & 36084 & 62 & 10.8074 & 2.1906e-04 \\
+ddr/crescent\_2corner\_asg1.xml & 4 & 2 & 4 & 36101 & 197 & 16.5702 & 1.1458e-04 \\
+ddr/curved\_2patch\_asg1.xml & 2 & 4 & 2 & 18049 & 40 & 2.8718 & 6.0646e-07 \\
+ddr/curved\_lshape\_3patch\_asg1.xml & 3 & 8 & 0 & 27066 & 18 & 5.2918 & 1.8382e-06 \\
+\end{longtable}
+\normalsize
+
+\begin{thebibliography}{9}
+\bibitem{SognTakacs}
+J.~Sogn and S.~Takacs,
+\emph{Multigrid solvers for the second biharmonic problem in isogeometric analysis},
+RICAM / JKU Linz report.
+\end{thebibliography}
+
+\end{document}

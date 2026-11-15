@@ -396,6 +396,115 @@ gsVector<T> getOuterNormalDerivative(
     }
 }
 
+/// Boundary corner frame data needed to enforce C^0 (second biharmonic) or C^1 (first biharmonic)
+/// boundary conditions cleanly on both sharp corners (Case A) and smooth boundary vertices (Case B).
+template <typename T>
+struct gsBoundaryCornerData
+{
+    bool isSmooth;
+    gsVector<T> dir1;
+    gsVector<T> dir2;
+    T curvature;
+};
 
+template <typename T>
+gsBoundaryCornerData<T> getBoundaryCornerData(
+    const gsMultiPatch<T>& mp,
+    const std::vector<patchCorner>& corners,
+    T eps = 1e-4)
+{
+    const short_t dim = 2;
+    std::vector<gsVector<T>> normals;
+    std::vector<gsVector<T>> tangents;
+    std::vector<gsVector<T>> accs;
+    std::vector<T> velSqs;
+
+    for (size_t i = 0; i < corners.size(); ++i)
+    {
+        const gsGeometry<T>& geo = mp.patch(corners[i].patch);
+
+        gsMatrix<T> pt(dim, 1);
+        const gsMatrix<T> supp = geo.support();
+        gsVector<bool> parameters = corners[i].parameters(dim);
+        for (short_t d = 0; d < dim; ++d)
+            pt(d, 0) = parameters[d] ? supp(d, 1) : supp(d, 0);
+
+        gsMatrix<T> deriv, deriv2;
+        geo.deriv_into(pt, deriv);
+        geo.deriv2_into(pt, deriv2);
+
+        gsMatrix<T> jacCf(2, 2);
+        jacCf(0, 0) =  deriv(3, 0);
+        jacCf(1, 0) = -deriv(1, 0);
+        jacCf(0, 1) = -deriv(2, 0);
+        jacCf(1, 1) =  deriv(0, 0);
+
+        std::vector<patchSide> sides;
+        corners[i].getContainingSides(dim, sides);
+        for (size_t j = 0; j < sides.size(); ++j)
+        {
+            if (mp.isBoundary(sides[j]))
+            {
+                gsVector<T> paramNormal(dim);
+                paramNormal.setZero();
+                paramNormal[sides[j].direction()] = sides[j].parameter() ? T(1) : T(-1);
+                gsVector<T> normal = jacCf * paramNormal * geo.orientation();
+                normal.normalize();
+                normals.push_back(normal);
+
+                const short_t tDir = 1 - sides[j].direction();
+                gsVector<T> vel(2);
+                vel(0) = deriv(tDir, 0);
+                vel(1) = deriv(tDir + 2, 0);
+                const T velSq = vel.squaredNorm();
+                gsVector<T> tangent = vel * (parameters[tDir] ? T(-1) : T(1)) / std::sqrt(velSq);
+                tangents.push_back(tangent);
+
+                gsVector<T> acc(2);
+                acc(0) = deriv2(tDir, 0);
+                acc(1) = deriv2(tDir + 3, 0);
+                accs.push_back(acc);
+                velSqs.push_back(velSq);
+            }
+        }
+    }
+
+    GISMO_ENSURE(normals.size() == 2, "Expected 2 boundary edges at boundary vertex, got " << normals.size());
+
+    gsBoundaryCornerData<T> out;
+    if (normals[0].dot(normals[1]) >= T(1) - eps)
+    {
+        // Case B: smooth boundary vertex (unique normal and tangent)
+        out.isSmooth = true;
+        out.dir1 = (normals[0] + normals[1]).normalized();
+        out.dir2.resize(2);
+        out.dir2(0) =  out.dir1(1);
+        out.dir2(1) = -out.dir1(0);
+        const T ck0 = accs[0].dot(out.dir1) / velSqs[0];
+        const T ck1 = accs[1].dot(out.dir1) / velSqs[1];
+        out.curvature = T(0.5) * (ck0 + ck1);
+    }
+    else if (std::abs(det2(tangents[0], tangents[1])) >= eps)
+    {
+        // Case A: sharp boundary corner with linearly independent tangents [t1, t2]
+        out.isSmooth = false;
+        out.dir1 = tangents[0];
+        out.dir2 = tangents[1];
+        out.curvature = T(0);
+    }
+    else
+    {
+        // Degenerate 0-angle / 360-angle cusp: tangents are collinear
+        out.isSmooth = true;
+        out.dir1 = normals[0];
+        out.dir2.resize(2);
+        out.dir2(0) =  out.dir1(1);
+        out.dir2(1) = -out.dir1(0);
+        const T ck0 = accs[0].dot(out.dir1) / velSqs[0];
+        const T ck1 = accs[1].dot(out.dir1) / velSqs[1];
+        out.curvature = T(0.5) * (ck0 + ck1);
+    }
+    return out;
+}
 
 } // namespace gismo

@@ -216,40 +216,75 @@ gsSparseMatrix<T> collocateCorners(
     result.setZero();
 
     // For each corner
+    const index_t stride = normals.cols() / 4;
+    GISMO_ENSURE(normals.rows() == 1 && (normals.cols() == 8 || normals.cols() == 16 || normals.cols() == 20),
+                 "Invalid corner directions matrix: expected 1x8, 1x16, or 1x20, got "
+                 << normals.rows() << "x" << normals.cols());
+
     for (index_t i=0; i<4; ++i)
     {
-        // Transform gradient to phyiscal domain
+        // Transform gradient to physical domain
         gsMatrix<T> der1Phys;
         transformGradients(md, i, der1, der1Phys);
         der1Phys = der1Phys.transpose();
-        // Transform x and y derivatives into derivatives in normal and tangenial direction
-        gsMatrix<T> transform(2,2);
-        transform(0,0) = normals(0+2*i);
-        transform(1,0) = normals(1+2*i);
-        transform(0,1) = normals(1+2*i);
-        transform(1,1) = -normals(0+2*i);
-        der1Phys = der1Phys * transform;
 
         // Transform Hessian to physical domain
         gsMatrix<T> der2Phys;
         transformDeriv2Hgrad(md, i, der1, der2, der2Phys);
-        // Transform x and y derivatives into derivatives in normal and tangenial direction
-        for (index_t j=0; j<idx.rows(); ++j)
-            der2Phys.row(j) = hessMatrixAsReduced<T>(
-                    transform * reducedHessAsMatrix<T>(der2Phys.row(j)) * transform
-            );
 
-        for (index_t j=0; j<idx.rows(); ++j)
+        if (stride == 2)
         {
-            result(6*i+0, idx(j, i)) = vals(j, i);       //      u
-            result(6*i+1, idx(j, i)) = der1Phys(j, 0);   // d_n  u
-            result(6*i+2, idx(j, i)) = der1Phys(j, 1);   // d_t  u
-            result(6*i+3, idx(j, i)) = der2Phys(j, 0);   // d_nn u
-            result(6*i+4, idx(j, i)) = der2Phys(j, 1);   // d_tt u
-            result(6*i+5, idx(j, i)) = der2Phys(j, 2);   // d_nt u
+            // Transform x and y derivatives into derivatives in normal and tangential direction
+            gsMatrix<T> transform(2,2);
+            transform(0,0) = normals(0+2*i);
+            transform(1,0) = normals(1+2*i);
+            transform(0,1) = normals(1+2*i);
+            transform(1,1) = -normals(0+2*i);
+            der1Phys = der1Phys * transform;
+
+            for (index_t j=0; j<idx.rows(); ++j)
+                der2Phys.row(j) = hessMatrixAsReduced<T>(
+                        transform * reducedHessAsMatrix<T>(der2Phys.row(j)) * transform
+                );
+
+            for (index_t j=0; j<idx.rows(); ++j)
+            {
+                result(6*i+0, idx(j, i)) = vals(j, i);       //      u
+                result(6*i+1, idx(j, i)) = der1Phys(j, 0);   // d_n  u
+                result(6*i+2, idx(j, i)) = der1Phys(j, 1);   // d_t  u
+                result(6*i+3, idx(j, i)) = der2Phys(j, 0);   // d_nn u
+                result(6*i+4, idx(j, i)) = der2Phys(j, 1);   // d_tt u
+                result(6*i+5, idx(j, i)) = der2Phys(j, 2);   // d_nt u
+            }
+        }
+        else
+        {
+            // General local frame transform Q = [d1, d2] (Case B: [n, t], Case A: [t1, t2])
+            gsMatrix<T> transform(2,2);
+            transform(0,0) = normals(0+stride*i);
+            transform(1,0) = normals(1+stride*i);
+            transform(0,1) = normals(2+stride*i);
+            transform(1,1) = normals(3+stride*i);
+            der1Phys = der1Phys * transform;
+
+            for (index_t j=0; j<idx.rows(); ++j)
+                der2Phys.row(j) = hessMatrixAsReduced<T>(
+                        transform.transpose() * reducedHessAsMatrix<T>(der2Phys.row(j)) * transform
+                );
+
+            const T cKappa = (stride == 5) ? normals(4+stride*i) : T(0);
+            for (index_t j=0; j<idx.rows(); ++j)
+            {
+                result(6*i+0, idx(j, i)) = vals(j, i);                              // u
+                result(6*i+1, idx(j, i)) = der1Phys(j, 0);                          // d_{d1} u
+                result(6*i+2, idx(j, i)) = der1Phys(j, 1);                          // d_{d2} u
+                result(6*i+3, idx(j, i)) = der2Phys(j, 0);                          // d_{d1 d1} u
+                result(6*i+4, idx(j, i)) = der2Phys(j, 1) + cKappa * der1Phys(j, 0);// d_{d2 d2} u + c_k d_{d1} u
+                result(6*i+5, idx(j, i)) = der2Phys(j, 2);                          // d_{d1 d2} u
+            }
         }
     }
-    return result.sparseView(1, 1e-4);
+    return result.sparseView(1, stride == 2 ? T(1e-4) : T(1e-12));
 }
 
 // ====================================================================
@@ -570,6 +605,9 @@ index_t sumUntil(const gsVector<index_t, 13> &vec, index_t until) {
 enum class cornerConditionType {
     all = 6,
     valuesNormals = 5,
+    valuesSharp = 51,
+    valuesSmooth = 3,
+    derivatives = 2,
     none = 0
 };
 
@@ -645,24 +683,25 @@ gsDofMapper makeMapperForArgyrisBasis(
         }
     }
 
-    // Now, incorporate the boundary conditons
-    // TODO: Implement separate conditions for "Values" and "Derivatives"
+    // Now, incorporate the boundary conditions
+    auto eliminateEdgeBlock = [&](const patchSide &ps, index_t levelOffset) {
+        const index_t nLvl = argBasis[ps.patch].sizes[levelOffset + 2 * (ps.m_index - 1)];
+        const index_t offLvl = sumUntil(argBasis[ps.patch].sizes, levelOffset + 2 * (ps.m_index - 1));
+        for (index_t j = 0; j < nLvl; ++j)
+            mapper.eliminateDof(offLvl + j, ps.patch);
+    };
+
     for (auto it = bc.begin("ValuesAndDerivatives"); it != bc.end("ValuesAndDerivatives"); ++it)
     {
-        const patchSide &ps = it->ps;
-
-        // External boundary side
-        const index_t nLvl0 = argBasis[ps.patch].sizes[1 + 2 * (ps.m_index - 1)];
-        const index_t offLvl0 = sumUntil(argBasis[ps.patch].sizes, 1 + 2 * (ps.m_index - 1));
-        for (index_t j = 0; j < nLvl0; ++j)
-          mapper.eliminateDof(offLvl0 + j, ps.patch);
-
-        const index_t nLvl1 = argBasis[ps.patch].sizes[2 + 2 * (ps.m_index - 1)];
-        const index_t offLvl1 =
-            sumUntil(argBasis[ps.patch].sizes, 2 + 2 * (ps.m_index - 1));
-        for (index_t j = 0; j < nLvl1; ++j)
-          mapper.eliminateDof(offLvl1 + j, ps.patch);
+        eliminateEdgeBlock(it->ps, 1);
+        eliminateEdgeBlock(it->ps, 2);
     }
+
+    for (auto it = bc.begin("Values"); it != bc.end("Values"); ++it)
+        eliminateEdgeBlock(it->ps, 1);
+
+    for (auto it = bc.begin("Derivatives"); it != bc.end("Derivatives"); ++it)
+        eliminateEdgeBlock(it->ps, 2);
 
     for (size_t i=0; i<cc.size(); ++i)
     {
@@ -678,6 +717,26 @@ gsDofMapper makeMapperForArgyrisBasis(
             for (index_t j=0; j<6; ++j)
                 if (j!=3)
                     mapper.eliminateDof(off_corner+j, cc[i].first.patch);
+        }
+        else if (cc[i].second == cornerConditionType::valuesSharp)
+        {
+            // Sharp corner (Case A) for 2nd biharmonic: eliminate u, d_{t1} u, d_{t2} u, d_{t1 t1} u, d_{t2 t2} u;
+            // leave mixed tangential derivative d_{t1 t2} u (j=5) free.
+            for (index_t j=0; j<5; ++j)
+                mapper.eliminateDof(off_corner+j, cc[i].first.patch);
+        }
+        else if (cc[i].second == cornerConditionType::valuesSmooth)
+        {
+            // Smooth boundary vertex (Case B) for 2nd biharmonic: eliminate u (0), d_t u (2), d_tt u + c_k d_n u (4);
+            // leave normal derivative DOFs d_n u (1), d_nn u (3), d_nt u (5) free.
+            mapper.eliminateDof(off_corner+0, cc[i].first.patch);
+            mapper.eliminateDof(off_corner+2, cc[i].first.patch);
+            mapper.eliminateDof(off_corner+4, cc[i].first.patch);
+        }
+        else if (cc[i].second == cornerConditionType::derivatives)
+        {
+            mapper.eliminateDof(off_corner+1, cc[i].first.patch);
+            mapper.eliminateDof(off_corner+5, cc[i].first.patch);
         }
         else if (cc[i].second == cornerConditionType::none)
         {
