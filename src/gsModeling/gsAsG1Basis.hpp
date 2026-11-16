@@ -284,7 +284,7 @@ gsSparseMatrix<T> collocateCorners(
             }
         }
     }
-    return result.sparseView(1, stride == 2 ? T(1e-4) : T(1e-12));
+    return result.sparseView(1, T(1e-12));
 }
 
 // ====================================================================
@@ -301,7 +301,7 @@ gsEdgeEmbedding<T> deriveEdgeEmbedding(
     const gsTensorBSplineBasis<2, T> &tensorBasis,
     const gsMatrix<T> &localGluingData,
     boxSide side,
-    T eps = 1e-4)
+    T eps = 1e-12)
 {
     const gsBSplineBasis<T> sideBasis = *tensorBasis.boundaryBasis(side);
     const gsMatrix<T> greville = sideBasis.anchors();
@@ -482,7 +482,7 @@ gsSparseMatrix<T> deriveCornerEmbedding(
     gsMatrix<T> result;
     makeSparseLUSolver(collocationMatrix)->apply(rhs, result);
 
-    return result.topRows(rows).sparseView(1e-4);
+    return result.topRows(rows).sparseView(T(1e-12));
 }
 
 template <typename T> struct gsAsG1Embedding {

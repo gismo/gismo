@@ -32,6 +32,7 @@
 #include <gismo.h>
 #include <gsModeling/gsAsG1Basis.hpp>
 #include <gsModeling/gsAsG1Domain.hpp>
+#include <gsModeling/gsAsG1Smoother.hpp>
 #include <gsMultiGrid/gsMultiGrid.h>
 #include <gsUtils/gsStopwatch.h>
 
@@ -75,6 +76,8 @@ struct LevelData2
     gsSparseMatrix<T> K_free;
     gsMatrix<T> F_free;
     gsMatrix<T> sol_bnd;
+    std::vector<index_t> skeletonDofs;
+    std::vector<std::vector<index_t>> smootherBlocks;
 };
 
 // Setup geometry and Argyris AS-G1 embedding on a single grid level (without PDE assembly)
@@ -86,7 +89,8 @@ LevelData2<T> setupLevelGeometry2(
     const gsBoundaryConditions<T> &bc,
     const std::vector<cornerCondition> &cc,
     index_t ref,
-    bool isFinest)
+    bool isFinest,
+    const std::string &smootherMode = "")
 {
     LevelData2<T> ld;
     ld.ref = ref;
@@ -96,6 +100,13 @@ LevelData2<T> setupLevelGeometry2(
     for (index_t i = 0; i < ref; ++i)
         ld.dbasis.uniformRefine(1, mult);
 
+    // Uniform parametric cell scale for this level (shared across all patches so interface/vertex matching stays exact)
+    T hLevel = ld.dbasis[0].getMinCellLength();
+    for (size_t i = 1; i < mp.nPatches(); ++i)
+        hLevel = std::min(hLevel, ld.dbasis[i].getMinCellLength());
+    if (hLevel <= T(0))
+        hLevel = std::pow(T(0.5), ref);
+
     gsBlockSparseMatrix<T> argBasisGlobalCreator(mp.nPatches(), mp.nPatches());
     for (size_t i = 0; i < mp.nPatches(); ++i)
     {
@@ -104,6 +115,28 @@ LevelData2<T> setupLevelGeometry2(
             gsMatrix<T>(gd.row(i)),
             gsMatrix<T>(framesForPatches.row(i)),
             mp.patch(i)));
+
+        // Rescale derivative DOFs uniformly (1st deriv by 1/h, 2nd deriv by 1/h^2) to balance T^T T and K_free
+        const auto &sz = ld.argBasis[i].sizes;
+        gsMatrix<T> scaleVec = gsMatrix<T>::Ones(ld.argBasis[i].matrix.cols(), 1);
+        index_t off = sz[0];
+        for (int s = 0; s < 4; ++s)
+        {
+            off += sz[1 + 2 * s];
+            for (index_t k = 0; k < sz[2 + 2 * s]; ++k)
+                scaleVec(off + k, 0) = T(1) / hLevel;
+            off += sz[2 + 2 * s];
+        }
+        for (int c = 0; c < 4; ++c)
+        {
+            scaleVec(off + 1, 0) = T(1) / hLevel;
+            scaleVec(off + 2, 0) = T(1) / hLevel;
+            scaleVec(off + 3, 0) = T(1) / (hLevel * hLevel);
+            scaleVec(off + 4, 0) = T(1) / (hLevel * hLevel);
+            scaleVec(off + 5, 0) = T(1) / (hLevel * hLevel);
+            off += 6;
+        }
+        ld.argBasis[i].matrix = ld.argBasis[i].matrix * scaleVec.asDiagonal();
         argBasisGlobalCreator.set(i, i, ld.argBasis[i].matrix);
     }
     gsSparseMatrix<T> argBasisGlobal = argBasisGlobalCreator;
@@ -119,6 +152,11 @@ LevelData2<T> setupLevelGeometry2(
         const index_t nBnd = ld.mapper.boundarySize();
         ld.T_bnd = T_global.rightCols(nBnd);
     }
+
+    if (smootherMode == "ring1")
+        ld.skeletonDofs = collectCoupledRing1Dofs(mp, ld.dbasis, ld.argBasis, ld.mapper);
+    else if (smootherMode == "line_ring1")
+        ld.smootherBlocks = collectInteriorLineAndRing1Blocks(mp, ld.dbasis, ld.argBasis, ld.mapper);
 
     return ld;
 }
@@ -292,6 +330,7 @@ bool runDomainExperiment2(
     index_t numPreSmooth,
     index_t numPostSmooth,
     const std::string &solverType,
+    const std::string &smootherType,
     T tol,
     index_t maxIt,
     bool homogeneousBC,
@@ -310,11 +349,18 @@ bool runDomainExperiment2(
     const bool useBubble     = homogeneousBC && (exactType == "bubble" || exactType == "sin_bubble");
     const bool useConstForce = homogeneousBC && (exactType == "const");
 
+    const std::string smootherLabel =
+        (smootherType == "fd_ring1") ? "Point GS + Patch Interior FD + Coupled Ring-1" :
+        (smootherType == "line_ring1") ? "Alternating Line Strips + Coupled Ring-1" :
+        (smootherType == "ring1") ? "Point GS + Coupled Ring-1 Skeleton" :
+        (smootherType == "sgs" || (smootherType == "auto" && solverType != "cg")) ? "Symmetric Gauss-Seidel" :
+        "Point Gauss-Seidel (fwd pre, bwd post)";
+
     gsInfo << "\n" << std::string(80, '=') << "\n";
     gsInfo << "Domain: " << geomPath << "\n";
     gsInfo << "PDE: " << beta << "*u + Delta^2 u = f, u = g1, Delta u = g2 on boundary\n";
     gsInfo << "Degree p = " << degree << " | Levels: r = " << minRef << " -> " << maxRef
-           << " | Smoother: Symmetric Gauss-Seidel (" << numPreSmooth << " pre, " << numPostSmooth << " post)\n";
+           << " | Smoother: " << smootherLabel << " (" << numPreSmooth << " pre, " << numPostSmooth << " post)\n";
     gsInfo << "Solver: " << (solverType == "cg" ? "PCG (Multigrid Preconditioner)" : "Direct Multigrid Iteration")
            << " | Cycles: " << (numCycles == 1 ? "V-cycle" : "W-cycle") << " | Tol = " << tol << "\n";
     gsInfo << "Boundary condition: " << (homogeneousBC ? "Homogeneous (u=0, Delta u=0)" : "Manufactured solution projection (u=g1, Delta u=g2)")
@@ -461,6 +507,7 @@ bool runDomainExperiment2(
     }
 
     // Set up grid hierarchy from minRef to maxRef
+    const std::string levelSmootherMode = (smootherType == "ring1" || smootherType == "line_ring1") ? smootherType : std::string();
     const index_t nLevels = maxRef - minRef + 1;
     const index_t finest  = nLevels - 1;
     std::vector<LevelData2<T>> levels(nLevels);
@@ -474,7 +521,7 @@ bool runDomainExperiment2(
             const bool isFinest = (l == finest);
             gsStopwatch timer;
             timer.restart();
-            levels[l] = setupLevelGeometry2(mp, gd, framesForPatches, bc, cc, ref, isFinest);
+            levels[l] = setupLevelGeometry2(mp, gd, framesForPatches, bc, cc, ref, isFinest, l > 0 ? levelSmootherMode : std::string());
             if (isFinest)
             {
                 const gsFunctionSet<T> *rhsPtr = useConstForce
@@ -517,10 +564,25 @@ bool runDomainExperiment2(
     mg->setNumCycles(numCycles);
     mg->setNumPreSmooth(numPreSmooth);
     mg->setNumPostSmooth(numPostSmooth);
+    mg->setCoarseSolver(makeSparseCholeskySolver(mg->matrix(0)));
 
-    for (index_t l = 0; l < nLevels; ++l)
+    for (index_t l = 1; l < nLevels; ++l)
     {
-        typename gsMultiGridOp<T>::PrecondPtr sm(makeGaussSeidelOp(mg->matrix(l)).release());
+        typename gsMultiGridOp<T>::PrecondPtr sm;
+        if (smootherType == "fd_ring1")
+            sm = typename gsMultiGridOp<T>::PrecondPtr(
+                gsAsG1FastDiagSmootherOp<T>::make(
+                    mg->matrix(l), mp, levels[l].dbasis, levels[l].argBasis, levels[l].mapper, beta).release());
+        else if (smootherType == "line_ring1")
+            sm = typename gsMultiGridOp<T>::PrecondPtr(
+                gsAsG1BlockSmootherOp<T>::make(mg->matrix(l), levels[l].smootherBlocks).release());
+        else if (smootherType == "ring1")
+            sm = typename gsMultiGridOp<T>::PrecondPtr(
+                gsAsG1SkeletonSmootherOp<T>::make(mg->matrix(l), levels[l].skeletonDofs).release());
+        else if (smootherType == "sgs" || (smootherType == "auto" && solverType != "cg"))
+            sm = typename gsMultiGridOp<T>::PrecondPtr(makeSymmetricGaussSeidelOp(mg->matrix(l)).release());
+        else
+            sm = typename gsMultiGridOp<T>::PrecondPtr(makeGaussSeidelOp(mg->matrix(l)).release());
         mg->setSmoother(l, sm);
     }
 
@@ -737,6 +799,7 @@ int main(int argc, char *argv[])
     std::string outDir("");
     std::string txtOut("");
     std::string solverType("cg");
+    std::string smootherType("auto");
     std::string suite("classic");
     std::string exactType("bubble");
     index_t degree = 3;
@@ -764,6 +827,7 @@ int main(int argc, char *argv[])
     cmd.addString("o", "outDir", "Output directory for Paraview VTK/PVD files.", outDir);
     cmd.addString("t", "txtOut", "Filename for tab-separated text results output.", txtOut);
     cmd.addString("s", "solver", "Iterative solver: 'cg' (PCG) or 'mg' (Direct Multigrid Iteration).", solverType);
+    cmd.addString("", "smoother", "Smoother: 'auto', 'gs', 'sgs', 'ring1', 'line_ring1', or 'fd_ring1'.", smootherType);
     cmd.addString("", "suite", "Benchmark suite when --all is set: classic, generator, noholes, holes, all.", suite);
     cmd.addString("", "exact", "Homogeneous exact solution (--homo): 'bubble' (B-spline), 'sin_bubble', 'box', or 'const'.", exactType);
     cmd.addInt("d", "degree", "Spline degree (minimum 3 for C1 AS-G1).", degree);
@@ -815,7 +879,7 @@ int main(int argc, char *argv[])
         runDomainExperiment2<T>(
             geometry, degree, bubbleDeg, minRef, maxRef,
             numCycles, numPreSmooth, numPostSmooth,
-            solverType, tol, maxIt, homogeneousBC, exactType, freqA, beta, forceVal, eps, margin,
+            solverType, smootherType, tol, maxIt, homogeneousBC, exactType, freqA, beta, forceVal, eps, margin,
             verifyDirect, plot, outDir, sanitizeStem2(geometry), txtOut);
     }
     else
@@ -982,7 +1046,7 @@ int main(int argc, char *argv[])
             bool ok = runDomainExperiment2<T>(
                 file, degree, bubbleDeg, minRef, maxRef,
                 numCycles, numPreSmooth, numPostSmooth,
-                solverType, tol, maxIt, homogeneousBC, exactType, freqA, beta, forceVal, eps, margin,
+                solverType, smootherType, tol, maxIt, homogeneousBC, exactType, freqA, beta, forceVal, eps, margin,
                 verifyDirect, plot, outDir, subDir, txtOut);
             if (ok)
                 numPassed++;
