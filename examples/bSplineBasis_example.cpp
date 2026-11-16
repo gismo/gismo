@@ -102,7 +102,8 @@ void printToParaview(const gsBSplineBasis<>& bsb,
                      const std::string& name)
 {
     gsInfo << "Writing bsb0 to paraview in a file: " << name << "\n\n";
-    gsWriteParaview(bsb, name);
+    gsParaview<real_t> pv;
+    pv.write(bsb, name);
 }
 
 void print(const gsBSplineBasis<>& bsb,

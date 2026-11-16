@@ -12,13 +12,14 @@
 */
 
 # include <gismo.h>
+# include <gsAssembler/gsDofMapperCreator.h>
 
 using namespace gismo;
 
 
 void setMapperForBiharmonic(gsBoundaryConditions<> & bc, gsMultiBasis<> & basis, gsDofMapper & mapper)
 {
-    mapper.init(basis);
+    mapper = createMapper(basis, 1, /*conforming=*/false);
 
     for (gsBoxTopology::const_iiterator it = basis.topology().iBegin();
          it != basis.topology().iEnd(); ++it) // C^0 at the interface
@@ -46,7 +47,7 @@ void setMapperForBiharmonic(gsBoundaryConditions<> & bc, gsMultiBasis<> & basis,
 void setDirichletNeumannValuesL2Projection(gsMultiPatch<> & mp, gsMultiBasis<> & basis, gsBoundaryConditions<> & bc, const expr::gsFeSpace<real_t> & u)
 {
     const gsDofMapper & mapper = u.mapper();
-    gsDofMapper mapperBdy(basis, u.dim());
+    gsDofMapper mapperBdy = createMapper(basis, u.dim(), /*conforming=*/false);
     for (gsBoxTopology::const_iiterator it = basis.topology().iBegin();
          it != basis.topology().iEnd(); ++it) // C^0 at the interface
     {
@@ -320,7 +321,7 @@ int main(int argc, char *argv[])
     {
         // Write approximate and exact solution to paraview files
         gsInfo << "Plotting in Paraview...\n";
-        ev.options().setSwitch("plot.elements", true);
+        ev.options().setSwitch("elements", true);
         ev.writeParaview( u_sol   , G, "solution");
         gsInfo << "Saved with solution.pvd \n";
     }

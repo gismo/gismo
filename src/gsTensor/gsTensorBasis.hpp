@@ -119,6 +119,14 @@ gsTensorBasis<d,T>& gsTensorBasis<d,T>::operator=( const gsTensorBasis & o)
     return *this;
 }
 
+template<short_t d, class T>
+memory::shared_ptr<gsDomain<T> > gsTensorBasis<d,T>::domain() const
+{
+    std::vector<typename gsDomain<T>::Ptr> domains(d);
+    for (short_t i = 0; i < d; ++i)
+        domains[i] = m_bases[i]->domain();
+    return memory::make_shared(new gsTensorDomain<T,d>(give(domains)));
+}
 
 template<short_t d, class T>
 void gsTensorBasis<d,T>::anchors_into(gsMatrix<T>& result) const

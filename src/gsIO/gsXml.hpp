@@ -107,11 +107,11 @@ gsXmlNode * putMatrixToXml ( gsMatrix<T> const & mat, gsXmlTree & data, std::str
     return new_node;
 }
 
-template<class T>
-gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<T> const & mat,
+template<class T, int _Options, typename _Index>
+gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<T,_Options,_Index> const & mat,
                                    gsXmlTree & data, std::string name)
 {
-    typedef typename gsSparseMatrix<T>::InnerIterator cIter;
+    typedef typename gsSparseMatrix<T,_Options,_Index>::InnerIterator cIter;
 
     std::ostringstream str;
     str << std::setprecision(data.getFloatPrecision());

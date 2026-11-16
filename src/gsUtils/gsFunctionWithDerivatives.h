@@ -122,9 +122,15 @@ public:
     }
     */
     
-private:
+public:
 
-    gsFunctionWithDerivatives(const gsFunctionWithDerivatives<T> &func);
+    gsFunctionWithDerivatives(const gsFunctionWithDerivatives<T> &func)
+    : m_values(func.m_values),
+      m_derivs(func.m_derivs),
+      m_deriv2(func.m_deriv2)
+    { }
+
+private:
         
     bool checkDimensions()
     {

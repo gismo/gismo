@@ -61,7 +61,8 @@ namespace rapidxml
 
 #define GSXML_GET_INTO(obj)          \
     static void get_into (gsXmlNode * node, obj & result) \
-    {   result = *get(node); }
+    {   memory::unique_ptr<obj> tmp(get(node));           \
+        result = *tmp; }
 
 #define TMPLA2(t1,t2)             t1,t2
 #define TMPLA3(t1,t2,t3)          t1,t2,t3
@@ -270,7 +271,7 @@ inline gsXmlNode* searchId(const int id, gsXmlNode* root,
 /// \param label the label which is sought for
 /// \param tag_name Limit search to tags named \em tag_name .
 /// \param print_warning Print warning if search was not successful
-inline gsXmlNode* searchLabel(const std::string label, 
+inline gsXmlNode* searchLabel(const std::string label,
                            gsXmlNode* root,
                            const char* tag_name = NULL,
                            const bool print_warning = true) {
@@ -417,8 +418,8 @@ void getSparseEntriesFromXml ( gsXmlNode * node,
                                gsSparseEntries<T> & result );
 
 /// Helper to insert sparse matrices into XML
-template<class T>
-gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<T> const & mat,
+template<class T, int _Options, typename _Index>
+gsXmlNode * putSparseMatrixToXml ( gsSparseMatrix<T,_Options,_Index> const & mat,
                                    gsXmlTree & data, std::string name = "SparseMatrix");
 
 }// end namespace internal

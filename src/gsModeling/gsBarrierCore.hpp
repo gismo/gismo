@@ -346,12 +346,10 @@ void gsBarrierCore<d, T>::foldoverElimination(const gsMultiPatch<T> &mp,
     if (Efoldover <= EPSILON) { break; }
   }
 
-  if (Efoldover > EPSILON) {
-    throw std::runtime_error(
-        "Maximum iterations reached. The foldover-energy value is " +
-            std::to_string(Efoldover) +
-            ". This suggests there may be issues with the input data.");
-  }
+  GISMO_ENSURE(Efoldover <= EPSILON,
+               "Foldover elimination failed. The foldover-energy value is " +
+                   std::to_string(Efoldover) +
+                   ". This suggests there may be issues with the input data.");
 }
 
 template<short_t d, typename T>
@@ -1240,8 +1238,6 @@ template<typename E1, typename E2>
 class frprod2_expr;
 template<typename E1, typename E2>
 class frprod3_expr;
-template<class E0, class E1, class E2>
-class ternary_expr; // ternary expression
 template<class E>
 class jacScaledLx_expr;
 template<class E>

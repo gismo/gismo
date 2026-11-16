@@ -398,9 +398,13 @@ public:
         assert( geoDim() == 3 );
         gsEigen::Transform<T,3,gsEigen::Affine>
             rot( gsEigen::AngleAxis<T> (angle,axis.normalized()) );
+        // OLD:
         // To do: Simpler way to use transforms ?
-        this->m_coefs = (this->m_coefs.rowwise().homogeneous() *
-                         rot.matrix().transpose() ).leftCols(3) ;
+        // this->m_coefs = (this->m_coefs.rowwise().homogeneous() *
+        //                  rot.matrix().transpose() ).leftCols(3) ;
+        // NEW:
+        this->m_coefs = this->m_coefs * rot.linear().transpose();
+        this->m_coefs.rowwise() += rot.translation().transpose();
     }
 
     /// Apply 2D Rotation by \a angle radians
@@ -462,6 +466,17 @@ public:
     void refineElements( std::vector<index_t> const & boxes );
 
     void unrefineElements( std::vector<index_t> const & boxes );
+
+    /** \brief Refines the support of the \a i-th basis function and
+     * adjusts the coefficients to keep the geometry the same.
+     *
+     * For tensor-product bases (e.g. gsTensorBSpline) knots are
+     * inserted in each component basis, so the refinement is
+     * prolongated along the parametric directions. For hierarchical
+     * bases (e.g. gsTHBSpline) the support is refined locally by one
+     * level. See gsBasis::refine_withCoefs().
+     */
+    void refineCoeff(index_t i);
 
     typename gsGeometry::uPtr coord(const index_t c) const;
 

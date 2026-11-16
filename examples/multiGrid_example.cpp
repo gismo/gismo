@@ -392,8 +392,10 @@ int main(int argc, char *argv[])
 
         // Write solution to paraview files
         gsInfo << "Write Paraview data to file multiGrid_result.pvd\n";
-        gsWriteParaview<>(sol, "multiGrid_result", 1000);
-        gsFileManager::open("multiGrid_result.pvd");
+        gsParaview<real_t> pv;
+        pv.options().setInt("numPoints", 1000);
+        pv.options().setSwitch("show", true);
+        pv.write(sol, "multiGrid_result");
     }
     if (!plot&&out.empty())
     {
@@ -423,14 +425,10 @@ gsPreconditionerOp<>::Ptr setupSubspaceCorrectedMassSmoother(
       "Unknown interface strategy." );
 
     // Setup dof mapper
-    gsDofMapper dm;
-    mb.getMapper(
+    gsDofMapper dm = createMapper(mb, bc,
        (dirichlet::strategy)opt.askInt("DirichletStrategy",11),
        iFaceStrategy,
-       bc,
-       dm,
-       0
-    );
+       /*nComp=*/1, /*unk=*/0, /*finalize=*/true);
     const index_t nTotalDofs = dm.freeSize();
 
     // Decompose the whole domain into components

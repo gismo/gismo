@@ -294,13 +294,7 @@ public:
     // Evaluates the (partial) derivatives of an element given by coefs at (the columns of) u.
     //void deriv_into(const gsMatrix<T> & u, const gsMatrix<T> & coefs, gsMatrix<T>& result ) const ;
 
-    memory::shared_ptr<gsDomain<T> > domain() const override
-    {
-        std::vector<typename gsDomain<T>::Ptr> domains(d);
-        for (short_t i = 0; i < d; ++i)
-            domains[i] = m_bases[i]->domain();
-        return memory::make_shared(new gsTensorDomain<T,d>(give(domains)));
-    }
+    memory::shared_ptr<gsDomain<T> > domain() const override;
 
     // Look at gsBasis class for documentation
     virtual typename gsGeometry<T>::uPtr interpolateAtAnchors(gsMatrix<T> const& vals) const override;

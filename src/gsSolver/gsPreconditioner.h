@@ -253,4 +253,123 @@ protected:
     using gsPreconditionerOp<T>::m_num_of_sweeps;
 }; // gsPreconditionerFromOp
 
+/// @brief Wrapper for classes inheriting from gsPreconditionerOp
+/// This wrapper adapts any Gismo preconditioner operator for use with Eigen's iterative solvers
+template <class T>
+class gsPreconditionerWrapper
+{
+    typedef T Scalar;
+    typedef gsEigen::Matrix<Scalar,gsEigen::Dynamic,1> Vector;
+    typedef typename Vector::StorageIndex StorageIndex;
+
+public:
+    typedef gsEigen::SparseMatrix<Scalar,0,index_t> EigenSparseMatrixType;
+
+    /// Default constructor
+    gsPreconditionerWrapper()
+    :
+    m_preconditioner(nullptr)
+    {}
+
+    /// Constructor with preconditioner
+    explicit gsPreconditionerWrapper(typename gsPreconditionerOp<Scalar>::uPtr preconditioner)
+    :
+    m_preconditioner(give(preconditioner))
+    {}
+
+    /// Move constructor
+    gsPreconditionerWrapper(gsPreconditionerWrapper&& other) noexcept
+    :
+    m_preconditioner(give(other.m_preconditioner))/* ,
+    m_stored_matrix(give(other.m_stored_matrix)) */
+    {}
+
+    /// Move assignment operator
+    gsPreconditionerWrapper& operator=(gsPreconditionerWrapper&& other) noexcept
+    {
+        if (this != &other) {
+            m_preconditioner = give(other.m_preconditioner);
+            // m_stored_matrix = give(other.m_stored_matrix);
+        }
+        return *this;
+    }
+
+    /// Assignment from preconditioner
+    gsPreconditionerWrapper& operator=(typename gsPreconditionerOp<Scalar>::uPtr preconditioner)
+    {
+        m_preconditioner = give(preconditioner);
+        return *this;
+    }
+
+    /// Set preconditioner
+    void set(typename gsPreconditionerOp<Scalar>::uPtr preconditioner)
+    {
+        m_preconditioner = give(preconditioner);
+    }
+
+    StorageIndex rows() const
+    {
+        return m_preconditioner ? gsEigen::internal::convert_index<StorageIndex>(m_preconditioner->rows())
+                                : StorageIndex(0);
+    }
+
+    StorageIndex cols() const
+    {
+        return m_preconditioner ? gsEigen::internal::convert_index<StorageIndex>(m_preconditioner->cols())
+                                : StorageIndex(0);
+    }
+
+    template<typename EigenMatType>
+    gsPreconditionerWrapper& analyzePattern(const EigenMatType& )
+    {
+        return *this;
+    }
+
+    template<typename EigenMatType>
+    gsPreconditionerWrapper& factorize(const EigenMatType& mat)
+    {
+        // Store a copy of the matrix for later use
+        // m_stored_matrix = mat;
+        return *this;
+    }
+
+    template<typename EigenMatType>
+    gsPreconditionerWrapper& compute(const EigenMatType& mat)
+    {
+        return analyzePattern(mat).factorize(mat);
+    }
+
+    template<typename Rhs>
+    inline const Vector solve(const gsEigen::MatrixBase<Rhs>& b) const
+    {
+        GISMO_ENSURE(m_preconditioner != nullptr, "gsPreconditionerWrapper: No preconditioner set.\n"
+            "Please call solver.preconditioner() = <preconditioner> or solver.setPreconditioner(<preconditioner>)"
+            " before calling solve().");
+
+        // Convert Eigen vector to Gismo format
+        const gsMatrix<Scalar> & bmat = b;
+        gsMatrix<Scalar> result(b.rows(), b.cols());
+
+        // Apply Gismo preconditioner
+        m_preconditioner->apply(bmat, result);
+
+        // Convert back to Eigen format
+        return result;
+    }
+
+    gsEigen::ComputationInfo info() { return gsEigen::Success; }
+
+    /// Access to the underlying preconditioner
+    const gsPreconditionerOp<Scalar>* preconditioner() const { return m_preconditioner.get(); }
+          gsPreconditionerOp<Scalar>* preconditioner()       { return m_preconditioner.get(); }
+
+protected:
+    typename gsPreconditionerOp<Scalar>::uPtr m_preconditioner;
+    // NOTE: Intentionally kept commented-out. When extending gsPreconditionerWrapper
+    // to support matrix-dependent Eigen preconditioners that need access to the
+    // original system matrix, this member can be uncommented and used to store
+    // a copy of that matrix during initialization.
+    // EigenSparseMatrixType m_stored_matrix;
+};
+
 } // namespace gismo

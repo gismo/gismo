@@ -457,6 +457,10 @@ public:
 
     /// Evaluate the function, \see eval_into()
     gsMatrix<T> eval(const gsMatrix<T>& u) const;
+    gsMatrix<T> operator()(const gsMatrix<T>& u) const
+    {
+        return this->eval(u);
+    }
 
     /// Evaluate the derivatives, \see deriv_into()
     gsMatrix<T> deriv(const gsMatrix<T>& u) const;

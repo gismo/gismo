@@ -2,12 +2,12 @@
 
     @brief Mathematical functions for use in G+Smo.
 
-    This file is part of the G+Smo library. 
+    This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
-    
+
     Author(s): A. Bressan, A. Mantzaflaris
 */
 
@@ -22,17 +22,24 @@
   #include <gsCoDiPack/gsCoDiPack.h>
 #endif
 
+#ifdef gsAutoDiff_ENABLED
+  #include <gsAutoDiff/gsAutoDiffUtils.h>
+#endif
+
 namespace gismo {
 
 /** @namespace gismo::math
 
     @brief
     This namespace contains common mathematical functions.
-    
+
     \ingroup Core
 */
 namespace math {
 
+/// Numeric limits of \a real_t. For a type other than \a real_t -- in
+/// particular inside a class template parameterised on the scalar type -- use
+/// math::numeric_limits<T> below instead.
 typedef std::numeric_limits<real_t> limits;
 
 // Math functions
@@ -91,6 +98,23 @@ using codi::isinf;
 //using codi::real;
 //using codi::imag;
 //using codi::conj;
+#endif
+
+#ifdef gsAutoDiff_ENABLED
+using autodiff::detail::abs;
+using autodiff::detail::sqrt;
+using autodiff::detail::pow;
+using autodiff::detail::exp;
+using autodiff::detail::log;
+using autodiff::detail::sin;
+using autodiff::detail::cos;
+using autodiff::detail::tan;
+using autodiff::detail::asin;
+using autodiff::detail::acos;
+using autodiff::detail::atan;
+using autodiff::detail::sinh;
+using autodiff::detail::cosh;
+using autodiff::detail::tanh;
 #endif
 
 #ifdef gsUniversal_ENABLED
@@ -195,8 +219,20 @@ inline sw::universal::posit<nbits,es> nextafter(sw::universal::posit<nbits,es> x
 // }
 
 
-/** Numeric precision (number of exact decimal digits expected) for
-    real_t
+/** Numeric precision and range of the scalar type \a T.
+
+    Wraps std::numeric_limits<T> so that types whose members are functions
+    rather than constants (mpfr::mpreal) can be used through one interface.
+
+    \note For a floating point type, min() is the smallest positive NORMAL
+    value, not the smallest value. Seed a maximum-reduction with lowest(),
+    which is the most negative finite value; min() would make the reduction
+    return a tiny positive number on an everywhere-negative field.
+
+    \note The range accessors are only meaningful where std::numeric_limits
+    is specialised for \a T; the primary standard template returns a
+    value-initialised T. A scalar needing its own mapping must specialise
+    this template, as mpfr::mpreal does below.
 */
 template <typename T>
 struct numeric_limits
@@ -206,6 +242,18 @@ struct numeric_limits
 
     inline static int digits10()
     { return std::numeric_limits<T>::digits10; }
+
+    /// Smallest positive normal value
+    inline static T min()    { return (std::numeric_limits<T>::min)();    }
+
+    /// Largest finite value
+    inline static T max()    { return (std::numeric_limits<T>::max)();    }
+
+    /// Most negative finite value (== -max() for floating point types)
+    inline static T lowest() { return std::numeric_limits<T>::lowest();   }
+
+    /// Difference between 1 and the next representable value
+    inline static T epsilon(){ return std::numeric_limits<T>::epsilon();  }
 };
 
 #ifdef gsMpfr_ENABLED
@@ -217,6 +265,18 @@ struct numeric_limits<mpfr::mpreal>
 
     inline static int digits10()
     { return std::numeric_limits<mpfr::mpreal>::digits10(); }
+
+    inline static mpfr::mpreal min()
+    { return (std::numeric_limits<mpfr::mpreal>::min)(); }
+
+    inline static mpfr::mpreal max()
+    { return (std::numeric_limits<mpfr::mpreal>::max)(); }
+
+    inline static mpfr::mpreal lowest()
+    { return std::numeric_limits<mpfr::mpreal>::lowest(); }
+
+    inline static mpfr::mpreal epsilon()
+    { return std::numeric_limits<mpfr::mpreal>::epsilon(); }
 };
 #endif
 
@@ -308,6 +368,7 @@ using ::sinh;
 using ::sqrt;
 using ::tan;
 using ::tanh;
+using ::trunc;
 
 //fixme: min/max duplication with global
 inline mpq_class (max)(const mpq_class & a, const mpq_class & b)
@@ -351,12 +412,12 @@ inline int ipow(int x, unsigned exp)
 }
 
 /// integer square root
-inline unsigned isqrt(unsigned value) 
+inline unsigned isqrt(unsigned value)
 {
     const unsigned sr = static_cast<unsigned>(std::sqrt(static_cast<double>(value)));
     //do { ++sr; } while(sr * sr  <= value); // pick closest integer
-    //do { --sr; } while(sr * sr   > value);  
-    return sr; 
+    //do { --sr; } while(sr * sr   > value);
+    return sr;
 }
 
 /// Returns convex combination of \a a and \a b with weight \a t

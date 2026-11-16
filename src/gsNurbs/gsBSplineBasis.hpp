@@ -737,8 +737,14 @@ gsTensorBSplineBasis<1,T>::evalAllDersSingle_into(index_t i,
 
         for( int k = 1; k <= m_p; k++ ) // Compute full triangular table
         {
-            saved = (N[(k-1)] == 0 ? (T)(0) :
-                     ((u(0,s)-m_knots[i])*N[ k-1 ])/(m_knots[i+k]-m_knots[i]) );
+            // saved = (N[(k-1)] == 0 ? (T)(0) :
+            //          ((u(0,s)-m_knots[i])*N[ k-1 ])/(m_knots[i+k]-m_knots[i]) );
+            // Note: ternary not used here as var_t (reverse-mode AD) does not
+            // support branch selection on the computational graph.
+            if ( N[(k-1)] == 0 )
+                saved = (T)0.0;
+            else
+                saved = ((u(0,s)-m_knots[i])*N[ k-1 ])/(m_knots[i+k]-m_knots[i]);
 
             for( int j = 0; j < m_p-k+1; j++)
             {
@@ -1047,6 +1053,28 @@ void gsTensorBSplineBasis<1,T>::refine_withCoefs(gsMatrix<T>& coefs, const std::
     // Probably does not work with periodic basis. We would need to shift the knots in the ghost areas by the active length,
     // sort the knot vector, swap the coefs accordingly, call this with perCoefs (or coefs?) and stretch outer knots.
     gsBoehmRefine(this->knots(), coefs, m_p, knots.begin(), knots.end());
+}
+
+
+template <class T>
+void gsTensorBSplineBasis<1,T>::refine_withCoefs(gsMatrix<T>& coefs, const gsMatrix<T> & boxes)
+{
+    GISMO_ASSERT( boxes.rows() == 1, "Refinement boxes must have one row.");
+    GISMO_ASSERT( boxes.cols() % 2 == 0, "Refinement boxes must have even number of columns.");
+
+    const std::vector<T> ukv = m_knots.unique();
+    std::vector<T> newKnots;
+    for (size_t i = 1; i < ukv.size(); ++i)
+    {
+        const T midpt = (ukv[i] + ukv[i-1]) / (T)(2);
+        for (index_t j = 0; j < boxes.cols(); j+=2)
+            if ( boxes(0,j) < midpt && midpt < boxes(0,j+1) )
+            {
+                newKnots.push_back(midpt);
+                break;
+            }
+    }
+    this->refine_withCoefs(coefs, newKnots);
 }
 
 

@@ -41,6 +41,8 @@ public:
     explicit gsTensorDomainIterator(const gsTensorDomain<T,D> & domain)
     : gsDomainIterator<T>()
     {
+        this->setPatchIndex(domain.patchIndex());
+
         // compute breaks and mesh size
         // meshStart.resize(D);
         // meshEnd.resize(D);

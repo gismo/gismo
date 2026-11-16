@@ -16,8 +16,6 @@
 #include <gsCore/gsForwardDeclarations.h>
 #include <gsMSplines/gsMappedBasis.h>   // Only to make linker happy
 #include <gsCore/gsDofMapper.h>         // Only to make linker happy
-#include <gsExpressions/gsExprHelper.h>
-#include <gsAssembler/gsExprEvaluator.h>
 // #include <gsIO/gsIOUtils.h>
 
 
@@ -35,7 +33,7 @@ namespace gismo
     /// @param export_base64 export as base64 encoded string
     /// @return Vector of strings of all <DataArrays>
     template <class T>
-    std::vector<std::string> toVTK(const gsFunctionSet<T>& funSet,
+    std::vector<std::string> toParaview(const gsFunctionSet<T>& funSet,
                                    unsigned nPts = 1000,
                                    unsigned precision = 5,
                                    std::string label = "",
@@ -43,7 +41,7 @@ namespace gismo
 
 
     template <class T>
-    std::vector<std::string> toVTK(const gsField<T>& field,
+    std::vector<std::string> toParaview(const gsField<T>& field,
                                    unsigned nPts = 1000,
                                    unsigned precision = 5,
                                    std::string label = "",
@@ -65,57 +63,6 @@ namespace gismo
                             std::map<std::string, std::string> attributes={{"",""}},
                             unsigned precision = 5,
                             const bool& export_base64=false);
-
-    /// @brief  Evaluates one expression over all patches and returns all
-    /// <DataArray> xml tags as a vector of strings, as no points are exported, no
-    /// need to enforce 1:3D fields
-    /// @tparam T
-    /// @param expr Expression to be evaluated
-    /// @param label The label with which the expression will appear in Paraview
-    /// @param export_base64 export as base64 encoded string
-    /// @return Vector of strings of all <DataArrays>
-    template <class E>
-    std::vector<std::string> toVTK(const expr::_expr<E>& expr,
-                                   gsExprEvaluator<> * evaltr,
-                                   unsigned nPts = 1000,
-                                   unsigned precision = 5,
-                                   std::string label = "SolutionField",
-                                   const bool& export_base64 = false)
-    {
-        std::vector<std::string> out;
-
-        // if false, embed topology ?
-        const index_t n = evaltr->exprData()->domain().nPieces();
-
-        gsMatrix<real_t> evaluated_values, bounding_box_dimensions;
-
-        for (index_t i = 0; i != n; ++i) {
-            // Get bounding box and sample evaluation points on current patch
-            bounding_box_dimensions =
-                evaltr->exprData()->domain().subdomain(i)->boundingBox();
-            gsGridIterator<real_t, CUBE> grid_iterator(bounding_box_dimensions,
-                                                    nPts);
-            evaltr->eval(expr, grid_iterator, i);
-
-            // Evaluate Expression on grid_points
-            evaluated_values = evaltr->allValues(
-                evaltr->elementwise().size() / grid_iterator.numPoints(),
-                grid_iterator.numPoints());
-
-
-            GISMO_ASSERT(evaluated_values.rows() <= 3, "The expression can be scalar or have at most 3 components.");
-            if (evaluated_values.rows() == 2)
-                // Pad matrix with zeros
-                evaluated_values.conservativeResizeLike(gsEigen::MatrixXd::Zero(3,evaluated_values.cols()));
-
-            out.push_back(toDataArray(evaluated_values,{{"Name",label}}, precision,export_base64));
-
-        }
-        return out;
-    }
-
-
-
 
 
     /// @brief ID transformation between G+Smo and vtk  control point IDs

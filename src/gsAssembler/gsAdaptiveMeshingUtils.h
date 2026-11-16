@@ -40,7 +40,9 @@ public:
      */
     gsElementErrorPlotter(const gsBasis<T>& basis, const std::vector<T>& errors )
     : m_basis(basis),m_errors(errors)
-    { }
+    {
+        GISMO_ASSERT(m_errors.size() == m_basis.numElements(),"The number of errors should be equal to the number of elements in the basis");
+    }
 
     virtual void eval_into(const gsMatrix<T>& u, gsMatrix<T>& res) const
     {

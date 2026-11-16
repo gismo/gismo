@@ -75,6 +75,8 @@ namespace gismo
 template<class T>
 class gsDomain
 {
+    index_t m_patch;
+
     public:
 
     typedef typename memory::shared_ptr<gsDomain<T> > Ptr;
@@ -82,11 +84,14 @@ class gsDomain
 
     typedef gsDomainIteratorWrapper<T> iterator;
 
+    gsDomain() : m_patch(0) { }
+
     virtual ~gsDomain() { }
 
+    index_t patchIndex() const { return m_patch; }
+    
 #if EIGEN_HAS_RVALUE_REFERENCES && EIGEN_GNUC_AT_MOST(4,7) && !EIGEN_COMP_PGI
     // defaulted declaration required at least in Gcc 4.7.2
-    gsDomain() = default;
     gsDomain(const gsDomain&) = default;
     gsDomain(gsDomain&&) = default;
     gsDomain & operator=(const gsDomain&) = default;
@@ -106,8 +111,9 @@ public:
         iterator & end()   { return end_;   }
     };
 
-public:
-
+        void setPatchIndex(index_t k) { m_patch = k; }
+    
+protected:
 
     // iterator(index_t i)
 
@@ -142,7 +148,7 @@ public:
      */
 
 public:
-
+    
     /// Return the k-th subdomain, in the case that there are more than one
     virtual Ptr subdomain(index_t k) const
     {

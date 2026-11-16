@@ -135,32 +135,28 @@ public:
     }
 
     /// Computes the L2-distance between the two fields, on the physical domain
-    T distanceL2(gsField<T> const & field, int numEvals= 1000) const;
+    T distanceL2(gsField<T> const & field) const;
 
     /// Computes the L2-distance between the field and a function \a func on the physical domain
     T distanceL2(gsFunctionSet<T> const & func,
-                 bool isFunc_param = false,
-                 int numEvals=1000) const;
+                 bool isFunc_param = false) const;
 
     /// Computes the L2-distance between the field and a function \a
     /// func on the physical domain, using mesh from B
     T distanceL2(gsFunctionSet<T> const & func,
                  gsMultiBasis<T> const & B,
-                 bool isFunc_param = false,
-                 int numEvals=1000) const;
+                 bool isFunc_param = false) const;
 
     /// Computes the H1-seminorm of the diff. between the field and a function \a
     /// func on the physical domain
     T distanceH1(gsFunctionSet<T> const & func,
-                 bool isFunc_param = false,
-                 int = 1000) const;
+                 bool isFunc_param = false) const;
 
     /// Computes the H1-seminorm of the diff. between the field and a function \a
     /// func on the physical domain, using mesh from B
     T distanceH1(gsFunctionSet<T> const & func,
                  gsMultiBasis<T> const & B,
-                 bool isFunc_param = false,
-                 int = 1000) const;
+                 bool isFunc_param = false) const;
 
     /// Computes the H2-seminorm of the diff. between the field and a function \a
     /// func on the physical domain, using mesh from B
@@ -170,8 +166,7 @@ public:
     /// Computes the DG-distance between the field and a function \a
     /// func on the physical domain
     T distanceDG(gsFunctionSet<T> const & func,
-                 bool isFunc_param = false,
-                 int = 1000) const;
+                 bool isFunc_param = false) const;
 
     /// Prints the object as a string.
     std::ostream &print(std::ostream &os) const
@@ -303,6 +298,16 @@ private:
 template<class T>
 std::ostream &operator<<(std::ostream &os, const gsField<T>& b)
 {return b.print(os); }
+
+
+#ifdef GISMO_WITH_PYBIND11
+
+  /**
+   * @brief Initializes the Python wrapper for the class: gsField
+   */
+  void pybind11_init_gsField(pybind11::module &m);
+
+#endif // GISMO_WITH_PYBIND11
 
 
 } // namespace gismo

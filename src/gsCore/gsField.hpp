@@ -23,10 +23,8 @@ namespace gismo
 template <class T>
 T gsField<T>::distanceL2(gsFunctionSet<T> const & func,
                          gsMultiBasis<T> const & B,
-                         bool isFunc_param,
-                         int numEvals) const
+                         bool isFunc_param) const
 {
-    GISMO_UNUSED(numEvals);// todo: subdivided quadrature elements
     gsExprEvaluator<T> ev;
     ev.setIntegrationDomain(B.domain());
     auto G = ev.getMap(this->patches());
@@ -43,8 +41,7 @@ T gsField<T>::distanceL2(gsFunctionSet<T> const & func,
 template <class T>
 T gsField<T>::distanceH1(gsFunctionSet<T> const & func,
                          gsMultiBasis<T> const & B,
-                         bool isFunc_param,
-                         int) const
+                         bool isFunc_param) const
 {
     gsExprEvaluator<T> ev;
     ev.setIntegrationDomain(B.domain());
@@ -91,26 +88,24 @@ T gsField<T>::distanceH2(gsFunctionSet<T> const & func,
 }
 
 template <class T>
-T gsField<T>::distanceL2(gsField<T> const & field, int numEvals) const
+T gsField<T>::distanceL2(gsField<T> const & field) const
 {
-    return distanceL2(*field.m_fields, field.m_parametric, numEvals);
+    return distanceL2(*field.m_fields, field.m_parametric);
 }
 
 template <class T>
 T gsField<T>::distanceL2(gsFunctionSet<T> const & func,
-                         bool isFunc_param,
-                         int numEvals) const
+                         bool isFunc_param) const
 {
     if (const gsMultiPatch<T>* mp = dynamic_cast<const gsMultiPatch<T>*>(m_fields.get()))
-        return distanceL2(func, gsMultiBasis<T>(*mp), isFunc_param, numEvals);
+        return distanceL2(func, gsMultiBasis<T>(*mp), isFunc_param);
     gsMultiBasis<T> mb(this->patches());
-    return distanceL2(func, mb, isFunc_param, numEvals);
+    return distanceL2(func, mb, isFunc_param);
 }
 
 template <class T>
 T gsField<T>::distanceH1(gsFunctionSet<T> const & func,
-                         bool isFunc_param,
-                         int) const
+                         bool isFunc_param) const
 {
     if (const gsMultiPatch<T>* mp = dynamic_cast<const gsMultiPatch<T>*>(m_fields.get()))
         return distanceH1(func, gsMultiBasis<T>(*mp), isFunc_param);
@@ -121,8 +116,7 @@ T gsField<T>::distanceH1(gsFunctionSet<T> const & func,
 template <class T>
 T gsField<T>::distanceDG(gsFunctionSet<T>
                          const & ,
-                         bool ,
-                         int) const
+                         bool) const
 {
     GISMO_NO_IMPLEMENTATION
     /*

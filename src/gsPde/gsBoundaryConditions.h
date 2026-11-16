@@ -168,7 +168,7 @@ struct boundary_condition
             }
             case condition_type::weak_clamped:
             {
-                m_label = "weak Clamped";
+                m_label = "Weak Clamped";
                 break;
             }
             case condition_type::collapsed:

@@ -51,6 +51,25 @@ void pybind11_init_gsBasis(py::module &m)
 
     .def("uniformRefine", &Class::uniformRefine, "Performs uniform refinement")
 
+    .def("uniformRefine_withTransfer",
+        [](Class& self, int numKnots, int mul) {
+            gsSparseMatrix<real_t, RowMajor> transfer_rm;
+            self.uniformRefine_withTransfer(transfer_rm, numKnots, mul);
+            gsSparseMatrix<real_t> transfer(transfer_rm);
+            return transfer;
+        },
+        py::arg("numKnots")=1, py::arg("mul")=1,
+        "Uniform h-refinement (all directions); returns the sparse transfer matrix")
+    .def("uniformCoarsen_withTransfer",
+        [](Class& self, int numKnots) {
+            gsSparseMatrix<real_t, RowMajor> transfer_rm;
+            self.uniformCoarsen_withTransfer(transfer_rm, numKnots);
+            gsSparseMatrix<real_t> transfer(transfer_rm);
+            return transfer;
+        },
+        py::arg("numKnots")=1,
+        "Uniform h-coarsening (all directions); returns the sparse transfer matrix")
+
     .def("evalSingle", static_cast<gsMatrix<real_t> (Class::*)(index_t, const gsMatrix<real_t> &                   ) const> (&Class::evalSingle    ), "Evaluates the basis function i")
     .def("evalSingle_into", static_cast<void        (Class::*)(index_t, const gsMatrix<real_t> &, gsMatrix<real_t>&) const> (&Class::evalSingle_into), "Evaluates the basis function i")
 
@@ -62,6 +81,8 @@ void pybind11_init_gsBasis(py::module &m)
 
     .def("numElements", static_cast<size_t (Class::*)(boxSide const & ) const> ( &Class::numElements), "Number of elements")
     .def("component", static_cast<gsBasis<real_t> & (Class::*)(short_t ) > ( &Class::component), "Return the basis of component",py::return_value_policy::reference)
+
+    .def("makeGeometry", &Class::makeGeometry, "Make a geometry object from this basis")
     ;
 }
 

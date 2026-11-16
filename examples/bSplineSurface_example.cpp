@@ -72,20 +72,40 @@ int main(int argc, char* argv[])
     gsTensorBSpline<2, real_t>  surface(basis, coefs);
 
 
-    // 5. saving surface, basis and control net to a file
+    // 5. refining the support of one basis function; for tensor-product
+    //    B-splines knots are inserted in each direction, hence the
+    //    refinement extends across the whole parameter domain
+    gsTensorBSpline<2, real_t> refined = surface;
+    const index_t bf = 0; // basis function at the corner (0,0)
+    gsInfo << "Support of basis function " << bf << ":\n"
+           << refined.basis().support(bf) << "\n\n";
+
+    refined.refineCoeff(bf);
+
+    gsMatrix<> pts = gsPointGrid<real_t>(surface.support(), 100);
+    gsInfo << "After refineCoeff(" << bf << "): "
+           << refined.basis().size(0) << " x " << refined.basis().size(1)
+           << " basis functions (before: " << basis.size(0) << " x "
+           << basis.size(1) << "), change in geometry = "
+           << (refined.eval(pts) - surface.eval(pts)).norm() << "\n\n";
+
+    // 6. saving surface, basis and control net to a file
     if (output != "")
     {
+        gsParaview<real_t> pv;
+        
         std::string out = output + "Geometry";
         gsInfo << "Writing the surface to a paraview file: " << out
                   << "\n\n";
 
-        gsWriteParaview(surface, out, 10000);
+        pv.options().setInt("numPoints", 10000);
+        pv.write(surface, out);
 
         out = output + "Basis";
         gsInfo << "Writing the basis to a paraview file: " << out
                   << "\n\n";
 
-        gsWriteParaview(basis, out);
+        pv.write(basis, out);
 
 
         out = output + "ContolNet";
@@ -94,12 +114,19 @@ int main(int argc, char* argv[])
 
         gsMesh<> mesh;
         surface.controlNet(mesh);
-        gsWriteParaview(mesh, out);
+        pv.write(mesh, out);
 
         out = output + "Coefficients";
-        gsMatrix <> coefs = surface.coefs();
+        coefs = surface.coefs();
         coefs.transposeInPlace();
-        gsWriteParaviewPoints(coefs, out);
+        pv.writePoints(coefs, out);
+
+        out = output + "RefinedContolNet";
+        gsInfo << "Writing the refined control net to a paraview file: " << out
+                  << "\n" << "\n";
+        gsMesh<> refinedMesh;
+        refined.controlNet(refinedMesh);
+        pv.write(refinedMesh, out);
 
     }
     else
