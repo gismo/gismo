@@ -1,7 +1,15 @@
 /** @file as_g1_biharmonic_multigrid_example.cpp
 
-    @brief Multigrid solver for the biharmonic problem over Analysis-Suitable G1
-           (AS-G1) multi-patch geometries with Symmetric Gauss-Seidel smoother.
+    @brief Multigrid solver for the first biharmonic problem
+           (\beta u + \Delta^2 u = f, u = g_1, \partial_n u = g_2 on \partial\Omega)
+           over Analysis-Suitable G1 (AS-G1) multi-patch geometries with
+           Symmetric Gauss-Seidel smoother.
+
+    Supports inhomogeneous manufactured solutions as well as homogeneous (zero)
+    boundary conditions (u = 0, \partial_n u = 0) using a compactly supported
+    tensor-product B-spline bubble, a smooth trigonometric bubble, or a
+    box-conforming trigonometric solution, with exact L2, H1, and H2 error
+    evaluation and optional PVD/VTK export.
 
     This file is part of the G+Smo library.
 
@@ -13,11 +21,11 @@
 */
 
 #include <algorithm>
-#include <chrono>
 #include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -29,6 +37,30 @@
 
 using namespace gismo;
 using namespace gismo::expr;
+
+static void mkdirRecursive(const std::string &path)
+{
+    if (path.empty())
+        return;
+    std::string cur;
+    for (size_t i = 0; i < path.size(); ++i)
+    {
+        cur.push_back(path[i]);
+        if (path[i] == '/' && cur.size() > 1)
+            gsFileManager::mkdir(cur);
+    }
+    if (cur.back() != '/')
+        gsFileManager::mkdir(cur);
+}
+
+static std::string sanitizeStem(const std::string &path)
+{
+    std::string base = gsFileManager::getBasename(path);
+    for (char &c : base)
+        if (c == ' ' || c == '/')
+            c = '_';
+    return base;
+}
 
 // Struct to hold assembled level data
 template <class T>
@@ -91,18 +123,21 @@ LevelData<T> setupLevelGeometry(
     return ld;
 }
 
-// Assemble biharmonic PDE system and boundary projection ONCE on the finest grid
+// Assemble first biharmonic PDE system and boundary projection ONCE on the finest grid
 template <class T>
 void assembleFinestSystem(
     const gsMultiPatch<T> &mp,
     const gsBoundaryConditions<T> &bc,
     LevelData<T> &ld,
-    const gsFunctionExpr<T> &exact_u,
-    const gsFunctionExpr<T> &exact_grad,
-    const gsFunctionExpr<T> &rhs_f,
+    const gsFunctionExpr<T> *exact_u,
+    const gsFunctionExpr<T> *exact_grad,
+    const gsFunctionExpr<T> *rhs_f,
+    const gsBubbleData<T> *bubbleData,
+    T beta,
     bool homogeneousBC)
 {
     const index_t nBnd = ld.mapper.boundarySize();
+    const bool useBubble = (bubbleData != nullptr);
 
     // Boundary Dirichlet values projection
     if (!homogeneousBC && nBnd > 0)
@@ -111,8 +146,8 @@ void assembleFinestSystem(
         A.setIntegrationDomain(ld.dbasis.domain());
         auto G_map = A.getMap(mp);
         auto u_space = A.getSpace(ld.dbasis);
-        auto u_coeff = A.getCoeff(exact_u, G_map);
-        auto u_grad_coeff = A.getCoeff(exact_grad, G_map);
+        auto u_coeff = A.getCoeff(*exact_u, G_map);
+        auto u_grad_coeff = A.getCoeff(*exact_grad, G_map);
 
         A.initSystem();
         A.assembleBdr(bc.get("ValuesAndDerivatives"),
@@ -134,13 +169,33 @@ void assembleFinestSystem(
     {
         gsExprAssembler<T> A(1, 1);
         A.setIntegrationDomain(ld.dbasis.domain());
+        if (useBubble)
+            A.options().setReal("quA", 2.0);
         auto G_map = A.getMap(mp);
         auto u_space = A.getSpace(ld.dbasis);
-        auto f_coeff = A.getCoeff(rhs_f, G_map);
 
         A.initSystem();
-        A.assemble(ilapl(u_space, G_map) * ilapl(u_space, G_map).tr() * meas(G_map),
-                   u_space * f_coeff * meas(G_map));
+        if (useBubble)
+        {
+            auto u_ex_coeff   = A.getCoeff(bubbleData->field, G_map);
+            auto lap_ex_coeff = A.getCoeff(bubbleData->lapField, G_map);
+            if (beta > T(0))
+                A.assemble((beta * (u_space * u_space.tr()) + ilapl(u_space, G_map) * ilapl(u_space, G_map).tr()) * meas(G_map),
+                           (beta * (u_space * u_ex_coeff) + ilapl(u_space, G_map) * lap_ex_coeff) * meas(G_map));
+            else
+                A.assemble(ilapl(u_space, G_map) * ilapl(u_space, G_map).tr() * meas(G_map),
+                           ilapl(u_space, G_map) * lap_ex_coeff * meas(G_map));
+        }
+        else
+        {
+            auto f_coeff = A.getCoeff(*rhs_f, G_map);
+            if (beta > T(0))
+                A.assemble((beta * (u_space * u_space.tr()) + ilapl(u_space, G_map) * ilapl(u_space, G_map).tr()) * meas(G_map),
+                           u_space * f_coeff * meas(G_map));
+            else
+                A.assemble(ilapl(u_space, G_map) * ilapl(u_space, G_map).tr() * meas(G_map),
+                           u_space * f_coeff * meas(G_map));
+        }
 
         K_discont = give(A.matrix());
         F_discont = give(A.rhs());
@@ -160,7 +215,6 @@ gsSparseMatrix<T, RowMajor> computeIntergridProlongation(
     const LevelData<T> &fine,
     size_t nPatches)
 {
-    // Compute block-diagonal patch B-spline refinement transfer matrix
     gsBlockSparseMatrix<T> R_block(nPatches, nPatches);
     for (size_t p = 0; p < nPatches; ++p)
     {
@@ -225,6 +279,7 @@ template <class T>
 bool runDomainExperiment(
     const std::string &geomPath,
     index_t degree,
+    index_t bubbleDeg,
     index_t minRef,
     index_t maxRef,
     index_t numCycles,
@@ -234,21 +289,40 @@ bool runDomainExperiment(
     T tol,
     index_t maxIt,
     bool homogeneousBC,
+    const std::string &exactType,
     T freqA,
+    T beta,
+    T eps,
+    T margin,
+    bool verifyDirect,
     bool plot,
     const std::string &outDir,
+    const std::string &plotSubDir,
     const std::string &txtOut)
 {
+    const bool useBubble = homogeneousBC && (exactType == "bubble" || exactType == "sin_bubble");
+
     gsInfo << "\n" << std::string(80, '=') << "\n";
     gsInfo << "Domain: " << geomPath << "\n";
+    gsInfo << "PDE: " << beta << "*u + Delta^2 u = f, first biharmonic (u, d_n u on boundary)\n";
     gsInfo << "Degree p = " << degree << " | Levels: r = " << minRef << " -> " << maxRef
            << " | Smoother: Symmetric Gauss-Seidel (" << numPreSmooth << " pre, " << numPostSmooth << " post)\n";
     gsInfo << "Solver: " << (solverType == "cg" ? "PCG (Multigrid Preconditioner)" : "Direct Multigrid Iteration")
            << " | Cycles: " << (numCycles == 1 ? "V-cycle" : "W-cycle") << " | Tol = " << tol << "\n";
-    gsInfo << "Boundary condition: " << (homogeneousBC ? "Homogeneous zero Dirichlet" : "Manufactured solution projection") << "\n";
+    gsInfo << "Boundary condition: " << (homogeneousBC ? "Homogeneous zero (u=0, d_n u=0)" : "Manufactured solution projection")
+           << " | Exact: " << (homogeneousBC ? exactType : "sin*cos") << "\n";
     gsInfo << std::string(80, '=') << "\n";
 
-    typename gsMultiPatch<T>::uPtr mpPtr = gsReadFile<>(geomPath);
+    typename gsMultiPatch<T>::uPtr mpPtr;
+    try
+    {
+        mpPtr = gsReadFile<>(geomPath);
+    }
+    catch (const std::exception &e)
+    {
+        gsInfo << "Skipping geometry (read failed: " << e.what() << ")\n";
+        return false;
+    }
     if (!mpPtr)
     {
         gsInfo << "Error: Cannot load geometry " << geomPath << "\n";
@@ -265,61 +339,90 @@ bool runDomainExperiment(
         mp.degreeElevate(elev);
     }
 
-    // Manufactured / source solution
-    const std::string s_a = std::to_string(freqA);
-    std::string u_expr, grad_x_expr, grad_y_expr, rhs_expr, hess_xx, hess_xy, hess_yy;
-    if (homogeneousBC)
+    // Gluing data & boundary corners
+    gsMatrix<T> gd;
+    try
     {
-        // Source f(x,y) = 4*pi^4*sin(pi*x)*sin(pi*y) for homogeneous boundary
-        u_expr = "sin(pi*x)*sin(pi*y)";
-        grad_x_expr = "pi*cos(pi*x)*sin(pi*y)";
-        grad_y_expr = "pi*sin(pi*x)*cos(pi*y)";
-        rhs_expr = "4*pi^4*sin(pi*x)*sin(pi*y)";
-        hess_xx = "-pi^2*sin(pi*x)*sin(pi*y)";
-        hess_xy = "pi^2*cos(pi*x)*cos(pi*y)";
-        hess_yy = "-pi^2*sin(pi*x)*sin(pi*y)";
+        gd = computeGluingData(mp, eps, 0);
     }
-    else
+    catch (const std::exception &e)
     {
-        u_expr = "sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-        grad_x_expr = s_a + "*pi*cos(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-        grad_y_expr = "-" + s_a + "*pi*sin(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
-        rhs_expr = std::to_string(4 * freqA * freqA * freqA * freqA) + "*pi^4*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-        hess_xx = "-" + std::to_string(freqA * freqA) + "*pi^2*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-        hess_xy = "-" + std::to_string(freqA * freqA) + "*pi^2*cos(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
-        hess_yy = "-" + std::to_string(freqA * freqA) + "*pi^2*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+        gsInfo << "Skipping geometry (gluing data failed: " << e.what() << ")\n";
+        return false;
     }
-    gsFunctionExpr<T> exact_u(u_expr, 2);
-    gsFunctionExpr<T> exact_grad(grad_x_expr, grad_y_expr, 2);
-    gsFunctionExpr<T> exact_hess(hess_xx, hess_xy, hess_xy, hess_yy, 2);
-    gsFunctionExpr<T> rhs_f(rhs_expr, 2);
 
-    // Boundary conditions
     gsConstantFunction<T> zero;
     gsBoundaryConditions<T> bc;
     for (auto it = mp.bBegin(); it != mp.bEnd(); ++it)
         bc.add(it->patch, it->side(), "ValuesAndDerivatives", zero);
 
-    // Gluing data & boundary corners
-    gsMatrix<T> gd = computeGluingData(mp, T(1e-8), 0);
     std::vector<std::vector<patchCorner>> vertices = getBoundaryVertices(mp, bc, "ValuesAndDerivatives");
     std::vector<cornerCondition> cc;
     gsMatrix<T> normalsForPatches(mp.nPatches(), 2 * 4);
     normalsForPatches.setZero();
-    for (size_t i = 0; i < vertices.size(); ++i)
+    try
     {
-        gsVector<T> normal = getOuterNormalDerivative(mp, vertices[i]);
-        for (size_t j = 0; j < vertices[i].size(); ++j)
-            normalsForPatches.block(vertices[i][j].patch, 2 * (vertices[i][j].m_index - 1), 1, 2) = normal.transpose();
-        cc.push_back(cornerCondition{vertices[i][0], normal.norm() < 1e-6 ? cornerConditionType::all : cornerConditionType::valuesNormals});
+        for (size_t i = 0; i < vertices.size(); ++i)
+        {
+            gsVector<T> normal = getOuterNormalDerivative(mp, vertices[i]);
+            for (size_t j = 0; j < vertices[i].size(); ++j)
+                normalsForPatches.block(vertices[i][j].patch, 2 * (vertices[i][j].m_index - 1), 1, 2) = normal.transpose();
+            cc.push_back(cornerCondition{vertices[i][0], normal.norm() < T(1e-6) ? cornerConditionType::all : cornerConditionType::valuesNormals});
+        }
+    }
+    catch (const std::exception &e)
+    {
+        gsInfo << "Skipping geometry (corner classification failed: " << e.what() << ")\n";
+        return false;
     }
     for (size_t i = 0; i < mp.nPatches(); ++i)
         for (index_t j = 0; j < 4; ++j)
-            if (normalsForPatches.block(i, 2 * j, 1, 2).norm() < 1e-6)
+            if (normalsForPatches.block(i, 2 * j, 1, 2).norm() < T(1e-6))
             {
                 normalsForPatches(i, 2 * j) = 1;
                 normalsForPatches(i, 2 * j + 1) = 0;
             }
+
+    // Manufactured / source solution
+    gsBubbleData<T> bubbleData;
+    std::unique_ptr<gsFunctionExpr<T>> exact_u_ptr, exact_grad_ptr, exact_hess_ptr, rhs_f_ptr;
+
+    if (useBubble)
+    {
+        const index_t bDeg = (bubbleDeg > 0) ? bubbleDeg : (degree + 2);
+        if (exactType == "sin_bubble")
+            bubbleData = makeTrigBubble(mp, std::max<index_t>(bDeg, 4), margin);
+        else
+            bubbleData = makeBSplineBubble(mp, bDeg, margin);
+
+        gsInfo << "  Bubble box      : [" << bubbleData.a_x << ", " << bubbleData.b_x
+               << "] x [" << bubbleData.a_y << ", " << bubbleData.b_y << "]\n";
+    }
+    else if (homogeneousBC)
+    {
+        gsBoxExactExprs ex = makeBoxHomogeneousExpressions(mp, false, freqA, beta);
+        exact_u_ptr.reset(new gsFunctionExpr<T>(ex.u_expr, 2));
+        exact_grad_ptr.reset(new gsFunctionExpr<T>(ex.grad_x_expr, ex.grad_y_expr, 2));
+        exact_hess_ptr.reset(new gsFunctionExpr<T>(ex.hess_xx, ex.hess_xy, ex.hess_xy, ex.hess_yy, 2));
+        rhs_f_ptr.reset(new gsFunctionExpr<T>(ex.rhs_expr, 2));
+    }
+    else
+    {
+        const std::string s_a = std::to_string(freqA);
+        const std::string s_b = std::to_string(beta);
+        const std::string u_expr      = "sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+        const std::string grad_x_expr =        s_a + "*pi*cos(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+        const std::string grad_y_expr = "-" +  s_a + "*pi*sin(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
+        const std::string rhs_expr    = "(" + s_b + " + 4*(" + s_a + ")^4*pi^4)*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+        const std::string hess_xx     = "-" + s_a + "^2*pi^2*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+        const std::string hess_xy     = "-" + s_a + "^2*pi^2*cos(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
+        const std::string hess_yy     = "-" + s_a + "^2*pi^2*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+
+        exact_u_ptr.reset(new gsFunctionExpr<T>(u_expr, 2));
+        exact_grad_ptr.reset(new gsFunctionExpr<T>(grad_x_expr, grad_y_expr, 2));
+        exact_hess_ptr.reset(new gsFunctionExpr<T>(hess_xx, hess_xy, hess_xy, hess_yy, 2));
+        rhs_f_ptr.reset(new gsFunctionExpr<T>(rhs_expr, 2));
+    }
 
     // Set up grid hierarchy from minRef to maxRef
     const index_t nLevels = maxRef - minRef + 1;
@@ -327,21 +430,33 @@ bool runDomainExperiment(
     std::vector<LevelData<T>> levels(nLevels);
     gsInfo << "Setting up grid hierarchy (" << nLevels << " levels)...\n";
     double totalSetupTime = 0;
-    for (index_t l = 0; l < nLevels; ++l)
+    try
     {
-        const index_t ref = minRef + l;
-        const bool isFinest = (l == finest);
-        gsStopwatch timer;
-        timer.restart();
-        levels[l] = setupLevelGeometry(mp, gd, normalsForPatches, bc, cc, ref, isFinest);
-        if (isFinest)
+        for (index_t l = 0; l < nLevels; ++l)
         {
-            assembleFinestSystem(mp, bc, levels[l], exact_u, exact_grad, rhs_f, homogeneousBC);
+            const index_t ref = minRef + l;
+            const bool isFinest = (l == finest);
+            gsStopwatch timer;
+            timer.restart();
+            levels[l] = setupLevelGeometry(mp, gd, normalsForPatches, bc, cc, ref, isFinest);
+            if (isFinest)
+            {
+                assembleFinestSystem(
+                    mp, bc, levels[l],
+                    exact_u_ptr.get(), exact_grad_ptr.get(), rhs_f_ptr.get(),
+                    useBubble ? &bubbleData : nullptr,
+                    beta, homogeneousBC);
+            }
+            const double tLevel = timer.stop();
+            totalSetupTime += tLevel;
+            gsInfo << "  Level " << l << " (ref=" << ref << "): " << levels[l].mapper.freeSize() << " DOFs ("
+                   << (isFinest ? "Geometry + PDE Assembly: " : "Geometry only: ") << std::fixed << std::setprecision(4) << tLevel << " s)\n";
         }
-        const double tLevel = timer.stop();
-        totalSetupTime += tLevel;
-        gsInfo << "  Level " << l << " (ref=" << ref << "): " << levels[l].mapper.freeSize() << " DOFs ("
-               << (isFinest ? "Geometry + PDE Assembly: " : "Geometry only: ") << std::fixed << std::setprecision(4) << tLevel << " s)\n";
+    }
+    catch (const std::exception &e)
+    {
+        gsInfo << "Skipping geometry (setup/assembly failed: " << e.what() << ")\n";
+        return false;
     }
 
     // Compute intergrid transfer matrices
@@ -358,7 +473,7 @@ bool runDomainExperiment(
                << " x " << transferMatrices[l].cols() << " (" << std::fixed << std::setprecision(4) << tTr << " s)\n";
     }
 
-    // Set up gsMultiGridOp (algebraic Galerkin coarse grid matrices are computed here automatically)
+    // Set up gsMultiGridOp
     typename gsMultiGridOp<T>::uPtr mg = gsMultiGridOp<T>::make(levels[finest].K_free, transferMatrices);
     mg->setNumCycles(numCycles);
     mg->setNumPreSmooth(numPreSmooth);
@@ -394,7 +509,7 @@ bool runDomainExperiment(
         numIterations = errHist.rows() - 1;
         finalRelRes = errHist(numIterations, 0);
     }
-    else // Direct Multigrid Iteration
+    else
     {
         gsMatrix<T> r = rhs_fine - A_fine * sol_free;
         const T r0_norm = r.norm();
@@ -423,55 +538,100 @@ bool runDomainExperiment(
     gsInfo << "  Transfer Time   : " << std::fixed << std::setprecision(4) << totalTransferTime << " s\n";
     gsInfo << "  Total Time      : " << std::fixed << std::setprecision(4) << (totalSetupTime + totalTransferTime + solveTime) << " s\n";
 
-    // Error evaluation against exact solution
-    T l2err = 0.0, h1err = 0.0, h2err = 0.0;
-    if (!homogeneousBC)
+    if (verifyDirect)
     {
-        gsMatrix<T> sol_discont = levels[finest].T_free * sol_free + levels[finest].T_bnd * levels[finest].sol_bnd;
-        gsMultiPatch<T> sol;
-        index_t offset = 0;
-        for (size_t i = 0; i < mp.nPatches(); ++i)
-        {
-            const index_t sz = levels[finest].argBasis[i].matrix.rows();
-            gsMatrix<T> ci = sol_discont.block(offset, 0, sz, 1);
-            offset += sz;
-            const gsTensorBSplineBasis<2, T> &tb = dynamic_cast<const gsTensorBSplineBasis<2, T> &>(levels[finest].dbasis[i]);
-            sol.addPatch(tb.makeGeometry(give(ci)));
-        }
+        gsMatrix<T> sol_direct;
+        gsStopwatch dirTimer;
+        dirTimer.restart();
+        makeSparseCholeskySolver(A_fine)->apply(rhs_fine, sol_direct);
+        const double dirTime = dirTimer.stop();
+        const T diffNorm = (sol_free - sol_direct).norm() / std::max(T(1e-15), sol_direct.norm());
+        gsInfo << "  Direct Cholesky : " << std::fixed << std::setprecision(4) << dirTime
+               << " s | Rel. Diff vs MG = " << std::scientific << std::setprecision(4) << diffNorm << "\n";
+    }
 
-        gsExprEvaluator<T> ev;
-        ev.setIntegrationDomain(levels[finest].dbasis.domain());
-        auto G_map_ev = ev.getMap(mp);
-        auto u_exact_ev = ev.getVariable(exact_u, G_map_ev);
-        auto grad_exact_ev = ev.getVariable(exact_grad, G_map_ev);
-        auto hess_exact_ev = reshape(ev.getVariable(exact_hess, G_map_ev), 2, 2);
-        auto u_sol_ev = ev.getVariable(sol);
+    // Reconstruct full solution and compute exact errors (both inhomogeneous and homogeneous BCs)
+    gsMatrix<T> sol_discont = levels[finest].T_free * sol_free;
+    if (!homogeneousBC && levels[finest].mapper.boundarySize() > 0)
+        sol_discont += levels[finest].T_bnd * levels[finest].sol_bnd;
+
+    gsMultiPatch<T> sol;
+    index_t offset = 0;
+    for (size_t i = 0; i < mp.nPatches(); ++i)
+    {
+        const index_t sz = levels[finest].argBasis[i].matrix.rows();
+        gsMatrix<T> ci = sol_discont.block(offset, 0, sz, 1);
+        offset += sz;
+        const gsTensorBSplineBasis<2, T> &tb = dynamic_cast<const gsTensorBSplineBasis<2, T> &>(levels[finest].dbasis[i]);
+        sol.addPatch(tb.makeGeometry(give(ci)));
+    }
+
+    gsExprEvaluator<T> ev;
+    ev.setIntegrationDomain(levels[finest].dbasis.domain());
+    if (useBubble)
+        ev.options().setReal("quA", 2.0);
+    auto G_map_ev = ev.getMap(mp);
+    auto u_sol_ev = ev.getVariable(sol);
+
+    T l2err = 0.0, h1err = 0.0, h2err = 0.0;
+    if (useBubble)
+    {
+        auto u_exact_ev = ev.getVariable(bubbleData.field, G_map_ev);
+        l2err = std::sqrt(ev.integral((u_sol_ev - u_exact_ev).sqNorm() * meas(G_map_ev)));
+        h1err = std::sqrt(ev.integral((igrad(u_sol_ev, G_map_ev) - igrad(u_exact_ev)).sqNorm() * meas(G_map_ev)));
+        h2err = std::sqrt(ev.integral((ihess(u_sol_ev, G_map_ev) - ihess(u_exact_ev)).sqNorm() * meas(G_map_ev)));
+    }
+    else
+    {
+        auto u_exact_ev    = ev.getVariable(*exact_u_ptr, G_map_ev);
+        auto grad_exact_ev = ev.getVariable(*exact_grad_ptr, G_map_ev);
+        auto hess_exact_ev = reshape(ev.getVariable(*exact_hess_ptr, G_map_ev), 2, 2);
 
         l2err = std::sqrt(ev.integral((u_sol_ev - u_exact_ev).sqNorm() * meas(G_map_ev)));
         h1err = std::sqrt(ev.integral((igrad(u_sol_ev, G_map_ev) - grad_exact_ev.tr()).sqNorm() * meas(G_map_ev)));
         h2err = std::sqrt(ev.integral((ihess(u_sol_ev, G_map_ev) - hess_exact_ev).sqNorm() * meas(G_map_ev)));
+    }
 
-        gsInfo << "  L2 Error        : " << std::scientific << std::setprecision(4) << l2err << "\n";
-        gsInfo << "  H1 Error        : " << std::scientific << std::setprecision(4) << h1err << "\n";
-        gsInfo << "  H2 Error        : " << std::scientific << std::setprecision(4) << h2err << "\n";
+    gsInfo << "  L2 Error        : " << std::scientific << std::setprecision(4) << l2err << "\n";
+    gsInfo << "  H1 Error        : " << std::scientific << std::setprecision(4) << h1err << "\n";
+    gsInfo << "  H2 Error        : " << std::scientific << std::setprecision(4) << h2err << "\n";
 
-        if (plot && !outDir.empty())
+    if (plot && !outDir.empty())
+    {
+        std::string prefix = outDir;
+        if (prefix.back() != '/')
+            prefix += '/';
+        if (!plotSubDir.empty())
         {
-            std::string prefix = outDir;
+            prefix += plotSubDir;
             if (prefix.back() != '/')
                 prefix += '/';
-            gsFileManager::mkdir(prefix);
-            std::string solName = prefix + "as_g1_mg_sol";
-            gsField<T> solField(mp, sol);
-            gsWriteParaview<>(solField, solName, 1000);
-            gsInfo << "  Exported Paraview plot: " << solName << "\n";
         }
+        mkdirRecursive(prefix);
+
+        const std::string solName   = prefix + "sol";
+        const std::string exactName = prefix + "exact";
+
+        gsField<T> solField(mp, sol);
+        gsWriteParaview<>(solField, solName, 1000);
+
+        if (useBubble)
+        {
+            gsField<T> exactField(mp, bubbleData.field, false);
+            gsWriteParaview<>(exactField, exactName, 1000);
+        }
+        else
+        {
+            gsField<T> exactField(mp, *exact_u_ptr, false);
+            gsWriteParaview<>(exactField, exactName, 1000);
+        }
+
+        gsInfo << "  Exported PVD    : " << solName << ".pvd & " << exactName << ".pvd\n";
     }
 
     const bool converged = (finalRelRes <= tol);
     gsInfo << "  Status          : " << (converged ? "CONVERGED" : "NOT CONVERGED") << "\n";
 
-    // Text file logging (comparable to parabolic_l2ls_example)
     if (!txtOut.empty())
     {
         const bool exists = gsFileManager::fileExists(txtOut);
@@ -480,7 +640,9 @@ bool runDomainExperiment(
 
         if (!exists)
             outfile << "geometry\t"
+                       "patches\t"
                        "degree\t"
+                       "beta\t"
                        "minRef\t"
                        "maxRef\t"
                        "nLevels\t"
@@ -489,6 +651,7 @@ bool runDomainExperiment(
                        "preSmooth\t"
                        "postSmooth\t"
                        "solver\t"
+                       "exact\t"
                        "tol\t"
                        "iter\t"
                        "relRes\t"
@@ -502,7 +665,9 @@ bool runDomainExperiment(
                        "status\n";
 
         outfile << geomPath << "\t"
+                << mp.nPatches() << "\t"
                 << degree << "\t"
+                << beta << "\t"
                 << minRef << "\t"
                 << maxRef << "\t"
                 << nLevels << "\t"
@@ -511,6 +676,7 @@ bool runDomainExperiment(
                 << numPreSmooth << "\t"
                 << numPostSmooth << "\t"
                 << solverType << "\t"
+                << (homogeneousBC ? exactType : "inhomo") << "\t"
                 << tol << "\t"
                 << numIterations << "\t"
                 << finalRelRes << "\t"
@@ -535,7 +701,10 @@ int main(int argc, char *argv[])
     std::string outDir("");
     std::string txtOut("");
     std::string solverType("cg");
+    std::string suite("classic");
+    std::string exactType("bubble");
     index_t degree = 3;
+    index_t bubbleDeg = 0;
     index_t minRef = 2;
     index_t maxRef = 4;
     index_t numCycles = 1;
@@ -544,16 +713,23 @@ int main(int argc, char *argv[])
     index_t maxIt = 300;
     T tol = 1e-8;
     T freqA = 1.0;
+    T beta = 0.0;
+    T eps = 1e-3;
+    T margin = 0.15;
     bool runAll = false;
     bool homogeneousBC = false;
+    bool verifyDirect = false;
     bool plot = false;
 
-    gsCmdLine cmd("AS-G1 Biharmonic Multigrid Solver with Gauss-Seidel Smoother.");
+    gsCmdLine cmd("AS-G1 Biharmonic Multigrid Solver with Symmetric Gauss-Seidel Smoother.");
     cmd.addString("f", "file", "Multi-patch geometry XML file.", geometry);
-    cmd.addString("o", "outDir", "Output directory for Paraview VTK files.", outDir);
+    cmd.addString("o", "outDir", "Output directory for Paraview VTK/PVD files.", outDir);
     cmd.addString("t", "txtOut", "Filename for tab-separated text results output.", txtOut);
     cmd.addString("s", "solver", "Iterative solver: 'cg' (PCG) or 'mg' (Direct Multigrid Iteration).", solverType);
+    cmd.addString("", "suite", "Benchmark suite when --all is set: classic, generator, noholes, holes, all.", suite);
+    cmd.addString("", "exact", "Homogeneous exact solution (--homo): 'bubble' (B-spline), 'sin_bubble', or 'box'.", exactType);
     cmd.addInt("d", "degree", "Spline degree (minimum 3 for C1 AS-G1).", degree);
+    cmd.addInt("", "bubbleDeg", "Degree/power of bubble exact solution (0 = degree + 2).", bubbleDeg);
     cmd.addInt("m", "minRef", "Coarsest grid refinement level (minimum 2).", minRef);
     cmd.addInt("r", "maxRef", "Finest grid refinement level.", maxRef);
     cmd.addInt("c", "cycles", "Multigrid cycle type: 1 = V-cycle, 2 = W-cycle.", numCycles);
@@ -562,9 +738,13 @@ int main(int argc, char *argv[])
     cmd.addInt("", "maxIt", "Maximum solver iterations.", maxIt);
     cmd.addReal("e", "tol", "Relative residual tolerance.", tol);
     cmd.addReal("a", "frequency", "Frequency factor in manufactured solution.", freqA);
-    cmd.addSwitch("homo", "Use homogeneous Dirichlet boundary conditions.", homogeneousBC);
-    cmd.addSwitch("all", "Run test suite across all multi-patch benchmark domains.", runAll);
-    cmd.addSwitch("plot", "Export Paraview visualization.", plot);
+    cmd.addReal("b", "beta", "Reaction parameter beta >= 0 in (beta u + Delta^2 u = f).", beta);
+    cmd.addReal("", "eps", "Tolerance for AS-G1 gluing data.", eps);
+    cmd.addReal("", "margin", "Fractional margin for bubble support inside inscribed rectangle (0..0.5).", margin);
+    cmd.addSwitch("homo", "Use homogeneous zero Dirichlet boundary conditions.", homogeneousBC);
+    cmd.addSwitch("verify", "Verify iterative solution against direct Cholesky solver.", verifyDirect);
+    cmd.addSwitch("all", "Run test suite across multi-patch benchmark domains.", runAll);
+    cmd.addSwitch("plot", "Export Paraview visualization (both exact and solved PVD).", plot);
 
     try
     {
@@ -581,53 +761,183 @@ int main(int argc, char *argv[])
         minRef = 2;
     if (maxRef < minRef)
         maxRef = minRef;
+    if (margin <= T(0) || margin >= T(0.5))
+        margin = T(0.15);
 
     if (!runAll)
     {
         runDomainExperiment<T>(
-            geometry, degree, minRef, maxRef,
+            geometry, degree, bubbleDeg, minRef, maxRef,
             numCycles, numPreSmooth, numPostSmooth,
-            solverType, tol, maxIt, homogeneousBC, freqA, plot, outDir, txtOut);
+            solverType, tol, maxIt, homogeneousBC, exactType, freqA, beta, eps, margin,
+            verifyDirect, plot, outDir, sanitizeStem(geometry), txtOut);
     }
     else
     {
-        // Benchmark suite across all multi-patch domain configurations
-        std::vector<std::string> benchmarkFiles = {
-            "domain2d/2patch/two_bilinear_patches.xml",
-            "domain2d/2patch/2_patch_rectangle.xml",
-            "domain2d/2patch/2_patch_rectangle_non_bilinear.xml",
-            "domain2d/2patch/three_patch_belt.xml",
-            "domain2d/2patch/three_patch_belt_non_bilinear.xml",
-            "domain2d/2patch/4_patch_3_valence_not_bilinear.xml",
-            "domain2d/2patch/5_patch_5_valence_not_bilinear.xml",
-            "domain2d/2patch/6_patch_4_valence_each_not_bilinear.xml",
-            "domain2d/2patch/6_patch_6_valence_not_bilinear.xml",
-            "domain2d/2patch/square_6_patch.xml",
-            "domain2d/2patch/square_6_patch_non_bilinear.xml",
-            "domain2d/2patch/two_patch_mathematica.xml",
-            "domain2d/2patch/two_patch_mathematica_non_bilinear.xml",
-            "domain2d/2patch/weirdo_multivalence.xml",
-            "domain2d/2patch/weirdo_multivalence_non_bilinear.xml",
-            "domain2d/2patch/experiment_multivalence_not_bilinear.xml"};
+        struct SuiteEntry { std::string tag; std::string path; };
+        std::vector<SuiteEntry> benchmarkFiles;
+
+        auto addList = [&](const std::string &tag, const std::vector<std::string> &list) {
+            for (const auto &f : list)
+                benchmarkFiles.push_back({tag, f});
+        };
+
+        auto addClassic = [&]() {
+            addList("classic", {
+                "domain2d/2patch/two_bilinear_patches.xml",
+                "domain2d/2patch/2_patch_rectangle.xml",
+                "domain2d/2patch/2_patch_rectangle_non_bilinear.xml",
+                "domain2d/2patch/three_patch_belt.xml",
+                "domain2d/2patch/three_patch_belt_non_bilinear.xml",
+                "domain2d/2patch/4_patch_3_valence_not_bilinear.xml",
+                "domain2d/2patch/5_patch_5_valence_not_bilinear.xml",
+                "domain2d/2patch/6_patch_4_valence_each_not_bilinear.xml",
+                "domain2d/2patch/6_patch_6_valence_not_bilinear.xml",
+                "domain2d/2patch/square_6_patch.xml",
+                "domain2d/2patch/square_6_patch_non_bilinear.xml",
+                "domain2d/2patch/two_patch_mathematica.xml",
+                "domain2d/2patch/two_patch_mathematica_non_bilinear.xml",
+                "domain2d/2patch/weirdo_multivalence.xml",
+                "domain2d/2patch/weirdo_multivalence_non_bilinear.xml",
+                "domain2d/2patch/experiment_multivalence_not_bilinear.xml",
+                "domain2d/2patch/convex_3_valence.xml",
+                "domain2d/2patch/convex_3_valence_non_bilinear.xml",
+                "domain2d/2patch/convex_5_valence.xml",
+                "domain2d/2patch/convex_5_valence_non_bilinear.xml",
+                "domain2d/2patch/convex_6_valence.xml",
+                "domain2d/2patch/convex_6_valence_non_bilinear.xml",
+                "domain2d/2patch/blob_geometry.xml",
+                "domain2d/2patch/blob_geometry_non_bilinear.xml",
+                "domain2d/2patch/circle/asg1_circle_5patch.xml",
+                "domain2d/2patch/circle/asg1_general_5patch_v2.xml",
+                "domain2d/2patch/circle/asg1_general_5patch_v4.xml"
+            });
+        };
+
+        auto addGenerator = [&]() {
+            addList("generator", {
+                "domain2d/as_g1_generator/2_patch_rectangle_asg1.xml",
+                "domain2d/as_g1_generator/two_squares_asg1.xml",
+                "domain2d/as_g1_generator/ldomain_asg1.xml",
+                "domain2d/as_g1_generator/lake_asg1.xml",
+                "domain2d/as_g1_generator/as_g1_tri_p3.xml",
+                "domain2d/as_g1_generator/as_g1_pentagon_p3.xml",
+                "domain2d/as_g1_generator/as_g1_pentagon_p3_r1.xml",
+                "domain2d/as_g1_generator/as_g1_hex_p3.xml",
+                "domain2d/as_g1_generator/as_g1_v3_p3.xml",
+                "domain2d/as_g1_generator/as_g1_v4_p3.xml",
+                "domain2d/as_g1_generator/as_g1_v5_p3_r1.xml",
+                "domain2d/as_g1_generator/as_g1_v6_p3.xml",
+                "domain2d/as_g1_generator/as_g1_v7_p3.xml",
+                "domain2d/as_g1_generator/as_g1_patch3_sym.xml",
+                "domain2d/as_g1_generator/as_g1_patch4_sym.xml",
+                "domain2d/as_g1_generator/as_g1_patch5_polygon_sym.xml",
+                "domain2d/as_g1_generator/as_g1_patch5_star_sym.xml",
+                "domain2d/as_g1_generator/as_g1_patch5_sym.xml",
+                "domain2d/as_g1_generator/as_g1_patch6_sym.xml",
+                "domain2d/as_g1_generator/as_g1_patch7_sym.xml",
+                "domain2d/as_g1_generator/as_g1_patch3_random.xml",
+                "domain2d/as_g1_generator/as_g1_patch4_random.xml",
+                "domain2d/as_g1_generator/as_g1_patch5_random.xml",
+                "domain2d/as_g1_generator/as_g1_patch6_random.xml",
+                "domain2d/as_g1_generator/as_g1_patch7_random.xml",
+                "domain2d/as_g1_generator/as_g1_pentagon_random_s101.xml",
+                "domain2d/as_g1_generator/as_g1_hex_random_s777.xml",
+                "domain2d/as_g1_generator/as_g1_star_v5_p3.xml",
+                "domain2d/as_g1_generator/as_g1_ellipse_v5_p3.xml",
+                "domain2d/as_g1_generator/yeti_asg1.xml",
+                "domain2d/lshape_9patch_non_bilinear_trig_p3_asg1.xml",
+                "domain2d/ring_7patch_non_bilinear_swirl_p3_asg1.xml"
+            });
+        };
+
+        auto addNoHoles = [&]() {
+            addList("noholes", {
+                "domain2d/as_g1_no_holes_reparametrized/benchmark_6/quad_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/benchmark_6/curved_quad_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/benchmark_6/lshape_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/benchmark_6/curved_lshape_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/benchmark_6/circle_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/comb_no_holes/comb_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/comb_no_holes/curved_comb_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/1to7corners/bulged_quad_non_bilinear_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/1to7corners/teardrop_1corner_convex_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/1to7corners/lens_2corner_convex_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/1to7corners/crescent_2corner_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/1to7corners/curved_triangle_3corner_convex_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/1to7corners/concave_triangle_3corner_nonconvex_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/1to7corners/star_triangle_3corner_nonconvex_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/1to7corners/curved_quad_4corner_convex_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/1to7corners/concave_quad_4corner_nonconvex_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/1to7corners/star_quad_4corner_nonconvex_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/1to7corners/curved_pentagon_5corner_convex_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/1to7corners/concave_pentagon_5corner_nonconvex_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/1to7corners/curved_hexagon_6corner_convex_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/1to7corners/star_hexagon_6corner_nonconvex_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/1to7corners/curved_heptagon_7corner_convex_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/1to7corners/star_heptagon_7corner_nonconvex_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/1to7corners/heart_1corner_nonconvex_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/1to7corners/heart_2corner_nonconvex_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/noHolesCounterExamples/01_dart_4corner_nonconvex_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/noHolesCounterExamples/02_serpentine_s_duct_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/noHolesCounterExamples/03_filleted_u_bracket_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/noHolesCounterExamples/04_heptagon_7corner_convex_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/noHolesCounterExamples/05_hourglass_pinch_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/noHolesCounterExamples/06_y_junction_3way_asg1.xml",
+                "domain2d/as_g1_no_holes_reparametrized/noHolesCounterExamples/07_asymmetric_staircase_8corner_asg1.xml"
+            });
+        };
+
+        auto addHoles = [&]() {
+            addList("holes", {
+                "domain2d/as_g1_domain_decomposition_results/asg1_reparametrized/bean_0corner_1hole_asg1.xml",
+                "domain2d/as_g1_domain_decomposition_results/asg1_reparametrized/curved_ring_4patch_asg1.xml",
+                "domain2d/as_g1_domain_decomposition_results/asg1_reparametrized/wavy_ring_annulus_asg1.xml",
+                "domain2d/as_g1_domain_decomposition_results/asg1_reparametrized/curved_lshape_6corner_1hole_asg1.xml",
+                "domain2d/as_g1_domain_decomposition_results/asg1_reparametrized/star_5corner_1hole_asg1.xml",
+                "domain2d/as_g1_domain_decomposition_results/asg1_reparametrized/crescent_2corner_asg1.xml",
+                "domain2d/as_g1_domain_decomposition_results/asg1_reparametrized/curved_2patch_asg1.xml",
+                "domain2d/as_g1_domain_decomposition_results/asg1_reparametrized/curved_lshape_3patch_asg1.xml"
+            });
+        };
+
+        if (suite == "classic")
+            addClassic();
+        else if (suite == "generator")
+            addGenerator();
+        else if (suite == "noholes")
+            addNoHoles();
+        else if (suite == "holes")
+            addHoles();
+        else
+        {
+            addClassic();
+            addGenerator();
+            addNoHoles();
+            addHoles();
+        }
 
         gsInfo << "\n======================================================================\n";
-        gsInfo << "RUNNING MULTIGRID TEST SUITE ACROSS ALL MULTI-PATCH DOMAINS\n";
+        gsInfo << "RUNNING FIRST BIHARMONIC MULTIGRID SUITE (" << suite << ")\n";
         gsInfo << "======================================================================\n";
 
         index_t numPassed = 0;
         index_t numFailed = 0;
 
-        for (const auto &file : benchmarkFiles)
+        for (const auto &entry : benchmarkFiles)
         {
+            const std::string &file = entry.path;
             if (!gsFileManager::fileExists(file) && !gsFileManager::fileExists("filedata/" + file))
             {
                 gsInfo << "Skipping non-existent: " << file << "\n";
                 continue;
             }
+            const std::string subDir = entry.tag + "/" + sanitizeStem(file);
             bool ok = runDomainExperiment<T>(
-                file, degree, minRef, maxRef,
+                file, degree, bubbleDeg, minRef, maxRef,
                 numCycles, numPreSmooth, numPostSmooth,
-                solverType, tol, maxIt, homogeneousBC, freqA, false, "", txtOut);
+                solverType, tol, maxIt, homogeneousBC, exactType, freqA, beta, eps, margin,
+                verifyDirect, plot, outDir, subDir, txtOut);
             if (ok)
                 numPassed++;
             else

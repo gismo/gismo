@@ -13,6 +13,17 @@
 
 #pragma once
 
+#include <algorithm>
+#include <cmath>
+#include <iomanip>
+#include <memory>
+#include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include <gsCore/gsPiecewiseFunction.h>
+
 namespace gismo {
 
 // ====================================================================
@@ -505,6 +516,609 @@ gsBoundaryCornerData<T> getBoundaryCornerData(
         out.curvature = T(0.5) * (ck0 + ck1);
     }
     return out;
+}
+
+// ====================================================================
+// Homogeneous-BC manufactured solutions (B-spline bubble & helpers)
+// ====================================================================
+
+/**
+ * @brief Scalar function returning the physical Laplacian Delta f = sum_d d^2f/dx_d^2
+ *        of a wrapped scalar gsFunction, used to assemble the energy-form RHS
+ *        l(v) = (Delta u_ex, Delta v) + beta (u_ex, v).
+ */
+template <typename T>
+class gsLaplacianFunction : public gsFunction<T>
+{
+    std::shared_ptr<const gsFunction<T>> m_f;
+
+public:
+    explicit gsLaplacianFunction(const gsFunction<T> &f)
+        : m_f(f.clone().release()) {}
+
+    GISMO_CLONE_FUNCTION(gsLaplacianFunction)
+
+    short_t domainDim() const override { return m_f->domainDim(); }
+    short_t targetDim() const override { return 1; }
+
+    void eval_into(const gsMatrix<T> &u, gsMatrix<T> &result) const override
+    {
+        gsMatrix<T> d2;
+        m_f->deriv2_into(u, d2);
+        const short_t d = m_f->domainDim();
+        result = d2.topRows(d).colwise().sum();
+    }
+};
+
+/**
+ * @brief Smooth C^{q-1} trigonometric bubble supported on [a_x, b_x] x [a_y, b_y]:
+ *        u(x, y) = sin^q(pi * (x - a_x) / (b_x - a_x)) * sin^q(pi * (y - a_y) / (b_y - a_y))
+ *        inside the rectangle and 0 outside.
+ */
+template <typename T>
+class gsTrigBubbleFunction : public gsFunction<T>
+{
+    T m_ax, m_bx, m_ay, m_by;
+    index_t m_q;
+
+    static void eval1D(T x, T a, T b, index_t q, T &val, T &d1, T &d2)
+    {
+        if (x <= a || x >= b)
+        {
+            val = T(0);
+            d1  = T(0);
+            d2  = T(0);
+            return;
+        }
+        const T L = b - a;
+        const T pi = T(3.1415926535897932384626433832795);
+        const T theta = pi * (x - a) / L;
+        const T s = std::sin(theta);
+        const T c = std::cos(theta);
+        const T s_qm2 = (q >= 2) ? std::pow(s, static_cast<int>(q - 2)) : T(1);
+        const T s_qm1 = s_qm2 * s;
+        const T s_q   = s_qm1 * s;
+
+        val = s_q;
+        d1  = T(q) * (pi / L) * s_qm1 * c;
+        d2  = T(q) * (pi / L) * (pi / L) * s_qm2 * (T(q) * c * c - T(1));
+    }
+
+public:
+    gsTrigBubbleFunction(T ax, T bx, T ay, T by, index_t q = 6)
+        : m_ax(ax), m_bx(bx), m_ay(ay), m_by(by), m_q(std::max<index_t>(q, 4)) {}
+
+    GISMO_CLONE_FUNCTION(gsTrigBubbleFunction)
+
+    short_t domainDim() const override { return 2; }
+    short_t targetDim() const override { return 1; }
+
+    void eval_into(const gsMatrix<T> &u, gsMatrix<T> &result) const override
+    {
+        const index_t n = u.cols();
+        result.resize(1, n);
+        for (index_t k = 0; k < n; ++k)
+        {
+            T vx, dx1, dx2, vy, dy1, dy2;
+            eval1D(u(0, k), m_ax, m_bx, m_q, vx, dx1, dx2);
+            eval1D(u(1, k), m_ay, m_by, m_q, vy, dy1, dy2);
+            result(0, k) = vx * vy;
+        }
+    }
+
+    void deriv_into(const gsMatrix<T> &u, gsMatrix<T> &result) const override
+    {
+        const index_t n = u.cols();
+        result.resize(2, n);
+        for (index_t k = 0; k < n; ++k)
+        {
+            T vx, dx1, dx2, vy, dy1, dy2;
+            eval1D(u(0, k), m_ax, m_bx, m_q, vx, dx1, dx2);
+            eval1D(u(1, k), m_ay, m_by, m_q, vy, dy1, dy2);
+            result(0, k) = dx1 * vy;
+            result(1, k) = vx * dy1;
+        }
+    }
+
+    void deriv2_into(const gsMatrix<T> &u, gsMatrix<T> &result) const override
+    {
+        const index_t n = u.cols();
+        result.resize(3, n);
+        for (index_t k = 0; k < n; ++k)
+        {
+            T vx, dx1, dx2, vy, dy1, dy2;
+            eval1D(u(0, k), m_ax, m_bx, m_q, vx, dx1, dx2);
+            eval1D(u(1, k), m_ay, m_by, m_q, vy, dy1, dy2);
+            result(0, k) = dx2 * vy;
+            result(1, k) = vx * dy2;
+            result(2, k) = dx1 * dy1;
+        }
+    }
+};
+
+/**
+ * @brief Computes a large axis-aligned rectangle [rect_xmin, rect_xmax] x [rect_ymin, rect_ymax]
+ *        strictly inscribed inside the planar multi-patch domain Omega.
+ *
+ * Handles simply connected, non-convex, curved, and multiply connected (perforated with holes)
+ * domains by chaining external/hole boundary curves into closed loops, performing multi-loop
+ * even-odd ray-casting, rasterizing boundary segments to enforce clearance, and running the
+ * O(N^2) maximal-rectangle-in-histogram search maximizing area * min(width, height).
+ */
+template <typename T>
+void computeInscribedRectangle(const gsMultiPatch<T> &mp,
+                               T &rect_xmin, T &rect_xmax,
+                               T &rect_ymin, T &rect_ymax,
+                               index_t gridN = 160)
+{
+    struct BdSeg { std::vector<std::pair<T, T>> pts; };
+    std::vector<BdSeg> segs;
+    const int K = 48;
+
+    for (auto it = mp.bBegin(); it != mp.bEnd(); ++it)
+    {
+        BdSeg seg;
+        const size_t pi = it->patch;
+        const boxSide side = it->side();
+        const short_t dir  = side.direction();
+        const short_t tang = 1 - dir;
+        const bool par     = side.parameter();
+
+        const gsMatrix<T> sup = mp.patch(pi).support();
+        const T fixedVal = sup(dir, par ? 1 : 0);
+        const T t0 = sup(tang, 0), t1 = sup(tang, 1);
+
+        gsMatrix<T> uv(2, K + 1);
+        for (int k = 0; k <= K; ++k)
+        {
+            uv(dir,  k) = fixedVal;
+            uv(tang, k) = t0 + (T(k) / T(K)) * (t1 - t0);
+        }
+        gsMatrix<T> xy;
+        mp.patch(pi).eval_into(uv, xy);
+        seg.pts.reserve(K + 1);
+        for (int k = 0; k <= K; ++k)
+            seg.pts.emplace_back(xy(0, k), xy(1, k));
+        segs.push_back(give(seg));
+    }
+
+    gsMatrix<T> bbox;
+    mp.boundingBox(bbox);
+    const T xmin = bbox(0, 0), xmax = bbox(0, 1);
+    const T ymin = bbox(1, 0), ymax = bbox(1, 1);
+    const T Lx = (xmax - xmin > T(1e-12)) ? (xmax - xmin) : T(1);
+    const T Ly = (ymax - ymin > T(1e-12)) ? (ymax - ymin) : T(1);
+    const T diagSq = Lx * Lx + Ly * Ly;
+
+    if (segs.empty())
+    {
+        rect_xmin = xmin; rect_xmax = xmax;
+        rect_ymin = ymin; rect_ymax = ymax;
+        return;
+    }
+
+    auto dsq = [](const std::pair<T, T> &a, const std::pair<T, T> &b) -> T {
+        const T dx = a.first - b.first, dy = a.second - b.second;
+        return dx * dx + dy * dy;
+    };
+
+    // Chain boundary segments into multiple closed loops (outer + any inner holes)
+    std::vector<std::vector<std::pair<T, T>>> loops;
+    std::vector<bool> used(segs.size(), false);
+    const T closeTolSq = T(1e-10) * diagSq;
+    const T matchTolSq = T(1e-4)  * diagSq;
+
+    for (size_t start = 0; start < segs.size(); ++start)
+    {
+        if (used[start])
+            continue;
+        used[start] = true;
+        std::vector<std::pair<T, T>> poly = segs[start].pts;
+
+        while (true)
+        {
+            const auto &tail = poly.back();
+            const auto &head = poly.front();
+            const T dClose = dsq(tail, head);
+            if (poly.size() > 2 && dClose <= closeTolSq)
+                break;
+
+            int best = -1;
+            T bestD = T(1e30);
+            bool rev = false;
+            for (size_t k = 0; k < segs.size(); ++k)
+            {
+                if (used[k])
+                    continue;
+                const T d0 = dsq(tail, segs[k].pts.front());
+                const T d1 = dsq(tail, segs[k].pts.back());
+                if (d0 < bestD) { bestD = d0; best = static_cast<int>(k); rev = false; }
+                if (d1 < bestD) { bestD = d1; best = static_cast<int>(k); rev = true; }
+            }
+
+            if (best < 0)
+                break;
+            if (bestD > matchTolSq && dClose <= bestD)
+                break;
+
+            used[best] = true;
+            const auto &pts = segs[best].pts;
+            if (rev)
+            {
+                for (int k = static_cast<int>(pts.size()) - 2; k >= 0; --k)
+                    poly.push_back(pts[k]);
+            }
+            else
+            {
+                for (size_t k = 1; k < pts.size(); ++k)
+                    poly.push_back(pts[k]);
+            }
+        }
+        if (poly.size() >= 3)
+            loops.push_back(give(poly));
+    }
+
+    auto inDomain = [&](T px, T py) -> bool {
+        bool in = false;
+        for (const auto &poly : loops)
+        {
+            for (size_t i = 0, j = poly.size() - 1; i < poly.size(); j = i++)
+            {
+                const T xi = poly[i].first,  yi = poly[i].second;
+                const T xj = poly[j].first,  yj = poly[j].second;
+                if (((yi > py) != (yj > py)) &&
+                    (px < (xj - xi) * (py - yi) / (yj - yi) + xi))
+                    in = !in;
+            }
+        }
+        return in;
+    };
+
+    auto searchGrid = [&](index_t N, bool excludeBdrSegs,
+                          T &outX0, T &outX1, T &outY0, T &outY1) -> bool {
+        const T dx = Lx / T(N), dy = Ly / T(N);
+
+        std::vector<std::vector<bool>> vIn(N + 1, std::vector<bool>(N + 1, false));
+        for (index_t i = 0; i <= N; ++i)
+            for (index_t j = 0; j <= N; ++j)
+                vIn[i][j] = inDomain(xmin + T(i) * dx, ymin + T(j) * dy);
+
+        std::vector<std::vector<bool>> cellValid(N, std::vector<bool>(N, false));
+        for (index_t i = 0; i < N; ++i)
+            for (index_t j = 0; j < N; ++j)
+                cellValid[i][j] = vIn[i][j] && vIn[i + 1][j] &&
+                                  vIn[i][j + 1] && vIn[i + 1][j + 1] &&
+                                  inDomain(xmin + (T(i) + T(0.5)) * dx,
+                                           ymin + (T(j) + T(0.5)) * dy);
+
+        if (excludeBdrSegs)
+        {
+            for (const auto &poly : loops)
+            {
+                for (size_t i = 0, j = poly.size() - 1; i < poly.size(); j = i++)
+                {
+                    const T x0 = std::min(poly[i].first,  poly[j].first);
+                    const T x1 = std::max(poly[i].first,  poly[j].first);
+                    const T y0 = std::min(poly[i].second, poly[j].second);
+                    const T y1 = std::max(poly[i].second, poly[j].second);
+                    const index_t iMin = std::max<index_t>(0, static_cast<index_t>(std::floor((x0 - xmin) / dx)));
+                    const index_t iMax = std::min<index_t>(N - 1, static_cast<index_t>(std::floor((x1 - xmin) / dx)));
+                    const index_t jMin = std::max<index_t>(0, static_cast<index_t>(std::floor((y0 - ymin) / dy)));
+                    const index_t jMax = std::min<index_t>(N - 1, static_cast<index_t>(std::floor((y1 - ymin) / dy)));
+                    for (index_t ci = iMin; ci <= iMax; ++ci)
+                        for (index_t cj = jMin; cj <= jMax; ++cj)
+                            cellValid[ci][cj] = false;
+                }
+            }
+        }
+
+        // Exact O(N^2) maximal rectangle in histogram maximizing area * min(w, h)
+        std::vector<index_t> h(N, 0);
+        T bestScore = T(-1);
+        index_t bestI0 = 0, bestI1 = 0, bestJ0 = 0, bestJ1 = 0;
+        for (index_t j = 0; j < N; ++j)
+        {
+            for (index_t i = 0; i < N; ++i)
+                h[i] = cellValid[i][j] ? (h[i] + 1) : 0;
+
+            std::vector<index_t> st;
+            for (index_t i = 0; i <= N; ++i)
+            {
+                const index_t curH = (i < N) ? h[i] : 0;
+                while (!st.empty() && h[st.back()] >= curH)
+                {
+                    const index_t hh = h[st.back()];
+                    st.pop_back();
+                    const index_t i0 = st.empty() ? 0 : (st.back() + 1);
+                    const index_t i1 = i;
+                    if (hh > 0 && i1 > i0)
+                    {
+                        const T pw = T(i1 - i0) * dx;
+                        const T ph = T(hh) * dy;
+                        const T score = pw * ph * std::min(pw, ph);
+                        if (score > bestScore)
+                        {
+                            bestScore = score;
+                            bestI0 = i0;
+                            bestI1 = i1;
+                            bestJ0 = j + 1 - hh;
+                            bestJ1 = j + 1;
+                        }
+                    }
+                }
+                st.push_back(i);
+            }
+        }
+
+        if (bestScore <= T(0))
+            return false;
+
+        outX0 = xmin + T(bestI0) * dx;
+        outX1 = xmin + T(bestI1) * dx;
+        outY0 = ymin + T(bestJ0) * dy;
+        outY1 = ymin + T(bestJ1) * dy;
+        return true;
+    };
+
+    if (searchGrid(gridN, true, rect_xmin, rect_xmax, rect_ymin, rect_ymax))
+        return;
+
+    if (searchGrid(gridN * 2, false, rect_xmin, rect_xmax, rect_ymin, rect_ymax))
+        return;
+
+    // Fallback for extremely thin domains: find interior point farthest from boundary
+    auto distSqToBoundary = [&](T px, T py) -> T {
+        T minD2 = T(1e30);
+        for (const auto &poly : loops)
+        {
+            for (size_t i = 0, j = poly.size() - 1; i < poly.size(); j = i++)
+            {
+                const T ax = poly[i].first, ay = poly[i].second;
+                const T bx = poly[j].first, by = poly[j].second;
+                const T vx = bx - ax, vy = by - ay;
+                const T len2 = vx * vx + vy * vy;
+                T t = (len2 > T(0)) ? ((px - ax) * vx + (py - ay) * vy) / len2 : T(0);
+                t = std::max(T(0), std::min(T(1), t));
+                const T cx = ax + t * vx - px;
+                const T cy = ay + t * vy - py;
+                minD2 = std::min(minD2, cx * cx + cy * cy);
+            }
+        }
+        return minD2;
+    };
+
+    const index_t M = 200;
+    const T dx = Lx / T(M), dy = Ly / T(M);
+    T bestX = xmin + T(0.5) * Lx, bestY = ymin + T(0.5) * Ly, bestR2 = T(0);
+    for (index_t i = 1; i < M; ++i)
+    {
+        const T px = xmin + T(i) * dx;
+        for (index_t j = 1; j < M; ++j)
+        {
+            const T py = ymin + T(j) * dy;
+            if (!inDomain(px, py))
+                continue;
+            const T r2 = distSqToBoundary(px, py);
+            if (r2 > bestR2)
+            {
+                bestR2 = r2;
+                bestX = px;
+                bestY = py;
+            }
+        }
+    }
+    const T halfSide = T(0.65) * std::sqrt(bestR2);
+    rect_xmin = bestX - halfSide;
+    rect_xmax = bestX + halfSide;
+    rect_ymin = bestY - halfSide;
+    rect_ymax = bestY + halfSide;
+}
+
+template <typename T>
+gsKnotVector<T> makeBubbleKnotVector(T lo, T hi, T a, T b, index_t p)
+{
+    std::vector<T> kn;
+    kn.reserve(3 * p + 4);
+    for (index_t i = 0; i <= p; ++i)
+        kn.push_back(lo);
+    for (index_t i = 0; i <= p + 1; ++i)
+        kn.push_back(a * T(p + 1 - i) / T(p + 1) + b * T(i) / T(p + 1));
+    for (index_t i = 0; i <= p; ++i)
+        kn.push_back(hi);
+    return gsKnotVector<T>(static_cast<short_t>(p), kn.begin(), kn.end());
+}
+
+template <typename T>
+struct gsBubbleData
+{
+    T rect_xmin = 0, rect_xmax = 1, rect_ymin = 0, rect_ymax = 1;
+    T a_x = 0, b_x = 1, a_y = 0, b_y = 1;
+    gsTensorBSpline<2, T> bubble;
+    gsPiecewiseFunction<T> field;
+    gsPiecewiseFunction<T> lapField;
+};
+
+/**
+ * @brief Constructs a normalized single tensor-product B-spline bubble of degree bubbleDeg
+ *        supported on an interior rectangle [a_x, b_x] x [a_y, b_y] strictly inside mp.
+ */
+template <typename T>
+gsBubbleData<T> makeBSplineBubble(const gsMultiPatch<T> &mp,
+                                  index_t bubbleDeg,
+                                  T margin = T(0.15))
+{
+    gsBubbleData<T> out;
+    if (margin <= T(0) || margin >= T(0.5))
+        margin = T(0.15);
+    if (bubbleDeg < 2)
+        bubbleDeg = 2;
+
+    gsMatrix<T> bbox;
+    mp.boundingBox(bbox);
+    const T x_min = bbox(0, 0), x_max = bbox(0, 1);
+    const T y_min = bbox(1, 0), y_max = bbox(1, 1);
+    const T Lx = (x_max - x_min > T(1e-12)) ? (x_max - x_min) : T(1);
+    const T Ly = (y_max - y_min > T(1e-12)) ? (y_max - y_min) : T(1);
+
+    computeInscribedRectangle(mp, out.rect_xmin, out.rect_xmax,
+                              out.rect_ymin, out.rect_ymax);
+
+    const T iLx = out.rect_xmax - out.rect_xmin;
+    const T iLy = out.rect_ymax - out.rect_ymin;
+    out.a_x = out.rect_xmin + margin * iLx;
+    out.b_x = out.rect_xmax - margin * iLx;
+    out.a_y = out.rect_ymin + margin * iLy;
+    out.b_y = out.rect_ymax - margin * iLy;
+
+    const T pad_x = T(0.05) * Lx;
+    const T pad_y = T(0.05) * Ly;
+
+    gsKnotVector<T> kvx = makeBubbleKnotVector(x_min - pad_x, x_max + pad_x, out.a_x, out.b_x, bubbleDeg);
+    gsKnotVector<T> kvy = makeBubbleKnotVector(y_min - pad_y, y_max + pad_y, out.a_y, out.b_y, bubbleDeg);
+    gsTensorBSplineBasis<2, T> bubbleBasis(kvx, kvy);
+
+    const index_t size0 = kvx.size() - bubbleDeg - 1;
+    const index_t bumpIdx = (bubbleDeg + 1) + (bubbleDeg + 1) * size0;
+
+    gsMatrix<T> bubbleCoefs(bubbleBasis.size(), 1);
+    bubbleCoefs.setZero();
+    bubbleCoefs(bumpIdx, 0) = T(1);
+
+    out.bubble = gsTensorBSpline<2, T>(bubbleBasis, give(bubbleCoefs));
+
+    // Normalize peak amplitude to 1.0 at the bubble center
+    gsMatrix<T> center(2, 1);
+    center(0, 0) = T(0.5) * (out.a_x + out.b_x);
+    center(1, 0) = T(0.5) * (out.a_y + out.b_y);
+    const T peak = out.bubble.eval(center)(0, 0);
+    if (std::abs(peak) > T(1e-14))
+        out.bubble.coefs() /= peak;
+
+    gsLaplacianFunction<T> bubbleLap(out.bubble);
+    for (size_t i = 0; i < mp.nPatches(); ++i)
+    {
+        out.field.addPiece(out.bubble);
+        out.lapField.addPiece(bubbleLap);
+    }
+    return out;
+}
+
+/**
+ * @brief Constructs a smooth trigonometric bubble of power trigPower supported on
+ *        [a_x, b_x] x [a_y, b_y] strictly inside mp.
+ */
+template <typename T>
+gsBubbleData<T> makeTrigBubble(const gsMultiPatch<T> &mp,
+                               index_t trigPower,
+                               T margin = T(0.15))
+{
+    gsBubbleData<T> out;
+    if (margin <= T(0) || margin >= T(0.5))
+        margin = T(0.15);
+
+    computeInscribedRectangle(mp, out.rect_xmin, out.rect_xmax,
+                              out.rect_ymin, out.rect_ymax);
+
+    const T iLx = out.rect_xmax - out.rect_xmin;
+    const T iLy = out.rect_ymax - out.rect_ymin;
+    out.a_x = out.rect_xmin + margin * iLx;
+    out.b_x = out.rect_xmax - margin * iLx;
+    out.a_y = out.rect_ymin + margin * iLy;
+    out.b_y = out.rect_ymax - margin * iLy;
+
+    gsTrigBubbleFunction<T> trig(out.a_x, out.b_x, out.a_y, out.b_y, trigPower);
+    gsLaplacianFunction<T> trigLap(trig);
+    for (size_t i = 0; i < mp.nPatches(); ++i)
+    {
+        out.field.addPiece(trig);
+        out.lapField.addPiece(trigLap);
+    }
+    return out;
+}
+
+struct gsBoxExactExprs
+{
+    std::string u_expr;
+    std::string grad_x_expr;
+    std::string grad_y_expr;
+    std::string hess_xx;
+    std::string hess_xy;
+    std::string hess_yy;
+    std::string lapl_expr;
+    std::string rhs_expr;
+};
+
+/**
+ * @brief Builds analytic expressions for box-conforming homogeneous-BC exact solutions
+ *        on axis-aligned rectangular bounding boxes [x0, x1] x [y0, y1]:
+ *        - First biharmonic:  u = sin^2(a*pi*(x-x0)/Lx) * sin^2(a*pi*(y-y0)/Ly)
+ *        - Second biharmonic: u = sin(a*pi*(x-x0)/Lx)   * sin(a*pi*(y-y0)/Ly)
+ */
+template <typename T>
+gsBoxExactExprs makeBoxHomogeneousExpressions(const gsMultiPatch<T> &mp,
+                                              bool isSecondBiharmonic,
+                                              T freqA,
+                                              T beta)
+{
+    gsMatrix<T> bbox;
+    mp.boundingBox(bbox);
+    const T x0 = bbox(0, 0), x1 = bbox(0, 1);
+    const T y0 = bbox(1, 0), y1 = bbox(1, 1);
+    const T Lx = (x1 - x0 > T(1e-12)) ? (x1 - x0) : T(1);
+    const T Ly = (y1 - y0 > T(1e-12)) ? (y1 - y0) : T(1);
+
+    auto fmt = [](T v) -> std::string {
+        std::ostringstream oss;
+        oss << std::setprecision(16) << v;
+        return oss.str();
+    };
+
+    const std::string sx0 = fmt(x0), sy0 = fmt(y0);
+    const std::string sLx = fmt(Lx), sLy = fmt(Ly);
+    const std::string sa  = fmt(freqA);
+    const std::string sb  = fmt(beta);
+
+    const std::string kx = "(" + sa + "*pi/" + sLx + ")";
+    const std::string ky = "(" + sa + "*pi/" + sLy + ")";
+    const std::string ax = "(" + kx + "*(x-(" + sx0 + ")))";
+    const std::string ay = "(" + ky + "*(y-(" + sy0 + ")))";
+
+    gsBoxExactExprs ex;
+    if (isSecondBiharmonic)
+    {
+        const std::string uStr = "sin(" + ax + ")*sin(" + ay + ")";
+        ex.u_expr      = uStr;
+        ex.grad_x_expr = kx + "*cos(" + ax + ")*sin(" + ay + ")";
+        ex.grad_y_expr = ky + "*sin(" + ax + ")*cos(" + ay + ")";
+        ex.hess_xx     = "-(" + kx + ")^2*" + uStr;
+        ex.hess_xy     = kx + "*" + ky + "*cos(" + ax + ")*cos(" + ay + ")";
+        ex.hess_yy     = "-(" + ky + ")^2*" + uStr;
+        ex.lapl_expr   = "0";
+        ex.rhs_expr    = "(" + sb + "+((" + kx + ")^2+(" + ky + ")^2)^2)*" + uStr;
+    }
+    else
+    {
+        const std::string sx2 = "(sin(" + ax + ")^2)";
+        const std::string sy2 = "(sin(" + ay + ")^2)";
+        const std::string uStr = sx2 + "*" + sy2;
+        const std::string s2x = "sin(2*" + ax + ")";
+        const std::string s2y = "sin(2*" + ay + ")";
+        const std::string c2x = "cos(2*" + ax + ")";
+        const std::string c2y = "cos(2*" + ay + ")";
+
+        ex.u_expr      = uStr;
+        ex.grad_x_expr = kx + "*" + s2x + "*" + sy2;
+        ex.grad_y_expr = ky + "*" + sx2 + "*" + s2y;
+        ex.hess_xx     = "2*(" + kx + ")^2*" + c2x + "*" + sy2;
+        ex.hess_xy     = kx + "*" + ky + "*" + s2x + "*" + s2y;
+        ex.hess_yy     = "2*(" + ky + ")^2*" + sx2 + "*" + c2y;
+        ex.lapl_expr   = "2*(" + kx + ")^2*" + c2x + "*" + sy2 + "+2*(" + ky + ")^2*" + sx2 + "*" + c2y;
+        ex.rhs_expr    = sb + "*" + uStr
+                       + "-8*(" + kx + ")^4*" + c2x + "*" + sy2
+                       + "+8*(" + kx + ")^2*(" + ky + ")^2*" + c2x + "*" + c2y
+                       + "-8*(" + ky + ")^4*" + sx2 + "*" + c2y;
+    }
+    return ex;
 }
 
 } // namespace gismo

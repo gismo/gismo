@@ -4,6 +4,12 @@
            (\beta u + \Delta^2 u = f, u = g_1, \Delta u = g_2 on \partial\Omega)
            over Analysis-Suitable G1 (AS-G1) multi-patch geometries.
 
+    Supports inhomogeneous manufactured solutions as well as homogeneous (zero)
+    boundary conditions (u = 0, Delta u = 0) using a compactly supported
+    tensor-product B-spline bubble, a smooth trigonometric bubble, or a
+    box-conforming trigonometric solution, with exact L2, H1, and H2 error
+    evaluation.
+
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
@@ -18,6 +24,8 @@
 #include <gismo.h>
 #include <iomanip>
 #include <iostream>
+#include <memory>
+#include <string>
 #include <vector>
 
 #include <gsModeling/gsAsG1Basis.hpp>
@@ -30,29 +38,34 @@ int main(int argc, char *argv[])
 {
     using T = real_t;
 
-    std::string geometry(
-        "domain2d/2patch/two_bilinear_patches.xml");
+    std::string geometry("domain2d/2patch/two_bilinear_patches.xml");
     std::string outDir("");
+    std::string exactType("bubble");
     index_t degree = 3;
+    index_t bubbleDeg = 0;
     index_t numGaussPerSpan = 0;
     index_t minRefinements = 2;
     index_t maxRefinements = 4;
     T freqA = 1;
     T beta = 0;
     T eps = 1e-3;
+    T margin = 0.15;
     bool homogeneousBC = false;
     bool plot = false;
 
     gsCmdLine cmd("AS-G1 Second Biharmonic Equation Solver and Convergence Experiment.");
     cmd.addString("f", "file", "Multi-patch geometry XML file.", geometry);
     cmd.addString("o", "outDir", "Output directory for VTK/PVD files.", outDir);
+    cmd.addString("", "exact", "Homogeneous exact solution (--homo): 'bubble' (B-spline), 'sin_bubble', or 'box'.", exactType);
     cmd.addInt("d", "degree", "Target degree (minimum 3).", degree);
+    cmd.addInt("", "bubbleDeg", "Degree/power of bubble exact solution (0 = degree + 2).", bubbleDeg);
     cmd.addInt("n", "numGauss", "Gauss points per knot span (0 = auto).", numGaussPerSpan);
     cmd.addInt("m", "minRefinements", "Minimum uniform refinement level to test (minimum 2 for AS-G1).", minRefinements);
     cmd.addInt("r", "refinements", "Maximum uniform refinement levels to test.", maxRefinements);
     cmd.addReal("a", "frequency", "Frequency factor 'a' in manufactured solution.", freqA);
     cmd.addReal("b", "beta", "Reaction parameter beta >= 0 in (beta u + Delta^2 u = f).", beta);
     cmd.addReal("e", "eps", "Tolerance for AS-G1 gluing data.", eps);
+    cmd.addReal("", "margin", "Fractional margin for bubble support inside inscribed rectangle (0..0.5).", margin);
     cmd.addSwitch("homo", "Use homogeneous boundary conditions (u = 0, Delta u = 0).", homogeneousBC);
     cmd.addSwitch("plot", "Export target function and numerical solution to VTK files.", plot);
 
@@ -74,12 +87,15 @@ int main(int argc, char *argv[])
 
     if (degree < 3)
         degree = 3;
-
     if (minRefinements < 0)
         minRefinements = 0;
+    if (maxRefinements < minRefinements)
+        maxRefinements = minRefinements;
+    if (margin <= T(0) || margin >= T(0.5))
+        margin = T(0.15);
 
     // ---- Read geometry ----
-    gsMultiPatch<T>::uPtr mpPtr = gsReadFile<>(geometry);
+    typename gsMultiPatch<T>::uPtr mpPtr = gsReadFile<>(geometry);
     if (!mpPtr)
     {
         gsInfo << "Error: Cannot read geometry " << geometry << "\n";
@@ -106,44 +122,62 @@ int main(int argc, char *argv[])
     }
 
     // ---- Manufactured Solution ----
-    const std::string s_a = std::to_string(freqA);
-    const std::string s_b = std::to_string(beta);
-    std::string u_expr, grad_x_expr, grad_y_expr, hess_xx, hess_xy, hess_yy, lapl_expr, rhs_expr;
-    if (homogeneousBC)
+    const bool useBubble = homogeneousBC && (exactType == "bubble" || exactType == "sin_bubble");
+    gsBubbleData<T> bubbleData;
+    std::unique_ptr<gsFunctionExpr<T>> exact_u_ptr, exact_grad_ptr, exact_hess_ptr, exact_lap_ptr, rhs_f_ptr;
+
+    if (useBubble)
     {
-        // Note: exact only on [0,1]^2; tests homogeneous BCs u = 0, Delta u = 0 on general domains
-        u_expr      = "sin(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
-        grad_x_expr =        s_a + "*pi*cos(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
-        grad_y_expr =        s_a + "*pi*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-        hess_xx     = "-" + s_a + "^2*pi^2*sin(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
-        hess_xy     =       s_a + "^2*pi^2*cos(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-        hess_yy     = "-" + s_a + "^2*pi^2*sin(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
-        lapl_expr   = "0";
-        rhs_expr    = "(" + s_b + " + 4*(" + s_a + ")^4*pi^4)*sin(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
+        const index_t bDeg = (bubbleDeg > 0) ? bubbleDeg : (degree + 2);
+        if (exactType == "sin_bubble")
+            bubbleData = makeTrigBubble(mp, std::max<index_t>(bDeg, 4), margin);
+        else
+            bubbleData = makeBSplineBubble(mp, bDeg, margin);
+    }
+    else if (homogeneousBC)
+    {
+        gsBoxExactExprs ex = makeBoxHomogeneousExpressions(mp, true, freqA, beta);
+        exact_u_ptr.reset(new gsFunctionExpr<T>(ex.u_expr, 2));
+        exact_grad_ptr.reset(new gsFunctionExpr<T>(ex.grad_x_expr, ex.grad_y_expr, 2));
+        exact_hess_ptr.reset(new gsFunctionExpr<T>(ex.hess_xx, ex.hess_xy, ex.hess_xy, ex.hess_yy, 2));
+        exact_lap_ptr.reset(new gsFunctionExpr<T>(ex.lapl_expr, 2));
+        rhs_f_ptr.reset(new gsFunctionExpr<T>(ex.rhs_expr, 2));
     }
     else
     {
-        u_expr      = "sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-        grad_x_expr =        s_a + "*pi*cos(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-        grad_y_expr = "-" + s_a + "*pi*sin(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
-        hess_xx     = "-" + s_a + "^2*pi^2*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-        hess_xy     = "-" + s_a + "^2*pi^2*cos(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
-        hess_yy     = "-" + s_a + "^2*pi^2*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-        lapl_expr   = "-2*(" + s_a + ")^2*pi^2*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-        rhs_expr    = "(" + s_b + " + 4*(" + s_a + ")^4*pi^4)*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
-    }
+        const std::string s_a = std::to_string(freqA);
+        const std::string s_b = std::to_string(beta);
+        const std::string u_expr      = "sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+        const std::string grad_x_expr =        s_a + "*pi*cos(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+        const std::string grad_y_expr = "-" +  s_a + "*pi*sin(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
+        const std::string hess_xx     = "-" +  s_a + "^2*pi^2*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+        const std::string hess_xy     = "-" +  s_a + "^2*pi^2*cos(" + s_a + "*pi*x)*sin(" + s_a + "*pi*y)";
+        const std::string hess_yy     = "-" +  s_a + "^2*pi^2*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+        const std::string lapl_expr   = "-2*(" + s_a + ")^2*pi^2*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
+        const std::string rhs_expr    = "(" + s_b + " + 4*(" + s_a + ")^4*pi^4)*sin(" + s_a + "*pi*x)*cos(" + s_a + "*pi*y)";
 
-    gsFunctionExpr<T> exact_u(u_expr, 2);
-    gsFunctionExpr<T> exact_grad(grad_x_expr, grad_y_expr, 2);
-    gsFunctionExpr<T> exact_hess(hess_xx, hess_xy, hess_xy, hess_yy, 2);
-    gsFunctionExpr<T> exact_laplace(lapl_expr, 2);
-    gsFunctionExpr<T> rhs_f(rhs_expr, 2);
+        exact_u_ptr.reset(new gsFunctionExpr<T>(u_expr, 2));
+        exact_grad_ptr.reset(new gsFunctionExpr<T>(grad_x_expr, grad_y_expr, 2));
+        exact_hess_ptr.reset(new gsFunctionExpr<T>(hess_xx, hess_xy, hess_xy, hess_yy, 2));
+        exact_lap_ptr.reset(new gsFunctionExpr<T>(lapl_expr, 2));
+        rhs_f_ptr.reset(new gsFunctionExpr<T>(rhs_expr, 2));
+    }
 
     gsInfo << "\n======================================================================\n";
     gsInfo << "AS-G1 Second Biharmonic Solver (" << beta << "*u + Delta^2 u = f, u = g1, Delta u = g2)\n";
     gsInfo << "Domain: " << geometry << " (" << mp.nPatches() << " patches)\n";
-    gsInfo << "Target Exact Function: u(x, y) = " << u_expr << "\n";
     gsInfo << "Boundary Mode: " << (homogeneousBC ? "Homogeneous (u=0, Delta u=0)" : "Manufactured (u=g1, Delta u=g2)") << "\n";
+    if (useBubble)
+    {
+        const index_t bDeg = (bubbleDeg > 0) ? bubbleDeg : (degree + 2);
+        gsInfo << "Exact Solution: " << (exactType == "sin_bubble" ? "Trig bubble (q=" : "B-spline bubble (deg=")
+               << bDeg << ") on [" << bubbleData.a_x << ", " << bubbleData.b_x << "] x ["
+               << bubbleData.a_y << ", " << bubbleData.b_y << "]\n";
+    }
+    else if (homogeneousBC)
+        gsInfo << "Exact Solution: Box trigonometric (sin*sin)\n";
+    else
+        gsInfo << "Exact Solution: sin(" << freqA << "*pi*x)*cos(" << freqA << "*pi*y)\n";
     gsInfo << "======================================================================\n\n";
 
     // ---- Define boundary conditions ("Values" only; normal derivatives stay free) ----
@@ -257,7 +291,7 @@ int main(int argc, char *argv[])
 
             auto G_map   = A.getMap(mp);
             auto u_space = A.getSpace(dbasis);
-            auto u_coeff = A.getCoeff(exact_u, G_map);
+            auto u_coeff = A.getCoeff(*exact_u_ptr, G_map);
 
             A.initSystem();
             A.assembleBdr(bc.get("Values"),
@@ -279,22 +313,39 @@ int main(int argc, char *argv[])
         {
             gsExprAssembler<T> A(1, 1);
             A.setIntegrationDomain(dbasis.domain());
+            if (useBubble)
+                A.options().setReal("quA", 2.0);
 
-            auto G_map    = A.getMap(mp);
-            auto u_space  = A.getSpace(dbasis);
-            auto f_coeff  = A.getCoeff(rhs_f, G_map);
-            auto g2_coeff = A.getCoeff(exact_laplace, G_map);
+            auto G_map   = A.getMap(mp);
+            auto u_space = A.getSpace(dbasis);
 
             A.initSystem();
-            if (beta > T(0))
-                A.assemble((beta * (u_space * u_space.tr()) + ilapl(u_space, G_map) * ilapl(u_space, G_map).tr()) * meas(G_map),
-                           u_space * f_coeff * meas(G_map));
+            if (useBubble)
+            {
+                auto u_ex_coeff   = A.getCoeff(bubbleData.field, G_map);
+                auto lap_ex_coeff = A.getCoeff(bubbleData.lapField, G_map);
+                if (beta > T(0))
+                    A.assemble((beta * (u_space * u_space.tr()) + ilapl(u_space, G_map) * ilapl(u_space, G_map).tr()) * meas(G_map),
+                               (beta * (u_space * u_ex_coeff) + ilapl(u_space, G_map) * lap_ex_coeff) * meas(G_map));
+                else
+                    A.assemble(ilapl(u_space, G_map) * ilapl(u_space, G_map).tr() * meas(G_map),
+                               ilapl(u_space, G_map) * lap_ex_coeff * meas(G_map));
+            }
             else
-                A.assemble(ilapl(u_space, G_map) * ilapl(u_space, G_map).tr() * meas(G_map),
-                           u_space * f_coeff * meas(G_map));
+            {
+                auto f_coeff  = A.getCoeff(*rhs_f_ptr, G_map);
+                auto g2_coeff = A.getCoeff(*exact_lap_ptr, G_map);
 
-            if (!homogeneousBC)
-                A.assembleBdr(bc.get("Values"), (igrad(u_space, G_map) * unv(G_map)) * g2_coeff.tr() * meas(G_map));
+                if (beta > T(0))
+                    A.assemble((beta * (u_space * u_space.tr()) + ilapl(u_space, G_map) * ilapl(u_space, G_map).tr()) * meas(G_map),
+                               u_space * f_coeff * meas(G_map));
+                else
+                    A.assemble(ilapl(u_space, G_map) * ilapl(u_space, G_map).tr() * meas(G_map),
+                               u_space * f_coeff * meas(G_map));
+
+                if (!homogeneousBC)
+                    A.assembleBdr(bc.get("Values"), (igrad(u_space, G_map) * unv(G_map)) * g2_coeff.tr() * meas(G_map));
+            }
 
             K_discont = give(A.matrix());
             F_discont = give(A.rhs());
@@ -311,7 +362,9 @@ int main(int argc, char *argv[])
         makeSparseCholeskySolver(K_free)->apply(F_free, sol_free);
 
         // Reconstruct full global vector sol_discont
-        gsMatrix<T> sol_discont = T_free * sol_free + T_bnd * sol_bnd;
+        gsMatrix<T> sol_discont = T_free * sol_free;
+        if (!homogeneousBC && nBnd > 0)
+            sol_discont += T_bnd * sol_bnd;
 
         // Reconstruct multi-patch solution field
         gsMultiPatch<T> sol;
@@ -328,20 +381,29 @@ int main(int argc, char *argv[])
         // ---- Error Evaluation ----
         gsExprEvaluator<T> ev;
         ev.setIntegrationDomain(dbasis.domain());
+        if (useBubble)
+            ev.options().setReal("quA", 2.0);
         auto G_map_ev = ev.getMap(mp);
-
-        auto u_exact_ev    = ev.getVariable(exact_u, G_map_ev);
-        auto grad_exact_ev = ev.getVariable(exact_grad, G_map_ev);
-        auto hess_exact_ev = reshape(ev.getVariable(exact_hess, G_map_ev), 2, 2);
-
         auto u_sol_ev = ev.getVariable(sol);
 
-        const T l2err = std::sqrt(
-            ev.integral((u_sol_ev - u_exact_ev).sqNorm() * meas(G_map_ev)));
-        const T h1err = std::sqrt(
-            ev.integral((igrad(u_sol_ev, G_map_ev) - grad_exact_ev.tr()).sqNorm() * meas(G_map_ev)));
-        const T h2err = std::sqrt(
-            ev.integral((ihess(u_sol_ev, G_map_ev) - hess_exact_ev).sqNorm() * meas(G_map_ev)));
+        T l2err = 0, h1err = 0, h2err = 0;
+        if (useBubble)
+        {
+            auto u_exact_ev = ev.getVariable(bubbleData.field, G_map_ev);
+            l2err = std::sqrt(ev.integral((u_sol_ev - u_exact_ev).sqNorm() * meas(G_map_ev)));
+            h1err = std::sqrt(ev.integral((igrad(u_sol_ev, G_map_ev) - igrad(u_exact_ev)).sqNorm() * meas(G_map_ev)));
+            h2err = std::sqrt(ev.integral((ihess(u_sol_ev, G_map_ev) - ihess(u_exact_ev)).sqNorm() * meas(G_map_ev)));
+        }
+        else
+        {
+            auto u_exact_ev    = ev.getVariable(*exact_u_ptr, G_map_ev);
+            auto grad_exact_ev = ev.getVariable(*exact_grad_ptr, G_map_ev);
+            auto hess_exact_ev = reshape(ev.getVariable(*exact_hess_ptr, G_map_ev), 2, 2);
+
+            l2err = std::sqrt(ev.integral((u_sol_ev - u_exact_ev).sqNorm() * meas(G_map_ev)));
+            h1err = std::sqrt(ev.integral((igrad(u_sol_ev, G_map_ev) - grad_exact_ev.tr()).sqNorm() * meas(G_map_ev)));
+            h2err = std::sqrt(ev.integral((ihess(u_sol_ev, G_map_ev) - hess_exact_ev).sqNorm() * meas(G_map_ev)));
+        }
 
         // Rates
         T l2_rate = 0, h1_rate = 0, h2_rate = 0;
@@ -390,10 +452,18 @@ int main(int argc, char *argv[])
             gsField<T> solField(mp, sol);
             gsWriteParaview<>(solField, solName, 1000);
 
-            gsField<T> exactField(mp, exact_u, false);
-            gsWriteParaview<>(exactField, exactName, 1000);
+            if (useBubble)
+            {
+                gsField<T> exactField(mp, bubbleData.field, false);
+                gsWriteParaview<>(exactField, exactName, 1000);
+            }
+            else
+            {
+                gsField<T> exactField(mp, *exact_u_ptr, false);
+                gsWriteParaview<>(exactField, exactName, 1000);
+            }
 
-            gsInfo << " -> Exported VTK plots: " << solName << " & " << exactName << "\n";
+            gsInfo << " -> Exported VTK plots: " << solName << ".pvd & " << exactName << ".pvd\n";
         }
     }
 
