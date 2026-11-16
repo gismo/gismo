@@ -496,6 +496,48 @@ SUITE(gsExprAssembler_test)
                     ev.integralInterface(s.right() - s.left(), patches.interfaces()), 1e-12);
     }
 
+    // assembleJacobian() with the default options, on several threads: for a
+    // residual linear in the solution the Jacobian is the matrix of the
+    // corresponding bilinear form. With a single element, all threads but one
+    // have no element to assemble.
+    TEST(DomainJacobian)
+    {
+#ifdef _OPENMP
+        const int nThreads = omp_get_max_threads();
+        omp_set_num_threads(4);
+#endif
+        gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(1,1,1);
+        for (index_t numRef = 0; numRef <= 2; numRef += 2)
+        {
+            gsMultiBasis<> mb(patches);
+            mb.degreeElevate(1);
+            mb.uniformRefine(numRef);
+
+            gsExprAssembler<> A(1,1);
+            A.setIntegrationElements(mb);
+            auto G = A.getMap(patches);
+            auto u = A.getSpace(mb);
+            u.setup(-1);
+            A.initSystem();
+
+            gsMatrix<> solVector = gsMatrix<>::Random(A.numDofs(), 1);
+            auto s = A.getSolution(u, solVector);
+
+            A.assembleJacobian(u * s * meas(G), s);
+            const gsSparseMatrix<> J = A.matrix();
+
+            A.initSystem();
+            A.assemble(u * u.tr() * meas(G));
+            const gsSparseMatrix<> M = A.matrix();
+
+            CHECK(M.norm() > 0);
+            CHECK((J - M).norm() <= 1e-8 * M.norm());
+        }
+#ifdef _OPENMP
+        omp_set_num_threads(nThreads);
+#endif
+    }
+
     // assembleJacobianIfc() differentiates an interface residual by finite
     // differences. For a residual linear in the solution, the Jacobian is the
     // matrix assembleIfc() builds from the corresponding bilinear form.

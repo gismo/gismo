@@ -1591,11 +1591,13 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
     clearMatrix();
     clearRhs();
 
-    bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
-
 #pragma omp parallel
 {
-    m_exprdata->parse(residual, u);
+    // Parsing binds the expressions to this thread's evaluation data, so
+    // every thread parses its own copies, as in assemble()
+    const expr res = residual;
+    solution uu = u;
+    m_exprdata->parse(res, uu);
     if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);
     //op_tuple(__printExpr(), arg_tpl);
 
@@ -1607,7 +1609,7 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 
     for ( auto & elem : m_exprdata->domain().allElements() )
     {
-        if (changeQuadrature && QuPatch!=elem.patchIndex())
+        if (QuPatch!=elem.patchIndex())
         {
             QuPatch = elem.patchIndex();
             // get Degree of the domain
@@ -1624,10 +1626,11 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
         // Evaluate at quadrature points
         m_exprdata->precompute(QuPatch);
 
+        // The perturbed coefficients are shared by all threads
 #       pragma omp critical (assemble_fdiffs)
         {
             // ee(residual); //Computes residual to m_rhs
-            ee.diff(residual, u); //Computes Jacobian
+            ee.diff(res, uu); //Computes Jacobian
         }
     }
 
