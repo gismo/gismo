@@ -428,6 +428,60 @@ SUITE(gsExprAssembler_test)
         }
     }
 
+    // On a side of a 2D patch, the L2 projection of Dirichlet data is the L2
+    // projection on that side. G(s,t) = (s, t(1+3s)) has measure 1 on the
+    // south side (x = s) but an interior measure 1+3s that varies along it,
+    // so data x^3, not in the spline space, must project as on [0,1].
+    // Both the expression assembler and gsAssembler project.
+    TEST(DirichletL2ProjectionOnSide)
+    {
+        gsMultiPatch<> mp;
+        gsMatrix<> corners(4,2);
+        corners << 0,0,  1,0,  0,1,  1,4;
+        mp.addPatch(gsTensorBSpline<2>(gsKnotVector<>(0,1,0,2), gsKnotVector<>(0,1,0,2), corners));
+        mp.computeTopology();
+        gsMultiBasis<> mb(mp);
+        mb.degreeElevate(1);
+        mb.uniformRefine(2);
+
+        gsFunctionExpr<> g("x^3", 2);
+        gsBoundaryConditions<> bc;
+        bc.addCondition(0, boundary::south, condition_type::dirichlet, &g);
+        bc.setGeoMap(mp);
+
+        // Reference: the L2 projection of s^3 onto the spline space along the side
+        gsMultiBasis<> mb1(mb.basis(0).component(0));
+        gsExprAssembler<> R(1,1);
+        R.setIntegrationElements(mb1);
+        auto w = R.getSpace(mb1);
+        gsBoundaryConditions<> none;
+        w.setup(none, dirichlet::homogeneous, 0);
+        R.initSystem();
+        gsFunctionExpr<> g1("x^3", 1);
+        auto gg = R.getCoeff(g1);
+        R.assemble(w * w.tr(), w * gg);
+        gsSparseSolver<>::LU solver(R.matrix());
+        const gsMatrix<> ref = solver.solve(R.rhs());
+        const index_t n = ref.rows();
+
+        gsExprAssembler<> A(1,1);
+        A.setIntegrationElements(mb);
+        auto u = A.getSpace(mb);
+        u.setup(bc, dirichlet::l2Projection, 0);
+        CHECK_EQUAL(n, u.mapper().boundarySize());
+        for (index_t i = 0; i != n; ++i)
+            CHECK_CLOSE(ref(i,0), u.fixedPart().at(u.mapper().bindex(i, 0)), 1e-10);
+
+        gsConstantFunction<> f(0, 2);
+        gsPoissonAssembler<> P(mp, mb, bc, f);
+        P.options().setInt("DirichletValues", dirichlet::l2Projection);
+        P.computeDirichletDofs();
+        const gsDofMapper & m = P.system().colMapper(0);
+        CHECK_EQUAL(n, m.boundarySize());
+        for (index_t i = 0; i != n; ++i)
+            CHECK_CLOSE(ref(i,0), P.fixedDofs().at(m.bindex(i, 0)), 1e-10);
+    }
+
     TEST(InterfaceExpression)
     {
         const index_t numRef = 2;
