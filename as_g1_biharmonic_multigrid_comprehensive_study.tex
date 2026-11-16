@@ -1,0 +1,541 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[margin=16mm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue,urlcolor=blue]{hyperref}
+
+\title{\textbf{Comprehensive Evaluation of AS-$G^1$ Biharmonic Multigrid Smoothers\\across 101 Classified 2D Multi-Patch Geometries}}
+\author{G+Smo AS-$G^1$ Multigrid Benchmark Study}
+\date{November 2026}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\bigskip
+
+\section{Executive Summary}
+This study reorganizes the G+Smo 2D AS-$G^1$ geometry repository into a strictly classified benchmark suite under \texttt{filedata/domain2d/as\_g1\_benchmark\_suite/} (\textbf{101 unique validated geometries}), presents the mathematical derivation and implementation of four progressive multigrid enhancements (\textbf{Proposals 4, 1, 2, and 3}), and reports systematic benchmarks across V-cycle (\texttt{-c 1}), W-cycle (\texttt{-c 2}), and Multigrid-PCG (\texttt{-s cg}), refinement levels $r \in \{3,4,5,6\}$ (up to $78{,}736$ DOFs), spline degrees $p \in \{3,4,5\}$, and both the first and second biharmonic equations.
+
+\begin{itemize}
+  \item \textbf{Near-100\% Direct MG Robustness:} Across all 101 unique domains at $r=3$ ($p=3$, $\nu_1=\nu_2=1$), V-cycle convergence improves from \textbf{74/101} (73.3\%, median 138 iters, 1.408\,s) with Proposal~4 (\texttt{auto}) to \textbf{88/101} (med 33, 0.428\,s) with Proposal~1 (\texttt{ring1}), \textbf{95/101} (med 24, 0.284\,s) with Proposal~3 (\texttt{fd\_ring1}), and \textbf{99/101} (98.0\%, med 17, 0.165\,s) with Proposal~2 (\texttt{line\_ring1}), achieving \textbf{89/89} (100\%) on all simply-connected classes and \textbf{101/101} (med 8, max 52, 0.080\,s) under PCG.
+  \item \textbf{True 3-Level W-Cycle Advantage ($r=4$, 61 domains):} On 3-level hierarchies, W-cycle \texttt{line\_ring1} improves median iterations from $24$ (V-cycle) to \textbf{18} and lowers median solve time from $0.551\,$s to \textbf{0.447\,s} (60/61 pass; only the boundary-ill-conditioned \texttt{asg1\_circle\_5patch.xml} stalls for every solver at $r=4$).
+  \item \textbf{$h$- and $p$-Robustness:} Under \texttt{mg-W line\_ring1}, iterations stay nearly constant across $r=3\to 6$ (\texttt{4\_patch\_3\_valence}: $17\to 18\to 19\to 20$ up to $64{,}002$ DOFs; \texttt{as\_g1\_pentagon\_p3\_r1}: $18\to 19\to 20$ up to $78{,}736$ DOFs). Across $p=3\to 5$, pointwise \texttt{ring1} deteriorates sharply while \texttt{line\_ring1} and \texttt{fd\_ring1} remain $p$-robust.
+  \item \textbf{Second Biharmonic Parity:} Across all 101 domains at $r=3$, \texttt{mg-V line\_ring1} reaches \textbf{99/101} (med 14 iters, 0.241\,s vs.\ 80/101, med 85, 1.563\,s for \texttt{auto}) and \texttt{cg-V line\_ring1} reaches \textbf{101/101} (med 8, max 40, 0.093\,s).
+\end{itemize}
+
+\section{Structured Benchmark Suite (\texttt{as\_g1\_benchmark\_suite})}
+Auditing the original 99 entries in \texttt{--suite all} revealed misclassifications (\texttt{ring\_7patch\_non\_bilinear\_swirl\_p3\_asg1.xml} has 1 hole yet sat in \texttt{generator}; three simply-connected geometries sat in \texttt{holes}), nine byte-identical clones in \texttt{as\_g1\_generator}, and filename collisions across subfolders. All 90 unique \texttt{--suite all} geometries plus 11 additional validated AS-$G^1$ domains (including 6 multi-hole domains with $3\text{--}5$ holes) were copied into five topological directories under \texttt{filedata/domain2d/as\_g1\_benchmark\_suite/}:
+
+\begin{center}
+\small
+\begin{tabular}{@{}lrlp{7.8cm}@{}}
+\toprule
+\textbf{Category Folder} & \textbf{Count} & \textbf{Topological Criterion} & \textbf{Multigrid Significance} \\
+\midrule
+\texttt{01\_single\_patch} & 10 & $P=1,\, n_{\text{Ifc}}=0,\, n_{\text{holes}}=0$ & Pure interior B-splines + outer Ring-1; tests curvature/anisotropy (\texttt{02\_serpentine\_s\_duct}). \\
+\texttt{02\_multipatch\_trees} & 22 & $P\ge 2,\, n_{\text{intV}}=0,\, n_{\text{holes}}=0$ & Interface trace/cross coupling and smooth Case-B boundary vertices, no interior stars. \\
+\texttt{03\_single\_vertex\_stars} & 34 & $n_{\text{intV}}=1,\, \text{val}\in\{3..7\},\, n_{\text{holes}}=0$ & Isolates a single interior 6-jet extraordinary vertex across bilinear, curved, random meshes. \\
+\texttt{04\_multi\_vertex\_meshes} & 23 & $n_{\text{intV}}\ge 2,\, n_{\text{holes}}=0$ & Coupled multi-valence stars ($3\text{--}6$), extreme patch AR (up to $5.06$), non-convex corners. \\
+\texttt{05\_multiply\_connected\_holes} & 12 & $n_{\text{holes}}\in\{1..6\}$ & Closed inner clamped boundary loops + swirl annuli and multi-hole plates. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Mathematical Motivations, Implementations \& Comparisons of Proposals 1--4}
+
+\subsection{Why Standalone Direct Multigrid Stalls While Multigrid-PCG Succeeds}
+In \texttt{gsMultiGrid.hpp}, \texttt{gsMultiGridOp} constructs Galerkin coarse matrices $K_{\ell-1} = (P_{\ell-1}^\ell)^T K_\ell P_{\ell-1}^\ell$ and applies symmetric pre-/post-smoothing (\texttt{step} downward, \texttt{stepT} upward). Consequently, the V-cycle preconditioner $M_{\text{MG}}$ is symmetric positive definite (SPD), and the preconditioned operator $M_{\text{MG}} A$ has real eigenvalues $\lambda_i \in (0, 1]$:
+\begin{enumerate}
+  \item \textbf{Outlier-Dominated Spectrum of $M_{\text{MG}} A$:} Exact spectral decomposition on the baseline biharmonic operator shows that \textbf{96--99\%} of eigenvalues on 2--4 patch domains (and \textbf{86--87\%} on 6-patch domains) already lie inside the well-conditioned bulk interval $[0.50, 1.00]$ ($\kappa_{\text{bulk}} \le 2$), while only a small cluster of \textbf{4--26 isolated outlier eigenvalues} approaches zero ($\lambda_{\min} \in [0.0088, 0.0697]$; e.g., \texttt{two\_bilinear\_patches} $r=4$: $\lambda_{\min} = 0.04735$, $\kappa = 21.12$; \texttt{square\_6\_patch} $r=3$: $\lambda_{\min} = 0.02387$, $\kappa = 41.90$; \texttt{square\_6\_patch\_non\_bilinear} $r=3$: $\lambda_{\min} = 0.00880$, $\kappa = 113.58$).
+  \item \textbf{Memoryless Stationary MG vs.\ Krylov Deflation:} Direct MG is a memoryless fixed-point iteration $e^{(k)} = (I - M_{\text{MG}}A)^k e^{(0)}$ governed permanently by the single worst eigenvalue via $\rho(I - M_{\text{MG}}A) = 1 - \lambda_{\min}$. Reaching relative tolerance $10^{-8}$ requires
+  \[
+    k_{\text{MG}} \approx \frac{\ln(10^8)}{-\ln(1 - \lambda_{\min})} \approx \frac{18.42}{\lambda_{\min}} = 18.42\,\kappa(M_{\text{MG}}A),
+  \]
+  predicting $389$ iterations for $\lambda_{\min} = 0.04735$ (matching the baseline's $338$) and $>2{,}000$ iterations for $\lambda_{\min} \le 0.0088$. By contrast, PCG achieves Chebyshev scaling $k_{\text{PCG}} \le \tfrac{1}{2}\ln(2\cdot 10^8)\sqrt{\kappa} \approx 9.56\sqrt{\kappa}$ \emph{and} superlinear Kaniel--Paige--Saad outlier deflation: once CG places polynomial roots near the few small eigenvalues, subsequent steps converge at the bulk factor $(\sqrt{2}-1)/(\sqrt{2}+1) \approx 0.172$.
+  \item \textbf{First vs.\ Second Biharmonic Boundary Physics:} In the first biharmonic problem ($u = \partial_n u = 0$ on $\partial\Omega$), clamping $\partial_n u = 0$ eliminates outer-boundary \texttt{EdgeCross} DOFs and forces boundary-adjacent normal curvature onto the coupled \texttt{EdgeTrace}/\texttt{Int(ring0)} interface layer, making baseline direct MG substantially harder than on the second biharmonic problem ($u = \Delta u = 0$, e.g., $338$ vs.\ $89$ iterations on \texttt{two\_bilinear\_patches}).
+\end{enumerate}
+
+\subsection{Proposal 4 (\texttt{--smoother auto}): Basis Conditioning, Derivative Scaling \& Symmetric GS}
+\paragraph{Mathematical Motivation.}
+Before modifying the smoother subspace structure, three algebraic and implementation defects inflated $\kappa(M_{\text{MG}}A)$ in the original drivers and embedding:
+\begin{enumerate}
+  \item \textbf{Sparsification truncation:} In \texttt{gsAsG1Basis.hpp}, \texttt{collocateCorners} (stride~2 first-biharmonic branch) and \texttt{deriveEdgeEmbedding} called \texttt{.sparseView(1, 1e-4)}, discarding genuine $\mathcal{O}(h)$ and $\mathcal{O}(h^2)$ derivative coefficients on distorted patches (producing $\|T_f P - R T_c\|/\|R T_c\| = 7.83\times 10^{-11}$ on \texttt{4\_patch\_3\_valence\_not\_bilinear}).
+  \item \textbf{Extreme diagonal scale disparity ($3.6\times 10^5\times$):} Unscaled physical AS-$G^1$ functionals $(u, \nabla u, \nabla^2 u)$ yield diagonal entries in $K_{\text{free}}$ scaling as $\mathcal{O}(h^{-2})$ for \texttt{Interior}/\texttt{EdgeTrace}, $\mathcal{O}(1)$ for \texttt{EdgeCross}, and spanning $[1.98\times 10^{-2}, 7.17\times 10^3]$ across \texttt{Corner6Jet} on \texttt{square\_6\_patch} ($r=3$), alongside strong off-diagonal $(u_{xx}, u_{yy})$ coupling from $\int (\Delta u)^2$.
+  \item \textbf{Half-strength GS and fallback LU coarse solver:} Both drivers passed \texttt{makeGaussSeidelOp} (one forward sweep in \texttt{step}, one backward sweep in \texttt{stepT}) instead of symmetric GS for \texttt{-s mg}, applied a smoother at level $l=0$, and omitted \texttt{setCoarseSolver} (defaulting to \texttt{SparseLU}).
+\end{enumerate}
+
+\paragraph{Implementation.}
+Tightened all \texttt{.sparseView} drop tolerances in \texttt{gsAsG1Basis.hpp} to \texttt{T(1e-12)}; added uniform per-level parametric cell scaling $h_\ell = \min_p h_{\min}(\mathcal{B}_{\ell,p})$ in \texttt{setupLevelGeometry}/\texttt{setupLevelGeometry2} scaling \texttt{EdgeCross} and first corner derivatives by $h_\ell^{-1}$ and second corner derivatives by $h_\ell^{-2}$ (preserving exact cross-patch matching and intergrid prolongation); set \texttt{mg->setCoarseSolver(makeSparseCholeskySolver(mg->matrix(0)))}; and restricted smoother construction to levels $l \ge 1$ using \texttt{makeSymmetricGaussSeidelOp} for \texttt{-s mg} and \texttt{makeGaussSeidelOp} for \texttt{-s cg}.
+
+\paragraph{Effect.}
+Cuts baseline \texttt{mg-V} on \texttt{two\_bilinear\_patches} ($r=4$) from $300\text{ (FAIL)} \to 214$, \texttt{2\_patch\_rectangle} from $103 \to 57$, \texttt{4\_patch\_3\_valence\_not\_bilinear} from $300\text{ (FAIL)} \to 178$, and \texttt{circle\_asg1} from $245$ ($21.5\,$s) $\to 125$ ($11.0\,$s), while improving \texttt{circle\_asg1} PCG solve time by $1.8\times$. Stretched and multi-valence domains (\texttt{square\_6\_patch}, \texttt{weirdo\_multivalence}) still exceed 300 iterations because cross-interface bending locking and anisotropy remain unresolved.
+
+\subsection{Proposal 1 (\texttt{--smoother ring1}): Multiplicative Point GS + Coupled Ring-1 Skeleton}
+\paragraph{Mathematical Motivation (Cross-Interface Bending Locking).}
+In \texttt{deriveArgyrisBasisEmbedding}, tensor-product B-splines on each patch are partitioned into interior indices $i_1, i_2 \in [2, n_d-3]$ (\texttt{Interior}) and boundary/interface layers $i_n \in \{0,1\}$ and $\{n-2,n-1\}$ spanning \texttt{EdgeTrace} ($\mathcal{V}_{E,0}$), \texttt{EdgeCross} ($\mathcal{V}_{E,1}$), and \texttt{Corner6Jet} ($\mathcal{V}_v$). Because the biharmonic form integrates $(\partial_{nn} u)^2$ and the second normal derivative $\partial_{nn} u$ on interface elements $[0, h]$ couples $B_0, B_1$ directly to the first two interior B-spline layers $B_2, B_3$ (\texttt{Int(ring0)}, $i_n \in \{2,3\}$) with $\mathcal{O}(h^{-4})$ stiffness, relaxing interface DOFs while holding \texttt{Int(ring0)} fixed introduces large artificial normal-curvature jumps.
+
+Mode-localization measurements directly prove this mechanism:
+\begin{itemize}
+  \item On \texttt{two\_bilinear\_patches} ($r=4$), adding an exact subspace solve on $(\text{Ifc}+\text{Crn})$ \emph{alone} without \texttt{Int(ring0)} reduces $\kappa(M_{\text{MG}}A)$ only from $21.11 \to 19.79$ ($338 \to 318$ MG iterations).
+  \item Expanding the block to include \texttt{Int(ring0)} (\textbf{Coupled Ring-1}) drops $\kappa(M_{\text{MG}}A)$ from $21.11 \to 3.27$ and direct MG iterations from $338 \to 43$ ($42$ with Proposal~4 scaling).
+\end{itemize}
+
+\paragraph{Implementation \& Complexity (\texttt{gsAsG1SkeletonSmootherOp}).}
+\texttt{collectCoupledRing1Dofs} gathers the $\mathcal{O}(\sqrt{N})$ global free index set
+\[
+  I_{\text{ring1}} = \{\text{free }\mathcal{V}_{E,0},\,\mathcal{V}_{E,1},\,\mathcal{V}_v\} \;\cup\; \{\text{interior DOFs with } i_n \in \{2,3\} \text{ or } \{n-4,n-3\}\}.
+\]
+In construction, \texttt{gsAsG1SkeletonSmootherOp} forms the boolean selector $P \in \mathbb{R}^{N \times n_{\text{sub}}}$, pre-extracts $R_{\text{sub}} = P^T A \in \mathbb{R}^{n_{\text{sub}} \times N}$, and Cholesky-factorizes $A_{\text{sub}} = R_{\text{sub}} P$ via \texttt{makeSparseCholeskySolver}. Applying \texttt{relaxSkeleton} evaluates the exact restricted residual $r_{\text{sub}} = P^T b - R_{\text{sub}} x$ in $\mathcal{O}(\sqrt{N})$ time and updates $x \leftarrow x + P A_{\text{sub}}^{-1} r_{\text{sub}}$. Symmetry of the pre/post smoother pair in \texttt{gsMultiGridOp} is preserved strictly via multiplicative reversal:
+\[
+  \texttt{step}: \quad \text{GS}_{\text{fwd}} \;\to\; \text{Ring1}, \qquad\qquad
+  \texttt{stepT}: \quad \text{Ring1} \;\to\; \text{GS}_{\text{bwd}}.
+\]
+
+\paragraph{Behavior \& Limitations.}
+Eliminates interface/vertex locking across all 34 single-vertex stars (34/34 pass at $r=3$, median 23 iters vs.\ 131 for \texttt{auto}) and raises overall 101-domain \texttt{mg-V} pass rate from 74/101 to 88/101. However, its interior smoother remains pointwise GS, so it still struggles on high-aspect-ratio patches (\texttt{sq6\_nb}), curved ducts (\texttt{02\_serpentine\_s\_duct}), and high spline degrees ($p=5$, e.g.\ \texttt{curved\_ring} $89 \to 130 \to 300^*$).
+
+\subsection{Proposal 2 (\texttt{--smoother line\_ring1}): Alternating 1D Strip Blocks + Coupled Ring-1}
+\paragraph{Mathematical Motivation (Patch Anisotropy, Double Knots \& Intra-Patch Curvature).}
+After Coupled Ring-1 removes interface locking, spectral outliers relocate into patch interiors for three reasons:
+\begin{enumerate}
+  \item \textbf{Fourth-power Jacobian anisotropy:} Biharmonic directional stiffness scales with $(|J_u|/|J_v|)^4$, producing $81\times$ directional contrast on \texttt{square\_6\_patch} ($|J_u|/|J_v| = 3.0$), $705\times$ on \texttt{square\_6\_patch\_non\_bilinear} ($5.154$), and $383\times$ on \texttt{weirdo\_multivalence} ($4.425$).
+  \item \textbf{$C^1$ knot-multiplicity 2 pairing:} Because \texttt{dbasis.uniformRefine(1, 2)} inserts knots with multiplicity~2, cubic $C^1$ interior splines form tightly coupled $2\times 2$ pairs per knot line that stall scalar GS.
+  \item \textbf{Spurious intra-patch metric variation & high-$p$ overlap:} Curved ducts (\texttt{02\_serpentine\_s\_duct}) vary Jacobian aspect ratio and off-diagonal metric $g^{12}$ spatially within one patch, while higher degrees $p \ge 4$ widen B-spline support overlap.
+\end{enumerate}
+
+\paragraph{Implementation \& Complexity (\texttt{gsAsG1BlockSmootherOp}).}
+\texttt{collectInteriorLineAndRing1Blocks} builds width-2, step-2 interior $u$-strips ($\{l_2, l_2+1\} \times [0, m_1-1]$) and $v$-strips ($[0, m_2-1] \times \{l_1, l_1+1\}$) per patch, followed by the Coupled Ring-1 block $I_{\text{ring1}}$ (so 100\% of free DOFs are covered). To avoid building $\mathcal{O}(\sqrt{N})$ sparse transfer matrices, \texttt{gsAsG1BlockSmootherOp} converts $A$ once into RowMajor (\texttt{m\_matRow}), extracts every diagonal submatrix $A_b = P_b^T A P_b$ in $\mathcal{O}(\text{nnz}(A))$ total setup time using a single reusable \texttt{globToLoc} lookup array, and factorizes each banded 1D block ($k \approx 2 m_d$, bandwidth $\mathcal{O}(p)$) and Ring-1 via \texttt{SimplicialLDLT} ($\mathcal{O}(p^2 N)$ total factorization and application cost). Exact $A$-symmetry of the multiplicative Schwarz sweep is enforced by reversing the block sequence between \texttt{step} and \texttt{stepT}:
+\[
+  E_{\text{step}} = \Big(\prod_{b=K-1}^{0} (I - P_b A_b^{-1} P_b^T A)\Big), \qquad
+  E_{\text{stepT}} = \Big(\prod_{b=0}^{K-1} (I - P_b A_b^{-1} P_b^T A)\Big) = E_{\text{step}}^*.
+\]
+Because every strip solves the \emph{exact physical Galerkin subblock} $P_b^T A P_b$, no damping parameter is needed regardless of patch curvature or $g^{12}$ skewness.
+
+\subsection{Proposal 3 (\texttt{--smoother fd\_ring1}): Interior Fast Diagonalization + Coupled Ring-1}
+\paragraph{Mathematical Motivation ($p$-Robust Tensor Inversion).}
+In isogeometric analysis, exact Kronecker Fast Diagonalization (FD) on tensor-product B-splines eliminates $p$-dependence in $\mathcal{O}(m_1 m_2(m_1 + m_2))$ operations per patch without forming multi-dimensional Cholesky factors.
+
+\paragraph{Implementation \& Metric/Power Calibration (\texttt{gsAsG1FastDiagSmootherOp}).}
+On each patch interior tensor grid $[2..n_1-3] \times [2..n_2-3]$ (whose basis functions satisfy clamped boundary conditions $B_i = B_i' = 0$ at $u,v \in \{0,1\}$), \texttt{assemble1DInteriorMassAndBiharmonic} integrates exact 1D mass $M_d = [\int B_i B_j]$ and 1D biharmonic $B_d = [\int B_i'' B_j'']$ via $(p+1)$-point Gauss quadrature over unique knot spans, then solves the small 1D generalized eigenproblem
+\[
+  B_d Q_d = M_d Q_d \Lambda_d^{(4)}, \qquad Q_d^T M_d Q_d = I \quad (d \in \{1, 2\}).
+\]
+Sampling the geometry Jacobian $J$ on a $3\times 3$ patch grid estimates average physical metric weights $c_1 = \overline{|J|(g^{11})^2}$, $c_2 = \overline{|J|(g^{22})^2}$, and $c_0 = \beta\overline{|J|}$ (where $g = J^T J$). By Cauchy--Schwarz on clamped functions ($\int \phi'\psi' \le \|\phi''\|_{L^2}\|\psi\|_{L^2}$), the 2D patch-interior operator is approximated in $(Q_1 \otimes Q_2)$ coordinates by the diagonal
+\[
+  D_{a,b} = \Big(\sqrt{c_1 \lambda_a^{(4,1)}} + \sqrt{c_2 \lambda_b^{(4,2)}}\Big)^2 + c_0,
+\]
+and applied via two small dense matrix multiplications $\hat{A}_p^{-1} r = Q_1 \big((Q_1^T R Q_2) \oslash D\big) Q_2^T$. Because spatial metric variation and cross-derivatives $g^{12}$ on curved patches can cause $\hat{A}_p$ to underestimate $A_{pp}$, 12 power-iteration steps in the $A_{pp}$-inner product estimate $\lambda_{\max}(\hat{A}_p^{-1} A_{pp})$ and calibrate $\omega_p = 0.90/\lambda_{\max}$ so every eigenvalue of $\omega_p \hat{A}_p^{-1} A_{pp}$ lies strictly below $1$. The symmetric smoother applies $\text{GS}_{\text{fwd}} \to \text{FD}_{\text{patches}} \to \text{Ring1}$ in \texttt{step} and its exact reverse in \texttt{stepT}.
+
+\subsection{Theoretical & Practical Comparison Across Proposals 1--4}
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lccccccp{3.6cm}@{}}
+\toprule
+\textbf{Proposal / Flag} & \textbf{Apply Cost} & \textbf{Ring-1 Lock} & \textbf{Anisotropy} & \textbf{Curved $g^{12}$} & \textbf{$p$-Robust} & \textbf{All-101 V/CG} & \textbf{Best Regime} \\
+\midrule
+Prop~4 (\texttt{auto}) & $\mathcal{O}(N)$ & No & No & No & No & 74/101 \,|\, 99/101 & Baseline conditioning only \\
+Prop~1 (\texttt{ring1}) & $\mathcal{O}(N)$ & Exact & No & No & No ($p\ge 5$ stalls) & 88/101 \,|\, 101/101 & Fast on mild $p=3$ stars/trees \\
+Prop~2 (\texttt{line\_ring1}) & $\mathcal{O}(p^2 N)$ & Exact & Exact 1D & Exact Galerkin & Yes ($p=3\text{--}5$) & \textbf{99/101} \,|\, \textbf{101/101} & \textbf{Best overall}; curved/stretched/holes \\
+Prop~3 (\texttt{fd\_ring1}) & $\mathcal{O}(m_1 m_2(m_1+m_2))$ & Exact & Mean $(c_1,c_2)$ & Damped ($\omega_p$) & Yes ($p=3\text{--}5$) & 95/101 \,|\, 100/101 & Fastest iters on affine rectangles \\
+\bottomrule
+\end{tabular}
+\end{center}
+Overall, \textbf{Proposal~2 (\texttt{line\_ring1})} is the most reliable general-purpose smoother because exact Galerkin 1D strips require zero global metric approximation or Rayleigh damping, whereas \textbf{Proposal~3 (\texttt{fd\_ring1})} slightly edges it out on axis-aligned/affine multi-patch domains (\texttt{2\_patch\_rectangle}, \texttt{two\_bilinear\_patches}, \texttt{ldomain}) where constant $(c_1, c_2)$ matches the exact physical operator.
+
+\section{Aggregate Experimental Results}
+
+\subsection{Full 101-Geometry Sweep ($p=3$, $m=2\to r=3$, Homogeneous BCs, First Biharmonic)}
+Direct Cholesky verification on \texttt{cg-V line\_ring1} passed on all 101 domains (median relative difference $5.50\times 10^{-10}$, maximum $2.27\times 10^{-7}$). Because $r=3$ ($m=2$) has two grid levels with an exact coarse solve, V-cycle and W-cycle are algebraically identical at this level.
+
+\begin{center}
+\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+\textbf{Solver / Cycle / Smoother} & \textbf{Pass Rate} & \textbf{Median Iters} & \textbf{Mean Iters} & \textbf{Max Iters} & \textbf{Median Solve (s)} \\
+\midrule
+\texttt{mg-V auto} & 74/101 & 138.0 & 153.2 & 300 & 1.4083 \\
+\texttt{mg-V ring1} & 88/101 & 33.0 & 85.2 & 300 & 0.4277 \\
+\texttt{mg-V line\_ring1} & 99/101 & 17.0 & 37.0 & 300 & 0.1652 \\
+\texttt{mg-V fd\_ring1} & 95/101 & 24.0 & 56.7 & 300 & 0.2835 \\
+\texttt{mg-W auto} & 74/101 & 138.0 & 153.2 & 300 & 1.2545 \\
+\texttt{mg-W ring1} & 88/101 & 33.0 & 85.2 & 300 & 0.4141 \\
+\texttt{mg-W line\_ring1} & 99/101 & 17.0 & 37.0 & 300 & 0.1693 \\
+\texttt{mg-W fd\_ring1} & 95/101 & 24.0 & 56.7 & 300 & 0.3026 \\
+\texttt{cg-V auto} & 99/101 & 30.0 & 45.5 & 300 & 0.2765 \\
+\texttt{cg-V ring1} & 101/101 & 12.0 & 24.7 & 186 & 0.1637 \\
+\texttt{cg-V line\_ring1} & 101/101 & 8.0 & 11.0 & 52 & 0.0795 \\
+\texttt{cg-V fd\_ring1} & 100/101 & 10.0 & 17.8 & 300 & 0.1221 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Per-Category Breakdown Across All 101 Domains ($r=3$, Biharm1 \& Biharm2)}
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lcccccccc@{}}
+\toprule
+\textbf{Category (N)} & \textbf{B1 V-\texttt{auto}} & \textbf{B1 V-\texttt{ring1}} & \textbf{B1 V-\texttt{fd}} & \textbf{B1 V-\texttt{line}} & \textbf{B1 CG-\texttt{line}} & \textbf{B2 V-\texttt{auto}} & \textbf{B2 V-\texttt{line}} & \textbf{B2 CG-\texttt{line}} \\
+\midrule
+\texttt{01\_single\_patch} (10) & 8/10 (9) & 8/10 (15) & 9/10 (10) & 10/10 (8) & 10/10 (6) & 8/10 (10) & 10/10 (8) & 10/10 (6) \\
+\texttt{02\_multipatch\_trees} (22) & 17/22 (63) & 21/22 (18) & 21/22 (14) & 22/22 (15) & 22/22 (8) & 18/22 (56) & 21/22 (15) & 22/22 (8) \\
+\texttt{03\_single\_vertex\_stars} (34) & 31/34 (131) & 34/34 (23) & 34/34 (19) & 34/34 (17) & 34/34 (8) & 34/34 (66) & 34/34 (12) & 34/34 (8) \\
+\texttt{04\_multi\_vertex\_meshes} (23) & 9/23 (300) & 16/23 (120) & 21/23 (56) & 23/23 (50) & 23/23 (13) & 10/23 (300) & 23/23 (32) & 23/23 (13) \\
+\texttt{05\_multiply\_connected\_holes} (12) & 9/12 (194) & 9/12 (76) & 10/12 (54) & 10/12 (27) & 12/12 (10) & 10/12 (108) & 11/12 (18) & 12/12 (10) \\
+\bottomrule
+\end{tabular}
+\end{center}
+Across all 101 domains on Second Biharmonic ($r=3$): \texttt{mg-V auto} passes 80/101 (median 85, mean 127.4, median solve 1.5628\,s), \texttt{mg-V line\_ring1} passes \textbf{99/101} (median 14, mean 32.5, median solve \textbf{0.2406\,s}), and \texttt{cg-V line\_ring1} passes \textbf{101/101} (median 8, mean 10.7, max 40, median solve \textbf{0.0927\,s}).
+
+\subsection{True 3-Level V-Cycle vs.\ W-Cycle vs.\ PCG ($m=2\to r=4$, 61 Domains)}
+\begin{center}
+\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+\textbf{Solver / Cycle / Smoother} & \textbf{Pass Rate} & \textbf{Median Iters} & \textbf{Mean Iters} & \textbf{Max Iters} & \textbf{Median Solve (s)} \\
+\midrule
+\texttt{mg-V auto} & 41/61 & 179.0 & 179.8 & 300 & 7.4445 \\
+\texttt{mg-V ring1} & 54/61 & 35.0 & 80.0 & 300 & 0.8476 \\
+\texttt{mg-V line\_ring1} & 60/61 & 24.0 & 42.3 & 300 & 0.5511 \\
+\texttt{mg-V fd\_ring1} & 57/61 & 26.0 & 58.3 & 300 & 0.6837 \\
+\texttt{mg-W auto} & 44/61 & 148.0 & 159.9 & 300 & 6.7053 \\
+\texttt{mg-W ring1} & 56/61 & 31.0 & 70.7 & 300 & 0.7830 \\
+\texttt{mg-W line\_ring1} & 60/61 & 18.0 & 34.0 & 300 & 0.4471 \\
+\texttt{mg-W fd\_ring1} & 58/61 & 23.0 & 50.8 & 300 & 0.6024 \\
+\texttt{cg-V auto} & 59/61 & 37.0 & 49.8 & 300 & 0.7285 \\
+\texttt{cg-V ring1} & 59/61 & 14.0 & 29.4 & 300 & 0.3024 \\
+\texttt{cg-V line\_ring1} & 60/61 & 10.0 & 16.4 & 300 & 0.1831 \\
+\texttt{cg-V fd\_ring1} & 60/61 & 11.0 & 20.1 & 300 & 0.2793 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Only \texttt{asg1\_circle\_5patch.xml} fails to reach $10^{-8}$ residual at $r=4$ (across all solvers and smoothers, including baseline \texttt{auto}), due to extreme boundary Jacobian ill-conditioning at $r=4$ despite optimal $O(h^4)$ $L^2$ error under direct Cholesky.
+
+\subsection{$h$-Refinement Scaling ($r = 3\text{--}6$, Stratified Core Set)}
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lcrrrrrrrrrrr@{}}
+\toprule
+\textbf{Domain} & $r$ & \textbf{DOFs} & \textbf{V-\texttt{auto}} & \textbf{V-\texttt{ring1}} & \textbf{V-\texttt{fd}} & \textbf{V-\texttt{line}} & \textbf{W-\texttt{auto}} & \textbf{W-\texttt{line}} & \textbf{CG-\texttt{auto}} & \textbf{CG-\texttt{line}} & \textbf{CG-\texttt{fd}} \\
+\midrule
+\texttt{2patch\_rect} & 3 & 405 & 49 & 18 & 6 & 7 & 49 & 7 & 17 & 6 & 5 \\
+\texttt{2patch\_rect} & 4 & 1829 & 57 & 20 & 8 & 10 & 55 & 10 & 23 & 7 & 6 \\
+\texttt{2patch\_rect} & 5 & 7749 & 55 & 23 & 8 & 11 & 49 & 9 & 27 & 7 & 6 \\
+\texttt{2patch\_rect} & 6 & 31877 & 55 & 24 & 8 & 12 & 53 & 9 & 28 & 8 & 6 \\
+\texttt{4patch\_v3} & 3 & 834 & 138 & 30 & 24 & 17 & 138 & 17 & 28 & 9 & 11 \\
+\texttt{4patch\_v3} & 4 & 3714 & 178 & 38 & 29 & 22 & 127 & 18 & 33 & 11 & 13 \\
+\texttt{4patch\_v3} & 5 & 15618 & 247 & 46 & 34 & 30 & 138 & 19 & 42 & 13 & 15 \\
+\texttt{4patch\_v3} & 6 & 64002 & TO & 53 & 39 & 39 & TO & 20 & 47 & 14 & 17 \\
+\texttt{circle\_asg1} & 3 & 10952 & 91 & 30 & 35 & 14 & 91 & 14 & 25 & 8 & 15 \\
+\texttt{circle\_asg1} & 4 & 44936 & 125 & 46 & 48 & 18 & 104 & 16 & 31 & 10 & 19 \\
+\texttt{curved\_quad} & 3 & 2116 & 9 & 15 & 7 & 8 & 9 & 8 & 9 & 6 & 6 \\
+\texttt{curved\_quad} & 4 & 8836 & 9 & 17 & 9 & 8 & 9 & 7 & 10 & 6 & 6 \\
+\texttt{curved\_ring} & 3 & 8636 & 48 & 89 & 14 & 9 & 48 & 9 & 25 & 6 & 9 \\
+\texttt{curved\_ring} & 4 & 35708 & 57 & 101 & 13 & 12 & 47 & 9 & 29 & 8 & 9 \\
+\texttt{ldomain} & 3 & 6436 & 52 & 15 & 13 & 14 & 52 & 14 & 16 & 7 & 6 \\
+\texttt{ldomain} & 4 & 26692 & 92 & 25 & 21 & 22 & 65 & 15 & 20 & 9 & 7 \\
+\texttt{serpentine} & 3 & 2116 & 300$^*$ & 300$^*$ & 300$^*$ & 21 & 300$^*$ & 21 & 226 & 11 & 63 \\
+\texttt{serpentine} & 4 & 8836 & 300$^*$ & 300$^*$ & 300$^*$ & 36 & 300$^*$ & 32 & 300$^*$ & 15 & 84 \\
+\texttt{sq6} & 3 & 1271 & 300$^*$ & 120 & 24 & 19 & 300$^*$ & 19 & 45 & 10 & 11 \\
+\texttt{sq6} & 4 & 5607 & 300$^*$ & 149 & 50 & 31 & 300$^*$ & 30 & 58 & 12 & 17 \\
+\texttt{sq6} & 5 & 23495 & 300$^*$ & 183 & 85 & 41 & 300$^*$ & 30 & 74 & 15 & 23 \\
+\texttt{sq6\_nb} & 3 & 1271 & 300$^*$ & 300$^*$ & 50 & 50 & 300$^*$ & 50 & 79 & 13 & 16 \\
+\texttt{sq6\_nb} & 4 & 5607 & 300$^*$ & 300$^*$ & 87 & 82 & 300$^*$ & 75 & 107 & 20 & 22 \\
+\texttt{sq6\_nb} & 5 & 23495 & 300$^*$ & 300$^*$ & 111 & 77 & 300$^*$ & 68 & 115 & 23 & 28 \\
+\texttt{swirl\_ring7} & 3 & 15113 & 300$^*$ & 64 & 52 & 41 & 300$^*$ & 41 & 38 & 13 & 18 \\
+\texttt{swirl\_ring7} & 4 & 62489 & TO & 107 & 75 & 68 & TO & 50 & 53 & 16 & 23 \\
+\texttt{two\_bilinear} & 3 & 403 & 140 & 27 & 19 & 21 & 140 & 21 & 17 & 8 & 7 \\
+\texttt{two\_bilinear} & 4 & 1827 & 214 & 42 & 29 & 35 & 171 & 27 & 26 & 10 & 9 \\
+\texttt{two\_bilinear} & 5 & 7747 & 300$^*$ & 61 & 41 & 49 & 196 & 31 & 34 & 12 & 11 \\
+\texttt{two\_bilinear} & 6 & 31875 & 300$^*$ & 80 & 53 & 65 & 213 & 33 & 40 & 13 & 13 \\
+\texttt{v5\_r1} & 3 & 4336 & 122 & 23 & 18 & 18 & 122 & 18 & 27 & 8 & 9 \\
+\texttt{v5\_r1} & 4 & 18896 & 178 & 33 & 24 & 26 & 137 & 19 & 33 & 10 & 10 \\
+\texttt{v5\_r1} & 5 & 78736 & 236 & 42 & 31 & 34 & 149 & 20 & 38 & 12 & 12 \\
+\texttt{v7\_p3} & 3 & 1455 & 230 & 33 & 26 & 28 & 230 & 28 & 34 & 9 & 9 \\
+\texttt{v7\_p3} & 4 & 6495 & 300$^*$ & 52 & 40 & 44 & 300$^*$ & 28 & 46 & 13 & 14 \\
+\texttt{v7\_p3} & 5 & 27327 & 300$^*$ & 74 & 58 & 63 & 300$^*$ & 32 & 59 & 15 & 17 \\
+\texttt{weirdo} & 3 & 2335 & 300$^*$ & 146 & 116 & 99 & 300$^*$ & 99 & 69 & 18 & 21 \\
+\texttt{weirdo} & 4 & 10303 & 300$^*$ & 283 & 220 & 192 & 300$^*$ & 150 & 103 & 27 & 33 \\
+\texttt{weirdo} & 5 & 43135 & 300$^*$ & 300$^*$ & 300$^*$ & 300$^*$ & TO & 217 & 135 & 36 & 41 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Spline Degree $p$-Robustness ($d = 3, 4, 5$) and Second Biharmonic Core}
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lccrrrrrrrrrr@{}}
+\toprule
+\textbf{Domain} & $r$ & $d$ & \textbf{DOFs} & \textbf{V-\texttt{auto}} & \textbf{V-\texttt{ring1}} & \textbf{V-\texttt{fd}} & \textbf{V-\texttt{line}} & \textbf{W-\texttt{auto}} & \textbf{W-\texttt{line}} & \textbf{CG-\texttt{auto}} & \textbf{CG-\texttt{line}} & \textbf{CG-\texttt{fd}} \\
+\midrule
+\texttt{2patch\_rect} & 4 & 3 & 1829 & 57 & 20 & 8 & 10 & 55 & 10 & 23 & 7 & 6 \\
+\texttt{2patch\_rect} & 4 & 4 & 1953 & 102 & 30 & 11 & 12 & 100 & 12 & 25 & 6 & 6 \\
+\texttt{2patch\_rect} & 4 & 5 & 2081 & 160 & 102 & 10 & 11 & 157 & 11 & 40 & 7 & 6 \\
+\texttt{4patch\_v3} & 4 & 3 & 3714 & 178 & 38 & 29 & 22 & 127 & 18 & 33 & 11 & 13 \\
+\texttt{4patch\_v3} & 4 & 4 & 3966 & 113 & 41 & 29 & 15 & 115 & 15 & 30 & 9 & 14 \\
+\texttt{4patch\_v3} & 4 & 5 & 4226 & 189 & 138 & 56 & 20 & 185 & 20 & 41 & 10 & 19 \\
+\texttt{curved\_quad} & 3 & 3 & 2116 & 9 & 15 & 7 & 8 & 9 & 8 & 9 & 6 & 6 \\
+\texttt{curved\_quad} & 3 & 4 & 2401 & 17 & 31 & 9 & 8 & 17 & 8 & 13 & 6 & 7 \\
+\texttt{curved\_quad} & 3 & 5 & 2704 & 58 & 108 & 11 & 12 & 58 & 12 & 25 & 8 & 8 \\
+\texttt{curved\_ring} & 3 & 3 & 8636 & 48 & 89 & 14 & 9 & 48 & 9 & 25 & 6 & 9 \\
+\texttt{curved\_ring} & 3 & 4 & 9800 & 75 & 130 & 14 & 7 & 75 & 7 & 29 & 6 & 9 \\
+\texttt{curved\_ring} & 3 & 5 & 11036 & 186 & 300$^*$ & 17 & 9 & 186 & 9 & 47 & 7 & 10 \\
+\texttt{ldomain} & 3 & 3 & 6436 & 52 & 15 & 13 & 14 & 52 & 14 & 16 & 7 & 6 \\
+\texttt{ldomain} & 3 & 4 & 7303 & 42 & 33 & 9 & 10 & 42 & 10 & 16 & 7 & 6 \\
+\texttt{ldomain} & 3 & 5 & 8224 & 57 & 107 & 6 & 12 & 57 & 12 & 25 & 8 & 5 \\
+\texttt{serpentine} & 3 & 3 & 2116 & 300$^*$ & 300$^*$ & 300$^*$ & 21 & 300$^*$ & 21 & 226 & 11 & 63 \\
+\texttt{serpentine} & 3 & 4 & 2401 & 300$^*$ & 300$^*$ & 300$^*$ & 33 & 300$^*$ & 33 & 258 & 15 & 73 \\
+\texttt{serpentine} & 3 & 5 & 2704 & 300$^*$ & 300$^*$ & 300$^*$ & 47 & 300$^*$ & 47 & 300$^*$ & 17 & 77 \\
+\texttt{sq6} & 4 & 3 & 5607 & 300$^*$ & 149 & 50 & 31 & 300$^*$ & 30 & 58 & 12 & 17 \\
+\texttt{sq6} & 4 & 4 & 5987 & 300$^*$ & 129 & 52 & 28 & 300$^*$ & 29 & 65 & 12 & 18 \\
+\texttt{sq6} & 4 & 5 & 6379 & 300$^*$ & 125 & 68 & 29 & 300$^*$ & 28 & 89 & 12 & 21 \\
+\texttt{sq6\_nb} & 4 & 3 & 5607 & 300$^*$ & 300$^*$ & 87 & 82 & 300$^*$ & 75 & 107 & 20 & 22 \\
+\texttt{sq6\_nb} & 4 & 4 & 5987 & 300$^*$ & 300$^*$ & 89 & 83 & 300$^*$ & 78 & 111 & 19 & 23 \\
+\texttt{sq6\_nb} & 4 & 5 & 6379 & 300$^*$ & 300$^*$ & 140 & 102 & 300$^*$ & 97 & 163 & 20 & 29 \\
+\texttt{swirl\_ring7} & 3 & 3 & 15113 & 300$^*$ & 64 & 52 & 41 & 300$^*$ & 41 & 38 & 13 & 18 \\
+\texttt{swirl\_ring7} & 3 & 4 & 17150 & 226 & 80 & 59 & 27 & 226 & 27 & 34 & 11 & 18 \\
+\texttt{swirl\_ring7} & 3 & 5 & 19313 & 262 & 196 & 96 & 22 & 262 & 22 & 47 & 11 & 22 \\
+\texttt{two\_bilinear} & 4 & 3 & 1827 & 214 & 42 & 29 & 35 & 171 & 27 & 26 & 10 & 9 \\
+\texttt{two\_bilinear} & 4 & 4 & 1951 & 167 & 28 & 14 & 18 & 127 & 16 & 28 & 8 & 8 \\
+\texttt{two\_bilinear} & 4 & 5 & 2079 & 196 & 89 & 15 & 15 & 181 & 13 & 38 & 8 & 9 \\
+\texttt{v7\_p3} & 4 & 3 & 6495 & 300$^*$ & 52 & 40 & 44 & 300$^*$ & 28 & 46 & 13 & 14 \\
+\texttt{v7\_p3} & 4 & 4 & 6936 & 277 & 31 & 27 & 25 & 228 & 22 & 36 & 10 & 12 \\
+\texttt{v7\_p3} & 4 & 5 & 7391 & 300$^*$ & 94 & 49 & 18 & 249 & 17 & 44 & 9 & 16 \\
+\texttt{weirdo} & 4 & 3 & 10303 & 300$^*$ & 283 & 220 & 192 & 300$^*$ & 150 & 103 & 27 & 33 \\
+\texttt{weirdo} & 4 & 4 & 11002 & 300$^*$ & 180 & 146 & 108 & 300$^*$ & 88 & 93 & 22 & 30 \\
+\texttt{weirdo} & 4 & 5 & 11723 & 300$^*$ & 227 & 158 & 70 & 300$^*$ & 60 & 110 & 19 & 32 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\medskip
+\noindent\textbf{Second Biharmonic Stratified Core ($d=3$):}
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}lcrrrrrrrrrrr@{}}
+\toprule
+\textbf{Domain} & $r$ & \textbf{DOFs} & \textbf{V-\texttt{auto}} & \textbf{V-\texttt{ring1}} & \textbf{V-\texttt{fd}} & \textbf{V-\texttt{line}} & \textbf{W-\texttt{auto}} & \textbf{W-\texttt{line}} & \textbf{CG-\texttt{auto}} & \textbf{CG-\texttt{line}} & \textbf{CG-\texttt{fd}} \\
+\midrule
+\texttt{2patch\_rect} & 4 & 1921 & 71 & 20 & 8 & 10 & 74 & 10 & 25 & 7 & 6 \\
+\texttt{4patch\_v3} & 4 & 3834 & 146 & 38 & 29 & 20 & 102 & 17 & 34 & 10 & 13 \\
+\texttt{circle\_asg1} & 3 & 11048 & 91 & 30 & 35 & 14 & 91 & 14 & 25 & 8 & 15 \\
+\texttt{curved\_quad} & 3 & 2208 & 9 & 15 & 7 & 8 & 9 & 8 & 9 & 6 & 6 \\
+\texttt{curved\_ring} & 3 & 8820 & 47 & 90 & 15 & 12 & 47 & 12 & 25 & 7 & 10 \\
+\texttt{ldomain} & 3 & 6622 & 57 & 17 & 14 & 15 & 57 & 15 & 17 & 8 & 6 \\
+\texttt{serpentine} & 3 & 2208 & 300$^*$ & 300$^*$ & 300$^*$ & 62 & 300$^*$ & 62 & 216 & 18 & 65 \\
+\texttt{sq6} & 4 & 5763 & 300$^*$ & 148 & 50 & 31 & 300$^*$ & 30 & 62 & 12 & 17 \\
+\texttt{sq6\_nb} & 4 & 5763 & 300$^*$ & 300$^*$ & 84 & 78 & 300$^*$ & 71 & 111 & 19 & 22 \\
+\texttt{swirl\_ring7} & 3 & 15435 & 102 & 64 & 52 & 22 & 102 & 22 & 30 & 11 & 18 \\
+\texttt{two\_bilinear} & 4 & 1917 & 61 & 22 & 12 & 15 & 59 & 12 & 23 & 9 & 8 \\
+\texttt{v5\_r1} & 4 & 19196 & 81 & 21 & 14 & 14 & 71 & 11 & 30 & 9 & 9 \\
+\texttt{v7\_p3} & 4 & 6705 & 107 & 19 & 16 & 13 & 92 & 12 & 32 & 9 & 10 \\
+\texttt{weirdo} & 4 & 10544 & 300$^*$ & 167 & 132 & 76 & 300$^*$ & 67 & 87 & 20 & 29 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Behavioral Comparison Across Domain Classes}
+\begin{itemize}
+  \item \textbf{Single-Patch Domains (\texttt{01\_single\_patch}):} Isotropic curved patches (\texttt{curved\_quad}) converge in $6\text{--}10$ steps for all smoothers, whereas curved anisotropic ducts (\texttt{02\_serpentine\_s\_duct}, AR $4.50$) fail under \texttt{auto}, \texttt{ring1}, and \texttt{fd\_ring1} in MG while \texttt{line\_ring1} converges cleanly in $21\text{--}36$ MG ($11\text{--}15$ CG) steps.
+  \item \textbf{Multi-Patch Trees (\texttt{02\_multipatch\_trees}):} On rectilinear or gently curved trees (\texttt{2\_patch\_rectangle}, \texttt{ldomain}, \texttt{two\_bilinear}), \texttt{fd\_ring1} matches or beats \texttt{line\_ring1} because constant-metric FD closely models each patch; on distorted trees (\texttt{comb}, \texttt{curved\_comb}, \texttt{staircase}), \texttt{line\_ring1} provides full $22/22$ robustness.
+  \item \textbf{Single-Vertex Stars (\texttt{03\_single\_vertex\_stars}):} Pointwise \texttt{auto} degrades severely as $h\to 0$ or $p$ rises. Coupled Ring-1 eliminates vertex/interface locking ($34/34$), while adding line strips (\texttt{line\_ring1}) preserves $p$-robustness through $d=5$ and achieves nearly $h$-independent W-cycle counts ($18\to 19\to 20$ up to $78{,}736$ DOFs on \texttt{as\_g1\_pentagon\_p3\_r1}).
+  \item \textbf{Multi-Vertex Meshes (\texttt{04\_multi\_vertex\_meshes}):} Combining multi-valence 6-jet vertices and high aspect ratio (\texttt{sq6\_nb} AR $5.06$, \texttt{weirdo}, \texttt{filleted\_u\_bracket}) stalls \texttt{auto} ($9/23$) and \texttt{ring1} ($16/23$); \texttt{line\_ring1} achieves $23/23$ (100\%) at $r=3$ and cuts \texttt{circle\_asg1} ($44{,}936$ DOFs at $r=4$) MG solve time from $11.0\,$s to $0.82\,$s.
+  \item \textbf{Multiply-Connected Domains (\texttt{05\_multiply\_connected\_holes}):} Closed hole corridors induce strong periodic coupling. \texttt{line\_ring1} maintains $p$-robust single-digit MG counts on \texttt{curved\_ring} ($9\text{--}12$ vs.\ $89\text{--}300^*$ for \texttt{ring1}) and achieves 12/12 CG convergence ($\le 52$ iters) even on 5-hole plates.
+\end{itemize}
+
+\section{Complete Per-Geometry Benchmark Tables}
+
+\subsection{All 101 Validated Domains ($d=3$, $m=2\to r=3$, Homogeneous BCs)}
+{\tiny
+\setlength{\tabcolsep}{2.5pt}
+\begin{longtable}{@{}rlrrrrccccc@{}}
+\toprule
+\textbf{ID} & \textbf{Filename} & $P$ & $H$ & \textbf{Val} & \textbf{DOFs} & \textbf{V-\texttt{auto}} & \textbf{V-\texttt{ring1}} & \textbf{V-\texttt{fd}} & \textbf{V-\texttt{line}} & \textbf{CG-\texttt{line}} / \textbf{B2 V-\texttt{line}} \\
+\midrule
+\endhead
+1 & \texttt{02\_serpentine\_s\_duct\_asg1.xml} & 1 & 0 & 0 & 2116 & 300$^*$ & 300$^*$ & 300$^*$ & 21 & 11 / 62 \\
+2 & \texttt{05\_hourglass\_pinch\_asg1.xml} & 1 & 0 & 0 & 2116 & 300$^*$ & 300$^*$ & 67 & 11 & 8 / 29 \\
+3 & \texttt{bulged\_quad\_non\_bilinear\_asg1.xml} & 1 & 0 & 0 & 2116 & 9 & 15 & 10 & 8 & 6 / 8 \\
+4 & \texttt{bulged\_quad\_non\_bilinear\_asg1\_reparam.xml} & 1 & 0 & 0 & 196 & 8 & 14 & 7 & 6 & 5 / 7 \\
+5 & \texttt{concave\_quad\_4corner\_nonconvex\_asg1.xml} & 1 & 0 & 0 & 2116 & 9 & 15 & 7 & 8 & 6 / 8 \\
+6 & \texttt{curved\_quad\_4corner\_convex\_asg1.xml} & 1 & 0 & 0 & 2116 & 9 & 15 & 9 & 8 & 6 / 8 \\
+7 & \texttt{curved\_quad\_asg1.xml} & 1 & 0 & 0 & 2116 & 9 & 15 & 7 & 8 & 6 / 8 \\
+8 & \texttt{lake\_asg1.xml} & 1 & 0 & 0 & 2116 & 174 & 214 & 214 & 15 & 9 / 23 \\
+9 & \texttt{quad\_asg1.xml} & 1 & 0 & 0 & 2116 & 9 & 15 & 4 & 8 & 6 / 8 \\
+10 & \texttt{star\_quad\_4corner\_nonconvex\_asg1.xml} & 1 & 0 & 0 & 2116 & 127 & 204 & 190 & 87 & 24 / 90 \\
+11 & \texttt{2\_patch\_rectangle.xml} & 2 & 0 & 0 & 405 & 49 & 18 & 6 & 7 & 6 / 7 \\
+12 & \texttt{2\_patch\_rectangle\_asg1.xml} & 2 & 0 & 0 & 4275 & 39 & 15 & 9 & 11 & 7 / 14 \\
+13 & \texttt{2\_patch\_rectangle\_non\_bilinear.xml} & 2 & 0 & 0 & 405 & 14 & 14 & 5 & 6 & 5 / 6 \\
+14 & \texttt{curved\_2patch\_asg1.xml} & 2 & 0 & 0 & 4277 & 147 & 74 & 18 & 17 & 9 / 17 \\
+15 & \texttt{curved\_hexagon\_6corner\_convex\_asg1.xml} & 2 & 0 & 0 & 4275 & 300$^*$ & 52 & 47 & 36 & 11 / 17 \\
+16 & \texttt{curved\_lshape\_non\_bilinear\_asg1.xml} & 2 & 0 & 0 & 4275 & 162 & 56 & 41 & 21 & 11 / 21 \\
+17 & \texttt{two\_bilinear\_patches.xml} & 2 & 0 & 0 & 403 & 140 & 27 & 19 & 21 & 8 / 10 \\
+18 & \texttt{two\_patch\_mathematica.xml} & 2 & 0 & 0 & 403 & 63 & 14 & 11 & 12 & 7 / 11 \\
+19 & \texttt{two\_patch\_mathematica\_non\_bilinear.xml} & 2 & 0 & 0 & 403 & 51 & 15 & 10 & 12 & 7 / 12 \\
+20 & \texttt{two\_squares\_asg1.xml} & 2 & 0 & 0 & 4277 & 18 & 16 & 5 & 7 & 6 / 7 \\
+21 & \texttt{07\_asymmetric\_staircase\_8corner\_asg1.xml} & 3 & 0 & 0 & 6434 & 300$^*$ & 222 & 170 & 160 & 23 / 68 \\
+22 & \texttt{curved\_lshape\_3patch\_asg1.xml} & 3 & 0 & 0 & 6434 & 48 & 17 & 15 & 15 & 7 / 16 \\
+23 & \texttt{curved\_lshape\_asg1.xml} & 3 & 0 & 0 & 6436 & 41 & 16 & 10 & 11 & 7 / 10 \\
+24 & \texttt{curved\_lshape\_non\_bilinear\_asg1\_reparam.xml} & 3 & 0 & 0 & 6435 & 300$^*$ & 300$^*$ & 300$^*$ & 89 & 23 / 300$^*$ \\
+25 & \texttt{ldomain\_asg1.xml} & 3 & 0 & 0 & 6436 & 52 & 15 & 13 & 14 & 7 / 15 \\
+26 & \texttt{lshape\_asg1.xml} & 3 & 0 & 0 & 6436 & 51 & 16 & 13 & 13 & 7 / 15 \\
+27 & \texttt{three\_patch\_belt.xml} & 3 & 0 & 0 & 610 & 63 & 19 & 12 & 15 & 8 / 12 \\
+28 & \texttt{three\_patch\_belt\_non\_bilinear.xml} & 3 & 0 & 0 & 610 & 51 & 17 & 13 & 13 & 7 / 13 \\
+29 & \texttt{06\_y\_junction\_3way\_asg1.xml} & 4 & 0 & 0 & 8597 & 116 & 104 & 48 & 28 & 11 / 27 \\
+30 & \texttt{lshape\_9patch\_non\_bilinear\_trig\_p3\_asg1.xml} & 9 & 0 & 0 & 19391 & 144 & 35 & 34 & 23 & 11 / 23 \\
+31 & \texttt{comb\_asg1.xml} & 11 & 0 & 0 & 23714 & 300$^*$ & 88 & 56 & 63 & 15 / 72 \\
+32 & \texttt{curved\_comb\_asg1.xml} & 11 & 0 & 0 & 23714 & 300$^*$ & 64 & 43 & 47 & 15 / 50 \\
+33 & \texttt{as\_g1\_patch3\_random.xml} & 3 & 0 & 3 & 627 & 150 & 75 & 60 & 32 & 12 / 34 \\
+34 & \texttt{as\_g1\_tri\_p3.xml} & 3 & 0 & 3 & 627 & 47 & 13 & 9 & 9 & 6 / 8 \\
+35 & \texttt{concave\_triangle\_3corner\_nonconvex\_asg1.xml} & 3 & 0 & 3 & 6486 & 20 & 33 & 27 & 7 & 6 / 12 \\
+36 & \texttt{convex\_3\_valence.xml} & 3 & 0 & 3 & 627 & 74 & 23 & 18 & 13 & 8 / 12 \\
+37 & \texttt{convex\_3\_valence\_non\_bilinear.xml} & 3 & 0 & 3 & 627 & 73 & 14 & 11 & 11 & 7 / 7 \\
+38 & \texttt{curved\_triangle\_3corner\_convex\_asg1.xml} & 3 & 0 & 3 & 6486 & 20 & 15 & 9 & 8 & 6 / 8 \\
+39 & \texttt{star\_hexagon\_6corner\_nonconvex\_asg1.xml} & 3 & 0 & 3 & 6483 & 18 & 16 & 9 & 7 & 6 / 10 \\
+40 & \texttt{star\_triangle\_3corner\_nonconvex\_asg1.xml} & 3 & 0 & 3 & 6486 & 200 & 81 & 81 & 40 & 14 / 40 \\
+41 & \texttt{4\_patch\_3\_valence\_not\_bilinear.xml} & 4 & 0 & 3 & 834 & 138 & 30 & 24 & 17 & 9 / 15 \\
+42 & \texttt{as\_g1\_patch4\_random.xml} & 4 & 0 & 4 & 834 & 95 & 18 & 14 & 14 & 8 / 9 \\
+43 & \texttt{as\_g1\_v4\_p3.xml} & 4 & 0 & 4 & 834 & 51 & 14 & 11 & 12 & 6 / 7 \\
+44 & \texttt{star\_heptagon\_7corner\_nonconvex\_asg1.xml} & 4 & 0 & 4 & 8643 & 149 & 43 & 34 & 17 & 9 / 17 \\
+45 & \texttt{5\_patch\_5\_valence\_not\_bilinear.xml} & 5 & 0 & 5 & 1041 & 147 & 21 & 17 & 18 & 9 / 12 \\
+46 & \texttt{as\_g1\_ellipse\_v5\_p3.xml} & 5 & 0 & 5 & 1041 & 300$^*$ & 62 & 44 & 45 & 10 / 18 \\
+47 & \texttt{as\_g1\_patch5\_polygon\_sym.xml} & 5 & 0 & 5 & 1041 & 100 & 19 & 14 & 16 & 7 / 9 \\
+48 & \texttt{as\_g1\_patch5\_random.xml} & 5 & 0 & 5 & 1041 & 106 & 23 & 20 & 21 & 9 / 13 \\
+49 & \texttt{as\_g1\_patch5\_star\_sym.xml} & 5 & 0 & 5 & 1041 & 82 & 17 & 14 & 15 & 8 / 9 \\
+50 & \texttt{as\_g1\_pentagon\_p3.xml} & 5 & 0 & 5 & 1041 & 100 & 18 & 14 & 16 & 7 / 9 \\
+51 & \texttt{as\_g1\_pentagon\_p3\_r1.xml} & 5 & 0 & 5 & 4336 & 122 & 23 & 18 & 18 & 8 / 12 \\
+52 & \texttt{as\_g1\_pentagon\_random\_s101.xml} & 5 & 0 & 5 & 1041 & 178 & 20 & 20 & 17 & 9 / 18 \\
+53 & \texttt{concave\_pentagon\_5corner\_nonconvex\_asg1.xml} & 5 & 0 & 5 & 10806 & 28 & 15 & 7 & 7 & 6 / 7 \\
+54 & \texttt{convex\_5\_valence.xml} & 5 & 0 & 5 & 1041 & 136 & 22 & 18 & 18 & 8 / 10 \\
+55 & \texttt{convex\_5\_valence\_non\_bilinear.xml} & 5 & 0 & 5 & 1041 & 300$^*$ & 39 & 28 & 27 & 9 / 14 \\
+56 & \texttt{curved\_pentagon\_5corner\_convex\_asg1.xml} & 5 & 0 & 5 & 10806 & 34 & 14 & 12 & 7 & 6 / 7 \\
+57 & \texttt{custom\_sample\_domain.xml} & 5 & 0 & 5 & 1041 & 130 & 21 & 18 & 17 & 8 / 8 \\
+58 & \texttt{yeti\_asg1.xml} & 5 & 0 & 5 & 10801 & 38 & 34 & 28 & 11 & 8 / 15 \\
+59 & \texttt{6\_patch\_6\_valence\_not\_bilinear.xml} & 6 & 0 & 6 & 1248 & 132 & 30 & 23 & 23 & 9 / 14 \\
+60 & \texttt{as\_g1\_hex\_p3.xml} & 6 & 0 & 6 & 1248 & 153 & 24 & 18 & 21 & 7 / 10 \\
+61 & \texttt{as\_g1\_hex\_random\_s777.xml} & 6 & 0 & 6 & 1248 & 263 & 29 & 25 & 25 & 10 / 12 \\
+62 & \texttt{as\_g1\_patch6\_random.xml} & 6 & 0 & 6 & 1248 & 183 & 32 & 26 & 21 & 10 / 14 \\
+63 & \texttt{convex\_6\_valence.xml} & 6 & 0 & 6 & 1249 & 233 & 31 & 25 & 24 & 10 / 13 \\
+64 & \texttt{convex\_6\_valence\_non\_bilinear.xml} & 6 & 0 & 6 & 1249 & 300$^*$ & 51 & 39 & 37 & 10 / 17 \\
+65 & \texttt{as\_g1\_patch7\_random.xml} & 7 & 0 & 7 & 1455 & 192 & 34 & 28 & 26 & 12 / 17 \\
+66 & \texttt{as\_g1\_v7\_p3.xml} & 7 & 0 & 7 & 1455 & 230 & 33 & 26 & 28 & 9 / 10 \\
+67 & \texttt{crescent\_2corner\_asg1.xml} & 4 & 0 & 3 & 8695 & 123 & 244 & 46 & 14 & 9 / 14 \\
+68 & \texttt{crescent\_2corner\_asg1\_reparam.xml} & 4 & 0 & 3 & 8695 & 300$^*$ & 300$^*$ & 237 & 171 & 24 / 173 \\
+69 & \texttt{lens\_2corner\_convex\_asg1.xml} & 4 & 0 & 3 & 8695 & 26 & 16 & 14 & 8 & 6 / 8 \\
+70 & \texttt{teardrop\_1corner\_convex\_asg1.xml} & 4 & 0 & 3 & 8695 & 25 & 16 & 13 & 9 & 6 / 9 \\
+71 & \texttt{asg1\_circle\_5patch.xml} & 5 & 0 & 3 & 1096 & 300$^*$ & 43 & 35 & 11 & 8 / 34 \\
+72 & \texttt{asg1\_general\_5patch\_v2.xml} & 5 & 0 & 3 & 1096 & 38 & 15 & 12 & 8 & 6 / 8 \\
+73 & \texttt{asg1\_general\_5patch\_v4.xml} & 5 & 0 & 3 & 1096 & 73 & 16 & 14 & 9 & 7 / 9 \\
+74 & \texttt{circle\_asg1.xml} & 5 & 0 & 3 & 10952 & 91 & 30 & 35 & 14 & 8 / 14 \\
+75 & \texttt{heart\_1corner\_nonconvex\_asg1.xml} & 5 & 0 & 3 & 10951 & 300$^*$ & 300$^*$ & 300$^*$ & 89 & 21 / 89 \\
+76 & \texttt{heart\_2corner\_nonconvex\_asg1.xml} & 5 & 0 & 3 & 10950 & 47 & 71 & 56 & 9 & 7 / 14 \\
+77 & \texttt{01\_dart\_4corner\_nonconvex\_asg1.xml} & 6 & 0 & 4 & 13062 & 300$^*$ & 300$^*$ & 250 & 133 & 29 / 133 \\
+78 & \texttt{04\_heptagon\_7corner\_convex\_asg1.xml} & 6 & 0 & 4 & 13012 & 300$^*$ & 300$^*$ & 145 & 127 & 21 / 78 \\
+79 & \texttt{6\_patch\_4\_valence\_each\_not\_bilinear.xml} & 6 & 0 & 4 & 1265 & 118 & 22 & 17 & 16 & 8 / 12 \\
+80 & \texttt{concave\_heptagon\_7corner\_nonconvex\_asg1.xml} & 6 & 0 & 4 & 13012 & 300$^*$ & 300$^*$ & 300$^*$ & 164 & 32 / 237 \\
+81 & \texttt{curved\_heptagon\_7corner\_convex\_asg1.xml} & 6 & 0 & 4 & 13012 & 300$^*$ & 288 & 133 & 122 & 19 / 57 \\
+82 & \texttt{square\_6\_patch.xml} & 6 & 0 & 5 & 1271 & 300$^*$ & 120 & 24 & 19 & 10 / 18 \\
+83 & \texttt{square\_6\_patch\_non\_bilinear.xml} & 6 & 0 & 5 & 1271 & 300$^*$ & 300$^*$ & 50 & 50 & 13 / 44 \\
+84 & \texttt{03\_filleted\_u\_bracket\_asg1.xml} & 11 & 0 & 4 & 23961 & 300$^*$ & 300$^*$ & 116 & 101 & 22 / 101 \\
+85 & \texttt{blob\_geometry.xml} & 11 & 0 & 6 & 2334 & 269 & 41 & 35 & 30 & 12 / 17 \\
+86 & \texttt{blob\_geometry\_non\_bilinear.xml} & 11 & 0 & 6 & 2334 & 300$^*$ & 90 & 77 & 65 & 15 / 32 \\
+87 & \texttt{weirdo\_multivalence.xml} & 11 & 0 & 6 & 2335 & 300$^*$ & 146 & 116 & 99 & 18 / 50 \\
+88 & \texttt{weirdo\_multivalence\_non\_bilinear.xml} & 11 & 0 & 6 & 2335 & 300$^*$ & 134 & 111 & 97 & 21 / 56 \\
+89 & \texttt{experiment\_multivalence\_not\_bilinear.xml} & 13 & 0 & 6 & 2766 & 300$^*$ & 106 & 84 & 66 & 14 / 24 \\
+90 & \texttt{bean\_0corner\_1hole\_asg1.xml} & 4 & 1 & 0 & 8644 & 138 & 30 & 24 & 13 & 7 / 13 \\
+91 & \texttt{curved\_lshape\_6corner\_1hole\_asg1.xml} & 4 & 1 & 0 & 8636 & 163 & 300$^*$ & 55 & 11 & 8 / 11 \\
+92 & \texttt{curved\_ring\_4patch\_asg1.xml} & 4 & 1 & 0 & 8636 & 48 & 89 & 14 & 9 & 6 / 12 \\
+93 & \texttt{star\_5corner\_1hole\_asg1.xml} & 4 & 1 & 0 & 8636 & 262 & 60 & 76 & 51 & 12 / 38 \\
+94 & \texttt{wavy\_ring\_annulus\_asg1.xml} & 4 & 1 & 0 & 8644 & 26 & 50 & 28 & 10 & 7 / 10 \\
+95 & \texttt{ring\_7patch\_non\_bilinear\_swirl\_p3\_asg1.xml} & 7 & 1 & 0 & 15113 & 300$^*$ & 64 & 52 & 41 & 13 / 22 \\
+96 & \texttt{crescent\_2corner\_3holes\_asg1.xml} & 12 & 5 & 0 & 25908 & 228 & 62 & 76 & 46 & 12 / 33 \\
+97 & \texttt{curved\_lshape\_6corner\_3holes\_asg1.xml} & 12 & 3 & 0 & 25996 & 300$^*$ & 300$^*$ & 300$^*$ & 300$^*$ & 39 / 125 \\
+98 & \texttt{starburst\_12corner\_3holes\_asg1.xml} & 12 & 5 & 0 & 25908 & 225 & 59 & 75 & 46 & 12 / 33 \\
+99 & \texttt{comb\_16corner\_4holes\_asg1.xml} & 17 & 8 & 0 & 36746 & 146 & 291 & 5 & 9 & 6 / 9 \\
+100 & \texttt{uchannel\_8corner\_4holes\_asg1.xml} & 17 & 5 & 0 & 36793 & 99 & 197 & 4 & 9 & 6 / 9 \\
+101 & \texttt{swiss\_cross\_12corner\_5holes\_asg1.xml} & 20 & 6 & 0 & 43395 & 300$^*$ & 300$^*$ & 300$^*$ & 300$^*$ & 52 / 300$^*$ \\
+\bottomrule
+\end{longtable}
+}
+
+\subsection{3-Level Hierarchy Comparison ($m=2\to r=4$, $d=3$, 61 Domains)}
+{\tiny
+\setlength{\tabcolsep}{2.5pt}
+\begin{longtable}{@{}lrcccccccccc@{}}
+\toprule
+\textbf{Filename} & \textbf{DOFs} & \textbf{V-\texttt{auto}} & \textbf{V-\texttt{ring1}} & \textbf{V-\texttt{fd}} & \textbf{V-\texttt{line}} & \textbf{W-\texttt{auto}} & \textbf{W-\texttt{ring1}} & \textbf{W-\texttt{fd}} & \textbf{W-\texttt{line}} & \textbf{CG-\texttt{auto}} & \textbf{CG-\texttt{line}} \\
+\midrule
+\endhead
+\texttt{02\_serpentine\_s\_duct\_asg1.xml} & 8836 & 300$^*$ & 300$^*$ & 300$^*$ & 36 & 300$^*$ & 300$^*$ & 300$^*$ & 32 & 300$^*$ & 15 \\
+\texttt{05\_hourglass\_pinch\_asg1.xml} & 8836 & 300$^*$ & 300$^*$ & 82 & 14 & 300$^*$ & 300$^*$ & 64 & 11 & 161 & 9 \\
+\texttt{bulged\_quad\_non\_bilinear\_asg1.xml} & 8836 & 9 & 17 & 11 & 8 & 9 & 16 & 11 & 7 & 10 & 6 \\
+\texttt{bulged\_quad\_non\_bilinear\_asg1\_reparam.xml} & 900 & 9 & 15 & 9 & 8 & 8 & 15 & 9 & 8 & 9 & 6 \\
+\texttt{concave\_quad\_4corner\_nonconvex\_asg1.xml} & 8836 & 9 & 17 & 9 & 8 & 9 & 16 & 9 & 7 & 10 & 6 \\
+\texttt{curved\_quad\_4corner\_convex\_asg1.xml} & 8836 & 9 & 17 & 11 & 8 & 9 & 16 & 11 & 7 & 10 & 6 \\
+\texttt{curved\_quad\_asg1.xml} & 8836 & 9 & 17 & 9 & 8 & 9 & 16 & 9 & 7 & 10 & 6 \\
+\texttt{lake\_asg1.xml} & 8836 & 300$^*$ & 300$^*$ & 300$^*$ & 22 & 275 & 300$^*$ & 300$^*$ & 18 & 60 & 12 \\
+\texttt{quad\_asg1.xml} & 8836 & 9 & 17 & 4 & 8 & 9 & 16 & 4 & 7 & 10 & 6 \\
+\texttt{star\_quad\_4corner\_nonconvex\_asg1.xml} & 8836 & 270 & 300$^*$ & 300$^*$ & 161 & 151 & 254 & 234 & 92 & 60 & 36 \\
+\texttt{2\_patch\_rectangle.xml} & 1829 & 57 & 20 & 8 & 10 & 55 & 19 & 8 & 10 & 23 & 7 \\
+\texttt{2\_patch\_rectangle\_asg1.xml} & 17763 & 57 & 17 & 13 & 14 & 41 & 16 & 10 & 11 & 19 & 8 \\
+\texttt{2\_patch\_rectangle\_non\_bilinear.xml} & 1829 & 17 & 15 & 5 & 7 & 17 & 14 & 5 & 7 & 11 & 6 \\
+\texttt{curved\_2patch\_asg1.xml} & 17765 & 161 & 89 & 19 & 17 & 156 & 90 & 18 & 18 & 43 & 10 \\
+\texttt{curved\_hexagon\_6corner\_convex\_asg1.xml} & 17763 & 300$^*$ & 66 & 59 & 47 & 300$^*$ & 57 & 48 & 37 & 53 & 14 \\
+\texttt{curved\_lshape\_non\_bilinear\_asg1.xml} & 17763 & 271 & 77 & 52 & 37 & 201 & 63 & 43 & 25 & 38 & 13 \\
+\texttt{two\_bilinear\_patches.xml} & 1827 & 214 & 42 & 29 & 35 & 171 & 34 & 24 & 27 & 26 & 10 \\
+\texttt{two\_patch\_mathematica.xml} & 1827 & 92 & 21 & 16 & 19 & 68 & 15 & 12 & 15 & 19 & 8 \\
+\texttt{two\_patch\_mathematica\_non\_bilinear.xml} & 1827 & 70 & 20 & 14 & 17 & 53 & 17 & 11 & 13 & 18 & 8 \\
+\texttt{two\_squares\_asg1.xml} & 17765 & 18 & 17 & 5 & 8 & 18 & 17 & 4 & 7 & 14 & 6 \\
+\texttt{three\_patch\_belt.xml} & 2754 & 91 & 27 & 18 & 22 & 67 & 20 & 14 & 16 & 25 & 9 \\
+\texttt{three\_patch\_belt\_non\_bilinear.xml} & 2754 & 77 & 22 & 18 & 20 & 58 & 17 & 14 & 16 & 22 & 8 \\
+\texttt{as\_g1\_patch3\_random.xml} & 2787 & 142 & 105 & 79 & 41 & 129 & 80 & 64 & 35 & 42 & 15 \\
+\texttt{as\_g1\_tri\_p3.xml} & 2787 & 55 & 15 & 10 & 10 & 42 & 14 & 10 & 9 & 22 & 7 \\
+\texttt{convex\_3\_valence.xml} & 2787 & 88 & 33 & 26 & 17 & 69 & 31 & 25 & 16 & 27 & 9 \\
+\texttt{convex\_3\_valence\_non\_bilinear.xml} & 2787 & 94 & 20 & 14 & 14 & 73 & 19 & 14 & 10 & 27 & 8 \\
+\texttt{4\_patch\_3\_valence\_not\_bilinear.xml} & 3714 & 178 & 38 & 29 & 22 & 127 & 32 & 26 & 18 & 33 & 11 \\
+\texttt{as\_g1\_patch4\_random.xml} & 3714 & 153 & 27 & 23 & 20 & 115 & 20 & 17 & 14 & 30 & 9 \\
+\texttt{as\_g1\_v4\_p3.xml} & 3714 & 80 & 18 & 13 & 15 & 62 & 14 & 10 & 11 & 22 & 7 \\
+\texttt{5\_patch\_5\_valence\_not\_bilinear.xml} & 4641 & 216 & 34 & 26 & 29 & 162 & 25 & 20 & 21 & 38 & 11 \\
+\texttt{as\_g1\_ellipse\_v5\_p3.xml} & 4641 & 300$^*$ & 98 & 69 & 74 & 300$^*$ & 78 & 56 & 59 & 62 & 14 \\
+\texttt{as\_g1\_patch5\_polygon\_sym.xml} & 4641 & 163 & 28 & 20 & 23 & 129 & 20 & 16 & 17 & 32 & 10 \\
+\texttt{as\_g1\_patch5\_random.xml} & 4641 & 179 & 36 & 33 & 33 & 132 & 26 & 24 & 24 & 35 & 11 \\
+\texttt{as\_g1\_patch5\_star\_sym.xml} & 4641 & 136 & 26 & 23 & 23 & 103 & 19 & 17 & 17 & 29 & 10 \\
+\texttt{as\_g1\_pentagon\_p3.xml} & 4641 & 161 & 27 & 19 & 23 & 129 & 20 & 15 & 17 & 32 & 9 \\
+\texttt{as\_g1\_pentagon\_p3\_r1.xml} & 18896 & 178 & 33 & 24 & 26 & 137 & 24 & 19 & 19 & 33 & 10 \\
+\texttt{as\_g1\_pentagon\_random\_s101.xml} & 4641 & 266 & 34 & 33 & 25 & 228 & 32 & 29 & 22 & 43 & 12 \\
+\texttt{convex\_5\_valence.xml} & 4641 & 236 & 33 & 26 & 27 & 193 & 27 & 23 & 18 & 41 & 11 \\
+\texttt{convex\_5\_valence\_non\_bilinear.xml} & 4641 & 300$^*$ & 66 & 51 & 46 & 300$^*$ & 59 & 47 & 42 & 50 & 13 \\
+\texttt{custom\_sample\_domain.xml} & 4641 & 200 & 29 & 24 & 24 & 167 & 21 & 19 & 18 & 42 & 10 \\
+\texttt{6\_patch\_6\_valence\_not\_bilinear.xml} & 5568 & 234 & 51 & 37 & 39 & 174 & 37 & 28 & 29 & 41 & 14 \\
+\texttt{as\_g1\_hex\_p3.xml} & 5568 & 247 & 35 & 26 & 31 & 194 & 24 & 20 & 20 & 37 & 9 \\
+\texttt{as\_g1\_hex\_random\_s777.xml} & 5568 & 300$^*$ & 53 & 46 & 44 & 300$^*$ & 43 & 38 & 34 & 54 & 14 \\
+\texttt{as\_g1\_patch6\_random.xml} & 5568 & 300$^*$ & 52 & 34 & 38 & 235 & 38 & 25 & 29 & 44 & 14 \\
+\texttt{convex\_6\_valence.xml} & 5569 & 300$^*$ & 47 & 36 & 38 & 300$^*$ & 40 & 33 & 30 & 56 & 14 \\
+\texttt{convex\_6\_valence\_non\_bilinear.xml} & 5569 & 300$^*$ & 75 & 55 & 63 & 300$^*$ & 78 & 62 & 52 & 62 & 15 \\
+\texttt{as\_g1\_patch7\_random.xml} & 6495 & 300$^*$ & 54 & 43 & 43 & 235 & 39 & 32 & 30 & 52 & 15 \\
+\texttt{as\_g1\_v7\_p3.xml} & 6495 & 300$^*$ & 52 & 40 & 44 & 300$^*$ & 37 & 31 & 28 & 46 & 13 \\
+\texttt{asg1\_circle\_5patch.xml} & 4744 & 300$^*$ & 300$^*$ & 300$^*$ & 300$^*$ & 300$^*$ & 300$^*$ & 300$^*$ & 300$^*$ & 300$^*$ & 300$^*$ \\
+\texttt{asg1\_general\_5patch\_v2.xml} & 4744 & 50 & 21 & 17 & 10 & 51 & 20 & 16 & 9 & 24 & 7 \\
+\texttt{asg1\_general\_5patch\_v4.xml} & 4744 & 92 & 26 & 20 & 11 & 82 & 25 & 19 & 10 & 33 & 8 \\
+\texttt{circle\_asg1.xml} & 44936 & 125 & 46 & 48 & 18 & 104 & 42 & 43 & 16 & 31 & 10 \\
+\texttt{6\_patch\_4\_valence\_each\_not\_bilinear.xml} & 5601 & 186 & 34 & 27 & 27 & 148 & 30 & 22 & 20 & 38 & 11 \\
+\texttt{square\_6\_patch.xml} & 5607 & 300$^*$ & 149 & 50 & 31 & 300$^*$ & 140 & 47 & 30 & 58 & 12 \\
+\texttt{square\_6\_patch\_non\_bilinear.xml} & 5607 & 300$^*$ & 300$^*$ & 87 & 82 & 300$^*$ & 300$^*$ & 77 & 75 & 107 & 20 \\
+\texttt{blob\_geometry.xml} & 10302 & 300$^*$ & 60 & 50 & 44 & 300$^*$ & 45 & 39 & 33 & 55 & 15 \\
+\texttt{blob\_geometry\_non\_bilinear.xml} & 10302 & 300$^*$ & 136 & 117 & 94 & 300$^*$ & 109 & 96 & 74 & 80 & 19 \\
+\texttt{weirdo\_multivalence.xml} & 10303 & 300$^*$ & 283 & 220 & 192 & 300$^*$ & 222 & 178 & 150 & 103 & 27 \\
+\texttt{weirdo\_multivalence\_non\_bilinear.xml} & 10303 & 300$^*$ & 269 & 230 & 201 & 300$^*$ & 221 & 187 & 162 & 116 & 31 \\
+\texttt{experiment\_multivalence\_not\_bilinear.xml} & 12190 & 300$^*$ & 300$^*$ & 225 & 190 & 300$^*$ & 244 & 181 & 152 & 83 & 21 \\
+\texttt{curved\_ring\_4patch\_asg1.xml} & 35708 & 57 & 101 & 13 & 12 & 47 & 92 & 12 & 9 & 29 & 8 \\
+\bottomrule
+\end{longtable}
+}
+
+\end{document}
