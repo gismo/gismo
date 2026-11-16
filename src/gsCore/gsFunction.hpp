@@ -736,18 +736,22 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
         }
         else if (1==d) // The boundary of a curve is a point
             InOut.measures.setOnes();
-        else // If on boundary
+        else // If on boundary: the measure of the side, from the tangent rows of J^T
         {
-            GISMO_ASSERT(d==2, "Only works for boundary curves..");
             const int dir = InOut.side.direction();
-            typename gsMatrix<T,domDim,tarDim>::ColMinorMatrixType   minor;
-            InOut.measures.resize(1, numPts);
+            gsMatrix<T> tang(d-1, n);
             for (index_t p = 0; p != numPts; ++p) // for all points
             {
                 const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(p).data(), d, n);
-                InOut.measures.at(p) = jacT.row(!dir).norm();
+                if (2==d)
+                    InOut.measures.at(p) = jacT.row(!dir).norm();
+                else
+                {
+                    for (index_t i = 0, k = 0; i != d; ++i)
+                        if (i != dir) tang.row(k++) = jacT.row(i);
+                    InOut.measures.at(p) = math::sqrt( (tang*tang.transpose()).determinant() );
+                }
             }
-            //InOut.measures = InOut.outNormals.colwise().norm(); // problematic on 3d curve boundary
         }
     }
 

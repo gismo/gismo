@@ -870,4 +870,33 @@ SUITE(gsExprAssembler_test)
         //
         CHECK(math::abs(ev.integral(el.area(G))-2*EIGEN_PI/32) < 1e-10);
     }
+
+    // On the faces of a volume, meas(G) is the area element of the face: the
+    // boundary integral of meas(G) over a parallelepiped (the unit cube mapped
+    // by x -> A x) is its surface area, twice the sum of |a_j x a_k| over the
+    // pairs of columns of A.
+    TEST(VolumeBoundaryMeasure)
+    {
+        gsMultiPatch<> mp;
+        mp.addPatch(gsNurbsCreator<>::BSplineCube(1));
+        mp.computeTopology();
+        gsMatrix<> A(3,3);
+        A << 1.0, 0.5, 0.2,
+             0.0, 2.0, 0.3,
+             0.4, 0.0, 1.5;
+        mp.patch(0).linearTransform(A);
+
+        real_t area = 0;
+        for (index_t i = 0; i != 3; ++i)
+        {
+            const gsVector<real_t,3> aj = A.col((i+1)%3), ak = A.col((i+2)%3);
+            area += 2 * aj.cross(ak).norm();
+        }
+
+        gsMultiBasis<> mb(mp);
+        gsExprEvaluator<> ev;
+        ev.setIntegrationDomain(mb.domain());
+        auto G = ev.getMap(mp);
+        CHECK_CLOSE(area, ev.integralBdr(meas(G)), 1e-12 * area);
+    }
 }
