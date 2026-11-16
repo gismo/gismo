@@ -48,15 +48,17 @@ int main(int argc, char *argv[])
     index_t maxRefinements = 4;
     T freqA = 1;
     T beta = 0;
+    T forceVal = 1;
     T eps = 1e-3;
     T margin = 0.15;
     bool homogeneousBC = false;
+    bool constForce = false;
     bool plot = false;
 
     gsCmdLine cmd("AS-G1 Second Biharmonic Equation Solver and Convergence Experiment.");
     cmd.addString("f", "file", "Multi-patch geometry XML file.", geometry);
     cmd.addString("o", "outDir", "Output directory for VTK/PVD files.", outDir);
-    cmd.addString("", "exact", "Homogeneous exact solution (--homo): 'bubble' (B-spline), 'sin_bubble', or 'box'.", exactType);
+    cmd.addString("", "exact", "Homogeneous exact solution (--homo): 'bubble' (B-spline), 'sin_bubble', 'box', or 'const'.", exactType);
     cmd.addInt("d", "degree", "Target degree (minimum 3).", degree);
     cmd.addInt("", "bubbleDeg", "Degree/power of bubble exact solution (0 = degree + 2).", bubbleDeg);
     cmd.addInt("n", "numGauss", "Gauss points per knot span (0 = auto).", numGaussPerSpan);
@@ -64,15 +66,23 @@ int main(int argc, char *argv[])
     cmd.addInt("r", "refinements", "Maximum uniform refinement levels to test.", maxRefinements);
     cmd.addReal("a", "frequency", "Frequency factor 'a' in manufactured solution.", freqA);
     cmd.addReal("b", "beta", "Reaction parameter beta >= 0 in (beta u + Delta^2 u = f).", beta);
+    cmd.addReal("", "force", "Constant RHS force value when --constForce or --exact const is used.", forceVal);
     cmd.addReal("e", "eps", "Tolerance for AS-G1 gluing data.", eps);
     cmd.addReal("", "margin", "Fractional margin for bubble support inside inscribed rectangle (0..0.5).", margin);
     cmd.addSwitch("homo", "Use homogeneous boundary conditions (u = 0, Delta u = 0).", homogeneousBC);
+    cmd.addSwitch("constForce", "Use homogeneous BCs (u = 0, Delta u = 0) with constant force f = forceVal.", constForce);
     cmd.addSwitch("plot", "Export target function and numerical solution to VTK files.", plot);
 
     try {
         cmd.getValues(argc, argv);
     } catch (int rv) {
         return rv;
+    }
+
+    if (constForce)
+    {
+        homogeneousBC = true;
+        exactType = "const";
     }
 
     std::string prefix;
@@ -121,10 +131,12 @@ int main(int argc, char *argv[])
         }
     }
 
-    // ---- Manufactured Solution ----
-    const bool useBubble = homogeneousBC && (exactType == "bubble" || exactType == "sin_bubble");
+    // ---- Manufactured Solution / Constant Force ----
+    const bool useBubble     = homogeneousBC && (exactType == "bubble" || exactType == "sin_bubble");
+    const bool useConstForce = homogeneousBC && (exactType == "const");
     gsBubbleData<T> bubbleData;
     std::unique_ptr<gsFunctionExpr<T>> exact_u_ptr, exact_grad_ptr, exact_hess_ptr, exact_lap_ptr, rhs_f_ptr;
+    std::unique_ptr<gsConstantFunction<T>> const_rhs_ptr;
 
     if (useBubble)
     {
@@ -133,6 +145,10 @@ int main(int argc, char *argv[])
             bubbleData = makeTrigBubble(mp, std::max<index_t>(bDeg, 4), margin);
         else
             bubbleData = makeBSplineBubble(mp, bDeg, margin);
+    }
+    else if (useConstForce)
+    {
+        const_rhs_ptr.reset(new gsConstantFunction<T>(forceVal, 2));
     }
     else if (homogeneousBC)
     {
@@ -174,6 +190,8 @@ int main(int argc, char *argv[])
                << bDeg << ") on [" << bubbleData.a_x << ", " << bubbleData.b_x << "] x ["
                << bubbleData.a_y << ", " << bubbleData.b_y << "]\n";
     }
+    else if (useConstForce)
+        gsInfo << "Right-Hand Side: Constant force f = " << forceVal << " (no closed-form exact solution)\n";
     else if (homogeneousBC)
         gsInfo << "Exact Solution: Box trigonometric (sin*sin)\n";
     else
@@ -231,11 +249,22 @@ int main(int argc, char *argv[])
            << ", Case B smooth vertices: " << nSmoothVertices << ")\n\n";
 
     // ---- Table header ----
-    gsInfo << std::setw(5) << "r" << std::setw(12) << "h_max" << std::setw(10)
-           << "N_free" << std::setw(14) << "L2 Error" << std::setw(10)
-           << "L2 Rate" << std::setw(14) << "H1 Error" << std::setw(10)
-           << "H1 Rate" << std::setw(14) << "H2 Error" << std::setw(10)
-           << "H2 Rate" << "\n";
+    if (useConstForce)
+    {
+        gsInfo << std::setw(5) << "r" << std::setw(12) << "h_max" << std::setw(10)
+               << "N_free" << std::setw(14) << "||u||_L2" << std::setw(10)
+               << "-" << std::setw(14) << "|u|_H1" << std::setw(10)
+               << "-" << std::setw(14) << "|u|_H2" << std::setw(10)
+               << "-" << "\n";
+    }
+    else
+    {
+        gsInfo << std::setw(5) << "r" << std::setw(12) << "h_max" << std::setw(10)
+               << "N_free" << std::setw(14) << "L2 Error" << std::setw(10)
+               << "L2 Rate" << std::setw(14) << "H1 Error" << std::setw(10)
+               << "H1 Rate" << std::setw(14) << "H2 Error" << std::setw(10)
+               << "H2 Rate" << "\n";
+    }
     gsInfo << std::string(99, '-') << "\n" << std::flush;
 
     T prev_h = 0;
@@ -331,6 +360,16 @@ int main(int argc, char *argv[])
                     A.assemble(ilapl(u_space, G_map) * ilapl(u_space, G_map).tr() * meas(G_map),
                                ilapl(u_space, G_map) * lap_ex_coeff * meas(G_map));
             }
+            else if (useConstForce)
+            {
+                auto f_coeff = A.getCoeff(*const_rhs_ptr, G_map);
+                if (beta > T(0))
+                    A.assemble((beta * (u_space * u_space.tr()) + ilapl(u_space, G_map) * ilapl(u_space, G_map).tr()) * meas(G_map),
+                               u_space * f_coeff * meas(G_map));
+                else
+                    A.assemble(ilapl(u_space, G_map) * ilapl(u_space, G_map).tr() * meas(G_map),
+                               u_space * f_coeff * meas(G_map));
+            }
             else
             {
                 auto f_coeff  = A.getCoeff(*rhs_f_ptr, G_map);
@@ -394,6 +433,12 @@ int main(int argc, char *argv[])
             h1err = std::sqrt(ev.integral((igrad(u_sol_ev, G_map_ev) - igrad(u_exact_ev)).sqNorm() * meas(G_map_ev)));
             h2err = std::sqrt(ev.integral((ihess(u_sol_ev, G_map_ev) - ihess(u_exact_ev)).sqNorm() * meas(G_map_ev)));
         }
+        else if (useConstForce)
+        {
+            l2err = std::sqrt(ev.integral(u_sol_ev.sqNorm() * meas(G_map_ev)));
+            h1err = std::sqrt(ev.integral(igrad(u_sol_ev, G_map_ev).sqNorm() * meas(G_map_ev)));
+            h2err = std::sqrt(ev.integral(ihess(u_sol_ev, G_map_ev).sqNorm() * meas(G_map_ev)));
+        }
         else
         {
             auto u_exact_ev    = ev.getVariable(*exact_u_ptr, G_map_ev);
@@ -407,7 +452,7 @@ int main(int argc, char *argv[])
 
         // Rates
         T l2_rate = 0, h1_rate = 0, h2_rate = 0;
-        if (ref > minRefinements && prev_h > 0)
+        if (!useConstForce && ref > minRefinements && prev_h > 0)
         {
             const T h_ratio = prev_h / h_max;
             l2_rate = std::log(prev_l2 / l2err) / std::log(h_ratio);
@@ -419,19 +464,19 @@ int main(int argc, char *argv[])
                << std::setprecision(4) << h_max << std::setw(10) << nFree
                << std::setw(14) << std::scientific << std::setprecision(4)
                << l2err;
-        if (ref > minRefinements)
+        if (!useConstForce && ref > minRefinements)
             gsInfo << std::setw(10) << std::fixed << std::setprecision(2) << l2_rate;
         else
             gsInfo << std::setw(10) << "-";
 
         gsInfo << std::setw(14) << std::scientific << std::setprecision(4) << h1err;
-        if (ref > minRefinements)
+        if (!useConstForce && ref > minRefinements)
             gsInfo << std::setw(10) << std::fixed << std::setprecision(2) << h1_rate;
         else
             gsInfo << std::setw(10) << "-";
 
         gsInfo << std::setw(14) << std::scientific << std::setprecision(4) << h2err;
-        if (ref > minRefinements)
+        if (!useConstForce && ref > minRefinements)
             gsInfo << std::setw(10) << std::fixed << std::setprecision(2) << h2_rate;
         else
             gsInfo << std::setw(10) << "-";
@@ -456,14 +501,18 @@ int main(int argc, char *argv[])
             {
                 gsField<T> exactField(mp, bubbleData.field, false);
                 gsWriteParaview<>(exactField, exactName, 1000);
+                gsInfo << " -> Exported VTK plots: " << solName << ".pvd & " << exactName << ".pvd\n";
             }
-            else
+            else if (!useConstForce)
             {
                 gsField<T> exactField(mp, *exact_u_ptr, false);
                 gsWriteParaview<>(exactField, exactName, 1000);
+                gsInfo << " -> Exported VTK plots: " << solName << ".pvd & " << exactName << ".pvd\n";
             }
-
-            gsInfo << " -> Exported VTK plots: " << solName << ".pvd & " << exactName << ".pvd\n";
+            else
+            {
+                gsInfo << " -> Exported VTK plot: " << solName << ".pvd\n";
+            }
         }
     }
 

@@ -131,7 +131,7 @@ void assembleFinestSystem(
     LevelData<T> &ld,
     const gsFunctionExpr<T> *exact_u,
     const gsFunctionExpr<T> *exact_grad,
-    const gsFunctionExpr<T> *rhs_f,
+    const gsFunctionSet<T> *rhs_f,
     const gsBubbleData<T> *bubbleData,
     T beta,
     bool homogeneousBC)
@@ -292,6 +292,7 @@ bool runDomainExperiment(
     const std::string &exactType,
     T freqA,
     T beta,
+    T forceVal,
     T eps,
     T margin,
     bool verifyDirect,
@@ -300,7 +301,8 @@ bool runDomainExperiment(
     const std::string &plotSubDir,
     const std::string &txtOut)
 {
-    const bool useBubble = homogeneousBC && (exactType == "bubble" || exactType == "sin_bubble");
+    const bool useBubble     = homogeneousBC && (exactType == "bubble" || exactType == "sin_bubble");
+    const bool useConstForce = homogeneousBC && (exactType == "const");
 
     gsInfo << "\n" << std::string(80, '=') << "\n";
     gsInfo << "Domain: " << geomPath << "\n";
@@ -386,6 +388,7 @@ bool runDomainExperiment(
     // Manufactured / source solution
     gsBubbleData<T> bubbleData;
     std::unique_ptr<gsFunctionExpr<T>> exact_u_ptr, exact_grad_ptr, exact_hess_ptr, rhs_f_ptr;
+    std::unique_ptr<gsConstantFunction<T>> const_rhs_ptr;
 
     if (useBubble)
     {
@@ -397,6 +400,11 @@ bool runDomainExperiment(
 
         gsInfo << "  Bubble box      : [" << bubbleData.a_x << ", " << bubbleData.b_x
                << "] x [" << bubbleData.a_y << ", " << bubbleData.b_y << "]\n";
+    }
+    else if (useConstForce)
+    {
+        const_rhs_ptr.reset(new gsConstantFunction<T>(forceVal, 2));
+        gsInfo << "  Constant force  : f = " << forceVal << " (no closed-form exact solution)\n";
     }
     else if (homogeneousBC)
     {
@@ -441,9 +449,12 @@ bool runDomainExperiment(
             levels[l] = setupLevelGeometry(mp, gd, normalsForPatches, bc, cc, ref, isFinest);
             if (isFinest)
             {
+                const gsFunctionSet<T> *rhsPtr = useConstForce
+                    ? static_cast<const gsFunctionSet<T> *>(const_rhs_ptr.get())
+                    : static_cast<const gsFunctionSet<T> *>(rhs_f_ptr.get());
                 assembleFinestSystem(
                     mp, bc, levels[l],
-                    exact_u_ptr.get(), exact_grad_ptr.get(), rhs_f_ptr.get(),
+                    exact_u_ptr.get(), exact_grad_ptr.get(), rhsPtr,
                     useBubble ? &bubbleData : nullptr,
                     beta, homogeneousBC);
             }
@@ -580,6 +591,18 @@ bool runDomainExperiment(
         l2err = std::sqrt(ev.integral((u_sol_ev - u_exact_ev).sqNorm() * meas(G_map_ev)));
         h1err = std::sqrt(ev.integral((igrad(u_sol_ev, G_map_ev) - igrad(u_exact_ev)).sqNorm() * meas(G_map_ev)));
         h2err = std::sqrt(ev.integral((ihess(u_sol_ev, G_map_ev) - ihess(u_exact_ev)).sqNorm() * meas(G_map_ev)));
+        gsInfo << "  L2 Error        : " << std::scientific << std::setprecision(4) << l2err << "\n";
+        gsInfo << "  H1 Error        : " << std::scientific << std::setprecision(4) << h1err << "\n";
+        gsInfo << "  H2 Error        : " << std::scientific << std::setprecision(4) << h2err << "\n";
+    }
+    else if (useConstForce)
+    {
+        const T l2norm = std::sqrt(ev.integral(u_sol_ev.sqNorm() * meas(G_map_ev)));
+        const T h1norm = std::sqrt(ev.integral(igrad(u_sol_ev, G_map_ev).sqNorm() * meas(G_map_ev)));
+        const T h2norm = std::sqrt(ev.integral(ihess(u_sol_ev, G_map_ev).sqNorm() * meas(G_map_ev)));
+        gsInfo << "  ||u||_L2        : " << std::scientific << std::setprecision(4) << l2norm << "\n";
+        gsInfo << "  |u|_H1          : " << std::scientific << std::setprecision(4) << h1norm << "\n";
+        gsInfo << "  |u|_H2          : " << std::scientific << std::setprecision(4) << h2norm << "\n";
     }
     else
     {
@@ -590,11 +613,10 @@ bool runDomainExperiment(
         l2err = std::sqrt(ev.integral((u_sol_ev - u_exact_ev).sqNorm() * meas(G_map_ev)));
         h1err = std::sqrt(ev.integral((igrad(u_sol_ev, G_map_ev) - grad_exact_ev.tr()).sqNorm() * meas(G_map_ev)));
         h2err = std::sqrt(ev.integral((ihess(u_sol_ev, G_map_ev) - hess_exact_ev).sqNorm() * meas(G_map_ev)));
+        gsInfo << "  L2 Error        : " << std::scientific << std::setprecision(4) << l2err << "\n";
+        gsInfo << "  H1 Error        : " << std::scientific << std::setprecision(4) << h1err << "\n";
+        gsInfo << "  H2 Error        : " << std::scientific << std::setprecision(4) << h2err << "\n";
     }
-
-    gsInfo << "  L2 Error        : " << std::scientific << std::setprecision(4) << l2err << "\n";
-    gsInfo << "  H1 Error        : " << std::scientific << std::setprecision(4) << h1err << "\n";
-    gsInfo << "  H2 Error        : " << std::scientific << std::setprecision(4) << h2err << "\n";
 
     if (plot && !outDir.empty())
     {
@@ -619,14 +641,18 @@ bool runDomainExperiment(
         {
             gsField<T> exactField(mp, bubbleData.field, false);
             gsWriteParaview<>(exactField, exactName, 1000);
+            gsInfo << "  Exported PVD    : " << solName << ".pvd & " << exactName << ".pvd\n";
         }
-        else
+        else if (!useConstForce)
         {
             gsField<T> exactField(mp, *exact_u_ptr, false);
             gsWriteParaview<>(exactField, exactName, 1000);
+            gsInfo << "  Exported PVD    : " << solName << ".pvd & " << exactName << ".pvd\n";
         }
-
-        gsInfo << "  Exported PVD    : " << solName << ".pvd & " << exactName << ".pvd\n";
+        else
+        {
+            gsInfo << "  Exported PVD    : " << solName << ".pvd\n";
+        }
     }
 
     const bool converged = (finalRelRes <= tol);
@@ -714,10 +740,12 @@ int main(int argc, char *argv[])
     T tol = 1e-8;
     T freqA = 1.0;
     T beta = 0.0;
+    T forceVal = 1.0;
     T eps = 1e-3;
     T margin = 0.15;
     bool runAll = false;
     bool homogeneousBC = false;
+    bool constForce = false;
     bool verifyDirect = false;
     bool plot = false;
 
@@ -727,7 +755,7 @@ int main(int argc, char *argv[])
     cmd.addString("t", "txtOut", "Filename for tab-separated text results output.", txtOut);
     cmd.addString("s", "solver", "Iterative solver: 'cg' (PCG) or 'mg' (Direct Multigrid Iteration).", solverType);
     cmd.addString("", "suite", "Benchmark suite when --all is set: classic, generator, noholes, holes, all.", suite);
-    cmd.addString("", "exact", "Homogeneous exact solution (--homo): 'bubble' (B-spline), 'sin_bubble', or 'box'.", exactType);
+    cmd.addString("", "exact", "Homogeneous exact solution (--homo): 'bubble' (B-spline), 'sin_bubble', 'box', or 'const'.", exactType);
     cmd.addInt("d", "degree", "Spline degree (minimum 3 for C1 AS-G1).", degree);
     cmd.addInt("", "bubbleDeg", "Degree/power of bubble exact solution (0 = degree + 2).", bubbleDeg);
     cmd.addInt("m", "minRef", "Coarsest grid refinement level (minimum 2).", minRef);
@@ -739,12 +767,14 @@ int main(int argc, char *argv[])
     cmd.addReal("e", "tol", "Relative residual tolerance.", tol);
     cmd.addReal("a", "frequency", "Frequency factor in manufactured solution.", freqA);
     cmd.addReal("b", "beta", "Reaction parameter beta >= 0 in (beta u + Delta^2 u = f).", beta);
+    cmd.addReal("", "force", "Constant RHS force value when --constForce or --exact const is used.", forceVal);
     cmd.addReal("", "eps", "Tolerance for AS-G1 gluing data.", eps);
     cmd.addReal("", "margin", "Fractional margin for bubble support inside inscribed rectangle (0..0.5).", margin);
     cmd.addSwitch("homo", "Use homogeneous zero Dirichlet boundary conditions.", homogeneousBC);
+    cmd.addSwitch("constForce", "Use homogeneous zero BCs with constant force f = forceVal (no exact solution).", constForce);
     cmd.addSwitch("verify", "Verify iterative solution against direct Cholesky solver.", verifyDirect);
     cmd.addSwitch("all", "Run test suite across multi-patch benchmark domains.", runAll);
-    cmd.addSwitch("plot", "Export Paraview visualization (both exact and solved PVD).", plot);
+    cmd.addSwitch("plot", "Export Paraview visualization.", plot);
 
     try
     {
@@ -753,6 +783,12 @@ int main(int argc, char *argv[])
     catch (int rv)
     {
         return rv;
+    }
+
+    if (constForce)
+    {
+        homogeneousBC = true;
+        exactType = "const";
     }
 
     if (degree < 3)
@@ -769,7 +805,7 @@ int main(int argc, char *argv[])
         runDomainExperiment<T>(
             geometry, degree, bubbleDeg, minRef, maxRef,
             numCycles, numPreSmooth, numPostSmooth,
-            solverType, tol, maxIt, homogeneousBC, exactType, freqA, beta, eps, margin,
+            solverType, tol, maxIt, homogeneousBC, exactType, freqA, beta, forceVal, eps, margin,
             verifyDirect, plot, outDir, sanitizeStem(geometry), txtOut);
     }
     else
@@ -936,7 +972,7 @@ int main(int argc, char *argv[])
             bool ok = runDomainExperiment<T>(
                 file, degree, bubbleDeg, minRef, maxRef,
                 numCycles, numPreSmooth, numPostSmooth,
-                solverType, tol, maxIt, homogeneousBC, exactType, freqA, beta, eps, margin,
+                solverType, tol, maxIt, homogeneousBC, exactType, freqA, beta, forceVal, eps, margin,
                 verifyDirect, plot, outDir, subDir, txtOut);
             if (ok)
                 numPassed++;
