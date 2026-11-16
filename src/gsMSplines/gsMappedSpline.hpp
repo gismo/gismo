@@ -203,7 +203,7 @@ gsGeometry<T> * gsMappedSpline<d,T>::exportPatch(int i,gsMatrix<T> const & local
 }
 
 template<short_t d,class T>
-std::map<std::array<size_t, 4>, internal::ElementBlock> gsMappedSpline<d,T>::BezierOperator() const
+std::map<std::array<size_t, 4>, internal::ElementBlock<T>> gsMappedSpline<d,T>::BezierOperator() const
 {
     GISMO_ENSURE( 2==domainDim(), "Anything other than bivariate splines is not yet supported!");
 
@@ -211,7 +211,7 @@ std::map<std::array<size_t, 4>, internal::ElementBlock> gsMappedSpline<d,T>::Bez
     // information in ElementBlocks. These will be grouped in a std::map
     // with respect to the number of active basis functions ( = NNj/NCV )
     // of each Bezier element
-    std::map<std::array<size_t, 4>, internal::ElementBlock> ElementBlocks;
+    std::map<std::array<size_t, 4>, internal::ElementBlock<T>> ElementBlocks;
 
     // index_t NNj; // Number of control points of the Bezier elements of block j
     gsMatrix<index_t> mappedActives, globalActives, localActives; // Active basis functions

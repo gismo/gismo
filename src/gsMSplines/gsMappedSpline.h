@@ -127,7 +127,7 @@ public:
     /// @return The ElementBlock structure of the Bezier extraction,
     /// which contains the Bezier coefficients and the active nodes
     /// for each bezier patch;
-    std::map<std::array<size_t, 4>, internal::ElementBlock> BezierOperator() const;
+    std::map<std::array<size_t, 4>, internal::ElementBlock<T>> BezierOperator() const;
 
 //////////////////////////////////////////////////
 // Virtual base members with a new implementation

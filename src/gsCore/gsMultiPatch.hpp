@@ -1024,7 +1024,7 @@ void gsMultiPatch<T>::constructSides()
 }
 
 template<class T>
-std::map< std::array<size_t, 4>, internal::ElementBlock> gsMultiPatch<T>::BezierOperator() const
+std::map< std::array<size_t, 4>, internal::ElementBlock<T>> gsMultiPatch<T>::BezierOperator() const
 {
     GISMO_ENSURE( 2==domainDim(), "Anything other than bivariate splines is not yet supported!");
 
@@ -1032,7 +1032,7 @@ std::map< std::array<size_t, 4>, internal::ElementBlock> gsMultiPatch<T>::Bezier
     // information in ElementBlocks. These will be grouped in a std::map
     // with respect to the number of active basis functions ( = NN/NCV )
     // of each Bezier element
-    std::map<std::array<size_t, 4>, internal::ElementBlock> ElementBlocks;
+    std::map<std::array<size_t, 4>, internal::ElementBlock<T>> ElementBlocks;
 
     gsMatrix<index_t> localActives, globalActives; // Active basis functions
     gsDofMapper mapper = getMapper((T)1e-7);
@@ -1104,7 +1104,7 @@ template<class T>
 gsMultiPatch<T> gsMultiPatch<T>::extractBezier() const
 {
     GISMO_ENSURE( 2==domainDim(), "Anything other than bivariate splines is not yet supported!");
-    std::map<std::array<size_t, 4>, internal::ElementBlock> ElementBlocks = BezierOperator();
+    std::map<std::array<size_t, 4>, internal::ElementBlock<T>> ElementBlocks = BezierOperator();
     gsMultiPatch<T> result;
 
     // Get the map from patch-local to global indexing for the multi-patch
@@ -1131,7 +1131,7 @@ gsMultiPatch<T> gsMultiPatch<T>::extractBezier() const
     gsMatrix<> newCoefs, newWeights;
     for (auto const& pair : ElementBlocks)
     {
-        internal::ElementBlock ElBlock = pair.second;
+        internal::ElementBlock<T> ElBlock = pair.second;
 
         kv[0] = gsKnotVector<T>(0,1,0,ElBlock.PR+1);
         kv[1] = gsKnotVector<T>(0,1,0,ElBlock.PS+1);
