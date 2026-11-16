@@ -1212,6 +1212,7 @@ public: /* Add local contributions to system matrix and right-hand side */
 
             for (size_t c = 0; c != actives.size(); ++c) // for all col-blocks
             {
+                const gsDofMapper & colMap = m_mappers[m_col.at(c)];
                 const gsMatrix<T> & fixedDofs = eliminatedDofs[m_col.at(c)];
 
                 for (index_t i = 0; i != numRowActive; ++i)
@@ -1219,13 +1220,15 @@ public: /* Add local contributions to system matrix and right-hand side */
                     const int ii =  m_rstr.at(r) + actives[r].at(i);
                     if ( rowMap.is_free_index(actives[r].at(i)) )
                     {
-                        m_rhs.row(ii) += localRhs.row(i + r * numRowActive); //  + c *
+                        // rhs should not be pushed for each col-block (but only once)
+                        if (0 == c)
+                            m_rhs.row(ii) += localRhs.row(i + r * numRowActive);
                         const index_t numColActive = actives[c].rows();
 
                         for (index_t j = 0; j < numColActive; ++j)
                         {
                             const int jj =  m_cstr.at(c) + actives[c].at(j);
-                            if ( rowMap.is_free_index(actives[c].at(j)) )
+                            if ( colMap.is_free_index(actives[c].at(j)) )
                             {
                                 // If matrix is symmetric, we store only lower
                                 // triangular part
@@ -1236,7 +1239,7 @@ public: /* Add local contributions to system matrix and right-hand side */
                             else // if ( mapper.is_boundary_index(jj) ) // Fixed DoF?
                             {
                                 m_rhs.at(ii) -= localMat(i + r * numRowActive, j + c * numRowActive) *  //  + c *..
-                                    fixedDofs.coeff( rowMap.global_to_bindex(actives[c].at(j)), 0 );
+                                    fixedDofs.coeff( colMap.global_to_bindex(actives[c].at(j)), 0 );
                             }
                         }
                     }
