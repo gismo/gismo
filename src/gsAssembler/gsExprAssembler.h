@@ -800,12 +800,12 @@ gsOptionList gsExprAssembler<T>::defaultOptions()
     gsOptionList opt;
     opt.addInt("DirichletValues"  , "Method for computation of Dirichlet DoF values [100..103]", 101);
     opt.addInt("DirichletStrategy", "Method for enforcement of Dirichlet BCs [11..14]", 11);
-    opt.addReal("quA", "Number of quadrature points: quA*deg + quB; For patchRule: Regularity of the target space", 1.0  );
-    opt.addInt ("quB", "Number of quadrature points: quA*deg + quB; For patchRule: Degree of the target space", 1    );
+    opt.addReal("quA", "Number of quadrature points: quA*deg + quB; For (H)patchRule: Degree of the target space", 1.0  );
+    opt.addInt ("quB", "Number of quadrature points: quA*deg + quB; For (H)patchRule: Regularity of the target space", 1    );
     opt.addReal("bdA", "Estimated nonzeros per column of the matrix: bdA*deg + bdB", 2.0  );
     opt.addInt ("bdB", "Estimated nonzeros per column of the matrix: bdA*deg + bdB", 1    );
     opt.addReal("bdO", "Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]", 0.333);
-    opt.addInt ("quRule", "Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule",1);
+    opt.addInt ("quRule", "Quadrature rule used (1) Gauss-Legendre; (2) Gauss-Lobatto; (3) Patch-Rule; (4) Hierarchical Patch-Rule",1);
     opt.addSwitch("overInt", "Apply over-integration on boundary elements or not?", false);
     opt.addSwitch("flipSide", "Flip side of interface where integration is performed.", false);
     opt.addSwitch("movingInterface", "Used in interface assembly when interface is not stationary.", false);
@@ -1130,6 +1130,14 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     _eval ee(m_fmatrix, m_rhs, m_exprdata->weights());
     ee.setElim(dirichlet::elimination==elim);
 
+    // QuRule is a thread-local variable (declared inside the omp parallel
+    // region above): every thread builds its own instance, which is what
+    // makes the last-hit cell cache in gsHPatchRule (m_lastCell) safe without
+    // synchronization. The downside is that per-cell construction cost (e.g.
+    // the Newton solve in gsHPatchRule) is paid nthreads times over instead of
+    // once; sharing one rule across threads (construct once + clone the
+    // lightweight per-thread cache) is a possible future optimization if this
+    // ever shows up in profiles.
     typename gsQuadRule<T>::uPtr QuRule;
     index_t QuPatch = -1;
 
@@ -1138,8 +1146,13 @@ void gsExprAssembler<T>::assemble(const expr &... args)
         if (/*changeQuadrature && */QuPatch!=elem.patch())
         {
             QuPatch = elem.patch();
-            // get Degree of the domain
-            QuRule = gsQuadrature::getPtr(this->trialSpace(0).source().basis(QuPatch), m_options);
+            // Build the quadrature rule from the integration domain (set via
+            // setIntegrationElements / setIntegrationDomain). When the
+            // integration domain equals the trial-space domain (the usual case)
+            // this is identical to the previous behaviour; when they differ it
+            // lets the rule (e.g. gsHPatchRule) be constructed on a dedicated
+            // integration basis while the DoFs stay defined by the trial space.
+            QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(QuPatch), m_options);
         }
 
         // Map the Quadrature rule to the element
@@ -1547,19 +1560,23 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
     cPoints.resize( m_exprdata->domain().nPieces() );
     cWeights.resize( m_exprdata->domain().nPieces() );
 
-    index_t count = 0;
     for (unsigned patchInd = 0; patchInd < m_exprdata->domain().nPieces(); ++patchInd)
     {
         auto & bb = this->trialSpace(0).source().basis(patchInd);
 
         QuRule = gsQuadrature::getPtr(bb, m_options);
-        const index_t numNodes = QuRule->numNodes();
+        index_t sz = 0;
+        for ( auto & elem : bb.domain()->allElements() )
+        {
+            QuRule->mapTo(elem.lowerCorner(), elem.upperCorner(),
+                          m_exprdata->points(), m_exprdata->weights());
+            sz += m_exprdata->weights().size();
+        }
 
-        // @hverhelst: THIS ASSUMES SAME NUMBER OF QUNODES PER ELEMENT
-        const index_t sz = bb.numElements() * numNodes;
         cPoints[patchInd].resize(bb.domainDim(), sz );
         cWeights[patchInd].resize( sz );
 
+        index_t count = 0;
         // Start iteration over elements of patchInd
         for ( auto & elem : bb.domain()->allElements() ) //todo: parallelize
         {
@@ -1567,6 +1584,7 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
             QuRule->mapTo( elem.lowerCorner(), elem.upperCorner(),
                            m_exprdata->points(), m_exprdata->weights());
 
+            const index_t numNodes = m_exprdata->weights().size();
             cWeights[patchInd].segment(count, numNodes) = m_exprdata->weights();
             cPoints[patchInd].middleCols(count, numNodes) = m_exprdata->points();
             count += numNodes;

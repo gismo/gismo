@@ -181,6 +181,9 @@ public:
 
     const gsHTree<d,Z> & tree() const { return m_tree; }
 
+    /// Returns the hierarchical basis that generated this domain
+    const gsHTensorBasis<d,T> & basis() const { return m_basis; }
+
 private:
 
     // WE SHOULD REMOVE THIS

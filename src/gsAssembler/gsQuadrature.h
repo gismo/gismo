@@ -18,6 +18,7 @@
 #include <gsAssembler/gsLobattoRule.h>
 #include <gsAssembler/gsNewtonCotesRule.h>
 #include <gsAssembler/gsPatchRule.h>
+#include <gsAssembler/gsHPatchRule.h>
 #include <gsAssembler/gsOverIntegrateRule.h>
 #include <gsAssembler/gsGaussRule.h>
 
@@ -91,7 +92,8 @@ struct gsQuadrature
     {
         GaussLegendre = 1, ///< Gauss-Legendre quadrature
         GaussLobatto  = 2, ///< Gauss-Lobatto quadrature
-        PatchRule     = 3  ///< Patch-wise quadrature rule  (Johannessen 2017)
+        PatchRule     = 3, ///< Patch-wise quadrature rule  (Johannessen 2017)
+        HPatchRule    = 4  ///< Hierarchical patch-wise quadrature rule (per-atomic-cell)
 
     };
     /*
@@ -182,7 +184,30 @@ struct gsQuadrature
         {
             // quA: Order of the target space
             // quB: Regularity of the target space
+            if (gsHPatchRule<T>::isHierarchical(domain))
+            {
+                // gsPatchRule is not hierarchical-aware: default to the finest
+                // level and warn once (use quRule=4 / gsHPatchRule instead).
+                static bool warned = false;
+                if (!warned)
+                {
+                    gsWarn << "gsPatchRule (quRule=3) is not hierarchical-aware; "
+                              "using the finest level. Use quRule=4 (gsHPatchRule) "
+                              "for a hierarchical patch rule.\n";
+                    warned = true;
+                }
+                typename gsDomain<T>::Ptr finest =
+                    gsHPatchRule<T>::finestTensorDomain(domain);
+                GISMO_ENSURE(finest, "Failed to extract finest tensor domain.");
+                return gsPatchRule<T>::make(*finest,cast<T,index_t>(quA),quB,over,fixDir);
+            }
             return gsPatchRule<T>::make(domain,cast<T,index_t>(quA),quB,over,fixDir);
+        }
+        else if (qu==HPatchRule)
+        {
+            // quA: Order of the target space
+            // quB: Regularity of the target space
+            return gsHPatchRule<T>::make(domain,cast<T,index_t>(quA),quB,over,fixDir);
         }
         else
         {
@@ -278,31 +303,28 @@ struct gsQuadrature
         typename gsBasis<T>::domainIter domIt    = domain.beginAll();
         typename gsBasis<    T>::    domainIter domItEnd = domain.endAll();
 
-        index_t     quadSize = 0;
-        typename gsQuadRule<T>::uPtr QuRule;
-        QuRule = getPtr(domain, options);
+        index_t quadSize = 0;
+        typename gsQuadRule<T>::uPtr QuRule = getPtr(domain, options);
+        gsMatrix<T> nodes;
+        gsVector<T> weights;
 
+        // mapTo() may return a variable number of points per element
+        // (e.g. gsPatchRule / gsHPatchRule), so count the mapped nodes.
         for (; domIt<domItEnd; ++domIt )
         {
-            QuRule = gsQuadrature::getPtr(domain, options);
-            quadSize+=QuRule->numNodes();
+            QuRule->mapTo(domIt.lowerCorner(), domIt.upperCorner(), nodes, weights);
+            quadSize += nodes.cols();
         }
 
         gsMatrix<T> result(domain.dim(),quadSize);
 
         index_t offset = 0;
-        gsMatrix<T> nodes;
-        gsVector<T> weights;
-
         domIt = domain.beginAll();
         for (; domIt<domItEnd; ++domIt )
         {
-            QuRule = gsQuadrature::getPtr(domain, options);
-            // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
-                           nodes, weights);
-            result.block(0,offset,domain.dim(),QuRule->numNodes()) = nodes;
-            offset += QuRule->numNodes();
+            QuRule->mapTo(domIt.lowerCorner(), domIt.upperCorner(), nodes, weights);
+            result.middleCols(offset, nodes.cols()) = nodes;
+            offset += nodes.cols();
         }
         return result;
     }
@@ -358,28 +380,28 @@ struct gsQuadrature
         typename gsBasis<T>::domainIter domItEnd = domain.endBdr(side.side());
 
         index_t quadSize = 0;
-        typename gsQuadRule<T>::uPtr QuRule;
-        QuRule = getPtr(domain, options, side.side().direction());
+        typename gsQuadRule<T>::uPtr QuRule =
+            getPtr(domain, options, side.side().direction());
+        gsMatrix<T> nodes;
+        gsVector<T> weights;
 
-        // First pass: count boundary elements
+        // mapTo() may return a variable number of points per boundary element.
         for (; domIt<domItEnd; ++domIt )
-            quadSize += QuRule->numNodes();
+        {
+            QuRule->mapTo(domIt.lowerCorner(), domIt.upperCorner(), nodes, weights);
+            quadSize += nodes.cols();
+        }
 
         gsMatrix<T> result(domain.dim(), quadSize);
 
         // Second pass: collect boundary quadrature points
         index_t offset = 0;
-        gsMatrix<T> nodes;
-        gsVector<T> weights;
         domIt = domain.beginBdr(side.side());
         for (; domIt<domItEnd; ++domIt )
         {
-            QuRule = gsQuadrature::getPtr(domain, options, side.side().direction());
-            // Map the Quadrature rule to the element
-            QuRule->mapTo( domIt.lowerCorner(), domIt.upperCorner(),
-                            nodes, weights);
-            result.block(0,offset,domain.dim(),QuRule->numNodes()) = nodes;
-            offset += QuRule->numNodes();
+            QuRule->mapTo(domIt.lowerCorner(), domIt.upperCorner(), nodes, weights);
+            result.middleCols(offset, nodes.cols()) = nodes;
+            offset += nodes.cols();
         }
         return result;
     }
