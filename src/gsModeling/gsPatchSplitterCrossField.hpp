@@ -122,7 +122,8 @@ inline bool buildConstrainedDomainTriangulation(
     bool refineEdges,
     int earMode,
     TriMeshData<T>& outMesh,
-    T maxBendRad = T(0.44))
+    T maxBendRad = T(0.44),
+    bool refineHolePerim = true)
 {
     if (dom.numLoops() == 0) return false;
     const int nLoops = dom.numLoops();
@@ -165,7 +166,7 @@ inline bool buildConstrainedDomainTriangulation(
                 loopPerim += segLens[si];
             }
             T localH = targetH;
-            if (l > 0 && loopPerim > T(1e-8))
+            if (l > 0 && loopPerim > T(1e-8) && refineHolePerim)
                 localH = std::min(targetH, loopPerim / T(8));
 
             for (size_t si = 0; si < raw.size(); ++si) {

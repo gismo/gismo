@@ -149,6 +149,7 @@ private:
 
     // Stage 2 & 3 Helpers
     bool optimizePolychordSplits(gsMultiPatch<T>& mp) const;
+    bool reducePolychordStrips(gsMultiPatch<T>& mp);
     bool harmonizeMultiPatchKnots(gsMultiPatch<T>& mp) const;
     bool relaxAndParameterize(gsMultiPatch<T>& mp, bool runBarrier = true);
     bool formatForArgyris(gsMultiPatch<T>& mp) const;

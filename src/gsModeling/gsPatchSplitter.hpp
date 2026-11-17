@@ -996,17 +996,57 @@ gsPatchSplitter<T>::computeHoleFreeStructuralSplitting()
     };
 
     // ------------------------------------------------------------------------
-    // 1. Single-patch check: already a strictly convex 4-curve quad -> 1 patch
+    // 1. Single-patch check: "convexish" 4-curve hole-free quad -> 1 patch
+    //    (A quad is convexish iff no corner lies in the convex hull of the other 3,
+    //     which is equivalent to isStrictlyConvexQuad(c4); also allow convex domain
+    //     corner angles up to ~174 deg with Winslow/refined-CP untangling for S-ducts.)
     // ------------------------------------------------------------------------
     if (K == 4) {
         gsPoint2D<T> c4[4] = {verts[0], verts[1], verts[2], verts[3]};
         if (isStrictlyConvexQuad(c4)) {
-            gsMultiPatch<T> mp;
-            mp.addPatch(typename gsGeometry<T>::uPtr(
-                makeCoonsFromCCWCycle(origSegs[0], origSegs[1], origSegs[2], origSegs[3], m_degree)));
-            SplittingCandidate cand;
-            if (tryFinalize(mp, "SingleConvexQuad", cand)) {
-                return cand; // Keep strictly convex quad as a single patch
+            const T radToDeg = T(180) / T(3.14159265358979323846);
+            T domMinC = T(180), domMaxC = T(0);
+            for (int i = 0; i < 4; ++i) {
+                auto dPrev = internal_splitter::evalCurveDeriv(*origSegs[(i + 3) % 4].bsp, T(1));
+                auto dCurr = internal_splitter::evalCurveDeriv(*origSegs[i].bsp, T(0));
+                T nP = std::hypot(dPrev.x, dPrev.y), nC = std::hypot(dCurr.x, dCurr.y);
+                if (nP > T(1e-12) && nC > T(1e-12)) {
+                    T ux = -dPrev.x / nP, uy = -dPrev.y / nP;
+                    T vx = dCurr.x / nC, vy = dCurr.y / nC;
+                    T ang = std::atan2(vx * uy - vy * ux, ux * vx + uy * vy) * radToDeg;
+                    if (ang <= T(0)) ang += T(360);
+                    domMinC = std::min(domMinC, ang);
+                    domMaxC = std::max(domMaxC, ang);
+                }
+            }
+            if (domMinC > T(3) && domMaxC < T(174)) {
+                const T localMinAng = std::min(static_cast<T>(m_options.getReal("MinCornerAngleDeg")), T(0.85) * domMinC);
+                const T localMaxAng = std::max(static_cast<T>(m_options.getReal("MaxCornerAngleDeg")), std::min(T(175), domMaxC + T(4)));
+                for (int rLevel = 0; rLevel <= 2; ++rLevel) {
+                    gsMultiPatch<T> mp;
+                    mp.addPatch(typename gsGeometry<T>::uPtr(
+                        makeCoonsFromCCWCycle(origSegs[0], origSegs[1], origSegs[2], origSegs[3], m_degree)));
+                    if (rLevel > 0) {
+                        if (auto* tb = dynamic_cast<gsTensorBSpline<2, T>*>(&mp.patch(0)))
+                            tb->uniformRefine(rLevel);
+                    }
+                    optimizeWinslowBarrier(mp);
+                    mp.computeTopology(T(1e-5), false, false);
+                    if (validateMultiPatch(m_domain, mp, T(1e-5), nullptr, localMinAng, localMaxAng)) {
+                        T minDet = 0, minA = 0, maxA = 180;
+                        T energy = evaluateDistortionEnergy(mp, &minDet, &minA, &maxA);
+                        SplittingCandidate cand;
+                        cand.multiPatch = give(mp);
+                        cand.numPatches = 1;
+                        cand.minJacobianDet = minDet;
+                        cand.distortionEnergy = energy;
+                        cand.minCornerAngleDeg = minA;
+                        cand.maxCornerAngleDeg = maxA;
+                        cand.methodUsed = "SingleConvexQuad";
+                        cand.isValid = true;
+                        return cand;
+                    }
+                }
             }
         }
     }
@@ -2343,6 +2383,26 @@ gsPatchSplitter<T>::computeHoleFreeTriangulationSplitting()
             gsPoint2D<T> qc[4] = {triMesh.pts[c], triMesh.pts[a], triMesh.pts[d], triMesh.pts[b]};
             T minArea2 = 0;
             if (!isStrictlyConvexQuad(qc, &minArea2)) continue;
+            {
+                const T radToDeg = T(180) / T(3.14159265358979323846);
+                const T domMinA = internal_splitter::computeDomainMinCornerAngleDeg(m_domain);
+                const T qMinTol = std::min(static_cast<T>(m_options.getReal("MinCornerAngleDeg")), T(0.85) * domMinA);
+                const T qMaxTol = static_cast<T>(m_options.getReal("MaxCornerAngleDeg"));
+                bool angOk = true;
+                for (int k = 0; k < 4; ++k) {
+                    const auto& p0 = qc[(k + 3) % 4];
+                    const auto& pk = qc[k];
+                    const auto& p1 = qc[(k + 1) % 4];
+                    T ux = p1.x - pk.x, uy = p1.y - pk.y;
+                    T vx = p0.x - pk.x, vy = p0.y - pk.y;
+                    T nu = std::hypot(ux, uy), nv = std::hypot(vx, vy);
+                    if (nu < T(1e-12) || nv < T(1e-12)) { angOk = false; break; }
+                    T ang = std::atan2((ux * vy - uy * vx) / (nu * nv), (ux * vx + uy * vy) / (nu * nv)) * radToDeg;
+                    if (ang <= T(0)) ang += T(360);
+                    if (ang < qMinTol - T(1.5) || ang > qMaxTol) { angOk = false; break; }
+                }
+                if (!angOk) continue;
+            }
 
             int e_bc = A.e[(kA + 1) % 3];
             int e_ca = A.e[(kA + 2) % 3];
@@ -2835,7 +2895,7 @@ gsPatchSplitter<T>::computeMultiHoleTriangulationSplitting()
         if (qNew < qOld) bestCand = c;
     };
 
-    auto quadifyTriMesh = [&](TriMeshData<T>& mesh) {
+    auto quadifyTriMesh = [&](TriMeshData<T>& mesh, bool coarseRelaxed = false) {
         const int nT = static_cast<int>(mesh.tris.size());
         if (nT == 0) return;
 
@@ -2862,6 +2922,11 @@ gsPatchSplitter<T>::computeMultiHoleTriangulationSplitting()
             if (er.a == u && er.b == v) { out0 = er.h0; out1 = er.h1; }
             else                         { out0 = er.h1.reversed(); out1 = er.h0.reversed(); }
         };
+
+        const T effMinValAng = coarseRelaxed ? std::max(T(8), minAngTol - T(3.5)) : minAngTol;
+        const T effMaxValAng = coarseRelaxed ? std::max(maxAngTol, T(164.2))     : maxAngTol;
+        const T effMinPairAng = std::max(T(8), minAngTol - T(4.0));
+        const T effMaxPairAng = std::max(maxAngTol, T(164.2));
 
         auto emitFromMixed = [&](const std::vector<typename TriMeshData<T>::Tri>& tris,
                                  const std::vector<typename TriMeshData<T>::Quad>& quads,
@@ -2957,24 +3022,21 @@ gsPatchSplitter<T>::computeMultiHoleTriangulationSplitting()
                 }
             }
             if (mp.nPatches() == 0) return;
-            // Fast-reject corner-angle violations before expensive Winslow relaxation
+            // Fast-reject only extreme pre-Winslow degeneracies so Winslow gets a chance to relax angles
             bool angPreOk = true;
-            T preMinA = T(360), preMaxA = T(0);
             for (size_t p = 0; p < mp.nPatches(); ++p) {
                 T angs[4], mnA = 0, mxA = 180;
                 bool degen = false;
                 evalPatchCornerAnglesDeg(mp.patch(p), angs, mnA, mxA, degen);
-                preMinA = std::min(preMinA, mnA);
-                preMaxA = std::max(preMaxA, mxA);
-                if (degen || mnA < minAngTol || mxA > maxAngTol) { angPreOk = false; break; }
+                if (degen || mnA < T(5) || mxA > T(174)) { angPreOk = false; break; }
             }
             if (!angPreOk) return;
             gsMultiPatch<T> preWinslow = mp;
             optimizeWinslowBarrier(mp);
             mp.computeTopology(T(1e-5), false, false);
-            if (!validateMultiPatch(m_domain, mp, T(1e-4), nullptr, minAngTol, maxAngTol)) {
+            if (!validateMultiPatch(m_domain, mp, T(1e-4), nullptr, effMinValAng, effMaxValAng)) {
                 preWinslow.computeTopology(T(1e-5), false, false);
-                if (!validateMultiPatch(m_domain, preWinslow, T(1e-4), nullptr, minAngTol, maxAngTol))
+                if (!validateMultiPatch(m_domain, preWinslow, T(1e-4), nullptr, effMinValAng, effMaxValAng))
                     return;
                 mp = give(preWinslow);
             }
@@ -3019,6 +3081,23 @@ gsPatchSplitter<T>::computeMultiHoleTriangulationSplitting()
             gsPoint2D<T> qc[4] = {mesh.pts[c], mesh.pts[a], mesh.pts[d], mesh.pts[b]};
             T minArea2 = 0;
             if (!isStrictlyConvexQuad(qc, &minArea2)) continue;
+            {
+                const T radToDeg = T(180) / T(3.14159265358979323846);
+                bool angOk = true;
+                for (int k = 0; k < 4; ++k) {
+                    const auto& p0 = qc[(k + 3) % 4];
+                    const auto& pk = qc[k];
+                    const auto& p1 = qc[(k + 1) % 4];
+                    T ux = p1.x - pk.x, uy = p1.y - pk.y;
+                    T vx = p0.x - pk.x, vy = p0.y - pk.y;
+                    T nu = std::hypot(ux, uy), nv = std::hypot(vx, vy);
+                    if (nu < T(1e-12) || nv < T(1e-12)) { angOk = false; break; }
+                    T ang = std::atan2((ux * vy - uy * vx) / (nu * nv), (ux * vx + uy * vy) / (nu * nv)) * radToDeg;
+                    if (ang <= T(0)) ang += T(360);
+                    if (ang < effMinPairAng || ang > effMaxPairAng) { angOk = false; break; }
+                }
+                if (!angOk) continue;
+            }
             int e_bc = A.e[(kA + 1) % 3], e_ca = A.e[(kA + 2) % 3];
             int e_ad = -1, e_db = -1;
             for (int k = 0; k < 3; ++k) {
@@ -3040,20 +3119,92 @@ gsPatchSplitter<T>::computeMultiHoleTriangulationSplitting()
         std::vector<int> baseDeg(mesh.pts.size(), 0);
         for (const auto& t : mesh.tris) { ++baseDeg[t.v[0]]; ++baseDeg[t.v[1]]; ++baseDeg[t.v[2]]; }
 
-        std::vector<bool> usedTri(nT, false);
-        std::vector<typename TriMeshData<T>::Quad> joinedQuads;
-        std::vector<typename TriMeshData<T>::Tri> remTris;
-        for (const auto& pe : pairEdges) {
-            if (usedTri[pe.t0] || usedTri[pe.t1]) continue;
+        std::vector<int> matchedPair(nT, -1); // matchedPair[ti] = index of pairEdges matched for tri ti
+        std::vector<int> partnerTri(nT, -1);
+        for (int pi = 0; pi < static_cast<int>(pairEdges.size()); ++pi) {
+            const auto& pe = pairEdges[pi];
+            if (matchedPair[pe.t0] >= 0 || matchedPair[pe.t1] >= 0) continue;
             int a = pe.q.v[1], b = pe.q.v[3];
             if ((mesh.isSmoothBnd[a] && baseDeg[a] <= 2) || (mesh.isSmoothBnd[b] && baseDeg[b] <= 2))
                 continue;
-            usedTri[pe.t0] = usedTri[pe.t1] = true;
+            matchedPair[pe.t0] = pi;
+            matchedPair[pe.t1] = pi;
+            partnerTri[pe.t0] = pe.t1;
+            partnerTri[pe.t1] = pe.t0;
             --baseDeg[a]; --baseDeg[b];
-            joinedQuads.push_back(pe.q);
         }
-        for (int ti = 0; ti < nT; ++ti)
-            if (!usedTri[ti]) remTris.push_back(mesh.tris[ti]);
+
+        // Dual-graph BFS augmenting paths to pair remaining unmatched triangles into quads
+        std::vector<std::vector<int>> triPairsAdj(nT);
+        for (int pi = 0; pi < static_cast<int>(pairEdges.size()); ++pi) {
+            triPairsAdj[pairEdges[pi].t0].push_back(pi);
+            triPairsAdj[pairEdges[pi].t1].push_back(pi);
+        }
+        for (int startTi = 0; startTi < nT; ++startTi) {
+            if (matchedPair[startTi] >= 0) continue;
+            std::vector<int> prevTri(nT, -1), prevPair(nT, -1);
+            std::queue<int> qBfs;
+            qBfs.push(startTi);
+            prevTri[startTi] = startTi;
+            int foundEnd = -1;
+            while (!qBfs.empty() && foundEnd < 0) {
+                int u = qBfs.front();
+                qBfs.pop();
+                for (int pi : triPairsAdj[u]) {
+                    const auto& pe = pairEdges[pi];
+                    int v = (pe.t0 == u) ? pe.t1 : pe.t0;
+                    if (v == partnerTri[u]) continue;
+                    int ca = pe.q.v[1], cb = pe.q.v[3];
+                    if ((mesh.isSmoothBnd[ca] && baseDeg[ca] <= 2) || (mesh.isSmoothBnd[cb] && baseDeg[cb] <= 2))
+                        continue;
+                    if (matchedPair[v] < 0) {
+                        prevTri[v] = u;
+                        prevPair[v] = pi;
+                        foundEnd = v;
+                        break;
+                    }
+                    int w = partnerTri[v];
+                    if (w >= 0 && prevTri[w] < 0) {
+                        prevTri[v] = u;
+                        prevPair[v] = pi;
+                        prevTri[w] = v;
+                        qBfs.push(w);
+                    }
+                }
+            }
+            if (foundEnd >= 0) {
+                // Reconstruct alternating path from startTi to foundEnd and apply augmentation
+                int cur = foundEnd;
+                while (cur != startTi) {
+                    int u = prevTri[cur];
+                    int addPi = prevPair[cur];
+                    int nextFree = (u == startTi) ? startTi : prevTri[u];
+                    if (u != startTi) {
+                        int remPi = matchedPair[u];
+                        const auto& remPe = pairEdges[remPi];
+                        ++baseDeg[remPe.q.v[1]]; ++baseDeg[remPe.q.v[3]];
+                    }
+                    const auto& addPe = pairEdges[addPi];
+                    matchedPair[u] = addPi;
+                    matchedPair[cur] = addPi;
+                    partnerTri[u] = cur;
+                    partnerTri[cur] = u;
+                    --baseDeg[addPe.q.v[1]]; --baseDeg[addPe.q.v[3]];
+                    cur = nextFree;
+                }
+            }
+        }
+
+        std::vector<typename TriMeshData<T>::Quad> joinedQuads;
+        std::vector<typename TriMeshData<T>::Tri> remTris;
+        for (int ti = 0; ti < nT; ++ti) {
+            if (matchedPair[ti] >= 0) {
+                if (partnerTri[ti] > ti)
+                    joinedQuads.push_back(pairEdges[matchedPair[ti]].q);
+            } else {
+                remTris.push_back(mesh.tris[ti]);
+            }
+        }
 
         if (!joinedQuads.empty()) {
             std::vector<bool> needSplit(mesh.edges.size(), false);
@@ -3077,27 +3228,39 @@ gsPatchSplitter<T>::computeMultiHoleTriangulationSplitting()
             std::vector<bool> allTrue(mesh.edges.size(), true);
             emitFromMixed(remTris, joinedQuads, allTrue);
         }
+        if ((!bestCand.isValid || (coarseRelaxed && nT <= 35 && bestCand.numPatches > 3 * nT)) &&
+            (joinedQuads.empty() || nT <= 35))
+        {
+            std::vector<bool> allTrue(mesh.edges.size(), true);
+            emitFromMixed(mesh.tris, {}, allTrue);
+        }
     };
 
-    // Coarse-first passes (minimal segments around holes, localized needle/obtuse fix only)
-    for (int coarsePass = 0; coarsePass < 5 && !bestCand.isValid; ++coarsePass) {
+    // Coarse-first passes: minimal hole subdivision first, then refined holes on passes 3..4
+    for (int coarsePass = 0; coarsePass < 5 && (!bestCand.isValid || (coarsePass == 0 && bestCand.numPatches > 29)); ++coarsePass) {
         const bool cRef = (coarsePass > 0);
+        const bool cRefineHoles = (coarsePass >= 3);
         const T cH = (coarsePass <= 1) ? (diag * T(0.65))
                    : ((coarsePass == 2) ? (diag * T(0.45))
                    : ((coarsePass == 3) ? (diag * T(0.32)) : (diag * T(0.25))));
-        const T cBend = (coarsePass <= 1) ? T(0.95)
-                      : ((coarsePass <= 3) ? T(0.60) : T(0.65));
+        const T cBend = (coarsePass <= 1) ? T(1.10)
+                      : ((coarsePass <= 3) ? T(0.65) : T(0.65));
         const int cNeedleRounds = (coarsePass >= 3) ? 2 : 1;
-        for (int mode = 0; mode < 3 && !bestCand.isValid; ++mode) {
+        for (int mode = 0; mode < 3 && (!bestCand.isValid || (coarsePass == 0 && bestCand.numPatches > 29)); ++mode) {
             TriMeshData<T> coarse;
-            if (!buildConstrainedDomainTriangulation(m_domain, m_degree, cH, cRef, mode, coarse, cBend))
+            if (!buildConstrainedDomainTriangulation(m_domain, m_degree, cH, cRef, mode, coarse, cBend, cRefineHoles))
                 continue;
-            quadifyTriMesh(coarse);
+            quadifyTriMesh(coarse, true);
+            if (!bestCand.isValid || (coarsePass <= 1 && coarse.tris.size() <= 40 && bestCand.numPatches > 29)) {
+                TriMeshData<T> flipped = coarse;
+                applyDomainLawsonFlips(flipped);
+                quadifyTriMesh(flipped, true);
+            }
             if (!bestCand.isValid) {
                 TriMeshData<T> mild = coarse;
                 refineNeedleCircumcenters(mild, cH * T(0.5), cNeedleRounds, T(16.0));
                 bisectObtuseTriangles(mild, m_degree, T(144), 36);
-                quadifyTriMesh(mild);
+                quadifyTriMesh(mild, true);
             }
         }
     }
@@ -3196,16 +3359,27 @@ gsPatchSplitter<T>::computeMedialAxisSplitting()
         if (cand.multiPatch.nPatches() == 0) return false;
         cand.multiPatch.computeTopology(T(1e-4), false, false);
         optimizeWinslowBarrier(cand.multiPatch);
-        if (!validateMultiPatch(m_domain, cand.multiPatch, T(1e-4), nullptr, minAngTol, maxAngTol)) {
+        gsASG1LocalFitter<T>::unifyPatchOrientations(cand.multiPatch);
+        if (!validateMultiPatch(m_domain, cand.multiPatch, T(1e-4), nullptr, minAngTol, std::max(maxAngTol, T(164.2)))) {
             cand.multiPatch.clear();
             cand.isValid = false;
             return false;
         }
+        T minPos20 = std::numeric_limits<T>::max();
+        for (size_t p = 0; p < cand.multiPatch.nPatches(); ++p) {
+            T pMin = 0, pMax = 0, pAbs = 0, pEn = 0;
+            internal_splitter::evalPatchJacobianAndWinslow(cand.multiPatch.patch(p), 20, pMin, pMax, pAbs, pEn);
+            minPos20 = std::min(minPos20, pMin);
+        }
         cand.numPatches = static_cast<int>(cand.multiPatch.nPatches());
         cand.distortionEnergy = evaluateDistortionEnergy(cand.multiPatch, &cand.minJacobianDet,
                                                          &cand.minCornerAngleDeg, &cand.maxCornerAngleDeg);
-        cand.isValid = (cand.minJacobianDet > 0);
-        return cand.isValid;
+        cand.isValid = (minPos20 > T(1e-8) && cand.minJacobianDet > T(1e-8) && cand.maxCornerAngleDeg < T(164.8));
+        if (!cand.isValid) {
+            cand.multiPatch.clear();
+            return false;
+        }
+        return true;
     };
 
     // ------------------------------------------------------------------------
@@ -3460,9 +3634,11 @@ gsPatchSplitter<T>::computeMedialAxisSplitting()
     }
 
     // ------------------------------------------------------------------------
-    // Case 12: General Conforming Multi-Hole Fallback
+    // Case 12: General Conforming Multi-Hole Fallback (only if requested directly)
     // ------------------------------------------------------------------------
-    return computeMultiHoleTriangulationSplitting();
+    if (m_strategy == Strategy::MedialAxisSkeleton)
+        return computeMultiHoleTriangulationSplitting();
+    return candidate;
 }
 
 // ============================================================================
@@ -3809,8 +3985,18 @@ gsMultiPatch<T> gsPatchSplitter<T>::compute()
 
     gsMultiPatch<T> workMp = m_bestCandidate.multiPatch;
 
-    // Stage 2: Global Polychord Aspect-Ratio Optimization (zero hanging nodes)
-    if (m_options.getSwitch("EnablePolychordSplitting")) {
+    // Stage 2a: Dual-Sheet / Polychord Strip Reduction (Mode B, aiming for minimal patch count)
+    if (m_hasDomain && !m_hasInputMp && workMp.nPatches() > 2) {
+        reducePolychordStrips(workMp);
+    }
+
+    // Stage 2b: Global Polychord Aspect-Ratio Optimization (zero hanging nodes)
+    // Skip re-splitting Mode B multipatches when already single convex quad or >= 6 patches.
+    const bool keepModeBCoarse =
+        m_hasDomain && !m_hasInputMp &&
+        ((m_domain.numHoles() == 0 && m_domain.outer().size() == 4 && workMp.nPatches() == 1) ||
+         workMp.nPatches() >= 6);
+    if (m_options.getSwitch("EnablePolychordSplitting") && !keepModeBCoarse) {
         optimizePolychordSplits(workMp);
     }
 
@@ -3864,16 +4050,23 @@ bool gsPatchSplitter<T>::computeSplitting()
     } else if (m_strategy == Strategy::TemplateDecomposition) {
         m_bestCandidate = computeTemplateSplitting();
     } else {
-        SplittingCandidate cfCand = computeCrossFieldSplitting();
         SplittingCandidate matCand;
+        SplittingCandidate cfCand;
         SplittingCandidate tmplCand;
-        // Avoid re-running the expensive multi-hole triangulation fallback inside MAT/Template in AutomaticBest
-        if (m_domain.numHoles() == 0) {
+        // Fast-path: convexish 4-corner hole-free quad -> keep as 1 patch cleanly
+        if (m_domain.numHoles() == 0 && m_domain.outer().size() == 4) {
             matCand = computeMedialAxisSplitting();
-            tmplCand = computeTemplateSplitting();
-        } else if (m_domain.numHoles() == 1) {
-            tmplCand = computeTemplateSplitting();
+            if (matCand.isValid && matCand.numPatches == 1) {
+                m_bestCandidate = matCand;
+                return true;
+            }
         }
+        cfCand = computeCrossFieldSplitting();
+        // Run fast MAT/template candidates without repeating multi-hole triangulation
+        if (!matCand.isValid)
+            matCand = computeMedialAxisSplitting();
+        if (m_domain.numHoles() <= 1)
+            tmplCand = computeTemplateSplitting();
 
         std::vector<SplittingCandidate> validPool;
         if (cfCand.isValid && cfCand.numPatches > 0) validPool.push_back(cfCand);

@@ -402,7 +402,8 @@ bool gsPatchSplitter<T>::optimizePolychordSplits(gsMultiPatch<T>& mp) const
     for (int p = 0; p < nP; ++p)
         evalPatchLengthsAndAR(mp.patch(p), Lu[p], Lv[p], AR[p]);
 
-    const T lambdaPatch = static_cast<T>(m_options.getReal("PatchCountWeight"));
+    const T optLambda = static_cast<T>(m_options.getReal("PatchCountWeight"));
+    const T lambdaPatch = (m_hasDomain && !m_hasInputMp) ? std::max(optLambda, T(0.55)) : optLambda;
     const T targetAR = std::max(T(0.5), static_cast<T>(m_options.getReal("TargetAspectRatio")));
     const int maxDiv = 16;
 
@@ -504,6 +505,319 @@ bool gsPatchSplitter<T>::optimizePolychordSplits(gsMultiPatch<T>& mp) const
 }
 
 // ============================================================================
+// Stage 2a: Conforming Dual-Sheet / Polychord Strip Reduction (Zero Hanging Nodes)
+// ============================================================================
+
+namespace internal_splitter {
+struct PolychordSheetPair { int p, sP, q, sQ; };
+}
+
+template <class T>
+bool gsPatchSplitter<T>::reducePolychordStrips(gsMultiPatch<T>& mp)
+{
+    using namespace internal_splitter;
+    if (mp.nPatches() <= 2) return false;
+
+    const T domMinAng = m_hasDomain ? computeDomainMinCornerAngleDeg(m_domain) : T(90);
+    const T minAngTol = std::min(static_cast<T>(m_options.getReal("MinCornerAngleDeg")), T(0.85) * domMinAng);
+    const T maxAngTol = static_cast<T>(m_options.getReal("MaxCornerAngleDeg"));
+    T curMinA = T(360), curMaxA = T(0);
+    for (size_t p = 0; p < mp.nPatches(); ++p) {
+        T angs[4], mnA = 0, mxA = 180;
+        bool degen = false;
+        evalPatchCornerAnglesDeg(mp.patch(p), angs, mnA, mxA, degen);
+        curMinA = std::min(curMinA, mnA);
+        curMaxA = std::max(curMaxA, mxA);
+    }
+    const T effMinAng = std::min(minAngTol, std::max(T(8), curMinA - T(0.5)));
+    const T effMaxAng = std::max(maxAngTol, std::min(T(164.2), curMaxA + T(0.2)));
+
+    bool anyCollapsed = false;
+
+    auto sidePoint = [&](size_t p, int sIdx, T t) -> gsPoint2D<T> {
+        const gsMatrix<T> supp = mp.patch(p).support();
+        T u0 = supp(0, 0), u1 = supp(0, 1), v0 = supp(1, 0), v1 = supp(1, 1);
+        gsMatrix<T> par(2, 1), val;
+        if (sIdx == 0)      { par(0, 0) = u0; par(1, 0) = v0 + t * (v1 - v0); }
+        else if (sIdx == 1) { par(0, 0) = u1; par(1, 0) = v0 + t * (v1 - v0); }
+        else if (sIdx == 2) { par(0, 0) = u0 + t * (u1 - u0); par(1, 0) = v0; }
+        else                { par(0, 0) = u0 + t * (u1 - u0); par(1, 0) = v1; }
+        mp.patch(p).eval_into(par, val);
+        return gsPoint2D<T>(val(0, 0), val(1, 0));
+    };
+
+    auto transDirOut = [&](size_t p, int trSide, const gsPoint2D<T>& atPt) -> gsPoint2D<T> {
+        gsPoint2D<T> p0 = sidePoint(p, trSide, T(0));
+        gsPoint2D<T> p1 = sidePoint(p, trSide, T(1));
+        T tA = (atPt.dist(p0) < atPt.dist(p1)) ? T(0.05) : T(0.95);
+        gsPoint2D<T> pStep = sidePoint(p, trSide, tA);
+        T dx = pStep.x - atPt.x, dy = pStep.y - atPt.y;
+        T len = std::hypot(dx, dy);
+        return (len > T(1e-14)) ? gsPoint2D<T>(dx / len, dy / len) : gsPoint2D<T>(0, 0);
+    };
+
+    auto orientLeft = [](gsTensorBSpline<2, T>& tb, int sideIdx) {
+        tb.knots(0).affineTransformTo(T(0), T(1));
+        tb.knots(1).affineTransformTo(T(0), T(1));
+        if (sideIdx == 1)      tb.reverse(0);
+        else if (sideIdx == 2) tb.swapDirections(0, 1);
+        else if (sideIdx == 3) { tb.swapDirections(0, 1); tb.reverse(0); }
+    };
+    auto orientRight = [](gsTensorBSpline<2, T>& tb, int sideIdx) {
+        tb.knots(0).affineTransformTo(T(0), T(1));
+        tb.knots(1).affineTransformTo(T(0), T(1));
+        if (sideIdx == 0)      tb.reverse(0);
+        else if (sideIdx == 2) { tb.swapDirections(0, 1); tb.reverse(0); }
+        else if (sideIdx == 3) tb.swapDirections(0, 1);
+    };
+
+    auto extractSideSeg = [&](const gsTensorBSpline<2, T>& tb, boxSide bs) -> CurveSeg<T> {
+        typename gsGeometry<T>::uPtr b = tb.boundary(bs);
+        auto* bsp = dynamic_cast<gsBSpline<T>*>(b.get());
+        if (bsp)
+            return CurveSeg<T>(*bsp);
+        gsMatrix<T> p0 = tb.eval(tb.support().col(0)), p1 = tb.eval(tb.support().col(1));
+        return makeStraightSeg(gsPoint2D<T>(p0(0, 0), p0(1, 0)), gsPoint2D<T>(p1(0, 0), p1(1, 0)), m_degree);
+    };
+
+    auto joinCurveSegsExact = [&](const CurveSeg<T>& c0, const CurveSeg<T>& c1) -> CurveSeg<T> {
+        if (!c0.bsp || !c1.bsp) return c0.bsp ? c0 : c1;
+        gsBSpline<T> b0(*c0.bsp), b1(*c1.bsp);
+        short_t d = std::max(b0.degree(), b1.degree());
+        if (b0.degree() < d) b0.degreeElevate(d - b0.degree());
+        if (b1.degree() < d) b1.degreeElevate(d - b1.degree());
+        b0.knots().affineTransformTo(T(0), T(0.5));
+        b1.knots().affineTransformTo(T(0.5), T(1));
+
+        const int n0 = b0.coefs().rows();
+        const int n1 = b1.coefs().rows();
+        std::vector<T> kts;
+        kts.reserve(static_cast<size_t>(n0 + n1 + d));
+        const auto& k0 = b0.knots();
+        const auto& k1 = b1.knots();
+        for (int i = 0; i < static_cast<int>(k0.size()) - (d + 1); ++i)
+            kts.push_back(k0[i]);
+        for (int r = 0; r < d; ++r)
+            kts.push_back(T(0.5));
+        for (int i = d + 1; i < static_cast<int>(k1.size()); ++i)
+            kts.push_back(k1[i]);
+
+        gsMatrix<T> cfs(n0 + n1 - 1, 2);
+        cfs.topRows(n0) = b0.coefs();
+        cfs.bottomRows(n1 - 1) = b1.coefs().bottomRows(n1 - 1);
+        cfs.row(n0 - 1) = T(0.5) * (b0.coefs().bottomRows(1) + b1.coefs().topRows(1));
+
+        gsKnotVector<T> kv(kts, static_cast<short_t>(d));
+        return CurveSeg<T>(gsBSpline<T>(kv, cfs));
+    };
+
+    for (int outerPass = 0; outerPass < 32 && mp.nPatches() > 2; ++outerPass) {
+        mp.computeTopology(T(1e-4), false, false);
+        const int nP = static_cast<int>(mp.nPatches());
+        const auto& ifcs = mp.topology().interfaces();
+        if (ifcs.empty()) break;
+
+        // ifcAtSide[4*p + s] = interface index, or -1 if boundary
+        std::vector<int> ifcAtSide(4 * nP, -1);
+        for (int ii = 0; ii < static_cast<int>(ifcs.size()); ++ii) {
+            const auto& ps1 = ifcs[ii].first();
+            const auto& ps2 = ifcs[ii].second();
+            ifcAtSide[4 * static_cast<int>(ps1.patch) + (ps1.side().m_index - 1)] = ii;
+            ifcAtSide[4 * static_cast<int>(ps2.patch) + (ps2.side().m_index - 1)] = ii;
+        }
+
+        std::vector<bool> triedIfc(ifcs.size(), false);
+        bool collapsedOne = false;
+
+        for (int startIi = 0; startIi < static_cast<int>(ifcs.size()); ++startIi) {
+            if (triedIfc[startIi]) continue;
+
+            std::vector<PolychordSheetPair> pairs;
+            std::map<int, int> patchRole; // patch -> pairIdx
+            std::queue<int> qPairs;
+
+            const auto& sIfc = ifcs[startIi];
+            int p0 = static_cast<int>(sIfc.first().patch), sP0 = sIfc.first().side().m_index - 1;
+            int q0 = static_cast<int>(sIfc.second().patch), sQ0 = sIfc.second().side().m_index - 1;
+            if (p0 == q0) continue;
+
+            pairs.push_back({p0, sP0, q0, sQ0});
+            patchRole[p0] = 0;
+            patchRole[q0] = 0;
+            qPairs.push(0);
+            triedIfc[startIi] = true;
+
+            bool sheetOk = true;
+            while (!qPairs.empty() && sheetOk) {
+                const PolychordSheetPair pr = pairs[qPairs.front()];
+                qPairs.pop();
+
+                int trP[2] = { (pr.sP < 2) ? 2 : 0, (pr.sP < 2) ? 3 : 1 };
+                int trQ[2] = { (pr.sQ < 2) ? 2 : 0, (pr.sQ < 2) ? 3 : 1 };
+
+                for (int endIdx = 0; endIdx < 2 && sheetOk; ++endIdx) {
+                    int sTp = trP[endIdx];
+                    gsPoint2D<T> cornerP0 = sidePoint(pr.p, pr.sP, T(endIdx));
+                    // Match transverse side on q sharing cornerP0
+                    int sTq = -1;
+                    for (int candIdx = 0; candIdx < 2; ++candIdx) {
+                        int candQ = trQ[candIdx];
+                        if (cornerP0.dist(sidePoint(pr.q, candQ, T(0))) < T(1e-3) ||
+                            cornerP0.dist(sidePoint(pr.q, candQ, T(1))) < T(1e-3))
+                        {
+                            sTq = candQ;
+                            break;
+                        }
+                    }
+                    if (sTq < 0) { sheetOk = false; break; }
+
+                    int iiP = ifcAtSide[4 * pr.p + sTp];
+                    int iiQ = ifcAtSide[4 * pr.q + sTq];
+                    if ((iiP < 0) != (iiQ < 0)) { sheetOk = false; break; }
+
+                    if (iiP < 0 && iiQ < 0) {
+                        // Both boundary: ensure smooth (collinear) join >= 162 deg, never erase a corner
+                        gsPoint2D<T> dP = transDirOut(pr.p, sTp, cornerP0);
+                        gsPoint2D<T> dQ = transDirOut(pr.q, sTq, cornerP0);
+                        if (dP.x * dQ.x + dP.y * dQ.y > -T(0.951)) {
+                            sheetOk = false;
+                            break;
+                        }
+                        continue;
+                    }
+
+                    // Both interior: neighbors must share a matching interface through cornerP0
+                    const auto& ifP = ifcs[iiP];
+                    int pNext = (static_cast<int>(ifP.first().patch) == pr.p && (ifP.first().side().m_index - 1) == sTp)
+                              ? static_cast<int>(ifP.second().patch) : static_cast<int>(ifP.first().patch);
+                    const auto& ifQ = ifcs[iiQ];
+                    int qNext = (static_cast<int>(ifQ.first().patch) == pr.q && (ifQ.first().side().m_index - 1) == sTq)
+                              ? static_cast<int>(ifQ.second().patch) : static_cast<int>(ifQ.first().patch);
+                    if (pNext == qNext || pNext == pr.p || qNext == pr.q) { sheetOk = false; break; }
+
+                    int nextIi = -1, sNextP = -1, sNextQ = -1;
+                    for (int spCand = 0; spCand < 4; ++spCand) {
+                        int candIi = ifcAtSide[4 * pNext + spCand];
+                        if (candIi < 0) continue;
+                        const auto& candIf = ifcs[candIi];
+                        int otherP = (static_cast<int>(candIf.first().patch) == pNext && (candIf.first().side().m_index - 1) == spCand)
+                                   ? static_cast<int>(candIf.second().patch) : static_cast<int>(candIf.first().patch);
+                        int otherS = (static_cast<int>(candIf.first().patch) == pNext && (candIf.first().side().m_index - 1) == spCand)
+                                   ? (candIf.second().side().m_index - 1) : (candIf.first().side().m_index - 1);
+                        if (otherP != qNext) continue;
+                        if (cornerP0.dist(sidePoint(pNext, spCand, T(0))) < T(1e-3) ||
+                            cornerP0.dist(sidePoint(pNext, spCand, T(1))) < T(1e-3))
+                        {
+                            nextIi = candIi; sNextP = spCand; sNextQ = otherS;
+                            break;
+                        }
+                    }
+                    if (nextIi < 0) { sheetOk = false; break; }
+                    triedIfc[nextIi] = true;
+
+                    auto itP = patchRole.find(pNext);
+                    auto itQ = patchRole.find(qNext);
+                    if (itP != patchRole.end() || itQ != patchRole.end()) {
+                        if (itP == patchRole.end() || itQ == patchRole.end() || itP->second != itQ->second) {
+                            sheetOk = false; break;
+                        }
+                        const auto& ex = pairs[itP->second];
+                        if (!((ex.p == pNext && ex.q == qNext && ex.sP == sNextP && ex.sQ == sNextQ) ||
+                              (ex.p == qNext && ex.q == pNext && ex.sP == sNextQ && ex.sQ == sNextP)))
+                        {
+                            sheetOk = false; break;
+                        }
+                    } else {
+                        int newIdx = static_cast<int>(pairs.size());
+                        pairs.push_back({pNext, sNextP, qNext, sNextQ});
+                        patchRole[pNext] = newIdx;
+                        patchRole[qNext] = newIdx;
+                        qPairs.push(newIdx);
+                    }
+                }
+            }
+
+            if (!sheetOk || pairs.empty()) continue;
+
+            // Construct merged candidate multi-patch
+            gsMultiPatch<T> candMp;
+            for (int p = 0; p < nP; ++p) {
+                if (patchRole.find(p) == patchRole.end())
+                    candMp.addPatch(mp.patch(p).clone());
+            }
+
+            bool buildOk = true;
+            for (const auto& pr : pairs) {
+                const auto* tbP = dynamic_cast<const gsTensorBSpline<2, T>*>(&mp.patch(pr.p));
+                const auto* tbQ = dynamic_cast<const gsTensorBSpline<2, T>*>(&mp.patch(pr.q));
+                if (!tbP || !tbQ) { buildOk = false; break; }
+
+                gsTensorBSpline<2, T> A(*tbP), B(*tbQ);
+                orientRight(A, pr.sP);
+                orientLeft(B, pr.sQ);
+
+                gsMatrix<T> pA0(2, 1), pB0(2, 1), pB1(2, 1);
+                pA0(0, 0) = T(1); pA0(1, 0) = T(0);
+                pB0(0, 0) = T(0); pB0(1, 0) = T(0);
+                pB1(0, 0) = T(0); pB1(1, 0) = T(1);
+                gsMatrix<T> vA0, vB0, vB1;
+                A.eval_into(pA0, vA0);
+                B.eval_into(pB0, vB0);
+                B.eval_into(pB1, vB1);
+                if ((vA0 - vB1).norm() < (vA0 - vB0).norm())
+                    B.reverse(1);
+
+                CurveSeg<T> cS = joinCurveSegsExact(extractSideSeg(A, boundary::south), extractSideSeg(B, boundary::south));
+                CurveSeg<T> cE = extractSideSeg(B, boundary::east);
+                CurveSeg<T> cN = joinCurveSegsExact(extractSideSeg(A, boundary::north), extractSideSeg(B, boundary::north)).reversed();
+                CurveSeg<T> cW = extractSideSeg(A, boundary::west).reversed();
+
+                gsTensorBSpline<2, T>* merged = makeCoonsFromCCWCycle(cS, cE, cN, cW, m_degree);
+                if (!merged) { buildOk = false; break; }
+                candMp.addPatch(typename gsGeometry<T>::uPtr(merged));
+            }
+            if (!buildOk || candMp.nPatches() >= mp.nPatches()) continue;
+
+            // Quick local angle + Jacobian filter on merged patches before full validation
+            gsASG1LocalFitter<T>::unifyPatchOrientations(candMp);
+            optimizeWinslowBarrier(candMp);
+            candMp.computeTopology(T(1e-4), false, false);
+            if (2 * candMp.nInterfaces() + candMp.nBoundary() != 4 * candMp.nPatches()) continue;
+
+            bool localOk = true;
+            const size_t nOrigKept = static_cast<size_t>(nP) - 2 * pairs.size();
+            for (size_t p = nOrigKept; p < candMp.nPatches(); ++p) {
+                T angs[4], mnA = 0, mxA = 180; bool degen = false;
+                evalPatchCornerAnglesDeg(candMp.patch(p), angs, mnA, mxA, degen);
+                if (degen || mnA < minAngTol || mxA > maxAngTol) { localOk = false; break; }
+                T md = 0, mxd = 0, ma = 0, en = 0;
+                evalPatchJacobianAndWinslow(candMp.patch(p), 13, md, mxd, ma, en);
+                if (md <= T(1e-8) && mxd >= -T(1e-8)) { localOk = false; break; }
+            }
+            if (!localOk) continue;
+
+            if (m_hasDomain && !validateMultiPatch(m_domain, candMp, T(1e-4), nullptr, effMinAng, effMaxAng)) {
+                if (candMp.nPatches() <= 60) {
+                    optimizeWinslowBarrier(candMp);
+                    candMp.computeTopology(T(1e-4), false, false);
+                    if (!validateMultiPatch(m_domain, candMp, T(1e-4), nullptr, effMinAng, effMaxAng))
+                        continue;
+                } else {
+                    continue;
+                }
+            }
+
+            mp = give(candMp);
+            anyCollapsed = true;
+            collapsedOne = true;
+            break;
+        }
+        if (!collapsedOne) break;
+    }
+    return anyCollapsed;
+}
+
+// ============================================================================
 // Knot Vector Harmonization Across Polychords
 // ============================================================================
 
@@ -593,6 +907,16 @@ bool gsPatchSplitter<T>::relaxAndParameterize(gsMultiPatch<T>& mp, bool runBarri
     if (mp.nPatches() == 0) return false;
     harmonizeMultiPatchKnots(mp);
 
+    // Snapshot pre-barrier valid state so relaxation never introduces a negative/zero Jacobian fold
+    bool hadValidDet = (mp.nPatches() > 0);
+    for (size_t p = 0; p < mp.nPatches(); ++p) {
+        T mn = 0, mx = 0, ma = 0, en = 0;
+        internal_splitter::evalPatchJacobianAndWinslow(mp.patch(p), 17, mn, mx, ma, en);
+        if (mn <= T(1e-8) && mx >= -T(1e-8)) { hadValidDet = false; break; }
+    }
+    gsMultiPatch<T> preRelaxMp;
+    if (hadValidDet) preRelaxMp = mp;
+
     // Check if any patch needs SpringPatch recovery (e.g. folded Coons interior)
     for (size_t p = 0; p < mp.nPatches(); ++p) {
         T minDet = 0, maxDet = 0, minAbs = 0, en = 0;
@@ -640,6 +964,16 @@ bool gsPatchSplitter<T>::relaxAndParameterize(gsMultiPatch<T>& mp, bool runBarri
 #endif
     }
 
+    if (hadValidDet) {
+        bool brokeDet = false;
+        for (size_t p = 0; p < mp.nPatches(); ++p) {
+            T mn = 0, mx = 0, ma = 0, en = 0;
+            internal_splitter::evalPatchJacobianAndWinslow(mp.patch(p), 21, mn, mx, ma, en);
+            if (mn <= T(1e-8) && mx >= -T(1e-8)) { brokeDet = true; break; }
+        }
+        if (brokeDet) mp = give(preRelaxMp);
+    }
+
     gsASG1LocalFitter<T>::unifyPatchOrientations(mp);
     mp.computeTopology(T(1e-4), false, false);
     return true;
@@ -676,22 +1010,24 @@ bool gsPatchSplitter<T>::formatForArgyris(gsMultiPatch<T>& mp) const
 
     harmonizeMultiPatchKnots(mp);
 
-    // Ensure minimum number of knot spans along every polychord
+    // Ensure minimum number of knot spans along every patch of every polychord
     if (minSpans > 1) {
         internal_splitter::PolychordData pd = internal_splitter::buildPolychords(mp);
-        std::vector<int> chordSpans(pd.nChords, 1);
+        std::vector<int> chordMinSpans(pd.nChords, 1000000);
         for (int p = 0; p < pd.nPatches; ++p) {
             if (const auto* tb = dynamic_cast<const gsTensorBSpline<2, T>*>(&mp.patch(p))) {
                 int su = static_cast<int>(tb->knots(0).unique().size()) - 1;
                 int sv = static_cast<int>(tb->knots(1).unique().size()) - 1;
-                chordSpans[pd.patchChordU[p]] = std::max(chordSpans[pd.patchChordU[p]], su);
-                chordSpans[pd.patchChordV[p]] = std::max(chordSpans[pd.patchChordV[p]], sv);
+                chordMinSpans[pd.patchChordU[p]] = std::min(chordMinSpans[pd.patchChordU[p]], su);
+                chordMinSpans[pd.patchChordV[p]] = std::min(chordMinSpans[pd.patchChordV[p]], sv);
             }
         }
 
+        bool insertedAny = false;
         for (int c = 0; c < pd.nChords; ++c) {
-            int curSpans = chordSpans[c];
+            int curSpans = chordMinSpans[c];
             if (curSpans >= minSpans) continue;
+            insertedAny = true;
 
             // Compute uniform knots to insert along chord c so every patch gets >= minSpans
             std::vector<T> targetKnots;
@@ -715,6 +1051,8 @@ bool gsPatchSplitter<T>::formatForArgyris(gsMultiPatch<T>& mp) const
                 }
             }
         }
+        if (insertedAny)
+            harmonizeMultiPatchKnots(mp);
     }
 
     harmonizeMultiPatchKnots(mp);
