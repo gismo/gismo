@@ -498,10 +498,12 @@ bool runArgyrisBiharmonicTest(
 int main(int argc, char* argv[])
 {
     bool plot = false;
+    bool asg1 = false;
     std::string filesFrom = "";
     std::string outDir = "";
     gsCmdLine cmd("Benchmark & ArgyrisSplines Integration Suite for gsPatchSplitter.");
     cmd.addSwitch("plot", "Export ParaView .pvd/.vts files for each benchmark.", plot);
+    cmd.addSwitch("asg1", "Run AS-G1 reparametrization (formatForArgyris) and export XML + PVD in batch mode.", asg1);
     cmd.addString("f", "files-from", "Run batch on XML paths listed in file (one path per line).", filesFrom);
     cmd.addString("o", "out-dir", "Output directory for PVD files and summary.csv in batch mode.", outDir);
     try {
@@ -542,32 +544,46 @@ int main(int argc, char* argv[])
             std::string label = sanitizeName(line);
             std::string pvdPrefix = outDir + "/" + label;
             gsFileData<T> fd(line);
+            std::cout << "[" << std::setw(2) << (nTotal + 1) << "] " << label << " ... " << std::flush;
+
+            auto exportBatchResult = [&](gsPatchSplitter<T>& splitter, gsMultiPatch<T>& res, const BenchMetrics& bm) {
+                std::cout << "P=" << bm.nPatches
+                          << " Ang=[" << std::fixed << std::setprecision(1) << bm.minAng << "," << bm.maxAng << "]"
+                          << " " << (bm.passed ? "PASS" : "FAIL") << "\n" << std::flush;
+                if (res.nPatches() == 0) return;
+                if (asg1) {
+                    gsFileData<T> outFd;
+                    outFd << res;
+                    outFd.save(pvdPrefix);
+                }
+                gsWriteParaview(res, pvdPrefix, 200, true);
+            };
 
             if (fd.has<gsPlanarDomain<T>>()) {
                 ++nTotal;
                 memory::unique_ptr<gsPlanarDomain<T>> dom = fd.getFirst<gsPlanarDomain<T>>();
                 T perim = computeDomainPerimeter(*dom);
                 gsPatchSplitter<T> splitter(*dom);
+                if (asg1) splitter.options().setSwitch("ApplyASG1Fitting", true);
                 gsMultiPatch<T> res = splitter.compute();
                 BenchMetrics bm;
                 bool ok = verifySplitterResult(label, splitter, res, perim, dom.get(), bm);
                 if (ok) ++nPass;
                 batchSummary.push_back(bm);
-                if (res.nPatches() > 0)
-                    gsWriteParaview(res, pvdPrefix, 200, true);
+                exportBatchResult(splitter, res, bm);
             } else if (fd.has<gsMultiPatch<T>>()) {
                 ++nTotal;
                 memory::unique_ptr<gsMultiPatch<T>> inMp = fd.getFirst<gsMultiPatch<T>>();
                 inMp->computeTopology();
                 T perim = computeMultiPatchBoundaryPerimeter(*inMp);
                 gsPatchSplitter<T> splitter(*inMp);
+                if (asg1) splitter.options().setSwitch("ApplyASG1Fitting", true);
                 gsMultiPatch<T> res = splitter.compute();
                 BenchMetrics bm;
                 bool ok = verifySplitterResult(label + "[ModeA]", splitter, res, perim, nullptr, bm);
                 if (ok) ++nPass;
                 batchSummary.push_back(bm);
-                if (res.nPatches() > 0)
-                    gsWriteParaview(res, pvdPrefix, 200, true);
+                exportBatchResult(splitter, res, bm);
             } else if (fd.has<gsGeometry<T>>()) {
                 ++nTotal;
                 memory::unique_ptr<gsGeometry<T>> g = fd.getFirst<gsGeometry<T>>();
@@ -576,15 +592,16 @@ int main(int argc, char* argv[])
                 inMp.computeTopology();
                 T perim = computeMultiPatchBoundaryPerimeter(inMp);
                 gsPatchSplitter<T> splitter(inMp);
+                if (asg1) splitter.options().setSwitch("ApplyASG1Fitting", true);
                 gsMultiPatch<T> res = splitter.compute();
                 BenchMetrics bm;
                 bool ok = verifySplitterResult(label + "[Geom]", splitter, res, perim, nullptr, bm);
                 if (ok) ++nPass;
                 batchSummary.push_back(bm);
-                if (res.nPatches() > 0)
-                    gsWriteParaview(res, pvdPrefix, 200, true);
+                exportBatchResult(splitter, res, bm);
             } else {
                 ++nSkip;
+                std::cout << "SKIP\n" << std::flush;
             }
         }
 

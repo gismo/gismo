@@ -721,13 +721,53 @@ bool gsPatchSplitter<T>::formatForArgyris(gsMultiPatch<T>& mp) const
 
     if (m_options.getSwitch("ApplyASG1Fitting") && targetDeg >= 3) {
         const index_t innerKnots = std::max<index_t>(2, minSpans - 1);
-        gsASG1LocalFitter<T> fitter(mp, targetDeg, targetReg, innerKnots);
-        fitter.setMode(gsASG1LocalFitter<T>::FittingMode::Global);
-        fitter.fit();
-        if (fitter.checkASG1(T(1e-3))) {
-            mp = fitter.result();
-            gsASG1LocalFitter<T>::unifyPatchOrientations(mp);
-            mp.computeTopology(T(1e-4), false, false);
+        auto tryFitMode = [&](typename gsASG1LocalFitter<T>::FittingMode mode, index_t nInner) -> bool {
+            gsASG1LocalFitter<T> fitter(mp, targetDeg, targetReg, nInner);
+            fitter.setMode(mode);
+            fitter.fit();
+            if (!fitter.checkASG1(T(1e-3)))
+                return false;
+            gsMultiPatch<T> fitted = fitter.result();
+            gsASG1LocalFitter<T>::unifyPatchOrientations(fitted);
+            fitted.computeTopology(T(1e-4), false, false);
+            for (size_t p = 0; p < fitted.nPatches(); ++p) {
+                if (auto* tb = dynamic_cast<const gsTensorBSpline<2, T>*>(&fitted.patch(p))) {
+                    T mnDet = 0, mxDet = 0, mnAbs = 0, en = 0;
+                    internal_splitter::evalPatchJacobianAndWinslow(*tb, 9, mnDet, mxDet, mnAbs, en);
+                    if (mnDet <= T(1e-9) && mxDet >= -T(1e-9))
+                        return false;
+                }
+            }
+            // Reject fit if curved boundary shifted beyond verifyBoundaryMatch tolerance
+            if (fitted.nPatches() == mp.nPatches()) {
+                for (const auto& bs : mp.topology().boundaries()) {
+                    const size_t p = static_cast<size_t>(bs.patch);
+                    gsMatrix<T> par(2, 9);
+                    for (int k = 0; k < 9; ++k) {
+                        T t = static_cast<T>(k) / T(8);
+                        if (bs.side() == boundary::west)      { par(0, k) = T(0); par(1, k) = t; }
+                        else if (bs.side() == boundary::east) { par(0, k) = T(1); par(1, k) = t; }
+                        else if (bs.side() == boundary::south){ par(0, k) = t;    par(1, k) = T(0); }
+                        else                                  { par(0, k) = t;    par(1, k) = T(1); }
+                    }
+                    gsMatrix<T> e0, e1;
+                    mp.patch(p).eval_into(par, e0);
+                    fitted.patch(p).eval_into(par, e1);
+                    if ((e0 - e1).colwise().norm().maxCoeff() > T(4e-3))
+                        return false;
+                }
+            }
+            mp = give(fitted);
+            return true;
+        };
+        auto runWithMode = [&](typename gsASG1LocalFitter<T>::FittingMode mode) -> bool {
+            return tryFitMode(mode, innerKnots);
+        };
+        if (mp.nPatches() <= 20) {
+            if (!runWithMode(gsASG1LocalFitter<T>::FittingMode::Global))
+                runWithMode(gsASG1LocalFitter<T>::FittingMode::Local);
+        } else {
+            runWithMode(gsASG1LocalFitter<T>::FittingMode::Local);
         }
     }
 

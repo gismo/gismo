@@ -61,7 +61,7 @@ gsOptionList gsPatchSplitter<T>::defaultOptions()
     opt.addInt("Strategy", "0: Auto/Hybrid, 1: CrossField, 2: ConcaveCut/MAT, 3: PolychordOnly", 0);
     opt.addReal("TargetAspectRatio", "Target patch aspect ratio Lu/Lv", 1.0);
     opt.addReal("MaxAspectRatio", "Preferred maximum patch aspect ratio", 2.0);
-    opt.addReal("PatchCountWeight", "Penalty weight per patch in polychord optimization", 0.15);
+    opt.addReal("PatchCountWeight", "Penalty weight per patch in polychord optimization", 0.18);
     opt.addReal("AngleThresholdDeg", "Boundary corner angle above which corner is split", 135.0);
     opt.addReal("MinCornerAngleDeg", "Minimum admissible patch corner tangent angle (deg)", 12.0);
     opt.addReal("MaxCornerAngleDeg", "Maximum admissible patch corner tangent angle (deg)", 155.0);
@@ -3079,6 +3079,29 @@ gsPatchSplitter<T>::computeMultiHoleTriangulationSplitting()
         }
     };
 
+    // Coarse-first passes (minimal segments around holes, localized needle/obtuse fix only)
+    for (int coarsePass = 0; coarsePass < 5 && !bestCand.isValid; ++coarsePass) {
+        const bool cRef = (coarsePass > 0);
+        const T cH = (coarsePass <= 1) ? (diag * T(0.65))
+                   : ((coarsePass == 2) ? (diag * T(0.45))
+                   : ((coarsePass == 3) ? (diag * T(0.32)) : (diag * T(0.25))));
+        const T cBend = (coarsePass <= 1) ? T(0.95)
+                      : ((coarsePass <= 3) ? T(0.60) : T(0.65));
+        const int cNeedleRounds = (coarsePass >= 3) ? 2 : 1;
+        for (int mode = 0; mode < 3 && !bestCand.isValid; ++mode) {
+            TriMeshData<T> coarse;
+            if (!buildConstrainedDomainTriangulation(m_domain, m_degree, cH, cRef, mode, coarse, cBend))
+                continue;
+            quadifyTriMesh(coarse);
+            if (!bestCand.isValid) {
+                TriMeshData<T> mild = coarse;
+                refineNeedleCircumcenters(mild, cH * T(0.5), cNeedleRounds, T(16.0));
+                bisectObtuseTriangles(mild, m_degree, T(144), 36);
+                quadifyTriMesh(mild);
+            }
+        }
+    }
+
     for (int refinePass = 0; refinePass < 2 && !bestCand.isValid; ++refinePass) {
         const bool doRef = (refinePass == 1);
         const T hStep = doRef ? (diag / T(6)) : (diag / T(8));
@@ -3842,8 +3865,15 @@ bool gsPatchSplitter<T>::computeSplitting()
         m_bestCandidate = computeTemplateSplitting();
     } else {
         SplittingCandidate cfCand = computeCrossFieldSplitting();
-        SplittingCandidate matCand = computeMedialAxisSplitting();
-        SplittingCandidate tmplCand = computeTemplateSplitting();
+        SplittingCandidate matCand;
+        SplittingCandidate tmplCand;
+        // Avoid re-running the expensive multi-hole triangulation fallback inside MAT/Template in AutomaticBest
+        if (m_domain.numHoles() == 0) {
+            matCand = computeMedialAxisSplitting();
+            tmplCand = computeTemplateSplitting();
+        } else if (m_domain.numHoles() == 1) {
+            tmplCand = computeTemplateSplitting();
+        }
 
         std::vector<SplittingCandidate> validPool;
         if (cfCand.isValid && cfCand.numPatches > 0) validPool.push_back(cfCand);

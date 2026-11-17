@@ -121,7 +121,8 @@ inline bool buildConstrainedDomainTriangulation(
     T targetH,
     bool refineEdges,
     int earMode,
-    TriMeshData<T>& outMesh)
+    TriMeshData<T>& outMesh,
+    T maxBendRad = T(0.44))
 {
     if (dom.numLoops() == 0) return false;
     const int nLoops = dom.numLoops();
@@ -179,7 +180,7 @@ inline bool buildConstrainedDomainTriangulation(
                     bend = std::acos(dot);
                 }
                 int nLen  = static_cast<int>(std::ceil(len / localH));
-                int nBend = static_cast<int>(std::ceil(bend / T(0.44))); // <= ~25 deg per seg
+                int nBend = static_cast<int>(std::ceil(bend / maxBendRad));
                 int nSub = std::max(1, std::min(12, std::max(nLen, nBend)));
                 if (nSub == 1) {
                     loopSegs[l].push_back(s);

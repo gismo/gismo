@@ -96,7 +96,7 @@ public:
 
     void setStrategy(Strategy strategy);
     void setDegree(int degree = 3);
-    void setWeights(T weightPatches = 1.0, T weightDistortion = 0.05);
+    void setWeights(T weightPatches = 2.0, T weightDistortion = 0.01);
 
     // Execution
     /// Full 4-stage pipeline: coarse conforming decomposition -> global polychord optimization
@@ -168,8 +168,8 @@ private:
     gsOptionList        m_options;
     Strategy            m_strategy = Strategy::AutomaticBest;
     int                 m_degree = 3;
-    T                   m_weightPatches = 1.0;
-    T                   m_weightDistortion = 0.05;
+    T                   m_weightPatches = 2.0;
+    T                   m_weightDistortion = 0.01;
 
     SplittingCandidate  m_bestCandidate;
 };
