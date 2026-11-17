@@ -52,11 +52,11 @@
     biharmonic (s=2, p-3). A degree is skipped for a form when p-1-s < 0.
 
     Usage:
-        ./hierarchical_rule_cost [--degrees 2,3,4,5,6] [-d dim] [-l levels]
+        ./hierarchical_rule_cost [--degrees 2,3,4] [-d dim] [-l levels]
                                  [--form mass|stiffness|biharmonic|all]
                                  [--meshPattern lshape|center|diagonal]
                                  [--admissible] [--admissibleJump m]
-                                 [--reps n] [--csv out.csv]
+                                 [--baseRefs k] [--band scaled|thin] [--reps n] [--csv out.csv]
 
     This file is part of the G+Smo library.
 
@@ -76,10 +76,19 @@
 #include <limits>
 #include <cstdlib>
 #include <sstream>
+#if !defined(_WIN32) && !defined(_WIN64)
+#include <unistd.h>
+#endif
 
 using namespace gismo;
 
 enum MeshPattern { PatternLShape, PatternCenter, PatternDiagonal };
+
+// Width of the refinement bands: BandScaled keeps the refined region's physical
+// size for every --baseRefs >= 1 (the centre box is shifted to an even origin,
+// which moves it by one level-targetLevel element at --baseRefs 1); BandThin
+// keeps the bands 4 target-level elements wide.
+enum BandVariant { BandScaled, BandThin };
 
 // ============================================================
 // Mesh helpers (shared verbatim with hierarchical_assembly_hpatch.cpp)
@@ -105,6 +114,26 @@ bool parseMeshPattern(const std::string & pattern, MeshPattern & result)
     return false;
 }
 
+bool parseBandVariant(const std::string & band, BandVariant & result)
+{
+    if (band == "scaled")
+    {
+        result = BandScaled;
+        return true;
+    }
+    if (band == "thin")
+    {
+        result = BandThin;
+        return true;
+    }
+    return false;
+}
+
+const char * bandName(BandVariant band)
+{
+    return band == BandScaled ? "scaled" : "thin";
+}
+
 template<short_t d>
 void appendTargetBox(const typename gsHTensorBasis<d,real_t>::point & low,
                      const typename gsHTensorBasis<d,real_t>::point & upp,
@@ -119,10 +148,17 @@ void appendTargetBox(const typename gsHTensorBasis<d,real_t>::point & low,
 }
 
 template<short_t d>
-std::vector<index_t> makePatternBoxes(index_t targetLevel, MeshPattern pattern)
+std::vector<index_t> makePatternBoxes(index_t targetLevel, MeshPattern pattern,
+                                      index_t baseRefs, BandVariant band)
 {
-    const index_t N = 4 * (1 << targetLevel);
-    const index_t width = 4;
+    // K base elements per direction; N is the pattern extent in level-targetLevel
+    // element indices. Scaled bands are K wide (fixed physical size), thin
+    // bands stay 4 elements wide. baseRefs >= 1 makes K, N and both widths even,
+    // so every box corner is a multiple of 2 and aligns with parent cells; the
+    // centre origin is rounded down to an even index for the same reason.
+    const index_t K = index_t(1) << baseRefs;
+    const index_t N = K * (index_t(1) << targetLevel);
+    const index_t width = (band == BandScaled ? K : std::min<index_t>(4, N));
     std::vector<index_t> boxes;
     typename gsHTensorBasis<d,real_t>::point low, upp;
 
@@ -143,7 +179,7 @@ std::vector<index_t> makePatternBoxes(index_t targetLevel, MeshPattern pattern)
             boxes.reserve(2 * d + 1);
             for (short_t dd = 0; dd < d; ++dd)
             {
-                low[dd] = (N - width) / 2;
+                low[dd] = ((N - width) / 4) * 2;
                 upp[dd] = low[dd] + width;
             }
             appendTargetBox<d>(low, upp, targetLevel, boxes);
@@ -211,11 +247,13 @@ makeMarkedElementsFromBoxes(const std::vector<index_t> & boxes,
 template<short_t d, class T>
 void refineLevel(gsTHBSplineBasis<d,T> & thb,
                  MeshPattern pattern,
+                 index_t baseRefs,
+                 BandVariant band,
                  index_t targetLevel,
                  bool admissible,
                  index_t admissibleJump)
 {
-    const std::vector<index_t> boxes = makePatternBoxes<d>(targetLevel, pattern);
+    const std::vector<index_t> boxes = makePatternBoxes<d>(targetLevel, pattern, baseRefs, band);
     if (!admissible)
     {
         thb.refineElements(boxes);
@@ -239,7 +277,7 @@ void refineLevel(gsTHBSplineBasis<d,T> & thb,
 /// Total number of nodes the rule selected in \a opts produces over the
 /// domain of \a basis, together with the wall-clock time spent CONSTRUCTING
 /// the rule (\a tBuild, seconds, best of \a reps) and the time spent mapping
-/// it to every element (\a tMap, seconds).
+/// it to every element (\a tMap, seconds, best of \a reps).
 template<class T>
 index_t countNodes(const gsBasis<T>    & basis,
                    const gsOptionList  & opts,
@@ -264,15 +302,45 @@ index_t countNodes(const gsBasis<T>    & basis,
     index_t n = 0;
     gsMatrix<T> nodes;
     gsVector<T> weights;
-    clock.restart();
-    for (auto & elem : basis.domain()->allElements())
+    tMap = std::numeric_limits<T>::max();
+    for (index_t k = 0; k < reps; ++k)
     {
-        rule->mapTo(elem.lowerCorner(), elem.upperCorner(), nodes, weights);
-        n += weights.size();
+        index_t nPass = 0;
+        clock.restart();
+        for (auto & elem : basis.domain()->allElements())
+        {
+            rule->mapTo(elem.lowerCorner(), elem.upperCorner(), nodes, weights);
+            nPass += weights.size();
+        }
+        const T t = clock.stop();
+        GISMO_ENSURE(k == 0 || nPass == n, "node count changed between mapping passes");
+        n = nPass;
+        tMap = math::min(tMap, t);
     }
-    tMap = clock.stop();
 
     return n;
+}
+
+/// Run-wide metadata repeated in every CSV row.
+struct RunInfo
+{
+    std::string pattern;   ///< mesh pattern name
+    std::string band;      ///< band variant name
+    index_t     threads;   ///< OpenMP thread count
+    std::string host;      ///< host name, CSV-safe
+    std::string cpu;       ///< CPU model, CSV-safe
+};
+
+/// Trims surrounding whitespace and replaces commas by semicolons so that the
+/// string occupies exactly one CSV field.
+std::string csvSafe(std::string str)
+{
+    for (size_t k = 0; k != str.size(); ++k)
+        if (str[k] == ',') str[k] = ';';
+    const std::string ws = " \t\r\n";
+    const size_t first = str.find_first_not_of(ws);
+    if (first == std::string::npos) return std::string();
+    return str.substr(first, str.find_last_not_of(ws) - first + 1);
 }
 
 // ============================================================
@@ -285,9 +353,12 @@ void measure(index_t        p,
              const std::string & formName,
              index_t        numLevels,
              MeshPattern    pattern,
+             BandVariant    bandVariant,
              bool           admissible,
              index_t        admissibleJump,
              index_t        reps,
+             index_t        baseRefs,
+             const RunInfo & info,
              std::ostream * csv)
 {
     const index_t reg = p - 1 - s;   // target regularity at a simple knot
@@ -296,8 +367,8 @@ void measure(index_t        p,
     // ---- mesh ----
     gsStopwatch clock;
     gsKnotVector<T> kv(0, 1.0, 0, p + 1, 1);
-    kv.uniformRefine();
-    kv.uniformRefine();
+    for (index_t i = 0; i < baseRefs; ++i)
+        kv.uniformRefine();
 
     std::vector<gsKnotVector<T>> kvs;
     for (short_t dd = 0; dd < d; ++dd) kvs.push_back(kv);
@@ -308,7 +379,7 @@ void measure(index_t        p,
     clock.restart();
     thb.uniformRefine();
     for (index_t lvl = 1; lvl <= numLevels; ++lvl)
-        refineLevel<d,T>(thb, pattern, lvl, admissible, admissibleJump);
+        refineLevel<d,T>(thb, pattern, baseRefs, bandVariant, lvl, admissible, admissibleJump);
     const T tMesh = clock.stop();
 
     const index_t nElem = thb.numElements();
@@ -392,7 +463,9 @@ void measure(index_t        p,
                << ratioH << ',' << ratioWQ << ','
                << tMesh << ',' << tBuildG << ',' << tMapG << ','
                << tBuildH << ',' << tMapH << ',' << nFallback << ','
-               << nBoundary << ',' << bdryFrac << '\n';
+               << nBoundary << ',' << bdryFrac << ','
+               << (p - 1) << ',' << info.pattern << ',' << reps << ','
+               << info.threads << ',' << info.host << ',' << info.cpu << ',' << baseRefs << ',' << info.band << '\n';
 }
 
 template<short_t d, class T>
@@ -400,15 +473,20 @@ void run(const std::vector<index_t> & degrees,
          const std::string & form,
          index_t numLevels,
          MeshPattern pattern,
+         BandVariant bandVariant,
          bool admissible,
          index_t admissibleJump,
          index_t reps,
+         index_t baseRefs,
+         const RunInfo & info,
          std::ostream * csv)
 {
     gsInfo << "dim=" << d << "  levels=" << numLevels
            << "  admissible=" << (admissible ? "true" : "false")
            << "  jump=" << admissibleJump
-           << "  reps=" << reps << "\n\n";
+           << "  reps=" << reps
+           << "  threads=" << info.threads << "\n"
+           << "host=" << info.host << "  cpu=" << info.cpu << "\n\n";
 
     gsInfo << std::left
            << std::setw(12) << "form"   << std::setw(4)  << "p"
@@ -424,11 +502,11 @@ void run(const std::vector<index_t> & degrees,
     {
         const index_t p = degrees[k];
         if (form == "mass"       || form == "all")
-            measure<d,T>(p, 0, "mass",       numLevels, pattern, admissible, admissibleJump, reps, csv);
+            measure<d,T>(p, 0, "mass",       numLevels, pattern, bandVariant, admissible, admissibleJump, reps, baseRefs, info, csv);
         if (form == "stiffness"  || form == "all")
-            measure<d,T>(p, 1, "stiffness",  numLevels, pattern, admissible, admissibleJump, reps, csv);
+            measure<d,T>(p, 1, "stiffness",  numLevels, pattern, bandVariant, admissible, admissibleJump, reps, baseRefs, info, csv);
         if (form == "biharmonic" || form == "all")
-            measure<d,T>(p, 2, "biharmonic", numLevels, pattern, admissible, admissibleJump, reps, csv);
+            measure<d,T>(p, 2, "biharmonic", numLevels, pattern, bandVariant, admissible, admissibleJump, reps, baseRefs, info, csv);
     }
     gsInfo << "\n";
 }
@@ -439,10 +517,12 @@ int main(int argc, char * argv[])
     index_t     numLevels      = 3;
     index_t     admissibleJump = 2;
     index_t     reps           = 3;
+    index_t     baseRefs       = 2;
     bool        admissible     = false;
-    std::string degreeList     = "2,3,4,5,6";
+    std::string degreeList     = "2,3,4";
     std::string form           = "all";
     std::string meshPattern    = "lshape";
+    std::string band           = "scaled";
     std::string csvFile        = "";
 
     gsCmdLine cmd("Rule-generation cost and node counts for gsHPatchRule (no assembly).");
@@ -453,7 +533,10 @@ int main(int argc, char * argv[])
     cmd.addString("",  "meshPattern", "Mesh pattern: lshape, center, diagonal", meshPattern);
     cmd.addSwitch("",  "admissible", "Apply admissible closure to the marked region", admissible);
     cmd.addInt   ("",  "admissibleJump", "Jump parameter m for admissible refinement", admissibleJump);
-    cmd.addInt   ("",  "reps",    "Repetitions for the construction timing (best of)", reps);
+    cmd.addInt   ("",  "reps",    "Repetitions for the construction and mapping timings (best of)", reps);
+    cmd.addString("",  "band",
+                  "Refinement band variant: scaled (band width grows with --baseRefs) or thin (4 elements wide)", band);
+    cmd.addInt   ("",  "baseRefs", "Uniform refinements of the base knot vector (2: 4 elements per direction before the level-0 refinement)", baseRefs);
     cmd.addString("",  "csv",     "Write one row per measurement to this file", csvFile);
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
 
@@ -472,6 +555,19 @@ int main(int argc, char * argv[])
     {
         gsInfo << "Error: admissibleJump must be >= 1.\n";
         return 1;
+    }
+    if (baseRefs < 1)
+    {
+        gsInfo << "Error: baseRefs must be >= 1 (pattern boxes must align with parent elements).\n";
+        return 2;
+    }
+
+    BandVariant bandVariant = BandScaled;
+    if (!parseBandVariant(band, bandVariant))
+    {
+        gsInfo << "Error: unknown band '" << band
+               << "'. Expected one of: scaled, thin.\n";
+        return 2;
     }
 
     MeshPattern pattern = PatternLShape;
@@ -504,14 +600,32 @@ int main(int argc, char * argv[])
         csvStream << "form,dim,p,levels,admissible,jump,nElem,nDof,maxLevel,"
                      "nGauss,nHPatch,nWQmodel,ratioH,ratioWQ,"
                      "tMesh,tBuildGauss,tMapGauss,tBuildHPatch,tMapHPatch,nFallback,"
-                     "nBoundaryElem,boundaryFraction\n";
+                     "nBoundaryElem,boundaryFraction,"
+                     "r,pattern,reps,threads,host,cpu,baseRefs,band\n";
         csv = &csvStream;
     }
 
-    if      (dim == 1) run<1, real_t>(degrees, form, numLevels, pattern, admissible, admissibleJump, reps, csv);
-    else if (dim == 2) run<2, real_t>(degrees, form, numLevels, pattern, admissible, admissibleJump, reps, csv);
-    else if (dim == 3) run<3, real_t>(degrees, form, numLevels, pattern, admissible, admissibleJump, reps, csv);
-    else if (dim == 4) run<4, real_t>(degrees, form, numLevels, pattern, admissible, admissibleJump, reps, csv);
+    RunInfo info;
+    info.pattern = meshPattern;
+    info.band    = band;
+    info.threads = omp_get_max_threads();
+    {
+#if !defined(_WIN32) && !defined(_WIN64)
+        char buf[256];
+        const bool ok = (gethostname(buf, sizeof(buf)) == 0);
+        buf[sizeof(buf) - 1] = '\0';
+        info.host = csvSafe(ok ? std::string(buf) : std::string("unknown"));
+#else
+        const char * h = std::getenv("COMPUTERNAME");
+        info.host = csvSafe(h ? std::string(h) : std::string("unknown"));
+#endif
+    }
+    info.cpu = csvSafe(gsSysInfo::getCpuInfo());
+
+    if      (dim == 1) run<1, real_t>(degrees, form, numLevels, pattern, bandVariant, admissible, admissibleJump, reps, baseRefs, info, csv);
+    else if (dim == 2) run<2, real_t>(degrees, form, numLevels, pattern, bandVariant, admissible, admissibleJump, reps, baseRefs, info, csv);
+    else if (dim == 3) run<3, real_t>(degrees, form, numLevels, pattern, bandVariant, admissible, admissibleJump, reps, baseRefs, info, csv);
+    else if (dim == 4) run<4, real_t>(degrees, form, numLevels, pattern, bandVariant, admissible, admissibleJump, reps, baseRefs, info, csv);
     else { gsInfo << "Error: dimension must be 1..4.\n"; return 1; }
 
     if (csv != nullptr) csvStream.close();

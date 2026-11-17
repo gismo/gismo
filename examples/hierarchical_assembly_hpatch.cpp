@@ -1,17 +1,23 @@
 /** @file hierarchical_assembly_hpatch.cpp
 
-    @brief Assembly test for gsHPatchRule: mass, stiffness, and biharmonic
-    matrices assembled with gsExprAssembler using three quadrature rules and
-    compared against element-wise Gauss quadrature.
+    @brief Assembly benchmark for gsHPatchRule: mass, stiffness, and biharmonic
+    matrices assembled with gsExprAssembler using gsHPatchRule (per-atomic-cell
+    hierarchical patch rule) and compared against element-wise Gauss-Legendre
+    quadrature.
 
-    The three rules (selected through the gsExprAssembler `quRule` option) are:
-      1 = Gauss-Legendre (reference),
-      3 = gsPatchRule    (hierarchical basis -> defaults to the finest level),
-      4 = gsHPatchRule   (per-atomic-cell hierarchical patch rule).
+    For each bilinear form the matrix is assembled with Gauss and with
+    gsHPatchRule; the error reported is ||M_rule - M_gauss||_inf together with
+    the total number of quadrature points and the timings.
 
-    For each bilinear form the matrix is assembled with all three rules; the
-    error reported is ||M_rule - M_gauss||_inf together with the total number
-    of quadrature points and the assembly time.
+    Both rules are built once, before the assembly, and handed to
+    gsExprAssembler through its quadrature factory (setQuadratureFactory) behind
+    the same forwarding wrapper, so both pay the same per-element dispatch.
+    Four timings are kept apart (seconds):
+      tMesh  : construction of the THB-spline mesh (once per run),
+      tBuild : construction of the quadrature rule,
+      tInit  : initSystem() and computation of the sparsity pattern,
+      tAsm   : one assemble() call on the initialised system, minimum over
+               --reps repetitions; Gauss and hpatch alternate within the loop.
 
     Forms:
       MASS       :  u * u^T
@@ -21,8 +27,20 @@
     The geometry is the identity map on the parameter domain, so meas(G)=1 and
     the assembled forms are the parametric mass/stiffness/biharmonic matrices.
 
+    With --csv one row per (form, rule) is written, columns:
+      form,dim,p,r,levels,pattern,admissible,jump,nElem,nDof,maxLevel,rule,
+      nPts,nFallback,absErr,relErr,tMesh,tBuild,tInit,tAsm,reps,threads,host,cpu,baseRefs,band
+
+    The shared rule keeps a per-instance cache and the timings are meant to be
+    serial, so the driver must be run with OMP_NUM_THREADS=1 (every run,
+    including --plot); otherwise it exits with code 2.
+
     Usage:
-        ./hierarchical_assembly_hpatch [-P deg] [-R reg] [-l levels] [-d dim] [--plot]
+        OMP_NUM_THREADS=1 ./hierarchical_assembly_hpatch [-P deg] [-R reg] [-l levels]
+            [-d dim] [--form mass|stiffness|biharmonic|all] [--reps n] [--csv file]
+            [--meshPattern lshape|center|diagonal] [--admissible] [--admissibleJump m]
+            [--baseRefs k] [--band scaled|thin] [--integrationBasis] [--plot]
+    The regularity -R defaults to deg-1.
 
     This file is part of the G+Smo library.
 
@@ -45,6 +63,12 @@ using namespace gismo;
 // ============================================================
 enum FormType { MASS, STIFFNESS, BIHARMONIC };
 enum MeshPattern { PatternLShape, PatternCenter, PatternDiagonal };
+
+// Width of the refinement bands: BandScaled keeps the refined region's physical
+// size for every --baseRefs >= 1 (the centre box is shifted to an even origin,
+// which moves it by one level-targetLevel element at --baseRefs 1); BandThin
+// keeps the bands 4 target-level elements wide.
+enum BandVariant { BandScaled, BandThin };
 
 // ============================================================
 // Helpers
@@ -85,50 +109,151 @@ T sparseMaxAbs(const gsSparseMatrix<T> & m)
     return mx;
 }
 
-/// Total number of quadrature points produced by the rule selected in \a opts
-/// over the domain of \a basis (the rule is built once and mapped per element).
+/// Total number of quadrature points that assemble() evaluates when it maps
+/// \a rule onto every element of the domain of \a basis.
 template<class T>
-index_t countPoints(const gsBasis<T> & basis, const gsOptionList & opts)
+index_t countPoints(const gsBasis<T> & basis, const gsQuadRule<T> & rule)
 {
-    typename gsQuadRule<T>::uPtr rule = gsQuadrature::getPtr(basis, opts);
     index_t n = 0;
     gsMatrix<T> nodes; gsVector<T> weights;
     for (auto & elem : basis.domain()->allElements())
     {
-        rule->mapTo(elem.lowerCorner(), elem.upperCorner(), nodes, weights);
+        rule.mapTo(elem.lowerCorner(), elem.upperCorner(), nodes, weights);
         n += weights.size();
     }
     return n;
 }
 
-/// Assemble one bilinear \a form. The DoFs are always defined by \a spaceMB
-/// (the original basis); the quadrature rule and element iteration use
-/// \a integMB as the integration domain.
-template<short_t d, class T>
-gsSparseMatrix<T> assembleForm(const gsMultiBasis<T> & spaceMB,
-                               const gsMultiBasis<T> & integMB,
-                               const gsMultiPatch<T> & mp,
-                               FormType                form,
-                               const gsOptionList    & opts,
-                               T                     & time)
+/// Quadrature rule that forwards mapTo() to a shared, prebuilt rule.
+///
+/// gsExprAssembler asks its quadrature factory for a fresh rule per patch and
+/// thread; this wrapper lets the factory hand out a rule that was built (and
+/// timed) beforehand. It holds no per-thread state: the shared rule may cache
+/// data between calls (gsHPatchRule does), so the wrapper is valid for serial
+/// runs only. numNodes() and dim() of the base class are not forwarded.
+template<class T>
+class gsForwardingQuadRule : public gsQuadRule<T>
 {
-    gsExprAssembler<T> A(1,1);
-    A.setOptions(opts);
-    A.setIntegrationElements(integMB);   // drives quadrature + element iteration
+public:
+    explicit gsForwardingQuadRule(memory::shared_ptr<const gsQuadRule<T> > rule)
+    : m_rule(give(rule)) { }
 
-    auto G = A.getMap(mp);
-    auto u = A.getSpace(spaceMB);        // drives the DoFs
+    using gsQuadRule<T>::mapTo;
 
+    void mapTo(const gsVector<T>& lower, const gsVector<T>& upper,
+               gsMatrix<T>& nodes, gsVector<T>& weights) const override
+    { m_rule->mapTo(lower, upper, nodes, weights); }
+
+    void mapTo(T startVal, T endVal,
+               gsMatrix<T>& nodes, gsVector<T>& weights) const override
+    { m_rule->mapTo(startVal, endVal, nodes, weights); }
+
+private:
+    memory::shared_ptr<const gsQuadRule<T> > m_rule;
+};
+
+/// Assembler together with the geometry map and trial space it hands out, set
+/// up to integrate with one prebuilt quadrature rule.
+///
+/// The DoFs are defined by \a spaceMB (the original basis); element iteration
+/// uses \a integMB as the integration domain.
+template<class T>
+struct AssemblyArm
+{
+    typedef typename gsExprAssembler<T>::QuadratureRulePtr QuadratureRulePtr;
+
+    gsExprAssembler<T>                      A;
+    typename gsExprAssembler<T>::geometryMap G;
+    typename gsExprAssembler<T>::space       u;
+
+    AssemblyArm(const gsMultiBasis<T> & spaceMB,
+                const gsMultiBasis<T> & integMB,
+                const gsMultiPatch<T> & mp,
+                memory::shared_ptr<const gsQuadRule<T> > rule)
+    : A(1,1), G(A.getMap(mp)), u(A.getSpace(spaceMB))
+    {
+        A.setIntegrationElements(integMB);
+        A.setQuadratureFactory(
+            [rule](const gsBasis<T> & basis, const gsOptionList & options,
+                   index_t patch, short_t fixedDirection) -> QuadratureRulePtr
+            {
+                GISMO_UNUSED(basis); GISMO_UNUSED(options); GISMO_UNUSED(patch);
+                GISMO_ENSURE(fixedDirection == -1,
+                             "The forwarding rule serves volume integration only.");
+                return QuadratureRulePtr(new gsForwardingQuadRule<T>(rule));
+            });
+    }
+
+private:
+    AssemblyArm(const AssemblyArm &);
+    AssemblyArm & operator=(const AssemblyArm &);
+};
+
+/// Timings of one arm, in seconds.
+struct ArmTimes
+{
+    double init;   ///< initSystem() and sparsity pattern
+    double assem;  ///< minimum over the repetitions of one assemble() call
+};
+
+/// Assemble the bilinear form \a e (same expression in every call) \a reps times
+/// on each of the two arms, alternating between them.
+///
+/// The system is initialised and its pattern computed once per arm (tInit).
+/// Before each repetition the values are zeroed in place with clearMatrix(),
+/// which keeps the pattern; only the assemble() call is timed. Alternating the
+/// arms spreads drifts of the machine (frequency, caches) over both.
+template<class T, class ExprA, class ExprB>
+void timeAssembly(AssemblyArm<T> & a, ExprA ea,
+                  AssemblyArm<T> & b, ExprB eb,
+                  index_t reps, ArmTimes & ta, ArmTimes & tb)
+{
     gsStopwatch sw;
-    A.initSystem();
+    a.A.initSystem();
+    a.A.computePattern(ea);
+    ta.init = sw.stop();
+    sw.restart();
+    b.A.initSystem();
+    b.A.computePattern(eb);
+    tb.init = sw.stop();
+
+    ta.assem = tb.assem = std::numeric_limits<double>::max();
+    for (index_t k = 0; k < reps; ++k)
+    {
+        a.A.clearMatrix();
+        sw.restart();
+        a.A.assemble(ea);
+        ta.assem = std::min(ta.assem, sw.stop());
+
+        b.A.clearMatrix();
+        sw.restart();
+        b.A.assemble(eb);
+        tb.assem = std::min(tb.assem, sw.stop());
+    }
+}
+
+/// Selects the bilinear form and runs timeAssembly() on the two arms.
+template<class T>
+void timeForm(FormType form, AssemblyArm<T> & a, AssemblyArm<T> & b,
+              index_t reps, ArmTimes & ta, ArmTimes & tb)
+{
     switch (form)
     {
-        case MASS:       A.assemble( u * u.tr() * meas(G) ); break;
-        case STIFFNESS:  A.assemble( igrad(u,G) * igrad(u,G).tr() * meas(G) ); break;
-        case BIHARMONIC: A.assemble( ilapl(u,G) * ilapl(u,G).tr() * meas(G) ); break;
+        case MASS:
+            timeAssembly(a, a.u * a.u.tr() * meas(a.G),
+                         b, b.u * b.u.tr() * meas(b.G), reps, ta, tb);
+            break;
+        case STIFFNESS:
+            timeAssembly(a, igrad(a.u,a.G) * igrad(a.u,a.G).tr() * meas(a.G),
+                         b, igrad(b.u,b.G) * igrad(b.u,b.G).tr() * meas(b.G),
+                         reps, ta, tb);
+            break;
+        case BIHARMONIC:
+            timeAssembly(a, ilapl(a.u,a.G) * ilapl(a.u,a.G).tr() * meas(a.G),
+                         b, ilapl(b.u,b.G) * ilapl(b.u,b.G).tr() * meas(b.G),
+                         reps, ta, tb);
+            break;
     }
-    time = sw.stop();
-    return A.matrix();
 }
 
 /// Assemble the load vector b_i = ∫ N_i dΩ (integral of each basis function).
@@ -173,6 +298,26 @@ bool parseMeshPattern(const std::string & pattern, MeshPattern & result)
     return false;
 }
 
+bool parseBandVariant(const std::string & band, BandVariant & result)
+{
+    if (band == "scaled")
+    {
+        result = BandScaled;
+        return true;
+    }
+    if (band == "thin")
+    {
+        result = BandThin;
+        return true;
+    }
+    return false;
+}
+
+const char * bandName(BandVariant band)
+{
+    return band == BandScaled ? "scaled" : "thin";
+}
+
 template<short_t d>
 void appendTargetBox(const typename gsHTensorBasis<d,real_t>::point & low,
                      const typename gsHTensorBasis<d,real_t>::point & upp,
@@ -187,10 +332,17 @@ void appendTargetBox(const typename gsHTensorBasis<d,real_t>::point & low,
 }
 
 template<short_t d>
-std::vector<index_t> makePatternBoxes(index_t targetLevel, MeshPattern pattern)
+std::vector<index_t> makePatternBoxes(index_t targetLevel, MeshPattern pattern,
+                                      index_t baseRefs, BandVariant band)
 {
-    const index_t N = 4 * (1 << targetLevel);
-    const index_t width = 4;
+    // K base elements per direction; N is the pattern extent in level-targetLevel
+    // element indices. Scaled bands are K wide (fixed physical size), thin
+    // bands stay 4 elements wide. baseRefs >= 1 makes K, N and both widths even,
+    // so every box corner is a multiple of 2 and aligns with parent cells; the
+    // centre origin is rounded down to an even index for the same reason.
+    const index_t K = index_t(1) << baseRefs;
+    const index_t N = K * (index_t(1) << targetLevel);
+    const index_t width = (band == BandScaled ? K : std::min<index_t>(4, N));
     std::vector<index_t> boxes;
     typename gsHTensorBasis<d,real_t>::point low, upp;
 
@@ -211,7 +363,7 @@ std::vector<index_t> makePatternBoxes(index_t targetLevel, MeshPattern pattern)
             boxes.reserve(2 * d + 1);
             for (short_t dd = 0; dd < d; ++dd)
             {
-                low[dd] = (N - width) / 2;
+                low[dd] = ((N - width) / 4) * 2;
                 upp[dd] = low[dd] + width;
             }
             appendTargetBox<d>(low, upp, targetLevel, boxes);
@@ -279,11 +431,13 @@ makeMarkedElementsFromBoxes(const std::vector<index_t> & boxes,
 template<short_t d, class T>
 void refineLevel(gsTHBSplineBasis<d,T> & thb,
                  MeshPattern pattern,
+                 index_t baseRefs,
+                 BandVariant band,
                  index_t targetLevel,
                  bool admissible,
                  index_t admissibleJump)
 {
-    const std::vector<index_t> boxes = makePatternBoxes<d>(targetLevel, pattern);
+    const std::vector<index_t> boxes = makePatternBoxes<d>(targetLevel, pattern, baseRefs, band);
     if (!admissible)
     {
         thb.refineElements(boxes);
@@ -301,11 +455,110 @@ void refineLevel(gsTHBSplineBasis<d,T> & thb,
 }
 
 // ============================================================
-// Compare the three rules for one bilinear form
+// Benchmark configuration and CSV output
+// ============================================================
+
+/// Command-line settings that are shared by all rows of a run.
+struct BenchConfig
+{
+    index_t       dim;
+    index_t       p;
+    index_t       r;               ///< basis regularity
+    index_t       numLevels;
+    MeshPattern   pattern;
+    BandVariant   band;            ///< width of the refinement bands
+    bool          admissible;
+    index_t       admissibleJump;
+    bool          plot;
+    bool          useIntegrationBasis;
+    std::string   form;            ///< mass, stiffness, biharmonic or all
+    index_t       reps;
+    index_t       baseRefs;        ///< uniform refinements of the base knot vector
+    std::ofstream * csv;           ///< open CSV file, or NULL
+    // Filled in once the mesh exists
+    index_t       nElem;
+    index_t       nDof;
+    index_t       maxLevel;
+    double        tMesh;
+};
+
+const char * patternName(MeshPattern pattern)
+{
+    return pattern == PatternLShape ? "lshape" :
+           pattern == PatternCenter ? "center" : "diagonal";
+}
+
+/// Header line of the CSV file.
+const char * csvHeader()
+{
+    return "form,dim,p,r,levels,pattern,admissible,jump,nElem,nDof,maxLevel,"
+           "rule,nPts,nFallback,absErr,relErr,tMesh,tBuild,tInit,tAsm,"
+           "reps,threads,host,cpu,baseRefs,band";
+}
+
+/// Host name of the machine, or "unknown".
+std::string hostName()
+{
+    std::ifstream in("/proc/sys/kernel/hostname");
+    std::string line;
+    if (!std::getline(in, line) || line.empty())
+        return "unknown";
+    return line;
+}
+
+/// Model name of the first CPU listed in /proc/cpuinfo with commas replaced by
+/// blanks (so that it is a single CSV field), or "unknown".
+std::string cpuModel()
+{
+    std::ifstream in("/proc/cpuinfo");
+    std::string line;
+    while (std::getline(in, line))
+    {
+        if (line.compare(0, 10, "model name") != 0)
+            continue;
+        const size_t colon = line.find(':');
+        if (colon == std::string::npos)
+            break;
+        std::string name = line.substr(colon + 1);
+        const size_t first = name.find_first_not_of(" \t");
+        const size_t last  = name.find_last_not_of(" \t\r\n");
+        if (first == std::string::npos)
+            break;
+        name = name.substr(first, last - first + 1);
+        std::replace(name.begin(), name.end(), ',', ' ');
+        return name;
+    }
+    return "unknown";
+}
+
+/// Appends one (form, rule) row to the CSV file of \a cfg, if there is one.
+void writeCsvRow(const BenchConfig & cfg, const std::string & form,
+                 const std::string & rule, index_t nPts, index_t nFallback,
+                 double absErr, double relErr, double tBuild, double tInit,
+                 double tAsm)
+{
+    if (!cfg.csv)
+        return;
+    std::ofstream & os = *cfg.csv;
+    os << std::scientific << std::setprecision(10);
+    os << form << ',' << cfg.dim << ',' << cfg.p << ',' << cfg.r << ','
+       << cfg.numLevels << ',' << patternName(cfg.pattern) << ','
+       << (cfg.admissible ? 1 : 0) << ',' << cfg.admissibleJump << ','
+       << cfg.nElem << ',' << cfg.nDof << ',' << cfg.maxLevel << ','
+       << rule << ',' << nPts << ',' << nFallback << ','
+       << absErr << ',' << relErr << ','
+       << cfg.tMesh << ',' << tBuild << ',' << tInit << ',' << tAsm << ','
+       << cfg.reps << ',' << omp_get_max_threads() << ','
+       << hostName() << ',' << cpuModel() << ',' << cfg.baseRefs << ',' << bandName(cfg.band) << '\n';
+}
+
+// ============================================================
+// Compare the two rules for one bilinear form
 // ============================================================
 
 template<short_t d, class T>
-void compareRules(const std::string     & formName,
+void compareRules(const BenchConfig     & cfg,
+                  const std::string     & formName,
                   const gsMultiBasis<T> & spaceMB,
                   const gsMultiBasis<T> & integMB,
                   const gsMultiPatch<T> & mp,
@@ -313,40 +566,50 @@ void compareRules(const std::string     & formName,
                   index_t                 quA,
                   index_t                 quB)
 {
-    auto makeOpts = [&](index_t quRule)
-    {
-        gsOptionList o = gsExprAssembler<T>::defaultOptions();
-        o.setInt ("quRule", quRule);
-        o.setReal("quA", static_cast<T>(quA));
-        o.setInt ("quB", quB);
-        return o;
-    };
-
     gsOptionList optGauss = gsExprAssembler<T>::defaultOptions();
     optGauss.setInt ("quRule", gsQuadrature::GaussLegendre);
     optGauss.setReal("quA", static_cast<T>(1.0));
     optGauss.setInt ("quB", 1);
-    // gsOptionList optPatch  = makeOpts(gsQuadrature::PatchRule);
-    gsOptionList optHPatch = makeOpts(gsQuadrature::HPatchRule);
+    // Option path of the RHS diagnostic below (selects gsHPatchRule)
+    gsOptionList optHPatch = gsExprAssembler<T>::defaultOptions();
+    optHPatch.setInt ("quRule", gsQuadrature::HPatchRule);
+    optHPatch.setReal("quA", static_cast<T>(quA));
+    optHPatch.setInt ("quB", quB);
 
-    // Gauss and gsPatchRule integrate on the original domain (they do not need
-    // the refined integration basis); gsHPatchRule uses integMB.
-    T tGauss = 0, tPatch = 0, tHPatch = 0;
-    const gsSparseMatrix<T> Mgauss  = assembleForm<d,T>(spaceMB, spaceMB, mp, form, optGauss,  tGauss);
-    // const gsSparseMatrix<T> Mpatch  = assembleForm<d,T>(spaceMB, spaceMB, mp, form, optPatch,  tPatch);
-    const gsSparseMatrix<T> Mhpatch = assembleForm<d,T>(spaceMB, integMB, mp, form, optHPatch, tHPatch);
+    // Prebuilt rules. Gauss integrates on the original domain, gsHPatchRule on
+    // the integration domain; only the constructors are timed.
+    gsStopwatch sw;
+    double tBuildGauss = 0, tBuildHPatch = 0;
+    sw.restart();
+    typename gsQuadRule<T>::uPtr gaussUnique = gsQuadrature::getPtr(spaceMB.basis(0), optGauss);
+    tBuildGauss = sw.stop();
+    memory::shared_ptr<const gsQuadRule<T> > gaussRule(gaussUnique.release());
 
-    const index_t nGauss  = countPoints(spaceMB.basis(0), optGauss);
-    // const index_t nPatch  = countPoints(spaceMB.basis(0), optPatch);
-    const index_t nHPatch = countPoints(integMB.basis(0), optHPatch);
+    memory::shared_ptr<gsDomain<T> > integDomain = integMB.basis(0).domain();
+    sw.restart();
+    memory::shared_ptr<gsHPatchRule<T> > hpatchRule(
+        new gsHPatchRule<T>(*integDomain, quA, quB, false));
+    tBuildHPatch = sw.stop();
+
+    AssemblyArm<T> armGauss (spaceMB, spaceMB, mp, gaussRule);
+    AssemblyArm<T> armHPatch(spaceMB, integMB,  mp, hpatchRule);
+
+    ArmTimes tGauss, tHPatch;
+    timeForm(form, armGauss, armHPatch, cfg.reps, tGauss, tHPatch);
+    const gsSparseMatrix<T> Mgauss  = armGauss.A.matrix();
+    const gsSparseMatrix<T> Mhpatch = armHPatch.A.matrix();
+
+    const index_t nGauss  = countPoints(spaceMB.basis(0), *gaussRule);
+    const index_t nHPatch = countPoints(integMB.basis(0), *hpatchRule);
 
     // Reference magnitude for relative error (biharmonic entries are huge,
     // ~h^-4, so absolute error is not a meaningful exactness measure there).
     const T magGauss  = sparseMaxAbs(Mgauss);
-    // const T errPatch  = sparseDiffMaxAbs(Mpatch,  Mgauss);
     const T errHPatch = sparseDiffMaxAbs(Mhpatch, Mgauss);
+    const T relHPatch = magGauss > 0 ? errHPatch / magGauss : errHPatch;
 
-    auto row = [&](const std::string & name, index_t npts, T err, T ratio, T tm)
+    auto row = [&](const std::string & name, index_t npts, T err, T ratio,
+                   double tAsm, double tBuild, double tInit)
     {
         gsInfo << std::left
                << std::setw(12) << name
@@ -355,7 +618,9 @@ void compareRules(const std::string     & formName,
                << std::setw(14) << std::scientific << std::setprecision(3)
                                 << (magGauss > 0 ? err / magGauss : err)
                << std::setw(9)  << std::fixed << std::setprecision(3) << ratio
-               << std::setw(10) << std::fixed << std::setprecision(4) << tm
+               << std::setw(10) << std::fixed << std::setprecision(4) << tAsm
+               << std::setw(10) << std::fixed << std::setprecision(4) << tBuild
+               << std::setw(10) << std::fixed << std::setprecision(4) << tInit
                << "\n";
     };
 
@@ -364,10 +629,18 @@ void compareRules(const std::string     & formName,
     gsInfo << std::left
            << std::setw(12) << "Rule" << std::setw(12) << "nPts"
            << std::setw(14) << "abs.err" << std::setw(14) << "rel.err"
-           << std::setw(9)  << "ratio" << std::setw(10) << "Time (s)" << "\n";
-    row("Gauss",        nGauss,  T(0),      T(1),                          tGauss);
-    // row("gsPatchRule",  nPatch,  errPatch,  (T)nPatch  / nGauss,           tPatch);
-    row("gsHPatchRule", nHPatch, errHPatch, (T)nHPatch / nGauss,           tHPatch);
+           << std::setw(9)  << "ratio" << std::setw(10) << "Time (s)"
+           << std::setw(10) << "tBuild" << std::setw(10) << "tInit" << "\n";
+    row("Gauss",        nGauss,  T(0),      T(1),                 tGauss.assem,  tBuildGauss,  tGauss.init);
+    row("gsHPatchRule", nHPatch, errHPatch, (T)nHPatch / nGauss,  tHPatch.assem, tBuildHPatch, tHPatch.init);
+
+    const std::string csvForm = form == MASS ? "mass" :
+                                form == STIFFNESS ? "stiffness" : "biharmonic";
+    writeCsvRow(cfg, csvForm, "gauss", nGauss, 0, 0.0, 0.0,
+                tBuildGauss, tGauss.init, tGauss.assem);
+    writeCsvRow(cfg, csvForm, "hpatch", nHPatch, hpatchRule->numFallbackCells(),
+                errHPatch, relHPatch,
+                tBuildHPatch, tHPatch.init, tHPatch.assem);
 
     // --- RHS diagnostic: b_i = ∫ N_i dΩ ---
     // Reveals per-function integration errors more directly than the matrix.
@@ -398,21 +671,17 @@ void compareRules(const std::string     & formName,
 // ============================================================
 
 template<short_t d, class T>
-void run(bool plot,
-         index_t numLevels,
-         index_t p,
-         index_t r,
-         bool useIntegrationBasis,
-         MeshPattern pattern,
-         bool admissible,
-         index_t admissibleJump)
+void run(BenchConfig & cfg)
 {
+    const index_t p = cfg.p, r = cfg.r;
+    const bool plot = cfg.plot;
+
     // ------------------------------------------------------------------
     // Build THB-spline basis with configurable local refinement
     // ------------------------------------------------------------------
     gsKnotVector<T> kv(0, 1.0, 0, p + 1, 1);
-    kv.uniformRefine();
-    kv.uniformRefine();
+    for (index_t i = 0; i < cfg.baseRefs; ++i)
+        kv.uniformRefine();
 
     std::vector<gsKnotVector<T>> kvs;
     for (short_t dd = 0; dd < d; ++dd) kvs.push_back(kv);
@@ -421,18 +690,23 @@ void run(bool plot,
     gsTHBSplineBasis<d,T>     thb(tbsb);
 
     gsInfo << "Building geometry..." << std::flush;
+    gsStopwatch meshTimer;
     {
         thb.uniformRefine();
-        for (index_t lvl = 1; lvl <= numLevels; ++lvl)
-            refineLevel<d,T>(thb, pattern, lvl, admissible, admissibleJump);
+        for (index_t lvl = 1; lvl <= cfg.numLevels; ++lvl)
+            refineLevel<d,T>(thb, cfg.pattern, cfg.baseRefs, cfg.band, lvl, cfg.admissible, cfg.admissibleJump);
     }
+    cfg.tMesh     = meshTimer.stop();
+    cfg.nElem     = thb.numElements();
+    cfg.nDof      = thb.size();
+    cfg.maxLevel  = thb.maxLevel();
     gsInfo << " done.\n";
 
     // The DoFs are ALWAYS defined by the original thb. The integration basis
     // (optionally refined via makeIntegrationBasis) only serves as the
     // integration domain for gsHPatchRule.
     gsTHBSplineBasis<d,T> integThb(thb);
-    if (useIntegrationBasis)
+    if (cfg.useIntegrationBasis)
     {
         integThb = gsHPatchRule<T>::template makeIntegrationBasis<d>(thb);
         gsInfo << "Integration basis: refined from " << thb.size()
@@ -440,13 +714,10 @@ void run(bool plot,
                << integThb.numElements() << " elements)\n";
     }
 
-    const char * patternName =
-        pattern == PatternLShape ? "lshape" :
-        pattern == PatternCenter ? "center" : "diagonal";
     gsInfo << "Basis: degree=" << p << "  regularity=" << r
-           << "  pattern=" << patternName
-           << "  admissible=" << (admissible ? "true" : "false")
-           << "  jump=" << admissibleJump
+           << "  pattern=" << patternName(cfg.pattern)
+           << "  admissible=" << (cfg.admissible ? "true" : "false")
+           << "  jump=" << cfg.admissibleJump
            << "  maxLevel=" << thb.maxLevel() << "  DOF=" << thb.size()
            << "  elements=" << thb.numElements() << "\n\n";
 
@@ -497,12 +768,15 @@ void run(bool plot,
     // ------------------------------------------------------------------
     // Assemble and compare (quA = 2p target degree; quB = target regularity)
     // ------------------------------------------------------------------
-    compareRules<d,T>("Mass",      spaceMB, integMB, mp, MASS,      2*p, r);
-    compareRules<d,T>("Stiffness", spaceMB, integMB, mp, STIFFNESS, 2*p, r-1);
+    const bool all = cfg.form == "all";
+    if (all || cfg.form == "mass")
+        compareRules<d,T>(cfg, "Mass",      spaceMB, integMB, mp, MASS,      2*p, r);
+    if (all || cfg.form == "stiffness")
+        compareRules<d,T>(cfg, "Stiffness", spaceMB, integMB, mp, STIFFNESS, 2*p, r-1);
 
-    if (r >= 2)
-        compareRules<d,T>("Biharmonic", spaceMB, integMB, mp, BIHARMONIC, 2*p, r-2);
-    else
+    if (cfg.form == "biharmonic" || (all && r >= 2))
+        compareRules<d,T>(cfg, "Biharmonic", spaceMB, integMB, mp, BIHARMONIC, 2*p, r-2);
+    else if (all)
         gsInfo << "Biharmonic: skipped (requires regularity >= 2; use -P 3 -R 2)\n";
 
     // gsHPatchRule diagnostics (fallback cells, on the integration domain)
@@ -520,24 +794,40 @@ void run(bool plot,
 int main(int argc, char * argv[])
 {
     index_t p          = 2;
-    index_t r          = 1;
+    index_t r          = -1;
     index_t numLevels  = 3;
     index_t dim        = 2;
     index_t admissibleJump = 2;
+    index_t reps       = 5;
+    index_t baseRefs   = 2;
     bool    plot       = false;
     bool    integBasis = false;
     bool    admissible = false;
     std::string meshPattern = "lshape";
+    std::string band = "scaled";
+    std::string form = "all";
+    std::string csvFile;
 
-    gsCmdLine cmd("Assembly test: gsHPatchRule vs Gauss and gsPatchRule (gsExprAssembler).");
+    gsCmdLine cmd("Assembly benchmark: gsHPatchRule vs Gauss (gsExprAssembler).");
     cmd.addInt   ("P", "deg",    "Polynomial degree",           p);
-    cmd.addInt   ("R", "reg",    "Regularity",                  r);
+    cmd.addInt   ("R", "reg",    "Regularity (-1: degree - 1)", r);
     cmd.addInt   ("l", "levels", "Number of refinement levels", numLevels);
     cmd.addInt   ("d", "dim",    "Problem dimension (1..4)",    dim);
     cmd.addInt   ("",  "admissibleJump",
                   "Jump parameter m for admissible refinement", admissibleJump);
     cmd.addString("",  "meshPattern",
                   "Mesh pattern: lshape, center, diagonal", meshPattern);
+    cmd.addString("",  "form",
+                  "Bilinear form: mass, stiffness, biharmonic, all", form);
+    cmd.addInt   ("",  "reps",
+                  "Repetitions of assemble(); the minimum time is reported", reps);
+    cmd.addString("",  "band",
+                  "Refinement band variant: scaled (band width grows with --baseRefs) or thin (4 elements wide)", band);
+    cmd.addInt   ("",  "baseRefs",
+                  "Uniform refinements of the base knot vector "
+                  "(2: 4 elements per direction before the level-0 refinement)", baseRefs);
+    cmd.addString("",  "csv",
+                  "Write one CSV row per (form, rule) to this file", csvFile);
     cmd.addSwitch("",  "admissible",
                   "Apply admissible closure to the marked refinement region", admissible);
     cmd.addSwitch("plot",        "Write ParaView mesh",         plot);
@@ -545,15 +835,55 @@ int main(int argc, char * argv[])
                   "Refine THB via makeIntegrationBasis before assembly", integBasis);
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
 
-    if (r >= p)
+    // The prebuilt rule is shared by all elements and caches data between
+    // calls; the timings are serial by design.
+    if (omp_get_max_threads() > 1)
     {
-        gsInfo << "Error: regularity must be < degree.\n";
-        return 1;
+        gsWarn << "This benchmark requires OMP_NUM_THREADS=1 (found "
+               << omp_get_max_threads() << " threads).\n";
+        return 2;
+    }
+
+    if (r == -1)
+        r = p - 1;
+    if (r < 0 || r >= p)
+    {
+        gsInfo << "Error: regularity must be in [0, degree).\n";
+        return EXIT_FAILURE;
     }
     if (admissibleJump < 1)
     {
         gsInfo << "Error: admissibleJump must be >= 1.\n";
-        return 1;
+        return EXIT_FAILURE;
+    }
+    if (reps < 1)
+    {
+        gsInfo << "Error: reps must be >= 1.\n";
+        return EXIT_FAILURE;
+    }
+    if (baseRefs < 1)
+    {
+        gsInfo << "Error: baseRefs must be >= 1 (pattern boxes must align with parent elements).\n";
+        return 2;
+    }
+    if (form != "mass" && form != "stiffness" && form != "biharmonic" && form != "all")
+    {
+        gsInfo << "Error: unknown form '" << form
+               << "'. Expected one of: mass, stiffness, biharmonic, all.\n";
+        return EXIT_FAILURE;
+    }
+    if (form == "biharmonic" && r < 2)
+    {
+        gsInfo << "Error: the biharmonic form requires regularity >= 2.\n";
+        return EXIT_FAILURE;
+    }
+
+    BandVariant bandVariant = BandScaled;
+    if (!parseBandVariant(band, bandVariant))
+    {
+        gsInfo << "Error: unknown band '" << band
+               << "'. Expected one of: scaled, thin.\n";
+        return 2;
     }
 
     MeshPattern pattern = PatternLShape;
@@ -561,14 +891,44 @@ int main(int argc, char * argv[])
     {
         gsInfo << "Error: unknown meshPattern '" << meshPattern
                << "'. Expected one of: lshape, center, diagonal.\n";
-        return 1;
+        return EXIT_FAILURE;
     }
 
-    if      (dim == 1) run<1, real_t>(plot, numLevels, p, r, integBasis, pattern, admissible, admissibleJump);
-    else if (dim == 2) run<2, real_t>(plot, numLevels, p, r, integBasis, pattern, admissible, admissibleJump);
-    else if (dim == 3) run<3, real_t>(plot, numLevels, p, r, integBasis, pattern, admissible, admissibleJump);
-    else if (dim == 4) run<4, real_t>(plot, numLevels, p, r, integBasis, pattern, admissible, admissibleJump);
-    else { gsInfo << "Error: dimension must be 1..4.\n"; return 1; }
+    std::ofstream csv;
+    if (!csvFile.empty())
+    {
+        csv.open(csvFile.c_str(), std::ios::out | std::ios::trunc);
+        if (!csv)
+        {
+            gsInfo << "Error: cannot open '" << csvFile << "' for writing.\n";
+            return EXIT_FAILURE;
+        }
+        csv << csvHeader() << '\n';
+    }
 
-    return 0;
+    BenchConfig cfg;
+    cfg.dim = dim;
+    cfg.p = p;
+    cfg.r = r;
+    cfg.numLevels = numLevels;
+    cfg.pattern = pattern;
+    cfg.admissible = admissible;
+    cfg.admissibleJump = admissibleJump;
+    cfg.plot = plot;
+    cfg.useIntegrationBasis = integBasis;
+    cfg.form = form;
+    cfg.reps = reps;
+    cfg.baseRefs = baseRefs;
+    cfg.band = bandVariant;
+    cfg.csv = csvFile.empty() ? NULL : &csv;
+    cfg.nElem = cfg.nDof = cfg.maxLevel = 0;
+    cfg.tMesh = 0;
+
+    if      (dim == 1) run<1, real_t>(cfg);
+    else if (dim == 2) run<2, real_t>(cfg);
+    else if (dim == 3) run<3, real_t>(cfg);
+    else if (dim == 4) run<4, real_t>(cfg);
+    else { gsInfo << "Error: dimension must be 1..4.\n"; return EXIT_FAILURE; }
+
+    return EXIT_SUCCESS;
 }
