@@ -392,7 +392,11 @@ TEST(per_component_bases)
                 CHECK_EQUAL(ref.is_boundary(i,k,0), rag.is_boundary(i,k,c));
     }
 
-    // The same pointer in every component reproduces the uniform overload
+    // The same pointer in every component reproduces the uniform overload. This comparison guards
+    // only the delegation of the uniform overload to the list overload (the uniform overload
+    // forwards nComp copies of the pointer); the list overload itself is checked independently
+    // against the scalar references earlier in this test (the conforming == false path; the
+    // conforming == true path is covered by per_component_bases_conforming).
     std::vector<const gsFunctionSet<real_t>*> same(2, &bQ);
     gsDofMapper viaList = createMapper(same, bQ.topology(), bc, 0, /*conforming=*/true, /*finalize=*/true);
     gsDofMapper viaUniform = createMapper(bQ, bQ.topology(), bc, /*nComp=*/2, 0, true, true);
@@ -402,6 +406,61 @@ TEST(per_component_bases)
     CHECK_EQUAL(viaUniform.freeSize(), viaList.freeSize());
     CHECK_EQUAL(viaUniform.boundarySize(), viaList.boundarySize());
     CHECK_EQUAL(viaUniform.coupledSize(), viaList.coupledSize());
+}
+
+// 12b. The same per-component comparison with conforming == true. The two
+// bases have different interface matches (bilinear: 3 dofs on the interface of
+// the two patches, biquadratic: 4), so each component must run its own
+// matchWith() instead of reusing the one of the previous component.
+// The oracle is the scalar mapper of each basis, built with conforming == true.
+TEST(per_component_bases_conforming)
+{
+    gsMultiPatch<real_t> mp = gsNurbsCreator<real_t>::BSplineSquareGrid(2, 1, 1.0);
+    gsMultiBasis<real_t> bP(mp);
+    bP.uniformRefine(1);
+    gsMultiBasis<real_t> bQ(mp);
+    bQ.degreeElevate(1);
+    bQ.uniformRefine(1);
+
+    // Same conditions as in per_component_bases: Dirichlet on patch 0 west and patch 1 north, and a
+    // corner value at the north-east corner of patch 0
+    gsFunctionExpr<real_t> g("0", 2);
+    gsBoundaryConditions<real_t> bc;
+    bc.addCondition(0, boundary::west,  condition_type::dirichlet, &g);
+    bc.addCondition(1, boundary::north, condition_type::dirichlet, &g);
+    bc.addCornerValue(boundary::northeast, 0.0, 0, 0, -1);
+
+    std::vector<const gsFunctionSet<real_t>*> bases;
+    bases.push_back(&bP);
+    bases.push_back(&bQ);
+    gsDofMapper rag = createMapper(bases, bP.topology(), bc, 0, /*conforming=*/true, /*finalize=*/true);
+
+    // Hand count. Component 0 (bilinear): 2 x 9 = 18 dofs, the 3 interface dofs are identified pairwise,
+    // leaving 15. Eliminated: 3 on patch 0 west and 3 on patch 1 north; the corner of patch 0 is the
+    // identified twin of the north-west corner of patch 1, already on the north side. So 6 eliminated
+    // and 9 free. Component 1 (biquadratic): 2 x 16 = 32, minus 4 identified = 28, eliminated
+    // 4 + 4 = 8, free 20.
+    const index_t wantSize[2] = {15, 28};
+    const index_t wantFree[2] = {9, 20};
+    for (index_t c = 0; c < 2; ++c)
+    {
+        gsDofMapper ref = createMapper(*bases[c], bP.topology(), bc, /*nComp=*/1, /*unk=*/0,
+                                       /*conforming=*/true, /*finalize=*/true);
+        CHECK_EQUAL(wantSize[c], rag.size(c));
+        CHECK_EQUAL(wantFree[c], rag.freeSize(c));
+        CHECK_EQUAL(ref.size(), rag.size(c));
+        CHECK_EQUAL(ref.freeSize(), rag.freeSize(c));
+        // Dof by dof: eliminated and coupled flags agree, and a free dof has the index of the scalar
+        // mapper moved by the number of free dofs of the preceding components
+        for (index_t k = 0; k < 2; ++k)
+            for (index_t i = 0; i < bases[c]->basis(k).size(); ++i)
+            {
+                CHECK_EQUAL(ref.is_boundary(i,k,0), rag.is_boundary(i,k,c));
+                CHECK_EQUAL(ref.is_coupled(i,k,0), rag.is_coupled(i,k,c));
+                if (ref.is_free(i,k,0) && rag.is_free(i,k,c))
+                    CHECK_EQUAL(ref.index(i,k,0), rag.index(i,k,c) - rag.firstIndex(c));
+            }
+    }
 }
 
 // 13. A mapper whose component sizes do not match the space's basis is

@@ -97,19 +97,22 @@ public:
     /// Default empty constructor
     gsDofMapper();
 
-    /// \brief Constructs a mapper from the per-component patch sizes.
-    /// \param patchDofSizes nPatches x nComp matrix; entry (k,c) is the number of DoFs of component c on patch k.
+    /// @brief Constructs a mapper from the per-component patch sizes.
+    /// @param patchDofSizes nPatches x nComp matrix; entry (k,c) is the number of DoFs of component c on patch k.
     ///        Components may have different sizes. Requires nPatches>0, nComp>0 and no negative entry.
     ///
     /// Templated such that it is only selected when giving an argument of type
     /// gsMatrix<index_t>. Anything else, including things that could be converted to
-    /// a gsMatrix, goes to the "standard" constructor taking a vector.
+    /// a gsMatrix, goes to the "standard" constructor taking a vector. In particular,
+    /// a multi-column Eigen expression (e.g. \c replicate, \c block, a transpose)
+    /// cannot deduce the template argument and converts to the vector overload, so
+    /// it must be wrapped in <tt>gsMatrix<index_t>(...)</tt>.
     template<class T, typename std::enable_if<std::is_same<T, index_t>::value, int>::type = 0>
     explicit gsDofMapper(const gsMatrix<T> & patchDofSizes)
     { initPatchDofs(patchDofSizes); }
 
-    /// \brief Uniform case: every one of the \a nComp components has the patch sizes \a patchDofSizes.
-    /// Equivalent to gsDofMapper(patchDofSizes.replicate(1,nComp)).
+    /// @brief Uniform case: every one of the \a nComp components has the patch sizes \a patchDofSizes.
+    /// Equivalent to gsDofMapper(gsMatrix<index_t>(patchDofSizes.replicate(1,nComp))).
     gsDofMapper(const gsVector<index_t> & patchDofSizes, index_t nComp = 1);
 
     void swap(gsDofMapper & other)
@@ -422,10 +425,10 @@ public:
 
     index_t boundarySizeWithDuplicates() const;
 
-    /// \brief Returns the position of local DoF 0 of patch \a k in the
+    /// @brief Returns the position of local DoF 0 of patch \a k in the
     /// patch-concatenated local numbering of component \a c (a local
     /// position, not a global index; no shift).
-    size_t offset(int k, index_t c = 0) const { return off(k,c); }
+    size_t offset(index_t k, index_t c = 0) const { return off(k,c); }
 
     /// Returns the number of patches present underneath the mapper
     size_t numPatches() const {return static_cast<size_t>(m_nPatches);}
@@ -536,8 +539,10 @@ private:
     }
 
     /// Number of valid local indices on patch \a k of component \a c: the patch
-    /// size, or every dof of \a c in the layout of setIdentity(), where all dofs
-    /// are on the last patch and are addressed through any patch
+    /// size, or every dof of \a c in the layout of setIdentity(), detected by the
+    /// offset of the last patch being 0. A regular mapper whose
+    /// patches 0..m_nPatches-2 are all empty in component \a c (sizes such as [0,...,0,n])
+    /// has the same offsets and so gets the same widened Debug bound.
     size_t localBound(index_t k, index_t c) const
     { return 0 == off(m_nPatches-1, c) ? off(m_nPatches, c) : off(k+1, c) - off(k, c); }
 

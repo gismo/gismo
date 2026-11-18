@@ -377,6 +377,12 @@ SUITE(gsExprAssembler_test)
         gsVector<index_t> swapped(2);
         swapped << n1, n0;
         CHECK_THROW(u.setupMapper(finalized(gsDofMapper(swapped, 2))), std::runtime_error);
+        // An extra empty patch: three patches (n0, n1, 0) for a two-patch basis. Both components total
+        // n0 + n1, the size of the space, so the totalSize check passes; the patch-count check
+        // (numPatches() == nBases()) is the only one that rejects it.
+        gsVector<index_t> extra(3);
+        extra << n0, n1, 0;
+        CHECK_THROW(u.setupMapper(finalized(gsDofMapper(extra, 2))), std::runtime_error);
         // An identity mapper maps local dof i of every patch to the same global dof
         gsDofMapper identity;
         identity.setIdentity(2, n0+n1, 2);

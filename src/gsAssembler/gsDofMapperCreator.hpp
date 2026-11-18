@@ -48,17 +48,26 @@ gsDofMapper createMapper(const std::vector<const gsFunctionSet<T>*> & bases,
 
     const bool hasBCs = bc.size() != 0;
 
+    // A gsMappedBasis is numbered globally by setIdentity(), not per patch, so it
+    // is accepted only when every component is the same basis object. Any mapped
+    // entry in a list that is not uniform is rejected, whatever its position.
+    bool sameInAll = true;
+    for (index_t c = 1; c != nComp; ++c)
+        sameInAll = sameInAll && bases[c] == bases[0];
+    if (!sameInAll)
+        for (index_t c = 0; c != nComp; ++c)
+        {
+            const bool isMapped = dynamic_cast<const gsMappedBasis<2,T>*>(bases[c]) != nullptr ||
+                                  dynamic_cast<const gsMappedBasis<3,T>*>(bases[c]) != nullptr;
+            GISMO_ENSURE(!isMapped, "createMapper: component " << c << " is a gsMappedBasis, which "
+                         "requires the same basis in every component.");
+        }
+
     gsDofMapper mapper;
 
     if (dynamic_cast<const gsMappedBasis<2,T>*>(bases[0]) != nullptr ||
         dynamic_cast<const gsMappedBasis<3,T>*>(bases[0]) != nullptr)
-    {
-        for (index_t c = 1; c != nComp; ++c)
-            GISMO_ENSURE(bases[c] == bases[0],
-                         "createMapper: a mapped basis requires the same basis in every component (component "
-                         << c << " differs).");
         mapper.setIdentity(nPatches, bases[0]->size(), nComp);
-    }
     else
     {
         gsMatrix<index_t> sz(nPatches, nComp);
@@ -224,6 +233,7 @@ gsDofMapper createMapper(const gsFunctionSet<T>        & bases,
                          bool    conforming,
                          bool    finalize)
 {
+    GISMO_ENSURE(nComp > 0, "createMapper: the number of components must be positive, got " << nComp);
     return createMapper<T>(std::vector<const gsFunctionSet<T>*>(static_cast<size_t>(nComp), &bases),
                            topology, bc, unk, conforming, finalize);
 }

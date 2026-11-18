@@ -117,8 +117,9 @@ public:
         const gsMultiBasis<T> * mb = dynamic_cast<const gsMultiBasis<T>*>(&this->source());
         GISMO_ENSURE( !mb || dofsMapper.numPatches()==mb->nBases(), "The dof-mapper has "<<dofsMapper.numPatches()
                       <<" patch(es), but the multi-basis has "<<(mb ? mb->nBases() : 0)<<".");
+        const index_t nP = static_cast<index_t>(dofsMapper.numPatches());
         for (index_t c = 0; c != dofsMapper.numComponents(); ++c)
-            for (size_t k = 0; k != dofsMapper.numPatches(); ++k)
+            for (index_t k = 0; k != nP; ++k)
             {
                 const size_t expected = mb ? static_cast<size_t>(mb->basis(k).size()) : dofsMapper.patchSize(k);
                 GISMO_ENSURE( dofsMapper.patchSize(k,c)==expected, "The dof-mapper has "<<dofsMapper.patchSize(k,c)
