@@ -1098,7 +1098,8 @@ bool gsPatchSplitter<T>::formatForArgyris(gsMultiPatch<T>& mp) const
                     T mnDet = 0, mxDet = 0, mnAbs = 0, en = 0;
                     internal_splitter::evalPatchJacobianAndWinslow(*tb, 21, mnDet, mxDet, mnAbs, en);
                     if ((mnDet <= T(1e-9) && mxDet >= -T(1e-9)) ||
-                        !internal_splitter::isPatchDetSingleSign(*tb, 21, T(1e-7)))
+                        !internal_splitter::isPatchDetSingleSign(*tb, 21, T(1e-7)) ||
+                        !internal_splitter::isPatchDetSingleSign(*tb, 20, T(1e-7)))
                         return false;
                     T angs[4], minA = 0, maxA = 180;
                     bool degen = false;
@@ -1129,24 +1130,29 @@ bool gsPatchSplitter<T>::formatForArgyris(gsMultiPatch<T>& mp) const
             mp = give(fitted);
             return true;
         };
-        auto runWithMode = [&](typename gsASG1LocalFitter<T>::FittingMode mode) -> bool {
-            for (index_t extra : {index_t(0), index_t(2), index_t(4), index_t(8), index_t(14), index_t(22)}) {
+        auto runWithMode = [&](typename gsASG1LocalFitter<T>::FittingMode mode,
+                               std::initializer_list<index_t> extras) -> bool {
+            for (index_t extra : extras) {
                 const index_t nInner = innerKnots + extra;
                 const index_t n1D = 4 + 2 * nInner;
                 if (mode == gsASG1LocalFitter<T>::FittingMode::Global &&
-                    static_cast<index_t>(mp.nPatches()) * n1D * n1D > 2600)
+                    static_cast<index_t>(mp.nPatches()) * n1D * n1D > 3200)
                     continue;
                 if (tryFitMode(mode, nInner))
                     return true;
             }
             return false;
         };
+        const std::initializer_list<index_t> allExtras = {index_t(0), index_t(1), index_t(2), index_t(3), index_t(4), index_t(5), index_t(6), index_t(8), index_t(14), index_t(22)};
         if (mp.nPatches() <= 20) {
-            if (!runWithMode(gsASG1LocalFitter<T>::FittingMode::Global))
-                runWithMode(gsASG1LocalFitter<T>::FittingMode::Local);
+            if (!runWithMode(gsASG1LocalFitter<T>::FittingMode::Global, allExtras))
+                runWithMode(gsASG1LocalFitter<T>::FittingMode::Local, allExtras);
+        } else if (mp.nPatches() <= 50) {
+            if (!runWithMode(gsASG1LocalFitter<T>::FittingMode::Local, {index_t(0), index_t(1), index_t(2), index_t(3), index_t(4)}) &&
+                !runWithMode(gsASG1LocalFitter<T>::FittingMode::Global, {index_t(0), index_t(1), index_t(2)}))
+                runWithMode(gsASG1LocalFitter<T>::FittingMode::Local, {index_t(5), index_t(6), index_t(8), index_t(14), index_t(22)});
         } else {
-            if (!runWithMode(gsASG1LocalFitter<T>::FittingMode::Local) && mp.nPatches() <= 40)
-                runWithMode(gsASG1LocalFitter<T>::FittingMode::Global);
+            runWithMode(gsASG1LocalFitter<T>::FittingMode::Local, allExtras);
         }
     }
 
