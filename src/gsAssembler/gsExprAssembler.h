@@ -286,7 +286,7 @@ public:
         }
 
         expr::gsFeSpace<T> s = m_exprdata->getSpace(mp,dim);
-        s.setSpaceData(m_sdata.back());
+        s.setSpaceData(*m_vrow[id]);
         return s;
     }
 
@@ -1593,7 +1593,7 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
                     {
                         const index_t jj = u.mapper().index(rowVar.data().actives(j),
                                                             rowVar.data().patchId, c);
-                        if (rowVar.mapper().is_free_index(jj) )
+                        if (u.mapper().is_free_index(jj) )
                         {
                             //Perturb \a u
                             u.perturbLocal( delta  , jj, rowVar.data().patchId);

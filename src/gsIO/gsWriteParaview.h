@@ -93,8 +93,13 @@ void gsWriteParaview(gsFunctionSet<T> const& geom,
 /// \param sl a gsMesh object
 /// \param fn filename where paraview file is written
 /// \param pvd if true, a .pvd file is generated (for compatibility)
+/// \param precision digits after the decimal point (fixed notation)
+///
+/// Declared in gsCore/gsForwardDeclarations.h, which holds its default
+/// arguments; a second declaration here could not repeat them.
 //template <class T>
-//void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd = true);
+//void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd = true,
+//                     unsigned precision = 5);
 
 /// \brief Exports a parametrized mesh.
 template <class T>
@@ -534,8 +539,8 @@ void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
                          unsigned precision = 5);
 
 /// Export an element \a box
-GISMO_DEPRECATED
 template<class T>
+GISMO_DEPRECATED
 void writeSingleBox(const gsMatrix<T> & box, std::string const & fn, T value,
                     unsigned precision = 5);
 
@@ -558,14 +563,16 @@ void writeSingleControlNet(const gsGeometry<T> & Geo,
 template<class T>
 void writeMultiPatchCompMesh(const gsMultiPatch<T> & mp,
                              std::string const & fn,
-                             unsigned resolution = 8);
+                             unsigned resolution = 8,
+                             unsigned precision = 5);
 
 /// \brief Export the control net of a whole multipatch as one file.
 ///
 /// As \ref writeMultiPatchCompMesh, but for the control nets.
 template<class T>
 void writeMultiPatchControlNet(const gsMultiPatch<T> & mp,
-                               std::string const & fn);
+                               std::string const & fn,
+                               unsigned precision = 5);
 
 // Please document
 template <class T>

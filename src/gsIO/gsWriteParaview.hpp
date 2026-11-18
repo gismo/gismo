@@ -347,7 +347,7 @@ void writeSingleBasisMesh(const gsBasis<T> & basis,
     else if ( basis.dim() == 2)
         writeSingleBasisMesh2D(msh,fn,precision);
     else
-        gsWriteParaview(msh, fn, false);
+        gsWriteParaview(msh, fn, false, precision);
 }
 
 /// Export a computational mesh
@@ -364,7 +364,7 @@ void writeSingleCompMesh(const gsBasis<T> & basis, const gsGeometry<T> & Geo,
     // else if ( basis.dim() == 2)
     //     writeSingleBasisMesh2D(msh,fn);
     // else
-        gsWriteParaview(msh, fn, false);
+        gsWriteParaview(msh, fn, false, precision);
 }
 
 namespace pv_mesh_detail {
@@ -395,7 +395,7 @@ void appendMesh(gsMesh<T> & target, const gsMesh<T> & src)
 
 template<class T>
 void writeMultiPatchCompMesh(const gsMultiPatch<T> & mp, std::string const & fn,
-                             unsigned resolution)
+                             unsigned resolution, unsigned precision)
 {
     gsMesh<T> all;
     for (size_t p = 0; p != mp.nPatches(); ++p)
@@ -404,11 +404,12 @@ void writeMultiPatchCompMesh(const gsMultiPatch<T> & mp, std::string const & fn,
         mp.patch(p).evaluateMesh(msh);
         pv_mesh_detail::appendMesh(all, msh);
     }
-    gsWriteParaview(all, fn, false);
+    gsWriteParaview(all, fn, false, precision);
 }
 
 template<class T>
-void writeMultiPatchControlNet(const gsMultiPatch<T> & mp, std::string const & fn)
+void writeMultiPatchControlNet(const gsMultiPatch<T> & mp, std::string const & fn,
+                               unsigned precision)
 {
     gsMesh<T> all;
     for (size_t p = 0; p != mp.nPatches(); ++p)
@@ -417,7 +418,7 @@ void writeMultiPatchControlNet(const gsMultiPatch<T> & mp, std::string const & f
         mp.patch(p).controlNet(msh);
         pv_mesh_detail::appendMesh(all, msh);
     }
-    gsWriteParaview(all, fn, false);
+    gsWriteParaview(all, fn, false, precision);
 }
 
 /// Export a control net
@@ -462,7 +463,7 @@ void writeSingleControlNet(const gsGeometry<T> & Geo,
         }
     }
 
-    gsWriteParaview(msh, fn, false);
+    gsWriteParaview(msh, fn, false, precision);
 }
 
 template<class T>
@@ -844,7 +845,7 @@ void writeSingleGeometry(const gsGeometry<T> & Geo, std::string const & fn, unsi
     /*
       gsMesh<T> msh;
       Geo.toMesh(msh, npts);
-      gsWriteParaview(msh, fn, false);
+      gsWriteParaview(msh, fn, false, precision);
       return;
     */
     gsMatrix<T> ab = Geo.parameterRange();
@@ -858,7 +859,7 @@ void writeSingleTrimSurface(const gsTrimSurface<T> & surf,
                             unsigned precision)
 {
     typename gsMesh<T>::uPtr msh = surf.toMesh(npts);
-    gsWriteParaview( *msh, fn, false);
+    gsWriteParaview( *msh, fn, false, precision);
 }
 
 /// Write a file containing a solution field over a geometry
@@ -1878,7 +1879,7 @@ void gsWriteParaview(const gsMatrix<T> & boxes, std::string const & fn, const st
     else if ( boxes.rows() == 2)
         writeSingleBasisMesh2D(mesh,fn,precision);
     else
-        gsWriteParaview(mesh, fn, false);
+        gsWriteParaview(mesh, fn, false, precision);
 }
 
 template<class T>
@@ -2432,15 +2433,12 @@ void gsWriteParaviewSolid(gsSolid<T> const& sl,
 
 
 /// Visualizing a mesh
-// Note: no trailing precision parameter here (unlike its siblings) --
-// gsCore/gsForwardDeclarations.h carries an authoritative 3-parameter
-// forward declaration of this overload (gsMesh, fn, bool pvd = true) that
-// is used across the library outside this module; changing its arity
-// would break every caller relying on that declaration alone.
+// The default arguments live in the declaration in
+// gsCore/gsForwardDeclarations.h, which is visible to every caller.
 template <class T>
-void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd)
+void gsWriteParaview(gsMesh<T> const& sl, std::string const & fn, bool pvd,
+                     unsigned precision)
 {
-    const unsigned precision = 5;
     std::string mfn(fn);
     mfn.append(".vtp");
     std::ofstream file(mfn.c_str());
@@ -2897,7 +2895,7 @@ void gsWriteParaview(const std::vector<gsMesh<T> >& meshes,
     for (unsigned index = 0; index < meshes.size(); index++)
     {
         std::string file = fn + "Level" + util::to_string(index);
-        gsWriteParaview(meshes[index], file, false);
+        gsWriteParaview(meshes[index], file, false, precision);
     }
 }
 

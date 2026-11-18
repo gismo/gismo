@@ -280,6 +280,20 @@ SUITE(gsExpressions_test)
         gsMultiBasis<real_t> mbFine(mp);
         mbFine.uniformRefine(4); // many elements -> more work per thread
 
+        // The loop below runs on as many threads as the host offers, and
+        // never fewer than four. A host or CI runner pinned to one thread
+        // would otherwise turn this into a serial check that passes while
+        // exercising none of the merge it exists to cover, so the thread
+        // count is asserted rather than assumed.
+        //
+        // It is raised before the assembler and evaluator are constructed:
+        // their per-thread storage (util::gsThreaded) is sized once, to
+        // omp_get_max_threads() at construction, and a parallel region with
+        // more threads would index past it.
+        const int nThreads = omp_get_max_threads();
+        const int nLoop    = nThreads > 4 ? nThreads : 4;
+        omp_set_num_threads(nLoop);
+
         gsExprAssembler<real_t> Aloc(1,1);
         Aloc.setIntegrationElements(mbFine);
         Aloc.getMap(mp);
@@ -290,8 +304,6 @@ SUITE(gsExpressions_test)
 
         // The reference is taken on one thread, where acc_global runs once
         // and no interleaving exists.
-        const int nThreads = omp_get_max_threads();
-
         omp_set_num_threads(1);
         const real_t maxRef = evloc.max(negC.val());
         const real_t minRef = evloc.min(posC.val());
@@ -299,12 +311,7 @@ SUITE(gsExpressions_test)
         CHECK(maxRef < 0.0);
         CHECK(minRef > 0.0);
 
-        // The loop runs on as many threads as the host offers, and never
-        // fewer than four. A host or CI runner pinned to one thread would
-        // otherwise turn this into a serial check that passes while
-        // exercising none of the merge it exists to cover, so the thread
-        // count is asserted rather than assumed.
-        omp_set_num_threads(nThreads > 4 ? nThreads : 4);
+        omp_set_num_threads(nLoop);
         CHECK(omp_get_max_threads() > 1);
 
         for (int i = 0; i != 20; ++i)
