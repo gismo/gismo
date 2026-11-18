@@ -100,6 +100,7 @@ namespace internal
 #include <gsNurbs/gsNurbs.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 #include <gsNurbs/gsTensorBSpline.h>
+#include <gsNurbs/gsTensorBSplineSpace.h>
 #include <gsNurbs/gsTensorNurbsBasis.h>
 #include <gsNurbs/gsTensorNurbs.h>
 #include <gsNurbs/gsNurbsCreator.h>
