@@ -14,6 +14,7 @@
 #include "gismo_unittest.h"       // Brings in G+Smo and the UnitTest++ framework
 #include <gsHSplines/gsHElement.h>
 #include <gsHSplines/gsHElementHelper.h>
+#include <random>
 
 SUITE(gsQuadratureRules_test)                 // The suite should have the same name as the file
 {
@@ -482,6 +483,34 @@ gsVector<real_t> hpatchIntegrateBasis(const gsBasis<real_t> & target,
     return result;
 }
 
+// Mass matrix sum_k w_k N_i(x_k) N_j(x_k) of `basis` on the boundary side `side`, with the
+// nodes of `rule` on the side's elements. Evaluated node by node, since a node on a leaf
+// boundary can have other active functions than the element's interior nodes.
+gsMatrix<real_t> hpatchBoundaryMass(const gsTHBSplineBasis<2,real_t> & basis,
+                                    boxSide side, const gsQuadRule<real_t> & rule)
+{
+    gsMatrix<real_t> M = gsMatrix<real_t>::Zero(basis.size(), basis.size());
+    gsMatrix<real_t> nodes, pt, val;
+    gsVector<real_t> weights;
+    gsMatrix<index_t> act;
+    auto dom = basis.domain();
+    gsBasis<real_t>::domainIter it = dom->beginBdr(side), end = dom->endBdr(side);
+    for (; it < end; ++it)
+    {
+        rule.mapTo(it.lowerCorner(), it.upperCorner(), nodes, weights);
+        for (index_t k = 0; k != nodes.cols(); ++k)
+        {
+            pt = nodes.col(k);
+            basis.active_into(pt, act);
+            basis.eval_into(pt, val);
+            for (index_t a = 0; a != act.rows(); ++a)
+                for (index_t b = 0; b != act.rows(); ++b)
+                    M(act(a,0), act(b,0)) += weights[k] * val(a,0) * val(b,0);
+        }
+    }
+    return M;
+}
+
 // Assemble a form (0=mass, 1=stiffness) on an identity geometry with the rule
 // selected by quRule, and return the dense matrix.
 gsMatrix<real_t> hpatchAssemble(gsTHBSplineBasis<2,real_t> thb, int form,
@@ -801,9 +830,12 @@ TEST(hpatchrule_2d_stiffness_vs_gauss_C0_knot_offcentre)
     const index_t p = 3;
     // C^0 line (knot multiplicity p) at x = 0.75: same target-multiplicity cap
     // (mu=3, m_deg+1=7, target regularity r_j-s = -1) as the centred fixture at
-    // x = 0.5. With numFallbackCells()==0 no leaf falls back to exact Gauss, so
-    // agreement with Gauss below verifies the min(...,m_deg+1) cap branch of the
-    // target space. The centred fixture at x = 0.5 follows in
+    // x = 0.5. numFallbackCells()==0: no Newton solve fails, so every leaf direction
+    // wider than one element keeps the patch rule (a direction one element wide ties
+    // with element-wise Gauss and uses it). Agreement with Gauss below therefore
+    // verifies the min(...,m_deg+1) cap branch of the target space: the C^0 line at
+    // x = 0.75 is an interior breakpoint of a leaf at least two elements wide in
+    // direction 0. The centred fixture at x = 0.5 follows in
     // hpatchrule_2d_stiffness_vs_gauss_C0_knot_centre.
     gsTHBSplineBasis<2,real_t> thb = makeRepeatedKnotTHB(p, 3, 0.75, {2,0,0,4,4});
 
@@ -1053,6 +1085,384 @@ TEST(hpatchrule_newton_1d_long_leaf)
     gsVector<real_t> Ig = hpatchIntegrateBasis(target, *tb.domain(), gauss);
     gsVector<real_t> Ih = hpatchIntegrateBasis(target, *tb.domain(), rule);
     CHECK_CLOSE(0.0, (Ih - Ig).cwiseAbs().maxCoeff(), 1e-12);
+}
+
+// ------------------------------------------------------------
+// Lookup of gsHPatchRule::mapTo on a hierarchical mesh with many leaves
+//
+// The fixture is makeRefinedTHB(2) with three more level-2 boxes (a centre square, the
+// upper-right corner and a strip on the west side), so that the cell lookup has to find
+// its leaf among many (10 leaves, counted through the tree's leaf iterator and pinned in
+// the shuffled-order and boundary tests, so a change of the fixture is noticed). The rule (2p, p-1) is the mass target.
+// ------------------------------------------------------------
+
+// A rule returns, for an element, exactly what it returns when the elements are queried
+// in volume order, whatever the query order: the lookup finds the one leaf that contains
+// the element (each element lies in exactly one leaf), so nodes and weights are
+// bitwise identical.
+TEST(hpatchrule_lookup_shuffled_order)
+{
+    const index_t p = 2;
+    gsTHBSplineBasis<2,real_t> thb = makeRefinedTHB(p);
+    std::vector<index_t> more = {2, 12,12,20,20,   2, 24,24,32,32,   2, 0,24,4,32};
+    thb.refineElements(more);
+
+    index_t nLeaves = 0;
+    for (auto leaf = thb.tree().beginLeafIterator(); leaf.good(); leaf.next())
+        ++nLeaves;
+    CHECK_EQUAL(index_t(10), nLeaves);
+
+    auto dom = thb.domain();
+    std::vector<gsVector<real_t> > lows, upps;
+    for (auto & elem : dom->allElements())
+    {
+        lows.push_back(elem.lowerCorner());
+        upps.push_back(elem.upperCorner());
+    }
+    const size_t nElem = lows.size();
+
+    // Reference: one rule, elements in volume order.
+    gsHPatchRule<real_t> first(*dom, 2*p, p-1, false);
+    std::vector<gsMatrix<real_t> > refNodes(nElem);
+    std::vector<gsVector<real_t> > refWeights(nElem);
+    for (size_t e = 0; e != nElem; ++e)
+        first.mapTo(lows[e], upps[e], refNodes[e], refWeights[e]);
+
+    // A second rule on the same domain, queried in reversed, shuffled and volume order.
+    // The orders chain on one rule, so each starts from wherever the last one stopped.
+    std::vector<size_t> volume(nElem);
+    for (size_t e = 0; e != nElem; ++e) volume[e] = e;
+    std::vector<std::vector<size_t> > orders(3, volume);
+    std::reverse(orders[0].begin(), orders[0].end());
+    std::mt19937 rng(20240607);
+    std::shuffle(orders[1].begin(), orders[1].end(), rng);
+
+    gsHPatchRule<real_t> second(*dom, 2*p, p-1, false);
+    gsMatrix<real_t> nodes;
+    gsVector<real_t> weights;
+    for (size_t o = 0; o != orders.size(); ++o)
+        for (size_t i = 0; i != nElem; ++i)
+        {
+            const size_t e = orders[o][i];
+            second.mapTo(lows[e], upps[e], nodes, weights);
+            CHECK_EQUAL(refWeights[e].size(), weights.size());
+            if (refWeights[e].size() == weights.size() && weights.size() > 0)
+            {
+                CHECK_EQUAL(real_t(0), (nodes   - refNodes[e]  ).cwiseAbs().maxCoeff());
+                CHECK_EQUAL(real_t(0), (weights - refWeights[e]).cwiseAbs().maxCoeff());
+            }
+        }
+}
+
+// Boundary iteration with a fixed direction: the elements of a side are degenerate in
+// the fixed direction (one node on the side) and the boundary iterator visits only the
+// leaves touching the side. The boundary mass matrix of the THB basis along a side is
+// a product of two basis functions, which lies in the target space (2p, p-1) of the
+// leaf, so the rule must reproduce the (p+1)-point Gauss matrix (exact to degree 2p+1
+// along the side; one point in the degenerate normal direction, weight 1). One rule per
+// direction serves both opposite sides, so the second side starts the lookup from the
+// cell the first one ended on. The functions are a partition of unity, hence the
+// entries of the mass matrix sum to the side length 1.
+TEST(hpatchrule_lookup_boundary_sides)
+{
+    const index_t p = 2;
+    gsTHBSplineBasis<2,real_t> thb = makeRefinedTHB(p);
+    std::vector<index_t> more = {2, 12,12,20,20,   2, 24,24,32,32,   2, 0,24,4,32};
+    thb.refineElements(more);
+
+    index_t nLeaves = 0;
+    for (auto leaf = thb.tree().beginLeafIterator(); leaf.good(); leaf.next())
+        ++nLeaves;
+    CHECK_EQUAL(index_t(10), nLeaves);
+
+    const boxSide sides[2][2] = { {boundary::west,  boundary::east},
+                                  {boundary::south, boundary::north} };
+    for (short_t dir = 0; dir != 2; ++dir)
+    {
+        gsHPatchRule<real_t> rule(*thb.domain(), 2*p, p-1, false, dir);
+
+        // 1 point normal to the side, p+1 points along it.
+        gsVector<index_t> nn(2);
+        nn[dir] = 1;
+        nn[1 - dir] = p + 1;
+        gsGaussRule<real_t> gauss(nn);
+
+        for (index_t s = 0; s != 2; ++s)
+        {
+            gsInfo << "row dir=" << dir << " side=" << sides[dir][s] << "\n";
+            gsMatrix<real_t> Mh = hpatchBoundaryMass(thb, sides[dir][s], rule);
+            gsMatrix<real_t> Mg = hpatchBoundaryMass(thb, sides[dir][s], gauss);
+            CHECK_CLOSE(0.0, (Mh - Mg).cwiseAbs().maxCoeff(), 1e-12);
+            CHECK_CLOSE(1.0, Mh.sum(), 1e-12);
+        }
+    }
+}
+
+// A query that no cell contains raises an error in every build (the lookup cannot return
+// nodes for it); the rule stays usable afterwards. The whole domain straddles several
+// leaves, and a box outside the domain has no leaf at all. Afterwards one real element
+// must give what a fresh rule gives.
+TEST(hpatchrule_lookup_miss_throws)
+{
+    const index_t p = 2;
+    gsTHBSplineBasis<2,real_t> thb = makeRefinedTHB(p);
+    std::vector<index_t> more = {2, 12,12,20,20,   2, 24,24,32,32,   2, 0,24,4,32};
+    thb.refineElements(more);
+
+    auto dom = thb.domain();
+    gsHPatchRule<real_t> rule(*dom, 2*p, p-1, false);
+    gsMatrix<real_t> nodes;
+    gsVector<real_t> weights;
+
+    const gsVector<real_t> zero = gsVector<real_t>::Zero(2);
+    const gsVector<real_t> one  = gsVector<real_t>::Ones(2);
+    CHECK_THROW(rule.mapTo(zero, one, nodes, weights), std::runtime_error);
+
+    const gsVector<real_t> outLow = gsVector<real_t>::Constant(2, 1.25);
+    const gsVector<real_t> outUpp = gsVector<real_t>::Constant(2, 1.5);
+    CHECK_THROW(rule.mapTo(outLow, outUpp, nodes, weights), std::runtime_error);
+
+    // First element of the volume iteration, after the two failed queries.
+    auto elem = dom->beginAll();
+    const gsVector<real_t> low = elem.lowerCorner(), upp = elem.upperCorner();
+    rule.mapTo(low, upp, nodes, weights);
+
+    gsHPatchRule<real_t> fresh(*dom, 2*p, p-1, false);
+    gsMatrix<real_t> refNodes;
+    gsVector<real_t> refWeights;
+    fresh.mapTo(low, upp, refNodes, refWeights);
+    CHECK_EQUAL(refWeights.size(), weights.size());
+    if (refWeights.size() == weights.size() && weights.size() > 0)
+    {
+        CHECK_EQUAL(real_t(0), (nodes   - refNodes  ).cwiseAbs().maxCoeff());
+        CHECK_EQUAL(real_t(0), (weights - refWeights).cwiseAbs().maxCoeff());
+    }
+}
+
+// ------------------------------------------------------------
+// Per-direction fallback of gsHPatchRule::_build
+//
+// For a leaf direction with n elements and nq = m_deg/2 + 1 Gauss points per element, the
+// patch rule has n1d nodes. The direction uses element-wise Gauss (n*nq nodes) when
+// n1d >= n*nq, or when its moment solve fails; the other directions keep their patch rule.
+// A leaf is counted by numFallbackCells() once, when a solve failed or Gauss was
+// strictly cheaper; a tie is not counted.
+// ------------------------------------------------------------
+
+// The moment solve of a direction stops on an absolute residual of 1e-14 on integrals
+// that scale with the length of the direction. On a direction of length 1e4 that is out
+// of reach for round-off, so this direction uses element-wise Gauss while the other
+// direction keeps its patch rule. Single leaf, p = 2, 4 elements per direction, target
+// (4,1): the patch rule has dim = 5 + 3*3 = 14 -> 7 nodes per direction, Gauss
+// 4*nq = 4*3 = 12.
+// Exactness is the relative error, since the integrals scale with the length.
+TEST(hpatchrule_fallback_newton_fails_in_one_direction_2d)
+{
+    struct Row { real_t L0; real_t L1; index_t nPts; index_t nFb; };
+    const Row rows[] = { {1,1,    49,0}, {1e4,1,    84,1}, {1,1e4,    84,1} };
+
+    const index_t p = 2, reg = 1;
+    for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
+    {
+        gsInfo << "row L0=" << rows[k].L0 << " L1=" << rows[k].L1 << "\n";
+        gsKnotVector<real_t> kv0(0, rows[k].L0, 3, p + 1, 1);
+        gsKnotVector<real_t> kv1(0, rows[k].L1, 3, p + 1, 1);
+        gsTensorBSplineBasis<2,real_t> tb(kv0, kv1);
+        gsTHBSplineBasis<2,real_t> thb(tb);
+        gsHPatchRule<real_t> rule(*thb.domain(), 2*p, reg, false);
+        CHECK_EQUAL(rows[k].nFb,  rule.numFallbackCells());
+        CHECK_EQUAL(rows[k].nPts, rule.numPointsTotal());
+
+        gsKnotVector<real_t> kvT0(0, rows[k].L0, 3, 2*p + 1, 2*p - reg);
+        gsKnotVector<real_t> kvT1(0, rows[k].L1, 3, 2*p + 1, 2*p - reg);
+        gsTensorBSplineBasis<2,real_t> target(kvT0, kvT1);
+        gsGaussRule<real_t> gauss(gsVector<index_t>::Constant(2, p + 1));
+        gsVector<real_t> Ig = hpatchIntegrateBasis(target, *tb.domain(), gauss);
+        gsVector<real_t> Ih = hpatchIntegrateBasis(target, *tb.domain(), rule);
+        CHECK_CLOSE(0.0, (Ih - Ig).cwiseAbs().maxCoeff() / Ig.cwiseAbs().maxCoeff(), 1e-12);
+    }
+}
+
+// 3D: with two directions of length 1e4 both fall back to Gauss (12 nodes each) and the
+// third keeps 7 patch nodes; the leaf is counted once, not once per direction.
+TEST(hpatchrule_fallback_newton_fails_in_one_direction_3d)
+{
+    struct Row { real_t L0; real_t L1; real_t L2; index_t nPts; index_t nFb; };
+    const Row rows[] = { {1,1,1,    343,0}, {1e4,1e4,1,    1008,1} };
+
+    const index_t p = 2, reg = 1;
+    for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
+    {
+        gsInfo << "row L0=" << rows[k].L0 << " L1=" << rows[k].L1 << " L2=" << rows[k].L2 << "\n";
+        gsKnotVector<real_t> kv0(0, rows[k].L0, 3, p + 1, 1);
+        gsKnotVector<real_t> kv1(0, rows[k].L1, 3, p + 1, 1);
+        gsKnotVector<real_t> kv2(0, rows[k].L2, 3, p + 1, 1);
+        gsTensorBSplineBasis<3,real_t> tb(kv0, kv1, kv2);
+        gsTHBSplineBasis<3,real_t> thb(tb);
+        gsHPatchRule<real_t> rule(*thb.domain(), 2*p, reg, false);
+        CHECK_EQUAL(rows[k].nFb,  rule.numFallbackCells());
+        CHECK_EQUAL(rows[k].nPts, rule.numPointsTotal());
+
+        gsKnotVector<real_t> kvT0(0, rows[k].L0, 3, 2*p + 1, 2*p - reg);
+        gsKnotVector<real_t> kvT1(0, rows[k].L1, 3, 2*p + 1, 2*p - reg);
+        gsKnotVector<real_t> kvT2(0, rows[k].L2, 3, 2*p + 1, 2*p - reg);
+        gsTensorBSplineBasis<3,real_t> target(kvT0, kvT1, kvT2);
+        gsGaussRule<real_t> gauss(gsVector<index_t>::Constant(3, p + 1));
+        gsVector<real_t> Ig = hpatchIntegrateBasis(target, *tb.domain(), gauss);
+        gsVector<real_t> Ih = hpatchIntegrateBasis(target, *tb.domain(), rule);
+        CHECK_CLOSE(0.0, (Ih - Ig).cwiseAbs().maxCoeff() / Ig.cwiseAbs().maxCoeff(), 1e-12);
+    }
+}
+
+// A leaf one element wide in a direction ties there: the target space of a single
+// element of degree 2p has dim = 2p+1 (odd), hence p+1 nodes after even-ing, which is
+// the p+1 = nq Gauss points of the element. The direction uses Gauss, and the tie is
+// not counted as a fallback. The mixed row has direction 0 tying (3 nodes) and direction
+// 1 with 4 elements on the patch rule (dim 5 + 3*3 = 14 -> 7 nodes), 3*7 = 21.
+// Reference: Gauss with p+1 points per element, exact to degree 2p+1.
+TEST(hpatchrule_fallback_tie_not_counted)
+{
+    struct Row { index_t p; index_t n1; index_t n2; index_t n3; };
+    const Row rows[] = { {2,3,9,27}, {3,4,16,64} };
+
+    for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
+    {
+        const index_t p = rows[k].p;
+        gsInfo << "row p=" << p << "\n";
+        gsKnotVector<real_t> kv(0, 1, 0, p + 1, 1);
+        gsKnotVector<real_t> kvT(0, 1, 0, 2*p + 1, p + 1);
+        gsGaussRule<real_t> gauss1(gsVector<index_t>::Constant(1, p + 1));
+        gsGaussRule<real_t> gauss2(gsVector<index_t>::Constant(2, p + 1));
+        gsGaussRule<real_t> gauss3(gsVector<index_t>::Constant(3, p + 1));
+
+        gsTensorBSplineBasis<1,real_t> tb1(kv);
+        gsTHBSplineBasis<1,real_t> thb1(tb1);
+        gsHPatchRule<real_t> rule1(*thb1.domain(), 2*p, p - 1, false);
+        CHECK_EQUAL(index_t(0),  rule1.numFallbackCells());
+        CHECK_EQUAL(rows[k].n1,  rule1.numPointsTotal());
+        gsBSplineBasis<real_t> target1(kvT);
+        CHECK_CLOSE(0.0, (hpatchIntegrateBasis(target1, *tb1.domain(), rule1)
+                          - hpatchIntegrateBasis(target1, *tb1.domain(), gauss1)).cwiseAbs().maxCoeff(), 1e-12);
+
+        gsTensorBSplineBasis<2,real_t> tb2(kv, kv);
+        gsTHBSplineBasis<2,real_t> thb2(tb2);
+        gsHPatchRule<real_t> rule2(*thb2.domain(), 2*p, p - 1, false);
+        CHECK_EQUAL(index_t(0),  rule2.numFallbackCells());
+        CHECK_EQUAL(rows[k].n2,  rule2.numPointsTotal());
+        gsTensorBSplineBasis<2,real_t> target2(kvT, kvT);
+        CHECK_CLOSE(0.0, (hpatchIntegrateBasis(target2, *tb2.domain(), rule2)
+                          - hpatchIntegrateBasis(target2, *tb2.domain(), gauss2)).cwiseAbs().maxCoeff(), 1e-12);
+
+        gsTensorBSplineBasis<3,real_t> tb3(kv, kv, kv);
+        gsTHBSplineBasis<3,real_t> thb3(tb3);
+        gsHPatchRule<real_t> rule3(*thb3.domain(), 2*p, p - 1, false);
+        CHECK_EQUAL(index_t(0),  rule3.numFallbackCells());
+        CHECK_EQUAL(rows[k].n3,  rule3.numPointsTotal());
+        gsTensorBSplineBasis<3,real_t> target3(kvT, kvT, kvT);
+        CHECK_CLOSE(0.0, (hpatchIntegrateBasis(target3, *tb3.domain(), rule3)
+                          - hpatchIntegrateBasis(target3, *tb3.domain(), gauss3)).cwiseAbs().maxCoeff(), 1e-12);
+    }
+
+    // Mixed: direction 0 one element (tie, Gauss), direction 1 four elements (patch).
+    const index_t p = 2;
+    gsKnotVector<real_t> kv0(0, 1, 0, p + 1, 1), kv1(0, 1, 3, p + 1, 1);
+    gsTensorBSplineBasis<2,real_t> tb(kv0, kv1);
+    gsTHBSplineBasis<2,real_t> thb(tb);
+    gsHPatchRule<real_t> rule(*thb.domain(), 2*p, p - 1, false);
+    CHECK_EQUAL(index_t(0),  rule.numFallbackCells());
+    CHECK_EQUAL(index_t(21), rule.numPointsTotal());
+    gsKnotVector<real_t> kvT0(0, 1, 0, 2*p + 1, p + 1), kvT1(0, 1, 3, 2*p + 1, p + 1);
+    gsTensorBSplineBasis<2,real_t> target(kvT0, kvT1);
+    gsGaussRule<real_t> gauss(gsVector<index_t>::Constant(2, p + 1));
+    CHECK_CLOSE(0.0, (hpatchIntegrateBasis(target, *tb.domain(), rule)
+                      - hpatchIntegrateBasis(target, *tb.domain(), gauss)).cwiseAbs().maxCoeff(), 1e-12);
+}
+
+// An odd target degree builds an exact rule: p = 2 basis, target degree 5, so the
+// element-wise Gauss reference has nq = 5/2 + 1 = 3 points per element (exact to degree 5).
+// The count is ceil(dim/2) with dim = 6 + (n-1)*(5-reg) for simple interior knots: e.g.
+// reg 4, n 4: 6 + 3*1 = 9 -> 10 (even) -> 5 nodes. The last row (n = 1) has dim 6 -> 3 = nq, a
+// tie. No row counts as a fallback.
+TEST(hpatchrule_fallback_odd_degree)
+{
+    struct Row { index_t reg; index_t n; index_t nPts1; index_t nPts2; };
+    const Row rows[] = { {4,4, 5,25}, {3,4, 6,36}, {1,4, 9,81}, {3,1, 3,9} };
+
+    const index_t p = 2, deg = 5;
+    for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
+    {
+        const index_t reg = rows[k].reg, n = rows[k].n;
+        gsInfo << "row reg=" << reg << " n=" << n << "\n";
+        gsKnotVector<real_t> kv(0, 1, n - 1, p + 1, 1);
+        gsKnotVector<real_t> kvT(0, 1, n - 1, deg + 1, deg - reg);
+
+        gsTensorBSplineBasis<1,real_t> tb1(kv);
+        gsTHBSplineBasis<1,real_t> thb1(tb1);
+        gsHPatchRule<real_t> rule1(*thb1.domain(), deg, reg, false);
+        CHECK_EQUAL(index_t(0),     rule1.numFallbackCells());
+        CHECK_EQUAL(rows[k].nPts1,  rule1.numPointsTotal());
+        gsBSplineBasis<real_t> target1(kvT);
+        gsGaussRule<real_t> gauss1(gsVector<index_t>::Constant(1, deg/2 + 1));
+        CHECK_CLOSE(0.0, (hpatchIntegrateBasis(target1, *tb1.domain(), rule1)
+                          - hpatchIntegrateBasis(target1, *tb1.domain(), gauss1)).cwiseAbs().maxCoeff(), 1e-12);
+
+        gsTensorBSplineBasis<2,real_t> tb2(kv, kv);
+        gsTHBSplineBasis<2,real_t> thb2(tb2);
+        gsHPatchRule<real_t> rule2(*thb2.domain(), deg, reg, false);
+        CHECK_EQUAL(index_t(0),     rule2.numFallbackCells());
+        CHECK_EQUAL(rows[k].nPts2,  rule2.numPointsTotal());
+        gsTensorBSplineBasis<2,real_t> target2(kvT, kvT);
+        gsGaussRule<real_t> gauss2(gsVector<index_t>::Constant(2, deg/2 + 1));
+        CHECK_CLOSE(0.0, (hpatchIntegrateBasis(target2, *tb2.domain(), rule2)
+                          - hpatchIntegrateBasis(target2, *tb2.domain(), gauss2)).cwiseAbs().maxCoeff(), 1e-12);
+    }
+}
+
+// Target degree 6 above 2p+1 = 3 for p = 1 (reg 0, nq = 6/2 + 1 = 4). (p+1)-point Gauss
+// is exact only to degree 2p+1 = 3, so element-wise Gauss in the target space needs
+// deg/2 + 1 = 4 points per element, and the reference uses 4. A single element ties
+// (dim 7 -> 8 -> 4 nodes = nq) in 1D and 2D; with 4 elements per direction and
+// direction 0 of length 1e4 the solve fails there and direction 0 gets 4*4 = 16 Gauss
+// nodes, while direction 1 (dim 7 + 3*6 = 25 -> 26) keeps 13 patch nodes: 16*13 = 208
+// nodes, one counted leaf. The 1e4 row is compared in the relative error.
+TEST(hpatchrule_fallback_degree_above_2p_plus_1)
+{
+    const index_t p = 1, deg = 6, reg = 0;
+    gsGaussRule<real_t> gauss1(gsVector<index_t>::Constant(1, deg/2 + 1));
+    gsGaussRule<real_t> gauss2(gsVector<index_t>::Constant(2, deg/2 + 1));
+
+    gsKnotVector<real_t> kv(0, 1, 0, p + 1, 1);
+    gsKnotVector<real_t> kvT(0, 1, 0, deg + 1, deg - reg);
+
+    gsTensorBSplineBasis<1,real_t> tb1(kv);
+    gsTHBSplineBasis<1,real_t> thb1(tb1);
+    gsHPatchRule<real_t> rule1(*thb1.domain(), deg, reg, false);
+    CHECK_EQUAL(index_t(0), rule1.numFallbackCells());
+    CHECK_EQUAL(index_t(4), rule1.numPointsTotal());
+    gsBSplineBasis<real_t> target1(kvT);
+    CHECK_CLOSE(0.0, (hpatchIntegrateBasis(target1, *tb1.domain(), rule1)
+                      - hpatchIntegrateBasis(target1, *tb1.domain(), gauss1)).cwiseAbs().maxCoeff(), 1e-12);
+
+    struct Row { index_t n0; index_t n1; real_t L0; index_t nPts; index_t nFb; };
+    const Row rows[] = { {1,1,1,    16,0}, {4,4,1e4,    208,1} };
+    for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
+    {
+        gsInfo << "row n0=" << rows[k].n0 << " n1=" << rows[k].n1 << " L0=" << rows[k].L0 << "\n";
+        gsKnotVector<real_t> kv0(0, rows[k].L0, rows[k].n0 - 1, p + 1, 1);
+        gsKnotVector<real_t> kv1(0, 1,          rows[k].n1 - 1, p + 1, 1);
+        gsTensorBSplineBasis<2,real_t> tb2(kv0, kv1);
+        gsTHBSplineBasis<2,real_t> thb2(tb2);
+        gsHPatchRule<real_t> rule2(*thb2.domain(), deg, reg, false);
+        CHECK_EQUAL(rows[k].nFb,  rule2.numFallbackCells());
+        CHECK_EQUAL(rows[k].nPts, rule2.numPointsTotal());
+
+        gsKnotVector<real_t> kvT0(0, rows[k].L0, rows[k].n0 - 1, deg + 1, deg - reg);
+        gsKnotVector<real_t> kvT1(0, 1,          rows[k].n1 - 1, deg + 1, deg - reg);
+        gsTensorBSplineBasis<2,real_t> target2(kvT0, kvT1);
+        gsVector<real_t> Ig = hpatchIntegrateBasis(target2, *tb2.domain(), gauss2);
+        gsVector<real_t> Ih = hpatchIntegrateBasis(target2, *tb2.domain(), rule2);
+        CHECK_CLOSE(0.0, (Ih - Ig).cwiseAbs().maxCoeff() / Ig.cwiseAbs().maxCoeff(), 1e-12);
+    }
 }
 
 } // SUITE gsQuadratureRules_test
