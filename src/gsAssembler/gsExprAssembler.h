@@ -286,7 +286,7 @@ public:
         }
 
         expr::gsFeSpace<T> s = m_exprdata->getSpace(mp,dim);
-        s.setSpaceData(m_sdata.back());
+        s.setSpaceData(*m_vrow[id]);
         return s;
     }
 

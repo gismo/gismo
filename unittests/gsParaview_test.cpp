@@ -15,7 +15,8 @@
 #include <gsIO/gsParaviewCollection.h>
 
 #include <cstdio> // std::remove
-#include <sstream> // std::istringstream
+#include <fstream> // std::ifstream
+#include <sstream> // std::istringstream, std::stringstream
 
 SUITE(gsParaview_test)
 {
@@ -93,17 +94,85 @@ TEST(PrecisionOption_honored)
         pv.write(mp, fn12);
     }
 
-    // Higher precision produces a strictly larger file
-    const std::string vts3  = fn3  + "0.vts";
-    const std::string vts12 = fn12 + "0.vts";
+    // Higher precision produces a strictly larger file. The patch index is
+    // appended with the default "patchDelimiter" option, "_".
+    const std::string vts3  = fn3  + "_0.vts";
+    const std::string vts12 = fn12 + "_0.vts";
 
-    if (gsFileManager::fileExists(vts3) && gsFileManager::fileExists(vts12))
+    CHECK(gsFileManager::fileExists(vts3));
+    CHECK(gsFileManager::fileExists(vts12));
+
+    std::ifstream f3(vts3);
+    std::ifstream f12(vts12);
+    std::string s3((std::istreambuf_iterator<char>(f3)), std::istreambuf_iterator<char>());
+    std::string s12((std::istreambuf_iterator<char>(f12)), std::istreambuf_iterator<char>());
+    CHECK(s12.size() > s3.size());
+}
+
+TEST(PrecisionOption_honored_meshes)
+{
+    // Element meshes, control nets and gsMesh objects go through the gsMesh
+    // writer; the option must reach it on every path, not only the sampled
+    // geometry checked above.
+    const std::string tmp = gsFileManager::getTempPath();
+    if (tmp.empty()) return;
+
+    gsMultiPatch<> mp;
+    mp.addPatch(gsNurbsCreator<>::BSplineSquare());
+
+    std::vector<gsMesh<real_t> > meshes(1);
+    mp.patch(0).controlNet(meshes[0]);
+
+    // Files written by each case, relative to the base name.
+    const char * multiblock[]  = {"_0_mesh.vtp", "_0_cnet.vtp"};
+    const char * singleFile[]  = {"_mesh.vtp", "_cnet.vtp"};
+
+    std::map<std::string, size_t> sizes[2];
+    const index_t precisions[2] = {3, 12};
+    for (int k = 0; k != 2; ++k)
     {
-        std::ifstream f3(vts3);
-        std::ifstream f12(vts12);
-        std::string s3((std::istreambuf_iterator<char>(f3)), std::istreambuf_iterator<char>());
-        std::string s12((std::istreambuf_iterator<char>(f12)), std::istreambuf_iterator<char>());
-        CHECK(s12.size() > s3.size());
+        const std::string fn = tmp + "gsParaview_meshprec" +
+            util::to_string(precisions[k]);
+        // getTempPath() may fall back to the working directory, where files
+        // of an earlier run would otherwise be measured.
+        for (const char * suffix : multiblock)
+            std::remove((fn + "_mb" + suffix).c_str());
+        for (const char * suffix : singleFile)
+            std::remove((fn + "_sf" + suffix).c_str());
+        std::remove((fn + "_vecLevel0.vtp").c_str());
+
+        gsParaview<real_t> pv;
+        pv.options().setInt("precision", precisions[k]);
+        pv.options().setSwitch("elements",   true);
+        pv.options().setSwitch("controlNet", true);
+        pv.write(mp, fn + "_mb");
+        pv.options().setSwitch("multiblock", false);
+        pv.write(mp, fn + "_sf");
+        pv.write(meshes, fn + "_vec");
+
+        std::vector<std::string> files;
+        for (const char * suffix : multiblock)
+            files.push_back(fn + "_mb" + suffix);
+        for (const char * suffix : singleFile)
+            files.push_back(fn + "_sf" + suffix);
+        files.push_back(fn + "_vecLevel0.vtp");
+
+        for (size_t f = 0; f != files.size(); ++f)
+        {
+            CHECK(gsFileManager::fileExists(files[f]));
+            std::ifstream in(files[f]);
+            const std::string content((std::istreambuf_iterator<char>(in)),
+                                      std::istreambuf_iterator<char>());
+            sizes[k][files[f].substr(fn.size())] = content.size();
+        }
+    }
+
+    for (const auto & entry : sizes[0])
+    {
+        // Higher precision produces a strictly larger file.
+        if (!(sizes[1][entry.first] > entry.second))
+            gsInfo << "precision ignored for " << entry.first << "\n";
+        CHECK(sizes[1][entry.first] > entry.second);
     }
 }
 
@@ -426,6 +495,45 @@ TEST(TimeSteppingElementMesh_smoke)
 
     CHECK(gsFileManager::fileExists(fn + ".pvd"));
     CHECK(gsFileManager::fileExists(fn + "_pvd/" + gsFileManager::getBasename(fn) + "_t0.000000_mesh0.vtp"));
+}
+
+// gsWriteParaviewTPgrid is reachable through its declaration alone (a
+// library build does not include gsWriteParaview.hpp), with and without
+// the precision.
+TEST(WriteTPgrid_declaredWithPrecision)
+{
+    const std::string tmp = gsFileManager::getTempPath();
+    if (tmp.empty()) return;
+
+    gsVector<real_t> a(2), b(2);
+    a << 0, 0;
+    b << 1, 1;
+    gsVector<unsigned> np(2);
+    np << 2, 2;
+    const gsMatrix<real_t> points = gsPointGrid<real_t>(a, b, np);
+    gsMatrix<real_t> data(1, points.cols());
+    data.setConstant(1.0 / 3);
+    gsVector<index_t> npi(2);
+    npi << 2, 2;
+
+    const std::string fn5 = tmp + "gsParaview_tpgrid_default";
+    const std::string fn3 = tmp + "gsParaview_tpgrid_prec3";
+    gsWriteParaviewTPgrid(points, data, npi, fn5);
+    gsWriteParaviewTPgrid(points, data, npi, fn3, 3);
+
+    const auto contents = [](const std::string & fn)
+    {
+        std::ifstream file(fn);
+        std::stringstream ss;
+        ss << file.rdbuf();
+        return ss.str();
+    };
+    const std::string vts5 = contents(fn5 + ".vts"), vts3 = contents(fn3 + ".vts");
+    CHECK(vts5.find("0.33333 ") != std::string::npos);
+    CHECK(vts3.find("0.333 ") != std::string::npos);
+    CHECK(vts3.find("0.3333") == std::string::npos);
+    std::remove((fn5 + ".vts").c_str());
+    std::remove((fn3 + ".vts").c_str());
 }
 
 } // SUITE

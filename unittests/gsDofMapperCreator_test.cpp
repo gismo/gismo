@@ -230,6 +230,26 @@ TEST(unknown_minus_one)
     CHECK_EQUAL(nbWest + nbEast, mAll.boundarySize());
 }
 
+// 8b. Corner conditions with unknown == -1 are a wildcard: they must be
+// eliminated regardless of the requested unk, while a corner condition with
+// an explicit, different unknown must still be skipped.
+TEST(corner_wildcard_unknown)
+{
+    gsMultiBasis<real_t> mb = twoPatchBasis();
+    gsBoundaryConditions<real_t> bc;
+
+    // Wildcard corner (unknown == -1): matches any requested unk.
+    bc.addCornerValue(boundary::southwest, 0.5, 0, -1);
+    // Explicit unknown == 1 corner: must be skipped when unk == 0.
+    bc.addCornerValue(boundary::northwest, 0.5, 0, 1);
+
+    gsDofMapper m0 = createMapper(mb, bc, 1, 0, false, true);
+    CHECK_EQUAL(1, m0.boundarySize()); // only the wildcard corner
+
+    gsDofMapper m1 = createMapper(mb, bc, 1, 1, false, true);
+    CHECK_EQUAL(2, m1.boundarySize()); // wildcard + explicit unk==1 corner
+}
+
 // 9. Multipatch with multiple components: conforming matching per component.
 TEST(multipatch_multicomponent_conforming)
 {

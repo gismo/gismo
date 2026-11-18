@@ -1,7 +1,7 @@
-version: 2.0
+version: 2.1
 
 jobs:
-#  x86_64_xcode15.4_cxx14_release:
+#  x86_64_xcode15_4_cxx14_release:
 #    macos:
 #      xcode: "15.4.0"
 #    resource_class: macos.m1.large.gen1
@@ -20,7 +20,7 @@ jobs:
 #          name: Build and test G+Smo on MacOS (x86_64)
 #          command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=$MAKEJOBS
 
-  x86_64_xcode14.3_cxx17_release:
+  x86_64_xcode14_3_cxx17_release:
     macos:
       xcode: "14.3.1"
     resource_class: macos.m1.medium.gen1
@@ -40,8 +40,7 @@ jobs:
           command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=$MAKEJOBS
           
 workflows:
-  version: 2
   build:
     jobs:
-#      - x86_64_xcode15.4_cxx14_release
-      - x86_64_xcode14.3_cxx17_release
+#      - x86_64_xcode15_4_cxx14_release
+      - x86_64_xcode14_3_cxx17_release

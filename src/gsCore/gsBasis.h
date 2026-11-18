@@ -806,6 +806,15 @@ public:
     virtual void refineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
     virtual void unrefineElements_withCoefs(gsMatrix<T> & coefs,std::vector<index_t> const & boxes);
 
+    /** @brief Refine the basis in the areas defined by \a boxes and
+     * adjust the coefficients \a coefs accordingly.
+     *
+     * The format of \a boxes is the same as in refine(). Tensor-product
+     * bases insert knots in each direction, hence the refinement extends
+     * across the whole domain; hierarchical bases refine locally.
+     */
+    virtual void refine_withCoefs(gsMatrix<T> & coefs, gsMatrix<T> const & boxes);
+
     /// @brief Refine the basis uniformly by inserting \a numKnots new
     /// knots with multiplicity \a mul on each knot span
     virtual void uniformRefine(int numKnots = 1, int mul=1, short_t dir=-1);

@@ -392,7 +392,7 @@ template <class Scalar>
 gsMultiPatch<Scalar> gsSurfMesh<Scalar>::asSpline(int deg) const
 {
     gsMultiPatch<Scalar> res;
-    int n;
+    int n(0);
     Halfedge he, hh;
     Vertex ve;
     bool evface;
@@ -1181,7 +1181,7 @@ void gsXml< gsSurfMesh<Scalar> >::get_into(gsXmlNode * node, gsSurfMesh<Scalar> 
             str.clear();
             str.str( en->value() );
             hlist.resize(ne);
-            unsigned k, c = 0;
+            c = 0;
             for (unsigned i=0; i<ne; ++i)
             {
                 gsGetInt(str, c);
