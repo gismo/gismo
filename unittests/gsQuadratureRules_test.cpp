@@ -455,6 +455,33 @@ real_t hpatchIntegrate(const gsHTensorBasis<2,real_t> & basis,
     return result;
 }
 
+// Integrals of all functions of `target`, accumulated over the elements of `domain`
+// with `rule`; entry i is the integral of basis function i. A rule is exact on the
+// span of `target` exactly when this vector equals the one of a rule known to be
+// exact there.
+gsVector<real_t> hpatchIntegrateBasis(const gsBasis<real_t> & target,
+                                      const gsDomain<real_t> & domain,
+                                      const gsQuadRule<real_t> & rule)
+{
+    gsVector<real_t> result = gsVector<real_t>::Zero(target.size());
+    gsMatrix<real_t> nodes, vals;
+    gsVector<real_t> weights;
+    gsMatrix<index_t> actives;
+    for (auto & elem : domain.allElements())
+    {
+        rule.mapTo(elem.lowerCorner(), elem.upperCorner(), nodes, weights);
+        if (weights.size() == 0) continue;
+        target.active_into(nodes, actives);
+        target.eval_into(nodes, vals);
+        // Per column: a node on a knot may have other active functions than the
+        // interior nodes of its element.
+        for (index_t k = 0; k != nodes.cols(); ++k)
+            for (index_t a = 0; a != actives.rows(); ++a)
+                result(actives(a,k)) += weights[k] * vals(a,k);
+    }
+    return result;
+}
+
 // Assemble a form (0=mass, 1=stiffness) on an identity geometry with the rule
 // selected by quRule, and return the dense matrix.
 gsMatrix<real_t> hpatchAssemble(gsTHBSplineBasis<2,real_t> thb, int form,
@@ -733,12 +760,15 @@ TEST(hpatchrule_target_kv_simple_knot_characterization)
 
 TEST(hpatchrule_simple_knot_rule_baseline)
 {
-    // Golden pre-fix values of the real gsHPatchRule::_build on simple-knot meshes,
-    // recorded on unmodified library code. Every interior breakpoint has multiplicity 1
-    // there, so any per-breakpoint refinement of the target space must leave these
-    // counts bit-identical.
+    // Golden values of the real gsHPatchRule::_build on simple-knot meshes. Every
+    // interior breakpoint has multiplicity 1 there, so any per-breakpoint refinement of
+    // the target space must leave these counts bit-identical. No row has a fallback
+    // cell: every direction solves its 1D moment equations, except direction 0 of the
+    // one-element-wide level-0 leaf, where the patch rule ties with (p+1)-point Gauss
+    // and Gauss is used uncounted; p = 4, reg = 2 needs the damped
+    // Levenberg-Marquardt phase of _compute1D, since the plain Newton step diverges.
     struct Row { index_t p; index_t reg; index_t nPts; index_t nFallback; };
-    const Row rows[] = { {2,1,241,0}, {2,0,381,0}, {3,2,452,0}, {3,1,596,0}, {4,3,684,0}, {4,2,1975,3} };
+    const Row rows[] = { {2,1,241,0}, {2,0,381,0}, {3,2,452,0}, {3,1,596,0}, {4,3,684,0}, {4,2,909,0} };
 
     for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
     {
@@ -771,10 +801,10 @@ TEST(hpatchrule_2d_stiffness_vs_gauss_C0_knot_offcentre)
     const index_t p = 3;
     // C^0 line (knot multiplicity p) at x = 0.75: same target-multiplicity cap
     // (mu=3, m_deg+1=7, target regularity r_j-s = -1) as the centred fixture at
-    // x = 0.5, but here _compute1D's Newton solve converges (numFallbackCells()==0),
-    // so this fixture is what actually exercises the min(...,m_deg+1) cap branch of
-    // the rule instead of falling back to exact Gauss on that leaf. The centred
-    // fixture is pinned separately below as a characterization of the fallback.
+    // x = 0.5. With numFallbackCells()==0 no leaf falls back to exact Gauss, so
+    // agreement with Gauss below verifies the min(...,m_deg+1) cap branch of the
+    // target space. The centred fixture at x = 0.5 follows in
+    // hpatchrule_2d_stiffness_vs_gauss_C0_knot_centre.
     gsTHBSplineBasis<2,real_t> thb = makeRepeatedKnotTHB(p, 3, 0.75, {2,0,0,4,4});
 
     gsHPatchRule<real_t> rule(*thb.domain(), 2*p, p-2, false);
@@ -785,20 +815,20 @@ TEST(hpatchrule_2d_stiffness_vs_gauss_C0_knot_offcentre)
     CHECK_CLOSE(0.0, (Kg - Kh).cwiseAbs().maxCoeff(), 1e-11);
 }
 
-TEST(hpatchrule_2d_stiffness_C0_knot_centre_falls_back)
+TEST(hpatchrule_2d_stiffness_vs_gauss_C0_knot_centre)
 {
     const index_t p = 3;
     // Same cap as the off-centre fixture (mu=3, target mult = m_deg+1 = 7,
-    // target regularity r_j-s = -1) but at x = 0.5, where _compute1D's Newton
-    // iteration (itMax = 200) does not converge on this leaf geometry. The rule
-    // then takes its documented Gauss fallback, which stays exact but costs points
-    // (numPointsTotal 1093 here vs 617 on the converging off-centre fixture).
-    // This pins the known fallback so a future change to WHEN it triggers is
-    // caught rather than silently absorbed into a passing test.
+    // target regularity r_j-s = -1) but at x = 0.5. The C^{-1} knot at the centre
+    // splits the leaf's target space into two blocks; _ensureEven1D makes each
+    // block even-dimensional, so the leaf keeps its patch rule (no Gauss fallback
+    // cell). Its 617 points in total are a measured value, pinned so that the count guards the
+    // target space of this leaf, the Gauss comparison its exactness.
     gsTHBSplineBasis<2,real_t> thb = makeRepeatedKnotTHB(p, 3, 0.5, {2,0,0,4,4});
 
     gsHPatchRule<real_t> rule(*thb.domain(), 2*p, p-2, false);
-    CHECK_EQUAL(index_t(1), rule.numFallbackCells());
+    CHECK_EQUAL(index_t(0), rule.numFallbackCells());
+    CHECK_EQUAL(index_t(617), rule.numPointsTotal());
 
     gsMatrix<real_t> Kg = hpatchAssemble(thb, 1, gsQuadrature::GaussLegendre, 2*p, p-2);
     gsMatrix<real_t> Kh = hpatchAssemble(thb, 1, gsQuadrature::HPatchRule,    2*p, p-2);
@@ -829,6 +859,200 @@ TEST(hpatchrule_2d_stiffness_vs_gauss_double_knot)
     gsMatrix<real_t> Kg = hpatchAssemble(thb, 1, gsQuadrature::GaussLegendre, 2*p, p-2);
     gsMatrix<real_t> Kh = hpatchAssemble(thb, 1, gsQuadrature::HPatchRule,    2*p, p-2);
     CHECK_CLOSE(0.0, (Kg - Kh).cwiseAbs().maxCoeff(), 1e-11);
+}
+
+// ------------------------------------------------------------
+// Single-leaf Newton solve of gsHPatchRule::_compute1D
+//
+// An unrefined THB basis has one level and one leaf, so the rule solves exactly one
+// moment system per direction. For a leaf of n elements with simple interior knots and
+// target (q, r) = (2p, r) the target space has
+//     dim = (q+1) + (n-1)(q-r)
+// functions; the rule has ceil(dim/2) nodes per direction (one knot is inserted when
+// dim is odd). Targets: mass r = p-1, stiffness r = p-2, biharmonic r = p-3.
+// ------------------------------------------------------------
+
+// High degree (p = 4, 5, 6), 1D leaf of n = 4 and 16 elements: the rule keeps its
+// patch rule (no Gauss fallback), has ceil(dim/2) nodes, and integrates every function
+// of the target space exactly. nPts is ceil(dim/2) with dim from the formula above,
+// e.g. p = 4, mass (8,3), n = 4: dim = 9 + 3*5 = 24, nPts = 12.
+// The reference for exactness is (p+1)-point Gauss per element, exact to degree 2p+1.
+TEST(hpatchrule_newton_1d_single_leaf_high_degree)
+{
+    struct Row { index_t p; index_t reg; index_t n; index_t nPts; };
+    const Row rows[] = {
+        {4,3, 4,12}, {4,3,16,42}, {4,2, 4,14}, {4,2,16,50}, {4,1, 4,15}, {4,1,16,57},
+        {5,4, 4,15}, {5,4,16,51}, {5,3, 4,16}, {5,3,16,58}, {5,2, 4,18}, {5,2,16,66},
+        {6,5, 4,17}, {6,5,16,59}, {6,4, 4,19}, {6,4,16,67}, {6,3, 4,20}, {6,3,16,74} };
+
+    for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
+    {
+        const index_t p = rows[k].p, reg = rows[k].reg, n = rows[k].n;
+        gsInfo << "row p=" << p << " reg=" << reg << " n=" << n << "\n";
+
+        gsKnotVector<real_t> kv(0, 1, n - 1, p + 1, 1);
+        gsTensorBSplineBasis<1,real_t> tb(kv);
+        gsTHBSplineBasis<1,real_t> thb(tb);
+        gsHPatchRule<real_t> rule(*thb.domain(), 2*p, reg, false);
+        CHECK_EQUAL(index_t(0),       rule.numFallbackCells());
+        CHECK_EQUAL(rows[k].nPts,     rule.numPointsTotal());
+
+        // Target space of the leaf before even-ing; even-ing only enlarges it.
+        gsKnotVector<real_t> kvT(0, 1, n - 1, 2*p + 1, 2*p - reg);
+        gsBSplineBasis<real_t> target(kvT);
+        gsGaussRule<real_t> gauss(gsVector<index_t>::Constant(1, p + 1));
+        gsVector<real_t> Ig = hpatchIntegrateBasis(target, *tb.domain(), gauss);
+        gsVector<real_t> Ih = hpatchIntegrateBasis(target, *tb.domain(), rule);
+        // 1e-12 leaves at least 50 times headroom over the Newton stop ||res||_2 < 1e-14:
+        // the residual is taken on the integrals of the even-ized basis, and each function
+        // of this target space is one of them, or (when dim is odd and a knot is inserted)
+        // a combination of at most two of them with coefficients in [0,1].
+        CHECK_CLOSE(0.0, (Ih - Ig).cwiseAbs().maxCoeff(), 1e-12);
+    }
+}
+
+// Same rows in 2D: both directions carry the same 1D system, so the node count is the
+// square of the 1D one (e.g. 12*12 = 144) and the rule is exact on the tensor target.
+TEST(hpatchrule_newton_2d_single_leaf_high_degree)
+{
+    struct Row { index_t p; index_t reg; index_t n; index_t nPts; };
+    const Row rows[] = {
+        {4,3, 4,144}, {4,3,16,1764}, {4,2, 4,196}, {4,2,16,2500}, {4,1, 4,225}, {4,1,16,3249},
+        {5,4, 4,225}, {5,4,16,2601}, {5,3, 4,256}, {5,3,16,3364}, {5,2, 4,324}, {5,2,16,4356},
+        {6,5, 4,289}, {6,5,16,3481}, {6,4, 4,361}, {6,4,16,4489}, {6,3, 4,400}, {6,3,16,5476} };
+
+    for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
+    {
+        const index_t p = rows[k].p, reg = rows[k].reg, n = rows[k].n;
+        gsInfo << "row p=" << p << " reg=" << reg << " n=" << n << "\n";
+
+        gsKnotVector<real_t> kv(0, 1, n - 1, p + 1, 1);
+        gsTensorBSplineBasis<2,real_t> tb(kv, kv);
+        gsTHBSplineBasis<2,real_t> thb(tb);
+        gsHPatchRule<real_t> rule(*thb.domain(), 2*p, reg, false);
+        CHECK_EQUAL(index_t(0),       rule.numFallbackCells());
+        CHECK_EQUAL(rows[k].nPts,     rule.numPointsTotal());
+
+        gsKnotVector<real_t> kvT(0, 1, n - 1, 2*p + 1, 2*p - reg);
+        gsTensorBSplineBasis<2,real_t> target(kvT, kvT);
+        gsGaussRule<real_t> gauss(gsVector<index_t>::Constant(2, p + 1));
+        gsVector<real_t> Ig = hpatchIntegrateBasis(target, *tb.domain(), gauss);
+        gsVector<real_t> Ih = hpatchIntegrateBasis(target, *tb.domain(), rule);
+        CHECK_CLOSE(0.0, (Ih - Ig).cwiseAbs().maxCoeff(), 1e-12);
+    }
+}
+
+// On single leaves where the Newton solve converges without any safeguard
+// (p = 2, 3; mass and stiffness targets), gsHPatchRule and the tensor gsPatchRule solve
+// the same system from the same starting guess (pairwise Greville midpoints) with the
+// same even-ing, so their nodes and weights must agree to round-off. Both rules are
+// first checked exact on the target space, otherwise agreement would not show that the
+// solved rule is the right one. The whole leaf is compared with one mapTo on [0,1]
+// (not element by element: a node at an element boundary such as 0.5 may fall on
+// either side of the half-open [lower, upper) filter in the two independent solves).
+TEST(hpatchrule_newton_1d_single_leaf_matches_patchrule)
+{
+    struct Row { index_t p; index_t reg; index_t n; };
+    const Row rows[] = { {2,1, 4}, {2,1,16}, {2,0, 4}, {2,0,16},
+                         {3,2, 4}, {3,2,16}, {3,1, 4}, {3,1,16} };
+
+    for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
+    {
+        const index_t p = rows[k].p, reg = rows[k].reg, n = rows[k].n;
+        gsInfo << "row p=" << p << " reg=" << reg << " n=" << n << "\n";
+
+        gsKnotVector<real_t> kv(0, 1, n - 1, p + 1, 1);
+        gsTensorBSplineBasis<1,real_t> tb(kv);
+        gsTHBSplineBasis<1,real_t> thb(tb);
+        gsHPatchRule<real_t> rule(*thb.domain(), 2*p, reg, false);
+        gsPatchRule<real_t> ref(*tb.domain(), 2*p, reg, false);
+
+        gsKnotVector<real_t> kvT(0, 1, n - 1, 2*p + 1, 2*p - reg);
+        gsBSplineBasis<real_t> target(kvT);
+        gsGaussRule<real_t> gauss(gsVector<index_t>::Constant(1, p + 1));
+        gsVector<real_t> Ig = hpatchIntegrateBasis(target, *tb.domain(), gauss);
+        CHECK_CLOSE(0.0, (hpatchIntegrateBasis(target, *tb.domain(), ref)  - Ig).cwiseAbs().maxCoeff(), 1e-12);
+        CHECK_CLOSE(0.0, (hpatchIntegrateBasis(target, *tb.domain(), rule) - Ig).cwiseAbs().maxCoeff(), 1e-12);
+
+        const gsVector<real_t> lower = gsVector<real_t>::Zero(1), upper = gsVector<real_t>::Ones(1);
+        gsMatrix<real_t> nodesH, nodesP;
+        gsVector<real_t> weightsH, weightsP;
+        rule.mapTo(lower, upper, nodesH, weightsH);
+        ref.mapTo(lower, upper, nodesP, weightsP);
+        // Different counts mean different target spaces: fail loudly, then skip the
+        // value comparison, which would otherwise be undefined.
+        CHECK_EQUAL(weightsP.size(), weightsH.size());
+        if (weightsP.size() == weightsH.size())
+        {
+            CHECK_CLOSE(0.0, (nodesH   - nodesP  ).cwiseAbs().maxCoeff(), 1e-12);
+            CHECK_CLOSE(0.0, (weightsH - weightsP).cwiseAbs().maxCoeff(), 1e-12);
+        }
+    }
+}
+
+// Same comparison in 2D: the rule is the tensor product of the 1D rules and is
+// compared in the tensor order of mapTo (direction 0 fastest).
+TEST(hpatchrule_newton_2d_single_leaf_matches_patchrule)
+{
+    struct Row { index_t p; index_t reg; index_t n; };
+    const Row rows[] = { {3,1, 4}, {2,1,16} };
+
+    for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
+    {
+        const index_t p = rows[k].p, reg = rows[k].reg, n = rows[k].n;
+        gsInfo << "row p=" << p << " reg=" << reg << " n=" << n << "\n";
+
+        gsKnotVector<real_t> kv(0, 1, n - 1, p + 1, 1);
+        gsTensorBSplineBasis<2,real_t> tb(kv, kv);
+        gsTHBSplineBasis<2,real_t> thb(tb);
+        gsHPatchRule<real_t> rule(*thb.domain(), 2*p, reg, false);
+        gsPatchRule<real_t> ref(*tb.domain(), 2*p, reg, false);
+
+        gsKnotVector<real_t> kvT(0, 1, n - 1, 2*p + 1, 2*p - reg);
+        gsTensorBSplineBasis<2,real_t> target(kvT, kvT);
+        gsGaussRule<real_t> gauss(gsVector<index_t>::Constant(2, p + 1));
+        gsVector<real_t> Ig = hpatchIntegrateBasis(target, *tb.domain(), gauss);
+        CHECK_CLOSE(0.0, (hpatchIntegrateBasis(target, *tb.domain(), ref)  - Ig).cwiseAbs().maxCoeff(), 1e-12);
+        CHECK_CLOSE(0.0, (hpatchIntegrateBasis(target, *tb.domain(), rule) - Ig).cwiseAbs().maxCoeff(), 1e-12);
+
+        const gsVector<real_t> lower = gsVector<real_t>::Zero(2), upper = gsVector<real_t>::Ones(2);
+        gsMatrix<real_t> nodesH, nodesP;
+        gsVector<real_t> weightsH, weightsP;
+        rule.mapTo(lower, upper, nodesH, weightsH);
+        ref.mapTo(lower, upper, nodesP, weightsP);
+        // Different counts mean different target spaces: fail loudly, then skip the
+        // value comparison, which would otherwise be undefined.
+        CHECK_EQUAL(weightsP.size(), weightsH.size());
+        if (weightsP.size() == weightsH.size())
+        {
+            CHECK_CLOSE(0.0, (nodesH   - nodesP  ).cwiseAbs().maxCoeff(), 1e-12);
+            CHECK_CLOSE(0.0, (weightsH - weightsP).cwiseAbs().maxCoeff(), 1e-12);
+        }
+    }
+}
+
+// A 1D leaf of 2000 elements, target (6,2) (mass, p = 3): the shape of a long leaf of a
+// hierarchical mesh. The target space has dim = 7 + 1999*4 = 8003 functions (odd, so one
+// knot is inserted), hence ceil(8003/2) = 4002 nodes. The rule must build without
+// falling back and integrate the target space exactly. The memory footprint of the
+// banded solve is measured outside the test (peak RSS of this test alone against a small
+// baseline test), since the test also passes with a dense Jacobian.
+TEST(hpatchrule_newton_1d_long_leaf)
+{
+    const index_t p = 3, reg = 2, n = 2000;
+    gsKnotVector<real_t> kv(0, 1, n - 1, p + 1, 1);
+    gsTensorBSplineBasis<1,real_t> tb(kv);
+    gsTHBSplineBasis<1,real_t> thb(tb);
+    gsHPatchRule<real_t> rule(*thb.domain(), 2*p, reg, false);
+    CHECK_EQUAL(index_t(0),    rule.numFallbackCells());
+    CHECK_EQUAL(index_t(4002), rule.numPointsTotal());
+
+    gsKnotVector<real_t> kvT(0, 1, n - 1, 2*p + 1, 2*p - reg);
+    gsBSplineBasis<real_t> target(kvT);
+    gsGaussRule<real_t> gauss(gsVector<index_t>::Constant(1, p + 1));
+    gsVector<real_t> Ig = hpatchIntegrateBasis(target, *tb.domain(), gauss);
+    gsVector<real_t> Ih = hpatchIntegrateBasis(target, *tb.domain(), rule);
+    CHECK_CLOSE(0.0, (Ih - Ig).cwiseAbs().maxCoeff(), 1e-12);
 }
 
 } // SUITE gsQuadratureRules_test

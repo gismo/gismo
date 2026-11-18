@@ -81,6 +81,9 @@ void gsHPatchRule<T>::_build(const gsDomain<T> & domain)
 
     m_maxLevel = basis.maxLevel();
 
+    // Element-wise Gauss with nq points per element is exact to degree 2nq-1 >= m_deg.
+    const index_t nq = m_deg / 2 + 1;
+
     auto leaf = hd->tree().beginLeafIterator();
     for (; leaf.good(); leaf.next())
     {
@@ -98,8 +101,7 @@ void gsHPatchRule<T>::_build(const gsDomain<T> & domain)
         // Convert index corners -> parametric corners (per direction)
         std::vector<gsKnotVector<T>> evenKvs(d);
         std::vector<index_t>         n1d(d, 0);
-        index_t nCandidateTensor = 1;
-        index_t nGaussTotal      = 1;
+        std::vector<bool>            gaussDir(d, false); // direction uses element-wise Gauss
 
         for (short_t dd = 0; dd < d; ++dd)
         {
@@ -110,9 +112,6 @@ void gsHPatchRule<T>::_build(const gsDomain<T> & domain)
             cell.upperIndex[dd] = leaf.upperCorner()[dd];
             cell.lowerParam[dd] = kvLev(cell.lowerIndex[dd]);
             cell.upperParam[dd] = kvLev(cell.upperIndex[dd]);
-
-            const index_t nElemDD = cell.upperIndex[dd] - cell.lowerIndex[dd];
-            nGaussTotal *= nElemDD * (basis.degree(dd) + 1);
 
             if (short_t(dd) == m_fixDir)
             {
@@ -147,51 +146,24 @@ void gsHPatchRule<T>::_build(const gsDomain<T> & domain)
             GISMO_ENSURE(N % 2 == 0,
                 "gsHPatchRule: even target basis construction failed in direction " << dd);
             n1d[dd] = N / 2;
-            nCandidateTensor *= n1d[dd];
+
+            // The patch rule is used in this direction only if it has strictly fewer
+            // nodes than element-wise Gauss; a tie costs the same and skips the solve.
+            const index_t nElemDD = cell.upperIndex[dd] - cell.lowerIndex[dd];
+            gaussDir[dd] = (n1d[dd] >= nElemDD * nq);
         }
 
-        // --- Decide: Johannessen or Gauss fallback ---
-        bool useFallback = (nCandidateTensor >= nGaussTotal);
-
+        // Per direction either the Johannessen rule on evenKvs[dd] or nq-point Gauss on
+        // every level-l element of the leaf.  On the leaf the target space is the tensor
+        // product S_1 x ... x S_d of univariate spaces S_k; Q_k is exact on S_k in both
+        // cases (the even-ized space contains S_k; piecewise polynomials of degree
+        // <= 2nq-1 >= m_deg on the leaf's elements contain S_k).  For separable
+        // f = f_1...f_d with f_k in S_k the tensor rule gives prod Q_k(f_k) = prod int f_k
+        // = int f, and by linearity it is exact on S, whichever direction uses which rule.
         std::vector<gsVector<T>> dirNodes(d), dirWeights(d);
-        if (!useFallback)
-        {
-            for (short_t dd = 0; dd < d && !useFallback; ++dd)
-            {
-                if (short_t(dd) == m_fixDir) continue;
-                if (!_compute1D(evenKvs[dd], dirNodes[dd], dirWeights[dd]))
-                    useFallback = true;
-            }
-        }
-
-        if (useFallback)
-        {
-            cell.usedFallback = true;
-            for (short_t dd = 0; dd < d; ++dd)
-            {
-                cell.dirMaps[dd].clear();
-                if (short_t(dd) == m_fixDir)
-                {
-                    // Store both cell boundaries so degenerate boundary elements
-                    // (lower[dd]==upper[dd]) can pick the correct boundary node.
-                    cell.dirMaps[dd].push_back(std::make_pair(cell.lowerParam[dd], T(1)));
-                    cell.dirMaps[dd].push_back(std::make_pair(cell.upperParam[dd], T(1)));
-                    continue;
-                }
-                const gsKnotVector<T> & kvLev =
-                    basis.tensorLevel(l).component(dd).knots();
-                _fillGaussFallback1D(cell.dirMaps[dd], kvLev,
-                                     cell.lowerIndex[dd], cell.upperIndex[dd],
-                                     basis.degree(dd) + 1);
-                _finalizeDirMap(cell.dirMaps[dd]);
-            }
-            m_cells.push_back(give(cell));
-            continue;
-        }
-
-        // --- Store Johannessen results (sorted by node) ---
         for (short_t dd = 0; dd < d; ++dd)
         {
+            cell.dirMaps[dd].clear();
             if (short_t(dd) == m_fixDir)
             {
                 // Store both cell boundaries so degenerate boundary elements
@@ -200,10 +172,32 @@ void gsHPatchRule<T>::_build(const gsDomain<T> & domain)
                 cell.dirMaps[dd].push_back(std::make_pair(cell.upperParam[dd], T(1)));
                 continue;
             }
-            cell.dirMaps[dd].reserve(n1d[dd]);
-            for (index_t k = 0; k < n1d[dd]; ++k)
-                cell.dirMaps[dd].push_back(
-                    std::make_pair(dirNodes[dd][k], dirWeights[dd][k]));
+
+            const index_t nGaussDD = (cell.upperIndex[dd] - cell.lowerIndex[dd]) * nq;
+            bool newtonFailed = false;
+            if (!gaussDir[dd])
+            {
+                newtonFailed = !_compute1D(evenKvs[dd], dirNodes[dd], dirWeights[dd]);
+                if (!newtonFailed)
+                {
+                    // Johannessen results, sorted by node
+                    cell.dirMaps[dd].reserve(n1d[dd]);
+                    for (index_t k = 0; k < n1d[dd]; ++k)
+                        cell.dirMaps[dd].push_back(
+                            std::make_pair(dirNodes[dd][k], dirWeights[dd][k]));
+                }
+            }
+
+            if (gaussDir[dd] || newtonFailed)
+            {
+                // A tie (n1d == nGaussDD) is not a fallback: same node count, no loss.
+                if (newtonFailed || n1d[dd] > nGaussDD)
+                    cell.usedFallback = true;
+                const gsKnotVector<T> & kvLev =
+                    basis.tensorLevel(l).component(dd).knots();
+                _fillGaussFallback1D(cell.dirMaps[dd], kvLev,
+                                     cell.lowerIndex[dd], cell.upperIndex[dd], nq);
+            }
             _finalizeDirMap(cell.dirMaps[dd]);
         }
         m_cells.push_back(give(cell));
@@ -222,27 +216,48 @@ void gsHPatchRule<T>::mapTo(const gsVector<T> & lower,
                             gsMatrix<T> & nodes,
                             gsVector<T> & weights) const
 {
-    const CellData & cell = _findCell(lower, upper);
+    GISMO_ASSERT(lower.size() == m_dim && upper.size() == m_dim,
+                 "gsHPatchRule::mapTo: element corners must have dim() entries");
+    _mapTo(lower.data(), upper.data(), nodes, weights);
+}
+
+template<class T>
+void gsHPatchRule<T>::mapTo(T startVal, T endVal,
+                            gsMatrix<T> & nodes, gsVector<T> & weights) const
+{
+    GISMO_ASSERT(m_dim == 1, "gsHPatchRule::mapTo(T,T,...) requires dim()==1");
+    _mapTo(&startVal, &endVal, nodes, weights);
+}
+
+template<class T>
+void gsHPatchRule<T>::_mapTo(const T * lower, const T * upper,
+                             gsMatrix<T> & nodes, gsVector<T> & weights) const
+{
+    const index_t c = _findCell(lower, upper);
+    if (c < 0)
+        _missError(lower, upper, m_dim);
+    const CellData & cell = m_cells[c];
 
 #ifndef NDEBUG
-    for (short_t dd = 0; dd < m_dim; ++dd)
+    for (index_t dd = 0; dd < m_dim; ++dd)
         GISMO_ASSERT(lower[dd] >= cell.lowerParam[dd] &&
                      upper[dd] <= cell.upperParam[dd],
-                     "gsHPatchRule::mapTo: integration element ["
-                     << lower.transpose() << "],[" << upper.transpose()
-                     << "] is not contained in selected leaf cell ["
-                     << cell.lowerParam.transpose() << "],["
-                     << cell.upperParam.transpose() << "]");
+                     "gsHPatchRule::mapTo: integration element is not contained "
+                     "in selected leaf cell in direction " << dd << ": ["
+                     << lower[dd] << "," << upper[dd] << "] not in ["
+                     << cell.lowerParam[dd] << "," << cell.upperParam[dd] << "]");
 #endif
 
     // node-only comparator for lower_bound on sorted (node,weight) arrays
     struct NodeLess
     { bool operator()(const std::pair<T,T> & p, T v) const { return p.first < v; } };
 
+    // The constructor accepts dim() = 1..4 only.
+    const std::pair<T,T> * first[4];  // start of the selected range in direction dd
+    index_t                cnt[4];    // its length
     index_t size = 1;
-    std::vector<gsVector<T>> elNodes(m_dim), elWeights(m_dim);
 
-    for (short_t dd = 0; dd < m_dim; ++dd)
+    for (index_t dd = 0; dd < m_dim; ++dd)
     {
         const std::vector<std::pair<T,T>> & dm = cell.dirMaps[dd];
         const bool isEnd  = (upper[dd] >= cell.upperParam[dd]);
@@ -267,53 +282,36 @@ void gsHPatchRule<T>::mapTo(const gsVector<T> & lower,
                    : (isEnd ? dm.end()
                             : std::lower_bound(dm.begin(), dm.end(), upper[dd], NodeLess()));
 
-        const index_t cnt = static_cast<index_t>(std::distance(itBegin, itEnd));
-        elNodes[dd].resize(cnt);
-        elWeights[dd].resize(cnt);
-        index_t k = 0;
-        for (auto it = itBegin; it != itEnd; ++it, ++k)
-        {
-            elNodes[dd][k]   = it->first;
-            elWeights[dd][k] = it->second;
-        }
-        size *= cnt;
+        cnt[dd]   = static_cast<index_t>(std::distance(itBegin, itEnd));
+        first[dd] = (cnt[dd] > 0 ? &*itBegin : nullptr);
+        size *= cnt[dd];
     }
 
     nodes.resize(m_dim, size);
     weights.resize(size);
     if (size == 0) return;
 
-    // Tensorize: direction 0 varies fastest (same convention as gsPatchRule)
-    index_t nPrev = elNodes[0].size();
-    nodes.row(0).head(nPrev)  = elNodes[0].transpose();
-    weights.head(nPrev)        = elWeights[0];
-
-    for (short_t dd = 1; dd < m_dim; ++dd)
+    // Tensorize: direction 0 varies fastest (same convention as gsPatchRule),
+    // column i <-> (idx[0],...,idx[m_dim-1]) with i = idx[0] + cnt[0]*(idx[1] + ...).
+    // The weight is accumulated as w_{d-1} * (... * (w_1 * w_0)).
+    index_t idx[4] = {0, 0, 0, 0};
+    for (index_t i = 0; i < size; ++i)
     {
-        const index_t nd   = elNodes[dd].size();
-        const index_t nNew = nPrev * nd;
-
-        const gsMatrix<T> prevNodes   = nodes.topRows(dd).leftCols(nPrev); // snapshot
-        const gsVector<T> prevWeights = weights.head(nPrev);               // snapshot
-
-        nodes.topRows(dd).leftCols(nNew) = prevNodes.replicate(1, nd);
-        for (index_t k = 0; k < nd; ++k)
+        T w = first[0][idx[0]].second;
+        nodes(0, i) = first[0][idx[0]].first;
+        for (index_t dd = 1; dd < m_dim; ++dd)
         {
-            nodes.row(dd).segment(k * nPrev, nPrev).setConstant(elNodes[dd][k]);
-            weights.segment(k * nPrev, nPrev) = elWeights[dd][k] * prevWeights;
+            nodes(dd, i) = first[dd][idx[dd]].first;
+            w = first[dd][idx[dd]].second * w;
         }
-        nPrev = nNew;
-    }
-}
+        weights[i] = w;
 
-template<class T>
-void gsHPatchRule<T>::mapTo(T startVal, T endVal,
-                            gsMatrix<T> & nodes, gsVector<T> & weights) const
-{
-    GISMO_ASSERT(m_dim == 1, "gsHPatchRule::mapTo(T,T,...) requires dim()==1");
-    gsVector<T> lo(1), up(1);
-    lo[0] = startVal; up[0] = endVal;
-    mapTo(lo, up, nodes, weights);
+        for (index_t dd = 0; dd < m_dim; ++dd)
+        {
+            if (++idx[dd] < cnt[dd]) break;
+            idx[dd] = 0;
+        }
+    }
 }
 
 // ============================================================
@@ -481,35 +479,49 @@ gsHPatchRule<T>::makeIntegrationBasis(const gsTHBSplineBasis<d,T,true> & basis)
 
 template<class T>
 bool gsHPatchRule<T>::_contains(const CellData & cell,
-                                const gsVector<T> & lower,
-                                const gsVector<T> & upper)
+                                const T * lower, const T * upper, index_t dim)
 {
-    for (index_t dd = 0; dd < lower.size(); ++dd)
+    for (index_t dd = 0; dd < dim; ++dd)
         if (lower[dd] < cell.lowerParam[dd] || upper[dd] > cell.upperParam[dd])
             return false;
     return true;
 }
 
 template<class T>
-const typename gsHPatchRule<T>::CellData &
-gsHPatchRule<T>::_findCell(const gsVector<T> & lower,
-                           const gsVector<T> & upper) const
+index_t gsHPatchRule<T>::_findCell(const T * lower, const T * upper) const
 {
-    // Cache: the standard element iteration order is cell-coherent, so a hit
-    // on the previously found cell is the common case (amortized O(1)).
-    if (m_lastCell < static_cast<index_t>(m_cells.size()) &&
-        _contains(m_cells[m_lastCell], lower, upper))
-        return m_cells[m_lastCell];
+    const index_t L = static_cast<index_t>(m_cells.size());
+    if (L == 0)
+        return -1;
 
-    for (index_t c = 0; c < static_cast<index_t>(m_cells.size()); ++c)
-        if (_contains(m_cells[c], lower, upper))
+    // Probe the last hit (k = 0), then its successor (k = 1), then continue
+    // cyclically: the leaf order of volume iteration makes k <= 1 the common
+    // case, and the wrap-around finds leaf 0 right after the last leaf.
+    const index_t c = m_lastCell;
+    for (index_t k = 0; k < L; ++k)
+    {
+        index_t j = c + k;
+        if (j >= L) j -= L;
+        if (_contains(m_cells[j], lower, upper, m_dim))
         {
-            m_lastCell = c;
-            return m_cells[c];
+            m_lastCell = j;
+            return j;
         }
+    }
+    return -1;
+}
 
-    GISMO_ERROR("gsHPatchRule::_findCell: no cell contains element ["
-                << lower.transpose() << "," << upper.transpose() << "]");
+template<class T>
+void gsHPatchRule<T>::_missError(const T * lower, const T * upper, index_t dim)
+{
+    gsVector<T> lo(dim), up(dim);
+    for (index_t dd = 0; dd < dim; ++dd)
+    {
+        lo[dd] = lower[dd];
+        up[dd] = upper[dd];
+    }
+    GISMO_ERROR("gsHPatchRule::mapTo: no cell contains element ["
+                << lo.transpose() << "," << up.transpose() << "]");
 }
 
 // ============================================================
@@ -519,32 +531,46 @@ gsHPatchRule<T>::_findCell(const gsVector<T> & lower,
 template<class T>
 gsKnotVector<T> gsHPatchRule<T>::_ensureEven1D(const gsKnotVector<T> & kv)
 {
-    gsBSplineBasis<T> basis(kv);
-    const index_t N = basis.size();
-    if (N % 2 == 0) return kv;
+    const index_t q = kv.degree();
+    const std::vector<T>       uk   = kv.unique();
+    const std::vector<index_t> mult = kv.multiplicities();
+    const index_t nU = static_cast<index_t>(uk.size());
 
-    gsKnotVector<T> result = kv;
-
-    typedef typename gsKnotVector<T>::const_iterator kIt;
-    std::vector<T> diff;
+    // A knot of multiplicity q+1 splits the space into independent blocks, and a node
+    // cannot serve two blocks. A block between two such knots (the end knots included)
+    // with u unique knots and interior multiplicities m_j has dimension
+    // q+1 + sum_j m_j, and needs an even dimension of its own.
+    std::vector<T> newKnots;
+    index_t first = 0;
+    for (index_t u = 1; u < nU; ++u)
     {
-        kIt prev = result.begin();
-        for (kIt it = result.begin() + 1; it != result.end(); ++it)
+        if (u != nU - 1 && mult[u] < q + 1)
+            continue;
+
+        index_t dim = q + 1;
+        for (index_t j = first + 1; j < u; ++j)
+            dim += mult[j];
+
+        if (dim % 2 != 0)
         {
-            diff.push_back(*it - *prev);
-            prev = it;
+            // Split the middle one of the longest spans of the block
+            T maxSpan = T(0);
+            for (index_t j = first; j < u; ++j)
+                maxSpan = (std::max)(maxSpan, uk[j + 1] - uk[j]);
+            std::vector<index_t> maxIdx;
+            for (index_t j = first; j < u; ++j)
+                if (math::abs(uk[j + 1] - uk[j] - maxSpan) / maxSpan < T(1e-15))
+                    maxIdx.push_back(j);
+            const index_t i = maxIdx.at(
+                static_cast<index_t>(std::ceil(maxIdx.size() / 2.0)) - 1);
+            newKnots.push_back((uk[i] + uk[i + 1]) / T(2));
         }
+        first = u;
     }
 
-    const T maxSpan = *std::max_element(diff.begin(), diff.end());
-    std::vector<index_t> maxIdx;
-    for (index_t k = 0; k < (index_t)diff.size(); ++k)
-        if (math::abs(diff[k] - maxSpan) / maxSpan < T(1e-15))
-            maxIdx.push_back(k);
-
-    const index_t i = maxIdx.at(
-        static_cast<index_t>(std::ceil(maxIdx.size() / 2.0)) - 1);
-    result.insert((result.at(i) + result.at(i + 1)) / T(2));
+    gsKnotVector<T> result = kv;
+    for (size_t i = 0; i != newKnots.size(); ++i)
+        result.insert(newKnots[i]);
     return result;
 }
 
@@ -572,7 +598,7 @@ gsHPatchRule<T>::_integrate1D(const gsKnotVector<T> & kv)
 }
 
 // ============================================================
-// Private static: _compute1D  (dense Newton)
+// Private static: _compute1D  (Newton, banded Jacobian) + _bandLUSolve
 // ============================================================
 
 template<class T>
@@ -600,44 +626,255 @@ bool gsHPatchRule<T>::_compute1D(const gsKnotVector<T> & evenKv,
         weights[k] = integrals[2*k] + integrals[2*k+1];
     }
 
+    const index_t q = evenKv.degree();
+    const gsVector<T> nodes0 = nodes, weights0 = weights;
+
+    // Local evaluations: (q+1) x n blocks holding, per node, the q+1 active
+    // B-splines (consecutive, ascending indices) and their values/derivatives.
     gsMatrix<index_t> actives;
-    gsMatrix<T>       vals(size, n), dvals(size, n);
-    gsMatrix<T>       vals_tmp, dvals_tmp;
-    gsVector<T>       res, update(size);
-    gsMatrix<T>       dres(size, size);            // allocate once (F3)
+    gsMatrix<T>       vals, dvals;
+    gsVector<T>       res(size), update(size);
+    gsMatrix<T>       AB; // LAPACK band storage of the Jacobian
 
     for (index_t it = 0; it < itMax; ++it)
     {
-        vals.setZero();
-        dvals.setZero();
-
         basis.active_into(nodes.transpose(), actives);
-        basis.eval_into  (nodes.transpose(), vals_tmp);
-        basis.deriv_into (nodes.transpose(), dvals_tmp);
+        basis.eval_into  (nodes.transpose(), vals);
+        basis.deriv_into (nodes.transpose(), dvals);
 
-        for (index_t act = 0; act < actives.rows(); ++act)
-            for (index_t pt = 0; pt < actives.cols(); ++pt)
+        // Residual F_i = sum_k w_k N_i(xi_k) - I_i
+        res = -integrals;
+        for (index_t k = 0; k < n; ++k)
+            for (index_t j = 0; j <= q; ++j)
+                res[actives(j, k)] += vals(j, k) * weights[k];
+
+        const T resNormN = res.norm();
+        if (!math::isfinite(resNormN)) break;
+        if (resNormN < tol) return true;
+
+        // Bandwidths of the Jacobian with the unknowns ordered (w_0, xi_0, w_1, xi_1, ...)
+        index_t kl = 0, ku = 0;
+        for (index_t k = 0; k < n; ++k)
+        {
+            kl = (std::max)(kl, actives(0, k) + q - 2*k);
+            ku = (std::max)(ku, 2*k + 1 - actives(0, k));
+        }
+
+        // Jacobian columns 2k: dF/dw_k = N_i(xi_k), 2k+1: dF/dxi_k = w_k N_i'(xi_k)
+        const index_t kv = kl + ku;
+        AB.setZero(2*kl + ku + 1, size);
+        for (index_t k = 0; k < n; ++k)
+            for (index_t j = 0; j <= q; ++j)
             {
-                vals (actives(act, pt), pt) = vals_tmp (act, pt);
-                dvals(actives(act, pt), pt) = dvals_tmp(act, pt);
+                const index_t i = actives(j, k);
+                AB(kv + i - 2*k    , 2*k    ) = vals (j, k);
+                AB(kv + i - 2*k - 1, 2*k + 1) = dvals(j, k) * weights[k];
             }
 
-        res = vals * weights - integrals;
-        if (res.norm() < tol) return true;
+        update = -res;
+        if (!_bandLUSolve(AB, kl, ku, update)) break;
+        if (!math::isfinite(update.sum())) break;
 
-        // Jacobian [dF/dw | dF/dxi]  (dense; small, square)
-        dres.leftCols(n)  = vals;
-        dres.rightCols(n) = dvals * weights.asDiagonal();
+        for (index_t k = 0; k < n; ++k)
+        {
+            weights[k] += update[2*k];
+            nodes[k]   += update[2*k + 1];
+        }
 
-        update = dres.partialPivLu().solve(-res);
+        if (nodes.minCoeff() <= evenKv.first()) break;
+        if (nodes.maxCoeff() >= evenKv.last())  break;
+    }
 
-        weights += update.head(n);
-        nodes   += update.tail(n);
+    // Levenberg-Marquardt restart from the starting guess: minimises ||F||^2 with the
+    // damped normal equations (J^T J + mu diag(J^T J)) d = -J^T F, which stay solvable
+    // when J is nearly singular and bound the step where the full Newton step leaves the
+    // basin of attraction. J^T J inherits the band structure of J (half-bandwidth hb).
+    nodes = nodes0;
+    weights = weights0;
+    const T lo = evenKv.first(), hi = evenKv.last();
+    gsMatrix<T> Hb, ABm;
+    gsVector<T> grad(size), dH(size), delta(size), resNew(size), nodesNew(n), weightsNew(n);
+    T mu = T(0);
+    for (index_t it = 0; it < itMax; ++it)
+    {
+        basis.active_into(nodes.transpose(), actives);
+        basis.eval_into  (nodes.transpose(), vals);
+        basis.deriv_into (nodes.transpose(), dvals);
 
-        if (nodes.minCoeff() <= evenKv.first()) return false;
-        if (nodes.maxCoeff() >= evenKv.last())  return false;
+        res = -integrals;
+        for (index_t k = 0; k < n; ++k)
+            for (index_t j = 0; j <= q; ++j)
+                res[actives(j, k)] += vals(j, k) * weights[k];
+
+        const T resNorm = res.norm();
+        if (!math::isfinite(resNorm)) return false;
+        if (resNorm < tol) return true;
+
+        // Gradient J^T F; the column of xi_k carries the factor w_k
+        for (index_t k = 0; k < n; ++k)
+        {
+            T gw = T(0), gx = T(0);
+            for (index_t j = 0; j <= q; ++j)
+            {
+                gw += vals (j, k) * res[actives(j, k)];
+                gx += dvals(j, k) * res[actives(j, k)];
+            }
+            grad[2*k]     = gw;
+            grad[2*k + 1] = weights[k] * gx;
+        }
+
+        // Half-bandwidth of J^T J: columns of nodes j and k couple iff their active ranges overlap
+        // For nodes in ascending order of their first active index the coupled nodes of k form
+        // a contiguous run, so the scans stop at its end (O(n q)); otherwise all pairs are scanned.
+        bool ordered = true;
+        for (index_t k = 1; k < n; ++k)
+            if (actives(0, k) < actives(0, k - 1)) { ordered = false; break; }
+
+        index_t hb = 1;
+        for (index_t k = 0; k < n; ++k)
+            for (index_t j = k + 1; j < n; ++j)
+            {
+                if (math::abs(actives(0, j) - actives(0, k)) <= q)
+                    hb = (std::max)(hb, 2 * (j - k) + 1);
+                else if (ordered)
+                    break;
+            }
+
+        // J^T J in band storage (LAPACK layout of _bandLUSolve with kl = ku = hb)
+        const index_t kvb = 2 * hb;
+        Hb.setZero(3 * hb + 1, size);
+        for (index_t k = 0; k < n; ++k)
+            for (index_t j = k; j < n; ++j)
+            {
+                const index_t ak = actives(0, k), aj = actives(0, j);
+                if (math::abs(aj - ak) > q)
+                {
+                    if (ordered) break;
+                    continue;
+                }
+                T b00 = T(0), b01 = T(0), b10 = T(0), b11 = T(0);
+                const index_t rLo = (std::max)(ak, aj), rHi = (std::min)(ak, aj) + q;
+                for (index_t r = rLo; r <= rHi; ++r)
+                {
+                    const T vk = vals(r - ak, k), dk = dvals(r - ak, k) * weights[k];
+                    const T vj = vals(r - aj, j), dj = dvals(r - aj, j) * weights[j];
+                    b00 += vk * vj;  b01 += vk * dj;
+                    b10 += dk * vj;  b11 += dk * dj;
+                }
+                // entry (row, col) of J^T J lives at Hb(kvb + row - col, col)
+                Hb(kvb + 2*k     - 2*j,     2*j    ) = b00;
+                Hb(kvb + 2*k     - (2*j+1), 2*j + 1) = b01;
+                Hb(kvb + 2*k + 1 - 2*j,     2*j    ) = b10;
+                Hb(kvb + 2*k + 1 - (2*j+1), 2*j + 1) = b11;
+                Hb(kvb + 2*j     - 2*k,     2*k    ) = b00;
+                Hb(kvb + 2*j + 1 - 2*k,     2*k    ) = b01;
+                Hb(kvb + 2*j     - (2*k+1), 2*k + 1) = b10;
+                Hb(kvb + 2*j + 1 - (2*k+1), 2*k + 1) = b11;
+            }
+        for (index_t i = 0; i < size; ++i)
+            dH[i] = (std::max)(Hb(kvb, i), std::numeric_limits<T>::min());
+        if (it == 0)
+            mu = T(1e-3) * dH.maxCoeff();
+
+        bool accepted = false;
+        for (index_t trial = 0; trial < 40 && !accepted; ++trial)
+        {
+            ABm = Hb;
+            for (index_t i = 0; i < size; ++i)
+                ABm(kvb, i) += mu * dH[i];
+            delta = -grad;
+            if (_bandLUSolve(ABm, hb, hb, delta))
+            {
+                for (index_t k = 0; k < n; ++k)
+                {
+                    weightsNew[k] = weights[k] + delta[2*k];
+                    nodesNew[k]   = nodes[k]   + delta[2*k + 1];
+                }
+                if (nodesNew.allFinite() && weightsNew.allFinite() &&
+                    nodesNew.minCoeff() > lo && nodesNew.maxCoeff() < hi)
+                {
+                    basis.active_into(nodesNew.transpose(), actives);
+                    basis.eval_into  (nodesNew.transpose(), vals);
+                    resNew = -integrals;
+                    for (index_t k = 0; k < n; ++k)
+                        for (index_t j = 0; j <= q; ++j)
+                            resNew[actives(j, k)] += vals(j, k) * weightsNew[k];
+                    if (resNew.allFinite() && resNew.norm() < resNorm)
+                    {
+                        nodes = nodesNew;
+                        weights = weightsNew;
+                        mu = (std::max)(mu / T(3), T(1e-14));
+                        accepted = true;
+                        break;
+                    }
+                }
+            }
+            mu *= T(4);
+        }
+        if (!accepted) return false; // no damped step lowers the residual
     }
     return false; // max iterations reached
+}
+
+template<class T>
+bool gsHPatchRule<T>::_bandLUSolve(gsMatrix<T> & AB, index_t kl, index_t ku, gsVector<T> & b)
+{
+    const index_t N  = AB.cols();
+    const index_t kv = kl + ku; // row of the diagonal in AB; U has upper bandwidth kv
+    std::vector<index_t> piv(N);
+
+    // Factorization P A = L U, row partial pivoting
+    for (index_t j = 0; j < N; ++j)
+    {
+        const index_t iMax = (std::min)(N - 1, j + kl);
+        const index_t cMax = (std::min)(N - 1, j + kv);
+
+        index_t p = j;
+        T pmax = math::abs(AB(kv, j));
+        for (index_t i = j + 1; i <= iMax; ++i)
+            if (math::abs(AB(kv + i - j, j)) > pmax)
+            {
+                pmax = math::abs(AB(kv + i - j, j));
+                p = i;
+            }
+        if (!(pmax > T(0)) || !(pmax <= (std::numeric_limits<T>::max)())) // zero, NaN or inf pivot
+            return false;
+        piv[j] = p;
+
+        if (p != j)
+            for (index_t c = j; c <= cMax; ++c)
+                std::swap(AB(kv + j - c, c), AB(kv + p - c, c));
+
+        const T d = AB(kv, j);
+        for (index_t i = j + 1; i <= iMax; ++i)
+            AB(kv + i - j, j) /= d;
+
+        for (index_t c = j + 1; c <= cMax; ++c)
+        {
+            const T u = AB(kv + j - c, c);
+            for (index_t i = j + 1; i <= iMax; ++i)
+                AB(kv + i - c, c) -= AB(kv + i - j, j) * u;
+        }
+    }
+
+    // Forward substitution L y = P b
+    for (index_t j = 0; j < N; ++j)
+    {
+        if (piv[j] != j)
+            std::swap(b[j], b[piv[j]]);
+        const index_t iMax = (std::min)(N - 1, j + kl);
+        for (index_t i = j + 1; i <= iMax; ++i)
+            b[i] -= AB(kv + i - j, j) * b[j];
+    }
+
+    // Back substitution U x = y
+    for (index_t j = N - 1; j >= 0; --j)
+    {
+        b[j] /= AB(kv, j);
+        for (index_t i = (std::max)(index_t(0), j - kv); i < j; ++i)
+            b[i] -= AB(kv + i - j, j) * b[j];
+    }
+    return true;
 }
 
 // ============================================================
