@@ -230,6 +230,16 @@ inline bool buildConstrainedDomainTriangulation(
     for (int l = 0; l < nLoops; ++l) {
         int M = static_cast<int>(loopSegs[l].size());
         int baseIdx = static_cast<int>(outMesh.pts.size());
+        T signedArea2 = T(0);
+        {
+            const auto& poly = outMesh.loopPolys[l];
+            for (size_t k = 0; k < poly.size(); ++k) {
+                size_t j = (k + 1) % poly.size();
+                signedArea2 += poly[k].x * poly[j].y - poly[j].x * poly[k].y;
+            }
+        }
+        // Outer loop CCW (area > 0) -> domain on left; Hole loop CW (area < 0) -> domain on left
+        const bool domainOnLeft = (l == 0) ? (signedArea2 >= T(0)) : (signedArea2 <= T(0));
         for (int i = 0; i < M; ++i) {
             outMesh.pts.push_back(loopSegs[l][i].p0());
             outMesh.isBoundaryPt.push_back(true);
@@ -245,9 +255,8 @@ inline bool buildConstrainedDomainTriangulation(
             T dt = tIn.x * tOut.x + tIn.y * tOut.y;
             T turnRad = std::atan2(cr, dt);
             bool smooth = (std::abs(turnRad) <= T(0.10));
-            // Interior domain angle at vertex i:
-            // Outer loop is CCW -> interior angle = pi - turnRad; Hole loop is CW -> interior angle = pi + turnRad
-            T intAngDeg = (l == 0) ? (T(180) - turnRad * radToDeg) : (T(180) + turnRad * radToDeg);
+            // Interior domain angle at vertex i when domain lies on the left of the oriented boundary
+            T intAngDeg = domainOnLeft ? (T(180) - turnRad * radToDeg) : (T(180) + turnRad * radToDeg);
             outMesh.isSmoothBnd.push_back(smooth);
             outMesh.isSharpCorner.push_back(std::abs(turnRad) > T(0.45)); // > ~25 deg turn
             outMesh.cornerAngleDeg.push_back(intAngDeg);
@@ -1307,14 +1316,18 @@ inline bool buildCrossFieldArrangementCandidate(
         if (!fineMesh.isBoundaryPt[i] || !fineMesh.isSharpCorner[i]) continue;
         if (fineMesh.cornerAngleDeg[i] <= angleThresholdDeg) continue;
 
-        gsPoint2D<T> tBack(-fineMesh.bndTanIn[i].x, -fineMesh.bndTanIn[i].y);
         gsPoint2D<T> tFwd(fineMesh.bndTanOut[i].x, fineMesh.bndTanOut[i].y);
-        // On CCW outer loop, interior sweeps CCW from tFwd to tBack
+        const gsPoint2D<T>& tIn = fineMesh.bndTanIn[i];
+        T cr = tIn.x * tFwd.y - tIn.y * tFwd.x;
+        T dt = tIn.x * tFwd.x + tIn.y * tFwd.y;
+        T turnRad = std::atan2(cr, dt);
+        T angIfLeft = T(180) - turnRad * (T(180) / T(3.14159265358979323846));
+        T sweepSign = (std::abs(fineMesh.cornerAngleDeg[i] - angIfLeft) < T(1)) ? T(1) : T(-1);
         T angStart = std::atan2(tFwd.y, tFwd.x);
         T sweepRad = fineMesh.cornerAngleDeg[i] * T(3.14159265358979323846) / T(180);
         int nPorts = std::max(1, static_cast<int>(std::floor(fineMesh.cornerAngleDeg[i] / T(90) + T(0.5))) - 1);
         for (int p = 1; p <= nPorts; ++p) {
-            T ang = angStart + sweepRad * (static_cast<T>(p) / static_cast<T>(nPorts + 1));
+            T ang = angStart + sweepSign * sweepRad * (static_cast<T>(p) / static_cast<T>(nPorts + 1));
             seeds.push_back({fineMesh.pts[i], gsPoint2D<T>(std::cos(ang), std::sin(ang)), -(i + 1)});
         }
     }

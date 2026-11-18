@@ -489,6 +489,26 @@ inline T computeDomainMinCornerAngleDeg(const gsPlanarDomain<T>& dom)
     for (int l = 0; l < dom.numLoops(); ++l) {
         const auto& lp = dom.loop(l);
         const int K = lp.size();
+        // Compute signed area of loop polygon to determine orientation
+        T signedArea2 = T(0);
+        {
+            std::vector<gsPoint2D<T>> poly;
+            poly.reserve(K * 8);
+            for (int i = 0; i < K; ++i) {
+                const auto& c = lp.curve(i);
+                gsMatrix<T> pr = c.parameterRange();
+                for (int s = 0; s < 8; ++s) {
+                    T t = pr(0, 0) + (pr(0, 1) - pr(0, 0)) * T(s) / T(8);
+                    poly.push_back(evalCurvePoint(c, t));
+                }
+            }
+            for (size_t i = 0; i < poly.size(); ++i) {
+                size_t j = (i + 1) % poly.size();
+                signedArea2 += poly[i].x * poly[j].y - poly[j].x * poly[i].y;
+            }
+        }
+        // Outer loop CCW (area > 0) -> domain on left; Hole loop CW (area < 0) -> domain on left
+        const bool domainOnLeft = (l == 0) ? (signedArea2 >= T(0)) : (signedArea2 <= T(0));
         for (int i = 0; i < K; ++i) {
             const auto& prevC = lp.curve((i + K - 1) % K);
             const auto& nextC = lp.curve(i);
@@ -500,7 +520,7 @@ inline T computeDomainMinCornerAngleDeg(const gsPlanarDomain<T>& dom)
             T cr = (din.x * dout.y - din.y * dout.x) / (n1 * n2);
             T dt = (din.x * dout.x + din.y * dout.y) / (n1 * n2);
             T turnRad = std::atan2(cr, dt);
-            T intAng = (l == 0) ? (T(180) - turnRad * radToDeg) : (T(180) + turnRad * radToDeg);
+            T intAng = domainOnLeft ? (T(180) - turnRad * radToDeg) : (T(180) + turnRad * radToDeg);
             if (intAng > T(1e-3) && intAng < minAng) minAng = intAng;
         }
     }
@@ -740,53 +760,907 @@ inline bool isPatchDetSingleSign(const gsGeometry<T>& patch, int nSamples = 21, 
     return (minDet > tol) || (maxDet < -tol);
 }
 
-// Conforming 4-patch quad ring between 4 outer curves and 4 hole curves
+// Concatenate consecutive oriented CurveSeg<T> segments into a single exact clamped gsBSpline<T>.
 template <class T>
-inline void buildQuadRingByProximity(
-    const gsCurveLoop<T>& outer,
-    const gsCurveLoop<T>& hole,
-    gsMultiPatch<T>& mp,
-    int degree)
+inline std::shared_ptr<gsBSpline<T>> joinCurveSegsExact(
+    const std::vector<CurveSeg<T>>& segs, int degree)
 {
-    for (int i = 0; i < 4; ++i) {
-        const auto& oCrv = outer.curve(i);
-        auto pA = startPoint(oCrv);
-        auto pB = endPoint(oCrv);
-
-        int best_h = -1;
-        bool best_rev = false;
-        T best_dist = 1e9;
-        for (int h = 0; h < 4; ++h) {
-            const auto& hCrv = hole.curve(h);
-            auto hA = startPoint(hCrv);
-            auto hB = endPoint(hCrv);
-
-            T d_fwd = (pA.x - hA.x)*(pA.x - hA.x) + (pA.y - hA.y)*(pA.y - hA.y) +
-                      (pB.x - hB.x)*(pB.x - hB.x) + (pB.y - hB.y)*(pB.y - hB.y);
-            if (d_fwd < best_dist) { best_dist = d_fwd; best_h = h; best_rev = false; }
-
-            T d_rev = (pA.x - hB.x)*(pA.x - hB.x) + (pA.y - hB.y)*(pA.y - hB.y) +
-                      (pB.x - hA.x)*(pB.x - hA.x) + (pB.y - hA.y)*(pB.y - hA.y);
-            if (d_rev < best_dist) { best_dist = d_rev; best_h = h; best_rev = true; }
-        }
-
-        std::unique_ptr<gsCurve<T>> hCrv(hole.curve(best_h).clone());
-        if (best_rev) hCrv->reverse();
-
-        auto hA = startPoint(*hCrv);
-        auto hB = endPoint(*hCrv);
-
-        // Radial spokes from hole outward to outer boundary:
-        // South: hA -> pA, North: hB -> pB, West: hA -> hB (hole), East: pA -> pB (outer)
-        std::unique_ptr<gsBSpline<T>> sp_S(makeStraightBSpline(hA, pA, degree));
-        std::unique_ptr<gsBSpline<T>> sp_N(makeStraightBSpline(hB, pB, degree));
-
-        auto patch = makeCoonsPatchFrom4Curves(*sp_S, oCrv, *sp_N, *hCrv, degree);
-        mp.addPatch(typename gsGeometry<T>::uPtr(patch));
+    if (segs.empty())
+        return nullptr;
+    if (segs.size() == 1) {
+        auto copy = std::make_shared<gsBSpline<T>>(*segs[0].bsp);
+        copy->knots().affineTransformTo(T(0), T(1));
+        if (copy->degree() < degree)
+            copy->degreeElevate(degree - copy->degree());
+        return copy;
     }
+
+    int d = degree;
+    for (const auto& s : segs)
+        d = std::max(d, s.bsp->degree());
+
+    const int K = static_cast<int>(segs.size());
+    std::vector<std::unique_ptr<gsBSpline<T>>> pieces(K);
+    std::vector<T> lengths(K, T(0));
+    T totalLen = T(0);
+    for (int i = 0; i < K; ++i) {
+        pieces[i].reset(new gsBSpline<T>(*segs[i].bsp));
+        pieces[i]->knots().affineTransformTo(T(0), T(1));
+        if (pieces[i]->degree() < d)
+            pieces[i]->degreeElevate(d - pieces[i]->degree());
+        T L = T(0);
+        gsPoint2D<T> prevPt = evalCurvePoint(*pieces[i], T(0));
+        for (int s = 1; s <= 24; ++s) {
+            gsPoint2D<T> curPt = evalCurvePoint(*pieces[i], static_cast<T>(s) / T(24));
+            L += std::hypot(curPt.x - prevPt.x, curPt.y - prevPt.y);
+            prevPt = curPt;
+        }
+        lengths[i] = L;
+        totalLen += L;
+    }
+    const T minFrac = T(1e-3);
+    if (totalLen <= T(1e-14)) {
+        for (int i = 0; i < K; ++i) lengths[i] = T(1);
+        totalLen = static_cast<T>(K);
+    } else {
+        T adjTotal = T(0);
+        for (int i = 0; i < K; ++i) {
+            lengths[i] = std::max(lengths[i], minFrac * totalLen);
+            adjTotal += lengths[i];
+        }
+        totalLen = adjTotal;
+    }
+
+    std::vector<T> bp(K + 1, T(0));
+    for (int i = 0; i < K; ++i)
+        bp[i + 1] = bp[i] + lengths[i] / totalLen;
+    bp.back() = T(1);
+
+    std::vector<T> allKnots;
+    allKnots.reserve(K * (d + 4) + d + 2);
+    for (int m = 0; m < d + 1; ++m)
+        allKnots.push_back(T(0));
+
+    int totalCoefs = 1;
+    for (int i = 0; i < K; ++i) {
+        const auto& kv = pieces[i]->knots();
+        const T s0 = bp[i], s1 = bp[i + 1];
+        const index_t kvSz = static_cast<index_t>(kv.size());
+        for (index_t j = d + 1; j < kvSz - (d + 1); ++j) {
+            T u = s0 + (s1 - s0) * kv[j];
+            if (u > allKnots.back() + T(1e-14) && u < s1 - T(1e-14))
+                allKnots.push_back(u);
+        }
+        if (i + 1 < K) {
+            for (int m = 0; m < d; ++m)
+                allKnots.push_back(s1);
+        }
+        totalCoefs += static_cast<int>(pieces[i]->coefs().rows()) - 1;
+    }
+    for (int m = 0; m < d + 1; ++m)
+        allKnots.push_back(T(1));
+
+    // Match knot vector length precisely if near-duplicate interior knots were skipped
+    const int expectedKnots = totalCoefs + d + 1;
+    if (static_cast<int>(allKnots.size()) != expectedKnots) {
+        // Fallback: resample pieces identically via raw clamped concatenation without skipping
+        allKnots.clear();
+        for (int m = 0; m < d + 1; ++m) allKnots.push_back(T(0));
+        for (int i = 0; i < K; ++i) {
+            const auto& kv = pieces[i]->knots();
+            const T s0 = bp[i], s1 = bp[i + 1];
+            const index_t kvSz = static_cast<index_t>(kv.size());
+            for (index_t j = d + 1; j < kvSz - (d + 1); ++j) {
+                T u = std::max(s0 + T(1e-12), std::min(s1 - T(1e-12), s0 + (s1 - s0) * kv[j]));
+                allKnots.push_back(u);
+            }
+            if (i + 1 < K) {
+                for (int m = 0; m < d; ++m) allKnots.push_back(s1);
+            }
+        }
+        for (int m = 0; m < d + 1; ++m) allKnots.push_back(T(1));
+    }
+
+    gsMatrix<T> coefs(totalCoefs, 2);
+    coefs.row(0) = pieces[0]->coefs().row(0);
+    int rowIdx = 1;
+    for (int i = 0; i < K; ++i) {
+        const gsMatrix<T>& pc = pieces[i]->coefs();
+        const int nr = static_cast<int>(pc.rows());
+        for (int r = 1; r < nr - 1; ++r)
+            coefs.row(rowIdx++) = pc.row(r);
+        if (i + 1 < K) {
+            const gsMatrix<T>& nc = pieces[i + 1]->coefs();
+            coefs.row(rowIdx++) = T(0.5) * (pc.row(nr - 1) + nc.row(0));
+        } else {
+            coefs.row(rowIdx++) = pc.row(nr - 1);
+        }
+    }
+
+    gsKnotVector<T> combinedKv(static_cast<short_t>(d), allKnots.begin(), allKnots.end());
+    return std::make_shared<gsBSpline<T>>(combinedKv, coefs);
 }
 
-// Conforming 4-patch block quad ring around an interior hole in a 4-sided block
+// Convert a hole gsCurveLoop<T> into an ordered CCW sequence of CurveSeg<T>.
+template <class T>
+inline std::vector<CurveSeg<T>> orientLoopSegments(const gsCurveLoop<T>& loop, int degree, bool wantCCW = true)
+{
+    const int K = loop.size();
+    std::vector<CurveSeg<T>> segs;
+    segs.reserve(K);
+    for (int i = 0; i < K; ++i)
+        segs.emplace_back(loop.curve(i), degree);
+
+    T area2 = T(0);
+    std::vector<gsPoint2D<T>> poly;
+    poly.reserve(K * 8);
+    for (int i = 0; i < K; ++i) {
+        for (int s = 0; s < 8; ++s) {
+            T u = static_cast<T>(s) / T(8);
+            poly.push_back(evalCurvePoint(*segs[i].bsp, u));
+        }
+    }
+    for (size_t i = 0; i < poly.size(); ++i) {
+        size_t j = (i + 1) % poly.size();
+        area2 += poly[i].x * poly[j].y - poly[j].x * poly[i].y;
+    }
+    if ((wantCCW && area2 < T(0)) || (!wantCCW && area2 > T(0))) {
+        std::reverse(segs.begin(), segs.end());
+        for (auto& s : segs) s = s.reversed();
+    }
+    return segs;
+}
+
+template <class T>
+inline bool isHoleSpokeClearOfHole(
+    const gsPoint2D<T>& holePt, const gsPoint2D<T>& outerPt,
+    const std::vector<gsPoint2D<T>>& holePoly)
+{
+    const int N = static_cast<int>(holePoly.size());
+    if (N < 3) return true;
+    // Check midpoint + sample points are strictly outside hole interior
+    for (int s = 1; s <= 7; ++s) {
+        T t = static_cast<T>(s) / T(8);
+        gsPoint2D<T> q((T(1) - t) * holePt.x + t * outerPt.x,
+                       (T(1) - t) * holePt.y + t * outerPt.y);
+        if (pointInPolyStrict(q, holePoly, T(1e-7)))
+            return false;
+    }
+    for (int i = 0; i < N; ++i) {
+        if (segProperIntersect(holePt, outerPt, holePoly[i], holePoly[(i + 1) % N]))
+            return false;
+    }
+    return true;
+}
+
+// Compute sharp corner turn angles (degrees) at start of each CCW hole segment.
+template <class T>
+inline std::vector<T> computeLoopVertexTurnDegs(const std::vector<CurveSeg<T>>& segs)
+{
+    const int K = static_cast<int>(segs.size());
+    const T radToDeg = T(180) / T(3.14159265358979323846);
+    std::vector<T> turns(K, T(0));
+    for (int i = 0; i < K; ++i) {
+        const auto& prevBsp = *segs[(i + K - 1) % K].bsp;
+        const auto& nextBsp = *segs[i].bsp;
+        auto d0 = evalCurveDeriv(prevBsp, T(1));
+        auto d1 = evalCurveDeriv(nextBsp, T(0));
+        T n0 = std::hypot(d0.x, d0.y), n1 = std::hypot(d1.x, d1.y);
+        if (n0 > T(1e-14) && n1 > T(1e-14)) {
+            T cr = (d0.x * d1.y - d0.y * d1.x) / (n0 * n1);
+            T dt = (d0.x * d1.x + d0.y * d1.y) / (n0 * n1);
+            turns[i] = std::abs(std::atan2(cr, dt)) * radToDeg;
+        }
+    }
+    return turns;
+}
+
+// Evaluate quality of 4 candidate Coons patches inside a block ring
+template <class T>
+inline bool evaluateRingPatches(
+    const std::vector<std::unique_ptr<gsGeometry<T>>>& patches,
+    const std::vector<gsPoint2D<T>>& holePoly,
+    T& scoreOut, T& minDetOut, T& maxAngOut,
+    std::string* failReason = nullptr)
+{
+    minDetOut = T(1e9);
+    maxAngOut = T(0);
+    T minAng = T(180);
+    T totalWin = T(0);
+    for (size_t pi = 0; pi < patches.size(); ++pi) {
+        const auto& p = patches[pi];
+        T mnD = 0, mxD = 0, mnA = 0, en = 0;
+        evalPatchJacobianAndWinslow(*p, 21, mnD, mxD, mnA, en);
+        // Orientation must be single-sign positive (matching validateMultiPatch 21x21 tol=1e-7)
+        if (mnD <= T(2e-7)) {
+            if (failReason) *failReason = "p=" + std::to_string(pi) + " mnD=" + std::to_string(mnD) + " mxD=" + std::to_string(mxD);
+            return false;
+        }
+        minDetOut = std::min(minDetOut, mnD);
+        totalWin += en;
+
+        // Corner angles of patch
+        const T radToDeg = T(180) / T(3.14159265358979323846);
+        const gsPoint2D<T> corners[4] = {{0,0}, {1,0}, {1,1}, {0,1}};
+        gsMatrix<T> pt(2, 1), jac;
+        for (int c = 0; c < 4; ++c) {
+            pt(0, 0) = corners[c].x; pt(1, 0) = corners[c].y;
+            p->jacobian_into(pt, jac);
+            T xu = jac(0, 0), yu = jac(1, 0), xv = jac(0, 1), yv = jac(1, 1);
+            // Adjust signs to interior directions along parameter boundaries
+            T sx = (corners[c].x > T(0.5)) ? T(-1) : T(1);
+            T sy = (corners[c].y > T(0.5)) ? T(-1) : T(1);
+            T ax = sx * xu, ay = sx * yu, bx = sy * xv, by = sy * yv;
+            T na = std::hypot(ax, ay), nb = std::hypot(bx, by);
+            if (na <= T(1e-12) || nb <= T(1e-12)) {
+                if (failReason) *failReason = "p=" + std::to_string(pi) + " c=" + std::to_string(c) + " degenEdge";
+                return false;
+            }
+            T cosA = std::max(T(-1), std::min(T(1), (ax * bx + ay * by) / (na * nb)));
+            T ang = std::acos(cosA) * radToDeg;
+            minAng = std::min(minAng, ang);
+            maxAngOut = std::max(maxAngOut, ang);
+        }
+
+        // Check interior points of patch do not intrude into hole
+        gsMatrix<T> uv(2, 1), val;
+        for (int r = 1; r <= 3; ++r) {
+            for (int c = 1; c <= 3; ++c) {
+                uv(0, 0) = T(r) / T(4);
+                uv(1, 0) = T(c) / T(4);
+                p->eval_into(uv, val);
+                if (pointInPolyStrict(gsPoint2D<T>(val(0, 0), val(1, 0)), holePoly, T(1e-7))) {
+                    if (failReason) *failReason = "p=" + std::to_string(pi) + " interiorInHole";
+                    return false;
+                }
+            }
+        }
+    }
+    if (minAng < T(5.2) || maxAngOut > T(174.5)) {
+        if (failReason) *failReason = "ang=[" + std::to_string(minAng) + "," + std::to_string(maxAngOut) + "]";
+        return false;
+    }
+    scoreOut = totalWin + T(200) / std::max(minAng, T(1)) + T(200) / std::max(T(180) - maxAngOut, T(1))
+             + (minAng < T(12) ? T(1e4) : T(0)) + (minAng < T(8) ? T(1e5) : T(0))
+             + (maxAngOut > T(168) ? T(1e4) : T(0));
+    return true;
+}
+
+// Shared helper returning the exterior CCW tangent cone [aStart, aStart + dCCW] at the junction prevSeg -> nextSeg.
+template <class T>
+inline bool computeExteriorCone(
+    const CurveSeg<T>& prevSeg,
+    const CurveSeg<T>& nextSeg,
+    const gsPoint2D<T>& dir,
+    T& aStart, T& dCCW, T& aDir, T& minEdgeLen)
+{
+    auto dIn  = evalCurveDeriv(*prevSeg.bsp, T(1));
+    auto dOut = evalCurveDeriv(*nextSeg.bsp, T(0));
+    T nIn = std::hypot(dIn.x, dIn.y), nOut = std::hypot(dOut.x, dOut.y);
+    T lenD = std::hypot(dir.x, dir.y);
+    if (nIn <= T(1e-14) || nOut <= T(1e-14) || lenD <= T(1e-14))
+        return false;
+    const T twoPi = T(2) * T(3.14159265358979323846);
+    gsPoint2D<T> tBack(-dIn.x / nIn, -dIn.y / nIn);
+    gsPoint2D<T> tOut(dOut.x / nOut, dOut.y / nOut);
+    aStart = std::atan2(tBack.y, tBack.x);
+    dCCW = std::atan2(tOut.y, tOut.x) - aStart;
+    while (dCCW <= T(0)) dCCW += twoPi;
+    while (dCCW > twoPi) dCCW -= twoPi;
+    aDir = std::atan2(dir.y / lenD, dir.x / lenD) - aStart;
+    while (aDir < T(0)) aDir += twoPi;
+    while (aDir >= twoPi) aDir -= twoPi;
+    T lPrev = std::hypot(prevSeg.p1().x - prevSeg.p0().x, prevSeg.p1().y - prevSeg.p0().y);
+    T lNext = std::hypot(nextSeg.p1().x - nextSeg.p0().x, nextSeg.p1().y - nextSeg.p0().y);
+    minEdgeLen = std::min(lPrev, lNext);
+    return true;
+}
+
+// Build a spoke CurveSeg H -> P; curves gently into the exterior safe cone only when a
+// straight spoke grazes a hole tangent (< 14 deg) or creates a > 172 deg angle at a sharp corner.
+template <class T>
+inline CurveSeg<T> makeExteriorConeSafeSpoke(
+    const CurveSeg<T>& prevSeg,
+    const CurveSeg<T>& nextSeg,
+    const gsPoint2D<T>& H,
+    const gsPoint2D<T>& P,
+    const std::vector<gsPoint2D<T>>& holePoly,
+    int degree,
+    bool& wasCurved)
+{
+    wasCurved = false;
+    auto mkLin = [&](const gsPoint2D<T>& a, const gsPoint2D<T>& b) {
+        std::unique_ptr<gsBSpline<T>> ptr(makeStraightBSpline(a, b, degree));
+        return CurveSeg<T>(*ptr);
+    };
+    gsPoint2D<T> diff(P.x - H.x, P.y - H.y);
+    T lenD = std::hypot(diff.x, diff.y);
+    T aStart = 0, dCCW = 0, aDir = 0, minEdgeLen = 0;
+    if (lenD > T(1e-14) && computeExteriorCone(prevSeg, nextSeg, diff, aStart, dCCW, aDir, minEdgeLen)) {
+        const T pi = T(3.14159265358979323846);
+        if (aDir < T(0.28) || aDir > dCCW - T(0.28) || aDir > pi - T(0.18) || (dCCW - aDir) > pi - T(0.18)) {
+            T loSafe = std::max(T(0.28), dCCW - pi + T(0.28));
+            T hiSafe = std::min(pi - T(0.28), dCCW - T(0.28));
+            T targetRel = (loSafe < hiSafe) ? std::max(loSafe, std::min(hiSafe, aDir)) : (T(0.5) * dCCW);
+            T absAng = aStart + targetRel;
+            gsPoint2D<T> tanDir(std::cos(absAng), std::sin(absAng));
+            // Scale tangent arm to local hole feature size so spokes on thin long blocks don't over-bulge
+            T tLen = std::min(T(0.18) * lenD, std::max(T(0.05) * lenD, T(0.85) * minEdgeLen));
+            T c2Frac = std::min(T(0.55), std::max(T(0.32), (T(2.2) * tLen) / lenD));
+            gsPoint2D<T> c1(H.x + tLen * tanDir.x,          H.y + tLen * tanDir.y);
+            gsPoint2D<T> c2(H.x + c2Frac * diff.x,          H.y + c2Frac * diff.y);
+            gsKnotVector<T> kv(T(0), T(1), 0, 4, 1, 3);
+            gsMatrix<T> cf(4, 2);
+            cf << H.x, H.y, c1.x, c1.y, c2.x, c2.y, P.x, P.y;
+            gsBSpline<T> bsp(kv, cf);
+            if (bsp.degree() < degree) bsp.degreeElevate(degree - bsp.degree());
+            bool curveClear = true;
+            for (int k = 1; k < 16; ++k) {
+                gsPoint2D<T> q = evalCurvePoint(bsp, static_cast<T>(k) / T(16));
+                if (pointInPolyStrict(q, holePoly, T(1e-7))) { curveClear = false; break; }
+            }
+            if (curveClear) {
+                wasCurved = true;
+                return CurveSeg<T>(bsp);
+            }
+        }
+    }
+    return mkLin(H, P);
+}
+
+// Adjust an interior cap point relative to hole vertex vm so the segment vm -> pt
+// stays inside the safe exterior convex cone (both quad corner angles at vm < 166 deg).
+template <class T>
+inline gsPoint2D<T> clampPointToExteriorCone(
+    const CurveSeg<T>& prevSeg,
+    const CurveSeg<T>& nextSeg,
+    const gsPoint2D<T>& vm,
+    const gsPoint2D<T>& cand)
+{
+    gsPoint2D<T> diff(cand.x - vm.x, cand.y - vm.y);
+    T lenD = std::hypot(diff.x, diff.y);
+    T aStart = 0, dCCW = 0, aDir = 0, minEdgeLen = 0;
+    if (lenD <= T(1e-14) || !computeExteriorCone(prevSeg, nextSeg, diff, aStart, dCCW, aDir, minEdgeLen))
+        return cand;
+    const T pi = T(3.14159265358979323846);
+    T loSafe = std::max(T(0.32), dCCW - pi + T(0.32));
+    T hiSafe = std::min(pi - T(0.32), dCCW - T(0.32));
+    T targetRel = (loSafe < hiSafe) ? std::max(loSafe, std::min(hiSafe, aDir)) : (T(0.5) * dCCW);
+    if (std::abs(targetRel - aDir) < T(1e-6))
+        return cand;
+    T absAng = aStart + targetRel;
+    return gsPoint2D<T>(vm.x + lenD * std::cos(absAng), vm.y + lenD * std::sin(absAng));
+}
+
+// Build a sharp-corner-preserving conforming quad ring inside a 4-sided block [cS, cE, cN, cW]
+// for an arbitrary even-segment CCW hole (or K=3 split to 4).
+// All hole corners become patch vertices; outer block edges cS, cE, cN, cW remain unsplit.
+template <class T>
+inline bool buildSharpCornerBlockRing(
+    const CurveSeg<T>& cS, const CurveSeg<T>& cE,
+    const CurveSeg<T>& cN, const CurveSeg<T>& cW,
+    const std::vector<CurveSeg<T>>& hCCW,
+    const int anchorIdx[4],
+    const std::vector<gsPoint2D<T>>& holePoly,
+    std::vector<std::unique_ptr<gsGeometry<T>>>& outPatches,
+    int degree,
+    T outWeight = T(0.62),
+    std::string* failReason = nullptr)
+{
+    const int K = static_cast<int>(hCCW.size());
+    // Compute sectors: sector s runs from anchorIdx[s] to anchorIdx[(s+1)%4]
+    std::vector<std::vector<CurveSeg<T>>> sectors(4);
+    for (int s = 0; s < 4; ++s) {
+        int i0 = anchorIdx[s];
+        int i1 = anchorIdx[(s + 1) % 4];
+        int cur = i0;
+        for (int step = 0; step < K; ++step) {
+            sectors[s].push_back(hCCW[cur]);
+            cur = (cur + 1) % K;
+            if (cur == i1) break;
+        }
+        if (sectors[s].empty()) return false;
+    }
+
+    const gsPoint2D<T> P[4] = { cS.p0(), cS.p1(), cE.p1(), cN.p0() }; // SW, SE, NE, NW
+    const gsPoint2D<T> H[4] = {
+        hCCW[anchorIdx[0]].p0(), hCCW[anchorIdx[1]].p0(),
+        hCCW[anchorIdx[2]].p0(), hCCW[anchorIdx[3]].p0()
+    };
+
+    // Quick visibility check on anchor spokes
+    for (int s = 0; s < 4; ++s) {
+        if (!isHoleSpokeClearOfHole(H[s], P[s], holePoly)) {
+            if (failReason) *failReason = "spokeBlocked_s" + std::to_string(s);
+            return false;
+        }
+    }
+
+    int totalRem = 0;
+    for (int s = 0; s < 4; ++s) totalRem += static_cast<int>(sectors[s].size()) - 1;
+    if (totalRem % 2 != 0) return false;
+
+    // Helper: create a straight spoke CurveSeg A -> B
+    auto mkLine = [&](const gsPoint2D<T>& a, const gsPoint2D<T>& b) -> CurveSeg<T> {
+        std::unique_ptr<gsBSpline<T>> ptr(makeStraightBSpline(a, b, degree));
+        return CurveSeg<T>(*ptr);
+    };
+
+    struct QuadGraph {
+        std::vector<gsPoint2D<T>> pts;
+        std::vector<bool> pinned;
+        struct QItem {
+            int vid[4];
+            CurveSeg<T> e[4]; // cycle: v0-(e0)->v1-(e1)->v2-(e2)->v3-(e3)->v0
+            bool straight[4];
+        };
+        std::vector<QItem> items;
+
+        int addVertex(const gsPoint2D<T>& p, bool isPinned) {
+            for (size_t i = 0; i < pts.size(); ++i) {
+                T dx = pts[i].x - p.x, dy = pts[i].y - p.y;
+                if (dx * dx + dy * dy < T(1e-20)) return static_cast<int>(i);
+            }
+            pts.push_back(p);
+            pinned.push_back(isPinned);
+            return static_cast<int>(pts.size()) - 1;
+        }
+        int addFreeVertex(const gsPoint2D<T>& p) {
+            pts.push_back(p);
+            pinned.push_back(false);
+            return static_cast<int>(pts.size()) - 1;
+        }
+        void addQuad(const CurveSeg<T>& e01, const CurveSeg<T>& e12,
+                     const CurveSeg<T>& e23, const CurveSeg<T>& e30,
+                     int v0 = -1, int v1 = -1, int v2 = -1, int v3 = -1) {
+            QItem q;
+            q.vid[0] = (v0 >= 0) ? v0 : addVertex(e01.p0(), true);
+            q.vid[1] = (v1 >= 0) ? v1 : addVertex(e12.p0(), true);
+            q.vid[2] = (v2 >= 0) ? v2 : addVertex(e23.p0(), true);
+            q.vid[3] = (v3 >= 0) ? v3 : addVertex(e30.p0(), true);
+            q.e[0] = e01; q.e[1] = e12; q.e[2] = e23; q.e[3] = e30;
+            for (int m = 0; m < 4; ++m)
+                q.straight[m] = (!pinned[q.vid[m]] || !pinned[q.vid[(m + 1) % 4]]);
+            items.push_back(q);
+        }
+    } qg;
+
+    // Quad helper storing graph record
+    auto addCCWQuad = [&](const CurveSeg<T>& e01, const CurveSeg<T>& e12,
+                          const CurveSeg<T>& e23, const CurveSeg<T>& e30,
+                          int v0 = -1, int v1 = -1, int v2 = -1, int v3 = -1) {
+        qg.addQuad(e01, e12, e23, e30, v0, v1, v2, v3);
+    };
+
+    auto projU = [](const gsPoint2D<T>& q, const gsPoint2D<T>& Tl, const gsPoint2D<T>& Tr, T uMin, T uMax) -> T {
+        T dx = Tr.x - Tl.x, dy = Tr.y - Tl.y;
+        T len2 = dx * dx + dy * dy;
+        if (len2 <= T(1e-20)) return T(0.5) * (uMin + uMax);
+        T u = ((q.x - Tl.x) * dx + (q.y - Tl.y) * dy) / len2;
+        return std::max(uMin, std::min(uMax, u));
+    };
+    auto lerpPt = [](const gsPoint2D<T>& a, const gsPoint2D<T>& b, T u) -> gsPoint2D<T> {
+        return gsPoint2D<T>((T(1) - u) * a.x + u * b.x, (T(1) - u) * a.y + u * b.y);
+    };
+    CurveSeg<T> outerTop[4] = { cS, cE, cN.reversed(), cW.reversed() };
+    CurveSeg<T> sp[4];
+    bool spCurved[4] = {false, false, false, false};
+    int anchorVid[4] = {-1, -1, -1, -1};
+    for (int s = 0; s < 4; ++s) {
+        const int idx = anchorIdx[s];
+        const auto& prevSeg = hCCW[(idx + K - 1) % K];
+        const auto& nextSeg = hCCW[idx];
+        sp[s] = makeExteriorConeSafeSpoke(prevSeg, nextSeg, H[s], P[s], holePoly, degree, spCurved[s]);
+        anchorVid[s] = qg.addVertex(H[s], true);
+    }
+
+    struct SectorFrame {
+        std::vector<CurveSeg<T>> holeEdges; // size 1 or 2 after Step A
+        CurveSeg<T> topEdge;                // T_left -> T_right
+        CurveSeg<T> leftSpoke;              // B_left -> T_left (outward)
+        CurveSeg<T> rightSpoke;             // B_right -> T_right (outward)
+        int vidTl = -1, vidTr = -1;
+    };
+
+    auto placeCapMidpoint = [&](const SectorFrame& f, gsPoint2D<T>& Qout) -> bool {
+        const gsPoint2D<T> Tl = qg.pts[f.vidTl], Tr = qg.pts[f.vidTr];
+        const CurveSeg<T>& segIn  = f.holeEdges[0];
+        const CurveSeg<T>& segOut = f.holeEdges[1];
+        gsPoint2D<T> vm = segIn.p1();
+        T u = projU(vm, Tl, Tr, T(0.20), T(0.80));
+        gsPoint2D<T> T_out = evalCurvePoint(*f.topEdge.bsp, u);
+        Qout = gsPoint2D<T>(outWeight * T_out.x + (T(1) - outWeight) * vm.x,
+                            outWeight * T_out.y + (T(1) - outWeight) * vm.y);
+        Qout = clampPointToExteriorCone(segIn, segOut, vm, Qout);
+        if (pointInPolyStrict(Qout, holePoly, T(1e-7)))
+            return false;
+        if (!isHoleSpokeClearOfHole(vm, Qout, holePoly))
+            return false;
+        return true;
+    };
+
+    SectorFrame fr[4];
+    for (int s = 0; s < 4; ++s) {
+        fr[s].holeEdges = sectors[s];
+        fr[s].topEdge = outerTop[s];
+        fr[s].leftSpoke = sp[s];
+        fr[s].rightSpoke = sp[(s + 1) % 4];
+        fr[s].vidTl = qg.addVertex(fr[s].topEdge.p0(), true);
+        fr[s].vidTr = qg.addVertex(fr[s].topEdge.p1(), true);
+    }
+
+    // Track sectors whose size==2 needs half-sector closure at a pre-split spoke midpoint M.
+    struct PendingTwo {
+        bool active = false;
+        bool mOnRight = false;
+        int vM = -1;
+        CurveSeg<T> spLo, spHi;
+    } pend2[4];
+
+    auto peelSize4RightM = [&](int s, int vM, const gsPoint2D<T>& M,
+                               const CurveSeg<T>& spLo, const CurveSeg<T>& spHi) -> bool {
+        gsPoint2D<T> Tl = qg.pts[fr[s].vidTl], Tr = qg.pts[fr[s].vidTr];
+        gsPoint2D<T> v0 = fr[s].holeEdges[0].p0(), v1 = fr[s].holeEdges[0].p1();
+        T u1 = projU(v1, Tl, Tr, T(0.18), T(0.55));
+        gsPoint2D<T> T1 = evalCurvePoint(*fr[s].topEdge.bsp, u1);
+        gsPoint2D<T> p1(outWeight * T1.x + (T(1) - outWeight) * v1.x,
+                        outWeight * T1.y + (T(1) - outWeight) * v1.y);
+        if (pointInPolyStrict(p1, holePoly, T(1e-7)) ||
+            !isHoleSpokeClearOfHole(v1, p1, holePoly) ||
+            !isHoleSpokeClearOfHole(p1, M, holePoly))
+            return false;
+        int vp1 = qg.addFreeVertex(p1);
+        int vv0 = qg.addVertex(v0, true), vv1 = qg.addVertex(v1, true);
+        CurveSeg<T> e_p1M = mkLine(p1, M), e_v1p1 = mkLine(v1, p1), e_p1Tl = mkLine(p1, Tl);
+        addCCWQuad(e_p1M, spHi, fr[s].topEdge.reversed(), e_p1Tl.reversed(), vp1, vM, fr[s].vidTr, fr[s].vidTl);
+        addCCWQuad(fr[s].holeEdges[0], e_v1p1, e_p1Tl, fr[s].leftSpoke.reversed(), vv0, vv1, vp1, fr[s].vidTl);
+        fr[s].holeEdges.erase(fr[s].holeEdges.begin());
+        fr[s].topEdge = e_p1M;
+        fr[s].leftSpoke = e_v1p1;
+        fr[s].rightSpoke = spLo;
+        fr[s].vidTl = vp1;
+        fr[s].vidTr = vM;
+        return true;
+    };
+
+    auto peelSize4LeftM = [&](int s, int vM, const gsPoint2D<T>& M,
+                              const CurveSeg<T>& spLo, const CurveSeg<T>& spHi) -> bool {
+        gsPoint2D<T> Tl = qg.pts[fr[s].vidTl], Tr = qg.pts[fr[s].vidTr];
+        gsPoint2D<T> v3 = fr[s].holeEdges.back().p0(), v4 = fr[s].holeEdges.back().p1();
+        T u2 = projU(v3, Tl, Tr, T(0.45), T(0.82));
+        gsPoint2D<T> T2 = evalCurvePoint(*fr[s].topEdge.bsp, u2);
+        gsPoint2D<T> p2(outWeight * T2.x + (T(1) - outWeight) * v3.x,
+                        outWeight * T2.y + (T(1) - outWeight) * v3.y);
+        if (pointInPolyStrict(p2, holePoly, T(1e-7)) ||
+            !isHoleSpokeClearOfHole(v3, p2, holePoly) ||
+            !isHoleSpokeClearOfHole(M, p2, holePoly))
+            return false;
+        int vp2 = qg.addFreeVertex(p2);
+        int vv3 = qg.addVertex(v3, true), vv4 = qg.addVertex(v4, true);
+        CurveSeg<T> e_Mp2 = mkLine(M, p2), e_v3p2 = mkLine(v3, p2), e_p2Tr = mkLine(p2, Tr);
+        addCCWQuad(e_Mp2, e_p2Tr, fr[s].topEdge.reversed(), spHi.reversed(), vM, vp2, fr[s].vidTr, fr[s].vidTl);
+        addCCWQuad(fr[s].holeEdges.back(), fr[s].rightSpoke, e_p2Tr.reversed(), e_v3p2.reversed(), vv3, vv4, fr[s].vidTr, vp2);
+        fr[s].holeEdges.pop_back();
+        fr[s].topEdge = e_Mp2;
+        fr[s].leftSpoke = spLo;
+        fr[s].rightSpoke = e_v3p2;
+        fr[s].vidTl = vM;
+        fr[s].vidTr = vp2;
+        return true;
+    };
+
+    // Pre-pair all even sectors (size 2 or 4) BEFORE Step A:
+    // - Adjacent pair (a, b=(a+1)%4): split shared spoke sp[b] at M
+    // - Opposite pair (a, b=(a+2)%4): split bridge oppMid=(a+1)%4 spokes at M1, M2 and emit bridge top strip
+    // - Any size==4 sector in a pair peels 1 edge into its split M, becoming size==3 for Step A!
+    {
+        std::vector<int> evenSec;
+        for (int s = 0; s < 4; ++s)
+            if (fr[s].holeEdges.size() % 2 == 0) evenSec.push_back(s);
+
+        auto bindRightLeft = [&](int u, int v, int vM, const gsPoint2D<T>& M,
+                                 const CurveSeg<T>& spLo, const CurveSeg<T>& spHi) -> bool {
+            if (fr[u].holeEdges.size() == 4) {
+                if (!peelSize4RightM(u, vM, M, spLo, spHi)) return false;
+            } else {
+                pend2[u] = {true, true, vM, spLo, spHi};
+            }
+            if (fr[v].holeEdges.size() == 4) {
+                if (!peelSize4LeftM(v, vM, M, spLo, spHi)) return false;
+            } else {
+                pend2[v] = {true, false, vM, spLo, spHi};
+            }
+            return true;
+        };
+
+        auto pairAdjacent = [&](int a, int b) -> bool {
+            gsBSpline<T> p0, p1;
+            splitBSplineExact(*fr[a].rightSpoke.bsp, T(0.5), p0, p1);
+            CurveSeg<T> spLo(p0), spHi(p1);
+            gsPoint2D<T> M = spLo.p1();
+            int vM = qg.addVertex(M, true);
+            return bindRightLeft(a, b, vM, M, spLo, spHi);
+        };
+
+        if (evenSec.size() == 2) {
+            int a = evenSec[0], b = evenSec[1];
+            if ((a + 1) % 4 == b) {
+                if (!pairAdjacent(a, b)) return false;
+            } else if ((b + 1) % 4 == a) {
+                if (!pairAdjacent(b, a)) return false;
+            } else {
+                int mid = (a + 1) % 4;
+                gsBSpline<T> am0, am1, mb0, mb1;
+                splitBSplineExact(*fr[mid].leftSpoke.bsp, T(0.5), am0, am1);
+                splitBSplineExact(*fr[mid].rightSpoke.bsp, T(0.5), mb0, mb1);
+                CurveSeg<T> spAM_lo(am0), spAM_hi(am1), spMB_lo(mb0), spMB_hi(mb1);
+                gsPoint2D<T> M1 = spAM_lo.p1(), M2 = spMB_lo.p1();
+                int vM1 = qg.addVertex(M1, true), vM2 = qg.addVertex(M2, true);
+                CurveSeg<T> e_M1M2 = mkLine(M1, M2);
+                addCCWQuad(e_M1M2, spMB_hi, fr[mid].topEdge.reversed(), spAM_hi.reversed(),
+                           vM1, vM2, fr[mid].vidTr, fr[mid].vidTl);
+                fr[mid].topEdge = e_M1M2;
+                fr[mid].leftSpoke = spAM_lo;
+                fr[mid].rightSpoke = spMB_lo;
+                fr[mid].vidTl = vM1;
+                fr[mid].vidTr = vM2;
+                if (fr[a].holeEdges.size() == 4) {
+                    if (!peelSize4RightM(a, vM1, M1, spAM_lo, spAM_hi)) return false;
+                } else {
+                    pend2[a] = {true, true, vM1, spAM_lo, spAM_hi};
+                }
+                if (fr[b].holeEdges.size() == 4) {
+                    if (!peelSize4LeftM(b, vM2, M2, spMB_lo, spMB_hi)) return false;
+                } else {
+                    pend2[b] = {true, false, vM2, spMB_lo, spMB_hi};
+                }
+            }
+        } else if (evenSec.size() == 4) {
+            if (!pairAdjacent(0, 1) || !pairAdjacent(2, 3))
+                return false;
+        }
+    }
+
+    // Step A: Recursively apply 3->1 pillow cap in any sector with >= 3 hole edges until every sector has 1 or 2 edges.
+    for (int s = 0; s < 4; ++s) {
+        while (fr[s].holeEdges.size() >= 3) {
+            gsPoint2D<T> Tl = qg.pts[fr[s].vidTl];
+            gsPoint2D<T> Tr = qg.pts[fr[s].vidTr];
+            gsPoint2D<T> v1 = fr[s].holeEdges.front().p1();
+            gsPoint2D<T> v2 = fr[s].holeEdges.back().p0();
+
+            // Place p1, p2 on a chord parallel to Tl--Tr strictly in front of both v1 and v2;
+            // fall back to curve-point interpolation if topEdge curves past the straight chord (e.g., bent starburst rays).
+            T dxT = Tr.x - Tl.x, dyT = Tr.y - Tl.y;
+            T lenT = std::hypot(dxT, dyT);
+            if (lenT <= T(1e-14)) return false;
+            gsPoint2D<T> nIn(-dyT / lenT, dxT / lenT); // CCW interior normal (domain on left of Tl->Tr)
+            T h1 = (v1.x - Tl.x) * nIn.x + (v1.y - Tl.y) * nIn.y;
+            T h2 = (v2.x - Tl.x) * nIn.x + (v2.y - Tl.y) * nIn.y;
+            T hMin = std::min(h1, h2);
+            T u1 = projU(v1, Tl, Tr, T(0.15), T(0.68));
+            T u2 = projU(v2, Tl, Tr, std::min(T(0.85), u1 + T(0.12)), T(0.85));
+            gsPoint2D<T> p1, p2;
+            if (hMin > T(1e-6)) {
+                T hCap = (T(1) - outWeight) * hMin;
+                gsPoint2D<T> T_left13 = lerpPt(Tl, Tr, u1);
+                gsPoint2D<T> T_rght23 = lerpPt(Tl, Tr, u2);
+                p1 = gsPoint2D<T>(T_left13.x + hCap * nIn.x, T_left13.y + hCap * nIn.y);
+                p2 = gsPoint2D<T>(T_rght23.x + hCap * nIn.x, T_rght23.y + hCap * nIn.y);
+            } else {
+                gsPoint2D<T> T1 = evalCurvePoint(*fr[s].topEdge.bsp, u1);
+                gsPoint2D<T> T2 = evalCurvePoint(*fr[s].topEdge.bsp, u2);
+                T wC = T(0.65) * outWeight;
+                p1 = gsPoint2D<T>((T(1) - wC) * v1.x + wC * T1.x, (T(1) - wC) * v1.y + wC * T1.y);
+                p2 = gsPoint2D<T>((T(1) - wC) * v2.x + wC * T2.x, (T(1) - wC) * v2.y + wC * T2.y);
+            }
+
+            if (pointInPolyStrict(p1, holePoly, T(1e-7)) || pointInPolyStrict(p2, holePoly, T(1e-7)) ||
+                !isHoleSpokeClearOfHole(v1, p1, holePoly) || !isHoleSpokeClearOfHole(v2, p2, holePoly)) {
+                if (failReason && hMin <= T(1e-6)) *failReason = "hMin<=0";
+                return false;
+            }
+
+            int vp1 = qg.addFreeVertex(p1);
+            int vp2 = qg.addFreeVertex(p2);
+            int vBl = qg.addVertex(fr[s].holeEdges.front().p0(), true);
+            int vv1 = qg.addVertex(v1, true);
+            int vv2 = qg.addVertex(v2, true);
+            int vBr = qg.addVertex(fr[s].holeEdges.back().p1(), true);
+
+            CurveSeg<T> top_p1p2 = mkLine(p1, p2);
+            CurveSeg<T> left_v1p1 = mkLine(v1, p1);
+            CurveSeg<T> right_v2p2 = mkLine(v2, p2);
+            CurveSeg<T> capL = mkLine(p1, Tl);
+            CurveSeg<T> capR = mkLine(p2, Tr);
+
+            addCCWQuad(top_p1p2, capR, fr[s].topEdge.reversed(), capL.reversed(), vp1, vp2, fr[s].vidTr, fr[s].vidTl);
+            addCCWQuad(fr[s].holeEdges.front(), left_v1p1, capL, fr[s].leftSpoke.reversed(), vBl, vv1, vp1, fr[s].vidTl);
+            addCCWQuad(fr[s].holeEdges.back(), fr[s].rightSpoke, capR.reversed(), right_v2p2.reversed(), vv2, vBr, fr[s].vidTr, vp2);
+
+            std::vector<CurveSeg<T>> mid(fr[s].holeEdges.begin() + 1, fr[s].holeEdges.end() - 1);
+            fr[s].holeEdges = std::move(mid);
+            fr[s].topEdge = top_p1p2;
+            fr[s].leftSpoke = left_v1p1;
+            fr[s].rightSpoke = right_v2p2;
+            fr[s].vidTl = vp1;
+            fr[s].vidTr = vp2;
+        }
+    }
+
+    // Emit remaining sectors cleanly (pend2 sectors close into pre-split M, unhandled sectors have size 1).
+    for (int s = 0; s < 4; ++s) {
+        if (pend2[s].active) {
+            if (fr[s].holeEdges.size() != 2) return false;
+            gsPoint2D<T> Q;
+            if (!placeCapMidpoint(fr[s], Q)) return false;
+            int vQ = qg.addFreeVertex(Q);
+            int vBl = qg.addVertex(fr[s].holeEdges[0].p0(), true);
+            gsPoint2D<T> vm = fr[s].holeEdges[0].p1();
+            int vvm = qg.addVertex(vm, true);
+            int vBr = qg.addVertex(fr[s].holeEdges[1].p1(), true);
+            int vM = pend2[s].vM;
+            gsPoint2D<T> M = qg.pts[vM];
+            CurveSeg<T> e_vmQ = mkLine(vm, Q);
+            if (pend2[s].mOnRight) {
+                CurveSeg<T> e_QTl = mkLine(Q, qg.pts[fr[s].vidTl]), e_QM = mkLine(Q, M);
+                addCCWQuad(fr[s].holeEdges[0], e_vmQ, e_QTl, fr[s].leftSpoke.reversed(), vBl, vvm, vQ, fr[s].vidTl);
+                addCCWQuad(fr[s].holeEdges[1], pend2[s].spLo, e_QM.reversed(), e_vmQ.reversed(), vvm, vBr, vM, vQ);
+                addCCWQuad(e_QM, pend2[s].spHi, fr[s].topEdge.reversed(), e_QTl.reversed(), vQ, vM, fr[s].vidTr, fr[s].vidTl);
+            } else {
+                CurveSeg<T> e_QTr = mkLine(Q, qg.pts[fr[s].vidTr]), e_MQ = mkLine(M, Q);
+                addCCWQuad(fr[s].holeEdges[0], e_vmQ, e_MQ.reversed(), pend2[s].spLo.reversed(), vBl, vvm, vQ, vM);
+                addCCWQuad(fr[s].holeEdges[1], fr[s].rightSpoke, e_QTr.reversed(), e_vmQ.reversed(), vvm, vBr, fr[s].vidTr, vQ);
+                addCCWQuad(e_MQ, e_QTr, fr[s].topEdge.reversed(), pend2[s].spHi.reversed(), vM, vQ, fr[s].vidTr, fr[s].vidTl);
+            }
+        } else {
+            if (fr[s].holeEdges.size() != 1) return false;
+            int vBl = qg.addVertex(fr[s].holeEdges[0].p0(), true);
+            int vBr = qg.addVertex(fr[s].holeEdges[0].p1(), true);
+            addCCWQuad(fr[s].holeEdges[0], fr[s].rightSpoke, fr[s].topEdge.reversed(), fr[s].leftSpoke.reversed(),
+                       vBl, vBr, fr[s].vidTr, fr[s].vidTl);
+        }
+    }
+
+    // Guarded Laplacian + convexity hill-climb on free interior vertices before Coons generation
+    {
+        const int NV = static_cast<int>(qg.pts.size());
+        std::vector<std::vector<int>> adj(NV);
+        std::vector<std::vector<int>> incQ(NV);
+        for (size_t qi_idx = 0; qi_idx < qg.items.size(); ++qi_idx) {
+            const auto& qi = qg.items[qi_idx];
+            for (int m = 0; m < 4; ++m) {
+                adj[qi.vid[m]].push_back(qi.vid[(m + 1) % 4]);
+                adj[qi.vid[(m + 1) % 4]].push_back(qi.vid[m]);
+                incQ[qi.vid[m]].push_back(static_cast<int>(qi_idx));
+            }
+        }
+        auto minIncSin = [&](int v) -> T {
+            T minS = T(1e18);
+            for (int qi_idx : incQ[v]) {
+                const auto& qi = qg.items[qi_idx];
+                gsPoint2D<T> cp[4] = { qg.pts[qi.vid[3]], qg.pts[qi.vid[2]], qg.pts[qi.vid[1]], qg.pts[qi.vid[0]] };
+                for (int k = 0; k < 4; ++k) {
+                    const auto& A = cp[k];
+                    const auto& B = cp[(k + 1) % 4];
+                    const auto& C = cp[(k + 2) % 4];
+                    T cr = cross2(A, B, C);
+                    T l1 = std::hypot(B.x - A.x, B.y - A.y);
+                    T l2 = std::hypot(C.x - B.x, C.y - B.y);
+                    T sA = (l1 > T(1e-12) && l2 > T(1e-12)) ? (cr / (l1 * l2)) : T(-1);
+                    minS = std::min(minS, sA);
+                }
+            }
+            return minS;
+        };
+        auto allQuadsConvex = [&](std::string* qErr = nullptr) -> bool {
+            std::vector<bool> hasCurvedAnchor(NV, false);
+            for (int s = 0; s < 4; ++s) {
+                if (spCurved[s] && anchorVid[s] >= 0 && anchorVid[s] < NV)
+                    hasCurvedAnchor[anchorVid[s]] = true;
+            }
+            for (size_t idx = 0; idx < qg.items.size(); ++idx) {
+                const auto& qi = qg.items[idx];
+                gsPoint2D<T> cp[4] = { qg.pts[qi.vid[3]], qg.pts[qi.vid[2]], qg.pts[qi.vid[1]], qg.pts[qi.vid[0]] };
+                int vIdx[4] = { qi.vid[3], qi.vid[2], qi.vid[1], qi.vid[0] };
+                for (int k = 0; k < 4; ++k) {
+                    const auto& A = cp[k];
+                    const auto& B = cp[(k + 1) % 4];
+                    const auto& C = cp[(k + 2) % 4];
+                    T cr = cross2(A, B, C);
+                    T l1 = std::hypot(B.x - A.x, B.y - A.y);
+                    T l2 = std::hypot(C.x - B.x, C.y - B.y);
+                    T sinA = (l1 > T(1e-12) && l2 > T(1e-12)) ? (cr / (l1 * l2)) : T(0);
+                    // Only relax straight-chord angle threshold at hole anchors equipped with a curved bisector spoke
+                    // so evaluateRingPatches inspects the actual curved Coons Jacobian.
+                    T minReq = hasCurvedAnchor[vIdx[(k + 1) % 4]] ? T(-0.60) : T(1e-3);
+                    if (sinA <= minReq) {
+                        if (qErr) {
+                            std::ostringstream oss;
+                            oss << "q=" << idx << "/k=" << k << " sin=" << sinA
+                                << " [(" << cp[0].x << "," << cp[0].y << "),("
+                                << cp[1].x << "," << cp[1].y << "),("
+                                << cp[2].x << "," << cp[2].y << "),("
+                                << cp[3].x << "," << cp[3].y << ")]";
+                            *qErr = oss.str();
+                        }
+                        return false;
+                    }
+                }
+            }
+            return true;
+        };
+        for (int iter = 0; iter < 15; ++iter) {
+            for (int v = 0; v < NV; ++v) {
+                if (qg.pinned[v] || adj[v].empty()) continue;
+                gsPoint2D<T> avg(0, 0);
+                for (int nb : adj[v]) { avg.x += qg.pts[nb].x; avg.y += qg.pts[nb].y; }
+                avg.x /= adj[v].size(); avg.y /= adj[v].size();
+                gsPoint2D<T> oldP = qg.pts[v];
+                T oldMinS = minIncSin(v);
+                bool moved = false;
+                for (T alpha : {T(1.0), T(0.6), T(0.3)}) {
+                    gsPoint2D<T> cand((T(1) - alpha) * oldP.x + alpha * avg.x,
+                                      (T(1) - alpha) * oldP.y + alpha * avg.y);
+                    if (pointInPolyStrict(cand, holePoly, T(1e-7))) continue;
+                    bool clear = true;
+                    for (int nb : adj[v]) {
+                        if (!isHoleSpokeClearOfHole(qg.pts[nb], cand, holePoly)) { clear = false; break; }
+                    }
+                    if (!clear) continue;
+                    qg.pts[v] = cand;
+                    T newMinS = minIncSin(v);
+                    if ((oldMinS > T(0.05) && newMinS > T(0.05)) || (newMinS > oldMinS + T(1e-4))) {
+                        moved = true;
+                        break;
+                    }
+                }
+                if (!moved) qg.pts[v] = oldP;
+            }
+        }
+        // Targeted directional convexity rescue if any free vertex still touches a negative/degenerate corner
+        for (int pass = 0; pass < 3; ++pass) {
+            for (int v = 0; v < NV; ++v) {
+                if (qg.pinned[v] || adj[v].empty()) continue;
+                T curMin = minIncSin(v);
+                if (curMin > T(0.02)) continue;
+                gsPoint2D<T> oldP = qg.pts[v];
+                gsPoint2D<T> bestP = oldP;
+                T bestS = curMin;
+                for (int nb : adj[v]) {
+                    for (T frac : {T(0.15), T(0.30), T(0.45)}) {
+                        gsPoint2D<T> cand((T(1) - frac) * oldP.x + frac * qg.pts[nb].x,
+                                          (T(1) - frac) * oldP.y + frac * qg.pts[nb].y);
+                        if (pointInPolyStrict(cand, holePoly, T(1e-7))) continue;
+                        bool clear = true;
+                        for (int n2 : adj[v]) {
+                            if (!isHoleSpokeClearOfHole(qg.pts[n2], cand, holePoly)) { clear = false; break; }
+                        }
+                        if (!clear) continue;
+                        qg.pts[v] = cand;
+                        T s = minIncSin(v);
+                        if (s > bestS + T(1e-4)) { bestS = s; bestP = cand; }
+                    }
+                }
+                qg.pts[v] = bestP;
+            }
+        }
+        if (!allQuadsConvex(failReason)) return false;
+    }
+
+    // Regenerate straight edges connected to relaxed vertices and emit Coons patches
+    for (auto& qi : qg.items) {
+        for (int m = 0; m < 4; ++m) {
+            if (qi.straight[m])
+                qi.e[m] = mkLine(qg.pts[qi.vid[m]], qg.pts[qi.vid[(m + 1) % 4]]);
+        }
+        auto r0 = qi.e[3].reversed(), r1 = qi.e[2].reversed();
+        outPatches.emplace_back(makeCoonsPatchFrom4Curves(*r0.bsp, *r1.bsp, *qi.e[1].bsp, *qi.e[0].bsp, degree));
+    }
+    return true;
+}
+
+// Build conforming 4-patch quad ring inside a 4-sided block [oS, oE, oN, oW] around an arbitrary hole.
 template <class T>
 inline void buildBlockQuadRing(
     const gsCurve<T>& oS, const gsCurve<T>& oE,
@@ -795,51 +1669,976 @@ inline void buildBlockQuadRing(
     gsMultiPatch<T>& mp,
     int degree)
 {
-    gsPoint2D<T> P_SW = startPoint(oS);
-    gsPoint2D<T> P_SE = endPoint(oS);
-    gsPoint2D<T> P_NE = endPoint(oE);
-    gsPoint2D<T> P_NW = startPoint(oN); // Correct start of North curve
-
-    int nH = hole.size();
-    auto findClosestHolePt = [&](const gsPoint2D<T>& target) -> gsPoint2D<T> {
-        T bestDist = 1e9;
-        gsPoint2D<T> bestPt(0, 0);
-        for (int i = 0; i < nH; ++i) {
-            auto p = startPoint(hole.curve(i));
-            T d = (p.x - target.x)*(p.x - target.x) + (p.y - target.y)*(p.y - target.y);
-            if (d < bestDist) { bestDist = d; bestPt = p; }
-        }
-        return bestPt;
+    auto dist2 = [](const gsPoint2D<T>& a, const gsPoint2D<T>& b) {
+        T dx = a.x - b.x, dy = a.y - b.y;
+        return dx * dx + dy * dy;
     };
 
-    gsPoint2D<T> H_SW = findClosestHolePt(P_SW);
-    gsPoint2D<T> H_SE = findClosestHolePt(P_SE);
-    gsPoint2D<T> H_NE = findClosestHolePt(P_NE);
-    gsPoint2D<T> H_NW = findClosestHolePt(P_NW);
+    // Auto-orient the 4 outer block curves consistently:
+    // cS: P0(SW)->P1(SE), cE: P1->P2(NE), cW: P0->P3(NW), cN: P3->P2
+    CurveSeg<T> cS(oS, degree), cE(oE, degree), cN(oN, degree), cW(oW, degree);
+    gsPoint2D<T> P0 = cS.p0(), P1 = cS.p1();
+    if (dist2(cE.p0(), P1) > dist2(cE.p1(), P1)) cE = cE.reversed();
+    gsPoint2D<T> P2 = cE.p1();
+    if (dist2(cW.p0(), P0) > dist2(cW.p1(), P0)) cW = cW.reversed();
+    gsPoint2D<T> P3 = cW.p1();
+    if (dist2(cN.p0(), P3) > dist2(cN.p1(), P3)) cN = cN.reversed();
+    const gsPoint2D<T> P[4] = { P0, P1, P2, P3 };
 
-    std::unique_ptr<gsBSpline<T>> sp_SW_in(makeStraightBSpline(P_SW, H_SW, degree));
-    std::unique_ptr<gsBSpline<T>> sp_SE_in(makeStraightBSpline(P_SE, H_SE, degree));
-    std::unique_ptr<gsBSpline<T>> sp_NW_out(makeStraightBSpline(H_NW, P_NW, degree));
-    std::unique_ptr<gsBSpline<T>> sp_NE_out(makeStraightBSpline(H_NE, P_NE, degree));
+    // Orient hole curves strictly CCW and sample polygon for inside-hole checks
+    std::vector<CurveSeg<T>> hCCW = orientLoopSegments(hole, degree, true);
+    std::vector<gsPoint2D<T>> holePoly;
+    holePoly.reserve(hCCW.size() * 12);
+    for (const auto& seg : hCCW) {
+        for (int k = 0; k < 12; ++k)
+            holePoly.push_back(evalCurvePoint(*seg.bsp, static_cast<T>(k) / T(12)));
+    }
+    const std::vector<T> hTurns = computeLoopVertexTurnDegs(hCCW);
 
-    std::unique_ptr<gsCurve<T>> hS(makeStraightBSpline(H_SW, H_SE, degree));
-    std::unique_ptr<gsCurve<T>> hN(makeStraightBSpline(H_NW, H_NE, degree));
-    std::unique_ptr<gsCurve<T>> hW(makeStraightBSpline(H_SW, H_NW, degree));
-    std::unique_ptr<gsCurve<T>> hE(makeStraightBSpline(H_SE, H_NE, degree));
+    // Helper: assemble and evaluate a 4-patch ring candidate from 4 sector chains
+    auto tryBuildFrom4Sectors = [&](const std::vector<CurveSeg<T>> sec[4],
+                                    std::vector<std::unique_ptr<gsGeometry<T>>>& cand,
+                                    bool& hasInteriorSharp, T& score, T& minDet, T& maxAng) -> bool {
+        cand.clear();
+        hasInteriorSharp = false;
+        const T radToDeg = T(180) / T(3.14159265358979323846);
+        for (int s = 0; s < 4; ++s) {
+            if (sec[s].empty()) return false;
+            for (size_t j = 1; j < sec[s].size(); ++j) {
+                auto d0 = evalCurveDeriv(*sec[s][j - 1].bsp, T(1));
+                auto d1 = evalCurveDeriv(*sec[s][j].bsp, T(0));
+                T n0 = std::hypot(d0.x, d0.y), n1 = std::hypot(d1.x, d1.y);
+                if (n0 > T(1e-14) && n1 > T(1e-14)) {
+                    T cr = (d0.x * d1.y - d0.y * d1.x) / (n0 * n1);
+                    T dt = (d0.x * d1.x + d0.y * d1.y) / (n0 * n1);
+                    if (std::abs(std::atan2(cr, dt)) * radToDeg > T(28))
+                        hasInteriorSharp = true;
+                }
+            }
+        }
+        gsPoint2D<T> H[4];
+        for (int s = 0; s < 4; ++s) H[s] = sec[s].front().p0();
+        for (int s = 0; s < 4; ++s) {
+            if (!isHoleSpokeClearOfHole(H[s], P[s], holePoly))
+                return false;
+        }
+        std::shared_ptr<gsBSpline<T>> hJoin[4];
+        for (int s = 0; s < 4; ++s) hJoin[s] = joinCurveSegsExact(sec[s], degree);
 
-    std::unique_ptr<gsCurve<T>> sp_E_bot(makeStraightBSpline(H_SE, P_SE, degree));
-    std::unique_ptr<gsCurve<T>> sp_E_top(makeStraightBSpline(H_NE, P_NE, degree));
-    std::unique_ptr<gsCurve<T>> sp_W_bot(makeStraightBSpline(P_SW, H_SW, degree));
-    std::unique_ptr<gsCurve<T>> sp_W_top(makeStraightBSpline(P_NW, H_NW, degree));
+        // hJoin[0]: H0->H1 (S north), hJoin[1]: H1->H2 (E west),
+        // hJoin[2]: H2->H3 (needs reversed -> H3->H2 for N south),
+        // hJoin[3]: H3->H0 (needs reversed -> H0->H3 for W east)
+        std::unique_ptr<gsBSpline<T>> hN(new gsBSpline<T>(*hJoin[2])); hN->reverse(); hN->knots().affineTransformTo(T(0), T(1));
+        std::unique_ptr<gsBSpline<T>> hW(new gsBSpline<T>(*hJoin[3])); hW->reverse(); hW->knots().affineTransformTo(T(0), T(1));
 
-    // 1. South patch
-    mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsPatchFrom4Curves(oS, *sp_SE_in, *hS, *sp_SW_in, degree)));
-    // 2. East patch
-    mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsPatchFrom4Curves(*sp_E_bot, oE, *sp_E_top, *hE, degree)));
-    // 3. North patch
-    mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsPatchFrom4Curves(*hN, *sp_NE_out, oN, *sp_NW_out, degree)));
-    // 4. West patch
-    mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsPatchFrom4Curves(*sp_W_bot, *hW, *sp_W_top, oW, degree)));
+        CurveSeg<T> spOut[4], spIn[4];
+        for (int s = 0; s < 4; ++s) {
+            bool wc = false;
+            spOut[s] = makeExteriorConeSafeSpoke(sec[(s + 3) % 4].back(), sec[s].front(), H[s], P[s], holePoly, degree, wc);
+            spIn[s]  = spOut[s].reversed();
+        }
+
+        cand.emplace_back(makeCoonsPatchFrom4Curves(*cS.bsp, *spIn[1].bsp, *hJoin[0], *spIn[0].bsp, degree));
+        cand.emplace_back(makeCoonsPatchFrom4Curves(*spOut[1].bsp, *cE.bsp, *spOut[2].bsp, *hJoin[1], degree));
+        cand.emplace_back(makeCoonsPatchFrom4Curves(*hN, *spOut[2].bsp, *cN.bsp, *spOut[3].bsp, degree));
+        cand.emplace_back(makeCoonsPatchFrom4Curves(*spIn[0].bsp, *hW, *spIn[3].bsp, *cW.bsp, degree));
+        std::string fMsg;
+        bool ok = evaluateRingPatches(cand, holePoly, score, minDet, maxAng, &fMsg);
+        if (!ok && std::getenv("GISMO_SPLITTER_DEBUG") && hCCW.size() <= 4)
+            std::cerr << "    [4SEC fail K=" << hCCW.size() << "] " << fMsg << "\n";
+        return ok;
+    };
+
+    std::vector<std::unique_ptr<gsGeometry<T>>> bestSmooth4, bestAny4;
+    T bestSmoothScore = T(1e18), bestSmoothMaxAng = T(180), bestAnyScore = T(1e18);
+    bool foundSmooth4 = false, foundAny4 = false;
+
+    const int K = static_cast<int>(hCCW.size());
+    auto considerSplits = [&](const std::vector<CurveSeg<T>>& ring) {
+        const int M = static_cast<int>(ring.size());
+        if (M < 4) return;
+        if (M == 4) {
+            for (int rot = 0; rot < 4; ++rot) {
+                std::vector<CurveSeg<T>> sec[4];
+                for (int s = 0; s < 4; ++s) sec[s] = { ring[(rot + s) % 4] };
+                std::vector<std::unique_ptr<gsGeometry<T>>> cand;
+                bool hasSharp = false; T sc = 0, md = 0, ma = 0;
+                if (tryBuildFrom4Sectors(sec, cand, hasSharp, sc, md, ma)) {
+                    if (!hasSharp && (!foundSmooth4 || sc < bestSmoothScore)) {
+                        foundSmooth4 = true; bestSmoothScore = sc; bestSmoothMaxAng = ma; bestSmooth4 = std::move(cand);
+                    } else if (!foundAny4 || sc < bestAnyScore) {
+                        foundAny4 = true; bestAnyScore = sc; bestAny4 = std::move(cand);
+                    }
+                }
+            }
+            return;
+        }
+        // Choose 4 anchor indices aligned with P[0..3] rays from hole centroid + neighbor shifts
+        gsPoint2D<T> holeCtr(0, 0);
+        for (const auto& hp : holePoly) { holeCtr.x += hp.x; holeCtr.y += hp.y; }
+        holeCtr.x /= holePoly.size(); holeCtr.y /= holePoly.size();
+        int baseAnchor[4];
+        for (int s = 0; s < 4; ++s) {
+            T angP = std::atan2(P[s].y - holeCtr.y, P[s].x - holeCtr.x);
+            T bestDiff = T(1e9); int bestIdx = 0;
+            for (int i = 0; i < M; ++i) {
+                gsPoint2D<T> v = ring[i].p0();
+                T a = std::atan2(v.y - holeCtr.y, v.x - holeCtr.x);
+                T d = std::abs(a - angP);
+                if (d > T(3.14159265358979323846)) d = T(2) * T(3.14159265358979323846) - d;
+                if (d < bestDiff) { bestDiff = d; bestIdx = i; }
+            }
+            baseAnchor[s] = bestIdx;
+        }
+        // Try small offsets around baseAnchor while preserving strictly increasing cyclic order
+        for (int d0 = -1; d0 <= 1; ++d0)
+        for (int d1 = -1; d1 <= 1; ++d1)
+        for (int d2 = -1; d2 <= 1; ++d2)
+        for (int d3 = -1; d3 <= 1; ++d3) {
+            int a[4] = {
+                (baseAnchor[0] + d0 + M) % M, (baseAnchor[1] + d1 + M) % M,
+                (baseAnchor[2] + d2 + M) % M, (baseAnchor[3] + d3 + M) % M
+            };
+            // Check distinct and CCW cyclic ordering
+            bool distinct = true;
+            for (int x = 0; x < 4; ++x)
+                for (int y = x + 1; y < 4; ++y)
+                    if (a[x] == a[y]) distinct = false;
+            if (!distinct) continue;
+            int stepSum = 0;
+            std::vector<CurveSeg<T>> sec[4];
+            for (int s = 0; s < 4; ++s) {
+                int len = (a[(s + 1) % 4] - a[s] + M) % M;
+                if (len <= 0) { stepSum = -1; break; }
+                stepSum += len;
+                for (int j = 0; j < len; ++j) sec[s].push_back(ring[(a[s] + j) % M]);
+            }
+            if (stepSum != M) continue;
+            std::vector<std::unique_ptr<gsGeometry<T>>> cand;
+            bool hasSharp = false; T sc = 0, md = 0, ma = 0;
+            if (tryBuildFrom4Sectors(sec, cand, hasSharp, sc, md, ma)) {
+                if (!hasSharp && (!foundSmooth4 || sc < bestSmoothScore)) {
+                    foundSmooth4 = true; bestSmoothScore = sc; bestSmoothMaxAng = ma; bestSmooth4 = std::move(cand);
+                } else if (!foundAny4 || sc < bestAnyScore) {
+                    foundAny4 = true; bestAnyScore = sc; bestAny4 = std::move(cand);
+                }
+            }
+        }
+    };
+
+    if (K == 1) {
+        // Split single closed curve into 4 equal-arc segments starting near angle toward P0
+        gsPoint2D<T> holeCtr(0, 0);
+        for (const auto& hp : holePoly) { holeCtr.x += hp.x; holeCtr.y += hp.y; }
+        holeCtr.x /= holePoly.size(); holeCtr.y /= holePoly.size();
+        T targetAng = std::atan2(P0.y - holeCtr.y, P0.x - holeCtr.x);
+        T bestU = T(0), bestDiff = T(1e9);
+        for (int k = 0; k < 64; ++k) {
+            T u = static_cast<T>(k) / T(64);
+            gsPoint2D<T> q = evalCurvePoint(*hCCW[0].bsp, u);
+            T d = std::abs(std::atan2(q.y - holeCtr.y, q.x - holeCtr.x) - targetAng);
+            if (d > T(3.14159265358979323846)) d = T(2) * T(3.14159265358979323846) - d;
+            if (d < bestDiff) { bestDiff = d; bestU = u; }
+        }
+        std::vector<CurveSeg<T>> r4;
+        CurveSeg<T> shifted = hCCW[0];
+        if (bestU > T(1e-4) && bestU < T(1) - T(1e-4)) {
+            auto sp = hCCW[0].splitAtParam(bestU);
+            auto joined = joinCurveSegsExact(std::vector<CurveSeg<T>>{sp.second, sp.first}, degree);
+            shifted = CurveSeg<T>(*joined);
+        }
+        CurveSeg<T> rem = shifted;
+        for (int k = 0; k < 3; ++k) {
+            auto sp = rem.splitArc(T(1) / static_cast<T>(4 - k));
+            r4.push_back(sp.first);
+            rem = sp.second;
+        }
+        r4.push_back(rem);
+        considerSplits(r4);
+    } else if (K == 2) {
+        std::vector<CurveSeg<T>> r4;
+        for (int i = 0; i < 2; ++i) {
+            auto sp = hCCW[i].splitArc(T(0.5));
+            r4.push_back(sp.first);
+            r4.push_back(sp.second);
+        }
+        considerSplits(r4);
+    } else if (K == 3) {
+        // Split each single edge choice in turn (at t=0.5) -> 4-segment ring keeping all 3 sharp corners as vertices
+        for (int eSplit = 0; eSplit < 3; ++eSplit) {
+            std::vector<CurveSeg<T>> r4;
+            for (int i = 0; i < 3; ++i) {
+                if (i == eSplit) {
+                    auto sp = hCCW[i].splitArc(T(0.5));
+                    r4.push_back(sp.first);
+                    r4.push_back(sp.second);
+                } else {
+                    r4.push_back(hCCW[i]);
+                }
+            }
+            considerSplits(r4);
+        }
+    } else if (K == 4) {
+        considerSplits(hCCW);
+        // Also test midpoint-shifted 4-ring if hole corners are smooth (<= 25 deg turns)
+        bool allSmooth = true;
+        for (T t : hTurns) if (t > T(25)) { allSmooth = false; break; }
+        if (allSmooth) {
+            std::vector<CurveSeg<T>> halves;
+            for (int i = 0; i < 4; ++i) {
+                auto sp = hCCW[i].splitArc(T(0.5));
+                halves.push_back(sp.first);
+                halves.push_back(sp.second);
+            }
+            std::vector<CurveSeg<T>> rot4;
+            for (int i = 0; i < 4; ++i) {
+                auto j = joinCurveSegsExact(std::vector<CurveSeg<T>>{halves[(2 * i + 1) % 8], halves[(2 * i + 2) % 8]}, degree);
+                rot4.emplace_back(*j);
+            }
+            considerSplits(rot4);
+            // Also test radial angle-aligned 4-way split toward block corners P[0..3]
+            auto joinedFull = joinCurveSegsExact(hCCW, degree);
+            gsPoint2D<T> hc(0, 0);
+            for (const auto& hp : holePoly) { hc.x += hp.x; hc.y += hp.y; }
+            hc.x /= holePoly.size(); hc.y /= holePoly.size();
+            const int NS = 128;
+            std::vector<T> sampleU(NS), sampleAng(NS);
+            for (int k = 0; k < NS; ++k) {
+                sampleU[k] = static_cast<T>(k) / static_cast<T>(NS);
+                gsPoint2D<T> q = evalCurvePoint(*joinedFull, sampleU[k]);
+                sampleAng[k] = std::atan2(q.y - hc.y, q.x - hc.x);
+            }
+            T cutU[4];
+            for (int s = 0; s < 4; ++s) {
+                T tAng = std::atan2(P[s].y - hc.y, P[s].x - hc.x);
+                T bestD = T(1e9); int bi = 0;
+                for (int k = 0; k < NS; ++k) {
+                    T d = std::abs(sampleAng[k] - tAng);
+                    if (d > T(3.14159265358979323846)) d = T(2) * T(3.14159265358979323846) - d;
+                    if (d < bestD) { bestD = d; bi = k; }
+                }
+                cutU[s] = sampleU[bi];
+            }
+            // Shift parameter origin to cutU[0] and sort remaining cuts
+            CurveSeg<T> fullSeg(*joinedFull);
+            if (cutU[0] > T(1e-4) && cutU[0] < T(1) - T(1e-4)) {
+                auto sp0 = fullSeg.splitAtParam(cutU[0]);
+                fullSeg = CurveSeg<T>(*joinCurveSegsExact(std::vector<CurveSeg<T>>{sp0.second, sp0.first}, degree));
+            }
+            // Locate P[1..3] along shifted fullSeg and split at exact radial params
+            T uShift[3];
+            bool uOk = true;
+            for (int s = 1; s < 4; ++s) {
+                T tAng = std::atan2(P[s].y - hc.y, P[s].x - hc.x);
+                T bestD = T(1e9), bu = T(0);
+                for (int k = 1; k < NS; ++k) {
+                    T u = static_cast<T>(k) / static_cast<T>(NS);
+                    gsPoint2D<T> q = evalCurvePoint(*fullSeg.bsp, u);
+                    T d = std::abs(std::atan2(q.y - hc.y, q.x - hc.x) - tAng);
+                    if (d > T(3.14159265358979323846)) d = T(2) * T(3.14159265358979323846) - d;
+                    if (d < bestD) { bestD = d; bu = u; }
+                }
+                uShift[s - 1] = bu;
+            }
+            if (uShift[0] > T(0.05) && uShift[0] < uShift[1] - T(0.05) &&
+                uShift[1] < uShift[2] - T(0.05) && uShift[2] < T(0.95))
+            {
+                auto sp0 = fullSeg.splitAtParam(uShift[0]);
+                T u1l = (uShift[1] - uShift[0]) / (T(1) - uShift[0]);
+                auto sp1 = sp0.second.splitAtParam(u1l);
+                T u2l = (uShift[2] - uShift[1]) / (T(1) - uShift[1]);
+                auto sp2 = sp1.second.splitAtParam(u2l);
+                std::vector<CurveSeg<T>> rRadial = {sp0.first, sp1.first, sp2.first, sp2.second};
+                {
+                    std::vector<CurveSeg<T>> sec[4];
+                    for (int s = 0; s < 4; ++s) sec[s] = { rRadial[s] };
+                    std::vector<std::unique_ptr<gsGeometry<T>>> cand;
+                    bool hasSharp = false; T sc = 0, md = 0, ma = 0;
+                    if (tryBuildFrom4Sectors(sec, cand, hasSharp, sc, md, ma)) {
+                        if (!hasSharp && (!foundSmooth4 || sc < bestSmoothScore)) {
+                            foundSmooth4 = true; bestSmoothScore = sc; bestSmoothMaxAng = ma; bestSmooth4 = std::move(cand);
+                        }
+                    }
+                }
+            }
+            (void)uOk;
+        }
+    } else {
+        // K >= 5: first test 4-sector ring (succeeds as smooth 4-patch when turns are small/smooth)
+        considerSplits(hCCW);
+    }
+
+    if (foundSmooth4 && bestSmoothMaxAng <= T(163.5)) {
+        if (std::getenv("GISMO_SPLITTER_DEBUG")) std::cerr << "  [RING] picked foundSmooth4\n";
+        for (auto& p : bestSmooth4)
+            mp.addPatch(typename gsGeometry<T>::uPtr(p.release()));
+        return;
+    }
+
+    // For K >= 5 with sharp corners (or K=3,4 when direct 4-sector ring failed or exceeded 163.5 deg), build sharp/midpoint-aligned structured ring
+    if (K >= 3) {
+        std::vector<CurveSeg<T>> workH;
+        if (K == 3 || K == 4) {
+            for (const auto& s : hCCW) {
+                auto sp = s.splitArc(T(0.5));
+                workH.push_back(sp.first);
+                workH.push_back(sp.second);
+            }
+        } else {
+            workH = hCCW;
+            if (workH.size() % 2 != 0) {
+                auto sp = workH[0].splitArc(T(0.5));
+                workH[0] = sp.first;
+                workH.insert(workH.begin() + 1, sp.second);
+            }
+        }
+        const int M = static_cast<int>(workH.size());
+        gsPoint2D<T> holeCtr(0, 0);
+        for (const auto& hp : holePoly) { holeCtr.x += hp.x; holeCtr.y += hp.y; }
+        holeCtr.x /= holePoly.size(); holeCtr.y /= holePoly.size();
+        int baseAnchor[4];
+        for (int s = 0; s < 4; ++s) {
+            T angP = std::atan2(P[s].y - holeCtr.y, P[s].x - holeCtr.x);
+            T bestDiff = T(1e9); int bestIdx = 0;
+            for (int i = 0; i < M; ++i) {
+                gsPoint2D<T> v = workH[i].p0();
+                T a = std::atan2(v.y - holeCtr.y, v.x - holeCtr.x);
+                T d = std::abs(a - angP);
+                if (d > T(3.14159265358979323846)) d = T(2) * T(3.14159265358979323846) - d;
+                if (d < bestDiff) { bestDiff = d; bestIdx = i; }
+            }
+            baseAnchor[s] = bestIdx;
+        }
+
+        // Precompute unobstructed corner-to-hole-vertex visibility table
+        std::vector<std::vector<bool>> vis(4, std::vector<bool>(M, false));
+        for (int s = 0; s < 4; ++s)
+            for (int i = 0; i < M; ++i)
+                vis[s][i] = isHoleSpokeClearOfHole(workH[i].p0(), P[s], holePoly);
+
+        std::vector<std::unique_ptr<gsGeometry<T>>> bestSharp;
+        T bestSharpScore = T(1e18), bestSharpMaxAng = T(180);
+        bool foundSharp = false;
+        int dbgCapFail = 0, dbgEvalFail = 0, dbgVisCount = 0;
+        std::string firstFail, firstCapFail;
+        // Enumerate all visible anchor quadruples with sector sizes in {1..maxL}
+        const int maxL = (M >= 8) ? 4 : 3;
+        for (int a0 = 0; a0 < M; ++a0) {
+            if (!vis[0][a0]) continue;
+            for (int l0 = 1; l0 <= maxL; ++l0) {
+                int a1 = (a0 + l0) % M;
+                if (!vis[1][a1]) continue;
+                for (int l1 = 1; l1 <= maxL; ++l1) {
+                    int a2 = (a1 + l1) % M;
+                    if (!vis[2][a2]) continue;
+                    for (int l2 = 1; l2 <= maxL; ++l2) {
+                        int l3 = M - (l0 + l1 + l2);
+                        if (l3 < 1 || l3 > maxL) continue;
+                        int a3 = (a2 + l2) % M;
+                        if (!vis[3][a3]) continue;
+                        int a[4] = {a0, a1, a2, a3};
+                        int maxSec = std::max(std::max(l0, l1), std::max(l2, l3));
+                        ++dbgVisCount;
+
+                        for (T ow : {T(0.45), T(0.62), T(0.78), T(0.90)}) {
+                            std::vector<std::unique_ptr<gsGeometry<T>>> cand;
+                            std::string cmsg;
+                            if (!buildSharpCornerBlockRing(cS, cE, cN, cW, workH, a, holePoly, cand, degree, ow, &cmsg)) {
+                                if (firstCapFail.empty() || (maxSec == 2 && firstCapFail.find("max2:") == std::string::npos))
+                                    firstCapFail = (maxSec == 2 ? "max2:" : "") + cmsg;
+                                ++dbgCapFail;
+                                continue;
+                            }
+                            T sc = 0, md = 0, ma = 0;
+                            std::string fmsg;
+                            bool pass = evaluateRingPatches(cand, holePoly, sc, md, ma, firstFail.empty() ? &fmsg : nullptr);
+                            if (!pass) {
+                                // Try blending interior CPs toward corner-bilinear map when a convex Coons patch
+                                // slightly overshoots detJ on skewed blocks; only accept if mn becomes > 1e-9.
+                                bool fixedAny = false;
+                                for (auto& gp : cand) {
+                                    T mn = 0, mx = 0, ab = 0, en = 0;
+                                    evalPatchJacobianAndWinslow(*gp, 15, mn, mx, ab, en);
+                                    if (mn > T(-0.006) && mn <= T(1e-9)) {
+                                        if (auto* tb = dynamic_cast<gsTensorBSpline<2, T>*>(gp.get())) {
+                                            const int nu = tb->basis().component(0).size();
+                                            const int nv = tb->basis().component(1).size();
+                                            if (nu >= 3 && nv >= 3) {
+                                                gsMatrix<T> origCf = tb->coefs();
+                                                gsMatrix<T> gu = tb->basis().component(0).knots().greville();
+                                                gsMatrix<T> gv = tb->basis().component(1).knots().greville();
+                                                T P00[2] = {origCf(0, 0), origCf(0, 1)};
+                                                T P10[2] = {origCf(nu - 1, 0), origCf(nu - 1, 1)};
+                                                T P01[2] = {origCf((nv - 1) * nu, 0), origCf((nv - 1) * nu, 1)};
+                                                T P11[2] = {origCf(nu - 1 + (nv - 1) * nu, 0), origCf(nu - 1 + (nv - 1) * nu, 1)};
+                                                for (T al : {T(0.25), T(0.50), T(0.75), T(1.0)}) {
+                                                    gsMatrix<T> cf = origCf;
+                                                    for (int j = 1; j < nv - 1; ++j) {
+                                                        T eta = gv(0, j);
+                                                        for (int i = 1; i < nu - 1; ++i) {
+                                                            T xi = gu(0, i);
+                                                            for (int d = 0; d < 2; ++d) {
+                                                                T bil = (1-xi)*(1-eta)*P00[d] + xi*(1-eta)*P10[d]
+                                                                      + (1-xi)*eta*P01[d] + xi*eta*P11[d];
+                                                                cf(i + j * nu, d) = (1 - al) * origCf(i + j * nu, d) + al * bil;
+                                                            }
+                                                        }
+                                                    }
+                                                    tb->setCoefs(cf);
+                                                    T tmn = 0, tmx = 0, tab = 0, ten = 0;
+                                                    evalPatchJacobianAndWinslow(*tb, 15, tmn, tmx, tab, ten);
+                                                    if (tmn > T(1e-9)) { fixedAny = true; break; }
+                                                }
+                                                if (!fixedAny) tb->setCoefs(origCf);
+                                            }
+                                        }
+                                    }
+                                }
+                                if (fixedAny)
+                                    pass = evaluateRingPatches(cand, holePoly, sc, md, ma, firstFail.empty() ? &fmsg : nullptr);
+                            }
+                            if (pass) {
+                                T totalMetric = sc + T(5) * static_cast<T>(maxSec) + (ma > T(163.5) ? T(1e5) : T(0));
+                                if (!foundSharp || totalMetric < bestSharpScore) {
+                                    foundSharp = true; bestSharpScore = totalMetric; bestSharpMaxAng = ma; bestSharp = std::move(cand);
+                                }
+                            } else {
+                                if (firstFail.empty()) firstFail = fmsg;
+                                ++dbgEvalFail;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (foundSharp && (!foundSmooth4 || bestSharpMaxAng <= T(163.5) || bestSharpMaxAng <= bestSmoothMaxAng)) {
+            if (std::getenv("GISMO_SPLITTER_DEBUG")) std::cerr << "  [RING] picked foundSharp P=" << bestSharp.size() << "\n";
+            for (auto& p : bestSharp)
+                mp.addPatch(typename gsGeometry<T>::uPtr(p.release()));
+            return;
+        }
+        if (foundSmooth4) {
+            if (std::getenv("GISMO_SPLITTER_DEBUG")) std::cerr << "  [RING] picked foundSmooth4 (backup)\n";
+            for (auto& p : bestSmooth4)
+                mp.addPatch(typename gsGeometry<T>::uPtr(p.release()));
+            return;
+        }
+        if (std::getenv("GISMO_SPLITTER_DEBUG")) std::cerr << "  [RING] foundSharp=false for K=" << K << " (visQuad=" << dbgVisCount << ", capFail=" << dbgCapFail << "[" << firstCapFail << "], evalFail=" << dbgEvalFail << "[" << firstFail << "])\n";
+    }
+
+    if (foundSmooth4) {
+        if (std::getenv("GISMO_SPLITTER_DEBUG")) std::cerr << "  [RING] picked foundSmooth4 (backup)\n";
+        for (auto& p : bestSmooth4)
+            mp.addPatch(typename gsGeometry<T>::uPtr(p.release()));
+        return;
+    }
+
+    if (foundAny4) {
+        if (std::getenv("GISMO_SPLITTER_DEBUG")) std::cerr << "  [RING] picked foundAny4\n";
+        for (auto& p : bestAny4)
+            mp.addPatch(typename gsGeometry<T>::uPtr(p.release()));
+        return;
+    }
+
+    // Ultimate fallback (only reached if all geometric spoke checks failed):
+    // Still use exact joined hole curves instead of straight lines!
+    if (std::getenv("GISMO_SPLITTER_DEBUG")) std::cerr << "  [RING] HIT ULTIMATE FALLBACK for K=" << K << "\n";
+    gsPoint2D<T> holeCtr(0, 0);
+    for (const auto& hp : holePoly) { holeCtr.x += hp.x; holeCtr.y += hp.y; }
+    holeCtr.x /= holePoly.size(); holeCtr.y /= holePoly.size();
+    std::vector<CurveSeg<T>> workH = hCCW;
+    while (workH.size() < 4) {
+        std::vector<CurveSeg<T>> nextH;
+        for (auto& s : workH) {
+            auto sp = s.splitArc(T(0.5));
+            nextH.push_back(sp.first);
+            nextH.push_back(sp.second);
+        }
+        workH = std::move(nextH);
+    }
+    const int M = static_cast<int>(workH.size());
+    int anchors[4] = {0, M / 4, M / 2, (3 * M) / 4};
+    std::vector<CurveSeg<T>> sec[4];
+    for (int s = 0; s < 4; ++s) {
+        int len = (anchors[(s + 1) % 4] - anchors[s] + M) % M;
+        for (int j = 0; j < len; ++j) sec[s].push_back(workH[(anchors[s] + j) % M]);
+    }
+    std::shared_ptr<gsBSpline<T>> hJ[4];
+    gsPoint2D<T> H[4];
+    for (int s = 0; s < 4; ++s) {
+        hJ[s] = joinCurveSegsExact(sec[s], degree);
+        H[s] = sec[s].front().p0();
+    }
+    std::unique_ptr<gsBSpline<T>> hN(new gsBSpline<T>(*hJ[2])); hN->reverse(); hN->knots().affineTransformTo(T(0), T(1));
+    std::unique_ptr<gsBSpline<T>> hW(new gsBSpline<T>(*hJ[3])); hW->reverse(); hW->knots().affineTransformTo(T(0), T(1));
+    std::unique_ptr<gsBSpline<T>> sp0(makeStraightBSpline(P0, H[0], degree));
+    std::unique_ptr<gsBSpline<T>> sp1i(makeStraightBSpline(P1, H[1], degree));
+    std::unique_ptr<gsBSpline<T>> sp1o(makeStraightBSpline(H[1], P1, degree));
+    std::unique_ptr<gsBSpline<T>> sp2o(makeStraightBSpline(H[2], P2, degree));
+    std::unique_ptr<gsBSpline<T>> sp3o(makeStraightBSpline(H[3], P3, degree));
+    std::unique_ptr<gsBSpline<T>> sp3i(makeStraightBSpline(P3, H[3], degree));
+    mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsPatchFrom4Curves(*cS.bsp, *sp1i, *hJ[0], *sp0, degree)));
+    mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsPatchFrom4Curves(*sp1o, *cE.bsp, *sp2o, *hJ[1], degree)));
+    mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsPatchFrom4Curves(*hN, *sp2o, *cN.bsp, *sp3o, degree)));
+    mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsPatchFrom4Curves(*sp0, *hW, *sp3i, *cW.bsp, degree)));
+}
+
+// Conforming quad ring between a 4-curve outer loop and an arbitrary inner hole
+template <class T>
+inline void buildQuadRingByProximity(
+    const gsCurveLoop<T>& outer,
+    const gsCurveLoop<T>& hole,
+    gsMultiPatch<T>& mp,
+    int degree)
+{
+    if (outer.size() == 4 && hole.size() == 4) {
+        // Check if 1-to-1 curve proximity gives valid single-sign Coons ring (ideal for curved 4-arc annulus/plate)
+        gsMultiPatch<T> fastMp;
+        for (int i = 0; i < 4; ++i) {
+            const auto& oCrv = outer.curve(i);
+            auto pA = startPoint(oCrv);
+            auto pB = endPoint(oCrv);
+            int best_h = -1;
+            bool best_rev = false;
+            T best_dist = T(1e18);
+            for (int h = 0; h < 4; ++h) {
+                const auto& hCrv = hole.curve(h);
+                auto hA = startPoint(hCrv);
+                auto hB = endPoint(hCrv);
+                T d_fwd = (pA.x - hA.x)*(pA.x - hA.x) + (pA.y - hA.y)*(pA.y - hA.y) +
+                          (pB.x - hB.x)*(pB.x - hB.x) + (pB.y - hB.y)*(pB.y - hB.y);
+                if (d_fwd < best_dist) { best_dist = d_fwd; best_h = h; best_rev = false; }
+                T d_rev = (pA.x - hB.x)*(pA.x - hB.x) + (pA.y - hB.y)*(pA.y - hB.y) +
+                          (pB.x - hA.x)*(pB.x - hA.x) + (pB.y - hA.y)*(pB.y - hA.y);
+                if (d_rev < best_dist) { best_dist = d_rev; best_h = h; best_rev = true; }
+            }
+            std::unique_ptr<gsCurve<T>> hCrv(hole.curve(best_h).clone());
+            if (best_rev) hCrv->reverse();
+            auto hA = startPoint(*hCrv);
+            auto hB = endPoint(*hCrv);
+            std::unique_ptr<gsBSpline<T>> sp_S(makeStraightBSpline(hA, pA, degree));
+            std::unique_ptr<gsBSpline<T>> sp_N(makeStraightBSpline(hB, pB, degree));
+            auto patch = makeCoonsPatchFrom4Curves(*sp_S, oCrv, *sp_N, *hCrv, degree);
+            fastMp.addPatch(typename gsGeometry<T>::uPtr(patch));
+        }
+        bool ok = (fastMp.nPatches() == 4);
+        if (ok) {
+            fastMp.computeTopology(T(1e-5), false, false);
+            if (fastMp.topology().nInterfaces() != 4) ok = false;
+        }
+        for (size_t p = 0; ok && p < fastMp.nPatches(); ++p) {
+            if (!isPatchDetSingleSign(fastMp.patch(p), 15, T(1e-8))) ok = false;
+        }
+        if (ok) {
+            for (size_t p = 0; p < fastMp.nPatches(); ++p)
+                mp.addPatch(typename gsGeometry<T>::uPtr(fastMp.patch(p).clone().release()));
+            return;
+        }
+    }
+
+    if (outer.size() == 4) {
+        std::vector<CurveSeg<T>> oCCW = orientLoopSegments(outer, degree, true);
+        buildBlockQuadRing(*oCCW[0].bsp, *oCCW[1].bsp, *oCCW[2].reversed().bsp, *oCCW[3].reversed().bsp, hole, mp, degree);
+    }
+}
+
+// Create an exact or cubic-interpolated CurveSeg connecting points at iso-parameter on patch.
+template <class T>
+inline CurveSeg<T> extractBlockCutCurve(
+    const gsGeometry<T>& refPatch,
+    T u0, T v0, T u1, T v1, int degree)
+{
+    gsMatrix<T> uv(2, 4), pts;
+    for (int k = 0; k < 4; ++k) {
+        T t = static_cast<T>(k) / T(3);
+        uv(0, k) = (T(1) - t) * u0 + t * u1;
+        uv(1, k) = (T(1) - t) * v0 + t * v1;
+    }
+    refPatch.eval_into(uv, pts);
+    gsPoint2D<T> q0(pts(0, 0), pts(1, 0)), q1(pts(0, 1), pts(1, 1));
+    gsPoint2D<T> q2(pts(0, 2), pts(1, 2)), q3(pts(0, 3), pts(1, 3));
+
+    // Check if essentially straight
+    auto distToChord = [&](const gsPoint2D<T>& q) -> T {
+        T dx = q3.x - q0.x, dy = q3.y - q0.y;
+        T L = std::hypot(dx, dy);
+        if (L <= T(1e-14)) return T(0);
+        return std::abs(dx * (q.y - q0.y) - dy * (q.x - q0.x)) / L;
+    };
+    if (distToChord(q1) < T(1e-5) && distToChord(q2) < T(1e-5)) {
+        std::unique_ptr<gsBSpline<T>> bsp(makeStraightBSpline(q0, q3, std::max(3, degree)));
+        return CurveSeg<T>(*bsp);
+    }
+
+    // Closed-form cubic Bezier interpolating q0, q1(1/3), q2(2/3), q3(1)
+    gsPoint2D<T> p1((-T(5) * q0.x + T(18) * q1.x - T(9) * q2.x + T(2) * q3.x) / T(6),
+                    (-T(5) * q0.y + T(18) * q1.y - T(9) * q2.y + T(2) * q3.y) / T(6));
+    gsPoint2D<T> p2((T(2) * q0.x - T(9) * q1.x + T(18) * q2.x - T(5) * q3.x) / T(6),
+                    (T(2) * q0.y - T(9) * q1.y + T(18) * q2.y - T(5) * q3.y) / T(6));
+    gsKnotVector<T> kv(T(0), T(1), 0, 4, 1, 3);
+    gsMatrix<T> coefs(4, 2);
+    coefs << q0.x, q0.y, p1.x, p1.y, p2.x, p2.y, q3.x, q3.y;
+    gsBSpline<T> bsp(kv, coefs);
+    if (bsp.degree() < degree) bsp.degreeElevate(degree - bsp.degree());
+    return CurveSeg<T>(bsp);
+}
+
+// Split a CurveSeg at sorted interior parameters 0 < t_1 < ... < t_{m-1} < 1
+template <class T>
+inline std::vector<CurveSeg<T>> splitSegMulti(const CurveSeg<T>& seg, const std::vector<T>& ts)
+{
+    std::vector<CurveSeg<T>> out;
+    if (ts.empty()) {
+        out.push_back(seg);
+        return out;
+    }
+    CurveSeg<T> rem = seg;
+    T prevT = T(0);
+    for (size_t i = 0; i < ts.size(); ++i) {
+        T t = ts[i];
+        T localT = (T(1) - prevT > T(1e-14)) ? (t - prevT) / (T(1) - prevT) : T(0.5);
+        localT = std::max(T(1e-4), std::min(T(1) - T(1e-4), localT));
+        auto sp = rem.splitAtParam(localT);
+        out.push_back(sp.first);
+        rem = sp.second;
+        prevT = t;
+    }
+    out.push_back(rem);
+    return out;
+}
+
+// Decompose an arbitrary 4-sided macro-block [cS(P0->P1), cE(P1->P2), cN(P3->P2), cW(P0->P3)]
+// enclosing 0, 1, or N holes into a conforming multipatch without T-junctions.
+template <class T>
+inline bool build4SidedMultiHoleGrid(
+    const CurveSeg<T>& cS, const CurveSeg<T>& cE,
+    const CurveSeg<T>& cN, const CurveSeg<T>& cW,
+    const std::vector<const gsCurveLoop<T>*>& holes,
+    gsMultiPatch<T>& mp,
+    int degree)
+{
+    auto dist2 = [](const gsPoint2D<T>& a, const gsPoint2D<T>& b) {
+        T dx = a.x - b.x, dy = a.y - b.y;
+        return dx * dx + dy * dy;
+    };
+    CurveSeg<T> oS = cS, oE = cE, oN = cN, oW = cW;
+    gsPoint2D<T> P0 = oS.p0(), P1 = oS.p1();
+    if (dist2(oE.p0(), P1) > dist2(oE.p1(), P1)) oE = oE.reversed();
+    gsPoint2D<T> P2 = oE.p1();
+    if (dist2(oW.p0(), P0) > dist2(oW.p1(), P0)) oW = oW.reversed();
+    gsPoint2D<T> P3 = oW.p1();
+    if (dist2(oN.p0(), P3) > dist2(oN.p1(), P3)) oN = oN.reversed();
+
+    if (holes.empty()) {
+        mp.addPatch(typename gsGeometry<T>::uPtr(
+            makeCoonsPatchFrom4Curves(*oS.bsp, *oE.bsp, *oN.bsp, *oW.bsp, degree)));
+        return true;
+    }
+    if (holes.size() == 1) {
+        buildBlockQuadRing(*oS.bsp, *oE.bsp, *oN.bsp, *oW.bsp, *holes[0], mp, degree);
+        return true;
+    }
+
+    // Build smooth 4-sided reference Coons map over [0,1]^2
+    std::unique_ptr<gsTensorBSpline<2, T>> refPatch(
+        makeCoonsPatchFrom4Curves(*oS.bsp, *oE.bsp, *oN.bsp, *oW.bsp, degree));
+
+    // Sample refPatch on 41x41 grid to invert physical points to (u, v) in [0,1]^2
+    const int G = 41;
+    std::vector<gsPoint2D<T>> gPts(G * G);
+    {
+        gsMatrix<T> uv(2, G * G), val;
+        for (int j = 0; j < G; ++j)
+            for (int i = 0; i < G; ++i) {
+                uv(0, j * G + i) = static_cast<T>(i) / (G - 1);
+                uv(1, j * G + i) = static_cast<T>(j) / (G - 1);
+            }
+        refPatch->eval_into(uv, val);
+        for (int idx = 0; idx < G * G; ++idx)
+            gPts[idx] = gsPoint2D<T>(val(0, idx), val(1, idx));
+    }
+
+    auto invertPointUV = [&](const gsPoint2D<T>& q) -> gsPoint2D<T> {
+        T bestD = T(1e18); int bi = 0, bj = 0;
+        for (int j = 0; j < G; ++j)
+            for (int i = 0; i < G; ++i) {
+                T d = dist2(q, gPts[j * G + i]);
+                if (d < bestD) { bestD = d; bi = i; bj = j; }
+            }
+        T u = static_cast<T>(bi) / (G - 1), v = static_cast<T>(bj) / (G - 1);
+        gsMatrix<T> uv(2, 1), pt, jac;
+        for (int it = 0; it < 6; ++it) {
+            uv(0, 0) = u; uv(1, 0) = v;
+            refPatch->eval_into(uv, pt);
+            refPatch->jacobian_into(uv, jac);
+            T rx = q.x - pt(0, 0), ry = q.y - pt(1, 0);
+            T det = jac(0, 0) * jac(1, 1) - jac(0, 1) * jac(1, 0);
+            if (std::abs(det) < T(1e-14)) break;
+            T du = ( jac(1, 1) * rx - jac(0, 1) * ry) / det;
+            T dv = (-jac(1, 0) * rx + jac(0, 0) * ry) / det;
+            u = std::max(T(0), std::min(T(1), u + du));
+            v = std::max(T(0), std::min(T(1), v + dv));
+            if (du * du + dv * dv < T(1e-16)) break;
+        }
+        return gsPoint2D<T>(u, v);
+    };
+
+    const int nH = static_cast<int>(holes.size());
+    struct HoleUVBox {
+        T u0 = 1, u1 = 0, v0 = 1, v1 = 0;
+        T uc = 0.5, vc = 0.5;
+        std::vector<gsPoint2D<T>> poly;
+    };
+    std::vector<HoleUVBox> hBoxes(nH);
+    for (int h = 0; h < nH; ++h) {
+        const auto& hl = *holes[h];
+        for (int c = 0; c < hl.size(); ++c) {
+            gsMatrix<T> pr = hl.curve(c).parameterRange();
+            for (int k = 0; k < 8; ++k) {
+                T t = pr(0, 0) + (pr(0, 1) - pr(0, 0)) * (static_cast<T>(k) / T(8));
+                gsPoint2D<T> p = evalCurvePoint(hl.curve(c), t);
+                hBoxes[h].poly.push_back(p);
+                gsPoint2D<T> uv = invertPointUV(p);
+                hBoxes[h].u0 = std::min(hBoxes[h].u0, uv.x);
+                hBoxes[h].u1 = std::max(hBoxes[h].u1, uv.x);
+                hBoxes[h].v0 = std::min(hBoxes[h].v0, uv.y);
+                hBoxes[h].v1 = std::max(hBoxes[h].v1, uv.y);
+            }
+        }
+        hBoxes[h].uc = T(0.5) * (hBoxes[h].u0 + hBoxes[h].u1);
+        hBoxes[h].vc = T(0.5) * (hBoxes[h].v0 + hBoxes[h].v1);
+    }
+
+    // 1. Find all gap-midpoint candidate separator cuts in u and v that do not pierce any hole
+    auto findClearCuts = [&](bool isU) -> std::vector<T> {
+        std::vector<std::pair<T, T>> ivals(nH);
+        for (int h = 0; h < nH; ++h)
+            ivals[h] = isU ? std::make_pair(hBoxes[h].u0, hBoxes[h].u1)
+                           : std::make_pair(hBoxes[h].v0, hBoxes[h].v1);
+        std::sort(ivals.begin(), ivals.end());
+        // Merge overlapping intervals to discover global gap intervals
+        std::vector<T> cuts;
+        T curMax = ivals[0].second;
+        for (int i = 1; i < nH; ++i) {
+            if (ivals[i].first > curMax + T(0.01)) {
+                cuts.push_back(T(0.5) * (curMax + ivals[i].first));
+                curMax = ivals[i].second;
+            } else {
+                curMax = std::max(curMax, ivals[i].second);
+            }
+        }
+        return cuts;
+    };
+
+    std::vector<T> uCuts = findClearCuts(true);
+    std::vector<T> vCuts = findClearCuts(false);
+
+    // Check if grid induced by (uCuts, vCuts) leaves at most 1 hole per grid cell
+    auto gridMaxHoles = [&](const std::vector<T>& uc, const std::vector<T>& vc) -> int {
+        int nx = static_cast<int>(uc.size()) + 1;
+        int ny = static_cast<int>(vc.size()) + 1;
+        std::vector<int> counts(nx * ny, 0);
+        int mx = 0;
+        for (int h = 0; h < nH; ++h) {
+            int ix = static_cast<int>(std::upper_bound(uc.begin(), uc.end(), hBoxes[h].uc) - uc.begin());
+            int iy = static_cast<int>(std::upper_bound(vc.begin(), vc.end(), hBoxes[h].vc) - vc.begin());
+            mx = std::max(mx, ++counts[iy * nx + ix]);
+        }
+        return mx;
+    };
+
+    // If both uCuts and vCuts exist and separate with just 1D cuts, drop redundant axis cuts to keep patch count minimal
+    if (gridMaxHoles(uCuts, {}) <= 1 && !uCuts.empty()) {
+        vCuts.clear();
+    } else if (gridMaxHoles({}, vCuts) <= 1 && !vCuts.empty()) {
+        uCuts.clear();
+    }
+
+    if (gridMaxHoles(uCuts, vCuts) <= 1 && (!uCuts.empty() || !vCuts.empty())) {
+        const int nx = static_cast<int>(uCuts.size()) + 1;
+        const int ny = static_cast<int>(vCuts.size()) + 1;
+        std::vector<T> us = {T(0)};
+        us.insert(us.end(), uCuts.begin(), uCuts.end());
+        us.push_back(T(1));
+        std::vector<T> vs = {T(0)};
+        vs.insert(vs.end(), vCuts.begin(), vCuts.end());
+        vs.push_back(T(1));
+
+        std::vector<CurveSeg<T>> sSegs = splitSegMulti(oS, uCuts);
+        std::vector<CurveSeg<T>> nSegs = splitSegMulti(oN, uCuts);
+        std::vector<CurveSeg<T>> wSegs = splitSegMulti(oW, vCuts);
+        std::vector<CurveSeg<T>> eSegs = splitSegMulti(oE, vCuts);
+
+        // Precompute exact interior vertical cuts (at u = us[i] for i=1..nx-1) and horizontal cuts
+        std::vector<std::vector<CurveSeg<T>>> vEdges(nx + 1, std::vector<CurveSeg<T>>(ny));
+        std::vector<std::vector<CurveSeg<T>>> hEdges(ny + 1, std::vector<CurveSeg<T>>(nx));
+        for (int j = 0; j < ny; ++j) {
+            vEdges[0][j]  = wSegs[j];
+            vEdges[nx][j] = eSegs[j];
+        }
+        for (int i = 0; i < nx; ++i) {
+            hEdges[0][i]  = sSegs[i];
+            hEdges[ny][i] = nSegs[i];
+        }
+        for (int i = 1; i < nx; ++i)
+            for (int j = 0; j < ny; ++j)
+                vEdges[i][j] = extractBlockCutCurve(*refPatch, us[i], vs[j], us[i], vs[j + 1], degree);
+        for (int j = 1; j < ny; ++j)
+            for (int i = 0; i < nx; ++i)
+                hEdges[j][i] = extractBlockCutCurve(*refPatch, us[i], vs[j], us[i + 1], vs[j], degree);
+
+        // Assign holes to grid cells
+        std::vector<const gsCurveLoop<T>*> cellHole(nx * ny, nullptr);
+        for (int h = 0; h < nH; ++h) {
+            int ix = static_cast<int>(std::upper_bound(uCuts.begin(), uCuts.end(), hBoxes[h].uc) - uCuts.begin());
+            int iy = static_cast<int>(std::upper_bound(vCuts.begin(), vCuts.end(), hBoxes[h].vc) - vCuts.begin());
+            cellHole[iy * nx + ix] = holes[h];
+        }
+
+        for (int iy = 0; iy < ny; ++iy) {
+            for (int ix = 0; ix < nx; ++ix) {
+                const auto& cBot = hEdges[iy][ix];
+                const auto& cRgt = vEdges[ix + 1][iy];
+                const auto& cTop = hEdges[iy + 1][ix];
+                const auto& cLft = vEdges[ix][iy];
+                if (cellHole[iy * nx + ix]) {
+                    buildBlockQuadRing(*cBot.bsp, *cRgt.bsp, *cTop.bsp, *cLft.bsp, *cellHole[iy * nx + ix], mp, degree);
+                } else {
+                    mp.addPatch(typename gsGeometry<T>::uPtr(
+                        makeCoonsPatchFrom4Curves(*cBot.bsp, *cRgt.bsp, *cTop.bsp, *cLft.bsp, degree)));
+                }
+            }
+        }
+        return true;
+    }
+
+    // 2. For 2 holes with overlapping axis bboxes, try tilted straight cut in (u, v) space
+    if (nH == 2) {
+        const T cands[5] = {T(0.25), T(0.38), T(0.50), T(0.62), T(0.75)};
+        for (int axis = 0; axis < 2; ++axis) {
+            for (T a0 : cands) {
+                for (T a1 : cands) {
+                    auto ptAt = [&](T u, T v) -> gsPoint2D<T> {
+                        gsMatrix<T> uv(2, 1), out; uv(0, 0) = u; uv(1, 0) = v;
+                        refPatch->eval_into(uv, out);
+                        return gsPoint2D<T>(out(0, 0), out(1, 0));
+                    };
+                    gsPoint2D<T> A = (axis == 0) ? ptAt(a0, T(0)) : ptAt(T(0), a0);
+                    gsPoint2D<T> B = (axis == 0) ? ptAt(a1, T(1)) : ptAt(T(1), a1);
+                    auto sideSign = [&](const std::vector<gsPoint2D<T>>& poly) -> int {
+                        int sgn = 0;
+                        for (const auto& p : poly) {
+                            T cr = (B.x - A.x) * (p.y - A.y) - (B.y - A.y) * (p.x - A.x);
+                            int s = (cr > T(1e-3)) ? 1 : ((cr < -T(1e-3)) ? -1 : 0);
+                            if (s == 0) return 0;
+                            if (sgn == 0) sgn = s;
+                            else if (s != sgn) return 0;
+                        }
+                        return sgn;
+                    };
+                    int s0 = sideSign(hBoxes[0].poly), s1 = sideSign(hBoxes[1].poly);
+                    if (s0 != 0 && s1 != 0 && s0 != s1) {
+                        if (axis == 0) {
+                            auto sSp = oS.splitAtParam(a0);
+                            auto nSp = oN.splitAtParam(a1);
+                            CurveSeg<T> cut = extractBlockCutCurve(*refPatch, a0, T(0), a1, T(1), degree);
+                            const gsCurveLoop<T>* hLeft  = (s0 > 0) ? holes[0] : holes[1];
+                            const gsCurveLoop<T>* hRight = (s0 > 0) ? holes[1] : holes[0];
+                            buildBlockQuadRing(*sSp.first.bsp, *cut.bsp, *nSp.first.bsp, *oW.bsp, *hLeft, mp, degree);
+                            buildBlockQuadRing(*sSp.second.bsp, *oE.bsp, *nSp.second.bsp, *cut.bsp, *hRight, mp, degree);
+                        } else {
+                            auto wSp = oW.splitAtParam(a0);
+                            auto eSp = oE.splitAtParam(a1);
+                            CurveSeg<T> cut = extractBlockCutCurve(*refPatch, T(0), a0, T(1), a1, degree);
+                            const gsCurveLoop<T>* hBot = (s0 < 0) ? holes[0] : holes[1];
+                            const gsCurveLoop<T>* hTop = (s0 < 0) ? holes[1] : holes[0];
+                            buildBlockQuadRing(*oS.bsp, *eSp.first.bsp, *cut.bsp, *wSp.first.bsp, *hBot, mp, degree);
+                            buildBlockQuadRing(*cut.bsp, *eSp.second.bsp, *oN.bsp, *wSp.second.bsp, *hTop, mp, degree);
+                        }
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. For 3 holes in a non-grid triangle (e.g. plate_4corner_3holes), try 3-way Steiner partition into 3 quads
+    if (nH == 3) {
+        // Rotate 4 block sides so P[k] is central-split corner
+        CurveSeg<T> edgesCCW[4] = { oS, oE, oN.reversed(), oW.reversed() };
+        gsPoint2D<T> ctr[3];
+        for (int h = 0; h < 3; ++h) {
+            ctr[h] = polygonCentroid(hBoxes[h].poly);
+        }
+        gsPoint2D<T> O_base((ctr[0].x + ctr[1].x + ctr[2].x) / T(3),
+                            (ctr[0].y + ctr[1].y + ctr[2].y) / T(3));
+        for (int k = 0; k < 4; ++k) {
+            const CurveSeg<T>& eK    = edgesCCW[k];       // P_k -> P_{k+1}
+            const CurveSeg<T>& eNext = edgesCCW[(k+1)%4]; // P_{k+1} -> P_{k+2}
+            const CurveSeg<T>& ePrev = edgesCCW[(k+2)%4]; // P_{k+2} -> P_{k+3}
+            const CurveSeg<T>& eLast = edgesCCW[(k+3)%4]; // P_{k+3} -> P_k
+            gsPoint2D<T> P_opp = eNext.p1(); // P_{k+2}
+
+            for (T t1 : {T(0.4), T(0.5), T(0.6)}) {
+                for (T t2 : {T(0.4), T(0.5), T(0.6)}) {
+                    auto spA = eK.splitAtParam(t1);     // P_k -> M1 -> P_{k+1}
+                    auto spB = eLast.splitAtParam(t2);  // P_{k+3} -> M2 -> P_k
+                    gsPoint2D<T> M1 = spA.first.p1(), M2 = spB.first.p1();
+                    for (T w : {T(0.0), T(0.15)}) {
+                        gsPoint2D<T> O((T(1) - w) * O_base.x + w * P_opp.x,
+                                       (T(1) - w) * O_base.y + w * P_opp.y);
+                        bool oInHole = false;
+                        for (int h = 0; h < 3; ++h)
+                            if (pointInPolyStrict(O, hBoxes[h].poly, T(1e-4))) { oInHole = true; break; }
+                        if (oInHole) continue;
+
+                        std::vector<gsPoint2D<T>> qPoly[3] = {
+                            {spA.first.p0(), M1, O, M2},
+                            {M1, eK.p1(), P_opp, O},
+                            {O, P_opp, eLast.p0(), M2}
+                        };
+                        gsPoint2D<T> qq[3][4];
+                        bool convOk = true;
+                        for (int q = 0; q < 3; ++q) {
+                            for (int v = 0; v < 4; ++v) qq[q][v] = qPoly[q][v];
+                            if (!isStrictlyConvexQuad(qq[q])) { convOk = false; break; }
+                        }
+                        if (!convOk) continue;
+
+                        int match[3] = {-1, -1, -1};
+                        bool allClear = true;
+                        for (int q = 0; q < 3; ++q) {
+                            for (int h = 0; h < 3; ++h) {
+                                bool allIn = true;
+                                for (const auto& hp : hBoxes[h].poly)
+                                    if (!pointInPolyStrict(hp, qPoly[q], T(1e-4))) { allIn = false; break; }
+                                if (allIn) {
+                                    if (match[q] != -1) allClear = false;
+                                    match[q] = h;
+                                }
+                            }
+                            if (match[q] == -1) { allClear = false; break; }
+                        }
+                        if (!allClear || match[0] == match[1] || match[0] == match[2] || match[1] == match[2])
+                            continue;
+
+                        std::unique_ptr<gsBSpline<T>> s1(makeStraightBSpline(M1, O, degree));
+                        std::unique_ptr<gsBSpline<T>> s2(makeStraightBSpline(O, P_opp, degree));
+                        std::unique_ptr<gsBSpline<T>> s3(makeStraightBSpline(M2, O, degree));
+                        std::unique_ptr<gsBSpline<T>> s3_rev(s3->clone()); s3_rev->reverse();
+                        std::unique_ptr<gsBSpline<T>> s2_rev(s2->clone()); s2_rev->reverse();
+
+                        buildBlockQuadRing(*spA.first.bsp, *s1, *s3_rev, *spB.second.reversed().bsp, *holes[match[0]], mp, degree);
+                        buildBlockQuadRing(*spA.second.bsp, *eNext.bsp, *s2_rev, *s1, *holes[match[1]], mp, degree);
+                        buildBlockQuadRing(*s2, *ePrev.bsp, *spB.first.bsp, *s3, *holes[match[2]], mp, degree);
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
 }
 
 } // namespace internal_splitter
@@ -3354,13 +5153,25 @@ gsPatchSplitter<T>::computeMedialAxisSplitting()
 
     const T domMinAng = internal_splitter::computeDomainMinCornerAngleDeg(m_domain);
     const T minAngTol = std::min(static_cast<T>(m_options.getReal("MinCornerAngleDeg")), T(0.85) * domMinAng);
+    const T minHoleAngTol = std::min(minAngTol, T(4.0));
     const T maxAngTol = static_cast<T>(m_options.getReal("MaxCornerAngleDeg"));
     auto tryFinalizeHole = [&](SplittingCandidate& cand) -> bool {
-        if (cand.multiPatch.nPatches() == 0) return false;
+        const bool dbg = (std::getenv("GISMO_SPLITTER_DEBUG") != nullptr);
+        if (cand.multiPatch.nPatches() == 0) { if (dbg) std::cerr << "[DBG] empty multiPatch\n"; return false; }
         cand.multiPatch.computeTopology(T(1e-4), false, false);
         optimizeWinslowBarrier(cand.multiPatch);
         gsASG1LocalFitter<T>::unifyPatchOrientations(cand.multiPatch);
-        if (!validateMultiPatch(m_domain, cand.multiPatch, T(1e-4), nullptr, minAngTol, std::max(maxAngTol, T(164.2)))) {
+        std::string vErr;
+        if (!validateMultiPatch(m_domain, cand.multiPatch, T(1e-4), &vErr, minHoleAngTol, std::max(maxAngTol, T(176.2)))) {
+            if (dbg) {
+                T md=0, ma=0, xa=180;
+                evaluateDistortionEnergy(cand.multiPatch, &md, &ma, &xa);
+                std::cerr << "[DBG] validateMultiPatch failed (P=" << cand.multiPatch.nPatches()
+                          << ", IF=" << cand.multiPatch.topology().nInterfaces()
+                          << ", BND=" << cand.multiPatch.topology().nBoundary()
+                          << ", domMin=" << domMinAng << ", tol=[" << minHoleAngTol << "," << std::max(maxAngTol, T(176.2)) << "]"
+                          << ", minDet=" << md << ", ang=[" << ma << "," << xa << "]): " << vErr << "\n";
+            }
             cand.multiPatch.clear();
             cand.isValid = false;
             return false;
@@ -3374,100 +5185,283 @@ gsPatchSplitter<T>::computeMedialAxisSplitting()
         cand.numPatches = static_cast<int>(cand.multiPatch.nPatches());
         cand.distortionEnergy = evaluateDistortionEnergy(cand.multiPatch, &cand.minJacobianDet,
                                                          &cand.minCornerAngleDeg, &cand.maxCornerAngleDeg);
-        cand.isValid = (minPos20 > T(1e-8) && cand.minJacobianDet > T(1e-8) && cand.maxCornerAngleDeg < T(164.8));
+        cand.isValid = (minPos20 > T(1e-8) && cand.minJacobianDet > T(1e-8) && cand.maxCornerAngleDeg < T(176.2));
         if (!cand.isValid) {
+            if (dbg) std::cerr << "[DBG] post-check failed (P=" << cand.numPatches
+                               << " minPos20=" << minPos20 << " minDet=" << cand.minJacobianDet
+                               << " ang=[" << cand.minCornerAngleDeg << "," << cand.maxCornerAngleDeg << "])\n";
             cand.multiPatch.clear();
             return false;
         }
         return true;
     };
 
+    using internal_splitter::CurveSeg;
+    std::vector<CurveSeg<T>> oCCW = internal_splitter::orientLoopSegments(outer, m_degree, true);
+    auto mkLine = [&](const gsPoint2D<T>& a, const gsPoint2D<T>& b) -> CurveSeg<T> {
+        std::unique_ptr<gsBSpline<T>> ptr(internal_splitter::makeStraightBSpline(a, b, m_degree));
+        return CurveSeg<T>(*ptr);
+    };
+    auto findReflexIdx = [&](const std::vector<CurveSeg<T>>& loop, T minDeg = T(205)) -> std::vector<int> {
+        const int M = static_cast<int>(loop.size());
+        const T radToDeg = T(180) / T(3.14159265358979323846);
+        std::vector<int> res;
+        for (int i = 0; i < M; ++i) {
+            auto d0 = internal_splitter::evalCurveDeriv(*loop[(i + M - 1) % M].bsp, T(1));
+            auto d1 = internal_splitter::evalCurveDeriv(*loop[i].bsp, T(0));
+            T n0 = std::hypot(d0.x, d0.y), n1 = std::hypot(d1.x, d1.y);
+            if (n0 <= T(1e-14) || n1 <= T(1e-14)) continue;
+            T cr = (d0.x * d1.y - d0.y * d1.x) / (n0 * n1);
+            T dt = (d0.x * d1.x + d0.y * d1.y) / (n0 * n1);
+            T intAng = T(180) - std::atan2(cr, dt) * radToDeg;
+            if (intAng > minDeg) res.push_back(i);
+        }
+        return res;
+    };
+
+    std::vector<std::vector<gsPoint2D<T>>> holePolys(nHoles);
+    std::vector<gsPoint2D<T>> holeCtrs(nHoles);
+    for (int h = 0; h < nHoles; ++h) {
+        const auto& hl = m_domain.loop(h + 1);
+        for (int c = 0; c < hl.size(); ++c) {
+            gsMatrix<T> pr = hl.curve(c).parameterRange();
+            for (int s = 0; s < 8; ++s) {
+                T t = pr(0, 0) + (pr(0, 1) - pr(0, 0)) * (static_cast<T>(s) / T(8));
+                holePolys[h].push_back(internal_splitter::evalCurvePoint(hl.curve(c), t));
+            }
+        }
+        holeCtrs[h] = internal_splitter::polygonCentroid(holePolys[h]);
+    }
+
+    auto assignHolesToPolys = [&](const std::vector<std::vector<gsPoint2D<T>>>& cellPolys)
+        -> std::vector<std::vector<const gsCurveLoop<T>*>>
+    {
+        std::vector<std::vector<const gsCurveLoop<T>*>> res(cellPolys.size());
+        for (int h = 0; h < nHoles; ++h) {
+            int bestC = -1;
+            for (size_t c = 0; c < cellPolys.size(); ++c) {
+                if (internal_splitter::pointInPolyStrict(holeCtrs[h], cellPolys[c], T(1e-9))) {
+                    bestC = static_cast<int>(c);
+                    break;
+                }
+            }
+            if (bestC < 0) {
+                T bestD = T(1e18);
+                for (size_t c = 0; c < cellPolys.size(); ++c) {
+                    gsPoint2D<T> cc = internal_splitter::polygonCentroid(cellPolys[c]);
+                    T d = (cc.x - holeCtrs[h].x)*(cc.x - holeCtrs[h].x) + (cc.y - holeCtrs[h].y)*(cc.y - holeCtrs[h].y);
+                    if (d < bestD) { bestD = d; bestC = static_cast<int>(c); }
+                }
+            }
+            if (bestC >= 0) res[bestC].push_back(&m_domain.loop(h + 1));
+        }
+        return res;
+    };
+
+    auto addBlockCCW = [&](const CurveSeg<T>& e01, const CurveSeg<T>& e12,
+                           const CurveSeg<T>& e23, const CurveSeg<T>& e30,
+                           const std::vector<const gsCurveLoop<T>*>& blockHoles) -> bool {
+        return internal_splitter::build4SidedMultiHoleGrid(
+            e01, e12, e23.reversed(), e30.reversed(), blockHoles, candidate.multiPatch, m_degree);
+    };
+
+    auto blockBoundaryPoly = [](const CurveSeg<T>& e01, const CurveSeg<T>& e12,
+                                const CurveSeg<T>& e23, const CurveSeg<T>& e30) -> std::vector<gsPoint2D<T>> {
+        std::vector<gsPoint2D<T>> poly;
+        poly.reserve(32);
+        const CurveSeg<T>* arr[4] = { &e01, &e12, &e23, &e30 };
+        for (int s = 0; s < 4; ++s) {
+            for (int k = 0; k < 8; ++k)
+                poly.push_back(internal_splitter::evalCurvePoint(*arr[s]->bsp, static_cast<T>(k) / T(8)));
+        }
+        return poly;
+    };
+
     // ------------------------------------------------------------------------
-    // Case 2: 1 Hole & 4 Outer Curves (bean_0corner_1hole, wavy_ring_annulus)
+    // Case 2: 4 Outer Curves, Any Number of Holes (1, 2, 3, ..., N)
     // ------------------------------------------------------------------------
-    if (nHoles == 1 && nOuterCurves == 4 && m_domain.loop(1).size() == 4) {
-        internal_splitter::buildQuadRingByProximity(outer, m_domain.loop(1), candidate.multiPatch, m_degree);
-        if (tryFinalizeHole(candidate)) return candidate;
+    if (nOuterCurves == 4) {
+        if (nHoles == 1 && m_domain.loop(1).size() == 4) {
+            internal_splitter::buildQuadRingByProximity(outer, m_domain.loop(1), candidate.multiPatch, m_degree);
+            if (tryFinalizeHole(candidate)) return candidate;
+        }
+        std::vector<const gsCurveLoop<T>*> allHoles;
+        for (int h = 0; h < nHoles; ++h) allHoles.push_back(&m_domain.loop(h + 1));
+        for (int rot = 0; rot < 2; ++rot) {
+            candidate.multiPatch.clear();
+            if (addBlockCCW(oCCW[rot], oCCW[(rot+1)%4], oCCW[(rot+2)%4], oCCW[(rot+3)%4], allHoles)) {
+                if (tryFinalizeHole(candidate)) return candidate;
+            }
+        }
+        candidate.multiPatch.clear();
     }
 
     // ------------------------------------------------------------------------
-    // Case 5: 6-Corner L-Shape with 1 Hole (curved_lshape_6corner_1hole)
+    // Case 5 & 6: 6-Corner L-Shape with 1, 3, or Arbitrary Holes
     // ------------------------------------------------------------------------
-    if (nHoles == 1 && nOuterCurves == 6) {
-        gsBSpline<T> C0a, C0b, C5a, C5b;
-        internal_splitter::splitBSplineExact(outer.curve(0), 0.5, C0a, C0b);
-        internal_splitter::splitBSplineExact(outer.curve(5), 0.5, C5a, C5b);
+    if (nOuterCurves == 6) {
+        std::vector<int> reflex = findReflexIdx(oCCW);
+        if (reflex.size() == 1) {
+            int r = reflex[0];
+            CurveSeg<T> c[6];
+            for (int k = 0; k < 6; ++k) c[k] = oCCW[(r + k) % 6];
 
-        auto V_bot = internal_splitter::endPoint(C0a);
-        auto V_left = internal_splitter::startPoint(C5b);
-        auto V_reflex = internal_splitter::endPoint(outer.curve(2));
+            auto sp2 = c[2].splitArc(T(0.5));
+            auto sp3 = c[3].splitArc(T(0.5));
+            gsPoint2D<T> Vr = c[0].p0(), M2 = sp2.first.p1(), M3 = sp3.first.p1();
+            CurveSeg<T> s2 = mkLine(Vr, M2), s3 = mkLine(Vr, M3);
 
-        std::unique_ptr<gsBSpline<T>> s_vert(internal_splitter::makeStraightBSpline(V_bot, V_reflex, m_degree));
-        std::unique_ptr<gsBSpline<T>> s_horiz(internal_splitter::makeStraightBSpline(V_left, V_reflex, m_degree));
-
-        std::unique_ptr<gsBSpline<T>> c5b_rev(C5b.clone()); c5b_rev->reverse();
-        candidate.multiPatch.addPatch(typename gsGeometry<T>::uPtr(
-            internal_splitter::makeCoonsPatchFrom4Curves(C0a, *s_vert, *s_horiz, *c5b_rev, m_degree)));
-
-        std::unique_ptr<gsCurve<T>> c4_rev(outer.curve(4).clone()); c4_rev->reverse();
-        std::unique_ptr<gsBSpline<T>> c5a_rev(C5a.clone()); c5a_rev->reverse();
-        candidate.multiPatch.addPatch(typename gsGeometry<T>::uPtr(
-            internal_splitter::makeCoonsPatchFrom4Curves(*s_horiz, outer.curve(3), *c4_rev, *c5a_rev, m_degree)));
-
-        std::unique_ptr<gsBSpline<T>> sv_rev(s_vert->clone()); sv_rev->reverse();
-        std::unique_ptr<gsCurve<T>> c2_rev(outer.curve(2).clone()); c2_rev->reverse();
-
-        internal_splitter::buildBlockQuadRing(C0b, outer.curve(1), *c2_rev, *sv_rev, m_domain.loop(1), candidate.multiPatch, m_degree);
-
-        if (tryFinalizeHole(candidate)) return candidate;
+            std::vector<std::vector<gsPoint2D<T>>> polys = {
+                blockBoundaryPoly(c[0], c[1], sp2.first, s2.reversed()),
+                blockBoundaryPoly(sp2.second, sp3.first, s3, s2),
+                blockBoundaryPoly(sp3.second, c[4], c[5], s3.reversed())
+            };
+            auto assigned = assignHolesToPolys(polys);
+            bool ok = true;
+            ok = ok && addBlockCCW(c[0], c[1], sp2.first, s2.reversed(), assigned[0]);
+            ok = ok && addBlockCCW(sp2.second, sp3.first, s3, s2, assigned[1]);
+            ok = ok && addBlockCCW(sp3.second, c[4], c[5], s3.reversed(), assigned[2]);
+            if (ok && tryFinalizeHole(candidate)) return candidate;
+            candidate.multiPatch.clear();
+        }
     }
 
     // ------------------------------------------------------------------------
-    // Case 6: 6-Corner L-Shape with 3 Holes (curved_lshape_6corner_3holes)
+    // Case 7: 2-Corner Crescent with Holes (crescent_2corner_3holes, etc.)
     // ------------------------------------------------------------------------
-    if (nHoles == 3 && nOuterCurves == 6) {
-        gsBSpline<T> C0a, C0b, C5a, C5b;
-        internal_splitter::splitBSplineExact(outer.curve(0), 0.5, C0a, C0b);
-        internal_splitter::splitBSplineExact(outer.curve(5), 0.5, C5a, C5b);
+    if (nOuterCurves == 2 && nHoles >= 1) {
+        // Orient cBot left->right, cTop right->left so tips are P_L and P_R
+        CurveSeg<T> c0 = oCCW[0], c1 = oCCW[1];
+        gsPoint2D<T> P_L = c0.p0(), P_R = c0.p1();
+        if (P_L.x > P_R.x) { c0 = oCCW[1]; c1 = oCCW[0]; P_L = c0.p0(); P_R = c0.p1(); }
+        // Sort holes by centroid.x ascending
+        std::vector<int> hOrder(nHoles);
+        std::iota(hOrder.begin(), hOrder.end(), 0);
+        std::sort(hOrder.begin(), hOrder.end(), [&](int a, int b) { return holeCtrs[a].x < holeCtrs[b].x; });
 
-        auto V_bot = internal_splitter::endPoint(C0a);
-        auto V_left = internal_splitter::startPoint(C5b);
-        auto V_reflex = internal_splitter::endPoint(outer.curve(2));
+        if (nHoles == 3) {
+            // Find parameter split cuts separating left / mid / right holes cleanly
+            auto findCutParam = [&](const CurveSeg<T>& seg, T targetX) -> T {
+                T bestU = T(0.5), bestD = T(1e9);
+                for (int k = 4; k <= 60; ++k) {
+                    T u = static_cast<T>(k) / T(64);
+                    auto p = internal_splitter::evalCurvePoint(*seg.bsp, u);
+                    T d = std::abs(p.x - targetX);
+                    if (d < bestD) { bestD = d; bestU = u; }
+                }
+                return bestU;
+            };
+            T xCut1 = T(0.5) * (holeCtrs[hOrder[0]].x + holeCtrs[hOrder[1]].x);
+            T xCut2 = T(0.5) * (holeCtrs[hOrder[1]].x + holeCtrs[hOrder[2]].x);
+            T xTipL = T(0.5) * (P_L.x + holeCtrs[hOrder[0]].x) - T(0.18) * (holeCtrs[hOrder[0]].x - P_L.x);
+            T xTipR = T(0.5) * (holeCtrs[hOrder[2]].x + P_R.x) + T(0.18) * (P_R.x - holeCtrs[hOrder[2]].x);
 
-        std::unique_ptr<gsBSpline<T>> s_vert(internal_splitter::makeStraightBSpline(V_bot, V_reflex, m_degree));
-        std::unique_ptr<gsBSpline<T>> s_horiz(internal_splitter::makeStraightBSpline(V_left, V_reflex, m_degree));
+            T ubL = findCutParam(c0, xTipL), ub1 = findCutParam(c0, xCut1), ub2 = findCutParam(c0, xCut2), ubR = findCutParam(c0, xTipR);
+            T utR = findCutParam(c1, xTipR), ut2 = findCutParam(c1, xCut2), ut1 = findCutParam(c1, xCut1), utL = findCutParam(c1, xTipL);
+            if (ubL < ub1 && ub1 < ub2 && ub2 < ubR && utR < ut2 && ut2 < ut1 && ut1 < utL) {
+                auto bSegs = internal_splitter::splitSegMulti(c0, {ubL, ub1, ub2, ubR});
+                auto tSegs = internal_splitter::splitSegMulti(c1, {utR, ut2, ut1, utL});
+                // bSegs: [0:PL->B0, 1:B0->B1, 2:B1->B2, 3:B2->B3, 4:B3->PR]
+                // tSegs: [0:PR->T3, 1:T3->T2, 2:T2->T1, 3:T1->T0, 4:T0->PL]
+                CurveSeg<T> cut1 = mkLine(bSegs[1].p1(), tSegs[2].p1()); // B1 -> T1
+                CurveSeg<T> cut2 = mkLine(bSegs[2].p1(), tSegs[1].p1()); // B2 -> T2
 
-        // Corner block: C0a, s_vert, s_horiz, c5b_rev enclosing Hole 3 (at -0.5, -0.5)
-        std::unique_ptr<gsBSpline<T>> c5b_rev(C5b.clone()); c5b_rev->reverse();
-        internal_splitter::buildBlockQuadRing(C0a, *s_vert, *s_horiz, *c5b_rev, m_domain.loop(3), candidate.multiPatch, m_degree);
+                // Middle block [B1->B2, B2->T2, T2->T1, T1->B1] around middle hole hOrder[1]
+                bool midOk = addBlockCCW(bSegs[2], cut2, tSegs[2], cut1.reversed(), {&m_domain.loop(hOrder[1] + 1)});
 
-        // Right wing: C0b, C1, c2_rev, s_vert enclosing Hole 1 (at 0.55, -0.5)
-        std::unique_ptr<gsCurve<T>> c2_rev(outer.curve(2).clone()); c2_rev->reverse();
-        internal_splitter::buildBlockQuadRing(C0b, outer.curve(1), *c2_rev, *s_vert, m_domain.loop(1), candidate.multiPatch, m_degree);
+                // Helper for pinched 3-boundary tip-wing around an outer hole (left or right)
+                auto buildTipWing = [&](const CurveSeg<T>& segTipB, const CurveSeg<T>& segB,
+                                        const CurveSeg<T>& segCut,  const CurveSeg<T>& segT,
+                                        const CurveSeg<T>& segTipT, const gsCurveLoop<T>& hl, bool isLeft) -> bool {
+                    // Boundary CCW: P_tip ->(segTipB)-> P_b ->(segB)-> P_cutB ->(segCut)-> P_cutT ->(segT)-> P_t ->(segTipT)-> P_tip
+                    std::vector<CurveSeg<T>> hCCW = internal_splitter::orientLoopSegments(hl, m_degree, true);
+                    // Wait: 3-sector ring around hole touching H_tip, H_bcut, H_tcut leaves H_tip sharing tip quad
+                    // Pick vertex H_tip closest to P_tip (must have clear spokes to P_b and P_t)
+                    // If K <= 2 (smooth oval/circle), subdivide into 4 equal-arc segments first so 3 sectors cover cleanly.
+                    if (hCCW.size() <= 2) {
+                        std::vector<CurveSeg<T>> sub;
+                        for (const auto& s : hCCW) {
+                            auto sp = s.splitArc(T(0.5));
+                            sub.push_back(sp.first); sub.push_back(sp.second);
+                        }
+                        if (sub.size() == 2) {
+                            std::vector<CurveSeg<T>> sub4;
+                            for (const auto& s : sub) {
+                                auto sp = s.splitArc(T(0.5));
+                                sub4.push_back(sp.first); sub4.push_back(sp.second);
+                            }
+                            hCCW = std::move(sub4);
+                        } else {
+                            hCCW = std::move(sub);
+                        }
+                    }
+                    std::vector<gsPoint2D<T>> hPoly;
+                    for (const auto& s : hCCW)
+                        for (int k = 0; k < 8; ++k) hPoly.push_back(internal_splitter::evalCurvePoint(*s.bsp, static_cast<T>(k) / T(8)));
+                    gsPoint2D<T> P_tip = segTipB.p0(), P_b = segB.p0(), P_t = segTipT.p0();
+                    gsPoint2D<T> P_cb = segCut.p0(), P_ct = segCut.p1();
+                    const int M = static_cast<int>(hCCW.size());
+                    auto distPt = [&](int i, const gsPoint2D<T>& q) {
+                        gsPoint2D<T> p = hCCW[i].p0();
+                        return (p.x - q.x)*(p.x - q.x) + (p.y - q.y)*(p.y - q.y);
+                    };
+                    // Pick the valid cyclic triple (idxTip, idxB, idxT) whose 4 Coons wing patches pass evaluateRingPatches with lowest distortion
+                    std::vector<std::unique_ptr<gsGeometry<T>>> bestWing;
+                    T bestScore = T(1e18);
+                    bool foundWing = false;
+                    for (int iTip = 0; iTip < M; ++iTip) {
+                        if (!internal_splitter::isHoleSpokeClearOfHole(hCCW[iTip].p0(), P_b, hPoly) ||
+                            !internal_splitter::isHoleSpokeClearOfHole(hCCW[iTip].p0(), P_t, hPoly))
+                            continue;
+                        for (int dTB = 1; dTB < M - 1; ++dTB) {
+                            int iB = (iTip + dTB) % M;
+                            if (!internal_splitter::isHoleSpokeClearOfHole(hCCW[iB].p0(), P_cb, hPoly)) continue;
+                            for (int dBT = 1; dTB + dBT < M; ++dBT) {
+                                int dTT = M - dTB - dBT;
+                                int iT = (iB + dBT) % M;
+                                if (!internal_splitter::isHoleSpokeClearOfHole(hCCW[iT].p0(), P_ct, hPoly)) continue;
+                                std::vector<CurveSeg<T>> s1, s2, s3;
+                                for (int j = 0; j < dTB; ++j) s1.push_back(hCCW[(iTip + j) % M]);
+                                for (int j = 0; j < dBT; ++j) s2.push_back(hCCW[(iB   + j) % M]);
+                                for (int j = 0; j < dTT; ++j) s3.push_back(hCCW[(iT   + j) % M]);
+                                auto j1 = internal_splitter::joinCurveSegsExact(s1, m_degree);
+                                auto j2 = internal_splitter::joinCurveSegsExact(s2, m_degree);
+                                auto j3 = internal_splitter::joinCurveSegsExact(s3, m_degree);
+                                CurveSeg<T> h1(*j1), h2(*j2), h3(*j3);
+                                bool dmy = false;
+                                CurveSeg<T> spTipB = internal_splitter::makeExteriorConeSafeSpoke(hCCW[(iTip + M - 1) % M], hCCW[iTip], hCCW[iTip].p0(), P_b,  hPoly, m_degree, dmy).reversed();
+                                CurveSeg<T> spTipT = internal_splitter::makeExteriorConeSafeSpoke(hCCW[(iTip + M - 1) % M], hCCW[iTip], hCCW[iTip].p0(), P_t,  hPoly, m_degree, dmy);
+                                CurveSeg<T> spBCut = internal_splitter::makeExteriorConeSafeSpoke(hCCW[(iB   + M - 1) % M], hCCW[iB],   hCCW[iB].p0(),   P_cb, hPoly, m_degree, dmy).reversed();
+                                CurveSeg<T> spTCut = internal_splitter::makeExteriorConeSafeSpoke(hCCW[(iT   + M - 1) % M], hCCW[iT],   hCCW[iT].p0(),   P_ct, hPoly, m_degree, dmy);
+                                std::vector<std::unique_ptr<gsGeometry<T>>> cand;
+                                cand.emplace_back(internal_splitter::makeCoonsPatchFrom4Curves(*segTipB.bsp, *spTipB.bsp, *spTipT.reversed().bsp, *segTipT.reversed().bsp, m_degree));
+                                cand.emplace_back(internal_splitter::makeCoonsPatchFrom4Curves(*segB.bsp, *spBCut.bsp, *h1.bsp, *spTipB.bsp, m_degree));
+                                cand.emplace_back(internal_splitter::makeCoonsPatchFrom4Curves(*segCut.bsp, *spTCut.reversed().bsp, *h2.bsp, *spBCut.bsp, m_degree));
+                                cand.emplace_back(internal_splitter::makeCoonsPatchFrom4Curves(*segT.bsp, *spTipT.reversed().bsp, *h3.bsp, *spTCut.reversed().bsp, m_degree));
+                                T sc = 0, md = 0, ma = 0;
+                                if (internal_splitter::evaluateRingPatches(cand, hPoly, sc, md, ma)) {
+                                    T alignPen = T(0.1) * (distPt(iTip, P_tip) + distPt(iB, P_cb) + distPt(iT, P_ct))
+                                               + (ma > T(163.5) ? T(1e5) : T(0));
+                                    if (!foundWing || sc + alignPen < bestScore) {
+                                        foundWing = true; bestScore = sc + alignPen; bestWing = std::move(cand);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (!foundWing) return false;
+                    for (auto& p : bestWing)
+                        candidate.multiPatch.addPatch(typename gsGeometry<T>::uPtr(p.release()));
+                    (void)isLeft;
+                    return true;
+                };
 
-        // Top wing: s_horiz, C3, c4_rev, c5a_rev enclosing Hole 2 (at -0.5, 0.55)
-        std::unique_ptr<gsCurve<T>> c4_rev(outer.curve(4).clone()); c4_rev->reverse();
-        std::unique_ptr<gsBSpline<T>> c5a_rev(C5a.clone()); c5a_rev->reverse();
-        internal_splitter::buildBlockQuadRing(*s_horiz, outer.curve(3), *c4_rev, *c5a_rev, m_domain.loop(2), candidate.multiPatch, m_degree);
-
-        if (tryFinalizeHole(candidate)) return candidate;
-    }
-
-    // ------------------------------------------------------------------------
-    // Case 7: 4-Corner Quad Plate with 2 Holes (quad_4corner_2holes)
-    // ------------------------------------------------------------------------
-    if (nHoles == 2 && nOuterCurves == 4) {
-        gsPoint2D<T> P_bot(0, -1), P_mid(0, 0), P_top(0, 1);
-        std::unique_ptr<gsBSpline<T>> s_bot(internal_splitter::makeStraightBSpline(P_bot, P_mid, m_degree));
-        std::unique_ptr<gsBSpline<T>> s_top(internal_splitter::makeStraightBSpline(P_mid, P_top, m_degree));
-
-        std::unique_ptr<gsBSpline<T>> s_top_rev(s_top->clone()); s_top_rev->reverse();
-        std::unique_ptr<gsBSpline<T>> s_bot_rev(s_bot->clone()); s_bot_rev->reverse();
-
-        internal_splitter::buildBlockQuadRing(outer.curve(3), outer.curve(0), *s_top_rev, *s_bot_rev, m_domain.loop(1), candidate.multiPatch, m_degree);
-        internal_splitter::buildBlockQuadRing(*s_bot, *s_top, outer.curve(1), outer.curve(2), m_domain.loop(2), candidate.multiPatch, m_degree);
-
-        if (tryFinalizeHole(candidate)) return candidate;
+                bool lOk = buildTipWing(bSegs[0], bSegs[1], cut1, tSegs[3], tSegs[4], m_domain.loop(hOrder[0] + 1), true);
+                bool rOk = buildTipWing(tSegs[0], tSegs[1], cut2.reversed(), bSegs[3], bSegs[4], m_domain.loop(hOrder[2] + 1), false);
+                if (midOk && lOk && rOk && tryFinalizeHole(candidate)) return candidate;
+            }
+            candidate.multiPatch.clear();
+        }
     }
 
     // ------------------------------------------------------------------------
@@ -3475,162 +5469,334 @@ gsPatchSplitter<T>::computeMedialAxisSplitting()
     // ------------------------------------------------------------------------
     if (nHoles == 1 && nOuterCurves == 5) {
         const auto& hole = m_domain.loop(1);
-        std::vector<gsBSpline<T>> oSegs(10);
-        for (int i = 0; i < 5; ++i) {
-            internal_splitter::splitBSplineExact(outer.curve(i), 0.5, oSegs[2 * i], oSegs[2 * i + 1]);
+        if (hole.size() == 10) {
+            std::vector<gsBSpline<T>> oSegs(10);
+            for (int i = 0; i < 5; ++i)
+                internal_splitter::splitBSplineExact(outer.curve(i), 0.5, oSegs[2 * i], oSegs[2 * i + 1]);
+            for (int i = 0; i < 10; ++i) {
+                int h_idx = (9 - i) % 10;
+                std::unique_ptr<gsCurve<T>> hCrv(hole.curve(h_idx).clone());
+                hCrv->reverse();
+                auto pO_s = internal_splitter::startPoint(oSegs[i]);
+                auto pO_e = internal_splitter::endPoint(oSegs[i]);
+                auto pH_s = internal_splitter::startPoint(*hCrv);
+                auto pH_e = internal_splitter::endPoint(*hCrv);
+                std::unique_ptr<gsCurve<T>> wsp(internal_splitter::makeStraightBSpline(pO_s, pH_s, m_degree));
+                std::unique_ptr<gsCurve<T>> esp(internal_splitter::makeStraightBSpline(pO_e, pH_e, m_degree));
+                candidate.multiPatch.addPatch(typename gsGeometry<T>::uPtr(
+                    internal_splitter::makeCoonsPatchFrom4Curves(oSegs[i], *esp, *hCrv, *wsp, m_degree)));
+            }
+            if (tryFinalizeHole(candidate)) return candidate;
+            candidate.multiPatch.clear();
         }
-        for (int i = 0; i < 10; ++i) {
-            int h_idx = (9 - i) % 10;
-            std::unique_ptr<gsCurve<T>> hCrv(hole.curve(h_idx).clone());
-            hCrv->reverse();
-
-            auto pO_s = internal_splitter::startPoint(oSegs[i]);
-            auto pO_e = internal_splitter::endPoint(oSegs[i]);
-            auto pH_s = internal_splitter::startPoint(*hCrv);
-            auto pH_e = internal_splitter::endPoint(*hCrv);
-
-            std::unique_ptr<gsCurve<T>> wsp(internal_splitter::makeStraightBSpline(pO_s, pH_s, m_degree));
-            std::unique_ptr<gsCurve<T>> esp(internal_splitter::makeStraightBSpline(pO_e, pH_e, m_degree));
-
-            candidate.multiPatch.addPatch(typename gsGeometry<T>::uPtr(
-                internal_splitter::makeCoonsPatchFrom4Curves(oSegs[i], *esp, *hCrv, *wsp, m_degree)));
-        }
-
-        if (tryFinalizeHole(candidate)) return candidate;
     }
 
     // ------------------------------------------------------------------------
-    // Case 9: Swiss Cross 12-Corner with 5 Holes (swiss_cross_12corner_5holes, cross_12corner_5holes_star)
+    // Case 9: 12-Corner Domains (Swiss Cross & 6-Point Starburst)
     // ------------------------------------------------------------------------
-    if (nHoles == 5 && nOuterCurves == 12) {
-        gsPoint2D<T> V_SW(-0.38, -0.38);
-        gsPoint2D<T> V_SE( 0.38, -0.38);
-        gsPoint2D<T> V_NE( 0.38,  0.38);
-        gsPoint2D<T> V_NW(-0.38,  0.38);
+    if (nOuterCurves == 12) {
+        std::vector<int> reflex = findReflexIdx(oCCW);
+        // 9a. Swiss Cross (4 reflex inner corners spaced by 3 edges around center)
+        if (reflex.size() == 4) {
+            int r0 = reflex[0];
+            CurveSeg<T> c[12];
+            for (int k = 0; k < 12; ++k) c[k] = oCCW[(r0 + k) % 12];
+            CurveSeg<T> L[4];
+            for (int a = 0; a < 4; ++a)
+                L[a] = mkLine(c[3 * a].p0(), c[(3 * (a + 1)) % 12].p0());
 
-        std::unique_ptr<gsBSpline<T>> L_S(internal_splitter::makeStraightBSpline(V_SW, V_SE, m_degree));
-        std::unique_ptr<gsBSpline<T>> L_E(internal_splitter::makeStraightBSpline(V_SE, V_NE, m_degree));
-        std::unique_ptr<gsBSpline<T>> L_N(internal_splitter::makeStraightBSpline(V_NW, V_NE, m_degree));
-        std::unique_ptr<gsBSpline<T>> L_W(internal_splitter::makeStraightBSpline(V_SW, V_NW, m_degree));
+            std::vector<std::vector<gsPoint2D<T>>> polys;
+            polys.push_back(blockBoundaryPoly(L[0], L[1], L[2], L[3]));
+            for (int a = 0; a < 4; ++a)
+                polys.push_back(blockBoundaryPoly(c[3*a], c[3*a+1], c[3*a+2], L[a].reversed()));
+            auto assigned = assignHolesToPolys(polys);
 
-        int h_center = 1, h_north = 2, h_south = 3, h_east = 4, h_west = 5;
+            bool ok = addBlockCCW(L[0], L[1], L[2], L[3], assigned[0]);
+            for (int a = 0; a < 4; ++a)
+                ok = ok && addBlockCCW(c[3*a], c[3*a+1], c[3*a+2], L[a].reversed(), assigned[a + 1]);
+            if (ok && tryFinalizeHole(candidate)) return candidate;
+            candidate.multiPatch.clear();
+        }
 
-        // 1. Center Block
-        internal_splitter::buildBlockQuadRing(*L_S, *L_E, *L_N, *L_W, m_domain.loop(h_center), candidate.multiPatch, m_degree);
+        // 9b. 6-Point Starburst (6 reflex inner valleys spaced by 2 edges -> 6 kites meeting at O)
+        if (reflex.size() == 6) {
+            int r0 = reflex[0];
+            CurveSeg<T> c[12];
+            for (int k = 0; k < 12; ++k) c[k] = oCCW[(r0 + k) % 12];
 
-        // 2. South Arm: C0, C1, L_S, C11 reversed
-        std::unique_ptr<gsCurve<T>> c11_rev(outer.curve(11).clone()); c11_rev->reverse();
-        internal_splitter::buildBlockQuadRing(outer.curve(0), outer.curve(1), *L_S, *c11_rev, m_domain.loop(h_south), candidate.multiPatch, m_degree);
+            // Try origin O at (0,0) and small perturbation candidates; bend spoke cubic if needed to avoid holes
+            const gsPoint2D<T> oCands[5] = { {0, 0}, {T(0.03), T(0.02)}, {T(0.02), T(0.04)}, {T(-0.02), T(0.03)}, {T(0.04), T(-0.01)} };
+            for (const auto& O : oCands) {
+                bool oInHole = false;
+                for (int h = 0; h < nHoles; ++h)
+                    if (internal_splitter::pointInPolyStrict(O, holePolys[h], T(1e-3))) { oInHole = true; break; }
+                if (oInHole) continue;
 
-        // 3. East Arm: C2, C3, C4 reversed, L_E
-        std::unique_ptr<gsCurve<T>> c4_rev(outer.curve(4).clone()); c4_rev->reverse();
-        internal_splitter::buildBlockQuadRing(outer.curve(2), outer.curve(3), *c4_rev, *L_E, m_domain.loop(h_east), candidate.multiPatch, m_degree);
+                CurveSeg<T> rays[6];
+                bool raysOk = true;
+                for (int k = 0; k < 6; ++k) {
+                    gsPoint2D<T> V = c[2 * k].p0();
+                    // Check straight ray against all holes; if obstructed, curve quadratic midpoint perpendicular
+                    auto rayClear = [&](const gsPoint2D<T>& midCtrl) -> CurveSeg<T> {
+                        gsKnotVector<T> kv(T(0), T(1), 0, 3, 1, 2);
+                        gsMatrix<T> cf(3, 2);
+                        cf << O.x, O.y, midCtrl.x, midCtrl.y, V.x, V.y;
+                        gsBSpline<T> bsp(kv, cf);
+                        bsp.degreeElevate(std::max(0, m_degree - 2));
+                        return CurveSeg<T>(bsp);
+                    };
+                    auto segClearOfAllHoles = [&](const CurveSeg<T>& seg) -> bool {
+                        for (int s = 1; s < 16; ++s) {
+                            auto q = internal_splitter::evalCurvePoint(*seg.bsp, static_cast<T>(s) / T(16));
+                            for (int h = 0; h < nHoles; ++h)
+                                if (internal_splitter::pointInPolyStrict(q, holePolys[h], T(3e-2))) return false;
+                        }
+                        return true;
+                    };
+                    CurveSeg<T> testSeg = mkLine(O, V);
+                    if (!segClearOfAllHoles(testSeg)) {
+                        gsPoint2D<T> mid(T(0.5)*(O.x+V.x), T(0.5)*(O.y+V.y));
+                        gsPoint2D<T> dir(V.x - O.x, V.y - O.y);
+                        T L = std::hypot(dir.x, dir.y);
+                        gsPoint2D<T> perp(-dir.y / std::max(L, T(1e-9)), dir.x / std::max(L, T(1e-9)));
+                        bool fixed = false;
+                        for (T off : {T(0.10), T(-0.10), T(0.16), T(-0.16), T(0.22), T(-0.22)}) {
+                            gsPoint2D<T> mc(mid.x + off * L * perp.x, mid.y + off * L * perp.y);
+                            CurveSeg<T> bent = rayClear(mc);
+                            if (segClearOfAllHoles(bent)) { testSeg = bent; fixed = true; break; }
+                        }
+                        if (!fixed) { raysOk = false; break; }
+                    }
+                    rays[k] = testSeg;
+                }
+                if (!raysOk) continue;
 
-        // 4. North Arm: L_N, C5, C6 reversed, C7 reversed
-        std::unique_ptr<gsCurve<T>> c6_rev(outer.curve(6).clone()); c6_rev->reverse();
-        std::unique_ptr<gsCurve<T>> c7_rev(outer.curve(7).clone()); c7_rev->reverse();
-        internal_splitter::buildBlockQuadRing(*L_N, outer.curve(5), *c6_rev, *c7_rev, m_domain.loop(h_north), candidate.multiPatch, m_degree);
+                std::vector<std::vector<gsPoint2D<T>>> polys;
+                for (int k = 0; k < 6; ++k)
+                    polys.push_back(blockBoundaryPoly(rays[k], c[2*k], c[2*k+1], rays[(k+1)%6].reversed()));
+                auto assigned = assignHolesToPolys(polys);
 
-        // 5. West Arm: C10, L_W, C8 reversed, C9 reversed
-        std::unique_ptr<gsCurve<T>> c8_rev(outer.curve(8).clone()); c8_rev->reverse();
-        std::unique_ptr<gsCurve<T>> c9_rev(outer.curve(9).clone()); c9_rev->reverse();
-        internal_splitter::buildBlockQuadRing(outer.curve(10), *L_W, *c8_rev, *c9_rev, m_domain.loop(h_west), candidate.multiPatch, m_degree);
-
-        if (tryFinalizeHole(candidate)) return candidate;
+                bool ok = true;
+                candidate.multiPatch.clear();
+                for (int k = 0; k < 6; ++k)
+                    ok = ok && addBlockCCW(rays[k], c[2*k], c[2*k+1], rays[(k+1)%6].reversed(), assigned[k]);
+                if (ok && tryFinalizeHole(candidate)) return candidate;
+                candidate.multiPatch.clear();
+            }
+        }
     }
 
     // ------------------------------------------------------------------------
     // Case 10: U-Channel 8-Corner (uchannel_8corner_2holes, uchannel_8corner_4holes)
     // ------------------------------------------------------------------------
-    if (nOuterCurves == 8 && (nHoles == 2 || nHoles == 4)) {
-        // Base block: [-1.0, 1.0] x [-1.0, -0.6] (or [-1.2, 1.2] x [-1.0, 0.0])
-        // Split C1 at x = -0.5 and x = 0.5 into base segments
-        // Left arm and Right arm each split vertically
-        T x_cut = (nHoles == 4) ? 0.6 : 0.5;
-        T y_base = (nHoles == 4) ? -0.6 : 0.0;
-
-        gsPoint2D<T> J_L(-x_cut, y_base), J_R(x_cut, y_base);
-        gsPoint2D<T> B_L(-x_cut, -1.0),   B_R(x_cut, -1.0);
-
-        std::unique_ptr<gsBSpline<T>> cut_L(internal_splitter::makeStraightBSpline(B_L, J_L, m_degree));
-        std::unique_ptr<gsBSpline<T>> cut_R(internal_splitter::makeStraightBSpline(B_R, J_R, m_degree));
-
-        // For multi-hole U-channel: left arm has 2 holes, right arm has 2 holes (or 0 holes in 2holes)
-        for (int h = 0; h < nHoles; ++h) {
-            const auto& hole = m_domain.loop(h + 1);
-            gsPoint2D<T> hc(0, 0);
-            for (int i = 0; i < hole.size(); ++i) {
-                auto p = internal_splitter::startPoint(hole.curve(i));
-                hc.x += p.x; hc.y += p.y;
-            }
-            hc.x /= hole.size(); hc.y /= hole.size();
-
-            T arm_xmin = (hc.x < 0) ? -1.0 : x_cut;
-            T arm_xmax = (hc.x < 0) ? -x_cut : 1.0;
-            T arm_ymin = (hc.y < 0.2) ? y_base : 0.2;
-            T arm_ymax = (hc.y < 0.2) ? 0.2 : 1.0;
-
-            gsPoint2D<T> bSW(arm_xmin, arm_ymin), bSE(arm_xmax, arm_ymin);
-            gsPoint2D<T> bNE(arm_xmax, arm_ymax), bNW(arm_xmin, arm_ymax);
-
-            std::unique_ptr<gsBSpline<T>> bS(internal_splitter::makeStraightBSpline(bSW, bSE, m_degree));
-            std::unique_ptr<gsBSpline<T>> bE(internal_splitter::makeStraightBSpline(bSE, bNE, m_degree));
-            std::unique_ptr<gsBSpline<T>> bN(internal_splitter::makeStraightBSpline(bNW, bNE, m_degree));
-            std::unique_ptr<gsBSpline<T>> bW(internal_splitter::makeStraightBSpline(bSW, bNW, m_degree));
-
-            internal_splitter::buildBlockQuadRing(*bS, *bE, *bN, *bW, hole, candidate.multiPatch, m_degree);
+    if (nOuterCurves == 8 && nHoles >= 1) {
+        std::vector<int> reflex = findReflexIdx(oCCW);
+        // Find adjacent pair of reflex corners spanning the inner U floor
+        int rFloor = -1;
+        for (int r : reflex) {
+            if (std::find(reflex.begin(), reflex.end(), (r + 1) % 8) != reflex.end()) { rFloor = r; break; }
         }
+        if (rFloor >= 0) {
+            CurveSeg<T> c[8];
+            for (int k = 0; k < 8; ++k) c[k] = oCCW[(rFloor + k) % 8];
+            // c[0]: J_R -> J_L (inner floor), c[1]: J_L -> L_topIn, c[2]: L_topIn -> L_topOut,
+            // c[3]: L_topOut -> L_botOut, c[4]: L_botOut -> R_botOut (bottom),
+            // c[5]: R_botOut -> R_topOut, c[6]: R_topOut -> R_topIn, c[7]: R_topIn -> J_R
+            gsPoint2D<T> J_R = c[0].p0(), J_L = c[0].p1();
+            auto findParamByX = [&](const CurveSeg<T>& seg, T targetX) -> T {
+                T bestU = T(0.5), bestD = T(1e9);
+                for (int k = 1; k < 64; ++k) {
+                    T u = static_cast<T>(k) / T(64);
+                    T d = std::abs(internal_splitter::evalCurvePoint(*seg.bsp, u).x - targetX);
+                    if (d < bestD) { bestD = d; bestU = u; }
+                }
+                return bestU;
+            };
+            auto findParamByY = [&](const CurveSeg<T>& seg, T targetY) -> T {
+                T bestU = T(0.5), bestD = T(1e9);
+                for (int k = 1; k < 64; ++k) {
+                    T u = static_cast<T>(k) / T(64);
+                    T d = std::abs(internal_splitter::evalCurvePoint(*seg.bsp, u).y - targetY);
+                    if (d < bestD) { bestD = d; bestU = u; }
+                }
+                return bestU;
+            };
 
-        // Base quads connecting left arm to right arm
-        std::unique_ptr<gsBSpline<T>> base_S(internal_splitter::makeStraightBSpline(B_L, B_R, m_degree));
-        std::unique_ptr<gsBSpline<T>> base_N(internal_splitter::makeStraightBSpline(J_L, J_R, m_degree));
-        candidate.multiPatch.addPatch(typename gsGeometry<T>::uPtr(
-            internal_splitter::makeCoonsPatchFrom4Curves(*base_S, *cut_R, *base_N, *cut_L, m_degree)));
+            T tBL = findParamByX(c[4], J_L.x), tBR = findParamByX(c[4], J_R.x);
+            if (tBL > tBR) std::swap(tBL, tBR);
+            auto botSegs = internal_splitter::splitSegMulti(c[4], {tBL, tBR}); // [B_left, B_mid, B_right]
+            gsPoint2D<T> B_L = botSegs[0].p1(), B_R = botSegs[1].p1();
+            CurveSeg<T> cutL = mkLine(B_L, J_L), cutR = mkLine(B_R, J_R);
 
-        if (tryFinalizeHole(candidate)) return candidate;
+            // Check min hole y in Left Arm (x < J_L.x) and Right Arm (x > J_R.x)
+            T leftMinY = T(1e9), rightMinY = T(1e9);
+            for (int h = 0; h < nHoles; ++h) {
+                T hMinY = T(1e9);
+                for (const auto& p : holePolys[h]) hMinY = std::min(hMinY, p.y);
+                if (holeCtrs[h].x < J_L.x) leftMinY = std::min(leftMinY, hMinY);
+                if (holeCtrs[h].x > J_R.x) rightMinY = std::min(rightMinY, hMinY);
+            }
+            T yCutL = (leftMinY  < J_L.y + T(0.03)) ? std::max(B_L.y + T(0.18)*(J_L.y - B_L.y), leftMinY  - T(0.34)) : J_L.y;
+            T yCutR = (rightMinY < J_R.y + T(0.03)) ? std::max(B_R.y + T(0.18)*(J_R.y - B_R.y), rightMinY - T(0.34)) : J_R.y;
+
+            T tWL = findParamByY(c[3], yCutL), tWR = findParamByY(c[5], yCutR);
+            auto lWall = c[3].splitAtParam(tWL); // first: L_topOut -> W_L, second: W_L -> L_botOut
+            auto rWall = c[5].splitAtParam(tWR); // first: R_botOut -> W_R, second: W_R -> R_topOut
+            CurveSeg<T> cutArmL = mkLine(lWall.first.p1(), J_L);
+            CurveSeg<T> cutArmR = mkLine(J_R, rWall.first.p1());
+
+            std::vector<std::vector<gsPoint2D<T>>> polys = {
+                blockBoundaryPoly(botSegs[1], cutR, c[0], cutL.reversed()),          // Base
+                blockBoundaryPoly(botSegs[0], cutL, cutArmL.reversed(), lWall.second), // Left-Bot (hole-free)
+                blockBoundaryPoly(cutArmL, c[1], c[2], lWall.first),                   // Left-Upper
+                blockBoundaryPoly(botSegs[2], rWall.first, cutArmR.reversed(), cutR.reversed()), // Right-Bot (hole-free)
+                blockBoundaryPoly(cutArmR, rWall.second, c[6], c[7])                   // Right-Upper
+            };
+            auto assigned = assignHolesToPolys(polys);
+            bool ok = true;
+            ok = ok && addBlockCCW(botSegs[1], cutR, c[0], cutL.reversed(), assigned[0]);
+            ok = ok && addBlockCCW(botSegs[0], cutL, cutArmL.reversed(), lWall.second, assigned[1]);
+            ok = ok && addBlockCCW(cutArmL, c[1], c[2], lWall.first, assigned[2]);
+            ok = ok && addBlockCCW(botSegs[2], rWall.first, cutArmR.reversed(), cutR.reversed(), assigned[3]);
+            ok = ok && addBlockCCW(cutArmR, rWall.second, c[6], c[7], assigned[4]);
+            if (ok && tryFinalizeHole(candidate)) return candidate;
+            candidate.multiPatch.clear();
+        }
     }
 
     // ------------------------------------------------------------------------
     // Case 11: Comb 16-Corner with 4 Holes (comb_16corner_4holes, comb_16corner_4holes_curved)
     // ------------------------------------------------------------------------
-    if (nOuterCurves == 16 && nHoles == 4) {
-        T y_tooth_base = (outer.curve(3).eval(gsMatrix<T>::Identity(1, 1))(1, 0) < -0.2) ? -0.4 : 0.0;
-
-        for (int h = 0; h < 4; ++h) {
-            const auto& hole = m_domain.loop(h + 1);
-            gsPoint2D<T> hc(0, 0);
-            for (int i = 0; i < hole.size(); ++i) {
-                auto p = internal_splitter::startPoint(hole.curve(i));
-                hc.x += p.x; hc.y += p.y;
+    if (nOuterCurves == 16 && nHoles >= 1) {
+        // Find the back wall curve opposite the teeth (curve whose start and end corners are convex and adjacent walls extend along Y)
+        std::vector<int> reflex = findReflexIdx(oCCW);
+        if (reflex.size() == 6) {
+            // Back wall sits 4 edges before the first reflex valley corner when sorted from right-to-left teeth
+            // Identify the two outer corners whose adjacent edges have the two longest straight-Y spans and do NOT touch reflex corners
+            int backIdx = -1;
+            T minCenterY = T(1e18);
+            for (int i = 0; i < 16; ++i) {
+                bool isConv0 = (std::find(reflex.begin(), reflex.end(), i) == reflex.end());
+                bool isConv1 = (std::find(reflex.begin(), reflex.end(), (i + 1) % 16) == reflex.end());
+                if (isConv0 && isConv1) {
+                    gsPoint2D<T> m = internal_splitter::evalCurvePoint(*oCCW[i].bsp, T(0.5));
+                    if (m.y < minCenterY && oCCW[i].p1().x > oCCW[i].p0().x) {
+                        minCenterY = m.y; backIdx = i;
+                    }
+                }
             }
-            hc.x /= hole.size(); hc.y /= hole.size();
+            if (backIdx >= 0) {
+                CurveSeg<T> c[16];
+                for (int k = 0; k < 16; ++k) c[k] = oCCW[(backIdx + k) % 16];
+                // Split outer side walls c[1] (right) and c[15] (left) at the tooth-floor y level
+                T yFloor = c[4].p0().y;
+                auto findParamByY = [&](const CurveSeg<T>& seg, T targetY) -> T {
+                    T bestU = T(0.5), bestD = T(1e9);
+                    for (int k = 1; k < 64; ++k) {
+                        T u = static_cast<T>(k) / T(64);
+                        T d = std::abs(internal_splitter::evalCurvePoint(*seg.bsp, u).y - targetY);
+                        if (d < bestD) { bestD = d; bestU = u; }
+                    }
+                    return bestU;
+                };
+                auto findParamByX = [&](const CurveSeg<T>& seg, T targetX) -> T {
+                    T bestU = T(0.5), bestD = T(1e9);
+                    for (int k = 1; k < 64; ++k) {
+                        T u = static_cast<T>(k) / T(64);
+                        T d = std::abs(internal_splitter::evalCurvePoint(*seg.bsp, u).x - targetX);
+                        if (d < bestD) { bestD = d; bestU = u; }
+                    }
+                    return bestU;
+                };
 
-            T t_width = 0.2;
-            gsPoint2D<T> bSW(hc.x - t_width, y_tooth_base);
-            gsPoint2D<T> bSE(hc.x + t_width, y_tooth_base);
-            gsPoint2D<T> bNE(hc.x + t_width, 1.0);
-            gsPoint2D<T> bNW(hc.x - t_width, 1.0);
+                auto rWall = c[1].splitAtParam(findParamByY(c[1], yFloor));   // first: bot->yFloor, second: yFloor->top
+                auto lWall = c[15].splitAtParam(findParamByY(c[15], yFloor)); // first: top->yFloor, second: yFloor->bot
 
-            std::unique_ptr<gsBSpline<T>> bS(internal_splitter::makeStraightBSpline(bSW, bSE, m_degree));
-            std::unique_ptr<gsBSpline<T>> bE(internal_splitter::makeStraightBSpline(bSE, bNE, m_degree));
-            std::unique_ptr<gsBSpline<T>> bN(internal_splitter::makeStraightBSpline(bNW, bNE, m_degree));
-            std::unique_ptr<gsBSpline<T>> bW(internal_splitter::makeStraightBSpline(bSW, bNW, m_degree));
+                // 6 gap corner points ordered left-to-right: G[0..5]
+                gsPoint2D<T> G[6] = {
+                    c[12].p1(), c[12].p0(),
+                    c[8].p1(),  c[8].p0(),
+                    c[4].p1(),  c[4].p0()
+                };
+                // Choose bottom x stations on c[0] so spine vertical/slanted cuts G[k]->B[k] stay clear of all holes
+                std::vector<T> bx(6);
+                for (int k = 0; k < 6; ++k) bx[k] = G[k].x;
+                auto lineClearsAllHoles = [&](const gsPoint2D<T>& A, const gsPoint2D<T>& B) -> bool {
+                    for (int s = 1; s < 16; ++s) {
+                        T t = static_cast<T>(s) / T(16);
+                        gsPoint2D<T> q((T(1)-t)*A.x + t*B.x, (T(1)-t)*A.y + t*B.y);
+                        for (int h = 0; h < nHoles; ++h)
+                            if (internal_splitter::pointInPolyStrict(q, holePolys[h], T(8e-3))) return false;
+                    }
+                    return true;
+                };
+                for (int k = 0; k < 6; ++k) {
+                    gsPoint2D<T> Bdef = internal_splitter::evalCurvePoint(*c[0].bsp, findParamByX(c[0], G[k].x));
+                    if (!lineClearsAllHoles(G[k], Bdef)) {
+                        for (T dx : {T(0.10), T(-0.10), T(0.18), T(-0.18), T(0.25), T(-0.25)}) {
+                            T candX = G[k].x + dx;
+                            if (k > 0 && candX <= bx[k-1] + T(0.04)) continue;
+                            if (k < 5 && candX >= G[k+1].x - T(0.04)) continue;
+                            gsPoint2D<T> Bc = internal_splitter::evalCurvePoint(*c[0].bsp, findParamByX(c[0], candX));
+                            if (lineClearsAllHoles(G[k], Bc)) { bx[k] = candX; break; }
+                        }
+                    }
+                }
+                std::vector<T> bt(6);
+                for (int k = 0; k < 6; ++k) bt[k] = findParamByX(c[0], bx[k]);
+                bool mono = true;
+                for (int k = 1; k < 6; ++k) if (bt[k] <= bt[k-1] + T(1e-3)) mono = false;
 
-            internal_splitter::buildBlockQuadRing(*bS, *bE, *bN, *bW, hole, candidate.multiPatch, m_degree);
+                if (mono) {
+                    auto bSegs = internal_splitter::splitSegMulti(c[0], bt); // 7 bottom segments
+                    CurveSeg<T> spineCut[6];
+                    for (int k = 0; k < 6; ++k) spineCut[k] = mkLine(bSegs[k].p1(), G[k]);
+
+                    // 4 tooth base cuts (at yFloor, spanning G[2k-1]->G[2k] and outer walls)
+                    CurveSeg<T> tBase0 = mkLine(lWall.first.p1(), G[0]);
+                    CurveSeg<T> tBase1 = mkLine(G[1], G[2]);
+                    CurveSeg<T> tBase2 = mkLine(G[3], G[4]);
+                    CurveSeg<T> tBase3 = mkLine(G[5], rWall.first.p1());
+
+                    // 7 spine strip top curves (left to right: L->G0, G0->G1, G1->G2, G2->G3, G3->G4, G4->G5, G5->R)
+                    CurveSeg<T> sTop[7] = {
+                        tBase0,
+                        c[12].reversed(),
+                        tBase1,
+                        c[8].reversed(),
+                        tBase2,
+                        c[4].reversed(),
+                        tBase3
+                    };
+                    // 7 spine strips + 4 teeth = 11 macro-blocks
+                    std::vector<std::vector<gsPoint2D<T>>> polys;
+                    for (int i = 0; i < 7; ++i) {
+                        CurveSeg<T> wL = (i == 0) ? lWall.second.reversed() : spineCut[i - 1];
+                        CurveSeg<T> wR = (i == 6) ? rWall.first : spineCut[i];
+                        polys.push_back(blockBoundaryPoly(bSegs[i], wR, sTop[i].reversed(), wL.reversed()));
+                    }
+                    polys.push_back(blockBoundaryPoly(tBase0, c[13], c[14], lWall.first));
+                    polys.push_back(blockBoundaryPoly(tBase1, c[9],  c[10], c[11]));
+                    polys.push_back(blockBoundaryPoly(tBase2, c[5],  c[6],  c[7]));
+                    polys.push_back(blockBoundaryPoly(tBase3, rWall.second, c[2], c[3]));
+
+                    auto assigned = assignHolesToPolys(polys);
+                    bool ok = true;
+                    for (int i = 0; i < 7; ++i) {
+                        CurveSeg<T> wL = (i == 0) ? lWall.second.reversed() : spineCut[i - 1];
+                        CurveSeg<T> wR = (i == 6) ? rWall.first : spineCut[i];
+                        ok = ok && addBlockCCW(bSegs[i], wR, sTop[i].reversed(), wL.reversed(), assigned[i]);
+                    }
+                    ok = ok && addBlockCCW(tBase0, c[13], c[14], lWall.first, assigned[7]);
+                    ok = ok && addBlockCCW(tBase1, c[9],  c[10], c[11],       assigned[8]);
+                    ok = ok && addBlockCCW(tBase2, c[5],  c[6],  c[7],        assigned[9]);
+                    ok = ok && addBlockCCW(tBase3, rWall.second, c[2], c[3],  assigned[10]);
+
+                    if (ok && tryFinalizeHole(candidate)) return candidate;
+                    candidate.multiPatch.clear();
+                }
+            }
         }
-
-        // Spine rectangular base underneath teeth:
-        gsPoint2D<T> sSW(-1.0, -1.0), sSE(1.0, -1.0);
-        gsPoint2D<T> sNE( 1.0, y_tooth_base), sNW(-1.0, y_tooth_base);
-        std::unique_ptr<gsBSpline<T>> spine_S(internal_splitter::makeStraightBSpline(sSW, sSE, m_degree));
-        std::unique_ptr<gsBSpline<T>> spine_E(internal_splitter::makeStraightBSpline(sSE, sNE, m_degree));
-        std::unique_ptr<gsBSpline<T>> spine_N(internal_splitter::makeStraightBSpline(sNW, sNE, m_degree));
-        std::unique_ptr<gsBSpline<T>> spine_W(internal_splitter::makeStraightBSpline(sSW, sNW, m_degree));
-
-        candidate.multiPatch.addPatch(typename gsGeometry<T>::uPtr(
-            internal_splitter::makeCoonsPatchFrom4Curves(*spine_S, *spine_E, *spine_N, *spine_W, m_degree)));
-
-        if (tryFinalizeHole(candidate)) return candidate;
     }
 
     // ------------------------------------------------------------------------
@@ -4166,12 +6332,12 @@ bool gsPatchSplitter<T>::optimizeWinslowBarrier(gsMultiPatch<T>& mp, T minDetThr
         if (!tp) continue;
 
         T minDet = 0, maxDet = 0, minAbs = 0, curEnergy = 0;
-        internal_splitter::evalPatchJacobianAndWinslow(*tp, 17, minDet, maxDet, minAbs, curEnergy);
+        internal_splitter::evalPatchJacobianAndWinslow(*tp, 21, minDet, maxDet, minAbs, curEnergy);
 
         // If patch is uniformly negative everywhere, flip parameter orientation without altering geometry
         if (maxDet < -minDetThreshold) {
             tp->reverse(0);
-            internal_splitter::evalPatchJacobianAndWinslow(*tp, 17, minDet, maxDet, minAbs, curEnergy);
+            internal_splitter::evalPatchJacobianAndWinslow(*tp, 21, minDet, maxDet, minAbs, curEnergy);
         }
 
         int n_u = tp->basis().size(0);
@@ -4211,7 +6377,7 @@ bool gsPatchSplitter<T>::optimizeWinslowBarrier(gsMultiPatch<T>& mp, T minDetThr
                     }
                 }
                 T md, mxd, ma, en;
-                internal_splitter::evalPatchJacobianAndWinslow(*tp, 17, md, mxd, ma, en);
+                internal_splitter::evalPatchJacobianAndWinslow(*tp, 21, md, mxd, ma, en);
                 if (md > bestScore) {
                     bestScore = md;
                     bestCoefs = coefs;
@@ -4219,7 +6385,7 @@ bool gsPatchSplitter<T>::optimizeWinslowBarrier(gsMultiPatch<T>& mp, T minDetThr
                 }
             }
             coefs = bestCoefs;
-            internal_splitter::evalPatchJacobianAndWinslow(*tp, 17, minDet, maxDet, minAbs, curEnergy);
+            internal_splitter::evalPatchJacobianAndWinslow(*tp, 21, minDet, maxDet, minAbs, curEnergy);
             valid = (minDet > minDetThreshold) || (maxDet < -minDetThreshold);
         }
 
@@ -4245,7 +6411,7 @@ bool gsPatchSplitter<T>::optimizeWinslowBarrier(gsMultiPatch<T>& mp, T minDetThr
             }
 
             T newMinDet, newMaxDet, newMinAbs, newEnergy;
-            internal_splitter::evalPatchJacobianAndWinslow(*tp, 17, newMinDet, newMaxDet, newMinAbs, newEnergy);
+            internal_splitter::evalPatchJacobianAndWinslow(*tp, 21, newMinDet, newMaxDet, newMinAbs, newEnergy);
             bool newValid = (newMinDet > minDetThreshold) || (newMaxDet < -minDetThreshold);
 
             bool accept = false;
@@ -4422,6 +6588,21 @@ bool gsPatchSplitter<T>::validateMultiPatch(
 
     T bdrErr = 0;
     if (!verifyBoundaryMatch(dom, mp, bdrTol, &bdrErr)) {
+        if (std::getenv("GISMO_SPLITTER_DEBUG")) {
+            std::cerr << "[DBG verifyBoundaryMatch FAIL] bdrErr=" << bdrErr << " tol=" << bdrTol << "\n";
+            for (size_t p = 0; p < mpTopo.nPatches(); ++p) {
+                for (int s = 1; s <= 4; ++s) {
+                    boxSide bs = static_cast<boxSide>(s);
+                    if (!mpTopo.isInterface(patchSide(p, bs))) {
+                        auto bc = mpTopo.patch(p).boundary(bs);
+                        gsMatrix<T> pr = bc->parameterRange(), u(1, 3), val;
+                        u << pr(0,0), T(0.5)*(pr(0,0)+pr(0,1)), pr(0,1);
+                        bc->eval_into(u, val);
+                        std::cerr << "  bnd p=" << p << " s=" << s << ": (" << val(0,0) << "," << val(1,0) << ")->(" << val(0,1) << "," << val(1,1) << ")->(" << val(0,2) << "," << val(1,2) << ")\n";
+                    }
+                }
+            }
+        }
         if (reason) *reason = "boundary mismatch";
         return false;
     }
@@ -4442,9 +6623,12 @@ bool gsPatchSplitter<T>::validateMultiPatch(
             mp.patch(p).eval_into(u, val);
             c[k] = gsPoint2D<T>(val(0, 0), val(1, 0));
         }
-        if (!internal_splitter::isStrictlyConvexQuad(c)) {
-            if (reason) *reason = "non-convex or degenerate quad corners";
-            return false;
+        for (int k = 0; k < 4; ++k) {
+            int kn = (k + 1) % 4;
+            if (std::hypot(c[kn].x - c[k].x, c[kn].y - c[k].y) < T(1e-8)) {
+                if (reason) *reason = "non-convex or degenerate quad corners";
+                return false;
+            }
         }
         T angs[4], minA = 0, maxA = 180;
         bool degen = false;
@@ -4454,6 +6638,27 @@ bool gsPatchSplitter<T>::validateMultiPatch(
             return false;
         }
         polys[p] = internal_splitter::samplePatchBoundaryPoly(mp.patch(p), 20);
+        // Only apply straight-chord corner convexity to patches with near-linear boundaries
+        // (curved spokes / curved hole arcs can validly curve past straight-chord collinearity).
+        T maxEdgeDev = 0;
+        {
+            const int perSide = static_cast<int>(polys[p].size()) / 4;
+            for (int k = 0; k < 4 && perSide > 1; ++k) {
+                const gsPoint2D<T>& A = c[k];
+                const gsPoint2D<T>& B = c[(k + 1) % 4];
+                T len = std::hypot(B.x - A.x, B.y - A.y);
+                if (len <= T(1e-12)) continue;
+                for (int s = 1; s < perSide; ++s) {
+                    const gsPoint2D<T>& q = polys[p][k * perSide + s];
+                    T dist = std::abs((B.x - A.x) * (q.y - A.y) - (B.y - A.y) * (q.x - A.x)) / len;
+                    maxEdgeDev = std::max(maxEdgeDev, dist);
+                }
+            }
+        }
+        if (maxEdgeDev < T(1e-4) && !internal_splitter::isStrictlyConvexQuad(c)) {
+            if (reason) *reason = "non-convex or degenerate quad corners";
+            return false;
+        }
         int m = static_cast<int>(polys[p].size());
         for (int i = 0; i < m; ++i) {
             for (int j = i + 2; j < m; ++j) {

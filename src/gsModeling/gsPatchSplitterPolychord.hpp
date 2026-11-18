@@ -797,7 +797,7 @@ bool gsPatchSplitter<T>::reducePolychordStrips(gsMultiPatch<T>& mp)
             if (!localOk) continue;
 
             if (m_hasDomain && !validateMultiPatch(m_domain, candMp, T(1e-4), nullptr, effMinAng, effMaxAng)) {
-                if (candMp.nPatches() <= 60) {
+                if (candMp.nPatches() <= 300) {
                     optimizeWinslowBarrier(candMp);
                     candMp.computeTopology(T(1e-4), false, false);
                     if (!validateMultiPatch(m_domain, candMp, T(1e-4), nullptr, effMinAng, effMaxAng))
@@ -1099,7 +1099,11 @@ bool gsPatchSplitter<T>::formatForArgyris(gsMultiPatch<T>& mp) const
             return true;
         };
         auto runWithMode = [&](typename gsASG1LocalFitter<T>::FittingMode mode) -> bool {
-            return tryFitMode(mode, innerKnots);
+            for (index_t extra : {index_t(0), index_t(2), index_t(4), index_t(8)}) {
+                if (tryFitMode(mode, innerKnots + extra))
+                    return true;
+            }
+            return false;
         };
         if (mp.nPatches() <= 20) {
             if (!runWithMode(gsASG1LocalFitter<T>::FittingMode::Global))
