@@ -860,35 +860,57 @@ bool gsPatchSplitter<T>::harmonizeMultiPatchKnots(gsMultiPatch<T>& mp) const
             }
         }
 
-        // Compute canonical union of knot vectors along the polychord
-        gsKnotVector<T> kvUnion;
+        // Compute canonical union of internal knots along the polychord with 1e-10 tolerance deduplication
+        const T knotTol = T(1e-10);
+        struct KnotCluster { T u; int mult; };
+        std::vector<KnotCluster> canonKnots;
         bool initUnion = false;
         for (const auto& e : entries) {
             if (const auto* tb = dynamic_cast<const gsTensorBSpline<2, T>*>(&mp.patch(e.patch))) {
+                initUnion = true;
                 gsKnotVector<T> kv = tb->knots(e.dir);
                 if (pd.chordOrientable[c] && e.flip) kv.reverse();
                 kv.affineTransformTo(T(0), T(1));
-                if (!initUnion) {
-                    kvUnion = kv;
-                    initUnion = true;
-                } else {
-                    kvUnion = kvUnion.knotUnion(kv);
+                std::vector<KnotCluster> localClusters;
+                for (index_t ki = 0; ki < kv.size(); ++ki) {
+                    T u = kv[ki];
+                    if (u <= knotTol || u >= T(1) - knotTol) continue;
+                    bool found = false;
+                    for (auto& lc : localClusters) {
+                        if (std::abs(lc.u - u) < knotTol) { ++lc.mult; found = true; break; }
+                    }
+                    if (!found) localClusters.push_back({u, 1});
+                }
+                for (const auto& lc : localClusters) {
+                    int clampedMult = std::min<int>(lc.mult, maxDeg);
+                    bool found = false;
+                    for (auto& cc : canonKnots) {
+                        if (std::abs(cc.u - lc.u) < knotTol) {
+                            cc.mult = std::max(cc.mult, clampedMult);
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) canonKnots.push_back({lc.u, clampedMult});
                 }
             }
         }
-        if (!initUnion) continue;
+        if (!initUnion || canonKnots.empty()) continue;
 
         // Insert missing knots into each patch along this polychord
         for (const auto& e : entries) {
             if (auto* tb = dynamic_cast<gsTensorBSpline<2, T>*>(&mp.patch(e.patch))) {
-                gsKnotVector<T> targetKv = kvUnion;
-                if (pd.chordOrientable[c] && e.flip) targetKv.reverse();
-                targetKv.affineTransformTo(T(0), T(1));
-
-                std::vector<T> missing;
-                targetKv.symDifference(tb->knots(e.dir), missing);
-                for (T kVal : missing)
-                    tb->insertKnot(kVal, e.dir, 1);
+                const auto& kv = tb->knots(e.dir);
+                for (const auto& cc : canonKnots) {
+                    T targetU = (pd.chordOrientable[c] && e.flip) ? (T(1) - cc.u) : cc.u;
+                    if (targetU <= knotTol || targetU >= T(1) - knotTol) continue;
+                    int curMult = 0;
+                    for (index_t ki = 0; ki < kv.size(); ++ki)
+                        if (std::abs(kv[ki] - targetU) < knotTol) ++curMult;
+                    int addMult = cc.mult - curMult;
+                    if (addMult > 0)
+                        tb->insertKnot(targetU, e.dir, addMult);
+                }
             }
         }
     }
@@ -1042,7 +1064,10 @@ bool gsPatchSplitter<T>::formatForArgyris(gsMultiPatch<T>& mp) const
                         int pc = (dir == 0) ? pd.patchChordU[p] : pd.patchChordV[p];
                         if (pc != c) continue;
                         for (T u : targetKnots) {
-                            int curMult = tb->knots(dir).multiplicity(u);
+                            const auto& kv = tb->knots(dir);
+                            int curMult = 0;
+                            for (index_t ki = 0; ki < kv.size(); ++ki)
+                                if (std::abs(kv[ki] - u) < T(1e-10)) ++curMult;
                             int addMult = mult - curMult;
                             if (addMult > 0)
                                 tb->insertKnot(u, dir, addMult);
@@ -1071,36 +1096,47 @@ bool gsPatchSplitter<T>::formatForArgyris(gsMultiPatch<T>& mp) const
             for (size_t p = 0; p < fitted.nPatches(); ++p) {
                 if (auto* tb = dynamic_cast<const gsTensorBSpline<2, T>*>(&fitted.patch(p))) {
                     T mnDet = 0, mxDet = 0, mnAbs = 0, en = 0;
-                    internal_splitter::evalPatchJacobianAndWinslow(*tb, 9, mnDet, mxDet, mnAbs, en);
-                    if (mnDet <= T(1e-9) && mxDet >= -T(1e-9))
+                    internal_splitter::evalPatchJacobianAndWinslow(*tb, 21, mnDet, mxDet, mnAbs, en);
+                    if ((mnDet <= T(1e-9) && mxDet >= -T(1e-9)) ||
+                        !internal_splitter::isPatchDetSingleSign(*tb, 21, T(1e-7)))
+                        return false;
+                    T angs[4], minA = 0, maxA = 180;
+                    bool degen = false;
+                    internal_splitter::evalPatchCornerAnglesDeg(*tb, angs, minA, maxA, degen);
+                    if (degen || minA < T(4.0) || maxA > T(164.9))
                         return false;
                 }
             }
-            // Reject fit if curved boundary shifted beyond verifyBoundaryMatch tolerance
+            // Reject fit if boundary patch corners drifted significantly
             if (fitted.nPatches() == mp.nPatches()) {
                 for (const auto& bs : mp.topology().boundaries()) {
                     const size_t p = static_cast<size_t>(bs.patch);
-                    gsMatrix<T> par(2, 9);
-                    for (int k = 0; k < 9; ++k) {
-                        T t = static_cast<T>(k) / T(8);
-                        if (bs.side() == boundary::west)      { par(0, k) = T(0); par(1, k) = t; }
-                        else if (bs.side() == boundary::east) { par(0, k) = T(1); par(1, k) = t; }
-                        else if (bs.side() == boundary::south){ par(0, k) = t;    par(1, k) = T(0); }
-                        else                                  { par(0, k) = t;    par(1, k) = T(1); }
-                    }
+                    gsMatrix<T> par(2, 2);
+                    if (bs.side() == boundary::west)      { par << T(0), T(0), T(0), T(1); }
+                    else if (bs.side() == boundary::east) { par << T(1), T(1), T(0), T(1); }
+                    else if (bs.side() == boundary::south){ par << T(0), T(1), T(0), T(0); }
+                    else                                  { par << T(0), T(1), T(1), T(1); }
                     gsMatrix<T> e0, e1;
                     mp.patch(p).eval_into(par, e0);
                     fitted.patch(p).eval_into(par, e1);
-                    if ((e0 - e1).colwise().norm().maxCoeff() > T(4e-3))
+                    T bDiff = (e0 - e1).colwise().norm().maxCoeff();
+                    if (bDiff > T(1.8e-3))
                         return false;
                 }
             }
+            if (!verifyBoundaryMatch(m_domain, fitted, T(1.9e-3)))
+                return false;
             mp = give(fitted);
             return true;
         };
         auto runWithMode = [&](typename gsASG1LocalFitter<T>::FittingMode mode) -> bool {
-            for (index_t extra : {index_t(0), index_t(2), index_t(4), index_t(8)}) {
-                if (tryFitMode(mode, innerKnots + extra))
+            for (index_t extra : {index_t(0), index_t(2), index_t(4), index_t(8), index_t(14), index_t(22)}) {
+                const index_t nInner = innerKnots + extra;
+                const index_t n1D = 4 + 2 * nInner;
+                if (mode == gsASG1LocalFitter<T>::FittingMode::Global &&
+                    static_cast<index_t>(mp.nPatches()) * n1D * n1D > 2600)
+                    continue;
+                if (tryFitMode(mode, nInner))
                     return true;
             }
             return false;
@@ -1109,7 +1145,8 @@ bool gsPatchSplitter<T>::formatForArgyris(gsMultiPatch<T>& mp) const
             if (!runWithMode(gsASG1LocalFitter<T>::FittingMode::Global))
                 runWithMode(gsASG1LocalFitter<T>::FittingMode::Local);
         } else {
-            runWithMode(gsASG1LocalFitter<T>::FittingMode::Local);
+            if (!runWithMode(gsASG1LocalFitter<T>::FittingMode::Local) && mp.nPatches() <= 40)
+                runWithMode(gsASG1LocalFitter<T>::FittingMode::Global);
         }
     }
 

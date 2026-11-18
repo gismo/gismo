@@ -555,9 +555,9 @@ inline bool pickOptimalTri1to3Center(
         }
     }
 
-    auto quadMaxDeg = [](const gsPoint2D<T> q[4]) -> T {
+    auto quadAngleMarginDeg = [](const gsPoint2D<T> q[4], T& minAngOut, T& maxAngOut) -> T {
         const T radToDeg = T(180) / T(3.14159265358979323846);
-        T mx = T(0);
+        T mn = T(360), mx = T(0);
         for (int k = 0; k < 4; ++k) {
             const auto& p0 = q[(k + 3) % 4];
             const auto& pk = q[k];
@@ -565,27 +565,37 @@ inline bool pickOptimalTri1to3Center(
             T ux = p1.x - pk.x, uy = p1.y - pk.y;
             T vx = p0.x - pk.x, vy = p0.y - pk.y;
             T nu = std::hypot(ux, uy), nv = std::hypot(vx, vy);
-            if (nu <= T(1e-14) || nv <= T(1e-14)) return T(360);
+            if (nu <= T(1e-14) || nv <= T(1e-14)) { minAngOut = T(0); maxAngOut = T(360); return -T(1); }
             T cr = (ux * vy - uy * vx) / (nu * nv);
             T dt = (ux * vx + uy * vy) / (nu * nv);
             T ang = std::atan2(cr, dt) * radToDeg;
             if (ang <= T(0)) ang += T(360);
-            if (ang > mx) mx = ang;
+            mn = std::min(mn, ang);
+            mx = std::max(mx, ang);
         }
-        return mx;
+        minAngOut = mn;
+        maxAngOut = mx;
+        return std::min(mn, T(180) - mx);
     };
 
     bool found = false;
-    T bestMax = T(360);
+    T bestScore = -T(1e9);
     for (const auto& Oc : cands) {
         gsPoint2D<T> q0[4] = {A, mAB, Oc, mCA};
         gsPoint2D<T> q1[4] = {B, mBC, Oc, mAB};
         gsPoint2D<T> q2[4] = {C, mCA, Oc, mBC};
         if (!isStrictlyConvexQuad(q0) || !isStrictlyConvexQuad(q1) || !isStrictlyConvexQuad(q2))
             continue;
-        T mA = std::max(quadMaxDeg(q0), std::max(quadMaxDeg(q1), quadMaxDeg(q2)));
-        if (!found || mA < bestMax) {
-            bestMax = mA;
+        T mn0, mx0, mn1, mx1, mn2, mx2;
+        T e0 = quadAngleMarginDeg(q0, mn0, mx0);
+        T e1 = quadAngleMarginDeg(q1, mn1, mx1);
+        T e2 = quadAngleMarginDeg(q2, mn2, mx2);
+        T minMargin = std::min(e0, std::min(e1, e2));
+        T maxA = std::max(mx0, std::max(mx1, mx2));
+        T minA = std::min(mn0, std::min(mn1, mn2));
+        T sc = minMargin + T(0.15) * minA - T(0.15) * maxA;
+        if (!found || sc > bestScore) {
+            bestScore = sc;
             outO = Oc;
             found = true;
         }
@@ -1711,8 +1721,10 @@ inline void buildBlockQuadRing(
                 if (n0 > T(1e-14) && n1 > T(1e-14)) {
                     T cr = (d0.x * d1.y - d0.y * d1.x) / (n0 * n1);
                     T dt = (d0.x * d1.x + d0.y * d1.y) / (n0 * n1);
-                    if (std::abs(std::atan2(cr, dt)) * radToDeg > T(28))
+                    if (std::abs(std::atan2(cr, dt)) * radToDeg > T(28)) {
                         hasInteriorSharp = true;
+                        return false;
+                    }
                 }
             }
         }
@@ -1749,9 +1761,9 @@ inline void buildBlockQuadRing(
         return ok;
     };
 
-    std::vector<std::unique_ptr<gsGeometry<T>>> bestSmooth4, bestAny4;
-    T bestSmoothScore = T(1e18), bestSmoothMaxAng = T(180), bestAnyScore = T(1e18);
-    bool foundSmooth4 = false, foundAny4 = false;
+    std::vector<std::unique_ptr<gsGeometry<T>>> bestSmooth4;
+    T bestSmoothScore = T(1e18), bestSmoothMaxAng = T(180);
+    bool foundSmooth4 = false;
 
     const int K = static_cast<int>(hCCW.size());
     auto considerSplits = [&](const std::vector<CurveSeg<T>>& ring) {
@@ -1766,8 +1778,6 @@ inline void buildBlockQuadRing(
                 if (tryBuildFrom4Sectors(sec, cand, hasSharp, sc, md, ma)) {
                     if (!hasSharp && (!foundSmooth4 || sc < bestSmoothScore)) {
                         foundSmooth4 = true; bestSmoothScore = sc; bestSmoothMaxAng = ma; bestSmooth4 = std::move(cand);
-                    } else if (!foundAny4 || sc < bestAnyScore) {
-                        foundAny4 = true; bestAnyScore = sc; bestAny4 = std::move(cand);
                     }
                 }
             }
@@ -1819,8 +1829,6 @@ inline void buildBlockQuadRing(
             if (tryBuildFrom4Sectors(sec, cand, hasSharp, sc, md, ma)) {
                 if (!hasSharp && (!foundSmooth4 || sc < bestSmoothScore)) {
                     foundSmooth4 = true; bestSmoothScore = sc; bestSmoothMaxAng = ma; bestSmooth4 = std::move(cand);
-                } else if (!foundAny4 || sc < bestAnyScore) {
-                    foundAny4 = true; bestAnyScore = sc; bestAny4 = std::move(cand);
                 }
             }
         }
@@ -2129,13 +2137,6 @@ inline void buildBlockQuadRing(
     if (foundSmooth4) {
         if (std::getenv("GISMO_SPLITTER_DEBUG")) std::cerr << "  [RING] picked foundSmooth4 (backup)\n";
         for (auto& p : bestSmooth4)
-            mp.addPatch(typename gsGeometry<T>::uPtr(p.release()));
-        return;
-    }
-
-    if (foundAny4) {
-        if (std::getenv("GISMO_SPLITTER_DEBUG")) std::cerr << "  [RING] picked foundAny4\n";
-        for (auto& p : bestAny4)
             mp.addPatch(typename gsGeometry<T>::uPtr(p.release()));
         return;
     }
@@ -4096,20 +4097,16 @@ gsPatchSplitter<T>::computeHoleFreeTriangulationSplitting()
                 if (!isStrictlyConvexQuad(qa)) continue;
                 if (!isSegmentInsidePoly(mesh.pts[c], mesh.pts[d], outerPoly)) continue;
 
-                auto minTriSin = [&](int i0, int i1, int i2) -> T {
-                    const auto& P0 = mesh.pts[i0];
-                    const auto& P1 = mesh.pts[i1];
-                    const auto& P2 = mesh.pts[i2];
-                    T cr2 = cross2(P0, P1, P2);
-                    if (cr2 <= T(1e-8)) return -T(1);
-                    T l2 = std::pow(P0.x - P1.x, 2) + std::pow(P0.y - P1.y, 2)
-                         + std::pow(P1.x - P2.x, 2) + std::pow(P1.y - P2.y, 2)
-                         + std::pow(P2.x - P0.x, 2) + std::pow(P2.y - P0.y, 2);
-                    return cr2 / (l2 + T(1e-14));
-                };
-                T curMin = std::min(minTriSin(a, b, c), minTriSin(b, a, d));
-                T newMin = std::min(minTriSin(c, a, d), minTriSin(c, d, b));
-                if (newMin <= curMin + T(1e-4)) continue;
+                T curMin0, curMax0, curMin1, curMax1;
+                internal_splitter::triMinMaxAnglesDeg(mesh.pts[a], mesh.pts[b], mesh.pts[c], curMin0, curMax0);
+                internal_splitter::triMinMaxAnglesDeg(mesh.pts[b], mesh.pts[a], mesh.pts[d], curMin1, curMax1);
+                T newMin0, newMax0, newMin1, newMax1;
+                internal_splitter::triMinMaxAnglesDeg(mesh.pts[c], mesh.pts[a], mesh.pts[d], newMin0, newMax0);
+                internal_splitter::triMinMaxAnglesDeg(mesh.pts[c], mesh.pts[d], mesh.pts[b], newMin1, newMax1);
+                T curMin = std::min(curMin0, curMin1), newMin = std::min(newMin0, newMin1);
+                T curMax = std::max(curMax0, curMax1), newMax = std::max(newMax0, newMax1);
+                if (newMin <= curMin + T(1e-3) && !(std::abs(newMin - curMin) <= T(1e-3) && newMax < curMax - T(1e-2)))
+                    continue;
 
                 // Protect smooth boundary vertices from dropping to deg == 1 unless needed
                 int degA = 0, degB = 0;
@@ -4158,6 +4155,11 @@ gsPatchSplitter<T>::computeHoleFreeTriangulationSplitting()
         const int nT = static_cast<int>(triMesh.tris.size());
         if (nT < 2) return;
 
+        const T radToDeg = T(180) / T(3.14159265358979323846);
+        const T domMinA = internal_splitter::computeDomainMinCornerAngleDeg(m_domain);
+        const T qMinTol = std::min(static_cast<T>(m_options.getReal("MinCornerAngleDeg")), T(0.85) * domMinA);
+        const T qMaxTol = static_cast<T>(m_options.getReal("MaxCornerAngleDeg"));
+
         struct PairEdge {
             int t0, t1;
             Quad q;
@@ -4182,26 +4184,6 @@ gsPatchSplitter<T>::computeHoleFreeTriangulationSplitting()
             gsPoint2D<T> qc[4] = {triMesh.pts[c], triMesh.pts[a], triMesh.pts[d], triMesh.pts[b]};
             T minArea2 = 0;
             if (!isStrictlyConvexQuad(qc, &minArea2)) continue;
-            {
-                const T radToDeg = T(180) / T(3.14159265358979323846);
-                const T domMinA = internal_splitter::computeDomainMinCornerAngleDeg(m_domain);
-                const T qMinTol = std::min(static_cast<T>(m_options.getReal("MinCornerAngleDeg")), T(0.85) * domMinA);
-                const T qMaxTol = static_cast<T>(m_options.getReal("MaxCornerAngleDeg"));
-                bool angOk = true;
-                for (int k = 0; k < 4; ++k) {
-                    const auto& p0 = qc[(k + 3) % 4];
-                    const auto& pk = qc[k];
-                    const auto& p1 = qc[(k + 1) % 4];
-                    T ux = p1.x - pk.x, uy = p1.y - pk.y;
-                    T vx = p0.x - pk.x, vy = p0.y - pk.y;
-                    T nu = std::hypot(ux, uy), nv = std::hypot(vx, vy);
-                    if (nu < T(1e-12) || nv < T(1e-12)) { angOk = false; break; }
-                    T ang = std::atan2((ux * vy - uy * vx) / (nu * nv), (ux * vx + uy * vy) / (nu * nv)) * radToDeg;
-                    if (ang <= T(0)) ang += T(360);
-                    if (ang < qMinTol - T(1.5) || ang > qMaxTol) { angOk = false; break; }
-                }
-                if (!angOk) continue;
-            }
 
             int e_bc = A.e[(kA + 1) % 3];
             int e_ca = A.e[(kA + 2) % 3];
@@ -4213,12 +4195,48 @@ gsPatchSplitter<T>::computeHoleFreeTriangulationSplitting()
             }
             if (e_ad < 0 || e_db < 0) continue;
 
-            T perim2 = T(0);
-            for (int s = 0; s < 4; ++s) {
-                int sn = (s + 1) % 4;
-                perim2 += std::pow(qc[s].x - qc[sn].x, 2) + std::pow(qc[s].y - qc[sn].y, 2);
+            int qv[4] = {c, a, d, b};
+            int qe[4] = {e_ca, e_ad, e_db, e_bc};
+            auto edgeDir = [&](int ei, int fromV, int toV, bool atEnd) -> gsPoint2D<T> {
+                const auto& er = triMesh.edges[ei];
+                if (er.isBoundary && er.seg.bsp) {
+                    bool fwd = (er.a == fromV);
+                    T u = (atEnd == fwd) ? T(1) : T(0);
+                    gsPoint2D<T> dv = evalCurveDeriv(*er.seg.bsp, u);
+                    T sgn = ((fwd && !atEnd) || (!fwd && atEnd)) ? T(1) : T(-1);
+                    T nm = std::hypot(dv.x, dv.y);
+                    if (nm > T(1e-14)) return gsPoint2D<T>(sgn * dv.x / nm, sgn * dv.y / nm);
+                }
+                T chSign = atEnd ? T(-1) : T(1);
+                T dx = chSign * (triMesh.pts[toV].x - triMesh.pts[fromV].x);
+                T dy = chSign * (triMesh.pts[toV].y - triMesh.pts[fromV].y);
+                T nm = std::hypot(dx, dy);
+                return (nm > T(1e-14)) ? gsPoint2D<T>(dx / nm, dy / nm) : gsPoint2D<T>(1, 0);
+            };
+            bool angOk = true;
+            T minAng = T(360), maxAng = T(0), maxDev90 = T(0);
+            T lenMin = T(1e30), lenMax = T(0);
+            for (int k = 0; k < 4; ++k) {
+                int kn = (k + 1) % 4, kp = (k + 3) % 4;
+                gsPoint2D<T> tOut = edgeDir(qe[k],  qv[k], qv[kn], false);
+                gsPoint2D<T> tBack = edgeDir(qe[kp], qv[kp], qv[k], true);
+                T cr = tOut.x * tBack.y - tOut.y * tBack.x;
+                T dt = tOut.x * tBack.x + tOut.y * tBack.y;
+                T ang = std::atan2(cr, dt) * radToDeg;
+                if (ang <= T(0)) ang += T(360);
+                if (ang < qMinTol - T(1.5) || ang > qMaxTol) { angOk = false; break; }
+                minAng = std::min(minAng, ang);
+                maxAng = std::max(maxAng, ang);
+                maxDev90 = std::max(maxDev90, std::abs(ang - T(90)));
+                T eLen = triMesh.pts[qv[k]].dist(triMesh.pts[qv[kn]]);
+                lenMin = std::min(lenMin, eLen);
+                lenMax = std::max(lenMax, eLen);
             }
-            T sc = minArea2 / (perim2 + T(1e-14));
+            if (!angOk) continue;
+
+            T effMinQ = std::min(minAng, T(180) - maxAng);
+            T arRatio = (lenMax > T(1e-14)) ? (lenMin / lenMax) : T(1);
+            T sc = effMinQ + T(2.25) * arRatio - T(0.15) * maxDev90;
             pairEdges.push_back({tA, tB, Quad{{c, a, d, b}, {e_ca, e_ad, e_db, e_bc}}, sc});
         }
         if (pairEdges.empty()) return;
@@ -4669,6 +4687,351 @@ gsPatchSplitter<T>::computeHoleFreeTriangulationSplitting()
     return bestCand;
 }
 
+namespace internal_splitter {
+
+// Evaluate exact corner angles (deg) and min(theta, 180-theta) from 4 CCW boundary CurveSegs.
+template <class T>
+inline void eval4SegCornerAnglesDeg(
+    const CurveSeg<T>& c0, const CurveSeg<T>& c1,
+    const CurveSeg<T>& c2, const CurveSeg<T>& c3,
+    T& minAngOut, T& maxAngOut, T& effMinOut)
+{
+    const CurveSeg<T>* cs[4] = {&c0, &c1, &c2, &c3};
+    const T radToDeg = T(180) / T(3.14159265358979323846);
+    minAngOut = T(360);
+    maxAngOut = T(0);
+    for (int k = 0; k < 4; ++k) {
+        const auto& cOut = *cs[k];
+        const auto& cIn  = *cs[(k + 3) % 4];
+        gsPoint2D<T> d0 = evalCurveDeriv(*cOut.bsp, T(0));
+        gsPoint2D<T> d1 = evalCurveDeriv(*cIn.bsp,  T(1));
+        T n0 = std::hypot(d0.x, d0.y), n1 = std::hypot(d1.x, d1.y);
+        if (n0 <= T(1e-14) || n1 <= T(1e-14)) {
+            minAngOut = T(0); maxAngOut = T(360); effMinOut = T(0); return;
+        }
+        gsPoint2D<T> tOut(d0.x / n0, d0.y / n0);
+        gsPoint2D<T> tBack(-d1.x / n1, -d1.y / n1);
+        T cr = tOut.x * tBack.y - tOut.y * tBack.x;
+        T dt = tOut.x * tBack.x + tOut.y * tBack.y;
+        T ang = std::atan2(cr, dt) * radToDeg;
+        if (ang <= T(0)) ang += T(360);
+        minAngOut = std::min(minAngOut, ang);
+        maxAngOut = std::max(maxAngOut, ang);
+    }
+    effMinOut = std::min(minAngOut, T(180) - maxAngOut);
+}
+
+// Curved-tangent-aware 1-to-3 triangle center selection maximizing min(theta, 180-theta)
+template <class T>
+inline bool pickOptimalTri1to3CenterCurved(
+    const gsPoint2D<T>& A, const gsPoint2D<T>& B, const gsPoint2D<T>& C,
+    const CurveSeg<T>& e01a, const CurveSeg<T>& e01b,
+    const CurveSeg<T>& e12a, const CurveSeg<T>& e12b,
+    const CurveSeg<T>& e20a, const CurveSeg<T>& e20b,
+    bool isBnd01, bool isBnd12, bool isBnd20,
+    gsPoint2D<T>& outO)
+{
+    const gsPoint2D<T> m01 = e01a.p1(), m12 = e12a.p1(), m20 = e20a.p1();
+    if (!isBnd01 && !isBnd12 && !isBnd20)
+        return pickOptimalTri1to3Center(A, B, C, m01, m12, m20, outO);
+
+    gsPoint2D<T> O_mid((m01.x + m12.x + m20.x) / T(3), (m01.y + m12.y + m20.y) / T(3));
+    gsPoint2D<T> O_tri((A.x + B.x + C.x) / T(3), (A.y + B.y + C.y) / T(3));
+    T la = B.dist(C), lb = C.dist(A), lc = A.dist(B), lsum = la + lb + lc;
+    gsPoint2D<T> O_inc = (lsum > T(1e-14))
+        ? gsPoint2D<T>((la * A.x + lb * B.x + lc * C.x) / lsum,
+                       (la * A.y + lb * B.y + lc * C.y) / lsum)
+        : O_tri;
+
+    auto unitTan = [&](const CurveSeg<T>& seg, T u, bool flip) -> gsPoint2D<T> {
+        gsPoint2D<T> d = evalCurveDeriv(*seg.bsp, u);
+        T nm = std::hypot(d.x, d.y);
+        if (nm <= T(1e-14)) return gsPoint2D<T>(0, 0);
+        T sgn = flip ? T(-1) : T(1);
+        return gsPoint2D<T>(sgn * d.x / nm, sgn * d.y / nm);
+    };
+
+    const gsPoint2D<T> tA0 = unitTan(e01a, T(0), false), tA1 = unitTan(e20b, T(1), true);
+    const gsPoint2D<T> tB0 = unitTan(e12a, T(0), false), tB1 = unitTan(e01b, T(1), true);
+    const gsPoint2D<T> tC0 = unitTan(e20a, T(0), false), tC1 = unitTan(e12b, T(1), true);
+    const gsPoint2D<T> tM01_in = unitTan(e01a, T(1), true), tM01_out = unitTan(e01b, T(0), false);
+    const gsPoint2D<T> tM12_in = unitTan(e12a, T(1), true), tM12_out = unitTan(e12b, T(0), false);
+    const gsPoint2D<T> tM20_in = unitTan(e20a, T(1), true), tM20_out = unitTan(e20b, T(0), false);
+
+    std::vector<gsPoint2D<T>> cands = {O_mid, O_tri, O_inc};
+    for (int s = 1; s <= 4; ++s) {
+        T w = static_cast<T>(s) / T(5);
+        cands.emplace_back((T(1) - w) * O_mid.x + w * O_inc.x, (T(1) - w) * O_mid.y + w * O_inc.y);
+        cands.emplace_back((T(1) - w) * O_mid.x + w * O_tri.x, (T(1) - w) * O_mid.y + w * O_tri.y);
+    }
+    const gsPoint2D<T> verts3[3] = {A, B, C};
+    for (const auto& V : verts3) {
+        for (T w : {T(0.12), T(0.24), T(0.36), T(0.48)})
+            cands.emplace_back((T(1) - w) * O_mid.x + w * V.x, (T(1) - w) * O_mid.y + w * V.y);
+    }
+    T avgH = lsum / T(3);
+    auto addNormalShoots = [&](const gsPoint2D<T>& mPt, const gsPoint2D<T>& tOut) {
+        if (std::hypot(tOut.x, tOut.y) <= T(1e-12)) return;
+        gsPoint2D<T> nrm(-tOut.y, tOut.x);
+        for (T alpha : {T(0.18), T(0.30), T(0.45)}) {
+            gsPoint2D<T> pN(mPt.x + alpha * avgH * nrm.x, mPt.y + alpha * avgH * nrm.y);
+            cands.push_back(pN);
+            cands.emplace_back(T(0.5) * (pN.x + O_inc.x), T(0.5) * (pN.y + O_inc.y));
+        }
+    };
+    if (isBnd01) addNormalShoots(m01, tM01_out);
+    if (isBnd12) addNormalShoots(m12, tM12_out);
+    if (isBnd20) addNormalShoots(m20, tM20_out);
+
+    const T radToDeg = T(180) / T(3.14159265358979323846);
+    auto angVec = [&](const gsPoint2D<T>& u, const gsPoint2D<T>& v) -> T {
+        T nu = std::hypot(u.x, u.y), nv = std::hypot(v.x, v.y);
+        if (nu <= T(1e-14) || nv <= T(1e-14)) return T(0);
+        T a = std::atan2(u.x * v.y - u.y * v.x, u.x * v.x + u.y * v.y) * radToDeg;
+        if (a <= T(0)) a += T(360);
+        return a;
+    };
+    auto vecDir = [&](const gsPoint2D<T>& P, const gsPoint2D<T>& Q) -> gsPoint2D<T> {
+        T dx = Q.x - P.x, dy = Q.y - P.y, nm = std::hypot(dx, dy);
+        return (nm > T(1e-14)) ? gsPoint2D<T>(dx / nm, dy / nm) : gsPoint2D<T>(0, 0);
+    };
+
+    bool found = false;
+    T bestScore = -T(1e9);
+    for (const auto& Oc : cands) {
+        gsPoint2D<T> q0[4] = {A, m01, Oc, m20};
+        gsPoint2D<T> q1[4] = {B, m12, Oc, m01};
+        gsPoint2D<T> q2[4] = {C, m20, Oc, m12};
+        if (!isStrictlyConvexQuad(q0) || !isStrictlyConvexQuad(q1) || !isStrictlyConvexQuad(q2))
+            continue;
+        gsPoint2D<T> s01 = vecDir(Oc, m01), ms01(-s01.x, -s01.y);
+        gsPoint2D<T> s12 = vecDir(Oc, m12), ms12(-s12.x, -s12.y);
+        gsPoint2D<T> s20 = vecDir(Oc, m20), ms20(-s20.x, -s20.y);
+        T aVals[12] = {
+            angVec(tA0, tA1), angVec(ms01, tM01_in),  angVec(s20, s01), angVec(tM20_out, ms20),
+            angVec(tB0, tB1), angVec(ms12, tM12_in),  angVec(s01, s12), angVec(tM01_out, ms01),
+            angVec(tC0, tC1), angVec(ms20, tM20_in),  angVec(s12, s20), angVec(tM12_out, ms12)
+        };
+        T mnA = T(360), mxA = T(0);
+        for (T av : aVals) {
+            if (av <= T(1e-6) || av >= T(359)) { mnA = T(0); mxA = T(360); break; }
+            mnA = std::min(mnA, av);
+            mxA = std::max(mxA, av);
+        }
+        T effMin = std::min(mnA, T(180) - mxA);
+        T sc = effMin + T(0.15) * mnA - T(0.15) * mxA;
+        if (!found || sc > bestScore) {
+            bestScore = sc;
+            outO = Oc;
+            found = true;
+        }
+    }
+    return found;
+}
+
+// Evaluate curved-aware quad union angles, strict halfplane clearance, and max-min-angle score.
+template <class T>
+inline bool evalMeshQuadUnion(
+    const TriMeshData<T>& mesh,
+    const int qv[4], const int qe[4],
+    T minPairAng, T maxPairAng,
+    T& effMinOut, T& scoreOut)
+{
+    gsPoint2D<T> qc[4] = {mesh.pts[qv[0]], mesh.pts[qv[1]], mesh.pts[qv[2]], mesh.pts[qv[3]]};
+    if (!isStrictlyConvexQuad(qc)) return false;
+
+    for (int k = 0; k < 4; ++k) {
+        const auto& er = mesh.edges[qe[k]];
+        if (!er.isBoundary || !er.seg.bsp) continue;
+        const gsPoint2D<T>& p1 = qc[(k + 1) % 4];
+        const gsPoint2D<T>& p2 = qc[(k + 2) % 4];
+        const gsPoint2D<T>& p3 = qc[(k + 3) % 4];
+        const gsPoint2D<T>& p0 = qc[k];
+        for (T u : {T(0.25), T(0.5), T(0.75)}) {
+            gsPoint2D<T> sPt = evalCurvePoint(*er.seg.bsp, u);
+            if (cross2(p1, p2, sPt) <= T(1e-8) ||
+                cross2(p2, p3, sPt) <= T(1e-8) ||
+                cross2(p3, p0, sPt) <= T(1e-8))
+                return false;
+        }
+    }
+
+    auto edgeDir = [&](int ei, int fromV, int toV, bool atEnd) -> gsPoint2D<T> {
+        const auto& er = mesh.edges[ei];
+        if (er.isBoundary && er.seg.bsp) {
+            bool fwd = (er.a == fromV);
+            T u = (atEnd == fwd) ? T(1) : T(0);
+            gsPoint2D<T> dv = evalCurveDeriv(*er.seg.bsp, u);
+            T sgn = ((fwd && !atEnd) || (!fwd && atEnd)) ? T(1) : T(-1);
+            T nm = std::hypot(dv.x, dv.y);
+            if (nm > T(1e-14)) return gsPoint2D<T>(sgn * dv.x / nm, sgn * dv.y / nm);
+        }
+        T chSign = atEnd ? T(-1) : T(1);
+        T dx = chSign * (mesh.pts[toV].x - mesh.pts[fromV].x);
+        T dy = chSign * (mesh.pts[toV].y - mesh.pts[fromV].y);
+        T nm = std::hypot(dx, dy);
+        return (nm > T(1e-14)) ? gsPoint2D<T>(dx / nm, dy / nm) : gsPoint2D<T>(1, 0);
+    };
+
+    const T radToDeg = T(180) / T(3.14159265358979323846);
+    T minAng = T(360), maxAng = T(0), maxDev90 = T(0);
+    T lenMin = T(1e30), lenMax = T(0);
+    for (int k = 0; k < 4; ++k) {
+        int kn = (k + 1) % 4, kp = (k + 3) % 4;
+        gsPoint2D<T> tOut  = edgeDir(qe[k],  qv[k],  qv[kn], false);
+        gsPoint2D<T> tBack = edgeDir(qe[kp], qv[kp], qv[k],  true);
+        T cr = tOut.x * tBack.y - tOut.y * tBack.x;
+        T dt = tOut.x * tBack.x + tOut.y * tBack.y;
+        T ang = std::atan2(cr, dt) * radToDeg;
+        if (ang <= T(0)) ang += T(360);
+        if (ang < minPairAng || ang > maxPairAng) return false;
+        minAng = std::min(minAng, ang);
+        maxAng = std::max(maxAng, ang);
+        maxDev90 = std::max(maxDev90, std::abs(ang - T(90)));
+        T eLen = mesh.pts[qv[k]].dist(mesh.pts[qv[kn]]);
+        lenMin = std::min(lenMin, eLen);
+        lenMax = std::max(lenMax, eLen);
+    }
+
+    effMinOut = std::min(minAng, T(180) - maxAng);
+    T arRatio = (lenMax > T(1e-14)) ? (lenMin / lenMax) : T(1);
+    scoreOut = effMinOut + T(2.25) * arRatio - T(0.15) * maxDev90;
+    return true;
+}
+
+// Co-optimize interior diagonals where a convex flip unlocks a substantially better adjacent quad union.
+template <class T>
+inline void flipForBetterQuadUnions(TriMeshData<T>& mesh, T minPairAng, T maxPairAng)
+{
+    const int nT = static_cast<int>(mesh.tris.size());
+    const int nE = static_cast<int>(mesh.edges.size());
+    if (nT < 2 || nE == 0) return;
+
+    for (int pass = 0; pass < 2; ++pass) {
+        struct EdgeAdj { int t0 = -1, k0 = -1, t1 = -1, k1 = -1; };
+        std::vector<EdgeAdj> eAdj(nE);
+        std::vector<int> vertDeg(mesh.pts.size(), 0);
+        for (int ti = 0; ti < nT; ++ti) {
+            const auto& tr = mesh.tris[ti];
+            for (int k = 0; k < 3; ++k) {
+                ++vertDeg[tr.v[k]];
+                int eid = tr.e[k];
+                if (eAdj[eid].t0 < 0) { eAdj[eid].t0 = ti; eAdj[eid].k0 = k; }
+                else if (eAdj[eid].t1 < 0) { eAdj[eid].t1 = ti; eAdj[eid].k1 = k; }
+            }
+        }
+
+        auto edgePairEff = [&](int eIdx, int tA, int kA, int tB, int kB) -> T {
+            const auto& A = mesh.tris[tA];
+            const auto& B = mesh.tris[tB];
+            int a = A.v[kA], b = A.v[(kA + 1) % 3], c = A.v[(kA + 2) % 3];
+            int d = B.v[(kB + 2) % 3];
+            if (B.v[kB] != b || B.v[(kB + 1) % 3] != a) return T(0);
+            int qv[4] = {c, a, d, b};
+            int qe[4] = {A.e[(kA + 2) % 3], B.e[(kB + 1) % 3], B.e[(kB + 2) % 3], A.e[(kA + 1) % 3]};
+            T eff = 0, sc = 0;
+            return evalMeshQuadUnion(mesh, qv, qe, minPairAng, maxPairAng, eff, sc) ? eff : T(0);
+        };
+
+        std::vector<T> triBestEff(nT, T(0));
+        for (int eIdx = 0; eIdx < nE; ++eIdx) {
+            if (mesh.edges[eIdx].isBoundary) continue;
+            int tA = eAdj[eIdx].t0, tB = eAdj[eIdx].t1;
+            if (tA < 0 || tB < 0) continue;
+            T eff = edgePairEff(eIdx, tA, eAdj[eIdx].k0, tB, eAdj[eIdx].k1);
+            triBestEff[tA] = std::max(triBestEff[tA], eff);
+            triBestEff[tB] = std::max(triBestEff[tB], eff);
+        }
+
+        bool anyFlip = false;
+        for (int eIdx = 0; eIdx < nE; ++eIdx) {
+            if (mesh.edges[eIdx].isBoundary) continue;
+            int tA = eAdj[eIdx].t0, kA = eAdj[eIdx].k0;
+            int tB = eAdj[eIdx].t1, kB = eAdj[eIdx].k1;
+            if (tA < 0 || tB < 0) continue;
+            T curBest = std::max(triBestEff[tA], triBestEff[tB]);
+            if (curBest >= T(32)) continue;
+
+            const auto A = mesh.tris[tA], B = mesh.tris[tB];
+            int a = A.v[kA], b = A.v[(kA + 1) % 3], c = A.v[(kA + 2) % 3];
+            int d = B.v[(kB + 2) % 3];
+            if (B.v[kB] != b || B.v[(kB + 1) % 3] != a) continue;
+            if ((mesh.isSmoothBnd[a] && vertDeg[a] <= 2) || (mesh.isSmoothBnd[b] && vertDeg[b] <= 2))
+                continue;
+
+            gsPoint2D<T> qa[4] = {mesh.pts[c], mesh.pts[a], mesh.pts[d], mesh.pts[b]};
+            if (!isStrictlyConvexQuad(qa)) continue;
+            if (!isSegmentInsideDomain(mesh.pts[c], mesh.pts[d], mesh.loopPolys)) continue;
+
+            T mn0, mx0, mn1, mx1;
+            triMinMaxAnglesDeg(mesh.pts[c], mesh.pts[a], mesh.pts[d], mn0, mx0);
+            triMinMaxAnglesDeg(mesh.pts[c], mesh.pts[d], mesh.pts[b], mn1, mx1);
+            if (std::min(mn0, mn1) < T(10) || std::max(mx0, mx1) > T(158)) continue;
+
+            int e_bc = A.e[(kA + 1) % 3], e_ca = A.e[(kA + 2) % 3];
+            int e_ad = B.e[(kB + 1) % 3], e_db = B.e[(kB + 2) % 3];
+
+            bool bndSafe = true;
+            for (int chk : {e_ca, e_ad, e_db, e_bc}) {
+                const auto& er = mesh.edges[chk];
+                if (!er.isBoundary || !er.seg.bsp) continue;
+                T reqSign = (chk == e_ca || chk == e_ad) ? T(-1) : T(1);
+                for (T u : {T(0.25), T(0.5), T(0.75)}) {
+                    if (reqSign * cross2(mesh.pts[c], mesh.pts[d], evalCurvePoint(*er.seg.bsp, u)) <= T(1e-8)) {
+                        bndSafe = false; break;
+                    }
+                }
+                if (!bndSafe) break;
+            }
+            if (!bndSafe) continue;
+
+            // Temporarily apply flip and inspect union options around the 5 cavity edges
+            auto oldEdge = mesh.edges[eIdx];
+            auto oldTA = mesh.tris[tA], oldTB = mesh.tris[tB];
+            mesh.edges[eIdx] = {c, d, CurveSeg<T>(), CurveSeg<T>(), CurveSeg<T>(), gsPoint2D<T>(), false, false, -1};
+            mesh.tris[tA] = {{c, a, d}, {e_ca, e_ad, eIdx}};
+            mesh.tris[tB] = {{c, d, b}, {eIdx, e_db, e_bc}};
+
+            T newBest = T(0);
+            auto testEdgeSlot = [&](int eid, int triIdx, int slotIdx) {
+                if (mesh.edges[eid].isBoundary) return;
+                int ot = (eAdj[eid].t0 == triIdx) ? eAdj[eid].t1 : eAdj[eid].t0;
+                int ok = (eAdj[eid].t0 == triIdx) ? eAdj[eid].k1 : eAdj[eid].k0;
+                if (ot < 0) {
+                    if (eid == eIdx) newBest = std::max(newBest, edgePairEff(eIdx, tA, 2, tB, 0));
+                    return;
+                }
+                newBest = std::max(newBest, edgePairEff(eid, triIdx, slotIdx, ot, ok));
+            };
+            testEdgeSlot(eIdx, tA, 2);
+            testEdgeSlot(e_ca, tA, 0);
+            testEdgeSlot(e_ad, tA, 1);
+            testEdgeSlot(e_db, tB, 1);
+            testEdgeSlot(e_bc, tB, 2);
+
+            bool accept = (curBest <= T(1e-6) && newBest >= T(16)) || (newBest > curBest + T(6));
+            if (accept) {
+                eAdj[eIdx] = {tA, 2, tB, 0};
+                if (eAdj[e_ca].t0 == tA) eAdj[e_ca].k0 = 0; else eAdj[e_ca].k1 = 0;
+                if (eAdj[e_ad].t0 == tB) { eAdj[e_ad].t0 = tA; eAdj[e_ad].k0 = 1; } else { eAdj[e_ad].t1 = tA; eAdj[e_ad].k1 = 1; }
+                if (eAdj[e_db].t0 == tB) eAdj[e_db].k0 = 1; else eAdj[e_db].k1 = 1;
+                if (eAdj[e_bc].t0 == tA) { eAdj[e_bc].t0 = tB; eAdj[e_bc].k0 = 2; } else { eAdj[e_bc].t1 = tB; eAdj[e_bc].k1 = 2; }
+                --vertDeg[a]; --vertDeg[b]; ++vertDeg[c]; ++vertDeg[d];
+                triBestEff[tA] = std::max(triBestEff[tA], newBest);
+                triBestEff[tB] = std::max(triBestEff[tB], newBest);
+                anyFlip = true;
+            } else {
+                mesh.edges[eIdx] = oldEdge;
+                mesh.tris[tA] = oldTA;
+                mesh.tris[tB] = oldTB;
+            }
+        }
+        if (!anyFlip) break;
+    }
+}
+
+} // namespace internal_splitter
+
 template <class T>
 typename gsPatchSplitter<T>::SplittingCandidate
 gsPatchSplitter<T>::computeMultiHoleTriangulationSplitting()
@@ -4694,11 +5057,11 @@ gsPatchSplitter<T>::computeMultiHoleTriangulationSplitting()
         if (qNew < qOld) bestCand = c;
     };
 
-    auto quadifyTriMesh = [&](TriMeshData<T>& mesh, bool coarseRelaxed = false) {
+    std::function<void(TriMeshData<T>&, bool, bool)> quadifyTriMesh;
+    quadifyTriMesh = [&](TriMeshData<T>& mesh, bool coarseRelaxed, bool allowParityRepair) {
         const int nT = static_cast<int>(mesh.tris.size());
         if (nT == 0) return;
 
-        // Ensure all edges have CurveSegs and split halves
         for (auto& er : mesh.edges) {
             if (!er.seg.bsp)
                 er.seg = makeStraightSeg(mesh.pts[er.a], mesh.pts[er.b], m_degree);
@@ -4708,19 +5071,9 @@ gsPatchSplitter<T>::computeMultiHoleTriangulationSplitting()
                 er.h1 = sp.second;
                 er.mid = sp.first.p1();
                 er.splitDone = true;
+                er.splitFrac = T(0.5);
             }
         }
-
-        auto getSegDir = [&](int eIdx, int u, int v) -> CurveSeg<T> {
-            const auto& er = mesh.edges[eIdx];
-            return (er.a == u && er.b == v) ? er.seg : er.seg.reversed();
-        };
-        auto getHalvesDir = [&](int eIdx, int u, int v, CurveSeg<T>& out0, CurveSeg<T>& out1, gsPoint2D<T>& outMid) {
-            const auto& er = mesh.edges[eIdx];
-            outMid = er.mid;
-            if (er.a == u && er.b == v) { out0 = er.h0; out1 = er.h1; }
-            else                         { out0 = er.h1.reversed(); out1 = er.h0.reversed(); }
-        };
 
         const T effMinValAng = coarseRelaxed ? std::max(T(8), minAngTol - T(3.5)) : minAngTol;
         const T effMaxValAng = coarseRelaxed ? std::max(maxAngTol, T(164.2))     : maxAngTol;
@@ -4730,137 +5083,458 @@ gsPatchSplitter<T>::computeMultiHoleTriangulationSplitting()
         auto emitFromMixed = [&](const std::vector<typename TriMeshData<T>::Tri>& tris,
                                  const std::vector<typename TriMeshData<T>::Quad>& quads,
                                  const std::vector<bool>& needSplit) {
-            gsMultiPatch<T> mp;
-            for (const auto& t : tris) {
-                if (!needSplit[t.e[0]] || !needSplit[t.e[1]] || !needSplit[t.e[2]]) return;
-                int v0 = t.v[0], v1 = t.v[1], v2 = t.v[2];
-                CurveSeg<T> e01_a, e01_b, e12_a, e12_b, e20_a, e20_b;
-                gsPoint2D<T> m01, m12, m20;
-                getHalvesDir(t.e[0], v0, v1, e01_a, e01_b, m01);
-                getHalvesDir(t.e[1], v1, v2, e12_a, e12_b, m12);
-                getHalvesDir(t.e[2], v2, v0, e20_a, e20_b, m20);
+            std::vector<typename TriMeshData<T>::EdgeRec> edges = mesh.edges;
 
-                gsPoint2D<T> O;
-                if (!internal_splitter::pickOptimalTri1to3Center(mesh.pts[v0], mesh.pts[v1], mesh.pts[v2],
-                                                                 m01, m12, m20, O))
-                    return;
-                auto s01 = makeStraightSeg(O, m01, m_degree);
-                auto s12 = makeStraightSeg(O, m12, m_degree);
-                auto s20 = makeStraightSeg(O, m20, m_degree);
-                mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(e01_a, s01.reversed(), s20, e20_b, m_degree)));
-                mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(e12_a, s12.reversed(), s01, e01_b, m_degree)));
-                mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(e20_a, s20.reversed(), s12, e12_b, m_degree)));
-            }
-            for (const auto& q : quads) {
+            auto resplitEdge = [&](int eIdx, T paramU) {
+                auto& er = edges[eIdx];
+                T u = std::max(T(0.16), std::min(T(0.84), paramU));
+                auto sp = er.seg.splitAtParam(u);
+                er.h0 = sp.first;
+                er.h1 = sp.second;
+                er.mid = sp.first.p1();
+                er.splitDone = true;
+                er.splitFrac = u;
+            };
+            auto getSegDir = [&](int eIdx, int u, int v) -> CurveSeg<T> {
+                const auto& er = edges[eIdx];
+                return (er.a == u && er.b == v) ? er.seg : er.seg.reversed();
+            };
+            auto getHalvesDir = [&](int eIdx, int u, int v, CurveSeg<T>& out0, CurveSeg<T>& out1, gsPoint2D<T>& outMid) {
+                const auto& er = edges[eIdx];
+                outMid = er.mid;
+                if (er.a == u && er.b == v) { out0 = er.h0; out1 = er.h1; }
+                else                         { out0 = er.h1.reversed(); out1 = er.h0.reversed(); }
+            };
+
+            for (const auto& t : tris)
+                if (!needSplit[t.e[0]] || !needSplit[t.e[1]] || !needSplit[t.e[2]]) return;
+            for (const auto& q : quads)
+                if (needSplit[q.e[0]] != needSplit[q.e[2]] || needSplit[q.e[1]] != needSplit[q.e[3]]) return;
+
+            auto chooseQuad4Center = [&](const typename TriMeshData<T>::Quad& q,
+                                         const CurveSeg<T>& e0a, const CurveSeg<T>& e0b, const gsPoint2D<T>& m01,
+                                         const CurveSeg<T>& e1a, const CurveSeg<T>& e1b, const gsPoint2D<T>& m12,
+                                         const CurveSeg<T>& e2a, const CurveSeg<T>& e2b, const gsPoint2D<T>& m23,
+                                         const CurveSeg<T>& e3a, const CurveSeg<T>& e3b, const gsPoint2D<T>& m30,
+                                         gsPoint2D<T>& outO, T& outEffMin) -> bool {
+                int v0 = q.v[0], v1 = q.v[1], v2 = q.v[2], v3 = q.v[3];
+                gsPoint2D<T> O_m((m01.x + m12.x + m23.x + m30.x) / T(4), (m01.y + m12.y + m23.y + m30.y) / T(4));
+                gsPoint2D<T> O_v((mesh.pts[v0].x + mesh.pts[v1].x + mesh.pts[v2].x + mesh.pts[v3].x) / T(4),
+                                 (mesh.pts[v0].y + mesh.pts[v1].y + mesh.pts[v2].y + mesh.pts[v3].y) / T(4));
+                std::vector<gsPoint2D<T>> oCands = {O_m, O_v};
+                for (T w : {T(0.25), T(0.5), T(0.75)})
+                    oCands.emplace_back((T(1) - w) * O_m.x + w * O_v.x, (T(1) - w) * O_m.y + w * O_v.y);
+                for (const auto& vp : {mesh.pts[v0], mesh.pts[v1], mesh.pts[v2], mesh.pts[v3]})
+                    oCands.emplace_back(T(0.75) * O_m.x + T(0.25) * vp.x, T(0.75) * O_m.y + T(0.25) * vp.y);
+
+                bool found = false;
+                T bestEff = -T(1e9);
+                for (const auto& Oc : oCands) {
+                    gsPoint2D<T> q0[4] = {mesh.pts[v0], m01, Oc, m30};
+                    gsPoint2D<T> q1[4] = {mesh.pts[v1], m12, Oc, m01};
+                    gsPoint2D<T> q2[4] = {mesh.pts[v2], m23, Oc, m12};
+                    gsPoint2D<T> q3[4] = {mesh.pts[v3], m30, Oc, m23};
+                    if (!isStrictlyConvexQuad(q0) || !isStrictlyConvexQuad(q1) ||
+                        !isStrictlyConvexQuad(q2) || !isStrictlyConvexQuad(q3))
+                        continue;
+                    auto s01 = makeStraightSeg(Oc, m01, m_degree);
+                    auto s12 = makeStraightSeg(Oc, m12, m_degree);
+                    auto s23 = makeStraightSeg(Oc, m23, m_degree);
+                    auto s30 = makeStraightSeg(Oc, m30, m_degree);
+                    T mnA, mxA, eff0, eff1, eff2, eff3;
+                    eval4SegCornerAnglesDeg(e0a, s01.reversed(), s30, e3b, mnA, mxA, eff0);
+                    eval4SegCornerAnglesDeg(e1a, s12.reversed(), s01, e0b, mnA, mxA, eff1);
+                    eval4SegCornerAnglesDeg(e2a, s23.reversed(), s12, e1b, mnA, mxA, eff2);
+                    eval4SegCornerAnglesDeg(e3a, s30.reversed(), s23, e2b, mnA, mxA, eff3);
+                    T effMin = std::min(std::min(eff0, eff1), std::min(eff2, eff3));
+                    if (!found || effMin > bestEff) {
+                        bestEff = effMin;
+                        outO = Oc;
+                        outEffMin = effMin;
+                        found = true;
+                    }
+                }
+                return found;
+            };
+
+            auto evalFaceSplitQuality = [&](bool isTri, int fIdx, T& minAngOut, T& maxAngOut, T& effMinOut) -> bool {
+                minAngOut = T(360); maxAngOut = T(0); effMinOut = -T(1);
+                if (isTri) {
+                    const auto& t = tris[fIdx];
+                    int v0 = t.v[0], v1 = t.v[1], v2 = t.v[2];
+                    CurveSeg<T> e01a, e01b, e12a, e12b, e20a, e20b;
+                    gsPoint2D<T> m01, m12, m20, O;
+                    getHalvesDir(t.e[0], v0, v1, e01a, e01b, m01);
+                    getHalvesDir(t.e[1], v1, v2, e12a, e12b, m12);
+                    getHalvesDir(t.e[2], v2, v0, e20a, e20b, m20);
+                    if (!internal_splitter::pickOptimalTri1to3CenterCurved(
+                            mesh.pts[v0], mesh.pts[v1], mesh.pts[v2],
+                            e01a, e01b, e12a, e12b, e20a, e20b,
+                            edges[t.e[0]].isBoundary, edges[t.e[1]].isBoundary, edges[t.e[2]].isBoundary, O))
+                        return false;
+                    auto s01 = makeStraightSeg(O, m01, m_degree);
+                    auto s12 = makeStraightSeg(O, m12, m_degree);
+                    auto s20 = makeStraightSeg(O, m20, m_degree);
+                    T mn, mx, ef;
+                    eval4SegCornerAnglesDeg(e01a, s01.reversed(), s20, e20b, mn, mx, ef);
+                    minAngOut = std::min(minAngOut, mn); maxAngOut = std::max(maxAngOut, mx);
+                    eval4SegCornerAnglesDeg(e12a, s12.reversed(), s01, e01b, mn, mx, ef);
+                    minAngOut = std::min(minAngOut, mn); maxAngOut = std::max(maxAngOut, mx);
+                    eval4SegCornerAnglesDeg(e20a, s20.reversed(), s12, e12b, mn, mx, ef);
+                    minAngOut = std::min(minAngOut, mn); maxAngOut = std::max(maxAngOut, mx);
+                    effMinOut = std::min(minAngOut, T(180) - maxAngOut);
+                    return (minAngOut >= effMinValAng && maxAngOut <= effMaxValAng);
+                }
+                const auto& q = quads[fIdx];
                 bool sp0 = needSplit[q.e[0]], sp1 = needSplit[q.e[1]];
-                bool sp2 = needSplit[q.e[2]], sp3 = needSplit[q.e[3]];
-                if (sp0 != sp2 || sp1 != sp3) return;
                 int v0 = q.v[0], v1 = q.v[1], v2 = q.v[2], v3 = q.v[3];
                 if (!sp0 && !sp1) {
                     gsPoint2D<T> c[4] = {mesh.pts[v0], mesh.pts[v1], mesh.pts[v2], mesh.pts[v3]};
-                    if (!isStrictlyConvexQuad(c)) return;
-                    mp.addPatch(typename gsGeometry<T>::uPtr(
-                        makeCoonsFromCCWCycle(getSegDir(q.e[0], v0, v1), getSegDir(q.e[1], v1, v2),
-                                              getSegDir(q.e[2], v2, v3), getSegDir(q.e[3], v3, v0), m_degree)));
+                    if (!isStrictlyConvexQuad(c)) return false;
+                    eval4SegCornerAnglesDeg(getSegDir(q.e[0], v0, v1), getSegDir(q.e[1], v1, v2),
+                                            getSegDir(q.e[2], v2, v3), getSegDir(q.e[3], v3, v0),
+                                            minAngOut, maxAngOut, effMinOut);
+                    return (minAngOut >= effMinValAng && maxAngOut <= effMaxValAng);
                 } else if (sp0 && !sp1) {
                     CurveSeg<T> e0a, e0b, e2a, e2b; gsPoint2D<T> m01, m23;
                     getHalvesDir(q.e[0], v0, v1, e0a, e0b, m01);
                     getHalvesDir(q.e[2], v2, v3, e2a, e2b, m23);
                     gsPoint2D<T> qa[4] = {mesh.pts[v0], m01, m23, mesh.pts[v3]};
                     gsPoint2D<T> qb[4] = {m01, mesh.pts[v1], mesh.pts[v2], m23};
-                    if (!isStrictlyConvexQuad(qa) || !isStrictlyConvexQuad(qb)) return;
+                    if (!isStrictlyConvexQuad(qa) || !isStrictlyConvexQuad(qb)) return false;
                     auto sMid = makeStraightSeg(m01, m23, m_degree);
-                    mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(e0a, sMid, e2b, getSegDir(q.e[3], v3, v0), m_degree)));
-                    mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(e0b, getSegDir(q.e[1], v1, v2), e2a, sMid.reversed(), m_degree)));
+                    T mn, mx, ef;
+                    eval4SegCornerAnglesDeg(e0a, sMid, e2b, getSegDir(q.e[3], v3, v0), mn, mx, ef);
+                    minAngOut = std::min(minAngOut, mn); maxAngOut = std::max(maxAngOut, mx);
+                    eval4SegCornerAnglesDeg(e0b, getSegDir(q.e[1], v1, v2), e2a, sMid.reversed(), mn, mx, ef);
+                    minAngOut = std::min(minAngOut, mn); maxAngOut = std::max(maxAngOut, mx);
+                    effMinOut = std::min(minAngOut, T(180) - maxAngOut);
+                    return (minAngOut >= effMinValAng && maxAngOut <= effMaxValAng);
                 } else if (!sp0 && sp1) {
                     CurveSeg<T> e1a, e1b, e3a, e3b; gsPoint2D<T> m12, m30;
                     getHalvesDir(q.e[1], v1, v2, e1a, e1b, m12);
                     getHalvesDir(q.e[3], v3, v0, e3a, e3b, m30);
                     gsPoint2D<T> qa[4] = {mesh.pts[v0], mesh.pts[v1], m12, m30};
                     gsPoint2D<T> qb[4] = {m30, m12, mesh.pts[v2], mesh.pts[v3]};
-                    if (!isStrictlyConvexQuad(qa) || !isStrictlyConvexQuad(qb)) return;
+                    if (!isStrictlyConvexQuad(qa) || !isStrictlyConvexQuad(qb)) return false;
                     auto sMid = makeStraightSeg(m12, m30, m_degree);
-                    mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(getSegDir(q.e[0], v0, v1), e1a, sMid, e3b, m_degree)));
-                    mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(sMid.reversed(), e1b, getSegDir(q.e[2], v2, v3), e3a, m_degree)));
+                    T mn, mx, ef;
+                    eval4SegCornerAnglesDeg(getSegDir(q.e[0], v0, v1), e1a, sMid, e3b, mn, mx, ef);
+                    minAngOut = std::min(minAngOut, mn); maxAngOut = std::max(maxAngOut, mx);
+                    eval4SegCornerAnglesDeg(sMid.reversed(), e1b, getSegDir(q.e[2], v2, v3), e3a, mn, mx, ef);
+                    minAngOut = std::min(minAngOut, mn); maxAngOut = std::max(maxAngOut, mx);
+                    effMinOut = std::min(minAngOut, T(180) - maxAngOut);
+                    return (minAngOut >= effMinValAng && maxAngOut <= effMaxValAng);
                 } else {
-                    CurveSeg<T> e0a, e0b, e1a, e1b, e2a, e2b, e3a, e3b; gsPoint2D<T> m01, m12, m23, m30;
+                    CurveSeg<T> e0a, e0b, e1a, e1b, e2a, e2b, e3a, e3b; gsPoint2D<T> m01, m12, m23, m30, O;
                     getHalvesDir(q.e[0], v0, v1, e0a, e0b, m01);
                     getHalvesDir(q.e[1], v1, v2, e1a, e1b, m12);
                     getHalvesDir(q.e[2], v2, v3, e2a, e2b, m23);
                     getHalvesDir(q.e[3], v3, v0, e3a, e3b, m30);
-                    gsPoint2D<T> O((m01.x + m12.x + m23.x + m30.x) / T(4), (m01.y + m12.y + m23.y + m30.y) / T(4));
-                    gsPoint2D<T> Ov((mesh.pts[v0].x + mesh.pts[v1].x + mesh.pts[v2].x + mesh.pts[v3].x) / T(4),
-                                    (mesh.pts[v0].y + mesh.pts[v1].y + mesh.pts[v2].y + mesh.pts[v3].y) / T(4));
-                    auto check4 = [&](const gsPoint2D<T>& Oc) -> bool {
-                        gsPoint2D<T> q0[4] = {mesh.pts[v0], m01, Oc, m30};
-                        gsPoint2D<T> q1[4] = {mesh.pts[v1], m12, Oc, m01};
-                        gsPoint2D<T> q2[4] = {mesh.pts[v2], m23, Oc, m12};
-                        gsPoint2D<T> q3[4] = {mesh.pts[v3], m30, Oc, m23};
-                        return isStrictlyConvexQuad(q0) && isStrictlyConvexQuad(q1)
-                            && isStrictlyConvexQuad(q2) && isStrictlyConvexQuad(q3);
-                    };
-                    if (!check4(O)) {
-                        if (check4(Ov)) O = Ov;
-                        else {
-                            bool found = false;
-                            for (T w = T(0.1); w <= T(0.91); w += T(0.1)) {
-                                gsPoint2D<T> Ot((1 - w) * O.x + w * Ov.x, (1 - w) * O.y + w * Ov.y);
-                                if (check4(Ot)) { O = Ot; found = true; break; }
-                            }
-                            if (!found) return;
-                        }
-                    }
+                    T dummyEff = 0;
+                    if (!chooseQuad4Center(q, e0a, e0b, m01, e1a, e1b, m12, e2a, e2b, m23, e3a, e3b, m30, O, dummyEff))
+                        return false;
                     auto s01 = makeStraightSeg(O, m01, m_degree);
                     auto s12 = makeStraightSeg(O, m12, m_degree);
                     auto s23 = makeStraightSeg(O, m23, m_degree);
                     auto s30 = makeStraightSeg(O, m30, m_degree);
-                    mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(e0a, s01.reversed(), s30, e3b, m_degree)));
-                    mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(e1a, s12.reversed(), s01, e0b, m_degree)));
-                    mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(e2a, s23.reversed(), s12, e1b, m_degree)));
-                    mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(e3a, s30.reversed(), s23, e2b, m_degree)));
+                    T mn, mx, ef;
+                    eval4SegCornerAnglesDeg(e0a, s01.reversed(), s30, e3b, mn, mx, ef);
+                    minAngOut = std::min(minAngOut, mn); maxAngOut = std::max(maxAngOut, mx);
+                    eval4SegCornerAnglesDeg(e1a, s12.reversed(), s01, e0b, mn, mx, ef);
+                    minAngOut = std::min(minAngOut, mn); maxAngOut = std::max(maxAngOut, mx);
+                    eval4SegCornerAnglesDeg(e2a, s23.reversed(), s12, e1b, mn, mx, ef);
+                    minAngOut = std::min(minAngOut, mn); maxAngOut = std::max(maxAngOut, mx);
+                    eval4SegCornerAnglesDeg(e3a, s30.reversed(), s23, e2b, mn, mx, ef);
+                    minAngOut = std::min(minAngOut, mn); maxAngOut = std::max(maxAngOut, mx);
+                    effMinOut = std::min(minAngOut, T(180) - maxAngOut);
+                    return (minAngOut >= effMinValAng && maxAngOut <= effMaxValAng);
                 }
+            };
+
+            // Build Coons multi-patch from current `edges`, recording per-face/per-edge patch ownership.
+            // If `outBadEdges` is passed on failure, populates unique `needSplit` edges bordering bad patches.
+            auto tryBuildFromCurrentEdges = [&](std::vector<int>* outBadEdges = nullptr) -> bool {
+                gsMultiPatch<T> mp;
+                std::vector<std::vector<int>> patchEdges;
+                for (const auto& t : tris) {
+                    int v0 = t.v[0], v1 = t.v[1], v2 = t.v[2];
+                    CurveSeg<T> e01_a, e01_b, e12_a, e12_b, e20_a, e20_b;
+                    gsPoint2D<T> m01, m12, m20;
+                    getHalvesDir(t.e[0], v0, v1, e01_a, e01_b, m01);
+                    getHalvesDir(t.e[1], v1, v2, e12_a, e12_b, m12);
+                    getHalvesDir(t.e[2], v2, v0, e20_a, e20_b, m20);
+
+                    gsPoint2D<T> O;
+                    if (!internal_splitter::pickOptimalTri1to3CenterCurved(
+                            mesh.pts[v0], mesh.pts[v1], mesh.pts[v2],
+                            e01_a, e01_b, e12_a, e12_b, e20_a, e20_b,
+                            edges[t.e[0]].isBoundary, edges[t.e[1]].isBoundary, edges[t.e[2]].isBoundary, O)) {
+                        if (outBadEdges) {
+                            for (int k = 0; k < 3; ++k)
+                                if (needSplit[t.e[k]]) outBadEdges->push_back(t.e[k]);
+                        }
+                        return false;
+                    }
+                    auto s01 = makeStraightSeg(O, m01, m_degree);
+                    auto s12 = makeStraightSeg(O, m12, m_degree);
+                    auto s20 = makeStraightSeg(O, m20, m_degree);
+                    mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(e01_a, s01.reversed(), s20, e20_b, m_degree)));
+                    patchEdges.push_back({t.e[0], t.e[2]});
+                    mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(e12_a, s12.reversed(), s01, e01_b, m_degree)));
+                    patchEdges.push_back({t.e[1], t.e[0]});
+                    mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(e20_a, s20.reversed(), s12, e12_b, m_degree)));
+                    patchEdges.push_back({t.e[2], t.e[1]});
+                }
+                for (const auto& q : quads) {
+                    bool sp0 = needSplit[q.e[0]], sp1 = needSplit[q.e[1]];
+                    int v0 = q.v[0], v1 = q.v[1], v2 = q.v[2], v3 = q.v[3];
+                    auto pushQBad = [&]() {
+                        if (outBadEdges)
+                            for (int k = 0; k < 4; ++k)
+                                if (needSplit[q.e[k]]) outBadEdges->push_back(q.e[k]);
+                    };
+                    if (!sp0 && !sp1) {
+                        gsPoint2D<T> c[4] = {mesh.pts[v0], mesh.pts[v1], mesh.pts[v2], mesh.pts[v3]};
+                        if (!isStrictlyConvexQuad(c)) { pushQBad(); return false; }
+                        mp.addPatch(typename gsGeometry<T>::uPtr(
+                            makeCoonsFromCCWCycle(getSegDir(q.e[0], v0, v1), getSegDir(q.e[1], v1, v2),
+                                                  getSegDir(q.e[2], v2, v3), getSegDir(q.e[3], v3, v0), m_degree)));
+                        patchEdges.push_back({q.e[0], q.e[1], q.e[2], q.e[3]});
+                    } else if (sp0 && !sp1) {
+                        CurveSeg<T> e0a, e0b, e2a, e2b; gsPoint2D<T> m01, m23;
+                        getHalvesDir(q.e[0], v0, v1, e0a, e0b, m01);
+                        getHalvesDir(q.e[2], v2, v3, e2a, e2b, m23);
+                        gsPoint2D<T> qa[4] = {mesh.pts[v0], m01, m23, mesh.pts[v3]};
+                        gsPoint2D<T> qb[4] = {m01, mesh.pts[v1], mesh.pts[v2], m23};
+                        if (!isStrictlyConvexQuad(qa) || !isStrictlyConvexQuad(qb)) { pushQBad(); return false; }
+                        auto sMid = makeStraightSeg(m01, m23, m_degree);
+                        mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(e0a, sMid, e2b, getSegDir(q.e[3], v3, v0), m_degree)));
+                        patchEdges.push_back({q.e[0], q.e[2]});
+                        mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(e0b, getSegDir(q.e[1], v1, v2), e2a, sMid.reversed(), m_degree)));
+                        patchEdges.push_back({q.e[0], q.e[2]});
+                    } else if (!sp0 && sp1) {
+                        CurveSeg<T> e1a, e1b, e3a, e3b; gsPoint2D<T> m12, m30;
+                        getHalvesDir(q.e[1], v1, v2, e1a, e1b, m12);
+                        getHalvesDir(q.e[3], v3, v0, e3a, e3b, m30);
+                        gsPoint2D<T> qa[4] = {mesh.pts[v0], mesh.pts[v1], m12, m30};
+                        gsPoint2D<T> qb[4] = {m30, m12, mesh.pts[v2], mesh.pts[v3]};
+                        if (!isStrictlyConvexQuad(qa) || !isStrictlyConvexQuad(qb)) { pushQBad(); return false; }
+                        auto sMid = makeStraightSeg(m12, m30, m_degree);
+                        mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(getSegDir(q.e[0], v0, v1), e1a, sMid, e3b, m_degree)));
+                        patchEdges.push_back({q.e[1], q.e[3]});
+                        mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(sMid.reversed(), e1b, getSegDir(q.e[2], v2, v3), e3a, m_degree)));
+                        patchEdges.push_back({q.e[1], q.e[3]});
+                    } else {
+                        CurveSeg<T> e0a, e0b, e1a, e1b, e2a, e2b, e3a, e3b; gsPoint2D<T> m01, m12, m23, m30;
+                        getHalvesDir(q.e[0], v0, v1, e0a, e0b, m01);
+                        getHalvesDir(q.e[1], v1, v2, e1a, e1b, m12);
+                        getHalvesDir(q.e[2], v2, v3, e2a, e2b, m23);
+                        getHalvesDir(q.e[3], v3, v0, e3a, e3b, m30);
+                        gsPoint2D<T> O;
+                        T dummyEff = 0;
+                        if (!chooseQuad4Center(q, e0a, e0b, m01, e1a, e1b, m12, e2a, e2b, m23, e3a, e3b, m30, O, dummyEff)) {
+                            pushQBad();
+                            return false;
+                        }
+                        auto s01 = makeStraightSeg(O, m01, m_degree);
+                        auto s12 = makeStraightSeg(O, m12, m_degree);
+                        auto s23 = makeStraightSeg(O, m23, m_degree);
+                        auto s30 = makeStraightSeg(O, m30, m_degree);
+                        mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(e0a, s01.reversed(), s30, e3b, m_degree)));
+                        patchEdges.push_back({q.e[0], q.e[3]});
+                        mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(e1a, s12.reversed(), s01, e0b, m_degree)));
+                        patchEdges.push_back({q.e[1], q.e[0]});
+                        mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(e2a, s23.reversed(), s12, e1b, m_degree)));
+                        patchEdges.push_back({q.e[2], q.e[1]});
+                        mp.addPatch(typename gsGeometry<T>::uPtr(makeCoonsFromCCWCycle(e3a, s30.reversed(), s23, e2b, m_degree)));
+                        patchEdges.push_back({q.e[3], q.e[2]});
+                    }
+                }
+                if (mp.nPatches() == 0) return false;
+                bool angPreOk = true;
+                for (size_t p = 0; p < mp.nPatches(); ++p) {
+                    T angs[4], mnA = 0, mxA = 180;
+                    bool degen = false;
+                    evalPatchCornerAnglesDeg(mp.patch(p), angs, mnA, mxA, degen);
+                    if (degen || mnA < effMinValAng || mxA > effMaxValAng) {
+                        angPreOk = false;
+                        if (outBadEdges)
+                            for (int eid : patchEdges[p])
+                                if (needSplit[eid]) outBadEdges->push_back(eid);
+                    }
+                }
+                if (!angPreOk) return false;
+                gsMultiPatch<T> preWinslow = mp;
+                optimizeWinslowBarrier(mp);
+                mp.computeTopology(T(1e-5), false, false);
+                std::string valErr;
+                bool valOk = validateMultiPatch(m_domain, mp, T(1e-4), &valErr, effMinValAng, effMaxValAng);
+                if (!valOk) {
+                    preWinslow.computeTopology(T(1e-5), false, false);
+                    if (validateMultiPatch(m_domain, preWinslow, T(1e-4), &valErr, effMinValAng, effMaxValAng)) {
+                        mp = give(preWinslow);
+                        valOk = true;
+                    }
+                }
+                if (!valOk) {
+                    if (outBadEdges) {
+                        for (size_t p = 0; p < mp.nPatches(); ++p) {
+                            T angs[4], mnA = 0, mxA = 180; bool degen = false;
+                            evalPatchCornerAnglesDeg(mp.patch(p), angs, mnA, mxA, degen);
+                            bool singleSign = isPatchDetSingleSign(mp.patch(p), 17, T(1e-7));
+                            if (degen || mnA < effMinValAng || mxA > effMaxValAng || !singleSign) {
+                                for (int eid : patchEdges[p])
+                                    if (needSplit[eid]) outBadEdges->push_back(eid);
+                            }
+                        }
+                    }
+                    return false;
+                }
+                T minDet = 0, minA = 0, maxA = 180;
+                T energy = evaluateDistortionEnergy(mp, &minDet, &minA, &maxA);
+                SplittingCandidate cand;
+                cand.multiPatch = give(mp);
+                cand.numPatches = static_cast<int>(cand.multiPatch.nPatches());
+                cand.minJacobianDet = minDet;
+                cand.distortionEnergy = energy;
+                cand.minCornerAngleDeg = minA;
+                cand.maxCornerAngleDeg = maxA;
+                cand.methodUsed = "MultiHoleTriangulation";
+                cand.isValid = true;
+                updateBest(cand);
+                return true;
+            };
+
+            // Step 1: Fast baseline with untouched 0.5 midpoints
+            std::vector<int> badEdges;
+            if (tryBuildFromCurrentEdges(&badEdges)) return;
+            if (badEdges.empty()) return;
+
+            std::sort(badEdges.begin(), badEdges.end());
+            badEdges.erase(std::unique(badEdges.begin(), badEdges.end()), badEdges.end());
+            if (badEdges.size() > 24) badEdges.resize(24);
+
+            // Step 2: Adaptive split-point rescue ONLY along edges bordering failing faces/patches
+            struct IncFace { bool isTri; int idx; };
+            std::vector<std::vector<IncFace>> edgeFaces(edges.size());
+            for (int ti = 0; ti < static_cast<int>(tris.size()); ++ti)
+                for (int k = 0; k < 3; ++k)
+                    edgeFaces[tris[ti].e[k]].push_back({true, ti});
+            for (int qi = 0; qi < static_cast<int>(quads.size()); ++qi)
+                for (int k = 0; k < 4; ++k)
+                    edgeFaces[quads[qi].e[k]].push_back({false, qi});
+
+            auto optimizeIncidentSplitEdge = [&](int eIdx) -> bool {
+                const auto& inc = edgeFaces[eIdx];
+                if (inc.empty()) return false;
+                T curMinAll = T(1e9);
+                bool curOkAll = true;
+                for (const auto& f : inc) {
+                    T mnA, mxA, efA;
+                    bool okA = evalFaceSplitQuality(f.isTri, f.idx, mnA, mxA, efA);
+                    curOkAll = curOkAll && okA;
+                    curMinAll = std::min(curMinAll, okA ? efA : (efA - T(200)));
+                }
+
+                T oldFrac = edges[eIdx].splitFrac;
+                auto oldH0 = edges[eIdx].h0;
+                auto oldH1 = edges[eIdx].h1;
+                auto oldMid = edges[eIdx].mid;
+
+                std::vector<T> tCands = {arcLengthSplitParam(*edges[eIdx].seg.bsp, T(0.5))};
+                for (const auto& f : inc) {
+                    if (f.isTri) {
+                        const auto& t = tris[f.idx];
+                        for (int k = 0; k < 3; ++k)
+                            if (t.e[k] == eIdx)
+                                tCands.push_back(edges[eIdx].seg.closestParam(mesh.pts[t.v[(k + 2) % 3]]));
+                    } else {
+                        const auto& q = quads[f.idx];
+                        for (int k = 0; k < 4; ++k)
+                            if (q.e[k] == eIdx)
+                                tCands.push_back(edges[eIdx].seg.closestParam(edges[q.e[(k + 2) % 4]].mid));
+                    }
+                }
+                for (T tc : {T(0.24), T(0.34), T(0.42), T(0.58), T(0.66), T(0.76)})
+                    tCands.push_back(tc);
+
+                T bestScore = curMinAll;
+                bool bestOk = curOkAll;
+                T bestFrac = oldFrac;
+                bool improved = false;
+                for (T tTry : tCands) {
+                    T uClamped = std::max(T(0.18), std::min(T(0.82), tTry));
+                    resplitEdge(eIdx, uClamped);
+                    T minAll = T(1e9);
+                    bool okAll = true;
+                    for (const auto& f : inc) {
+                        T mnA, mxA, efA;
+                        bool okA = evalFaceSplitQuality(f.isTri, f.idx, mnA, mxA, efA);
+                        okAll = okAll && okA;
+                        minAll = std::min(minAll, okA ? efA : (efA - T(200)));
+                    }
+                    // On curved boundary edges, also verify the actual Coons Jacobian of incident faces doesn't flip
+                    if (okAll && edges[eIdx].isBoundary) {
+                        for (const auto& f : inc) {
+                            if (f.isTri) {
+                                const auto& t = tris[f.idx];
+                                int v0 = t.v[0], v1 = t.v[1], v2 = t.v[2];
+                                CurveSeg<T> e01a, e01b, e12a, e12b, e20a, e20b; gsPoint2D<T> m01, m12, m20, O;
+                                getHalvesDir(t.e[0], v0, v1, e01a, e01b, m01);
+                                getHalvesDir(t.e[1], v1, v2, e12a, e12b, m12);
+                                getHalvesDir(t.e[2], v2, v0, e20a, e20b, m20);
+                                if (!internal_splitter::pickOptimalTri1to3CenterCurved(
+                                        mesh.pts[v0], mesh.pts[v1], mesh.pts[v2],
+                                        e01a, e01b, e12a, e12b, e20a, e20b,
+                                        edges[t.e[0]].isBoundary, edges[t.e[1]].isBoundary, edges[t.e[2]].isBoundary, O)) {
+                                    okAll = false; break;
+                                }
+                                auto s01 = makeStraightSeg(O, m01, m_degree), s12 = makeStraightSeg(O, m12, m_degree), s20 = makeStraightSeg(O, m20, m_degree);
+                                std::unique_ptr<gsTensorBSpline<2, T>> p0(makeCoonsFromCCWCycle(e01a, s01.reversed(), s20, e20b, m_degree));
+                                std::unique_ptr<gsTensorBSpline<2, T>> p1(makeCoonsFromCCWCycle(e12a, s12.reversed(), s01, e01b, m_degree));
+                                std::unique_ptr<gsTensorBSpline<2, T>> p2(makeCoonsFromCCWCycle(e20a, s20.reversed(), s12, e12b, m_degree));
+                                if (!isPatchDetSingleSign(*p0, 11, T(1e-8)) || !isPatchDetSingleSign(*p1, 11, T(1e-8)) || !isPatchDetSingleSign(*p2, 11, T(1e-8))) {
+                                    okAll = false; break;
+                                }
+                            }
+                        }
+                    }
+                    bool accept = (!bestOk && okAll) ||
+                                  (okAll == bestOk && minAll > bestScore + T(1.0));
+                    if (accept) {
+                        bestOk = okAll;
+                        bestScore = minAll;
+                        bestFrac = uClamped;
+                        improved = true;
+                    }
+                }
+                if (improved) {
+                    resplitEdge(eIdx, bestFrac);
+                    return true;
+                }
+                edges[eIdx].splitFrac = oldFrac;
+                edges[eIdx].h0 = oldH0;
+                edges[eIdx].h1 = oldH1;
+                edges[eIdx].mid = oldMid;
+                return false;
+            };
+
+            bool anyMoved = false;
+            for (int eIdx : badEdges) {
+                if (optimizeIncidentSplitEdge(eIdx)) anyMoved = true;
             }
-            if (mp.nPatches() == 0) return;
-            // Fast-reject only extreme pre-Winslow degeneracies so Winslow gets a chance to relax angles
-            bool angPreOk = true;
-            for (size_t p = 0; p < mp.nPatches(); ++p) {
-                T angs[4], mnA = 0, mxA = 180;
-                bool degen = false;
-                evalPatchCornerAnglesDeg(mp.patch(p), angs, mnA, mxA, degen);
-                if (degen || mnA < T(5) || mxA > T(174)) { angPreOk = false; break; }
-            }
-            if (!angPreOk) return;
-            gsMultiPatch<T> preWinslow = mp;
-            optimizeWinslowBarrier(mp);
-            mp.computeTopology(T(1e-5), false, false);
-            if (!validateMultiPatch(m_domain, mp, T(1e-4), nullptr, effMinValAng, effMaxValAng)) {
-                preWinslow.computeTopology(T(1e-5), false, false);
-                if (!validateMultiPatch(m_domain, preWinslow, T(1e-4), nullptr, effMinValAng, effMaxValAng))
-                    return;
-                mp = give(preWinslow);
-            }
-            T minDet = 0, minA = 0, maxA = 180;
-            T energy = evaluateDistortionEnergy(mp, &minDet, &minA, &maxA);
-            SplittingCandidate cand;
-            cand.multiPatch = give(mp);
-            cand.numPatches = static_cast<int>(cand.multiPatch.nPatches());
-            cand.minJacobianDet = minDet;
-            cand.distortionEnergy = energy;
-            cand.minCornerAngleDeg = minA;
-            cand.maxCornerAngleDeg = maxA;
-            cand.methodUsed = "MultiHoleTriangulation";
-            cand.isValid = true;
-            updateBest(cand);
+            if (anyMoved) tryBuildFromCurrentEdges(nullptr);
         };
 
-        // 1. Direct 1-to-3 split
+        // 1. Direct 1-to-3 split baseline
         {
             std::vector<bool> allTrue(mesh.edges.size(), true);
             emitFromMixed(mesh.tris, {}, allTrue);
         }
 
-        // 2. Greedy triangle pairing + parity propagation / Catmull-Clark
-        struct PairEdge { int t0, t1; typename TriMeshData<T>::Quad q; T score; };
+        // 2. Curved-aware max-min-angle triangle pairing + augmenting paths + local swap optimization
+        struct PairEdge { int t0, t1; typename TriMeshData<T>::Quad q; T effMin; T score; };
         std::vector<PairEdge> pairEdges;
         for (int eIdx = 0; eIdx < static_cast<int>(mesh.edges.size()); ++eIdx) {
             if (mesh.edges[eIdx].isBoundary) continue;
@@ -4877,135 +5551,147 @@ gsPatchSplitter<T>::computeMultiHoleTriangulationSplitting()
             const auto& B = mesh.tris[tB];
             int a = A.v[kA], b = A.v[(kA + 1) % 3], c = A.v[(kA + 2) % 3];
             int d = B.v[(kB + 2) % 3];
-            gsPoint2D<T> qc[4] = {mesh.pts[c], mesh.pts[a], mesh.pts[d], mesh.pts[b]};
-            T minArea2 = 0;
-            if (!isStrictlyConvexQuad(qc, &minArea2)) continue;
-            {
-                const T radToDeg = T(180) / T(3.14159265358979323846);
-                bool angOk = true;
-                for (int k = 0; k < 4; ++k) {
-                    const auto& p0 = qc[(k + 3) % 4];
-                    const auto& pk = qc[k];
-                    const auto& p1 = qc[(k + 1) % 4];
-                    T ux = p1.x - pk.x, uy = p1.y - pk.y;
-                    T vx = p0.x - pk.x, vy = p0.y - pk.y;
-                    T nu = std::hypot(ux, uy), nv = std::hypot(vx, vy);
-                    if (nu < T(1e-12) || nv < T(1e-12)) { angOk = false; break; }
-                    T ang = std::atan2((ux * vy - uy * vx) / (nu * nv), (ux * vx + uy * vy) / (nu * nv)) * radToDeg;
-                    if (ang <= T(0)) ang += T(360);
-                    if (ang < effMinPairAng || ang > effMaxPairAng) { angOk = false; break; }
-                }
-                if (!angOk) continue;
-            }
+            if (B.v[kB] != b || B.v[(kB + 1) % 3] != a) continue;
+            int qv[4] = {c, a, d, b};
             int e_bc = A.e[(kA + 1) % 3], e_ca = A.e[(kA + 2) % 3];
-            int e_ad = -1, e_db = -1;
-            for (int k = 0; k < 3; ++k) {
-                int u = B.v[k], v = B.v[(k + 1) % 3];
-                if ((u == a && v == d) || (u == d && v == a)) e_ad = B.e[k];
-                if ((u == d && v == b) || (u == b && v == d)) e_db = B.e[k];
-            }
-            if (e_ad < 0 || e_db < 0) continue;
-            T perim2 = T(0);
-            for (int s = 0; s < 4; ++s) {
-                int sn = (s + 1) % 4;
-                perim2 += (qc[s].x - qc[sn].x) * (qc[s].x - qc[sn].x) + (qc[s].y - qc[sn].y) * (qc[s].y - qc[sn].y);
-            }
-            pairEdges.push_back({tA, tB, {{c, a, d, b}, {e_ca, e_ad, e_db, e_bc}}, minArea2 / (perim2 + T(1e-14))});
+            int e_ad = B.e[(kB + 1) % 3], e_db = B.e[(kB + 2) % 3];
+            int qe[4] = {e_ca, e_ad, e_db, e_bc};
+            T effMin = 0, sc = 0;
+            if (!evalMeshQuadUnion(mesh, qv, qe, effMinPairAng, effMaxPairAng, effMin, sc))
+                continue;
+            pairEdges.push_back({tA, tB, {{c, a, d, b}, {e_ca, e_ad, e_db, e_bc}}, effMin, sc});
         }
         std::sort(pairEdges.begin(), pairEdges.end(),
                   [](const PairEdge& p, const PairEdge& q) { return p.score > q.score; });
 
-        std::vector<int> baseDeg(mesh.pts.size(), 0);
-        for (const auto& t : mesh.tris) { ++baseDeg[t.v[0]]; ++baseDeg[t.v[1]]; ++baseDeg[t.v[2]]; }
-
-        std::vector<int> matchedPair(nT, -1); // matchedPair[ti] = index of pairEdges matched for tri ti
-        std::vector<int> partnerTri(nT, -1);
-        for (int pi = 0; pi < static_cast<int>(pairEdges.size()); ++pi) {
-            const auto& pe = pairEdges[pi];
-            if (matchedPair[pe.t0] >= 0 || matchedPair[pe.t1] >= 0) continue;
-            int a = pe.q.v[1], b = pe.q.v[3];
-            if ((mesh.isSmoothBnd[a] && baseDeg[a] <= 2) || (mesh.isSmoothBnd[b] && baseDeg[b] <= 2))
-                continue;
-            matchedPair[pe.t0] = pi;
-            matchedPair[pe.t1] = pi;
-            partnerTri[pe.t0] = pe.t1;
-            partnerTri[pe.t1] = pe.t0;
-            --baseDeg[a]; --baseDeg[b];
-        }
-
-        // Dual-graph BFS augmenting paths to pair remaining unmatched triangles into quads
+        std::vector<int> initBaseDeg(mesh.pts.size(), 0);
+        for (const auto& t : mesh.tris) { ++initBaseDeg[t.v[0]]; ++initBaseDeg[t.v[1]]; ++initBaseDeg[t.v[2]]; }
         std::vector<std::vector<int>> triPairsAdj(nT);
         for (int pi = 0; pi < static_cast<int>(pairEdges.size()); ++pi) {
             triPairsAdj[pairEdges[pi].t0].push_back(pi);
             triPairsAdj[pairEdges[pi].t1].push_back(pi);
         }
-        for (int startTi = 0; startTi < nT; ++startTi) {
-            if (matchedPair[startTi] >= 0) continue;
-            std::vector<int> prevTri(nT, -1), prevPair(nT, -1);
-            std::queue<int> qBfs;
-            qBfs.push(startTi);
-            prevTri[startTi] = startTi;
-            int foundEnd = -1;
-            while (!qBfs.empty() && foundEnd < 0) {
-                int u = qBfs.front();
-                qBfs.pop();
-                for (int pi : triPairsAdj[u]) {
-                    const auto& pe = pairEdges[pi];
-                    int v = (pe.t0 == u) ? pe.t1 : pe.t0;
-                    if (v == partnerTri[u]) continue;
-                    int ca = pe.q.v[1], cb = pe.q.v[3];
-                    if ((mesh.isSmoothBnd[ca] && baseDeg[ca] <= 2) || (mesh.isSmoothBnd[cb] && baseDeg[cb] <= 2))
-                        continue;
-                    if (matchedPair[v] < 0) {
-                        prevTri[v] = u;
-                        prevPair[v] = pi;
-                        foundEnd = v;
-                        break;
-                    }
-                    int w = partnerTri[v];
-                    if (w >= 0 && prevTri[w] < 0) {
-                        prevTri[v] = u;
-                        prevPair[v] = pi;
-                        prevTri[w] = v;
-                        qBfs.push(w);
-                    }
-                }
-            }
-            if (foundEnd >= 0) {
-                // Reconstruct alternating path from startTi to foundEnd and apply augmentation
-                int cur = foundEnd;
-                while (cur != startTi) {
-                    int u = prevTri[cur];
-                    int addPi = prevPair[cur];
-                    int nextFree = (u == startTi) ? startTi : prevTri[u];
-                    if (u != startTi) {
-                        int remPi = matchedPair[u];
-                        const auto& remPe = pairEdges[remPi];
-                        ++baseDeg[remPe.q.v[1]]; ++baseDeg[remPe.q.v[3]];
-                    }
-                    const auto& addPe = pairEdges[addPi];
-                    matchedPair[u] = addPi;
-                    matchedPair[cur] = addPi;
-                    partnerTri[u] = cur;
-                    partnerTri[cur] = u;
-                    --baseDeg[addPe.q.v[1]]; --baseDeg[addPe.q.v[3]];
-                    cur = nextFree;
-                }
-            }
-        }
-
-        std::vector<typename TriMeshData<T>::Quad> joinedQuads;
-        std::vector<typename TriMeshData<T>::Tri> remTris;
+        std::vector<T> triMinAng(nT, T(60));
         for (int ti = 0; ti < nT; ++ti) {
-            if (matchedPair[ti] >= 0) {
-                if (partnerTri[ti] > ti)
-                    joinedQuads.push_back(pairEdges[matchedPair[ti]].q);
-            } else {
-                remTris.push_back(mesh.tris[ti]);
-            }
+            T mxA = T(0);
+            triMinMaxAnglesDeg(mesh.pts[mesh.tris[ti].v[0]],
+                               mesh.pts[mesh.tris[ti].v[1]],
+                               mesh.pts[mesh.tris[ti].v[2]], triMinAng[ti], mxA);
         }
 
-        if (!joinedQuads.empty()) {
+        auto runMatchingStrategy = [&](T minEffThresh, std::vector<typename TriMeshData<T>::Quad>& joinedQuadsOut,
+                                       std::vector<typename TriMeshData<T>::Tri>& remTrisOut) {
+            std::vector<int> baseDeg = initBaseDeg;
+            std::vector<int> matchedPair(nT, -1), partnerTri(nT, -1);
+
+            for (int tier = 0; tier < 2; ++tier) {
+                T thresh = (tier == 0) ? minEffThresh : T(0);
+                if (tier == 1 && minEffThresh <= T(0)) break;
+                for (int pi = 0; pi < static_cast<int>(pairEdges.size()); ++pi) {
+                    const auto& pe = pairEdges[pi];
+                    if (pe.effMin < thresh) continue;
+                    if (matchedPair[pe.t0] >= 0 || matchedPair[pe.t1] >= 0) continue;
+                    int a = pe.q.v[1], b = pe.q.v[3];
+                    if ((mesh.isSmoothBnd[a] && baseDeg[a] <= 2) || (mesh.isSmoothBnd[b] && baseDeg[b] <= 2))
+                        continue;
+                    matchedPair[pe.t0] = pi; matchedPair[pe.t1] = pi;
+                    partnerTri[pe.t0] = pe.t1; partnerTri[pe.t1] = pe.t0;
+                    --baseDeg[a]; --baseDeg[b];
+                }
+            }
+
+            // Augmenting paths prioritizing sharpest sliver unmatched triangles first
+            std::vector<int> orderUnmatched;
+            for (int ti = 0; ti < nT; ++ti)
+                if (matchedPair[ti] < 0) orderUnmatched.push_back(ti);
+            std::sort(orderUnmatched.begin(), orderUnmatched.end(),
+                      [&](int a, int b) { return triMinAng[a] < triMinAng[b]; });
+
+            for (int startTi : orderUnmatched) {
+                if (matchedPair[startTi] >= 0) continue;
+                std::vector<int> prevTri(nT, -1), prevPair(nT, -1);
+                std::queue<int> qBfs;
+                qBfs.push(startTi);
+                prevTri[startTi] = startTi;
+                int foundEnd = -1;
+                while (!qBfs.empty() && foundEnd < 0) {
+                    int u = qBfs.front(); qBfs.pop();
+                    for (int pi : triPairsAdj[u]) {
+                        const auto& pe = pairEdges[pi];
+                        int v = (pe.t0 == u) ? pe.t1 : pe.t0;
+                        if (v == partnerTri[u]) continue;
+                        int ca = pe.q.v[1], cb = pe.q.v[3];
+                        if ((mesh.isSmoothBnd[ca] && baseDeg[ca] <= 2) || (mesh.isSmoothBnd[cb] && baseDeg[cb] <= 2))
+                            continue;
+                        if (matchedPair[v] < 0) {
+                            prevTri[v] = u; prevPair[v] = pi; foundEnd = v; break;
+                        }
+                        int w = partnerTri[v];
+                        if (w >= 0 && prevTri[w] < 0) {
+                            prevTri[v] = u; prevPair[v] = pi; prevTri[w] = v; qBfs.push(w);
+                        }
+                    }
+                }
+                if (foundEnd >= 0) {
+                    int cur = foundEnd;
+                    while (cur != startTi) {
+                        int u = prevTri[cur], addPi = prevPair[cur];
+                        int nextFree = (u == startTi) ? startTi : prevTri[u];
+                        if (u != startTi) {
+                            const auto& remPe = pairEdges[matchedPair[u]];
+                            ++baseDeg[remPe.q.v[1]]; ++baseDeg[remPe.q.v[3]];
+                        }
+                        const auto& addPe = pairEdges[addPi];
+                        matchedPair[u] = addPi; matchedPair[cur] = addPi;
+                        partnerTri[u] = cur; partnerTri[cur] = u;
+                        --baseDeg[addPe.q.v[1]]; --baseDeg[addPe.q.v[3]];
+                        cur = nextFree;
+                    }
+                }
+            }
+
+            // Local 1-edge shift improvement: replace (t0, t1) with higher-angle (t1, freeT2)
+            for (int sweep = 0; sweep < 2; ++sweep) {
+                bool changed = false;
+                for (int pi = 0; pi < static_cast<int>(pairEdges.size()); ++pi) {
+                    const auto& newPe = pairEdges[pi];
+                    int tA = newPe.t0, tB = newPe.t1;
+                    bool aFree = (matchedPair[tA] < 0), bFree = (matchedPair[tB] < 0);
+                    if (aFree == bFree) continue;
+                    int freeT = aFree ? tA : tB;
+                    int occT  = aFree ? tB : tA;
+                    int oldPi = matchedPair[occT];
+                    const auto& oldPe = pairEdges[oldPi];
+                    if (newPe.effMin <= oldPe.effMin + T(3.0)) continue;
+                    int occMate = partnerTri[occT];
+                    int ca = newPe.q.v[1], cb = newPe.q.v[3];
+                    bool sameVerts = (ca == oldPe.q.v[1] && cb == oldPe.q.v[3]) || (ca == oldPe.q.v[3] && cb == oldPe.q.v[1]);
+                    if (!sameVerts && ((mesh.isSmoothBnd[ca] && baseDeg[ca] <= 2) || (mesh.isSmoothBnd[cb] && baseDeg[cb] <= 2)))
+                        continue;
+                    ++baseDeg[oldPe.q.v[1]]; ++baseDeg[oldPe.q.v[3]];
+                    matchedPair[occMate] = -1; partnerTri[occMate] = -1;
+                    matchedPair[freeT] = pi; matchedPair[occT] = pi;
+                    partnerTri[freeT] = occT; partnerTri[occT] = freeT;
+                    --baseDeg[ca]; --baseDeg[cb];
+                    changed = true;
+                }
+                if (!changed) break;
+            }
+
+            joinedQuadsOut.clear();
+            remTrisOut.clear();
+            for (int ti = 0; ti < nT; ++ti) {
+                if (matchedPair[ti] >= 0) {
+                    if (partnerTri[ti] > ti) joinedQuadsOut.push_back(pairEdges[matchedPair[ti]].q);
+                } else {
+                    remTrisOut.push_back(mesh.tris[ti]);
+                }
+            }
+        };
+
+        auto propagateAndEmit = [&](const std::vector<typename TriMeshData<T>::Quad>& joinedQuads,
+                                    const std::vector<typename TriMeshData<T>::Tri>& remTris) -> bool {
+            if (joinedQuads.empty()) return false;
             std::vector<bool> needSplit(mesh.edges.size(), false);
             for (const auto& t : remTris)
                 needSplit[t.e[0]] = needSplit[t.e[1]] = needSplit[t.e[2]] = true;
@@ -5023,43 +5709,132 @@ gsPatchSplitter<T>::computeMultiHoleTriangulationSplitting()
                     }
                 }
             }
+            int prevP = bestCand.isValid ? bestCand.numPatches : 999999;
             emitFromMixed(remTris, joinedQuads, needSplit);
             std::vector<bool> allTrue(mesh.edges.size(), true);
             emitFromMixed(remTris, joinedQuads, allTrue);
+            return bestCand.isValid && bestCand.numPatches < prevP;
+        };
+
+        std::vector<typename TriMeshData<T>::Quad> jQuads0, jQuads1;
+        std::vector<typename TriMeshData<T>::Tri> rem0, rem1;
+        if (!pairEdges.empty()) {
+            runMatchingStrategy(T(0), jQuads0, rem0);
+            propagateAndEmit(jQuads0, rem0);
+
+            T highThresh = std::max(effMinPairAng + T(8), T(22));
+            runMatchingStrategy(highThresh, jQuads1, rem1);
+            if (jQuads1.size() != jQuads0.size() || !rem1.empty())
+                propagateAndEmit(jQuads1, rem1);
+
+            // Parity repair: if 1-2 unmatched triangles trigger global cascades on a coarse mesh,
+            // bisect one boundary edge of the worst unmatched triangle and re-CDT + re-pair.
+            if (allowParityRepair && coarseRelaxed && nT <= 90 && !rem0.empty() && rem0.size() <= 3) {
+                int candTri = -1, candEdge = -1, candK = -1;
+                T bestLen = -T(1);
+                for (const auto& rt : rem0) {
+                    for (int k = 0; k < 3; ++k) {
+                        int eid = rt.e[k];
+                        if (!mesh.edges[eid].isBoundary) continue;
+                        T el = mesh.pts[rt.v[k]].dist(mesh.pts[rt.v[(k + 1) % 3]]);
+                        if (el > bestLen) {
+                            bestLen = el; candEdge = eid; candK = k;
+                            for (int ti = 0; ti < nT; ++ti)
+                                if (mesh.tris[ti].e[0] == rt.e[0] && mesh.tris[ti].e[1] == rt.e[1] && mesh.tris[ti].e[2] == rt.e[2])
+                                    candTri = ti;
+                        }
+                    }
+                }
+                if (candTri >= 0 && candEdge >= 0) {
+                    const auto bt = mesh.tris[candTri];
+                    int u = bt.v[candK], v = bt.v[(candK + 1) % 3], opp = bt.v[(candK + 2) % 3];
+                    int e_vo = bt.e[(candK + 1) % 3], e_ou = bt.e[(candK + 2) % 3];
+                    auto oldEr = mesh.edges[candEdge];
+                    T tMid = arcLengthSplitParam(*oldEr.seg.bsp, T(0.5));
+                    T tPrj = std::max(T(0.22), std::min(T(0.78), oldEr.seg.closestParam(mesh.pts[opp])));
+                    for (T tTry : {tPrj, tMid}) {
+                        TriMeshData<T> rMesh = mesh;
+                        auto sp = oldEr.seg.splitAtParam(tTry);
+                        gsPoint2D<T> sPt = sp.first.p1();
+                        if (cross2(rMesh.pts[u], sPt, rMesh.pts[opp]) <= T(1e-9) ||
+                            cross2(sPt, rMesh.pts[v], rMesh.pts[opp]) <= T(1e-9))
+                            continue;
+                        if (!isSegmentInsideDomain(rMesh.pts[opp], sPt, rMesh.loopPolys)) continue;
+                        int mIdx = static_cast<int>(rMesh.pts.size());
+                        rMesh.pts.push_back(sPt);
+                        rMesh.isBoundaryPt.push_back(true);
+                        rMesh.isSmoothBnd.push_back(true);
+                        rMesh.isSharpCorner.push_back(false);
+                        rMesh.cornerAngleDeg.push_back(T(180));
+                        auto din = evalCurveDeriv(*sp.first.bsp, T(1));
+                        T dn = std::hypot(din.x, din.y);
+                        gsPoint2D<T> tDir = (dn > T(1e-14)) ? gsPoint2D<T>(din.x / dn, din.y / dn) : gsPoint2D<T>(1, 0);
+                        rMesh.bndTanIn.push_back(tDir); rMesh.bndTanOut.push_back(tDir);
+                        int oldA = oldEr.a, oldB = oldEr.b;
+                        rMesh.edges[candEdge] = {oldA, mIdx, sp.first, CurveSeg<T>(), CurveSeg<T>(), gsPoint2D<T>(), false, true, oldEr.loopIdx};
+                        int e_mb = static_cast<int>(rMesh.edges.size());
+                        rMesh.edges.push_back({mIdx, oldB, sp.second, CurveSeg<T>(), CurveSeg<T>(), gsPoint2D<T>(), false, true, oldEr.loopIdx});
+                        int e_om = static_cast<int>(rMesh.edges.size());
+                        rMesh.edges.push_back({opp, mIdx, makeStraightSeg(rMesh.pts[opp], sPt, m_degree),
+                                               CurveSeg<T>(), CurveSeg<T>(), gsPoint2D<T>(), false, false, -1});
+                        auto halfFor = [&](int ep) { return (ep == oldA) ? candEdge : e_mb; };
+                        rMesh.tris[candTri] = {{u, mIdx, opp}, {halfFor(u), e_om, e_ou}};
+                        rMesh.tris.push_back({{mIdx, v, opp}, {halfFor(v), e_vo, e_om}});
+                        applyDomainLawsonFlips(rMesh);
+                        flipForBetterQuadUnions(rMesh, effMinPairAng, effMaxPairAng);
+                        quadifyTriMesh(rMesh, coarseRelaxed, false);
+                        break;
+                    }
+                }
+            }
         }
-        if ((!bestCand.isValid || (coarseRelaxed && nT <= 35 && bestCand.numPatches > 3 * nT)) &&
-            (joinedQuads.empty() || nT <= 35))
+        if (!bestCand.isValid ||
+            (coarseRelaxed && nT <= 35 && bestCand.numPatches > 3 * nT && (jQuads0.empty() || nT <= 35)))
         {
             std::vector<bool> allTrue(mesh.edges.size(), true);
             emitFromMixed(mesh.tris, {}, allTrue);
         }
     };
 
-    // Coarse-first passes: minimal hole subdivision first, then refined holes on passes 3..4
+    // Coarse-first passes: true CDT + feature projections + quad-union co-optimization + targeted sliver repair
     for (int coarsePass = 0; coarsePass < 5 && (!bestCand.isValid || (coarsePass == 0 && bestCand.numPatches > 29)); ++coarsePass) {
         const bool cRef = (coarsePass > 0);
         const bool cRefineHoles = (coarsePass >= 3);
         const T cH = (coarsePass <= 1) ? (diag * T(0.65))
                    : ((coarsePass == 2) ? (diag * T(0.45))
                    : ((coarsePass == 3) ? (diag * T(0.32)) : (diag * T(0.25))));
-        const T cBend = (coarsePass <= 1) ? T(1.10)
-                      : ((coarsePass <= 3) ? T(0.65) : T(0.65));
+        const T cBend = (coarsePass <= 1) ? T(1.10) : T(0.65);
         const int cNeedleRounds = (coarsePass >= 3) ? 2 : 1;
-        for (int mode = 0; mode < 3 && (!bestCand.isValid || (coarsePass == 0 && bestCand.numPatches > 29)); ++mode) {
-            TriMeshData<T> coarse;
-            if (!buildConstrainedDomainTriangulation(m_domain, m_degree, cH, cRef, mode, coarse, cBend, cRefineHoles))
-                continue;
-            quadifyTriMesh(coarse, true);
-            if (!bestCand.isValid || (coarsePass <= 1 && coarse.tris.size() <= 40 && bestCand.numPatches > 29)) {
-                TriMeshData<T> flipped = coarse;
-                applyDomainLawsonFlips(flipped);
-                quadifyTriMesh(flipped, true);
-            }
-            if (!bestCand.isValid) {
-                TriMeshData<T> mild = coarse;
-                refineNeedleCircumcenters(mild, cH * T(0.5), cNeedleRounds, T(16.0));
-                bisectObtuseTriangles(mild, m_degree, T(144), 36);
-                quadifyTriMesh(mild, true);
+
+        for (int featPass = 0; featPass < 2; ++featPass) {
+            const bool useFeat = (featPass == 1);
+            if (useFeat && bestCand.isValid && (coarsePass > 0 || bestCand.numPatches <= 29)) break;
+
+            for (int mode = 0; mode < 3 && (!bestCand.isValid || (coarsePass == 0 && bestCand.numPatches > 29)); ++mode) {
+                TriMeshData<T> coarse;
+                if (!buildConstrainedDomainTriangulation(m_domain, m_degree, cH, cRef, mode, coarse, cBend, cRefineHoles, useFeat))
+                    continue;
+                if (coarsePass == 0 && !useFeat)
+                    quadifyTriMesh(coarse, true, true);
+
+                TriMeshData<T> cdt = coarse;
+                applyDomainLawsonFlips(cdt);
+                if (!bestCand.isValid || (coarsePass <= 1 && cdt.tris.size() <= 45 && bestCand.numPatches > 29))
+                    quadifyTriMesh(cdt, true, true);
+
+                if (!bestCand.isValid || (coarsePass <= 1 && cdt.tris.size() <= 60 && bestCand.numPatches > 29)) {
+                    TriMeshData<T> qOpt = cdt;
+                    flipForBetterQuadUnions(qOpt, std::max(T(8), minAngTol - T(4.0)), std::max(maxAngTol, T(164.2)));
+                    quadifyTriMesh(qOpt, true, true);
+                }
+
+                if (!bestCand.isValid) {
+                    TriMeshData<T> mild = cdt;
+                    refineNeedleCircumcenters(mild, cH * T(0.55), cNeedleRounds, T(16.0), true, 16);
+                    bisectObtuseTriangles(mild, m_degree, T(146), 28);
+                    applyDomainLawsonFlips(mild);
+                    quadifyTriMesh(mild, true, false);
+                }
             }
         }
     }
@@ -5070,31 +5845,36 @@ gsPatchSplitter<T>::computeMultiHoleTriangulationSplitting()
         for (int mode = 0; mode < 3 && (!bestCand.isValid || !doRef); ++mode) {
             if (mode == 2 && bestCand.isValid) continue;
             TriMeshData<T> coarse;
-            if (!buildConstrainedDomainTriangulation(m_domain, m_degree, hStep, doRef, mode, coarse))
+            if (!buildConstrainedDomainTriangulation(m_domain, m_degree, hStep, doRef, mode, coarse, T(0.44), true, true))
                 continue;
-            quadifyTriMesh(coarse);
+            TriMeshData<T> cdt = coarse;
+            applyDomainLawsonFlips(cdt);
+            quadifyTriMesh(cdt, false, false);
 
-            if (!bestCand.isValid || !doRef) {
-                TriMeshData<T> flipped = coarse;
-                applyDomainLawsonFlips(flipped);
-                quadifyTriMesh(flipped);
+            if (!bestCand.isValid) {
+                TriMeshData<T> qOpt = cdt;
+                flipForBetterQuadUnions(qOpt, std::max(T(8), minAngTol - T(4.0)), std::max(maxAngTol, T(164.2)));
+                quadifyTriMesh(qOpt, false, false);
             }
 
             if (!bestCand.isValid) {
-                TriMeshData<T> steiner = coarse;
+                TriMeshData<T> steiner = cdt;
                 refineInteriorTriangles(steiner, hStep, 2);
                 bisectObtuseTriangles(steiner, m_degree, T(146), 28);
-                quadifyTriMesh(steiner);
+                applyDomainLawsonFlips(steiner);
+                quadifyTriMesh(steiner, false, false);
             }
         }
     }
 
     if (!bestCand.isValid) {
         TriMeshData<T> fine;
-        if (buildConstrainedDomainTriangulation(m_domain, m_degree, diag / T(10), true, 0, fine)) {
+        if (buildConstrainedDomainTriangulation(m_domain, m_degree, diag / T(10), true, 0, fine, T(0.44), true, true)) {
+            applyDomainLawsonFlips(fine);
             refineInteriorTriangles(fine, diag / T(10), 2);
             bisectObtuseTriangles(fine, m_degree, T(146), 28);
-            quadifyTriMesh(fine);
+            applyDomainLawsonFlips(fine);
+            quadifyTriMesh(fine, false, false);
         }
     }
 
@@ -5114,13 +5894,16 @@ gsPatchSplitter<T>::computeMultiHoleTriangulationSplitting()
             T minQ = (fPass >= 3) ? T(16.5) : T(14.5);
             bool allowCentroid = (fPass >= 5);
             TriMeshData<T> needle;
-            if (!buildConstrainedDomainTriangulation(m_domain, m_degree, fH, fRef, fMode, needle))
+            if (!buildConstrainedDomainTriangulation(m_domain, m_degree, fH, fRef, fMode, needle, T(0.44), true, false) &&
+                !buildConstrainedDomainTriangulation(m_domain, m_degree, fH, fRef, fMode, needle, T(0.44), true, true))
                 continue;
+            applyDomainLawsonFlips(needle);
             refineInteriorTriangles(needle, fH, nRounds);
             if (runNeedle)
                 refineNeedleCircumcenters(needle, fH, nRounds, needleAng, allowCentroid);
             bisectObtuseTriangles(needle, m_degree, maxQ, maxSp, minQ);
-            quadifyTriMesh(needle);
+            applyDomainLawsonFlips(needle);
+            quadifyTriMesh(needle, false, false);
         }
     }
 
@@ -5162,14 +5945,14 @@ gsPatchSplitter<T>::computeMedialAxisSplitting()
         optimizeWinslowBarrier(cand.multiPatch);
         gsASG1LocalFitter<T>::unifyPatchOrientations(cand.multiPatch);
         std::string vErr;
-        if (!validateMultiPatch(m_domain, cand.multiPatch, T(1e-4), &vErr, minHoleAngTol, std::max(maxAngTol, T(176.2)))) {
+        if (!validateMultiPatch(m_domain, cand.multiPatch, T(1e-4), &vErr, minHoleAngTol, std::max(maxAngTol, T(164.9)))) {
             if (dbg) {
                 T md=0, ma=0, xa=180;
                 evaluateDistortionEnergy(cand.multiPatch, &md, &ma, &xa);
                 std::cerr << "[DBG] validateMultiPatch failed (P=" << cand.multiPatch.nPatches()
                           << ", IF=" << cand.multiPatch.topology().nInterfaces()
                           << ", BND=" << cand.multiPatch.topology().nBoundary()
-                          << ", domMin=" << domMinAng << ", tol=[" << minHoleAngTol << "," << std::max(maxAngTol, T(176.2)) << "]"
+                          << ", domMin=" << domMinAng << ", tol=[" << minHoleAngTol << "," << std::max(maxAngTol, T(164.9)) << "]"
                           << ", minDet=" << md << ", ang=[" << ma << "," << xa << "]): " << vErr << "\n";
             }
             cand.multiPatch.clear();
@@ -5185,7 +5968,7 @@ gsPatchSplitter<T>::computeMedialAxisSplitting()
         cand.numPatches = static_cast<int>(cand.multiPatch.nPatches());
         cand.distortionEnergy = evaluateDistortionEnergy(cand.multiPatch, &cand.minJacobianDet,
                                                          &cand.minCornerAngleDeg, &cand.maxCornerAngleDeg);
-        cand.isValid = (minPos20 > T(1e-8) && cand.minJacobianDet > T(1e-8) && cand.maxCornerAngleDeg < T(176.2));
+        cand.isValid = (minPos20 > T(1e-8) && cand.minJacobianDet > T(1e-8) && cand.maxCornerAngleDeg < T(164.9));
         if (!cand.isValid) {
             if (dbg) std::cerr << "[DBG] post-check failed (P=" << cand.numPatches
                                << " minPos20=" << minPos20 << " minDet=" << cand.minJacobianDet
@@ -5424,6 +6207,23 @@ gsPatchSplitter<T>::computeMedialAxisSplitting()
                                 for (int j = 0; j < dTB; ++j) s1.push_back(hCCW[(iTip + j) % M]);
                                 for (int j = 0; j < dBT; ++j) s2.push_back(hCCW[(iB   + j) % M]);
                                 for (int j = 0; j < dTT; ++j) s3.push_back(hCCW[(iT   + j) % M]);
+                                auto hasSharpChain = [](const std::vector<CurveSeg<T>>& ch) -> bool {
+                                    const T r2d = T(180) / T(3.14159265358979323846);
+                                    for (size_t j = 1; j < ch.size(); ++j) {
+                                        auto d0 = internal_splitter::evalCurveDeriv(*ch[j - 1].bsp, T(1));
+                                        auto d1 = internal_splitter::evalCurveDeriv(*ch[j].bsp, T(0));
+                                        T n0 = std::hypot(d0.x, d0.y), n1 = std::hypot(d1.x, d1.y);
+                                        if (n0 > T(1e-14) && n1 > T(1e-14)) {
+                                            T cr = (d0.x * d1.y - d0.y * d1.x) / (n0 * n1);
+                                            T dt = (d0.x * d1.x + d0.y * d1.y) / (n0 * n1);
+                                            if (std::abs(std::atan2(cr, dt)) * r2d > T(28))
+                                                return true;
+                                        }
+                                    }
+                                    return false;
+                                };
+                                if (hasSharpChain(s1) || hasSharpChain(s2) || hasSharpChain(s3))
+                                    continue;
                                 auto j1 = internal_splitter::joinCurveSegsExact(s1, m_degree);
                                 auto j2 = internal_splitter::joinCurveSegsExact(s2, m_degree);
                                 auto j3 = internal_splitter::joinCurveSegsExact(s3, m_degree);
