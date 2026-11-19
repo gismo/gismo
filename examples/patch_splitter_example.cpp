@@ -25,6 +25,7 @@
 
 #include <gismo.h>
 #include <gsModeling/gsPatchSplitter.h>
+#include <gsModeling/gsPatchSplitterGeom.hpp>
 #include <gsModeling/gsPlanarDomainGenerator.h>
 #include <gsModeling/gsAsG1GeometryGenerator.h>
 #include <gsModeling/gsASG1LocalFitter.h>
@@ -38,6 +39,9 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <chrono>
+#include <fstream>
+#include <sstream>
 
 using namespace gismo;
 
@@ -57,6 +61,8 @@ void printUsage(const char* prog)
               << "  -d, --degree <int>        Polynomial degree (default: 3, for C^1 Argyris)\n"
               << "  -o, --output <prefix>     ParaView export prefix (default: splitter_out)\n"
               << "  -b, --benchmark           Run comprehensive multi-topology benchmark suite\n"
+              << "  -c, --compare             Head-to-head multi-strategy benchmark (cross, mat, template, auto)\n"
+              << "  --csv <file>              CSV output path for comparison results (default: comparison_results.csv)\n"
               << "  -h, --help                Show this help message\n\n"
               << "Available Presets:\n"
               << "  With Holes:   plate_with_hole, plate_with_2holes, lshape_with_hole\n"
@@ -165,7 +171,9 @@ bool processDomainFile(
     const std::string& filepath,
     const std::string& splitDir,
     const std::string& asg1Dir,
-    BatchRecord& rec)
+    BatchRecord& rec,
+    gsPatchSplitter<real_t>::Strategy strategy = gsPatchSplitter<real_t>::Strategy::AutomaticBest,
+    const std::string& stratStr = "auto")
 {
     std::string filename = getBaseName(filepath);
     rec.name = filename;
@@ -209,14 +217,14 @@ bool processDomainFile(
                   << ", Holes = " << nHoles << "\n";
 
         // Decompose planar domain via gsPatchSplitter
-        std::cout << "  -> Running gsPatchSplitter (Medial Axis Skeleton Strategy)...\n";
+        std::cout << "  -> Running gsPatchSplitter (Strategy: " << stratStr << ")...\n";
         gsPatchSplitter<real_t> splitter(dom);
-        splitter.setStrategy(gsPatchSplitter<real_t>::Strategy::AutomaticBest);
+        splitter.setStrategy(strategy);
         splitter.setDegree(3);
         splitter.computeSplitting();
         mp = splitter.getMultiPatch();
         rec.type = splitter.bestCandidate().methodUsed;
-        if (rec.type.empty()) rec.type = "MedialAxisSkeleton";
+        if (rec.type.empty()) rec.type = stratStr;
     }
 
     rec.patches = mp.nPatches();
@@ -263,10 +271,14 @@ bool processDomainFile(
     gsWriteParaview(mp, splitPvd, 50, true);
     std::cout << "  Saved Split Domain: " << splitXml << " and " << splitPvd << ".pvd\n";
 
-    // Run AS-G1 Reparametrizer (Global Mode, p=3, r=1, k=2)
-    std::cout << "  Running AS-G1 Local Fitter (Global Remark 1 KKT)...\n";
+    // Run AS-G1 Reparametrizer (Global Mode for M <= 30, Local Mode for M > 30)
+    std::cout << "  Running AS-G1 Local Fitter (" << (mp.nPatches() > 30 ? "Local Mode" : "Global Remark 1 KKT") << ")...\n";
     gsASG1LocalFitter<real_t> fitter(mp, 3, 1, 2);
-    fitter.setMode(gsASG1LocalFitter<real_t>::FittingMode::Global);
+    if (mp.nPatches() > 30) {
+        fitter.setMode(gsASG1LocalFitter<real_t>::FittingMode::Local);
+    } else {
+        fitter.setMode(gsASG1LocalFitter<real_t>::FittingMode::Global);
+    }
     fitter.fit();
 
     rec.maxAlpha = fitter.maxAlphaResidual();
@@ -290,7 +302,10 @@ bool processDomainFile(
     return true;
 }
 
-int runBatchSuite(const std::string& inDir, const std::string& outBase)
+int runBatchSuite(const std::string& inDir,
+                  const std::string& outBase,
+                  gsPatchSplitter<real_t>::Strategy strategy = gsPatchSplitter<real_t>::Strategy::AutomaticBest,
+                  const std::string& stratStr = "auto")
 {
     std::string splitDir = outBase + "/split_domains";
     std::string asg1Dir = outBase + "/asg1_reparametrized";
@@ -326,6 +341,7 @@ int runBatchSuite(const std::string& inDir, const std::string& outBase)
     std::cout << "======================================================================\n";
     std::cout << "  QUADRILATERAL DOMAIN DECOMPOSITION & AS-G1 PIPELINE (22 GEOMETRIES) \n";
     std::cout << "  Input Directory:  " << inDir << "\n";
+    std::cout << "  Layout Strategy:  " << stratStr << "\n";
     std::cout << "  Output Split:     " << splitDir << "\n";
     std::cout << "  Output AS-G1:     " << asg1Dir << "\n";
     std::cout << "======================================================================\n";
@@ -336,7 +352,7 @@ int runBatchSuite(const std::string& inDir, const std::string& outBase)
     for (const auto& f : targetFiles) {
         std::string fullpath = inDir + "/" + f;
         BatchRecord rec;
-        if (processDomainFile(fullpath, splitDir, asg1Dir, rec)) {
+        if (processDomainFile(fullpath, splitDir, asg1Dir, rec, strategy, stratStr)) {
             successCount++;
             records.push_back(rec);
         }
@@ -375,12 +391,168 @@ int runBatchSuite(const std::string& inDir, const std::string& outBase)
     return (successCount == static_cast<int>(targetFiles.size()) ? 0 : 1);
 }
 
+// ============================================================================
+// Multi-Strategy Comparison Harness (Phase 4)
+// ============================================================================
+
+struct ComparisonRecord {
+    std::string domain;
+    std::string strategy;
+    int patches = 0;
+    int ev_count = 0;
+    real_t min_angle = 0.0;
+    real_t max_angle = 0.0;
+    real_t max_ar = 0.0;
+    real_t min_detJ = 0.0;
+    real_t energy = 0.0;
+    double runtime_ms = 0.0;
+    std::string selected = "FAILED";
+    bool success = false;
+};
+
+void runStrategyComparison(
+    const std::string& domainName,
+    const gsPlanarDomain<real_t>& dom,
+    int degree,
+    std::vector<ComparisonRecord>& records)
+{
+    struct StratInfo {
+        std::string name;
+        gsPatchSplitter<real_t>::Strategy strat;
+    };
+    std::vector<StratInfo> strats = {
+        {"cross", gsPatchSplitter<real_t>::Strategy::HarmonicCrossField},
+        {"mat", gsPatchSplitter<real_t>::Strategy::MedialAxisSkeleton},
+        {"template", gsPatchSplitter<real_t>::Strategy::TemplateDecomposition},
+        {"auto", gsPatchSplitter<real_t>::Strategy::AutomaticBest}
+    };
+
+    for (const auto& s : strats) {
+        ComparisonRecord rec;
+        rec.domain = domainName;
+        rec.strategy = s.name;
+
+        auto tStart = std::chrono::high_resolution_clock::now();
+        gsPatchSplitter<real_t> splitter(dom);
+        splitter.setStrategy(s.strat);
+        splitter.setDegree(degree);
+        bool ok = splitter.computeSplitting();
+        auto tEnd = std::chrono::high_resolution_clock::now();
+        rec.runtime_ms = std::chrono::duration<double, std::milli>(tEnd - tStart).count();
+
+        if (ok) {
+            rec.success = true;
+            const auto& cand = splitter.bestCandidate();
+            const auto& mp = splitter.getMultiPatch();
+            rec.patches = static_cast<int>(mp.nPatches());
+            rec.energy = cand.distortionEnergy;
+            rec.selected = cand.methodUsed;
+
+            std::vector<std::vector<patchCorner>> evList;
+            mp.topology().getEVs(evList, false);
+            rec.ev_count = static_cast<int>(evList.size());
+
+            real_t minAng = 360.0, maxAng = 0.0;
+            real_t maxAR = 0.0;
+            for (size_t p = 0; p < mp.nPatches(); ++p) {
+                real_t aDeg[4], pMinA, pMaxA;
+                bool degen;
+                internal_splitter::evalPatchCornerAnglesDeg(mp.patch(p), aDeg, pMinA, pMaxA, degen);
+                minAng = std::min(minAng, pMinA);
+                maxAng = std::max(maxAng, pMaxA);
+                real_t lu, lv, ar;
+                internal_splitter::evalPatchLengthsAndAR(mp.patch(p), lu, lv, ar);
+                maxAR = std::max(maxAR, ar);
+            }
+            rec.min_angle = minAng;
+            rec.max_angle = maxAng;
+            rec.max_ar = maxAR;
+
+            real_t minDet = 0.0;
+            splitter.checkJacobians(&minDet);
+            rec.min_detJ = minDet;
+        } else {
+            rec.success = false;
+            rec.selected = "FAILED";
+        }
+        records.push_back(rec);
+    }
+}
+
+void exportComparisonCSV(const std::vector<ComparisonRecord>& records, const std::string& csvPath)
+{
+    std::ofstream out(csvPath);
+    if (!out) {
+        std::cerr << "Failed to open CSV output: " << csvPath << "\n";
+        return;
+    }
+    out << "domain,strategy,patches,EV_count,min_angle,max_angle,max_AR,min_detJ,energy,runtime_ms,selected\n";
+    for (const auto& r : records) {
+        out << r.domain << ","
+            << r.strategy << ","
+            << r.patches << ","
+            << r.ev_count << ","
+            << std::fixed << std::setprecision(2) << r.min_angle << ","
+            << std::fixed << std::setprecision(2) << r.max_angle << ","
+            << std::fixed << std::setprecision(2) << r.max_ar << ","
+            << std::scientific << std::setprecision(4) << r.min_detJ << ","
+            << std::fixed << std::setprecision(4) << r.energy << ","
+            << std::fixed << std::setprecision(2) << r.runtime_ms << ","
+            << r.selected << "\n";
+    }
+    std::cout << "\nComparison CSV exported successfully to: " << csvPath << "\n";
+}
+
+void printComparisonTable(const std::vector<ComparisonRecord>& records)
+{
+    std::cout << "\n";
+    std::cout << "=========================================================================================================================\n";
+    std::cout << "                                  MULTI-STRATEGY HEAD-TO-HEAD COMPARISON                                                 \n";
+    std::cout << "=========================================================================================================================\n";
+    std::cout << std::left
+              << std::setw(28) << "Domain"
+              << std::setw(10) << "Strategy"
+              << std::setw(8)  << "Patches"
+              << std::setw(8)  << "EVs"
+              << std::setw(15) << "Angle [min,max]"
+              << std::setw(9)  << "Max AR"
+              << std::setw(13) << "Min det(J)"
+              << std::setw(11) << "Time (ms)"
+              << std::setw(22) << "Selected Method"
+              << "\n";
+    std::cout << "-------------------------------------------------------------------------------------------------------------------------\n";
+
+    for (const auto& r : records) {
+        std::string angStr = std::to_string(static_cast<int>(std::round(r.min_angle))) + "-" +
+                             std::to_string(static_cast<int>(std::round(r.max_angle))) + " deg";
+        if (!r.success) angStr = "N/A";
+        std::ostringstream arStr;
+        if (r.success) arStr << std::fixed << std::setprecision(1) << r.max_ar;
+        else arStr << "-";
+
+        std::cout << std::left
+                  << std::setw(28) << r.domain
+                  << std::setw(10) << r.strategy
+                  << std::setw(8)  << (r.success ? std::to_string(r.patches) : "-")
+                  << std::setw(8)  << (r.success ? std::to_string(r.ev_count) : "-")
+                  << std::setw(15) << angStr
+                  << std::setw(9)  << arStr.str()
+                  << std::scientific << std::setprecision(2) << std::setw(13) << r.min_detJ
+                  << std::fixed << std::setprecision(1) << std::setw(11) << r.runtime_ms
+                  << std::setw(22) << r.selected
+                  << "\n";
+    }
+    std::cout << "=========================================================================================================================\n";
+}
+
 int main(int argc, char* argv[])
 {
     std::string preset = "plate_with_hole";
     std::string xmlFile = "";
     std::string batchDir = "";
     bool runBatch = false;
+    bool runCompare = false;
+    std::string csvPath = "comparison_results.csv";
     std::string stratStr = "auto";
     int degree = 3;
     std::string outPrefix = "splitter_out";
@@ -397,6 +569,10 @@ int main(int argc, char* argv[])
         } else if (arg == "--dir") {
             runBatch = true;
             if (i + 1 < argc) batchDir = argv[++i];
+        } else if (arg == "-c" || arg == "--compare") {
+            runCompare = true;
+        } else if (arg == "--csv") {
+            if (i + 1 < argc) csvPath = argv[++i];
         } else if (arg == "-p" || arg == "--preset") {
             if (i + 1 < argc) preset = argv[++i];
         } else if (arg == "-x" || arg == "--xml") {
@@ -412,16 +588,85 @@ int main(int argc, char* argv[])
         }
     }
 
-    if (runBatch) {
-        if (batchDir.empty()) batchDir = "filedata/domain2d/generated_domains";
-        std::string outBase = "filedata/domain2d/as_g1_domain_decomposition_results";
-        return runBatchSuite(batchDir, outBase);
-    }
-
     gsPatchSplitter<real_t>::Strategy strategy = gsPatchSplitter<real_t>::Strategy::AutomaticBest;
     if (stratStr == "cross") strategy = gsPatchSplitter<real_t>::Strategy::HarmonicCrossField;
     else if (stratStr == "mat") strategy = gsPatchSplitter<real_t>::Strategy::MedialAxisSkeleton;
     else if (stratStr == "template") strategy = gsPatchSplitter<real_t>::Strategy::TemplateDecomposition;
+
+    if (runCompare) {
+        std::vector<ComparisonRecord> records;
+        if (runBatch || !batchDir.empty()) {
+            if (batchDir.empty()) batchDir = "filedata/domain2d/generated_domains";
+            std::vector<std::string> targetFiles = {
+                "bean_0corner_1hole.xml",
+                "bulged_quad_non_bilinear.xml",
+                "comb_16corner_4holes.xml",
+                "comb_16corner_4holes_curved.xml",
+                "crescent_2corner.xml",
+                "crescent_2corner_3holes.xml",
+                "cross_12corner_5holes_star.xml",
+                "curved_2patch.xml",
+                "curved_lshape_3patch.xml",
+                "curved_lshape_6corner_1hole.xml",
+                "curved_lshape_6corner_3holes.xml",
+                "curved_lshape_non_bilinear.xml",
+                "curved_ring_4patch.xml",
+                "heart_1corner_nonconvex.xml",
+                "plate_4corner_8holes_weird.xml",
+                "quad_4corner_2holes.xml",
+                "star_5corner_1hole.xml",
+                "starburst_12corner_3holes.xml",
+                "swiss_cross_12corner_5holes.xml",
+                "uchannel_8corner_2holes.xml",
+                "uchannel_8corner_4holes.xml",
+                "wavy_ring_annulus.xml"
+            };
+            for (const auto& f : targetFiles) {
+                std::string fullpath = batchDir + "/" + f;
+                try {
+                    gsReadFile<real_t> rf(fullpath);
+                    memory::unique_ptr<gsPlanarDomain<real_t>> pDom = rf;
+                    if (pDom) {
+                        std::cout << "Comparing strategies on: " << f << "...\n";
+                        runStrategyComparison(f, *pDom, degree, records);
+                    }
+                } catch (...) {}
+            }
+        } else if (!xmlFile.empty()) {
+            gsReadFile<real_t> rf(xmlFile);
+            memory::unique_ptr<gsPlanarDomain<real_t>> pDom = rf;
+            if (pDom) {
+                std::cout << "Comparing strategies on: " << xmlFile << "...\n";
+                runStrategyComparison(getBaseName(xmlFile), *pDom, degree, records);
+            }
+        } else {
+            std::vector<std::string> benchPresets = {
+                "plate_with_hole",
+                "lshape",
+                "curved_lshape",
+                "curved_quad",
+                "circle",
+                "quad"
+            };
+            for (const auto& pName : benchPresets) {
+                std::unique_ptr<gsPlanarDomain<real_t>> dom(
+                    gsPlanarDomainGenerator<real_t>::preset(pName, 1.0, degree));
+                if (dom) {
+                    std::cout << "Comparing strategies on: " << pName << "...\n";
+                    runStrategyComparison(pName, *dom, degree, records);
+                }
+            }
+        }
+        exportComparisonCSV(records, csvPath);
+        printComparisonTable(records);
+        return 0;
+    }
+
+    if (runBatch) {
+        if (batchDir.empty()) batchDir = "filedata/domain2d/generated_domains";
+        std::string outBase = "filedata/domain2d/as_g1_domain_decomposition_results";
+        return runBatchSuite(batchDir, outBase, strategy, stratStr);
+    }
 
     if (runBenchmark) {
         std::cout << "========================================================================\n"

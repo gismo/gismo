@@ -59,14 +59,21 @@ inline void exportCDTToVTK(const TriMeshData<T>& mesh, const std::vector<int>& t
 template <class T>
 inline void exportSkeletonToVTK(
     const std::vector<std::vector<gsPoint2D<T>>>& polylines,
+    const std::vector<T>& polylineRadii,
     const std::vector<gsPoint2D<T>>& junctions,
+    const std::vector<T>& junctionRadii,
     const std::string& filename)
 {
     std::ofstream out(filename);
     if (!out) return;
     std::vector<gsPoint2D<T>> allPts;
     std::vector<std::vector<int>> cellConn;
-    for (const auto& poly : polylines) {
+    std::vector<int> branchIds;
+    std::vector<float> cellRadii;
+
+    int curBranchId = 0;
+    for (size_t i = 0; i < polylines.size(); ++i) {
+        const auto& poly = polylines[i];
         if (poly.size() < 2) continue;
         std::vector<int> conn;
         for (const auto& pt : poly) {
@@ -74,11 +81,16 @@ inline void exportSkeletonToVTK(
             allPts.push_back(pt);
         }
         cellConn.push_back(conn);
+        branchIds.push_back(curBranchId++);
+        cellRadii.push_back(i < polylineRadii.size() ? static_cast<float>(polylineRadii[i]) : 0.0f);
     }
-    for (const auto& j : junctions) {
+    for (size_t i = 0; i < junctions.size(); ++i) {
+        const auto& j = junctions[i];
         std::vector<int> conn = {static_cast<int>(allPts.size())};
         allPts.push_back(j);
         cellConn.push_back(conn);
+        branchIds.push_back(curBranchId++);
+        cellRadii.push_back(i < junctionRadii.size() ? static_cast<float>(junctionRadii[i]) : 0.0f);
     }
     int totalCellEntries = 0;
     for (const auto& c : cellConn) totalCellEntries += 1 + static_cast<int>(c.size());
@@ -98,6 +110,22 @@ inline void exportSkeletonToVTK(
         if (c.size() == 1) out << "1\n"; // VTK_VERTEX
         else out << "4\n";              // VTK_POLY_LINE
     }
+    out << "CELL_DATA " << cellConn.size() << "\n";
+    out << "SCALARS branchId int 1\nLOOKUP_TABLE default\n";
+    for (int bid : branchIds) out << bid << "\n";
+    out << "SCALARS radius float 1\nLOOKUP_TABLE default\n";
+    for (float rad : cellRadii) out << rad << "\n";
+}
+
+template <class T>
+inline void exportSkeletonToVTK(
+    const std::vector<std::vector<gsPoint2D<T>>>& polylines,
+    const std::vector<gsPoint2D<T>>& junctions,
+    const std::string& filename)
+{
+    std::vector<T> pr(polylines.size(), T(0));
+    std::vector<T> jr(junctions.size(), T(0));
+    exportSkeletonToVTK(polylines, pr, junctions, jr, filename);
 }
 
 template <class T>
@@ -483,13 +511,20 @@ public:
         }
 
         std::vector<gsPoint2D<T>> debugJunctions;
+        std::vector<T> debugJunctionRadii;
         std::vector<std::vector<gsPoint2D<T>>> debugPolylines;
+        std::vector<T> debugPolylineRadii;
         for (const auto& b : branches) {
-            if (!b.isPruned && b.polyline.size() >= 2)
+            if (!b.isPruned && b.polyline.size() >= 2) {
                 debugPolylines.push_back(b.polyline);
+                debugPolylineRadii.push_back(b.nodePath.empty() ? triNodes[b.u].radius : triNodes[b.nodePath[0]].radius);
+            }
         }
         for (int ti = 0; ti < nT; ++ti) {
-            if (triNodes[ti].triType == 2) debugJunctions.push_back(triNodes[ti].pt);
+            if (triNodes[ti].triType == 2) {
+                debugJunctions.push_back(triNodes[ti].pt);
+                debugJunctionRadii.push_back(triNodes[ti].radius);
+            }
         }
 
         std::vector<std::pair<gsPoint2D<T>, gsPoint2D<T>>> debugSpokes;
@@ -568,7 +603,7 @@ public:
         }
 
         if (dbg) {
-            exportSkeletonToVTK(debugPolylines, debugJunctions, "mat_debug_skeleton.vtk");
+            exportSkeletonToVTK(debugPolylines, debugPolylineRadii, debugJunctions, debugJunctionRadii, "mat_debug_skeleton.vtk");
             exportSpokesToVTK(debugSpokes, "mat_debug_spokes.vtk");
             std::cout << "[MAT] Emitted " << quadPatches.size() << " initial dual quads.\n";
         }
