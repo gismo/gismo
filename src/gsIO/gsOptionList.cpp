@@ -599,7 +599,6 @@ void pybind11_init_gsOptionList(py::module &m) {
     }), "Construct gsOptionList from a Python dictionary")
 
     .def(py::init<const gsOptionList&>())
-    .def(py::init<gsOptionList&&>())
 
     .def("__repr__",
          [](const gsOptionList &obj) {
