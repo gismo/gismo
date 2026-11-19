@@ -77,12 +77,22 @@ public:
      * @brief Factory for an opt-in custom quadrature rule.
      *
      * The factory is called once for every rule instance required by an
-     * assembly operation (in particular, once per OpenMP worker and patch for
-     * volume assembly). It must return a fresh rule and, when OpenMP is enabled,
-     * be safe to call concurrently. @a fixedDirection is -1 for volume
-     * integration and the fixed parametric direction for boundary and interface
-     * integration. Overriding gsQuadRule::mapTo() permits element-dependent
-     * rules.
+     * assembly operation, by every assembly loop:
+     * - assemble() and assembleJacobian() call it once per OpenMP worker and
+     *   patch, concurrently;
+     * - assembleBdr(), assembleIfc() and assembleJacobianIfc() call it once
+     *   per boundary condition, side or interface, serially;
+     * - quPointsWeights() calls it once per patch.
+     *
+     * It must return a fresh rule and, when OpenMP is enabled, be safe to call
+     * concurrently. It receives the trial-space basis of @a patch
+     * (trialSpace(0)), not the integration domain. A factory therefore selects
+     * its rule by @a patch and @a fixedDirection, and its rules must match the
+     * integration elements (see setIntegrationElements and
+     * setIntegrationDomain), which the loops iterate. @a fixedDirection is -1
+     * for volume integration and the fixed parametric direction for boundary
+     * and interface integration. Overriding gsQuadRule::mapTo() permits
+     * element-dependent rules.
      */
     typedef std::function<QuadratureRulePtr(const gsBasis<T> & basis,
                                              const gsOptionList & options,
@@ -206,11 +216,17 @@ public:
     void rhs_into(gsMatrix<T> & out) { out = give(m_rhs); }
 
     /// \brief Sets the domain of integration.
+    /// @note Without a quadrature factory (@ref setQuadratureFactory), every
+    /// assembly loop builds its quadrature rule on this domain and iterates
+    /// its elements.
     /// \warning Must be called before any computation is requested
     void setIntegrationElements(const gsMultiBasis<T> & mesh)
     { m_exprdata->setDomain(mesh.domain()); } // @hverhelst TODO
 
     /// \brief Sets the domain of integration.
+    /// @note Without a quadrature factory (@ref setQuadratureFactory), every
+    /// assembly loop builds its quadrature rule on this domain and iterates
+    /// its elements.
     /// \warning Must be called before any computation is requested
     void setIntegrationDomain(typename gsDomain<T>::Ptr domain)
     { m_exprdata->setDomain(give(domain)); } // @hverhelst TODO
@@ -509,21 +525,37 @@ public:
 
 private:
 
-    QuadratureRulePtr makeQuadratureRule(const gsBasis<T> & basis,
-                                         index_t patch,
-                                         short_t fixedDirection = -1) const
+    /**
+     * @brief Returns a fresh quadrature rule for \a patch. Every assembly loop obtains its rule here.
+     *
+     * If a factory is installed (@ref setQuadratureFactory) it is called with the trial-space basis of
+     * \a patch, the assembler options, \a patch and \a fixedDirection, and must return a non-null rule.
+     * Otherwise the rule is built by @ref gsQuadrature from the assembler options on the integration
+     * domain of \a patch (see @ref setIntegrationElements, @ref setIntegrationDomain), with
+     * \a fixedDirection.
+     *
+     * @param patch          patch (subdomain) index of the integration domain
+     * @param fixedDirection -1 for volume integration; the parametric direction normal to the side
+     *                       for boundary and interface integration
+     *
+     * Called once per patch and thread (volume loops) or once per boundary condition, side or
+     * interface (serial loops), never inside an element loop. Cost: one rule construction.
+     */
+    QuadratureRulePtr makeQuadratureRule(index_t patch, short_t fixedDirection = -1) const
     {
         if (m_quadratureFactory)
         {
             QuadratureRulePtr rule =
-                m_quadratureFactory(basis, m_options, patch, fixedDirection);
+                m_quadratureFactory(this->trialSpace(0).source().basis(patch),
+                                    m_options, patch, fixedDirection);
             GISMO_ENSURE(rule,
                          "Custom quadrature factory returned a null rule for patch "
                          << patch << ".");
             return rule;
         }
 
-        return gsQuadrature::getPtr(basis, m_options, fixedDirection);
+        return gsQuadrature::getPtr(*m_exprdata->domain().subdomain(patch),
+                                    m_options, fixedDirection);
     }
 
     template<class... expr> void _computePattern(const expr &... args);
@@ -1234,33 +1266,22 @@ void gsExprAssembler<T>::assemble(const expr &... args)
     ee.setElim(dirichlet::elimination==elim);
 
     // QuRule is a thread-local variable (declared inside the omp parallel
-    // region above): every thread builds its own instance, which is what
-    // makes the last-hit cell cache in gsHPatchRule (m_lastCell) safe without
-    // synchronization. The downside is that per-cell construction cost (e.g.
-    // the Newton solve in gsHPatchRule) is paid nthreads times over instead of
-    // once; sharing one rule across threads (construct once + clone the
-    // lightweight per-thread cache) is a possible future optimization if this
-    // ever shows up in profiles.
+    // region above): every thread obtains its own rule from
+    // makeQuadratureRule, so per-object lookup state of a rule (e.g. the
+    // last-hit leaf of gsHPatchRule) is never shared between threads.
+    // Without a factory every thread builds its own rule per patch, so the
+    // construction cost (e.g. the Newton solve in gsHPatchRule) is paid
+    // once per thread; a factory can instead hand out cheap handles to one
+    // prebuilt rule (gsHPatchRule::makeFactory).
     typename gsQuadRule<T>::uPtr QuRule;
     index_t QuPatch = -1;
 
     for ( auto & elem : m_exprdata->domain().allElements() )
     {
-        if (/*changeQuadrature && */QuPatch!=elem.patchIndex())
+        if (QuPatch!=elem.patchIndex())
         {
             QuPatch = elem.patchIndex();
-            // A custom quadrature factory, when installed, takes precedence
-            // and receives the trial basis. Otherwise the rule is built from
-            // the integration domain (set via setIntegrationElements /
-            // setIntegrationDomain). When the integration domain equals the
-            // trial-space domain (the usual case) both give the same rule;
-            // when they differ, the rule (e.g. gsHPatchRule) is constructed
-            // on the dedicated integration basis while the DoFs stay defined
-            // by the trial space.
-            if (m_quadratureFactory)
-                QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(QuPatch), QuPatch);
-            else
-                QuRule = gsQuadrature::getPtr(*m_exprdata->domain().subdomain(QuPatch), m_options);
+            QuRule = makeQuadratureRule(QuPatch);
         }
 
         // Map the Quadrature rule to the element
@@ -1316,8 +1337,7 @@ void gsExprAssembler<T>::assembleBdr(const bcRefList & BCs, expr&... args)
     {
         const boundary_condition<T> * it = &iit->get();
 
-        QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(it->patch()),
-                                    it->patch(), it->side().direction());
+        QuRule = makeQuadratureRule(it->patch(), it->side().direction());
 
         // Update boundary function source
         m_exprdata->setMutSource(*it->function());
@@ -1370,8 +1390,7 @@ void gsExprAssembler<T>::assembleBdr(const bContainer & bnd, expr&... args)
     for (gsBoxTopology::const_biterator it = bnd.begin();
          it != bnd.end(); ++it )
     {
-        QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(it->patch),
-                                    it->patch, it->side().direction());
+        QuRule = makeQuadratureRule(it->patch, it->side().direction());
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add it->patch to domainiter ?
@@ -1448,8 +1467,7 @@ void gsExprAssembler<T>::assembleIfc(const ifContainer & iFaces, expr... args)
         else
             interfaceMap = gsCPPInterface<T>::make(getGeometryMap(), iFace);
 
-        QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(patch1),
-                                    patch1, iFace.first().side().direction());
+        QuRule = makeQuadratureRule(patch1, iFace.first().side().direction());
 
         // TODO [later]: Use beginIfc instead of beginBdr
         typename gsBasis<T>::domainIter domIt =
@@ -1492,8 +1510,6 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
     clearMatrix();
     clearRhs();
 
-    bool changeQuadrature = !m_options.askSwitch("SameQuadrature",true);
-
 #pragma omp parallel
 {
     m_exprdata->parse(residual, u);
@@ -1508,11 +1524,10 @@ void gsExprAssembler<T>::assembleJacobian(const expr residual, solution & u)
 
     for ( auto & elem : m_exprdata->domain().allElements() )
     {
-        if (changeQuadrature && QuPatch!=elem.patchIndex())
+        if (QuPatch!=elem.patchIndex())
         {
             QuPatch = elem.patchIndex();
-            // get Degree of the domain
-            QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(QuPatch), QuPatch);
+            QuRule = makeQuadratureRule(QuPatch);
         }
 
         // Map the Quadrature rule to the element
@@ -1568,8 +1583,7 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
 
         gsCPPInterface<T> interfaceMap(getGeometryMap(), iFace);
 
-        QuRule = makeQuadratureRule(this->trialSpace(0).source().basis(patch1),
-                                    patch1, iFace.first().side().direction());
+        QuRule = makeQuadratureRule(patch1, iFace.first().side().direction());
 
         // Initialize domain element iterator for current patch
         typename gsBasis<T>::domainIter domIt =  // add patch1 to domainiter ?
@@ -1674,23 +1688,23 @@ void gsExprAssembler<T>::quPointsWeights(std::vector<gsMatrix<T> >&  cPoints, st
 
     for (unsigned patchInd = 0; patchInd < m_exprdata->domain().nPieces(); ++patchInd)
     {
-        auto & bb = this->trialSpace(0).source().basis(patchInd);
+        const typename gsDomain<T>::Ptr dom = m_exprdata->domain().subdomain(patchInd);
 
-        QuRule = makeQuadratureRule(bb, patchInd);
+        QuRule = makeQuadratureRule(patchInd);
         index_t sz = 0;
-        for ( auto & elem : bb.domain()->allElements() )
+        for ( auto & elem : dom->allElements() )
         {
             QuRule->mapTo(elem.lowerCorner(), elem.upperCorner(),
                           m_exprdata->points(), m_exprdata->weights());
             sz += m_exprdata->weights().size();
         }
 
-        cPoints[patchInd].resize(bb.domainDim(), sz );
+        cPoints[patchInd].resize(dom->dim(), sz );
         cWeights[patchInd].resize( sz );
 
         index_t count = 0;
         // Start iteration over elements of patchInd
-        for ( auto & elem : bb.domain()->allElements() ) //todo: parallelize
+        for ( auto & elem : dom->allElements() ) //todo: parallelize
         {
             // Map the Quadrature rule to the element
             QuRule->mapTo( elem.lowerCorner(), elem.upperCorner(),
