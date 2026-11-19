@@ -155,7 +155,7 @@ private:
     bool formatForArgyris(gsMultiPatch<T>& mp) const;
 
     // Optimization & Post-Processing
-    bool optimizeWinslowBarrier(gsMultiPatch<T>& mp, T minDetThreshold = 1e-7);
+    bool optimizeWinslowBarrier(gsMultiPatch<T>& mp, T minDetThreshold = 1e-7) const;
     void ensureExactBoundaryConformity(gsMultiPatch<T>& mp);
     T evaluateDistortionEnergy(const gsMultiPatch<T>& mp, T* minDetOut = nullptr,
                                T* minAngleOut = nullptr, T* maxAngleOut = nullptr) const;

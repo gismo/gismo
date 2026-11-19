@@ -3004,7 +3004,6 @@ inline bool build4SidedMultiHoleGrid(
     CurveSeg<T> oS = cS, oE = cE, oN = cN, oW = cW;
     gsPoint2D<T> P0 = oS.p0(), P1 = oS.p1();
     if (dist2(oE.p0(), P1) > dist2(oE.p1(), P1)) oE = oE.reversed();
-    gsPoint2D<T> P2 = oE.p1();
     if (dist2(oW.p0(), P0) > dist2(oW.p1(), P0)) oW = oW.reversed();
     gsPoint2D<T> P3 = oW.p1();
     if (dist2(oN.p0(), P3) > dist2(oN.p1(), P3)) oN = oN.reversed();
@@ -8013,7 +8012,7 @@ bool gsPatchSplitter<T>::splitDegenerateSinglePatchOGrid(const gsMultiPatch<T>& 
 
         gsASG1LocalFitter<T>::unifyPatchOrientations(candMp);
         candMp.computeTopology(T(1e-5), false, false);
-        const_cast<gsPatchSplitter<T>*>(this)->optimizeWinslowBarrier(candMp);
+        optimizeWinslowBarrier(candMp);
         candMp.computeTopology(T(1e-5), false, false);
         T minDet = 0, minA = 0, maxA = 180;
         T energy = evaluateDistortionEnergy(candMp, &minDet, &minA, &maxA);
@@ -8299,7 +8298,7 @@ T gsPatchSplitter<T>::evaluateDistortionEnergy(const gsMultiPatch<T>& mp, T* min
 }
 
 template <class T>
-bool gsPatchSplitter<T>::optimizeWinslowBarrier(gsMultiPatch<T>& mp, T minDetThreshold)
+bool gsPatchSplitter<T>::optimizeWinslowBarrier(gsMultiPatch<T>& mp, T minDetThreshold) const
 {
     if (mp.nPatches() == 0) return false;
 
