@@ -31,6 +31,7 @@
 #include <gsModeling/gsPatchSplitterGeom.hpp>
 #include <gsModeling/gsPatchSplitterTriMesh.hpp>
 #include <gsModeling/gsPatchSplitterTemplates.hpp>
+#include <gsModeling/gsPatchSplitterMAT.hpp>
 #include <gsModeling/gsPatchSplitterPolychord.hpp>
 #include <gsModeling/gsPatchSplitterCrossField.hpp>
 #include <gsModeling/gsASG1LocalFitter.h>
@@ -3146,7 +3147,7 @@ gsPatchSplitter<T>::computeMedialAxisSplitting()
         cand.numPatches = static_cast<int>(cand.multiPatch.nPatches());
         cand.distortionEnergy = evaluateDistortionEnergy(cand.multiPatch, &cand.minJacobianDet,
                                                          &cand.minCornerAngleDeg, &cand.maxCornerAngleDeg);
-        cand.isValid = (minPos20 > T(1e-8) && cand.minJacobianDet > T(1e-8) && cand.maxCornerAngleDeg < T(164.9));
+        cand.isValid = (minPos20 > T(1e-8) && cand.minJacobianDet > T(1e-8) && cand.maxCornerAngleDeg < std::max(maxAngTol, T(164.9)));
         if (!cand.isValid) {
             if (dbg) std::cerr << "[DBG] post-check failed (P=" << cand.numPatches
                                << " minPos20=" << minPos20 << " minDet=" << cand.minJacobianDet
@@ -3156,6 +3157,24 @@ gsPatchSplitter<T>::computeMedialAxisSplitting()
         }
         return true;
     };
+
+    // ------------------------------------------------------------------------
+    // Method 1: True Delaunay-Dual Medial Axis Transform (MAT) Quad Decomposition
+    // (Invoked directly when Strategy::MedialAxisSkeleton is explicitly selected)
+    // ------------------------------------------------------------------------
+    if (m_strategy == Strategy::MedialAxisSkeleton)
+    {
+        gsMultiPatch<T> matMp;
+        if (internal_splitter::gsPatchSplitterMAT<T>::buildMATMultiPatch(m_domain, m_degree, matMp)) {
+            reducePolychordStrips(matMp);
+            SplittingCandidate matCand;
+            matCand.multiPatch = matMp;
+            matCand.methodUsed = "MedialAxisTransform";
+            if (tryFinalizeHole(matCand)) {
+                return matCand;
+            }
+        }
+    }
 
     using internal_splitter::CurveSeg;
     std::vector<CurveSeg<T>> oCCW = internal_splitter::orientLoopSegments(outer, m_degree, true);
@@ -4084,8 +4103,21 @@ gsPatchSplitter<T>::computeMedialAxisSplitting()
     }
 
     // ------------------------------------------------------------------------
-    // Case 12: General Conforming Multi-Hole Fallback (only if requested directly)
+    // Case 12: General Conforming Delaunay-Dual Medial Axis Transform (MAT)
     // ------------------------------------------------------------------------
+    {
+        gsMultiPatch<T> matMp;
+        if (internal_splitter::gsPatchSplitterMAT<T>::buildMATMultiPatch(m_domain, m_degree, matMp)) {
+            reducePolychordStrips(matMp);
+            SplittingCandidate matCand;
+            matCand.multiPatch = matMp;
+            matCand.methodUsed = "MedialAxisTransform";
+            if (tryFinalizeHole(matCand)) {
+                return matCand;
+            }
+        }
+    }
+
     if (m_strategy == Strategy::MedialAxisSkeleton)
         return computeMultiHoleTriangulationSplitting();
     return candidate;
@@ -4950,7 +4982,13 @@ bool gsPatchSplitter<T>::validateMultiPatch(
         bool degen = false;
         internal_splitter::evalPatchCornerAnglesDeg(mp.patch(p), angs, minA, maxA, degen);
         if (degen || minA < minAngleDeg || maxA > maxAngleDeg) {
-            if (reason) *reason = "corner tangent angle out of admissible bounds";
+            if (reason) {
+                std::ostringstream ss;
+                ss << "corner tangent angle out of bounds on patch " << p 
+                   << " (degen=" << degen << " minA=" << minA << " maxA=" << maxA 
+                   << " bounds=[" << minAngleDeg << "," << maxAngleDeg << "])";
+                *reason = ss.str();
+            }
             return false;
         }
         polys[p] = internal_splitter::samplePatchBoundaryPoly(mp.patch(p), 20);

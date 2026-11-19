@@ -633,7 +633,7 @@ inline bool isSegmentInsidePoly(const gsPoint2D<T>& a, const gsPoint2D<T>& b,
 template <class T>
 inline const gsMatrix<T>& getSamplingGrid2D(int nSamples)
 {
-    static std::map<int, gsMatrix<T>> cache;
+    static thread_local std::map<int, gsMatrix<T>> cache;
     auto it = cache.find(nSamples);
     if (it != cache.end()) return it->second;
 
@@ -663,10 +663,28 @@ inline void evalPatchJacobianAndWinslow(const gsGeometry<T>& patch, int nSamples
 
     const T h = T(1) / (nSamples - 1);
     const int N = nSamples * nSamples;
-    const gsMatrix<T>& uGrid = getSamplingGrid2D<T>(nSamples);
+    const gsMatrix<T>& stdGrid = getSamplingGrid2D<T>(nSamples);
+
+    const gsMatrix<T> supp = patch.support();
+    const T u0 = supp(0, 0), u1 = supp(0, 1);
+    const T v0 = supp(1, 0), v1 = supp(1, 1);
+    const T du = u1 - u0, dv = v1 - v0;
+
+    gsMatrix<T> scaledGrid;
+    const gsMatrix<T>* uGridPtr = &stdGrid;
+    const bool isUnit = (std::abs(u0) < T(1e-9) && std::abs(u1 - T(1)) < T(1e-9) &&
+                         std::abs(v0) < T(1e-9) && std::abs(v1 - T(1)) < T(1e-9));
+    if (!isUnit) {
+        scaledGrid.resize(2, N);
+        for (int p = 0; p < N; ++p) {
+            scaledGrid(0, p) = u0 + stdGrid(0, p) * du;
+            scaledGrid(1, p) = v0 + stdGrid(1, p) * dv;
+        }
+        uGridPtr = &scaledGrid;
+    }
 
     gsMatrix<T> J;
-    patch.jacobian_into(uGrid, J);
+    patch.jacobian_into(*uGridPtr, J);
 
     const T hSq = h * h;
     for (int p = 0; p < N; ++p) {
@@ -705,6 +723,137 @@ inline bool isPatchDetSingleSign(const gsGeometry<T>& patch, int nSamples = 21, 
     evalPatchJacobianAndWinslow(patch, nSamples, minDet, maxDet, minAbs, energy);
     if (minAbsOut) *minAbsOut = minAbs;
     return (minDet > tol) || (maxDet < -tol);
+}
+
+// Corner Tangent Angle & Aspect Ratio Diagnostics
+template <class T>
+inline void evalPatchCornerAnglesDeg(const gsGeometry<T>& patch,
+                                     T anglesDeg[4],
+                                     T& minAngDeg,
+                                     T& maxAngDeg,
+                                     bool& hasDegenerateCorner)
+{
+    const gsMatrix<T> supp = patch.support();
+    const T u0 = supp(0, 0), u1 = supp(0, 1);
+    const T v0 = supp(1, 0), v1 = supp(1, 1);
+    const T du = u1 - u0, dv = v1 - v0;
+
+    // Corner order: 0=(u0,v0) SW, 1=(u1,v0) SE, 2=(u1,v1) NE, 3=(u0,v1) NW
+    // Inward tangent signs (su, sv) so t1 x t2 = +detJ when detJ > 0
+    const T cu[4] = {u0, u1, u1, u0};
+    const T cv[4] = {v0, v0, v1, v1};
+    const bool t1IsU[4] = {true, false, true, false};
+    const T s1[4] = {T(1), T(1), T(-1), T(-1)};
+    const T s2[4] = {T(1), T(-1), T(-1), T(1)};
+
+    // Batch evaluate center (col 0) + 4 corners (cols 1..4)
+    gsMatrix<T> pts(2, 5), dBatch;
+    pts(0, 0) = T(0.5) * (u0 + u1); pts(1, 0) = T(0.5) * (v0 + v1);
+    for (int c = 0; c < 4; ++c) {
+        pts(0, c + 1) = cu[c];
+        pts(1, c + 1) = cv[c];
+    }
+    patch.deriv_into(pts, dBatch);
+
+    const T detMid = dBatch(0, 0) * dBatch(3, 0) - dBatch(2, 0) * dBatch(1, 0);
+    const T orientSign = (detMid >= T(0)) ? T(1) : T(-1);
+
+    minAngDeg = T(360);
+    maxAngDeg = T(0);
+    hasDegenerateCorner = false;
+    const T radToDeg = T(180) / T(3.14159265358979323846);
+
+    for (int c = 0; c < 4; ++c) {
+        int col = c + 1;
+        T ux = dBatch(0, col), vx = dBatch(1, col);
+        T uy = dBatch(2, col), vy = dBatch(3, col);
+        T t1x = t1IsU[c] ? s1[c] * ux : s1[c] * vx;
+        T t1y = t1IsU[c] ? s1[c] * uy : s1[c] * vy;
+        T t2x = t1IsU[c] ? s2[c] * vx : s2[c] * ux;
+        T t2y = t1IsU[c] ? s2[c] * vy : s2[c] * uy;
+
+        T n1 = std::hypot(t1x, t1y);
+        T n2 = std::hypot(t2x, t2y);
+
+        // If a corner control point collapses (zero tangent), probe slightly inward
+        if (n1 < T(1e-10) || n2 < T(1e-10)) {
+            const T eps = T(1e-3);
+            gsMatrix<T> pt(2, 1), der;
+            pt(0, 0) = (cu[c] == u0) ? (u0 + eps * du) : (u1 - eps * du);
+            pt(1, 0) = (cv[c] == v0) ? (v0 + eps * dv) : (v1 - eps * dv);
+            patch.deriv_into(pt, der);
+            ux = der(0, 0); vx = der(1, 0);
+            uy = der(2, 0); vy = der(3, 0);
+            t1x = t1IsU[c] ? s1[c] * ux : s1[c] * vx;
+            t1y = t1IsU[c] ? s1[c] * uy : s1[c] * vy;
+            t2x = t1IsU[c] ? s2[c] * vx : s2[c] * ux;
+            t2y = t1IsU[c] ? s2[c] * vy : s2[c] * uy;
+            n1 = std::hypot(t1x, t1y);
+            n2 = std::hypot(t2x, t2y);
+        }
+
+        if (n1 < T(1e-12) || n2 < T(1e-12)) {
+            anglesDeg[c] = T(180);
+            hasDegenerateCorner = true;
+        } else {
+            const T dot = (t1x * t2x + t1y * t2y) / (n1 * n2);
+            const T cr  = orientSign * (t1x * t2y - t1y * t2x) / (n1 * n2);
+            T ang = std::atan2(cr, dot) * radToDeg;
+            if (ang <= T(-1e-6))
+                ang += T(360);
+            else if (ang < T(0))
+                ang = T(0);
+            anglesDeg[c] = ang;
+            if (ang > T(175.0) || ang < T(5.0))
+                hasDegenerateCorner = true;
+        }
+        minAngDeg = std::min(minAngDeg, anglesDeg[c]);
+        maxAngDeg = std::max(maxAngDeg, anglesDeg[c]);
+    }
+}
+
+template <class T>
+inline void evalPatchLengthsAndAR(const gsGeometry<T>& patch,
+                                  T& Lu,
+                                  T& Lv,
+                                  T& aspectRatio)
+{
+    const gsMatrix<T> supp = patch.support();
+    const T u0 = supp(0, 0), u1 = supp(0, 1);
+    const T v0 = supp(1, 0), v1 = supp(1, 1);
+    const int nS = 16;
+
+    auto lineArcLen = [&](bool alongU, T fixedFrac) -> T {
+        gsMatrix<T> pts(2, nS + 1), vals;
+        for (int i = 0; i <= nS; ++i) {
+            T t = static_cast<T>(i) / static_cast<T>(nS);
+            if (alongU) {
+                pts(0, i) = u0 + t * (u1 - u0);
+                pts(1, i) = v0 + fixedFrac * (v1 - v0);
+            } else {
+                pts(0, i) = u0 + fixedFrac * (u1 - u0);
+                pts(1, i) = v0 + t * (v1 - v0);
+            }
+        }
+        patch.eval_into(pts, vals);
+        T len = T(0);
+        for (int i = 0; i < nS; ++i)
+            len += std::hypot(vals(0, i + 1) - vals(0, i), vals(1, i + 1) - vals(1, i));
+        return len;
+    };
+
+    const T fracs[3] = {T(0), T(0.5), T(1)};
+    Lu = T(0);
+    Lv = T(0);
+    for (int k = 0; k < 3; ++k) {
+        Lu += lineArcLen(true, fracs[k]);
+        Lv += lineArcLen(false, fracs[k]);
+    }
+    Lu /= T(3);
+    Lv /= T(3);
+
+    const T eps = T(1e-12);
+    aspectRatio = std::max(Lu / std::max(Lv, eps), Lv / std::max(Lu, eps));
 }
 
 // Concatenate consecutive oriented CurveSeg<T> segments into a single exact clamped gsBSpline<T>.

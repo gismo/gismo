@@ -42,6 +42,11 @@ struct TriMeshData {
         T paramU = T(0);
     };
 
+    struct BoundaryLoopRing {
+        std::vector<int> vertices; // ordered vertex indices along the loop
+        std::vector<int> edges;    // edges[i] is edgeId connecting vertices[i] -> vertices[(i+1)%M]
+    };
+
     std::vector<gsPoint2D<T>> pts;
     std::vector<bool> isBoundaryPt;
     std::vector<bool> isSmoothBnd;
@@ -50,6 +55,7 @@ struct TriMeshData {
     std::vector<gsPoint2D<T>> bndTanIn;
     std::vector<gsPoint2D<T>> bndTanOut;
     std::vector<BoundaryVertexInfo> bndInfo;
+    std::vector<BoundaryLoopRing> loopRings;
     std::vector<EdgeRec> edges;
     std::vector<Tri> tris;
     std::vector<Quad> quads;
@@ -172,9 +178,15 @@ inline bool buildConstrainedDomainTriangulation(
         outMesh.loopPolys[l] = sampleCurveLoopPoly(dom.loop(l), 28);
 
     // Prepare boundary segments for each loop (ensuring >= 4 segments per loop)
-    struct LoopSeg { CurveSeg<T> seg; int loopIdx; };
-    std::vector<std::vector<CurveSeg<T>>> loopSegs(nLoops);
-    std::vector<std::vector<CurveSeg<T>>> rawLoops(nLoops);
+    struct LoopSeg {
+        CurveSeg<T> seg;
+        int loopIdx = 0;
+        int curveIdx = 0;
+        T paramU0 = T(0);
+        T paramU1 = T(1);
+    };
+    std::vector<std::vector<LoopSeg>> loopSegs(nLoops);
+    std::vector<std::vector<LoopSeg>> rawLoops(nLoops);
     const gsMatrix<T> domBbox = dom.boundingBox();
     const T domDiag = std::hypot(domBbox(0, 1) - domBbox(0, 0), domBbox(1, 1) - domBbox(1, 0));
 
@@ -183,19 +195,25 @@ inline bool buildConstrainedDomainTriangulation(
         const int K = lp.size();
         if (K == 0) return false;
 
-        std::vector<CurveSeg<T>> raw;
+        std::vector<LoopSeg> raw;
         if (K == 1) {
             auto sH = CurveSeg<T>(lp.curve(0), degree).splitArc(T(0.5));
             auto s1 = sH.first.splitArc(T(0.5));
             auto s2 = sH.second.splitArc(T(0.5));
-            raw = {s1.first, s1.second, s2.first, s2.second};
+            raw = { {s1.first, l, 0, T(0.0), T(0.25)},
+                    {s1.second, l, 0, T(0.25), T(0.5)},
+                    {s2.first, l, 0, T(0.5), T(0.75)},
+                    {s2.second, l, 0, T(0.75), T(1.0)} };
         } else if (K == 2) {
             auto s0 = CurveSeg<T>(lp.curve(0), degree).splitArc(T(0.5));
             auto s1 = CurveSeg<T>(lp.curve(1), degree).splitArc(T(0.5));
-            raw = {s0.first, s0.second, s1.first, s1.second};
+            raw = { {s0.first, l, 0, T(0.0), T(0.5)},
+                    {s0.second, l, 0, T(0.5), T(1.0)},
+                    {s1.first, l, 1, T(0.0), T(0.5)},
+                    {s1.second, l, 1, T(0.5), T(1.0)} };
         } else {
             for (int i = 0; i < K; ++i)
-                raw.emplace_back(lp.curve(i), degree);
+                raw.push_back({CurveSeg<T>(lp.curve(i), degree), l, i, T(0.0), T(1.0)});
         }
         rawLoops[l] = std::move(raw);
     }
@@ -204,8 +222,8 @@ inline bool buildConstrainedDomainTriangulation(
     std::vector<gsPoint2D<T>> featurePts;
     if (addFeatureProj && nLoops > 1) {
         for (int l = 0; l < nLoops; ++l)
-            for (const auto& seg : rawLoops[l])
-                featurePts.push_back(seg.p0());
+            for (const auto& rseg : rawLoops[l])
+                featurePts.push_back(rseg.seg.p0());
     }
 
     for (int l = 0; l < nLoops; ++l) {
@@ -217,8 +235,8 @@ inline bool buildConstrainedDomainTriangulation(
             T loopPerim = T(0);
             std::vector<T> segLens(raw.size(), T(0));
             for (size_t si = 0; si < raw.size(); ++si) {
-                gsPoint2D<T> pm = evalCurvePoint(*raw[si].bsp, T(0.5));
-                segLens[si] = raw[si].p0().dist(pm) + pm.dist(raw[si].p1());
+                gsPoint2D<T> pm = evalCurvePoint(*raw[si].seg.bsp, T(0.5));
+                segLens[si] = raw[si].seg.p0().dist(pm) + pm.dist(raw[si].seg.p1());
                 loopPerim += segLens[si];
             }
             T localH = targetH;
@@ -226,7 +244,7 @@ inline bool buildConstrainedDomainTriangulation(
                 localH = std::min(targetH, loopPerim / T(8));
 
             for (size_t si = 0; si < raw.size(); ++si) {
-                const auto& s = raw[si];
+                const auto& s = raw[si].seg;
                 T len = segLens[si];
                 auto d0 = evalCurveDeriv(*s.bsp, T(0));
                 auto d1 = evalCurveDeriv(*s.bsp, T(1));
@@ -248,7 +266,7 @@ inline bool buildConstrainedDomainTriangulation(
 
         if (addFeatureProj && nLoops > 1 && domDiag > T(1e-12)) {
             for (size_t si = 0; si < raw.size(); ++si) {
-                const auto& s = raw[si];
+                const auto& s = raw[si].seg;
                 gsPoint2D<T> pm = evalCurvePoint(*s.bsp, T(0.5));
                 T sLen = s.p0().dist(pm) + pm.dist(s.p1());
                 if (sLen < (l == 0 ? T(0.16) : T(0.12)) * domDiag) continue;
@@ -305,25 +323,27 @@ inline bool buildConstrainedDomainTriangulation(
                 loopSegs[l].push_back(raw[si]);
                 continue;
             }
-            CurveSeg<T> rem = raw[si];
+            CurveSeg<T> rem = raw[si].seg;
             T prevU = T(0);
+            T u0 = raw[si].paramU0, u1 = raw[si].paramU1;
             for (T uAbs : filt) {
                 T locU = (uAbs - prevU) / std::max(T(1e-9), T(1) - prevU);
                 locU = std::max(T(0.05), std::min(T(0.95), locU));
                 auto sp = rem.splitAtParam(locU);
-                loopSegs[l].push_back(sp.first);
+                T curU = u0 + uAbs * (u1 - u0);
+                loopSegs[l].push_back({sp.first, l, raw[si].curveIdx, u0 + prevU * (u1 - u0), curU});
                 rem = sp.second;
                 prevU = uAbs;
             }
-            loopSegs[l].push_back(rem);
+            loopSegs[l].push_back({rem, l, raw[si].curveIdx, u0 + prevU * (u1 - u0), u1});
         }
 
         // Rebuild loopPolys directly from loopSegs so every ring vertex coincides with loopPolys
         outMesh.loopPolys[l].clear();
-        for (const auto& seg : loopSegs[l]) {
+        for (const auto& ls : loopSegs[l]) {
             for (int k = 0; k < 16; ++k) {
                 T u = static_cast<T>(k) / T(16);
-                outMesh.loopPolys[l].push_back(evalCurvePoint(*seg.bsp, u));
+                outMesh.loopPolys[l].push_back(evalCurvePoint(*ls.seg.bsp, u));
             }
         }
     }
@@ -345,8 +365,12 @@ inline bool buildConstrainedDomainTriangulation(
     };
 
     const T radToDeg = T(180) / T(3.14159265358979323846);
+    outMesh.loopRings.clear();
+    outMesh.loopRings.resize(nLoops);
     for (int l = 0; l < nLoops; ++l) {
         int M = static_cast<int>(loopSegs[l].size());
+        outMesh.loopRings[l].vertices.reserve(M);
+        outMesh.loopRings[l].edges.reserve(M);
         int baseIdx = static_cast<int>(outMesh.pts.size());
         T signedArea2 = T(0);
         {
@@ -359,11 +383,12 @@ inline bool buildConstrainedDomainTriangulation(
         // Outer loop CCW (area > 0) -> domain on left; Hole loop CW (area < 0) -> domain on left
         const bool domainOnLeft = (l == 0) ? (signedArea2 >= T(0)) : (signedArea2 <= T(0));
         for (int i = 0; i < M; ++i) {
-            outMesh.pts.push_back(loopSegs[l][i].p0());
+            outMesh.pts.push_back(loopSegs[l][i].seg.p0());
             outMesh.isBoundaryPt.push_back(true);
+            outMesh.bndInfo.push_back({l, loopSegs[l][i].curveIdx, loopSegs[l][i].paramU0});
 
-            const auto& prevBsp = *loopSegs[l][(i + M - 1) % M].bsp;
-            const auto& nextBsp = *loopSegs[l][i].bsp;
+            const auto& prevBsp = *loopSegs[l][(i + M - 1) % M].seg.bsp;
+            const auto& nextBsp = *loopSegs[l][i].seg.bsp;
             auto din  = evalCurveDeriv(prevBsp, T(1));
             auto dout = evalCurveDeriv(nextBsp, T(0));
             T n1 = std::hypot(din.x, din.y), n2 = std::hypot(dout.x, dout.y);
@@ -384,8 +409,10 @@ inline bool buildConstrainedDomainTriangulation(
         for (int i = 0; i < M; ++i) {
             int u = baseIdx + i;
             int v = baseIdx + (i + 1) % M;
-            int eid = addUndirEdge(u, v, loopSegs[l][i], true, l);
-            rings[l].push_back({u, loopSegs[l][i], eid});
+            int eid = addUndirEdge(u, v, loopSegs[l][i].seg, true, l);
+            rings[l].push_back({u, loopSegs[l][i].seg, eid});
+            outMesh.loopRings[l].vertices.push_back(u);
+            outMesh.loopRings[l].edges.push_back(eid);
         }
     }
 
@@ -701,6 +728,86 @@ inline bool buildConstrainedDomainTriangulation(
     if (cross2(outMesh.pts[ia], outMesh.pts[ib], outMesh.pts[ic]) <= T(1e-8)) return false;
     outMesh.tris.push_back({{ia, ib, ic}, {activeRing[0].edgeId, activeRing[1].edgeId, activeRing[2].edgeId}});
     return true;
+}
+
+// Extract exact CAD boundary curve between two boundary vertices vStart -> vEnd on loop l
+template <class T>
+inline CurveSeg<T> extractExactCADBoundaryBetween(
+    const TriMeshData<T>& mesh,
+    int vStart, int vEnd,
+    int degree,
+    bool forward = true)
+{
+    if (vStart < 0 || vEnd < 0 ||
+        static_cast<size_t>(vStart) >= mesh.pts.size() ||
+        static_cast<size_t>(vEnd) >= mesh.pts.size()) {
+        return CurveSeg<T>();
+    }
+    if (vStart == vEnd) {
+        return makeStraightSeg(mesh.pts[vStart], mesh.pts[vEnd], degree);
+    }
+    if (mesh.loopRings.empty()) {
+        return makeStraightSeg(mesh.pts[vStart], mesh.pts[vEnd], degree);
+    }
+
+    int lStart = (static_cast<size_t>(vStart) < mesh.bndInfo.size()) ? mesh.bndInfo[vStart].loopIdx : -1;
+    int lEnd   = (static_cast<size_t>(vEnd) < mesh.bndInfo.size()) ? mesh.bndInfo[vEnd].loopIdx : -1;
+    if (lStart < 0 || lStart != lEnd || lStart >= static_cast<int>(mesh.loopRings.size())) {
+        return makeStraightSeg(mesh.pts[vStart], mesh.pts[vEnd], degree);
+    }
+
+    const auto& ring = mesh.loopRings[lStart];
+    int M = static_cast<int>(ring.vertices.size());
+    if (M < 2) {
+        return makeStraightSeg(mesh.pts[vStart], mesh.pts[vEnd], degree);
+    }
+
+    int iStart = -1, iEnd = -1;
+    for (int i = 0; i < M; ++i) {
+        if (ring.vertices[i] == vStart) iStart = i;
+        if (ring.vertices[i] == vEnd)   iEnd = i;
+    }
+    if (iStart < 0 || iEnd < 0) {
+        return makeStraightSeg(mesh.pts[vStart], mesh.pts[vEnd], degree);
+    }
+
+    std::vector<CurveSeg<T>> segs;
+    if (forward) {
+        int i = iStart;
+        while (i != iEnd) {
+            int eid = ring.edges[i];
+            const auto& er = mesh.edges[eid];
+            int u = ring.vertices[i];
+            int v = ring.vertices[(i + 1) % M];
+            CurveSeg<T> s = (er.a == u && er.b == v) ? er.seg : er.seg.reversed();
+            segs.push_back(s);
+            i = (i + 1) % M;
+        }
+    } else {
+        int i = iStart;
+        while (i != iEnd) {
+            int prevI = (i - 1 + M) % M;
+            int eid = ring.edges[prevI];
+            const auto& er = mesh.edges[eid];
+            int u = ring.vertices[prevI];
+            int v = ring.vertices[i];
+            CurveSeg<T> s = (er.a == u && er.b == v) ? er.seg.reversed() : er.seg;
+            segs.push_back(s);
+            i = prevI;
+        }
+    }
+
+    if (segs.empty()) {
+        return makeStraightSeg(mesh.pts[vStart], mesh.pts[vEnd], degree);
+    }
+    if (segs.size() == 1) {
+        return segs[0];
+    }
+    auto joined = joinCurveSegsExact(segs, degree);
+    if (joined) {
+        return CurveSeg<T>(*joined);
+    }
+    return makeStraightSeg(mesh.pts[vStart], mesh.pts[vEnd], degree);
 }
 
 template <class T>
