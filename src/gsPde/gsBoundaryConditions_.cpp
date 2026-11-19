@@ -25,6 +25,12 @@ void pybind11_enum_gsBoundaryConditions(py::module &m)
         .value("collapsed"     , condition_type::collapsed)
         .value("laplace"       , condition_type::laplace)
         .export_values();
+
+    py::enum_<trace_type::type>(m, "tracetype")
+        .value("essential" , trace_type::essential )
+        .value("all"       , trace_type::all       )
+        .value("normal"    , trace_type::normal    )
+        .value("tangential", trace_type::tangential);
 }
 
 void pybind11_init_gsBoundaryConditions(py::module &m)
@@ -60,6 +66,9 @@ void pybind11_init_gsBoundaryConditions(py::module &m)
         // py::arg("unknown") = 0,
         // py::arg("parametric") = false,
         // py::arg("comp") = -1
+        )
+    .def("addCondition", static_cast<void (Class::*)(int, boxSide, condition_type::type, trace_type::type, gsFunctionSet<real_t> *, short_t, bool, int)> (&Class::addCondition),
+        "Adds a boundary condition that applies to the part of the field selected by the trace"
         )
       .def("addCornerValue", static_cast<void (Class::*)(boundary::corner, real_t, int, short_t, int)> (&Class::addCornerValue),
                             "Adds a boundary condition"//,

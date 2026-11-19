@@ -43,6 +43,23 @@ struct condition_type
 
 };
 
+/// @brief Specifies which part of the field a boundary condition applies to
+///
+/// The trace selector is orthogonal to condition_type::type.
+///
+/// @ingroup Pde
+struct trace_type
+{
+    /// Specifies the part of the field a boundary condition applies to
+    enum type
+    {
+        essential  = 0, ///< Essential trace of the space the condition is applied to; for an H1 (identity) space this equals \a all
+        all        = 1, ///< Every component
+        normal     = 2, ///< Normal component on the side
+        tangential = 3  ///< Tangential components on the side
+    };
+};
+
 // Print (as string) a boundary type
 inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
 {
@@ -278,8 +295,12 @@ struct boundary_condition
     /// is defined in parametric coordinates
     bool    parametric()  const { return m_parametric; }
 
+    /// Returns the part of the field (trace selector) this boundary condition applies to
+    trace_type::type trace() const { return m_trace; }
+
     /// Checks if \a this is the same as \other apart from the function data.
-    bool isSame(const boundary_condition & other) {return ((other.ps == ps) && (other.unknown() == unknown()) && (other.unkComponent() == unkComponent())) ;}
+    /// The patch side, unknown, component and trace are compared.
+    bool isSame(const boundary_condition & other) {return ((other.ps == ps) && (other.unknown() == unknown()) && (other.unkComponent() == unkComponent()) && (other.trace() == trace())) ;}
 
     patchSide ps;                ///< Side of a patch for this boundary condition
 
@@ -296,6 +317,8 @@ struct boundary_condition
     short_t m_unkcomp;               ///< Component of unknown to which this boundary condition refers to
 
     bool m_parametric;
+
+    trace_type::type m_trace = trace_type::essential; ///< Part of the field the condition applies to
 };
 
 /**
@@ -672,6 +695,46 @@ public:
             m_bc[bc.ctype()].push_back(bc);
         else // bc of this type is already defined on patch p and side s
             gsWarn<<"Condition of type "<<bc.ctype()<<" on patch "<<bc.patch()<<" side "<<bc.side()<<" of unknown "<<bc.unknown()<<" with component "<<bc.unkComponent()<<" ignored, because it has already been defined\n";
+    }
+
+    /** @brief Adds another boundary condition with a trace selector
+     *
+     * Creates an object of type boundary_condition and adds it to
+     * the list of corresponding boundary conditions. A condition is
+     * a duplicate only if patch, side, unknown, component and trace
+     * all agree.
+     *
+     * @param p Index of the patch
+     * @param s Side of the patch
+     * @param t Type of boundary condition (see condition_type::type)
+     * @param tr Part of the field the condition applies to, see
+     * trace_type::type (essential trace, all components, normal or
+     * tangential part)
+     * @param f Function defining the boundary condition
+     * @param unknown Specifies which unknown variable the boundary condition
+     * refers to
+     * @param parametric True if the function data for this boundary condition
+     * is defined in parametric coordinates.
+     * @param comp Cartesian component of an identity space the condition
+     * applies to; -1 means all components.
+     *
+     * A trace other than essential or all selects a part of a vector
+     * field; whether a component makes sense together with it is decided
+     * by the space that consumes the condition (e.g. gsDiscreteSpace).
+     */
+    void addCondition(int p, boxSide s, condition_type::type t, trace_type::type tr,
+                      gsFunctionSet<T> * f, short_t unknown = 0, bool parametric = false,
+                      int comp = -1)
+    {
+        function_ptr fun = memory::make_shared_not_owned(f);
+        auto bc = boundary_condition<T>(p,s,fun,t,unknown,comp,parametric);
+        bc.m_trace = tr;
+        const auto & c = m_bc[bc.ctype()];
+        auto it = std::find_if(c.begin(), c.end(), [&bc](const boundary_condition<T> & b){ return bc.isSame(b); });
+        if (it==c.end())
+            m_bc[bc.ctype()].push_back(bc);
+        else // bc of this type and trace is already defined on patch p and side s
+            gsWarn<<"Condition of type "<<bc.ctype()<<" on patch "<<bc.patch()<<" side "<<bc.side()<<" of unknown "<<bc.unknown()<<" with trace "<<bc.trace()<<" ignored, because it has already been defined\n";
     }
 
     void addCondition(int p, boxSide s, condition_type::type t,

@@ -30,6 +30,31 @@ class gsXml< gsBoundaryConditions<T> >
 private:
     gsXml() { }
     typedef gsBoundaryConditions<T> Object;
+
+    /// Returns the name used in the \a trace attribute of a \a bc node for the trace selector \a tr
+    static std::string traceName(trace_type::type tr)
+    {
+        switch (tr)
+        {
+        case trace_type::essential  : return "essential";
+        case trace_type::all        : return "all";
+        case trace_type::normal     : return "normal";
+        case trace_type::tangential : return "tangential";
+        }
+        GISMO_ERROR("Unknown trace selector "<<static_cast<int>(tr));
+    }
+
+    /// Returns the trace selector with the name \a name; any name other than the four of traceName() is refused
+    static trace_type::type traceFromName(const std::string & name)
+    {
+        if (name == "essential")  return trace_type::essential;
+        if (name == "all")        return trace_type::all;
+        if (name == "normal")     return trace_type::normal;
+        if (name == "tangential") return trace_type::tangential;
+        GISMO_ENSURE(name == "tangential", "Unknown value \""<<name<<"\" of the attribute \"trace\" of a boundary condition;"
+                     " expected essential, all, normal or tangential");
+        return trace_type::tangential;
+    }
 public:
     GSXML_COMMON_FUNCTIONS(Object);
     static std::string tag  () { return "boundaryConditions"; }
@@ -153,6 +178,10 @@ public:
           bool ispar = false;
           if (NULL != att_ispar) ispar = atoi(att_ispar->value());
 
+          const gsXmlAttribute* att_trace = child->first_attribute("trace");
+          trace_type::type tr = trace_type::essential;
+          if (NULL != att_trace) tr = traceFromName(att_trace->value());
+
           const gsXmlAttribute* att_name = child->first_attribute("name");
           if (NULL != att_name) {
             boundaries.clear();
@@ -175,8 +204,11 @@ public:
           const char* bctype = bcat->value();
           for (std::vector<patchSide>::const_iterator it = boundaries.begin();
                it != boundaries.end(); ++it)
+          {
             result.add(it->patch, it->side(), bctype, function_map[fIndex], uIndex,
                        cIndex, ispar);
+            (--result.end(bctype))->m_trace = tr;
+          }
         }
 
         T val(0);
@@ -225,7 +257,7 @@ public:
         std::vector<typename gsFunctionSet<T>::Ptr> fun;
         //gsSortedVector<typename gsFunction<T>::Ptr> fun;
         typedef typename std::vector<const boundary_condition<T>*> bctype_vec;
-        typedef typename std::map<int, bctype_vec> bctype_map;
+        typedef typename std::map<std::pair<int,int>, bctype_vec> bctype_map;
         std::map<std::string, bctype_map> fi;
 
         for (bctype_it it = obj.beginAll(); it != obj.endAll(); ++it)
@@ -245,10 +277,11 @@ public:
                         - fun.begin();
 //                fun.push_sorted_unique(ptr);
 //                int index = fun.getIndex(ptr);
-                std::vector<const boundary_condition<T>*> vec = map[index];
+                const std::pair<int,int> key(index, static_cast<int>(bc->trace()));
+                std::vector<const boundary_condition<T>*> vec = map[key];
                 const boundary_condition<T>* b = &(*bc);
                 vec.push_back(b);
-                map[index] = vec;
+                map[key] = vec;
             }
             std::pair<std::string, bctype_map> pair(label, map);
             fi.insert(pair);
@@ -266,7 +299,7 @@ public:
 
         // for all bcs, append bc, cv
         typedef typename std::map<std::string, bctype_map>::const_iterator bctype_map_it;
-        typedef typename std::map<int, bctype_vec>::const_iterator bctype_iv_it;
+        typedef typename bctype_map::const_iterator bctype_iv_it;
         typedef typename bctype_vec::const_iterator bctype_vec_it;
 
         count = 0;
@@ -278,7 +311,7 @@ public:
 
             for (bctype_iv_it bcV = map.begin(); bcV != map.end(); ++bcV)
             {
-                int index = bcV->first;
+                int index = bcV->first.first;
                 bctype_vec vec = bcV->second;
                 //gsDebug << "index='" << index << "'\n";
                 //gsDebug << "vec='" << vec.size() << "'\n";
@@ -304,6 +337,9 @@ public:
                                 b.unkComponent(), data);
                         bcNode->append_attribute(componentNode);
                         bcNode->append_attribute(unknownNode);
+                        if (bcV->first.second != trace_type::essential)
+                            bcNode->append_attribute(internal::makeAttribute("trace",
+                                traceName(static_cast<trace_type::type>(bcV->first.second)), data));
                         first = false;
                     }
                     else
