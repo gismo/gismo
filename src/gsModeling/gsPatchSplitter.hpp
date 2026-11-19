@@ -4106,22 +4106,6 @@ gsPatchSplitter<T>::computeMultiHoleStructuralTemplates()
         }
     }
 
-    // ------------------------------------------------------------------------
-    // Case 12: General Conforming Delaunay-Dual Medial Axis Transform (MAT)
-    // ------------------------------------------------------------------------
-    {
-        gsMultiPatch<T> matMp;
-        if (internal_splitter::gsPatchSplitterMAT<T>::buildMATMultiPatch(m_domain, m_degree, matMp)) {
-            reducePolychordStrips(matMp);
-            SplittingCandidate matCand;
-            matCand.multiPatch = matMp;
-            matCand.methodUsed = "MedialAxisTransform";
-            if (tryFinalizeHole(matCand)) {
-                return matCand;
-            }
-        }
-    }
-
     return candidate;
 }
 

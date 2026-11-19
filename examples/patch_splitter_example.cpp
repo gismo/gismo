@@ -271,26 +271,33 @@ bool processDomainFile(
     gsWriteParaview(mp, splitPvd, 50, true);
     std::cout << "  Saved Split Domain: " << splitXml << " and " << splitPvd << ".pvd\n";
 
-    // Run AS-G1 Reparametrizer (Global Mode for M <= 30, Local Mode for M > 30)
-    std::cout << "  Running AS-G1 Local Fitter (" << (mp.nPatches() > 30 ? "Local Mode" : "Global Remark 1 KKT") << ")...\n";
-    gsASG1LocalFitter<real_t> fitter(mp, 3, 1, 2);
-    if (mp.nPatches() > 30) {
-        fitter.setMode(gsASG1LocalFitter<real_t>::FittingMode::Local);
-    } else {
-        fitter.setMode(gsASG1LocalFitter<real_t>::FittingMode::Global);
+    // Run AS-G1 Reparametrizer (Adaptive Global/Local fallback)
+    std::cout << "  Running AS-G1 Local Fitter...\n";
+    bool fitOk = false;
+    gsMultiPatch<real_t> fitted;
+    for (int nInner : {2, 3, 4, 6}) {
+        auto mode = (mp.nPatches() <= 20 && nInner <= 4)
+            ? gsASG1LocalFitter<real_t>::FittingMode::Global
+            : gsASG1LocalFitter<real_t>::FittingMode::Local;
+        gsASG1LocalFitter<real_t> fitter(mp, 3, 1, nInner);
+        fitter.setMode(mode);
+        fitter.fit();
+        rec.maxAlpha = fitter.maxAlphaResidual();
+        rec.maxBeta  = fitter.maxBetaResidual();
+        if (fitter.checkASG1(1e-4)) {
+            fitted = fitter.result();
+            fitOk = true;
+            break;
+        }
+        if (nInner == 6) fitted = fitter.result();
     }
-    fitter.fit();
-
-    rec.maxAlpha = fitter.maxAlphaResidual();
-    rec.maxBeta = fitter.maxBetaResidual();
-    rec.asg1_success = fitter.checkASG1(1e-4);
+    rec.asg1_success = fitOk;
 
     std::cout << "  AS-G1 Gluing Residuals: Alpha = " << std::scientific << rec.maxAlpha
               << ", Beta = " << rec.maxBeta << " -> "
               << (rec.asg1_success ? "SUCCESS (Residual <= 1e-4)" : "TOLERANCE WARNING") << "\n";
 
     // Export Reparametrized Domain (XML and ParaView with 50 sample resolution)
-    const auto& fitted = fitter.result();
     std::string asg1Xml = asg1Dir + "/" + filename + "_asg1.xml";
     std::string asg1Pvd = asg1Dir + "/" + filename + "_asg1";
     gsFileData<real_t> outAsg1;
@@ -664,7 +671,7 @@ int main(int argc, char* argv[])
 
     if (runBatch) {
         if (batchDir.empty()) batchDir = "filedata/domain2d/generated_domains";
-        std::string outBase = "filedata/domain2d/as_g1_domain_decomposition_results";
+        std::string outBase = (outPrefix != "splitter_out") ? outPrefix : "filedata/domain2d/as_g1_domain_decomposition_results";
         return runBatchSuite(batchDir, outBase, strategy, stratStr);
     }
 

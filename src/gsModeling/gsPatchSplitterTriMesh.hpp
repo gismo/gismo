@@ -696,6 +696,18 @@ inline bool buildConstrainedDomainTriangulation(
             edgeMap[{std::min(u, newIdx), std::max(u, newIdx)}] = eOld;
             int eSecond = addUndirEdge(newIdx, v, sp.second, true, loopIdxOld);
 
+            outMesh.bndInfo.push_back({loopIdxOld, -1, T(0)});
+            if (loopIdxOld >= 0 && loopIdxOld < static_cast<int>(outMesh.loopRings.size())) {
+                auto& lr = outMesh.loopRings[loopIdxOld];
+                for (size_t ri = 0; ri < lr.edges.size(); ++ri) {
+                    if (lr.edges[ri] == eOld) {
+                        lr.vertices.insert(lr.vertices.begin() + static_cast<long>(ri + 1), newIdx);
+                        lr.edges.insert(lr.edges.begin() + static_cast<long>(ri + 1), eSecond);
+                        break;
+                    }
+                }
+            }
+
             activeRing[splitK].outSeg = sp.first;
             activeRing[splitK].edgeId = eOld;
             activeRing.insert(activeRing.begin() + splitK + 1, {newIdx, sp.second, eSecond});
