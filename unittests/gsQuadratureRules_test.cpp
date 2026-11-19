@@ -1512,4 +1512,545 @@ TEST(hpatchrule_fallback_degree_above_2p_plus_1)
     }
 }
 
+// ============================================================
+// gsHPatchRuleCache, rule handles and gsHPatchRule::makeFactory
+// ============================================================
+
+// Largest |difference| of the nodes and weights that `a` and `b` give on every element of
+// `basis`: the volume elements for fd = -1, else the elements of both sides normal to
+// direction fd (degenerate in fd). Returns +infinity if the two give a different number of
+// points on some element. `nElem` returns the number of elements visited, so that a caller
+// can rule out a vacuous zero.
+real_t hpatchMaxDiff(const gsQuadRule<real_t> & a, const gsQuadRule<real_t> & b,
+                     const gsBasis<real_t> & basis, short_t fd, index_t & nElem)
+{
+    auto dom = basis.domain();
+    real_t diff = 0;
+    nElem = 0;
+    gsMatrix<real_t> na, nb;
+    gsVector<real_t> wa, wb;
+    // Sides 2*fd+1 and 2*fd+2 are the two sides normal to direction fd.
+    for (short_t k = 0; k != (fd < 0 ? 1 : 2); ++k)
+    {
+        const boxSide side(static_cast<short_t>(fd < 0 ? 1 : 2*fd + 1 + k));
+        gsDomain<real_t>::iterator it  = (fd < 0 ? dom->beginAll() : dom->beginBdr(side));
+        gsDomain<real_t>::iterator end = (fd < 0 ? dom->endAll()   : dom->endBdr(side));
+        for (; it < end; ++it)
+        {
+            ++nElem;
+            a.mapTo(it.lowerCorner(), it.upperCorner(), na, wa);
+            b.mapTo(it.lowerCorner(), it.upperCorner(), nb, wb);
+            if (na.rows() != nb.rows() || na.cols() != nb.cols() || wa.size() != wb.size())
+                return std::numeric_limits<real_t>::infinity();
+            if (wa.size() > 0)
+                diff = (std::max)(diff, (std::max)((na - nb).cwiseAbs().maxCoeff(),
+                                                   (wa - wb).cwiseAbs().maxCoeff()));
+        }
+    }
+    return diff;
+}
+
+// Mass (form 0) or stiffness (form 1) matrix of `thb` on the identity geometry, assembled
+// with the leaf rule (deg, reg): through the options (quRule = HPatchRule), or through a
+// factory from gsHPatchRule::makeFactory installed on the same assembler.
+template<short_t d>
+gsMatrix<real_t> hpatchAssembleLeafRule(gsTHBSplineBasis<d,real_t> thb, int form,
+                                        index_t deg, index_t reg, bool useFactory)
+{
+    gsTensorBSplineBasis<d,real_t> & l0 = thb.tensorLevel(0);
+    gsMatrix<real_t> coefs = l0.anchors().transpose();
+    gsTensorBSpline<d,real_t> geom(l0, coefs);
+    gsMultiPatch<real_t> mp; mp.addPatch(geom);
+    gsMultiBasis<real_t> mb; mb.addBasis(thb.clone().release()); mb.setTopology(mp);
+
+    gsExprAssembler<real_t> A(1,1);
+    gsOptionList opt = gsExprAssembler<real_t>::defaultOptions();
+    opt.setInt("quRule", gsQuadrature::HPatchRule);
+    opt.setReal("quA", static_cast<real_t>(deg));
+    opt.setInt("quB", reg);
+    A.setOptions(opt);
+    A.setIntegrationElements(mb);
+    if (useFactory)
+        A.setQuadratureFactory(gsHPatchRule<real_t>::makeFactory(mb, deg, reg, false));
+    auto G = A.getMap(mp);
+    auto u = A.getSpace(mb);
+    A.initSystem();
+    if (form == 0) A.assemble( u * u.tr() * meas(G) );
+    else           A.assemble( igrad(u,G) * igrad(u,G).tr() * meas(G) );
+    return A.matrix().toDense();
+}
+
+// The cache stores the solved shape of every (leaf, direction) lookup under the key
+// (min(L,1), normalised even target knot vector); a lookup either hits an entry or solves
+// and inserts one, so hits + solves is the number of lookups and size == solves. A leaf
+// direction that ties with Gauss never touches the cache, so for the target (2p, p-1) with
+// simple knots the lookups of one build are the (leaf, direction) pairs at least two
+// elements wide. Here these are counted from outside on makeRefinedTHB(p): the 1x7 leaf has
+// one (direction 1), the 7x8 leaf two, the 4x4 corner leaf two. The 1x7 leaf's direction
+// and the 7x8 leaf's direction 0 are 7 elements over [0.125,1] (L = 0.875) and share a key,
+// the corner leaf's two directions share a key, and the 8-element direction has its own.
+// Rules built through the cache must equal rules built without it bit for bit (a hit
+// returns what a fresh solve of that key returns), a rule with another regularity has other
+// knot multiplicities and so needs entries of its own, and clear() forgets everything.
+TEST(hpatchrule_cache_counts_over_two_builds)
+{
+    struct Row { index_t p; index_t patchDirs; index_t solvesA; index_t hitsA;
+                 index_t solvesD; index_t hitsD; };
+    const Row rows[] = { {2, 5, 3, 2, 6, 9},
+                         {3, 5, 3, 2, 6, 9},
+                         {4, 5, 3, 2, 6, 9} };
+
+    for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
+    {
+        const index_t p = rows[k].p;
+        gsInfo << "row p=" << p << "\n";
+        gsTHBSplineBasis<2,real_t> thb = makeRefinedTHB(p);
+        auto dom = thb.domain();
+
+        index_t patchDirs = 0;
+        for (auto leaf = thb.tree().beginLeafIterator(); leaf.good(); leaf.next())
+            for (short_t dd = 0; dd != 2; ++dd)
+                if (leaf.upperCorner()[dd] - leaf.lowerCorner()[dd] >= 2)
+                    ++patchDirs;
+        CHECK_EQUAL(rows[k].patchDirs, patchDirs);
+
+        // Build A: every lookup is new except for the repeated keys.
+        gsHPatchRuleCache<real_t> cache;
+        gsHPatchRule<real_t> ruleA(*dom, 2*p, p-1, false, -1, &cache);
+        CHECK_EQUAL(patchDirs, cache.numHits() + cache.numSolves());
+        CHECK_EQUAL(rows[k].solvesA, cache.numSolves());
+        CHECK_EQUAL(rows[k].hitsA,   cache.numHits());
+        CHECK_EQUAL(cache.numSolves(), cache.size());
+        CHECK_EQUAL(index_t(0), cache.numFailures());
+        CHECK(cache.failedKeys().empty());
+        const index_t solvesA = cache.numSolves();
+        const index_t hitsA   = cache.numHits();
+
+        // Build B on the same cache: all keys are present, so nothing is solved.
+        gsHPatchRule<real_t> ruleB(*dom, 2*p, p-1, false, -1, &cache);
+        CHECK_EQUAL(solvesA, cache.numSolves());
+        CHECK_EQUAL(hitsA + patchDirs, cache.numHits());
+        CHECK_EQUAL(cache.numSolves(), cache.size());
+        CHECK_EQUAL(index_t(0), cache.numFailures());
+        CHECK(cache.failedKeys().empty());
+
+        // Rule C has its own cache, local to the build. A is built from fresh solves
+        // (and hits on shapes solved in the same build), B only from stored shapes.
+        gsHPatchRule<real_t> ruleC(*dom, 2*p, p-1, false);
+        index_t nElem = 0;
+        CHECK_EQUAL(real_t(0), hpatchMaxDiff(ruleA, ruleC, thb, -1, nElem));
+        CHECK(nElem > 0);
+        CHECK_EQUAL(real_t(0), hpatchMaxDiff(ruleB, ruleC, thb, -1, nElem));
+        CHECK(nElem > 0);
+
+        // Build D with regularity p-2: other knot multiplicities in the target, so other keys.
+        gsHPatchRule<real_t> ruleD(*dom, 2*p, p-2, false, -1, &cache);
+        CHECK(cache.numSolves() > solvesA);
+        CHECK_EQUAL(rows[k].solvesD, cache.numSolves());
+        CHECK_EQUAL(rows[k].hitsD,   cache.numHits());
+        CHECK_EQUAL(cache.numSolves(), cache.size());
+        CHECK_EQUAL(index_t(0), cache.numFailures());
+        CHECK(cache.failedKeys().empty());
+        gsHPatchRule<real_t> ruleD0(*dom, 2*p, p-2, false);
+        CHECK_EQUAL(real_t(0), hpatchMaxDiff(ruleD, ruleD0, thb, -1, nElem));
+        CHECK(nElem > 0);
+
+        // clear() drops the shapes: a rebuild solves exactly what A solved.
+        cache.clear();
+        CHECK_EQUAL(index_t(0), cache.numHits());
+        CHECK_EQUAL(index_t(0), cache.numSolves());
+        CHECK_EQUAL(index_t(0), cache.numFailures());
+        CHECK_EQUAL(index_t(0), cache.size());
+        CHECK(cache.failedKeys().empty());
+        gsHPatchRule<real_t> ruleE(*dom, 2*p, p-1, false, -1, &cache);
+        CHECK_EQUAL(solvesA, cache.numSolves());
+        CHECK_EQUAL(hitsA,   cache.numHits());
+        CHECK_EQUAL(real_t(0), hpatchMaxDiff(ruleE, ruleC, thb, -1, nElem));
+        CHECK(nElem > 0);
+    }
+}
+
+// The key holds min(L,1), not L: a direction of length 1 or more is solved on the same
+// reference interval as one of length 1, so equal normalised shapes share one entry,
+// while a shorter direction has a different stopping tolerance (1e-14/L) and so is
+// keyed by its own length. A single 1D leaf with 4 elements and the target (4,1) has
+// dim = 5 + 3*3 = 14, i.e. 7 nodes, below the 4*3 = 12 Gauss nodes, so each rule makes
+// exactly one lookup. The lengths are powers of two, so that mapping the knots to [0,1]
+// is exact and no rounding can split a key.
+TEST(hpatchrule_cache_key_clamped_length)
+{
+    struct Row { real_t L; index_t solves; index_t hits; };
+    // L = 2: first shape. L = 4 and L = 1: min(L,1) = 1 and the same normalised knots,
+    // so hits. L = 0.5 and L = 0.25: other keys, so solves.
+    const Row rows[] = { {2,    1, 0},
+                         {4,    1, 1},
+                         {0.5,  2, 1},
+                         {0.25, 3, 1},
+                         {1,    3, 2} };
+
+    const index_t p = 2;
+    gsHPatchRuleCache<real_t> cache;
+    for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
+    {
+        gsInfo << "row L=" << rows[k].L << "\n";
+        gsKnotVector<real_t> kv(0, rows[k].L, 3, p + 1, 1);
+        gsTensorBSplineBasis<1,real_t> tb(kv);
+        gsTHBSplineBasis<1,real_t> thb(tb);
+        gsHPatchRule<real_t> rule(*thb.domain(), 2*p, 1, false, -1, &cache);
+        CHECK_EQUAL(rows[k].solves, cache.numSolves());
+        CHECK_EQUAL(rows[k].hits,   cache.numHits());
+        CHECK_EQUAL(cache.numSolves(), cache.size());
+    }
+    CHECK_EQUAL(index_t(3), cache.size());
+    CHECK_EQUAL(index_t(0), cache.numFailures());
+
+    // The rule that hit the entry of L = 2 equals one solved without a cache.
+    gsKnotVector<real_t> kv4(0, 4, 3, p + 1, 1);
+    gsTensorBSplineBasis<1,real_t> tb4(kv4);
+    gsTHBSplineBasis<1,real_t> thb4(tb4);
+    gsHPatchRule<real_t> cached4(*thb4.domain(), 2*p, 1, false, -1, &cache);
+    gsHPatchRule<real_t> plain4(*thb4.domain(), 2*p, 1, false);
+    index_t nElem = 0;
+    CHECK_EQUAL(real_t(0), hpatchMaxDiff(cached4, plain4, thb4, -1, nElem));
+    CHECK_EQUAL(index_t(4), nElem);
+}
+
+// A direction whose moment solve fails is recorded once: the key (normalised even target
+// knot vector on [0,1], min(L,1)) goes into failedKeys() and numFailures() counts it. A
+// failed entry stays in the cache, so a second build hits it without a new failure and the
+// leaf again falls back to Gauss in that direction, which numFallbackCells() counts. The
+// fixture is the graded leaf of hpatchrule_fallback_newton_fails_in_one_direction_2d:
+// direction 0 has breakpoints 0, 1/s, 101/s, 1 with s = 1 + 100 + 1e4 and fails, direction
+// 1 is uniform on [0,1] and converges.
+TEST(hpatchrule_cache_failed_keys)
+{
+    const index_t p = 2, reg = 1;
+    const real_t s = 1 + 100 + 1e4, b1 = 1 / s, b2 = 101 / s;
+    const real_t knots0[] = {0,0,0, b1, b2, 1,1,1};
+    gsKnotVector<real_t> kv0(std::vector<real_t>(knots0, knots0 + 8), p);
+    gsKnotVector<real_t> kv1(0, 1, 3, p + 1, 1);
+    gsTensorBSplineBasis<2,real_t> tb(kv0, kv1);
+    gsTHBSplineBasis<2,real_t> thb(tb);
+    auto dom = thb.domain();
+
+    gsHPatchRuleCache<real_t> cache;
+    gsHPatchRule<real_t> rule1(*dom, 2*p, reg, false, -1, &cache);
+    CHECK_EQUAL(index_t(1),  rule1.numFallbackCells());
+    CHECK_EQUAL(index_t(63), rule1.numPointsTotal());
+    CHECK_EQUAL(index_t(2), cache.numSolves());
+    CHECK_EQUAL(index_t(0), cache.numHits());
+    CHECK_EQUAL(index_t(1), cache.numFailures());
+    CHECK_EQUAL(cache.numSolves(), cache.size());
+    CHECK_EQUAL(size_t(1), cache.failedKeys().size());
+    if (cache.failedKeys().size() == 1)
+    {
+        const gsKnotVector<real_t> & key = cache.failedKeys()[0].first;
+        CHECK_EQUAL(real_t(1), cache.failedKeys()[0].second);
+        CHECK_EQUAL(2*p, key.degree());
+        CHECK_EQUAL(real_t(0), key[0]);
+        CHECK_EQUAL(real_t(1), key[key.size() - 1]);
+    }
+    const index_t failures1 = cache.numFailures();
+
+    // The failed entry is hit, not solved again, and the fallback is the same.
+    gsHPatchRule<real_t> rule2(*dom, 2*p, reg, false, -1, &cache);
+    CHECK_EQUAL(failures1, cache.numFailures());
+    CHECK_EQUAL(size_t(1), cache.failedKeys().size());
+    CHECK_EQUAL(index_t(2), cache.numHits());
+    CHECK_EQUAL(index_t(1), rule2.numFallbackCells());
+    index_t nElem = 0;
+    CHECK_EQUAL(real_t(0), hpatchMaxDiff(rule1, rule2, thb, -1, nElem));
+    CHECK(nElem > 0);
+
+    cache.clear();
+    CHECK(cache.failedKeys().empty());
+    CHECK_EQUAL(index_t(0), cache.numFailures());
+}
+
+// A copy of a rule gives what a freshly built rule gives, for every element and in any
+// query order, also when the copy is assigned onto a rule of another domain and when the
+// original is gone before the first query. Each rule is queried in a different order and
+// the queries are interleaved element by element. What this can show is correct results
+// under interleaving, after assignment from another domain and after the original is
+// destroyed (the lookup is right from any start cell). That the leaf data is shared and
+// each handle keeps its own lookup position is not observable through the public API.
+TEST(hpatchrule_handle_copies_interleaved)
+{
+    const index_t p = 2;
+    gsTHBSplineBasis<2,real_t> thb = makeRefinedTHB(p);
+    std::vector<index_t> more = {2, 12,12,20,20,   2, 24,24,32,32,   2, 0,24,4,32};
+    thb.refineElements(more);
+    auto dom = thb.domain();
+
+    std::vector<gsVector<real_t> > lows, upps;
+    for (auto & elem : dom->allElements())
+    {
+        lows.push_back(elem.lowerCorner());
+        upps.push_back(elem.upperCorner());
+    }
+    const size_t nElem = lows.size();
+
+    // Reference result of every element from a rule that was only ever queried in volume order.
+    gsHPatchRule<real_t> fresh(*dom, 2*p, p-1, false);
+    std::vector<gsMatrix<real_t> > refNodes(nElem);
+    std::vector<gsVector<real_t> > refWeights(nElem);
+    for (size_t e = 0; e != nElem; ++e)
+        fresh.mapTo(lows[e], upps[e], refNodes[e], refWeights[e]);
+
+    gsHPatchRule<real_t> orig(*dom, 2*p, p-1, false);
+    gsHPatchRule<real_t> byCopy(orig);
+
+    // The other domain has other leaves, hence another number of points.
+    gsTHBSplineBasis<2,real_t> otherThb = makeRefinedTHB(p);
+    auto otherDom = otherThb.domain();
+    gsHPatchRule<real_t> byAssign(*otherDom, 2*p, p-1, false);
+    CHECK(byAssign.numPointsTotal() != orig.numPointsTotal());
+    byAssign = orig;
+
+    // The copy is taken from a rule that is destroyed before anything is queried.
+    memory::unique_ptr<gsHPatchRule<real_t> > holder(
+        new gsHPatchRule<real_t>(*dom, 2*p, p-1, false));
+    gsHPatchRule<real_t> outliving(*holder);
+    holder.reset();
+
+    CHECK_EQUAL(orig.numPointsTotal(),   byCopy.numPointsTotal());
+    CHECK_EQUAL(orig.numPointsTotal(),   byAssign.numPointsTotal());
+    CHECK_EQUAL(orig.numPointsTotal(),   outliving.numPointsTotal());
+    CHECK_EQUAL(orig.numFallbackCells(), byCopy.numFallbackCells());
+    CHECK_EQUAL(orig.numFallbackCells(), byAssign.numFallbackCells());
+    CHECK_EQUAL(orig.numFallbackCells(), outliving.numFallbackCells());
+
+    std::vector<size_t> volume(nElem), reversed(nElem), shuffled(nElem);
+    for (size_t e = 0; e != nElem; ++e) { volume[e] = e; reversed[e] = nElem - 1 - e; }
+    shuffled = volume;
+    std::mt19937 rng(20240607);
+    std::shuffle(shuffled.begin(), shuffled.end(), rng);
+
+    gsHPatchRule<real_t> * handles[4] = { &orig, &byCopy, &byAssign, &outliving };
+    const std::vector<size_t> * orders[4] = { &volume, &reversed, &shuffled, &volume };
+    gsMatrix<real_t> nodes;
+    gsVector<real_t> weights;
+    for (size_t i = 0; i != nElem; ++i)
+        for (size_t h = 0; h != 4; ++h)
+        {
+            const size_t e = (*orders[h])[i];
+            handles[h]->mapTo(lows[e], upps[e], nodes, weights);
+            CHECK_EQUAL(refWeights[e].size(), weights.size());
+            if (refWeights[e].size() == weights.size() && weights.size() > 0)
+            {
+                CHECK_EQUAL(real_t(0), (nodes   - refNodes[e]  ).cwiseAbs().maxCoeff());
+                CHECK_EQUAL(real_t(0), (weights - refWeights[e]).cwiseAbs().maxCoeff());
+            }
+        }
+}
+
+// The factory returns, for every patch and every slot, the rule that the constructor builds
+// for the same (patch, fixDir): fixDir -1 is the volume rule, fixDir d the rule of the two
+// sides normal to direction d. Equality is bitwise on the nodes and weights of every volume
+// or boundary element, with a caller cache (shared across rows) and without one (the
+// factory then owns a cache). The two patches of mb2 have different leaves, so a mixed-up
+// patch index changes the point counts. A patch or direction outside the multi-basis is
+// rejected by a GISMO_ENSURE, which throws in every build.
+TEST(hpatchrule_factory_slots_equal_constructor)
+{
+    // mb2: patch 0 is the corner-refined THB, patch 1 the 10-leaf one.
+    gsTHBSplineBasis<2,real_t> ml = makeRefinedTHB(2);
+    std::vector<index_t> more = {2, 12,12,20,20,   2, 24,24,32,32,   2, 0,24,4,32};
+    ml.refineElements(more);
+    gsMultiBasis<real_t> mb2;
+    mb2.addBasis(makeRefinedTHB(2).clone().release());
+    mb2.addBasis(ml.clone().release());
+
+    // mb3: one 3D patch, degree 2, refined in a corner.
+    gsKnotVector<real_t> kv(0, 1, 0, 3, 1);
+    kv.uniformRefine(); kv.uniformRefine();
+    gsTensorBSplineBasis<3,real_t> tb(kv, kv, kv);
+    gsTHBSplineBasis<3,real_t> thb3(tb);
+    thb3.uniformRefine();
+    std::vector<index_t> box = {2, 0,0,0, 4,4,4};
+    thb3.refineElements(box);
+    gsMultiBasis<real_t> mb3;
+    mb3.addBasis(thb3.clone().release());
+
+    gsHPatchRuleCache<real_t> callerCache;
+    struct Row { const gsMultiBasis<real_t> * mb; index_t deg; index_t reg; bool useCache; };
+    const Row rows[] = { {&mb2, 4, 1, true},
+                         {&mb2, 4, 0, false},
+                         {&mb3, 4, 1, true},
+                         {&mb3, 4, 0, false} };
+
+    gsOptionList opt;
+    for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
+    {
+        const gsMultiBasis<real_t> & mb = *rows[k].mb;
+        const short_t d = mb.dim();
+        gsHPatchRule<real_t>::QuadratureFactory f = gsHPatchRule<real_t>::makeFactory(
+            mb, rows[k].deg, rows[k].reg, false, rows[k].useCache ? &callerCache : nullptr);
+        for (index_t patch = 0; patch != static_cast<index_t>(mb.nBases()); ++patch)
+            for (short_t fd = -1; fd != d; ++fd)
+            {
+                auto dom = mb.basis(patch).domain();
+                gsHPatchRule<real_t> ref(*dom, rows[k].deg, rows[k].reg, false, fd);
+                gsQuadRule<real_t>::uPtr h = f(mb.basis(patch), opt, patch, fd);
+                index_t nElem = 0;
+                const real_t diff = hpatchMaxDiff(*h, ref, mb.basis(patch), fd, nElem);
+                gsInfo << "dim=" << d << " deg=" << rows[k].deg << " reg=" << rows[k].reg
+                       << " patch=" << patch << " fd=" << fd << " nElem=" << nElem
+                       << (rows[k].useCache ? " cache" : " nocache") << "\n";
+                CHECK(nElem > 0);
+                CHECK_EQUAL(real_t(0), diff);
+            }
+    }
+
+    gsHPatchRule<real_t>::QuadratureFactory g =
+        gsHPatchRule<real_t>::makeFactory(mb2, 4, 1, false);
+    CHECK_THROW(g(mb2.basis(0), opt, 2, -1), std::runtime_error);
+    CHECK_THROW(g(mb2.basis(0), opt, 0, 2), std::runtime_error);
+}
+
+// A caller's cache sees every build the factory makes: the volume rule of each patch is
+// built when the factory is created, a boundary slot on its first request, and later
+// requests are served from the stored rule. The lookups of the volume builds are counted
+// from outside over both patches: (leaf, direction) pairs at least two elements wide, which
+// is where the target (4,1) with simple knots does not tie with Gauss. The boundary slot
+// (patch 0, fixDir 0) builds a rule that looks up only direction 1; the three leaves of
+// makeRefinedTHB(2) (1x7, 7x8 and 4x4 elements) are all at least 2 wide in direction 1, so
+// that adds 3 lookups.
+TEST(hpatchrule_factory_cache_counters)
+{
+    gsTHBSplineBasis<2,real_t> ml = makeRefinedTHB(2);
+    std::vector<index_t> more = {2, 12,12,20,20,   2, 24,24,32,32,   2, 0,24,4,32};
+    ml.refineElements(more);
+    gsTHBSplineBasis<2,real_t> corner = makeRefinedTHB(2);
+    gsMultiBasis<real_t> mb2;
+    mb2.addBasis(corner.clone().release());
+    mb2.addBasis(ml.clone().release());
+
+    index_t lookups = 0;
+    const gsTHBSplineBasis<2,real_t> * patches[2] = { &corner, &ml };
+    for (size_t b = 0; b != 2; ++b)
+        for (auto leaf = patches[b]->tree().beginLeafIterator(); leaf.good(); leaf.next())
+            for (short_t dd = 0; dd != 2; ++dd)
+                if (leaf.upperCorner()[dd] - leaf.lowerCorner()[dd] >= 2)
+                    ++lookups;
+    CHECK_EQUAL(index_t(23), lookups);
+
+    gsOptionList opt;
+    gsHPatchRuleCache<real_t> c;
+    gsHPatchRule<real_t>::QuadratureFactory f =
+        gsHPatchRule<real_t>::makeFactory(mb2, 4, 1, false, &c);
+
+    // Step 1: the volume rules of both patches.
+    CHECK_EQUAL(lookups, c.numHits() + c.numSolves());
+    CHECK_EQUAL(index_t(15), c.numHits());
+    CHECK_EQUAL(index_t(8),  c.numSolves());
+    const index_t afterCreate = c.numHits() + c.numSolves();
+
+    // Step 2: the first request of a boundary slot builds it.
+    f(mb2.basis(0), opt, 0, 0);
+    CHECK_EQUAL(afterCreate + 3, c.numHits() + c.numSolves());
+    CHECK_EQUAL(index_t(18), c.numHits());
+    CHECK_EQUAL(index_t(8),  c.numSolves());
+    const index_t hits = c.numHits(), solves = c.numSolves(), size = c.size();
+
+    // Step 3: the same slot again and a volume slot are copies of stored rules.
+    f(mb2.basis(0), opt, 0, 0);
+    f(mb2.basis(0), opt, 0, -1);
+    CHECK_EQUAL(hits,   c.numHits());
+    CHECK_EQUAL(solves, c.numSolves());
+    CHECK_EQUAL(size,   c.size());
+    CHECK_EQUAL(index_t(0), c.numFailures());
+
+    // Step 4: invariants.
+    CHECK_EQUAL(c.numSolves(), c.size());
+    CHECK_EQUAL(index_t(0), c.numFailures());
+    CHECK(c.failedKeys().empty());
+}
+
+// The factory owns a clone of the multi-basis it was made from: refining the caller's basis
+// after makeFactory does not change a boundary slot that is built later, which equals the
+// rule of an unrefined twin. A handle stays valid when the factory is released.
+TEST(hpatchrule_factory_owns_clone)
+{
+    gsMultiBasis<real_t> mb;
+    mb.addBasis(makeRefinedTHB(2).clone().release());
+    gsHPatchRule<real_t>::QuadratureFactory f =
+        gsHPatchRule<real_t>::makeFactory(mb, 4, 1, false);
+
+    mb.basis(0).uniformRefine();
+
+    // Slot (0, 1) was never requested, so it is built from the factory's own basis now.
+    // A factory that read the caller's refined basis would build a different rule.
+    gsOptionList opt;
+    gsQuadRule<real_t>::uPtr h = f(mb.basis(0), opt, 0, 1);
+    gsTHBSplineBasis<2,real_t> twin = makeRefinedTHB(2);
+    auto twinDom = twin.domain();
+    gsHPatchRule<real_t> ref(*twinDom, 4, 1, false, 1);
+    index_t nElem = 0;
+    CHECK_EQUAL(real_t(0), hpatchMaxDiff(*h, ref, twin, 1, nElem));
+    CHECK(nElem > 0);
+
+    f = gsHPatchRule<real_t>::QuadratureFactory();
+    CHECK_EQUAL(real_t(0), hpatchMaxDiff(*h, ref, twin, 1, nElem));
+    CHECK(nElem > 0);
+}
+
+// The factory installed on a gsExprAssembler assembles the same matrix as the option path
+// (quRule = 4, quA, quB), for the mass matrix with the rule (4,1) and the stiffness matrix
+// with (4,0), on two 2D hierarchical bases and a 3D one. On one thread the two matrices are
+// bitwise equal (the same rules in the same element order); with several threads the
+// assembler adds element contributions in a run-dependent order, which changes the sums by
+// rounding only (a few units of the machine epsilon relative to the largest entry), and the
+// suite may run threaded. So the bound is a small multiple of the epsilon, about 1e-13 in
+// double. Per-element identity of the factory rules is checked by
+// hpatchrule_factory_slots_equal_constructor.
+TEST(hpatchrule_factory_assembly_equals_option_path)
+{
+    struct Row { int form; index_t deg; index_t reg; };
+    const Row rows[] = { {0, 4, 1}, {1, 4, 0} };
+    const real_t tol = 500 * math::limits::epsilon();
+
+    gsTHBSplineBasis<2,real_t> corner = makeRefinedTHB(2);
+    gsTHBSplineBasis<2,real_t> ml = makeRefinedTHB(2);
+    std::vector<index_t> more = {2, 12,12,20,20,   2, 24,24,32,32,   2, 0,24,4,32};
+    ml.refineElements(more);
+    gsKnotVector<real_t> kv(0, 1, 0, 3, 1);
+    kv.uniformRefine(); kv.uniformRefine();
+    gsTensorBSplineBasis<3,real_t> tb(kv, kv, kv);
+    gsTHBSplineBasis<3,real_t> thb3(tb);
+    thb3.uniformRefine();
+    std::vector<index_t> box = {2, 0,0,0, 4,4,4};
+    thb3.refineElements(box);
+
+    for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
+    {
+        gsInfo << "form=" << rows[k].form << " deg=" << rows[k].deg
+               << " reg=" << rows[k].reg << "\n";
+
+        gsMatrix<real_t> Ko = hpatchAssembleLeafRule<2>(corner, rows[k].form, rows[k].deg, rows[k].reg, false);
+        gsMatrix<real_t> Kf = hpatchAssembleLeafRule<2>(corner, rows[k].form, rows[k].deg, rows[k].reg, true);
+        real_t maxAbs = Ko.cwiseAbs().maxCoeff();
+        CHECK(maxAbs > 0);
+        CHECK_EQUAL(Ko.rows(), Kf.rows());
+        CHECK_EQUAL(Ko.cols(), Kf.cols());
+        CHECK((Kf - Ko).cwiseAbs().maxCoeff() <= tol * maxAbs);
+
+        Ko = hpatchAssembleLeafRule<2>(ml, rows[k].form, rows[k].deg, rows[k].reg, false);
+        Kf = hpatchAssembleLeafRule<2>(ml, rows[k].form, rows[k].deg, rows[k].reg, true);
+        maxAbs = Ko.cwiseAbs().maxCoeff();
+        CHECK(maxAbs > 0);
+        CHECK_EQUAL(Ko.rows(), Kf.rows());
+        CHECK_EQUAL(Ko.cols(), Kf.cols());
+        CHECK((Kf - Ko).cwiseAbs().maxCoeff() <= tol * maxAbs);
+
+        Ko = hpatchAssembleLeafRule<3>(thb3, rows[k].form, rows[k].deg, rows[k].reg, false);
+        Kf = hpatchAssembleLeafRule<3>(thb3, rows[k].form, rows[k].deg, rows[k].reg, true);
+        maxAbs = Ko.cwiseAbs().maxCoeff();
+        CHECK(maxAbs > 0);
+        CHECK_EQUAL(Ko.rows(), Kf.rows());
+        CHECK_EQUAL(Ko.cols(), Kf.cols());
+        CHECK((Kf - Ko).cwiseAbs().maxCoeff() <= tol * maxAbs);
+    }
+}
+
 } // SUITE gsQuadratureRules_test
