@@ -31,7 +31,8 @@
 #error "EIGEN_NO_STATIC_ASSERT is defined: Eigen 5 then compiles EIGEN_STATIC_ASSERT to nothing"
 #endif
 
-namespace {
+SUITE(gsEigenMigration_test)
+{
 
 // n x n path-graph (1D SPD) Laplacian: 2 on the diagonal, -1 on the two
 // off-diagonals. A minimum-degree ordering of this pattern produces no fill.
@@ -57,11 +58,6 @@ gsEigenMigration_cyclicShift(index_t n, index_t shift)
         Q.indices()(i) = (i + shift) % n;
     return Q;
 }
-
-}
-
-SUITE(gsEigenMigration_test)
-{
 
 // --- Version -----------------------------------------------------------
 // gsSysInfo::getEigenVersion() must build "<major>.<minor>.<patch>" from
@@ -137,6 +133,7 @@ TEST(gsSparseVector_move_assign)
     a = give(b);
 
     CHECK_EQUAL(2, a.size());
+    // Exact: the value 1 is only stored and moved, never computed.
     CHECK_EQUAL(real_t(1), a.coeff(0));
     CHECK(a.valuePtr() == pb);
 
@@ -223,8 +220,13 @@ TEST(gsTensorBSplineBasis_move_assign)
 // A = Q . A0 . Q^T (A0 the SPD Laplacian, Q a cyclic shift) so that the
 // factorization's AMD ordering is not the identity permutation.
 
+// fillReducingPermutation()/inversePermutation() must be mutually inverse and
+// consistent with solve(): applying the permutations by hand around forward
+// and backward substitution with factors() must reproduce ilu.solve(b), which
+// in turn must agree with gsEigen::IncompleteLUT on the same matrix.
 TEST(gsIncompleteLUT_accessors)
 {
+    // Test matrix A = Q A0 Q^T with a non-identity fill-reducing permutation.
     const index_t n = 12;
     const index_t shift = 5;
 
@@ -250,6 +252,8 @@ TEST(gsIncompleteLUT_accessors)
     // the P/Pinv accessors would go undetected by the comparisons below.
     CHECK(P.indices() != Pinv.indices());
 
+    // Right-hand side b = (1,...,n); reference y = P (U \ (L \ (Pinv b))) is
+    // computed by hand from the dense factors (unit-lower L, upper U).
     gsVector<real_t> b(n);
     for (index_t i = 0; i != n; ++i)
         b(i) = real_t(i + 1);
@@ -260,6 +264,8 @@ TEST(gsIncompleteLUT_accessors)
     y = LU.triangularView<gsEigen::Upper>().solve(y);
     y = P * y;
 
+    // Solution under test; the tolerance of 100 machine epsilons relative to
+    // ||x||_inf allows for rounding in the n=12 substitutions.
     gsVector<real_t> x = ilu.solve(b);
 
     const real_t tol = 100 * std::numeric_limits<real_t>::epsilon() * x.lpNorm<gsEigen::Infinity>();

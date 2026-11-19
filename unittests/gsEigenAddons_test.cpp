@@ -57,7 +57,8 @@ static_assert(std::is_same<decltype(gsEigen::saveMarket(std::declval<const NsSMa
 static_assert(std::is_same<decltype(gsEigen::loadMarket(std::declval<NsSMat&>(), std::declval<const std::string&>())),
                            bool>::value, "gsEigen::loadMarket missing");
 
-namespace {
+SUITE(gsEigenAddons_test)
+{
 
 // Shared 2x2 / 2x3 operands and their reference Kronecker product, used by
 // both KroneckerProduct tests so the dense and sparse paths check the same
@@ -87,17 +88,17 @@ gsMatrix<real_t> kroneckerRef(const gsMatrix<real_t> & A, const gsMatrix<real_t>
     return Kref;
 }
 
-}
-
-SUITE(gsEigenAddons_test)
-{
-
+// gsEigen::kroneckerProduct on dense operands must equal the block matrix
+// [A(i,j)*B]_ij; the expected value is built independently by kroneckerRef
+// from that definition.
 TEST(KroneckerProduct_dense)
 {
+    // Operands and the block-wise reference product.
     const gsMatrix<real_t> A = kroneckerA();
     const gsMatrix<real_t> B = kroneckerB();
     const gsMatrix<real_t> Kref = kroneckerRef(A, B);
 
+    // Product under test.
     gsMatrix<real_t> K = gsEigen::kroneckerProduct(A, B);
 
     CHECK_EQUAL(4, K.rows());
@@ -109,12 +110,17 @@ TEST(KroneckerProduct_dense)
     CHECK_EQUAL(real_t(0), (K - Kref).cwiseAbs().maxCoeff());
 }
 
+// gsEigen::kroneckerProduct on sparse operands must give the same matrix as
+// the dense definition [A(i,j)*B]_ij (reference from kroneckerRef) and keep
+// the result sparse.
 TEST(KroneckerProduct_sparse)
 {
+    // Same operands and block-wise reference as the dense test.
     const gsMatrix<real_t> A = kroneckerA();
     const gsMatrix<real_t> B = kroneckerB();
     const gsMatrix<real_t> Kref = kroneckerRef(A, B);
 
+    // Sparse copies of the operands (structural zeros dropped) and the product under test.
     const gsSparseMatrix<real_t> As = A.sparseView();
     const gsSparseMatrix<real_t> Bs = B.sparseView();
     gsSparseMatrix<real_t> Ks = gsEigen::kroneckerProduct(As, Bs);
@@ -125,6 +131,7 @@ TEST(KroneckerProduct_sparse)
     // Kronecker product stores exactly nnz(A)*nnz(B)=12 entries: no dense
     // fill-in for the structural zero.
     CHECK_EQUAL(12, Ks.nonZeros());
+    // Exact for the same reason as in the dense test: entries are products of small integers.
     CHECK_EQUAL(real_t(0), (gsMatrix<real_t>(Ks.toDense()) - Kref).cwiseAbs().maxCoeff());
 }
 

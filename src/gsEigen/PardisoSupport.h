@@ -36,6 +36,7 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 
+#pragma once
 #ifndef GISMO_PARDISOSUPPORT_H
 #define GISMO_PARDISOSUPPORT_H
 

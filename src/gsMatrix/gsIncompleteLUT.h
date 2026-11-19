@@ -7,6 +7,8 @@
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Author(s): H.M. Verhelst
 */
 
 #pragma once
@@ -15,26 +17,29 @@
 
 namespace gismo {
 
-/** \brief Incomplete LUT factorization (gsEigen::IncompleteLUT) exposing
+/** @brief Incomplete LUT factorization (gsEigen::IncompleteLUT) exposing
     its combined L/U factor matrix and its fill-reducing permutation.
 
     Use gsEigen::IncompleteLUT directly when only compute()/solve() are
     needed (e.g. as a preconditioner); use this class when the factors
     themselves are needed, e.g. for block smoothers in multigrid.
 
-    \tparam Scalar       coefficient type
-    \tparam StorageIndex index type of the factor and the permutations
+    @tparam Scalar       coefficient type
+    @tparam StorageIndex index type of the factor and the permutations
 
-    \ingroup Matrix
+    @ingroup Matrix
 */
 template <class Scalar, class StorageIndex = index_t>
 class gsIncompleteLUT : public gsEigen::IncompleteLUT<Scalar, StorageIndex>
 {
     typedef gsEigen::IncompleteLUT<Scalar, StorageIndex> Base;
 public:
+    /// Sparse type of the combined L and U factors
     typedef typename Base::FactorType FactorType;
+    /// Type of the row and column permutations
     typedef gsEigen::PermutationMatrix<gsEigen::Dynamic, gsEigen::Dynamic, StorageIndex> PermutationType;
 
+    /// Constructs an empty factorization; call compute() before use
     gsIncompleteLUT() : Base() {}
 
     /// Computes the factorization of \a mat with drop tolerance \a droptol and fill factor \a fillfactor

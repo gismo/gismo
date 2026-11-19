@@ -15,7 +15,7 @@
     would place the module in namespace ::Eigen, apart from the gsEigen types
     it has to operate on.
 
-    \warning If a translation unit has already included
+    @warning If a translation unit has already included
     <unsupported/Eigen/IterativeSolvers> directly, that header's include guard
     turns this wrapper into a no-op and the module's symbols stay in ::Eigen.
 
