@@ -92,10 +92,10 @@ public:
         // The vector holds the free dofs of every space of the system (see
         // gsExprAssembler::getSolution); this space's are those below the
         // lastIndex() of its mapper, which includes the mapper's shift.
-        if ( _Sv->size() < _u.mapper().lastIndex() )
+        if ( _Sv->rows() < _u.mapper().lastIndex() )
         {
-            gsWarn<< "The solution vector is too short: "
-                  <<_Sv->size()<<" < "<<_u.mapper().lastIndex() <<". ";
+            gsWarn<< "The solution vector is too short for the whole system: "
+                  <<_Sv->rows()<<" < "<<_u.mapper().lastIndex() <<". ";
             return false;
         }
         if((size_t)_u.source().size()*dim()!=_u.mapper().mapSize())
@@ -197,7 +197,10 @@ public:
     { _u.getCoeffs(*_Sv, result, p); }
 
     /// Extracts ALL the coefficients in a solution vector; including
-    /// coupled and boundary DoFs
+    /// coupled and boundary DoFs.
+    /// The result has mapper().mapSize() rows, ordered component-major: the
+    /// coefficient of local DoF i of component c on patch p is at row
+    /// sum_{c'<c} totalSize(c') + offset(p) + i.
     void extractFull(gsMatrix<T> & result) const
     {
         index_t offset;
@@ -226,7 +229,7 @@ public:
                     else // eliminated DoF: fill with Dirichlet data
                         result(i+offset,0) =  _u.fixedPart().at( _u.mapper().global_to_bindex(ii) );
                 }
-                offset += sz;
+                offset += static_cast<index_t>(_u.mapper().totalSize(c));
             }
         }
     }

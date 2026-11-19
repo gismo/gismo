@@ -109,16 +109,14 @@ std::vector<boxCorner> boxComponent::containedCorners() const
 
 std::vector<boxSide> boxComponent::containingSides() const
 {
-    const index_t d = dim();
-
     std::vector<boxSide> result;
-    result.reserve(d);
+    result.reserve(m_total_dim-dim());
     index_t data = m_index;
-    for (index_t i=0; i<d; ++i)
+    for (index_t i=0; i<m_total_dim; ++i)
     {
         const index_t loc = data%3;
         if (loc)
-            result.push_back(boxSide(loc+2*d));
+            result.push_back(boxSide(loc+2*i));
         data /= 3;
     }
     return result;

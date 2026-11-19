@@ -72,7 +72,24 @@ int main(int argc, char* argv[])
     gsTensorBSpline<2, real_t>  surface(basis, coefs);
 
 
-    // 5. saving surface, basis and control net to a file
+    // 5. refining the support of one basis function; for tensor-product
+    //    B-splines knots are inserted in each direction, hence the
+    //    refinement extends across the whole parameter domain
+    gsTensorBSpline<2, real_t> refined = surface;
+    const index_t bf = 0; // basis function at the corner (0,0)
+    gsInfo << "Support of basis function " << bf << ":\n"
+           << refined.basis().support(bf) << "\n\n";
+
+    refined.refineCoeff(bf);
+
+    gsMatrix<> pts = gsPointGrid<real_t>(surface.support(), 100);
+    gsInfo << "After refineCoeff(" << bf << "): "
+           << refined.basis().size(0) << " x " << refined.basis().size(1)
+           << " basis functions (before: " << basis.size(0) << " x "
+           << basis.size(1) << "), change in geometry = "
+           << (refined.eval(pts) - surface.eval(pts)).norm() << "\n\n";
+
+    // 6. saving surface, basis and control net to a file
     if (output != "")
     {
         gsParaview<real_t> pv;
@@ -103,6 +120,13 @@ int main(int argc, char* argv[])
         coefs = surface.coefs();
         coefs.transposeInPlace();
         pv.writePoints(coefs, out);
+
+        out = output + "RefinedContolNet";
+        gsInfo << "Writing the refined control net to a paraview file: " << out
+                  << "\n" << "\n";
+        gsMesh<> refinedMesh;
+        refined.controlNet(refinedMesh);
+        pv.write(refinedMesh, out);
 
     }
     else
