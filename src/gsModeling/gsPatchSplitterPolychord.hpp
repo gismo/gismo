@@ -35,14 +35,6 @@ inline void evalPatchCornerAnglesDeg(const gsGeometry<T>& patch,
     const T v0 = supp(1, 0), v1 = supp(1, 1);
     const T du = u1 - u0, dv = v1 - v0;
 
-    // Sample center detJ to determine global sign (right-handed vs left-handed)
-    gsMatrix<T> uvMid(2, 1), dMid;
-    uvMid(0, 0) = T(0.5) * (u0 + u1);
-    uvMid(1, 0) = T(0.5) * (v0 + v1);
-    patch.deriv_into(uvMid, dMid);
-    const T detMid = dMid(0, 0) * dMid(3, 0) - dMid(2, 0) * dMid(1, 0);
-    const T orientSign = (detMid >= T(0)) ? T(1) : T(-1);
-
     // Corner order: 0=(u0,v0) SW, 1=(u1,v0) SE, 2=(u1,v1) NE, 3=(u0,v1) NW
     // Inward tangent signs (su, sv) so t1 x t2 = +detJ when detJ > 0
     const T cu[4] = {u0, u1, u1, u0};
@@ -51,19 +43,27 @@ inline void evalPatchCornerAnglesDeg(const gsGeometry<T>& patch,
     const T s1[4] = {T(1), T(1), T(-1), T(-1)};
     const T s2[4] = {T(1), T(-1), T(-1), T(1)};
 
+    // Batch evaluate center (col 0) + 4 corners (cols 1..4)
+    gsMatrix<T> pts(2, 5), dBatch;
+    pts(0, 0) = T(0.5) * (u0 + u1); pts(1, 0) = T(0.5) * (v0 + v1);
+    for (int c = 0; c < 4; ++c) {
+        pts(0, c + 1) = cu[c];
+        pts(1, c + 1) = cv[c];
+    }
+    patch.deriv_into(pts, dBatch);
+
+    const T detMid = dBatch(0, 0) * dBatch(3, 0) - dBatch(2, 0) * dBatch(1, 0);
+    const T orientSign = (detMid >= T(0)) ? T(1) : T(-1);
+
     minAngDeg = T(360);
     maxAngDeg = T(0);
     hasDegenerateCorner = false;
     const T radToDeg = T(180) / T(3.14159265358979323846);
 
     for (int c = 0; c < 4; ++c) {
-        gsMatrix<T> pt(2, 1), der;
-        pt(0, 0) = cu[c];
-        pt(1, 0) = cv[c];
-        patch.deriv_into(pt, der);
-
-        T ux = der(0, 0), vx = der(1, 0);
-        T uy = der(2, 0), vy = der(3, 0);
+        int col = c + 1;
+        T ux = dBatch(0, col), vx = dBatch(1, col);
+        T uy = dBatch(2, col), vy = dBatch(3, col);
         T t1x = t1IsU[c] ? s1[c] * ux : s1[c] * vx;
         T t1y = t1IsU[c] ? s1[c] * uy : s1[c] * vy;
         T t2x = t1IsU[c] ? s2[c] * vx : s2[c] * ux;
@@ -75,6 +75,7 @@ inline void evalPatchCornerAnglesDeg(const gsGeometry<T>& patch,
         // If a corner control point collapses (zero tangent), probe slightly inward
         if (n1 < T(1e-10) || n2 < T(1e-10)) {
             const T eps = T(1e-3);
+            gsMatrix<T> pt(2, 1), der;
             pt(0, 0) = (cu[c] == u0) ? (u0 + eps * du) : (u1 - eps * du);
             pt(1, 0) = (cv[c] == v0) ? (v0 + eps * dv) : (v1 - eps * dv);
             patch.deriv_into(pt, der);
@@ -1080,8 +1081,6 @@ bool gsPatchSplitter<T>::formatForArgyris(gsMultiPatch<T>& mp) const
             harmonizeMultiPatchKnots(mp);
     }
 
-    harmonizeMultiPatchKnots(mp);
-
     if (m_options.getSwitch("ApplyASG1Fitting") && targetDeg >= 3) {
         const index_t innerKnots = std::max<index_t>(2, minSpans - 1);
         auto tryFitMode = [&](typename gsASG1LocalFitter<T>::FittingMode mode, index_t nInner) -> bool {
@@ -1125,7 +1124,7 @@ bool gsPatchSplitter<T>::formatForArgyris(gsMultiPatch<T>& mp) const
                         return false;
                 }
             }
-            if (!verifyBoundaryMatch(m_domain, fitted, T(1.9e-3)))
+            if (m_hasDomain && !verifyBoundaryMatch(m_domain, fitted, T(1.9e-3)))
                 return false;
             mp = give(fitted);
             return true;

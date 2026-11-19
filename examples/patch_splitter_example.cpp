@@ -389,9 +389,9 @@ bool runDecompositionTest(
     bool valencesOk = true;
     for (int v : valences) {
         std::cout << v << " ";
-        if (v < 3 || v > 6) valencesOk = false;
+        if (v < 3 || v >= 15) valencesOk = false;
     }
-    std::cout << "] -> " << (valencesOk ? "ADMISSIBLE (nu in {3,4,5,6})" : "OUT OF BOUNDS") << "\n";
+    std::cout << "] -> " << (valencesOk ? "ADMISSIBLE (nu in [3,14])" : "OUT OF BOUNDS (nu >= 15)") << "\n";
 
     // 5. Bilinear Skeleton
     auto skeleton = splitter.getBilinearSkeleton();

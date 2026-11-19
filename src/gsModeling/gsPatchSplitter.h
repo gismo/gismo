@@ -15,7 +15,7 @@
     - 4-RoSy Harmonic Cross-Field + Separatrix Simplification & Structural/MAT decomposition.
     - Global Polychord integer optimization for near-square aspect ratios with minimal patches.
     - Winslow barrier + gsSpringPatch / gsBarrierPatch bijective interior parameterization.
-    - Direct ArgyrisSplines formatting (degree elevation, minimum knot spans, orientation unification).
+    - Direct ArgyrisSplines formatting without reparametrization (degree elevation, minimum knot spans, orientation unification).
 
     This file is part of the G+Smo library.
     Author(s): F. Hasanova, Antigravity

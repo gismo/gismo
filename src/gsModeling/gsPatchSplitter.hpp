@@ -243,19 +243,22 @@ inline void splitBSplineExact(const gsCurve<T>& crv, T t_split, gsBSpline<T>& le
 }
 
 template <class T>
-inline T arcLengthSplitParam(const gsCurve<T>& crv, T frac = 0.5, int nSamples = 64)
+inline T arcLengthSplitParam(const gsCurve<T>& crv, T frac = 0.5, int nSamples = 40)
 {
     gsMatrix<T> pr = crv.parameterRange();
     T u0 = pr(0, 0), u1 = pr(0, 1);
     std::vector<T> u(nSamples + 1), s(nSamples + 1, T(0));
-    gsPoint2D<T> prev = evalCurvePoint(crv, u0);
-    u[0] = u0;
-    for (int i = 1; i <= nSamples; ++i) {
+    gsMatrix<T> uMat(1, nSamples + 1), valMat;
+    for (int i = 0; i <= nSamples; ++i) {
         T ui = u0 + (u1 - u0) * (static_cast<T>(i) / static_cast<T>(nSamples));
         u[i] = ui;
-        gsPoint2D<T> cur = evalCurvePoint(crv, ui);
-        s[i] = s[i - 1] + std::hypot(cur.x - prev.x, cur.y - prev.y);
-        prev = cur;
+        uMat(0, i) = ui;
+    }
+    crv.eval_into(uMat, valMat);
+    for (int i = 1; i <= nSamples; ++i) {
+        T dx = valMat(0, i) - valMat(0, i - 1);
+        T dy = valMat(1, i) - valMat(1, i - 1);
+        s[i] = s[i - 1] + std::hypot(dx, dy);
     }
     T target = frac * s.back();
     if (s.back() <= 1e-14) return u0 + frac * (u1 - u0);
@@ -369,8 +372,17 @@ struct CurveSeg {
         bsp->knots().affineTransformTo(0.0, 1.0);
     }
 
-    gsPoint2D<T> p0() const { return startPoint(*bsp); }
-    gsPoint2D<T> p1() const { return endPoint(*bsp); }
+    gsPoint2D<T> p0() const {
+        if (!bsp) return gsPoint2D<T>(0, 0);
+        const auto& c = bsp->coefs();
+        return gsPoint2D<T>(c(0, 0), c(0, 1));
+    }
+    gsPoint2D<T> p1() const {
+        if (!bsp) return gsPoint2D<T>(0, 0);
+        const auto& c = bsp->coefs();
+        const auto n = c.rows() - 1;
+        return gsPoint2D<T>(c(n, 0), c(n, 1));
+    }
 
     CurveSeg reversed() const {
         CurveSeg r;
@@ -396,28 +408,35 @@ struct CurveSeg {
     }
 
     T closestParam(const gsPoint2D<T>& q) const {
-        const int nS = 64;
+        if (!bsp) return T(0.5);
+        const int nS = 40;
+        gsMatrix<T> uMat(1, nS + 1), ptsMat;
+        for (int i = 0; i <= nS; ++i) {
+            uMat(0, i) = static_cast<T>(i) / static_cast<T>(nS);
+        }
+        bsp->eval_into(uMat, ptsMat);
+
         T bestU = T(0.5);
         T bestD2 = std::numeric_limits<T>::max();
         for (int i = 0; i <= nS; ++i) {
-            T u = static_cast<T>(i) / static_cast<T>(nS);
-            gsPoint2D<T> pt = evalCurvePoint(*bsp, u);
-            T dx = pt.x - q.x, dy = pt.y - q.y;
+            T dx = ptsMat(0, i) - q.x, dy = ptsMat(1, i) - q.y;
             T d2 = dx * dx + dy * dy;
-            if (d2 < bestD2) { bestD2 = d2; bestU = u; }
+            if (d2 < bestD2) { bestD2 = d2; bestU = uMat(0, i); }
         }
         T du = T(1) / static_cast<T>(nS);
         T a = std::max(T(0), bestU - du);
         T b = std::min(T(1), bestU + du);
         const T phi = T(0.6180339887498949);
+        gsMatrix<T> uPt(1, 1), ptVal;
         auto evalD2 = [&](T u) -> T {
-            gsPoint2D<T> pt = evalCurvePoint(*bsp, u);
-            T dx = pt.x - q.x, dy = pt.y - q.y;
+            uPt(0, 0) = u;
+            bsp->eval_into(uPt, ptVal);
+            T dx = ptVal(0, 0) - q.x, dy = ptVal(1, 0) - q.y;
             return dx * dx + dy * dy;
         };
         T c1 = b - phi * (b - a), c2 = a + phi * (b - a);
         T f1 = evalD2(c1), f2 = evalD2(c2);
-        for (int it = 0; it < 30; ++it) {
+        for (int it = 0; it < 18; ++it) {
             if (f1 < f2) {
                 b = c2; c2 = c1; f2 = f1;
                 c1 = b - phi * (b - a); f1 = evalD2(c1);
@@ -433,8 +452,16 @@ struct CurveSeg {
 template <class T>
 inline CurveSeg<T> makeStraightSeg(const gsPoint2D<T>& a, const gsPoint2D<T>& b, int degree)
 {
+    int n = degree + 1;
+    gsKnotVector<T> kv(0.0, 1.0, 0, n, 1, degree);
+    gsMatrix<T> coefs(n, 2);
+    for (int i = 0; i < n; ++i) {
+        T t = static_cast<T>(i) / static_cast<T>(degree);
+        coefs(i, 0) = (1.0 - t) * a.x + t * b.x;
+        coefs(i, 1) = (1.0 - t) * a.y + t * b.y;
+    }
     CurveSeg<T> seg;
-    seg.bsp.reset(makeStraightBSpline(a, b, degree));
+    seg.bsp = std::make_shared<gsBSpline<T>>(kv, coefs);
     return seg;
 }
 
@@ -646,18 +673,18 @@ inline bool pointInPolyStrict(const gsPoint2D<T>& p, const std::vector<gsPoint2D
 template <class T>
 inline std::vector<gsPoint2D<T>> samplePatchBoundaryPoly(const gsGeometry<T>& patch, int nPerSide = 20)
 {
-    std::vector<gsPoint2D<T>> poly;
-    poly.reserve(4 * nPerSide);
-    gsMatrix<T> u(2, 1), val;
-    auto pushPt = [&](T xi, T eta) {
-        u(0, 0) = xi; u(1, 0) = eta;
-        patch.eval_into(u, val);
-        poly.push_back(gsPoint2D<T>(val(0, 0), val(1, 0)));
-    };
-    for (int i = 0; i < nPerSide; ++i) pushPt(static_cast<T>(i) / nPerSide, T(0));
-    for (int i = 0; i < nPerSide; ++i) pushPt(T(1), static_cast<T>(i) / nPerSide);
-    for (int i = 0; i < nPerSide; ++i) pushPt(T(1) - static_cast<T>(i) / nPerSide, T(1));
-    for (int i = 0; i < nPerSide; ++i) pushPt(T(0), T(1) - static_cast<T>(i) / nPerSide);
+    const int total = 4 * nPerSide;
+    std::vector<gsPoint2D<T>> poly(total);
+    gsMatrix<T> u(2, total), val;
+    int col = 0;
+    for (int i = 0; i < nPerSide; ++i) { u(0, col) = static_cast<T>(i) / nPerSide; u(1, col) = T(0); ++col; }
+    for (int i = 0; i < nPerSide; ++i) { u(0, col) = T(1); u(1, col) = static_cast<T>(i) / nPerSide; ++col; }
+    for (int i = 0; i < nPerSide; ++i) { u(0, col) = T(1) - static_cast<T>(i) / nPerSide; u(1, col) = T(1); ++col; }
+    for (int i = 0; i < nPerSide; ++i) { u(0, col) = T(0); u(1, col) = T(1) - static_cast<T>(i) / nPerSide; ++col; }
+    patch.eval_into(u, val);
+    for (int i = 0; i < total; ++i) {
+        poly[i] = gsPoint2D<T>(val(0, i), val(1, i));
+    }
     return poly;
 }
 
@@ -665,13 +692,18 @@ template <class T>
 inline std::vector<gsPoint2D<T>> sampleCurveLoopPoly(const gsCurveLoop<T>& loop, int nPerCurve = 24)
 {
     std::vector<gsPoint2D<T>> poly;
+    poly.reserve(loop.size() * nPerCurve);
+    gsMatrix<T> uMat(1, nPerCurve), valMat;
     for (int c = 0; c < loop.size(); ++c) {
         const auto& crv = loop.curve(c);
         gsMatrix<T> pr = crv.parameterRange();
         T u0 = pr(0, 0), u1 = pr(0, 1);
         for (int i = 0; i < nPerCurve; ++i) {
-            T u = u0 + (u1 - u0) * (static_cast<T>(i) / nPerCurve);
-            poly.push_back(evalCurvePoint(crv, u));
+            uMat(0, i) = u0 + (u1 - u0) * (static_cast<T>(i) / static_cast<T>(nPerCurve));
+        }
+        crv.eval_into(uMat, valMat);
+        for (int i = 0; i < nPerCurve; ++i) {
+            poly.push_back(gsPoint2D<T>(valMat(0, i), valMat(1, i)));
         }
     }
     return poly;
@@ -717,6 +749,28 @@ inline bool isSegmentInsidePoly(const gsPoint2D<T>& a, const gsPoint2D<T>& b,
 }
 
 template <class T>
+inline const gsMatrix<T>& getSamplingGrid2D(int nSamples)
+{
+    static std::map<int, gsMatrix<T>> cache;
+    auto it = cache.find(nSamples);
+    if (it != cache.end()) return it->second;
+
+    const T h = T(1) / (nSamples - 1);
+    const int N = nSamples * nSamples;
+    gsMatrix<T>& grid = cache[nSamples];
+    grid.resize(2, N);
+    for (int j = 0; j < nSamples; ++j) {
+        T eta = j * h;
+        for (int i = 0; i < nSamples; ++i) {
+            int p = j * nSamples + i;
+            grid(0, p) = i * h;
+            grid(1, p) = eta;
+        }
+    }
+    return grid;
+}
+
+template <class T>
 inline void evalPatchJacobianAndWinslow(const gsGeometry<T>& patch, int nSamples,
                                         T& minDet, T& maxDet, T& minAbsDet, T& energy)
 {
@@ -726,36 +780,37 @@ inline void evalPatchJacobianAndWinslow(const gsGeometry<T>& patch, int nSamples
     energy = T(0);
 
     const T h = T(1) / (nSamples - 1);
-    gsMatrix<T> u(2, 1), J;
-    for (int j = 0; j < nSamples; ++j) {
-        T eta = j * h;
-        for (int i = 0; i < nSamples; ++i) {
-            T xi = i * h;
-            u(0, 0) = xi;
-            u(1, 0) = eta;
-            patch.jacobian_into(u, J);
+    const int N = nSamples * nSamples;
+    const gsMatrix<T>& uGrid = getSamplingGrid2D<T>(nSamples);
 
-            T Jxi_x  = J(0, 0), Jxi_y  = J(1, 0);
-            T Jeta_x = J(0, 1), Jeta_y = J(1, 1);
+    gsMatrix<T> J;
+    patch.jacobian_into(uGrid, J);
 
-            T normSq_xi  = Jxi_x * Jxi_x + Jxi_y * Jxi_y;
-            T normSq_eta = Jeta_x * Jeta_x + Jeta_y * Jeta_y;
-            T detJ = Jxi_x * Jeta_y - Jxi_y * Jeta_x;
+    const T hSq = h * h;
+    for (int p = 0; p < N; ++p) {
+        int col0 = 2 * p;
+        int col1 = col0 + 1;
 
-            minDet = std::min(minDet, detJ);
-            maxDet = std::max(maxDet, detJ);
-            T absDet = std::abs(detJ);
-            minAbsDet = std::min(minAbsDet, absDet);
+        T Jxi_x  = J(0, col0), Jxi_y  = J(1, col0);
+        T Jeta_x = J(0, col1), Jeta_y = J(1, col1);
 
-            if (absDet > T(1e-12)) {
-                T norm_xi  = std::sqrt(normSq_xi);
-                T norm_eta = std::sqrt(normSq_eta);
-                T win = (normSq_xi + normSq_eta) / absDet;
-                T orth = (absDet / (norm_xi * norm_eta + T(1e-14))) - T(1);
-                energy += (win + orth * orth) * (h * h);
-            } else {
-                energy += T(1e6);
-            }
+        T normSq_xi  = Jxi_x * Jxi_x + Jxi_y * Jxi_y;
+        T normSq_eta = Jeta_x * Jeta_x + Jeta_y * Jeta_y;
+        T detJ = Jxi_x * Jeta_y - Jxi_y * Jeta_x;
+
+        minDet = std::min(minDet, detJ);
+        maxDet = std::max(maxDet, detJ);
+        T absDet = std::abs(detJ);
+        minAbsDet = std::min(minAbsDet, absDet);
+
+        if (absDet > T(1e-12)) {
+            T norm_xi  = std::sqrt(normSq_xi);
+            T norm_eta = std::sqrt(normSq_eta);
+            T win = (normSq_xi + normSq_eta) / absDet;
+            T orth = (absDet / (norm_xi * norm_eta + T(1e-14))) - T(1);
+            energy += (win + orth * orth) * hSq;
+        } else {
+            energy += T(1e6);
         }
     }
 }
@@ -4896,8 +4951,8 @@ gsPatchSplitter<T>::computeHoleFreeTriangulationSplitting()
             // so t1.v[mateEdgePos] == p, t1.v[(mateEdgePos+1)%3] == n, w == t1.v[(mateEdgePos+2)%3].
             if (t1.v[mateEdgePos] != p || t1.v[(mateEdgePos + 1) % 3] != n) {
                 // Adjust edge names to match (p, n, w) ordering
-                e_pw = t1.e[(mateEdgePos + 2) % 3];
-                e_wn = t1.e[(mateEdgePos + 1) % 3];
+                e_pw = t1.e[(mateEdgePos + 1) % 3];
+                e_wn = t1.e[(mateEdgePos + 2) % 3];
             } else {
                 e_pw = t1.e[(mateEdgePos + 2) % 3];
                 e_wn = t1.e[(mateEdgePos + 1) % 3];
@@ -5443,7 +5498,8 @@ gsPatchSplitter<T>::computeHoleFreeTriangulationSplitting()
             ++triCount[ib];
             ++triCount[ic];
 
-            ring[iPrev].outSeg = getSegDir(MixedMesh{pts, isSmooth, edges, {}, {}}, e2, ia, ic);
+            const auto& er2 = edges[e2];
+            ring[iPrev].outSeg = (er2.a == ia && er2.b == ic) ? er2.seg : er2.seg.reversed();
             ring.erase(ring.begin() + bestIdx);
         }
 
@@ -8489,9 +8545,20 @@ bool gsPatchSplitter<T>::checkNoSelfIntersections() const
     size_t nP = mp.nPatches();
     if (nP == 0) return false;
 
+    struct PatchAABB { T xMin, xMax, yMin, yMax; };
+    std::vector<PatchAABB> boxes(nP);
     std::vector<std::vector<gsPoint2D<T>>> polys(nP);
+
     for (size_t p = 0; p < nP; ++p) {
         polys[p] = internal_splitter::samplePatchBoundaryPoly(mp.patch(p), 20);
+        T xMin = std::numeric_limits<T>::max(), xMax = -std::numeric_limits<T>::max();
+        T yMin = std::numeric_limits<T>::max(), yMax = -std::numeric_limits<T>::max();
+        for (const auto& pt : polys[p]) {
+            xMin = std::min(xMin, pt.x); xMax = std::max(xMax, pt.x);
+            yMin = std::min(yMin, pt.y); yMax = std::max(yMax, pt.y);
+        }
+        boxes[p] = {xMin - T(1e-7), xMax + T(1e-7), yMin - T(1e-7), yMax + T(1e-7)};
+
         int m = static_cast<int>(polys[p].size());
         for (int i = 0; i < m; ++i) {
             for (int j = i + 2; j < m; ++j) {
@@ -8503,10 +8570,29 @@ bool gsPatchSplitter<T>::checkNoSelfIntersections() const
         }
     }
 
-    gsMatrix<T> u(2, 1), val;
+    gsMatrix<T> u(2, 9), val;
     const T pts[3] = {T(0.25), T(0.5), T(0.75)};
+    int col = 0;
+    for (int a = 0; a < 3; ++a) {
+        for (int b = 0; b < 3; ++b) {
+            u(0, col) = pts[a]; u(1, col) = pts[b];
+            ++col;
+        }
+    }
+    std::vector<std::vector<gsPoint2D<T>>> innerPts(nP, std::vector<gsPoint2D<T>>(9));
+    for (size_t p = 0; p < nP; ++p) {
+        mp.patch(p).eval_into(u, val);
+        for (int k = 0; k < 9; ++k) {
+            innerPts[p][k] = gsPoint2D<T>(val(0, k), val(1, k));
+        }
+    }
+
     for (size_t p = 0; p < nP; ++p) {
         for (size_t q = p + 1; q < nP; ++q) {
+            if (boxes[p].xMax < boxes[q].xMin || boxes[p].xMin > boxes[q].xMax ||
+                boxes[p].yMax < boxes[q].yMin || boxes[p].yMin > boxes[q].yMax)
+                continue;
+
             int mp1 = static_cast<int>(polys[p].size());
             int mq1 = static_cast<int>(polys[q].size());
             for (int i = 0; i < mp1; ++i) {
@@ -8516,13 +8602,9 @@ bool gsPatchSplitter<T>::checkNoSelfIntersections() const
                         return false;
                 }
             }
-            for (int a = 0; a < 3; ++a) {
-                for (int b = 0; b < 3; ++b) {
-                    u(0, 0) = pts[a]; u(1, 0) = pts[b];
-                    mp.patch(p).eval_into(u, val);
-                    if (internal_splitter::pointInPolyStrict(gsPoint2D<T>(val(0, 0), val(1, 0)), polys[q]))
-                        return false;
-                }
+            for (int k = 0; k < 9; ++k) {
+                if (internal_splitter::pointInPolyStrict(innerPts[p][k], polys[q]))
+                    return false;
             }
         }
     }
@@ -8636,9 +8718,41 @@ bool gsPatchSplitter<T>::validateMultiPatch(
         }
     }
 
+    struct PatchAABB { T xMin, xMax, yMin, yMax; };
+    std::vector<PatchAABB> boxes(nP);
+    for (size_t p = 0; p < nP; ++p) {
+        T xMin = std::numeric_limits<T>::max(), xMax = -std::numeric_limits<T>::max();
+        T yMin = std::numeric_limits<T>::max(), yMax = -std::numeric_limits<T>::max();
+        for (const auto& pt : polys[p]) {
+            xMin = std::min(xMin, pt.x); xMax = std::max(xMax, pt.x);
+            yMin = std::min(yMin, pt.y); yMax = std::max(yMax, pt.y);
+        }
+        boxes[p] = {xMin - T(1e-7), xMax + T(1e-7), yMin - T(1e-7), yMax + T(1e-7)};
+    }
+
+    gsMatrix<T> uInner(2, 9), valInner;
     const T pts[3] = {T(0.25), T(0.5), T(0.75)};
+    int colIn = 0;
+    for (int a = 0; a < 3; ++a) {
+        for (int b = 0; b < 3; ++b) {
+            uInner(0, colIn) = pts[a]; uInner(1, colIn) = pts[b];
+            ++colIn;
+        }
+    }
+    std::vector<std::vector<gsPoint2D<T>>> innerPts(nP, std::vector<gsPoint2D<T>>(9));
+    for (size_t p = 0; p < nP; ++p) {
+        mp.patch(p).eval_into(uInner, valInner);
+        for (int k = 0; k < 9; ++k) {
+            innerPts[p][k] = gsPoint2D<T>(valInner(0, k), valInner(1, k));
+        }
+    }
+
     for (size_t p = 0; p < nP; ++p) {
         for (size_t q = p + 1; q < nP; ++q) {
+            if (boxes[p].xMax < boxes[q].xMin || boxes[p].xMin > boxes[q].xMax ||
+                boxes[p].yMax < boxes[q].yMin || boxes[p].yMin > boxes[q].yMax)
+                continue;
+
             int mp1 = static_cast<int>(polys[p].size());
             int mq1 = static_cast<int>(polys[q].size());
             for (int i = 0; i < mp1; ++i) {
@@ -8650,14 +8764,10 @@ bool gsPatchSplitter<T>::validateMultiPatch(
                     }
                 }
             }
-            for (int a = 0; a < 3; ++a) {
-                for (int b = 0; b < 3; ++b) {
-                    u(0, 0) = pts[a]; u(1, 0) = pts[b];
-                    mp.patch(p).eval_into(u, val);
-                    if (internal_splitter::pointInPolyStrict(gsPoint2D<T>(val(0, 0), val(1, 0)), polys[q])) {
-                        if (reason) *reason = "patch overlap";
-                        return false;
-                    }
+            for (int k = 0; k < 9; ++k) {
+                if (internal_splitter::pointInPolyStrict(innerPts[p][k], polys[q])) {
+                    if (reason) *reason = "patch overlap";
+                    return false;
                 }
             }
         }
@@ -8710,6 +8820,7 @@ bool gsPatchSplitter<T>::verifyBoundaryMatch(
         const gsGeometry<T>* crv;
         T u0, u1;
         std::vector<T> u, x, y;
+        T xMin, xMax, yMin, yMax;
     };
     auto buildSampled = [](const gsGeometry<T>* crv, int nSeg = 40) -> SampledCurve {
         SampledCurve sc;
@@ -8719,14 +8830,24 @@ bool gsPatchSplitter<T>::verifyBoundaryMatch(
         sc.u.resize(nSeg + 1);
         sc.x.resize(nSeg + 1);
         sc.y.resize(nSeg + 1);
-        gsMatrix<T> uMat(1, 1), val;
+        gsMatrix<T> uMat(1, nSeg + 1), val;
         for (int i = 0; i <= nSeg; ++i) {
             T ui = sc.u0 + (sc.u1 - sc.u0) * (static_cast<T>(i) / static_cast<T>(nSeg));
             sc.u[i] = ui;
-            uMat(0, 0) = ui;
-            crv->eval_into(uMat, val);
-            sc.x[i] = val(0, 0);
-            sc.y[i] = val(1, 0);
+            uMat(0, i) = ui;
+        }
+        crv->eval_into(uMat, val);
+        sc.xMin = std::numeric_limits<T>::max();
+        sc.xMax = -std::numeric_limits<T>::max();
+        sc.yMin = std::numeric_limits<T>::max();
+        sc.yMax = -std::numeric_limits<T>::max();
+        for (int i = 0; i <= nSeg; ++i) {
+            sc.x[i] = val(0, i);
+            sc.y[i] = val(1, i);
+            sc.xMin = std::min(sc.xMin, sc.x[i]);
+            sc.xMax = std::max(sc.xMax, sc.x[i]);
+            sc.yMin = std::min(sc.yMin, sc.y[i]);
+            sc.yMax = std::max(sc.yMax, sc.y[i]);
         }
         return sc;
     };
@@ -8737,19 +8858,42 @@ bool gsPatchSplitter<T>::verifyBoundaryMatch(
     mpSampled.reserve(mpBdrCurves.size());
     for (const auto& c : mpBdrCurves) mpSampled.push_back(buildSampled(c.get()));
 
-    auto pointToSampledCurveDist = [](T px, T py, const SampledCurve& sc) -> T {
-        int nSeg = static_cast<int>(sc.u.size()) - 1;
-        int bestSeg = 0;
-        T bestD2 = std::numeric_limits<T>::max();
-        for (int i = 0; i < nSeg; ++i) {
-            T ax = sc.x[i], ay = sc.y[i];
-            T dx = sc.x[i + 1] - ax, dy = sc.y[i + 1] - ay;
-            T L2 = dx * dx + dy * dy;
-            T t = (L2 > T(1e-24)) ? std::max(T(0), std::min(T(1), ((px - ax) * dx + (py - ay) * dy) / L2)) : T(0);
-            T qx = ax + t * dx - px, qy = ay + t * dy - py;
-            T d2 = qx * qx + qy * qy;
-            if (d2 < bestD2) { bestD2 = d2; bestSeg = i; }
+    auto aabbDistSq = [](T px, T py, const SampledCurve& sc) -> T {
+        T dx = (px < sc.xMin) ? (sc.xMin - px) : ((px > sc.xMax) ? (px - sc.xMax) : T(0));
+        T dy = (py < sc.yMin) ? (sc.yMin - py) : ((py > sc.yMax) ? (py - sc.yMax) : T(0));
+        return dx * dx + dy * dy;
+    };
+
+    auto pointToCurvesDist = [&](T px, T py, const std::vector<SampledCurve>& targetCurves) -> T {
+        T bestPolyD2 = std::numeric_limits<T>::max();
+        int bestC = -1;
+        int bestSeg = -1;
+
+        for (size_t c = 0; c < targetCurves.size(); ++c) {
+            const auto& sc = targetCurves[c];
+            if (aabbDistSq(px, py, sc) >= bestPolyD2) continue;
+
+            int nSeg = static_cast<int>(sc.u.size()) - 1;
+            for (int i = 0; i < nSeg; ++i) {
+                T ax = sc.x[i], ay = sc.y[i];
+                T dx = sc.x[i + 1] - ax, dy = sc.y[i + 1] - ay;
+                T L2 = dx * dx + dy * dy;
+                T t = (L2 > T(1e-24)) ? std::max(T(0), std::min(T(1), ((px - ax) * dx + (py - ay) * dy) / L2)) : T(0);
+                T qx = ax + t * dx - px, qy = ay + t * dy - py;
+                T d2 = qx * qx + qy * qy;
+                if (d2 < bestPolyD2) {
+                    bestPolyD2 = d2;
+                    bestC = static_cast<int>(c);
+                    bestSeg = i;
+                }
+            }
         }
+
+        if (bestC < 0) return std::numeric_limits<T>::max();
+
+        // Refine on best curve via golden-section search
+        const auto& sc = targetCurves[bestC];
+        int nSeg = static_cast<int>(sc.u.size()) - 1;
         T du = (sc.u1 - sc.u0) / static_cast<T>(nSeg);
         T a = std::max(sc.u0, sc.u[bestSeg] - T(0.5) * du);
         T b = std::min(sc.u1, sc.u[bestSeg + 1] + T(0.5) * du);
@@ -8763,7 +8907,7 @@ bool gsPatchSplitter<T>::verifyBoundaryMatch(
         };
         T c1 = b - phi * (b - a), c2 = a + phi * (b - a);
         T f1 = evalD2(c1), f2 = evalD2(c2);
-        for (int iter = 0; iter < 45; ++iter) {
+        for (int iter = 0; iter < 18; ++iter) {
             if (f1 < f2) {
                 b = c2; c2 = c1; f2 = f1;
                 c1 = b - phi * (b - a); f1 = evalD2(c1);
@@ -8772,7 +8916,7 @@ bool gsPatchSplitter<T>::verifyBoundaryMatch(
                 c2 = a + phi * (b - a); f2 = evalD2(c2);
             }
         }
-        T bestFinal = std::min(bestD2, std::min(f1, f2));
+        T bestFinal = std::min(bestPolyD2, std::min(f1, f2));
         return std::sqrt(bestFinal);
     };
 
@@ -8781,24 +8925,16 @@ bool gsPatchSplitter<T>::verifyBoundaryMatch(
     // Forward check: every original boundary curve point must match MultiPatch boundary
     for (const auto& oSc : origSampled) {
         for (size_t i = 0; i < oSc.u.size(); ++i) {
-            T dMin = std::numeric_limits<T>::max();
-            for (const auto& bSc : mpSampled) {
-                T d = pointToSampledCurveDist(oSc.x[i], oSc.y[i], bSc);
-                if (d < dMin) dMin = d;
-            }
-            if (dMin > maxDist) maxDist = dMin;
+            T d = pointToCurvesDist(oSc.x[i], oSc.y[i], mpSampled);
+            if (d > maxDist) maxDist = d;
         }
     }
 
     // Backward check: every MultiPatch boundary point must match original domain curves
     for (const auto& bSc : mpSampled) {
         for (size_t i = 0; i < bSc.u.size(); ++i) {
-            T dMin = std::numeric_limits<T>::max();
-            for (const auto& oSc : origSampled) {
-                T d = pointToSampledCurveDist(bSc.x[i], bSc.y[i], oSc);
-                if (d < dMin) dMin = d;
-            }
-            if (dMin > maxDist) maxDist = dMin;
+            T d = pointToCurvesDist(bSc.x[i], bSc.y[i], origSampled);
+            if (d > maxDist) maxDist = d;
         }
     }
 
@@ -8809,75 +8945,7 @@ bool gsPatchSplitter<T>::verifyBoundaryMatch(
 template <class T>
 std::vector<int> gsPatchSplitter<T>::getVertexValences() const
 {
-    std::vector<int> valences;
-    const auto& mp = m_bestCandidate.multiPatch;
-    if (mp.nPatches() == 0) return valences;
-
-    std::vector<gsPoint2D<T>> bndCorners;
-    for (const auto& bnd : mp.boundaries()) {
-        size_t p = bnd.patch;
-        boxSide s = bnd.side();
-        const auto* tp = dynamic_cast<const gsTensorBSpline<2, T>*>(&mp.patch(p));
-        if (!tp) continue;
-        int nu = tp->basis().size(0);
-        int nv = tp->basis().size(1);
-        const auto& c = tp->coefs();
-
-        if (s == boxSide(boundary::south)) {
-            bndCorners.emplace_back(c(0, 0), c(0, 1));
-            bndCorners.emplace_back(c(nu - 1, 0), c(nu - 1, 1));
-        } else if (s == boxSide(boundary::north)) {
-            bndCorners.emplace_back(c((nv - 1) * nu, 0), c((nv - 1) * nu, 1));
-            bndCorners.emplace_back(c(nu - 1 + (nv - 1) * nu, 0), c(nu - 1 + (nv - 1) * nu, 1));
-        } else if (s == boxSide(boundary::west)) {
-            bndCorners.emplace_back(c(0, 0), c(0, 1));
-            bndCorners.emplace_back(c((nv - 1) * nu, 0), c((nv - 1) * nu, 1));
-        } else if (s == boxSide(boundary::east)) {
-            bndCorners.emplace_back(c(nu - 1, 0), c(nu - 1, 1));
-            bndCorners.emplace_back(c(nu - 1 + (nv - 1) * nu, 0), c(nu - 1 + (nv - 1) * nu, 1));
-        }
-    }
-
-    std::vector<gsPoint2D<T>> allCorners;
-    for (size_t p = 0; p < mp.nPatches(); ++p) {
-        const auto* tp = dynamic_cast<const gsTensorBSpline<2, T>*>(&mp.patch(p));
-        if (!tp) continue;
-        int nu = tp->basis().size(0);
-        int nv = tp->basis().size(1);
-        const auto& c = tp->coefs();
-
-        allCorners.emplace_back(c(0, 0), c(0, 1));
-        allCorners.emplace_back(c(nu - 1, 0), c(nu - 1, 1));
-        allCorners.emplace_back(c(nu - 1 + (nv - 1) * nu, 0), c(nu - 1 + (nv - 1) * nu, 1));
-        allCorners.emplace_back(c((nv - 1) * nu, 0), c((nv - 1) * nu, 1));
-    }
-
-    std::vector<bool> visited(allCorners.size(), false);
-    for (size_t i = 0; i < allCorners.size(); ++i) {
-        if (visited[i]) continue;
-        visited[i] = true;
-        int val = 1;
-        for (size_t j = i + 1; j < allCorners.size(); ++j) {
-            if (allCorners[i].distSq(allCorners[j]) < 1e-4) {
-                val++;
-                visited[j] = true;
-            }
-        }
-
-        bool isBoundary = false;
-        for (const auto& bc : bndCorners) {
-            if (allCorners[i].distSq(bc) < 1e-4) {
-                isBoundary = true;
-                break;
-            }
-        }
-
-        if (!isBoundary) {
-            valences.push_back(val);
-        }
-    }
-
-    return valences;
+    return analyzeQuality(m_bestCandidate.multiPatch).intValences;
 }
 
 // ============================================================================
