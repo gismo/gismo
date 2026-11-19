@@ -52,6 +52,9 @@
 #include <Eigen/StdVector>
 #include <Eigen/Geometry>
 
+// BiCGSTAB with the relative stopping criterion that Eigen 5.0.x lacks
+#include <gsEigen/BiCGSTAB.h>
+
 // Extra Eigen code
 #include <gsMatrix/Adjugate.h>
 #include <gsMatrix/BlockDiag.h>
@@ -181,20 +184,20 @@ public:
             gsEigen::Lower|gsEigen::Upper, gsPreconditionerWrapper<T> > CGCustom;
 
     /// BiCGSTAB with Incomplete LU factorization with dual-threshold strategy
-    typedef gsEigen::BiCGSTAB<gsEigen::SparseMatrix<T,0,index_t>,
-                            gsEigen::IncompleteLUT<T, index_t> > BiCGSTABILUT;
+    typedef gsEigen::gsBiCGSTAB<gsEigen::SparseMatrix<T,0,index_t>,
+                              gsEigen::IncompleteLUT<T, index_t> > BiCGSTABILUT;
 
     /// BiCGSTAB with Diagonal (Jacobi) preconditioner
-    typedef gsEigen::BiCGSTAB<gsEigen::SparseMatrix<T,0,index_t>,
-                            gsEigen::DiagonalPreconditioner<T> > BiCGSTABDiagonal;
+    typedef gsEigen::gsBiCGSTAB<gsEigen::SparseMatrix<T,0,index_t>,
+                              gsEigen::DiagonalPreconditioner<T> > BiCGSTABDiagonal;
 
     /// BiCGSTAB without preconditioner (identity as preconditioner)
-    typedef gsEigen::BiCGSTAB<gsEigen::SparseMatrix<T,0,index_t>,
-                            gsEigen::IdentityPreconditioner > BiCGSTABIdentity;
+    typedef gsEigen::gsBiCGSTAB<gsEigen::SparseMatrix<T,0,index_t>,
+                              gsEigen::IdentityPreconditioner > BiCGSTABIdentity;
 
     /// BiCGSTAB with custom preconditioner (gsPreconditionerWrapper)
-    typedef gsEigen::BiCGSTAB<gsEigen::SparseMatrix<T,0,index_t>,
-                            gsPreconditionerWrapper<T> > BiCGSTABCustom;
+    typedef gsEigen::gsBiCGSTAB<gsEigen::SparseMatrix<T,0,index_t>,
+                              gsPreconditionerWrapper<T> > BiCGSTABCustom;
 
     /// Direct LDLt factorization
     typedef gsEigen::SimplicialLDLT<gsEigen::SparseMatrix<T,0,index_t> > SimplicialLDLT;
