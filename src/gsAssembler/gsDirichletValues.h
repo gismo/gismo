@@ -24,6 +24,10 @@ namespace expr
 template<class T> class gsFeSpace;
 };
 
+/// Dirichlet data is either scalar, and then applies to every component the
+/// condition constrains, or has one component per space component, of which
+/// the constrained ones are used.
+///
 /// \param sameElement asserts that each boundary quadrature batch lies in a single Bezier element of
 /// the geometry map; passing false evaluates the map per point. Read from no option list.
 /// Applies to the \c dirichlet::l2Projection branch only: \c dirichlet::interpolation does not
@@ -103,6 +107,16 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
         const int k = it->patch();
         const gsBasis<T> & basis = u.source().basis(k);
 
+        if (!it->isHomogeneous())
+        {
+            const index_t nd   = it->function()->piece(k).targetDim();
+            const index_t need = (-1 == com ? u.dim() : com + 1);
+            GISMO_ENSURE(1 == nd || nd >= need,
+                         "Dirichlet data on patch "<<k<<", side "<<it->side()<<" has "<<nd
+                         <<" components; expected 1 or at least "<<need
+                         <<" for the "<<u.dim()<<"-component space");
+        }
+
         GISMO_ENSURE((dynamic_cast<const gsTensorBasis<1,T>*>(&basis) ||
                       dynamic_cast<const gsTensorBasis<2,T>*>(&basis) ||
                       dynamic_cast<const gsTensorBasis<3,T>*>(&basis) ||
@@ -169,10 +183,6 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
             typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
             const gsMatrix<T> & dVals = geo->coefs();
 
-            // One column per data component; scalar data apply to every
-            // component the condition constrains
-            GISMO_ASSERT(1==dVals.cols() || r<dVals.cols(),
-                         "Dirichlet data has "<<dVals.cols()<<" components, expected 1 or "<<u.dim());
             const index_t dc = (1==dVals.cols() ? 0 : r);
 
             // Save corresponding boundary dofs
@@ -317,10 +327,17 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
         const gsBasis<T> & basis = u.source().basis(patchIdx);
         const gsFunction<T> & patch = gmap.function(patchIdx);
 
-        // The side of a curve is its end point, where the measure is 1. The
-        // interior measure |G'| there would vanish with the tangent of the
-        // curve, and so would the projection. For d >= 2 the quadrature
-        // points stay weighted by the interior measure.
+        if (!iter->isHomogeneous())
+        {
+            const index_t nd   = iter->function()->piece(patchIdx).targetDim();
+            const index_t need = (-1 == com ? u.dim() : com + 1);
+            GISMO_ENSURE(1 == nd || nd >= need,
+                         "Dirichlet data on patch "<<patchIdx<<", side "<<iter->side()<<" has "<<nd
+                         <<" components; expected 1 or at least "<<need
+                         <<" for the "<<u.dim()<<"-component space");
+        }
+
+        // On a curve the side is an end point; computeAuxiliaryData (gsFunction.hpp) sets its measure.
         md.side = (1 == patch.domainDim() ? iter->side() : boxSide(boundary::none));
 
         // Set up quadrature to degree+1 Gauss points per direction,
@@ -409,10 +426,6 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
                   }
                 }
 
-                // One row per data component; scalar data apply to every
-                // component the condition constrains
-                GISMO_ASSERT(1==rhsVals.rows() || r<rhsVals.rows(),
-                    "Dirichlet data has "<<rhsVals.rows()<<" components, expected 1 or "<<u.dim());
                 const index_t dc = (1==rhsVals.rows() ? 0 : r);
 
                 // Do the actual assembly:

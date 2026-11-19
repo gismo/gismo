@@ -54,8 +54,8 @@ public:
     // Documentation in gsDomainIterator.h
     void next(index_t increment) override
     {
-        // Threaded loops step past the end when there are fewer elements
-        // than threads; stop at the end, as the tensor iterators do.
+        // Threaded (strided) loops step past the end on their last stride;
+        // clamp the step at the end, as the tensor iterators do.
         m_it += std::min<index_t>(increment, m_itEnd - m_it);
     }
 
@@ -123,6 +123,11 @@ private:
 
 public:
 
+    /// @brief Constructs the iterator over the single boundary element on
+    /// side \a s of a knot-vector domain (see the class description).
+    /// @param _knots Knot vector whose domain is iterated; only the end
+    /// point and the adjacent span length are copied, no reference is kept.
+    /// @param s Boundary side, must be boundary::west or boundary::east.
     gsKnotDomainBoundaryIterator(const gsKnotVector<T> & _knots, const boxSide & s)
     : gsDomainIterator<T>(0, s)
     {
@@ -140,16 +145,24 @@ public:
         }
     }
 
+    /// @brief Copy constructor
     gsKnotDomainBoundaryIterator(const gsKnotDomainBoundaryIterator & other) = default;
-    domainIter clone() const override { return domainIter(new gsKnotDomainBoundaryIterator(*this)); }
+
+    domainIter clone() const override
+    { return domainIter(new gsKnotDomainBoundaryIterator(*this)); }
 
     // A single element: the loops compare element ids with endBdr(), so
     // stepping changes the id only
-    void next() override { }
-    void next(index_t) override { }
-    void prev() override { }
-    void prev(index_t) override { }
-    void reset() override { }
+    void next() override
+    { }
+    void next(index_t) override
+    { }
+    void prev() override
+    { }
+    void prev(index_t) override
+    { }
+    void reset() override
+    { }
 
     gsVector<T> lowerCorner() const override
     { return gsVector<T>::Constant(1, m_point); }
@@ -157,9 +170,11 @@ public:
     gsVector<T> upperCorner() const override
     { return gsVector<T>::Constant(1, m_point); }
 
-    const T getPerpendicularCellSize() const override { return m_width; }
+    const T getPerpendicularCellSize() const override
+    { return m_width; }
 
-    bool isBoundaryElement() const override { return true; }
+    bool isBoundaryElement() const override
+    { return true; }
 
 }; // class gsKnotDomainBoundaryIterator
 

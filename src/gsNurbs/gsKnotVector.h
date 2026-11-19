@@ -177,6 +177,11 @@ public: // iterator ends
         return domainIter(new gsKnotDomainIterator<T>(*this,false));
     }
 
+    /// @brief Number of elements on boundary side \a s, always 1: the end
+    /// point of the domain on that side.
+    /// @param s Boundary side, must be boundary::west or boundary::east;
+    /// any other value, including the default boundary::none, fails the
+    /// GISMO_ENSURE.
     size_t numElementsBdr(boxSide const & s = boundary::none) const override
     {
         GISMO_ENSURE(s == boundary::west || s == boundary::east,

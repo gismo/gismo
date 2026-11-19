@@ -58,9 +58,12 @@ public:
 
     gsFeSolution(const gsFeSpace<T> & u, gsMatrix<T> & Sv) : _u(u), _Sv(&Sv) { }
 
-    // res is scratch space of eval(); a copy starts without it
+    /// @brief Copy constructor: copies the space \a _u and the coefficient
+    /// pointer \a _Sv but not the scratch matrix \a res of eval(), which
+    /// starts empty in the copy
     gsFeSolution(const gsFeSolution & other)
-    : _expr<gsFeSolution<T> >(), _u(other._u), _Sv(other._Sv) { }
+    : _expr<gsFeSolution<T> >(), _u(other._u), _Sv(other._Sv)
+    { }
 
     const gsFeSpace<T> & space() const {return _u;};
 

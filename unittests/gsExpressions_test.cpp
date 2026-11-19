@@ -176,7 +176,15 @@ SUITE(gsExpressions_test)
         CHECK_EQUAL(1, grad(f1D).rows());
         CHECK_EQUAL(2, grad(f2D).rows());
         CHECK_EQUAL(2, grad(f2D).cols());
-        CHECK_EQUAL((ev.eval(grad(f2D) - jac(f2D),pt)).norm(), 0.0);
+        // For a variable, grad_expr and jac_expr both only reshape and transpose
+        // the same derivative values, so the difference is zero by construction.
+        // The tolerance, that of the next check, only allows round-off should one
+        // of the two compute rather than copy.
+        CHECK_CLOSE(0.0, (ev.eval(grad(f2D) - jac(f2D),pt)).norm(), 1e-12);
+        // f2Dphys is func2D composed with the geometry map G, which is the identity
+        // of the unit square, so it is func2D at the same point as pt and its
+        // derivatives are computed directly. What remains is round-off on entries
+        // of size 1 at pt.
         auto f2Dphys = ev.getVariable(func2D, G);
         CHECK_EQUAL(2, grad(f2Dphys).rows());
         CHECK((ev.eval(grad(f2Dphys) - jac(f2D),pt)).norm() < 1e-12);
@@ -383,6 +391,9 @@ SUITE(gsExpressions_test)
     {
         for (index_t c = 0; c != 2; ++c)
         {
+            // c == 0: a degree-2 surface in 3D with its middle control point
+            // lifted. c == 1: a degree-2 B-spline curve in 2D, with one interior
+            // knot (gsKnotVector(0,1,1,3): end multiplicity 3).
             gsMultiPatch<real_t> mp;
             if (0 == c)
             {
@@ -404,6 +415,7 @@ SUITE(gsExpressions_test)
             const index_t n = mb.basis(0).size();
             gsBoundaryConditions<real_t> bc;
 
+            // M: the vector-valued assembly with jac(u).cwisetr() % jac(u).tr()
             gsExprAssembler<real_t> A(1,1);
             A.setIntegrationElements(mb);
             auto G = A.getMap(mp);
@@ -413,6 +425,7 @@ SUITE(gsExpressions_test)
             A.assemble(jac(u).cwisetr() % jac(u).tr() * meas(G));
             const gsMatrix<real_t> M = A.matrix().toDense();
 
+            // Reference K: the scalar stiffness matrix grad(s) * grad(s).tr()
             gsExprAssembler<real_t> B(1,1);
             B.setIntegrationElements(mb);
             auto H = B.getMap(mp);
@@ -423,6 +436,7 @@ SUITE(gsExpressions_test)
             const gsMatrix<real_t> K = B.matrix().toDense();
 
             CHECK_EQUAL(dim*n, M.rows());
+            // Component block (a,b) of M equals K when a == b and 0 otherwise.
             real_t err = 0;
             for (index_t a = 0; a != dim; ++a)
                 for (index_t b = 0; b != dim; ++b)
@@ -432,6 +446,9 @@ SUITE(gsExpressions_test)
                             const real_t Kij = (a == b ? K(s.mapper().index(i), s.mapper().index(j)) : 0);
                             err = math::max(err, math::abs(M(u.mapper().index(i,0,a), u.mapper().index(j,0,b)) - Kij));
                         }
+            // M and K integrate the same parametric derivative products, with the
+            // same basis and quadrature, in a different order of operations, so
+            // they agree to round-off relative to the largest entry.
             CHECK(err < 1e-12 * K.lpNorm<gsEigen::Infinity>());
         }
     }
@@ -449,6 +466,8 @@ SUITE(gsExpressions_test)
         const index_t dim = 2, n = mb.basis(0).size(), n2 = mb2.basis(0).size();
         gsBoundaryConditions<real_t> bc;
 
+        // Vector-valued assembly of M: test space of degree p, trial space of
+        // degree p+1.
         gsExprAssembler<real_t> A(2,2);
         A.setIntegrationElements(mb);
         auto G = A.getMap(mp);
@@ -460,6 +479,8 @@ SUITE(gsExpressions_test)
         A.assemble(jac(u).cwisetr() % jac(v).tr() * meas(G));
         const gsMatrix<real_t> M = A.matrix().toDense();
 
+        // Reference K: the scalar matrix grad(s) * grad(t).tr() on the same two
+        // bases.
         gsExprAssembler<real_t> B(2,2);
         B.setIntegrationElements(mb);
         auto H = B.getMap(mp);
@@ -472,6 +493,8 @@ SUITE(gsExpressions_test)
         const gsMatrix<real_t> K = B.matrix().toDense();
 
         CHECK_EQUAL(dim*(n+n2), M.rows());
+        // Test row i of component a against trial column j of component b: the
+        // diagonal component blocks equal the scalar matrix K, the others are 0.
         real_t err = 0;
         for (index_t a = 0; a != dim; ++a)
             for (index_t b = 0; b != dim; ++b)
@@ -481,6 +504,9 @@ SUITE(gsExpressions_test)
                         const real_t Kij = (a == b ? K(s.mapper().index(i), t.mapper().index(j)) : 0);
                         err = math::max(err, math::abs(M(u.mapper().index(i,0,a), v.mapper().index(j,0,b)) - Kij));
                     }
+        // M and K integrate the same parametric derivative products, with the
+        // same bases and quadrature, in a different order of operations, so they
+        // agree to round-off relative to the largest entry.
         CHECK(err < 1e-12 * K.lpNorm<gsEigen::Infinity>());
     }
 
@@ -501,12 +527,16 @@ SUITE(gsExpressions_test)
         CHECK_EQUAL(1, (jac(G) % jac(G)).rows());
         CHECK_EQUAL(1, (jac(G) % jac(G)).cols());
 
+        // pt is an interior point of the single element. J is the 3x2 Jacobian
+        // taken directly from the patch.
         gsVector<real_t> pt(2);
         pt << 0.3, 0.6;
         const gsMatrix<real_t> J = mp.patch(0).jacobian(pt);
         const gsMatrix<real_t> v = ev.eval(jac(G) % jac(G), pt);
         CHECK_EQUAL(1, v.rows());
         CHECK_EQUAL(1, v.cols());
+        // Oracle: A % A = sum_ij A_ij^2 = ||A||_F^2. The tolerance is round-off
+        // on entries of size 1.
         CHECK_CLOSE(J.squaredNorm(), v(0,0), 1e-12);
     }
 

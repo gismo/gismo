@@ -35,6 +35,27 @@ public:
     }
 };
 
+/// Poisson assembler whose single unknown has two components, so that the
+/// legacy Dirichlet code sees an unknown size U = 2. A plain
+/// gsPoissonAssembler always has U = 1; a vector-valued unknown exists only
+/// through a custom gsSparseSystem, which this refresh() sets up.
+class TwoComponentPoissonAssembler : public gismo::gsPoissonAssembler<real_t>
+{
+public:
+    TwoComponentPoissonAssembler(const gismo::gsPoissonPde<real_t> & pde,
+                                 const gismo::gsMultiBasis<real_t> & mb)
+    : gismo::gsPoissonAssembler<real_t>(pde, mb) { }
+
+    void refresh() override
+    {
+        gismo::gsDofMapper map = gismo::createMapper(m_bases[0], m_pde_ptr->bc(), 1, 0, true, true);
+        std::vector<gismo::gsDofMapper> maps(2, map);
+        gismo::gsVector<index_t> dims(1);
+        dims << 2;
+        m_system = gismo::gsSparseSystem<real_t>(maps, dims);
+    }
+};
+
 } // anonymous namespace
 
 
@@ -165,9 +186,9 @@ SUITE(gsExprAssembler_test)
 
             // Two distinct-block terms in one assemble() call: this is what
             // actually writes into both diagonal blocks of the system
-            // matrix, so a wrong offset for p's block (computed pre-fix as
-            // d*(d*n) instead of d*n) would either write out of range or
-            // leave part of v's block untouched.
+            // matrix, so a wrong offset for p's block (d*(d*n) instead of
+            // d*n) would either write out of range or leave part of v's
+            // block untouched.
             A.assemble(v*v.tr()*meas(G), p*p.tr()*meas(G));
 
             // Counting entirely-zero rows separates "wrong total" from
@@ -200,6 +221,9 @@ SUITE(gsExprAssembler_test)
     // spaces, each space's dofs lie at its mapper's shift in that vector.
     TEST(SolutionOfShiftedSpace)
     {
+        // Set-up: the unit square, with uniformRefine(2) (two knots inserted
+        // per span). Two scalar spaces are unknowns 0 and 1 of one system, and
+        // there are no boundary conditions.
         gsMultiPatch<> mp(*gsNurbsCreator<>::BSplineSquare());
         gsMultiBasis<> mb(mp);
         mb.uniformRefine(2);
@@ -232,6 +256,10 @@ SUITE(gsExprAssembler_test)
         // eval() asserts check() inside the evaluator's parallel region
         if (s0.check() && s1.check())
         {
+            // Integrals over the parameter domain (no meas) of the constants 1
+            // and 2, and of the gradient of a constant. Gauss quadrature is
+            // exact for them and the derivatives of the partition of unity sum
+            // to 0, so only round-off remains.
             gsExprEvaluator<> ev(A);
             CHECK_CLOSE(1.0, ev.integral(s0), 1e-12);
             CHECK_CLOSE(2.0, ev.integral(s1), 1e-12);
@@ -267,6 +295,8 @@ SUITE(gsExprAssembler_test)
     // parametric Laplacian, i.e. hess(u).trace()
     TEST(LaplacianOfSpace)
     {
+        // Set-up: two unit squares side by side, degree elevated by 2 and
+        // refined once.
         gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(2,1,1.0);
         gsMultiBasis<> mb(mp);
         mb.degreeElevate(2);
@@ -280,17 +310,24 @@ SUITE(gsExprAssembler_test)
         auto f = A.getCoeff(ff, G);
         u.setup(0);
 
+        // Assembly with lapl(u): matrix M and right-hand side b.
         A.initSystem();
         A.assemble(lapl(u) * lapl(u).tr() * meas(G) + (lapl(u) + u) * u.tr() * meas(G),
                    lapl(u) * f * meas(G));
         const gsSparseMatrix<> M = A.matrix();
         const gsMatrix<>       b = A.rhs();
 
+        // Second assembly of the same forms, with hess(u).trace() in place of
+        // lapl(u): the reference.
         A.initSystem();
         A.assemble(hess(u).trace() * hess(u).trace().tr() * meas(G)
                    + (hess(u).trace() + u) * u.tr() * meas(G),
                    hess(u).trace() * f * meas(G));
 
+        // The two lower bounds are non-vacuity guards: the relative checks
+        // below would pass trivially for a zero matrix or vector. The relative
+        // tolerance 1e-12 holds because the two forms are the same quantity,
+        // evaluated with the same quadrature, so they agree to round-off.
         CHECK(M.norm() > 1);
         CHECK(b.norm() > 1e-3);
         CHECK((M - A.matrix()).norm() <= 1e-12 * M.norm());
@@ -327,6 +364,10 @@ SUITE(gsExprAssembler_test)
     // corner dofs the same way).
     TEST(DirichletValuesVectorData)
     {
+        // Set-up: two unit squares side by side, degree elevated by 1 and
+        // refined once. g is vector data, h scalar data. bcs holds the
+        // conditions as given; split holds the same conditions as scalar
+        // conditions per component, the oracle.
         gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(2,1,1.0);
         gsMultiBasis<> mb(mp);
         mb.degreeElevate(1);
@@ -355,9 +396,12 @@ SUITE(gsExprAssembler_test)
         bcs  .addCondition(0, boundary::north, condition_type::dirichlet, &h , 0, false,  0);
         split.addCondition(0, boundary::north, condition_type::dirichlet, &h , 0, false,  0);
 
+        // Both Dirichlet methods are checked: interpolation and L2 projection.
         const index_t methods[2] = {dirichlet::interpolation, dirichlet::l2Projection};
         for (index_t m = 0; m != 2; ++m)
         {
+            // u carries the vector-data conditions, w the scalar split of the
+            // same conditions, both with the same Dirichlet method.
             gsExprAssembler<> A(1,1), B(1,1);
             A.setIntegrationElements(mb);
             B.setIntegrationElements(mb);
@@ -367,6 +411,8 @@ SUITE(gsExprAssembler_test)
             w.setup(split, methods[m], 0);
             CHECK_EQUAL(w.mapper().boundarySize(), u.mapper().boundarySize());
 
+            // Compare every constrained dof of every component, and track the
+            // largest difference and the largest value.
             real_t maxDiff = 0, maxVal = 0;
             index_t numFixed = 0;
             for (size_t k = 0; k != mp.nPatches(); ++k)
@@ -381,6 +427,13 @@ SUITE(gsExprAssembler_test)
                         maxVal  = math::max(maxVal , math::abs(b));
                         ++numFixed;
                     }
+            // The data are O(1): on the east side of patch 1 (x = 2), h = x +
+            // 2y^2 >= 2, so the relative check below is not against near-zero
+            // values. Both set-ups compute the fixed dofs from the same data with
+            // the same method (interpolation at the same anchors, or the same
+            // boundary L2 system solved to machine-epsilon tolerance), so they
+            // differ by round-off. 1e-10 (about 4.5e5 eps) leaves room for the
+            // conditioning of the small boundary systems.
             CHECK(numFixed > 0);
             CHECK(maxVal > 0.5);
             CHECK(maxDiff <= 1e-10 * maxVal);
@@ -391,10 +444,15 @@ SUITE(gsExprAssembler_test)
     // Dirichlet data reduces to the value there: the dof of the end basis
     // function takes the data value, whatever the tangent of the curve.
     // G(t) = t^2, on the line and as a curve in the plane, has a vanishing
-    // tangent at t = 0; x = 2t is a regular curve. Both the expression
-    // assembler and gsAssembler project.
+    // tangent at t = 0; x = 2t is a regular curve. The expression assembler
+    // projects for all three curves; gsAssembler (through gsPoissonAssembler)
+    // only for the two curves on the line, because the loop skips the planar
+    // curve with `if (1 != dim) continue;`.
     TEST(DirichletL2ProjectionAtCurveEnd)
     {
+        // Constant Dirichlet data at the west and east end of each curve. The
+        // three degree-2 curves, on one span, are x = t^2, the planar
+        // (t^2, 2t^2), and x = 2t.
         const real_t gW = 0.75, gE = -1.25;
         gsKnotVector<> kv(0, 1, 0, 3); // degree 2, one span
         gsMatrix<> cps[3];
@@ -406,6 +464,7 @@ SUITE(gsExprAssembler_test)
             gsMultiPatch<> mp;
             mp.addPatch(gsBSpline<>(kv, cps[c]));
             gsMultiBasis<> mb(mp);
+            // uniformRefine(2) inserts two knots per span
             mb.uniformRefine(2);
             const index_t n = mb.basis(0).size();
             const short_t dim = mp.geoDim();
@@ -421,9 +480,16 @@ SUITE(gsExprAssembler_test)
             auto u = A.getSpace(mb);
             u.setup(bc, dirichlet::l2Projection, 0);
             CHECK_EQUAL(2, u.mapper().boundarySize());
+            // On an end point each boundary dof has a 1x1 equation
+            // N(end)^2 x = N(end) g, with N(end) = 1 and measure 1. The CG solver
+            // solves this diagonal system to round-off, and 1e-10 is a round-off
+            // bound.
             CHECK_CLOSE(gW, u.fixedPart().at(u.mapper().bindex(0  , 0)), 1e-10);
             CHECK_CLOSE(gE, u.fixedPart().at(u.mapper().bindex(n-1, 0)), 1e-10);
 
+            // The same projection through gsAssembler, here gsPoissonAssembler,
+            // for the curves on the line only. The tolerance is that of the
+            // expression assembler above.
             if (1 != dim) continue;
             gsConstantFunction<> f(0, 1);
             gsPoissonAssembler<> P(mp, mb, bc, f);
@@ -433,6 +499,130 @@ SUITE(gsExprAssembler_test)
             CHECK_EQUAL(2, m.boundarySize());
             CHECK_CLOSE(gW, P.fixedDofs().at(m.bindex(0  , 0)), 1e-10);
             CHECK_CLOSE(gE, P.fixedDofs().at(m.bindex(n-1, 0)), 1e-10);
+        }
+    }
+
+    // Dirichlet data with fewer components than the condition addresses is
+    // refused when the space is set up (a runtime error, in every build type),
+    // for both ways of computing the values. A 3-component space with
+    // 2-component data (x, y) is refused for a condition on all components
+    // (com = -1 needs 3) and on component 2 (needs 3), and accepted for
+    // component 1 (needs 2), which reads component 1 of the data, y. The
+    // accepted case also shows the data is used: the boundary values hold y,
+    // which reaches 1 at the top corner of the unit square, so a maximum above
+    // 0.5 (half of the exact maximum 1) rules out values left at zero.
+    TEST(DirichletValuesTooFewComponents)
+    {
+        gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(2,1,1.0);
+        gsMultiBasis<> mb(mp);
+        mb.degreeElevate(1);
+        mb.uniformRefine(1);
+        gsFunctionExpr<> g("x", "y", 2);
+
+        const index_t methods[2] = {dirichlet::interpolation, dirichlet::l2Projection};
+        const index_t comps[3]   = {-1, 2, 1};
+        for (index_t m = 0; m != 2; ++m)
+            for (index_t c = 0; c != 3; ++c)
+            {
+                gsBoundaryConditions<> bcs;
+                bcs.setGeoMap(mp);
+                bcs.addCondition(0, boundary::west, condition_type::dirichlet, &g, 0, false, comps[c]);
+
+                gsExprAssembler<> A(1,1);
+                A.setIntegrationElements(mb);
+                auto u = A.getSpace(mb, 3);
+                if (c < 2)
+                    CHECK_THROW(u.setup(bcs, methods[m], 0), std::runtime_error);
+                else
+                {
+                    u.setup(bcs, methods[m], 0);
+                    CHECK(u.mapper().boundarySize() > 0);
+                    CHECK(u.fixedPart().cwiseAbs().maxCoeff() > 0.5);
+                }
+            }
+    }
+
+    // The legacy gsAssembler accepts Dirichlet data of one component for an
+    // unknown of U components with a single right-hand side (the value is used
+    // for every component), and refuses any other mismatch of the number of
+    // data components with U times the number of right-hand sides, in both the
+    // interpolation and the L2 projection. Oracle for the accepted case:
+    // gsDirichletValues (through gsFeSpace::setup) on the same condition and a
+    // 2-component space, which also broadcasts scalar data. Both compute the
+    // same thing: the interpolation uses the anchors of the side's boundary
+    // basis, the L2 projection the Gauss rule of that basis with 3 points
+    // per direction (degree 2 after one elevation, exact up to degree 5), so
+    // the cubic datum 1 + x + y^3 is integrated exactly by both, and the two
+    // CG solves of a few unknowns agree to far below the tolerance
+    // 1e-10 * maxVal, a relative tolerance on values of order 1. On the west
+    // side x = 0, so the datum is 1 + y^3, between 1 and 2; maxVal > 0.5
+    // (half the datum's minimum) rules out values left at zero.
+    TEST(LegacyDirichletScalarDataOnVectorUnknown)
+    {
+        gsMultiPatch<> mp = gsNurbsCreator<>::BSplineSquareGrid(1,1,1.0);
+        gsMultiBasis<> mb(mp);
+        mb.degreeElevate(1);
+
+        gsFunctionExpr<> h ("1 + x + y*y*y", 2);
+        gsFunctionExpr<> h3("x", "y", "x*y", 2);
+        gsFunctionExpr<> rhs1("1", 2);
+        gsFunctionExpr<> rhs2("1", "2", 2);
+
+        const index_t methods[2] = {dirichlet::interpolation, dirichlet::l2Projection};
+        for (index_t method : methods)
+        {
+            gsBoundaryConditions<> bc;
+            bc.setGeoMap(mp);
+            bc.addCondition(0, boundary::west, condition_type::dirichlet, &h);
+
+            // accepted: scalar data, U = 2, one right-hand side
+            gsPoissonPde<> pde(mp, bc, rhs1);
+            TwoComponentPoissonAssembler A(pde, mb);
+            A.options().setInt("DirichletValues", method);
+            A.refresh();
+            A.computeDirichletDofs(0);
+
+            gsExprAssembler<> E(1,1);
+            E.setIntegrationElements(mb);
+            auto u = E.getSpace(mb, 2);
+            u.setup(bc, method, 0);
+
+            const gsDofMapper & m = A.system().colMapper(0);
+            real_t maxDiff = 0, maxVal = 0;
+            index_t numFixed = 0;
+            for (index_t i = 0; i != mb.basis(0).size(); ++i)
+            {
+                if (!m.is_boundary(i, 0)) continue;
+                for (index_t r = 0; r != 2; ++r)
+                {
+                    CHECK(u.mapper().is_boundary(i, 0, r));
+                    const real_t a = A.fixedDofs()(m.bindex(i, 0), r);
+                    const real_t b = u.fixedPart().at(u.mapper().bindex(i, 0, r));
+                    maxDiff = math::max(maxDiff, math::abs(a-b));
+                    maxVal  = math::max(maxVal , math::abs(b));
+                    ++numFixed;
+                }
+            }
+            CHECK(numFixed > 0);
+            CHECK(maxVal > 0.5);
+            CHECK(maxDiff <= 1e-10 * maxVal);
+
+            // refused: 3 components of data for U = 2
+            gsBoundaryConditions<> bc3;
+            bc3.setGeoMap(mp);
+            bc3.addCondition(0, boundary::west, condition_type::dirichlet, &h3);
+            gsPoissonPde<> pde3(mp, bc3, rhs1);
+            TwoComponentPoissonAssembler A3(pde3, mb);
+            A3.options().setInt("DirichletValues", method);
+            A3.refresh();
+            CHECK_THROW(A3.computeDirichletDofs(0), std::runtime_error);
+
+            // refused: scalar data with two right-hand sides, 1 != U * R = 4
+            gsPoissonPde<> pde2(mp, bc, rhs2);
+            TwoComponentPoissonAssembler A2(pde2, mb);
+            A2.options().setInt("DirichletValues", method);
+            A2.refresh();
+            CHECK_THROW(A2.computeDirichletDofs(0), std::runtime_error);
         }
     }
 
@@ -514,6 +704,8 @@ SUITE(gsExprAssembler_test)
     // matrix assembleIfc() builds from the corresponding bilinear form.
     TEST(InterfaceJacobian)
     {
+        // Set-up: two stacked unit squares, degree 2, uniformRefine(2) (two
+        // knots per span), unglued (setup(-1)), and a random solution vector.
         gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(1,2,1);
         gsMultiBasis<> mb(patches);
         mb.degreeElevate(1);
@@ -529,13 +721,23 @@ SUITE(gsExprAssembler_test)
         gsMatrix<> solVector = gsMatrix<>::Random(A.numDofs(), 1);
         auto s = A.getSolution(u, solVector);
 
+        // J: the finite-difference Jacobian of the residual u * s.
         A.assembleJacobianIfc(patches.interfaces(), u * s * nv(G).norm(), s);
         const gsSparseMatrix<> J = A.matrix();
 
+        // M: assembleIfc() of the bilinear form u * u.tr() the residual
+        // linearizes to.
         A.initSystem();
         A.assembleIfc(patches.interfaces(), u * u.tr() * nv(G).norm());
         const gsSparseMatrix<> M = A.matrix();
 
+        // The tolerance 1e-8 is that of the finite-difference Jacobian with the
+        // default fixed interface (movingInterface == false): the five-point
+        // central-difference stencil with step 1e-5 is exact for a residual
+        // that is a polynomial of degree at most 4 in the perturbed dof, and
+        // this one is linear, so only cancellation round-off remains, about
+        // eps/step, 2e-11 relative. 1e-8 leaves about three orders of magnitude
+        // of margin.
         CHECK(M.norm() > 0);
         CHECK((J - M).norm() <= 1e-8 * M.norm());
     }
@@ -567,10 +769,19 @@ SUITE(gsExprAssembler_test)
             gsMatrix<> solVector = gsMatrix<>::Random(A.numDofs(), 1);
             auto s = A.getSolution(u, solVector);
 
-            // J of the residual minus M of the linearized form, relative to M
+            // J of the residual minus M of the linearized form, relative to M.
+            // The tolerance 1e-8 is that of the finite-difference Jacobian with
+            // the default fixed interface (movingInterface == false): the
+            // five-point central-difference stencil with step 1e-5 is exact for
+            // a residual that is a polynomial of degree at most 4 in the
+            // perturbed dof, so only cancellation round-off remains, about
+            // eps/step, 2e-11 relative. The quadratic case u * s_R^2 is still
+            // within the exact range of the stencil.
             gsSparseMatrix<> J, M;
             auto relErr = [&]() { return (J - M).norm() / M.norm(); };
 
+            // u * s.right() against u * u.right().tr(): the dependence on the
+            // dofs of the second side.
             A.initSystem();
             A.assembleJacobianIfc(patches.interfaces(), u * s.right() * nv(G).norm(), s);
             J = A.matrix();
@@ -579,6 +790,8 @@ SUITE(gsExprAssembler_test)
             M = A.matrix();
             CHECK(relErr() <= 1e-8);
 
+            // u.right() * s against u.right() * u.tr(): the test functions of
+            // the second side.
             A.initSystem();
             A.assembleJacobianIfc(patches.interfaces(), u.right() * s * nv(G).norm(), s);
             J = A.matrix();
@@ -653,6 +866,13 @@ SUITE(gsExprAssembler_test)
             return gsSparseMatrix<>(A.matrix());
         };
 
+        // J1 is the first call. A second call on the same assembler, and a call
+        // after an assembleIfc(), must give the sparsity and the values of the
+        // first call. Every call restarts from the same vector (sol =
+        // solVector) and runs the same finite differences on the same elements,
+        // so the Jacobians differ at most by round-off: 1e-12 relative is a
+        // round-off bound, far tighter than the 1e-8 with which a
+        // finite-difference Jacobian is compared with an exact matrix.
         const gsSparseMatrix<> J1 = jacobian(1, false);
         CHECK(J1.norm() > 0);
         const gsSparseMatrix<> later[2] = {jacobian(2, false), jacobian(1, true)};
@@ -709,6 +929,17 @@ SUITE(gsExprAssembler_test)
 
             // J of the residual minus M of the linearized form, relative to M
             gsSparseMatrix<> J, M;
+            // The tolerance 1e-8 is that of the finite-difference Jacobian with
+            // the default fixed interface (movingInterface == false), which
+            // uses the five-point central-difference stencil with step 1e-5. The
+            // stencil is exact for a residual that is a polynomial of degree at
+            // most 4 in the perturbed dof, and every residual here is linear or
+            // quadratic, so there is no truncation error. What remains is
+            // cancellation round-off, about eps/step, 2e-11 relative, so 1e-8
+            // leaves about three orders of magnitude of margin. As a column
+            // threshold, 1e-8 * |M| separates the columns the residual depends
+            // on (entries of the size of M's) from columns holding only
+            // finite-difference round-off.
             const auto check = [&]()
             {
                 CHECK(M.norm() > 0);
@@ -716,6 +947,7 @@ SUITE(gsExprAssembler_test)
                 CHECK_EQUAL(usedCols(M, 1e-8 * M.norm()), usedCols(J, 1e-8 * M.norm()));
             };
 
+            // u * s.right(): the columns come from the second side.
             A.initSystem();
             A.assembleJacobianIfc(patches.interfaces(), u * s.right() * nv(G).norm(), s);
             J = A.matrix();
@@ -724,6 +956,7 @@ SUITE(gsExprAssembler_test)
             M = A.matrix();
             check();
 
+            // u.right() * s: the rows are those of second-side test functions.
             A.initSystem();
             A.assembleJacobianIfc(patches.interfaces(), u.right() * s * nv(G).norm(), s);
             J = A.matrix();
@@ -732,6 +965,8 @@ SUITE(gsExprAssembler_test)
             M = A.matrix();
             check();
 
+            // u.right() * (s - s.right()): both, with its two-form assembleIfc
+            // as the reference.
             A.initSystem();
             A.assembleJacobianIfc(patches.interfaces(),
                                   u.right() * (s - s.right()) * nv(G).norm(), s);
@@ -756,6 +991,65 @@ SUITE(gsExprAssembler_test)
             M = A.matrix();
             check();
         }
+    }
+
+    // assembleJacobianIfc() must perturb the dofs of the second side only
+    // when the residual depends on them. A residual that reaches across the
+    // interface only through the geometry (G.right()) and not through the
+    // solution space is linear in the dofs of u on the first side. Then:
+    //  - J equals the matrix assembleIfc() builds from the linearized form,
+    //    u * u.tr() with the same geometry weight; the finite-difference
+    //    stencil is exact for a residual linear in the dofs, so only
+    //    round-off, of order epsilon * |R| / delta (delta = 1e-5, about 1e-11
+    //    relative in double precision), remains, below the tolerance 1e-8
+    //    that the sibling tests use;
+    //  - for unglued patches (setup(-1)) the dofs of the second patch belong
+    //    to the second side only, so their columns are structurally zero and
+    //    nothing may be stored in them. Perturbing them would store the
+    //    round-off of the stencil (8a - a - 8a + a)/(12 delta), which does not
+    //    cancel exactly in floating point, as stored entries. The count of
+    //    stored entries is exact (0), because a perturbation that was
+    //    skipped leaves no entry at all.
+    TEST(InterfaceJacobianGeometryAcross)
+    {
+        gsMultiPatch<> patches = gsNurbsCreator<>::BSplineSquareGrid(1,2,1);
+        gsMultiBasis<> mb(patches);
+        mb.degreeElevate(1);
+        mb.uniformRefine(2);
+
+        gsExprAssembler<> A(1,1);
+        A.setIntegrationElements(mb);
+        auto G = A.getMap(patches);
+        auto u = A.getSpace(mb);
+        u.setup(-1);
+        A.initSystem();
+
+        gsMatrix<> solVector = gsMatrix<>::Random(A.numDofs(), 1);
+        auto s = A.getSolution(u, solVector);
+
+        A.assembleJacobianIfc(patches.interfaces(),
+                              u * s * nv(G).norm() * (G.right().tr()*G.right()).val(), s);
+        const gsSparseMatrix<> J = A.matrix();
+
+        A.initSystem();
+        A.assembleIfc(patches.interfaces(),
+                      u * u.tr() * nv(G).norm() * (G.right().tr()*G.right()).val());
+        const gsSparseMatrix<> M = A.matrix();
+
+        CHECK(M.norm() > 0);
+        CHECK((J - M).norm() <= 1e-8 * M.norm());
+
+        // stored entries in the columns of the second patch
+        const index_t p2 = patches.interfaces().front().second().patch;
+        index_t numCols = 0, numStored = 0;
+        for (index_t i = 0; i != mb.basis(p2).size(); ++i)
+        {
+            ++numCols;
+            for (gsSparseMatrix<>::InnerIterator it(J, u.mapper().index(i, p2)); it; ++it)
+                ++numStored;
+        }
+        CHECK(numCols > 0);
+        CHECK_EQUAL(0, numStored);
     }
 
     // A mapper installed by setupMapper() must be the one initSystem() uses.

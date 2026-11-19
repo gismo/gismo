@@ -504,7 +504,7 @@ public:
     // respect to the solution \a u
     template<class expr> void assembleJacobian(const expr residual, solution & u);
 
-    /// \brief Adds the Jacobian of the interface residual \a residual with
+    /// @brief Adds the Jacobian of the interface residual \a residual with
     /// respect to the solution \a u to the system matrix, by finite differences
     ///
     /// The dofs active on the first side of each interface are perturbed,
@@ -613,6 +613,10 @@ private:
         // points
         gsMatrix<index_t>   m_rowInd, m_rowPos, m_colInd;
         gsMatrix<T>         m_pointVal;
+        // Global dofs already perturbed by diff() for the current element
+        std::vector<index_t> m_done;
+        // Scratch of activeUnion(), kept to reuse its capacity
+        std::vector<index_t> m_union;
 
         _eval(FiberMatrix & _fmatrix,
               gsMatrix<T>       & _rhs,
@@ -667,8 +671,8 @@ private:
         template <typename E> void diff(const gismo::expr::_expr<E> & ee,
                                         solution & u)
         {
-            std::vector<index_t> done;
-            diff(ee, u, u.space(), done);
+            m_done.clear();
+            diff(ee, u, u.space(), m_done);
         }
 
         // Adds the Jacobian of \a ee with respect to the free dofs of \a u
@@ -700,17 +704,17 @@ private:
             const bool colsVary = !sameActives(space.data().actives);
             if (colsVary)
                 activeUnion(space.data().actives, m_colInd);
-            const gsMatrix<index_t> & act = (colsVary ? m_colInd : space.data().actives);
+            const gsMatrix<index_t> & colInd = (colsVary ? m_colInd : space.data().actives);
 
             const index_t patch = space.data().patchId;
-            localMat.setZero(v.dim() * rowInd.rows(), u.dim() * act.rows());
+            localMat.setZero(v.dim() * rowInd.rows(), u.dim() * colInd.rows());
 
             for ( index_t c=0; c!= u.dim(); c++)
             {
-                const index_t rls = c * act.rows();     //local stride
-                for ( index_t j = 0; j != act.rows(); j++ )     // for all basis functions (col(j))
+                const index_t rls = c * colInd.rows();     //local stride
+                for ( index_t j = 0; j != colInd.rows(); j++ )     // for all basis functions (col(j))
                 {
-                    const index_t jj = u.mapper().index(act.at(j), patch, c);
+                    const index_t jj = u.mapper().index(colInd.at(j), patch, c);
                     if (u.mapper().is_free_index(jj) &&
                         done.end() == std::find(done.begin(), done.end(), jj) )
                     {
@@ -738,7 +742,7 @@ private:
             }
 
             //  ------- Accumulate  -------
-            push<true,false>(v, space, rowInd, act);
+            push<true,false>(v, space, rowInd, colInd);
         }
 
         // Integrates the vector expression \a ee into \a aux. If \a rowsVary,
@@ -781,23 +785,23 @@ private:
         // The union of the columns of \a act, in the order of first
         // appearance, to the column \a un; if \a pos is given, the position
         // in \a un of each entry of \a act to it
-        static void activeUnion(const gsMatrix<index_t> & act,
-                                gsMatrix<index_t> & un,
-                                gsMatrix<index_t> * pos = nullptr)
+        void activeUnion(const gsMatrix<index_t> & act,
+                         gsMatrix<index_t> & un,
+                         gsMatrix<index_t> * pos = nullptr)
         {
-            std::vector<index_t> all;
+            m_union.clear();
             if (pos)
                 pos->resize(act.rows(), act.cols());
             for (index_t k = 0; k != act.cols(); ++k)
                 for (index_t i = 0; i != act.rows(); ++i)
                 {
-                    const auto it = std::find(all.begin(), all.end(), act(i,k));
+                    const auto it = std::find(m_union.begin(), m_union.end(), act(i,k));
                     if (pos)
-                        (*pos)(i,k) = static_cast<index_t>(it - all.begin());
-                    if (all.end() == it)
-                        all.push_back(act(i,k));
+                        (*pos)(i,k) = static_cast<index_t>(it - m_union.begin());
+                    if (m_union.end() == it)
+                        m_union.push_back(act(i,k));
                 }
-            un = gsAsConstMatrix<index_t>(all, static_cast<index_t>(all.size()), 1);
+            un = gsAsConstMatrix<index_t>(m_union, static_cast<index_t>(m_union.size()), 1);
         }
 
         void operator() (const expr::_expr<expr::gsNullExpr<T> > &) {}
@@ -1646,9 +1650,10 @@ void gsExprAssembler<T>::assembleJacobianIfc(const ifContainer & iFaces,
 
     m_exprdata->parse(residual, u);
     // The solution on the second side, for the derivatives with respect to
-    // its dofs; only if the residual is evaluated there
+    // its dofs; only if the basis of u is evaluated there. This must be
+    // queried before uRight.parse, which registers that basis itself.
     solution uRight = u.right();
-    const bool across = m_exprdata->parsedAcross();
+    const bool across = m_exprdata->parsedAcross(u.space().source());
     if (across)
         uRight.parse(*m_exprdata);
     if (m_options.askSwitch("SameElement",true)) m_exprdata->activateFlags(SAME_ELEMENT);

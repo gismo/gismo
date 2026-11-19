@@ -342,6 +342,13 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
             continue;
         }
 
+        const index_t U  = m_system.unkSize(unk_);
+        const index_t R  = m_pde_ptr->numRhs();
+        const index_t nd = it->function()->targetDim();
+        GISMO_ENSURE(nd == U*R || (1 == nd && 1 == R),
+                     "Dirichlet data has "<<nd<<" components; expected "<<U*R
+                     <<" (unknown size "<<U<<" x "<<R<<" right-hand sides), or 1 for a single right-hand side");
+
         // Get the side information
         short_t dir = it->side().direction( );
         index_t param = (it->side().parameter() ? 1 : 0);
@@ -364,9 +371,6 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
             }
         }
 
-        GISMO_ASSERT(it->function()->targetDim() == m_system.unkSize(unk_) * m_pde_ptr->numRhs(),
-                     "Given Dirichlet boundary function does not match problem dimension."
-                     <<it->function()->targetDim()<<" != "<<m_system.unkSize(unk_) << " * " << m_system.rhs().cols()<<"\n");
 
         // Compute dirichlet values
         gsMatrix<T> fpts;
@@ -384,7 +388,10 @@ void gsAssembler<T>::computeDirichletDofsIntpl(const gsDofMapper & mapper,
         for (index_t l=0; l!= boundary.size(); ++l)
         {
             const index_t ii = mapper.bindex( boundary.at(l) , it->patch() );
-            m_ddof[unk_].row(ii) = dVals.row(l);
+            if (nd == U*R)
+                m_ddof[unk_].row(ii) = dVals.row(l);
+            else // scalar data: same value for every component
+                m_ddof[unk_].row(ii) = dVals.row(l).replicate(1, U);
         }
     }
 }
@@ -405,7 +412,7 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
     // Temporaries
     gsVector<T> quWeights;
 
-    gsMatrix<T> rhsVals;
+    gsMatrix<T> rhsVals, rhsTmp;
     gsMatrix<index_t> globIdxAct;
     gsMatrix<T> basisVals;
 
@@ -419,22 +426,23 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
         if (iter->isHomogeneous() )
             continue;
 
-        GISMO_ASSERT(iter->function()->targetDim() == m_system.unkSize(unk_)* m_pde_ptr->numRhs(),
-                     "Given Dirichlet boundary function does not match problem dimension."
-                     <<iter->function()->targetDim()<<" != "<<m_system.unkSize(unk_)<<"x"<<m_system.rhs().cols()<<"\n");
-
         const short_t unk = iter->unknown();
         if(unk!=unk_)
             continue;
+
+        const index_t U  = m_system.unkSize(unk_);
+        const index_t R  = m_pde_ptr->numRhs();
+        const index_t nd = iter->function()->targetDim();
+        GISMO_ENSURE(nd == U*R || (1 == nd && 1 == R),
+                     "Dirichlet data has "<<nd<<" components; expected "<<U*R
+                     <<" (unknown size "<<U<<" x "<<R<<" right-hand sides), or 1 for a single right-hand side");
+
         const index_t patchIdx   = iter->patch();
         const gsBasis<T> & basis = (m_bases[unk])[patchIdx];
 
         const gsGeometry<T> & patch = m_pde_ptr->patches()[patchIdx];
 
-        // The side of a curve is its end point, where the measure is 1. The
-        // interior measure |G'| there would vanish with the tangent of the
-        // curve, and so would the projection. For d >= 2 the quadrature
-        // points stay weighted by the interior measure.
+        // On a curve the side is an end point; computeAuxiliaryData (gsFunction.hpp) sets its measure.
         md.side = (1 == patch.domainDim() ? iter->side() : boxSide(boundary::none));
 
         // Set up quadrature to degree+1 Gauss points per direction,
@@ -459,6 +467,11 @@ void gsAssembler<T>::computeDirichletDofsL2Proj(const gsDofMapper & mapper,
             // to rhsVals. Here, "rhs" refers to the right-hand-side
             // of the L2-projection, not of the PDE.
             rhsVals = iter->function()->eval( m_pde_ptr->domain()[patchIdx].eval( md.points ) );
+            if (nd != U*R) // scalar data: same value for every component
+            {
+                rhsTmp.swap(rhsVals);
+                rhsVals = rhsTmp.replicate(U, 1);
+            }
 
             basis.eval_into( md.points, basisVals);
 

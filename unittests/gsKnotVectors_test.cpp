@@ -247,11 +247,27 @@ SUITE(gsKnotVectors_test)
     }
 
     // Threaded assembly loops start thread tid at element tid and advance by
-    // the number of threads, so an iterator is stepped past the end whenever
-    // the domain has fewer elements than threads.
+    // the number of threads, so on its last stride a thread steps past the
+    // end of the domain (by up to nt-1 elements). The test checks that the
+    // iterator is clamped at the domain end: lowerCorner() there is the end
+    // knot of the domain, not one of the knots lying beyond it.
+    //
+    // The knot vector is not clamped: its domain [-1.25, 1.25] has 10
+    // elements and three further knots (1.5, 1.75, 2) lie beyond the domain
+    // end, so an unclamped overshoot of at most 3 (nt <= 4) reads one of them
+    // (wrong, but inside the knot array) and the test fails by a wrong value,
+    // not by an out-of-range read.
+    // id() is not checked after the loop: it counts the steps taken and is not
+    // clamped. Inside the loop, id() indexes the breaks, which are exact
+    // copies of the knots, and the iterator's lower corner reads the same
+    // stored knot, so the two should agree exactly. The tolerance 1e-12
+    // (about 4500 eps, on knots of size at most 2) only allows round-off, not
+    // a different element. After the loop the end-knot comparison is exact
+    // because both sides read the same stored knot.
     TEST(stridedDomainIteration)
     {
-        gsKnotVector<real_t> kv(0, 1, 1, 3); // 2 elements
+        std::vector<real_t> knots = {-2, -1.75, -1.5, -1.25, -1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2};
+        gsKnotVector<real_t> kv(3, knots.begin(), knots.end()); // 10 elements
         gsBSplineBasis<real_t> basis(kv);
         const std::vector<real_t> breaks = kv.breaks();
         const size_t numEl = basis.domain()->numElements();
@@ -268,6 +284,8 @@ SUITE(gsKnotVectors_test)
                     CHECK_CLOSE(breaks[domIt.id()], domIt.lowerCorner()(0), 1e-12);
                     ++count;
                 }
+                // The loop has left the domain: the iterator stopped at the domain end
+                CHECK_EQUAL(*kv.domainEnd(), domIt.lowerCorner()(0));
             }
             CHECK_EQUAL(numEl, count);
         }
@@ -1411,6 +1429,12 @@ SUITE(gsKnotVectors_test_gsKnotIterator)
         const boxSide sides[2] = {boundary::west, boundary::east};
         const real_t  ends [2] = {0.5, 2};
 
+        // On each side there is exactly one boundary element, and the iterator
+        // reports its side, its (coinciding) lower and upper corner at the end
+        // of the domain, and the size of the span next to the end point. The
+        // values 0.5, 2 and 0.375 = 1.5/4 are exact binary fractions, from the
+        // uniform knot vector constructor, so any difference is round-off:
+        // 1e-14 is about 45 eps.
         for (index_t i = 0; i != 2; ++i)
         {
             CHECK_EQUAL(1u, basis.domain()->numElementsBdr(sides[i]));
@@ -1434,6 +1458,11 @@ SUITE(gsKnotVectors_test_gsKnotIterator)
     // other has a linear solution, which the discretization reproduces.
     TEST(neumannAtCurveEnd)
     {
+        // Set-up: a degree-2 basis with three interior knots, mapped to x = 2t
+        // by the coefficients 2 times the anchors (so the curve is the segment
+        // (0,2)). The exact solutions are linear in x: u = c + g x with the
+        // Dirichlet value c at the west end and the Neumann flux g at the east
+        // end, and u = c + g (2 - x) with the roles of the two ends exchanged.
         gsKnotVector<real_t> kv(0, 1, 3, 3);
         gsBSplineBasis<real_t> basis(kv);
         gsMultiPatch<real_t> mp;
@@ -1468,13 +1497,21 @@ SUITE(gsKnotVectors_test_gsKnotIterator)
             A.assembleBdr(bc.get("Neumann"), u * h * nv(G).norm());
             gsMatrix<real_t> expected = gsMatrix<real_t>::Zero(A.numDofs(), 1);
             expected(u.mapper().index(boundary::west == neu ? 0 : n-1, 0), 0) = g;
+            // The rhs is g times the end basis value 1 times the unit measure at
+            // the end point, so it is exact up to round-off of O(1) values.
             CHECK((A.rhs() - expected).norm() < 1e-13);
 
+            // Solve: assemble the stiffness matrix (the Neumann part is already
+            // in the rhs) and solve the system directly.
             A.assemble(igrad(u, G) * igrad(u, G).tr() * meas(G));
             gsSparseSolver<real_t>::LU solver;
             solver.compute(A.matrix());
             gsMatrix<real_t> solVector = solver.solve(A.rhs());
 
+            // The exact solution is linear in x = 2t, so it lies in the discrete
+            // space and the Galerkin solution reproduces it. The Dirichlet value
+            // at the other end is exact as well: one end basis function, of
+            // value 1 there. What remains is the round-off of the small LU solve.
             gsExprEvaluator<real_t> ev(A);
             auto s  = A.getSolution(u, solVector);
             auto ex = ev.getVariable(boundary::east == neu ? exactEast : exactWest, G);

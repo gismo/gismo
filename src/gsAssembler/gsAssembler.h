@@ -544,6 +544,10 @@ public:  /* Dirichlet degrees of freedom computation */
 protected:  /* Helpers for Dirichlet degrees of freedom computation */
 
     /// @brief calculates the values of the eliminated dofs based on Interpolation.
+    ///
+    /// The Dirichlet data has unkSize*numRhs components, or is scalar when
+    /// there is a single right-hand side, and is then applied to every
+    /// component of the unknown.
     /// \param[in] mapper the dofMapper for the considered unknown
     /// \param[in] mbasis the multipabasis for the considered unknown
     /// \param[in] unk_ the considered unknown
@@ -552,6 +556,9 @@ protected:  /* Helpers for Dirichlet degrees of freedom computation */
                                    const short_t unk_ = 0);
 
     /// @brief calculates the values of the eliminated dofs based on L2 Projection.
+    ///
+    /// The Dirichlet data follows the same convention as in
+    /// computeDirichletDofsIntpl.
     /// \param[in] mapper the dofMapper for the considered unknown
     /// \param[in] mbasis the multipabasis for the considered unknown
     /// \param[in] unk_ the considered unknown

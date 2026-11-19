@@ -109,6 +109,11 @@ SUITE(gsComposedMethods_test)                 // The suite should have the same 
     // must not depend on what the output matrix held before the call.
     TEST(gsComposedBasis_anchors)
     {
+        // The composition is the identity map of the unit square, degree-elevated
+        // to 2, with its middle control point (row 4) moved from (0.5,0.5) to
+        // (0.9,0.9). The map is then not affine, so inverting it takes Newton
+        // iterations. kv1 and kv2 are degree-2 knot vectors with 2 and 3
+        // interior knots.
         gsGeometry<>::uPtr com = gsNurbsCreator<>::BSplineSquareDeg(2);
         com->coefs().row(4).setConstant(0.9);
 
@@ -117,12 +122,19 @@ SUITE(gsComposedMethods_test)                 // The suite should have the same 
         gsTensorBSplineBasis<2> tbasis(kv1,kv2);
         gsComposedBasis<> cbasis(*com,tbasis);
 
+        // Start from NaN, so a result that was not written shows up as non-finite.
+        // A failed inversion yields inf, which allFinite() also catches.
         gsMatrix<> anchors(2, cbasis.size());
         anchors.setConstant(std::numeric_limits<real_t>::quiet_NaN());
         cbasis.anchors_into(anchors);
         CHECK(anchors.allFinite());
         if (anchors.allFinite())
         {
+            // The composition maps each computed anchor back onto the anchor of
+            // the tensor basis it was inverted from. 1e-2 is the accuracy that
+            // anchors_into passes to invertPoints: Newton stops once the 2-norm
+            // of the residual value - G(arg) is at most 1e-2, and the max-abs
+            // entry of a column is at most its 2-norm.
             const gsMatrix<> mapped = com->eval(anchors);
             CHECK((mapped - tbasis.anchors()).cwiseAbs().maxCoeff() <= 1e-2);
         }
