@@ -62,6 +62,7 @@
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsDomain/gsHDomain.h>
 
+#include <functional>
 #include <map>
 #include <utility>
 #include <vector>
@@ -107,7 +108,13 @@ template<class T> class gsHPatchRule;
 
     **Thread safety and lifetime.** The cache is not thread-safe: two builds that run
     concurrently must not share one cache. A rule does not keep a pointer to the cache,
-    so the cache only has to outlive the constructor call it is passed to.
+    so the cache only has to outlive the constructor call it is passed to. A factory from
+    gsHPatchRule::makeFactory is the exception to the lifetime: it keeps the pointer, uses
+    the cache in makeFactory and, under its own lock, in every later request that builds a
+    boundary rule, so the cache must outlive the factory and all its copies. No two builds
+    that use one cache may run at the same time; in particular two factories that share a
+    cache must not be called concurrently, and a constructor call with that cache must
+    not run while one of the factories is being called.
 
     **Complexity.** A build makes S solves instead of one per patch direction, where S is
     the number of distinct keys. A lookup costs O(log S) key comparisons of cost
@@ -184,6 +191,17 @@ private:
     element to lie under at most one finer truncated function for other
     reasons (e.g. simplifying downstream bookkeeping).
 
+    **Handles.** The leaf data (the sorted node-weight arrays of all leaves) is filled once by
+    the constructor and is immutable afterwards. Copying a rule (copy construction or
+    assignment) gives a handle: it shares the leaf data and owns its lookup position
+    (see @ref m_lastCell) by value. Copy construction costs O(1): one reference-count
+    increment and a few scalars; it allocates nothing. Copy assignment may release the
+    previous leaf data, which costs O(L) (L = number of leaves) when the target was its last
+    owner. The leaf data lives as long as the last handle. A handle
+    must be used by one thread at a time, but handles of one rule can be used concurrently
+    by different threads. Copy a rule only while no other thread calls mapTo on it, because
+    the copy reads the lookup position.
+
     \ingroup Assembler
 */
 template<class T>
@@ -193,9 +211,16 @@ public:
 
     typedef memory::unique_ptr<gsHPatchRule> uPtr;
 
+    /// Same type as gsExprAssembler<T>::QuadratureFactory.
+    typedef std::function<typename gsQuadRule<T>::uPtr(const gsBasis<T> & basis,
+                                                        const gsOptionList & options,
+                                                        index_t patch,
+                                                        short_t fixedDirection)> QuadratureFactory;
+
     /// Default empty constructor
     gsHPatchRule()
-    : m_deg(0), m_reg(0), m_over(false), m_fixDir(-1), m_dim(0), m_maxLevel(0),
+    : m_cells(memory::make_shared(new std::vector<CellData>)),
+      m_deg(0), m_reg(0), m_over(false), m_fixDir(-1), m_dim(0), m_maxLevel(0),
       m_lastCell(0) {}
 
     /**
@@ -232,6 +257,61 @@ public:
                      short_t  fixDir = -1,
                      gsHPatchRuleCache<T> * cache = nullptr)
     { return uPtr(new gsHPatchRule(domain,degree,regularity,overintegrate,fixDir,cache)); }
+
+    /**
+     * @brief Quadrature factory that hands out handles of rules built once.
+     *
+     * Returns a callable of the type of gsExprAssembler<T>::QuadratureFactory, for
+     * gsExprAssembler::setQuadratureFactory. It owns one volume rule per patch of
+     * \a integration and one boundary rule per (patch, direction); a call returns a handle
+     * (see the class documentation) of the requested rule, so the Newton solves of a
+     * build are paid once and not once per thread and per assembly.
+     *
+     * A call with (\a basis, \a options, \a patch, \a fixedDirection) returns
+     * - for \a fixedDirection == -1 a handle to the volume rule of \a patch,
+     * - for \a fixedDirection >= 0 a handle to the boundary rule of
+     *   (\a patch, \a fixedDirection), which serves both sides of that direction.
+     *
+     * It ignores \a basis and \a options (apart from a dimension assertion): the rule
+     * parameters are fixed at creation, and the rule is selected by \a patch and
+     * \a fixedDirection only. A \a patch outside the patches of \a integration, or a
+     * \a fixedDirection outside [-1, dim), raises an error.
+     *
+     * The volume rules are built eagerly and serially in makeFactory (a patch that is not
+     * hierarchical makes the constructor throw there). A boundary rule is built on the
+     * first request of its (patch, direction), under a lock, and kept. Volume requests
+     * take no lock.
+     *
+     * **Thread safety.** The callable is safe to call concurrently, and copies of it share
+     * one state. Each returned handle belongs to one thread at a time. The lock is
+     * an OpenMP lock (the stub of gsOpenMP when OpenMP is off) taken through a scope guard,
+     * so an error raised inside a lazy build does not leave it set.
+     *
+     * **Lifetime.** The factory clones \a integration, so the argument only has to live
+     * during this call; all rules, volume and boundary, are built on the clone. Refining the
+     * caller's multi-basis afterwards does not update the factory: build a new one. A
+     * non-null \a cache is kept as a pointer and used for every build of the factory, so it
+     * must outlive the factory and all its copies; no two builds that use it may run
+     * at the same time (see @ref gsHPatchRuleCache). With \c nullptr the factory owns a
+     * cache of its own. Handles do not depend on the factory or on the cache: they stay
+     * valid after every copy of the factory is destroyed.
+     *
+     * **Complexity.** Creation makes one rule build per patch. A volume call is O(1) and
+     * allocates one object. A boundary call is O(1) plus the lock, and one rule build on
+     * the first request of a slot. A handle shares O(number of nodes) data and owns O(1).
+     *
+     * @param integration   Multi-basis of hierarchical bases; patch \a i is built from
+     *                      its basis \a i.
+     * @param degree        Target integration degree (see the constructor).
+     * @param regularity    Target regularity (see the constructor).
+     * @param overintegrate Reserved (must be false), as in the constructor.
+     * @param cache         Optional, caller-owned store of solved 1D shapes (see above).
+     */
+    static QuadratureFactory makeFactory(const gsMultiBasis<T> & integration,
+                                         index_t  degree,
+                                         index_t  regularity,
+                                         bool     overintegrate,
+                                         gsHPatchRuleCache<T> * cache = nullptr);
 
     ~gsHPatchRule() {}
 
@@ -321,6 +401,9 @@ private:
         /// (a tie is not counted)
         bool                       usedFallback;
     };
+
+    /// Shared state of a factory returned by makeFactory.
+    struct FactoryState;
 
     // ----------------------------------------------------------------
     // Private helpers
@@ -528,7 +611,9 @@ private:
     // ----------------------------------------------------------------
     // Data
     // ----------------------------------------------------------------
-    std::vector<CellData> m_cells;    ///< One entry per leaf of the HTree
+    /// One entry per leaf of the HTree. Never null; filled once by the constructor and
+    /// immutable afterwards, shared by all handles (copies) of the rule.
+    memory::shared_ptr<const std::vector<CellData> > m_cells;
 
     index_t m_deg;
     index_t m_reg;
@@ -537,8 +622,9 @@ private:
     index_t m_dim;
     index_t m_maxLevel;
 
-    /// Index of the last-hit cell, in [0, L) when L = m_cells.size() > 0.
-    /// Mutable lookup cache; safe because each thread owns its rule.
+    /// Index of the last-hit cell of *this handle*, in [0, L) when L = m_cells->size() > 0.
+    /// Mutable lookup cache. Handles share the leaf data and never share this field, so a
+    /// handle needs no synchronisation as long as one thread uses it.
     mutable index_t m_lastCell;
 
 }; // class gsHPatchRule

@@ -22,8 +22,10 @@
 #include <gsHSplines/gsHElementHelper.h>
 #include <gsDomain/gsHDomainIterator.h>
 #include <gsMatrix/gsSparseSolver.h>
+#include <gsCore/gsMultiBasis.h>
 
 #include <algorithm>
+#include <functional>
 #include <map>
 
 namespace gismo
@@ -87,6 +89,8 @@ void gsHPatchRule<T>::_build(const gsDomain<T> & domain, gsHPatchRuleCache<T> & 
 
     // Element-wise Gauss with nq points per element is exact to degree 2nq-1 >= m_deg.
     const index_t nq = m_deg / 2 + 1;
+
+    std::vector<CellData> cells;
 
     auto leaf = hd->tree().beginLeafIterator();
     for (; leaf.good(); leaf.next())
@@ -223,9 +227,10 @@ void gsHPatchRule<T>::_build(const gsDomain<T> & domain, gsHPatchRuleCache<T> & 
             }
             _finalizeDirMap(cell.dirMaps[dd]);
         }
-        m_cells.push_back(give(cell));
+        cells.push_back(give(cell));
     }
 
+    m_cells = memory::make_shared(new std::vector<CellData>(give(cells)));
     m_lastCell = 0;
 }
 
@@ -259,7 +264,7 @@ void gsHPatchRule<T>::_mapTo(const T * lower, const T * upper,
     const index_t c = _findCell(lower, upper);
     if (c < 0)
         _missError(lower, upper, m_dim);
-    const CellData & cell = m_cells[c];
+    const CellData & cell = (*m_cells)[c];
 
 #ifndef NDEBUG
     for (index_t dd = 0; dd < m_dim; ++dd)
@@ -344,8 +349,9 @@ void gsHPatchRule<T>::_mapTo(const T * lower, const T * upper,
 template<class T>
 index_t gsHPatchRule<T>::numPointsTotal() const
 {
+    const std::vector<CellData> & cells = *m_cells;
     index_t total = 0;
-    for (const CellData & cell : m_cells)
+    for (const CellData & cell : cells)
     {
         index_t nPts = 1;
         for (short_t dd = 0; dd < m_dim; ++dd)
@@ -365,8 +371,9 @@ index_t gsHPatchRule<T>::numPointsTotal() const
 template<class T>
 index_t gsHPatchRule<T>::numFallbackCells() const
 {
+    const std::vector<CellData> & cells = *m_cells;
     index_t cnt = 0;
-    for (const CellData & cell : m_cells)
+    for (const CellData & cell : cells)
         if (cell.usedFallback) ++cnt;
     return cnt;
 }
@@ -434,6 +441,107 @@ gsHPatchRule<T>::_referenceRule(const gsKnotVector<T> & refKv, T Lc,
         cache.m_failedKeys.push_back(std::make_pair(refKv, Lc));
     }
     return cache.m_shapes.insert(std::make_pair(key, give(entry))).first->second;
+}
+
+// ============================================================
+// makeFactory
+// ============================================================
+
+/// State shared by all copies of a factory (see makeFactory). The volume rules are
+/// immutable after construction; the boundary slots change only under \a lock.
+template<class T>
+struct gsHPatchRule<T>::FactoryState
+{
+    /// Owner of an OpenMP lock: initialised and destroyed with the object, also when the
+    /// construction of the enclosing state throws after this member is built.
+    struct Lock
+    {
+        Lock()  { omp_init_lock(&m_lock); }
+        ~Lock() { omp_destroy_lock(&m_lock); }
+        Lock(const Lock &) = delete;
+        Lock & operator=(const Lock &) = delete;
+
+        omp_lock_t m_lock;
+    };
+
+    /// Holds a Lock for the lifetime of the guard, so an error raised in a locked
+    /// section releases it.
+    struct Guard
+    {
+        explicit Guard(Lock & l) : m_l(l) { omp_set_lock(&m_l.m_lock); }
+        ~Guard() { omp_unset_lock(&m_l.m_lock); }
+        Guard(const Guard &) = delete;
+        Guard & operator=(const Guard &) = delete;
+
+        Lock & m_l;
+    };
+
+    FactoryState(const gsMultiBasis<T> & integration, index_t degree,
+                 index_t regularity, bool overintegrate, gsHPatchRuleCache<T> * extCache)
+    : basis(integration), deg(degree), reg(regularity), over(overintegrate),
+      cache(extCache ? extCache : &ownCache)
+    {
+        volume.reserve(basis.nBases());
+        for (size_t i = 0; i != basis.nBases(); ++i)
+            volume.push_back(gsHPatchRule<T>(*basis.basis(i).domain(),
+                                             deg, reg, over, -1, cache));
+        dim = (volume.empty() ? 0 : static_cast<short_t>(volume.front().dim()));
+        bdr.resize(volume.size() * dim);
+    }
+
+    FactoryState(const FactoryState &) = delete;
+    FactoryState & operator=(const FactoryState &) = delete;
+
+    gsMultiBasis<T>        basis;   ///< Own clone of the integration bases
+    index_t                deg, reg;
+    bool                   over;
+    gsHPatchRuleCache<T>   ownCache;
+    gsHPatchRuleCache<T> * cache;   ///< The caller's cache, or &ownCache
+    Lock                   lock;
+    short_t                dim;
+    std::vector<gsHPatchRule<T> >                     volume;  ///< Per patch
+    std::vector<memory::unique_ptr<gsHPatchRule<T> > > bdr;    ///< Slot patch*dim+dir, null until built
+};
+
+template<class T>
+typename gsHPatchRule<T>::QuadratureFactory
+gsHPatchRule<T>::makeFactory(const gsMultiBasis<T> & integration,
+                             const index_t  degree,
+                             const index_t  regularity,
+                             const bool     overintegrate,
+                             gsHPatchRuleCache<T> * cache)
+{
+    memory::shared_ptr<FactoryState> state =
+        memory::make_shared(new FactoryState(integration, degree, regularity,
+                                             overintegrate, cache));
+
+    return [state](const gsBasis<T> & basis, const gsOptionList & options,
+                   const index_t patch, const short_t fixedDirection)
+           -> typename gsQuadRule<T>::uPtr
+    {
+        GISMO_UNUSED(options);
+        GISMO_UNUSED(basis);
+        GISMO_ASSERT(basis.dim() == state->dim,
+                     "gsHPatchRule factory: basis dimension " << basis.dim()
+                     << " differs from the dimension " << state->dim << " of the rules");
+        GISMO_ENSURE(0 <= patch && patch < static_cast<index_t>(state->volume.size()),
+                     "gsHPatchRule factory: patch " << patch << " out of range");
+        GISMO_ENSURE(-1 <= fixedDirection && fixedDirection < state->dim,
+                     "gsHPatchRule factory: fixed direction " << fixedDirection
+                     << " out of range");
+
+        if (fixedDirection < 0)
+            return typename gsQuadRule<T>::uPtr(new gsHPatchRule<T>(state->volume[patch]));
+
+        typename FactoryState::Guard guard(state->lock);
+        memory::unique_ptr<gsHPatchRule<T> > & slot =
+            state->bdr[patch * state->dim + fixedDirection];
+        if (!slot)
+            slot.reset(new gsHPatchRule<T>(*state->basis.basis(patch).domain(),
+                                           state->deg, state->reg, state->over,
+                                           fixedDirection, state->cache));
+        return typename gsQuadRule<T>::uPtr(new gsHPatchRule<T>(*slot));
+    };
 }
 
 // ============================================================
@@ -578,7 +686,8 @@ bool gsHPatchRule<T>::_contains(const CellData & cell,
 template<class T>
 index_t gsHPatchRule<T>::_findCell(const T * lower, const T * upper) const
 {
-    const index_t L = static_cast<index_t>(m_cells.size());
+    const std::vector<CellData> & cells = *m_cells;
+    const index_t L = static_cast<index_t>(cells.size());
     if (L == 0)
         return -1;
 
@@ -590,7 +699,7 @@ index_t gsHPatchRule<T>::_findCell(const T * lower, const T * upper) const
     {
         index_t j = c + k;
         if (j >= L) j -= L;
-        if (_contains(m_cells[j], lower, upper, m_dim))
+        if (_contains(cells[j], lower, upper, m_dim))
         {
             m_lastCell = j;
             return j;
