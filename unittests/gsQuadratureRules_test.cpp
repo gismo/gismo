@@ -1245,21 +1245,23 @@ TEST(hpatchrule_lookup_miss_throws)
 // For a leaf direction with n elements and nq = m_deg/2 + 1 Gauss points per element, the
 // patch rule has n1d nodes. The direction uses element-wise Gauss (n*nq nodes) when
 // n1d >= n*nq, or when its moment solve fails; the other directions keep their patch rule.
-// A leaf is counted by numFallbackCells() once, when a solve failed or Gauss was
-// strictly cheaper; a tie is not counted.
+// A leaf is counted by numFallbackCells() once, when a solve failed; a tie is not counted.
 // ------------------------------------------------------------
 
-// The moment solve of a direction stops on an absolute residual of 1e-14 on integrals
-// that scale with the length of the direction. On a direction of length 1e4 that is out
-// of reach for round-off, so this direction uses element-wise Gauss while the other
-// direction keeps its patch rule. Single leaf, p = 2, 4 elements per direction, target
-// (4,1): the patch rule has dim = 5 + 3*3 = 14 -> 7 nodes per direction, Gauss
-// 4*nq = 4*3 = 12.
+// Each direction is solved on [0,1] and scaled to the leaf, with the stop of a leaf of
+// length 1 for every length of at least 1. A direction of length 1e4 therefore gets the
+// patch rule of a direction of length 1 (scaled), and the leaf does not fall back. Single
+// leaf, p = 2, 4 elements per direction, target (4,1): the patch rule has
+// dim = 5 + 3*3 = 14 -> 7 nodes per direction, Gauss 4*nq = 4*3 = 12.
 // Exactness is the relative error, since the integrals scale with the length.
+//
+// The last block has a direction with 3 elements of lengths in ratio 1 : 100 : 1e4 whose
+// moment solve fails: it uses 3*3 = 9 Gauss nodes, while the other direction (4 uniform
+// elements) keeps its 7 patch nodes. The leaf is counted once.
 TEST(hpatchrule_fallback_newton_fails_in_one_direction_2d)
 {
     struct Row { real_t L0; real_t L1; index_t nPts; index_t nFb; };
-    const Row rows[] = { {1,1,    49,0}, {1e4,1,    84,1}, {1,1e4,    84,1} };
+    const Row rows[] = { {1,1,    49,0}, {1e4,1,    49,0}, {1,1e4,    49,0} };
 
     const index_t p = 2, reg = 1;
     for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
@@ -1281,14 +1283,37 @@ TEST(hpatchrule_fallback_newton_fails_in_one_direction_2d)
         gsVector<real_t> Ih = hpatchIntegrateBasis(target, *tb.domain(), rule);
         CHECK_CLOSE(0.0, (Ih - Ig).cwiseAbs().maxCoeff() / Ig.cwiseAbs().maxCoeff(), 1e-12);
     }
+
+    // Direction 0: breakpoints 0, 1/s, 101/s, 1 with s = 1 + 100 + 1e4, simple interior
+    // knots in the basis and multiplicity 2p - reg = 3 in the target.
+    const real_t s = 1 + 100 + 1e4, b1 = 1 / s, b2 = 101 / s;
+    const real_t knots0[]  = {0,0,0,    b1,    b2,    1,1,1};
+    const real_t knotsT0[] = {0,0,0,0,0, b1,b1,b1, b2,b2,b2, 1,1,1,1,1};
+    gsKnotVector<real_t> kv0(std::vector<real_t>(knots0, knots0 + 8), p);
+    gsKnotVector<real_t> kvT0(std::vector<real_t>(knotsT0, knotsT0 + 16), 2*p);
+    gsKnotVector<real_t> kv1(0, 1, 3, p + 1, 1);
+    gsKnotVector<real_t> kvT1(0, 1, 3, 2*p + 1, 2*p - reg);
+    gsTensorBSplineBasis<2,real_t> tb(kv0, kv1);
+    gsTHBSplineBasis<2,real_t> thb(tb);
+    gsHPatchRule<real_t> rule(*thb.domain(), 2*p, reg, false);
+    CHECK_EQUAL(index_t(1),  rule.numFallbackCells());
+    CHECK_EQUAL(index_t(63), rule.numPointsTotal());
+
+    gsTensorBSplineBasis<2,real_t> target(kvT0, kvT1);
+    gsGaussRule<real_t> gauss(gsVector<index_t>::Constant(2, p + 1));
+    gsVector<real_t> Ig = hpatchIntegrateBasis(target, *tb.domain(), gauss);
+    gsVector<real_t> Ih = hpatchIntegrateBasis(target, *tb.domain(), rule);
+    CHECK_CLOSE(0.0, (Ih - Ig).cwiseAbs().maxCoeff() / Ig.cwiseAbs().maxCoeff(), 1e-12);
 }
 
-// 3D: with two directions of length 1e4 both fall back to Gauss (12 nodes each) and the
-// third keeps 7 patch nodes; the leaf is counted once, not once per direction.
+// 3D: with two directions of length 1e4 the leaf keeps its patch rule in all directions
+// (7 nodes each). The last block has two directions that fail, graded as in the 2D test:
+// they use 9 Gauss nodes each and the third keeps 7 patch nodes; the leaf is counted
+// once, not once per direction.
 TEST(hpatchrule_fallback_newton_fails_in_one_direction_3d)
 {
     struct Row { real_t L0; real_t L1; real_t L2; index_t nPts; index_t nFb; };
-    const Row rows[] = { {1,1,1,    343,0}, {1e4,1e4,1,    1008,1} };
+    const Row rows[] = { {1,1,1,    343,0}, {1e4,1e4,1,    343,0} };
 
     const index_t p = 2, reg = 1;
     for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
@@ -1312,6 +1337,28 @@ TEST(hpatchrule_fallback_newton_fails_in_one_direction_3d)
         gsVector<real_t> Ih = hpatchIntegrateBasis(target, *tb.domain(), rule);
         CHECK_CLOSE(0.0, (Ih - Ig).cwiseAbs().maxCoeff() / Ig.cwiseAbs().maxCoeff(), 1e-12);
     }
+
+    // Directions 0 and 1: the graded knot vector of the 2D test (breakpoints 0, 1/s, 101/s, 1),
+    // whose solve fails, so 3*3 = 9 Gauss nodes each; direction 2: 4 uniform elements with 7
+    // patch nodes. Expected 9*9*7 = 567 nodes and one counted leaf.
+    const real_t s = 1 + 100 + 1e4, b1 = 1 / s, b2 = 101 / s;
+    const real_t knots0[]  = {0,0,0,    b1,    b2,    1,1,1};
+    const real_t knotsT0[] = {0,0,0,0,0, b1,b1,b1, b2,b2,b2, 1,1,1,1,1};
+    gsKnotVector<real_t> kv0(std::vector<real_t>(knots0, knots0 + 8), p);
+    gsKnotVector<real_t> kvT0(std::vector<real_t>(knotsT0, knotsT0 + 16), 2*p);
+    gsKnotVector<real_t> kv2(0, 1, 3, p + 1, 1);
+    gsKnotVector<real_t> kvT2(0, 1, 3, 2*p + 1, 2*p - reg);
+    gsTensorBSplineBasis<3,real_t> tb(kv0, kv0, kv2);
+    gsTHBSplineBasis<3,real_t> thb(tb);
+    gsHPatchRule<real_t> rule(*thb.domain(), 2*p, reg, false);
+    CHECK_EQUAL(index_t(1),   rule.numFallbackCells());
+    CHECK_EQUAL(index_t(567), rule.numPointsTotal());
+
+    gsTensorBSplineBasis<3,real_t> target(kvT0, kvT0, kvT2);
+    gsGaussRule<real_t> gauss(gsVector<index_t>::Constant(3, p + 1));
+    gsVector<real_t> Ig = hpatchIntegrateBasis(target, *tb.domain(), gauss);
+    gsVector<real_t> Ih = hpatchIntegrateBasis(target, *tb.domain(), rule);
+    CHECK_CLOSE(0.0, (Ih - Ig).cwiseAbs().maxCoeff() / Ig.cwiseAbs().maxCoeff(), 1e-12);
 }
 
 // A leaf one element wide in a direction ties there: the target space of a single
@@ -1421,10 +1468,10 @@ TEST(hpatchrule_fallback_odd_degree)
 // Target degree 6 above 2p+1 = 3 for p = 1 (reg 0, nq = 6/2 + 1 = 4). (p+1)-point Gauss
 // is exact only to degree 2p+1 = 3, so element-wise Gauss in the target space needs
 // deg/2 + 1 = 4 points per element, and the reference uses 4. A single element ties
-// (dim 7 -> 8 -> 4 nodes = nq) in 1D and 2D; with 4 elements per direction and
-// direction 0 of length 1e4 the solve fails there and direction 0 gets 4*4 = 16 Gauss
-// nodes, while direction 1 (dim 7 + 3*6 = 25 -> 26) keeps 13 patch nodes: 16*13 = 208
-// nodes, one counted leaf. The 1e4 row is compared in the relative error.
+// (dim 7 -> 8 -> 4 nodes = nq) in 1D and 2D and uses Gauss without being counted. With
+// 4 elements per direction (dim 7 + 3*6 = 25 -> 26) each direction has 13 patch nodes, also
+// for a direction of length 1e4, which is solved on [0,1] like a direction of length 1:
+// 13*13 = 169 nodes, no counted leaf. The 1e4 row is compared in the relative error.
 TEST(hpatchrule_fallback_degree_above_2p_plus_1)
 {
     const index_t p = 1, deg = 6, reg = 0;
@@ -1444,7 +1491,7 @@ TEST(hpatchrule_fallback_degree_above_2p_plus_1)
                       - hpatchIntegrateBasis(target1, *tb1.domain(), gauss1)).cwiseAbs().maxCoeff(), 1e-12);
 
     struct Row { index_t n0; index_t n1; real_t L0; index_t nPts; index_t nFb; };
-    const Row rows[] = { {1,1,1,    16,0}, {4,4,1e4,    208,1} };
+    const Row rows[] = { {1,1,1,    16,0}, {4,4,1e4,    169,0} };
     for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
     {
         gsInfo << "row n0=" << rows[k].n0 << " n1=" << rows[k].n1 << " L0=" << rows[k].L0 << "\n";

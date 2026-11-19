@@ -9,6 +9,7 @@ namespace gismo
 {
 
 CLASS_TEMPLATE_INST gsHPatchRule<real_t>;
+CLASS_TEMPLATE_INST gsHPatchRuleCache<real_t>;
 
 // Explicit instantiation of the dimension-templated makeIntegrationBasis
 TEMPLATE_INST gsTHBSplineBasis<1,real_t,true>

@@ -38,7 +38,8 @@ gsHPatchRule<T>::gsHPatchRule(const gsDomain<T> & domain,
                               const index_t  degree,
                               const index_t  regularity,
                               const bool     overintegrate,
-                              const short_t  fixDir)
+                              const short_t  fixDir,
+                              gsHPatchRuleCache<T> * cache)
 :
 m_deg(degree),
 m_reg(regularity),
@@ -51,12 +52,15 @@ m_lastCell(0)
     GISMO_ENSURE(m_reg < m_deg, "regularity must be strictly less than degree");
     GISMO_ENSURE(!m_over, "gsHPatchRule: over-integration is not implemented.");
 
+    gsHPatchRuleCache<T> local;
+    gsHPatchRuleCache<T> & c = cache ? *cache : local;
+
     switch (m_dim)
     {
-        case 1: _build<1>(domain); break;
-        case 2: _build<2>(domain); break;
-        case 3: _build<3>(domain); break;
-        case 4: _build<4>(domain); break;
+        case 1: _build<1>(domain, c); break;
+        case 2: _build<2>(domain, c); break;
+        case 3: _build<3>(domain, c); break;
+        case 4: _build<4>(domain, c); break;
         default:
             GISMO_ERROR("gsHPatchRule: unsupported domain dimension " << m_dim);
     }
@@ -68,7 +72,7 @@ m_lastCell(0)
 
 template<class T>
 template<short_t d>
-void gsHPatchRule<T>::_build(const gsDomain<T> & domain)
+void gsHPatchRule<T>::_build(const gsDomain<T> & domain, gsHPatchRuleCache<T> & cache)
 {
     const gsHDomain<d,T,index_t> * hd =
         dynamic_cast<const gsHDomain<d,T,index_t>*>(&domain);
@@ -149,7 +153,12 @@ void gsHPatchRule<T>::_build(const gsDomain<T> & domain)
 
             // The patch rule is used in this direction only if it has strictly fewer
             // nodes than element-wise Gauss; a tie costs the same and skips the solve.
+            // It never has more: a block of e elements between two knots of multiplicity
+            // m_deg+1 has at most e*m_deg+1 functions, hence after even-ing at most
+            // ceil((e*m_deg+1)/2) <= e*nq nodes.
             const index_t nElemDD = cell.upperIndex[dd] - cell.lowerIndex[dd];
+            GISMO_ASSERT(n1d[dd] <= nElemDD * nq,
+                         "gsHPatchRule: the Johannessen rule has more nodes than element-wise Gauss in direction " << dd);
             gaussDir[dd] = (n1d[dd] >= nElemDD * nq);
         }
 
@@ -160,7 +169,10 @@ void gsHPatchRule<T>::_build(const gsDomain<T> & domain)
         // <= 2nq-1 >= m_deg on the leaf's elements contain S_k).  For separable
         // f = f_1...f_d with f_k in S_k the tensor rule gives prod Q_k(f_k) = prod int f_k
         // = int f, and by linearity it is exact on S, whichever direction uses which rule.
-        std::vector<gsVector<T>> dirNodes(d), dirWeights(d);
+        // The Johannessen rule of a direction is solved on the even target knot vector mapped
+        // affinely to [0,1] and scaled back to the leaf [a,a+L] (node a + L*xi, weight
+        // L*omega): B-splines are invariant under the map and the moments I_i scale with L,
+        // so a rule that is exact on [0,1] is exact on the leaf.
         for (short_t dd = 0; dd < d; ++dd)
         {
             cell.dirMaps[dd].clear();
@@ -173,25 +185,36 @@ void gsHPatchRule<T>::_build(const gsDomain<T> & domain)
                 continue;
             }
 
-            const index_t nGaussDD = (cell.upperIndex[dd] - cell.lowerIndex[dd]) * nq;
             bool newtonFailed = false;
             if (!gaussDir[dd])
             {
-                newtonFailed = !_compute1D(evenKvs[dd], dirNodes[dd], dirWeights[dd]);
+                // Even target knot vector mapped to [0,1]: division per knot, monotone and
+                // exact at both ends (z = a gives 0, z = b gives 1).
+                const T a = cell.lowerParam[dd];
+                const T L = cell.upperParam[dd] - a;
+                const std::vector<T> & physKnots = evenKvs[dd];
+                std::vector<T> refKnots(physKnots.size());
+                for (size_t i = 0; i != physKnots.size(); ++i)
+                    refKnots[i] = (physKnots[i] - a) / L;
+                const gsKnotVector<T> refKv(refKnots, evenKvs[dd].degree());
+
+                const typename gsHPatchRuleCache<T>::Entry & rule =
+                    _referenceRule(refKv, (std::min)(L, T(1)), cache);
+                newtonFailed = !rule.converged;
                 if (!newtonFailed)
                 {
                     // Johannessen results, sorted by node
                     cell.dirMaps[dd].reserve(n1d[dd]);
                     for (index_t k = 0; k < n1d[dd]; ++k)
                         cell.dirMaps[dd].push_back(
-                            std::make_pair(dirNodes[dd][k], dirWeights[dd][k]));
+                            std::make_pair(a + L * rule.nodes[k], L * rule.weights[k]));
                 }
             }
 
             if (gaussDir[dd] || newtonFailed)
             {
-                // A tie (n1d == nGaussDD) is not a fallback: same node count, no loss.
-                if (newtonFailed || n1d[dd] > nGaussDD)
+                // A tie (no solve) is not a fallback: same node count, no loss.
+                if (newtonFailed)
                     cell.usedFallback = true;
                 const gsKnotVector<T> & kvLev =
                     basis.tensorLevel(l).component(dd).knots();
@@ -346,6 +369,71 @@ index_t gsHPatchRule<T>::numFallbackCells() const
     for (const CellData & cell : m_cells)
         if (cell.usedFallback) ++cnt;
     return cnt;
+}
+
+// ============================================================
+// Shape cache and reference-interval solve
+// ============================================================
+
+template<class T>
+gsHPatchRuleCache<T>::gsHPatchRuleCache()
+: m_hits(0), m_solves(0), m_failures(0)
+{ }
+
+template<class T>
+index_t gsHPatchRuleCache<T>::numHits() const { return m_hits; }
+
+template<class T>
+index_t gsHPatchRuleCache<T>::numSolves() const { return m_solves; }
+
+template<class T>
+index_t gsHPatchRuleCache<T>::numFailures() const { return m_failures; }
+
+template<class T>
+index_t gsHPatchRuleCache<T>::size() const
+{ return static_cast<index_t>(m_shapes.size()); }
+
+template<class T>
+const std::vector< std::pair<gsKnotVector<T>, T> > &
+gsHPatchRuleCache<T>::failedKeys() const
+{ return m_failedKeys; }
+
+template<class T>
+void gsHPatchRuleCache<T>::clear()
+{
+    m_shapes.clear();
+    m_failedKeys.clear();
+    m_hits = m_solves = m_failures = 0;
+}
+
+template<class T>
+const typename gsHPatchRuleCache<T>::Entry &
+gsHPatchRule<T>::_referenceRule(const gsKnotVector<T> & refKv, T Lc,
+                                gsHPatchRuleCache<T> & cache)
+{
+    typedef typename gsHPatchRuleCache<T>::Key   Key;
+    typedef typename gsHPatchRuleCache<T>::Entry Entry;
+
+    const Key key(Lc, std::make_pair(static_cast<index_t>(refKv.degree()),
+                                     static_cast<const std::vector<T> &>(refKv)));
+    typename std::map<Key, Entry>::const_iterator it = cache.m_shapes.find(key);
+    if (it != cache.m_shapes.end())
+    {
+        ++cache.m_hits;
+        return it->second;
+    }
+
+    ++cache.m_solves;
+    Entry entry;
+    entry.converged = _compute1D(refKv, entry.nodes, entry.weights, T(1e-14) / Lc);
+    if (!entry.converged)
+    {
+        entry.nodes.resize(0);
+        entry.weights.resize(0);
+        ++cache.m_failures;
+        cache.m_failedKeys.push_back(std::make_pair(refKv, Lc));
+    }
+    return cache.m_shapes.insert(std::make_pair(key, give(entry))).first->second;
 }
 
 // ============================================================

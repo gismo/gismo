@@ -32,14 +32,20 @@
     element-wise Gauss with floor(\a degree / 2) + 1 points per element, the
     smallest count that is exact to degree \a degree, whenever:
       - its candidate Johannessen node count is >= the element-wise Gauss node
-        count of the leaf in that direction (a tie costs the same and skips
-        the Newton solve), or
+        count of the leaf in that direction (in effect a tie, which costs the
+        same and skips the Newton solve), or
       - its Newton solve fails to converge.
     The other directions of the same leaf keep their Johannessen rule. A tensor
     product of such per-direction rules is exact on the leaf's target space.
     numFallbackCells() counts the leaves with a direction in Gauss because its
-    Newton solve failed or its Johannessen node count is strictly larger than the
-    Gauss count; a tie is not counted.
+    Newton solve failed; a tie is not counted.
+
+    Each 1D rule is solved on the leaf's target knot vector mapped to [0,1] and
+    scaled to the leaf (node a + L xi, weight L omega). The solve on [0,1] stops at
+    1e-14/min(L,1): this is the physical stop 1e-14 for a leaf direction of length
+    L <= 1 and the stop of a length-1 leaf for L > 1 (see the tol parameter of
+    gsHPatchRule::_compute1D). A @ref gsHPatchRuleCache shares the
+    solved shapes between leaves, directions and builds.
 
     This file is part of the G+Smo library.
 
@@ -56,10 +62,105 @@
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsDomain/gsHDomain.h>
 
+#include <map>
+#include <utility>
+#include <vector>
+
 namespace gismo
 {
 
 template<short_t d, class T, bool Trunc> class gsTHBSplineBasis;
+
+template<class T> class gsHPatchRule;
+
+/**
+    @brief Caller-owned store of solved 1D quadrature shapes for @ref gsHPatchRule.
+
+    A shape is the Johannessen rule of one even target knot vector mapped to [0,1]. A
+    @ref gsHPatchRule solves every leaf direction on [0,1] and scales the result to the leaf
+    (node \f$a + L\xi\f$, weight \f$L\omega\f$, \f$L = b-a\f$), so leaf directions with
+    the same shape need one solve only. Passing the same cache to several builds shares
+    the shapes between them.
+
+    **Key.** The clamped length \f$\min(L,1)\f$ together with the degree and the full
+    repeated-knot sequence of the normalised even target knot vector, all compared
+    exactly (no tolerance, no quantisation). This is exactly the input of the solve: the
+    knot vector on [0,1] and the stopping tolerance \f$10^{-14}/\min(L,1)\f$ on the
+    2-norm of the moment residual. A hit therefore returns bitwise what a fresh solve
+    of the same key returns. Leaf directions of length at least 1 with the same normalised
+    shape share an entry; a direction shorter than 1 shares with directions of the same
+    length only. Two leaves whose normalised knots or lengths differ by one ulp get two
+    entries, which costs a solve and never a wrong rule.
+
+    **Value.** The nodes and weights on [0,1], or a recorded failure (a solve that did not
+    converge). A failed entry holds no nodes and weights; the partial iterates of a
+    failed solve are never stored.
+
+    **Counters.** For every lookup of a patch direction (a non-fixed direction whose
+    Johannessen node count is below the Gauss node count) a build increments either
+    numHits() (the key is present, converged or failed) or numSolves() (the key is
+    absent, so a solve is made and stored), and a failed solve also increments
+    numFailures() and appends its key to failedKeys(). After any number of builds:
+    numHits() + numSolves() is the number of lookups, numFailures() == failedKeys().size()
+    <= numSolves(), and size() == numSolves(). Directions that use Gauss because of a tie
+    never touch the cache.
+
+    **Thread safety and lifetime.** The cache is not thread-safe: two builds that run
+    concurrently must not share one cache. A rule does not keep a pointer to the cache,
+    so the cache only has to outlive the constructor call it is passed to.
+
+    **Complexity.** A build makes S solves instead of one per patch direction, where S is
+    the number of distinct keys. A lookup costs O(log S) key comparisons of cost
+    O(knot vector size) each. Memory is O(sum of the sizes of the stored shapes) and
+    grows across builds until clear().
+
+    @ingroup Assembler
+*/
+template<class T>
+class GISMO_EXPORT gsHPatchRuleCache
+{
+public:
+
+    /// Empty cache with all counters zero.
+    gsHPatchRuleCache();
+
+    /// Number of lookups answered from the cache (no solve).
+    index_t numHits() const;
+
+    /// Number of 1D solves made through the cache.
+    index_t numSolves() const;
+
+    /// Number of solves that did not converge; equals failedKeys().size().
+    index_t numFailures() const;
+
+    /// Number of stored shapes (converged and failed).
+    index_t size() const;
+
+    /// (normalised even target knot vector, min(L,1)) of the failed solves, in order of failure.
+    const std::vector< std::pair<gsKnotVector<T>, T> > & failedKeys() const;
+
+    /// Drops all shapes and the failed-key list and resets the counters.
+    void clear();
+
+private:
+
+    friend class gsHPatchRule<T>;
+
+    /// Rule of one shape on [0,1]; \a nodes and \a weights are empty if !converged.
+    struct Entry
+    {
+        bool        converged;
+        gsVector<T> nodes;
+        gsVector<T> weights;
+    };
+
+    /// (min(L,1), (degree, repeated knots of the normalised even target knot vector))
+    typedef std::pair< T, std::pair< index_t, std::vector<T> > > Key;
+
+    std::map<Key, Entry> m_shapes;
+    std::vector< std::pair<gsKnotVector<T>, T> > m_failedKeys;
+    index_t m_hits, m_solves, m_failures;
+};
 
 /**
     \brief Per-atomic-cell hierarchical patch quadrature rule.
@@ -111,19 +212,26 @@ public:
      *                     regularity + 1 - mu_j (floored at -1).
      * @param overintegrate Reserved (must be false).
      * @param fixDir       Direction to fix (-1 = none).
+     * @param cache        Optional, caller-owned store of solved 1D shapes; not stored by
+     *                     the rule, so it only has to outlive this call. \c nullptr uses
+     *                     a cache local to this build. Must not be shared by builds that
+     *                     run concurrently (see @ref gsHPatchRuleCache).
      */
     gsHPatchRule(const gsDomain<T> & domain,
                  index_t  degree,
                  index_t  regularity,
                  bool     overintegrate,
-                 short_t  fixDir = -1);
+                 short_t  fixDir = -1,
+                 gsHPatchRuleCache<T> * cache = nullptr);
 
+    /// Same arguments as the constructor; returns the rule in a unique pointer.
     static uPtr make(const gsDomain<T> & domain,
                      index_t  degree,
                      index_t  regularity,
                      bool     overintegrate,
-                     short_t  fixDir = -1)
-    { return uPtr(new gsHPatchRule(domain,degree,regularity,overintegrate,fixDir)); }
+                     short_t  fixDir = -1,
+                     gsHPatchRuleCache<T> * cache = nullptr)
+    { return uPtr(new gsHPatchRule(domain,degree,regularity,overintegrate,fixDir,cache)); }
 
     ~gsHPatchRule() {}
 
@@ -163,12 +271,12 @@ public:
 
     /**
      * @brief Number of atomic cells with at least one direction (other than the
-     *        fixed one) in element-wise Gauss because its Newton solve failed or
-     *        because the Johannessen rule would have strictly more nodes than
-     *        Gauss.
+     *        fixed one) in element-wise Gauss because its 1D solve failed.
      *
      * A direction with equally many Johannessen and Gauss nodes uses Gauss but is
-     * not counted: it costs no node and loses nothing. Complexity O(number of cells).
+     * not counted: it costs no node and loses nothing. The Johannessen rule never has
+     * more nodes than Gauss: a block of e elements between two knots of multiplicity
+     * deg+1 has at most ceil((e*deg+1)/2) nodes, which is at most (deg/2+1)*e. Complexity O(number of cells).
      */
     index_t numFallbackCells() const;
 
@@ -209,8 +317,8 @@ private:
         index_t                    level;       ///< Hierarchical level
         /// dirMaps[dd]: ascending-by-node list of (node,weight) in direction dd
         std::vector<std::vector<std::pair<T,T>>> dirMaps;
-        /// True if a non-fixed direction is in element-wise Gauss because its Newton
-        /// solve failed or the Johannessen rule has strictly more nodes (not on a tie)
+        /// True if a non-fixed direction is in element-wise Gauss because its solve failed
+        /// (a tie is not counted)
         bool                       usedFallback;
     };
 
@@ -218,9 +326,27 @@ private:
     // Private helpers
     // ----------------------------------------------------------------
 
-    /// Dimension-specific construction (downcasts \a domain to gsHDomain<d,...>).
+    /// Dimension-specific construction (downcasts \a domain to gsHDomain<d,...>);
+    /// the 1D rules of the patch directions come from \a cache.
     template<short_t d>
-    void _build(const gsDomain<T> & domain);
+    void _build(const gsDomain<T> & domain, gsHPatchRuleCache<T> & cache);
+
+    /**
+     * @brief Rule of a normalised even target space for a leaf direction of clamped length.
+     *
+     * Looks \a refKv (the even target knot vector mapped to [0,1]) and \a Lc =
+     * min(L,1) up in \a cache; on a miss solves it with the tolerance
+     * \f$10^{-14}/L_c\f$ and stores the result, converged or failed. The tolerance is
+     * the physical stop \f$10^{-14}\f$ for a leaf direction of length \f$L \le 1\f$ (a
+     * rule scaled by \f$L\f$ has residual \f$L\f$ times that on [0,1]) and the stop of a
+     * length-1 leaf for \f$L > 1\f$. Updates the counters of \a cache.
+     *
+     * Complexity: O(log S) key comparisons for the lookup, plus one _compute1D on a miss.
+     *
+     * @return the stored entry; valid until \a cache is cleared or destroyed
+     */
+    static const typename gsHPatchRuleCache<T>::Entry &
+    _referenceRule(const gsKnotVector<T> & refKv, T Lc, gsHPatchRuleCache<T> & cache);
 
     /**
      * @brief Ensure that the basis dimension of \a kv is even, block by block.
@@ -296,7 +422,11 @@ private:
      * @param[out]    nodes   the n nodes
      * @param[out]    weights the n weights
      * @param[in]     tol     absolute convergence tolerance on the 2-norm of the
-     *                        residual \f$F\f$ (not scaled by the norm of the integrals)
+     *                        residual \f$F\f$ of the system it is given (not scaled by the
+     *                        norm of the integrals). The constructor passes the target space
+     *                        mapped to [0,1] with \f$\text{tol} = 10^{-14}/\min(L,1)\f$:
+     *                        the physical stop \f$10^{-14}\f$ for a leaf direction of length
+     *                        \f$L \le 1\f$, and the stop of a length-1 leaf for \f$L > 1\f$.
      * @param[in]     itMax   maximum number of iterations of each of the two phases
      * @return true on convergence of either phase, false if both fail (the
      *         Levenberg-Marquardt phase finds no step that lowers the residual, produces
