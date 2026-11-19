@@ -139,6 +139,7 @@ private:
     SplittingCandidate computeMedialAxisSplitting();
     SplittingCandidate computeTemplateSplitting();
     SplittingCandidate computeHoleFreeStructuralSplitting();
+    SplittingCandidate computeMultiHoleStructuralTemplates();
     SplittingCandidate computeHoleFreeTriangulationSplitting();
     SplittingCandidate computeMultiHoleTriangulationSplitting();
 

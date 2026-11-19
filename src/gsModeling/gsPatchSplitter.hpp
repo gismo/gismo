@@ -204,29 +204,11 @@ gsPatchSplitter<T>::computeCrossFieldSplitting()
                 bestCand.distortionEnergy = energy;
                 bestCand.minCornerAngleDeg = minA;
                 bestCand.maxCornerAngleDeg = maxA;
-                bestCand.methodUsed = label;
+                bestCand.methodUsed = label.empty() ? "HarmonicCrossField" : label;
                 bestCand.isValid = true;
             }
         }
     }
-
-    // 2. Compare against conforming triangulation-joining decomposition (hole-free or multi-hole)
-    SplittingCandidate triCand = (m_domain.numHoles() == 0)
-        ? computeHoleFreeTriangulationSplitting()
-        : computeMultiHoleTriangulationSplitting();
-
-    if (triCand.isValid) {
-        if (!bestCand.isValid) {
-            bestCand = std::move(triCand);
-        } else {
-            T qBest = m_weightPatches * bestCand.numPatches + m_weightDistortion * bestCand.distortionEnergy;
-            T qTri  = m_weightPatches * triCand.numPatches + m_weightDistortion * triCand.distortionEnergy;
-            if (qTri < qBest) bestCand = std::move(triCand);
-        }
-    }
-
-    if (bestCand.isValid)
-        bestCand.methodUsed = "HarmonicCrossField";
 
     return bestCand;
 }
@@ -3097,21 +3079,61 @@ template <class T>
 typename gsPatchSplitter<T>::SplittingCandidate
 gsPatchSplitter<T>::computeMedialAxisSplitting()
 {
-    SplittingCandidate candidate;
-    candidate.methodUsed = "MedialAxisSkeleton";
+    using namespace internal_splitter;
+    SplittingCandidate cand;
+    cand.methodUsed = "MedialAxisTransform";
+    cand.isValid = false;
 
-    if (m_domain.numLoops() == 0) {
-        candidate.isValid = false;
+    if (m_domain.numLoops() == 0) return cand;
+
+    const T domMinAng = getDomainMinCornerAngleDeg();
+    const T minHoleAngTol = std::min(static_cast<T>(m_options.getReal("MinCornerAngleDeg")), T(0.85) * domMinAng);
+    const T maxAngTol = static_cast<T>(m_options.getReal("MaxCornerAngleDeg"));
+
+    gsMultiPatch<T> matMp;
+    if (gsPatchSplitterMAT<T>::buildMATMultiPatch(m_domain, m_degree, matMp)) {
+        reducePolychordStrips(matMp);
+        matMp.computeTopology(T(1e-4), false, false);
+        optimizeWinslowBarrier(matMp);
+        gsASG1LocalFitter<T>::unifyPatchOrientations(matMp);
+
+        std::string vErr;
+        if (validateMultiPatch(m_domain, matMp, T(1e-4), &vErr, minHoleAngTol, std::max(maxAngTol, T(164.9)))) {
+            T minPos20 = std::numeric_limits<T>::max();
+            for (size_t p = 0; p < matMp.nPatches(); ++p) {
+                T pMin = 0, pMax = 0, pAbs = 0, pEn = 0;
+                evalPatchJacobianAndWinslow(matMp.patch(p), 20, pMin, pMax, pAbs, pEn);
+                minPos20 = std::min(minPos20, pMin);
+            }
+            cand.numPatches = static_cast<int>(matMp.nPatches());
+            cand.distortionEnergy = evaluateDistortionEnergy(matMp, &cand.minJacobianDet,
+                                                             &cand.minCornerAngleDeg, &cand.maxCornerAngleDeg);
+            cand.isValid = (minPos20 > T(1e-8) && cand.minJacobianDet > T(1e-8) && cand.maxCornerAngleDeg < std::max(maxAngTol, T(164.9)));
+            if (cand.isValid) {
+                cand.multiPatch = give(matMp);
+                cand.methodUsed = "MedialAxisTransform";
+                return cand;
+            }
+        }
+    }
+    return cand;
+}
+
+template <class T>
+typename gsPatchSplitter<T>::SplittingCandidate
+gsPatchSplitter<T>::computeMultiHoleStructuralTemplates()
+{
+    SplittingCandidate candidate;
+    candidate.methodUsed = "TemplateDecomposition";
+    candidate.isValid = false;
+
+    if (m_domain.numLoops() <= 1) {
         return candidate;
     }
 
     const auto& outer = m_domain.outer();
     int nHoles = m_domain.numHoles();
     int nOuterCurves = outer.size();
-
-    if (nHoles == 0) {
-        return computeHoleFreeStructuralSplitting();
-    }
 
     const T domMinAng = getDomainMinCornerAngleDeg();
     const T minAngTol = std::min(static_cast<T>(m_options.getReal("MinCornerAngleDeg")), T(0.85) * domMinAng);
@@ -3157,24 +3179,6 @@ gsPatchSplitter<T>::computeMedialAxisSplitting()
         }
         return true;
     };
-
-    // ------------------------------------------------------------------------
-    // Method 1: True Delaunay-Dual Medial Axis Transform (MAT) Quad Decomposition
-    // (Invoked directly when Strategy::MedialAxisSkeleton is explicitly selected)
-    // ------------------------------------------------------------------------
-    if (m_strategy == Strategy::MedialAxisSkeleton)
-    {
-        gsMultiPatch<T> matMp;
-        if (internal_splitter::gsPatchSplitterMAT<T>::buildMATMultiPatch(m_domain, m_degree, matMp)) {
-            reducePolychordStrips(matMp);
-            SplittingCandidate matCand;
-            matCand.multiPatch = matMp;
-            matCand.methodUsed = "MedialAxisTransform";
-            if (tryFinalizeHole(matCand)) {
-                return matCand;
-            }
-        }
-    }
 
     using internal_splitter::CurveSeg;
     std::vector<CurveSeg<T>> oCCW = internal_splitter::orientLoopSegments(outer, m_degree, true);
@@ -4118,8 +4122,6 @@ gsPatchSplitter<T>::computeMedialAxisSplitting()
         }
     }
 
-    if (m_strategy == Strategy::MedialAxisSkeleton)
-        return computeMultiHoleTriangulationSplitting();
     return candidate;
 }
 
@@ -4133,44 +4135,25 @@ gsPatchSplitter<T>::computeTemplateSplitting()
 {
     SplittingCandidate candidate;
     candidate.methodUsed = "TemplateDecomposition";
+    candidate.isValid = false;
 
     if (m_domain.numLoops() == 0) {
-        candidate.isValid = false;
         return candidate;
     }
 
-    const auto& outer = m_domain.outer();
-    int nHoles = m_domain.numHoles();
-    int nOuterCurves = outer.size();
-    const T domMinAng = getDomainMinCornerAngleDeg();
-    const T minAngTol = std::min(static_cast<T>(m_options.getReal("MinCornerAngleDeg")), T(0.85) * domMinAng);
-    const T maxAngTol = static_cast<T>(m_options.getReal("MaxCornerAngleDeg"));
-
-    if (nHoles == 0) {
-        candidate.numPatches = 0;
-        candidate.isValid = false;
-        return candidate;
-    }
-
-    // 1-hole with 4 curves
-    if (nHoles == 1 && nOuterCurves == 4 && m_domain.loop(1).size() == 4) {
-        internal_splitter::buildQuadRingByProximity(outer, m_domain.loop(1), candidate.multiPatch, m_degree);
-        candidate.multiPatch.computeTopology(T(1e-5), false, false);
-        optimizeWinslowBarrier(candidate.multiPatch);
-        if (validateMultiPatch(m_domain, candidate.multiPatch, T(1e-4), nullptr, minAngTol, maxAngTol)) {
-            candidate.numPatches = 4;
-            candidate.distortionEnergy = evaluateDistortionEnergy(candidate.multiPatch, &candidate.minJacobianDet,
-                                                                &candidate.minCornerAngleDeg, &candidate.maxCornerAngleDeg);
-            candidate.isValid = (candidate.minJacobianDet > 0);
-            return candidate;
+    if (m_domain.numHoles() == 0) {
+        candidate = computeHoleFreeStructuralSplitting();
+        if (!candidate.isValid) {
+            candidate = computeHoleFreeTriangulationSplitting();
         }
-        candidate.multiPatch.clear();
+    } else {
+        candidate = computeMultiHoleStructuralTemplates();
+        if (!candidate.isValid) {
+            candidate = computeMultiHoleTriangulationSplitting();
+        }
     }
-
-    if (m_strategy == Strategy::TemplateDecomposition) {
-        // General conforming multi-hole fallback (guaranteed 0 hanging nodes & exact boundary match)
-        candidate = computeMultiHoleTriangulationSplitting();
-        if (candidate.isValid)
+    if (candidate.isValid) {
+        if (candidate.methodUsed.empty() || candidate.methodUsed == "MedialAxisSkeleton")
             candidate.methodUsed = "TemplateDecomposition";
     }
     return candidate;
@@ -4532,9 +4515,13 @@ bool gsPatchSplitter<T>::computeSplitting()
     } else if (m_strategy == Strategy::TemplateDecomposition) {
         m_bestCandidate = computeTemplateSplitting();
     } else {
-        SplittingCandidate matCand;
+        // Strategy::AutomaticBest:
+        // Runs MAT and Cross-Field side-by-side (plus Templates as a 3rd competitor / fallback),
+        // evaluates identical post-validation, and picks the best layout using the unified fair score.
         SplittingCandidate cfCand;
+        SplittingCandidate matCand;
         SplittingCandidate tmplCand;
+
         // Fast-path: convexish 4-corner hole-free quad -> keep as 1 patch cleanly
         if (m_domain.numHoles() == 0 && m_domain.outer().size() == 4) {
             matCand = computeMedialAxisSplitting();
@@ -4543,12 +4530,11 @@ bool gsPatchSplitter<T>::computeSplitting()
                 return true;
             }
         }
+
         cfCand = computeCrossFieldSplitting();
-        // Run fast MAT/template candidates without repeating multi-hole triangulation
         if (!matCand.isValid)
             matCand = computeMedialAxisSplitting();
-        if (m_domain.numHoles() <= 1)
-            tmplCand = computeTemplateSplitting();
+        tmplCand = computeTemplateSplitting();
 
         std::vector<SplittingCandidate> validPool;
         if (cfCand.isValid && cfCand.numPatches > 0) validPool.push_back(cfCand);
@@ -4556,13 +4542,20 @@ bool gsPatchSplitter<T>::computeSplitting()
         if (tmplCand.isValid && tmplCand.numPatches > 0) validPool.push_back(tmplCand);
 
         if (validPool.empty()) {
-            m_bestCandidate = matCand.numPatches > 0 ? matCand : cfCand;
+            m_bestCandidate = matCand.numPatches > 0 ? matCand : (cfCand.numPatches > 0 ? cfCand : tmplCand);
             return false;
         }
 
         const bool preferSingleQuad = (m_domain.numHoles() == 0 && m_domain.outer().size() == 4);
         auto computeQ = [this](const SplittingCandidate& c) -> T {
-            return m_weightPatches * c.numPatches + m_weightDistortion * c.distortionEnergy;
+            std::vector<std::vector<patchCorner>> evs;
+            c.multiPatch.topology().getEVs(evs, false);
+            int nEV = static_cast<int>(evs.size());
+            T angPen = (c.maxCornerAngleDeg > T(145.0)) ? T(0.1) * (c.maxCornerAngleDeg - T(145.0)) : T(0);
+            return m_weightPatches * c.numPatches
+                 + m_weightDistortion * c.distortionEnergy
+                 + T(0.25) * nEV
+                 + angPen;
         };
 
         std::sort(validPool.begin(), validPool.end(),
