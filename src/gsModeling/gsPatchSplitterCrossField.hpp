@@ -1508,13 +1508,14 @@ inline bool evalCrossFieldAngleAt(const TriMeshData<T>& mesh,
                                   T& thetaOut,
                                   int& triOut)
 {
-    for (int ti = 0; ti < static_cast<int>(mesh.tris.size()); ++ti) {
+    auto testTri = [&](int ti) -> bool {
+        if (ti < 0 || ti >= static_cast<int>(mesh.tris.size())) return false;
         const auto& t = mesh.tris[ti];
         const auto& A = mesh.pts[t.v[0]];
         const auto& B = mesh.pts[t.v[1]];
         const auto& C = mesh.pts[t.v[2]];
         T area2 = cross2(A, B, C);
-        if (std::abs(area2) < T(1e-14)) continue;
+        if (std::abs(area2) < T(1e-14)) return false;
         T l0 = cross2(B, C, p) / area2;
         T l1 = cross2(C, A, p) / area2;
         T l2 = T(1) - l0 - l1;
@@ -1525,6 +1526,14 @@ inline bool evalCrossFieldAngleAt(const TriMeshData<T>& mesh,
             triOut = ti;
             return true;
         }
+        return false;
+    };
+
+    if (triOut >= 0 && testTri(triOut)) return true;
+
+    for (int ti = 0; ti < static_cast<int>(mesh.tris.size()); ++ti) {
+        if (ti == triOut) continue;
+        if (testTri(ti)) return true;
     }
     return false;
 }
@@ -1728,12 +1737,12 @@ inline bool buildCrossFieldArrangementCandidate(
         gsPoint2D<T> cur = sd.start;
         gsPoint2D<T> dir = sd.dir;
         bool terminated = false;
+        int curTri = -1;
 
         for (int st = 0; st < maxSteps && !terminated; ++st) {
             // Update direction from cross-field (branch closest to current dir)
             T th = T(0);
-            int triDummy = -1;
-            if (st > 2 && evalCrossFieldAngleAt(fineMesh, cf, cur, th, triDummy)) {
+            if (st > 2 && evalCrossFieldAngleAt(fineMesh, cf, cur, th, curTri)) {
                 T bestDot = -T(2);
                 gsPoint2D<T> bestDir = dir;
                 for (int k = 0; k < 4; ++k) {

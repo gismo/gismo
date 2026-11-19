@@ -103,6 +103,7 @@ void gsPatchSplitter<T>::setDomain(const gsPlanarDomain<T>& domain)
     m_domain = domain;
     m_hasDomain = true;
     m_hasInputMp = false;
+    m_cachedDomainMinCornerAngle = -1;
     m_bestCandidate = SplittingCandidate();
 }
 
@@ -123,6 +124,7 @@ void gsPatchSplitter<T>::loadDomainFromXml(const std::string& xml_file)
         m_domain = *pDom;
         m_hasDomain = true;
         m_hasInputMp = false;
+        m_cachedDomainMinCornerAngle = -1;
         m_bestCandidate = SplittingCandidate();
     } else {
         GISMO_ERROR("XML file " << xml_file << " does not contain a gsPlanarDomain.");
@@ -555,10 +557,10 @@ inline T computeDomainMinCornerAngleDeg(const gsPlanarDomain<T>& dom)
 }
 
 template <class T>
-inline bool pickOptimalTri1to3Center(
+inline std::vector<gsPoint2D<T>> generateTri1to3CenterCandidates(
     const gsPoint2D<T>& A, const gsPoint2D<T>& B, const gsPoint2D<T>& C,
     const gsPoint2D<T>& mAB, const gsPoint2D<T>& mBC, const gsPoint2D<T>& mCA,
-    gsPoint2D<T>& outO)
+    gsPoint2D<T>* outO_inc = nullptr, T* outLsum = nullptr)
 {
     gsPoint2D<T> O_mid((mAB.x + mBC.x + mCA.x) / T(3), (mAB.y + mBC.y + mCA.y) / T(3));
     gsPoint2D<T> O_tri((A.x + B.x + C.x) / T(3), (A.y + B.y + C.y) / T(3));
@@ -567,6 +569,8 @@ inline bool pickOptimalTri1to3Center(
         ? gsPoint2D<T>((la * A.x + lb * B.x + lc * C.x) / lsum,
                        (la * A.y + lb * B.y + lc * C.y) / lsum)
         : O_tri;
+    if (outO_inc) *outO_inc = O_inc;
+    if (outLsum) *outLsum = lsum;
 
     std::vector<gsPoint2D<T>> cands = {O_mid, O_tri, O_inc};
     for (int s = 1; s <= 4; ++s) {
@@ -581,6 +585,16 @@ inline bool pickOptimalTri1to3Center(
             cands.emplace_back((T(1) - w) * O_mid.x + w * V.x, (T(1) - w) * O_mid.y + w * V.y);
         }
     }
+    return cands;
+}
+
+template <class T>
+inline bool pickOptimalTri1to3Center(
+    const gsPoint2D<T>& A, const gsPoint2D<T>& B, const gsPoint2D<T>& C,
+    const gsPoint2D<T>& mAB, const gsPoint2D<T>& mBC, const gsPoint2D<T>& mCA,
+    gsPoint2D<T>& outO)
+{
+    std::vector<gsPoint2D<T>> cands = generateTri1to3CenterCandidates(A, B, C, mAB, mBC, mCA);
 
     auto quadAngleMarginDeg = [](const gsPoint2D<T> q[4], T& minAngOut, T& maxAngOut) -> T {
         const T radToDeg = T(180) / T(3.14159265358979323846);
@@ -1269,8 +1283,7 @@ inline bool buildSharpCornerBlockRing(
 
     // Helper: create a straight spoke CurveSeg A -> B
     auto mkLine = [&](const gsPoint2D<T>& a, const gsPoint2D<T>& b) -> CurveSeg<T> {
-        std::unique_ptr<gsBSpline<T>> ptr(makeStraightBSpline(a, b, degree));
-        return CurveSeg<T>(*ptr);
+        return makeStraightSeg(a, b, degree);
     };
 
     struct QuadGraph {
@@ -1914,8 +1927,7 @@ inline bool tryBuildCross8QuadRing(
     }
 
     auto mkLine = [&](const gsPoint2D<T>& a, const gsPoint2D<T>& b) -> CurveSeg<T> {
-        std::unique_ptr<gsBSpline<T>> ptr(makeStraightBSpline(a, b, degree));
-        return CurveSeg<T>(*ptr);
+        return makeStraightSeg(a, b, degree);
     };
 
     const gsPoint2D<T> P[4] = { cS.p0(), cS.p1(), cE.p1(), cN.p0() };
@@ -2014,8 +2026,7 @@ inline void buildBlockQuadRing(
     const std::vector<T> hTurns = computeLoopVertexTurnDegs(hCCW);
 
     auto mkLine = [&](const gsPoint2D<T>& a, const gsPoint2D<T>& b) -> CurveSeg<T> {
-        std::unique_ptr<gsBSpline<T>> ptr(makeStraightBSpline(a, b, degree));
-        return CurveSeg<T>(*ptr);
+        return makeStraightSeg(a, b, degree);
     };
 
     // Helper: assemble and evaluate a 4-patch ring candidate from 4 sector chains inside an arbitrary 4-sided block
@@ -2899,6 +2910,83 @@ inline std::vector<CurveSeg<T>> splitSegMulti(const CurveSeg<T>& seg, const std:
     return out;
 }
 
+template <class T>
+struct SeparatorGrid1D {
+    static std::vector<T> findClearCuts(const std::vector<std::pair<T, T>>& intervals, T minGap) {
+        if (intervals.empty()) return {};
+        auto ivals = intervals;
+        std::sort(ivals.begin(), ivals.end());
+        std::vector<T> cuts;
+        T curMax = ivals[0].second;
+        for (size_t i = 1; i < ivals.size(); ++i) {
+            if (ivals[i].first > curMax + minGap) {
+                cuts.push_back(T(0.5) * (curMax + ivals[i].first));
+                curMax = ivals[i].second;
+            } else {
+                curMax = std::max(curMax, ivals[i].second);
+            }
+        }
+        return cuts;
+    }
+
+    static int gridMaxItems(const std::vector<T>& xCuts, const std::vector<T>& yCuts,
+                            const std::vector<gsPoint2D<T>>& centers) {
+        int nx = static_cast<int>(xCuts.size()) + 1;
+        int ny = static_cast<int>(yCuts.size()) + 1;
+        std::vector<int> counts(nx * ny, 0);
+        int mx = 0;
+        for (const auto& c : centers) {
+            int ix = static_cast<int>(std::upper_bound(xCuts.begin(), xCuts.end(), c.x) - xCuts.begin());
+            int iy = static_cast<int>(std::upper_bound(yCuts.begin(), yCuts.end(), c.y) - yCuts.begin());
+            mx = std::max(mx, ++counts[iy * nx + ix]);
+        }
+        return mx;
+    }
+
+    static void pruneRedundantCuts(std::vector<T>& xCuts, std::vector<T>& yCuts,
+                                   const std::vector<std::pair<T, T>>& xIvals,
+                                   const std::vector<std::pair<T, T>>& yIvals,
+                                   const std::vector<gsPoint2D<T>>& centers) {
+        if (gridMaxItems(xCuts, {}, centers) <= 1 && !xCuts.empty()) {
+            yCuts.clear();
+        } else if (gridMaxItems({}, yCuts, centers) <= 1 && !yCuts.empty()) {
+            xCuts.clear();
+        } else if (gridMaxItems(xCuts, yCuts, centers) <= 1 && (xCuts.size() + yCuts.size() > 1)) {
+            auto cutMargin = [&](T val, const std::vector<std::pair<T, T>>& ivals) -> T {
+                T mn = T(1e18);
+                for (const auto& iv : ivals) {
+                    mn = std::min(mn, std::min(std::abs(val - iv.first), std::abs(val - iv.second)));
+                }
+                return mn;
+            };
+            while (xCuts.size() + yCuts.size() > 1) {
+                bool bestIsX = true;
+                int bestIdx = -1;
+                T smallestM = T(1e18);
+                for (size_t i = 0; i < xCuts.size(); ++i) {
+                    std::vector<T> xc = xCuts;
+                    xc.erase(xc.begin() + static_cast<long>(i));
+                    if ((!xc.empty() || !yCuts.empty()) && gridMaxItems(xc, yCuts, centers) <= 1) {
+                        T m = cutMargin(xCuts[i], xIvals);
+                        if (m < smallestM) { smallestM = m; bestIsX = true; bestIdx = static_cast<int>(i); }
+                    }
+                }
+                for (size_t i = 0; i < yCuts.size(); ++i) {
+                    std::vector<T> yc = yCuts;
+                    yc.erase(yc.begin() + static_cast<long>(i));
+                    if ((!xCuts.empty() || !yc.empty()) && gridMaxItems(xCuts, yc, centers) <= 1) {
+                        T m = cutMargin(yCuts[i], yIvals);
+                        if (m < smallestM) { smallestM = m; bestIsX = false; bestIdx = static_cast<int>(i); }
+                    }
+                }
+                if (bestIdx < 0) break;
+                if (bestIsX) xCuts.erase(xCuts.begin() + bestIdx);
+                else         yCuts.erase(yCuts.begin() + bestIdx);
+            }
+        }
+    }
+};
+
 // Decompose an arbitrary 4-sided macro-block [cS(P0->P1), cE(P1->P2), cN(P3->P2), cW(P0->P3)]
 // enclosing 0, 1, or N holes into a conforming multipatch without T-junctions.
 template <class T>
@@ -3002,86 +3090,19 @@ inline bool build4SidedMultiHoleGrid(
     }
 
     // 1. Find all gap-midpoint candidate separator cuts in u and v that do not pierce any hole
-    auto findClearCuts = [&](bool isU) -> std::vector<T> {
-        std::vector<std::pair<T, T>> ivals(nH);
-        for (int h = 0; h < nH; ++h)
-            ivals[h] = isU ? std::make_pair(hBoxes[h].u0, hBoxes[h].u1)
-                           : std::make_pair(hBoxes[h].v0, hBoxes[h].v1);
-        std::sort(ivals.begin(), ivals.end());
-        // Merge overlapping intervals to discover global gap intervals
-        std::vector<T> cuts;
-        T curMax = ivals[0].second;
-        for (int i = 1; i < nH; ++i) {
-            if (ivals[i].first > curMax + T(0.01)) {
-                cuts.push_back(T(0.5) * (curMax + ivals[i].first));
-                curMax = ivals[i].second;
-            } else {
-                curMax = std::max(curMax, ivals[i].second);
-            }
-        }
-        return cuts;
-    };
-
-    std::vector<T> uCuts = findClearCuts(true);
-    std::vector<T> vCuts = findClearCuts(false);
-
-    // Check if grid induced by (uCuts, vCuts) leaves at most 1 hole per grid cell
-    auto gridMaxHoles = [&](const std::vector<T>& uc, const std::vector<T>& vc) -> int {
-        int nx = static_cast<int>(uc.size()) + 1;
-        int ny = static_cast<int>(vc.size()) + 1;
-        std::vector<int> counts(nx * ny, 0);
-        int mx = 0;
-        for (int h = 0; h < nH; ++h) {
-            int ix = static_cast<int>(std::upper_bound(uc.begin(), uc.end(), hBoxes[h].uc) - uc.begin());
-            int iy = static_cast<int>(std::upper_bound(vc.begin(), vc.end(), hBoxes[h].vc) - vc.begin());
-            mx = std::max(mx, ++counts[iy * nx + ix]);
-        }
-        return mx;
-    };
-
-    // If both uCuts and vCuts exist and separate with just 1D cuts, drop redundant axis cuts to keep patch count minimal
-    if (gridMaxHoles(uCuts, {}) <= 1 && !uCuts.empty()) {
-        vCuts.clear();
-    } else if (gridMaxHoles({}, vCuts) <= 1 && !vCuts.empty()) {
-        uCuts.clear();
-    } else if (gridMaxHoles(uCuts, vCuts) <= 1 && (uCuts.size() + vCuts.size() > 1)) {
-        // Greedily drop redundant cuts (smallest hole clearance first) while preserving max 1 hole per cell
-        auto cutMargin = [&](T val, bool isU) -> T {
-            T mn = T(1e18);
-            for (int h = 0; h < nH; ++h) {
-                T lo = isU ? hBoxes[h].u0 : hBoxes[h].v0;
-                T hi = isU ? hBoxes[h].u1 : hBoxes[h].v1;
-                mn = std::min(mn, std::min(std::abs(val - lo), std::abs(val - hi)));
-            }
-            return mn;
-        };
-        while (uCuts.size() + vCuts.size() > 1) {
-            bool bestIsU = true;
-            int bestIdx = -1;
-            T smallestM = T(1e18);
-            for (size_t i = 0; i < uCuts.size(); ++i) {
-                std::vector<T> uc = uCuts;
-                uc.erase(uc.begin() + static_cast<long>(i));
-                if ((!uc.empty() || !vCuts.empty()) && gridMaxHoles(uc, vCuts) <= 1) {
-                    T m = cutMargin(uCuts[i], true);
-                    if (m < smallestM) { smallestM = m; bestIsU = true; bestIdx = static_cast<int>(i); }
-                }
-            }
-            for (size_t i = 0; i < vCuts.size(); ++i) {
-                std::vector<T> vc = vCuts;
-                vc.erase(vc.begin() + static_cast<long>(i));
-                if ((!uCuts.empty() || !vc.empty()) && gridMaxHoles(uCuts, vc) <= 1) {
-                    T m = cutMargin(vCuts[i], false);
-                    if (m < smallestM) { smallestM = m; bestIsU = false; bestIdx = static_cast<int>(i); }
-                }
-            }
-            if (bestIdx < 0) break;
-            if (bestIsU) uCuts.erase(uCuts.begin() + bestIdx);
-            else         vCuts.erase(vCuts.begin() + bestIdx);
-        }
+    std::vector<std::pair<T, T>> uIvals(nH), vIvals(nH);
+    std::vector<gsPoint2D<T>> uvCenters(nH);
+    for (int h = 0; h < nH; ++h) {
+        uIvals[h] = {hBoxes[h].u0, hBoxes[h].u1};
+        vIvals[h] = {hBoxes[h].v0, hBoxes[h].v1};
+        uvCenters[h] = {hBoxes[h].uc, hBoxes[h].vc};
     }
+    std::vector<T> uCuts = SeparatorGrid1D<T>::findClearCuts(uIvals, T(0.01));
+    std::vector<T> vCuts = SeparatorGrid1D<T>::findClearCuts(vIvals, T(0.01));
 
-    if (gridMaxHoles(uCuts, vCuts) <= 1 && (!uCuts.empty() || !vCuts.empty())) {
+    SeparatorGrid1D<T>::pruneRedundantCuts(uCuts, vCuts, uIvals, vIvals, uvCenters);
+
+    if (SeparatorGrid1D<T>::gridMaxItems(uCuts, vCuts, uvCenters) <= 1 && (!uCuts.empty() || !vCuts.empty())) {
         const int nx = static_cast<int>(uCuts.size()) + 1;
         const int ny = static_cast<int>(vCuts.size()) + 1;
         std::vector<T> us = {T(0)};
@@ -3281,8 +3302,7 @@ inline bool build4SidedInnerAxisGrid(
     const int nH = static_cast<int>(holes.size());
 
     auto mkLine = [&](const gsPoint2D<T>& a, const gsPoint2D<T>& b) -> CurveSeg<T> {
-        std::unique_ptr<gsBSpline<T>> ptr(makeStraightBSpline(a, b, degree));
-        return CurveSeg<T>(*ptr);
+        return makeStraightSeg(a, b, degree);
     };
 
     std::vector<gsPoint2D<T>> outerPoly;
@@ -3321,87 +3341,25 @@ inline bool build4SidedInnerAxisGrid(
     const T hSpan = std::max(hxMax - hxMin, hyMax - hyMin);
     if (hSpan <= T(1e-12)) return false;
 
-    auto findClearCuts = [&](bool isX) -> std::vector<T> {
-        std::vector<std::pair<T, T>> ivals(nH);
-        T loAll = T(1e18), hiAll = -T(1e18);
-        for (int h = 0; h < nH; ++h) {
-            ivals[h] = isX ? std::make_pair(hBoxes[h].x0, hBoxes[h].x1)
-                           : std::make_pair(hBoxes[h].y0, hBoxes[h].y1);
-            loAll = std::min(loAll, ivals[h].first);
-            hiAll = std::max(hiAll, ivals[h].second);
-        }
-        T minGap = T(0.02) * std::max(hiAll - loAll, T(1e-6));
-        std::sort(ivals.begin(), ivals.end());
-        std::vector<T> cuts;
-        T curMax = ivals[0].second;
-        for (int i = 1; i < nH; ++i) {
-            if (ivals[i].first > curMax + minGap) {
-                cuts.push_back(T(0.5) * (curMax + ivals[i].first));
-                curMax = ivals[i].second;
-            } else {
-                curMax = std::max(curMax, ivals[i].second);
-            }
-        }
-        return cuts;
-    };
-
-    std::vector<T> xCuts = findClearCuts(true);
-    std::vector<T> yCuts = findClearCuts(false);
-
-    auto gridMaxHoles = [&](const std::vector<T>& xc, const std::vector<T>& yc) -> int {
-        int nx = static_cast<int>(xc.size()) + 1;
-        int ny = static_cast<int>(yc.size()) + 1;
-        std::vector<int> counts(nx * ny, 0);
-        int mx = 0;
-        for (int h = 0; h < nH; ++h) {
-            int ix = static_cast<int>(std::upper_bound(xc.begin(), xc.end(), hBoxes[h].xc) - xc.begin());
-            int iy = static_cast<int>(std::upper_bound(yc.begin(), yc.end(), hBoxes[h].yc) - yc.begin());
-            mx = std::max(mx, ++counts[iy * nx + ix]);
-        }
-        return mx;
-    };
-
-    if (gridMaxHoles(xCuts, {}) <= 1 && !xCuts.empty()) {
-        yCuts.clear();
-    } else if (gridMaxHoles({}, yCuts) <= 1 && !yCuts.empty()) {
-        xCuts.clear();
-    } else if (gridMaxHoles(xCuts, yCuts) <= 1 && (xCuts.size() + yCuts.size() > 1)) {
-        auto cutMargin = [&](T val, bool isX) -> T {
-            T mn = T(1e18);
-            for (int h = 0; h < nH; ++h) {
-                T lo = isX ? hBoxes[h].x0 : hBoxes[h].y0;
-                T hi = isX ? hBoxes[h].x1 : hBoxes[h].y1;
-                mn = std::min(mn, std::min(std::abs(val - lo), std::abs(val - hi)));
-            }
-            return mn;
-        };
-        while (xCuts.size() + yCuts.size() > 1) {
-            bool bestIsX = true;
-            int bestIdx = -1;
-            T smallestM = T(1e18);
-            for (size_t i = 0; i < xCuts.size(); ++i) {
-                std::vector<T> xc = xCuts;
-                xc.erase(xc.begin() + static_cast<long>(i));
-                if ((!xc.empty() || !yCuts.empty()) && gridMaxHoles(xc, yCuts) <= 1) {
-                    T m = cutMargin(xCuts[i], true);
-                    if (m < smallestM) { smallestM = m; bestIsX = true; bestIdx = static_cast<int>(i); }
-                }
-            }
-            for (size_t i = 0; i < yCuts.size(); ++i) {
-                std::vector<T> yc = yCuts;
-                yc.erase(yc.begin() + static_cast<long>(i));
-                if ((!xCuts.empty() || !yc.empty()) && gridMaxHoles(xCuts, yc) <= 1) {
-                    T m = cutMargin(yCuts[i], false);
-                    if (m < smallestM) { smallestM = m; bestIsX = false; bestIdx = static_cast<int>(i); }
-                }
-            }
-            if (bestIdx < 0) break;
-            if (bestIsX) xCuts.erase(xCuts.begin() + bestIdx);
-            else         yCuts.erase(yCuts.begin() + bestIdx);
-        }
+    std::vector<std::pair<T, T>> xIvals(nH), yIvals(nH);
+    std::vector<gsPoint2D<T>> xyCenters(nH);
+    T loAllX = T(1e18), hiAllX = -T(1e18);
+    T loAllY = T(1e18), hiAllY = -T(1e18);
+    for (int h = 0; h < nH; ++h) {
+        xIvals[h] = {hBoxes[h].x0, hBoxes[h].x1};
+        yIvals[h] = {hBoxes[h].y0, hBoxes[h].y1};
+        xyCenters[h] = {hBoxes[h].xc, hBoxes[h].yc};
+        loAllX = std::min(loAllX, hBoxes[h].x0); hiAllX = std::max(hiAllX, hBoxes[h].x1);
+        loAllY = std::min(loAllY, hBoxes[h].y0); hiAllY = std::max(hiAllY, hBoxes[h].y1);
     }
+    T minGapX = T(0.02) * std::max(hiAllX - loAllX, T(1e-6));
+    T minGapY = T(0.02) * std::max(hiAllY - loAllY, T(1e-6));
+    std::vector<T> xCuts = SeparatorGrid1D<T>::findClearCuts(xIvals, minGapX);
+    std::vector<T> yCuts = SeparatorGrid1D<T>::findClearCuts(yIvals, minGapY);
 
-    if (gridMaxHoles(xCuts, yCuts) > 1 || (xCuts.empty() && yCuts.empty()))
+    SeparatorGrid1D<T>::pruneRedundantCuts(xCuts, yCuts, xIvals, yIvals, xyCenters);
+
+    if (SeparatorGrid1D<T>::gridMaxItems(xCuts, yCuts, xyCenters) > 1 || (xCuts.empty() && yCuts.empty()))
         return false;
 
     const int nx = static_cast<int>(xCuts.size()) + 1;
@@ -3563,6 +3521,15 @@ inline bool build4SidedInnerAxisGrid(
 
 namespace gismo {
 
+template <class T>
+T gsPatchSplitter<T>::getDomainMinCornerAngleDeg() const
+{
+    if (m_cachedDomainMinCornerAngle < 0 && m_hasDomain) {
+        m_cachedDomainMinCornerAngle = internal_splitter::computeDomainMinCornerAngleDeg(m_domain);
+    }
+    return (m_cachedDomainMinCornerAngle >= 0) ? m_cachedDomainMinCornerAngle : T(90);
+}
+
 // ============================================================================
 // Approach 1: Boundary-Aligned 4-RoSy Harmonic Cross-Field Decomposition
 // ============================================================================
@@ -3578,7 +3545,7 @@ gsPatchSplitter<T>::computeCrossFieldSplitting()
 
     if (m_domain.numLoops() == 0) return bestCand;
 
-    const T domMinAng = internal_splitter::computeDomainMinCornerAngleDeg(m_domain);
+    const T domMinAng = getDomainMinCornerAngleDeg();
     const T minAngTol = std::min(static_cast<T>(m_options.getReal("MinCornerAngleDeg")), T(0.85) * domMinAng);
     const T maxAngTol = static_cast<T>(m_options.getReal("MaxCornerAngleDeg"));
 
@@ -3683,7 +3650,7 @@ gsPatchSplitter<T>::computeHoleFreeStructuralSplitting()
         if (mp.nPatches() == 0) return false;
         optimizeWinslowBarrier(mp);
         mp.computeTopology(T(1e-5), false, false);
-        const T domMinAng = internal_splitter::computeDomainMinCornerAngleDeg(m_domain);
+        const T domMinAng = getDomainMinCornerAngleDeg();
         const T minAngTol = std::min(static_cast<T>(m_options.getReal("MinCornerAngleDeg")), T(0.85) * domMinAng);
         const T maxAngTol = static_cast<T>(m_options.getReal("MaxCornerAngleDeg"));
         if (!validateMultiPatch(m_domain, mp, T(1e-5), nullptr, minAngTol, maxAngTol)) return false;
@@ -4668,7 +4635,7 @@ gsPatchSplitter<T>::computeHoleFreeTriangulationSplitting()
         if (mp.nPatches() == 0) return false;
         optimizeWinslowBarrier(mp);
         mp.computeTopology(T(1e-5), false, false);
-        const T domMinAng = internal_splitter::computeDomainMinCornerAngleDeg(m_domain);
+        const T domMinAng = getDomainMinCornerAngleDeg();
         const T minAngTol = std::min(static_cast<T>(m_options.getReal("MinCornerAngleDeg")), T(0.85) * domMinAng);
         const T maxAngTol = static_cast<T>(m_options.getReal("MaxCornerAngleDeg"));
         if (!validateMultiPatch(m_domain, mp, T(1e-5), nullptr, minAngTol, maxAngTol))
@@ -4988,20 +4955,27 @@ gsPatchSplitter<T>::computeHoleFreeTriangulationSplitting()
     // Lawson Delaunay edge flips on interior straight edges inside outerPoly.
     auto applyLawsonDelaunayFlips = [&](MixedMesh& mesh) {
         int nT = static_cast<int>(mesh.tris.size());
-        if (nT < 2) return;
+        int nE = static_cast<int>(mesh.edges.size());
+        if (nT < 2 || nE == 0) return;
         for (int pass = 0; pass < nT * 2; ++pass) {
-            bool flipped = false;
-            for (int eIdx = 0; eIdx < static_cast<int>(mesh.edges.size()); ++eIdx) {
-                if (mesh.edges[eIdx].isBoundary) continue;
-                int tA = -1, kA = -1, tB = -1, kB = -1;
-                for (int ti = 0; ti < nT; ++ti) {
-                    for (int k = 0; k < 3; ++k) {
-                        if (mesh.tris[ti].e[k] == eIdx) {
-                            if (tA < 0) { tA = ti; kA = k; }
-                            else        { tB = ti; kB = k; }
-                        }
+            struct EdgeAdj { int t0 = -1, k0 = -1, t1 = -1, k1 = -1; };
+            std::vector<EdgeAdj> eAdj(nE);
+            std::vector<int> vertDeg(mesh.pts.size(), 0);
+            for (int ti = 0; ti < nT; ++ti) {
+                for (int k = 0; k < 3; ++k) {
+                    ++vertDeg[mesh.tris[ti].v[k]];
+                    int eid = mesh.tris[ti].e[k];
+                    if (eid >= 0 && eid < nE) {
+                        if (eAdj[eid].t0 < 0) { eAdj[eid].t0 = ti; eAdj[eid].k0 = k; }
+                        else if (eAdj[eid].t1 < 0) { eAdj[eid].t1 = ti; eAdj[eid].k1 = k; }
                     }
                 }
+            }
+            bool flipped = false;
+            for (int eIdx = 0; eIdx < nE; ++eIdx) {
+                if (mesh.edges[eIdx].isBoundary) continue;
+                int tA = eAdj[eIdx].t0, kA = eAdj[eIdx].k0;
+                int tB = eAdj[eIdx].t1, kB = eAdj[eIdx].k1;
                 if (tA < 0 || tB < 0) continue;
                 Tri A = mesh.tris[tA], B = mesh.tris[tB];
                 int a = A.v[kA], b = A.v[(kA + 1) % 3], c = A.v[(kA + 2) % 3];
@@ -5022,14 +4996,7 @@ gsPatchSplitter<T>::computeHoleFreeTriangulationSplitting()
                     continue;
 
                 // Protect smooth boundary vertices from dropping to deg == 1 unless needed
-                int degA = 0, degB = 0;
-                for (int ti = 0; ti < nT; ++ti) {
-                    for (int k = 0; k < 3; ++k) {
-                        if (mesh.tris[ti].v[k] == a) ++degA;
-                        if (mesh.tris[ti].v[k] == b) ++degB;
-                    }
-                }
-                if ((mesh.isSmooth[a] && degA <= 2) || (mesh.isSmooth[b] && degB <= 2)) continue;
+                if ((mesh.isSmooth[a] && vertDeg[a] <= 2) || (mesh.isSmooth[b] && vertDeg[b] <= 2)) continue;
 
                 // Find edge indices around A and B matching c->a, a->d, d->b, b->c
                 int e_bc = A.e[(kA + 1) % 3];
@@ -5069,7 +5036,7 @@ gsPatchSplitter<T>::computeHoleFreeTriangulationSplitting()
         if (nT < 2) return;
 
         const T radToDeg = T(180) / T(3.14159265358979323846);
-        const T domMinA = internal_splitter::computeDomainMinCornerAngleDeg(m_domain);
+        const T domMinA = getDomainMinCornerAngleDeg();
         const T qMinTol = std::min(static_cast<T>(m_options.getReal("MinCornerAngleDeg")), T(0.85) * domMinA);
         const T qMaxTol = static_cast<T>(m_options.getReal("MaxCornerAngleDeg"));
 
@@ -5078,18 +5045,24 @@ gsPatchSplitter<T>::computeHoleFreeTriangulationSplitting()
             Quad q;
             T score;
         };
+
+        struct EdgeAdj { int t0 = -1, k0 = -1, t1 = -1, k1 = -1; };
+        std::vector<EdgeAdj> eAdj(triMesh.edges.size());
+        for (int ti = 0; ti < nT; ++ti) {
+            for (int k = 0; k < 3; ++k) {
+                int eid = triMesh.tris[ti].e[k];
+                if (eid >= 0 && eid < static_cast<int>(triMesh.edges.size())) {
+                    if (eAdj[eid].t0 < 0) { eAdj[eid].t0 = ti; eAdj[eid].k0 = k; }
+                    else if (eAdj[eid].t1 < 0) { eAdj[eid].t1 = ti; eAdj[eid].k1 = k; }
+                }
+            }
+        }
+
         std::vector<PairEdge> pairEdges;
         for (int eIdx = 0; eIdx < static_cast<int>(triMesh.edges.size()); ++eIdx) {
             if (triMesh.edges[eIdx].isBoundary) continue;
-            int tA = -1, kA = -1, tB = -1, kB = -1;
-            for (int ti = 0; ti < nT; ++ti) {
-                for (int k = 0; k < 3; ++k) {
-                    if (triMesh.tris[ti].e[k] == eIdx) {
-                        if (tA < 0) { tA = ti; kA = k; }
-                        else        { tB = ti; kB = k; }
-                    }
-                }
-            }
+            int tA = eAdj[eIdx].t0, kA = eAdj[eIdx].k0;
+            int tB = eAdj[eIdx].t1, kB = eAdj[eIdx].k1;
             if (tA < 0 || tB < 0) continue;
             Tri A = triMesh.tris[tA], B = triMesh.tris[tB];
             int a = A.v[kA], b = A.v[(kA + 1) % 3], c = A.v[(kA + 2) % 3];
@@ -5649,13 +5622,9 @@ inline bool pickOptimalTri1to3CenterCurved(
     if (!isBnd01 && !isBnd12 && !isBnd20)
         return pickOptimalTri1to3Center(A, B, C, m01, m12, m20, outO);
 
-    gsPoint2D<T> O_mid((m01.x + m12.x + m20.x) / T(3), (m01.y + m12.y + m20.y) / T(3));
-    gsPoint2D<T> O_tri((A.x + B.x + C.x) / T(3), (A.y + B.y + C.y) / T(3));
-    T la = B.dist(C), lb = C.dist(A), lc = A.dist(B), lsum = la + lb + lc;
-    gsPoint2D<T> O_inc = (lsum > T(1e-14))
-        ? gsPoint2D<T>((la * A.x + lb * B.x + lc * C.x) / lsum,
-                       (la * A.y + lb * B.y + lc * C.y) / lsum)
-        : O_tri;
+    gsPoint2D<T> O_inc;
+    T lsum = 0;
+    std::vector<gsPoint2D<T>> cands = generateTri1to3CenterCandidates(A, B, C, m01, m12, m20, &O_inc, &lsum);
 
     auto unitTan = [&](const CurveSeg<T>& seg, T u, bool flip) -> gsPoint2D<T> {
         gsPoint2D<T> d = evalCurveDeriv(*seg.bsp, u);
@@ -5671,18 +5640,6 @@ inline bool pickOptimalTri1to3CenterCurved(
     const gsPoint2D<T> tM01_in = unitTan(e01a, T(1), true), tM01_out = unitTan(e01b, T(0), false);
     const gsPoint2D<T> tM12_in = unitTan(e12a, T(1), true), tM12_out = unitTan(e12b, T(0), false);
     const gsPoint2D<T> tM20_in = unitTan(e20a, T(1), true), tM20_out = unitTan(e20b, T(0), false);
-
-    std::vector<gsPoint2D<T>> cands = {O_mid, O_tri, O_inc};
-    for (int s = 1; s <= 4; ++s) {
-        T w = static_cast<T>(s) / T(5);
-        cands.emplace_back((T(1) - w) * O_mid.x + w * O_inc.x, (T(1) - w) * O_mid.y + w * O_inc.y);
-        cands.emplace_back((T(1) - w) * O_mid.x + w * O_tri.x, (T(1) - w) * O_mid.y + w * O_tri.y);
-    }
-    const gsPoint2D<T> verts3[3] = {A, B, C};
-    for (const auto& V : verts3) {
-        for (T w : {T(0.12), T(0.24), T(0.36), T(0.48)})
-            cands.emplace_back((T(1) - w) * O_mid.x + w * V.x, (T(1) - w) * O_mid.y + w * V.y);
-    }
     T avgH = lsum / T(3);
     auto addNormalShoots = [&](const gsPoint2D<T>& mPt, const gsPoint2D<T>& tOut) {
         if (std::hypot(tOut.x, tOut.y) <= T(1e-12)) return;
@@ -5959,7 +5916,7 @@ gsPatchSplitter<T>::computeMultiHoleTriangulationSplitting()
     if (m_domain.numLoops() == 0) return bestCand;
     const gsMatrix<T> bbox = m_domain.boundingBox();
     const T diag = std::hypot(bbox(0, 1) - bbox(0, 0), bbox(1, 1) - bbox(1, 0));
-    const T domMinAng = internal_splitter::computeDomainMinCornerAngleDeg(m_domain);
+    const T domMinAng = getDomainMinCornerAngleDeg();
     const T minAngTol = std::min(static_cast<T>(m_options.getReal("MinCornerAngleDeg")), T(0.85) * domMinAng);
     const T maxAngTol = static_cast<T>(m_options.getReal("MaxCornerAngleDeg"));
 
@@ -6848,7 +6805,7 @@ gsPatchSplitter<T>::computeMedialAxisSplitting()
         return computeHoleFreeStructuralSplitting();
     }
 
-    const T domMinAng = internal_splitter::computeDomainMinCornerAngleDeg(m_domain);
+    const T domMinAng = getDomainMinCornerAngleDeg();
     const T minAngTol = std::min(static_cast<T>(m_options.getReal("MinCornerAngleDeg")), T(0.85) * domMinAng);
     const T minHoleAngTol = std::min(minAngTol, T(4.0));
     const T maxAngTol = static_cast<T>(m_options.getReal("MaxCornerAngleDeg"));
@@ -7846,7 +7803,7 @@ gsPatchSplitter<T>::computeTemplateSplitting()
     const auto& outer = m_domain.outer();
     int nHoles = m_domain.numHoles();
     int nOuterCurves = outer.size();
-    const T domMinAng = internal_splitter::computeDomainMinCornerAngleDeg(m_domain);
+    const T domMinAng = getDomainMinCornerAngleDeg();
     const T minAngTol = std::min(static_cast<T>(m_options.getReal("MinCornerAngleDeg")), T(0.85) * domMinAng);
     const T maxAngTol = static_cast<T>(m_options.getReal("MaxCornerAngleDeg"));
 
@@ -8625,22 +8582,28 @@ bool gsPatchSplitter<T>::validateMultiPatch(
         return false;
     }
 
-    gsMultiPatch<T> mpTopo(mp);
-    mpTopo.computeTopology(std::max(T(1e-4), bdrTol), false, false);
-    if (2 * mpTopo.nInterfaces() + mpTopo.nBoundary() != 4 * mpTopo.nPatches()) {
-        if (reason) *reason = "non-conforming topology (hanging nodes or unmatched sides)";
-        return false;
+    const bool hasTopo = (mp.nInterfaces() > 0 || mp.nBoundary() > 0) &&
+                         (2 * mp.nInterfaces() + mp.nBoundary() == 4 * mp.nPatches());
+    gsMultiPatch<T> mpTopo;
+    const gsMultiPatch<T>& topoMp = hasTopo ? mp : mpTopo;
+    if (!hasTopo) {
+        mpTopo = mp;
+        mpTopo.computeTopology(std::max(T(1e-4), bdrTol), false, false);
+        if (2 * mpTopo.nInterfaces() + mpTopo.nBoundary() != 4 * mpTopo.nPatches()) {
+            if (reason) *reason = "non-conforming topology (hanging nodes or unmatched sides)";
+            return false;
+        }
     }
 
     T bdrErr = 0;
     if (!verifyBoundaryMatch(dom, mp, bdrTol, &bdrErr)) {
         if (std::getenv("GISMO_SPLITTER_DEBUG")) {
             std::cerr << "[DBG verifyBoundaryMatch FAIL] bdrErr=" << bdrErr << " tol=" << bdrTol << "\n";
-            for (size_t p = 0; p < mpTopo.nPatches(); ++p) {
+            for (size_t p = 0; p < topoMp.nPatches(); ++p) {
                 for (int s = 1; s <= 4; ++s) {
                     boxSide bs = static_cast<boxSide>(s);
-                    if (!mpTopo.isInterface(patchSide(p, bs))) {
-                        auto bc = mpTopo.patch(p).boundary(bs);
+                    if (!topoMp.isInterface(patchSide(p, bs))) {
+                        auto bc = topoMp.patch(p).boundary(bs);
                         gsMatrix<T> pr = bc->parameterRange(), u(1, 3), val;
                         u << pr(0,0), T(0.5)*(pr(0,0)+pr(0,1)), pr(0,1);
                         bc->eval_into(u, val);

@@ -159,12 +159,14 @@ private:
     void ensureExactBoundaryConformity(gsMultiPatch<T>& mp);
     T evaluateDistortionEnergy(const gsMultiPatch<T>& mp, T* minDetOut = nullptr,
                                T* minAngleOut = nullptr, T* maxAngleOut = nullptr) const;
+    T getDomainMinCornerAngleDeg() const;
 
 private:
     gsPlanarDomain<T>   m_domain;
     gsMultiPatch<T>     m_inputMp;
     bool                m_hasInputMp = false;
     bool                m_hasDomain = false;
+    mutable T           m_cachedDomainMinCornerAngle = -1;
 
     gsOptionList        m_options;
     Strategy            m_strategy = Strategy::AutomaticBest;
