@@ -226,6 +226,11 @@ namespace internal
 #include <gsIO/gsXmlUtils.h>
 #include <gsIO/gsCsv.h>
 
+/* ----------- System ----------- */
+#include <gsSystem/gsModuleManager.h>
+#include <gsSystem/gsRegistry.h>
+#include <gsSystem/gsFileIo.h>
+
 /* ----------- Parallel ----------- */
 #include <gsParallel/gsMpi.h>
 

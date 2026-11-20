@@ -15,7 +15,7 @@
 ## GISMO_VERSION      - version string of G+SMO
 ## GISMO_INCLUDE_DIRS - include directories for G+SMO
 ## GISMO_LIBRARIES    - libraries to link against
-## GISMO_MODULE_PATH  - path containing cmake modules
+## GISMO_CMAKE_PATH   - path containing cmake modules
 ## GISMO_USE_FILE     - the cmake use-file
 ## GISMO_BUILD_TYPE   - the cmake build type used to compile G+Smo
 ##
@@ -46,7 +46,7 @@ set(GISMO_LIBRARY_DIR  "@CONF_LIB_DIRS@")
 set(GISMO_LIBRARIES           gismo)
 set(GISMO_STATIC_LIBRARIES    gismo_static)
 set(TARGET_ARCHITECTURE "@TARGET_ARCHITECTURE@")
-set(GISMO_MODULE_PATH  "@CONF_MODULE_PATH@")
+set(GISMO_CMAKE_PATH   "@CONF_MODULE_PATH@")
 set(GISMO_USE_FILE     "@CONF_USE_FILE@")
 set(GISMO_BUILD_TYPE   "@CMAKE_BUILD_TYPE@")
 
@@ -63,4 +63,4 @@ elseif(NOT "x${CMAKE_BUILD_TYPE}" STREQUAL "x${GISMO_BUILD_TYPE}")
   message(WARNING "G+Smo is configured in ${GISMO_BUILD_TYPE} mode which does not coincide with this project! Conflicts may occur. Re-run CMake with CMAKE_BUILD_TYPE=${GISMO_BUILD_TYPE} to fix this, or update gismo_DIR.")
 endif()
 
-#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${GISMO_MODULE_PATH})
+#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${GISMO_CMAKE_PATH})

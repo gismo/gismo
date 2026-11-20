@@ -11,6 +11,7 @@
     Author(s): A. Mantzaflaris
 */
 
+#pragma once
 
 #include <gsOpennurbs/gsWriteOpenNurbs.h>
 
@@ -35,7 +36,7 @@ namespace gismo {
 
 namespace extensions {
 
-void writeON_Init(ONX_Model & model)
+inline void writeON_Init(ONX_Model & model)
 {
   ON::Begin();
   // If you want to learn to write b-rep models, first work through
@@ -71,7 +72,7 @@ void writeON_Init(ONX_Model & model)
 */
 }
 
-bool writeON_Write3dm(ONX_Model & model, const std::string & fname)
+inline bool writeON_Write3dm(ONX_Model & model, const std::string & fname)
 {
     const char* filename = fname.c_str();
 
@@ -98,6 +99,11 @@ bool writeON_Write3dm(ONX_Model & model, const std::string & fname)
     int version = 0; // version will be ON_BinaryArchive::CurrentArchiveVersion()
 
     FILE* fp = ON::OpenFile( filename, "wb" );
+    if (!fp)
+    {
+        ON::End();
+        return false;
+    }
     ON_BinaryFile archive( ON::write3dm, fp ); // fp = pointer from fopoen(...,"wb")
     // start section comment
     const char* sStartSectionComment = __FILE__ "write_points_example()" __DATE__;
@@ -113,8 +119,8 @@ bool writeON_Write3dm(ONX_Model & model, const std::string & fname)
         message_log.Print("Errors while writing %s.\n",filename);
     
     ON::End();
-    
-    return true;
+
+    return ok;
 }
 
     
@@ -130,9 +136,10 @@ bool writeON_NurbsCurve( const gsCurve<T> & curve, ONX_Model & model, const std:
         curve.coefsSize()  // number of control vertices
         );
 
-      for (int k = 0; k < wiggle->CVCount(); k++ ) 
+      const bool has3 = (curve.geoDim() >= 3);
+      for (index_t k = 0; k < wiggle->CVCount(); k++ )
       {
-          ON_3dPoint pt( cast<T,double>(curve.coef(k,0)), cast<T,double>(curve.coef(k,1)), 0.0  ); // pt = some 3d point
+          ON_3dPoint pt( cast<T,double>(curve.coef(k,0)), cast<T,double>(curve.coef(k,1)), (has3 ? cast<T,double>(curve.coef(k,2)) : 0.0) ); // pt = some 3d point
           wiggle->SetCV( k, pt );
       }
 
@@ -283,11 +290,8 @@ bool writeON_PlanarDomain( const gsPlanarDomain<T> & pd, const std::string & nam
 
 /// Writes a Mesh to OpenNurbs file
 template<class T>
-bool writeON_Mesh(const gsMesh<T> & msh, const std::string & name)
+bool writeON_Mesh(const gsMesh<T> & msh, ONX_Model & model, const std::string & name)
 {
-    ONX_Model model;
-    writeON_Init(model);
-    
     const size_t nf = msh.numFaces();
     const size_t nv = msh.numVertices();
 
@@ -332,7 +336,17 @@ bool writeON_Mesh(const gsMesh<T> & msh, const std::string & name)
       else
           delete mesh;
 
-    return writeON_Write3dm(model,name+".3dm");
+    return true;
+}
+
+/// Writes a Mesh to OpenNurbs file
+template<class T>
+bool writeON_Mesh(const gsMesh<T> & msh, const std::string & name)
+{
+    ONX_Model model;
+    writeON_Init(model);
+    writeON_Mesh(msh, model, "mesh");
+    return writeON_Write3dm(model, name+".3dm");
 }
 
 }// namespace extensions

@@ -59,6 +59,12 @@ bool writeON_NurbsCurve( const gsCurve<T> & curve, const std::string & name);
 template<class T>
 bool writeON_Mesh(const gsMesh<T> & msh, const std::string & name);
 
+template<class T>
+bool writeON_Mesh(const gsMesh<T> & msh, ONX_Model & model, const std::string & name);
+
+/// Writes the curves, surfaces, multipatches and meshes found in \a data
+bool gsWriteOpenNurbs(const char * fn, const internal::gsXmlTree & data);
+
 }
 
 } // namespace gismo

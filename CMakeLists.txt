@@ -195,6 +195,10 @@ set(INCLUDE_INSTALL_DIR include CACHE STRING "Installation directory for header 
 #functions to fetch(download) head revision from git or Subversion
 include(gsFetch)
 
+set(GISMO_DYNAMIC_MODULES "" CACHE STRING "Optional modules built as dynamically loaded libraries (requires GISMO_BUILD_LIB)")
+#functions to build optional modules as dynamic libraries or into the library
+include(gsModule)
+
 if (EIGEN_USE_MKL_ALL)
   # See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html
   find_package(MKL REQUIRED)
@@ -339,7 +343,11 @@ foreach(gssm ${GISMO_OPTIONAL})
   string(REPLACE "." "_" SUBMODULE_NAME ${SUBMODULE_NAME})
   string(REPLACE "!" "_" SUBMODULE_NAME ${SUBMODULE_NAME})
   string(REPLACE "*" "_" SUBMODULE_NAME ${SUBMODULE_NAME})
-  set(CONFIGEXT_H "${CONFIGEXT_H}#define ${SUBMODULE_NAME}_ENABLED\n")
+  get_property(_gs_dynamic GLOBAL PROPERTY GISMO_DYNAMIC_MODULE_LIST)
+  list(FIND _gs_dynamic ${SUBMODULE} _gs_dynamic_idx)
+  if(_gs_dynamic_idx EQUAL -1)
+    set(CONFIGEXT_H "${CONFIGEXT_H}#define ${SUBMODULE_NAME}_ENABLED\n")
+  endif()
 endforeach()
 
 foreach(gssm ${GISMO_EXTERNALS})
@@ -358,6 +366,11 @@ endif()
 message("  GISMO_OPTIONAL        ${GISMO_OPTIONAL}")
 set(GISMO_OPTIONAL ${GISMO_OPTIONAL}
   CACHE STRING "List of optional G+Smo modules" FORCE)
+
+# Configuration header and register calls of the built-in modules
+gismo_configure_modules()
+set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES}
+  "${gismo_BINARY_DIR}/gsSystem/gsBuiltinModules.cpp")
 
 ## #################################################################
 ## Shared and static library

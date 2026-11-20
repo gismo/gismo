@@ -27,6 +27,8 @@ if(${PROJECT_NAME}_LINKER)
   target_link_libraries(${PROJECT_NAME}_static "${${PROJECT_NAME}_LINKER}")
 endif()
 
+target_link_libraries(${PROJECT_NAME}_static ${CMAKE_DL_LIBS})
+
 if (GISMO_WITH_XDEBUG AND DBGHELP_FOUND)
   target_link_libraries(${PROJECT_NAME}_static ${DBGHELP_LIBRARY})
 ENDIF()
@@ -173,6 +175,8 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
   if(${PROJECT_NAME}_LINKER)
     target_link_libraries(${PROJECT_NAME} "${${PROJECT_NAME}_LINKER}")
   endif()
+
+  target_link_libraries(${PROJECT_NAME} ${CMAKE_DL_LIBS})
 
   if (GISMO_GCC_STATIC_LINKAGE)
     target_link_libraries(${PROJECT_NAME} -static-libgcc -static-libstdc++)

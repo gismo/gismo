@@ -130,10 +130,24 @@ ${gismo_externals}/onurbs/opennurbs_memory_util.c
 #${gismo_externals}/onurbs/zlib/zutil.c
 # 
 gsReadOpenNurbs.cpp
+gsWriteOpenNurbs.cpp
+gsOpenNurbsFile.cpp
 #gsWriteOpenNurbs_.cpp
 )
 
-if (GISMO_BUILD_LIB)
+# Dynamic module when listed in GISMO_DYNAMIC_MODULES, unless the prefixed zlib
+# (which calls oncalloc/onfree of OpenNURBS) is compiled into libgismo
+set(GSOPENNURBS_DYNAMIC OFF)
+list(FIND GISMO_DYNAMIC_MODULES ${PROJECT_NAME} _gsOpennurbs_idx)
+if(NOT _gsOpennurbs_idx EQUAL -1)
+  if(GISMO_ZLIB_STATIC)
+    message(WARNING "gsOpennurbs: GISMO_ZLIB_STATIC is set and the prefixed zlib inside libgismo needs OpenNURBS; building gsOpennurbs into the library instead of as a dynamic module")
+  else()
+    set(GSOPENNURBS_DYNAMIC ON)
+  endif()
+endif()
+
+if (GISMO_BUILD_LIB AND NOT GSOPENNURBS_DYNAMIC)
 set(OPENNURBS_SOURCES ${OPENNURBS_SOURCES} gsWriteOpenNurbs_.cpp)
 endif()
 
@@ -320,8 +334,20 @@ if (GISMO_ZLIB_STATIC)
   add_definitions(-DMY_ZCALLOC) # zlib uses oncalloc() and onfree()
 endif()
 
-add_library(${PROJECT_NAME} OBJECT ${OPENNURBS_SOURCES}) #STATIC
-#target_link_libraries(${PROJECT_NAME} Rpcrt4) # Note: linked with gismolib instead
+if(GSOPENNURBS_DYNAMIC)
+  find_package(ZLIB QUIET)
+  if(NOT ZLIB_FOUND)
+    message(FATAL_ERROR "gsOpennurbs: dynamic module needs a system zlib")
+  endif()
+  set(GSOPENNURBS_LINK ${ZLIB_LIBRARIES})
+  if ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
+    set(GSOPENNURBS_LINK ${GSOPENNURBS_LINK} Rpcrt4)
+  endif()
+  gismo_add_module_library(${PROJECT_NAME} SOURCES ${OPENNURBS_SOURCES} LINK ${GSOPENNURBS_LINK})
+else()
+  add_library(${PROJECT_NAME} OBJECT ${OPENNURBS_SOURCES}) #STATIC
+  #target_link_libraries(${PROJECT_NAME} Rpcrt4) # Note: linked with gismolib instead
+endif()
 
 if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
   set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "/W0")
@@ -331,18 +357,21 @@ endif()
 #In CMake 2.8.12 the above can be:
 #target_compile_options(${PROJECT_NAME} PRIVATE $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:-w> $<$<CXX_COMPILER_ID:MSVC>: /W0>)
 
-set_target_properties(${PROJECT_NAME} 
-PROPERTIES POSITION_INDEPENDENT_CODE ON
-COMPILE_DEFINITIONS gismo_EXPORTS
-FOLDER "G+Smo extensions")
-
 #SET_TARGET_PROPERTIES(${PROJECT_NAME} PROPERTIES VERSION "2010.04.95")
 
-set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
-    CACHE INTERNAL "Gismo extensions to be included")
-if ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" )
-set(gismo_LINKER ${gismo_LINKER} Rpcrt4
-    CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+if(NOT GSOPENNURBS_DYNAMIC)
+  set_target_properties(${PROJECT_NAME}
+  PROPERTIES POSITION_INDEPENDENT_CODE ON
+  COMPILE_DEFINITIONS gismo_EXPORTS
+  FOLDER "G+Smo extensions")
+
+  set(gismo_EXTENSIONS ${gismo_EXTENSIONS} $<TARGET_OBJECTS:${PROJECT_NAME}>
+      CACHE INTERNAL "Gismo extensions to be included")
+  if ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" )
+  set(gismo_LINKER ${gismo_LINKER} Rpcrt4
+      CACHE INTERNAL "${PROJECT_NAME} extra linker objects")
+  endif()
+  gismo_add_builtin_module(${PROJECT_NAME})
 endif()
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}
