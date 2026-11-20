@@ -561,6 +561,10 @@ public:
                     if (dbg) std::cout << "[MAT] Smooth 5-patch O-grid.\n";
                     return true;
                 }
+                if (buildSmoothOffsetOGrid(dom, degree, outMp)) {
+                    if (dbg) std::cout << "[MAT] Smooth offset O-grid (P=" << outMp.nPatches() << ").\n";
+                    return true;
+                }
             }
         }
 

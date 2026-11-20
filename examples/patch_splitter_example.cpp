@@ -42,6 +42,7 @@
 #include <chrono>
 #include <fstream>
 #include <sstream>
+#include <dirent.h>
 
 using namespace gismo;
 
@@ -221,8 +222,12 @@ bool processDomainFile(
         gsPatchSplitter<real_t> splitter(dom);
         splitter.setStrategy(strategy);
         splitter.setDegree(3);
-        splitter.computeSplitting();
+        if (!splitter.computeSplitting()) {
+            std::cerr << "  [FAILED] gsPatchSplitter failed on " << filename << "\n";
+            return false;
+        }
         mp = splitter.getMultiPatch();
+        splitter.postProcessSplit(mp);
         rec.type = splitter.bestCandidate().methodUsed;
         if (rec.type.empty()) rec.type = stratStr;
     }
@@ -247,66 +252,112 @@ bool processDomainFile(
 
     real_t minDet = 1e30;
     for (size_t p = 0; p < mp.nPatches(); ++p) {
-        for (int j = 0; j <= 20; ++j) {
-            for (int i = 0; i <= 20; ++i) {
-                gsMatrix<real_t> u(2, 1);
-                u(0, 0) = i / 20.0;
-                u(1, 0) = j / 20.0;
-                gsMatrix<real_t> J = mp.patch(p).jacobian(u);
-                real_t detJ = J(0, 0) * J(1, 1) - J(1, 0) * J(0, 1);
-                if (detJ < minDet) minDet = detJ;
-            }
-        }
+        real_t pMin = internal_splitter::evalPatchMinDetDense(mp.patch(p), 49);
+        if (pMin < minDet) minDet = pMin;
     }
     rec.minDet = minDet;
     std::cout << "  Certified Min det(J): " << std::scientific << std::setprecision(4)
-              << minDet << (minDet >= 0 ? " >= 0 (CERTIFIED NON-DEGENERATE)" : " < 0 (INVERTED ELEMENT)") << "\n";
+              << minDet << (minDet > 0 ? " > 0 (CERTIFIED NON-DEGENERATE)" : " <= 0 (INVERTED ELEMENT)") << "\n";
 
-    // Export Split Domain (XML and ParaView with 50 sample resolution for smooth curves)
+    // Export Split Domain (XML + clean multi-part ParaView VTU/VTP with PatchID & JacobianDet)
     std::string splitXml = splitDir + "/" + filename + ".xml";
     std::string splitPvd = splitDir + "/" + filename;
     gsFileData<real_t> outFd;
     outFd << mp;
     outFd.save(splitXml);
-    gsWriteParaview(mp, splitPvd, 50, true);
+    gsPatchSplitter<real_t>::exportParaviewMultiPatch(mp, splitPvd);
     std::cout << "  Saved Split Domain: " << splitXml << " and " << splitPvd << ".pvd\n";
 
-    // Run AS-G1 Reparametrizer (Adaptive Global/Local fallback)
+    // Run AS-G1 Reparametrizer (Adaptive Global/Local fallback, keeping best valid Jacobian)
     std::cout << "  Running AS-G1 Local Fitter...\n";
     bool fitOk = false;
     gsMultiPatch<real_t> fitted;
-    for (int nInner : {2, 3, 4, 6}) {
-        auto mode = (mp.nPatches() <= 20 && nInner <= 4)
-            ? gsASG1LocalFitter<real_t>::FittingMode::Global
-            : gsASG1LocalFitter<real_t>::FittingMode::Local;
-        gsASG1LocalFitter<real_t> fitter(mp, 3, 1, nInner);
-        fitter.setMode(mode);
-        fitter.fit();
-        rec.maxAlpha = fitter.maxAlphaResidual();
-        rec.maxBeta  = fitter.maxBetaResidual();
-        if (fitter.checkASG1(1e-4)) {
-            fitted = fitter.result();
-            fitOk = true;
-            break;
+    real_t bestFMinDet = -1e30;
+    real_t bestAlpha = 1e30, bestBeta = 1e30;
+    for (int nInner : {2, 3, 4, 6, 8, 12}) {
+        std::vector<gsASG1LocalFitter<real_t>::FittingMode> modes;
+        if (mp.nPatches() <= 32 && nInner <= 4)
+            modes.push_back(gsASG1LocalFitter<real_t>::FittingMode::Global);
+        modes.push_back(gsASG1LocalFitter<real_t>::FittingMode::Local);
+
+        for (auto mode : modes) {
+            gsASG1LocalFitter<real_t> fitter(mp, 3, 1, nInner);
+            fitter.setMode(mode);
+            fitter.fit();
+            real_t curAlpha = fitter.maxAlphaResidual();
+            real_t curBeta  = fitter.maxBetaResidual();
+            if (fitter.checkASG1(1e-4)) {
+                gsMultiPatch<real_t> candFit = fitter.result();
+                real_t fMinDet = 1e30;
+                for (size_t p = 0; p < candFit.nPatches(); ++p) {
+                    fMinDet = std::min(fMinDet, internal_splitter::evalPatchMinDetDense(candFit.patch(p), 49));
+                }
+                if (fMinDet <= 1e-8) {
+                    internal_splitter::untangleASG1FreeInteriorCoefs(candFit, 1e-6);
+                    fMinDet = 1e30;
+                    for (size_t p = 0; p < candFit.nPatches(); ++p) {
+                        fMinDet = std::min(fMinDet, internal_splitter::evalPatchMinDetDense(candFit.patch(p), 49));
+                    }
+                }
+                if (fMinDet > bestFMinDet || fitted.nPatches() == 0) {
+                    bestFMinDet = fMinDet;
+                    bestAlpha = curAlpha;
+                    bestBeta  = curBeta;
+                    fitted = candFit;
+                }
+                if (fMinDet > 1e-8) {
+                    fitOk = true;
+                    break;
+                }
+            } else if (nInner == 12 && fitted.nPatches() == 0) {
+                bestAlpha = curAlpha;
+                bestBeta  = curBeta;
+                fitted = fitter.result();
+            }
         }
-        if (nInner == 6) fitted = fitter.result();
+        if (fitOk) break;
     }
+    rec.maxAlpha = bestAlpha;
+    rec.maxBeta  = bestBeta;
     rec.asg1_success = fitOk;
+    if (fitted.nPatches() > 0) {
+        real_t fMinDet = 1e30;
+        for (size_t p = 0; p < fitted.nPatches(); ++p) {
+            fMinDet = std::min(fMinDet, internal_splitter::evalPatchMinDetDense(fitted.patch(p), 49));
+        }
+        std::cout << "  AS-G1 Fitted Min det(J): " << std::scientific << std::setprecision(4) << fMinDet << "\n";
+    }
 
     std::cout << "  AS-G1 Gluing Residuals: Alpha = " << std::scientific << rec.maxAlpha
               << ", Beta = " << rec.maxBeta << " -> "
               << (rec.asg1_success ? "SUCCESS (Residual <= 1e-4)" : "TOLERANCE WARNING") << "\n";
 
-    // Export Reparametrized Domain (XML and ParaView with 50 sample resolution)
+    // Export Reparametrized Domain (XML + clean multi-part ParaView VTU/VTP + standalone knots VTP)
     std::string asg1Xml = asg1Dir + "/" + filename + "_asg1.xml";
     std::string asg1Pvd = asg1Dir + "/" + filename + "_asg1";
     gsFileData<real_t> outAsg1;
     outAsg1 << fitted;
     outAsg1.save(asg1Xml);
-    gsWriteParaview(fitted, asg1Pvd, 50, true);
+    gsPatchSplitter<real_t>::exportParaviewMultiPatch(fitted, asg1Pvd, 0, true);
     std::cout << "  Saved AS-G1 Geometry: " << asg1Xml << " and " << asg1Pvd << ".pvd\n";
 
     return true;
+}
+
+inline std::vector<std::string> collectXmlFilesInDir(const std::string& dirPath)
+{
+    std::vector<std::string> files;
+    DIR* dir = opendir(dirPath.c_str());
+    if (!dir) return files;
+    struct dirent* ent;
+    while ((ent = readdir(dir)) != nullptr) {
+        std::string name(ent->d_name);
+        if (name.size() > 4 && name.compare(name.size() - 4, 4, ".xml") == 0)
+            files.push_back(name);
+    }
+    closedir(dir);
+    std::sort(files.begin(), files.end());
+    return files;
 }
 
 int runBatchSuite(const std::string& inDir,
@@ -317,36 +368,42 @@ int runBatchSuite(const std::string& inDir,
     std::string splitDir = outBase + "/split_domains";
     std::string asg1Dir = outBase + "/asg1_reparametrized";
 
+    gsFileManager::mkdir(outBase);
     gsFileManager::mkdir(splitDir);
     gsFileManager::mkdir(asg1Dir);
 
-    std::vector<std::string> targetFiles = {
-        "bean_0corner_1hole.xml",
-        "bulged_quad_non_bilinear.xml",
-        "comb_16corner_4holes.xml",
-        "comb_16corner_4holes_curved.xml",
-        "crescent_2corner.xml",
-        "crescent_2corner_3holes.xml",
-        "cross_12corner_5holes_star.xml",
-        "curved_2patch.xml",
-        "curved_lshape_3patch.xml",
-        "curved_lshape_6corner_1hole.xml",
-        "curved_lshape_6corner_3holes.xml",
-        "curved_lshape_non_bilinear.xml",
-        "curved_ring_4patch.xml",
-        "heart_1corner_nonconvex.xml",
-        "plate_4corner_8holes_weird.xml",
-        "quad_4corner_2holes.xml",
-        "star_5corner_1hole.xml",
-        "starburst_12corner_3holes.xml",
-        "swiss_cross_12corner_5holes.xml",
-        "uchannel_8corner_2holes.xml",
-        "uchannel_8corner_4holes.xml",
-        "wavy_ring_annulus.xml"
-    };
+    std::vector<std::string> targetFiles;
+    if (inDir == "filedata/domain2d/generated_domains") {
+        targetFiles = {
+            "bean_0corner_1hole.xml",
+            "bulged_quad_non_bilinear.xml",
+            "comb_16corner_4holes.xml",
+            "comb_16corner_4holes_curved.xml",
+            "crescent_2corner.xml",
+            "crescent_2corner_3holes.xml",
+            "cross_12corner_5holes_star.xml",
+            "curved_2patch.xml",
+            "curved_lshape_3patch.xml",
+            "curved_lshape_6corner_1hole.xml",
+            "curved_lshape_6corner_3holes.xml",
+            "curved_lshape_non_bilinear.xml",
+            "curved_ring_4patch.xml",
+            "heart_1corner_nonconvex.xml",
+            "plate_4corner_8holes_weird.xml",
+            "quad_4corner_2holes.xml",
+            "star_5corner_1hole.xml",
+            "starburst_12corner_3holes.xml",
+            "swiss_cross_12corner_5holes.xml",
+            "uchannel_8corner_2holes.xml",
+            "uchannel_8corner_4holes.xml",
+            "wavy_ring_annulus.xml"
+        };
+    } else {
+        targetFiles = collectXmlFilesInDir(inDir);
+    }
 
     std::cout << "======================================================================\n";
-    std::cout << "  QUADRILATERAL DOMAIN DECOMPOSITION & AS-G1 PIPELINE (22 GEOMETRIES) \n";
+    std::cout << "  QUADRILATERAL DOMAIN DECOMPOSITION & AS-G1 PIPELINE (" << targetFiles.size() << " GEOMETRIES)\n";
     std::cout << "  Input Directory:  " << inDir << "\n";
     std::cout << "  Layout Strategy:  " << stratStr << "\n";
     std::cout << "  Output Split:     " << splitDir << "\n";
@@ -604,30 +661,35 @@ int main(int argc, char* argv[])
         std::vector<ComparisonRecord> records;
         if (runBatch || !batchDir.empty()) {
             if (batchDir.empty()) batchDir = "filedata/domain2d/generated_domains";
-            std::vector<std::string> targetFiles = {
-                "bean_0corner_1hole.xml",
-                "bulged_quad_non_bilinear.xml",
-                "comb_16corner_4holes.xml",
-                "comb_16corner_4holes_curved.xml",
-                "crescent_2corner.xml",
-                "crescent_2corner_3holes.xml",
-                "cross_12corner_5holes_star.xml",
-                "curved_2patch.xml",
-                "curved_lshape_3patch.xml",
-                "curved_lshape_6corner_1hole.xml",
-                "curved_lshape_6corner_3holes.xml",
-                "curved_lshape_non_bilinear.xml",
-                "curved_ring_4patch.xml",
-                "heart_1corner_nonconvex.xml",
-                "plate_4corner_8holes_weird.xml",
-                "quad_4corner_2holes.xml",
-                "star_5corner_1hole.xml",
-                "starburst_12corner_3holes.xml",
-                "swiss_cross_12corner_5holes.xml",
-                "uchannel_8corner_2holes.xml",
-                "uchannel_8corner_4holes.xml",
-                "wavy_ring_annulus.xml"
-            };
+            std::vector<std::string> targetFiles;
+            if (batchDir == "filedata/domain2d/generated_domains") {
+                targetFiles = {
+                    "bean_0corner_1hole.xml",
+                    "bulged_quad_non_bilinear.xml",
+                    "comb_16corner_4holes.xml",
+                    "comb_16corner_4holes_curved.xml",
+                    "crescent_2corner.xml",
+                    "crescent_2corner_3holes.xml",
+                    "cross_12corner_5holes_star.xml",
+                    "curved_2patch.xml",
+                    "curved_lshape_3patch.xml",
+                    "curved_lshape_6corner_1hole.xml",
+                    "curved_lshape_6corner_3holes.xml",
+                    "curved_lshape_non_bilinear.xml",
+                    "curved_ring_4patch.xml",
+                    "heart_1corner_nonconvex.xml",
+                    "plate_4corner_8holes_weird.xml",
+                    "quad_4corner_2holes.xml",
+                    "star_5corner_1hole.xml",
+                    "starburst_12corner_3holes.xml",
+                    "swiss_cross_12corner_5holes.xml",
+                    "uchannel_8corner_2holes.xml",
+                    "uchannel_8corner_4holes.xml",
+                    "wavy_ring_annulus.xml"
+                };
+            } else {
+                targetFiles = collectXmlFilesInDir(batchDir);
+            }
             for (const auto& f : targetFiles) {
                 std::string fullpath = batchDir + "/" + f;
                 try {

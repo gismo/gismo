@@ -126,6 +126,13 @@ public:
     void configureAsG1Generator(gsAsG1GeometryGenerator<T>& generator) const;
 
     void exportParaview(const std::string& filename_prefix, unsigned npts = 900) const;
+    static void exportParaviewMultiPatch(const gsMultiPatch<T>& mp,
+                                         const std::string& filename_prefix,
+                                         unsigned samplesPerEdge = 0,
+                                         bool exportKnots = false);
+
+    // Optional post-processing for Stage-1 split meshes (strip reduction + Winslow barrier smoothing)
+    bool postProcessSplit(gsMultiPatch<T>& mp);
 
     // Additional Accessors
     const SplittingCandidate& bestCandidate() const { return m_bestCandidate; }

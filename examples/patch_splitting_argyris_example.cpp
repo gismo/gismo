@@ -556,7 +556,7 @@ int main(int argc, char* argv[])
                     outFd << res;
                     outFd.save(pvdPrefix);
                 }
-                gsWriteParaview(res, pvdPrefix, 200, true);
+                gsPatchSplitter<T>::exportParaviewMultiPatch(res, pvdPrefix);
             };
 
             if (fd.has<gsPlanarDomain<T>>()) {

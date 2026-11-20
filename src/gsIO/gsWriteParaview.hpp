@@ -678,6 +678,7 @@ void gsWriteParaview(const gsField<T> & field,
     const unsigned n = field.nPieces();
     gsParaviewCollection collection(fn);
     std::string fileName, fileName_nopath;
+    index_t partIdx = 0;
 
     for ( unsigned i=0; i < n; ++i )
     {
@@ -687,14 +688,14 @@ void gsWriteParaview(const gsField<T> & field,
         fileName = fn + pDelim + util::to_string(i);
         fileName_nopath = gsFileManager::getFilename(fileName);
         writeSinglePatchField( field, i, fileName, npts );
-        collection.addPart(fileName_nopath + ".vts");
+        collection.addPart(fileName_nopath + ".vts", -1, "Patch_" + util::to_string(i), partIdx++);
         if ( mesh )
         {
             fileName+= "_mesh";
             fileName_nopath = gsFileManager::getFilename(fileName);
             writeSingleCompMesh(dom, field.patch(i), fileName);
 
-            collection.addPart(fileName_nopath + ".vtp");
+            collection.addPart(fileName_nopath + ".vtp", -1, "Mesh_" + util::to_string(i), partIdx++);
         }
 
     }
@@ -944,6 +945,7 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
 
     gsParaviewCollection collection(fn);
     std::string fnBase, fnBase_nopath;
+    index_t partIdx = 0;
 
     for ( size_t i=0; i<n ; i++)
     {
@@ -953,12 +955,12 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
         if ( Geo.at(i)->domainDim() == 1 )
         {
             writeSingleCurve(*Geo[i], fnBase, npts);
-            collection.addPart(fnBase_nopath + ".vtp");
+            collection.addPart(fnBase_nopath + ".vtp", -1, "Curve_" + util::to_string(i), partIdx++);
         }
         else
         {
             writeSingleGeometry( *Geo[i], fnBase, npts ) ;
-            collection.addPart(fnBase_nopath + ".vts");
+            collection.addPart(fnBase_nopath + ".vts", -1, "Patch_" + util::to_string(i), partIdx++);
         }
 
         if ( mesh )
@@ -966,7 +968,7 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
             const std::string fileName = fnBase + "_mesh";
             const std::string fileName_nopath = gsFileManager::getFilename(fileName);
             writeSingleCompMesh(Geo[i]->basis(), *Geo[i], fileName);
-            collection.addPart(fileName_nopath + ".vtp");
+            collection.addPart(fileName_nopath + ".vtp", -1, "Mesh_" + util::to_string(i), partIdx++);
         }
 
         if ( ctrlNet ) // Output the control net
@@ -974,7 +976,7 @@ void gsWriteParaview( std::vector<gsGeometry<T> *> const & Geo,
             const std::string fileName = fnBase + "_cnet";
             const std::string fileName_nopath = gsFileManager::getFilename(fileName);
             writeSingleControlNet(*Geo[i], fileName);
-            collection.addPart(fileName_nopath + ".vtp");
+            collection.addPart(fileName_nopath + ".vtp", -1, "ControlNet_" + util::to_string(i), partIdx++);
         }
     }
     collection.save();

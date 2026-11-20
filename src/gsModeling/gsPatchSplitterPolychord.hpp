@@ -162,21 +162,21 @@ inline void splitTensorPatchGrid(
 {
     auto addNormalized = [&](const gsTensorBSpline<2, T>& bsp) {
         auto copy = new gsTensorBSpline<2, T>(bsp);
-        copy->knots(0).affineTransformTo(T(0), T(1));
-        copy->knots(1).affineTransformTo(T(0), T(1));
+        internal_splitter::safeNormalizeKnotVector01(copy->knots(0));
+        internal_splitter::safeNormalizeKnotVector01(copy->knots(1));
         outMp.addPatch(typename gsGeometry<T>::uPtr(copy));
     };
     auto addNormalizedNurbs = [&](const gsTensorNurbs<2, T>& nrb) {
         auto copy = new gsTensorNurbs<2, T>(nrb);
-        copy->knots(0).affineTransformTo(T(0), T(1));
-        copy->knots(1).affineTransformTo(T(0), T(1));
+        internal_splitter::safeNormalizeKnotVector01(copy->knots(0));
+        internal_splitter::safeNormalizeKnotVector01(copy->knots(1));
         outMp.addPatch(typename gsGeometry<T>::uPtr(copy));
     };
 
     if (const auto* tb = dynamic_cast<const gsTensorBSpline<2, T>*>(&geom)) {
         gsTensorBSpline<2, T> base(*tb);
-        base.knots(0).affineTransformTo(T(0), T(1));
-        base.knots(1).affineTransformTo(T(0), T(1));
+        internal_splitter::safeNormalizeKnotVector01(base.knots(0));
+        internal_splitter::safeNormalizeKnotVector01(base.knots(1));
 
         std::vector<gsTensorBSpline<2, T>> uStrips;
         gsTensorBSpline<2, T> remU = base;
@@ -211,8 +211,8 @@ inline void splitTensorPatchGrid(
 
     if (const auto* tn = dynamic_cast<const gsTensorNurbs<2, T>*>(&geom)) {
         gsTensorNurbs<2, T> base(*tn);
-        base.knots(0).affineTransformTo(T(0), T(1));
-        base.knots(1).affineTransformTo(T(0), T(1));
+        internal_splitter::safeNormalizeKnotVector01(base.knots(0));
+        internal_splitter::safeNormalizeKnotVector01(base.knots(1));
 
         std::vector<gsTensorNurbs<2, T>> uStrips;
         gsTensorNurbs<2, T> remU = base;
@@ -397,10 +397,256 @@ bool gsPatchSplitter<T>::reducePolychordStrips(gsMultiPatch<T>& mp)
         curMinA = std::min(curMinA, mnA);
         curMaxA = std::max(curMaxA, mxA);
     }
-    const T effMinAng = std::min(minAngTol, std::max(T(8), curMinA - T(0.5)));
+    const T effMinAng = std::min(minAngTol, std::max(T(4), curMinA - T(0.5)));
     const T effMaxAng = std::max(maxAngTol, std::min(T(164.2), curMaxA + T(0.2)));
 
     bool anyCollapsed = false;
+
+    // Local 6 -> 4 merger for adjacent 1-to-3 split triangle pockets:
+    // Two interior valence-3 vertices sharing an interior valence-4 midpoint form a 6-quad
+    // pocket whose 8 outer half-edges bound a quadrilateral. Replacing it with 4 conforming
+    // quads eliminates 2 patches AND both valence-3 EVs, unlocking downstream sheet reduction.
+    auto mergeAdjacentTriSplitPockets = [&]() -> bool {
+        bool mergedAny = false;
+        for (int pass = 0; pass < 24 && mp.nPatches() > 6; ++pass) {
+            mp.computeTopology(T(1e-4), false, false);
+            const int nP = static_cast<int>(mp.nPatches());
+            std::vector<gsPoint2D<T>> verts;
+            std::vector<std::array<int, 4>> pVerts(nP);
+            auto getVid = [&](const gsPoint2D<T>& pt) -> int {
+                for (size_t i = 0; i < verts.size(); ++i)
+                    if (verts[i].dist(pt) < T(1e-4)) return static_cast<int>(i);
+                verts.push_back(pt);
+                return static_cast<int>(verts.size()) - 1;
+            };
+            const T uvC[4][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+            gsMatrix<T> par(2, 1), val;
+            for (int p = 0; p < nP; ++p) {
+                const gsMatrix<T> supp = mp.patch(p).support();
+                for (int k = 0; k < 4; ++k) {
+                    par(0, 0) = supp(0, 0) + uvC[k][0] * (supp(0, 1) - supp(0, 0));
+                    par(1, 0) = supp(1, 0) + uvC[k][1] * (supp(1, 1) - supp(1, 0));
+                    mp.patch(p).eval_into(par, val);
+                    pVerts[p][k] = getVid(gsPoint2D<T>(val(0, 0), val(1, 0)));
+                }
+            }
+            const int nV = static_cast<int>(verts.size());
+            std::vector<std::vector<int>> vPatches(nV);
+            std::vector<bool> vIsBnd(nV, false);
+            std::map<std::pair<int, int>, int> edgeUse;
+            for (int p = 0; p < nP; ++p) {
+                for (int k = 0; k < 4; ++k) {
+                    vPatches[pVerts[p][k]].push_back(p);
+                    int a = pVerts[p][k], b = pVerts[p][(k + 1) % 4];
+                    edgeUse[{std::min(a, b), std::max(a, b)}]++;
+                }
+            }
+            for (const auto& kv : edgeUse) {
+                if (kv.second == 1) {
+                    vIsBnd[kv.first.first] = true;
+                    vIsBnd[kv.first.second] = true;
+                }
+            }
+
+            // Collect interior valence-3 vertices
+            std::vector<int> v3List;
+            for (int v = 0; v < nV; ++v)
+                if (!vIsBnd[v] && vPatches[v].size() == 3)
+                    v3List.push_back(v);
+            if (v3List.size() < 2) break;
+
+            // Find an edge-midpoint interior valence-4 vertex m adjacent to two v3 vertices
+            bool didMerge = false;
+            for (size_t i = 0; i < v3List.size() && !didMerge; ++i) {
+                int vA = v3List[i];
+                for (size_t j = i + 1; j < v3List.size() && !didMerge; ++j) {
+                    int vB = v3List[j];
+                    // Ensure the 3 patches around vA and 3 patches around vB are 6 distinct patches
+                    std::set<int> pSet(vPatches[vA].begin(), vPatches[vA].end());
+                    for (int p : vPatches[vB]) pSet.insert(p);
+                    if (pSet.size() != 6) continue;
+
+                    // Count shared vertices between the two 3-patch clusters
+                    std::set<int> vertsA, vertsB;
+                    for (int p : vPatches[vA]) for (int k = 0; k < 4; ++k) vertsA.insert(pVerts[p][k]);
+                    for (int p : vPatches[vB]) for (int k = 0; k < 4; ++k) vertsB.insert(pVerts[p][k]);
+                    std::vector<int> sharedV;
+                    for (int v : vertsA) if (vertsB.count(v)) sharedV.push_back(v);
+                    if (sharedV.size() != 3) continue; // Expect (A, m, B)
+
+                    // Identify the interior shared midpoint m (adjacent to both vA and vB)
+                    int vM = -1;
+                    for (int v : sharedV) {
+                        if (!vIsBnd[v] && vPatches[v].size() == 4) {
+                            std::set<int> vp(vPatches[v].begin(), vPatches[v].end());
+                            int inSix = 0;
+                            for (int p : vp) if (pSet.count(p)) ++inSix;
+                            if (inSix == 4) { vM = v; break; }
+                        }
+                    }
+                    if (vM < 0) continue;
+
+                    // Extract the directed boundary cycle of the 6-patch union (8 half-edges, CCW)
+                    struct DirEdge { int u, v; CurveSeg<T> seg; };
+                    std::map<std::pair<int, int>, int> localCnt;
+                    std::vector<DirEdge> allEdges;
+                    const boxSide sideOrder[4] = {boundary::south, boundary::east, boundary::north, boundary::west};
+                    const int sideCorners[4][2] = {{0, 1}, {1, 2}, {2, 3}, {3, 0}};
+                    for (int p : pSet) {
+                        const auto* tb = dynamic_cast<const gsTensorBSpline<2, T>*>(&mp.patch(p));
+                        if (!tb) { allEdges.clear(); break; }
+                        // Verify CCW corner order on patch p
+                        T area2 = cross2(verts[pVerts[p][0]], verts[pVerts[p][1]], verts[pVerts[p][2]])
+                                + cross2(verts[pVerts[p][0]], verts[pVerts[p][2]], verts[pVerts[p][3]]);
+                        bool flipOri = (area2 < T(0));
+                        for (int s = 0; s < 4; ++s) {
+                            int ca = pVerts[p][sideCorners[s][0]];
+                            int cb = pVerts[p][sideCorners[s][1]];
+                            localCnt[{std::min(ca, cb), std::max(ca, cb)}]++;
+                            typename gsGeometry<T>::uPtr b = tb->boundary(sideOrder[s]);
+                            auto* bsp = dynamic_cast<gsBSpline<T>*>(b.get());
+                            if (!bsp) continue;
+                            CurveSeg<T> seg(*bsp);
+                            if (seg.p0().dist(verts[ca]) > seg.p1().dist(verts[ca])) seg = seg.reversed();
+                            if (flipOri) {
+                                allEdges.push_back({cb, ca, seg.reversed()});
+                            } else {
+                                allEdges.push_back({ca, cb, seg});
+                            }
+                        }
+                    }
+                    if (allEdges.empty()) continue;
+
+                    std::vector<DirEdge> bndEdges;
+                    for (const auto& de : allEdges) {
+                        if (localCnt[{std::min(de.u, de.v), std::max(de.u, de.v)}] == 1)
+                            bndEdges.push_back(de);
+                    }
+                    if (bndEdges.size() != 8) continue;
+
+                    // Chain the 8 boundary edges into an ordered CCW cycle
+                    std::vector<DirEdge> cycle;
+                    std::vector<bool> usedE(8, false);
+                    // Start at one of the two shared corner vertices (in sharedV \ {vM})
+                    int startV = -1;
+                    for (int v : sharedV) if (v != vM) { startV = v; break; }
+                    int curV = startV;
+                    for (int step = 0; step < 8; ++step) {
+                        int nxt = -1;
+                        for (int e = 0; e < 8; ++e) {
+                            if (!usedE[e] && bndEdges[e].u == curV) { nxt = e; break; }
+                        }
+                        if (nxt < 0) break;
+                        usedE[nxt] = true;
+                        cycle.push_back(bndEdges[nxt]);
+                        curV = bndEdges[nxt].v;
+                    }
+                    if (cycle.size() != 8 || curV != startV) continue;
+
+                    // Outer quad corners are cycle[0].u, cycle[2].u, cycle[4].u, cycle[6].u
+                    // Outer midpoints are cycle[1].u, cycle[3].u, cycle[5].u, cycle[7].u
+                    gsPoint2D<T> C[4], M[4];
+                    for (int k = 0; k < 4; ++k) {
+                        C[k] = verts[cycle[2 * k].u];
+                        M[k] = verts[cycle[2 * k + 1].u];
+                    }
+                    if (!isStrictlyConvexQuad(C)) continue;
+
+                    // Pick optimal center O inside (C0, C1, C2, C3)
+                    gsPoint2D<T> O_best = verts[vM];
+                    T bestEff = -T(1);
+                    bool foundO = false;
+                    gsPoint2D<T> oCands[5] = {
+                        verts[vM],
+                        gsPoint2D<T>(T(0.5) * (verts[vA].x + verts[vB].x), T(0.5) * (verts[vA].y + verts[vB].y)),
+                        gsPoint2D<T>(T(0.25) * (M[0].x + M[1].x + M[2].x + M[3].x), T(0.25) * (M[0].y + M[1].y + M[2].y + M[3].y)),
+                        gsPoint2D<T>(T(0.25) * (C[0].x + C[1].x + C[2].x + C[3].x), T(0.25) * (C[0].y + C[1].y + C[2].y + C[3].y)),
+                        gsPoint2D<T>(T(0.5) * (verts[vM].x + T(0.25) * (C[0].x + C[1].x + C[2].x + C[3].x)),
+                                     T(0.5) * (verts[vM].y + T(0.25) * (C[0].y + C[1].y + C[2].y + C[3].y)))
+                    };
+                    for (int ci = 0; ci < 5; ++ci) {
+                        const auto& Oc = oCands[ci];
+                        gsPoint2D<T> sq[4][4] = {
+                            {C[0], M[0], Oc, M[3]},
+                            {C[1], M[1], Oc, M[0]},
+                            {C[2], M[2], Oc, M[1]},
+                            {C[3], M[3], Oc, M[2]}
+                        };
+                        if (!isStrictlyConvexQuad(sq[0]) || !isStrictlyConvexQuad(sq[1]) ||
+                            !isStrictlyConvexQuad(sq[2]) || !isStrictlyConvexQuad(sq[3]))
+                            continue;
+                        CurveSeg<T> sp[4];
+                        for (int k = 0; k < 4; ++k) sp[k] = makeStraightSeg(Oc, M[k], m_degree);
+                        T mnAll = T(360), mxAll = T(0);
+                        for (int k = 0; k < 4; ++k) {
+                            T mnA, mxA, efA;
+                            eval4SegCornerAnglesDeg(cycle[2 * k].seg, sp[k].reversed(), sp[(k + 3) % 4], cycle[(2 * k + 7) % 8].seg, mnA, mxA, efA);
+                            mnAll = std::min(mnAll, mnA);
+                            mxAll = std::max(mxAll, mxA);
+                        }
+                        if (mnAll < effMinAng || mxAll > effMaxAng) continue;
+                        T ef = std::min(mnAll, T(180) - mxAll);
+                        if (!foundO || ef > bestEff) {
+                            bestEff = ef;
+                            O_best = Oc;
+                            foundO = true;
+                        }
+                    }
+                    if (!foundO) continue;
+
+                    CurveSeg<T> sp[4];
+                    for (int k = 0; k < 4; ++k) sp[k] = makeStraightSeg(O_best, M[k], m_degree);
+                    std::vector<gsTensorBSpline<2, T>*> newQuads;
+                    bool qOk = true;
+                    for (int k = 0; k < 4; ++k) {
+                        auto* qp = makeCoonsFromCCWCycle(
+                            cycle[2 * k].seg, sp[k].reversed(), sp[(k + 3) % 4], cycle[(2 * k + 7) % 8].seg, m_degree);
+                        if (!qp) { qOk = false; break; }
+                        T angs[4], mnA = 0, mxA = 180; bool degen = false;
+                        evalPatchCornerAnglesDeg(*qp, angs, mnA, mxA, degen);
+                        if (degen || mnA < effMinAng || mxA > effMaxAng) { delete qp; qOk = false; break; }
+                        if (!isPatchDetSingleSign(*qp, 15, T(1e-7))) {
+                            if (!internal_splitter::quickHarmonicPatchRepair(*qp, T(1e-7))) {
+                                delete qp; qOk = false; break;
+                            }
+                        }
+                        newQuads.push_back(qp);
+                    }
+                    if (!qOk || newQuads.size() != 4) {
+                        for (auto* qp : newQuads) delete qp;
+                        continue;
+                    }
+
+                    gsMultiPatch<T> candMp;
+                    for (int p = 0; p < nP; ++p)
+                        if (!pSet.count(p)) candMp.addPatch(mp.patch(p).clone());
+                    for (auto* qp : newQuads)
+                        candMp.addPatch(typename gsGeometry<T>::uPtr(qp));
+                    gsASG1LocalFitter<T>::unifyPatchOrientations(candMp);
+                    candMp.computeTopology(T(1e-4), false, false);
+                    if (2 * candMp.nInterfaces() + candMp.nBoundary() != 4 * candMp.nPatches()) continue;
+                    if (m_hasDomain && !validateMultiPatch(m_domain, candMp, T(1e-4), nullptr, effMinAng, effMaxAng))
+                        continue;
+                    bool denseOk = true;
+                    for (size_t p = static_cast<size_t>(nP) - 6; p < candMp.nPatches(); ++p) {
+                        if (internal_splitter::evalPatchMinDetDense(candMp.patch(p), 49) <= T(1e-8)) {
+                            denseOk = false; break;
+                        }
+                    }
+                    if (!denseOk) continue;
+
+                    mp = give(candMp);
+                    mergedAny = true;
+                    didMerge = true;
+                }
+            }
+            if (!didMerge) break;
+        }
+        return mergedAny;
+    };
+
+    if (mergeAdjacentTriSplitPockets())
+        anyCollapsed = true;
 
     auto sidePoint = [&](size_t p, int sIdx, T t) -> gsPoint2D<T> {
         const gsMatrix<T> supp = mp.patch(p).support();
@@ -425,17 +671,17 @@ bool gsPatchSplitter<T>::reducePolychordStrips(gsMultiPatch<T>& mp)
     };
 
     auto orientLeft = [](gsTensorBSpline<2, T>& tb, int sideIdx) {
-        tb.knots(0).affineTransformTo(T(0), T(1));
-        tb.knots(1).affineTransformTo(T(0), T(1));
-        if (sideIdx == 1)      tb.reverse(0);
+        internal_splitter::safeNormalizeKnotVector01(tb.knots(0));
+        internal_splitter::safeNormalizeKnotVector01(tb.knots(1));
+        if (sideIdx == 1)      internal_splitter::safeReverseTensorBSpline(tb, 0);
         else if (sideIdx == 2) tb.swapDirections(0, 1);
-        else if (sideIdx == 3) { tb.swapDirections(0, 1); tb.reverse(0); }
+        else if (sideIdx == 3) { tb.swapDirections(0, 1); internal_splitter::safeReverseTensorBSpline(tb, 0); }
     };
     auto orientRight = [](gsTensorBSpline<2, T>& tb, int sideIdx) {
-        tb.knots(0).affineTransformTo(T(0), T(1));
-        tb.knots(1).affineTransformTo(T(0), T(1));
-        if (sideIdx == 0)      tb.reverse(0);
-        else if (sideIdx == 2) { tb.swapDirections(0, 1); tb.reverse(0); }
+        internal_splitter::safeNormalizeKnotVector01(tb.knots(0));
+        internal_splitter::safeNormalizeKnotVector01(tb.knots(1));
+        if (sideIdx == 0)      internal_splitter::safeReverseTensorBSpline(tb, 0);
+        else if (sideIdx == 2) { tb.swapDirections(0, 1); internal_splitter::safeReverseTensorBSpline(tb, 0); }
         else if (sideIdx == 3) tb.swapDirections(0, 1);
     };
 
@@ -450,33 +696,8 @@ bool gsPatchSplitter<T>::reducePolychordStrips(gsMultiPatch<T>& mp)
 
     auto joinCurveSegsExact = [&](const CurveSeg<T>& c0, const CurveSeg<T>& c1) -> CurveSeg<T> {
         if (!c0.bsp || !c1.bsp) return c0.bsp ? c0 : c1;
-        gsBSpline<T> b0(*c0.bsp), b1(*c1.bsp);
-        short_t d = std::max(b0.degree(), b1.degree());
-        if (b0.degree() < d) b0.degreeElevate(d - b0.degree());
-        if (b1.degree() < d) b1.degreeElevate(d - b1.degree());
-        b0.knots().affineTransformTo(T(0), T(0.5));
-        b1.knots().affineTransformTo(T(0.5), T(1));
-
-        const int n0 = b0.coefs().rows();
-        const int n1 = b1.coefs().rows();
-        std::vector<T> kts;
-        kts.reserve(static_cast<size_t>(n0 + n1 + d));
-        const auto& k0 = b0.knots();
-        const auto& k1 = b1.knots();
-        for (int i = 0; i < static_cast<int>(k0.size()) - (d + 1); ++i)
-            kts.push_back(k0[i]);
-        for (int r = 0; r < d; ++r)
-            kts.push_back(T(0.5));
-        for (int i = d + 1; i < static_cast<int>(k1.size()); ++i)
-            kts.push_back(k1[i]);
-
-        gsMatrix<T> cfs(n0 + n1 - 1, 2);
-        cfs.topRows(n0) = b0.coefs();
-        cfs.bottomRows(n1 - 1) = b1.coefs().bottomRows(n1 - 1);
-        cfs.row(n0 - 1) = T(0.5) * (b0.coefs().bottomRows(1) + b1.coefs().topRows(1));
-
-        gsKnotVector<T> kv(kts, static_cast<short_t>(d));
-        return CurveSeg<T>(gsBSpline<T>(kv, cfs));
+        auto joined = internal_splitter::joinCurveSegsExact(std::vector<CurveSeg<T>>{c0, c1}, m_degree);
+        return joined ? CurveSeg<T>(*joined) : c0;
     };
 
     for (int outerPass = 0; outerPass < 32 && mp.nPatches() > 2; ++outerPass) {
@@ -633,7 +854,7 @@ bool gsPatchSplitter<T>::reducePolychordStrips(gsMultiPatch<T>& mp)
                 B.eval_into(pB0, vB0);
                 B.eval_into(pB1, vB1);
                 if ((vA0 - vB1).norm() < (vA0 - vB0).norm())
-                    B.reverse(1);
+                    internal_splitter::safeReverseTensorBSpline(B, 1);
 
                 CurveSeg<T> cS = joinCurveSegsExact(extractSideSeg(A, boundary::south), extractSideSeg(B, boundary::south));
                 CurveSeg<T> cE = extractSideSeg(B, boundary::east);
@@ -646,34 +867,44 @@ bool gsPatchSplitter<T>::reducePolychordStrips(gsMultiPatch<T>& mp)
             }
             if (!buildOk || candMp.nPatches() >= mp.nPatches()) continue;
 
-            // Quick local angle + Jacobian filter on merged patches before full validation
-            gsASG1LocalFitter<T>::unifyPatchOrientations(candMp);
-            optimizeWinslowBarrier(candMp);
-            candMp.computeTopology(T(1e-4), false, false);
-            if (2 * candMp.nInterfaces() + candMp.nBoundary() != 4 * candMp.nPatches()) continue;
-
-            bool localOk = true;
+            // Quick local angle + Jacobian filter on merged patches only before full validation
             const size_t nOrigKept = static_cast<size_t>(nP) - 2 * pairs.size();
+            bool localOk = true;
             for (size_t p = nOrigKept; p < candMp.nPatches(); ++p) {
                 T angs[4], mnA = 0, mxA = 180; bool degen = false;
                 evalPatchCornerAnglesDeg(candMp.patch(p), angs, mnA, mxA, degen);
-                if (degen || mnA < minAngTol || mxA > maxAngTol) { localOk = false; break; }
+                if (degen || mnA < effMinAng || mxA > effMaxAng) { localOk = false; break; }
                 T md = 0, mxd = 0, ma = 0, en = 0;
-                evalPatchJacobianAndWinslow(candMp.patch(p), 13, md, mxd, ma, en);
-                if (md <= T(1e-8) && mxd >= -T(1e-8)) { localOk = false; break; }
+                evalPatchJacobianAndWinslow(candMp.patch(p), 15, md, mxd, ma, en);
+                if (mxd < -T(1e-8)) {
+                    if (auto* tb = dynamic_cast<gsTensorBSpline<2, T>*>(&candMp.patch(p))) {
+                        internal_splitter::safeReverseTensorBSpline(*tb, 0);
+                        evalPatchJacobianAndWinslow(*tb, 15, md, mxd, ma, en);
+                    }
+                }
+                if (md <= T(1e-8)) {
+                    auto* tb = dynamic_cast<gsTensorBSpline<2, T>*>(&candMp.patch(p));
+                    if (!tb || !internal_splitter::quickHarmonicPatchRepair(*tb, T(1e-7))) {
+                        localOk = false;
+                        break;
+                    }
+                }
             }
             if (!localOk) continue;
 
-            if (m_hasDomain && !validateMultiPatch(m_domain, candMp, T(1e-4), nullptr, effMinAng, effMaxAng)) {
-                if (candMp.nPatches() <= 300) {
-                    optimizeWinslowBarrier(candMp);
-                    candMp.computeTopology(T(1e-4), false, false);
-                    if (!validateMultiPatch(m_domain, candMp, T(1e-4), nullptr, effMinAng, effMaxAng))
-                        continue;
-                } else {
-                    continue;
+            gsASG1LocalFitter<T>::unifyPatchOrientations(candMp);
+            candMp.computeTopology(T(1e-4), false, false);
+            if (2 * candMp.nInterfaces() + candMp.nBoundary() != 4 * candMp.nPatches()) continue;
+
+            if (m_hasDomain && !validateMultiPatch(m_domain, candMp, T(1e-4), nullptr, effMinAng, effMaxAng))
+                continue;
+            bool denseOk = true;
+            for (size_t p = nOrigKept; p < candMp.nPatches(); ++p) {
+                if (internal_splitter::evalPatchMinDetDense(candMp.patch(p), 49) <= T(1e-8)) {
+                    denseOk = false; break;
                 }
             }
+            if (!denseOk) continue;
 
             mp = give(candMp);
             anyCollapsed = true;
@@ -699,8 +930,8 @@ bool gsPatchSplitter<T>::harmonizeMultiPatchKnots(gsMultiPatch<T>& mp) const
     // Ensure [0,1]^2 parameter domain on all B-spline patches
     for (size_t p = 0; p < mp.nPatches(); ++p) {
         if (auto* tb = dynamic_cast<gsTensorBSpline<2, T>*>(&mp.patch(p))) {
-            tb->knots(0).affineTransformTo(T(0), T(1));
-            tb->knots(1).affineTransformTo(T(0), T(1));
+            internal_splitter::safeNormalizeKnotVector01(tb->knots(0));
+            internal_splitter::safeNormalizeKnotVector01(tb->knots(1));
         }
     }
 
@@ -737,10 +968,10 @@ bool gsPatchSplitter<T>::harmonizeMultiPatchKnots(gsMultiPatch<T>& mp) const
             if (const auto* tb = dynamic_cast<const gsTensorBSpline<2, T>*>(&mp.patch(e.patch))) {
                 initUnion = true;
                 gsKnotVector<T> kv = tb->knots(e.dir);
-                if (pd.chordOrientable[c] && e.flip) kv.reverse();
-                kv.affineTransformTo(T(0), T(1));
+                if (pd.chordOrientable[c] && e.flip) internal_splitter::safeReverseKnotVector01(kv);
+                internal_splitter::safeNormalizeKnotVector01(kv);
                 std::vector<KnotCluster> localClusters;
-                for (index_t ki = 0; ki < kv.size(); ++ki) {
+                for (size_t ki = 0; ki < kv.size(); ++ki) {
                     T u = kv[ki];
                     if (u <= knotTol || u >= T(1) - knotTol) continue;
                     bool found = false;
@@ -773,7 +1004,7 @@ bool gsPatchSplitter<T>::harmonizeMultiPatchKnots(gsMultiPatch<T>& mp) const
                     T targetU = (pd.chordOrientable[c] && e.flip) ? (T(1) - cc.u) : cc.u;
                     if (targetU <= knotTol || targetU >= T(1) - knotTol) continue;
                     int curMult = 0;
-                    for (index_t ki = 0; ki < kv.size(); ++ki)
+                    for (size_t ki = 0; ki < kv.size(); ++ki)
                         if (std::abs(kv[ki] - targetU) < knotTol) ++curMult;
                     int addMult = cc.mult - curMult;
                     if (addMult > 0)
@@ -889,8 +1120,8 @@ bool gsPatchSplitter<T>::formatForArgyris(gsMultiPatch<T>& mp) const
     // Elevate degree uniformly if below targetDeg
     for (size_t p = 0; p < mp.nPatches(); ++p) {
         if (auto* tb = dynamic_cast<gsTensorBSpline<2, T>*>(&mp.patch(p))) {
-            tb->knots(0).affineTransformTo(T(0), T(1));
-            tb->knots(1).affineTransformTo(T(0), T(1));
+            internal_splitter::safeNormalizeKnotVector01(tb->knots(0));
+            internal_splitter::safeNormalizeKnotVector01(tb->knots(1));
             for (short_t d = 0; d < 2; ++d) {
                 if (tb->degree(d) < targetDeg)
                     tb->degreeElevate(targetDeg - tb->degree(d), d);
@@ -934,7 +1165,7 @@ bool gsPatchSplitter<T>::formatForArgyris(gsMultiPatch<T>& mp) const
                         for (T u : targetKnots) {
                             const auto& kv = tb->knots(dir);
                             int curMult = 0;
-                            for (index_t ki = 0; ki < kv.size(); ++ki)
+                            for (size_t ki = 0; ki < kv.size(); ++ki)
                                 if (std::abs(kv[ki] - u) < T(1e-10)) ++curMult;
                             int addMult = mult - curMult;
                             if (addMult > 0)
@@ -958,6 +1189,7 @@ bool gsPatchSplitter<T>::formatForArgyris(gsMultiPatch<T>& mp) const
                 return false;
             gsMultiPatch<T> fitted = fitter.result();
             gsASG1LocalFitter<T>::unifyPatchOrientations(fitted);
+            internal_splitter::untangleASG1FreeInteriorCoefs(fitted, T(1e-6));
             fitted.computeTopology(T(1e-4), false, false);
             for (size_t p = 0; p < fitted.nPatches(); ++p) {
                 if (auto* tb = dynamic_cast<const gsTensorBSpline<2, T>*>(&fitted.patch(p))) {

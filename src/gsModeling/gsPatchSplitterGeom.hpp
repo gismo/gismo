@@ -76,12 +76,161 @@ inline gsBSpline<T>* makeStraightBSpline(const gsPoint2D<T>& p0, const gsPoint2D
 }
 
 template <class T>
+inline void safeNormalizeKnotVector01(gsKnotVector<T>& kv)
+{
+    const short_t d = kv.degree();
+    const index_t sz = static_cast<index_t>(kv.size());
+    if (d < 0 || sz < 2 * (d + 1)) return;
+    const T a = *kv.domainBegin();
+    const T b = *kv.domainEnd();
+    if (std::abs(a) <= T(1e-14) && std::abs(b - T(1)) <= T(1e-14))
+        return;
+    const T span = b - a;
+    if (span <= T(1e-15)) return;
+
+    std::vector<T> kts;
+    kts.reserve(static_cast<size_t>(sz));
+    for (short_t m = 0; m < d + 1; ++m)
+        kts.push_back(T(0));
+    T curVal = T(0);
+    int curRun = 0;
+    for (index_t j = d + 1; j < sz - (d + 1); ++j) {
+        T u = (kv[j] - a) / span;
+        u = std::max(T(1e-12), std::min(T(1) - T(1e-12), u));
+        if (curRun > 0 && u <= curVal + T(1e-13)) {
+            if (curRun >= d) {
+                u = std::min(T(1) - T(1e-12), curVal + T(1e-11));
+                curVal = u;
+                curRun = 1;
+            } else {
+                u = curVal;
+                ++curRun;
+            }
+        } else {
+            curVal = u;
+            curRun = 1;
+        }
+        kts.push_back(u);
+    }
+    for (short_t m = 0; m < d + 1; ++m)
+        kts.push_back(T(1));
+    kv = gsKnotVector<T>(kts, d);
+}
+
+template <class T>
+inline void safeReverseKnotVector01(gsKnotVector<T>& kv)
+{
+    const short_t d = kv.degree();
+    const index_t sz = static_cast<index_t>(kv.size());
+    if (d < 0 || sz < 2 * (d + 1)) return;
+    const T a = *kv.domainBegin();
+    const T b = *kv.domainEnd();
+    const T span = std::max(T(1e-15), b - a);
+
+    std::vector<T> kts(static_cast<size_t>(sz), T(0));
+    for (short_t m = 0; m < d + 1; ++m)
+        kts[m] = T(0);
+    T curVal = T(0);
+    int curRun = 0;
+    for (index_t k = d + 1; k < sz - (d + 1); ++k) {
+        T u = (b - kv[sz - 1 - k]) / span;
+        u = std::max(T(1e-12), std::min(T(1) - T(1e-12), u));
+        if (curRun > 0 && u <= curVal + T(1e-13)) {
+            if (curRun >= d) {
+                u = std::min(T(1) - T(1e-12), curVal + T(1e-11));
+                curVal = u;
+                curRun = 1;
+            } else {
+                u = curVal;
+                ++curRun;
+            }
+        } else {
+            curVal = u;
+            curRun = 1;
+        }
+        kts[k] = u;
+    }
+    for (short_t m = 0; m < d + 1; ++m)
+        kts[sz - 1 - m] = T(1);
+    kv = gsKnotVector<T>(kts, d);
+}
+
+template <class T>
+inline void safeReverseTensorBSpline(gsTensorBSpline<2, T>& tb, int dir)
+{
+    safeReverseKnotVector01(tb.knots(dir));
+    const int nu = tb.basis().component(0).size();
+    const int nv = tb.basis().component(1).size();
+    gsMatrix<T>& cf = tb.coefs();
+    if (dir == 0) {
+        for (int j = 0; j < nv; ++j) {
+            for (int i = 0; i < nu / 2; ++i)
+                cf.row(i + j * nu).swap(cf.row((nu - 1 - i) + j * nu));
+        }
+    } else {
+        for (int j = 0; j < nv / 2; ++j) {
+            for (int i = 0; i < nu; ++i)
+                cf.row(i + j * nu).swap(cf.row(i + (nv - 1 - j) * nu));
+        }
+    }
+}
+
+template <class T>
+inline void safeReverseCurve(gsCurve<T>& crv)
+{
+    if (auto* bsp = dynamic_cast<gsBSpline<T>*>(&crv)) {
+        safeReverseKnotVector01(bsp->knots());
+        gsMatrix<T> rc = bsp->coefs().colwise().reverse();
+        bsp->setCoefs(give(rc));
+        return;
+    }
+    crv.reverse();
+}
+
+template <class T>
+inline void safeNormalizeKnots01(gsBSpline<T>& bsp)
+{
+    safeNormalizeKnotVector01(bsp.knots());
+}
+
+template <class T>
+inline T curveIntegratedTurnRad(const gsBSpline<T>& bsp, int nSamples = 24)
+{
+    const gsMatrix<T> pr = bsp.parameterRange();
+    const T u0 = pr(0, 0), u1 = pr(0, 1);
+    gsMatrix<T> uMat(1, nSamples + 1), pts;
+    for (int i = 0; i <= nSamples; ++i)
+        uMat(0, i) = u0 + (u1 - u0) * (static_cast<T>(i) / static_cast<T>(nSamples));
+    bsp.eval_into(uMat, pts);
+
+    T totTurn = T(0);
+    gsPoint2D<T> prevTan(0, 0);
+    bool hasPrev = false;
+    for (int i = 1; i <= nSamples; ++i) {
+        T dx = pts(0, i) - pts(0, i - 1);
+        T dy = pts(1, i) - pts(1, i - 1);
+        T ds = std::hypot(dx, dy);
+        if (ds > T(1e-14)) {
+            gsPoint2D<T> curTan(dx / ds, dy / ds);
+            if (hasPrev) {
+                T cr = prevTan.x * curTan.y - prevTan.y * curTan.x;
+                T dt = prevTan.x * curTan.x + prevTan.y * curTan.y;
+                totTurn += std::abs(std::atan2(cr, dt));
+            }
+            prevTan = curTan;
+            hasPrev = true;
+        }
+    }
+    return totTurn;
+}
+
+template <class T>
 inline gsBSpline<T>* toClampedBSpline(const gsCurve<T>& curve, int target_degree)
 {
     const auto* bsp = dynamic_cast<const gsBSpline<T>*>(&curve);
     if (bsp) {
         auto copy = new gsBSpline<T>(*bsp);
-        copy->knots().affineTransformTo(0.0, 1.0);
+        safeNormalizeKnots01(*copy);
         if (copy->degree() < target_degree) {
             copy->degreeElevate(target_degree - copy->degree());
         }
@@ -109,8 +258,8 @@ inline void splitBSplineExact(const gsCurve<T>& crv, T t_split, gsBSpline<T>& le
 {
     std::unique_ptr<gsBSpline<T>> bsp(toClampedBSpline(crv, 3));
     bsp->splitAt(t_split, left, right);
-    left.knots().affineTransformTo(0.0, 1.0);
-    right.knots().affineTransformTo(0.0, 1.0);
+    safeNormalizeKnots01(left);
+    safeNormalizeKnots01(right);
 }
 
 template <class T>
@@ -147,8 +296,8 @@ inline T arcLengthSplitParam(const gsCurve<T>& crv, T frac = 0.5, int nSamples =
 template <class T>
 inline void harmonizeBSplinePair(std::unique_ptr<gsBSpline<T>>& a, std::unique_ptr<gsBSpline<T>>& b)
 {
-    a->knots().affineTransformTo(0.0, 1.0);
-    b->knots().affineTransformTo(0.0, 1.0);
+    safeNormalizeKnots01(*a);
+    safeNormalizeKnots01(*b);
     int maxDeg = std::max(a->degree(), b->degree());
     if (a->degree() < maxDeg) a->degreeElevate(maxDeg - a->degree());
     if (b->degree() < maxDeg) b->degreeElevate(maxDeg - b->degree());
@@ -240,7 +389,7 @@ struct CurveSeg {
     }
     explicit CurveSeg(const gsBSpline<T>& b) {
         bsp = std::make_shared<gsBSpline<T>>(b);
-        bsp->knots().affineTransformTo(0.0, 1.0);
+        safeNormalizeKnots01(*bsp);
     }
 
     gsPoint2D<T> p0() const {
@@ -257,9 +406,11 @@ struct CurveSeg {
 
     CurveSeg reversed() const {
         CurveSeg r;
-        r.bsp = std::make_shared<gsBSpline<T>>(*bsp);
-        r.bsp->reverse();
-        r.bsp->knots().affineTransformTo(0.0, 1.0);
+        if (!bsp) return r;
+        gsKnotVector<T> kv = bsp->knots();
+        safeReverseKnotVector01(kv);
+        gsMatrix<T> rc = bsp->coefs().colwise().reverse();
+        r.bsp = std::make_shared<gsBSpline<T>>(give(kv), give(rc));
         return r;
     }
 
@@ -632,6 +783,558 @@ inline bool isSegmentInsidePoly(const gsPoint2D<T>& a, const gsPoint2D<T>& b,
 }
 
 template <class T>
+struct TensorGridEval1D
+{
+    int M = 0, nu = 0, nv = 0;
+    gsMatrix<T> Bu, Du, Bv, Dv;
+    gsMatrix<T> DuT, BuT;
+    T hSq = T(1);
+
+    bool init(const gsTensorBSpline<2, T>& tp, int nSamples)
+    {
+        if (nSamples < 2) return false;
+        M = nSamples;
+        nu = tp.basis().component(0).size();
+        nv = tp.basis().component(1).size();
+        if (nu <= 0 || nv <= 0) return false;
+
+        const gsMatrix<T> supp = tp.support();
+        const T u0 = supp(0, 0), u1 = supp(0, 1);
+        const T v0 = supp(1, 0), v1 = supp(1, 1);
+        const T h = T(1) / static_cast<T>(M - 1);
+        hSq = h * h;
+
+        gsMatrix<T> uPts(1, M), vPts(1, M);
+        for (int i = 0; i < M; ++i) {
+            T t = static_cast<T>(i) * h;
+            uPts(0, i) = u0 + t * (u1 - u0);
+            vPts(0, i) = v0 + t * (v1 - v0);
+        }
+
+        const auto& b0 = tp.basis().component(0);
+        const auto& b1 = tp.basis().component(1);
+        gsMatrix<T> valU, derU, valV, derV;
+        gsMatrix<index_t> actU, actV;
+        b0.eval_into(uPts, valU);
+        b0.deriv_into(uPts, derU);
+        b0.active_into(uPts, actU);
+        b1.eval_into(vPts, valV);
+        b1.deriv_into(vPts, derV);
+        b1.active_into(vPts, actV);
+
+        Bu.setZero(M, nu); Du.setZero(M, nu);
+        for (int q = 0; q < M; ++q) {
+            for (int r = 0; r < actU.rows(); ++r) {
+                int idx = static_cast<int>(actU(r, q));
+                Bu(q, idx) = valU(r, q);
+                Du(q, idx) = derU(r, q);
+            }
+        }
+        Bv.setZero(M, nv); Dv.setZero(M, nv);
+        for (int q = 0; q < M; ++q) {
+            for (int r = 0; r < actV.rows(); ++r) {
+                int idx = static_cast<int>(actV(r, q));
+                Bv(q, idx) = valV(r, q);
+                Dv(q, idx) = derV(r, q);
+            }
+        }
+        DuT = Du.transpose();
+        BuT = Bu.transpose();
+        return true;
+    }
+
+    void coefsToMatrices(const gsMatrix<T>& coefs, gsMatrix<T>& Cx, gsMatrix<T>& Cy) const
+    {
+        Cx.resize(nu, nv);
+        Cy.resize(nu, nv);
+        for (int j = 0; j < nv; ++j) {
+            for (int i = 0; i < nu; ++i) {
+                int idx = i + j * nu;
+                Cx(i, j) = coefs(idx, 0);
+                Cy(i, j) = coefs(idx, 1);
+            }
+        }
+    }
+
+    void evalWinslow(const gsMatrix<T>& Cx, const gsMatrix<T>& Cy,
+                     T& minDet, T& maxDet, T& minAbsDet, T& energy) const
+    {
+        const gsMatrix<T> Xu = Du * Cx * Bv.transpose();
+        const gsMatrix<T> Yu = Du * Cy * Bv.transpose();
+        const gsMatrix<T> Xv = Bu * Cx * Dv.transpose();
+        const gsMatrix<T> Yv = Bu * Cy * Dv.transpose();
+
+        minDet = std::numeric_limits<T>::max();
+        maxDet = -std::numeric_limits<T>::max();
+        minAbsDet = std::numeric_limits<T>::max();
+        energy = T(0);
+
+        for (int b = 0; b < M; ++b) {
+            for (int a = 0; a < M; ++a) {
+                T jxi_x = Xu(a, b), jxi_y = Yu(a, b);
+                T jeta_x = Xv(a, b), jeta_y = Yv(a, b);
+                T normSq_xi = jxi_x * jxi_x + jxi_y * jxi_y;
+                T normSq_eta = jeta_x * jeta_x + jeta_y * jeta_y;
+                T detJ = jxi_x * jeta_y - jxi_y * jeta_x;
+
+                if (detJ < minDet) minDet = detJ;
+                if (detJ > maxDet) maxDet = detJ;
+                T absDet = std::abs(detJ);
+                if (absDet < minAbsDet) minAbsDet = absDet;
+
+                if (absDet > T(1e-12)) {
+                    T norm_xi = std::sqrt(normSq_xi);
+                    T norm_eta = std::sqrt(normSq_eta);
+                    T win = (normSq_xi + normSq_eta) / absDet;
+                    T orth = (absDet / (norm_xi * norm_eta + T(1e-14))) - T(1);
+                    energy += (win + orth * orth) * hSq;
+                } else {
+                    energy += T(1e6);
+                }
+            }
+        }
+    }
+
+    // Evaluates Escobar/Garanzha-Kaporin regularized Winslow objective and its exact
+    // interior control-point gradient wrt coefs (zero on boundary CPs).
+    void evalRegularizedWinslowAndGrad(const gsMatrix<T>& Cx, const gsMatrix<T>& Cy,
+                                       T eps, T& objOut, T& minDetOut, T& maxDetOut,
+                                       gsMatrix<T>& gradCoefs) const
+    {
+        const gsMatrix<T> Xu = Du * Cx * Bv.transpose();
+        const gsMatrix<T> Yu = Du * Cy * Bv.transpose();
+        const gsMatrix<T> Xv = Bu * Cx * Dv.transpose();
+        const gsMatrix<T> Yv = Bu * Cy * Dv.transpose();
+
+        gsMatrix<T> Gxu(M, M), Gyu(M, M), Gxv(M, M), Gyv(M, M);
+        const T fourEpsSq = T(4) * eps * eps;
+        const T w = hSq;
+
+        minDetOut = std::numeric_limits<T>::max();
+        maxDetOut = -std::numeric_limits<T>::max();
+        objOut = T(0);
+
+        for (int b = 0; b < M; ++b) {
+            for (int a = 0; a < M; ++a) {
+                T xu = Xu(a, b), yu = Yu(a, b);
+                T xv = Xv(a, b), yv = Yv(a, b);
+                T d = xu * yv - yu * xv;
+                if (d < minDetOut) minDetOut = d;
+                if (d > maxDetOut) maxDetOut = d;
+
+                T g11 = xu * xu + yu * yu;
+                T g22 = xv * xv + yv * yv;
+                T sq = std::sqrt(d * d + fourEpsSq);
+                T chi = T(0.5) * (d + sq);
+                T chiSafe = std::max(chi, T(1e-18));
+                T f = (g11 + g22) / chiSafe;
+                objOut += f * w;
+
+                T df_dd = -f / std::max(sq, T(1e-18));
+                T twoOverChi = (T(2) * w) / chiSafe;
+                T w_dfd = w * df_dd;
+                Gxu(a, b) = twoOverChi * xu + w_dfd * yv;
+                Gyu(a, b) = twoOverChi * yu - w_dfd * xv;
+                Gxv(a, b) = twoOverChi * xv - w_dfd * yu;
+                Gyv(a, b) = twoOverChi * yv + w_dfd * xu;
+            }
+        }
+
+        const gsMatrix<T> dCx = DuT * Gxu * Bv + BuT * Gxv * Dv;
+        const gsMatrix<T> dCy = DuT * Gyu * Bv + BuT * Gyv * Dv;
+        gradCoefs.setZero(nu * nv, 2);
+        for (int j = 1; j < nv - 1; ++j) {
+            for (int i = 1; i < nu - 1; ++i) {
+                int idx = i + j * nu;
+                gradCoefs(idx, 0) = dCx(i, j);
+                gradCoefs(idx, 1) = dCy(i, j);
+            }
+        }
+    }
+};
+
+// Solve Greville-weighted 5-point discrete Laplace equation for strictly interior CPs (45 SOR sweeps).
+template <class T>
+inline void computeHarmonicInteriorCoefs(const gsTensorBSpline<2, T>& tp, gsMatrix<T>& outCoefs)
+{
+    const int nu = tp.basis().component(0).size();
+    const int nv = tp.basis().component(1).size();
+    outCoefs = tp.coefs();
+    if (nu <= 2 || nv <= 2) return;
+
+    const gsMatrix<T> gr_u = tp.basis().component(0).knots().greville();
+    const gsMatrix<T> gr_v = tp.basis().component(1).knots().greville();
+    std::vector<T> wL(nu, T(1)), wR(nu, T(1)), wD(nv, T(1)), wU(nv, T(1));
+    for (int i = 1; i < nu - 1; ++i) {
+        T hL = std::max(T(1e-9), gr_u(0, i) - gr_u(0, i - 1));
+        T hR = std::max(T(1e-9), gr_u(0, i + 1) - gr_u(0, i));
+        T sum = hL + hR;
+        wL[i] = T(2) / (hL * sum);
+        wR[i] = T(2) / (hR * sum);
+    }
+    for (int j = 1; j < nv - 1; ++j) {
+        T hD = std::max(T(1e-9), gr_v(0, j) - gr_v(0, j - 1));
+        T hU = std::max(T(1e-9), gr_v(0, j + 1) - gr_v(0, j));
+        T sum = hD + hU;
+        wD[j] = T(2) / (hD * sum);
+        wU[j] = T(2) / (hU * sum);
+    }
+
+    const T omega = T(1.65);
+    const T oneMinusW = T(1) - omega;
+    for (int sweep = 0; sweep < 45; ++sweep) {
+        for (int j = 1; j < nv - 1; ++j) {
+            const T wd = wD[j], wu = wU[j];
+            for (int i = 1; i < nu - 1; ++i) {
+                const T wl = wL[i], wr = wR[i];
+                const T denom = wl + wr + wd + wu;
+                const int idx = i + j * nu;
+                const T gsX = (wl * outCoefs(idx - 1, 0) + wr * outCoefs(idx + 1, 0) +
+                               wd * outCoefs(idx - nu, 0) + wu * outCoefs(idx + nu, 0)) / denom;
+                const T gsY = (wl * outCoefs(idx - 1, 1) + wr * outCoefs(idx + 1, 1) +
+                               wd * outCoefs(idx - nu, 1) + wu * outCoefs(idx + nu, 1)) / denom;
+                outCoefs(idx, 0) = oneMinusW * outCoefs(idx, 0) + omega * gsX;
+                outCoefs(idx, 1) = oneMinusW * outCoefs(idx, 1) + omega * gsY;
+            }
+        }
+    }
+}
+
+// Forward declaration
+template <class T>
+inline void evalPatchJacobianAndWinslow(const gsGeometry<T>& patch, int nSamples,
+                                        T& minDet, T& maxDet, T& minAbsDet, T& energy);
+
+// Dense Jacobian check: M >= 49 (49 = 2*24 + 1 hits every 24x24, 16x16, 12x12, 8x8 cell midpoint exactly).
+template <class T>
+inline T evalPatchMinDetDense(const gsGeometry<T>& patch, int minSamples = 49)
+{
+    int M = minSamples;
+    if (const auto* tb = dynamic_cast<const gsTensorBSpline<2, T>*>(&patch)) {
+        int maxN = std::max(tb->basis().component(0).size(), tb->basis().component(1).size());
+        if (maxN > M) M = std::min(97, maxN + 8);
+        // Ensure odd M >= 49; if M == 49 it hits k/48 (exact 24x24 midpoints)
+        if ((M % 2) == 0) ++M;
+    }
+    T mn = 0, mx = 0, ma = 0, en = 0;
+    evalPatchJacobianAndWinslow(patch, M, mn, mx, ma, en);
+    if (M != 49) {
+        T mn49 = 0, mx49 = 0, ma49 = 0, en49 = 0;
+        evalPatchJacobianAndWinslow(patch, 49, mn49, mx49, ma49, en49);
+        mn = std::min(mn, mn49);
+    }
+    return mn;
+}
+
+// Fast standalone harmonic + analytic Barzilai-Borwein Winslow repair for a folded gsTensorBSpline<2, T> patch.
+template <class T>
+inline bool quickHarmonicPatchRepair(gsTensorBSpline<2, T>& tp, T minDetTol = T(1e-8))
+{
+    const int nu = tp.basis().component(0).size();
+    const int nv = tp.basis().component(1).size();
+    if (nu <= 2 || nv <= 2) return false;
+
+    const int M = std::max(49, std::min(97, std::max(nu, nv) + 4));
+    TensorGridEval1D<T> tg;
+    if (!tg.init(tp, M)) return false;
+
+    gsMatrix<T> origCoefs = tp.coefs(), Cx, Cy;
+    tg.coefsToMatrices(origCoefs, Cx, Cy);
+    T md0 = 0, mx0 = 0, ma0 = 0, en0 = 0;
+    tg.evalWinslow(Cx, Cy, md0, mx0, ma0, en0);
+    if (md0 > minDetTol || mx0 < -minDetTol) return true;
+
+    gsMatrix<T> harmCoefs;
+    computeHarmonicInteriorCoefs(tp, harmCoefs);
+
+    gsMatrix<T> bestCoefs = origCoefs;
+    T bestMin = md0;
+    for (T alpha : {T(0.5), T(0.8), T(1.0)}) {
+        gsMatrix<T> cand = (T(1) - alpha) * origCoefs + alpha * harmCoefs;
+        tg.coefsToMatrices(cand, Cx, Cy);
+        T md = 0, mx = 0, ma = 0, en = 0;
+        tg.evalWinslow(Cx, Cy, md, mx, ma, en);
+        if (md > bestMin) {
+            bestMin = md;
+            bestCoefs = std::move(cand);
+            if (md > minDetTol) {
+                tp.setCoefs(bestCoefs);
+                T vMin = 0, vMax = 0, vAbs = 0, vEn = 0;
+                evalPatchJacobianAndWinslow(tp, 21, vMin, vMax, vAbs, vEn);
+                if (vMin > minDetTol) return true;
+            }
+        }
+    }
+
+    // 20-step analytic Barzilai-Borwein regularized-Winslow untangling from bestCoefs
+    const T tikW = (std::max(nu, nv) > 20) ? T(1e-5) : T(0);
+    auto evalObjGrad = [&](const gsMatrix<T>& x, T epsVal, T& objOut, T& mdOut, T& mxOut, gsMatrix<T>& gOut) -> void {
+        tg.coefsToMatrices(x, Cx, Cy);
+        tg.evalRegularizedWinslowAndGrad(Cx, Cy, epsVal, objOut, mdOut, mxOut, gOut);
+        if (tikW > T(0)) {
+            gsMatrix<T> diff = x - harmCoefs;
+            T sumSq = T(0);
+            for (int j = 1; j < nv - 1; ++j) {
+                for (int i = 1; i < nu - 1; ++i) {
+                    int idx = i + j * nu;
+                    T dx = diff(idx, 0), dy = diff(idx, 1);
+                    sumSq += dx * dx + dy * dy;
+                    gOut(idx, 0) += T(2) * tikW * dx;
+                    gOut(idx, 1) += T(2) * tikW * dy;
+                }
+            }
+            objOut += tikW * sumSq;
+        }
+    };
+
+    T eps = std::max(T(1.2) * std::max(T(0), -bestMin), T(0.03) * std::max(std::abs(mx0), T(1e-6)));
+    gsMatrix<T> xCur = bestCoefs, gCur, xPrev, gPrev;
+    T objCur = 0, curMin = bestMin, curMax = mx0;
+    evalObjGrad(xCur, eps, objCur, curMin, curMax, gCur);
+    T bboxDiag = std::hypot(origCoefs.col(0).maxCoeff() - origCoefs.col(0).minCoeff(),
+                            origCoefs.col(1).maxCoeff() - origCoefs.col(1).minCoeff());
+    const T maxDisp = std::max(T(1e-5), T(0.15) * bboxDiag / std::max(T(2), static_cast<T>(std::max(nu, nv))));
+    bool hasPrev = false;
+    for (int it = 0; it < 20; ++it) {
+        T gMax = gCur.cwiseAbs().maxCoeff();
+        if (gMax <= T(1e-12)) break;
+        T step = maxDisp / gMax;
+        if (hasPrev) {
+            gsMatrix<T> sDiff = xCur - xPrev;
+            gsMatrix<T> yDiff = gCur - gPrev;
+            T yy = (yDiff.array() * yDiff.array()).sum();
+            T sy = (sDiff.array() * yDiff.array()).sum();
+            if (yy > T(1e-24) && sy > T(1e-24)) {
+                T bbStep = sy / yy;
+                if (bbStep * gMax <= maxDisp)
+                    step = std::max(T(1e-4) * step, bbStep);
+            }
+        }
+        T slope = -(gCur.array() * gCur.array()).sum();
+        bool acc = false;
+        for (int ls = 0; ls < 6; ++ls) {
+            gsMatrix<T> xNext = xCur - step * gCur, gNext;
+            T objNext = 0, mdN = 0, mxN = 0;
+            evalObjGrad(xNext, eps, objNext, mdN, mxN, gNext);
+            if (objNext <= objCur + T(1e-4) * step * slope) {
+                xPrev = std::move(xCur);
+                gPrev = std::move(gCur);
+                xCur = std::move(xNext);
+                gCur = std::move(gNext);
+                objCur = objNext; curMin = mdN; curMax = mxN;
+                hasPrev = true;
+                acc = true;
+                break;
+            }
+            step *= T(0.5);
+        }
+        if (!acc) break;
+        if (curMin > minDetTol) {
+            tp.setCoefs(xCur);
+            T vMin = 0, vMax = 0, vAbs = 0, vEn = 0;
+            evalPatchJacobianAndWinslow(tp, 21, vMin, vMax, vAbs, vEn);
+            if (vMin > minDetTol) return true;
+        }
+        T newEps = std::max(T(1.1) * std::max(T(0), -curMin), T(0.35) * eps);
+        if (newEps < T(0.75) * eps) {
+            eps = newEps;
+            evalObjGrad(xCur, eps, objCur, curMin, curMax, gCur);
+            hasPrev = false;
+        }
+    }
+    if (curMin > md0) tp.setCoefs(xCur);
+    else if (bestMin > md0) tp.setCoefs(bestCoefs);
+    T fMin = 0, fMax = 0, fAbs = 0, fEn = 0;
+    evalPatchJacobianAndWinslow(tp, 21, fMin, fMax, fAbs, fEn);
+    return (fMin > minDetTol);
+}
+
+// Untangle folded strictly-interior CPs (2 <= i <= nu-3, 2 <= j <= nv-3) of an AS-G1 fitted multi-patch
+// without touching the outer 2 rings of CPs, preserving exact boundary geometry and G1 gluing residuals.
+template <class T>
+inline void untangleASG1FreeInteriorCoefs(gsMultiPatch<T>& mp, T minDetTol = T(1e-6))
+{
+    for (size_t p = 0; p < mp.nPatches(); ++p) {
+        auto* tp = dynamic_cast<gsTensorBSpline<2, T>*>(&mp.patch(p));
+        if (!tp) continue;
+        const int nu = tp->basis().component(0).size();
+        const int nv = tp->basis().component(1).size();
+        if (nu < 6 || nv < 6) continue;
+
+        T md0 = evalPatchMinDetDense(*tp, 49);
+        if (md0 > minDetTol) continue;
+
+        const int M = std::max(49, std::min(97, std::max(nu, nv) + 4));
+        TensorGridEval1D<T> tg;
+        if (!tg.init(*tp, M)) continue;
+
+        gsMatrix<T> origCoefs = tp->coefs(), harmFree = origCoefs, Cx, Cy;
+        {
+            const gsMatrix<T> gr_u = tp->basis().component(0).knots().greville();
+            const gsMatrix<T> gr_v = tp->basis().component(1).knots().greville();
+            std::vector<T> wL(nu, T(1)), wR(nu, T(1)), wD(nv, T(1)), wU(nv, T(1));
+            for (int i = 2; i < nu - 2; ++i) {
+                T hL = std::max(T(1e-9), gr_u(0, i) - gr_u(0, i - 1));
+                T hR = std::max(T(1e-9), gr_u(0, i + 1) - gr_u(0, i));
+                T sum = hL + hR;
+                wL[i] = T(2) / (hL * sum);
+                wR[i] = T(2) / (hR * sum);
+            }
+            for (int j = 2; j < nv - 2; ++j) {
+                T hD = std::max(T(1e-9), gr_v(0, j) - gr_v(0, j - 1));
+                T hU = std::max(T(1e-9), gr_v(0, j + 1) - gr_v(0, j));
+                T sum = hD + hU;
+                wD[j] = T(2) / (hD * sum);
+                wU[j] = T(2) / (hU * sum);
+            }
+            const T omega = T(1.65), oneMinusW = T(1) - omega;
+            for (int sweep = 0; sweep < 45; ++sweep) {
+                for (int j = 2; j < nv - 2; ++j) {
+                    const T wd = wD[j], wu = wU[j];
+                    for (int i = 2; i < nu - 2; ++i) {
+                        const T wl = wL[i], wr = wR[i];
+                        const T denom = wl + wr + wd + wu;
+                        const int idx = i + j * nu;
+                        const T gsX = (wl * harmFree(idx - 1, 0) + wr * harmFree(idx + 1, 0) +
+                                       wd * harmFree(idx - nu, 0) + wu * harmFree(idx + nu, 0)) / denom;
+                        const T gsY = (wl * harmFree(idx - 1, 1) + wr * harmFree(idx + 1, 1) +
+                                       wd * harmFree(idx - nu, 1) + wu * harmFree(idx + nu, 1)) / denom;
+                        harmFree(idx, 0) = oneMinusW * harmFree(idx, 0) + omega * gsX;
+                        harmFree(idx, 1) = oneMinusW * harmFree(idx, 1) + omega * gsY;
+                    }
+                }
+            }
+        }
+
+        auto maskToFreeBox = [&](gsMatrix<T>& mat, const gsMatrix<T>& refOuter) -> void {
+            for (int j = 0; j < nv; ++j) {
+                for (int i = 0; i < nu; ++i) {
+                    if (i < 2 || i >= nu - 2 || j < 2 || j >= nv - 2) {
+                        int idx = i + j * nu;
+                        mat(idx, 0) = refOuter(idx, 0);
+                        mat(idx, 1) = refOuter(idx, 1);
+                    }
+                }
+            }
+        };
+        auto zeroOuterTwoRings = [&](gsMatrix<T>& g) -> void {
+            for (int j = 0; j < nv; ++j) {
+                for (int i = 0; i < nu; ++i) {
+                    if (i < 2 || i >= nu - 2 || j < 2 || j >= nv - 2) {
+                        int idx = i + j * nu;
+                        g(idx, 0) = T(0);
+                        g(idx, 1) = T(0);
+                    }
+                }
+            }
+        };
+
+        gsMatrix<T> bestCoefs = origCoefs;
+        tg.coefsToMatrices(origCoefs, Cx, Cy);
+        T mdInit = 0, mxInit = 0, maInit = 0, enInit = 0;
+        tg.evalWinslow(Cx, Cy, mdInit, mxInit, maInit, enInit);
+        T bestMin = mdInit;
+        for (T al : {T(0.35), T(0.70), T(1.0)}) {
+            gsMatrix<T> cand = (T(1) - al) * origCoefs + al * harmFree;
+            maskToFreeBox(cand, origCoefs);
+            tg.coefsToMatrices(cand, Cx, Cy);
+            T md = 0, mx = 0, ma = 0, en = 0;
+            tg.evalWinslow(Cx, Cy, md, mx, ma, en);
+            if (md > bestMin) {
+                bestMin = md;
+                bestCoefs = std::move(cand);
+            }
+        }
+        if (bestMin > minDetTol) {
+            tp->setCoefs(bestCoefs);
+            T vMin = 0, vMax = 0, vAbs = 0, vEn = 0;
+            evalPatchJacobianAndWinslow(*tp, 21, vMin, vMax, vAbs, vEn);
+            if (vMin > minDetTol) continue;
+            tp->setCoefs(origCoefs);
+        }
+
+        const T tikW = (std::max(nu, nv) > 20) ? T(1e-5) : T(0);
+        auto evalFreeObjGrad = [&](const gsMatrix<T>& x, T epsVal, T& objOut, T& mdOut, T& mxOut, gsMatrix<T>& gOut) -> void {
+            tg.coefsToMatrices(x, Cx, Cy);
+            tg.evalRegularizedWinslowAndGrad(Cx, Cy, epsVal, objOut, mdOut, mxOut, gOut);
+            if (tikW > T(0)) {
+                gsMatrix<T> diff = x - harmFree;
+                T sumSq = T(0);
+                for (int j = 2; j < nv - 2; ++j) {
+                    for (int i = 2; i < nu - 2; ++i) {
+                        int idx = i + j * nu;
+                        T dx = diff(idx, 0), dy = diff(idx, 1);
+                        sumSq += dx * dx + dy * dy;
+                        gOut(idx, 0) += T(2) * tikW * dx;
+                        gOut(idx, 1) += T(2) * tikW * dy;
+                    }
+                }
+                objOut += tikW * sumSq;
+            }
+            zeroOuterTwoRings(gOut);
+        };
+
+        T eps = std::max(T(1.2) * std::max(T(0), -bestMin), T(0.03) * std::max(std::abs(mxInit), T(1e-6)));
+        gsMatrix<T> xCur = bestCoefs, gCur, xPrev, gPrev;
+        T objCur = 0, curMin = bestMin, curMax = mxInit;
+        evalFreeObjGrad(xCur, eps, objCur, curMin, curMax, gCur);
+        T bboxDiag = std::hypot(origCoefs.col(0).maxCoeff() - origCoefs.col(0).minCoeff(),
+                                origCoefs.col(1).maxCoeff() - origCoefs.col(1).minCoeff());
+        const T maxDisp = std::max(T(1e-5), T(0.15) * bboxDiag / std::max(T(2), static_cast<T>(std::max(nu, nv))));
+        bool hasPrev = false;
+        for (int it = 0; it < 50; ++it) {
+            T gMax = gCur.cwiseAbs().maxCoeff();
+            if (gMax <= T(1e-12)) break;
+            T step = maxDisp / gMax;
+            if (hasPrev) {
+                gsMatrix<T> sDiff = xCur - xPrev;
+                gsMatrix<T> yDiff = gCur - gPrev;
+                T yy = (yDiff.array() * yDiff.array()).sum();
+                T sy = (sDiff.array() * yDiff.array()).sum();
+                if (yy > T(1e-24) && sy > T(1e-24)) {
+                    T bbStep = sy / yy;
+                    if (bbStep * gMax <= maxDisp)
+                        step = std::max(T(1e-4) * step, bbStep);
+                }
+            }
+            T slope = -(gCur.array() * gCur.array()).sum();
+            bool acc = false;
+            for (int ls = 0; ls < 6; ++ls) {
+                gsMatrix<T> xNext = xCur - step * gCur, gNext;
+                T objNext = 0, mdN = 0, mxN = 0;
+                evalFreeObjGrad(xNext, eps, objNext, mdN, mxN, gNext);
+                if (objNext <= objCur + T(1e-4) * step * slope) {
+                    xPrev = std::move(xCur);
+                    gPrev = std::move(gCur);
+                    xCur = std::move(xNext);
+                    gCur = std::move(gNext);
+                    objCur = objNext; curMin = mdN; curMax = mxN;
+                    hasPrev = true;
+                    acc = true;
+                    break;
+                }
+                step *= T(0.5);
+            }
+            if (!acc) break;
+            if (curMin > minDetTol) break;
+            T newEps = std::max(T(1.1) * std::max(T(0), -curMin), T(0.35) * eps);
+            if (newEps < T(0.75) * eps) {
+                eps = newEps;
+                evalFreeObjGrad(xCur, eps, objCur, curMin, curMax, gCur);
+                hasPrev = false;
+            }
+        }
+
+        const gsMatrix<T>& chosen = (curMin > bestMin) ? xCur : bestCoefs;
+        tp->setCoefs(chosen);
+        T md21 = 0, mx21 = 0, ma21 = 0, en21 = 0;
+        evalPatchJacobianAndWinslow(*tp, 21, md21, mx21, ma21, en21);
+        if (md21 <= md0)
+            tp->setCoefs(origCoefs);
+    }
+}
+
+template <class T>
 inline const gsMatrix<T>& getSamplingGrid2D(int nSamples)
 {
     static thread_local std::map<int, gsMatrix<T>> cache;
@@ -657,6 +1360,16 @@ template <class T>
 inline void evalPatchJacobianAndWinslow(const gsGeometry<T>& patch, int nSamples,
                                         T& minDet, T& maxDet, T& minAbsDet, T& energy)
 {
+    if (const auto* tb = dynamic_cast<const gsTensorBSpline<2, T>*>(&patch)) {
+        TensorGridEval1D<T> tg;
+        if (tg.init(*tb, nSamples)) {
+            gsMatrix<T> Cx, Cy;
+            tg.coefsToMatrices(tb->coefs(), Cx, Cy);
+            tg.evalWinslow(Cx, Cy, minDet, maxDet, minAbsDet, energy);
+            return;
+        }
+    }
+
     minDet = std::numeric_limits<T>::max();
     maxDet = -std::numeric_limits<T>::max();
     minAbsDet = std::numeric_limits<T>::max();
@@ -866,7 +1579,7 @@ inline std::shared_ptr<gsBSpline<T>> joinCurveSegsExact(
         return nullptr;
     if (segs.size() == 1) {
         auto copy = std::make_shared<gsBSpline<T>>(*segs[0].bsp);
-        copy->knots().affineTransformTo(T(0), T(1));
+        safeNormalizeKnots01(*copy);
         if (copy->degree() < degree)
             copy->degreeElevate(degree - copy->degree());
         return copy;
@@ -882,7 +1595,7 @@ inline std::shared_ptr<gsBSpline<T>> joinCurveSegsExact(
     T totalLen = T(0);
     for (int i = 0; i < K; ++i) {
         pieces[i].reset(new gsBSpline<T>(*segs[i].bsp));
-        pieces[i]->knots().affineTransformTo(T(0), T(1));
+        safeNormalizeKnots01(*pieces[i]);
         if (pieces[i]->degree() < d)
             pieces[i]->degreeElevate(d - pieces[i]->degree());
         T L = T(0);
@@ -924,9 +1637,8 @@ inline std::shared_ptr<gsBSpline<T>> joinCurveSegsExact(
         const T s0 = bp[i], s1 = bp[i + 1];
         const index_t kvSz = static_cast<index_t>(kv.size());
         for (index_t j = d + 1; j < kvSz - (d + 1); ++j) {
-            T u = s0 + (s1 - s0) * kv[j];
-            if (u > allKnots.back() + T(1e-14) && u < s1 - T(1e-14))
-                allKnots.push_back(u);
+            T u = std::max(s0 + T(1e-12), std::min(s1 - T(1e-12), s0 + (s1 - s0) * kv[j]));
+            allKnots.push_back(std::max(allKnots.back(), u));
         }
         if (i + 1 < K) {
             for (int m = 0; m < d; ++m)

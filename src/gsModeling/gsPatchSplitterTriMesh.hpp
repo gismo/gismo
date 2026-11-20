@@ -167,7 +167,8 @@ inline bool buildConstrainedDomainTriangulation(
     TriMeshData<T>& outMesh,
     T maxBendRad = T(0.44),
     bool refineHolePerim = true,
-    bool addFeatureProj = false)
+    bool addFeatureProj = false,
+    bool ensureEvenParity = false)
 {
     if (dom.numLoops() == 0) return false;
     const int nLoops = dom.numLoops();
@@ -229,37 +230,66 @@ inline bool buildConstrainedDomainTriangulation(
     for (int l = 0; l < nLoops; ++l) {
         const auto& raw = rawLoops[l];
 
-        // Gather split parameters per raw segment from uniform/bend refinement + feature projections
+        // Gather split parameters per raw segment from uniform/integrated-bend refinement + feature projections
         std::vector<std::vector<T>> segSplits(raw.size());
-        if (refineEdges && targetH > T(1e-8)) {
+        if (domDiag > T(1e-12)) {
             T loopPerim = T(0);
             std::vector<T> segLens(raw.size(), T(0));
+            std::vector<T> segTurns(raw.size(), T(0));
             for (size_t si = 0; si < raw.size(); ++si) {
-                gsPoint2D<T> pm = evalCurvePoint(*raw[si].seg.bsp, T(0.5));
-                segLens[si] = raw[si].seg.p0().dist(pm) + pm.dist(raw[si].seg.p1());
-                loopPerim += segLens[si];
-            }
-            T localH = targetH;
-            if (l > 0 && loopPerim > T(1e-8) && refineHolePerim)
-                localH = std::min(targetH, loopPerim / T(8));
-
-            for (size_t si = 0; si < raw.size(); ++si) {
-                const auto& s = raw[si].seg;
-                T len = segLens[si];
-                auto d0 = evalCurveDeriv(*s.bsp, T(0));
-                auto d1 = evalCurveDeriv(*s.bsp, T(1));
-                T n0 = std::hypot(d0.x, d0.y), n1 = std::hypot(d1.x, d1.y);
-                T bend = T(0);
-                if (n0 > T(1e-14) && n1 > T(1e-14)) {
-                    T dot = std::max(T(-1), std::min(T(1), (d0.x * d1.x + d0.y * d1.y) / (n0 * n1)));
-                    bend = std::acos(dot);
+                const auto& bsp = *raw[si].seg.bsp;
+                const int NS = 24;
+                gsMatrix<T> uMat(1, NS + 1), ptsMat;
+                for (int ks = 0; ks <= NS; ++ks)
+                    uMat(0, ks) = static_cast<T>(ks) / static_cast<T>(NS);
+                bsp.eval_into(uMat, ptsMat);
+                T len = T(0), totTurn = T(0);
+                gsPoint2D<T> prevTan(0, 0);
+                bool hasPrevTan = false;
+                for (int ks = 1; ks <= NS; ++ks) {
+                    T dx = ptsMat(0, ks) - ptsMat(0, ks - 1);
+                    T dy = ptsMat(1, ks) - ptsMat(1, ks - 1);
+                    T ds = std::hypot(dx, dy);
+                    len += ds;
+                    if (ds > T(1e-14)) {
+                        gsPoint2D<T> curTan(dx / ds, dy / ds);
+                        if (hasPrevTan) {
+                            T cr = prevTan.x * curTan.y - prevTan.y * curTan.x;
+                            T dt = prevTan.x * curTan.x + prevTan.y * curTan.y;
+                            totTurn += std::abs(std::atan2(cr, dt));
+                        }
+                        prevTan = curTan;
+                        hasPrevTan = true;
+                    }
                 }
-                int nLen  = static_cast<int>(std::ceil(len / localH));
-                int nBend = static_cast<int>(std::ceil(bend / maxBendRad));
-                int nSub = std::max(1, std::min(12, std::max(nLen, nBend)));
-                for (int k = 1; k < nSub; ++k) {
-                    T uArc = arcLengthSplitParam(*s.bsp, static_cast<T>(k) / static_cast<T>(nSub));
-                    segSplits[si].push_back(uArc);
+                segLens[si] = len;
+                segTurns[si] = totTurn;
+                loopPerim += len;
+            }
+            if (refineEdges && targetH > T(1e-8)) {
+                T localH = targetH;
+                if (l > 0 && loopPerim > T(1e-8) && refineHolePerim)
+                    localH = std::min(targetH, loopPerim / T(8));
+
+                for (size_t si = 0; si < raw.size(); ++si) {
+                    int nLen  = static_cast<int>(std::ceil(segLens[si] / localH));
+                    int nBend = static_cast<int>(std::ceil(segTurns[si] / maxBendRad));
+                    int nSub = std::max(1, std::min(24, std::max(nLen, nBend)));
+                    for (int k = 1; k < nSub; ++k) {
+                        T uArc = arcLengthSplitParam(*raw[si].seg.bsp, static_cast<T>(k) / static_cast<T>(nSub));
+                        segSplits[si].push_back(uArc);
+                    }
+                }
+            } else {
+                // Even in coarse pass, subdivide S-curves/hairpins whose integrated turning exceeds ~106 deg
+                for (size_t si = 0; si < raw.size(); ++si) {
+                    if (segTurns[si] > T(1.85)) {
+                        int nSub = std::max(2, std::min(16, static_cast<int>(std::ceil(segTurns[si] / T(1.15)))));
+                        for (int k = 1; k < nSub; ++k) {
+                            T uArc = arcLengthSplitParam(*raw[si].seg.bsp, static_cast<T>(k) / static_cast<T>(nSub));
+                            segSplits[si].push_back(uArc);
+                        }
+                    }
                 }
             }
         }
@@ -348,8 +378,63 @@ inline bool buildConstrainedDomainTriangulation(
         }
     }
 
+    if (ensureEvenParity) {
+        size_t totalBnd = 0;
+        int bestL = -1, bestSi = -1;
+        T bestScore = T(-1);
+        for (int l = 0; l < nLoops; ++l) {
+            totalBnd += loopSegs[l].size();
+            for (int si = 0; si < static_cast<int>(loopSegs[l].size()); ++si) {
+                T arcLen = T(0);
+                gsPoint2D<T> prevPt = evalCurvePoint(*loopSegs[l][si].seg.bsp, T(0));
+                for (int ks = 1; ks <= 8; ++ks) {
+                    gsPoint2D<T> curPt = evalCurvePoint(*loopSegs[l][si].seg.bsp, static_cast<T>(ks) / T(8));
+                    arcLen += prevPt.dist(curPt);
+                    prevPt = curPt;
+                }
+                T sc = arcLen * (l == 0 ? T(1.05) : T(1.0));
+                if (sc > bestScore) { bestScore = sc; bestL = l; bestSi = si; }
+            }
+        }
+        if ((totalBnd % 2) == 1 && bestL >= 0 && bestSi >= 0) {
+            const auto orig = loopSegs[bestL][bestSi];
+            T tMid = arcLengthSplitParam(*orig.seg.bsp, T(0.5));
+            auto sp = orig.seg.splitAtParam(tMid);
+            T uMid = orig.paramU0 + tMid * (orig.paramU1 - orig.paramU0);
+            LoopSeg firstHalf = {sp.first, orig.loopIdx, orig.curveIdx, orig.paramU0, uMid};
+            LoopSeg secondHalf = {sp.second, orig.loopIdx, orig.curveIdx, uMid, orig.paramU1};
+            loopSegs[bestL][bestSi] = firstHalf;
+            loopSegs[bestL].insert(loopSegs[bestL].begin() + bestSi + 1, secondHalf);
+
+            outMesh.loopPolys[bestL].clear();
+            for (const auto& ls : loopSegs[bestL]) {
+                for (int k = 0; k < 16; ++k) {
+                    T u = static_cast<T>(k) / T(16);
+                    outMesh.loopPolys[bestL].push_back(evalCurvePoint(*ls.seg.bsp, u));
+                }
+            }
+        }
+    }
+
     // Populate vertices and boundary edges for every loop
-    struct RingNode { int ptIdx; CurveSeg<T> outSeg; int edgeId; };
+    struct RingNode {
+        int ptIdx;
+        CurveSeg<T> outSeg;
+        int edgeId;
+        gsPoint2D<T> q25, q50, q75;
+    };
+    auto makeRingNode = [](int ptIdx, const CurveSeg<T>& seg, int eid) -> RingNode {
+        RingNode rn{ptIdx, seg, eid, seg.p0(), seg.p0(), seg.p1()};
+        if (seg.bsp) {
+            gsMatrix<T> ev, par(1, 3);
+            par(0, 0) = T(0.25); par(0, 1) = T(0.5); par(0, 2) = T(0.75);
+            seg.bsp->eval_into(par, ev);
+            rn.q25 = gsPoint2D<T>(ev(0, 0), ev(1, 0));
+            rn.q50 = gsPoint2D<T>(ev(0, 1), ev(1, 1));
+            rn.q75 = gsPoint2D<T>(ev(0, 2), ev(1, 2));
+        }
+        return rn;
+    };
     std::vector<std::vector<RingNode>> rings(nLoops);
     std::map<std::pair<int, int>, int> edgeMap;
 
@@ -410,7 +495,7 @@ inline bool buildConstrainedDomainTriangulation(
             int u = baseIdx + i;
             int v = baseIdx + (i + 1) % M;
             int eid = addUndirEdge(u, v, loopSegs[l][i].seg, true, l);
-            rings[l].push_back({u, loopSegs[l][i].seg, eid});
+            rings[l].push_back(makeRingNode(u, loopSegs[l][i].seg, eid));
             outMesh.loopRings[l].vertices.push_back(u);
             outMesh.loopRings[l].edges.push_back(eid);
         }
@@ -508,7 +593,77 @@ inline bool buildConstrainedDomainTriangulation(
                 }
             }
 
-            if (bestHPos < 0 || bestOuterPos < 0) return false;
+            if (bestHPos < 0 || bestOuterPos < 0) {
+                int splitHPos = -1, splitActOp = -1;
+                T splitParam = T(0.5), bestSplitCost = std::numeric_limits<T>::max();
+                const int actSz = static_cast<int>(activeRing.size());
+                for (int hp = 0; hp < hSize; ++hp) {
+                    int hmIdx = hRing[hp].ptIdx;
+                    const auto& M = outMesh.pts[hmIdx];
+                    for (int op = 0; op < actSz; ++op) {
+                        const int eOld = activeRing[op].edgeId;
+                        if (eOld < 0 || eOld >= static_cast<int>(outMesh.edges.size()) || !outMesh.edges[eOld].isBoundary)
+                            continue;
+                        if (!activeRing[op].outSeg.bsp) continue;
+                        T uCand = std::max(T(0.20), std::min(T(0.80), activeRing[op].outSeg.closestParam(M)));
+                        gsPoint2D<T> V = evalCurvePoint(*activeRing[op].outSeg.bsp, uCand);
+                        T d = std::hypot(V.x - M.x, V.y - M.y);
+                        if (d <= T(1e-12) || d >= bestSplitCost) continue;
+                        if (!isSegmentInsideDomain(M, V, outMesh.loopPolys)) continue;
+                        bool crossBridge = false;
+                        for (const auto& br : bridges) {
+                            if (segProperIntersect(M, V, br.first, br.second)) { crossBridge = true; break; }
+                        }
+                        if (crossBridge) continue;
+                        bestSplitCost = d;
+                        splitHPos = hp;
+                        splitActOp = op;
+                        splitParam = uCand;
+                    }
+                }
+                if (splitHPos < 0 || splitActOp < 0) return false;
+
+                int eOld = activeRing[splitActOp].edgeId;
+                int uIdx = activeRing[splitActOp].ptIdx;
+                int vIdxOld = activeRing[(splitActOp + 1) % actSz].ptIdx;
+                auto sp = activeRing[splitActOp].outSeg.splitAtParam(splitParam);
+                gsPoint2D<T> midPt = sp.first.p1();
+                int newIdx = static_cast<int>(outMesh.pts.size());
+                outMesh.pts.push_back(midPt);
+                outMesh.isBoundaryPt.push_back(true);
+                outMesh.isSmoothBnd.push_back(true);
+                outMesh.isSharpCorner.push_back(false);
+                outMesh.cornerAngleDeg.push_back(T(180));
+                auto din = evalCurveDeriv(*sp.first.bsp, T(1));
+                T dn = std::hypot(din.x, din.y);
+                gsPoint2D<T> tMid = (dn > T(1e-14)) ? gsPoint2D<T>(din.x / dn, din.y / dn) : gsPoint2D<T>(1, 0);
+                outMesh.bndTanIn.push_back(tMid);
+                outMesh.bndTanOut.push_back(tMid);
+
+                int loopIdxOld = outMesh.edges[eOld].loopIdx;
+                bool fwdOld = (outMesh.edges[eOld].a == uIdx);
+                outMesh.edges[eOld] = fwdOld
+                    ? typename TriMeshData<T>::EdgeRec{uIdx, newIdx, sp.first, CurveSeg<T>(), CurveSeg<T>(), gsPoint2D<T>(), false, true, loopIdxOld}
+                    : typename TriMeshData<T>::EdgeRec{newIdx, uIdx, sp.first.reversed(), CurveSeg<T>(), CurveSeg<T>(), gsPoint2D<T>(), false, true, loopIdxOld};
+                edgeMap.erase({std::min(uIdx, vIdxOld), std::max(uIdx, vIdxOld)});
+                edgeMap[{std::min(uIdx, newIdx), std::max(uIdx, newIdx)}] = eOld;
+                int eSecond = addUndirEdge(newIdx, vIdxOld, sp.second, true, loopIdxOld);
+                outMesh.bndInfo.push_back({loopIdxOld, -1, T(0)});
+                if (loopIdxOld >= 0 && loopIdxOld < static_cast<int>(outMesh.loopRings.size())) {
+                    auto& lr = outMesh.loopRings[loopIdxOld];
+                    for (size_t ri = 0; ri < lr.edges.size(); ++ri) {
+                        if (lr.edges[ri] == eOld) {
+                            lr.vertices.insert(lr.vertices.begin() + static_cast<long>(ri + 1), newIdx);
+                            lr.edges.insert(lr.edges.begin() + static_cast<long>(fwdOld ? (ri + 1) : ri), eSecond);
+                            break;
+                        }
+                    }
+                }
+                activeRing[splitActOp] = makeRingNode(uIdx, sp.first, eOld);
+                activeRing.insert(activeRing.begin() + splitActOp + 1, makeRingNode(newIdx, sp.second, eSecond));
+                bestHPos = splitHPos;
+                bestOuterPos = splitActOp + 1;
+            }
 
             int vIdx = activeRing[bestOuterPos].ptIdx;
             int mIdx = hRing[bestHPos].ptIdx;
@@ -524,10 +679,10 @@ inline bool buildConstrainedDomainTriangulation(
             for (int k = 0; k < bestOuterPos; ++k)
                 newRing.push_back(activeRing[k]);
 
-            newRing.push_back({vIdx, segVM, bridgeEid});
+            newRing.push_back(makeRingNode(vIdx, segVM, bridgeEid));
             for (int k = 0; k < hSize; ++k)
                 newRing.push_back(hRing[(bestHPos + k) % hSize]);
-            newRing.push_back({mIdx, segMV, bridgeEid});
+            newRing.push_back(makeRingNode(mIdx, segMV, bridgeEid));
 
             for (int k = bestOuterPos; k < static_cast<int>(activeRing.size()); ++k)
                 newRing.push_back(activeRing[k]);
@@ -617,15 +772,11 @@ inline bool buildConstrainedDomainTriangulation(
                     if ((ka == ia && kb == ib) || (ka == ib && kb == ia) ||
                         (ka == ib && kb == ic) || (ka == ic && kb == ib))
                         continue;
-                    const auto& bsp = *activeRing[k].outSeg.bsp;
-                    gsMatrix<T> ev, par(1, 3);
-                    par(0, 0) = T(0.25); par(0, 1) = T(0.5); par(0, 2) = T(0.75);
-                    bsp.eval_into(par, ev);
-                    for (int s = 0; s < 3; ++s) {
-                        if (pointInTri(A, B, C, gsPoint2D<T>(ev(0, s), ev(1, s)))) {
-                            clear = false;
-                            break;
-                        }
+                    if (pointInTri(A, B, C, activeRing[k].q25) ||
+                        pointInTri(A, B, C, activeRing[k].q50) ||
+                        pointInTri(A, B, C, activeRing[k].q75)) {
+                        clear = false;
+                        break;
                     }
                 }
                 if (!clear) continue;
@@ -652,7 +803,7 @@ inline bool buildConstrainedDomainTriangulation(
         }
 
         if (bestIdx < 0) {
-            if (subDivs >= 24) return false;
+            if (subDivs >= std::max(48, 2 * static_cast<int>(activeRing.size()))) return false;
             int splitK = -1;
             T maxSag = -T(1);
             int longestK = -1;
@@ -662,8 +813,7 @@ inline bool buildConstrainedDomainTriangulation(
                 int v = activeRing[(k + 1) % m].ptIdx;
                 int eOld = activeRing[k].edgeId;
                 if (!outMesh.edges[eOld].isBoundary) continue;
-                auto sp = activeRing[k].outSeg.splitArc(T(0.5));
-                gsPoint2D<T> mid = sp.first.p1();
+                const gsPoint2D<T>& mid = activeRing[k].q50;
                 T chord = outMesh.pts[u].dist(outMesh.pts[v]);
                 if (chord > maxLen) { maxLen = chord; longestK = k; }
                 T sag = (chord > T(1e-12)) ? std::abs(cross2(outMesh.pts[u], outMesh.pts[v], mid)) / (chord * chord + T(1e-12)) : T(0);
@@ -691,7 +841,10 @@ inline bool buildConstrainedDomainTriangulation(
             triCount.push_back(0);
 
             int loopIdxOld = outMesh.edges[eOld].loopIdx;
-            outMesh.edges[eOld] = {u, newIdx, sp.first, CurveSeg<T>(), CurveSeg<T>(), gsPoint2D<T>(), false, true, loopIdxOld};
+            bool fwdOld = (outMesh.edges[eOld].a == u);
+            outMesh.edges[eOld] = fwdOld
+                ? typename TriMeshData<T>::EdgeRec{u, newIdx, sp.first, CurveSeg<T>(), CurveSeg<T>(), gsPoint2D<T>(), false, true, loopIdxOld}
+                : typename TriMeshData<T>::EdgeRec{newIdx, u, sp.first.reversed(), CurveSeg<T>(), CurveSeg<T>(), gsPoint2D<T>(), false, true, loopIdxOld};
             edgeMap.erase({std::min(u, v), std::max(u, v)});
             edgeMap[{std::min(u, newIdx), std::max(u, newIdx)}] = eOld;
             int eSecond = addUndirEdge(newIdx, v, sp.second, true, loopIdxOld);
@@ -702,15 +855,14 @@ inline bool buildConstrainedDomainTriangulation(
                 for (size_t ri = 0; ri < lr.edges.size(); ++ri) {
                     if (lr.edges[ri] == eOld) {
                         lr.vertices.insert(lr.vertices.begin() + static_cast<long>(ri + 1), newIdx);
-                        lr.edges.insert(lr.edges.begin() + static_cast<long>(ri + 1), eSecond);
+                        lr.edges.insert(lr.edges.begin() + static_cast<long>(fwdOld ? (ri + 1) : ri), eSecond);
                         break;
                     }
                 }
             }
 
-            activeRing[splitK].outSeg = sp.first;
-            activeRing[splitK].edgeId = eOld;
-            activeRing.insert(activeRing.begin() + splitK + 1, {newIdx, sp.second, eSecond});
+            activeRing[splitK] = makeRingNode(u, sp.first, eOld);
+            activeRing.insert(activeRing.begin() + splitK + 1, makeRingNode(newIdx, sp.second, eSecond));
             ++subDivs;
             continue;
         }
@@ -730,8 +882,8 @@ inline bool buildConstrainedDomainTriangulation(
         ++triCount[ic];
 
         const auto& er2 = outMesh.edges[e2];
-        activeRing[iPrev].outSeg = (er2.a == ia && er2.b == ic) ? er2.seg : er2.seg.reversed();
-        activeRing[iPrev].edgeId = e2;
+        CurveSeg<T> diagSeg = (er2.a == ia && er2.b == ic) ? er2.seg : er2.seg.reversed();
+        activeRing[iPrev] = makeRingNode(ia, diagSeg, e2);
         activeRing.erase(activeRing.begin() + bestIdx);
     }
 
@@ -823,6 +975,20 @@ inline CurveSeg<T> extractExactCADBoundaryBetween(
 }
 
 template <class T>
+inline int minRequiredBoundaryTriValence(const TriMeshData<T>& mesh, int v)
+{
+    if (v < 0 || v >= static_cast<int>(mesh.pts.size()) || !mesh.isBoundaryPt[v])
+        return 1;
+    if (mesh.cornerAngleDeg[v] > T(325))
+        return 4;
+    if (mesh.cornerAngleDeg[v] > T(275))
+        return 3;
+    if (mesh.isSmoothBnd[v] || mesh.cornerAngleDeg[v] > T(155))
+        return 2;
+    return 1;
+}
+
+template <class T>
 inline void applyDomainLawsonFlips(TriMeshData<T>& mesh)
 {
     const int nT = static_cast<int>(mesh.tris.size());
@@ -905,7 +1071,8 @@ inline void applyDomainLawsonFlips(TriMeshData<T>& mesh)
         if (newMin <= curMin + T(1e-3) && !(std::abs(newMin - curMin) <= T(1e-3) && newMax < curMax - T(1e-2)))
             continue;
 
-        if ((mesh.isSmoothBnd[a] && vertDeg[a] <= 2) || (mesh.isSmoothBnd[b] && vertDeg[b] <= 2))
+        if (vertDeg[a] <= minRequiredBoundaryTriValence(mesh, a) ||
+            vertDeg[b] <= minRequiredBoundaryTriValence(mesh, b))
             continue;
 
         int e_bc = A.e[(kA + 1) % 3];
@@ -1223,10 +1390,259 @@ inline void refineNeedleCircumcenters(TriMeshData<T>& mesh, T targetH, int maxRo
     smoothInteriorVertices(mesh, 4);
 }
 
+// Shared helper that tries splitting one chosen edge of triangle `badTi` (and its mate if interior).
+template <class T>
+inline bool trySplitTriangleEdges(
+    TriMeshData<T>& mesh,
+    int badTi,
+    const int order[3],
+    int degree,
+    T minAllowedChildAng)
+{
+    const auto bt = mesh.tris[badTi];
+    auto segClears = [&](const CurveSeg<T>& seg, const gsPoint2D<T>& pStart,
+                         const gsPoint2D<T>& pEnd, const gsPoint2D<T>& qOpp) -> bool {
+        if (!seg.bsp) return true;
+        for (T s : {T(0.25), T(0.5), T(0.75)}) {
+            gsPoint2D<T> q = evalCurvePoint(*seg.bsp, s);
+            if (cross2(pEnd, qOpp, q) <= T(1e-8) || cross2(qOpp, pStart, q) <= T(1e-8))
+                return false;
+        }
+        return true;
+    };
+
+    for (int oi = 0; oi < 3; ++oi) {
+        int kMax = order[oi];
+        int u = bt.v[kMax], v = bt.v[(kMax + 1) % 3], opp = bt.v[(kMax + 2) % 3];
+        int eIdx = bt.e[kMax];
+        int e_vo = bt.e[(kMax + 1) % 3];
+        int e_ou = bt.e[(kMax + 2) % 3];
+
+        auto oldEr = mesh.edges[eIdx];
+        if (!oldEr.seg.bsp)
+            oldEr.seg = makeStraightSeg(mesh.pts[oldEr.a], mesh.pts[oldEr.b], degree);
+
+        int mateTi = -1, mateK = -1;
+        for (int ti = 0; ti < static_cast<int>(mesh.tris.size()); ++ti) {
+            if (ti == badTi) continue;
+            for (int k = 0; k < 3; ++k) {
+                if (mesh.tris[ti].e[k] == eIdx) { mateTi = ti; mateK = k; break; }
+            }
+            if (mateTi >= 0) break;
+        }
+        int mOpp = (mateTi >= 0) ? mesh.tris[mateTi].v[(mateK + 2) % 3] : -1;
+
+        T tMid = arcLengthSplitParam(*oldEr.seg.bsp, T(0.5));
+        std::vector<T> tCands = {tMid};
+        T tOpp = std::max(T(0.20), std::min(T(0.80), oldEr.seg.closestParam(mesh.pts[opp])));
+        if (std::abs(tOpp - tMid) > T(0.03)) tCands.push_back(tOpp);
+        if (mOpp >= 0) {
+            T tMate = std::max(T(0.20), std::min(T(0.80), oldEr.seg.closestParam(mesh.pts[mOpp])));
+            T tAvg = T(0.5) * (tOpp + tMate);
+            if (std::abs(tMate - tMid) > T(0.03)) tCands.push_back(tMate);
+            if (std::abs(tAvg - tMid) > T(0.03))  tCands.push_back(tAvg);
+        }
+
+        std::pair<CurveSeg<T>, CurveSeg<T>> bestSp;
+        T bestSplitScore = -T(1e9);
+        bool foundSplit = false;
+        for (size_t ci = 0; ci < tCands.size(); ++ci) {
+            auto spTry = oldEr.seg.splitAtParam(tCands[ci]);
+            gsPoint2D<T> sPt = spTry.first.p1();
+            if (cross2(mesh.pts[u], sPt, mesh.pts[opp]) <= T(1e-7) ||
+                cross2(sPt, mesh.pts[v], mesh.pts[opp]) <= T(1e-7))
+                continue;
+            if (!curvedBoundaryEdgeClearsVertex(mesh, e_ou, opp, u, sPt) ||
+                !curvedBoundaryEdgeClearsVertex(mesh, e_vo, v, opp, sPt))
+                continue;
+            if (oldEr.isBoundary) {
+                if (!isSegmentInsideDomain(mesh.pts[opp], sPt, mesh.loopPolys)) continue;
+                const bool fwdUV = (oldEr.a == u);
+                const auto& segUS = fwdUV ? spTry.first : spTry.second.reversed();
+                const auto& segSV = fwdUV ? spTry.second : spTry.first.reversed();
+                if (!segClears(segUS, mesh.pts[u], sPt, mesh.pts[opp]) ||
+                    !segClears(segSV, sPt, mesh.pts[v], mesh.pts[opp]))
+                    continue;
+            }
+            if (mateTi >= 0) {
+                int mu = mesh.tris[mateTi].v[mateK], mv = mesh.tris[mateTi].v[(mateK + 1) % 3];
+                int e_mvo = mesh.tris[mateTi].e[(mateK + 1) % 3];
+                int e_mou = mesh.tris[mateTi].e[(mateK + 2) % 3];
+                if (cross2(mesh.pts[mu], sPt, mesh.pts[mOpp]) <= T(1e-7) ||
+                    cross2(sPt, mesh.pts[mv], mesh.pts[mOpp]) <= T(1e-7))
+                    continue;
+                if (!curvedBoundaryEdgeClearsVertex(mesh, e_mou, mOpp, mu, sPt) ||
+                    !curvedBoundaryEdgeClearsVertex(mesh, e_mvo, mv, mOpp, sPt))
+                    continue;
+                if (oldEr.isBoundary) {
+                    if (!isSegmentInsideDomain(mesh.pts[mOpp], sPt, mesh.loopPolys)) continue;
+                }
+            }
+            T mnA, mxA, mnB, mxB;
+            triMinMaxAnglesDeg(mesh.pts[u], sPt, mesh.pts[opp], mnA, mxA);
+            triMinMaxAnglesDeg(sPt, mesh.pts[v], mesh.pts[opp], mnB, mxB);
+            T mnAll = std::min(mnA, mnB);
+            if (mateTi >= 0) {
+                int mu = mesh.tris[mateTi].v[mateK], mv = mesh.tris[mateTi].v[(mateK + 1) % 3];
+                T mnC, mxC, mnD, mxD;
+                triMinMaxAnglesDeg(mesh.pts[mu], sPt, mesh.pts[mOpp], mnC, mxC);
+                triMinMaxAnglesDeg(sPt, mesh.pts[mv], mesh.pts[mOpp], mnD, mxD);
+                mnAll = std::min(mnAll, std::min(mnC, mnD));
+            }
+            if (mnAll < minAllowedChildAng) continue;
+            T sc = mnAll + (ci == 0 ? T(1.5) : T(0));
+            if (!foundSplit || sc > bestSplitScore) {
+                bestSplitScore = sc;
+                bestSp = spTry;
+                foundSplit = true;
+            }
+        }
+        if (!foundSplit) continue;
+        auto& sp = bestSp;
+        gsPoint2D<T> midPt = sp.first.p1();
+
+        int mIdx = static_cast<int>(mesh.pts.size());
+        mesh.pts.push_back(midPt);
+        mesh.isBoundaryPt.push_back(oldEr.isBoundary);
+        mesh.isSmoothBnd.push_back(oldEr.isBoundary);
+        mesh.isSharpCorner.push_back(false);
+        mesh.cornerAngleDeg.push_back(oldEr.isBoundary ? T(180) : T(360));
+        auto din = evalCurveDeriv(*sp.first.bsp, T(1));
+        T dn = std::hypot(din.x, din.y);
+        gsPoint2D<T> tMidDir = (dn > T(1e-14)) ? gsPoint2D<T>(din.x / dn, din.y / dn) : gsPoint2D<T>(1, 0);
+        mesh.bndTanIn.push_back(tMidDir);
+        mesh.bndTanOut.push_back(tMidDir);
+
+        int oldA = oldEr.a, oldB = oldEr.b;
+        mesh.edges[eIdx] = {oldA, mIdx, sp.first, CurveSeg<T>(), CurveSeg<T>(), gsPoint2D<T>(), false, oldEr.isBoundary, oldEr.loopIdx};
+        int e_mb = static_cast<int>(mesh.edges.size());
+        mesh.edges.push_back({mIdx, oldB, sp.second, CurveSeg<T>(), CurveSeg<T>(), gsPoint2D<T>(), false, oldEr.isBoundary, oldEr.loopIdx});
+
+        auto halfFor = [&](int endPt) { return (endPt == oldA) ? eIdx : e_mb; };
+        int e_om = static_cast<int>(mesh.edges.size());
+        mesh.edges.push_back({opp, mIdx, makeStraightSeg(mesh.pts[opp], midPt, degree),
+                              CurveSeg<T>(), CurveSeg<T>(), gsPoint2D<T>(), false, false, -1});
+        mesh.tris[badTi] = {{u, mIdx, opp}, {halfFor(u), e_om, e_ou}};
+        mesh.tris.push_back({{mIdx, v, opp}, {halfFor(v), e_vo, e_om}});
+
+        if (mateTi >= 0) {
+            const auto mt = mesh.tris[mateTi];
+            int mu = mt.v[mateK], mv = mt.v[(mateK + 1) % 3];
+            int e_mvo = mt.e[(mateK + 1) % 3];
+            int e_mou = mt.e[(mateK + 2) % 3];
+            int e_mom = static_cast<int>(mesh.edges.size());
+            mesh.edges.push_back({mOpp, mIdx, makeStraightSeg(mesh.pts[mOpp], midPt, degree),
+                                  CurveSeg<T>(), CurveSeg<T>(), gsPoint2D<T>(), false, false, -1});
+            mesh.tris[mateTi] = {{mu, mIdx, mOpp}, {halfFor(mu), e_mom, e_mou}};
+            mesh.tris.push_back({{mIdx, mv, mOpp}, {halfFor(mv), e_mvo, e_mom}});
+        }
+
+        applyDomainLawsonFlips(mesh);
+        return true;
+    }
+    return false;
+}
+
+template <class T>
+inline void fixUndervalentAndReflexCorners(TriMeshData<T>& mesh, int degree, int maxSplits = 12)
+{
+    auto edgeDirAt = [&](int ei, int fromV, int toV, bool atEnd) -> gsPoint2D<T> {
+        const auto& er = mesh.edges[ei];
+        if (er.isBoundary && er.seg.bsp) {
+            bool fwd = (er.a == fromV);
+            T u = (atEnd == fwd) ? T(1) : T(0);
+            gsPoint2D<T> dv = evalCurveDeriv(*er.seg.bsp, u);
+            T sgn = ((fwd && !atEnd) || (!fwd && atEnd)) ? T(1) : T(-1);
+            T nm = std::hypot(dv.x, dv.y);
+            if (nm > T(1e-14)) return gsPoint2D<T>(sgn * dv.x / nm, sgn * dv.y / nm);
+        }
+        T chSign = atEnd ? T(-1) : T(1);
+        T dx = chSign * (mesh.pts[toV].x - mesh.pts[fromV].x);
+        T dy = chSign * (mesh.pts[toV].y - mesh.pts[fromV].y);
+        T nm = std::hypot(dx, dy);
+        return (nm > T(1e-14)) ? gsPoint2D<T>(dx / nm, dy / nm) : gsPoint2D<T>(1, 0);
+    };
+    const T radToDeg = T(180) / T(3.14159265358979323846);
+
+    for (int iter = 0; iter < maxSplits; ++iter) {
+        if (mesh.tris.size() > 500) break;
+        std::vector<int> vertDeg(mesh.pts.size(), 0);
+        for (const auto& tr : mesh.tris) {
+            ++vertDeg[tr.v[0]]; ++vertDeg[tr.v[1]]; ++vertDeg[tr.v[2]];
+        }
+        struct Cand { int ti, cornerIdx; T score; };
+        std::vector<Cand> cands;
+        for (int ti = 0; ti < static_cast<int>(mesh.tris.size()); ++ti) {
+            const auto& t = mesh.tris[ti];
+            for (int idx = 0; idx < 3; ++idx) {
+                int vk = t.v[idx];
+                if (vertDeg[vk] < minRequiredBoundaryTriValence(mesh, vk)) {
+                    cands.push_back({ti, idx, T(200) + mesh.cornerAngleDeg[vk]});
+                    continue;
+                }
+                int eOut = t.e[idx], eIn = t.e[(idx + 2) % 3];
+                if (mesh.isBoundaryPt[vk] && (mesh.edges[eOut].isBoundary != mesh.edges[eIn].isBoundary)) {
+                    int vPrev = t.v[(idx + 2) % 3], vNext = t.v[(idx + 1) % 3];
+                    gsPoint2D<T> tOut = edgeDirAt(eOut, vk, vNext, false);
+                    gsPoint2D<T> tBack = edgeDirAt(eIn, vPrev, vk, true);
+                    T cAng = std::atan2(tOut.x * tBack.y - tOut.y * tBack.x,
+                                        tOut.x * tBack.x + tOut.y * tBack.y) * radToDeg;
+                    if (cAng <= T(0)) cAng += T(360);
+                    if (cAng > T(160) && cAng < T(215))
+                        cands.push_back({ti, idx, cAng});
+                }
+            }
+        }
+        if (cands.empty()) break;
+        std::sort(cands.begin(), cands.end(), [](const Cand& a, const Cand& b) { return a.score > b.score; });
+
+        bool didSplit = false;
+        for (const auto& c : cands) {
+            int order[3] = { (c.cornerIdx + 1) % 3, c.cornerIdx, (c.cornerIdx + 2) % 3 };
+            if (trySplitTriangleEdges(mesh, c.ti, order, degree, T(1.5))) {
+                didSplit = true;
+                break;
+            }
+        }
+        if (!didSplit) break;
+    }
+}
+
 template <class T>
 inline void bisectObtuseTriangles(TriMeshData<T>& mesh, int degree, T maxQuadAngleDeg = T(146), int maxSplits = 28, T minQuadAngleDeg = T(14.5))
 {
-    auto triQuadMaxAngle = [&](const typename TriMeshData<T>::Tri& t) -> T {
+    auto edgeDirAt = [&](int ei, int fromV, int toV, bool atEnd) -> gsPoint2D<T> {
+        const auto& er = mesh.edges[ei];
+        if (er.isBoundary && er.seg.bsp) {
+            bool fwd = (er.a == fromV);
+            T u = (atEnd == fwd) ? T(1) : T(0);
+            gsPoint2D<T> dv = evalCurveDeriv(*er.seg.bsp, u);
+            T sgn = ((fwd && !atEnd) || (!fwd && atEnd)) ? T(1) : T(-1);
+            T nm = std::hypot(dv.x, dv.y);
+            if (nm > T(1e-14)) return gsPoint2D<T>(sgn * dv.x / nm, sgn * dv.y / nm);
+        }
+        T chSign = atEnd ? T(-1) : T(1);
+        T dx = chSign * (mesh.pts[toV].x - mesh.pts[fromV].x);
+        T dy = chSign * (mesh.pts[toV].y - mesh.pts[fromV].y);
+        T nm = std::hypot(dx, dy);
+        return (nm > T(1e-14)) ? gsPoint2D<T>(dx / nm, dy / nm) : gsPoint2D<T>(1, 0);
+    };
+
+    auto triQuadMaxAngle = [&](const typename TriMeshData<T>::Tri& t, const std::vector<int>& vertDeg, int* outLowValIdx = nullptr) -> T {
+        if (outLowValIdx) *outLowValIdx = -1;
+        T forcedScore = T(-1);
+        for (int idx = 0; idx < 3; ++idx) {
+            int vk = t.v[idx];
+            if (vertDeg[vk] < minRequiredBoundaryTriValence(mesh, vk)) {
+                T sc = T(200) + mesh.cornerAngleDeg[vk];
+                if (sc > forcedScore) {
+                    forcedScore = sc;
+                    if (outLowValIdx) *outLowValIdx = idx;
+                }
+            }
+        }
+        if (forcedScore > T(0)) return forcedScore;
+
         const auto& A = mesh.pts[t.v[0]];
         const auto& B = mesh.pts[t.v[1]];
         const auto& C = mesh.pts[t.v[2]];
@@ -1272,181 +1688,85 @@ inline void bisectObtuseTriangles(TriMeshData<T>& mesh, int degree, T maxQuadAng
         gsPoint2D<T> q0[4] = {A, m01, O, m20};
         gsPoint2D<T> q1[4] = {B, m12, O, m01};
         gsPoint2D<T> q2[4] = {C, m20, O, m12};
-        return std::max(quadScore(q0, isCornerSharp(0)),
-                        std::max(quadScore(q1, isCornerSharp(1)), quadScore(q2, isCornerSharp(2))));
+        T bestAng = std::max(quadScore(q0, isCornerSharp(0)),
+                             std::max(quadScore(q1, isCornerSharp(1)), quadScore(q2, isCornerSharp(2))));
+
+        const T radToDeg = T(180) / T(3.14159265358979323846);
+        for (int idx = 0; idx < 3; ++idx) {
+            int eOut = t.e[idx], eIn = t.e[(idx + 2) % 3];
+            if (!mesh.edges[eOut].isBoundary && !mesh.edges[eIn].isBoundary) continue;
+            if (mesh.edges[eOut].isBoundary && mesh.edges[eIn].isBoundary) continue;
+            int vPrev = t.v[(idx + 2) % 3], vk = t.v[idx], vNext = t.v[(idx + 1) % 3];
+            gsPoint2D<T> tOut = edgeDirAt(eOut, vk, vNext, false);
+            gsPoint2D<T> tBack = edgeDirAt(eIn, vPrev, vk, true);
+            T cr = tOut.x * tBack.y - tOut.y * tBack.x;
+            T dt = tOut.x * tBack.x + tOut.y * tBack.y;
+            T cAng = std::atan2(cr, dt) * radToDeg;
+            if (cAng <= T(0)) cAng += T(360);
+            if (cAng > T(158) && cAng < T(215) && cAng > bestAng) bestAng = cAng;
+        }
+        return bestAng;
     };
 
     for (int iter = 0; iter < maxSplits; ++iter) {
         if (mesh.tris.size() > 500) break;
-        int badTi = -1;
-        T worstAng = maxQuadAngleDeg;
-        for (int ti = 0; ti < static_cast<int>(mesh.tris.size()); ++ti) {
-            T a = triQuadMaxAngle(mesh.tris[ti]);
-            if (a > worstAng) { worstAng = a; badTi = ti; }
+        std::vector<int> vertDeg(mesh.pts.size(), 0);
+        for (const auto& tr : mesh.tris) {
+            ++vertDeg[tr.v[0]]; ++vertDeg[tr.v[1]]; ++vertDeg[tr.v[2]];
         }
-        if (badTi < 0) break;
-
-        const auto bt = mesh.tris[badTi];
-        int order[3] = {0, 1, 2};
-        T lens[3];
-        for (int k = 0; k < 3; ++k)
-            lens[k] = mesh.pts[bt.v[k]].dist(mesh.pts[bt.v[(k + 1) % 3]]);
-        std::sort(order, order + 3, [&](int a, int b) { return lens[a] > lens[b]; });
+        struct BadCand { int ti, lvi; T ang; };
+        std::vector<BadCand> cands;
+        for (int ti = 0; ti < static_cast<int>(mesh.tris.size()); ++ti) {
+            int lvi = -1;
+            T a = triQuadMaxAngle(mesh.tris[ti], vertDeg, &lvi);
+            if (a > maxQuadAngleDeg)
+                cands.push_back({ti, lvi, a});
+        }
+        if (cands.empty()) break;
+        std::sort(cands.begin(), cands.end(), [](const BadCand& x, const BadCand& y) { return x.ang > y.ang; });
 
         bool didSplit = false;
-        for (int oi = 0; oi < 3 && !didSplit; ++oi) {
-            int kMax = order[oi];
-            int u = bt.v[kMax], v = bt.v[(kMax + 1) % 3], opp = bt.v[(kMax + 2) % 3];
-            int eIdx = bt.e[kMax];
-            int e_vo = bt.e[(kMax + 1) % 3];
-            int e_ou = bt.e[(kMax + 2) % 3];
+        for (const auto& cand : cands) {
+            const auto bt = mesh.tris[cand.ti];
+            int order[3] = {0, 1, 2};
+            T lens[3];
+            for (int k = 0; k < 3; ++k)
+                lens[k] = mesh.pts[bt.v[k]].dist(mesh.pts[bt.v[(k + 1) % 3]]);
+            std::sort(order, order + 3, [&](int a, int b) { return lens[a] > lens[b]; });
 
-            auto oldEr = mesh.edges[eIdx];
-            if (!oldEr.seg.bsp)
-                oldEr.seg = makeStraightSeg(mesh.pts[oldEr.a], mesh.pts[oldEr.b], degree);
+            T oldMn0, oldMx0;
+            triMinMaxAnglesDeg(mesh.pts[bt.v[0]], mesh.pts[bt.v[1]], mesh.pts[bt.v[2]], oldMn0, oldMx0);
+            T minAllowedChildAng = std::max(T(3.5), std::min(T(10.0), T(0.65) * oldMn0));
 
-            int mateTi = -1, mateK = -1;
-            for (int ti = 0; ti < static_cast<int>(mesh.tris.size()); ++ti) {
-                if (ti == badTi) continue;
-                for (int k = 0; k < 3; ++k) {
-                    if (mesh.tris[ti].e[k] == eIdx) { mateTi = ti; mateK = k; break; }
-                }
-                if (mateTi >= 0) break;
-            }
-            int mOpp = (mateTi >= 0) ? mesh.tris[mateTi].v[(mateK + 2) % 3] : -1;
-
-            // Evaluate midpoint vs orthogonal altitude-foot split parameters along oldEr
-            T tMid = arcLengthSplitParam(*oldEr.seg.bsp, T(0.5));
-            std::vector<T> tCands = {tMid};
-            T tOpp = std::max(T(0.20), std::min(T(0.80), oldEr.seg.closestParam(mesh.pts[opp])));
-            if (std::abs(tOpp - tMid) > T(0.03)) tCands.push_back(tOpp);
-            if (mOpp >= 0) {
-                T tMate = std::max(T(0.20), std::min(T(0.80), oldEr.seg.closestParam(mesh.pts[mOpp])));
-                T tAvg = T(0.5) * (tOpp + tMate);
-                if (std::abs(tMate - tMid) > T(0.03)) tCands.push_back(tMate);
-                if (std::abs(tAvg - tMid) > T(0.03))  tCands.push_back(tAvg);
-            }
-
-            T oldMn0, oldMx0, oldMinAng;
-            triMinMaxAnglesDeg(mesh.pts[u], mesh.pts[v], mesh.pts[opp], oldMn0, oldMx0);
-            oldMinAng = oldMn0;
-            if (mateTi >= 0) {
-                T oldMn1, oldMx1;
-                int mu = mesh.tris[mateTi].v[mateK], mv = mesh.tris[mateTi].v[(mateK + 1) % 3];
-                triMinMaxAnglesDeg(mesh.pts[mu], mesh.pts[mv], mesh.pts[mOpp], oldMn1, oldMx1);
-                oldMinAng = std::min(oldMinAng, oldMn1);
-            }
-            const T minAllowedChildAng = std::max(T(3.5), std::min(T(10.0), T(0.65) * oldMinAng));
-
-            auto segClears = [&](const CurveSeg<T>& seg, const gsPoint2D<T>& pStart,
-                                 const gsPoint2D<T>& pEnd, const gsPoint2D<T>& qOpp) -> bool {
-                if (!seg.bsp) return true;
-                for (T s : {T(0.25), T(0.5), T(0.75)}) {
-                    gsPoint2D<T> q = evalCurvePoint(*seg.bsp, s);
-                    if (cross2(pEnd, qOpp, q) <= T(1e-8) || cross2(qOpp, pStart, q) <= T(1e-8))
-                        return false;
-                }
-                return true;
-            };
-
-            std::pair<CurveSeg<T>, CurveSeg<T>> bestSp;
-            T bestSplitScore = -T(1e9);
-            bool foundSplit = false;
-            for (size_t ci = 0; ci < tCands.size(); ++ci) {
-                auto spTry = oldEr.seg.splitAtParam(tCands[ci]);
-                gsPoint2D<T> sPt = spTry.first.p1();
-                if (cross2(mesh.pts[u], sPt, mesh.pts[opp]) <= T(1e-7) ||
-                    cross2(sPt, mesh.pts[v], mesh.pts[opp]) <= T(1e-7))
-                    continue;
-                if (!curvedBoundaryEdgeClearsVertex(mesh, e_ou, opp, u, sPt) ||
-                    !curvedBoundaryEdgeClearsVertex(mesh, e_vo, v, opp, sPt))
-                    continue;
-                if (oldEr.isBoundary) {
-                    if (!isSegmentInsideDomain(mesh.pts[opp], sPt, mesh.loopPolys)) continue;
-                    const bool fwdUV = (oldEr.a == u);
-                    const auto& segUS = fwdUV ? spTry.first : spTry.second.reversed();
-                    const auto& segSV = fwdUV ? spTry.second : spTry.first.reversed();
-                    if (!segClears(segUS, mesh.pts[u], sPt, mesh.pts[opp]) ||
-                        !segClears(segSV, sPt, mesh.pts[v], mesh.pts[opp]))
-                        continue;
-                }
-                if (mateTi >= 0) {
-                    int mu = mesh.tris[mateTi].v[mateK], mv = mesh.tris[mateTi].v[(mateK + 1) % 3];
-                    int e_mvo = mesh.tris[mateTi].e[(mateK + 1) % 3];
-                    int e_mou = mesh.tris[mateTi].e[(mateK + 2) % 3];
-                    if (cross2(mesh.pts[mu], sPt, mesh.pts[mOpp]) <= T(1e-7) ||
-                        cross2(sPt, mesh.pts[mv], mesh.pts[mOpp]) <= T(1e-7))
-                        continue;
-                    if (!curvedBoundaryEdgeClearsVertex(mesh, e_mou, mOpp, mu, sPt) ||
-                        !curvedBoundaryEdgeClearsVertex(mesh, e_mvo, mv, mOpp, sPt))
-                        continue;
-                    if (oldEr.isBoundary) {
-                        if (!isSegmentInsideDomain(mesh.pts[mOpp], sPt, mesh.loopPolys)) continue;
+            int forceIdx = cand.lvi;
+            if (forceIdx < 0 && oldMx0 > T(150)) {
+                // Put edge opposite the widest vertex angle first
+                T bestCornerA = -T(1);
+                for (int idx = 0; idx < 3; ++idx) {
+                    const auto& Q = mesh.pts[bt.v[idx]];
+                    const auto& U = mesh.pts[bt.v[(idx + 1) % 3]];
+                    const auto& V = mesh.pts[bt.v[(idx + 2) % 3]];
+                    T lu = Q.dist(U), lv = Q.dist(V);
+                    if (lu > T(1e-14) && lv > T(1e-14)) {
+                        T ca = std::acos(std::max(T(-1), std::min(T(1), ((U.x-Q.x)*(V.x-Q.x)+(U.y-Q.y)*(V.y-Q.y))/(lu*lv)))) * T(180) / T(3.14159265358979323846);
+                        if (ca > bestCornerA) { bestCornerA = ca; forceIdx = idx; }
                     }
                 }
-                T mnA, mxA, mnB, mxB;
-                triMinMaxAnglesDeg(mesh.pts[u], sPt, mesh.pts[opp], mnA, mxA);
-                triMinMaxAnglesDeg(sPt, mesh.pts[v], mesh.pts[opp], mnB, mxB);
-                T mnAll = std::min(mnA, mnB);
-                if (mateTi >= 0) {
-                    int mu = mesh.tris[mateTi].v[mateK], mv = mesh.tris[mateTi].v[(mateK + 1) % 3];
-                    T mnC, mxC, mnD, mxD;
-                    triMinMaxAnglesDeg(mesh.pts[mu], sPt, mesh.pts[mOpp], mnC, mxC);
-                    triMinMaxAnglesDeg(sPt, mesh.pts[mv], mesh.pts[mOpp], mnD, mxD);
-                    mnAll = std::min(mnAll, std::min(mnC, mnD));
-                }
-                if (mnAll < minAllowedChildAng) continue;
-                // Small symmetry bias for 0.5 midpoint when nearly tied
-                T sc = mnAll + (ci == 0 ? T(1.5) : T(0));
-                if (!foundSplit || sc > bestSplitScore) {
-                    bestSplitScore = sc;
-                    bestSp = spTry;
-                    foundSplit = true;
-                }
             }
-            if (!foundSplit) continue;
-            auto& sp = bestSp;
-            gsPoint2D<T> midPt = sp.first.p1();
-
-            int mIdx = static_cast<int>(mesh.pts.size());
-            mesh.pts.push_back(midPt);
-            mesh.isBoundaryPt.push_back(oldEr.isBoundary);
-            mesh.isSmoothBnd.push_back(oldEr.isBoundary);
-            mesh.isSharpCorner.push_back(false);
-            mesh.cornerAngleDeg.push_back(oldEr.isBoundary ? T(180) : T(360));
-            auto din = evalCurveDeriv(*sp.first.bsp, T(1));
-            T dn = std::hypot(din.x, din.y);
-            gsPoint2D<T> tMidDir = (dn > T(1e-14)) ? gsPoint2D<T>(din.x / dn, din.y / dn) : gsPoint2D<T>(1, 0);
-            mesh.bndTanIn.push_back(tMidDir);
-            mesh.bndTanOut.push_back(tMidDir);
-
-            int oldA = oldEr.a, oldB = oldEr.b;
-            mesh.edges[eIdx] = {oldA, mIdx, sp.first, CurveSeg<T>(), CurveSeg<T>(), gsPoint2D<T>(), false, oldEr.isBoundary, oldEr.loopIdx};
-            int e_mb = static_cast<int>(mesh.edges.size());
-            mesh.edges.push_back({mIdx, oldB, sp.second, CurveSeg<T>(), CurveSeg<T>(), gsPoint2D<T>(), false, oldEr.isBoundary, oldEr.loopIdx});
-
-            auto halfFor = [&](int endPt) { return (endPt == oldA) ? eIdx : e_mb; };
-
-            int e_om = static_cast<int>(mesh.edges.size());
-            mesh.edges.push_back({opp, mIdx, makeStraightSeg(mesh.pts[opp], midPt, degree),
-                                  CurveSeg<T>(), CurveSeg<T>(), gsPoint2D<T>(), false, false, -1});
-            mesh.tris[badTi] = {{u, mIdx, opp}, {halfFor(u), e_om, e_ou}};
-            mesh.tris.push_back({{mIdx, v, opp}, {halfFor(v), e_vo, e_om}});
-
-            if (mateTi >= 0) {
-                const auto mt = mesh.tris[mateTi];
-                int mu = mt.v[mateK], mv = mt.v[(mateK + 1) % 3];
-                int e_mvo = mt.e[(mateK + 1) % 3];
-                int e_mou = mt.e[(mateK + 2) % 3];
-                int e_mom = static_cast<int>(mesh.edges.size());
-                mesh.edges.push_back({mOpp, mIdx, makeStraightSeg(mesh.pts[mOpp], midPt, degree),
-                                      CurveSeg<T>(), CurveSeg<T>(), gsPoint2D<T>(), false, false, -1});
-                mesh.tris[mateTi] = {{mu, mIdx, mOpp}, {halfFor(mu), e_mom, e_mou}};
-                mesh.tris.push_back({{mIdx, mv, mOpp}, {halfFor(mv), e_mvo, e_mom}});
+            if (forceIdx >= 0) {
+                int oppEdge = (forceIdx + 1) % 3;
+                for (int pos = 0; pos < 3; ++pos) {
+                    if (order[pos] == oppEdge && pos > 0) {
+                        std::swap(order[0], order[pos]);
+                        break;
+                    }
+                }
+                minAllowedChildAng = T(1.5);
             }
-
-            applyDomainLawsonFlips(mesh);
-            didSplit = true;
+            if (trySplitTriangleEdges(mesh, cand.ti, order, degree, minAllowedChildAng)) {
+                didSplit = true;
+                break;
+            }
         }
         if (!didSplit) break;
     }
@@ -1579,7 +1899,8 @@ inline void flipForBetterQuadUnions(TriMeshData<T>& mesh, T minPairAng, T maxPai
             int a = A.v[kA], b = A.v[(kA + 1) % 3], c = A.v[(kA + 2) % 3];
             int d = B.v[(kB + 2) % 3];
             if (B.v[kB] != b || B.v[(kB + 1) % 3] != a) continue;
-            if ((mesh.isSmoothBnd[a] && vertDeg[a] <= 2) || (mesh.isSmoothBnd[b] && vertDeg[b] <= 2))
+            if (vertDeg[a] <= minRequiredBoundaryTriValence(mesh, a) ||
+                vertDeg[b] <= minRequiredBoundaryTriValence(mesh, b))
                 continue;
 
             gsPoint2D<T> qa[4] = {mesh.pts[c], mesh.pts[a], mesh.pts[d], mesh.pts[b]};
@@ -1651,6 +1972,140 @@ inline void flipForBetterQuadUnions(TriMeshData<T>& mesh, T minPairAng, T maxPai
         }
         if (!anyFlip) break;
     }
+}
+
+// Construct a clamped cubic Bezier interior CurveSeg elevated to `degree`.
+template <class T>
+inline CurveSeg<T> makeCubicBezierInteriorSeg(
+    const gsPoint2D<T>& q0,
+    const gsPoint2D<T>& p1,
+    const gsPoint2D<T>& p2,
+    const gsPoint2D<T>& q3,
+    int degree)
+{
+    gsKnotVector<T> kv(T(0), T(1), 0, 4, 1, 3);
+    gsMatrix<T> coefs(4, 2);
+    coefs << q0.x, q0.y, p1.x, p1.y, p2.x, p2.y, q3.x, q3.y;
+    gsBSpline<T> bsp(kv, coefs);
+    if (bsp.degree() < degree)
+        bsp.degreeElevate(degree - bsp.degree());
+    return CurveSeg<T>(bsp);
+}
+
+// Edmonds' general-graph Blossom augmenting-path search from an unmatched vertex `root`.
+// Returns true and commits one augmenting path (subject to `canCommit` valence guard) if found.
+template <class CanCommitFn>
+inline bool augmentBlossomMatchingFrom(
+    int root,
+    int nV,
+    const std::vector<std::vector<std::pair<int, int>>>& adj, // (neighborV, pairEdgeIdx)
+    std::vector<int>& partner,
+    std::vector<int>& matchedPair,
+    CanCommitFn&& canCommit)
+{
+    if (partner[root] >= 0) return false;
+
+    std::vector<int> p(nV, -1);
+    std::vector<int> pEdge(nV, -1);
+    std::vector<int> base(nV);
+    for (int i = 0; i < nV; ++i) base[i] = i;
+    std::vector<bool> used(nV, false);
+    std::vector<bool> blossom(nV, false);
+
+    auto lca = [&](int a, int b) -> int {
+        std::vector<bool> vis(nV, false);
+        for (;;) {
+            a = base[a];
+            vis[a] = true;
+            if (partner[a] < 0) break;
+            a = p[partner[a]];
+        }
+        for (;;) {
+            b = base[b];
+            if (vis[b]) return b;
+            b = p[partner[b]];
+        }
+    };
+
+    auto markPath = [&](int v, int b, int children, int edgeToChild) {
+        while (base[v] != b) {
+            blossom[base[v]] = blossom[base[partner[v]]] = true;
+            p[v] = children;
+            pEdge[v] = edgeToChild;
+            children = partner[v];
+            edgeToChild = matchedPair[v];
+            v = p[partner[v]];
+        }
+    };
+
+    std::queue<int> q;
+    used[root] = true;
+    q.push(root);
+    int foundEnd = -1;
+
+    while (!q.empty() && foundEnd < 0) {
+        int v = q.front();
+        q.pop();
+        for (const auto& nb : adj[v]) {
+            int to = nb.first;
+            int pi = nb.second;
+            if (base[v] == base[to] || partner[v] == to) continue;
+            if (to == root || (partner[to] >= 0 && p[partner[to]] >= 0)) {
+                int curbase = lca(v, to);
+                std::fill(blossom.begin(), blossom.end(), false);
+                markPath(v, curbase, to, pi);
+                markPath(to, curbase, v, pi);
+                for (int i = 0; i < nV; ++i) {
+                    if (blossom[base[i]]) {
+                        base[i] = curbase;
+                        if (!used[i]) {
+                            used[i] = true;
+                            q.push(i);
+                        }
+                    }
+                }
+            } else if (p[to] < 0) {
+                p[to] = v;
+                pEdge[to] = pi;
+                if (partner[to] < 0) {
+                    foundEnd = to;
+                    break;
+                }
+                int m = partner[to];
+                used[m] = true;
+                q.push(m);
+            }
+        }
+    }
+
+    if (foundEnd < 0) return false;
+
+    // Reconstruct added/removed pair edges along the augmenting path
+    std::vector<int> addPairs, remPairs;
+    std::vector<std::tuple<int, int, int>> flips; // (u, v, addPi)
+    int cur = foundEnd;
+    int guard = 0;
+    while (cur >= 0 && guard++ <= nV) {
+        int pv = p[cur];
+        if (pv < 0) return false;
+        int addPi = pEdge[cur];
+        int ppv = partner[pv];
+        if (ppv >= 0) remPairs.push_back(matchedPair[pv]);
+        addPairs.push_back(addPi);
+        flips.emplace_back(pv, cur, addPi);
+        cur = ppv;
+    }
+    if (guard > nV || !canCommit(addPairs, remPairs))
+        return false;
+
+    for (const auto& f : flips) {
+        int u = std::get<0>(f), v = std::get<1>(f), addPi = std::get<2>(f);
+        partner[u] = v;
+        partner[v] = u;
+        matchedPair[u] = addPi;
+        matchedPair[v] = addPi;
+    }
+    return true;
 }
 
 
