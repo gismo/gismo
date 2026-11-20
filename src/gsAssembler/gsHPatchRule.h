@@ -51,7 +51,8 @@
     by fewer boxes that tile the same region. Every such box is a union of leaves of its
     level, so the rule of the box is exact on the tensor space of that level on the box by
     the argument of the class documentation, and it has fewer nodes than the rules of the
-    leaves it replaces. Everything above holds per cell, where a cell is a leaf (no merging)
+    leaves it replaces. The default mode is MergeMode::best; MergeMode::none keeps the kd
+    leaves. Everything above holds per cell, where a cell is a leaf (MergeMode::none)
     or such a box.
 
     This file is part of the G+Smo library.
@@ -201,7 +202,8 @@ private:
     element to lie under at most one finer truncated function for other
     reasons (e.g. simplifying downstream bookkeeping).
 
-    **Leaf merging.** With a MergeMode other than \c none, the leaves of each level are replaced
+    **Leaf merging.** The default MergeMode is \c best; \c none keeps the kd leaves as cells.
+    With a MergeMode other than \c none, the leaves of each level are replaced
     by boxes of the same level that tile the same region (the cells of the rule), and one
     rule is built per box. A box is a union of leaves of its level and is itself a box, so
     on it every active function coincides with a level-m tensor B-spline combination and
@@ -316,8 +318,8 @@ public:
      *                     run concurrently (see @ref gsHPatchRuleCache).
      * @param merge        How the leaves of each level are merged into cells (see
      *                     @ref MergeMode for the guarantees, the history dependence and
-     *                     the complexity of each mode). The default \c none keeps the
-     *                     kd leaves as cells. The partition is built before the cells,
+     *                     the complexity of each mode). The default is \c best; \c none
+     *                     keeps the kd leaves as cells. The partition is built before the cells,
      *                     and its wall time is reported by partitionInfo().
      */
     gsHPatchRule(const gsDomain<T> & domain,
@@ -326,7 +328,7 @@ public:
                  bool     overintegrate,
                  short_t  fixDir = -1,
                  gsHPatchRuleCache<T> * cache = nullptr,
-                 MergeMode merge = MergeMode::none);
+                 MergeMode merge = MergeMode::best);
 
     /// Same arguments as the constructor; returns the rule in a unique pointer.
     static uPtr make(const gsDomain<T> & domain,
@@ -335,7 +337,7 @@ public:
                      bool     overintegrate,
                      short_t  fixDir = -1,
                      gsHPatchRuleCache<T> * cache = nullptr,
-                     MergeMode merge = MergeMode::none)
+                     MergeMode merge = MergeMode::best)
     { return uPtr(new gsHPatchRule(domain,degree,regularity,overintegrate,fixDir,cache,merge)); }
 
     /**
@@ -387,14 +389,14 @@ public:
      * @param overintegrate Reserved (must be false), as in the constructor.
      * @param cache         Optional, caller-owned store of solved 1D shapes (see above).
      * @param merge         Leaf merging of every volume and boundary rule of the factory
-     *                      (see @ref MergeMode). The default \c none keeps the kd leaves.
+     *                      (see @ref MergeMode). The default is \c best; \c none keeps the kd leaves.
      */
     static QuadratureFactory makeFactory(const gsMultiBasis<T> & integration,
                                          index_t  degree,
                                          index_t  regularity,
                                          bool     overintegrate,
                                          gsHPatchRuleCache<T> * cache = nullptr,
-                                         MergeMode merge = MergeMode::none);
+                                         MergeMode merge = MergeMode::best);
 
     // User-declared, so that no implicit move constructor or move assignment exists: a move
     // would leave the shared pointers m_cells and m_index of the source null, and every

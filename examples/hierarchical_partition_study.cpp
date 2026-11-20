@@ -784,7 +784,8 @@ RuleCheck validateModel(const gsTHBSplineBasis<d,T> & thb, const Partition<d> & 
                         index_t tDeg, index_t tReg)
 {
     RuleCheck rc;
-    gsHPatchRule<T> rule(*thb.domain(), tDeg, tReg, false);
+    gsHPatchRule<T> rule(*thb.domain(), tDeg, tReg, false, -1, nullptr,
+                         gsHPatchRule<T>::MergeMode::none);
 
     gsMatrix<T> nodes;
     gsVector<T> weights;

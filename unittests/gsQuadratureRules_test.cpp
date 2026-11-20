@@ -1938,7 +1938,8 @@ TEST(hpatchrule_factory_cache_counters)
     gsOptionList opt;
     gsHPatchRuleCache<real_t> c;
     gsHPatchRule<real_t>::QuadratureFactory f =
-        gsHPatchRule<real_t>::makeFactory(mb2, 4, 1, false, &c);
+        gsHPatchRule<real_t>::makeFactory(mb2, 4, 1, false, &c,
+                                          gsHPatchRule<real_t>::MergeMode::none);
 
     // Step 1: the volume rules of both patches.
     CHECK_EQUAL(lookups, c.numHits() + c.numSolves());

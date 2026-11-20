@@ -833,7 +833,7 @@ SUITE(gsExprAssembler_test)
         if (W.size() == 1 && P.size() == 1)
         {
             CHECK(W[0].allFinite());
-            CHECK_EQUAL(639, W[0].size());
+            CHECK_EQUAL(532, W[0].size()); // all nodes of patch 0 under the merged partition
             CHECK_EQUAL(W[0].size(), P[0].cols());
             CHECK_CLOSE(real_t(1), W[0].sum(), 1000 * eps);
 

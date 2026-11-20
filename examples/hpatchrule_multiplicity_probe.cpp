@@ -352,7 +352,8 @@ int main(int argc, char* argv[])
                        << (winLeaf >= 0 ? (leafFallbackCur[winLeaf] ? "true" : "false") : "n/a") << "\n";
 
             // ---- SELFCHECK ----
-            gsHPatchRule<real_t> rule(*thb.domain(), m_deg, m_reg, false);
+            gsHPatchRule<real_t> rule(*thb.domain(), m_deg, m_reg, false, -1, nullptr,
+                                      gsHPatchRule<real_t>::MergeMode::none);
             const index_t realFallback = rule.numFallbackCells();
             const index_t realPoints   = rule.numPointsTotal();
             const bool selfOk = (predictedFallbackCur <= realFallback);
