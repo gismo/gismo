@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
         {
             gsMultiPatch<> mp;
             filedata.getFirst(mp);
-            gsInfo<< "Got "<< mp <<"\n";
+            gsInfo<< "Got multipatch "<< mp <<"\n";
 
             // Write the whole multipatch (and any field over it) as a single
             // .vtu rather than one file per patch.
@@ -146,8 +146,9 @@ int main(int argc, char *argv[])
             gsMultiPatch<> mp = filedata.getAll< gsGeometry<> >();
             if ( 1==mp.nPatches() )
             {
-                gsInfo<< "Got "<< mp.patch(0) <<"\n";
+                gsInfo<< "Got one patch "<< mp.patch(0) <<"\n";
                 pv.write(mp.patch(0), pname);
+                return EXIT_SUCCESS;
             }
             else
                 gsInfo<< "Got a set of patches "<< mp <<"\n";
