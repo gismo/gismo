@@ -58,7 +58,7 @@ OUTPUT_NAME ${PROJECT_NAME}${gs_static_lib_suffix} )
 if (GISMO_WITH_PYBIND11)
 
   pybind11_add_module(py${PROJECT_NAME} MODULE
-    "${gismo_SOURCE_DIR}/src/misc/gsPyBind11.cpp"
+    "${gismo_SOURCE_DIR}/src/gsSystem/gsPyBind11.cpp"
     )
 
   set_target_properties(py${PROJECT_NAME} PROPERTIES
@@ -101,15 +101,13 @@ if(GISMO_BUILD_LIB)
   #  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-implicit-templates")
   #endif()
 
-if("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR
-   "x${CMAKE_GENERATOR}" STREQUAL "xXcode")
- set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES}
-     "${gismo_SOURCE_DIR}/src/misc/gsDllMain.cpp")
-endif()
+# Library initialization (loads the dynamic modules)
+set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES}
+    "${gismo_SOURCE_DIR}/src/gsSystem/gsDllMain.cpp")
 
 if (GISMO_WITH_XDEBUG)
   if (NOT "x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC" OR DBGHELP_FOUND)
-    set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES} ${gismo_SOURCE_DIR}/src/misc/gsStackWalker.cpp)
+    set(${PROJECT_NAME}_SOURCES ${${PROJECT_NAME}_SOURCES} ${gismo_SOURCE_DIR}/src/gsSystem/gsStackWalker.cpp)
   endif()
 endif()
 

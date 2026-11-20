@@ -56,7 +56,7 @@ namespace gismo {
     is written.
 
     \code
-    // Loading is automatic when an unknown extension is met ...
+    // The modules found in the search paths are loaded with the library ...
     gsFileData<> fd("surface.3dm");
     fd.save("out.3dm");
 
@@ -65,8 +65,11 @@ namespace gismo {
     \endcode
 
     The key of gsFileIo::find is the extension in lower case without the dot.
-    When it is not registered, gsModuleManager::loadAll runs once and the
-    lookup is repeated.
+    gsModuleManager::loadAll runs once, when the G+Smo library is initialized
+    (\c gsSystem/gsDllMain.cpp), so the lookup itself loads nothing: a module
+    that is unloaded, or that lies in a directory added afterwards with
+    gsModuleManager::addSearchPath, is loaded with gsModuleManager::load or
+    gsModuleManager::loadAll.
 
     The handshake of a dynamic module is the structure gismo_module_info_t
     (gsModuleInfo.h), checked by gsModuleManager::load. A module is rejected,

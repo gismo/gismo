@@ -57,7 +57,7 @@ size_t position(const std::vector<std::string> & v, const std::string & s)
 // true when an io for ".3dm" can be made; otherwise prints why the caller returns early
 bool have3dm(const char * test)
 {
-    gsFileIo::uPtr io = gsFileIo::find("3dm");   // loads gsOpennurbs on a miss (dynamic mode)
+    gsFileIo::uPtr io = gsFileIo::find("3dm");   // dynamic mode: gsOpennurbs was loaded with the library
     if (io) return true;
     gsInfo << "gsModuleManager_test: 3dm io not available, skipping " << test << "\n";
     return false;
@@ -406,9 +406,9 @@ TEST(FileIo_roundTrip3dmPlanarCurve)
 }
 
 // Property: a dynamically loaded module can be unloaded (its registrations
-// disappear) and is loaded again on demand; a built-in module refuses unload.
+// disappear) and can be loaded again; a built-in module refuses unload.
 // Expected values: documented behaviour of gsModuleManager::unload and of
-// gsFileIo::find (loadAll on a miss). Last test of the suite, as it changes
+// gsFileIo::find (which loads nothing). Last test of the suite, as it changes
 // the module state.
 TEST(Manager_unloadReload)
 {
@@ -431,8 +431,12 @@ TEST(Manager_unloadReload)
     CHECK(!gsRegistry<gsFileIo>::get().has("3dm"));
     CHECK(!mm.unload("gsOpennurbs"));
 
-    // A lookup of the extension loads the module again; the io object is
-    // destroyed before the scope ends.
+    // A lookup of the extension does not load the module again.
+    CHECK(gsFileIo::find("3dm").get() == NULL);
+    CHECK(!mm.isLoaded("gsOpennurbs"));
+
+    // An explicit load does; the io object is destroyed before the scope ends.
+    CHECK(mm.load("gsOpennurbs"));
     {
         gsFileIo::uPtr io = gsFileIo::find("3dm");
         CHECK(io.get() != NULL);

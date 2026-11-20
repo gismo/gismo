@@ -8,12 +8,11 @@
 include_directories(${GISMO_INCLUDE_DIRS})
 
 SUBDIRLIST(SUBDIRS ${CMAKE_CURRENT_SOURCE_DIR})
-#LIST( REMOVE_ITEM SUBDIRS misc)
 LIST( APPEND SUBDIRS gsUtils/gsMesh)
 LIST( APPEND SUBDIRS gsMesh2/gsSubdivisionSchemes)
 
 if (GISMO_BUILD_PCH)
-  add_precompiled_header(gsPrecompiledHeader misc/gsPrecompiledHeader.h)
+  add_precompiled_header(gsPrecompiledHeader gsSystem/gsPrecompiledHeader.h)
 endif()
 
 FOREACH(subdir ${SUBDIRS})
@@ -25,6 +24,14 @@ FOREACH(subdir ${SUBDIRS})
   aux_header_directory     (${CMAKE_CURRENT_SOURCE_DIR}/${subdir} ${subdir}_H  )
   aux_cpp_noins_directory  (${CMAKE_CURRENT_SOURCE_DIR}/${subdir} ${subdir}_CPP)
   aux_tmpl_header_directory(${CMAKE_CURRENT_SOURCE_DIR}/${subdir} ${subdir}_HPP)
+
+  # Sources of gsSystem that are added conditionally in cmake/gsLibrary.cmake
+  if (${GM_NAME} STREQUAL "gsSystem")
+    foreach(special gsDllMain gsPyBind11 gsStackWalker)
+      list(REMOVE_ITEM ${subdir}_CPP
+        "${CMAKE_CURRENT_SOURCE_DIR}/${subdir}/${special}.cpp")
+    endforeach()
+  endif()
 
   if(GISMO_BUILD_LIB)
     aux_instance_directory (${CMAKE_CURRENT_SOURCE_DIR}/${subdir} ${subdir}_INS)

@@ -12,7 +12,6 @@
 */
 
 #include <gsSystem/gsFileIo.h>
-#include <gsSystem/gsModuleManager.h>
 
 #include <algorithm>
 #include <cctype>
@@ -51,17 +50,9 @@ gsFileIo::uPtr gsFileIo::find(const std::string & ext)
     std::for_each(key.begin(), key.end(),
                   [](char & a){ a = static_cast<char>(::tolower(a)); } );
 
-    // get() registers the built-in modules, so it precedes the first lookup
-    gsModuleManager & mm = gsModuleManager::get();
-
-    gsRegistry<gsFileIo> & reg = gsRegistry<gsFileIo>::get();
-
-    if ( !reg.has(key) )
-    {
-        mm.loadAll();
-        return reg.make(key);
-    }
-    return reg.make(key);
+    // The dynamic modules are loaded when the library is initialized
+    // (gsDllMain.cpp); get() registers the built-in ones
+    return gsRegistry<gsFileIo>::get().make(key);
 }
 
 } // namespace gismo

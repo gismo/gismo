@@ -62,8 +62,9 @@ public:
 
     /// Makes the reader/writer registered for the extension @a ext (case
     /// insensitive, with or without leading dot), or returns a null
-    /// pointer if there is none. If the extension is not registered,
-    /// gsModuleManager::loadAll() runs once and the lookup is repeated.
+    /// pointer if there is none. The modules found in the search
+    /// paths are loaded when the library is initialized; a module added
+    /// later needs gsModuleManager::load() or gsModuleManager::loadAll().
     static uPtr find(const std::string & ext);
 };
 
