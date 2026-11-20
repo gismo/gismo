@@ -45,7 +45,7 @@ include_directories( ${GISMO_INCLUDE_DIRS})
 link_directories   ( ${GISMO_LIBRARY_DIR} )
 
 include( ${GISMO_USE_FILE} )
-set(CMAKE_MODULE_PATH ${GISMO_MODULE_PATH})
+set(CMAKE_MODULE_PATH ${GISMO_CMAKE_PATH})
 include(gsConfig) #compiler configuration
 
 # Application files

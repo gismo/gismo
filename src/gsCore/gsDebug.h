@@ -31,7 +31,7 @@
 #endif
 
 //#ifdef GISMO_WITH_XDEBUG
-//  #include <misc/gsStackWalker.h>
+//  #include <gsSystem/gsStackWalker.h>
 //#endif
 
 namespace gismo {
