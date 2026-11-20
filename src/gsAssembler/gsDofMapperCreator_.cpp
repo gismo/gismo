@@ -6,6 +6,11 @@
 namespace gismo
 {
 
+TEMPLATE_INST gsDofMapper createMapper(const std::vector<const gsFunctionSet<real_t>*> & bases,
+                                       const gsBoxTopology & topology,
+                                       const gsBoundaryConditions<real_t> & bc,
+                                       index_t unk, bool conforming, bool finalize);
+
 TEMPLATE_INST gsDofMapper createMapper(const gsFunctionSet<real_t> & bases,
                                        const gsBoxTopology & topology,
                                        const gsBoundaryConditions<real_t> & bc,
