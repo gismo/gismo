@@ -68,7 +68,7 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
   options.addInt("quRule",
                  "Quadrature rule [1:GaussLegendre,2:GaussLobatto,3:PatchRule]",
                  1);
-  options.addInt("overInt", "Apply over-integration?", 0);
+  options.addSwitch("overInt", "Apply over-integration?", false);
 
   // Preconditioner type for AA: 0: NO preconditioning, 1: Full Jacobian preconditioner, 2: Diagonal Jacobian preconditioner, 3: Diagonal Block Jacobian preconditioner
   options.addInt("AAPreconditionType", "Preconditioner type for AA", 0);

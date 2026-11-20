@@ -92,7 +92,24 @@ public:
     {
         return b.print( os );
     }
-    
+
+    /// Same dimension, number of boxes, boundaries and interfaces, in stored
+    /// order. Properties and labels are ignored.
+    /// Only for gsBoxTopology itself: derived classes (e.g. gsMultiPatch)
+    /// compare their topology() instead.
+    template<class Topology>
+    friend typename std::enable_if<std::is_same<Topology, gsBoxTopology>::value, bool>::type
+    operator==(const Topology & a, const Topology & b)
+    {
+        return a.m_dim      == b.m_dim      && a.nboxes       == b.nboxes &&
+               a.m_boundary == b.m_boundary && a.m_interfaces == b.m_interfaces;
+    }
+
+    /// Negation of operator==
+    template<class Topology>
+    friend typename std::enable_if<std::is_same<Topology, gsBoxTopology>::value, bool>::type
+    operator!=(const Topology & a, const Topology & b) { return !(a == b); }
+
     /// Number of boxes
     index_t nBoxes() const       { return nboxes; }
 
