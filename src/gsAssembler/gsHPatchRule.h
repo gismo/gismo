@@ -47,6 +47,13 @@
     gsHPatchRule::_compute1D). A @ref gsHPatchRuleCache shares the
     solved shapes between leaves, directions and builds.
 
+    Leaf merging (gsHPatchRule::MergeMode). The rule can replace the leaves of each level
+    by fewer boxes that tile the same region. Every such box is a union of leaves of its
+    level, so the rule of the box is exact on the tensor space of that level on the box by
+    the argument of the class documentation, and it has fewer nodes than the rules of the
+    leaves it replaces. Everything above holds per cell, where a cell is a leaf (no merging)
+    or such a box.
+
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
@@ -62,6 +69,7 @@
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsDomain/gsHDomain.h>
 
+#include <array>
 #include <functional>
 #include <map>
 #include <utility>
@@ -71,6 +79,8 @@ namespace gismo
 {
 
 template<short_t d, class T, bool Trunc> class gsTHBSplineBasis;
+
+template<short_t d, class T> class gsHTensorBasis;
 
 template<class T> class gsHPatchRule;
 
@@ -191,12 +201,20 @@ private:
     element to lie under at most one finer truncated function for other
     reasons (e.g. simplifying downstream bookkeeping).
 
-    **Handles.** The leaf data (the sorted node-weight arrays of all leaves) is filled once by
+    **Leaf merging.** With a MergeMode other than \c none, the leaves of each level are replaced
+    by boxes of the same level that tile the same region (the cells of the rule), and one
+    rule is built per box. A box is a union of leaves of its level and is itself a box, so
+    on it every active function coincides with a level-m tensor B-spline combination and
+    the exactness argument above carries over. The kd-tree of the domain is not modified.
+    The kd leaves stay the unit of the lookup: see @ref _findCell.
+
+    **Handles.** The leaf data (the sorted node-weight arrays of all cells and the index
+    from kd leaves to cells) is filled once by
     the constructor and is immutable afterwards. Copying a rule (copy construction or
     assignment) gives a handle: it shares the leaf data and owns its lookup position
-    (see @ref m_lastCell) by value. Copy construction costs O(1): one reference-count
+    (see @ref m_lastLeaf) by value. Copy construction costs O(1): one reference-count
     increment and a few scalars; it allocates nothing. Copy assignment may release the
-    previous leaf data, which costs O(L) (L = number of leaves) when the target was its last
+    previous leaf data, which costs O(L) (L = number of cells) when the target was its last
     owner. The leaf data lives as long as the last handle. A handle
     must be used by one thread at a time, but handles of one rule can be used concurrently
     by different threads. Copy a rule only while no other thread calls mapTo on it, because
@@ -217,14 +235,69 @@ public:
                                                         index_t patch,
                                                         short_t fixedDirection)> QuadratureFactory;
 
+    /**
+     * @brief How the constructor partitions the region of each level into the cells of the rule.
+     *
+     * The cells of a level are boxes (in the level-local unique-knot indices) whose union is
+     * the union of the kd-tree leaves of that level. Merging acts per level, because
+     * different levels have different target spaces, and per rule, hence per patch.
+     * A candidate is scored with the node count of the rule itself: per direction other
+     * than the fixed one, the number of nodes of the even target knot vector of the box,
+     * multiplied over the directions. The score assumes that the 1D solves converge; a box
+     * whose solve fails is integrated by element-wise Gauss in that direction, see
+     * numFallbackCells().
+     *
+     * - \c none: the cells are the kd leaves, in leaf-iterator order.
+     * - \c pairwise: repeated merging of boxes whose union is a box, starting from the kd
+     *   leaves. Never more nodes than \c none. Complexity O(L^2 log L) in the worst case
+     *   (L = leaves of the level), a few O(L log L) passes in practice. It depends on the
+     *   kd leaves, hence on the refinement history of the domain.
+     * - \c sweep: the canonical slab decomposition of the region, with the axis order of
+     *   fewest nodes per level (ties to the lexicographically smallest order). The result
+     *   depends on the region only, not on the kd-tree: it is history-independent. It can have
+     *   more nodes than \c none. Complexity O(d! L^d log L) in the worst case, far less
+     *   in practice.
+     * - \c best: both candidates, and per level the one with fewer model nodes (a tie
+     *   goes to \c sweep). Hence best <= pairwise <= none in node count, and best <= sweep.
+     *   As \c pairwise, \c best is not history-independent in general; it is wherever
+     *   \c sweep wins or ties on every level.
+     *
+     * With every mode other than \c none the cells are sorted by (level, lower corner, upper
+     * corner), so equal partitions give bitwise equal rules.
+     */
+    enum class MergeMode { none, pairwise, sweep, best };
+
+    /// Partition of one build; shared by all handles of the rule. Node counts are model
+    /// counts: the sum over the boxes of the product of the 1D node counts of the
+    /// directions other than the fixed one. When no 1D solve fails, numPointsTotal() equals
+    /// the model count of the partition that was kept: nodesLeaves for MergeMode::none,
+    /// nodesPairwise for \c pairwise, nodesSweep for \c sweep, and for \c best the sum over
+    /// the levels of the smaller of the two candidate counts of each level. That sum is at
+    /// most min(nodesPairwise, nodesSweep), and equal to it when levelsPairwise == 0.
+    struct PartitionInfo
+    {
+        PartitionInfo()
+        : numLeaves(0), numCells(0), nodesLeaves(0), nodesPairwise(-1), nodesSweep(-1),
+          levelsPairwise(0), seconds(0) {}
+
+        index_t numLeaves;      ///< kd-tree leaves of the domain
+        index_t numCells;       ///< cells of the rule
+        index_t nodesLeaves;    ///< model node count of the kd-tree leaves
+        index_t nodesPairwise;  ///< model node count of the pairwise candidate, -1 if not computed
+        index_t nodesSweep;     ///< model node count of the sweep candidate, -1 if not computed
+        index_t levelsPairwise; ///< levels on which the pairwise candidate was kept
+        double  seconds;        ///< wall time of candidates + choice (gsStopwatch), 0 for none
+    };
+
     /// Default empty constructor
     gsHPatchRule()
     : m_cells(memory::make_shared(new std::vector<CellData>)),
+      m_index(memory::make_shared(new LeafIndex)),
       m_deg(0), m_reg(0), m_over(false), m_fixDir(-1), m_dim(0), m_maxLevel(0),
-      m_lastCell(0) {}
+      m_merge(MergeMode::none), m_lastLeaf(0) {}
 
     /**
-     * @brief Construct a per-atomic-cell hierarchical patch rule.
+     * @brief Construct a per-cell hierarchical patch rule (a cell is a kd leaf, or with merging a box of leaves of one level).
      *
      * @param domain       A hierarchical domain (must be a \ref gsHDomain, as
      *                     returned by gsHTensorBasis::domain()).
@@ -241,13 +314,19 @@ public:
      *                     the rule, so it only has to outlive this call. \c nullptr uses
      *                     a cache local to this build. Must not be shared by builds that
      *                     run concurrently (see @ref gsHPatchRuleCache).
+     * @param merge        How the leaves of each level are merged into cells (see
+     *                     @ref MergeMode for the guarantees, the history dependence and
+     *                     the complexity of each mode). The default \c none keeps the
+     *                     kd leaves as cells. The partition is built before the cells,
+     *                     and its wall time is reported by partitionInfo().
      */
     gsHPatchRule(const gsDomain<T> & domain,
                  index_t  degree,
                  index_t  regularity,
                  bool     overintegrate,
                  short_t  fixDir = -1,
-                 gsHPatchRuleCache<T> * cache = nullptr);
+                 gsHPatchRuleCache<T> * cache = nullptr,
+                 MergeMode merge = MergeMode::none);
 
     /// Same arguments as the constructor; returns the rule in a unique pointer.
     static uPtr make(const gsDomain<T> & domain,
@@ -255,8 +334,9 @@ public:
                      index_t  regularity,
                      bool     overintegrate,
                      short_t  fixDir = -1,
-                     gsHPatchRuleCache<T> * cache = nullptr)
-    { return uPtr(new gsHPatchRule(domain,degree,regularity,overintegrate,fixDir,cache)); }
+                     gsHPatchRuleCache<T> * cache = nullptr,
+                     MergeMode merge = MergeMode::none)
+    { return uPtr(new gsHPatchRule(domain,degree,regularity,overintegrate,fixDir,cache,merge)); }
 
     /**
      * @brief Quadrature factory that hands out handles of rules built once.
@@ -306,13 +386,19 @@ public:
      * @param regularity    Target regularity (see the constructor).
      * @param overintegrate Reserved (must be false), as in the constructor.
      * @param cache         Optional, caller-owned store of solved 1D shapes (see above).
+     * @param merge         Leaf merging of every volume and boundary rule of the factory
+     *                      (see @ref MergeMode). The default \c none keeps the kd leaves.
      */
     static QuadratureFactory makeFactory(const gsMultiBasis<T> & integration,
                                          index_t  degree,
                                          index_t  regularity,
                                          bool     overintegrate,
-                                         gsHPatchRuleCache<T> * cache = nullptr);
+                                         gsHPatchRuleCache<T> * cache = nullptr,
+                                         MergeMode merge = MergeMode::none);
 
+    // User-declared, so that no implicit move constructor or move assignment exists: a move
+    // would leave the shared pointers m_cells and m_index of the source null, and every
+    // handle must keep both non-null.
     ~gsHPatchRule() {}
 
 public:
@@ -320,9 +406,12 @@ public:
     /**
      * @brief Map quadrature rule to the element \a [lower, upper].
      *
-     * Looks up the atomic cell whose parametric box contains \a [lower, upper],
-     * filters the cell's per-direction node arrays to the element bounds, and
-     * tensorizes the result (direction 0 fastest).
+     * Looks up the cell (a kd leaf, or a merged box) whose parametric box contains
+     * \a [lower, upper], filters the cell's per-direction node arrays to the element
+     * bounds, and tensorizes the result (direction 0 fastest). For a merged cell the
+     * elements of the cell share its nodes: the nodes returned for an element are those
+     * of the cell inside the element, and the elements of the cell together get every
+     * node once.
      *
      * An element outside every cell is a precondition violation and raises an
      * error.
@@ -346,11 +435,26 @@ public:
 
     index_t dim() const { return m_dim; }
 
-    /// Total number of quadrature points across all atomic cells.
+    /// Total number of quadrature points across all cells, merged or not.
     index_t numPointsTotal() const;
 
     /**
-     * @brief Number of atomic cells with at least one direction (other than the
+     * @brief The partition of the build: leaves, cells, model node counts of the candidates.
+     *
+     * Shared by all handles of the rule, valid as long as one handle lives. The node
+     * counts are model counts that assume convergent 1D solves. With numFallbackCells() == 0,
+     * numPointsTotal() equals the count of the partition that was kept (see PartitionInfo);
+     * for \c best that is the per-level minimum summed over the levels, at most
+     * min(nodesPairwise, nodesSweep). Guarantees (see @ref MergeMode):
+     * best <= pairwise <= leaves in model count, and best <= sweep; \c sweep is
+     * history-independent while \c pairwise and \c best are not in general. The
+     * member \c seconds is the wall time of the candidates and the choice and is
+     * 0 for MergeMode::none. Complexity O(1).
+     */
+    const PartitionInfo & partitionInfo() const;
+
+    /**
+     * @brief Number of cells (merged or not) with at least one direction (other than the
      *        fixed one) in element-wise Gauss because its 1D solve failed.
      *
      * A direction with equally many Johannessen and Gauss nodes uses Gauss but is
@@ -387,7 +491,8 @@ public:
 
 private:
 
-    /// Per-atomic-cell quadrature data (sorted node→weight arrays per direction).
+    /// Per-cell quadrature data (sorted node→weight arrays per direction); a cell is a
+    /// kd leaf or a merged box of leaves of one level.
     struct CellData
     {
         gsVector<T>                lowerParam;  ///< Parametric lower corner
@@ -405,6 +510,26 @@ private:
     /// Shared state of a factory returned by makeFactory.
     struct FactoryState;
 
+    /// Box of elements of one level, in level-local unique-knot indices: the elements
+    /// with lo[dd] <= i_dd < up[dd] in every direction dd.
+    template<short_t d>
+    struct IndexBox
+    {
+        index_t lo[d];
+        index_t up[d];
+    };
+
+    /// Lookup structure shared by all handles; immutable after construction.
+    /// The kd leaves in leaf-iterator order (the order of volume iteration) with their
+    /// parametric boxes, and for each leaf the cells that meet it in a set of positive volume.
+    struct LeafIndex
+    {
+        std::vector<T>       lo, up;  ///< Parametric kd-leaf boxes, d entries per leaf
+        std::vector<index_t> first;   ///< CSR offsets into \a cell, numLeaves + 1 entries
+        std::vector<index_t> cell;    ///< Cells that meet leaf i: cell[first[i]] .. cell[first[i+1]-1]
+        PartitionInfo        info;
+    };
+
     // ----------------------------------------------------------------
     // Private helpers
     // ----------------------------------------------------------------
@@ -413,6 +538,121 @@ private:
     /// the 1D rules of the patch directions come from \a cache.
     template<short_t d>
     void _build(const gsDomain<T> & domain, gsHPatchRuleCache<T> & cache);
+
+    /**
+     * @brief Even target knot vector of a cell in one direction, and its node count.
+     *
+     * The target knot vector has multiplicity m_deg+1 at both ends of the unique-knot index
+     * range [\a lo, \a up] of \a kvLev and, at an interior unique knot of multiplicity
+     * mu_j in \a kvLev, multiplicity min(m_deg - m_reg - 1 + mu_j, m_deg + 1) (target
+     * regularity m_reg + 1 - mu_j, floored at -1). It is made even block by block by
+     * @ref _ensureEven1D. The 1D rule has \a n1d = (dimension)/2 nodes. The build of the
+     * cells and the scoring of the candidate partitions both use this function, so the
+     * model count and the rule cannot differ.
+     *
+     * Complexity: O((up - lo) * m_deg) for the knots, plus _ensureEven1D.
+     */
+    gsKnotVector<T> _evenTargetKnots1D(const gsKnotVector<T> & kvLev,
+                                       index_t lo, index_t up, index_t & n1d) const;
+
+    /// Model node count of \a boxes of level \a level: the sum over the boxes of the
+    /// product of the 1D node counts of the non-fixed directions. Never touches a
+    /// gsHPatchRuleCache. Complexity O(sum over boxes of the extents of the box).
+    template<short_t d>
+    index_t _modelNodes(const gsHTensorBasis<d,T> & basis, index_t level,
+                        const std::vector<IndexBox<d> > & boxes) const;
+
+    /// Strict weak order of boxes: lower corner lexicographically, then upper corner.
+    template<short_t d>
+    static bool _boxLess(const IndexBox<d> & x, const IndexBox<d> & y);
+
+    /**
+     * @brief Repeatedly merges boxes whose union is a box, in place.
+     *
+     * Two boxes merge when they agree in every axis but one and touch along it. Passes
+     * over the axes repeat until nothing merges. The result depends on the set of
+     * boxes only, and a merge never raises the node count, since the merged target space
+     * has at most the dimension of the sum of the two (the interior multiplicity at the
+     * shared knot is added and one end block of m_deg+1 is dropped).
+     *
+     * Complexity: a pass over one axis sorts O(L log L) and merges runs in one scan; every
+     * productive pass removes a box, so O(L^2 log L) in the worst case and a few passes in practice.
+     */
+    template<short_t d>
+    static void _mergePairwise(std::vector<IndexBox<d> > & boxes);
+
+    /**
+     * @brief Canonical slab decomposition of the union of the disjoint boxes \a B for the
+     *        axis order \a sigma, from depth \a k on.
+     *
+     * At depth k the cut set holds every face coordinate of \a B along a = sigma[k]. Each
+     * slab between consecutive cuts is decomposed by the recursive call (axes sigma[k+1..])
+     * on the boxes spanning the slab, clipped to it; a piece is glued to the piece of the
+     * previous slab that has the same extents in the remaining axes and touches it. The
+     * last axis merges touching intervals directly.
+     *
+     * Why this is canonical: the cut set contains every face coordinate of the kd leaves,
+     * including interior faces that depend on the refinement history. At a cut where the
+     * cross-section of the region is the same on both sides, the recursive results on both
+     * sides are identical, so every piece continues across the cut and the cut leaves no
+     * trace. Every other cut is a face of the region itself. The output therefore depends on
+     * the region and \a sigma, not on the kd-tree. Merging happens inner axes first; a second
+     * pass would find nothing, because pieces touching along sigma[k] with equal other
+     * extents are already glued inside the slabs.
+     *
+     * Complexity: a depth has at most 2L-1 slabs for L boxes and the pieces before gluing
+     * number at most (2L)^(d-1) L = O(L^d), so the result can contain more boxes than L (a
+     * T-shaped region made of 2 leaves gives 3 pieces for one axis order). The slab filter costs O(L) per slab
+     * and the ordered maps add a log factor: O(L^d log L) per axis order. Ordered containers
+     * only, so the result does not depend on hash order.
+     */
+    template<short_t d>
+    static std::vector<IndexBox<d> > _sweepRec(const std::vector<IndexBox<d> > & B,
+                                               const std::array<short_t,d> & sigma, short_t k);
+
+    /// Sweep candidate of one level: runs _sweepRec for every axis order (lexicographic
+    /// order from 0,..,d-1) and keeps the order with fewest model nodes, ties to the
+    /// lexicographically smallest order. The pieces are sorted by _boxLess; \a nodes is
+    /// their model count. Complexity: d! times _sweepRec and _modelNodes.
+    template<short_t d>
+    std::vector<IndexBox<d> > _sweepLevel(const gsHTensorBasis<d,T> & basis, index_t level,
+                                          const std::vector<IndexBox<d> > & leaves,
+                                          index_t & nodes) const;
+
+    /**
+     * @brief Cells of every kd leaf: the CSR lists of LeafIndex.
+     *
+     * Leaf i is listed with every cell of its level whose box meets the leaf in a set of
+     * positive volume, in ascending cell order. The cells of a level are indexed by a
+     * bounding-volume tree, so a leaf is queried in O(log C + f) for C cells of its level
+     * and f cells that meet it. Total O(C log C + L log C + sum of f). In debug builds
+     * it checks that the intersections with the listed cells cover every leaf exactly
+     * and that the cells of every level cover the leaves of that level exactly.
+     */
+    template<short_t d>
+    static void _leafCells(const std::vector<IndexBox<d> > & leafBox,
+                           const std::vector<index_t> & leafLev,
+                           const std::vector<IndexBox<d> > & cellBox,
+                           const std::vector<index_t> & cellLev,
+                           std::vector<index_t> & first, std::vector<index_t> & cell);
+
+    /**
+     * @brief Chooses the cells of the rule from the kd leaves according to m_merge.
+     *
+     * For MergeMode::none the cells are the leaves in leaf-iterator order. Otherwise the
+     * leaves of each level are replaced by the pairwise and/or the sweep candidate (per
+     * m_merge; for \c best the one with fewer model nodes, a tie to the sweep), and the cells
+     * are sorted by (level, _boxLess). Fills the candidate fields of \a info.
+     *
+     * Complexity: see MergeMode.
+     */
+    template<short_t d>
+    void _partition(const gsHTensorBasis<d,T> & basis,
+                    const std::vector<IndexBox<d> > & leafBox,
+                    const std::vector<index_t> & leafLev,
+                    std::vector<IndexBox<d> > & cellBox,
+                    std::vector<index_t> & cellLev,
+                    PartitionInfo & info) const;
 
     /**
      * @brief Rule of a normalised even target space for a leaf direction of clamped length.
@@ -568,25 +808,28 @@ private:
                 gsMatrix<T> & nodes, gsVector<T> & weights) const;
 
     /**
-     * @brief Index of the atomic cell whose parametric box contains the
+     * @brief Index of the cell whose parametric box contains the
      *        element \a [lower, upper] (arrays of length dim()), or -1.
      *
      * Containment: cell contains [lower,upper] iff
      * cell.lower[dd] <= lower[dd] and upper[dd] <= cell.upper[dd] for all dd
-     * (exact comparison). Probes the last hit \a m_lastCell, then its
-     * successor, then scans the remaining cells cyclically starting at
-     * \a m_lastCell + 2; the cell found becomes the new \a m_lastCell.
+     * (exact comparison). Two levels: probes the kd leaves, starting at the last hit
+     * \a m_lastLeaf, then its successor, then cyclically; the leaf found becomes the new
+     * \a m_lastLeaf, and the first of the cells that meet it that contains the element is
+     * returned. If no leaf contains the element (an element of a coarser or foreign
+     * domain), or none of its cells does, all cells are scanned in order.
      * Handles degenerate (boundary) elements where lower[dd] == upper[dd].
-     * Never throws; a containing cell is found whenever one exists, in any
-     * iteration order.
+     * Never throws and never allocates; a containing cell is found whenever one exists,
+     * in any iteration order.
      *
-     * Complexity, with L = number of cells:
-     * - O(1) amortised per element in volume iteration order
-     *   (gsHDomainIterator visits the leaves in the order of m_cells);
-     * - O(nBdrElem + L) per sweep for boundary or interface iteration with a
+     * Complexity, with L_kd = number of kd leaves, L = number of cells and f_i = number of
+     * cells that meet leaf i (1 when the leaf lies in one cell):
+     * - O(1) amortised plus O(f_i d) per element in volume iteration order
+     *   (gsHDomainIterator visits the leaves in the order of LeafIndex);
+     * - O(nBdrElem + L_kd) per sweep for boundary or interface iteration with a
      *   fixed direction (the boundary iterator skips leaves not on the side);
-     * - one O(L) scan at the start of each OpenMP chunk;
-     * - O(L) per miss when elements arrive in an order unrelated to the leaf
+     * - one O(L_kd) scan at the start of each OpenMP chunk;
+     * - O(L_kd + L) per miss when elements arrive in an order unrelated to the leaf
      *   order (shuffled, or a domain other than the rule's own);
      * - returns -1 if no cell contains the element.
      */
@@ -611,9 +854,13 @@ private:
     // ----------------------------------------------------------------
     // Data
     // ----------------------------------------------------------------
-    /// One entry per leaf of the HTree. Never null; filled once by the constructor and
-    /// immutable afterwards, shared by all handles (copies) of the rule.
+    /// One entry per cell (a kd leaf, or a merged box). Never null; filled once by the
+    /// constructor and immutable afterwards, shared by all handles (copies) of the rule.
     memory::shared_ptr<const std::vector<CellData> > m_cells;
+
+    /// The kd leaves, the cells that meet each, and the partition info. Never null;
+    /// filled once by the constructor and immutable afterwards, shared by all handles.
+    memory::shared_ptr<const LeafIndex> m_index;
 
     index_t m_deg;
     index_t m_reg;
@@ -621,11 +868,12 @@ private:
     short_t m_fixDir;
     index_t m_dim;
     index_t m_maxLevel;
+    MergeMode m_merge;
 
-    /// Index of the last-hit cell of *this handle*, in [0, L) when L = m_cells->size() > 0.
-    /// Mutable lookup cache. Handles share the leaf data and never share this field, so a
-    /// handle needs no synchronisation as long as one thread uses it.
-    mutable index_t m_lastCell;
+    /// Position of the last-hit kd leaf of *this handle* in the leaf list of m_index, in
+    /// [0, L_kd) when L_kd > 0. Mutable lookup cache. Handles share the leaf data and never
+    /// share this field, so a handle needs no synchronisation as long as one thread uses it.
+    mutable index_t m_lastLeaf;
 
 }; // class gsHPatchRule
 

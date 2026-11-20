@@ -23,8 +23,10 @@
 #include <gsDomain/gsHDomainIterator.h>
 #include <gsMatrix/gsSparseSolver.h>
 #include <gsCore/gsMultiBasis.h>
+#include <gsUtils/gsStopwatch.h>
 
 #include <algorithm>
+#include <array>
 #include <functional>
 #include <map>
 
@@ -41,7 +43,8 @@ gsHPatchRule<T>::gsHPatchRule(const gsDomain<T> & domain,
                               const index_t  regularity,
                               const bool     overintegrate,
                               const short_t  fixDir,
-                              gsHPatchRuleCache<T> * cache)
+                              gsHPatchRuleCache<T> * cache,
+                              const MergeMode merge)
 :
 m_deg(degree),
 m_reg(regularity),
@@ -49,7 +52,8 @@ m_over(overintegrate),
 m_fixDir(fixDir),
 m_dim(domain.dim()),
 m_maxLevel(0),
-m_lastCell(0)
+m_merge(merge),
+m_lastLeaf(0)
 {
     GISMO_ENSURE(m_reg < m_deg, "regularity must be strictly less than degree");
     GISMO_ENSURE(!m_over, "gsHPatchRule: over-integration is not implemented.");
@@ -90,12 +94,39 @@ void gsHPatchRule<T>::_build(const gsDomain<T> & domain, gsHPatchRuleCache<T> & 
     // Element-wise Gauss with nq points per element is exact to degree 2nq-1 >= m_deg.
     const index_t nq = m_deg / 2 + 1;
 
-    std::vector<CellData> cells;
-
-    auto leaf = hd->tree().beginLeafIterator();
-    for (; leaf.good(); leaf.next())
+    // The kd leaves in leaf-iterator order (the order of volume iteration), with their
+    // parametric boxes for the lookup.
+    std::vector<IndexBox<d> > leafBox;
+    std::vector<index_t>      leafLev;
+    LeafIndex lidx;
+    for (auto leaf = hd->tree().beginLeafIterator(); leaf.good(); leaf.next())
     {
         const index_t l = leaf.level();
+        IndexBox<d> b;
+        for (short_t dd = 0; dd < d; ++dd)
+        {
+            const gsKnotVector<T> & kvLev = basis.tensorLevel(l).component(dd).knots();
+            b.lo[dd] = leaf.lowerCorner()[dd];
+            b.up[dd] = leaf.upperCorner()[dd];
+            lidx.lo.push_back(kvLev(b.lo[dd]));
+            lidx.up.push_back(kvLev(b.up[dd]));
+        }
+        leafBox.push_back(b);
+        leafLev.push_back(l);
+    }
+
+    std::vector<IndexBox<d> > cellBox;
+    std::vector<index_t>      cellLev;
+    _partition<d>(basis, leafBox, leafLev, cellBox, cellLev, lidx.info);
+
+    std::vector<CellData> cells;
+    cells.reserve(cellBox.size());
+    index_t modelNodes = 0;
+
+    for (size_t c = 0; c < cellBox.size(); ++c)
+    {
+        const index_t l = cellLev[c];
+        const IndexBox<d> & box = cellBox[c];
 
         CellData cell;
         cell.level = l;
@@ -116,8 +147,8 @@ void gsHPatchRule<T>::_build(const gsDomain<T> & domain, gsHPatchRuleCache<T> & 
             const gsKnotVector<T> & kvLev =
                 basis.tensorLevel(l).component(dd).knots();
 
-            cell.lowerIndex[dd] = leaf.lowerCorner()[dd];
-            cell.upperIndex[dd] = leaf.upperCorner()[dd];
+            cell.lowerIndex[dd] = box.lo[dd];
+            cell.upperIndex[dd] = box.up[dd];
             cell.lowerParam[dd] = kvLev(cell.lowerIndex[dd]);
             cell.upperParam[dd] = kvLev(cell.upperIndex[dd]);
 
@@ -128,32 +159,8 @@ void gsHPatchRule<T>::_build(const gsDomain<T> & domain, gsHPatchRuleCache<T> & 
                 continue;
             }
 
-            // Target knot vector on the leaf: degree m_deg, and at every interior
-            // breakpoint the multiplicity implied by the level-l knot vector's own
-            // multiplicity mu_j.  Target regularity there is r_j - s = m_reg + 1 - mu_j
-            // (Cor. 2.1), floored at -1, i.e. multiplicity capped at m_deg + 1.
-            std::vector<T> repKnots;
-            for (index_t i = cell.lowerIndex[dd]; i <= cell.upperIndex[dd]; ++i)
-            {
-                const T    z    = kvLev(i);                 // unique index -> knot value
-                const bool endK = (i == cell.lowerIndex[dd] || i == cell.upperIndex[dd]);
-                index_t    mult;
-                if (endK)
-                    mult = m_deg + 1;
-                else
-                {
-                    const index_t muj = kvLev.multiplicity(z);
-                    mult = math::min(m_deg - m_reg - 1 + muj, m_deg + 1);
-                }
-                repKnots.insert(repKnots.end(), mult, z);
-            }
-            gsKnotVector<T> targetKv(repKnots, static_cast<short_t>(m_deg));
-            evenKvs[dd] = _ensureEven1D(targetKv);
-
-            const index_t N = gsBSplineBasis<T>(evenKvs[dd]).size();
-            GISMO_ENSURE(N % 2 == 0,
-                "gsHPatchRule: even target basis construction failed in direction " << dd);
-            n1d[dd] = N / 2;
+            evenKvs[dd] = _evenTargetKnots1D(kvLev, cell.lowerIndex[dd],
+                                             cell.upperIndex[dd], n1d[dd]);
 
             // The patch rule is used in this direction only if it has strictly fewer
             // nodes than element-wise Gauss; a tie costs the same and skips the solve.
@@ -167,10 +174,10 @@ void gsHPatchRule<T>::_build(const gsDomain<T> & domain, gsHPatchRuleCache<T> & 
         }
 
         // Per direction either the Johannessen rule on evenKvs[dd] or nq-point Gauss on
-        // every level-l element of the leaf.  On the leaf the target space is the tensor
+        // every level-l element of the cell.  On the cell the target space is the tensor
         // product S_1 x ... x S_d of univariate spaces S_k; Q_k is exact on S_k in both
         // cases (the even-ized space contains S_k; piecewise polynomials of degree
-        // <= 2nq-1 >= m_deg on the leaf's elements contain S_k).  For separable
+        // <= 2nq-1 >= m_deg on the cell's elements contain S_k).  For separable
         // f = f_1...f_d with f_k in S_k the tensor rule gives prod Q_k(f_k) = prod int f_k
         // = int f, and by linearity it is exact on S, whichever direction uses which rule.
         // The Johannessen rule of a direction is solved on the even target knot vector mapped
@@ -228,10 +235,529 @@ void gsHPatchRule<T>::_build(const gsDomain<T> & domain, gsHPatchRuleCache<T> & 
             _finalizeDirMap(cell.dirMaps[dd]);
         }
         cells.push_back(give(cell));
+
+        index_t cellNodes = 1;
+        for (short_t dd = 0; dd < d; ++dd)
+            if (short_t(dd) != m_fixDir)
+                cellNodes *= n1d[dd];
+        modelNodes += cellNodes;
     }
 
+    PartitionInfo & info = lidx.info;
+    info.numCells = static_cast<index_t>(cells.size());
+    if (MergeMode::none == m_merge)
+        info.nodesLeaves = modelNodes;
+
+    // Cells that meet each leaf; with one cell per leaf, leaf i is its own cell i.
+    if (MergeMode::none == m_merge)
+    {
+        const index_t nLeaves = info.numLeaves;
+        lidx.first.resize(nLeaves + 1);
+        lidx.cell.resize(nLeaves);
+        for (index_t i = 0; i < nLeaves; ++i)
+        {
+            lidx.first[i] = i;
+            lidx.cell[i]  = i;
+        }
+        lidx.first[nLeaves] = nLeaves;
+    }
+    else
+        _leafCells<d>(leafBox, leafLev, cellBox, cellLev, lidx.first, lidx.cell);
+
     m_cells = memory::make_shared(new std::vector<CellData>(give(cells)));
-    m_lastCell = 0;
+    m_index = memory::make_shared(new LeafIndex(give(lidx)));
+    m_lastLeaf = 0;
+}
+
+// ============================================================
+// Leaf merging
+// ============================================================
+
+template<class T>
+gsKnotVector<T> gsHPatchRule<T>::_evenTargetKnots1D(const gsKnotVector<T> & kvLev,
+                                                    const index_t lo, const index_t up,
+                                                    index_t & n1d) const
+{
+    // Target knot vector on the cell: degree m_deg, and at every interior breakpoint the
+    // multiplicity implied by the level knot vector's own multiplicity mu_j.  Target
+    // regularity there is r_j - s = m_reg + 1 - mu_j (Cor. 2.1), floored at -1, i.e.
+    // multiplicity capped at m_deg + 1.
+    std::vector<T> repKnots;
+    for (index_t i = lo; i <= up; ++i)
+    {
+        const T    z    = kvLev(i);                 // unique index -> knot value
+        const bool endK = (i == lo || i == up);
+        index_t    mult;
+        if (endK)
+            mult = m_deg + 1;
+        else
+        {
+            const index_t muj = kvLev.multiplicity(z);
+            mult = math::min(m_deg - m_reg - 1 + muj, m_deg + 1);
+        }
+        repKnots.insert(repKnots.end(), mult, z);
+    }
+    const gsKnotVector<T> targetKv(repKnots, static_cast<short_t>(m_deg));
+    gsKnotVector<T> evenKv = _ensureEven1D(targetKv);
+
+    // Dimension of the spline space on evenKv; each node serves two basis functions.
+    const index_t N = static_cast<index_t>(evenKv.size()) - evenKv.degree() - 1;
+    GISMO_ENSURE(N % 2 == 0,
+        "gsHPatchRule: even target basis construction failed");
+    n1d = N / 2;
+    return evenKv;
+}
+
+template<class T>
+template<short_t d>
+index_t gsHPatchRule<T>::_modelNodes(const gsHTensorBasis<d,T> & basis, const index_t level,
+                                     const std::vector<IndexBox<d> > & boxes) const
+{
+    index_t total = 0;
+    for (size_t k = 0; k < boxes.size(); ++k)
+    {
+        index_t nodes = 1;
+        for (short_t dd = 0; dd < d; ++dd)
+        {
+            if (short_t(dd) == m_fixDir)
+                continue;
+            index_t n1d = 0;
+            _evenTargetKnots1D(basis.tensorLevel(level).component(dd).knots(),
+                               boxes[k].lo[dd], boxes[k].up[dd], n1d);
+            nodes *= n1d;
+        }
+        total += nodes;
+    }
+    return total;
+}
+
+template<class T>
+template<short_t d>
+bool gsHPatchRule<T>::_boxLess(const IndexBox<d> & x, const IndexBox<d> & y)
+{
+    for (short_t dd = 0; dd < d; ++dd)
+        if (x.lo[dd] != y.lo[dd]) return x.lo[dd] < y.lo[dd];
+    for (short_t dd = 0; dd < d; ++dd)
+        if (x.up[dd] != y.up[dd]) return x.up[dd] < y.up[dd];
+    return false;
+}
+
+template<class T>
+template<short_t d>
+void gsHPatchRule<T>::_mergePairwise(std::vector<IndexBox<d> > & boxes)
+{
+    // True when x and y have the same extents in every axis except a.
+    struct SameCrossSection
+    {
+        static bool test(const IndexBox<d> & x, const IndexBox<d> & y, short_t a)
+        {
+            for (short_t dd = 0; dd < d; ++dd)
+                if (dd != a && (x.lo[dd] != y.lo[dd] || x.up[dd] != y.up[dd]))
+                    return false;
+            return true;
+        }
+    };
+
+    // Orders boxes by their extents in all axes except a, then by lo[a]; boxes of equal
+    // cross-section are then adjacent and sorted along a. The boxes are disjoint, so this is
+    // a strict total order and the result does not depend on the input order.
+    struct CrossSectionLess
+    {
+        short_t a;
+        bool operator()(const IndexBox<d> & x, const IndexBox<d> & y) const
+        {
+            for (short_t dd = 0; dd < d; ++dd)
+            {
+                if (dd == a) continue;
+                if (x.lo[dd] != y.lo[dd]) return x.lo[dd] < y.lo[dd];
+                if (x.up[dd] != y.up[dd]) return x.up[dd] < y.up[dd];
+            }
+            return x.lo[a] < y.lo[a];
+        }
+    };
+
+    bool changed = true;
+    while (changed)
+    {
+        changed = false;
+        for (short_t a = 0; a < d; ++a)
+        {
+            CrossSectionLess cmp;
+            cmp.a = a;
+            std::sort(boxes.begin(), boxes.end(), cmp);
+
+            std::vector<IndexBox<d> > merged;
+            merged.reserve(boxes.size());
+            for (size_t k = 0; k < boxes.size(); ++k)
+            {
+                if (!merged.empty() && SameCrossSection::test(merged.back(), boxes[k], a)
+                    && merged.back().up[a] == boxes[k].lo[a])
+                {
+                    merged.back().up[a] = boxes[k].up[a];
+                    changed = true;
+                }
+                else
+                    merged.push_back(boxes[k]);
+            }
+            boxes.swap(merged);
+        }
+    }
+}
+
+template<class T>
+template<short_t d>
+auto gsHPatchRule<T>::_sweepRec(const std::vector<IndexBox<d> > & B,
+                                const std::array<short_t,d> & sigma, const short_t k)
+    -> std::vector<IndexBox<d> >
+{
+    const short_t a = sigma[k];
+    std::vector<IndexBox<d> > result;
+
+    if (k == d - 1)
+    {
+        // All boxes share their extents in the other axes (fixed by the outer slabs):
+        // merge touching intervals along a.
+        std::vector<IndexBox<d> > sorted(B);
+        std::sort(sorted.begin(), sorted.end(),
+                  [a](const IndexBox<d> & x, const IndexBox<d> & y) { return x.lo[a] < y.lo[a]; });
+        for (size_t i = 0; i < sorted.size(); ++i)
+        {
+            if (!result.empty() && result.back().up[a] == sorted[i].lo[a])
+                result.back().up[a] = sorted[i].up[a];
+            else
+                result.push_back(sorted[i]);
+        }
+        return result;
+    }
+
+    std::vector<index_t> cuts;
+    cuts.reserve(2 * B.size());
+    for (size_t i = 0; i < B.size(); ++i)
+    {
+        cuts.push_back(B[i].lo[a]);
+        cuts.push_back(B[i].up[a]);
+    }
+    std::sort(cuts.begin(), cuts.end());
+    cuts.erase(std::unique(cuts.begin(), cuts.end()), cuts.end());
+
+    typedef std::vector<index_t> Key;
+    std::map<Key, size_t> open;
+    for (size_t c = 0; c + 1 < cuts.size(); ++c)
+    {
+        const index_t c0 = cuts[c], c1 = cuts[c + 1];
+        std::vector<IndexBox<d> > S;
+        for (size_t i = 0; i < B.size(); ++i)
+            if (B[i].lo[a] <= c0 && B[i].up[a] >= c1)
+            {
+                IndexBox<d> clipped = B[i];
+                clipped.lo[a] = c0;
+                clipped.up[a] = c1;
+                S.push_back(clipped);
+            }
+        if (S.empty())
+        {
+            open.clear();
+            continue;
+        }
+
+        const std::vector<IndexBox<d> > P = _sweepRec<d>(S, sigma, k + 1);
+        std::map<Key, size_t> newOpen;
+        for (size_t i = 0; i < P.size(); ++i)
+        {
+            Key key;
+            for (short_t j = k + 1; j < d; ++j)
+            {
+                key.push_back(P[i].lo[sigma[j]]);
+                key.push_back(P[i].up[sigma[j]]);
+            }
+            const typename std::map<Key, size_t>::const_iterator it = open.find(key);
+            if (it != open.end() && result[it->second].up[a] == c0)
+            {
+                result[it->second].up[a] = c1;
+                newOpen[key] = it->second;
+            }
+            else
+            {
+                result.push_back(P[i]);
+                newOpen[key] = result.size() - 1;
+            }
+        }
+        open.swap(newOpen);
+    }
+    return result;
+}
+
+template<class T>
+template<short_t d>
+auto gsHPatchRule<T>::_sweepLevel(const gsHTensorBasis<d,T> & basis, const index_t level,
+                                  const std::vector<IndexBox<d> > & leaves,
+                                  index_t & nodes) const
+    -> std::vector<IndexBox<d> >
+{
+    std::array<short_t,d> sigma;
+    for (short_t dd = 0; dd < d; ++dd) sigma[dd] = dd;
+
+    std::vector<IndexBox<d> > best;
+    nodes = -1;
+    do
+    {
+        std::vector<IndexBox<d> > pieces = _sweepRec<d>(leaves, sigma, 0);
+        const index_t n = _modelNodes<d>(basis, level, pieces);
+        if (nodes < 0 || n < nodes)
+        {
+            nodes = n;
+            best.swap(pieces);
+        }
+    } while (std::next_permutation(sigma.begin(), sigma.end()));
+
+    std::sort(best.begin(), best.end(), &gsHPatchRule<T>::template _boxLess<d>);
+    return best;
+}
+
+template<class T>
+template<short_t d>
+void gsHPatchRule<T>::_partition(const gsHTensorBasis<d,T> & basis,
+                                 const std::vector<IndexBox<d> > & leafBox,
+                                 const std::vector<index_t> & leafLev,
+                                 std::vector<IndexBox<d> > & cellBox,
+                                 std::vector<index_t> & cellLev,
+                                 PartitionInfo & info) const
+{
+    info.numLeaves = static_cast<index_t>(leafBox.size());
+    cellBox.clear();
+    cellLev.clear();
+
+    if (MergeMode::none == m_merge)
+    {
+        cellBox = leafBox;
+        cellLev = leafLev;
+        return;
+    }
+
+    const bool doPairwise = (MergeMode::sweep != m_merge);
+    const bool doSweep    = (MergeMode::pairwise != m_merge);
+
+    std::vector<std::vector<IndexBox<d> > > byLevel(m_maxLevel + 1);
+    for (size_t i = 0; i < leafBox.size(); ++i)
+        byLevel[leafLev[i]].push_back(leafBox[i]);
+
+    gsStopwatch timer;
+    index_t nodesPw = 0, nodesSw = 0, levelsPw = 0;
+    std::vector<std::vector<IndexBox<d> > > chosen(m_maxLevel + 1);
+    for (index_t l = 0; l <= m_maxLevel; ++l)
+    {
+        if (byLevel[l].empty())
+            continue;
+
+        std::vector<IndexBox<d> > pw, sw;
+        index_t np = 0, ns = 0;
+        if (doPairwise)
+        {
+            pw = byLevel[l];
+            _mergePairwise<d>(pw);
+            np = _modelNodes<d>(basis, l, pw);
+            nodesPw += np;
+        }
+        if (doSweep)
+        {
+            sw = _sweepLevel<d>(basis, l, byLevel[l], ns);
+            nodesSw += ns;
+        }
+
+        // A tie goes to the sweep, which is history-independent.
+        if (doPairwise && (!doSweep || np < ns))
+        {
+            ++levelsPw;
+            chosen[l].swap(pw);
+        }
+        else
+            chosen[l].swap(sw);
+        std::sort(chosen[l].begin(), chosen[l].end(), &gsHPatchRule<T>::template _boxLess<d>);
+    }
+    info.nodesPairwise  = doPairwise ? nodesPw : -1;
+    info.nodesSweep     = doSweep ? nodesSw : -1;
+    info.levelsPairwise = levelsPw;
+    info.seconds        = timer.stop();
+
+    for (index_t l = 0; l <= m_maxLevel; ++l)
+    {
+        for (size_t k = 0; k < chosen[l].size(); ++k)
+        {
+            cellBox.push_back(chosen[l][k]);
+            cellLev.push_back(l);
+        }
+        info.nodesLeaves += _modelNodes<d>(basis, l, byLevel[l]);
+    }
+}
+
+template<class T>
+template<short_t d>
+void gsHPatchRule<T>::_leafCells(const std::vector<IndexBox<d> > & leafBox,
+                                 const std::vector<index_t> & leafLev,
+                                 const std::vector<IndexBox<d> > & cellBox,
+                                 const std::vector<index_t> & cellLev,
+                                 std::vector<index_t> & first, std::vector<index_t> & cell)
+{
+    // Bounding-volume tree over the cells of one level: a node covers the cells
+    // ids[begin..end) and has either two children or at most 4 cells.
+    struct Node
+    {
+        IndexBox<d> bb;
+        index_t     left, right, begin, end;
+    };
+    struct Tree
+    {
+        std::vector<Node>    nodes;
+        std::vector<index_t> ids;
+    };
+    struct Overlap
+    {
+        static bool test(const IndexBox<d> & x, const IndexBox<d> & y)
+        {
+            for (short_t dd = 0; dd < d; ++dd)
+                if (x.lo[dd] >= y.up[dd] || y.lo[dd] >= x.up[dd])
+                    return false;
+            return true;
+        }
+    };
+
+    const index_t nLeaves = static_cast<index_t>(leafBox.size());
+    index_t nLevels = 0;
+    for (size_t i = 0; i < leafLev.size(); ++i)
+        nLevels = (std::max)(nLevels, leafLev[i] + 1);
+    for (size_t c = 0; c < cellLev.size(); ++c)
+        nLevels = (std::max)(nLevels, cellLev[c] + 1);
+
+    std::vector<Tree> trees(nLevels);
+    for (size_t c = 0; c < cellBox.size(); ++c)
+        trees[cellLev[c]].ids.push_back(static_cast<index_t>(c));
+
+    std::vector<index_t> stack;
+    for (index_t l = 0; l < nLevels; ++l)
+    {
+        Tree & t = trees[l];
+        if (t.ids.empty())
+            continue;
+
+        Node root;
+        root.left = root.right = -1;
+        root.begin = 0;
+        root.end   = static_cast<index_t>(t.ids.size());
+        t.nodes.push_back(root);
+        stack.assign(1, 0);
+        while (!stack.empty())
+        {
+            const index_t ni = stack.back();
+            stack.pop_back();
+            const index_t begin = t.nodes[ni].begin, end = t.nodes[ni].end;
+
+            IndexBox<d> bb = cellBox[t.ids[begin]];
+            for (index_t k = begin + 1; k < end; ++k)
+                for (short_t dd = 0; dd < d; ++dd)
+                {
+                    bb.lo[dd] = (std::min)(bb.lo[dd], cellBox[t.ids[k]].lo[dd]);
+                    bb.up[dd] = (std::max)(bb.up[dd], cellBox[t.ids[k]].up[dd]);
+                }
+            t.nodes[ni].bb = bb;
+            if (end - begin <= 4)
+                continue;
+
+            // Split at the median of the box centres along the longest axis.
+            short_t ax = 0;
+            for (short_t dd = 1; dd < d; ++dd)
+                if (bb.up[dd] - bb.lo[dd] > bb.up[ax] - bb.lo[ax])
+                    ax = dd;
+            const index_t mid = begin + (end - begin) / 2;
+            std::nth_element(t.ids.begin() + begin, t.ids.begin() + mid, t.ids.begin() + end,
+                [&cellBox, ax](index_t x, index_t y)
+                { return cellBox[x].lo[ax] + cellBox[x].up[ax] < cellBox[y].lo[ax] + cellBox[y].up[ax]; });
+
+            Node lc, rc;
+            lc.left = lc.right = rc.left = rc.right = -1;
+            lc.begin = begin; lc.end = mid;
+            rc.begin = mid;   rc.end = end;
+            t.nodes[ni].left  = static_cast<index_t>(t.nodes.size());
+            t.nodes.push_back(lc);
+            t.nodes[ni].right = static_cast<index_t>(t.nodes.size());
+            t.nodes.push_back(rc);
+            stack.push_back(t.nodes[ni].left);
+            stack.push_back(t.nodes[ni].right);
+        }
+    }
+
+    first.assign(nLeaves + 1, 0);
+    cell.clear();
+    std::vector<index_t> hits;
+    for (index_t i = 0; i < nLeaves; ++i)
+    {
+        first[i] = static_cast<index_t>(cell.size());
+        const Tree & t = trees[leafLev[i]];
+        hits.clear();
+        if (!t.nodes.empty())
+        {
+            stack.assign(1, 0);
+            while (!stack.empty())
+            {
+                const Node & nd = t.nodes[stack.back()];
+                stack.pop_back();
+                if (!Overlap::test(nd.bb, leafBox[i]))
+                    continue;
+                if (nd.left < 0)
+                {
+                    for (index_t k = nd.begin; k < nd.end; ++k)
+                        if (Overlap::test(cellBox[t.ids[k]], leafBox[i]))
+                            hits.push_back(t.ids[k]);
+                }
+                else
+                {
+                    stack.push_back(nd.left);
+                    stack.push_back(nd.right);
+                }
+            }
+        }
+        std::sort(hits.begin(), hits.end());
+        cell.insert(cell.end(), hits.begin(), hits.end());
+    }
+    first[nLeaves] = static_cast<index_t>(cell.size());
+
+#ifndef NDEBUG
+    // Every leaf is covered exactly by its intersections with the listed cells, and the cells
+    // of every level cover the leaves of that level exactly.
+    struct Volume
+    {
+        static long long of(const IndexBox<d> & x)
+        {
+            long long v = 1;
+            for (short_t dd = 0; dd < d; ++dd)
+                v *= static_cast<long long>(x.up[dd] - x.lo[dd]);
+            return v;
+        }
+        static long long common(const IndexBox<d> & x, const IndexBox<d> & y)
+        {
+            long long v = 1;
+            for (short_t dd = 0; dd < d; ++dd)
+                v *= static_cast<long long>((std::min)(x.up[dd], y.up[dd])
+                                          - (std::max)(x.lo[dd], y.lo[dd]));
+            return v;
+        }
+    };
+    std::vector<long long> leafVol(nLevels, 0), cellVol(nLevels, 0);
+    for (index_t i = 0; i < nLeaves; ++i)
+    {
+        long long covered = 0;
+        for (index_t k = first[i]; k < first[i + 1]; ++k)
+            covered += Volume::common(leafBox[i], cellBox[cell[k]]);
+        GISMO_ASSERT(covered == Volume::of(leafBox[i]),
+                     "gsHPatchRule: the cells do not cover kd leaf " << i << " exactly");
+        leafVol[leafLev[i]] += Volume::of(leafBox[i]);
+    }
+    for (size_t c = 0; c < cellBox.size(); ++c)
+        cellVol[cellLev[c]] += Volume::of(cellBox[c]);
+    for (index_t l = 0; l < nLevels; ++l)
+        GISMO_ASSERT(leafVol[l] == cellVol[l],
+                     "gsHPatchRule: the cells of level " << l
+                     << " do not cover the leaves of the level exactly");
+#endif
 }
 
 // ============================================================
@@ -378,6 +904,12 @@ index_t gsHPatchRule<T>::numFallbackCells() const
     return cnt;
 }
 
+template<class T>
+const typename gsHPatchRule<T>::PartitionInfo & gsHPatchRule<T>::partitionInfo() const
+{
+    return m_index->info;
+}
+
 // ============================================================
 // Shape cache and reference-interval solve
 // ============================================================
@@ -477,14 +1009,15 @@ struct gsHPatchRule<T>::FactoryState
     };
 
     FactoryState(const gsMultiBasis<T> & integration, index_t degree,
-                 index_t regularity, bool overintegrate, gsHPatchRuleCache<T> * extCache)
+                 index_t regularity, bool overintegrate, gsHPatchRuleCache<T> * extCache,
+                 MergeMode mergeMode)
     : basis(integration), deg(degree), reg(regularity), over(overintegrate),
-      cache(extCache ? extCache : &ownCache)
+      cache(extCache ? extCache : &ownCache), merge(mergeMode)
     {
         volume.reserve(basis.nBases());
         for (size_t i = 0; i != basis.nBases(); ++i)
             volume.push_back(gsHPatchRule<T>(*basis.basis(i).domain(),
-                                             deg, reg, over, -1, cache));
+                                             deg, reg, over, -1, cache, merge));
         dim = (volume.empty() ? 0 : static_cast<short_t>(volume.front().dim()));
         bdr.resize(volume.size() * dim);
     }
@@ -497,6 +1030,7 @@ struct gsHPatchRule<T>::FactoryState
     bool                   over;
     gsHPatchRuleCache<T>   ownCache;
     gsHPatchRuleCache<T> * cache;   ///< The caller's cache, or &ownCache
+    MergeMode              merge;   ///< Leaf merging of every rule of the factory
     Lock                   lock;
     short_t                dim;
     std::vector<gsHPatchRule<T> >                     volume;  ///< Per patch
@@ -509,11 +1043,12 @@ gsHPatchRule<T>::makeFactory(const gsMultiBasis<T> & integration,
                              const index_t  degree,
                              const index_t  regularity,
                              const bool     overintegrate,
-                             gsHPatchRuleCache<T> * cache)
+                             gsHPatchRuleCache<T> * cache,
+                             const MergeMode merge)
 {
     memory::shared_ptr<FactoryState> state =
         memory::make_shared(new FactoryState(integration, degree, regularity,
-                                             overintegrate, cache));
+                                             overintegrate, cache, merge));
 
     return [state](const gsBasis<T> & basis, const gsOptionList & options,
                    const index_t patch, const short_t fixedDirection)
@@ -539,7 +1074,7 @@ gsHPatchRule<T>::makeFactory(const gsMultiBasis<T> & integration,
         if (!slot)
             slot.reset(new gsHPatchRule<T>(*state->basis.basis(patch).domain(),
                                            state->deg, state->reg, state->over,
-                                           fixedDirection, state->cache));
+                                           fixedDirection, state->cache, state->merge));
         return typename gsQuadRule<T>::uPtr(new gsHPatchRule<T>(*slot));
     };
 }
@@ -687,24 +1222,44 @@ template<class T>
 index_t gsHPatchRule<T>::_findCell(const T * lower, const T * upper) const
 {
     const std::vector<CellData> & cells = *m_cells;
-    const index_t L = static_cast<index_t>(cells.size());
+    const LeafIndex & ix = *m_index;
+    const index_t L = ix.info.numLeaves;
     if (L == 0)
         return -1;
 
-    // Probe the last hit (k = 0), then its successor (k = 1), then continue
+    // Probe the last hit leaf (k = 0), then its successor (k = 1), then continue
     // cyclically: the leaf order of volume iteration makes k <= 1 the common
     // case, and the wrap-around finds leaf 0 right after the last leaf.
-    const index_t c = m_lastCell;
+    const index_t c = m_lastLeaf;
     for (index_t k = 0; k < L; ++k)
     {
         index_t j = c + k;
         if (j >= L) j -= L;
-        if (_contains(cells[j], lower, upper, m_dim))
-        {
-            m_lastCell = j;
-            return j;
-        }
+
+        const T * lo = ix.lo.data() + j * m_dim;
+        const T * up = ix.up.data() + j * m_dim;
+        bool inside = true;
+        for (index_t dd = 0; dd < m_dim; ++dd)
+            if (lower[dd] < lo[dd] || upper[dd] > up[dd])
+            {
+                inside = false;
+                break;
+            }
+        if (!inside)
+            continue;
+
+        m_lastLeaf = j;
+        for (index_t q = ix.first[j]; q < ix.first[j + 1]; ++q)
+            if (_contains(cells[ix.cell[q]], lower, upper, m_dim))
+                return ix.cell[q];
+        break;
     }
+
+    // No leaf contains the element, or none of the cells of its leaf does (an element of a
+    // coarser or foreign domain, which a cell can contain without any leaf doing so).
+    for (index_t c2 = 0; c2 < static_cast<index_t>(cells.size()); ++c2)
+        if (_contains(cells[c2], lower, upper, m_dim))
+            return c2;
     return -1;
 }
 
