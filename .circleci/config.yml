@@ -20,10 +20,10 @@ jobs:
 #          name: Build and test G+Smo on MacOS (x86_64)
 #          command: ctest -S cmake/ctest_script.cmake -D KEEPCONFIG=ON -D CTEST_BUILD_JOBS=$MAKEJOBS
 
-  x86_64_xcode14_3_cxx17_release:
+  x86_64_xcode16_4_cxx17_release:
     macos:
-      xcode: "14.3.1"
-    resource_class: macos.m1.medium.gen1
+      xcode: "16.4.0"
+    resource_class: m4pro.medium
     working_directory: ~/gismo
     environment:
       MAKEJOBS: 4
@@ -43,4 +43,4 @@ workflows:
   build:
     jobs:
 #      - x86_64_xcode15_4_cxx14_release
-      - x86_64_xcode14_3_cxx17_release
+      - x86_64_xcode16_4_cxx17_release
