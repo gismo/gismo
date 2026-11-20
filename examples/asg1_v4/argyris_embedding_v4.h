@@ -75,8 +75,8 @@ inline gsSparseMatrix<T> embeddingMatrix(const gsBSplineBasis<T>& coarse,
                                          const gsBSplineBasis<T>& fine)
 {
     gsMatrix<T> greville = fine.anchors();
-    gsSparseMatrix<T> Cc = collocationMatrix(coarse, greville);
-    gsSparseMatrix<T> Cf = collocationMatrix(fine,   greville);
+    gsSparseMatrix<T> Cc = asg1v4::collocationMatrix(coarse, greville);
+    gsSparseMatrix<T> Cf = asg1v4::collocationMatrix(fine,   greville);
     gsMatrix<T> result;
     makeSparseLUSolver(Cf)->apply(Cc, result);
     return result.sparseView(1, 1e-10);
@@ -131,16 +131,16 @@ gsSparseMatrix<T> createGluingDataArgyrisBasis(
 
     gsBSplineBasis<T> sideSmootherBasis = sideBasis;
     sideSmootherBasis.elevateContinuity(1);
-    GISMO_ASSERT(isNested(sideSmootherBasis, sideBasis),
+    GISMO_ASSERT(asg1v4::isNested(sideSmootherBasis, sideBasis),
                  "Computed bases not nested.");
 
     gsBSplineBasis<T> sideLowerDegreeBasis = sideBasis;
     sideLowerDegreeBasis.degreeReduce(1);
-    GISMO_ASSERT(isNested(sideLowerDegreeBasis, sideBasis),
+    GISMO_ASSERT(asg1v4::isNested(sideLowerDegreeBasis, sideBasis),
                  "Computed bases not nested.");
 
-    gsSparseMatrix<T> embFirstLayer  = embeddingMatrix(sideSmootherBasis,     sideBasis);
-    gsSparseMatrix<T> embSecondLayer = embeddingMatrix(sideLowerDegreeBasis,  sideBasis);
+    gsSparseMatrix<T> embFirstLayer  = asg1v4::embeddingMatrix(sideSmootherBasis,     sideBasis);
+    gsSparseMatrix<T> embSecondLayer = asg1v4::embeddingMatrix(sideLowerDegreeBasis,  sideBasis);
 
     const bool    isLow  = !side.parameter();
     const int     dir    = side.direction();
@@ -190,7 +190,7 @@ gsSparseMatrix<T> createGluingDataArgyrisBasis(
             dPhi(k, pt) = sideDeriv(a, pt);
         }
 
-    gsSparseMatrix<T> sideColloc = collocationMatrix(sideBasis, greville);
+    gsSparseMatrix<T> sideColloc = asg1v4::collocationMatrix(sideBasis, greville);
 
     gsVector<T> tNorm(nPts), betaVals(nPts), alphaVals(nPts);
     for (index_t pt = 0; pt < nPts; ++pt)

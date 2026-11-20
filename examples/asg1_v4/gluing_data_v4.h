@@ -99,8 +99,8 @@ InterfaceSamples<T> sampleInterface(
     const T t1a = sup1(tDir1, 0), t1b = sup1(tDir1, 1);
     const T t2a = sup2(tDir2, 0), t2b = sup2(tDir2, 1);
 
-    std::vector<T> breaks1 = breaksOf(g1, tDir1);
-    std::vector<T> breaks2 = breaksOf(g2, tDir2);
+    std::vector<T> breaks1 = asg1v4::breaksOf(g1, tDir1);
+    std::vector<T> breaks2 = asg1v4::breaksOf(g2, tDir2);
     for (T& br : breaks2)
     {
         T s = (br - t2a) / (t2b - t2a);
@@ -136,13 +136,13 @@ InterfaceSamples<T> sampleInterface(
     S.w = wts;
     for (index_t i = 0; i < N; ++i)
     {
-        const gsVector<T> g1n = partial(d1, nDir1, i);
-        const gsVector<T> g1t = partial(d1, tDir1, i);
-        const gsVector<T> g2n = partial(d2, nDir2, i);
-        const gsVector<T> g2t = partial(d2, tDir2, i);
-        S.D1(i) = s1      * det2(g1n, g1t);
-        S.D2(i) = s2      * det2(g2n, g2t);
-        S.D3(i) = s1 * s2 * det2(g1n, g2n);
+        const gsVector<T> g1n = asg1v4::partial(d1, nDir1, i);
+        const gsVector<T> g1t = asg1v4::partial(d1, tDir1, i);
+        const gsVector<T> g2n = asg1v4::partial(d2, nDir2, i);
+        const gsVector<T> g2t = asg1v4::partial(d2, tDir2, i);
+        S.D1(i) = s1      * asg1v4::det2(g1n, g1t);
+        S.D2(i) = s2      * asg1v4::det2(g2n, g2t);
+        S.D3(i) = s1 * s2 * asg1v4::det2(g1n, g2n);
         S.t(i)  = (nodes(0,i) - t1a) / (t1b - t1a);
     }
     return S;
@@ -238,7 +238,7 @@ gsVector<T> computeGluingDataForInterface(
     success = false;
 
     bool tFlip = false;
-    InterfaceSamples<T> S = sampleInterface(mp, interf, tFlip, numGaussPerSpan);
+    InterfaceSamples<T> S = asg1v4::sampleInterface(mp, interf, tFlip, numGaussPerSpan);
 
     if (S.D1.minCoeff()*S.D1.maxCoeff() < 0 ||
         S.D2.minCoeff()*S.D2.maxCoeff() < 0)
@@ -250,7 +250,7 @@ gsVector<T> computeGluingDataForInterface(
     const bool sameSign = (S.D1.minCoeff() * S.D2.minCoeff() > 0);
     if (sameSign) S.D1 = -S.D1;
 
-    SolveResult<T> r = solveLinearGluing(S);
+    SolveResult<T> r = asg1v4::solveLinearGluing(S);
     if (r.alphaErr >= eps)
     {
         if (verbose) gsInfo << "  FAILED alphaErr=" << r.alphaErr << "\n";

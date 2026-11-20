@@ -9,6 +9,7 @@
 #pragma once
 
 #include <gsCore/gsLinearAlgebra.h>
+#include <gsModeling/gsPlanarDomainGenerator.h>
 #include <gsModeling/gsPlanarDomain.h>
 #include <gsModeling/gsCoonsPatch.h>
 #include <gsNurbs/gsBSpline.h>

@@ -7,6 +7,7 @@
 #include "gsAsG1Basis.hpp"
 #include "gsAsG1Domain.hpp"
 #include <gismo.h>
+#include "../../examples/asg1_v4/argyris_embedding_v4.h"
 
 namespace gismo {
 
@@ -458,7 +459,7 @@ private:
         const gsTensorBSplineBasis<2, T> &tb =
             static_cast<const gsTensorBSplineBasis<2, T> &>(m_mb.basis(p));
         side_matrices[p][s - 1] =
-            createGluingDataArgyrisBasis(tb, bs, a0, a1, b0, b1, 1e-12, tSign);
+            asg1v4::createGluingDataArgyrisBasis(tb, bs, a0, a1, b0, b1, T(1e-12), tSign);
       }
     }
 
@@ -695,7 +696,7 @@ private:
           const index_t n0R = tbRot.size(0);
 
           auto classifySide = [&](index_t rotNeighbor, boxSide &side,
-                                  bool &highEnd) {
+                                  bool &highEnd) -> void {
             const index_t oc = perm[k][0];         // vertex corner (original)
             const index_t on = perm[k][rotNeighbor]; // neighbor along the edge
             const index_t ci = oc % N0o, cj = oc / N0o;
