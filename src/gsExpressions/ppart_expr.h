@@ -41,6 +41,12 @@ public:
 
     ppart_expr(_expr<E> const& u) : _u(u) { }
 
+    /// @brief Copy constructor: copies the wrapped expression but not the
+    /// scratch matrix \a res of eval(), which starts empty in the copy
+    ppart_expr(const ppart_expr & other)
+    : _expr<ppart_expr<E> >(), _u(other._u)
+    { }
+
     const gsMatrix<Scalar> & eval(index_t k) const
     {
         res = _u.eval(k).cwiseMax(0.0); // component-wise maximum with zero

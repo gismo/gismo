@@ -45,6 +45,12 @@ public:
     jac_expr(const E & _u_)
     : _u(_u_) { }
 
+    /// @brief Copy constructor: copies the wrapped expression but not the
+    /// scratch matrix \a res of eval(), which starts empty in the copy
+    jac_expr(const jac_expr & other)
+    : _expr<jac_expr<E> >(), _u(other._u)
+    { }
+
     MatExprType eval(const index_t k) const
     {
         if (0!=Space)

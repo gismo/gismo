@@ -58,6 +58,13 @@ public:
 
     gsFeSolution(const gsFeSpace<T> & u, gsMatrix<T> & Sv) : _u(u), _Sv(&Sv) { }
 
+    /// @brief Copy constructor: copies the space \a _u and the coefficient
+    /// pointer \a _Sv but not the scratch matrix \a res of eval(), which
+    /// starts empty in the copy
+    gsFeSolution(const gsFeSolution & other)
+    : _expr<gsFeSolution<T> >(), _u(other._u), _Sv(other._Sv)
+    { }
+
     const gsFeSpace<T> & space() const {return _u;};
 
     mutable gsMatrix<T> res;
@@ -85,6 +92,9 @@ public:
     // Performs validity checks for the solution object
     bool check() const
     {
+        // The vector holds the free dofs of every space of the system (see
+        // gsExprAssembler::getSolution); this space's are those below the
+        // lastIndex() of its mapper, which includes the mapper's shift.
         if ( _Sv->rows() < _u.mapper().lastIndex() )
         {
             gsWarn<< "The solution vector is too short for the whole system: "

@@ -603,7 +603,8 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
     const index_t numPts = InOut.points.cols();
 
     // If the measure on a boundary is requested, calculate the outer normal vector as well
-    if ( InOut.side!=boundary::none && (InOut.flags & NEED_MEASURE) ) InOut.flags|=NEED_OUTER_NORMAL;
+    // (except for a curve, see the outer-normal branch below)
+    if ( InOut.side!=boundary::none && (InOut.flags & NEED_MEASURE) && 1!=d ) InOut.flags|=NEED_OUTER_NORMAL;
 
     // Outer normal vector
     if ( InOut.flags & NEED_OUTER_NORMAL)
@@ -616,10 +617,64 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
         const int dir = InOut.side.direction();
         InOut.outNormals.resize(n,numPts);
 
-        if (tarDim!=-1 ? tarDim == domDim : n==d)
+        // The side of a curve is its end point, where the measure is 1
+        // whatever the tangent, so no outer normal is needed for the measure.
+        // The outer normal there is the unit tangent pointing out of the
+        // parameter interval. A tangent whose length is round-off relative to
+        // the speed |G'| at the parameter centre (len <= 1e-7 * centreLen, the
+        // constant 1e-7 of the d == n branch below, applied here relative to
+        // |G'(centre)|) has no direction in 2D or 3D
+        // and is refused. In 1D the outer normal is +-1 by the orientation of
+        // the map, taken from the sign of G' at the parameter centre, as the
+        // d == n branch does with the Jacobian determinant.
+        if ( 1==d )
         {
-            if ( 1==n ) { InOut.outNormals.setConstant(sgn); return; } // 1D case
+            // One Jacobian evaluation per call, independent of the number of points,
+            // and only for a function with a support: without one there is no
+            // parameter centre, centreLen stays 0 and the test below reduces to len == 0
+            gsMatrix<T> jacC;
+            T centreLen = 0;
+            if (0 != src.support().cols())
+            {
+                jacC = src.jacobian(src.parameterCenter());
+                centreLen = jacC.norm();
+            }
 
+            // Writes the outer normal at the end point of column q of the
+            // points into column p of outNormals
+            auto endNormal = [&](index_t p, index_t q)
+            {
+                const gsAsConstMatrix<T,domDim,tarDim> jacT(InOut.values[1].col(q).data(), d, n);
+                const T len = jacT.row(0).norm();
+                const bool degenerate = (len <= 1e-7 * centreLen);
+                if (!degenerate)
+                    InOut.outNormals.col(p) = (sgn / len) * jacT.row(0).transpose();
+                else
+                {
+                    GISMO_ENSURE(1 == n, "The tangent of the curve vanishes at its end point, "
+                                 "so it has no outer normal there.\n" << InOut.points);
+                    GISMO_ENSURE(0 != jacC.size() && 0 != jacC(0,0), "The derivative of the map vanishes at the end point "
+                                 "and at the centre, so its orientation is unknown.\n" << InOut.points);
+                    InOut.outNormals(0,p) = jacC(0,0) < 0 ? -sgn : sgn;
+                }
+            };
+
+            if (InOut.side != boundary::none)
+            {
+                // All points are the same end point: decide once, copy to every column
+                if (numPts > 0)
+                {
+                    endNormal(0, 0);
+                    for (index_t p=1; p!=numPts; ++p)
+                        InOut.outNormals.col(p) = InOut.outNormals.col(0);
+                }
+            }
+            else
+                for (index_t p=0; p!=numPts; ++p)
+                    endNormal(p, p);
+        }
+        else if (tarDim!=-1 ? tarDim == domDim : n==d)
+        {
             T det_sgn = 0;
             typename gsMatrix<T,domDim,tarDim>::FirstMinorMatrixType minor;
             // Determine Jacobian determinant's sign, assume constant along boundary
@@ -711,6 +766,8 @@ inline void computeAuxiliaryData(const gsFunction<T> &src, gsMapData<T> & InOut,
                                                     .determinant() );
             }
         }
+        else if (1==d) // end point of a curve: measure 1, see the outer-normal branch above
+            InOut.measures.setOnes();
         else // If on boundary
         {
             GISMO_ASSERT(d==2, "Only works for boundary curves..");

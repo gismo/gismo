@@ -171,6 +171,24 @@ SUITE(gsExpressions_test)
 
         CHECK_EQUAL((ev.eval(grad(f2D/2),pt)  -grad_func2D/2).norm(), 0.0);
 
+        // The gradient of a vector-valued function is its Jacobian, also in
+        // its dimensions, so it combines with other matrices of that size
+        CHECK_EQUAL(1, grad(f1D).rows());
+        CHECK_EQUAL(2, grad(f2D).rows());
+        CHECK_EQUAL(2, grad(f2D).cols());
+        // For a variable, grad_expr and jac_expr both only reshape and transpose
+        // the same derivative values, so the difference is zero by construction.
+        // The tolerance, that of the next check, only allows round-off should one
+        // of the two compute rather than copy.
+        CHECK_CLOSE(0.0, (ev.eval(grad(f2D) - jac(f2D),pt)).norm(), 1e-12);
+        // f2Dphys is func2D composed with the geometry map G, which is the identity
+        // of the unit square, so it is func2D at the same point as pt and its
+        // derivatives are computed directly. What remains is round-off on entries
+        // of size 1 at pt.
+        auto f2Dphys = ev.getVariable(func2D, G);
+        CHECK_EQUAL(2, grad(f2Dphys).rows());
+        CHECK((ev.eval(grad(f2Dphys) - jac(f2D),pt)).norm() < 1e-12);
+
         // Space gradient
         CHECK_EQUAL((ev.eval(grad(u),pt)-grad_mb).norm(), 0.0);
 
@@ -357,6 +375,169 @@ SUITE(gsExpressions_test)
         CHECK_EQUAL((ev.eval(f2D.npart(), pt) - neg_result2D).norm(), 0.0);
         CHECK_EQUAL((ev.eval(f1D.npart(), pt) - neg_result1D).norm(), 0.0);
 
+    }
+
+/*
+    FROBENIUS PRODUCT
+*/
+    // jac(u) of a space with dim() components on a d-dimensional parameter
+    // domain has one dim() x d block per basis function (row = component),
+    // and jac(u).cwisetr() % jac(v).tr() multiplies whole blocks: it is the
+    // gradient product sum_ij d_j u_i d_j v_i, i.e. the scalar stiffness
+    // matrix grad(s) * grad(t).tr() in each diagonal component block and
+    // zero between components.  The blocks are square only if dim() == d;
+    // here a surface in 3D with three components and a curve in 2D with two.
+    TEST(frprod_nonsquare_blocks)
+    {
+        for (index_t c = 0; c != 2; ++c)
+        {
+            // c == 0: a degree-2 surface in 3D with its middle control point
+            // lifted. c == 1: a degree-2 B-spline curve in 2D, with one interior
+            // knot (gsKnotVector(0,1,1,3): end multiplicity 3).
+            gsMultiPatch<real_t> mp;
+            if (0 == c)
+            {
+                mp.addPatch(gsNurbsCreator<real_t>::BSplineSquare(1.0));
+                mp.embed(3);
+                mp.degreeElevate(1);
+                mp.patch(0).coefs()(4,2) = 0.5; // lift the middle control point
+            }
+            else
+            {
+                gsKnotVector<real_t> kv(0, 1, 1, 3);
+                gsMatrix<real_t> coefs(4,2);
+                coefs << 0,0, 1,0.5, 2,0.2, 3,1;
+                mp.addPatch(gsBSpline<real_t>(gsBSplineBasis<real_t>(kv), coefs));
+            }
+            const index_t dim = mp.targetDim();
+            gsMultiBasis<real_t> mb(mp);
+            mb.uniformRefine();
+            const index_t n = mb.basis(0).size();
+            gsBoundaryConditions<real_t> bc;
+
+            // M: the vector-valued assembly with jac(u).cwisetr() % jac(u).tr()
+            gsExprAssembler<real_t> A(1,1);
+            A.setIntegrationElements(mb);
+            auto G = A.getMap(mp);
+            auto u = A.getSpace(mb, dim);
+            u.setup(bc, dirichlet::homogeneous, 0);
+            A.initSystem();
+            A.assemble(jac(u).cwisetr() % jac(u).tr() * meas(G));
+            const gsMatrix<real_t> M = A.matrix().toDense();
+
+            // Reference K: the scalar stiffness matrix grad(s) * grad(s).tr()
+            gsExprAssembler<real_t> B(1,1);
+            B.setIntegrationElements(mb);
+            auto H = B.getMap(mp);
+            auto s = B.getSpace(mb);
+            s.setup(bc, dirichlet::homogeneous, 0);
+            B.initSystem();
+            B.assemble(grad(s) * grad(s).tr() * meas(H));
+            const gsMatrix<real_t> K = B.matrix().toDense();
+
+            CHECK_EQUAL(dim*n, M.rows());
+            // Component block (a,b) of M equals K when a == b and 0 otherwise.
+            real_t err = 0;
+            for (index_t a = 0; a != dim; ++a)
+                for (index_t b = 0; b != dim; ++b)
+                    for (index_t i = 0; i != n; ++i)
+                        for (index_t j = 0; j != n; ++j)
+                        {
+                            const real_t Kij = (a == b ? K(s.mapper().index(i), s.mapper().index(j)) : 0);
+                            err = math::max(err, math::abs(M(u.mapper().index(i,0,a), u.mapper().index(j,0,b)) - Kij));
+                        }
+            // M and K integrate the same parametric derivative products, with the
+            // same basis and quadrature, in a different order of operations, so
+            // they agree to round-off relative to the largest entry.
+            CHECK(err < 1e-12 * K.lpNorm<gsEigen::Infinity>());
+        }
+    }
+
+    // The same product between a test and a trial space with different
+    // numbers of basis functions (degree p and p+1 on the same elements):
+    // the result has one row per test and one column per trial function.
+    TEST(frprod_distinct_spaces)
+    {
+        gsMultiPatch<real_t> mp(*gsNurbsCreator<real_t>::BSplineFatQuarterAnnulus());
+        gsMultiBasis<real_t> mb(mp), mb2(mp);
+        mb.uniformRefine();
+        mb2.uniformRefine();
+        mb2.degreeElevate(1);
+        const index_t dim = 2, n = mb.basis(0).size(), n2 = mb2.basis(0).size();
+        gsBoundaryConditions<real_t> bc;
+
+        // Vector-valued assembly of M: test space of degree p, trial space of
+        // degree p+1.
+        gsExprAssembler<real_t> A(2,2);
+        A.setIntegrationElements(mb);
+        auto G = A.getMap(mp);
+        auto u = A.getSpace(mb,  dim, 0);
+        auto v = A.getSpace(mb2, dim, 1);
+        u.setup(bc, dirichlet::homogeneous, 0);
+        v.setup(bc, dirichlet::homogeneous, 0);
+        A.initSystem();
+        A.assemble(jac(u).cwisetr() % jac(v).tr() * meas(G));
+        const gsMatrix<real_t> M = A.matrix().toDense();
+
+        // Reference K: the scalar matrix grad(s) * grad(t).tr() on the same two
+        // bases.
+        gsExprAssembler<real_t> B(2,2);
+        B.setIntegrationElements(mb);
+        auto H = B.getMap(mp);
+        auto s = B.getSpace(mb,  1, 0);
+        auto t = B.getSpace(mb2, 1, 1);
+        s.setup(bc, dirichlet::homogeneous, 0);
+        t.setup(bc, dirichlet::homogeneous, 0);
+        B.initSystem();
+        B.assemble(grad(s) * grad(t).tr() * meas(H));
+        const gsMatrix<real_t> K = B.matrix().toDense();
+
+        CHECK_EQUAL(dim*(n+n2), M.rows());
+        // Test row i of component a against trial column j of component b: the
+        // diagonal component blocks equal the scalar matrix K, the others are 0.
+        real_t err = 0;
+        for (index_t a = 0; a != dim; ++a)
+            for (index_t b = 0; b != dim; ++b)
+                for (index_t i = 0; i != n; ++i)
+                    for (index_t j = 0; j != n2; ++j)
+                    {
+                        const real_t Kij = (a == b ? K(s.mapper().index(i), t.mapper().index(j)) : 0);
+                        err = math::max(err, math::abs(M(u.mapper().index(i,0,a), v.mapper().index(j,0,b)) - Kij));
+                    }
+        // M and K integrate the same parametric derivative products, with the
+        // same bases and quadrature, in a different order of operations, so they
+        // agree to round-off relative to the largest entry.
+        CHECK(err < 1e-12 * K.lpNorm<gsEigen::Infinity>());
+    }
+
+    // Without a space on either side, A % B is a single scalar, also when
+    // A and B are not square (here the 3 x 2 Jacobian of a surface in 3D)
+    TEST(frprod_nonsquare_variables)
+    {
+        gsMultiPatch<real_t> mp;
+        mp.addPatch(gsNurbsCreator<real_t>::BSplineSquare(1.0));
+        mp.embed(3);
+        mp.degreeElevate(1);
+        mp.patch(0).coefs()(4,2) = 0.5; // lift the middle control point
+        gsMultiBasis<real_t> mb(mp);
+
+        gsExprEvaluator<real_t> ev;
+        ev.setIntegrationElements(mb);
+        auto G = ev.getMap(mp);
+        CHECK_EQUAL(1, (jac(G) % jac(G)).rows());
+        CHECK_EQUAL(1, (jac(G) % jac(G)).cols());
+
+        // pt is an interior point of the single element. J is the 3x2 Jacobian
+        // taken directly from the patch.
+        gsVector<real_t> pt(2);
+        pt << 0.3, 0.6;
+        const gsMatrix<real_t> J = mp.patch(0).jacobian(pt);
+        const gsMatrix<real_t> v = ev.eval(jac(G) % jac(G), pt);
+        CHECK_EQUAL(1, v.rows());
+        CHECK_EQUAL(1, v.cols());
+        // Oracle: A % A = sum_ij A_ij^2 = ||A||_F^2. The tolerance is round-off
+        // on entries of size 1.
+        CHECK_CLOSE(J.squaredNorm(), v(0,0), 1e-12);
     }
 
 }
