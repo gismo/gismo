@@ -15,9 +15,14 @@
     For every (form, candidate) the driver reports the number of boxes, the
     exact number of nodes of the patch rule on those boxes, a lower bound that
     holds for any exact partition, and the partition time. The node count comes
-    from a model that mirrors gsHPatchRule::_build; the model is validated
-    against the real rule on the kdtree candidate and then reused unchanged for
-    the other two. Forms are the ones of hierarchical_assembly_hpatch: mass
+    from a model that mirrors gsHPatchRule::_build: per direction the sum over
+    the C^{-1} blocks of the target space of ceil(dim/2) nodes, never more than
+    the nq = tDeg/2 + 1 Gauss points per element of that direction. The model
+    is validated against the real rule (MergeMode::none) leaf by leaf on the
+    kdtree candidate and then reused unchanged for the other two. A leaf whose
+    real count differs from the model is accepted only as a Newton fallback:
+    the 1D solve failed in a non-empty subset of the directions, which then
+    carry their Gauss counts. Forms are the ones of hierarchical_assembly_hpatch: mass
     (target degree 2p, regularity r), stiffness (2p, r-1) and biharmonic
     (2p, r-2, only for r >= 2).
 
@@ -38,6 +43,14 @@
     (one line, no spaces), and one row per (form, candidate) in the order
     kdtree, pairwise, sweep. nNodesRule, nFallbackRule and modelMatchesRule are
     only filled for kdtree, axisOrder only for sweep. tPartition is in seconds.
+
+    Console only, after the three rows of a form, a "mergeCheck" line compares
+    the three partitions with a real gsHPatchRule built with MergeMode::best:
+    its partitionInfo() (leaves, nodesLeaves, nodesPairwise, nodesSweep,
+    levelsPairwise), its element-loop point count, and the sum over the levels
+    of the smaller of the pairwise and sweep model counts. Every item is printed
+    as library/study; libraryMatches is 1 when all agree. The check costs one
+    extra rule build (and one element loop) per form.
 
     Usage:
         ./hierarchical_partition_study [-P deg] [-R reg] [-l levels] [-d dim]
@@ -339,80 +352,78 @@ long long countBoxes(const Partition<d> & parts)
 // Node model
 // ============================================================
 
-/// Number of nodes of element-wise Gauss quadrature on a box, with basis degree
-/// p+1 points per element and direction: prod_d (up-lo)(p_d+1). This is the
-/// nGaussTotal of gsHPatchRule::_build, which the fallback fill reproduces.
-template<short_t d, class T>
-long long gaussCountOfBox(const gsTHBSplineBasis<d,T> & thb,
-                          const index_t * lo, const index_t * up)
+/// Nodes of element-wise Gauss quadrature in one direction of a box with
+/// `numElem` level elements: gsHPatchRule uses nq = tDeg/2 + 1 points per
+/// element, which integrates degree 2 nq - 1 >= tDeg exactly.
+inline long long gaussCount1D(index_t numElem, index_t tDeg)
 {
-    long long g = 1;
-    for (short_t dd = 0; dd < d; ++dd)
-        g *= static_cast<long long>(up[dd] - lo[dd]) * (thb.degree(dd) + 1);
-    return g;
+    return static_cast<long long>(numElem) * (tDeg / 2 + 1);
+}
+
+/// Node count of the one-dimensional rule of gsHPatchRule on the index
+/// interval [lo, up] of the unique knots of `kv`.
+///
+/// Mirror of gsHPatchRule::_evenTargetKnots1D. The target knot vector has
+/// multiplicity tDeg+1 at both ends and, at an interior unique knot of
+/// multiplicity mu_j in `kv`, min(tDeg - tReg - 1 + mu_j, tDeg + 1). A knot of
+/// multiplicity tDeg+1 cuts the target space into independent blocks (the
+/// C^{-1} blocks), and a node cannot serve two blocks. A block has dimension
+/// (tDeg+1) + (sum of its interior multiplicities); an odd dimension gets one
+/// extra knot (_ensureEven1D), and each node serves two basis functions. The
+/// rule therefore has the sum over the blocks of ceil(dim_b / 2) nodes. An
+/// interior knot cuts a block when mu_j >= tReg + 2 (a simple knot, mu_j = 1,
+/// with tReg = -1).
+///
+/// The count never exceeds gaussCount1D. The real rule takes the Gauss nodes
+/// in a direction where the two are equal (a tie), which is the same count.
+///
+/// Complexity: O(up - lo) multiplicity lookups.
+template<class T>
+long long nodes1DOfInterval(const gsKnotVector<T> & kv, index_t lo, index_t up,
+                            index_t tDeg, index_t tReg)
+{
+    long long total = 0;
+    long long dim   = tDeg + 1;
+    for (index_t i = lo + 1; i <= up; ++i)
+    {
+        const index_t mult = (i == up)
+            ? tDeg + 1
+            : math::min(tDeg - tReg - 1 + kv.multiplicity(kv(i)), tDeg + 1);
+        if (mult == tDeg + 1)
+        {
+            total += (dim + 1) / 2;
+            dim    = tDeg + 1;
+        }
+        else
+            dim += mult;
+    }
+    return total;
 }
 
 /// Node count of gsHPatchRule (volume rule, fixDir = -1) on one box at level
-/// `lev`; `countFallback` is set when _build would fill the box with
-/// element-wise Gauss because the patch rule has no fewer nodes.
-///
-/// Mirror of gsHPatchRule::_build. In direction dd the target knot vector has
-/// multiplicity tDeg+1 at both ends of the box and, at an interior unique knot
-/// of multiplicity mu_j in the level knot vector, min(tDeg - tReg - 1 + mu_j,
-/// tDeg + 1). Its spline space has dimension N0 = (sum of multiplicities) -
-/// (tDeg+1). _ensureEven1D leaves an even N0 alone and inserts one knot into an
-/// odd one, so N = N0 + (N0 % 2) and the 1D rule has N/2 = ceil(N0/2) nodes.
-/// The tensor rule has the product of these; it is replaced by Gauss when it
-/// is not smaller than the Gauss count (the decision is per box).
-///
-/// Facts used by the validation: N0 <= (2p+1) n_d when tDeg = 2p, so
-/// ceil(N0/2) <= (p+1) n_d with equality only for n_d = 1. The count fallback
-/// can therefore only fire on boxes one element wide in every direction, and
-/// there both counts coincide. The Newton iteration of _compute1D can also
-/// fail and trigger the fallback; the model assumes it converges.
-///
-/// Complexity: O(sum_d (up_d - lo_d)) multiplicity lookups.
+/// `lev`: the product over the directions of nodes1DOfInterval. The model
+/// assumes that every one-dimensional Newton solve converges; a failed solve
+/// puts that direction of a box on Gauss nodes instead (see validateModel).
 template<short_t d, class T>
 long long nodesOfBox(const gsTHBSplineBasis<d,T> & thb, index_t lev,
                      const index_t * lo, const index_t * up,
-                     index_t tDeg, index_t tReg, bool & countFallback)
+                     index_t tDeg, index_t tReg)
 {
-    long long candidate = 1;
+    long long n = 1;
     for (short_t dd = 0; dd < d; ++dd)
-    {
-        const gsKnotVector<T> & kv = thb.tensorLevel(lev).component(dd).knots();
-        long long sumMult = 0;
-        for (index_t i = lo[dd]; i <= up[dd]; ++i)
-        {
-            if (i == lo[dd] || i == up[dd])
-                sumMult += tDeg + 1;
-            else
-            {
-                const index_t muj = kv.multiplicity(kv(i));
-                sumMult += math::min(tDeg - tReg - 1 + muj, tDeg + 1);
-            }
-        }
-        const long long N0 = sumMult - (tDeg + 1);
-        candidate *= (N0 + 1) / 2;
-    }
-
-    const long long gauss = gaussCountOfBox<d,T>(thb, lo, up);
-    countFallback = (candidate >= gauss);
-    return countFallback ? gauss : candidate;
+        n *= nodes1DOfInterval<T>(thb.tensorLevel(lev).component(dd).knots(),
+                                  lo[dd], up[dd], tDeg, tReg);
+    return n;
 }
 
 template<short_t d, class T>
 long long nodesOfBoxes(const gsTHBSplineBasis<d,T> & thb, index_t lev,
                        const std::vector<Box<d>> & boxes,
-                       index_t tDeg, index_t tReg, long long * nCountFallback = nullptr)
+                       index_t tDeg, index_t tReg)
 {
     long long n = 0;
     for (size_t k = 0; k < boxes.size(); ++k)
-    {
-        bool fb = false;
-        n += nodesOfBox<d,T>(thb, lev, boxes[k].lo, boxes[k].up, tDeg, tReg, fb);
-        if (nCountFallback != nullptr && fb) ++(*nCountFallback);
-    }
+        n += nodesOfBox<d,T>(thb, lev, boxes[k].lo, boxes[k].up, tDeg, tReg);
     return n;
 }
 
@@ -434,9 +445,10 @@ long long nodesOfPartition(const gsTHBSplineBasis<d,T> & thb, const Partition<d>
 /// multiplicity is min(a-1+mu_j, tDeg+1) >= a (mu_j >= 1, and a <= tDeg+1
 /// because tReg >= -1), so N0 >= (tDeg+1) + (n-1) a >= n a and the 1D node
 /// count ceil(N0/2) is at least n a / 2. A box with E elements thus has at
-/// least E (a/2)^d patch nodes. The Gauss count per element, (p+1)^d, is also
-/// at least (a/2)^d because a <= 2p+1, so the fallback does not undercut it.
-/// Summing over the boxes of an exact partition gives nElem (a/2)^d, and the
+/// least E (a/2)^d patch nodes (per-block even-ing only raises the count of a
+/// direction to the sum of ceil(dim_b/2) >= N/2, with N >= N0 the total
+/// dimension, and a direction on Gauss nodes has n (tDeg/2+1) >= n a/2 of
+/// them). Summing over the boxes of an exact partition gives nElem (a/2)^d, and the
 /// ceiling holds since node counts are integers. Exact integer arithmetic.
 long long nodesLowerBound(long long nElem, index_t d, index_t tDeg, index_t tReg)
 {
@@ -765,20 +777,23 @@ void ensureExact(const gsTHBSplineBasis<d,T> & thb, const Partition<d> & cand,
 struct RuleCheck
 {
     long long nNodesRule     = 0;  ///< nodes of the real rule over all elements
-    long long nFallbackRule  = 0;  ///< cells with usedFallback (count + Newton)
-    long long fModel         = 0;  ///< leaves the model puts in count fallback
+    long long nFallbackRule  = 0;  ///< cells with a direction on Gauss after a failed Newton solve
     long long nNewton        = 0;  ///< leaves where the real rule fell back unpredicted
     long long nMismatch      = 0;  ///< leaves matching neither case
     bool      matches        = false;
 };
 
-/// Builds the real gsHPatchRule and compares it leaf by leaf with the model.
-/// A leaf matches when the real node count equals the model's. When the model
-/// predicted the patch rule (strictly fewer nodes than Gauss) and the real
-/// count is the Gauss count, the Newton iteration failed there: a Newton
-/// fallback, which a model cannot predict. Any other leaf is a mismatch.
-/// `matches` requires no mismatch and nFallbackRule == fModel + nNewton, so
-/// with nNewton == 0 it implies that the modelled total equals nNodesRule.
+/// Builds the real gsHPatchRule (no merging) and compares it leaf by leaf with
+/// the model. In direction dd the model has m_dd nodes and element-wise Gauss
+/// g_dd = n_dd (tDeg/2+1), with m_dd <= g_dd; the rule uses the Johannessen
+/// nodes where m_dd < g_dd and Gauss where m_dd = g_dd (a tie, which is not a
+/// fallback). A leaf matches when the real node count is prod_dd m_dd. When
+/// the 1D Newton solve fails in a non-empty subset S of the directions with
+/// m_dd < g_dd, those directions are filled with Gauss and the real count is
+/// prod_{dd in S} g_dd * prod_{dd not in S} m_dd: a Newton fallback, which a
+/// model cannot predict. Any other leaf is a mismatch. `matches` requires no
+/// mismatch and nFallbackRule == nNewton, so with nNewton == 0 it implies
+/// that the modelled total equals nNodesRule.
 template<short_t d, class T>
 RuleCheck validateModel(const gsTHBSplineBasis<d,T> & thb, const Partition<d> & kd,
                         index_t tDeg, index_t tReg)
@@ -814,20 +829,40 @@ RuleCheck validateModel(const gsTHBSplineBasis<d,T> & thb, const Partition<d> & 
             const long long real = weights.size();
             sumLeaves += real;
 
-            bool fb = false;
-            const long long model =
-                nodesOfBox<d,T>(thb, static_cast<index_t>(l), b.lo, b.up, tDeg, tReg, fb);
-            const long long gauss = gaussCountOfBox<d,T>(thb, b.lo, b.up);
-            if (fb) ++rc.fModel;
+            long long m[d], g[d];
+            long long model = 1;
+            for (short_t dd = 0; dd < d; ++dd)
+            {
+                m[dd] = nodes1DOfInterval<T>(
+                    thb.tensorLevel(static_cast<index_t>(l)).component(dd).knots(),
+                    b.lo[dd], b.up[dd], tDeg, tReg);
+                g[dd] = gaussCount1D(b.up[dd] - b.lo[dd], tDeg);
+                model *= m[dd];
+            }
             if (real == model) continue;
-            if (!fb && real == gauss) ++rc.nNewton;
+
+            // Gauss in the directions of the subset, the model count in the others.
+            bool newtonFallback = false;
+            for (index_t mask = 1; mask < (index_t(1) << d) && !newtonFallback; ++mask)
+            {
+                long long count = 1;
+                bool      valid = true;
+                for (short_t dd = 0; dd < d; ++dd)
+                {
+                    const bool inSubset = ((mask >> dd) & 1) != 0;
+                    if (inSubset && m[dd] == g[dd]) valid = false;
+                    count *= inSubset ? g[dd] : m[dd];
+                }
+                newtonFallback = valid && (real == count);
+            }
+            if (newtonFallback) ++rc.nNewton;
             else ++rc.nMismatch;
         }
     }
     GISMO_ENSURE(sumLeaves == rc.nNodesRule,
                  "per-leaf node counts (" << sumLeaves << ") do not sum to the element-loop count ("
                  << rc.nNodesRule << ")");
-    rc.matches = (rc.nMismatch == 0 && rc.nFallbackRule == rc.fModel + rc.nNewton);
+    rc.matches = (rc.nMismatch == 0 && rc.nFallbackRule == rc.nNewton);
     return rc;
 }
 
@@ -1002,13 +1037,56 @@ int run(index_t numLevels, index_t p, index_t r, MeshPattern pattern, BandVarian
             if (w.hasRule)
                 gsInfo << "  nNodesRule=" << w.rule.nNodesRule
                        << "  nFallbackRule=" << w.rule.nFallbackRule
-                       << "  F_model=" << w.rule.fModel
                        << "  nNewton=" << w.rule.nNewton
                        << "  mismatchLeaves=" << w.rule.nMismatch
                        << "  modelMatchesRule=" << (w.rule.matches ? 1 : 0);
             gsInfo << "\n";
             rows.push_back(w);
         }
+        // Merged rule: the library's MergeMode::best keeps, per level, the pairwise
+        // or the sweep candidate, whichever has fewer model nodes (a tie goes to
+        // sweep). From the study's own partitions this gives the expected
+        // levels kept pairwise and the expected total, which the rule's partition
+        // info and its element-loop point count must reproduce. When no direction
+        // fell back to Gauss, the point count equals the model count of the
+        // partition kept.
+        long long expectLevelsPw = 0, expectBest = 0;
+        for (size_t l = 0; l < pw.size(); ++l)
+        {
+            const long long pwL = nodesOfBoxes<d,T>(thb, static_cast<index_t>(l), pw[l], fs.tDeg, fs.tReg);
+            const long long swL = nodesOfBoxes<d,T>(thb, static_cast<index_t>(l), sw[l], fs.tDeg, fs.tReg);
+            if (pwL < swL) ++expectLevelsPw;
+            expectBest += (std::min)(pwL, swL);
+        }
+        gsHPatchRule<T> ruleBest(*thb.domain(), fs.tDeg, fs.tReg, false, -1, nullptr,
+                                 gsHPatchRule<T>::MergeMode::best);
+        const typename gsHPatchRule<T>::PartitionInfo & info = ruleBest.partitionInfo();
+        long long pointsBest = 0;
+        {
+            gsMatrix<T> nodes;
+            gsVector<T> weights;
+            for (auto & elem : thb.domain()->allElements())
+            {
+                ruleBest.mapTo(elem.lowerCorner(), elem.upperCorner(), nodes, weights);
+                pointsBest += weights.size();
+            }
+        }
+        const bool libraryMatches =
+            info.numLeaves == rowKd.nBoxes && info.nodesLeaves == rowKd.nNodes &&
+            info.nodesPairwise == rowPw.nNodes && info.nodesSweep == rowSw.nNodes &&
+            info.levelsPairwise == expectLevelsPw &&
+            pointsBest == ruleBest.numPointsTotal() &&
+            (ruleBest.numFallbackCells() != 0 || pointsBest == expectBest);
+        gsInfo << "mergeCheck " << fs.name
+               << " leaves=" << info.numLeaves << "/" << rowKd.nBoxes
+               << " nodesLeaves=" << info.nodesLeaves << "/" << rowKd.nNodes
+               << " nodesPairwise=" << info.nodesPairwise << "/" << rowPw.nNodes
+               << " nodesSweep=" << info.nodesSweep << "/" << rowSw.nNodes
+               << " levelsPairwise=" << info.levelsPairwise << "/" << expectLevelsPw
+               << " points=" << pointsBest << "/" << expectBest
+               << " fallbackCells=" << ruleBest.numFallbackCells()
+               << " libraryMatches=" << (libraryMatches ? 1 : 0) << "\n";
+
         gsInfo << "sweep<=kdtree: " << (rowSw.nNodes <= rowKd.nNodes ? 1 : 0) << " " << fs.name << "\n";
         gsInfo << "pairwise<=kdtree: " << (rowPw.nNodes <= rowKd.nNodes ? 1 : 0) << " " << fs.name << "\n";
     }

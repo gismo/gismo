@@ -1,20 +1,25 @@
 /** @file hierarchical_assembly_hpatch.cpp
 
     @brief Assembly benchmark for gsHPatchRule: mass, stiffness, and biharmonic
-    matrices assembled with gsExprAssembler using gsHPatchRule (per-atomic-cell
-    hierarchical patch rule) and compared against element-wise Gauss-Legendre
-    quadrature.
+    matrices assembled with gsExprAssembler using gsHPatchRule (reduced patch
+    quadrature: one tensor patch rule per kd leaf, or per merged box of leaves
+    of one level) and compared against element-wise Gauss-Legendre quadrature.
 
     For each bilinear form the matrix is assembled with Gauss and with
     gsHPatchRule; the error reported is ||M_rule - M_gauss||_inf together with
     the total number of quadrature points and the timings.
 
-    Both rules are built once, before the assembly, and handed to
-    gsExprAssembler through its quadrature factory (setQuadratureFactory) behind
-    the same forwarding wrapper, so both pay the same per-element dispatch.
+    The Gauss rule is built once, before the assembly. The gsHPatchRule is built
+    by gsHPatchRule::makeFactory, whose factory hands out one handle (a copy that
+    shares the cell data and has its own lookup position) per call. Both are
+    given to gsExprAssembler through its quadrature factory
+    (setQuadratureFactory), each behind a forwarding wrapper, so both pay the
+    same per-element dispatch.
     Four timings are kept apart (seconds):
       tMesh  : construction of the THB-spline mesh (once per run),
-      tBuild : construction of the quadrature rule,
+      tBuild : construction of the quadrature rule; for hpatch it is the whole
+               makeFactory call, i.e. the clone of the integration basis, the
+               partition (--merge) and the rule itself,
       tInit  : initSystem() and computation of the sparsity pattern,
       tAsm   : one assemble() call on the initialised system, minimum over
                --reps repetitions; Gauss and hpatch alternate within the loop.
@@ -29,18 +34,38 @@
 
     With --csv one row per (form, rule) is written, columns:
       form,dim,p,r,levels,pattern,admissible,jump,nElem,nDof,maxLevel,rule,
-      nPts,nFallback,absErr,relErr,tMesh,tBuild,tInit,tAsm,reps,threads,host,cpu,baseRefs,band
+      nPts,nFallback,absErr,relErr,tMesh,tBuild,tInit,tAsm,reps,threads,host,cpu,baseRefs,band,
+      merge,tPartition,numLeaves,numCells,levelsPairwise,nodesLeaves,nodesPairwise,nodesSweep
+    The last eight columns describe the partition of the hpatch rule and are
+    empty in the gauss row:
+      merge          : the merge mode (--merge),
+      tPartition     : wall time of the candidates and the choice, in seconds
+                       (0 for none); it is part of tBuild,
+      numLeaves      : kd leaves of the domain,
+      numCells       : cells of the rule (boxes after merging),
+      levelsPairwise : levels on which the pairwise candidate was kept (the
+                       non-empty levels for pairwise, 0 for sweep),
+      nodesLeaves, nodesPairwise, nodesSweep : model node counts of the kd
+                       leaves, the pairwise candidate and the sweep candidate;
+                       -1 means not computed. The counts assume that every 1D
+                       solve converges, so nPts equals the count of the
+                       partition kept only when nFallback is 0.
+    nFallback is the number of cells with a direction on Gauss nodes because its
+    Newton solve failed.
 
-    The shared rule keeps a per-instance cache and the timings are meant to be
-    serial, so the driver must be run with OMP_NUM_THREADS=1 (every run,
-    including --plot); otherwise it exits with code 2.
+    The timings are serial by design (the benchmark compares single-thread
+    assembly times), so the driver must be run with OMP_NUM_THREADS=1 (every
+    run, including --plot); otherwise it exits with code 2.
 
     Usage:
         OMP_NUM_THREADS=1 ./hierarchical_assembly_hpatch [-P deg] [-R reg] [-l levels]
             [-d dim] [--form mass|stiffness|biharmonic|all] [--reps n] [--csv file]
             [--meshPattern lshape|center|diagonal] [--admissible] [--admissibleJump m]
-            [--baseRefs k] [--band scaled|thin] [--integrationBasis] [--plot]
-    The regularity -R defaults to deg-1.
+            [--baseRefs k] [--band scaled|thin] [--merge none|pairwise|sweep|best]
+            [--integrationBasis] [--plot]
+    The regularity -R defaults to deg-1. --merge selects the leaf merging of the
+    hpatch rule (default best, the library default); --plot always shows the
+    nodes of the best rule.
 
     This file is part of the G+Smo library.
 
@@ -124,13 +149,14 @@ index_t countPoints(const gsBasis<T> & basis, const gsQuadRule<T> & rule)
     return n;
 }
 
-/// Quadrature rule that forwards mapTo() to a shared, prebuilt rule.
+/// Quadrature rule that forwards mapTo() to another rule.
 ///
 /// gsExprAssembler asks its quadrature factory for a fresh rule per patch and
-/// thread; this wrapper lets the factory hand out a rule that was built (and
-/// timed) beforehand. It holds no per-thread state: the shared rule may cache
-/// data between calls (gsHPatchRule does), so the wrapper is valid for serial
-/// runs only. numNodes() and dim() of the base class are not forwarded.
+/// thread; this wrapper lets the factory hand out rules that were built (and
+/// timed) beforehand, behind one layer of virtual dispatch for every arm. It
+/// forwards either to a shared stateless rule (Gauss) or to a handle that
+/// belongs to this wrapper alone (gsHPatchRule). numNodes() and dim() of the
+/// base class are not forwarded.
 template<class T>
 class gsForwardingQuadRule : public gsQuadRule<T>
 {
@@ -153,7 +179,7 @@ private:
 };
 
 /// Assembler together with the geometry map and trial space it hands out, set
-/// up to integrate with one prebuilt quadrature rule.
+/// up to integrate with a prebuilt quadrature rule or with a rule factory.
 ///
 /// The DoFs are defined by \a spaceMB (the original basis); element iteration
 /// uses \a integMB as the integration domain.
@@ -161,6 +187,7 @@ template<class T>
 struct AssemblyArm
 {
     typedef typename gsExprAssembler<T>::QuadratureRulePtr QuadratureRulePtr;
+    typedef typename gsExprAssembler<T>::QuadratureFactory QuadratureFactory;
 
     gsExprAssembler<T>                      A;
     typename gsExprAssembler<T>::geometryMap G;
@@ -181,6 +208,26 @@ struct AssemblyArm
                 GISMO_ENSURE(fixedDirection == -1,
                              "The forwarding rule serves volume integration only.");
                 return QuadratureRulePtr(new gsForwardingQuadRule<T>(rule));
+            });
+    }
+
+    /// Every call of \a inner returns a rule that the wrapper takes over.
+    AssemblyArm(const gsMultiBasis<T> & spaceMB,
+                const gsMultiBasis<T> & integMB,
+                const gsMultiPatch<T> & mp,
+                QuadratureFactory inner)
+    : A(1,1), G(A.getMap(mp)), u(A.getSpace(spaceMB))
+    {
+        A.setIntegrationElements(integMB);
+        A.setQuadratureFactory(
+            [inner](const gsBasis<T> & basis, const gsOptionList & options,
+                    index_t patch, short_t fixedDirection) -> QuadratureRulePtr
+            {
+                GISMO_ENSURE(fixedDirection == -1,
+                             "The forwarding rule serves volume integration only.");
+                QuadratureRulePtr result = inner(basis, options, patch, fixedDirection);
+                return QuadratureRulePtr(new gsForwardingQuadRule<T>(
+                    memory::shared_ptr<const gsQuadRule<T> >(result.release())));
             });
     }
 
@@ -258,15 +305,20 @@ void timeForm(FormType form, AssemblyArm<T> & a, AssemblyArm<T> & b,
 
 /// Assemble the load vector b_i = ∫ N_i dΩ (integral of each basis function).
 /// spaceMB defines the DoFs; integMB drives the quadrature rule and iteration.
+/// \a factory is the quadrature factory to integrate with; nullptr selects the
+/// rule named by the option "quRule" of \a opts.
 template<short_t d, class T>
 gsVector<T> assembleRHS(const gsMultiBasis<T> & spaceMB,
                         const gsMultiBasis<T> & integMB,
                         const gsMultiPatch<T> & mp,
-                        const gsOptionList    & opts)
+                        const gsOptionList    & opts,
+                        const typename gsExprAssembler<T>::QuadratureFactory * factory)
 {
     gsExprAssembler<T> A(1,1);
     A.setOptions(opts);
     A.setIntegrationElements(integMB);
+    if (factory != nullptr)
+        A.setQuadratureFactory(*factory);
 
     auto G = A.getMap(mp);
     auto u = A.getSpace(spaceMB);
@@ -276,6 +328,23 @@ gsVector<T> assembleRHS(const gsMultiBasis<T> & spaceMB,
     A.initSystem();
     A.assemble( u * meas(G) );   // b_i = ∫ N_i dΩ
     return A.rhs();
+}
+
+/// Whether \a name is a merge mode of gsHPatchRule: none, pairwise, sweep, best.
+bool isMergeMode(const std::string & name)
+{
+    return name == "none" || name == "pairwise" || name == "sweep" || name == "best";
+}
+
+/// The gsHPatchRule merge mode named \a name (see isMergeMode()).
+template<class T>
+typename gsHPatchRule<T>::MergeMode mergeModeOf(const std::string & name)
+{
+    typedef typename gsHPatchRule<T>::MergeMode MergeMode;
+    GISMO_ENSURE(isMergeMode(name), "unknown merge mode '" << name << "'");
+    return name == "none"     ? MergeMode::none     :
+           name == "pairwise" ? MergeMode::pairwise :
+           name == "sweep"    ? MergeMode::sweep    : MergeMode::best;
 }
 
 bool parseMeshPattern(const std::string & pattern, MeshPattern & result)
@@ -472,6 +541,7 @@ struct BenchConfig
     bool          plot;
     bool          useIntegrationBasis;
     std::string   form;            ///< mass, stiffness, biharmonic or all
+    std::string   merge;           ///< leaf merging of the hpatch rule: none, pairwise, sweep, best
     index_t       reps;
     index_t       baseRefs;        ///< uniform refinements of the base knot vector
     std::ofstream * csv;           ///< open CSV file, or NULL
@@ -493,8 +563,24 @@ const char * csvHeader()
 {
     return "form,dim,p,r,levels,pattern,admissible,jump,nElem,nDof,maxLevel,"
            "rule,nPts,nFallback,absErr,relErr,tMesh,tBuild,tInit,tAsm,"
-           "reps,threads,host,cpu,baseRefs,band";
+           "reps,threads,host,cpu,baseRefs,band,"
+           "merge,tPartition,numLeaves,numCells,levelsPairwise,"
+           "nodesLeaves,nodesPairwise,nodesSweep";
 }
+
+/// Partition columns of an hpatch CSV row (see the file documentation).
+struct PartitionColumns
+{
+    PartitionColumns()
+    : present(false), seconds(0), numLeaves(0), numCells(0), levelsPairwise(0),
+      nodesLeaves(0), nodesPairwise(0), nodesSweep(0) { }
+
+    bool        present;   ///< false: the eight fields are written empty
+    std::string merge;
+    double      seconds;
+    index_t     numLeaves, numCells, levelsPairwise;
+    index_t     nodesLeaves, nodesPairwise, nodesSweep;
+};
 
 /// Host name of the machine, or "unknown".
 std::string hostName()
@@ -535,7 +621,7 @@ std::string cpuModel()
 void writeCsvRow(const BenchConfig & cfg, const std::string & form,
                  const std::string & rule, index_t nPts, index_t nFallback,
                  double absErr, double relErr, double tBuild, double tInit,
-                 double tAsm)
+                 double tAsm, const PartitionColumns & part)
 {
     if (!cfg.csv)
         return;
@@ -549,7 +635,14 @@ void writeCsvRow(const BenchConfig & cfg, const std::string & form,
        << absErr << ',' << relErr << ','
        << cfg.tMesh << ',' << tBuild << ',' << tInit << ',' << tAsm << ','
        << cfg.reps << ',' << omp_get_max_threads() << ','
-       << hostName() << ',' << cpuModel() << ',' << cfg.baseRefs << ',' << bandName(cfg.band) << '\n';
+       << hostName() << ',' << cpuModel() << ',' << cfg.baseRefs << ',' << bandName(cfg.band);
+    if (part.present)
+        os << ',' << part.merge << ',' << part.seconds << ',' << part.numLeaves << ','
+           << part.numCells << ',' << part.levelsPairwise << ',' << part.nodesLeaves << ','
+           << part.nodesPairwise << ',' << part.nodesSweep;
+    else
+        os << ",,,,,,,,";
+    os << '\n';
 }
 
 // ============================================================
@@ -570,14 +663,12 @@ void compareRules(const BenchConfig     & cfg,
     optGauss.setInt ("quRule", gsQuadrature::GaussLegendre);
     optGauss.setReal("quA", static_cast<T>(1.0));
     optGauss.setInt ("quB", 1);
-    // Option path of the RHS diagnostic below (selects gsHPatchRule)
-    gsOptionList optHPatch = gsExprAssembler<T>::defaultOptions();
-    optHPatch.setInt ("quRule", gsQuadrature::HPatchRule);
-    optHPatch.setReal("quA", static_cast<T>(quA));
-    optHPatch.setInt ("quB", quB);
+    // Options of the RHS diagnostic of the hpatch rule, which integrates with
+    // the leaf factory below instead of an option-selected rule.
+    const gsOptionList optDefault = gsExprAssembler<T>::defaultOptions();
 
     // Prebuilt rules. Gauss integrates on the original domain, gsHPatchRule on
-    // the integration domain; only the constructors are timed.
+    // the integration domain; only the construction is timed.
     gsStopwatch sw;
     double tBuildGauss = 0, tBuildHPatch = 0;
     sw.restart();
@@ -585,14 +676,21 @@ void compareRules(const BenchConfig     & cfg,
     tBuildGauss = sw.stop();
     memory::shared_ptr<const gsQuadRule<T> > gaussRule(gaussUnique.release());
 
-    memory::shared_ptr<gsDomain<T> > integDomain = integMB.basis(0).domain();
     sw.restart();
-    memory::shared_ptr<gsHPatchRule<T> > hpatchRule(
-        new gsHPatchRule<T>(*integDomain, quA, quB, false));
+    const typename gsExprAssembler<T>::QuadratureFactory hpatchFactory =
+        gsHPatchRule<T>::makeFactory(integMB, quA, quB, false, nullptr,
+                                     mergeModeOf<T>(cfg.merge));
     tBuildHPatch = sw.stop();
 
+    // A handle of the factory's rule for counting points and for the
+    // diagnostics; outside every timed region.
+    const typename gsQuadRule<T>::uPtr handle =
+        hpatchFactory(integMB.basis(0), optDefault, 0, -1);
+    const gsHPatchRule<T> & hpatchRule = dynamic_cast<const gsHPatchRule<T> &>(*handle);
+    const typename gsHPatchRule<T>::PartitionInfo & info = hpatchRule.partitionInfo();
+
     AssemblyArm<T> armGauss (spaceMB, spaceMB, mp, gaussRule);
-    AssemblyArm<T> armHPatch(spaceMB, integMB,  mp, hpatchRule);
+    AssemblyArm<T> armHPatch(spaceMB, integMB,  mp, hpatchFactory);
 
     ArmTimes tGauss, tHPatch;
     timeForm(form, armGauss, armHPatch, cfg.reps, tGauss, tHPatch);
@@ -600,7 +698,12 @@ void compareRules(const BenchConfig     & cfg,
     const gsSparseMatrix<T> Mhpatch = armHPatch.A.matrix();
 
     const index_t nGauss  = countPoints(spaceMB.basis(0), *gaussRule);
-    const index_t nHPatch = countPoints(integMB.basis(0), *hpatchRule);
+    const index_t nHPatch = countPoints(integMB.basis(0), hpatchRule);
+    // A merged cell hands each of its nodes to exactly one element.
+    GISMO_ENSURE(nHPatch == hpatchRule.numPointsTotal(),
+                 "The element-wise point count (" << nHPatch
+                 << ") differs from the point count of the rule ("
+                 << hpatchRule.numPointsTotal() << ").");
 
     // Reference magnitude for relative error (biharmonic entries are huge,
     // ~h^-4, so absolute error is not a meaningful exactness measure there).
@@ -633,14 +736,34 @@ void compareRules(const BenchConfig     & cfg,
            << std::setw(10) << "tBuild" << std::setw(10) << "tInit" << "\n";
     row("Gauss",        nGauss,  T(0),      T(1),                 tGauss.assem,  tBuildGauss,  tGauss.init);
     row("gsHPatchRule", nHPatch, errHPatch, (T)nHPatch / nGauss,  tHPatch.assem, tBuildHPatch, tHPatch.init);
+    gsInfo << "gsHPatchRule: merge=" << cfg.merge
+           << " points=" << hpatchRule.numPointsTotal()
+           << " fallbackCells=" << hpatchRule.numFallbackCells()
+           << " leaves=" << info.numLeaves << " cells=" << info.numCells
+           << " nodesLeaves=" << info.nodesLeaves
+           << " nodesPairwise=" << info.nodesPairwise
+           << " nodesSweep=" << info.nodesSweep
+           << " levelsPairwise=" << info.levelsPairwise
+           << " tPartition=" << info.seconds << "\n";
+
+    PartitionColumns part;
+    part.present        = true;
+    part.merge          = cfg.merge;
+    part.seconds        = info.seconds;
+    part.numLeaves      = info.numLeaves;
+    part.numCells       = info.numCells;
+    part.levelsPairwise = info.levelsPairwise;
+    part.nodesLeaves    = info.nodesLeaves;
+    part.nodesPairwise  = info.nodesPairwise;
+    part.nodesSweep     = info.nodesSweep;
 
     const std::string csvForm = form == MASS ? "mass" :
                                 form == STIFFNESS ? "stiffness" : "biharmonic";
     writeCsvRow(cfg, csvForm, "gauss", nGauss, 0, 0.0, 0.0,
-                tBuildGauss, tGauss.init, tGauss.assem);
-    writeCsvRow(cfg, csvForm, "hpatch", nHPatch, hpatchRule->numFallbackCells(),
+                tBuildGauss, tGauss.init, tGauss.assem, PartitionColumns());
+    writeCsvRow(cfg, csvForm, "hpatch", nHPatch, hpatchRule.numFallbackCells(),
                 errHPatch, relHPatch,
-                tBuildHPatch, tHPatch.init, tHPatch.assem);
+                tBuildHPatch, tHPatch.init, tHPatch.assem, part);
 
     // --- RHS diagnostic: b_i = ∫ N_i dΩ ---
     // Reveals per-function integration errors more directly than the matrix.
@@ -648,19 +771,15 @@ void compareRules(const BenchConfig     & cfg,
     // Truncated THB functions that are piecewise-polynomial within an atomic cell
     // would show non-zero relative error here if the rule misses their kink points.
     {
-        const gsVector<T> bGauss  = assembleRHS<d,T>(spaceMB, spaceMB, mp, optGauss);
-        // const gsVector<T> bPatch  = assembleRHS<d,T>(spaceMB, spaceMB, mp, optPatch);
-        const gsVector<T> bHPatch = assembleRHS<d,T>(spaceMB, integMB, mp, optHPatch);
+        const gsVector<T> bGauss  = assembleRHS<d,T>(spaceMB, spaceMB, mp, optGauss, nullptr);
+        const gsVector<T> bHPatch = assembleRHS<d,T>(spaceMB, integMB, mp, optDefault, &hpatchFactory);
 
         const T rhsMag  = bGauss.cwiseAbs().maxCoeff();
-        // const T rhsErrP = (bPatch  - bGauss).cwiseAbs().maxCoeff();
         const T rhsErrH = (bHPatch - bGauss).cwiseAbs().maxCoeff();
 
         gsInfo << "  ∫N_i dΩ — sum(Gauss)=" << std::fixed << std::setprecision(15)
                << bGauss.sum()
                << "  sum(hpatch)=" << bHPatch.sum() << "\n";
-        // gsInfo << "  gsPatchRule  rel.err=" << std::scientific << std::setprecision(3)
-        //        << (rhsMag > 0 ? rhsErrP / rhsMag : rhsErrP);
         gsInfo << "  gsHPatchRule rel.err="
                << (rhsMag > 0 ? rhsErrH / rhsMag : rhsErrH) << "\n\n";
     }
@@ -778,13 +897,6 @@ void run(BenchConfig & cfg)
         compareRules<d,T>(cfg, "Biharmonic", spaceMB, integMB, mp, BIHARMONIC, 2*p, r-2);
     else if (all)
         gsInfo << "Biharmonic: skipped (requires regularity >= 2; use -P 3 -R 2)\n";
-
-    // gsHPatchRule diagnostics (fallback cells, on the integration domain)
-    {
-        gsHPatchRule<T> hp(*integThb.domain(), 2*p, r, false);
-        gsInfo << "gsHPatchRule: " << hp.numPointsTotal() << " points, "
-               << hp.numFallbackCells() << " fallback cells\n";
-    }
 }
 
 // ============================================================
@@ -806,6 +918,7 @@ int main(int argc, char * argv[])
     std::string meshPattern = "lshape";
     std::string band = "scaled";
     std::string form = "all";
+    std::string merge = "best";
     std::string csvFile;
 
     gsCmdLine cmd("Assembly benchmark: gsHPatchRule vs Gauss (gsExprAssembler).");
@@ -819,6 +932,8 @@ int main(int argc, char * argv[])
                   "Mesh pattern: lshape, center, diagonal", meshPattern);
     cmd.addString("",  "form",
                   "Bilinear form: mass, stiffness, biharmonic, all", form);
+    cmd.addString("",  "merge",
+                  "Leaf merging of the leaf rule: none, pairwise, sweep, best", merge);
     cmd.addInt   ("",  "reps",
                   "Repetitions of assemble(); the minimum time is reported", reps);
     cmd.addString("",  "band",
@@ -830,13 +945,13 @@ int main(int argc, char * argv[])
                   "Write one CSV row per (form, rule) to this file", csvFile);
     cmd.addSwitch("",  "admissible",
                   "Apply admissible closure to the marked refinement region", admissible);
-    cmd.addSwitch("plot",        "Write ParaView mesh",         plot);
+    cmd.addSwitch("plot",        "Write ParaView mesh and the quadrature nodes of the best rule "
+                                 "(whatever --merge says)", plot);
     cmd.addSwitch("integrationBasis",
                   "Refine THB via makeIntegrationBasis before assembly", integBasis);
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
 
-    // The prebuilt rule is shared by all elements and caches data between
-    // calls; the timings are serial by design.
+    // The timings compare single-thread assembly; they are serial by design.
     if (omp_get_max_threads() > 1)
     {
         gsWarn << "This benchmark requires OMP_NUM_THREADS=1 (found "
@@ -870,6 +985,12 @@ int main(int argc, char * argv[])
     {
         gsInfo << "Error: unknown form '" << form
                << "'. Expected one of: mass, stiffness, biharmonic, all.\n";
+        return EXIT_FAILURE;
+    }
+    if (!isMergeMode(merge))
+    {
+        gsInfo << "Error: unknown merge '" << merge
+               << "'. Expected one of: none, pairwise, sweep, best.\n";
         return EXIT_FAILURE;
     }
     if (form == "biharmonic" && r < 2)
@@ -917,6 +1038,7 @@ int main(int argc, char * argv[])
     cfg.plot = plot;
     cfg.useIntegrationBasis = integBasis;
     cfg.form = form;
+    cfg.merge = merge;
     cfg.reps = reps;
     cfg.baseRefs = baseRefs;
     cfg.band = bandVariant;
