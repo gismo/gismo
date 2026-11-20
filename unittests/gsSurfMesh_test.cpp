@@ -13,6 +13,11 @@
         (gsSurfMesh), and must re-bind the property handles to the copy;
         forgetting either half aliases or truncates the mesh silently.
 
+      - compute_face_normal()'s triangle branch, whose cross product operands
+        must both be relative to the same vertex: a normal has no magnitude to
+        look wrong and no obviously invalid value, so translation invariance
+        and agreement with the general-polygon branch are pinned directly.
+
     This file is part of the G+Smo library.
 
     This Source Code Form is subject to the terms of the Mozilla Public
@@ -29,6 +34,7 @@ SUITE(gsSurfMesh_test)
 
 typedef gsSurfMesh<real_t>          Mesh;
 typedef gsSurfMesh<real_t>::Point   Point;
+typedef gsSurfMesh<real_t>::Normal  Normal;
 typedef gsSurfMesh<real_t>::Vertex  Vertex;
 
 // V - E + F, i.e. 2 for a closed genus-0 surface, 2-2g in general
@@ -57,6 +63,18 @@ inline bool readMesh(Mesh & m, const std::string & relPath)
 {
     const std::string p = gsFileManager::findInDataDir(relPath);
     return m.read(p);
+}
+
+/// One triangle with the given corner positions, in the given order.
+Mesh triangleMesh(const Point & a, const Point & b, const Point & c)
+{
+    Mesh m;
+    std::vector<Vertex> v;
+    v.push_back(m.add_vertex(a));
+    v.push_back(m.add_vertex(b));
+    v.push_back(m.add_vertex(c));
+    m.add_face(v);
+    return m;
 }
 
 
@@ -458,6 +476,79 @@ TEST(FaceNormals_Outward)
         // ... and they point away from the centre (the cube is origin-centred)
         CHECK( n.dot(m.face_barycenter(f)) > 0.0 );
     }
+}
+
+/// The normal of a counter-clockwise triangle must be (p1-p0) x (p2-p0),
+/// normalized -- at ANY position, not only at the origin.
+TEST(computeFaceNormal_matchesTheTextbookFormula)
+{
+    // Deliberately off-origin and not axis aligned: at the origin a sign error
+    // can survive a symmetric fixture.
+    const Point a(5.0, 3.0, 2.0);
+    const Point b(6.0, 3.0, 2.0);
+    const Point c(5.0, 4.0, 2.0);
+
+    Mesh m = triangleMesh(a, b, c);
+    const Normal n = m.compute_face_normal(*m.faces().begin());
+
+    Normal expect = (b-a).cross(c-a);
+    expect.normalize();
+
+    CHECK_CLOSE(expect[0], n[0], 1e-12);
+    CHECK_CLOSE(expect[1], n[1], 1e-12);
+    CHECK_CLOSE(expect[2], n[2], 1e-12);
+
+    // For this fixture that is +z; assert it explicitly so a future refactor
+    // that flips the winding convention has to say so out loud.
+    CHECK_CLOSE(0.0, n[0], 1e-12);
+    CHECK_CLOSE(0.0, n[1], 1e-12);
+    CHECK_CLOSE(1.0, n[2], 1e-12);
+}
+
+/// A normal is a direction: translating the mesh must not change it.
+TEST(computeFaceNormal_isTranslationInvariant)
+{
+    const Point a(0.0, 0.0, 0.0);
+    const Point b(1.0, 0.0, 0.0);
+    const Point c(0.0, 1.0, 0.0);
+    const Point t(5.0, 3.0, 2.0);
+
+    Mesh m0 = triangleMesh(a,     b,     c    );
+    Mesh m1 = triangleMesh(a + t, b + t, c + t);
+
+    const Normal n0 = m0.compute_face_normal(*m0.faces().begin());
+    const Normal n1 = m1.compute_face_normal(*m1.faces().begin());
+
+    CHECK_CLOSE(n0[0], n1[0], 1e-12);
+    CHECK_CLOSE(n0[1], n1[1], 1e-12);
+    CHECK_CLOSE(n0[2], n1[2], 1e-12);
+}
+
+/// The triangle branch and the general-polygon branch must agree: a coplanar
+/// quad and a triangle with the same winding report the same normal.
+TEST(computeFaceNormal_triangleAndPolygonBranchesAgree)
+{
+    const Point a(5.0, 3.0, 2.0);
+    const Point b(6.0, 3.0, 2.0);
+    const Point c(6.0, 4.0, 2.0);
+    const Point d(5.0, 4.0, 2.0);
+
+    Mesh tri = triangleMesh(a, b, c);
+
+    Mesh quad;
+    std::vector<Vertex> qv;
+    qv.push_back(quad.add_vertex(a));
+    qv.push_back(quad.add_vertex(b));
+    qv.push_back(quad.add_vertex(c));
+    qv.push_back(quad.add_vertex(d));
+    quad.add_face(qv);
+
+    const Normal nt = tri .compute_face_normal(*tri .faces().begin());
+    const Normal nq = quad.compute_face_normal(*quad.faces().begin());
+
+    CHECK_CLOSE(nt[0], nq[0], 1e-12);
+    CHECK_CLOSE(nt[1], nq[1], 1e-12);
+    CHECK_CLOSE(nt[2], nq[2], 1e-12);
 }
 
 } // SUITE

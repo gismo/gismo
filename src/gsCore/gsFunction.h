@@ -196,11 +196,23 @@ public:
      */
     virtual void deriv2_into( const gsMatrix<T>& u, gsMatrix<T>& result ) const;
 
+    /// \brief Evaluates the Hessian of component \a coord at the points \a u.
+    ///
+    /// Let \em d = domainDim().
+    /// \param[in] u gsMatrix of size <em>d</em> x <em>N</em>, one evaluation point per column.
+    /// \param[out] result gsMatrix of size <em>(d*d)</em> x <em>N</em>. Column \em k
+    /// is the <em>d</em> x <em>d</em> Hessian (matrix of second partial
+    /// derivatives) of component \a coord at <tt>u.col(k)</tt>, stored column-major.
+    /// \param[in] coord index of the component function, 0 <= coord < targetDim()
+    ///
+    /// \warning The Hessian is computed from deriv2_into(), and is hence
+    /// only as accurate as that function: by default central finite
+    /// differences, unless deriv2_into() is overridden.
     virtual void hessian_into(const gsMatrix<T>& u, gsMatrix<T>& result,
                               index_t coord = 0) const;
 
-    /// Evaluates the Hessian (matrix of second partial derivatives) of
-    /// coordinate \a coord at points \a u.
+    /// Evaluates the Hessian of component \a coord at points \a u;
+    /// see hessian_into() for the layout of the result.
     virtual gsMatrix<T> hessian(const gsMatrix<T>& u, index_t coord = 0) const
     {
         gsMatrix<T> res;

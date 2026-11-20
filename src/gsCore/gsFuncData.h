@@ -134,6 +134,10 @@ public:
     mutable unsigned flags;
     index_t      patchId; // move to mapdata
 
+    /// Requested derivative order beyond what \a flags imply; -1 means "none".
+    /// Honoured by maxDeriv() only when NEED_DERIV_N is set.
+    mutable index_t derivOrder = -1;
+
     gsMatrix<index_t> actives;
 
     /// Stores values and derivatives
@@ -162,7 +166,7 @@ public:
 
     /// \brief Copy constructor
     gsFuncData(const gsFuncData<T> & other)
-    : flags(other.flags), patchId(other.patchId), dim(other.dim)
+    : flags(other.flags), patchId(other.patchId), derivOrder(other.derivOrder), dim(other.dim)
     {
         actives = other.actives;
         values = other.values;
@@ -173,7 +177,7 @@ public:
 
     /// \brief Move constructor
     gsFuncData(gsFuncData<T> && other)
-    : flags(other.flags), patchId(other.patchId), dim(other.dim)
+    : flags(other.flags), patchId(other.patchId), derivOrder(other.derivOrder), dim(other.dim)
     {
         actives.swap(other.actives);
         values.swap(other.values);
@@ -189,6 +193,7 @@ public:
         {
             flags = other.flags;
             patchId = other.patchId;
+            derivOrder = other.derivOrder;
             dim = other.dim;
             actives = other.actives;
             values = other.values;
@@ -206,6 +211,7 @@ public:
         {
             flags = other.flags;
             patchId = other.patchId;
+            derivOrder = other.derivOrder;
             dim = other.dim;
             actives.swap(other.actives);
             values.swap(other.values);
@@ -229,13 +235,19 @@ public:
 
     int maxDeriv() const
     {
+        int d;
         if (flags & (NEED_LAPLACIAN|NEED_DERIV2|NEED_HESSIAN) )
-            return 2;
+            d = 2;
         else if (flags & (NEED_DERIV|NEED_GRAD_TRANSFORM|NEED_CURL|NEED_DIV) )
-            return 1;
+            d = 1;
         else if (flags & (NEED_VALUE) )
-            return 0;
-        return -1;
+            d = 0;
+        else
+            d = -1;
+
+        if (flags & NEED_DERIV_N)
+            d = math::max(d, (int)derivOrder);
+        return d;
     }
 
     /**
@@ -252,6 +264,7 @@ public:
     {
         flags = 0;
         patchId = -1;
+        derivOrder = -1;
         actives.clear();
         values.clear();
         curls.clear();
@@ -265,6 +278,7 @@ public:
     {
         std::swap(flags  , other.flags  );
         std::swap(patchId, other.patchId);
+        std::swap(derivOrder, other.derivOrder);
         std::swap(dim, other.dim);
         actives   .swap(other.actives   );
         values    .swap(other.values    );

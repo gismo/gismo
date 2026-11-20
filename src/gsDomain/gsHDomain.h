@@ -15,8 +15,7 @@
 
 #include <gsCore/gsLinearAlgebra.h>
 #include <gsDomain/gsDomain.h>
-#include <gsDomain/gsHTree.h>
-#include <gsDomain/gsHDomainLeafIter.h>
+#include <gsHSplines/gsHTree.h>
 #include <gsDomain/gsHDomainIterator.h>
 #include <gsDomain/gsHDomainBoundaryIterator.h>
 
@@ -28,9 +27,6 @@ class gsHDomainIterator;
 
 template<class T>
 class gsSegment;
-
-// template <short_t d, class Z>
-// class gsKdNode;
 
 template <class T>
 class gsVSegment;
