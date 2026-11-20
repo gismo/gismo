@@ -225,7 +225,7 @@ public:
     { return this->basis().source().knots(i); } 
 
     /// Inserts knot \a knot at direction \a dir, \a i times
-    void insertKnot( T knot, int dir, int i = 1) override
+    void insertKnot( T knot, index_t dir, index_t i = 1) override
     {
         GISMO_ASSERT( i>0, "multiplicity must be at least 1");
         GISMO_ASSERT( dir >= 0 && static_cast<unsigned>(dir) < d,

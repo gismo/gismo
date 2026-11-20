@@ -246,6 +246,12 @@ template <typename T>
 inline T pow_impl(const T& v0, const T& v1, AUTODIFF_TYPE_TAG)
 {
     using std::pow;
+    // exprtk hands constant exponents over as AUTODIFF_TYPE too. The
+    // derivative of pow(dual, dual) contains log(v0) and v1/v0, which are
+    // NaN or infinite for v0 <= 0 even when the exponent is constant, so
+    // x^2 at x <= 0 had NaN derivatives.
+    if (autodiff_helper::is_constant(v1))
+        return autodiff_helper::pow_constant(v0, autodiff::val(v1));
     return pow(v0, v1);
 }
 

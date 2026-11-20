@@ -207,4 +207,41 @@ TEST(BSplineSurface_Reverse_Var)
     
 }
 
+// gsFunctionExpr differentiates through forward-mode autodiff, and exprtk
+// passes constant exponents as autodiff numbers. The derivative of
+// pow(dual, dual) involves log(base) and exponent/base, so powers with a
+// constant exponent must not depend on them: at a base <= 0 they are NaN.
+TEST(FunctionExprPowerAtNonPositiveBase)
+{
+    gsMatrix<real_t> u(1,2);
+    u << 0.0, -1.5;
+
+    // x^2.5 is not reduced to products by exprtk in any build
+    gsFunctionExpr<real_t> f("x^2.5", 1);
+    gsMatrix<real_t> d1, d2;
+    f.deriv_into (u.leftCols(1), d1);
+    f.deriv2_into(u.leftCols(1), d2);
+    CHECK_CLOSE(0.0, d1(0,0), 1e-14);
+    CHECK_CLOSE(0.0, d2(0,0), 1e-14);
+
+    // x^2 and x^3 at x = 0 and x = -1.5
+    gsFunctionExpr<real_t> g("x^2 + x^3", 1);
+    g.deriv_into (u, d1);
+    g.deriv2_into(u, d2);
+    CHECK_CLOSE(0.0,           d1(0,0), 1e-14);
+    CHECK_CLOSE(2.0,           d2(0,0), 1e-14);
+    CHECK_CLOSE(-3.0 + 6.75,   d1(0,1), 1e-13);
+    CHECK_CLOSE( 2.0 - 9.0,    d2(0,1), 1e-13);
+
+    // x^0 and x^1 at x = 0, value included
+    gsFunctionExpr<real_t> h("x^0 + x^1", 1);
+    gsMatrix<real_t> v;
+    h.eval_into  (u.leftCols(1), v);
+    h.deriv_into (u.leftCols(1), d1);
+    h.deriv2_into(u.leftCols(1), d2);
+    CHECK_CLOSE(1.0, v (0,0), 1e-14);
+    CHECK_CLOSE(1.0, d1(0,0), 1e-14);
+    CHECK_CLOSE(0.0, d2(0,0), 1e-14);
+}
+
 }

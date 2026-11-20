@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
     index_t degree    = 1;
     index_t m         = 2;
     index_t numRef    = 5;
-    short_t d         = 2;
+    index_t d         = 2;
     gsCmdLine cmd("Example of gsHElementMarker.");
     cmd.addInt("m","jump",
                "parameter m", m);
