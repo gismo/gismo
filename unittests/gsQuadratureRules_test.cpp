@@ -1099,7 +1099,7 @@ TEST(hpatchrule_newton_1d_long_leaf)
 // A rule returns, for an element, exactly what it returns when the elements are queried
 // in volume order, whatever the query order: the lookup finds the one leaf that contains
 // the element (each element lies in exactly one leaf), so nodes and weights are
-// bitwise identical.
+// bitwise identical. With MergeMode::none the cells are the kd leaves.
 TEST(hpatchrule_lookup_shuffled_order)
 {
     const index_t p = 2;
@@ -1122,7 +1122,8 @@ TEST(hpatchrule_lookup_shuffled_order)
     const size_t nElem = lows.size();
 
     // Reference: one rule, elements in volume order.
-    gsHPatchRule<real_t> first(*dom, 2*p, p-1, false);
+    gsHPatchRule<real_t> first(*dom, 2*p, p-1, false, -1, nullptr,
+                               gsHPatchRule<real_t>::MergeMode::none);
     std::vector<gsMatrix<real_t> > refNodes(nElem);
     std::vector<gsVector<real_t> > refWeights(nElem);
     for (size_t e = 0; e != nElem; ++e)
@@ -1137,7 +1138,8 @@ TEST(hpatchrule_lookup_shuffled_order)
     std::mt19937 rng(20240607);
     std::shuffle(orders[1].begin(), orders[1].end(), rng);
 
-    gsHPatchRule<real_t> second(*dom, 2*p, p-1, false);
+    gsHPatchRule<real_t> second(*dom, 2*p, p-1, false, -1, nullptr,
+                                gsHPatchRule<real_t>::MergeMode::none);
     gsMatrix<real_t> nodes;
     gsVector<real_t> weights;
     for (size_t o = 0; o != orders.size(); ++o)
@@ -1592,6 +1594,8 @@ gsMatrix<real_t> hpatchAssembleLeafRule(gsTHBSplineBasis<d,real_t> thb, int form
 // Rules built through the cache must equal rules built without it bit for bit (a hit
 // returns what a fresh solve of that key returns), a rule with another regularity has other
 // knot multiplicities and so needs entries of its own, and clear() forgets everything.
+// The rules keep the kd leaves as cells (MergeMode::none), because the counts are over
+// the leaves.
 TEST(hpatchrule_cache_counts_over_two_builds)
 {
     struct Row { index_t p; index_t patchDirs; index_t solvesA; index_t hitsA;
@@ -1616,7 +1620,8 @@ TEST(hpatchrule_cache_counts_over_two_builds)
 
         // Build A: every lookup is new except for the repeated keys.
         gsHPatchRuleCache<real_t> cache;
-        gsHPatchRule<real_t> ruleA(*dom, 2*p, p-1, false, -1, &cache);
+        gsHPatchRule<real_t> ruleA(*dom, 2*p, p-1, false, -1, &cache,
+                                   gsHPatchRule<real_t>::MergeMode::none);
         CHECK_EQUAL(patchDirs, cache.numHits() + cache.numSolves());
         CHECK_EQUAL(rows[k].solvesA, cache.numSolves());
         CHECK_EQUAL(rows[k].hitsA,   cache.numHits());
@@ -1627,7 +1632,8 @@ TEST(hpatchrule_cache_counts_over_two_builds)
         const index_t hitsA   = cache.numHits();
 
         // Build B on the same cache: all keys are present, so nothing is solved.
-        gsHPatchRule<real_t> ruleB(*dom, 2*p, p-1, false, -1, &cache);
+        gsHPatchRule<real_t> ruleB(*dom, 2*p, p-1, false, -1, &cache,
+                                   gsHPatchRule<real_t>::MergeMode::none);
         CHECK_EQUAL(solvesA, cache.numSolves());
         CHECK_EQUAL(hitsA + patchDirs, cache.numHits());
         CHECK_EQUAL(cache.numSolves(), cache.size());
@@ -1636,7 +1642,8 @@ TEST(hpatchrule_cache_counts_over_two_builds)
 
         // Rule C has its own cache, local to the build. A is built from fresh solves
         // (and hits on shapes solved in the same build), B only from stored shapes.
-        gsHPatchRule<real_t> ruleC(*dom, 2*p, p-1, false);
+        gsHPatchRule<real_t> ruleC(*dom, 2*p, p-1, false, -1, nullptr,
+                                   gsHPatchRule<real_t>::MergeMode::none);
         index_t nElem = 0;
         CHECK_EQUAL(real_t(0), hpatchMaxDiff(ruleA, ruleC, thb, -1, nElem));
         CHECK(nElem > 0);
@@ -1644,14 +1651,16 @@ TEST(hpatchrule_cache_counts_over_two_builds)
         CHECK(nElem > 0);
 
         // Build D with regularity p-2: other knot multiplicities in the target, so other keys.
-        gsHPatchRule<real_t> ruleD(*dom, 2*p, p-2, false, -1, &cache);
+        gsHPatchRule<real_t> ruleD(*dom, 2*p, p-2, false, -1, &cache,
+                                   gsHPatchRule<real_t>::MergeMode::none);
         CHECK(cache.numSolves() > solvesA);
         CHECK_EQUAL(rows[k].solvesD, cache.numSolves());
         CHECK_EQUAL(rows[k].hitsD,   cache.numHits());
         CHECK_EQUAL(cache.numSolves(), cache.size());
         CHECK_EQUAL(index_t(0), cache.numFailures());
         CHECK(cache.failedKeys().empty());
-        gsHPatchRule<real_t> ruleD0(*dom, 2*p, p-2, false);
+        gsHPatchRule<real_t> ruleD0(*dom, 2*p, p-2, false, -1, nullptr,
+                                    gsHPatchRule<real_t>::MergeMode::none);
         CHECK_EQUAL(real_t(0), hpatchMaxDiff(ruleD, ruleD0, thb, -1, nElem));
         CHECK(nElem > 0);
 
@@ -1662,7 +1671,8 @@ TEST(hpatchrule_cache_counts_over_two_builds)
         CHECK_EQUAL(index_t(0), cache.numFailures());
         CHECK_EQUAL(index_t(0), cache.size());
         CHECK(cache.failedKeys().empty());
-        gsHPatchRule<real_t> ruleE(*dom, 2*p, p-1, false, -1, &cache);
+        gsHPatchRule<real_t> ruleE(*dom, 2*p, p-1, false, -1, &cache,
+                                   gsHPatchRule<real_t>::MergeMode::none);
         CHECK_EQUAL(solvesA, cache.numSolves());
         CHECK_EQUAL(hitsA,   cache.numHits());
         CHECK_EQUAL(real_t(0), hpatchMaxDiff(ruleE, ruleC, thb, -1, nElem));
@@ -2052,6 +2062,523 @@ TEST(hpatchrule_factory_assembly_equals_option_path)
         CHECK_EQUAL(Ko.cols(), Kf.cols());
         CHECK((Kf - Ko).cwiseAbs().maxCoeff() <= tol * maxAbs);
     }
+}
+
+// ------------------------------------------------------------
+// Leaf merging of gsHPatchRule (MergeMode)
+//
+// Merging replaces the kd-tree leaves of each level by fewer, larger cells (boxes of
+// elements) with a rule of their own. The tests use single-patch fixtures on which merging
+// really happens (fewer cells than leaves). All rules have degree p = 2 in the basis, and
+// the targets are the mass target (2p, p-1) = (4, 1) and the stiffness target
+// (2p, p-2) = (4, 0).
+//
+// The fixtures are makeRefinedTHB(2) refined further by level-2 boxes:
+//  - "tiled": four boxes that tile the square [8,16)^2 of level-2 indices (12 leaves);
+//  - "overlap": three overlapping boxes (14 leaves; sweep splits a kd leaf between cells);
+//  - "scattered": three separated boxes, as in the lookup tests (10 leaves);
+//  - a 3D basis with three adjacent level-2 boxes (10 leaves).
+// ------------------------------------------------------------
+
+// makeRefinedTHB(2) refined further by level-2 boxes {2, lo0, lo1, up0, up1}, inserted
+// with one refineElements call per box in the given order. The kd-tree leaves depend on
+// that order, the refined region does not.
+gsTHBSplineBasis<2,real_t> hpatchInsertBoxes(const std::vector<std::vector<index_t> > & boxes)
+{
+    gsTHBSplineBasis<2,real_t> thb = makeRefinedTHB(2);
+    for (size_t k = 0; k != boxes.size(); ++k)
+    {
+        std::vector<index_t> b = boxes[k];
+        thb.refineElements(b);
+    }
+    return thb;
+}
+
+// Mass (form 0) or stiffness (form 1) matrix of `thb` on the identity geometry. With
+// gauss == true: element-wise Gauss with the assembler's default options (p+1 points per
+// direction). Otherwise: the leaf rule (deg, reg) of a factory from
+// gsHPatchRule::makeFactory with merge mode `merge`.
+template<short_t d>
+gsMatrix<real_t> hpatchAssembleMerged(gsTHBSplineBasis<d,real_t> thb, int form,
+                                      index_t deg, index_t reg,
+                                      gsHPatchRule<real_t>::MergeMode merge, bool gauss)
+{
+    gsTensorBSplineBasis<d,real_t> & l0 = thb.tensorLevel(0);
+    gsMatrix<real_t> coefs = l0.anchors().transpose();
+    gsTensorBSpline<d,real_t> geom(l0, coefs);
+    gsMultiPatch<real_t> mp; mp.addPatch(geom);
+    gsMultiBasis<real_t> mb; mb.addBasis(thb.clone().release()); mb.setTopology(mp);
+
+    gsExprAssembler<real_t> A(1,1);
+    gsOptionList opt = gsExprAssembler<real_t>::defaultOptions();
+    A.setOptions(opt);
+    A.setIntegrationElements(mb);
+    if (!gauss)
+        A.setQuadratureFactory(gsHPatchRule<real_t>::makeFactory(mb, deg, reg, false, nullptr, merge));
+    auto G = A.getMap(mp);
+    auto u = A.getSpace(mb);
+    A.initSystem();
+    if (form == 0) A.assemble( u * u.tr() * meas(G) );
+    else           A.assemble( igrad(u,G) * igrad(u,G).tr() * meas(G) );
+    return A.matrix().toDense();
+}
+
+// Node counts of the four merge modes on six (fixture, target) rows on which merging
+// happens. Node counts are numPointsTotal() of the rule, which equals the model count of
+// the kept partition when no 1D solve falls back to Gauss (numFallbackCells() == 0, checked
+// first). The properties:
+//  - none keeps the kd leaves as cells and reports no candidate counts;
+//  - pairwise never has more nodes than none, and best never more than pairwise or sweep;
+//  - sweep can have more nodes than none (documented), so sweep <= none is not asserted;
+//  - the counts that best reports for its candidates are the node counts of the pairwise,
+//    sweep and none rules built separately on the same domain;
+//  - best keeps, per level, the smaller of pairwise and sweep, so its total is at most
+//    min(nodesPairwise, nodesSweep), with equality when pairwise won on no level, and
+//    strictly below nodesSweep when it won on some level.
+// The per-level counts are not public, so the per-level minimum itself is not asserted.
+// The overlap rows are the witnesses that the per-level minimum can lie strictly below both
+// candidate totals (pairwise wins on one level, and best has fewer nodes than the smaller
+// of the two totals).
+// The leaf, cell and node counts and levelsPairwise in the table are measured values,
+// pinned so that a change of the partition shows; the orderings and identities checked
+// beside them are what the MergeMode documentation guarantees.
+TEST(hpatchrule_merge_node_counts)
+{
+    typedef gsHPatchRule<real_t> Rule;
+    typedef Rule::MergeMode Mode;
+
+    gsTHBSplineBasis<2,real_t> tiled = hpatchInsertBoxes(
+        { {2, 8,8,12,12}, {2, 12,8,16,12}, {2, 8,12,12,16}, {2, 12,12,16,16} });
+    gsTHBSplineBasis<2,real_t> overlap = hpatchInsertBoxes(
+        { {2, 4,4,7,8}, {2, 3,4,7,7}, {2, 5,3,9,6} });
+
+    gsKnotVector<real_t> kv(0, 1, 0, 3, 1);
+    kv.uniformRefine(); kv.uniformRefine();
+    gsTensorBSplineBasis<3,real_t> tb(kv, kv, kv);
+    gsTHBSplineBasis<3,real_t> box3(tb);
+    box3.uniformRefine();
+    std::vector<index_t> c0 = {2, 0,0,0, 4,4,4};
+    std::vector<index_t> c1 = {2, 4,0,0, 8,4,4};
+    std::vector<index_t> c2 = {2, 8,0,0, 12,4,4};
+    box3.refineElements(c0); box3.refineElements(c1); box3.refineElements(c2);
+
+    // The rules store no domain reference, but the domains stay alive for the table.
+    auto domTiled = tiled.domain();
+    auto domOverlap = overlap.domain();
+    auto dom3 = box3.domain();
+
+    struct Row { const char * name; const gsDomain<real_t> * dom; index_t deg; index_t reg;
+                 index_t leaves; index_t cells; index_t nNone; index_t nPw; index_t nSw;
+                 index_t nBest; index_t levelsPw; };
+    const Row rows[] = {
+        {"tiled mass",         domTiled.get(),   4, 1, 12,  7,  477,  428,  428,  428, 0},
+        {"tiled stiffness",    domTiled.get(),   4, 0, 12,  7,  738,  689,  689,  689, 0},
+        {"overlap mass",       domOverlap.get(), 4, 1, 14, 10,  452,  412,  401,  398, 1},
+        {"overlap stiffness",  domOverlap.get(), 4, 0, 14, 10,  676,  638,  640,  636, 1},
+        {"3D boxes mass",      dom3.get(),       4, 1, 10,  4, 4278, 3604, 3508, 3508, 0},
+        {"3D boxes stiffness", dom3.get(),       4, 0, 10,  4, 8066, 7304, 7224, 7224, 0} };
+
+    for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
+    {
+        const Row & r = rows[k];
+        Rule none    (*r.dom, r.deg, r.reg, false, -1, nullptr, Mode::none);
+        Rule pairwise(*r.dom, r.deg, r.reg, false, -1, nullptr, Mode::pairwise);
+        Rule sweep   (*r.dom, r.deg, r.reg, false, -1, nullptr, Mode::sweep);
+        Rule best    (*r.dom, r.deg, r.reg, false, -1, nullptr, Mode::best);
+        const Rule::PartitionInfo & iN = none.partitionInfo();
+        const Rule::PartitionInfo & iP = pairwise.partitionInfo();
+        const Rule::PartitionInfo & iS = sweep.partitionInfo();
+        const Rule::PartitionInfo & iB = best.partitionInfo();
+        gsInfo << "row " << r.name << ": leaves " << iB.numLeaves << ", cells "
+               << iB.numCells << ", nodes none/pairwise/sweep/best "
+               << none.numPointsTotal() << "/" << pairwise.numPointsTotal() << "/"
+               << sweep.numPointsTotal() << "/" << best.numPointsTotal()
+               << ", levelsPairwise " << iB.levelsPairwise << "\n";
+
+        // The model counts below assume that no direction fell back to Gauss.
+        CHECK_EQUAL(index_t(0), none.numFallbackCells());
+        CHECK_EQUAL(index_t(0), pairwise.numFallbackCells());
+        CHECK_EQUAL(index_t(0), sweep.numFallbackCells());
+        CHECK_EQUAL(index_t(0), best.numFallbackCells());
+
+        // Leaves are a property of the domain; none has one cell per leaf, and best
+        // really merges (fewer cells than leaves).
+        CHECK_EQUAL(r.leaves, iN.numLeaves);
+        CHECK_EQUAL(r.leaves, iP.numLeaves);
+        CHECK_EQUAL(r.leaves, iS.numLeaves);
+        CHECK_EQUAL(r.leaves, iB.numLeaves);
+        CHECK_EQUAL(iN.numLeaves, iN.numCells);
+        CHECK_EQUAL(r.cells, iB.numCells);
+        CHECK(iB.numCells < iB.numLeaves);
+
+        // none computes no candidate and takes no time.
+        CHECK_EQUAL(index_t(-1), iN.nodesPairwise);
+        CHECK_EQUAL(index_t(-1), iN.nodesSweep);
+        CHECK_EQUAL(index_t(0), iN.levelsPairwise);
+        CHECK_EQUAL(0.0, iN.seconds);
+
+        // Node counts per mode, and the guaranteed orderings.
+        CHECK_EQUAL(r.nNone, none.numPointsTotal());
+        CHECK_EQUAL(r.nPw,   pairwise.numPointsTotal());
+        CHECK_EQUAL(r.nSw,   sweep.numPointsTotal());
+        CHECK_EQUAL(r.nBest, best.numPointsTotal());
+        CHECK(pairwise.numPointsTotal() <= none.numPointsTotal());
+        CHECK(best.numPointsTotal() <= pairwise.numPointsTotal());
+        CHECK(best.numPointsTotal() <= sweep.numPointsTotal());
+
+        // The reported counts are those of the partitions kept by the single-mode rules.
+        CHECK_EQUAL(none.numPointsTotal(),     iN.nodesLeaves);
+        CHECK_EQUAL(pairwise.numPointsTotal(), iP.nodesPairwise);
+        CHECK_EQUAL(sweep.numPointsTotal(),    iS.nodesSweep);
+        CHECK_EQUAL(none.numPointsTotal(),     iB.nodesLeaves);
+        CHECK_EQUAL(pairwise.numPointsTotal(), iB.nodesPairwise);
+        CHECK_EQUAL(sweep.numPointsTotal(),    iB.nodesSweep);
+
+        // Identity of best: the per-level minimum is at most each candidate total. It
+        // equals the sweep total when pairwise won on no level, and lies strictly below
+        // it when pairwise won on some level.
+        CHECK_EQUAL(r.levelsPw, iB.levelsPairwise);
+        CHECK(best.numPointsTotal() <= (std::min)(iB.nodesPairwise, iB.nodesSweep));
+        if (r.levelsPw == 0)
+            CHECK_EQUAL(iB.nodesSweep, best.numPointsTotal());
+        else if (r.levelsPw > 0)
+            CHECK(best.numPointsTotal() < iB.nodesSweep);
+    }
+}
+
+// Every merged cell carries a rule that is exact on the cell's target space (class
+// documentation, exactness paragraph), and the integrands of the mass and stiffness
+// matrices of the THB basis lie in it. So the matrices assembled with a merged rule equal
+// the element-wise Gauss matrices (p+1 points per direction, exact for these integrands on
+// the identity geometry) up to round-off, whatever the merge mode. The bound is relative
+// to the largest entry; the largest relative difference observed is about 6e-14, and the
+// bound 1e-12 leaves room for another summation order in a threaded run.
+TEST(hpatchrule_merge_exact_vs_gauss_volume)
+{
+    typedef gsHPatchRule<real_t>::MergeMode Mode;
+    const Mode modes[3] = { Mode::pairwise, Mode::sweep, Mode::best };
+    const char * modeNames[3] = { "pairwise", "sweep", "best" };
+    struct Form { int form; index_t deg; index_t reg; const char * name; };
+    const Form forms[2] = { {0, 4, 1, "mass"}, {1, 4, 0, "stiffness"} };
+    const real_t tol = 1e-12;
+
+    // 2D: four tiling boxes, and three overlapping boxes.
+    const char * names2[2] = { "tiled", "overlap" };
+    const gsTHBSplineBasis<2,real_t> bases2[2] = {
+        hpatchInsertBoxes({ {2, 8,8,12,12}, {2, 12,8,16,12}, {2, 8,12,12,16}, {2, 12,12,16,16} }),
+        hpatchInsertBoxes({ {2, 4,4,7,8}, {2, 3,4,7,7}, {2, 5,3,9,6} }) };
+    for (index_t b = 0; b != 2; ++b)
+        for (index_t f = 0; f != 2; ++f)
+        {
+            gsMatrix<real_t> Kg = hpatchAssembleMerged<2>(bases2[b], forms[f].form, forms[f].deg,
+                                                         forms[f].reg, Mode::none, true);
+            CHECK(Kg.allFinite());
+            const real_t scale = Kg.cwiseAbs().maxCoeff();
+            CHECK(scale > 0);
+            for (index_t m = 0; m != 3; ++m)
+            {
+                gsMatrix<real_t> Km = hpatchAssembleMerged<2>(bases2[b], forms[f].form,
+                                          forms[f].deg, forms[f].reg, modes[m], false);
+                CHECK(Km.allFinite());
+                CHECK_EQUAL(Kg.rows(), Km.rows());
+                CHECK_EQUAL(Kg.cols(), Km.cols());
+                if (Kg.rows() == Km.rows() && Kg.cols() == Km.cols())
+                {
+                    const real_t diff = (Km - Kg).cwiseAbs().maxCoeff();
+                    gsInfo << "2D " << names2[b] << " " << forms[f].name << " "
+                           << modeNames[m] << ": relative difference " << diff / scale << "\n";
+                    CHECK_CLOSE(real_t(0), diff, tol * scale);
+                }
+            }
+        }
+
+    // 3D: three adjacent boxes.
+    gsKnotVector<real_t> kv(0, 1, 0, 3, 1);
+    kv.uniformRefine(); kv.uniformRefine();
+    gsTensorBSplineBasis<3,real_t> tb(kv, kv, kv);
+    gsTHBSplineBasis<3,real_t> box3(tb);
+    box3.uniformRefine();
+    std::vector<index_t> c0 = {2, 0,0,0, 4,4,4};
+    std::vector<index_t> c1 = {2, 4,0,0, 8,4,4};
+    std::vector<index_t> c2 = {2, 8,0,0, 12,4,4};
+    box3.refineElements(c0); box3.refineElements(c1); box3.refineElements(c2);
+    for (index_t f = 0; f != 2; ++f)
+    {
+        gsMatrix<real_t> Kg = hpatchAssembleMerged<3>(box3, forms[f].form, forms[f].deg,
+                                                     forms[f].reg, Mode::none, true);
+        CHECK(Kg.allFinite());
+        const real_t scale = Kg.cwiseAbs().maxCoeff();
+        CHECK(scale > 0);
+        for (index_t m = 0; m != 3; ++m)
+        {
+            gsMatrix<real_t> Km = hpatchAssembleMerged<3>(box3, forms[f].form, forms[f].deg,
+                                                         forms[f].reg, modes[m], false);
+            CHECK(Km.allFinite());
+            CHECK_EQUAL(Kg.rows(), Km.rows());
+            CHECK_EQUAL(Kg.cols(), Km.cols());
+            if (Kg.rows() == Km.rows() && Kg.cols() == Km.cols())
+            {
+                const real_t diff = (Km - Kg).cwiseAbs().maxCoeff();
+                gsInfo << "3D boxes " << forms[f].name << " " << modeNames[m]
+                       << ": relative difference " << diff / scale << "\n";
+                CHECK_CLOSE(real_t(0), diff, tol * scale);
+            }
+        }
+    }
+}
+
+// A boundary rule (fixDir = dir) of every merge mode integrates the boundary mass matrix
+// of the THB basis along both sides normal to dir exactly: on a side the matrix entries
+// are products of two basis functions, which lie in the target (2p, p-1), and the reference
+// is Gauss with one point normal to the side and p+1 along it. The entries of the matrix
+// sum to the side length, 1 (partition of unity). Merging must not cost nodes
+// (pairwise and best have at most the nodes of none). The node counts of none and best per
+// row are measured values, pinned; the row
+// "scattered, dir 0" is a case where best has strictly fewer nodes than none. The cell
+// count equals the leaf count there, so merging shows as a node drop, not as fewer cells.
+// Only 2D is covered, because the boundary-mass helper is 2D.
+// The tolerance 1e-12 is that of hpatchrule_lookup_boundary_sides.
+TEST(hpatchrule_merge_exact_vs_gauss_boundary)
+{
+    typedef gsHPatchRule<real_t> Rule;
+    typedef Rule::MergeMode Mode;
+    const index_t p = 2;
+
+    gsTHBSplineBasis<2,real_t> scattered = makeRefinedTHB(p);
+    std::vector<index_t> more = {2, 12,12,20,20,   2, 24,24,32,32,   2, 0,24,4,32};
+    scattered.refineElements(more);
+    gsTHBSplineBasis<2,real_t> tiled = hpatchInsertBoxes(
+        { {2, 8,8,12,12}, {2, 12,8,16,12}, {2, 8,12,12,16}, {2, 12,12,16,16} });
+    gsTHBSplineBasis<2,real_t> overlap = hpatchInsertBoxes(
+        { {2, 4,4,7,8}, {2, 3,4,7,7}, {2, 5,3,9,6} });
+
+    struct Row { const char * name; const gsTHBSplineBasis<2,real_t> * thb; short_t dir;
+                 index_t nNone; index_t nBest; };
+    const Row rows[] = {
+        {"scattered", &scattered, 0, 103, 68}, {"scattered", &scattered, 1, 62, 62},
+        {"tiled",     &tiled,     0,  95, 41}, {"tiled",     &tiled,     1, 60, 41},
+        {"overlap",   &overlap,   0,  95, 44}, {"overlap",   &overlap,   1, 63, 49} };
+
+    const Mode modes[3] = { Mode::pairwise, Mode::sweep, Mode::best };
+    const char * modeNames[3] = { "pairwise", "sweep", "best" };
+    const boxSide sides[2][2] = { {boundary::west,  boundary::east},
+                                  {boundary::south, boundary::north} };
+
+    for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
+    {
+        const Row & r = rows[k];
+        const short_t dir = r.dir;
+        Rule none(*r.thb->domain(), 2*p, p-1, false, dir, nullptr, Mode::none);
+        Rule best(*r.thb->domain(), 2*p, p-1, false, dir, nullptr, Mode::best);
+        gsInfo << "row " << r.name << " dir=" << dir << ": nodes none "
+               << none.numPointsTotal() << ", best " << best.numPointsTotal() << "\n";
+        CHECK_EQUAL(r.nNone, none.numPointsTotal());
+        CHECK_EQUAL(r.nBest, best.numPointsTotal());
+        CHECK(best.numPointsTotal() <= none.numPointsTotal());
+        if (k == 0)
+            CHECK(best.numPointsTotal() < none.numPointsTotal());
+
+        // 1 point normal to the side, p+1 points along it.
+        gsVector<index_t> nn(2);
+        nn[dir] = 1;
+        nn[1 - dir] = p + 1;
+        gsGaussRule<real_t> gauss(nn);
+
+        for (index_t m = 0; m != 3; ++m)
+        {
+            Rule rule(*r.thb->domain(), 2*p, p-1, false, dir, nullptr, modes[m]);
+            CHECK_EQUAL(index_t(0), rule.numFallbackCells());
+            if (modes[m] != Mode::sweep)
+                CHECK(rule.numPointsTotal() <= none.numPointsTotal());
+            for (index_t s = 0; s != 2; ++s)
+            {
+                gsInfo << "  " << modeNames[m] << " side=" << sides[dir][s] << "\n";
+                gsMatrix<real_t> Mh = hpatchBoundaryMass(*r.thb, sides[dir][s], rule);
+                gsMatrix<real_t> Mg = hpatchBoundaryMass(*r.thb, sides[dir][s], gauss);
+                CHECK_CLOSE(0.0, (Mh - Mg).cwiseAbs().maxCoeff(), 1e-12);
+                CHECK_CLOSE(1.0, Mh.sum(), 1e-12);
+            }
+        }
+    }
+}
+
+// A merged rule returns, for an element, exactly what it returns when the elements are
+// queried in volume order, whatever the query order (reversed, shuffled, volume again,
+// chained on one rule): the lookup finds the one cell that contains the element, so nodes
+// and weights are bitwise identical. On the three-overlapping-boxes fixture the sweep partition splits a kd leaf between
+// cells, so the lookup must pick the cell that contains the element and not the first
+// cell of its leaf; pairwise cells are unions of whole kd leaves. A query that no cell contains throws in every build
+// and leaves the rule usable. Every row merges (fewer cells than leaves), so the lookup
+// is not the trivial one-cell-per-leaf case.
+// The element counts per row (124 and 139) are measured, pinned.
+TEST(hpatchrule_merge_lookup_any_order)
+{
+    typedef gsHPatchRule<real_t> Rule;
+    typedef Rule::MergeMode Mode;
+
+    gsTHBSplineBasis<2,real_t> tiled = hpatchInsertBoxes(
+        { {2, 8,8,12,12}, {2, 12,8,16,12}, {2, 8,12,12,16}, {2, 12,12,16,16} });
+    gsTHBSplineBasis<2,real_t> overlap = hpatchInsertBoxes(
+        { {2, 4,4,7,8}, {2, 3,4,7,7}, {2, 5,3,9,6} });
+    auto domTiled = tiled.domain();
+    auto domOverlap = overlap.domain();
+
+    struct Row { const char * name; const gsDomain<real_t> * dom; Mode mode; index_t nElem; };
+    const Row rows[] = {
+        {"overlap pairwise", domOverlap.get(), Mode::pairwise, 124},
+        {"overlap sweep",    domOverlap.get(), Mode::sweep,    124},
+        {"overlap best",     domOverlap.get(), Mode::best,     124},
+        {"tiled best",       domTiled.get(),   Mode::best,     139} };
+
+    for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
+    {
+        const Row & r = rows[k];
+        std::vector<gsVector<real_t> > lows, upps;
+        for (auto & elem : r.dom->allElements())
+        {
+            lows.push_back(elem.lowerCorner());
+            upps.push_back(elem.upperCorner());
+        }
+        const size_t nElem = lows.size();
+        CHECK_EQUAL(r.nElem, index_t(nElem));
+
+        // Reference: one rule, elements in volume order.
+        Rule first(*r.dom, 4, 1, false, -1, nullptr, r.mode);
+        std::vector<gsMatrix<real_t> > refNodes(nElem);
+        std::vector<gsVector<real_t> > refWeights(nElem);
+        for (size_t e = 0; e != nElem; ++e)
+            first.mapTo(lows[e], upps[e], refNodes[e], refWeights[e]);
+
+        // A second rule, queried in reversed, shuffled and volume order, chained.
+        std::vector<size_t> volume(nElem);
+        for (size_t e = 0; e != nElem; ++e) volume[e] = e;
+        std::vector<std::vector<size_t> > orders(3, volume);
+        std::reverse(orders[0].begin(), orders[0].end());
+        std::mt19937 rng(20240607);
+        std::shuffle(orders[1].begin(), orders[1].end(), rng);
+
+        Rule second(*r.dom, 4, 1, false, -1, nullptr, r.mode);
+        gsInfo << "row " << r.name << ": leaves " << second.partitionInfo().numLeaves
+               << ", cells " << second.partitionInfo().numCells << ", elements " << nElem << "\n";
+        CHECK(second.partitionInfo().numCells < second.partitionInfo().numLeaves);
+        gsMatrix<real_t> nodes;
+        gsVector<real_t> weights;
+        for (size_t o = 0; o != orders.size(); ++o)
+            for (size_t i = 0; i != nElem; ++i)
+            {
+                const size_t e = orders[o][i];
+                second.mapTo(lows[e], upps[e], nodes, weights);
+                CHECK_EQUAL(refWeights[e].size(), weights.size());
+                if (refWeights[e].size() == weights.size() && weights.size() > 0)
+                {
+                    CHECK_EQUAL(real_t(0), (nodes   - refNodes[e]  ).cwiseAbs().maxCoeff());
+                    CHECK_EQUAL(real_t(0), (weights - refWeights[e]).cwiseAbs().maxCoeff());
+                }
+            }
+    }
+
+    // The miss: the whole domain straddles several cells, and a box outside the domain
+    // has none. After both, a real element gives what a fresh rule gives.
+    Rule rule(*domOverlap, 4, 1, false, -1, nullptr, Mode::best);
+    gsMatrix<real_t> nodes;
+    gsVector<real_t> weights;
+    const gsVector<real_t> zero = gsVector<real_t>::Zero(2);
+    const gsVector<real_t> one  = gsVector<real_t>::Ones(2);
+    CHECK_THROW(rule.mapTo(zero, one, nodes, weights), std::runtime_error);
+    const gsVector<real_t> outLow = gsVector<real_t>::Constant(2, 1.25);
+    const gsVector<real_t> outUpp = gsVector<real_t>::Constant(2, 1.5);
+    CHECK_THROW(rule.mapTo(outLow, outUpp, nodes, weights), std::runtime_error);
+
+    auto elem = domOverlap->beginAll();
+    const gsVector<real_t> low = elem.lowerCorner(), upp = elem.upperCorner();
+    rule.mapTo(low, upp, nodes, weights);
+    Rule fresh(*domOverlap, 4, 1, false, -1, nullptr, Mode::best);
+    gsMatrix<real_t> refNodes;
+    gsVector<real_t> refWeights;
+    fresh.mapTo(low, upp, refNodes, refWeights);
+    CHECK_EQUAL(refWeights.size(), weights.size());
+    if (refWeights.size() == weights.size() && weights.size() > 0)
+    {
+        CHECK_EQUAL(real_t(0), (nodes   - refNodes  ).cwiseAbs().maxCoeff());
+        CHECK_EQUAL(real_t(0), (weights - refWeights).cwiseAbs().maxCoeff());
+    }
+}
+
+// The sweep partition depends only on the refined region and not on how the region was
+// built up: refining the same boxes in any order changes the kd-tree leaves (the
+// three overlapping boxes give 14 leaves in four orders and 11 in two, measured and
+// pinned in the table) but gives a
+// bitwise equal sweep rule, for the volume and for both boundary directions. Best keeps
+// pairwise on some levels, and pairwise depends on the kd leaves, so best is not history
+// independent in general; for it the test asserts only best <= sweep, in every order,
+// and compares no best rules across orders. Boundary rules are compared only over boundary
+// elements, because a volume rule queried at a degenerate boundary element returns no
+// nodes and the comparison would pass vacuously.
+TEST(hpatchrule_merge_sweep_history_independent)
+{
+    typedef gsHPatchRule<real_t> Rule;
+    typedef Rule::MergeMode Mode;
+
+    // Part A: three overlapping boxes in all six insertion orders. perm lists the box
+    // indices in insertion order.
+    const std::vector<std::vector<index_t> > vb = {
+        {2, 4,4,7,8}, {2, 3,4,7,7}, {2, 5,3,9,6} };
+    gsTHBSplineBasis<2,real_t> v0 = hpatchInsertBoxes(vb);
+    auto dom0 = v0.domain();
+    std::vector<Rule> sw0;
+    for (short_t fd = -1; fd != 2; ++fd)
+        sw0.push_back(Rule(*dom0, 4, 1, false, fd, nullptr, Mode::sweep));
+
+    struct Row { index_t perm[3]; index_t leaves; };
+    const Row rows[] = { {{0,1,2}, 14}, {{0,2,1}, 14}, {{1,0,2}, 14},
+                         {{1,2,0}, 14}, {{2,0,1}, 11}, {{2,1,0}, 11} };
+    for (size_t k = 0; k != sizeof(rows)/sizeof(rows[0]); ++k)
+    {
+        const Row & r = rows[k];
+        std::vector<std::vector<index_t> > ordered;
+        for (index_t j = 0; j != 3; ++j)
+            ordered.push_back(vb[r.perm[j]]);
+        gsTHBSplineBasis<2,real_t> vk = hpatchInsertBoxes(ordered);
+        auto domK = vk.domain();
+
+        std::vector<Rule> swk;
+        for (short_t fd = -1; fd != 2; ++fd)
+            swk.push_back(Rule(*domK, 4, 1, false, fd, nullptr, Mode::sweep));
+        Rule bsk(*domK, 4, 1, false, -1, nullptr, Mode::best);
+
+        gsInfo << "order " << r.perm[0] << r.perm[1] << r.perm[2] << ": leaves "
+               << swk[0].partitionInfo().numLeaves << ", sweep nodes "
+               << swk[0].numPointsTotal() << ", best nodes " << bsk.numPointsTotal() << "\n";
+        CHECK_EQUAL(r.leaves, swk[0].partitionInfo().numLeaves);
+        for (short_t fd = -1; fd != 2; ++fd)
+        {
+            const size_t i = static_cast<size_t>(fd + 1);
+            CHECK_EQUAL(sw0[i].partitionInfo().numCells, swk[i].partitionInfo().numCells);
+            CHECK_EQUAL(sw0[i].numPointsTotal(), swk[i].numPointsTotal());
+            index_t nElem = 0;
+            CHECK_EQUAL(real_t(0), hpatchMaxDiff(swk[i], sw0[i], v0, fd, nElem));
+            CHECK(nElem > 0);
+        }
+        CHECK(bsk.numPointsTotal() <= swk[0].numPointsTotal());
+    }
+
+    // Part B: four tiling boxes in two insertion orders.
+    gsTHBSplineBasis<2,real_t> tiledA = hpatchInsertBoxes(
+        { {2, 8,8,12,12}, {2, 12,8,16,12}, {2, 8,12,12,16}, {2, 12,12,16,16} });
+    gsTHBSplineBasis<2,real_t> tiledB = hpatchInsertBoxes(
+        { {2, 12,12,16,16}, {2, 12,8,16,12}, {2, 8,8,12,12}, {2, 8,12,12,16} });
+    auto domA = tiledA.domain();
+    auto domB = tiledB.domain();
+    Rule swA(*domA, 4, 1, false, -1, nullptr, Mode::sweep);
+    Rule swB(*domB, 4, 1, false, -1, nullptr, Mode::sweep);
+    Rule bestA(*domA, 4, 1, false, -1, nullptr, Mode::best);
+    Rule bestB(*domB, 4, 1, false, -1, nullptr, Mode::best);
+    index_t nElem = 0;
+    CHECK_EQUAL(real_t(0), hpatchMaxDiff(swA, swB, tiledA, -1, nElem));
+    CHECK(nElem > 0);
+    CHECK_EQUAL(swA.numPointsTotal(), swB.numPointsTotal());
+    CHECK(bestA.numPointsTotal() <= swA.numPointsTotal());
+    CHECK(bestB.numPointsTotal() <= swB.numPointsTotal());
 }
 
 } // SUITE gsQuadratureRules_test
