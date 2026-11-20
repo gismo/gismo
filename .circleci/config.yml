@@ -23,7 +23,7 @@ jobs:
   x86_64_xcode16_4_cxx17_release:
     macos:
       xcode: "16.4.0"
-    resource_class: macos.m4pro.medium
+    resource_class: m4pro.medium
     working_directory: ~/gismo
     environment:
       MAKEJOBS: 4
