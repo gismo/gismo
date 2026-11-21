@@ -210,7 +210,7 @@ public:
 
     /// This constructor allows constructing a gsSparseMatrix from Eigen expressions
     template<typename OtherDerived>
-    gsSparseMatrix(const gsEigen::EigenBase<OtherDerived>& other)  : Base(other) { }
+    gsSparseMatrix(const gsEigen::EigenBase<OtherDerived>& other)  : Base() { Base::operator=(other.derived()); }
 
     /// This constructor allows constructing a gsSparseMatrix from a selfadjoint view
     template<typename OtherDerived, unsigned int UpLo>
@@ -229,21 +229,6 @@ public:
     template<typename OtherDerived>
     gsSparseMatrix(const gsEigen::ReturnByValue<OtherDerived>& other)  : Base(other) { }
 
-#if !EIGEN_HAS_RVALUE_REFERENCES
-    // swap assignment operator
-    gsSparseMatrix & operator=(gsSparseMatrix other)
-    {
-        this->swap(other);
-        return *this;
-    }
-
-    template<typename OtherDerived, int a>
-    gsSparseMatrix & operator=(const gsEigen::SparseSymmetricPermutationProduct<OtherDerived, a>& other)
-    {
-        this->Base::operator=(other);
-        return *this;
-    }
-#else
 #  ifdef _MSC_VER
     template <class EigenExpr>
     gsSparseMatrix& operator= (const EigenExpr & other)
@@ -271,8 +256,6 @@ public:
         other.clear();
         return *this;
     }
-
-#endif
 
     /**
        \brief This function returns a smart pointer to the
@@ -630,6 +613,17 @@ namespace gsEigen { namespace internal {
 template<typename T, int _Options, typename _Index>
 struct traits<gismo::gsSparseMatrix<T,_Options,_Index> >:
 gsEigen::internal::traits<gsEigen::SparseMatrix<T,_Options,_Index> > { };
+
+template<typename T, int _Options, typename _Index>
+struct evaluator<gismo::gsSparseMatrix<T,_Options,_Index> > :
+    evaluator<gsEigen::SparseMatrix<T,_Options,_Index> >
+{
+    typedef gismo::gsSparseMatrix<T,_Options,_Index> XprType;
+    typedef evaluator<gsEigen::SparseMatrix<T,_Options,_Index> > Base;
+    EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE evaluator() = default;
+    EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE explicit evaluator(const XprType& m)
+        : Base(static_cast<const gsEigen::SparseMatrix<T,_Options,_Index>&>(m)) {}
+};
 } }
 
 /* *****************************************************************

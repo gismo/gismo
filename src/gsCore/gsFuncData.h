@@ -338,7 +338,7 @@ public:
         //swap inplace
         const index_t nr = der2.rows();
         der2.resize(sz, der2.size()/sz);
-        gsMatrix<T> tmp = der2(prm,gsEigen::all);
+        gsMatrix<T> tmp = der2(prm,gsEigen::placeholders::all);
         tmp.resize(nr, der2.size()/nr);
         der2.swap(tmp);
     }

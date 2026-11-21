@@ -110,7 +110,7 @@ gcc8_cxx11_release_mpreal_long:
     IMAGE:            "gcc:8"
     CNAME:            "gcc"
     CXXNAME:          "g++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=11;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_BUILD_EXAMPLES=OFF;-DGISMO_COEFF_TYPE=mpfr::mpreal;-DGISMO_INDEX_TYPE=long'"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_BUILD_EXAMPLES=OFF;-DGISMO_COEFF_TYPE=mpfr::mpreal;-DGISMO_INDEX_TYPE=long'"
     CTEST_ARGS:       "-D DO_TESTS=FALSE" #only one test failing!
 
 # GCC 9, C++14, Release
@@ -168,7 +168,7 @@ clang8_cxx11_release_double_int32t:
     IMAGE:            "silkeh/clang:8"
     CNAME:            "clang"
     CXXNAME:          "clang++"
-    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=11;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_BUILD_EXAMPLES=OFF;-DGISMO_COEFF_TYPE=double;-DGISMO_INDEX_TYPE=int32_t'"
+    CMAKE_ARGS:       "'-DCMAKE_CXX_STANDARD=14;-DGISMO_BUILD_UNITTESTS=ON;-DGISMO_BUILD_EXAMPLES=OFF;-DGISMO_COEFF_TYPE=double;-DGISMO_INDEX_TYPE=int32_t'"
   except:
     - ci_test
     - coverity_scan

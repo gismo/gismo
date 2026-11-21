@@ -168,7 +168,7 @@ std::ostream& gsPlanarDomain<T>::print(std::ostream &os) const
 template <class T>
 void gsPlanarDomain<T>::sampleLoop_into( int loopID, int npoints, int numEndPoints, gsMatrix<T> & u )
 {
-    assert( (loopID>=0) && (loopID < numLoops()) );
+    GISMO_ASSERT( (loopID>=0) && (loopID < numLoops()), "Loop ID is out of bounds." );
 
     int np; // new number of points
     switch (numEndPoints)
@@ -228,8 +228,8 @@ T getDistance(gsVertex<T>* v1,gsVertex<T>* v2)  // todo: move as member of gsVer
 template <class T>
 void gsPlanarDomain<T>::sampleCurve_into( int loopID, int curveID, int npoints, gsMatrix<T> & u )
 {
-    assert( (loopID>=0) && (loopID < numLoops()) );
-    assert( (curveID>=0) && (curveID < loop(loopID).size() ) );
+    GISMO_ASSERT( (loopID>=0) && (loopID < numLoops()), "Loop ID is out of bounds." );
+    GISMO_ASSERT( (curveID>=0) && (curveID < loop(loopID).size() ), "Curve ID is out of bounds." );
     u.resize(2,npoints);
     typename std::vector< gsCurve<T> *>::const_iterator it;
     for ( it= (m_loops[loopID]->curves()).begin()+curveID; it!= (m_loops[loopID]->curves()).begin()+curveID+1 ; ++it )

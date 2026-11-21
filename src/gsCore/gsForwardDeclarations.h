@@ -41,7 +41,7 @@
 
 #ifdef gsGmp_ENABLED
 #include <gmpxx.h>
-#include <unsupported/Eigen/MPQClassExtra>
+#include <gsEigen/MPQClassExtra.h>
 #endif
 
 #ifdef gsUniversal_ENABLED

@@ -136,7 +136,6 @@ public:
     virtual ~gsGeometry();
 
 
-#if EIGEN_HAS_RVALUE_REFERENCES
     gsGeometry(gsGeometry&& other)
     : m_coefs(std::move(other.m_coefs)), m_basis(other.m_basis),
       m_id(std::move(other.m_id))
@@ -151,7 +150,6 @@ public:
         m_id = std::move(other.m_id);
         return *this;
     }
-#endif
 
 public:
 
@@ -395,7 +393,7 @@ public:
     /// Apply 3D Rotation by \a angle radians around axis \a axis
     void rotate(T angle, const gsVector<T,3> & axis )
     {
-        assert( geoDim() == 3 );
+        GISMO_ASSERT( geoDim() == 3, "Only for 3D");
         gsEigen::Transform<T,3,gsEigen::Affine>
             rot( gsEigen::AngleAxis<T> (angle,axis.normalized()) );
         // OLD:

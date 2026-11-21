@@ -182,7 +182,7 @@ typename gsSolidHeVertex<T>::gsSolidHalfEdgeHandle gsSolidHeVertex<T>::getHalfEd
     currentEdge = currentEdge->mate;
     if(dest && currentEdge->face == f) return currentEdge;
     currentEdge = currentEdge->next;
-    assert(currentEdge != hed); // didn't find the face
+    GISMO_ASSERT(currentEdge != hed, "Failed to find the face.");
   }
 }
 

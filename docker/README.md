@@ -36,7 +36,7 @@ image run
 |-|-|
 | `os` | _Name of the operating system including specific version number._ Supported values are: `ubuntu16.04`, `ubuntu18.04`, and `ubuntu20.04`. |
 | `compiler` | _Name of the compiler including a specific version number._ Supported values are: `clang3.5` to `clang11` and `gcc4.7` to `gcc11`. Note that not all compiler versions are available on all operating systems. Newer compiler versions typically require also newer operating systems. |
-| `cxx` | _C++ standard._ Supported values are: `cxx11`, `cxx14`, `cxx17`, `cxx20`, and `cxx23`. |
+| `cxx` | _C++ standard._ Supported values are: `cxx14`, `cxx17`, `cxx20`, and `cxx23`. |
 | `buildtype` | _Build type._ Supported values are: `debug`, `release`, `debinfo`, and `minsize`. |
 
 | | Optional configuration |

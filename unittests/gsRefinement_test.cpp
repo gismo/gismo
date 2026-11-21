@@ -104,7 +104,7 @@ SUITE(gsRefinement_test)
         gsBSpline<>& bsp = dynamic_cast<gsBSpline<>&>(*geo);
         index_t mult = 2;
 
-        assert(mult <= bsp.degree());
+        GISMO_ASSERT(mult <= bsp.degree(), "Multiplicity must not exceed the degree.");
 
         std::vector<real_t> knots;
 

@@ -236,7 +236,7 @@ public:
     // when they are done.
     void updateBoundingBox()
     {
-        assert(!m_loops.empty()); // outer loop does not exist
+        GISMO_ASSERT(!m_loops.empty(), "Outer loop does not exist.");
         m_bbox = m_loops[0]->getBoundingBox();
     }
 

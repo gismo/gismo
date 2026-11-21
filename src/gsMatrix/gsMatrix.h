@@ -191,19 +191,6 @@ public:
 #endif
 */
 
-#if !EIGEN_HAS_RVALUE_REFERENCES
-    // swap assignment operator
-    gsMatrix & operator=(typename gsEigen::internal::conditional<
-                         -1==_Rows,gsMatrix, const gsMatrix &>::type other)
-    {
-        if (-1==_Rows)
-            this->swap(other);
-        else
-            this->Base::operator=(other);
-        return *this;
-    }
-#endif
-
     std::pair<index_t,index_t> dim() const
     { return std::make_pair(this->rows(), this->cols() ); }
 
@@ -718,4 +705,15 @@ namespace gsEigen { namespace internal {
 template<class T, int _Rows, int _Cols, int _Options>
 struct traits<gismo::gsMatrix<T,_Rows,_Cols,_Options> > :
 gsEigen::internal::traits<gsEigen::Matrix<T,_Rows,_Cols,_Options> > { };
+
+template<class T, int _Rows, int _Cols, int _Options>
+struct evaluator<gismo::gsMatrix<T,_Rows,_Cols,_Options> > :
+    evaluator<gsEigen::Matrix<T,_Rows,_Cols,_Options> >
+{
+    typedef gismo::gsMatrix<T,_Rows,_Cols,_Options> XprType;
+    typedef evaluator<gsEigen::Matrix<T,_Rows,_Cols,_Options> > Base;
+    EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE constexpr evaluator() = default;
+    EIGEN_DEVICE_FUNC EIGEN_STRONG_INLINE constexpr explicit evaluator(const XprType& m)
+        : Base(static_cast<const gsEigen::Matrix<T,_Rows,_Cols,_Options>&>(m)) {}
+};
 } }

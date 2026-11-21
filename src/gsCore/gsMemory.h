@@ -248,15 +248,8 @@ inline std::vector<T*> release(std::vector< unique_ptr<T> >& cont)
 } // namespace memory
 
 #if __cplusplus >= 201103 || _MSC_VER >= 1900
-// fix MSVC 2013- (_MSC_VER < 1900)
-// MSVC < 1900 do not work probably. give makes a deep copy for return value,
-// losses left value. But the alternative code results in segmentation vaults
-// because a swap/give loop leads to a stack overflow.
-// From the adresses, it seams that Eigen do not support rvalue with MSVC < 1900
-// Therefore disabled EIGEN_HAS_RVALUE_REFERENCES for MSVC < 1900 and use
-// alternative code.
 
-/** 
+/**
     Alias for std::move, to be used instead of writing std::move for
     keeping backward c++98 compatibility
 */

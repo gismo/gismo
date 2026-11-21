@@ -221,10 +221,10 @@ gsMatrix<T> criticalPointOfQuadratic(gsMatrix<T> const & A, gsMatrix<T> const & 
 {
     index_t n = A.rows(); // dimension of X
     index_t m = d.rows(); // number of exact constraints
-    assert(m<=n); // if not, the problem is ill defined
-    assert(A.cols()==n); // A must be a square matrix
-    assert(C.cols()==n);
-    assert(d.cols()==1 && C.rows()==d.rows());
+    GISMO_ASSERT(m<=n, "The problem is ill defined.");
+    GISMO_ASSERT(A.cols()==n, "A must be a square matrix.");
+    GISMO_ASSERT(C.cols()==n, "Inconsistent matrix dimensions.");
+    GISMO_ASSERT(d.cols()==1 && C.rows()==d.rows(), "Inconsistent matrix dimensions.");
     gsMatrix<T> bt;
     if (b.rows()!=1) bt=b.transpose(); else bt=b;
 
@@ -304,8 +304,8 @@ gsMatrix<T> flipLR(const gsMatrix<T> & mat)
 template <class T>
 gsMatrix<T> crossNorm2Mat(gsMatrix<T> const & mat1,gsMatrix<T> const & mat2)
 {
-    assert(mat1.rows()==3 && mat2.rows()==3);
-    assert(mat1.cols()==mat2.cols());
+    GISMO_ASSERT(mat1.rows()==3 && mat2.rows()==3, "Expected 3 rows for cross product.");
+    GISMO_ASSERT(mat1.cols()==mat2.cols(), "Inconsistent matrix dimensions.");
     size_t const nr = mat1.rows();
     size_t const nc = mat1.cols();
     gsMatrix<T> rcross(nr,mat1.cols()); rcross.setZero();
@@ -328,9 +328,9 @@ void addConstraints(gsMatrix<T> const & C1, gsMatrix<T> const & d1,
     int nc1 = C1.cols();
     int nr2 = C2.rows();
 
-    assert(nc1== C2.cols() );
-    assert(nr1==d1.rows());
-    assert(nr2==d2.rows());
+    GISMO_ASSERT(nc1== C2.cols(), "Inconsistent matrix dimensions.");
+    GISMO_ASSERT(nr1==d1.rows(), "Inconsistent matrix dimensions.");
+    GISMO_ASSERT(nr2==d2.rows(), "Inconsistent matrix dimensions.");
     C.resize(nr1+nr2,nc1);
     C.block(0,0,nr1,nc1) = C1;
     C.block(nr1,0,nr2,nc1) = C2;
@@ -362,9 +362,9 @@ gsMatrix<T> convert2Zero(gsMatrix<T> const & mat)
 template <class T>
 void removeCol(gsMatrix<T> & mat, int const & removeEnds, int const & nPoints)
 {
-    assert(removeEnds==1 || removeEnds==2);
+    GISMO_ASSERT(removeEnds==1 || removeEnds==2, "Invalid value for removeEnds.");
     int nPeriod = mat.cols()/nPoints;
-    assert( nPeriod*nPoints == mat.cols() );
+    GISMO_ASSERT( nPeriod*nPoints == mat.cols(), "Inconsistent matrix dimensions.");
     int ind1,ind2;
     if (removeEnds==1)
     {

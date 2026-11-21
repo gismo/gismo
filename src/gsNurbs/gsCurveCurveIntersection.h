@@ -357,7 +357,7 @@ public:
     m_crv1(crv1),
     m_crv2(crv2)
     {
-        assert(crv1.geoDim() == crv2.geoDim());
+        GISMO_ASSERT(crv1.geoDim() == crv2.geoDim(), "Curve dimensions do not match.");
     }
 
     void Values(const gsVector<T,2> &uv,

@@ -9,4 +9,4 @@ Description: G+Smo (Geometry + Simulation Modules, pronounced "gismo") is an ope
 URL: https://gismo.github.io/
 Version: @gismo_VERSION@
 Libs: -L${libdir} -l${project_name}
-Cflags: -I${includedir} -I${includedir}/${project_name}
+Cflags: -I${includedir} -I${includedir}/${project_name} @GISMO_PC_EIGEN_CFLAGS@

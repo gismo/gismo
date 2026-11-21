@@ -15,7 +15,9 @@ See the section <a href="https://github.com/gismo/gismo/wiki/Downloads" target="
 of the wiki for downloading information.
 
 The configuration/compilation is based on the CMake build management
-system. A C++ compiler should be available in the system.
+system. A C++14 (or newer) compiler and %Eigen 5.x
+are required. %Eigen is cloned by default (\c GISMO_Eigen=Mirror); \c Find uses an
+installed %Eigen, e.g. given via \c Eigen_DIR, and \c Auto tries Find first (see the README).
 See the section <a href="https://github.com/gismo/gismo/wiki/Compiling" target="_parent">Compiling</a>
 of the wiki for information on compilation.
 
@@ -513,8 +515,18 @@ objects defined which correspond to Eigen objects. In general, we try
 to avoid the direct use of the \a Eigen namespace inside the library,
 whenever possible.
 
-The sources of the Eigen linear algebra library are included in the
-code repository of \gismo, for your convenience.
+\gismo includes %Eigen under the namespace \c gsEigen; code that uses
+\gismo spells it \c gsEigen::. Do not include a different %Eigen
+installation in the same translation unit as \c gismo.h.
+%Eigen's unsupported modules are included through the \gismo wrappers
+\c gsEigen/IterativeSolvers.h, \c gsEigen/SparseExtra.h,
+\c gsEigen/KroneckerProduct.h and \c gsEigen/MatrixFunctions.h (they are
+not part of \c gismo.h); including \c unsupported/Eigen/... directly
+declares the \c Eigen namespace instead of \c gsEigen.
+
+%Eigen 5.x is an external dependency of \gismo: it is located via
+\c Eigen_DIR (\c GISMO_Eigen=Find), or fetched into \c external/Eigen (\c GISMO_Eigen=Mirror,
+the default; \c Auto tries Find first).
 
 Matrix operations of Eigen should be preferred over using for loops or
 manual functions. One reason for this is the clarity of the code, the
