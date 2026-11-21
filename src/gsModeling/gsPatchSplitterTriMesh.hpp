@@ -1646,15 +1646,24 @@ inline void bisectObtuseTriangles(TriMeshData<T>& mesh, int degree, T maxQuadAng
         const auto& A = mesh.pts[t.v[0]];
         const auto& B = mesh.pts[t.v[1]];
         const auto& C = mesh.pts[t.v[2]];
-        auto midOf = [&](int eIdx) -> gsPoint2D<T> {
+        auto midOf = [&](int eIdx, int oppV) -> gsPoint2D<T> {
             const auto& er = mesh.edges[eIdx];
-            if (er.seg.bsp) return er.seg.splitArc(T(0.5)).first.p1();
+            if (er.seg.bsp) {
+                if (er.isBoundary && oppV >= 0) {
+                    T uPrj = std::max(T(0.14), std::min(T(0.86), er.seg.closestParam(mesh.pts[oppV])));
+                    T uMid = er.seg.splitArc(T(0.5)).first.p1().dist(mesh.pts[oppV]);
+                    gsPoint2D<T> pPrj = evalCurvePoint(*er.seg.bsp, uPrj);
+                    if (pPrj.dist(mesh.pts[oppV]) < uMid * T(0.95))
+                        return pPrj;
+                }
+                return er.seg.splitArc(T(0.5)).first.p1();
+            }
             return gsPoint2D<T>(T(0.5) * (mesh.pts[er.a].x + mesh.pts[er.b].x),
                                 T(0.5) * (mesh.pts[er.a].y + mesh.pts[er.b].y));
         };
-        gsPoint2D<T> m01 = midOf(t.e[0]);
-        gsPoint2D<T> m12 = midOf(t.e[1]);
-        gsPoint2D<T> m20 = midOf(t.e[2]);
+        gsPoint2D<T> m01 = midOf(t.e[0], t.v[2]);
+        gsPoint2D<T> m12 = midOf(t.e[1], t.v[0]);
+        gsPoint2D<T> m20 = midOf(t.e[2], t.v[1]);
         gsPoint2D<T> O;
         if (!pickOptimalTri1to3Center(A, B, C, m01, m12, m20, O)) return T(180);
 
@@ -1778,10 +1787,21 @@ inline bool evalMeshQuadUnion(
     const TriMeshData<T>& mesh,
     const int qv[4], const int qe[4],
     T minPairAng, T maxPairAng,
-    T& effMinOut, T& scoreOut)
+    T& effMinOut, T& scoreOut,
+    bool allowCurvedInteriorChord = false)
 {
     gsPoint2D<T> qc[4] = {mesh.pts[qv[0]], mesh.pts[qv[1]], mesh.pts[qv[2]], mesh.pts[qv[3]]};
-    if (!isStrictlyConvexQuad(qc)) return false;
+    const bool strictConv = isStrictlyConvexQuad(qc);
+    if (!strictConv) {
+        if (!allowCurvedInteriorChord) return false;
+        // For curved-chord pairing, allow mild non-convexity ONLY if signed area is positive
+        // and at least one edge is interior so a curved Bezier chord can restore strict convexity.
+        T area2 = cross2(qc[0], qc[1], qc[2]) + cross2(qc[0], qc[2], qc[3]);
+        if (area2 <= T(1e-7)) return false;
+        bool hasInt = false;
+        for (int k = 0; k < 4; ++k) if (!mesh.edges[qe[k]].isBoundary) hasInt = true;
+        if (!hasInt) return false;
+    }
 
     for (int k = 0; k < 4; ++k) {
         const auto& er = mesh.edges[qe[k]];
@@ -1790,18 +1810,20 @@ inline bool evalMeshQuadUnion(
         const gsPoint2D<T>& p2 = qc[(k + 2) % 4];
         const gsPoint2D<T>& p3 = qc[(k + 3) % 4];
         const gsPoint2D<T>& p0 = qc[k];
+        bool e1Int = !mesh.edges[qe[(k + 1) % 4]].isBoundary;
+        bool e2Int = !mesh.edges[qe[(k + 2) % 4]].isBoundary;
+        bool e3Int = !mesh.edges[qe[(k + 3) % 4]].isBoundary;
         for (T u : {T(0.25), T(0.5), T(0.75)}) {
             gsPoint2D<T> sPt = evalCurvePoint(*er.seg.bsp, u);
-            if (cross2(p1, p2, sPt) <= T(1e-8) ||
-                cross2(p2, p3, sPt) <= T(1e-8) ||
-                cross2(p3, p0, sPt) <= T(1e-8))
-                return false;
+            if ((!allowCurvedInteriorChord || !e1Int) && cross2(p1, p2, sPt) <= T(1e-8)) return false;
+            if ((!allowCurvedInteriorChord || !e2Int) && cross2(p2, p3, sPt) <= T(1e-8)) return false;
+            if ((!allowCurvedInteriorChord || !e3Int) && cross2(p3, p0, sPt) <= T(1e-8)) return false;
         }
     }
 
     auto edgeDir = [&](int ei, int fromV, int toV, bool atEnd) -> gsPoint2D<T> {
         const auto& er = mesh.edges[ei];
-        if (er.isBoundary && er.seg.bsp) {
+        if (er.seg.bsp && (er.isBoundary || allowCurvedInteriorChord)) {
             bool fwd = (er.a == fromV);
             T u = (atEnd == fwd) ? T(1) : T(0);
             gsPoint2D<T> dv = evalCurveDeriv(*er.seg.bsp, u);
@@ -1827,7 +1849,10 @@ inline bool evalMeshQuadUnion(
         T dt = tOut.x * tBack.x + tOut.y * tBack.y;
         T ang = std::atan2(cr, dt) * radToDeg;
         if (ang <= T(0)) ang += T(360);
-        if (ang < minPairAng || ang > maxPairAng) return false;
+        bool bothBnd = mesh.edges[qe[k]].isBoundary && mesh.edges[qe[kp]].isBoundary;
+        T locMin = (allowCurvedInteriorChord && !bothBnd) ? std::max(T(3), minPairAng - T(6)) : minPairAng;
+        T locMax = (allowCurvedInteriorChord && !bothBnd) ? std::min(T(178), maxPairAng + T(14)) : maxPairAng;
+        if (ang < locMin || ang > locMax) return false;
         minAng = std::min(minAng, ang);
         maxAng = std::max(maxAng, ang);
         maxDev90 = std::max(maxDev90, std::abs(ang - T(90)));
@@ -1838,7 +1863,7 @@ inline bool evalMeshQuadUnion(
 
     effMinOut = std::min(minAng, T(180) - maxAng);
     T arRatio = (lenMax > T(1e-14)) ? (lenMin / lenMax) : T(1);
-    scoreOut = effMinOut + T(2.25) * arRatio - T(0.15) * maxDev90;
+    scoreOut = effMinOut + T(2.25) * arRatio - T(0.15) * maxDev90 - (strictConv ? T(0) : T(12));
     return true;
 }
 
@@ -1990,6 +2015,43 @@ inline CurveSeg<T> makeCubicBezierInteriorSeg(
     if (bsp.degree() < degree)
         bsp.degreeElevate(degree - bsp.degree());
     return CurveSeg<T>(bsp);
+}
+
+// Build a smooth cubic Hermite interior spoke O -> M departing O along unit direction `tO`
+// and arriving at M along incoming normal `tM_inward` (pointing from M back toward interior),
+// guaranteed to stay strictly inside `loopPolys`. Falls back to straight if clearance fails.
+template <class T>
+inline CurveSeg<T> makeSymmetricHermiteSpoke(
+    const gsPoint2D<T>& O,
+    const gsPoint2D<T>& M,
+    const gsPoint2D<T>& tO,
+    const gsPoint2D<T>& tM_inward,
+    const std::vector<std::vector<gsPoint2D<T>>>& loopPolys,
+    int degree)
+{
+    const T L = O.dist(M);
+    if (L <= T(1e-10)) return makeStraightSeg(O, M, degree);
+    T nO = std::hypot(tO.x, tO.y), nM = std::hypot(tM_inward.x, tM_inward.y);
+    if (nO <= T(1e-12) || nM <= T(1e-12)) return makeStraightSeg(O, M, degree);
+    gsPoint2D<T> dO(tO.x / nO, tO.y / nO);
+    gsPoint2D<T> dM(tM_inward.x / nM, tM_inward.y / nM);
+    // Avoid creating hairpin loops if tangent points strongly backward (> 115 deg from chord)
+    gsPoint2D<T> ch((M.x - O.x) / L, (M.y - O.y) / L);
+    if (dO.x * ch.x + dO.y * ch.y < T(-0.35)) dO = ch;
+    if (dM.x * (-ch.x) + dM.y * (-ch.y) < T(-0.35)) dM = gsPoint2D<T>(-ch.x, -ch.y);
+
+    for (T alpha : {T(0.32), T(0.22), T(0.13)}) {
+        gsPoint2D<T> p1(O.x + alpha * L * dO.x, O.y + alpha * L * dO.y);
+        gsPoint2D<T> p2(M.x + alpha * L * dM.x, M.y + alpha * L * dM.y);
+        CurveSeg<T> cs = makeCubicBezierInteriorSeg(O, p1, p2, M, degree);
+        bool ok = true;
+        for (int s = 1; s < 10; ++s) {
+            gsPoint2D<T> pt = evalCurvePoint(*cs.bsp, static_cast<T>(s) / T(10));
+            if (!isPointStrictlyInsideDomain(pt, loopPolys, T(1e-5))) { ok = false; break; }
+        }
+        if (ok) return cs;
+    }
+    return makeStraightSeg(O, M, degree);
 }
 
 // Edmonds' general-graph Blossom augmenting-path search from an unmatched vertex `root`.

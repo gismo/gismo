@@ -148,7 +148,7 @@ private:
     SplittingCandidate computeHoleFreeStructuralSplitting();
     SplittingCandidate computeMultiHoleStructuralTemplates();
     SplittingCandidate computeHoleFreeTriangulationSplitting();
-    SplittingCandidate computeMultiHoleTriangulationSplitting();
+    SplittingCandidate computeMultiHoleTriangulationSplitting(bool coarseOnly = false);
 
     // Mode A Helpers
     SplittingCandidate computeModeACoarseLayout();
@@ -164,6 +164,14 @@ private:
 
     // Optimization & Post-Processing
     bool optimizeWinslowBarrier(gsMultiPatch<T>& mp, T minDetThreshold = 1e-7) const;
+
+    /// \brief Coupled multi-patch Winslow optimizer that jointly moves interior vertices,
+    /// curves shared interior interfaces (maintaining exact C^0 conformity), and optionally
+    /// slides CAD boundary split parameters along exact original domain curves.
+    bool optimizeCoupledInterfacesAndInteriors(gsMultiPatch<T>& mp,
+                                               T minDetThreshold = 1e-7,
+                                               int maxIters = 28,
+                                               bool slideBoundarySplits = true) const;
     void ensureExactBoundaryConformity(gsMultiPatch<T>& mp);
     T evaluateDistortionEnergy(const gsMultiPatch<T>& mp, T* minDetOut = nullptr,
                                T* minAngleOut = nullptr, T* maxAngleOut = nullptr) const;

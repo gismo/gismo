@@ -951,6 +951,75 @@ struct TensorGridEval1D
             }
         }
     }
+
+    // Same regularized Winslow objective, returning exact analytic gradient wrt ALL control points
+    // (including boundary/interface sides and corners) for coupled multi-patch interface optimization.
+    // Optional scale-balancing area barrier: areaWeight * (chi/areaRef + areaRef/chi - 2) prevents
+    // pure scale-invariant Winslow from shrinking inner patches (e.g. O-grid core squares) while
+    // expanding squeezed patches toward a healthy area.
+    void evalRegularizedWinslowAndGradAll(const gsMatrix<T>& Cx, const gsMatrix<T>& Cy,
+                                          T eps, T& objOut, T& minDetOut, T& maxDetOut,
+                                          gsMatrix<T>& gradCoefs,
+                                          T areaRef = T(0), T areaWeight = T(0)) const
+    {
+        const gsMatrix<T> Xu = Du * Cx * Bv.transpose();
+        const gsMatrix<T> Yu = Du * Cy * Bv.transpose();
+        const gsMatrix<T> Xv = Bu * Cx * Dv.transpose();
+        const gsMatrix<T> Yv = Bu * Cy * Dv.transpose();
+
+        gsMatrix<T> Gxu(M, M), Gyu(M, M), Gxv(M, M), Gyv(M, M);
+        const T fourEpsSq = T(4) * eps * eps;
+        const T w = hSq;
+        const bool useArea = (areaWeight > T(0) && areaRef > T(1e-12));
+
+        minDetOut = std::numeric_limits<T>::max();
+        maxDetOut = -std::numeric_limits<T>::max();
+        objOut = T(0);
+
+        for (int b = 0; b < M; ++b) {
+            for (int a = 0; a < M; ++a) {
+                T xu = Xu(a, b), yu = Yu(a, b);
+                T xv = Xv(a, b), yv = Yv(a, b);
+                T d = xu * yv - yu * xv;
+                if (d < minDetOut) minDetOut = d;
+                if (d > maxDetOut) maxDetOut = d;
+
+                T g11 = xu * xu + yu * yu;
+                T g22 = xv * xv + yv * yv;
+                T sq = std::sqrt(d * d + fourEpsSq);
+                T sqSafe = std::max(sq, T(1e-18));
+                T chi = T(0.5) * (d + sq);
+                T chiSafe = std::max(chi, T(1e-18));
+                T f = (g11 + g22) / chiSafe;
+                T df_dd = -f / sqSafe;
+                if (useArea) {
+                    T rA = chiSafe / areaRef;
+                    T invRA = areaRef / chiSafe;
+                    f += areaWeight * (rA + invRA - T(2));
+                    df_dd += areaWeight * (rA - invRA) / sqSafe;
+                }
+                objOut += f * w;
+
+                T twoOverChi = (T(2) * w) / chiSafe;
+                T w_dfd = w * df_dd;
+                Gxu(a, b) = twoOverChi * xu + w_dfd * yv;
+                Gyu(a, b) = twoOverChi * yu - w_dfd * xv;
+                Gxv(a, b) = twoOverChi * xv - w_dfd * yu;
+                Gyv(a, b) = twoOverChi * yv + w_dfd * xu;
+            }
+        }
+
+        const gsMatrix<T> dCx = DuT * Gxu * Bv + BuT * Gxv * Dv;
+        const gsMatrix<T> dCy = DuT * Gyu * Bv + BuT * Gyv * Dv;
+        gradCoefs.resize(nu * nv, 2);
+        for (int j = 0; j < nv; ++j) {
+            for (int i = 0; i < nu; ++i) {
+                int idx = i + j * nu;
+                gradCoefs(idx, 0) = dCx(i, j);
+                gradCoefs(idx, 1) = dCy(i, j);
+            }
+        }
+    }
 };
 
 // Solve Greville-weighted 5-point discrete Laplace equation for strictly interior CPs (45 SOR sweeps).
@@ -1012,7 +1081,8 @@ inline T evalPatchMinDetDense(const gsGeometry<T>& patch, int minSamples = 49)
     int M = minSamples;
     if (const auto* tb = dynamic_cast<const gsTensorBSpline<2, T>*>(&patch)) {
         int maxN = std::max(tb->basis().component(0).size(), tb->basis().component(1).size());
-        if (maxN > M) M = std::min(97, maxN + 8);
+        int reqM = 2 * maxN + 1;
+        if (reqM > M) M = std::min(129, reqM);
         // Ensure odd M >= 49; if M == 49 it hits k/48 (exact 24x24 midpoints)
         if ((M % 2) == 0) ++M;
     }
@@ -1034,7 +1104,7 @@ inline bool quickHarmonicPatchRepair(gsTensorBSpline<2, T>& tp, T minDetTol = T(
     const int nv = tp.basis().component(1).size();
     if (nu <= 2 || nv <= 2) return false;
 
-    const int M = std::max(49, std::min(97, std::max(nu, nv) + 4));
+    const int M = std::max(49, std::min(129, 2 * std::max(nu, nv) + 1));
     TensorGridEval1D<T> tg;
     if (!tg.init(tp, M)) return false;
 

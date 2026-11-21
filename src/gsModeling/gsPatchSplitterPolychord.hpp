@@ -700,6 +700,7 @@ bool gsPatchSplitter<T>::reducePolychordStrips(gsMultiPatch<T>& mp)
         return joined ? CurveSeg<T>(*joined) : c0;
     };
 
+    int coupledRescues = 0;
     for (int outerPass = 0; outerPass < 32 && mp.nPatches() > 2; ++outerPass) {
         mp.computeTopology(T(1e-4), false, false);
         const int nP = static_cast<int>(mp.nPatches());
@@ -863,6 +864,25 @@ bool gsPatchSplitter<T>::reducePolychordStrips(gsMultiPatch<T>& mp)
 
                 gsTensorBSpline<2, T>* merged = makeCoonsFromCCWCycle(cS, cE, cN, cW, m_degree);
                 if (!merged) { buildOk = false; break; }
+                // Prevent merging end-to-end into very long, thin ribbons (which degrade IGA/AS-G1 solvers),
+                // while freely allowing cross-medial merges that make thin half-strips fatter/more square!
+                auto approxPatchAR = [](const gsGeometry<T>& g) -> T {
+                    gsMatrix<T> u(2, 4), ev;
+                    u << T(0), T(1), T(0.5), T(0.5),
+                         T(0.5), T(0.5), T(0), T(1);
+                    g.eval_into(u, ev);
+                    T lu = std::hypot(ev(0, 1) - ev(0, 0), ev(1, 1) - ev(1, 0));
+                    T lv = std::hypot(ev(0, 3) - ev(0, 2), ev(1, 3) - ev(1, 2));
+                    T mn = std::max(T(1e-12), std::min(lu, lv));
+                    return std::max(lu, lv) / mn;
+                };
+                T arBefore = std::max(approxPatchAR(*tbP), approxPatchAR(*tbQ));
+                T arMerged = approxPatchAR(*merged);
+                if (arMerged > T(3.8) && arMerged > arBefore * T(1.15)) {
+                    delete merged;
+                    buildOk = false;
+                    break;
+                }
                 candMp.addPatch(typename gsGeometry<T>::uPtr(merged));
             }
             if (!buildOk || candMp.nPatches() >= mp.nPatches()) continue;
@@ -870,10 +890,12 @@ bool gsPatchSplitter<T>::reducePolychordStrips(gsMultiPatch<T>& mp)
             // Quick local angle + Jacobian filter on merged patches only before full validation
             const size_t nOrigKept = static_cast<size_t>(nP) - 2 * pairs.size();
             bool localOk = true;
+            bool hopelessAngle = false;
             for (size_t p = nOrigKept; p < candMp.nPatches(); ++p) {
                 T angs[4], mnA = 0, mxA = 180; bool degen = false;
                 evalPatchCornerAnglesDeg(candMp.patch(p), angs, mnA, mxA, degen);
-                if (degen || mnA < effMinAng || mxA > effMaxAng) { localOk = false; break; }
+                if (degen || mnA < T(5) || mxA > T(176)) { hopelessAngle = true; localOk = false; break; }
+                if (mnA < effMinAng || mxA > effMaxAng) { localOk = false; break; }
                 T md = 0, mxd = 0, ma = 0, en = 0;
                 evalPatchJacobianAndWinslow(candMp.patch(p), 15, md, mxd, ma, en);
                 if (mxd < -T(1e-8)) {
@@ -882,11 +904,31 @@ bool gsPatchSplitter<T>::reducePolychordStrips(gsMultiPatch<T>& mp)
                         evalPatchJacobianAndWinslow(*tb, 15, md, mxd, ma, en);
                     }
                 }
-                if (md <= T(1e-8)) {
+                T d49 = internal_splitter::evalPatchMinDetDense(candMp.patch(p), 49);
+                if (md <= T(1e-8) || d49 <= T(1e-8)) {
                     auto* tb = dynamic_cast<gsTensorBSpline<2, T>*>(&candMp.patch(p));
-                    if (!tb || !internal_splitter::quickHarmonicPatchRepair(*tb, T(1e-7))) {
+                    if (!tb || !internal_splitter::quickHarmonicPatchRepair(*tb, T(1e-7)) ||
+                        internal_splitter::evalPatchMinDetDense(*tb, 49) <= T(1e-8)) {
                         localOk = false;
                         break;
+                    }
+                }
+            }
+            if (!localOk && !hopelessAngle && candMp.nPatches() <= 96 && coupledRescues < 10) {
+                // Phase 4: allow coupled curved-interface relaxation to untangle merged curved strips!
+                ++coupledRescues;
+                gsASG1LocalFitter<T>::unifyPatchOrientations(candMp);
+                candMp.computeTopology(T(1e-4), false, false);
+                if (2 * candMp.nInterfaces() + candMp.nBoundary() == 4 * candMp.nPatches() &&
+                    optimizeCoupledInterfacesAndInteriors(candMp, T(1e-7), 12, false)) {
+                    localOk = true;
+                    for (size_t p = nOrigKept; p < candMp.nPatches(); ++p) {
+                        T angs[4], mnA = 0, mxA = 180; bool degen = false;
+                        evalPatchCornerAnglesDeg(candMp.patch(p), angs, mnA, mxA, degen);
+                        if (degen || mnA < effMinAng || mxA > effMaxAng ||
+                            internal_splitter::evalPatchMinDetDense(candMp.patch(p), 49) <= T(1e-8)) {
+                            localOk = false; break;
+                        }
                     }
                 }
             }
@@ -959,8 +1001,9 @@ bool gsPatchSplitter<T>::harmonizeMultiPatchKnots(gsMultiPatch<T>& mp) const
             }
         }
 
-        // Compute canonical union of internal knots along the polychord with 1e-10 tolerance deduplication
-        const T knotTol = T(1e-10);
+        // Compute canonical union of internal knots along the polychord with 1e-6 tolerance deduplication
+        // (avoids creating degenerate ~1e-8 knot spans when reversing floating-point arc-length knots).
+        const T knotTol = T(1e-6);
         struct KnotCluster { T u; int mult; };
         std::vector<KnotCluster> canonKnots;
         bool initUnion = false;
@@ -1006,7 +1049,8 @@ bool gsPatchSplitter<T>::harmonizeMultiPatchKnots(gsMultiPatch<T>& mp) const
                     int curMult = 0;
                     for (size_t ki = 0; ki < kv.size(); ++ki)
                         if (std::abs(kv[ki] - targetU) < knotTol) ++curMult;
-                    int addMult = cc.mult - curMult;
+                    int maxAllowed = std::min<int>(cc.mult, tb->degree(e.dir));
+                    int addMult = maxAllowed - curMult;
                     if (addMult > 0)
                         tb->insertKnot(targetU, e.dir, addMult);
                 }
@@ -1028,17 +1072,34 @@ bool gsPatchSplitter<T>::relaxAndParameterize(gsMultiPatch<T>& mp, bool runBarri
     if (mp.nPatches() == 0) return false;
     harmonizeMultiPatchKnots(mp);
 
-    // Snapshot pre-barrier valid state so relaxation never introduces a negative/zero Jacobian fold
-    bool hadValidDet = (mp.nPatches() > 0);
+    // Unconditionally snapshot pre-barrier state using dense 49x49 check so Stage 3 NEVER worsens det(J)
+    T preMinDet49 = std::numeric_limits<T>::max();
+    int preNeg49 = 0;
+    int maxPatchKnots = 0;
     for (size_t p = 0; p < mp.nPatches(); ++p) {
-        T mn = 0, mx = 0, ma = 0, en = 0;
-        internal_splitter::evalPatchJacobianAndWinslow(mp.patch(p), 17, mn, mx, ma, en);
-        if (mn <= T(1e-8) && mx >= -T(1e-8)) { hadValidDet = false; break; }
+        T d49 = internal_splitter::evalPatchMinDetDense(mp.patch(p), 49);
+        preMinDet49 = std::min(preMinDet49, d49);
+        if (d49 <= T(1e-8)) ++preNeg49;
+        if (const auto* tb = dynamic_cast<const gsTensorBSpline<2, T>*>(&mp.patch(p)))
+            maxPatchKnots = std::max(maxPatchKnots, std::max<int>(tb->basis().component(0).size(), tb->basis().component(1).size()));
     }
-    gsMultiPatch<T> preRelaxMp;
-    if (hadValidDet) preRelaxMp = mp;
+    const bool hadValidDet = (mp.nPatches() > 0 && preNeg49 == 0);
+    gsMultiPatch<T> preRelaxMp = mp;
 
-    // Check if any patch needs SpringPatch recovery (e.g. folded Coons interior)
+    // Repair any individual patch with dense micro-fold first (safe per-patch interior-only repair)
+    for (size_t p = 0; p < mp.nPatches(); ++p) {
+        T d49 = internal_splitter::evalPatchMinDetDense(mp.patch(p), 49);
+        if (d49 <= T(1e-8)) {
+            if (auto* tb = dynamic_cast<gsTensorBSpline<2, T>*>(&mp.patch(p))) {
+                gsTensorBSpline<2, T> backup(*tb);
+                internal_splitter::quickHarmonicPatchRepair(*tb, T(1e-7));
+                if (internal_splitter::evalPatchMinDetDense(*tb, 49) < d49)
+                    *tb = backup;
+            }
+        }
+    }
+
+    // Check if any patch still needs SpringPatch recovery (e.g. folded Coons interior)
     for (size_t p = 0; p < mp.nPatches(); ++p) {
         T minDet = 0, maxDet = 0, minAbs = 0, en = 0;
         internal_splitter::evalPatchJacobianAndWinslow(mp.patch(p), 17, minDet, maxDet, minAbs, en);
@@ -1068,31 +1129,44 @@ bool gsPatchSplitter<T>::relaxAndParameterize(gsMultiPatch<T>& mp, bool runBarri
     }
 
     if (runBarrier) {
+        // Avoid running coarse-grid Winslow/coupled optimization on dense-knot harmonized rings
+        // (maxPatchKnots > 18), where coarse 17x17 grids miss narrow harmonized knot spans and fold them.
+        if (maxPatchKnots <= 18) {
 #ifdef gsHLBFGS_ENABLED
-        if (m_options.getInt("ParameterizationMethod") == 1) {
-            try {
-                gsBarrierPatch<2, T> bp(mp, true);
-                bp.compute();
-                mp = bp.result();
-            } catch (...) {
+            if (m_options.getInt("ParameterizationMethod") == 1) {
+                try {
+                    gsBarrierPatch<2, T> bp(mp, true);
+                    bp.compute();
+                    mp = bp.result();
+                } catch (...) {
+                    optimizeWinslowBarrier(mp);
+                }
+            } else {
                 optimizeWinslowBarrier(mp);
             }
-        } else {
-            optimizeWinslowBarrier(mp);
-        }
 #else
-        optimizeWinslowBarrier(mp);
+            optimizeWinslowBarrier(mp);
 #endif
+            if (mp.nPatches() >= 2)
+                optimizeCoupledInterfacesAndInteriors(mp, T(1e-7), 24, true);
+        }
     }
 
-    if (hadValidDet) {
-        bool brokeDet = false;
+    // Strict dense 49x49 rollback guard: NEVER allow Stage 3 to turn positive patches negative or worsen folds
+    {
+        T postMinDet49 = std::numeric_limits<T>::max();
+        int postNeg49 = 0;
         for (size_t p = 0; p < mp.nPatches(); ++p) {
-            T mn = 0, mx = 0, ma = 0, en = 0;
-            internal_splitter::evalPatchJacobianAndWinslow(mp.patch(p), 21, mn, mx, ma, en);
-            if (mn <= T(1e-8) && mx >= -T(1e-8)) { brokeDet = true; break; }
+            T d49 = internal_splitter::evalPatchMinDetDense(mp.patch(p), 49);
+            postMinDet49 = std::min(postMinDet49, d49);
+            if (d49 <= T(1e-8)) ++postNeg49;
         }
-        if (brokeDet) mp = give(preRelaxMp);
+        if ((hadValidDet && postNeg49 > 0) ||
+            (postNeg49 > preNeg49) ||
+            (postNeg49 == preNeg49 && postMinDet49 < preMinDet49 - T(1e-7) && postMinDet49 <= T(1e-8)))
+        {
+            mp = give(preRelaxMp);
+        }
     }
 
     gsASG1LocalFitter<T>::unifyPatchOrientations(mp);
@@ -1197,7 +1271,8 @@ bool gsPatchSplitter<T>::formatForArgyris(gsMultiPatch<T>& mp) const
                     internal_splitter::evalPatchJacobianAndWinslow(*tb, 21, mnDet, mxDet, mnAbs, en);
                     if ((mnDet <= T(1e-9) && mxDet >= -T(1e-9)) ||
                         !internal_splitter::isPatchDetSingleSign(*tb, 21, T(1e-7)) ||
-                        !internal_splitter::isPatchDetSingleSign(*tb, 20, T(1e-7)))
+                        !internal_splitter::isPatchDetSingleSign(*tb, 20, T(1e-7)) ||
+                        internal_splitter::evalPatchMinDetDense(*tb, 49) <= T(1e-8))
                         return false;
                     T angs[4], minA = 0, maxA = 180;
                     bool degen = false;

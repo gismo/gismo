@@ -3889,34 +3889,110 @@ inline bool buildGeneralKSectorHoleRing(
                 }
                 if (!wedgeAngOk) continue;
 
+                // Curved-spoke builder: falls back to bowed cubic Bezier spoke when straight line-of-sight
+                // clips a curved hole or concave cell wall.
+                auto buildClearSpoke = [&](const CurveSeg<T>& hp, const CurveSeg<T>& hn,
+                                           const gsPoint2D<T>& H, const gsPoint2D<T>& Pdst,
+                                           CurveSeg<T>& outSeg, std::vector<gsPoint2D<T>>& outPoly) -> bool {
+                    auto sample16 = [](const CurveSeg<T>& seg) -> std::vector<gsPoint2D<T>> {
+                        std::vector<gsPoint2D<T>> pts(17);
+                        for (int k = 0; k <= 16; ++k)
+                            pts[k] = evalCurvePoint(*seg.bsp, static_cast<T>(k) / T(16));
+                        return pts;
+                    };
+                    if (isHoleSpokeClearOfHole(H, Pdst, inLoopPoly) && isSegmentInsidePoly(H, Pdst, cellPoly)) {
+                        bool wc = false;
+                        outSeg = makeExteriorConeSafeSpoke(hp, hn, H, Pdst, inLoopPoly, degree, wc);
+                        outPoly = sample16(outSeg);
+                        bool ok = true;
+                        for (int k = 1; k < 16; ++k)
+                            if (pointInPolyStrict(outPoly[k], inLoopPoly, T(1e-6)) || !pointInPolyStrict(outPoly[k], cellPoly, T(1e-6)))
+                                { ok = false; break; }
+                        if (ok) return true;
+                    }
+                    // Try curved cubic Bezier spokes bowing around concave hole/outer walls
+                    T L = H.dist(Pdst);
+                    if (L <= T(1e-10)) return false;
+                    gsPoint2D<T> d((Pdst.x - H.x) / L, (Pdst.y - H.y) / L);
+                    gsPoint2D<T> perp(-d.y, d.x);
+                    for (T bow : {T(0.20), T(-0.20), T(0.35), T(-0.35), T(0.50), T(-0.50)}) {
+                        gsPoint2D<T> c1(H.x + (L / T(3)) * d.x + bow * L * perp.x,
+                                        H.y + (L / T(3)) * d.y + bow * L * perp.y);
+                        gsPoint2D<T> c2(H.x + (T(2) * L / T(3)) * d.x + bow * L * perp.x,
+                                        H.y + (T(2) * L / T(3)) * d.y + bow * L * perp.y);
+                        gsKnotVector<T> kv(T(0), T(1), 0, 4, 1, 3);
+                        gsMatrix<T> cf(4, 2);
+                        cf << H.x, H.y, c1.x, c1.y, c2.x, c2.y, Pdst.x, Pdst.y;
+                        gsBSpline<T> bsp(kv, cf);
+                        if (bsp.degree() < degree) bsp.degreeElevate(degree - bsp.degree());
+                        CurveSeg<T> cand(bsp);
+                        std::vector<gsPoint2D<T>> poly = sample16(cand);
+                        bool ok = true;
+                        for (int k = 1; k < 16; ++k) {
+                            if (pointInPolyStrict(poly[k], inLoopPoly, T(1e-6)) ||
+                                !pointInPolyStrict(poly[k], cellPoly, T(1e-6))) {
+                                ok = false; break;
+                            }
+                        }
+                        if (ok) {
+                            // Verify sub-segments don't cross hole or cell boundary
+                            for (int k = 1; k + 2 < 16 && ok; ++k) {
+                                for (size_t e = 0; e < inLoopPoly.size() && ok; ++e)
+                                    if (segProperIntersect(poly[k], poly[k + 1], inLoopPoly[e], inLoopPoly[(e + 1) % inLoopPoly.size()]))
+                                        ok = false;
+                                for (size_t e = 0; e < cellPoly.size() && ok; ++e)
+                                    if (segProperIntersect(poly[k], poly[k + 1], cellPoly[e], cellPoly[(e + 1) % cellPoly.size()]))
+                                        ok = false;
+                            }
+                        }
+                        if (ok) {
+                            outSeg = cand;
+                            outPoly = std::move(poly);
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+
+                auto spokesCross = [](const std::vector<gsPoint2D<T>>& pa, const std::vector<gsPoint2D<T>>& pb) -> bool {
+                    for (size_t i = 0; i + 1 < pa.size(); ++i) {
+                        for (size_t j = 0; j + 1 < pb.size(); ++j) {
+                            if ((i == 0 && j == 0 && pa[0].dist(pb[0]) < T(1e-6)) ||
+                                (i + 2 == pa.size() && j + 2 == pb.size() && pa.back().dist(pb.back()) < T(1e-6)))
+                                continue;
+                            if (segProperIntersect(pa[i], pa[i + 1], pb[j], pb[j + 1]))
+                                return true;
+                        }
+                    }
+                    return false;
+                };
+
                 std::vector<CurveSeg<T>> spA(Me), spB(Me);
                 bool visOk = true;
-                std::vector<std::pair<gsPoint2D<T>, gsPoint2D<T>>> segList;
-                segList.reserve(2 * Me);
+                std::vector<std::vector<gsPoint2D<T>>> spPolys;
+                spPolys.reserve(2 * Me);
                 for (int j = 0; j < Me && visOk; ++j) {
                     gsPoint2D<T> Hj = hExp[j].p0();
                     const auto& hp = hExp[(j + Me - 1) % Me];
                     const auto& hn = hExp[j];
-                    if (!isHoleSpokeClearOfHole(Hj, Pe[vStart[j]], inLoopPoly) ||
-                        !isSegmentInsidePoly(Hj, Pe[vStart[j]], cellPoly)) {
+                    std::vector<gsPoint2D<T>> polyA;
+                    if (!buildClearSpoke(hp, hn, Hj, Pe[vStart[j]], spA[j], polyA)) {
                         visOk = false; break;
                     }
-                    bool wc = false;
-                    spA[j] = makeExteriorConeSafeSpoke(hp, hn, Hj, Pe[vStart[j]], inLoopPoly, degree, wc);
-                    segList.push_back({Hj, Pe[vStart[j]]});
+                    spPolys.push_back(std::move(polyA));
                     if (mExp[j] == 2) {
-                        if (!isHoleSpokeClearOfHole(Hj, Pe[vEnd[j]], inLoopPoly) ||
-                            !isSegmentInsidePoly(Hj, Pe[vEnd[j]], cellPoly)) { visOk = false; break; }
-                        spB[j] = makeExteriorConeSafeSpoke(hp, hn, Hj, Pe[vEnd[j]], inLoopPoly, degree, wc);
-                        segList.push_back({Hj, Pe[vEnd[j]]});
+                        std::vector<gsPoint2D<T>> polyB;
+                        if (!buildClearSpoke(hp, hn, Hj, Pe[vEnd[j]], spB[j], polyB)) {
+                            visOk = false; break;
+                        }
+                        spPolys.push_back(std::move(polyB));
                     } else {
                         spB[j] = spA[j];
                     }
                 }
-                for (size_t i = 0; i < segList.size() && visOk; ++i) {
-                    for (size_t j = i + 1; j < segList.size() && visOk; ++j) {
-                        if (segProperIntersect(segList[i].first, segList[i].second,
-                                               segList[j].first, segList[j].second))
+                for (size_t i = 0; i < spPolys.size() && visOk; ++i) {
+                    for (size_t j = i + 1; j < spPolys.size() && visOk; ++j) {
+                        if (spokesCross(spPolys[i], spPolys[j]))
                             visOk = false;
                     }
                 }
@@ -4119,7 +4195,11 @@ inline bool computeRecursiveCellSplitting(
     T minAngTol,
     T maxAngTol,
     gsMultiPatch<T>& outMp,
-    std::string& outLabel)
+    std::string& outLabel,
+    std::function<bool(const std::vector<CurveSeg<T>>&,
+                       const std::vector<bool>&,
+                       const gsCurveLoop<T>*,
+                       std::vector<std::unique_ptr<gsGeometry<T>>>&)> leafFallback = nullptr)
 {
     if (dom.numLoops() == 0 || dom.outer().size() == 0) return false;
     const gsMatrix<T> bbox = dom.boundingBox();
@@ -4294,7 +4374,22 @@ inline bool computeRecursiveCellSplitting(
         outP.clear();
 
         if (cell.holeIds.empty()) {
-            return meshHoleFree(cell, depth, outP);
+            if (meshHoleFree(cell, depth, outP))
+                return true;
+            if (depth > 0 && leafFallback) {
+                std::vector<CurveSeg<T>> leafCCW;
+                std::vector<bool> leafIsCut;
+                for (const auto& hs : cell.boundary) {
+                    leafCCW.push_back(hs.seg);
+                    leafIsCut.push_back(hs.isCutEdge);
+                }
+                std::vector<std::unique_ptr<gsGeometry<T>>> fbP;
+                if (leafFallback(leafCCW, leafIsCut, nullptr, fbP) && !fbP.empty()) {
+                    outP = std::move(fbP);
+                    return true;
+                }
+            }
+            return false;
         }
 
         const int K = static_cast<int>(cell.boundary.size());
@@ -4349,6 +4444,13 @@ inline bool computeRecursiveCellSplitting(
             if (buildGeneralKSectorHoleRing(leafCCW, dom.loop(hid + 1), leafPoly, leafP, degree, minAngTol, maxAngTol, leafIsCut)) {
                 outP = std::move(leafP);
                 return true;
+            }
+            if (depth > 0 && leafFallback && !timeExpired()) {
+                std::vector<std::unique_ptr<gsGeometry<T>>> fbP;
+                if (leafFallback(leafCCW, leafIsCut, &dom.loop(hid + 1), fbP) && !fbP.empty()) {
+                    outP = std::move(fbP);
+                    return true;
+                }
             }
             if (timeExpired() || solverNodes > maxSolverNodes) return false;
         }
