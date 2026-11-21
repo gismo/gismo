@@ -24,9 +24,7 @@ template <class T>
 class gsSolidHeVertex  : public gsSolidElement<T>
 {
 public:
-    #   define Eigen gsEigen
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-#   undef Eigen
     typedef T scalar_t;
     typedef gsSolidElement<T> SolidElement;
     typedef typename SolidElement::gsSolidHeVertexHandle gsSolidHeVertexHandle;
@@ -182,7 +180,7 @@ typename gsSolidHeVertex<T>::gsSolidHalfEdgeHandle gsSolidHeVertex<T>::getHalfEd
     currentEdge = currentEdge->mate;
     if(dest && currentEdge->face == f) return currentEdge;
     currentEdge = currentEdge->next;
-    assert(currentEdge != hed); // didn't find the face
+    GISMO_ASSERT(currentEdge != hed, "Failed to find the face."); // didn't find the face
   }
 }
 

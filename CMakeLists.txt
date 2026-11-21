@@ -100,9 +100,17 @@ endif()
 ## Cmake Inclusions and configuration options
 ## #################################################################
 
-#Fix for Eigen directory
-if (NOT WIN32 AND NOT EXISTS "${PROJECT_BINARY_DIR}/Eigen")
-  execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${PROJECT_SOURCE_DIR}/external/gsEigen ${PROJECT_BINARY_DIR}/Eigen)
+# Eigen_DIR: hint path to a pre-installed Eigen root (e.g. /path/to/eigen-5.0.0),
+# the directory containing Eigen/Core. Resolved below via cmake/FindEigen.cmake,
+# once GISMO_EIGEN_FETCH (gsOptions.cmake) and gismo_fetch_directory (gsFetch.cmake)
+# are available; falls back to fetching Eigen 5.0.0 into external/Eigen when not
+# found (or when GISMO_EIGEN_FETCH is set).
+set(Eigen_DIR "" CACHE PATH "Path to external Eigen root (e.g. /path/to/eigen-5.0.0)")
+
+if(Eigen_DIR AND NOT EXISTS "${Eigen_DIR}/Eigen/Core")
+  message(FATAL_ERROR
+    "Eigen_DIR='${Eigen_DIR}' does not point to a valid Eigen tree "
+    "(expected ${Eigen_DIR}/Eigen/Core).")
 endif()
 
 set(CMAKE_INSTALL_MESSAGE NEVER)
@@ -179,8 +187,55 @@ unset(gismo_UNITTESTS            CACHE)
 set(${PROJECT_NAME}_optionals ""
     CACHE INTERNAL "${PROJECT_NAME} list of optionals")
 
-set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/external"
-     "${PROJECT_BINARY_DIR}" "${PROJECT_SOURCE_DIR}/optional"
+#functions to fetch(download) head revision from git or Subversion
+include(gsFetch)
+
+# Resolve Eigen: search the system / Eigen_DIR unless a fetch is forced, and
+# fetch Eigen 5.0.0 into external/Eigen when not found (or when forced).
+if (NOT GISMO_EIGEN_FETCH)
+  include(FindEigen)
+endif()
+
+if (NOT EIGEN_FOUND OR GISMO_EIGEN_FETCH)
+  gismo_fetch_directory(Eigen
+    GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+    GIT_TAG        5.0.0
+    DESTINATION    external
+  )
+  # FORCE: a plain CACHE set leaves an existing entry alone, so a cached or
+  # -D-supplied EIGEN_INCLUDE_DIR would survive into the include dirs even
+  # though this branch only runs when that Eigen was rejected (too old, or
+  # GISMO_EIGEN_FETCH overrides it) - and the build would then compile against
+  # the very headers the version check turned down.
+  set(EIGEN_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/external/Eigen CACHE INTERNAL "" FORCE)
+  message(STATUS "Using fetched Eigen at ${EIGEN_INCLUDE_DIR}")
+else()
+  message(STATUS "Using Eigen ${EIGEN_VERSION} at ${EIGEN_INCLUDE_DIR}")
+endif()
+
+# GISMO_EIGEN_VENDORED means "the Eigen we use lives in this project's own
+# external/Eigen, so it is ours to install" (consumed by gsInstall.cmake to
+# gate installing the Eigen/unsupported headers). Decided from the resolved
+# EIGEN_INCLUDE_DIR's path rather than from which branch above ran: once
+# Eigen has been fetched once, FindEigen.cmake re-validates the now-cached
+# ${PROJECT_SOURCE_DIR}/external/Eigen on every later configure and the
+# fetch branch above is skipped from then on, so branch identity alone
+# cannot tell "vendored" from "found". A list or generator-expression value
+# simply fails this string match, which correctly reads as "not vendored".
+get_filename_component(_eigen_dir "${EIGEN_INCLUDE_DIR}" ABSOLUTE)
+if(_eigen_dir STREQUAL "${PROJECT_SOURCE_DIR}/external/Eigen")
+  set(GISMO_EIGEN_VENDORED TRUE CACHE INTERNAL "Whether Eigen was fetched/vendored by G+Smo")
+else()
+  set(GISMO_EIGEN_VENDORED FALSE CACHE INTERNAL "Whether Eigen was fetched/vendored by G+Smo")
+endif()
+unset(_eigen_dir)
+
+# ${EIGEN_INCLUDE_DIR} goes BEFORE external/ so that <Eigen/Core> and
+# <unsupported/Eigen/...> resolve to the resolved Eigen (found or fetched),
+# not any other content that may live under external/.
+set (GISMO_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/src"
+     "${PROJECT_BINARY_DIR}" "${EIGEN_INCLUDE_DIR}"
+     "${PROJECT_SOURCE_DIR}/external" "${PROJECT_SOURCE_DIR}/optional"
      CACHE INTERNAL "${PROJECT_NAME} include directories" )
 
 # Offer the user the choice of overriding the installation directories
@@ -191,9 +246,6 @@ set(INCLUDE_INSTALL_DIR include CACHE STRING "Installation directory for header 
 ## #################################################################
 ## Extensions
 ## #################################################################
-
-#functions to fetch(download) head revision from git or Subversion
-include(gsFetch)
 
 if (EIGEN_USE_MKL_ALL)
   # See http://eigen.tuxfamily.org/dox/TopicUsingIntelMKL.html
@@ -220,12 +272,9 @@ if(EXISTS "${CMAKE_SOURCE_DIR}/optional/gsAutoDiff" AND autodiff_FOUND)
 endif()
 
 if (";${GISMO_OPTIONAL};" MATCHES ";gsAutoDiff;")
-  string(STRIP "gsAutoDiff" SUBMODULE)
-  if(EXISTS "${PROJECT_SOURCE_DIR}/optional/${SUBMODULE}/dependencies.cmake")
-    message(STATUS "Processing dependencies for optional module: ${SUBMODULE}")
-    include("${PROJECT_SOURCE_DIR}/optional/${SUBMODULE}/dependencies.cmake")
-  endif()
-  gismo_fetch_module(gsAutoDiff)
+  gismo_fetch_module_source(gsAutoDiff)
+  gismo_include_module_dependencies(gsAutoDiff)
+  gismo_add_extension(gsAutoDiff)
 endif()
 
 #first time
@@ -278,16 +327,8 @@ if(GISMO_WITH_UMFPACK)
   #include_directories(SYSTEM ${UMFPACK_INCLUDES})
 endif(GISMO_WITH_UMFPACK)
 
-# Process external dependencies for optional modules BEFORE building sources
-list(REMOVE_DUPLICATES GISMO_OPTIONAL)
-list(SORT GISMO_OPTIONAL)
-foreach(gssm ${GISMO_OPTIONAL})
-  string(STRIP ${gssm} SUBMODULE)
-  if(EXISTS "${PROJECT_SOURCE_DIR}/optional/${SUBMODULE}/dependencies.cmake")
-    message(STATUS "Processing dependencies for optional module: ${SUBMODULE}")
-    include("${PROJECT_SOURCE_DIR}/optional/${SUBMODULE}/dependencies.cmake")
-  endif()
-endforeach()
+# Fetch optional modules and process their external dependencies BEFORE building sources
+gismo_prepare_optional_modules()
 
 #second time
 include_directories(${GISMO_INCLUDE_DIRS})
@@ -416,6 +457,35 @@ if(GISMO_BUILD_UNITTESTS)
 else()
   add_custom_target(unittests COMMAND "" COMMENT "Set CMake argument GISMO_BUILD_UNITTESTS=ON to enable unittests")
 endif(GISMO_BUILD_UNITTESTS)
+
+## #################################################################
+## CMake dependency-API tests
+## #################################################################
+
+if(BUILD_TESTING)
+  add_test(NAME cmake_dependency_test COMMAND ${CMAKE_COMMAND}
+    -DGISMO_SOURCE_DIR=${PROJECT_SOURCE_DIR}
+    -DSCRATCH_DIR=${PROJECT_BINARY_DIR}/cmake_tests/dependency
+    -DTEST_GENERATOR=${CMAKE_GENERATOR}
+    -DTEST_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+    -DTEST_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+    -DTEST_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    -P ${PROJECT_SOURCE_DIR}/cmake/tests/run_dependency_tests.cmake)
+  set_property(TEST cmake_dependency_test PROPERTY LABELS cmake)
+  set_property(TEST cmake_dependency_test PROPERTY TIMEOUT 900)
+
+  add_test(NAME cmake_module_fetch_test COMMAND ${CMAKE_COMMAND}
+    -DGISMO_SOURCE_DIR=${PROJECT_SOURCE_DIR}
+    -DSCRATCH_DIR=${PROJECT_BINARY_DIR}/cmake_tests/module_fetch
+    -DTEST_GENERATOR=${CMAKE_GENERATOR}
+    -DTEST_MAKE_PROGRAM=${CMAKE_MAKE_PROGRAM}
+    -P ${PROJECT_SOURCE_DIR}/cmake/tests/run_module_fetch_tests.cmake)
+  set_property(TEST cmake_module_fetch_test PROPERTY LABELS cmake)
+  set_property(TEST cmake_module_fetch_test PROPERTY TIMEOUT 300)
+  if(NOT CMAKE_VERSION VERSION_LESS 3.16)
+    set_property(TEST cmake_module_fetch_test PROPERTY SKIP_REGULAR_EXPRESSION "GSMODFETCH_SKIPPED")
+  endif()
+endif()
 
 ## #################################################################
 ## Install

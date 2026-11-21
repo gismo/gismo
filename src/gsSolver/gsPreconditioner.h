@@ -259,11 +259,11 @@ template <class T>
 class gsPreconditionerWrapper
 {
     typedef T Scalar;
-    typedef gsEigen::Matrix<Scalar,gsEigen::Dynamic,1> Vector;
+    typedef Eigen::Matrix<Scalar,Eigen::Dynamic,1> Vector;
     typedef typename Vector::StorageIndex StorageIndex;
 
 public:
-    typedef gsEigen::SparseMatrix<Scalar,0,index_t> EigenSparseMatrixType;
+    typedef Eigen::SparseMatrix<Scalar,0,index_t> EigenSparseMatrixType;
 
     /// Default constructor
     gsPreconditionerWrapper()
@@ -309,13 +309,13 @@ public:
 
     StorageIndex rows() const
     {
-        return m_preconditioner ? gsEigen::internal::convert_index<StorageIndex>(m_preconditioner->rows())
+        return m_preconditioner ? Eigen::internal::convert_index<StorageIndex>(m_preconditioner->rows())
                                 : StorageIndex(0);
     }
 
     StorageIndex cols() const
     {
-        return m_preconditioner ? gsEigen::internal::convert_index<StorageIndex>(m_preconditioner->cols())
+        return m_preconditioner ? Eigen::internal::convert_index<StorageIndex>(m_preconditioner->cols())
                                 : StorageIndex(0);
     }
 
@@ -340,7 +340,7 @@ public:
     }
 
     template<typename Rhs>
-    inline const Vector solve(const gsEigen::MatrixBase<Rhs>& b) const
+    inline const Vector solve(const Eigen::MatrixBase<Rhs>& b) const
     {
         GISMO_ENSURE(m_preconditioner != nullptr, "gsPreconditionerWrapper: No preconditioner set.\n"
             "Please call solver.preconditioner() = <preconditioner> or solver.setPreconditioner(<preconditioner>)"
@@ -357,7 +357,7 @@ public:
         return result;
     }
 
-    gsEigen::ComputationInfo info() { return gsEigen::Success; }
+    Eigen::ComputationInfo info() { return Eigen::Success; }
 
     /// Access to the underlying preconditioner
     const gsPreconditionerOp<Scalar>* preconditioner() const { return m_preconditioner.get(); }

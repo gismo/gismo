@@ -1,0 +1,8 @@
+## <Name>Config.cmake template for a header-only "already installed" fixture
+## package, instantiated by fixtures/prebuilt/CMakeLists.txt via
+## configure_file(... @ONLY) once per header-only found-package case that
+## does not need a generator-expression include dir (FakeHdrDep).
+add_library(GsDepTest::@GSDEP_NAME@ INTERFACE IMPORTED)
+set_target_properties(GsDepTest::@GSDEP_NAME@ PROPERTIES
+  INTERFACE_INCLUDE_DIRECTORIES "@GSDEP_INCLUDE_DIR@")
+set(@GSDEP_NAME@_FOUND TRUE)

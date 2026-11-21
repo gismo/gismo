@@ -575,7 +575,7 @@ void pybind11_init_gsOptionList(py::module &m) {
     .def("getAllEntries", &gsOptionList::getAllEntries)
 
     .def(py::init<>())
-    .def("assign", &gsOptionList::operator=)
+    .def("assign", (gsOptionList& (gsOptionList::*)(const gsOptionList&)) &gsOptionList::operator=)
     // Constructor from Python dict: converts dict keys/values to gsOptionList entries
     .def(py::init([](const py::dict& dict_opts) {
         gsOptionList* opt = new gsOptionList();
@@ -598,10 +598,7 @@ void pybind11_init_gsOptionList(py::module &m) {
         return opt;
     }), "Construct gsOptionList from a Python dictionary")
 
-#if EIGEN_HAS_RVALUE_REFERENCES
     .def(py::init<const gsOptionList&>())
-    .def(py::init<gsOptionList&&>())
-#endif
 
     .def("__repr__",
          [](const gsOptionList &obj) {

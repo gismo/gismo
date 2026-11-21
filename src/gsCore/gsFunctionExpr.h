@@ -128,15 +128,11 @@ public:
     { return uPtr(new gsFunctionExpr(expression_string1, expression_string2, expression_string3, expression_string4,
                 expression_string5, expression_string6, expression_string7, expression_string8, expression_string9, ddim)); }
 
-#if EIGEN_HAS_RVALUE_REFERENCES
     gsFunctionExpr(gsFunctionExpr&& other);
 
     gsFunctionExpr& operator=(const gsFunctionExpr& other);
 
     gsFunctionExpr& operator=(gsFunctionExpr&& other);
-#else
-    gsFunctionExpr& operator=(gsFunctionExpr other);
-#endif
 
     ~gsFunctionExpr();
 

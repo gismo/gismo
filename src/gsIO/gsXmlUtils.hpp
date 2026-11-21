@@ -180,7 +180,7 @@ public:
                 m->addVolume(volFaces);
             }
         }
-        assert(ntest==n);// check if the number of surfaces in the input file is correct
+        GISMO_ASSERT(ntest==n, "Inconsistent number of faces in the input file!" );// check if the number of surfaces in the input file is correct
 
         return m;
     }
@@ -508,7 +508,7 @@ public:
 
     static gsTrimSurface<T> * get (gsXmlNode * node)
     {
-        assert( !strcmp( node->name(),"TrimSurface") );
+        GISMO_ASSERT( !strcmp( node->name(),"TrimSurface"), "Something went wrong. Expected TrimSurface tag." );
 
         gsXmlNode * tmp = node->first_node("Geometry");
         gsSurface<T> * geo =  gsXml<gsSurface<T> >::get (tmp) ;
@@ -1280,11 +1280,11 @@ public:
 
     static gsPoissonPde<T> * get (gsXmlNode * node)
     {
-        assert( ( !strcmp( node->name(),"Pde") ) &&
-                ( !(
-                    strcmp( node->first_attribute("type")->value(),"PoissonPde")
-                    && strcmp( node->first_attribute("type")->value(),"SurfacePoissonPde")
-                     )) );
+        GISMO_ASSERT( ( !strcmp( node->name(),"Pde") ) &&
+                      ( !(
+                          strcmp( node->first_attribute("type")->value(),"PoissonPde")
+                          && strcmp( node->first_attribute("type")->value(),"SurfacePoissonPde")
+                          )), "Something went wrong. Expected Pde tag with type PoissonPde or SurfacePoissonPde." );
 
         // Read the dimension
         GISMO_ASSERT( node->first_attribute("dim"), "xml reader: No dim found" ) ;

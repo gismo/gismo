@@ -138,7 +138,7 @@ void gsTrimSurface<T>::cuttingAngles(int const & sourceID,int const & targetID,T
 template <class T>
 void gsTrimSurface<T>::sampleLoop_into( int loopNumber, int npoints, gsMatrix<T> & u) const
 {
-    assert( (loopNumber>=0) && (loopNumber < m_domain->numLoops()) );
+    GISMO_ASSERT( (loopNumber>=0) && (loopNumber < m_domain->numLoops()), "Loop number is out of bounds." );
 
     gsMatrix<T> pts = m_domain->sampleLoop(loopNumber, npoints);
     return m_surface->eval_into(pts, u); // Compute points on curve of the surface
@@ -147,8 +147,8 @@ void gsTrimSurface<T>::sampleLoop_into( int loopNumber, int npoints, gsMatrix<T>
 template <class T>
 void gsTrimSurface<T>::sampleCurve_into( int loopNumber, int curveNumber, int npoints, gsMatrix<T> & u ) const
 {
-    assert( (loopNumber>=0) && (loopNumber < m_domain->numLoops()) );
-    assert( (curveNumber>=0) && (curveNumber < m_domain->loop(loopNumber).size() ) );
+    GISMO_ASSERT( (loopNumber>=0) && (loopNumber < m_domain->numLoops()), "Loop number is out of bounds." );
+    GISMO_ASSERT( (curveNumber>=0) && (curveNumber < m_domain->loop(loopNumber).size() ), "Curve number is out of bounds." );
 
     gsMatrix<T> pts = m_domain->sampleCurve(loopNumber, curveNumber, npoints);
     //m_domain->sample(pts,loopNumber,npoints);

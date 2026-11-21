@@ -258,7 +258,7 @@ gsMatrix<T> gsCurveLoop<T>::getBoundingBox()
     gsMatrix<T, 2, 2> result;
     int numCurves = m_curves.size();
     T offset = 0.0001;
-    assert(numCurves != 0); // bounding box does not exist if there are no curves
+    GISMO_ASSERT(numCurves != 0, "Bounding box does not exist if there are no curves");
     gsMatrix<T> *coefs = &(m_curves[0]->coefs());
     result(0, 0) = coefs->col(0).minCoeff() - offset;
     result(1, 0) = coefs->col(1).minCoeff() - offset;
@@ -280,8 +280,8 @@ template<class T>
 bool gsCurveLoop<T>::approximatingPolygon(const std::vector<T> &signedAngles, const std::vector<T> &lengths, T margin, gsMatrix<T> &result)
 {
     size_t n = signedAngles.size();
-    assert(lengths.size() == n);
-    
+    GISMO_ASSERT(lengths.size() == n, "Inconsistent vector sizes.");
+
     std::vector<T> scaledAngles(signedAngles); // copy
     T totalAngle(0);
     for(size_t i = 0; i < n; i++)
@@ -383,7 +383,7 @@ std::vector<T> gsCurveLoop<T>::domainSizes() const
 template <class T>
 void gsCurveLoop<T>::adjustPolygonToUnitSquare(gsMatrix<T> &corners, T const margin)
 {
-    assert(corners.cols() == 2);
+    GISMO_ASSERT(corners.cols() == 2, "Expected 2 columns for corner coordinates.");
     size_t n = corners.rows();
     
     T minx = corners.col(0).minCoeff();
@@ -431,8 +431,8 @@ gsVector3d<T> gsCurveLoop<T>::initFrom3DPlaneFit(const std::vector<gsVector3d<T>
     }
 
     // compute a singular value decomposition
-    gsEigen::JacobiSVD< gsEigen::Matrix<T, Dynamic, Dynamic> > svd(
-        shiftedPoints * shiftedPoints.transpose(), gsEigen::ComputeFullU);
+    Eigen::JacobiSVD< Eigen::Matrix<T, Dynamic, Dynamic> > svd(
+        shiftedPoints * shiftedPoints.transpose(), Eigen::ComputeFullU);
 
     // extract plane projection matrix from the svd
     gsMatrix<T> svd_u(svd.matrixU());
@@ -483,7 +483,7 @@ template<class T>
 bool gsCurveLoop<T>::initFrom3DByAngles(const std::vector<gsVector3d<T> *> points3D, const std::vector<bool> isConvex, T margin)
 {
     size_t n = isConvex.size();
-    assert(n == points3D.size());
+    GISMO_ASSERT(n == points3D.size(), "Inconsistent vector sizes.");
 
     std::vector<T> angles;
     std::vector<T> lengths;
@@ -559,8 +559,8 @@ template<class T>
 bool gsCurveLoop<T>::initFrom3DByAngles(const std::vector<T>& angles3D, const std::vector<T>& lengths3D, const std::vector<bool>& isConvex, T margin, bool unitSquare)
 {
     size_t n = isConvex.size();
-    assert(angles3D.size() == n);
-    assert(lengths3D.size() == n);
+    GISMO_ASSERT(angles3D.size() == n, "Inconsistent vector sizes.");
+    GISMO_ASSERT(lengths3D.size() == n, "Inconsistent vector sizes.");
 
     freeAll(m_curves);
     m_curves.clear();
