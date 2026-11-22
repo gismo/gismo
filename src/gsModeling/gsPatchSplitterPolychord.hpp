@@ -648,6 +648,308 @@ bool gsPatchSplitter<T>::reducePolychordStrips(gsMultiPatch<T>& mp)
     if (mergeAdjacentTriSplitPockets())
         anyCollapsed = true;
 
+    // Stage 4A: Interior Doublet Collapse (-1 patch per op, eliminates 180-deg interior valence-2 vertices!)
+    auto collapseInteriorDoublets = [&]() -> bool {
+        bool collapsedAny = false;
+        for (int pass = 0; pass < 24 && mp.nPatches() > 2; ++pass) {
+            mp.computeTopology(T(1e-4), false, false);
+            const int nP = static_cast<int>(mp.nPatches());
+            std::vector<gsPoint2D<T>> verts;
+            std::vector<std::array<int, 4>> pVerts(nP);
+            auto getVid = [&](const gsPoint2D<T>& pt) -> int {
+                for (size_t i = 0; i < verts.size(); ++i)
+                    if (verts[i].dist(pt) < T(1e-4)) return static_cast<int>(i);
+                verts.push_back(pt);
+                return static_cast<int>(verts.size()) - 1;
+            };
+            const T uvC[4][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+            gsMatrix<T> par(2, 1), val;
+            for (int p = 0; p < nP; ++p) {
+                const gsMatrix<T> supp = mp.patch(p).support();
+                for (int k = 0; k < 4; ++k) {
+                    par(0, 0) = supp(0, 0) + uvC[k][0] * (supp(0, 1) - supp(0, 0));
+                    par(1, 0) = supp(1, 0) + uvC[k][1] * (supp(1, 1) - supp(1, 0));
+                    mp.patch(p).eval_into(par, val);
+                    pVerts[p][k] = getVid(gsPoint2D<T>(val(0, 0), val(1, 0)));
+                }
+            }
+            const int nV = static_cast<int>(verts.size());
+            std::vector<std::vector<int>> vPatches(nV);
+            std::vector<bool> vIsBnd(nV, false);
+            std::map<std::pair<int, int>, int> edgeUse;
+            for (int p = 0; p < nP; ++p) {
+                for (int k = 0; k < 4; ++k) {
+                    vPatches[pVerts[p][k]].push_back(p);
+                    int a = pVerts[p][k], b = pVerts[p][(k + 1) % 4];
+                    edgeUse[{std::min(a, b), std::max(a, b)}]++;
+                }
+            }
+            for (const auto& kv : edgeUse)
+                if (kv.second == 1) { vIsBnd[kv.first.first] = true; vIsBnd[kv.first.second] = true; }
+
+            bool didOne = false;
+            const boxSide sideOrder[4] = {boundary::south, boundary::east, boundary::north, boundary::west};
+            const int sideCorners[4][2] = {{0, 1}, {1, 2}, {2, 3}, {3, 0}};
+
+            for (int vD = 0; vD < nV && !didOne; ++vD) {
+                if (vIsBnd[vD] || vPatches[vD].size() != 2) continue;
+                int pA = vPatches[vD][0], pB = vPatches[vD][1];
+                if (pA == pB) continue;
+
+                // Collect CCW boundary edges of pA U pB (must yield exactly 4 distinct outer edges!)
+                struct DE { int u, v; CurveSeg<T> seg; };
+                std::map<std::pair<int, int>, int> locCnt;
+                std::vector<DE> allE;
+                int pairP[2] = {pA, pB};
+                bool okExtract = true;
+                for (int idx = 0; idx < 2; ++idx) {
+                    int p = pairP[idx];
+                    const auto* tb = dynamic_cast<const gsTensorBSpline<2, T>*>(&mp.patch(p));
+                    if (!tb) { okExtract = false; break; }
+                    T area2 = cross2(verts[pVerts[p][0]], verts[pVerts[p][1]], verts[pVerts[p][2]])
+                            + cross2(verts[pVerts[p][0]], verts[pVerts[p][2]], verts[pVerts[p][3]]);
+                    bool flipOri = (area2 < T(0));
+                    for (int s = 0; s < 4; ++s) {
+                        int ca = pVerts[p][sideCorners[s][0]];
+                        int cb = pVerts[p][sideCorners[s][1]];
+                        locCnt[{std::min(ca, cb), std::max(ca, cb)}]++;
+                        typename gsGeometry<T>::uPtr b = tb->boundary(sideOrder[s]);
+                        auto* bsp = dynamic_cast<gsBSpline<T>*>(b.get());
+                        if (!bsp) { okExtract = false; break; }
+                        CurveSeg<T> seg(*bsp);
+                        if (seg.p0().dist(verts[ca]) > seg.p1().dist(verts[ca])) seg = seg.reversed();
+                        if (flipOri) allE.push_back({cb, ca, seg.reversed()});
+                        else         allE.push_back({ca, cb, seg});
+                    }
+                }
+                if (!okExtract) continue;
+                std::vector<DE> bndE;
+                for (const auto& de : allE)
+                    if (locCnt[{std::min(de.u, de.v), std::max(de.u, de.v)}] == 1)
+                        bndE.push_back(de);
+                if (bndE.size() != 4) continue;
+
+                // Chain into 4-edge CCW cycle
+                std::vector<DE> cyc = {bndE[0]};
+                std::vector<bool> used(4, false); used[0] = true;
+                for (int step = 1; step < 4; ++step) {
+                    int nxt = -1;
+                    for (int e = 0; e < 4; ++e)
+                        if (!used[e] && bndE[e].u == cyc.back().v) { nxt = e; break; }
+                    if (nxt < 0) break;
+                    used[nxt] = true;
+                    cyc.push_back(bndE[nxt]);
+                }
+                if (cyc.size() != 4 || cyc.back().v != cyc.front().u) continue;
+
+                std::unique_ptr<gsTensorBSpline<2, T>> merged(
+                    makeCoonsFromCCWCycle(cyc[0].seg, cyc[1].seg, cyc[2].seg, cyc[3].seg, m_degree));
+                if (!merged) continue;
+                if (internal_splitter::evalPatchMinDetDense(*merged, 49) <= T(1e-8))
+                    internal_splitter::quickHarmonicPatchRepair(*merged, T(1e-7));
+                if (internal_splitter::evalPatchMinDetDense(*merged, 49) <= T(1e-8)) continue;
+                T angs[4], mnA = 0, mxA = 180; bool degen = false;
+                evalPatchCornerAnglesDeg(*merged, angs, mnA, mxA, degen);
+                if (degen || mnA < effMinAng || mxA > effMaxAng) continue;
+
+                gsMultiPatch<T> candMp;
+                for (int p = 0; p < nP; ++p)
+                    if (p != pA && p != pB) candMp.addPatch(mp.patch(p).clone());
+                candMp.addPatch(typename gsGeometry<T>::uPtr(merged.release()));
+                gsASG1LocalFitter<T>::unifyPatchOrientations(candMp);
+                candMp.computeTopology(T(1e-4), false, false);
+                if (2 * candMp.nInterfaces() + candMp.nBoundary() != 4 * candMp.nPatches()) continue;
+                if (m_hasDomain && !validateMultiPatch(m_domain, candMp, T(1e-4), nullptr, effMinAng, effMaxAng))
+                    continue;
+                mp = give(candMp);
+                collapsedAny = true;
+                didOne = true;
+            }
+            if (!didOne) break;
+        }
+        return collapsedAny;
+    };
+
+    // Stage 4B: High-Valence Interior Diamond Collapse (Tarini et al. 2010: -1 patch, reduces EV irregularity!)
+    auto collapseHighValenceDiamonds = [&]() -> bool {
+        bool collapsedAny = false;
+        for (int pass = 0; pass < 24 && mp.nPatches() > 4; ++pass) {
+            mp.computeTopology(T(1e-4), false, false);
+            const int nP = static_cast<int>(mp.nPatches());
+            std::vector<gsPoint2D<T>> verts;
+            std::vector<std::array<int, 4>> pVerts(nP);
+            auto getVid = [&](const gsPoint2D<T>& pt) -> int {
+                for (size_t i = 0; i < verts.size(); ++i)
+                    if (verts[i].dist(pt) < T(1e-4)) return static_cast<int>(i);
+                verts.push_back(pt);
+                return static_cast<int>(verts.size()) - 1;
+            };
+            const T uvC[4][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+            gsMatrix<T> par(2, 1), val;
+            for (int p = 0; p < nP; ++p) {
+                const gsMatrix<T> supp = mp.patch(p).support();
+                for (int k = 0; k < 4; ++k) {
+                    par(0, 0) = supp(0, 0) + uvC[k][0] * (supp(0, 1) - supp(0, 0));
+                    par(1, 0) = supp(1, 0) + uvC[k][1] * (supp(1, 1) - supp(1, 0));
+                    mp.patch(p).eval_into(par, val);
+                    pVerts[p][k] = getVid(gsPoint2D<T>(val(0, 0), val(1, 0)));
+                }
+            }
+            const int nV = static_cast<int>(verts.size());
+            std::vector<std::vector<int>> vPatches(nV);
+            std::vector<bool> vIsBnd(nV, false);
+            std::map<std::pair<int, int>, int> edgeUse;
+            for (int p = 0; p < nP; ++p) {
+                for (int k = 0; k < 4; ++k) {
+                    vPatches[pVerts[p][k]].push_back(p);
+                    int a = pVerts[p][k], b = pVerts[p][(k + 1) % 4];
+                    edgeUse[{std::min(a, b), std::max(a, b)}]++;
+                }
+            }
+            for (const auto& kv : edgeUse)
+                if (kv.second == 1) { vIsBnd[kv.first.first] = true; vIsBnd[kv.first.second] = true; }
+
+            bool didOne = false;
+            const boxSide sideOrder[4] = {boundary::south, boundary::east, boundary::north, boundary::west};
+            const int sideCorners[4][2] = {{0, 1}, {1, 2}, {2, 3}, {3, 0}};
+
+            for (int q = 0; q < nP && !didOne; ++q) {
+                for (int diagIdx = 0; diagIdx < 2 && !didOne; ++diagIdx) {
+                    int v0 = pVerts[q][diagIdx];
+                    int v1 = pVerts[q][diagIdx + 1];
+                    int v2 = pVerts[q][diagIdx + 2];
+                    int v3 = pVerts[q][(diagIdx + 3) % 4];
+                    if (vIsBnd[v0] || vIsBnd[v2]) continue;
+                    int val0 = static_cast<int>(vPatches[v0].size());
+                    int val2 = static_cast<int>(vPatches[v2].size());
+                    int val1 = static_cast<int>(vPatches[v1].size());
+                    int val3 = static_cast<int>(vPatches[v3].size());
+                    // Require strict irregularity reduction & safe target valences (never create valence-2 interior!)
+                    if (!vIsBnd[v1] && val1 < 4) continue;
+                    if (!vIsBnd[v3] && val3 < 4) continue;
+                    if (vIsBnd[v1] && val1 < 2) continue;
+                    if (vIsBnd[v3] && val3 < 2) continue;
+                    int newValStar = val0 + val2 - 4;
+                    if (newValStar < 3 || newValStar > 8) continue;
+                    // Collapse only when it reduces total EV distortion (e.g., (3,3) or high-valence diamond!)
+                    int errBefore = std::abs(val0 - 4) + std::abs(val2 - 4)
+                                  + (vIsBnd[v1] ? 0 : std::abs(val1 - 4))
+                                  + (vIsBnd[v3] ? 0 : std::abs(val3 - 4));
+                    int errAfter  = std::abs(newValStar - 4)
+                                  + (vIsBnd[v1] ? 0 : std::abs(val1 - 5))
+                                  + (vIsBnd[v3] ? 0 : std::abs(val3 - 5));
+                    if (errAfter > errBefore) continue;
+
+                    // Reject if any OTHER patch shares both v0 and v2 (would collapse that patch too!)
+                    bool sharedOther = false;
+                    for (int p : vPatches[v0]) {
+                        if (p == q) continue;
+                        for (int k = 0; k < 4; ++k) if (pVerts[p][k] == v2) { sharedOther = true; break; }
+                        if (sharedOther) break;
+                    }
+                    if (sharedOther) continue;
+
+                    gsPoint2D<T> pStar(T(0.5) * (verts[v0].x + verts[v2].x),
+                                       T(0.5) * (verts[v0].y + verts[v2].y));
+
+                    // Build deterministic shifted curve for any interior edge touching v0 or v2
+                    auto shiftCurveEndpoints = [&](const CurveSeg<T>& seg, const gsPoint2D<T>& d0, const gsPoint2D<T>& d1) -> CurveSeg<T> {
+                        gsBSpline<T> bsp(*seg.bsp);
+                        safeNormalizeKnots01(bsp);
+                        gsMatrix<T> gr = bsp.knots().greville();
+                        gsMatrix<T>& cf = bsp.coefs();
+                        const int nr = static_cast<int>(cf.rows());
+                        for (int r = 0; r < nr; ++r) {
+                            T t = (nr > 1) ? gr(0, r) : T(0);
+                            cf(r, 0) += (T(1) - t) * d0.x + t * d1.x;
+                            cf(r, 1) += (T(1) - t) * d0.y + t * d1.y;
+                        }
+                        return CurveSeg<T>(bsp);
+                    };
+
+                    // Canonical merged interior curves for (pStar -> v1) and (pStar -> v3)
+                    CurveSeg<T> cStar1 = makeStraightSeg(pStar, verts[v1], m_degree);
+                    CurveSeg<T> cStar3 = makeStraightSeg(pStar, verts[v3], m_degree);
+
+                    std::set<int> touched;
+                    for (int p : vPatches[v0]) if (p != q) touched.insert(p);
+                    for (int p : vPatches[v2]) if (p != q) touched.insert(p);
+
+                    gsMultiPatch<T> candMp;
+                    bool buildOk = true;
+                    for (int p = 0; p < nP && buildOk; ++p) {
+                        if (p == q) continue;
+                        if (!touched.count(p)) {
+                            candMp.addPatch(mp.patch(p).clone());
+                            continue;
+                        }
+                        const auto* tb = dynamic_cast<const gsTensorBSpline<2, T>*>(&mp.patch(p));
+                        if (!tb) { buildOk = false; break; }
+                        T area2 = cross2(verts[pVerts[p][0]], verts[pVerts[p][1]], verts[pVerts[p][2]])
+                                + cross2(verts[pVerts[p][0]], verts[pVerts[p][2]], verts[pVerts[p][3]]);
+                        bool flipOri = (area2 < T(0));
+                        CurveSeg<T> sidesCCW[4];
+                        for (int s = 0; s < 4 && buildOk; ++s) {
+                            int ca = pVerts[p][sideCorners[s][0]];
+                            int cb = pVerts[p][sideCorners[s][1]];
+                            typename gsGeometry<T>::uPtr b = tb->boundary(sideOrder[s]);
+                            auto* bsp = dynamic_cast<gsBSpline<T>*>(b.get());
+                            if (!bsp) { buildOk = false; break; }
+                            CurveSeg<T> seg(*bsp);
+                            if (seg.p0().dist(verts[ca]) > seg.p1().dist(verts[ca])) seg = seg.reversed();
+
+                            int u = flipOri ? cb : ca;
+                            int v = flipOri ? ca : cb;
+                            if (flipOri) seg = seg.reversed();
+
+                            bool uIsM = (u == v0 || u == v2);
+                            bool vIsM = (v == v0 || v == v2);
+                            if (uIsM && v == v1)      seg = cStar1;
+                            else if (vIsM && u == v1) seg = cStar1.reversed();
+                            else if (uIsM && v == v3) seg = cStar3;
+                            else if (vIsM && u == v3) seg = cStar3.reversed();
+                            else if (uIsM || vIsM) {
+                                gsPoint2D<T> d0 = uIsM ? gsPoint2D<T>(pStar.x - verts[u].x, pStar.y - verts[u].y) : gsPoint2D<T>(0, 0);
+                                gsPoint2D<T> d1 = vIsM ? gsPoint2D<T>(pStar.x - verts[v].x, pStar.y - verts[v].y) : gsPoint2D<T>(0, 0);
+                                seg = shiftCurveEndpoints(seg, d0, d1);
+                            }
+                            int slot = flipOri ? (3 - s) : s;
+                            sidesCCW[slot] = seg;
+                        }
+                        if (!buildOk) break;
+                        std::unique_ptr<gsTensorBSpline<2, T>> np(
+                            makeCoonsFromCCWCycle(sidesCCW[0], sidesCCW[1], sidesCCW[2], sidesCCW[3], m_degree));
+                        if (!np) { buildOk = false; break; }
+                        if (internal_splitter::evalPatchMinDetDense(*np, 49) <= T(1e-8))
+                            internal_splitter::quickHarmonicPatchRepair(*np, T(1e-7));
+                        if (internal_splitter::evalPatchMinDetDense(*np, 49) <= T(1e-8)) { buildOk = false; break; }
+                        T angs[4], mnA = 0, mxA = 180; bool degen = false;
+                        evalPatchCornerAnglesDeg(*np, angs, mnA, mxA, degen);
+                        if (degen || mnA < effMinAng || mxA > effMaxAng) { buildOk = false; break; }
+                        candMp.addPatch(typename gsGeometry<T>::uPtr(np.release()));
+                    }
+                    if (!buildOk || candMp.nPatches() != static_cast<size_t>(nP - 1)) continue;
+                    gsASG1LocalFitter<T>::unifyPatchOrientations(candMp);
+                    candMp.computeTopology(T(1e-4), false, false);
+                    if (2 * candMp.nInterfaces() + candMp.nBoundary() != 4 * candMp.nPatches()) continue;
+                    if (m_hasDomain && !validateMultiPatch(m_domain, candMp, T(1e-4), nullptr, effMinAng, effMaxAng))
+                        continue;
+
+                    mp = give(candMp);
+                    collapsedAny = true;
+                    didOne = true;
+                }
+            }
+            if (!didOne) break;
+        }
+        return collapsedAny;
+    };
+
+    if (collapseInteriorDoublets())
+        anyCollapsed = true;
+    if (collapseHighValenceDiamonds())
+        anyCollapsed = true;
+
     auto sidePoint = [&](size_t p, int sIdx, T t) -> gsPoint2D<T> {
         const gsMatrix<T> supp = mp.patch(p).support();
         T u0 = supp(0, 0), u1 = supp(0, 1), v0 = supp(1, 0), v1 = supp(1, 1);

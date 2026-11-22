@@ -34,6 +34,7 @@
 #include <gsModeling/gsPatchSplitterMAT.hpp>
 #include <gsModeling/gsPatchSplitterPolychord.hpp>
 #include <gsModeling/gsPatchSplitterCrossField.hpp>
+#include <gsModeling/gsPatchSplitterMotorcycle.hpp>
 #include <gsModeling/gsASG1LocalFitter.h>
 #include <gsModeling/gsCoonsPatch.h>
 #include <gsNurbs/gsBSpline.h>
@@ -72,6 +73,8 @@ gsOptionList gsPatchSplitter<T>::defaultOptions()
     opt.addReal("MinCornerAngleDeg", "Minimum admissible patch corner tangent angle (deg)", 12.0);
     opt.addReal("MaxCornerAngleDeg", "Maximum admissible patch corner tangent angle (deg)", 155.0);
     opt.addReal("StripCollapseRatio", "Relative distance to snap parallel separatrices", 0.25);
+    opt.addReal("SmoothJointTolDeg", "Boundary angle deviation from 180 deg below which CAD curve joints are treated as smooth G1", 22.0);
+    opt.addReal("TMeshARWeight", "Aspect-ratio regularization weight in T-mesh integer quantization (multigrid-friendly)", 0.35);
     opt.addInt("Degree", "Target B-spline degree (>= 3 for ArgyrisSplines)", 3);
     opt.addInt("Regularity", "Target spline regularity r (1 <= r <= p - 2)", 1);
     opt.addInt("MinKnotSpans", "Minimum knot spans per patch direction (>= 3 for ArgyrisSplines)", 3);
@@ -200,8 +203,13 @@ gsPatchSplitter<T>::computeCrossFieldSplitting()
     const int maxPatchesCap = std::max(1, static_cast<int>(m_options.getInt("MaxPatches")));
     const T stripRatio = static_cast<T>(m_options.getReal("StripCollapseRatio"));
     const T angThresh  = static_cast<T>(m_options.getReal("AngleThresholdDeg"));
+    const T smoothJointTol = static_cast<T>(m_options.getReal("SmoothJointTolDeg"));
+    const T tmeshARWeight  = static_cast<T>(m_options.getReal("TMeshARWeight"));
 
-    // Solve MBO Unit-Norm 4-RoSy Cross-Field ONCE on the background FEM mesh
+    // Stage 0: Virtual G1-Consolidated CAD Boundary Loops
+    std::vector<VirtualCADLoop<T>> vloops = buildVirtualCADLoops(m_domain, m_degree, smoothJointTol);
+
+    // Stage 1: Solve Curvature-Regularized Robin MBO 4-RoSy Cross-Field ONCE on the background FEM mesh
     const T targetH = diag / ((m_domain.numHoles() >= 4) ? T(26) : T(22));
     TriMeshData<T> fineMesh;
     if (!buildConstrainedDomainTriangulation(m_domain, m_degree, targetH, true, 0, fineMesh))
@@ -211,7 +219,15 @@ gsPatchSplitter<T>::computeCrossFieldSplitting()
 
     CrossFieldMeshAccel<T> accel;
     accel.build(fineMesh);
-    CrossFieldSolution<T> cf = solveHarmonic4RoSy(fineMesh, &accel);
+    CrossFieldSolution<T> cf = solveRegularized4RoSy(fineMesh, vloops, &accel);
+
+    const bool cfDbg = (std::getenv("GISMO_CF_DEBUG") != nullptr);
+    if (cfDbg) {
+        int totPinned = 0;
+        for (const auto& vl : vloops) totPinned += static_cast<int>(vl.corners.size());
+        std::cerr << "[CF_DBG] Stage0/1: loops=" << vloops.size() << " pinnedCorners=" << totPinned
+                  << " robinSings=" << cf.singularities.size() << "\n";
+    }
 
     auto countNegDense = [&](const gsMultiPatch<T>& mpCheck) -> int {
         int cnt = 0;
@@ -226,7 +242,23 @@ gsPatchSplitter<T>::computeCrossFieldSplitting()
                 if (auto* tb = dynamic_cast<gsTensorBSpline<2, T>*>(&mpFix.patch(p))) {
                     gsTensorBSpline<2, T> bk(*tb);
                     quickHarmonicPatchRepair(*tb, T(1e-7));
-                    if (evalPatchMinDetDense(*tb, 49) < d0) *tb = bk;
+                    T d1 = evalPatchMinDetDense(*tb, 49);
+                    if (d1 < d0) { *tb = bk; d1 = d0; }
+                    if (d1 <= T(1e-8)) {
+                        try {
+                            gsMultiPatch<T> bndC;
+                            bndC.addPatch(tb->boundary(boundary::south));
+                            bndC.addPatch(tb->boundary(boundary::east));
+                            bndC.addPatch(tb->boundary(boundary::north));
+                            bndC.addPatch(tb->boundary(boundary::west));
+                            gsSpringPatch<T> sp(bndC);
+                            const gsGeometry<T>& res = sp.compute();
+                            if (const auto* sTb = dynamic_cast<const gsTensorBSpline<2, T>*>(&res)) {
+                                if (evalPatchMinDetDense(*sTb, 49) > d1)
+                                    *tb = *sTb;
+                            }
+                        } catch (...) {}
+                    }
                 }
             }
         }
@@ -246,7 +278,6 @@ gsPatchSplitter<T>::computeCrossFieldSplitting()
              + ratioPen + angPen + detPen + globalBonus;
     };
 
-    const bool cfDbg = (std::getenv("GISMO_CF_DEBUG") != nullptr);
     const int compactTarget = (m_domain.numHoles() == 0) ? 6
                             : (m_domain.numHoles() == 1 ? 6 : std::max(12, 5 * m_domain.numHoles() + 4));
     auto evaluateAndRegister = [&](gsMultiPatch<T>& candMp, const std::string& label) -> bool {
@@ -339,12 +370,53 @@ gsPatchSplitter<T>::computeCrossFieldSplitting()
         gsASG1LocalFitter<T>::unifyPatchOrientations(candMp);
         candMp.computeTopology(T(1e-4), false, false);
         repairMicroFolds(candMp);
+
+        // 4. Symmetric 3-span interior-DOF rescue for strongly curved low-patch layouts (e.g. amoeba P=5/24)
+        //    where 1-span cubic interiors (only 2x2 interior coefs) lack freedom to untangle curved lobes!
+        if (countNegDense(candMp) > 0 && candMp.nPatches() <= 64) {
+            gsMultiPatch<T> refMp(candMp);
+            const int negPre = countNegDense(refMp);
+            for (size_t p = 0; p < refMp.nPatches(); ++p) {
+                if (auto* tb = dynamic_cast<gsTensorBSpline<2, T>*>(&refMp.patch(p))) {
+                    safeNormalizeKnotVector01(tb->knots(0));
+                    safeNormalizeKnotVector01(tb->knots(1));
+                    for (int d = 0; d < 2; ++d) {
+                        if (tb->knots(d).unique().size() < 4) {
+                            tb->insertKnot(T(1) / T(3), d, 1);
+                            tb->insertKnot(T(2) / T(3), d, 1);
+                        }
+                    }
+                }
+            }
+            harmonizeMultiPatchKnots(refMp);
+            repairMicroFolds(refMp);
+            optimizeWinslowBarrier(refMp);
+            repairMicroFolds(refMp);
+            if (refMp.nPatches() >= 2) {
+                optimizeCoupledInterfacesAndInteriors(refMp, T(1e-7), 18, true);
+                repairMicroFolds(refMp);
+            }
+            gsASG1LocalFitter<T>::unifyPatchOrientations(refMp);
+            if (checkConforming(refMp) && countNegDense(refMp) < negPre)
+                candMp = give(refMp);
+        }
+
         if (static_cast<int>(candMp.nPatches()) > maxPatchesCap)
             return false;
 
         std::string vErr;
         if (!validateMultiPatch(m_domain, candMp, T(1e-4), &vErr, effMinAng, effMaxAng)) {
-            if (cfDbg) std::cerr << "[CF_DBG] " << label << " P=" << candMp.nPatches() << " FAIL validate: " << vErr << "\n";
+            if (cfDbg) {
+                if (vErr.find("boundary") != std::string::npos) {
+                    T bDist = 0;
+                    verifyBoundaryMatch(m_domain, candMp, T(1e-4), &bDist);
+                    std::cerr << "[CF_DBG] " << label << " P=" << candMp.nPatches()
+                              << " FAIL validate: " << vErr << " maxBdrDist=" << bDist
+                              << " IF=" << candMp.nInterfaces() << " B=" << candMp.nBoundary() << "\n";
+                } else {
+                    std::cerr << "[CF_DBG] " << label << " P=" << candMp.nPatches() << " FAIL validate: " << vErr << "\n";
+                }
+            }
             return false;
         }
         int nNeg = countNegDense(candMp);
@@ -381,7 +453,48 @@ gsPatchSplitter<T>::computeCrossFieldSplitting()
                 bestER <= T(5.5));
     };
 
-    // Engine 1: MBO Curved-Streamline Separatrix Arrangement + Corridor Merging + Local Even-Gon Splitting
+    // Stage 2A: Poisson-Torsion Curved 5-Patch O-Grid for smooth 0-corner hole-free domains (e.g. circle, amoeba)
+    if (m_domain.numHoles() == 0 && !vloops.empty() && vloops[0].corners.empty()) {
+        gsMultiPatch<T> ogridMp;
+        bool builtO = buildHarmonicCurvedOGrid(m_domain, vloops, fineMesh, accel, m_degree, ogridMp);
+        if (cfDbg) std::cerr << "[CF_DBG] Stage2A PoissonOGrid: ok=" << builtO << " P=" << ogridMp.nPatches() << "\n";
+        if (builtO) {
+            if (evaluateAndRegister(ogridMp, "HarmonicCrossField"))
+                return bestCand;
+        }
+    }
+
+    // Stage 2B + Stage 3 (Primary Engine 1): Simultaneous Motorcycle T-Mesh + Native Integer Quantization
+    for (int reflexMode : {0, 1}) {
+        TMeshGraph<T> tmesh;
+        bool builtT = buildSimultaneousMotorcycleTMesh(
+            m_domain, vloops, fineMesh, cf, accel, m_degree, reflexMode, tmesh);
+        if (cfDbg) {
+            std::cerr << "[CF_DBG] Stage2B Motorcycle(rm=" << reflexMode << "): ok=" << builtT
+                      << " F=" << tmesh.faces.size() << " E=" << tmesh.segs.size() << "\n";
+        }
+        if (!builtT) continue;
+        bool quantOk = quantizeTMeshMinimalPatches(tmesh, tmeshARWeight, maxPatchesCap);
+        if (cfDbg) {
+            int estP = 0;
+            for (const auto& rf : tmesh.faces) {
+                int nu = 0, nv = 0;
+                for (int he : rf.sideHEs[0]) nu += tmesh.segs[tmesh.halfEdges[he].segIdx].quantLen;
+                for (int he : rf.sideHEs[1]) nv += tmesh.segs[tmesh.halfEdges[he].segIdx].quantLen;
+                estP += nu * nv;
+            }
+            std::cerr << "[CF_DBG] Stage3 Quantizer(rm=" << reflexMode << "): ok=" << quantOk << " estP=" << estP << "\n";
+        }
+        if (!quantOk) continue;
+
+        gsMultiPatch<T> motoMp;
+        if (emitQuantizedTMeshPatches(tmesh, vloops, m_degree, motoMp)) {
+            if (evaluateAndRegister(motoMp, "HarmonicCrossField"))
+                return bestCand;
+        }
+    }
+
+    // Engine 1b (Legacy fallback): MBO Curved-Streamline Separatrix Arrangement + Corridor Merging + Local Even-Gon Splitting
     {
         gsMultiPatch<T> sepMp;
         std::string label;
