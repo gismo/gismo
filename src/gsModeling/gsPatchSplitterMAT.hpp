@@ -185,6 +185,30 @@ public:
     // Internal Geometry Helpers
     // ------------------------------------------------------------------------
 
+    // Minimum Euclidean distance from point p to all boundary loop polyline edges.
+    static T pointToLoopsDist(
+        const gsPoint2D<T>& p,
+        const std::vector<std::vector<gsPoint2D<T>>>& loopPolys)
+    {
+        T bestD2 = std::numeric_limits<T>::max();
+        for (const auto& poly : loopPolys) {
+            const size_t n = poly.size();
+            if (n < 2) continue;
+            for (size_t i = 0; i < n; ++i) {
+                const auto& a = poly[i];
+                const auto& b = poly[(i + 1) % n];
+                T vx = b.x - a.x, vy = b.y - a.y;
+                T l2 = vx * vx + vy * vy;
+                T t = (l2 > T(1e-24)) ? std::max(T(0), std::min(T(1), ((p.x - a.x) * vx + (p.y - a.y) * vy) / l2)) : T(0);
+                T dx = p.x - (a.x + t * vx);
+                T dy = p.y - (a.y + t * vy);
+                T d2 = dx * dx + dy * dy;
+                if (d2 < bestD2) bestD2 = d2;
+            }
+        }
+        return (bestD2 < std::numeric_limits<T>::max()) ? std::sqrt(bestD2) : T(0);
+    }
+
     // Return (vLeft, vRight) when crossing from CCW triangle tFrom into tTo across their shared edge.
     static bool getSharedChord(const TriMeshData<T>& mesh, int tFrom, int tTo, int& vLeft, int& vRight)
     {
@@ -278,18 +302,48 @@ public:
             return true;
         };
 
+        auto sampleSegPoly = [](const CurveSeg<T>& seg, int nS) -> std::vector<gsPoint2D<T>> {
+            std::vector<gsPoint2D<T>> pts;
+            pts.reserve(nS + 1);
+            for (int k = 0; k <= nS; ++k)
+                pts.push_back(evalCurvePoint(*seg.bsp, static_cast<T>(k) / T(nS)));
+            return pts;
+        };
+        const std::vector<gsPoint2D<T>> polyL = sampleSegPoly(bndL, 12);
+        const std::vector<gsPoint2D<T>> polyR = sampleSegPoly(bndR, 12);
+
+        auto crossesWalls = [&](const CurveSeg<T>& cand) -> bool {
+            std::vector<gsPoint2D<T>> cPts = sampleSegPoly(cand, 12);
+            auto hitPoly = [&](const std::vector<gsPoint2D<T>>& wp) -> bool {
+                for (size_t i = 0; i + 1 < cPts.size(); ++i) {
+                    for (size_t j = 0; j + 1 < wp.size(); ++j) {
+                        if (cPts[i].dist(wp[j]) < T(1e-5) || cPts[i].dist(wp[j + 1]) < T(1e-5) ||
+                            cPts[i + 1].dist(wp[j]) < T(1e-5) || cPts[i + 1].dist(wp[j + 1]) < T(1e-5))
+                            continue;
+                        if (segProperIntersect(cPts[i], cPts[i + 1], wp[j], wp[j + 1]))
+                            return true;
+                    }
+                }
+                return false;
+            };
+            return hitPoly(polyL) || hitPoly(polyR);
+        };
+
         auto evalCandScore = [&](const CurveSeg<T>& cand) -> T {
             T mnL = 0, mxL = 180, efL = -180;
             T mnR = 0, mxR = 180, efR = -180;
             eval4SegCornerAnglesDeg(cand, spPb_Lb, bndL, spLa_Pa, mnL, mxL, efL);
             eval4SegCornerAnglesDeg(spPa_Ra, bndR, spRb_Pb, cand.reversed(), mnR, mxR, efR);
-            return std::min(efL, efR);
+            T sc = std::min(efL, efR);
+            if (crossesWalls(cand)) sc -= T(1000.0);
+            return sc;
         };
 
         CurveSeg<T> bestSeg = straight;
         T bestScore = curveInside(straight) ? evalCandScore(straight) : -T(1e8);
 
-        // 1. Variation-diminishing convex-hull cubic candidates along arc-length polyline samples (zero Runge overshoot)
+        // 1. Variation-diminishing convex-hull cubic candidates along arc-length polyline samples
+        //    (plus gentle lam=1.15/1.35 push to clear convex hole bulges while staying strictly inside domain)
         if (poly.size() >= 3) {
             std::vector<T> s(poly.size(), T(0));
             for (size_t i = 1; i < poly.size(); ++i)
@@ -312,7 +366,7 @@ public:
                 gsPoint2D<T> q2 = sampleAt(T(2) / T(3));
                 gsPoint2D<T> c1Lin((T(2) * A.x + B.x) / T(3), (T(2) * A.y + B.y) / T(3));
                 gsPoint2D<T> c2Lin((A.x + T(2) * B.x) / T(3), (A.y + T(2) * B.y) / T(3));
-                for (T lam : {T(1.0), T(0.70), T(0.45), T(0.25)}) {
+                for (T lam : {T(1.35), T(1.15), T(1.0), T(0.70), T(0.45), T(0.25)}) {
                     gsPoint2D<T> p1((T(1) - lam) * c1Lin.x + lam * q1.x, (T(1) - lam) * c1Lin.y + lam * q1.y);
                     gsPoint2D<T> p2((T(1) - lam) * c2Lin.x + lam * q2.x, (T(1) - lam) * c2Lin.y + lam * q2.y);
                     CurveSeg<T> cand = makeCubic(p1, p2);
@@ -385,8 +439,18 @@ public:
                 capPoly.push_back(evalCurvePoint(*bEdges[k].bsp, static_cast<T>(s) / T(8)));
         gsPoint2D<T> ctrPoly = polygonCentroid(capPoly);
 
-        std::vector<gsPoint2D<T>> cands = {ctrPoly, pAvg};
-        const T alphas[4] = {T(0.42), T(0.32), T(0.50), T(0.24)};
+        gsPoint2D<T> ctrMid(T(0.5) * (ctrPoly.x + pAvg.x), T(0.5) * (ctrPoly.y + pAvg.y));
+        std::vector<gsPoint2D<T>> cands = {ctrPoly, ctrMid, pAvg};
+        const T alphas[6] = {T(0.42), T(0.34), T(0.26), T(0.18), T(0.50), T(0.12)};
+
+        // Detect whether interior cap spoke edges bEdges[0] / bEdges[3] are straight
+        auto isEdgeStraight = [](const CurveSeg<T>& seg) -> bool {
+            gsPoint2D<T> a = seg.p0(), b = seg.p1(), m = evalCurvePoint(*seg.bsp, T(0.5));
+            T L = a.dist(b);
+            return (L <= T(1e-12)) || (std::abs(cross2(a, b, m)) / L < T(1e-3) * L);
+        };
+        const bool e0Straight = isEdgeStraight(bEdges[0]);
+        const bool e3Straight = isEdgeStraight(bEdges[3]);
 
         std::vector<gsTensorBSpline<2, T>*> bestFive;
         T bestMaxAng = T(360);
@@ -430,15 +494,15 @@ public:
                             !isPointStrictlyInsideDomain(midQP, loopPolys, T(1e-6)) ||
                             !isPointStrictlyInsideDomain(qtrQP, loopPolys, T(1e-6)) ||
                             !isSegmentInsideDomain(Q[k], Q[(k + 1) % 4], loopPolys) ||
-                            !pointInPolyStrict(Q[k], capPoly, T(1e-5)) ||
-                            !pointInPolyStrict(midQP, capPoly, T(1e-5)) ||
-                            !pointInPolyStrict(qtrQP, capPoly, T(1e-5)) ||
-                            !pointInPolyStrict(midQQ, capPoly, T(1e-5))) {
+                            !pointInPolyStrict(Q[k], capPoly, T(1e-6)) ||
+                            !pointInPolyStrict(midQP, capPoly, T(1e-6)) ||
+                            !pointInPolyStrict(qtrQP, capPoly, T(1e-6)) ||
+                            !pointInPolyStrict(midQQ, capPoly, T(1e-6))) {
                             ok = false; break;
                         }
-                        // Ensure Q stays strictly on the interior side of the cap's two straight spoke edges P[0]->P[1] and P[3]->P[0]
-                        if (cross2(P[0], P[1], Q[k]) <= T(1e-7) ||
-                            cross2(P[3], P[0], Q[k]) <= T(1e-7)) {
+                        // Ensure Q stays strictly on the interior side of straight spoke edges P[0]->P[1] and P[3]->P[0]
+                        if ((e0Straight && cross2(P[0], P[1], Q[k]) <= T(1e-7)) ||
+                            (e3Straight && cross2(P[3], P[0], Q[k]) <= T(1e-7))) {
                             ok = false; break;
                         }
                     }
@@ -463,16 +527,18 @@ public:
                     T worstQuality = T(180);
                     for (auto* patch : trial) {
                         if (!patch) { trialOk = false; break; }
-                        if (!isPatchDetSingleSign(*patch, 15, T(1e-7)))
+                        if (evalPatchMinDetDense(*patch, 49) <= T(1e-7))
                             quickHarmonicPatchRepair(*patch, T(1e-7));
-                        if (!isPatchDetSingleSign(*patch, 15, T(1e-7))) { trialOk = false; break; }
+                        if (evalPatchMinDetDense(*patch, 49) <= T(1e-8)) { trialOk = false; break; }
                         T angs[4], mnA = 0, mxA = 180;
                         bool degen = false;
                         evalPatchCornerAnglesDeg(*patch, angs, mnA, mxA, degen);
-                        if (degen || mnA < T(14) || mxA > T(160)) { trialOk = false; break; }
-                        worstQuality = std::min(worstQuality, std::min(mnA, T(180) - mxA));
+                        if (degen || mnA < T(8) || mxA > T(163.5)) { trialOk = false; break; }
+                        T q = std::min(mnA, T(180) - mxA);
+                        // Strongly prefer >= 14 deg and <= 158 deg, while still accepting valid [8, 163.5] over a 180-deg fallback
+                        if (mnA < T(14) || mxA > T(158)) q -= T(30);
+                        worstQuality = std::min(worstQuality, q);
                     }
-                    // Maximize worstQuality (stored inversely in bestMaxAng = 180 - worstQuality)
                     T score = T(180) - worstQuality;
                     if (trialOk && score < bestMaxAng) {
                         for (auto* old : bestFive) delete old;
@@ -520,6 +586,84 @@ public:
         if (!buildConstrainedDomainTriangulation(dom, degree, targetH, true, 0, mesh))
             return false;
         applyDomainLawsonFlips(mesh);
+
+        // Eliminate extreme collinear/sliver J-triangles (> 168 deg, height/maxEdge < 0.04) whose longest
+        // interior edge borders an S-triangle: flipping to the strictly shorter opposite diagonal converts
+        // a 1-sleeve sliver bridge into direct J-J adjacency so Step 1.4 merges it into a convex junction.
+        {
+            const int nT0 = static_cast<int>(mesh.tris.size());
+            const int nE0 = static_cast<int>(mesh.edges.size());
+            bool flippedAny = true;
+            for (int pass = 0; pass < 4 && flippedAny; ++pass) {
+                flippedAny = false;
+                struct EAdj { int t0 = -1, k0 = -1, t1 = -1, k1 = -1; };
+                std::vector<EAdj> eAdj(nE0);
+                for (int ti = 0; ti < nT0; ++ti) {
+                    const auto& tr = mesh.tris[ti];
+                    for (int k = 0; k < 3; ++k) {
+                        int eid = tr.e[k];
+                        if (eAdj[eid].t0 < 0) { eAdj[eid].t0 = ti; eAdj[eid].k0 = k; }
+                        else if (eAdj[eid].t1 < 0) { eAdj[eid].t1 = ti; eAdj[eid].k1 = k; }
+                    }
+                }
+                auto triBndCount = [&](int ti) -> int {
+                    int nb = 0;
+                    for (int k = 0; k < 3; ++k)
+                        if (mesh.edges[mesh.tris[ti].e[k]].isBoundary) ++nb;
+                    return nb;
+                };
+                auto isSliverJLongestEdge = [&](int ti, int kEdge) -> bool {
+                    if (triBndCount(ti) != 0) return false;
+                    const auto& tr = mesh.tris[ti];
+                    const auto& P0 = mesh.pts[tr.v[0]];
+                    const auto& P1 = mesh.pts[tr.v[1]];
+                    const auto& P2 = mesh.pts[tr.v[2]];
+                    T l[3] = {P0.dist(P1), P1.dist(P2), P2.dist(P0)};
+                    T lMax = std::max(l[0], std::max(l[1], l[2]));
+                    if (lMax <= T(1e-12) || l[kEdge] < T(0.999) * lMax) return false;
+                    T hMin = std::abs(cross2(P0, P1, P2)) / lMax;
+                    T mnA = 0, mxA = 0;
+                    triMinMaxAnglesDeg(P0, P1, P2, mnA, mxA);
+                    return (mxA > T(168.0) && hMin < T(0.04) * lMax);
+                };
+
+                for (int eIdx = 0; eIdx < nE0; ++eIdx) {
+                    if (mesh.edges[eIdx].isBoundary) continue;
+                    int tA = eAdj[eIdx].t0, kA = eAdj[eIdx].k0;
+                    int tB = eAdj[eIdx].t1, kB = eAdj[eIdx].k1;
+                    if (tA < 0 || tB < 0) continue;
+
+                    bool flipCand = (isSliverJLongestEdge(tA, kA) && triBndCount(tB) == 1) ||
+                                    (isSliverJLongestEdge(tB, kB) && triBndCount(tA) == 1);
+                    if (!flipCand) continue;
+
+                    const auto A = mesh.tris[tA];
+                    const auto B = mesh.tris[tB];
+                    int a = A.v[kA], b = A.v[(kA + 1) % 3], c = A.v[(kA + 2) % 3];
+                    int d = B.v[(kB + 2) % 3];
+                    if (c == d || c == a || c == b || d == a || d == b) continue;
+                    if (B.v[kB] != b || B.v[(kB + 1) % 3] != a) continue;
+
+                    if (mesh.pts[c].dist(mesh.pts[d]) >= T(0.90) * mesh.pts[a].dist(mesh.pts[b]))
+                        continue;
+
+                    gsPoint2D<T> qa[4] = {mesh.pts[c], mesh.pts[a], mesh.pts[d], mesh.pts[b]};
+                    if (!isStrictlyConvexQuad(qa)) continue;
+                    if (!isSegmentInsideDomain(mesh.pts[c], mesh.pts[d], mesh.loopPolys)) continue;
+
+                    int e_bc = A.e[(kA + 1) % 3];
+                    int e_ca = A.e[(kA + 2) % 3];
+                    int e_ad = B.e[(kB + 1) % 3];
+                    int e_db = B.e[(kB + 2) % 3];
+
+                    mesh.edges[eIdx] = {c, d, CurveSeg<T>(), CurveSeg<T>(), CurveSeg<T>(), gsPoint2D<T>(), false, false, -1};
+                    mesh.tris[tA] = {{c, a, d}, {e_ca, e_ad, eIdx}};
+                    mesh.tris[tB] = {{c, d, b}, {eIdx, e_db, e_bc}};
+                    flippedAny = true;
+                    break;
+                }
+            }
+        }
 
         const int nT = static_cast<int>(mesh.tris.size());
         const int nE = static_cast<int>(mesh.edges.size());
@@ -578,14 +722,43 @@ public:
             if (useCC && node.triType != 0) {
                 node.pt = cc;
                 node.radius = cr;
+                // On skinny or near-right J-triangles, prevent circumcenter from hugging a boundary vertex/edge
+                if (node.triType == 2) {
+                    T la = B.dist(C), lb = C.dist(A), lc = A.dist(B);
+                    T maxE = std::max(la, std::max(lb, lc));
+                    T area2 = std::abs(cross2(A, B, C));
+                    T dMinE = std::min(std::abs(cross2(A, B, cc)) / std::max(T(1e-12), lc),
+                              std::min(std::abs(cross2(B, C, cc)) / std::max(T(1e-12), la),
+                                       std::abs(cross2(C, A, cc)) / std::max(T(1e-12), lb)));
+                    T dMinV = std::min(cc.dist(A), std::min(cc.dist(B), cc.dist(C)));
+                    T centMinE = area2 / std::max(T(1e-12), T(3) * maxE);
+                    if (dMinE < T(0.65) * centMinE || dMinV < T(0.18) * maxE) {
+                        gsPoint2D<T> cent((A.x + B.x + C.x) / T(3), (A.y + B.y + C.y) / T(3));
+                        node.pt = gsPoint2D<T>(T(0.25) * cc.x + T(0.75) * cent.x,
+                                               T(0.25) * cc.y + T(0.75) * cent.y);
+                        node.radius = (node.pt.dist(A) + node.pt.dist(B) + node.pt.dist(C)) / T(3);
+                    }
+                }
             } else if (node.triType == 2 || node.triType == 0) {
-                // J-triangle or T-triangle: incenter is guaranteed strictly inside the triangle
-                // (never on the interior chord midpoint, avoiding 180-deg collinear leaf corners!)
+                // J-triangle or T-triangle: blend incenter with centroid on skinny J-triangles so junctions
+                // never collapse onto a short hole edge (e.g. dist = 1e-3 from boundary!).
                 T la = B.dist(C), lb = C.dist(A), lc = A.dist(B);
                 T perim = std::max(T(1e-12), la + lb + lc);
-                node.pt = gsPoint2D<T>((la * A.x + lb * B.x + lc * C.x) / perim,
-                                       (la * A.y + lb * B.y + lc * C.y) / perim);
-                node.radius = std::abs(cross2(A, B, C)) / perim;
+                gsPoint2D<T> inc((la * A.x + lb * B.x + lc * C.x) / perim,
+                                 (la * A.y + lb * B.y + lc * C.y) / perim);
+                gsPoint2D<T> cent((A.x + B.x + C.x) / T(3), (A.y + B.y + C.y) / T(3));
+                if (node.triType == 2) {
+                    T minE = std::min(la, std::min(lb, lc));
+                    T maxE = std::max(T(1e-12), std::max(la, std::max(lb, lc)));
+                    T wCent = std::max(T(0.40), std::min(T(1.0), (T(0.55) - minE / maxE) / T(0.35)));
+                    node.pt = gsPoint2D<T>((T(1) - wCent) * inc.x + wCent * cent.x,
+                                           (T(1) - wCent) * inc.y + wCent * cent.y);
+                    node.radius = std::max(std::abs(cross2(A, B, C)) / perim,
+                                           (node.pt.dist(A) + node.pt.dist(B) + node.pt.dist(C)) / T(4));
+                } else {
+                    node.pt = inc;
+                    node.radius = std::abs(cross2(A, B, C)) / perim;
+                }
             } else {
                 // S/T-triangle: chordal midpoint (average of interior edge midpoints)
                 gsPoint2D<T> sumM(0, 0);
@@ -1179,15 +1352,41 @@ public:
 
         if (branches.empty()) return false;
 
-        // Smooth interior medial polylines of every branch (4 constrained Laplacian sweeps)
+        // Smooth interior medial polylines of every branch (4 clearance-constrained Laplacian sweeps)
+        // so curved arcs wrapping around convex holes NEVER shrink inward toward a hole wall!
         for (auto& br : branches) {
             if (br.poly.size() < 3) continue;
-            int np = static_cast<int>(br.poly.size());
+            const int np = static_cast<int>(br.poly.size());
+            const int nc = static_cast<int>(br.chords.size());
+            // First pull any wall-hugging circumcenter S-node back toward its chord midpoint
+            for (int i = 1; i < np - 1; ++i) {
+                int ci = std::min(i, nc - 1);
+                const auto& pL = mesh.pts[br.chords[ci].vL];
+                const auto& pR = mesh.pts[br.chords[ci].vR];
+                T chW = pL.dist(pR);
+                gsPoint2D<T> midLR(T(0.5) * (pL.x + pR.x), T(0.5) * (pL.y + pR.y));
+                if (chW > T(1e-12) &&
+                    (br.poly[i].dist(pL) < T(0.28) * chW || br.poly[i].dist(pR) < T(0.28) * chW)) {
+                    if (isPointStrictlyInsideDomain(midLR, mesh.loopPolys, T(1e-5)))
+                        br.poly[i] = midLR;
+                }
+            }
             for (int iter = 0; iter < 4; ++iter) {
                 for (int i = 1; i < np - 1; ++i) {
                     gsPoint2D<T> sm(T(0.5) * br.poly[i].x + T(0.25) * (br.poly[i - 1].x + br.poly[i + 1].x),
                                     T(0.5) * br.poly[i].y + T(0.25) * (br.poly[i - 1].y + br.poly[i + 1].y));
-                    if (isPointStrictlyInsideDomain(sm, mesh.loopPolys, T(1e-5)))
+                    if (!isPointStrictlyInsideDomain(sm, mesh.loopPolys, T(1e-5))) continue;
+                    // Reject any Laplacian step that pulls the medial polyline closer than 0.32 * chW to either wall
+                    bool clearanceOk = true;
+                    for (int ci : {std::max(0, i - 1), std::min(nc - 1, i)}) {
+                        const auto& pL = mesh.pts[br.chords[ci].vL];
+                        const auto& pR = mesh.pts[br.chords[ci].vR];
+                        T chW = pL.dist(pR);
+                        if (chW > T(1e-12) && (sm.dist(pL) < T(0.32) * chW || sm.dist(pR) < T(0.32) * chW)) {
+                            clearanceOk = false; break;
+                        }
+                    }
+                    if (clearanceOk)
                         br.poly[i] = sm;
                 }
             }
@@ -1263,10 +1462,20 @@ public:
                 if (nL <= T(1e-12) || nR <= T(1e-12)) return;
                 T cosA = std::max(T(-1), std::min(T(1), (dL.x * dR.x + dL.y * dR.y) / (nL * nR)));
                 T angDeg = std::acos(cosA) * radToDeg;
+                // Boundary clearance check: never push PL right against a slanted sleeve side wall!
+                T dBnd = pointToLoopsDist(cand, mesh.loopPolys);
+                if (dBnd < T(0.05) * Lc) return;
+                T dMidL = pointToLoopsDist(midL, mesh.loopPolys);
+                T dMidR = pointToLoopsDist(midR, mesh.loopPolys);
+                T clrPen = T(0);
+                if (dBnd < T(0.22) * Lc)
+                    clrPen += T(350) * (T(0.22) - dBnd / Lc);
+                if (std::min(dMidL, dMidR) < T(0.06) * Lc)
+                    clrPen += T(200) * (T(0.06) - std::min(dMidL, dMidR) / Lc);
                 // Smooth objective: target ~120 deg, strongly penalize > 152 deg, never drop all candidates
                 T sc = std::abs(angDeg - T(120)) + (angDeg > T(152) ? T(12) * (angDeg - T(152)) : T(0))
                      + (angDeg < T(75) ? T(4) * (T(75) - angDeg) : T(0))
-                     + (isDeep ? T(3) : T(0));
+                     + clrPen + (isDeep ? T(3) : T(0));
                 if (sc < bestScore) {
                     bestScore = sc;
                     bestAngDeg = angDeg;
@@ -1275,10 +1484,20 @@ public:
                 }
             };
 
-            // Pass 1: candidates along M -> pAdj (including up to 0.80 when pAdj is close to M)
+            // Pass 1: candidates along M -> pAdj and M -> next-chord midpoint (keeps PL centered in slanted sleeves)
             for (T al : {T(0.32), T(0.45), T(0.58), T(0.70), T(0.80), T(0.24), T(0.16)}) {
                 gsPoint2D<T> cand((T(1) - al) * M.x + al * pAdj.x, (T(1) - al) * M.y + al * pAdj.y);
                 evalLeafCand(cand, false);
+            }
+            if (incBrIdx >= 0 && branches[incBrIdx].chords.size() >= 2) {
+                const auto& brI = branches[incBrIdx];
+                const auto& ch1 = leafAtFront ? brI.chords[1] : brI.chords[brI.chords.size() - 2];
+                gsPoint2D<T> mid1(T(0.5) * (mesh.pts[ch1.vL].x + mesh.pts[ch1.vR].x),
+                                  T(0.5) * (mesh.pts[ch1.vL].y + mesh.pts[ch1.vR].y));
+                for (T al : {T(0.35), T(0.55), T(0.75), T(1.0)}) {
+                    gsPoint2D<T> cand((T(1) - al) * M.x + al * mid1.x, (T(1) - al) * M.y + al * mid1.y);
+                    evalLeafCand(cand, false);
+                }
             }
 
             // Pass 2: if sleeve is wide & short (bestAng > 150 deg), search deeper toward pNext or inward chord normal
@@ -1345,6 +1564,7 @@ public:
             gsPoint2D<T> pt;
             int vL, vR;
             int polyIdx;
+            int chordIdx;
         };
 
         auto isSpokeInteriorClear = [&](const gsPoint2D<T>& medPt, const gsPoint2D<T>& bndPt) -> bool {
@@ -1353,6 +1573,48 @@ public:
                 if (!isPointStrictlyInsideDomain(q, mesh.loopPolys, T(1e-6))) return false;
             }
             return true;
+        };
+
+        // Ensure an interior station point at chord (vLi, vRi) stays centered enough that its two spokes
+        // form a healthy separation angle (>= 62 deg, avoiding >165 deg flanking angles on narrow necks!)
+        // and never hugs either boundary endpoint (< 0.25 * chW).
+        auto centerStationPt = [&](const gsPoint2D<T>& rawPt, int vLi, int vRi, gsPoint2D<T>& outPt) -> bool {
+            const auto& pL = mesh.pts[vLi];
+            const auto& pR = mesh.pts[vRi];
+            T chW = pL.dist(pR);
+            gsPoint2D<T> midLR(T(0.5) * (pL.x + pR.x), T(0.5) * (pL.y + pR.y));
+            auto spokeSepDeg = [&](const gsPoint2D<T>& p) -> T {
+                T ux = pL.x - p.x, uy = pL.y - p.y;
+                T vx = pR.x - p.x, vy = pR.y - p.y;
+                T lu = std::hypot(ux, uy), lv = std::hypot(vx, vy);
+                if (lu <= T(1e-12) || lv <= T(1e-12)) return T(0);
+                T cs = std::max(T(-1), std::min(T(1), (ux * vx + uy * vy) / (lu * lv)));
+                return std::acos(cs) * radToDeg;
+            };
+            auto ptValid = [&](const gsPoint2D<T>& p) -> bool {
+                return isPointStrictlyInsideDomain(p, mesh.loopPolys, T(1e-5)) &&
+                       isSpokeInteriorClear(p, pL) && isSpokeInteriorClear(p, pR);
+            };
+            auto ptHealthy = [&](const gsPoint2D<T>& p) -> bool {
+                if (chW <= T(1e-12)) return true;
+                return spokeSepDeg(p) >= T(62.0) &&
+                       p.dist(pL) >= T(0.25) * chW &&
+                       p.dist(pR) >= T(0.25) * chW;
+            };
+            if (ptValid(rawPt) && ptHealthy(rawPt)) {
+                outPt = rawPt;
+                return true;
+            }
+            for (T w : {T(0.35), T(0.55), T(0.75), T(0.90), T(1.0)}) {
+                gsPoint2D<T> cand((T(1) - w) * rawPt.x + w * midLR.x, (T(1) - w) * rawPt.y + w * midLR.y);
+                if (ptValid(cand) && ptHealthy(cand)) {
+                    outPt = cand;
+                    return true;
+                }
+            }
+            if (ptValid(rawPt)) { outPt = rawPt; return true; }
+            if (ptValid(midLR)) { outPt = midLR; return true; }
+            return false;
         };
 
         std::vector<std::vector<Station>> allBranchStations(branches.size());
@@ -1366,12 +1628,14 @@ public:
                 continue;
 
             auto& stations = allBranchStations[bi];
-            stations.push_back({macroNodes[br.uNode].pt, br.chords.front().vL, br.chords.front().vR, 0});
+            stations.push_back({macroNodes[br.uNode].pt, br.chords.front().vL, br.chords.front().vR, 0, 0});
 
             if (nChords >= 3) {
                 const T avgRad = std::max(T(1e-6), T(0.5) * (macroNodes[br.uNode].radius + macroNodes[br.vNode].radius));
                 T accumLen = T(0);
                 T accumTurn = T(0);
+                T accumTurnL = T(0);
+                T accumTurnR = T(0);
                 gsPoint2D<T> prevDir(0, 0);
                 bool hasDir = false;
 
@@ -1393,6 +1657,22 @@ public:
 
                     int vLi = br.chords[ci].vL;
                     int vRi = br.chords[ci].vR;
+                    // Track smooth boundary tangent turns along each advancing CAD arc (using intra-arc
+                    // outgoing -> incoming tangents so sharp corners at endpoints never trigger false turns!)
+                    int prevVL = br.chords[ci - 1].vL;
+                    int prevVR = br.chords[ci - 1].vR;
+                    if (vLi != prevVL) {
+                        const auto& t0 = mesh.bndTanOut[vLi];
+                        const auto& t1 = mesh.bndTanIn[prevVL];
+                        T cs = std::max(T(-1), std::min(T(1), t0.x * t1.x + t0.y * t1.y));
+                        accumTurnL += std::acos(cs) * radToDeg;
+                    }
+                    if (vRi != prevVR) {
+                        const auto& t0 = mesh.bndTanOut[prevVR];
+                        const auto& t1 = mesh.bndTanIn[vRi];
+                        T cs = std::max(T(-1), std::min(T(1), t0.x * t1.x + t0.y * t1.y));
+                        accumTurnR += std::acos(cs) * radToDeg;
+                    }
                     const auto& prevSt = stations.back();
                     const auto& endCh  = br.chords.back();
 
@@ -1424,7 +1704,8 @@ public:
                     else if (vRi == prevSt.vR)
                         reflexFanSplit = checkReflexFan(vRi, vLi, prevSt.vL, endCh.vL);
 
-                    bool wantSplit = hitSharpCorner || reflexFanSplit ||
+                    bool curvedWallSplit = (accumTurnL > T(70.0)) || (accumTurnR > T(70.0));
+                    bool wantSplit = hitSharpCorner || reflexFanSplit || curvedWallSplit ||
                                      (accumTurn > T(65.0)) || (accumLen > T(3.6) * avgRad);
                     int minRem = (hitSharpCorner || reflexFanSplit) ? 1 : 2;
                     if (wantSplit && (nChords - 1 - ci) >= minRem) {
@@ -1433,21 +1714,24 @@ public:
                         bool oneAdvances = (vLi != prevSt.vL || vRi != prevSt.vR) &&
                                            (vLi != endCh.vL  || vRi != endCh.vR);
                         if (bothAdvance || ((hitSharpCorner || reflexFanSplit) && oneAdvances)) {
-                            gsPoint2D<T> candPt = curPt;
-                            if (!isPointStrictlyInsideDomain(candPt, mesh.loopPolys, T(1e-5)) ||
-                                !isSpokeInteriorClear(candPt, mesh.pts[vLi]) ||
-                                !isSpokeInteriorClear(candPt, mesh.pts[vRi]))
-                            {
-                                candPt = gsPoint2D<T>(T(0.5) * (mesh.pts[vLi].x + mesh.pts[vRi].x),
-                                                      T(0.5) * (mesh.pts[vLi].y + mesh.pts[vRi].y));
+                            T chW = mesh.pts[vLi].dist(mesh.pts[vRi]);
+                            bool nonSliverWall = true;
+                            if (!hitSharpCorner && !reflexFanSplit && bothAdvance && chW > T(1e-12)) {
+                                T dLA = mesh.pts[vLi].dist(mesh.pts[prevSt.vL]);
+                                T dRA = mesh.pts[vRi].dist(mesh.pts[prevSt.vR]);
+                                T dLB = mesh.pts[vLi].dist(mesh.pts[endCh.vL]);
+                                T dRB = mesh.pts[vRi].dist(mesh.pts[endCh.vR]);
+                                if (std::min(std::min(dLA, dRA), std::min(dLB, dRB)) < T(0.08) * chW)
+                                    nonSliverWall = false;
                             }
-                            if (isPointStrictlyInsideDomain(candPt, mesh.loopPolys, T(1e-5)) &&
-                                isSpokeInteriorClear(candPt, mesh.pts[vLi]) &&
-                                isSpokeInteriorClear(candPt, mesh.pts[vRi]))
+                            gsPoint2D<T> candPt;
+                            if (nonSliverWall && centerStationPt(curPt, vLi, vRi, candPt))
                             {
-                                stations.push_back({candPt, vLi, vRi, pi});
+                                stations.push_back({candPt, vLi, vRi, pi, ci});
                                 accumLen = T(0);
                                 accumTurn = T(0);
+                                accumTurnL = T(0);
+                                accumTurnR = T(0);
                             }
                         }
                     }
@@ -1455,42 +1739,7 @@ public:
             }
 
             stations.push_back({macroNodes[br.vNode].pt, br.chords.back().vL, br.chords.back().vR,
-                                static_cast<int>(br.poly.size()) - 1});
-        }
-
-        // Pre-register every mesh-vertex spoke (vBnd, P) so all spokes incident to each boundary vertex
-        // are coordinated into a single non-crossing, boundary-cone-safe curved Bezier registry (exact C^0!).
-        std::map<int, std::vector<gsPoint2D<T>>> bndSpokeTargets;
-        auto registerBndSpoke = [&](int vBnd, const gsPoint2D<T>& medPt) {
-            if (vBnd < 0 || static_cast<size_t>(vBnd) >= mesh.pts.size()) return;
-            auto& vec = bndSpokeTargets[vBnd];
-            for (const auto& q : vec)
-                if (q.dist(medPt) < T(1e-8)) return;
-            vec.push_back(medPt);
-        };
-
-        for (const auto& stations : allBranchStations) {
-            for (const auto& st : stations) {
-                registerBndSpoke(st.vL, st.pt);
-                registerBndSpoke(st.vR, st.pt);
-            }
-        }
-        for (size_t mi = 0; mi < macroNodes.size(); ++mi) {
-            const auto& mn = macroNodes[mi];
-            if (mn.tris.empty() || mn.degree != 1) continue;
-            int leafTri = mn.tris[0];
-            int parentTri = -1;
-            for (int nb : triNodes[leafTri].adj)
-                if (triNodes[nb].active) { parentTri = nb; break; }
-            if (parentTri < 0) continue;
-            int vL = -1, vR = -1;
-            if (!getSharedChord(mesh, parentTri, leafTri, vL, vR)) continue;
-            registerBndSpoke(vR, mn.pt);
-            registerBndSpoke(vL, mn.pt);
-            std::vector<int> sharpV;
-            int nIntV = 0;
-            if (analyzeCapArc(vR, vL, sharpV, nIntV) && sharpV.size() >= 3)
-                registerBndSpoke(sharpV[sharpV.size() / 2], mn.pt);
+                                static_cast<int>(br.poly.size()) - 1, nChords - 1});
         }
 
         // Determine loop orientation defensively (outer CCW => domainOnLeft, hole CW => domainOnLeft)
@@ -1541,116 +1790,149 @@ public:
             return makeStraightSeg(B, P, degree);
         };
 
-        // Compute coordinated arrival tangents for every boundary vertex and cache CurveSeg(vBnd -> P)
         const T piVal = T(3.14159265358979323846);
         const T twoPi = T(2) * piVal;
         struct CachedSpoke { gsPoint2D<T> P; CurveSeg<T> seg; };
         std::map<int, std::vector<CachedSpoke>> bndSpokeCache;
 
-        for (const auto& kvPair : bndSpokeTargets) {
-            int vBnd = kvPair.first;
-            const auto& ptsVec = kvPair.second;
-            const int K = static_cast<int>(ptsVec.size());
-            if (K == 0) continue;
-            const gsPoint2D<T>& B = mesh.pts[vBnd];
+        // Rebuild coordinated boundary-spoke cache from current allBranchStations + active leaf caps
+        auto rebuildBndSpokeCache = [&]() {
+            bndSpokeCache.clear();
+            std::map<int, std::vector<gsPoint2D<T>>> bndSpokeTargets;
+            auto registerBndSpoke = [&](int vBnd, const gsPoint2D<T>& medPt) {
+                if (vBnd < 0 || static_cast<size_t>(vBnd) >= mesh.pts.size()) return;
+                auto& vec = bndSpokeTargets[vBnd];
+                for (const auto& q : vec)
+                    if (q.dist(medPt) < T(1e-8)) return;
+                vec.push_back(medPt);
+            };
 
-            // Interior CCW cone [aStart, aStart + dCCW] at vBnd
-            const int lIdx = (static_cast<size_t>(vBnd) < mesh.bndInfo.size()) ? mesh.bndInfo[vBnd].loopIdx : 0;
-            const bool domOnLeft = (lIdx >= 0 && static_cast<size_t>(lIdx) < loopDomainOnLeft.size())
-                                 ? loopDomainOnLeft[lIdx] : true;
-            const gsPoint2D<T>& tOut = mesh.bndTanOut[vBnd];
-            const gsPoint2D<T>& tIn  = mesh.bndTanIn[vBnd];
-            gsPoint2D<T> tBack(-tIn.x, -tIn.y);
-            const gsPoint2D<T>& ray0 = domOnLeft ? tOut : tBack;
-            const gsPoint2D<T>& ray1 = domOnLeft ? tBack : tOut;
-            T aStart = std::atan2(ray0.y, ray0.x);
-            T dCCW   = std::atan2(ray1.y, ray1.x) - aStart;
-            while (dCCW <= T(1e-9)) dCCW += twoPi;
-            while (dCCW > twoPi)    dCCW -= twoPi;
-
-            struct SpokeItem { gsPoint2D<T> P; T rawAng; T len; };
-            std::vector<SpokeItem> items;
-            items.reserve(K);
-            const T midExt = T(0.5) * (dCCW + twoPi);
-            T minSpokeLen = std::numeric_limits<T>::max();
-            for (const auto& P : ptsVec) {
-                T len = B.dist(P);
-                minSpokeLen = std::min(minSpokeLen, len);
-                T ang = std::atan2(P.y - B.y, P.x - B.x) - aStart;
-                while (ang < T(0)) ang += twoPi;
-                while (ang >= twoPi) ang -= twoPi;
-                // Map exterior overshoot smoothly to negative (near ray0) vs > dCCW (near ray1)
-                if (ang > midExt) ang -= twoPi;
-                items.push_back({P, ang, len});
-            }
-            std::sort(items.begin(), items.end(),
-                      [](const SpokeItem& a, const SpokeItem& b) { return a.rawAng < b.rawAng; });
-
-            const T avgGap   = dCCW / T(K + 1);
-            const T wallMin  = std::min(T(0.46), T(0.42) * avgGap);  // >= ~26.4 deg from CAD walls
-            const T spokeMin = std::min(T(0.18), T(0.35) * avgGap);  // >= ~10.3 deg between adjacent spokes
-            const T gMax     = std::max(T(2.54), avgGap + T(0.03));  // <= ~145.5 deg whenever feasible
-
-            bool alreadySafe = true;
-            for (int j = 0; j < K; ++j) {
-                T reqMin = (j == 0) ? wallMin : spokeMin;
-                T gapPrev = (j == 0) ? items[0].rawAng : (items[j].rawAng - items[j - 1].rawAng);
-                if (gapPrev < reqMin || gapPrev > gMax) { alreadySafe = false; break; }
-            }
-            if (alreadySafe && ((dCCW - items.back().rawAng) < wallMin || (dCCW - items.back().rawAng) > gMax))
-                alreadySafe = false;
-
-            std::vector<T> targetAng(K);
-            for (int j = 0; j < K; ++j)
-                targetAng[j] = std::max(wallMin, std::min(dCCW - wallMin, items[j].rawAng));
-
-            if (!alreadySafe) {
-                for (int sweep = 0; sweep < 40; ++sweep) {
-                    for (int j = 0; j < K; ++j) {
-                        T lo = (j == 0) ? wallMin : (targetAng[j - 1] + spokeMin);
-                        T hi = (j == 0) ? gMax    : (targetAng[j - 1] + gMax);
-                        targetAng[j] = std::max(lo, std::min(hi, targetAng[j]));
-                    }
-                    for (int j = K - 1; j >= 0; --j) {
-                        T hi = (j == K - 1) ? (dCCW - wallMin) : (targetAng[j + 1] - spokeMin);
-                        T lo = (j == K - 1) ? (dCCW - gMax)    : (targetAng[j + 1] - gMax);
-                        targetAng[j] = std::max(lo, std::min(hi, targetAng[j]));
-                    }
+            for (const auto& stations : allBranchStations) {
+                for (const auto& st : stations) {
+                    registerBndSpoke(st.vL, st.pt);
+                    registerBndSpoke(st.vR, st.pt);
                 }
-                bool projOk = true;
+            }
+            for (size_t mi = 0; mi < macroNodes.size(); ++mi) {
+                const auto& mn = macroNodes[mi];
+                if (mn.tris.empty() || mn.degree != 1) continue;
+                int leafTri = mn.tris[0];
+                int parentTri = -1;
+                for (int nb : triNodes[leafTri].adj)
+                    if (triNodes[nb].active) { parentTri = nb; break; }
+                if (parentTri < 0) continue;
+                int vL = -1, vR = -1;
+                if (!getSharedChord(mesh, parentTri, leafTri, vL, vR)) continue;
+                registerBndSpoke(vR, mn.pt);
+                registerBndSpoke(vL, mn.pt);
+                std::vector<int> sharpV;
+                int nIntV = 0;
+                if (analyzeCapArc(vR, vL, sharpV, nIntV) && sharpV.size() >= 3)
+                    registerBndSpoke(sharpV[sharpV.size() / 2], mn.pt);
+            }
+
+            for (const auto& kvPair : bndSpokeTargets) {
+                int vBnd = kvPair.first;
+                const auto& ptsVec = kvPair.second;
+                const int K = static_cast<int>(ptsVec.size());
+                if (K == 0) continue;
+                const gsPoint2D<T>& B = mesh.pts[vBnd];
+
+                const int lIdx = (static_cast<size_t>(vBnd) < mesh.bndInfo.size()) ? mesh.bndInfo[vBnd].loopIdx : 0;
+                const bool domOnLeft = (lIdx >= 0 && static_cast<size_t>(lIdx) < loopDomainOnLeft.size())
+                                     ? loopDomainOnLeft[lIdx] : true;
+                const gsPoint2D<T>& tOut = mesh.bndTanOut[vBnd];
+                const gsPoint2D<T>& tIn  = mesh.bndTanIn[vBnd];
+                gsPoint2D<T> tBack(-tIn.x, -tIn.y);
+                const gsPoint2D<T>& ray0 = domOnLeft ? tOut : tBack;
+                const gsPoint2D<T>& ray1 = domOnLeft ? tBack : tOut;
+                T aStart = std::atan2(ray0.y, ray0.x);
+                T dCCW   = std::atan2(ray1.y, ray1.x) - aStart;
+                while (dCCW <= T(1e-9)) dCCW += twoPi;
+                while (dCCW > twoPi)    dCCW -= twoPi;
+
+                struct SpokeItem { gsPoint2D<T> P; T rawAng; T len; };
+                std::vector<SpokeItem> items;
+                items.reserve(K);
+                const T midExt = T(0.5) * (dCCW + twoPi);
+                T minSpokeLen = std::numeric_limits<T>::max();
+                for (const auto& P : ptsVec) {
+                    T len = B.dist(P);
+                    minSpokeLen = std::min(minSpokeLen, len);
+                    T ang = std::atan2(P.y - B.y, P.x - B.x) - aStart;
+                    while (ang < T(0)) ang += twoPi;
+                    while (ang >= twoPi) ang -= twoPi;
+                    if (ang > midExt) ang -= twoPi;
+                    items.push_back({P, ang, len});
+                }
+                std::sort(items.begin(), items.end(),
+                          [](const SpokeItem& a, const SpokeItem& b) { return a.rawAng < b.rawAng; });
+
+                const T avgGap   = dCCW / T(K + 1);
+                const T wallMin  = std::min(T(0.46), T(0.42) * avgGap);
+                const T spokeMin = std::min(T(0.18), T(0.35) * avgGap);
+                const T gMax     = std::max(T(2.54), avgGap + T(0.03));
+
+                bool alreadySafe = true;
                 for (int j = 0; j < K; ++j) {
                     T reqMin = (j == 0) ? wallMin : spokeMin;
-                    T gp = (j == 0) ? targetAng[0] : (targetAng[j] - targetAng[j - 1]);
-                    if (gp < reqMin - T(1e-3) || gp > gMax + T(1e-3)) projOk = false;
+                    T gapPrev = (j == 0) ? items[0].rawAng : (items[j].rawAng - items[j - 1].rawAng);
+                    if (gapPrev < reqMin || gapPrev > gMax) { alreadySafe = false; break; }
                 }
-                if ((dCCW - targetAng.back()) < wallMin - T(1e-3) || (dCCW - targetAng.back()) > gMax + T(1e-3))
-                    projOk = false;
-                if (!projOk) {
-                    for (int j = 0; j < K; ++j)
-                        targetAng[j] = avgGap * T(j + 1);
-                }
-            }
+                if (alreadySafe && ((dCCW - items.back().rawAng) < wallMin || (dCCW - items.back().rawAng) > gMax))
+                    alreadySafe = false;
 
-            auto& cacheVec = bndSpokeCache[vBnd];
-            cacheVec.reserve(K);
-            for (int j = 0; j < K; ++j) {
-                T diffAng = std::abs(targetAng[j] - items[j].rawAng);
-                CurveSeg<T> seg;
-                if (diffAng <= T(0.02)) {
-                    seg = makeStraightSeg(B, items[j].P, degree);
-                } else {
-                    T absA = aStart + targetAng[j];
-                    gsPoint2D<T> tB(std::cos(absA), std::sin(absA));
-                    // Cap handle length by 0.35 * minSpokeLen so a long curved spoke never sweeps past a short neighbor spoke
-                    T maxT1Abs = (K == 1) ? (T(0.22) * items[j].len)
-                                          : std::min(T(0.16) * items[j].len, T(0.35) * minSpokeLen);
-                    const gsPoint2D<T>* prevP = (j > 0) ? &items[j - 1].P : nullptr;
-                    const gsPoint2D<T>* nextP = (j + 1 < K) ? &items[j + 1].P : nullptr;
-                    seg = buildCurvedSpokeBndToMed(B, items[j].P, tB, maxT1Abs, prevP, nextP);
+                std::vector<T> targetAng(K);
+                for (int j = 0; j < K; ++j)
+                    targetAng[j] = std::max(wallMin, std::min(dCCW - wallMin, items[j].rawAng));
+
+                if (!alreadySafe) {
+                    for (int sweep = 0; sweep < 40; ++sweep) {
+                        for (int j = 0; j < K; ++j) {
+                            T lo = (j == 0) ? wallMin : (targetAng[j - 1] + spokeMin);
+                            T hi = (j == 0) ? gMax    : (targetAng[j - 1] + gMax);
+                            targetAng[j] = std::max(lo, std::min(hi, targetAng[j]));
+                        }
+                        for (int j = K - 1; j >= 0; --j) {
+                            T hi = (j == K - 1) ? (dCCW - wallMin) : (targetAng[j + 1] - spokeMin);
+                            T lo = (j == K - 1) ? (dCCW - gMax)    : (targetAng[j + 1] - gMax);
+                            targetAng[j] = std::max(lo, std::min(hi, targetAng[j]));
+                        }
+                    }
+                    bool projOk = true;
+                    for (int j = 0; j < K; ++j) {
+                        T reqMin = (j == 0) ? wallMin : spokeMin;
+                        T gp = (j == 0) ? targetAng[0] : (targetAng[j] - targetAng[j - 1]);
+                        if (gp < reqMin - T(1e-3) || gp > gMax + T(1e-3)) projOk = false;
+                    }
+                    if ((dCCW - targetAng.back()) < wallMin - T(1e-3) || (dCCW - targetAng.back()) > gMax + T(1e-3))
+                        projOk = false;
+                    if (!projOk) {
+                        for (int j = 0; j < K; ++j)
+                            targetAng[j] = avgGap * T(j + 1);
+                    }
                 }
-                cacheVec.push_back({items[j].P, seg});
+
+                auto& cacheVec = bndSpokeCache[vBnd];
+                cacheVec.reserve(K);
+                for (int j = 0; j < K; ++j) {
+                    T diffAng = std::abs(targetAng[j] - items[j].rawAng);
+                    CurveSeg<T> seg;
+                    if (diffAng <= T(0.02)) {
+                        seg = makeStraightSeg(B, items[j].P, degree);
+                    } else {
+                        T absA = aStart + targetAng[j];
+                        gsPoint2D<T> tB(std::cos(absA), std::sin(absA));
+                        T maxT1Abs = (K == 1) ? (T(0.22) * items[j].len)
+                                              : std::min(T(0.16) * items[j].len, T(0.35) * minSpokeLen);
+                        const gsPoint2D<T>* prevP = (j > 0) ? &items[j - 1].P : nullptr;
+                        const gsPoint2D<T>* nextP = (j + 1 < K) ? &items[j + 1].P : nullptr;
+                        seg = buildCurvedSpokeBndToMed(B, items[j].P, tB, maxT1Abs, prevP, nextP);
+                    }
+                    cacheVec.push_back({items[j].P, seg});
+                }
             }
-        }
+        };
 
         auto getSpokeBndToMed = [&](int vBnd, const gsPoint2D<T>& medPt) -> CurveSeg<T> {
             auto it = bndSpokeCache.find(vBnd);
@@ -1742,129 +2024,239 @@ public:
             }
 
             // Case 2: Left wall pinned at reflex/pivot vertex R = pLa (vLa == vLb), Right wall advances (vRa -> vRb)
-            // -> 3-Quad Medial Y-Split: keeps medial spine Pa -> Pm -> Pb strictly separating left and right spokes
-            //    at Pa and Pb (never putting pLa -> Pa -> pRa in the same quad!), with Pm optimized so
-            //    all 3 quads (Left: Pa->Pm->Pb->R, Right1: Pa->vRa->MR->Pm, Right2: Pm->MR->vRb->Pb) have valid angles!
+            // -> 3-Quad Medial Y-Split: checks positive CCW orientation of ALL 3 quads across multiple uSplit & Pm
+            //    candidates, and only curves med1/med2 when verified det > 0 and strictly better corner angles!
             if (vLa == vLb && vRa != vRb) {
                 CurveSeg<T> bndR = extractExactCADBoundaryBetween(mesh, vRa, vRb, degree, true);
                 gsPoint2D<T> Mab(T(0.5) * (Pa.x + Pb.x), T(0.5) * (Pa.y + Pb.y));
-                T uSplit = std::max(T(0.25), std::min(T(0.75), bndR.closestParam(Mab)));
-                auto spR = bndR.splitAtParam(uSplit);
-                gsPoint2D<T> MR = spR.first.p1();
+                T uClose = std::max(T(0.25), std::min(T(0.75), bndR.closestParam(Mab)));
 
                 CurveSeg<T> spPa_Ra = getSpokeMedToBnd(Pa, vRa);
                 CurveSeg<T> spRb_Pb = getSpokeBndToMed(vRb, Pb);
                 CurveSeg<T> spPb_R  = getSpokeMedToBnd(Pb, vLa);
                 CurveSeg<T> spR_Pa  = getSpokeBndToMed(vLa, Pa);
 
-                gsPoint2D<T> Pm(Mab.x + T(0.28) * (Mab.x - pLa.x), Mab.y + T(0.28) * (Mab.y - pLa.y));
+                T bestUSplit = uClose;
+                auto bestSpR = bndR.splitAtParam(uClose);
+                gsPoint2D<T> bestMR = bestSpR.first.p1();
+                gsPoint2D<T> Pm(T(0.7) * Mab.x + T(0.3) * bestMR.x, T(0.7) * Mab.y + T(0.3) * bestMR.y);
                 T bestEff = -T(1e9);
-                std::vector<gsPoint2D<T>> pmCands;
-                // Median-ray extension from R=pLa through Mab: mathematically guaranteed inside cone (R->Pa, R->Pb)!
-                for (T gam : {T(0.25), T(0.38), T(0.52), T(0.68), T(0.85), T(0.16), T(0.10)})
-                    pmCands.emplace_back(Mab.x + gam * (Mab.x - pLa.x), Mab.y + gam * (Mab.y - pLa.y));
-                for (T beta : {T(0.28), T(0.18), T(0.38), T(0.52), T(0.64)}) {
-                    for (T sShift : {T(0.0), T(-0.16), T(0.16)}) {
-                        gsPoint2D<T> base((T(1) - std::abs(sShift)) * Mab.x + std::abs(sShift) * (sShift > 0 ? Pb.x : Pa.x),
-                                          (T(1) - std::abs(sShift)) * Mab.y + std::abs(sShift) * (sShift > 0 ? Pb.y : Pa.y));
-                        pmCands.emplace_back((T(1) - beta) * base.x + beta * MR.x, (T(1) - beta) * base.y + beta * MR.y);
+
+                const T uTry[4] = {uClose, T(0.50), T(0.35), T(0.65)};
+                for (int ui = 0; ui < 4; ++ui) {
+                    T uS = uTry[ui];
+                    if (ui > 0 && std::abs(uS - uClose) < T(0.06)) continue;
+                    auto spR = bndR.splitAtParam(uS);
+                    gsPoint2D<T> MR = spR.first.p1();
+
+                    std::vector<gsPoint2D<T>> pmCands;
+                    for (T gam : {T(0.06), T(0.14), T(0.24), T(0.36), T(0.50)})
+                        pmCands.emplace_back(Mab.x + gam * (Mab.x - pLa.x), Mab.y + gam * (Mab.y - pLa.y));
+                    for (T beta : {T(0.12), T(0.24), T(0.36), T(0.50), T(0.64)}) {
+                        for (T sShift : {T(0.0), T(-0.18), T(0.18)}) {
+                            gsPoint2D<T> base((T(1) - std::abs(sShift)) * Mab.x + std::abs(sShift) * (sShift > 0 ? Pb.x : Pa.x),
+                                              (T(1) - std::abs(sShift)) * Mab.y + std::abs(sShift) * (sShift > 0 ? Pb.y : Pa.y));
+                            pmCands.emplace_back((T(1) - beta) * base.x + beta * MR.x, (T(1) - beta) * base.y + beta * MR.y);
+                        }
+                    }
+                    // Also include interior centroids of (Pa, pRa, MR, Pb, pRb)
+                    gsPoint2D<T> triCtr((Pa.x + Pb.x + MR.x) / T(3), (Pa.y + Pb.y + MR.y) / T(3));
+                    pmCands.push_back(triCtr);
+
+                    for (const auto& cand : pmCands) {
+                        if (!isPointStrictlyInsideDomain(cand, mesh.loopPolys, T(1e-6)) ||
+                            !isSpokeInteriorClear(cand, MR) ||
+                            !isSpokeInteriorClear(cand, Pa) ||
+                            !isSpokeInteriorClear(cand, Pb))
+                            continue;
+                        // Left Quad (Pa -> cand -> Pb -> R) strictly CCW
+                        if (cross2(Pa, cand, Pb) <= T(1e-8) ||
+                            cross2(cand, Pb, pLa) <= T(1e-8) ||
+                            cross2(pLa, Pa, cand) <= T(1e-8))
+                            continue;
+                        // Right Quad 1 (Pa -> pRa -> MR -> cand) & Right Quad 2 (cand -> MR -> pRb -> Pb) strictly positive CCW
+                        if (cross2(Pa, pRa, MR) + cross2(Pa, MR, cand) <= T(1e-8) ||
+                            cross2(Pa, MR, cand) <= T(1e-8) ||
+                            cross2(cand, MR, pRb) + cross2(cand, pRb, Pb) <= T(1e-8) ||
+                            cross2(cand, MR, Pb) <= T(1e-8))
+                            continue;
+
+                        CurveSeg<T> m1 = makeStraightSeg(Pa, cand, degree);
+                        CurveSeg<T> m2 = makeStraightSeg(cand, Pb, degree);
+                        CurveSeg<T> sM = makeMidCurveSpokeMedToBnd(cand, bndR, uS);
+                        T mn0, mx0, ef0, mn1, mx1, ef1, mn2, mx2, ef2;
+                        eval4SegCornerAnglesDeg(m1, m2, spPb_R, spR_Pa, mn0, mx0, ef0);
+                        eval4SegCornerAnglesDeg(spPa_Ra, spR.first, sM.reversed(), m1.reversed(), mn1, mx1, ef1);
+                        eval4SegCornerAnglesDeg(sM, spR.second, spRb_Pb, m2.reversed(), mn2, mx2, ef2);
+                        T eff = std::min(ef0, std::min(ef1, ef2));
+                        if (eff > bestEff) {
+                            bestEff = eff;
+                            Pm = cand;
+                            bestUSplit = uS;
+                            bestSpR = spR;
+                            bestMR = MR;
+                        }
                     }
                 }
-                for (const auto& cand : pmCands) {
-                    gsPoint2D<T> mMR(T(0.5) * (cand.x + MR.x), T(0.5) * (cand.y + MR.y));
-                    if (!isPointStrictlyInsideDomain(cand, mesh.loopPolys, T(1e-6)) ||
-                        !isPointStrictlyInsideDomain(mMR, mesh.loopPolys, T(1e-6)))
-                        continue;
-                    if (cross2(Pa, cand, Pb) <= T(1e-8) ||
-                        cross2(cand, Pb, pLa) <= T(1e-8) ||
-                        cross2(pLa, Pa, cand) <= T(1e-8))
-                        continue;
-                    CurveSeg<T> m1 = makeStraightSeg(Pa, cand, degree);
-                    CurveSeg<T> m2 = makeStraightSeg(cand, Pb, degree);
-                    CurveSeg<T> sM = makeMidCurveSpokeMedToBnd(cand, bndR, uSplit);
+
+                debugSpokes.push_back({Pm, bestMR});
+                CurveSeg<T> spPm_MR = makeMidCurveSpokeMedToBnd(Pm, bndR, bestUSplit);
+                CurveSeg<T> med1 = makeStraightSeg(Pa, Pm, degree);
+                CurveSeg<T> med2 = makeStraightSeg(Pm, Pb, degree);
+
+                // Only try gentle cone-safe curving of med1/med2 when straight angles are tight (< 22 deg margin),
+                // and adopt ONLY if all 3 trial patches stay det > 0 and strictly improve the worst corner margin!
+                if (bestEff < T(22.0)) {
+                    std::vector<gsPoint2D<T>> poly1 = {Pa, Pm}, poly2 = {Pm, Pb};
+                    CurveSeg<T> cMed1 = fitMedialCurveConeSafe(
+                        poly1, degree, mesh.loopPolys, spPb_R, bestSpR.first, spR_Pa, spPa_Ra, med2, spPm_MR.reversed());
+                    CurveSeg<T> cMed2 = fitMedialCurveConeSafe(
+                        poly2, degree, mesh.loopPolys, spR_Pa, bestSpR.second, cMed1, spPm_MR, spPb_R, spRb_Pb);
                     T mn0, mx0, ef0, mn1, mx1, ef1, mn2, mx2, ef2;
-                    eval4SegCornerAnglesDeg(m1, m2, spPb_R, spR_Pa, mn0, mx0, ef0);
-                    eval4SegCornerAnglesDeg(spPa_Ra, spR.first, sM.reversed(), m1.reversed(), mn1, mx1, ef1);
-                    eval4SegCornerAnglesDeg(sM, spR.second, spRb_Pb, m2.reversed(), mn2, mx2, ef2);
-                    T eff = std::min(ef0, std::min(ef1, ef2));
-                    if (eff > bestEff) { bestEff = eff; Pm = cand; }
+                    eval4SegCornerAnglesDeg(cMed1, cMed2, spPb_R, spR_Pa, mn0, mx0, ef0);
+                    eval4SegCornerAnglesDeg(spPa_Ra, bestSpR.first, spPm_MR.reversed(), cMed1.reversed(), mn1, mx1, ef1);
+                    eval4SegCornerAnglesDeg(spPm_MR, bestSpR.second, spRb_Pb, cMed2.reversed(), mn2, mx2, ef2);
+                    T cEff = std::min(ef0, std::min(ef1, ef2));
+                    if (cEff > bestEff + T(1.0)) {
+                        std::unique_ptr<gsTensorBSpline<2, T>> t0(makeCoonsFromCCWCycle(cMed1, cMed2, spPb_R, spR_Pa, degree));
+                        std::unique_ptr<gsTensorBSpline<2, T>> t1(makeCoonsFromCCWCycle(spPa_Ra, bestSpR.first, spPm_MR.reversed(), cMed1.reversed(), degree));
+                        std::unique_ptr<gsTensorBSpline<2, T>> t2(makeCoonsFromCCWCycle(spPm_MR, bestSpR.second, spRb_Pb, cMed2.reversed(), degree));
+                        if (t0 && t1 && t2) {
+                            if (evalPatchMinDetDense(*t0, 25) <= T(1e-7)) quickHarmonicPatchRepair(*t0, T(1e-7));
+                            if (evalPatchMinDetDense(*t1, 25) <= T(1e-7)) quickHarmonicPatchRepair(*t1, T(1e-7));
+                            if (evalPatchMinDetDense(*t2, 25) <= T(1e-7)) quickHarmonicPatchRepair(*t2, T(1e-7));
+                            if (evalPatchMinDetDense(*t0, 25) > T(1e-7) &&
+                                evalPatchMinDetDense(*t1, 25) > T(1e-7) &&
+                                evalPatchMinDetDense(*t2, 25) > T(1e-7)) {
+                                med1 = cMed1;
+                                med2 = cMed2;
+                            }
+                        }
+                    }
                 }
-                debugSpokes.push_back({Pm, MR});
-                CurveSeg<T> spPm_MR = makeMidCurveSpokeMedToBnd(Pm, bndR, uSplit);
-                std::vector<gsPoint2D<T>> poly1 = {Pa, Pm}, poly2 = {Pm, Pb};
-                CurveSeg<T> med1 = fitMedialCurveConeSafe(
-                    poly1, degree, mesh.loopPolys, spPb_R, spR.first, spR_Pa, spPa_Ra, makeStraightSeg(Pm, Pb, degree), spPm_MR.reversed());
-                CurveSeg<T> med2 = fitMedialCurveConeSafe(
-                    poly2, degree, mesh.loopPolys, spR_Pa, spR.second, med1, spPm_MR, spPb_R, spRb_Pb);
 
                 // Left Quad (CCW):   Pa -> Pm -> Pb -> R
                 // Right Quad 1 (CCW): Pa -> vRa -> MR -> Pm
                 // Right Quad 2 (CCW): Pm -> MR -> vRb -> Pb
                 return pushQuad(med1, med2, spPb_R, spR_Pa) &&
-                       pushQuad(spPa_Ra, spR.first, spPm_MR.reversed(), med1.reversed()) &&
-                       pushQuad(spPm_MR, spR.second, spRb_Pb, med2.reversed());
+                       pushQuad(spPa_Ra, bestSpR.first, spPm_MR.reversed(), med1.reversed()) &&
+                       pushQuad(spPm_MR, bestSpR.second, spRb_Pb, med2.reversed());
             }
 
             // Case 3: Right wall pinned at reflex/pivot vertex R = pRa (vRa == vRb), Left wall advances (vLb -> vLa)
-            // -> Symmetric 3-Quad Medial Y-Split with Pm along median ray from R=pRa through Mab / toward ML!
+            // -> Symmetric 3-Quad Medial Y-Split checking positive CCW orientation of ALL 3 quads!
             if (vRa == vRb && vLa != vLb) {
                 CurveSeg<T> bndL = extractExactCADBoundaryBetween(mesh, vLb, vLa, degree, true);
                 gsPoint2D<T> Mab(T(0.5) * (Pa.x + Pb.x), T(0.5) * (Pa.y + Pb.y));
-                T uSplit = std::max(T(0.25), std::min(T(0.75), bndL.closestParam(Mab)));
-                auto spL = bndL.splitAtParam(uSplit);
-                gsPoint2D<T> ML = spL.first.p1();
+                T uClose = std::max(T(0.25), std::min(T(0.75), bndL.closestParam(Mab)));
 
                 CurveSeg<T> spPa_R  = getSpokeMedToBnd(Pa, vRa);
                 CurveSeg<T> spR_Pb  = getSpokeBndToMed(vRa, Pb);
                 CurveSeg<T> spPb_Lb = getSpokeMedToBnd(Pb, vLb);
                 CurveSeg<T> spLa_Pa = getSpokeBndToMed(vLa, Pa);
 
-                gsPoint2D<T> Pm(Mab.x + T(0.28) * (Mab.x - pRa.x), Mab.y + T(0.28) * (Mab.y - pRa.y));
+                T bestUSplit = uClose;
+                auto bestSpL = bndL.splitAtParam(uClose);
+                gsPoint2D<T> bestML = bestSpL.first.p1();
+                gsPoint2D<T> Pm(T(0.7) * Mab.x + T(0.3) * bestML.x, T(0.7) * Mab.y + T(0.3) * bestML.y);
                 T bestEff = -T(1e9);
-                std::vector<gsPoint2D<T>> pmCands;
-                for (T gam : {T(0.25), T(0.38), T(0.52), T(0.68), T(0.85), T(0.16), T(0.10)})
-                    pmCands.emplace_back(Mab.x + gam * (Mab.x - pRa.x), Mab.y + gam * (Mab.y - pRa.y));
-                for (T beta : {T(0.28), T(0.18), T(0.38), T(0.52), T(0.64)}) {
-                    for (T sShift : {T(0.0), T(-0.16), T(0.16)}) {
-                        gsPoint2D<T> base((T(1) - std::abs(sShift)) * Mab.x + std::abs(sShift) * (sShift > 0 ? Pb.x : Pa.x),
-                                          (T(1) - std::abs(sShift)) * Mab.y + std::abs(sShift) * (sShift > 0 ? Pb.y : Pa.y));
-                        pmCands.emplace_back((T(1) - beta) * base.x + beta * ML.x, (T(1) - beta) * base.y + beta * ML.y);
+
+                const T uTry[4] = {uClose, T(0.50), T(0.35), T(0.65)};
+                for (int ui = 0; ui < 4; ++ui) {
+                    T uS = uTry[ui];
+                    if (ui > 0 && std::abs(uS - uClose) < T(0.06)) continue;
+                    auto spL = bndL.splitAtParam(uS);
+                    gsPoint2D<T> ML = spL.first.p1();
+
+                    std::vector<gsPoint2D<T>> pmCands;
+                    for (T gam : {T(0.06), T(0.14), T(0.24), T(0.36), T(0.50)})
+                        pmCands.emplace_back(Mab.x + gam * (Mab.x - pRa.x), Mab.y + gam * (Mab.y - pRa.y));
+                    for (T beta : {T(0.12), T(0.24), T(0.36), T(0.50), T(0.64)}) {
+                        for (T sShift : {T(0.0), T(-0.18), T(0.18)}) {
+                            gsPoint2D<T> base((T(1) - std::abs(sShift)) * Mab.x + std::abs(sShift) * (sShift > 0 ? Pb.x : Pa.x),
+                                              (T(1) - std::abs(sShift)) * Mab.y + std::abs(sShift) * (sShift > 0 ? Pb.y : Pa.y));
+                            pmCands.emplace_back((T(1) - beta) * base.x + beta * ML.x, (T(1) - beta) * base.y + beta * ML.y);
+                        }
+                    }
+                    gsPoint2D<T> triCtr((Pa.x + Pb.x + ML.x) / T(3), (Pa.y + Pb.y + ML.y) / T(3));
+                    pmCands.push_back(triCtr);
+
+                    for (const auto& cand : pmCands) {
+                        if (!isPointStrictlyInsideDomain(cand, mesh.loopPolys, T(1e-6)) ||
+                            !isSpokeInteriorClear(cand, ML) ||
+                            !isSpokeInteriorClear(cand, Pa) ||
+                            !isSpokeInteriorClear(cand, Pb))
+                            continue;
+                        // Right Quad (Pa -> R -> Pb -> cand) strictly CCW
+                        if (cross2(Pb, cand, Pa) <= T(1e-8) ||
+                            cross2(cand, Pa, pRa) <= T(1e-8) ||
+                            cross2(pRa, Pb, cand) <= T(1e-8))
+                            continue;
+                        // Left Quad 1 (Pa -> cand -> ML -> pLa) & Left Quad 2 (cand -> Pb -> pLb -> ML) strictly positive CCW
+                        if (cross2(Pa, cand, ML) + cross2(Pa, ML, pLa) <= T(1e-8) ||
+                            cross2(Pa, cand, ML) <= T(1e-8) ||
+                            cross2(cand, Pb, pLb) + cross2(cand, pLb, ML) <= T(1e-8) ||
+                            cross2(cand, Pb, ML) <= T(1e-8))
+                            continue;
+
+                        CurveSeg<T> m1 = makeStraightSeg(Pa, cand, degree);
+                        CurveSeg<T> m2 = makeStraightSeg(cand, Pb, degree);
+                        CurveSeg<T> sM = makeMidCurveSpokeMedToBnd(cand, bndL, uS);
+                        T mn0, mx0, ef0, mn1, mx1, ef1, mn2, mx2, ef2;
+                        eval4SegCornerAnglesDeg(spPa_R, spR_Pb, m2.reversed(), m1.reversed(), mn0, mx0, ef0);
+                        eval4SegCornerAnglesDeg(m1, sM, spL.second, spLa_Pa, mn1, mx1, ef1);
+                        eval4SegCornerAnglesDeg(m2, spPb_Lb, spL.first, sM.reversed(), mn2, mx2, ef2);
+                        T eff = std::min(ef0, std::min(ef1, ef2));
+                        if (eff > bestEff) {
+                            bestEff = eff;
+                            Pm = cand;
+                            bestUSplit = uS;
+                            bestSpL = spL;
+                            bestML = ML;
+                        }
                     }
                 }
-                for (const auto& cand : pmCands) {
-                    gsPoint2D<T> mML(T(0.5) * (cand.x + ML.x), T(0.5) * (cand.y + ML.y));
-                    if (!isPointStrictlyInsideDomain(cand, mesh.loopPolys, T(1e-6)) ||
-                        !isPointStrictlyInsideDomain(mML, mesh.loopPolys, T(1e-6)))
-                        continue;
-                    if (cross2(Pb, cand, Pa) <= T(1e-8) ||
-                        cross2(cand, Pa, pRa) <= T(1e-8) ||
-                        cross2(pRa, Pb, cand) <= T(1e-8))
-                        continue;
-                    CurveSeg<T> m1 = makeStraightSeg(Pa, cand, degree);
-                    CurveSeg<T> m2 = makeStraightSeg(cand, Pb, degree);
-                    CurveSeg<T> sM = makeMidCurveSpokeMedToBnd(cand, bndL, uSplit);
+
+                debugSpokes.push_back({Pm, bestML});
+                CurveSeg<T> spPm_ML = makeMidCurveSpokeMedToBnd(Pm, bndL, bestUSplit);
+                CurveSeg<T> med1 = makeStraightSeg(Pa, Pm, degree);
+                CurveSeg<T> med2 = makeStraightSeg(Pm, Pb, degree);
+
+                if (bestEff < T(22.0)) {
+                    std::vector<gsPoint2D<T>> poly1 = {Pa, Pm}, poly2 = {Pm, Pb};
+                    CurveSeg<T> cMed1 = fitMedialCurveConeSafe(
+                        poly1, degree, mesh.loopPolys, bestSpL.second, spR_Pb, spLa_Pa, spPa_R, spPm_ML, med2.reversed());
+                    CurveSeg<T> cMed2 = fitMedialCurveConeSafe(
+                        poly2, degree, mesh.loopPolys, bestSpL.first, spPa_R, spPm_ML.reversed(), cMed1.reversed(), spPb_Lb, spR_Pb);
                     T mn0, mx0, ef0, mn1, mx1, ef1, mn2, mx2, ef2;
-                    eval4SegCornerAnglesDeg(spPa_R, spR_Pb, m2.reversed(), m1.reversed(), mn0, mx0, ef0);
-                    eval4SegCornerAnglesDeg(m1, sM, spL.second, spLa_Pa, mn1, mx1, ef1);
-                    eval4SegCornerAnglesDeg(m2, spPb_Lb, spL.first, sM.reversed(), mn2, mx2, ef2);
-                    T eff = std::min(ef0, std::min(ef1, ef2));
-                    if (eff > bestEff) { bestEff = eff; Pm = cand; }
+                    eval4SegCornerAnglesDeg(spPa_R, spR_Pb, cMed2.reversed(), cMed1.reversed(), mn0, mx0, ef0);
+                    eval4SegCornerAnglesDeg(cMed1, spPm_ML, bestSpL.second, spLa_Pa, mn1, mx1, ef1);
+                    eval4SegCornerAnglesDeg(cMed2, spPb_Lb, bestSpL.first, spPm_ML.reversed(), mn2, mx2, ef2);
+                    T cEff = std::min(ef0, std::min(ef1, ef2));
+                    if (cEff > bestEff + T(1.0)) {
+                        std::unique_ptr<gsTensorBSpline<2, T>> t0(makeCoonsFromCCWCycle(spPa_R, spR_Pb, cMed2.reversed(), cMed1.reversed(), degree));
+                        std::unique_ptr<gsTensorBSpline<2, T>> t1(makeCoonsFromCCWCycle(cMed1, spPm_ML, bestSpL.second, spLa_Pa, degree));
+                        std::unique_ptr<gsTensorBSpline<2, T>> t2(makeCoonsFromCCWCycle(cMed2, spPb_Lb, bestSpL.first, spPm_ML.reversed(), degree));
+                        if (t0 && t1 && t2) {
+                            if (evalPatchMinDetDense(*t0, 25) <= T(1e-7)) quickHarmonicPatchRepair(*t0, T(1e-7));
+                            if (evalPatchMinDetDense(*t1, 25) <= T(1e-7)) quickHarmonicPatchRepair(*t1, T(1e-7));
+                            if (evalPatchMinDetDense(*t2, 25) <= T(1e-7)) quickHarmonicPatchRepair(*t2, T(1e-7));
+                            if (evalPatchMinDetDense(*t0, 25) > T(1e-7) &&
+                                evalPatchMinDetDense(*t1, 25) > T(1e-7) &&
+                                evalPatchMinDetDense(*t2, 25) > T(1e-7)) {
+                                med1 = cMed1;
+                                med2 = cMed2;
+                            }
+                        }
+                    }
                 }
-                debugSpokes.push_back({Pm, ML});
-                CurveSeg<T> spPm_ML = makeMidCurveSpokeMedToBnd(Pm, bndL, uSplit);
-                // Note: for Case 3, med1 runs Pa -> Pm with Left Quad 1 on left and Right Quad on right
-                std::vector<gsPoint2D<T>> poly1 = {Pa, Pm}, poly2 = {Pm, Pb};
-                CurveSeg<T> med1 = fitMedialCurveConeSafe(
-                    poly1, degree, mesh.loopPolys, spL.second, spR_Pb, spLa_Pa, spPa_R, spPm_ML, makeStraightSeg(Pb, Pm, degree));
-                CurveSeg<T> med2 = fitMedialCurveConeSafe(
-                    poly2, degree, mesh.loopPolys, spL.first, spPa_R, spPm_ML.reversed(), med1.reversed(), spPb_Lb, spR_Pb);
 
                 // Right Quad (CCW):  Pa -> R -> Pb -> Pm
                 // Left Quad 1 (CCW): Pa -> Pm -> ML -> vLa
                 // Left Quad 2 (CCW): Pm -> Pb -> vLb -> ML
                 return pushQuad(spPa_R, spR_Pb, med2.reversed(), med1.reversed()) &&
-                       pushQuad(med1, spPm_ML, spL.second, spLa_Pa) &&
-                       pushQuad(med2, spPb_Lb, spL.first, spPm_ML.reversed());
+                       pushQuad(med1, spPm_ML, bestSpL.second, spLa_Pa) &&
+                       pushQuad(med2, spPb_Lb, bestSpL.first, spPm_ML.reversed());
             }
 
             // Case 4: Standard branch segment (both walls advance: vLa != vLb and vRa != vRb)
@@ -1886,23 +2278,105 @@ public:
                    pushQuad(spPa_Ra, bndR, spRb_Pb, med.reversed());
         };
 
-        // Emit all MacroBranches using pre-computed stations & boundary-cone-safe curved spokes
-        for (size_t bi = 0; bi < branches.size() && !emitFailed; ++bi) {
-            const auto& br = branches[bi];
-            const auto& stations = allBranchStations[bi];
-            for (size_t si = 0; si + 1 < stations.size(); ++si) {
-                const auto& stA = stations[si];
-                const auto& stB = stations[si + 1];
-                std::vector<gsPoint2D<T>> subPoly;
-                subPoly.push_back(stA.pt);
-                for (int pi = stA.polyIdx + 1; pi < stB.polyIdx && pi < static_cast<int>(br.poly.size()); ++pi)
-                    subPoly.push_back(br.poly[pi]);
-                subPoly.push_back(stB.pt);
-
-                if (!emitBranchSegment(stA.pt, stA.vL, stA.vR, stB.pt, stB.vL, stB.vR, subPoly)) {
-                    emitFailed = true;
-                    break;
+        // Emit all MacroBranches with up to 2 adaptive bisection passes:
+        // If any single curved/swirled branch segment produces a folded, self-intersecting, or >163.5 deg quad,
+        // bisect ONLY that segment at its best interior CDT chord, rebuild coordinated spokes, and re-emit!
+        auto isQuadSegmentBad = [](const gsTensorBSpline<2, T>& patch) -> bool {
+            if (evalPatchMinDetDense(patch, 49) <= T(1e-8)) return true;
+            T angs[4], mnA = 0, mxA = 180;
+            bool degen = false;
+            evalPatchCornerAnglesDeg(patch, angs, mnA, mxA, degen);
+            if (degen || mnA < T(5.0) || mxA > T(163.5)) return true;
+            auto poly = samplePatchBoundaryPoly(patch, 16);
+            int m = static_cast<int>(poly.size());
+            for (int i = 0; i < m; ++i) {
+                for (int j = i + 2; j < m; ++j) {
+                    if (i == 0 && j == m - 1) continue;
+                    if (segProperIntersect(poly[i], poly[(i + 1) % m], poly[j], poly[(j + 1) % m]))
+                        return true;
                 }
+            }
+            return false;
+        };
+
+        for (int adaptPass = 0; adaptPass < 5; ++adaptPass) {
+            rebuildBndSpokeCache();
+            for (auto* p : quadPatches) delete p;
+            quadPatches.clear();
+            debugSpokes.clear();
+            emitFailed = false;
+
+            std::vector<std::pair<size_t, Station>> pendingSplits;
+
+            for (size_t bi = 0; bi < branches.size() && !emitFailed; ++bi) {
+                const auto& br = branches[bi];
+                const auto& stations = allBranchStations[bi];
+                for (size_t si = 0; si + 1 < stations.size(); ++si) {
+                    const auto& stA = stations[si];
+                    const auto& stB = stations[si + 1];
+                    std::vector<gsPoint2D<T>> subPoly;
+                    subPoly.push_back(stA.pt);
+                    for (int pi = stA.polyIdx + 1; pi < stB.polyIdx && pi < static_cast<int>(br.poly.size()); ++pi)
+                        subPoly.push_back(br.poly[pi]);
+                    subPoly.push_back(stB.pt);
+
+                    size_t qStart = quadPatches.size();
+                    if (!emitBranchSegment(stA.pt, stA.vL, stA.vR, stB.pt, stB.vL, stB.vR, subPoly)) {
+                        emitFailed = true;
+                        break;
+                    }
+
+                    if (adaptPass < 4 && (stB.chordIdx - stA.chordIdx) >= 2) {
+                        bool segBad = false;
+                        for (size_t qk = qStart; qk < quadPatches.size(); ++qk) {
+                            if (isQuadSegmentBad(*quadPatches[qk])) { segBad = true; break; }
+                        }
+                        if (segBad) {
+                            // Find best bisecting interior CDT chord strictly between stA.chordIdx and stB.chordIdx
+                            T midC = T(0.5) * T(stA.chordIdx + stB.chordIdx);
+                            T bestScore = std::numeric_limits<T>::max();
+                            bool foundSplit = false;
+                            Station bestSt;
+                            for (int ci = stA.chordIdx + 1; ci < stB.chordIdx; ++ci) {
+                                int vLi = br.chords[ci].vL;
+                                int vRi = br.chords[ci].vR;
+                                bool bothAdv = (vLi != stA.vL && vRi != stA.vR && vLi != stB.vL && vRi != stB.vR);
+                                bool oneAdv  = (vLi != stA.vL || vRi != stA.vR) && (vLi != stB.vL || vRi != stB.vR);
+                                if (!oneAdv) continue;
+                                int pi = std::min(ci, static_cast<int>(br.poly.size()) - 2);
+                                gsPoint2D<T> candPt;
+                                if (!centerStationPt(br.poly[pi], vLi, vRi, candPt))
+                                    continue;
+                                T chW = mesh.pts[vLi].dist(mesh.pts[vRi]);
+                                T sliverPen = T(0);
+                                if (bothAdv && chW > T(1e-12)) {
+                                    T minAdv = std::min(
+                                        std::min(mesh.pts[vLi].dist(mesh.pts[stA.vL]), mesh.pts[vRi].dist(mesh.pts[stA.vR])),
+                                        std::min(mesh.pts[vLi].dist(mesh.pts[stB.vL]), mesh.pts[vRi].dist(mesh.pts[stB.vR])));
+                                    if (minAdv < T(0.06) * chW) sliverPen = T(40);
+                                }
+                                T sc = std::abs(T(ci) - midC) + (bothAdv ? T(0) : T(100)) + sliverPen;
+                                if (sc < bestScore) {
+                                    bestScore = sc;
+                                    bestSt = {candPt, vLi, vRi, pi, ci};
+                                    foundSplit = true;
+                                }
+                            }
+                            if (foundSplit)
+                                pendingSplits.push_back({bi, bestSt});
+                        }
+                    }
+                }
+            }
+
+            if (pendingSplits.empty() || emitFailed || adaptPass == 4)
+                break;
+
+            for (const auto& ps : pendingSplits) {
+                auto& sts = allBranchStations[ps.first];
+                sts.push_back(ps.second);
+                std::sort(sts.begin(), sts.end(),
+                          [](const Station& a, const Station& b) { return a.chordIdx < b.chordIdx; });
             }
         }
 

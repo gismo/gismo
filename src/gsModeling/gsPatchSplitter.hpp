@@ -4632,7 +4632,28 @@ gsMultiPatch<T> gsPatchSplitter<T>::compute()
         ((m_domain.numHoles() == 0 && m_domain.outer().size() == 4 && workMp.nPatches() == 1) ||
          workMp.nPatches() >= 6);
     if (m_options.getSwitch("EnablePolychordSplitting") && !keepModeBCoarse) {
+        bool preSplitDenseOk = true;
+        for (size_t p = 0; p < workMp.nPatches(); ++p) {
+            T mn20 = 0, mx20 = 0, ma20 = 0, en20 = 0;
+            internal_splitter::evalPatchJacobianAndWinslow(workMp.patch(p), 20, mn20, mx20, ma20, en20);
+            if (internal_splitter::evalPatchMinDetDense(workMp.patch(p), 49) <= T(1e-8) || mn20 <= T(1e-8)) {
+                preSplitDenseOk = false; break;
+            }
+        }
+        gsMultiPatch<T> preSplitMp;
+        if (preSplitDenseOk) preSplitMp = workMp;
         optimizePolychordSplits(workMp);
+        if (preSplitDenseOk) {
+            bool brokeSplit = false;
+            for (size_t p = 0; p < workMp.nPatches(); ++p) {
+                T mn20 = 0, mx20 = 0, ma20 = 0, en20 = 0;
+                internal_splitter::evalPatchJacobianAndWinslow(workMp.patch(p), 20, mn20, mx20, ma20, en20);
+                if (internal_splitter::evalPatchMinDetDense(workMp.patch(p), 49) <= T(1e-8) || mn20 <= T(1e-8)) {
+                    brokeSplit = true; break;
+                }
+            }
+            if (brokeSplit) workMp = give(preSplitMp);
+        }
     }
 
     // Stage 3: Knot Harmonization, Relaxation & Bijective Parameterization

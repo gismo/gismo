@@ -785,15 +785,109 @@ inline bool isSegmentInsidePoly(const gsPoint2D<T>& a, const gsPoint2D<T>& b,
 template <class T>
 struct TensorGridEval1D
 {
-    int M = 0, nu = 0, nv = 0;
+    int M = 0, Mu = 0, Mv = 0, nu = 0, nv = 0;
     gsMatrix<T> Bu, Du, Bv, Dv;
     gsMatrix<T> DuT, BuT;
     T hSq = T(1);
 
+    // Initialize separable evaluation matrices on a knot-aware tensor grid:
+    // includes {0.0, 0.05, 0.50, 0.95} of every unique knot span (catching both right- and left-hand
+    // limits at high-multiplicity CAD knots!) merged with minAxisPts uniform samples.
+    bool initKnotAware(const gsTensorBSpline<2, T>& tp, int minAxisPts = 21)
+    {
+        nu = tp.basis().component(0).size();
+        nv = tp.basis().component(1).size();
+        if (nu <= 0 || nv <= 0) return false;
+
+        auto buildAxis = [&](const gsBSplineBasis<T>& b1d) -> std::vector<T> {
+            std::vector<T> uniq = b1d.knots().unique();
+            std::vector<T> pts;
+            if (uniq.size() < 2) return pts;
+            const T a = uniq.front(), b = uniq.back();
+            pts.reserve(uniq.size() * 4 + static_cast<size_t>(minAxisPts));
+            for (size_t i = 0; i + 1 < uniq.size(); ++i) {
+                T u0 = uniq[i], du = uniq[i + 1] - uniq[i];
+                pts.push_back(u0);
+                pts.push_back(u0 + T(0.05) * du);
+                pts.push_back(u0 + T(0.50) * du);
+                pts.push_back(u0 + T(0.95) * du);
+            }
+            pts.push_back(uniq.back());
+            for (int k = 0; k < minAxisPts; ++k)
+                pts.push_back(a + (b - a) * static_cast<T>(k) / static_cast<T>(minAxisPts - 1));
+            std::sort(pts.begin(), pts.end());
+            std::vector<T> dedup;
+            dedup.reserve(pts.size());
+            const T tol = std::max(T(1e-11), T(1e-9) * (b - a));
+            for (T x : pts) {
+                if (dedup.empty() || x - dedup.back() > tol)
+                    dedup.push_back(x);
+            }
+            if (dedup.size() > 161) {
+                std::vector<T> sub;
+                sub.reserve(161);
+                for (int k = 0; k < 161; ++k)
+                    sub.push_back(dedup[static_cast<size_t>(k) * (dedup.size() - 1) / 160]);
+                dedup.swap(sub);
+            }
+            return dedup;
+        };
+
+        const auto& b0 = tp.basis().component(0);
+        const auto& b1 = tp.basis().component(1);
+        std::vector<T> uVec = buildAxis(b0);
+        std::vector<T> vVec = buildAxis(b1);
+        Mu = static_cast<int>(uVec.size());
+        Mv = static_cast<int>(vVec.size());
+        if (Mu < 2 || Mv < 2) return false;
+        M = std::max(Mu, Mv);
+        hSq = T(1) / (static_cast<T>(Mu - 1) * static_cast<T>(Mv - 1));
+
+        gsMatrix<T> uPts(1, Mu), vPts(1, Mv);
+        for (int i = 0; i < Mu; ++i) uPts(0, i) = uVec[i];
+        for (int j = 0; j < Mv; ++j) vPts(0, j) = vVec[j];
+
+        gsMatrix<T> valU, derU, valV, derV;
+        gsMatrix<index_t> actU, actV;
+        b0.eval_into(uPts, valU); b0.deriv_into(uPts, derU); b0.active_into(uPts, actU);
+        b1.eval_into(vPts, valV); b1.deriv_into(vPts, derV); b1.active_into(vPts, actV);
+
+        Bu.setZero(Mu, nu); Du.setZero(Mu, nu);
+        for (int q = 0; q < Mu; ++q) {
+            for (int r = 0; r < actU.rows(); ++r) {
+                int idx = static_cast<int>(actU(r, q));
+                Bu(q, idx) = valU(r, q);
+                Du(q, idx) = derU(r, q);
+            }
+        }
+        Bv.setZero(Mv, nv); Dv.setZero(Mv, nv);
+        for (int q = 0; q < Mv; ++q) {
+            for (int r = 0; r < actV.rows(); ++r) {
+                int idx = static_cast<int>(actV(r, q));
+                Bv(q, idx) = valV(r, q);
+                Dv(q, idx) = derV(r, q);
+            }
+        }
+        DuT = Du.transpose();
+        BuT = Bu.transpose();
+        return true;
+    }
+
+    static T evalMinDetKnotAware(const gsTensorBSpline<2, T>& tp, int minAxisPts = 21)
+    {
+        TensorGridEval1D<T> tg;
+        if (!tg.initKnotAware(tp, minAxisPts)) return T(0);
+        gsMatrix<T> Cx, Cy;
+        tg.coefsToMatrices(tp.coefs(), Cx, Cy);
+        T mn = 0, mx = 0, ma = 0, en = 0;
+        tg.evalWinslow(Cx, Cy, mn, mx, ma, en);
+        return mn;
+    }
+
     bool init(const gsTensorBSpline<2, T>& tp, int nSamples)
     {
         if (nSamples < 2) return false;
-        M = nSamples;
+        M = Mu = Mv = nSamples;
         nu = tp.basis().component(0).size();
         nv = tp.basis().component(1).size();
         if (nu <= 0 || nv <= 0) return false;
@@ -869,8 +963,8 @@ struct TensorGridEval1D
         minAbsDet = std::numeric_limits<T>::max();
         energy = T(0);
 
-        for (int b = 0; b < M; ++b) {
-            for (int a = 0; a < M; ++a) {
+        for (int b = 0; b < Mv; ++b) {
+            for (int a = 0; a < Mu; ++a) {
                 T jxi_x = Xu(a, b), jxi_y = Yu(a, b);
                 T jeta_x = Xv(a, b), jeta_y = Yv(a, b);
                 T normSq_xi = jxi_x * jxi_x + jxi_y * jxi_y;
@@ -906,7 +1000,7 @@ struct TensorGridEval1D
         const gsMatrix<T> Xv = Bu * Cx * Dv.transpose();
         const gsMatrix<T> Yv = Bu * Cy * Dv.transpose();
 
-        gsMatrix<T> Gxu(M, M), Gyu(M, M), Gxv(M, M), Gyv(M, M);
+        gsMatrix<T> Gxu(Mu, Mv), Gyu(Mu, Mv), Gxv(Mu, Mv), Gyv(Mu, Mv);
         const T fourEpsSq = T(4) * eps * eps;
         const T w = hSq;
 
@@ -914,8 +1008,8 @@ struct TensorGridEval1D
         maxDetOut = -std::numeric_limits<T>::max();
         objOut = T(0);
 
-        for (int b = 0; b < M; ++b) {
-            for (int a = 0; a < M; ++a) {
+        for (int b = 0; b < Mv; ++b) {
+            for (int a = 0; a < Mu; ++a) {
                 T xu = Xu(a, b), yu = Yu(a, b);
                 T xv = Xv(a, b), yv = Yv(a, b);
                 T d = xu * yv - yu * xv;
@@ -967,7 +1061,7 @@ struct TensorGridEval1D
         const gsMatrix<T> Xv = Bu * Cx * Dv.transpose();
         const gsMatrix<T> Yv = Bu * Cy * Dv.transpose();
 
-        gsMatrix<T> Gxu(M, M), Gyu(M, M), Gxv(M, M), Gyv(M, M);
+        gsMatrix<T> Gxu(Mu, Mv), Gyu(Mu, Mv), Gxv(Mu, Mv), Gyv(Mu, Mv);
         const T fourEpsSq = T(4) * eps * eps;
         const T w = hSq;
         const bool useArea = (areaWeight > T(0) && areaRef > T(1e-12));
@@ -976,8 +1070,8 @@ struct TensorGridEval1D
         maxDetOut = -std::numeric_limits<T>::max();
         objOut = T(0);
 
-        for (int b = 0; b < M; ++b) {
-            for (int a = 0; a < M; ++a) {
+        for (int b = 0; b < Mv; ++b) {
+            for (int a = 0; a < Mu; ++a) {
                 T xu = Xu(a, b), yu = Yu(a, b);
                 T xv = Xv(a, b), yv = Yv(a, b);
                 T d = xu * yv - yu * xv;
@@ -1079,7 +1173,8 @@ template <class T>
 inline T evalPatchMinDetDense(const gsGeometry<T>& patch, int minSamples = 49)
 {
     int M = minSamples;
-    if (const auto* tb = dynamic_cast<const gsTensorBSpline<2, T>*>(&patch)) {
+    const auto* tb = dynamic_cast<const gsTensorBSpline<2, T>*>(&patch);
+    if (tb) {
         int maxN = std::max(tb->basis().component(0).size(), tb->basis().component(1).size());
         int reqM = 2 * maxN + 1;
         if (reqM > M) M = std::min(129, reqM);
@@ -1093,6 +1188,10 @@ inline T evalPatchMinDetDense(const gsGeometry<T>& patch, int minSamples = 49)
         evalPatchJacobianAndWinslow(patch, 49, mn49, mx49, ma49, en49);
         mn = std::min(mn, mn49);
     }
+    if (tb && (tb->basis().component(0).knots().unique().size() > 2 ||
+               tb->basis().component(1).knots().unique().size() > 2)) {
+        mn = std::min(mn, TensorGridEval1D<T>::evalMinDetKnotAware(*tb, 21));
+    }
     return mn;
 }
 
@@ -1104,9 +1203,8 @@ inline bool quickHarmonicPatchRepair(gsTensorBSpline<2, T>& tp, T minDetTol = T(
     const int nv = tp.basis().component(1).size();
     if (nu <= 2 || nv <= 2) return false;
 
-    const int M = std::max(49, std::min(129, 2 * std::max(nu, nv) + 1));
     TensorGridEval1D<T> tg;
-    if (!tg.init(tp, M)) return false;
+    if (!tg.initKnotAware(tp, 33)) return false;
 
     gsMatrix<T> origCoefs = tp.coefs(), Cx, Cy;
     tg.coefsToMatrices(origCoefs, Cx, Cy);
@@ -1131,7 +1229,8 @@ inline bool quickHarmonicPatchRepair(gsTensorBSpline<2, T>& tp, T minDetTol = T(
                 tp.setCoefs(bestCoefs);
                 T vMin = 0, vMax = 0, vAbs = 0, vEn = 0;
                 evalPatchJacobianAndWinslow(tp, 21, vMin, vMax, vAbs, vEn);
-                if (vMin > minDetTol) return true;
+                if (vMin > minDetTol && TensorGridEval1D<T>::evalMinDetKnotAware(tp, 21) > minDetTol)
+                    return true;
             }
         }
     }
