@@ -330,6 +330,14 @@ public:
             Self_t::component(j).reduceContinuity(i);
     }
 
+    /// \brief Elevates spline continuity (in all directions) at
+    /// interior knots by \a i (i.e. reduces interior knot multiplicity)
+    void elevateContinuity(int const & i = 1) override
+    {
+        for (short_t j = 0; j < d; ++j)
+            Self_t::component(j).elevateContinuity(i);
+    }
+
     /// \brief Returns span (element) indices of the beginning and end
     /// of the support of the i-th basis function.
     template <int _Rows>
