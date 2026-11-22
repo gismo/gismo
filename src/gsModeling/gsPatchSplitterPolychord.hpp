@@ -271,7 +271,7 @@ bool gsPatchSplitter<T>::optimizePolychordSplits(gsMultiPatch<T>& mp) const
         evalPatchLengthsAndAR(mp.patch(p), Lu[p], Lv[p], AR[p]);
 
     const T optLambda = static_cast<T>(m_options.getReal("PatchCountWeight"));
-    const T lambdaPatch = (m_hasDomain && !m_hasInputMp) ? std::max(optLambda, T(0.55)) : optLambda;
+    const T lambdaPatch = (m_hasDomain && (!m_hasInputMp || m_didDomainReblock)) ? std::max(optLambda, T(0.55)) : optLambda;
     const T targetAR = std::max(T(0.5), static_cast<T>(m_options.getReal("TargetAspectRatio")));
     const int maxDiv = 16;
 
@@ -700,6 +700,79 @@ bool gsPatchSplitter<T>::reducePolychordStrips(gsMultiPatch<T>& mp)
         return joined ? CurveSeg<T>(*joined) : c0;
     };
 
+    std::vector<std::vector<gsPoint2D<T>>> domLoopPolys;
+    if (m_hasDomain) {
+        domLoopPolys.reserve(m_domain.numLoops());
+        for (int l = 0; l < m_domain.numLoops(); ++l)
+            domLoopPolys.push_back(sampleCurveLoopPoly(m_domain.loop(l), 32));
+    }
+
+    // Smooth, canonical, bit-for-bit symmetric single-span cubic fitter for merged INTERIOR edges
+    // (eliminates C^0 triple knots and exponential knot-vector blowup across polychord rings!)
+    auto fitSmoothInteriorJoined = [&](const CurveSeg<T>& c0, const CurveSeg<T>& c1) -> CurveSeg<T> {
+        if (!c0.bsp || !c1.bsp) return joinCurveSegsExact(c0, c1);
+        gsPoint2D<T> pA = c0.p0(), pB = c1.p1();
+        bool flipCanon = (pB.x < pA.x - T(1e-9)) ||
+                         (std::abs(pB.x - pA.x) <= T(1e-9) && pB.y < pA.y);
+        CurveSeg<T> s0 = flipCanon ? c1.reversed() : c0;
+        CurveSeg<T> s1 = flipCanon ? c0.reversed() : c1;
+
+        const int N = 24;
+        std::vector<gsPoint2D<T>> pts;
+        pts.reserve(2 * N + 1);
+        for (int k = 0; k <= N; ++k)
+            pts.push_back(evalCurvePoint(*s0.bsp, static_cast<T>(k) / static_cast<T>(N)));
+        for (int k = 1; k <= N; ++k)
+            pts.push_back(evalCurvePoint(*s1.bsp, static_cast<T>(k) / static_cast<T>(N)));
+
+        std::vector<T> cum(pts.size(), T(0));
+        for (size_t i = 1; i < pts.size(); ++i)
+            cum[i] = cum[i - 1] + pts[i - 1].dist(pts[i]);
+        const T tot = cum.back();
+        if (tot <= T(1e-12)) return joinCurveSegsExact(c0, c1);
+
+        auto sampleFrac = [&](T f) -> gsPoint2D<T> {
+            T target = f * tot;
+            for (size_t i = 1; i < pts.size(); ++i) {
+                if (cum[i] >= target) {
+                    T ds = cum[i] - cum[i - 1];
+                    T al = (ds > T(1e-14)) ? (target - cum[i - 1]) / ds : T(0);
+                    return gsPoint2D<T>((T(1) - al) * pts[i - 1].x + al * pts[i].x,
+                                        (T(1) - al) * pts[i - 1].y + al * pts[i].y);
+                }
+            }
+            return pts.back();
+        };
+
+        const gsPoint2D<T>& A = pts.front();
+        const gsPoint2D<T>& B = pts.back();
+        gsPoint2D<T> q1 = sampleFrac(T(1) / T(3));
+        gsPoint2D<T> q2 = sampleFrac(T(2) / T(3));
+        gsPoint2D<T> c1Int((-T(5) * A.x + T(18) * q1.x - T(9) * q2.x + T(2) * B.x) / T(6),
+                           (-T(5) * A.y + T(18) * q1.y - T(9) * q2.y + T(2) * B.y) / T(6));
+        gsPoint2D<T> c2Int((T(2) * A.x - T(9) * q1.x + T(18) * q2.x - T(5) * B.x) / T(6),
+                           (T(2) * A.y - T(9) * q1.y + T(18) * q2.y - T(5) * B.y) / T(6));
+        gsPoint2D<T> c1Lin((T(2) * A.x + B.x) / T(3), (T(2) * A.y + B.y) / T(3));
+        gsPoint2D<T> c2Lin((A.x + T(2) * B.x) / T(3), (A.y + T(2) * B.y) / T(3));
+
+        for (T lam : {T(1.0), T(0.70), T(0.40), T(0.0)}) {
+            gsPoint2D<T> p1((T(1) - lam) * c1Lin.x + lam * c1Int.x, (T(1) - lam) * c1Lin.y + lam * c1Int.y);
+            gsPoint2D<T> p2((T(1) - lam) * c2Lin.x + lam * c2Int.x, (T(1) - lam) * c2Lin.y + lam * c2Int.y);
+            CurveSeg<T> cand = makeCubicBezierInteriorSeg(A, p1, p2, B, m_degree);
+            bool okIn = true;
+            if (!domLoopPolys.empty()) {
+                for (int k = 1; k < 10; ++k) {
+                    if (!isPointStrictlyInsideDomain(evalCurvePoint(*cand.bsp, static_cast<T>(k) / T(10)), domLoopPolys, T(1e-6))) {
+                        okIn = false; break;
+                    }
+                }
+            }
+            if (okIn)
+                return flipCanon ? cand.reversed() : cand;
+        }
+        return joinCurveSegsExact(c0, c1);
+    };
+
     int coupledRescues = 0;
     for (int outerPass = 0; outerPass < 32 && mp.nPatches() > 2; ++outerPass) {
         mp.computeTopology(T(1e-4), false, false);
@@ -857,10 +930,29 @@ bool gsPatchSplitter<T>::reducePolychordStrips(gsMultiPatch<T>& mp)
                 if ((vA0 - vB1).norm() < (vA0 - vB0).norm())
                     internal_splitter::safeReverseTensorBSpline(B, 1);
 
-                CurveSeg<T> cS = joinCurveSegsExact(extractSideSeg(A, boundary::south), extractSideSeg(B, boundary::south));
+                CurveSeg<T> segSA = extractSideSeg(A, boundary::south);
+                CurveSeg<T> segSB = extractSideSeg(B, boundary::south);
+                CurveSeg<T> segNA = extractSideSeg(A, boundary::north);
+                CurveSeg<T> segNB = extractSideSeg(B, boundary::north);
+
+                // Exact original side of pr.p mapped to south/north of A by orientRight(A, pr.sP)
+                const int sOrigSouth = (pr.sP < 2) ? 2 : 0;
+                const int sOrigNorth = (pr.sP < 2) ? 3 : 1;
+                const bool sIsInterior = (ifcAtSide[4 * pr.p + sOrigSouth] >= 0);
+                const bool nIsInterior = (ifcAtSide[4 * pr.p + sOrigNorth] >= 0);
+
+                CurveSeg<T> cS = sIsInterior ? fitSmoothInteriorJoined(segSA, segSB)
+                                             : joinCurveSegsExact(segSA, segSB);
                 CurveSeg<T> cE = extractSideSeg(B, boundary::east);
-                CurveSeg<T> cN = joinCurveSegsExact(extractSideSeg(A, boundary::north), extractSideSeg(B, boundary::north)).reversed();
+                CurveSeg<T> cN = (nIsInterior ? fitSmoothInteriorJoined(segNA, segNB)
+                                              : joinCurveSegsExact(segNA, segNB)).reversed();
                 CurveSeg<T> cW = extractSideSeg(A, boundary::west).reversed();
+
+                // Guard against exponential knot-vector blow-up when repeatedly merging curved boundary sheets
+                if ((cS.bsp && cS.bsp->knots().size() > 52) || (cN.bsp && cN.bsp->knots().size() > 52)) {
+                    buildOk = false;
+                    break;
+                }
 
                 gsTensorBSpline<2, T>* merged = makeCoonsFromCCWCycle(cS, cE, cN, cW, m_degree);
                 if (!merged) { buildOk = false; break; }
@@ -878,7 +970,7 @@ bool gsPatchSplitter<T>::reducePolychordStrips(gsMultiPatch<T>& mp)
                 };
                 T arBefore = std::max(approxPatchAR(*tbP), approxPatchAR(*tbQ));
                 T arMerged = approxPatchAR(*merged);
-                if (arMerged > T(3.8) && arMerged > arBefore * T(1.15)) {
+                if (arMerged > T(5.2) || (arMerged > T(3.5) && arMerged > arBefore * T(1.12))) {
                     delete merged;
                     buildOk = false;
                     break;
@@ -914,15 +1006,20 @@ bool gsPatchSplitter<T>::reducePolychordStrips(gsMultiPatch<T>& mp)
                     }
                 }
             }
-            if (!localOk && !hopelessAngle && candMp.nPatches() <= 96 && coupledRescues < 10) {
-                // Phase 4: allow coupled curved-interface relaxation to untangle merged curved strips!
+            if (!localOk && !hopelessAngle && candMp.nPatches() <= 96 && coupledRescues < 8) {
+                // Phase 4: allow coupled curved-interface relaxation to untangle merged curved strips
+                // while guarding against knot blow-up from polychord harmonization inside the merge loop!
                 ++coupledRescues;
                 gsASG1LocalFitter<T>::unifyPatchOrientations(candMp);
                 candMp.computeTopology(T(1e-4), false, false);
                 if (2 * candMp.nInterfaces() + candMp.nBoundary() == 4 * candMp.nPatches() &&
                     optimizeCoupledInterfacesAndInteriors(candMp, T(1e-7), 12, false)) {
-                    localOk = true;
-                    for (size_t p = nOrigKept; p < candMp.nPatches(); ++p) {
+                    int mxKn = 0;
+                    for (size_t p = 0; p < candMp.nPatches(); ++p)
+                        if (const auto* tb = dynamic_cast<const gsTensorBSpline<2, T>*>(&candMp.patch(p)))
+                            mxKn = std::max(mxKn, std::max<int>(tb->knots(0).size(), tb->knots(1).size()));
+                    localOk = (mxKn <= 56);
+                    for (size_t p = nOrigKept; p < candMp.nPatches() && localOk; ++p) {
                         T angs[4], mnA = 0, mxA = 180; bool degen = false;
                         evalPatchCornerAnglesDeg(candMp.patch(p), angs, mnA, mxA, degen);
                         if (degen || mnA < effMinAng || mxA > effMaxAng ||

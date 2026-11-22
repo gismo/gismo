@@ -75,7 +75,7 @@ gsOptionList gsPatchSplitter<T>::defaultOptions()
     opt.addInt("Degree", "Target B-spline degree (>= 3 for ArgyrisSplines)", 3);
     opt.addInt("Regularity", "Target spline regularity r (1 <= r <= p - 2)", 1);
     opt.addInt("MinKnotSpans", "Minimum knot spans per patch direction (>= 3 for ArgyrisSplines)", 3);
-    opt.addInt("MaxPatches", "Maximum admissible patch count for macro-patch decomposition", 80);
+    opt.addInt("MaxPatches", "Maximum admissible patch count for macro-patch decomposition", 140);
     opt.addSwitch("EnablePolychordSplitting", "Run global polychord aspect-ratio optimization in compute()", true);
     opt.addSwitch("ApplyASG1Fitting", "Run gsASG1LocalFitter in formatForArgyris()", false);
     opt.addInt("ParameterizationMethod", "0: Coons + Spring + Winslow, 1: Coons + gsBarrierPatch (if enabled)", 0);
@@ -110,6 +110,7 @@ void gsPatchSplitter<T>::setDomain(const gsPlanarDomain<T>& domain)
     m_domain = domain;
     m_hasDomain = true;
     m_hasInputMp = false;
+    m_didDomainReblock = false;
     m_cachedDomainMinCornerAngle = -1;
     m_bestCandidate = SplittingCandidate();
 }
@@ -119,6 +120,7 @@ void gsPatchSplitter<T>::setMultiPatch(const gsMultiPatch<T>& inputMp)
 {
     m_inputMp = inputMp;
     m_hasInputMp = true;
+    m_didDomainReblock = false;
     m_bestCandidate = SplittingCandidate();
 }
 
@@ -131,6 +133,7 @@ void gsPatchSplitter<T>::loadDomainFromXml(const std::string& xml_file)
         m_domain = *pDom;
         m_hasDomain = true;
         m_hasInputMp = false;
+        m_didDomainReblock = false;
         m_cachedDomainMinCornerAngle = -1;
         m_bestCandidate = SplittingCandidate();
     } else {
@@ -183,33 +186,215 @@ gsPatchSplitter<T>::computeCrossFieldSplitting()
 
     if (m_domain.numLoops() == 0) return bestCand;
 
+    const gsMatrix<T> bbox = m_domain.boundingBox();
+    const T diag = std::hypot(bbox(0, 1) - bbox(0, 0), bbox(1, 1) - bbox(1, 0));
+    if (diag <= T(1e-12)) return bestCand;
+
     const T domMinAng = getDomainMinCornerAngleDeg();
     const T minAngTol = std::min(static_cast<T>(m_options.getReal("MinCornerAngleDeg")), T(0.85) * domMinAng);
+    const T effMinAng = (m_domain.numHoles() > 0)
+                      ? std::min(minAngTol, std::max(T(4.0), minAngTol - T(4.0)))
+                      : std::min(minAngTol, std::max(T(4.0), minAngTol - T(3.5)));
     const T maxAngTol = static_cast<T>(m_options.getReal("MaxCornerAngleDeg"));
+    const T effMaxAng = std::max(maxAngTol, T(164.9));
+    const int maxPatchesCap = std::max(1, static_cast<int>(m_options.getInt("MaxPatches")));
+    const T stripRatio = static_cast<T>(m_options.getReal("StripCollapseRatio"));
+    const T angThresh  = static_cast<T>(m_options.getReal("AngleThresholdDeg"));
 
-    // 1. Solve 4-RoSy harmonic cross-field + separatrix tracing + strip collapse
-    {
-        gsMultiPatch<T> cfMp;
-        std::string label;
-        const T stripRatio = static_cast<T>(m_options.getReal("StripCollapseRatio"));
-        const T angThresh  = static_cast<T>(m_options.getReal("AngleThresholdDeg"));
-        if (buildCrossFieldArrangementCandidate(m_domain, m_degree, stripRatio, angThresh, cfMp, label)) {
-            optimizeWinslowBarrier(cfMp);
-            cfMp.computeTopology(T(1e-5), false, false);
-            if (validateMultiPatch(m_domain, cfMp, T(1e-4), nullptr, minAngTol, maxAngTol)) {
-                T minDet = 0, minA = 0, maxA = 180;
-                T energy = evaluateDistortionEnergy(cfMp, &minDet, &minA, &maxA);
-                bestCand.multiPatch = give(cfMp);
-                bestCand.numPatches = static_cast<int>(bestCand.multiPatch.nPatches());
-                bestCand.minJacobianDet = minDet;
-                bestCand.distortionEnergy = energy;
-                bestCand.minCornerAngleDeg = minA;
-                bestCand.maxCornerAngleDeg = maxA;
-                bestCand.methodUsed = label.empty() ? "HarmonicCrossField" : label;
-                bestCand.isValid = true;
+    // Solve MBO Unit-Norm 4-RoSy Cross-Field ONCE on the background FEM mesh
+    const T targetH = diag / ((m_domain.numHoles() >= 4) ? T(26) : T(22));
+    TriMeshData<T> fineMesh;
+    if (!buildConstrainedDomainTriangulation(m_domain, m_degree, targetH, true, 0, fineMesh))
+        return bestCand;
+    applyDomainLawsonFlips(fineMesh);
+    refineInteriorTriangles(fineMesh, targetH, 2);
+
+    CrossFieldMeshAccel<T> accel;
+    accel.build(fineMesh);
+    CrossFieldSolution<T> cf = solveHarmonic4RoSy(fineMesh, &accel);
+
+    auto countNegDense = [&](const gsMultiPatch<T>& mpCheck) -> int {
+        int cnt = 0;
+        for (size_t p = 0; p < mpCheck.nPatches(); ++p)
+            if (evalPatchMinDetDense(mpCheck.patch(p), 49) <= T(1e-8)) ++cnt;
+        return cnt;
+    };
+    auto repairMicroFolds = [&](gsMultiPatch<T>& mpFix) {
+        for (size_t p = 0; p < mpFix.nPatches(); ++p) {
+            T d0 = evalPatchMinDetDense(mpFix.patch(p), 49);
+            if (d0 <= T(1e-8)) {
+                if (auto* tb = dynamic_cast<gsTensorBSpline<2, T>*>(&mpFix.patch(p))) {
+                    gsTensorBSpline<2, T> bk(*tb);
+                    quickHarmonicPatchRepair(*tb, T(1e-7));
+                    if (evalPatchMinDetDense(*tb, 49) < d0) *tb = bk;
+                }
             }
         }
+    };
+    auto scoreCand = [&](const SplittingCandidate& c) -> T {
+        std::vector<std::vector<patchCorner>> evs;
+        c.multiPatch.topology().getEVs(evs, false);
+        T maxER = evalMultiPatchMaxEdgeRatio(c.multiPatch);
+        T ratioPen = (maxER > T(5.0)) ? T(1.5) * (maxER - T(5.0)) : T(0);
+        T angPen = ((c.maxCornerAngleDeg > T(146.0)) ? T(0.35) * (c.maxCornerAngleDeg - T(146.0)) : T(0))
+                 + ((c.minCornerAngleDeg < T(22.0))  ? T(0.60) * (T(22.0) - c.minCornerAngleDeg) : T(0));
+        T detPen = (c.minJacobianDet < T(1e-4)) ? T(6.0) : T(0);
+        T globalBonus = (c.numPatches <= 32) ? -T(2.5) : T(0);
+        return m_weightPatches * static_cast<T>(c.numPatches)
+             + m_weightDistortion * c.distortionEnergy
+             + T(0.25) * static_cast<T>(evs.size())
+             + ratioPen + angPen + detPen + globalBonus;
+    };
+
+    const bool cfDbg = (std::getenv("GISMO_CF_DEBUG") != nullptr);
+    const int compactTarget = (m_domain.numHoles() == 0) ? 6
+                            : (m_domain.numHoles() == 1 ? 6 : std::max(12, 5 * m_domain.numHoles() + 4));
+    auto evaluateAndRegister = [&](gsMultiPatch<T>& candMp, const std::string& label) -> bool {
+        if (candMp.nPatches() == 0 || static_cast<int>(candMp.nPatches()) > maxPatchesCap + 80) {
+            if (cfDbg) std::cerr << "[CF_DBG] " << label << " P=" << candMp.nPatches() << " skip: empty or > headroom\n";
+            return false;
+        }
+        // Skip expensive relaxation if we already have a much smaller well-conditioned candidate
+        if (bestCand.isValid && static_cast<int>(candMp.nPatches()) > bestCand.numPatches + 12 &&
+            bestCand.minJacobianDet > T(2e-4) && bestCand.maxCornerAngleDeg <= T(150.0))
+            return false;
+
+        gsASG1LocalFitter<T>::unifyPatchOrientations(candMp);
+        candMp.computeTopology(T(1e-4), false, false);
+        if (2 * candMp.nInterfaces() + candMp.nBoundary() != 4 * candMp.nPatches()) {
+            if (cfDbg) std::cerr << "[CF_DBG] " << label << " P=" << candMp.nPatches() << " FAIL: non-conforming IF=" << candMp.nInterfaces() << " B=" << candMp.nBoundary() << "\n";
+            return false;
+        }
+
+        auto checkConforming = [](gsMultiPatch<T>& m) -> bool {
+            m.computeTopology(T(1e-4), false, false);
+            return (2 * m.nInterfaces() + m.nBoundary() == 4 * m.nPatches());
+        };
+
+        repairMicroFolds(candMp);
+
+        // 1. Pre-reduction interior-vertex smoothing + bad-corner angle relaxation (on clean low-knot curves)
+        if (candMp.nPatches() >= 2 && candMp.nPatches() <= 160) {
+            gsMultiPatch<T> preV(candMp);
+            int negBefore = countNegDense(candMp);
+            relaxInteriorVertices(candMp, 5);
+            relaxBadCornerAngles(candMp, effMinAng, effMaxAng, 2);
+            repairMicroFolds(candMp);
+            if (!checkConforming(candMp) || countNegDense(candMp) > negBefore)
+                candMp = give(preV);
+        }
+
+        // 2. Single-pass Polychord dual-sheet strip collapse (NO repeated harmonizeMultiPatchKnots blow-up!)
+        if (candMp.nPatches() > 2) {
+            int negBefore = countNegDense(candMp);
+            gsMultiPatch<T> redMp(candMp);
+            if (reducePolychordStrips(redMp) && redMp.nPatches() > 0 && redMp.nPatches() < candMp.nPatches()) {
+                redMp.computeTopology(T(1e-4), false, false);
+                repairMicroFolds(redMp);
+                if (checkConforming(redMp) && countNegDense(redMp) <= negBefore)
+                    candMp = give(redMp);
+            }
+        }
+
+        if (static_cast<int>(candMp.nPatches()) > maxPatchesCap) {
+            if (cfDbg) std::cerr << "[CF_DBG] " << label << " P=" << candMp.nPatches() << " skip: > cap(" << maxPatchesCap << ") after strip reduction\n";
+            return false;
+        }
+
+        // 3. Post-reduction interior-vertex smoothing, corner-angle rescue, and Winslow + coupled relaxation
+        if (candMp.nPatches() >= 2) {
+            gsMultiPatch<T> preV(candMp);
+            int negBefore = countNegDense(candMp);
+            relaxInteriorVertices(candMp, 5);
+            relaxBadCornerAngles(candMp, effMinAng, effMaxAng, 3);
+            repairMicroFolds(candMp);
+            if (!checkConforming(candMp) || countNegDense(candMp) > negBefore)
+                candMp = give(preV);
+        }
+        {
+            gsMultiPatch<T> preWin(candMp);
+            int negBefore = countNegDense(candMp);
+            optimizeWinslowBarrier(candMp);
+            repairMicroFolds(candMp);
+            if (!checkConforming(candMp) || countNegDense(candMp) > negBefore)
+                candMp = give(preWin);
+        }
+        if (candMp.nPatches() >= 2 && candMp.nPatches() <= 140) {
+            gsMultiPatch<T> preCpl(candMp);
+            int negBefore = countNegDense(candMp);
+            optimizeCoupledInterfacesAndInteriors(candMp, T(1e-7), 22, true);
+            repairMicroFolds(candMp);
+            if (!checkConforming(candMp) || countNegDense(candMp) > negBefore)
+                candMp = give(preCpl);
+        }
+        if (candMp.nPatches() >= 2) {
+            gsMultiPatch<T> preAng(candMp);
+            int negBefore = countNegDense(candMp);
+            relaxBadCornerAngles(candMp, effMinAng, effMaxAng, 3);
+            repairMicroFolds(candMp);
+            if (!checkConforming(candMp) || countNegDense(candMp) > negBefore)
+                candMp = give(preAng);
+        }
+
+        gsASG1LocalFitter<T>::unifyPatchOrientations(candMp);
+        candMp.computeTopology(T(1e-4), false, false);
+        repairMicroFolds(candMp);
+        if (static_cast<int>(candMp.nPatches()) > maxPatchesCap)
+            return false;
+
+        std::string vErr;
+        if (!validateMultiPatch(m_domain, candMp, T(1e-4), &vErr, effMinAng, effMaxAng)) {
+            if (cfDbg) std::cerr << "[CF_DBG] " << label << " P=" << candMp.nPatches() << " FAIL validate: " << vErr << "\n";
+            return false;
+        }
+        int nNeg = countNegDense(candMp);
+        if (nNeg > 0) {
+            if (cfDbg) std::cerr << "[CF_DBG] " << label << " P=" << candMp.nPatches() << " FAIL denseNeg=" << nNeg << "\n";
+            return false;
+        }
+
+        T minDet = 0, minA = 0, maxA = 180;
+        T energy = evaluateDistortionEnergy(candMp, &minDet, &minA, &maxA);
+        if (minDet <= T(1e-8) || maxA > effMaxAng) {
+            if (cfDbg) std::cerr << "[CF_DBG] " << label << " P=" << candMp.nPatches() << " FAIL post minDet=" << minDet << " maxA=" << maxA << "\n";
+            return false;
+        }
+        T maxER = evalMultiPatchMaxEdgeRatio(candMp);
+        if (cfDbg) std::cerr << "[CF_DBG] " << label << " P=" << candMp.nPatches() << " VALID! minDet=" << minDet << " ang=[" << minA << "," << maxA << "] maxER=" << maxER << "\n";
+
+        SplittingCandidate cand;
+        cand.multiPatch = give(candMp);
+        cand.numPatches = static_cast<int>(cand.multiPatch.nPatches());
+        cand.minJacobianDet = minDet;
+        cand.distortionEnergy = energy;
+        cand.minCornerAngleDeg = minA;
+        cand.maxCornerAngleDeg = maxA;
+        cand.methodUsed = label.empty() ? "HarmonicCrossField" : label;
+        cand.isValid = true;
+
+        if (!bestCand.isValid || scoreCand(cand) < scoreCand(bestCand))
+            bestCand = give(cand);
+
+        T bestER = evalMultiPatchMaxEdgeRatio(bestCand.multiPatch);
+        return (bestCand.isValid && bestCand.numPatches <= compactTarget &&
+                bestCand.maxCornerAngleDeg <= T(146.0) && bestCand.minCornerAngleDeg >= T(22.0) &&
+                bestER <= T(5.5));
+    };
+
+    // Engine 1: MBO Curved-Streamline Separatrix Arrangement + Corridor Merging + Local Even-Gon Splitting
+    {
+        gsMultiPatch<T> sepMp;
+        std::string label;
+        if (buildCrossFieldSeparatrixFromSolved(
+                m_domain, fineMesh, cf, accel, m_degree, stripRatio, angThresh, maxPatchesCap, sepMp, label)) {
+            if (evaluateAndRegister(sepMp, label))
+                return bestCand;
+        }
     }
+
+    // Engine 2: MBO Cross-Field-Aligned Coarse Blossom-Quad + Dual-Path Zipper + Curved Cross-Field Interior Edges
+    runCrossFieldBlossomQuadEngine(
+        m_domain, fineMesh, cf, accel, m_degree, minAngTol, maxAngTol, maxPatchesCap, evaluateAndRegister);
 
     return bestCand;
 }
@@ -4558,6 +4743,7 @@ gsPatchSplitter<T>::computeModeACoarseLayout()
         if (extractPlanarDomainFromMultiPatch(mp, extractedDom)) {
             m_domain = extractedDom;
             m_hasDomain = true;
+            m_didDomainReblock = true;
             if (computeSplitting()) {
                 return m_bestCandidate;
             }
@@ -4602,9 +4788,10 @@ gsMultiPatch<T> gsPatchSplitter<T>::compute()
 
     gsMultiPatch<T> workMp = m_bestCandidate.multiPatch;
 
-    // Stage 2a: Dual-Sheet / Polychord Strip Reduction (Mode B, aiming for minimal patch count)
+    // Stage 2a: Dual-Sheet / Polychord Strip Reduction (Mode B or Mode A->B reblocking, aiming for minimal patch count)
     // Guarded by dense 49x49 Jacobian check so Stage 2a never degrades a certified Stage 1 layout.
-    if (m_hasDomain && !m_hasInputMp && workMp.nPatches() > 2) {
+    const bool isDomainModeB = m_hasDomain && (!m_hasInputMp || m_didDomainReblock);
+    if (isDomainModeB && workMp.nPatches() > 2) {
         bool stage1DenseOk = true;
         for (size_t p = 0; p < workMp.nPatches(); ++p) {
             if (internal_splitter::evalPatchMinDetDense(workMp.patch(p), 49) <= T(1e-8)) {
@@ -4626,11 +4813,12 @@ gsMultiPatch<T> gsPatchSplitter<T>::compute()
     }
 
     // Stage 2b: Global Polychord Aspect-Ratio Optimization (zero hanging nodes)
-    // Skip re-splitting Mode B multipatches when already single convex quad or >= 6 patches.
+    // Skip re-splitting Mode B multipatches when already a minimal single quad or >= 4 patches
+    // (preserves minimal 4-patch annuli and 5-patch butterfly O-grids).
     const bool keepModeBCoarse =
-        m_hasDomain && !m_hasInputMp &&
+        isDomainModeB &&
         ((m_domain.numHoles() == 0 && m_domain.outer().size() == 4 && workMp.nPatches() == 1) ||
-         workMp.nPatches() >= 6);
+         workMp.nPatches() >= 4);
     if (m_options.getSwitch("EnablePolychordSplitting") && !keepModeBCoarse) {
         bool preSplitDenseOk = true;
         for (size_t p = 0; p < workMp.nPatches(); ++p) {

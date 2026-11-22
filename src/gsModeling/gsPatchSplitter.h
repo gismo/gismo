@@ -182,6 +182,7 @@ private:
     gsMultiPatch<T>     m_inputMp;
     bool                m_hasInputMp = false;
     bool                m_hasDomain = false;
+    bool                m_didDomainReblock = false;
     mutable T           m_cachedDomainMinCornerAngle = -1;
 
     gsOptionList        m_options;
