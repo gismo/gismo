@@ -325,6 +325,7 @@ bool runDomainExperiment(
     index_t numPostSmooth,
     const std::string &solverType,
     const std::string &smootherType,
+    index_t scmsRp,
     T tol,
     index_t maxIt,
     bool homogeneousBC,
@@ -344,6 +345,11 @@ bool runDomainExperiment(
     const bool useConstForce = homogeneousBC && (exactType == "const");
 
     const std::string smootherLabel =
+        (smootherType == "scms") ? "SCMS Multiplicative + Overlapping Skeleton (Remark 5)" :
+        (smootherType == "scms_add") ? "SCMS Additive Schwarz + Overlapping Skeleton (Theorem 5, isotropic)" :
+        (smootherType == "scms_add_metric") ? "SCMS Additive Schwarz + Overlapping Skeleton (metric-weighted)" :
+        (smootherType == "scms_add_analytic") ? "SCMS Additive Schwarz (Theorem 5, analytic 1/(8*c_bar_G))" :
+        (smootherType == "scms_nonov") ? "SCMS Multiplicative + Non-Overlapping Skeleton (r_p=2)" :
         (smootherType == "fd_ring1") ? "Point GS + Patch Interior FD + Coupled Ring-1" :
         (smootherType == "line_ring1") ? "Alternating Line Strips + Coupled Ring-1" :
         (smootherType == "ring1") ? "Point GS + Coupled Ring-1 Skeleton" :
@@ -538,10 +544,37 @@ bool runDomainExperiment(
     mg->setNumPostSmooth(numPostSmooth);
     mg->setCoarseSolver(makeSparseCholeskySolver(mg->matrix(0)));
 
+    gsStopwatch smTimer;
+    smTimer.restart();
     for (index_t l = 1; l < nLevels; ++l)
     {
         typename gsMultiGridOp<T>::PrecondPtr sm;
-        if (smootherType == "fd_ring1")
+        if (smootherType == "scms")
+            sm = typename gsMultiGridOp<T>::PrecondPtr(
+                gsAsG1ScmsSmootherOp<T>::make(
+                    mg->matrix(l), mp, levels[l].dbasis, levels[l].argBasis, levels[l].mapper,
+                    beta, scmsRp, /*additive=*/false, /*useMetricWeights=*/true, /*calibrateByPowerMethod=*/true).release());
+        else if (smootherType == "scms_add")
+            sm = typename gsMultiGridOp<T>::PrecondPtr(
+                gsAsG1ScmsSmootherOp<T>::make(
+                    mg->matrix(l), mp, levels[l].dbasis, levels[l].argBasis, levels[l].mapper,
+                    beta, scmsRp, /*additive=*/true, /*useMetricWeights=*/false, /*calibrateByPowerMethod=*/true).release());
+        else if (smootherType == "scms_add_metric")
+            sm = typename gsMultiGridOp<T>::PrecondPtr(
+                gsAsG1ScmsSmootherOp<T>::make(
+                    mg->matrix(l), mp, levels[l].dbasis, levels[l].argBasis, levels[l].mapper,
+                    beta, scmsRp, /*additive=*/true, /*useMetricWeights=*/true, /*calibrateByPowerMethod=*/true).release());
+        else if (smootherType == "scms_add_analytic")
+            sm = typename gsMultiGridOp<T>::PrecondPtr(
+                gsAsG1ScmsSmootherOp<T>::make(
+                    mg->matrix(l), mp, levels[l].dbasis, levels[l].argBasis, levels[l].mapper,
+                    beta, scmsRp, /*additive=*/true, /*useMetricWeights=*/false, /*calibrateByPowerMethod=*/false).release());
+        else if (smootherType == "scms_nonov")
+            sm = typename gsMultiGridOp<T>::PrecondPtr(
+                gsAsG1ScmsSmootherOp<T>::make(
+                    mg->matrix(l), mp, levels[l].dbasis, levels[l].argBasis, levels[l].mapper,
+                    beta, /*r_p=*/2, /*additive=*/false, /*useMetricWeights=*/true, /*calibrateByPowerMethod=*/true).release());
+        else if (smootherType == "fd_ring1")
             sm = typename gsMultiGridOp<T>::PrecondPtr(
                 gsAsG1FastDiagSmootherOp<T>::make(
                     mg->matrix(l), mp, levels[l].dbasis, levels[l].argBasis, levels[l].mapper, beta).release());
@@ -557,6 +590,7 @@ bool runDomainExperiment(
             sm = typename gsMultiGridOp<T>::PrecondPtr(makeGaussSeidelOp(mg->matrix(l)).release());
         mg->setSmoother(l, sm);
     }
+    const double smootherSetupTime = smTimer.stop();
 
     // Solve system on finest level
     const gsSparseMatrix<T> &A_fine = levels[finest].K_free;
@@ -603,13 +637,16 @@ bool runDomainExperiment(
     }
     const double solveTime = solveTimer.stop();
 
+    const T avgRate = (numIterations > 0 && finalRelRes > T(0)) ? std::pow(finalRelRes, T(1) / T(numIterations)) : T(0);
     gsInfo << "\n--- Multigrid Convergence Results ---\n";
     gsInfo << "  Iterations      : " << numIterations << "\n";
+    gsInfo << "  Avg. Conv. Rate : " << std::fixed << std::setprecision(4) << avgRate << "\n";
     gsInfo << "  Final Rel. Res. : " << std::scientific << std::setprecision(4) << finalRelRes << "\n";
     gsInfo << "  Solve Time      : " << std::fixed << std::setprecision(4) << solveTime << " s\n";
+    gsInfo << "  Smoother Setup  : " << std::fixed << std::setprecision(4) << smootherSetupTime << " s\n";
     gsInfo << "  Setup Time      : " << std::fixed << std::setprecision(4) << totalSetupTime << " s\n";
     gsInfo << "  Transfer Time   : " << std::fixed << std::setprecision(4) << totalTransferTime << " s\n";
-    gsInfo << "  Total Time      : " << std::fixed << std::setprecision(4) << (totalSetupTime + totalTransferTime + solveTime) << " s\n";
+    gsInfo << "  Total Time      : " << std::fixed << std::setprecision(4) << (totalSetupTime + totalTransferTime + smootherSetupTime + solveTime) << " s\n";
 
     if (verifyDirect)
     {
@@ -800,6 +837,7 @@ int main(int argc, char *argv[])
     index_t numPreSmooth = 1;
     index_t numPostSmooth = 1;
     index_t maxIt = 300;
+    index_t scmsRp = -1;
     T tol = 1e-8;
     T freqA = 1.0;
     T beta = 0.0;
@@ -817,7 +855,8 @@ int main(int argc, char *argv[])
     cmd.addString("o", "outDir", "Output directory for Paraview VTK/PVD files.", outDir);
     cmd.addString("t", "txtOut", "Filename for tab-separated text results output.", txtOut);
     cmd.addString("s", "solver", "Iterative solver: 'cg' (PCG) or 'mg' (Direct Multigrid Iteration).", solverType);
-    cmd.addString("", "smoother", "Smoother: 'auto', 'gs', 'sgs', 'ring1', 'line_ring1', or 'fd_ring1'.", smootherType);
+    cmd.addString("", "smoother", "Smoother: 'auto', 'gs', 'sgs', 'ring1', 'line_ring1', 'fd_ring1', 'scms', 'scms_add', 'scms_add_metric', 'scms_add_analytic', or 'scms_nonov'.", smootherType);
+    cmd.addInt("", "scmsRp", "SCMS skeleton strip width r_p (-1 = p+1, 2 = non-overlapping, >=3 = custom).", scmsRp);
     cmd.addString("", "suite", "Benchmark suite when --all is set: classic, generator, noholes, holes, all.", suite);
     cmd.addString("", "exact", "Homogeneous exact solution (--homo): 'bubble' (B-spline), 'sin_bubble', 'box', or 'const'.", exactType);
     cmd.addInt("d", "degree", "Spline degree (minimum 3 for C1 AS-G1).", degree);
@@ -869,7 +908,7 @@ int main(int argc, char *argv[])
         runDomainExperiment<T>(
             geometry, degree, bubbleDeg, minRef, maxRef,
             numCycles, numPreSmooth, numPostSmooth,
-            solverType, smootherType, tol, maxIt, homogeneousBC, exactType, freqA, beta, forceVal, eps, margin,
+            solverType, smootherType, scmsRp, tol, maxIt, homogeneousBC, exactType, freqA, beta, forceVal, eps, margin,
             verifyDirect, plot, outDir, sanitizeStem(geometry), txtOut);
     }
     else
@@ -1036,7 +1075,7 @@ int main(int argc, char *argv[])
             bool ok = runDomainExperiment<T>(
                 file, degree, bubbleDeg, minRef, maxRef,
                 numCycles, numPreSmooth, numPostSmooth,
-                solverType, smootherType, tol, maxIt, homogeneousBC, exactType, freqA, beta, forceVal, eps, margin,
+                solverType, smootherType, scmsRp, tol, maxIt, homogeneousBC, exactType, freqA, beta, forceVal, eps, margin,
                 verifyDirect, plot, outDir, subDir, txtOut);
             if (ok)
                 numPassed++;
