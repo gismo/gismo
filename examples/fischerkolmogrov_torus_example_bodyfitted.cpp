@@ -74,6 +74,146 @@
 using namespace gismo;
 
 // =============================================================================
+// LINEAR SOLVER (as in adaptive_phase-field_fracture_example_DC_*.cpp)
+//   "cgdiag": CG with a diagonal (Jacobi) preconditioner (default).
+//   "cgic":   CG with an incomplete-Cholesky preconditioner.
+//   "direct": Eigen SimplicialLDLT (Pardiso LDLT if G+Smo has Pardiso). Exact,
+//             but its time and memory grow superlinearly with the DoFs in 3D.
+// The FK tangent alpha_m M + alpha_f gamma dt (D K - rho(1-2N) M) is mass
+// dominated for small dt; the iteration count (LinIts in computational.csv)
+// shows how well conditioned it is (see also --cond).
+// =============================================================================
+template <class Solver, class T>
+index_t fkSolveCG(Solver & solver, const char * name,
+                  const gsSparseMatrix<T> & K, const gsMatrix<T> & b, gsMatrix<T> & x,
+                  index_t maxIt, T tol)
+{
+    solver.setMaxIterations(maxIt);
+    solver.setTolerance(tol);
+    solver.compute(K);
+    GISMO_ENSURE(solver.info()==gsEigen::Success,
+                 name<<": the preconditioner setup failed.");
+    x = solver.solve(b);
+    GISMO_ENSURE(solver.info()==gsEigen::Success,
+                 name<<" did not converge: "<<solver.iterations()<<"/"<<maxIt<<" iteration(s), "
+                 "error = "<<solver.error()<<" > "<<tol<<". Raise --cgMaxIt or --cgTol, or use "
+                 "--solver cgic / direct.");
+    return solver.iterations();
+}
+
+/// Solves K x = b with \a linSolver; returns the number of iterations (1 for direct).
+template <class T>
+index_t fkSolveLinear(const std::string & linSolver,
+                      const gsSparseMatrix<T> & K, const gsMatrix<T> & b, gsMatrix<T> & x,
+                      index_t maxIt, T tol)
+{
+    typedef gsEigen::SparseMatrix<T,0,index_t> EigenMat;
+    if (linSolver=="cgic")
+    {
+        gsEigen::ConjugateGradient<EigenMat, gsEigen::Lower|gsEigen::Upper,
+                                   gsEigen::IncompleteCholesky<T,gsEigen::Lower,
+                                            gsEigen::AMDOrdering<index_t> > > solver;
+        return fkSolveCG(solver,"CG (incomplete Cholesky)",K,b,x,maxIt,tol);
+    }
+    else if (linSolver=="cgdiag")
+    {
+        gsEigen::ConjugateGradient<EigenMat, gsEigen::Lower|gsEigen::Upper,
+                                   gsEigen::DiagonalPreconditioner<T> > solver;
+        return fkSolveCG(solver,"CG (diagonal)",K,b,x,maxIt,tol);
+    }
+    GISMO_ENSURE(linSolver=="direct","Unknown linear solver \""<<linSolver<<"\" (cgdiag|cgic|direct)");
+#ifdef GISMO_WITH_PARDISO
+    typename gsSparseSolver<T>::PardisoLDLT solver;
+#else
+    typename gsSparseSolver<T>::SimplicialLDLT solver;
+#endif
+    solver.compute(K);
+    GISMO_ENSURE(solver.info()==gsEigen::Success,"Factorisation of the FK matrix failed.");
+    x = solver.solve(b);
+    return 1;
+}
+
+// =============================================================================
+// CONDITION NUMBER (--cond): spectral condition number kappa = lmax/lmin of a
+// symmetric positive definite matrix, estimated with the power iteration (lmax)
+// and the inverse power iteration with an LDLT factorization (lmin). Done for
+// the system matrix K and for the Jacobi-scaled S = D^-1/2 K D^-1/2, which is
+// the matrix CG with the diagonal preconditioner effectively sees.
+// =============================================================================
+template <class T>
+struct fkCond { T lmax, lmin, kappa; index_t itMax, itMin; };
+
+template <class T>
+fkCond<T> fkConditionNumber(const gsSparseMatrix<T> & K, index_t maxIt = 1000, T tol = 1e-8)
+{
+    fkCond<T> c;
+    const index_t n = K.rows();
+    gsMatrix<T> x = gsMatrix<T>::Ones(n,1), y;
+    for (index_t i = 0; i != n; ++i) x(i,0) += 0.1 * math::sin(1.0 + i); // generic start
+    x /= x.norm();
+    // power iteration: largest eigenvalue
+    T lam = 0, lamOld = 0;
+    for (c.itMax = 1; c.itMax <= maxIt; ++c.itMax)
+    {
+        y = K * x;
+        lam = x.col(0).dot(y.col(0)); // Rayleigh quotient
+        x = y / y.norm();
+        if (c.itMax > 1 && math::abs(lam - lamOld) < tol * math::abs(lam)) break;
+        lamOld = lam;
+    }
+    c.lmax = lam;
+    // inverse power iteration: smallest eigenvalue
+    typename gsSparseSolver<T>::SimplicialLDLT ldlt;
+    ldlt.compute(K);
+    GISMO_ENSURE(ldlt.info()==gsEigen::Success, "--cond: factorization failed.");
+    x = gsMatrix<T>::Ones(n,1);
+    for (index_t i = 0; i != n; ++i) x(i,0) += 0.1 * math::cos(2.0 + i);
+    x /= x.norm();
+    lamOld = 0;
+    for (c.itMin = 1; c.itMin <= maxIt; ++c.itMin)
+    {
+        y = ldlt.solve(x);
+        lam = x.col(0).dot(y.col(0)); // = 1/lmin estimate
+        x = y / y.norm();
+        if (c.itMin > 1 && math::abs(lam - lamOld) < tol * math::abs(lam)) break;
+        lamOld = lam;
+    }
+    c.lmin  = 1.0 / lam;
+    c.kappa = c.lmax / c.lmin;
+    return c;
+}
+
+/// Jacobi-scaled copy D^-1/2 K D^-1/2 (unit diagonal)
+template <class T>
+gsSparseMatrix<T> fkJacobiScaled(const gsSparseMatrix<T> & K)
+{
+    gsVector<T> d = K.diagonal().cwiseAbs().cwiseSqrt().cwiseInverse();
+    gsSparseMatrix<T> S = K;
+    for (index_t k = 0; k < S.outerSize(); ++k)
+        for (typename gsSparseMatrix<T>::InnerIterator it(S, k); it; ++it)
+            it.valueRef() *= d[it.row()] * d[it.col()];
+    return S;
+}
+
+/// Writes the --cond results to the log and returns them as csv lines
+template <class T>
+std::string fkReportCond(const gsSparseMatrix<T> & K)
+{
+    const fkCond<T> c = fkConditionNumber(K);
+    const fkCond<T> s = fkConditionNumber(fkJacobiScaled(K));
+    gsInfo << "Condition number of the system matrix (first Newton matrix, n = " << K.rows() << "):\n"
+           << "  K             : lmax = " << c.lmax << ", lmin = " << c.lmin << ", kappa = " << c.kappa
+           << "  (" << c.itMax << "/" << c.itMin << " power/inverse iterations)\n"
+           << "  D^-1/2 K D^-1/2: lmax = " << s.lmax << ", lmin = " << s.lmin << ", kappa = " << s.kappa
+           << "  (" << s.itMax << "/" << s.itMin << " power/inverse iterations)\n";
+    std::ostringstream os;
+    os.precision(10);
+    os << "cond_K," << c.kappa << "\ncond_K_lmax," << c.lmax << "\ncond_K_lmin," << c.lmin << "\n"
+       << "cond_jacobi," << s.kappa << "\ncond_jacobi_lmax," << s.lmax << "\ncond_jacobi_lmin," << s.lmin << "\n";
+    return os.str();
+}
+
+// =============================================================================
 // GEOMETRY: exact single-patch NURBS solid torus
 // =============================================================================
 struct torusParams
@@ -246,7 +386,11 @@ void solve(gsMultiPatch<T> & mp,
            index_t plotPts = 50000,  // ParaView sample points per frame
            real_t volExact = 0,      // exact |Omega| in mm^3, for the csv
            bool periodic = true,     // C1 (periodic) instead of C0 (glued) at the seam
-           bool plotMesh = false)    // write the computational mesh to ParaView
+           bool plotMesh = false,    // write the computational mesh to ParaView
+           const std::string & linSolver = "cgdiag", // cgdiag | cgic | direct
+           index_t cgMaxIt = 20000,
+           real_t  cgTol   = 1e-8,   // relative to ||rhs||
+           bool    cond    = false)  // estimate the condition number of the first matrix
 {
     // Everything below runs in BOX units (lengths / L); the csv converts back.
     const fkParams<T> par = fkToBox(parPhys);
@@ -322,6 +466,45 @@ void solve(gsMultiPatch<T> & mp,
     gsInfo << "Elements (u x v x w): " << tb->component(0).numElements() << " x "
            << tb->component(1).numElements() << " x " << tb->component(2).numElements()
            << " = " << tb->numElements() << "\n";
+
+    // Physical element size [mm]: per element h_e = its longest edge (chord
+    // between the mapped corners). Also the longest cross-section (u,v) and
+    // toroidal (w) edge separately. Same definition as h in the immersed code
+    // (cube edge), so the two can be put on one axis.
+    real_t hMax = 0, hMin = std::numeric_limits<real_t>::max(), hSum = 0;
+    real_t hCrossMax = 0, hTorMax = 0;
+    {
+        typename gsBasis<T>::domainIter domIt    = tb->domain()->beginAll();
+        typename gsBasis<T>::domainIter domItEnd = tb->domain()->endAll();
+        gsMatrix<T> c(3, 8), x;
+        index_t nE = 0;
+        for (; domIt < domItEnd; ++domIt)
+        {
+            const gsVector<T> lo = domIt.lowerCorner(), up = domIt.upperCorner();
+            for (index_t k = 0; k != 8; ++k)
+                for (index_t d = 0; d != 3; ++d)
+                    c(d, k) = ((k >> d) & 1) ? up[d] : lo[d];
+            mp.patch(0).eval_into(c, x);
+            real_t he = 0;
+            for (index_t k = 0; k != 8; ++k)
+                for (index_t d = 0; d != 3; ++d)
+                    if (!((k >> d) & 1))
+                    {
+                        const real_t len = (x.col(k) - x.col(k | (1 << d))).norm() * parPhys.L;
+                        he = math::max(he, len);
+                        if (d == 2) hTorMax   = math::max(hTorMax, len);
+                        else        hCrossMax = math::max(hCrossMax, len);
+                    }
+            hMax = math::max(hMax, he);
+            hMin = math::min(hMin, he);
+            hSum += he;
+            ++nE;
+        }
+        hSum /= nE; // mean
+    }
+    gsInfo << "Element size (longest edge per element): h_max = " << hMax << " mm, h_min = "
+           << hMin << " mm, h_mean = " << hSum << " mm; longest cross-section edge "
+           << hCrossMax << " mm, longest toroidal edge " << hTorMax << " mm\n";
 
     // Computational mesh for ParaView: the element boundaries of the refined
     // solution basis, mapped through the exact geometry (curved edges).
@@ -401,7 +584,7 @@ void solve(gsMultiPatch<T> & mp,
                "V_exact,V_P_relerr,V_T,V_N,growth,dintN_dt\n";
     compFile.open(out+"/computational.csv");
     compFile << std::setprecision(8)
-             << "TimeStep,Time,NewtonIts,ResidualNorm,StepSolve_s,StepTotal_s,Wall_s\n";
+             << "TimeStep,Time,NewtonIts,LinIts,ResidualNorm,StepSolve_s,StepTotal_s,Wall_s\n";
     
     real_t N_hat_th = par.Nth;  // Cell density threshold defining Omega_T (tumor)
     real_t k_steep = 200.0;  // Steepness factor for Heaviside step function
@@ -460,8 +643,9 @@ void solve(gsMultiPatch<T> & mp,
     }
     A.initSystem();
 
-    gsSparseSolver<>::uPtr solver = gsSparseSolver<>::get("SimplicialLDLT");
     gsSparseMatrix<> K, K_const, K_nitsche;
+    gsInfo << "Linear solver: " << linSolver
+           << (linSolver == "direct" ? "" : " (CG tol " + util::to_string(cgTol) + ")") << "\n";
 
     // -------------------------------------------------------------------------
     // 4. Initial Condition Setup (smooth hyperbolic-tangent tumor seed)
@@ -482,8 +666,8 @@ void solve(gsMultiPatch<T> & mp,
         auto f0 = A.getCoeff(N0, G);
         A.initSystem();
         A.assemble(w * w.tr() * meas(G), w * f0 * meas(G));
-        solver->compute(A.matrix());
-        Nold = solver->solve(A.rhs());
+        // mass matrix: SPD and well conditioned, same linear solver as the steps
+        fkSolveLinear<T>(linSolver, A.matrix(), A.rhs(), Nold, cgMaxIt, cgTol);
         tIC = swIC.stop();
 
         solution n0_sol = A.getSolution(w, Nold);
@@ -626,7 +810,8 @@ void solve(gsMultiPatch<T> & mp,
     // -------------------------------------------------------------------------
     index_t maxIt = 50;
     real_t tol    = TIMEopt.askReal("tol", 1e-4);
-    index_t itsTotal = 0;
+    index_t itsTotal = 0, linItsTotal = 0;
+    std::string condCsv; // filled by --cond
     real_t  tSolveTotal = 0;
     gsStopwatch swLoop;
 
@@ -638,7 +823,7 @@ void solve(gsMultiPatch<T> & mp,
         Nnew  = Nold;
         dNnew = (gamma - 1.0) / gamma * dNold;
 
-        index_t its = maxIt;
+        index_t its = maxIt, linIts = 0; // Newton its, linear-solver its (summed over Newton)
         real_t  resNorm = 0;
         for (index_t it = 0; it < maxIt; ++it)
         {
@@ -667,9 +852,14 @@ void solve(gsMultiPatch<T> & mp,
             K = A.giveMatrix();
             K += K_const;
 
+            // Condition number of the first system matrix (--cond)
+            if (cond && step == 0 && it == 0)
+                condCsv = fkReportCond(K);
+
             // Solve and Update
-            solver->compute(K);
-            dNupdate = solver->solve(-Q);
+            const index_t li = fkSolveLinear<T>(linSolver, K, -Q, dNupdate, cgMaxIt, cgTol);
+            linIts      += li;
+            linItsTotal += li;
 
             dNnew += dNupdate;
             Nnew.noalias() += (gamma * dt) * dNupdate;
@@ -692,7 +882,7 @@ void solve(gsMultiPatch<T> & mp,
 
         itsTotal    += its;
         tSolveTotal += tSolve;
-        compFile << step+1 << "," << (step+1)*dt << "," << its << "," << resNorm << ","
+        compFile << step+1 << "," << (step+1)*dt << "," << its << "," << linIts << "," << resNorm << ","
                  << tSolve << "," << swStep.stop() << "," << swTotal.stop() << "\n";
         compFile.flush();
     }
@@ -708,6 +898,8 @@ void solve(gsMultiPatch<T> & mp,
             << "degree," << tb->degree(0) << "\n"
             << "seam," << (periodic ? "periodic_C1" : "glued_C0") << "\n"
             << "elements," << dbasis.basis(0).numElements() << "\n"
+            << "h_max_mm," << hMax << "\nh_min_mm," << hMin << "\nh_mean_mm," << hSum << "\n"
+            << "h_cross_max_mm," << hCrossMax << "\nh_tor_max_mm," << hTorMax << "\n"
             << "DoFs," << A.numDofs() << "\n"
             << "DoFs_active," << A.numDofs() << "\n"
             << "quad_points_interior," << nQuad << "\nquad_points_cut,0\n"
@@ -720,6 +912,10 @@ void solve(gsMultiPatch<T> & mp,
             << "dt," << dt << "\nsteps," << maxSteps << "\n"
             << "newton_its_total," << itsTotal << "\n"
             << "newton_its_mean," << (maxSteps ? (real_t)itsTotal / maxSteps : 0) << "\n"
+            << "lin_solver," << linSolver << "\ncg_tol," << cgTol << "\n"
+            << "lin_its_total," << linItsTotal << "\n"
+            << "lin_its_per_newton_mean," << (itsTotal ? (real_t)linItsTotal / itsTotal : 0) << "\n"
+            << condCsv
             << "time_setup_s," << tSetup << "\n"
             << "time_solve_total_s," << tSolveTotal << "\n"
             << "time_solve_per_step_mean_s," << (maxSteps ? tSolveTotal / maxSteps : 0) << "\n"
@@ -795,6 +991,14 @@ int main(int argc, char *argv[])
     bool C0seam = false, plotMesh = false;
     cmd.addSwitch("C0seam", "Glue the toroidal seam as a C0 interface instead of a periodic (C1) basis", C0seam);
     cmd.addSwitch("plotMesh", "Write the computational mesh (element edges) to ParaView", plotMesh);
+    std::string linSolver = "cgdiag";
+    index_t cgMaxIt = 20000;
+    real_t  cgTol   = 1e-8;
+    bool    cond    = false;
+    cmd.addString("", "solver", "Linear solver: cgdiag (default) | cgic | direct", linSolver);
+    cmd.addInt   ("", "cgMaxIt", "Max CG iterations per linear solve", cgMaxIt);
+    cmd.addReal  ("", "cgTol", "CG tolerance, relative to ||rhs||", cgTol);
+    cmd.addSwitch("cond", "Estimate the condition number of the first system matrix (K and Jacobi-scaled)", cond);
     cmd.addReal("D", "diffusivity", "Tumor cell diffusivity D [mm^2/day]", par.D);
     cmd.addReal("p", "rho", "Net proliferation rate rho [1/day]", par.rho);
     cmd.addReal("R", "radius", "Radius R of the initial tumor [mm]", par.R);
@@ -890,7 +1094,7 @@ int main(int argc, char *argv[])
     // --plot also writes the geometry and the computational mesh (they are
     // static, written once); --plotMesh writes them without the N frames.
     solve<3, real_t>(mp, bc, CHopt, TIMEopt, Aopt, dt, maxSteps, numRefine, par, out, plot, refTor, plotPts, volExact,
-                     !C0seam, plot || plotMesh);
+                     !C0seam, plot || plotMesh, linSolver, cgMaxIt, cgTol, cond);
 
     gsInfo << "Exact torus volume (compare with V_P in the csv): " << volExact << " mm^3\n";
     return EXIT_SUCCESS;
