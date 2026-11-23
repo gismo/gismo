@@ -70,12 +70,26 @@ V_P never changes. That is about 30% of the loop time at r3. Do one loop over
 the elements/quadrature points (like the immersed `biomarkers` lambda), and
 compute V_P once.
 
-## 4. Same IC projection in both codes
-- Body-fitted: L² projection onto the space over Ω.
-- Immersed: `gsL2Projection` over the whole background box [0,1]³.
+## 4. Same IC projection in both codes ✅ DONE (2026-11-23)
+The immersed code now projects over Ω on its cut-cell quadrature (mass matrix +
+1e-10 regularization, rhs ∫_Ω N0 φ), the same operator as the body-fitted code.
+`--icBox` restores the old projection over the whole box.
 
-For an identical setup, assemble the immersed IC projection on the cut-cell
-quadrature (`blocks`): mass matrix + regularization, rhs ∫ N0 φ over Ω.
+Result (R = 2.5, σ = 1; exact over Ω: ∫N = 45.51, V_T = 104.83, V_N = 31.86):
+
+| run | IC rel. L² err | N_max (exact 0.497) | ∫N(0) | V_T(0) |
+|---|---|---|---|---|
+| body-fitted r3 | 8.6 % | 0.566 | 45.516 | 108.43 |
+| body-fitted r4 | 1.05 % | 0.491 | 45.512 | 105.36 |
+| immersed r4, box (old) | 26.1 % | 0.501 | 46.094 | 118.56 |
+| immersed r4, Ω (new) | 25.1 % | 0.495 | 45.505 | 122.92 |
+| immersed r5, box (old) | 6.1 % | 0.540 | 45.461 | 107.12 |
+| immersed r5, Ω (new) | 5.9 % | 0.539 | 45.512 | 107.00 |
+
+With the Ω projection, the initial tumour mass ∫N(0) is identical in all
+runs (L² projection conserves it). The remaining differences in V_T(0) and
+the overshoot are the space resolution: match levels by the IC error
+(body-fitted r3 ↔ immersed r5, body-fitted r4 ↔ immersed r6).
 
 ## 5. `--plotEvery k`
 With Δt = 1, `--plot` writes 731 frames (~2 GB). Write only every k-th frame,

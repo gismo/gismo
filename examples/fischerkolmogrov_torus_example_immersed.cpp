@@ -314,6 +314,8 @@ struct fcmParams
     index_t     plotRes      = 64;    // sample points per direction of the N field
     bool        plotPoints   = false; // also dump N at the quadrature points
     bool        plotMesh     = true;  // also write the background grid
+    bool        icBox        = false; // IC: L2 projection over the whole box (old)
+                                      // instead of over Omega (default, as body-fitted)
     // Output coordinates: box units, like the body-fitted torus example, so
     // that the two results overlay in ParaView (x_out = toPhys*x_box + shift).
     real_t      toPhys       = 1.0;
@@ -775,15 +777,59 @@ void solve(gsMultiPatch<T> & mp,
     // -------------------------------------------------------------------------
     gsFunctionExpr<T> N0 = tumorSeed<dim,T>(par);
 
-    // L2-projection of the seed onto the background basis. The background map
-    // is the identity, so gsL2Projection's parametric evaluation of N0 IS the
-    // physical one here (unlike on the body-fitted torus).
-    // There are no eliminated degrees of freedom here (the immersed boundary
-    // condition is natural), so the coefficients ARE the unknowns.
+    // L2-projection of the seed onto the background basis.
+    //  default : over OMEGA, i.e. on the cut-cell quadrature of the solver:
+    //            find N_h with  \int_Omega N_h v = \int_Omega N0 v  for all
+    //            active v. This is the same operator as in the body-fitted
+    //            code (projection over Omega), so the two initial conditions
+    //            differ only by the discrete spaces. The inactive dofs get the
+    //            tiny background regularization (and rhs 0), as in the solver.
+    //  --icBox : over the whole background box [0,1]^3 with gsL2Projection
+    //            (the old behaviour); differs near the torus surface.
+    // The background map is the identity, so N0 is evaluated at physical
+    // (box) coordinates in both cases.
     gsMatrix<T> N0coefs;
     gsStopwatch swIC;
-    gsInfo << "IC L2-projection error: "
-           << gsL2Projection<T>::project(dbasis, mp, N0, N0coefs) << "\n";
+    if (fcm.icBox)
+        gsInfo << "IC L2-projection (whole box) error: "
+               << gsL2Projection<T>::project(dbasis, mp, N0, N0coefs) << "\n";
+    else
+    {
+        gsSparseEntries<T> trip;
+        gsMatrix<T> rhs = gsMatrix<T>::Zero(nDofs, 1);
+        // mass matrix and rhs over Omega, scaled by coeff (1 on Omega)
+        auto addMass = [&](const fkQuadBlock<T> & b, T coeff, bool withRhs)
+        {
+            const index_t nu = (index_t)b.glob.size();
+            gsMatrix<T> Me = gsMatrix<T>::Zero(nu, nu);
+            const gsMatrix<T> f = withRhs ? N0.eval(b.pts) : gsMatrix<T>();
+            for (index_t q = 0; q != b.pts.cols(); ++q)
+            {
+                const T w = b.wts[q] * coeff;
+                for (index_t i = 0; i != b.act.rows(); ++i)
+                {
+                    const index_t li = b.loc(i,q);
+                    if (withRhs) rhs(b.act(i,q),0) += w * f(0,q) * b.bv(i,q);
+                    for (index_t j = 0; j != b.act.rows(); ++j)
+                        Me(li, b.loc(j,q)) += w * b.bv(i,q) * b.bv(j,q);
+                }
+            }
+            scatter(b, Me, trip);
+        };
+        for (size_t e = 0; e != blocks.size(); ++e)
+            addMass(blocks[e], (T)1, true);
+        fkQuadBlock<T> bgIC; // tiny regularization on the whole box (inactive dofs)
+        for (auto it = tbsPtr->domain()->beginAll(); it != tbsPtr->domain()->endAll(); ++it)
+        {
+            gauss.mapTo(it.lowerCorner(), it.upperCorner(), qpts, qwts);
+            fkBuildBlock(*tbsPtr, qpts, qwts, bgIC);
+            addMass(bgIC, (T)1e-10, false);
+        }
+        gsSparseMatrix<T> Mic(nDofs, nDofs);
+        Mic.setFrom(trip);
+        const index_t li = fkSolveLinear<T>(linSolver, Mic, rhs, N0coefs, cgMaxIt, cgTol);
+        gsInfo << "IC: L2 projection over Omega (" << linSolver << ", " << li << " its)\n";
+    }
     const real_t tIC = swIC.stop();
     // Relative L2(Omega) error ||N_h(0) - N0|| / ||N0|| on the immersed
     // quadrature (unit-free, so the same number as in the body-fitted code;
@@ -1229,6 +1275,7 @@ int main(int argc, char *argv[])
     // Immersed / finite-cell quadrature
     cmd.addInt("e", "degreeElevation", "Degree elevation of the (linear) background basis; 1 = quadratic", fcm.degElevate);
     cmd.addInt("", "quadDepth", "Octree subdivision depth of the cut-cell quadrature", fcm.quadDepth);
+    cmd.addSwitch("icBox", "Project the initial condition over the whole background box (old) instead of over Omega", fcm.icBox);
     cmd.addString("", "indicator", "Adaptive indicator: uniform, fallback or integralChange", fcm.indicator);
     cmd.addReal("", "indicatorTol", "integralChange acceptance tolerance", fcm.indicatorTol);
     cmd.addInt("", "plotRes", "Sample points per direction of the plotted N field", fcm.plotRes);
