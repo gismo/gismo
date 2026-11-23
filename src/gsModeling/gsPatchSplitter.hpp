@@ -35,6 +35,7 @@
 #include <gsModeling/gsPatchSplitterPolychord.hpp>
 #include <gsModeling/gsPatchSplitterCrossField.hpp>
 #include <gsModeling/gsPatchSplitterMotorcycle.hpp>
+#include <gsModeling/gsPatchSplitterMerged.hpp>
 #include <gsModeling/gsASG1LocalFitter.h>
 #include <gsModeling/gsCoonsPatch.h>
 #include <gsNurbs/gsBSpline.h>
@@ -4403,6 +4404,419 @@ gsPatchSplitter<T>::computeMedialAxisSplitting()
     return bestCand;
 }
 
+// ============================================================================
+// Approach 4: Field-Guided Medial Macro-Pairing ("Merged" 5-Module Algorithm)
+// ============================================================================
+
+template <class T>
+typename gsPatchSplitter<T>::SplittingCandidate
+gsPatchSplitter<T>::computeFieldGuidedMedialSplitting()
+{
+    using namespace internal_splitter;
+    SplittingCandidate bestCand;
+    bestCand.methodUsed = "FieldGuidedMedialPairing";
+    bestCand.isValid = false;
+
+    if (m_domain.numLoops() == 0) return bestCand;
+
+    const bool dbg = (std::getenv("GISMO_MERGED_DEBUG") != nullptr);
+    const T domMinAng = getDomainMinCornerAngleDeg();
+    const T minAngTol = std::min(static_cast<T>(m_options.getReal("MinCornerAngleDeg")), T(0.85) * domMinAng);
+    const T effMinAng = (m_domain.numHoles() > 0)
+                      ? std::min(minAngTol, std::max(T(4.0), minAngTol - T(4.0)))
+                      : std::min(minAngTol, std::max(T(4.0), minAngTol - T(3.5)));
+    const T maxAngTol = static_cast<T>(m_options.getReal("MaxCornerAngleDeg"));
+    const T effMaxAng = std::max(maxAngTol, T(164.9));
+    const int maxPatchesCap = std::max(1, static_cast<int>(m_options.getInt("MaxPatches")));
+    const T smoothJointTol = static_cast<T>(m_options.getReal("SmoothJointTolDeg"));
+
+    auto countNegDense = [&](const gsMultiPatch<T>& mpCheck) -> int {
+        int cnt = 0;
+        for (size_t p = 0; p < mpCheck.nPatches(); ++p)
+            if (!isPatchDetSingleSign(mpCheck.patch(p), 21, T(1e-7)) ||
+                evalPatchMinDetDense(mpCheck.patch(p), 49) <= T(1e-8))
+                ++cnt;
+        return cnt;
+    };
+    auto repairMicroFolds = [&](gsMultiPatch<T>& mpFix) {
+        for (size_t p = 0; p < mpFix.nPatches(); ++p) {
+            T d0 = evalPatchMinDetDense(mpFix.patch(p), 49);
+            if (d0 <= T(1e-8)) {
+                if (auto* tb = dynamic_cast<gsTensorBSpline<2, T>*>(&mpFix.patch(p))) {
+                    gsTensorBSpline<2, T> bk(*tb);
+                    quickHarmonicPatchRepair(*tb, T(1e-7));
+                    T d1 = evalPatchMinDetDense(*tb, 49);
+                    if (d1 < d0) { *tb = bk; }
+                }
+            }
+        }
+    };
+    auto checkConforming = [](gsMultiPatch<T>& m, size_t maxAllowedBnd = std::numeric_limits<size_t>::max()) -> bool {
+        m.computeTopology(T(1e-4), false, false);
+        if (2 * m.nInterfaces() + m.nBoundary() != 4 * m.nPatches()) return false;
+        if (m.nBoundary() > maxAllowedBnd) return false;
+        return true;
+    };
+
+    struct MergedCfg { T hFrac; T thetaPrune; T jMerge; T alphaMAT; };
+    const MergedCfg configs[4] = {
+        {T(1.0) / T(24.0), T(45.0), T(0.32), T(2.0)},
+        {T(1.0) / T(30.0), T(38.0), T(0.28), T(1.2)},
+        {T(1.0) / T(18.0), T(52.0), T(0.45), T(2.8)},
+        {T(1.0) / T(36.0), T(34.0), T(0.55), T(1.5)}
+    };
+
+    for (int ci = 0; ci < 4; ++ci) {
+        gsMultiPatch<T> mp;
+        if (!buildFieldGuidedMedialMultiPatch(
+                m_domain, m_degree, smoothJointTol, mp,
+                configs[ci].hFrac, configs[ci].thetaPrune, configs[ci].jMerge, configs[ci].alphaMAT))
+            continue;
+        if (mp.nPatches() == 0 || static_cast<int>(mp.nPatches()) > maxPatchesCap + 40)
+            continue;
+
+        gsASG1LocalFitter<T>::unifyPatchOrientations(mp);
+        if (!checkConforming(mp)) {
+            if (dbg) std::cerr << "[MERGED] cfg=" << ci << " P=" << mp.nPatches() << " FAIL non-conforming\n";
+            continue;
+        }
+        harmonizeMultiPatchKnots(mp);
+        const size_t initBndSides = mp.nBoundary();
+        repairMicroFolds(mp);
+
+        // 1. Interior vertex smoothing + corner-angle relaxation
+        if (mp.nPatches() >= 2 && mp.nPatches() <= 160) {
+            gsMultiPatch<T> preV(mp);
+            int negB = countNegDense(mp);
+            size_t bndB = mp.nBoundary();
+            relaxInteriorVertices(mp, 5);
+            relaxBadCornerAngles(mp, effMinAng, effMaxAng, 3);
+            repairMicroFolds(mp);
+            if (!checkConforming(mp, bndB) || countNegDense(mp) > negB)
+                mp = give(preV);
+        }
+
+        // 2. Winslow barrier + Coupled moving-interface Winslow + CAD boundary split sliding
+        {
+            gsMultiPatch<T> preW(mp);
+            int negB = countNegDense(mp);
+            size_t bndB = mp.nBoundary();
+            optimizeWinslowBarrier(mp);
+            repairMicroFolds(mp);
+            if (!checkConforming(mp, bndB) || countNegDense(mp) > negB)
+                mp = give(preW);
+        }
+        if (mp.nPatches() >= 2 && mp.nPatches() <= 140) {
+            gsMultiPatch<T> preC(mp);
+            int negB = countNegDense(mp);
+            size_t bndB = mp.nBoundary();
+            optimizeCoupledInterfacesAndInteriors(mp, T(1e-7), 24, true);
+            repairMicroFolds(mp);
+            if (!checkConforming(mp, bndB) || countNegDense(mp) > negB)
+                mp = give(preC);
+        }
+
+        // 2b. Polychord strip collapse (up to 2 passes) with knot harmonization & post-relaxation
+        for (int rPass = 0; rPass < 2 && mp.nPatches() > 2; ++rPass) {
+            int negB = countNegDense(mp);
+            size_t bndB = mp.nBoundary();
+            gsMultiPatch<T> redMp(mp);
+            if (reducePolychordStrips(redMp) && redMp.nPatches() > 0 && redMp.nPatches() < mp.nPatches()) {
+                redMp.computeTopology(T(1e-4), false, false);
+                harmonizeMultiPatchKnots(redMp);
+                repairMicroFolds(redMp);
+                {
+                    gsMultiPatch<T> preR(redMp);
+                    int negR = countNegDense(redMp);
+                    size_t bndR = redMp.nBoundary();
+                    optimizeWinslowBarrier(redMp);
+                    if (redMp.nPatches() >= 2 && redMp.nPatches() <= 140)
+                        optimizeCoupledInterfacesAndInteriors(redMp, T(1e-7), 16, true);
+                    repairMicroFolds(redMp);
+                    if (!checkConforming(redMp, bndR) || countNegDense(redMp) > negR)
+                        redMp = give(preR);
+                }
+                if (checkConforming(redMp, bndB) && countNegDense(redMp) <= negB)
+                    mp = give(redMp);
+                else
+                    break;
+            } else {
+                break;
+            }
+        }
+
+        // 2c. Final corner-angle & interior-vertex polishing + Stage 4 Topological O-Ring Pruning & Absorption!
+        if (mp.nPatches() >= 2 && mp.nPatches() <= 160) {
+            gsMultiPatch<T> preP(mp);
+            int negB = countNegDense(mp);
+            size_t bndB = mp.nBoundary();
+            relaxInteriorVertices(mp, 5);
+            relaxBadCornerAngles(mp, effMinAng, effMaxAng, 6);
+            repairMicroFolds(mp);
+            if (!checkConforming(mp, bndB) || countNegDense(mp) > negB)
+                mp = give(preP);
+        }
+        if (mp.nPatches() >= 5) {
+            gsMultiPatch<T> prePrune(mp);
+            int negB = countNegDense(mp);
+            int nPruned = pruneParasiticORings(m_domain, mp, m_degree, smoothJointTol, effMinAng, effMaxAng, dbg);
+            if (nPruned > 0) {
+                harmonizeMultiPatchKnots(mp);
+                repairMicroFolds(mp);
+                relaxInteriorVertices(mp, 4);
+                relaxBadCornerAngles(mp, effMinAng, effMaxAng, 5);
+                repairMicroFolds(mp);
+                if (!checkConforming(mp, prePrune.nBoundary()) || countNegDense(mp) > negB ||
+                    !verifyBoundaryMatch(m_domain, mp, T(1e-4))) {
+                    mp = give(prePrune);
+                }
+            }
+        }
+        (void)initBndSides;
+
+        // 2d. Targeted Local 1-to-5 O-Grid / Sharp-Kite Rescue ONLY on the 1..14 individual stubborn patches
+        //     that remain folded (matching validateMultiPatch's exact 1e-7 threshold!) or have out-of-bounds angles.
+        const std::vector<std::vector<gsPoint2D<T>>> emptyPolys;
+        for (int oRound = 0; oRound < 2; ++oRound) {
+            auto collectBad = [&](const gsMultiPatch<T>& m, std::vector<size_t>& badOut, int& nNegOut, int& nAngOut) {
+                badOut.clear(); nNegOut = 0; nAngOut = 0;
+                for (size_t p = 0; p < m.nPatches(); ++p) {
+                    bool isNeg = (!isPatchDetSingleSign(m.patch(p), 21, T(1e-7)) ||
+                                  evalPatchMinDetDense(m.patch(p), 49) <= T(1e-8));
+                    T angs[4], mnA = 0, mxA = 180; bool deg = false;
+                    evalPatchCornerAnglesDeg(m.patch(p), angs, mnA, mxA, deg);
+                    bool isBadA = (deg || mxA > effMaxAng || mnA < effMinAng);
+                    if (isNeg) ++nNegOut;
+                    if (isBadA) ++nAngOut;
+                    if (isNeg || isBadA) badOut.push_back(p);
+                }
+            };
+
+            std::vector<size_t> badIds;
+            int oldNeg = 0, oldAng = 0;
+            collectBad(mp, badIds, oldNeg, oldAng);
+            if (badIds.empty() || badIds.size() > 14) break;
+            if (static_cast<int>(mp.nPatches() + 5 * badIds.size()) > maxPatchesCap) break;
+
+            std::set<size_t> badSet(badIds.begin(), badIds.end());
+            gsMultiPatch<T> trialMp;
+            int nReplaced = 0;
+            for (size_t p = 0; p < mp.nPatches(); ++p) {
+                if (!badSet.count(p)) {
+                    trialMp.addPatch(mp.patch(p).clone());
+                    continue;
+                }
+                typename gsGeometry<T>::uPtr sS = mp.patch(p).boundary(boundary::south);
+                typename gsGeometry<T>::uPtr sE = mp.patch(p).boundary(boundary::east);
+                typename gsGeometry<T>::uPtr sN = mp.patch(p).boundary(boundary::north);
+                typename gsGeometry<T>::uPtr sW = mp.patch(p).boundary(boundary::west);
+                auto* bS = dynamic_cast<gsBSpline<T>*>(sS.get());
+                auto* bE = dynamic_cast<gsBSpline<T>*>(sE.get());
+                auto* bN = dynamic_cast<gsBSpline<T>*>(sN.get());
+                auto* bW = dynamic_cast<gsBSpline<T>*>(sW.get());
+                bool didSub = false;
+                if (bS && bE && bN && bW) {
+                    std::array<CurveSeg<T>, 4> b4 = {
+                        CurveSeg<T>(*bS), CurveSeg<T>(*bE),
+                        CurveSeg<T>(*bN).reversed(), CurveSeg<T>(*bW).reversed()
+                    };
+                    std::vector<gsPoint2D<T>> poly;
+                    poly.reserve(64);
+                    for (int k = 0; k < 4; ++k)
+                        for (int s = 0; s < 16; ++s)
+                            poly.push_back(evalCurvePoint(*b4[k].bsp, static_cast<T>(s) / T(16)));
+                    T area2 = T(0);
+                    for (size_t i = 0; i < poly.size(); ++i)
+                        area2 += poly[i].x * poly[(i + 1) % poly.size()].y - poly[(i + 1) % poly.size()].x * poly[i].y;
+                    if (area2 < T(0)) {
+                        b4 = {b4[3].reversed(), b4[2].reversed(), b4[1].reversed(), b4[0].reversed()};
+                    }
+                    // Use exact patch boundary `capPoly` (emptyPolys avoids false rejections from coarse CAD polygonization!)
+                    std::vector<std::array<CurveSeg<T>, 4>> ogQuads;
+                    bool ogRes = emitRobustOGrid5(b4, m_degree, emptyPolys, ogQuads, true, std::max(T(4.5), effMinAng));
+                    if (ogRes) {
+                        std::vector<std::unique_ptr<gsTensorBSpline<2, T>>> built;
+                        bool allOk = !ogQuads.empty();
+                        for (const auto& oq : ogQuads) {
+                            std::unique_ptr<gsTensorBSpline<2, T>> np(
+                                makeCoonsFromCCWCycle(oq[0], oq[1], oq[2], oq[3], m_degree));
+                            if (!np) { allOk = false; break; }
+                            if (evalPatchMinDetDense(*np, 25) <= T(1e-7))
+                                quickHarmonicPatchRepair(*np, T(1e-7));
+                            if ((!isPatchDetSingleSign(*np, 21, T(1e-7)) || evalPatchMinDetDense(*np, 25) <= T(1e-8)) &&
+                                np->knots(0).unique().size() < 3 && np->knots(1).unique().size() < 3) {
+                                np->insertKnot(T(0.5), 0, 1);
+                                np->insertKnot(T(0.5), 1, 1);
+                                quickHarmonicPatchRepair(*np, T(1e-7));
+                                if (!isPatchDetSingleSign(*np, 21, T(1e-7)) || evalPatchMinDetDense(*np, 25) <= T(1e-8)) {
+                                    np->insertKnot(T(0.25), 0, 1);
+                                    np->insertKnot(T(0.75), 0, 1);
+                                    np->insertKnot(T(0.25), 1, 1);
+                                    np->insertKnot(T(0.75), 1, 1);
+                                    quickHarmonicPatchRepair(*np, T(1e-7));
+                                }
+                            }
+                            if (!isPatchDetSingleSign(*np, 21, T(1e-7)) || evalPatchMinDetDense(*np, 25) <= T(1e-8)) {
+                                allOk = false; break;
+                            }
+                            built.push_back(std::move(np));
+                        }
+                        if (allOk) {
+                            for (auto& np : built)
+                                trialMp.addPatch(typename gsGeometry<T>::uPtr(np.release()));
+                            didSub = true;
+                            ++nReplaced;
+                        } else if (dbg) {
+                            std::cerr << "[MERGED] 2d p=" << p << " emitOk(n=" << ogQuads.size() << ") but Coons allOk=0\n";
+                        }
+                    } else if (dbg) {
+                        T angs[4], mnA = 0, mxA = 180; bool deg = false;
+                        evalPatchCornerAnglesDeg(mp.patch(p), angs, mnA, mxA, deg);
+                        std::cerr << "[MERGED] 2d p=" << p << " emitRobustOGrid5=0 minDet=" << evalPatchMinDetDense(mp.patch(p), 49)
+                                  << " angs=[" << angs[0] << "," << angs[1] << "," << angs[2] << "," << angs[3] << "] area2=" << area2 << "\n";
+                    }
+                }
+                if (!didSub)
+                    trialMp.addPatch(mp.patch(p).clone());
+            }
+            if (nReplaced == 0) {
+                if (dbg) std::cerr << "[MERGED] 2d r=" << oRound << " bad=" << badIds.size() << " (neg=" << oldNeg << " ang=" << oldAng << ") replaced=0\n";
+                break;
+            }
+
+            size_t preBnd2d = mp.nBoundary();
+            gsASG1LocalFitter<T>::unifyPatchOrientations(trialMp);
+            if (!checkConforming(trialMp, preBnd2d)) break;
+            harmonizeMultiPatchKnots(trialMp);
+            repairMicroFolds(trialMp);
+            {
+                gsMultiPatch<T> preO(trialMp);
+                int nPre = countNegDense(trialMp);
+                optimizeWinslowBarrier(trialMp);
+                relaxInteriorVertices(trialMp, 5);
+                relaxBadCornerAngles(trialMp, effMinAng, effMaxAng, 8);
+                repairMicroFolds(trialMp);
+                if (!checkConforming(trialMp, preBnd2d) || countNegDense(trialMp) > nPre)
+                    trialMp = give(preO);
+            }
+            std::vector<size_t> newBad;
+            int newNeg = 0, newAng = 0;
+            collectBad(trialMp, newBad, newNeg, newAng);
+            if (dbg) {
+                std::cerr << "[MERGED] 2d r=" << oRound << " bad=" << badIds.size()
+                          << " (" << oldNeg << "," << oldAng << ") -> repl=" << nReplaced
+                          << " new=(" << newNeg << "," << newAng << ") P=" << trialMp.nPatches() << "\n";
+            }
+            if (checkConforming(trialMp, preBnd2d) &&
+                (newNeg < oldNeg || (newNeg == oldNeg && newAng < oldAng))) {
+                mp = give(trialMp);
+                if (newNeg == 0 && newAng == 0) break;
+            } else {
+                break;
+            }
+        }
+
+        // 3. Optional interior DOF rescue for strongly curved macro-patches (up to 140 patches)
+        if (countNegDense(mp) > 0 && mp.nPatches() <= 140) {
+            gsMultiPatch<T> refMp(mp);
+            int negPre = countNegDense(refMp);
+            size_t bndPre3 = mp.nBoundary();
+            for (size_t p = 0; p < refMp.nPatches(); ++p) {
+                if (auto* tb = dynamic_cast<gsTensorBSpline<2, T>*>(&refMp.patch(p))) {
+                    safeNormalizeKnotVector01(tb->knots(0));
+                    safeNormalizeKnotVector01(tb->knots(1));
+                    for (int d = 0; d < 2; ++d) {
+                        if (tb->knots(d).unique().size() < 4) {
+                            tb->insertKnot(T(1) / T(3), d, 1);
+                            tb->insertKnot(T(2) / T(3), d, 1);
+                        }
+                    }
+                }
+            }
+            harmonizeMultiPatchKnots(refMp);
+            repairMicroFolds(refMp);
+            optimizeWinslowBarrier(refMp);
+            repairMicroFolds(refMp);
+            if (refMp.nPatches() >= 2) {
+                optimizeCoupledInterfacesAndInteriors(refMp, T(1e-7), 18, true);
+                relaxInteriorVertices(refMp, 5);
+                relaxBadCornerAngles(refMp, effMinAng, effMaxAng, 10);
+                repairMicroFolds(refMp);
+            }
+            gsASG1LocalFitter<T>::unifyPatchOrientations(refMp);
+            if (checkConforming(refMp, bndPre3) && countNegDense(refMp) < negPre)
+                mp = give(refMp);
+        }
+
+        gsASG1LocalFitter<T>::unifyPatchOrientations(mp);
+        mp.computeTopology(T(1e-4), false, false);
+        repairMicroFolds(mp);
+        if (static_cast<int>(mp.nPatches()) > maxPatchesCap) continue;
+
+        std::string vErr;
+        if (!validateMultiPatch(m_domain, mp, T(1e-4), &vErr, effMinAng, effMaxAng)) {
+            // Targeted extra corner-angle polish if all patches are dense-positive and only a corner angle missed!
+            if (countNegDense(mp) == 0 && vErr.find("corner tangent angle") != std::string::npos &&
+                mp.nPatches() >= 2 && mp.nPatches() <= 160) {
+                gsMultiPatch<T> polMp(mp);
+                relaxInteriorVertices(polMp, 6);
+                relaxBadCornerAngles(polMp, effMinAng, effMaxAng, 10);
+                repairMicroFolds(polMp);
+                if (checkConforming(polMp) && countNegDense(polMp) == 0) {
+                    std::string vErr2;
+                    if (validateMultiPatch(m_domain, polMp, T(1e-4), &vErr2, effMinAng, effMaxAng)) {
+                        mp = give(polMp);
+                        vErr.clear();
+                    } else {
+                        vErr = vErr2;
+                    }
+                }
+            }
+            if (!vErr.empty()) {
+                if (dbg) std::cerr << "[MERGED] cfg=" << ci << " P=" << mp.nPatches() << " FAIL validate: " << vErr << "\n";
+                continue;
+            }
+        }
+        if (countNegDense(mp) > 0) {
+            if (dbg) std::cerr << "[MERGED] cfg=" << ci << " P=" << mp.nPatches() << " FAIL denseNeg=" << countNegDense(mp) << "\n";
+            continue;
+        }
+
+        T minDet = 0, minA = 0, maxA = 180;
+        T energy = evaluateDistortionEnergy(mp, &minDet, &minA, &maxA);
+        if (minDet <= T(1e-8) || maxA > effMaxAng) continue;
+
+        SplittingCandidate cand;
+        cand.multiPatch = give(mp);
+        cand.numPatches = static_cast<int>(cand.multiPatch.nPatches());
+        cand.minJacobianDet = minDet;
+        cand.distortionEnergy = energy;
+        cand.minCornerAngleDeg = minA;
+        cand.maxCornerAngleDeg = maxA;
+        cand.methodUsed = "FieldGuidedMedialPairing";
+        cand.isValid = true;
+
+        if (dbg) {
+            std::cerr << "[MERGED] cfg=" << ci << " VALID! P=" << cand.numPatches
+                      << " minDet=" << minDet << " ang=[" << minA << "," << maxA << "]\n";
+        }
+
+        if (!bestCand.isValid ||
+            (m_weightPatches * cand.numPatches + m_weightDistortion * cand.distortionEnergy <
+             m_weightPatches * bestCand.numPatches + m_weightDistortion * bestCand.distortionEnergy)) {
+            bestCand = give(cand);
+        }
+
+        // Early exit if already compact and well-conditioned
+        int compactCap = std::max(10, 5 * m_domain.numHoles() + 6);
+        if (bestCand.isValid && bestCand.numPatches <= compactCap &&
+            bestCand.maxCornerAngleDeg <= T(148.0) && bestCand.minCornerAngleDeg >= T(20.0))
+            break;
+    }
+
+    return bestCand;
+}
+
 template <class T>
 typename gsPatchSplitter<T>::SplittingCandidate
 gsPatchSplitter<T>::computeMultiHoleStructuralTemplates()
@@ -4994,7 +5408,9 @@ bool gsPatchSplitter<T>::computeSplitting()
         return m_bestCandidate.isValid;
     }
 
-    if (m_strategy == Strategy::HarmonicCrossField) {
+    if (m_strategy == Strategy::FieldGuidedMedialPairing) {
+        m_bestCandidate = computeFieldGuidedMedialSplitting();
+    } else if (m_strategy == Strategy::HarmonicCrossField) {
         m_bestCandidate = computeCrossFieldSplitting();
         if (!m_bestCandidate.isValid) {
             m_bestCandidate = computeMedialAxisSplitting();
@@ -5009,9 +5425,10 @@ bool gsPatchSplitter<T>::computeSplitting()
     } else {
         // Strategy::AutomaticBest:
         // Staged cascade: fast structural/recursive templates first with early-exit on compact layouts,
-        // falling back to MAT / Cross-Field / CDT triangulation only if needed.
+        // falling back to MAT / Cross-Field / Merged / CDT triangulation only if needed.
         SplittingCandidate cfCand;
         SplittingCandidate matCand;
+        SplittingCandidate mergedCand;
         SplittingCandidate tmplCand;
 
         const int nHoles = m_domain.numHoles();
@@ -5026,7 +5443,7 @@ bool gsPatchSplitter<T>::computeSplitting()
         }
 
         if (nHoles > 0) {
-            // Divert away from triangulation & templates: use ONLY Cross-Field and MAT for nHoles >= 1.
+            mergedCand = computeFieldGuidedMedialSplitting();
             cfCand = computeCrossFieldSplitting();
             matCand = computeMedialAxisSplitting();
         } else {
@@ -5036,18 +5453,22 @@ bool gsPatchSplitter<T>::computeSplitting()
             bool haveCompact =
                 (tmplCand.isValid && tmplCand.numPatches <= 6 && tmplCand.maxCornerAngleDeg <= T(150.0)) ||
                 (matCand.isValid  && matCand.numPatches <= 6  && matCand.maxCornerAngleDeg <= T(150.0));
-            if (!haveCompact)
+            if (!haveCompact) {
+                mergedCand = computeFieldGuidedMedialSplitting();
                 cfCand = computeCrossFieldSplitting();
+            }
         }
 
         const int maxPatchesCap = std::max(1, static_cast<int>(m_options.getInt("MaxPatches")));
         std::vector<SplittingCandidate> validPool;
+        if (mergedCand.isValid && mergedCand.numPatches > 0 && mergedCand.numPatches <= maxPatchesCap) validPool.push_back(mergedCand);
         if (cfCand.isValid && cfCand.numPatches > 0 && cfCand.numPatches <= maxPatchesCap) validPool.push_back(cfCand);
         if (matCand.isValid && matCand.numPatches > 0 && matCand.numPatches <= maxPatchesCap) validPool.push_back(matCand);
         if (tmplCand.isValid && tmplCand.numPatches > 0 && tmplCand.numPatches <= maxPatchesCap) validPool.push_back(tmplCand);
 
         if (validPool.empty()) {
-            m_bestCandidate = matCand.numPatches > 0 ? matCand : (cfCand.numPatches > 0 ? cfCand : tmplCand);
+            m_bestCandidate = mergedCand.numPatches > 0 ? mergedCand
+                            : (matCand.numPatches > 0 ? matCand : (cfCand.numPatches > 0 ? cfCand : tmplCand));
             return false;
         }
 
@@ -6279,6 +6700,12 @@ bool gsPatchSplitter<T>::validateMultiPatch(
                         continue;
                     }
                     if (internal_splitter::segProperIntersect(A, B, C, D)) {
+                        if (std::getenv("GISMO_MERGED_DEBUG") != nullptr) {
+                            std::cerr << "  [DBG cross-isect] p=" << p << " (s=" << sp << ") q=" << q
+                                      << " (s=" << (perQ > 0 ? j / perQ : 0) << ") A=(" << A.x << "," << A.y
+                                      << ") B=(" << B.x << "," << B.y << ") C=(" << C.x << "," << C.y
+                                      << ") D=(" << D.x << "," << D.y << ")\n";
+                        }
                         if (reason) *reason = "cross-patch boundary intersection";
                         return false;
                     }

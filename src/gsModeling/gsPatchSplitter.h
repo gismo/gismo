@@ -39,11 +39,12 @@ template <class T = real_t>
 class GISMO_EXPORT gsPatchSplitter {
 public:
     enum class Strategy {
-        AutomaticBest,         // Runs Cross-Field, Structural/MAT, and Templates; picks best valid layout
-        HarmonicCrossField,    // 4-RoSy harmonic cross-field + separatrix simplification
-        MedialAxisSkeleton,    // Concave-cut, structural & hole-cell decomposition
-        TemplateDecomposition, // Topological preset templates & conforming triangulation fallback
-        PolychordOnly          // Polychord aspect-ratio splitting only (for existing gsMultiPatch)
+        AutomaticBest,           // Runs Cross-Field, Structural/MAT, Merged, and Templates; picks best valid layout
+        HarmonicCrossField,      // 4-RoSy harmonic cross-field + separatrix simplification
+        MedialAxisSkeleton,      // Concave-cut, structural & hole-cell decomposition
+        TemplateDecomposition,   // Topological preset templates & conforming triangulation fallback
+        PolychordOnly,           // Polychord aspect-ratio splitting only (for existing gsMultiPatch)
+        FieldGuidedMedialPairing // Merged 5-module Field-Guided Medial Macro-Pairing algorithm
     };
 
     struct SplittingCandidate {
@@ -144,6 +145,7 @@ private:
     // Splitting Core
     SplittingCandidate computeCrossFieldSplitting();
     SplittingCandidate computeMedialAxisSplitting();
+    SplittingCandidate computeFieldGuidedMedialSplitting();
     SplittingCandidate computeTemplateSplitting();
     SplittingCandidate computeHoleFreeStructuralSplitting();
     SplittingCandidate computeMultiHoleStructuralTemplates();

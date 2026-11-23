@@ -57,7 +57,7 @@ void printUsage(const char* prog)
               << "  --dir <path>              Process all XML geometries in specified directory\n"
               << "  -p, --preset <name>       Preset domain name (default: plate_with_hole)\n"
               << "  -x, --xml <file>          Load gsPlanarDomain from XML file\n"
-              << "  -s, --strategy <name>     Decomposition strategy: auto, cross, mat, template\n"
+              << "  -s, --strategy <name>     Decomposition strategy: auto, cross, mat, template, merged\n"
               << "                            (default: auto)\n"
               << "  -d, --degree <int>        Polynomial degree (default: 3, for C^1 Argyris)\n"
               << "  -o, --output <prefix>     ParaView export prefix (default: splitter_out)\n"
@@ -276,7 +276,8 @@ bool processDomainFile(
     real_t bestAlpha = 1e30, bestBeta = 1e30;
     for (int nInner : {2, 3, 4, 6, 8, 12}) {
         std::vector<gsASG1LocalFitter<real_t>::FittingMode> modes;
-        if (mp.nPatches() <= 32 && nInner <= 4)
+        const int n1D = 4 + 2 * nInner;
+        if (mp.nPatches() <= 16 && static_cast<int>(mp.nPatches()) * n1D * n1D <= 1800)
             modes.push_back(gsASG1LocalFitter<real_t>::FittingMode::Global);
         modes.push_back(gsASG1LocalFitter<real_t>::FittingMode::Local);
 
@@ -656,6 +657,7 @@ int main(int argc, char* argv[])
     if (stratStr == "cross") strategy = gsPatchSplitter<real_t>::Strategy::HarmonicCrossField;
     else if (stratStr == "mat") strategy = gsPatchSplitter<real_t>::Strategy::MedialAxisSkeleton;
     else if (stratStr == "template") strategy = gsPatchSplitter<real_t>::Strategy::TemplateDecomposition;
+    else if (stratStr == "merged") strategy = gsPatchSplitter<real_t>::Strategy::FieldGuidedMedialPairing;
 
     if (runCompare) {
         std::vector<ComparisonRecord> records;
