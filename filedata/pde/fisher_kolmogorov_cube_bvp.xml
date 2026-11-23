@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xml>
+
+  <!-- Computational domain: unit cube (0,1)^3 -->
+  <MultiPatch parDim="3" id="0">
+    <patches type="id_range">500 500</patches>
+  </MultiPatch>
+
+  <!-- Boundary conditions: none => natural (zero-flux Neumann) BCs on the whole boundary -->
+  <boundaryConditions id="2" multipatch="0">
+    <Function type="FunctionExpr" dim="3" index="0">0</Function>
+  </boundaryConditions>
+
+  <!-- Physics & Fisher-Kolmogorov model parameters -->
+  <OptionList id="3">
+    <real label="lambda" desc="Penalty parameter" value="1.5e-3"/>
+    <real label="diffusivity" desc="Tumor cell diffusivity D" value="0.001"/>
+    <real label="rho" desc="Net proliferation rate rho" value="1e-3"/>
+    <real label="radius" desc="Initial tumor seed radius R" value="0.15"/>
+    <real label="sigma" desc="Initial tumor seed interface width sigma" value="0.075"/>
+    <real label="Nth" desc="Cell density threshold N_th defining Omega_T" value="0.15"/>
+  </OptionList>
+
+  <!-- Time integrator options -->
+  <OptionList id="4">
+    <real label="dt" desc="Time step size" value="0.5"/>
+    <int label="Nsteps" desc="Number of time steps" value="10"/>
+    <real label="rho_inf" desc="Spectral radius parameter for Generalized-Alpha method" value="0.5"/>
+    <real label="tol" desc="Relative Newton-Raphson residual tolerance" value="1e-4"/>
+  </OptionList>
+
+  <!-- Assembler & Mesh options -->
+  <OptionList id="5">
+    <int label="numRefine" desc="Number of uniform mesh refinement steps" value="4"/>
+    <int label="DirichletStrategy" desc="Method for enforcement of Dirichlet BCs [11..14]" value="11"/>
+    <int label="DirichletValues" desc="Method for computation of Dirichlet DoF values [100..103]" value="101"/>
+    <int label="InterfaceStrategy" desc="Method of treatment of patch interfaces [0..3]" value="1"/>
+    <real label="bdA" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="2"/>
+    <int label="bdB" desc="Estimated nonzeros per column of the matrix: bdA*deg + bdB" value="1"/>
+    <real label="bdO" desc="Overhead of sparse mem. allocation: (1+bdO)(bdA*deg + bdB) [0..1]" value="0.333"/>
+    <real label="quA" desc="Number of quadrature points: quA*deg + quB" value="1"/>
+    <int label="quB" desc="Number of quadrature points: quA*deg + quB" value="1"/>
+    <int label="quRule" desc="Quadrature rule [1:GaussLegendre,2:GaussLobatto]" value="1"/>
+  </OptionList>
+
+  <!-- Spline data: trilinear unit cube -->
+  <Geometry type="TensorBSpline3" id="500">
+    <Basis type="TensorBSplineBasis3" parDim="3">
+      <Basis type="BSplineBasis" index="0">
+        <KnotVector degree="1">0.00000 0.00000 1.00000 1.00000</KnotVector>
+      </Basis>
+      <Basis type="BSplineBasis" index="1">
+        <KnotVector degree="1">0.00000 0.00000 1.00000 1.00000</KnotVector>
+      </Basis>
+      <Basis type="BSplineBasis" index="2">
+        <KnotVector degree="1">0.00000 0.00000 1.00000 1.00000</KnotVector>
+      </Basis>
+    </Basis>
+    <coefs geoDim="3">
+      0 0 0
+      1 0 0
+      0 1 0
+      1 1 0
+      0 0 1
+      1 0 1
+      0 1 1
+      1 1 1
+    </coefs>
+  </Geometry>
+
+</xml>

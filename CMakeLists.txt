@@ -144,6 +144,12 @@ if (CMAKE_VERSION VERSION_GREATER 3.11.5)
 endif()
 set(GISMO_OPTIONAL ${GISMO_OPTIONAL}
   CACHE STRING "List of optional G+Smo modules" FORCE)
+# gsAlgoim headers rely on C++17 features (e.g. std::is_same_v) and are
+# included from core targets when enabled.
+if (";${GISMO_OPTIONAL};" MATCHES ";gsAlgoim;" AND CMAKE_CXX_STANDARD LESS 17)
+  message(STATUS "gsAlgoim enabled: raising CMAKE_CXX_STANDARD to 17")
+  set(CMAKE_CXX_STANDARD 17 CACHE INTERNAL "" FORCE)
+endif()
 #message(STATUS "Submodules ${GISMO_OPTIONAL}")
 
 ## #################################################################
