@@ -560,7 +560,10 @@ void solve(gsMultiPatch<T> & mp,
     gsInfo << "Solver (box) units: D = " << D << " box^2/day, rho = " << rho
            << " 1/day, R = " << par.R << ", sigma = " << par.sigma << ", amp = " << par.amp
            << ", N_th = " << par.Nth << "\n";
-    gsInfo << "Discretization: numRefine = " << numRefine << ", DoFs = " << dbasis.size()
+    // unknowns = basis functions minus the wrapped copies merged at the periodic seam
+    gsInfo << "Discretization: numRefine = " << numRefine << ", DoFs (unknowns) = "
+           << dbasis.size() - (index_t)periodicPairs.size() << " (" << dbasis.size()
+           << " basis functions, " << periodicPairs.size() << " merged at the seam)"
            << ", dt = " << dt << ", steps = " << maxSteps << "\n";
 
     // Initialization biomarkers
