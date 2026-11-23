@@ -747,6 +747,14 @@ bool gsPatchSplitter<T>::reducePolychordStrips(gsMultiPatch<T>& mp)
                 if (!merged) continue;
                 if (internal_splitter::evalPatchMinDetDense(*merged, 49) <= T(1e-8))
                     internal_splitter::quickHarmonicPatchRepair(*merged, T(1e-7));
+                if (internal_splitter::evalPatchMinDetDense(*merged, 49) <= T(1e-8)) {
+                    gsMultiPatch<T> tmpOne;
+                    tmpOne.addPatch(merged->clone());
+                    if (optimizeWinslowBarrier(tmpOne, T(1e-7))) {
+                        if (auto* fixed = dynamic_cast<gsTensorBSpline<2, T>*>(&tmpOne.patch(0)))
+                            *merged = *fixed;
+                    }
+                }
                 if (internal_splitter::evalPatchMinDetDense(*merged, 49) <= T(1e-8)) continue;
                 T angs[4], mnA = 0, mxA = 180; bool degen = false;
                 evalPatchCornerAnglesDeg(*merged, angs, mnA, mxA, degen);
@@ -922,6 +930,14 @@ bool gsPatchSplitter<T>::reducePolychordStrips(gsMultiPatch<T>& mp)
                         if (!np) { buildOk = false; break; }
                         if (internal_splitter::evalPatchMinDetDense(*np, 49) <= T(1e-8))
                             internal_splitter::quickHarmonicPatchRepair(*np, T(1e-7));
+                        if (internal_splitter::evalPatchMinDetDense(*np, 49) <= T(1e-8)) {
+                            gsMultiPatch<T> tmpOne;
+                            tmpOne.addPatch(np->clone());
+                            if (optimizeWinslowBarrier(tmpOne, T(1e-7))) {
+                                if (auto* fixed = dynamic_cast<gsTensorBSpline<2, T>*>(&tmpOne.patch(0)))
+                                    *np = *fixed;
+                            }
+                        }
                         if (internal_splitter::evalPatchMinDetDense(*np, 49) <= T(1e-8)) { buildOk = false; break; }
                         T angs[4], mnA = 0, mxA = 180; bool degen = false;
                         evalPatchCornerAnglesDeg(*np, angs, mnA, mxA, degen);

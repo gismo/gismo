@@ -4510,7 +4510,13 @@ gsPatchSplitter<T>::computeFieldGuidedMedialSplitting()
             gsMultiPatch<T> preC(mp);
             int negB = countNegDense(mp);
             size_t bndB = mp.nBoundary();
-            optimizeCoupledInterfacesAndInteriors(mp, T(1e-7), 24, true);
+            bool hasSkewed = false;
+            for (size_t p = 0; p < mp.nPatches(); ++p) {
+                T angs[4], mnA = 0, mxA = 180; bool deg = false;
+                evalPatchCornerAnglesDeg(mp.patch(p), angs, mnA, mxA, deg);
+                if (deg || mnA < T(30.0) || mxA > T(140.0)) { hasSkewed = true; break; }
+            }
+            optimizeCoupledInterfacesAndInteriors(mp, T(1e-7), hasSkewed ? 36 : 24, true);
             repairMicroFolds(mp);
             if (!checkConforming(mp, bndB) || countNegDense(mp) > negB)
                 mp = give(preC);
@@ -4561,12 +4567,15 @@ gsPatchSplitter<T>::computeFieldGuidedMedialSplitting()
             int negB = countNegDense(mp);
             int nPruned = pruneParasiticORings(m_domain, mp, m_degree, smoothJointTol, effMinAng, effMaxAng, dbg);
             if (nPruned > 0) {
+                size_t prunedBnd = mp.nBoundary();
                 harmonizeMultiPatchKnots(mp);
                 repairMicroFolds(mp);
+                if (mp.nPatches() >= 2 && mp.nPatches() <= 140)
+                    optimizeCoupledInterfacesAndInteriors(mp, T(1e-7), 18, true);
                 relaxInteriorVertices(mp, 4);
                 relaxBadCornerAngles(mp, effMinAng, effMaxAng, 5);
                 repairMicroFolds(mp);
-                if (!checkConforming(mp, prePrune.nBoundary()) || countNegDense(mp) > negB ||
+                if (!checkConforming(mp, prunedBnd) || countNegDense(mp) > negB ||
                     !verifyBoundaryMatch(m_domain, mp, T(1e-4))) {
                     mp = give(prePrune);
                 }
@@ -4654,6 +4663,14 @@ gsPatchSplitter<T>::computeFieldGuidedMedialSplitting()
                                     np->insertKnot(T(0.25), 1, 1);
                                     np->insertKnot(T(0.75), 1, 1);
                                     quickHarmonicPatchRepair(*np, T(1e-7));
+                                }
+                                if (!isPatchDetSingleSign(*np, 21, T(1e-7)) || evalPatchMinDetDense(*np, 25) <= T(1e-8)) {
+                                    gsMultiPatch<T> tmpO;
+                                    tmpO.addPatch(np->clone());
+                                    if (optimizeWinslowBarrier(tmpO, T(1e-7))) {
+                                        if (auto* fx = dynamic_cast<gsTensorBSpline<2, T>*>(&tmpO.patch(0)))
+                                            *np = *fx;
+                                    }
                                 }
                             }
                             if (!isPatchDetSingleSign(*np, 21, T(1e-7)) || evalPatchMinDetDense(*np, 25) <= T(1e-8)) {
@@ -5941,8 +5958,9 @@ bool gsPatchSplitter<T>::optimizeCoupledInterfacesAndInteriors(
         }
     };
 
-    const T lamArea = T(0.35);
-    const T lamBend = T(0.05);
+    const T lamArea  = T(0.35);
+    const T lamBend  = T(0.05);
+    const T lamOrtho = T(0.22);
     auto evalGlobalObjGrad = [&](const gsMatrix<T>& x, T epsVal, T& objOut, T& gMinDet, T& gMaxDet, gsMatrix<T>& gOut) {
         objOut = T(0);
         gMinDet = std::numeric_limits<T>::max();
@@ -5959,7 +5977,7 @@ bool gsPatchSplitter<T>::optimizeCoupledInterfacesAndInteriors(
             }
             tgs[p].coefsToMatrices(pCoefs, Cx, Cy);
             T pObj = 0, pMn = 0, pMx = 0;
-            tgs[p].evalRegularizedWinslowAndGradAll(Cx, Cy, epsVal, pObj, pMn, pMx, pGrad, patchAreaRef[p], lamArea);
+            tgs[p].evalRegularizedWinslowAndGradAll(Cx, Cy, epsVal, pObj, pMn, pMx, pGrad, patchAreaRef[p], lamArea, lamOrtho);
             objOut += pObj;
             if (pMn < gMinDet) gMinDet = pMn;
             if (pMx > gMaxDet) gMaxDet = pMx;
@@ -6077,21 +6095,37 @@ bool gsPatchSplitter<T>::optimizeCoupledInterfacesAndInteriors(
 
     // Phase 1B: Exact CAD Boundary Split-Parameter Sliding (1D u_b along smooth CAD curves)
     // Slides smooth 2-patch boundary split points along the exact joined CAD B-spline via splitAt,
-    // strictly preserving CAD boundary geometry while reducing patch skew and aspect-ratio distortion.
+    // prioritized worst-corner-skew-first across the entire mesh (unblocked beyond 16 vertices!).
     if (slideBoundarySplits && m_hasDomain && m_domain.numLoops() > 0 && bestValid) {
         const T minAngTol = std::min(static_cast<T>(m_options.getReal("MinCornerAngleDeg")), T(0.85) * getDomainMinCornerAngleDeg());
         const T maxAngTol = std::max(static_cast<T>(m_options.getReal("MaxCornerAngleDeg")), T(164.2));
+        auto extractSide = [&](const gsTensorBSpline<2, T>& tb, int sIdx) -> CurveSeg<T> {
+            typename gsGeometry<T>::uPtr b = tb.boundary(static_cast<boxSide>(sIdx + 1));
+            auto* bsp = dynamic_cast<gsBSpline<T>*>(b.get());
+            return bsp ? CurveSeg<T>(*bsp) : CurveSeg<T>();
+        };
         for (int sweep = 0; sweep < 2; ++sweep) {
             mp.computeTopology(T(1e-4), false, false);
             bool anySlid = false;
-            // Find shared interior interfaces whose one endpoint lies on a smooth domain boundary split
-            int triedVerts = 0;
-            for (auto it = mp.iBegin(); it != mp.iEnd() && triedVerts < 16; ++it) {
-                const auto& ps1 = it->first();
-                const auto& ps2 = it->second();
-                int p1 = static_cast<int>(ps1.patch), s1 = ps1.side().m_index - 1;
-                int p2 = static_cast<int>(ps2.patch), s2 = ps2.side().m_index - 1;
+            struct SlideIfc { int p1, s1, p2, s2; T skew; };
+            std::vector<SlideIfc> ifcList;
+            for (auto it = mp.iBegin(); it != mp.iEnd(); ++it) {
+                int p1 = static_cast<int>(it->first().patch), s1 = it->first().side().m_index - 1;
+                int p2 = static_cast<int>(it->second().patch), s2 = it->second().side().m_index - 1;
                 if (p1 == p2) continue;
+                T a1[4], mn1 = 90, mx1 = 90, a2[4], mn2 = 90, mx2 = 90; bool d1 = false, d2 = false;
+                evalPatchCornerAnglesDeg(mp.patch(p1), a1, mn1, mx1, d1);
+                evalPatchCornerAnglesDeg(mp.patch(p2), a2, mn2, mx2, d2);
+                T sk = std::max(std::max(T(90) - mn1, mx1 - T(90)), std::max(T(90) - mn2, mx2 - T(90)));
+                ifcList.push_back({p1, s1, p2, s2, sk});
+            }
+            std::sort(ifcList.begin(), ifcList.end(), [](const SlideIfc& a, const SlideIfc& b) { return a.skew > b.skew; });
+
+            int triedVerts = 0;
+            for (const auto& item : ifcList) {
+                if (triedVerts >= 32) break;
+                if (item.skew < T(10.0)) continue;
+                int p1 = item.p1, s1 = item.s1, p2 = item.p2, s2 = item.s2;
                 auto* tb1 = dynamic_cast<gsTensorBSpline<2, T>*>(&mp.patch(p1));
                 auto* tb2 = dynamic_cast<gsTensorBSpline<2, T>*>(&mp.patch(p2));
                 if (!tb1 || !tb2) continue;
@@ -6099,13 +6133,8 @@ bool gsPatchSplitter<T>::optimizeCoupledInterfacesAndInteriors(
                 // Transverse sides of p1 and p2 meeting at the endpoints of this shared interface
                 int tr1[2] = {(s1 < 2) ? 2 : 0, (s1 < 2) ? 3 : 1};
                 int tr2[2] = {(s2 < 2) ? 2 : 0, (s2 < 2) ? 3 : 1};
-                auto extractSide = [&](const gsTensorBSpline<2, T>& tb, int sIdx) -> CurveSeg<T> {
-                    typename gsGeometry<T>::uPtr b = tb.boundary(static_cast<boxSide>(sIdx + 1));
-                    auto* bsp = dynamic_cast<gsBSpline<T>*>(b.get());
-                    return bsp ? CurveSeg<T>(*bsp) : CurveSeg<T>();
-                };
 
-                for (int eEnd = 0; eEnd < 2 && triedVerts < 16; ++eEnd) {
+                for (int eEnd = 0; eEnd < 2 && triedVerts < 32; ++eEnd) {
                     int bS1 = tr1[eEnd];
                     if (mp.isInterface(patchSide(p1, static_cast<boxSide>(bS1 + 1)))) continue;
                     CurveSeg<T> segB1 = extractSide(*tb1, bS1);
@@ -6230,8 +6259,18 @@ bool gsPatchSplitter<T>::optimizeCoupledInterfacesAndInteriors(
                                 : makeCoonsFromCCWCycle(c3.reversed(), c2.reversed(), c1.reversed(), c0.reversed(), m_degree);
                             if (!raw) return nullptr;
                             std::unique_ptr<gsTensorBSpline<2, T>> ptr(raw);
-                            if (evalPatchMinDetDense(*ptr, 49) <= minDetThreshold) {
+                            T mdSlide = evalPatchMinDetDense(*ptr, 49);
+                            if (mdSlide <= minDetThreshold) {
                                 quickHarmonicPatchRepair(*ptr, std::max(minDetThreshold, T(1e-7)));
+                                mdSlide = evalPatchMinDetDense(*ptr, 49);
+                            }
+                            if (mdSlide <= minDetThreshold && mdSlide > -T(0.05)) {
+                                gsMultiPatch<T> tmpOne;
+                                tmpOne.addPatch(ptr->clone());
+                                if (optimizeWinslowBarrier(tmpOne, std::max(minDetThreshold, T(1e-7)))) {
+                                    if (auto* fx = dynamic_cast<gsTensorBSpline<2, T>*>(&tmpOne.patch(0)))
+                                        *ptr = *fx;
+                                }
                             }
                             return ptr;
                         };

@@ -1054,7 +1054,8 @@ struct TensorGridEval1D
     void evalRegularizedWinslowAndGradAll(const gsMatrix<T>& Cx, const gsMatrix<T>& Cy,
                                           T eps, T& objOut, T& minDetOut, T& maxDetOut,
                                           gsMatrix<T>& gradCoefs,
-                                          T areaRef = T(0), T areaWeight = T(0)) const
+                                          T areaRef = T(0), T areaWeight = T(0),
+                                          T orthoWeight = T(0)) const
     {
         const gsMatrix<T> Xu = Du * Cx * Bv.transpose();
         const gsMatrix<T> Yu = Du * Cy * Bv.transpose();
@@ -1065,13 +1066,18 @@ struct TensorGridEval1D
         const T fourEpsSq = T(4) * eps * eps;
         const T w = hSq;
         const bool useArea = (areaWeight > T(0) && areaRef > T(1e-12));
+        const bool useOrtho = (orthoWeight > T(0));
+        const T wCornerOrtho = orthoWeight * T(0.5);
+        const T wEdgeOrtho   = orthoWeight / std::max(T(4), static_cast<T>(2 * (Mu + Mv)));
 
         minDetOut = std::numeric_limits<T>::max();
         maxDetOut = -std::numeric_limits<T>::max();
         objOut = T(0);
 
         for (int b = 0; b < Mv; ++b) {
+            const bool bEdge = (b == 0 || b == Mv - 1);
             for (int a = 0; a < Mu; ++a) {
+                const bool aEdge = (a == 0 || a == Mu - 1);
                 T xu = Xu(a, b), yu = Yu(a, b);
                 T xv = Xv(a, b), yv = Yv(a, b);
                 T d = xu * yv - yu * xv;
@@ -1096,10 +1102,31 @@ struct TensorGridEval1D
 
                 T twoOverChi = (T(2) * w) / chiSafe;
                 T w_dfd = w * df_dd;
-                Gxu(a, b) = twoOverChi * xu + w_dfd * yv;
-                Gyu(a, b) = twoOverChi * yu - w_dfd * xv;
-                Gxv(a, b) = twoOverChi * xv - w_dfd * yu;
-                Gyv(a, b) = twoOverChi * yv + w_dfd * xu;
+                T gxu = twoOverChi * xu + w_dfd * yv;
+                T gyu = twoOverChi * yu - w_dfd * xv;
+                T gxv = twoOverChi * xv - w_dfd * yu;
+                T gyv = twoOverChi * yv + w_dfd * xu;
+
+                if (useOrtho && (aEdge || bEdge)) {
+                    const T wLoc = (aEdge && bEdge) ? wCornerOrtho : wEdgeOrtho;
+                    const T g12 = xu * xv + yu * yv;
+                    const T denom = g11 * g22 + T(1e-18);
+                    const T invD = T(1) / denom;
+                    const T cosSq = g12 * g12 * invD;
+                    objOut += wLoc * cosSq;
+                    const T dQ_dg12 = T(2) * wLoc * g12 * invD;
+                    const T dQ_dg11 = -wLoc * cosSq * g22 * invD;
+                    const T dQ_dg22 = -wLoc * cosSq * g11 * invD;
+                    gxu += dQ_dg12 * xv + T(2) * dQ_dg11 * xu;
+                    gyu += dQ_dg12 * yv + T(2) * dQ_dg11 * yu;
+                    gxv += dQ_dg12 * xu + T(2) * dQ_dg22 * xv;
+                    gyv += dQ_dg12 * yu + T(2) * dQ_dg22 * yv;
+                }
+
+                Gxu(a, b) = gxu;
+                Gyu(a, b) = gyu;
+                Gxv(a, b) = gxv;
+                Gyv(a, b) = gyv;
             }
         }
 

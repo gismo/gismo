@@ -967,6 +967,38 @@ inline bool emitRobustOGrid5(
                             quickHarmonicPatchRepair(*tb, T(1e-7));
                             md = evalPatchMinDetDense(*tb, 21);
                         }
+                        if (md <= T(1e-7) && md > -T(5e-2)) {
+                            // Lightweight local Winslow untangle for micro-folds (e.g. -0.0014 on curved reflex O-grid)
+                            TensorGridEval1D<T> tgLoc;
+                            if (tgLoc.init(*tb, 17)) {
+                                gsMatrix<T> xC = tb->coefs(), Cx, Cy, gC;
+                                T obj = 0, mn = 0, mx = 0;
+                                T epsW = std::max(T(1.5) * std::max(T(0), -md), T(1e-5));
+                                T diagP = std::max(T(1e-4), std::hypot(xC.col(0).maxCoeff() - xC.col(0).minCoeff(),
+                                                                       xC.col(1).maxCoeff() - xC.col(1).minCoeff()));
+                                T maxSt = T(0.08) * diagP / std::max(T(2), static_cast<T>(std::max(tgLoc.nu, tgLoc.nv)));
+                                for (int wIt = 0; wIt < 14; ++wIt) {
+                                    tgLoc.coefsToMatrices(xC, Cx, Cy);
+                                    tgLoc.evalRegularizedWinslowAndGrad(Cx, Cy, epsW, obj, mn, mx, gC);
+                                    if (mn > T(1e-6)) break;
+                                    T gMx = gC.cwiseAbs().maxCoeff();
+                                    if (gMx <= T(1e-14)) break;
+                                    T al = maxSt / gMx;
+                                    for (int ls = 0; ls < 5; ++ls) {
+                                        gsMatrix<T> xn = xC - al * gC;
+                                        T o2 = 0, mn2 = 0, mx2 = 0; gsMatrix<T> g2;
+                                        tgLoc.coefsToMatrices(xn, Cx, Cy);
+                                        tgLoc.evalRegularizedWinslowAndGrad(Cx, Cy, epsW, o2, mn2, mx2, g2);
+                                        if (o2 < obj || mn2 > mn) { xC = std::move(xn); mn = mn2; obj = o2; break; }
+                                        al *= T(0.5);
+                                    }
+                                    if (mn > T(1e-7)) epsW = std::max(T(1e-7), T(1e-4) * std::max(T(0), mx));
+                                    else epsW = std::max(T(1.1) * std::max(T(0), -mn), T(0.5) * epsW);
+                                }
+                                tb->setCoefs(xC);
+                                md = evalPatchMinDetDense(*tb, 21);
+                            }
+                        }
                     }
                     worstDet = std::min(worstDet, md);
                     if (worstDet <= T(1e-7)) break;
@@ -1157,6 +1189,37 @@ inline bool emitRobustOGrid5(
                                 tb->insertKnot(T(0.75), 1, 1);
                                 quickHarmonicPatchRepair(*tb, T(1e-7));
                                 md = evalPatchMinDetDense(*tb, 21);
+                            }
+                            if (md <= T(1e-7) && md > -T(5e-2)) {
+                                TensorGridEval1D<T> tgLoc;
+                                if (tgLoc.init(*tb, 17)) {
+                                    gsMatrix<T> xC = tb->coefs(), Cx, Cy, gC;
+                                    T obj = 0, mn = 0, mx = 0;
+                                    T epsW = std::max(T(1.5) * std::max(T(0), -md), T(1e-5));
+                                    T diagP = std::max(T(1e-4), std::hypot(xC.col(0).maxCoeff() - xC.col(0).minCoeff(),
+                                                                           xC.col(1).maxCoeff() - xC.col(1).minCoeff()));
+                                    T maxSt = T(0.08) * diagP / std::max(T(2), static_cast<T>(std::max(tgLoc.nu, tgLoc.nv)));
+                                    for (int wIt = 0; wIt < 14; ++wIt) {
+                                        tgLoc.coefsToMatrices(xC, Cx, Cy);
+                                        tgLoc.evalRegularizedWinslowAndGrad(Cx, Cy, epsW, obj, mn, mx, gC);
+                                        if (mn > T(1e-6)) break;
+                                        T gMx = gC.cwiseAbs().maxCoeff();
+                                        if (gMx <= T(1e-14)) break;
+                                        T al = maxSt / gMx;
+                                        for (int ls = 0; ls < 5; ++ls) {
+                                            gsMatrix<T> xn = xC - al * gC;
+                                            T o2 = 0, mn2 = 0, mx2 = 0; gsMatrix<T> g2;
+                                            tgLoc.coefsToMatrices(xn, Cx, Cy);
+                                            tgLoc.evalRegularizedWinslowAndGrad(Cx, Cy, epsW, o2, mn2, mx2, g2);
+                                            if (o2 < obj || mn2 > mn) { xC = std::move(xn); mn = mn2; obj = o2; break; }
+                                            al *= T(0.5);
+                                        }
+                                        if (mn > T(1e-7)) epsW = std::max(T(1e-7), T(1e-4) * std::max(T(0), mx));
+                                        else epsW = std::max(T(1.1) * std::max(T(0), -mn), T(0.5) * epsW);
+                                    }
+                                    tb->setCoefs(xC);
+                                    md = evalPatchMinDetDense(*tb, 21);
+                                }
                             }
                         }
                         worstDet = std::min(worstDet, md);
@@ -2075,17 +2138,26 @@ inline bool sliceNecksAndBalanceParity(
     int triHint = -1;
 
     // Helper: snap arc coordinate to nearby pinned corner with n_q >= 2 (avoiding tiny sliver walls)
+    // Stage 1A: Stronger attraction to >=195 deg reentrant hole/domain corners so existing cuts land
+    // directly on reflex corners instead of leaving tiny stub walls and N=4 reflex boomerang hubs!
     auto snapToPinnedCorner = [&](int lIdx, T s, T rLocal) -> T {
         const auto& vl = bb.vloops[lIdx];
         T bestS = virtualLoopWrapS(vl, s);
-        T snapTol = std::min(T(0.32) * rLocal, T(0.06) * vl.totalArcLen);
+        T baseSnapTol = std::min(T(0.32) * rLocal, T(0.06) * vl.totalArcLen);
+        T reflexSnapTol = std::min(T(0.65) * rLocal, T(0.18) * vl.totalArcLen);
+        T bestD = std::numeric_limits<T>::max();
+        T chosenS = bestS;
         for (const auto& c : vl.corners) {
             if (c.targetPatchValence < 2) continue; // never snap onto sharp n_q=1 tips
             T d = std::abs(bestS - c.arcS);
             d = std::min(d, vl.totalArcLen - d);
-            if (d < snapTol) return c.arcS;
+            T tol = (c.interiorAngleDeg >= T(195.0)) ? reflexSnapTol : baseSnapTol;
+            if (d < tol && d < bestD) {
+                bestD = d;
+                chosenS = c.arcS;
+            }
         }
-        return bestS;
+        return chosenS;
     };
 
     // Helper: locally refine a candidate cross-cut (loopA, sA) <-> (loopB, sB) minimizing J(gamma)
@@ -2177,9 +2249,19 @@ inline bool sliceNecksAndBalanceParity(
         const int nCh = static_cast<int>(br.chords.size());
         if (nCh == 0) continue;
 
-        // Compute sleeve polyline length and mean radius
+        // Compute sleeve polyline length, cumulative turning angle, and mean radius
         T sLen = T(0);
+        T sTurn = T(0);
         for (size_t k = 1; k < br.poly.size(); ++k) sLen += br.poly[k - 1].dist(br.poly[k]);
+        for (size_t k = 1; k + 1 < br.poly.size(); ++k) {
+            gsPoint2D<T> d0(br.poly[k].x - br.poly[k - 1].x, br.poly[k].y - br.poly[k - 1].y);
+            gsPoint2D<T> d1(br.poly[k + 1].x - br.poly[k].x, br.poly[k + 1].y - br.poly[k].y);
+            T l0 = std::hypot(d0.x, d0.y), l1 = std::hypot(d1.x, d1.y);
+            if (l0 > T(1e-10) && l1 > T(1e-10)) {
+                T c = std::max(T(-1), std::min(T(1), (d0.x * d1.x + d0.y * d1.y) / (l0 * l1)));
+                sTurn += std::acos(c);
+            }
+        }
         T meanR = T(0);
         for (const auto& ch : br.chords) meanR += T(0.5) * bb.cdt.pts[ch.vL].dist(bb.cdt.pts[ch.vR]);
         meanR = std::max(T(1e-5), meanR / static_cast<T>(nCh));
@@ -2209,12 +2291,21 @@ inline bool sliceNecksAndBalanceParity(
             continue;
         }
 
-        // Standard junction-to-junction or junction-to-leaf sleeve: coarse macro-spacing!
-        int nCuts = (sLen < T(3.2) * meanR)
+        // Stage 1B: Curvature-adaptive coarser macro-spacing (prevents high-AR channel strip bloat!)
+        int nCuts = 1;
+        if (sTurn < T(1.15)) {
+            // Straight or mildly curved sleeve: 1 cut up to 5.2*meanR, coarser ~4.4*meanR spacing above
+            nCuts = (sLen < T(5.2) * meanR)
                   ? 1
-                  : std::max(2, std::min(4, static_cast<int>(std::llround(sLen / (T(2.8) * meanR)))));
+                  : std::max(2, std::min(3, static_cast<int>(std::llround(sLen / (T(4.4) * meanR)))));
+        } else {
+            // Strongly curved sleeve: place cuts every ~78 deg of bend or ~4.0*meanR
+            int byTurn = static_cast<int>(std::ceil(sTurn / T(1.36)));
+            int byLen  = static_cast<int>(std::llround(sLen / (T(4.0) * meanR)));
+            nCuts = std::max(1, std::min(3, std::max(byTurn, byLen)));
+        }
         if (nLoops == 1 && nTotalSleeves == 1)
-            nCuts = std::max(2, std::min(4, nCuts + 1)); // crescent/heart ribbon gets 2-4 clean cross-cuts
+            nCuts = std::max(2, std::min(3, nCuts + 1)); // crescent/heart fallback gets 2-3 cuts
         if (nCh <= 2) nCuts = 1;
 
         for (int k = 0; k < nCuts; ++k) {
@@ -2687,11 +2778,44 @@ inline bool sliceNecksAndBalanceParity(
                 }
                 seenCut[sides[i].cutId] = i;
             }
+            // Also detect EVERY CW inner hole pinched at a shared vertex uNode (2 cuts meeting at 1 hole corner!)
+            {
+                std::map<int, size_t> seenNode;
+                for (size_t i = 0; i < ns; ++i) {
+                    int u = sides[i].uNode;
+                    if (u < 0) continue;
+                    auto it = seenNode.find(u);
+                    if (it != seenNode.end()) {
+                        size_t j = it->second;
+                        T a1 = sidesArea2(sides, j, i);
+                        T a2 = sidesArea2(sides, i, j);
+                        if (std::min(a1, a2) <= T(1e-8)) {
+                            ++nBad;
+                            if (badHubIdx < 0) {
+                                badHubIdx = static_cast<int>(hi);
+                                size_t st = (a1 < a2) ? j : i;
+                                size_t en = (a1 < a2) ? i : j;
+                                for (size_t k = st; k != en; k = (k + 1) % ns)
+                                    if (!sides[k].isCrossCut && sides[k].loopIdx >= 0) innerLoopsOut.insert(sides[k].loopIdx);
+                                // Loop 0 is always outer boundary; if included in innerLoopsOut, flip to the other arc!
+                                if (innerLoopsOut.count(0)) {
+                                    std::set<int> altL;
+                                    for (size_t k = en; k != st; k = (k + 1) % ns)
+                                        if (!sides[k].isCrossCut && sides[k].loopIdx > 0) altL.insert(sides[k].loopIdx);
+                                    if (!altL.empty()) innerLoopsOut = std::move(altL);
+                                }
+                            }
+                        }
+                    } else {
+                        seenNode[u] = i;
+                    }
+                }
+            }
         }
         return nBad;
     };
 
-    for (int fixPass = 0; fixPass < nLoops + 2; ++fixPass) {
+    for (int fixPass = 0; fixPass < nLoops + 4; ++fixPass) {
         int badH = -1;
         std::set<int> innerLoops;
         int curBad = detectSlitOrPinchedHole(badH, innerLoops);
@@ -2701,14 +2825,15 @@ inline bool sliceNecksAndBalanceParity(
 
         const auto& sides = out.hubs[badH].sidesCCW;
         struct BndCand { int loopIdx; T s; gsPoint2D<T> pt; };
-        std::vector<BndCand> innerCands, outerCands;
+        std::vector<BndCand> innerCands, outerCands, allHubCands;
         for (const auto& sd : sides) {
             if (sd.isCrossCut || sd.loopIdx < 0) continue;
             const auto& vl = bb.vloops[sd.loopIdx];
             T sp = mergedLoopForwardSpan(vl, sd.sStart, sd.sEnd);
-            for (T frac : {T(0.25), T(0.50), T(0.75)}) {
+            for (T frac : {T(0.15), T(0.35), T(0.50), T(0.65), T(0.85)}) {
                 T s = virtualLoopWrapS(vl, sd.sStart + frac * sp);
                 BndCand bc{sd.loopIdx, s, evalVirtualLoopPoint(vl, s)};
+                allHubCands.push_back(bc);
                 if (innerLoops.count(sd.loopIdx)) innerCands.push_back(bc);
                 else outerCands.push_back(bc);
             }
@@ -2723,30 +2848,39 @@ inline bool sliceNecksAndBalanceParity(
                 }
             }
         }
+        // Fallback: if inner->outer cuts are blocked by an intervening hole in innerLoops, allow any cross-loop cut inside badH!
+        if (outerCands.empty() || innerLoops.size() >= 2) {
+            for (const auto& bc : allHubCands) outerCands.push_back(bc);
+        }
 
         bool fixedOne = false;
         const T relaxTol = std::max(T(1e-5), T(0.002) * bb.domDiag);
         for (T minDeg : {T(12.0), T(6.0), T(2.5)}) {
-            T bestDist = std::numeric_limits<T>::max();
-            BndCand bestA{0, T(0), gsPoint2D<T>(0, 0)};
-            BndCand bestB{0, T(0), gsPoint2D<T>(0, 0)};
+            struct PairCut { T dist; BndCand a, b; };
+            std::map<std::pair<int, int>, PairCut> bestPerPair;
             for (const auto& ca : innerCands) {
                 for (const auto& cb : outerCands) {
                     if (ca.loopIdx == cb.loopIdx) continue;
+                    std::pair<int, int> lkey(std::min(ca.loopIdx, cb.loopIdx), std::max(ca.loopIdx, cb.loopIdx));
                     T d = ca.pt.dist(cb.pt);
-                    if (d <= relaxTol || d >= bestDist) continue;
+                    auto itP = bestPerPair.find(lkey);
+                    if (d <= relaxTol || (itP != bestPerPair.end() && d >= itP->second.dist)) continue;
                     if (!isCrossCutClear(ca.pt, cb.pt, densePolys, out.cuts, relaxTol)) continue;
                     if (!isCrossCutTangentClear(bb.vloops, ca.loopIdx, ca.s, cb.loopIdx, cb.s, minDeg)) continue;
-                    bestDist = d; bestA = ca; bestB = cb;
+                    bestPerPair[lkey] = {d, ca, cb};
                 }
             }
-            if (bestDist < std::numeric_limits<T>::max()) {
+            std::vector<PairCut> tried;
+            tried.reserve(bestPerPair.size());
+            for (const auto& kv : bestPerPair) tried.push_back(kv.second);
+            std::sort(tried.begin(), tried.end(), [](const PairCut& x, const PairCut& y) { return x.dist < y.dist; });
+            for (const auto& pc : tried) {
                 CrossCut<T> cc;
                 cc.id = static_cast<int>(out.cuts.size());
                 cc.sleeveIdx = -1;
-                cc.loopA = bestA.loopIdx; cc.loopB = bestB.loopIdx;
-                cc.arcSA = bestA.s;       cc.arcSB = bestB.s;
-                cc.ptA = bestA.pt;        cc.ptB = bestB.pt;
+                cc.loopA = pc.a.loopIdx; cc.loopB = pc.b.loopIdx;
+                cc.arcSA = pc.a.s;       cc.arcSB = pc.b.s;
+                cc.ptA = pc.a.pt;        cc.ptB = pc.b.pt;
                 cc.costJ = T(0);
                 out.cuts.push_back(cc);
                 int chkH = -1; std::set<int> chkL;
@@ -2758,6 +2892,7 @@ inline bool sliceNecksAndBalanceParity(
                     buildDCELAndTraceHubs();
                 }
             }
+            if (fixedOne) break;
         }
         if (!fixedOne) break;
     }
@@ -2852,6 +2987,24 @@ inline bool sliceNecksAndBalanceParity(
             return true;
         };
 
+        // Detect whether a small hub contains an unsplit >=195 deg reentrant reflex corner
+        auto hubHasReflexCorner = [&](int hi) -> bool {
+            const auto& sides = out.hubs[hi].sidesCCW;
+            const int ns = static_cast<int>(sides.size());
+            for (int i = 0; i < ns; ++i) {
+                if (!sides[i].seg.bsp || !sides[(i + ns - 1) % ns].seg.bsp) continue;
+                gsPoint2D<T> dIn  = evalCurveDeriv(*sides[(i + ns - 1) % ns].seg.bsp, T(1));
+                gsPoint2D<T> dOut = evalCurveDeriv(*sides[i].seg.bsp, T(0));
+                T n1 = std::hypot(dIn.x, dIn.y), n2 = std::hypot(dOut.x, dOut.y);
+                if (n1 > T(1e-12) && n2 > T(1e-12)) {
+                    T ang = mergedCcwAngleDeg(gsPoint2D<T>(dOut.x / n2, dOut.y / n2),
+                                              gsPoint2D<T>(-dIn.x / n1, -dIn.y / n1));
+                    if (ang >= T(195.0)) return true;
+                }
+            }
+            return false;
+        };
+
         int cutToDrop = -1;
         int bestPrio = -1;
         T smallestPocketA = std::numeric_limits<T>::max();
@@ -2861,17 +3014,23 @@ inline bool sliceNecksAndBalanceParity(
             if (hA < 0 || hB < 0 || hA == hB) continue;
             int nA = static_cast<int>(out.hubs[hA].sidesCCW.size());
             int nB = static_cast<int>(out.hubs[hB].sidesCCW.size());
-            if (nA > 3 && nB > 3) continue;
+            bool bothOdd = ((nA % 2) == 1 && (nB % 2) == 1);
+            bool reflexQuad = ((nA == 4 && hubHasReflexCorner(hA)) || (nB == 4 && hubHasReflexCorner(hB)));
+            if (nA > 3 && nB > 3 && !bothOdd && !reflexQuad) continue;
             int nMerged = nA + nB - 2;
-            if (nMerged > 14) continue;
-            // On 0-hole smooth shapes (amoeba/heart/crescent), keep big >18% smooth lobes intact
+            int maxMerged = (bothOdd || reflexQuad) ? 12 : 14;
+            if (nMerged > maxMerged) continue;
+            // On 0-hole smooth shapes (amoeba/heart/crescent), keep big >20% smooth lobes intact
             T minA = std::min(hubAreas[hA], hubAreas[hB]);
-            if (nLoops == 1 && minA > T(0.18) * totA) continue;
+            if (nLoops == 1 && minA > T(0.20) * totA) continue;
             if (!canSafelyDeleteCut(ci)) continue;
 
             int prio = 1;
-            if (nA == 2 || nB == 2) prio = 3;
-            else if ((nA == 3 && (nB % 2) == 1) || (nB == 3 && (nA % 2) == 1)) prio = 2;
+            if (nA == 2 || nB == 2) prio = 4;
+            else if (nA == 3 && nB == 3) prio = 4;
+            else if ((nA == 3 && (nB % 2) == 1) || (nB == 3 && (nA % 2) == 1)) prio = 3;
+            else if (reflexQuad) prio = 2;
+            else if (bothOdd) prio = 2;
 
             if (prio > bestPrio || (prio == bestPrio && minA < smallestPocketA)) {
                 bestPrio = prio;
@@ -2893,9 +3052,63 @@ inline bool sliceNecksAndBalanceParity(
         }
     }
 
-    // 3.4 Curvature-Aware Wall Subdivision & 1-Layer-Preserving Parity Balancing
-    // Subdivide any smooth boundary wall turning > 125 deg, and ensure every hub has EVEN sides B(P_j) = 2*m_j >= 4
-    // strictly by splitting CAD boundary walls (preserving k_gamma == 1 on every cross-cut!).
+    // 3.3d Split any positive-area figure-8 hub (repeated vertex uNode with BOTH sub-loops positive area)
+    // into two simple hubs BEFORE Module 3.4 parity balancing so odd/odd pinched hubs never enter Module 4!
+    {
+        auto subSidesArea2 = [](const std::vector<typename JunctionPolygon<T>::Side>& sides, size_t a, size_t b) -> T {
+            std::vector<gsPoint2D<T>> pl;
+            const size_t ns = sides.size();
+            for (size_t i = a; i != b; i = (i + 1) % ns)
+                for (int s = 0; s < 6; ++s)
+                    pl.push_back(evalCurvePoint(*sides[i].seg.bsp, static_cast<T>(s) / T(6)));
+            T a2 = T(0);
+            for (size_t k = 0; k < pl.size(); ++k)
+                a2 += pl[k].x * pl[(k + 1) % pl.size()].y - pl[(k + 1) % pl.size()].x * pl[k].y;
+            return a2;
+        };
+        for (int splitPass = 0; splitPass < 16; ++splitPass) {
+            bool splitAny = false;
+            for (size_t hi = 0; hi < out.hubs.size(); ++hi) {
+                const auto& sides = out.hubs[hi].sidesCCW;
+                const size_t ns = sides.size();
+                if (ns < 4) continue;
+                std::map<int, size_t> seenU;
+                size_t pA = 0, pB = 0;
+                bool foundPinch = false;
+                for (size_t i = 0; i < ns; ++i) {
+                    int u = sides[i].uNode;
+                    if (u < 0) continue;
+                    auto it = seenU.find(u);
+                    if (it != seenU.end()) {
+                        size_t j = it->second;
+                        if (i - j >= 2 && ns - (i - j) >= 2 &&
+                            subSidesArea2(sides, j, i) > T(1e-8) &&
+                            subSidesArea2(sides, i, j) > T(1e-8)) {
+                            pA = j; pB = i; foundPinch = true; break;
+                        }
+                    } else {
+                        seenU[u] = i;
+                    }
+                }
+                if (foundPinch) {
+                    JunctionPolygon<T> h1, h2;
+                    h1.id = out.hubs[hi].id;
+                    h2.id = static_cast<int>(out.hubs.size());
+                    for (size_t k = pA; k < pB; ++k) h1.sidesCCW.push_back(sides[k]);
+                    for (size_t k = pB; k != pA; k = (k + 1) % ns) h2.sidesCCW.push_back(sides[k]);
+                    out.hubs[hi] = std::move(h1);
+                    out.hubs.push_back(std::move(h2));
+                    splitAny = true;
+                    break;
+                }
+            }
+            if (!splitAny) break;
+        }
+    }
+
+    // 3.4 Curvature-Aware Wall Subdivision & Cross-Cut Parity Pairing (Stage 2A)
+    // First subdivide strongly curved CAD walls, then pair adjacent odd hubs across shared cross-cuts
+    // (k_gamma = 2 with safe valence-3/4 interior node!) before falling back to boundary parity splits.
     auto splitBoundarySideAtMid = [&](JunctionPolygon<T>& hub, int sideIdx) -> bool {
         auto sd = hub.sidesCCW[sideIdx];
         if (sd.isCrossCut || sd.loopIdx < 0) return false;
@@ -2927,28 +3140,156 @@ inline bool sliceNecksAndBalanceParity(
         return true;
     };
 
+    // Pass 1: Subdivide strongly turning (> 135 deg) smooth CAD boundary walls so Coons patches don't fold
     for (auto& hub : out.hubs) {
-        // First subdivide strongly turning (> 125 deg) smooth CAD boundary walls so Coons patches don't fold
         for (int pass = 0; pass < 3; ++pass) {
             bool splitAny = false;
             for (int si = 0; si < static_cast<int>(hub.sidesCCW.size()); ++si) {
                 const auto& sd = hub.sidesCCW[si];
                 if (sd.isCrossCut || !sd.seg.bsp) continue;
-                if (curveIntegratedTurnRad(*sd.seg.bsp, 16) > T(2.18)) { // > ~125 deg
+                if (curveIntegratedTurnRad(*sd.seg.bsp, 16) > T(2.36)) { // > ~135 deg
                     if (splitBoundarySideAtMid(hub, si)) { splitAny = true; break; }
                 }
             }
             if (!splitAny) break;
         }
+    }
 
-        // Enforce B(P_j) >= 4 and B(P_j) even by splitting the longest CAD boundary side
+    // Pass 2 (Stage 2A): Pair adjacent odd-sided hubs across a shared cross-cut (k_gamma = 2)
+    // Whenever two odd hubs (hA, hB) share an unsplit cross-cut gamma and max(B_A, B_B) >= 5,
+    // splitting gamma at a safe interior point makes BOTH hubs even with ZERO 180-deg CAD wall splits!
+    // When min(B_A, B_B) == 3 and max >= 5, offsetting vMid slightly into the larger hub creates a
+    // convex (~145 deg) 4-gon in the small hub and forces a chord from vMid in the >=6-gon big hub (valence 3)!
+    {
+        auto buildHubPolyLocal = [](const JunctionPolygon<T>& h) -> std::vector<gsPoint2D<T>> {
+            std::vector<gsPoint2D<T>> pl;
+            pl.reserve(h.sidesCCW.size() * 6);
+            for (const auto& sd : h.sidesCCW)
+                for (int k = 0; k < 6; ++k)
+                    pl.push_back(evalCurvePoint(*sd.seg.bsp, static_cast<T>(k) / T(6)));
+            return pl;
+        };
+
+        std::set<int> splitCutIds;
+        for (int pairIter = 0; pairIter < static_cast<int>(out.cuts.size()); ++pairIter) {
+            // Find an adjacent pair of odd hubs sharing an unsplit cross-cut
+            struct CutRef { int h = -1, sideIdx = -1; };
+            std::map<int, std::vector<CutRef>> cutMap;
+            for (int hi = 0; hi < static_cast<int>(out.hubs.size()); ++hi) {
+                for (int si = 0; si < static_cast<int>(out.hubs[hi].sidesCCW.size()); ++si) {
+                    const auto& sd = out.hubs[hi].sidesCCW[si];
+                    if (sd.isCrossCut && sd.cutId >= 0 && !splitCutIds.count(sd.cutId))
+                        cutMap[sd.cutId].push_back({hi, si});
+                }
+            }
+
+            int bestCut = -1, bestHA = -1, bestSA = -1, bestHB = -1, bestSB = -1;
+            int bestPrio = -1;
+            for (const auto& kv : cutMap) {
+                if (kv.second.size() != 2) continue;
+                int hA = kv.second[0].h, sA = kv.second[0].sideIdx;
+                int hB = kv.second[1].h, sB = kv.second[1].sideIdx;
+                if (hA == hB) continue;
+                int nA = static_cast<int>(out.hubs[hA].sidesCCW.size());
+                int nB = static_cast<int>(out.hubs[hB].sidesCCW.size());
+                if ((nA % 2) != 1 || (nB % 2) != 1) continue;
+                if (std::max(nA, nB) < 5) continue; // avoid valence-2 interior doublet on (3,3)
+                int prio = (std::min(nA, nB) == 3) ? 2 : 1; // strongly prioritize rescuing B=3 pockets!
+                if (prio > bestPrio) {
+                    bestPrio = prio;
+                    bestCut = kv.first;
+                    bestHA = hA; bestSA = sA;
+                    bestHB = hB; bestSB = sB;
+                }
+            }
+            if (bestCut < 0) break;
+
+            // Ensure hBig has the larger side count (>= 5)
+            int nA = static_cast<int>(out.hubs[bestHA].sidesCCW.size());
+            int nB = static_cast<int>(out.hubs[bestHB].sidesCCW.size());
+            int hSmall = (nA <= nB) ? bestHA : bestHB;
+            int sSmall = (nA <= nB) ? bestSA : bestSB;
+            int hBig   = (nA <= nB) ? bestHB : bestHA;
+            int sBig   = (nA <= nB) ? bestSB : bestSA;
+            int nSmall = std::min(nA, nB);
+
+            const auto sdSmall = out.hubs[hSmall].sidesCCW[sSmall];
+            const auto sdBig   = out.hubs[hBig].sidesCCW[sBig];
+            gsPoint2D<T> P0 = sdSmall.seg.p0(), P1 = sdSmall.seg.p1();
+            T cLen = P0.dist(P1);
+            if (cLen <= T(1e-6)) { splitCutIds.insert(bestCut); continue; }
+
+            gsPoint2D<T> midPt(T(0.5) * (P0.x + P1.x), T(0.5) * (P0.y + P1.y));
+            if (nSmall == 3) {
+                // sdSmall goes CCW around hSmall (so left normal points INTO hSmall, right normal points INTO hBig!)
+                gsPoint2D<T> nIntoBig((P1.y - P0.y) / cLen, -(P1.x - P0.x) / cLen);
+                auto polyBig = buildHubPolyLocal(out.hubs[hBig]);
+                bool foundOff = false;
+                for (T frac : {T(0.16), T(0.12), T(0.08)}) {
+                    gsPoint2D<T> cand(midPt.x + frac * cLen * nIntoBig.x,
+                                      midPt.y + frac * cLen * nIntoBig.y);
+                    if (pointInPolyStrict(cand, polyBig, T(1e-5)) &&
+                        isPointStrictlyInsideDomain(cand, densePolys, T(1e-5)) &&
+                        isSegmentInsideDomain(P0, cand, densePolys) &&
+                        isSegmentInsideDomain(cand, P1, densePolys)) {
+                        midPt = cand;
+                        foundOff = true;
+                        break;
+                    }
+                }
+                if (!foundOff) { splitCutIds.insert(bestCut); continue; }
+            }
+
+            // Create interior arrangement node for midPt (loopIdx = -1 -> interior vertex in Module 4 & 5!)
+            int midNode = static_cast<int>(out.nodes.size());
+            typename SlicedDecomposition<T>::ArrNode nd;
+            nd.pt = midPt;
+            nd.loopIdx = -1;
+            nd.arcS = T(0);
+            nd.isPinnedCorner = false;
+            nd.cornerAngleDeg = T(360);
+            nd.targetValence = (nSmall == 3) ? 3 : 4;
+            out.nodes.push_back(nd);
+
+            // Split sdSmall (P0 -> midPt -> P1) and sdBig (P1 -> midPt -> P0) consistently!
+            CurveSeg<T> seg01 = makeStraightSeg(P0, midPt, degree);
+            CurveSeg<T> seg12 = makeStraightSeg(midPt, P1, degree);
+            {
+                auto a0 = sdSmall; a0.vNode = midNode; a0.seg = seg01;
+                auto a1 = sdSmall; a1.uNode = midNode; a1.seg = seg12;
+                out.hubs[hSmall].sidesCCW[sSmall] = std::move(a0);
+                out.hubs[hSmall].sidesCCW.insert(out.hubs[hSmall].sidesCCW.begin() + sSmall + 1, std::move(a1));
+            }
+            {
+                bool sameDir = (sdBig.seg.p0().dist(P0) < sdBig.seg.p0().dist(P1));
+                auto b0 = sdBig;
+                auto b1 = sdBig;
+                if (sameDir) {
+                    b0.vNode = midNode; b0.seg = seg01;
+                    b1.uNode = midNode; b1.seg = seg12;
+                } else {
+                    b0.vNode = midNode; b0.seg = seg12.reversed();
+                    b1.uNode = midNode; b1.seg = seg01.reversed();
+                }
+                out.hubs[hBig].sidesCCW[sBig] = std::move(b0);
+                out.hubs[hBig].sidesCCW.insert(out.hubs[hBig].sidesCCW.begin() + sBig + 1, std::move(b1));
+            }
+            splitCutIds.insert(bestCut);
+        }
+    }
+
+    // Pass 3: Enforce B(P_j) >= 4 and B(P_j) even on any remaining unpaired odd hub
+    // Prefer splitting the CAD boundary side with highest curvature/turning (or longest if flat)
+    for (auto& hub : out.hubs) {
         while (hub.sidesCCW.size() < 4 || (hub.sidesCCW.size() % 2) == 1) {
             int bestSi = -1;
-            T bestLen = -T(1);
+            T bestScore = -T(1);
             for (int si = 0; si < static_cast<int>(hub.sidesCCW.size()); ++si) {
-                if (hub.sidesCCW[si].isCrossCut) continue;
+                if (hub.sidesCCW[si].isCrossCut || !hub.sidesCCW[si].seg.bsp) continue;
                 T L = mergedMeasureSegArcLen(hub.sidesCCW[si].seg, 12);
-                if (L > bestLen) { bestLen = L; bestSi = si; }
+                T turn = curveIntegratedTurnRad(*hub.sidesCCW[si].seg.bsp, 12);
+                T sc = (L / std::max(T(1e-6), bb.domDiag)) + T(0.45) * turn;
+                if (sc > bestScore) { bestScore = sc; bestSi = si; }
             }
             if (bestSi < 0 || !splitBoundarySideAtMid(hub, bestSi))
                 break;
@@ -4017,6 +4358,231 @@ inline bool quadrangulateByTriangulationBlossomShift(
         return true;
     };
 
+    // Stage 3C: Constrained Delaunay + Cavity-Recovery Triangulation Fallback
+    // Handles strongly non-convex / curved hubs (e.g., heptagon_nonconvex_4holes_expr) where ear-clipping fails!
+    auto tryConstrainedInteriorCDT = [&](std::vector<LTri>& outT) -> bool {
+        outT.clear();
+            T minX = bndPts[0].x, maxX = bndPts[0].x, minY = bndPts[0].y, maxY = bndPts[0].y;
+            for (const auto& p : hubPoly) {
+                minX = std::min(minX, p.x); maxX = std::max(maxX, p.x);
+                minY = std::min(minY, p.y); maxY = std::max(maxY, p.y);
+            }
+            T diag = std::max(T(1e-6), std::hypot(maxX - minX, maxY - minY));
+            T minSp = T(0.065) * diag;
+
+            std::vector<gsPoint2D<T>> pts = bndPts;
+            auto tryAddSteiner = [&](const gsPoint2D<T>& q) {
+                if (pts.size() >= static_cast<size_t>(N + 22)) return;
+                if (!pointInPolyStrict(q, hubPoly, T(1e-5)) || !isPointStrictlyInsideDomain(q, densePolys, T(1e-5))) return;
+                for (const auto& ex : pts)
+                    if (ex.dist(q) < minSp) return;
+                pts.push_back(q);
+            };
+            gsPoint2D<T> poleC; T rPoleC = T(0);
+            if (mergedFindDeepInteriorPoint(hubPoly, densePolys, poleC, rPoleC))
+                tryAddSteiner(poleC);
+            for (int gy = 1; gy <= 7; ++gy) {
+                for (int gx = 1; gx <= 7; ++gx) {
+                    gsPoint2D<T> q(minX + (maxX - minX) * static_cast<T>(gx) / T(8),
+                                   minY + (maxY - minY) * static_cast<T>(gy) / T(8));
+                    tryAddSteiner(q);
+                }
+            }
+
+            const int M = static_cast<int>(pts.size());
+            // Append 3 super-triangle vertices
+            T cx = T(0.5) * (minX + maxX), cy = T(0.5) * (minY + maxY);
+            T R = T(20.0) * diag;
+            pts.push_back(gsPoint2D<T>(cx - T(2) * R, cy - R));
+            pts.push_back(gsPoint2D<T>(cx + T(2) * R, cy - R));
+            pts.push_back(gsPoint2D<T>(cx, cy + T(2) * R));
+
+            std::vector<LTri> dt = {{{M, M + 1, M + 2}}};
+            auto inCirc = [&](const gsPoint2D<T>& A, const gsPoint2D<T>& B, const gsPoint2D<T>& C, const gsPoint2D<T>& P) -> bool {
+                T ax = A.x - P.x, ay = A.y - P.y;
+                T bx = B.x - P.x, by = B.y - P.y;
+                T cx_ = C.x - P.x, cy_ = C.y - P.y;
+                T det = (ax * ax + ay * ay) * (bx * cy_ - cx_ * by)
+                      - (bx * bx + by * by) * (ax * cy_ - cx_ * ay)
+                      + (cx_ * cx_ + cy_ * cy_) * (ax * by - bx * ay);
+                return det > T(1e-12);
+            };
+
+            for (int pi = 0; pi < M; ++pi) {
+                std::vector<LTri> bad, keep;
+                for (const auto& t : dt) {
+                    if (inCirc(pts[t.v[0]], pts[t.v[1]], pts[t.v[2]], pts[pi])) bad.push_back(t);
+                    else keep.push_back(t);
+                }
+                if (bad.empty()) continue;
+                std::map<std::pair<int, int>, int> ec;
+                for (const auto& t : bad) {
+                    for (int k = 0; k < 3; ++k) {
+                        int a = t.v[k], b = t.v[(k + 1) % 3];
+                        ec[{std::min(a, b), std::max(a, b)}]++;
+                    }
+                }
+                for (const auto& t : bad) {
+                    for (int k = 0; k < 3; ++k) {
+                        int a = t.v[k], b = t.v[(k + 1) % 3];
+                        if (ec[{std::min(a, b), std::max(a, b)}] == 1) {
+                            if (cross2(pts[a], pts[b], pts[pi]) > T(1e-14))
+                                keep.push_back({{a, b, pi}});
+                            else if (cross2(pts[b], pts[a], pts[pi]) > T(1e-14))
+                                keep.push_back({{b, a, pi}});
+                        }
+                    }
+                }
+                dt = std::move(keep);
+            }
+
+            // Drop super-triangle faces
+            std::vector<LTri> cleanDt;
+            cleanDt.reserve(dt.size());
+            for (const auto& t : dt) {
+                if (t.v[0] < M && t.v[1] < M && t.v[2] < M && cross2(pts[t.v[0]], pts[t.v[1]], pts[t.v[2]]) > T(1e-12))
+                    cleanDt.push_back(t);
+            }
+            dt = std::move(cleanDt);
+            pts.resize(M);
+
+            // Recover every constrained hub boundary edge (i, (i+1)%N) via cavity removal + polygon ear-clipping
+            auto hasUndirEdge = [&](int a, int b) -> bool {
+                for (const auto& t : dt) {
+                    for (int k = 0; k < 3; ++k) {
+                        int u = t.v[k], v = t.v[(k + 1) % 3];
+                        if ((u == a && v == b) || (u == b && v == a)) return true;
+                    }
+                }
+                return false;
+            };
+            auto earClipSimpleChain = [&](std::vector<int> polyIdx, std::vector<LTri>& dst) -> bool {
+                // Ensure CCW orientation
+                T a2 = T(0);
+                for (size_t k = 0; k < polyIdx.size(); ++k)
+                    a2 += pts[polyIdx[k]].x * pts[polyIdx[(k + 1) % polyIdx.size()]].y
+                        - pts[polyIdx[(k + 1) % polyIdx.size()]].x * pts[polyIdx[k]].y;
+                if (a2 < T(0)) std::reverse(polyIdx.begin(), polyIdx.end());
+                int guard = 0;
+                while (polyIdx.size() > 3 && guard++ < 500) {
+                    int m = static_cast<int>(polyIdx.size());
+                    bool clipped = false;
+                    for (int k = 0; k < m; ++k) {
+                        int ia = polyIdx[(k + m - 1) % m], ib = polyIdx[k], ic = polyIdx[(k + 1) % m];
+                        if (cross2(pts[ia], pts[ib], pts[ic]) <= T(1e-12)) continue;
+                        bool anyIn = false;
+                        for (int j = 0; j < m; ++j) {
+                            int id = polyIdx[j];
+                            if (id == ia || id == ib || id == ic) continue;
+                            if (cross2(pts[ia], pts[ib], pts[id]) >= -T(1e-10) &&
+                                cross2(pts[ib], pts[ic], pts[id]) >= -T(1e-10) &&
+                                cross2(pts[ic], pts[ia], pts[id]) >= -T(1e-10)) { anyIn = true; break; }
+                        }
+                        if (anyIn) continue;
+                        dst.push_back({{ia, ib, ic}});
+                        polyIdx.erase(polyIdx.begin() + k);
+                        clipped = true;
+                        break;
+                    }
+                    if (!clipped) return false;
+                }
+                if (polyIdx.size() == 3 && cross2(pts[polyIdx[0]], pts[polyIdx[1]], pts[polyIdx[2]]) > T(1e-12)) {
+                    dst.push_back({{polyIdx[0], polyIdx[1], polyIdx[2]}});
+                    return true;
+                }
+                return (polyIdx.size() < 3);
+            };
+
+            for (int i = 0; i < N; ++i) {
+                int a = i, b = (i + 1) % N;
+                if (hasUndirEdge(a, b)) continue;
+                std::vector<LTri> crossT, keepT;
+                for (const auto& t : dt) {
+                    bool hits = false;
+                    for (int k = 0; k < 3; ++k) {
+                        int u = t.v[k], v = t.v[(k + 1) % 3];
+                        if (u == a || u == b || v == a || v == b) continue;
+                        if (segProperIntersect(pts[a], pts[b], pts[u], pts[v])) { hits = true; break; }
+                    }
+                    if (hits) crossT.push_back(t);
+                    else keepT.push_back(t);
+                }
+                if (crossT.empty()) continue;
+                // Extract directed boundary edges of the removed cavity
+                std::map<std::pair<int, int>, int> ec;
+                for (const auto& t : crossT)
+                    for (int k = 0; k < 3; ++k)
+                        ec[{std::min(t.v[k], t.v[(k + 1) % 3]), std::max(t.v[k], t.v[(k + 1) % 3])}]++;
+                std::map<int, int> nextV;
+                for (const auto& t : crossT)
+                    for (int k = 0; k < 3; ++k) {
+                        int u = t.v[k], v = t.v[(k + 1) % 3];
+                        if (ec[{std::min(u, v), std::max(u, v)}] == 1) nextV[u] = v;
+                    }
+                if (!nextV.count(a) || !nextV.count(b)) continue;
+                std::vector<int> chain1 = {a}, chain2 = {b};
+                int cur = nextV[a], g1 = 0;
+                while (cur != b && nextV.count(cur) && g1++ < M + 2) { chain1.push_back(cur); cur = nextV[cur]; }
+                chain1.push_back(b);
+                cur = nextV[b]; int g2 = 0;
+                while (cur != a && nextV.count(cur) && g2++ < M + 2) { chain2.push_back(cur); cur = nextV[cur]; }
+                chain2.push_back(a);
+                if (chain1.back() == b && chain2.back() == a && chain1.size() >= 3 && chain2.size() >= 3) {
+                    std::vector<LTri> fillT;
+                    if (earClipSimpleChain(chain1, fillT) && earClipSimpleChain(chain2, fillT)) {
+                        for (const auto& ft : fillT) keepT.push_back(ft);
+                        dt = std::move(keepT);
+                    }
+                }
+            }
+
+            // Exact topological interior extraction via left-of-boundary BFS flood-fill from directed edges (i, (i+1)%N)!
+            // Strictly immune to bowed curved CAD edges whose straight chords slightly graze hubPoly!
+            auto isConstrainedUndir = [&](int a, int b) -> bool {
+                return (a < N && b < N) && (((a + 1) % N == b) || ((b + 1) % N == a));
+            };
+            const int nDt = static_cast<int>(dt.size());
+            std::map<std::pair<int, int>, std::vector<int>> edgeToTris;
+            std::vector<bool> inMask(nDt, false);
+            std::queue<int> fq;
+            for (int ti = 0; ti < nDt; ++ti) {
+                for (int k = 0; k < 3; ++k) {
+                    int u = dt[ti].v[k], v = dt[ti].v[(k + 1) % 3];
+                    edgeToTris[{std::min(u, v), std::max(u, v)}].push_back(ti);
+                    if (u < N && v < N && ((u + 1) % N == v)) {
+                        if (!inMask[ti]) { inMask[ti] = true; fq.push(ti); }
+                    }
+                }
+            }
+            while (!fq.empty()) {
+                int ti = fq.front(); fq.pop();
+                for (int k = 0; k < 3; ++k) {
+                    int u = dt[ti].v[k], v = dt[ti].v[(k + 1) % 3];
+                    if (isConstrainedUndir(u, v)) continue; // never cross constrained boundary!
+                    const auto& nbs = edgeToTris[{std::min(u, v), std::max(u, v)}];
+                    for (int nb : nbs) {
+                        if (!inMask[nb]) { inMask[nb] = true; fq.push(nb); }
+                    }
+                }
+            }
+            for (int ti = 0; ti < nDt; ++ti) {
+                if (inMask[ti] && cross2(pts[dt[ti].v[0]], pts[dt[ti].v[1]], pts[dt[ti].v[2]]) > T(1e-12))
+                    outT.push_back(dt[ti]);
+            }
+            if (outT.empty() || (outT.size() % 2) != 0) return false;
+            // Verify all N boundary edges are present once
+            for (int i = 0; i < N; ++i) {
+                int a = i, b = (i + 1) % N;
+                bool found = false;
+                for (const auto& t : outT)
+                    for (int k = 0; k < 3; ++k)
+                        if (t.v[k] == a && t.v[(k + 1) % 3] == b) { found = true; break; }
+                if (!found) return false;
+            }
+            allPts = std::move(pts);
+            return true;
+        };
+
     if (!tryEarClip(true, tris)) {
         // Try inserting deep interior pole + star fan if star-shaped
         gsPoint2D<T> pole; T rPole = T(0);
@@ -4040,329 +4606,328 @@ inline bool quadrangulateByTriangulationBlossomShift(
                     tris.push_back({{N, i, (i + 1) % N}});
             }
         }
-        if (!fanOk && !trySteinerEarClip(tris) && !tryEarClip(false, tris)) {
-            if (std::getenv("GISMO_MERGED_DEBUG") != nullptr)
-                std::cerr << "[MERGED] BlossomShift earClip fail N=" << N << "\n";
-            return false;
-        }
-    }
 
-    const int nT = static_cast<int>(tris.size());
-    if (nT < 2 || (nT % 2) != 0) return false;
-
-    // Insert 1 deep interior pole Steiner point inside the largest interior triangle when N >= 12 (improves hub quality!)
-    if (static_cast<int>(allPts.size()) == N && N >= 12) {
-        gsPoint2D<T> pole; T rPole = T(0);
-        if (mergedFindDeepInteriorPoint(hubPoly, densePolys, pole, rPole)) {
-            int hitT = -1;
-            T bestMinB = T(0.05);
-            for (int ti = 0; ti < static_cast<int>(tris.size()); ++ti) {
-                const auto& A = allPts[tris[ti].v[0]];
-                const auto& B = allPts[tris[ti].v[1]];
-                const auto& C = allPts[tris[ti].v[2]];
-                T a2 = cross2(A, B, C);
-                if (a2 <= T(1e-10)) continue;
-                T b0 = cross2(B, C, pole) / a2;
-                T b1 = cross2(C, A, pole) / a2;
-                T b2 = T(1) - b0 - b1;
-                T mn = std::min(b0, std::min(b1, b2));
-                if (mn > bestMinB) { bestMinB = mn; hitT = ti; }
-            }
-            if (hitT >= 0) {
-                int vNew = static_cast<int>(allPts.size());
-                allPts.push_back(pole);
-                LTri oldT = tris[hitT];
-                tris[hitT] = {{oldT.v[0], oldT.v[1], vNew}};
-                tris.push_back({{oldT.v[1], oldT.v[2], vNew}});
-                tris.push_back({{oldT.v[2], oldT.v[0], vNew}});
+        bool usedCDTAlready = false;
+        if (!fanOk && !trySteinerEarClip(tris)) {
+            if (tryConstrainedInteriorCDT(tris)) {
+                usedCDTAlready = true;
+            } else if (!tryEarClip(false, tris)) {
+                if (std::getenv("GISMO_MERGED_DEBUG") != nullptr)
+                    std::cerr << "[MERGED] BlossomShift earClip+CDT fail N=" << N << "\n";
+                return false;
             }
         }
+        (void)usedCDTAlready;
     }
 
     auto isBndEdge = [&](int a, int b) -> bool {
         return (a < N && b < N) && (((a + 1) % N == b) || ((b + 1) % N == a));
     };
 
-    // Constrained Lawson flips inside hubPoly
-    auto inCircle = [&](const gsPoint2D<T>& A, const gsPoint2D<T>& B, const gsPoint2D<T>& C, const gsPoint2D<T>& D) -> bool {
-        T ax = A.x - D.x, ay = A.y - D.y;
-        T bx = B.x - D.x, by = B.y - D.y;
-        T cx = C.x - D.x, cy = C.y - D.y;
-        T det = (ax * ax + ay * ay) * (bx * cy - cx * by)
-              - (bx * bx + by * by) * (ax * cy - cx * ay)
-              + (cx * cx + cy * cy) * (ax * by - bx * ay);
-        return det > T(1e-10);
-    };
-    for (int pass = 0; pass < 8; ++pass) {
-        bool flipped = false;
-        const int curT = static_cast<int>(tris.size());
-        for (int i = 0; i < curT && !flipped; ++i) {
-            for (int ka = 0; ka < 3 && !flipped; ++ka) {
-                int a = tris[i].v[ka], b = tris[i].v[(ka + 1) % 3], c = tris[i].v[(ka + 2) % 3];
-                if (isBndEdge(a, b)) continue;
-                for (int j = i + 1; j < curT; ++j) {
-                    for (int kb = 0; kb < 3; ++kb) {
-                        if (tris[j].v[kb] == b && tris[j].v[(kb + 1) % 3] == a) {
-                            int d = tris[j].v[(kb + 2) % 3];
-                            gsPoint2D<T> q[4] = {allPts[c], allPts[a], allPts[d], allPts[b]};
-                            if (isStrictlyConvexQuad(q) && inCircle(allPts[a], allPts[b], allPts[c], allPts[d]) &&
-                                earInsideHub(allPts[c], allPts[d], true)) {
-                                tris[i] = {{c, a, d}};
-                                tris[j] = {{c, d, b}};
-                                flipped = true;
+    // Full matching pipeline encapsulated so we can retry seamlessly on a fresh CDT triangulation if ear-clipping deadlocks!
+    auto runBlossomMatchingPipeline = [&](std::vector<LTri>& curTris,
+                                          std::vector<gsPoint2D<T>>& curPts,
+                                          std::vector<std::array<int, 4>>& qvListOut) -> bool {
+        qvListOut.clear();
+        if (curTris.size() < 2 || (curTris.size() % 2) != 0) return false;
+
+        // Insert 1 deep interior pole Steiner point inside the largest interior triangle when N >= 12 (improves hub quality!)
+        if (static_cast<int>(curPts.size()) == N && N >= 12) {
+            gsPoint2D<T> pole; T rPole = T(0);
+            if (mergedFindDeepInteriorPoint(hubPoly, densePolys, pole, rPole)) {
+                int hitT = -1;
+                T bestMinB = T(0.05);
+                for (int ti = 0; ti < static_cast<int>(curTris.size()); ++ti) {
+                    const auto& A = curPts[curTris[ti].v[0]];
+                    const auto& B = curPts[curTris[ti].v[1]];
+                    const auto& C = curPts[curTris[ti].v[2]];
+                    T a2 = cross2(A, B, C);
+                    if (a2 <= T(1e-10)) continue;
+                    T b0 = cross2(B, C, pole) / a2;
+                    T b1 = cross2(C, A, pole) / a2;
+                    T b2 = T(1) - b0 - b1;
+                    T mn = std::min(b0, std::min(b1, b2));
+                    if (mn > bestMinB) { bestMinB = mn; hitT = ti; }
+                }
+                if (hitT >= 0) {
+                    int vNew = static_cast<int>(curPts.size());
+                    curPts.push_back(pole);
+                    LTri oldT = curTris[hitT];
+                    curTris[hitT] = {{oldT.v[0], oldT.v[1], vNew}};
+                    curTris.push_back({{oldT.v[1], oldT.v[2], vNew}});
+                    curTris.push_back({{oldT.v[2], oldT.v[0], vNew}});
+                }
+            }
+        }
+
+        // Constrained Lawson flips inside hubPoly
+        auto inCircle = [&](const gsPoint2D<T>& A, const gsPoint2D<T>& B, const gsPoint2D<T>& C, const gsPoint2D<T>& D) -> bool {
+            T ax = A.x - D.x, ay = A.y - D.y;
+            T bx = B.x - D.x, by = B.y - D.y;
+            T cx = C.x - D.x, cy = C.y - D.y;
+            T det = (ax * ax + ay * ay) * (bx * cy - cx * by)
+                  - (bx * bx + by * by) * (ax * cy - cx * ay)
+                  + (cx * cx + cy * cy) * (ax * by - bx * ay);
+            return det > T(1e-10);
+        };
+        for (int pass = 0; pass < 8; ++pass) {
+            bool flipped = false;
+            const int curT = static_cast<int>(curTris.size());
+            for (int i = 0; i < curT && !flipped; ++i) {
+                for (int ka = 0; ka < 3 && !flipped; ++ka) {
+                    int a = curTris[i].v[ka], b = curTris[i].v[(ka + 1) % 3], c = curTris[i].v[(ka + 2) % 3];
+                    if (isBndEdge(a, b)) continue;
+                    for (int j = i + 1; j < curT; ++j) {
+                        for (int kb = 0; kb < 3; ++kb) {
+                            if (curTris[j].v[kb] == b && curTris[j].v[(kb + 1) % 3] == a) {
+                                int d = curTris[j].v[(kb + 2) % 3];
+                                gsPoint2D<T> q[4] = {curPts[c], curPts[a], curPts[d], curPts[b]};
+                                if (isStrictlyConvexQuad(q) && inCircle(curPts[a], curPts[b], curPts[c], curPts[d]) &&
+                                    earInsideHub(curPts[c], curPts[d], true)) {
+                                    curTris[i] = {{c, a, d}};
+                                    curTris[j] = {{c, d, b}};
+                                    flipped = true;
+                                }
+                                break;
                             }
-                            break;
                         }
+                        if (flipped) break;
                     }
-                    if (flipped) break;
                 }
             }
+            if (!flipped) break;
         }
-        if (!flipped) break;
-    }
 
-    // Blossom matching helper on `tList` (Phase 1: convex edges, Phase 2: all interior edges)
-    struct DualEdge { int t0, t1; int a, b, c, d; bool convex; T cost; };
-    auto solveBlossom = [&](const std::vector<LTri>& tList,
-                            std::vector<std::array<int, 4>>& qvOut,
-                            std::vector<int>& unmatchedOut) -> bool {
-        const int mT = static_cast<int>(tList.size());
-        std::vector<DualEdge> dEdges;
-        for (int i = 0; i < mT; ++i) {
-            for (int ka = 0; ka < 3; ++ka) {
-                int a = tList[i].v[ka], b = tList[i].v[(ka + 1) % 3], c = tList[i].v[(ka + 2) % 3];
-                if (isBndEdge(a, b)) continue;
-                for (int j = i + 1; j < mT; ++j) {
-                    for (int kb = 0; kb < 3; ++kb) {
-                        if (tList[j].v[kb] == b && tList[j].v[(kb + 1) % 3] == a) {
-                            int d = tList[j].v[(kb + 2) % 3];
-                            // Forbid bowtie pairings where c and d lie on the same side of shared diagonal (a, b)!
-                            T aTri1 = cross2(allPts[a], allPts[b], allPts[c]);
-                            T aTri2 = cross2(allPts[b], allPts[a], allPts[d]);
-                            if (aTri1 <= T(1e-10) || aTri2 <= T(1e-10)) continue;
-                            gsPoint2D<T> q[4] = {allPts[c], allPts[a], allPts[d], allPts[b]};
-                            if (segProperIntersect(q[0], q[1], q[2], q[3]) ||
-                                segProperIntersect(q[1], q[2], q[3], q[0])) continue;
-                            bool conv = isStrictlyConvexQuad(q);
-                            T cost = conv ? T(0) : T(50.0);
-                            for (int k = 0; k < 4; ++k) {
-                                gsPoint2D<T> u(q[(k + 1) % 4].x - q[k].x, q[(k + 1) % 4].y - q[k].y);
-                                gsPoint2D<T> v(q[(k + 3) % 4].x - q[k].x, q[(k + 3) % 4].y - q[k].y);
-                                T ang = mergedCcwAngleDeg(u, v);
-                                T dev = std::abs(ang - T(90.0)) / T(45.0);
-                                cost += dev * dev;
+        // Blossom matching helper on `tList` (Phase 0: convex edges, Phase 1: all valid interior edges)
+        struct DualEdge { int t0, t1; int a, b, c, d; bool convex; T cost; };
+        auto buildValidDualEdges = [&](const std::vector<LTri>& tList, std::vector<DualEdge>& dEdgesOut) {
+            dEdgesOut.clear();
+            const int mT = static_cast<int>(tList.size());
+            for (int i = 0; i < mT; ++i) {
+                for (int ka = 0; ka < 3; ++ka) {
+                    int a = tList[i].v[ka], b = tList[i].v[(ka + 1) % 3], c = tList[i].v[(ka + 2) % 3];
+                    if (isBndEdge(a, b)) continue;
+                    for (int j = i + 1; j < mT; ++j) {
+                        for (int kb = 0; kb < 3; ++kb) {
+                            if (tList[j].v[kb] == b && tList[j].v[(kb + 1) % 3] == a) {
+                                int d = tList[j].v[(kb + 2) % 3];
+                                T aTri1 = cross2(curPts[a], curPts[b], curPts[c]);
+                                T aTri2 = cross2(curPts[b], curPts[a], curPts[d]);
+                                if (aTri1 <= T(1e-14) || aTri2 <= T(1e-14)) continue;
+                                gsPoint2D<T> q[4] = {curPts[c], curPts[a], curPts[d], curPts[b]};
+                                if (segProperIntersect(q[0], q[1], q[2], q[3]) ||
+                                    segProperIntersect(q[1], q[2], q[3], q[0])) continue;
+                                bool conv = isStrictlyConvexQuad(q);
+                                T cost = conv ? T(0) : T(50.0);
+                                for (int k = 0; k < 4; ++k) {
+                                    gsPoint2D<T> u(q[(k + 1) % 4].x - q[k].x, q[(k + 1) % 4].y - q[k].y);
+                                    gsPoint2D<T> v(q[(k + 3) % 4].x - q[k].x, q[(k + 3) % 4].y - q[k].y);
+                                    T ang = mergedCcwAngleDeg(u, v);
+                                    T dev = std::abs(ang - T(90.0)) / T(45.0);
+                                    cost += dev * dev;
+                                }
+                                dEdgesOut.push_back({i, j, a, b, c, d, conv, cost});
+                                break;
                             }
-                            dEdges.push_back({i, j, a, b, c, d, conv, cost});
-                            break;
                         }
                     }
                 }
             }
-        }
-        std::sort(dEdges.begin(), dEdges.end(), [](const DualEdge& x, const DualEdge& y) { return x.cost < y.cost; });
+            std::sort(dEdgesOut.begin(), dEdgesOut.end(), [](const DualEdge& x, const DualEdge& y) { return x.cost < y.cost; });
+        };
 
-        std::vector<int> partner(mT, -1), matchedPair(mT, -1);
-        auto alwaysOk = [](const std::vector<int>&, const std::vector<int>&) { return true; };
+        auto solveBlossom = [&](const std::vector<LTri>& tList,
+                                std::vector<std::array<int, 4>>& qvOut,
+                                std::vector<int>& unmatchedOut) -> bool {
+            const int mT = static_cast<int>(tList.size());
+            std::vector<DualEdge> dEdges;
+            buildValidDualEdges(tList, dEdges);
 
-        for (int phase = 0; phase < 2; ++phase) {
-            std::vector<std::vector<std::pair<int, int>>> adj(mT);
-            for (int ei = 0; ei < static_cast<int>(dEdges.size()); ++ei) {
-                if (phase == 0 && !dEdges[ei].convex) continue;
-                adj[dEdges[ei].t0].push_back({dEdges[ei].t1, ei});
-                adj[dEdges[ei].t1].push_back({dEdges[ei].t0, ei});
-            }
-            // Greedy seed first
-            for (int ei = 0; ei < static_cast<int>(dEdges.size()); ++ei) {
-                if (phase == 0 && !dEdges[ei].convex) continue;
-                int u = dEdges[ei].t0, v = dEdges[ei].t1;
-                if (partner[u] < 0 && partner[v] < 0) {
-                    partner[u] = v; partner[v] = u;
-                    matchedPair[u] = ei; matchedPair[v] = ei;
+            std::vector<int> partner(mT, -1), matchedPair(mT, -1);
+            auto alwaysOk = [](const std::vector<int>&, const std::vector<int>&) { return true; };
+
+            for (int phase = 0; phase < 2; ++phase) {
+                std::vector<std::vector<std::pair<int, int>>> adj(mT);
+                for (int ei = 0; ei < static_cast<int>(dEdges.size()); ++ei) {
+                    if (phase == 0 && !dEdges[ei].convex) continue;
+                    adj[dEdges[ei].t0].push_back({dEdges[ei].t1, ei});
+                    adj[dEdges[ei].t1].push_back({dEdges[ei].t0, ei});
+                }
+                for (int ei = 0; ei < static_cast<int>(dEdges.size()); ++ei) {
+                    if (phase == 0 && !dEdges[ei].convex) continue;
+                    int u = dEdges[ei].t0, v = dEdges[ei].t1;
+                    if (partner[u] < 0 && partner[v] < 0) {
+                        partner[u] = v; partner[v] = u;
+                        matchedPair[u] = ei; matchedPair[v] = ei;
+                    }
+                }
+                for (int r = 0; r < mT; ++r) {
+                    if (partner[r] < 0)
+                        augmentBlossomMatchingFrom(r, mT, adj, partner, matchedPair, alwaysOk);
                 }
             }
-            // Edmonds' Blossom augmenting paths
-            for (int r = 0; r < mT; ++r) {
-                if (partner[r] < 0)
-                    augmentBlossomMatchingFrom(r, mT, adj, partner, matchedPair, alwaysOk);
+
+            unmatchedOut.clear();
+            for (int i = 0; i < mT; ++i)
+                if (partner[i] < 0) unmatchedOut.push_back(i);
+            if (!unmatchedOut.empty()) return false;
+
+            qvOut.clear();
+            for (int i = 0; i < mT; ++i) {
+                if (partner[i] > i) {
+                    const auto& de = dEdges[matchedPair[i]];
+                    qvOut.push_back({de.c, de.a, de.d, de.b});
+                }
             }
-        }
+            return (static_cast<int>(qvOut.size()) == mT / 2);
+        };
 
-        unmatchedOut.clear();
-        for (int i = 0; i < mT; ++i)
-            if (partner[i] < 0) unmatchedOut.push_back(i);
-        if (!unmatchedOut.empty()) return false;
-
-        qvOut.clear();
-        for (int i = 0; i < mT; ++i) {
-            if (partner[i] > i) {
-                const auto& de = dEdges[matchedPair[i]];
-                qvOut.push_back({de.c, de.a, de.d, de.b});
+        auto evalUnmatchedDualDist = [&](const std::vector<LTri>& tList, const std::vector<int>& unm) -> int {
+            if (unm.size() < 2) return 0;
+            const int mT = static_cast<int>(tList.size());
+            std::vector<DualEdge> dEdges;
+            buildValidDualEdges(tList, dEdges);
+            std::vector<std::vector<int>> dAdj(mT);
+            for (const auto& de : dEdges) { dAdj[de.t0].push_back(de.t1); dAdj[de.t1].push_back(de.t0); }
+            int totD = 0;
+            for (size_t ui = 0; ui < unm.size(); ++ui) {
+                std::vector<int> dist(mT, 999);
+                std::queue<int> q;
+                q.push(unm[ui]); dist[unm[ui]] = 0;
+                while (!q.empty()) {
+                    int cur = q.front(); q.pop();
+                    for (int nb : dAdj[cur]) if (dist[nb] > dist[cur] + 1) { dist[nb] = dist[cur] + 1; q.push(nb); }
+                }
+                int mn = 999;
+                for (size_t uj = 0; uj < unm.size(); ++uj)
+                    if (uj != ui) mn = std::min(mn, dist[unm[uj]]);
+                totD += mn;
             }
-        }
-        return (static_cast<int>(qvOut.size()) == mT / 2);
-    };
+            return totD;
+        };
 
-    // Dual-distance helper between unmatched triangles (enables multi-step K_{1,3} claw resolution!)
-    auto evalUnmatchedDualDist = [&](const std::vector<LTri>& tList, const std::vector<int>& unm) -> int {
-        if (unm.size() < 2) return 0;
-        const int mT = static_cast<int>(tList.size());
-        std::vector<std::vector<int>> dAdj(mT);
-        for (int i = 0; i < mT; ++i) {
-            for (int ka = 0; ka < 3; ++ka) {
-                int a = tList[i].v[ka], b = tList[i].v[(ka + 1) % 3];
-                if (isBndEdge(a, b)) continue;
-                for (int j = i + 1; j < mT; ++j) {
-                    for (int kb = 0; kb < 3; ++kb) {
-                        if (tList[j].v[kb] == b && tList[j].v[(kb + 1) % 3] == a) {
-                            dAdj[i].push_back(j); dAdj[j].push_back(i);
-                            break;
+        std::vector<int> unmatched;
+        bool okMatch = solveBlossom(curTris, qvListOut, unmatched);
+        int curDualDist = okMatch ? 0 : evalUnmatchedDualDist(curTris, unmatched);
+
+        for (int attempt = 0; !okMatch && attempt < 24; ++attempt) {
+            bool didFlip = false;
+            const int curT = static_cast<int>(curTris.size());
+            std::vector<LTri> bestAlt;
+            std::vector<int> bestUnm;
+            int bestDist = curDualDist;
+            size_t bestUnmSz = unmatched.size();
+
+            for (int i = 0; i < curT && !okMatch; ++i) {
+                for (int ka = 0; ka < 3 && !okMatch; ++ka) {
+                    int a = curTris[i].v[ka], b = curTris[i].v[(ka + 1) % 3], c = curTris[i].v[(ka + 2) % 3];
+                    if (isBndEdge(a, b)) continue;
+                    for (int j = i + 1; j < curT; ++j) {
+                        for (int kb = 0; kb < 3; ++kb) {
+                            if (curTris[j].v[kb] == b && curTris[j].v[(kb + 1) % 3] == a) {
+                                int d = curTris[j].v[(kb + 2) % 3];
+                                gsPoint2D<T> q[4] = {curPts[c], curPts[a], curPts[d], curPts[b]};
+                                if (isStrictlyConvexQuad(q)) {
+                                    std::vector<LTri> alt = curTris;
+                                    alt[i] = {{c, a, d}};
+                                    alt[j] = {{c, d, b}};
+                                    std::vector<int> altUnm;
+                                    if (solveBlossom(alt, qvListOut, altUnm)) {
+                                        curTris = std::move(alt);
+                                        okMatch = true;
+                                        didFlip = true;
+                                    } else {
+                                        int dNew = evalUnmatchedDualDist(alt, altUnm);
+                                        if (altUnm.size() < bestUnmSz || (altUnm.size() == bestUnmSz && dNew < bestDist)) {
+                                            bestUnmSz = altUnm.size();
+                                            bestDist = dNew;
+                                            bestAlt = std::move(alt);
+                                            bestUnm = std::move(altUnm);
+                                            didFlip = true;
+                                        }
+                                    }
+                                }
+                                break;
+                            }
                         }
+                        if (okMatch) break;
                     }
                 }
             }
+            if (okMatch) break;
+            if (!didFlip || bestAlt.empty()) break;
+            curTris = std::move(bestAlt);
+            unmatched = std::move(bestUnm);
+            curDualDist = bestDist;
         }
-        int totD = 0;
-        for (size_t ui = 0; ui < unm.size(); ++ui) {
-            std::vector<int> dist(mT, 999);
-            std::queue<int> q;
-            q.push(unm[ui]); dist[unm[ui]] = 0;
-            while (!q.empty()) {
-                int cur = q.front(); q.pop();
-                for (int nb : dAdj[cur]) if (dist[nb] > dist[cur] + 1) { dist[nb] = dist[cur] + 1; q.push(nb); }
+
+        // Guaranteed 1->3 Centroid-Split Claw-Destroyer using EXACT solveBlossom dual graph!
+        for (int sp = 0; !okMatch && unmatched.size() >= 2 && sp < 18; ++sp) {
+            const int mT = static_cast<int>(curTris.size());
+            std::vector<DualEdge> dEdges;
+            buildValidDualEdges(curTris, dEdges);
+            std::vector<std::vector<int>> dAdj(mT);
+            for (const auto& de : dEdges) { dAdj[de.t0].push_back(de.t1); dAdj[de.t1].push_back(de.t0); }
+
+            // Find closest pair (src, dst) among all unmatched triangles in the valid dual graph
+            int bestSrc = -1, bestDst = -1, bestD = 999;
+            std::vector<int> bestPrev;
+            for (size_t ui = 0; ui < unmatched.size(); ++ui) {
+                int s = unmatched[ui];
+                std::vector<int> prevT(mT, -1), dist(mT, 999);
+                std::queue<int> q;
+                q.push(s); dist[s] = 0;
+                while (!q.empty()) {
+                    int u = q.front(); q.pop();
+                    for (int nb : dAdj[u]) {
+                        if (dist[nb] > dist[u] + 1) { dist[nb] = dist[u] + 1; prevT[nb] = u; q.push(nb); }
+                    }
+                }
+                for (size_t uj = ui + 1; uj < unmatched.size(); ++uj) {
+                    int t = unmatched[uj];
+                    if (dist[t] < bestD) { bestD = dist[t]; bestSrc = s; bestDst = t; bestPrev = prevT; }
+                }
             }
-            int mn = 999;
-            for (size_t uj = 0; uj < unm.size(); ++uj)
-                if (uj != ui) mn = std::min(mn, dist[unm[uj]]);
-            totD += mn;
+            if (bestSrc < 0 || bestDst < 0 || bestD >= 999 || bestD < 2) break;
+            int cur = bestDst;
+            while (bestPrev[cur] >= 0 && bestPrev[cur] != bestSrc) cur = bestPrev[cur];
+            int p1 = cur;
+            if (p1 < 0 || p1 >= mT) break;
+            const auto& A2 = curPts[curTris[p1].v[0]];
+            const auto& B2 = curPts[curTris[p1].v[1]];
+            const auto& C2 = curPts[curTris[p1].v[2]];
+            if (cross2(A2, B2, C2) <= T(1e-12)) break;
+            gsPoint2D<T> G((A2.x + B2.x + C2.x) / T(3), (A2.y + B2.y + C2.y) / T(3));
+            int vG = static_cast<int>(curPts.size());
+            curPts.push_back(G);
+            LTri oldT = curTris[p1];
+            curTris[p1] = {{oldT.v[0], oldT.v[1], vG}};
+            curTris.push_back({{oldT.v[1], oldT.v[2], vG}});
+            curTris.push_back({{oldT.v[2], oldT.v[0], vG}});
+            okMatch = solveBlossom(curTris, qvListOut, unmatched);
         }
-        return totD;
+        return okMatch;
     };
 
     std::vector<std::array<int, 4>> qvList;
-    std::vector<int> unmatched;
-    bool okMatch = solveBlossom(tris, qvList, unmatched);
-    int curDualDist = okMatch ? 0 : evalUnmatchedDualDist(tris, unmatched);
-
-    // Multi-step dual-distance-guided diagonal flipping to break any K_{1,3} claw!
-    for (int attempt = 0; !okMatch && attempt < 28; ++attempt) {
-        bool didFlip = false;
-        const int curT = static_cast<int>(tris.size());
-        std::vector<LTri> bestAlt;
-        std::vector<int> bestUnm;
-        int bestDist = curDualDist;
-        size_t bestUnmSz = unmatched.size();
-
-        for (int i = 0; i < curT && !okMatch; ++i) {
-            for (int ka = 0; ka < 3 && !okMatch; ++ka) {
-                int a = tris[i].v[ka], b = tris[i].v[(ka + 1) % 3], c = tris[i].v[(ka + 2) % 3];
-                if (isBndEdge(a, b)) continue;
-                for (int j = i + 1; j < curT; ++j) {
-                    for (int kb = 0; kb < 3; ++kb) {
-                        if (tris[j].v[kb] == b && tris[j].v[(kb + 1) % 3] == a) {
-                            int d = tris[j].v[(kb + 2) % 3];
-                            gsPoint2D<T> q[4] = {allPts[c], allPts[a], allPts[d], allPts[b]};
-                            if (isStrictlyConvexQuad(q)) {
-                                std::vector<LTri> alt = tris;
-                                alt[i] = {{c, a, d}};
-                                alt[j] = {{c, d, b}};
-                                std::vector<int> altUnm;
-                                if (solveBlossom(alt, qvList, altUnm)) {
-                                    tris = std::move(alt);
-                                    okMatch = true;
-                                    didFlip = true;
-                                } else {
-                                    int dNew = evalUnmatchedDualDist(alt, altUnm);
-                                    if (altUnm.size() < bestUnmSz || (altUnm.size() == bestUnmSz && dNew < bestDist)) {
-                                        bestUnmSz = altUnm.size();
-                                        bestDist = dNew;
-                                        bestAlt = std::move(alt);
-                                        bestUnm = std::move(altUnm);
-                                        didFlip = true;
-                                    }
-                                }
-                            }
-                            break;
-                        }
-                    }
-                    if (okMatch) break;
-                }
+    bool okMatch = runBlossomMatchingPipeline(tris, allPts, qvList);
+    if (!okMatch) {
+        // Retry seamlessly on a fresh Constrained Delaunay triangulation of hubPoly!
+        std::vector<LTri> cdtTris;
+        std::vector<gsPoint2D<T>> savedPts = allPts;
+        if (tryConstrainedInteriorCDT(cdtTris)) {
+            if (runBlossomMatchingPipeline(cdtTris, allPts, qvList)) {
+                tris = std::move(cdtTris);
+                okMatch = true;
+            } else {
+                allPts = std::move(savedPts);
             }
         }
-        if (okMatch) break;
-        if (!didFlip || bestAlt.empty()) break;
-        tris = std::move(bestAlt);
-        unmatched = std::move(bestUnm);
-        curDualDist = bestDist;
-    }
-
-    // Guaranteed 1->3 Centroid-Split Claw-Destroyer along shortest dual path between unmatched triangles:
-    // Splitting the first interior triangle `p_1` adjacent to `unmatched[0]` on the path to `unmatched[k]`
-    // destroys any K_{1,3} claw without splitting any boundary edge, strictly reducing unmatched distance until 0!
-    for (int sp = 0; !okMatch && unmatched.size() >= 2 && sp < 8; ++sp) {
-        const int mT = static_cast<int>(tris.size());
-        std::vector<std::vector<int>> dAdj(mT);
-        for (int i = 0; i < mT; ++i) {
-            for (int ka = 0; ka < 3; ++ka) {
-                int a = tris[i].v[ka], b = tris[i].v[(ka + 1) % 3];
-                if (isBndEdge(a, b)) continue;
-                for (int j = i + 1; j < mT; ++j) {
-                    for (int kb = 0; kb < 3; ++kb) {
-                        if (tris[j].v[kb] == b && tris[j].v[(kb + 1) % 3] == a) {
-                            dAdj[i].push_back(j); dAdj[j].push_back(i);
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        int src = unmatched[0];
-        std::vector<int> prevT(mT, -1), dist(mT, 999);
-        std::queue<int> q;
-        q.push(src); dist[src] = 0;
-        while (!q.empty()) {
-            int u = q.front(); q.pop();
-            for (int nb : dAdj[u]) {
-                if (dist[nb] > dist[u] + 1) { dist[nb] = dist[u] + 1; prevT[nb] = u; q.push(nb); }
-            }
-        }
-        int dst = -1, bestD = 999;
-        for (size_t k = 1; k < unmatched.size(); ++k) {
-            if (dist[unmatched[k]] < bestD) { bestD = dist[unmatched[k]]; dst = unmatched[k]; }
-        }
-        if (dst < 0 || bestD < 1) break;
-        // Trace back to p_1 (first neighbor of src on shortest path to dst; if bestD==1 split src itself!)
-        int p1 = src;
-        if (bestD >= 2) {
-            int cur = dst;
-            while (prevT[cur] >= 0 && prevT[cur] != src) cur = prevT[cur];
-            p1 = cur;
-        }
-        if (p1 < 0 || p1 >= mT) break;
-        const auto& A = allPts[tris[p1].v[0]];
-        const auto& B = allPts[tris[p1].v[1]];
-        const auto& C = allPts[tris[p1].v[2]];
-        if (cross2(A, B, C) <= T(1e-10)) {
-            if (p1 == src && cross2(allPts[tris[dst].v[0]], allPts[tris[dst].v[1]], allPts[tris[dst].v[2]]) > T(1e-10))
-                p1 = dst;
-            else
-                break;
-        }
-        const auto& A2 = allPts[tris[p1].v[0]];
-        const auto& B2 = allPts[tris[p1].v[1]];
-        const auto& C2 = allPts[tris[p1].v[2]];
-        gsPoint2D<T> G((A2.x + B2.x + C2.x) / T(3), (A2.y + B2.y + C2.y) / T(3));
-        int vG = static_cast<int>(allPts.size());
-        allPts.push_back(G);
-        LTri oldT = tris[p1];
-        tris[p1] = {{oldT.v[0], oldT.v[1], vG}};
-        tris.push_back({{oldT.v[1], oldT.v[2], vG}});
-        tris.push_back({{oldT.v[2], oldT.v[0], vG}});
-        okMatch = solveBlossom(tris, qvList, unmatched);
     }
 
     if (!okMatch) {
         if (std::getenv("GISMO_MERGED_DEBUG") != nullptr)
-            std::cerr << "[MERGED] BlossomShift fail N=" << N << " nT=" << tris.size() << " unm=" << unmatched.size() << "\n";
+            std::cerr << "[MERGED] BlossomShift fail N=" << N << " nT=" << tris.size() << "\n";
         return false;
     }
 
@@ -4925,7 +5490,7 @@ inline bool pairJunctionHubsExact(
             // Curved-CAD-Wall Rescue (preserves even N->N+2 and 100% cross-cut conformity!):
             // Try 1: if >= 2 CAD boundary walls exist, bisect BOTH most-curved/longest walls at 0.5 (cleanly cuts 180-deg horseshoe/U-bend bands in half!).
             // Try 2: split the single most-curved CAD boundary wall into 3 equal arcs (1->3).
-            if (wallSplitTry < 2 && hub.sidesCCW.size() <= 20) {
+            if (wallSplitTry < 2 && hub.sidesCCW.size() <= 28) {
                 workSides = hub.sidesCCW;
                 const int origN = static_cast<int>(workSides.size());
                 std::vector<std::pair<T, int>> cadSides;
@@ -5000,11 +5565,11 @@ inline bool pairJunctionHubsExact(
             return false;
         }
 
-        // Register all boundary vertices (including any newly inserted CAD wall split points!)
+        // Register all hub perimeter vertices (keeping interior cross-cut split nodes with loopIdx < 0 as interior!)
         for (const auto& sd : bestSides) {
             if (sd.uNode >= 0 && sd.uNode < static_cast<int>(sliced.nodes.size())) {
                 const auto& nd = sliced.nodes[sd.uNode];
-                getOrAddVert(nd.pt, true, nd.loopIdx, nd.arcS, nd.isPinnedCorner, nd.cornerAngleDeg, -1);
+                getOrAddVert(nd.pt, (nd.loopIdx >= 0), nd.loopIdx, nd.arcS, nd.isPinnedCorner, nd.cornerAngleDeg, -1);
             } else if (!sd.isCrossCut && sd.loopIdx >= 0) {
                 getOrAddVert(sd.seg.p0(), true, sd.loopIdx, sd.sStart, false, T(180), -1);
             }
@@ -5074,14 +5639,53 @@ inline bool realizeHermiteMultiPatch(
         const int K = static_cast<int>(inc.size());
 
         if (vtx.isBoundary && vtx.loopIdx >= 0 && vtx.loopIdx < static_cast<int>(bb.vloops.size())) {
+            const auto& vl = bb.vloops[vtx.loopIdx];
             if (!vtx.isPinnedCorner && K == 1) {
                 // Smooth CAD boundary split -> exact 90-deg inward normal (AS-G1 beta(0) = 0!)
-                gsPoint2D<T> nIn = mergedInwardNormalOnLoop(bb.vloops[vtx.loopIdx], vtx.arcS);
+                gsPoint2D<T> nIn = mergedInwardNormalOnLoop(vl, vtx.arcS);
                 edgeEndTan[{inc[0].eId, v}] = nIn;
             } else {
-                // Pinned corner or multi-spoke boundary vertex -> divide interior sector smoothly
-                for (int j = 0; j < K; ++j)
-                    edgeEndTan[{inc[j].eId, v}] = gsPoint2D<T>(std::cos(inc[j].chordAng), std::sin(inc[j].chordAng));
+                // Stage 4.1: Pinned corner or multi-spoke boundary vertex -> divide exact curved CAD interior sector
+                // omega equally into (K + 1) sectors, clamped gently around chordAng so Hermite curves stay monotone!
+                const T epsS = std::min(T(1e-3) * vl.totalArcLen, T(1e-3) * bb.domDiag);
+                gsPoint2D<T> tOut  = evalVirtualLoopUnitTangent(vl, virtualLoopWrapS(vl, vtx.arcS + epsS));
+                gsPoint2D<T> tIn   = evalVirtualLoopUnitTangent(vl, virtualLoopWrapS(vl, vtx.arcS - epsS));
+                gsPoint2D<T> tBack(-tIn.x, -tIn.y);
+                T omegaDeg = mergedCcwAngleDeg(tOut, tBack);
+                if (omegaDeg < T(10.0) || omegaDeg > T(350.0)) omegaDeg = vtx.cornerAngleDeg;
+                T omegaRad = omegaDeg * pi / T(180.0);
+                T angOut = std::atan2(tOut.y, tOut.x);
+
+                // Sort incident edges in strict CCW order inside (0, omegaRad) from tOut -> tBack
+                auto normPos = [&](T a) -> T {
+                    T d = a - angOut;
+                    while (d < T(0)) d += twoPi;
+                    while (d >= twoPi) d -= twoPi;
+                    return d;
+                };
+                std::sort(inc.begin(), inc.end(), [&](const IncIntEdge& a, const IncIntEdge& b) {
+                    return normPos(a.chordAng) < normPos(b.chordAng);
+                });
+
+                const T stepRad = omegaRad / static_cast<T>(K + 1);
+                const T maxSwing = T(48.0) * pi / T(180.0);
+                for (int j = 0; j < K; ++j) {
+                    T eqRel = stepRad * static_cast<T>(j + 1);
+                    T chRel = normPos(inc[j].chordAng);
+                    // Clamp departure toward equal-sector ray while preventing >48 deg S-curve deviation from chord
+                    T useRel = eqRel;
+                    if (chRel > T(0.02) && chRel < omegaRad - T(0.02)) {
+                        T diff = eqRel - chRel;
+                        if (diff > maxSwing) useRel = chRel + maxSwing;
+                        else if (diff < -maxSwing) useRel = chRel - maxSwing;
+                    }
+                    // Guarantee strict minimum wall clearance inside [0.40*stepRad, omegaRad - 0.40*stepRad]
+                    T loRel = (j == 0) ? (T(0.42) * stepRad) : (stepRad * (static_cast<T>(j) + T(0.45)));
+                    T hiRel = (j == K - 1) ? (omegaRad - T(0.42) * stepRad) : (stepRad * (static_cast<T>(j + 1) + T(0.55)));
+                    useRel = std::max(loRel, std::min(hiRel, useRel));
+                    T finalAng = angOut + useRel;
+                    edgeEndTan[{inc[j].eId, v}] = gsPoint2D<T>(std::cos(finalAng), std::sin(finalAng));
+                }
             }
         } else if (!vtx.isBoundary && K >= 3 && K <= 6) {
             // Interior vertex of valence K -> fit optimal symmetric 2*pi/K star phase phi0
@@ -5284,6 +5888,263 @@ inline bool buildFieldGuidedMedialMultiPatch(
                 if (dbg) std::cerr << "[MERGED] Fast smooth O-grid P=" << outMp.nPatches() << "\n";
                 return true;
             }
+        }
+    }
+
+    // Stage 2B: Fast 3/4/5/6-Patch 2-Lane Longitudinal Mesh for 0-Hole 1- or 2-Corner Domains (crescent, heart)
+    // Uses curved MAT spine chords + handles BOTH double-convex tips (crescent: 4-6p) AND tip+reentrant-cleft (heart: 3-5p)!
+    if (dom.numHoles() == 0 && bb.vloops.size() == 1 &&
+        (bb.vloops[0].corners.size() == 1 || bb.vloops[0].corners.size() == 2))
+    {
+        const auto& vl = bb.vloops[0];
+        const auto dense0 = mergedBuildDenseLoopPolys(bb.vloops, bb.domDiag);
+        auto evalArcAngleDeg = [&](T s) -> T {
+            const T epsS = std::min(T(1e-3) * vl.totalArcLen, T(1e-3) * bb.domDiag);
+            gsPoint2D<T> tO = evalVirtualLoopUnitTangent(vl, virtualLoopWrapS(vl, s + epsS));
+            gsPoint2D<T> tI = evalVirtualLoopUnitTangent(vl, virtualLoopWrapS(vl, s - epsS));
+            return mergedCcwAngleDeg(tO, gsPoint2D<T>(-tI.x, -tI.y));
+        };
+
+        struct AnchorPair { T sA, sB, angA, angB; };
+        std::vector<AnchorPair> anchorPairs;
+        if (vl.corners.size() == 2) {
+            T s0 = vl.corners[0].arcS, s1 = vl.corners[1].arcS;
+            T a0 = evalArcAngleDeg(s0), a1 = evalArcAngleDeg(s1);
+            // Put sharper/convex tip at sA, larger/reentrant cleft (if any) at sB
+            if (a0 <= a1) anchorPairs.push_back({s0, s1, a0, a1});
+            else          anchorPairs.push_back({s1, s0, a1, a0});
+        } else {
+            T s0 = vl.corners[0].arcS;
+            T a0 = evalArcAngleDeg(s0);
+            T sHalf = virtualLoopWrapS(vl, s0 + T(0.5) * vl.totalArcLen);
+            anchorPairs.push_back({s0, sHalf, a0, evalArcAngleDeg(sHalf)});
+            // Also probe maximum inward-concavity peak on opposite half (hits smooth heart cleft!)
+            T bestS = sHalf, bestCurv = -T(1e9);
+            const T epsS = T(0.015) * vl.totalArcLen;
+            for (int k = 0; k <= 32; ++k) {
+                T f = T(0.25) + T(0.50) * static_cast<T>(k) / T(32);
+                T s = virtualLoopWrapS(vl, s0 + f * vl.totalArcLen);
+                gsPoint2D<T> t0 = evalVirtualLoopUnitTangent(vl, virtualLoopWrapS(vl, s - epsS));
+                gsPoint2D<T> t1 = evalVirtualLoopUnitTangent(vl, virtualLoopWrapS(vl, s + epsS));
+                T cIn = -(t0.x * t1.y - t0.y * t1.x);
+                if (cIn > bestCurv) { bestCurv = cIn; bestS = s; }
+            }
+            if (std::abs(bestS - sHalf) > T(0.01) * vl.totalArcLen)
+                anchorPairs.push_back({s0, bestS, a0, evalArcAngleDeg(bestS)});
+        }
+
+        T domMinC = T(180);
+        for (const auto& c : vl.corners) domMinC = std::min(domMinC, c.interiorAngleDeg);
+        const T minAngAllow = std::min(T(12.0), std::max(T(4.0), T(0.75) * domMinC));
+        const T maxAngAllow = T(163.5);
+
+        bool found2Lane = false;
+        gsMultiPatch<T> best2Lane;
+        size_t best2P = 999;
+        T best2MinA = T(0);
+
+        auto tryEvaluate2Lane = [&](const std::vector<std::array<CurveSeg<T>, 4>>& qList) {
+            if (qList.empty() || (found2Lane && qList.size() > best2P)) return;
+            gsMultiPatch<T> candMp;
+            T worstMinA = T(180);
+            for (const auto& q : qList) {
+                if (!q[0].bsp || !q[1].bsp || !q[2].bsp || !q[3].bsp) return;
+                std::unique_ptr<gsTensorBSpline<2, T>> np(makeCoonsFromCCWCycle(q[0], q[1], q[2], q[3], degree));
+                if (!np) return;
+                if (evalPatchMinDetDense(*np, 49) <= T(1e-6))
+                    quickHarmonicPatchRepair(*np, T(1e-6));
+                if (!isPatchDetSingleSign(*np, 21, T(1e-7)) || evalPatchMinDetDense(*np, 49) <= T(1e-6))
+                    return;
+                T angs[4], mnA = 0, mxA = 180; bool deg = false;
+                evalPatchCornerAnglesDeg(*np, angs, mnA, mxA, deg);
+                if (deg || mnA < minAngAllow || mxA > maxAngAllow) return;
+                worstMinA = std::min(worstMinA, mnA);
+                candMp.addPatch(typename gsGeometry<T>::uPtr(np.release()));
+            }
+            gsASG1LocalFitter<T>::unifyPatchOrientations(candMp);
+            candMp.computeTopology(T(1e-4), false, false);
+            if (2 * candMp.nInterfaces() + candMp.nBoundary() != 4 * candMp.nPatches()) return;
+            if (!found2Lane || candMp.nPatches() < best2P ||
+                (candMp.nPatches() == best2P && worstMinA > best2MinA)) {
+                found2Lane = true;
+                best2P = candMp.nPatches();
+                best2MinA = worstMinA;
+                best2Lane = give(candMp);
+            }
+        };
+
+        // Build curved medial spine cubic segment between S[a] and S[b] guided by an interior midpoint M
+        auto makeCurvedSpine = [&](const gsPoint2D<T>& A, const gsPoint2D<T>& M, const gsPoint2D<T>& B) -> CurveSeg<T> {
+            // Quadratic-elevated cubic Bezier passing through M at t=0.5: Q_mid = 2*M - 0.5*(A+B)
+            gsPoint2D<T> Q(T(2) * M.x - T(0.5) * (A.x + B.x), T(2) * M.y - T(0.5) * (A.y + B.y));
+            gsPoint2D<T> c1((A.x + T(2) * Q.x) / T(3), (A.y + T(2) * Q.y) / T(3));
+            gsPoint2D<T> c2((B.x + T(2) * Q.x) / T(3), (B.y + T(2) * Q.y) / T(3));
+            return makeCubicBezierInteriorSeg(A, c1, c2, B, degree);
+        };
+
+        for (const auto& ap : anchorPairs) {
+            T sA = ap.sA, sB = ap.sB;
+            T L1 = mergedLoopForwardSpan(vl, sA, sB);
+            T L2 = mergedLoopForwardSpan(vl, sB, sA);
+            if (L1 <= T(1e-5) || L2 <= T(1e-5)) continue;
+
+            // Helper: compute medial midpoint S(f) at normalized progress f in (0, 1) along arc1/arc2
+            auto evalMedialPt = [&](T f, gsPoint2D<T>& p1Out, gsPoint2D<T>& p2Out, gsPoint2D<T>& sOut) -> bool {
+                T sa = virtualLoopWrapS(vl, sA + f * L1);
+                T sb = virtualLoopWrapS(vl, sA - f * L2);
+                p1Out = evalVirtualLoopPoint(vl, sa);
+                p2Out = evalVirtualLoopPoint(vl, sb);
+                gsPoint2D<T> mid(T(0.5) * (p1Out.x + p2Out.x), T(0.5) * (p1Out.y + p2Out.y));
+                if (isPointStrictlyInsideDomain(mid, dense0, T(1e-5))) { sOut = mid; return true; }
+                // Fallback: closest MAT polyline point if thin highly curved crescent
+                if (!bb.sleeves.empty() && !bb.sleeves[0].poly.empty()) {
+                    const auto& mp0 = bb.sleeves[0].poly;
+                    T bestD = std::numeric_limits<T>::max();
+                    gsPoint2D<T> bestQ = mid;
+                    for (const auto& q : mp0) {
+                        T d = q.dist(p1Out) + q.dist(p2Out);
+                        if (d < bestD && isPointStrictlyInsideDomain(q, dense0, T(1e-5))) { bestD = d; bestQ = q; }
+                    }
+                    if (bestD < std::numeric_limits<T>::max()) { sOut = bestQ; return true; }
+                }
+                return false;
+            };
+
+            // Case 1: 1-corner smooth/cleft domain (e.g. heart_1corner_nonconvex!) -> 6-patch (1 sharp tip kite + 5-patch O-grid)
+            // Cuts 11-patch twin-O-ring layout nearly in half (11 -> 6) with clean tip kite and smooth upper O-grid!
+            if (ap.angA < T(165.0) && ap.angB >= T(165.0)) {
+                gsPoint2D<T> PB = evalVirtualLoopPoint(vl, sB);
+                for (T fS : {T(0.30), T(0.36), T(0.24), T(0.42)}) {
+                    gsPoint2D<T> P1, P2, Sraw;
+                    if (!evalMedialPt(fS, P1, P2, Sraw)) continue;
+                    // Push S0 away from tip A toward sB so P1->S0->P2 bends into a clean ~120 deg chevron (never 180!)
+                    T dW = P1.dist(P2);
+                    gsPoint2D<T> dirB(PB.x - Sraw.x, PB.y - Sraw.y);
+                    T dL = std::hypot(dirB.x, dirB.y);
+                    if (dL <= T(1e-6)) continue;
+                    dirB.x /= dL; dirB.y /= dL;
+                    for (T push : {T(0.32), T(0.22), T(0.45)}) {
+                        gsPoint2D<T> S0(Sraw.x + std::min(push * dW, T(0.35) * dL) * dirB.x,
+                                        Sraw.y + std::min(push * dW, T(0.35) * dL) * dirB.y);
+                        if (!isPointStrictlyInsideDomain(S0, dense0, T(1e-5)) ||
+                            !isSegmentInsideDomain(P1, S0, dense0) || !isSegmentInsideDomain(S0, P2, dense0))
+                            continue;
+                        T s1 = virtualLoopWrapS(vl, sA + fS * L1);
+                        T s2 = virtualLoopWrapS(vl, sA - fS * L2);
+                        CurveSeg<T> sp1 = makeStraightSeg(P1, S0, degree);
+                        CurveSeg<T> sp2 = makeStraightSeg(S0, P2, degree);
+                        std::array<CurveSeg<T>, 4> tipQ = {
+                            extractVirtualSubCurve(vl, sA, s1, degree), sp1, sp2, extractVirtualSubCurve(vl, s2, sA, degree)
+                        };
+                        std::array<CurveSeg<T>, 4> bodyQ = {
+                            extractVirtualSubCurve(vl, s1, sB, degree),
+                            extractVirtualSubCurve(vl, sB, s2, degree),
+                            sp2.reversed(), sp1.reversed()
+                        };
+                        std::vector<std::array<CurveSeg<T>, 4>> og5;
+                        if (emitRobustOGrid5(bodyQ, degree, dense0, og5, false, minAngAllow)) {
+                            std::vector<std::array<CurveSeg<T>, 4>> q6;
+                            q6.push_back(tipQ);
+                            for (auto& oq : og5) q6.push_back(std::move(oq));
+                            tryEvaluate2Lane(q6);
+                        }
+                    }
+                }
+            }
+
+            // Case 2: Both tips convex (<165 deg, e.g. crescent_2corner!) -> 4-patch (M=2) or 6-patch (M=3) curved-spine 2-lane!
+            // Shifts end spine points S[0], S[M-1] inward toward interior so P1[0]->S[0]->P2[0] forms ~120 deg chevrons!
+            if (ap.angA < T(165.0) && ap.angB < T(165.0)) {
+                const std::vector<std::vector<T>> fracSets = {
+                    {T(0.28), T(0.72)},
+                    {T(0.24), T(0.76)},
+                    {T(0.32), T(0.68)},
+                    {T(0.20), T(0.50), T(0.80)},
+                    {T(0.24), T(0.50), T(0.76)}
+                };
+                for (const auto& fracs : fracSets) {
+                    const int M = static_cast<int>(fracs.size());
+                    if (found2Lane && static_cast<size_t>(2 * M) > best2P) continue;
+                    std::vector<T> s1(M), s2(M);
+                    std::vector<gsPoint2D<T>> P1(M), P2(M), S(M);
+                    bool ok = true;
+                    for (int k = 0; k < M; ++k) {
+                        s1[k] = virtualLoopWrapS(vl, sA + fracs[k] * L1);
+                        s2[k] = virtualLoopWrapS(vl, sA - fracs[k] * L2);
+                        if (!evalMedialPt(fracs[k], P1[k], P2[k], S[k])) { ok = false; break; }
+                    }
+                    if (!ok) continue;
+
+                    // Bend end chevrons S[0] and S[M-1] inward along the medial spine so Tip A & Tip B kites have ~120 deg angles!
+                    for (T bendFrac : {T(0.32), T(0.45), T(0.22)}) {
+                        std::vector<gsPoint2D<T>> Sb = S;
+                        gsPoint2D<T> mp1, mp2, SmidA, SmidB;
+                        T fInA = std::min(T(0.48), fracs[0] + T(0.10));
+                        T fInB = std::max(T(0.52), fracs[M - 1] - T(0.10));
+                        if (evalMedialPt(fInA, mp1, mp2, SmidA)) {
+                            T dx = SmidA.x - S[0].x, dy = SmidA.y - S[0].y;
+                            T dl = std::hypot(dx, dy);
+                            if (dl > T(1e-6)) {
+                                T step = std::min(bendFrac * P1[0].dist(P2[0]), T(0.75) * dl);
+                                Sb[0] = gsPoint2D<T>(S[0].x + step * dx / dl, S[0].y + step * dy / dl);
+                            }
+                        }
+                        if (evalMedialPt(fInB, mp1, mp2, SmidB)) {
+                            T dx = SmidB.x - S[M - 1].x, dy = SmidB.y - S[M - 1].y;
+                            T dl = std::hypot(dx, dy);
+                            if (dl > T(1e-6)) {
+                                T step = std::min(bendFrac * P1[M - 1].dist(P2[M - 1]), T(0.75) * dl);
+                                Sb[M - 1] = gsPoint2D<T>(S[M - 1].x + step * dx / dl, S[M - 1].y + step * dy / dl);
+                            }
+                        }
+                        bool bendOk = true;
+                        for (int k = 0; k < M && bendOk; ++k) {
+                            if (!isPointStrictlyInsideDomain(Sb[k], dense0, T(1e-5)) ||
+                                !isSegmentInsideDomain(P1[k], Sb[k], dense0) ||
+                                !isSegmentInsideDomain(Sb[k], P2[k], dense0)) bendOk = false;
+                        }
+                        if (!bendOk) continue;
+
+                        std::vector<CurveSeg<T>> e1(M + 1), e2(M + 1), sp1(M), sp2(M), spine(M - 1);
+                        e1[0] = extractVirtualSubCurve(vl, sA, s1[0], degree);
+                        e2[0] = extractVirtualSubCurve(vl, s2[0], sA, degree);
+                        for (int k = 0; k + 1 < M && bendOk; ++k) {
+                            e1[k + 1] = extractVirtualSubCurve(vl, s1[k], s1[k + 1], degree);
+                            e2[k + 1] = extractVirtualSubCurve(vl, s2[k + 1], s2[k], degree);
+                            gsPoint2D<T> q1, q2, Smid;
+                            if (evalMedialPt(T(0.5) * (fracs[k] + fracs[k + 1]), q1, q2, Smid))
+                                spine[k] = makeCurvedSpine(Sb[k], Smid, Sb[k + 1]);
+                            else
+                                spine[k] = makeStraightSeg(Sb[k], Sb[k + 1], degree);
+                            for (int t = 1; t < 8; ++t) {
+                                if (!isPointStrictlyInsideDomain(evalCurvePoint(*spine[k].bsp, static_cast<T>(t) / T(8)), dense0, T(1e-5))) {
+                                    bendOk = false; break;
+                                }
+                            }
+                        }
+                        if (!bendOk) continue;
+                        e1[M] = extractVirtualSubCurve(vl, s1[M - 1], sB, degree);
+                        e2[M] = extractVirtualSubCurve(vl, sB, s2[M - 1], degree);
+                        for (int k = 0; k < M; ++k) {
+                            sp1[k] = makeStraightSeg(P1[k], Sb[k], degree);
+                            sp2[k] = makeStraightSeg(Sb[k], P2[k], degree);
+                        }
+                        std::vector<std::array<CurveSeg<T>, 4>> qList;
+                        qList.push_back({e1[0], sp1[0], sp2[0], e2[0]});
+                        for (int k = 0; k + 1 < M; ++k) {
+                            qList.push_back({e1[k + 1], sp1[k + 1], spine[k].reversed(), sp1[k].reversed()});
+                            qList.push_back({spine[k], sp2[k + 1], e2[k + 1], sp2[k].reversed()});
+                        }
+                        qList.push_back({e1[M], e2[M], sp2[M - 1].reversed(), sp1[M - 1].reversed()});
+                        tryEvaluate2Lane(qList);
+                    }
+                }
+            }
+        }
+        if (found2Lane) {
+            outMp = give(best2Lane);
+            if (dbg) std::cerr << "[MERGED] Fast 2-lane longitudinal mesh P=" << outMp.nPatches() << " (0 O-rings!)\n";
+            return true;
         }
     }
 
@@ -5774,6 +6635,248 @@ inline int pruneParasiticORings(
                     }
                 }
             }
+
+            // Op 4D (Stage 3A): Neighbor-Merged 6-gon Bisection (C_5 U pNbr: 6 -> 2, -4 patches!)
+            // Eliminates SMOOTH_180 AND REFLEX_CORNER 5-rings with ZERO outer boundary edits (expectedBnd == oldBnd)!
+            // Connects the bad (>=162 deg) corner of the 6-gon directly to its opposite vertex (iBad+3)%6 on pNbr!
+            if (!prunedOne) {
+                auto chainNToCCW = [&](const std::vector<CurveSeg<T>>& raw, std::vector<CurveSeg<T>>& out) -> bool {
+                    const int M = static_cast<int>(raw.size());
+                    if (M < 4) return false;
+                    out.resize(M);
+                    std::vector<bool> used(M, false);
+                    used[0] = true;
+                    out[0] = raw[0];
+                    gsPoint2D<T> cur = out[0].p1();
+                    for (int step = 1; step < M; ++step) {
+                        int hit = -1; bool rev = false; T bestD = T(5e-4);
+                        for (int k = 1; k < M; ++k) {
+                            if (used[k]) continue;
+                            T d0 = raw[k].p0().dist(cur), d1 = raw[k].p1().dist(cur);
+                            if (d0 < bestD) { bestD = d0; hit = k; rev = false; }
+                            if (d1 < bestD) { bestD = d1; hit = k; rev = true; }
+                        }
+                        if (hit < 0) return false;
+                        used[hit] = true;
+                        out[step] = rev ? raw[hit].reversed() : raw[hit];
+                        cur = out[step].p1();
+                    }
+                    if (cur.dist(out[0].p0()) > T(5e-4)) return false;
+                    std::vector<gsPoint2D<T>> poly;
+                    poly.reserve(M * 8);
+                    for (int k = 0; k < M; ++k)
+                        for (int s = 0; s < 8; ++s)
+                            poly.push_back(evalCurvePoint(*out[k].bsp, static_cast<T>(s) / T(8)));
+                    T a2 = T(0);
+                    for (size_t i = 0; i < poly.size(); ++i)
+                        a2 += poly[i].x * poly[(i + 1) % poly.size()].y - poly[(i + 1) % poly.size()].x * poly[i].y;
+                    if (std::abs(a2) <= T(1e-10)) return false;
+                    if (a2 < T(0)) {
+                        std::vector<CurveSeg<T>> revOut(M);
+                        for (int k = 0; k < M; ++k) revOut[k] = out[M - 1 - k].reversed();
+                        out = std::move(revOut);
+                    }
+                    return true;
+                };
+
+                for (int kSide = 0; kSide < 4 && !prunedOne; ++kSide) {
+                    int pNbr = rg.extNbr[kSide].first;
+                    int sNbr = rg.extNbr[kSide].second;
+                    if (pNbr < 0 || cl5.count(pNbr)) continue;
+                    // Skip if pNbr touches C5 on > 1 side (handled by Kite6 Op 4B)
+                    int touchCnt = 0;
+                    for (int kk = 0; kk < 4; ++kk) if (rg.extNbr[kk].first == pNbr) ++touchCnt;
+                    if (touchCnt != 1) continue;
+
+                    std::array<CurveSeg<T>, 4> nbrSegs;
+                    if (!extractPatchCcwSides(mp.patch(pNbr), nbrSegs)) continue;
+                    std::vector<CurveSeg<T>> raw6;
+                    raw6.reserve(6);
+                    for (int s = 0; s < 4; ++s) if (s != kSide) raw6.push_back(outSeg[s]);
+                    for (int s = 0; s < 4; ++s) if (s != sNbr) raw6.push_back(nbrSegs[s]);
+                    std::vector<CurveSeg<T>> cyc6;
+                    if (!chainNToCCW(raw6, cyc6)) continue;
+
+                    // Compute interior vertex angles of the 6-gon
+                    T ang6[6];
+                    gsPoint2D<T> bis6[6];
+                    std::vector<int> tryStarts;
+                    const T deg2rad = T(3.14159265358979323846) / T(180);
+                    for (int i = 0; i < 6; ++i) {
+                        gsPoint2D<T> dIn  = evalCurveDeriv(*cyc6[(i + 5) % 6].bsp, T(1));
+                        gsPoint2D<T> dOut = evalCurveDeriv(*cyc6[i].bsp, T(0));
+                        T n1 = std::hypot(dIn.x, dIn.y), n2 = std::hypot(dOut.x, dOut.y);
+                        if (n1 > T(1e-12) && n2 > T(1e-12)) {
+                            gsPoint2D<T> tO(dOut.x / n2, dOut.y / n2), tB(-dIn.x / n1, -dIn.y / n1);
+                            ang6[i] = mergedCcwAngleDeg(tO, tB);
+                            T hr = T(0.5) * ang6[i] * deg2rad;
+                            bis6[i] = gsPoint2D<T>(tO.x * std::cos(hr) - tO.y * std::sin(hr),
+                                                   tO.x * std::sin(hr) + tO.y * std::cos(hr));
+                        } else {
+                            ang6[i] = T(120);
+                            bis6[i] = gsPoint2D<T>(1, 0);
+                        }
+                    }
+                    // Prioritize diagonals splitting any >=162 deg smooth/reflex corner first!
+                    for (int i = 0; i < 3; ++i) {
+                        if (ang6[i] >= T(162.0) || ang6[i + 3] >= T(162.0)) tryStarts.push_back(i);
+                    }
+                    for (int i = 0; i < 3; ++i) {
+                        if (std::find(tryStarts.begin(), tryStarts.end(), i) == tryStarts.end())
+                            tryStarts.push_back(i);
+                    }
+
+                    // Build 6-gon polygon for interior chord containment check
+                    std::vector<gsPoint2D<T>> poly6;
+                    poly6.reserve(48);
+                    for (int k = 0; k < 6; ++k)
+                        for (int s = 0; s < 8; ++s)
+                            poly6.push_back(evalCurvePoint(*cyc6[k].bsp, static_cast<T>(s) / T(8)));
+
+                    for (int i0 : tryStarts) {
+                        int i3 = (i0 + 3) % 6;
+                        // Ensure remaining 4 unsplit corners of the 6-gon don't have unsplit >= effMaxAng corners
+                        bool otherBad = false;
+                        for (int m = 0; m < 6; ++m) {
+                            if (m == i0 || m == i3) continue;
+                            if (ang6[m] > effMaxAng - T(0.5) || ang6[m] < effMinAng + T(0.5)) { otherBad = true; break; }
+                        }
+                        if (otherBad) continue;
+
+                        gsPoint2D<T> A = cyc6[i0].p0(), B = cyc6[i3].p0();
+                        T L = A.dist(B);
+                        if (L <= T(1e-7)) continue;
+                        gsPoint2D<T> ch((B.x - A.x) / L, (B.y - A.y) / L);
+
+                        std::vector<CurveSeg<T>> chordCands;
+                        chordCands.push_back(makeStraightSeg(A, B, degree));
+                        // Gentle Hermite chord along inward bisectors of A and B (smoothly splits 180/240 deg corners!)
+                        gsPoint2D<T> dA = (bis6[i0].x * ch.x + bis6[i0].y * ch.y > T(0.20)) ? bis6[i0] : ch;
+                        gsPoint2D<T> dB = (bis6[i3].x * (-ch.x) + bis6[i3].y * (-ch.y) > T(0.20)) ? bis6[i3] : gsPoint2D<T>(-ch.x, -ch.y);
+                        for (T al : {T(0.22), T(0.12)}) {
+                            gsPoint2D<T> p1(A.x + al * L * dA.x, A.y + al * L * dA.y);
+                            gsPoint2D<T> p2(B.x + al * L * dB.x, B.y + al * L * dB.y);
+                            chordCands.push_back(makeCubicBezierInteriorSeg(A, p1, p2, B, degree));
+                        }
+
+                        for (const auto& chord : chordCands) {
+                            bool inOk = true;
+                            for (int s = 1; s < 8; ++s) {
+                                gsPoint2D<T> q = evalCurvePoint(*chord.bsp, static_cast<T>(s) / T(8));
+                                if (!pointInPolyStrict(q, poly6, T(1e-6))) { inOk = false; break; }
+                            }
+                            if (!inOk) continue;
+
+                            std::array<CurveSeg<T>, 4> c4A = {cyc6[i0], cyc6[(i0 + 1) % 6], cyc6[(i0 + 2) % 6], chord.reversed()};
+                            std::array<CurveSeg<T>, 4> c4B = {chord, cyc6[i3], cyc6[(i3 + 1) % 6], cyc6[(i3 + 2) % 6]};
+                            auto npA = buildCertifiedSinglePatch(c4A);
+                            auto npB = buildCertifiedSinglePatch(c4B);
+                            if (npA && npB) {
+                                std::set<int> cl6 = cl5;
+                                cl6.insert(pNbr);
+                                std::vector<std::unique_ptr<gsTensorBSpline<2, T>>> add;
+                                add.push_back(std::move(npA));
+                                add.push_back(std::move(npB));
+                                if (commitReplacement(cl6, add, oldBnd)) {
+                                    if (dbg) std::cerr << "[MERGED] Pruned O-ring+Nbr 6->2 (p0=" << rg.p0 << ",nbr=" << pNbr << ") P=" << mp.nPatches() << "\n";
+                                    ++totalPruned;
+                                    prunedOne = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (prunedOne) break;
+                    }
+                }
+            }
+
+            // Op 4E (Stage 3B): 3-Patch Valence-3 L-Split (5 -> 3, -2 patches!) for Reflex Pockets on dOmega
+            if (!prunedOne) {
+                std::array<CurveSeg<T>, 4> c5ccw;
+                if (chain4ToCCW(outSeg, c5ccw)) {
+                    // Identify which sides of c5ccw are free domain boundary edges
+                    bool isBndSide[4] = {false, false, false, false};
+                    for (int k = 0; k < 4; ++k) {
+                        for (int origK = 0; origK < 4; ++origK) {
+                            if ((c5ccw[k].p0().dist(outSeg[origK].p0()) < T(5e-4) && c5ccw[k].p1().dist(outSeg[origK].p1()) < T(5e-4)) ||
+                                (c5ccw[k].p0().dist(outSeg[origK].p1()) < T(5e-4) && c5ccw[k].p1().dist(outSeg[origK].p0()) < T(5e-4))) {
+                                isBndSide[k] = (rg.extNbr[origK].first < 0);
+                                break;
+                            }
+                        }
+                    }
+                    // Look for a reflex corner >= 190 deg whose two opposite sides (iRef+1, iRef+2) are free boundary walls
+                    int iRef = -1;
+                    T refAng = T(0);
+                    gsPoint2D<T> refBis(1, 0);
+                    const T deg2rad = T(3.14159265358979323846) / T(180);
+                    for (int i = 0; i < 4; ++i) {
+                        if (!isBndSide[(i + 1) % 4] || !isBndSide[(i + 2) % 4]) continue;
+                        gsPoint2D<T> dIn  = evalCurveDeriv(*c5ccw[(i + 3) % 4].bsp, T(1));
+                        gsPoint2D<T> dOut = evalCurveDeriv(*c5ccw[i].bsp, T(0));
+                        T n1 = std::hypot(dIn.x, dIn.y), n2 = std::hypot(dOut.x, dOut.y);
+                        if (n1 > T(1e-12) && n2 > T(1e-12)) {
+                            gsPoint2D<T> tO(dOut.x / n2, dOut.y / n2), tB(-dIn.x / n1, -dIn.y / n1);
+                            T ang = mergedCcwAngleDeg(tO, tB);
+                            if (ang >= T(190.0) && ang > refAng) {
+                                refAng = ang;
+                                iRef = i;
+                                T hr = T(0.5) * ang * deg2rad;
+                                refBis = gsPoint2D<T>(tO.x * std::cos(hr) - tO.y * std::sin(hr),
+                                                      tO.x * std::sin(hr) + tO.y * std::cos(hr));
+                            }
+                        }
+                    }
+                    if (iRef >= 0) {
+                        std::vector<gsPoint2D<T>> poly4;
+                        poly4.reserve(32);
+                        for (int k = 0; k < 4; ++k)
+                            for (int s = 0; s < 8; ++s)
+                                poly4.push_back(evalCurvePoint(*c5ccw[k].bsp, static_cast<T>(s) / T(8)));
+
+                        auto sp1 = c5ccw[(iRef + 1) % 4].splitArc(T(0.5));
+                        auto sp2 = c5ccw[(iRef + 2) % 4].splitArc(T(0.5));
+                        if (sp1.first.bsp && sp1.second.bsp && sp2.first.bsp && sp2.second.bsp) {
+                            gsPoint2D<T> Vref = c5ccw[iRef].p0();
+                            gsPoint2D<T> Vopp = c5ccw[(iRef + 2) % 4].p0();
+                            gsPoint2D<T> M1 = sp1.first.p1();
+                            gsPoint2D<T> M2 = sp2.first.p1();
+                            T dDiag = Vref.dist(Vopp);
+                            std::vector<gsPoint2D<T>> cCands = {
+                                gsPoint2D<T>(T(0.50) * Vref.x + T(0.50) * Vopp.x, T(0.50) * Vref.y + T(0.50) * Vopp.y),
+                                gsPoint2D<T>(T(0.40) * Vref.x + T(0.60) * Vopp.x, T(0.40) * Vref.y + T(0.60) * Vopp.y),
+                                gsPoint2D<T>((Vref.x + M1.x + M2.x) / T(3), (Vref.y + M1.y + M2.y) / T(3)),
+                                gsPoint2D<T>(Vref.x + T(0.45) * dDiag * refBis.x, Vref.y + T(0.45) * dDiag * refBis.y)
+                            };
+                            for (const auto& C : cCands) {
+                                if (!pointInPolyStrict(C, poly4, T(1e-6))) continue;
+                                CurveSeg<T> sRefC = makeStraightSeg(Vref, C, degree);
+                                CurveSeg<T> sM1C  = makeStraightSeg(M1, C, degree);
+                                CurveSeg<T> sM2C  = makeStraightSeg(M2, C, degree);
+                                std::array<CurveSeg<T>, 4> q0 = {c5ccw[iRef], sp1.first, sM1C, sRefC.reversed()};
+                                std::array<CurveSeg<T>, 4> q1 = {sM1C.reversed(), sp1.second, sp2.first, sM2C};
+                                std::array<CurveSeg<T>, 4> q2 = {sRefC, sM2C.reversed(), sp2.second, c5ccw[(iRef + 3) % 4]};
+                                auto np0 = buildCertifiedSinglePatch(q0);
+                                auto np1 = buildCertifiedSinglePatch(q1);
+                                auto np2 = buildCertifiedSinglePatch(q2);
+                                if (np0 && np1 && np2) {
+                                    std::vector<std::unique_ptr<gsTensorBSpline<2, T>>> add;
+                                    add.push_back(std::move(np0));
+                                    add.push_back(std::move(np1));
+                                    add.push_back(std::move(np2));
+                                    if (commitReplacement(cl5, add, oldBnd + 2)) {
+                                        if (dbg) std::cerr << "[MERGED] Replaced Reflex O-ring 5->3 L-split (p0=" << rg.p0 << ") P=" << mp.nPatches() << "\n";
+                                        ++totalPruned;
+                                        prunedOne = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (prunedOne) break;
         }
         if (!prunedOne) break;
     }
