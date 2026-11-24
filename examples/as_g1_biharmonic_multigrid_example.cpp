@@ -346,6 +346,7 @@ bool runDomainExperiment(
 
     const std::string smootherLabel =
         (smootherType == "scms") ? "SCMS Multiplicative + Overlapping Skeleton (Remark 5)" :
+        (smootherType == "scms_hybrid") ? "SCMS Hybrid (Point GS + SCMS + Overlapping Skeleton, Sogn-Takacs Sec 5.3)" :
         (smootherType == "scms_add") ? "SCMS Additive Schwarz + Overlapping Skeleton (Theorem 5, isotropic)" :
         (smootherType == "scms_add_metric") ? "SCMS Additive Schwarz + Overlapping Skeleton (metric-weighted)" :
         (smootherType == "scms_add_analytic") ? "SCMS Additive Schwarz (Theorem 5, analytic 1/(8*c_bar_G))" :
@@ -554,6 +555,12 @@ bool runDomainExperiment(
                 gsAsG1ScmsSmootherOp<T>::make(
                     mg->matrix(l), mp, levels[l].dbasis, levels[l].argBasis, levels[l].mapper,
                     beta, scmsRp, /*additive=*/false, /*useMetricWeights=*/true, /*calibrateByPowerMethod=*/true).release());
+        else if (smootherType == "scms_hybrid")
+            sm = typename gsMultiGridOp<T>::PrecondPtr(
+                gsAsG1ScmsSmootherOp<T>::make(
+                    mg->matrix(l), mp, levels[l].dbasis, levels[l].argBasis, levels[l].mapper,
+                    beta, scmsRp, /*additive=*/false, /*useMetricWeights=*/true, /*calibrateByPowerMethod=*/true,
+                    /*includeOuterBoundaryRing=*/true, /*usePointGS=*/true).release());
         else if (smootherType == "scms_add")
             sm = typename gsMultiGridOp<T>::PrecondPtr(
                 gsAsG1ScmsSmootherOp<T>::make(
@@ -855,7 +862,7 @@ int main(int argc, char *argv[])
     cmd.addString("o", "outDir", "Output directory for Paraview VTK/PVD files.", outDir);
     cmd.addString("t", "txtOut", "Filename for tab-separated text results output.", txtOut);
     cmd.addString("s", "solver", "Iterative solver: 'cg' (PCG) or 'mg' (Direct Multigrid Iteration).", solverType);
-    cmd.addString("", "smoother", "Smoother: 'auto', 'gs', 'sgs', 'ring1', 'line_ring1', 'fd_ring1', 'scms', 'scms_add', 'scms_add_metric', 'scms_add_analytic', or 'scms_nonov'.", smootherType);
+    cmd.addString("", "smoother", "Smoother: 'auto', 'gs', 'sgs', 'ring1', 'line_ring1', 'fd_ring1', 'scms', 'scms_hybrid', 'scms_add', 'scms_add_metric', 'scms_add_analytic', or 'scms_nonov'.", smootherType);
     cmd.addInt("", "scmsRp", "SCMS skeleton strip width r_p (-1 = p+1, 2 = non-overlapping, >=3 = custom).", scmsRp);
     cmd.addString("", "suite", "Benchmark suite when --all is set: classic, generator, noholes, holes, all.", suite);
     cmd.addString("", "exact", "Homogeneous exact solution (--homo): 'bubble' (B-spline), 'sin_bubble', 'box', or 'const'.", exactType);
