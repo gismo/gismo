@@ -86,8 +86,10 @@ public:
 
     bool checkASG1(T eps = 1e-4) const;
 
-    T maxAlphaResidual() const { return m_max_res_a; }
-    T maxBetaResidual()  const { return m_max_res_b; }
+    T maxAlphaResidual()  const { return m_max_res_a; }
+    T maxBetaResidual()   const { return m_max_res_b; }
+    T maxNormalResidual() const { return m_max_res_n; }
+    short_t geoDim()      const { return m_geoDim; }
 
     const std::vector<GluingData>& gluingData() const { return m_gluing; }
 
@@ -118,6 +120,7 @@ protected:
 
 private:
     const gsMultiPatch<T>& m_target;
+    short_t m_geoDim;
     short_t m_p;
     short_t m_r;
     index_t m_k;
@@ -135,6 +138,7 @@ private:
 
     mutable T m_max_res_a;
     mutable T m_max_res_b;
+    mutable T m_max_res_n;
 
     FittingMode m_mode = FittingMode::Global;
 };

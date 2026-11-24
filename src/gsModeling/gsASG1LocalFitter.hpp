@@ -7,10 +7,12 @@
 
 #include <gsModeling/gsASG1LocalFitter.h>
 #include <gsAssembler/gsGaussRule.h>
+#include <gsNurbs/gsTensorNurbs.h>
 #include <iostream>
 #include <iomanip>
 #include <vector>
 #include <map>
+#include <queue>
 #include <algorithm>
 #include <cmath>
 
@@ -56,9 +58,12 @@ void gsASG1LocalFitter<T>::evalSTangAndNorm(const gsGeometry<T>& patch, const pa
     gsMatrix<T> pt(2, 1);
     pt << u, v;
     gsMatrix<T> d = patch.deriv(pt);
-    gsVector<T> du(2), dv(2);
-    du << d(0, 0), d(2, 0);
-    dv << d(1, 0), d(3, 0);
+    const short_t geoDim = patch.targetDim();
+    gsVector<T> du(geoDim), dv(geoDim);
+    for (short_t c = 0; c < geoDim; ++c) {
+        du(c) = d(2 * c + 0, 0);
+        dv(c) = d(2 * c + 1, 0);
+    }
 
     if (si.nDir == 0) {
         nVec = si.nSign * du;
@@ -101,13 +106,16 @@ gsASG1LocalFitter<T>::gsASG1LocalFitter(const gsMultiPatch<T>& target_surface,
                                        short_t regularity,
                                        index_t num_inner_knots)
     : m_target(target_surface),
+      m_geoDim(target_surface.targetDim()),
       m_p(degree),
       m_r(regularity),
       m_k(num_inner_knots),
       m_sigma(T(1) / (degree * (num_inner_knots + 1))),
       m_max_res_a(T(0)),
-      m_max_res_b(T(0))
+      m_max_res_b(T(0)),
+      m_max_res_n(T(0))
 {
+    GISMO_ASSERT(m_geoDim == 2 || m_geoDim == 3, "gsASG1LocalFitter supports targetDim 2 or 3.");
     GISMO_ASSERT(m_p >= 3, "Degree p must be >= 3.");
     GISMO_ASSERT(m_r >= 1 && m_r <= m_p - 2, "Regularity r must satisfy 1 <= r <= p - 2.");
     GISMO_ASSERT(m_k >= (5 - m_p + (m_p - m_r - 2)) / (m_p - m_r - 1), "Insufficient inner knots.");
@@ -118,7 +126,7 @@ gsASG1LocalFitter<T>::gsASG1LocalFitter(const gsMultiPatch<T>& target_surface,
     m_n2 = m_n * m_n;
 
     index_t nP = m_target.nPatches();
-    m_patchCP.resize(nP, gsMatrix<T>::Zero(m_n2, 2));
+    m_patchCP.resize(nP, gsMatrix<T>::Zero(m_n2, m_geoDim));
     m_patchCP_fixed.resize(nP, std::vector<bool>(m_n2, false));
 }
 
@@ -295,8 +303,13 @@ void gsASG1LocalFitter<T>::step0_computeGluingFunctions()
     index_t nI = m_target.nInterfaces();
     m_gluing.resize(nI);
 
-    auto det2D = [](const gsVector<T>& a, const gsVector<T>& b) -> T {
-        return a(0) * b(1) - a(1) * b(0);
+    auto areaMag = [this](const gsVector<T>& a, const gsVector<T>& b) -> T {
+        if (m_geoDim == 2)
+            return std::abs(a(0) * b(1) - a(1) * b(0));
+        const T cx = a(1) * b(2) - a(2) * b(1);
+        const T cy = a(2) * b(0) - a(0) * b(2);
+        const T cz = a(0) * b(1) - a(1) * b(0);
+        return std::sqrt(cx * cx + cy * cy + cz * cz);
     };
 
     index_t interfIdx = 0;
@@ -318,15 +331,27 @@ void gsASG1LocalFitter<T>::step0_computeGluingFunctions()
         evalSTangAndNorm(m_target.patch(bi.second().patch), bi.second(), flipped, T(0), n2_0, t2_0);
         evalSTangAndNorm(m_target.patch(bi.second().patch), bi.second(), flipped, T(1), n2_1, t2_1);
 
-        m_gluing[interfIdx].a0_1 = std::max(std::abs(det2D(n1_0, t1_0)), T(1e-12));
-        m_gluing[interfIdx].a1_1 = std::max(std::abs(det2D(n1_1, t1_1)), T(1e-12));
-        m_gluing[interfIdx].a0_2 = std::max(std::abs(det2D(n2_0, t2_0)), T(1e-12));
-        m_gluing[interfIdx].a1_2 = std::max(std::abs(det2D(n2_1, t2_1)), T(1e-12));
+        T a0_1 = std::max(areaMag(n1_0, t1_0), T(1e-12));
+        T a1_1 = std::max(areaMag(n1_1, t1_1), T(1e-12));
+        T a0_2 = std::max(areaMag(n2_0, t2_0), T(1e-12));
+        T a1_2 = std::max(areaMag(n2_1, t2_1), T(1e-12));
 
-        m_gluing[interfIdx].b0_1 = n1_0.dot(t1_0) / t1_0.squaredNorm();
-        m_gluing[interfIdx].b1_1 = n1_1.dot(t1_1) / t1_1.squaredNorm();
-        m_gluing[interfIdx].b0_2 = n2_0.dot(t2_0) / t2_0.squaredNorm();
-        m_gluing[interfIdx].b1_2 = n2_1.dot(t2_1) / t2_1.squaredNorm();
+        // Appendix A normalization: min_{xi in [0,1]} min(alpha_1(xi), alpha_2(xi)) = 1
+        const T minA = std::min(std::min(a0_1, a1_1), std::min(a0_2, a1_2));
+        if (minA > T(1e-12)) {
+            a0_1 /= minA; a1_1 /= minA;
+            a0_2 /= minA; a1_2 /= minA;
+        }
+
+        m_gluing[interfIdx].a0_1 = a0_1;
+        m_gluing[interfIdx].a1_1 = a1_1;
+        m_gluing[interfIdx].a0_2 = a0_2;
+        m_gluing[interfIdx].a1_2 = a1_2;
+
+        m_gluing[interfIdx].b0_1 = n1_0.dot(t1_0) / std::max(t1_0.squaredNorm(), T(1e-15));
+        m_gluing[interfIdx].b1_1 = n1_1.dot(t1_1) / std::max(t1_1.squaredNorm(), T(1e-15));
+        m_gluing[interfIdx].b0_2 = n2_0.dot(t2_0) / std::max(t2_0.squaredNorm(), T(1e-15));
+        m_gluing[interfIdx].b1_2 = n2_1.dot(t2_1) / std::max(t2_1.squaredNorm(), T(1e-15));
 
         T u0, v0, ts0, u1, v1, ts1;
         mapInterfaceParam(bi.first(), false, T(0), u0, v0, ts0);
@@ -356,8 +381,7 @@ void gsASG1LocalFitter<T>::step1_solveVertexProblems()
     struct VertexResult {
         std::vector<OrderedVertexPatch> ord;
         gsVector<T> x_v;
-        gsVector<T> sol_x;
-        gsVector<T> sol_y;
+        gsMatrix<T> sol;
         bool valid;
     };
     std::vector<VertexResult> vResults(nVerts);
@@ -383,8 +407,7 @@ void gsASG1LocalFitter<T>::step1_solveVertexProblems()
 
         int nVars = val * 5;
         gsMatrix<T> H(nVars, nVars); H.setZero();
-        gsVector<T> f_x(nVars), f_y(nVars);
-        f_x.setZero(); f_y.setZero();
+        gsMatrix<T> F(nVars, m_geoDim); F.setZero();
 
         for (int j = 0; j < val; ++j) {
             int pId = ord[j].pc.patch;
@@ -396,19 +419,20 @@ void gsASG1LocalFitter<T>::step1_solveVertexProblems()
             gsMatrix<T> dS = m_target.patch(pId).deriv(ptC);
             gsMatrix<T> d2S = m_target.patch(pId).deriv2(ptC);
 
-            gsVector<T> S_du(2), S_dv(2), S_duu(2), S_dvv(2), S_duv(2);
-            S_du << dS(0,0), dS(2,0);
-            S_dv << dS(1,0), dS(3,0);
-            S_duu << d2S(0,0), d2S(3,0);
-            S_duv << d2S(1,0), d2S(4,0);
-            S_dvv << d2S(2,0), d2S(5,0);
+            gsVector<T> S_du(m_geoDim), S_dv(m_geoDim), S_duu(m_geoDim), S_dvv(m_geoDim), S_duv(m_geoDim);
+            for (short_t d = 0; d < m_geoDim; ++d) {
+                S_du(d)  = dS(2 * d + 0, 0);
+                S_dv(d)  = dS(2 * d + 1, 0);
+                S_duu(d) = d2S(3 * d + 0, 0);
+                S_dvv(d) = d2S(3 * d + 1, 0);
+                S_duv(d) = d2S(3 * d + 2, 0);
+            }
 
-            gsVector<T> S_d1(2), S_d2(2), S_d11(2), S_d22(2), S_d12(2);
-            S_d1  = (ord[j].dir_prev == 0) ? ord[j].sign_prev * S_du : ord[j].sign_prev * S_dv;
-            S_d2  = (ord[j].dir_next == 0) ? ord[j].sign_next * S_du : ord[j].sign_next * S_dv;
-            S_d11 = (ord[j].dir_prev == 0) ? S_duu : S_dvv;
-            S_d22 = (ord[j].dir_next == 0) ? S_duu : S_dvv;
-            S_d12 = ord[j].sign_prev * ord[j].sign_next * S_duv;
+            gsVector<T> S_d1  = (ord[j].dir_prev == 0) ? ord[j].sign_prev * S_du : ord[j].sign_prev * S_dv;
+            gsVector<T> S_d2  = (ord[j].dir_next == 0) ? ord[j].sign_next * S_du : ord[j].sign_next * S_dv;
+            gsVector<T> S_d11 = (ord[j].dir_prev == 0) ? S_duu : S_dvv;
+            gsVector<T> S_d22 = (ord[j].dir_next == 0) ? S_duu : S_dvv;
+            gsVector<T> S_d12 = ord[j].sign_prev * ord[j].sign_next * S_duv;
 
             int base = j * 5;
             T s1 = T(m_p) * T(m_k + 1);
@@ -425,30 +449,24 @@ void gsASG1LocalFitter<T>::step1_solveVertexProblems()
             gsVector<T> t12 = S_d12 / s1Sq;
 
             H(base + 0, base + 0) += T(2) * c1;
-            f_x(base + 0) += T(2) * c1 * t1(0);
-            f_y(base + 0) += T(2) * c1 * t1(1);
+            F.row(base + 0) += T(2) * c1 * t1.transpose();
 
             H(base + 2, base + 2) += T(2) * c1;
-            f_x(base + 2) += T(2) * c1 * t2(0);
-            f_y(base + 2) += T(2) * c1 * t2(1);
+            F.row(base + 2) += T(2) * c1 * t2.transpose();
 
             H(base + 0, base + 0) += T(2) * c2 * T(4);
             H(base + 1, base + 1) += T(2) * c2 * T(1);
             H(base + 0, base + 1) -= T(2) * c2 * T(2);
             H(base + 1, base + 0) -= T(2) * c2 * T(2);
-            f_x(base + 0) -= T(2) * c2 * T(2) * t11(0);
-            f_y(base + 0) -= T(2) * c2 * T(2) * t11(1);
-            f_x(base + 1) += T(2) * c2 * T(1) * t11(0);
-            f_y(base + 1) += T(2) * c2 * T(1) * t11(1);
+            F.row(base + 0) -= T(2) * c2 * T(2) * t11.transpose();
+            F.row(base + 1) += T(2) * c2 * T(1) * t11.transpose();
 
             H(base + 2, base + 2) += T(2) * c2 * T(4);
             H(base + 3, base + 3) += T(2) * c2 * T(1);
             H(base + 2, base + 3) -= T(2) * c2 * T(2);
             H(base + 3, base + 2) -= T(2) * c2 * T(2);
-            f_x(base + 2) -= T(2) * c2 * T(2) * t22(0);
-            f_y(base + 2) -= T(2) * c2 * T(2) * t22(1);
-            f_x(base + 3) += T(2) * c2 * T(1) * t22(0);
-            f_y(base + 3) += T(2) * c2 * T(1) * t22(1);
+            F.row(base + 2) -= T(2) * c2 * T(2) * t22.transpose();
+            F.row(base + 3) += T(2) * c2 * T(1) * t22.transpose();
 
             H(base + 0, base + 0) += T(2) * c12;
             H(base + 2, base + 2) += T(2) * c12;
@@ -459,12 +477,9 @@ void gsASG1LocalFitter<T>::step1_solveVertexProblems()
             H(base + 4, base + 0) -= T(2) * c12;
             H(base + 2, base + 4) -= T(2) * c12;
             H(base + 4, base + 2) -= T(2) * c12;
-            f_x(base + 0) -= T(2) * c12 * t12(0);
-            f_y(base + 0) -= T(2) * c12 * t12(1);
-            f_x(base + 2) -= T(2) * c12 * t12(0);
-            f_y(base + 2) -= T(2) * c12 * t12(1);
-            f_x(base + 4) += T(2) * c12 * t12(0);
-            f_y(base + 4) += T(2) * c12 * t12(1);
+            F.row(base + 0) -= T(2) * c12 * t12.transpose();
+            F.row(base + 2) -= T(2) * c12 * t12.transpose();
+            F.row(base + 4) += T(2) * c12 * t12.transpose();
         }
 
         int numInterf = val - (ord[0].is_boundary_prev ? 1 : 0);
@@ -542,8 +557,7 @@ void gsASG1LocalFitter<T>::step1_solveVertexProblems()
             gsMatrix<T> Hred = Z.transpose() * H * Z;
             gsEigen::FullPivLU<gsMatrix<T>> lu(Hred);
             if (lu.isInvertible()) {
-                vResults[vId].sol_x = Z * lu.solve(Z.transpose() * f_x);
-                vResults[vId].sol_y = Z * lu.solve(Z.transpose() * f_y);
+                vResults[vId].sol = Z * lu.solve(Z.transpose() * F);
                 vResults[vId].valid = true;
             }
         }
@@ -564,28 +578,26 @@ void gsASG1LocalFitter<T>::step1_solveVertexProblems()
 
         if (!vResults[vId].valid || val == 1) continue;
 
-        const gsVector<T>& sol_x = vResults[vId].sol_x;
-        const gsVector<T>& sol_y = vResults[vId].sol_y;
+        const gsMatrix<T>& sol = vResults[vId].sol;
 
         for (int j = 0; j < val; ++j) {
             int pId = ord[j].pc.patch;
             boxCorner c = ord[j].pc.corner();
             int base = j * 5;
 
-            auto setCP = [&](int i_prev, int i_next, T x, T y) {
+            auto setCP = [&](int i_prev, int i_next, int solRow) {
                 int iu = (ord[j].dir_prev == 0) ? i_prev : i_next;
                 int iv = (ord[j].dir_prev == 0) ? i_next : i_prev;
                 int gIdx = getGlobalCPIndex(c, iu, iv);
-                m_patchCP[pId](gIdx, 0) = x;
-                m_patchCP[pId](gIdx, 1) = y;
+                m_patchCP[pId].row(gIdx) = x_v.transpose() + sol.row(solRow);
                 m_patchCP_fixed[pId][gIdx] = true;
             };
 
-            setCP(1, 0, x_v(0) + sol_x(base + 0), x_v(1) + sol_y(base + 0));
-            setCP(2, 0, x_v(0) + sol_x(base + 1), x_v(1) + sol_y(base + 1));
-            setCP(0, 1, x_v(0) + sol_x(base + 2), x_v(1) + sol_y(base + 2));
-            setCP(0, 2, x_v(0) + sol_x(base + 3), x_v(1) + sol_y(base + 3));
-            setCP(1, 1, x_v(0) + sol_x(base + 4), x_v(1) + sol_y(base + 4));
+            setCP(1, 0, base + 0);
+            setCP(2, 0, base + 1);
+            setCP(0, 1, base + 2);
+            setCP(0, 2, base + 3);
+            setCP(1, 1, base + 4);
         }
     }
 }
@@ -660,7 +672,7 @@ void gsASG1LocalFitter<T>::step2_solveInterfaceProblems()
         }
 
         gsMatrix<T> evalS1 = m_target.patch(p1).eval(ptsS1);
-        gsMatrix<T> S_bdr(2, nQ), S_tan(2, nQ), S_norm(2, nQ);
+        gsMatrix<T> S_bdr(m_geoDim, nQ), S_tan(m_geoDim, nQ), S_norm(m_geoDim, nQ);
         for (int q = 0; q < nQ; ++q) {
             S_bdr.col(q) = evalS1.col(q);
             gsVector<T> nVec, tVec;
@@ -689,39 +701,29 @@ void gsASG1LocalFitter<T>::step2_solveInterfaceProblems()
         int nVars = off_d1_aux + n1;
 
         gsMatrix<T> H_int(nVars, nVars); H_int.setZero();
-        gsVector<T> f_x(nVars), f_y(nVars);
-        f_x.setZero(); f_y.setZero();
+        gsMatrix<T> F_int(nVars, m_geoDim); F_int.setZero();
 
-        gsVector<T> rhs_full_r0_x = T(2) * (B_1D.transpose() * W_1D * S_bdr.row(0).transpose() +
-                                            m_sigma * D_1D.transpose() * W_1D * S_tan.row(0).transpose() -
-                                            s1 * m_sigma * B_1D.transpose() * W_1D * S_norm.row(0).transpose());
-        gsVector<T> rhs_full_r0_y = T(2) * (B_1D.transpose() * W_1D * S_bdr.row(1).transpose() +
-                                            m_sigma * D_1D.transpose() * W_1D * S_tan.row(1).transpose() -
-                                            s1 * m_sigma * B_1D.transpose() * W_1D * S_norm.row(1).transpose());
-        gsVector<T> rhs_full_r1_x = T(2) * (s1 * m_sigma * B_1D.transpose() * W_1D * S_norm.row(0).transpose());
-        gsVector<T> rhs_full_r1_y = T(2) * (s1 * m_sigma * B_1D.transpose() * W_1D * S_norm.row(1).transpose());
+        gsMatrix<T> rhs_full_r0 = T(2) * (B_1D.transpose() * W_1D * S_bdr.transpose() +
+                                          m_sigma * D_1D.transpose() * W_1D * S_tan.transpose() -
+                                          s1 * m_sigma * B_1D.transpose() * W_1D * S_norm.transpose());
+        gsMatrix<T> rhs_full_r1 = T(2) * (s1 * m_sigma * B_1D.transpose() * W_1D * S_norm.transpose());
 
         for (int j = 0; j < m_n; ++j) {
             int gIdx0 = getEdgeCPIndex(gd.ps1, 0, gd.reversed1 ? (m_n - 1 - j) : j);
             int gIdx1 = getEdgeCPIndex(gd.ps1, 1, gd.reversed1 ? (m_n - 1 - j) : j);
             if (m_patchCP_fixed[p1][gIdx0]) {
-                rhs_full_r0_x -= H_r0_r0.col(j) * m_patchCP[p1](gIdx0, 0);
-                rhs_full_r0_y -= H_r0_r0.col(j) * m_patchCP[p1](gIdx0, 1);
-                rhs_full_r1_x -= H_r0_r1.row(j).transpose() * m_patchCP[p1](gIdx0, 0);
-                rhs_full_r1_y -= H_r0_r1.row(j).transpose() * m_patchCP[p1](gIdx0, 1);
+                rhs_full_r0 -= H_r0_r0.col(j) * m_patchCP[p1].row(gIdx0);
+                rhs_full_r1 -= H_r0_r1.row(j).transpose() * m_patchCP[p1].row(gIdx0);
             }
             if (m_patchCP_fixed[p1][gIdx1]) {
-                rhs_full_r0_x -= H_r0_r1.col(j) * m_patchCP[p1](gIdx1, 0);
-                rhs_full_r0_y -= H_r0_r1.col(j) * m_patchCP[p1](gIdx1, 1);
-                rhs_full_r1_x -= H_r1_r1.col(j) * m_patchCP[p1](gIdx1, 0);
-                rhs_full_r1_y -= H_r1_r1.col(j) * m_patchCP[p1](gIdx1, 1);
+                rhs_full_r0 -= H_r0_r1.col(j) * m_patchCP[p1].row(gIdx1);
+                rhs_full_r1 -= H_r1_r1.col(j) * m_patchCP[p1].row(gIdx1);
             }
         }
 
         for (int a = 0; a < nf_r0_1; ++a) {
             int ja = free_r0_1[a];
-            f_x(off_r0_1 + a) = rhs_full_r0_x(ja);
-            f_y(off_r0_1 + a) = rhs_full_r0_y(ja);
+            F_int.row(off_r0_1 + a) = rhs_full_r0.row(ja);
             for (int b = 0; b < nf_r0_1; ++b) H_int(off_r0_1 + a, off_r0_1 + b) = H_r0_r0(ja, free_r0_1[b]);
             for (int b = 0; b < nf_r1_1; ++b) {
                 int jb = free_r1_1[b];
@@ -731,12 +733,11 @@ void gsASG1LocalFitter<T>::step2_solveInterfaceProblems()
         }
         for (int a = 0; a < nf_r1_1; ++a) {
             int ja = free_r1_1[a];
-            f_x(off_r1_1 + a) = rhs_full_r1_x(ja);
-            f_y(off_r1_1 + a) = rhs_full_r1_y(ja);
+            F_int.row(off_r1_1 + a) = rhs_full_r1.row(ja);
             for (int b = 0; b < nf_r1_1; ++b) H_int(off_r1_1 + a, off_r1_1 + b) = H_r1_r1(ja, free_r1_1[b]);
         }
 
-        gsMatrix<T> S_bdr2(2, nQ), S_tan2(2, nQ), S_norm2(2, nQ);
+        gsMatrix<T> S_bdr2(m_geoDim, nQ), S_tan2(m_geoDim, nQ), S_norm2(m_geoDim, nQ);
         gsMatrix<T> evalS2 = m_target.patch(p2).eval(ptsS2);
         for (int q = 0; q < nQ; ++q) {
             S_bdr2.col(q) = evalS2.col(q);
@@ -746,36 +747,27 @@ void gsASG1LocalFitter<T>::step2_solveInterfaceProblems()
             S_tan2.col(q) = tVec2;
         }
 
-        gsVector<T> rhs_full_r0_2_x = T(2) * (B_1D.transpose() * W_1D * S_bdr2.row(0).transpose() +
-                                              m_sigma * D_1D.transpose() * W_1D * S_tan2.row(0).transpose() -
-                                              s1 * m_sigma * B_1D.transpose() * W_1D * S_norm2.row(0).transpose());
-        gsVector<T> rhs_full_r0_2_y = T(2) * (B_1D.transpose() * W_1D * S_bdr2.row(1).transpose() +
-                                              m_sigma * D_1D.transpose() * W_1D * S_tan2.row(1).transpose() -
-                                              s1 * m_sigma * B_1D.transpose() * W_1D * S_norm2.row(1).transpose());
-        gsVector<T> rhs_full_r1_2_x = T(2) * (s1 * m_sigma * B_1D.transpose() * W_1D * S_norm2.row(0).transpose());
-        gsVector<T> rhs_full_r1_2_y = T(2) * (s1 * m_sigma * B_1D.transpose() * W_1D * S_norm2.row(1).transpose());
+        gsMatrix<T> rhs_full_r0_2 = T(2) * (B_1D.transpose() * W_1D * S_bdr2.transpose() +
+                                            m_sigma * D_1D.transpose() * W_1D * S_tan2.transpose() -
+                                            s1 * m_sigma * B_1D.transpose() * W_1D * S_norm2.transpose());
+        gsMatrix<T> rhs_full_r1_2 = T(2) * (s1 * m_sigma * B_1D.transpose() * W_1D * S_norm2.transpose());
 
         for (int j = 0; j < m_n; ++j) {
             int gIdx0 = getEdgeCPIndex(gd.ps2, 0, gd.reversed2 ? (m_n - 1 - j) : j);
             int gIdx1 = getEdgeCPIndex(gd.ps2, 1, gd.reversed2 ? (m_n - 1 - j) : j);
             if (m_patchCP_fixed[p2][gIdx0]) {
-                rhs_full_r0_2_x -= H_r0_r0.col(j) * m_patchCP[p2](gIdx0, 0);
-                rhs_full_r0_2_y -= H_r0_r0.col(j) * m_patchCP[p2](gIdx0, 1);
-                rhs_full_r1_2_x -= H_r0_r1.row(j).transpose() * m_patchCP[p2](gIdx0, 0);
-                rhs_full_r1_2_y -= H_r0_r1.row(j).transpose() * m_patchCP[p2](gIdx0, 1);
+                rhs_full_r0_2 -= H_r0_r0.col(j) * m_patchCP[p2].row(gIdx0);
+                rhs_full_r1_2 -= H_r0_r1.row(j).transpose() * m_patchCP[p2].row(gIdx0);
             }
             if (m_patchCP_fixed[p2][gIdx1]) {
-                rhs_full_r0_2_x -= H_r0_r1.col(j) * m_patchCP[p2](gIdx1, 0);
-                rhs_full_r0_2_y -= H_r0_r1.col(j) * m_patchCP[p2](gIdx1, 1);
-                rhs_full_r1_2_x -= H_r1_r1.col(j) * m_patchCP[p2](gIdx1, 0);
-                rhs_full_r1_2_y -= H_r1_r1.col(j) * m_patchCP[p2](gIdx1, 1);
+                rhs_full_r0_2 -= H_r0_r1.col(j) * m_patchCP[p2].row(gIdx1);
+                rhs_full_r1_2 -= H_r1_r1.col(j) * m_patchCP[p2].row(gIdx1);
             }
         }
 
         for (int a = 0; a < nf_r0_2; ++a) {
             int ja = free_r0_2[a];
-            f_x(off_r0_2 + a) = rhs_full_r0_2_x(ja);
-            f_y(off_r0_2 + a) = rhs_full_r0_2_y(ja);
+            F_int.row(off_r0_2 + a) = rhs_full_r0_2.row(ja);
             for (int b = 0; b < nf_r0_2; ++b) H_int(off_r0_2 + a, off_r0_2 + b) = H_r0_r0(ja, free_r0_2[b]);
             for (int b = 0; b < nf_r1_2; ++b) {
                 int jb = free_r1_2[b];
@@ -785,25 +777,22 @@ void gsASG1LocalFitter<T>::step2_solveInterfaceProblems()
         }
         for (int a = 0; a < nf_r1_2; ++a) {
             int ja = free_r1_2[a];
-            f_x(off_r1_2 + a) = rhs_full_r1_2_x(ja);
-            f_y(off_r1_2 + a) = rhs_full_r1_2_y(ja);
+            F_int.row(off_r1_2 + a) = rhs_full_r1_2.row(ja);
             for (int b = 0; b < nf_r1_2; ++b) H_int(off_r1_2 + a, off_r1_2 + b) = H_r1_r1(ja, free_r1_2[b]);
         }
 
         int numC = 2 * m_n + nf_r0_2 + nf_r1_2;
         gsMatrix<T> C_int(numC, nVars); C_int.setZero();
-        gsVector<T> g_int_x(numC), g_int_y(numC);
-        g_int_x.setZero(); g_int_y.setZero();
+        gsMatrix<T> G_int(numC, m_geoDim); G_int.setZero();
 
         int c_row = 0;
         // Constraint A: Patch 1 boundary match (j = 0..m_n-1)
         for (int j = 0; j < m_n; ++j) {
-            T fixed_x = 0, fixed_y = 0;
+            gsMatrix<T> fixed_v = gsMatrix<T>::Zero(1, m_geoDim);
             for (int i = 0; i < m_n; ++i) {
                 int gIdx = getEdgeCPIndex(gd.ps1, 0, gd.reversed1 ? (m_n - 1 - i) : i);
                 if (m_patchCP_fixed[p1][gIdx]) {
-                    fixed_x += B_greville(j, i) * m_patchCP[p1](gIdx, 0);
-                    fixed_y += B_greville(j, i) * m_patchCP[p1](gIdx, 1);
+                    fixed_v += B_greville(j, i) * m_patchCP[p1].row(gIdx);
                 } else {
                     auto it = std::find(free_r0_1.begin(), free_r0_1.end(), i);
                     if (it != free_r0_1.end()) {
@@ -813,8 +802,7 @@ void gsASG1LocalFitter<T>::step2_solveInterfaceProblems()
                 }
             }
             for (int l = 0; l < n0; ++l) C_int(c_row, off_d0_aux + l) = -B0_greville(j, l);
-            g_int_x(c_row) = -fixed_x;
-            g_int_y(c_row) = -fixed_y;
+            G_int.row(c_row) = -fixed_v;
             c_row++;
         }
 
@@ -823,7 +811,7 @@ void gsASG1LocalFitter<T>::step2_solveInterfaceProblems()
             T xi = greville(0, j);
             T a1 = gd.alpha1(xi);
             T b1 = gd.beta1(xi);
-            T fixed_x = 0, fixed_y = 0;
+            gsMatrix<T> fixed_v = gsMatrix<T>::Zero(1, m_geoDim);
 
             for (int i = 0; i < m_n; ++i) {
                 T coeff_0 = -b1 * D_greville(j, i) - s1 * B_greville(j, i);
@@ -833,8 +821,7 @@ void gsASG1LocalFitter<T>::step2_solveInterfaceProblems()
                 int gIdx1 = getEdgeCPIndex(gd.ps1, 1, gd.reversed1 ? (m_n - 1 - i) : i);
 
                 if (m_patchCP_fixed[p1][gIdx0]) {
-                    fixed_x += coeff_0 * m_patchCP[p1](gIdx0, 0);
-                    fixed_y += coeff_0 * m_patchCP[p1](gIdx0, 1);
+                    fixed_v += coeff_0 * m_patchCP[p1].row(gIdx0);
                 } else {
                     auto it = std::find(free_r0_1.begin(), free_r0_1.end(), i);
                     if (it != free_r0_1.end()) {
@@ -844,8 +831,7 @@ void gsASG1LocalFitter<T>::step2_solveInterfaceProblems()
                 }
 
                 if (m_patchCP_fixed[p1][gIdx1]) {
-                    fixed_x += coeff_1 * m_patchCP[p1](gIdx1, 0);
-                    fixed_y += coeff_1 * m_patchCP[p1](gIdx1, 1);
+                    fixed_v += coeff_1 * m_patchCP[p1].row(gIdx1);
                 } else {
                     auto it = std::find(free_r1_1.begin(), free_r1_1.end(), i);
                     if (it != free_r1_1.end()) {
@@ -856,19 +842,17 @@ void gsASG1LocalFitter<T>::step2_solveInterfaceProblems()
             }
 
             for (int l = 0; l < n1; ++l) C_int(c_row, off_d1_aux + l) = -(a1 / safeAScale) * B1_greville(j, l);
-            g_int_x(c_row) = -fixed_x;
-            g_int_y(c_row) = -fixed_y;
+            G_int.row(c_row) = -fixed_v;
             c_row++;
         }
 
         // Constraint C: Patch 2 boundary match (j = 3..m_n-4)
         for (int j = 3; j <= m_n - 4; ++j) {
-            T fixed_x = 0, fixed_y = 0;
+            gsMatrix<T> fixed_v = gsMatrix<T>::Zero(1, m_geoDim);
             for (int i = 0; i < m_n; ++i) {
                 int gIdx = getEdgeCPIndex(gd.ps2, 0, gd.reversed2 ? (m_n - 1 - i) : i);
                 if (m_patchCP_fixed[p2][gIdx]) {
-                    fixed_x += B_greville(j, i) * m_patchCP[p2](gIdx, 0);
-                    fixed_y += B_greville(j, i) * m_patchCP[p2](gIdx, 1);
+                    fixed_v += B_greville(j, i) * m_patchCP[p2].row(gIdx);
                 } else {
                     auto it = std::find(free_r0_2.begin(), free_r0_2.end(), i);
                     if (it != free_r0_2.end()) {
@@ -878,8 +862,7 @@ void gsASG1LocalFitter<T>::step2_solveInterfaceProblems()
                 }
             }
             for (int l = 0; l < n0; ++l) C_int(c_row, off_d0_aux + l) = -B0_greville(j, l);
-            g_int_x(c_row) = -fixed_x;
-            g_int_y(c_row) = -fixed_y;
+            G_int.row(c_row) = -fixed_v;
             c_row++;
         }
 
@@ -888,7 +871,7 @@ void gsASG1LocalFitter<T>::step2_solveInterfaceProblems()
             T xi = greville(0, j);
             T a2 = gd.alpha2(xi);
             T b2 = gd.beta2(xi);
-            T fixed_x = 0, fixed_y = 0;
+            gsMatrix<T> fixed_v = gsMatrix<T>::Zero(1, m_geoDim);
 
             for (int i = 0; i < m_n; ++i) {
                 T coeff_0 = s1 * B_greville(j, i) + b2 * D_greville(j, i);
@@ -898,8 +881,7 @@ void gsASG1LocalFitter<T>::step2_solveInterfaceProblems()
                 int gIdx1 = getEdgeCPIndex(gd.ps2, 1, gd.reversed2 ? (m_n - 1 - i) : i);
 
                 if (m_patchCP_fixed[p2][gIdx0]) {
-                    fixed_x += coeff_0 * m_patchCP[p2](gIdx0, 0);
-                    fixed_y += coeff_0 * m_patchCP[p2](gIdx0, 1);
+                    fixed_v += coeff_0 * m_patchCP[p2].row(gIdx0);
                 } else {
                     auto it = std::find(free_r0_2.begin(), free_r0_2.end(), i);
                     if (it != free_r0_2.end()) {
@@ -909,8 +891,7 @@ void gsASG1LocalFitter<T>::step2_solveInterfaceProblems()
                 }
 
                 if (m_patchCP_fixed[p2][gIdx1]) {
-                    fixed_x += coeff_1 * m_patchCP[p2](gIdx1, 0);
-                    fixed_y += coeff_1 * m_patchCP[p2](gIdx1, 1);
+                    fixed_v += coeff_1 * m_patchCP[p2].row(gIdx1);
                 } else {
                     auto it = std::find(free_r1_2.begin(), free_r1_2.end(), i);
                     if (it != free_r1_2.end()) {
@@ -921,8 +902,7 @@ void gsASG1LocalFitter<T>::step2_solveInterfaceProblems()
             }
 
             for (int l = 0; l < n1; ++l) C_int(c_row, off_d1_aux + l) = -(a2 / safeAScale) * B1_greville(j, l);
-            g_int_x(c_row) = -fixed_x;
-            g_int_y(c_row) = -fixed_y;
+            G_int.row(c_row) = -fixed_v;
             c_row++;
         }
 
@@ -931,46 +911,39 @@ void gsASG1LocalFitter<T>::step2_solveInterfaceProblems()
         KKT.block(0, nVars, nVars, numC) = C_int.transpose();
         KKT.block(nVars, 0, numC, nVars) = C_int;
 
-        gsVector<T> rhs_kkt_x(nVars + numC), rhs_kkt_y(nVars + numC);
-        rhs_kkt_x.head(nVars) = f_x;
-        rhs_kkt_y.head(nVars) = f_y;
-        rhs_kkt_x.tail(numC) = g_int_x;
-        rhs_kkt_y.tail(numC) = g_int_y;
+        gsMatrix<T> rhs_kkt(nVars + numC, m_geoDim);
+        rhs_kkt.topRows(nVars) = F_int;
+        rhs_kkt.bottomRows(numC) = G_int;
 
         gsEigen::FullPivLU<gsMatrix<T>> lu(KKT);
         if (!lu.isInvertible()) {
             std::cerr << "gsASG1LocalFitter: Warning: Interface " << m << " KKT not invertible!\n";
             continue;
         }
-        gsVector<T> sol_x = lu.solve(rhs_kkt_x);
-        gsVector<T> sol_y = lu.solve(rhs_kkt_y);
+        gsMatrix<T> sol = lu.solve(rhs_kkt);
 
         for (int a = 0; a < nf_r0_1; ++a) {
             int j = free_r0_1[a];
             int gIdx = getEdgeCPIndex(gd.ps1, 0, gd.reversed1 ? (m_n - 1 - j) : j);
-            m_patchCP[p1](gIdx, 0) = sol_x(off_r0_1 + a);
-            m_patchCP[p1](gIdx, 1) = sol_y(off_r0_1 + a);
+            m_patchCP[p1].row(gIdx) = sol.row(off_r0_1 + a);
             m_patchCP_fixed[p1][gIdx] = true;
         }
         for (int a = 0; a < nf_r1_1; ++a) {
             int j = free_r1_1[a];
             int gIdx = getEdgeCPIndex(gd.ps1, 1, gd.reversed1 ? (m_n - 1 - j) : j);
-            m_patchCP[p1](gIdx, 0) = sol_x(off_r1_1 + a);
-            m_patchCP[p1](gIdx, 1) = sol_y(off_r1_1 + a);
+            m_patchCP[p1].row(gIdx) = sol.row(off_r1_1 + a);
             m_patchCP_fixed[p1][gIdx] = true;
         }
         for (int a = 0; a < nf_r0_2; ++a) {
             int j = free_r0_2[a];
             int gIdx = getEdgeCPIndex(gd.ps2, 0, gd.reversed2 ? (m_n - 1 - j) : j);
-            m_patchCP[p2](gIdx, 0) = sol_x(off_r0_2 + a);
-            m_patchCP[p2](gIdx, 1) = sol_y(off_r0_2 + a);
+            m_patchCP[p2].row(gIdx) = sol.row(off_r0_2 + a);
             m_patchCP_fixed[p2][gIdx] = true;
         }
         for (int a = 0; a < nf_r1_2; ++a) {
             int j = free_r1_2[a];
             int gIdx = getEdgeCPIndex(gd.ps2, 1, gd.reversed2 ? (m_n - 1 - j) : j);
-            m_patchCP[p2](gIdx, 0) = sol_x(off_r1_2 + a);
-            m_patchCP[p2](gIdx, 1) = sol_y(off_r1_2 + a);
+            m_patchCP[p2].row(gIdx) = sol.row(off_r1_2 + a);
             m_patchCP_fixed[p2][gIdx] = true;
         }
     }
@@ -1020,7 +993,7 @@ void gsASG1LocalFitter<T>::step2b_solveBoundaryEdges()
             ptsS(0, q) = u; ptsS(1, q) = v;
         }
         gsMatrix<T> evalS = m_target.patch(pId).eval(ptsS);
-        gsMatrix<T> S_bdr(2, nQ), S_tan(2, nQ), S_norm(2, nQ);
+        gsMatrix<T> S_bdr(m_geoDim, nQ), S_tan(m_geoDim, nQ), S_norm(m_geoDim, nQ);
         for (int q = 0; q < nQ; ++q) {
             S_bdr.col(q) = evalS.col(q);
             gsVector<T> nVec, tVec;
@@ -1042,38 +1015,29 @@ void gsASG1LocalFitter<T>::step2b_solveBoundaryEdges()
         int nFree = nf0 + nf1;
         if (nFree == 0) continue;
 
-        gsVector<T> rhs_full_r0_x = T(2) * (B_1D.transpose() * W_1D * S_bdr.row(0).transpose() +
-                                            m_sigma * D_1D.transpose() * W_1D * S_tan.row(0).transpose() -
-                                            s1 * m_sigma * B_1D.transpose() * W_1D * S_norm.row(0).transpose());
-        gsVector<T> rhs_full_r0_y = T(2) * (B_1D.transpose() * W_1D * S_bdr.row(1).transpose() +
-                                            m_sigma * D_1D.transpose() * W_1D * S_tan.row(1).transpose() -
-                                            s1 * m_sigma * B_1D.transpose() * W_1D * S_norm.row(1).transpose());
-        gsVector<T> rhs_full_r1_x = T(2) * (s1 * m_sigma * B_1D.transpose() * W_1D * S_norm.row(0).transpose());
-        gsVector<T> rhs_full_r1_y = T(2) * (s1 * m_sigma * B_1D.transpose() * W_1D * S_norm.row(1).transpose());
+        gsMatrix<T> rhs_full_r0 = T(2) * (B_1D.transpose() * W_1D * S_bdr.transpose() +
+                                          m_sigma * D_1D.transpose() * W_1D * S_tan.transpose() -
+                                          s1 * m_sigma * B_1D.transpose() * W_1D * S_norm.transpose());
+        gsMatrix<T> rhs_full_r1 = T(2) * (s1 * m_sigma * B_1D.transpose() * W_1D * S_norm.transpose());
 
         for (int j = 0; j < m_n; ++j) {
             int gIdx0 = getEdgeCPIndex(ps, 0, j);
             int gIdx1 = getEdgeCPIndex(ps, 1, j);
             if (m_patchCP_fixed[pId][gIdx0]) {
-                rhs_full_r0_x -= H_r0_r0.col(j) * m_patchCP[pId](gIdx0, 0);
-                rhs_full_r0_y -= H_r0_r0.col(j) * m_patchCP[pId](gIdx0, 1);
-                rhs_full_r1_x -= H_r0_r1.row(j).transpose() * m_patchCP[pId](gIdx0, 0);
-                rhs_full_r1_y -= H_r0_r1.row(j).transpose() * m_patchCP[pId](gIdx0, 1);
+                rhs_full_r0 -= H_r0_r0.col(j) * m_patchCP[pId].row(gIdx0);
+                rhs_full_r1 -= H_r0_r1.row(j).transpose() * m_patchCP[pId].row(gIdx0);
             }
             if (m_patchCP_fixed[pId][gIdx1]) {
-                rhs_full_r0_x -= H_r0_r1.col(j) * m_patchCP[pId](gIdx1, 0);
-                rhs_full_r0_y -= H_r0_r1.col(j) * m_patchCP[pId](gIdx1, 1);
-                rhs_full_r1_x -= H_r1_r1.col(j) * m_patchCP[pId](gIdx1, 0);
-                rhs_full_r1_y -= H_r1_r1.col(j) * m_patchCP[pId](gIdx1, 1);
+                rhs_full_r0 -= H_r0_r1.col(j) * m_patchCP[pId].row(gIdx1);
+                rhs_full_r1 -= H_r1_r1.col(j) * m_patchCP[pId].row(gIdx1);
             }
         }
 
         gsMatrix<T> H_bdr(nFree, nFree); H_bdr.setZero();
-        gsVector<T> rhs_x(nFree), rhs_y(nFree);
+        gsMatrix<T> rhs(nFree, m_geoDim);
         for (int a = 0; a < nf0; ++a) {
             int ja = free_r0[a];
-            rhs_x(a) = rhs_full_r0_x(ja);
-            rhs_y(a) = rhs_full_r0_y(ja);
+            rhs.row(a) = rhs_full_r0.row(ja);
             for (int c = 0; c < nf0; ++c) H_bdr(a, c) = H_r0_r0(ja, free_r0[c]);
             for (int c = 0; c < nf1; ++c) {
                 H_bdr(a, nf0 + c) = H_r0_r1(ja, free_r1[c]);
@@ -1082,27 +1046,23 @@ void gsASG1LocalFitter<T>::step2b_solveBoundaryEdges()
         }
         for (int a = 0; a < nf1; ++a) {
             int ja = free_r1[a];
-            rhs_x(nf0 + a) = rhs_full_r1_x(ja);
-            rhs_y(nf0 + a) = rhs_full_r1_y(ja);
+            rhs.row(nf0 + a) = rhs_full_r1.row(ja);
             for (int c = 0; c < nf1; ++c) H_bdr(nf0 + a, nf0 + c) = H_r1_r1(ja, free_r1[c]);
         }
 
         gsEigen::FullPivLU<gsMatrix<T>> lu(H_bdr);
         if (lu.isInvertible()) {
-            gsVector<T> sol_x = lu.solve(rhs_x);
-            gsVector<T> sol_y = lu.solve(rhs_y);
+            gsMatrix<T> sol = lu.solve(rhs);
             for (int a = 0; a < nf0; ++a) {
                 int j = free_r0[a];
                 int gIdx = getEdgeCPIndex(ps, 0, j);
-                m_patchCP[pId](gIdx, 0) = sol_x(a);
-                m_patchCP[pId](gIdx, 1) = sol_y(a);
+                m_patchCP[pId].row(gIdx) = sol.row(a);
                 m_patchCP_fixed[pId][gIdx] = true;
             }
             for (int a = 0; a < nf1; ++a) {
                 int j = free_r1[a];
                 int gIdx = getEdgeCPIndex(ps, 1, j);
-                m_patchCP[pId](gIdx, 0) = sol_x(nf0 + a);
-                m_patchCP[pId](gIdx, 1) = sol_y(nf0 + a);
+                m_patchCP[pId].row(gIdx) = sol.row(nf0 + a);
                 m_patchCP_fixed[pId][gIdx] = true;
             }
         }
@@ -1155,13 +1115,13 @@ void gsASG1LocalFitter<T>::step3_solvePatchInteriors()
         gsMatrix<T> evalS = m_target.patch(pId).eval(qNodes2D);
         gsMatrix<T> derivS = m_target.patch(pId).deriv(qNodes2D);
 
-        gsVector<T> b_x(m_n2), b_y(m_n2);
-        b_x.setZero(); b_y.setZero();
+        gsMatrix<T> B_rhs(m_n2, m_geoDim);
+        B_rhs.setZero();
 
         for (int j = 0; j < m_n; ++j) {
             for (int i = 0; i < m_n; ++i) {
                 int I = i + j * m_n;
-                T val_x = 0, val_y = 0;
+                gsMatrix<T> val = gsMatrix<T>::Zero(1, m_geoDim);
                 for (int qj = 0; qj < nQ; ++qj) {
                     T Bj_v = B_1D.coeff(qj, j);
                     T Dj_v = D_1D.coeff(qj, j);
@@ -1175,19 +1135,15 @@ void gsASG1LocalFitter<T>::step3_solvePatchInteriors()
                         T Du_val = Di_u * Bj_v;
                         T Dv_val = Bi_u * Dj_v;
 
-                        T sx = evalS(0, qIdx);
-                        T sy = evalS(1, qIdx);
-                        T dsx_du = derivS(0, qIdx);
-                        T dsy_du = derivS(2, qIdx);
-                        T dsx_dv = derivS(1, qIdx);
-                        T dsy_dv = derivS(3, qIdx);
-
-                        val_x += w * (sx * B_val + m_sigma * (dsx_du * Du_val + dsx_dv * Dv_val));
-                        val_y += w * (sy * B_val + m_sigma * (dsy_du * Du_val + dsy_dv * Dv_val));
+                        for (short_t d = 0; d < m_geoDim; ++d) {
+                            T sc = evalS(d, qIdx);
+                            T dsc_du = derivS(2 * d + 0, qIdx);
+                            T dsc_dv = derivS(2 * d + 1, qIdx);
+                            val(0, d) += w * (sc * B_val + m_sigma * (dsc_du * Du_val + dsc_dv * Dv_val));
+                        }
                     }
                 }
-                b_x(I) = val_x;
-                b_y(I) = val_y;
+                B_rhs.row(I) = val;
             }
         }
 
@@ -1205,33 +1161,27 @@ void gsASG1LocalFitter<T>::step3_solvePatchInteriors()
         if (nFree > 0) {
             gsMatrix<T> A_ff(nFree, nFree);
             gsMatrix<T> A_fc(nFree, nFixed);
-            gsVector<T> rhs_ff_x(nFree), rhs_ff_y(nFree);
-            gsVector<T> d_fixed_x(nFixed), d_fixed_y(nFixed);
+            gsMatrix<T> rhs_ff(nFree, m_geoDim);
+            gsMatrix<T> d_fixed(nFixed, m_geoDim);
 
-            for (int a = 0; a < nFixed; ++a) {
-                d_fixed_x(a) = m_patchCP[pId](fixed_idx[a], 0);
-                d_fixed_y(a) = m_patchCP[pId](fixed_idx[a], 1);
-            }
+            for (int a = 0; a < nFixed; ++a)
+                d_fixed.row(a) = m_patchCP[pId].row(fixed_idx[a]);
 
             for (int a = 0; a < nFree; ++a) {
                 int ia = free_idx[a];
-                rhs_ff_x(a) = b_x(ia);
-                rhs_ff_y(a) = b_y(ia);
+                rhs_ff.row(a) = B_rhs.row(ia);
                 for (int b = 0; b < nFree; ++b) A_ff(a, b) = A_2D(ia, free_idx[b]);
                 for (int b = 0; b < nFixed; ++b) A_fc(a, b) = A_2D(ia, fixed_idx[b]);
             }
 
-            rhs_ff_x -= A_fc * d_fixed_x;
-            rhs_ff_y -= A_fc * d_fixed_y;
+            rhs_ff -= A_fc * d_fixed;
 
             gsEigen::FullPivLU<gsMatrix<T>> lu(A_ff);
-            gsVector<T> sol_x = lu.solve(rhs_ff_x);
-            gsVector<T> sol_y = lu.solve(rhs_ff_y);
+            gsMatrix<T> sol = lu.solve(rhs_ff);
 
             for (int a = 0; a < nFree; ++a) {
                 int ia = free_idx[a];
-                m_patchCP[pId](ia, 0) = sol_x(a);
-                m_patchCP[pId](ia, 1) = sol_y(a);
+                m_patchCP[pId].row(ia) = sol.row(a);
                 m_patchCP_fixed[pId][ia] = true;
             }
         }
@@ -1363,13 +1313,9 @@ void gsASG1LocalFitter<T>::fitGlobal()
     }
 
     index_t nVar = nP * nCP + nI * (n0 + n1);
-    gsMatrix<T> Q_glob(nVar, nVar); Q_glob.setZero();
-    for (index_t p_idx = 0; p_idx < nP; ++p_idx) {
-        Q_glob.block(p_idx * nCP, p_idx * nCP, nCP, nCP) = Q;
-    }
-
-    gsVector<T> F_x(nVar), F_y(nVar);
-    F_x.setZero(); F_y.setZero();
+    std::vector<gsMatrix<T>> Q_patches(nP, Q);
+    gsMatrix<T> F_glob(nVar, m_geoDim);
+    F_glob.setZero();
 
     for (index_t p_idx = 0; p_idx < nP; ++p_idx) {
         gsMatrix<T> valS = m_target.patch(p_idx).eval(pts2);
@@ -1380,9 +1326,6 @@ void gsASG1LocalFitter<T>::fitGlobal()
             for (int iu = 0; iu < nQ1; ++iu) {
                 int q = iu + iv * nQ1;
                 T w = w2(q);
-                T sx = valS(0, q), sy = valS(1, q);
-                T du_sx = derS(0, q), du_sy = derS(2, q);
-                T dv_sx = derS(1, q), dv_sy = derS(3, q);
 
                 for (int jv = 0; jv < m_n; ++jv) {
                     T bv = B_val1D(iv, jv);
@@ -1396,8 +1339,12 @@ void gsASG1LocalFitter<T>::fitGlobal()
                         T dphi_u = du_b * bv;
                         T dphi_v = bu * dv_b;
 
-                        F_x(a) += w * (sx * phi + sigma * (du_sx * dphi_u + dv_sx * dphi_v));
-                        F_y(a) += w * (sy * phi + sigma * (du_sy * dphi_u + dv_sy * dphi_v));
+                        for (short_t d = 0; d < m_geoDim; ++d) {
+                            T sc = valS(d, q);
+                            T du_sc = derS(2 * d + 0, q);
+                            T dv_sc = derS(2 * d + 1, q);
+                            F_glob(a, d) += w * (sc * phi + sigma * (du_sc * dphi_u + dv_sc * dphi_v));
+                        }
                     }
                 }
             }
@@ -1423,18 +1370,18 @@ void gsASG1LocalFitter<T>::fitGlobal()
         gsMatrix<T> valB = m_target.patch(p_idx).eval(ptsB);
 
         for (int j1 = 0; j1 < m_n; ++j1) {
-            int a1 = off + getCPIdx(si.nDir, nBnd, j1);
+            int loc1 = getCPIdx(si.nDir, nBnd, j1);
+            int a1 = off + loc1;
             for (int j2 = 0; j2 < m_n; ++j2) {
-                int a2 = off + getCPIdx(si.nDir, nBnd, j2);
-                Q_glob(a1, a2) += M1_bnd(j1, j2);
+                int loc2 = getCPIdx(si.nDir, nBnd, j2);
+                Q_patches[p_idx](loc1, loc2) += M1_bnd(j1, j2);
             }
-            T fx_b = 0, fy_b = 0;
-            for (int q = 0; q < nQ1; ++q) {
-                fx_b += qWeights1D(q) * valB(0, q) * B_val1D(q, j1);
-                fy_b += qWeights1D(q) * valB(1, q) * B_val1D(q, j1);
+            for (short_t d = 0; d < m_geoDim; ++d) {
+                T f_b = 0;
+                for (int q = 0; q < nQ1; ++q)
+                    f_b += qWeights1D(q) * valB(d, q) * B_val1D(q, j1);
+                F_glob(a1, d) += wBndGlob * f_b;
             }
-            F_x(a1) += wBndGlob * fx_b;
-            F_y(a1) += wBndGlob * fy_b;
         }
     }
 
@@ -1558,35 +1505,71 @@ void gsASG1LocalFitter<T>::fitGlobal()
     }
 
     int numC = constr_rows.size();
-    gsMatrix<T> C_mat(numC, nVar); C_mat.setZero();
-    for (int c = 0; c < numC; ++c) {
-        for (const auto& item : constr_rows[c]) {
-            C_mat(c, item.first) += item.second;
+    std::vector<int> indepRows;
+    if (numC > 0) {
+        gsMatrix<T> Ct(nVar, numC); Ct.setZero();
+        for (int c = 0; c < numC; ++c) {
+            for (const auto& item : constr_rows[c])
+                Ct(item.first, c) += item.second;
+            const T colNorm = Ct.col(c).norm();
+            if (colNorm > T(1e-14))
+                Ct.col(c) /= colNorm;
+        }
+        // Select a full-row-rank subset of sparse constraints so closed interior
+        // vertex loops never render the KKT matrix singular.
+        gsEigen::ColPivHouseholderQR<gsMatrix<T>> qr(Ct);
+        qr.setThreshold(T(1e-10));
+        const index_t rankC = qr.rank();
+        const auto& perm = qr.colsPermutation().indices();
+        indepRows.reserve(rankC);
+        for (index_t k = 0; k < rankC; ++k)
+            indepRows.push_back(perm(k));
+    }
+
+    const int numCIndep = static_cast<int>(indepRows.size());
+    const int nTot = nVar + numCIndep;
+
+    gsSparseEntries<T> kktEntries;
+    kktEntries.reserve(nP * nCP * nCP + 2 * numCIndep * 16);
+    for (index_t p_idx = 0; p_idx < nP; ++p_idx) {
+        const int off = p_idx * nCP;
+        for (int a = 0; a < nCP; ++a)
+            for (int b = 0; b < nCP; ++b)
+                if (std::abs(Q_patches[p_idx](a, b)) > T(1e-16))
+                    kktEntries.add(off + a, off + b, Q_patches[p_idx](a, b));
+    }
+    for (int r = 0; r < numCIndep; ++r) {
+        const auto& row = constr_rows[indepRows[r]];
+        for (const auto& item : row) {
+            if (std::abs(item.second) > T(1e-16)) {
+                kktEntries.add(nVar + r, item.first, item.second);
+                kktEntries.add(item.first, nVar + r, item.second);
+            }
         }
     }
 
-    int nTot = nVar + numC;
-    gsMatrix<T> KKT(nTot, nTot); KKT.setZero();
-    KKT.block(0, 0, nVar, nVar) = Q_glob;
-    KKT.block(0, nVar, nVar, numC) = C_mat.transpose();
-    KKT.block(nVar, 0, numC, nVar) = C_mat;
+    gsSparseMatrix<T> KKT(nTot, nTot);
+    KKT.setFrom(kktEntries);
 
-    gsVector<T> rhs_x(nTot), rhs_y(nTot);
-    rhs_x.setZero(); rhs_y.setZero();
-    rhs_x.head(nVar) = F_x;
-    rhs_y.head(nVar) = F_y;
+    gsMatrix<T> rhs(nTot, m_geoDim);
+    rhs.setZero();
+    rhs.topRows(nVar) = F_glob;
 
-    auto solver = KKT.fullPivLu();
-    gsVector<T> sol_x = solver.solve(rhs_x);
-    gsVector<T> sol_y = solver.solve(rhs_y);
+    gsMatrix<T> sol;
+    gsEigen::SparseLU<gsSparseMatrix<T>> sparseLu;
+    sparseLu.compute(KKT);
+    if (sparseLu.info() == gsEigen::Success) {
+        sol = sparseLu.solve(rhs);
+    } else {
+        gsMatrix<T> denseKKT(KKT);
+        sol = denseKKT.fullPivLu().solve(rhs);
+    }
 
     m_result.clear();
     for (index_t p_idx = 0; p_idx < nP; ++p_idx) {
-        gsMatrix<T> cp(nCP, 2);
-        for (int a = 0; a < nCP; ++a) {
-            cp(a, 0) = sol_x(p_idx * nCP + a);
-            cp(a, 1) = sol_y(p_idx * nCP + a);
-        }
+        gsMatrix<T> cp(nCP, m_geoDim);
+        for (int a = 0; a < nCP; ++a)
+            cp.row(a) = sol.row(p_idx * nCP + a);
         m_patchCP[p_idx] = cp;
         gsTensorBSplineBasis<2, T> tBasis(m_kv, m_kv);
         typename gsGeometry<T>::uPtr patchGeom(new gsTensorBSpline<2, T>(tBasis, cp));
@@ -1606,10 +1589,14 @@ bool gsASG1LocalFitter<T>::checkASG1(T eps) const
 {
     m_max_res_a = T(0);
     m_max_res_b = T(0);
+    m_max_res_n = T(0);
     bool all_valid = true;
 
     for (auto it = m_result.iBegin(); it != m_result.iEnd(); ++it) {
         auto S_samp = sampleInterface(m_result, *it, 5);
+        m_max_res_n = std::max(m_max_res_n, S_samp.maxNormalAngle);
+        if (m_geoDim == 3 && S_samp.maxNormalAngle * S_samp.maxNormalAngle > eps)
+            all_valid = false;
         if (S_samp.D1.minCoeff() * S_samp.D1.maxCoeff() <= 0 ||
             S_samp.D2.minCoeff() * S_samp.D2.maxCoeff() <= 0) {
             all_valid = false;
@@ -1674,61 +1661,130 @@ bool gsASG1LocalFitter<T>::checkASG1(T eps) const
 template <class T>
 bool gsASG1LocalFitter<T>::unifyPatchOrientations(gsMultiPatch<T>& mp)
 {
+    auto flipPatchU = [](gsGeometry<T>& geom) -> bool {
+        if (auto* bsp = dynamic_cast<gsTensorBSpline<2, T>*>(&geom)) {
+            int nu = bsp->basis().size(0);
+            int nv = bsp->basis().size(1);
+            gsMatrix<T> coefs = bsp->coefs();
+            gsMatrix<T> new_coefs = coefs;
+            for (int i = 0; i < nu; ++i)
+                for (int j = 0; j < nv; ++j)
+                    new_coefs.row(j * nu + (nu - 1 - i)) = coefs.row(j * nu + i);
+            bsp->setCoefs(new_coefs);
+            return true;
+        }
+        if (auto* nurbs = dynamic_cast<gsTensorNurbs<2, T>*>(&geom)) {
+            int nu = nurbs->basis().size(0);
+            int nv = nurbs->basis().size(1);
+            gsMatrix<T> coefs = nurbs->coefs();
+            gsMatrix<T> weights = nurbs->weights();
+            gsMatrix<T> new_coefs = coefs;
+            gsMatrix<T> new_weights = weights;
+            for (int i = 0; i < nu; ++i) {
+                for (int j = 0; j < nv; ++j) {
+                    int old_idx = j * nu + i;
+                    int new_idx = j * nu + (nu - 1 - i);
+                    new_coefs.row(new_idx) = coefs.row(old_idx);
+                    new_weights(new_idx, 0) = weights(old_idx, 0);
+                }
+            }
+            nurbs->setCoefs(new_coefs);
+            nurbs->weights() = new_weights;
+            return true;
+        }
+        return false;
+    };
+
     int flippedCount = 0;
-    for (size_t p = 0; p < mp.nPatches(); ++p) {
-        auto& geom = mp.patch(p);
-        // Compute mean Jacobian determinant
-        T sumDet = 0;
-        int count = 0;
-        for (int i = 0; i <= 2; ++i) {
-            for (int j = 0; j <= 2; ++j) {
-                gsVector<T> u(2);
-                u << i * T(0.5), j * T(0.5);
-                gsMatrix<T> jac;
-                geom.jacobian_into(u, jac);
-                T detJ = jac(0, 0) * jac(1, 1) - jac(0, 1) * jac(1, 0);
-                sumDet += detJ;
-                count++;
+    if (mp.targetDim() == 3) {
+        const index_t nP = mp.nPatches();
+        std::vector<bool> visited(nP, false);
+        std::vector<bool> flipped(nP, false);
+
+        auto evalSurfaceNormal = [](const gsGeometry<T>& g, T u, T v) -> gsVector<T> {
+            gsMatrix<T> pt(2, 1);
+            pt << u, v;
+            gsMatrix<T> d = g.deriv(pt);
+            gsVector<T> du(3), dv(3), n(3);
+            for (int c = 0; c < 3; ++c) {
+                du(c) = d(2 * c + 0, 0);
+                dv(c) = d(2 * c + 1, 0);
+            }
+            n(0) = du(1) * dv(2) - du(2) * dv(1);
+            n(1) = du(2) * dv(0) - du(0) * dv(2);
+            n(2) = du(0) * dv(1) - du(1) * dv(0);
+            return n;
+        };
+
+        auto evalSideMidpoint = [](const patchSide& ps, bool rev, T& u, T& v) {
+            T ts;
+            mapInterfaceParam(ps, rev, T(0.5), u, v, ts);
+        };
+
+        for (index_t root = 0; root < nP; ++root) {
+            if (visited[root]) continue;
+            visited[root] = true;
+            std::queue<index_t> q;
+            q.push(root);
+            while (!q.empty()) {
+                index_t cur = q.front();
+                q.pop();
+                for (auto it = mp.iBegin(); it != mp.iEnd(); ++it) {
+                    const boundaryInterface& bi = *it;
+                    patchSide psCur, psNbr;
+                    bool curIsFirst = false;
+                    if (bi.first().patch == cur) {
+                        psCur = bi.first(); psNbr = bi.second(); curIsFirst = true;
+                    } else if (bi.second().patch == cur) {
+                        psCur = bi.second(); psNbr = bi.first(); curIsFirst = false;
+                    } else {
+                        continue;
+                    }
+                    const index_t nbr = psNbr.patch;
+                    if (visited[nbr]) continue;
+
+                    SideInfo si1 = getSideInfo(bi.first().side());
+                    const bool rev2 = !bi.dirOrientation(bi.first(), si1.tDir);
+                    T u1, v1, u2, v2;
+                    evalSideMidpoint(bi.first(), false, u1, v1);
+                    evalSideMidpoint(bi.second(), rev2, u2, v2);
+                    gsVector<T> nCur = curIsFirst
+                        ? evalSurfaceNormal(mp.patch(bi.first().patch), u1, v1)
+                        : evalSurfaceNormal(mp.patch(bi.second().patch), u2, v2);
+                    gsVector<T> nNbr = curIsFirst
+                        ? evalSurfaceNormal(mp.patch(bi.second().patch), u2, v2)
+                        : evalSurfaceNormal(mp.patch(bi.first().patch), u1, v1);
+                    if (flipped[cur]) nCur = -nCur;
+
+                    visited[nbr] = true;
+                    if (nCur.dot(nNbr) < T(0))
+                        flipped[nbr] = true;
+                    q.push(nbr);
+                }
             }
         }
-        T meanDet = sumDet / count;
-        if (meanDet < T(0)) {
-            // Flip u-direction of patch
-            auto* bsp = dynamic_cast<gsTensorBSpline<2, T>*>(&geom);
-            if (bsp) {
-                int nu = bsp->basis().size(0);
-                int nv = bsp->basis().size(1);
-                gsMatrix<T> coefs = bsp->coefs();
-                gsMatrix<T> new_coefs = coefs;
-                for (int i = 0; i < nu; ++i) {
-                    for (int j = 0; j < nv; ++j) {
-                        new_coefs.row(j * nu + (nu - 1 - i)) = coefs.row(j * nu + i);
-                    }
-                }
-                bsp->setCoefs(new_coefs);
-                flippedCount++;
-            } else {
-                auto* nurbs = dynamic_cast<gsTensorNurbs<2, T>*>(&geom);
-                if (nurbs) {
-                    int nu = nurbs->basis().size(0);
-                    int nv = nurbs->basis().size(1);
-                    gsMatrix<T> coefs = nurbs->coefs();
-                    gsMatrix<T> weights = nurbs->weights();
-                    gsMatrix<T> new_coefs = coefs;
-                    gsMatrix<T> new_weights = weights;
-                    for (int i = 0; i < nu; ++i) {
-                        for (int j = 0; j < nv; ++j) {
-                            int old_idx = j * nu + i;
-                            int new_idx = j * nu + (nu - 1 - i);
-                            new_coefs.row(new_idx) = coefs.row(old_idx);
-                            new_weights(new_idx, 0) = weights(old_idx, 0);
-                        }
-                    }
-                    nurbs->setCoefs(new_coefs);
-                    nurbs->weights() = new_weights;
-                    flippedCount++;
+        for (index_t p = 0; p < nP; ++p) {
+            if (flipped[p] && flipPatchU(mp.patch(p)))
+                ++flippedCount;
+        }
+    } else {
+        for (size_t p = 0; p < mp.nPatches(); ++p) {
+            auto& geom = mp.patch(p);
+            T sumDet = 0;
+            int count = 0;
+            for (int i = 0; i <= 2; ++i) {
+                for (int j = 0; j <= 2; ++j) {
+                    gsVector<T> u(2);
+                    u << i * T(0.5), j * T(0.5);
+                    gsMatrix<T> jac;
+                    geom.jacobian_into(u, jac);
+                    T detJ = jac(0, 0) * jac(1, 1) - jac(0, 1) * jac(1, 0);
+                    sumDet += detJ;
+                    count++;
                 }
             }
+            if (sumDet / count < T(0) && flipPatchU(geom))
+                flippedCount++;
         }
     }
     if (flippedCount > 0) {

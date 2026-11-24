@@ -23,6 +23,7 @@
 #include <vector>
 
 #include <gsCore/gsPiecewiseFunction.h>
+#include <gsNurbs/gsTensorNurbsBasis.h>
 
 namespace gismo {
 
@@ -35,19 +36,31 @@ inline T det2(const gsVector<T>& a, const gsVector<T>& b)
 { return a(0)*b(1) - a(1)*b(0); }
 
 template <class T>
-inline gsVector<T> partial(const gsMatrix<T>& d, index_t dir, index_t col)
+inline T det3(const gsVector<T>& a, const gsVector<T>& b, const gsVector<T>& n)
 {
-    gsVector<T> v(2);
-    v(0) = d(dir,     col);
-    v(1) = d(dir + 2, col);
+    const T cx = a(1)*b(2) - a(2)*b(1);
+    const T cy = a(2)*b(0) - a(0)*b(2);
+    const T cz = a(0)*b(1) - a(1)*b(0);
+    return cx*n(0) + cy*n(1) + cz*n(2);
+}
+
+template <class T>
+inline gsVector<T> partial(const gsMatrix<T>& d, index_t dir, index_t col, short_t geoDim = 2)
+{
+    gsVector<T> v(geoDim);
+    for (short_t c = 0; c < geoDim; ++c)
+        v(c) = d(dir + 2 * c, col);
     return v;
 }
 
 template <class T>
 gsVector<T> breaksOf(const gsGeometry<T>& geo, short_t dir)
 {
+    const gsBasis<T>* basisPtr = &geo.basis();
+    if (const auto* rBasis = dynamic_cast<const gsRationalBasis<gsTensorBSplineBasis<2, T>>*>(basisPtr))
+        basisPtr = &rBasis->source();
     const gsBSplineBasis<T>& bb =
-        dynamic_cast<const gsBSplineBasis<T>&>(geo.basis().component(dir));
+        dynamic_cast<const gsBSplineBasis<T>&>(basisPtr->component(dir));
     const std::vector<T> &brks = bb.knots().breaks();
     gsVector<T> result(brks.size());
     result.assign(brks.begin(), brks.end());
@@ -65,6 +78,7 @@ struct InterfaceSamples
     index_t size() const { return D1.size(); }
     T integrate(const gsVector<T>& f) const { return weights.dot(f); }
     bool flipped;
+    T maxNormalAngle = T(0); // max |g2n . n_S| / ||g2n|| for 3D surfaces (0 in 2D)
 };
 
 /// Sample D1,D2,D3 along the interface.
@@ -123,17 +137,52 @@ InterfaceSamples<T> sampleInterface(
     // Jacobian of geometry
     const gsMatrix<T> d1 = g1.deriv(pts1);
     const gsMatrix<T> d2 = g2.deriv(pts2);
+    const short_t geoDim = mp.targetDim();
+    GISMO_ENSURE(geoDim == 2 || geoDim == 3,
+                 "sampleInterface supports 2D planar domains and 3D surfaces, got geoDim=" << geoDim);
 
     S.D1.resize(N); S.D2.resize(N); S.D3.resize(N);
+    S.maxNormalAngle = T(0);
     for (index_t i = 0; i < N; ++i)
     {
-        const gsVector<T> g1n = partial(d1, nDir1, i);
-        const gsVector<T> g1t = partial(d1, tDir1, i);
-        const gsVector<T> g2n = partial(d2, nDir2, i);
-        const gsVector<T> g2t = partial(d2, tDir2, i);
-        S.D1(i) = s1      * det2(g1n, g1t);
-        S.D2(i) = s2      * det2(g2n, g2t);
-        S.D3(i) = s1 * s2 * det2(g1n, g2n);
+        const gsVector<T> g1n = partial(d1, nDir1, i, geoDim);
+        const gsVector<T> g1t = partial(d1, tDir1, i, geoDim);
+        const gsVector<T> g2n = partial(d2, nDir2, i, geoDim);
+        const gsVector<T> g2t = partial(d2, tDir2, i, geoDim);
+        if (geoDim == 2)
+        {
+            S.D1(i) = s1      * det2(g1n, g1t);
+            S.D2(i) = s2      * det2(g2n, g2t);
+            S.D3(i) = s1 * s2 * det2(g1n, g2n);
+        }
+        else
+        {
+            gsVector<T> nS(3);
+            nS(0) = g1n(1)*g1t(2) - g1n(2)*g1t(1);
+            nS(1) = g1n(2)*g1t(0) - g1n(0)*g1t(2);
+            nS(2) = g1n(0)*g1t(1) - g1n(1)*g1t(0);
+            const T nNorm = nS.norm();
+            if (nNorm > T(1e-15))
+            {
+                nS /= nNorm;
+                const T g2nNorm = g2n.norm();
+                if (g2nNorm > T(1e-15))
+                {
+                    const T sinAngle = std::abs(g2n.dot(nS)) / g2nNorm;
+                    if (sinAngle > S.maxNormalAngle)
+                        S.maxNormalAngle = sinAngle;
+                }
+                S.D1(i) = s1      * det3(g1n, g1t, nS);
+                S.D2(i) = s2      * det3(g2n, g2t, nS);
+                S.D3(i) = s1 * s2 * det3(g1n, g2n, nS);
+            }
+            else
+            {
+                S.D1(i) = T(0);
+                S.D2(i) = T(0);
+                S.D3(i) = T(0);
+            }
+        }
     }
     return S;
 }
@@ -275,6 +324,23 @@ gsVector<T> computeGluingDataForInterface(
         result[7] *= -1;
     }
     return result;
+}
+
+/// Normalize linear gluing data [a1_0, a1_1, b1_0, b1_1, a2_0, a2_1, b2_0, b2_1]
+/// according to Appendix A of Hasanova, S. Takacs, T. Takacs (2026):
+/// rescale (alpha_1, alpha_2) so min_{xi in [0,1]} min(|alpha_1(xi)|, |alpha_2(xi)|) = 1.
+template <class T>
+void normalizeGluingDataAppendixA(gsVector<T>& gd)
+{
+    GISMO_ASSERT(gd.size() == 8, "Expected 8-entry gluing data vector.");
+    const T minA = std::min(
+        std::min(std::abs(gd[0]), std::abs(gd[1])),
+        std::min(std::abs(gd[4]), std::abs(gd[5])));
+    if (minA > T(1e-14))
+    {
+        gd[0] /= minA; gd[1] /= minA;
+        gd[4] /= minA; gd[5] /= minA;
+    }
 }
 
 
@@ -516,6 +582,236 @@ gsBoundaryCornerData<T> getBoundaryCornerData(
         out.curvature = T(0.5) * (ck0 + ck1);
     }
     return out;
+}
+
+/// 3D surface boundary corner frame data in the shared vertex tangent plane T_v S.
+/// For smooth boundary vertices (Case B): dir1 = outward conormal n_co in T_v S,
+/// dir2 = boundary unit tangent t in T_v S, curvature = geodesic curvature kappa_g.
+/// For sharp boundary corners (Case A): dir1 = t1, dir2 = t2 in T_v S, curvature = 0.
+template <typename T>
+gsBoundaryCornerData<T> getSurfaceBoundaryCornerData(
+    const gsMultiPatch<T>& mp,
+    const std::vector<patchCorner>& corners,
+    T eps = 1e-4)
+{
+    const short_t dim = 2;
+    GISMO_ENSURE(mp.targetDim() == 3, "getSurfaceBoundaryCornerData expects a 3D surface (targetDim == 3).");
+
+    std::vector<gsVector<T>> conormals;
+    std::vector<gsVector<T>> tangents;
+    std::vector<gsVector<T>> accs;
+    std::vector<T> velSqs;
+
+    for (size_t i = 0; i < corners.size(); ++i)
+    {
+        const gsGeometry<T>& geo = mp.patch(corners[i].patch);
+        gsMatrix<T> pt(dim, 1);
+        const gsMatrix<T> supp = geo.support();
+        const gsVector<bool> parameters = corners[i].parameters(dim);
+        for (short_t d = 0; d < dim; ++d)
+            pt(d, 0) = parameters[d] ? supp(d, 1) : supp(d, 0);
+
+        gsMatrix<T> deriv, deriv2;
+        geo.deriv_into(pt, deriv);
+        geo.deriv2_into(pt, deriv2);
+
+        std::vector<patchSide> sides;
+        corners[i].getContainingSides(dim, sides);
+        for (size_t j = 0; j < sides.size(); ++j)
+        {
+            if (mp.isBoundary(sides[j]))
+            {
+                const short_t nDir = sides[j].direction();
+                const short_t tDir = 1 - nDir;
+
+                const gsVector<T> vel = partial(deriv, tDir, 0, 3);
+                const T velSq = vel.squaredNorm();
+                const gsVector<T> tangent = vel * (parameters[tDir] ? T(-1) : T(1)) / std::sqrt(velSq);
+                tangents.push_back(tangent);
+
+                const T nOutSign = sides[j].parameter() ? T(1) : T(-1);
+                const gsVector<T> gOut = nOutSign * partial(deriv, nDir, 0, 3);
+                gsVector<T> conormal = gOut - gOut.dot(tangent) * tangent;
+                conormal.normalize();
+                conormals.push_back(conormal);
+
+                gsVector<T> acc(3);
+                for (short_t c = 0; c < 3; ++c)
+                    acc(c) = deriv2(3 * c + tDir, 0);
+                accs.push_back(acc);
+                velSqs.push_back(velSq);
+            }
+        }
+    }
+
+    GISMO_ENSURE(conormals.size() == 2,
+                 "Expected 2 boundary edges at surface boundary vertex, got " << conormals.size());
+
+    gsBoundaryCornerData<T> out;
+    auto cross3 = [](const gsVector<T>& a, const gsVector<T>& b) -> gsVector<T> {
+        gsVector<T> r(3);
+        r(0) = a(1)*b(2) - a(2)*b(1);
+        r(1) = a(2)*b(0) - a(0)*b(2);
+        r(2) = a(0)*b(1) - a(1)*b(0);
+        return r;
+    };
+
+    if (conormals[0].dot(conormals[1]) >= T(1) - eps)
+    {
+        // Case B: smooth boundary vertex on 3D surface
+        out.isSmooth = true;
+        out.dir1 = (conormals[0] + conormals[1]).normalized();
+        gsVector<T> tanDiff = tangents[0] - tangents[1];
+        tanDiff -= tanDiff.dot(out.dir1) * out.dir1;
+        if (tanDiff.norm() < T(1e-12))
+        {
+            tanDiff = tangents[0] - tangents[0].dot(out.dir1) * out.dir1;
+        }
+        out.dir2 = tanDiff.normalized();
+        const T ck0 = accs[0].dot(out.dir1) / velSqs[0];
+        const T ck1 = accs[1].dot(out.dir1) / velSqs[1];
+        out.curvature = T(0.5) * (ck0 + ck1);
+    }
+    else if (cross3(tangents[0], tangents[1]).norm() >= eps)
+    {
+        // Case A: sharp boundary corner with linearly independent tangents [t1, t2] in T_v S
+        out.isSmooth = false;
+        out.dir1 = tangents[0];
+        out.dir2 = tangents[1];
+        out.curvature = T(0);
+    }
+    else
+    {
+        // Degenerate cusp
+        out.isSmooth = true;
+        out.dir1 = conormals[0];
+        gsVector<T> tProj = tangents[0] - tangents[0].dot(out.dir1) * out.dir1;
+        out.dir2 = tProj.normalized();
+        const T ck0 = accs[0].dot(out.dir1) / velSqs[0];
+        const T ck1 = accs[1].dot(out.dir1) / velSqs[1];
+        out.curvature = T(0.5) * (ck0 + ck1);
+    }
+    return out;
+}
+
+/// Build shared 3D surface tangent-plane frames for all corners of every patch.
+/// Returns a (nPatches x 28) matrix with stride 7 per corner:
+///   [d1_x, d1_y, d1_z, d2_x, d2_y, d2_z, kappa_g].
+/// Every topological vertex (both interior and boundary) receives a single shared
+/// tangent-plane frame across all incident patches, guaranteeing exact 6-jet matching.
+/// Also fills cornerIsSmooth(patch, cornerIdx) (1 for smooth boundary / interior, 0 for sharp corner).
+template <typename T>
+gsMatrix<T> computeSurfaceCornerFrames(
+    const gsMultiPatch<T>& mp,
+    gsMatrix<index_t>* cornerIsSmooth = nullptr,
+    T eps = 1e-4)
+{
+    GISMO_ENSURE(mp.targetDim() == 3, "computeSurfaceCornerFrames expects a 3D surface (targetDim == 3).");
+    const index_t nP = mp.nPatches();
+    gsMatrix<T> frames(nP, 4 * 7);
+    frames.setZero();
+    if (cornerIsSmooth)
+        cornerIsSmooth->setOnes(nP, 4);
+
+    auto cross3 = [](const gsVector<T>& a, const gsVector<T>& b) -> gsVector<T> {
+        gsVector<T> r(3);
+        r(0) = a(1)*b(2) - a(2)*b(1);
+        r(1) = a(2)*b(0) - a(0)*b(2);
+        r(2) = a(0)*b(1) - a(1)*b(0);
+        return r;
+    };
+
+    const auto& vertices = mp.topology().vertices();
+    for (size_t v = 0; v < vertices.size(); ++v)
+    {
+        const std::vector<patchCorner>& grp = vertices[v];
+        if (grp.empty()) continue;
+
+        // Count boundary sides incident to this vertex
+        index_t nBndSides = 0;
+        for (size_t i = 0; i < grp.size(); ++i)
+        {
+            std::vector<patchSide> sides;
+            grp[i].getContainingSides(2, sides);
+            for (size_t j = 0; j < sides.size(); ++j)
+                if (mp.isBoundary(sides[j]))
+                    ++nBndSides;
+        }
+
+        gsVector<T> d1(3), d2(3);
+        T kappa = T(0);
+        bool isSmooth = true;
+
+        if (nBndSides == 2)
+        {
+            const gsBoundaryCornerData<T> cd = getSurfaceBoundaryCornerData(mp, grp, eps);
+            d1 = cd.dir1;
+            d2 = cd.dir2;
+            kappa = cd.curvature;
+            isSmooth = cd.isSmooth;
+        }
+        else
+        {
+            // Interior vertex (or non-manifold boundary): build deterministic orthonormal basis of T_v S
+            gsVector<T> avgN = gsVector<T>::Zero(3);
+            gsVector<T> refN = gsVector<T>::Zero(3);
+            for (size_t i = 0; i < grp.size(); ++i)
+            {
+                const gsGeometry<T>& geo = mp.patch(grp[i].patch);
+                gsMatrix<T> pt(2, 1);
+                const gsMatrix<T> supp = geo.support();
+                const gsVector<bool> params = grp[i].parameters(2);
+                pt(0, 0) = params[0] ? supp(0, 1) : supp(0, 0);
+                pt(1, 0) = params[1] ? supp(1, 1) : supp(1, 0);
+                gsMatrix<T> deriv;
+                geo.deriv_into(pt, deriv);
+                const gsVector<T> gu = partial(deriv, 0, 0, 3);
+                const gsVector<T> gv = partial(deriv, 1, 0, 3);
+                gsVector<T> n = cross3(gu, gv);
+                const T nn = n.norm();
+                if (nn > T(1e-14))
+                {
+                    n /= nn;
+                    if (refN.norm() < T(0.5)) refN = n;
+                    else if (n.dot(refN) < T(0)) n = -n;
+                    avgN += n;
+                }
+            }
+            if (avgN.norm() > T(1e-14))
+                avgN.normalize();
+            else
+                avgN << T(0), T(0), T(1);
+
+            // Deterministic tangent vector e1 orthogonal to avgN (matches [e_x, e_y] when avgN = +-e_z)
+            gsVector<T> trial(3);
+            if (std::abs(avgN(0)) < T(0.9))
+                trial << T(1), T(0), T(0);
+            else
+                trial << T(0), T(1), T(0);
+            d1 = trial - trial.dot(avgN) * avgN;
+            d1.normalize();
+            d2 = cross3(avgN, d1);
+            d2.normalize();
+            kappa = T(0);
+            isSmooth = true;
+        }
+
+        for (size_t i = 0; i < grp.size(); ++i)
+        {
+            const index_t p = grp[i].patch;
+            const index_t cIdx = grp[i].m_index - 1;
+            frames(p, 7 * cIdx + 0) = d1(0);
+            frames(p, 7 * cIdx + 1) = d1(1);
+            frames(p, 7 * cIdx + 2) = d1(2);
+            frames(p, 7 * cIdx + 3) = d2(0);
+            frames(p, 7 * cIdx + 4) = d2(1);
+            frames(p, 7 * cIdx + 5) = d2(2);
+            frames(p, 7 * cIdx + 6) = kappa;
+            if (cornerIsSmooth)
+                (*cornerIsSmooth)(p, cIdx) = isSmooth ? 1 : 0;
+        }
+    }
+    return frames;
 }
 
 // ====================================================================
