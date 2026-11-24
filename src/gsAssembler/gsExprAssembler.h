@@ -964,6 +964,11 @@ void gsExprAssembler<T>::setFixedDofs(const gsMatrix<T> & coefMatrix, short_t un
         const index_t k = it->patch();
         if ( k == patch )
         {
+            GISMO_ENSURE(it->trace() == trace_type::essential || it->trace() == trace_type::all,
+                         "setFixedDofs: the Dirichlet condition on patch " << k << ", side "
+                         << it->side() << " constrains the " << it->trace() << " part, which "
+                         "this assembler cannot impose; it sets whole components (trace "
+                         "essential or all).");
             // Get indices in the patch on this boundary
             const gsMatrix<index_t> boundary =
                     mbasis[k].boundary(it->side());

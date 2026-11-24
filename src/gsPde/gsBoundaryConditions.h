@@ -45,7 +45,10 @@ struct condition_type
 
 /// @brief Specifies which part of the field a boundary condition applies to
 ///
-/// The trace selector is orthogonal to condition_type::type.
+/// The trace selector is orthogonal to condition_type::type. The
+/// assemblers of the core library constrain whole components and accept
+/// essential and all only; normal and tangential are for spaces that
+/// support them.
 ///
 /// @ingroup Pde
 struct trace_type
@@ -59,6 +62,19 @@ struct trace_type
         tangential = 3  ///< Tangential components on the side
     };
 };
+
+// Print (as string) a trace selector
+inline std::ostream &operator<<(std::ostream &os, const trace_type::type& o)
+{
+    switch (o)
+    {
+        case trace_type::essential : return os << "essential";
+        case trace_type::all       : return os << "all";
+        case trace_type::normal    : return os << "normal";
+        case trace_type::tangential: return os << "tangential";
+    }
+    return os << "unknown trace " << static_cast<int>(o);
+}
 
 // Print (as string) a boundary type
 inline std::ostream &operator<<(std::ostream &os, const condition_type::type& o)
@@ -301,6 +317,20 @@ struct boundary_condition
     /// Checks if \a this is the same as \other apart from the function data.
     /// The patch side, unknown, component and trace are compared.
     bool isSame(const boundary_condition & other) {return ((other.ps == ps) && (other.unknown() == unknown()) && (other.unkComponent() == unkComponent()) && (other.trace() == trace())) ;}
+
+    /// Checks if \a this and \a other constrain a common part of the same
+    /// unknown on the same patch side. Two conditions there are disjoint
+    /// only if they name different components, or if one constrains the
+    /// normal and the other the tangential part.
+    bool overlaps(const boundary_condition & other) const
+    {
+        if (!(other.ps == ps) || other.unknown() != unknown())
+            return false;
+        if (unkComponent() >= 0 && other.unkComponent() >= 0)
+            return unkComponent() == other.unkComponent();
+        return !( (trace() == trace_type::normal     && other.trace() == trace_type::tangential) ||
+                  (trace() == trace_type::tangential && other.trace() == trace_type::normal) );
+    }
 
     patchSide ps;                ///< Side of a patch for this boundary condition
 
@@ -630,12 +660,24 @@ public:
     { return coupled_boundaries.end(); }
 
 
+    /// Adds a condition with the type named by \a label; refuses one that
+    /// overlaps a condition of that type already defined (see addCondition)
     void add(int p, boxSide s, const std::string & label,
              const function_ptr & f_ptr, short_t unknown = 0,
              int comp = -1, bool parametric = false)
     {
-        m_bc[label].push_back(
-                boundary_condition<T>(p, s, f_ptr, label, unknown, comp, parametric) );
+        add(p,s,label,f_ptr,unknown,comp,parametric,trace_type::essential);
+    }
+
+    /// Adds a condition with the type named by \a label and the trace
+    /// selector \a tr (see addCondition)
+    void add(int p, boxSide s, const std::string & label,
+             const function_ptr & f_ptr, short_t unknown,
+             int comp, bool parametric, trace_type::type tr)
+    {
+        boundary_condition<T> bc(p, s, f_ptr, label, unknown, comp, parametric);
+        bc.m_trace = tr;
+        push(bc);
     }
 
     void add(int p, boxSide s, const std::string & label,
@@ -643,8 +685,7 @@ public:
              int comp = -1, bool parametric = false)
     {
         function_ptr f_ptr = memory::make_shared_not_owned(f);
-        m_bc[label].push_back(
-                boundary_condition<T>(p, s, f_ptr, label, unknown, comp, parametric) );
+        add(p,s,label,f_ptr,unknown,comp,parametric);
     }
 
     void add(int p, boxSide s, const std::string & label,
@@ -655,20 +696,27 @@ public:
         add(p,s,label,fun,unknown,comp,parametric);
     }
 
-    /** \brief Adds another boundary condition
+    /** @brief Adds another boundary condition
      *
      * Creates an object of type boundary_condition and adds is to
      * the list of corresponding boundary conditions.
      *
-     * \param p Index of the patch
-     * \param s Side of the patch
-     * \param t Type of boundary condition (see condition_type::type)
-     * \param f Function defining the boundary condition
-     * \param unknown Specifies which unknown variable the boundary condition
+     * @param p Index of the patch
+     * @param s Side of the patch
+     * @param t Type of boundary condition (see condition_type::type)
+     * @param f Function defining the boundary condition
+     * @param unknown Specifies which unknown variable the boundary condition
      * refers to (to be used if more than one variable is unknown, e.g.,
      * velocity and pressure)
-     * \param parametric True if the function data for this boundary condition
+     * @param parametric True if the function data for this boundary condition
      * is defined in parametric coordinates.
+     * @param comp Component of the unknown the condition applies to; -1
+     * means all components.
+     *
+     * Conditions of one type on one patch side for one unknown must not
+     * overlap: they may only name different components, or constrain the
+     * normal and the tangential part (see boundary_condition::overlaps).
+     * Adding an overlapping condition, an exact duplicate included, throws.
      */
     void addCondition(int p, boxSide s, condition_type::type t,
                       gsFunctionSet<T> * f, short_t unknown = 0, bool parametric = false, int comp = -1)
@@ -680,29 +728,22 @@ public:
     void addConditions(const bcRefList & bcrf)
     {
         for (auto bc : bcrf)
-            m_bc[bc.get().ctype()].push_back(bc);
+            push(bc.get());
     }
 
     void addCondition(int p, boxSide s, condition_type::type t,
                       const function_ptr & f_shptr, short_t unknown = 0,
                       bool parametric = false, int comp = -1)
     {
-        auto bc = boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric);
-        // Every condition type can only be applied once
-        const auto & c = m_bc[bc.ctype()];
-        auto it = std::find_if(c.begin(), c.end(), [&bc](const boundary_condition<T> & b){ return bc.isSame(b); });
-        if (it==c.end())
-            m_bc[bc.ctype()].push_back(bc);
-        else // bc of this type is already defined on patch p and side s
-            gsWarn<<"Condition of type "<<bc.ctype()<<" on patch "<<bc.patch()<<" side "<<bc.side()<<" of unknown "<<bc.unknown()<<" with component "<<bc.unkComponent()<<" ignored, because it has already been defined\n";
+        push(boundary_condition<T>(p,s,f_shptr,t,unknown,comp,parametric));
     }
 
     /** @brief Adds another boundary condition with a trace selector
      *
      * Creates an object of type boundary_condition and adds it to
-     * the list of corresponding boundary conditions. A condition is
-     * a duplicate only if patch, side, unknown, component and trace
-     * all agree.
+     * the list of corresponding boundary conditions. It must not
+     * overlap a condition of the same type already defined on the side
+     * (see the overload without trace).
      *
      * @param p Index of the patch
      * @param s Side of the patch
@@ -716,11 +757,12 @@ public:
      * @param parametric True if the function data for this boundary condition
      * is defined in parametric coordinates.
      * @param comp Cartesian component of an identity space the condition
-     * applies to; -1 means all components.
+     * applies to; -1 means all components. A component is refused
+     * together with a trace other than essential.
      *
-     * A trace other than essential or all selects a part of a vector
-     * field; whether a component makes sense together with it is decided
-     * by the space that consumes the condition (e.g. gsDiscreteSpace).
+     * A trace normal or tangential selects a part of a vector field. Only
+     * spaces that support it accept it; the assemblers of the core
+     * library refuse it.
      */
     void addCondition(int p, boxSide s, condition_type::type t, trace_type::type tr,
                       gsFunctionSet<T> * f, short_t unknown = 0, bool parametric = false,
@@ -729,12 +771,7 @@ public:
         function_ptr fun = memory::make_shared_not_owned(f);
         auto bc = boundary_condition<T>(p,s,fun,t,unknown,comp,parametric);
         bc.m_trace = tr;
-        const auto & c = m_bc[bc.ctype()];
-        auto it = std::find_if(c.begin(), c.end(), [&bc](const boundary_condition<T> & b){ return bc.isSame(b); });
-        if (it==c.end())
-            m_bc[bc.ctype()].push_back(bc);
-        else // bc of this type and trace is already defined on patch p and side s
-            gsWarn<<"Condition of type "<<bc.ctype()<<" on patch "<<bc.patch()<<" side "<<bc.side()<<" of unknown "<<bc.unknown()<<" with trace "<<bc.trace()<<" ignored, because it has already been defined\n";
+        push(bc);
     }
 
     void addCondition(int p, boxSide s, condition_type::type t,
@@ -915,7 +952,8 @@ public:
         for(const_iterator it = bc_all.begin(); it!= bc_all.end();it++)
         {
             if((*it).patch()==np)
-                result.add(0,(*it).side(),it->ctype(),(*it).function(),(*it).unknown());
+                result.add(0,(*it).side(),it->ctype(),(*it).function(),(*it).unknown(),
+                           (*it).unkComponent(),(*it).parametric(),(*it).trace());
         }
 
         for(const_citerator it = cornerBegin(); it!= cornerEnd();it++)
@@ -992,6 +1030,28 @@ public:
     {
         GISMO_ASSERT(nullptr!=m_patches, "Geometry map was not provided in BC.");
         return *m_patches;
+    }
+
+private:
+    // Appends bc to the list of its type, refusing a component together
+    // with a trace and a condition overlapping one already in that list
+    void push(const boundary_condition<T> & bc)
+    {
+        GISMO_ENSURE(bc.unkComponent() < 0 || bc.trace() == trace_type::essential,
+                     "The " << bc.ctype() << " condition on patch " << bc.patch() << ", side "
+                     << bc.side() << " of unknown " << bc.unknown() << " names component "
+                     << bc.unkComponent() << " and the trace " << bc.trace()
+                     << "; a condition on one component takes no trace.");
+        bcContainer & list = m_bc[bc.ctype()];
+        for (const boundary_condition<T> & b : list)
+            GISMO_ENSURE(!bc.overlaps(b),
+                         "The " << bc.ctype() << " condition on patch " << bc.patch() << ", side "
+                         << bc.side() << " of unknown " << bc.unknown() << " (component "
+                         << bc.unkComponent() << ", trace " << bc.trace() << ") overlaps one "
+                         "already defined there (component " << b.unkComponent() << ", trace "
+                         << b.trace() << "). Conditions on one side may only name different "
+                         "components, or constrain the normal and the tangential part.");
+        list.push_back(bc);
     }
 
 private: // Data members

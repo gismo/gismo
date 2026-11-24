@@ -212,6 +212,9 @@ void checkGsBoundaryCondition(const gsBoundaryConditions<real_t> & sut)
     CHECK_EQUAL(3, c);
 }
 
+namespace
+{
+
 // Two unit-square patches with a degree-2 basis, 2 knots inserted per span
 // (3x3 elements, 5x5 functions per patch): small, with boundary dofs on every side.
 gsMultiBasis<real_t> traceTestPatches(gsMultiPatch<real_t> & mp)
@@ -223,39 +226,28 @@ gsMultiBasis<real_t> traceTestPatches(gsMultiPatch<real_t> & mp)
     return mb;
 }
 
-// Condition set with Dirichlet data g on (patch 0, west) and (patch 1, east).
-// With traced == false the conditions use the overload without trace
-// selector; with traced == true the same sides, function and unknown are
-// added with trace_type::normal and trace_type::tangential.
+// Condition set with Dirichlet data g on (patch 0, west) and (patch 1, east),
+// both with the trace tr
 gsBoundaryConditions<real_t> traceTestConditions(gsFunctionExpr<real_t> & g,
                                                  const gsMultiPatch<real_t> & mp,
-                                                 bool traced)
+                                                 trace_type::type tr)
 {
     gsBoundaryConditions<real_t> bcs;
-    if (traced)
-    {
-        bcs.addCondition(0, boundary::west, condition_type::dirichlet,
-                         trace_type::normal, &g);
-        bcs.addCondition(1, boundary::east, condition_type::dirichlet,
-                         trace_type::tangential, &g);
-    }
-    else
-    {
-        bcs.addCondition(0, boundary::west, condition_type::dirichlet, &g);
-        bcs.addCondition(1, boundary::east, condition_type::dirichlet, &g);
-    }
+    bcs.addCondition(0, boundary::west, condition_type::dirichlet, tr, &g);
+    bcs.addCondition(1, boundary::east, condition_type::dirichlet, tr, &g);
     bcs.setGeoMap(mp);
     return bcs;
 }
 
-// Trace of the first condition in the container on (patch, side); -1 if there is none
-int traceOnSide(const gsBoundaryConditions<real_t>::bcContainer & list,
-                index_t patch, boxSide side)
+// Number of conditions in the container on (patch, side) with the trace tr
+int countTrace(const gsBoundaryConditions<real_t>::bcContainer & list,
+               index_t patch, boxSide side, trace_type::type tr)
 {
+    int n = 0;
     for (auto it = list.begin(); it != list.end(); ++it)
-        if (it->patch() == patch && it->side() == side)
-            return static_cast<int>(it->trace());
-    return -1;
+        if (it->patch() == patch && it->side() == side && it->trace() == tr)
+            ++n;
+    return n;
 }
 
 // The two mappers have the same sizes and the same flat-local to global numbering
@@ -269,6 +261,8 @@ void checkSameMapper(const gsDofMapper & a, const gsDofMapper & b)
     if (va.size() == vb.size())
         CHECK(va == vb);
 }
+
+} // namespace
 
 SUITE(gsBoundaryConditions_test)
 {
@@ -421,13 +415,15 @@ SUITE(gsBoundaryConditions_test)
     // Property: a data file that predates the trace selector (no "trace"
     // attribute on any <bc>) reads as essential everywhere. bc.xml holds 6
     // Dirichlet and 2 Neumann conditions (see checkGsBoundaryCondition); the
-    // count check makes sure the loop below is not vacuous.
+    // count check makes sure the loops below are not vacuous.
     TEST(trace_xml_missing_attribute_reads_essential)
     {
         std::string path = gsFileManager::findInDataDir("gsBoundaryConditions/bc.xml");
         gsBoundaryConditions<real_t> bcs = gsBoundaryConditions_loadFromFile(path);
         CHECK_EQUAL(6u, bcs.dirichletSides().size());
         CHECK_EQUAL(2u, bcs.neumannSides().size());
+
+        // Every condition read carries the default trace
         for (size_t i = 0; i < bcs.dirichletSides().size(); ++i)
             CHECK_EQUAL(trace_type::essential, bcs.dirichletSides()[i].trace());
         for (size_t i = 0; i < bcs.neumannSides().size(); ++i)
@@ -436,16 +432,18 @@ SUITE(gsBoundaryConditions_test)
 
     // Property: traces survive a write/read cycle and the "trace" attribute
     // appears in the file. The traces written are the ones assigned below, so
-    // the reference is the input itself. Each condition has its own function
-    // object so that the writer puts them in separate <bc> nodes.
+    // the reference is the input itself.
     TEST(trace_xml_round_trip)
     {
-        gsFunctionExpr<real_t> g0("0", 2), g1("1", 2), g2("2", 2), g3("3", 2);
+        // The normal and the tangential condition on (0, west) share one
+        // function, so the writer must keep them apart by their trace; the
+        // other two have functions of their own.
+        gsFunctionExpr<real_t> g0("0", 2), g1("1", 2), g3("3", 2);
         gsBoundaryConditions<real_t> bcs;
         bcs.addCondition(0, boundary::west, condition_type::dirichlet,
                          trace_type::normal, &g1);
-        bcs.addCondition(0, boundary::east, condition_type::dirichlet,
-                         trace_type::tangential, &g2);
+        bcs.addCondition(0, boundary::west, condition_type::dirichlet,
+                         trace_type::tangential, &g1);
         bcs.addCondition(0, boundary::south, condition_type::dirichlet, &g0);
         bcs.addCondition(0, boundary::north, condition_type::neumann,
                          trace_type::all, &g3);
@@ -459,17 +457,14 @@ SUITE(gsBoundaryConditions_test)
         ss << in.rdbuf();
         CHECK(std::string::npos != ss.str().find("trace="));
 
+        // Each condition comes back once, with its trace
         gsBoundaryConditions<real_t> back = gsBoundaryConditions_loadFromFile(path);
         CHECK_EQUAL(3u, back.dirichletSides().size());
         CHECK_EQUAL(1u, back.neumannSides().size());
-        CHECK_EQUAL(static_cast<int>(trace_type::normal),
-                    traceOnSide(back.dirichletSides(), 0, boundary::west));
-        CHECK_EQUAL(static_cast<int>(trace_type::tangential),
-                    traceOnSide(back.dirichletSides(), 0, boundary::east));
-        CHECK_EQUAL(static_cast<int>(trace_type::essential),
-                    traceOnSide(back.dirichletSides(), 0, boundary::south));
-        CHECK_EQUAL(static_cast<int>(trace_type::all),
-                    traceOnSide(back.neumannSides(), 0, boundary::north));
+        CHECK_EQUAL(1, countTrace(back.dirichletSides(), 0, boundary::west, trace_type::normal));
+        CHECK_EQUAL(1, countTrace(back.dirichletSides(), 0, boundary::west, trace_type::tangential));
+        CHECK_EQUAL(1, countTrace(back.dirichletSides(), 0, boundary::south, trace_type::essential));
+        CHECK_EQUAL(1, countTrace(back.neumannSides(), 0, boundary::north, trace_type::all));
     }
 
     // Property: a set with only default traces writes no "trace" attribute
@@ -502,7 +497,7 @@ SUITE(gsBoundaryConditions_test)
     // Property: isSame distinguishes conditions that differ only in the
     // trace, and still identifies conditions with equal traces. Expected
     // truth values follow from the definition (same patch side, unknown,
-    // component and trace) and from the duplicate rule of addCondition.
+    // component and trace).
     TEST(trace_isSame)
     {
         gsFunctionExpr<real_t> g("0", 2), h("1", 2);
@@ -513,7 +508,8 @@ SUITE(gsBoundaryConditions_test)
         n2c.addCondition(0, boundary::west, condition_type::dirichlet,
                          trace_type::normal, &h);
 
-        // isSame is non-const, so work on copies
+        // isSame is non-const, so work on copies; n1 and n2 differ in the
+        // function only, a and n1 in the trace only
         boundary_condition<real_t> a  = d.dirichletSides()[0];
         boundary_condition<real_t> n1 = n1c.dirichletSides()[0];
         boundary_condition<real_t> n2 = n2c.dirichletSides()[0];
@@ -522,111 +518,164 @@ SUITE(gsBoundaryConditions_test)
         CHECK(!a.isSame(n1));
         CHECK(!n1.isSame(a));
         CHECK(n1.isSame(n2));
-
-        // Default and normal condition on the same side are both kept
-        gsBoundaryConditions<real_t> both;
-        both.addCondition(0, boundary::west, condition_type::dirichlet, &g);
-        both.addCondition(0, boundary::west, condition_type::dirichlet,
-                          trace_type::normal, &g);
-        CHECK_EQUAL(2u, both.dirichletSides().size());
     }
 
-    // Property: the trace overload of addCondition stores the component it is
-    // given (unknown 0, not parametric, component 1) together with the trace,
-    // and keeps -1 (all components) when no component is passed.
-    TEST(trace_with_component)
+    // Property: conditions of one type on one patch side for one unknown are
+    // kept only if they constrain disjoint parts: different components, or
+    // the normal and the tangential part. Every other combination, an exact
+    // duplicate included, throws and leaves the set as it was. The expected
+    // outcomes are the rule itself.
+    TEST(overlapping_conditions)
     {
         gsFunctionExpr<real_t> g("0", 2);
-        gsBoundaryConditions<real_t> bcs;
-        bcs.addCondition(0, boundary::west, condition_type::dirichlet,
-                         trace_type::normal, &g, 0, false, 1);
-        bcs.addCondition(0, boundary::east, condition_type::dirichlet,
-                         trace_type::normal, &g);
-        CHECK_EQUAL(2u, bcs.dirichletSides().size());
-        CHECK_EQUAL(trace_type::normal, bcs.dirichletSides()[0].trace());
-        CHECK_EQUAL(1, bcs.dirichletSides()[0].unkComponent());
-        CHECK_EQUAL(trace_type::normal, bcs.dirichletSides()[1].trace());
-        CHECK_EQUAL(-1, bcs.dirichletSides()[1].unkComponent());
+
+        // Accepted: different components; normal with tangential; the same
+        // side for another unknown or another condition type
+        gsBoundaryConditions<real_t> ok;
+        ok.addCondition(0, boundary::west, condition_type::dirichlet, &g, 0, false, 0);
+        ok.addCondition(0, boundary::west, condition_type::dirichlet, &g, 0, false, 1);
+        ok.addCondition(0, boundary::east, condition_type::dirichlet, trace_type::normal, &g);
+        ok.addCondition(0, boundary::east, condition_type::dirichlet, trace_type::tangential, &g);
+        ok.addCondition(0, boundary::east, condition_type::dirichlet, &g, 1);
+        ok.addCondition(0, boundary::east, condition_type::neumann, trace_type::tangential, &g);
+        CHECK_EQUAL(5u, ok.dirichletSides().size());
+        CHECK_EQUAL(1u, ok.neumannSides().size());
+
+        // Refused: each addCondition below overlaps a condition of ok
+        CHECK_THROW(ok.addCondition(0, boundary::west, condition_type::dirichlet, &g, 0, false, 1),
+                    std::runtime_error); // exact duplicate
+        CHECK_THROW(ok.addCondition(0, boundary::west, condition_type::dirichlet, &g),
+                    std::runtime_error); // all components over component 0
+        CHECK_THROW(ok.addCondition(0, boundary::east, condition_type::dirichlet, trace_type::all, &g),
+                    std::runtime_error); // all over normal
+        CHECK_THROW(ok.addCondition(0, boundary::east, condition_type::dirichlet, trace_type::normal, &g),
+                    std::runtime_error); // normal twice
+        CHECK_THROW(ok.addCondition(0, boundary::east, condition_type::dirichlet, &g, 0, false, 0),
+                    std::runtime_error); // component 0 over normal
+        CHECK_EQUAL(5u, ok.dirichletSides().size());
+
+        // Refused: essential over all, which constrain the same components
+        gsBoundaryConditions<real_t> full;
+        full.addCondition(0, boundary::west, condition_type::dirichlet, trace_type::all, &g);
+        CHECK_THROW(full.addCondition(0, boundary::west, condition_type::dirichlet, &g),
+                    std::runtime_error);
+
+        // Refused: a component together with a trace
+        gsBoundaryConditions<real_t> comp;
+        CHECK_THROW(comp.addCondition(0, boundary::west, condition_type::dirichlet,
+                                      trace_type::normal, &g, 0, false, 1),
+                    std::runtime_error);
+        CHECK_EQUAL(0u, comp.dirichletSides().size());
     }
 
-    // Property: createMapper ignores the trace. Two condition sets that differ
-    // only in the traces must give the same mapper; the reference is the
-    // mapper of the set without traces.
-    TEST(trace_inert_createMapper)
+    // Property: getConditionsForPatch keeps the component, the trace and the
+    // parametric flag of each condition, so two conditions on different
+    // components of one side are copied as two disjoint conditions.
+    TEST(conditions_for_patch_keep_component)
+    {
+        gsFunctionExpr<real_t> g("0", 2);
+        gsBoundaryConditions<real_t> bcs, onPatch;
+        bcs.addCondition(1, boundary::west, condition_type::dirichlet, &g, 0, true, 0);
+        bcs.addCondition(1, boundary::west, condition_type::dirichlet, &g, 0, false, 1);
+        bcs.addCondition(1, boundary::east, condition_type::dirichlet, trace_type::normal, &g);
+        bcs.getConditionsForPatch(1, onPatch);
+
+        // Patch 1 becomes patch 0 of the copy
+        CHECK_EQUAL(3u, onPatch.dirichletSides().size());
+        CHECK_EQUAL(0, onPatch.dirichletSides()[0].patch());
+        CHECK_EQUAL(0, onPatch.dirichletSides()[0].unkComponent());
+        CHECK(onPatch.dirichletSides()[0].parametric());
+        CHECK_EQUAL(1, onPatch.dirichletSides()[1].unkComponent());
+        CHECK(!onPatch.dirichletSides()[1].parametric());
+        CHECK_EQUAL(trace_type::normal, onPatch.dirichletSides()[2].trace());
+    }
+
+    // Property: createMapper accepts the traces essential and all, which
+    // both constrain every component, and refuses normal and tangential,
+    // which it cannot impose. The reference for the accepted traces is the
+    // mapper of the set with the default trace.
+    TEST(trace_createMapper)
     {
         gsMultiPatch<real_t> mp;
         gsMultiBasis<real_t> mb = traceTestPatches(mp);
         gsFunctionExpr<real_t> g("x*y", 2);
-        gsBoundaryConditions<real_t> A = traceTestConditions(g, mp, false);
-        gsBoundaryConditions<real_t> B = traceTestConditions(g, mp, true);
+        gsBoundaryConditions<real_t> E = traceTestConditions(g, mp, trace_type::essential);
+        gsBoundaryConditions<real_t> A = traceTestConditions(g, mp, trace_type::all);
+        gsBoundaryConditions<real_t> N = traceTestConditions(g, mp, trace_type::normal);
+        gsBoundaryConditions<real_t> Tn = traceTestConditions(g, mp, trace_type::tangential);
 
-        // Guards against a vacuous comparison: B really carries traces
-        CHECK_EQUAL(2u, B.dirichletSides().size());
-        for (size_t i = 0; i < B.dirichletSides().size(); ++i)
-            CHECK(trace_type::essential != B.dirichletSides()[i].trace());
-
+        gsDofMapper mE = createMapper(mb, E, 1, 0, true, true);
         gsDofMapper mA = createMapper(mb, A, 1, 0, true, true);
-        gsDofMapper mB = createMapper(mb, B, 1, 0, true, true);
-        CHECK(mA.boundarySize() > 0);
-        checkSameMapper(mA, mB);
+        CHECK(mE.boundarySize() > 0);
+        checkSameMapper(mE, mA);
+
+        CHECK_THROW(createMapper(mb, N, 1, 0, true, true), std::runtime_error);
+        CHECK_THROW(createMapper(mb, Tn, 1, 0, true, true), std::runtime_error);
     }
 
-    // Property: the expression-assembler space gives the same mapper and the
-    // same interpolated Dirichlet values with and without traces.
-    TEST(trace_inert_exprAssembler)
+    // Property: an expression-assembler space gives the same mapper and the
+    // same interpolated Dirichlet values for the traces essential and all,
+    // and refuses normal in its setup and in gsDirichletValues.
+    TEST(trace_exprAssembler)
     {
         gsMultiPatch<real_t> mp;
         gsMultiBasis<real_t> mb = traceTestPatches(mp);
-        gsFunctionExpr<real_t> g("x*y", 2);
-        gsBoundaryConditions<real_t> A = traceTestConditions(g, mp, false);
-        gsBoundaryConditions<real_t> B = traceTestConditions(g, mp, true);
-        for (size_t i = 0; i < B.dirichletSides().size(); ++i)
-            CHECK(trace_type::essential != B.dirichletSides()[i].trace());
+        // Non-zero on both Dirichlet sides (x = 0 and x = 2), so the
+        // interpolated values are non-trivial
+        gsFunctionExpr<real_t> g("1 + x*y", 2);
+        gsBoundaryConditions<real_t> E = traceTestConditions(g, mp, trace_type::essential);
+        gsBoundaryConditions<real_t> A = traceTestConditions(g, mp, trace_type::all);
+        gsBoundaryConditions<real_t> N = traceTestConditions(g, mp, trace_type::normal);
 
-        gsExprAssembler<real_t> eaA(1,1), eaB(1,1);
+        gsExprAssembler<real_t> eaE(1,1), eaA(1,1), eaN(1,1);
+        eaE.setIntegrationElements(mb);
         eaA.setIntegrationElements(mb);
-        eaB.setIntegrationElements(mb);
+        eaN.setIntegrationElements(mb);
+        auto uE = eaE.getSpace(mb);
         auto uA = eaA.getSpace(mb);
-        auto uB = eaB.getSpace(mb);
+        auto uN = eaN.getSpace(mb);
+        uE.setup(E, dirichlet::interpolation, 0);
         uA.setup(A, dirichlet::interpolation, 0);
-        uB.setup(B, dirichlet::interpolation, 0);
+        CHECK(uE.mapper().boundarySize() > 0);
+        checkSameMapper(uE.mapper(), uA.mapper());
 
-        CHECK(uA.mapper().boundarySize() > 0);
-        checkSameMapper(uA.mapper(), uB.mapper());
-
-        // x*y is not identically zero on the Dirichlet sides, so the
-        // interpolated values are non-trivial; they must agree exactly since
-        // the same data goes through the same code path.
+        // The interpolation does not read the trace, so the same operations
+        // on the same data give the same values, bit for bit
+        const gsMatrix<real_t> & fE = uE.fixedPart();
         const gsMatrix<real_t> & fA = uA.fixedPart();
-        const gsMatrix<real_t> & fB = uB.fixedPart();
-        CHECK_EQUAL(fA.rows(), fB.rows());
-        CHECK_EQUAL(fA.cols(), fB.cols());
-        CHECK(fA.rows() > 0);
-        CHECK(fA.cwiseAbs().maxCoeff() > 0);
-        if (fA.rows() == fB.rows() && fA.cols() == fB.cols())
-            CHECK(fA == fB);
+        CHECK_EQUAL(fE.rows(), fA.rows());
+        CHECK_EQUAL(fE.cols(), fA.cols());
+        CHECK(fE.rows() > 0);
+        CHECK(fE.cwiseAbs().minCoeff() > 0);
+        if (fE.rows() == fA.rows() && fE.cols() == fA.cols())
+            CHECK(fE == fA);
+
+        // Normal is refused by the setup, and by gsDirichletValues on a
+        // space set up without it
+        CHECK_THROW(uN.setup(N, dirichlet::interpolation, 0), std::runtime_error);
+        CHECK_THROW(gsDirichletValues(N, dirichlet::interpolation, uE), std::runtime_error);
     }
 
-    // Property: gsPoissonAssembler builds the same dof mapper (and hence the
-    // same number of dofs) with and without traces on the Dirichlet data.
-    TEST(trace_inert_poissonAssembler)
+    // Property: gsPoissonAssembler builds the same dof mapper with the
+    // traces essential and all, and refuses tangential.
+    TEST(trace_poissonAssembler)
     {
         gsMultiPatch<real_t> mp;
         gsMultiBasis<real_t> mb = traceTestPatches(mp);
         gsFunctionExpr<real_t> g("x*y", 2), rhs("1", 2);
-        gsBoundaryConditions<real_t> A = traceTestConditions(g, mp, false);
-        gsBoundaryConditions<real_t> B = traceTestConditions(g, mp, true);
-        for (size_t i = 0; i < B.dirichletSides().size(); ++i)
-            CHECK(trace_type::essential != B.dirichletSides()[i].trace());
+        gsBoundaryConditions<real_t> E = traceTestConditions(g, mp, trace_type::essential);
+        gsBoundaryConditions<real_t> A = traceTestConditions(g, mp, trace_type::all);
+        gsBoundaryConditions<real_t> Tn = traceTestConditions(g, mp, trace_type::tangential);
 
+        // Same number of dofs and same numbering for essential and all
+        gsPoissonAssembler<real_t> pE(mp, mb, E, rhs);
         gsPoissonAssembler<real_t> pA(mp, mb, A, rhs);
-        gsPoissonAssembler<real_t> pB(mp, mb, B, rhs);
-
-        CHECK_EQUAL(pA.numDofs(), pB.numDofs());
+        CHECK_EQUAL(pE.numDofs(), pA.numDofs());
+        const gsDofMapper & mE = pE.system().colMapper(0);
         const gsDofMapper & mA = pA.system().colMapper(0);
-        const gsDofMapper & mB = pB.system().colMapper(0);
-        CHECK(mA.boundarySize() > 0);
-        checkSameMapper(mA, mB);
-    }
+        CHECK(mE.boundarySize() > 0);
+        checkSameMapper(mE, mA);
 
+        CHECK_THROW(gsPoissonAssembler<real_t> pT(mp, mb, Tn, rhs), std::runtime_error);
+    }
 }

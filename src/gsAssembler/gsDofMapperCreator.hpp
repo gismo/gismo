@@ -27,6 +27,28 @@
 namespace gismo
 {
 
+namespace internal
+{
+
+// Checks a strong condition that createMapper is about to impose on whole
+// components: refuses a normal or tangential trace, which the mapper cannot
+// express
+template<class T>
+void checkMapperCondition(const boundary_condition<T> & bc, size_t numPatches, index_t nComp)
+{
+    GISMO_ENSURE(bc.trace() == trace_type::essential || bc.trace() == trace_type::all,
+                 "createMapper: the " << bc.ctype() << " condition on patch " << bc.ps.patch << ", side "
+                 << bc.ps.side() << " constrains the " << bc.trace() << " part, which "
+                 "this mapper cannot impose; it constrains whole components (trace "
+                 "essential or all).");
+    GISMO_ASSERT(static_cast<size_t>(bc.ps.patch) < numPatches,
+                 "Problem: a boundary condition is set on a patch id which does not exist.");
+    GISMO_ASSERT(bc.unkComponent() >= -1 && bc.unkComponent() < nComp,
+                 "Problem: a boundary condition is set on a component which does not exist.");
+}
+
+} // namespace internal
+
 template<class T>
 gsDofMapper createMapper(const std::vector<const gsFunctionSet<T>*> & bases,
                          const gsBoxTopology           & topology,
@@ -108,12 +130,9 @@ gsDofMapper createMapper(const std::vector<const gsFunctionSet<T>*> & bases,
         {
             if (unk!=-1 && it->unknown() != unk) continue;
 
-            GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < mapper.numPatches(),
-                        "Problem: a boundary condition is set on a patch id which does not exist.");
+            internal::checkMapperCondition(*it, mapper.numPatches(), nComp);
 
             const index_t cc = it->unkComponent();
-            GISMO_ASSERT(cc >= -1 && cc < nComp,
-                         "Problem: a boundary condition is set on a component which does not exist.");
             for (index_t c = 0; c != nComp; ++c)
             {
                 if (cc == -1 || c == cc)
@@ -130,8 +149,7 @@ gsDofMapper createMapper(const std::vector<const gsFunctionSet<T>*> & bases,
         {
             if (unk!=-1 && it->unknown() != unk) continue;
 
-            GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < mapper.numPatches(),
-                            "Problem: a boundary condition is set on a patch id which does not exist.");
+            internal::checkMapperCondition(*it, mapper.numPatches(), nComp);
 
             const index_t cc = it->unkComponent();
             for (index_t c = 0; c!=nComp; c++) // for all components
@@ -155,8 +173,7 @@ gsDofMapper createMapper(const std::vector<const gsFunctionSet<T>*> & bases,
         {
             if (unk!=-1 && it->unknown() != unk) continue;
 
-            GISMO_ASSERT(static_cast<size_t>(it->ps.patch) < mapper.numPatches(),
-                            "Problem: a boundary condition is set on a patch id which does not exist.");
+            internal::checkMapperCondition(*it, mapper.numPatches(), nComp);
             const index_t cc = it->unkComponent();
             for (index_t c = 0; c!=nComp; c++) // for all components
             {

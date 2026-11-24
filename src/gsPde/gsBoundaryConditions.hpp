@@ -51,9 +51,8 @@ private:
         if (name == "all")        return trace_type::all;
         if (name == "normal")     return trace_type::normal;
         if (name == "tangential") return trace_type::tangential;
-        GISMO_ENSURE(name == "tangential", "Unknown value \""<<name<<"\" of the attribute \"trace\" of a boundary condition;"
-                     " expected essential, all, normal or tangential");
-        return trace_type::tangential;
+        GISMO_ERROR("Unknown value \""<<name<<"\" of the attribute \"trace\" of a boundary condition;"
+                    " expected essential, all, normal or tangential");
     }
 public:
     GSXML_COMMON_FUNCTIONS(Object);
@@ -206,8 +205,7 @@ public:
                it != boundaries.end(); ++it)
           {
             result.add(it->patch, it->side(), bctype, function_map[fIndex], uIndex,
-                       cIndex, ispar);
-            (--result.end(bctype))->m_trace = tr;
+                       cIndex, ispar, tr);
           }
         }
 

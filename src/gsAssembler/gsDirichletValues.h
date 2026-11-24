@@ -37,6 +37,15 @@ void gsDirichletValues(
 {
     if ( bc.container("Dirichlet").empty() && bc.cornerValues().empty()) return;
 
+    for (typename gsBoundaryConditions<T>::const_iterator it = bc.begin("Dirichlet");
+         it != bc.end("Dirichlet"); ++it)
+        GISMO_ENSURE(it->unknown() != u.id() || it->trace() == trace_type::essential
+                     || it->trace() == trace_type::all,
+                     "gsDirichletValues: the Dirichlet condition on patch " << it->patch()
+                     << ", side " << it->side() << " constrains the " << it->trace()
+                     << " part, which these values cannot impose; they set whole components "
+                     "(trace essential or all).");
+
     const gsDofMapper & mapper = u.mapper();
     gsMatrix<T> & fixedDofs = const_cast<expr::gsFeSpace<T>&>(u).fixedPart();
     fixedDofs.setZero(u.mapper().boundarySize(), 1 );
