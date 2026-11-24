@@ -54,6 +54,8 @@
 
 #include <iomanip>
 #include <map>
+#include <set>
+#include <sstream>
 #include <vector>
 
 using namespace gismo;
@@ -320,7 +322,27 @@ struct fcmParams
     // that the two results overlay in ParaView (x_out = toPhys*x_box + shift).
     real_t      toPhys       = 1.0;
     real_t      shift[3]     = {0, 0, 0};
+    std::string saveAt       = "";    // times [day] at which N is written (--saveAt)
 };
+
+// --saveAt "t1,t2,...": times [day] -> time-step numbers (t = 0 is step 0)
+inline std::set<index_t> fkSaveSteps(const std::string & s, real_t dt)
+{
+    std::set<index_t> steps;
+    std::stringstream ss(s);
+    std::string tok;
+    while (std::getline(ss, tok, ','))
+    {
+        if (tok.find_first_not_of(" \t") == std::string::npos) continue;
+        const real_t  t = std::stod(tok);
+        const index_t n = static_cast<index_t>(math::floor(t / dt + 0.5));
+        if (math::abs(n * dt - t) > 1e-8 * math::max((real_t)1, t))
+            gsWarn << "--saveAt " << t << " is not a multiple of dt; saving at t = "
+                   << n * dt << " instead.\n";
+        steps.insert(n);
+    }
+    return steps;
+}
 
 // Map 3 x n box points (in place) to the output coordinates.
 template <class T>
@@ -1054,7 +1076,23 @@ void solve(gsMultiPatch<T> & mp,
         csvFile.flush();
         int_N_prev = int_N;
     };
+    // --saveAt: the background spline over [0,1]^3. The background map is the
+    // identity, so this is N as a function of the box coordinates x, the same
+    // coordinates as the body-fitted geometry (compare with the body-fitted
+    // code: --cmpA <this file> --cmpAType im). Inactive coefficients stay at
+    // their initial value; only N inside Omega is meaningful.
+    const std::set<index_t> saveSteps = fkSaveSteps(fcm.saveAt, dt);
+    auto saveN = [&](index_t n)
+    {
+        if (!saveSteps.count(n)) return;
+        typename gsGeometry<T>::uPtr geo = dbasis.basis(0).makeGeometry(Nold);
+        const std::string fn = out + "/N_t" + util::to_string(n*dt) + ".xml";
+        gsWrite(*geo, fn);
+        gsInfo << "  Solution written: " << fn << "\n";
+    };
+
     writeBio(0, 0.0);
+    saveN(0);
     const real_t V_P_relerr = math::abs(V_P*L3 - volExact) / volExact;
     const real_t tSetup = swTotal.stop();
 
@@ -1145,6 +1183,7 @@ void solve(gsMultiPatch<T> & mp,
         writeOut(Nold, step+1, (step+1)*dt);
 
         writeBio(step+1, (step+1)*dt);
+        saveN(step+1);
 
         itsTotal    += its;
         tSolveTotal += tSolve;
@@ -1281,6 +1320,7 @@ int main(int argc, char *argv[])
     cmd.addInt("", "plotRes", "Sample points per direction of the plotted N field", fcm.plotRes);
     cmd.addSwitch("plotPoints", "Additionally dump N at the immersed quadrature points", fcm.plotPoints);
     cmd.addSwitch("noPlotMesh", "Do not write the background grid", noPlotMesh);
+    cmd.addString("", "saveAt", "Write the solution spline at these times [day], e.g. 365,730 (file <out>/N_t<time>.xml)", fcm.saveAt);
 
     try { cmd.getValues(argc, argv); } catch (int rv) { return rv; }
     fcm.plotMesh = !noPlotMesh;

@@ -70,6 +70,8 @@
     Author(s): L. Venta-Viñuela
 */
 #include <gismo.h>
+#include <set>
+#include <sstream>
 
 using namespace gismo;
 
@@ -342,6 +344,25 @@ gsFunctionExpr<T> tumorSeed(const fkParams<T> & par, const gsMultiPatch<T> & mp)
     return gsFunctionExpr<T>(expr.str(), dim);
 }
 
+// --saveAt "t1,t2,...": times [day] -> time-step numbers (t = 0 is step 0)
+inline std::set<index_t> fkSaveSteps(const std::string & s, real_t dt)
+{
+    std::set<index_t> steps;
+    std::stringstream ss(s);
+    std::string tok;
+    while (std::getline(ss, tok, ','))
+    {
+        if (tok.find_first_not_of(" \t") == std::string::npos) continue;
+        const real_t  t = std::stod(tok);
+        const index_t n = static_cast<index_t>(math::floor(t / dt + 0.5));
+        if (math::abs(n * dt - t) > 1e-8 * math::max((real_t)1, t))
+            gsWarn << "--saveAt " << t << " is not a multiple of dt; saving at t = "
+                   << n * dt << " instead.\n";
+        steps.insert(n);
+    }
+    return steps;
+}
+
 template <class T, class Expr>
 T computeInt(const gsMultiBasis<T>  & integrationBasis,
                 const gsFunctionSet<T> & geometryMap,
@@ -390,11 +411,13 @@ void solve(gsMultiPatch<T> & mp,
            const std::string & linSolver = "cgdiag", // cgdiag | cgic | direct
            index_t cgMaxIt = 20000,
            real_t  cgTol   = 1e-8,   // relative to ||rhs||
-           bool    cond    = false)  // estimate the condition number of the first matrix
+           bool    cond    = false,  // estimate the condition number of the first matrix
+           const std::string & saveAt = "") // times [day] at which N is written (--saveAt)
 {
     // Everything below runs in BOX units (lengths / L); the csv converts back.
     const fkParams<T> par = fkToBox(parPhys);
     const real_t L3 = parPhys.L * parPhys.L * parPhys.L; // box volume -> mm^3
+    const std::set<index_t> saveSteps = fkSaveSteps(saveAt, dt);
     gsStopwatch swTotal; // wall time of the whole solve (setup + time loop)
     // -------------------------------------------------------------------------
     // 1. Basis & Problem Setup (Uniform Tensor Product Basis, No Adaptivity)
@@ -799,8 +822,21 @@ void solve(gsMultiPatch<T> & mp,
         csvFile.flush();
         int_N_prev = int_N;
     };
+    // --saveAt: the solution spline in PARAMETER space (u,v,w) of the torus map.
+    // All body-fitted levels share that map, so files of different levels are
+    // compared at the same (u,v,w) (see fkCompare). With the periodic seam the
+    // w-knots are unclamped; the spline is written as it is.
+    auto saveN = [&](index_t n)
+    {
+        if (!saveSteps.count(n)) return;
+        const std::string fn = out + "/N_t" + util::to_string(n*dt) + ".xml";
+        gsWrite(mp_nold.patch(0), fn);
+        gsInfo << "  Solution written: " << fn << "\n";
+    };
+
     Nnew = Nold;
     writeBio(0, 0.0);
+    saveN(0);
     const real_t V_P_relerr = math::abs(V_P*L3 - volExact) / volExact;
 
     // Quadrature points: (Gauss rule per element) x (elements)
@@ -882,6 +918,7 @@ void solve(gsMultiPatch<T> & mp,
             writeFrame((step+1)*dt);
 
         writeBio(step+1, (step+1)*dt);
+        saveN(step+1);
 
         itsTotal    += its;
         tSolveTotal += tSolve;
@@ -931,6 +968,107 @@ void solve(gsMultiPatch<T> & mp,
            << (maxSteps ? (real_t)itsTotal / maxSteps : 0) << " its/step), total "
            << tTotal << " s\n";
 
+}
+
+// =============================================================================
+// FIELD COMPARISON (--cmpA / --cmpB): DSC, RMSE and relative L2 difference
+// =============================================================================
+// The six integrals, for any two field expressions a, b (see fkCompare):
+//   I[0] = int (a-b)^2,  I[1] = int b^2,  I[2] = int min(H_a, H_b),
+//   I[3] = int H_a,      I[4] = int H_b,  I[5] = int 1 = V_P
+// with H_x = 1/(1+exp(-k(x - N_th))), the same smoothed indicator as V_T.
+// The intersection uses min(H_a,H_b) (fuzzy Dice), not H_a*H_b: with a smoothed
+// H, H*H < H, so the product would give DSC(a,a) < 1 (0.97 at r3).
+// min(x,y) = (x + y - |x - y|)/2.
+template <class T, class EA, class EB, class GM>
+void fkCmpIntegrals(gsExprEvaluator<T> & ev, const EA & a, const EB & b, GM & G,
+                    T Nth, T k, T I[6])
+{
+    auto Ha = 1.0 / (1.0 + (-k * (a.val() - Nth)).exp());
+    auto Hb = 1.0 / (1.0 + (-k * (b.val() - Nth)).exp());
+    auto dH = Ha - Hb;
+    expr::abs_expr<decltype(dH)> absdH(dH);
+    I[0] = ev.integral((a - b).sqNorm() * meas(G));
+    I[1] = ev.integral(b.sqNorm() * meas(G));
+    I[2] = ev.integral(0.5 * (Ha + Hb - absdH) * meas(G));
+    I[3] = ev.integral(Ha * meas(G));
+    I[4] = ev.integral(Hb * meas(G));
+    I[5] = ev.integral(meas(G));
+}
+
+// Compares two saved solutions (--saveAt files) over the EXACT torus, on the
+// body-fitted quadrature of mesh level (numRefine, refTor):
+//   type "bf": a body-fitted file, a spline in the parameter space (u,v,w) of
+//              the torus map G; all body-fitted levels share G, so it is
+//              evaluated at the quadrature point u itself.
+//   type "im": an immersed file, a spline over the background box [0,1]^3 in
+//              box coordinates (identity map); evaluated at x = G(u).
+// Appends one row to csvOut:
+//   DSC  = 2 int H_a H_b / (int H_a + int H_b)
+//   RMSE = sqrt( int (a-b)^2 / V_P )
+//   e_L2 = ||a-b||_L2 / ||b||_L2      (b is the reference)
+template <class T>
+void fkCompare(const gsMultiPatch<T> & mp, index_t numRefine, index_t refTor, index_t quB,
+               const std::string & fileA, const std::string & typeA,
+               const std::string & fileB, const std::string & typeB,
+               T Nth, T L, const std::string & csvOut)
+{
+    GISMO_ENSURE((typeA == "bf" || typeA == "im") && (typeB == "bf" || typeB == "im"),
+                 "--cmpAType / --cmpBType must be bf or im.");
+    gsFileData<T> fa(fileA), fb(fileB);
+    typename gsGeometry<T>::uPtr ga = fa.template getFirst< gsGeometry<T> >();
+    typename gsGeometry<T>::uPtr gb = fb.template getFirst< gsGeometry<T> >();
+    GISMO_ENSURE(ga && gb, "Could not read a spline from " << fileA << " or " << fileB);
+
+    // Quadrature mesh: the body-fitted elements of level (numRefine, refTor).
+    // The two fields live on other meshes (non-matching), so use a fine level
+    // and extra Gauss points (quB).
+    gsMultiBasis<T> qb(mp, true);
+    for (index_t r = 0; r != numRefine; ++r) qb.basis(0).uniformRefine();
+    for (index_t r = 0; r != refTor; ++r)    qb.basis(0).uniformRefine(1, 1, 2);
+
+    gsExprAssembler<T> A(1, 1);
+    A.setIntegrationElements(qb);
+    A.options().setInt("quB", quB);
+    typename gsExprAssembler<T>::geometryMap G = A.getMap(mp);
+    gsExprEvaluator<T> ev(A);
+    ev.options().update(A.options(), gsOptionList::addIfUnknown);
+    ev.options().setSwitch("SameElement", false); // fields on other meshes
+
+    gsInfo << "Comparing A = " << fileA << " (" << typeA << ") with B = " << fileB << " ("
+           << typeB << "), quadrature on " << qb.basis(0).numElements() << " elements, "
+           << "quB = " << quB << "\n";
+    gsStopwatch sw;
+    const T k = 200.0; // same steepness as the biomarkers
+    T I[6];
+    if (typeA == "bf" && typeB == "bf")
+        fkCmpIntegrals(ev, A.getCoeff(*ga),    A.getCoeff(*gb),    G, Nth, k, I);
+    else if (typeA == "bf")
+        fkCmpIntegrals(ev, A.getCoeff(*ga),    A.getCoeff(*gb, G), G, Nth, k, I);
+    else if (typeB == "bf")
+        fkCmpIntegrals(ev, A.getCoeff(*ga, G), A.getCoeff(*gb),    G, Nth, k, I);
+    else
+        fkCmpIntegrals(ev, A.getCoeff(*ga, G), A.getCoeff(*gb, G), G, Nth, k, I);
+
+    const T L3   = L * L * L;
+    const T DSC  = 2 * I[2] / (I[3] + I[4]);
+    const T RMSE = math::sqrt(I[0] / I[5]);
+    const T eL2  = math::sqrt(I[0] / I[1]);
+    gsInfo << "  DSC = " << DSC << ", RMSE = " << RMSE << ", e_L2 = " << eL2
+           << ", V_T(A) = " << I[3]*L3 << " mm^3, V_T(B) = " << I[4]*L3
+           << " mm^3, V_P = " << I[5]*L3 << " mm^3 (" << sw.stop() << " s)\n";
+
+    const bool isNew = !gsFileManager::fileExists(csvOut);
+    std::ofstream f(csvOut.c_str(), std::ios::app);
+    f << std::setprecision(12);
+    if (isNew)
+        f << "fileA,typeA,fileB,typeB,numRefine,refTor,quB,DSC,RMSE,e_L2,"
+             "V_T_A,V_T_B,V_P,intH_AB\n";
+    f << fileA << "," << typeA << "," << fileB << "," << typeB << ","
+      << numRefine << "," << refTor << "," << quB << ","
+      << DSC << "," << RMSE << "," << eL2 << ","
+      << I[3]*L3 << "," << I[4]*L3 << "," << I[5]*L3 << "," << I[2]*L3 << "\n";
+    gsInfo << "  Row appended to " << csvOut << "\n";
 }
 
 // =============================================================================
@@ -1002,6 +1140,15 @@ int main(int argc, char *argv[])
     cmd.addInt   ("", "cgMaxIt", "Max CG iterations per linear solve", cgMaxIt);
     cmd.addReal  ("", "cgTol", "CG tolerance, relative to ||rhs||", cgTol);
     cmd.addSwitch("cond", "Estimate the condition number of the first system matrix (K and Jacobi-scaled)", cond);
+    std::string saveAt, cmpA, cmpB, cmpAType = "bf", cmpBType = "bf", cmpOut = "comparison.csv";
+    index_t cmpQuB = 2;
+    cmd.addString("", "saveAt", "Write the solution spline at these times [day], e.g. 365,730 (file <out>/N_t<time>.xml)", saveAt);
+    cmd.addString("", "cmpA", "Comparison mode (no time stepping): saved solution A", cmpA);
+    cmd.addString("", "cmpB", "Comparison mode: saved solution B (the reference for e_L2)", cmpB);
+    cmd.addString("", "cmpAType", "Type of file A: bf (body-fitted) | im (immersed)", cmpAType);
+    cmd.addString("", "cmpBType", "Type of file B: bf (body-fitted) | im (immersed)", cmpBType);
+    cmd.addString("", "cmpOut", "Comparison csv (one row appended per call)", cmpOut);
+    cmd.addInt   ("", "cmpQuB", "Comparison quadrature: quA*p + quB Gauss points per direction", cmpQuB);
     cmd.addReal("D", "diffusivity", "Tumor cell diffusivity D [mm^2/day]", par.D);
     cmd.addReal("p", "rho", "Net proliferation rate rho [1/day]", par.rho);
     cmd.addReal("R", "radius", "Radius R of the initial tumor [mm]", par.R);
@@ -1037,6 +1184,15 @@ int main(int argc, char *argv[])
            << bb(1,0) << "," << bb(1,1) << "] x [" << bb(2,0) << "," << bb(2,1) << "]\n";
     if (bb.minCoeff() < 0 || bb.maxCoeff() > 1)
         gsWarn << "The torus does not fit inside [0,1]^3.\n";
+
+    // Comparison mode: no time stepping, compare two --saveAt files and exit
+    if (!cmpA.empty() || !cmpB.empty())
+    {
+        GISMO_ENSURE(!cmpA.empty() && !cmpB.empty(), "Comparison mode needs both --cmpA and --cmpB.");
+        fkCompare<real_t>(mp, numRefine, refTor, cmpQuB, cmpA, cmpAType, cmpB, cmpBType,
+                          par.Nth, L, cmpOut);
+        return EXIT_SUCCESS;
+    }
 
     // The bounding-box centre is in the hole: default tumour centre on the core circle
     if (math::isnan(par.xc) && math::isnan(par.yc) && math::isnan(par.zc))
@@ -1097,7 +1253,7 @@ int main(int argc, char *argv[])
     // --plot also writes the geometry and the computational mesh (they are
     // static, written once); --plotMesh writes them without the N frames.
     solve<3, real_t>(mp, bc, CHopt, TIMEopt, Aopt, dt, maxSteps, numRefine, par, out, plot, refTor, plotPts, volExact,
-                     !C0seam, plot || plotMesh, linSolver, cgMaxIt, cgTol, cond);
+                     !C0seam, plot || plotMesh, linSolver, cgMaxIt, cgTol, cond, saveAt);
 
     gsInfo << "Exact torus volume (compare with V_P in the csv): " << volExact << " mm^3\n";
     return EXIT_SUCCESS;
