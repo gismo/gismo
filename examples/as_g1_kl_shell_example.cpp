@@ -24,14 +24,29 @@
 #include <gsModeling/gsAsG1ShellSolver.hpp>
 
 #include <cmath>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <sys/stat.h>
 #include <vector>
 
 using namespace gismo;
 
 namespace {
+
+void mkdirRecursive(const std::string& path)
+{
+    std::string cur;
+    for (size_t i = 0; i < path.size(); ++i)
+    {
+        cur.push_back(path[i]);
+        if (path[i] == '/' && cur.size() > 1)
+            ::mkdir(cur.c_str(), 0755);
+    }
+    if (!cur.empty())
+        ::mkdir(cur.c_str(), 0755);
+}
 
 /// Normalize all patch knot supports to [0, 1]^2 and embed 2D planar domains in z = 0.
 gsMultiPatch<real_t> loadOpenSurface3D(const std::string& filename)
@@ -184,6 +199,106 @@ struct SmoothManufacturedShellField
     }
 };
 
+class SmoothExactGsFunction : public gsFunction<real_t>
+{
+    SmoothManufacturedShellField m_field;
+public:
+    explicit SmoothExactGsFunction(const SmoothManufacturedShellField& f) : m_field(f) {}
+    GISMO_CLONE_FUNCTION(SmoothExactGsFunction)
+
+    short_t domainDim() const override { return 3; }
+    short_t targetDim() const override { return 3; }
+    const gsFunction<real_t>& piece(const index_t) const override { return *this; }
+
+    void eval_into(const gsMatrix<real_t>& u, gsMatrix<real_t>& result) const override
+    {
+        const index_t n = u.cols();
+        result.resize(3, n);
+        gsVector<real_t> g(3);
+        gsMatrix<real_t> H(3, 3);
+        for (index_t k = 0; k < n; ++k)
+        {
+            const gsVector<real_t> xP = u.col(k);
+            for (index_t c = 0; c < 3; ++c)
+            {
+                real_t v = 0;
+                m_field(c, xP, v, g, H);
+                result(c, k) = v;
+            }
+        }
+    }
+};
+
+void exportExactAndSolutionPVD(const gsMultiPatch<real_t>& mpConst,
+                               const gsMultiBasis<real_t>& dbasis,
+                               const gsMultiPatch<real_t>& dispMPConst,
+                               const SmoothManufacturedShellField& exactField,
+                               const std::string& exportPrefix,
+                               index_t nPts = 1000)
+{
+    if (exportPrefix.empty())
+        return;
+
+    const size_t slash = exportPrefix.find_last_of("/\\");
+    const std::string parentDir = (slash != std::string::npos) ? exportPrefix.substr(0, slash + 1) : "./";
+    mkdirRecursive(parentDir + "_vtk");
+
+    gsMultiPatch<real_t> mp = mpConst;
+    gsMultiPatch<real_t> dispMP = dispMPConst;
+    SmoothExactGsFunction exactFunc(exactField);
+
+    // 1. Export Exact Function PVD
+    {
+        gsExprEvaluator<real_t> ev;
+        ev.setIntegrationDomain(dbasis.domain());
+        auto G = ev.getMap(mp);
+        auto uEx = ev.getVariable(exactFunc, G);
+
+        gsParaviewCollection col(exportPrefix + "_exact.pvd", &ev);
+        col.options().setInt("numPoints", nPts);
+        col.options().setInt("precision", 6);
+        col.options().setSwitch("plotElements", true);
+        col.options().setInt("plotElements.resolution", -1);
+        col.options().setSwitch("plotControlNet", false);
+        col.options().setSwitch("makeSubfolder", true);
+        col.options().setString("subfolder", "_vtk");
+
+        col.newTimeStep(&mp);
+        col.addField(uEx, "ExactDisplacement");
+        col.addField(uEx.norm(), "ExactMagnitude");
+        col.saveTimeStep();
+        col.save();
+        gsInfo << "Exported ParaView exact field    -> " << exportPrefix << "_exact.pvd\n";
+    }
+
+    // 2. Export Numerical Solution (+ Error) PVD
+    {
+        gsExprEvaluator<real_t> ev;
+        ev.setIntegrationDomain(dbasis.domain());
+        auto G = ev.getMap(mp);
+        auto uEx = ev.getVariable(exactFunc, G);
+        auto uSol = ev.getVariable(dispMP);
+
+        gsParaviewCollection col(exportPrefix + "_solution.pvd", &ev);
+        col.options().setInt("numPoints", nPts);
+        col.options().setInt("precision", 6);
+        col.options().setSwitch("plotElements", true);
+        col.options().setInt("plotElements.resolution", -1);
+        col.options().setSwitch("plotControlNet", false);
+        col.options().setSwitch("makeSubfolder", true);
+        col.options().setString("subfolder", "_vtk");
+
+        col.newTimeStep(&mp);
+        col.addField(uSol, "Displacement");
+        col.addField(uSol.norm(), "DisplacementMagnitude");
+        col.addField(uEx - uSol, "ErrorVector");
+        col.addField((uEx - uSol).norm(), "PointwiseError");
+        col.saveTimeStep();
+        col.save();
+        gsInfo << "Exported ParaView solution field -> " << exportPrefix << "_solution.pvd\n";
+    }
+}
+
 gsBoundaryConditions<real_t> buildAllBoundaryBC(const gsMultiPatch<real_t>& mp,
                                                 const std::string& bcMode)
 {
@@ -325,8 +440,7 @@ void runManufacturedStudy(const gsMultiPatch<real_t>& mp,
         if (r == maxRef && !exportPrefix.empty())
         {
             gsMultiPatch<real_t> dispMP = asmbl.buildDisplacementMultiPatch(c_sol);
-            gsWriteParaview(mp, dispMP, exportPrefix + "_disp", 1000);
-            gsInfo << "Exported ParaView solution field -> " << exportPrefix << "_disp.pvd\n";
+            exportExactAndSolutionPVD(mp, fin.dbasis, dispMP, exactField, exportPrefix);
         }
     }
 }
