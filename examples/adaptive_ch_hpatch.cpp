@@ -16,7 +16,20 @@
 
     After each solved step the mesh is adapted once, in place, on the one THB
     basis that serves as space and integration basis:
-      - indicator   eta_K = 1 - |mean_K c|, evaluated with a Gauss rule;
+      - indicator   evaluated with a Gauss rule, selected by --indicator:
+                      grad (default)  eta_K = eps * sqrt( (1/|K|) int_K |grad c|^2 ),
+                      phase           eta_K = 1 - |mean_K c|.
+                    Across a flat interface c = tanh(x / (sqrt(2) eps)), hence
+                    eps |c'| = (1 - c^2) / sqrt(2): the gradient indicator is at most
+                    1/sqrt(2) on the interface and tends to 0 in the bulk. The phase
+                    indicator presumes a bulk at c = +-1. On a curved interface the
+                    Gibbs-Thomson effect shifts the bulk value by about
+                    delta = sigma kappa / ([c] f''(+-1)) = sigma kappa / 4, for the
+                    potential f = (1 - c^2)^2 / 4 (f''(+-1) = 2, jump [c] = 2), with
+                    sigma = 2 sqrt(2) eps / 3 the interface energy and kappa the
+                    curvature; the shift can exceed tauC, so cells the interface has
+                    left would never be coarsened. The gradient vanishes in the bulk
+                    whatever its value;
       - refine      every element with eta_K > tauR and level l < L is
                     refined directly to level L;
       - coarsen     a parent cell is coarsened when all four children are
@@ -65,7 +78,7 @@
     Usage:
         OMP_NUM_THREADS=1 ./adaptive_ch_hpatch [-P deg] [--n0 n] [-l levels] [--beta b]
             [--ic bubbles3|bubbles2] [--dt dt] [-N steps] [--rhoinf r] [--tol t]
-            [--maxit n] [--taur tr] [--tauc tc] [--rule gauss|leaf] [--shadow]
+            [--maxit n] [--taur tr] [--tauc tc] [--indicator grad|phase] [--rule gauss|leaf] [--shadow]
             [--reps n] [--csv file] [--caseId name] [--commit sha] [--modcommit sha]
     The bubbles are (0.34,0.5,r 0.15), (0.66,0.5,r 0.15) and, for bubbles3,
     (0.5,0.2,r 0.08); the two large ones merge.
@@ -467,6 +480,7 @@ int main(int argc, char * argv[])
     index_t maxIt = 50;
     real_t  tauR = 0.05;
     real_t  tauC = 0.005;
+    std::string indicator = "grad";
     std::string rule = "gauss";
     bool    shadow = false;
     index_t reps = 5;
@@ -489,6 +503,7 @@ int main(int argc, char * argv[])
     cmd.addInt   ("",  "maxit",    "Maximum number of Newton iterations (>= 2)", maxIt);
     cmd.addReal  ("",  "taur",     "Refine elements with indicator eta > taur", tauR);
     cmd.addReal  ("",  "tauc",     "Coarsen parents whose four children have eta < tauc (0 < tauc < taur)", tauC);
+    cmd.addString("",  "indicator","Refinement indicator: grad (eps*RMS|grad c| per element) or phase (1-|mean c|)", indicator);
     cmd.addString("",  "rule",     "Quadrature rule of the solve: gauss or leaf", rule);
     cmd.addSwitch("",  "shadow",   "Also time a leaf-rule assembler against Gauss after each step (needs --rule gauss)", shadow);
     cmd.addInt   ("",  "reps",     "Repetitions of the shadow timing; the minimum is reported", reps);
@@ -522,6 +537,11 @@ int main(int argc, char * argv[])
     if (!(0 < tauC && tauC < tauR && tauR < 1))
     {
         gsInfo << "Error: the thresholds must satisfy 0 < tauc < taur < 1.\n";
+        return EXIT_FAILURE;
+    }
+    if (indicator != "grad" && indicator != "phase")
+    {
+        gsInfo << "Error: indicator must be grad or phase.\n";
         return EXIT_FAILURE;
     }
     if (rule != "gauss" && rule != "leaf")
@@ -701,6 +721,7 @@ int main(int argc, char * argv[])
     out.line(headerLine("maxIt", maxIt));
     out.line(headerLine("tauR", tauR));
     out.line(headerLine("tauC", tauC));
+    out.line(headerLine("indicator", indicator));
     out.line(headerLine("reps", reps));
     out.line(headerLine("quA", real_t(2)));
     out.line(headerLine("quB", index_t(1)));
@@ -846,9 +867,11 @@ int main(int argc, char * argv[])
         const gsCahnHilliardBounds<real_t> bounds = asmMain.checkConcentrationBounds(Cmp);
         tDiag += sw.stop();
 
-        // 5. Indicator eta_K = 1 - |mean_K c| through a standalone Gauss
-        //    evaluator (it never uses the quadrature factory), rebuilt each
-        //    step because it stores the element set of mb at this call.
+        // 5. Indicator per element, through a standalone Gauss evaluator (it
+        //    never uses the quadrature factory), rebuilt each step because it
+        //    stores the element set of mb at this call:
+        //      grad:  eta_K = eps * sqrt( int_K |grad c|^2 / |K| ),
+        //      phase: eta_K = 1 - |int_K c / |K||.
         sw.restart();
         gsExprEvaluator<real_t> ev;
         ev.options().setReal("quA", 2.0);
@@ -856,7 +879,10 @@ int main(int argc, char * argv[])
         ev.setIntegrationElements(mb);
         auto G = ev.getMap(mp);
         auto c = ev.getVariable(Cmp);
-        ev.integralElWise(meas(G) * c);
+        if (indicator == "grad")
+            ev.integralElWise(meas(G) * igrad(c, G).sqNorm());
+        else
+            ev.integralElWise(meas(G) * c);
         const std::vector<real_t> cInt = ev.elementwise();
         ev.integralElWise(meas(G));
         const std::vector<real_t> areas = ev.elementwise();
@@ -864,7 +890,8 @@ int main(int argc, char * argv[])
                      "The evaluator returned " << cInt.size() << " element values for " << nElem << " elements.");
         std::vector<real_t> eta(nElem);
         for (index_t e = 0; e < nElem; ++e)
-            eta[e] = 1 - math::abs(cInt[e] / areas[e]);
+            eta[e] = (indicator == "grad") ? eps * math::sqrt(cInt[e] / areas[e])
+                                           : 1 - math::abs(cInt[e] / areas[e]);
         const std::vector<ElemData> elems = gatherElements(mb.basis(0), n0, eta, numLevels);
         index_t maxLevel = 0;
         for (const ElemData & d : elems)
