@@ -27,6 +27,8 @@
 #include <gsAssembler/gsExprEvaluator.h>
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsSolver/gsGMRes.h>
+#include <gsNurbs/gsBSplineBasis.h>
+#include <gsNurbs/gsTensorBSplineBasis.h>
 
 
 #ifdef gsHLBFGS_ENABLED
@@ -162,11 +164,12 @@ class gsBarrierCore
                                         const gsOptionList &options);
 
   /// PDE-based method, dimension-independent implementation (used for
-  /// volumes): H2 discretization of the elliptic grid generation equations,
-  /// followed by computeRegularizedH1()
-  static gsMultiPatch<T> computePDEPatchVolume(const gsMultiPatch<T> &mp,
-                                               const gsDofMapper &mapper,
-                                               const gsOptionList &options);
+  /// volumes, and for planar domains with Garanzha's regularization): H2
+  /// discretization of the elliptic grid generation equations (element-wise
+  /// assembly), followed by computeRegularizedH1()
+  static gsMultiPatch<T> computePDEPatchGeneric(const gsMultiPatch<T> &mp,
+                                                const gsDofMapper &mapper,
+                                                const gsOptionList &options);
 
   /**
    * @brief Robust second stage of the PDE-based method (planar domains and

@@ -88,6 +88,67 @@ inline void cofactorDerivative(const MatJ &J, const index_t b,
   }
 }
 
+template<short_t d, typename T> class gsRegularizedPDEAssembler;
+
+/// Values and derivatives up to order \a n of the p+1 B-splines of degree
+/// \a p that are nonzero on the knot span [U[span], U[span+1]), at \a u
+/// (Piegl & Tiller, The NURBS Book, algorithm A2.3). Unlike an evaluation
+/// that locates the span of \a u, this gives the functions of the given span
+/// also at its end points (one-sided limits from inside the span).
+/// ders(k, j): k-th derivative of the j-th function of the span.
+template<class T>
+void bsplineSpanDerivatives(const gsKnotVector<T> &U, const index_t p,
+                            const index_t span, const T u, const index_t n,
+                            gsMatrix<T> &ders) {
+  ders.setZero(n + 1, p + 1);
+  gsMatrix<T> ndu(p + 1, p + 1), a(2, p + 1);
+  std::vector<T> left(p + 1), right(p + 1);
+  ndu(0, 0) = 1;
+  for (index_t j = 1; j <= p; ++j) {
+    left[j] = u - U[span + 1 - j];
+    right[j] = U[span + j] - u;
+    T saved = 0;
+    for (index_t r = 0; r < j; ++r) {
+      ndu(j, r) = right[r + 1] + left[j - r];
+      const T temp = ndu(r, j - 1) / ndu(j, r);
+      ndu(r, j) = saved + right[r + 1] * temp;
+      saved = left[j - r] * temp;
+    }
+    ndu(j, j) = saved;
+  }
+  for (index_t j = 0; j <= p; ++j) { ders(0, j) = ndu(j, p); }
+  const index_t nn = std::min(n, p); // higher derivatives vanish
+  for (index_t r = 0; r <= p; ++r) {
+    index_t s1 = 0, s2 = 1;
+    a(0, 0) = 1;
+    for (index_t k = 1; k <= nn; ++k) {
+      T d = 0;
+      const index_t rk = r - k, pk = p - k;
+      if (r >= k) {
+        a(s2, 0) = a(s1, 0) / ndu(pk + 1, rk);
+        d = a(s2, 0) * ndu(rk, pk);
+      }
+      const index_t j1 = (rk >= -1) ? 1 : -rk;
+      const index_t j2 = (r - 1 <= pk) ? k - 1 : p - r;
+      for (index_t j = j1; j <= j2; ++j) {
+        a(s2, j) = (a(s1, j) - a(s1, j - 1)) / ndu(pk + 1, rk + j);
+        d += a(s2, j) * ndu(rk + j, pk);
+      }
+      if (r <= pk) {
+        a(s2, k) = -a(s1, k - 1) / ndu(pk + 1, r);
+        d += a(s2, k) * ndu(r, pk);
+      }
+      ders(k, r) = d;
+      std::swap(s1, s2);
+    }
+  }
+  T factor = p;
+  for (index_t k = 1; k <= nn; ++k) {
+    ders.row(k) *= factor;
+    factor *= (p - k);
+  }
+}
+
 /// Coefficients w such that A : H = w . h for a symmetric matrix A and the
 /// second derivatives h stored as (11, 22, [33,] 12, [13, 23]).
 template<class MatA, class VecW>
@@ -1272,8 +1333,12 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
     return result;
   }
 
-  // The expressions used below are specific to planar domains
-  if (d != 2) { return computePDEPatchVolume(mp, mapper, options); }
+  // Volumes, and planar domains with Garanzha's regularization: generic
+  // implementation. The code below is the original planar one (kept
+  // unchanged for PDEGaranzha = 0).
+  if (d != 2 || options.askSwitch("PDEGaranzha", true)) {
+    return computePDEPatchGeneric(mp, mapper, options);
+  }
 
   // get initial guess vector
   gsVector<T> initialGuessVector = convertMultiPatchToFreeVector(mp, mapper);
@@ -1473,7 +1538,7 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
 
 template<short_t d, typename T>
 gsMultiPatch<T>
-gsBarrierCore<d, T>::computePDEPatchVolume(const gsMultiPatch<T> &mp,
+gsBarrierCore<d, T>::computePDEPatchGeneric(const gsMultiPatch<T> &mp,
                                            const gsDofMapper &mapper,
                                            const gsOptionList &options) {
   GISMO_ENSURE(d == 2 || d == 3, "The PDE-based method is implemented for "
@@ -1485,67 +1550,57 @@ gsBarrierCore<d, T>::computePDEPatchVolume(const gsMultiPatch<T> &mp,
   // get initial guess vector
   gsVector<T> initialGuessVector = convertMultiPatchToFreeVector(mp, mapper);
 
-  gsExprAssembler<T> assembler;
-  gsMultiBasis<T> mb(mp);
-  assembler.setIntegrationDomain(mb.domain());
+  // H2 stage in its own scope: its assembler, Jacobian and preconditioner
+  // are released before the next stage
+  gsVector<T> solVector;
+  {
+    typedef std::function<gsSparseMatrix<T>(gsVector<T> const &)> Jacobian_t;
+    typedef std::function<gsVector<T>(gsVector<T> const &)> Residual_t;
 
-  gsBoundaryConditions<T> bc;
-  bc.setGeoMap(mp);
-  for (auto bit = mp.bBegin(); bit != mp.bEnd(); ++bit) {
-    bc.addCondition(*bit, condition_type::dirichlet, nullptr);
+    // Elliptic grid generation equations in non-divergence form (H2),
+    // assembled element-wise with the default (Gauss) quadrature of
+    // gsExprAssembler, as the expressions scaledEGGRes / scaledEGGJac
+    gsRegularizedPDEAssembler<d, T> h2Assembler(
+        mp, mapper, gsExprAssembler<T>::defaultOptions(), 1);
+    Residual_t Residual = [&](gsVector<T> const &x) {
+      gsVector<T> residual;
+      h2Assembler.setFreeVector(x);
+      h2Assembler.h2Residual(residual);
+      return residual;
+    };
+
+    // Preconditioner: 0: analytical Jacobian, 1: its diagonal,
+    // 2: its diagonal blocks
+    index_t preconditionerType = options.askInt("AAPreconditionType", 0);
+    if (preconditionerType < 0 || preconditionerType > 2) {
+      preconditionerType = 0;
+    }
+    Jacobian_t Jacobian = [&](gsVector<T> const &x) {
+      gsSparseMatrix<T> jacobian;
+      h2Assembler.setFreeVector(x);
+      h2Assembler.h2Jacobian(preconditionerType, jacobian);
+      return jacobian;
+    };
+
+    preAAParam<T> param;
+    param.m = options.askInt("AAwindowsize", 5);
+    param.usePreconditioning = true;
+    param.updatePreconditionerStep = options.askInt("N_update", 5);
+    param.epsilon = 1e-5;
+    if (useIterativeSolver(mapper.freeSize(), options)) {
+      param.linearSolver = gmresPreconditioner(options, true);
+      param.blocks = componentOfDofs(mp, mapper);
+      param.nodes = nodeOfDofs(mp, mapper);
+      param.innerMaxIterations = options.askInt("PDEInnerMaxIterations", 100);
+    }
+
+    preAApp::AndersonAcceleration<T> AASolver(param);
+    if (verbose > 1) { AASolver.enableIterationInfoPrinting(); }
+    else { AASolver.disableIterationInfoPrinting(); }
+    gsStopwatch stageTimer;
+    solVector = AASolver.compute(initialGuessVector, Residual, Jacobian);
+    verboseLog(aaSummary("H2", AASolver, stageTimer.stop()), verbose);
   }
-
-  space space1 = assembler.getSpace(mb, d);
-  space1.setup(bc, dirichlet::homogeneous, 0);
-
-  typedef std::function<gsSparseMatrix<T>(gsVector<T> const &)> Jacobian_t;
-  typedef std::function<gsVector<T>(gsVector<T> const &)> Residual_t;
-
-  // Elliptic grid generation equations in non-divergence form (H2)
-  gsMultiPatch<T> mpSubstitute = mp;
-  Residual_t Residual = [&](gsVector<T> const &x) {
-    convertFreeVectorToMultiPatch<T>(x, mapper, mpSubstitute);
-    geometryMap G = assembler.getMap(mpSubstitute);
-
-    assembler.initSystem();
-    assembler.assemble(scaledEGGRes(space1, G));
-    return assembler.rhs();
-  };
-
-  // Preconditioner: 0: analytical Jacobian, 1: its diagonal,
-  // 2: its diagonal blocks
-  index_t preconditionerType = options.askInt("AAPreconditionType", 0);
-  if (preconditionerType < 0 || preconditionerType > 2) {
-    preconditionerType = 0;
-  }
-  Jacobian_t Jacobian = [&](gsVector<T> const &x) {
-    convertFreeVectorToMultiPatch<T>(x, mapper, mpSubstitute);
-    geometryMap G = assembler.getMap(mpSubstitute);
-
-    assembler.initSystem();
-    assembler.assemble(scaledEGGJac(space1, G, preconditionerType));
-    return assembler.matrix();
-  };
-
-  preAAParam<T> param;
-  param.m = options.askInt("AAwindowsize", 5);
-  param.usePreconditioning = true;
-  param.updatePreconditionerStep = options.askInt("N_update", 5);
-  param.epsilon = 1e-5;
-  if (useIterativeSolver(mapper.freeSize(), options)) {
-    param.linearSolver = gmresPreconditioner(options, true);
-    param.blocks = componentOfDofs(mp, mapper);
-    param.nodes = nodeOfDofs(mp, mapper);
-    param.innerMaxIterations = options.askInt("PDEInnerMaxIterations", 100);
-  }
-
-  preAApp::AndersonAcceleration<T> AASolver(param);
-  if (verbose > 1) { AASolver.enableIterationInfoPrinting(); }
-  else { AASolver.disableIterationInfoPrinting(); }
-  gsStopwatch stageTimer;
-  gsVector<T> solVector =
-      AASolver.compute(initialGuessVector, Residual, Jacobian);
-  verboseLog(aaSummary("H2", AASolver, stageTimer.stop()), verbose);
   if (!solVector.allFinite()) { solVector = initialGuessVector; }
 
   if (options.askSwitch("PDEGaranzha", true)) {
@@ -1642,9 +1697,30 @@ bool gsBarrierCore<d, T>::useIterativeSolver(const index_t numDofs,
  * The same quantities are available as expressions (garanzhaWinslowEnergy,
  * garanzhaWinslowGrad/Hess, regularizedH1Res/Jac); here the element matrices
  * are computed with matrix-matrix products over all quadrature nodes of an
- * element, the sparsity patterns are computed once, the Hessian is stored as
- * its lower triangle only, and the derivatives of the basis functions at the
- * quadrature nodes are cached (within a memory budget).
+ * element, the sparsity patterns are computed once, and the Hessian is stored
+ * as its lower triangle only.
+ *
+ * Basis functions: for tensor-product B-spline bases, the univariate
+ * B-splines of every knot span and their first and second derivatives are
+ * tabulated at the univariate quadrature nodes (a few kB in total). The
+ * Jacobian matrices of the map at the nodes (energy, minimum of det(J), H1
+ * residual) and the projection of the H1 fluxes onto the gradients of the
+ * basis functions are computed from these tables by sum factorization; where
+ * all derivatives of the active functions are needed (Hessian, Jacobians,
+ * H2), they are formed from the tables (same products, in the same order, as
+ * gsTensorBasis). For other bases, the derivatives at the quadrature nodes
+ * are cached within a memory budget (\a cacheBytes).
+ *
+ * det(J) is monitored (and the regularized quantities are integrated) at the
+ * quadrature nodes at which it depends on the free control points; this is
+ * determined once, for the given geometry: on the boundary of the parameter
+ * domain it only depends on the fixed control points.
+ *
+ * Besides the regularized stages, the class assembles the residual and the
+ * Jacobian of the (scaled) elliptic grid generation equations in
+ * non-divergence form (H2 discretization, the same as scaledEGGRes /
+ * scaledEGGJac); for these, use an instance with the quadrature rule of the
+ * H2 stage.
  */
 template<short_t d, typename T>
 class gsRegularizedPDEAssembler {
@@ -1668,6 +1744,10 @@ class gsRegularizedPDEAssembler {
     index_t id = 0;
     for (size_t ip = 0; ip != m_mb.nBases(); ++ip) {
       const gsBasis<T> &basis = m_mb.basis(ip);
+      const gsTensorBSplineBasis<d, T> *tensorBasis =
+          dynamic_cast<const gsTensorBSplineBasis<d, T> *>(&basis);
+      // univariate tables of this patch: (direction, first function, nodes)
+      std::map<std::array<index_t, 3>, index_t> tableOf;
       // quadrature rules by number of additional nodes
       std::map<index_t, memory::shared_ptr<gsQuadRule<T> > > rules;
       for (auto &domElem : basis.domain()->allElements()) {
@@ -1684,8 +1764,9 @@ class gsRegularizedPDEAssembler {
         Element e;
         e.id = id++;
         e.patch = ip;
-        rules[extra]->mapTo(domElem.lowerCorner(), domElem.upperCorner(),
-                            e.nodes, e.weights);
+        e.lower = domElem.lowerCorner();
+        e.upper = domElem.upperCorner();
+        rules[extra]->mapTo(e.lower, e.upper, e.nodes, e.weights);
         basis.active_into(domElem.centerPoint(), e.actives);
         const index_t A = e.actives.rows();
         e.dofs.resize(d * A);
@@ -1700,20 +1781,30 @@ class gsRegularizedPDEAssembler {
         }
         if (!anyFree) { continue; } // nothing depends on this element
 
-        basis.deriv_into(e.nodes, ders);
+        e.table.fill(-1);
+        if (tensorBasis) { setupTables(*tensorBasis, tableOf, e); }
+        if (e.table[0] >= 0) {
+          tensorBasisValues(e, nullptr, &ders, nullptr);
+        } else {
+          basis.deriv_into(e.nodes, ders);
+        }
         localCoefs(e, coefs);
         // det(J) is monitored at the nodes where it depends on free dofs
-        e.monitor.assign(e.nodes.cols(), 0);
-        for (index_t k = 0; k != e.nodes.cols(); ++k) {
+        e.monitor.assign(e.numNodes(), 0);
+        for (index_t k = 0; k != e.numNodes(); ++k) {
           const gsAsConstMatrix<T> dB = ders.reshapeCol(k, d, A);
           jacGeom.noalias() = coefs.transpose() * dB.transpose();
           cofactorMatrix(jacGeom, cof);
           e.monitor[k] = controllable(e, cof, dB);
         }
-        const size_t bytes = ders.size() * sizeof(T);
-        if (cached + bytes <= cacheBytes) {
-          e.ders = ders;
-          cached += bytes;
+        if (e.table[0] >= 0) {
+          e.nodes.resize(0, 0); // formed from the tables when needed
+        } else {
+          const size_t bytes = ders.size() * sizeof(T);
+          if (cached + bytes <= cacheBytes) {
+            e.ders = ders;
+            cached += bytes;
+          }
         }
         m_elements.push_back(give(e));
       }
@@ -1737,10 +1828,7 @@ class gsRegularizedPDEAssembler {
         rules[e.patch] = memory::shared_ptr<gsQuadRule<T> >(
             gsQuadrature::getPtr(m_mb.basis(e.patch), checkOptions).release());
       }
-      // element box: the extreme quadrature nodes (Gauss-Lobatto rule)
-      const gsVector<T> lower = e.nodes.rowwise().minCoeff();
-      const gsVector<T> upper = e.nodes.rowwise().maxCoeff();
-      rules[e.patch]->mapTo(lower, upper, nodes, weights);
+      rules[e.patch]->mapTo(e.lower, e.upper, nodes, weights);
       m_mb.basis(e.patch).deriv_into(nodes, ders);
       localCoefs(e, coefs);
       const index_t A = e.actives.rows();
@@ -1764,17 +1852,14 @@ class gsRegularizedPDEAssembler {
   /// Minimum of orientation * det(J) over the monitored quadrature nodes
   T minDet() const {
     T result = std::numeric_limits<T>::max();
-    gsMatrix<T> buffer, coefs;
-    MatrixD jacGeom;
+    gsMatrix<T> coefs, jacobians, work;
     for (const Element &e : m_elements) {
-      const gsMatrix<T> &ders = derivatives(e, buffer);
       localCoefs(e, coefs);
-      const index_t A = e.actives.rows();
-      for (index_t k = 0; k != e.nodes.cols(); ++k) {
+      nodeJacobians(e, coefs, jacobians, work);
+      for (index_t k = 0; k != e.numNodes(); ++k) {
         if (!e.monitor[k]) { continue; }
-        jacGeom.noalias() =
-            coefs.transpose() * ders.reshapeCol(k, d, A).transpose();
-        const T det = m_orientation * jacGeom.determinant();
+        const T det = m_orientation
+            * MatrixD(jacobians.middleCols(k * d, d)).determinant();
         if (det != det) { return det; } // NaN must not go unnoticed
         if (det < result) { result = det; }
       }
@@ -1785,17 +1870,15 @@ class gsRegularizedPDEAssembler {
   /// Garanzha's regularized Winslow functional  int |J|^2 / chi^(2/d)
   T energy(const T eps) const {
     T result = 0;
-    gsMatrix<T> buffer, coefs;
+    gsMatrix<T> coefs, jacobians, work;
     MatrixD jacGeom, cof;
     for (const Element &e : m_elements) {
-      const gsMatrix<T> &ders = derivatives(e, buffer);
       localCoefs(e, coefs);
-      const index_t A = e.actives.rows();
-      for (index_t k = 0; k != e.nodes.cols(); ++k) {
-        const gsAsConstMatrix<T> dB = ders.reshapeCol(k, d, A);
-        jacGeom.noalias() = coefs.transpose() * dB.transpose();
+      nodeJacobians(e, coefs, jacobians, work);
+      for (index_t k = 0; k != e.numNodes(); ++k) {
+        if (!e.monitor[k]) { continue; }
+        jacGeom = jacobians.middleCols(k * d, d);
         cofactorMatrix(jacGeom, cof);
-        if (!controllable(e, cof, dB)) { continue; }
         const T det = m_orientation * jacGeom.row(0).dot(cof.row(0));
         result += e.weights(k) * jacGeom.squaredNorm()
             / chiPower(garanzhaChi(det, eps));
@@ -1809,8 +1892,8 @@ class gsRegularizedPDEAssembler {
   void gradientHessian(const T eps, gsVector<T> &gradient,
                        gsSparseMatrix<T> &hessian) const {
     gradient.setZero(m_numDofs);
-    if (0 == m_patternLower.rows()) { buildPattern(true, m_patternLower); }
-    hessian = m_patternLower;
+    if (m_patternLower.outer.empty()) { buildPattern(true, m_patternLower); }
+    makeMatrix(m_patternLower, hessian);
     hessian.coeffs().setZero();
 
     gsMatrix<T> buffer, coefs, P, Q, X, Y, Dstack, Dweighted, local, laplace;
@@ -1821,7 +1904,7 @@ class gsRegularizedPDEAssembler {
       const gsMatrix<T> &ders = derivatives(e, buffer);
       localCoefs(e, coefs);
       const index_t A = e.actives.rows();
-      controllableNodes(e, ders, coefs, nodes);
+      monitoredNodes(e, nodes);
       const index_t nq = nodes.size();
       if (0 == nq) { continue; }
 
@@ -1884,29 +1967,27 @@ class gsRegularizedPDEAssembler {
   /// Residual of the regularized H1 discretization
   void h1Residual(const T eps, gsVector<T> &residual) const {
     residual.setZero(m_numDofs);
-    gsMatrix<T> buffer, coefs, flux;
-    gsVector<T> local;
-    MatrixD jacGeom, cof, K;
+    gsMatrix<T> coefs, jacobians, fluxes, local, work;
+    MatrixD jacGeom, cof;
     for (const Element &e : m_elements) {
-      const gsMatrix<T> &ders = derivatives(e, buffer);
       localCoefs(e, coefs);
-      const index_t A = e.actives.rows();
-      local.setZero(d * A);
-      for (index_t k = 0; k != e.nodes.cols(); ++k) {
-        const gsAsConstMatrix<T> dB = ders.reshapeCol(k, d, A);
-        jacGeom.noalias() = coefs.transpose() * dB.transpose();
+      nodeJacobians(e, coefs, jacobians, work);
+      // fluxes(c, k * d + a) = K(c, a) at node k (zero if not monitored);
+      // the residual is  sum_k grad(phi_i) . K e_c
+      fluxes.setZero(d, d * e.numNodes());
+      for (index_t k = 0; k != e.numNodes(); ++k) {
+        if (!e.monitor[k]) { continue; }
+        jacGeom = jacobians.middleCols(k * d, d);
         cofactorMatrix(jacGeom, cof);
-        if (!controllable(e, cof, dB)) { continue; }
         const T det = m_orientation * jacGeom.row(0).dot(cof.row(0));
         const T chi = garanzhaChi(det, eps);
         const T chiPow = (2 == m_h1Power ? chi * chi : chi);
-        K.noalias() = (cof.transpose() * cof) * (e.weights(k) / chiPow);
-        flux.noalias() = K * dB;
-        for (index_t c = 0; c != d; ++c) {
-          local.segment(c * A, A) += flux.row(c).transpose();
-        }
+        fluxes.middleCols(k * d, d).noalias() =
+            (cof.transpose() * cof) * (e.weights(k) / chiPow);
       }
-      scatterVector(e, local, residual);
+      testGradients(e, fluxes, local, work);
+      gsAsConstVector<T> localVector(local.data(), local.size());
+      scatterVector(e, gsVector<T>(localVector), residual);
     }
   }
 
@@ -1914,8 +1995,8 @@ class gsRegularizedPDEAssembler {
   /// (optionally only its diagonal blocks)
   void h1Jacobian(const T eps, const bool diagBlocksOnly,
                   gsSparseMatrix<T> &jacobian) const {
-    if (0 == m_patternFull.rows()) { buildPattern(false, m_patternFull); }
-    jacobian = m_patternFull;
+    if (m_patternFull.outer.empty()) { buildPattern(false, m_patternFull); }
+    makeMatrix(m_patternFull, jacobian);
     jacobian.coeffs().setZero();
 
     gsMatrix<T> buffer, coefs, Dstack, Tcb, local;
@@ -1928,7 +2009,7 @@ class gsRegularizedPDEAssembler {
       const gsMatrix<T> &ders = derivatives(e, buffer);
       localCoefs(e, coefs);
       const index_t A = e.actives.rows();
-      controllableNodes(e, ders, coefs, nodes);
+      monitoredNodes(e, nodes);
       const index_t nq = nodes.size();
       if (0 == nq) { continue; }
 
@@ -1983,6 +2064,133 @@ class gsRegularizedPDEAssembler {
     }
   }
 
+  /// Residual of the scaled elliptic grid generation equations in
+  /// non-divergence form (H2):
+  ///   R_{c,i} = int phi_i (adj(g) : Hess(x_c)) / trace(adj(g)) dxi
+  void h2Residual(gsVector<T> &residual) const {
+    residual.setZero(m_numDofs);
+    const index_t nd2 = d * (d + 1) / 2;
+    gsMatrix<T> values, deriv, deriv2, coefs;
+    gsVector<T> local;
+    gsEigen::Matrix<T, d * (d + 1) / 2, 1> weights;
+    MatrixD jacGeom, cof, adjMetric;
+    for (const Element &e : m_elements) {
+      allBasisValues(e, values, deriv, deriv2);
+      localCoefs(e, coefs);
+      const index_t A = e.actives.rows();
+      local.setZero(d * A);
+      for (index_t k = 0; k != e.numNodes(); ++k) {
+        jacGeom.noalias() =
+            coefs.transpose() * deriv.reshapeCol(k, d, A).transpose();
+        cofactorMatrix(jacGeom, cof);
+        adjMetric.noalias() = cof.transpose() * cof;
+        packSymmetric(adjMetric, weights);
+        const T scale = adjMetric.trace();
+        const gsAsConstMatrix<T> D2 = deriv2.reshapeCol(k, nd2, A);
+        for (index_t c = 0; c != d; ++c) {
+          const T Lx = weights.dot(D2 * coefs.col(c)) / scale;
+          local.segment(c * A, A) += (e.weights(k) * Lx) * values.col(k);
+        }
+      }
+      scatterVector(e, local, residual);
+    }
+  }
+
+  /// Jacobian of h2Residual; mode 0: full matrix, 1: its diagonal only,
+  /// 2: its diagonal blocks (coordinate components) only
+  void h2Jacobian(const index_t mode, gsSparseMatrix<T> &jacobian) const {
+    if (m_patternFull.outer.empty()) { buildPattern(false, m_patternFull); }
+    makeMatrix(m_patternFull, jacobian);
+    jacobian.coeffs().setZero();
+    const index_t nd2 = d * (d + 1) / 2;
+    typedef gsEigen::Matrix<T, d * (d + 1) / 2, 1> VectorH;
+    gsMatrix<T> values, deriv, deriv2, coefs, local, weighted;
+    // dL[c * d + b]: row n = variation of Lx(c) at node n with respect to
+    // coordinate b of the active functions
+    std::vector<gsMatrix<T> > dL(d * d);
+    VectorH weights, dWeights, deriv2Geom[d];
+    MatrixD jacGeom, cof, dCof, adjMetric, dAdjMetric, value;
+    gsEigen::Matrix<T, d, 1> unit, Lx;
+    gsEigen::Matrix<T, 1, Dynamic> commonTerm;
+    for (const Element &e : m_elements) {
+      allBasisValues(e, values, deriv, deriv2);
+      localCoefs(e, coefs);
+      const index_t A = e.actives.rows(), nq = e.numNodes();
+      for (auto &m : dL) { m.resize(nq, A); }
+      weighted.resize(A, nq);
+      for (index_t k = 0; k != nq; ++k) {
+        const gsAsConstMatrix<T> dB = deriv.reshapeCol(k, d, A);
+        const gsAsConstMatrix<T> D2 = deriv2.reshapeCol(k, nd2, A);
+        jacGeom.noalias() = coefs.transpose() * dB.transpose();
+        cofactorMatrix(jacGeom, cof);
+        adjMetric.noalias() = cof.transpose() * cof;
+        packSymmetric(adjMetric, weights);
+        const T scale = adjMetric.trace();
+        for (index_t c = 0; c != d; ++c) {
+          deriv2Geom[c].noalias() = D2 * coefs.col(c);
+          Lx(c) = weights.dot(deriv2Geom[c]) / scale;
+        }
+        // adj(g) : Hess(phi_j) / scale
+        commonTerm.noalias() = (weights.transpose() * D2) / scale;
+        weighted.col(k) = e.weights(k) * values.col(k);
+        for (index_t b = 0; b != d; ++b) {
+          for (index_t a = 0; a != d; ++a) {
+            unit.setZero();
+            unit(a) = 1;
+            cofactorDerivative(jacGeom, b, unit, dCof);
+            dAdjMetric.noalias() = dCof.transpose() * cof;
+            dAdjMetric += MatrixD(dAdjMetric.transpose());
+            packSymmetric(dAdjMetric, dWeights);
+            const T dScale = dAdjMetric.trace();
+            for (index_t c = 0; c != d; ++c) {
+              value(c, a) = (dWeights.dot(deriv2Geom[c]) - Lx(c) * dScale) / scale;
+            }
+          }
+          for (index_t c = 0; c != d; ++c) {
+            if (0 != mode && c != b) { continue; }
+            dL[c * d + b].row(k).noalias() = value.row(c) * dB;
+            if (c == b) { dL[c * d + b].row(k) += commonTerm; }
+          }
+        }
+      }
+      local.setZero(d * A, d * A);
+      for (index_t c = 0; c != d; ++c) {
+        for (index_t b = 0; b != d; ++b) {
+          if (0 != mode && c != b) { continue; }
+          if (1 == mode) {
+            local.block(b * A, b * A, A, A).diagonal() =
+                (weighted.array() * dL[c * d + b].transpose().array())
+                    .rowwise().sum();
+          } else {
+            local.block(c * A, b * A, A, A).noalias() = weighted * dL[c * d + b];
+          }
+        }
+      }
+      scatterMatrix(e, local, false, jacobian);
+    }
+  }
+
+  /// (For tests) number of elements with free dofs, and for element \a i:
+  /// its patch, quadrature nodes, active functions and the values, first
+  /// and second derivatives of these at the nodes, as used for the assembly
+  index_t numActiveElements() const { return m_elements.size(); }
+  void elementBasisData(const index_t i, size_t &patch, gsMatrix<T> &nodes,
+                        gsMatrix<index_t> &actives, gsMatrix<T> &values,
+                        gsMatrix<T> &deriv, gsMatrix<T> &deriv2,
+                        bool &tabulated) const {
+    const Element &e = m_elements[i];
+    patch = e.patch;
+    actives = e.actives;
+    tabulated = (e.table[0] >= 0);
+    allBasisValues(e, values, deriv, deriv2);
+    if (!tabulated) { nodes = e.nodes; return; }
+    std::vector<gsVector<T> > grid(d);
+    for (short_t a = 0; a != d; ++a) {
+      grid[a] = m_tables[e.table[a]].nodes;
+    }
+    gsPointGrid(grid, nodes);
+  }
+
   /// Number of free dofs
   index_t numDofs() const { return m_numDofs; }
 
@@ -1990,22 +2198,206 @@ class gsRegularizedPDEAssembler {
   struct Element {
     index_t id = 0;     // number of the element (patch by patch)
     size_t patch = 0;
-    gsMatrix<T> nodes;
+    gsVector<T> lower, upper;   // corners of the element
+    gsMatrix<T> nodes;          // quadrature nodes (only without tables)
     gsVector<T> weights;
     gsMatrix<index_t> actives;
     std::vector<index_t> dofs;  // global index of (coordinate c, function i), -1: fixed
     std::vector<char> monitor;  // det(J) monitored at node k?
-    gsMatrix<T> ders;           // cached derivatives of the active functions
+    gsMatrix<T> ders;           // cached derivatives (only without tables)
+    std::array<index_t, d> table; // univariate tables per direction, or -1
+    index_t numNodes() const { return weights.size(); }
+  };
+
+  /// Sparsity pattern (compressed column storage), without values
+  struct Pattern {
+    std::vector<index_t> outer, inner;
+  };
+
+  /// Univariate B-splines of one knot span (degree + 1 functions) and their
+  /// first and second derivatives at the univariate quadrature nodes
+  struct Table1D {
+    index_t degree = 0;
+    gsVector<T> nodes;
+    std::vector<T> values;  // (order, function, node)
+    T &value(index_t order, index_t j, index_t q) {
+      return values[(order * (degree + 1) + j) * nodes.size() + q];
+    }
+    T value(index_t order, index_t j, index_t q) const {
+      return values[(order * (degree + 1) + j) * nodes.size() + q];
+    }
   };
 
   static T chiPower(const T chi) {
     return (2 == d ? chi : math::pow(chi, T(2) / d));
   }
 
+  /// First derivatives of the active functions at the quadrature nodes of
+  /// \a e, rows i * d + a (function i, direction a), one column per node
   const gsMatrix<T> &derivatives(const Element &e, gsMatrix<T> &buffer) const {
+    if (e.table[0] >= 0) {
+      tensorBasisValues(e, nullptr, &buffer, nullptr);
+      return buffer;
+    }
     if (e.ders.size()) { return e.ders; }
     m_mb.basis(e.patch).deriv_into(e.nodes, buffer);
     return buffer;
+  }
+
+  /// Values (rows i), first derivatives (rows i * d + a) and second
+  /// derivatives (rows i * d(d+1)/2 + m, m as in packSymmetric) of the active
+  /// functions at the quadrature nodes of \a e
+  void allBasisValues(const Element &e, gsMatrix<T> &values,
+                      gsMatrix<T> &deriv, gsMatrix<T> &deriv2) const {
+    if (e.table[0] >= 0) {
+      tensorBasisValues(e, &values, &deriv, &deriv2);
+      return;
+    }
+    std::vector<gsMatrix<T> > all;
+    m_mb.basis(e.patch).evalAllDers_into(e.nodes, 2, all);
+    values = all[0];
+    deriv = all[1];
+    deriv2 = all[2];
+  }
+
+  /// Univariate tables of the element (tensor-product B-spline basis): the
+  /// quadrature rule must be a tensor rule and the active functions must be
+  /// numbered lexicographically, otherwise the element keeps the generic
+  /// evaluation (e.table[0] < 0).
+  void setupTables(const gsTensorBSplineBasis<d, T> &basis,
+                   std::map<std::array<index_t, 3>, index_t> &tableOf,
+                   Element &e) {
+    const gsVector<index_t, d> first = basis.tensorIndex(e.actives(0, 0));
+    gsVector<index_t, d> size, numNodes, stride;
+    for (short_t a = 0; a != d; ++a) {
+      size(a) = basis.component(a).degree() + 1;
+    }
+    if (size.prod() != e.actives.rows()) { return; }
+    // lexicographic numbering of the active functions
+    gsVector<index_t, d> v = gsVector<index_t, d>::Zero(), idx;
+    index_t r = 0;
+    do {
+      idx = first + v;
+      if (basis.index(idx) != e.actives(r++, 0)) { return; }
+    } while (nextLexicographic(v, size));
+    // tensor grid of quadrature nodes, first direction fastest
+    index_t total = 1;
+    for (short_t a = 0; a != d; ++a) {
+      stride(a) = total;
+      // nodes n * stride(a), n = 0, 1, ...: direction a varies, the others
+      // stay at their first coordinate
+      index_t n = 1;
+      while (n * total < e.numNodes()) {
+        bool same = true;
+        for (short_t b = 0; b != d; ++b) {
+          if (b != a && e.nodes(b, n * total) != e.nodes(b, 0)) { same = false; }
+        }
+        if (!same) { break; }
+        ++n;
+      }
+      numNodes(a) = n;
+      total *= n;
+    }
+    if (total != e.numNodes()) { return; }
+    v.setZero();
+    index_t k = 0;
+    do {
+      for (short_t a = 0; a != d; ++a) {
+        if (e.nodes(a, k) != e.nodes(a, v(a) * stride(a))) { return; }
+      }
+      ++k;
+    } while (nextLexicographic(v, numNodes));
+
+    std::array<index_t, d> table;
+    gsMatrix<T> ders;
+    for (short_t a = 0; a != d; ++a) {
+      const std::array<index_t, 3> key = {{index_t(a), first(a), numNodes(a)}};
+      auto it = tableOf.find(key);
+      if (it == tableOf.end()) {
+        const gsBSplineBasis<T> &comp = basis.component(a);
+        const index_t p = comp.degree();
+        Table1D t;
+        t.degree = p;
+        t.nodes.resize(numNodes(a));
+        t.values.assign(3 * (p + 1) * numNodes(a), T(0));
+        for (index_t q = 0; q != numNodes(a); ++q) {
+          t.nodes(q) = e.nodes(a, q * stride(a));
+          bsplineSpanDerivatives(comp.knots(), p, first(a) + p, t.nodes(q), 2, ders);
+          for (index_t o = 0; o != 3; ++o)
+            for (index_t j = 0; j <= p; ++j) { t.value(o, j, q) = ders(o, j); }
+        }
+        it = tableOf.emplace(key, index_t(m_tables.size())).first;
+        m_tables.push_back(give(t));
+      }
+      table[a] = it->second;
+    }
+    e.table = table;
+  }
+
+  /// Values / first / second derivatives (any of them may be skipped) of the
+  /// active functions at the nodes of \a e, from the univariate tables; the
+  /// products are formed in the same order as in gsTensorBasis
+  void tensorBasisValues(const Element &e, gsMatrix<T> *values,
+                         gsMatrix<T> *deriv, gsMatrix<T> *deriv2) const {
+    const Table1D *tab[d];
+    gsVector<index_t, d> size, numNodes;
+    for (short_t a = 0; a != d; ++a) {
+      tab[a] = &m_tables[e.table[a]];
+      size(a) = tab[a]->degree + 1;
+      numNodes(a) = tab[a]->nodes.size();
+    }
+    const index_t A = size.prod(), nq = numNodes.prod();
+    const index_t nd2 = d * (d + 1) / 2;
+    if (values) { values->resize(A, nq); }
+    if (deriv) { deriv->resize(d * A, nq); }
+    if (deriv2) { deriv2->resize(nd2 * A, nq); }
+    T val[d], der[d], der2[d];
+    gsVector<index_t, d> kq = gsVector<index_t, d>::Zero(), v;
+    index_t k = 0;
+    do {
+      v.setZero();
+      index_t r = 0;
+      do {
+        for (short_t a = 0; a != d; ++a) {
+          val[a] = tab[a]->value(0, v(a), kq(a));
+          der[a] = tab[a]->value(1, v(a), kq(a));
+          der2[a] = tab[a]->value(2, v(a), kq(a));
+        }
+        if (values) {
+          T prod = val[0];
+          for (short_t i = 1; i < d; ++i) { prod *= val[i]; }
+          (*values)(r, k) = prod;
+        }
+        if (deriv) {
+          for (short_t c = 0; c != d; ++c) {
+            T prod = der[c];
+            for (short_t i = 0; i != d; ++i) {
+              if (i != c) { prod *= val[i]; }
+            }
+            (*deriv)(r * d + c, k) = prod;
+          }
+        }
+        if (deriv2) {
+          index_t m = d;
+          for (short_t c = 0; c != d; ++c) {
+            T prod = der2[c];
+            for (short_t i = 0; i != d; ++i) {
+              if (i != c) { prod *= val[i]; }
+            }
+            (*deriv2)(r * nd2 + c, k) = prod;
+            for (short_t l = c + 1; l < d; ++l) {
+              T mixed = der[c] * der[l];
+              for (short_t i = 0; i != d; ++i) {
+                if (i != c && i != l) { mixed *= val[i]; }
+              }
+              (*deriv2)(r * nd2 + m++, k) = mixed;
+            }
+          }
+        }
+        ++r;
+      } while (nextLexicographic(v, size));
+      ++k;
+    } while (nextLexicographic(kq, numNodes));
   }
 
 
@@ -2031,17 +2423,115 @@ class gsRegularizedPDEAssembler {
     return false;
   }
 
-  void controllableNodes(const Element &e, const gsMatrix<T> &ders,
-                         const gsMatrix<T> &coefs,
-                         std::vector<index_t> &nodes) const {
-    const index_t A = e.actives.rows();
-    MatrixD jacGeom, cof;
+  /// Upper bound of the size of the intermediate tensors of the sum
+  /// factorization: d * prod_j max(degree_j + 1, nodes_j)
+  index_t contractionBound(const Element &e) const {
+    index_t bound = d;
+    for (short_t j = 0; j != d; ++j) {
+      const Table1D &t = m_tables[e.table[j]];
+      bound *= std::max<index_t>(t.degree + 1, t.nodes.size());
+    }
+    return bound;
+  }
+
+  /// Quadrature nodes of \a e at which det(J) depends on the free control
+  /// points (determined once: on the boundary of the parameter domain this
+  /// depends on the fixed control points only)
+  static void monitoredNodes(const Element &e, std::vector<index_t> &nodes) {
     nodes.clear();
-    for (index_t k = 0; k != e.nodes.cols(); ++k) {
-      const gsAsConstMatrix<T> dB = ders.reshapeCol(k, d, A);
-      jacGeom.noalias() = coefs.transpose() * dB.transpose();
-      cofactorMatrix(jacGeom, cof);
-      if (controllable(e, cof, dB)) { nodes.push_back(k); }
+    for (index_t k = 0; k != e.numNodes(); ++k) {
+      if (e.monitor[k]) { nodes.push_back(k); }
+    }
+  }
+
+  /// Jacobian matrices of the map at the quadrature nodes of \a e:
+  /// jacobians(c, k * d + a) = d x_c / d xi_a at node k. For tensor-product
+  /// bases by sum factorization: the local control points C(i_1..i_d, c) are
+  /// contracted with the univariate tables direction by direction.
+  void nodeJacobians(const Element &e, const gsMatrix<T> &coefs,
+                     gsMatrix<T> &jacobians, gsMatrix<T> &work) const {
+    const index_t nq = e.numNodes();
+    jacobians.resize(d, d * nq);
+    if (e.table[0] < 0) {
+      const gsMatrix<T> &ders = derivatives(e, work);
+      const index_t A = e.actives.rows();
+      for (index_t k = 0; k != nq; ++k) {
+        jacobians.middleCols(k * d, d).noalias() =
+            coefs.transpose() * ders.reshapeCol(k, d, A).transpose();
+      }
+      return;
+    }
+    typedef gsEigen::Matrix<T, Dynamic, Dynamic> Dense;
+    typedef gsEigen::Map<const Dense, 0, gsEigen::OuterStride<> > TableMap;
+    // two buffers for the intermediate tensors (no allocation per element)
+    const index_t bound = contractionBound(e);
+    if (work.size() < 2 * bound) { work.resize(2 * bound, 1); }
+    T *buffer[2] = {work.data(), work.data() + bound};
+    for (short_t a = 0; a != d; ++a) {
+      // X: (s_j x rest) with i_j fastest; after direction j the node index
+      // q_j becomes the slowest index: Y(rest, q_j) = sum_i X(i, rest) G(i, q_j)
+      const T *X = coefs.data();
+      index_t size = coefs.size();
+      for (short_t j = 0; j != d; ++j) {
+        const Table1D &t = m_tables[e.table[j]];
+        const index_t s = t.degree + 1, n = t.nodes.size();
+        const index_t rest = size / s;
+        // G^T as (n x s) column major: (q, i) -> values[(o * s + i) * n + q]
+        const TableMap Gt(&t.values[(j == a ? 1 : 0) * s * n], n, s,
+                          gsEigen::OuterStride<>(n));
+        gsEigen::Map<Dense> Y(buffer[j % 2], rest, n);
+        Y.noalias() = gsEigen::Map<const Dense>(X, s, rest).transpose()
+            * Gt.transpose();
+        X = Y.data();
+        size = rest * n;
+      }
+      // X: (c, q_1, ..., q_d), c fastest
+      const gsEigen::Map<const Dense> flat(X, d, nq);
+      for (index_t k = 0; k != nq; ++k) { jacobians.col(k * d + a) = flat.col(k); }
+    }
+  }
+
+  /// Projection onto the gradients of the active functions:
+  /// local(i, c) = sum_k sum_a d phi_i / d xi_a (node k) * fluxes(c, k * d + a)
+  /// (the adjoint of nodeJacobians)
+  void testGradients(const Element &e, const gsMatrix<T> &fluxes,
+                     gsMatrix<T> &local, gsMatrix<T> &work) const {
+    const index_t nq = e.numNodes(), A = e.actives.rows();
+    local.setZero(A, d);
+    if (e.table[0] < 0) {
+      const gsMatrix<T> &ders = derivatives(e, work);
+      for (index_t k = 0; k != nq; ++k) {
+        local.noalias() += ders.reshapeCol(k, d, A).transpose()
+            * fluxes.middleCols(k * d, d).transpose();
+      }
+      return;
+    }
+    typedef gsEigen::Matrix<T, Dynamic, Dynamic> Dense;
+    typedef gsEigen::Map<const Dense, 0, gsEigen::OuterStride<> > TableMap;
+    const index_t bound = contractionBound(e);
+    if (work.size() < 2 * bound) { work.resize(2 * bound, 1); }
+    T *buffer[2] = {work.data(), work.data() + bound};
+    for (short_t a = 0; a != d; ++a) {
+      // Y: (c, q_1, ..., q_d) = fluxes(c, k * d + a)
+      gsEigen::Map<Dense> start(buffer[0], d, nq);
+      for (index_t k = 0; k != nq; ++k) { start.col(k) = fluxes.col(k * d + a); }
+      const T *Y = buffer[0];
+      index_t size = d * nq;
+      for (short_t j = d - 1; j >= 0; --j) {
+        // Y viewed as (rest x n_j) with q_j slowest; X(i, rest) = sum_q G(i, q) Y(rest, q)
+        const Table1D &t = m_tables[e.table[j]];
+        const index_t s = t.degree + 1, n = t.nodes.size();
+        const index_t rest = size / n;
+        const TableMap Gt(&t.values[(j == a ? 1 : 0) * s * n], n, s,
+                          gsEigen::OuterStride<>(n));
+        gsEigen::Map<Dense> X(buffer[(d - j) % 2], s, rest);
+        X.noalias() = Gt.transpose()
+            * gsEigen::Map<const Dense>(Y, rest, n).transpose();
+        Y = X.data();
+        size = s * rest;
+      }
+      // Y: (i_1, ..., i_d, c), i_1 fastest
+      local += gsEigen::Map<const Dense>(Y, A, d);
     }
   }
 
@@ -2073,7 +2563,7 @@ class gsRegularizedPDEAssembler {
 
   /// Sparsity pattern (compressed, column major) of the coupling of the
   /// free dofs by the elements (lower triangle only if \a lowerOnly)
-  void buildPattern(const bool lowerOnly, gsSparseMatrix<T> &pattern) const {
+  void buildPattern(const bool lowerOnly, Pattern &pattern) const {
     // elements containing each dof
     std::vector<std::vector<index_t> > elementsOf(m_numDofs);
     for (size_t ie = 0; ie != m_elements.size(); ++ie) {
@@ -2098,11 +2588,17 @@ class gsRegularizedPDEAssembler {
       inner.insert(inner.end(), column.begin(), column.end());
       outer[gj + 1] = inner.size();
     }
-    pattern.resize(m_numDofs, m_numDofs);
-    pattern.resizeNonZeros(inner.size());
-    std::copy(outer.begin(), outer.end(), pattern.outerIndexPtr());
-    std::copy(inner.begin(), inner.end(), pattern.innerIndexPtr());
-    std::fill(pattern.valuePtr(), pattern.valuePtr() + inner.size(), T(0));
+    pattern.outer.swap(outer);
+    pattern.inner.swap(inner);
+  }
+
+  /// A matrix with the given sparsity pattern and zero values
+  void makeMatrix(const Pattern &pattern, gsSparseMatrix<T> &matrix) const {
+    matrix.resize(m_numDofs, m_numDofs);
+    matrix.resizeNonZeros(pattern.inner.size());
+    std::copy(pattern.outer.begin(), pattern.outer.end(), matrix.outerIndexPtr());
+    std::copy(pattern.inner.begin(), pattern.inner.end(), matrix.innerIndexPtr());
+    std::fill(matrix.valuePtr(), matrix.valuePtr() + pattern.inner.size(), T(0));
   }
 
   gsMultiPatch<T> m_mp;
@@ -2113,7 +2609,8 @@ class gsRegularizedPDEAssembler {
   index_t m_h1Power = 2;
   index_t m_numAllElements = 0;
   std::vector<Element> m_elements;
-  mutable gsSparseMatrix<T> m_patternLower, m_patternFull;
+  std::vector<Table1D> m_tables;
+  mutable Pattern m_patternLower, m_patternFull;
 };
 
 template<short_t d, typename T>
