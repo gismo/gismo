@@ -142,6 +142,7 @@ int main(int argc, char *argv[]) {
   bool isBRep = false; // Input data is B-Rep
   bool noRegularization = false; // Disable Garanzha's regularization (PDE patch)
   bool skipH2 = false; // PDE patch: no H2 stage, untangling directly from the initial guess
+  bool freePDE = false; // PDE patch, free interfaces: H2/H1 as for single patches
   index_t linearSolver = 0; // Linear solvers of the PDE patch: 0 auto, 1 direct, 2 iterative
   index_t preconditioner = 0; // Preconditioner of GMRES (PDE patch): 0 auto, 1-3 see below
   index_t h1Form = 0;       // Regularized H1 stage: 0 original form, 1 weak Laplace equation of the inverse map
@@ -179,6 +180,9 @@ int main(int argc, char *argv[]) {
              "adaptive refinements where det(J) <= 0 between the nodes (0: off)",
              adaptiveRounds);
   cmd.addSwitch("free", "Make interfaces free", isInterfaceFree);
+  cmd.addSwitch("freepde", "PDE patch with --free: apply the H2/H1 stages as for "
+                "single patches (by default, the parameter domains are scaled by "
+                "chord lengths and the regularized Winslow energy is minimized)", freePDE);
   cmd.addSwitch("noh2", "PDE patch (experimental): skip the H2 stage and start "
                 "the untangling from the initial interior", skipH2);
   cmd.addSwitch("noreg", "PDE patch: disable Garanzha's regularization, i.e., no "
@@ -245,6 +249,7 @@ int main(int argc, char *argv[]) {
     opt.options().setInt("AAPreconditionType", AAPreconditionType);
     opt.options().setSwitch("PDEGaranzha", !noRegularization);
     opt.options().setSwitch("PDESkipH2", skipH2);
+    opt.options().setSwitch("PDEFreeInterfaceEnergy", !freePDE);
     opt.options().setInt("PDELinearSolver", linearSolver);
     opt.options().setInt("PDEPreconditioner", preconditioner);
     opt.options().setInt("PDEH1Form", h1Form);
@@ -260,6 +265,7 @@ int main(int argc, char *argv[]) {
     opt.options().setInt("AAPreconditionType", AAPreconditionType);
     opt.options().setSwitch("PDEGaranzha", !noRegularization);
     opt.options().setSwitch("PDESkipH2", skipH2);
+    opt.options().setSwitch("PDEFreeInterfaceEnergy", !freePDE);
     opt.options().setInt("PDELinearSolver", linearSolver);
     opt.options().setInt("PDEPreconditioner", preconditioner);
     opt.options().setInt("PDEH1Form", h1Form);

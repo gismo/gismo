@@ -137,6 +137,19 @@ class gsBarrierCore
   static std::vector<index_t> nodeOfDofs(const gsMultiPatch<T> &mp,
                                          const gsDofMapper &mapper);
 
+  /// True if some free unknown belongs to more than one patch (free
+  /// interfaces)
+  static bool couplesPatches(const gsMultiPatch<T> &mp,
+                             const gsDofMapper &mapper);
+
+  /// Copy of \a mp whose parameter domains are rescaled so that the
+  /// parametric length of every patch edge is the mean physical length of
+  /// its chord: the edges connected through interfaces and opposite patch
+  /// edges. Adjacent patches then have equal parametric lengths along their
+  /// interfaces and the parametric lengths follow the physical ones. Only
+  /// the knot vectors of tensor-product B-spline patches change.
+  static gsMultiPatch<T> chordScaled(const gsMultiPatch<T> &mp);
+
  private:
   /// Barrier function-based method
   static gsMultiPatch<T> computeBarrierPatch(const gsMultiPatch<T> &mp,

@@ -310,6 +310,25 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
   // the coordinates. For thin domains (few elements across), sparse LU is
   // cheap and the multigrid smoothers are slow; PDEPreconditioner = 1 or
   // PDELinearSolver = 1 can be faster there.
+  // Free interfaces (patches coupled through the mapper): the H2 and H1
+  // equations of the patches are written in their own parametric
+  // coordinates and are summed at the interfaces, which is only consistent
+  // if the parametric coordinates of adjacent patches agree in scale and
+  // orientation. Instead, the parameter domains are rescaled by chord lengths
+  // (chordScaled) and the regularized Winslow energy, which does not depend
+  // on the orientation of the parametric coordinates, is minimized (no H2,
+  // no H1). Off: the stages of a single patch are applied as they are.
+  options.addSwitch("PDEFreeInterfaceEnergy",
+                    "PDE patch, free interfaces: chord-scaled parameter "
+                    "domains and energy minimization instead of H2/H1", true);
+  // Energy minimization as the final stage (also for single patches): no
+  // H1 stage; relative energy decrease at which the minimization stops
+  options.addSwitch("PDEEnergyFinal",
+                    "PDE patch: the regularized Winslow energy minimization is "
+                    "the final stage (no H1)", false);
+  options.addReal("PDEEnergyTol",
+                  "PDE patch: relative energy decrease at which the final energy "
+                  "minimization stops", 1e-11);
   // Experimental: skip the H2 stage and start the untangling (and the
   // regularized H1 stage) from the given interior. Only with PDEGaranzha.
   options.addSwitch("PDESkipH2",
@@ -1320,6 +1339,24 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
   // Nothing to do without free control points (e.g. a bilinear patch)
   if (mapper.freeSize() == 0) { return mp; }
 
+  // Free interfaces: chord-scaled parameter domains, energy minimization
+  if (options.askSwitch("PDEGaranzha", true)
+      && options.askSwitch("PDEFreeInterfaceEnergy", true)
+      && couplesPatches(mp, mapper)) {
+    verboseLog("PDE-based parameterization construction with free interfaces: "
+               "chord-scaled parameter domains, energy minimization ...\n",
+               options.askInt("Verbose", 0));
+    gsMultiPatch<T> scaled = chordScaled(mp);
+    gsOptionList energyOptions = options;
+    energyOptions.addSwitch("PDEEnergyFinal", "", true);
+    gsVector<T> x = convertMultiPatchToFreeVector(scaled, mapper);
+    x = computeRegularizedH1(scaled, mapper, x, energyOptions);
+    // same control points, original parameter domains
+    gsMultiPatch<T> result = mp;
+    convertFreeVectorToMultiPatch<T>(x, mapper, result);
+    return result;
+  }
+
   // Experimental: no H2 stage, untangling and regularized H1 directly from
   // the given interior (e.g. a Coons patch)
   if (options.askSwitch("PDEGaranzha", true)
@@ -1667,6 +1704,100 @@ gsBarrierCore<d, T>::nodeOfDofs(const gsMultiPatch<T> &mp,
     node[i] = number[k];
   }
   return node;
+}
+
+template<short_t d, typename T>
+bool gsBarrierCore<d, T>::couplesPatches(const gsMultiPatch<T> &mp,
+                                         const gsDofMapper &mapper) {
+  if (mp.nPatches() < 2) { return false; }
+  std::vector<index_t> owner(mapper.freeSize(), -1);
+  for (size_t ip = 0; ip != mp.nPatches(); ++ip)
+    for (index_t c = 0; c != mp.targetDim(); ++c)
+      for (size_t i = 0; i != mapper.patchSize(ip, c); ++i) {
+        if (!mapper.is_free(i, ip, c)) { continue; }
+        index_t &o = owner[mapper.index(i, ip, c)];
+        if (o >= 0 && o != index_t(ip)) { return true; }
+        o = ip;
+      }
+  return false;
+}
+
+template<short_t d, typename T>
+gsMultiPatch<T> gsBarrierCore<d, T>::chordScaled(const gsMultiPatch<T> &mp) {
+  const size_t np = mp.nPatches();
+  // (patch, direction) -> class; union-find
+  std::vector<index_t> parent(np * d);
+  for (size_t i = 0; i != parent.size(); ++i) { parent[i] = i; }
+  std::function<index_t(index_t)> find = [&](index_t i) {
+    while (parent[i] != i) { i = parent[i] = parent[parent[i]]; }
+    return i;
+  };
+  // physical length along each direction: mean length of the control
+  // polygons of the 2^(d-1) patch edges in that direction
+  std::vector<T> length(np * d, T(0));
+  std::vector<bool> tensor(np, false);
+  for (size_t ip = 0; ip != np; ++ip) {
+    const gsTensorBSpline<d, T> *patch =
+        dynamic_cast<const gsTensorBSpline<d, T> *>(&mp.patch(ip));
+    if (!patch) { continue; }
+    tensor[ip] = true;
+    const gsTensorBSplineBasis<d, T> &basis = patch->basis();
+    gsVector<index_t, d> size;
+    for (short_t a = 0; a != d; ++a) { size(a) = basis.size(a); }
+    for (short_t a = 0; a != d; ++a) {
+      T sum = 0;
+      index_t numEdges = 0;
+      // corner pattern of the other directions
+      for (index_t corner = 0; corner != (1 << (d - 1)); ++corner) {
+        gsVector<index_t, d> idx;
+        index_t bit = 0;
+        for (short_t b = 0; b != d; ++b) {
+          if (b == a) { continue; }
+          idx(b) = ((corner >> bit++) & 1) ? size(b) - 1 : 0;
+        }
+        for (index_t i = 0; i + 1 < size(a); ++i) {
+          idx(a) = i;
+          const index_t i0 = basis.index(idx);
+          idx(a) = i + 1;
+          sum += (patch->coefs().row(basis.index(idx)) - patch->coefs().row(i0)).norm();
+        }
+        ++numEdges;
+      }
+      length[ip * d + a] = sum / numEdges;
+    }
+  }
+  for (auto it = mp.topology().iBegin(); it != mp.topology().iEnd(); ++it) {
+    const patchSide &first = it->first(), &second = it->second();
+    const gsVector<index_t> dirMap = it->dirMap(first);
+    for (short_t a = 0; a != d; ++a) {
+      if (a == first.direction()) { continue; }
+      const index_t r1 = find(first.patch * d + a);
+      const index_t r2 = find(second.patch * d + dirMap(a));
+      if (r1 != r2) { parent[r1] = r2; }
+    }
+  }
+  std::vector<T> sum(np * d, T(0));
+  std::vector<index_t> count(np * d, 0);
+  for (size_t i = 0; i != np * d; ++i) {
+    if (!tensor[i / d] || !(length[i] > 0)) { continue; }
+    sum[find(i)] += length[i];
+    ++count[find(i)];
+  }
+  gsMultiPatch<T> result = mp;
+  for (size_t ip = 0; ip != np; ++ip) {
+    if (!tensor[ip]) { continue; }
+    const gsTensorBSpline<d, T> &patch =
+        static_cast<const gsTensorBSpline<d, T> &>(mp.patch(ip));
+    std::vector<gsKnotVector<T> > knots(d);
+    for (short_t a = 0; a != d; ++a) {
+      const index_t r = find(ip * d + a);
+      knots[a] = patch.basis().knots(a);
+      if (count[r] > 0) { knots[a].affineTransformTo(0, sum[r] / count[r]); }
+    }
+    gsTensorBSplineBasis<d, T> basis(knots);
+    result.patch(ip) = gsTensorBSpline<d, T>(basis, patch.coefs());
+  }
+  return result;
 }
 
 template<short_t d, typename T>
@@ -2683,8 +2814,12 @@ gsBarrierCore<d, T>::regularizedStage(const gsMultiPatch<T> &mp,
   // Foldover-free maps in 50 lines of code, ACM TOG 40(4), 2021
   const T epsFactor = 0.2;
   const index_t maxBacktracking = 30;
-  const index_t maxUntangleIter = 200;
-  const T untangleTol = 1e-5;
+  // With PDEEnergyFinal (set for free interfaces), the energy minimization
+  // is the last stage: it runs also for an unfolded start, to a tighter
+  // tolerance, and the H1 stage is skipped.
+  const bool energyFinal = options.askSwitch("PDEEnergyFinal", false);
+  const index_t maxUntangleIter = energyFinal ? 1000 : 200;
+  const T untangleTol = energyFinal ? options.askReal("PDEEnergyTol", 1e-11) : 1e-5;
   const T stagnationTol = 1e-12;
   const T armijo = 1e-4;
 
@@ -2779,10 +2914,12 @@ gsBarrierCore<d, T>::regularizedStage(const gsMultiPatch<T> &mp,
   // functional  W(x) = int |J|_F^2 / chi(det J, eps)^(2/d)  (Gauss-Newton
   // method with Armijo line search). Only needed if the input is folded.
   //////////////////////////////////////////////////////////////////////////
-  if (!(Dmin > 0)) {
-    verboseLog("\nThe H2 result is folded (min det(J) / mean det(J) = "
-                   + std::to_string(Dmin / meanDet)
-                   + "). Start untangling...", verbose);
+  if (!(Dmin > 0) || energyFinal) {
+    verboseLog(energyFinal ? std::string("\nMinimizing the regularized Winslow "
+                                         "energy (final stage)...")
+                           : "\nThe H2 result is folded (min det(J) / mean det(J) = "
+                                 + std::to_string(Dmin / meanDet)
+                                 + "). Start untangling...", verbose);
 
     T eps = epsMin;
     auto energy = [&](gsVector<T> const &u) {
@@ -2811,6 +2948,10 @@ gsBarrierCore<d, T>::regularizedStage(const gsMultiPatch<T> &mp,
       const T negPart = std::min<T>(Dmin, 0);
       eps = math::sqrt(epsMin * epsMin
                            + epsFactor * epsFactor * negPart * negPart);
+      // As the final stage, once unfolded: eps <= 0.1 min det(J), so that
+      // chi ~ det(J) everywhere and the energy acts as a barrier against
+      // degenerate cells (with eps > det(J) it is bounded there).
+      if (energyFinal && Dmin > 0) { eps = std::min(eps, T(0.1) * Dmin); }
 
       timer.restart();
       const T W0 = energy(x);
@@ -2897,7 +3038,7 @@ gsBarrierCore<d, T>::regularizedStage(const gsMultiPatch<T> &mp,
     }
   }
 
-  if (!options.askSwitch("needPDEH1", true)) { return finish(x); }
+  if (energyFinal || !options.askSwitch("needPDEH1", true)) { return finish(x); }
 
   if (!(Dmin > 0)) {
     gsWarn << "The parameterization could not be untangled; the H1 "
