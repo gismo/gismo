@@ -490,7 +490,7 @@ void runSolverComparison(const gsMultiPatch<real_t>& mp,
 
     const std::vector<std::pair<std::string, std::string>> configs = {
         {"direct",     "-"},
-        {"schwarz_cg", "patch_skel"},
+        {"schwarz_cg", "-"},
         {"cg",         "nodal_gs"},
         {"cg",         "ring1"},
         {"cg",         "line_ring1"},
@@ -529,17 +529,39 @@ void runScordelisLoBenchmark(const std::string& file,
                              const std::string& smootherType)
 {
     gsMultiPatch<real_t> mp = loadOpenSurface3D(file);
-    gsKLShellMaterial<real_t> mat;
-    mat.E = 4.32e8;
-    mat.nu = 0.0;
-    mat.thickness = 0.25;
+    gsKLShellMaterial<real_t> mat(4.32e8, 0.0, 0.25);
 
-    // Identify curved diaphragm boundaries (where X is constant at x=0 or x=50) vs free straight edges.
-    // On the exact MacNeal-Harder / Kiendl Scordelis-Lo benchmark, u_y = u_z = 0 on both curved ends,
-    // while axial warping u_x is FREE on both ends (only the 1-DOF rigid axial shift is removed by
-    // pinning u_x = 0 at a single point via a tiny spring/corner elimination).
+    // Compute overall geometry bounding box for scale-invariant boundary classification
+    gsVector<real_t, 3> bbMin = gsVector<real_t, 3>::Constant(1e30);
+    gsVector<real_t, 3> bbMax = gsVector<real_t, 3>::Constant(-1e30);
+    {
+        gsMatrix<real_t> grid(2, 25);
+        for (int j = 0; j < 5; ++j)
+            for (int i = 0; i < 5; ++i)
+            {
+                grid(0, i + 5 * j) = i * 0.25;
+                grid(1, i + 5 * j) = j * 0.25;
+            }
+        for (size_t p = 0; p < mp.nPatches(); ++p)
+        {
+            const gsMatrix<real_t> X = mp.patch(p).eval(grid);
+            for (int c = 0; c < 3; ++c)
+            {
+                bbMin(c) = std::min(bbMin(c), X.row(c).minCoeff());
+                bbMax(c) = std::max(bbMax(c), X.row(c).maxCoeff());
+            }
+        }
+    }
+    const gsVector<real_t, 3> bbExt = bbMax - bbMin;
+    const real_t scale = std::max(bbExt.maxCoeff(), real_t(1e-12));
+
+    // Identify curved diaphragm boundaries (constant axial coordinate, varying Z) vs straight free edges.
+    // On the exact MacNeal-Harder / Kiendl Scordelis-Lo benchmark, transverse displacements are zero
+    // on both curved ends, while axial warping is free (only the 1-DOF rigid axial shift is removed).
     gsBoundaryConditions<real_t> bc;
     gsConstantFunction<real_t> zero(0.0, 3);
+    std::vector<patchSide> freeSides;
+    std::vector<patchSide> diaphragmSides;
     index_t axialComp = 0;
     for (size_t i = 0; i < mp.boundaries().size(); ++i)
     {
@@ -553,9 +575,10 @@ void runScordelisLoBenchmark(const std::string& file,
         const real_t dX = X.row(0).maxCoeff() - X.row(0).minCoeff();
         const real_t dY = X.row(1).maxCoeff() - X.row(1).minCoeff();
         const real_t dZ = X.row(2).maxCoeff() - X.row(2).minCoeff();
-        if (dZ > 1.0 && (dY < 1e-3 || dX < 1e-3))
+        if (dZ > 0.05 * bbExt(2) && (dY < 1e-3 * scale || dX < 1e-3 * scale))
         {
-            if (dY < 1e-3)
+            diaphragmSides.push_back(ps);
+            if (dY < 1e-3 * scale)
             {
                 axialComp = 1;
                 bc.add(ps.patch, ps.side(), "Values", zero, 0); // u_x = 0
@@ -568,18 +591,26 @@ void runScordelisLoBenchmark(const std::string& file,
                 bc.add(ps.patch, ps.side(), "Values", zero, 2); // u_z = 0
             }
         }
+        else
+        {
+            freeSides.push_back(ps);
+        }
     }
+    GISMO_ENSURE(!diaphragmSides.empty(),
+                 "runScordelisLoBenchmark: failed to identify curved diaphragm boundaries.");
 
     gsInfo << "\n================================================================================\n"
            << "Scordelis-Lo Roof Benchmark (Non-Isoparametric Polynomial S_{p=" << degreeP
            << "} on Exact NURBS)\n"
-           << "  Reference free-edge midpoint vertical displacement u_z ~ -0.3006 .. -0.3024\n"
+           << "  Reference free-edge midpoint vertical displacement u_z ~ -0.3006 (KL) .. -0.3024\n"
            << "================================================================================\n";
 
     auto gravityLoad = [](const gsVector<real_t>&, gsVector<real_t, 3>& fBody, real_t& pNorm) {
         fBody << 0.0, 0.0, -90.0;
         pNorm = 0.0;
     };
+
+    const real_t midAx = 0.5 * (bbMin(axialComp) + bbMax(axialComp));
 
     for (index_t r = minRef; r <= maxRef; ++r)
     {
@@ -593,34 +624,420 @@ void runScordelisLoBenchmark(const std::string& file,
         asmbl.assemblePhysicalRHS(gravityLoad, F_discont);
         asmbl.projectSystem(K_discont, F_discont, fin.T_free, fin.T_bnd, u_bnd, K_free, F_free);
 
-        // Pin the single axial rigid-body translation mode at corner 0 of patch 0
-        const index_t corner0Off = sumUntil(fin.argBasis[0].sizes, 9);
-        if (fin.mapper.is_free(corner0Off, 0, axialComp))
+        // Pin the single axial rigid-body translation mode on a guaranteed free corner value DOF
+        bool axialPinned = false;
+        for (size_t p = 0; p < mp.nPatches() && !axialPinned; ++p)
         {
-            const index_t pinIdx = fin.mapper.index(corner0Off, 0, axialComp);
-            K_free.coeffRef(pinIdx, pinIdx) += mat.E;
+            for (index_t c = 0; c < 4 && !axialPinned; ++c)
+            {
+                const index_t cornerOff = sumUntil(fin.argBasis[p].sizes, 9 + c);
+                if (fin.mapper.is_free(cornerOff, static_cast<index_t>(p), axialComp))
+                {
+                    const index_t pinIdx = fin.mapper.index(cornerOff, static_cast<index_t>(p), axialComp);
+                    K_free.coeffRef(pinIdx, pinIdx) += mat.E;
+                    axialPinned = true;
+                }
+            }
         }
+        GISMO_ENSURE(axialPinned,
+                     "runScordelisLoBenchmark: could not find a free axial corner DOF to pin rigid translation.");
 
         const auto st = hier.solve(K_free, F_free, mat, u_free, solverType, smootherType,
                                    1, 1, 1, 250, 1e-10);
         gsVector<real_t> c_sol = fin.T_free * u_free;
 
-        // Evaluate vertical displacement u_z at midpoints of all 4 edges (free edge has max |u_z|)
+        // Evaluate vertical displacement u_z at the physical axial midpoint along straight free edge(s)
+        // (works identically for both single-patch and multi-patch split roofs).
         real_t minUz = 0.0;
-        for (size_t p = 0; p < mp.nPatches(); ++p)
+        bool foundMid = false;
+        for (const patchSide& ps : freeSides)
         {
-            const real_t pts[4][2] = {{0.0, 0.5}, {1.0, 0.5}, {0.5, 0.0}, {0.5, 1.0}};
-            for (int k = 0; k < 4; ++k)
+            const short_t nDir = ps.direction(), tDir = 1 - nDir;
+            const real_t samples[3] = {0.0, 0.5, 1.0};
+            for (int s = 0; s < 3; ++s)
             {
-                const auto uVal = asmbl.evalDisplacement(c_sol, p, pts[k][0], pts[k][1]);
-                if (uVal(2) < minUz) minUz = uVal(2);
+                gsMatrix<real_t> pt(2, 1);
+                pt(nDir, 0) = ps.parameter() ? 1.0 : 0.0;
+                pt(tDir, 0) = samples[s];
+                const gsMatrix<real_t> X = mp.patch(ps.patch).eval(pt);
+                if (std::abs(X(axialComp, 0) - midAx) <= 1e-3 * scale)
+                {
+                    const auto uVal = asmbl.evalDisplacement(c_sol, ps.patch, pt(0, 0), pt(1, 0));
+                    if (!foundMid || uVal(2) < minUz)
+                    {
+                        minUz = uVal(2);
+                        foundMid = true;
+                    }
+                }
             }
         }
+        GISMO_ENSURE(foundMid,
+                     "runScordelisLoBenchmark: failed to locate free-edge axial midpoint.");
+
+        // Check diaphragm Dirichlet constraint residual across all diaphragm edges including corners
+        real_t maxDiaphLeak = 0.0;
+        const index_t transComp = 1 - axialComp;
+        for (const patchSide& ps : diaphragmSides)
+        {
+            const short_t nDir = ps.direction(), tDir = 1 - nDir;
+            for (int s = 0; s <= 20; ++s)
+            {
+                gsMatrix<real_t> pt(2, 1);
+                pt(nDir, 0) = ps.parameter() ? 1.0 : 0.0;
+                pt(tDir, 0) = s / 20.0;
+                const auto uVal = asmbl.evalDisplacement(c_sol, ps.patch, pt(0, 0), pt(1, 0));
+                maxDiaphLeak = std::max(maxDiaphLeak, std::max(std::abs(uVal(transComp)), std::abs(uVal(2))));
+            }
+        }
+
         gsInfo << "  ref=" << r << "  nFree=" << std::setw(6) << st.nFree
                << "  u_z(free_mid)=" << std::fixed << std::setprecision(6) << minUz
+               << "  max|u_diaph|=" << std::scientific << std::setprecision(2) << maxDiaphLeak
                << "  iters=" << std::setw(4) << st.iterations
                << "  relRes=" << std::scientific << std::setprecision(1) << st.relResidual << "\n";
     }
+}
+
+void runPhysicsVerification(const std::string& scordelisFile)
+{
+    gsInfo << "\n================================================================================\n"
+           << "AS-G1 Kirchhoff-Love Shell Intrinsic & Physical Regression Suite\n"
+           << "================================================================================\n";
+
+    auto embed2DTo3D = [](const gsMultiPatch<real_t>& mp2) -> gsMultiPatch<real_t> {
+        gsMultiPatch<real_t> mp3;
+        for (size_t p = 0; p < mp2.nPatches(); ++p)
+        {
+            const auto& bsp = dynamic_cast<const gsTensorBSpline<2, real_t>&>(mp2.patch(p));
+            gsMatrix<real_t> c3 = gsMatrix<real_t>::Zero(bsp.coefs().rows(), 3);
+            c3.leftCols(2) = bsp.coefs();
+            mp3.addPatch(typename gsGeometry<real_t>::uPtr(new gsTensorBSpline<2, real_t>(bsp.basis(), c3)));
+        }
+        mp3.computeTopology();
+        return mp3;
+    };
+
+    // 1. Intrinsic checks (symmetry, 6 rigid-body modes, manufactured RHS consistency) on curved 2x2 paraboloid
+    {
+        gsMultiPatch<real_t> mp = embed2DTo3D(gsNurbsCreator<real_t>::BSplineSquareGrid(2, 2, 0.5));
+        for (size_t p = 0; p < mp.nPatches(); ++p)
+        {
+            auto& bsp = dynamic_cast<gsTensorBSpline<2, real_t>&>(mp.patch(p));
+            bsp.degreeElevate(1); // quadratic in u, v so z = 0.25*(x^2 + y^2) is exact
+            const gsMatrix<real_t> anc = bsp.basis().anchors();
+            const gsMatrix<real_t> X = bsp.eval(anc);
+            gsMatrix<real_t> vals(3, anc.cols());
+            for (index_t j = 0; j < anc.cols(); ++j)
+            {
+                vals(0, j) = X(0, j);
+                vals(1, j) = X(1, j);
+                vals(2, j) = 0.25 * (X(0, j) * X(0, j) + X(1, j) * X(1, j));
+            }
+            bsp.coefs() = bsp.basis().interpolateAtAnchors(vals)->coefs();
+        }
+        mp.computeTopology();
+
+        gsKLShellMaterial<real_t> mat(1e6, 0.3, 0.1);
+        gsMultiBasis<real_t> db = buildAsG1PolynomialMultiBasis(mp, 3, 1, 0);
+        gsAsG1KLShellAssembler<real_t> asmbl(mp, db, mat);
+        gsSparseMatrix<real_t> K;
+        asmbl.assembleStiffness(K);
+        const real_t kNorm = K.norm();
+        const real_t symErr = (gsSparseMatrix<real_t>(K - gsSparseMatrix<real_t>(K.transpose()))).norm() / kNorm;
+        GISMO_ENSURE(symErr < 1e-14, "Stiffness matrix asymmetry too large: " << symErr);
+
+        const index_t N = asmbl.scalarDiscontSize();
+        real_t maxRbErr = 0.0;
+        for (int m = 0; m < 6; ++m)
+        {
+            gsVector<real_t> c(3 * N);
+            for (size_t p = 0; p < mp.nPatches(); ++p)
+            {
+                const gsMatrix<real_t> anc = db[p].anchors();
+                const gsMatrix<real_t> X = mp.patch(p).eval(anc);
+                gsMatrix<real_t> vals(3, anc.cols());
+                for (index_t j = 0; j < anc.cols(); ++j)
+                {
+                    gsVector<real_t, 3> u = gsVector<real_t, 3>::Zero();
+                    if (m < 3)
+                        u(m) = 1.0;
+                    else
+                    {
+                        gsVector<real_t, 3> ax = gsVector<real_t, 3>::Zero();
+                        ax(m - 3) = 1.0;
+                        gsVector<real_t, 3> x3;
+                        x3 << X(0, j), X(1, j), X(2, j);
+                        u = ax.cross(x3);
+                    }
+                    vals.col(j) = u;
+                }
+                auto g = db[p].interpolateAtAnchors(vals);
+                for (index_t comp = 0; comp < 3; ++comp)
+                    c.segment(comp * N + asmbl.patchOffsets()[p], db[p].size()) = g->coefs().col(comp);
+            }
+            const real_t rbErr = (K * c).norm() / (kNorm * c.norm());
+            maxRbErr = std::max(maxRbErr, rbErr);
+        }
+        GISMO_ENSURE(maxRbErr < 1e-13, "Rigid-body mode kernel residual too large: " << maxRbErr);
+        gsInfo << "  [PASS] Intrinsic curved 2x2 paraboloid: sym=" << std::scientific << std::setprecision(2)
+               << symErr << ", maxRigidBody=" << maxRbErr << "\n";
+    }
+
+    // 2. Clamped and Simply-Supported 2x2 Kirchhoff plates (verifies B2 smooth-boundary clamping fix)
+    {
+        gsMultiPatch<real_t> grid = embed2DTo3D(gsNurbsCreator<real_t>::BSplineSquareGrid(2, 2, 0.5));
+        gsKLShellMaterial<real_t> mat(1e6, 0.3, 0.01);
+        const real_t D = mat.E * std::pow(mat.thickness, 3) / (12.0 * (1.0 - mat.nu * mat.nu));
+
+        const std::pair<std::string, real_t> cases[2] = {
+            {"ValuesAndDerivatives", 0.00126532 / D},
+            {"Values",               0.00406235 / D}
+        };
+        for (const auto& cs : cases)
+        {
+            gsBoundaryConditions<real_t> bc;
+            gsConstantFunction<real_t> zero(0.0, 3);
+            for (const auto& ps : grid.boundaries())
+                for (short_t c = 0; c < 3; ++c)
+                    bc.add(ps.patch, ps.side(), cs.first, zero, c);
+
+            gsAsG1ShellHierarchy<real_t> hier(grid, bc, 3, 1, 0, 1, true);
+            const auto& fin = hier.finest();
+            gsAsG1KLShellAssembler<real_t> asmbl(grid, fin.dbasis, mat);
+            gsSparseMatrix<real_t> K, Kf;
+            gsVector<real_t> F, Ff, ub = gsVector<real_t>::Zero(fin.mapper.boundarySize()), uf;
+            asmbl.assembleStiffness(K);
+            asmbl.assemblePhysicalRHS(
+                [](const gsVector<real_t>&, gsVector<real_t, 3>& f, real_t& pn) { f.setZero(); pn = 1.0; }, F);
+            asmbl.projectSystem(K, F, fin.T_free, fin.T_bnd, ub, Kf, Ff);
+            const auto st = hier.solve(Kf, Ff, mat, uf, "cg", "line_ring1", 1, 1, 1, 200, 1e-12);
+            gsVector<real_t> c_sol = fin.T_free * uf;
+
+            real_t wc = 0.0;
+            for (size_t p = 0; p < grid.nPatches(); ++p)
+                for (int k = 0; k < 4; ++k)
+                {
+                    gsMatrix<real_t> u(2, 1);
+                    u << (k % 2), (k / 2);
+                    const gsMatrix<real_t> X = grid.patch(p).eval(u);
+                    if (std::abs(X(0, 0) - 0.5) < 1e-10 && std::abs(X(1, 0) - 0.5) < 1e-10)
+                        wc = asmbl.evalDisplacement(c_sol, p, u(0, 0), u(1, 0))(2);
+                }
+            const real_t ratio = wc / cs.second;
+            GISMO_ENSURE(st.converged && std::abs(ratio - 1.0) < 1e-4,
+                         "2x2 plate (" << cs.first << ") failed: w_c/w_ref = " << ratio);
+            gsInfo << "  [PASS] 2x2 plate (" << std::left << std::setw(20) << cs.first
+                   << "): w_c/w_ref=" << std::fixed << std::setprecision(6) << ratio
+                   << ", iters=" << st.iterations << "\n";
+        }
+    }
+
+    // 3. Multi-patch 2x2 Cantilever plate in both edge orientations (nu = 0 -> exact quartic beam w_tip = qL^4/(8D))
+    {
+        gsMultiPatch<real_t> grid = embed2DTo3D(gsNurbsCreator<real_t>::BSplineSquareGrid(2, 2, 0.5));
+        gsKLShellMaterial<real_t> mat(1e6, 0.0, 0.01);
+        const real_t D = mat.E * std::pow(mat.thickness, 3) / 12.0;
+        const real_t wTipRef = 1.0 / (8.0 * D);
+
+        for (int clampAxis = 0; clampAxis < 2; ++clampAxis)
+        {
+            gsBoundaryConditions<real_t> bc;
+            gsConstantFunction<real_t> zero(0.0, 3);
+            for (const auto& ps : grid.boundaries())
+            {
+                gsMatrix<real_t> pt(2, 1);
+                const short_t nDir = ps.direction(), tDir = 1 - nDir;
+                pt(nDir, 0) = ps.parameter() ? 1.0 : 0.0;
+                pt(tDir, 0) = 0.5;
+                const gsMatrix<real_t> X = grid.patch(ps.patch).eval(pt);
+                if (std::abs(X(clampAxis, 0)) < 1e-10)
+                    for (short_t c = 0; c < 3; ++c)
+                        bc.add(ps.patch, ps.side(), "ValuesAndDerivatives", zero, c);
+            }
+
+            gsAsG1ShellHierarchy<real_t> hier(grid, bc, 4, 2, 0, 1, true);
+            const auto& fin = hier.finest();
+            gsAsG1KLShellAssembler<real_t> asmbl(grid, fin.dbasis, mat);
+            gsSparseMatrix<real_t> K, Kf;
+            gsVector<real_t> F, Ff, ub = gsVector<real_t>::Zero(fin.mapper.boundarySize()), uf;
+            asmbl.assembleStiffness(K);
+            asmbl.assemblePhysicalRHS(
+                [](const gsVector<real_t>&, gsVector<real_t, 3>& f, real_t& pn) { f.setZero(); pn = 1.0; }, F);
+            asmbl.projectSystem(K, F, fin.T_free, fin.T_bnd, ub, Kf, Ff);
+            const auto st = hier.solve(Kf, Ff, mat, uf, "direct");
+            gsVector<real_t> c_sol = fin.T_free * uf;
+
+            real_t maxTipErr = 0.0;
+            real_t maxClampLeak = 0.0;
+            for (size_t p = 0; p < grid.nPatches(); ++p)
+            {
+                for (int j = 0; j <= 4; ++j)
+                    for (int i = 0; i <= 4; ++i)
+                    {
+                        gsMatrix<real_t> pt(2, 1);
+                        pt << i * 0.25, j * 0.25;
+                        const gsMatrix<real_t> X = grid.patch(p).eval(pt);
+                        const auto uVal = asmbl.evalDisplacement(c_sol, p, pt(0, 0), pt(1, 0));
+                        if (std::abs(X(clampAxis, 0) - 1.0) < 1e-10)
+                            maxTipErr = std::max(maxTipErr, std::abs(uVal(2) - wTipRef) / wTipRef);
+                        if (std::abs(X(clampAxis, 0)) < 1e-10)
+                            maxClampLeak = std::max(maxClampLeak, uVal.norm());
+                    }
+            }
+            GISMO_ENSURE(st.converged && maxTipErr < 1e-8 && maxClampLeak < 1e-12,
+                         "2x2 cantilever (axis=" << clampAxis << ") failed: tipRelErr="
+                         << maxTipErr << ", clampLeak=" << maxClampLeak);
+            gsInfo << "  [PASS] 2x2 cantilever (clamp axis=" << clampAxis
+                   << "): tipRelErr=" << std::scientific << std::setprecision(2) << maxTipErr
+                   << ", clampLeak=" << maxClampLeak << "\n";
+        }
+    }
+
+    // 4. Curved sharp-corner one-sided Dirichlet test on quarter-annulus (r in [1,2], theta in [0,pi/2])
+    {
+        gsMultiPatch<real_t> ann;
+        ann.addPatch(gsNurbsCreator<real_t>::NurbsQuarterAnnulus(1.0, 2.0));
+        // Embed 2D NURBS in 3D (z = 0)
+        const auto& r2 = dynamic_cast<const gsTensorNurbs<2, real_t>&>(ann.patch(0));
+        gsMatrix<real_t> c3 = gsMatrix<real_t>::Zero(r2.coefs().rows(), 3);
+        c3.leftCols(2) = r2.coefs();
+        gsMultiPatch<real_t> ann3;
+        ann3.addPatch(typename gsGeometry<real_t>::uPtr(new gsTensorNurbs<2, real_t>(r2.basis(), c3)));
+        ann3.computeTopology();
+
+        // Constrain Values ONLY on inner curved arc (r = 1) and outer curved arc (r = 2), leaving radial edges free
+        gsBoundaryConditions<real_t> bc;
+        gsConstantFunction<real_t> zero(0.0, 3);
+        std::vector<patchSide> curvedSides;
+        for (const auto& ps : ann3.boundaries())
+        {
+            gsMatrix<real_t> pts(2, 3);
+            const short_t nDir = ps.direction(), tDir = 1 - nDir;
+            pts.row(nDir).setConstant(ps.parameter() ? 1.0 : 0.0);
+            pts(tDir, 0) = 0.0; pts(tDir, 1) = 0.5; pts(tDir, 2) = 1.0;
+            const gsMatrix<real_t> X = ann3.patch(0).eval(pts);
+            const real_t r0 = std::hypot(X(0, 0), X(1, 0));
+            const real_t r1 = std::hypot(X(0, 1), X(1, 1));
+            const real_t r2v = std::hypot(X(0, 2), X(1, 2));
+            if (std::abs(r0 - r1) < 1e-4 && std::abs(r1 - r2v) < 1e-4)
+            {
+                curvedSides.push_back(ps);
+                for (short_t c = 0; c < 3; ++c)
+                    bc.add(ps.patch, ps.side(), "Values", zero, c);
+            }
+        }
+        GISMO_ENSURE(curvedSides.size() == 2, "Expected 2 curved arcs on quarter annulus.");
+
+        gsKLShellMaterial<real_t> mat(1e6, 0.3, 0.05);
+        gsAsG1ShellHierarchy<real_t> hier(ann3, bc, 4, 2, 0, 1, true);
+        const auto& fin = hier.finest();
+        gsAsG1KLShellAssembler<real_t> asmbl(ann3, fin.dbasis, mat);
+        gsSparseMatrix<real_t> K, Kf;
+        gsVector<real_t> F, Ff, ub = gsVector<real_t>::Zero(fin.mapper.boundarySize()), uf;
+        asmbl.assembleStiffness(K);
+        asmbl.assemblePhysicalRHS(
+            [](const gsVector<real_t>&, gsVector<real_t, 3>& f, real_t& pn) { f.setZero(); pn = 1.0; }, F);
+        asmbl.projectSystem(K, F, fin.T_free, fin.T_bnd, ub, Kf, Ff);
+        const auto st = hier.solve(Kf, Ff, mat, uf, "direct");
+        gsVector<real_t> c_sol = fin.T_free * uf;
+
+        real_t maxArcLeak = 0.0;
+        for (const patchSide& ps : curvedSides)
+        {
+            const short_t nDir = ps.direction(), tDir = 1 - nDir;
+            for (int s = 0; s <= 20; ++s)
+            {
+                gsMatrix<real_t> pt(2, 1);
+                pt(nDir, 0) = ps.parameter() ? 1.0 : 0.0;
+                pt(tDir, 0) = s / 20.0;
+                maxArcLeak = std::max(maxArcLeak, asmbl.evalDisplacement(c_sol, 0, pt(0, 0), pt(1, 0)).norm());
+            }
+        }
+        GISMO_ENSURE(st.converged && maxArcLeak < 1e-11,
+                     "Curved sharp-corner quarter-annulus Dirichlet leak too large: " << maxArcLeak);
+        gsInfo << "  [PASS] Quarter-annulus curved sharp-corner BCs: maxArcLeak="
+               << std::scientific << std::setprecision(2) << maxArcLeak << "\n";
+    }
+
+    // 5. Scordelis-Lo cylindrical NURBS roof (verifies B1 sharp-corner one-sided diaphragm fix)
+    {
+        gsMultiPatch<real_t> mp = loadOpenSurface3D(scordelisFile);
+        gsKLShellMaterial<real_t> mat(4.32e8, 0.0, 0.25);
+        gsBoundaryConditions<real_t> bc;
+        gsConstantFunction<real_t> zero(0.0, 3);
+        std::vector<patchSide> diaphragmSides, freeSides;
+        index_t axialComp = 0;
+        for (const auto& ps : mp.boundaries())
+        {
+            gsMatrix<real_t> pts(2, 3);
+            const short_t nDir = ps.direction(), tDir = 1 - nDir;
+            pts.row(nDir).setConstant(ps.parameter() ? 1.0 : 0.0);
+            pts(tDir, 0) = 0.0; pts(tDir, 1) = 0.5; pts(tDir, 2) = 1.0;
+            const gsMatrix<real_t> X = mp.patch(ps.patch).eval(pts);
+            const real_t dX = X.row(0).maxCoeff() - X.row(0).minCoeff();
+            const real_t dY = X.row(1).maxCoeff() - X.row(1).minCoeff();
+            const real_t dZ = X.row(2).maxCoeff() - X.row(2).minCoeff();
+            if (dZ > 1.0 && (dY < 1e-3 || dX < 1e-3))
+            {
+                diaphragmSides.push_back(ps);
+                const index_t tComp = (dY < 1e-3) ? 0 : 1;
+                axialComp = 1 - tComp;
+                bc.add(ps.patch, ps.side(), "Values", zero, tComp);
+                bc.add(ps.patch, ps.side(), "Values", zero, 2);
+            }
+            else
+            {
+                freeSides.push_back(ps);
+            }
+        }
+        gsAsG1ShellHierarchy<real_t> hier(mp, bc, 4, 2, 0, 2, true);
+        const auto& fin = hier.finest();
+        gsAsG1KLShellAssembler<real_t> asmbl(mp, fin.dbasis, mat);
+        gsSparseMatrix<real_t> K, Kf;
+        gsVector<real_t> F, Ff, ub = gsVector<real_t>::Zero(fin.mapper.boundarySize()), uf;
+        asmbl.assembleStiffness(K);
+        asmbl.assemblePhysicalRHS(
+            [](const gsVector<real_t>&, gsVector<real_t, 3>& f, real_t& pn) { f << 0.0, 0.0, -90.0; pn = 0.0; }, F);
+        asmbl.projectSystem(K, F, fin.T_free, fin.T_bnd, ub, Kf, Ff);
+        const index_t c0Off = sumUntil(fin.argBasis[0].sizes, 9);
+        GISMO_ENSURE(fin.mapper.is_free(c0Off, 0, axialComp), "Scordelis axial corner DOF unexpectedly constrained.");
+        const index_t pinIdx = fin.mapper.index(c0Off, 0, axialComp);
+        Kf.coeffRef(pinIdx, pinIdx) += mat.E;
+
+        const auto st = hier.solve(Kf, Ff, mat, uf, "cg", "line_ring1", 1, 1, 1, 250, 1e-11);
+        gsVector<real_t> c_sol = fin.T_free * uf;
+
+        real_t minUz = 0.0;
+        for (const patchSide& ps : freeSides)
+        {
+            const short_t nDir = ps.direction(), tDir = 1 - nDir;
+            gsMatrix<real_t> pt(2, 1);
+            pt(nDir, 0) = ps.parameter() ? 1.0 : 0.0;
+            pt(tDir, 0) = 0.5;
+            minUz = std::min(minUz, asmbl.evalDisplacement(c_sol, ps.patch, pt(0, 0), pt(1, 0))(2));
+        }
+        real_t maxDiaphLeak = 0.0;
+        const index_t transComp = 1 - axialComp;
+        for (const patchSide& ps : diaphragmSides)
+        {
+            const short_t nDir = ps.direction(), tDir = 1 - nDir;
+            for (int s = 0; s <= 20; ++s)
+            {
+                gsMatrix<real_t> pt(2, 1);
+                pt(nDir, 0) = ps.parameter() ? 1.0 : 0.0;
+                pt(tDir, 0) = s / 20.0;
+                const auto uVal = asmbl.evalDisplacement(c_sol, ps.patch, pt(0, 0), pt(1, 0));
+                maxDiaphLeak = std::max(maxDiaphLeak, std::max(std::abs(uVal(transComp)), std::abs(uVal(2))));
+            }
+        }
+        GISMO_ENSURE(st.converged && std::abs(minUz + 0.3006) < 1e-3 && maxDiaphLeak < 1e-11,
+                     "Scordelis-Lo verification failed: u_z=" << minUz << ", diaphLeak=" << maxDiaphLeak);
+        gsInfo << "  [PASS] Scordelis-Lo NURBS roof (p=4, ref=2): u_z=" << std::fixed << std::setprecision(5)
+               << minUz << " (ref -0.3006), max|u_diaph|=" << std::scientific << std::setprecision(2)
+               << maxDiaphLeak << ", iters=" << st.iterations << "\n";
+    }
+
+    gsInfo << "All intrinsic & physical verification checks PASSED.\n";
 }
 
 } // anonymous namespace
@@ -646,7 +1063,7 @@ int main(int argc, char* argv[])
 
     gsCmdLine cmd("AS-G1 Multi-Patch & Multigrid Kirchhoff-Love Shell Solver (Hasanova-Takacs-Takacs 2026).");
     cmd.addString("f", "file", "Input open 3D surface or 2D domain XML file.", geomFile);
-    cmd.addString("t", "test", "Mode: manufactured | benchmark_solvers | p_sweep | scordelis_lo.", testMode);
+    cmd.addString("t", "test", "Mode: manufactured | benchmark_solvers | p_sweep | scordelis_lo | verify_physics.", testMode);
     cmd.addString("b", "bc", "Boundary condition: clamped | simply_supported.", bcMode);
     cmd.addString("s", "solver", "Solver: direct | schwarz_cg | mg | cg (MG-PCG).", solverType);
     cmd.addString("m", "smoother", "MG smoother: nodal_gs | ring1 | line_ring1 | scms | scms_hybrid.", smootherType);
@@ -669,6 +1086,15 @@ int main(int argc, char* argv[])
     mat.E = E;
     mat.nu = nu;
     mat.thickness = thickness;
+
+    if (testMode == "verify_physics")
+    {
+        const std::string scordFile = (geomFile == "asg1_reparametrized_domains/farahat_kl_shells/xml/surfHalfSphere_asg1.xml")
+                                    ? "filedata/surfaces/scordelis_lo_roof.xml"
+                                    : geomFile;
+        runPhysicsVerification(scordFile);
+        return 0;
+    }
 
     if (testMode == "scordelis_lo")
     {

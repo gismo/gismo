@@ -106,10 +106,10 @@ public:
             }
         }
 
-        // 2. Compute shared 3D vertex tangent frames (stride = 7) and corner conditions per component
+        // 2. Compute shared 3D vertex tangent frames (stride = 10) and corner conditions per component
         gsMatrix<index_t> cornerSmooth;
         m_cornerFrames = computeSurfaceCornerFrames(m_mp, &cornerSmooth, T(1e-3));
-        m_ccPerComp = buildCornerConditionsPerComponent(m_mp, m_bc, cornerSmooth);
+        m_ccPerComp = buildCornerConditionsPerComponent(m_mp, m_bc, cornerSmooth, m_cornerFrames);
 
         // 3. Build nested (p, k) levels l = 0 .. L (L = maxRef - minRef)
         const index_t nLevels = m_maxRef - m_minRef + 1;
@@ -168,6 +168,11 @@ public:
         T tol = T(1e-10),
         index_t scmsRp = -1) const
     {
+        GISMO_ENSURE(solverType == "direct" || solverType == "schwarz_cg" ||
+                     solverType == "mg" || solverType == "cg",
+                     "Unknown shell solver type: " << solverType
+                     << " (expected \"direct\", \"schwarz_cg\", \"mg\", or \"cg\").");
+
         gsAsG1ShellSolveStats<T> stats;
         stats.nFree = finest().mapper.freeSize();
         stats.nBnd  = finest().mapper.boundarySize();
@@ -271,13 +276,17 @@ public:
             }
             stats.iterations = std::min(it, maxIter);
         }
-        else // "cg" (MG-PCG)
+        else if (solverType == "cg")
         {
             gsConjugateGradient<T> cg(K_free, typename gsLinearOperator<T>::Ptr(mg.release()));
             cg.setTolerance(tol);
             cg.setMaxIterations(maxIter);
             cg.solve(bMat, xMat);
             stats.iterations = cg.iterations();
+        }
+        else
+        {
+            GISMO_ERROR("Unknown shell solver type: " << solverType);
         }
         u_free = xMat.col(0);
         stats.solveTimeSec = timer.stop();
@@ -290,59 +299,147 @@ private:
     static std::vector<cornerConditions> buildCornerConditionsPerComponent(
         const gsMultiPatch<T>& mp,
         const gsBoundaryConditions<T>& bc,
-        const gsMatrix<index_t>& cornerSmooth)
+        const gsMatrix<index_t>& cornerSmooth,
+        const gsMatrix<T>& cornerFrames)
     {
         std::vector<cornerConditions> ccPerComp(3);
         const auto& vertices = mp.topology().vertices();
+        const index_t stride = cornerFrames.cols() / 4;
 
         for (index_t comp = 0; comp < 3; ++comp)
         {
-            // Mark boundary sides eliminated for this component
             auto hasSideLabel = [&](const patchSide& ps, const std::string& label) -> bool {
                 for (auto it = bc.begin(label); it != bc.end(label); ++it)
                     if (it->unknown() == comp && it->ps == ps)
                         return true;
                 return false;
             };
+            auto sideHasV = [&](const patchSide& ps) -> bool {
+                return hasSideLabel(ps, "ValuesAndDerivatives")
+                    || hasSideLabel(ps, "Clamped")
+                    || hasSideLabel(ps, "Values")
+                    || hasSideLabel(ps, "Dirichlet");
+            };
+            auto sideHasD = [&](const patchSide& ps) -> bool {
+                return hasSideLabel(ps, "ValuesAndDerivatives")
+                    || hasSideLabel(ps, "Clamped")
+                    || hasSideLabel(ps, "Derivatives");
+            };
 
             for (size_t v = 0; v < vertices.size(); ++v)
             {
                 const auto& grp = vertices[v];
-                index_t nVal = 0, nDer = 0, nBnd = 0;
+                if (grp.empty()) continue;
+
+                // Enumerate incident boundary sides in the exact same order as
+                // getSurfaceBoundaryCornerData so bSides[0] aligns with frame dir1
+                // and bSides[1] aligns with frame dir2.
+                std::vector<patchSide> bSides;
                 for (size_t i = 0; i < grp.size(); ++i)
                 {
                     std::vector<patchSide> sides;
                     grp[i].getContainingSides(2, sides);
                     for (size_t j = 0; j < sides.size(); ++j)
-                    {
-                        if (!mp.isBoundary(sides[j])) continue;
-                        ++nBnd;
-                        const bool clamped = hasSideLabel(sides[j], "ValuesAndDerivatives")
-                                          || hasSideLabel(sides[j], "Clamped");
-                        const bool hasV = clamped || hasSideLabel(sides[j], "Values")
-                                       || hasSideLabel(sides[j], "Dirichlet");
-                        const bool hasD = clamped || hasSideLabel(sides[j], "Derivatives");
-                        if (hasV) ++nVal;
-                        if (hasD) ++nDer;
-                    }
+                        if (mp.isBoundary(sides[j]))
+                            bSides.push_back(sides[j]);
                 }
-                if (nBnd == 0) continue;
+                if (bSides.empty()) continue;
+
+                const index_t p0 = grp[0].patch;
+                const index_t c0 = grp[0].m_index - 1;
+                const bool isSmooth = (cornerSmooth(p0, c0) != 0);
 
                 cornerConditionType ctype = cornerConditionType::none;
-                if (nVal >= 2 && nDer >= 2)
-                    ctype = cornerConditionType::all;
-                else if (nVal >= 2 && nDer == 0)
+                if (bSides.size() == 2)
                 {
-                    const bool isSmooth = (cornerSmooth(grp[0].patch, grp[0].m_index - 1) != 0);
-                    ctype = isSmooth ? cornerConditionType::valuesSmooth
-                                     : cornerConditionType::valuesSharp;
+                    const bool v0 = sideHasV(bSides[0]), d0 = sideHasD(bSides[0]);
+                    const bool v1 = sideHasV(bSides[1]), d1 = sideHasD(bSides[1]);
+
+                    if (isSmooth)
+                    {
+                        // Case B: smooth boundary vertex, frame [d1 = n_co, d2 = t]
+                        // Clamped (V+D) fixes u, d_n, d_t, d_tt + k*d_n, d_nt and MUST leave d_nn (j=3) free.
+                        if ((v0 || v1) && (d0 || d1))
+                            ctype = cornerConditionType::valuesNormals;
+                        else if (v0 || v1)
+                            ctype = cornerConditionType::valuesSmooth;
+                        else if (d0 || d1)
+                            ctype = cornerConditionType::derivatives;
+                    }
+                    else
+                    {
+                        // Case A: sharp boundary corner, frame [d1 = t_0 (bSides[0]), d2 = t_1 (bSides[1])]
+                        gsVector<T, 3> t0, t1;
+                        t0 << cornerFrames(p0, stride * c0 + 0),
+                              cornerFrames(p0, stride * c0 + 1),
+                              cornerFrames(p0, stride * c0 + 2);
+                        t1 << cornerFrames(p0, stride * c0 + 3),
+                              cornerFrames(p0, stride * c0 + 4),
+                              cornerFrames(p0, stride * c0 + 5);
+                        const bool isOrthogonal = (std::abs(t0.dot(t1)) < T(1e-3));
+
+                        if (v0 && v1)
+                        {
+                            // Both edges constrain values; any normal-slope constraint eliminates all 6 jet DOFs.
+                            ctype = (d0 || d1) ? cornerConditionType::all
+                                               : cornerConditionType::valuesSharp;
+                        }
+                        else if (v0 && d0)
+                        {
+                            // Side 0 clamped, side 1 free (or orthogonal symmetry): leave d^2/ds_1^2 (j=4) free.
+                            ctype = (!d1 || isOrthogonal) ? cornerConditionType::clampedSide1
+                                                          : cornerConditionType::all;
+                        }
+                        else if (v1 && d1)
+                        {
+                            // Side 1 clamped, side 0 free (or orthogonal symmetry): leave d^2/ds_0^2 (j=3) free.
+                            ctype = (!d0 || isOrthogonal) ? cornerConditionType::clampedSide2
+                                                          : cornerConditionType::all;
+                        }
+                        else if (v0)
+                        {
+                            // Side 0 values only, side 1 free or symmetry derivative
+                            ctype = d1 ? cornerConditionType::valuesSide1DerSide2
+                                       : cornerConditionType::valuesSide1;
+                        }
+                        else if (v1)
+                        {
+                            // Side 1 values only, side 0 free or symmetry derivative
+                            ctype = d0 ? cornerConditionType::derSide1ValuesSide2
+                                       : cornerConditionType::valuesSide2;
+                        }
+                        else if (d0 && d1)
+                        {
+                            ctype = cornerConditionType::derivativesSharp;
+                        }
+                        else if (d0)
+                        {
+                            ctype = cornerConditionType::derivativesSide1;
+                        }
+                        else if (d1)
+                        {
+                            ctype = cornerConditionType::derivativesSide2;
+                        }
+                    }
                 }
-                else if (nVal >= 2 && nDer == 1)
-                    ctype = cornerConditionType::valuesNormals;
-                else if (nVal == 1 && nDer == 1)
-                    ctype = cornerConditionType::valuesSmooth;
-                else if (nVal == 0 && nDer >= 2)
-                    ctype = cornerConditionType::derivatives;
+                else
+                {
+                    // Fallback for non-manifold boundary vertices
+                    index_t nVal = 0, nDer = 0;
+                    for (size_t k = 0; k < bSides.size(); ++k)
+                    {
+                        if (sideHasV(bSides[k])) ++nVal;
+                        if (sideHasD(bSides[k])) ++nDer;
+                    }
+                    if (nVal > 0 && nDer > 0)
+                        ctype = cornerConditionType::all;
+                    else if (nVal >= 2)
+                        ctype = cornerConditionType::valuesSharp;
+                    else if (nVal == 1)
+                        ctype = cornerConditionType::valuesSmooth;
+                    else if (nDer > 0)
+                        ctype = cornerConditionType::derivatives;
+                }
 
                 if (ctype != cornerConditionType::none)
                     ccPerComp[comp].emplace_back(grp[0], ctype);
@@ -357,11 +454,20 @@ private:
         const size_t nP = m_mp.nPatches();
         ld.argBasis.resize(nP);
 
-        // Compute mesh size hLevel from the knot breaks of patch 0
-        const gsTensorBSplineBasis<2, T>& tb0 =
-            dynamic_cast<const gsTensorBSplineBasis<2, T>&>(ld.dbasis[0]);
-        const index_t nSpans = std::max<index_t>(1, static_cast<index_t>(tb0.component(0).knots().breaks().size()) - 1);
-        ld.hLevel = T(1) / T(nSpans);
+        // Compute representative parametric mesh size hLevel as maximum knot span across all patches & directions
+        T hMax = T(0);
+        for (size_t p = 0; p < nP; ++p)
+        {
+            const gsTensorBSplineBasis<2, T>& tbp =
+                dynamic_cast<const gsTensorBSplineBasis<2, T>&>(ld.dbasis[p]);
+            for (short_t d = 0; d < 2; ++d)
+            {
+                const std::vector<T> brks = tbp.component(d).knots().breaks();
+                for (size_t e = 0; e + 1 < brks.size(); ++e)
+                    hMax = std::max(hMax, brks[e + 1] - brks[e]);
+            }
+        }
+        ld.hLevel = (hMax > T(0)) ? hMax : T(1);
 
         for (size_t p = 0; p < nP; ++p)
         {

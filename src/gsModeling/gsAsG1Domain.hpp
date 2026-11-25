@@ -478,10 +478,18 @@ gsVector<T> getOuterNormalDerivative(
 template <typename T>
 struct gsBoundaryCornerData
 {
-    bool isSmooth;
+    bool isSmooth = false;
     gsVector<T> dir1;
     gsVector<T> dir2;
-    T curvature;
+    T curvature = T(0);
+    // Optional tangent-plane curvature correction weights in the orthonormal basis
+    // E = [e1, e2] of span(dir1, dir2), so that:
+    //   DOF 3 = Hess_S u(d1, d1) + k0_e1 * (grad_S u . e1) + k0_e2 * (grad_S u . e2)
+    //   DOF 4 = Hess_S u(d2, d2) + k1_e1 * (grad_S u . e1) + k1_e2 * (grad_S u . e2)
+    T k0_e1 = T(0);
+    T k0_e2 = T(0);
+    T k1_e1 = T(0);
+    T k1_e2 = T(0);
 };
 
 template <typename T>
@@ -671,14 +679,30 @@ gsBoundaryCornerData<T> getSurfaceBoundaryCornerData(
         const T ck0 = accs[0].dot(out.dir1) / velSqs[0];
         const T ck1 = accs[1].dot(out.dir1) / velSqs[1];
         out.curvature = T(0.5) * (ck0 + ck1);
+        out.k0_e1 = T(0);
+        out.k0_e2 = T(0);
+        out.k1_e1 = out.curvature;
+        out.k1_e2 = T(0);
     }
     else if (cross3(tangents[0], tangents[1]).norm() >= eps)
     {
-        // Case A: sharp boundary corner with linearly independent tangents [t1, t2] in T_v S
+        // Case A: sharp boundary corner with linearly independent tangents [t1, t2] in T_v S.
+        // Include each boundary edge's geodesic curvature correction along its outward conormal
+        // so that DOF 3 = d^2(u|_{e_0})/ds_0^2 and DOF 4 = d^2(u|_{e_1})/ds_1^2 exactly even
+        // when one edge is curved and the other is free.
         out.isSmooth = false;
         out.dir1 = tangents[0];
         out.dir2 = tangents[1];
         out.curvature = T(0);
+
+        const gsVector<T> e1 = out.dir1.normalized();
+        const gsVector<T> e2 = (out.dir2 - out.dir2.dot(e1) * e1).normalized();
+        const T ck0 = accs[0].dot(conormals[0]) / velSqs[0];
+        const T ck1 = accs[1].dot(conormals[1]) / velSqs[1];
+        out.k0_e1 = ck0 * e1.dot(conormals[0]);
+        out.k0_e2 = ck0 * e2.dot(conormals[0]);
+        out.k1_e1 = ck1 * e1.dot(conormals[1]);
+        out.k1_e2 = ck1 * e2.dot(conormals[1]);
     }
     else
     {
@@ -690,15 +714,20 @@ gsBoundaryCornerData<T> getSurfaceBoundaryCornerData(
         const T ck0 = accs[0].dot(out.dir1) / velSqs[0];
         const T ck1 = accs[1].dot(out.dir1) / velSqs[1];
         out.curvature = T(0.5) * (ck0 + ck1);
+        out.k0_e1 = T(0);
+        out.k0_e2 = T(0);
+        out.k1_e1 = out.curvature;
+        out.k1_e2 = T(0);
     }
     return out;
 }
 
 /// Build shared 3D surface tangent-plane frames for all corners of every patch.
-/// Returns a (nPatches x 28) matrix with stride 7 per corner:
-///   [d1_x, d1_y, d1_z, d2_x, d2_y, d2_z, kappa_g].
+/// Returns a (nPatches x 40) matrix with stride 10 per corner:
+///   [d1_x, d1_y, d1_z, d2_x, d2_y, d2_z, k0_e1, k0_e2, k1_e1, k1_e2].
 /// Every topological vertex (both interior and boundary) receives a single shared
-/// tangent-plane frame across all incident patches, guaranteeing exact 6-jet matching.
+/// tangent-plane frame across all incident patches, guaranteeing exact 6-jet matching
+/// and exact arc-length 2-jets along both smooth and sharp curved boundary edges.
 /// Also fills cornerIsSmooth(patch, cornerIdx) (1 for smooth boundary / interior, 0 for sharp corner).
 template <typename T>
 gsMatrix<T> computeSurfaceCornerFrames(
@@ -708,7 +737,7 @@ gsMatrix<T> computeSurfaceCornerFrames(
 {
     GISMO_ENSURE(mp.targetDim() == 3, "computeSurfaceCornerFrames expects a 3D surface (targetDim == 3).");
     const index_t nP = mp.nPatches();
-    gsMatrix<T> frames(nP, 4 * 7);
+    gsMatrix<T> frames(nP, 4 * 10);
     frames.setZero();
     if (cornerIsSmooth)
         cornerIsSmooth->setOnes(nP, 4);
@@ -739,7 +768,7 @@ gsMatrix<T> computeSurfaceCornerFrames(
         }
 
         gsVector<T> d1(3), d2(3);
-        T kappa = T(0);
+        T k0_e1 = T(0), k0_e2 = T(0), k1_e1 = T(0), k1_e2 = T(0);
         bool isSmooth = true;
 
         if (nBndSides == 2)
@@ -747,7 +776,10 @@ gsMatrix<T> computeSurfaceCornerFrames(
             const gsBoundaryCornerData<T> cd = getSurfaceBoundaryCornerData(mp, grp, eps);
             d1 = cd.dir1;
             d2 = cd.dir2;
-            kappa = cd.curvature;
+            k0_e1 = cd.k0_e1;
+            k0_e2 = cd.k0_e2;
+            k1_e1 = cd.k1_e1;
+            k1_e2 = cd.k1_e2;
             isSmooth = cd.isSmooth;
         }
         else
@@ -792,7 +824,6 @@ gsMatrix<T> computeSurfaceCornerFrames(
             d1.normalize();
             d2 = cross3(avgN, d1);
             d2.normalize();
-            kappa = T(0);
             isSmooth = true;
         }
 
@@ -800,13 +831,16 @@ gsMatrix<T> computeSurfaceCornerFrames(
         {
             const index_t p = grp[i].patch;
             const index_t cIdx = grp[i].m_index - 1;
-            frames(p, 7 * cIdx + 0) = d1(0);
-            frames(p, 7 * cIdx + 1) = d1(1);
-            frames(p, 7 * cIdx + 2) = d1(2);
-            frames(p, 7 * cIdx + 3) = d2(0);
-            frames(p, 7 * cIdx + 4) = d2(1);
-            frames(p, 7 * cIdx + 5) = d2(2);
-            frames(p, 7 * cIdx + 6) = kappa;
+            frames(p, 10 * cIdx + 0) = d1(0);
+            frames(p, 10 * cIdx + 1) = d1(1);
+            frames(p, 10 * cIdx + 2) = d1(2);
+            frames(p, 10 * cIdx + 3) = d2(0);
+            frames(p, 10 * cIdx + 4) = d2(1);
+            frames(p, 10 * cIdx + 5) = d2(2);
+            frames(p, 10 * cIdx + 6) = k0_e1;
+            frames(p, 10 * cIdx + 7) = k0_e2;
+            frames(p, 10 * cIdx + 8) = k1_e1;
+            frames(p, 10 * cIdx + 9) = k1_e2;
             if (cornerIsSmooth)
                 (*cornerIsSmooth)(p, cIdx) = isSmooth ? 1 : 0;
         }

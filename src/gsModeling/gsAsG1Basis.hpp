@@ -212,15 +212,19 @@ gsSparseMatrix<T> collocateCorners(
 
     // For each corner
     const index_t stride = normals.cols() / 4;
-    GISMO_ENSURE(normals.rows() == 1 && (normals.cols() == 8 || normals.cols() == 16 || normals.cols() == 20 || normals.cols() == 28),
-                 "Invalid corner directions matrix: expected 1x8, 1x16, 1x20, or 1x28, got "
+    GISMO_ENSURE(normals.rows() == 1 &&
+                 (normals.cols() == 8 || normals.cols() == 16 || normals.cols() == 20 ||
+                  normals.cols() == 28 || normals.cols() == 40),
+                 "Invalid corner directions matrix: expected 1x8, 1x16, 1x20, 1x28, or 1x40, got "
                  << normals.rows() << "x" << normals.cols());
 
-    if (stride == 7)
+    if (stride == 7 || stride == 10)
     {
-        // 3D surface corner 6-jets in the shared 2D vertex tangent-plane frame [d1, d2, kappa_g].
+        // 3D surface corner 6-jets in the shared 2D vertex tangent-plane frame:
+        //   stride == 7 : [d1(3), d2(3), kappa_g]
+        //   stride == 10: [d1(3), d2(3), k0_e1, k0_e2, k1_e1, k1_e2]
         GISMO_ENSURE(geo.targetDim() == 3,
-                     "stride == 7 corner frames require a 3D surface geometry (targetDim == 3).");
+                     "stride == 7 or 10 corner frames require a 3D surface geometry (targetDim == 3).");
         gsMatrix<T> gDeriv, gDeriv2;
         geo.deriv_into(corners, gDeriv);   // 6 x 4
         geo.deriv2_into(corners, gDeriv2); // 9 x 4
@@ -228,9 +232,13 @@ gsSparseMatrix<T> collocateCorners(
         for (index_t i = 0; i < 4; ++i)
         {
             gsVector<T> d1(3), d2(3);
-            d1 << normals(0, 7*i + 0), normals(0, 7*i + 1), normals(0, 7*i + 2);
-            d2 << normals(0, 7*i + 3), normals(0, 7*i + 4), normals(0, 7*i + 5);
-            const T cKappa = normals(0, 7*i + 6);
+            d1 << normals(0, stride*i + 0), normals(0, stride*i + 1), normals(0, stride*i + 2);
+            d2 << normals(0, stride*i + 3), normals(0, stride*i + 4), normals(0, stride*i + 5);
+            const T cKappa = (stride == 7) ? normals(0, stride*i + 6) : T(0);
+            const T k0_e1  = (stride == 10) ? normals(0, stride*i + 6) : T(0);
+            const T k0_e2  = (stride == 10) ? normals(0, stride*i + 7) : T(0);
+            const T k1_e1  = (stride == 10) ? normals(0, stride*i + 8) : T(0);
+            const T k1_e2  = (stride == 10) ? normals(0, stride*i + 9) : T(0);
 
             // Orthonormal basis E = [e1, e2] of span(d1, d2) = T_v S
             gsVector<T> e1 = d1.normalized();
@@ -291,8 +299,16 @@ gsSparseMatrix<T> collocateCorners(
                 result(6*i + 0, idx(j, i)) = vals(j, i);
                 result(6*i + 1, idx(j, i)) = gd(0);
                 result(6*i + 2, idx(j, i)) = gd(1);
-                result(6*i + 3, idx(j, i)) = Hd(0, 0);
-                result(6*i + 4, idx(j, i)) = Hd(1, 1) + cKappa * gd(0);
+                if (stride == 10)
+                {
+                    result(6*i + 3, idx(j, i)) = Hd(0, 0) + k0_e1 * gy(0) + k0_e2 * gy(1);
+                    result(6*i + 4, idx(j, i)) = Hd(1, 1) + k1_e1 * gy(0) + k1_e2 * gy(1);
+                }
+                else
+                {
+                    result(6*i + 3, idx(j, i)) = Hd(0, 0);
+                    result(6*i + 4, idx(j, i)) = Hd(1, 1) + cKappa * gd(0);
+                }
                 result(6*i + 5, idx(j, i)) = Hd(0, 1);
             }
         }
@@ -686,13 +702,76 @@ index_t sumUntil(const gsVector<index_t, 13> &vec, index_t until) {
 }
 
 enum class cornerConditionType {
-    all = 6,
-    valuesNormals = 5,
-    valuesSharp = 51,
-    valuesSmooth = 3,
-    derivatives = 2,
+    all = 6,                   // eliminate {0,1,2,3,4,5}
+    valuesNormals = 5,         // smooth clamped (or sharp clampedSide2): eliminate {0,1,2,4,5}, free {3}
+    valuesSharp = 51,          // sharp both-values: eliminate {0,1,2,3,4}, free {5}
+    valuesSmooth = 3,          // smooth values (or sharp valuesSide2): eliminate {0,2,4}, free {1,3,5}
+    derivatives = 2,           // smooth derivatives (or sharp derivativesSide2): eliminate {1,5}
+    valuesSide1 = 31,          // sharp side-0 values only: eliminate {0,1,3}, free {2,4,5}
+    valuesSide2 = 32,          // sharp side-1 values only: eliminate {0,2,4}, free {1,3,5}
+    clampedSide1 = 52,         // sharp side-0 clamped, side-1 free/orth-sym: eliminate {0,1,2,3,5}, free {4}
+    clampedSide2 = 53,         // sharp side-1 clamped, side-0 free/orth-sym: eliminate {0,1,2,4,5}, free {3}
+    valuesSide1DerSide2 = 41,  // sharp side-0 values, side-1 orth-sym: eliminate {0,1,3,5}, free {2,4}
+    derSide1ValuesSide2 = 42,  // sharp side-0 orth-sym, side-1 values: eliminate {0,2,4,5}, free {1,3}
+    derivativesSharp = 23,     // sharp both-sides orth-sym: eliminate {1,2,5}, free {0,3,4}
+    derivativesSide1 = 21,     // sharp side-0 orth-sym only: eliminate {2,5}, free {0,1,3,4}
+    derivativesSide2 = 22,     // sharp side-1 orth-sym only: eliminate {1,5}, free {0,2,3,4}
     none = 0
 };
+
+inline void eliminateCornerConditionDofs(
+    gsDofMapper& mapper,
+    index_t off_corner,
+    index_t patch,
+    cornerConditionType tp,
+    index_t comp = 0)
+{
+    auto elim = [&](index_t j) { mapper.eliminateDof(off_corner + j, patch, comp); };
+    switch (tp)
+    {
+        case cornerConditionType::all:
+            for (index_t j = 0; j < 6; ++j) elim(j);
+            break;
+        case cornerConditionType::valuesNormals:
+        case cornerConditionType::clampedSide2:
+            elim(0); elim(1); elim(2); elim(4); elim(5);
+            break;
+        case cornerConditionType::clampedSide1:
+            elim(0); elim(1); elim(2); elim(3); elim(5);
+            break;
+        case cornerConditionType::valuesSharp:
+            for (index_t j = 0; j < 5; ++j) elim(j);
+            break;
+        case cornerConditionType::valuesSmooth:
+        case cornerConditionType::valuesSide2:
+            elim(0); elim(2); elim(4);
+            break;
+        case cornerConditionType::valuesSide1:
+            elim(0); elim(1); elim(3);
+            break;
+        case cornerConditionType::valuesSide1DerSide2:
+            elim(0); elim(1); elim(3); elim(5);
+            break;
+        case cornerConditionType::derSide1ValuesSide2:
+            elim(0); elim(2); elim(4); elim(5);
+            break;
+        case cornerConditionType::derivativesSharp:
+            elim(1); elim(2); elim(5);
+            break;
+        case cornerConditionType::derivativesSide1:
+            elim(2); elim(5);
+            break;
+        case cornerConditionType::derivatives:
+        case cornerConditionType::derivativesSide2:
+            elim(1); elim(5);
+            break;
+        case cornerConditionType::none:
+            break;
+        default:
+            GISMO_ENSURE(false, "Unknown cornerConditionType.");
+            break;
+    }
+}
 
 typedef std::pair<patchCorner, cornerConditionType> cornerCondition;
 typedef std::vector<cornerCondition> cornerConditions;
@@ -790,45 +869,7 @@ gsDofMapper makeMapperForArgyrisBasis(
     {
         const index_t c = cc[i].first.m_index - 1;
         const index_t off_corner = sumUntil(argBasis[cc[i].first.patch].sizes, 9 + c);
-        if (cc[i].second == cornerConditionType::all)
-        {
-            for (index_t j=0; j<6; ++j)
-                mapper.eliminateDof(off_corner+j, cc[i].first.patch);
-        }
-        else if (cc[i].second == cornerConditionType::valuesNormals)
-        {
-            for (index_t j=0; j<6; ++j)
-                if (j!=3)
-                    mapper.eliminateDof(off_corner+j, cc[i].first.patch);
-        }
-        else if (cc[i].second == cornerConditionType::valuesSharp)
-        {
-            // Sharp corner (Case A) for 2nd biharmonic: eliminate u, d_{t1} u, d_{t2} u, d_{t1 t1} u, d_{t2 t2} u;
-            // leave mixed tangential derivative d_{t1 t2} u (j=5) free.
-            for (index_t j=0; j<5; ++j)
-                mapper.eliminateDof(off_corner+j, cc[i].first.patch);
-        }
-        else if (cc[i].second == cornerConditionType::valuesSmooth)
-        {
-            // Smooth boundary vertex (Case B) for 2nd biharmonic: eliminate u (0), d_t u (2), d_tt u + c_k d_n u (4);
-            // leave normal derivative DOFs d_n u (1), d_nn u (3), d_nt u (5) free.
-            mapper.eliminateDof(off_corner+0, cc[i].first.patch);
-            mapper.eliminateDof(off_corner+2, cc[i].first.patch);
-            mapper.eliminateDof(off_corner+4, cc[i].first.patch);
-        }
-        else if (cc[i].second == cornerConditionType::derivatives)
-        {
-            mapper.eliminateDof(off_corner+1, cc[i].first.patch);
-            mapper.eliminateDof(off_corner+5, cc[i].first.patch);
-        }
-        else if (cc[i].second == cornerConditionType::none)
-        {
-            // Do nothing
-        }
-        else
-        {
-            GISMO_ENSURE(false, "Not implemented.");
-        }
+        eliminateCornerConditionDofs(mapper, off_corner, cc[i].first.patch, cc[i].second, 0);
     }
 
     mapper.finalize();
@@ -1099,33 +1140,7 @@ gsDofMapper makeVectorMapperForArgyrisBasis(
             const index_t c = cc[i].first.m_index - 1;
             const index_t p = cc[i].first.patch;
             const index_t off_corner = sumUntil(argBasis[p].sizes, 9 + c);
-            const cornerConditionType tp = cc[i].second;
-            if (tp == cornerConditionType::all)
-            {
-                for (index_t j = 0; j < 6; ++j)
-                    mapper.eliminateDof(off_corner + j, p, comp);
-            }
-            else if (tp == cornerConditionType::valuesNormals)
-            {
-                for (index_t j = 0; j < 6; ++j)
-                    if (j != 3) mapper.eliminateDof(off_corner + j, p, comp);
-            }
-            else if (tp == cornerConditionType::valuesSharp)
-            {
-                for (index_t j = 0; j < 5; ++j)
-                    mapper.eliminateDof(off_corner + j, p, comp);
-            }
-            else if (tp == cornerConditionType::valuesSmooth)
-            {
-                mapper.eliminateDof(off_corner + 0, p, comp);
-                mapper.eliminateDof(off_corner + 2, p, comp);
-                mapper.eliminateDof(off_corner + 4, p, comp);
-            }
-            else if (tp == cornerConditionType::derivatives)
-            {
-                mapper.eliminateDof(off_corner + 1, p, comp);
-                mapper.eliminateDof(off_corner + 5, p, comp);
-            }
+            eliminateCornerConditionDofs(mapper, off_corner, p, cc[i].second, comp);
         }
     }
 
@@ -1225,14 +1240,23 @@ gsVector<T> evalSurfaceCornerJet3D(
     geo.deriv_into(pt, gDeriv);
     geo.deriv2_into(pt, gDeriv2);
 
+    const index_t stride = cornerFramesRow.cols() / 4;
+    GISMO_ENSURE(stride == 7 || stride == 10,
+                 "evalSurfaceCornerJet3D expects cornerFramesRow with 28 or 40 columns, got "
+                 << cornerFramesRow.cols());
+
     gsVector<T> d1(3), d2(3);
-    d1 << cornerFramesRow(0, 7 * cornerIdx + 0),
-          cornerFramesRow(0, 7 * cornerIdx + 1),
-          cornerFramesRow(0, 7 * cornerIdx + 2);
-    d2 << cornerFramesRow(0, 7 * cornerIdx + 3),
-          cornerFramesRow(0, 7 * cornerIdx + 4),
-          cornerFramesRow(0, 7 * cornerIdx + 5);
-    const T cKappa = cornerFramesRow(0, 7 * cornerIdx + 6);
+    d1 << cornerFramesRow(0, stride * cornerIdx + 0),
+          cornerFramesRow(0, stride * cornerIdx + 1),
+          cornerFramesRow(0, stride * cornerIdx + 2);
+    d2 << cornerFramesRow(0, stride * cornerIdx + 3),
+          cornerFramesRow(0, stride * cornerIdx + 4),
+          cornerFramesRow(0, stride * cornerIdx + 5);
+    const T cKappa = (stride == 7) ? cornerFramesRow(0, stride * cornerIdx + 6) : T(0);
+    const T k0_e1  = (stride == 10) ? cornerFramesRow(0, stride * cornerIdx + 6) : T(0);
+    const T k0_e2  = (stride == 10) ? cornerFramesRow(0, stride * cornerIdx + 7) : T(0);
+    const T k1_e1  = (stride == 10) ? cornerFramesRow(0, stride * cornerIdx + 8) : T(0);
+    const T k1_e2  = (stride == 10) ? cornerFramesRow(0, stride * cornerIdx + 9) : T(0);
 
     gsVector<T> e1 = d1.normalized();
     gsVector<T> e2 = d2 - d2.dot(e1) * e1;
@@ -1288,8 +1312,16 @@ gsVector<T> evalSurfaceCornerJet3D(
     jet(0) = val;
     jet(1) = gd(0);
     jet(2) = gd(1);
-    jet(3) = Hd(0, 0);
-    jet(4) = Hd(1, 1) + cKappa * gd(0);
+    if (stride == 10)
+    {
+        jet(3) = Hd(0, 0) + k0_e1 * gy(0) + k0_e2 * gy(1);
+        jet(4) = Hd(1, 1) + k1_e1 * gy(0) + k1_e2 * gy(1);
+    }
+    else
+    {
+        jet(3) = Hd(0, 0);
+        jet(4) = Hd(1, 1) + cKappa * gd(0);
+    }
     jet(5) = Hd(0, 1);
     return jet;
 }
