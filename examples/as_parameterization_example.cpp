@@ -140,6 +140,14 @@ int main(int argc, char *argv[]) {
   index_t AAPreconditionType = 0; // Preconditioner type for Anderson Acceleration
   bool isInterfaceFree = false; // Make interfaces free
   bool isBRep = false; // Input data is B-Rep
+  bool noRegularization = false; // Disable Garanzha's regularization (PDE patch)
+  bool skipH2 = false; // PDE patch: no H2 stage, untangling directly from the initial guess
+  index_t linearSolver = 0; // Linear solvers of the PDE patch: 0 auto, 1 direct, 2 iterative
+  index_t preconditioner = 0; // Preconditioner of GMRES (PDE patch): 0 auto, 1-3 see below
+  index_t h1Form = 0;       // Regularized H1 stage: 0 original form, 1 weak Laplace equation of the inverse map
+  real_t safeguard = 100;   // Regularized H1 stage: divergence safeguard factor (0: off)
+  index_t extraNodes = 0;   // Regularized stage: additional Gauss-Lobatto nodes per direction
+  index_t adaptiveRounds = 0; // Regularized stage: max. adaptive refinements of the quadrature
 
   // Constants for input file and description
   std::string INPUT_FILE = "breps/other/TUDflame.xml";
@@ -156,7 +164,26 @@ int main(int argc, char *argv[]) {
              "1 Barrier patch , 2 Penalty patch, 3 Penalty patch (2)", paramMethod);
   cmd.addInt("v", "Verbose", "Print output 0: no print, 1: summary, 2: full print", verboseMode);
   cmd.addInt("a", "preconditionType", "Preconsitioner type for Anderson Acceleration", AAPreconditionType);
+  cmd.addInt("s", "linearSolver", "Linear solvers of the PDE patch with regularization: "
+             "0 automatic (by problem size), 1 direct, 2 iterative", linearSolver);
+  cmd.addInt("", "precond", "PDE patch, preconditioner of GMRES: 0 automatic, "
+             "1 block Gauss-Seidel by coordinate (sparse LU), 2 algebraic "
+             "multigrid (nodal), 3 block Gauss-Seidel (multigrid)", preconditioner);
+  cmd.addInt("", "h1form", "PDE patch, regularized H1 stage: 0 original form, "
+             "1 weak form of Laplace's equation for the inverse map", h1Form);
+  cmd.addReal("", "safeguard", "PDE patch, regularized H1 stage: divergence "
+              "safeguard factor (0: off)", safeguard);
+  cmd.addInt("", "extranodes", "PDE patch, regularized stage: additional "
+             "Gauss-Lobatto nodes per direction", extraNodes);
+  cmd.addInt("", "adaptive", "PDE patch, regularized stage: max. number of "
+             "adaptive refinements where det(J) <= 0 between the nodes (0: off)",
+             adaptiveRounds);
   cmd.addSwitch("free", "Make interfaces free", isInterfaceFree);
+  cmd.addSwitch("noh2", "PDE patch (experimental): skip the H2 stage and start "
+                "the untangling from the initial interior", skipH2);
+  cmd.addSwitch("noreg", "PDE patch: disable Garanzha's regularization, i.e., no "
+                         "untangling and the original H1 solver (planar) or "
+                         "the H2 solver only (volumes)", noRegularization);
   try { cmd.getValues(argc, argv); }
   catch (int rv) { return rv; }
   //! [Parse command line]
@@ -216,12 +243,29 @@ int main(int argc, char *argv[]) {
     opt.options().setInt("Verbose", verboseMode);
     opt.options().setInt("ParamMethod", paramMethod);
     opt.options().setInt("AAPreconditionType", AAPreconditionType);
+    opt.options().setSwitch("PDEGaranzha", !noRegularization);
+    opt.options().setSwitch("PDESkipH2", skipH2);
+    opt.options().setInt("PDELinearSolver", linearSolver);
+    opt.options().setInt("PDEPreconditioner", preconditioner);
+    opt.options().setInt("PDEH1Form", h1Form);
+    opt.options().setReal("PDEH1Safeguard", safeguard);
+    opt.options().setInt("PDEExtraNodes", extraNodes);
+    opt.options().setInt("PDEAdaptiveRounds", adaptiveRounds);
     opt.compute();
     result = opt.result();
   } else if (geodim == 3) {
     gsBarrierPatch<3, real_t> opt(*mp, !isInterfaceFree);
     opt.options().setInt("Verbose", verboseMode);
     opt.options().setInt("ParamMethod", paramMethod);
+    opt.options().setInt("AAPreconditionType", AAPreconditionType);
+    opt.options().setSwitch("PDEGaranzha", !noRegularization);
+    opt.options().setSwitch("PDESkipH2", skipH2);
+    opt.options().setInt("PDELinearSolver", linearSolver);
+    opt.options().setInt("PDEPreconditioner", preconditioner);
+    opt.options().setInt("PDEH1Form", h1Form);
+    opt.options().setReal("PDEH1Safeguard", safeguard);
+    opt.options().setInt("PDEExtraNodes", extraNodes);
+    opt.options().setInt("PDEAdaptiveRounds", adaptiveRounds);
     opt.compute();
     result = opt.result();
   } else {

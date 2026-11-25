@@ -22,6 +22,132 @@
 
 namespace gismo {
 
+/// Garanzha's regularization of the Jacobian determinant D:
+/// chi(D,eps) = (D + sqrt(D^2 + eps^2))/2 > 0, with chi -> max(D,0) for
+/// eps -> 0. See V. Garanzha, I. Kaporin, Regularization of the barrier
+/// variational method, Comput. Math. Math. Phys. 39 (1999), and Garanzha et
+/// al., Foldover-free maps in 50 lines of code, ACM TOG 40(4), 2021.
+template<class T>
+inline T garanzhaChi(const T D, const T eps) {
+  const T root = math::sqrt(D * D + eps * eps);
+  // For D < 0, D + root suffers from cancellation; use the equivalent form
+  // (D + root) = eps^2 / (root - D)
+  return (D < 0 ? 0.5 * eps * eps / (root - D) : 0.5 * (D + root));
+}
+
+/// Cofactor matrix cof(J) = det(J) J^{-T} of a 2x2 or 3x3 matrix; it is
+/// well-defined also for singular J. The rows of cof(J) are the derivatives
+/// of det(J) with respect to the rows of J.
+template<class MatJ, class MatC>
+inline void cofactorMatrix(const MatJ &J, MatC &cof) {
+  const index_t dim = J.rows();
+  cof.resize(dim, dim);
+  if (2 == dim) {
+    cof(0, 0) = J(1, 1);
+    cof(0, 1) = -J(1, 0);
+    cof(1, 0) = -J(0, 1);
+    cof(1, 1) = J(0, 0);
+  } else {
+    GISMO_ASSERT(3 == dim, "Implemented for dimension 2 and 3 only.");
+    for (index_t r = 0; r != 3; ++r) {
+      // row r is the cross product of the two following rows of J
+      const index_t r1 = (r + 1) % 3, r2 = (r + 2) % 3;
+      cof(r, 0) = J(r1, 1) * J(r2, 2) - J(r1, 2) * J(r2, 1);
+      cof(r, 1) = J(r1, 2) * J(r2, 0) - J(r1, 0) * J(r2, 2);
+      cof(r, 2) = J(r1, 0) * J(r2, 1) - J(r1, 1) * J(r2, 0);
+    }
+  }
+}
+
+/// Derivative of the cofactor matrix of J in the direction of a perturbation
+/// of row \a b of J by the vector \a g (i.e. of the coordinate \a b of the
+/// geometry by a function with parametric gradient \a g).
+template<class MatJ, class Vec, class MatC>
+inline void cofactorDerivative(const MatJ &J, const index_t b,
+                               const Vec &g, MatC &dCof) {
+  const index_t dim = J.rows();
+  dCof.setZero(dim, dim);
+  if (2 == dim) {
+    if (0 == b) {
+      dCof(1, 0) = -g(1);
+      dCof(1, 1) = g(0);
+    } else {
+      dCof(0, 0) = g(1);
+      dCof(0, 1) = -g(0);
+    }
+  } else {
+    const index_t r1 = (b + 1) % 3, r2 = (b + 2) % 3;
+    // row r1 = J_{r2} x J_b  ->  J_{r2} x g
+    dCof(r1, 0) = J(r2, 1) * g(2) - J(r2, 2) * g(1);
+    dCof(r1, 1) = J(r2, 2) * g(0) - J(r2, 0) * g(2);
+    dCof(r1, 2) = J(r2, 0) * g(1) - J(r2, 1) * g(0);
+    // row r2 = J_b x J_{r1}  ->  g x J_{r1}
+    dCof(r2, 0) = g(1) * J(r1, 2) - g(2) * J(r1, 1);
+    dCof(r2, 1) = g(2) * J(r1, 0) - g(0) * J(r1, 2);
+    dCof(r2, 2) = g(0) * J(r1, 1) - g(1) * J(r1, 0);
+  }
+}
+
+/// Coefficients w such that A : H = w . h for a symmetric matrix A and the
+/// second derivatives h stored as (11, 22, [33,] 12, [13, 23]).
+template<class MatA, class VecW>
+inline void packSymmetric(const MatA &A, VecW &w) {
+  const index_t dim = A.rows();
+  w.resize(dim * (dim + 1) / 2);
+  index_t m = dim;
+  for (index_t a = 0; a != dim; ++a) {
+    w(a) = A(a, a);
+    for (index_t b = a + 1; b != dim; ++b) { w(m++) = 2 * A(a, b); }
+  }
+}
+
+/// Tells whether det(J) at a point can be changed by the free control points:
+/// \a cof is the cofactor matrix of J, \a derivBasis (dim x N) holds the
+/// parametric gradients of the N active basis functions with indices
+/// \a actives on patch \a patch. The derivative of det(J) with respect to
+/// the coordinate c of the control point i is  cof.row(c) . grad(phi_i).
+/// It vanishes for all free control points, e.g., on the edges and corners of
+/// the parameter domain, and where the parameterization of a boundary face
+/// is degenerate: there det(J) is determined by the boundary alone.
+template<class MatC, class Mat>
+inline bool detIsControllable(const gsDofMapper &mapper,
+                              const gsMatrix<index_t> &actives,
+                              const index_t patch,
+                              const MatC &cof,
+                              const Mat &derivBasis) {
+  typedef typename MatC::Scalar T;
+  const index_t dim = cof.rows();
+  const T tol = 1e-10 * cof.norm() * derivBasis.colwise().norm().maxCoeff();
+  for (index_t i = 0; i != derivBasis.cols(); ++i) {
+    for (index_t c = 0; c != dim; ++c) {
+      if (mapper.is_free(actives(i, 0), patch, c)
+          && math::abs(cof.row(c).dot(derivBasis.col(i))) > tol) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/// One-line summary of an Anderson acceleration solve (for Verbose > 0)
+template<class Solver>
+inline std::string aaSummary(const std::string &stage, const Solver &solver,
+                             const double seconds) {
+  std::ostringstream os;
+  os << "[PDE] " << stage << ": " << solver.iterations() << " iterations, "
+     << (solver.converged() ? "converged" : "NOT converged")
+     << " (residual " << solver.residualNorm() << "), "
+     << solver.preconditionerUpdates() << " preconditioner updates, "
+     << solver.restarts() << " restarts, "
+     << solver.innerIterations() << " GMRES iterations, "
+     << solver.innerFallbacks() << " LU fall-backs, "
+     << solver.rejections() << " safeguard rejections; time " << seconds
+     << " s (preconditioner " << solver.preconditionerTime()
+     << " s, residual " << solver.residualTime()
+     << " s, solves " << solver.solveTime() << " s)";
+  return os.str();
+}
+
 template<short_t d, typename T>
 gsOptionList gsBarrierCore<d, T>::defaultOptions() {
   gsOptionList options;
@@ -81,6 +207,91 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
 
   // need improve the parameterization quality for PDE-based method?
   options.addSwitch("needPDEH1", "improve quality by H1 discrezation?", true);
+
+  // Garanzha's regularization of the PDE-based method: the
+  // Jacobian determinant D in the denominators is replaced by
+  // chi(D,eps) = (D + sqrt(D^2 + eps^2))/2 > 0, folded intermediate results
+  // are untangled, and the steps of the H1 solver keep the result unfolded.
+  options.addSwitch("PDEGaranzha",
+                    "Garanzha regularization for the PDE-based method?", true);
+  options.addReal("PDEGaranzhaEps",
+                  "Regularization parameter eps relative to the mean of det(J)",
+                  1e-4);
+  // Linear solvers of the Garanzha-regularized PDE-based method (and of the
+  // H2 stage for volumes): 0: automatic (direct up to PDEDirectSolverLimit
+  // unknowns, iterative above), 1: direct (sparse LU for the Anderson
+  // acceleration, sparse LDL^T for the untangling), 2: iterative (GMRES,
+  // preconditioned as set by PDEPreconditioner, falling back to sparse LU if
+  // it converges slowly; CG with incomplete Cholesky)
+  options.addInt("PDELinearSolver",
+                 "Linear solvers: 0 automatic, 1 direct, 2 iterative", 0);
+  options.addInt("PDEDirectSolverLimit",
+                 "Automatic choice of the linear solvers: max. unknowns for "
+                 "direct solvers", 4000);
+  options.addInt("PDEInnerMaxIterations",
+                 "Max. GMRES iterations per solve before switching to sparse LU",
+                 100);
+  // Preconditioner of GMRES:
+  //  1: block Gauss-Seidel with the coordinate components as blocks, sparse
+  //     LU of each block,
+  //  2: algebraic multigrid (preAApp::NodalAMG) with nodal aggregation and
+  //     nodal block Gauss-Seidel smoothing (the unknowns of a control point
+  //     form one block),
+  //  3: block Gauss-Seidel as 1, the blocks approximated by NodalAMG,
+  //  0: automatic: 3 for the H2 stage, 2 for the H1 stage.
+  // The H2 equations are those of the physical coordinates, which the
+  // coordinate blocks fit; 3 is set up much faster than 1 for large volumes
+  // (e.g. 0.1 s instead of 6 s for 24000 unknowns). The H1 equations are
+  // those of the parametric coordinates, so the coordinate blocks are no
+  // good approximation of their Jacobian: with 1, GMRES often needs more
+  // than PDEInnerMaxIterations iterations and the solver falls back to
+  // sparse LU; the nodal blocks of 2 are independent of the orientation of
+  // the coordinates. For thin domains (few elements across), sparse LU is
+  // cheap and the multigrid smoothers are slow; PDEPreconditioner = 1 or
+  // PDELinearSolver = 1 can be faster there.
+  // Experimental: skip the H2 stage and start the untangling (and the
+  // regularized H1 stage) from the given interior. Only with PDEGaranzha.
+  options.addSwitch("PDESkipH2",
+                    "PDE patch: skip the H2 stage (start untangling from the "
+                    "given interior)", false);
+  options.addInt("PDEPreconditioner",
+                 "Preconditioner of GMRES: 0 automatic, 1 block Gauss-Seidel "
+                 "(LU), 2 algebraic multigrid (nodal), 3 block Gauss-Seidel "
+                 "(multigrid)", 0);
+  // Formulation of the regularized H1 stage:
+  // 0: int grad(phi) . adj(g) e_c / chi^2 dxi   (as the original H1 stage,
+  //    int grad(phi) . g^{-1} e_c dxi, with det J replaced by chi)
+  // 1: int grad(phi) . adj(g) e_c / chi dxi, i.e. the weak form
+  //    int grad_x(phi) . grad_x(xi_c) dx of Laplace's equation for the
+  //    inverse map, with det J replaced by chi
+  options.addInt("PDEH1Form", "Regularized H1 stage: 0 original, 1 weak "
+                              "Laplace equation of the inverse map", 0);
+  // Regularized H1 stage: if the residual norm exceeds this factor times the
+  // smallest one so far, return to that iterate and restart with a damped
+  // step (0: off). Diverging runs exceed 1e3 - 1e7, converging runs rarely
+  // exceed 1e2.
+  options.addReal("PDEH1Safeguard", "Regularized H1 stage: divergence "
+                                    "safeguard factor (0: off)", 100);
+  // The regularized stage integrates and enforces det(J) > 0 at the nodes of
+  // a Gauss-Lobatto rule with p + 2 + PDEExtraNodes nodes per direction.
+  // More nodes help if det(J) is positive up to the boundary, but harm if
+  // the boundary forces det(J) <= 0 somewhere (e.g. at the edges of a volume
+  // whose boundary surfaces meet tangentially).
+  options.addInt("PDEExtraNodes", "Regularized stage: additional "
+                 "Gauss-Lobatto nodes per direction", 0);
+  // Adaptive variant: after the regularized stage, det(J) is checked at the
+  // nodes of a Gauss-Lobatto rule with p + 2 + PDECheckExtraNodes nodes per
+  // direction; in elements where it is not positive, the rule of the stage
+  // gets one more node per direction (at most 3) and the stage is repeated
+  // from its last result, at most PDEAdaptiveRounds times (0: off).
+  // Like PDEExtraNodes, this helps if det(J) can be positive up to the
+  // boundary (planar test set: 974 -> 976 of 977 bijective), but costs time
+  // and may harm where the boundary forces det(J) <= 0 near edges.
+  options.addInt("PDEAdaptiveRounds", "Regularized stage: max. number of "
+                 "adaptive refinements of the quadrature", 0);
+  options.addInt("PDECheckExtraNodes", "Regularized stage, adaptive variant: "
+                 "additional Gauss-Lobatto nodes per direction for the check",
+                 4);
 
   return options;
 }
@@ -1045,6 +1256,25 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
                                      const gismo::gsDofMapper &mapper,
                                      const gismo::gsOptionList &options) {
 
+  // Nothing to do without free control points (e.g. a bilinear patch)
+  if (mapper.freeSize() == 0) { return mp; }
+
+  // Experimental: no H2 stage, untangling and regularized H1 directly from
+  // the given interior (e.g. a Coons patch)
+  if (options.askSwitch("PDEGaranzha", true)
+      && options.askSwitch("PDESkipH2", false)) {
+    verboseLog("PDE-based parameterization construction (without H2) ...\n",
+               options.askInt("Verbose", 0));
+    gsVector<T> x = convertMultiPatchToFreeVector(mp, mapper);
+    x = computeRegularizedH1(mp, mapper, x, options);
+    gsMultiPatch<T> result = mp;
+    convertFreeVectorToMultiPatch<T>(x, mapper, result);
+    return result;
+  }
+
+  // The expressions used below are specific to planar domains
+  if (d != 2) { return computePDEPatchVolume(mp, mapper, options); }
+
   // get initial guess vector
   gsVector<T> initialGuessVector = convertMultiPatchToFreeVector(mp, mapper);
 
@@ -1166,9 +1396,18 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
   param.epsilon = 1e-5;
 
   preAApp::AndersonAcceleration<T> AASolver(param);
+  gsStopwatch stageTimer;
   gsVector<T> solVector = AASolver.compute(initialGuessVector,Residual, Jacobian);
+  verboseLog(aaSummary("H2", AASolver, stageTimer.stop()),
+             options.askInt("Verbose", 0));
 
-  if (options.askSwitch("needPDEH1", true))
+  if (d == 2 && options.askSwitch("PDEGaranzha", true))
+  {
+    // Robust second stage: untangling + regularized H1 discretization
+    if (!solVector.allFinite()) { solVector = initialGuessVector; }
+    solVector = computeRegularizedH1(mp, mapper, solVector, options);
+  }
+  else if (options.askSwitch("needPDEH1", true))
   {
     verboseLog("\nStart parameterization improvement by H1 discrezation...",options.askInt("Verbose", 0));
     Residual = [&assembler, &mapper, &mpSubstitute, &space1](gsVector<T> const &x)
@@ -1230,6 +1469,1025 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
   verboseLog("Finished!", options.askInt("Verbose", 0));
 
   return result;
+}
+
+template<short_t d, typename T>
+gsMultiPatch<T>
+gsBarrierCore<d, T>::computePDEPatchVolume(const gsMultiPatch<T> &mp,
+                                           const gsDofMapper &mapper,
+                                           const gsOptionList &options) {
+  GISMO_ENSURE(d == 2 || d == 3, "The PDE-based method is implemented for "
+                                 "dimension 2 and 3 only.");
+
+  const index_t verbose = options.askInt("Verbose", 0);
+  verboseLog("PDE-based parameterization construction ...\n", verbose);
+
+  // get initial guess vector
+  gsVector<T> initialGuessVector = convertMultiPatchToFreeVector(mp, mapper);
+
+  gsExprAssembler<T> assembler;
+  gsMultiBasis<T> mb(mp);
+  assembler.setIntegrationDomain(mb.domain());
+
+  gsBoundaryConditions<T> bc;
+  bc.setGeoMap(mp);
+  for (auto bit = mp.bBegin(); bit != mp.bEnd(); ++bit) {
+    bc.addCondition(*bit, condition_type::dirichlet, nullptr);
+  }
+
+  space space1 = assembler.getSpace(mb, d);
+  space1.setup(bc, dirichlet::homogeneous, 0);
+
+  typedef std::function<gsSparseMatrix<T>(gsVector<T> const &)> Jacobian_t;
+  typedef std::function<gsVector<T>(gsVector<T> const &)> Residual_t;
+
+  // Elliptic grid generation equations in non-divergence form (H2)
+  gsMultiPatch<T> mpSubstitute = mp;
+  Residual_t Residual = [&](gsVector<T> const &x) {
+    convertFreeVectorToMultiPatch<T>(x, mapper, mpSubstitute);
+    geometryMap G = assembler.getMap(mpSubstitute);
+
+    assembler.initSystem();
+    assembler.assemble(scaledEGGRes(space1, G));
+    return assembler.rhs();
+  };
+
+  // Preconditioner: 0: analytical Jacobian, 1: its diagonal,
+  // 2: its diagonal blocks
+  index_t preconditionerType = options.askInt("AAPreconditionType", 0);
+  if (preconditionerType < 0 || preconditionerType > 2) {
+    preconditionerType = 0;
+  }
+  Jacobian_t Jacobian = [&](gsVector<T> const &x) {
+    convertFreeVectorToMultiPatch<T>(x, mapper, mpSubstitute);
+    geometryMap G = assembler.getMap(mpSubstitute);
+
+    assembler.initSystem();
+    assembler.assemble(scaledEGGJac(space1, G, preconditionerType));
+    return assembler.matrix();
+  };
+
+  preAAParam<T> param;
+  param.m = options.askInt("AAwindowsize", 5);
+  param.usePreconditioning = true;
+  param.updatePreconditionerStep = options.askInt("N_update", 5);
+  param.epsilon = 1e-5;
+  if (useIterativeSolver(mapper.freeSize(), options)) {
+    param.linearSolver = gmresPreconditioner(options, true);
+    param.blocks = componentOfDofs(mp, mapper);
+    param.nodes = nodeOfDofs(mp, mapper);
+    param.innerMaxIterations = options.askInt("PDEInnerMaxIterations", 100);
+  }
+
+  preAApp::AndersonAcceleration<T> AASolver(param);
+  if (verbose > 1) { AASolver.enableIterationInfoPrinting(); }
+  else { AASolver.disableIterationInfoPrinting(); }
+  gsStopwatch stageTimer;
+  gsVector<T> solVector =
+      AASolver.compute(initialGuessVector, Residual, Jacobian);
+  verboseLog(aaSummary("H2", AASolver, stageTimer.stop()), verbose);
+  if (!solVector.allFinite()) { solVector = initialGuessVector; }
+
+  if (options.askSwitch("PDEGaranzha", true)) {
+    // Robust second stage: untangling + regularized H1 discretization
+    solVector = computeRegularizedH1(mp, mapper, solVector, options);
+  } else if (options.askSwitch("needPDEH1", true)) {
+    gsWarn << "For volumes, the H1 discretization is only available with "
+              "Garanzha's regularization (option PDEGaranzha); the result of "
+              "the H2 discretization is returned.\n";
+  }
+
+  gsMultiPatch<T> result = mp;
+  convertFreeVectorToMultiPatch<T>(solVector, mapper, result);
+
+  verboseLog("Finished!", verbose);
+
+  return result;
+}
+
+template<short_t d, typename T>
+std::vector<index_t>
+gsBarrierCore<d, T>::componentOfDofs(const gsMultiPatch<T> &mp,
+                                     const gsDofMapper &mapper) {
+  std::vector<index_t> component(mapper.freeSize(), 0);
+  for (size_t ip = 0; ip != mp.nPatches(); ++ip) {
+    for (index_t c = 0; c != mp.targetDim(); ++c) {
+      for (size_t i = 0; i != mapper.patchSize(ip, c); ++i) {
+        if (mapper.is_free(i, ip, c)) { component[mapper.index(i, ip, c)] = c; }
+      }
+    }
+  }
+  return component;
+}
+
+template<short_t d, typename T>
+std::vector<index_t>
+gsBarrierCore<d, T>::nodeOfDofs(const gsMultiPatch<T> &mp,
+                                const gsDofMapper &mapper) {
+  // key of a control point: its smallest free unknown
+  std::vector<index_t> key(mapper.freeSize(), -1);
+  std::vector<index_t> dofs;
+  for (size_t ip = 0; ip != mp.nPatches(); ++ip) {
+    const size_t numBasis = mapper.patchSize(ip, 0);
+    for (size_t i = 0; i != numBasis; ++i) {
+      dofs.clear();
+      for (index_t c = 0; c != mp.targetDim(); ++c) {
+        if (i < mapper.patchSize(ip, c) && mapper.is_free(i, ip, c)) {
+          dofs.push_back(mapper.index(i, ip, c));
+        }
+      }
+      if (dofs.empty()) { continue; }
+      const index_t k = *std::min_element(dofs.begin(), dofs.end());
+      for (index_t dof : dofs) {
+        key[dof] = (key[dof] < 0) ? k : std::min(key[dof], k);
+      }
+    }
+  }
+  // consecutive numbers
+  std::vector<index_t> number(mapper.freeSize(), -1), node(mapper.freeSize());
+  index_t numNodes = 0;
+  for (size_t i = 0; i != key.size(); ++i) {
+    const index_t k = key[i] < 0 ? index_t(i) : key[i];
+    if (number[k] < 0) { number[k] = numNodes++; }
+    node[i] = number[k];
+  }
+  return node;
+}
+
+template<short_t d, typename T>
+int gsBarrierCore<d, T>::gmresPreconditioner(const gsOptionList &options,
+                                             const bool h2Stage) {
+  const index_t choice = options.askInt("PDEPreconditioner", 0);
+  if (choice >= 1 && choice <= 3) { return choice; }
+  return h2Stage ? 3 : 2;
+}
+
+template<short_t d, typename T>
+bool gsBarrierCore<d, T>::useIterativeSolver(const index_t numDofs,
+                                             const gsOptionList &options) {
+  switch (options.askInt("PDELinearSolver", 0)) {
+    case 1: return false;
+    case 2: return true;
+    default: return numDofs > options.askInt("PDEDirectSolverLimit", 4000);
+  }
+}
+
+/**
+ * @brief Element-wise assembly of the quantities used in the regularized
+ * second stage of the PDE-based method (planar domains and volumes):
+ * Garanzha's regularized Winslow functional with its gradient and
+ * Gauss-Newton Hessian, the regularized H1 residual with its Jacobian, and
+ * the minimum of det(J) over the quadrature nodes.
+ *
+ * The same quantities are available as expressions (garanzhaWinslowEnergy,
+ * garanzhaWinslowGrad/Hess, regularizedH1Res/Jac); here the element matrices
+ * are computed with matrix-matrix products over all quadrature nodes of an
+ * element, the sparsity patterns are computed once, the Hessian is stored as
+ * its lower triangle only, and the derivatives of the basis functions at the
+ * quadrature nodes are cached (within a memory budget).
+ */
+template<short_t d, typename T>
+class gsRegularizedPDEAssembler {
+ public:
+  typedef gsEigen::Matrix<T, d, d> MatrixD;
+
+  /// \a extraNodes (optional): for every element (numbered patch by patch in
+  /// the order of the domain iterators), the number of additional
+  /// Gauss-Lobatto nodes per direction to use there
+  gsRegularizedPDEAssembler(const gsMultiPatch<T> &mp,
+                            const gsDofMapper &mapper,
+                            const gsOptionList &quOptions,
+                            const T orientation,
+                            const std::vector<index_t> &extraNodes = std::vector<index_t>(),
+                            const size_t cacheBytes = size_t(1) << 30)
+      : m_mp(mp), m_mb(mp), m_mapper(mapper), m_orientation(orientation),
+        m_numDofs(mapper.freeSize()) {
+    size_t cached = 0;
+    gsMatrix<T> ders, coefs;
+    MatrixD jacGeom, cof;
+    index_t id = 0;
+    for (size_t ip = 0; ip != m_mb.nBases(); ++ip) {
+      const gsBasis<T> &basis = m_mb.basis(ip);
+      // quadrature rules by number of additional nodes
+      std::map<index_t, memory::shared_ptr<gsQuadRule<T> > > rules;
+      for (auto &domElem : basis.domain()->allElements()) {
+        const index_t extra = (size_t(id) < extraNodes.size() ? extraNodes[id] : 0);
+        if (!rules.count(extra)) {
+          gsOptionList elementOptions = quOptions;
+          if (extra > 0) {
+            elementOptions.setInt("quRule", gsQuadrature::GaussLobatto);
+            elementOptions.setInt("quB", quOptions.getInt("quB") + extra);
+          }
+          rules[extra] = memory::shared_ptr<gsQuadRule<T> >(
+              gsQuadrature::getPtr(basis, elementOptions).release());
+        }
+        Element e;
+        e.id = id++;
+        e.patch = ip;
+        rules[extra]->mapTo(domElem.lowerCorner(), domElem.upperCorner(),
+                            e.nodes, e.weights);
+        basis.active_into(domElem.centerPoint(), e.actives);
+        const index_t A = e.actives.rows();
+        e.dofs.resize(d * A);
+        bool anyFree = false;
+        for (index_t c = 0; c != d; ++c) {
+          for (index_t i = 0; i != A; ++i) {
+            const index_t dof = e.actives(i, 0);
+            e.dofs[c * A + i] = m_mapper.is_free(dof, ip, c)
+                                ? m_mapper.index(dof, ip, c) : -1;
+            anyFree = anyFree || e.dofs[c * A + i] >= 0;
+          }
+        }
+        if (!anyFree) { continue; } // nothing depends on this element
+
+        basis.deriv_into(e.nodes, ders);
+        localCoefs(e, coefs);
+        // det(J) is monitored at the nodes where it depends on free dofs
+        e.monitor.assign(e.nodes.cols(), 0);
+        for (index_t k = 0; k != e.nodes.cols(); ++k) {
+          const gsAsConstMatrix<T> dB = ders.reshapeCol(k, d, A);
+          jacGeom.noalias() = coefs.transpose() * dB.transpose();
+          cofactorMatrix(jacGeom, cof);
+          e.monitor[k] = controllable(e, cof, dB);
+        }
+        const size_t bytes = ders.size() * sizeof(T);
+        if (cached + bytes <= cacheBytes) {
+          e.ders = ders;
+          cached += bytes;
+        }
+        m_elements.push_back(give(e));
+      }
+    }
+    m_numAllElements = id;
+  }
+
+  /// Total number of elements (including those without free dofs)
+  index_t numElements() const { return m_numAllElements; }
+
+  /// For every element, the number of nodes of the given (check) rule at
+  /// which det(J) depends on the free dofs but orientation * det(J) <= 0
+  std::vector<index_t> negativeCheckPoints(const gsOptionList &checkOptions) const {
+    std::vector<index_t> result(m_numAllElements, 0);
+    gsMatrix<T> nodes, ders, coefs;
+    gsVector<T> weights;
+    MatrixD jacGeom, cof;
+    std::vector<memory::shared_ptr<gsQuadRule<T> > > rules(m_mb.nBases());
+    for (const Element &e : m_elements) {
+      if (!rules[e.patch]) {
+        rules[e.patch] = memory::shared_ptr<gsQuadRule<T> >(
+            gsQuadrature::getPtr(m_mb.basis(e.patch), checkOptions).release());
+      }
+      // element box: the extreme quadrature nodes (Gauss-Lobatto rule)
+      const gsVector<T> lower = e.nodes.rowwise().minCoeff();
+      const gsVector<T> upper = e.nodes.rowwise().maxCoeff();
+      rules[e.patch]->mapTo(lower, upper, nodes, weights);
+      m_mb.basis(e.patch).deriv_into(nodes, ders);
+      localCoefs(e, coefs);
+      const index_t A = e.actives.rows();
+      for (index_t k = 0; k != nodes.cols(); ++k) {
+        const gsAsConstMatrix<T> dB = ders.reshapeCol(k, d, A);
+        jacGeom.noalias() = coefs.transpose() * dB.transpose();
+        cofactorMatrix(jacGeom, cof);
+        if (!controllable(e, cof, dB)) { continue; }
+        const T det = m_orientation * jacGeom.row(0).dot(cof.row(0));
+        if (!(det > 0)) { ++result[e.id]; }
+      }
+    }
+    return result;
+  }
+
+  /// Sets the free control points
+  void setFreeVector(const gsVector<T> &x) {
+    convertFreeVectorToMultiPatch<T>(x, m_mapper, m_mp);
+  }
+
+  /// Minimum of orientation * det(J) over the monitored quadrature nodes
+  T minDet() const {
+    T result = std::numeric_limits<T>::max();
+    gsMatrix<T> buffer, coefs;
+    MatrixD jacGeom;
+    for (const Element &e : m_elements) {
+      const gsMatrix<T> &ders = derivatives(e, buffer);
+      localCoefs(e, coefs);
+      const index_t A = e.actives.rows();
+      for (index_t k = 0; k != e.nodes.cols(); ++k) {
+        if (!e.monitor[k]) { continue; }
+        jacGeom.noalias() =
+            coefs.transpose() * ders.reshapeCol(k, d, A).transpose();
+        const T det = m_orientation * jacGeom.determinant();
+        if (det != det) { return det; } // NaN must not go unnoticed
+        if (det < result) { result = det; }
+      }
+    }
+    return result;
+  }
+
+  /// Garanzha's regularized Winslow functional  int |J|^2 / chi^(2/d)
+  T energy(const T eps) const {
+    T result = 0;
+    gsMatrix<T> buffer, coefs;
+    MatrixD jacGeom, cof;
+    for (const Element &e : m_elements) {
+      const gsMatrix<T> &ders = derivatives(e, buffer);
+      localCoefs(e, coefs);
+      const index_t A = e.actives.rows();
+      for (index_t k = 0; k != e.nodes.cols(); ++k) {
+        const gsAsConstMatrix<T> dB = ders.reshapeCol(k, d, A);
+        jacGeom.noalias() = coefs.transpose() * dB.transpose();
+        cofactorMatrix(jacGeom, cof);
+        if (!controllable(e, cof, dB)) { continue; }
+        const T det = m_orientation * jacGeom.row(0).dot(cof.row(0));
+        result += e.weights(k) * jacGeom.squaredNorm()
+            / chiPower(garanzhaChi(det, eps));
+      }
+    }
+    return result;
+  }
+
+  /// Gradient and (lower triangle of the) Gauss-Newton Hessian of the
+  /// regularized Winslow functional
+  void gradientHessian(const T eps, gsVector<T> &gradient,
+                       gsSparseMatrix<T> &hessian) const {
+    gradient.setZero(m_numDofs);
+    if (0 == m_patternLower.rows()) { buildPattern(true, m_patternLower); }
+    hessian = m_patternLower;
+    hessian.coeffs().setZero();
+
+    gsMatrix<T> buffer, coefs, P, Q, X, Y, Dstack, Dweighted, local, laplace;
+    gsVector<T> localGradient;
+    MatrixD jacGeom, cof;
+    std::vector<index_t> nodes;
+    for (const Element &e : m_elements) {
+      const gsMatrix<T> &ders = derivatives(e, buffer);
+      localCoefs(e, coefs);
+      const index_t A = e.actives.rows();
+      controllableNodes(e, ders, coefs, nodes);
+      const index_t nq = nodes.size();
+      if (0 == nq) { continue; }
+
+      P.resize(d * A, nq);
+      Q.resize(d * A, nq);
+      Y.resize(d * A, 2 * nq);
+      Dstack.resize(d * nq, A);
+      Dweighted.resize(d * nq, A);
+      localGradient.setZero(d * A);
+      for (index_t n = 0; n != nq; ++n) {
+        const index_t k = nodes[n];
+        const gsAsConstMatrix<T> dB = ders.reshapeCol(k, d, A);
+        jacGeom.noalias() = coefs.transpose() * dB.transpose();
+        cofactorMatrix(jacGeom, cof);
+        const T det = m_orientation * jacGeom.row(0).dot(cof.row(0));
+        const T sqNorm = jacGeom.squaredNorm();
+        const T root = math::sqrt(det * det + eps * eps);
+        const T chiPow = chiPower(garanzhaChi(det, eps));
+        const T rho = 1.0 / root; // chi'/chi
+        const T w = e.weights(k);
+
+        // p.row(c) = grad(x_c) . grad(phi), q.row(c) = d(det J)/d(x_c)
+        for (index_t c = 0; c != d; ++c) {
+          P.col(n).segment(c * A, A).noalias() =
+              (jacGeom.row(c) * dB).transpose();
+          Q.col(n).segment(c * A, A).noalias() =
+              m_orientation * (cof.row(c) * dB).transpose();
+        }
+        localGradient.noalias() += (w / chiPow)
+            * (2.0 * P.col(n) - (T(2) / d) * rho * sqNorm * Q.col(n));
+
+        // Hessian: c1 (p q^T + q p^T) + c2 q q^T + 2/chi^(2/d) laplace
+        const T wp = 2.0 * w / chiPow;
+        const T c1 = -(T(1) / d) * rho * wp;
+        const T c2 = (T(1) / (d * d)) * rho * rho * sqNorm * wp;
+        Y.col(n) = c1 * Q.col(n);
+        Y.col(nq + n) = c1 * P.col(n) + c2 * Q.col(n);
+        Dstack.middleRows(d * n, d) = dB;
+        Dweighted.middleRows(d * n, d) = wp * dB;
+      }
+      X.resize(d * A, 2 * nq);
+      X.leftCols(nq) = P;
+      X.rightCols(nq) = Q;
+      local.noalias() = X * Y.transpose();
+      laplace.noalias() = Dstack.transpose() * Dweighted;
+      for (index_t c = 0; c != d; ++c) {
+        local.block(c * A, c * A, A, A) += laplace;
+      }
+      scatterVector(e, localGradient, gradient);
+      scatterMatrix(e, local, true, hessian);
+    }
+  }
+
+  /// Exponent q of chi in the H1 residual, int grad(phi) . adj(g) e_c / chi^q
+  void setH1Power(const index_t q) {
+    GISMO_ENSURE(q == 1 || q == 2, "The exponent must be 1 or 2.");
+    m_h1Power = q;
+  }
+
+  /// Residual of the regularized H1 discretization
+  void h1Residual(const T eps, gsVector<T> &residual) const {
+    residual.setZero(m_numDofs);
+    gsMatrix<T> buffer, coefs, flux;
+    gsVector<T> local;
+    MatrixD jacGeom, cof, K;
+    for (const Element &e : m_elements) {
+      const gsMatrix<T> &ders = derivatives(e, buffer);
+      localCoefs(e, coefs);
+      const index_t A = e.actives.rows();
+      local.setZero(d * A);
+      for (index_t k = 0; k != e.nodes.cols(); ++k) {
+        const gsAsConstMatrix<T> dB = ders.reshapeCol(k, d, A);
+        jacGeom.noalias() = coefs.transpose() * dB.transpose();
+        cofactorMatrix(jacGeom, cof);
+        if (!controllable(e, cof, dB)) { continue; }
+        const T det = m_orientation * jacGeom.row(0).dot(cof.row(0));
+        const T chi = garanzhaChi(det, eps);
+        const T chiPow = (2 == m_h1Power ? chi * chi : chi);
+        K.noalias() = (cof.transpose() * cof) * (e.weights(k) / chiPow);
+        flux.noalias() = K * dB;
+        for (index_t c = 0; c != d; ++c) {
+          local.segment(c * A, A) += flux.row(c).transpose();
+        }
+      }
+      scatterVector(e, local, residual);
+    }
+  }
+
+  /// Jacobian of the residual of the regularized H1 discretization
+  /// (optionally only its diagonal blocks)
+  void h1Jacobian(const T eps, const bool diagBlocksOnly,
+                  gsSparseMatrix<T> &jacobian) const {
+    if (0 == m_patternFull.rows()) { buildPattern(false, m_patternFull); }
+    jacobian = m_patternFull;
+    jacobian.coeffs().setZero();
+
+    gsMatrix<T> buffer, coefs, Dstack, Tcb, local;
+    MatrixD jacGeom, cof, dCof, K, dK;
+    std::vector<index_t> nodes;
+    // dKs[n][b * d + a]: variation of K at node n for the perturbation of
+    // the coordinate b by a function with gradient e_a
+    std::vector<MatrixD, gsEigen::aligned_allocator<MatrixD> > dKs;
+    for (const Element &e : m_elements) {
+      const gsMatrix<T> &ders = derivatives(e, buffer);
+      localCoefs(e, coefs);
+      const index_t A = e.actives.rows();
+      controllableNodes(e, ders, coefs, nodes);
+      const index_t nq = nodes.size();
+      if (0 == nq) { continue; }
+
+      Dstack.resize(d * nq, A);
+      dKs.resize(nq * d * d);
+      gsEigen::Matrix<T, d, 1> unit;
+      for (index_t n = 0; n != nq; ++n) {
+        const index_t k = nodes[n];
+        const gsAsConstMatrix<T> dB = ders.reshapeCol(k, d, A);
+        Dstack.middleRows(d * n, d) = dB;
+        jacGeom.noalias() = coefs.transpose() * dB.transpose();
+        cofactorMatrix(jacGeom, cof);
+        const T det = m_orientation * jacGeom.row(0).dot(cof.row(0));
+        const T root = math::sqrt(det * det + eps * eps);
+        const T chi = garanzhaChi(det, eps);
+        const T w = 1.0 / (2 == m_h1Power ? chi * chi : chi);
+        K.noalias() = (cof.transpose() * cof) * w;
+        for (index_t b = 0; b != d; ++b) {
+          for (index_t a = 0; a != d; ++a) {
+            unit.setZero();
+            unit(a) = 1;
+            cofactorDerivative(jacGeom, b, unit, dCof);
+            // d(1/chi^q) = dInvChiq / chi^q, chi'/chi = 1/sqrt(D^2+eps^2)
+            const T dInvChiq = -T(m_h1Power) * m_orientation * cof(b, a) / root;
+            dK.noalias() = dCof.transpose() * cof;
+            dK += MatrixD(dK.transpose());
+            dKs[n * d * d + b * d + a] =
+                e.weights(k) * (w * dK + dInvChiq * K);
+          }
+        }
+      }
+
+      local.setZero(d * A, d * A);
+      Tcb.resize(d * nq, A);
+      for (index_t c = 0; c != d; ++c) {
+        for (index_t b = 0; b != d; ++b) {
+          if (diagBlocksOnly && c != b) { continue; }
+          // block (c,b) = sum_n dB_n^T N_n dB_n with N_n(e,a) = dK[b][a](c,e)
+          for (index_t n = 0; n != nq; ++n) {
+            MatrixD N;
+            for (index_t a = 0; a != d; ++a) {
+              N.col(a) = dKs[n * d * d + b * d + a].row(c).transpose();
+            }
+            Tcb.middleRows(d * n, d).noalias() =
+                N * Dstack.middleRows(d * n, d);
+          }
+          local.block(c * A, b * A, A, A).noalias() =
+              Dstack.transpose() * Tcb;
+        }
+      }
+      scatterMatrix(e, local, false, jacobian);
+    }
+  }
+
+  /// Number of free dofs
+  index_t numDofs() const { return m_numDofs; }
+
+ private:
+  struct Element {
+    index_t id = 0;     // number of the element (patch by patch)
+    size_t patch = 0;
+    gsMatrix<T> nodes;
+    gsVector<T> weights;
+    gsMatrix<index_t> actives;
+    std::vector<index_t> dofs;  // global index of (coordinate c, function i), -1: fixed
+    std::vector<char> monitor;  // det(J) monitored at node k?
+    gsMatrix<T> ders;           // cached derivatives of the active functions
+  };
+
+  static T chiPower(const T chi) {
+    return (2 == d ? chi : math::pow(chi, T(2) / d));
+  }
+
+  const gsMatrix<T> &derivatives(const Element &e, gsMatrix<T> &buffer) const {
+    if (e.ders.size()) { return e.ders; }
+    m_mb.basis(e.patch).deriv_into(e.nodes, buffer);
+    return buffer;
+  }
+
+
+  void localCoefs(const Element &e, gsMatrix<T> &coefs) const {
+    const gsMatrix<T> &all = m_mp.patch(e.patch).coefs();
+    coefs.resize(e.actives.rows(), d);
+    for (index_t i = 0; i != e.actives.rows(); ++i) {
+      coefs.row(i) = all.row(e.actives(i, 0));
+    }
+  }
+
+  /// Same criterion as detIsControllable
+  static bool controllable(const Element &e, const MatrixD &cof,
+                           const gsAsConstMatrix<T> &dB) {
+    const index_t A = dB.cols();
+    const T tol = 1e-10 * cof.norm() * dB.colwise().norm().maxCoeff();
+    for (index_t c = 0; c != d; ++c) {
+      for (index_t i = 0; i != A; ++i) {
+        if (e.dofs[c * A + i] >= 0
+            && math::abs(cof.row(c).dot(dB.col(i))) > tol) { return true; }
+      }
+    }
+    return false;
+  }
+
+  void controllableNodes(const Element &e, const gsMatrix<T> &ders,
+                         const gsMatrix<T> &coefs,
+                         std::vector<index_t> &nodes) const {
+    const index_t A = e.actives.rows();
+    MatrixD jacGeom, cof;
+    nodes.clear();
+    for (index_t k = 0; k != e.nodes.cols(); ++k) {
+      const gsAsConstMatrix<T> dB = ders.reshapeCol(k, d, A);
+      jacGeom.noalias() = coefs.transpose() * dB.transpose();
+      cofactorMatrix(jacGeom, cof);
+      if (controllable(e, cof, dB)) { nodes.push_back(k); }
+    }
+  }
+
+  void scatterVector(const Element &e, const gsVector<T> &local,
+                     gsVector<T> &global) const {
+    for (size_t l = 0; l != e.dofs.size(); ++l) {
+      if (e.dofs[l] >= 0) { global(e.dofs[l]) += local(l); }
+    }
+  }
+
+  void scatterMatrix(const Element &e, const gsMatrix<T> &local,
+                     const bool lowerOnly, gsSparseMatrix<T> &global) const {
+    const index_t n = e.dofs.size();
+    const index_t *outer = global.outerIndexPtr();
+    const index_t *inner = global.innerIndexPtr();
+    T *values = global.valuePtr();
+    for (index_t jl = 0; jl != n; ++jl) {
+      const index_t gj = e.dofs[jl];
+      if (gj < 0) { continue; }
+      const index_t *first = inner + outer[gj], *last = inner + outer[gj + 1];
+      for (index_t il = 0; il != n; ++il) {
+        const index_t gi = e.dofs[il];
+        if (gi < 0 || (lowerOnly && gi < gj)) { continue; }
+        const index_t *pos = std::lower_bound(first, last, gi);
+        values[pos - inner] += local(il, jl);
+      }
+    }
+  }
+
+  /// Sparsity pattern (compressed, column major) of the coupling of the
+  /// free dofs by the elements (lower triangle only if \a lowerOnly)
+  void buildPattern(const bool lowerOnly, gsSparseMatrix<T> &pattern) const {
+    // elements containing each dof
+    std::vector<std::vector<index_t> > elementsOf(m_numDofs);
+    for (size_t ie = 0; ie != m_elements.size(); ++ie) {
+      for (index_t g : m_elements[ie].dofs) {
+        if (g >= 0 && (elementsOf[g].empty() || elementsOf[g].back() != index_t(ie))) {
+          elementsOf[g].push_back(ie);
+        }
+      }
+    }
+    std::vector<index_t> marker(m_numDofs, -1), column;
+    std::vector<index_t> outer(m_numDofs + 1, 0), inner;
+    for (index_t gj = 0; gj != m_numDofs; ++gj) {
+      column.clear();
+      for (index_t ie : elementsOf[gj]) {
+        for (index_t gi : m_elements[ie].dofs) {
+          if (gi < 0 || (lowerOnly && gi < gj) || marker[gi] == gj) { continue; }
+          marker[gi] = gj;
+          column.push_back(gi);
+        }
+      }
+      std::sort(column.begin(), column.end());
+      inner.insert(inner.end(), column.begin(), column.end());
+      outer[gj + 1] = inner.size();
+    }
+    pattern.resize(m_numDofs, m_numDofs);
+    pattern.resizeNonZeros(inner.size());
+    std::copy(outer.begin(), outer.end(), pattern.outerIndexPtr());
+    std::copy(inner.begin(), inner.end(), pattern.innerIndexPtr());
+    std::fill(pattern.valuePtr(), pattern.valuePtr() + inner.size(), T(0));
+  }
+
+  gsMultiPatch<T> m_mp;
+  gsMultiBasis<T> m_mb;
+  const gsDofMapper &m_mapper;
+  T m_orientation;
+  index_t m_numDofs;
+  index_t m_h1Power = 2;
+  index_t m_numAllElements = 0;
+  std::vector<Element> m_elements;
+  mutable gsSparseMatrix<T> m_patternLower, m_patternFull;
+};
+
+template<short_t d, typename T>
+gsVector<T>
+gsBarrierCore<d, T>::computeRegularizedH1(const gsMultiPatch<T> &mp,
+                                          const gsDofMapper &mapper,
+                                          gsVector<T> x,
+                                          const gsOptionList &options) {
+  GISMO_ENSURE(d == 2 || d == 3, "The regularized PDE-based method is "
+                                 "implemented for dimension 2 and 3 only.");
+
+  const index_t verbose = options.askInt("Verbose", 0);
+  const index_t maxRounds = options.askInt("PDEAdaptiveRounds", 0);
+  if (maxRounds <= 0) {
+    return regularizedStage(mp, mapper, x, options,
+                            std::vector<index_t>(), nullptr);
+  }
+
+  // det(J) is checked at the nodes of a denser Gauss-Lobatto rule. Where
+  // it is not positive, the rule of the stage is refined in that element and
+  // the stage is repeated from the last result.
+  const index_t maxExtraNodes = 3;
+  std::vector<index_t> extraNodes, negatives;
+  gsVector<T> best = x;
+  index_t bestNegatives = std::numeric_limits<index_t>::max();
+  for (index_t round = 0; ; ++round) {
+    const gsVector<T> result = regularizedStage(mp, mapper, x, options,
+                                                extraNodes, &negatives);
+    index_t numNegative = 0, numElements = 0;
+    for (index_t n : negatives) { numNegative += n; numElements += (n > 0); }
+    if (verbose > 0) {
+      gsInfo << "[PDE] adaptive round " << round << ": " << numNegative
+             << " check points with det(J) <= 0 in " << numElements
+             << " elements\n";
+    }
+    if (numNegative < bestNegatives) {
+      best = result;
+      bestNegatives = numNegative;
+    }
+    if (0 == numNegative || round == maxRounds) { break; }
+
+    extraNodes.resize(negatives.size(), 0);
+    bool refined = false;
+    for (size_t e = 0; e != negatives.size(); ++e) {
+      if (negatives[e] > 0 && extraNodes[e] < maxExtraNodes) {
+        ++extraNodes[e];
+        refined = true;
+      }
+    }
+    if (!refined) { break; }
+    x = result;
+  }
+  return best;
+}
+
+template<short_t d, typename T>
+gsVector<T>
+gsBarrierCore<d, T>::regularizedStage(const gsMultiPatch<T> &mp,
+                                      const gsDofMapper &mapper,
+                                      gsVector<T> x,
+                                      const gsOptionList &options,
+                                      const std::vector<index_t> &extraNodes,
+                                      std::vector<index_t> *negatives) {
+  const index_t verbose = options.askInt("Verbose", 0);
+  if (negatives) { negatives->clear(); }
+
+  // Keep det(J) >= stepFraction * (current minimum) in every step
+  const T stepFraction = 0.2;
+  // eps = sqrt(epsMin^2 + (epsFactor * min(Dmin,0))^2), see Garanzha et al.,
+  // Foldover-free maps in 50 lines of code, ACM TOG 40(4), 2021
+  const T epsFactor = 0.2;
+  const index_t maxBacktracking = 30;
+  const index_t maxUntangleIter = 200;
+  const T untangleTol = 1e-5;
+  const T stagnationTol = 1e-12;
+  const T armijo = 1e-4;
+
+  gsMultiBasis<T> mb(mp);
+
+  // The Jacobian determinant must stay positive up to the boundary, hence a
+  // Gauss-Lobatto rule (same exactness as the default Gauss rule), whose
+  // nodes include the element boundaries, is used for this stage.
+  gsExprAssembler<T> assembler;
+  assembler.setIntegrationDomain(mb.domain());
+  assembler.options().setInt("quRule", gsQuadrature::GaussLobatto);
+  assembler.options().setReal("quA", 1.0);
+  assembler.options().setInt("quB", 2 + std::max<index_t>(
+      0, options.askInt("PDEExtraNodes", 0)));
+
+  // same quadrature rule and expression data as the assembler
+  gsExprEvaluator<T> evaluator(assembler);
+
+  gsMultiPatch<T> mpSubstitute = mp;
+
+  // The integral of det(J) (signed area or volume) only depends on the fixed
+  // control points. To evaluate it reliably even if the given interior is
+  // far off, the free control points are moved to the centroid of the fixed
+  // ones. Dividing by the measure of the parameter domain gives the mean
+  // value of det(J), which sets the scale of the regularization.
+  T meanDet = 0;
+  {
+    gsVector<T> centroid = gsVector<T>::Zero(mp.targetDim());
+    gsVector<index_t> numFixed = gsVector<index_t>::Zero(mp.targetDim());
+    for (size_t iptch = 0; iptch != mp.nPatches(); ++iptch)
+      for (index_t idim = 0; idim != mp.targetDim(); ++idim)
+        for (size_t idof = 0; idof != mapper.patchSize(iptch, idim); ++idof)
+          if (!mapper.is_free(idof, iptch, idim)) {
+            centroid(idim) += mp.patch(iptch).coefs()(idof, idim);
+            ++numFixed(idim);
+          }
+    if (numFixed.minCoeff() > 0) {
+      for (size_t iptch = 0; iptch != mp.nPatches(); ++iptch)
+        for (index_t idim = 0; idim != mp.targetDim(); ++idim)
+          for (size_t idof = 0; idof != mapper.patchSize(iptch, idim); ++idof)
+            if (mapper.is_free(idof, iptch, idim))
+              mpSubstitute.patch(iptch).coefs()(idof, idim) =
+                  centroid(idim) / numFixed(idim);
+    }
+    geometryMap G = evaluator.getMap(mpSubstitute);
+    meanDet = evaluator.integral(jac(G).det());
+
+    T parameterMeasure = 0;
+    for (size_t iptch = 0; iptch != mb.nBases(); ++iptch) {
+      const gsMatrix<T> box = mb.basis(iptch).support();
+      parameterMeasure += (box.col(1) - box.col(0)).prod();
+    }
+    meanDet /= parameterMeasure;
+  }
+  if (!(math::abs(meanDet) > 0)) {
+    gsWarn << "The computational domain has zero measure; the regularized "
+              "PDE-based method is skipped.\n";
+    return x;
+  }
+  const T orientation = (meanDet > 0 ? 1 : -1);
+  meanDet = math::abs(meanDet);
+
+  const T epsMin = options.askReal("PDEGaranzhaEps", 1e-4) * meanDet;
+
+  // Element-wise assembly of all quantities of this stage. det(J) is
+  // monitored at all quadrature nodes at which it depends on the free
+  // control points.
+  gsRegularizedPDEAssembler<d, T> fem(mp, mapper, assembler.options(),
+                                      orientation, extraNodes);
+  // det(J) at the nodes of a denser Gauss-Lobatto rule, for the result
+  gsOptionList checkOptions = assembler.options();
+  checkOptions.setInt("quB", 2 + std::max<index_t>(
+      0, options.askInt("PDECheckExtraNodes", 4)));
+  auto finish = [&](const gsVector<T> &result) {
+    if (negatives) {
+      fem.setFreeVector(result);
+      *negatives = fem.negativeCheckPoints(checkOptions);
+    }
+    return result;
+  };
+  const bool iterativeSolvers = useIterativeSolver(fem.numDofs(), options);
+  fem.setH1Power(1 == options.askInt("PDEH1Form", 0) ? 1 : 2);
+  auto minDet = [&](gsVector<T> const &u) {
+    fem.setFreeVector(u);
+    return fem.minDet();
+  };
+
+  T Dmin = minDet(x);
+
+  //////////////////////////////////////////////////////////////////////////
+  // Stage 1: untangling by minimizing Garanzha's regularized Winslow
+  // functional  W(x) = int |J|_F^2 / chi(det J, eps)^(2/d)  (Gauss-Newton
+  // method with Armijo line search). Only needed if the input is folded.
+  //////////////////////////////////////////////////////////////////////////
+  if (!(Dmin > 0)) {
+    verboseLog("\nThe H2 result is folded (min det(J) / mean det(J) = "
+                   + std::to_string(Dmin / meanDet)
+                   + "). Start untangling...", verbose);
+
+    T eps = epsMin;
+    auto energy = [&](gsVector<T> const &u) {
+      fem.setFreeVector(u);
+      return fem.energy(eps);
+    };
+
+    // Linear solver for the Gauss-Newton steps: sparse LDL^T or CG with
+    // incomplete Cholesky (plain Eigen matrix type, as required by the
+    // iterative solvers)
+    typedef gsEigen::SparseMatrix<T, 0, index_t> EigenSparse;
+    gsEigen::SimplicialLDLT<EigenSparse, gsEigen::Lower> ldlt;
+    gsEigen::ConjugateGradient<EigenSparse, gsEigen::Lower,
+        gsEigen::IncompleteCholesky<T, gsEigen::Lower,
+                                    gsEigen::AMDOrdering<index_t> > > pcg;
+    gsSparseMatrix<T> hessian;
+    index_t numCGIterations = 0;
+    T gradientNorm0 = -1;
+
+    gsVector<T> gradient, direction, trial;
+    gsStopwatch stageTimer, timer;
+    double timeAssembly = 0, timeLinearSolver = 0, timeLineSearch = 0;
+    index_t numEnergyEvaluations = 0;
+    index_t iter = 0;
+    for (; iter != maxUntangleIter; ++iter) {
+      const T negPart = std::min<T>(Dmin, 0);
+      eps = math::sqrt(epsMin * epsMin
+                           + epsFactor * epsFactor * negPart * negPart);
+
+      timer.restart();
+      const T W0 = energy(x);
+      ++numEnergyEvaluations;
+
+      fem.setFreeVector(x);
+      fem.gradientHessian(eps, gradient, hessian);
+      timeAssembly += timer.stop();
+
+      timer.restart();
+      if (!iterativeSolvers) {
+        if (0 == iter) { ldlt.analyzePattern(hessian); }
+        ldlt.factorize(hessian);
+        direction = -ldlt.solve(gradient);
+      } else {
+        // Inexact Newton: relative tolerance (forcing term)
+        // min(0.1, sqrt(|g| / |g_0|)). CG starts from zero, which yields a
+        // descent direction for any number of CG iterations.
+        const T gradientNorm = gradient.norm();
+        if (gradientNorm0 < 0) { gradientNorm0 = gradientNorm; }
+        const T forcing = std::max<T>(
+            1e-8, std::min<T>(0.1, math::sqrt(gradientNorm / gradientNorm0)));
+        const gsVector<T> zero = gsVector<T>::Zero(gradient.size());
+        pcg.setTolerance(forcing);
+        pcg.compute(hessian);
+        direction = -pcg.solveWithGuess(gradient, zero);
+        // (Eigen does not count the last iteration if it converged)
+        numCGIterations += pcg.iterations()
+            + (pcg.iterations() < pcg.maxIterations() ? 1 : 0);
+      }
+      timeLinearSolver += timer.stop();
+
+      const T slope = gradient.dot(direction);
+      if (!direction.allFinite() || !(slope < 0)) { break; }
+
+      // Armijo line search; once unfolded, never fold again
+      timer.restart();
+      T step = 1, W1 = W0, D1 = Dmin;
+      bool accepted = false;
+      for (index_t ib = 0; ib != maxBacktracking; ++ib, step *= 0.5) {
+        trial = x + step * direction;
+        W1 = energy(trial);
+        ++numEnergyEvaluations;
+        if (!(W1 <= W0 + armijo * step * slope)) { continue; }
+        D1 = minDet(trial);
+        if (Dmin > 0 && !(D1 >= stepFraction * Dmin)) { continue; }
+        accepted = true;
+        break;
+      }
+      timeLineSearch += timer.stop();
+      if (!accepted) { break; }
+
+      const bool wasUnfolded = (Dmin > 0);
+      x = trial;
+      Dmin = D1;
+      if (verbose > 1) {
+        gsInfo << "  untangling iter " << iter << ": energy = " << W1
+               << ", min det(J) / mean det(J) = " << Dmin / meanDet << "\n";
+      }
+      // unfolded and the energy has settled
+      if (wasUnfolded && Dmin > 0 && (W0 - W1) <= untangleTol * W0) {
+        ++iter;
+        break;
+      }
+      // still folded, but no progress any more: give up
+      if (!(Dmin > 0) && (W0 - W1) <= stagnationTol * W0) {
+        ++iter;
+        break;
+      }
+    }
+    verboseLog("Untangling finished after " + std::to_string(iter)
+                   + " iterations, min det(J) / mean det(J) = "
+                   + std::to_string(Dmin / meanDet), verbose);
+    if (verbose > 0) {
+      gsInfo << "[PDE] untangling: " << iter << " iterations, "
+             << numEnergyEvaluations << " energy evaluations";
+      if (iterativeSolvers) {
+        gsInfo << ", " << numCGIterations << " CG iterations";
+      }
+      gsInfo << "; time "
+             << stageTimer.stop() << " s (assembly " << timeAssembly
+             << " s, linear solver " << timeLinearSolver
+             << " s, line search " << timeLineSearch << " s)\n";
+    }
+  }
+
+  if (!options.askSwitch("needPDEH1", true)) { return finish(x); }
+
+  if (!(Dmin > 0)) {
+    gsWarn << "The parameterization could not be untangled; the H1 "
+              "discretization is skipped.\n";
+    return finish(x);
+  }
+
+  //////////////////////////////////////////////////////////////////////////
+  // Stage 2: H1 discretization with det(J) replaced by chi(det J, eps)
+  //////////////////////////////////////////////////////////////////////////
+  verboseLog("\nStart parameterization improvement by the regularized H1 "
+             "discretization...", verbose);
+
+  typedef std::function<gsSparseMatrix<T>(gsVector<T> const &)> Jacobian_t;
+  typedef std::function<gsVector<T>(gsVector<T> const &)> Residual_t;
+
+  Residual_t Residual = [&](gsVector<T> const &u) {
+    gsVector<T> residual;
+    fem.setFreeVector(u);
+    fem.h1Residual(epsMin, residual);
+    return residual;
+  };
+
+  // 1: diagonal blocks of the Jacobian, otherwise: full analytical Jacobian
+  const bool diagonalBlocks = (1 == options.askInt("AAPreconditionType", 0));
+  Jacobian_t Jacobian = [&](gsVector<T> const &u) {
+    gsSparseMatrix<T> jacobian;
+    fem.setFreeVector(u);
+    fem.h1Jacobian(epsMin, diagonalBlocks, jacobian);
+    return jacobian;
+  };
+
+  preAAParam<T> param;
+  param.m = options.askInt("AAwindowsize", 5);
+  param.usePreconditioning = true;
+  param.updatePreconditionerStep = options.askInt("N_update", 5);
+  param.epsilon = 1e-5;
+  if (iterativeSolvers) {
+    param.linearSolver = gmresPreconditioner(options, false);
+    param.blocks = componentOfDofs(mp, mapper);
+    param.nodes = nodeOfDofs(mp, mapper);
+    param.innerMaxIterations = options.askInt("PDEInnerMaxIterations", 100);
+  }
+  param.safeguardFactor = options.askReal("PDEH1Safeguard", 100);
+
+  preAApp::AndersonAcceleration<T> AASolver(param);
+  if (verbose > 1) { AASolver.enableIterationInfoPrinting(); }
+  else { AASolver.disableIterationInfoPrinting(); }
+
+  // Backtracking: an unfolded parameterization stays unfolded
+  index_t numShortenedSteps = 0;
+  double timeFilter = 0;
+  AASolver.setStepFilter([&](gsVector<T> const &from, gsVector<T> &to) {
+    gsStopwatch filterTimer;
+    const T bound = stepFraction * minDet(from);
+    const gsVector<T> direction = to - from;
+    T step = 1;
+    for (index_t ib = 0; ib != maxBacktracking; ++ib, step *= 0.5) {
+      to = from + step * direction;
+      if (minDet(to) >= bound) {
+        if (ib > 0) { ++numShortenedSteps; }
+        timeFilter += filterTimer.stop();
+        return true;
+      }
+    }
+    timeFilter += filterTimer.stop();
+    return false;
+  });
+
+  const gsVector<T> unfolded = x;
+  gsStopwatch stageTimer;
+  x = AASolver.compute(unfolded, Residual, Jacobian);
+  if (verbose > 0) {
+    gsInfo << aaSummary("regularized H1", AASolver, stageTimer.stop())
+           << "; " << numShortenedSteps << " shortened steps, step control "
+           << timeFilter << " s\n";
+  }
+
+  if (!AASolver.converged() || !x.allFinite()) {
+    // Keep the last result which is known to be valid
+    verboseLog("The regularized H1 solver did not converge (residual norm "
+                   + std::to_string(AASolver.residualNorm())
+                   + "); its starting point is returned.", verbose);
+    x = unfolded;
+  }
+
+  return finish(x);
 }
 
 namespace expr {
@@ -1972,6 +3230,642 @@ EIGEN_STRONG_INLINE
 frprod2_expr<E1, E2> const frprod2(E1 const &u,
                                    E2 const &M) {
   return frprod2_expr<E1, E2>(u, M);
+}
+
+/*
+  Residual of the (scaled) elliptic grid generation equations in
+  non-divergence form (H2 discretization), in two and three dimensions:
+
+     R_{c,i} = phi_i * ( adj(g) : Hess(x_c) ) / trace(adj(g)),   g = J^T J
+
+  For planar domains trace(adj(g)) = trace(g), i.e. this is the residual
+  frprod3(u, hess(G) % (jac(G).tr()*jac(G)).adj() / trace).
+*/
+template<class E>
+class scaledEGGRes_expr : public _expr<scaledEGGRes_expr<E> > {
+ public:
+  typedef typename E::Scalar Scalar;
+
+ private:
+  typename E::Nested_t _u;
+  typename gsGeometryMap<Scalar>::Nested_t _G;
+
+  // matrices of size dim x dim, dim <= 3, without heap allocation
+  typedef gsEigen::Matrix<Scalar, Dynamic, Dynamic, 0, 3, 3> SmallMatrix;
+  typedef gsEigen::Matrix<Scalar, Dynamic, 1, 0, 6, 1> SmallVector;
+
+  mutable gsMatrix<Scalar> res;
+  mutable SmallMatrix jacGeom, cof, adjMetric;
+  mutable SmallVector weights;
+
+ public:
+  enum { Space = 1, ScalarValued = 0, ColBlocks = 0 };
+
+  scaledEGGRes_expr(const E &u, const gsGeometryMap<Scalar> &G)
+      : _u(u), _G(G) {}
+
+  const gsMatrix<Scalar> &eval(const index_t k) const {
+    const index_t dim = _u.dim();
+    const index_t A = _u.cardinality() / dim;
+    const index_t numDeriv2 = dim * (dim + 1) / 2;
+
+    // jacGeom(c,a) = d x_c / d xi_a
+    jacGeom = _G.data().values[1].reshapeCol(k, dim, dim).transpose();
+    cofactorMatrix(jacGeom, cof);
+    adjMetric.noalias() = cof.transpose() * cof;
+    packSymmetric(adjMetric, weights);
+    const Scalar scaleFactor = adjMetric.trace();
+
+    const auto deriv2Geom = _G.data().values[2].col(k);
+    const auto basis = _u.data().values[0].col(k);
+
+    res.resize(_u.cardinality(), 1);
+    for (index_t c = 0; c != dim; ++c) {
+      const Scalar Lx =
+          weights.dot(deriv2Geom.segment(c * numDeriv2, numDeriv2))
+              / scaleFactor;
+      res.middleRows(c * A, A).noalias() = Lx * basis;
+    }
+    return res;
+  }
+
+  index_t rows() const { return 1; }
+
+  index_t cols() const { return 1; }
+
+  void parse(gsExprHelper<Scalar> &evList) const {
+    evList.add(_u);
+    _u.data().flags |= NEED_VALUE;
+
+    evList.add(_G);
+    _G.data().flags |= NEED_DERIV | NEED_DERIV2;
+  }
+
+  const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
+  const gsFeSpace<Scalar> &colVar() const { return gsNullExpr<Scalar>::get(); }
+  index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+  void print(std::ostream &os) const {
+    os << "scaledEGGRes(";
+    _u.print(os);
+    os << ")";
+  }
+};
+
+/*
+  Exact Jacobian matrix of scaledEGGRes_expr with respect to the control
+  points, in two and three dimensions.
+  mode 0: full matrix, 1: diagonal only, 2: diagonal blocks only
+*/
+template<class E>
+class scaledEGGJac_expr : public _expr<scaledEGGJac_expr<E> > {
+ public:
+  typedef typename E::Scalar Scalar;
+
+ private:
+  typename E::Nested_t _u;
+  typename gsGeometryMap<Scalar>::Nested_t _G;
+  index_t _mode;
+
+  typedef gsEigen::Matrix<Scalar, Dynamic, Dynamic, 0, 3, 3> SmallMatrix;
+  typedef gsEigen::Matrix<Scalar, Dynamic, 1, 0, 6, 1> SmallVector;
+
+  mutable gsMatrix<Scalar> res, derivBasis, commonTerm, dLx;
+  mutable SmallMatrix jacGeom, cof, dCof, adjMetric, dAdjMetric, value;
+  mutable SmallVector weights, dWeights, Lx;
+
+ public:
+  enum { Space = 3, ScalarValued = 0, ColBlocks = 0 };
+
+  scaledEGGJac_expr(const E &u, const gsGeometryMap<Scalar> &G,
+                    const index_t mode)
+      : _u(u), _G(G), _mode(mode) {}
+
+  const gsMatrix<Scalar> &eval(const index_t k) const {
+    const index_t dim = _u.dim();
+    const index_t A = _u.cardinality() / dim;
+    const index_t numDeriv2 = dim * (dim + 1) / 2;
+
+    jacGeom = _G.data().values[1].reshapeCol(k, dim, dim).transpose();
+    cofactorMatrix(jacGeom, cof);
+    adjMetric.noalias() = cof.transpose() * cof;
+    packSymmetric(adjMetric, weights);
+    const Scalar scaleFactor = adjMetric.trace();
+
+    const auto deriv2Geom = _G.data().values[2].col(k);
+    const auto basis = _u.data().values[0].col(k);
+    derivBasis = _u.data().values[1].reshapeCol(k, dim, A);
+    const auto deriv2Basis = _u.data().values[2].reshapeCol(k, numDeriv2, A);
+
+    Lx.resize(dim);
+    for (index_t c = 0; c != dim; ++c) {
+      Lx(c) = weights.dot(deriv2Geom.segment(c * numDeriv2, numDeriv2))
+          / scaleFactor;
+    }
+    // adj(g) : Hess(phi_j) / scale
+    commonTerm.noalias() = (weights.transpose() * deriv2Basis) / scaleFactor;
+
+    res.resize(_u.cardinality(), _u.cardinality());
+    if (0 != _mode) { res.setZero(); }
+
+    // The variation of adj(g) = cof^T cof, hence of the residual, is linear
+    // in grad(phi_j): it is computed for the unit vectors and combined.
+    gsEigen::Matrix<Scalar, 3, 1> unit;
+    value.resize(dim, dim);
+    for (index_t b = 0; b != dim; ++b) {
+      for (index_t a = 0; a != dim; ++a) {
+        unit.setZero();
+        unit(a) = 1;
+        cofactorDerivative(jacGeom, b, unit, dCof);
+        dAdjMetric.noalias() = dCof.transpose() * cof;
+        dAdjMetric += SmallMatrix(dAdjMetric.transpose());
+        packSymmetric(dAdjMetric, dWeights);
+        const Scalar dScale = dAdjMetric.trace();
+
+        for (index_t c = 0; c != dim; ++c) {
+          value(c, a) = (dWeights.dot(
+              deriv2Geom.segment(c * numDeriv2, numDeriv2))
+              - Lx(c) * dScale) / scaleFactor;
+        }
+      }
+
+      // derivative of Lx(c) with respect to the coordinate b of all
+      // control points (row vector), times the test functions
+      for (index_t c = 0; c != dim; ++c) {
+        if (0 != _mode && c != b) { continue; }
+        dLx.noalias() = value.row(c) * derivBasis;
+        if (c == b) { dLx += commonTerm; }
+        if (1 == _mode) {
+          res.block(b * A, b * A, A, A).diagonal() =
+              basis.cwiseProduct(dLx.transpose());
+        } else {
+          res.block(c * A, b * A, A, A).noalias() = basis * dLx;
+        }
+      }
+    }
+    return res;
+  }
+
+  index_t rows() const { return 1; }
+
+  index_t cols() const { return 1; }
+
+  void parse(gsExprHelper<Scalar> &evList) const {
+    evList.add(_u);
+    _u.data().flags |= NEED_VALUE | NEED_GRAD | NEED_DERIV2;
+
+    evList.add(_G);
+    _G.data().flags |= NEED_DERIV | NEED_DERIV2;
+  }
+
+  const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
+  const gsFeSpace<Scalar> &colVar() const { return _u.rowVar(); }
+  index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+  void print(std::ostream &os) const {
+    os << "scaledEGGJac(";
+    _u.print(os);
+    os << ")";
+  }
+};
+
+/*
+  Residual of the H1 discretization of the PDE-based parameterization
+  (cf. jacU % invJac with invJac = jac(G).inv(), jacU = jac(u) * invJac),
+  where 1/det(J) is replaced by 1/chi(det(J),eps):
+
+     R_{c,i} = grad(phi_i) . ( adj(g) e_c ) / chi^2,
+     g = J^T J,  adj(g) = cof(J)^T cof(J)
+
+  It is well-defined for every J. Two and three dimensions.
+*/
+template<class E>
+class regularizedH1Res_expr : public _expr<regularizedH1Res_expr<E> > {
+ public:
+  typedef typename E::Scalar Scalar;
+
+ private:
+  typename E::Nested_t _u;
+  typename gsGeometryMap<Scalar>::Nested_t _G;
+  Scalar _eps, _orientation;
+
+  typedef gsEigen::Matrix<Scalar, Dynamic, Dynamic, 0, 3, 3> SmallMatrix;
+
+  mutable gsMatrix<Scalar> res, flux, derivBasis;
+  mutable SmallMatrix jacGeom, cof, K;
+
+ public:
+  enum { Space = 1, ScalarValued = 0, ColBlocks = 0 };
+
+  regularizedH1Res_expr(const E &u, const gsGeometryMap<Scalar> &G,
+                        Scalar eps, Scalar orientation)
+      : _u(u), _G(G), _eps(eps), _orientation(orientation) {}
+
+  const gsMatrix<Scalar> &eval(const index_t k) const {
+    const index_t dim = _u.dim();
+    const index_t A = _u.cardinality() / dim;
+
+    // jacGeom(c,a) = d x_c / d xi_a
+    jacGeom = _G.data().values[1].reshapeCol(k, dim, dim).transpose();
+    cofactorMatrix(jacGeom, cof);
+    const Scalar det = _orientation * jacGeom.row(0).dot(cof.row(0));
+    const Scalar chi = garanzhaChi(det, _eps);
+
+    derivBasis = _u.data().values[1].reshapeCol(k, dim, A);
+    res.resize(_u.cardinality(), 1);
+    if (!detIsControllable(_u.mapper(), _u.data().actives, _u.data().patchId,
+                           cof, derivBasis)) {
+      // det(J) is determined by the boundary: no contribution
+      res.setZero();
+      return res;
+    }
+
+    K.noalias() = (cof.transpose() * cof) / (chi * chi);
+    flux.noalias() = K * derivBasis;
+    for (index_t c = 0; c != dim; ++c) {
+      res.middleRows(c * A, A) = flux.row(c).transpose();
+    }
+    return res;
+  }
+
+  index_t rows() const { return 1; }
+
+  index_t cols() const { return 1; }
+
+  void parse(gsExprHelper<Scalar> &evList) const {
+    evList.add(_u);
+    _u.data().flags |= NEED_GRAD | NEED_ACTIVE;
+
+    evList.add(_G);
+    _G.data().flags |= NEED_DERIV;
+  }
+
+  const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
+  const gsFeSpace<Scalar> &colVar() const { return gsNullExpr<Scalar>::get(); }
+  index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+  void print(std::ostream &os) const {
+    os << "regularizedH1Res(";
+    _u.print(os);
+    os << ")";
+  }
+};
+
+/*
+  Exact Jacobian matrix of regularizedH1Res_expr with respect to the control
+  points (optionally only its diagonal blocks). Two and three dimensions.
+*/
+template<class E>
+class regularizedH1Jac_expr : public _expr<regularizedH1Jac_expr<E> > {
+ public:
+  typedef typename E::Scalar Scalar;
+
+ private:
+  typename E::Nested_t _u;
+  typename gsGeometryMap<Scalar>::Nested_t _G;
+  Scalar _eps, _orientation;
+  bool _diagBlocksOnly;
+
+  typedef gsEigen::Matrix<Scalar, Dynamic, Dynamic, 0, 3, 3> SmallMatrix;
+
+  mutable gsMatrix<Scalar> res, derivBasis, flux[3];
+  mutable SmallMatrix jacGeom, cof, dCof, K, dK;
+
+ public:
+  enum { Space = 3, ScalarValued = 0, ColBlocks = 0 };
+
+  regularizedH1Jac_expr(const E &u, const gsGeometryMap<Scalar> &G,
+                        Scalar eps, Scalar orientation, bool diagBlocksOnly)
+      : _u(u), _G(G), _eps(eps), _orientation(orientation),
+        _diagBlocksOnly(diagBlocksOnly) {}
+
+  const gsMatrix<Scalar> &eval(const index_t k) const {
+    const index_t dim = _u.dim();
+    const index_t A = _u.cardinality() / dim;
+
+    jacGeom = _G.data().values[1].reshapeCol(k, dim, dim).transpose();
+    cofactorMatrix(jacGeom, cof);
+    const Scalar det = _orientation * jacGeom.row(0).dot(cof.row(0));
+    const Scalar root = math::sqrt(det * det + _eps * _eps);
+    const Scalar chi = garanzhaChi(det, _eps);
+    const Scalar w = 1.0 / (chi * chi);
+
+    K.noalias() = (cof.transpose() * cof) * w;
+    derivBasis = _u.data().values[1].reshapeCol(k, dim, A);
+
+    res.resize(_u.cardinality(), _u.cardinality());
+    if (!detIsControllable(_u.mapper(), _u.data().actives, _u.data().patchId,
+                           cof, derivBasis)) {
+      res.setZero();
+      return res;
+    }
+    if (_diagBlocksOnly) { res.setZero(); }
+
+    // The variation of K = adj(g)/chi^2 is linear in grad(phi_j): it is
+    // computed for the unit vectors and combined.
+    gsEigen::Matrix<Scalar, 3, 1> unit;
+    for (index_t b = 0; b != dim; ++b) {
+      for (index_t a = 0; a != dim; ++a) {
+        unit.setZero();
+        unit(a) = 1;
+        cofactorDerivative(jacGeom, b, unit, dCof);
+        // d(1/chi^2) = dInvChi2 / chi^2, using chi'/chi = 1/sqrt(D^2+eps^2)
+        // and d(det J) = cof.row(b) . grad(phi_j)
+        const Scalar dInvChi2 = -2.0 * _orientation * cof(b, a) / root;
+
+        dK.noalias() = dCof.transpose() * cof;
+        dK += SmallMatrix(dK.transpose());
+        dK = w * dK + dInvChi2 * K;
+        flux[a].noalias() = dK * derivBasis;
+      }
+
+      for (index_t c = 0; c != dim; ++c) {
+        if (_diagBlocksOnly && c != b) { continue; }
+        auto block = res.block(c * A, b * A, A, A);
+        block.noalias() = flux[0].row(c).transpose() * derivBasis.row(0);
+        for (index_t a = 1; a != dim; ++a) {
+          block.noalias() += flux[a].row(c).transpose() * derivBasis.row(a);
+        }
+      }
+    }
+    return res;
+  }
+
+  index_t rows() const { return 1; }
+
+  index_t cols() const { return 1; }
+
+  void parse(gsExprHelper<Scalar> &evList) const {
+    evList.add(_u);
+    _u.data().flags |= NEED_GRAD | NEED_ACTIVE;
+
+    evList.add(_G);
+    _G.data().flags |= NEED_DERIV;
+  }
+
+  const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
+  const gsFeSpace<Scalar> &colVar() const { return _u.rowVar(); }
+  index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+  void print(std::ostream &os) const {
+    os << "regularizedH1Jac(";
+    _u.print(os);
+    os << ")";
+  }
+};
+
+/*
+  Gradient (isHessian = false) and Gauss-Newton Hessian (isHessian = true) of
+  Garanzha's regularized Winslow functional in dimension d = 2, 3,
+
+     W(x) = int |J|_F^2 / chi(det(J),eps)^(2/d),
+
+  with respect to the control points. Writing W = int |r|^2 with
+  r = J / chi^(1/d), the Gauss-Newton Hessian 2 (dr)^T (dr) is symmetric
+  positive definite for eps > 0.
+*/
+template<class E, bool isHessian>
+class garanzhaWinslow_expr
+    : public _expr<garanzhaWinslow_expr<E, isHessian> > {
+ public:
+  typedef typename E::Scalar Scalar;
+
+ private:
+  typename E::Nested_t _u;
+  typename gsGeometryMap<Scalar>::Nested_t _G;
+  Scalar _eps, _orientation;
+
+  typedef gsEigen::Matrix<Scalar, Dynamic, Dynamic, 0, 3, 3> SmallMatrix;
+
+  mutable gsMatrix<Scalar> res, derivBasis, p, q, laplace;
+  mutable gsVector<Scalar> pVec, qVec;
+  mutable SmallMatrix jacGeom, cof;
+
+ public:
+  enum { Space = (isHessian ? 3 : 1), ScalarValued = 0, ColBlocks = 0 };
+
+  garanzhaWinslow_expr(const E &u, const gsGeometryMap<Scalar> &G,
+                       Scalar eps, Scalar orientation)
+      : _u(u), _G(G), _eps(eps), _orientation(orientation) {}
+
+  const gsMatrix<Scalar> &eval(const index_t k) const {
+    const index_t dim = _u.dim();
+    const index_t A = _u.cardinality() / dim;
+
+    jacGeom = _G.data().values[1].reshapeCol(k, dim, dim).transpose();
+    cofactorMatrix(jacGeom, cof);
+    const Scalar det = _orientation * jacGeom.row(0).dot(cof.row(0));
+    const Scalar sqNorm = jacGeom.squaredNorm();
+    const Scalar root = math::sqrt(det * det + _eps * _eps);
+    const Scalar chi = garanzhaChi(det, _eps);
+    const Scalar rho = 1.0 / root; // chi'/chi
+    const Scalar chiPow = (2 == dim ? chi : math::pow(chi, Scalar(2) / dim));
+
+    derivBasis = _u.data().values[1].reshapeCol(k, dim, A);
+    if (!detIsControllable(_u.mapper(), _u.data().actives, _u.data().patchId,
+                           cof, derivBasis)) {
+      // det(J) is determined by the boundary: the point does not take part
+      // in the functional (see garanzhaWinslowEnergy_expr)
+      res.setZero(_u.cardinality(), isHessian ? _u.cardinality() : 1);
+      return res;
+    }
+    // p.row(c) = grad(x_c) . grad(phi),  q.row(c) = d(det J)/d(x_c)
+    p.noalias() = jacGeom * derivBasis;
+    q.noalias() = _orientation * (cof * derivBasis);
+
+    if (!isHessian) {
+      res.resize(_u.cardinality(), 1);
+      const Scalar c1 = (Scalar(2) / dim) * rho * sqNorm;
+      for (index_t c = 0; c != dim; ++c) {
+        res.middleRows(c * A, A).noalias() =
+            ((2.0 * p.row(c) - c1 * q.row(c)) / chiPow).transpose();
+      }
+    } else {
+      res.resize(_u.cardinality(), _u.cardinality());
+      const Scalar w = 2.0 / chiPow;
+      const Scalar c1 = -(Scalar(1) / dim) * rho * w;
+      const Scalar c2 = (Scalar(1) / (dim * dim)) * rho * rho * sqNorm * w;
+      // block (c,b) = c1 (p_c^T q_b + q_c^T p_b) + c2 q_c^T q_b
+      //               + delta_cb w grad(phi)^T grad(phi),
+      // i.e. a rank-two matrix plus diagonal blocks
+      pVec.resize(_u.cardinality());
+      qVec.resize(_u.cardinality());
+      for (index_t c = 0; c != dim; ++c) {
+        pVec.segment(c * A, A) = p.row(c).transpose();
+        qVec.segment(c * A, A) = q.row(c).transpose();
+      }
+      res.noalias() = (c1 * pVec) * qVec.transpose();
+      res.noalias() += qVec * (c1 * pVec + c2 * qVec).transpose();
+      laplace.noalias() = w * (derivBasis.transpose() * derivBasis);
+      for (index_t c = 0; c != dim; ++c) {
+        res.block(c * A, c * A, A, A) += laplace;
+      }
+    }
+    return res;
+  }
+
+  index_t rows() const { return 1; }
+
+  index_t cols() const { return 1; }
+
+  void parse(gsExprHelper<Scalar> &evList) const {
+    evList.add(_u);
+    _u.data().flags |= NEED_GRAD | NEED_ACTIVE;
+
+    evList.add(_G);
+    _G.data().flags |= NEED_DERIV;
+  }
+
+  const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
+  const gsFeSpace<Scalar> &colVar() const {
+    return isHessian ? _u.rowVar() : gsNullExpr<Scalar>::get();
+  }
+  index_t cardinality_impl() const { return _u.cardinality_impl(); }
+
+  void print(std::ostream &os) const {
+    os << (isHessian ? "garanzhaWinslowHess(" : "garanzhaWinslowGrad(");
+    _u.print(os);
+    os << ")";
+  }
+};
+
+/*
+  Density of Garanzha's regularized Winslow functional in dimension d = 2, 3:
+
+     |J|_F^2 / chi(det(J),eps)^(2/d)
+
+  Points at which det(J) cannot be changed by the free control points of the
+  space \a u (see detIsControllable) do not take part in the functional.
+*/
+template<class E>
+class garanzhaWinslowEnergy_expr
+    : public _expr<garanzhaWinslowEnergy_expr<E> > {
+ public:
+  typedef typename E::Scalar Scalar;
+
+ private:
+  typename E::Nested_t _u;
+  typename gsGeometryMap<Scalar>::Nested_t _G;
+  Scalar _eps, _orientation;
+
+  typedef gsEigen::Matrix<Scalar, Dynamic, Dynamic, 0, 3, 3> SmallMatrix;
+
+  mutable SmallMatrix jacGeom, cof;
+  mutable Scalar res;
+
+ public:
+  enum { Space = 0, ScalarValued = 1, ColBlocks = 0 };
+
+  garanzhaWinslowEnergy_expr(const E &u, const gsGeometryMap<Scalar> &G,
+                             Scalar eps, Scalar orientation)
+      : _u(u), _G(G), _eps(eps), _orientation(orientation) {}
+
+  Scalar eval(const index_t k) const {
+    const index_t dim = _u.dim();
+    const index_t A = _u.data().values[1].rows() / dim;
+    jacGeom = _G.data().values[1].reshapeCol(k, dim, dim).transpose();
+    cofactorMatrix(jacGeom, cof);
+    if (!detIsControllable(_u.mapper(), _u.data().actives, _u.data().patchId,
+                           cof, _u.data().values[1].reshapeCol(k, dim, A))) {
+      res = 0;
+      return res;
+    }
+    const Scalar det = _orientation * jacGeom.row(0).dot(cof.row(0));
+    const Scalar chi = garanzhaChi(det, _eps);
+    const Scalar chiPow = (2 == dim ? chi : math::pow(chi, Scalar(2) / dim));
+    res = jacGeom.squaredNorm() / chiPow;
+    return res;
+  }
+
+  index_t rows() const { return 0; }
+
+  index_t cols() const { return 0; }
+
+  void parse(gsExprHelper<Scalar> &evList) const {
+    evList.add(_u);
+    _u.data().flags |= NEED_GRAD | NEED_ACTIVE;
+
+    evList.add(_G);
+    _G.data().flags |= NEED_DERIV;
+  }
+
+  const gsFeSpace<Scalar> &rowVar() const { return gsNullExpr<Scalar>::get(); }
+  const gsFeSpace<Scalar> &colVar() const { return gsNullExpr<Scalar>::get(); }
+
+  void print(std::ostream &os) const {
+    os << "garanzhaWinslowEnergy(";
+    _G.print(os);
+    os << ")";
+  }
+};
+
+/// density of Garanzha's regularized Winslow functional
+template<class E>
+EIGEN_STRONG_INLINE
+garanzhaWinslowEnergy_expr<E> garanzhaWinslowEnergy(const E &u,
+                                                    const gsGeometryMap<typename E::Scalar> &G,
+                                                    const typename E::Scalar eps,
+                                                    const typename E::Scalar orientation = 1) {
+  return garanzhaWinslowEnergy_expr<E>(u, G, eps, orientation);
+}
+
+/// residual of the scaled elliptic grid generation equations (2D and 3D)
+template<class E>
+EIGEN_STRONG_INLINE
+scaledEGGRes_expr<E> scaledEGGRes(const E &u,
+                                  const gsGeometryMap<typename E::Scalar> &G) {
+  return scaledEGGRes_expr<E>(u, G);
+}
+
+/// jacobian matrix of the scaled elliptic grid generation equations (2D and
+/// 3D); mode 0: full, 1: diagonal, 2: diagonal blocks
+template<class E>
+EIGEN_STRONG_INLINE
+scaledEGGJac_expr<E> scaledEGGJac(const E &u,
+                                  const gsGeometryMap<typename E::Scalar> &G,
+                                  const index_t mode = 0) {
+  return scaledEGGJac_expr<E>(u, G, mode);
+}
+
+/// residual of the H1 discretization with Garanzha's regularization
+template<class E>
+EIGEN_STRONG_INLINE
+regularizedH1Res_expr<E> regularizedH1Res(const E &u,
+                                          const gsGeometryMap<typename E::Scalar> &G,
+                                          const typename E::Scalar eps,
+                                          const typename E::Scalar orientation = 1) {
+  return regularizedH1Res_expr<E>(u, G, eps, orientation);
+}
+
+/// jacobian matrix of the H1 discretization with Garanzha's regularization
+template<class E>
+EIGEN_STRONG_INLINE
+regularizedH1Jac_expr<E> regularizedH1Jac(const E &u,
+                                          const gsGeometryMap<typename E::Scalar> &G,
+                                          const typename E::Scalar eps,
+                                          const typename E::Scalar orientation = 1,
+                                          const bool diagBlocksOnly = false) {
+  return regularizedH1Jac_expr<E>(u, G, eps, orientation, diagBlocksOnly);
+}
+
+/// gradient of Garanzha's regularized Winslow functional
+template<class E>
+EIGEN_STRONG_INLINE
+garanzhaWinslow_expr<E, false> garanzhaWinslowGrad(const E &u,
+                                                   const gsGeometryMap<typename E::Scalar> &G,
+                                                   const typename E::Scalar eps,
+                                                   const typename E::Scalar orientation = 1) {
+  return garanzhaWinslow_expr<E, false>(u, G, eps, orientation);
+}
+
+/// Gauss-Newton Hessian of Garanzha's regularized Winslow functional
+template<class E>
+EIGEN_STRONG_INLINE
+garanzhaWinslow_expr<E, true> garanzhaWinslowHess(const E &u,
+                                                  const gsGeometryMap<typename E::Scalar> &G,
+                                                  const typename E::Scalar eps,
+                                                  const typename E::Scalar orientation = 1) {
+  return garanzhaWinslow_expr<E, true>(u, G, eps, orientation);
 }
 
 /// Ternary expression for conditional evaluation
