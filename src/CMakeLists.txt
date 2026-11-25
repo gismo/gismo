@@ -18,6 +18,10 @@ endif()
 FOREACH(subdir ${SUBDIRS})
 
   get_filename_component(GM_NAME ${subdir} NAME)
+  set(GM_TARGET ${GM_NAME})
+  if (";${GISMO_OPTIONAL};" MATCHES ";${GM_NAME};" AND EXISTS "${PROJECT_SOURCE_DIR}/optional/${GM_NAME}/CMakeLists.txt")
+    set(GM_TARGET "${GM_NAME}_src")
+  endif()
   #message("module: ${GM_NAME}")
 
   ## Collect files
@@ -30,14 +34,14 @@ FOREACH(subdir ${SUBDIRS})
   endif()
 
   ## Add module
-  add_library(${GM_NAME} OBJECT
+  add_library(${GM_TARGET} OBJECT
     ${${subdir}_H}
     ${${subdir}_HPP}
     ${${subdir}_CPP} # static/non templated part
     ${${subdir}_INS}
     )
 
-  set_target_properties(${GM_NAME} PROPERTIES
+  set_target_properties(${GM_TARGET} PROPERTIES
     COMPILE_DEFINITIONS gismo_EXPORTS
     POSITION_INDEPENDENT_CODE ON
     LINKER_LANGUAGE CXX
@@ -45,10 +49,10 @@ FOREACH(subdir ${SUBDIRS})
     )
 
   if(TARGET gmp)
-    add_dependencies(${GM_NAME} gmp)
+    add_dependencies(${GM_TARGET} gmp)
   endif()
   if(TARGET mpfr)
-    add_dependencies(${GM_NAME} mpfr)
+    add_dependencies(${GM_TARGET} mpfr)
   endif()
 
   ## Add extra instances (template instantiations)
@@ -56,31 +60,31 @@ FOREACH(subdir ${SUBDIRS})
   # compiled above only for GISMO_COEFF_TYPE
   math(EXPR ii "1")
   foreach(ins ${GISMO_EXTRA_INSTANCE})
-    add_library(${GM_NAME}_${ii} OBJECT
+    add_library(${GM_TARGET}_${ii} OBJECT
       ${${subdir}_H}
       ${${subdir}_HPP}
       ${${subdir}_INS}
       )
-    set_target_properties(${GM_NAME}_${ii} PROPERTIES
+    set_target_properties(${GM_TARGET}_${ii} PROPERTIES
       COMPILE_DEFINITIONS "gismo_EXPORTS;real_t=${ins}"
       POSITION_INDEPENDENT_CODE ON
       LINKER_LANGUAGE CXX
       FOLDER "G+Smo modules"
       )
-    set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${GM_NAME}_${ii}>
+    set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${GM_TARGET}_${ii}>
       CACHE INTERNAL "G+Smo modules" )
     math(EXPR ii "${ii}+1")
   endforeach()
 
   if (GISMO_BUILD_PCH)
-    target_precompiled_header(${GM_NAME} gsPrecompiledHeader)
+    target_precompiled_header(${GM_TARGET} gsPrecompiledHeader)
   endif()
 
   if(GISMO_WITH_IPOPT AND ${GM_NAME} MATCHES gsOptimizer)
     include_directories(${IPOPT_INCLUDE_DIR})
   endif()
 
-  set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${GM_NAME}>
+  set(gismo_MODULES ${gismo_MODULES} $<TARGET_OBJECTS:${GM_TARGET}>
     CACHE INTERNAL "G+Smo modules" )
 
   ## install module
