@@ -20,10 +20,12 @@
 #include <gsIO/gsParaviewCollection.h>
 #include <gsNurbs/gsTensorBSpline.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
+#include <gsPde/gsBoundaryConditions.h>
 
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <map>
 #include <queue>
 #include <vector>
 
@@ -160,6 +162,16 @@ struct gsKLShellErrors
 };
 
 /**
+ * @brief Variational enforcement mode for physical Kirchhoff-Love shell
+ *        normal-rotation boundary conditions: theta_nu(u) = A_3 . d_nu u = g_theta.
+ */
+enum class gsKLRotationBCType
+{
+    SymmetricNitsche, ///< Variationally consistent symmetric Nitsche (default, parameter-free SPD)
+    Penalty           ///< Pure rotation penalty (optional, for comparison with weak penalty methods)
+};
+
+/**
  * @brief Thread-safe disjoint Kirchhoff-Love shell assembler over polynomial
  *        multi-basis S_{p,k,Z} mapped by polynomial or rational NURBS geometry mp.
  */
@@ -171,7 +183,8 @@ public:
                            const gsMultiBasis<T>& dbasis,
                            const gsKLShellMaterial<T>& mat,
                            index_t quadExtra = 2)
-        : m_mp(mp), m_dbasis(dbasis), m_mat(mat), m_quadExtra(quadExtra)
+        : m_mp(mp), m_dbasis(dbasis), m_mat(mat), m_quadExtra(quadExtra),
+          m_rotMode(gsKLRotationBCType::SymmetricNitsche), m_rotGamma0(T(4))
     {
         GISMO_ENSURE(m_mp.nPatches() > 0,
                      "gsAsG1KLShellAssembler requires at least one patch.");
@@ -274,6 +287,124 @@ public:
         }
     }
 
+    /**
+     * @brief Convenience constructor that also registers physical normal-rotation
+     *        boundary conditions ("Clamped", "NormalRotation", "SymmetryRotation").
+     */
+    gsAsG1KLShellAssembler(const gsMultiPatch<T>& mp,
+                           const gsMultiBasis<T>& dbasis,
+                           const gsKLShellMaterial<T>& mat,
+                           const gsBoundaryConditions<T>& bc,
+                           index_t quadExtra = 2,
+                           T rotGamma0 = T(4),
+                           gsKLRotationBCType rotMode = gsKLRotationBCType::SymmetricNitsche)
+        : gsAsG1KLShellAssembler(mp, dbasis, mat, quadExtra)
+    {
+        setRotationBCs(bc, rotGamma0, rotMode);
+    }
+
+    /**
+     * @brief Register physical Kirchhoff-Love normal-rotation boundary conditions
+     *        theta_nu(u) = A_3 . d_nu u = g_theta from @p bc.
+     *
+     * Extracts deduplicated boundary patchSides carrying:
+     *   - "NormalRotation" / "SymmetryRotation" (uses supplied scalar function g_theta if non-null)
+     *   - "Clamped" (enforces homogeneous zero normal rotation g_theta = 0 alongside strong
+     *     displacement elimination u = g_D in gsDofMapper, leaving in-plane membrane strains free)
+     *
+     * @param gamma0  Dimensionless stabilization constant. In SymmetricNitsche mode (default),
+     *                the effective penalty is gamma = gamma0 * (p_n + 1)^2 (gamma0 = 4 guarantees
+     *                strict SPD coercivity even on corner elements with two clamped edges).
+     *                In Penalty mode, gamma = gamma0 directly.
+     */
+    void setRotationBCs(const gsBoundaryConditions<T>& bc,
+                        T gamma0 = T(4),
+                        gsKLRotationBCType mode = gsKLRotationBCType::SymmetricNitsche)
+    {
+        GISMO_ENSURE(gamma0 > T(0) && std::isfinite(gamma0),
+                     "setRotationBCs: gamma0 must be positive and finite, got " << gamma0 << ".");
+        m_rotMode = mode;
+        m_rotGamma0 = gamma0;
+        m_rotSides.clear();
+        m_rotBdrElements.clear();
+
+        // Deduplicate by (patch, sideIndex), giving explicit NormalRotation/SymmetryRotation
+        // precedence so a user can combine "Clamped" (u = g_D) + "NormalRotation" (g_theta != 0).
+        std::map<std::pair<index_t, index_t>, size_t> sideToIdx;
+
+        auto registerSide = [&](const patchSide& ps,
+                                typename boundary_condition<T>::function_ptr gFn,
+                                bool useFuncAsRotation)
+        {
+            GISMO_ENSURE(ps.patch >= 0 && static_cast<size_t>(ps.patch) < m_mp.nPatches(),
+                         "setRotationBCs: patch index " << ps.patch << " out of range.");
+            GISMO_ENSURE(m_mp.isBoundary(ps),
+                         "setRotationBCs: patchSide (" << ps.patch << ", " << ps.side()
+                         << ") is not an outer boundary side of mp.");
+            const std::pair<index_t, index_t> key(ps.patch, static_cast<index_t>(ps.side().index()));
+            auto itMap = sideToIdx.find(key);
+            if (itMap == sideToIdx.end())
+            {
+                RotationBoundarySide rbs;
+                rbs.ps = ps;
+                if (useFuncAsRotation)
+                    rbs.gTheta = gFn;
+                sideToIdx[key] = m_rotSides.size();
+                m_rotSides.push_back(std::move(rbs));
+            }
+            else if (useFuncAsRotation && gFn)
+            {
+                m_rotSides[itMap->second].gTheta = gFn;
+            }
+        };
+
+        for (auto it = bc.begin("NormalRotation"); it != bc.end("NormalRotation"); ++it)
+            registerSide(it->ps, it->function(), true);
+        for (auto it = bc.begin("SymmetryRotation"); it != bc.end("SymmetryRotation"); ++it)
+            registerSide(it->ps, it->function(), true);
+        for (auto it = bc.begin("Clamped"); it != bc.end("Clamped"); ++it)
+            registerSide(it->ps, it->function(), false);
+
+        for (size_t sIdx = 0; sIdx < m_rotSides.size(); ++sIdx)
+        {
+            const patchSide& ps = m_rotSides[sIdx].ps;
+            const size_t p = static_cast<size_t>(ps.patch);
+            const short_t nDir = ps.direction();
+            const short_t tDir = 1 - nDir;
+            const bool par = ps.parameter();
+            const std::vector<T>& brkT = (tDir == 0) ? m_brkU[p] : m_brkV[p];
+            const std::vector<T>& brkN = (nDir == 0) ? m_brkU[p] : m_brkV[p];
+            const T xiN = par ? brkN.back() : brkN.front();
+            const T dXiN = par ? (brkN[brkN.size() - 1] - brkN[brkN.size() - 2])
+                               : (brkN[1] - brkN[0]);
+            const index_t nEt = static_cast<index_t>(brkT.size()) - 1;
+            for (index_t et = 0; et < nEt; ++et)
+            {
+                RotationBoundaryElement rbe;
+                rbe.sideIdx = sIdx;
+                rbe.patch = ps.patch;
+                rbe.nDir = nDir;
+                rbe.tDir = tDir;
+                rbe.outSign = par ? T(1) : T(-1);
+                rbe.xiN = xiN;
+                rbe.dXiN = dXiN;
+                rbe.et = et;
+                m_rotBdrElements.push_back(rbe);
+            }
+        }
+    }
+
+    void clearRotationBCs()
+    {
+        m_rotSides.clear();
+        m_rotBdrElements.clear();
+    }
+
+    index_t numRotationBoundarySides() const { return static_cast<index_t>(m_rotSides.size()); }
+    index_t numRotationBoundaryElements() const { return static_cast<index_t>(m_rotBdrElements.size()); }
+    gsKLRotationBCType rotationBCMode() const { return m_rotMode; }
+    T rotationGamma0() const { return m_rotGamma0; }
+
     index_t scalarDiscontSize() const { return m_nDiscontScalar; }
     index_t vectorDiscontSize() const { return 3 * m_nDiscontScalar; }
     const std::vector<index_t>& patchOffsets() const { return m_patchOff; }
@@ -289,8 +420,10 @@ public:
     {
         const index_t N = 3 * m_nDiscontScalar;
         const index_t nElems = static_cast<index_t>(m_elements.size());
+        const index_t nBdrElems = static_cast<index_t>(m_rotBdrElements.size());
         const T tMem = m_mat.thickness;
         const T tBend = (m_mat.thickness * m_mat.thickness * m_mat.thickness) / T(12);
+        const T D_nunu = m_mat.E * tBend / (T(1) - m_mat.nu * m_mat.nu);
 
         int maxThreads = 1;
 #ifdef _OPENMP
@@ -318,6 +451,7 @@ public:
             std::vector<gsMatrix<T>> ders;
             gsMatrix<index_t> act;
             gsMatrix<T> Ke, Bm, Bb;
+            gsVector<T> bTheta, bM;
             gsMatrix<T, 3, 3> C;
             index_t locDegenerate = 0;
 
@@ -423,6 +557,135 @@ public:
                 }
             }
 
+            // Physical KL normal-rotation boundary terms (Symmetric Nitsche or Penalty)
+            #pragma omp for schedule(dynamic, 4)
+            for (index_t bIdx = 0; bIdx < nBdrElems; ++bIdx)
+            {
+                const RotationBoundaryElement& el = m_rotBdrElements[static_cast<size_t>(bIdx)];
+                const size_t p = static_cast<size_t>(el.patch);
+                const auto& tb = static_cast<const gsTensorBSplineBasis<2, T>&>(m_dbasis[p]);
+                const gsGeometry<T>& geo = m_mp.patch(p);
+                const index_t pOff = m_patchOff[p];
+
+                const std::vector<T>& brkT = (el.tDir == 0) ? m_brkU[p] : m_brkV[p];
+                const short_t pT = tb.component(el.tDir).degree();
+                const short_t pN = tb.component(el.nDir).degree();
+                const gsGaussRule<T> ruleT(pT + m_quadExtra);
+                const index_t nQ = ruleT.numNodes();
+
+                ruleT.mapTo(brkT[el.et], brkT[el.et + 1], qu, wu);
+                pts.resize(2, nQ);
+                pts.row(el.nDir).setConstant(el.xiN);
+                pts.row(el.tDir) = qu.row(0);
+
+                geo.deriv_into(pts, gD1);
+                geo.deriv2_into(pts, gD2);
+                tb.evalAllDers_into(pts, 2, ders);
+                tb.active_into(pts.col(0), act);
+                const index_t nAct = act.rows();
+                const index_t nEl = 3 * nAct;
+                Ke.setZero(nEl, nEl);
+                bTheta.resize(nEl);
+                bM.resize(nEl);
+
+                const T gammaEff = (m_rotMode == gsKLRotationBCType::SymmetricNitsche)
+                                 ? (m_rotGamma0 * T((pN + 1) * (pN + 1)))
+                                 : m_rotGamma0;
+
+                for (index_t q = 0; q < nQ; ++q)
+                {
+                    gsSurfaceKinematics3D<T> kin;
+                    if (!kin.compute(gD1, gD2, q))
+                    {
+                        ++locDegenerate;
+                        continue;
+                    }
+
+                    const gsVector<T, 3>& At = (el.tDir == 0) ? kin.A1 : kin.A2;
+                    const gsVector<T, 3>& An = (el.nDir == 0) ? kin.A1 : kin.A2;
+                    const T ds = At.norm();
+                    if (!(ds > T(0)) || !std::isfinite(ds))
+                    {
+                        ++locDegenerate;
+                        continue;
+                    }
+                    const gsVector<T, 3> tau = At / ds;
+                    const gsVector<T, 3> gOut = el.outSign * An;
+                    const gsVector<T, 3> nuRaw = gOut - gOut.dot(tau) * tau;
+                    const T nuNorm = nuRaw.norm();
+                    if (!(nuNorm > T(0)) || !std::isfinite(nuNorm))
+                    {
+                        ++locDegenerate;
+                        continue;
+                    }
+                    const gsVector<T, 3> nuVec = nuRaw / nuNorm;
+
+                    const T nu_1  = nuVec.dot(kin.A1);
+                    const T nu_2  = nuVec.dot(kin.A2);
+                    const T nu1up = nuVec.dot(kin.A1up);
+                    const T nu2up = nuVec.dot(kin.A2up);
+                    const T hNu   = (kin.dS / ds) * el.dXiN;
+                    if (!(hNu > T(0)) || !std::isfinite(hNu))
+                    {
+                        ++locDegenerate;
+                        continue;
+                    }
+
+                    m_mat.voigtMatrix(kin.A11inv, kin.A22inv, kin.A12inv, C);
+                    gsVector<T, 3> wNu;
+                    wNu << nu_1 * nu_1, nu_2 * nu_2, T(2) * nu_1 * nu_2;
+                    const gsVector<T, 3> mRow = tBend * (C * wNu);
+
+                    for (index_t a = 0; a < nAct; ++a)
+                    {
+                        const T d1  = ders[1](2 * a + 0, q);
+                        const T d2  = ders[1](2 * a + 1, q);
+                        const T d11 = ders[2](3 * a + 0, q);
+                        const T d22 = ders[2](3 * a + 1, q);
+                        const T d12 = ders[2](3 * a + 2, q);
+
+                        const T dNuN  = nu1up * d1 + nu2up * d2;
+                        const T cov11 = -(d11 - kin.G1_11 * d1 - kin.G2_11 * d2);
+                        const T cov22 = -(d22 - kin.G1_22 * d1 - kin.G2_22 * d2);
+                        const T cov12 = -T(2) * (d12 - kin.G1_12 * d1 - kin.G2_12 * d2);
+                        const T mScal = mRow(0) * cov11 + mRow(1) * cov22 + mRow(2) * cov12;
+
+                        for (index_t c = 0; c < 3; ++c)
+                        {
+                            const index_t col = c * nAct + a;
+                            bTheta(col) = dNuN  * kin.A3(c);
+                            bM(col)     = mScal * kin.A3(c);
+                        }
+                    }
+
+                    const T wBdr = wu(q) * ds;
+                    const T stab = (gammaEff * D_nunu) / hNu;
+                    if (m_rotMode == gsKLRotationBCType::SymmetricNitsche)
+                        Ke.noalias() += wBdr * (bM * bTheta.transpose() + bTheta * bM.transpose());
+                    Ke.noalias() += (wBdr * stab) * (bTheta * bTheta.transpose());
+                }
+
+                for (index_t c1 = 0; c1 < 3; ++c1)
+                {
+                    const index_t base1 = c1 * m_nDiscontScalar + pOff;
+                    for (index_t a = 0; a < nAct; ++a)
+                    {
+                        const index_t row = base1 + act(a, 0);
+                        const index_t rLoc = c1 * nAct + a;
+                        for (index_t c2 = 0; c2 < 3; ++c2)
+                        {
+                            const index_t base2 = c2 * m_nDiscontScalar + pOff;
+                            for (index_t b = 0; b < nAct; ++b)
+                            {
+                                const T val = Ke(rLoc, c2 * nAct + b);
+                                if (val != T(0))
+                                    locEnt.add(row, base2 + act(b, 0), val);
+                            }
+                        }
+                    }
+                }
+            }
+
             if (locDegenerate > 0)
                 degenerateCount.fetch_add(locDegenerate, std::memory_order_relaxed);
 
@@ -459,9 +722,11 @@ public:
     {
         const index_t N = 3 * m_nDiscontScalar;
         const index_t nElems = static_cast<index_t>(m_elements.size());
+        const index_t nBdrElems = static_cast<index_t>(m_rotBdrElements.size());
         F_discont.setZero(N);
         const T tMem = m_mat.thickness;
         const T tBend = (m_mat.thickness * m_mat.thickness * m_mat.thickness) / T(12);
+        const T D_nunu = m_mat.E * tBend / (T(1) - m_mat.nu * m_mat.nu);
         std::atomic<index_t> degenerateCount(0);
 
         #pragma omp parallel
@@ -596,6 +861,138 @@ public:
                 }
             }
 
+            // Matching physical KL normal-rotation boundary terms: a_rot(u_ex, v)
+            #pragma omp for schedule(dynamic, 4)
+            for (index_t bIdx = 0; bIdx < nBdrElems; ++bIdx)
+            {
+                const RotationBoundaryElement& el = m_rotBdrElements[static_cast<size_t>(bIdx)];
+                const size_t p = static_cast<size_t>(el.patch);
+                const auto& tb = static_cast<const gsTensorBSplineBasis<2, T>&>(m_dbasis[p]);
+                const gsGeometry<T>& geo = m_mp.patch(p);
+                const index_t pOff = m_patchOff[p];
+
+                const std::vector<T>& brkT = (el.tDir == 0) ? m_brkU[p] : m_brkV[p];
+                const short_t pT = tb.component(el.tDir).degree();
+                const short_t pN = tb.component(el.nDir).degree();
+                const gsGaussRule<T> ruleT(pT + m_quadExtra);
+                const index_t nQ = ruleT.numNodes();
+
+                ruleT.mapTo(brkT[el.et], brkT[el.et + 1], qu, wu);
+                pts.resize(2, nQ);
+                pts.row(el.nDir).setConstant(el.xiN);
+                pts.row(el.tDir) = qu.row(0);
+
+                geo.eval_into(pts, Xq);
+                geo.deriv_into(pts, gD1);
+                geo.deriv2_into(pts, gD2);
+                tb.evalAllDers_into(pts, 2, ders);
+                tb.active_into(pts.col(0), act);
+                const index_t nAct = act.rows();
+                Fe.setZero(3 * nAct);
+
+                const T gammaEff = (m_rotMode == gsKLRotationBCType::SymmetricNitsche)
+                                 ? (m_rotGamma0 * T((pN + 1) * (pN + 1)))
+                                 : m_rotGamma0;
+
+                for (index_t q = 0; q < nQ; ++q)
+                {
+                    gsSurfaceKinematics3D<T> kin;
+                    if (!kin.compute(gD1, gD2, q))
+                    {
+                        ++locDegenerate;
+                        continue;
+                    }
+
+                    const gsVector<T, 3>& At = (el.tDir == 0) ? kin.A1 : kin.A2;
+                    const gsVector<T, 3>& An = (el.nDir == 0) ? kin.A1 : kin.A2;
+                    const T ds = At.norm();
+                    if (!(ds > T(0)) || !std::isfinite(ds))
+                    {
+                        ++locDegenerate;
+                        continue;
+                    }
+                    const gsVector<T, 3> tau = At / ds;
+                    const gsVector<T, 3> gOut = el.outSign * An;
+                    const gsVector<T, 3> nuRaw = gOut - gOut.dot(tau) * tau;
+                    const T nuNorm = nuRaw.norm();
+                    if (!(nuNorm > T(0)) || !std::isfinite(nuNorm))
+                    {
+                        ++locDegenerate;
+                        continue;
+                    }
+                    const gsVector<T, 3> nuVec = nuRaw / nuNorm;
+
+                    const T nu_1  = nuVec.dot(kin.A1);
+                    const T nu_2  = nuVec.dot(kin.A2);
+                    const T nu1up = nuVec.dot(kin.A1up);
+                    const T nu2up = nuVec.dot(kin.A2up);
+                    const T hNu   = (kin.dS / ds) * el.dXiN;
+                    if (!(hNu > T(0)) || !std::isfinite(hNu))
+                    {
+                        ++locDegenerate;
+                        continue;
+                    }
+
+                    m_mat.voigtMatrix(kin.A11inv, kin.A22inv, kin.A12inv, C);
+                    gsVector<T, 3> wNu;
+                    wNu << nu_1 * nu_1, nu_2 * nu_2, T(2) * nu_1 * nu_2;
+                    const gsVector<T, 3> mRow = tBend * (C * wNu);
+
+                    gsVector<T> xPhys = Xq.col(q);
+                    gsVector<T, 3> u1, u2, u11, u22, u12;
+                    for (index_t c = 0; c < 3; ++c)
+                    {
+                        T val = T(0);
+                        evalExactComp(c, xPhys, val, gP, hP);
+                        u1(c)  = gP.dot(kin.A1);
+                        u2(c)  = gP.dot(kin.A2);
+                        u11(c) = kin.A1.dot(hP * kin.A1) + gP.dot(kin.A11);
+                        u22(c) = kin.A2.dot(hP * kin.A2) + gP.dot(kin.A22);
+                        u12(c) = kin.A1.dot(hP * kin.A2) + gP.dot(kin.A12);
+                    }
+
+                    const T thetaEx = (nu1up * u1 + nu2up * u2).dot(kin.A3);
+                    gsVector<T, 3> kapEx;
+                    kapEx(0) = -(u11 - kin.G1_11 * u1 - kin.G2_11 * u2).dot(kin.A3);
+                    kapEx(1) = -(u22 - kin.G1_22 * u1 - kin.G2_22 * u2).dot(kin.A3);
+                    kapEx(2) = -T(2) * (u12 - kin.G1_12 * u1 - kin.G2_12 * u2).dot(kin.A3);
+                    const T mEx = mRow.dot(kapEx);
+
+                    const T wBdr = wu(q) * ds;
+                    const T stab = (gammaEff * D_nunu) / hNu;
+                    const T cTheta = wBdr * (((m_rotMode == gsKLRotationBCType::SymmetricNitsche) ? mEx : T(0))
+                                             + stab * thetaEx);
+                    const T cM     = (m_rotMode == gsKLRotationBCType::SymmetricNitsche)
+                                   ? (wBdr * thetaEx) : T(0);
+
+                    for (index_t a = 0; a < nAct; ++a)
+                    {
+                        const T d1  = ders[1](2 * a + 0, q);
+                        const T d2  = ders[1](2 * a + 1, q);
+                        const T d11 = ders[2](3 * a + 0, q);
+                        const T d22 = ders[2](3 * a + 1, q);
+                        const T d12 = ders[2](3 * a + 2, q);
+
+                        const T dNuN  = nu1up * d1 + nu2up * d2;
+                        const T cov11 = -(d11 - kin.G1_11 * d1 - kin.G2_11 * d2);
+                        const T cov22 = -(d22 - kin.G1_22 * d1 - kin.G2_22 * d2);
+                        const T cov12 = -T(2) * (d12 - kin.G1_12 * d1 - kin.G2_12 * d2);
+                        const T mScal = mRow(0) * cov11 + mRow(1) * cov22 + mRow(2) * cov12;
+                        const T weightScalar = cTheta * dNuN + cM * mScal;
+
+                        for (index_t c = 0; c < 3; ++c)
+                            Fe(c * nAct + a) += weightScalar * kin.A3(c);
+                    }
+                }
+
+                for (index_t c = 0; c < 3; ++c)
+                {
+                    const index_t base = c * m_nDiscontScalar + pOff;
+                    for (index_t a = 0; a < nAct; ++a)
+                        (*fTarget)(base + act(a, 0)) += Fe(c * nAct + a);
+                }
+            }
+
             if (locDegenerate > 0)
                 degenerateCount.fetch_add(locDegenerate, std::memory_order_relaxed);
 
@@ -626,8 +1023,19 @@ public:
     {
         const index_t N = 3 * m_nDiscontScalar;
         const index_t nElems = static_cast<index_t>(m_elements.size());
+        const index_t nBdrElems = static_cast<index_t>(m_rotBdrElements.size());
+        const T tBend = (m_mat.thickness * m_mat.thickness * m_mat.thickness) / T(12);
+        const T D_nunu = m_mat.E * tBend / (T(1) - m_mat.nu * m_mat.nu);
         F_discont.setZero(N);
         std::atomic<index_t> degenerateCount(0);
+
+        bool anyPrescribedRot = false;
+        for (const auto& rs : m_rotSides)
+            if (rs.gTheta)
+            {
+                anyPrescribedRot = true;
+                break;
+            }
 
         #pragma omp parallel
         {
@@ -645,8 +1053,10 @@ public:
 
             gsMatrix<T> qu, qv, pts;
             gsVector<T> wu, wv, wq;
-            gsMatrix<T> Xq, gD1, vals;
+            gsMatrix<T> Xq, gD1, gD2, vals, gThetaVals;
+            std::vector<gsMatrix<T>> ders;
             gsMatrix<index_t> act;
+            gsMatrix<T, 3, 3> C;
             index_t locDegenerate = 0;
 
             #pragma omp for schedule(dynamic, 4)
@@ -704,6 +1114,126 @@ public:
                         const index_t base = c * m_nDiscontScalar + pOff;
                         for (index_t a = 0; a < nAct; ++a)
                             (*fTarget)(base + act(a, 0)) += vals(a, q) * load(c);
+                    }
+                }
+            }
+
+            // Inhomogeneous prescribed normal-rotation boundary RHS (when g_theta != null)
+            if (anyPrescribedRot)
+            {
+                #pragma omp for schedule(dynamic, 4)
+                for (index_t bIdx = 0; bIdx < nBdrElems; ++bIdx)
+                {
+                    const RotationBoundaryElement& el = m_rotBdrElements[static_cast<size_t>(bIdx)];
+                    const auto& gFn = m_rotSides[el.sideIdx].gTheta;
+                    if (!gFn) continue;
+
+                    const size_t p = static_cast<size_t>(el.patch);
+                    const auto& tb = static_cast<const gsTensorBSplineBasis<2, T>&>(m_dbasis[p]);
+                    const gsGeometry<T>& geo = m_mp.patch(p);
+                    const index_t pOff = m_patchOff[p];
+                    const T nSign = m_patchNormalSign[p];
+
+                    const std::vector<T>& brkT = (el.tDir == 0) ? m_brkU[p] : m_brkV[p];
+                    const short_t pT = tb.component(el.tDir).degree();
+                    const short_t pN = tb.component(el.nDir).degree();
+                    const gsGaussRule<T> ruleT(pT + m_quadExtra);
+                    const index_t nQ = ruleT.numNodes();
+
+                    ruleT.mapTo(brkT[el.et], brkT[el.et + 1], qu, wu);
+                    pts.resize(2, nQ);
+                    pts.row(el.nDir).setConstant(el.xiN);
+                    pts.row(el.tDir) = qu.row(0);
+
+                    geo.eval_into(pts, Xq);
+                    if (gFn->domainDim() == 3)
+                        gFn->eval_into(Xq, gThetaVals);
+                    else
+                        gFn->eval_into(pts, gThetaVals);
+
+                    if (gThetaVals.row(0).cwiseAbs().maxCoeff() == T(0))
+                        continue;
+
+                    geo.deriv_into(pts, gD1);
+                    geo.deriv2_into(pts, gD2);
+                    tb.evalAllDers_into(pts, 2, ders);
+                    tb.active_into(pts.col(0), act);
+                    const index_t nAct = act.rows();
+
+                    const T gammaEff = (m_rotMode == gsKLRotationBCType::SymmetricNitsche)
+                                     ? (m_rotGamma0 * T((pN + 1) * (pN + 1)))
+                                     : m_rotGamma0;
+
+                    for (index_t q = 0; q < nQ; ++q)
+                    {
+                        const T gVal = gThetaVals(0, q) * nSign;
+                        if (gVal == T(0)) continue;
+
+                        gsSurfaceKinematics3D<T> kin;
+                        if (!kin.compute(gD1, gD2, q))
+                        {
+                            ++locDegenerate;
+                            continue;
+                        }
+                        const gsVector<T, 3>& At = (el.tDir == 0) ? kin.A1 : kin.A2;
+                        const gsVector<T, 3>& An = (el.nDir == 0) ? kin.A1 : kin.A2;
+                        const T ds = At.norm();
+                        if (!(ds > T(0)) || !std::isfinite(ds))
+                        {
+                            ++locDegenerate;
+                            continue;
+                        }
+                        const gsVector<T, 3> tau = At / ds;
+                        const gsVector<T, 3> gOut = el.outSign * An;
+                        const gsVector<T, 3> nuRaw = gOut - gOut.dot(tau) * tau;
+                        const T nuNorm = nuRaw.norm();
+                        if (!(nuNorm > T(0)) || !std::isfinite(nuNorm))
+                        {
+                            ++locDegenerate;
+                            continue;
+                        }
+                        const gsVector<T, 3> nuVec = nuRaw / nuNorm;
+
+                        const T nu_1  = nuVec.dot(kin.A1);
+                        const T nu_2  = nuVec.dot(kin.A2);
+                        const T nu1up = nuVec.dot(kin.A1up);
+                        const T nu2up = nuVec.dot(kin.A2up);
+                        const T hNu   = (kin.dS / ds) * el.dXiN;
+                        if (!(hNu > T(0)) || !std::isfinite(hNu))
+                        {
+                            ++locDegenerate;
+                            continue;
+                        }
+
+                        m_mat.voigtMatrix(kin.A11inv, kin.A22inv, kin.A12inv, C);
+                        gsVector<T, 3> wNu;
+                        wNu << nu_1 * nu_1, nu_2 * nu_2, T(2) * nu_1 * nu_2;
+                        const gsVector<T, 3> mRow = tBend * (C * wNu);
+
+                        const T wBdr = wu(q) * ds;
+                        const T stab = (gammaEff * D_nunu) / hNu;
+                        const T cTheta = wBdr * stab * gVal;
+                        const T cM     = (m_rotMode == gsKLRotationBCType::SymmetricNitsche)
+                                       ? (wBdr * gVal) : T(0);
+
+                        for (index_t a = 0; a < nAct; ++a)
+                        {
+                            const T d1  = ders[1](2 * a + 0, q);
+                            const T d2  = ders[1](2 * a + 1, q);
+                            const T d11 = ders[2](3 * a + 0, q);
+                            const T d22 = ders[2](3 * a + 1, q);
+                            const T d12 = ders[2](3 * a + 2, q);
+
+                            const T dNuN  = nu1up * d1 + nu2up * d2;
+                            const T cov11 = -(d11 - kin.G1_11 * d1 - kin.G2_11 * d2);
+                            const T cov22 = -(d22 - kin.G1_22 * d1 - kin.G2_22 * d2);
+                            const T cov12 = -T(2) * (d12 - kin.G1_12 * d1 - kin.G2_12 * d2);
+                            const T mScal = mRow(0) * cov11 + mRow(1) * cov22 + mRow(2) * cov12;
+                            const T weightScalar = cTheta * dNuN + cM * mScal;
+
+                            for (index_t c = 0; c < 3; ++c)
+                                (*fTarget)(c * m_nDiscontScalar + pOff + act(a, 0)) += weightScalar * kin.A3(c);
+                        }
                     }
                 }
             }
@@ -1009,6 +1539,102 @@ public:
         return dispMP;
     }
 
+    /**
+     * @brief Compute L^2 boundary error sqrt( int_{Gamma_rot} (theta_nu(u_h) - g_theta)^2 ds )
+     *        over all registered rotation-constrained boundary sides.
+     */
+    T computeRotationBCErrorL2(const gsVector<T>& c_discont) const
+    {
+        GISMO_ENSURE(c_discont.size() == 3 * m_nDiscontScalar,
+                     "computeRotationBCErrorL2: c_discont size (" << c_discont.size()
+                     << ") does not match vectorDiscontSize() (" << (3 * m_nDiscontScalar) << ").");
+        if (m_rotBdrElements.empty())
+            return T(0);
+
+        T err2 = T(0);
+        for (size_t bIdx = 0; bIdx < m_rotBdrElements.size(); ++bIdx)
+        {
+            const RotationBoundaryElement& el = m_rotBdrElements[bIdx];
+            const size_t p = static_cast<size_t>(el.patch);
+            const auto& tb = static_cast<const gsTensorBSplineBasis<2, T>&>(m_dbasis[p]);
+            const gsGeometry<T>& geo = m_mp.patch(p);
+            const index_t pOff = m_patchOff[p];
+            const T nSign = m_patchNormalSign[p];
+            const auto& gFn = m_rotSides[el.sideIdx].gTheta;
+
+            const std::vector<T>& brkT = (el.tDir == 0) ? m_brkU[p] : m_brkV[p];
+            const gsGaussRule<T> ruleT(tb.component(el.tDir).degree() + m_quadExtra + 1);
+            const index_t nQ = ruleT.numNodes();
+
+            gsMatrix<T> qu, pts(2, nQ), Xq, gD1, gThetaVals;
+            gsVector<T> wu;
+            std::vector<gsMatrix<T>> ders;
+            gsMatrix<index_t> act;
+
+            ruleT.mapTo(brkT[el.et], brkT[el.et + 1], qu, wu);
+            pts.row(el.nDir).setConstant(el.xiN);
+            pts.row(el.tDir) = qu.row(0);
+
+            geo.deriv_into(pts, gD1);
+            if (gFn)
+            {
+                if (gFn->domainDim() == 3)
+                {
+                    geo.eval_into(pts, Xq);
+                    gFn->eval_into(Xq, gThetaVals);
+                }
+                else
+                    gFn->eval_into(pts, gThetaVals);
+            }
+            tb.evalAllDers_into(pts, 1, ders);
+            tb.active_into(pts.col(0), act);
+            const index_t nAct = act.rows();
+
+            for (index_t q = 0; q < nQ; ++q)
+            {
+                gsSurfaceKinematics3D<T> kin;
+                if (!kin.computeFirstOrder(gD1, q))
+                    continue;
+                const T a11 = kin.A1.dot(kin.A1);
+                const T a22 = kin.A2.dot(kin.A2);
+                const T a12 = kin.A1.dot(kin.A2);
+                const T invDet = T(1) / (kin.dS * kin.dS);
+                const gsVector<T, 3> A1up = (a22 * kin.A1 - a12 * kin.A2) * invDet;
+                const gsVector<T, 3> A2up = (a11 * kin.A2 - a12 * kin.A1) * invDet;
+
+                const gsVector<T, 3>& At = (el.tDir == 0) ? kin.A1 : kin.A2;
+                const gsVector<T, 3>& An = (el.nDir == 0) ? kin.A1 : kin.A2;
+                const T ds = At.norm();
+                if (!(ds > T(0))) continue;
+                const gsVector<T, 3> tau = At / ds;
+                const gsVector<T, 3> gOut = el.outSign * An;
+                const gsVector<T, 3> nuRaw = gOut - gOut.dot(tau) * tau;
+                const T nuNorm = nuRaw.norm();
+                if (!(nuNorm > T(0))) continue;
+                const gsVector<T, 3> nuVec = nuRaw / nuNorm;
+                const T nu1up = nuVec.dot(A1up);
+                const T nu2up = nuVec.dot(A2up);
+
+                gsVector<T, 3> u1 = gsVector<T, 3>::Zero(), u2 = gsVector<T, 3>::Zero();
+                for (index_t c = 0; c < 3; ++c)
+                {
+                    const index_t base = c * m_nDiscontScalar + pOff;
+                    for (index_t a = 0; a < nAct; ++a)
+                    {
+                        const T coef = c_discont(base + act(a, 0));
+                        u1(c) += coef * ders[1](2 * a + 0, q);
+                        u2(c) += coef * ders[1](2 * a + 1, q);
+                    }
+                }
+                const T thetaH = (nu1up * u1 + nu2up * u2).dot(kin.A3) * nSign;
+                const T gTarget = gFn ? gThetaVals(0, q) : T(0);
+                const T diff = thetaH - gTarget;
+                err2 += wu(q) * ds * diff * diff;
+            }
+        }
+        return std::sqrt(std::max(err2, T(0)));
+    }
+
 private:
     struct PatchElement
     {
@@ -1017,16 +1643,38 @@ private:
         index_t ev;
     };
 
+    struct RotationBoundarySide
+    {
+        patchSide ps;
+        typename boundary_condition<T>::function_ptr gTheta; // null => homogeneous g_theta = 0
+    };
+
+    struct RotationBoundaryElement
+    {
+        size_t sideIdx;
+        index_t patch;
+        short_t nDir;
+        short_t tDir;
+        T outSign;
+        T xiN;
+        T dXiN;
+        index_t et;
+    };
+
     gsMultiPatch<T> m_mp;
     gsMultiBasis<T> m_dbasis;
     gsKLShellMaterial<T> m_mat;
     index_t m_quadExtra;
+    gsKLRotationBCType m_rotMode;
+    T m_rotGamma0;
     std::vector<index_t> m_patchOff;
     index_t m_nDiscontScalar;
     std::vector<std::vector<T>> m_brkU;
     std::vector<std::vector<T>> m_brkV;
     std::vector<PatchElement> m_elements;
     std::vector<T> m_patchNormalSign;
+    std::vector<RotationBoundarySide> m_rotSides;
+    std::vector<RotationBoundaryElement> m_rotBdrElements;
 };
 
 } // namespace gismo

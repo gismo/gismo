@@ -139,6 +139,7 @@ public:
     index_t numLevels() const { return static_cast<index_t>(m_levels.size()); }
     const gsAsG1ShellLevel<T>& level(index_t l) const { return m_levels[l]; }
     const gsAsG1ShellLevel<T>& finest() const { return m_levels.back(); }
+    const gsBoundaryConditions<T>& boundaryConditions() const { return m_bc; }
     const gsMatrix<T>& gluingData() const { return m_gluing; }
     const gsMatrix<T>& cornerFrames() const { return m_cornerFrames; }
     short_t degree() const { return m_p; }
@@ -322,7 +323,6 @@ private:
             };
             auto sideHasD = [&](const patchSide& ps) -> bool {
                 return hasSideLabel(ps, "ValuesAndDerivatives")
-                    || hasSideLabel(ps, "Clamped")
                     || hasSideLabel(ps, "Derivatives");
             };
 

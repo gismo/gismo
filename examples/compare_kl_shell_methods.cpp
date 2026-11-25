@@ -948,7 +948,7 @@ void buildBCObjects(const gsMultiPatch<real_t>& mp,
 
     for (const auto& e : entries)
     {
-        bcASG1.add(e.ps.patch, e.ps.side(), e.clamped ? "ValuesAndDerivatives" : "Values", zero3, e.comp);
+        bcASG1.add(e.ps.patch, e.ps.side(), e.clamped ? "Clamped" : "Values", zero3, e.comp);
         bcKLShell.addCondition(e.ps, condition_type::dirichlet, &zero1, 0, false, e.comp);
         if (e.clamped)
         {
@@ -1030,7 +1030,7 @@ void runHeadToHeadCase(const std::string& caseName,
     const auto& fin = hier.finest();
     const gsMultiBasis<real_t> sharedBasis = fin.dbasis;
 
-    gsAsG1KLShellAssembler<real_t> ourAsmbl(mp, sharedBasis, mat, /*quadExtra=*/2);
+    gsAsG1KLShellAssembler<real_t> ourAsmbl(mp, sharedBasis, mat, bcASG1, /*quadExtra=*/2);
     gsSparseMatrix<real_t> K_discont, K_free;
     gsVector<real_t> F_discont, F_free, u_bnd;
 

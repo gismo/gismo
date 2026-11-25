@@ -339,4 +339,113 @@ SUITE(gsAsG1KLShellAssembler_test)
         gsVector<real_t> badC = gsVector<real_t>::Zero(10);
         CHECK_THROW(asmbl.evalDisplacement(badC, 0, 0.5, 0.5), std::runtime_error);
     }
+
+    TEST(PhysicalClampedNitscheCurvedShellAndNormalRotation)
+    {
+        // 1. Curved 2x2 paraboloid physically Clamped shell with nonzero membrane boundary strain
+        gsMultiPatch<real_t> mp = makeCurvedParaboloid2x2();
+        const real_t alpha = 0.25;
+        auto exactClampedCurved = [&](index_t comp, const gsVector<real_t>& X,
+                                      real_t& val, gsVector<real_t>& g, gsMatrix<real_t>& H)
+        {
+            const real_t pi = EIGEN_PI;
+            const real_t x = X(0), y = X(1);
+            const real_t sx = std::sin(pi * x), cx = std::cos(pi * x);
+            const real_t sy = std::sin(pi * y), cy = std::cos(pi * y);
+            const real_t phi = sx * sy;
+            const real_t px = pi * cx * sy, py = pi * sx * cy;
+            const real_t pxx = -pi * pi * phi, pyy = -pi * pi * phi, pxy = pi * pi * cx * cy;
+
+            g.setZero(3);
+            H.setZero(3, 3);
+            if (comp == 0 || comp == 1)
+            {
+                val = phi;
+                g(0) = px; g(1) = py;
+                H(0, 0) = pxx; H(1, 1) = pyy; H(0, 1) = H(1, 0) = pxy;
+            }
+            else
+            {
+                const real_t c2 = 2.0 * alpha;
+                const real_t gx = sx * sx, gy = sy * sy;
+                const real_t dgx = pi * std::sin(2.0 * pi * x), dgy = pi * std::sin(2.0 * pi * y);
+                const real_t ddgx = 2.0 * pi * pi * std::cos(2.0 * pi * x);
+                const real_t ddgy = 2.0 * pi * pi * std::cos(2.0 * pi * y);
+                const real_t psi = gx * gy;
+                const real_t wx = dgx * gy, wy = gx * dgy;
+                const real_t wxx = ddgx * gy, wyy = gx * ddgy, wxy = dgx * dgy;
+
+                val = c2 * (x + y) * phi + psi;
+                g(0) = c2 * phi + c2 * (x + y) * px + wx;
+                g(1) = c2 * phi + c2 * (x + y) * py + wy;
+                H(0, 0) = 2.0 * c2 * px + c2 * (x + y) * pxx + wxx;
+                H(1, 1) = 2.0 * c2 * py + c2 * (x + y) * pyy + wyy;
+                H(0, 1) = H(1, 0) = c2 * (px + py) + c2 * (x + y) * pxy + wxy;
+            }
+        };
+
+        gsBoundaryConditions<real_t> bc;
+        gsConstantFunction<real_t> zero(0.0, 3);
+        for (const auto& ps : mp.boundaries())
+            for (short_t c = 0; c < 3; ++c)
+                bc.add(ps.patch, ps.side(), "Clamped", zero, c);
+
+        gsKLShellMaterial<real_t> mat(1e6, 0.3, 0.05);
+        real_t l2_0 = 0, h2_0 = 0, rot_0 = 0, l2_1 = 0, h2_1 = 0, rot_1 = 0;
+        for (index_t r = 0; r <= 1; ++r)
+        {
+            gsAsG1ShellHierarchy<real_t> hier(mp, bc, 3, 1, 0, r, true);
+            const auto& fin = hier.finest();
+            gsAsG1KLShellAssembler<real_t> asmbl(mp, fin.dbasis, mat, bc);
+            CHECK_EQUAL(static_cast<index_t>(mp.boundaries().size()), asmbl.numRotationBoundarySides());
+            gsSparseMatrix<real_t> K, Kf;
+            gsVector<real_t> F, Ff, ub, uf;
+            asmbl.assembleStiffness(K);
+            asmbl.assembleManufacturedRHS(exactClampedCurved, F);
+            asmbl.projectSystem(K, F, fin.T_free, fin.T_bnd, ub, Kf, Ff);
+            const auto st = hier.solve(Kf, Ff, mat, uf, "cg", "line_ring1", 1, 1, 1, 200, 1e-12);
+            CHECK(st.converged);
+            gsVector<real_t> c_sol = fin.T_free * uf;
+            const auto err = asmbl.computeErrors(c_sol, exactClampedCurved);
+            if (r == 0) { l2_0 = err.l2Rel(); h2_0 = err.h2Rel(); rot_0 = asmbl.computeRotationBCErrorL2(c_sol); }
+            else        { l2_1 = err.l2Rel(); h2_1 = err.h2Rel(); rot_1 = asmbl.computeRotationBCErrorL2(c_sol); }
+        }
+        CHECK(std::log2(l2_0 / l2_1) > 3.5);
+        CHECK(std::log2(h2_0 / h2_1) > 1.7);
+        CHECK(std::log2(rot_0 / rot_1) > 2.5);
+        CHECK(rot_1 < 1e-3);
+
+        // 2. Inhomogeneous NormalRotation patch test (exact tilted plane u_z = slope * x)
+        gsMultiPatch<real_t> sq;
+        sq.addPatch(gsNurbsCreator<real_t>::BSplineSquare(1.0, 0.0, 0.0));
+        sq = embed2DTo3D(sq);
+        const real_t slope = 0.05;
+        gsBoundaryConditions<real_t> bcRot;
+        gsConstantFunction<real_t> rotVal(-slope, 3);
+        for (short_t c = 0; c < 3; ++c)
+            bcRot.add(0, boundary::west, "Values", zero, c);
+        bcRot.add(0, boundary::west, "NormalRotation", rotVal, 0);
+
+        gsAsG1ShellHierarchy<real_t> hSq(sq, bcRot, 3, 1, 0, 0, true);
+        const auto& fSq = hSq.finest();
+        gsAsG1KLShellAssembler<real_t> aSq(sq, fSq.dbasis, mat, bcRot);
+        gsSparseMatrix<real_t> Ksq, Kfsq;
+        gsVector<real_t> Fsq, Ffsq, ubsq, ufsq;
+        aSq.assembleStiffness(Ksq);
+        aSq.assemblePhysicalRHS(
+            [](const gsVector<real_t>&, gsVector<real_t, 3>& f, real_t& pn) { f.setZero(); pn = 0.0; }, Fsq);
+        aSq.projectSystem(Ksq, Fsq, fSq.T_free, fSq.T_bnd, ubsq, Kfsq, Ffsq);
+        const auto stSq = hSq.solve(Kfsq, Ffsq, mat, ufsq, "direct");
+        CHECK(stSq.converged);
+        gsVector<real_t> cSq = fSq.T_free * ufsq;
+        for (int i = 0; i <= 4; ++i)
+        {
+            const real_t x = i * 0.25;
+            const auto u = aSq.evalDisplacement(cSq, 0, x, 0.5);
+            CHECK_CLOSE(0.0, u(0), 1e-12);
+            CHECK_CLOSE(0.0, u(1), 1e-12);
+            CHECK_CLOSE(slope * x, u(2), 1e-12);
+        }
+        CHECK(aSq.computeRotationBCErrorL2(cSq) < 1e-12);
+    }
 }

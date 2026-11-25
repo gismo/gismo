@@ -1035,7 +1035,12 @@ std::vector<gsVector<T>> scaleArgyrisDerivativeBlocks(
  *        gsDofMapper for the conforming AS-G1 Argyris space [V_A^1]^{nComp}.
  *
  * Supports component-specific boundary conditions via bc[comp] (unknown index = comp)
- * using labels: "ValuesAndDerivatives" / "Clamped", "Values" / "Dirichlet", "Derivatives",
+ * using labels:
+ *   - "ValuesAndDerivatives": strong value + crossing-derivative elimination (C^1 clamped per component)
+ *   - "Values" / "Dirichlet" / "Clamped": strong value elimination on edge level-0
+ *       (for "Clamped" on curved KL shells, physical normal rotation theta_nu = A_3 . d_nu u = 0
+ *        is enforced by gsAsG1KLShellAssembler so in-plane membrane normal strains remain free)
+ *   - "Derivatives": strong crossing-derivative elimination on edge level-1
  * plus per-component corner conditions ccPerComp[comp].
  */
 template <typename T>
@@ -1118,10 +1123,7 @@ gsDofMapper makeVectorMapperForArgyrisBasis(
         eliminateEdgeBlock(it->ps, 2, it->unknown());
     }
     for (auto it = bc.begin("Clamped"); it != bc.end("Clamped"); ++it)
-    {
         eliminateEdgeBlock(it->ps, 1, it->unknown());
-        eliminateEdgeBlock(it->ps, 2, it->unknown());
-    }
     for (auto it = bc.begin("Values"); it != bc.end("Values"); ++it)
         eliminateEdgeBlock(it->ps, 1, it->unknown());
     for (auto it = bc.begin("Dirichlet"); it != bc.end("Dirichlet"); ++it)

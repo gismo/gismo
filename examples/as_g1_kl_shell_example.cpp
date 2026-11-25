@@ -304,7 +304,11 @@ gsBoundaryConditions<real_t> buildAllBoundaryBC(const gsMultiPatch<real_t>& mp,
 {
     gsBoundaryConditions<real_t> bc;
     gsConstantFunction<real_t> zero(0.0, 3);
-    const std::string label = (bcMode == "simply_supported") ? "Values" : "ValuesAndDerivatives";
+    std::string label = "Clamped";
+    if (bcMode == "simply_supported")
+        label = "Values";
+    else if (bcMode == "strong_c1" || bcMode == "values_and_derivatives")
+        label = "ValuesAndDerivatives";
     for (size_t i = 0; i < mp.boundaries().size(); ++i)
     {
         const patchSide& ps = mp.boundaries()[i];
@@ -370,7 +374,7 @@ void runManufacturedStudy(const gsMultiPatch<real_t>& mp,
         gsAsG1ShellHierarchy<real_t> hier(mp, bc, degreeP, effK, minRef, r, /*normalizeGluing=*/true);
         const auto& fin = hier.finest();
 
-        gsAsG1KLShellAssembler<real_t> asmbl(mp, fin.dbasis, mat);
+        gsAsG1KLShellAssembler<real_t> asmbl(mp, fin.dbasis, mat, bc);
         gsSparseMatrix<real_t> K_discont, K_free;
         gsVector<real_t> F_discont, F_free;
         asmbl.assembleStiffness(K_discont);
@@ -462,7 +466,7 @@ void runSolverComparison(const gsMultiPatch<real_t>& mp,
     SmoothManufacturedShellField exactField;
     exactField.freq = freq;
 
-    gsAsG1KLShellAssembler<real_t> asmbl(mp, fin.dbasis, mat);
+    gsAsG1KLShellAssembler<real_t> asmbl(mp, fin.dbasis, mat, bc);
     gsSparseMatrix<real_t> K_discont, K_free;
     gsVector<real_t> F_discont, F_free, u_bnd;
     asmbl.assembleStiffness(K_discont);
@@ -616,7 +620,7 @@ void runScordelisLoBenchmark(const std::string& file,
     {
         gsAsG1ShellHierarchy<real_t> hier(mp, bc, degreeP, regularityK, minRef, r, true);
         const auto& fin = hier.finest();
-        gsAsG1KLShellAssembler<real_t> asmbl(mp, fin.dbasis, mat);
+        gsAsG1KLShellAssembler<real_t> asmbl(mp, fin.dbasis, mat, bc);
         gsSparseMatrix<real_t> K_discont, K_free;
         gsVector<real_t> F_discont, F_free, u_bnd, u_free;
         u_bnd.setZero(fin.mapper.boundarySize());
@@ -789,8 +793,9 @@ void runPhysicsVerification(const std::string& scordelisFile)
         gsKLShellMaterial<real_t> mat(1e6, 0.3, 0.01);
         const real_t D = mat.E * std::pow(mat.thickness, 3) / (12.0 * (1.0 - mat.nu * mat.nu));
 
-        const std::pair<std::string, real_t> cases[2] = {
+        const std::pair<std::string, real_t> cases[3] = {
             {"ValuesAndDerivatives", 0.00126532 / D},
+            {"Clamped",              0.00126532 / D},
             {"Values",               0.00406235 / D}
         };
         for (const auto& cs : cases)
@@ -803,7 +808,7 @@ void runPhysicsVerification(const std::string& scordelisFile)
 
             gsAsG1ShellHierarchy<real_t> hier(grid, bc, 3, 1, 0, 1, true);
             const auto& fin = hier.finest();
-            gsAsG1KLShellAssembler<real_t> asmbl(grid, fin.dbasis, mat);
+            gsAsG1KLShellAssembler<real_t> asmbl(grid, fin.dbasis, mat, bc);
             gsSparseMatrix<real_t> K, Kf;
             gsVector<real_t> F, Ff, ub = gsVector<real_t>::Zero(fin.mapper.boundarySize()), uf;
             asmbl.assembleStiffness(K);
@@ -992,7 +997,7 @@ void runPhysicsVerification(const std::string& scordelisFile)
         }
         gsAsG1ShellHierarchy<real_t> hier(mp, bc, 4, 2, 0, 2, true);
         const auto& fin = hier.finest();
-        gsAsG1KLShellAssembler<real_t> asmbl(mp, fin.dbasis, mat);
+        gsAsG1KLShellAssembler<real_t> asmbl(mp, fin.dbasis, mat, bc);
         gsSparseMatrix<real_t> K, Kf;
         gsVector<real_t> F, Ff, ub = gsVector<real_t>::Zero(fin.mapper.boundarySize()), uf;
         asmbl.assembleStiffness(K);
@@ -1035,6 +1040,166 @@ void runPhysicsVerification(const std::string& scordelisFile)
         gsInfo << "  [PASS] Scordelis-Lo NURBS roof (p=4, ref=2): u_z=" << std::fixed << std::setprecision(5)
                << minUz << " (ref -0.3006), max|u_diaph|=" << std::scientific << std::setprecision(2)
                << maxDiaphLeak << ", iters=" << st.iterations << "\n";
+    }
+
+    // 6. Curved 2x2 paraboloid physically Clamped shell (Symmetric Nitsche theta_nu = 0, nonzero membrane strain eps_nunu != 0)
+    {
+        gsMultiPatch<real_t> mp = embed2DTo3D(gsNurbsCreator<real_t>::BSplineSquareGrid(2, 2, 0.5));
+        const real_t alpha = 0.25;
+        for (size_t p = 0; p < mp.nPatches(); ++p)
+        {
+            auto& bsp = dynamic_cast<gsTensorBSpline<2, real_t>&>(mp.patch(p));
+            bsp.degreeElevate(1);
+            const gsMatrix<real_t> anc = bsp.basis().anchors();
+            const gsMatrix<real_t> X = bsp.eval(anc);
+            gsMatrix<real_t> vals(3, anc.cols());
+            for (index_t j = 0; j < anc.cols(); ++j)
+            {
+                vals(0, j) = X(0, j);
+                vals(1, j) = X(1, j);
+                vals(2, j) = alpha * (X(0, j) * X(0, j) + X(1, j) * X(1, j));
+            }
+            bsp.coefs() = bsp.basis().interpolateAtAnchors(vals)->coefs();
+        }
+        mp.computeTopology();
+
+        // Exact physical clamped field on z = alpha*(x^2 + y^2):
+        //   u = (phi, phi, 2*alpha*(x+y)*phi + psi), phi = sin(pi x)sin(pi y), psi = sin^2(pi x)sin^2(pi y).
+        // Satisfies u|_Gamma = 0 AND A_3 . d_nu u|_Gamma = 0 identically, while eps_nunu|_Gamma != 0!
+        auto exactClampedCurved = [&](index_t comp, const gsVector<real_t>& X,
+                                      real_t& val, gsVector<real_t>& g, gsMatrix<real_t>& H)
+        {
+            const real_t pi = EIGEN_PI;
+            const real_t x = X(0), y = X(1);
+            const real_t sx = std::sin(pi * x), cx = std::cos(pi * x);
+            const real_t sy = std::sin(pi * y), cy = std::cos(pi * y);
+            const real_t phi = sx * sy;
+            const real_t px = pi * cx * sy, py = pi * sx * cy;
+            const real_t pxx = -pi * pi * phi, pyy = -pi * pi * phi, pxy = pi * pi * cx * cy;
+
+            g.setZero(3);
+            H.setZero(3, 3);
+            if (comp == 0 || comp == 1)
+            {
+                val = phi;
+                g(0) = px; g(1) = py;
+                H(0, 0) = pxx; H(1, 1) = pyy; H(0, 1) = H(1, 0) = pxy;
+            }
+            else
+            {
+                const real_t c2 = 2.0 * alpha;
+                const real_t gx = sx * sx, gy = sy * sy;
+                const real_t dgx = pi * std::sin(2.0 * pi * x), dgy = pi * std::sin(2.0 * pi * y);
+                const real_t ddgx = 2.0 * pi * pi * std::cos(2.0 * pi * x);
+                const real_t ddgy = 2.0 * pi * pi * std::cos(2.0 * pi * y);
+                const real_t psi = gx * gy;
+                const real_t wx = dgx * gy, wy = gx * dgy;
+                const real_t wxx = ddgx * gy, wyy = gx * ddgy, wxy = dgx * dgy;
+
+                val = c2 * (x + y) * phi + psi;
+                g(0) = c2 * phi + c2 * (x + y) * px + wx;
+                g(1) = c2 * phi + c2 * (x + y) * py + wy;
+                H(0, 0) = 2.0 * c2 * px + c2 * (x + y) * pxx + wxx;
+                H(1, 1) = 2.0 * c2 * py + c2 * (x + y) * pyy + wyy;
+                H(0, 1) = H(1, 0) = c2 * (px + py) + c2 * (x + y) * pxy + wxy;
+            }
+        };
+
+        gsBoundaryConditions<real_t> bc;
+        gsConstantFunction<real_t> zero(0.0, 3);
+        for (const auto& ps : mp.boundaries())
+            for (short_t c = 0; c < 3; ++c)
+                bc.add(ps.patch, ps.side(), "Clamped", zero, c);
+
+        gsKLShellMaterial<real_t> mat(1e6, 0.3, 0.05);
+        real_t prevL2 = 0.0, prevH2 = 0.0, prevRotErr = 0.0;
+        real_t lastL2 = 0.0, lastH2 = 0.0, lastRotErr = 0.0;
+        index_t lastIters = 0;
+        for (index_t r = 0; r <= 1; ++r)
+        {
+            gsAsG1ShellHierarchy<real_t> hier(mp, bc, 3, 1, 0, r, true);
+            const auto& fin = hier.finest();
+            gsAsG1KLShellAssembler<real_t> asmbl(mp, fin.dbasis, mat, bc);
+            gsSparseMatrix<real_t> K, Kf;
+            gsVector<real_t> F, Ff, ub, uf;
+            asmbl.assembleStiffness(K);
+            asmbl.assembleManufacturedRHS(exactClampedCurved, F);
+            asmbl.projectSystem(K, F, fin.T_free, fin.T_bnd, ub, Kf, Ff);
+            const auto st = hier.solve(Kf, Ff, mat, uf, "cg", "line_ring1", 1, 1, 1, 200, 1e-12);
+            GISMO_ENSURE(st.converged, "Curved Clamped Nitsche MG-PCG failed to converge at ref=" << r);
+            gsVector<real_t> c_sol = fin.T_free * uf;
+            const auto err = asmbl.computeErrors(c_sol, exactClampedCurved);
+            if (r == 0)
+            {
+                prevL2 = err.l2Rel();
+                prevH2 = err.h2Rel();
+                prevRotErr = asmbl.computeRotationBCErrorL2(c_sol);
+            }
+            else
+            {
+                lastL2 = err.l2Rel();
+                lastH2 = err.h2Rel();
+                lastRotErr = asmbl.computeRotationBCErrorL2(c_sol);
+                lastIters = st.iterations;
+            }
+        }
+        const real_t eocL2 = std::log2(prevL2 / lastL2);
+        const real_t eocH2 = std::log2(prevH2 / lastH2);
+        const real_t eocRot = std::log2(prevRotErr / lastRotErr);
+        GISMO_ENSURE(eocL2 > 3.5 && eocH2 > 1.7 && eocRot > 2.5 && lastH2 < 5e-2 && lastRotErr < 1e-3,
+                     "Curved Clamped Nitsche check failed: eocL2=" << eocL2 << ", eocH2=" << eocH2
+                     << ", eocRot=" << eocRot << ", H2=" << lastH2 << ", rotErr=" << lastRotErr);
+        gsInfo << "  [PASS] Curved 2x2 Clamped Nitsche (eps_nunu!=0): L2=" << std::scientific << std::setprecision(2)
+               << lastL2 << " (EOC=" << std::fixed << std::setprecision(2) << eocL2 << "), H2="
+               << std::scientific << lastH2 << " (EOC=" << std::fixed << eocH2
+               << "), rotL2=" << std::scientific << lastRotErr << " (EOC=" << std::fixed << eocRot
+               << "), iters=" << lastIters << "\n";
+    }
+
+    // 7. Inhomogeneous NormalRotation BC patch test (exact tilted plane u_z(x,y) = slope * x under zero load)
+    {
+        gsMultiPatch<real_t> sq;
+        sq.addPatch(gsNurbsCreator<real_t>::BSplineSquare(1.0, 0.0, 0.0));
+        sq = embed2DTo3D(sq);
+
+        const real_t slope = 0.05;
+        // On West side (x = 0), outward conormal nu = (-1, 0, 0), A3 = (0, 0, 1) -> theta_nu = -du_z/dx = -slope
+        gsBoundaryConditions<real_t> bc;
+        gsConstantFunction<real_t> zero(0.0, 3);
+        gsConstantFunction<real_t> rotVal(-slope, 3);
+        bc.add(0, boundary::west, "Values", zero, 0);
+        bc.add(0, boundary::west, "Values", zero, 1);
+        bc.add(0, boundary::west, "Values", zero, 2);
+        bc.add(0, boundary::west, "NormalRotation", rotVal, 0);
+
+        gsKLShellMaterial<real_t> mat(1e6, 0.3, 0.05);
+        gsAsG1ShellHierarchy<real_t> hier(sq, bc, 3, 1, 0, 0, true);
+        const auto& fin = hier.finest();
+        gsAsG1KLShellAssembler<real_t> asmbl(sq, fin.dbasis, mat, bc);
+        gsSparseMatrix<real_t> K, Kf;
+        gsVector<real_t> F, Ff, ub, uf;
+        asmbl.assembleStiffness(K);
+        asmbl.assemblePhysicalRHS(
+            [](const gsVector<real_t>&, gsVector<real_t, 3>& f, real_t& pn) { f.setZero(); pn = 0.0; }, F);
+        asmbl.projectSystem(K, F, fin.T_free, fin.T_bnd, ub, Kf, Ff);
+        const auto st = hier.solve(Kf, Ff, mat, uf, "direct");
+        gsVector<real_t> c_sol = fin.T_free * uf;
+
+        real_t maxPlaneErr = 0.0;
+        for (int j = 0; j <= 4; ++j)
+            for (int i = 0; i <= 4; ++i)
+            {
+                const real_t x = i * 0.25, y = j * 0.25;
+                const auto u = asmbl.evalDisplacement(c_sol, 0, x, y);
+                gsVector<real_t, 3> uRef; uRef << 0.0, 0.0, slope * x;
+                maxPlaneErr = std::max(maxPlaneErr, (u - uRef).norm());
+            }
+        const real_t rotErr = asmbl.computeRotationBCErrorL2(c_sol);
+        GISMO_ENSURE(st.converged && maxPlaneErr < 1e-12 && rotErr < 1e-12,
+                     "Inhomogeneous NormalRotation patch test failed: planeErr=" << maxPlaneErr
+                     << ", rotErr=" << rotErr);
+        gsInfo << "  [PASS] Inhomogeneous NormalRotation patch test: maxPlaneErr="
+               << std::scientific << std::setprecision(2) << maxPlaneErr << ", rotL2=" << rotErr << "\n";
     }
 
     gsInfo << "All intrinsic & physical verification checks PASSED.\n";

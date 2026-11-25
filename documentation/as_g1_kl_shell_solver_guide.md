@@ -322,21 +322,26 @@ int main()
     gsReadFile<>("asg1_reparametrized_domains/farahat_kl_shells/xml/surfHalfSphere_asg1.xml", mp);
     mp.computeTopology();
 
-    // 2. Define per-component boundary conditions ("ValuesAndDerivatives" = clamped, "Values" = pinned)
-    //    (You can also clamp/pin individual components comp = 0, 1, 2 for symmetry or rigid diaphragms!)
+    // 2. Define per-component boundary conditions:
+    //    - "Clamped"          : physical KL clamped support (u = 0 strong + normal rotation A_3 . d_nu u = 0 via Symmetric Nitsche,
+    //                           leaving in-plane membrane normal strains free on curved shells)
+    //    - "Values"           : pinned / simply-supported / diaphragm displacement constraint u_comp = 0
+    //    - "NormalRotation"   : standalone rotation constraint A_3 . d_nu u = g_theta (e.g. curved symmetry planes)
+    //    - "ValuesAndDerivatives": strong componentwise C^1 elimination (for flat plates or full-3-jet manufactured tests)
     gsBoundaryConditions<real_t> bc;
     gsConstantFunction<real_t> zero(0.0, 3);
     for (const patchSide& ps : mp.boundaries())
         for (short_t comp = 0; comp < 3; ++comp)
-            bc.add(ps.patch, ps.side(), "ValuesAndDerivatives", zero, comp);
+            bc.add(ps.patch, ps.side(), "Clamped", zero, comp);
 
     // 3. Build nested (p, k) AS-G1 multigrid hierarchy (p = 4, k = 2, levels r = 0..3)
     gsAsG1ShellHierarchy<real_t> hier(mp, bc, /*degreeP=*/4, /*regularityK=*/2, /*minRef=*/0, /*maxRef=*/3);
 
     // 4. Assemble finest-level Kirchhoff-Love shell system under gravity + normal pressure
+    //    (Passing bc registers physical Symmetric Nitsche normal-rotation BCs for "Clamped" / "NormalRotation".)
     gsKLShellMaterial<real_t> mat(1.0e6, 0.3, 0.05); // E, nu, thickness t
     const auto& fine = hier.finest();
-    gsAsG1KLShellAssembler<real_t> asmbl(mp, fine.dbasis, mat);
+    gsAsG1KLShellAssembler<real_t> asmbl(mp, fine.dbasis, mat, bc);
 
     gsSparseMatrix<real_t> K_discont, K_free;
     gsVector<real_t> F_discont, F_free, u_bnd, u_free; // empty u_bnd => homogeneous zero BCs
