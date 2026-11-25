@@ -88,6 +88,101 @@ inline void cofactorDerivative(const MatJ &J, const index_t b,
   }
 }
 
+/// Integrand of a regularized Winslow-type energy at one point, with its
+/// gradient and Hessian with respect to the Jacobian matrix J of the map
+/// (J vectorized row by row: index c * d + a for d x_c / d xi_a):
+///   form 0: f = |J|^2 / chi(D, eps)^(2/d)   (Garanzha's conformal form)
+///   form 1: f = |cof J|^2 / chi(D, eps)      (inverse Dirichlet energy:
+///           |grad_x xi|^2 det J; in 2D the same as form 0)
+/// with D = orientation * det J. Hessian (if \a hessian is given):
+///   type 0: Gauss-Newton (f = |r|^2, r = vec(J or cof J) / chi^(p/2)),
+///   type 1: exact, type 2: exact, projected onto the positive semidefinite
+///   matrices (negative eigenvalues set to zero).
+template<short_t d, typename T>
+T garanzhaEnergyDerivatives(const gsEigen::Matrix<T, d, d> &J,
+                            const T orientation, const T eps,
+                            const index_t form, const index_t hessianType,
+                            gsEigen::Matrix<T, d * d, 1> *gradient,
+                            gsEigen::Matrix<T, d * d, d * d> *hessian) {
+  typedef gsEigen::Matrix<T, d, d> MatD;
+  typedef gsEigen::Matrix<T, d * d, 1> VecJ;
+  typedef gsEigen::Matrix<T, d * d, d * d> MatJ;
+  MatD cof, dCof;
+  cofactorMatrix(J, cof);
+  const T D = orientation * J.row(0).dot(cof.row(0));
+  const T root = math::sqrt(D * D + eps * eps);
+  const T chi = garanzhaChi(D, eps);
+  const T rho = 1 / root;                       // chi' / chi
+  const bool inverse = (1 == form && 3 == d);
+  const T p = inverse ? T(1) : T(2) / d;
+  const T chiP = inverse ? chi : (2 == d ? chi : math::pow(chi, p));
+  // E = d vec(cof) / d vec(J), column b * d + e
+  MatJ dCofdJ;
+  gsEigen::Matrix<T, d, 1> unit;
+  for (short_t b = 0; b != d; ++b)
+    for (short_t e = 0; e != d; ++e) {
+      unit.setZero();
+      unit(e) = 1;
+      cofactorDerivative(J, b, unit, dCof);
+      for (short_t r = 0; r != d; ++r)
+        for (short_t c = 0; c != d; ++c) { dCofdJ(r * d + c, b * d + e) = dCof(r, c); }
+    }
+  VecJ Gvec, gradD;
+  for (short_t r = 0; r != d; ++r)
+    for (short_t c = 0; c != d; ++c) {
+      Gvec(r * d + c) = inverse ? cof(r, c) : J(r, c);
+      gradD(r * d + c) = orientation * cof(r, c);
+    }
+  const T g = Gvec.squaredNorm();
+  const T f = g / chiP;
+  if (!gradient && !hessian) { return f; }
+  // E = d Gvec / d vec(J)
+  const VecJ gradG = inverse ? VecJ(2 * dCofdJ.transpose() * Gvec) : VecJ(2 * Gvec);
+  if (gradient) { *gradient = (gradG - p * g * rho * gradD) / chiP; }
+  if (!hessian) { return f; }
+  MatJ EtE;
+  if (inverse) { EtE.noalias() = dCofdJ.transpose() * dCofdJ; }
+  else { EtE.setIdentity(); }
+  const MatJ mixed = gradG * gradD.transpose() + gradD * gradG.transpose();
+  if (0 == hessianType) {
+    *hessian = (2 * EtE - (p * rho / 2) * mixed
+                + (p * p * rho * rho * g / 2) * (gradD * gradD.transpose())) / chiP;
+    return f;
+  }
+  // exact: H_g - p rho (grad g grad D^T + sym) + g (p(p+1) rho^2 - p chi''/chi)
+  //        grad D grad D^T - p g rho H_D,   chi''/chi = (root - D) / root^3
+  MatJ Hg = 2 * EtE;
+  if (inverse) {
+    // second derivatives of cof (bilinear in J): d^2 cof / dJ_ca dJ_be
+    MatD unitJ;
+    for (short_t c = 0; c != d; ++c)
+      for (short_t a = 0; a != d; ++a) {
+        unitJ.setZero();
+        unitJ(c, a) = 1;
+        for (short_t b = 0; b != d; ++b)
+          for (short_t e = 0; e != d; ++e) {
+            unit.setZero();
+            unit(e) = 1;
+            cofactorDerivative(unitJ, b, unit, dCof);
+            T sum = 0;
+            for (short_t r = 0; r != d; ++r)
+              for (short_t q = 0; q != d; ++q) { sum += cof(r, q) * dCof(r, q); }
+            Hg(c * d + a, b * d + e) += 2 * sum;
+          }
+      }
+  }
+  const T chi2 = (root - D) / (root * root * root);
+  *hessian = (Hg - p * rho * mixed
+              + g * (p * (p + 1) * rho * rho - p * chi2) * (gradD * gradD.transpose())
+              - (p * g * rho * orientation) * dCofdJ) / chiP;
+  if (2 == hessianType) {
+    gsEigen::SelfAdjointEigenSolver<MatJ> eig(*hessian);
+    const VecJ lambda = eig.eigenvalues().cwiseMax(T(0));
+    *hessian = eig.eigenvectors() * lambda.asDiagonal() * eig.eigenvectors().transpose();
+  }
+  return f;
+}
+
 template<short_t d, typename T> class gsRegularizedPDEAssembler;
 
 /// Values and derivatives up to order \a n of the p+1 B-splines of degree
@@ -326,9 +421,34 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
   options.addSwitch("PDEEnergyFinal",
                     "PDE patch: the regularized Winslow energy minimization is "
                     "the final stage (no H1)", false);
+  // If the H1 stage does not converge: minimize the energy to convergence
+  // from its starting point (instead of returning that point, which is only
+  // unfolded at the quadrature nodes)
+  options.addSwitch("PDEEnergyFallback",
+                    "PDE patch: minimize the energy if the H1 stage does not "
+                    "converge", true);
   options.addReal("PDEEnergyTol",
                   "PDE patch: relative energy decrease at which the final energy "
                   "minimization stops", 1e-11);
+  // Energy of the untangling / final energy stage: 0: |J|^2 / chi^(2/d)
+  // (Garanzha's conformal form), 1: |cof J|^2 / chi (inverse Dirichlet
+  // energy int |grad_x xi|^2 dx; its continuous minimizer is the inverse
+  // harmonic map, as for the H1 stage). The same in 2D. In 3D, form 1 gave
+  // higher mean scaled Jacobians on most test volumes, but a much lower
+  // minimum on a twisted multi-patch domain (0.32 instead of 0.59); its
+  // discrete minimizers are not closer to the H1 results than those of
+  // form 0 (2-11 % of the size apart on 14^3 volumes).
+  options.addInt("PDEEnergyForm",
+                 "PDE patch, energy: 0 |J|^2/chi^(2/d), 1 |cof J|^2/chi", 0);
+  // Hessian of the energy minimization: 0: Gauss-Newton, 1: exact,
+  // 2: exact, projected onto the positive semidefinite matrices at every
+  // quadrature node (projected Newton); -1: automatic: 2 for the final
+  // energy stage of volumes (e.g. 7 instead of 24 iterations, half the
+  // time), otherwise 0 (in 2D, the cheaper Gauss-Newton assembly outweighs
+  // the fewer iterations). A step without descent falls back to Gauss-Newton.
+  options.addInt("PDEEnergyHessian",
+                 "PDE patch, energy minimization: 0 Gauss-Newton, 1 exact, "
+                 "2 projected Newton (-1 automatic)", -1);
   // Experimental: skip the H2 stage and start the untangling (and the
   // regularized H1 stage) from the given interior. Only with PDEGaranzha.
   options.addSwitch("PDESkipH2",
@@ -1982,28 +2102,49 @@ class gsRegularizedPDEAssembler {
 
   /// Minimum of orientation * det(J) over the monitored quadrature nodes
   T minDet() const {
-    T result = std::numeric_limits<T>::max();
-    gsMatrix<T> coefs, jacobians, work;
-    for (const Element &e : m_elements) {
+    std::vector<T> partial(numThreads(), std::numeric_limits<T>::max());
+    // buffers of a thread
+    struct Work {
+      gsMatrix<T> coefs, jacobians, work;
+    };
+    forEachElement<Work>([&](const Element &e, const int thread, Work &w) {
+      GISMO_UNUSED(thread);
+      auto &coefs = w.coefs;
+      auto &jacobians = w.jacobians;
+      auto &work = w.work;
       localCoefs(e, coefs);
       nodeJacobians(e, coefs, jacobians, work);
+      T &result = partial[thread];
       for (index_t k = 0; k != e.numNodes(); ++k) {
         if (!e.monitor[k]) { continue; }
         const T det = m_orientation
             * MatrixD(jacobians.middleCols(k * d, d)).determinant();
-        if (det != det) { return det; } // NaN must not go unnoticed
+        if (det != det) { result = det; return; } // NaN must not go unnoticed
         if (det < result) { result = det; }
       }
+    }, false);
+    T result = std::numeric_limits<T>::max();
+    for (const T value : partial) {
+      if (value != value) { return value; }
+      result = std::min(result, value);
     }
     return result;
   }
 
   /// Garanzha's regularized Winslow functional  int |J|^2 / chi^(2/d)
   T energy(const T eps) const {
-    T result = 0;
-    gsMatrix<T> coefs, jacobians, work;
-    MatrixD jacGeom, cof;
-    for (const Element &e : m_elements) {
+    std::vector<T> partial(numThreads(), T(0));
+    // buffers of a thread
+    struct Work {
+      gsMatrix<T> coefs, jacobians, work;
+    };
+    forEachElement<Work>([&](const Element &e, const int thread, Work &w) {
+      GISMO_UNUSED(thread);
+      auto &coefs = w.coefs;
+      auto &jacobians = w.jacobians;
+      auto &work = w.work;
+      MatrixD jacGeom, cof;
+      T &result = partial[thread];
       localCoefs(e, coefs);
       nodeJacobians(e, coefs, jacobians, work);
       for (index_t k = 0; k != e.numNodes(); ++k) {
@@ -2011,10 +2152,16 @@ class gsRegularizedPDEAssembler {
         jacGeom = jacobians.middleCols(k * d, d);
         cofactorMatrix(jacGeom, cof);
         const T det = m_orientation * jacGeom.row(0).dot(cof.row(0));
-        result += e.weights(k) * jacGeom.squaredNorm()
-            / chiPower(garanzhaChi(det, eps));
+        if (1 == m_energyForm && 3 == d) {
+          result += e.weights(k) * cof.squaredNorm() / garanzhaChi(det, eps);
+        } else {
+          result += e.weights(k) * jacGeom.squaredNorm()
+              / chiPower(garanzhaChi(det, eps));
+        }
       }
-    }
+    }, false);
+    T result = 0;
+    for (const T value : partial) { result += value; }
     return result;
   }
 
@@ -2025,19 +2172,33 @@ class gsRegularizedPDEAssembler {
     gradient.setZero(m_numDofs);
     if (m_patternLower.outer.empty()) { buildPattern(true, m_patternLower); }
     makeMatrix(m_patternLower, hessian);
-    hessian.coeffs().setZero();
-
-    gsMatrix<T> buffer, coefs, P, Q, X, Y, Dstack, Dweighted, local, laplace;
-    gsVector<T> localGradient;
-    MatrixD jacGeom, cof;
-    std::vector<index_t> nodes;
-    for (const Element &e : m_elements) {
+    // buffers of a thread
+    struct Work {
+      gsMatrix<T> buffer, coefs, P, Q, X, Y, Dstack, Dweighted, local, laplace;
+      gsVector<T> localGradient;
+      std::vector<index_t> nodes;
+    };
+    forEachElement<Work>([&](const Element &e, const int thread, Work &w) {
+      GISMO_UNUSED(thread);
+      auto &buffer = w.buffer;
+      auto &coefs = w.coefs;
+      auto &P = w.P;
+      auto &Q = w.Q;
+      auto &X = w.X;
+      auto &Y = w.Y;
+      auto &Dstack = w.Dstack;
+      auto &Dweighted = w.Dweighted;
+      auto &local = w.local;
+      auto &laplace = w.laplace;
+      auto &localGradient = w.localGradient;
+      auto &nodes = w.nodes;
+      MatrixD jacGeom, cof;
       const gsMatrix<T> &ders = derivatives(e, buffer);
       localCoefs(e, coefs);
       const index_t A = e.actives.rows();
       monitoredNodes(e, nodes);
       const index_t nq = nodes.size();
-      if (0 == nq) { continue; }
+      if (0 == nq) { return; }
 
       P.resize(d * A, nq);
       Q.resize(d * A, nq);
@@ -2086,7 +2247,91 @@ class gsRegularizedPDEAssembler {
       }
       scatterVector(e, localGradient, gradient);
       scatterMatrix(e, local, true, hessian);
-    }
+    });
+  }
+
+  /// Form of the energy: 0: |J|^2 / chi^(2/d), 1: |cof J|^2 / chi (see
+  /// garanzhaEnergyDerivatives; the same in 2D)
+  void setEnergyForm(const index_t form) { m_energyForm = form; }
+  index_t energyForm() const { return m_energyForm; }
+
+  /// Gradient and lower triangle of a Hessian of the energy (form set by
+  /// setEnergyForm): hessianType 0: Gauss-Newton, 1: exact, 2: exact,
+  /// projected onto the positive semidefinite matrices at every node.
+  /// (For form 0 with Gauss-Newton, gradientHessian is the faster variant.)
+  void energyGradientHessian(const T eps, const index_t hessianType,
+                             gsVector<T> &gradient,
+                             gsSparseMatrix<T> &hessian) const {
+    gradient.setZero(m_numDofs);
+    if (m_patternLower.outer.empty()) { buildPattern(true, m_patternLower); }
+    makeMatrix(m_patternLower, hessian);
+    typedef gsEigen::Matrix<T, d * d, 1> VecJ;
+    typedef gsEigen::Matrix<T, d * d, d * d> MatJ;
+    // buffers of a thread
+    struct Work {
+      gsMatrix<T> buffer, coefs, jacobians, work, fluxes, localGradient,
+          Dstack, Tcb, local;
+      std::vector<MatJ, gsEigen::aligned_allocator<MatJ> > H;
+      std::vector<index_t> nodes;
+    };
+    forEachElement<Work>([&](const Element &e, const int thread, Work &w) {
+      GISMO_UNUSED(thread);
+      auto &buffer = w.buffer;
+      auto &coefs = w.coefs;
+      auto &jacobians = w.jacobians;
+      auto &work = w.work;
+      auto &fluxes = w.fluxes;
+      auto &localGradient = w.localGradient;
+      auto &Dstack = w.Dstack;
+      auto &Tcb = w.Tcb;
+      auto &local = w.local;
+      auto &H = w.H;
+      auto &nodes = w.nodes;
+      VecJ gradJ;
+      MatrixD jacGeom, N;
+      monitoredNodes(e, nodes);
+      const index_t nq = nodes.size();
+      if (0 == nq) { return; }
+      localCoefs(e, coefs);
+      nodeJacobians(e, coefs, jacobians, work);
+      const gsMatrix<T> &ders = derivatives(e, buffer);
+      const index_t A = e.actives.rows();
+      fluxes.setZero(d, d * e.numNodes());
+      H.resize(nq);
+      Dstack.resize(d * nq, A);
+      for (index_t n = 0; n != nq; ++n) {
+        const index_t k = nodes[n];
+        jacGeom = jacobians.middleCols(k * d, d);
+        garanzhaEnergyDerivatives<d, T>(jacGeom, m_orientation, eps,
+                                        m_energyForm, hessianType, &gradJ, &H[n]);
+        H[n] *= e.weights(k);
+        for (short_t c = 0; c != d; ++c)
+          for (short_t a = 0; a != d; ++a) {
+            fluxes(c, k * d + a) = e.weights(k) * gradJ(c * d + a);
+          }
+        Dstack.middleRows(d * n, d) = ders.reshapeCol(k, d, A);
+      }
+      testGradients(e, fluxes, localGradient, work);
+      gsAsConstVector<T> gradientVector(localGradient.data(), localGradient.size());
+      scatterVector(e, gsVector<T>(gradientVector), gradient);
+
+      // block (c, b) = sum_n dB_n^T N_n dB_n, N_n(a, e') = H_n(c d + a, b d + e')
+      local.resize(d * A, d * A);
+      Tcb.resize(d * nq, A);
+      for (short_t c = 0; c != d; ++c) {
+        for (short_t b = 0; b <= c; ++b) {
+          for (index_t n = 0; n != nq; ++n) {
+            N = H[n].template block<d, d>(c * d, b * d);
+            Tcb.middleRows(d * n, d).noalias() = N * Dstack.middleRows(d * n, d);
+          }
+          local.block(c * A, b * A, A, A).noalias() = Dstack.transpose() * Tcb;
+          if (b != c) {
+            local.block(b * A, c * A, A, A) = local.block(c * A, b * A, A, A).transpose();
+          }
+        }
+      }
+      scatterMatrix(e, local, true, hessian);
+    });
   }
 
   /// Exponent q of chi in the H1 residual, int grad(phi) . adj(g) e_c / chi^q
@@ -2098,9 +2343,18 @@ class gsRegularizedPDEAssembler {
   /// Residual of the regularized H1 discretization
   void h1Residual(const T eps, gsVector<T> &residual) const {
     residual.setZero(m_numDofs);
-    gsMatrix<T> coefs, jacobians, fluxes, local, work;
-    MatrixD jacGeom, cof;
-    for (const Element &e : m_elements) {
+    // buffers of a thread
+    struct Work {
+      gsMatrix<T> coefs, jacobians, fluxes, local, work;
+    };
+    forEachElement<Work>([&](const Element &e, const int thread, Work &w) {
+      GISMO_UNUSED(thread);
+      auto &coefs = w.coefs;
+      auto &jacobians = w.jacobians;
+      auto &fluxes = w.fluxes;
+      auto &local = w.local;
+      auto &work = w.work;
+      MatrixD jacGeom, cof;
       localCoefs(e, coefs);
       nodeJacobians(e, coefs, jacobians, work);
       // fluxes(c, k * d + a) = K(c, a) at node k (zero if not monitored);
@@ -2119,7 +2373,7 @@ class gsRegularizedPDEAssembler {
       testGradients(e, fluxes, local, work);
       gsAsConstVector<T> localVector(local.data(), local.size());
       scatterVector(e, gsVector<T>(localVector), residual);
-    }
+    });
   }
 
   /// Jacobian of the residual of the regularized H1 discretization
@@ -2130,19 +2384,30 @@ class gsRegularizedPDEAssembler {
     makeMatrix(m_patternFull, jacobian);
     jacobian.coeffs().setZero();
 
-    gsMatrix<T> buffer, coefs, Dstack, Tcb, local;
-    MatrixD jacGeom, cof, dCof, K, dK;
-    std::vector<index_t> nodes;
     // dKs[n][b * d + a]: variation of K at node n for the perturbation of
     // the coordinate b by a function with gradient e_a
-    std::vector<MatrixD, gsEigen::aligned_allocator<MatrixD> > dKs;
-    for (const Element &e : m_elements) {
+    // buffers of a thread
+    struct Work {
+      gsMatrix<T> buffer, coefs, Dstack, Tcb, local;
+      std::vector<index_t> nodes;
+      std::vector<MatrixD, gsEigen::aligned_allocator<MatrixD> > dKs;
+    };
+    forEachElement<Work>([&](const Element &e, const int thread, Work &w) {
+      GISMO_UNUSED(thread);
+      auto &buffer = w.buffer;
+      auto &coefs = w.coefs;
+      auto &Dstack = w.Dstack;
+      auto &Tcb = w.Tcb;
+      auto &local = w.local;
+      auto &nodes = w.nodes;
+      auto &dKs = w.dKs;
+      MatrixD jacGeom, cof, dCof, K, dK;
       const gsMatrix<T> &ders = derivatives(e, buffer);
       localCoefs(e, coefs);
       const index_t A = e.actives.rows();
       monitoredNodes(e, nodes);
       const index_t nq = nodes.size();
-      if (0 == nq) { continue; }
+      if (0 == nq) { return; }
 
       Dstack.resize(d * nq, A);
       dKs.resize(nq * d * d);
@@ -2192,7 +2457,7 @@ class gsRegularizedPDEAssembler {
         }
       }
       scatterMatrix(e, local, false, jacobian);
-    }
+    });
   }
 
   /// Residual of the scaled elliptic grid generation equations in
@@ -2201,11 +2466,20 @@ class gsRegularizedPDEAssembler {
   void h2Residual(gsVector<T> &residual) const {
     residual.setZero(m_numDofs);
     const index_t nd2 = d * (d + 1) / 2;
-    gsMatrix<T> values, deriv, deriv2, coefs;
-    gsVector<T> local;
-    gsEigen::Matrix<T, d * (d + 1) / 2, 1> weights;
-    MatrixD jacGeom, cof, adjMetric;
-    for (const Element &e : m_elements) {
+    // buffers of a thread
+    struct Work {
+      gsMatrix<T> values, deriv, deriv2, coefs;
+      gsVector<T> local;
+    };
+    forEachElement<Work>([&](const Element &e, const int thread, Work &w) {
+      GISMO_UNUSED(thread);
+      auto &values = w.values;
+      auto &deriv = w.deriv;
+      auto &deriv2 = w.deriv2;
+      auto &coefs = w.coefs;
+      auto &local = w.local;
+      gsEigen::Matrix<T, d * (d + 1) / 2, 1> weights;
+      MatrixD jacGeom, cof, adjMetric;
       allBasisValues(e, values, deriv, deriv2);
       localCoefs(e, coefs);
       const index_t A = e.actives.rows();
@@ -2224,7 +2498,7 @@ class gsRegularizedPDEAssembler {
         }
       }
       scatterVector(e, local, residual);
-    }
+    });
   }
 
   /// Jacobian of h2Residual; mode 0: full matrix, 1: its diagonal only,
@@ -2235,15 +2509,27 @@ class gsRegularizedPDEAssembler {
     jacobian.coeffs().setZero();
     const index_t nd2 = d * (d + 1) / 2;
     typedef gsEigen::Matrix<T, d * (d + 1) / 2, 1> VectorH;
-    gsMatrix<T> values, deriv, deriv2, coefs, local, weighted;
     // dL[c * d + b]: row n = variation of Lx(c) at node n with respect to
     // coordinate b of the active functions
-    std::vector<gsMatrix<T> > dL(d * d);
-    VectorH weights, dWeights, deriv2Geom[d];
-    MatrixD jacGeom, cof, dCof, adjMetric, dAdjMetric, value;
-    gsEigen::Matrix<T, d, 1> unit, Lx;
-    gsEigen::Matrix<T, 1, Dynamic> commonTerm;
-    for (const Element &e : m_elements) {
+    // buffers of a thread
+    struct Work {
+      gsMatrix<T> values, deriv, deriv2, coefs, local, weighted;
+      std::vector<gsMatrix<T> > dL = std::vector<gsMatrix<T> >(d * d);
+      gsEigen::Matrix<T, 1, Dynamic> commonTerm;
+    };
+    forEachElement<Work>([&](const Element &e, const int thread, Work &w) {
+      GISMO_UNUSED(thread);
+      auto &values = w.values;
+      auto &deriv = w.deriv;
+      auto &deriv2 = w.deriv2;
+      auto &coefs = w.coefs;
+      auto &local = w.local;
+      auto &weighted = w.weighted;
+      auto &dL = w.dL;
+      VectorH weights, dWeights, deriv2Geom[d];
+      MatrixD jacGeom, cof, dCof, adjMetric, dAdjMetric, value;
+      auto &commonTerm = w.commonTerm;
+      gsEigen::Matrix<T, d, 1> unit, Lx;
       allBasisValues(e, values, deriv, deriv2);
       localCoefs(e, coefs);
       const index_t A = e.actives.rows(), nq = e.numNodes();
@@ -2298,7 +2584,7 @@ class gsRegularizedPDEAssembler {
         }
       }
       scatterMatrix(e, local, false, jacobian);
-    }
+    });
   }
 
   /// (For tests) number of elements with free dofs, and for element \a i:
@@ -2554,6 +2840,80 @@ class gsRegularizedPDEAssembler {
     return false;
   }
 
+  /// Number of threads of the parallel assembly
+  static int numThreads() {
+#ifdef _OPENMP
+    return omp_get_max_threads();
+#else
+    return 1;
+#endif
+  }
+
+  /// Calls body(element, thread) for all elements. With several (OpenMP)
+  /// threads, the elements are processed color by color in parallel: the
+  /// elements of one color share no free dofs, so that they can add to the
+  /// global vectors and matrices concurrently (\a colored = false: any order,
+  /// for reductions). With one thread, the elements are processed in their
+  /// order (results bit-identical to a serial build).
+  /// \a Work: buffers of a thread, constructed on its stack and passed to
+  /// every call of \a body as body(element, thread, work).
+  template<class Work, class Body>
+  void forEachElement(Body &&body, const bool colored = true) const {
+#ifdef _OPENMP
+    if (omp_get_max_threads() > 1 && m_elements.size() > 1) {
+      if (colored && m_colors.empty()) { colorElements(); }
+      const index_t numElements = m_elements.size();
+#pragma omp parallel
+      {
+        const int thread = omp_get_thread_num();
+        Work work;
+        if (colored) {
+          for (const std::vector<index_t> &color : m_colors) {
+            const index_t size = color.size();
+#pragma omp for schedule(dynamic, 4)
+            for (index_t i = 0; i < size; ++i) {
+              body(m_elements[color[i]], thread, work);
+            }
+          }
+        } else {
+#pragma omp for schedule(dynamic, 8)
+          for (index_t i = 0; i < numElements; ++i) {
+            body(m_elements[i], thread, work);
+          }
+        }
+      }
+      return;
+    }
+#endif
+    GISMO_UNUSED(colored);
+    Work work;
+    for (const Element &e : m_elements) { body(e, 0, work); }
+  }
+
+  /// Greedy coloring of the elements: elements with a common free dof get
+  /// different colors
+  void colorElements() const {
+    std::vector<std::vector<index_t> > colorsOfDof(m_numDofs);
+    std::vector<char> used;
+    m_colors.clear();
+    for (size_t i = 0; i != m_elements.size(); ++i) {
+      used.assign(m_colors.size() + 1, 0);
+      for (index_t g : m_elements[i].dofs) {
+        if (g < 0) { continue; }
+        for (index_t c : colorsOfDof[g]) { used[c] = 1; }
+      }
+      index_t color = 0;
+      while (used[color]) { ++color; }
+      if (color == index_t(m_colors.size())) { m_colors.emplace_back(); }
+      m_colors[color].push_back(i);
+      for (index_t g : m_elements[i].dofs) {
+        if (g >= 0 && (colorsOfDof[g].empty() || colorsOfDof[g].back() != color)) {
+          colorsOfDof[g].push_back(color);
+        }
+      }
+    }
+  }
+
   /// Upper bound of the size of the intermediate tensors of the sum
   /// factorization: d * prod_j max(degree_j + 1, nodes_j)
   index_t contractionBound(const Element &e) const {
@@ -2738,10 +3098,12 @@ class gsRegularizedPDEAssembler {
   T m_orientation;
   index_t m_numDofs;
   index_t m_h1Power = 2;
+  index_t m_energyForm = 0;
   index_t m_numAllElements = 0;
   std::vector<Element> m_elements;
   std::vector<Table1D> m_tables;
   mutable Pattern m_patternLower, m_patternFull;
+  mutable std::vector<std::vector<index_t> > m_colors;
 };
 
 template<short_t d, typename T>
@@ -2818,8 +3180,12 @@ gsBarrierCore<d, T>::regularizedStage(const gsMultiPatch<T> &mp,
   // is the last stage: it runs also for an unfolded start, to a tighter
   // tolerance, and the H1 stage is skipped.
   const bool energyFinal = options.askSwitch("PDEEnergyFinal", false);
-  const index_t maxUntangleIter = energyFinal ? 1000 : 200;
-  const T untangleTol = energyFinal ? options.askReal("PDEEnergyTol", 1e-11) : 1e-5;
+  // energy form (0: |J|^2/chi^(2/d), 1: |cof J|^2/chi) and Hessian type
+  // (0: Gauss-Newton, 1: exact, 2: projected Newton); -1: automatic
+  index_t energyForm = options.askInt("PDEEnergyForm", 0);
+  if (energyForm < 0 || energyForm > 1) { energyForm = 0; }
+  const index_t userHessian = options.askInt("PDEEnergyHessian", -1);
+  const T energyTol = options.askReal("PDEEnergyTol", 1e-11);
   const T stagnationTol = 1e-12;
   const T armijo = 1e-4;
 
@@ -2914,8 +3280,16 @@ gsBarrierCore<d, T>::regularizedStage(const gsMultiPatch<T> &mp,
   // functional  W(x) = int |J|_F^2 / chi(det J, eps)^(2/d)  (Gauss-Newton
   // method with Armijo line search). Only needed if the input is folded.
   //////////////////////////////////////////////////////////////////////////
-  if (!(Dmin > 0) || energyFinal) {
-    verboseLog(energyFinal ? std::string("\nMinimizing the regularized Winslow "
+  // Minimization of the regularized energy: untangling (stops once unfolded
+  // and settled) or, with final = true, to convergence (tolerance
+  // PDEEnergyTol; eps <= 0.1 min det(J) once unfolded), e.g. as the final
+  // stage or as the fall-back if the H1 stage does not converge
+  auto minimizeEnergy = [&](const bool final) {
+    const index_t stageHessian = (userHessian >= 0 && userHessian <= 2)
+                                     ? userHessian : ((final && 3 == d) ? 2 : 0);
+    const index_t stageMaxIter = final ? 1000 : 200;
+    const T stageTol = final ? energyTol : T(1e-5);
+    verboseLog(final ? std::string("\nMinimizing the regularized Winslow "
                                          "energy (final stage)...")
                            : "\nThe H2 result is folded (min det(J) / mean det(J) = "
                                  + std::to_string(Dmin / meanDet)
@@ -2942,38 +3316,44 @@ gsBarrierCore<d, T>::regularizedStage(const gsMultiPatch<T> &mp,
     gsVector<T> gradient, direction, trial;
     gsStopwatch stageTimer, timer;
     double timeAssembly = 0, timeLinearSolver = 0, timeLineSearch = 0;
-    index_t numEnergyEvaluations = 0;
-    index_t iter = 0;
-    for (; iter != maxUntangleIter; ++iter) {
-      const T negPart = std::min<T>(Dmin, 0);
-      eps = math::sqrt(epsMin * epsMin
-                           + epsFactor * epsFactor * negPart * negPart);
-      // As the final stage, once unfolded: eps <= 0.1 min det(J), so that
-      // chi ~ det(J) everywhere and the energy acts as a barrier against
-      // degenerate cells (with eps > det(J) it is bounded there).
-      if (energyFinal && Dmin > 0) { eps = std::min(eps, T(0.1) * Dmin); }
+    index_t numEnergyEvaluations = 0, numNewtonFallbacks = 0;
 
-      timer.restart();
-      const T W0 = energy(x);
-      ++numEnergyEvaluations;
+    // Energy form and Hessian (Gauss-Newton or projected Newton)
+    fem.setEnergyForm(energyForm);
+    auto assembleStep = [&](const T epsStep, const index_t type) {
+      if (0 == energyForm && 0 == type) {
+        fem.gradientHessian(epsStep, gradient, hessian);
+      } else {
+        fem.energyGradientHessian(epsStep, type, gradient, hessian);
+      }
+    };
 
-      fem.setFreeVector(x);
-      fem.gradientHessian(eps, gradient, hessian);
-      timeAssembly += timer.stop();
-
-      timer.restart();
+    // Linear solver: sparse LDL^T, or (inexact Newton) CG preconditioned by
+    // the algebraic multigrid method NodalAMG (PDEPreconditioner = 1:
+    // incomplete Cholesky)
+    const bool choleskyPreconditioner =
+        (1 == options.askInt("PDEPreconditioner", 0));
+    memory::shared_ptr<preAApp::NodalAMG<T> > amg;
+    if (iterativeSolvers && !choleskyPreconditioner) {
+      amg.reset(new preAApp::NodalAMG<T>());
+      amg->setNodes(nodeOfDofs(mp, mapper), componentOfDofs(mp, mapper));
+    }
+    bool patternAnalyzed = false;
+    auto solveStep = [&]() {
       if (!iterativeSolvers) {
-        if (0 == iter) { ldlt.analyzePattern(hessian); }
+        if (!patternAnalyzed) { ldlt.analyzePattern(hessian); patternAnalyzed = true; }
         ldlt.factorize(hessian);
         direction = -ldlt.solve(gradient);
-      } else {
-        // Inexact Newton: relative tolerance (forcing term)
-        // min(0.1, sqrt(|g| / |g_0|)). CG starts from zero, which yields a
-        // descent direction for any number of CG iterations.
-        const T gradientNorm = gradient.norm();
-        if (gradientNorm0 < 0) { gradientNorm0 = gradientNorm; }
-        const T forcing = std::max<T>(
-            1e-8, std::min<T>(0.1, math::sqrt(gradientNorm / gradientNorm0)));
+        return;
+      }
+      // Inexact Newton: relative tolerance (forcing term)
+      // min(0.1, sqrt(|g| / |g_0|)). CG starts from zero, which yields a
+      // descent direction for any number of CG iterations.
+      const T gradientNorm = gradient.norm();
+      if (gradientNorm0 < 0) { gradientNorm0 = gradientNorm; }
+      const T forcing = std::max<T>(
+          1e-8, std::min<T>(0.1, math::sqrt(gradientNorm / gradientNorm0)));
+      if (choleskyPreconditioner) {
         const gsVector<T> zero = gsVector<T>::Zero(gradient.size());
         pcg.setTolerance(forcing);
         pcg.compute(hessian);
@@ -2981,8 +3361,52 @@ gsBarrierCore<d, T>::regularizedStage(const gsMultiPatch<T> &mp,
         // (Eigen does not count the last iteration if it converged)
         numCGIterations += pcg.iterations()
             + (pcg.iterations() < pcg.maxIterations() ? 1 : 0);
+        return;
       }
+      const gsSparseMatrix<T> full =
+          hessian.template selfadjointView<gsEigen::Lower>();
+      amg->compute(full);
+      gsConjugateGradient<T> cg(full, amg);
+      cg.setTolerance(forcing);
+      cg.setMaxIterations(500);
+      gsMatrix<T> solution = gsMatrix<T>::Zero(gradient.size(), 1);
+      cg.solve(gradient, solution);
+      numCGIterations += cg.iterations();
+      direction = -solution.col(0);
+    };
+    index_t iter = 0;
+    for (; iter != stageMaxIter; ++iter) {
+      const T negPart = std::min<T>(Dmin, 0);
+      eps = math::sqrt(epsMin * epsMin
+                           + epsFactor * epsFactor * negPart * negPart);
+      // As the final stage, once unfolded: eps <= 0.1 min det(J), so that
+      // chi ~ det(J) everywhere and the energy acts as a barrier against
+      // degenerate cells (with eps > det(J) it is bounded there).
+      if (final && Dmin > 0) { eps = std::min(eps, T(0.1) * Dmin); }
+
+      timer.restart();
+      const T W0 = energy(x);
+      ++numEnergyEvaluations;
+
+      fem.setFreeVector(x);
+      assembleStep(eps, stageHessian);
+      timeAssembly += timer.stop();
+
+      timer.restart();
+      solveStep();
       timeLinearSolver += timer.stop();
+      if (0 != stageHessian
+          && (!direction.allFinite() || !(gradient.dot(direction) < 0))) {
+        // no descent direction from the (projected) Newton step:
+        // Gauss-Newton step instead
+        ++numNewtonFallbacks;
+        timer.restart();
+        assembleStep(eps, 0);
+        timeAssembly += timer.stop();
+        timer.restart();
+        solveStep();
+        timeLinearSolver += timer.stop();
+      }
 
       const T slope = gradient.dot(direction);
       if (!direction.allFinite() || !(slope < 0)) { break; }
@@ -3012,7 +3436,7 @@ gsBarrierCore<d, T>::regularizedStage(const gsMultiPatch<T> &mp,
                << ", min det(J) / mean det(J) = " << Dmin / meanDet << "\n";
       }
       // unfolded and the energy has settled
-      if (wasUnfolded && Dmin > 0 && (W0 - W1) <= untangleTol * W0) {
+      if (wasUnfolded && Dmin > 0 && (W0 - W1) <= stageTol * W0) {
         ++iter;
         break;
       }
@@ -3026,7 +3450,7 @@ gsBarrierCore<d, T>::regularizedStage(const gsMultiPatch<T> &mp,
                    + " iterations, min det(J) / mean det(J) = "
                    + std::to_string(Dmin / meanDet), verbose);
     if (verbose > 0) {
-      gsInfo << "[PDE] untangling: " << iter << " iterations, "
+      gsInfo << (final ? "[PDE] energy minimization: " : "[PDE] untangling: ") << iter << " iterations, "
              << numEnergyEvaluations << " energy evaluations";
       if (iterativeSolvers) {
         gsInfo << ", " << numCGIterations << " CG iterations";
@@ -3034,9 +3458,12 @@ gsBarrierCore<d, T>::regularizedStage(const gsMultiPatch<T> &mp,
       gsInfo << "; time "
              << stageTimer.stop() << " s (assembly " << timeAssembly
              << " s, linear solver " << timeLinearSolver
-             << " s, line search " << timeLineSearch << " s)\n";
+             << " s, line search " << timeLineSearch << " s); energy form "
+             << energyForm << ", Hessian " << stageHessian << ", "
+             << numNewtonFallbacks << " Gauss-Newton fall-backs\n";
     }
-  }
+  };
+  if (!(Dmin > 0) || energyFinal) { minimizeEnergy(energyFinal); }
 
   if (energyFinal || !options.askSwitch("needPDEH1", true)) { return finish(x); }
 
@@ -3118,11 +3545,21 @@ gsBarrierCore<d, T>::regularizedStage(const gsMultiPatch<T> &mp,
   }
 
   if (!AASolver.converged() || !x.allFinite()) {
-    // Keep the last result which is known to be valid
-    verboseLog("The regularized H1 solver did not converge (residual norm "
-                   + std::to_string(AASolver.residualNorm())
-                   + "); its starting point is returned.", verbose);
+    // Back to the last result which is known to be valid. It is only
+    // unfolded at the quadrature nodes and may be barely so: the energy is
+    // minimized to convergence from there (PDEEnergyFallback).
     x = unfolded;
+    if (options.askSwitch("PDEEnergyFallback", true)) {
+      verboseLog("The regularized H1 solver did not converge (residual norm "
+                     + std::to_string(AASolver.residualNorm())
+                     + "); the energy is minimized instead.", verbose);
+      Dmin = minDet(x);
+      minimizeEnergy(true);
+    } else {
+      verboseLog("The regularized H1 solver did not converge (residual norm "
+                     + std::to_string(AASolver.residualNorm())
+                     + "); its starting point is returned.", verbose);
+    }
   }
 
   return finish(x);

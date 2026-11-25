@@ -27,6 +27,10 @@
 #include <gsAssembler/gsExprEvaluator.h>
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsSolver/gsGMRes.h>
+#include <gsSolver/gsConjugateGradient.h>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 #include <gsNurbs/gsBSplineBasis.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 
