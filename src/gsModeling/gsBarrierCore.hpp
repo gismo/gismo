@@ -113,7 +113,7 @@ T garanzhaEnergyDerivatives(const gsEigen::Matrix<T, d, d> &J,
   const T root = math::sqrt(D * D + eps * eps);
   const T chi = garanzhaChi(D, eps);
   const T rho = 1 / root;                       // chi' / chi
-  const bool inverse = (1 == form && 3 == d);
+  const bool inverse = (PDEEnergyForm::InverseDirichlet == form && 3 == d);
   const T p = inverse ? T(1) : T(2) / d;
   const T chiP = inverse ? chi : (2 == d ? chi : math::pow(chi, p));
   // E = d vec(cof) / d vec(J), column b * d + e
@@ -144,7 +144,7 @@ T garanzhaEnergyDerivatives(const gsEigen::Matrix<T, d, d> &J,
   if (inverse) { EtE.noalias() = dCofdJ.transpose() * dCofdJ; }
   else { EtE.setIdentity(); }
   const MatJ mixed = gradG * gradD.transpose() + gradD * gradG.transpose();
-  if (0 == hessianType) {
+  if (PDEEnergyHessian::GaussNewton == hessianType) {
     *hessian = (2 * EtE - (p * rho / 2) * mixed
                 + (p * p * rho * rho * g / 2) * (gradD * gradD.transpose())) / chiP;
     return f;
@@ -175,7 +175,7 @@ T garanzhaEnergyDerivatives(const gsEigen::Matrix<T, d, d> &J,
   *hessian = (Hg - p * rho * mixed
               + g * (p * (p + 1) * rho * rho - p * chi2) * (gradD * gradD.transpose())
               - (p * g * rho * orientation) * dCofdJ) / chiP;
-  if (2 == hessianType) {
+  if (PDEEnergyHessian::ProjectedNewton == hessianType) {
     gsEigen::SelfAdjointEigenSolver<MatJ> eig(*hessian);
     const VecJ lambda = eig.eigenvalues().cwiseMax(T(0));
     *hessian = eig.eigenvectors() * lambda.asDiagonal() * eig.eigenvectors().transpose();
@@ -265,6 +265,10 @@ inline void packSymmetric(const MatA &A, VecW &w) {
 /// It vanishes for all free control points, e.g., on the edges and corners of
 /// the parameter domain, and where the parameterization of a boundary face
 /// is degenerate: there det(J) is determined by the boundary alone.
+/// Relative tolerance of the tests whether det(J) depends on the free dofs
+/// (detIsControllable and the rank test of gsRegularizedPDEAssembler)
+const double detDependenceTolerance = 1e-10;
+
 template<class MatC, class Mat>
 inline bool detIsControllable(const gsDofMapper &mapper,
                               const gsMatrix<index_t> &actives,
@@ -273,7 +277,8 @@ inline bool detIsControllable(const gsDofMapper &mapper,
                               const Mat &derivBasis) {
   typedef typename MatC::Scalar T;
   const index_t dim = cof.rows();
-  const T tol = 1e-10 * cof.norm() * derivBasis.colwise().norm().maxCoeff();
+  const T tol = T(detDependenceTolerance) * cof.norm()
+              * derivBasis.colwise().norm().maxCoeff();
   for (index_t i = 0; i != derivBasis.cols(); ++i) {
     for (index_t c = 0; c != dim; ++c) {
       if (mapper.is_free(actives(i, 0), patch, c)
@@ -364,6 +369,13 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
   // need improve the parameterization quality for PDE-based method?
   options.addSwitch("needPDEH1", "improve quality by H1 discrezation?", true);
 
+  // options of the (regularized) PDE-based method
+  addPDEOptions(options);
+  return options;
+}
+
+template<short_t d, typename T>
+void gsBarrierCore<d, T>::addPDEOptions(gsOptionList &options) {
   // Garanzha's regularization of the PDE-based method: the
   // Jacobian determinant D in the denominators is replaced by
   // chi(D,eps) = (D + sqrt(D^2 + eps^2))/2 > 0, folded intermediate results
@@ -376,9 +388,11 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
   // Linear solvers of the Garanzha-regularized PDE-based method (and of the
   // H2 stage for volumes): 0: automatic (direct up to PDEDirectSolverLimit
   // unknowns, iterative above), 1: direct (sparse LU for the Anderson
-  // acceleration, sparse LDL^T for the untangling), 2: iterative (GMRES,
-  // preconditioned as set by PDEPreconditioner, falling back to sparse LU if
-  // it converges slowly; CG with incomplete Cholesky)
+  // acceleration, sparse LDL^T for the energy minimization), 2: iterative
+  // (GMRES, preconditioned as set by PDEPreconditioner, falling back to
+  // sparse LU if it converges slowly; CG preconditioned by NodalAMG, or by
+  // incomplete Cholesky with PDEPreconditioner = BlockGaussSeidelLU).
+  // Values: struct PDELinearSolver
   options.addInt("PDELinearSolver",
                  "Linear solvers: 0 automatic, 1 direct, 2 iterative", 0);
   options.addInt("PDEDirectSolverLimit",
@@ -394,7 +408,8 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
   //     nodal block Gauss-Seidel smoothing (the unknowns of a control point
   //     form one block),
   //  3: block Gauss-Seidel as 1, the blocks approximated by NodalAMG,
-  //  0: automatic: 3 for the H2 stage, 2 for the H1 stage.
+  //  0: automatic: 3 for the H2 stage, 2 for the H1 stage
+  // (values: struct PDEPreconditioner).
   // The H2 equations are those of the physical coordinates, which the
   // coordinate blocks fit; 3 is set up much faster than 1 for large volumes
   // (e.g. 0.1 s instead of 6 s for 24000 unknowns). The H1 equations are
@@ -449,7 +464,7 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
   options.addInt("PDEEnergyHessian",
                  "PDE patch, energy minimization: 0 Gauss-Newton, 1 exact, "
                  "2 projected Newton (-1 automatic)", -1);
-  // Experimental: skip the H2 stage and start the untangling (and the
+  // (Experimental) skip the H2 stage and start the untangling (and the
   // regularized H1 stage) from the given interior. Only with PDEGaranzha.
   options.addSwitch("PDESkipH2",
                     "PDE patch: skip the H2 stage (start untangling from the "
@@ -458,7 +473,7 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
                  "Preconditioner of GMRES: 0 automatic, 1 block Gauss-Seidel "
                  "(LU), 2 algebraic multigrid (nodal), 3 block Gauss-Seidel "
                  "(multigrid)", 0);
-  // Formulation of the regularized H1 stage:
+  // (Experimental) formulation of the regularized H1 stage (struct PDEH1Form):
   // 0: int grad(phi) . adj(g) e_c / chi^2 dxi   (as the original H1 stage,
   //    int grad(phi) . g^{-1} e_c dxi, with det J replaced by chi)
   // 1: int grad(phi) . adj(g) e_c / chi dxi, i.e. the weak form
@@ -472,15 +487,16 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
   // exceed 1e2.
   options.addReal("PDEH1Safeguard", "Regularized H1 stage: divergence "
                                     "safeguard factor (0: off)", 100);
-  // The regularized stage integrates and enforces det(J) > 0 at the nodes of
-  // a Gauss-Lobatto rule with p + 2 + PDEExtraNodes nodes per direction.
+  // (Experimental) the regularized stage integrates and enforces det(J) > 0
+  // at the nodes of a Gauss-Lobatto rule with p + 2 + PDEExtraNodes nodes per
+  // direction.
   // More nodes help if det(J) is positive up to the boundary, but harm if
   // the boundary forces det(J) <= 0 somewhere (e.g. at the edges of a volume
   // whose boundary surfaces meet tangentially).
   options.addInt("PDEExtraNodes", "Regularized stage: additional "
                  "Gauss-Lobatto nodes per direction", 0);
-  // Adaptive variant: after the regularized stage, det(J) is checked at the
-  // nodes of a Gauss-Lobatto rule with p + 2 + PDECheckExtraNodes nodes per
+  // (Experimental) adaptive variant: after the regularized stage, det(J) is
+  // checked at the nodes of a Gauss-Lobatto rule with p + 2 + PDECheckExtraNodes nodes per
   // direction; in elements where it is not positive, the rule of the stage
   // gets one more node per direction (at most 3) and the stage is repeated
   // from its last result, at most PDEAdaptiveRounds times (0: off).
@@ -493,7 +509,6 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
                  "additional Gauss-Lobatto nodes per direction for the check",
                  4);
 
-  return options;
 }
 
 /// Compute the area of the computational domain
@@ -920,10 +935,9 @@ gsObjQualityImprovePt<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
     return std::numeric_limits<T>::max();
   } else {
     auto Euniform = pow(jac(G).det(), 2);
+    // (another choice of this term, Jiao et al. 2011:
+    // |J|^2 / det(J)^(2/3))
     auto Ewinslow = 0.5 * (jac(G).sqNorm() * jac(G).inv().sqNorm());
-
-//            // another objective function term - Jiao et al. 2011
-//            auto Ewinslow = jac(G).sqNorm() / pow(jac(G).det(), 2.0 / 3.0);
 
     return m_evaluator.integral(m_lambda1 * Ewinslow + m_lambda2 * Euniform);
   }
@@ -979,11 +993,8 @@ gsObjQualityImprovePt<d, T>::gradObj_into_impl(const gsAsConstVector<T> &u,
   auto derEwinslow = frprod2(space1, (jac(G).inv().sqNorm() * jac(G) - jac(G)
       .sqNorm() * (jac(G).tr() * jac(G) * jac(G).tr()).inv()));
 
-//        // gradient of another objective function term
-//        auto Ewinslow = jac(G).sqNorm() / pow(jac(G).det(), 2.0 / 3.0);
-//        auto derEwinslow =
-//                2.0 * frprod2(space1, jac(G)) / pow(jac(G).det(), 2.0 / 3.0) -
-//                2.0 * Ewinslow.val() * derJacDet / jac(G).det() / 3.0;
+// (gradient of the other choice, |J|^2 / det(J)^(2/3):
+//  2 frprod2(u, J) / det(J)^(2/3) - (2/3) |J|^2 / det(J)^(5/3) d det(J))
   auto derEuniform = 2.0 * jac(G).det() * derJacDet;
 
   m_assembler.initSystem();
@@ -1135,7 +1146,6 @@ T gsObjPenaltyPt<d, T>::evalObj(const gsAsConstVector<T> &u) const {
   auto Euniform = pow(jac(G).det(), 2.0);
 
   return m_evaluator.integral(m_lambda1 * Ewinslow + m_lambda2 * Euniform);
-//  return evalObj_impl<d>(u);
 }
 
 template<short_t d, typename T>
@@ -1298,7 +1308,7 @@ gsObjPenaltyPt2<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
 
   // Calculation of Ewinslow and Euniform
   auto Ewinslow = jac(G).sqNorm() / chi;
-//  auto Euniform = chi + 1.0 / chi;
+  // (alternative uniformity term: chi + 1 / chi)
   auto Euniform = pow(jac(G).det(), 2.0);
 
   // Evaluate the integral and return
@@ -1329,7 +1339,7 @@ gsObjPenaltyPt2<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
       pow(jac(G).det(), 2.0) / pow(chi, 2.0);
 
   // Compute Euniform
-//  auto Euniform = chi + 1.0 / chi;
+  // (alternative uniformity term: chi + 1 / chi)
   auto Euniform = pow(jac(G).det(), 2.0);
 
   // Compute and return the integral
@@ -1380,7 +1390,7 @@ gsObjPenaltyPt2<d, T>::gradObj_into_impl(const gsAsConstVector<T> &u,
       Ewinslow.val() * chip * derJacDet);
 
   // Define the derivative of Euniform
-//  auto derEuniform = (chip - chip / pow(chi, 2)) * derJacDet;
+  // (for the alternative term chi + 1 / chi: (chi' - chi' / chi^2) d det(J))
   auto derEuniform = 2.0 * jac(G).det() * derJacDet;
 
   // Assemble the system and set the result
@@ -1436,7 +1446,7 @@ gsObjPenaltyPt2<d, T>::gradObj_into_impl(const gsAsConstVector<T> &u,
   auto derEwinslow = derJacFrob2 * pow(jac(G).det(), 2) / pow(chi, 2)
       + jacFrobNorm2 / pow(chi, 2)
           * (jac(G).det() - chip / chi * pow(jac(G).det(), 2)) * derJacDet;
-//  auto derEuniform = (chip - chip / pow(chi, 2)) * derJacDet;
+  // (for the alternative term chi + 1 / chi: (chi' - chi' / chi^2) d det(J))
   auto derEuniform = 2.0 * jac(G).det() * derJacDet;
 
   // Initialize and assemble the system
@@ -1455,32 +1465,19 @@ gsMultiPatch<T>
 gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
                                      const gismo::gsDofMapper &mapper,
                                      const gismo::gsOptionList &options) {
-
   // Nothing to do without free control points (e.g. a bilinear patch)
   if (mapper.freeSize() == 0) { return mp; }
 
+  const bool regularized = options.askSwitch("PDEGaranzha", true);
   // Free interfaces: chord-scaled parameter domains, energy minimization
-  if (options.askSwitch("PDEGaranzha", true)
-      && options.askSwitch("PDEFreeInterfaceEnergy", true)
+  if (regularized && options.askSwitch("PDEFreeInterfaceEnergy", true)
       && couplesPatches(mp, mapper)) {
-    verboseLog("PDE-based parameterization construction with free interfaces: "
-               "chord-scaled parameter domains, energy minimization ...\n",
-               options.askInt("Verbose", 0));
-    gsMultiPatch<T> scaled = chordScaled(mp);
-    gsOptionList energyOptions = options;
-    energyOptions.addSwitch("PDEEnergyFinal", "", true);
-    gsVector<T> x = convertMultiPatchToFreeVector(scaled, mapper);
-    x = computeRegularizedH1(scaled, mapper, x, energyOptions);
-    // same control points, original parameter domains
-    gsMultiPatch<T> result = mp;
-    convertFreeVectorToMultiPatch<T>(x, mapper, result);
-    return result;
+    return computePDEPatchFreeInterfaces(mp, mapper, options);
   }
 
   // Experimental: no H2 stage, untangling and regularized H1 directly from
   // the given interior (e.g. a Coons patch)
-  if (options.askSwitch("PDEGaranzha", true)
-      && options.askSwitch("PDESkipH2", false)) {
+  if (regularized && options.askSwitch("PDESkipH2", false)) {
     verboseLog("PDE-based parameterization construction (without H2) ...\n",
                options.askInt("Verbose", 0));
     gsVector<T> x = convertMultiPatchToFreeVector(mp, mapper);
@@ -1491,25 +1488,43 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
   }
 
   // Volumes, and planar domains with Garanzha's regularization: generic
-  // implementation. The code below is the original planar one (kept
-  // unchanged for PDEGaranzha = 0).
-  if (d != 2 || options.askSwitch("PDEGaranzha", true)) {
+  // implementation; otherwise the original planar one (PDEGaranzha = 0)
+  if (d != 2 || regularized) {
     return computePDEPatchGeneric(mp, mapper, options);
   }
+  return computePDEPatchPlanar(mp, mapper, options);
+}
 
+template<short_t d, typename T>
+gsMultiPatch<T>
+gsBarrierCore<d, T>::computePDEPatchFreeInterfaces(const gsMultiPatch<T> &mp,
+                                                   const gsDofMapper &mapper,
+                                                   const gsOptionList &options) {
+  verboseLog("PDE-based parameterization construction with free interfaces: "
+             "chord-scaled parameter domains, energy minimization ...\n",
+             options.askInt("Verbose", 0));
+  gsMultiPatch<T> scaled = chordScaled(mp);
+  gsOptionList energyOptions = options;
+  // (addSwitch also replaces an existing switch)
+  energyOptions.addSwitch("PDEEnergyFinal",
+                          "PDE patch: the regularized Winslow energy "
+                          "minimization is the final stage (no H1)", true);
+  gsVector<T> x = convertMultiPatchToFreeVector(scaled, mapper);
+  x = computeRegularizedH1(scaled, mapper, x, energyOptions);
+  // same control points, original parameter domains
+  gsMultiPatch<T> result = mp;
+  convertFreeVectorToMultiPatch<T>(x, mapper, result);
+  return result;
+}
+
+template<short_t d, typename T>
+gsMultiPatch<T>
+gsBarrierCore<d, T>::computePDEPatchPlanar(const gsMultiPatch<T> &mp,
+                                           const gsDofMapper &mapper,
+                                           const gsOptionList &options) {
   // get initial guess vector
   gsVector<T> initialGuessVector = convertMultiPatchToFreeVector(mp, mapper);
 
-//  std::string solverSetting = "Parameters setting:\n";
-//  solverSetting += "\t\t\t Window size = " +
-//      std::to_string(options.getInt("AAwindowsize")) + "\n";
-//  solverSetting += "\t\t\t Update preconditioner every " +
-//      std::to_string(options.getInt("N_update")) + " steps \n";
-//  solverSetting += "\t\t\t Preconditioner type: " +
-//      std::to_string(options.getInt("AAPreconditionType")) + "\n";
-//  solverSetting += "\t\t\t Need improve by H1?  " +
-//      std::to_string(options.getSwitch("needPDEH1")) + "\n";
-//  verboseLog(solverSetting, options.askInt("Verbose", 0));
 
   verboseLog("PDE-based parameterization construction ...\n",
              options.askInt("Verbose", 0));
@@ -1623,66 +1638,8 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
   verboseLog(aaSummary("H2", AASolver, stageTimer.stop()),
              options.askInt("Verbose", 0));
 
-  if (d == 2 && options.askSwitch("PDEGaranzha", true))
-  {
-    // Robust second stage: untangling + regularized H1 discretization
-    if (!solVector.allFinite()) { solVector = initialGuessVector; }
-    solVector = computeRegularizedH1(mp, mapper, solVector, options);
-  }
-  else if (options.askSwitch("needPDEH1", true))
-  {
-    verboseLog("\nStart parameterization improvement by H1 discrezation...",options.askInt("Verbose", 0));
-    Residual = [&assembler, &mapper, &mpSubstitute, &space1](gsVector<T> const &x)
-    {
-      // H1 discretization
-      convertFreeVectorToMultiPatch<T>(x, mapper, mpSubstitute);
-      geometryMap G = assembler.getMap(mpSubstitute);
-
-      auto invJacMat = jac(G).inv();
-      auto jacU = jac(space1) * invJacMat;
-      auto nonlinearSystem = jacU % invJacMat;
-
-      assembler.initSystem();
-      assembler.assemble(nonlinearSystem);
-      return assembler.rhs();
-    };
-
-    preconditionerType = options.askInt("AAPreconditionType", 0);
-    switch (preconditionerType) {
-      case 1:
-        Jacobian = [&assembler, &mapper, &mpSubstitute, &space1](gsVector<T> const &x)
-        {
-          // diagonal block Jacobian matrix as a preconditioner
-          convertFreeVectorToMultiPatch<T>(x, mapper, mpSubstitute);
-          geometryMap G = assembler.getMap(mpSubstitute);
-
-          auto jacMat = jacScaledLxH1DiagBlock(space1, G);
-
-          assembler.initSystem();
-          assembler.assemble(jacMat);
-
-          return assembler.matrix();
-        };
-        break;
-
-      default:
-        Jacobian = [&assembler, &mapper, &mpSubstitute,&space1](gsVector<T> const &x)
-        {
-          // analytical Jacobian matrix as a preconditioner
-          convertFreeVectorToMultiPatch<T>(x, mapper, mpSubstitute);
-          geometryMap G = assembler.getMap(mpSubstitute);
-
-          auto jacMat = jacScaledLxH1(space1, G);
-
-          assembler.initSystem();
-          assembler.assemble(jacMat);
-
-          return assembler.matrix();
-        };
-    }
-
-    preAApp::AndersonAcceleration<T> AASolver2(param);
-    solVector = AASolver2.compute(solVector, Residual, Jacobian);
+  if (options.askSwitch("needPDEH1", true)) {
+    solVector = planarH1Stage(mp, mapper, solVector, options);
   }
 
   gsMultiPatch<T> result = mp;
@@ -1691,6 +1648,87 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
   verboseLog("Finished!", options.askInt("Verbose", 0));
 
   return result;
+}
+
+template<short_t d, typename T>
+gsVector<T>
+gsBarrierCore<d, T>::planarH1Stage(const gsMultiPatch<T> &mp,
+                                   const gsDofMapper &mapper,
+                                   const gsVector<T> &x,
+                                   const gsOptionList &options) {
+  gsExprAssembler<T> assembler;
+  gsMultiBasis<T> mb(mp);
+  assembler.setIntegrationDomain(mb.domain());
+  gsBoundaryConditions<> bc;
+  bc.setGeoMap(mp);
+  for (auto bit = mp.bBegin(); bit != mp.bEnd(); ++bit) {
+    bc.addCondition(*bit, condition_type::dirichlet, nullptr);
+  }
+  space space1 = assembler.getSpace(mb, d);
+  space1.setup(bc, dirichlet::homogeneous, 0);
+  gsMultiPatch<T> mpSubstitute = mp;
+
+  typedef std::function<gsSparseMatrix<T>(gsVector<T> const &)> Jacobian_t;
+  typedef std::function<gsVector<T>(gsVector<T> const &)> Residual_t;
+  Jacobian_t Jacobian;
+  preAAParam<T> param;
+  param.m = options.askInt("AAwindowsize", 5);
+  param.usePreconditioning = true;
+  param.updatePreconditionerStep = options.askInt("N_update", 5);
+  param.epsilon = 1e-5;
+
+  verboseLog("\nStart parameterization improvement by H1 discretization...",options.askInt("Verbose", 0));
+  Residual_t Residual = [&assembler, &mapper, &mpSubstitute, &space1](gsVector<T> const &u)
+  {
+    // H1 discretization
+    convertFreeVectorToMultiPatch<T>(u, mapper, mpSubstitute);
+    geometryMap G = assembler.getMap(mpSubstitute);
+
+    auto invJacMat = jac(G).inv();
+    auto jacU = jac(space1) * invJacMat;
+    auto nonlinearSystem = jacU % invJacMat;
+
+    assembler.initSystem();
+    assembler.assemble(nonlinearSystem);
+    return assembler.rhs();
+  };
+
+  index_t preconditionerType = options.askInt("AAPreconditionType", 0);
+  switch (preconditionerType) {
+    case 1:
+      Jacobian = [&assembler, &mapper, &mpSubstitute, &space1](gsVector<T> const &u)
+      {
+        // diagonal block Jacobian matrix as a preconditioner
+        convertFreeVectorToMultiPatch<T>(u, mapper, mpSubstitute);
+        geometryMap G = assembler.getMap(mpSubstitute);
+
+        auto jacMat = jacScaledLxH1DiagBlock(space1, G);
+
+        assembler.initSystem();
+        assembler.assemble(jacMat);
+
+        return assembler.matrix();
+      };
+      break;
+
+    default:
+      Jacobian = [&assembler, &mapper, &mpSubstitute,&space1](gsVector<T> const &u)
+      {
+        // analytical Jacobian matrix as a preconditioner
+        convertFreeVectorToMultiPatch<T>(u, mapper, mpSubstitute);
+        geometryMap G = assembler.getMap(mpSubstitute);
+
+        auto jacMat = jacScaledLxH1(space1, G);
+
+        assembler.initSystem();
+        assembler.assemble(jacMat);
+
+        return assembler.matrix();
+      };
+  }
+
+  preAApp::AndersonAcceleration<T> AASolver2(param);
+  return AASolver2.compute(x, Residual, Jacobian);
 }
 
 template<short_t d, typename T>
@@ -1903,6 +1941,12 @@ gsMultiPatch<T> gsBarrierCore<d, T>::chordScaled(const gsMultiPatch<T> &mp) {
     sum[find(i)] += length[i];
     ++count[find(i)];
   }
+  // lengths relative to the longest chord (affineTransformTo needs
+  // intervals longer than 1e-5)
+  T longest = 0;
+  for (size_t i = 0; i != np * d; ++i) {
+    if (count[i] > 0) { longest = std::max(longest, sum[i] / count[i]); }
+  }
   gsMultiPatch<T> result = mp;
   for (size_t ip = 0; ip != np; ++ip) {
     if (!tensor[ip]) { continue; }
@@ -1912,7 +1956,9 @@ gsMultiPatch<T> gsBarrierCore<d, T>::chordScaled(const gsMultiPatch<T> &mp) {
     for (short_t a = 0; a != d; ++a) {
       const index_t r = find(ip * d + a);
       knots[a] = patch.basis().knots(a);
-      if (count[r] > 0) { knots[a].affineTransformTo(0, sum[r] / count[r]); }
+      if (count[r] > 0) {
+        knots[a].affineTransformTo(0, sum[r] / count[r] / longest);
+      }
     }
     gsTensorBSplineBasis<d, T> basis(knots);
     result.patch(ip) = gsTensorBSpline<d, T>(basis, patch.coefs());
@@ -1923,17 +1969,25 @@ gsMultiPatch<T> gsBarrierCore<d, T>::chordScaled(const gsMultiPatch<T> &mp) {
 template<short_t d, typename T>
 int gsBarrierCore<d, T>::gmresPreconditioner(const gsOptionList &options,
                                              const bool h2Stage) {
-  const index_t choice = options.askInt("PDEPreconditioner", 0);
-  if (choice >= 1 && choice <= 3) { return choice; }
-  return h2Stage ? 3 : 2;
+  switch (options.askInt("PDEPreconditioner", PDEPreconditioner::Automatic)) {
+    case PDEPreconditioner::BlockGaussSeidelLU:
+      return preAAParam<T>::BlockGaussSeidelLU;
+    case PDEPreconditioner::NodalAMG:
+      return preAAParam<T>::NodalAMG;
+    case PDEPreconditioner::BlockGaussSeidelAMG:
+      return preAAParam<T>::BlockGaussSeidelAMG;
+    default:
+      return h2Stage ? preAAParam<T>::BlockGaussSeidelAMG
+                     : preAAParam<T>::NodalAMG;
+  }
 }
 
 template<short_t d, typename T>
 bool gsBarrierCore<d, T>::useIterativeSolver(const index_t numDofs,
                                              const gsOptionList &options) {
-  switch (options.askInt("PDELinearSolver", 0)) {
-    case 1: return false;
-    case 2: return true;
+  switch (options.askInt("PDELinearSolver", PDELinearSolver::Automatic)) {
+    case PDELinearSolver::Direct: return false;
+    case PDELinearSolver::Iterative: return true;
     default: return numDofs > options.askInt("PDEDirectSolverLimit", 4000);
   }
 }
@@ -2037,7 +2091,7 @@ class gsRegularizedPDEAssembler {
         if (e.table[0] >= 0) {
           tensorBasisValues(e, nullptr, &ders, nullptr);
         } else {
-          basis.deriv_into(e.nodes, ders);
+          elementDerivatives(basis, e.nodes, ders);
         }
         localCoefs(e, coefs);
         // det(J) is monitored at the nodes where it depends on free dofs
@@ -2046,7 +2100,7 @@ class gsRegularizedPDEAssembler {
           const gsAsConstMatrix<T> dB = ders.reshapeCol(k, d, A);
           jacGeom.noalias() = coefs.transpose() * dB.transpose();
           cofactorMatrix(jacGeom, cof);
-          e.monitor[k] = controllable(e, cof, dB);
+          e.monitor[k] = monitored(e, cof, dB);
         }
         if (e.table[0] >= 0) {
           e.nodes.resize(0, 0); // formed from the tables when needed
@@ -2080,14 +2134,14 @@ class gsRegularizedPDEAssembler {
             gsQuadrature::getPtr(m_mb.basis(e.patch), checkOptions).release());
       }
       rules[e.patch]->mapTo(e.lower, e.upper, nodes, weights);
-      m_mb.basis(e.patch).deriv_into(nodes, ders);
+      elementDerivatives(m_mb.basis(e.patch), nodes, ders);
       localCoefs(e, coefs);
       const index_t A = e.actives.rows();
       for (index_t k = 0; k != nodes.cols(); ++k) {
         const gsAsConstMatrix<T> dB = ders.reshapeCol(k, d, A);
         jacGeom.noalias() = coefs.transpose() * dB.transpose();
         cofactorMatrix(jacGeom, cof);
-        if (!controllable(e, cof, dB)) { continue; }
+        if (!monitored(e, cof, dB)) { continue; }
         const T det = m_orientation * jacGeom.row(0).dot(cof.row(0));
         if (!(det > 0)) { ++result[e.id]; }
       }
@@ -2107,11 +2161,11 @@ class gsRegularizedPDEAssembler {
     struct Work {
       gsMatrix<T> coefs, jacobians, work;
     };
-    forEachElement<Work>([&](const Element &e, const int thread, Work &w) {
+    forEachElement<Work>([&](const Element &e, const int thread, Work &ws) {
       GISMO_UNUSED(thread);
-      auto &coefs = w.coefs;
-      auto &jacobians = w.jacobians;
-      auto &work = w.work;
+      auto &coefs = ws.coefs;
+      auto &jacobians = ws.jacobians;
+      auto &work = ws.work;
       localCoefs(e, coefs);
       nodeJacobians(e, coefs, jacobians, work);
       T &result = partial[thread];
@@ -2138,11 +2192,11 @@ class gsRegularizedPDEAssembler {
     struct Work {
       gsMatrix<T> coefs, jacobians, work;
     };
-    forEachElement<Work>([&](const Element &e, const int thread, Work &w) {
+    forEachElement<Work>([&](const Element &e, const int thread, Work &ws) {
       GISMO_UNUSED(thread);
-      auto &coefs = w.coefs;
-      auto &jacobians = w.jacobians;
-      auto &work = w.work;
+      auto &coefs = ws.coefs;
+      auto &jacobians = ws.jacobians;
+      auto &work = ws.work;
       MatrixD jacGeom, cof;
       T &result = partial[thread];
       localCoefs(e, coefs);
@@ -2152,7 +2206,7 @@ class gsRegularizedPDEAssembler {
         jacGeom = jacobians.middleCols(k * d, d);
         cofactorMatrix(jacGeom, cof);
         const T det = m_orientation * jacGeom.row(0).dot(cof.row(0));
-        if (1 == m_energyForm && 3 == d) {
+        if (PDEEnergyForm::InverseDirichlet == m_energyForm && 3 == d) {
           result += e.weights(k) * cof.squaredNorm() / garanzhaChi(det, eps);
         } else {
           result += e.weights(k) * jacGeom.squaredNorm()
@@ -2178,20 +2232,20 @@ class gsRegularizedPDEAssembler {
       gsVector<T> localGradient;
       std::vector<index_t> nodes;
     };
-    forEachElement<Work>([&](const Element &e, const int thread, Work &w) {
+    forEachElement<Work>([&](const Element &e, const int thread, Work &ws) {
       GISMO_UNUSED(thread);
-      auto &buffer = w.buffer;
-      auto &coefs = w.coefs;
-      auto &P = w.P;
-      auto &Q = w.Q;
-      auto &X = w.X;
-      auto &Y = w.Y;
-      auto &Dstack = w.Dstack;
-      auto &Dweighted = w.Dweighted;
-      auto &local = w.local;
-      auto &laplace = w.laplace;
-      auto &localGradient = w.localGradient;
-      auto &nodes = w.nodes;
+      auto &buffer = ws.buffer;
+      auto &coefs = ws.coefs;
+      auto &P = ws.P;
+      auto &Q = ws.Q;
+      auto &X = ws.X;
+      auto &Y = ws.Y;
+      auto &Dstack = ws.Dstack;
+      auto &Dweighted = ws.Dweighted;
+      auto &local = ws.local;
+      auto &laplace = ws.laplace;
+      auto &localGradient = ws.localGradient;
+      auto &nodes = ws.nodes;
       MatrixD jacGeom, cof;
       const gsMatrix<T> &ders = derivatives(e, buffer);
       localCoefs(e, coefs);
@@ -2274,19 +2328,19 @@ class gsRegularizedPDEAssembler {
       std::vector<MatJ, gsEigen::aligned_allocator<MatJ> > H;
       std::vector<index_t> nodes;
     };
-    forEachElement<Work>([&](const Element &e, const int thread, Work &w) {
+    forEachElement<Work>([&](const Element &e, const int thread, Work &ws) {
       GISMO_UNUSED(thread);
-      auto &buffer = w.buffer;
-      auto &coefs = w.coefs;
-      auto &jacobians = w.jacobians;
-      auto &work = w.work;
-      auto &fluxes = w.fluxes;
-      auto &localGradient = w.localGradient;
-      auto &Dstack = w.Dstack;
-      auto &Tcb = w.Tcb;
-      auto &local = w.local;
-      auto &H = w.H;
-      auto &nodes = w.nodes;
+      auto &buffer = ws.buffer;
+      auto &coefs = ws.coefs;
+      auto &jacobians = ws.jacobians;
+      auto &work = ws.work;
+      auto &fluxes = ws.fluxes;
+      auto &localGradient = ws.localGradient;
+      auto &Dstack = ws.Dstack;
+      auto &Tcb = ws.Tcb;
+      auto &local = ws.local;
+      auto &H = ws.H;
+      auto &nodes = ws.nodes;
       VecJ gradJ;
       MatrixD jacGeom, N;
       monitoredNodes(e, nodes);
@@ -2347,13 +2401,13 @@ class gsRegularizedPDEAssembler {
     struct Work {
       gsMatrix<T> coefs, jacobians, fluxes, local, work;
     };
-    forEachElement<Work>([&](const Element &e, const int thread, Work &w) {
+    forEachElement<Work>([&](const Element &e, const int thread, Work &ws) {
       GISMO_UNUSED(thread);
-      auto &coefs = w.coefs;
-      auto &jacobians = w.jacobians;
-      auto &fluxes = w.fluxes;
-      auto &local = w.local;
-      auto &work = w.work;
+      auto &coefs = ws.coefs;
+      auto &jacobians = ws.jacobians;
+      auto &fluxes = ws.fluxes;
+      auto &local = ws.local;
+      auto &work = ws.work;
       MatrixD jacGeom, cof;
       localCoefs(e, coefs);
       nodeJacobians(e, coefs, jacobians, work);
@@ -2392,15 +2446,15 @@ class gsRegularizedPDEAssembler {
       std::vector<index_t> nodes;
       std::vector<MatrixD, gsEigen::aligned_allocator<MatrixD> > dKs;
     };
-    forEachElement<Work>([&](const Element &e, const int thread, Work &w) {
+    forEachElement<Work>([&](const Element &e, const int thread, Work &ws) {
       GISMO_UNUSED(thread);
-      auto &buffer = w.buffer;
-      auto &coefs = w.coefs;
-      auto &Dstack = w.Dstack;
-      auto &Tcb = w.Tcb;
-      auto &local = w.local;
-      auto &nodes = w.nodes;
-      auto &dKs = w.dKs;
+      auto &buffer = ws.buffer;
+      auto &coefs = ws.coefs;
+      auto &Dstack = ws.Dstack;
+      auto &Tcb = ws.Tcb;
+      auto &local = ws.local;
+      auto &nodes = ws.nodes;
+      auto &dKs = ws.dKs;
       MatrixD jacGeom, cof, dCof, K, dK;
       const gsMatrix<T> &ders = derivatives(e, buffer);
       localCoefs(e, coefs);
@@ -2471,13 +2525,13 @@ class gsRegularizedPDEAssembler {
       gsMatrix<T> values, deriv, deriv2, coefs;
       gsVector<T> local;
     };
-    forEachElement<Work>([&](const Element &e, const int thread, Work &w) {
+    forEachElement<Work>([&](const Element &e, const int thread, Work &ws) {
       GISMO_UNUSED(thread);
-      auto &values = w.values;
-      auto &deriv = w.deriv;
-      auto &deriv2 = w.deriv2;
-      auto &coefs = w.coefs;
-      auto &local = w.local;
+      auto &values = ws.values;
+      auto &deriv = ws.deriv;
+      auto &deriv2 = ws.deriv2;
+      auto &coefs = ws.coefs;
+      auto &local = ws.local;
       gsEigen::Matrix<T, d * (d + 1) / 2, 1> weights;
       MatrixD jacGeom, cof, adjMetric;
       allBasisValues(e, values, deriv, deriv2);
@@ -2517,18 +2571,18 @@ class gsRegularizedPDEAssembler {
       std::vector<gsMatrix<T> > dL = std::vector<gsMatrix<T> >(d * d);
       gsEigen::Matrix<T, 1, Dynamic> commonTerm;
     };
-    forEachElement<Work>([&](const Element &e, const int thread, Work &w) {
+    forEachElement<Work>([&](const Element &e, const int thread, Work &ws) {
       GISMO_UNUSED(thread);
-      auto &values = w.values;
-      auto &deriv = w.deriv;
-      auto &deriv2 = w.deriv2;
-      auto &coefs = w.coefs;
-      auto &local = w.local;
-      auto &weighted = w.weighted;
-      auto &dL = w.dL;
+      auto &values = ws.values;
+      auto &deriv = ws.deriv;
+      auto &deriv2 = ws.deriv2;
+      auto &coefs = ws.coefs;
+      auto &local = ws.local;
+      auto &weighted = ws.weighted;
+      auto &dL = ws.dL;
       VectorH weights, dWeights, deriv2Geom[d];
       MatrixD jacGeom, cof, dCof, adjMetric, dAdjMetric, value;
-      auto &commonTerm = w.commonTerm;
+      auto &commonTerm = ws.commonTerm;
       gsEigen::Matrix<T, d, 1> unit, Lx;
       allBasisValues(e, values, deriv, deriv2);
       localCoefs(e, coefs);
@@ -2657,7 +2711,7 @@ class gsRegularizedPDEAssembler {
       return buffer;
     }
     if (e.ders.size()) { return e.ders; }
-    m_mb.basis(e.patch).deriv_into(e.nodes, buffer);
+    elementDerivatives(m_mb.basis(e.patch), e.nodes, buffer);
     return buffer;
   }
 
@@ -2670,8 +2724,10 @@ class gsRegularizedPDEAssembler {
       tensorBasisValues(e, &values, &deriv, &deriv2);
       return;
     }
+    // sameElement: the functions of the element (that of the first node,
+    // its lower corner) at all nodes, also on its upper knots
     std::vector<gsMatrix<T> > all;
-    m_mb.basis(e.patch).evalAllDers_into(e.nodes, 2, all);
+    m_mb.basis(e.patch).evalAllDers_into(e.nodes, 2, all, true);
     values = all[0];
     deriv = all[1];
     deriv2 = all[2];
@@ -2826,11 +2882,46 @@ class gsRegularizedPDEAssembler {
     }
   }
 
+  /// First derivatives (as deriv_into) of the functions active on the
+  /// element whose quadrature nodes are \a nodes (first node: its lower
+  /// corner), also at nodes on its upper knots, where deriv_into would take
+  /// the functions of the next knot span
+  static void elementDerivatives(const gsBasis<T> &basis,
+                                 const gsMatrix<T> &nodes, gsMatrix<T> &ders) {
+    std::vector<gsMatrix<T> > all;
+    basis.evalAllDers_into(nodes, 1, all, true);
+    ders.swap(all[1]);
+  }
+
+  /// Is det(J) at the node monitored? If the gradients of the free active
+  /// functions span all directions (e.g. in the interior of the parameter
+  /// domain), det(J) depends on the free dofs unless J is degenerate there,
+  /// which must not be overlooked: monitored. Otherwise (on the boundary of
+  /// the parameter domain) the dependence is decided by the cofactors
+  /// (controllable), which then only involve the fixed control points.
+  static bool monitored(const Element &e, const MatrixD &cof,
+                        const gsAsConstMatrix<T> &dB) {
+    const index_t A = dB.cols();
+    MatrixD gram = MatrixD::Zero();
+    for (index_t i = 0; i != A; ++i) {
+      bool free = false;
+      for (index_t c = 0; c != d; ++c) { free = free || e.dofs[c * A + i] >= 0; }
+      if (free) { gram.noalias() += dB.col(i) * dB.col(i).transpose(); }
+    }
+    const gsEigen::SelfAdjointEigenSolver<MatrixD> eig(gram, gsEigen::EigenvaluesOnly);
+    const T largest = eig.eigenvalues().maxCoeff();
+    if (largest > 0 && eig.eigenvalues().minCoeff() > T(detDependenceTolerance) * largest) {
+      return true;
+    }
+    return controllable(e, cof, dB);
+  }
+
   /// Same criterion as detIsControllable
   static bool controllable(const Element &e, const MatrixD &cof,
                            const gsAsConstMatrix<T> &dB) {
     const index_t A = dB.cols();
-    const T tol = 1e-10 * cof.norm() * dB.colwise().norm().maxCoeff();
+    const T tol = T(detDependenceTolerance) * cof.norm()
+                * dB.colwise().norm().maxCoeff();
     for (index_t c = 0; c != d; ++c) {
       for (index_t i = 0; i != A; ++i) {
         if (e.dofs[c * A + i] >= 0
@@ -3159,371 +3250,424 @@ gsBarrierCore<d, T>::computeRegularizedH1(const gsMultiPatch<T> &mp,
   return best;
 }
 
+/**
+ * The regularized stage of the PDE-based method for one multi-patch with its
+ * dof mapper (see gsBarrierCore::regularizedStage): minimization of
+ * Garanzha's regularized Winslow energy (untangling, or to convergence) and
+ * the regularized H1 discretization, with the step control that keeps an
+ * unfolded parameterization unfolded. The quantities are assembled
+ * element-wise (gsRegularizedPDEAssembler) with a Gauss-Lobatto rule, whose
+ * nodes include the element boundaries.
+ */
 template<short_t d, typename T>
-gsVector<T>
-gsBarrierCore<d, T>::regularizedStage(const gsMultiPatch<T> &mp,
-                                      const gsDofMapper &mapper,
-                                      gsVector<T> x,
-                                      const gsOptionList &options,
-                                      const std::vector<index_t> &extraNodes,
-                                      std::vector<index_t> *negatives) {
-  const index_t verbose = options.askInt("Verbose", 0);
-  if (negatives) { negatives->clear(); }
+class gsRegularizedStage {
+ public:
+  /// Fixed parameters of the stage
+  struct Constants {
+    /// every step keeps min det(J) >= stepFraction * (current minimum)
+    T stepFraction = T(0.2);
+    /// eps = sqrt(epsMin^2 + (epsFactor * min(Dmin, 0))^2), see Garanzha et
+    /// al., Foldover-free maps in 50 lines of code, ACM TOG 40(4), 2021
+    T epsFactor = T(0.2);
+    /// energy minimization to convergence, once unfolded:
+    /// eps <= epsShrink * min det(J), so that chi ~ det(J) everywhere
+    T epsShrink = T(0.1);
+    index_t maxBacktracking = 30;
+    T armijo = T(1e-4);
+    /// untangling stops once unfolded and the relative energy decrease is
+    /// below untangleTol, or if folded and below stagnationTol
+    T untangleTol = T(1e-5);
+    T stagnationTol = T(1e-12);
+    index_t maxUntangleIterations = 200;
+    index_t maxFinalIterations = 1000;
+    /// forcing term of the inexact Newton steps (CG):
+    /// min(maxForcing, sqrt(|g| / |g_0|)), at least minForcing
+    T minForcing = T(1e-8), maxForcing = T(0.1);
+    index_t maxCGIterations = 500;
+    /// tolerance of the H1 stage (residual norm)
+    T h1Tolerance = T(1e-5);
+  } constants;
 
-  // Keep det(J) >= stepFraction * (current minimum) in every step
-  const T stepFraction = 0.2;
-  // eps = sqrt(epsMin^2 + (epsFactor * min(Dmin,0))^2), see Garanzha et al.,
-  // Foldover-free maps in 50 lines of code, ACM TOG 40(4), 2021
-  const T epsFactor = 0.2;
-  const index_t maxBacktracking = 30;
-  // With PDEEnergyFinal (set for free interfaces), the energy minimization
-  // is the last stage: it runs also for an unfolded start, to a tighter
-  // tolerance, and the H1 stage is skipped.
-  const bool energyFinal = options.askSwitch("PDEEnergyFinal", false);
-  // energy form (0: |J|^2/chi^(2/d), 1: |cof J|^2/chi) and Hessian type
-  // (0: Gauss-Newton, 1: exact, 2: projected Newton); -1: automatic
-  index_t energyForm = options.askInt("PDEEnergyForm", 0);
-  if (energyForm < 0 || energyForm > 1) { energyForm = 0; }
-  const index_t userHessian = options.askInt("PDEEnergyHessian", -1);
-  const T energyTol = options.askReal("PDEEnergyTol", 1e-11);
-  const T stagnationTol = 1e-12;
-  const T armijo = 1e-4;
-
-  gsMultiBasis<T> mb(mp);
-
-  // The Jacobian determinant must stay positive up to the boundary, hence a
-  // Gauss-Lobatto rule (same exactness as the default Gauss rule), whose
-  // nodes include the element boundaries, is used for this stage.
-  gsExprAssembler<T> assembler;
-  assembler.setIntegrationDomain(mb.domain());
-  assembler.options().setInt("quRule", gsQuadrature::GaussLobatto);
-  assembler.options().setReal("quA", 1.0);
-  assembler.options().setInt("quB", 2 + std::max<index_t>(
-      0, options.askInt("PDEExtraNodes", 0)));
-
-  // same quadrature rule and expression data as the assembler
-  gsExprEvaluator<T> evaluator(assembler);
-
-  gsMultiPatch<T> mpSubstitute = mp;
-
-  // The integral of det(J) (signed area or volume) only depends on the fixed
-  // control points. To evaluate it reliably even if the given interior is
-  // far off, the free control points are moved to the centroid of the fixed
-  // ones. Dividing by the measure of the parameter domain gives the mean
-  // value of det(J), which sets the scale of the regularization.
-  T meanDet = 0;
-  {
-    gsVector<T> centroid = gsVector<T>::Zero(mp.targetDim());
-    gsVector<index_t> numFixed = gsVector<index_t>::Zero(mp.targetDim());
-    for (size_t iptch = 0; iptch != mp.nPatches(); ++iptch)
-      for (index_t idim = 0; idim != mp.targetDim(); ++idim)
-        for (size_t idof = 0; idof != mapper.patchSize(iptch, idim); ++idof)
-          if (!mapper.is_free(idof, iptch, idim)) {
-            centroid(idim) += mp.patch(iptch).coefs()(idof, idim);
-            ++numFixed(idim);
-          }
-    if (numFixed.minCoeff() > 0) {
-      for (size_t iptch = 0; iptch != mp.nPatches(); ++iptch)
-        for (index_t idim = 0; idim != mp.targetDim(); ++idim)
-          for (size_t idof = 0; idof != mapper.patchSize(iptch, idim); ++idof)
-            if (mapper.is_free(idof, iptch, idim))
-              mpSubstitute.patch(iptch).coefs()(idof, idim) =
-                  centroid(idim) / numFixed(idim);
-    }
-    geometryMap G = evaluator.getMap(mpSubstitute);
-    meanDet = evaluator.integral(jac(G).det());
-
-    T parameterMeasure = 0;
-    for (size_t iptch = 0; iptch != mb.nBases(); ++iptch) {
-      const gsMatrix<T> box = mb.basis(iptch).support();
-      parameterMeasure += (box.col(1) - box.col(0)).prod();
-    }
-    meanDet /= parameterMeasure;
+  gsRegularizedStage(const gsMultiPatch<T> &mp, const gsDofMapper &mapper,
+                     const gsOptionList &options,
+                     const std::vector<index_t> &extraNodes)
+      : m_mp(mp), m_mapper(mapper), m_options(options),
+        m_verbose(options.askInt("Verbose", 0)),
+        m_quOptions(lobattoOptions(options.askInt("PDEExtraNodes", 0))),
+        m_meanDet(meanDeterminant(mp, mapper, m_quOptions)),
+        m_orientation(m_meanDet < 0 ? T(-1) : T(1)),
+        m_epsMin(options.askReal("PDEGaranzhaEps", 1e-4) * math::abs(m_meanDet)),
+        m_fem(mp, mapper, m_quOptions, m_orientation, extraNodes),
+        m_iterative(gsBarrierCore<d, T>::useIterativeSolver(m_fem.numDofs(),
+                                                            options)) {
+    m_meanDet = math::abs(m_meanDet);
+    m_fem.setH1Power(PDEH1Form::WeakLaplace == options.askInt("PDEH1Form", 0)
+                         ? 1 : 2);
+    index_t form = options.askInt("PDEEnergyForm", PDEEnergyForm::Conformal);
+    if (form != PDEEnergyForm::InverseDirichlet) { form = PDEEnergyForm::Conformal; }
+    m_fem.setEnergyForm(form);
   }
-  if (!(math::abs(meanDet) > 0)) {
-    gsWarn << "The computational domain has zero measure; the regularized "
-              "PDE-based method is skipped.\n";
-    return x;
+
+  /// False if the computational domain has zero measure
+  bool valid() const { return m_meanDet > 0; }
+
+  /// Minimum of orientation * det(J) over the monitored quadrature nodes
+  T minDet(const gsVector<T> &x) {
+    m_fem.setFreeVector(x);
+    return m_fem.minDet();
   }
-  const T orientation = (meanDet > 0 ? 1 : -1);
-  meanDet = math::abs(meanDet);
 
-  const T epsMin = options.askReal("PDEGaranzhaEps", 1e-4) * meanDet;
+  /// For every element, the number of nodes of a denser Gauss-Lobatto rule
+  /// (PDECheckExtraNodes additional nodes) with det(J) <= 0
+  std::vector<index_t> negativeCheckPoints(const gsVector<T> &x) {
+    m_fem.setFreeVector(x);
+    return m_fem.negativeCheckPoints(
+        lobattoOptions(m_options.askInt("PDECheckExtraNodes", 4)));
+  }
 
-  // Element-wise assembly of all quantities of this stage. det(J) is
-  // monitored at all quadrature nodes at which it depends on the free
-  // control points.
-  gsRegularizedPDEAssembler<d, T> fem(mp, mapper, assembler.options(),
-                                      orientation, extraNodes);
-  // det(J) at the nodes of a denser Gauss-Lobatto rule, for the result
-  gsOptionList checkOptions = assembler.options();
-  checkOptions.setInt("quB", 2 + std::max<index_t>(
-      0, options.askInt("PDECheckExtraNodes", 4)));
-  auto finish = [&](const gsVector<T> &result) {
-    if (negatives) {
-      fem.setFreeVector(result);
-      *negatives = fem.negativeCheckPoints(checkOptions);
-    }
-    return result;
-  };
-  const bool iterativeSolvers = useIterativeSolver(fem.numDofs(), options);
-  fem.setH1Power(1 == options.askInt("PDEH1Form", 0) ? 1 : 2);
-  auto minDet = [&](gsVector<T> const &u) {
-    fem.setFreeVector(u);
-    return fem.minDet();
-  };
+  /// Minimization of the regularized energy from \a x (with min det(J)
+  /// \a Dmin), by Gauss-Newton or projected Newton steps with Armijo line
+  /// search; once unfolded, no step folds again. final = false: untangling
+  /// (stops once unfolded and settled); final = true: to convergence
+  /// (PDEEnergyTol), with eps <= epsShrink * min det(J) once unfolded.
+  void minimizeEnergy(gsVector<T> &x, T &Dmin, const bool final);
 
-  T Dmin = minDet(x);
+  /// Regularized H1 stage (Anderson acceleration with the Jacobian as
+  /// preconditioner and the step control) from the unfolded \a x; returns
+  /// true if it converged (then \a x is the result)
+  bool solveH1(gsVector<T> &x);
 
-  //////////////////////////////////////////////////////////////////////////
-  // Stage 1: untangling by minimizing Garanzha's regularized Winslow
-  // functional  W(x) = int |J|_F^2 / chi(det J, eps)^(2/d)  (Gauss-Newton
-  // method with Armijo line search). Only needed if the input is folded.
-  //////////////////////////////////////////////////////////////////////////
-  // Minimization of the regularized energy: untangling (stops once unfolded
-  // and settled) or, with final = true, to convergence (tolerance
-  // PDEEnergyTol; eps <= 0.1 min det(J) once unfolded), e.g. as the final
-  // stage or as the fall-back if the H1 stage does not converge
-  auto minimizeEnergy = [&](const bool final) {
-    const index_t stageHessian = (userHessian >= 0 && userHessian <= 2)
-                                     ? userHessian : ((final && 3 == d) ? 2 : 0);
-    const index_t stageMaxIter = final ? 1000 : 200;
-    const T stageTol = final ? energyTol : T(1e-5);
-    verboseLog(final ? std::string("\nMinimizing the regularized Winslow "
-                                         "energy (final stage)...")
-                           : "\nThe H2 result is folded (min det(J) / mean det(J) = "
-                                 + std::to_string(Dmin / meanDet)
-                                 + "). Start untangling...", verbose);
-
-    T eps = epsMin;
-    auto energy = [&](gsVector<T> const &u) {
-      fem.setFreeVector(u);
-      return fem.energy(eps);
-    };
-
-    // Linear solver for the Gauss-Newton steps: sparse LDL^T or CG with
-    // incomplete Cholesky (plain Eigen matrix type, as required by the
-    // iterative solvers)
+ private:
+  /// State of the linear solver of the energy minimization
+  struct NewtonSolver {
     typedef gsEigen::SparseMatrix<T, 0, index_t> EigenSparse;
     gsEigen::SimplicialLDLT<EigenSparse, gsEigen::Lower> ldlt;
     gsEigen::ConjugateGradient<EigenSparse, gsEigen::Lower,
         gsEigen::IncompleteCholesky<T, gsEigen::Lower,
                                     gsEigen::AMDOrdering<index_t> > > pcg;
-    gsSparseMatrix<T> hessian;
-    index_t numCGIterations = 0;
-    T gradientNorm0 = -1;
-
-    gsVector<T> gradient, direction, trial;
-    gsStopwatch stageTimer, timer;
-    double timeAssembly = 0, timeLinearSolver = 0, timeLineSearch = 0;
-    index_t numEnergyEvaluations = 0, numNewtonFallbacks = 0;
-
-    // Energy form and Hessian (Gauss-Newton or projected Newton)
-    fem.setEnergyForm(energyForm);
-    auto assembleStep = [&](const T epsStep, const index_t type) {
-      if (0 == energyForm && 0 == type) {
-        fem.gradientHessian(epsStep, gradient, hessian);
-      } else {
-        fem.energyGradientHessian(epsStep, type, gradient, hessian);
-      }
-    };
-
-    // Linear solver: sparse LDL^T, or (inexact Newton) CG preconditioned by
-    // the algebraic multigrid method NodalAMG (PDEPreconditioner = 1:
-    // incomplete Cholesky)
-    const bool choleskyPreconditioner =
-        (1 == options.askInt("PDEPreconditioner", 0));
     memory::shared_ptr<preAApp::NodalAMG<T> > amg;
-    if (iterativeSolvers && !choleskyPreconditioner) {
-      amg.reset(new preAApp::NodalAMG<T>());
-      amg->setNodes(nodeOfDofs(mp, mapper), componentOfDofs(mp, mapper));
-    }
     bool patternAnalyzed = false;
-    auto solveStep = [&]() {
-      if (!iterativeSolvers) {
-        if (!patternAnalyzed) { ldlt.analyzePattern(hessian); patternAnalyzed = true; }
-        ldlt.factorize(hessian);
-        direction = -ldlt.solve(gradient);
-        return;
-      }
-      // Inexact Newton: relative tolerance (forcing term)
-      // min(0.1, sqrt(|g| / |g_0|)). CG starts from zero, which yields a
-      // descent direction for any number of CG iterations.
-      const T gradientNorm = gradient.norm();
-      if (gradientNorm0 < 0) { gradientNorm0 = gradientNorm; }
-      const T forcing = std::max<T>(
-          1e-8, std::min<T>(0.1, math::sqrt(gradientNorm / gradientNorm0)));
-      if (choleskyPreconditioner) {
-        const gsVector<T> zero = gsVector<T>::Zero(gradient.size());
-        pcg.setTolerance(forcing);
-        pcg.compute(hessian);
-        direction = -pcg.solveWithGuess(gradient, zero);
-        // (Eigen does not count the last iteration if it converged)
-        numCGIterations += pcg.iterations()
-            + (pcg.iterations() < pcg.maxIterations() ? 1 : 0);
-        return;
-      }
-      const gsSparseMatrix<T> full =
-          hessian.template selfadjointView<gsEigen::Lower>();
-      amg->compute(full);
-      gsConjugateGradient<T> cg(full, amg);
-      cg.setTolerance(forcing);
-      cg.setMaxIterations(500);
-      gsMatrix<T> solution = gsMatrix<T>::Zero(gradient.size(), 1);
-      cg.solve(gradient, solution);
-      numCGIterations += cg.iterations();
-      direction = -solution.col(0);
-    };
-    index_t iter = 0;
-    for (; iter != stageMaxIter; ++iter) {
-      const T negPart = std::min<T>(Dmin, 0);
-      eps = math::sqrt(epsMin * epsMin
-                           + epsFactor * epsFactor * negPart * negPart);
-      // As the final stage, once unfolded: eps <= 0.1 min det(J), so that
-      // chi ~ det(J) everywhere and the energy acts as a barrier against
-      // degenerate cells (with eps > det(J) it is bounded there).
-      if (final && Dmin > 0) { eps = std::min(eps, T(0.1) * Dmin); }
-
-      timer.restart();
-      const T W0 = energy(x);
-      ++numEnergyEvaluations;
-
-      fem.setFreeVector(x);
-      assembleStep(eps, stageHessian);
-      timeAssembly += timer.stop();
-
-      timer.restart();
-      solveStep();
-      timeLinearSolver += timer.stop();
-      if (0 != stageHessian
-          && (!direction.allFinite() || !(gradient.dot(direction) < 0))) {
-        // no descent direction from the (projected) Newton step:
-        // Gauss-Newton step instead
-        ++numNewtonFallbacks;
-        timer.restart();
-        assembleStep(eps, 0);
-        timeAssembly += timer.stop();
-        timer.restart();
-        solveStep();
-        timeLinearSolver += timer.stop();
-      }
-
-      const T slope = gradient.dot(direction);
-      if (!direction.allFinite() || !(slope < 0)) { break; }
-
-      // Armijo line search; once unfolded, never fold again
-      timer.restart();
-      T step = 1, W1 = W0, D1 = Dmin;
-      bool accepted = false;
-      for (index_t ib = 0; ib != maxBacktracking; ++ib, step *= 0.5) {
-        trial = x + step * direction;
-        W1 = energy(trial);
-        ++numEnergyEvaluations;
-        if (!(W1 <= W0 + armijo * step * slope)) { continue; }
-        D1 = minDet(trial);
-        if (Dmin > 0 && !(D1 >= stepFraction * Dmin)) { continue; }
-        accepted = true;
-        break;
-      }
-      timeLineSearch += timer.stop();
-      if (!accepted) { break; }
-
-      const bool wasUnfolded = (Dmin > 0);
-      x = trial;
-      Dmin = D1;
-      if (verbose > 1) {
-        gsInfo << "  untangling iter " << iter << ": energy = " << W1
-               << ", min det(J) / mean det(J) = " << Dmin / meanDet << "\n";
-      }
-      // unfolded and the energy has settled
-      if (wasUnfolded && Dmin > 0 && (W0 - W1) <= stageTol * W0) {
-        ++iter;
-        break;
-      }
-      // still folded, but no progress any more: give up
-      if (!(Dmin > 0) && (W0 - W1) <= stagnationTol * W0) {
-        ++iter;
-        break;
-      }
-    }
-    verboseLog("Untangling finished after " + std::to_string(iter)
-                   + " iterations, min det(J) / mean det(J) = "
-                   + std::to_string(Dmin / meanDet), verbose);
-    if (verbose > 0) {
-      gsInfo << (final ? "[PDE] energy minimization: " : "[PDE] untangling: ") << iter << " iterations, "
-             << numEnergyEvaluations << " energy evaluations";
-      if (iterativeSolvers) {
-        gsInfo << ", " << numCGIterations << " CG iterations";
-      }
-      gsInfo << "; time "
-             << stageTimer.stop() << " s (assembly " << timeAssembly
-             << " s, linear solver " << timeLinearSolver
-             << " s, line search " << timeLineSearch << " s); energy form "
-             << energyForm << ", Hessian " << stageHessian << ", "
-             << numNewtonFallbacks << " Gauss-Newton fall-backs\n";
-    }
+    T gradientNorm0 = -1;
+    index_t numCGIterations = 0;
+    double timeAssembly = 0, timeSolve = 0;
   };
-  if (!(Dmin > 0) || energyFinal) { minimizeEnergy(energyFinal); }
 
-  if (energyFinal || !options.askSwitch("needPDEH1", true)) { return finish(x); }
-
-  if (!(Dmin > 0)) {
-    gsWarn << "The parameterization could not be untangled; the H1 "
-              "discretization is skipped.\n";
-    return finish(x);
+  /// Gauss-Lobatto rule with 2 + extra nodes per direction beyond the degree
+  static gsOptionList lobattoOptions(const index_t extra) {
+    gsOptionList result = gsExprAssembler<T>::defaultOptions();
+    result.setInt("quRule", gsQuadrature::GaussLobatto);
+    result.setReal("quA", 1.0);
+    result.setInt("quB", 2 + std::max<index_t>(0, extra));
+    return result;
   }
 
-  //////////////////////////////////////////////////////////////////////////
-  // Stage 2: H1 discretization with det(J) replaced by chi(det J, eps)
-  //////////////////////////////////////////////////////////////////////////
-  verboseLog("\nStart parameterization improvement by the regularized H1 "
-             "discretization...", verbose);
+  /// Mean value of det(J) (signed). The integral of det(J), the signed area
+  /// or volume, only depends on the fixed control points; to evaluate it
+  /// reliably even if the given interior is far off, the free control points
+  /// are moved to the centroid of the fixed ones.
+  static T meanDeterminant(const gsMultiPatch<T> &mp, const gsDofMapper &mapper,
+                           const gsOptionList &quOptions);
 
+  /// Gradient and Hessian of the energy at the current free vector of the
+  /// assembler, and the Newton direction (linearSolve)
+  void newtonDirection(const T eps, const index_t hessianType,
+                       NewtonSolver &solver, gsVector<T> &gradient,
+                       gsSparseMatrix<T> &hessian, gsVector<T> &direction);
+
+  /// Newton direction for the given gradient and (lower triangle of the)
+  /// Hessian: sparse LDL^T, or inexact CG preconditioned by NodalAMG
+  /// (PDEPreconditioner = BlockGaussSeidelLU: incomplete Cholesky)
+  void linearSolve(NewtonSolver &solver, const gsVector<T> &gradient,
+                   const gsSparseMatrix<T> &hessian, gsVector<T> &direction);
+
+  const gsMultiPatch<T> &m_mp;
+  const gsDofMapper &m_mapper;
+  const gsOptionList &m_options;
+  const index_t m_verbose;
+  const gsOptionList m_quOptions;
+  T m_meanDet;
+  const T m_orientation;
+  const T m_epsMin;
+  gsRegularizedPDEAssembler<d, T> m_fem;
+  const bool m_iterative;
+};
+
+template<short_t d, typename T>
+T gsRegularizedStage<d, T>::meanDeterminant(const gsMultiPatch<T> &mp,
+                                            const gsDofMapper &mapper,
+                                            const gsOptionList &quOptions) {
+  gsMultiBasis<T> mb(mp);
+  gsExprAssembler<T> assembler;
+  assembler.setIntegrationDomain(mb.domain());
+  assembler.setOptions(quOptions);
+  gsExprEvaluator<T> evaluator(assembler);
+
+  gsMultiPatch<T> mpSubstitute = mp;
+  gsVector<T> centroid = gsVector<T>::Zero(mp.targetDim());
+  gsVector<index_t> numFixed = gsVector<index_t>::Zero(mp.targetDim());
+  for (size_t iptch = 0; iptch != mp.nPatches(); ++iptch)
+    for (index_t idim = 0; idim != mp.targetDim(); ++idim)
+      for (size_t idof = 0; idof != mapper.patchSize(iptch, idim); ++idof)
+        if (!mapper.is_free(idof, iptch, idim)) {
+          centroid(idim) += mp.patch(iptch).coefs()(idof, idim);
+          ++numFixed(idim);
+        }
+  if (numFixed.minCoeff() > 0) {
+    for (size_t iptch = 0; iptch != mp.nPatches(); ++iptch)
+      for (index_t idim = 0; idim != mp.targetDim(); ++idim)
+        for (size_t idof = 0; idof != mapper.patchSize(iptch, idim); ++idof)
+          if (mapper.is_free(idof, iptch, idim))
+            mpSubstitute.patch(iptch).coefs()(idof, idim) =
+                centroid(idim) / numFixed(idim);
+  }
+  typename gsExprAssembler<T>::geometryMap G = evaluator.getMap(mpSubstitute);
+  const T integral = evaluator.integral(jac(G).det());
+
+  // divided by the measure of the parameter domain
+  T parameterMeasure = 0;
+  for (size_t iptch = 0; iptch != mb.nBases(); ++iptch) {
+    const gsMatrix<T> box = mb.basis(iptch).support();
+    parameterMeasure += (box.col(1) - box.col(0)).prod();
+  }
+  return integral / parameterMeasure;
+}
+
+template<short_t d, typename T>
+void gsRegularizedStage<d, T>::newtonDirection(const T eps,
+                                               const index_t hessianType,
+                                               NewtonSolver &solver,
+                                               gsVector<T> &gradient,
+                                               gsSparseMatrix<T> &hessian,
+                                               gsVector<T> &direction) {
+  gsStopwatch timer;
+  if (PDEEnergyForm::Conformal == m_fem.energyForm()
+      && PDEEnergyHessian::GaussNewton == hessianType) {
+    m_fem.gradientHessian(eps, gradient, hessian);  // faster variant
+  } else {
+    m_fem.energyGradientHessian(eps, hessianType, gradient, hessian);
+  }
+  solver.timeAssembly += timer.stop();
+  timer.restart();
+  linearSolve(solver, gradient, hessian, direction);
+  solver.timeSolve += timer.stop();
+}
+
+template<short_t d, typename T>
+void gsRegularizedStage<d, T>::linearSolve(NewtonSolver &solver,
+                                           const gsVector<T> &gradient,
+                                           const gsSparseMatrix<T> &hessian,
+                                           gsVector<T> &direction) {
+  if (!m_iterative) {
+    if (!solver.patternAnalyzed) {
+      solver.ldlt.analyzePattern(hessian);
+      solver.patternAnalyzed = true;
+    }
+    solver.ldlt.factorize(hessian);
+    direction = -solver.ldlt.solve(gradient);
+    return;
+  }
+  // Inexact Newton: relative tolerance (forcing term). CG starts from zero,
+  // which yields a descent direction for any number of CG iterations.
+  const T gradientNorm = gradient.norm();
+  if (solver.gradientNorm0 < 0) { solver.gradientNorm0 = gradientNorm; }
+  const T forcing = std::max<T>(
+      constants.minForcing,
+      std::min<T>(constants.maxForcing,
+                  math::sqrt(gradientNorm / solver.gradientNorm0)));
+  if (PDEPreconditioner::BlockGaussSeidelLU
+      == m_options.askInt("PDEPreconditioner", PDEPreconditioner::Automatic)) {
+    // incomplete Cholesky (the preconditioner before NodalAMG)
+    const gsVector<T> zero = gsVector<T>::Zero(gradient.size());
+    solver.pcg.setTolerance(forcing);
+    solver.pcg.compute(hessian);
+    direction = -solver.pcg.solveWithGuess(gradient, zero);
+    // (Eigen does not count the last iteration if it converged)
+    solver.numCGIterations += solver.pcg.iterations()
+        + (solver.pcg.iterations() < solver.pcg.maxIterations() ? 1 : 0);
+    return;
+  }
+  if (!solver.amg) {
+    solver.amg.reset(new preAApp::NodalAMG<T>());
+    solver.amg->setNodes(gsBarrierCore<d, T>::nodeOfDofs(m_mp, m_mapper),
+                         gsBarrierCore<d, T>::componentOfDofs(m_mp, m_mapper));
+  }
+  const gsSparseMatrix<T> full =
+      hessian.template selfadjointView<gsEigen::Lower>();
+  solver.amg->compute(full);
+  gsConjugateGradient<T> cg(full, solver.amg);
+  cg.setTolerance(forcing);
+  cg.setMaxIterations(constants.maxCGIterations);
+  gsMatrix<T> solution = gsMatrix<T>::Zero(gradient.size(), 1);
+  cg.solve(gradient, solution);
+  solver.numCGIterations += cg.iterations();
+  direction = -solution.col(0);
+}
+
+template<short_t d, typename T>
+void gsRegularizedStage<d, T>::minimizeEnergy(gsVector<T> &x, T &Dmin,
+                                              const bool final) {
+  // Hessian: as set by PDEEnergyHessian; automatic: projected Newton for the
+  // final minimization of volumes, Gauss-Newton otherwise
+  index_t hessianType = m_options.askInt("PDEEnergyHessian",
+                                         PDEEnergyHessian::Automatic);
+  if (hessianType < PDEEnergyHessian::GaussNewton
+      || hessianType > PDEEnergyHessian::ProjectedNewton) {
+    hessianType = (final && 3 == d) ? PDEEnergyHessian::ProjectedNewton
+                                    : PDEEnergyHessian::GaussNewton;
+  }
+  const index_t maxIterations = final ? constants.maxFinalIterations
+                                      : constants.maxUntangleIterations;
+  const T tolerance = final ? T(m_options.askReal("PDEEnergyTol", 1e-11))
+                            : constants.untangleTol;
+  verboseLog(final ? std::string("\nMinimizing the regularized Winslow "
+                                 "energy (final stage)...")
+                   : "\nThe H2 result is folded (min det(J) / mean det(J) = "
+                         + std::to_string(Dmin / m_meanDet)
+                         + "). Start untangling...", m_verbose);
+
+  T eps = m_epsMin;
+  auto energy = [&](const gsVector<T> &u) {
+    m_fem.setFreeVector(u);
+    return m_fem.energy(eps);
+  };
+  NewtonSolver solver;
+  gsSparseMatrix<T> hessian;
+  gsVector<T> gradient, direction, trial;
+  gsStopwatch stageTimer, timer;
+  double timeEnergy = 0, timeLineSearch = 0;
+  index_t numEnergyEvaluations = 0, numNewtonFallbacks = 0;
+  index_t iter = 0;
+  for (; iter != maxIterations; ++iter) {
+    const T negPart = std::min<T>(Dmin, 0);
+    eps = math::sqrt(m_epsMin * m_epsMin + constants.epsFactor
+                     * constants.epsFactor * negPart * negPart);
+    // to convergence, once unfolded: chi ~ det(J) everywhere, so that the
+    // energy acts as a barrier against degenerate cells (with eps > det(J)
+    // it is bounded there)
+    if (final && Dmin > 0) { eps = std::min(eps, constants.epsShrink * Dmin); }
+
+    timer.restart();
+    const T W0 = energy(x);
+    ++numEnergyEvaluations;
+    timeEnergy += timer.stop();
+    m_fem.setFreeVector(x);
+    newtonDirection(eps, hessianType, solver, gradient, hessian, direction);
+    if (PDEEnergyHessian::GaussNewton != hessianType
+        && (!direction.allFinite() || !(gradient.dot(direction) < 0))) {
+      // no descent direction from the (projected) Newton step:
+      // Gauss-Newton step instead
+      ++numNewtonFallbacks;
+      newtonDirection(eps, PDEEnergyHessian::GaussNewton, solver, gradient,
+                      hessian, direction);
+    }
+
+    const T slope = gradient.dot(direction);
+    if (!direction.allFinite() || !(slope < 0)) { break; }
+
+    // Armijo line search; once unfolded, never fold again
+    timer.restart();
+    T step = 1, W1 = W0, D1 = Dmin;
+    bool accepted = false;
+    for (index_t ib = 0; ib != constants.maxBacktracking; ++ib, step *= 0.5) {
+      trial = x + step * direction;
+      W1 = energy(trial);
+      ++numEnergyEvaluations;
+      if (!(W1 <= W0 + constants.armijo * step * slope)) { continue; }
+      D1 = minDet(trial);
+      if (Dmin > 0 && !(D1 >= constants.stepFraction * Dmin)) { continue; }
+      accepted = true;
+      break;
+    }
+    timeLineSearch += timer.stop();
+    if (!accepted) { break; }
+
+    const bool wasUnfolded = (Dmin > 0);
+    x = trial;
+    Dmin = D1;
+    if (m_verbose > 1) {
+      gsInfo << "  untangling iter " << iter << ": energy = " << W1
+             << ", min det(J) / mean det(J) = " << Dmin / m_meanDet << "\n";
+    }
+    // unfolded and the energy has settled
+    if (wasUnfolded && Dmin > 0 && (W0 - W1) <= tolerance * W0) {
+      ++iter;
+      break;
+    }
+    // still folded, but no progress any more: give up
+    if (!(Dmin > 0) && (W0 - W1) <= constants.stagnationTol * W0) {
+      ++iter;
+      break;
+    }
+  }
+  verboseLog("Untangling finished after " + std::to_string(iter)
+                 + " iterations, min det(J) / mean det(J) = "
+                 + std::to_string(Dmin / m_meanDet), m_verbose);
+  if (m_verbose > 0) {
+    gsInfo << (final ? "[PDE] energy minimization: " : "[PDE] untangling: ")
+           << iter << " iterations, " << numEnergyEvaluations
+           << " energy evaluations";
+    if (m_iterative) {
+      gsInfo << ", " << solver.numCGIterations << " CG iterations";
+    }
+    gsInfo << "; time " << stageTimer.stop() << " s (assembly "
+           << timeEnergy + solver.timeAssembly << " s, linear solver "
+           << solver.timeSolve << " s, line search " << timeLineSearch
+           << " s); energy form " << m_fem.energyForm() << ", Hessian "
+           << hessianType << ", " << numNewtonFallbacks
+           << " Gauss-Newton fall-backs\n";
+  }
+}
+
+template<short_t d, typename T>
+bool gsRegularizedStage<d, T>::solveH1(gsVector<T> &x) {
+  verboseLog("\nStart parameterization improvement by the regularized H1 "
+             "discretization...", m_verbose);
   typedef std::function<gsSparseMatrix<T>(gsVector<T> const &)> Jacobian_t;
   typedef std::function<gsVector<T>(gsVector<T> const &)> Residual_t;
 
-  Residual_t Residual = [&](gsVector<T> const &u) {
-    gsVector<T> residual;
-    fem.setFreeVector(u);
-    fem.h1Residual(epsMin, residual);
-    return residual;
+  Residual_t residual = [&](gsVector<T> const &u) {
+    gsVector<T> result;
+    m_fem.setFreeVector(u);
+    m_fem.h1Residual(m_epsMin, result);
+    return result;
   };
-
-  // 1: diagonal blocks of the Jacobian, otherwise: full analytical Jacobian
-  const bool diagonalBlocks = (1 == options.askInt("AAPreconditionType", 0));
-  Jacobian_t Jacobian = [&](gsVector<T> const &u) {
-    gsSparseMatrix<T> jacobian;
-    fem.setFreeVector(u);
-    fem.h1Jacobian(epsMin, diagonalBlocks, jacobian);
-    return jacobian;
+  // AAPreconditionType 1: diagonal blocks of the Jacobian, otherwise the full
+  // analytical Jacobian
+  const bool diagonalBlocks = (1 == m_options.askInt("AAPreconditionType", 0));
+  Jacobian_t jacobian = [&](gsVector<T> const &u) {
+    gsSparseMatrix<T> result;
+    m_fem.setFreeVector(u);
+    m_fem.h1Jacobian(m_epsMin, diagonalBlocks, result);
+    return result;
   };
 
   preAAParam<T> param;
-  param.m = options.askInt("AAwindowsize", 5);
+  param.m = m_options.askInt("AAwindowsize", 5);
   param.usePreconditioning = true;
-  param.updatePreconditionerStep = options.askInt("N_update", 5);
-  param.epsilon = 1e-5;
-  if (iterativeSolvers) {
-    param.linearSolver = gmresPreconditioner(options, false);
-    param.blocks = componentOfDofs(mp, mapper);
-    param.nodes = nodeOfDofs(mp, mapper);
-    param.innerMaxIterations = options.askInt("PDEInnerMaxIterations", 100);
+  param.updatePreconditionerStep = m_options.askInt("N_update", 5);
+  param.epsilon = constants.h1Tolerance;
+  if (m_iterative) {
+    param.linearSolver =
+        gsBarrierCore<d, T>::gmresPreconditioner(m_options, false);
+    param.blocks = gsBarrierCore<d, T>::componentOfDofs(m_mp, m_mapper);
+    param.nodes = gsBarrierCore<d, T>::nodeOfDofs(m_mp, m_mapper);
+    param.innerMaxIterations = m_options.askInt("PDEInnerMaxIterations", 100);
   }
-  param.safeguardFactor = options.askReal("PDEH1Safeguard", 100);
+  param.safeguardFactor = m_options.askReal("PDEH1Safeguard", 100);
 
-  preAApp::AndersonAcceleration<T> AASolver(param);
-  if (verbose > 1) { AASolver.enableIterationInfoPrinting(); }
-  else { AASolver.disableIterationInfoPrinting(); }
+  preAApp::AndersonAcceleration<T> solver(param);
+  if (m_verbose > 1) { solver.enableIterationInfoPrinting(); }
+  else { solver.disableIterationInfoPrinting(); }
 
   // Backtracking: an unfolded parameterization stays unfolded
   index_t numShortenedSteps = 0;
   double timeFilter = 0;
-  AASolver.setStepFilter([&](gsVector<T> const &from, gsVector<T> &to) {
+  solver.setStepFilter([&](gsVector<T> const &from, gsVector<T> &to) {
     gsStopwatch filterTimer;
-    const T bound = stepFraction * minDet(from);
+    const T bound = constants.stepFraction * minDet(from);
     const gsVector<T> direction = to - from;
     T step = 1;
-    for (index_t ib = 0; ib != maxBacktracking; ++ib, step *= 0.5) {
+    for (index_t ib = 0; ib != constants.maxBacktracking; ++ib, step *= 0.5) {
       to = from + step * direction;
       if (minDet(to) >= bound) {
         if (ib > 0) { ++numShortenedSteps; }
@@ -3535,35 +3679,71 @@ gsBarrierCore<d, T>::regularizedStage(const gsMultiPatch<T> &mp,
     return false;
   });
 
-  const gsVector<T> unfolded = x;
   gsStopwatch stageTimer;
-  x = AASolver.compute(unfolded, Residual, Jacobian);
-  if (verbose > 0) {
-    gsInfo << aaSummary("regularized H1", AASolver, stageTimer.stop())
+  const gsVector<T> result = solver.compute(x, residual, jacobian);
+  if (m_verbose > 0) {
+    gsInfo << aaSummary("regularized H1", solver, stageTimer.stop())
            << "; " << numShortenedSteps << " shortened steps, step control "
            << timeFilter << " s\n";
   }
+  if (!solver.converged() || !result.allFinite()) {
+    verboseLog("The regularized H1 solver did not converge (residual norm "
+                   + std::to_string(solver.residualNorm()) + ").", m_verbose);
+    return false;
+  }
+  x = result;
+  return true;
+}
 
-  if (!AASolver.converged() || !x.allFinite()) {
-    // Back to the last result which is known to be valid. It is only
-    // unfolded at the quadrature nodes and may be barely so: the energy is
-    // minimized to convergence from there (PDEEnergyFallback).
-    x = unfolded;
-    if (options.askSwitch("PDEEnergyFallback", true)) {
-      verboseLog("The regularized H1 solver did not converge (residual norm "
-                     + std::to_string(AASolver.residualNorm())
-                     + "); the energy is minimized instead.", verbose);
-      Dmin = minDet(x);
-      minimizeEnergy(true);
-    } else {
-      verboseLog("The regularized H1 solver did not converge (residual norm "
-                     + std::to_string(AASolver.residualNorm())
-                     + "); its starting point is returned.", verbose);
-    }
+template<short_t d, typename T>
+gsVector<T>
+gsBarrierCore<d, T>::regularizedStage(const gsMultiPatch<T> &mp,
+                                      const gsDofMapper &mapper,
+                                      gsVector<T> x,
+                                      const gsOptionList &options,
+                                      const std::vector<index_t> &extraNodes,
+                                      std::vector<index_t> *negatives) {
+  if (negatives) { negatives->clear(); }
+  gsRegularizedStage<d, T> stage(mp, mapper, options, extraNodes);
+  if (!stage.valid()) {
+    gsWarn << "The computational domain has zero measure; the regularized "
+              "PDE-based method is skipped.\n";
+    return x;
+  }
+  auto finish = [&](const gsVector<T> &result) {
+    if (negatives) { *negatives = stage.negativeCheckPoints(result); }
+    return result;
+  };
+
+  // 1. Energy minimization: untangling if folded. With PDEEnergyFinal (set for
+  //    free interfaces) it is the last stage: it also runs for an unfolded
+  //    start, to convergence, and the H1 stage is skipped.
+  const bool energyFinal = options.askSwitch("PDEEnergyFinal", false);
+  T Dmin = stage.minDet(x);
+  if (!(Dmin > 0) || energyFinal) { stage.minimizeEnergy(x, Dmin, energyFinal); }
+  if (energyFinal || !options.askSwitch("needPDEH1", true)) { return finish(x); }
+  if (!(Dmin > 0)) {
+    gsWarn << "The parameterization could not be untangled; the H1 "
+              "discretization is skipped.\n";
+    return finish(x);
   }
 
+  // 2. Regularized H1 stage. If it does not converge: back to its start,
+  //    which is only unfolded at the quadrature nodes and may be barely so;
+  //    the energy is then minimized to convergence from there
+  //    (PDEEnergyFallback).
+  if (!stage.solveH1(x)) {
+    if (options.askSwitch("PDEEnergyFallback", true)) {
+      verboseLog("The energy is minimized instead.", options.askInt("Verbose", 0));
+      Dmin = stage.minDet(x);
+      stage.minimizeEnergy(x, Dmin, true);
+    } else {
+      verboseLog("Its starting point is returned.", options.askInt("Verbose", 0));
+    }
+  }
   return finish(x);
 }
+
 
 namespace expr {
 
@@ -3623,7 +3803,6 @@ class frprod3_expr : public _expr<frprod3_expr<E1, E2> > {
 
   frprod3_expr(_expr<E1> const &u, _expr<E2> const &v)
       : _u(u), _v(v) {
-    // gsInfo << "expression is space ? "<<E1::Space <<"\n"; _u.print(gsInfo);
     // GISMO_ASSERT(_u.rows() == _v.rows(),
     //              "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in % operation");
     // GISMO_ASSERT(_u.cols() == _v.cols(),
@@ -3745,7 +3924,6 @@ class jacScaledLx_expr : public _expr<jacScaledLx_expr<E> > {
 
     const index_t A = _u.cardinality() / _u.dim(); // _u.data().actives.rows()
     res.resize(_u.cardinality(), _u.cardinality());
-//        res.setZero();
     res.topLeftCorner(A, A).noalias() = basis * dLxdx;
     res.topRightCorner(A, A).noalias() = basis * dLxdy;
     res.bottomLeftCorner(A, A).noalias() = basis * dLydx;
@@ -3768,7 +3946,8 @@ class jacScaledLx_expr : public _expr<jacScaledLx_expr<E> > {
 
   const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
   const gsFeSpace<Scalar> &colVar() const { return _u.rowVar(); }
-  // TODO: question, what do these parameters mean?
+  // rowVar / colVar: the spaces of the rows and columns of the assembled
+  // matrix; cardinality: the number of local (active) functions of the space
   index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
   void print(std::ostream &os) const {
@@ -3869,7 +4048,8 @@ class jacScaledLxDiag_expr : public _expr<jacScaledLxDiag_expr<E> > {
 
   const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
   const gsFeSpace<Scalar> &colVar() const { return _u.rowVar(); }
-  // TODO: question, what do these parameters mean?
+  // rowVar / colVar: the spaces of the rows and columns of the assembled
+  // matrix; cardinality: the number of local (active) functions of the space
   index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
   void print(std::ostream &os) const {
@@ -3972,7 +4152,8 @@ class jacScaledLxDiagBlock_expr : public _expr<jacScaledLxDiagBlock_expr<E> > {
 
   const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
   const gsFeSpace<Scalar> &colVar() const { return _u.rowVar(); }
-  // TODO: question, what do these parameters mean?
+  // rowVar / colVar: the spaces of the rows and columns of the assembled
+  // matrix; cardinality: the number of local (active) functions of the space
   index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
   void print(std::ostream &os) const {
@@ -4070,7 +4251,8 @@ class jacScaledLxH1_expr : public _expr<jacScaledLxH1_expr<E> > {
 
   const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
   const gsFeSpace<Scalar> &colVar() const { return _u.rowVar(); }
-  // TODO: question, what do these parameters mean?
+  // rowVar / colVar: the spaces of the rows and columns of the assembled
+  // matrix; cardinality: the number of local (active) functions of the space
   index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
   void print(std::ostream &os) const {
@@ -4166,7 +4348,8 @@ class jacScaledLxH1DiagBlock_expr
 
   const gsFeSpace<Scalar> &rowVar() const { return _u.rowVar(); }
   const gsFeSpace<Scalar> &colVar() const { return _u.rowVar(); }
-  // TODO: question, what do these parameters mean?
+  // rowVar / colVar: the spaces of the rows and columns of the assembled
+  // matrix; cardinality: the number of local (active) functions of the space
   index_t cardinality_impl() const { return _u.cardinality_impl(); }
 
   void print(std::ostream &os) const {
@@ -4217,7 +4400,6 @@ class frprod2_expr : public _expr<frprod2_expr<E1, E2> > {
 
   frprod2_expr(_expr<E1> const &u, _expr<E2> const &v)
       : _u(u), _v(v) {
-    // gsInfo << "expression is space ? "<<E1::Space <<"\n"; _u.print(gsInfo);
     // GISMO_ASSERT(_u.rows() == _v.rows(),
     //              "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in % operation");
     // GISMO_ASSERT(_u.cols() == _v.cols(),

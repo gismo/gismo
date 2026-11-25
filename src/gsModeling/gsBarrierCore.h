@@ -27,6 +27,8 @@
 #include <gsAssembler/gsExprEvaluator.h>
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsSolver/gsGMRes.h>
+#include <iomanip>
+#include <sstream>
 #include <gsSolver/gsConjugateGradient.h>
 #ifdef _OPENMP
 #include <omp.h>
@@ -39,8 +41,6 @@
 #include <gsHLBFGS/gsHLBFGS.h>
 #endif
 
-//#include <gsLBFGSpp/gsLBFGSpp.h>
-//#include <gsPreAA/gsPreAA.h>
 
 namespace gismo {
 /**
@@ -109,10 +109,43 @@ inline void verboseLog(const std::string &message, const index_t &verbose) {
   if (verbose > 0) { gsInfo << message << "\n"; }
 }
 
+/// Values of the option PDELinearSolver (linear solvers of the regularized
+/// PDE-based method and of the H2 stage of volumes)
+struct PDELinearSolver {
+  enum { Automatic = 0, Direct = 1, Iterative = 2 };
+};
+
+/// Values of the option PDEPreconditioner (preconditioner of GMRES; CG of
+/// the energy minimization: NodalAMG, or incomplete Cholesky for
+/// BlockGaussSeidelLU)
+struct PDEPreconditioner {
+  enum { Automatic = 0, BlockGaussSeidelLU = 1, NodalAMG = 2,
+         BlockGaussSeidelAMG = 3 };
+};
+
+/// Values of the option PDEEnergyForm (see garanzhaEnergyDerivatives)
+struct PDEEnergyForm {
+  enum { Conformal = 0, InverseDirichlet = 1 };
+};
+
+/// Values of the option PDEEnergyHessian
+struct PDEEnergyHessian {
+  enum { Automatic = -1, GaussNewton = 0, Exact = 1, ProjectedNewton = 2 };
+};
+
+/// Values of the option PDEH1Form
+struct PDEH1Form {
+  enum { Original = 0, WeakLaplace = 1 };
+};
+
+template<short_t d, typename T> class gsRegularizedStage;
+
 /// gsBarrierCore
 template<short_t d, typename T= real_t>
 class gsBarrierCore
 {
+  friend class gsRegularizedStage<d, T>;
+
  private:
   typedef typename gsExprAssembler<T>::geometryMap geometryMap;
   typedef typename gsExprAssembler<T>::space space;
@@ -184,6 +217,27 @@ class gsBarrierCore
   /// volumes, and for planar domains with Garanzha's regularization): H2
   /// discretization of the elliptic grid generation equations (element-wise
   /// assembly), followed by computeRegularizedH1()
+  /// Adds the options of the (regularized) PDE-based method to \a options
+  static void addPDEOptions(gsOptionList &options);
+
+  /// PDE-based method with free interfaces: chord-scaled parameter domains
+  /// and minimization of the regularized energy (see PDEFreeInterfaceEnergy)
+  static gsMultiPatch<T> computePDEPatchFreeInterfaces(const gsMultiPatch<T> &mp,
+                                                       const gsDofMapper &mapper,
+                                                       const gsOptionList &options);
+
+  /// PDE-based method, original planar implementation (PDEGaranzha = 0):
+  /// H2 discretization, then planarH1Stage
+  static gsMultiPatch<T> computePDEPatchPlanar(const gsMultiPatch<T> &mp,
+                                               const gsDofMapper &mapper,
+                                               const gsOptionList &options);
+
+  /// Original (unregularized) planar H1 discretization, from \a x
+  static gsVector<T> planarH1Stage(const gsMultiPatch<T> &mp,
+                                   const gsDofMapper &mapper,
+                                   const gsVector<T> &x,
+                                   const gsOptionList &options);
+
   static gsMultiPatch<T> computePDEPatchGeneric(const gsMultiPatch<T> &mp,
                                                 const gsDofMapper &mapper,
                                                 const gsOptionList &options);
@@ -622,11 +676,6 @@ class preAAParam {
   ///
   int updatePreconditionerStep;
   ///
-  /// Mixing or damping parameter.
-  /// It plays exactly the same role as it does for Picard iteration.
-  /// One could vary \ref beta as the iteration.
-  ///
-//  Scalar beta;
   ///
   /// Use preconditioning or not?
   ///
@@ -641,6 +690,9 @@ class preAAParam {
   /// \ref innerMaxIterations, sparse LU is used for the rest of the solve.
   ///
   int linearSolver;
+  /// Values of \ref linearSolver
+  enum { SparseLU = 0, BlockGaussSeidelLU = 1, NodalAMG = 2,
+         BlockGaussSeidelAMG = 3 };
   ///
   /// Relative tolerance and max. iterations of the iterative linear solver
   ///
@@ -684,9 +736,8 @@ class preAAParam {
     epsilon_rel = Scalar(1e-5);
     max_iterations = 100;
     updatePreconditionerStep = 10;
-//    beta = Scalar(1.0);
     usePreconditioning = false;
-    linearSolver = 0;
+    linearSolver = SparseLU;
     innerTolerance = Scalar(1e-8);
     innerAcceptance = Scalar(1e-4);
     innerMaxIterations = 100;
@@ -705,22 +756,10 @@ class preAAParam {
     GISMO_ENSURE(epsilon >= 0, "'epsilon' must be non-negative");
     GISMO_ENSURE(epsilon_rel >= 0, "'epsilon_rel' must be non-negative");
     GISMO_ENSURE(max_iterations >= 0, "'max_iterations' must be non-negative");
-//    GISMO_ENSURE(beta >= 0 && beta <= 1.0, "'beta' must be between 0 and 1");
   }
 };
 
 namespace preAApp {
-
-template<typename Func>
-inline void measureTime(Func func) {
-  auto beforeTime = std::chrono::high_resolution_clock::now();
-
-  func();  // Call the function
-
-  auto afterTime = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration<double>(afterTime - beforeTime).count();
-  printf("\nTime passed by %.8f sec. \n", duration);
-}
 
 /// @brief Algebraic multigrid preconditioner for systems whose unknowns
 /// are grouped in nodes (here: the coordinates of one control point).
@@ -1260,7 +1299,7 @@ class AndersonAcceleration {
     // check if the initial guess is the solution
     if (m_currResidualNorm < m_param.epsilon) {
       if (m_printInfo)
-        printf("You are lucky, the initial guess is exactly the solution.\n\n\n");
+        gsInfo << "You are lucky, the initial guess is exactly the solution.\n\n\n";
       return u0;
     }
     m_bestNorm = m_currResidualNorm;
@@ -1273,7 +1312,7 @@ class AndersonAcceleration {
 
     // print iteration information
     if (m_printInfo) {
-      printf("Iter.      ||F(x)|| \n");
+      gsInfo << "Iter.      ||F(x)|| \n";
       printIterationInfo();
     }
 
@@ -1343,15 +1382,16 @@ class AndersonAcceleration {
     m_timePreconditioner = m_timeResidual = m_timeSolve = 0;
     m_blockPreconditioner.reset();
     m_amgPreconditioner.reset();
-    if (m_param.linearSolver >= 1 && m_param.linearSolver <= 3) {
+    if (m_param.linearSolver != preAAParam<Scalar>::SparseLU) {
       GISMO_ENSURE(m_param.blocks.size() == size_t(m_dim),
                    "preAAParam::blocks must give the block of every unknown.");
     }
-    if (1 == m_param.linearSolver || 3 == m_param.linearSolver) {
-      m_blockPreconditioner.reset(
-          new BlockGaussSeidel<Scalar>(3 == m_param.linearSolver));
+    if (preAAParam<Scalar>::BlockGaussSeidelLU == m_param.linearSolver
+        || preAAParam<Scalar>::BlockGaussSeidelAMG == m_param.linearSolver) {
+      m_blockPreconditioner.reset(new BlockGaussSeidel<Scalar>(
+          preAAParam<Scalar>::BlockGaussSeidelAMG == m_param.linearSolver));
       m_blockPreconditioner->setBlocks(m_param.blocks);
-    } else if (2 == m_param.linearSolver) {
+    } else if (preAAParam<Scalar>::NodalAMG == m_param.linearSolver) {
       GISMO_ENSURE(m_param.nodes.size() == size_t(m_dim),
                    "preAAParam::nodes must give the node of every unknown.");
       m_amgPreconditioner.reset(new NodalAMG<Scalar>());
@@ -1374,12 +1414,12 @@ class AndersonAcceleration {
   }
 
   inline void printSolverInfo() {
-    printf("\nAnderson Acceleration SOLVER: parameter settings... \n");
-    printf("depth                       =     %d\n", m_param.m);
-    printf("use preconditioner          =     %d\n",
-           m_param.usePreconditioning);
-    printf("update preconditioner step  =     %d\n\n",
-           m_param.updatePreconditionerStep);
+    gsInfo << "\nAnderson Acceleration SOLVER: parameter settings... \n"
+           << "depth                       =     " << m_param.m << "\n"
+           << "use preconditioner          =     "
+           << int(m_param.usePreconditioning) << "\n"
+           << "update preconditioner step  =     "
+           << m_param.updatePreconditionerStep << "\n\n";
   }
 
   /// Moves to the proposed iterate, subject to the step filter (if any).
@@ -1445,6 +1485,8 @@ class AndersonAcceleration {
             m_stalled = true;
             break;
           }
+          // (the rejected residual may be NaN, which would end the loop)
+          m_currResidualNorm = m_bestNorm;
           ++m_iter;
           m_sinceRestart = 0;
           trackIterationInfo();
@@ -1584,7 +1626,12 @@ class AndersonAcceleration {
 
   inline void printIterationInfo() {
     if (m_printInfo) {
-        printf(" %d         %.4e\n", m_iter, cast<Scalar,double>( m_currResidualNorm ));
+        // (formatted in a separate stream: gsInfo keeps its settings)
+        std::ostringstream line;
+        line << " " << m_iter << "         " << std::scientific
+             << std::setprecision(4) << cast<Scalar, double>(m_currResidualNorm)
+             << "\n";
+        gsInfo << line.str();
     }
   }
 
