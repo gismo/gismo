@@ -16,6 +16,7 @@
 #include <cstring>
 #include <string>
 #include <sstream>
+#include <stdexcept>
 
 #include <gsIO/gsOptionList.h>
 
@@ -250,6 +251,37 @@ void gsOptionList::remove(const std::string & label)
 
 void gsOptionList::update(const gsOptionList & other, gsOptionList::updateType type)
 {
+    if (type == errorIfUnknown)
+    {
+        // Validate every entry of other before anything is written, so that a
+        // throw leaves this object unchanged.
+        auto typeName = [this](const std::string & l) -> const char *
+        {
+            if (isString(l)) return "string";
+            if (isInt(l))    return "int";
+            if (isReal(l))   return "real";
+            if (isSwitch(l)) return "switch";
+            return nullptr;
+        };
+        auto check = [&typeName](const std::string & l, const char * otherType)
+        {
+            const char * mine = typeName(l);
+            if (nullptr == mine)
+                throw std::runtime_error("gsOptionList::update: unknown option '" + l + "'");
+            if (std::strcmp(mine, otherType) != 0)
+                throw std::runtime_error("gsOptionList::update: option '" + l +
+                                         "' has type " + mine + ", not " + otherType);
+        };
+        for ( StringTable::const_iterator it = other.m_strings.begin(); it != other.m_strings.end(); ++it )
+            check(it->first, "string");
+        for ( IntTable::const_iterator it = other.m_ints.begin(); it != other.m_ints.end(); ++it )
+            check(it->first, "int");
+        for ( RealTable::const_iterator it = other.m_reals.begin(); it != other.m_reals.end(); ++it )
+            check(it->first, "real");
+        for ( SwitchTable::const_iterator it = other.m_switches.begin(); it != other.m_switches.end(); ++it )
+            check(it->first, "switch");
+    }
+
     // add strings to list
     for ( StringTable::const_iterator it1 = other.m_strings.begin(); it1 != other.m_strings.end(); it1++ )
     {
@@ -559,9 +591,14 @@ void pybind11_init_gsOptionList(py::module &m) {
     .def("addMultiInt", &gsOptionList::addMultiInt)
 
     .def("remove",     &gsOptionList::remove)
-    .def("update",     (void (gsOptionList::*)(const gsOptionList&)) &gsOptionList::update)
-    .def("update",     (void (gsOptionList::*)(const gsOptionList&,
-                                               gsOptionList::updateType)) &gsOptionList::update)
+    // update() is one member with a defaulted second argument; a default is not
+    // part of the function type, so a cast to a one-argument member pointer would
+    // be a reinterpret_cast. Each arity is bound through a lambda instead.
+    .def("update", [](gsOptionList & self, const gsOptionList & other)
+                   { self.update(other); })
+    .def("update", [](gsOptionList & self, const gsOptionList & other,
+                      gsOptionList::updateType type)
+                   { self.update(other, type); })
     .def("hasGlobals", &gsOptionList::hasGlobals)
 
     .def("wrapIntoGroup", &gsOptionList::wrapIntoGroup)
@@ -575,7 +612,7 @@ void pybind11_init_gsOptionList(py::module &m) {
     .def("getAllEntries", &gsOptionList::getAllEntries)
 
     .def(py::init<>())
-    .def("assign", &gsOptionList::operator=)
+    .def("assign", static_cast<gsOptionList& (gsOptionList::*)(const gsOptionList&)>(&gsOptionList::operator=))
     // Constructor from Python dict: converts dict keys/values to gsOptionList entries
     .def(py::init([](const py::dict& dict_opts) {
         gsOptionList* opt = new gsOptionList();
@@ -600,7 +637,6 @@ void pybind11_init_gsOptionList(py::module &m) {
 
 #if EIGEN_HAS_RVALUE_REFERENCES
     .def(py::init<const gsOptionList&>())
-    .def(py::init<gsOptionList&&>())
 #endif
 
     .def("__repr__",
@@ -614,6 +650,7 @@ void pybind11_init_gsOptionList(py::module &m) {
   py::enum_<gsOptionList::updateType>(ol, "updateType")
     .value("ignoreIfUnknown", gsOptionList::updateType::ignoreIfUnknown)
     .value("addIfUnknown",    gsOptionList::updateType::addIfUnknown)
+    .value("errorIfUnknown",  gsOptionList::updateType::errorIfUnknown)
     .export_values()
     ;
 
