@@ -54,7 +54,7 @@ class gsIetiMapper
 
 public:
     /// @brief Default constructor
-    gsIetiMapper() : m_multiBasis(NULL), m_nPrimalDofs(0), m_status(0) {}
+    gsIetiMapper() : m_multiBasis(NULL), m_nLagrangeMultipliers(0), m_nPrimalDofs(0), m_status(0) {}
 
     /// @brief Create the ieti mapper
     ///
@@ -97,7 +97,12 @@ public:
     /// patch averages. In this case, the requirement that it contributes to
     /// at least two patches does not apply. For corners, use \ref cornersAsPrimals
     /// instead.
-    void interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, short_t d );
+    ///
+    /// If \a patches is not empty, the constraint vectors are only assembled
+    /// for these patches. The numbering of the primal dofs is the same as
+    /// without the list, so that distributed solvers agree on it.
+    void interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, short_t d,
+                                     const std::vector<index_t>& patches = std::vector<index_t>() );
 
     /// @brief With this function, the caller can register more primal constraints
     ///
@@ -112,7 +117,15 @@ public:
     ///                        if false, then no redundancy
     /// @param excludeCorners  Ignore corners for jump matrices. This makes sense
     ///                        if the corners are chosen as primal dofs
-    void computeJumpMatrices( bool fullyRedundant, bool excludeCorners );
+    /// @param patches         If not empty, only the jump matrices of these patches
+    ///                        are stored; the jump matrices of all other patches
+    ///                        have no rows (but the number of columns of the
+    ///                        patch-local dof mapper). The number of Lagrange
+    ///                        multipliers is that of the full problem. This
+    ///                        avoids storing all jump matrices on every rank of
+    ///                        a distributed solver.
+    void computeJumpMatrices( bool fullyRedundant, bool excludeCorners,
+                              const std::vector<index_t>& patches = std::vector<index_t>() );
 
     /// @brief Returns a list of dofs that are (on the coarse level) coupled
     ///
@@ -127,7 +140,7 @@ public:
     ///
     /// This function exposes the \ref dofMapperLocal and the \ref fixedPart to
     /// the space.
-    void initFeSpace( typename gsExprAssembler<T>::space u, index_t k )
+    void initFeSpace( typename gsExprAssembler<T>::space u, index_t k ) const
     {
         GISMO_ASSERT( m_status&1,
             "gsIetiMapper: The class has not been initialized." );
@@ -147,7 +160,7 @@ public:
     {
         GISMO_ASSERT(! m_jumpMatrices.empty(),
             "gsIetiMapper: Number of Lagrange multipliers not yet known.");
-        return m_jumpMatrices[0].rows();
+        return m_nLagrangeMultipliers;
     }
 
     /// @brief Returns the size of the primal problem (number of primal dofs)
@@ -197,6 +210,7 @@ private:
     std::vector<gsDofMapper>                      m_dofMapperLocal;      ///< A vector of the patch-local dof mappers
     std::vector<Matrix>                           m_fixedPart;           ///< The values for the elminated (Dirichlet) dofs
     std::vector<JumpMatrix>                       m_jumpMatrices;        ///< The jump matrices
+    index_t                                       m_nLagrangeMultipliers;///< The number of Lagrange multipliers
     index_t                                       m_nPrimalDofs;         ///< The number of primal dofs already created
     std::vector< std::vector<SparseVector> >      m_primalConstraints;   ///< The primal constraints
     std::vector< std::vector<index_t> >           m_primalDofIndices;    ///< The primal dof indices for each of the primal constraints

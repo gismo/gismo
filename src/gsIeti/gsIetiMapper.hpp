@@ -215,7 +215,8 @@ gsSparseVector<T> gsIetiMapper<T>::assembleAverage(
 
 
 template <class T>
-void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, const short_t d )
+void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, const short_t d,
+    const std::vector<index_t>& patches )
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
     GISMO_ASSERT( d>0, "gsIetiMapper::interfaceAveragesAsPrimals cannot handle corners." );
@@ -231,6 +232,10 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, co
         " already been called for d="<<d );
     m_status |= flag;
 
+    std::vector<char> keep(m_multiBasis->nBases(), patches.empty() ? 1 : 0);
+    for (size_t i=0; i<patches.size(); ++i)
+        keep[patches[i]] = 1;
+
     std::vector< std::vector<patchComponent> > components = geo.allComponents();
     const index_t nComponents = components.size();
     for (index_t n=0; n<nComponents; ++n)
@@ -242,6 +247,19 @@ void gsIetiMapper<T>::interfaceAveragesAsPrimals( const gsMultiPatch<T>& geo, co
             for (index_t i=0; i<sz; ++i)
             {
                 const index_t k = components[n][i].patch();
+                if (!keep[k])
+                {
+                    // The average is nonzero iff the component has a free dof
+                    gsMatrix<index_t> indices;
+                    (*m_multiBasis)[k].componentBasis_withIndices(components[n][i], indices, false);
+                    for (index_t j=0; j<indices.size(); ++j)
+                        if (m_dofMapperLocal[k].is_free_index(m_dofMapperLocal[k].index(indices(j,0),0)))
+                        {
+                            ++used;
+                            break;
+                        }
+                    continue;
+                }
                 gsSparseVector<T> constr = assembleAverage(
                     geo[k],
                     (*m_multiBasis)[k],
@@ -294,7 +312,8 @@ std::vector<index_t> gsIetiMapper<T>::skeletonDofs( const index_t patch ) const
 }
 
 template <class T>
-void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorners )
+void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorners,
+    const std::vector<index_t>& patches )
 {
     GISMO_ASSERT( m_status&1, "gsIetiMapper: The class has not been initialized." );
 
@@ -358,11 +377,16 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
     }
 
     // Compute the jump matrices
+    std::vector<char> keep(nPatches, patches.empty() ? 1 : 0);
+    for (size_t i=0; i<patches.size(); ++i)
+        keep[patches[i]] = 1;
+    m_nLagrangeMultipliers = numLagrangeMult;
     std::vector< gsSparseEntries<T> > jumpMatrices_se(nPatches);
     for (index_t i=0; i<nPatches; ++i)
     {
         const index_t dim = m_multiBasis->dim();
-        jumpMatrices_se[i].reserve(std::pow(m_dofMapperLocal[i].freeSize(),(1.0-dim)/dim));
+        if (keep[i])
+            jumpMatrices_se[i].reserve(std::pow(m_dofMapperLocal[i].freeSize(),(1.0-dim)/dim));
     }
 
     index_t multiplier = 0;
@@ -378,8 +402,10 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
             {
                 const index_t patch2 = coupling[i][j2].first;
                 const index_t localMappedIndex2 = coupling[i][j2].second;
-                jumpMatrices_se[patch1].add(multiplier,localMappedIndex1,(T)1);
-                jumpMatrices_se[patch2].add(multiplier,localMappedIndex2,(T)-1);
+                if (keep[patch1])
+                    jumpMatrices_se[patch1].add(multiplier,localMappedIndex1,(T)1);
+                if (keep[patch2])
+                    jumpMatrices_se[patch2].add(multiplier,localMappedIndex2,(T)-1);
                 ++multiplier;
             }
         }
@@ -390,8 +416,13 @@ void gsIetiMapper<T>::computeJumpMatrices( bool fullyRedundant, bool excludeCorn
     m_jumpMatrices.clear();
     for (index_t i=0; i<nPatches; ++i)
     {
-        m_jumpMatrices.push_back(JumpMatrix(numLagrangeMult, m_dofMapperLocal[i].freeSize()));
-        m_jumpMatrices[i].setFrom(jumpMatrices_se[i]);
+        if (keep[i])
+        {
+            m_jumpMatrices.push_back(JumpMatrix(numLagrangeMult, m_dofMapperLocal[i].freeSize()));
+            m_jumpMatrices[i].setFrom(jumpMatrices_se[i]);
+        }
+        else
+            m_jumpMatrices.push_back(JumpMatrix(0, m_dofMapperLocal[i].freeSize()));
     }
 
 }
