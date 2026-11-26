@@ -1202,6 +1202,215 @@ void runPhysicsVerification(const std::string& scordelisFile)
                << std::scientific << std::setprecision(2) << maxPlaneErr << ", rotL2=" << rotErr << "\n";
     }
 
+    // 8. Audit F1/F2/F13a: Inhomogeneous Dirichlet lifting via hier.makeAssembler/projectSystem + nu = 0.5 + F1 guards
+    {
+        gsMultiPatch<real_t> mp = embed2DTo3D(gsNurbsCreator<real_t>::BSplineSquareGrid(2, 2, 0.5));
+        for (size_t p = 0; p < mp.nPatches(); ++p)
+        {
+            auto& bsp = dynamic_cast<gsTensorBSpline<2, real_t>&>(mp.patch(p));
+            bsp.degreeElevate(1);
+            const gsMatrix<real_t> anc = bsp.basis().anchors();
+            const gsMatrix<real_t> X = bsp.eval(anc);
+            gsMatrix<real_t> vals(3, anc.cols());
+            for (index_t j = 0; j < anc.cols(); ++j)
+            {
+                vals(0, j) = X(0, j);
+                vals(1, j) = X(1, j);
+                vals(2, j) = 0.25 * (X(0, j) * X(0, j) + X(1, j) * X(1, j));
+            }
+            bsp.coefs() = bsp.basis().interpolateAtAnchors(vals)->coefs();
+        }
+        mp.computeTopology();
+
+        gsBoundaryConditions<real_t> bc;
+        gsVector<real_t, 3> shift;
+        shift << 1.5, -0.7, 2.3;
+        gsConstantFunction<real_t> g0(shift(0), 3), g1(shift(1), 3), g2(shift(2), 3);
+        for (const auto& ps : mp.boundaries())
+        {
+            bc.add(ps.patch, ps.side(), "Clamped", g0, 0);
+            bc.add(ps.patch, ps.side(), "Clamped", g1, 1);
+            bc.add(ps.patch, ps.side(), "Clamped", g2, 2);
+        }
+
+        // F13a: nu = 0.5 is valid for linear plane-stress shells
+        gsKLShellMaterial<real_t> mat(1e6, 0.5, 0.05);
+        gsAsG1ShellHierarchy<real_t> hier(mp, bc, 3, 1, 0, 1, true);
+        const auto& fin = hier.finest();
+        auto asmbl = hier.makeAssembler(mat);
+
+        // F1: forgetting bc in a separate assembler must be caught by verifyAssemblerBCs
+        gsAsG1KLShellAssembler<real_t> asmblNoBC(mp, fin.dbasis, mat);
+        bool caughtMissingRotBC = false;
+        try { hier.verifyAssemblerBCs(asmblNoBC); }
+        catch (const std::exception&) { caughtMissingRotBC = true; }
+        GISMO_ENSURE(caughtMissingRotBC, "F1 check failed: verifyAssemblerBCs did not catch missing rotation BCs.");
+
+        // F1: unsupported BC labels must be rejected loudly
+        gsBoundaryConditions<real_t> badBc;
+        gsConstantFunction<real_t> zf(0.0, 3);
+        badBc.add(0, boundary::west, "Neumann", zf, 0);
+        bool caughtUnsupportedBC = false;
+        try { gsAsG1KLShellAssembler<real_t> badAsmbl(mp, fin.dbasis, mat, badBc); }
+        catch (const std::exception&) { caughtUnsupportedBC = true; }
+        GISMO_ENSURE(caughtUnsupportedBC, "F1 check failed: unsupported BC label 'Neumann' was silently accepted.");
+
+        // F2: nonzero Dirichlet lifting reproduces exact rigid translation under zero load
+        gsSparseMatrix<real_t> K, Kf;
+        gsVector<real_t> F, Ff, ub, uf;
+        asmbl.assembleStiffness(K);
+        asmbl.assemblePhysicalRHS(
+            [](const gsVector<real_t>&, gsVector<real_t, 3>& f, real_t& pn) { f.setZero(); pn = 0.0; }, F);
+        hier.projectSystem(asmbl, K, F, Kf, Ff, &ub);
+        const auto st = hier.solve(Kf, Ff, mat, uf, "direct");
+        gsVector<real_t> c_sol = fin.T_free * uf + fin.T_bnd * ub;
+
+        real_t maxTransErr = 0.0;
+        for (size_t p = 0; p < mp.nPatches(); ++p)
+            for (int j = 0; j <= 3; ++j)
+                for (int i = 0; i <= 3; ++i)
+                    maxTransErr = std::max(maxTransErr,
+                        (asmbl.evalDisplacement(c_sol, p, i / 3.0, j / 3.0) - shift).norm());
+        GISMO_ENSURE(st.converged && maxTransErr < 1e-10,
+                     "F2 inhomogeneous Dirichlet lifting failed: maxTransErr=" << maxTransErr);
+        gsInfo << "  [PASS] Audit F1/F2/F13a (curved Clamped lifting, nu=0.5, BC guards): maxTransErr="
+               << std::scientific << std::setprecision(2) << maxTransErr << "\n";
+    }
+
+    // 9. Audit F3 & F8: Folded 45-deg crease rejection and mismatched parametric interface length rejection
+    {
+        // F3: 45-deg folded two-patch surface
+        gsMultiPatch<real_t> folded = embed2DTo3D(gsNurbsCreator<real_t>::BSplineSquareGrid(2, 1, 1.0));
+        auto& p1 = dynamic_cast<gsTensorBSpline<2, real_t>&>(folded.patch(1));
+        const real_t c45 = std::cos(EIGEN_PI / 4.0), s45 = std::sin(EIGEN_PI / 4.0);
+        for (index_t i = 0; i < p1.coefs().rows(); ++i)
+        {
+            const real_t dx = p1.coefs()(i, 0) - 1.0;
+            p1.coefs()(i, 0) = 1.0 + dx * c45;
+            p1.coefs()(i, 2) = dx * s45;
+        }
+        folded.computeTopology();
+        bool caughtCrease = false;
+        try { computeGluingData(folded, real_t(1e-5)); }
+        catch (const std::exception&) { caughtCrease = true; }
+        GISMO_ENSURE(caughtCrease, "F3 check failed: 45-degree folded surface passed computeGluingData.");
+
+        // F8: mismatched tangential parametric length across interface
+        gsMultiPatch<real_t> badParam = embed2DTo3D(gsNurbsCreator<real_t>::BSplineSquareGrid(2, 1, 1.0));
+        auto& bp1 = dynamic_cast<gsTensorBSpline<2, real_t>&>(badParam.patch(1));
+        bp1.basis().knots(1).affineTransformTo(0.0, 2.0);
+        badParam.computeTopology();
+        bool caughtMismatch = false;
+        try { computeGluingData(badParam, real_t(1e-5)); }
+        catch (const std::exception&) { caughtMismatch = true; }
+        GISMO_ENSURE(caughtMismatch, "F8 check failed: mismatched tangential knot length passed computeGluingData.");
+
+        gsInfo << "  [PASS] Audit F3/F8 (folded crease & mismatched interface parameterization rejected)\n";
+    }
+
+    // 10. Audit F5 & F6: Acutely skewed (20 deg) clamped rhombus SPD Nitsche + non-orthogonal Derivatives guard
+    {
+        const real_t ang = 20.0 * EIGEN_PI / 180.0;
+        gsMatrix<real_t> corners(4, 3);
+        corners << 0.0, 0.0, 0.0,
+                   1.0, 0.0, 0.0,
+                   std::cos(ang), std::sin(ang), 0.0,
+                   1.0 + std::cos(ang), std::sin(ang), 0.0;
+        gsKnotVector<real_t> kv(0.0, 1.0, 0, 2);
+        gsTensorBSplineBasis<2, real_t> b2(kv, kv);
+        gsMultiPatch<real_t> rhomb;
+        rhomb.addPatch(typename gsGeometry<real_t>::uPtr(new gsTensorBSpline<2, real_t>(b2, corners)));
+        rhomb.computeTopology();
+
+        // F5: Clamped Symmetric Nitsche on acutely skewed 20-deg rhombus must be strictly SPD
+        gsBoundaryConditions<real_t> bcClamp;
+        gsConstantFunction<real_t> zero(0.0, 3);
+        for (const auto& ps : rhomb.boundaries())
+            for (short_t c = 0; c < 3; ++c)
+                bcClamp.add(ps.patch, ps.side(), "Clamped", zero, c);
+
+        gsKLShellMaterial<real_t> mat(1e6, 0.3, 0.02);
+        gsAsG1ShellHierarchy<real_t> hier(rhomb, bcClamp, 3, 1, 0, 1, true);
+        auto asmbl = hier.makeAssembler(mat);
+        gsSparseMatrix<real_t> K, Kf;
+        gsVector<real_t> F, Ff, uf;
+        asmbl.assembleStiffness(K);
+        asmbl.assemblePhysicalRHS(
+            [](const gsVector<real_t>&, gsVector<real_t, 3>& f, real_t& pn) { f.setZero(); pn = 1.0; }, F);
+        hier.projectSystem(asmbl, K, F, Kf, Ff);
+
+        gsEigen::SimplicialLDLT<gsSparseMatrix<real_t>> ldlt;
+        ldlt.compute(Kf);
+        const real_t minPivot = (ldlt.info() == gsEigen::Success) ? ldlt.vectorD().minCoeff() : -1.0;
+        const auto st = hier.solve(Kf, Ff, mat, uf, "cg", "line_ring1", 1, 1, 1, 200, 1e-12);
+        GISMO_ENSURE(ldlt.info() == gsEigen::Success && minPivot > 0.0 && st.converged,
+                     "F5 skewed clamped rhombus Nitsche failed: minPivot=" << minPivot
+                     << ", iters=" << st.iterations);
+
+        // F6: non-orthogonal sharp corner with strong "Derivatives" without co-located "Values" must throw
+        gsBoundaryConditions<real_t> bcNonOrth;
+        bcNonOrth.add(0, boundary::west, "Derivatives", zero, 2);
+        bcNonOrth.add(0, boundary::south, "Values", zero, 2);
+        bool caughtNonOrth = false;
+        try { gsAsG1ShellHierarchy<real_t> badHier(rhomb, bcNonOrth, 3, 1, 0, 0, true); }
+        catch (const std::exception&) { caughtNonOrth = true; }
+        GISMO_ENSURE(caughtNonOrth, "F6 check failed: non-orthogonal strong 'Derivatives' was silently accepted.");
+
+        gsInfo << "  [PASS] Audit F5/F6 (20-deg skewed Clamped Nitsche SPD minPivot="
+               << std::scientific << std::setprecision(2) << minPivot << ", iters=" << st.iterations
+               << "; non-orthogonal Derivatives rejected)\n";
+    }
+
+    // 11. Audit F9, F10, F12: Breakpoint refinement guard, normal flip sign, r_p = -1 default strip DOFs
+    {
+        // F9: geometry with interior knot 0.5 vs discretization basis without knot 0.5
+        gsMultiPatch<real_t> sq2;
+        sq2.addPatch(gsNurbsCreator<real_t>::BSplineSquare(1.0, 0.0, 0.0));
+        gsMultiPatch<real_t> refinedGeom = embed2DTo3D(sq2);
+        dynamic_cast<gsTensorBSpline<2, real_t>&>(refinedGeom.patch(0)).uniformRefine(1);
+        refinedGeom.computeTopology();
+
+        gsKnotVector<real_t> coarseKv(0.0, 1.0, 0, 4); // degree 3, no interior knots
+        gsMultiBasis<real_t> coarseDb;
+        coarseDb.addBasis(new gsTensorBSplineBasis<2, real_t>(coarseKv, coarseKv));
+        gsKLShellMaterial<real_t> mat(1e6, 0.3, 0.05);
+        bool caughtMissingKnot = false;
+        try { gsAsG1KLShellAssembler<real_t> badAsmbl(refinedGeom, coarseDb, mat); }
+        catch (const std::exception&) { caughtMissingKnot = true; }
+        GISMO_ENSURE(caughtMissingKnot, "F9 check failed: missing geometry interior breakpoint was not detected.");
+
+        // F10: flipGlobalNormalOrientation negates normal pressure RHS exactly
+        gsMultiPatch<real_t> grid = embed2DTo3D(gsNurbsCreator<real_t>::BSplineSquareGrid(2, 2, 0.5));
+        gsBoundaryConditions<real_t> bc;
+        gsConstantFunction<real_t> zero(0.0, 3);
+        for (const auto& ps : grid.boundaries())
+            for (short_t c = 0; c < 3; ++c)
+                bc.add(ps.patch, ps.side(), "Values", zero, c);
+        gsAsG1ShellHierarchy<real_t> hier(grid, bc, 3, 1, 0, 0, true);
+        auto asmbl = hier.makeAssembler(mat);
+        GISMO_ENSURE(asmbl.isOrientable(), "F10 check failed: 2x2 plate reported non-orientable.");
+        gsVector<real_t> Fpos, Fneg;
+        auto loadFn = [](const gsVector<real_t>&, gsVector<real_t, 3>& f, real_t& pn) { f.setZero(); pn = 1.0; };
+        asmbl.assemblePhysicalRHS(loadFn, Fpos);
+        asmbl.flipGlobalNormalOrientation();
+        asmbl.assemblePhysicalRHS(loadFn, Fneg);
+        const real_t flipErr = (Fpos + Fneg).norm() / std::max<real_t>(Fpos.norm(), 1.0);
+        GISMO_ENSURE(flipErr < 1e-14, "F10 check failed: flipGlobalNormalOrientation err=" << flipErr);
+
+        // F12: r_p = -1 activates default p+1 strip instead of returning empty
+        const auto stripNeg = shell_internal::collectShellCoupledStripDofs(
+            grid, hier.finest().dbasis, hier.finest().argBasis, hier.finest().mapper, -1, true, 3);
+        const auto stripZero = shell_internal::collectShellCoupledStripDofs(
+            grid, hier.finest().dbasis, hier.finest().argBasis, hier.finest().mapper, 0, true, 3);
+        GISMO_ENSURE(stripNeg.size() > stripZero.size(),
+                     "F12 check failed: collectShellCoupledStripDofs(r_p=-1) size=" << stripNeg.size()
+                     << " <= r_p=0 size=" << stripZero.size());
+
+        gsInfo << "  [PASS] Audit F9/F10/F12 (breakpoint guard, normal flip err="
+               << std::scientific << std::setprecision(2) << flipErr
+               << ", r_p=-1 strip DOFs=" << stripNeg.size() << " > r_p=0 " << stripZero.size() << ")\n";
+    }
+
     gsInfo << "All intrinsic & physical verification checks PASSED.\n";
 }
 

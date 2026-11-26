@@ -108,6 +108,15 @@ InterfaceSamples<T> sampleInterface(
 
     const T t1a = sup1(tDir1, 0), t1b = sup1(tDir1, 1);
     T t2a = sup2(tDir2, 0), t2b = sup2(tDir2, 1);
+    const T len1 = t1b - t1a;
+    const T len2 = t2b - t2a;
+    GISMO_ENSURE(len1 > T(0) && len2 > T(0),
+                 "sampleInterface: degenerate tangential parametric interval on interface.");
+    GISMO_ENSURE(std::abs(len1 - len2) <= T(1e-10) * std::max(len1, len2),
+                 "sampleInterface: mismatched tangential parametric lengths across interface "
+                 "(patch " << ps1.patch << " has L=" << len1 << ", patch " << ps2.patch
+                 << " has L=" << len2 << "). Normalize patch knot vectors to [0,1]^2 before "
+                 "computing AS-G1 gluing data.");
     if (S.flipped)
         std::swap(t2a, t2b);
 
@@ -276,6 +285,17 @@ gsVector<T> computeGluingDataForInterface(
     gsVector<T> result(8);
 
     InterfaceSamples<T> S = sampleInterface(mp, interf, numGaussPerSpan);
+
+    if (mp.targetDim() == 3)
+    {
+        const T normalAngleTol = std::max<T>(T(1e-2), std::sqrt(std::max<T>(eps, T(0))));
+        GISMO_ENSURE(S.maxNormalAngle <= normalAngleTol,
+                     "Not G1/AS-G1: interface between patch " << interf.first().patch
+                     << " and patch " << interf.second().patch
+                     << " has a tangent-plane kink (sin(angle) = " << S.maxNormalAngle
+                     << " > tol = " << normalAngleTol
+                     << "). Creased/folded shells cannot be modeled with C^1 AS-G1 continuity.");
+    }
 
     GISMO_ENSURE (S.D1.minCoeff() * S.D1.maxCoeff() > 0 &&
         S.D2.minCoeff() * S.D2.maxCoeff() > 0, "Not AS-G1");
@@ -781,6 +801,47 @@ gsMatrix<T> computeSurfaceCornerFrames(
             k1_e1 = cd.k1_e1;
             k1_e2 = cd.k1_e2;
             isSmooth = cd.isSmooth;
+        }
+        else if (nBndSides == 1)
+        {
+            // Slit / single-boundary-edge vertex: align frame [d1 = outward conormal, d2 = tangent]
+            // with that unique boundary side so strong corner conditions match the boundary edge.
+            for (size_t i = 0; i < grp.size(); ++i)
+            {
+                std::vector<patchSide> sides;
+                grp[i].getContainingSides(2, sides);
+                for (size_t j = 0; j < sides.size(); ++j)
+                {
+                    if (!mp.isBoundary(sides[j])) continue;
+                    const gsGeometry<T>& geo = mp.patch(grp[i].patch);
+                    gsMatrix<T> pt(2, 1);
+                    const gsMatrix<T> supp = geo.support();
+                    const gsVector<bool> params = grp[i].parameters(2);
+                    pt(0, 0) = params[0] ? supp(0, 1) : supp(0, 0);
+                    pt(1, 0) = params[1] ? supp(1, 1) : supp(1, 0);
+                    gsMatrix<T> deriv, deriv2;
+                    geo.deriv_into(pt, deriv);
+                    geo.deriv2_into(pt, deriv2);
+
+                    const short_t nDir = sides[j].direction();
+                    const short_t tDir = 1 - nDir;
+                    const gsVector<T> vel = partial(deriv, tDir, 0, 3);
+                    const T velSq = vel.squaredNorm();
+                    const gsVector<T> tangent = vel * (params[tDir] ? T(-1) : T(1)) / std::sqrt(velSq);
+                    const T nOutSign = sides[j].parameter() ? T(1) : T(-1);
+                    const gsVector<T> gOut = nOutSign * partial(deriv, nDir, 0, 3);
+                    gsVector<T> conormal = gOut - gOut.dot(tangent) * tangent;
+                    conormal.normalize();
+
+                    gsVector<T> acc(3);
+                    for (short_t c = 0; c < 3; ++c)
+                        acc(c) = deriv2(3 * c + tDir, 0);
+                    d1 = conormal;
+                    d2 = tangent;
+                    k1_e1 = acc.dot(conormal) / velSq;
+                    isSmooth = true;
+                }
+            }
         }
         else
         {

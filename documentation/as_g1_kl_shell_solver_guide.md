@@ -233,7 +233,7 @@ Our smoother suite in [gsAsG1ShellSmoother.hpp](file:///home/fhasanova/gismo/src
 
 | Smoother Flag | C++ Class | Mathematical Subspace Correction | Per-Sweep Cost | Key Strength |
 | :--- | :--- | :--- | :---: | :--- |
-| `nodal_gs` | `gsNodalBlockGaussSeidelOp<T>` | Groups $[u_x, u_y, u_z]$ at every topological node ($3\times 3$ interior/edge blocks; $18\times 18$ vertex 6-jet blocks) and sweeps symmetrically. Inverting each $3\times 3$ nodal block is **invariant under $SO(3)$ rotations** of $\mathbf{a}_3$! | $O(p^2 N_h)$ | Eliminates Cartesian normal-tilt membrane locking for $t \ll 1$. |
+| `nodal_gs` | `gsNodalBlockGaussSeidelOp<T>` | Groups $[u_x, u_y, u_z]$ at every topological scalar basis DOF ($3\times 3$ nodal blocks across interior, edge, and vertex jet DOFs) and sweeps symmetrically. Inverting each $3\times 3$ nodal block is **invariant under $SO(3)$ rotations** of $\mathbf{a}_3$! | $O(p^2 N_h)$ | Eliminates Cartesian normal-tilt membrane locking for $t \ll 1$. |
 | `ring1` | `gsAsG1ShellSkeletonSmootherOp<T>` | `nodal_gs` sweep + exact `SimplicialLDLT` solve over the 3-component **Coupled Ring-1 Skeleton** ($r_p = 4$: all interfaces, vertices, and 2 interior collar rings). | $O(N_h)$ | Fast setup & solve; **4.52× faster than Direct** at 107k DOFs ($p=3$). |
 | `line_ring1` | `gsAsG1ShellBlockSmootherOp<T>` | Exact multiplicative Schwarz over 3-component 2-row $u$-strips $\to$ 2-column $v$-strips $\to$ Coupled Ring-1 skeleton (exact reverse order in `stepT`). | $O(p^2 N_h)$ | Captures $(AR)^4$ anisotropy, skewness $A^{12}\neq 0$, holes, and higher $p$. **Fewest iterations (`9–21`)**. |
 | `scms` | `gsAsG1ShellScmsSmootherOp<T>` (`useNodalGS=false`) | Rotates patch-interior residuals by mean patch tangent–normal frame $\mathbf{R}_p = [\bar{\mathbf{t}}_1, \bar{\mathbf{t}}_2, \bar{\mathbf{n}}] \in SO(3)$, applies 1D generalized-eigenvalue Kronecker inverse symbols (2nd-order membrane for $\bar{u}_{t_1}, \bar{u}_{t_2}$; 4th-order bending + $c_{\text{curv}}$ reaction for $\bar{u}_n$), plus overlapping $r_p = p+1$ skeleton Cholesky. | $O(p N_h)$ interior | Pure Kronecker interior (degrades when $\mathbf{a}_3$ varies strongly within one patch). |
@@ -259,7 +259,7 @@ where $\widehat{\mathbf{P}}_{\text{discont}}^{(\ell-1 \to \ell)}$ is the patch-l
 | :---: | :--- | :---: | :--- |
 | `-f` | `--file` | `.../surfHalfSphere_asg1.xml` | Path to any open 3D surface XML (certified AS-$G^1$ B-spline or rational NURBS) or 2D planar AS-$G^1$ XML (automatically embedded in $z=0$). |
 | `-t` | `--test` | `manufactured` | `manufactured`: $h$-refinement study reporting $L^2, H^1$, covariant $H^2$, energy EOCs, and Theorem 6 $\widehat{\Pi}_{AS}$ ratio.<br>`benchmark_solvers`: Side-by-side timing/iteration table of all 7 solver/smoother combinations.<br>`p_sweep`: Automated degree sweep $p = 3, 4, 5, 6$ with maximal smoothness $k = p - 2$.<br>`scordelis_lo`: Exact rational NURBS Scordelis–Lo roof under gravity ($p_z = -90$).<br>`verify_physics`: Intrinsic symmetry/rigid-body kernel + multi-patch clamped/simply-supported/cantilever plate, curved sharp-corner, and Scordelis–Lo regression checks. |
-| `-b` | `--bc` | `clamped` | `clamped` ($\mathbf{u} = \mathbf{0}$ and normal slope $\partial_n \mathbf{u} = \mathbf{0}$ on $\partial\mathcal{S}$) or `simply_supported` ($\mathbf{u} = \mathbf{0}$ on $\partial\mathcal{S}$, free bending rotation). |
+| `-b` | `--bc` | `clamped` | `clamped` ($\mathbf{u} = \mathbf{0}$ strongly and physical normal rotation $\theta_\nu(\mathbf{u}) = 0$ via symmetric Nitsche), `simply_supported` ($\mathbf{u} = \mathbf{0}$ on $\partial\mathcal{S}$, free bending rotation), or `strong_c1` (componentwise $\mathbf{u} = \mathbf{0}, \partial_\nu \mathbf{u} = \mathbf{0}$). |
 | `-s` | `--solver` | `cg` | `cg` (symmetric V-cycle MG-PCG, **recommended**), `mg` (stationary V-cycle), `schwarz_cg` (single-level domain decomposition PCG), or `direct` (`SimplicialLDLT`). |
 | `-m` | `--smoother` | `line_ring1` | `line_ring1` (**default**), `ring1`, `scms_hybrid`, `scms`, or `nodal_gs`. |
 | `-p` | `--degree` | `3` | Polynomial spline degree $p \ge 3$. |
@@ -267,7 +267,7 @@ where $\widehat{\mathbf{P}}_{\text{discont}}^{(\ell-1 \to \ell)}$ is the patch-l
 | `-r` | `--minRef` | `0` | Coarsest multigrid refinement level $\ell = 0$. |
 | `-R` | `--maxRef` | `3` | Finest solve refinement level $\ell = L - 1$. |
 | — | `--young` | `1e6` | Young's modulus $E$. |
-| — | `--nu` | `0.3` | Poisson's ratio $\nu \in [0, 0.5)$. |
+| — | `--nu` | `0.3` | Poisson's ratio $\nu \in (-1, 0.5]$ (plane stress is SPD up to incompressible $\nu = 0.5$). |
 | — | `--thickness` | `0.1` | Shell thickness $t > 0$. |
 | `-w` | `--freq` | `1.0` | Wave frequency $\omega$ of the smooth 3D manufactured displacement field. |
 | — | `--plateZ` | `false` | Restricts manufactured field to pure transverse deflection $(0, 0, u_z)$ for flat Kirchhoff plate cross-checks. |
@@ -337,22 +337,24 @@ int main()
     // 3. Build nested (p, k) AS-G1 multigrid hierarchy (p = 4, k = 2, levels r = 0..3)
     gsAsG1ShellHierarchy<real_t> hier(mp, bc, /*degreeP=*/4, /*regularityK=*/2, /*minRef=*/0, /*maxRef=*/3);
 
-    // 4. Assemble finest-level Kirchhoff-Love shell system under gravity + normal pressure
-    //    (Passing bc registers physical Symmetric Nitsche normal-rotation BCs for "Clamped" / "NormalRotation".)
+    // 4. Assemble finest-level Kirchhoff-Love shell system under gravity + dead normal pressure
+    //    (hier.makeAssembler(mat) binds m_bc automatically so "Clamped" / "NormalRotation" Nitsche
+    //     terms cannot be accidentally dropped, using exact element-local trace stabilization.)
     gsKLShellMaterial<real_t> mat(1.0e6, 0.3, 0.05); // E, nu, thickness t
     const auto& fine = hier.finest();
-    gsAsG1KLShellAssembler<real_t> asmbl(mp, fine.dbasis, mat, bc);
+    gsAsG1KLShellAssembler<real_t> asmbl = hier.makeAssembler(mat);
 
     gsSparseMatrix<real_t> K_discont, K_free;
-    gsVector<real_t> F_discont, F_free, u_bnd, u_free; // empty u_bnd => homogeneous zero BCs
+    gsVector<real_t> F_discont, F_free, u_bnd, u_free;
     asmbl.assembleStiffness(K_discont);
     asmbl.assemblePhysicalRHS(
         [](const gsVector<real_t>& /*x*/, gsVector<real_t, 3>& bodyForce, real_t& pressure) {
             bodyForce << 0.0, 0.0, -90.0; // vertical gravity load
-            pressure = 0.0;               // optional follower normal pressure p_n * n
+            pressure = 0.0;               // optional dead normal pressure p_n * n (undeformed normal)
         },
         F_discont);
-    asmbl.projectSystem(K_discont, F_discont, fine.T_free, fine.T_bnd, u_bnd, K_free, F_free);
+    // Verifies rotation BCs and automatically projects any nonzero Dirichlet functions in bc into u_bnd:
+    hier.projectSystem(asmbl, K_discont, F_discont, K_free, F_free, &u_bnd);
 
     // 5. Solve with Symmetric V-Cycle MG-PCG + line_ring1 smoother
     auto stats = hier.solve(K_free, F_free, mat, u_free,
@@ -361,7 +363,7 @@ int main()
                             /*maxIter=*/200, /*tol=*/1e-10);
 
     // 6. Reconstruct continuous 3D displacement MultiPatch for evaluation or ParaView export
-    gsVector<real_t> c_sol = fine.T_free * u_free; // (+ fine.T_bnd * u_bnd if inhomogeneous)
+    gsVector<real_t> c_sol = fine.T_free * u_free + fine.T_bnd * u_bnd;
     gsMultiPatch<real_t> dispMP = asmbl.buildDisplacementMultiPatch(c_sol);
     return 0;
 }

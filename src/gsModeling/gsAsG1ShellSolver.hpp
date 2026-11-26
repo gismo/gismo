@@ -139,11 +139,85 @@ public:
     index_t numLevels() const { return static_cast<index_t>(m_levels.size()); }
     const gsAsG1ShellLevel<T>& level(index_t l) const { return m_levels[l]; }
     const gsAsG1ShellLevel<T>& finest() const { return m_levels.back(); }
+    const gsMultiPatch<T>& geometry() const { return m_mp; }
     const gsBoundaryConditions<T>& boundaryConditions() const { return m_bc; }
     const gsMatrix<T>& gluingData() const { return m_gluing; }
     const gsMatrix<T>& cornerFrames() const { return m_cornerFrames; }
     short_t degree() const { return m_p; }
     short_t regularity() const { return m_k; }
+
+    /// True if m_bc contains any physical KL rotation BCs ("Clamped", "NormalRotation", "SymmetryRotation").
+    bool hasRotationBCs() const
+    {
+        return (m_bc.begin("Clamped") != m_bc.end("Clamped"))
+            || (m_bc.begin("NormalRotation") != m_bc.end("NormalRotation"))
+            || (m_bc.begin("SymmetryRotation") != m_bc.end("SymmetryRotation"));
+    }
+
+    /**
+     * @brief Recommended factory for gsAsG1KLShellAssembler bound to this hierarchy's
+     *        finest mesh and boundary conditions (prevents accidentally dropping "Clamped"
+     *        or "NormalRotation" Nitsche terms).
+     */
+    gsAsG1KLShellAssembler<T> makeAssembler(
+        const gsKLShellMaterial<T>& mat,
+        index_t quadExtra = 2,
+        T rotGamma0 = T(4),
+        gsKLRotationBCType rotMode = gsKLRotationBCType::SymmetricNitsche) const
+    {
+        return gsAsG1KLShellAssembler<T>(
+            m_mp, finest().dbasis, mat, m_bc, quadExtra, rotGamma0, rotMode);
+    }
+
+    /// Guard that verifies @p asmbl registered rotation BCs whenever m_bc requests them.
+    void verifyAssemblerBCs(const gsAsG1KLShellAssembler<T>& asmbl) const
+    {
+        asmbl.verifyBCs(m_bc);
+    }
+
+    /**
+     * @brief Compute the finest-level eliminated boundary DOF lifting vector @p u_bnd
+     *        directly from the displacement functions stored in m_bc (values-only L^2
+     *        boundary projection; fast-paths to zero for homogeneous BCs).
+     */
+    void computeDirichletLifting(gsVector<T>& u_bnd, index_t quadExtra = 2) const
+    {
+        const gsAsG1ShellLevel<T>& fin = finest();
+        projectBoundaryDirichletValues3D(
+            m_mp, fin.dbasis, fin.argBasis, fin.mapper, m_bc, 3, u_bnd, quadExtra);
+    }
+
+    /**
+     * @brief Safe end-to-end projection of (K_discont, F_discont) onto the finest free
+     *        AS-G1 space: verifies that @p asmbl registered all rotation BCs in m_bc,
+     *        automatically computes inhomogeneous Dirichlet lifting from m_bc (unless a
+     *        non-empty @p u_bnd_inout was pre-populated by the caller), and projects.
+     */
+    void projectSystem(const gsAsG1KLShellAssembler<T>& asmbl,
+                       const gsSparseMatrix<T>& K_discont,
+                       const gsVector<T>& F_discont,
+                       gsSparseMatrix<T>& K_free,
+                       gsVector<T>& F_free,
+                       gsVector<T>* u_bnd_inout = nullptr,
+                       index_t quadExtra = 2) const
+    {
+        verifyAssemblerBCs(asmbl);
+        const gsAsG1ShellLevel<T>& fin = finest();
+        gsVector<T> localUb;
+        if (u_bnd_inout && u_bnd_inout->size() > 0)
+        {
+            gsAsG1KLShellAssembler<T>::projectSystem(
+                K_discont, F_discont, fin.T_free, fin.T_bnd, *u_bnd_inout, K_free, F_free);
+        }
+        else
+        {
+            computeDirichletLifting(localUb, quadExtra);
+            if (u_bnd_inout)
+                *u_bnd_inout = localUb;
+            gsAsG1KLShellAssembler<T>::projectSystem(
+                K_discont, F_discont, fin.T_free, fin.T_bnd, localUb, K_free, F_free);
+        }
+    }
 
     /**
      * @brief Solve K_free * u_free = F_free using one of:
@@ -399,46 +473,82 @@ private:
                         else if (v0)
                         {
                             // Side 0 values only, side 1 free or symmetry derivative
+                            if (d1)
+                                GISMO_ENSURE(isOrthogonal,
+                                             "buildCornerConditionsPerComponent: strong componentwise \"Derivatives\" "
+                                             "BC at non-orthogonal sharp corner (|t0.t1|=" << std::abs(t0.dot(t1))
+                                             << ") cannot be enforced by diagonal jet elimination; use physical "
+                                             "\"NormalRotation\" / \"SymmetryRotation\" (Symmetric Nitsche) instead.");
                             ctype = d1 ? cornerConditionType::valuesSide1DerSide2
                                        : cornerConditionType::valuesSide1;
                         }
                         else if (v1)
                         {
                             // Side 1 values only, side 0 free or symmetry derivative
+                            if (d0)
+                                GISMO_ENSURE(isOrthogonal,
+                                             "buildCornerConditionsPerComponent: strong componentwise \"Derivatives\" "
+                                             "BC at non-orthogonal sharp corner (|t0.t1|=" << std::abs(t0.dot(t1))
+                                             << ") cannot be enforced by diagonal jet elimination; use physical "
+                                             "\"NormalRotation\" / \"SymmetryRotation\" (Symmetric Nitsche) instead.");
                             ctype = d0 ? cornerConditionType::derSide1ValuesSide2
                                        : cornerConditionType::valuesSide2;
                         }
                         else if (d0 && d1)
                         {
+                            GISMO_ENSURE(isOrthogonal,
+                                         "buildCornerConditionsPerComponent: strong componentwise \"Derivatives\" "
+                                         "BCs on both edges of a non-orthogonal sharp corner (|t0.t1|="
+                                         << std::abs(t0.dot(t1)) << ") cannot be enforced by diagonal jet elimination; "
+                                         "use physical \"NormalRotation\" / \"SymmetryRotation\" instead.");
                             ctype = cornerConditionType::derivativesSharp;
                         }
                         else if (d0)
                         {
+                            GISMO_ENSURE(isOrthogonal,
+                                         "buildCornerConditionsPerComponent: strong componentwise \"Derivatives\" "
+                                         "BC at non-orthogonal sharp corner (|t0.t1|=" << std::abs(t0.dot(t1))
+                                         << ") cannot be enforced by diagonal jet elimination; use physical "
+                                         "\"NormalRotation\" / \"SymmetryRotation\" instead.");
                             ctype = cornerConditionType::derivativesSide1;
                         }
                         else if (d1)
                         {
+                            GISMO_ENSURE(isOrthogonal,
+                                         "buildCornerConditionsPerComponent: strong componentwise \"Derivatives\" "
+                                         "BC at non-orthogonal sharp corner (|t0.t1|=" << std::abs(t0.dot(t1))
+                                         << ") cannot be enforced by diagonal jet elimination; use physical "
+                                         "\"NormalRotation\" / \"SymmetryRotation\" instead.");
                             ctype = cornerConditionType::derivativesSide2;
                         }
                     }
                 }
+                else if (bSides.size() == 1)
+                {
+                    // Single boundary side at a slit/seam vertex: computeSurfaceCornerFrames aligns
+                    // [d1 = outward conormal, d2 = boundary tangent] with bSides[0].
+                    const bool v0 = sideHasV(bSides[0]), d0 = sideHasD(bSides[0]);
+                    if (v0 && d0)
+                        ctype = cornerConditionType::valuesNormals;
+                    else if (v0)
+                        ctype = cornerConditionType::valuesSmooth;
+                    else if (d0)
+                        ctype = cornerConditionType::derivatives;
+                }
                 else
                 {
-                    // Fallback for non-manifold boundary vertices
+                    // Non-manifold boundary vertex (>2 incident boundary sides): reject constrained BCs
+                    // instead of silently eliminating DOFs in an arbitrary unaligned tangent frame.
                     index_t nVal = 0, nDer = 0;
                     for (size_t k = 0; k < bSides.size(); ++k)
                     {
                         if (sideHasV(bSides[k])) ++nVal;
                         if (sideHasD(bSides[k])) ++nDer;
                     }
-                    if (nVal > 0 && nDer > 0)
-                        ctype = cornerConditionType::all;
-                    else if (nVal >= 2)
-                        ctype = cornerConditionType::valuesSharp;
-                    else if (nVal == 1)
-                        ctype = cornerConditionType::valuesSmooth;
-                    else if (nDer > 0)
-                        ctype = cornerConditionType::derivatives;
+                    GISMO_ENSURE(nVal == 0 && nDer == 0,
+                                 "buildCornerConditionsPerComponent: non-manifold boundary vertex with "
+                                 << bSides.size() << " incident boundary sides cannot enforce strong AS-G1 "
+                                 "Dirichlet/derivative corner BCs.");
                 }
 
                 if (ctype != cornerConditionType::none)

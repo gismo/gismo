@@ -448,4 +448,168 @@ SUITE(gsAsG1KLShellAssembler_test)
         }
         CHECK(aSq.computeRotationBCErrorL2(cSq) < 1e-12);
     }
+
+    TEST(AuditCorrectnessTrapsRegression)
+    {
+        // F1: verifyBCs catches forgetting bc when "Clamped" is present; makeAssembler binds it
+        {
+            gsMultiPatch<real_t> mp = makeCurvedParaboloid2x2();
+            gsBoundaryConditions<real_t> bc;
+            gsConstantFunction<real_t> zero(0.0, 3);
+            for (const auto& ps : mp.boundaries())
+                for (short_t c = 0; c < 3; ++c)
+                    bc.add(ps.patch, ps.side(), "Clamped", zero, c);
+            gsAsG1ShellHierarchy<real_t> hier(mp, bc, 3, 1, 0, 0, true);
+            gsKLShellMaterial<real_t> mat(1e6, 0.3, 0.05);
+            gsAsG1KLShellAssembler<real_t> missingBC(mp, hier.finest().dbasis, mat);
+            CHECK_THROW(hier.verifyAssemblerBCs(missingBC), std::runtime_error);
+
+            gsAsG1KLShellAssembler<real_t> boundAsm = hier.makeAssembler(mat);
+            hier.verifyAssemblerBCs(boundAsm);
+
+            // Unsupported label rejected loudly
+            gsBoundaryConditions<real_t> badBC = bc;
+            badBC.add(mp.boundaries()[0].patch, mp.boundaries()[0].side(), "Neumann", zero, 2);
+            CHECK_THROW(boundAsm.setRotationBCs(badBC), std::runtime_error);
+        }
+
+        // F2: Inhomogeneous physical Dirichlet lifting reproduces exact rigid translation on curved clamped shell
+        {
+            gsMultiPatch<real_t> mp = makeCurvedParaboloid2x2();
+            gsVector<real_t> shift(3);
+            shift << 1.5, -0.7, 2.3;
+            gsConstantFunction<real_t> shiftFn(shift, 3);
+            gsBoundaryConditions<real_t> bc;
+            for (const auto& ps : mp.boundaries())
+                for (short_t c = 0; c < 3; ++c)
+                    bc.add(ps.patch, ps.side(), "Clamped", shiftFn, c);
+
+            gsKLShellMaterial<real_t> mat(1e6, 0.5, 0.05); // Also verifies F13a (nu == 0.5 incompressible plane stress)
+            gsAsG1ShellHierarchy<real_t> hier(mp, bc, 3, 1, 0, 1, true);
+            gsAsG1KLShellAssembler<real_t> asmbl = hier.makeAssembler(mat);
+            gsSparseMatrix<real_t> K, Kf;
+            gsVector<real_t> F, Ff, ub, uf;
+            asmbl.assembleStiffness(K);
+            asmbl.assemblePhysicalRHS(
+                [](const gsVector<real_t>&, gsVector<real_t, 3>& f, real_t& pn) { f.setZero(); pn = 0.0; }, F);
+            hier.projectSystem(asmbl, K, F, Kf, Ff, &ub);
+            CHECK(ub.size() == hier.finest().mapper.boundarySize());
+            CHECK(ub.norm() > 0.0);
+
+            const auto st = hier.solve(Kf, Ff, mat, uf, "cg", "line_ring1", 1, 1, 1, 200, 1e-12);
+            CHECK(st.converged);
+            gsVector<real_t> c_sol = hier.finest().T_free * uf + hier.finest().T_bnd * ub;
+            for (size_t p = 0; p < mp.nPatches(); ++p)
+            {
+                const auto uMid = asmbl.evalDisplacement(c_sol, p, 0.5, 0.5);
+                CHECK_CLOSE(shift(0), uMid(0), 1e-11);
+                CHECK_CLOSE(shift(1), uMid(1), 1e-11);
+                CHECK_CLOSE(shift(2), uMid(2), 1e-11);
+            }
+            CHECK(asmbl.computeRotationBCErrorL2(c_sol) < 1e-11);
+        }
+
+        // F3: Creased 45-degree 2-patch folded L-shell must be rejected by computeGluingData
+        {
+            gsMultiPatch<real_t> folded;
+            gsTensorBSpline<2, real_t> p0 = *dynamic_cast<gsTensorBSpline<2, real_t>*>(
+                embed2DTo3D(gsMultiPatch<real_t>(*gsNurbsCreator<real_t>::BSplineSquare(1.0, 0.0, 0.0))).patch(0).clone().release());
+            gsTensorBSpline<2, real_t> p1 = p0;
+            const real_t c45 = std::cos(EIGEN_PI / 4.0), s45 = std::sin(EIGEN_PI / 4.0);
+            for (index_t i = 0; i < p1.coefs().rows(); ++i)
+            {
+                const real_t x = p1.coefs()(i, 0);
+                p1.coefs()(i, 0) = 1.0 + x * c45;
+                p1.coefs()(i, 2) = x * s45;
+            }
+            folded.addPatch(p0);
+            folded.addPatch(p1);
+            folded.computeTopology();
+            CHECK_THROW(computeGluingData(folded, real_t(1e-5)), std::runtime_error);
+        }
+
+        // F5 & F6: Acutely skewed 20-deg rhombus clamped plate: SymmetricNitsche is SPD & accurate,
+        //          while componentwise "Derivatives" on a non-orthogonal sharp corner throws cleanly.
+        {
+            const real_t ang = 20.0 * EIGEN_PI / 180.0;
+            gsMultiPatch<real_t> rhomb = embed2DTo3D(gsMultiPatch<real_t>(*gsNurbsCreator<real_t>::BSplineSquare(1.0, 0.0, 0.0)));
+            auto& bsp = dynamic_cast<gsTensorBSpline<2, real_t>&>(rhomb.patch(0));
+            for (index_t i = 0; i < bsp.coefs().rows(); ++i)
+            {
+                const real_t u = bsp.coefs()(i, 0), v = bsp.coefs()(i, 1);
+                bsp.coefs()(i, 0) = u + v * std::cos(ang);
+                bsp.coefs()(i, 1) = v * std::sin(ang);
+            }
+            rhomb.computeTopology();
+
+            gsConstantFunction<real_t> zero(0.0, 3);
+            // F6: "Derivatives" on one side of non-orthogonal sharp corner must throw
+            gsBoundaryConditions<real_t> bcBadDer;
+            bcBadDer.add(0, boundary::west, "Derivatives", zero, 2);
+            CHECK_THROW(gsAsG1ShellHierarchy<real_t>(rhomb, bcBadDer, 3, 1, 0, 0, true), std::runtime_error);
+
+            // F5: Clamped 20-deg rhombus with element-local eigenvalue SymmetricNitsche is strictly SPD
+            gsBoundaryConditions<real_t> bcClamp;
+            for (const auto& ps : rhomb.boundaries())
+                for (short_t c = 0; c < 3; ++c)
+                    bcClamp.add(ps.patch, ps.side(), "Clamped", zero, c);
+
+            gsKLShellMaterial<real_t> mat(1e6, 0.3, 0.05);
+            gsAsG1ShellHierarchy<real_t> hier(rhomb, bcClamp, 3, 1, 0, 1, true);
+            gsAsG1KLShellAssembler<real_t> asmbl = hier.makeAssembler(mat);
+            gsSparseMatrix<real_t> K, Kf;
+            gsVector<real_t> F, Ff, uf;
+            asmbl.assembleStiffness(K);
+            asmbl.assemblePhysicalRHS(
+                [](const gsVector<real_t>&, gsVector<real_t, 3>& f, real_t& pn) { f.setZero(); pn = 1.0; }, F);
+            hier.projectSystem(asmbl, K, F, Kf, Ff);
+
+            gsEigen::SimplicialLDLT<gsSparseMatrix<real_t>> ldlt;
+            ldlt.compute(Kf);
+            CHECK(ldlt.info() == gsEigen::Success);
+            CHECK(ldlt.vectorD().minCoeff() > 0.0);
+
+            const auto st = hier.solve(Kf, Ff, mat, uf, "cg", "line_ring1", 1, 1, 1, 200, 1e-11);
+            CHECK(st.converged);
+            gsVector<real_t> c_sol = hier.finest().T_free * uf;
+            CHECK(asmbl.evalDisplacement(c_sol, 0, 0.5, 0.5)(2) > 0.0);
+
+            // F10: flipGlobalNormalOrientation negates pressure-driven deflection exactly
+            asmbl.flipGlobalNormalOrientation();
+            gsVector<real_t> Fflip, Ffflip, ufflip;
+            asmbl.assemblePhysicalRHS(
+                [](const gsVector<real_t>&, gsVector<real_t, 3>& f, real_t& pn) { f.setZero(); pn = 1.0; }, Fflip);
+            hier.projectSystem(asmbl, K, Fflip, Kf, Ffflip);
+            hier.solve(Kf, Ffflip, mat, ufflip, "direct");
+            CHECK_CLOSE(-uf.norm(), -ufflip.norm(), 1e-12);
+            CHECK((uf + ufflip).norm() <= 1e-11 * uf.norm());
+
+            // F12: collectShellCoupledStripDofs with r_p = -1 activates default p + 1 rings
+            const auto skelNeg = shell_internal::collectShellCoupledStripDofs(
+                rhomb, hier.finest().dbasis, hier.finest().argBasis, hier.finest().mapper, -1, true, 3);
+            const auto skelZero = shell_internal::collectShellCoupledStripDofs(
+                rhomb, hier.finest().dbasis, hier.finest().argBasis, hier.finest().mapper, 0, true, 3);
+            CHECK(skelNeg.size() > skelZero.size());
+        }
+
+        // F8: Mismatched tangential parametric lengths across interface must throw
+        {
+            gsMultiPatch<real_t> badParam = embed2DTo3D(gsNurbsCreator<real_t>::BSplineSquareGrid(2, 1, 0.5));
+            auto& bsp1 = dynamic_cast<gsTensorBSpline<2, real_t>&>(badParam.patch(1));
+            bsp1.basis().knots(1).affineTransformTo(0.0, 2.0);
+            badParam.computeTopology();
+            CHECK_THROW(computeGluingData(badParam, real_t(1e-5)), std::runtime_error);
+        }
+
+        // F9: Missing interior geometry breakpoint in dbasis must throw
+        {
+            gsMultiPatch<real_t> mp = embed2DTo3D(gsMultiPatch<real_t>(*gsNurbsCreator<real_t>::BSplineSquare(1.0, 0.0, 0.0)));
+            mp.patch(0).uniformRefine(1); // geometry now has interior knot at 0.5
+            gsKnotVector<real_t> kv(0.0, 1.0, 0, 4); // basis missing knot at 0.5
+            gsMultiBasis<real_t> badBasis;
+            badBasis.addBasis(new gsTensorBSplineBasis<2, real_t>(kv, kv));
+            gsKLShellMaterial<real_t> mat(1e6, 0.3, 0.05);
+            CHECK_THROW(gsAsG1KLShellAssembler<real_t>(mp, badBasis, mat), std::runtime_error);
+        }
+    }
 }

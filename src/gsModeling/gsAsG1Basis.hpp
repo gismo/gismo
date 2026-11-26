@@ -1757,4 +1757,384 @@ void projectVectorAsG1Exact3D(
             if (freeCount(i) > 1) (*u_free_qi)(i) /= T(freeCount(i));
 }
 
+/**
+ * @brief Project physical Dirichlet boundary functions stored in @p bc onto the
+ *        eliminated boundary DOF vector @p u_bnd (size mapper.boundarySize()).
+ *
+ * Unlike projectVectorAsG1Exact3D (which requires analytic 3D gradients and Hessians
+ * for manufactured-solution studies), this routine requires only function values
+ * (eval_into) from gsBoundaryConditions for labels:
+ *   - "Values" / "Dirichlet" / "Clamped" / "ValuesAndDerivatives" (boundary trace L^2 projection)
+ *   - "Derivatives" / "ValuesAndDerivatives" (boundary normal-derivative L^2 projection)
+ *
+ * Fast-paths to a zero vector without linear solves whenever all boundary functions
+ * are null or identically zero at boundary quadrature points.
+ */
+template <typename T>
+void projectBoundaryDirichletValues3D(
+    const gsMultiPatch<T>& mp,
+    const gsMultiBasis<T>& dbasis,
+    const std::vector<gsArgyrisEmbedding<T>>& argBasis,
+    const gsDofMapper& mapper,
+    const gsBoundaryConditions<T>& bc,
+    index_t nComp,
+    gsVector<T>& u_bnd,
+    index_t quadExtra = 2)
+{
+    const index_t nBnd = mapper.boundarySize();
+    u_bnd.setZero(nBnd);
+    if (nBnd == 0)
+        return;
+
+    const size_t nP = mp.nPatches();
+    std::vector<gsSparseMatrix<T, RowMajor>> argRowMajor(nP);
+    bool rowMajorBuilt = false;
+
+    auto ensureRowMajor = [&]() {
+        if (rowMajorBuilt) return;
+        for (size_t p = 0; p < nP; ++p)
+            argRowMajor[p] = argBasis[p].matrix;
+        rowMajorBuilt = true;
+    };
+
+    struct BdrCondEntry
+    {
+        patchSide ps;
+        typename boundary_condition<T>::function_ptr fn;
+        bool zeroTarget;
+    };
+
+    for (index_t comp = 0; comp < nComp; ++comp)
+    {
+        // Deduplicate value-constrained and derivative-constrained sides for this component
+        std::map<std::pair<index_t, index_t>, BdrCondEntry> valSides, derSides;
+        auto addVal = [&](const std::string& label) {
+            for (auto it = bc.begin(label); it != bc.end(label); ++it)
+            {
+                if (it->unknown() != comp) continue;
+                const std::pair<index_t, index_t> key(it->ps.patch, static_cast<index_t>(it->ps.side().index()));
+                valSides[key] = BdrCondEntry{it->ps, it->function(), false};
+            }
+        };
+        addVal("Values");
+        addVal("Dirichlet");
+        addVal("Clamped");
+        addVal("ValuesAndDerivatives");
+
+        for (auto it = bc.begin("ValuesAndDerivatives"); it != bc.end("ValuesAndDerivatives"); ++it)
+        {
+            if (it->unknown() != comp) continue;
+            const std::pair<index_t, index_t> key(it->ps.patch, static_cast<index_t>(it->ps.side().index()));
+            derSides[key] = BdrCondEntry{it->ps, nullptr, true};
+        }
+        for (auto it = bc.begin("Derivatives"); it != bc.end("Derivatives"); ++it)
+        {
+            if (it->unknown() != comp) continue;
+            const std::pair<index_t, index_t> key(it->ps.patch, static_cast<index_t>(it->ps.side().index()));
+            derSides[key] = BdrCondEntry{it->ps, it->function(), false};
+        }
+
+        // Fast-path check: skip linear solve if all boundary targets for this component are zero
+        bool anyNonZero = false;
+        auto checkNonZero = [&](const std::map<std::pair<index_t, index_t>, BdrCondEntry>& sides) {
+            for (const auto& kv : sides)
+            {
+                const BdrCondEntry& e = kv.second;
+                if (e.zeroTarget || !e.fn) continue;
+                const size_t p = static_cast<size_t>(e.ps.patch);
+                const auto& tb = dynamic_cast<const gsTensorBSplineBasis<2, T>&>(dbasis[p]);
+                const short_t nDir = e.ps.direction(), tDir = 1 - nDir;
+                const bool par = e.ps.parameter();
+                const gsMatrix<T> supp = tb.support();
+                const std::vector<T> brkT = tb.component(tDir).knots().breaks();
+                const gsGaussRule<T> ruleT(tb.component(tDir).degree() + quadExtra);
+                gsMatrix<T> qu, pts, Xq, gVals;
+                gsVector<T> wu;
+                ruleT.mapToAll(brkT, qu, wu);
+                pts.resize(2, qu.cols());
+                pts.row(nDir).setConstant(supp(nDir, par ? 1 : 0));
+                pts.row(tDir) = qu.row(0);
+                if (e.fn->domainDim() == mp.targetDim())
+                {
+                    mp.patch(p).eval_into(pts, Xq);
+                    e.fn->eval_into(Xq, gVals);
+                }
+                else
+                {
+                    e.fn->eval_into(pts, gVals);
+                }
+                const index_t rowInFn = (gVals.rows() > comp) ? comp : 0;
+                if (gVals.row(rowInFn).cwiseAbs().maxCoeff() > T(0))
+                {
+                    anyNonZero = true;
+                    return;
+                }
+            }
+        };
+        checkNonZero(valSides);
+        if (!anyNonZero)
+            checkNonZero(derSides);
+        if (!anyNonZero)
+            continue;
+
+        ensureRowMajor();
+
+        // Collect all eliminated global boundary DOF indices belonging to this component
+        std::vector<index_t> bndToLoc(static_cast<size_t>(nBnd), -1);
+        std::vector<index_t> locToBnd;
+        for (size_t p = 0; p < nP; ++p)
+        {
+            const index_t nCols = argBasis[p].matrix.cols();
+            for (index_t k = 0; k < nCols; ++k)
+            {
+                if (mapper.is_boundary(k, static_cast<index_t>(p), comp))
+                {
+                    const index_t bIdx = mapper.bindex(k, static_cast<index_t>(p), comp);
+                    if (bndToLoc[static_cast<size_t>(bIdx)] < 0)
+                    {
+                        bndToLoc[static_cast<size_t>(bIdx)] = static_cast<index_t>(locToBnd.size());
+                        locToBnd.push_back(bIdx);
+                    }
+                }
+            }
+        }
+        const index_t nLocBnd = static_cast<index_t>(locToBnd.size());
+        if (nLocBnd == 0)
+            continue;
+
+        gsSparseEntries<T> gramEnt;
+        gsVector<T> rhsComp = gsVector<T>::Zero(nLocBnd);
+        std::vector<T> phiAccum(static_cast<size_t>(nLocBnd), T(0));
+        std::vector<index_t> touchedMark(static_cast<size_t>(nLocBnd), 0);
+        index_t markStamp = 0;
+        std::vector<index_t> touched;
+
+        // 1. Assemble boundary value L^2 Gram matrix and RHS over valSides
+        for (const auto& kv : valSides)
+        {
+            const BdrCondEntry& e = kv.second;
+            const size_t p = static_cast<size_t>(e.ps.patch);
+            const auto& tb = dynamic_cast<const gsTensorBSplineBasis<2, T>&>(dbasis[p]);
+            const gsGeometry<T>& geo = mp.patch(p);
+            const short_t nDir = e.ps.direction(), tDir = 1 - nDir;
+            const bool par = e.ps.parameter();
+            const gsMatrix<T> supp = tb.support();
+            const std::vector<T> brkT = tb.component(tDir).knots().breaks();
+            const gsGaussRule<T> ruleT(std::max(tb.component(tDir).degree(), geo.basis().degree(tDir)) + quadExtra);
+
+            const index_t nEt = static_cast<index_t>(brkT.size()) - 1;
+            gsMatrix<T> qu, pts, Xq, gD1, vals, gVals;
+            gsVector<T> wu;
+            gsMatrix<index_t> act;
+
+            for (index_t et = 0; et < nEt; ++et)
+            {
+                ruleT.mapTo(brkT[et], brkT[et + 1], qu, wu);
+                const index_t nQ = qu.cols();
+                pts.resize(2, nQ);
+                pts.row(nDir).setConstant(supp(nDir, par ? 1 : 0));
+                pts.row(tDir) = qu.row(0);
+
+                geo.deriv_into(pts, gD1);
+                tb.eval_into(pts, vals);
+                tb.active_into(pts.col(0), act);
+                if (e.fn)
+                {
+                    if (e.fn->domainDim() == mp.targetDim())
+                    {
+                        geo.eval_into(pts, Xq);
+                        e.fn->eval_into(Xq, gVals);
+                    }
+                    else
+                        e.fn->eval_into(pts, gVals);
+                }
+                const index_t rowInFn = (e.fn && gVals.rows() > comp) ? comp : 0;
+
+                for (index_t q = 0; q < nQ; ++q)
+                {
+                    gsVector<T, 3> At;
+                    for (int c = 0; c < 3; ++c)
+                        At(c) = gD1(2 * c + tDir, q);
+                    const T ds = At.norm();
+                    if (!(ds > T(0)) || !std::isfinite(ds)) continue;
+                    const T wBdr = wu(q) * ds;
+                    const T gVal = e.fn ? gVals(rowInFn, q) : T(0);
+
+                    touched.clear();
+                    ++markStamp;
+                    for (index_t a = 0; a < act.rows(); ++a)
+                    {
+                        const T va = vals(a, q);
+                        if (va == T(0)) continue;
+                        const index_t bspRow = act(a, 0);
+                        for (typename gsSparseMatrix<T, RowMajor>::InnerIterator it(argRowMajor[p], bspRow); it; ++it)
+                        {
+                            const index_t argCol = it.col();
+                            if (!mapper.is_boundary(argCol, static_cast<index_t>(p), comp))
+                                continue;
+                            const index_t locB = bndToLoc[static_cast<size_t>(mapper.bindex(argCol, static_cast<index_t>(p), comp))];
+                            if (touchedMark[static_cast<size_t>(locB)] != markStamp)
+                            {
+                                touchedMark[static_cast<size_t>(locB)] = markStamp;
+                                touched.push_back(locB);
+                            }
+                            phiAccum[static_cast<size_t>(locB)] += va * it.value();
+                        }
+                    }
+
+                    for (size_t i = 0; i < touched.size(); ++i)
+                    {
+                        const index_t li = touched[i];
+                        const T pi = phiAccum[static_cast<size_t>(li)];
+                        rhsComp(li) += wBdr * pi * gVal;
+                        for (size_t j = 0; j < touched.size(); ++j)
+                        {
+                            const index_t lj = touched[j];
+                            gramEnt.add(li, lj, wBdr * pi * phiAccum[static_cast<size_t>(lj)]);
+                        }
+                    }
+                    for (index_t li : touched)
+                        phiAccum[static_cast<size_t>(li)] = T(0);
+                }
+            }
+        }
+
+        // 2. Assemble boundary outward-conormal derivative Gram matrix & RHS over derSides
+        for (const auto& kv : derSides)
+        {
+            const BdrCondEntry& e = kv.second;
+            const size_t p = static_cast<size_t>(e.ps.patch);
+            const auto& tb = dynamic_cast<const gsTensorBSplineBasis<2, T>&>(dbasis[p]);
+            const gsGeometry<T>& geo = mp.patch(p);
+            const short_t nDir = e.ps.direction(), tDir = 1 - nDir;
+            const bool par = e.ps.parameter();
+            const T outSign = par ? T(1) : T(-1);
+            const gsMatrix<T> supp = tb.support();
+            const std::vector<T> brkT = tb.component(tDir).knots().breaks();
+            const std::vector<T> brkN = tb.component(nDir).knots().breaks();
+            const T dXiN = par ? (brkN[brkN.size() - 1] - brkN[brkN.size() - 2]) : (brkN[1] - brkN[0]);
+            const gsGaussRule<T> ruleT(std::max(tb.component(tDir).degree(), geo.basis().degree(tDir)) + quadExtra);
+
+            const index_t nEt = static_cast<index_t>(brkT.size()) - 1;
+            gsMatrix<T> qu, pts, Xq, gD1, gVals;
+            std::vector<gsMatrix<T>> ders;
+            gsVector<T> wu;
+            gsMatrix<index_t> act;
+
+            for (index_t et = 0; et < nEt; ++et)
+            {
+                ruleT.mapTo(brkT[et], brkT[et + 1], qu, wu);
+                const index_t nQ = qu.cols();
+                pts.resize(2, nQ);
+                pts.row(nDir).setConstant(supp(nDir, par ? 1 : 0));
+                pts.row(tDir) = qu.row(0);
+
+                geo.deriv_into(pts, gD1);
+                tb.evalAllDers_into(pts, 1, ders);
+                tb.active_into(pts.col(0), act);
+                if (!e.zeroTarget && e.fn)
+                {
+                    if (e.fn->domainDim() == mp.targetDim())
+                    {
+                        geo.eval_into(pts, Xq);
+                        e.fn->eval_into(Xq, gVals);
+                    }
+                    else
+                        e.fn->eval_into(pts, gVals);
+                }
+                const index_t rowInFn = (!e.zeroTarget && e.fn && gVals.rows() > comp) ? comp : 0;
+
+                for (index_t q = 0; q < nQ; ++q)
+                {
+                    gsVector<T, 3> A1, A2;
+                    for (int c = 0; c < 3; ++c)
+                    {
+                        A1(c) = gD1(2 * c + 0, q);
+                        A2(c) = gD1(2 * c + 1, q);
+                    }
+                    const T a11 = A1.dot(A1), a22 = A2.dot(A2), a12 = A1.dot(A2);
+                    const T detA = a11 * a22 - a12 * a12;
+                    if (!(detA > T(0)) || !std::isfinite(detA)) continue;
+                    const T dS = std::sqrt(detA);
+                    const gsVector<T, 3> A1up = (a22 * A1 - a12 * A2) / detA;
+                    const gsVector<T, 3> A2up = (a11 * A2 - a12 * A1) / detA;
+
+                    const gsVector<T, 3>& At = (tDir == 0) ? A1 : A2;
+                    const gsVector<T, 3>& An = (nDir == 0) ? A1 : A2;
+                    const T ds = At.norm();
+                    if (!(ds > T(0)) || !std::isfinite(ds)) continue;
+                    const gsVector<T, 3> tau = At / ds;
+                    const gsVector<T, 3> gOut = outSign * An;
+                    const gsVector<T, 3> nuRaw = gOut - gOut.dot(tau) * tau;
+                    const T nuNorm = nuRaw.norm();
+                    if (!(nuNorm > T(0)) || !std::isfinite(nuNorm)) continue;
+                    const gsVector<T, 3> nuVec = nuRaw / nuNorm;
+                    const T nu1up = nuVec.dot(A1up);
+                    const T nu2up = nuVec.dot(A2up);
+                    const T hNu = (dS / ds) * dXiN;
+                    const T wDer = wu(q) * ds * hNu * hNu;
+                    const T gDerVal = (!e.zeroTarget && e.fn) ? gVals(rowInFn, q) : T(0);
+
+                    touched.clear();
+                    ++markStamp;
+                    for (index_t a = 0; a < act.rows(); ++a)
+                    {
+                        const T dNuN = nu1up * ders[1](2 * a + 0, q) + nu2up * ders[1](2 * a + 1, q);
+                        if (dNuN == T(0)) continue;
+                        const index_t bspRow = act(a, 0);
+                        for (typename gsSparseMatrix<T, RowMajor>::InnerIterator it(argRowMajor[p], bspRow); it; ++it)
+                        {
+                            const index_t argCol = it.col();
+                            if (!mapper.is_boundary(argCol, static_cast<index_t>(p), comp))
+                                continue;
+                            const index_t locB = bndToLoc[static_cast<size_t>(mapper.bindex(argCol, static_cast<index_t>(p), comp))];
+                            if (touchedMark[static_cast<size_t>(locB)] != markStamp)
+                            {
+                                touchedMark[static_cast<size_t>(locB)] = markStamp;
+                                touched.push_back(locB);
+                            }
+                            phiAccum[static_cast<size_t>(locB)] += dNuN * it.value();
+                        }
+                    }
+
+                    for (size_t i = 0; i < touched.size(); ++i)
+                    {
+                        const index_t li = touched[i];
+                        const T pi = phiAccum[static_cast<size_t>(li)];
+                        rhsComp(li) += wDer * pi * gDerVal;
+                        for (size_t j = 0; j < touched.size(); ++j)
+                        {
+                            const index_t lj = touched[j];
+                            gramEnt.add(li, lj, wDer * pi * phiAccum[static_cast<size_t>(lj)]);
+                        }
+                    }
+                    for (index_t li : touched)
+                        phiAccum[static_cast<size_t>(li)] = T(0);
+                }
+            }
+        }
+
+        gsSparseMatrix<T> G(nLocBnd, nLocBnd);
+        G.setFrom(gramEnt);
+        gsEigen::SimplicialLDLT<gsSparseMatrix<T>> ldlt;
+        ldlt.compute(G);
+        if (ldlt.info() != gsEigen::Success)
+        {
+            T maxDiag = T(0);
+            for (index_t i = 0; i < nLocBnd; ++i)
+                maxDiag = std::max(maxDiag, std::abs(G.coeff(i, i)));
+            const T reg = T(1e-13) * std::max(maxDiag, T(1));
+            for (index_t i = 0; i < nLocBnd; ++i)
+                G.coeffRef(i, i) += reg;
+            ldlt.compute(G);
+        }
+        GISMO_ENSURE(ldlt.info() == gsEigen::Success,
+                     "projectBoundaryDirichletValues3D: failed to factor boundary projection Gram matrix for comp "
+                     << comp << ".");
+        const gsVector<T> uComp = ldlt.solve(rhsComp);
+        for (index_t i = 0; i < nLocBnd; ++i)
+            u_bnd(locToBnd[static_cast<size_t>(i)]) = uComp(i);
+    }
+}
+
 } // namespace gismo

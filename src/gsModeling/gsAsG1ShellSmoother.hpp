@@ -143,7 +143,8 @@ std::vector<index_t> collectShellCoupledStripDofs(
             addNode(static_cast<index_t>(p), col);
 
         // 2. Interior boundary rings within distance r_p of interfaces (or all sides)
-        if (r_p <= 0 || nInt == 0)
+        //    (r_p == 0 disables rings; r_p < 0 selects the default p + 1 overlapping ring width)
+        if (r_p == 0 || nInt == 0)
             continue;
 
         const gsTensorBSplineBasis<2, T>& tb =
