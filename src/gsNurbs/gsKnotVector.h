@@ -165,9 +165,11 @@ public: // iterator ends
         return domainIter(new gsKnotDomainIterator<T>(*this));
     }
 
-    domainIter beginBdr(const boxSide   /* bs */) const override
+    /// The boundary of side \a bs (west or east) is the end point of the
+    /// domain on that side, a single element of zero length
+    domainIter beginBdr(const boxSide bs) const override
     {
-        return domainIter(new gsKnotDomainIterator<T>(*this));
+        return domainIter(new gsKnotDomainBoundaryIterator<T>(*this, bs));
     }
 
     domainIter endAll() const override
@@ -175,9 +177,16 @@ public: // iterator ends
         return domainIter(new gsKnotDomainIterator<T>(*this,false));
     }
 
-    domainIter endBdr(const boxSide   /* bs */) const override
+    /// @brief Number of elements on boundary side \a s, always 1: the end
+    /// point of the domain on that side.
+    /// @param s Boundary side, must be boundary::west or boundary::east;
+    /// any other value, including the default boundary::none, fails the
+    /// GISMO_ENSURE.
+    size_t numElementsBdr(boxSide const & s = boundary::none) const override
     {
-        return domainIter(new gsKnotDomainIterator<T>(*this,false));
+        GISMO_ENSURE(s == boundary::west || s == boundary::east,
+                     "A knot vector domain has the boundary sides west and east, got "<< s);
+        return 1;
     }
 
     short_t dim() const override { return 1; }

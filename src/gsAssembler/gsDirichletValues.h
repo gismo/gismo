@@ -24,6 +24,10 @@ namespace expr
 template<class T> class gsFeSpace;
 };
 
+/// Dirichlet data is either scalar, and then applies to every component the
+/// condition constrains, or has one component per space component, of which
+/// the constrained ones are used.
+///
 /// \param sameElement asserts that each boundary quadrature batch lies in a single Bezier element of
 /// the geometry map; passing false evaluates the map per point. Read from no option list.
 /// Applies to the \c dirichlet::l2Projection branch only: \c dirichlet::interpolation does not
@@ -103,6 +107,16 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
         const int k = it->patch();
         const gsBasis<T> & basis = u.source().basis(k);
 
+        if (!it->isHomogeneous())
+        {
+            const index_t nd   = it->function()->piece(k).targetDim();
+            const index_t need = (-1 == com ? u.dim() : com + 1);
+            GISMO_ENSURE(1 == nd || nd >= need,
+                         "Dirichlet data on patch "<<k<<", side "<<it->side()<<" has "<<nd
+                         <<" components; expected 1 or at least "<<need
+                         <<" for the "<<u.dim()<<"-component space");
+        }
+
         GISMO_ENSURE((dynamic_cast<const gsTensorBasis<1,T>*>(&basis) ||
                       dynamic_cast<const gsTensorBasis<2,T>*>(&basis) ||
                       dynamic_cast<const gsTensorBasis<3,T>*>(&basis) ||
@@ -169,11 +183,13 @@ void gsDirichletValuesByTPInterpolation(const expr::gsFeSpace<T> & u,
             typename gsGeometry<T>::uPtr geo = h->interpolateAtAnchors(fpts);
             const gsMatrix<T> & dVals = geo->coefs();
 
+            const index_t dc = (1==dVals.cols() ? 0 : r);
+
             // Save corresponding boundary dofs
             for (index_t l=0; l!= boundary.size(); ++l)
             {
                 const int ii = u.mapper().bindex( boundary.at(l) , k, r );
-                fixedDofs.at(ii) = dVals.at(l);
+                fixedDofs.at(ii) = dVals(l, dc);
             }
         }
     }
@@ -311,6 +327,19 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
         const gsBasis<T> & basis = u.source().basis(patchIdx);
         const gsFunction<T> & patch = gmap.function(patchIdx);
 
+        if (!iter->isHomogeneous())
+        {
+            const index_t nd   = iter->function()->piece(patchIdx).targetDim();
+            const index_t need = (-1 == com ? u.dim() : com + 1);
+            GISMO_ENSURE(1 == nd || nd >= need,
+                         "Dirichlet data on patch "<<patchIdx<<", side "<<iter->side()<<" has "<<nd
+                         <<" components; expected 1 or at least "<<need
+                         <<" for the "<<u.dim()<<"-component space");
+        }
+
+        // On a curve the side is an end point; computeAuxiliaryData (gsFunction.hpp) sets its measure.
+        md.side = (1 == patch.domainDim() ? iter->side() : boxSide(boundary::none));
+
         // Set up quadrature to degree+1 Gauss points per direction,
         // all lying on iter->side() except from the direction which
         // is NOT along the element
@@ -397,12 +426,7 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
                   }
                 }
 
-                GISMO_ASSERT((com!=-1) || rhsVals.rows() == u.dim(),
-                    "If no component is specified for Dirichlet boundary, "
-                    "target dimension must match field dimension.");
-                GISMO_ASSERT((com==-1) || rhsVals.rows() == 1,
-                    "If the component is specified for Dirichlet boundary, "
-                    "then a scalar function is expected.");
+                const index_t dc = (1==rhsVals.rows() ? 0 : r);
 
                 // Do the actual assembly:
                 for (index_t k = 0; k < md.points.cols(); k++)
@@ -430,7 +454,7 @@ void gsDirichletValuesByL2Projection( const expr::gsFeSpace<T> & u,
                             projMatEntries.add(ii, jj, weight_k * basisVals(i, k) * basisVals(j, k));
                         } // for j
 
-                        globProjRhs.at(ii) += weight_k * basisVals(i, k) * rhsVals( (-1==com?r:0) ,k);
+                        globProjRhs.at(ii) += weight_k * basisVals(i, k) * rhsVals(dc, k);
                         //globProjRhs.at(ii) += weight_k * basisVals(i, k) * rhsVals(r ,k);
 
                     } // for i

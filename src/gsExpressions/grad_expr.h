@@ -43,6 +43,12 @@ public:
     grad_expr(const E & u) : _u(u)
     { GISMO_ASSERT(1==u.dim(),"grad(.) requires 1D variable, use jac(.) instead.");}
 
+    /// @brief Copy constructor: copies the wrapped expression but not the
+    /// scratch matrix \a tmp of eval(), which starts empty in the copy
+    grad_expr(const grad_expr & other)
+    : _expr<grad_expr<E> >(), _u(other._u)
+    { }
+
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
         // Assumes: derivatives are in _u.data().values[1]
@@ -52,7 +58,10 @@ public:
         return tmp;
     }
 
-    index_t rows() const { return 1 /*==u.dim()*/; }
+    // A space has one row per basis function. A variable has one row per
+    // component of its source: eval() gives the Jacobian of a vector-valued
+    // function.
+    index_t rows() const { return 0 == Space ? _u.source().targetDim() : 1; }
 
     index_t cols() const { return _u.source().domainDim(); }
 
