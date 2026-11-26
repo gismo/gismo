@@ -143,6 +143,34 @@ public:
     );
 
     /// Provides \a gsLinearOperator representing a preconditioner for the
+    /// stiffness matrix \f$ (\nabla u, \nabla v)_{L_2} \f$ on the physical
+    /// domain of a single patch, based on the fast diagonalization approach
+    /// (SIAM J. Sci. Comput., 38 (6), p. A3644 - A3671, 2016)
+    ///
+    /// The operator is the exact inverse of
+    /// \f$ \sum_{k=1}^d (\tilde c_k \partial_k u, \partial_k v)_{L_2} \f$
+    /// on the parameter domain, where
+    /// \f$ \tilde c_k(\xi) = a_k(\xi_k) \prod_{j \ne k} m_j(\xi_j) \f$
+    /// is a separable approximation of
+    /// \f$ c_k = (|\det J| J^{-1} J^{-\top})_{kk} \f$ and \f$ J \f$ is the
+    /// Jacobian of the geometry map. The weights \f$ a_k \f$ and
+    /// \f$ m_j \f$ are those of \a elasticityFastDiagonalizationOp. If
+    /// \f$ |\det J| J^{-1} J^{-\top} \f$ is diagonal and its entries are of
+    /// the given form, the operator is the exact inverse of the stiffness
+    /// matrix that is assembled with the quadrature rule given by \a opt.
+    ///
+    /// \param basis  A tensor basis
+    /// \param geo    Geometry map of the patch
+    /// \param bc     Boundary conditions
+    /// \param opt    Assembler options
+    static OpUPtr            fastDiagonalizationOp(
+        const gsBasis<T>& basis,
+        const gsGeometry<T>& geo,
+        const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
+        const gsOptionList& opt = gsAssembler<T>::defaultOptions()
+    );
+
+    /// Provides \a gsLinearOperator representing a preconditioner for the
     /// displacement formulation of linear elasticity on a single patch, based
     /// on the fast diagonalization approach
     /// (SIAM J. Sci. Comput., 38 (6), p. A3644 - A3671, 2016)
@@ -163,11 +191,35 @@ public:
     /// component \f$ c \f$ are those registered for the unknown 0 with the
     /// component \f$ c \f$ or with all components.
     ///
-    /// If a geometry is given, the coefficients of each direction are scaled
-    /// with the average over the patch of the corresponding diagonal entry of
-    /// \f$ |\det J| J^{-1} J^{-\top} \f$, where \f$ J \f$ is the Jacobian of the
-    /// geometry map. This accounts for the size and the aspect ratio of the
-    /// patch.
+    /// If a geometry is given, the block of the component \f$ c \f$ represents
+    /// \f$ \sum_{k=1}^d (\tilde c_{c,k} \partial_k u_c, \partial_k v_c)_{L_2} \f$
+    /// instead, where \f$ \tilde c_{c,k} \f$ is a separable approximation of
+    /// \f$ c_{c,k} = \mu (|\det J| J^{-1} J^{-\top})_{kk} + (\lambda+\mu) |\det J| (J^{-1})_{kc}^2 \f$
+    /// and \f$ J \f$ is the Jacobian of the geometry map. These coefficients
+    /// are the ones of the terms \f$ \partial_k u_c \partial_k v_c \f$ of the
+    /// diagonal block of the elasticity bilinear form on the physical
+    /// domain; its terms with mixed derivatives are dropped. The
+    /// approximation reads
+    /// \f$ \tilde c_{c,k}(\xi) = a_k(\xi_k) \prod_{j \ne k} m_j(\xi_j) \f$,
+    /// so the block is the sum over \f$ k \f$ of Kronecker products of a
+    /// univariate stiffness matrix weighted with \f$ a_k \f$ and univariate
+    /// mass matrices weighted with \f$ m_j \f$, which the fast diagonalization
+    /// inverts exactly. The weights are means over the quadrature nodes of
+    /// the basis: \f$ a_k(\xi_k) \f$ is the mean of \f$ c_{c,k} \f$ over all other
+    /// directions and \f$ m_j(\xi_j) \f$ is the geometric mean over
+    /// \f$ k \ne j \f$ of the mean of \f$ c_{c,k} \f$ over all directions but
+    /// \f$ j \f$, divided by the mean of \f$ c_{c,k} \f$ over the patch. The
+    /// approximation is exact if the coefficients are of the given form,
+    /// like for a box with a different grading in each direction or for an
+    /// annulus in two dimensions. For a constant Jacobian, each direction
+    /// is scaled with one number, which accounts for the size and the
+    /// aspect ratio of the patch. The setup evaluates the Jacobian once per
+    /// quadrature node of the patch.
+    ///
+    /// If the determinant of the Jacobian vanishes or changes its sign at a
+    /// quadrature node, each direction is scaled with the average of
+    /// \f$ (|\det J| J^{-1} J^{-\top})_{kk} \f$ over the anchors of the
+    /// geometry instead.
     ///
     /// \param basis   A tensor basis (of one displacement component)
     /// \param bc      Boundary conditions
@@ -257,6 +309,15 @@ private:
         const gsOptionList& opt,
         T alpha,
         const gsVector<T>& beta,
+        T gamma
+    );
+
+    // Fast diagonalization for given univariate matrices, where the i-th
+    // matrix belongs to the direction d-1-i
+    static OpUPtr            fastDiagonalization(
+        const std::vector< gsSparseMatrix<T> >& local_stiff,
+        const std::vector< gsSparseMatrix<T> >& local_mass,
+        T alpha,
         T gamma
     );
 

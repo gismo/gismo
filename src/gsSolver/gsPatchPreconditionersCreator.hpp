@@ -18,6 +18,7 @@
 #include <gsSolver/gsBlockOp.h>
 #include <gsSolver/gsMatrixOp.h>
 #include <gsAssembler/gsExprAssembler.h>
+#include <gsAssembler/gsQuadrature.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
 
 namespace gismo
@@ -105,6 +106,253 @@ gsSparseMatrix<T> assembleStiffness(const gsBasis<T>& basis)
     return result;
 }
 
+
+// Quadrature nodes and weights of all elements of a univariate basis, with
+// the values, the derivatives and the indices of the basis functions that
+// are active at the nodes (one column per node)
+template<typename T>
+struct univariateQuadrature
+{
+    gsMatrix<T>       nodes;
+    gsVector<T>       weights;
+    gsMatrix<T>       values;
+    gsMatrix<T>       derivs;
+    gsMatrix<index_t> actives;
+    T                 volume; // sum of the weights
+};
+
+template<typename T>
+void setupUnivariateQuadrature(const gsBasis<T>& basis, const gsOptionList& opt,
+                               univariateQuadrature<T>& result)
+{
+    typename gsQuadRule<T>::uPtr rule = gsQuadrature::getPtr(basis, opt);
+    memory::shared_ptr< gsDomain<T> > domain = basis.domain();
+    typename gsBasis<T>::domainIter domIt    = domain->beginAll();
+    typename gsBasis<T>::domainIter domItEnd = domain->endAll();
+
+    std::vector<T> nodes, weights;
+    gsMatrix<T> elNodes;
+    gsVector<T> elWeights;
+    for (; domIt < domItEnd; ++domIt )
+    {
+        rule->mapTo( domIt.lowerCorner(), domIt.upperCorner(), elNodes, elWeights );
+        for ( index_t q=0; q<elWeights.rows(); ++q )
+        {
+            nodes.push_back( elNodes(0,q) );
+            weights.push_back( elWeights[q] );
+        }
+    }
+
+    const index_t n = (index_t)nodes.size();
+    result.nodes.resize(1,n);
+    result.weights.resize(n);
+    for ( index_t q=0; q<n; ++q )
+    {
+        result.nodes(0,q)  = nodes[q];
+        result.weights[q]  = weights[q];
+    }
+    result.volume = result.weights.sum();
+    basis.eval_into  (result.nodes, result.values );
+    basis.deriv_into (result.nodes, result.derivs );
+    basis.active_into(result.nodes, result.actives);
+}
+
+// Assembles the univariate matrix with the entries
+// sum_q weights[q] coef[q] f_i(nodes[q]) f_j(nodes[q]), where the f_i are
+// the derivatives of the basis functions if stiffness is true and their
+// values otherwise
+template<typename T>
+gsSparseMatrix<T> assembleWeighted(const univariateQuadrature<T>& qu,
+                                   const gsVector<T>& coef, bool stiffness, index_t sz)
+{
+    const gsMatrix<T>& f = stiffness ? qu.derivs : qu.values;
+    const index_t K = f.rows();
+    gsSparseEntries<T> entries;
+    entries.reserve( K*K*f.cols() );
+    for ( index_t q=0; q<f.cols(); ++q )
+    {
+        const T w = qu.weights[q] * coef[q];
+        for ( index_t i=0; i<K; ++i )
+            for ( index_t j=0; j<K; ++j )
+                entries.add( qu.actives(i,q), qu.actives(j,q), w * f(i,q) * f(j,q) );
+    }
+    gsSparseMatrix<T> result(sz,sz);
+    result.setFrom(entries);
+    result.makeCompressed();
+    return result;
+}
+
+// Averages of the diagonal of |det J| J^{-1} J^{-T} over the anchors of the
+// basis of the geometry
+template<typename T>
+gsVector<T> averageMetricDiagonal(const gsGeometry<T>& geo)
+{
+    const index_t d = geo.domainDim();
+    gsMatrix<T> pts, jacs;
+    geo.basis().anchors_into(pts);
+    geo.jacobian_into(pts, jacs);
+    gsVector<T> result = gsVector<T>::Zero(d);
+    for ( index_t i=0; i<pts.cols(); ++i )
+    {
+        const gsMatrix<T> J = jacs.block(0, i*d, d, d);
+        const T detJ = math::abs(J.determinant());
+        const gsMatrix<T> Jinv = J.inverse();
+        for ( index_t k=0; k<d; ++k )
+            result[k] += detJ * Jinv.row(k).squaredNorm();
+    }
+    result /= (T)(pts.cols());
+    return result;
+}
+
+// Sums of |det J| (J^{-1})_{kc}^2 over the tensor grid of the quadrature
+// nodes, where J is the Jacobian of the geometry. For the direction k, the
+// component c and the direction j, result[(k*d+c)*d+j] has one entry per
+// node of the direction j: the sum over the nodes of all other directions,
+// weighted with their quadrature weights. The grid is traversed line by
+// line, so the memory is linear in the univariate sizes.
+//
+// Returns false if the determinant vanishes or changes its sign.
+template<typename T>
+bool assembleMetricSums(const gsGeometry<T>& geo,
+                        const std::vector< univariateQuadrature<T> >& qu,
+                        std::vector< gsVector<T> >& result)
+{
+    const index_t d = (index_t)qu.size();
+    result.resize(d*d*d);
+    for ( index_t i=0; i<d*d; ++i )
+        for ( index_t j=0; j<d; ++j )
+            result[i*d+j].setZero( qu[j].weights.rows() );
+
+    const index_t n0 = qu[0].weights.rows();
+    gsMatrix<T> pts(d,n0), jacs, J, Jinv, line(d,d);
+    pts.row(0) = qu[0].nodes;
+    gsVector<index_t> idx = gsVector<index_t>::Zero(d);
+    T sign = 0;
+
+    // Loop over the lines in the direction 0
+    while (true)
+    {
+        T w = 1;
+        for ( index_t l=1; l<d; ++l )
+        {
+            pts.row(l).setConstant( qu[l].nodes(0,idx[l]) );
+            w *= qu[l].weights[idx[l]];
+        }
+        geo.jacobian_into(pts, jacs);
+
+        line.setZero();
+        for ( index_t i=0; i<n0; ++i )
+        {
+            J = jacs.block(0, i*d, d, d);
+            const T detJ = J.determinant();
+            if (sign == 0)
+                sign = detJ > 0 ? 1 : -1;
+            if (!(sign * detJ > 0))
+                return false;
+            Jinv = J.inverse();
+            for ( index_t k=0; k<d; ++k )
+                for ( index_t c=0; c<d; ++c )
+                {
+                    const T val = sign * detJ * Jinv(k,c) * Jinv(k,c);
+                    result[(k*d+c)*d][i] += w * val;
+                    line(k,c) += qu[0].weights[i] * val;
+                }
+        }
+
+        for ( index_t j=1; j<d; ++j )
+        {
+            T wj = 1;
+            for ( index_t l=1; l<d; ++l )
+                if (l != j)
+                    wj *= qu[l].weights[idx[l]];
+            for ( index_t k=0; k<d; ++k )
+                for ( index_t c=0; c<d; ++c )
+                    result[(k*d+c)*d+j][idx[j]] += wj * line(k,c);
+        }
+
+        // Next line
+        index_t l = 1;
+        for ( ; l<d; ++l )
+        {
+            if (++idx[l] < qu[l].weights.rows())
+                break;
+            idx[l] = 0;
+        }
+        if (l == d)
+            break;
+    }
+    return true;
+}
+
+// Univariate matrices of the separable approximation
+//   c_k(xi) ~ a_k(xi_k) prod_{j!=k} m_j(xi_j)
+// of the coefficients c_k = sum_c factors(k,c) |det J| (J^{-1})_{kc}^2,
+// given the sums from assembleMetricSums: stiffness matrices weighted with
+// a_k and mass matrices weighted with m_k.
+//
+// a_k is the mean of c_k over the hyperplanes orthogonal to the direction k.
+// m_j is the geometric mean over k!=j of the means of c_k over the
+// hyperplanes orthogonal to the direction j, each divided by the mean of c_k
+// over the whole parameter domain. All means are weighted with the
+// quadrature weights. The approximation is exact if each c_k is of the
+// given form; for a constant Jacobian, a_k = c_k and m_j = 1.
+template<typename T>
+void assembleTensorSeparable(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& opt,
+    const std::vector< univariateQuadrature<T> >& qu,
+    const std::vector< gsVector<T> >& sums,
+    const gsMatrix<T>& factors,
+    std::vector< gsSparseMatrix<T> >& local_stiff,
+    std::vector< gsSparseMatrix<T> >& local_mass
+    )
+{
+    const index_t d = basis.dim();
+
+    // mean[k*d+j]: means of c_k over the hyperplanes orthogonal to j
+    std::vector< gsVector<T> > mean(d*d);
+    gsVector<T> total(d);
+    for ( index_t k=0; k<d; ++k )
+    {
+        for ( index_t j=0; j<d; ++j )
+        {
+            T vol = 1;
+            for ( index_t l=0; l<d; ++l )
+                if (l != j)
+                    vol *= qu[l].volume;
+            mean[k*d+j].setZero( qu[j].weights.rows() );
+            for ( index_t c=0; c<d; ++c )
+                mean[k*d+j] += (factors(k,c) / vol) * sums[(k*d+c)*d+j];
+        }
+        total[k] = qu[k].weights.dot(mean[k*d+k]) / qu[k].volume;
+    }
+
+    local_stiff.resize(d);
+    local_mass.resize(d);
+    for ( index_t j=0; j<d; ++j )
+    {
+        const gsVector<T>& a = mean[j*d+j];
+        gsVector<T> m = gsVector<T>::Ones( qu[j].weights.rows() );
+        for ( index_t k=0; k<d; ++k )
+            if (k != j)
+                m.array() *= mean[k*d+j].array() / total[k];
+        if (d > 2)
+            for ( index_t q=0; q<m.rows(); ++q )
+                m[q] = math::pow( m[q], (T)(1)/(T)(d-1) );
+
+        GISMO_ASSERT ( (a.array() > 0).all() && (m.array() > 0).all(),
+            "gsPatchPreconditionersCreator: the separable weights have to be positive." );
+
+        // The i-th univariate matrix belongs to the direction d-1-i
+        const index_t sz = basis.component(j).size();
+        local_stiff[d-1-j] = assembleWeighted(qu[j], a, true , sz);
+        local_mass [d-1-j] = assembleWeighted(qu[j], m, false, sz);
+        const gsBoundaryConditions<T> bcj = boundaryConditionsForDirection(bc,j);
+        eliminateDirichlet1D(bcj, opt, local_stiff[d-1-j]);
+        eliminateDirichlet1D(bcj, opt, local_mass [d-1-j]);
+    }
+}
 
 template<typename T>
 std::vector< gsSparseMatrix<T> > assembleTensorMass(
@@ -306,6 +554,35 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
 }
 
 template<typename T>
+typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<T>::fastDiagonalizationOp(
+    const gsBasis<T>& basis,
+    const gsGeometry<T>& geo,
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& opt
+    )
+{
+    const index_t d = basis.dim();
+    GISMO_ASSERT ( geo.domainDim() == d && geo.targetDim() == d,
+        "gsPatchPreconditionersCreator<T>::fastDiagonalizationOp(): geometry and basis do not fit." );
+
+    std::vector< univariateQuadrature<T> > qu(d);
+    for ( index_t k=0; k<d; ++k )
+        setupUnivariateQuadrature(basis.component(k), opt, qu[k]);
+
+    std::vector< gsVector<T> > sums;
+    if ( !assembleMetricSums(geo, qu, sums) )
+    {
+        // The geometry map is not regular: one average per direction
+        return fastDiagonalization(basis, bc, opt, 0, averageMetricDiagonal(geo), 0);
+    }
+
+    std::vector< gsSparseMatrix<T> > local_stiff, local_mass;
+    const gsMatrix<T> factors = gsMatrix<T>::Ones(d,d);
+    assembleTensorSeparable(basis, bc, opt, qu, sums, factors, local_stiff, local_mass);
+    return fastDiagonalization(local_stiff, local_mass, 0, 0);
+}
+
+template<typename T>
 typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<T>::elasticityFastDiagonalizationOp(
     const gsBasis<T>& basis,
     const gsBoundaryConditions<T>& bc,
@@ -337,29 +614,38 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
         "gsPatchPreconditionersCreator<T>::elasticityFastDiagonalizationOp() needs mu>0 and lambda+mu>0." );
 
     const index_t d = basis.dim();
+    typename gsBlockOp<T>::uPtr result = gsBlockOp<T>::make(d,d);
 
-    // Averages of the diagonal of |det J| J^{-1} J^{-T} over the anchors of the basis
     gsVector<T> scaling = gsVector<T>::Ones(d);
     if (geo)
     {
         GISMO_ASSERT ( geo->domainDim() == d && geo->targetDim() == d,
             "gsPatchPreconditionersCreator<T>::elasticityFastDiagonalizationOp(): geometry and basis do not fit." );
-        gsMatrix<T> pts, jacs;
-        geo->basis().anchors_into(pts);
-        geo->jacobian_into(pts, jacs);
-        scaling.setZero();
-        for ( index_t i=0; i<pts.cols(); ++i )
+
+        std::vector< univariateQuadrature<T> > qu(d);
+        for ( index_t k=0; k<d; ++k )
+            setupUnivariateQuadrature(basis.component(k), opt, qu[k]);
+
+        std::vector< gsVector<T> > sums;
+        if ( assembleMetricSums(*geo, qu, sums) )
         {
-            const gsMatrix<T> J = jacs.block(0, i*d, d, d);
-            const T detJ = math::abs(J.determinant());
-            const gsMatrix<T> Jinv = J.inverse();
-            for ( index_t k=0; k<d; ++k )
-                scaling[k] += detJ * Jinv.row(k).squaredNorm();
+            // The coefficient of the direction k in the block of the component c is
+            // mu (|det J| J^{-1} J^{-T})_{kk} + (lambda+mu) |det J| (J^{-1})_{kc}^2
+            std::vector< gsSparseMatrix<T> > local_stiff, local_mass;
+            for ( index_t c=0; c<d; ++c )
+            {
+                gsMatrix<T> factors = gsMatrix<T>::Constant(d,d,mu);
+                factors.col(c).array() += lambda+mu;
+                assembleTensorSeparable(basis, bc[c], opt, qu, sums, factors, local_stiff, local_mass);
+                result->addOperator(c, c, fastDiagonalization(local_stiff, local_mass, 0, 0) );
+            }
+            return result;
         }
-        scaling /= (T)(pts.cols());
+
+        // The geometry map is not regular: one average per direction
+        scaling = averageMetricDiagonal(*geo);
     }
 
-    typename gsBlockOp<T>::uPtr result = gsBlockOp<T>::make(d,d);
     for ( index_t c=0; c<d; ++c )
     {
         gsVector<T> beta = mu * scaling;
@@ -389,6 +675,19 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
     // The i-th univariate matrix belongs to the direction d-1-i
     for (index_t i=0; i!=d; ++i)
         local_stiff[i] *= beta[d-1-i];
+
+    return fastDiagonalization(local_stiff, local_mass, alpha, gamma);
+}
+
+template<typename T>
+typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<T>::fastDiagonalization(
+    const std::vector< gsSparseMatrix<T> >& local_stiff,
+    const std::vector< gsSparseMatrix<T> >& local_mass,
+    T alpha,
+    T gamma
+    )
+{
+    const index_t d = (index_t)local_stiff.size();
 
     // Determine overall size
     index_t sz = 1;
