@@ -15,6 +15,7 @@
 #include <gsSolver/gsSumOp.h>
 #include <gsSolver/gsProductOp.h>
 #include <gsSolver/gsKroneckerOp.h>
+#include <gsSolver/gsBlockOp.h>
 #include <gsSolver/gsMatrixOp.h>
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsNurbs/gsTensorBSplineBasis.h>
@@ -36,6 +37,20 @@ gsBoundaryConditions<T> boundaryConditionsForDirection( const gsBoundaryConditio
         if (cond)
             result.addCondition(local,cond->type(),cond->function());
     }
+    return result;
+}
+
+template<typename T>
+gsBoundaryConditions<T> boundaryConditionsForComponent( const gsBoundaryConditions<T>& bc, short_t component )
+{
+    gsBoundaryConditions<T> result;
+
+    for ( typename gsBoundaryConditions<T>::const_bciterator it = bc.beginAll(); it != bc.endAll(); ++it )
+        for ( typename gsBoundaryConditions<T>::const_iterator cond = it->second.begin(); cond != it->second.end(); ++cond )
+            if ( cond->unknown() == 0 && cond->patch() == 0
+                 && ( cond->unkComponent() == -1 || cond->unkComponent() == component )
+                 && !result.getConditionFromSide(cond->ps) )
+                result.addCondition(cond->ps,cond->type(),cond->function());
     return result;
 }
 
@@ -270,17 +285,110 @@ typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<
 {
     GISMO_ASSERT ( beta != 0, "gsPatchPreconditionersCreator<T>::fastDiagonalizationOp() does not work for beta==0." );
 
+    return fastDiagonalization(basis, bc, opt, alpha, gsVector<T>::Constant(basis.dim(),beta), gamma);
+}
+
+template<typename T>
+typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<T>::fastDiagonalizationOp(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& opt,
+    T alpha,
+    const gsVector<T>& beta
+    )
+{
+    GISMO_ASSERT ( beta.rows() == basis.dim(),
+        "gsPatchPreconditionersCreator<T>::fastDiagonalizationOp() needs one beta per direction." );
+    GISMO_ASSERT ( (beta.array() > 0).all(),
+        "gsPatchPreconditionersCreator<T>::fastDiagonalizationOp() needs positive betas." );
+
+    return fastDiagonalization(basis, bc, opt, alpha, beta, 0);
+}
+
+template<typename T>
+typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<T>::elasticityFastDiagonalizationOp(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& opt,
+    T lambda,
+    T mu,
+    const gsGeometry<T>* geo
+    )
+{
+    std::vector< gsBoundaryConditions<T> > bcs;
+    for ( index_t c=0; c<basis.dim(); ++c )
+        bcs.push_back( boundaryConditionsForComponent(bc,(short_t)c) );
+    return elasticityFastDiagonalizationOp(basis, bcs, opt, lambda, mu, geo);
+}
+
+template<typename T>
+typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<T>::elasticityFastDiagonalizationOp(
+    const gsBasis<T>& basis,
+    const std::vector< gsBoundaryConditions<T> >& bc,
+    const gsOptionList& opt,
+    T lambda,
+    T mu,
+    const gsGeometry<T>* geo
+    )
+{
+    GISMO_ASSERT ( (index_t)bc.size() == basis.dim(),
+        "gsPatchPreconditionersCreator<T>::elasticityFastDiagonalizationOp() needs boundary conditions for each component." );
+    GISMO_ASSERT ( mu > 0 && lambda + mu > 0,
+        "gsPatchPreconditionersCreator<T>::elasticityFastDiagonalizationOp() needs mu>0 and lambda+mu>0." );
+
+    const index_t d = basis.dim();
+
+    // Averages of the diagonal of |det J| J^{-1} J^{-T} over the anchors of the basis
+    gsVector<T> scaling = gsVector<T>::Ones(d);
+    if (geo)
+    {
+        GISMO_ASSERT ( geo->domainDim() == d && geo->targetDim() == d,
+            "gsPatchPreconditionersCreator<T>::elasticityFastDiagonalizationOp(): geometry and basis do not fit." );
+        gsMatrix<T> pts, jacs;
+        geo->basis().anchors_into(pts);
+        geo->jacobian_into(pts, jacs);
+        scaling.setZero();
+        for ( index_t i=0; i<pts.cols(); ++i )
+        {
+            const gsMatrix<T> J = jacs.block(0, i*d, d, d);
+            const T detJ = math::abs(J.determinant());
+            const gsMatrix<T> Jinv = J.inverse();
+            for ( index_t k=0; k<d; ++k )
+                scaling[k] += detJ * Jinv.row(k).squaredNorm();
+        }
+        scaling /= (T)(pts.cols());
+    }
+
+    typename gsBlockOp<T>::uPtr result = gsBlockOp<T>::make(d,d);
+    for ( index_t c=0; c<d; ++c )
+    {
+        gsVector<T> beta = mu * scaling;
+        beta[c] += (lambda+mu) * scaling[c];
+        result->addOperator(c, c,
+            fastDiagonalization(basis, bc[c], opt, 0, beta, 0) );
+    }
+    return result;
+}
+
+template<typename T>
+typename gsPatchPreconditionersCreator<T>::OpUPtr gsPatchPreconditionersCreator<T>::fastDiagonalization(
+    const gsBasis<T>& basis,
+    const gsBoundaryConditions<T>& bc,
+    const gsOptionList& opt,
+    T alpha,
+    const gsVector<T>& beta,
+    T gamma
+    )
+{
     const index_t d = basis.dim();
 
     // Assemble univariate
     std::vector< gsSparseMatrix<T> > local_stiff = assembleTensorStiffness(basis, bc, opt);
     std::vector< gsSparseMatrix<T> > local_mass  = assembleTensorMass(basis, bc, opt);
 
-    if (beta!=0)
-    {
-        for (index_t i=0; i!=d; ++i)
-            local_stiff[i] *= beta;
-    }
+    // The i-th univariate matrix belongs to the direction d-1-i
+    for (index_t i=0; i!=d; ++i)
+        local_stiff[i] *= beta[d-1-i];
 
     // Determine overall size
     index_t sz = 1;

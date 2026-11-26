@@ -122,6 +122,91 @@ public:
         T gamma = 0
     );
 
+    /// Provides \a gsLinearOperator representing the inverse of an anisotropic
+    /// stiffness matrix on the parameter domain based on the fast diagonalization
+    /// approach (SIAM J. Sci. Comput., 38 (6), p. A3644 - A3671, 2016)
+    ///
+    /// The stiffness matrix represents
+    /// \f$ \sum_{k=1}^d \beta_k (\partial_k u, \partial_k v)_{L_2} + \alpha (u, v)_{L_2} \f$
+    ///
+    /// \param basis  A tensor basis
+    /// \param bc     Boundary conditions
+    /// \param opt    Assembler options
+    /// \param alpha  Scaling parameter (see above)
+    /// \param beta   Vector with one positive scaling parameter per parametric direction
+    static OpUPtr            fastDiagonalizationOp(
+        const gsBasis<T>& basis,
+        const gsBoundaryConditions<T>& bc,
+        const gsOptionList& opt,
+        T alpha,
+        const gsVector<T>& beta
+    );
+
+    /// Provides \a gsLinearOperator representing a preconditioner for the
+    /// displacement formulation of linear elasticity on a single patch, based
+    /// on the fast diagonalization approach
+    /// (SIAM J. Sci. Comput., 38 (6), p. A3644 - A3671, 2016)
+    ///
+    /// The operator is the exact inverse of the block diagonal of the
+    /// elasticity bilinear form
+    /// \f$ 2 \mu (\varepsilon(u), \varepsilon(v))_{L_2} + \lambda (\nabla\cdot u, \nabla\cdot v)_{L_2} \f$
+    /// on the parameter domain: the block of the displacement component \f$ c \f$
+    /// represents
+    /// \f$ \sum_{k=1}^d (\mu + (\lambda+\mu) \delta_{ck}) (\partial_k u_c, \partial_k v_c)_{L_2} \f$.
+    /// By Korn's inequality, it is spectrally equivalent to the inverse of the
+    /// elasticity stiffness matrix, with constants independent of the grid
+    /// size and the spline degree, as long as each component has a Dirichlet
+    /// condition on at least one side.
+    ///
+    /// The unknowns are ordered component by component, as for a vector
+    /// valued space of \a gsExprAssembler. The boundary conditions of the
+    /// component \f$ c \f$ are those registered for the unknown 0 with the
+    /// component \f$ c \f$ or with all components.
+    ///
+    /// If a geometry is given, the coefficients of each direction are scaled
+    /// with the average over the patch of the corresponding diagonal entry of
+    /// \f$ |\det J| J^{-1} J^{-\top} \f$, where \f$ J \f$ is the Jacobian of the
+    /// geometry map. This accounts for the size and the aspect ratio of the
+    /// patch.
+    ///
+    /// \param basis   A tensor basis (of one displacement component)
+    /// \param bc      Boundary conditions
+    /// \param opt     Assembler options
+    /// \param lambda  First Lame parameter
+    /// \param mu      Second Lame parameter (shear modulus)
+    /// \param geo     Geometry map of the patch (optional)
+    static OpUPtr            elasticityFastDiagonalizationOp(
+        const gsBasis<T>& basis,
+        const gsBoundaryConditions<T>& bc,
+        const gsOptionList& opt,
+        T lambda,
+        T mu,
+        const gsGeometry<T>* geo = NULL
+    );
+
+    /// Provides \a gsLinearOperator representing a preconditioner for the
+    /// displacement formulation of linear elasticity on a single patch, based
+    /// on the fast diagonalization approach
+    ///
+    /// As above, with one set of scalar boundary conditions per displacement
+    /// component. Use this version with assemblers that register the
+    /// components as separate unknowns.
+    ///
+    /// \param basis   A tensor basis (of one displacement component)
+    /// \param bc      Boundary conditions for each component
+    /// \param opt     Assembler options
+    /// \param lambda  First Lame parameter
+    /// \param mu      Second Lame parameter (shear modulus)
+    /// \param geo     Geometry map of the patch (optional)
+    static OpUPtr            elasticityFastDiagonalizationOp(
+        const gsBasis<T>& basis,
+        const std::vector< gsBoundaryConditions<T> >& bc,
+        const gsOptionList& opt,
+        T lambda,
+        T mu,
+        const gsGeometry<T>* geo = NULL
+    );
+
     /// Provides \a gsLinearOperator representing the subspace corrected mass smoother
     /// on the parameter domain (SIAM J. on Numerical Analysis. 55 (4). p. 2004 - 2024, 2017)
     ///
@@ -161,6 +246,18 @@ public:
         const gsBasis<T>& basis,
         const gsBoundaryConditions<T>& bc = gsBoundaryConditions<T>(),
         const gsOptionList& opt = gsAssembler<T>::defaultOptions()
+    );
+
+private:
+
+    // Fast diagonalization with one coefficient per parametric direction
+    static OpUPtr            fastDiagonalization(
+        const gsBasis<T>& basis,
+        const gsBoundaryConditions<T>& bc,
+        const gsOptionList& opt,
+        T alpha,
+        const gsVector<T>& beta,
+        T gamma
     );
 
 };
