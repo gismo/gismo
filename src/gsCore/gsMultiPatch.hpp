@@ -460,40 +460,75 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly, bool)
     cId2.reserve(nCorS);
 
     std::set<index_t> found;
-    for (size_t sideind=0; sideind<pSide.size(); ++sideind)
+    // Compares the sides sideind < other and adds an interface if they match
+    auto compareSides = [&](const size_t sideind, const size_t other)
     {
         const patchSide & side = pSide[sideind];
-        for (size_t other=sideind+1; other<pSide.size(); ++other)
+        side        .getContainedCorners(m_dim,cId1);
+        pSide[other].getContainedCorners(m_dim,cId2);
+        matched.setConstant(false);
+
+        // Check whether the side center matches
+        if (!cornersOnly)
+            if ( ( pCorners[side.patch        ].col(nCorP+side-1        ) -
+                   pCorners[pSide[other].patch].col(nCorP+pSide[other]-1)
+                     ).norm() >= tol )
+                return;
+
+        //t-junction
+        // check for matching vertices else
+        // invert the vertices of first side on the second and vise-versa
+        // if at least one vertex is found (at most 2^(d-1)), mark as interface
+
+        // Check whether the vertices match and compute direction
+        // map and orientation
+        if ( matchVerticesOnSide( pCorners[side.patch]        , cId1, 0,
+                                  pCorners[pSide[other].patch], cId2,
+                                  matched, dirMap, dirOr, tol ) )
         {
-            side        .getContainedCorners(m_dim,cId1);
-            pSide[other].getContainedCorners(m_dim,cId2);
-            matched.setConstant(false);
-
-            // Check whether the side center matches
-            if (!cornersOnly)
-                if ( ( pCorners[side.patch        ].col(nCorP+side-1        ) -
-                       pCorners[pSide[other].patch].col(nCorP+pSide[other]-1)
-                         ).norm() >= tol )
-                    continue;
-
-            //t-junction
-            // check for matching vertices else
-            // invert the vertices of first side on the second and vise-versa
-            // if at least one vertex is found (at most 2^(d-1)), mark as interface
-
-            // Check whether the vertices match and compute direction
-            // map and orientation
-            if ( matchVerticesOnSide( pCorners[side.patch]        , cId1, 0,
-                                      pCorners[pSide[other].patch], cId2,
-                                      matched, dirMap, dirOr, tol ) )
-            {
-                dirMap(side.direction()) = pSide[other].direction();
-                dirOr (side.direction()) = !( side.parameter() == pSide[other].parameter() );
-                BaseA::addInterface( boundaryInterface(side, pSide[other], dirMap, dirOr));
-                found.insert(sideind);
-                found.insert(other);
-            }
+            dirMap(side.direction()) = pSide[other].direction();
+            dirOr (side.direction()) = !( side.parameter() == pSide[other].parameter() );
+            BaseA::addInterface( boundaryInterface(side, pSide[other], dirMap, dirOr));
+            found.insert(sideind);
+            found.insert(other);
         }
+    };
+
+    // Two sides can only match if their centers are closer than tol. The
+    // sides are sorted by the first coordinate of their centers and only the
+    // pairs that are closer than 2*tol in this coordinate are compared, which
+    // avoids the comparison of all pairs. The candidate pairs are visited in
+    // the order of the loop over all pairs, so the interfaces are the same and
+    // in the same order.
+    bool sweep = !cornersOnly;
+    std::vector<std::pair<T,size_t> > key;
+    if (sweep)
+    {
+        key.reserve(pSide.size());
+        for (size_t s=0; s<pSide.size(); ++s)
+        {
+            const T x = pCorners[pSide[s].patch](0, nCorP+pSide[s]-1);
+            if (!(math::isfinite)(x)) { sweep = false; break; }
+            key.push_back(std::make_pair(x, s));
+        }
+    }
+    if (sweep)
+    {
+        std::sort(key.begin(), key.end());
+        std::vector<std::pair<size_t,size_t> > candidates;
+        for (size_t a=0; a<key.size(); ++a)
+            for (size_t b=a+1; b<key.size() && key[b].first - key[a].first < 2*tol; ++b)
+                candidates.push_back(std::make_pair(std::min(key[a].second, key[b].second),
+                                                    std::max(key[a].second, key[b].second)));
+        std::sort(candidates.begin(), candidates.end());
+        for (size_t c=0; c<candidates.size(); ++c)
+            compareSides(candidates[c].first, candidates[c].second);
+    }
+    else
+    {
+        for (size_t sideind=0; sideind<pSide.size(); ++sideind)
+            for (size_t other=sideind+1; other<pSide.size(); ++other)
+                compareSides(sideind, other);
     }
 
     index_t k = 0;
