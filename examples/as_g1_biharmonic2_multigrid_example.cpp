@@ -351,12 +351,15 @@ bool runDomainExperiment2(
     const bool useConstForce = homogeneousBC && (exactType == "const");
 
     const std::string smootherLabel =
-        (smootherType == "scms") ? "SCMS Multiplicative + Overlapping Skeleton (Remark 5)" :
-        (smootherType == "scms_hybrid") ? "SCMS Hybrid (Point GS + SCMS + Overlapping Skeleton, Sogn-Takacs Sec 5.3)" :
-        (smootherType == "scms_add") ? "SCMS Additive Schwarz + Overlapping Skeleton (Theorem 5, isotropic)" :
-        (smootherType == "scms_add_metric") ? "SCMS Additive Schwarz + Overlapping Skeleton (metric-weighted)" :
-        (smootherType == "scms_add_analytic") ? "SCMS Additive Schwarz (Theorem 5, analytic 1/(8*c_bar_G))" :
-        (smootherType == "scms_nonov") ? "SCMS Multiplicative + Non-Overlapping Skeleton (r_p=2)" :
+        (smootherType == "scms") ? "SCMS Multiplicative (Odd-Deriv S0 Mass + Sparse Skeleton, Sec 5)" :
+        (smootherType == "scms_hybrid") ? "SCMS Hybrid (Fast Point GS + Odd-Deriv S0 Mass + Sparse Skeleton)" :
+        (smootherType == "scms_l2orth") ? "SCMS Multiplicative (Odd-Deriv S0 Mass + Exact L2-Orth Skeleton, Thm 5)" :
+        (smootherType == "scms_l2orth_hybrid") ? "SCMS Hybrid (Fast Point GS + S0 Mass + Exact L2-Orth Skeleton)" :
+        (smootherType == "scms_add_l2orth") ? "SCMS Additive Schwarz (Exact Theorem 5 L2-Orthogonal Splitting)" :
+        (smootherType == "scms_add") ? "SCMS Additive Schwarz (Odd-Deriv S0 Mass + Sparse Skeleton)" :
+        (smootherType == "scms_add_metric") ? "SCMS Additive Schwarz (Odd-Deriv S0 Mass + Power-Calibrated)" :
+        (smootherType == "scms_add_analytic") ? "SCMS Additive Schwarz (Theorem 5, Analytic 4*c_bar_G*2520*h^-4)" :
+        (smootherType == "scms_nonov") ? "SCMS Multiplicative + Non-Overlapping Local Skeleton (r_p=2)" :
         (smootherType == "fd_ring1") ? "Point GS + Patch Interior FD + Coupled Ring-1" :
         (smootherType == "line_ring1") ? "Alternating Line Strips + Coupled Ring-1" :
         (smootherType == "ring1") ? "Point GS + Coupled Ring-1 Skeleton" :
@@ -589,6 +592,24 @@ bool runDomainExperiment2(
                     mg->matrix(l), mp, levels[l].dbasis, levels[l].argBasis, levels[l].mapper,
                     beta, scmsRp, /*additive=*/false, /*useMetricWeights=*/true, /*calibrateByPowerMethod=*/true,
                     /*includeOuterBoundaryRing=*/true, /*usePointGS=*/true).release());
+        else if (smootherType == "scms_l2orth")
+            sm = typename gsMultiGridOp<T>::PrecondPtr(
+                gsAsG1ScmsSmootherOp<T>::make(
+                    mg->matrix(l), mp, levels[l].dbasis, levels[l].argBasis, levels[l].mapper,
+                    beta, scmsRp, /*additive=*/false, /*useMetricWeights=*/true, /*calibrateByPowerMethod=*/true,
+                    /*includeOuterBoundaryRing=*/true, /*usePointGS=*/false, /*useL2OrthSkeleton=*/true).release());
+        else if (smootherType == "scms_l2orth_hybrid")
+            sm = typename gsMultiGridOp<T>::PrecondPtr(
+                gsAsG1ScmsSmootherOp<T>::make(
+                    mg->matrix(l), mp, levels[l].dbasis, levels[l].argBasis, levels[l].mapper,
+                    beta, scmsRp, /*additive=*/false, /*useMetricWeights=*/true, /*calibrateByPowerMethod=*/true,
+                    /*includeOuterBoundaryRing=*/true, /*usePointGS=*/true, /*useL2OrthSkeleton=*/true).release());
+        else if (smootherType == "scms_add_l2orth")
+            sm = typename gsMultiGridOp<T>::PrecondPtr(
+                gsAsG1ScmsSmootherOp<T>::make(
+                    mg->matrix(l), mp, levels[l].dbasis, levels[l].argBasis, levels[l].mapper,
+                    beta, scmsRp, /*additive=*/true, /*useMetricWeights=*/true, /*calibrateByPowerMethod=*/true,
+                    /*includeOuterBoundaryRing=*/true, /*usePointGS=*/false, /*useL2OrthSkeleton=*/true).release());
         else if (smootherType == "scms_add")
             sm = typename gsMultiGridOp<T>::PrecondPtr(
                 gsAsG1ScmsSmootherOp<T>::make(
@@ -872,8 +893,8 @@ int main(int argc, char *argv[])
     cmd.addString("o", "outDir", "Output directory for Paraview VTK/PVD files.", outDir);
     cmd.addString("t", "txtOut", "Filename for tab-separated text results output.", txtOut);
     cmd.addString("s", "solver", "Iterative solver: 'cg' (PCG) or 'mg' (Direct Multigrid Iteration).", solverType);
-    cmd.addString("", "smoother", "Smoother: 'auto', 'gs', 'sgs', 'ring1', 'line_ring1', 'fd_ring1', 'scms', 'scms_hybrid', 'scms_add', 'scms_add_metric', 'scms_add_analytic', or 'scms_nonov'.", smootherType);
-    cmd.addInt("", "scmsRp", "SCMS skeleton strip width r_p (-1 = p+1, 2 = non-overlapping, >=3 = custom).", scmsRp);
+    cmd.addString("", "smoother", "Smoother: 'auto', 'gs', 'sgs', 'ring1', 'line_ring1', 'fd_ring1', 'scms', 'scms_hybrid', 'scms_l2orth', 'scms_l2orth_hybrid', 'scms_add_l2orth', 'scms_add', 'scms_add_metric', 'scms_add_analytic', or 'scms_nonov'.", smootherType);
+    cmd.addInt("", "scmsRp", "SCMS skeleton strip width r_p (-1 = auto max(4,p), -2 = p+1, -3 = minimal O(p/2), 2 = non-overlapping, >=3 = custom).", scmsRp);
     cmd.addString("", "suite", "Benchmark suite when --all is set: classic, generator, noholes, holes, all.", suite);
     cmd.addString("", "exact", "Homogeneous exact solution (--homo): 'bubble' (B-spline), 'sin_bubble', 'box', or 'const'.", exactType);
     cmd.addInt("d", "degree", "Spline degree (minimum 3 for C1 AS-G1).", degree);

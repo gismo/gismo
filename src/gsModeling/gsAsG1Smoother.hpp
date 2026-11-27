@@ -9,9 +9,10 @@
       3. gsAsG1FastDiagSmootherOp  : Patch-interior Fast Diagonalization + Ring-1 skeleton
                                      (with optional Point Gauss-Seidel hybrid sweep).
       4. gsAsG1ScmsSmootherOp      : O(p N_h) h- and p-robust Subspace-Corrected Mass Smoother
-                                     (SCMS) + overlapping skeleton Schwarz smoother, supporting
-                                     multiplicative, additive, analytical, and Sogn-Takacs
-                                     hybrid (Point GS + SCMS + skeleton) modes.
+                                     (SCMS) based on the scaled-norm L2-orthogonal odd-derivative
+                                     S_0 splitting (single pure Kronecker mass block on S_0 x S_0
+                                     + exact sparse or L2-orthogonal skeleton Cholesky), with
+                                     fast branchless Point Gauss-Seidel hybrid mode.
 
     This file is part of the G+Smo library.
 
@@ -150,6 +151,14 @@ public:
         A_sub.setFrom(se);
         m_solver.reset(new EigenLDLT());
         m_solver->compute(A_sub);
+        if (m_solver->info() != gsEigen::Success)
+        {
+            gsWarn << "SubspaceCholeskyBlock: SimplicialLDLT factorization failed (size=" << k
+                   << "); disabling block.\n";
+            m_solver.reset();
+            m_dofs.clear();
+            return false;
+        }
         return true;
     }
 
@@ -169,22 +178,40 @@ public:
         const index_t k = static_cast<index_t>(m_dofs.size());
         const index_t ncols = rhs.cols();
         m_rSub.resize(k, ncols);
+        m_eSub.resize(k, ncols);
 
         if (ncols == 1)
         {
             const T *rhsPtr = rhs.data();
             T *xPtr = x.data();
             T *rPtr = m_rSub.data();
+            const index_t *dofsPtr = m_dofs.data();
             if (xIsZero)
             {
                 for (index_t i = 0; i < k; ++i)
-                    rPtr[i] = rhsPtr[m_dofs[i]];
+                    rPtr[i] = rhsPtr[dofsPtr[i]];
+            }
+            else if (A.isCompressed())
+            {
+                typedef typename gsSparseMatrix<T>::StorageIndex StorageIndex;
+                const StorageIndex *outer = A.outerIndexPtr();
+                const StorageIndex *inner = A.innerIndexPtr();
+                const T *val = A.valuePtr();
+                for (index_t i = 0; i < k; ++i)
+                {
+                    const index_t row = dofsPtr[i];
+                    T acc = rhsPtr[row];
+                    const StorageIndex end = outer[row + 1];
+                    for (StorageIndex p = outer[row]; p < end; ++p)
+                        acc -= val[p] * xPtr[inner[p]];
+                    rPtr[i] = acc;
+                }
             }
             else
             {
                 for (index_t i = 0; i < k; ++i)
                 {
-                    const index_t row = m_dofs[i];
+                    const index_t row = dofsPtr[i];
                     T acc = rhsPtr[row];
                     for (typename gsSparseMatrix<T>::InnerIterator it(A, row); it; ++it)
                         acc -= it.value() * xPtr[it.row()];
@@ -194,7 +221,7 @@ public:
             m_eSub = m_solver->solve(m_rSub);
             const T *ePtr = m_eSub.data();
             for (index_t i = 0; i < k; ++i)
-                xPtr[m_dofs[i]] += ePtr[i];
+                xPtr[dofsPtr[i]] += ePtr[i];
         }
         else
         {
@@ -221,19 +248,21 @@ public:
         const index_t k = static_cast<index_t>(m_dofs.size());
         const index_t ncols = r.cols();
         m_rSub.resize(k, ncols);
+        m_eSub.resize(k, ncols);
 
         if (ncols == 1)
         {
             const T *rGlob = r.data();
             T *rPtr = m_rSub.data();
+            const index_t *dofsPtr = m_dofs.data();
             for (index_t i = 0; i < k; ++i)
-                rPtr[i] = rGlob[m_dofs[i]];
+                rPtr[i] = rGlob[dofsPtr[i]];
 
             m_eSub = m_solver->solve(m_rSub);
             T *xPtr = x.data();
             const T *ePtr = m_eSub.data();
             for (index_t i = 0; i < k; ++i)
-                xPtr[m_dofs[i]] += weight * ePtr[i];
+                xPtr[dofsPtr[i]] += weight * ePtr[i];
         }
         else
         {
@@ -250,6 +279,165 @@ private:
     std::unique_ptr<EigenLDLT> m_solver;
     mutable gsMatrix<T> m_rSub;
     mutable gsMatrix<T> m_eSub;
+};
+
+/// Fast, multi-RHS, reference-free Point Gauss-Seidel smoother for symmetric compressed
+/// ColMajor sparse matrices. Caches reciprocal diagonals and diagonal positions so that:
+///   - Multi-column right-hand sides are handled natively (no single-RHS restriction).
+///   - No internal reference to A is stored (safe across moves/copies of owning smoothers).
+///   - Inner loops are branchless on raw CSC pointers, with a triangular half-sweep fast
+///     path whenever the initial iterate is identically zero.
+template <class T>
+class PointGaussSeidelSmoother
+{
+public:
+    typedef typename gsSparseMatrix<T>::StorageIndex StorageIndex;
+
+    PointGaussSeidelSmoother() : m_sortedTri(false) {}
+
+    void init(const gsSparseMatrix<T> &A)
+    {
+        GISMO_ASSERT(A.rows() == A.cols(), "PointGaussSeidelSmoother requires a square matrix.");
+        GISMO_ASSERT(A.isCompressed(), "PointGaussSeidelSmoother requires a compressed matrix.");
+
+        const index_t n = A.rows();
+        m_invDiag.resize(n);
+        m_diagPos.assign(static_cast<size_t>(n), StorageIndex(-1));
+        m_sortedTri = (n > 0);
+
+        const StorageIndex *outer = A.outerIndexPtr();
+        const StorageIndex *inner = A.innerIndexPtr();
+        const T *val = A.valuePtr();
+
+        for (index_t i = 0; i < n; ++i)
+        {
+            const StorageIndex start = outer[i];
+            const StorageIndex end   = outer[i + 1];
+            StorageIndex prev = StorageIndex(-1);
+            T d = T(0);
+            bool foundDiag = false;
+            for (StorageIndex k = start; k < end; ++k)
+            {
+                const StorageIndex j = inner[k];
+                if (j <= prev)
+                    m_sortedTri = false;
+                prev = j;
+                if (static_cast<index_t>(j) == i)
+                {
+                    d = val[k];
+                    m_diagPos[static_cast<size_t>(i)] = k;
+                    foundDiag = true;
+                }
+            }
+            if (!foundDiag)
+                m_sortedTri = false;
+
+            if (std::abs(d) > T(1e-30))
+                m_invDiag(i) = T(1) / d;
+            else
+            {
+                m_invDiag(i) = T(0);
+                gsWarn << "PointGaussSeidelSmoother: zero or near-zero diagonal at row " << i << ".\n";
+            }
+        }
+    }
+
+    /// Forward Point Gauss-Seidel sweep (exact on symmetric ColMajor compressed A).
+    void stepForward(const gsSparseMatrix<T> &A,
+                     const gsMatrix<T> &rhs,
+                     gsMatrix<T> &x,
+                     bool xIsZero = false) const
+    {
+        const index_t n = A.rows();
+        const index_t ncols = rhs.cols();
+        if (n == 0 || ncols == 0)
+            return;
+
+        const StorageIndex *outer = A.outerIndexPtr();
+        const StorageIndex *inner = A.innerIndexPtr();
+        const T *val = A.valuePtr();
+        const T *invD = m_invDiag.data();
+
+        for (index_t c = 0; c < ncols; ++c)
+        {
+            const T *f = rhs.data() + c * n;
+            T *xp = x.data() + c * n;
+            if (xIsZero && m_sortedTri)
+            {
+                const StorageIndex *dpos = m_diagPos.data();
+                for (index_t i = 0; i < n; ++i)
+                {
+                    T sum = T(0);
+                    const StorageIndex end = dpos[i];
+                    for (StorageIndex k = outer[i]; k < end; ++k)
+                        sum += val[k] * xp[inner[k]];
+                    xp[i] = (f[i] - sum) * invD[i];
+                }
+            }
+            else
+            {
+                for (index_t i = 0; i < n; ++i)
+                {
+                    T sum = T(0);
+                    const StorageIndex end = outer[i + 1];
+                    for (StorageIndex k = outer[i]; k < end; ++k)
+                        sum += val[k] * xp[inner[k]];
+                    xp[i] += (f[i] - sum) * invD[i];
+                }
+            }
+        }
+    }
+
+    /// Backward Point Gauss-Seidel sweep (exact A-adjoint of stepForward on symmetric A).
+    void stepBackward(const gsSparseMatrix<T> &A,
+                      const gsMatrix<T> &rhs,
+                      gsMatrix<T> &x,
+                      bool xIsZero = false) const
+    {
+        const index_t n = A.rows();
+        const index_t ncols = rhs.cols();
+        if (n == 0 || ncols == 0)
+            return;
+
+        const StorageIndex *outer = A.outerIndexPtr();
+        const StorageIndex *inner = A.innerIndexPtr();
+        const T *val = A.valuePtr();
+        const T *invD = m_invDiag.data();
+
+        for (index_t c = 0; c < ncols; ++c)
+        {
+            const T *f = rhs.data() + c * n;
+            T *xp = x.data() + c * n;
+            if (xIsZero && m_sortedTri)
+            {
+                const StorageIndex *dpos = m_diagPos.data();
+                for (index_t i = n - 1; i >= 0; --i)
+                {
+                    T sum = T(0);
+                    const StorageIndex end = outer[i + 1];
+                    for (StorageIndex k = dpos[i] + 1; k < end; ++k)
+                        sum += val[k] * xp[inner[k]];
+                    xp[i] = (f[i] - sum) * invD[i];
+                }
+            }
+            else
+            {
+                for (index_t i = n - 1; i >= 0; --i)
+                {
+                    T sum = T(0);
+                    const StorageIndex end = outer[i + 1];
+                    for (StorageIndex k = outer[i]; k < end; ++k)
+                        sum += val[k] * xp[inner[k]];
+                    xp[i] += (f[i] - sum) * invD[i];
+                }
+            }
+        }
+    }
+
+private:
+    gsVector<T> m_invDiag;
+    std::vector<StorageIndex> m_diagPos;
+    bool m_sortedTri;
 };
 
 /// Narrow-banded SPD Cholesky solver (A = L L^T) stored in flat column-major band layout.
@@ -725,6 +913,86 @@ struct UnivariateBasisKey
     }
 };
 
+/// Assemble 1D clamped interior mass M0 (m x m, m = n - 4) and optionally the full
+/// n x n 1D mass matrix Mfull (when buildFullMass is true), plus minimum knot span hMin.
+/// Avoids computing 2nd derivatives when only mass matrices are needed (new S_0 SCMS).
+template <class T>
+void assemble1DMassMatrices(
+    const gsBSplineBasis<T> &b1d,
+    gsSparseMatrix<T> &M0,
+    T &hMin,
+    bool buildFullMass = false,
+    gsSparseMatrix<T> *Mfull = nullptr)
+{
+    const index_t n = b1d.size();
+    const index_t m = n - 4;
+    const short_t deg = b1d.degree();
+
+    const std::vector<T> uknots = b1d.knots().unique();
+    hMin = (uknots.size() >= 2) ? (uknots[1] - uknots[0]) : T(1);
+    for (size_t k = 1; k + 1 < uknots.size(); ++k)
+    {
+        const T span = uknots[k + 1] - uknots[k];
+        if (span > T(0) && span < hMin)
+            hMin = span;
+    }
+    if (hMin <= T(0))
+        hMin = T(1);
+
+    gsSparseEntries<T> seM0, seMfull;
+    seM0.reserve(std::max<index_t>(0, m) * (2 * deg + 1));
+    if (buildFullMass && Mfull)
+        seMfull.reserve(n * (2 * deg + 1));
+
+    gsGaussRule<T> quRule(deg + 1);
+    gsMatrix<T> quNodes, ev;
+    gsVector<T> quWeights;
+    gsMatrix<index_t> actives;
+
+    for (size_t k = 0; k + 1 < uknots.size(); ++k)
+    {
+        quRule.mapTo(uknots[k], uknots[k + 1], quNodes, quWeights);
+        b1d.eval_into(quNodes, ev);
+        b1d.active_into(quNodes.col(0), actives);
+
+        const index_t nAct = actives.rows();
+        const index_t nQ = quWeights.rows();
+        for (index_t r = 0; r < nAct; ++r)
+        {
+            const index_t ar = actives(r, 0);
+            const index_t ir = ar - 2;
+            const bool rInt = (ir >= 0 && ir < m);
+            for (index_t c = 0; c < nAct; ++c)
+            {
+                const index_t ac = actives(c, 0);
+                const index_t ic = ac - 2;
+                const bool cInt = (ic >= 0 && ic < m);
+                if (!rInt && !cInt && !(buildFullMass && Mfull))
+                    continue;
+                if ((!rInt || !cInt) && !(buildFullMass && Mfull))
+                    continue;
+
+                T mVal = T(0);
+                for (index_t q = 0; q < nQ; ++q)
+                    mVal += quWeights(q, 0) * ev(r, q) * ev(c, q);
+
+                if (rInt && cInt)
+                    seM0.add(ir, ic, mVal);
+                if (buildFullMass && Mfull)
+                    seMfull.add(ar, ac, mVal);
+            }
+        }
+    }
+
+    M0.resize(std::max<index_t>(0, m), std::max<index_t>(0, m));
+    M0.setFrom(seM0);
+    if (buildFullMass && Mfull)
+    {
+        Mfull->resize(n, n);
+        Mfull->setFrom(seMfull);
+    }
+}
+
 /// Assemble 1D clamped interior mass M0 and 2nd-derivative biharmonic B0 (m x m, m = n - 4)
 /// together with the minimum knot span hMin.
 template <class T>
@@ -963,6 +1231,22 @@ void gatherPatchResidual(const gsSparseMatrix<T> &A,
             for (index_t i = 0; i < nPatch; ++i)
                 rPtr[i] = rhsCol[dofs[i]];
         }
+        else if (A.isCompressed())
+        {
+            typedef typename gsSparseMatrix<T>::StorageIndex StorageIndex;
+            const StorageIndex *outer = A.outerIndexPtr();
+            const StorageIndex *inner = A.innerIndexPtr();
+            const T *val = A.valuePtr();
+            for (index_t i = 0; i < nPatch; ++i)
+            {
+                const index_t row = dofs[i];
+                T acc = rhsCol[row];
+                const StorageIndex end = outer[row + 1];
+                for (StorageIndex k = outer[row]; k < end; ++k)
+                    acc -= val[k] * xCol[inner[k]];
+                rPtr[i] = acc;
+            }
+        }
         else
         {
             for (index_t i = 0; i < nPatch; ++i)
@@ -1072,14 +1356,17 @@ bool arePatchInteriorsDecoupled(const gsSparseMatrix<T> &A,
 
 /**
  * @brief Collect global free DOF indices on the AS-G1 interface/vertex skeleton
- *        augmented with an O(p)-layer interior B-spline boundary strip (Section 5.1).
+ *        augmented with a boundary strip of interior B-splines per patch side.
  *
  * @param r_p  Total B-spline strip index width per patch side:
- *             - r_p < 0 (default): uses r_p = p + 1 (minimal p-robust strip of Remark 5,
- *               including all p - 1 interior B-spline layers touching dOmega_hat;
- *               equals 4 for p = 3, matching collectCoupledRing1Dofs).
- *             - r_p == 2: non-overlapping skeleton V_h^{skel} (Remark 5).
- *             - r_p >= 3: custom strip width (e.g., (4*c0 + 3)*p from Theorem 4).
+ *             - r_p == -1 (default): exact boundary-supported B-spline strip
+ *               r_d = max(4, p_d) covering {B_0, ..., B_{p_d - 1}} (Section 5.3:
+ *               {B_{p_d}, ..., B_{n_d - p_d - 1}} belong identically to S_0;
+ *               equals 4 for p = 3, 4 and p for p >= 5).
+ *             - r_p == -2: legacy p + 1 boundary strip.
+ *             - r_p == -3: minimal odd-derivative constraint strip max(4, 2*floor((p-3)/2) + 2).
+ *             - r_p == 2:  non-overlapping skeleton V_h^{skel}.
+ *             - r_p >= 3:  explicit custom strip width.
  */
 template <class T>
 std::vector<index_t> collectCoupledStripDofs(
@@ -1090,6 +1377,19 @@ std::vector<index_t> collectCoupledStripDofs(
     index_t r_p = -1,
     bool includeOuterBoundaryRing = true)
 {
+    auto resolveStrip = [](short_t deg, index_t rp) -> index_t {
+        if (rp >= 2)
+            return rp;
+        if (rp == -2)
+            return static_cast<index_t>(deg) + 1;
+        if (rp == -3)
+        {
+            const index_t ncTilde = std::max<index_t>(0, (static_cast<index_t>(deg) - 3) / 2);
+            return std::max<index_t>(4, 2 * ncTilde + 2);
+        }
+        return std::max<index_t>(4, static_cast<index_t>(deg));
+    };
+
     const size_t nPatches = mp.nPatches();
     const index_t nFree = mapper.freeSize();
     std::vector<bool> inSkeleton(nFree, false);
@@ -1115,8 +1415,8 @@ std::vector<index_t> collectCoupledStripDofs(
         const index_t n2 = tb.component(1).size();
         const index_t m1 = n1 - 4;
         const index_t m2 = n2 - 4;
-        const index_t r1 = (r_p < 0) ? (tb.degree(0) + 1) : std::max<index_t>(2, r_p);
-        const index_t r2 = (r_p < 0) ? (tb.degree(1) + 1) : std::max<index_t>(2, r_p);
+        const index_t r1 = resolveStrip(tb.degree(0), r_p);
+        const index_t r2 = resolveStrip(tb.degree(1), r_p);
 
         const bool actW = sideActive[p * 5 + 1];
         const bool actE = sideActive[p * 5 + 2];
@@ -1291,7 +1591,8 @@ public:
                              const std::vector<index_t> &skeletonDofs)
         : m_mat(mat)
     {
-        m_gs = makeGaussSeidelOp(m_mat);
+        m_mat.makeCompressed();
+        m_pgs.init(m_mat);
         std::vector<index_t> globToLoc(m_mat.rows(), -1);
         m_skeleton.init(m_mat, skeletonDofs, globToLoc, 24);
     }
@@ -1309,14 +1610,15 @@ public:
 
     void step(const gsMatrix<T> &rhs, gsMatrix<T> &x) const override
     {
-        m_gs->step(rhs, x);
+        m_pgs.stepForward(m_mat, rhs, x, internal::isExactlyZero(x));
         m_skeleton.relax(m_mat, rhs, x);
     }
 
     void stepT(const gsMatrix<T> &rhs, gsMatrix<T> &x) const override
     {
-        m_skeleton.relax(m_mat, rhs, x, internal::isExactlyZero(x));
-        m_gs->stepT(rhs, x);
+        const bool xZero0 = internal::isExactlyZero(x);
+        m_skeleton.relax(m_mat, rhs, x, xZero0);
+        m_pgs.stepBackward(m_mat, rhs, x, xZero0 && m_skeleton.empty());
     }
 
     typename gsLinearOperator<T>::Ptr underlyingOp() const override { return makeMatrixOp(m_mat); }
@@ -1325,7 +1627,7 @@ public:
 
 private:
     gsSparseMatrix<T> m_mat;
-    typename gsPreconditionerOp<T>::uPtr m_gs;
+    internal::PointGaussSeidelSmoother<T> m_pgs;
     internal::SubspaceCholeskyBlock<T> m_skeleton;
 };
 
@@ -1416,8 +1718,9 @@ public:
                              bool includeOuterBoundaryRing = true)
         : m_mat(mat), m_usePointGS(usePointGS)
     {
+        m_mat.makeCompressed();
         if (m_usePointGS)
-            m_gs = makeGaussSeidelOp(m_mat);
+            m_pgs.init(m_mat);
 
         std::vector<index_t> globToLoc(m_mat.rows(), -1);
 
@@ -1541,10 +1844,11 @@ public:
 
     void step(const gsMatrix<T> &rhs, gsMatrix<T> &x) const override
     {
+        const bool xZero0 = internal::isExactlyZero(x);
         if (m_usePointGS)
-            m_gs->step(rhs, x);
+            m_pgs.stepForward(m_mat, rhs, x, xZero0);
 
-        const bool xZero = internal::isExactlyZero(x);
+        const bool xZero = !m_usePointGS && xZero0;
 #ifdef _OPENMP
         if (m_patchesDecoupled && m_patches.size() > 1)
         {
@@ -1564,9 +1868,10 @@ public:
 
     void stepT(const gsMatrix<T> &rhs, gsMatrix<T> &x) const override
     {
-        m_skeleton.relax(m_mat, rhs, x, internal::isExactlyZero(x));
+        const bool xZero0 = internal::isExactlyZero(x);
+        m_skeleton.relax(m_mat, rhs, x, xZero0);
 
-        const bool xZero = internal::isExactlyZero(x);
+        const bool xZero = xZero0 && m_skeleton.empty();
 #ifdef _OPENMP
         if (m_patchesDecoupled && m_patches.size() > 1)
         {
@@ -1582,7 +1887,7 @@ public:
         }
 
         if (m_usePointGS)
-            m_gs->stepT(rhs, x);
+            m_pgs.stepBackward(m_mat, rhs, x, false);
     }
 
     typename gsLinearOperator<T>::Ptr underlyingOp() const override { return makeMatrixOp(m_mat); }
@@ -1623,32 +1928,48 @@ private:
     gsSparseMatrix<T> m_mat;
     bool m_usePointGS;
     bool m_patchesDecoupled = true;
-    typename gsPreconditionerOp<T>::uPtr m_gs;
+    internal::PointGaussSeidelSmoother<T> m_pgs;
     internal::SubspaceCholeskyBlock<T> m_skeleton;
     std::vector<PatchFD> m_patches;
     mutable std::vector<Workspace> m_workspaces;
 };
 
 /**
- * @brief O(p N_h) h- and p-robust Subspace-Corrected Mass Smoother (SCMS) + Overlapping
- *        Skeleton Schwarz Smoother for multi-patch AS-G1 biharmonic discretizations.
+ * @brief O(p N_h) h- and p-robust Subspace-Corrected Mass Smoother (SCMS) + Skeleton
+ *        Schwarz Smoother for multi-patch AS-G1 biharmonic discretizations (Section 5).
  *
- * On each patch interior S^0_{p,p-2,h}(Omega_hat), splits each 1D spline space into:
- *   - S^{D,0} (vanishing even boundary derivatives u^{(2j)} = 0 for 2j <= p - 2),
- *     inverted in O(p m) via StructuredNullspaceBasis Q_0 and zero-transpose
- *     BandedSPDCholesky of M_{0,0} = Q_0^T M_0 Q_0.
- *   - S^{D,1} = (S^{D,0})^{\perp_{W_0}} (dim <= p - 2), simultaneously diagonalizing
- *     B_0 and M_0.
+ * Based on the scaled-norm L2-orthogonal odd-derivative splitting:
+ *   On each 1D spline space S = S_{p,p-2,h}(0,1), define the constrained subspace
+ *     S_0 = { s in S : s^{(r)}(0) = s^{(r)}(1) = 0  for all r in R_p },
+ *     R_p = {0} U { 2*l + 1 : l >= 0, 2*l + 1 <= p - 2 }  (|R_p| = floor((p+1)/2)),
+ *   which satisfies S_0 subset S^0 = S cap H_0^2(0,1) and the p-robust inverse inequality
+ *   |s_0|_{H^2}^2 <= 2520 h^{-4} ||s_0||_{L^2}^2 (Lemma 3).
  *
- * Coupled with an exact sparse Cholesky solve on the enlarged skeleton \widetilde{V}_h^{skel}:
+ *   - For p = 3 and p = 4: S_0 = S^0 (P_0 = I, zero boundary constraints/SVDs).
+ *   - For p >= 5: only n_c_tilde = floor((p - 3)/2) odd derivatives r = 3, 5, ..., 2*n_c_tilde + 1
+ *     are enforced on k_b = 2*n_c_tilde interior B-splines per endpoint via tiny SVDs.
+ *   - On each patch interior V_{h,00}^{(i)} = S_0 x S_0, a SINGLE pure Kronecker mass block
+ *       (L_{00}^{(i)})^{-1} = scale_i * (P_0^{(1)} M_{00,1}^{-1} P_0^{(1)T}
+ *                                       (x) P_0^{(2)} M_{00,2}^{-1} P_0^{(2)T})
+ *     is applied in O(p N_h^{(i)}) via StructuredNullspaceBasis and zero-transpose
+ *     BandedSPDCholesky -- eliminating all Q_1, W_0, eigensolve, and 4-block overhead.
+ *
+ * Coupled with an exact skeleton Cholesky solver:
+ *  - Practical sparse local skeleton (useL2OrthSkeleton = false, default; Remark 6(2)):
+ *      exact sparse Cholesky on the AS-G1 interface/vertex skeleton plus a minimal
+ *      O(p/2)-layer interior strip covering the odd-derivative constraint support.
+ *  - Exact L2(Omega_hat)-orthogonal skeleton (useL2OrthSkeleton = true; Theorem 5 / Eq. (60)):
+ *      exact non-overlapping direct sum V_h^{AS-G1} = (sum_i V_{h,00}^{(i)}) (+) V_h^{skel,perp}
+ *      with implicit O(p N_h) application of I_skel^perp and (I_skel^perp)^T.
  *  - Multiplicative mode (additive = false, default):
- *      step(rhs, x):  [fwd Point GS ->] patch-interior SCMS -> skeleton Cholesky
- *      stepT(rhs, x): skeleton Cholesky -> patch-interior SCMS [-> bwd Point GS]
+ *      step(rhs, x):  [fwd Point GS ->] patch-interior S_00 mass -> skeleton Cholesky
+ *      stepT(rhs, x): skeleton Cholesky -> patch-interior S_00 mass [-> bwd Point GS]
  *  - Hybrid mode (usePointGS = true, Sogn & Takacs 2019 Section 5.3):
- *      wraps Patch SCMS + Skeleton in symmetric Point Gauss-Seidel sweeps to eliminate
- *      geometry-distortion degradation on strongly curved/stretched multi-patch domains.
- *  - Additive mode (additive = true, Theorem 5):
- *      x <- x + 0.5 * ( sum_i scale_i I_i (L_i^{int})^{-1} I_i^T r + I_skel A_skel^{-1} I_skel^T r )
+ *      wraps Patch S_00 mass + Skeleton in fast branchless Point Gauss-Seidel sweeps to
+ *      eliminate geometry-distortion / anisotropy / C^1-knot degradation.
+ *  - Additive mode (additive = true, Theorem 5 / Eq. (61)):
+ *      x <- x + 0.5 * ( sum_i scale_i I_{00}^{(i)} (M_{00}^{(i)})^{-1} (I_{00}^{(i)})^T r
+ *                       + I_skel A_skel^{-1} I_skel^T r ).
  */
 template <class T>
 class gsAsG1ScmsSmootherOp GISMO_FINAL : public gsPreconditionerOp<T>
@@ -1669,106 +1990,97 @@ public:
                          bool useMetricWeights = true,
                          bool calibrateByPowerMethod = true,
                          bool includeOuterBoundaryRing = true,
-                         bool usePointGS = false)
-        : m_mat(mat), m_additive(additive), m_usePointGS(usePointGS)
+                         bool usePointGS = false,
+                         bool useL2OrthSkeleton = false,
+                         T multSafetyFactor = T(1.50))
+        : m_mat(mat),
+          m_additive(additive),
+          m_usePointGS(usePointGS),
+          m_useL2OrthSkeleton(useL2OrthSkeleton)
     {
+        m_mat.makeCompressed();
+
         if (m_usePointGS)
-            m_gs = makeGaussSeidelOp(m_mat);
+            m_pgs.init(m_mat);
 
         std::vector<index_t> globToLoc(m_mat.rows(), -1);
 
-        // 1. Setup enlarged skeleton Cholesky solver on \widetilde{V}_h^{skel}
-        const std::vector<index_t> skelDofs = collectCoupledStripDofs(
-            mp, dbasis, argBasis, mapper, r_p, includeOuterBoundaryRing);
-        m_skeleton.init(m_mat, skelDofs, globToLoc, 32);
+        // 1. Setup practical sparse skeleton Cholesky solver (unless exact L2-orth is requested)
+        if (!m_useL2OrthSkeleton)
+        {
+            const std::vector<index_t> skelDofs = collectCoupledStripDofs(
+                mp, dbasis, argBasis, mapper, r_p, includeOuterBoundaryRing);
+            m_skeleton.init(m_mat, skelDofs, globToLoc, 32);
+        }
 
-        // 2. Setup O(p N_h^{(i)}) Kronecker SCMS on each patch interior, caching 1D bases
-        //    (W_0 = c_d (B_0 + sigma0Hat * M_0) factors out c_d completely!)
-        std::vector<std::pair<internal::UnivariateBasisKey<T>, std::shared_ptr<UnivariateSCMS>>> uCache;
-        auto getUnivariateSCMS = [&](const gsBSplineBasis<T> &b1d) -> std::shared_ptr<UnivariateSCMS> {
+        // 2. Setup O(p N_h^{(i)}) pure Kronecker mass smoother on each patch interior S_0 x S_0,
+        //    caching unique 1D bases across patches and directions.
+        std::vector<std::pair<internal::UnivariateBasisKey<T>, std::shared_ptr<UnivariateS0>>> uCache;
+        auto getUnivariateS0 = [&](const gsBSplineBasis<T> &b1d) -> std::shared_ptr<UnivariateS0> {
             const auto key = internal::UnivariateBasisKey<T>::fromBasis(b1d);
             for (const auto &entry : uCache)
                 if (entry.first == key)
                     return entry.second;
 
-            auto u = std::make_shared<UnivariateSCMS>();
-            buildUnivariateSCMS(b1d, /*useSharpSigma0=*/calibrateByPowerMethod, *u);
+            auto u = std::make_shared<UnivariateS0>();
+            buildUnivariateS0(b1d, /*needFullMass=*/m_useL2OrthSkeleton, *u);
             uCache.emplace_back(key, u);
             return u;
         };
 
         m_patches.reserve(mp.nPatches());
+        m_totalInteriorDofs = 0;
+        const T safetyFactor = m_additive ? T(0.92) : multSafetyFactor;
+
         for (size_t p = 0; p < mp.nPatches(); ++p)
         {
             const gsTensorBSplineBasis<2, T> &tb =
                 dynamic_cast<const gsTensorBSplineBasis<2, T> &>(dbasis[p]);
-            PatchSCMS scms;
+            PatchS00 scms;
+            scms.patchIdx = p;
             scms.grid = internal::extractPatchInteriorGrid(tb, argBasis[p], mapper, p);
             if (!scms.grid.hasFree)
                 continue;
 
-            const internal::PatchMetric<T> pm =
-                internal::samplePatchMetric(mp.patch(p), useMetricWeights, 4);
-            scms.c0 = beta * pm.detMean;
+            scms.u1 = getUnivariateS0(tb.component(0));
+            scms.u2 = getUnivariateS0(tb.component(1));
+            m_totalInteriorDofs += scms.grid.m1 * scms.grid.m2;
 
-            scms.u1 = getUnivariateSCMS(tb.component(0));
-            scms.u2 = getUnivariateSCMS(tb.component(1));
-
-            const T sigma1 = pm.c1 * scms.u1->sigma0Hat;
-            const T sigma2 = pm.c2 * scms.u2->sigma0Hat;
-            scms.invSigma00 = T(1) / (sigma1 + sigma2 + scms.c0);
-
-            if (scms.u1->nD1 > 0)
+            if (scms.u1->n0 > 0 && scms.u2->n0 > 0)
             {
-                scms.invDiag10.resize(scms.u1->nD1);
-                for (index_t a = 0; a < scms.u1->nD1; ++a)
+                if (calibrateByPowerMethod)
                 {
-                    const T denom = pm.c1 * scms.u1->b11Hat(a)
-                                  + (sigma2 + scms.c0) * scms.u1->mu11(a);
-                    scms.invDiag10(a) = (denom > T(0)) ? (T(1) / denom) : T(0);
+                    const gsSparseMatrix<T> A_pp =
+                        internal::extractSymmetricSubmatrix(m_mat, scms.grid.dofs, globToLoc, 25);
+                    Workspace ws;
+                    scms.scale = internal::calibratePatchOperatorScale(
+                        A_pp, scms.grid,
+                        [&](const gsMatrix<T> &R, gsMatrix<T> &E) { applyUnscaledPatchS00(scms, R, E, ws); },
+                        safetyFactor, /*maxIter=*/20);
                 }
-            }
-            if (scms.u2->nD1 > 0)
-            {
-                scms.invDiag01.resize(scms.u2->nD1);
-                for (index_t b = 0; b < scms.u2->nD1; ++b)
+                else
                 {
-                    const T denom = pm.c2 * scms.u2->b11Hat(b)
-                                  + (sigma1 + scms.c0) * scms.u2->mu11(b);
-                    scms.invDiag01(b) = (denom > T(0)) ? (T(1) / denom) : T(0);
+                    // Exact analytical bound from Section 5.3 / Eq. (58):
+                    //   L_{00}^{(i)} = (2 * cBarG * 2520 * (h1^{-4} + h2^{-4}) + beta * detMean) * (M0 x M0)
+                    //   (= (4 * cBarG * 2520 * h^{-4} + beta * detMean) * (M0 x M0) when h1 == h2 == h)
+                    const internal::PatchMetric<T> pm =
+                        internal::samplePatchMetric(mp.patch(p), useMetricWeights, 4);
+                    const T sigma12 = T(2) * (scms.u1->analyticSigma + scms.u2->analyticSigma);
+                    const T denom = pm.cBarG * sigma12 + beta * pm.detMean;
+                    scms.scale = (denom > T(0)) ? (T(1) / denom) : T(1);
                 }
-            }
-            if (scms.u1->nD1 > 0 && scms.u2->nD1 > 0)
-            {
-                scms.invDiag11.resize(scms.u1->nD1, scms.u2->nD1);
-                for (index_t b = 0; b < scms.u2->nD1; ++b)
-                    for (index_t a = 0; a < scms.u1->nD1; ++a)
-                    {
-                        const T denom = pm.c1 * scms.u1->b11Hat(a) * scms.u2->mu11(b)
-                                      + scms.u1->mu11(a) * pm.c2 * scms.u2->b11Hat(b)
-                                      + scms.c0 * scms.u1->mu11(a) * scms.u2->mu11(b);
-                        scms.invDiag11(a, b) = (denom > T(0)) ? (T(1) / denom) : T(0);
-                    }
-            }
-
-            if (calibrateByPowerMethod)
-            {
-                const gsSparseMatrix<T> A_pp =
-                    internal::extractSymmetricSubmatrix(m_mat, scms.grid.dofs, globToLoc, 25);
-                Workspace ws;
-                scms.scale = internal::calibratePatchOperatorScale(
-                    A_pp, scms.grid,
-                    [&](const gsMatrix<T> &R, gsMatrix<T> &E) { applyUnscaledPatchSCMS(scms, R, E, ws); },
-                    T(0.92), /*maxIter=*/15);
             }
             else
             {
-                // Analytical bound (8 * c_bar_G)^{-1} from Theorem 5 / Eq. (55)
-                scms.scale = T(1) / (T(8) * pm.cBarG);
+                scms.scale = T(0);
             }
 
             m_patches.push_back(std::move(scms));
         }
+
+        // 3. Optional exact L2(Omega_hat)-orthogonal skeleton (Theorem 5 / Eq. (60))
+        if (m_useL2OrthSkeleton)
+            initL2OrthSkeleton(mp, argBasis, mapper, globToLoc);
 
         std::vector<const internal::PatchInteriorGrid *> gridPtrs;
         gridPtrs.reserve(m_patches.size());
@@ -1794,12 +2106,15 @@ public:
                      bool useMetricWeights = true,
                      bool calibrateByPowerMethod = true,
                      bool includeOuterBoundaryRing = true,
-                     bool usePointGS = false)
+                     bool usePointGS = false,
+                     bool useL2OrthSkeleton = false,
+                     T multSafetyFactor = T(1.50))
     {
         return uPtr(new gsAsG1ScmsSmootherOp(
             mat, mp, dbasis, argBasis, mapper, beta, r_p,
             additive, useMetricWeights, calibrateByPowerMethod,
-            includeOuterBoundaryRing, usePointGS));
+            includeOuterBoundaryRing, usePointGS, useL2OrthSkeleton,
+            multSafetyFactor));
     }
 
     void step(const gsMatrix<T> &rhs, gsMatrix<T> &x) const override
@@ -1807,32 +2122,24 @@ public:
         if (m_additive)
         {
             if (m_usePointGS)
-                m_gs->step(rhs, x);
+                m_pgs.stepForward(m_mat, rhs, x, internal::isExactlyZero(x));
             stepAdditive(rhs, x);
             if (m_usePointGS)
-                m_gs->stepT(rhs, x);
+                m_pgs.stepBackward(m_mat, rhs, x, false);
             return;
         }
 
+        const bool xZero0 = internal::isExactlyZero(x);
         if (m_usePointGS)
-            m_gs->step(rhs, x);
+            m_pgs.stepForward(m_mat, rhs, x, xZero0);
 
-        const bool xZero = internal::isExactlyZero(x);
-#ifdef _OPENMP
-        if (m_patchesDecoupled && m_patches.size() > 1)
-        {
-#pragma omp parallel for schedule(static)
-            for (index_t p = 0; p < static_cast<index_t>(m_patches.size()); ++p)
-                relaxPatch(static_cast<size_t>(p), rhs, x, xZero);
-        }
+        const bool xZeroPatch = !m_usePointGS && xZero0;
+        relaxAllPatches(rhs, x, xZeroPatch, /*reverse=*/false);
+
+        if (m_useL2OrthSkeleton)
+            relaxL2OrthSkeleton(rhs, x, false);
         else
-#endif
-        {
-            for (size_t p = 0; p < m_patches.size(); ++p)
-                relaxPatch(p, rhs, x, xZero && (m_patchesDecoupled || p == 0));
-        }
-
-        m_skeleton.relax(m_mat, rhs, x);
+            m_skeleton.relax(m_mat, rhs, x);
     }
 
     void stepT(const gsMatrix<T> &rhs, gsMatrix<T> &x) const override
@@ -1843,25 +2150,24 @@ public:
             return;
         }
 
-        m_skeleton.relax(m_mat, rhs, x, internal::isExactlyZero(x));
-
-        const bool xZero = internal::isExactlyZero(x);
-#ifdef _OPENMP
-        if (m_patchesDecoupled && m_patches.size() > 1)
+        const bool xZero0 = internal::isExactlyZero(x);
+        bool skelEmpty = false;
+        if (m_useL2OrthSkeleton)
         {
-#pragma omp parallel for schedule(static)
-            for (index_t p = 0; p < static_cast<index_t>(m_patches.size()); ++p)
-                relaxPatch(static_cast<size_t>(p), rhs, x, xZero);
+            skelEmpty = !m_l2SkelSolver || (m_l2Nskel == 0);
+            relaxL2OrthSkeleton(rhs, x, xZero0);
         }
         else
-#endif
         {
-            for (size_t p = m_patches.size(); p-- > 0;)
-                relaxPatch(p, rhs, x, xZero && (m_patchesDecoupled || p + 1 == m_patches.size()));
+            skelEmpty = m_skeleton.empty();
+            m_skeleton.relax(m_mat, rhs, x, xZero0);
         }
 
+        const bool xZeroPatch = xZero0 && skelEmpty;
+        relaxAllPatches(rhs, x, xZeroPatch, /*reverse=*/true);
+
         if (m_usePointGS)
-            m_gs->stepT(rhs, x);
+            m_pgs.stepBackward(m_mat, rhs, x, false);
     }
 
     typename gsLinearOperator<T>::Ptr underlyingOp() const override { return makeMatrixOp(m_mat); }
@@ -1869,115 +2175,114 @@ public:
     index_t cols() const override { return m_mat.cols(); }
 
 private:
-    struct UnivariateSCMS
+    typedef gsEigen::SimplicialLDLT<gsSparseMatrix<T>> EigenLDLT;
+
+    struct UnivariateS0
     {
-        index_t m = 0;
-        index_t nD0 = 0;
-        index_t nD1 = 0;
-        T sigma0Hat = T(1);                       // unit-metric inverse constant (physical sigma0 = c_d * sigma0Hat)
-        internal::StructuredNullspaceBasis<T> Q0; // m x nD0 localized basis of S^{D,0}
-        internal::BandedSPDCholesky<T> cholM00;   // narrow-banded Cholesky of M_{0,0} = Q_0^T M_0 Q_0
-        gsMatrix<T> Q1;                           // m x nD1 basis of S^{D,1} (diagonalizing B_0, M_0)
-        gsVector<T> b11Hat;                       // unit-metric q_a^T B_0 q_a
-        gsVector<T> mu11;                         // q_a^T M_0 q_a
+        index_t n = 0;                          // full 1D B-spline dimension
+        index_t m = 0;                          // clamped interior dimension n - 4
+        index_t n0 = 0;                         // dim(S_0)
+        index_t nPerp = 0;                      // dim(S_perp) = m - n0
+        T hMin = T(1);
+        T analyticSigma = T(2520);              // 2520 / hMin^4 (Lemma 3)
+        internal::StructuredNullspaceBasis<T> P0; // m x n0 localized basis of S_0
+        internal::BandedSPDCholesky<T> cholM00;   // narrow-banded Cholesky of M_{00} = P_0^T M_0 P_0
+        // Populated only when useL2OrthSkeleton == true:
+        gsSparseMatrix<T> Pperp;                // m x nPerp orthogonal complement of P_0 in S^0
+        gsSparseMatrix<T> Mcross;               // n0 x n = P_0^T M_full[2:n-2, 0:n]
+        gsSparseMatrix<T> McrossT;              // n x n0 = Mcross^T (compressed ColMajor)
     };
 
-    struct PatchSCMS
+    struct PatchS00
     {
+        size_t patchIdx = 0;
         internal::PatchInteriorGrid grid;
-        std::shared_ptr<UnivariateSCMS> u1, u2;
-        T c0 = T(0);
-        T invSigma00 = T(1);
-        gsVector<T> invDiag10;
-        gsVector<T> invDiag01;
-        gsMatrix<T> invDiag11;
+        std::shared_ptr<UnivariateS0> u1, u2;
         T scale = T(1);
+    };
+
+    struct PatchL2OrthData
+    {
+        size_t scmsIdx = 0;
+        gsSparseMatrix<T> E_free;               // (n1 * n2) x nFreeLoc
+        std::vector<index_t> freeGlobDofs;      // size nFreeLoc
     };
 
     struct Workspace
     {
         gsMatrix<T> R_mat, E_mat;
-        gsMatrix<T> T0, T1;
-        gsMatrix<T> W00, W10, W01, W11;
-        gsMatrix<T> U0, U1;
+        gsMatrix<T> T0, W00, U0;
     };
 
-    /// Estimate lambda_max(M_{0,0}^{-1} B_{0,0}) in O(p * nD0) using banded Cholesky power iteration.
-    static T estimate1DInverseConstant(const internal::BandedSPDCholesky<T> &cholM00,
-                                       const gsSparseMatrix<T> &B00,
-                                       T fallbackSigma)
-    {
-        const index_t n = cholM00.size();
-        if (n <= 0)
-            return fallbackSigma;
-
-        gsVector<T> v(n);
-        for (index_t i = 0; i < n; ++i)
-            v(i) = std::sin(T(i + 1) * T(1.73)) + T(0.5) * std::cos(T(i + 1) * T(0.37));
-        const T vn = v.norm();
-        if (vn <= T(0))
-            return fallbackSigma;
-        v /= vn;
-
-        T lamMax = T(0);
-        T prevLam = T(0);
-        gsVector<T> Bv(n), w(n);
-        for (int iter = 0; iter < 20; ++iter)
-        {
-            Bv.noalias() = B00 * v;
-            const T vBv = v.dot(Bv);
-            if (vBv <= T(1e-30))
-                break;
-
-            w = Bv;
-            cholM00.solveLeftInPlace(w); // w = M_{0,0}^{-1} (B_{0,0} v)
-            const T wBv = w.dot(Bv);
-            const T lam = (wBv > T(0)) ? (wBv / vBv) : T(0);
-            if (lam > T(0))
-                lamMax = lam;
-
-            const T wn = w.norm();
-            if (wn <= T(1e-30))
-                break;
-            v = w / wn;
-
-            if (iter >= 5 && prevLam > T(0) && std::abs(lamMax - prevLam) <= T(1e-4) * lamMax)
-                break;
-            prevLam = lamMax;
-        }
-        return (lamMax > T(1e-12)) ? (T(1.02) * lamMax) : fallbackSigma;
-    }
-
-    static void buildUnivariateSCMS(const gsBSplineBasis<T> &b1d,
-                                    bool useSharpSigma0,
-                                    UnivariateSCMS &out)
+    static void buildUnivariateS0(const gsBSplineBasis<T> &b1d,
+                                  bool needFullMass,
+                                  UnivariateS0 &out)
     {
         const short_t deg = b1d.degree();
         const index_t n = b1d.size();
         const index_t m = n - 4;
-        out.m = m;
+        out.n = n;
+        out.m = std::max<index_t>(0, m);
 
-        gsSparseMatrix<T> M0, B0;
+        gsSparseMatrix<T> M0, Mfull;
         T hMin = T(1);
-        internal::assemble1DClampedMassAndBiharmonic(b1d, M0, B0, hMin);
+        internal::assemble1DMassMatrices(b1d, M0, hMin, needFullMass, needFullMass ? &Mfull : nullptr);
+        out.hMin = hMin;
+        out.analyticSigma = T(2520) / (hMin * hMin * hMin * hMin);
 
-        // Lemma 4 analytical bound on S^{D,0}_{p,p-2,h}
-        const T analyticSigma0 = T(2520) / (hMin * hMin * hMin * hMin);
-
-        const index_t r_ev = (deg - 2) / 2; // even derivatives 2j <= p - 2 per end
-        if (r_ev <= 0)
+        if (m <= 0)
         {
-            out.nD0 = m;
-            out.nD1 = 0;
-            out.Q0.setIdentity(m);
-            out.cholM00.compute(M0);
-            out.sigma0Hat = useSharpSigma0
-                ? estimate1DInverseConstant(out.cholM00, B0, analyticSigma0)
-                : analyticSigma0;
+            out.n0 = 0;
+            out.nPerp = 0;
             return;
         }
 
-        // Evaluate boundary even derivatives on hMin-scaled knots for high-p stability
+        // Helper to extract M_strip = Mfull[2:n-2, 0:n] (m x n) when exact L2-orth is requested
+        auto buildMcross = [&](const gsSparseMatrix<T> &P0_sp) {
+            if (!needFullMass || out.n0 <= 0)
+            {
+                out.Mcross.resize(0, n);
+                out.McrossT.resize(n, 0);
+                return;
+            }
+            gsSparseEntries<T> seStrip;
+            seStrip.reserve(Mfull.nonZeros());
+            for (index_t col = 0; col < n; ++col)
+                for (typename gsSparseMatrix<T>::InnerIterator it(Mfull, col); it; ++it)
+                {
+                    const index_t ir = it.row() - 2;
+                    if (ir >= 0 && ir < m)
+                        seStrip.add(ir, col, it.value());
+                }
+            gsSparseMatrix<T> Mstrip(m, n);
+            Mstrip.setFrom(seStrip);
+            out.Mcross = P0_sp.transpose() * Mstrip;
+            out.Mcross.makeCompressed();
+            out.McrossT = out.Mcross.transpose();
+            out.McrossT.makeCompressed();
+        };
+
+        // Odd boundary derivatives inside S^0: r in {3, 5, ..., 2*ncTilde + 1} <= p - 2
+        const index_t ncTilde = std::max<index_t>(0, (static_cast<index_t>(deg) - 3) / 2);
+        if (ncTilde == 0)
+        {
+            // p = 3 and p = 4: R_p = {0, 1}, so S_0 = S^0 with zero extra constraints!
+            out.n0 = m;
+            out.nPerp = 0;
+            out.P0.setIdentity(m);
+            out.cholM00.compute(M0);
+            if (needFullMass)
+            {
+                out.Pperp.resize(m, 0);
+                buildMcross(out.P0.toSparseMatrix());
+            }
+            return;
+        }
+
+        // Evaluate odd derivatives r = 3, 5, ..., rMax on hMin-scaled knots for high-p stability
+        const index_t rMax = 2 * ncTilde + 1;
+        const index_t kb = rMax - 1; // exact support width in S^0: {B_2, ..., B_{rMax}}
+
         const std::vector<T> uknots = b1d.knots().unique();
         const T uMin = uknots.front();
         const T uMaxScaled = (uknots.back() - uMin) / hMin;
@@ -1996,54 +2301,69 @@ private:
         endPts(0, 1) = uMaxScaled;
         std::vector<gsMatrix<T>> evEnd;
         gsMatrix<index_t> actEnd;
-        bScaled.evalAllDers_into(endPts, static_cast<int>(2 * r_ev), evEnd);
+        bScaled.evalAllDers_into(endPts, static_cast<int>(rMax), evEnd);
         bScaled.active_into(endPts, actEnd);
-
-        const index_t kb = deg - 1;
-        gsMatrix<T> C_full;
 
         if (m >= 2 * kb)
         {
-            gsMatrix<T> C_L(r_ev, kb), C_R(r_ev, kb);
+            gsMatrix<T> C_L(ncTilde, kb), C_R(ncTilde, kb);
             C_L.setZero();
             C_R.setZero();
 
-            for (index_t j = 1; j <= r_ev; ++j)
+            for (index_t l = 0; l < ncTilde; ++l)
             {
+                const index_t der = 2 * l + 3; // 3, 5, ..., rMax
                 for (index_t r = 0; r < actEnd.rows(); ++r)
                 {
                     const index_t irL = actEnd(r, 0) - 2;
                     if (irL >= 0 && irL < kb)
-                        C_L(j - 1, irL) = evEnd[2 * j](r, 0);
+                        C_L(l, irL) = evEnd[der](r, 0);
 
                     const index_t irR = actEnd(r, 1) - 2;
                     if (irR >= m - kb && irR < m)
-                        C_R(j - 1, irR - (m - kb)) = evEnd[2 * j](r, 1);
+                        C_R(l, irR - (m - kb)) = evEnd[der](r, 1);
                 }
-                const T nL = C_L.row(j - 1).norm();
-                if (nL > T(0)) C_L.row(j - 1) /= nL;
-                const T nR = C_R.row(j - 1).norm();
-                if (nR > T(0)) C_R.row(j - 1) /= nR;
+                const T nL = C_L.row(l).norm();
+                if (nL > T(0)) C_L.row(l) /= nL;
+                const T nR = C_R.row(l).norm();
+                if (nR > T(0)) C_R.row(l) /= nR;
             }
 
             const gsMatrix<T> V_L = C_L.jacobiSvd(gsEigen::ComputeFullV).matrixV();
             const gsMatrix<T> V_R = C_R.jacobiSvd(gsEigen::ComputeFullV).matrixV();
-            const index_t kNull = kb - r_ev;
-            out.Q0.setBlockDiag(m, kb, V_L.rightCols(kNull), V_R.rightCols(kNull));
-            out.nD0 = out.Q0.cols();
+            const index_t kNull = kb - ncTilde; // == ncTilde
+            out.P0.setBlockDiag(m, kb, V_L.rightCols(kNull), V_R.rightCols(kNull));
+            out.n0 = out.P0.cols();
+            out.nPerp = 2 * ncTilde;
 
-            C_full.setZero(2 * r_ev, m);
-            C_full.topLeftCorner(r_ev, kb)     = C_L;
-            C_full.bottomRightCorner(r_ev, kb) = C_R;
+            if (needFullMass)
+            {
+                gsSparseEntries<T> sePerp;
+                sePerp.reserve(2 * kb * ncTilde);
+                for (index_t c = 0; c < ncTilde; ++c)
+                {
+                    for (index_t r = 0; r < kb; ++r)
+                    {
+                        if (std::abs(V_L(r, c)) > T(1e-14))
+                            sePerp.add(r, c, V_L(r, c));
+                        if (std::abs(V_R(r, c)) > T(1e-14))
+                            sePerp.add(m - kb + r, ncTilde + c, V_R(r, c));
+                    }
+                }
+                out.Pperp.resize(m, out.nPerp);
+                out.Pperp.setFrom(sePerp);
+                out.Pperp.makeCompressed();
+            }
         }
         else
         {
-            // Coarse-mesh fallback (m < 2*(p - 1))
-            gsMatrix<T> C_raw(2 * r_ev, m);
+            // Coarse-mesh fallback (m < 2 * kb)
+            gsMatrix<T> C_raw(2 * ncTilde, m);
             C_raw.setZero();
             index_t nRows = 0;
-            for (index_t j = 1; j <= r_ev; ++j)
+            for (index_t l = 0; l < ncTilde; ++l)
             {
+                const index_t der = 2 * l + 3;
                 for (int side = 0; side < 2; ++side)
                 {
                     gsVector<T> rowVec(m);
@@ -2052,7 +2372,7 @@ private:
                     {
                         const index_t ir = actEnd(r, side) - 2;
                         if (ir >= 0 && ir < m)
-                            rowVec(ir) = evEnd[2 * j](r, side);
+                            rowVec(ir) = evEnd[der](r, side);
                     }
                     const T rn = rowVec.norm();
                     if (rn > T(1e-14))
@@ -2061,7 +2381,7 @@ private:
             }
             C_raw.conservativeResize(nRows, m);
 
-            auto svd = C_raw.jacobiSvd(gsEigen::ComputeFullU | gsEigen::ComputeFullV);
+            auto svd = C_raw.jacobiSvd(gsEigen::ComputeFullV);
             const gsVector<T> sv = svd.singularValues();
             index_t rk = 0;
             if (sv.size() > 0 && sv(0) > T(0))
@@ -2069,183 +2389,62 @@ private:
                     if (sv(i) > T(1e-10) * sv(0))
                         ++rk;
 
-            out.nD0 = m - rk;
-            out.Q0.setDense(svd.matrixV().rightCols(out.nD0));
-            C_full = svd.matrixU().leftCols(rk).transpose() * C_raw;
+            out.n0 = m - rk;
+            out.nPerp = rk;
+            out.P0.setDense(svd.matrixV().rightCols(out.n0));
+            if (needFullMass)
+            {
+                out.Pperp = svd.matrixV().leftCols(rk).sparseView(T(1), T(1e-14));
+                out.Pperp.makeCompressed();
+            }
         }
 
-        if (out.nD0 > 0)
+        if (out.n0 > 0)
         {
-            const gsSparseMatrix<T> Q0_sp = out.Q0.toSparseMatrix();
-            const gsSparseMatrix<T> M00 = Q0_sp.transpose() * M0 * Q0_sp;
+            const gsSparseMatrix<T> P0_sp = out.P0.toSparseMatrix();
+            const gsSparseMatrix<T> M00 = P0_sp.transpose() * M0 * P0_sp;
             out.cholM00.compute(M00);
-
-            if (useSharpSigma0)
-            {
-                const gsSparseMatrix<T> B00 = Q0_sp.transpose() * B0 * Q0_sp;
-                out.sigma0Hat = estimate1DInverseConstant(out.cholM00, B00, analyticSigma0);
-            }
-            else
-            {
-                out.sigma0Hat = analyticSigma0;
-            }
+            if (needFullMass)
+                buildMcross(P0_sp);
         }
-        else
+        else if (needFullMass)
         {
-            out.sigma0Hat = analyticSigma0;
-        }
-
-        // Construct S^{D,1} = (S^{D,0})^{\perp_{W0Hat}} = span(W0Hat^{-1} C_full^T)
-        if (C_full.rows() == 0)
-        {
-            out.nD1 = 0;
-            return;
-        }
-
-        const gsSparseMatrix<T> W0Hat = B0 + out.sigma0Hat * M0;
-        internal::BandedSPDCholesky<T> cholW0;
-        cholW0.compute(W0Hat);
-
-        gsMatrix<T> Q1_tilde = C_full.transpose();
-        cholW0.solveLeftInPlace(Q1_tilde);
-
-        // Normalize columns in W0Hat-norm and W0Hat-orthonormalize via small symmetric eigensolve
-        gsMatrix<T> WQ = W0Hat * Q1_tilde;
-        for (index_t k = 0; k < Q1_tilde.cols(); ++k)
-        {
-            const T wNormSq = Q1_tilde.col(k).dot(WQ.col(k));
-            if (wNormSq > T(0))
-            {
-                const T invNorm = T(1) / std::sqrt(wNormSq);
-                Q1_tilde.col(k) *= invNorm;
-                WQ.col(k) *= invNorm;
-            }
-        }
-
-        const gsMatrix<T> G_W = Q1_tilde.transpose() * WQ;
-        gsEigen::SelfAdjointEigenSolver<typename gsMatrix<T>::Base> esW(G_W, gsEigen::ComputeEigenvectors);
-        const gsVector<T> ew = esW.eigenvalues();
-        const T ewMax = (ew.size() > 0) ? ew.maxCoeff() : T(0);
-
-        std::vector<index_t> keep;
-        for (index_t k = 0; k < ew.size(); ++k)
-            if (ew(k) > T(1e-11) * ewMax)
-                keep.push_back(k);
-
-        out.nD1 = static_cast<index_t>(keep.size());
-        if (out.nD1 == 0)
-            return;
-
-        gsMatrix<T> Q1_hat(m, out.nD1);
-        for (index_t idx = 0; idx < out.nD1; ++idx)
-        {
-            const index_t k = keep[idx];
-            Q1_hat.col(idx).noalias() = (Q1_tilde * esW.eigenvectors().col(k)) / std::sqrt(ew(k));
-        }
-
-        // Simultaneously diagonalize M_{1,1} and B_{1,1} inside the W0Hat-orthonormal basis
-        const gsMatrix<T> M11_hat = Q1_hat.transpose() * (M0 * Q1_hat);
-        gsEigen::SelfAdjointEigenSolver<typename gsMatrix<T>::Base> esM(M11_hat, gsEigen::ComputeEigenvectors);
-        out.Q1.noalias() = Q1_hat * esM.eigenvectors();
-
-        const gsMatrix<T> BQ1 = B0 * out.Q1;
-        const gsMatrix<T> MQ1 = M0 * out.Q1;
-        out.b11Hat.resize(out.nD1);
-        out.mu11.resize(out.nD1);
-        for (index_t a = 0; a < out.nD1; ++a)
-        {
-            out.b11Hat(a) = std::max(T(0), out.Q1.col(a).dot(BQ1.col(a)));
-            out.mu11(a)   = std::max(T(1e-30), out.Q1.col(a).dot(MQ1.col(a)));
+            out.Mcross.resize(0, n);
+            out.McrossT.resize(n, 0);
         }
     }
 
-    /// Factored 4-block Kronecker SCMS apply with zero heap allocations and zero transposes.
-    static void applyUnscaledPatchSCMS(const PatchSCMS &scms,
-                                       const gsMatrix<T> &R_mat,
-                                       gsMatrix<T> &E_mat,
-                                       Workspace &ws)
+    /// Single-block pure Kronecker mass apply on S_0 x S_0 (zero heap allocations, zero transposes).
+    static void applyUnscaledPatchS00(const PatchS00 &scms,
+                                      const gsMatrix<T> &R_mat,
+                                      gsMatrix<T> &E_mat,
+                                      Workspace &ws)
     {
-        const UnivariateSCMS &u1 = *scms.u1;
-        const UnivariateSCMS &u2 = *scms.u2;
+        const UnivariateS0 &u1 = *scms.u1;
+        const UnivariateS0 &u2 = *scms.u2;
 
-        // Ultra-fast p = 3 path (S^{D,1} = {0}, Q_0 = I): pure banded Cholesky left + right solves
-        if (u1.nD1 == 0 && u2.nD1 == 0 && u1.Q0.isIdentity() && u2.Q0.isIdentity())
+        if (u1.n0 <= 0 || u2.n0 <= 0)
+        {
+            E_mat.setZero(u1.m, u2.m);
+            return;
+        }
+
+        // Ultra-fast p = 3, 4 path (P_0 = I): pure banded Cholesky left + right solves
+        if (u1.P0.isIdentity() && u2.P0.isIdentity())
         {
             E_mat = R_mat;
             u1.cholM00.solveLeftInPlace(E_mat);
             u2.cholM00.solveRightInPlace(E_mat);
-            E_mat *= scms.invSigma00;
             return;
         }
 
-        // 1. Left projections (each computed ONCE instead of twice)
-        if (u1.nD0 > 0)
-            u1.Q0.applyTransposeLeft(R_mat, ws.T0);
-        if (u1.nD1 > 0)
-        {
-            ws.T1.resize(u1.nD1, u2.m);
-            ws.T1.noalias() = u1.Q1.transpose() * R_mat;
-        }
-
-        // 2. Subspace (*, 0): combine Blocks (0,0) and (1,0) before single right Q_0^{(2)T}
-        if (u2.nD0 > 0)
-        {
-            if (u1.nD0 > 0)
-            {
-                u2.Q0.applyRight(ws.T0, ws.W00);
-                u1.cholM00.solveLeftInPlace(ws.W00);
-                u2.cholM00.solveRightInPlace(ws.W00);
-                ws.W00 *= scms.invSigma00;
-                u1.Q0.applyLeft(ws.W00, ws.U0);
-            }
-            else
-            {
-                ws.U0.setZero(u1.m, u2.nD0);
-            }
-
-            if (u1.nD1 > 0)
-            {
-                u2.Q0.applyRight(ws.T1, ws.W10);
-                for (index_t a = 0; a < u1.nD1; ++a)
-                    ws.W10.row(a) *= scms.invDiag10(a);
-                u2.cholM00.solveRightInPlace(ws.W10);
-                ws.U0.noalias() += u1.Q1 * ws.W10;
-            }
-
-            u2.Q0.applyTransposeRight(ws.U0, E_mat);
-        }
-        else
-        {
-            E_mat.setZero(u1.m, u2.m);
-        }
-
-        // 3. Subspace (*, 1): combine Blocks (0,1) and (1,1) before single right Q_1^{(2)T}
-        if (u2.nD1 > 0)
-        {
-            if (u1.nD0 > 0)
-            {
-                ws.W01.resize(u1.nD0, u2.nD1);
-                ws.W01.noalias() = ws.T0 * u2.Q1;
-                u1.cholM00.solveLeftInPlace(ws.W01);
-                for (index_t b = 0; b < u2.nD1; ++b)
-                    ws.W01.col(b) *= scms.invDiag01(b);
-                u1.Q0.applyLeft(ws.W01, ws.U1);
-            }
-            else
-            {
-                ws.U1.setZero(u1.m, u2.nD1);
-            }
-
-            if (u1.nD1 > 0)
-            {
-                ws.W11.resize(u1.nD1, u2.nD1);
-                ws.W11.noalias() = ws.T1 * u2.Q1;
-                ws.W11.array() *= scms.invDiag11.array();
-                ws.U1.noalias() += u1.Q1 * ws.W11;
-            }
-
-            E_mat.noalias() += ws.U1 * u2.Q1.transpose();
-        }
+        // General p >= 5 path: single S_0 x S_0 Kronecker mass block
+        u1.P0.applyTransposeLeft(R_mat, ws.T0);
+        u2.P0.applyRight(ws.T0, ws.W00);
+        u1.cholM00.solveLeftInPlace(ws.W00);
+        u2.cholM00.solveRightInPlace(ws.W00);
+        u1.P0.applyLeft(ws.W00, ws.U0);
+        u2.P0.applyTransposeRight(ws.U0, E_mat);
     }
 
     void relaxPatch(size_t pIdx, const gsMatrix<T> &rhs, gsMatrix<T> &x, bool xIsZero = false) const
@@ -2255,7 +2454,10 @@ private:
 #else
         Workspace &ws = m_workspaces[0];
 #endif
-        const PatchSCMS &scms = m_patches[pIdx];
+        const PatchS00 &scms = m_patches[pIdx];
+        if (scms.scale == T(0))
+            return;
+
         const index_t ncols = rhs.cols();
         ws.R_mat.resize(scms.grid.m1, scms.grid.m2);
         ws.E_mat.resize(scms.grid.m1, scms.grid.m2);
@@ -2263,8 +2465,35 @@ private:
         for (index_t col = 0; col < ncols; ++col)
         {
             internal::gatherPatchResidual(m_mat, scms.grid, rhs, x, col, xIsZero, ws.R_mat);
-            applyUnscaledPatchSCMS(scms, ws.R_mat, ws.E_mat, ws);
+            applyUnscaledPatchS00(scms, ws.R_mat, ws.E_mat, ws);
             internal::scatterPatchCorrection(scms.grid, ws.E_mat, scms.scale, col, x);
+        }
+    }
+
+    void relaxAllPatches(const gsMatrix<T> &rhs, gsMatrix<T> &x, bool xZero, bool reverse) const
+    {
+        const size_t nP = m_patches.size();
+        if (nP == 0)
+            return;
+#ifdef _OPENMP
+        if (m_patchesDecoupled && nP > 1 && m_totalInteriorDofs >= 4000)
+        {
+            const int nThreads = std::min<int>(omp_get_max_threads(), static_cast<int>(nP));
+#pragma omp parallel for schedule(static) num_threads(nThreads)
+            for (index_t p = 0; p < static_cast<index_t>(nP); ++p)
+                relaxPatch(static_cast<size_t>(p), rhs, x, xZero);
+            return;
+        }
+#endif
+        if (!reverse)
+        {
+            for (size_t p = 0; p < nP; ++p)
+                relaxPatch(p, rhs, x, xZero && (m_patchesDecoupled || p == 0));
+        }
+        else
+        {
+            for (size_t p = nP; p-- > 0;)
+                relaxPatch(p, rhs, x, xZero && (m_patchesDecoupled || p + 1 == nP));
         }
     }
 
@@ -2280,18 +2509,24 @@ private:
         }
         const gsMatrix<T> &r = *rPtr;
         const index_t ncols = rhs.cols();
+        const size_t nP = m_patches.size();
 
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static) if (m_patches.size() > 1)
+        const bool useOmp = (nP > 1 && m_totalInteriorDofs >= 4000);
+        const int nThreads = useOmp ? std::min<int>(omp_get_max_threads(), static_cast<int>(nP)) : 1;
+#pragma omp parallel for schedule(static) if (useOmp) num_threads(nThreads)
 #endif
-        for (index_t p = 0; p < static_cast<index_t>(m_patches.size()); ++p)
+        for (index_t p = 0; p < static_cast<index_t>(nP); ++p)
         {
 #ifdef _OPENMP
             Workspace &ws = m_workspaces[static_cast<size_t>(omp_get_thread_num())];
 #else
             Workspace &ws = m_workspaces[0];
 #endif
-            const PatchSCMS &scms = m_patches[static_cast<size_t>(p)];
+            const PatchS00 &scms = m_patches[static_cast<size_t>(p)];
+            if (scms.scale == T(0))
+                continue;
+
             const index_t nPatch = scms.grid.m1 * scms.grid.m2;
             ws.R_mat.resize(scms.grid.m1, scms.grid.m2);
             ws.E_mat.resize(scms.grid.m1, scms.grid.m2);
@@ -2316,23 +2551,402 @@ private:
                     }
                 }
 
-                applyUnscaledPatchSCMS(scms, ws.R_mat, ws.E_mat, ws);
+                applyUnscaledPatchS00(scms, ws.R_mat, ws.E_mat, ws);
                 internal::scatterPatchCorrection(scms.grid, ws.E_mat, w, col, x);
             }
         }
 
-        m_skeleton.applyAdditive(r, x, T(0.5));
+        if (m_useL2OrthSkeleton)
+            applyL2OrthSkeletonAdditive(r, x, T(0.5));
+        else
+            m_skeleton.applyAdditive(r, x, T(0.5));
+    }
+
+    // ------------------------------------------------------------------------
+    // Exact L2(Omega_hat)-Orthogonal Skeleton (Theorem 5 / Eq. (60))
+    // ------------------------------------------------------------------------
+    void initL2OrthSkeleton(const gsMultiPatch<T> &mp,
+                            const std::vector<gsArgyrisEmbedding<T>> &argBasis,
+                            const gsDofMapper &mapper,
+                            std::vector<index_t> &globToLoc)
+    {
+        (void)mp;
+        const index_t nFree = m_mat.rows();
+        std::vector<bool> isPatchInt(static_cast<size_t>(nFree), false);
+        for (const auto &scms : m_patches)
+            for (index_t dof : scms.grid.dofs)
+                if (dof >= 0)
+                    isPatchInt[static_cast<size_t>(dof)] = true;
+
+        std::vector<index_t> evColOfDof(static_cast<size_t>(nFree), -1);
+        index_t nEV = 0;
+        gsSparseEntries<T> seIloc;
+        seIloc.reserve(nFree * 2);
+        for (index_t g = 0; g < nFree; ++g)
+        {
+            if (!isPatchInt[static_cast<size_t>(g)])
+            {
+                evColOfDof[static_cast<size_t>(g)] = nEV;
+                seIloc.add(g, nEV, T(1));
+                ++nEV;
+            }
+        }
+
+        index_t nextCol = nEV;
+        std::vector<std::vector<index_t>> patchSkelCols(m_patches.size());
+        m_l2Patches.resize(m_patches.size());
+
+        for (size_t idx = 0; idx < m_patches.size(); ++idx)
+        {
+            const PatchS00 &scms = m_patches[idx];
+            const size_t p = scms.patchIdx;
+            const UnivariateS0 &u1 = *scms.u1;
+            const UnivariateS0 &u2 = *scms.u2;
+            const index_t m1 = scms.grid.m1;
+            const index_t nInt = argBasis[p].sizes[0];
+            const index_t nLocal = argBasis[p].matrix.cols();
+            const index_t nFull = argBasis[p].matrix.rows();
+
+            // Store free-DOF columns of patch embedding E^{(p)} for implicit O(p N_h) apply
+            PatchL2OrthData &l2p = m_l2Patches[idx];
+            l2p.scmsIdx = idx;
+            gsSparseEntries<T> seE;
+            seE.reserve(argBasis[p].matrix.nonZeros());
+            std::vector<index_t> seenEV;
+            for (index_t loc = 0; loc < nLocal; ++loc)
+            {
+                if (!mapper.is_free(loc, p))
+                    continue;
+                const index_t g = mapper.index(loc, p);
+                const index_t colIdx = static_cast<index_t>(l2p.freeGlobDofs.size());
+                l2p.freeGlobDofs.push_back(g);
+                for (typename gsSparseMatrix<T>::InnerIterator it(argBasis[p].matrix, loc); it; ++it)
+                    seE.add(it.row(), colIdx, it.value());
+
+                if (loc >= nInt && evColOfDof[static_cast<size_t>(g)] >= 0)
+                    seenEV.push_back(evColOfDof[static_cast<size_t>(g)]);
+            }
+            l2p.E_free.resize(nFull, static_cast<index_t>(l2p.freeGlobDofs.size()));
+            l2p.E_free.setFrom(seE);
+            l2p.E_free.makeCompressed();
+
+            std::sort(seenEV.begin(), seenEV.end());
+            seenEV.erase(std::unique(seenEV.begin(), seenEV.end()), seenEV.end());
+            patchSkelCols[idx] = std::move(seenEV);
+
+            // Add patch-local interior orthogonal complement columns (0,perp), (perp,0), (perp,perp)
+            if (u1.nPerp > 0 || u2.nPerp > 0)
+            {
+                const gsSparseMatrix<T> P0_1 = u1.P0.toSparseMatrix();
+                const gsSparseMatrix<T> P0_2 = u2.P0.toSparseMatrix();
+
+                auto addTensorCols = [&](const gsSparseMatrix<T> &A1, const gsSparseMatrix<T> &A2) {
+                    if (A1.cols() == 0 || A2.cols() == 0)
+                        return;
+                    for (index_t c2 = 0; c2 < A2.cols(); ++c2)
+                    {
+                        for (index_t c1 = 0; c1 < A1.cols(); ++c1)
+                        {
+                            bool hasNnz = false;
+                            const index_t col = nextCol;
+                            for (typename gsSparseMatrix<T>::InnerIterator it2(A2, c2); it2; ++it2)
+                            {
+                                for (typename gsSparseMatrix<T>::InnerIterator it1(A1, c1); it1; ++it1)
+                                {
+                                    const index_t g = scms.grid.dofs[it1.row() + m1 * it2.row()];
+                                    if (g >= 0)
+                                    {
+                                        seIloc.add(g, col, it1.value() * it2.value());
+                                        hasNnz = true;
+                                    }
+                                }
+                            }
+                            if (hasNnz)
+                            {
+                                patchSkelCols[idx].push_back(col);
+                                ++nextCol;
+                            }
+                        }
+                    }
+                };
+
+                addTensorCols(P0_1, u2.Pperp);
+                addTensorCols(u1.Pperp, P0_2);
+                addTensorCols(u1.Pperp, u2.Pperp);
+            }
+        }
+
+        m_l2Nskel = nextCol;
+        if (m_l2Nskel == 0)
+            return;
+
+        m_Iloc.resize(nFree, m_l2Nskel);
+        m_Iloc.setFrom(seIloc);
+        m_Iloc.makeCompressed();
+        m_IlocT = m_Iloc.transpose();
+        m_IlocT.makeCompressed();
+
+        // Exact Galerkin assembly of A_skel^perp = (I_skel^perp)^T A_h I_skel^perp
+        const gsSparseMatrix<T> AI_loc = m_mat * m_Iloc;
+        const gsSparseMatrix<T> A_loc = m_IlocT * AI_loc;
+
+        gsSparseEntries<T> seSkel;
+        seSkel.reserve(A_loc.nonZeros() * 4);
+        for (index_t c = 0; c < A_loc.cols(); ++c)
+            for (typename gsSparseMatrix<T>::InnerIterator it(A_loc, c); it; ++it)
+                seSkel.add(it.row(), c, it.value());
+
+        for (size_t idx = 0; idx < m_patches.size(); ++idx)
+        {
+            const PatchS00 &scms = m_patches[idx];
+            const UnivariateS0 &u1 = *scms.u1;
+            const UnivariateS0 &u2 = *scms.u2;
+            const std::vector<index_t> &skCols = patchSkelCols[idx];
+            const index_t kp = static_cast<index_t>(skCols.size());
+            if (kp == 0 || u1.n0 <= 0 || u2.n0 <= 0)
+                continue;
+
+            const PatchL2OrthData &l2p = m_l2Patches[idx];
+            const index_t m1 = scms.grid.m1;
+            const index_t m2 = scms.grid.m2;
+            const index_t nPatch = m1 * m2;
+
+            // Map global DOF -> local column(s) of E_free on this patch
+            std::vector<std::pair<index_t, index_t>> dofCols;
+            dofCols.reserve(l2p.freeGlobDofs.size());
+            for (size_t lc = 0; lc < l2p.freeGlobDofs.size(); ++lc)
+                dofCols.emplace_back(l2p.freeGlobDofs[lc], static_cast<index_t>(lc));
+            std::sort(dofCols.begin(), dofCols.end());
+
+            // Build C_p (nPatch x kp): patch interior L2-projection correction -Q_00(I_loc[:, skCols])
+            gsMatrix<T> C_p(nPatch, kp);
+            gsMatrix<T> V_hat(u1.n, u2.n), tmp(u1.n0, u2.n), Y(u1.n0, u2.n0), U0(m1, u2.n0), W(m1, m2);
+            for (index_t j = 0; j < kp; ++j)
+            {
+                const index_t s = skCols[j];
+                V_hat.setZero();
+                T *vPtr = V_hat.data();
+                for (typename gsSparseMatrix<T>::InnerIterator it(m_Iloc, s); it; ++it)
+                {
+                    const index_t g = it.row();
+                    const T coeff = it.value();
+                    auto rangeIt = std::lower_bound(
+                        dofCols.begin(), dofCols.end(), std::make_pair(g, index_t(-1)));
+                    for (; rangeIt != dofCols.end() && rangeIt->first == g; ++rangeIt)
+                    {
+                        const index_t lc = rangeIt->second;
+                        for (typename gsSparseMatrix<T>::InnerIterator eit(l2p.E_free, lc); eit; ++eit)
+                            vPtr[eit.row()] += coeff * eit.value();
+                    }
+                }
+
+                tmp.noalias() = u1.Mcross * V_hat;
+                Y.noalias() = tmp * u2.McrossT;
+                u1.cholM00.solveLeftInPlace(Y);
+                u2.cholM00.solveRightInPlace(Y);
+                u1.P0.applyLeft(Y, U0);
+                u2.P0.applyTransposeRight(U0, W);
+
+                T *cCol = C_p.data() + j * nPatch;
+                const T *wPtr = W.data();
+                for (index_t i = 0; i < nPatch; ++i)
+                    cCol[i] = (scms.grid.dofs[i] >= 0) ? (-wPtr[i]) : T(0);
+            }
+
+            // Extract B_p = AI_loc[grid.dofs, skCols] (nPatch x kp)
+            for (index_t i = 0; i < nPatch; ++i)
+                if (scms.grid.dofs[i] >= 0)
+                    globToLoc[scms.grid.dofs[i]] = i;
+
+            gsMatrix<T> B_p(nPatch, kp);
+            B_p.setZero();
+            for (index_t j = 0; j < kp; ++j)
+            {
+                const index_t s = skCols[j];
+                for (typename gsSparseMatrix<T>::InnerIterator it(AI_loc, s); it; ++it)
+                {
+                    const index_t locRow = globToLoc[it.row()];
+                    if (locRow >= 0)
+                        B_p(locRow, j) = it.value();
+                }
+            }
+            for (index_t dof : scms.grid.dofs)
+                if (dof >= 0)
+                    globToLoc[dof] = -1;
+
+            const gsSparseMatrix<T> A_pp =
+                internal::extractSymmetricSubmatrix(m_mat, scms.grid.dofs, globToLoc, 25);
+            const gsMatrix<T> AC_p = A_pp * C_p;
+            const gsMatrix<T> B_t_C = B_p.transpose() * C_p;
+            gsMatrix<T> Delta_p = B_t_C + B_t_C.transpose();
+            Delta_p.noalias() += C_p.transpose() * AC_p;
+
+            for (index_t c = 0; c < kp; ++c)
+                for (index_t r = 0; r < kp; ++r)
+                {
+                    const T val = Delta_p(r, c);
+                    if (std::abs(val) > T(1e-16))
+                        seSkel.add(skCols[r], skCols[c], val);
+                }
+        }
+
+        gsSparseMatrix<T> A_skel_perp(m_l2Nskel, m_l2Nskel);
+        A_skel_perp.setFrom(seSkel);
+        m_l2SkelSolver.reset(new EigenLDLT());
+        m_l2SkelSolver->compute(A_skel_perp);
+        if (m_l2SkelSolver->info() != gsEigen::Success)
+        {
+            gsWarn << "gsAsG1ScmsSmootherOp: L2-orthogonal skeleton Cholesky failed (size="
+                   << m_l2Nskel << "); disabling skeleton block.\n";
+            m_l2SkelSolver.reset();
+        }
+    }
+
+    /// Implicit O(p N_h) application of y = (I_skel^perp)^T * r.
+    void applyL2OrthPerpT(const gsMatrix<T> &r, gsMatrix<T> &ySkel) const
+    {
+        const index_t nFree = r.rows();
+        const index_t ncols = r.cols();
+        m_l2GlobBuf = r;
+
+        for (const PatchL2OrthData &l2p : m_l2Patches)
+        {
+            const PatchS00 &scms = m_patches[l2p.scmsIdx];
+            const UnivariateS0 &u1 = *scms.u1;
+            const UnivariateS0 &u2 = *scms.u2;
+            if (u1.n0 <= 0 || u2.n0 <= 0)
+                continue;
+
+            const index_t m1 = scms.grid.m1;
+            const index_t m2 = scms.grid.m2;
+            const index_t nPatch = m1 * m2;
+            gsMatrix<T> R_int(m1, m2), T0, Z, tmp(u1.n, u2.n0), W_hat(u1.n, u2.n);
+
+            for (index_t col = 0; col < ncols; ++col)
+            {
+                const T *rCol = r.data() + col * nFree;
+                T *rmPtr = R_int.data();
+                for (index_t i = 0; i < nPatch; ++i)
+                {
+                    const index_t g = scms.grid.dofs[i];
+                    rmPtr[i] = (g >= 0) ? rCol[g] : T(0);
+                }
+
+                u1.P0.applyTransposeLeft(R_int, T0);
+                u2.P0.applyRight(T0, Z);
+                u1.cholM00.solveLeftInPlace(Z);
+                u2.cholM00.solveRightInPlace(Z);
+                tmp.noalias() = u1.McrossT * Z;
+                W_hat.noalias() = tmp * u2.Mcross;
+
+                const T *wPtr = W_hat.data();
+                T *gCol = m_l2GlobBuf.data() + col * nFree;
+                const index_t nFreeLoc = static_cast<index_t>(l2p.freeGlobDofs.size());
+                for (index_t lc = 0; lc < nFreeLoc; ++lc)
+                {
+                    T acc = T(0);
+                    for (typename gsSparseMatrix<T>::InnerIterator it(l2p.E_free, lc); it; ++it)
+                        acc += it.value() * wPtr[it.row()];
+                    gCol[l2p.freeGlobDofs[lc]] -= acc;
+                }
+            }
+        }
+
+        ySkel.resize(m_l2Nskel, ncols);
+        ySkel.noalias() = m_IlocT * m_l2GlobBuf;
+    }
+
+    /// Implicit O(p N_h) update: x += weight * I_skel^perp * eSkel.
+    void applyL2OrthPerpAdd(const gsMatrix<T> &eSkel, gsMatrix<T> &x, T weight) const
+    {
+        const index_t nFree = x.rows();
+        const index_t ncols = eSkel.cols();
+        m_l2GlobBuf.resize(nFree, ncols);
+        m_l2GlobBuf.noalias() = m_Iloc * eSkel;
+        x.noalias() += weight * m_l2GlobBuf;
+
+        for (const PatchL2OrthData &l2p : m_l2Patches)
+        {
+            const PatchS00 &scms = m_patches[l2p.scmsIdx];
+            const UnivariateS0 &u1 = *scms.u1;
+            const UnivariateS0 &u2 = *scms.u2;
+            if (u1.n0 <= 0 || u2.n0 <= 0)
+                continue;
+
+            const index_t m1 = scms.grid.m1;
+            const index_t m2 = scms.grid.m2;
+            gsMatrix<T> V_hat(u1.n, u2.n), tmp(u1.n0, u2.n), Y(u1.n0, u2.n0), U0(m1, u2.n0), W(m1, m2);
+
+            for (index_t col = 0; col < ncols; ++col)
+            {
+                V_hat.setZero();
+                T *vPtr = V_hat.data();
+                const T *uCol = m_l2GlobBuf.data() + col * nFree;
+                const index_t nFreeLoc = static_cast<index_t>(l2p.freeGlobDofs.size());
+                for (index_t lc = 0; lc < nFreeLoc; ++lc)
+                {
+                    const T coeff = uCol[l2p.freeGlobDofs[lc]];
+                    if (coeff == T(0))
+                        continue;
+                    for (typename gsSparseMatrix<T>::InnerIterator it(l2p.E_free, lc); it; ++it)
+                        vPtr[it.row()] += coeff * it.value();
+                }
+
+                tmp.noalias() = u1.Mcross * V_hat;
+                Y.noalias() = tmp * u2.McrossT;
+                u1.cholM00.solveLeftInPlace(Y);
+                u2.cholM00.solveRightInPlace(Y);
+                u1.P0.applyLeft(Y, U0);
+                u2.P0.applyTransposeRight(U0, W);
+
+                internal::scatterPatchCorrection(scms.grid, W, -weight, col, x);
+            }
+        }
+    }
+
+    void relaxL2OrthSkeleton(const gsMatrix<T> &rhs, gsMatrix<T> &x, bool xIsZero) const
+    {
+        if (!m_l2SkelSolver || m_l2Nskel == 0)
+            return;
+        const gsMatrix<T> *rPtr = &rhs;
+        if (!xIsZero)
+        {
+            m_resBuf.resize(rhs.rows(), rhs.cols());
+            m_resBuf.noalias() = rhs - m_mat * x;
+            rPtr = &m_resBuf;
+        }
+        applyL2OrthPerpT(*rPtr, m_l2Rsub);
+        m_l2Esub = m_l2SkelSolver->solve(m_l2Rsub);
+        applyL2OrthPerpAdd(m_l2Esub, x, T(1));
+    }
+
+    void applyL2OrthSkeletonAdditive(const gsMatrix<T> &r, gsMatrix<T> &x, T weight) const
+    {
+        if (!m_l2SkelSolver || m_l2Nskel == 0)
+            return;
+        applyL2OrthPerpT(r, m_l2Rsub);
+        m_l2Esub = m_l2SkelSolver->solve(m_l2Rsub);
+        applyL2OrthPerpAdd(m_l2Esub, x, weight);
     }
 
     gsSparseMatrix<T> m_mat;
     bool m_additive;
     bool m_usePointGS;
+    bool m_useL2OrthSkeleton;
     bool m_patchesDecoupled = true;
-    typename gsPreconditionerOp<T>::uPtr m_gs;
+    index_t m_totalInteriorDofs = 0;
+    internal::PointGaussSeidelSmoother<T> m_pgs;
     internal::SubspaceCholeskyBlock<T> m_skeleton;
-    std::vector<PatchSCMS> m_patches;
+    std::vector<PatchS00> m_patches;
     mutable std::vector<Workspace> m_workspaces;
     mutable gsMatrix<T> m_resBuf;
+
+    // Exact L2-orthogonal skeleton state (populated only when m_useL2OrthSkeleton == true)
+    index_t m_l2Nskel = 0;
+    gsSparseMatrix<T> m_Iloc, m_IlocT;
+    std::vector<PatchL2OrthData> m_l2Patches;
+    std::unique_ptr<EigenLDLT> m_l2SkelSolver;
+    mutable gsMatrix<T> m_l2GlobBuf, m_l2Rsub, m_l2Esub;
 };
 
 } // namespace gismo
