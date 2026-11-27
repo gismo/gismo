@@ -918,12 +918,13 @@ public: // Deprecated functions required by gsCompactKnotVector.
         return m_repKnots.at(i);
     }
 
-    /// Checks whether the knot vector is uniform.
+    /// Checks whether the knot vector is uniform, i.e. whether all
+    /// distinct knots are equally spaced up to the absolute tolerance \a tol.
     bool isUniform(T tol = 1e-9) const
     {
         const T df = *(ubegin() + 1) - *ubegin();
         for( uiterator uit = ubegin() + 1; uit != uend(); ++uit )
-            if( math::abs(*uit - (*uit-(T)(1)) - df) > tol )
+            if( math::abs(*uit - *(uit-1) - df) > tol )
                 return false;
         return true;
     }
