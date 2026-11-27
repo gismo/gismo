@@ -189,6 +189,9 @@ void gsDofMapper::markTagged( index_t i, index_t k, index_t comp)
 
 void gsDofMapper::markBoundary(index_t k, const gsMatrix<index_t> & boundaryDofs, index_t comp)
 {
+    // With one component, comp == -1 means component 0
+    if (-1 == comp && 1 == componentsSize())
+        comp = 0;
     if (-1 == comp || m_curElimId >= 0)
     {
         for (index_t i = 0; i < boundaryDofs.rows(); ++i)
