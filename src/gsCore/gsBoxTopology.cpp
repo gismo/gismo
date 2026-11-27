@@ -287,6 +287,104 @@ std::vector<patchCorner> getCanonicCorners( const std::vector<patchCorner>& c, c
     return corners;
 }
 
+// @brief Interface of every patch side, for lookups in constant time
+//
+// Entry (patch, side) holds the position of the first interface in
+// gsBoxTopology::interfaces() that contains the side, or -1. This is the
+// interface that gsBoxTopology::getNeighbour and gsBoxTopology::getInterface
+// find by linear search.
+class sideInterfaceTable
+{
+public:
+    explicit sideInterfaceTable(const gsBoxTopology& bt)
+    : m_bt(bt), m_nSides(2*bt.dim()), m_valid(true)
+    {
+        const gsBoxTopology::ifContainer& ifc = bt.interfaces();
+        m_interface.assign(bt.nBoxes()*m_nSides, -1);
+        for (size_t i = 0; i < ifc.size(); ++i)
+        {
+            add(ifc[i].first(), i);
+            add(ifc[i].second(), i);
+        }
+    }
+
+    /// False if an interface refers to a patch or side out of range
+    bool valid() const { return m_valid; }
+
+    /// Same result as gsBoxTopology::getCornerList
+    bool cornerList(const patchCorner& start, std::vector<patchCorner> & cornerList) const
+    {
+        const gsBoxTopology::ifContainer& ifc = m_bt.interfaces();
+        bool innerVertex=true;
+        cornerList.clear();
+        cornerList.push_back(start);
+        std::vector<patchSide> visitedSides;
+        std::vector<patchSide> psides;     // psides and vertices relate to each other
+        std::vector<patchCorner> vertices;
+        start.getContainingSides(m_bt.dim(),psides);
+        for(size_t i = 0;i<psides.size();i++)
+            vertices.push_back(start);
+        patchSide ps,psNeighbour;
+        patchCorner pc,pcNeighbour;
+        do
+        {
+            ps = psides.back();
+            pc = vertices.back();
+            psides.pop_back();
+            vertices.pop_back();
+            if(std::find(visitedSides.begin(), visitedSides.end(), ps)==visitedSides.end())
+                visitedSides.push_back(ps);
+            const index_t ii = find(ps);
+            if(ii<0)
+            {
+                innerVertex=false;
+                continue;
+            }
+            const boundaryInterface & boundIf = ifc[ii];
+            psNeighbour = (boundIf.first() == ps) ? boundIf.second() : boundIf.first();
+            if(std::find(visitedSides.begin(), visitedSides.end(), psNeighbour)!=visitedSides.end())
+                continue;
+            visitedSides.push_back(psNeighbour);
+            pcNeighbour = boundIf.mapCorner(pc);
+            if(pcNeighbour==pc)
+                continue;
+            std::vector<patchSide> neighbourSides;
+            pcNeighbour.getContainingSides(m_bt.dim(),neighbourSides);
+            for(size_t i=0;i<neighbourSides.size();++i)
+            {
+                psides.push_back(neighbourSides[i]);
+                vertices.push_back(pcNeighbour);
+            }
+            if(std::find(cornerList.begin(), cornerList.end(), pcNeighbour)==cornerList.end())
+                cornerList.push_back(pcNeighbour);
+        }while(!psides.empty());
+        return innerVertex;
+    }
+
+private:
+    bool inRange(const patchSide& ps) const
+    {
+        return ps.patch >= 0 && ps.patch < m_bt.nBoxes() && ps.index() >= 1 && ps.index() <= m_nSides;
+    }
+
+    void add(const patchSide& ps, index_t i)
+    {
+        if (!inRange(ps)) { m_valid = false; return; }
+        index_t & entry = m_interface[ps.patch*m_nSides + ps.index()-1];
+        if (entry < 0) entry = i;
+    }
+
+    index_t find(const patchSide& ps) const
+    {
+        return inRange(ps) ? m_interface[ps.patch*m_nSides + ps.index()-1] : -1;
+    }
+
+    const gsBoxTopology & m_bt;
+    index_t m_nSides;
+    bool m_valid;
+    std::vector<index_t> m_interface;
+};
+
 // @brief Converts the given corners in unique corner ids
 std::vector<index_t> getCornerIndices( const std::vector<patchCorner>& corner, index_t dim )
 {
@@ -310,13 +408,41 @@ std::vector< std::vector<patchComponent> > gsBoxTopology::allComponents(bool com
 
     std::vector<map_t> comps(dim+1);
 
+    // The canonic corner of every patch corner is computed once, with
+    // interface lookups in constant time; the result is the same as
+    // getCanonicCorners gives.
+    const sideInterfaceTable table(*this);
+    const index_t nCorners = 1 << dim;
+    std::vector<patchCorner> canonic(nPatches*nCorners);
+    std::vector<char> known(nPatches*nCorners, 0);
+    std::vector<patchCorner> cornerList;
+
     for (size_t i = 0; i<nPatches; ++i)
     {
         for (short_t j = 0; j<cnr; ++j)
         {
             patchComponent pc(i, j, dim);
             const index_t d = pc.dim();
-            std::vector< patchCorner > crns = getCanonicCorners(pc.containedCorners(),*this);
+            std::vector< patchCorner > crns;
+            if (table.valid())
+            {
+                const std::vector<patchCorner> contained = pc.containedCorners();
+                crns.reserve(contained.size());
+                for (size_t l = 0; l < contained.size(); ++l)
+                {
+                    const index_t c = contained[l].patch*nCorners + contained[l].m_index - 1;
+                    if (!known[c])
+                    {
+                        table.cornerList(contained[l], cornerList);
+                        canonic[c] = *std::min_element(cornerList.begin(), cornerList.end());
+                        known[c] = 1;
+                    }
+                    crns.push_back(canonic[c]);
+                }
+                std::sort(crns.begin(),crns.end());
+            }
+            else
+                crns = getCanonicCorners(pc.containedCorners(),*this);
             component_coll_t& g = comps[d][getCornerIndices(crns, dim)];
             g.push_back(pc);
         }
