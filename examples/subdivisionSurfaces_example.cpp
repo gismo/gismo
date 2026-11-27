@@ -76,7 +76,7 @@ int main(int argc, char** argv)
    
     mesh.write("mesh_out.off");
     if (dm) // Dual mesh
-        mesh.dual_mesh();
+        mesh.dual_mesh_inplace();
 
     gsInfo << "Output: " << mesh.n_vertices() << " vertices, "
         << mesh.n_edges() << " edges, " << mesh.n_faces() << " faces. \n";
