@@ -274,6 +274,7 @@ class GISMO_EXPORT gsXml< gsSurfMesh<Scalar> >
 private:
     gsXml();
 public:
+    GSXML_COMMON_FUNCTIONS(gsSurfMesh<Scalar>);
     static std::string tag () { return "Mesh"; }
     static std::string type() { return ""; } //no inheritance
 
