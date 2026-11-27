@@ -13,6 +13,9 @@
 
 #pragma once
 
+#include <array>
+#include <map>
+
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsDofMapper.h>
@@ -494,32 +497,45 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly, bool)
         }
     };
 
-    // Two sides can only match if their centers are closer than tol. The
-    // sides are sorted by the first coordinate of their centers and only the
-    // pairs that are closer than 2*tol in this coordinate are compared, which
-    // avoids the comparison of all pairs. The candidate pairs are visited in
-    // the order of the loop over all pairs, so the interfaces are the same and
-    // in the same order.
-    bool sweep = !cornersOnly;
-    std::vector<std::pair<T,size_t> > key;
-    if (sweep)
+    // Two sides can only match if their centers are closer than tol, so
+    // their centers lie in the same or in adjacent cells of a grid of cell
+    // size 2*tol. The centers are binned and only sides in adjacent cells are
+    // compared, which avoids the comparison of all pairs. The candidate pairs
+    // are visited in the order of the loop over all pairs, so the interfaces
+    // are the same and in the same order.
+    const index_t gd = pCorners.empty() ? 0 : pCorners[0].rows();
+    bool sweep = !cornersOnly && gd > 0 && gd <= 3;
+    typedef std::array<long long,3> cell_t;
+    std::vector<cell_t> cell(sweep ? pSide.size() : 0);
+    for (size_t s=0; sweep && s<pSide.size(); ++s)
     {
-        key.reserve(pSide.size());
-        for (size_t s=0; s<pSide.size(); ++s)
+        cell[s].fill(0);
+        for (index_t r=0; r<gd; ++r)
         {
-            const T x = pCorners[pSide[s].patch](0, nCorP+pSide[s]-1);
-            if (!(math::isfinite)(x)) { sweep = false; break; }
-            key.push_back(std::make_pair(x, s));
+            const T x = pCorners[pSide[s].patch](r, nCorP+pSide[s]-1) / (2*tol);
+            if (!(math::isfinite)(x) || math::abs(x) > (T)(1e15)) { sweep = false; break; }
+            cell[s][r] = (long long)(math::floor(x));
         }
     }
     if (sweep)
     {
-        std::sort(key.begin(), key.end());
+        std::map<cell_t, std::vector<size_t> > bins;
+        for (size_t s=0; s<pSide.size(); ++s)
+            bins[cell[s]].push_back(s);
         std::vector<std::pair<size_t,size_t> > candidates;
-        for (size_t a=0; a<key.size(); ++a)
-            for (size_t b=a+1; b<key.size() && key[b].first - key[a].first < 2*tol; ++b)
-                candidates.push_back(std::make_pair(std::min(key[a].second, key[b].second),
-                                                    std::max(key[a].second, key[b].second)));
+        const index_t nNbr = math::ipow(3, gd);
+        for (size_t s=0; s<pSide.size(); ++s)
+            for (index_t n=0; n<nNbr; ++n)
+            {
+                cell_t c = cell[s];
+                for (index_t r=0, m=n; r<gd; ++r, m/=3)
+                    c[r] += m%3 - 1;
+                typename std::map<cell_t, std::vector<size_t> >::const_iterator it = bins.find(c);
+                if (it == bins.end()) continue;
+                for (size_t q=0; q<it->second.size(); ++q)
+                    if (it->second[q] > s)
+                        candidates.push_back(std::make_pair(s, it->second[q]));
+            }
         std::sort(candidates.begin(), candidates.end());
         for (size_t c=0; c<candidates.size(); ++c)
             compareSides(candidates[c].first, candidates[c].second);
