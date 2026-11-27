@@ -2646,7 +2646,7 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T,Trunc>::coarsening_direct( const std::vec
             if( n[i].bContains(old_ij) )//it he basis function was not refined
             {
                 result(start_lv_i + std::distance(n[i].begin(), n[i].find_it_or_fail(old_ij) ),glob_numb ) = 1;//settign the coefficient of the not refined basis function to 1
-                std::vector<lvl_coef> coeffs;
+                std::vector<lvl_coef<T> > coeffs;
                 gsMatrix<index_t, d, 2> supp(d, 2);
                 this->m_bases[i]->elementSupport_into(old_ij, supp);//this->support(start_lv_i+old_ij);
                 gsVector<index_t, d   > low = supp.col(0);
@@ -2658,7 +2658,7 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T,Trunc>::coarsening_direct( const std::vec
                 }
                 unsigned max_lvl = math::min<index_t>( this->m_tree.query4(low,upp, i), transfer.size()) ;//transfer.size();//
                 //gsDebug<<"transfer size "<< transfer.size()<<" max lvl"<< this->m_tree.query4(supp.col(0),supp.col(1), this->levelOf(start_lv_i+j))<<"   lvl of"<< this->levelOf(start_lv_i+j)<<" support\n"<<supp<<std::endl;
-                lvl_coef temp;
+                lvl_coef<T> temp;
                 temp.pos = old_ij;
                 temp.coef = 1;
                 temp.lvl = i;
@@ -2668,7 +2668,7 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T,Trunc>::coarsening_direct( const std::vec
                 }
                 for (size_t coeff_index = 0; coeff_index < coeffs.size(); ++coeff_index)
                 {
-                    const lvl_coef coeff = coeffs[coeff_index];
+                    const lvl_coef<T> coeff = coeffs[coeff_index];
 
                     start_lv_i = 0;
                     for(unsigned int l =0; l < coeff.lvl; l++)
@@ -2742,8 +2742,8 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T,Trunc>::coarsening_direct( const std::vec
 
                 unsigned max_lvl =
                     math::min<index_t>( this->m_tree.query4(low,upp, i), transfer.size() ) ;
-                std::vector<lvl_coef> coeffs;
-                lvl_coef temp;
+                std::vector<lvl_coef<T> > coeffs;
+                lvl_coef<T> temp;
                 temp.pos = old_ij;
                 temp.coef = 1;
                 temp.lvl = i;
@@ -2751,7 +2751,7 @@ gsSparseMatrix<T> gsTHBSplineBasis<d,T,Trunc>::coarsening_direct( const std::vec
                 coeffs.push_back(temp);
                 for (size_t coeff_index = 0; coeff_index < coeffs.size(); ++coeff_index)
                 {
-                    const lvl_coef coeff = coeffs[coeff_index];
+                    const lvl_coef<T> coeff = coeffs[coeff_index];
 
                     start_lv_i = 0;
                     for(unsigned int l =0; l < coeff.lvl; l++)

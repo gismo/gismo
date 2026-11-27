@@ -29,11 +29,15 @@
 namespace gismo
 {
 
+// Templated on the coefficient type: the library can be compiled for more than
+// one real_t (extra instances), and a non-template struct with a real_t member
+// would then have a different layout in each under the same name.
+template<class T>
 struct lvl_coef
 {
     int pos; // flat index at grid of level \a lvl
     int unsigned lvl; // level
-    real_t coef; // value of the coefficient (lvl,pos)
+    T coef; // value of the coefficient (lvl,pos)
 };
 
 /**

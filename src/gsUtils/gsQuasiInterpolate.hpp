@@ -84,9 +84,10 @@ gsMatrix<T> gsQuasiInterpolate<T>::localL2(const gsBasis<T> &bb,
                                             index_t i,                                    
                                             const gsMatrix<T> &ab)
 {
+    using Real = gsQuadrature::Real;
     gsMatrix<T> bev, fev, pts, tmp;
     gsVector<T> weights;
-    gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,(T)1.0,1);
+    gsVector<index_t> nNodes = gsQuadrature::numNodes(bb,(Real)1.0,1);
     gsQuadRule<T>  qRule     = gsQuadrature::get<T>(gsQuadrature::GaussLobatto,nNodes);
     qRule.mapTo(ab.col(0),ab.col(1), pts, weights);//map points and weights on element (for quadrature)
 
@@ -253,7 +254,7 @@ gsMatrix<T> gsQuasiInterpolate<T>::localTaylor(const gsTensorBSplineBasis<d,T> &
     for (short_t dir = 0; dir!=d; ++dir)
     {
         deg[dir]  = b.degree(dir);
-        rdir[dir] = math::min(r, static_cast<int>(deg[dir])); // r <= p per direction
+        rdir[dir] = math::min(r, static_cast<index_t>(deg[dir])); // r <= p per direction
         const gsKnotVector<T> & kv = b.knots(dir);
         for (index_t q = jj[dir]+1; q<=jj[dir]+deg[dir]; ++q)
             knots[dir].push_back(kv[q]);
