@@ -189,8 +189,48 @@ void gsDofMapper::markTagged( index_t i, index_t k, index_t comp)
 
 void gsDofMapper::markBoundary(index_t k, const gsMatrix<index_t> & boundaryDofs, index_t comp)
 {
+    if (-1 == comp || m_curElimId >= 0)
+    {
+        for (index_t i = 0; i < boundaryDofs.rows(); ++i)
+            eliminateDof( boundaryDofs.at(i), k, comp );
+        return;
+    }
+    GISMO_ASSERT(static_cast<size_t>(k)<numPatches(), "Invalid patch index "<< k <<" >= "<< numPatches() );
+    GISMO_ASSERT(static_cast<size_t>(comp)<componentsSize(), "Invalid component index "<< comp <<" >= "<< componentsSize() );
+
+    // Same result as eliminateDof for every dof in turn, but a coupling dof
+    // is not replaced by its eliminated index immediately (one pass over all
+    // dofs per coupling dof); the replacements are collected and applied in
+    // one pass at the end.
+    std::vector<index_t> replacement; // coupling id -> eliminated id, 0 if none
     for (index_t i = 0; i < boundaryDofs.rows(); ++i)
-      eliminateDof( boundaryDofs.at(i), k, comp );
+    {
+        index_t & dof = MAPPER_PATCH_DOF(boundaryDofs.at(i), k, comp);
+        index_t old = dof;
+        if (old > 0 && static_cast<size_t>(old) < replacement.size() && replacement[old] != 0)
+            old = replacement[old]; // already eliminated by this call
+        if (old == 0)       // regular free dof
+        {
+            --m_numFreeDofs[comp+1];
+            dof = m_curElimId--;
+        }
+        else if (old > 0)   // coupling dof
+        {
+            --m_numFreeDofs[comp+1];
+            if (static_cast<size_t>(old) >= replacement.size())
+                replacement.resize(old+1, 0);
+            replacement[old] = m_curElimId--;
+        }
+        // else: old < 0: already an eliminated dof, nothing to do
+    }
+    if (!replacement.empty())
+    {
+        const index_t sz = replacement.size();
+        std::vector<index_t> & dofs = m_dofs[comp];
+        for (std::vector<index_t>::iterator j = dofs.begin(); j != dofs.end(); ++j)
+            if (*j > 0 && *j < sz && replacement[*j] != 0)
+                *j = replacement[*j];
+    }
 }
 
 void gsDofMapper::markCoupledAsTagged()
