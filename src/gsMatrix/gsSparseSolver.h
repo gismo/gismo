@@ -46,6 +46,8 @@ template<typename T> class gsEigenDGMRES;
     So in order to solve \f$ A x = b \f$ with a solver \a s two functions must be called:
     s.compute(A) and s.solve(b). The calls can be chained as in  s.compute(A).solve(b).
 
+    compute can be split in analyzePattern (symbolic step) and factorize
+    (numerical step), to reuse the analysis for matrices with the same sparsity pattern.
 
     Moreover, a collection of available sparse solvers is given as typedefs
     Example of usage:
@@ -122,6 +124,18 @@ public:
         return os.str();
     }
 
+    /// Symbolic step of compute(), depends only on the sparsity pattern of the matrix
+    virtual gsSparseSolver& analyzePattern(const MatrixT & /*matrix*/)
+    {
+        return *this;
+    }
+
+    /// Numerical step of compute(), for a matrix with the sparsity pattern of the last analysis
+    virtual gsSparseSolver& factorize(const MatrixT &matrix)
+    {
+        return compute(matrix);
+    }
+
     static uPtr get(const std::string & slv)
     {
         if (slv=="CGDiagonal")       return uPtr(new CGDiagonal());
@@ -176,6 +190,18 @@ std::ostream &operator<<(std::ostream &os, const gsSparseSolver<T>& b)
             m_rows=matrix.rows();                                       \
             m_cols=matrix.cols();                                       \
             gsEigenAdaptor<T>::eigenName::compute(matrix);              \
+            return *this;                                               \
+        }                                                               \
+        gsname& analyzePattern(const MatrixT &matrix)                   \
+        {                                                               \
+            m_rows=matrix.rows();                                       \
+            m_cols=matrix.cols();                                       \
+            gsEigenAdaptor<T>::eigenName::analyzePattern(matrix);       \
+            return *this;                                               \
+        }                                                               \
+        gsname& factorize (const MatrixT &matrix)                       \
+        {                                                               \
+            gsEigenAdaptor<T>::eigenName::factorize(matrix);            \
             return *this;                                               \
         }                                                               \
         VectorT solve  (const VectorT &rhs) const                       \
