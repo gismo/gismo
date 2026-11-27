@@ -31,11 +31,10 @@ namespace gismo
 
 class gsCmdLinePrivate
 {
-    typedef index_t intVal_t;
 public:
     /*
     typedef TCLAP::Arg                             Arg;
-    typedef TCLAP::ValueArg<intVal_t>              IntArg;
+    typedef TCLAP::ValueArg<index_t>               IntArg;
     typedef TCLAP::ValueArg<real_t>                RealArg;
     typedef TCLAP::ValueArg<std::string>           StrArg;
     typedef TCLAP::SwitchArg                       SwitchArg;
@@ -78,12 +77,12 @@ public:
     TCLAP::CmdLine cmd;
 
     // Stores integer arguments
-    std::vector<TCLAP::ValueArg<intVal_t>*>    intVals;
-    std::vector<intVal_t*>                     intRes;
+    std::vector<TCLAP::ValueArg<index_t>*>     intVals;
+    std::vector<index_t*>                      intRes;
 
     // Stores multi integer arguments
-    std::vector<TCLAP::MultiArg<intVal_t>*>    multiIntVals;
-    std::vector<std::vector<intVal_t>*>        multiIntRes;
+    std::vector<TCLAP::MultiArg<index_t>*>     multiIntVals;
+    std::vector<std::vector<index_t>*>         multiIntRes;
 
     // Stores real_t arguments
     std::vector<TCLAP::ValueArg<real_t>*>      realVals;
@@ -158,24 +157,24 @@ gsCmdLine::gsCmdLine( const std::string& message,
 void gsCmdLine::addInt( const std::string& flag,
                         const std::string& name,
                         const std::string& desc,
-                        intVal_t         & value)
+                        index_t          & value)
 {
     GISMO_ASSERT( flag.size() < 2, "The flag (short form) must be empty or one character only." );
     GISMO_ASSERT( name.size() > 1, "The name (long form of the flag) must be at least two characters." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
-    my->intVals.push_back(new TCLAP::ValueArg<intVal_t>(flag,name,desc,false,value,"int",my->cmd) );
+    my->intVals.push_back(new TCLAP::ValueArg<index_t>(flag,name,desc,false,value,"int",my->cmd) );
     my->intRes.push_back(&value);
 }
 
 void gsCmdLine::addMultiInt( const std::string    & flag,
                              const std::string    & name,
                              const std::string    & desc,
-                             std::vector<intVal_t>& value)
+                             std::vector<index_t> & value)
 {
     GISMO_ASSERT( flag.size() < 2, "The flag (short form) must be empty or one character only." );
     GISMO_ASSERT( name.size() > 1, "The name (long form of the flag) must be at least two characters." );
     GISMO_ASSERT( !my->didParseCmdLine, "Variables must not be registered after calling gsCmdLine::getValues." );
-    my->multiIntVals.push_back(new TCLAP::MultiArg<intVal_t>(flag,name,desc,false,"int",my->cmd) );
+    my->multiIntVals.push_back(new TCLAP::MultiArg<index_t>(flag,name,desc,false,"int",my->cmd) );
     my->multiIntRes.push_back(&value);
 }
 
