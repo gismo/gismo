@@ -732,7 +732,18 @@ public:
     // Coarsens the basis uniformly by removing \a numKnots knots on each knot span
     virtual void uniformCoarsen(int numKnots = 1);
 
-    // Coarsen the basis uniformly and adjust the given matrix of coefficients accordingly
+    /// Coarsen the basis uniformly (see uniformCoarsen) and replace \a coefs
+    /// by the least-squares solution (sparse QR) x of T x = coefs, where T
+    /// is the transfer matrix from the coarsened basis to the current one.
+    /// The coarsened geometry equals the current one exactly when the
+    /// current geometry lies in the coarsened space (e.g. right after
+    /// uniformRefine_withCoefs); otherwise it is the least-squares fit of
+    /// the coefficients. Throws (GISMO_ENSURE, std::runtime_error) when
+    /// coefs.rows() differs from the number of functions of the current
+    /// basis as reproduced from the coarsened one, e.g. if \a coefs does not
+    /// match this basis. Leaves on level 0 are mapped to the coarser new
+    /// level 0, and uniformCoarsen is lossy for odd leaf corners; in both
+    /// cases the current geometry need not lie in the coarsened space.
     void uniformCoarsen_withCoefs(gsMatrix<T>& coefs, int numKnots = 1);
 
     // see gsBasis for documentation

@@ -130,7 +130,7 @@ protected:
 
 
     /*
-        // Taking domain from basis (uses gsHDomain WHICH DOES NOT INHERIT FROM GSDOMAIN)
+        // Taking domain from a THB basis (a gsHDomain)
         gsTHBSplineBasis<d,T> thb;
         gsExprAssembler<> A;
         A.setIntegrationElements(thb.domain());
@@ -181,6 +181,43 @@ public: // Domain element iterators
     {
         return iterator(new gsDomainIteratorEnd<T>(this->numElementsBdr(bs)));
     }
+
+    /// Returns an iterator over the skeleton: the interior faces shared by
+    /// two elements of this domain. Implemented by domains with a skeleton
+    /// concept (e.g. gsTensorDomain); see gsDomainFaceIterator for the
+    /// iteration contract.
+    virtual iterator beginSkeleton() const
+    {GISMO_NO_IMPLEMENTATION}
+
+    /// Returns an iterator to the end of the skeleton faces
+    virtual iterator endSkeleton() const
+    {
+        return iterator(new gsDomainIteratorEnd<T>(this->numSkeletonFaces()));
+    }
+
+    /// Number of faces in the skeleton set. The base implementation throws:
+    /// a domain without a skeleton concept has no meaningful face count.
+    /// Implementations typically count by a sweep in O(#faces), so hoist
+    /// endSkeleton() out of a loop rather than re-evaluating it per step.
+    virtual size_t numSkeletonFaces() const
+    { GISMO_ERROR("gsDomain::numSkeletonFaces: this domain has no skeleton concept."); }
+
+    /// Returns an iterator over the ghost set: the subset of the skeleton
+    /// faces having at least one cut neighbour. Domains without cut cells
+    /// (e.g. gsTensorDomain) have an empty ghost set.
+    virtual iterator beginGhost() const
+    {GISMO_NO_IMPLEMENTATION}
+
+    /// Returns an iterator to the end of the ghost faces
+    virtual iterator endGhost() const
+    {
+        return iterator(new gsDomainIteratorEnd<T>(this->numGhostFaces()));
+    }
+
+    /// Number of faces in the ghost set. The base implementation throws,
+    /// as numSkeletonFaces() does. Same cost note as numSkeletonFaces().
+    virtual size_t numGhostFaces() const
+    { GISMO_ERROR("gsDomain::numGhostFaces: this domain has no skeleton concept."); }
 
     /// Returns a pair of two iterators, that define a chunk (range)
     /// per thread of elements that can be used in a parallel for

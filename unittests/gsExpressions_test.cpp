@@ -359,4 +359,48 @@ SUITE(gsExpressions_test)
 
     }
 
+    // colBlocks of an evaluation that is already stored side by side,
+    // rows() x (n*cols()), with n = number of active basis functions
+    TEST(colBlocks_expr_cols_stored)
+    {
+        const index_t nAct = ev_mb.rows();
+        auto e = u.tr();
+        static_assert(!decltype(e)::ColBlocks, "u.tr() must not be a ColBlocks expression");
+
+        gsMatrix<real_t> raw = ev.eval(e, pt);
+        gsMatrix<real_t> blk = ev.eval(e.cb(), pt);
+
+        CHECK(nAct >= 2);
+        CHECK_EQUAL(e.rows(), raw.rows());
+        CHECK_EQUAL(nAct * e.cols(), raw.cols());
+
+        CHECK_EQUAL(e.rows(), blk.rows());
+        CHECK_EQUAL(nAct * e.cols(), blk.cols());
+        CHECK_EQUAL(0.0, (blk - raw).norm());
+        CHECK_EQUAL(nAct, e.cb().cardinality());
+    }
+
+    // colBlocks of an evaluation stored one block below the other,
+    // (n*rows()) x cols(), is re-laid out side by side
+    TEST(colBlocks_expr_rows_stored)
+    {
+        const index_t nAct = ev_mb.rows();
+        auto e = grad(u);
+        static_assert(!decltype(e)::ColBlocks, "grad(u) must not be a ColBlocks expression");
+
+        gsMatrix<real_t> raw = ev.eval(e, pt);
+        gsMatrix<real_t> blk = ev.eval(e.cb(), pt);
+
+        CHECK(nAct >= 2);
+        CHECK_EQUAL(nAct * e.rows(), raw.rows());
+        CHECK_EQUAL(e.cols(), raw.cols());
+
+        CHECK_EQUAL(e.rows(), blk.rows());
+        CHECK_EQUAL(nAct * e.cols(), blk.cols());
+        CHECK_EQUAL(nAct, e.cb().cardinality());
+        for (index_t r = 0; r != nAct; ++r)
+            CHECK_EQUAL(0.0, (blk.middleCols(r * e.cols(), e.cols())
+                              - raw.middleRows(r * e.rows(), e.rows())).norm());
+    }
+
 }

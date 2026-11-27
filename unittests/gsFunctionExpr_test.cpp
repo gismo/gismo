@@ -242,4 +242,49 @@ SUITE(gsFunctionExpr_test)
                 CHECK_CLOSE(D(m++,0), (*md)(0,0), tol);
             }
     }
+
+    TEST(hessian_multipoint_multicomponent_2d)
+    {
+        // hessian(u,c) returns one column per point: column k is the
+        // column-major Hessian of component c at u.col(k). Every column of
+        // both components is checked against closed-form Hessians.
+        gsFunctionExpr<real_t> f("x^3*y + 2*x*y^2", "x^2*y^2 + y^3", 2);
+
+        const index_t n = 7;
+        gsMatrix<real_t> u(2, n);
+        for (index_t k = 0; k!=n; ++k)
+        {
+            u(0,k) = 0.5 + 0.25 * k;
+            u(1,k) = 2.0 - 0.2 * k;
+        }
+
+        for (index_t c = 0; c!=2; ++c)
+        {
+            const gsMatrix<real_t> H = f.hessian(u, c);
+            CHECK_EQUAL(4, H.rows());
+            CHECK_EQUAL(n, H.cols());
+            if (4 != H.rows() || n != H.cols())
+                continue;
+
+            for (index_t k = 0; k!=n; ++k)
+            {
+                const real_t x = u(0,k), y = u(1,k);
+                real_t hxx, hxy, hyy;
+                if (0 == c)
+                {
+                    hxx = 6*x*y;
+                    hxy = 3*x*x + 4*y;
+                    hyy = 4*x;
+                }
+                else
+                {
+                    hxx = 2*y*y;
+                    hxy = 4*x*y;
+                    hyy = 2*x*x + 6*y;
+                }
+                const real_t e[4] = {hxx, hxy, hxy, hyy};
+                CHECK_ARRAY_CLOSE(e, H.col(k).data(), 4, tol);
+            }
+        }
+    }
 }

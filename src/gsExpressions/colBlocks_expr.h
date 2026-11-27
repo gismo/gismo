@@ -42,36 +42,32 @@ public:
 
     mutable gsMatrix<Scalar> ev, res;
 
+    /// Returns the evaluation of the wrapped expression in column-block
+    /// layout: the n blocks of size rows() x cols() placed side by side,
+    /// i.e. a rows() x (n*cols()) matrix.
+    ///
+    /// A block vector stored in rows ((n*rows()) x cols()) is re-laid out,
+    /// at cost O(n*rows()*cols()). An evaluation that is already in
+    /// column-block layout (rows() x (n*cols())), or that is not a block
+    /// vector at all, is returned as evaluated.
     const gsMatrix<Scalar> & eval(const index_t k) const
     {
-        //return _u.eval(k).transpose();
-        // /*
         ev = _u.eval(k);
         if (E::ColBlocks)
-        {
             return ev;
-        }
-        else
+
+        GISMO_ASSERT(ev.rows() % _u.rows() == 0 && ev.cols() % _u.cols() == 0,
+                     "Result is not a multiple of the space dimensions?");
+
+        const index_t rowBlocks = ev.rows() / _u.rows();
+        if ( rowBlocks >= 1 && ev.cols() == _u.cols() ) // stored in rows
         {
-            res = _u.eval(k);
-
-            GISMO_ASSERT(res.rows() % _u.rows() == 0 && res.cols() % _u.cols() == 0,"Result is not a multiple of the space dimensions?");
-
-            index_t cardinality;
-            if ( (cardinality = res.rows() / _u.rows()) >= 1 && res.cols() / _u.cols() == 1 ) // stored in rows
-            {
-                res.resize(_u.rows(), cardinality * _u.cols());
-                for (index_t r = 0; r!=cardinality; r++)
-                    res.block(0 , r * _u.cols(), _u.rows(), _u.cols()) = ev.block( r * _u.rows(), 0, _u.rows(), _u.cols() );
-            }
-            else if ( (cardinality = res.rows() / _u.rows()) == 1 && res.cols() / _u.cols() >= 1 ) // stored in cols ----->>>> This is already colBlocks???
-            {
-                res.resize(_u.rows(), cardinality * _u.cols());
-                for (index_t r = 0; r!=cardinality; r++)
-                    res.block(0 , r * _u.cols(), _u.rows(), _u.cols()) = ev.block( 0, r * _u.cols(), _u.rows(), _u.cols() );
-            }
+            res.resize(_u.rows(), rowBlocks * _u.cols());
+            for (index_t r = 0; r!=rowBlocks; r++)
+                res.block(0 , r * _u.cols(), _u.rows(), _u.cols()) = ev.block( r * _u.rows(), 0, _u.rows(), _u.cols() );
+            return res;
         }
-        return res;
+        return ev;
     }
 
     index_t rows() const { return _u.rows(); }

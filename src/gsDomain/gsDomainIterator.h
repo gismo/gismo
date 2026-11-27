@@ -195,6 +195,10 @@ public:
 
     gsDomainIterator<T> & operator*() { return *m_domainIter; }
 
+    /// Sign of the current element, see gsDomainIterator::sign()
+    short_t sign() const
+    { return m_domainIter->sign(); }
+
 public:
 
     short_t dim() const
@@ -211,6 +215,11 @@ public:
 
     const T getPerpendicularCellSize() const
     { return m_domainIter->getPerpendicularCellSize(); }
+
+    /// Perpendicular cell size on the right side of a face, see
+    /// gsDomainFaceIterator
+    const T getPerpendicularCellSizeRight() const
+    { return m_domainIter->getPerpendicularCellSizeRight(); }
 
     bool isBoundaryElement() const
     { return m_domainIter->isBoundaryElement(); }
@@ -374,6 +383,16 @@ public:
     {
         GISMO_NO_IMPLEMENTATION
     }
+
+    /// Sign of the element with respect to a trimming level set:
+    /// -1 interior, 0 cut, +1 exterior. Domains with no trimming concept
+    /// report -1, i.e. every element is interior.
+    virtual short_t sign() const { return -1; }
+
+    /// Perpendicular cell size on the right (upper-index) side of a face;
+    /// face iterators only, see gsDomainFaceIterator.
+    virtual const T getPerpendicularCellSizeRight() const
+    { GISMO_NO_IMPLEMENTATION }
 
     virtual bool isBoundaryElement() const
     {
