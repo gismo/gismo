@@ -1,0 +1,198 @@
+namespace gismo {
+
+/** \defgroup System System module
+\ingroup Modules
+
+    This module provides the machinery that lets optional modules of \gismo be
+    compiled into the library or loaded at run time as separate libraries.
+
+\section System_what What a module is
+
+    An optional module (the directory <tt>optional/\<name\></tt>, enabled
+    through the CMake variable \c GISMO_OPTIONAL) is either compiled into
+    libgismo (the default), or, when its name is also listed in the CMake
+    variable \c GISMO_DYNAMIC_MODULES, built as a separate library that is
+    loaded at run time. Code that reaches a module through a registry works
+    the same in both modes.
+
+\section System_entry Entry points
+
+    Every module defines its entry points with the macro
+    \c GISMO_MODULE_ENTRY(name, version) (gsModule.h), used once per module at
+    namespace scope and followed by the body of the register function. The
+    argument \c name is a bare identifier equal to the CMake name of the
+    module, \c version is a string literal. The symbols have C linkage:
+
+    - Dynamic mode (\c GISMO_MODULE_DYNAMIC, defined by
+      \c gismo_add_module_library): the exported functions
+      \c gismo_module_info and \c gismo_module_register.
+    - Built-in mode: the function \c gismo_module_register_\<name\>, called
+      from the file \c gsBuiltinModules.cpp generated in the build tree for
+      every module that called \c gismo_add_builtin_module(\<name\>).
+
+    The classes involved are:
+
+    - gsModuleManager: process-wide singleton that registers the built-in
+      modules and loads dynamic ones (gsModuleManager::load,
+      gsModuleManager::loadAll, gsModuleManager::unload). It reports the
+      modules it knows with gsModuleManager::has,
+      gsModuleManager::isLoaded and gsModuleManager::modules, and the files
+      it refused with gsModuleManager::rejected.
+    - gsRegistry: key-to-factory map per base type, filled by the register
+      function of a module (gsRegistry::add) and queried by users
+      (gsRegistry::has, gsRegistry::make, gsRegistry::keys). The helper
+      gsRegistryFactory makes a factory of a derived class. There is one
+      registry per base type and process, instantiated in and exported from
+      libgismo (\c gsRegistry_.cpp); a module adds to it and must not
+      instantiate its own.
+    - gsFileIo: reader and writer of a file format provided by a module,
+      found with gsFileIo::find.
+
+    gsFileData uses gsFileIo for extensions it has no native reader or writer
+    for: \c gsFileData::read passes such an extension to gsFileIo::find, and
+    \c gsFileData::save passes any extension other than \c xml and \c gz to it
+    first; if the format can be written, that format is written, and no
+    \c .xml file. If the writer fails, a warning is printed and nothing else
+    is written.
+
+    \code
+    // The modules found in the search paths are loaded with the library ...
+    gsFileData<> fd("surface.3dm");
+    fd.save("out.3dm");
+
+    // ... or explicit
+    gsModuleManager::get().load("gsOpennurbs");
+    \endcode
+
+    The key of gsFileIo::find is the extension in lower case without the dot.
+    gsModuleManager::loadAll runs once, when the G+Smo library is initialized
+    (\c gsSystem/gsDllMain.cpp), so the lookup itself loads nothing: a module
+    that is unloaded, or that lies in a directory added afterwards with
+    gsModuleManager::addSearchPath, is loaded with gsModuleManager::load or
+    gsModuleManager::loadAll.
+
+    The handshake of a dynamic module is the structure gismo_module_info_t
+    (gsModuleInfo.h), checked by gsModuleManager::load. A module is rejected,
+    with a warning, and listed by gsModuleManager::rejected, unless its
+    \c abi_major equals \c GISMO_MAJOR, its \c abi_minor is not newer than
+    \c GISMO_MINOR, and its \c coeff_type and \c index_type equal those of
+    the host.
+
+\section System_search Search order
+
+    A module \c \<name\> is the file \c \<name\>.so (\c \<name\>.dll on
+    Windows), without a \c lib prefix. The argument of gsModuleManager::load
+    that contains a path separator is used as the path of the file; otherwise
+    it is a module name, and the file is looked for in the directories of
+    gsModuleManager::searchPaths, in this order:
+
+    -# the entries of the environment variable \c GISMO_MODULE_PATH
+       (separated by \c : , or by \c ; on Windows),
+    -# the directories given to gsModuleManager::addSearchPath,
+    -# the compiled-in directory \c GISMO_MODULE_DIR (the build tree),
+    -# the compiled-in directory \c GISMO_MODULE_INSTALL_DIR (the install tree).
+
+    Empty entries and repeated directories are skipped, and the first file
+    found wins. \c GISMO_MODULE_DIR is a macro of the generated header
+    \c gsModuleConfig.h, not an environment variable.
+    gsModuleManager::loadAll tries every file with the module suffix in these
+    directories, except files whose name starts with \c libgismo, and skips
+    modules that are present or were already rejected.
+
+\section System_build Building a module dynamically
+
+    For the user: configure with the module in both \c GISMO_OPTIONAL and
+    \c GISMO_DYNAMIC_MODULES. This needs \c GISMO_BUILD_LIB=ON; without it a
+    warning is printed and the module is built into the library.
+
+    \code{.sh}
+    cmake . -DGISMO_BUILD_LIB=ON -DGISMO_OPTIONAL="gsOpennurbs" -DGISMO_DYNAMIC_MODULES=gsOpennurbs
+    \endcode
+
+    The module file is written to <tt>\<build\>/lib/gismo/modules</tt>
+    (\c GISMO_MODULE_DIR) and installed to
+    <tt>\<prefix\>/\<LIB_INSTALL_DIR\>/gismo/modules</tt>
+    (\c GISMO_MODULE_INSTALL_DIR). The generated header \c gsModuleConfig.h is
+    installed with the other headers of gsSystem.
+
+    For the module author: the CMake functions are defined in
+    \c cmake/gsModule.cmake.
+
+    - <tt>gismo_add_module_library(\<name\> SOURCES \<files\> [LINK \<libs\>])</tt>
+      builds \c \<name\> as a MODULE library linked to \c gismo, with
+      \c GISMO_MODULE_DYNAMIC defined and hidden symbol visibility.
+    - <tt>gismo_add_builtin_module(\<name\>)</tt> records that the object code
+      of \c \<name\> is part of libgismo.
+    - <tt>gismo_configure_modules()</tt> generates \c gsModuleConfig.h and
+      \c gsBuiltinModules.cpp once all optional modules have been added.
+
+    A module is a client of libgismo, which is built with hidden symbol
+    visibility: it can call only the symbols that libgismo exports
+    (\c GISMO_EXPORT).
+
+    The module \c gsOpennurbs chooses the mode in its \c CMakeLists.txt:
+
+    \code{.cmake}
+    if(GSOPENNURBS_DYNAMIC)
+      find_package(ZLIB QUIET)
+      if(NOT ZLIB_FOUND)
+        message(FATAL_ERROR "gsOpennurbs: dynamic module needs a system zlib")
+      endif()
+      set(GSOPENNURBS_LINK ${ZLIB_LIBRARIES})
+      if ("x${CMAKE_CXX_COMPILER_ID}" STREQUAL "xMSVC")
+        set(GSOPENNURBS_LINK ${GSOPENNURBS_LINK} Rpcrt4)
+      endif()
+      gismo_add_module_library(${PROJECT_NAME} SOURCES ${OPENNURBS_SOURCES} LINK ${GSOPENNURBS_LINK})
+    else()
+      add_library(${PROJECT_NAME} OBJECT ${OPENNURBS_SOURCES}) #STATIC
+      #target_link_libraries(${PROJECT_NAME} Rpcrt4) # Note: linked with gismolib instead
+    endif()
+    \endcode
+
+    and, for the built-in branch, calls \c gismo_add_builtin_module near the
+    end of the file. \c GSOPENNURBS_DYNAMIC is set when \c gsOpennurbs is in
+    \c GISMO_DYNAMIC_MODULES, except when \c GISMO_ZLIB_STATIC is set: then
+    a warning is printed and the module is built into the library, because the
+    prefixed zlib inside libgismo needs OpenNURBS.
+
+\section System_format Adding a file format
+
+    Derive a class from gsFileIo, override gsFileIo::canRead,
+    gsFileIo::canWrite, gsFileIo::read and gsFileIo::write (they work on a
+    \c gsXmlTree, the in-memory form of the \gismo xml file), and register a
+    factory of it under the lower-case extension without the dot, in the body
+    of \c GISMO_MODULE_ENTRY. Build the module with the CMake pattern of
+    \ref System_build. No change to gsFileData is needed.
+
+    The worked example is \c gsOpennurbs (extension \c 3dm), in
+    \c optional/gsOpennurbs/gsOpenNurbsFile.cpp:
+
+    \code
+    GISMO_MODULE_ENTRY(gsOpennurbs, GISMO_VERSION)
+    {
+        gsRegistry<gsFileIo>::get().add("3dm", &gsRegistryFactory<gsFileIo, gsOpenNurbsFile>);
+    }
+    \endcode
+
+    The 3dm writer writes \c gsBSpline curves and \c gsTensorBSpline<2>
+    surfaces of geometric dimension 2 or 3; other geometry kinds (NURBS among
+    them) are skipped with a warning.
+
+\section System_limits Known limits
+
+    - Dynamic mode is verified on Linux only; Windows and macOS are untested.
+    - The manager and the registries are not thread-safe.
+    - A module built dynamically has no \c \<name\>_ENABLED define, so code
+      under <tt>\#ifdef \<name\>_ENABLED</tt> (for instance the 3dm parts of
+      \c examples/fileIo_example.cpp) is compiled out in that mode.
+    - Every object made by a factory of a module must be destroyed before the
+      module is unloaded; gsFileData creates and destroys its gsFileIo inside
+      one call.
+    - The register function of a module should not load another module:
+      registrations made after such a nested load are not attributed to the
+      outer module (see gsModuleManager::registering).
+    - gsModuleManager::unload returns false for a built-in module.
+
+*/
+
+}

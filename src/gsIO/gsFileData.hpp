@@ -24,9 +24,7 @@
 #include <rapidxml/rapidxml.hpp>       // External file
 #include <rapidxml/rapidxml_print.hpp> // External file
 
-#ifdef gsOpennurbs_ENABLED
-#include <gsOpennurbs/gsReadOpenNurbs.h>
-#endif
+#include <gsSystem/gsFileIo.h>
 
 #ifdef gsOpenCascade_ENABLED
 #include <gsOpenCascade/gsReadOcct.h>
@@ -97,6 +95,23 @@ gsFileData<T>::addComment(String const & message)
 template<class T> void
 gsFileData<T>::save(String const & fname, bool compress)  const
 {
+    // Formats other than xml are written by a registered writer, if any
+    const String ext = gsFileManager::getExtension(fname);
+    if ( !ext.empty() && ext != "xml" && ext != "gz" )
+    {
+        gsFileIo::uPtr io = gsFileIo::find(ext);
+        if ( io && io->canWrite() )
+        {
+            m_lastPath = fname;
+            if (!gsFileManager::isFullyQualified(m_lastPath))
+                m_lastPath = gsFileManager::getCurrentPath() + m_lastPath;
+            if ( !io->write(fname, *data) )
+                gsWarn<<"gsFileData: Problem with file "<<fname
+                      <<": the writer registered for \"."<<ext<<"\" failed.\n";
+            return;
+        }
+    }
+
     gsXmlNode * comment = internal::makeComment("This file was created by G+Smo "
                                                 GISMO_VERSION, *data);
     data->prepend_node(comment);
@@ -190,10 +205,6 @@ bool gsFileData<T>::read(String const & fn, bool recursive)
         return readAxelFile(m_lastPath);
     else if (ext== "off")
         return readOffFile(m_lastPath);
-#ifdef gsOpennurbs_ENABLED
-    else if (ext== "3dm")
-        return read3dmFile(m_lastPath);
-#endif
 #ifdef gsOpenCascade_ENABLED
     else if (ext== "brep")
         return readBrepFile(m_lastPath);
@@ -226,6 +237,9 @@ bool gsFileData<T>::read(String const & fn, bool recursive)
         return readCsvFile(m_lastPath);
     else
     {
+        gsFileIo::uPtr io = gsFileIo::find(ext);
+        if ( io && io->canRead() )
+            return io->read(m_lastPath, *data);
         gsWarn<<"gsFileData: Problem with file "<<fn<<": Unknown extension \"."<<ext<<"\".\n";
         return false;
     }
@@ -2505,12 +2519,8 @@ bool gsFileData<T>::readX3dFile( String const & fn )
 template<class T>
 bool gsFileData<T>::read3dmFile( String const & fn )
 {
-#ifdef gsOpennurbs_ENABLED
-    return extensions::gsReadOpenNurbs( fn.c_str(), *data);
-#else
-    GISMO_UNUSED(fn);
-    return false;
-#endif
+    gsFileIo::uPtr io = gsFileIo::find("3dm");
+    return io && io->canRead() && io->read(fn, *data);
 }
 
 
