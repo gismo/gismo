@@ -197,7 +197,7 @@ SUITE(gsBoxTopology_test)
         mb.uniformRefine();
         gsDofMapper batched = createMapper(mb, gsBoundaryConditions<>(), dirichlet::elimination,
                                            iFace::glue, /*nComp=*/1, /*unk=*/0, /*finalize=*/false);
-        gsDofMapper single = batched;
+        gsDofMapper single = batched, allComp = batched;
         index_t eliminated = 0;
         for (gsMultiPatch<>::const_biterator it = mp.bBegin(); it != mp.bEnd(); ++it)
         {
@@ -205,6 +205,7 @@ SUITE(gsBoxTopology_test)
                 continue;
             const gsMatrix<index_t> bnd = mb[it->patch].boundary(it->side());
             batched.markBoundary(it->patch, bnd, 0);
+            allComp.markBoundary(it->patch, bnd, -1);
             for (index_t i = 0; i < bnd.rows(); ++i)
                 single.eliminateDof(bnd(i,0), it->patch, 0);
             eliminated += bnd.rows();
@@ -212,6 +213,8 @@ SUITE(gsBoxTopology_test)
         CHECK( eliminated > 0 );
         batched.finalize();
         single.finalize();
+        allComp.finalize();
+        CHECK( allComp.asVector() == single.asVector() );
         CHECK( batched.freeSize() == single.freeSize() );
         CHECK( batched.boundarySize() == single.boundarySize() );
         CHECK( batched.coupledSize() == single.coupledSize() );
