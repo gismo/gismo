@@ -88,7 +88,7 @@ static void run(const char *name, const gsMultiPatch<T> &mp, int p, int r, T nu)
       }
       P = give(B);
     }
-    if (which == 3) { // the kernel's scalars: Gauss-weighted means over the patch
+    if (which == 3) { // per-direction scalars: Gauss-weighted means over the patch
       gsMatrix<T> acc = gsMatrix<T>::Zero(d, d), nodes, jacs;
       gsVector<T> wts;
       T vol = 0;
