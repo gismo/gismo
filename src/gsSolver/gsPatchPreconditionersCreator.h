@@ -211,7 +211,9 @@ public:
     /// \f$ j \f$, divided by the mean of \f$ c_{c,k} \f$ over the patch. The
     /// approximation is exact if the coefficients are of the given form,
     /// like for a box with a different grading in each direction or for an
-    /// annulus in two dimensions. For a constant Jacobian, each direction
+    /// exact polar parametrization of an annulus in two dimensions (a spline
+    /// approximation of an annulus is close to it, not exact). For a constant
+    /// Jacobian, each direction
     /// is scaled with one number, which accounts for the size and the
     /// aspect ratio of the patch. The setup evaluates the Jacobian once per
     /// quadrature node of the patch.
