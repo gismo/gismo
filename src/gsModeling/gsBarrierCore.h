@@ -26,14 +26,22 @@
 #include <gsExpressions/gsExprHelper.h>
 #include <gsAssembler/gsExprEvaluator.h>
 #include <gsAssembler/gsExprAssembler.h>
+#include <gsSolver/gsGMRes.h>
+#include <iomanip>
+#include <limits>
+#include <sstream>
+#include <gsSolver/gsConjugateGradient.h>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+#include <gsNurbs/gsBSplineBasis.h>
+#include <gsNurbs/gsTensorBSplineBasis.h>
 
 
 #ifdef gsHLBFGS_ENABLED
 #include <gsHLBFGS/gsHLBFGS.h>
 #endif
 
-//#include <gsLBFGSpp/gsLBFGSpp.h>
-//#include <gsPreAA/gsPreAA.h>
 
 namespace gismo {
 /**
@@ -102,16 +110,49 @@ inline void verboseLog(const std::string &message, const index_t &verbose) {
   if (verbose > 0) { gsInfo << message << "\n"; }
 }
 
+template<short_t d, typename T> class gsRegularizedStage;
+
 /// gsBarrierCore
 template<short_t d, typename T= real_t>
 class gsBarrierCore
 {
+  friend class gsRegularizedStage<d, T>;
+
  private:
   typedef typename gsExprAssembler<T>::geometryMap geometryMap;
   typedef typename gsExprAssembler<T>::space space;
   typedef typename gsExprAssembler<T>::solution solution;
 
  public:
+  /// Values of the option PDE.LinearSolver: linear solvers of the regularized
+  /// PDE-based method and of the H2 stage of volumes
+  struct LinearSolver {
+    enum { Automatic = 0, Direct = 1, Iterative = 2 };
+  };
+
+  /// Values of the option PDE.Preconditioner: preconditioner of GMRES (and of
+  /// CG in the energy minimization: NodalAMG, incomplete Cholesky for
+  /// BlockGaussSeidelLU)
+  struct Preconditioner {
+    enum { Automatic = 0, BlockGaussSeidelLU = 1, NodalAMG = 2,
+           BlockGaussSeidelAMG = 3 };
+  };
+
+  /// Values of the option PDE.EnergyForm (see garanzhaEnergyDerivatives)
+  struct EnergyForm {
+    enum { Conformal = 0, InverseDirichlet = 1 };
+  };
+
+  /// Values of the option PDE.EnergyHessian (see garanzhaEnergyDerivatives)
+  struct EnergyHessian {
+    enum { Automatic = -1, GaussNewton = 0, Exact = 1, ProjectedNewton = 2 };
+  };
+
+  /// Values of the option PDE.H1Form
+  struct H1Form {
+    enum { Original = 0, WeakLaplace = 1 };
+  };
+
   /// construct analysis-suitable parameterization
   static gsMultiPatch<T> compute(const gsMultiPatch<T> &mp,
                                  const gsDofMapper &mapper,
@@ -122,6 +163,38 @@ class gsBarrierCore
 
   /// Default options
   static gsOptionList defaultOptions();
+
+  /// Default options of the (regularized) PDE-based method, without the
+  /// prefix of their group: defaultOptions() holds them as PDE.<name>
+  static gsOptionList defaultPDEOptions();
+
+  /// \a options completed by the default values of the options PDE.<name>
+  /// that it does not contain
+  static gsOptionList withPDEDefaults(const gsOptionList &options);
+
+  /// Coordinate component of every free unknown (blocks of the block
+  /// Gauss-Seidel preconditioner)
+  static std::vector<index_t> componentOfDofs(const gsMultiPatch<T> &mp,
+                                              const gsDofMapper &mapper);
+
+  /// Control point (node) of every free unknown: the free unknowns of one
+  /// control point, also of one shared by several patches, get the same
+  /// node number (numbers 0, 1, ...; for the algebraic multigrid method)
+  static std::vector<index_t> nodeOfDofs(const gsMultiPatch<T> &mp,
+                                         const gsDofMapper &mapper);
+
+  /// True if some free unknown belongs to more than one patch (free
+  /// interfaces)
+  static bool couplesPatches(const gsMultiPatch<T> &mp,
+                             const gsDofMapper &mapper);
+
+  /// Copy of \a mp whose parameter domains are rescaled so that the
+  /// parametric length of every patch edge is the mean physical length of
+  /// its chord: the edges connected through interfaces and opposite patch
+  /// edges. Adjacent patches then have equal parametric lengths along their
+  /// interfaces and the parametric lengths follow the physical ones. Only
+  /// the knot vectors of tensor-product B-spline patches change.
+  static gsMultiPatch<T> chordScaled(const gsMultiPatch<T> &mp);
 
  private:
   /// Barrier function-based method
@@ -148,6 +221,74 @@ class gsBarrierCore
   static gsMultiPatch<T> computeVHPatch(const gsMultiPatch<T> &mp,
                                         const gsDofMapper &mapper,
                                         const gsOptionList &options);
+
+  /// PDE-based method with free interfaces: chord-scaled parameter domains
+  /// and minimization of the regularized energy (see PDE.FreeInterfaceEnergy)
+  static gsMultiPatch<T> computePDEPatchFreeInterfaces(const gsMultiPatch<T> &mp,
+                                                       const gsDofMapper &mapper,
+                                                       const gsOptionList &options);
+
+  /// PDE-based method, original planar implementation (PDE.Garanzha = 0):
+  /// H2 discretization, then planarH1Stage
+  static gsMultiPatch<T> computePDEPatchPlanar(const gsMultiPatch<T> &mp,
+                                               const gsDofMapper &mapper,
+                                               const gsOptionList &options);
+
+  /// Original (unregularized) planar H1 discretization, from \a x
+  static gsVector<T> planarH1Stage(const gsMultiPatch<T> &mp,
+                                   const gsDofMapper &mapper,
+                                   const gsVector<T> &x,
+                                   const gsOptionList &options);
+
+  /// PDE-based method, dimension-independent implementation (used for
+  /// volumes, and for planar domains with Garanzha's regularization): H2
+  /// discretization of the elliptic grid generation equations (element-wise
+  /// assembly), followed by computeRegularizedH1()
+  static gsMultiPatch<T> computePDEPatchGeneric(const gsMultiPatch<T> &mp,
+                                                const gsDofMapper &mapper,
+                                                const gsOptionList &options);
+
+  /**
+   * @brief Robust second stage of the PDE-based method (planar domains and
+   * volumes), based on Garanzha's regularization
+   * chi(D,eps) = (D + sqrt(D^2 + eps^2))/2 of the Jacobian determinant D.
+   *
+   * 1. If the given parameterization is folded, it is untangled by minimizing
+   *    the regularized Winslow functional int |J|^2 / chi(det J, eps)^(2/d).
+   * 2. The H1 discretization is solved with 1/det J replaced by
+   *    1/chi(det J, eps), using steps that keep the parameterization unfolded.
+   *
+   * @param[in]  mp       Multipatch (already scaled to the unit box)
+   * @param[in]  mapper   DoF mapper of the free control points
+   * @param[in]  x        Free control points to start from (H2 solution)
+   * @param[in]  options  Options
+   *
+   * @return     The free control points of the result
+   */
+  static gsVector<T> computeRegularizedH1(const gsMultiPatch<T> &mp,
+                                          const gsDofMapper &mapper,
+                                          gsVector<T> x,
+                                          const gsOptionList &options);
+
+  /// One pass of computeRegularizedH1(): untangling (if needed) and the
+  /// regularized H1 stage, with \a extraNodes additional Gauss-Lobatto
+  /// nodes per direction in the elements (see gsRegularizedPDEAssembler).
+  /// If \a negatives is given, it receives the number of check points with
+  /// det(J) <= 0 of every element of the result.
+  static gsVector<T> regularizedStage(const gsMultiPatch<T> &mp,
+                                      const gsDofMapper &mapper,
+                                      gsVector<T> x,
+                                      const gsOptionList &options,
+                                      const std::vector<index_t> &extraNodes,
+                                      std::vector<index_t> *negatives);
+
+  /// Value of preAAParam::linearSolver for GMRES in the H2 or H1 stage
+  /// (option PDE.Preconditioner)
+  static int gmresPreconditioner(const gsOptionList &options, bool h2Stage);
+
+  /// Use iterative linear solvers for a problem with this many unknowns?
+  static bool useIterativeSolver(const index_t numDofs,
+                                 const gsOptionList &options);
 
  protected:
   /**
@@ -500,7 +641,7 @@ class gsObjPenaltyPt2 : public gsOptProblem<T> {
 ///
 /// Parameters to control the preconditioned Anderson Acceleration algorithm
 ///
-template <typename Scalar = double>
+template <typename Scalar = real_t>
 class preAAParam {
  public:
   ///
@@ -541,15 +682,56 @@ class preAAParam {
   ///
   int updatePreconditionerStep;
   ///
-  /// Mixing or damping parameter.
-  /// It plays exactly the same role as it does for Picard iteration.
-  /// One could vary \ref beta as the iteration.
-  ///
-//  Scalar beta;
   ///
   /// Use preconditioning or not?
   ///
   bool usePreconditioning;
+  ///
+  /// Linear solver for the preconditioner: 0: sparse LU (default),
+  /// 1: GMRES with a block Gauss-Seidel preconditioner (blocks given by
+  /// \ref blocks, solved by sparse LU), 2: GMRES with the algebraic
+  /// multigrid preconditioner NodalAMG (nodes given by \ref nodes, components
+  /// by \ref blocks), 3: GMRES with block Gauss-Seidel whose diagonal blocks
+  /// are approximated by NodalAMG. If GMRES does not converge within
+  /// \ref innerMaxIterations, sparse LU is used for the rest of the solve.
+  ///
+  int linearSolver;
+  /// Values of \ref linearSolver
+  enum { SparseLU = 0, BlockGaussSeidelLU = 1, NodalAMG = 2,
+         BlockGaussSeidelAMG = 3 };
+  ///
+  /// Relative tolerance of the iterative linear solver
+  ///
+  Scalar innerTolerance;
+  ///
+  /// Max. number of iterations of the iterative linear solver per solve
+  ///
+  int innerMaxIterations;
+  ///
+  /// A solution of the iterative linear solver is accepted if its true
+  /// relative residual is below this bound (gismo's GMRES is left
+  /// preconditioned, so its own criterion refers to the preconditioned
+  /// residual). The fixed point of the iteration does not depend on the
+  /// accuracy of the linear solves, only its convergence speed does.
+  ///
+  Scalar innerAcceptance;
+  ///
+  /// Block (e.g. coordinate component) of each unknown, for linearSolver
+  /// 1, 2 and 3
+  ///
+  std::vector<index_t> blocks;
+  ///
+  /// Node (control point) of each unknown, for linearSolver 2
+  ///
+  std::vector<index_t> nodes;
+  ///
+  /// Safeguard against divergence (0: off): if the residual norm exceeds
+  /// safeguardFactor times the smallest one so far, the iteration returns to
+  /// the iterate with the smallest residual and restarts there with a fresh
+  /// preconditioner and a halved (damped) plain step. The damping is relaxed
+  /// again whenever the residual reaches a new minimum.
+  ///
+  Scalar safeguardFactor;
 
  public:
   ///
@@ -563,8 +745,12 @@ class preAAParam {
     epsilon_rel = Scalar(1e-5);
     max_iterations = 100;
     updatePreconditionerStep = 10;
-//    beta = Scalar(1.0);
     usePreconditioning = false;
+    linearSolver = SparseLU;
+    innerTolerance = Scalar(1e-8);
+    innerAcceptance = Scalar(1e-4);
+    innerMaxIterations = 100;
+    safeguardFactor = 0;
     // clang-format on
   }
 
@@ -579,31 +765,198 @@ class preAAParam {
     GISMO_ENSURE(epsilon >= 0, "'epsilon' must be non-negative");
     GISMO_ENSURE(epsilon_rel >= 0, "'epsilon_rel' must be non-negative");
     GISMO_ENSURE(max_iterations >= 0, "'max_iterations' must be non-negative");
-//    GISMO_ENSURE(beta >= 0 && beta <= 1.0, "'beta' must be between 0 and 1");
   }
 };
 
 namespace preAApp {
 
-template<typename Func>
-inline void measureTime(Func func) {
-  auto beforeTime = std::chrono::high_resolution_clock::now();
+/// @brief Algebraic multigrid preconditioner for systems whose unknowns
+/// are grouped in nodes (here: the coordinates of one control point).
+///
+/// Aggregation-based AMG: the nodes are aggregated on the graph of strong
+/// couplings between nodes (Frobenius norms of the node blocks), the
+/// prolongation interpolates each component by a constant on every aggregate
+/// (unsmoothed by default; optionally smoothed by one damped block Jacobi
+/// step), the coarse matrices are Galerkin products R A P with R = P^T, and
+/// the smoother is the nodal block Gauss-Seidel method (forward before,
+/// backward after the coarse grid correction), which inverts the coupling of
+/// all components of a node exactly. Unlike a partition of the unknowns by
+/// coordinate component, nodal blocks are invariant under rotations of the
+/// physical coordinates. One cycle is applied per call; meant as a
+/// preconditioner of GMRES. The matrix need not be symmetric.
+///
+/// Cost, for n unknowns, nnz nonzeros and node blocks of size b: set-up
+/// O(nnz) per level for the aggregation and O(n b^2) for the inverses of
+/// the diagonal blocks, plus the sparse products R A P and the dense LU of
+/// the coarsest level (at most 4 coarseSize unknowns). The coarsening stops
+/// unless an aggregation reduces the nodes by at least 10%, so the levels
+/// shrink geometrically and the total is a multiple of the finest level
+/// given by operatorComplexity(). One cycle costs O(nnz) per level and sweep.
+template<typename Scalar = real_t>
+class NodalAMG : public gsLinearOperator<Scalar> {
+ public:
+  /// Row-major sparse matrix (the smoother traverses rows)
+  typedef gsEigen::SparseMatrix<Scalar, gsEigen::RowMajor, index_t> RowMatrix;
+  /// Column vector
+  typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, 1> Vector;
+  /// Dense matrix (node blocks, coarsest level)
+  typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, gsEigen::Dynamic> Dense;
 
-  func();  // Call the function
+  /// Parameters of the method
+  struct Settings {
+    /// Strength threshold: node J is strongly coupled to node I if
+    /// |A_IJ| > theta * sqrt(|A_II| |A_JJ|) (Frobenius norms of the blocks)
+    Scalar theta = Scalar(0.08);
+    /// Block Gauss-Seidel sweeps before / after the coarse grid correction
+    index_t preSweeps = 2, postSweeps = 2;
+    /// The coarsening stops at this many unknowns (dense LU below)
+    index_t coarseSize = 400;
+    /// Maximal number of levels
+    index_t maxLevels = 10;
+    /// Smooth the prolongation (smoothed aggregation)
+    bool smoothProlongation = false;
+  };
 
-  auto afterTime = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration<double>(afterTime - beforeTime).count();
-  printf("\nTime passed by %.8f sec. \n", duration);
-}
+  /// Parameters of the method (before compute())
+  Settings &settings() { return m_settings; }
+  /// Parameters of the method
+  const Settings &settings() const { return m_settings; }
+
+  /// Empty preconditioner: call setNodes() and compute() before use
+  NodalAMG() {}
+
+  /// Sets the node and the component of every unknown (the unknowns of one
+  /// node should have different components)
+  void setNodes(const std::vector<index_t> &nodes,
+                const std::vector<index_t> &components);
+
+  /// Builds the hierarchy for the matrix \a mat
+  template<typename MatType>
+  NodalAMG &compute(const MatType &mat);
+
+  /// NumericalIssue if a diagonal block or the coarsest matrix is singular
+  gsEigen::ComputationInfo info() const { return m_info; }
+
+  /// Number of levels of the hierarchy
+  index_t numLevels() const { return m_levels.size(); }
+
+  /// Sum of the nonzeros of all levels relative to the finest level
+  Scalar operatorComplexity() const;
+
+  /// gsLinearOperator interface: one cycle with zero initial guess
+  void apply(const gsMatrix<Scalar> &input, gsMatrix<Scalar> &x) const;
+  /// Number of unknowns
+  index_t rows() const { return m_perm.size(); }
+  /// Number of unknowns
+  index_t cols() const { return m_perm.size(); }
+
+ private:
+  struct Level {
+    RowMatrix A, P, R;
+    /// unknowns of node I: nodePtr[I], ..., nodePtr[I+1]-1
+    std::vector<index_t> nodePtr;
+    /// component of every unknown
+    std::vector<index_t> comp;
+    /// inverses of the diagonal node blocks (row-major, packed)
+    std::vector<Scalar> dinv;
+    std::vector<index_t> dinvPtr;
+  };
+
+  /// Inverts the diagonal node blocks (diagonal inverse for singular blocks)
+  bool blockDiagonalInverse(Level &L) const;
+
+  /// Greedy aggregation of the nodes on the (symmetrized) graph of strong
+  /// couplings; returns the number of aggregates
+  index_t aggregate(const Level &L, std::vector<index_t> &agg) const;
+
+  /// Prolongation: every component is interpolated by a constant on each
+  /// aggregate (columns normalized); \a C receives the nodes and components
+  /// of the coarse level
+  RowMatrix prolongation(const Level &L, const std::vector<index_t> &agg,
+                         const index_t numAgg, Level &C) const;
+
+  /// One sweep of the nodal block Gauss-Seidel method
+  void smooth(const Level &L, const Vector &b, Vector &x, const bool forward) const;
+
+  /// V-cycle on level l with zero initial guess
+  void cycle(const size_t l, const Vector &b, Vector &x) const;
+
+  std::vector<index_t> m_perm, m_inv, m_nodePtr0, m_comp0;
+  Settings m_settings;
+  std::vector<Level> m_levels;
+  gsEigen::PartialPivLU<Dense> m_coarseLU;
+  bool m_coarseDirect = true;
+  gsEigen::ComputationInfo m_info = gsEigen::Success;
+};
+
+/// @brief Block Gauss-Seidel preconditioner: the block lower triangle of a
+/// matrix, for a given partition of the unknowns into blocks (e.g.
+/// coordinate components), applied by forward block substitution. The
+/// diagonal blocks are solved by sparse LU factorizations or, if
+/// \a amgBlocks, approximated by one cycle of the algebraic multigrid method
+/// NodalAMG (scalar nodes), which is much cheaper to set up for large 3D
+/// problems.
+///
+/// Cost: the set-up of the sparse LU factorizations of the diagonal blocks
+/// grows superlinearly with the block size (fill-in; for volumes the
+/// dominating cost), that of the AMG blocks is O(nnz) (see NodalAMG). An
+/// application costs one solve per diagonal block plus one product with the
+/// strictly lower block triangle.
+template<typename Scalar = real_t>
+class BlockGaussSeidel : public gsLinearOperator<Scalar> {
+ public:
+  /// Column-major sparse matrix (blocks)
+  typedef gsEigen::SparseMatrix<Scalar, 0, index_t> SparseMatrix;
+
+  /// \a amgBlocks: approximate the diagonal blocks by NodalAMG instead of
+  /// solving them by sparse LU; call setBlocks() and compute() before use
+  explicit BlockGaussSeidel(const bool amgBlocks = false)
+      : m_amgBlocks(amgBlocks) {}
+
+  /// Sets the block of every unknown
+  void setBlocks(const std::vector<index_t> &blocks);
+
+  /// Extracts the block lower triangle of \a mat and factorizes (or sets up
+  /// the AMG of) its diagonal blocks
+  template<typename MatType>
+  BlockGaussSeidel &compute(const MatType &mat);
+
+  /// Forward block substitution
+  template<typename Rhs>
+  gsVector<Scalar> solve(const gsEigen::MatrixBase<Rhs> &rhs) const;
+
+  /// Failure of a factorization of a diagonal block, if any
+  gsEigen::ComputationInfo info() const { return m_info; }
+
+  /// gsLinearOperator interface (for gismo's iterative solvers)
+  void apply(const gsMatrix<Scalar> &input, gsMatrix<Scalar> &x) const;
+  /// Number of unknowns
+  index_t rows() const { return m_blockOf.size(); }
+  /// Number of unknowns
+  index_t cols() const { return m_blockOf.size(); }
+
+ private:
+  std::vector<index_t> m_blockOf, m_local;
+  std::vector<std::vector<index_t> > m_members;
+  std::vector<std::vector<SparseMatrix> > m_lower;
+  std::vector<memory::shared_ptr<gsEigen::SparseLU<SparseMatrix> > > m_lu;
+  std::vector<memory::shared_ptr<NodalAMG<Scalar> > > m_amg;
+  bool m_amgBlocks;
+  gsEigen::ComputationInfo m_info = gsEigen::Success;
+};
 
 /// @brief Anderson acceleration solver and its (preconditioned) variants
 ///
 /// \ingroup Solver
-template<typename Scalar = double>
+template<typename Scalar = real_t>
 class AndersonAcceleration {
  public:
   typedef std::function<gsSparseMatrix<Scalar>(gsVector<Scalar> const &)> Jacobian_t;
   typedef std::function<gsVector<Scalar>(gsVector<Scalar> const &)> Residual_t;
+  /// Step filter: given the current iterate and a proposed new iterate, it
+  /// may shorten the step (by modifying the proposal in place). Returns false
+  /// if no admissible step exists.
+  typedef std::function<bool(gsVector<Scalar> const &, gsVector<Scalar> &)> StepFilter_t;
 
   explicit AndersonAcceleration(const preAAParam<Scalar> &param) :
       m_param(param) {
@@ -624,15 +977,21 @@ class AndersonAcceleration {
 
     // check if the initial guess is the solution
     if (m_currResidualNorm < m_param.epsilon) {
-      printf("You are lucky, the initial guess is exactly the solution.\n\n\n");
+      if (m_printInfo)
+        gsInfo << "You are lucky, the initial guess is exactly the solution.\n\n\n";
       return u0;
-    } else {
-      m_solution = m_currentG;
+    }
+    m_bestNorm = m_currResidualNorm;
+    m_bestSolution = m_solution;
+    if (!acceptStep(m_currentG)) {
+      // no admissible step from the initial guess
+      m_stalled = true;
+      return m_solution;
     }
 
     // print iteration information
     if (m_printInfo) {
-      printf("Iter.      ||F(x)|| \n");
+      gsInfo << "Iter.      ||F(x)|| \n";
       printIterationInfo();
     }
 
@@ -645,12 +1004,79 @@ class AndersonAcceleration {
   inline void enableIterationInfoPrinting() { m_printInfo = true; }
   inline void disableIterationInfoPrinting() { m_printInfo = false; }
 
+  /// Sets a filter that is applied to every step (e.g. a line search)
+  inline void setStepFilter(const StepFilter_t &filter) { m_stepFilter = filter; }
+
+  /// True if the residual norm dropped below the tolerance
+  inline bool converged() const { return m_currResidualNorm < m_param.epsilon; }
+
+  /// True if the iteration stopped early: the step filter rejected all
+  /// steps, or the divergence safeguard halved the damping below 1/1024
+  inline bool stalled() const { return m_stalled; }
+
+  /// Number of iterations performed
+  inline int iterations() const { return m_iter; }
+
+  /// Norm of the last evaluated residual
+  inline Scalar residualNorm() const { return m_currResidualNorm; }
+
+  /// Number of preconditioner (Jacobian) updates
+  inline int preconditionerUpdates() const { return m_numPreconditionerUpdates; }
+
+  /// Number of restarts after a rejected accelerated step
+  inline int restarts() const { return m_numRestarts; }
+
+  /// Wall time (s) spent in assembling and factorizing the preconditioner
+  inline double preconditionerTime() const { return m_timePreconditioner; }
+
+  /// Wall time (s) spent in evaluating the residual
+  inline double residualTime() const { return m_timeResidual; }
+
+  /// Wall time (s) spent in solving with the preconditioner
+  inline double solveTime() const { return m_timeSolve; }
+
+  /// Total number of iterations of the iterative linear solver (GMRES)
+  inline int innerIterations() const { return m_numInnerIterations; }
+
+  /// Number of fall-backs from the iterative linear solver to sparse LU
+  inline int innerFallbacks() const { return m_numFallbacks; }
+
+  /// Number of iterates rejected by the safeguard
+  inline int rejections() const { return m_numRejections; }
+
  private:
   inline void initialize(const gsVector<Scalar> &u0) {
     m_solution = u0;
     m_dim = m_solution.size();
     m_iter = 0;
+    m_sinceRestart = 0;
     m_columnIndex = 0;
+    m_stalled = false;
+    m_numPreconditionerUpdates = 0;
+    m_numRestarts = 0;
+    m_numInnerIterations = 0;
+    m_numFallbacks = 0;
+    m_iterativeFailed = false;
+    m_numRejections = 0;
+    m_damping = 1;
+    m_timePreconditioner = m_timeResidual = m_timeSolve = 0;
+    m_blockPreconditioner.reset();
+    m_amgPreconditioner.reset();
+    if (m_param.linearSolver != preAAParam<Scalar>::SparseLU) {
+      GISMO_ENSURE(m_param.blocks.size() == size_t(m_dim),
+                   "preAAParam::blocks must give the block of every unknown.");
+    }
+    if (preAAParam<Scalar>::BlockGaussSeidelLU == m_param.linearSolver
+        || preAAParam<Scalar>::BlockGaussSeidelAMG == m_param.linearSolver) {
+      m_blockPreconditioner.reset(new BlockGaussSeidel<Scalar>(
+          preAAParam<Scalar>::BlockGaussSeidelAMG == m_param.linearSolver));
+      m_blockPreconditioner->setBlocks(m_param.blocks);
+    } else if (preAAParam<Scalar>::NodalAMG == m_param.linearSolver) {
+      GISMO_ENSURE(m_param.nodes.size() == size_t(m_dim),
+                   "preAAParam::nodes must give the node of every unknown.");
+      m_amgPreconditioner.reset(new NodalAMG<Scalar>());
+      m_amgPreconditioner->setNodes(m_param.nodes, m_param.blocks);
+    }
 
     m_currentF.resize(m_dim);
     m_prevdG.resize(m_dim, m_param.m);
@@ -668,16 +1094,30 @@ class AndersonAcceleration {
   }
 
   inline void printSolverInfo() {
-    printf("\nAnderson Acceleration SOLVER: parameter settings... \n");
-    printf("depth                       =     %d\n", m_param.m);
-    printf("use preconditioner          =     %d\n",
-           m_param.usePreconditioning);
-    printf("update preconditioner step  =     %d\n\n",
-           m_param.updatePreconditionerStep);
+    gsInfo << "\nAnderson Acceleration SOLVER: parameter settings... \n"
+           << "depth                       =     " << m_param.m << "\n"
+           << "use preconditioner          =     "
+           << int(m_param.usePreconditioning) << "\n"
+           << "update preconditioner step  =     "
+           << m_param.updatePreconditionerStep << "\n\n";
+  }
+
+  /// Moves to the proposed iterate, subject to the step filter (if any).
+  /// Returns false if the proposal is rejected; the iterate is then unchanged.
+  inline bool acceptStep(const gsVector<Scalar> &proposal) {
+    if (!m_stepFilter) {
+      m_solution = proposal;
+      return true;
+    }
+    gsVector<Scalar> next = proposal;
+    if (!next.allFinite() || !m_stepFilter(m_solution, next)) { return false; }
+    m_solution = next;
+    return true;
   }
 
   inline void startIteration(const Residual_t &F, const Jacobian_t &Jacobian) {
     m_iter = 1;
+    m_sinceRestart = 1;
     if (m_param.m == 0) {
       performPicardIteration(F, Jacobian);
     } else {
@@ -692,11 +1132,12 @@ class AndersonAcceleration {
       updateG(F, Jacobian);
 
       // update the solution
-      m_solution = m_currentG;
+      if (!acceptStep(m_currentG)) { m_stalled = true; break; }
 
       printIterationInfo();
 
       ++m_iter;
+      ++m_sinceRestart;
       trackIterationInfo();
     }
   }
@@ -712,16 +1153,61 @@ class AndersonAcceleration {
 
       printIterationInfo();
 
-      updatePrevdFAndPrevdG();
+      if (m_param.safeguardFactor > 0) {
+        if (!(m_currResidualNorm <= m_param.safeguardFactor * m_bestNorm)) {
+          // Divergence: back to the best iterate, restart there with a fresh
+          // preconditioner and a damped plain step
+          ++m_numRejections;
+          m_damping *= 0.5;
+          m_solution = m_bestSolution;
+          if (m_damping < Scalar(1) / 1024) {
+            m_currResidualNorm = m_bestNorm;
+            m_stalled = true;
+            break;
+          }
+          // (the rejected residual may be NaN, which would end the loop)
+          m_currResidualNorm = m_bestNorm;
+          ++m_iter;
+          m_sinceRestart = 0;
+          trackIterationInfo();
+          continue;
+        }
+        if (m_currResidualNorm < m_bestNorm) {
+          m_bestNorm = m_currResidualNorm;
+          m_bestSolution = m_solution;
+          m_damping = std::min<Scalar>(1, 2 * m_damping);
+        }
+      }
 
-      // update alpha and solution (compute normal equation)
-      updateAlpha();
-      updateSolution();
+      if (m_sinceRestart == 0) {
+        // restart: plain (preconditioned, possibly damped) step with a fresh
+        // history
+        if (!acceptStep(m_damping < 1 ? gsVector<Scalar>(m_solution + m_damping * m_currentF)
+                                      : m_currentG)) { m_stalled = true; break; }
+        m_columnIndex = 0;
+        m_prevdF.col(0) = -m_currentF;
+        m_prevdG.col(0) = -m_currentG;
+      } else {
+        updatePrevdFAndPrevdG();
 
-      // update the column indices
-      updateColumnIndices();
+        // update alpha and solution (compute normal equation)
+        updateAlpha();
+        if (!updateSolution()) {
+          // The accelerated step was rejected by the step filter: restart
+          // from the current iterate with a fresh preconditioner.
+          ++m_iter;
+          ++m_numRestarts;
+          m_sinceRestart = 0;
+          trackIterationInfo();
+          continue;
+        }
+
+        // update the column indices
+        updateColumnIndices();
+      }
 
       ++m_iter;
+      ++m_sinceRestart;
       trackIterationInfo();
     }
   }
@@ -739,14 +1225,77 @@ class AndersonAcceleration {
   /// update fixed point function with preconditioning
   inline void updateGWithPreconditioning(const Residual_t &F,
                                          const Jacobian_t &Jacobian) {
-    if (!(m_iter % m_param.updatePreconditionerStep)) {
+    gsStopwatch timer;
+    if (!(m_sinceRestart % m_param.updatePreconditionerStep)) {
       m_preconditioner = Jacobian(m_solution);
-      m_linearSolverPreconditioning.compute(m_preconditioner);
+      m_useLU = !(m_blockPreconditioner || m_amgPreconditioner)
+                || m_iterativeFailed;
+      if (!m_useLU) {
+        memory::shared_ptr<gsLinearOperator<Scalar> > preconditioner;
+        if (m_blockPreconditioner) {
+          m_blockPreconditioner->compute(m_preconditioner);
+          m_useLU = (m_blockPreconditioner->info() != gsEigen::Success);
+          preconditioner = m_blockPreconditioner;
+        } else {
+          m_amgPreconditioner->compute(m_preconditioner);
+          m_useLU = (m_amgPreconditioner->info() != gsEigen::Success);
+          preconditioner = m_amgPreconditioner;
+        }
+        if (m_useLU) {
+          ++m_numFallbacks;
+          m_iterativeFailed = true;
+        } else {
+          m_iterativeSolver.reset(
+              new gsGMRes<Scalar>(m_preconditioner, preconditioner));
+          m_iterativeSolver->setTolerance(m_param.innerTolerance);
+          m_iterativeSolver->setMaxIterations(m_param.innerMaxIterations);
+        }
+      }
+      if (m_useLU) { m_linearSolverPreconditioning.compute(m_preconditioner); }
+      ++m_numPreconditionerUpdates;
+      m_timePreconditioner += timer.stop();
     }
+    if (m_useLU && m_linearSolverPreconditioning.info() != gsEigen::Success) {
+      // The preconditioner could not be factorized: no step, and a
+      // non-finite residual norm which terminates the iteration.
+      m_currentF.setZero(m_dim);
+      m_currResidualNorm = std::numeric_limits<Scalar>::quiet_NaN();
+      return;
+    }
+    timer.restart();
     gsVector<Scalar> residual = F(m_solution);
     m_currResidualNorm = residual.norm();
+    m_timeResidual += timer.stop();
 
-    m_currentF = -m_linearSolverPreconditioning.solve(residual);
+    timer.restart();
+    if (!m_useLU) {
+      gsMatrix<Scalar> solution;
+      solution.setZero(m_dim, 1);
+      m_iterativeSolver->solve(residual, solution);
+      m_numInnerIterations += m_iterativeSolver->iterations();
+      // gismo's GMRES is left preconditioned: check the true residual
+      const Scalar trueResidual = (m_preconditioner * solution - residual).norm();
+      m_currentF = -solution.col(0);
+      if (!(trueResidual <= m_param.innerAcceptance * residual.norm())
+          || !m_currentF.allFinite()) {
+        // The iterative solver did not converge: sparse LU from now on
+        ++m_numFallbacks;
+        m_useLU = true;
+        m_iterativeFailed = true;
+        gsStopwatch factorizationTimer;
+        m_linearSolverPreconditioning.compute(m_preconditioner);
+        m_timePreconditioner += factorizationTimer.stop();
+        if (m_linearSolverPreconditioning.info() != gsEigen::Success) {
+          m_currentF.setZero(m_dim);
+          m_currResidualNorm = std::numeric_limits<Scalar>::quiet_NaN();
+          return;
+        }
+      }
+    }
+    if (m_useLU) {
+      m_currentF = -m_linearSolverPreconditioning.solve(residual);
+    }
+    m_timeSolve += timer.stop();
   }
 
   /// update fixed point function without preconditioning
@@ -757,7 +1306,12 @@ class AndersonAcceleration {
 
   inline void printIterationInfo() {
     if (m_printInfo) {
-        printf(" %d         %.4e\n", m_iter, cast<Scalar,double>( m_currResidualNorm ));
+        // (formatted in a separate stream: gsInfo keeps its settings)
+        std::ostringstream line;
+        line << " " << m_iter << "         " << std::scientific
+             << std::setprecision(4) << cast<Scalar, double>(m_currResidualNorm)
+             << "\n";
+        gsInfo << line.str();
     }
   }
 
@@ -774,7 +1328,7 @@ class AndersonAcceleration {
   /// update the coefficients \f$ alpha_i \f$ by solving a Least-Square problem
   inline void updateAlpha() {
     // compute m_mk
-    m_mk = std::min(m_param.m, m_iter);
+    m_mk = std::min(m_param.m, m_sinceRestart);
 
     if (m_mk == 1) {
       m_alpha(0) = 0;
@@ -806,12 +1360,19 @@ class AndersonAcceleration {
     }
   }
 
-  /// update the solution
-  inline void updateSolution() {
+  /// update the solution; returns false if the step filter rejects the step
+  inline bool updateSolution() {
     // Update the current solution (x) using the rescaled alpha
-    m_solution = m_currentG - m_prevdG.block(0, 0, m_dim, m_mk) *
-        ((m_alpha.head(m_mk).array()
+    if (!m_stepFilter) {
+      m_solution = m_currentG - m_prevdG.block(0, 0, m_dim, m_mk) *
+          ((m_alpha.head(m_mk).array()
+              / m_scaledF.head(m_mk).array()).matrix());
+      return true;
+    }
+    const gsVector<Scalar> proposal = m_currentG
+        - m_prevdG.block(0, 0, m_dim, m_mk) * ((m_alpha.head(m_mk).array()
             / m_scaledF.head(m_mk).array()).matrix());
+    return acceptStep(proposal);
   }
 
   void updateColumnIndices() {
@@ -831,10 +1392,12 @@ class AndersonAcceleration {
   int m_dim = -1;
   // Iteration
   int m_iter = 0;
+  // Iterations since the last (re)start; equals m_iter if no restart occurred
+  int m_sinceRestart = 0;
   int m_mk = 0;
   int m_columnIndex = 0;
   // Residual
-  Scalar m_currResidualNorm;
+  Scalar m_currResidualNorm = std::numeric_limits<Scalar>::infinity();
   // Solution
   gsVector<Scalar> m_solution;
   gsVector<Scalar> m_currentF;
@@ -848,6 +1411,25 @@ class AndersonAcceleration {
   // Preconditioning
   gsSparseMatrix<Scalar> m_preconditioner;
   gsEigen::SparseLU<gsSparseMatrix<Scalar>> m_linearSolverPreconditioning;
+  memory::shared_ptr<BlockGaussSeidel<Scalar> > m_blockPreconditioner;
+  memory::shared_ptr<NodalAMG<Scalar> > m_amgPreconditioner;
+  memory::unique_ptr<gsGMRes<Scalar> > m_iterativeSolver;
+  bool m_useLU = true;
+  // the iterative solver failed once: sparse LU for the rest of the solve
+  bool m_iterativeFailed = false;
+  // Optional step filter (line search) and its status
+  StepFilter_t m_stepFilter;
+  bool m_stalled = false;
+  // Statistics
+  int m_numPreconditionerUpdates = 0;
+  int m_numRestarts = 0;
+  int m_numInnerIterations = 0;
+  int m_numFallbacks = 0;
+  // Safeguard
+  int m_numRejections = 0;
+  Scalar m_bestNorm = 0, m_damping = 1;
+  gsVector<Scalar> m_bestSolution;
+  double m_timePreconditioner = 0, m_timeResidual = 0, m_timeSolve = 0;
   // Print information
   bool m_printInfo = true;
 

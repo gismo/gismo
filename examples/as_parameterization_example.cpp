@@ -13,6 +13,7 @@
 
 #include <gismo.h>
 #include <gsAssembler/gsDofMapperCreator.h>
+#include <gsModeling/gsBarrierCore.h>
 
 using namespace gismo;
 
@@ -50,7 +51,7 @@ void makeMapperFixedInterface(const gsMultiPatch<T> &mp, gsDofMapper &mapper) {
   makeMapper(mp,
              mapper,
              [](const gsBasis<T> &basis,
-                const typename gsMultiPatch<>::const_biterator &bit) { return basis.allBoundary(); });
+                const typename gsMultiPatch<>::const_biterator &) { return basis.allBoundary(); });
 }
 
 template<typename T>
@@ -61,6 +62,23 @@ void makeMapperFreeInterface(const gsMultiPatch<T> &mp, gsDofMapper &mapper) {
                 const typename gsMultiPatch<>::const_biterator &bit) {
                return basis.boundary(bit->index());
              });
+}
+
+/// Constructs the parameterization of \a mp with gsBarrierPatch<d>. The
+/// entries of \a settings (here: from the command line) override the
+/// default options of gsBarrierPatch; a name that gsBarrierPatch does not
+/// know is an error rather than silently ignored.
+template<short_t d, typename T>
+gsMultiPatch<T> computeParameterization(const gsMultiPatch<T> &mp,
+                                        bool fixInterfaces,
+                                        const gsOptionList &settings) {
+  gsBarrierPatch<d, T> opt(mp, fixInterfaces);
+  const size_t numOptions = opt.options().size();
+  opt.options().update(settings, gsOptionList::addIfUnknown);
+  GISMO_ENSURE(opt.options().size() == numOptions,
+               "Unknown option name in the settings");
+  opt.compute();
+  return opt.result();
 }
 
 template<typename T>
@@ -77,10 +95,6 @@ void outputResult(const gsMultiPatch<T> &mp, const std::string &filename) {
   gsOptionList options = gsExprEvaluator<>::defaultOptions();
   options.setSwitch("elements",false);
   options.setInt("numPoints",(mdim==2) ? 1000 : 10000);
-  if (mdim == 2)
-    options.setInt("numPoints",1000);
-  else
-    options.setInt("numPoints",10000);
   ev.options() = options;
 
   gsInfo << "\n Parameterization quality info (only values for quadrature "
@@ -140,6 +154,18 @@ int main(int argc, char *argv[]) {
   index_t AAPreconditionType = 0; // Preconditioner type for Anderson Acceleration
   bool isInterfaceFree = false; // Make interfaces free
   bool isBRep = false; // Input data is B-Rep
+  // PDE-based method (option group PDE of gsBarrierPatch), initialized with
+  // the default values of the library
+  const gsOptionList pdeDefaults = gsBarrierCore<2, real_t>::defaultPDEOptions();
+  bool noRegularization = !pdeDefaults.getSwitch("Garanzha");
+  bool skipH2 = pdeDefaults.getSwitch("SkipH2");
+  bool freeInterfacePDE = !pdeDefaults.getSwitch("FreeInterfaceEnergy");
+  index_t linearSolver = pdeDefaults.getInt("LinearSolver");
+  index_t preconditioner = pdeDefaults.getInt("Preconditioner");
+  index_t h1Form = pdeDefaults.getInt("H1Form");
+  real_t safeguard = pdeDefaults.getReal("H1Safeguard");
+  index_t extraNodes = pdeDefaults.getInt("ExtraNodes");
+  index_t adaptiveRounds = pdeDefaults.getInt("AdaptiveRounds");
 
   // Constants for input file and description
   std::string INPUT_FILE = "breps/other/TUDflame.xml";
@@ -155,8 +181,31 @@ int main(int argc, char *argv[]) {
              "Parameterization Method: 0 PDE patch (default), "
              "1 Barrier patch , 2 Penalty patch, 3 Penalty patch (2)", paramMethod);
   cmd.addInt("v", "Verbose", "Print output 0: no print, 1: summary, 2: full print", verboseMode);
-  cmd.addInt("a", "preconditionType", "Preconsitioner type for Anderson Acceleration", AAPreconditionType);
+  cmd.addInt("a", "preconditionType", "Preconditioner type for Anderson Acceleration", AAPreconditionType);
+  cmd.addInt("s", "linearSolver", "Linear solvers of the PDE patch with regularization: "
+             "0 automatic (by problem size), 1 direct, 2 iterative", linearSolver);
+  cmd.addInt("", "preconditioner", "PDE patch, preconditioner of GMRES: 0 automatic, "
+             "1 block Gauss-Seidel by coordinate (sparse LU), 2 algebraic "
+             "multigrid (nodal), 3 block Gauss-Seidel (multigrid)", preconditioner);
+  cmd.addInt("", "h1Form", "PDE patch, regularized H1 stage: 0 original form, "
+             "1 weak form of Laplace's equation for the inverse map", h1Form);
+  cmd.addReal("", "safeguard", "PDE patch, regularized H1 stage: divergence "
+              "safeguard factor (0: off)", safeguard);
+  cmd.addInt("", "extraNodes", "PDE patch, regularized stage: additional "
+             "Gauss-Lobatto nodes per direction", extraNodes);
+  cmd.addInt("", "adaptiveRounds", "PDE patch, regularized stage: max. number of "
+             "adaptive refinements where det(J) <= 0 between the nodes (0: off)",
+             adaptiveRounds);
   cmd.addSwitch("free", "Make interfaces free", isInterfaceFree);
+  cmd.addSwitch("freeInterfacePDE", "PDE patch with --free: apply the H2/H1 "
+                "stages as for single patches (by default, the parameter domains "
+                "are scaled by chord lengths and the regularized Winslow energy "
+                "is minimized)", freeInterfacePDE);
+  cmd.addSwitch("skipH2", "PDE patch (experimental): skip the H2 stage and start "
+                "the untangling from the initial interior", skipH2);
+  cmd.addSwitch("noRegularization", "PDE patch: disable Garanzha's regularization, i.e., no "
+                         "untangling and the original H1 solver (planar) or "
+                         "the H2 solver only (volumes)", noRegularization);
   try { cmd.getValues(argc, argv); }
   catch (int rv) { return rv; }
   //! [Parse command line]
@@ -210,20 +259,26 @@ int main(int argc, char *argv[]) {
   //! [refine the geometry for better result]
 
   //! [perform analysis-suitable parameterization construction]
+  // the command-line values, overriding the defaults of gsBarrierPatch
+  gsOptionList settings;
+  settings.addInt("Verbose", "", verboseMode);
+  settings.addInt("ParamMethod", "", paramMethod);
+  settings.addInt("AAPreconditionType", "", AAPreconditionType);
+  settings.addSwitch("PDE.Garanzha", "", !noRegularization);
+  settings.addSwitch("PDE.SkipH2", "", skipH2);
+  settings.addSwitch("PDE.FreeInterfaceEnergy", "", !freeInterfacePDE);
+  settings.addInt("PDE.LinearSolver", "", linearSolver);
+  settings.addInt("PDE.Preconditioner", "", preconditioner);
+  settings.addInt("PDE.H1Form", "", h1Form);
+  settings.addReal("PDE.H1Safeguard", "", safeguard);
+  settings.addInt("PDE.ExtraNodes", "", extraNodes);
+  settings.addInt("PDE.AdaptiveRounds", "", adaptiveRounds);
+
   gsMultiPatch<> result;
   if (geodim == 2) {
-    gsBarrierPatch<2, real_t> opt(*mp, !isInterfaceFree);
-    opt.options().setInt("Verbose", verboseMode);
-    opt.options().setInt("ParamMethod", paramMethod);
-    opt.options().setInt("AAPreconditionType", AAPreconditionType);
-    opt.compute();
-    result = opt.result();
+    result = computeParameterization<2>(*mp, !isInterfaceFree, settings);
   } else if (geodim == 3) {
-    gsBarrierPatch<3, real_t> opt(*mp, !isInterfaceFree);
-    opt.options().setInt("Verbose", verboseMode);
-    opt.options().setInt("ParamMethod", paramMethod);
-    opt.compute();
-    result = opt.result();
+    result = computeParameterization<3>(*mp, !isInterfaceFree, settings);
   } else {
     gsInfo << "current version only support pardim = geodim = 2 or 3.\n";
     return EXIT_FAILURE;
