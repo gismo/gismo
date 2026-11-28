@@ -110,6 +110,205 @@ SUITE(gsPreconditioner_test)
         runPreconditionerTest(3);
     }
 
+    TEST(gsFastDiagonalizationAnisotropic_test)
+    {
+        // Define Geometry
+        gsMultiPatch<> mp( *gsNurbsCreator<>::BSplineCube(1) );
+
+        // Create multibasis with different sizes in the directions
+        gsMultiBasis<> mb(mp);
+        mb.setDegree(3);
+        mb.uniformRefine();
+        dynamic_cast< gsTensorBSplineBasis<3>& >(mb[0]).component(1).uniformRefine();
+
+        // Define Boundary conditions
+        gsConstantFunction<> one(1,mp.geoDim());
+        gsBoundaryConditions<> bc;
+        bc.addCondition( boundary::west, condition_type::dirichlet, &one );
+        bc.addCondition( boundary::back, condition_type::dirichlet, &one );
+
+        gsOptionList opt = gsAssembler<>::defaultOptions();
+        gsVector<> beta(3);
+        beta << 0.7, 3, 11;
+        const real_t alpha = 0.25;
+
+        // Reference: Kronecker sum of the univariate matrices
+        std::vector< gsSparseMatrix<> > M(3), S(3);
+        for (index_t k=0; k!=3; ++k)
+        {
+            gsBoundaryConditions<> bc1;
+            if (k==0) bc1.addCondition( boundary::west, condition_type::dirichlet, &one );
+            if (k==2) bc1.addCondition( boundary::east, condition_type::dirichlet, &one );
+            M[k] = gsPatchPreconditionersCreator<>::massMatrix(mb[0].component(k),bc1,opt);
+            S[k] = gsPatchPreconditionersCreator<>::stiffnessMatrix(mb[0].component(k),bc1,opt,0,1);
+        }
+        gsSparseMatrix<> mat = beta[0] * M[2].kron(M[1]).kron(S[0]);
+        mat += beta[1] * M[2].kron(S[1]).kron(M[0]);
+        mat += beta[2] * S[2].kron(M[1]).kron(M[0]);
+        mat += alpha * M[2].kron(M[1]).kron(M[0]);
+
+        gsLinearOperator<>::Ptr fd = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb[0],bc,opt,alpha,beta);
+
+        gsMatrix<> x, y, z;
+        x.setRandom(mat.rows(),2);
+        y = mat * x;
+        fd->apply(y,z);
+        CHECK ( (z-x).norm() <= 1.e-10 * x.norm() );
+    }
+
+    TEST(gsFastDiagonalizationElasticity_test)
+    {
+        const real_t lambda = 0.5769, mu = 0.3846; // Young's modulus 1, Poisson's ratio 0.3
+
+        for (index_t testcase=0; testcase!=2; ++testcase)
+        {
+            // Define Geometry: unit square or a box with aspect ratio 8
+            gsMultiPatch<> mp( *gsNurbsCreator<>::BSplineSquare(1) );
+            if (testcase==1) mp.patch(0).coefs().col(0) *= 8;
+            mp.computeTopology();
+
+            // Create multibasis
+            gsMultiBasis<> mb(mp,true);
+            mb.setDegree(3);
+            for (index_t i=0; i!=4; ++i)
+                mb.uniformRefine();
+
+            // Define Boundary conditions: clamped on one side
+            gsConstantFunction<> zero(gsVector<>::Zero(2),2);
+            gsBoundaryConditions<> bc;
+            bc.addCondition( 0, boundary::west, condition_type::dirichlet, &zero, 0, false, -1 );
+            bc.setGeoMap(mp);
+
+            // Assemble
+            gsExprAssembler<> assembler(1,1);
+            assembler.setIntegrationDomain(mb.domain());
+            gsExprAssembler<>::geometryMap G = assembler.getMap(mp);
+            gsExprAssembler<>::space u = assembler.getSpace(mb,2);
+            u.setup(bc, dirichlet::l2Projection, 0);
+            assembler.initSystem();
+            auto jac = ijac(u,G);
+            assembler.assemble(
+                lambda * idiv(u,G) * idiv(u,G).tr() * meas(G)
+                + mu * ( (jac.cwisetr() + jac) % jac.tr() ) * meas(G)
+            );
+            const gsSparseMatrix<>& mat = assembler.matrix();
+
+            gsMatrix<> rhs, sol;
+            rhs.setRandom(mat.rows(),1);
+            sol.setZero(mat.rows(),1);
+
+            gsOptionList opt = gsAssembler<>::defaultOptions();
+            gsConjugateGradient<> solver(mat,
+                gsPatchPreconditionersCreator<>::elasticityFastDiagonalizationOp(mb[0],bc,opt,lambda,mu,&mp.patch(0)));
+            solver.setTolerance( 1.e-8 );
+            solver.setMaxIterations( testcase==0 ? 40 : 60 );
+            solver.solve(rhs,sol);
+            CHECK ( solver.error() <= solver.tolerance() );
+        }
+    }
+
+    TEST(gsFastDiagonalizationGeometry_test)
+    {
+        // On a box with a different grading in each direction, the matrix
+        // |det J| J^{-1} J^{-T} is diagonal and its entries are products of
+        // univariate functions. So, the operator with the geometry has to
+        // be the inverse of the assembled stiffness matrix.
+        for (index_t dim=2; dim!=4; ++dim)
+        {
+            // Define Geometry
+            gsMultiPatch<> mp;
+            if (dim==2) mp.addPatch( *gsNurbsCreator<>::BSplineSquare(1) );
+            else        mp.addPatch( *gsNurbsCreator<>::BSplineCube(1) );
+            mp.patch(0).degreeElevate(1);
+            gsMatrix<>& coefs = mp.patch(0).coefs();
+            coefs.col(0) = coefs.col(0).array().square().matrix();
+            coefs.col(1) = ( 0.5 * (coefs.col(1).array() + coefs.col(1).array().square()) ).matrix();
+            if (dim==3) coefs.col(2) *= 3;
+            mp.computeTopology();
+
+            // Create multibasis
+            gsMultiBasis<> mb(mp,true);
+            mb.setDegree(3);
+            for (index_t i=0; i!=5-dim; ++i)
+                mb.uniformRefine();
+
+            // Define Boundary conditions
+            gsConstantFunction<> zero(0,mp.geoDim());
+            gsBoundaryConditions<> bc;
+            bc.addCondition( 0, boundary::west,  condition_type::dirichlet, &zero );
+            bc.addCondition( 0, boundary::north, condition_type::dirichlet, &zero );
+            bc.setGeoMap(mp);
+
+            // Assemble
+            gsExprAssembler<> assembler(1,1);
+            assembler.setIntegrationDomain(mb.domain());
+            gsExprAssembler<>::geometryMap G = assembler.getMap(mp);
+            gsExprAssembler<>::space u = assembler.getSpace(mb);
+            u.setup(bc, dirichlet::l2Projection, 0);
+            assembler.initSystem();
+            assembler.assemble( igrad(u,G) * igrad(u,G).tr() * meas(G) );
+            const gsSparseMatrix<>& mat = assembler.matrix();
+
+            gsOptionList opt = gsAssembler<>::defaultOptions();
+            gsLinearOperator<>::Ptr fd = gsPatchPreconditionersCreator<>::fastDiagonalizationOp(mb[0],mp.patch(0),bc,opt);
+
+            gsMatrix<> x, y, z;
+            x.setRandom(mat.rows(),2);
+            y = mat * x;
+            fd->apply(y,z);
+            CHECK ( (z-x).norm() <= 1.e-8 * x.norm() );
+        }
+    }
+
+    TEST(gsFastDiagonalizationElasticityAnnulus_test)
+    {
+        const real_t lambda = 0.5769, mu = 0.3846; // Young's modulus 1, Poisson's ratio 0.3
+
+        // Define Geometry: the Jacobian varies along both directions
+        gsMultiPatch<> mp( *gsNurbsCreator<>::BSplineFatQuarterAnnulus(1,2) );
+        mp.computeTopology();
+
+        // Create multibasis
+        gsMultiBasis<> mb(mp,true);
+        mb.setDegree(3);
+        for (index_t i=0; i!=4; ++i)
+            mb.uniformRefine();
+
+        // Define Boundary conditions: clamped on the inner arc
+        gsConstantFunction<> zero(gsVector<>::Zero(2),2);
+        gsBoundaryConditions<> bc;
+        bc.addCondition( 0, boundary::west, condition_type::dirichlet, &zero, 0, false, -1 );
+        bc.setGeoMap(mp);
+
+        // Assemble
+        gsExprAssembler<> assembler(1,1);
+        assembler.setIntegrationDomain(mb.domain());
+        gsExprAssembler<>::geometryMap G = assembler.getMap(mp);
+        gsExprAssembler<>::space u = assembler.getSpace(mb,2);
+        u.setup(bc, dirichlet::l2Projection, 0);
+        assembler.initSystem();
+        auto jac = ijac(u,G);
+        assembler.assemble(
+            lambda * idiv(u,G) * idiv(u,G).tr() * meas(G)
+            + mu * ( (jac.cwisetr() + jac) % jac.tr() ) * meas(G)
+        );
+        const gsSparseMatrix<>& mat = assembler.matrix();
+
+        gsMatrix<> rhs, sol;
+        rhs.setRandom(mat.rows(),1);
+        sol.setZero(mat.rows(),1);
+
+        // One scaling factor per direction does not reach the tolerance
+        // within this number of iterations
+        gsOptionList opt = gsAssembler<>::defaultOptions();
+        gsConjugateGradient<> solver(mat,
+            gsPatchPreconditionersCreator<>::elasticityFastDiagonalizationOp(mb[0],bc,opt,lambda,mu,&mp.patch(0)));
+        solver.setTolerance( 1.e-8 );
+        solver.setMaxIterations( 35 );
+        solver.solve(rhs,sol);
+        CHECK ( solver.error() <= solver.tolerance() );
+    }
+
     TEST(gsPatchPreconditioner_stiff_test)
     {
         // Define Geometry
