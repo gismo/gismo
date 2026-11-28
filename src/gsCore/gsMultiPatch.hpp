@@ -13,6 +13,9 @@
 
 #pragma once
 
+#include <array>
+#include <map>
+
 #include <gsCore/gsBasis.h>
 #include <gsCore/gsGeometry.h>
 #include <gsCore/gsDofMapper.h>
@@ -460,40 +463,88 @@ bool gsMultiPatch<T>::computeTopology( T tol, bool cornersOnly, bool)
     cId2.reserve(nCorS);
 
     std::set<index_t> found;
-    for (size_t sideind=0; sideind<pSide.size(); ++sideind)
+    // Compares the sides sideind < other and adds an interface if they match
+    auto compareSides = [&](const size_t sideind, const size_t other)
     {
         const patchSide & side = pSide[sideind];
-        for (size_t other=sideind+1; other<pSide.size(); ++other)
+        side        .getContainedCorners(m_dim,cId1);
+        pSide[other].getContainedCorners(m_dim,cId2);
+        matched.setConstant(false);
+
+        // Check whether the side center matches
+        if (!cornersOnly)
+            if ( ( pCorners[side.patch        ].col(nCorP+side-1        ) -
+                   pCorners[pSide[other].patch].col(nCorP+pSide[other]-1)
+                     ).norm() >= tol )
+                return;
+
+        //t-junction
+        // check for matching vertices else
+        // invert the vertices of first side on the second and vise-versa
+        // if at least one vertex is found (at most 2^(d-1)), mark as interface
+
+        // Check whether the vertices match and compute direction
+        // map and orientation
+        if ( matchVerticesOnSide( pCorners[side.patch]        , cId1, 0,
+                                  pCorners[pSide[other].patch], cId2,
+                                  matched, dirMap, dirOr, tol ) )
         {
-            side        .getContainedCorners(m_dim,cId1);
-            pSide[other].getContainedCorners(m_dim,cId2);
-            matched.setConstant(false);
-
-            // Check whether the side center matches
-            if (!cornersOnly)
-                if ( ( pCorners[side.patch        ].col(nCorP+side-1        ) -
-                       pCorners[pSide[other].patch].col(nCorP+pSide[other]-1)
-                         ).norm() >= tol )
-                    continue;
-
-            //t-junction
-            // check for matching vertices else
-            // invert the vertices of first side on the second and vise-versa
-            // if at least one vertex is found (at most 2^(d-1)), mark as interface
-
-            // Check whether the vertices match and compute direction
-            // map and orientation
-            if ( matchVerticesOnSide( pCorners[side.patch]        , cId1, 0,
-                                      pCorners[pSide[other].patch], cId2,
-                                      matched, dirMap, dirOr, tol ) )
-            {
-                dirMap(side.direction()) = pSide[other].direction();
-                dirOr (side.direction()) = !( side.parameter() == pSide[other].parameter() );
-                BaseA::addInterface( boundaryInterface(side, pSide[other], dirMap, dirOr));
-                found.insert(sideind);
-                found.insert(other);
-            }
+            dirMap(side.direction()) = pSide[other].direction();
+            dirOr (side.direction()) = !( side.parameter() == pSide[other].parameter() );
+            BaseA::addInterface( boundaryInterface(side, pSide[other], dirMap, dirOr));
+            found.insert(sideind);
+            found.insert(other);
         }
+    };
+
+    // Two sides can only match if their centers are closer than tol, so
+    // their centers lie in the same or in adjacent cells of a grid of cell
+    // size 2*tol. The centers are binned and only sides in adjacent cells are
+    // compared, which avoids the comparison of all pairs. The candidate pairs
+    // are visited in the order of the loop over all pairs, so the interfaces
+    // are the same and in the same order.
+    const index_t gd = pCorners.empty() ? 0 : pCorners[0].rows();
+    bool sweep = !cornersOnly && gd > 0 && gd <= 3;
+    typedef std::array<long long,3> cell_t;
+    std::vector<cell_t> cell(sweep ? pSide.size() : 0);
+    for (size_t s=0; sweep && s<pSide.size(); ++s)
+    {
+        cell[s].fill(0);
+        for (index_t r=0; r<gd; ++r)
+        {
+            const T x = pCorners[pSide[s].patch](r, nCorP+pSide[s]-1) / (2*tol);
+            if (!(math::isfinite)(x) || math::abs(x) > (T)(1e15)) { sweep = false; break; }
+            cell[s][r] = (long long)(math::floor(x));
+        }
+    }
+    if (sweep)
+    {
+        std::map<cell_t, std::vector<size_t> > bins;
+        for (size_t s=0; s<pSide.size(); ++s)
+            bins[cell[s]].push_back(s);
+        std::vector<std::pair<size_t,size_t> > candidates;
+        const index_t nNbr = math::ipow(3, gd);
+        for (size_t s=0; s<pSide.size(); ++s)
+            for (index_t n=0; n<nNbr; ++n)
+            {
+                cell_t c = cell[s];
+                for (index_t r=0, m=n; r<gd; ++r, m/=3)
+                    c[r] += m%3 - 1;
+                typename std::map<cell_t, std::vector<size_t> >::const_iterator it = bins.find(c);
+                if (it == bins.end()) continue;
+                for (size_t q=0; q<it->second.size(); ++q)
+                    if (it->second[q] > s)
+                        candidates.push_back(std::make_pair(s, it->second[q]));
+            }
+        std::sort(candidates.begin(), candidates.end());
+        for (size_t c=0; c<candidates.size(); ++c)
+            compareSides(candidates[c].first, candidates[c].second);
+    }
+    else
+    {
+        for (size_t sideind=0; sideind<pSide.size(); ++sideind)
+            for (size_t other=sideind+1; other<pSide.size(); ++other)
+                compareSides(sideind, other);
     }
 
     index_t k = 0;
