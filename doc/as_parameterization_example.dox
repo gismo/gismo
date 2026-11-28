@@ -1,0 +1,119 @@
+namespace gismo {
+/**
+
+\page as_parameterization_example as_parameterization_example.cpp
+
+This example constructs an analysis-suitable parameterization of a planar
+domain or of a volume from its boundary (gsBarrierPatch). The method is set
+by the option \c ParamMethod; this page describes the default, the
+PDE-based method, and its options (group \c PDE of
+gsBarrierCore::defaultOptions, see gsBarrierCore::defaultPDEOptions).
+
+\section as_parameterization_pde PDE-based method
+
+The interior control points are those of a discrete harmonic map from the
+parameter domain onto the computational domain, i.e. of a map whose
+inverse is harmonic (elliptic grid generation). The method has three
+stages:
+
+1. \b H2: the elliptic grid generation equations in non-divergence form,
+   L(x) = tr(adj(g) hess(x)) / tr(g) = 0 with the metric g = J^T J,
+   discretized by test functions in the parameter domain (Anderson
+   acceleration with the Jacobian as preconditioner).
+2. \b Untangling, only if the H2 result is folded (det(J) <= 0 somewhere):
+   minimization of Garanzha's regularized Winslow energy
+   int |J|^2 / chi(det J, eps)^(2/d) dxi with
+   chi(D, eps) = (D + sqrt(D^2 + eps^2)) / 2, a barrier against folds once
+   eps is small, by Gauss-Newton or projected Newton steps with Armijo line
+   search. eps shrinks with the folding; once the map is unfolded, no step
+   may fold it again.
+3. \b Regularized H1: the H1 discretization of the same equations (Laplace's
+   equation for the inverse map, int grad(phi) . g^{-1} e_c dxi = 0) with
+   det(J) replaced by chi; every step is shortened so that min det(J)
+   decreases by at most a fixed fraction.
+
+Without the regularization (\c PDE.Garanzha = false) the method is the
+original one: H2 and H1 without untangling for planar domains, the H2 stage
+only for volumes. det(J) is checked at the nodes of a Gauss-Lobatto rule
+(which includes the element boundaries), and only where it depends on the
+free control points.
+
+\section as_parameterization_solvers Linear solvers and preconditioners
+
+Small systems are solved directly (sparse LU, sparse LDL^T for the energy),
+larger ones (above \c PDE.DirectSolverLimit unknowns) iteratively
+(\c PDE.LinearSolver): GMRES for the H2 and H1 stages, falling back to
+sparse LU if it needs more than \c PDE.InnerMaxIterations iterations, and
+CG for the energy minimization. Preconditioners (\c PDE.Preconditioner):
+
+- block Gauss-Seidel by coordinate component (preAApp::BlockGaussSeidel),
+  with sparse LU or algebraic multigrid blocks: suits the H2 equations,
+  which are those of the physical coordinates;
+- nodal algebraic multigrid (preAApp::NodalAMG): the unknowns of one control
+  point form a node. The H1 equations are those of the parametric
+  coordinates while the unknowns are physical coordinates, so coordinate
+  blocks are a poor approximation of the H1 Jacobian; nodal blocks are,
+  moreover, invariant under rotations of the physical coordinates.
+
+The automatic choice uses the multigrid block Gauss-Seidel method for H2,
+NodalAMG for H1 and for the CG of the energy minimization. For thin domains
+(few elements across), sparse LU is cheap and the smoothers converge
+slowly; \c PDE.LinearSolver = 1 (direct) can be faster there.
+
+\section as_parameterization_free Free interfaces
+
+With free interfaces (gsBarrierPatch(mp, false), option \c --free), the H2
+and H1 equations of every patch are written in its own parametric
+coordinates and summed at the interfaces. This is only consistent if
+adjacent patches agree in parametric scale and orientation. By default
+(\c PDE.FreeInterfaceEnergy), the parameter domains are therefore rescaled
+by chord lengths (gsBarrierCore::chordScaled) and the regularized Winslow
+energy, which does not depend on the parametric coordinates, is minimized
+to convergence (\c PDE.EnergyTol) instead of the H2 and H1 stages; the
+result is returned on the original knot vectors. Patches may be oriented
+differently: det(J) is taken with the orientation of each patch.
+
+\section as_parameterization_energy Energy and Hessian
+
+\c PDE.EnergyForm selects the energy of the untangling and of the final
+energy stage: |J|^2 / chi^(2/d) (default) or the inverse Dirichlet energy
+|cof J|^2 / chi, whose continuous minimizer is the inverse harmonic map;
+both coincide in 2D. \c PDE.EnergyHessian selects Gauss-Newton, exact or
+projected Newton steps (the exact Hessian projected onto the positive
+semidefinite matrices at every quadrature node); automatically, projected
+Newton is used for the final energy stage of volumes, Gauss-Newton
+otherwise. A step without descent falls back to Gauss-Newton.
+
+\section as_parameterization_safeguards Safeguards and fall-backs
+
+- \c PDE.H1Safeguard: if the H1 residual norm exceeds this factor times the
+  smallest one so far, the H1 iteration returns to that iterate and
+  restarts with a damped step. Diverging runs exceed the default factor by
+  far, converging ones rarely reach it.
+- \c PDE.EnergyFallback: if the H1 stage does not converge, the energy is
+  minimized to convergence from its starting point (which is only unfolded
+  at the quadrature nodes) instead of returning that point.
+
+\section as_parameterization_experimental Experimental options
+
+- \c PDE.SkipH2: untangling and H1 start from the given interior (e.g. a
+  Coons patch) instead of the H2 result.
+- \c PDE.H1Form = 1: the weak form int grad_x(phi) . grad_x(xi_c) dx of
+  Laplace's equation for the inverse map (det(J) replaced by chi) instead of
+  the original H1 form.
+- \c PDE.ExtraNodes, \c PDE.AdaptiveRounds: more Gauss-Lobatto nodes in all
+  elements, or adaptively in the elements where det(J) <= 0 at the nodes of
+  a denser check rule (\c PDE.CheckExtraNodes). This helps if det(J) can be
+  positive up to the boundary, and harms where the boundary forces
+  det(J) <= 0 (e.g. at the edges of a volume whose boundary surfaces meet
+  tangentially).
+
+\section as_parameterization_exampleAnnotated Annotated source file
+
+Here is the full file \c examples/as_parameterization_example.cpp. Clicking
+on a function or class name will lead you to its reference documentation.
+
+\include as_parameterization_example.cpp
+
+*/
+}

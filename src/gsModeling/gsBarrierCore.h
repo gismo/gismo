@@ -28,6 +28,7 @@
 #include <gsAssembler/gsExprAssembler.h>
 #include <gsSolver/gsGMRes.h>
 #include <iomanip>
+#include <limits>
 #include <sstream>
 #include <gsSolver/gsConjugateGradient.h>
 #ifdef _OPENMP
@@ -109,35 +110,6 @@ inline void verboseLog(const std::string &message, const index_t &verbose) {
   if (verbose > 0) { gsInfo << message << "\n"; }
 }
 
-/// Values of the option PDELinearSolver (linear solvers of the regularized
-/// PDE-based method and of the H2 stage of volumes)
-struct PDELinearSolver {
-  enum { Automatic = 0, Direct = 1, Iterative = 2 };
-};
-
-/// Values of the option PDEPreconditioner (preconditioner of GMRES; CG of
-/// the energy minimization: NodalAMG, or incomplete Cholesky for
-/// BlockGaussSeidelLU)
-struct PDEPreconditioner {
-  enum { Automatic = 0, BlockGaussSeidelLU = 1, NodalAMG = 2,
-         BlockGaussSeidelAMG = 3 };
-};
-
-/// Values of the option PDEEnergyForm (see garanzhaEnergyDerivatives)
-struct PDEEnergyForm {
-  enum { Conformal = 0, InverseDirichlet = 1 };
-};
-
-/// Values of the option PDEEnergyHessian
-struct PDEEnergyHessian {
-  enum { Automatic = -1, GaussNewton = 0, Exact = 1, ProjectedNewton = 2 };
-};
-
-/// Values of the option PDEH1Form
-struct PDEH1Form {
-  enum { Original = 0, WeakLaplace = 1 };
-};
-
 template<short_t d, typename T> class gsRegularizedStage;
 
 /// gsBarrierCore
@@ -152,6 +124,35 @@ class gsBarrierCore
   typedef typename gsExprAssembler<T>::solution solution;
 
  public:
+  /// Values of the option PDE.LinearSolver: linear solvers of the regularized
+  /// PDE-based method and of the H2 stage of volumes
+  struct LinearSolver {
+    enum { Automatic = 0, Direct = 1, Iterative = 2 };
+  };
+
+  /// Values of the option PDE.Preconditioner: preconditioner of GMRES (and of
+  /// CG in the energy minimization: NodalAMG, incomplete Cholesky for
+  /// BlockGaussSeidelLU)
+  struct Preconditioner {
+    enum { Automatic = 0, BlockGaussSeidelLU = 1, NodalAMG = 2,
+           BlockGaussSeidelAMG = 3 };
+  };
+
+  /// Values of the option PDE.EnergyForm (see garanzhaEnergyDerivatives)
+  struct EnergyForm {
+    enum { Conformal = 0, InverseDirichlet = 1 };
+  };
+
+  /// Values of the option PDE.EnergyHessian (see garanzhaEnergyDerivatives)
+  struct EnergyHessian {
+    enum { Automatic = -1, GaussNewton = 0, Exact = 1, ProjectedNewton = 2 };
+  };
+
+  /// Values of the option PDE.H1Form
+  struct H1Form {
+    enum { Original = 0, WeakLaplace = 1 };
+  };
+
   /// construct analysis-suitable parameterization
   static gsMultiPatch<T> compute(const gsMultiPatch<T> &mp,
                                  const gsDofMapper &mapper,
@@ -162,6 +163,14 @@ class gsBarrierCore
 
   /// Default options
   static gsOptionList defaultOptions();
+
+  /// Default options of the (regularized) PDE-based method, without the
+  /// prefix of their group: defaultOptions() holds them as PDE.<name>
+  static gsOptionList defaultPDEOptions();
+
+  /// \a options completed by the default values of the options PDE.<name>
+  /// that it does not contain
+  static gsOptionList withPDEDefaults(const gsOptionList &options);
 
   /// Coordinate component of every free unknown (blocks of the block
   /// Gauss-Seidel preconditioner)
@@ -213,20 +222,13 @@ class gsBarrierCore
                                         const gsDofMapper &mapper,
                                         const gsOptionList &options);
 
-  /// PDE-based method, dimension-independent implementation (used for
-  /// volumes, and for planar domains with Garanzha's regularization): H2
-  /// discretization of the elliptic grid generation equations (element-wise
-  /// assembly), followed by computeRegularizedH1()
-  /// Adds the options of the (regularized) PDE-based method to \a options
-  static void addPDEOptions(gsOptionList &options);
-
   /// PDE-based method with free interfaces: chord-scaled parameter domains
-  /// and minimization of the regularized energy (see PDEFreeInterfaceEnergy)
+  /// and minimization of the regularized energy (see PDE.FreeInterfaceEnergy)
   static gsMultiPatch<T> computePDEPatchFreeInterfaces(const gsMultiPatch<T> &mp,
                                                        const gsDofMapper &mapper,
                                                        const gsOptionList &options);
 
-  /// PDE-based method, original planar implementation (PDEGaranzha = 0):
+  /// PDE-based method, original planar implementation (PDE.Garanzha = 0):
   /// H2 discretization, then planarH1Stage
   static gsMultiPatch<T> computePDEPatchPlanar(const gsMultiPatch<T> &mp,
                                                const gsDofMapper &mapper,
@@ -238,6 +240,10 @@ class gsBarrierCore
                                    const gsVector<T> &x,
                                    const gsOptionList &options);
 
+  /// PDE-based method, dimension-independent implementation (used for
+  /// volumes, and for planar domains with Garanzha's regularization): H2
+  /// discretization of the elliptic grid generation equations (element-wise
+  /// assembly), followed by computeRegularizedH1()
   static gsMultiPatch<T> computePDEPatchGeneric(const gsMultiPatch<T> &mp,
                                                 const gsDofMapper &mapper,
                                                 const gsOptionList &options);
@@ -277,7 +283,7 @@ class gsBarrierCore
                                       std::vector<index_t> *negatives);
 
   /// Value of preAAParam::linearSolver for GMRES in the H2 or H1 stage
-  /// (option PDEPreconditioner)
+  /// (option PDE.Preconditioner)
   static int gmresPreconditioner(const gsOptionList &options, bool h2Stage);
 
   /// Use iterative linear solvers for a problem with this many unknowns?
@@ -635,7 +641,7 @@ class gsObjPenaltyPt2 : public gsOptProblem<T> {
 ///
 /// Parameters to control the preconditioned Anderson Acceleration algorithm
 ///
-template <typename Scalar = double>
+template <typename Scalar = real_t>
 class preAAParam {
  public:
   ///
@@ -694,9 +700,12 @@ class preAAParam {
   enum { SparseLU = 0, BlockGaussSeidelLU = 1, NodalAMG = 2,
          BlockGaussSeidelAMG = 3 };
   ///
-  /// Relative tolerance and max. iterations of the iterative linear solver
+  /// Relative tolerance of the iterative linear solver
   ///
   Scalar innerTolerance;
+  ///
+  /// Max. number of iterations of the iterative linear solver per solve
+  ///
   int innerMaxIterations;
   ///
   /// A solution of the iterative linear solver is accepted if its true
@@ -775,131 +784,70 @@ namespace preAApp {
 /// coordinate component, nodal blocks are invariant under rotations of the
 /// physical coordinates. One cycle is applied per call; meant as a
 /// preconditioner of GMRES. The matrix need not be symmetric.
-template<typename Scalar = double>
+///
+/// Cost, for n unknowns, nnz nonzeros and node blocks of size b: set-up
+/// O(nnz) per level for the aggregation and O(n b^2) for the inverses of
+/// the diagonal blocks, plus the sparse products R A P and the dense LU of
+/// the coarsest level (at most 4 coarseSize unknowns). The coarsening stops
+/// unless an aggregation reduces the nodes by at least 10%, so the levels
+/// shrink geometrically and the total is a multiple of the finest level
+/// given by operatorComplexity(). One cycle costs O(nnz) per level and sweep.
+template<typename Scalar = real_t>
 class NodalAMG : public gsLinearOperator<Scalar> {
  public:
+  /// Row-major sparse matrix (the smoother traverses rows)
   typedef gsEigen::SparseMatrix<Scalar, gsEigen::RowMajor, index_t> RowMatrix;
+  /// Column vector
   typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, 1> Vector;
+  /// Dense matrix (node blocks, coarsest level)
   typedef gsEigen::Matrix<Scalar, gsEigen::Dynamic, gsEigen::Dynamic> Dense;
 
+  /// Parameters of the method
   struct Settings {
     /// Strength threshold: node J is strongly coupled to node I if
     /// |A_IJ| > theta * sqrt(|A_II| |A_JJ|) (Frobenius norms of the blocks)
     Scalar theta = Scalar(0.08);
     /// Block Gauss-Seidel sweeps before / after the coarse grid correction
-    int preSweeps = 2, postSweeps = 2;
+    index_t preSweeps = 2, postSweeps = 2;
     /// The coarsening stops at this many unknowns (dense LU below)
     index_t coarseSize = 400;
-    int maxLevels = 10;
+    /// Maximal number of levels
+    index_t maxLevels = 10;
     /// Smooth the prolongation (smoothed aggregation)
     bool smoothProlongation = false;
-  } settings;
+  };
 
+  /// Parameters of the method (before compute())
+  Settings &settings() { return m_settings; }
+  /// Parameters of the method
+  const Settings &settings() const { return m_settings; }
+
+  /// Empty preconditioner: call setNodes() and compute() before use
   NodalAMG() {}
 
   /// Sets the node and the component of every unknown (the unknowns of one
   /// node should have different components)
   void setNodes(const std::vector<index_t> &nodes,
-                const std::vector<index_t> &components) {
-    GISMO_ENSURE(nodes.size() == components.size(),
-                 "NodalAMG: nodes and components differ in size.");
-    const index_t n = nodes.size();
-    // order the unknowns node by node
-    m_perm.resize(n);
-    for (index_t i = 0; i != n; ++i) { m_perm[i] = i; }
-    std::stable_sort(m_perm.begin(), m_perm.end(), [&](index_t a, index_t b) {
-      return nodes[a] != nodes[b] ? nodes[a] < nodes[b]
-                                  : components[a] < components[b];
-    });
-    m_inv.resize(n);
-    for (index_t i = 0; i != n; ++i) { m_inv[m_perm[i]] = i; }
-    m_nodePtr0.assign(1, 0);
-    m_comp0.resize(n);
-    for (index_t i = 0; i != n; ++i) {
-      m_comp0[i] = components[m_perm[i]];
-      if (i > 0 && nodes[m_perm[i]] != nodes[m_perm[i - 1]]) {
-        m_nodePtr0.push_back(i);
-      }
-    }
-    if (n > 0) { m_nodePtr0.push_back(n); }
-  }
+                const std::vector<index_t> &components);
 
   /// Builds the hierarchy for the matrix \a mat
   template<typename MatType>
-  NodalAMG &compute(const MatType &mat) {
-    const index_t n = mat.rows();
-    GISMO_ENSURE(index_t(m_perm.size()) == n && mat.cols() == n,
-                 "NodalAMG: the nodes of the unknowns are not set.");
-    m_levels.clear();
-    m_levels.emplace_back();
-    {
-      Level &fine = m_levels.back();
-      std::vector<gsEigen::Triplet<Scalar, index_t> > entries;
-      entries.reserve(mat.nonZeros());
-      for (index_t j = 0; j < mat.outerSize(); ++j)
-        for (typename MatType::InnerIterator it(mat, j); it; ++it)
-          entries.emplace_back(m_inv[it.row()], m_inv[it.col()], it.value());
-      fine.A.resize(n, n);
-      fine.A.setFromTriplets(entries.begin(), entries.end());
-      fine.nodePtr = m_nodePtr0;
-      fine.comp = m_comp0;
-    }
-    m_info = gsEigen::Success;
-    while (true) {
-      Level &L = m_levels.back();
-      if (!blockDiagonalInverse(L)) { m_info = gsEigen::NumericalIssue; }
-      const index_t numNodes = L.nodePtr.size() - 1;
-      if (L.A.rows() <= settings.coarseSize
-          || int(m_levels.size()) >= settings.maxLevels) { break; }
-      std::vector<index_t> agg;
-      const index_t numAgg = aggregate(L, agg);
-      // stop if the aggregation hardly coarsens
-      if (numAgg == 0 || 10 * numAgg > 9 * numNodes) { break; }
-      Level C;
-      L.P = prolongation(L, agg, numAgg, C);
-      L.R = RowMatrix(L.P.transpose());
-      const RowMatrix AP = L.A * L.P;
-      C.A = RowMatrix(L.R * AP);
-      m_levels.push_back(std::move(C));
-    }
-    const Level &coarsest = m_levels.back();
-    m_coarseDirect = (coarsest.A.rows() <= 4 * settings.coarseSize);
-    if (m_coarseDirect && coarsest.A.rows() > 0) {
-      m_coarseLU.compute(Dense(coarsest.A));
-      if (!m_coarseLU.matrixLU().diagonal().allFinite()
-          || m_coarseLU.matrixLU().diagonal().cwiseAbs().minCoeff() == Scalar(0)) {
-        m_info = gsEigen::NumericalIssue;
-      }
-    }
-    return *this;
-  }
+  NodalAMG &compute(const MatType &mat);
 
+  /// NumericalIssue if a diagonal block or the coarsest matrix is singular
   gsEigen::ComputationInfo info() const { return m_info; }
 
   /// Number of levels of the hierarchy
   index_t numLevels() const { return m_levels.size(); }
 
   /// Sum of the nonzeros of all levels relative to the finest level
-  Scalar operatorComplexity() const {
-    Scalar sum = 0;
-    for (const Level &L : m_levels) { sum += L.A.nonZeros(); }
-    return m_levels.empty() ? Scalar(0)
-                            : sum / Scalar(m_levels.front().A.nonZeros());
-  }
+  Scalar operatorComplexity() const;
 
   /// gsLinearOperator interface: one cycle with zero initial guess
-  void apply(const gsMatrix<Scalar> &input, gsMatrix<Scalar> &x) const {
-    const index_t n = m_perm.size();
-    x.resize(input.rows(), input.cols());
-    if (0 == n) { return; }
-    Vector b(n), y;
-    for (index_t j = 0; j != input.cols(); ++j) {
-      for (index_t i = 0; i != n; ++i) { b(i) = input(m_perm[i], j); }
-      cycle(0, b, y);
-      for (index_t i = 0; i != n; ++i) { x(m_perm[i], j) = y(i); }
-    }
-  }
+  void apply(const gsMatrix<Scalar> &input, gsMatrix<Scalar> &x) const;
+  /// Number of unknowns
   index_t rows() const { return m_perm.size(); }
+  /// Number of unknowns
   index_t cols() const { return m_perm.size(); }
 
  private:
@@ -915,237 +863,26 @@ class NodalAMG : public gsLinearOperator<Scalar> {
   };
 
   /// Inverts the diagonal node blocks (diagonal inverse for singular blocks)
-  bool blockDiagonalInverse(Level &L) const {
-    const index_t numNodes = L.nodePtr.size() - 1;
-    L.dinvPtr.assign(numNodes + 1, 0);
-    for (index_t I = 0; I != numNodes; ++I) {
-      const index_t bs = L.nodePtr[I + 1] - L.nodePtr[I];
-      L.dinvPtr[I + 1] = L.dinvPtr[I] + bs * bs;
-    }
-    L.dinv.assign(L.dinvPtr.back(), Scalar(0));
-    bool regular = true;
-    for (index_t I = 0; I != numNodes; ++I) {
-      const index_t s = L.nodePtr[I], bs = L.nodePtr[I + 1] - s;
-      Dense block = Dense::Zero(bs, bs);
-      for (index_t i = s; i != s + bs; ++i)
-        for (typename RowMatrix::InnerIterator it(L.A, i); it; ++it)
-          if (it.col() >= s && it.col() < s + bs) {
-            block(i - s, it.col() - s) = it.value();
-          }
-      gsEigen::FullPivLU<Dense> lu(block);
-      Dense inverse;
-      if (lu.isInvertible()) {
-        inverse = lu.inverse();
-      } else {
-        inverse = Dense::Zero(bs, bs);
-        for (index_t k = 0; k != bs; ++k) {
-          if (block(k, k) != Scalar(0)) { inverse(k, k) = 1 / block(k, k); }
-          else { regular = false; }
-        }
-      }
-      for (index_t r = 0; r != bs; ++r)
-        for (index_t c = 0; c != bs; ++c)
-          L.dinv[L.dinvPtr[I] + r * bs + c] = inverse(r, c);
-    }
-    return regular;
-  }
+  bool blockDiagonalInverse(Level &L) const;
 
   /// Greedy aggregation of the nodes on the (symmetrized) graph of strong
   /// couplings; returns the number of aggregates
-  index_t aggregate(const Level &L, std::vector<index_t> &agg) const {
-    const index_t numNodes = L.nodePtr.size() - 1;
-    std::vector<index_t> nodeOf(L.A.rows());
-    for (index_t I = 0; I != numNodes; ++I)
-      for (index_t i = L.nodePtr[I]; i != L.nodePtr[I + 1]; ++i) { nodeOf[i] = I; }
-    // Frobenius norms of the node blocks; pass 0: diagonal blocks,
-    // pass 1: strong off-diagonal couplings
-    std::vector<Scalar> diag(numNodes, 0), acc(numNodes, 0);
-    std::vector<char> seen(numNodes, 0);
-    std::vector<index_t> touched;
-    std::vector<std::vector<std::pair<index_t, Scalar> > > strong(numNodes);
-    for (int pass = 0; pass != 2; ++pass) {
-      for (index_t I = 0; I != numNodes; ++I) {
-        touched.clear();
-        for (index_t i = L.nodePtr[I]; i != L.nodePtr[I + 1]; ++i)
-          for (typename RowMatrix::InnerIterator it(L.A, i); it; ++it) {
-            const index_t J = nodeOf[it.col()];
-            if (!seen[J]) { seen[J] = 1; touched.push_back(J); }
-            acc[J] += it.value() * it.value();
-          }
-        for (index_t J : touched) {
-          const Scalar norm = math::sqrt(acc[J]);
-          acc[J] = 0;
-          seen[J] = 0;
-          if (0 == pass) {
-            if (J == I) { diag[I] = norm; }
-          } else if (J != I && norm > settings.theta * math::sqrt(diag[I] * diag[J])) {
-            strong[I].emplace_back(J, norm);
-            strong[J].emplace_back(I, norm);
-          }
-        }
-      }
-    }
-    for (auto &list : strong) { // remove duplicates, keep the max. strength
-      std::sort(list.begin(), list.end());
-      size_t k = 0;
-      for (size_t m = 0; m != list.size(); ++m) {
-        if (k > 0 && list[k - 1].first == list[m].first) {
-          list[k - 1].second = std::max(list[k - 1].second, list[m].second);
-        } else {
-          list[k++] = list[m];
-        }
-      }
-      list.resize(k);
-    }
-    agg.assign(numNodes, -1);
-    index_t numAgg = 0;
-    // 1. a node and its strong neighbours, if none of them is aggregated yet
-    for (index_t I = 0; I != numNodes; ++I) {
-      if (agg[I] >= 0) { continue; }
-      bool free = true;
-      for (const auto &e : strong[I]) {
-        if (agg[e.first] >= 0) { free = false; break; }
-      }
-      if (!free) { continue; }
-      agg[I] = numAgg;
-      for (const auto &e : strong[I]) { agg[e.first] = numAgg; }
-      ++numAgg;
-    }
-    // 2. the remaining nodes join the most strongly coupled aggregate of 1.
-    const std::vector<index_t> first = agg;
-    for (index_t I = 0; I != numNodes; ++I) {
-      if (agg[I] >= 0) { continue; }
-      Scalar best = -1;
-      for (const auto &e : strong[I]) {
-        if (first[e.first] >= 0 && e.second > best) {
-          best = e.second;
-          agg[I] = first[e.first];
-        }
-      }
-    }
-    // 3. nodes without strong couplings to aggregates
-    for (index_t I = 0; I != numNodes; ++I) {
-      if (agg[I] >= 0) { continue; }
-      agg[I] = numAgg;
-      for (const auto &e : strong[I]) {
-        if (agg[e.first] < 0) { agg[e.first] = numAgg; }
-      }
-      ++numAgg;
-    }
-    return numAgg;
-  }
+  index_t aggregate(const Level &L, std::vector<index_t> &agg) const;
 
   /// Prolongation: every component is interpolated by a constant on each
   /// aggregate (columns normalized); \a C receives the nodes and components
   /// of the coarse level
   RowMatrix prolongation(const Level &L, const std::vector<index_t> &agg,
-                         const index_t numAgg, Level &C) const {
-    const index_t numNodes = L.nodePtr.size() - 1;
-    // (component, number of unknowns) of every aggregate
-    std::vector<std::vector<std::pair<index_t, index_t> > > comps(numAgg);
-    for (index_t I = 0; I != numNodes; ++I)
-      for (index_t i = L.nodePtr[I]; i != L.nodePtr[I + 1]; ++i) {
-        std::vector<std::pair<index_t, index_t> > &list = comps[agg[I]];
-        size_t k = 0;
-        while (k != list.size() && list[k].first != L.comp[i]) { ++k; }
-        if (k == list.size()) { list.emplace_back(L.comp[i], 1); }
-        else { ++list[k].second; }
-      }
-    C.nodePtr.assign(numAgg + 1, 0);
-    C.comp.clear();
-    for (index_t a = 0; a != numAgg; ++a) {
-      std::sort(comps[a].begin(), comps[a].end());
-      C.nodePtr[a + 1] = C.nodePtr[a] + comps[a].size();
-      for (const auto &p : comps[a]) { C.comp.push_back(p.first); }
-    }
-    std::vector<gsEigen::Triplet<Scalar, index_t> > entries;
-    entries.reserve(L.A.rows());
-    for (index_t I = 0; I != numNodes; ++I)
-      for (index_t i = L.nodePtr[I]; i != L.nodePtr[I + 1]; ++i) {
-        const index_t a = agg[I];
-        for (size_t k = 0; k != comps[a].size(); ++k)
-          if (comps[a][k].first == L.comp[i]) {
-            entries.emplace_back(i, C.nodePtr[a] + k,
-                                 1 / math::sqrt(Scalar(comps[a][k].second)));
-          }
-      }
-    RowMatrix P(L.A.rows(), C.nodePtr.back());
-    P.setFromTriplets(entries.begin(), entries.end());
-    if (!settings.smoothProlongation) { return P; }
-
-    // P <- (I - omega D^{-1} A) P, omega = 4 / (3 rho(D^{-1} A))
-    entries.clear();
-    for (index_t I = 0; I != numNodes; ++I) {
-      const index_t s = L.nodePtr[I], bs = L.nodePtr[I + 1] - s;
-      for (index_t r = 0; r != bs; ++r)
-        for (index_t c = 0; c != bs; ++c)
-          entries.emplace_back(s + r, s + c, L.dinv[L.dinvPtr[I] + r * bs + c]);
-    }
-    RowMatrix Dinv(L.A.rows(), L.A.rows());
-    Dinv.setFromTriplets(entries.begin(), entries.end());
-    const RowMatrix DA = Dinv * L.A;
-    Vector v = Vector::Ones(L.A.rows()), w;
-    for (index_t i = 0; i < v.size(); i += 3) { v(i) = Scalar(-0.5); }
-    Scalar rho = 1;
-    for (int k = 0; k != 15; ++k) {
-      w = DA * v;
-      rho = w.norm() / v.norm();
-      if (!(rho > 0)) { return P; }
-      v = w / w.norm();
-    }
-    const RowMatrix smoothed = P - (Scalar(4) / (3 * rho)) * RowMatrix(DA * P);
-    return smoothed;
-  }
+                         const index_t numAgg, Level &C) const;
 
   /// One sweep of the nodal block Gauss-Seidel method
-  void smooth(const Level &L, const Vector &b, Vector &x, const bool forward) const {
-    const index_t numNodes = L.nodePtr.size() - 1;
-    Vector r;
-    for (index_t k = 0; k != numNodes; ++k) {
-      const index_t I = forward ? k : numNodes - 1 - k;
-      const index_t s = L.nodePtr[I], bs = L.nodePtr[I + 1] - s;
-      r.resize(bs);
-      for (index_t i = s; i != s + bs; ++i) {
-        Scalar sum = b(i);
-        for (typename RowMatrix::InnerIterator it(L.A, i); it; ++it) {
-          sum -= it.value() * x(it.col());
-        }
-        r(i - s) = sum;
-      }
-      const Scalar *D = &L.dinv[L.dinvPtr[I]];
-      for (index_t p = 0; p != bs; ++p) {
-        Scalar dx = 0;
-        for (index_t q = 0; q != bs; ++q) { dx += D[p * bs + q] * r(q); }
-        x(s + p) += dx;
-      }
-    }
-  }
+  void smooth(const Level &L, const Vector &b, Vector &x, const bool forward) const;
 
   /// V-cycle on level l with zero initial guess
-  void cycle(const size_t l, const Vector &b, Vector &x) const {
-    const Level &L = m_levels[l];
-    if (l + 1 == m_levels.size()) {
-      if (m_coarseDirect) {
-        x = m_coarseLU.solve(b);
-      } else {  // the coarsening stopped early: smoothing only
-        x.setZero(b.size());
-        for (int k = 0; k != 2 * settings.postSweeps; ++k) {
-          smooth(L, b, x, true);
-          smooth(L, b, x, false);
-        }
-      }
-      return;
-    }
-    x.setZero(b.size());
-    for (int k = 0; k != settings.preSweeps; ++k) { smooth(L, b, x, true); }
-    const Vector coarseRhs = L.R * (b - L.A * x);
-    Vector coarseSol;
-    cycle(l + 1, coarseRhs, coarseSol);
-    x += L.P * coarseSol;
-    for (int k = 0; k != settings.postSweeps; ++k) { smooth(L, b, x, false); }
-  }
+  void cycle(const size_t l, const Vector &b, Vector &x) const;
 
   std::vector<index_t> m_perm, m_inv, m_nodePtr0, m_comp0;
+  Settings m_settings;
   std::vector<Level> m_levels;
   gsEigen::PartialPivLU<Dense> m_coarseLU;
   bool m_coarseDirect = true;
@@ -1159,101 +896,43 @@ class NodalAMG : public gsLinearOperator<Scalar> {
 /// \a amgBlocks, approximated by one cycle of the algebraic multigrid method
 /// NodalAMG (scalar nodes), which is much cheaper to set up for large 3D
 /// problems.
-template<typename Scalar = double>
+///
+/// Cost: the set-up of the sparse LU factorizations of the diagonal blocks
+/// grows superlinearly with the block size (fill-in; for volumes the
+/// dominating cost), that of the AMG blocks is O(nnz) (see NodalAMG). An
+/// application costs one solve per diagonal block plus one product with the
+/// strictly lower block triangle.
+template<typename Scalar = real_t>
 class BlockGaussSeidel : public gsLinearOperator<Scalar> {
  public:
+  /// Column-major sparse matrix (blocks)
   typedef gsEigen::SparseMatrix<Scalar, 0, index_t> SparseMatrix;
 
+  /// \a amgBlocks: approximate the diagonal blocks by NodalAMG instead of
+  /// solving them by sparse LU; call setBlocks() and compute() before use
   explicit BlockGaussSeidel(const bool amgBlocks = false)
       : m_amgBlocks(amgBlocks) {}
 
   /// Sets the block of every unknown
-  void setBlocks(const std::vector<index_t> &blocks) {
-    m_blockOf = blocks;
-    const index_t numBlocks = blocks.empty() ? 0
-        : *std::max_element(blocks.begin(), blocks.end()) + 1;
-    m_members.assign(numBlocks, std::vector<index_t>());
-    m_local.resize(blocks.size());
-    for (size_t i = 0; i != blocks.size(); ++i) {
-      m_local[i] = m_members[blocks[i]].size();
-      m_members[blocks[i]].push_back(i);
-    }
-  }
+  void setBlocks(const std::vector<index_t> &blocks);
 
+  /// Extracts the block lower triangle of \a mat and factorizes (or sets up
+  /// the AMG of) its diagonal blocks
   template<typename MatType>
-  BlockGaussSeidel &compute(const MatType &mat) {
-    GISMO_ASSERT(m_blockOf.size() == size_t(mat.rows()),
-                 "The blocks of the unknowns are not set.");
-    const size_t numBlocks = m_members.size();
-    typedef std::vector<gsEigen::Triplet<Scalar, index_t> > Entries;
-    // entries[g][h]: block (g,h) of the lower block triangle
-    std::vector<std::vector<Entries> > entries(numBlocks,
-                                               std::vector<Entries>(numBlocks));
-    for (index_t j = 0; j < mat.outerSize(); ++j) {
-      for (typename MatType::InnerIterator it(mat, j); it; ++it) {
-        const index_t g = m_blockOf[it.row()], h = m_blockOf[it.col()];
-        if (g >= h && it.value() != Scalar(0)) {
-          entries[g][h].emplace_back(m_local[it.row()], m_local[it.col()],
-                                     it.value());
-        }
-      }
-    }
-    m_lower.assign(numBlocks, std::vector<SparseMatrix>(numBlocks));
-    for (size_t g = 0; g != numBlocks; ++g) {
-      for (size_t h = 0; h < g; ++h) {
-        m_lower[g][h].resize(m_members[g].size(), m_members[h].size());
-        m_lower[g][h].setFromTriplets(entries[g][h].begin(),
-                                      entries[g][h].end());
-      }
-    }
-    m_info = gsEigen::Success;
-    m_lu.assign(numBlocks, nullptr);
-    m_amg.assign(numBlocks, nullptr);
-    for (size_t b = 0; b != numBlocks; ++b) {
-      SparseMatrix block(m_members[b].size(), m_members[b].size());
-      block.setFromTriplets(entries[b][b].begin(), entries[b][b].end());
-      if (m_amgBlocks) {
-        std::vector<index_t> nodes(m_members[b].size()), zero(nodes.size(), 0);
-        for (size_t i = 0; i != nodes.size(); ++i) { nodes[i] = i; }
-        m_amg[b].reset(new NodalAMG<Scalar>());
-        m_amg[b]->setNodes(nodes, zero);
-        m_amg[b]->compute(block);
-        if (m_amg[b]->info() != gsEigen::Success) { m_info = m_amg[b]->info(); }
-      } else {
-        m_lu[b].reset(new gsEigen::SparseLU<SparseMatrix>());
-        m_lu[b]->compute(block);
-        if (m_lu[b]->info() != gsEigen::Success) { m_info = m_lu[b]->info(); }
-      }
-    }
-    return *this;
-  }
+  BlockGaussSeidel &compute(const MatType &mat);
 
   /// Forward block substitution
   template<typename Rhs>
-  gsVector<Scalar> solve(const gsEigen::MatrixBase<Rhs> &rhs) const {
-    gsVector<Scalar> result(rhs.rows());
-    gsMatrix<Scalar> blockRhs;
-    std::vector<gsMatrix<Scalar> > blockSol(m_members.size());
-    for (size_t b = 0; b != m_members.size(); ++b) {
-      const std::vector<index_t> &members = m_members[b];
-      blockRhs.resize(members.size(), 1);
-      for (size_t i = 0; i != members.size(); ++i) { blockRhs(i) = rhs(members[i]); }
-      for (size_t h = 0; h < b; ++h) { blockRhs -= m_lower[b][h] * blockSol[h]; }
-      if (m_amgBlocks) { m_amg[b]->apply(blockRhs, blockSol[b]); }
-      else { blockSol[b] = m_lu[b]->solve(blockRhs); }
-      for (size_t i = 0; i != members.size(); ++i) { result(members[i]) = blockSol[b](i); }
-    }
-    return result;
-  }
+  gsVector<Scalar> solve(const gsEigen::MatrixBase<Rhs> &rhs) const;
 
+  /// Failure of a factorization of a diagonal block, if any
   gsEigen::ComputationInfo info() const { return m_info; }
 
   /// gsLinearOperator interface (for gismo's iterative solvers)
-  void apply(const gsMatrix<Scalar> &input, gsMatrix<Scalar> &x) const {
-    x.resize(input.rows(), input.cols());
-    for (index_t j = 0; j != input.cols(); ++j) { x.col(j) = solve(input.col(j)); }
-  }
+  void apply(const gsMatrix<Scalar> &input, gsMatrix<Scalar> &x) const;
+  /// Number of unknowns
   index_t rows() const { return m_blockOf.size(); }
+  /// Number of unknowns
   index_t cols() const { return m_blockOf.size(); }
 
  private:
@@ -1269,7 +948,7 @@ class BlockGaussSeidel : public gsLinearOperator<Scalar> {
 /// @brief Anderson acceleration solver and its (preconditioned) variants
 ///
 /// \ingroup Solver
-template<typename Scalar = double>
+template<typename Scalar = real_t>
 class AndersonAcceleration {
  public:
   typedef std::function<gsSparseMatrix<Scalar>(gsVector<Scalar> const &)> Jacobian_t;
@@ -1331,7 +1010,8 @@ class AndersonAcceleration {
   /// True if the residual norm dropped below the tolerance
   inline bool converged() const { return m_currResidualNorm < m_param.epsilon; }
 
-  /// True if the iteration stopped since the step filter rejected all steps
+  /// True if the iteration stopped early: the step filter rejected all
+  /// steps, or the divergence safeguard halved the damping below 1/1024
   inline bool stalled() const { return m_stalled; }
 
   /// Number of iterations performed
@@ -1717,7 +1397,7 @@ class AndersonAcceleration {
   int m_mk = 0;
   int m_columnIndex = 0;
   // Residual
-  Scalar m_currResidualNorm;
+  Scalar m_currResidualNorm = std::numeric_limits<Scalar>::infinity();
   // Solution
   gsVector<Scalar> m_solution;
   gsVector<Scalar> m_currentF;

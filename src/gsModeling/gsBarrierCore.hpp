@@ -113,7 +113,7 @@ T garanzhaEnergyDerivatives(const gsEigen::Matrix<T, d, d> &J,
   const T root = math::sqrt(D * D + eps * eps);
   const T chi = garanzhaChi(D, eps);
   const T rho = 1 / root;                       // chi' / chi
-  const bool inverse = (PDEEnergyForm::InverseDirichlet == form && 3 == d);
+  const bool inverse = (gsBarrierCore<d, T>::EnergyForm::InverseDirichlet == form && 3 == d);
   const T p = inverse ? T(1) : T(2) / d;
   const T chiP = inverse ? chi : (2 == d ? chi : math::pow(chi, p));
   // E = d vec(cof) / d vec(J), column b * d + e
@@ -144,7 +144,7 @@ T garanzhaEnergyDerivatives(const gsEigen::Matrix<T, d, d> &J,
   if (inverse) { EtE.noalias() = dCofdJ.transpose() * dCofdJ; }
   else { EtE.setIdentity(); }
   const MatJ mixed = gradG * gradD.transpose() + gradD * gradG.transpose();
-  if (PDEEnergyHessian::GaussNewton == hessianType) {
+  if (gsBarrierCore<d, T>::EnergyHessian::GaussNewton == hessianType) {
     *hessian = (2 * EtE - (p * rho / 2) * mixed
                 + (p * p * rho * rho * g / 2) * (gradD * gradD.transpose())) / chiP;
     return f;
@@ -175,7 +175,7 @@ T garanzhaEnergyDerivatives(const gsEigen::Matrix<T, d, d> &J,
   *hessian = (Hg - p * rho * mixed
               + g * (p * (p + 1) * rho * rho - p * chi2) * (gradD * gradD.transpose())
               - (p * g * rho * orientation) * dCofdJ) / chiP;
-  if (PDEEnergyHessian::ProjectedNewton == hessianType) {
+  if (gsBarrierCore<d, T>::EnergyHessian::ProjectedNewton == hessianType) {
     gsEigen::SelfAdjointEigenSolver<MatJ> eig(*hessian);
     const VecJ lambda = eig.eigenvalues().cwiseMax(T(0));
     *hessian = eig.eigenvectors() * lambda.asDiagonal() * eig.eigenvectors().transpose();
@@ -257,6 +257,10 @@ inline void packSymmetric(const MatA &A, VecW &w) {
   }
 }
 
+/// Relative tolerance of the tests whether det(J) depends on the free dofs
+/// (detIsControllable and the rank test of gsRegularizedPDEAssembler)
+const real_t detDependenceTolerance = 1e-10;
+
 /// Tells whether det(J) at a point can be changed by the free control points:
 /// \a cof is the cofactor matrix of J, \a derivBasis (dim x N) holds the
 /// parametric gradients of the N active basis functions with indices
@@ -265,10 +269,6 @@ inline void packSymmetric(const MatA &A, VecW &w) {
 /// It vanishes for all free control points, e.g., on the edges and corners of
 /// the parameter domain, and where the parameterization of a boundary face
 /// is degenerate: there det(J) is determined by the boundary alone.
-/// Relative tolerance of the tests whether det(J) depends on the free dofs
-/// (detIsControllable and the rank test of gsRegularizedPDEAssembler)
-const double detDependenceTolerance = 1e-10;
-
 template<class MatC, class Mat>
 inline bool detIsControllable(const gsDofMapper &mapper,
                               const gsMatrix<index_t> &actives,
@@ -369,146 +369,71 @@ gsOptionList gsBarrierCore<d, T>::defaultOptions() {
   // need improve the parameterization quality for PDE-based method?
   options.addSwitch("needPDEH1", "improve quality by H1 discrezation?", true);
 
-  // options of the (regularized) PDE-based method
-  addPDEOptions(options);
+  // options of the (regularized) PDE-based method: group "PDE"
+  options.update(defaultPDEOptions().wrapIntoGroup("PDE"),
+                 gsOptionList::addIfUnknown);
   return options;
 }
 
 template<short_t d, typename T>
-void gsBarrierCore<d, T>::addPDEOptions(gsOptionList &options) {
-  // Garanzha's regularization of the PDE-based method: the
-  // Jacobian determinant D in the denominators is replaced by
-  // chi(D,eps) = (D + sqrt(D^2 + eps^2))/2 > 0, folded intermediate results
-  // are untangled, and the steps of the H1 solver keep the result unfolded.
-  options.addSwitch("PDEGaranzha",
-                    "Garanzha regularization for the PDE-based method?", true);
-  options.addReal("PDEGaranzhaEps",
-                  "Regularization parameter eps relative to the mean of det(J)",
-                  1e-4);
-  // Linear solvers of the Garanzha-regularized PDE-based method (and of the
-  // H2 stage for volumes): 0: automatic (direct up to PDEDirectSolverLimit
-  // unknowns, iterative above), 1: direct (sparse LU for the Anderson
-  // acceleration, sparse LDL^T for the energy minimization), 2: iterative
-  // (GMRES, preconditioned as set by PDEPreconditioner, falling back to
-  // sparse LU if it converges slowly; CG preconditioned by NodalAMG, or by
-  // incomplete Cholesky with PDEPreconditioner = BlockGaussSeidelLU).
-  // Values: struct PDELinearSolver
-  options.addInt("PDELinearSolver",
-                 "Linear solvers: 0 automatic, 1 direct, 2 iterative", 0);
-  options.addInt("PDEDirectSolverLimit",
-                 "Automatic choice of the linear solvers: max. unknowns for "
-                 "direct solvers", 4000);
-  options.addInt("PDEInnerMaxIterations",
-                 "Max. GMRES iterations per solve before switching to sparse LU",
-                 100);
-  // Preconditioner of GMRES:
-  //  1: block Gauss-Seidel with the coordinate components as blocks, sparse
-  //     LU of each block,
-  //  2: algebraic multigrid (preAApp::NodalAMG) with nodal aggregation and
-  //     nodal block Gauss-Seidel smoothing (the unknowns of a control point
-  //     form one block),
-  //  3: block Gauss-Seidel as 1, the blocks approximated by NodalAMG,
-  //  0: automatic: 3 for the H2 stage, 2 for the H1 stage
-  // (values: struct PDEPreconditioner).
-  // The H2 equations are those of the physical coordinates, which the
-  // coordinate blocks fit; 3 is set up much faster than 1 for large volumes
-  // (e.g. 0.1 s instead of 6 s for 24000 unknowns). The H1 equations are
-  // those of the parametric coordinates, so the coordinate blocks are no
-  // good approximation of their Jacobian: with 1, GMRES often needs more
-  // than PDEInnerMaxIterations iterations and the solver falls back to
-  // sparse LU; the nodal blocks of 2 are independent of the orientation of
-  // the coordinates. For thin domains (few elements across), sparse LU is
-  // cheap and the multigrid smoothers are slow; PDEPreconditioner = 1 or
-  // PDELinearSolver = 1 can be faster there.
-  // Free interfaces (patches coupled through the mapper): the H2 and H1
-  // equations of the patches are written in their own parametric
-  // coordinates and are summed at the interfaces, which is only consistent
-  // if the parametric coordinates of adjacent patches agree in scale and
-  // orientation. Instead, the parameter domains are rescaled by chord lengths
-  // (chordScaled) and the regularized Winslow energy, which does not depend
-  // on the orientation of the parametric coordinates, is minimized (no H2,
-  // no H1). Off: the stages of a single patch are applied as they are.
-  options.addSwitch("PDEFreeInterfaceEnergy",
-                    "PDE patch, free interfaces: chord-scaled parameter "
-                    "domains and energy minimization instead of H2/H1", true);
-  // Energy minimization as the final stage (also for single patches): no
-  // H1 stage; relative energy decrease at which the minimization stops
-  options.addSwitch("PDEEnergyFinal",
-                    "PDE patch: the regularized Winslow energy minimization is "
-                    "the final stage (no H1)", false);
-  // If the H1 stage does not converge: minimize the energy to convergence
-  // from its starting point (instead of returning that point, which is only
-  // unfolded at the quadrature nodes)
-  options.addSwitch("PDEEnergyFallback",
-                    "PDE patch: minimize the energy if the H1 stage does not "
-                    "converge", true);
-  options.addReal("PDEEnergyTol",
-                  "PDE patch: relative energy decrease at which the final energy "
-                  "minimization stops", 1e-11);
-  // Energy of the untangling / final energy stage: 0: |J|^2 / chi^(2/d)
-  // (Garanzha's conformal form), 1: |cof J|^2 / chi (inverse Dirichlet
-  // energy int |grad_x xi|^2 dx; its continuous minimizer is the inverse
-  // harmonic map, as for the H1 stage). The same in 2D. In 3D, form 1 gave
-  // higher mean scaled Jacobians on most test volumes, but a much lower
-  // minimum on a twisted multi-patch domain (0.32 instead of 0.59); its
-  // discrete minimizers are not closer to the H1 results than those of
-  // form 0 (2-11 % of the size apart on 14^3 volumes).
-  options.addInt("PDEEnergyForm",
-                 "PDE patch, energy: 0 |J|^2/chi^(2/d), 1 |cof J|^2/chi", 0);
-  // Hessian of the energy minimization: 0: Gauss-Newton, 1: exact,
-  // 2: exact, projected onto the positive semidefinite matrices at every
-  // quadrature node (projected Newton); -1: automatic: 2 for the final
-  // energy stage of volumes (e.g. 7 instead of 24 iterations, half the
-  // time), otherwise 0 (in 2D, the cheaper Gauss-Newton assembly outweighs
-  // the fewer iterations). A step without descent falls back to Gauss-Newton.
-  options.addInt("PDEEnergyHessian",
-                 "PDE patch, energy minimization: 0 Gauss-Newton, 1 exact, "
-                 "2 projected Newton (-1 automatic)", -1);
-  // (Experimental) skip the H2 stage and start the untangling (and the
-  // regularized H1 stage) from the given interior. Only with PDEGaranzha.
-  options.addSwitch("PDESkipH2",
-                    "PDE patch: skip the H2 stage (start untangling from the "
-                    "given interior)", false);
-  options.addInt("PDEPreconditioner",
-                 "Preconditioner of GMRES: 0 automatic, 1 block Gauss-Seidel "
-                 "(LU), 2 algebraic multigrid (nodal), 3 block Gauss-Seidel "
-                 "(multigrid)", 0);
-  // (Experimental) formulation of the regularized H1 stage (struct PDEH1Form):
-  // 0: int grad(phi) . adj(g) e_c / chi^2 dxi   (as the original H1 stage,
-  //    int grad(phi) . g^{-1} e_c dxi, with det J replaced by chi)
-  // 1: int grad(phi) . adj(g) e_c / chi dxi, i.e. the weak form
-  //    int grad_x(phi) . grad_x(xi_c) dx of Laplace's equation for the
-  //    inverse map, with det J replaced by chi
-  options.addInt("PDEH1Form", "Regularized H1 stage: 0 original, 1 weak "
-                              "Laplace equation of the inverse map", 0);
-  // Regularized H1 stage: if the residual norm exceeds this factor times the
-  // smallest one so far, return to that iterate and restart with a damped
-  // step (0: off). Diverging runs exceed 1e3 - 1e7, converging runs rarely
-  // exceed 1e2.
-  options.addReal("PDEH1Safeguard", "Regularized H1 stage: divergence "
-                                    "safeguard factor (0: off)", 100);
-  // (Experimental) the regularized stage integrates and enforces det(J) > 0
-  // at the nodes of a Gauss-Lobatto rule with p + 2 + PDEExtraNodes nodes per
-  // direction.
-  // More nodes help if det(J) is positive up to the boundary, but harm if
-  // the boundary forces det(J) <= 0 somewhere (e.g. at the edges of a volume
-  // whose boundary surfaces meet tangentially).
-  options.addInt("PDEExtraNodes", "Regularized stage: additional "
-                 "Gauss-Lobatto nodes per direction", 0);
-  // (Experimental) adaptive variant: after the regularized stage, det(J) is
-  // checked at the nodes of a Gauss-Lobatto rule with p + 2 + PDECheckExtraNodes nodes per
-  // direction; in elements where it is not positive, the rule of the stage
-  // gets one more node per direction (at most 3) and the stage is repeated
-  // from its last result, at most PDEAdaptiveRounds times (0: off).
-  // Like PDEExtraNodes, this helps if det(J) can be positive up to the
-  // boundary (planar test set: 974 -> 976 of 977 bijective), but costs time
-  // and may harm where the boundary forces det(J) <= 0 near edges.
-  options.addInt("PDEAdaptiveRounds", "Regularized stage: max. number of "
-                 "adaptive refinements of the quadrature", 0);
-  options.addInt("PDECheckExtraNodes", "Regularized stage, adaptive variant: "
-                 "additional Gauss-Lobatto nodes per direction for the check",
-                 4);
+gsOptionList gsBarrierCore<d, T>::defaultPDEOptions() {
+  // See the page as_parameterization_example for the background of the
+  // options and of their default values
+  gsOptionList options;
+  options.addSwitch("Garanzha", "Garanzha's regularization: det(J) replaced by "
+                    "chi(det J, eps) = (det J + sqrt(det J^2 + eps^2)) / 2, "
+                    "folded results untangled (off: original method)", true);
+  options.addReal("GaranzhaEps", "Smallest regularization parameter eps, "
+                  "relative to the mean of |det(J)|", 1e-4);
+  options.addInt("LinearSolver", "Linear solvers of the regularized method "
+                 "(LinearSolver): 0 automatic (by DirectSolverLimit), 1 direct, "
+                 "2 iterative (GMRES / CG)", LinearSolver::Automatic);
+  options.addInt("DirectSolverLimit", "Automatic choice of the linear solvers: "
+                 "max. number of unknowns for direct solvers", 4000);
+  options.addInt("InnerMaxIterations", "Max. number of GMRES iterations per "
+                 "solve before falling back to sparse LU", 100);
+  options.addInt("Preconditioner", "Preconditioner of GMRES (Preconditioner): "
+                 "0 automatic, 1 block Gauss-Seidel by coordinate (sparse LU "
+                 "blocks), 2 nodal algebraic multigrid, 3 block Gauss-Seidel by "
+                 "coordinate (multigrid blocks)", Preconditioner::Automatic);
+  options.addSwitch("FreeInterfaceEnergy", "Free interfaces: chord-scaled "
+                    "parameter domains and energy minimization instead of the "
+                    "H2 and H1 stages", true);
+  options.addSwitch("EnergyFinal", "The energy minimization is the final stage "
+                    "(no H1 stage)", false);
+  options.addSwitch("EnergyFallback", "Minimize the energy to convergence if "
+                    "the H1 stage does not converge", true);
+  options.addReal("EnergyTol", "Relative energy decrease at which the final "
+                  "energy minimization stops", 1e-11);
+  options.addInt("EnergyForm", "Energy of the untangling and of the final "
+                 "energy stage (EnergyForm): 0 |J|^2 / chi^(2/d), "
+                 "1 |cof J|^2 / chi (the same in 2D)", EnergyForm::Conformal);
+  options.addInt("EnergyHessian", "Hessian of the energy minimization "
+                 "(EnergyHessian): -1 automatic, 0 Gauss-Newton, 1 exact, "
+                 "2 projected Newton", EnergyHessian::Automatic);
+  options.addReal("H1Safeguard", "Regularized H1 stage: restart from the best "
+                  "iterate when the residual norm exceeds this factor times the "
+                  "smallest one (0: off)", 100);
+  options.addSwitch("SkipH2", "Experimental: no H2 stage; untangling and H1 "
+                    "start from the given interior", false);
+  options.addInt("H1Form", "Experimental: regularized H1 stage (H1Form): "
+                 "0 original form, 1 weak form of Laplace's equation for the "
+                 "inverse map", H1Form::Original);
+  options.addInt("ExtraNodes", "Experimental: additional Gauss-Lobatto nodes "
+                 "per direction of the regularized stage", 0);
+  options.addInt("AdaptiveRounds", "Experimental: max. number of adaptive "
+                 "refinements of the quadrature where det(J) <= 0 between the "
+                 "nodes (0: off)", 0);
+  options.addInt("CheckExtraNodes", "Adaptive refinement (AdaptiveRounds): "
+                 "additional Gauss-Lobatto nodes per direction of the check", 4);
+  return options;
+}
 
+template<short_t d, typename T>
+gsOptionList gsBarrierCore<d, T>::withPDEDefaults(const gsOptionList &options) {
+  gsOptionList result = defaultPDEOptions().wrapIntoGroup("PDE");
+  result.update(options, gsOptionList::addIfUnknown);
+  return result;
 }
 
 /// Compute the area of the computational domain
@@ -877,7 +802,6 @@ gsObjQualityImprovePt<d, T>::gsObjQualityImprovePt(
     m_mb(m_mp) {
     m_assembler.setIntegrationDomain(m_mb.domain());
   m_evaluator = gsExprEvaluator<T>(m_assembler);
-//  defaultOptions();
 }
 
 template<short_t d, typename T>
@@ -926,7 +850,6 @@ template<short_t d, typename T>
 template<short_t _d>
 typename std::enable_if<_d == 3, T>::type
 gsObjQualityImprovePt<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
-//        gsMultiPatch<T> mp = m_mp;
   convertFreeVectorToMultiPatch<T>(u, m_mapper, m_mp);
 
   geometryMap G = m_evaluator.getMap(m_mp);
@@ -935,8 +858,6 @@ gsObjQualityImprovePt<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
     return std::numeric_limits<T>::max();
   } else {
     auto Euniform = pow(jac(G).det(), 2);
-    // (another choice of this term, Jiao et al. 2011:
-    // |J|^2 / det(J)^(2/3))
     auto Ewinslow = 0.5 * (jac(G).sqNorm() * jac(G).inv().sqNorm());
 
     return m_evaluator.integral(m_lambda1 * Ewinslow + m_lambda2 * Euniform);
@@ -1308,7 +1229,6 @@ gsObjPenaltyPt2<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
 
   // Calculation of Ewinslow and Euniform
   auto Ewinslow = jac(G).sqNorm() / chi;
-  // (alternative uniformity term: chi + 1 / chi)
   auto Euniform = pow(jac(G).det(), 2.0);
 
   // Evaluate the integral and return
@@ -1339,7 +1259,6 @@ gsObjPenaltyPt2<d, T>::evalObj_impl(const gsAsConstVector<T> &u) const {
       pow(jac(G).det(), 2.0) / pow(chi, 2.0);
 
   // Compute Euniform
-  // (alternative uniformity term: chi + 1 / chi)
   auto Euniform = pow(jac(G).det(), 2.0);
 
   // Compute and return the integral
@@ -1464,20 +1383,22 @@ template<short_t d, typename T>
 gsMultiPatch<T>
 gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
                                      const gismo::gsDofMapper &mapper,
-                                     const gismo::gsOptionList &options) {
+                                     const gismo::gsOptionList &givenOptions) {
   // Nothing to do without free control points (e.g. a bilinear patch)
   if (mapper.freeSize() == 0) { return mp; }
+  // all options of the group PDE are set from here on
+  const gsOptionList options = withPDEDefaults(givenOptions);
 
-  const bool regularized = options.askSwitch("PDEGaranzha", true);
+  const bool regularized = options.getSwitch("PDE.Garanzha");
   // Free interfaces: chord-scaled parameter domains, energy minimization
-  if (regularized && options.askSwitch("PDEFreeInterfaceEnergy", true)
+  if (regularized && options.getSwitch("PDE.FreeInterfaceEnergy")
       && couplesPatches(mp, mapper)) {
     return computePDEPatchFreeInterfaces(mp, mapper, options);
   }
 
   // Experimental: no H2 stage, untangling and regularized H1 directly from
   // the given interior (e.g. a Coons patch)
-  if (regularized && options.askSwitch("PDESkipH2", false)) {
+  if (regularized && options.getSwitch("PDE.SkipH2")) {
     verboseLog("PDE-based parameterization construction (without H2) ...\n",
                options.askInt("Verbose", 0));
     gsVector<T> x = convertMultiPatchToFreeVector(mp, mapper);
@@ -1488,7 +1409,7 @@ gsBarrierCore<d, T>::computePDEPatch(const gsMultiPatch<T> &mp,
   }
 
   // Volumes, and planar domains with Garanzha's regularization: generic
-  // implementation; otherwise the original planar one (PDEGaranzha = 0)
+  // implementation; otherwise the original planar one (PDE.Garanzha = 0)
   if (d != 2 || regularized) {
     return computePDEPatchGeneric(mp, mapper, options);
   }
@@ -1505,10 +1426,7 @@ gsBarrierCore<d, T>::computePDEPatchFreeInterfaces(const gsMultiPatch<T> &mp,
              options.askInt("Verbose", 0));
   gsMultiPatch<T> scaled = chordScaled(mp);
   gsOptionList energyOptions = options;
-  // (addSwitch also replaces an existing switch)
-  energyOptions.addSwitch("PDEEnergyFinal",
-                          "PDE patch: the regularized Winslow energy "
-                          "minimization is the final stage (no H1)", true);
+  energyOptions.setSwitch("PDE.EnergyFinal", true);
   gsVector<T> x = convertMultiPatchToFreeVector(scaled, mapper);
   x = computeRegularizedH1(scaled, mapper, x, energyOptions);
   // same control points, original parameter domains
@@ -1786,7 +1704,7 @@ gsBarrierCore<d, T>::computePDEPatchGeneric(const gsMultiPatch<T> &mp,
       param.linearSolver = gmresPreconditioner(options, true);
       param.blocks = componentOfDofs(mp, mapper);
       param.nodes = nodeOfDofs(mp, mapper);
-      param.innerMaxIterations = options.askInt("PDEInnerMaxIterations", 100);
+      param.innerMaxIterations = options.getInt("PDE.InnerMaxIterations");
     }
 
     preAApp::AndersonAcceleration<T> AASolver(param);
@@ -1798,12 +1716,12 @@ gsBarrierCore<d, T>::computePDEPatchGeneric(const gsMultiPatch<T> &mp,
   }
   if (!solVector.allFinite()) { solVector = initialGuessVector; }
 
-  if (options.askSwitch("PDEGaranzha", true)) {
+  if (options.getSwitch("PDE.Garanzha")) {
     // Robust second stage: untangling + regularized H1 discretization
     solVector = computeRegularizedH1(mp, mapper, solVector, options);
   } else if (options.askSwitch("needPDEH1", true)) {
     gsWarn << "For volumes, the H1 discretization is only available with "
-              "Garanzha's regularization (option PDEGaranzha); the result of "
+              "Garanzha's regularization (option PDE.Garanzha); the result of "
               "the H2 discretization is returned.\n";
   }
 
@@ -1822,7 +1740,7 @@ gsBarrierCore<d, T>::componentOfDofs(const gsMultiPatch<T> &mp,
   std::vector<index_t> component(mapper.freeSize(), 0);
   for (size_t ip = 0; ip != mp.nPatches(); ++ip) {
     for (index_t c = 0; c != mp.targetDim(); ++c) {
-      for (size_t i = 0; i != mapper.patchSize(ip, c); ++i) {
+      for (index_t i = 0; i != index_t(mapper.patchSize(ip, c)); ++i) {
         if (mapper.is_free(i, ip, c)) { component[mapper.index(i, ip, c)] = c; }
       }
     }
@@ -1838,11 +1756,11 @@ gsBarrierCore<d, T>::nodeOfDofs(const gsMultiPatch<T> &mp,
   std::vector<index_t> key(mapper.freeSize(), -1);
   std::vector<index_t> dofs;
   for (size_t ip = 0; ip != mp.nPatches(); ++ip) {
-    const size_t numBasis = mapper.patchSize(ip, 0);
-    for (size_t i = 0; i != numBasis; ++i) {
+    const index_t numBasis = mapper.patchSize(ip, 0);
+    for (index_t i = 0; i != numBasis; ++i) {
       dofs.clear();
       for (index_t c = 0; c != mp.targetDim(); ++c) {
-        if (i < mapper.patchSize(ip, c) && mapper.is_free(i, ip, c)) {
+        if (i < index_t(mapper.patchSize(ip, c)) && mapper.is_free(i, ip, c)) {
           dofs.push_back(mapper.index(i, ip, c));
         }
       }
@@ -1871,7 +1789,7 @@ bool gsBarrierCore<d, T>::couplesPatches(const gsMultiPatch<T> &mp,
   std::vector<index_t> owner(mapper.freeSize(), -1);
   for (size_t ip = 0; ip != mp.nPatches(); ++ip)
     for (index_t c = 0; c != mp.targetDim(); ++c)
-      for (size_t i = 0; i != mapper.patchSize(ip, c); ++i) {
+      for (index_t i = 0; i != index_t(mapper.patchSize(ip, c)); ++i) {
         if (!mapper.is_free(i, ip, c)) { continue; }
         index_t &o = owner[mapper.index(i, ip, c)];
         if (o >= 0 && o != index_t(ip)) { return true; }
@@ -1969,12 +1887,12 @@ gsMultiPatch<T> gsBarrierCore<d, T>::chordScaled(const gsMultiPatch<T> &mp) {
 template<short_t d, typename T>
 int gsBarrierCore<d, T>::gmresPreconditioner(const gsOptionList &options,
                                              const bool h2Stage) {
-  switch (options.askInt("PDEPreconditioner", PDEPreconditioner::Automatic)) {
-    case PDEPreconditioner::BlockGaussSeidelLU:
+  switch (options.getInt("PDE.Preconditioner")) {
+    case Preconditioner::BlockGaussSeidelLU:
       return preAAParam<T>::BlockGaussSeidelLU;
-    case PDEPreconditioner::NodalAMG:
+    case Preconditioner::NodalAMG:
       return preAAParam<T>::NodalAMG;
-    case PDEPreconditioner::BlockGaussSeidelAMG:
+    case Preconditioner::BlockGaussSeidelAMG:
       return preAAParam<T>::BlockGaussSeidelAMG;
     default:
       return h2Stage ? preAAParam<T>::BlockGaussSeidelAMG
@@ -1985,10 +1903,10 @@ int gsBarrierCore<d, T>::gmresPreconditioner(const gsOptionList &options,
 template<short_t d, typename T>
 bool gsBarrierCore<d, T>::useIterativeSolver(const index_t numDofs,
                                              const gsOptionList &options) {
-  switch (options.askInt("PDELinearSolver", PDELinearSolver::Automatic)) {
-    case PDELinearSolver::Direct: return false;
-    case PDELinearSolver::Iterative: return true;
-    default: return numDofs > options.askInt("PDEDirectSolverLimit", 4000);
+  switch (options.getInt("PDE.LinearSolver")) {
+    case LinearSolver::Direct: return false;
+    case LinearSolver::Iterative: return true;
+    default: return numDofs > options.getInt("PDE.DirectSolverLimit");
   }
 }
 
@@ -1999,8 +1917,11 @@ bool gsBarrierCore<d, T>::useIterativeSolver(const index_t numDofs,
  * Gauss-Newton Hessian, the regularized H1 residual with its Jacobian, and
  * the minimum of det(J) over the quadrature nodes.
  *
- * The same quantities are available as expressions (garanzhaWinslowEnergy,
- * garanzhaWinslowGrad/Hess, regularizedH1Res/Jac); here the element matrices
+ * Away from nodes with degenerate J, the same quantities are available as
+ * expressions (garanzhaWinslowEnergy, garanzhaWinslowGrad/Hess,
+ * regularizedH1Res/Jac); the expressions skip a node where J is degenerate
+ * (detIsControllable), the assembler keeps it if the gradients of the free
+ * functions span all directions (see monitored()). Here the element matrices
  * are computed with matrix-matrix products over all quadrature nodes of an
  * element, the sparsity patterns are computed once, and the Hessian is stored
  * as its lower triangle only.
@@ -2016,6 +1937,12 @@ bool gsBarrierCore<d, T>::useIterativeSolver(const index_t numDofs,
  * gsTensorBasis). For other bases, the derivatives at the quadrature nodes
  * are cached within a memory budget (\a cacheBytes).
  *
+ * Cost per element, for degree p and q nodes per direction: the Jacobians
+ * of the map at all q^d nodes by sum factorization take
+ * O(d^2 (p+1) max(p+1, q)^d) operations instead of O(d^2 (p+1)^d q^d) with
+ * the derivatives of all active functions; element matrices (Hessians,
+ * Jacobians) take O(d^2 (p+1)^(2d) q^d), as for any element-wise assembly.
+ *
  * det(J) is monitored (and the regularized quantities are integrated) at the
  * quadrature nodes at which it depends on the free control points; this is
  * determined once, for the given geometry: on the boundary of the parameter
@@ -2030,19 +1957,44 @@ bool gsBarrierCore<d, T>::useIterativeSolver(const index_t numDofs,
 template<short_t d, typename T>
 class gsRegularizedPDEAssembler {
  public:
+  typedef gsBarrierCore<d, T> Core;
   typedef gsEigen::Matrix<T, d, d> MatrixD;
 
-  /// \a extraNodes (optional): for every element (numbered patch by patch in
-  /// the order of the domain iterators), the number of additional
-  /// Gauss-Lobatto nodes per direction to use there
+  /// \a orientations: for every patch, +1 or -1, the sign of det(J) of a
+  /// bijective parameterization of that patch (patches of a multi-patch may
+  /// be oriented differently). \a extraNodes (optional): for every element
+  /// (numbered patch by patch in the order of the domain iterators), the
+  /// number of additional Gauss-Lobatto nodes per direction to use there
+  gsRegularizedPDEAssembler(const gsMultiPatch<T> &mp,
+                            const gsDofMapper &mapper,
+                            const gsOptionList &quOptions,
+                            const std::vector<T> &orientations,
+                            const std::vector<index_t> &extraNodes = std::vector<index_t>(),
+                            const size_t cacheBytes = size_t(1) << 30)
+      : m_mp(mp), m_mb(mp), m_mapper(mapper), m_orientations(orientations),
+        m_numDofs(mapper.freeSize()) {
+    GISMO_ENSURE(m_orientations.size() == mp.nPatches(),
+                 "gsRegularizedPDEAssembler: one orientation per patch expected");
+    setup(quOptions, extraNodes, cacheBytes);
+  }
+
+  /// Same orientation (+1 or -1) for all patches
   gsRegularizedPDEAssembler(const gsMultiPatch<T> &mp,
                             const gsDofMapper &mapper,
                             const gsOptionList &quOptions,
                             const T orientation,
                             const std::vector<index_t> &extraNodes = std::vector<index_t>(),
                             const size_t cacheBytes = size_t(1) << 30)
-      : m_mp(mp), m_mb(mp), m_mapper(mapper), m_orientation(orientation),
+      : m_mp(mp), m_mb(mp), m_mapper(mapper),
+        m_orientations(mp.nPatches(), orientation),
         m_numDofs(mapper.freeSize()) {
+    setup(quOptions, extraNodes, cacheBytes);
+  }
+
+ private:
+  /// Elements, quadrature nodes, tables and monitored nodes (constructors)
+  void setup(const gsOptionList &quOptions, const std::vector<index_t> &extraNodes,
+             const size_t cacheBytes) {
     size_t cached = 0;
     gsMatrix<T> ders, coefs;
     MatrixD jacGeom, cof;
@@ -2117,6 +2069,7 @@ class gsRegularizedPDEAssembler {
     m_numAllElements = id;
   }
 
+ public:
   /// Total number of elements (including those without free dofs)
   index_t numElements() const { return m_numAllElements; }
 
@@ -2142,7 +2095,7 @@ class gsRegularizedPDEAssembler {
         jacGeom.noalias() = coefs.transpose() * dB.transpose();
         cofactorMatrix(jacGeom, cof);
         if (!monitored(e, cof, dB)) { continue; }
-        const T det = m_orientation * jacGeom.row(0).dot(cof.row(0));
+        const T det = orientation(e) * jacGeom.row(0).dot(cof.row(0));
         if (!(det > 0)) { ++result[e.id]; }
       }
     }
@@ -2171,7 +2124,7 @@ class gsRegularizedPDEAssembler {
       T &result = partial[thread];
       for (index_t k = 0; k != e.numNodes(); ++k) {
         if (!e.monitor[k]) { continue; }
-        const T det = m_orientation
+        const T det = orientation(e)
             * MatrixD(jacobians.middleCols(k * d, d)).determinant();
         if (det != det) { result = det; return; } // NaN must not go unnoticed
         if (det < result) { result = det; }
@@ -2185,7 +2138,9 @@ class gsRegularizedPDEAssembler {
     return result;
   }
 
-  /// Garanzha's regularized Winslow functional  int |J|^2 / chi^(2/d)
+  /// Garanzha's regularized Winslow functional: int |J|^2 / chi^(2/d)
+  /// (energy form Core::EnergyForm::Conformal), or int |cof J|^2 / chi
+  /// (Core::EnergyForm::InverseDirichlet, see setEnergyForm)
   T energy(const T eps) const {
     std::vector<T> partial(numThreads(), T(0));
     // buffers of a thread
@@ -2205,8 +2160,8 @@ class gsRegularizedPDEAssembler {
         if (!e.monitor[k]) { continue; }
         jacGeom = jacobians.middleCols(k * d, d);
         cofactorMatrix(jacGeom, cof);
-        const T det = m_orientation * jacGeom.row(0).dot(cof.row(0));
-        if (PDEEnergyForm::InverseDirichlet == m_energyForm && 3 == d) {
+        const T det = orientation(e) * jacGeom.row(0).dot(cof.row(0));
+        if (Core::EnergyForm::InverseDirichlet == m_energyForm && 3 == d) {
           result += e.weights(k) * cof.squaredNorm() / garanzhaChi(det, eps);
         } else {
           result += e.weights(k) * jacGeom.squaredNorm()
@@ -2265,7 +2220,7 @@ class gsRegularizedPDEAssembler {
         const gsAsConstMatrix<T> dB = ders.reshapeCol(k, d, A);
         jacGeom.noalias() = coefs.transpose() * dB.transpose();
         cofactorMatrix(jacGeom, cof);
-        const T det = m_orientation * jacGeom.row(0).dot(cof.row(0));
+        const T det = orientation(e) * jacGeom.row(0).dot(cof.row(0));
         const T sqNorm = jacGeom.squaredNorm();
         const T root = math::sqrt(det * det + eps * eps);
         const T chiPow = chiPower(garanzhaChi(det, eps));
@@ -2277,7 +2232,7 @@ class gsRegularizedPDEAssembler {
           P.col(n).segment(c * A, A).noalias() =
               (jacGeom.row(c) * dB).transpose();
           Q.col(n).segment(c * A, A).noalias() =
-              m_orientation * (cof.row(c) * dB).transpose();
+              orientation(e) * (cof.row(c) * dB).transpose();
         }
         localGradient.noalias() += (w / chiPow)
             * (2.0 * P.col(n) - (T(2) / d) * rho * sqNorm * Q.col(n));
@@ -2307,6 +2262,7 @@ class gsRegularizedPDEAssembler {
   /// Form of the energy: 0: |J|^2 / chi^(2/d), 1: |cof J|^2 / chi (see
   /// garanzhaEnergyDerivatives; the same in 2D)
   void setEnergyForm(const index_t form) { m_energyForm = form; }
+  /// Form of the energy (see setEnergyForm)
   index_t energyForm() const { return m_energyForm; }
 
   /// Gradient and lower triangle of a Hessian of the energy (form set by
@@ -2356,7 +2312,7 @@ class gsRegularizedPDEAssembler {
       for (index_t n = 0; n != nq; ++n) {
         const index_t k = nodes[n];
         jacGeom = jacobians.middleCols(k * d, d);
-        garanzhaEnergyDerivatives<d, T>(jacGeom, m_orientation, eps,
+        garanzhaEnergyDerivatives<d, T>(jacGeom, orientation(e), eps,
                                         m_energyForm, hessianType, &gradJ, &H[n]);
         H[n] *= e.weights(k);
         for (short_t c = 0; c != d; ++c)
@@ -2367,7 +2323,7 @@ class gsRegularizedPDEAssembler {
       }
       testGradients(e, fluxes, localGradient, work);
       gsAsConstVector<T> gradientVector(localGradient.data(), localGradient.size());
-      scatterVector(e, gsVector<T>(gradientVector), gradient);
+      scatterVector(e, gradientVector, gradient);
 
       // block (c, b) = sum_n dB_n^T N_n dB_n, N_n(a, e') = H_n(c d + a, b d + e')
       local.resize(d * A, d * A);
@@ -2418,7 +2374,7 @@ class gsRegularizedPDEAssembler {
         if (!e.monitor[k]) { continue; }
         jacGeom = jacobians.middleCols(k * d, d);
         cofactorMatrix(jacGeom, cof);
-        const T det = m_orientation * jacGeom.row(0).dot(cof.row(0));
+        const T det = orientation(e) * jacGeom.row(0).dot(cof.row(0));
         const T chi = garanzhaChi(det, eps);
         const T chiPow = (2 == m_h1Power ? chi * chi : chi);
         fluxes.middleCols(k * d, d).noalias() =
@@ -2426,7 +2382,7 @@ class gsRegularizedPDEAssembler {
       }
       testGradients(e, fluxes, local, work);
       gsAsConstVector<T> localVector(local.data(), local.size());
-      scatterVector(e, gsVector<T>(localVector), residual);
+      scatterVector(e, localVector, residual);
     });
   }
 
@@ -2472,7 +2428,7 @@ class gsRegularizedPDEAssembler {
         Dstack.middleRows(d * n, d) = dB;
         jacGeom.noalias() = coefs.transpose() * dB.transpose();
         cofactorMatrix(jacGeom, cof);
-        const T det = m_orientation * jacGeom.row(0).dot(cof.row(0));
+        const T det = orientation(e) * jacGeom.row(0).dot(cof.row(0));
         const T root = math::sqrt(det * det + eps * eps);
         const T chi = garanzhaChi(det, eps);
         const T w = 1.0 / (2 == m_h1Power ? chi * chi : chi);
@@ -2483,7 +2439,7 @@ class gsRegularizedPDEAssembler {
             unit(a) = 1;
             cofactorDerivative(jacGeom, b, unit, dCof);
             // d(1/chi^q) = dInvChiq / chi^q, chi'/chi = 1/sqrt(D^2+eps^2)
-            const T dInvChiq = -T(m_h1Power) * m_orientation * cof(b, a) / root;
+            const T dInvChiq = -T(m_h1Power) * orientation(e) * cof(b, a) / root;
             dK.noalias() = dCof.transpose() * cof;
             dK += MatrixD(dK.transpose());
             dKs[n * d * d + b * d + a] =
@@ -2698,6 +2654,9 @@ class gsRegularizedPDEAssembler {
       return values[(order * (degree + 1) + j) * nodes.size() + q];
     }
   };
+
+  /// Orientation (+1 or -1) of the patch of element \a e
+  T orientation(const Element &e) const { return m_orientations[e.patch]; }
 
   static T chiPower(const T chi) {
     return (2 == d ? chi : math::pow(chi, T(2) / d));
@@ -3117,7 +3076,9 @@ class gsRegularizedPDEAssembler {
     }
   }
 
-  void scatterVector(const Element &e, const gsVector<T> &local,
+  /// Adds the element vector \a local (a vector or a map) to \a global
+  template<class LocalVector>
+  void scatterVector(const Element &e, const LocalVector &local,
                      gsVector<T> &global) const {
     for (size_t l = 0; l != e.dofs.size(); ++l) {
       if (e.dofs[l] >= 0) { global(e.dofs[l]) += local(l); }
@@ -3186,7 +3147,8 @@ class gsRegularizedPDEAssembler {
   gsMultiPatch<T> m_mp;
   gsMultiBasis<T> m_mb;
   const gsDofMapper &m_mapper;
-  T m_orientation;
+  /// per patch: +1 or -1, the sign of det(J) of a bijective result
+  std::vector<T> m_orientations;
   index_t m_numDofs;
   index_t m_h1Power = 2;
   index_t m_energyForm = 0;
@@ -3207,7 +3169,7 @@ gsBarrierCore<d, T>::computeRegularizedH1(const gsMultiPatch<T> &mp,
                                  "implemented for dimension 2 and 3 only.");
 
   const index_t verbose = options.askInt("Verbose", 0);
-  const index_t maxRounds = options.askInt("PDEAdaptiveRounds", 0);
+  const index_t maxRounds = options.getInt("PDE.AdaptiveRounds");
   if (maxRounds <= 0) {
     return regularizedStage(mp, mapper, x, options,
                             std::vector<index_t>(), nullptr);
@@ -3262,6 +3224,7 @@ gsBarrierCore<d, T>::computeRegularizedH1(const gsMultiPatch<T> &mp,
 template<short_t d, typename T>
 class gsRegularizedStage {
  public:
+  typedef gsBarrierCore<d, T> Core;
   /// Fixed parameters of the stage
   struct Constants {
     /// every step keeps min det(J) >= stepFraction * (current minimum)
@@ -3286,30 +3249,42 @@ class gsRegularizedStage {
     index_t maxCGIterations = 500;
     /// tolerance of the H1 stage (residual norm)
     T h1Tolerance = T(1e-5);
-  } constants;
+  };
 
   gsRegularizedStage(const gsMultiPatch<T> &mp, const gsDofMapper &mapper,
                      const gsOptionList &options,
                      const std::vector<index_t> &extraNodes)
       : m_mp(mp), m_mapper(mapper), m_options(options),
         m_verbose(options.askInt("Verbose", 0)),
-        m_quOptions(lobattoOptions(options.askInt("PDEExtraNodes", 0))),
-        m_meanDet(meanDeterminant(mp, mapper, m_quOptions)),
-        m_orientation(m_meanDet < 0 ? T(-1) : T(1)),
-        m_epsMin(options.askReal("PDEGaranzhaEps", 1e-4) * math::abs(m_meanDet)),
-        m_fem(mp, mapper, m_quOptions, m_orientation, extraNodes),
+        m_quOptions(lobattoOptions(options.getInt("PDE.ExtraNodes"))),
+        m_patchDet(patchDeterminants(mp, mapper, m_quOptions)),
+        m_meanDet(meanAbsolute(m_patchDet)),
+        m_orientations(signs(m_patchDet)),
+        m_epsMin(options.getReal("PDE.GaranzhaEps") * m_meanDet),
+        m_fem(mp, mapper, m_quOptions, m_orientations, extraNodes),
         m_iterative(gsBarrierCore<d, T>::useIterativeSolver(m_fem.numDofs(),
                                                             options)) {
-    m_meanDet = math::abs(m_meanDet);
-    m_fem.setH1Power(PDEH1Form::WeakLaplace == options.askInt("PDEH1Form", 0)
+    m_fem.setH1Power(Core::H1Form::WeakLaplace == options.getInt("PDE.H1Form")
                          ? 1 : 2);
-    index_t form = options.askInt("PDEEnergyForm", PDEEnergyForm::Conformal);
-    if (form != PDEEnergyForm::InverseDirichlet) { form = PDEEnergyForm::Conformal; }
+    index_t form = options.getInt("PDE.EnergyForm");
+    if (form != Core::EnergyForm::InverseDirichlet) { form = Core::EnergyForm::Conformal; }
     m_fem.setEnergyForm(form);
   }
 
-  /// False if the computational domain has zero measure
-  bool valid() const { return m_meanDet > 0; }
+  /// False if the computational domain, or one of its patches, has zero
+  /// measure
+  bool valid() const {
+    for (const T patchDet : m_patchDet) {
+      if (!(patchDet != 0)) { return false; }
+    }
+    return m_meanDet > 0;
+  }
+
+  /// True if the patches do not all have the same orientation
+  bool mixedOrientation() const {
+    return std::find(m_orientations.begin(), m_orientations.end(),
+                     -m_orientations.front()) != m_orientations.end();
+  }
 
   /// Minimum of orientation * det(J) over the monitored quadrature nodes
   T minDet(const gsVector<T> &x) {
@@ -3318,18 +3293,18 @@ class gsRegularizedStage {
   }
 
   /// For every element, the number of nodes of a denser Gauss-Lobatto rule
-  /// (PDECheckExtraNodes additional nodes) with det(J) <= 0
+  /// (PDE.CheckExtraNodes additional nodes) with det(J) <= 0
   std::vector<index_t> negativeCheckPoints(const gsVector<T> &x) {
     m_fem.setFreeVector(x);
     return m_fem.negativeCheckPoints(
-        lobattoOptions(m_options.askInt("PDECheckExtraNodes", 4)));
+        lobattoOptions(m_options.getInt("PDE.CheckExtraNodes")));
   }
 
   /// Minimization of the regularized energy from \a x (with min det(J)
   /// \a Dmin), by Gauss-Newton or projected Newton steps with Armijo line
   /// search; once unfolded, no step folds again. final = false: untangling
   /// (stops once unfolded and settled); final = true: to convergence
-  /// (PDEEnergyTol), with eps <= epsShrink * min det(J) once unfolded.
+  /// (PDE.EnergyTol), with eps <= epsShrink * min det(J) once unfolded.
   void minimizeEnergy(gsVector<T> &x, T &Dmin, const bool final);
 
   /// Regularized H1 stage (Anderson acceleration with the Jacobian as
@@ -3361,12 +3336,30 @@ class gsRegularizedStage {
     return result;
   }
 
-  /// Mean value of det(J) (signed). The integral of det(J), the signed area
-  /// or volume, only depends on the fixed control points; to evaluate it
-  /// reliably even if the given interior is far off, the free control points
-  /// are moved to the centroid of the fixed ones.
-  static T meanDeterminant(const gsMultiPatch<T> &mp, const gsDofMapper &mapper,
-                           const gsOptionList &quOptions);
+  /// For every patch, the integral of det(J) (its signed area or volume)
+  /// divided by the measure of the whole parameter domain. The integral only
+  /// depends on the control points on the boundary of the patch; to evaluate
+  /// it reliably even if the given interior is far off, the free control
+  /// points inside the patch are moved to the centroid of the fixed ones.
+  static std::vector<T> patchDeterminants(const gsMultiPatch<T> &mp,
+                                          const gsDofMapper &mapper,
+                                          const gsOptionList &quOptions);
+
+  /// Mean value of |det(J)|: sum of the absolute values of \a patchDet
+  static T meanAbsolute(const std::vector<T> &patchDet) {
+    T result = 0;
+    for (const T value : patchDet) { result += math::abs(value); }
+    return result;
+  }
+
+  /// Orientation of every patch: the sign of \a patchDet
+  static std::vector<T> signs(const std::vector<T> &patchDet) {
+    std::vector<T> result(patchDet.size());
+    for (size_t p = 0; p != patchDet.size(); ++p) {
+      result[p] = (patchDet[p] < 0 ? T(-1) : T(1));
+    }
+    return result;
+  }
 
   /// Gradient and Hessian of the energy at the current free vector of the
   /// assembler, and the Newton direction (linearSolve)
@@ -3376,7 +3369,7 @@ class gsRegularizedStage {
 
   /// Newton direction for the given gradient and (lower triangle of the)
   /// Hessian: sparse LDL^T, or inexact CG preconditioned by NodalAMG
-  /// (PDEPreconditioner = BlockGaussSeidelLU: incomplete Cholesky)
+  /// (PDE.Preconditioner = BlockGaussSeidelLU: incomplete Cholesky)
   void linearSolve(NewtonSolver &solver, const gsVector<T> &gradient,
                    const gsSparseMatrix<T> &hessian, gsVector<T> &direction);
 
@@ -3385,51 +3378,63 @@ class gsRegularizedStage {
   const gsOptionList &m_options;
   const index_t m_verbose;
   const gsOptionList m_quOptions;
-  T m_meanDet;
-  const T m_orientation;
+  const Constants m_constants = Constants();
+  const std::vector<T> m_patchDet;
+  const T m_meanDet;
+  const std::vector<T> m_orientations;
   const T m_epsMin;
   gsRegularizedPDEAssembler<d, T> m_fem;
   const bool m_iterative;
 };
 
 template<short_t d, typename T>
-T gsRegularizedStage<d, T>::meanDeterminant(const gsMultiPatch<T> &mp,
-                                            const gsDofMapper &mapper,
-                                            const gsOptionList &quOptions) {
-  gsMultiBasis<T> mb(mp);
-  gsExprAssembler<T> assembler;
-  assembler.setIntegrationDomain(mb.domain());
-  assembler.setOptions(quOptions);
-  gsExprEvaluator<T> evaluator(assembler);
-
+std::vector<T> gsRegularizedStage<d, T>::patchDeterminants(const gsMultiPatch<T> &mp,
+                                                           const gsDofMapper &mapper,
+                                                           const gsOptionList &quOptions) {
   gsMultiPatch<T> mpSubstitute = mp;
   gsVector<T> centroid = gsVector<T>::Zero(mp.targetDim());
   gsVector<index_t> numFixed = gsVector<index_t>::Zero(mp.targetDim());
   for (size_t iptch = 0; iptch != mp.nPatches(); ++iptch)
     for (index_t idim = 0; idim != mp.targetDim(); ++idim)
-      for (size_t idof = 0; idof != mapper.patchSize(iptch, idim); ++idof)
+      for (index_t idof = 0; idof != index_t(mapper.patchSize(iptch, idim)); ++idof)
         if (!mapper.is_free(idof, iptch, idim)) {
           centroid(idim) += mp.patch(iptch).coefs()(idof, idim);
           ++numFixed(idim);
         }
   if (numFixed.minCoeff() > 0) {
-    for (size_t iptch = 0; iptch != mp.nPatches(); ++iptch)
+    for (size_t iptch = 0; iptch != mp.nPatches(); ++iptch) {
+      // free control points on the boundary of the patch (free interfaces)
+      // are kept: they bound the patch
+      const gsMatrix<index_t> boundary = mp.basis(iptch).allBoundary();
+      std::vector<bool> onBoundary(mp.patch(iptch).coefs().rows(), false);
+      for (index_t i = 0; i != boundary.rows(); ++i) { onBoundary[boundary(i, 0)] = true; }
       for (index_t idim = 0; idim != mp.targetDim(); ++idim)
-        for (size_t idof = 0; idof != mapper.patchSize(iptch, idim); ++idof)
-          if (mapper.is_free(idof, iptch, idim))
+        for (index_t idof = 0; idof != index_t(mapper.patchSize(iptch, idim)); ++idof)
+          if (mapper.is_free(idof, iptch, idim) && !onBoundary[idof])
             mpSubstitute.patch(iptch).coefs()(idof, idim) =
                 centroid(idim) / numFixed(idim);
+    }
   }
-  typename gsExprAssembler<T>::geometryMap G = evaluator.getMap(mpSubstitute);
-  const T integral = evaluator.integral(jac(G).det());
 
-  // divided by the measure of the parameter domain
+  // measure of the parameter domain
   T parameterMeasure = 0;
-  for (size_t iptch = 0; iptch != mb.nBases(); ++iptch) {
-    const gsMatrix<T> box = mb.basis(iptch).support();
+  for (size_t iptch = 0; iptch != mp.nPatches(); ++iptch) {
+    const gsMatrix<T> box = mp.basis(iptch).support();
     parameterMeasure += (box.col(1) - box.col(0)).prod();
   }
-  return integral / parameterMeasure;
+
+  std::vector<T> result(mp.nPatches());
+  for (size_t iptch = 0; iptch != mp.nPatches(); ++iptch) {
+    const gsMultiPatch<T> patch(mpSubstitute.patch(iptch));
+    gsMultiBasis<T> mb(patch);
+    gsExprAssembler<T> assembler;
+    assembler.setIntegrationDomain(mb.domain());
+    assembler.setOptions(quOptions);
+    gsExprEvaluator<T> evaluator(assembler);
+    typename gsExprAssembler<T>::geometryMap G = evaluator.getMap(patch);
+    result[iptch] = evaluator.integral(jac(G).det()) / parameterMeasure;
+  }
+  return result;
 }
 
 template<short_t d, typename T>
@@ -3440,8 +3445,8 @@ void gsRegularizedStage<d, T>::newtonDirection(const T eps,
                                                gsSparseMatrix<T> &hessian,
                                                gsVector<T> &direction) {
   gsStopwatch timer;
-  if (PDEEnergyForm::Conformal == m_fem.energyForm()
-      && PDEEnergyHessian::GaussNewton == hessianType) {
+  if (Core::EnergyForm::Conformal == m_fem.energyForm()
+      && Core::EnergyHessian::GaussNewton == hessianType) {
     m_fem.gradientHessian(eps, gradient, hessian);  // faster variant
   } else {
     m_fem.energyGradientHessian(eps, hessianType, gradient, hessian);
@@ -3471,11 +3476,11 @@ void gsRegularizedStage<d, T>::linearSolve(NewtonSolver &solver,
   const T gradientNorm = gradient.norm();
   if (solver.gradientNorm0 < 0) { solver.gradientNorm0 = gradientNorm; }
   const T forcing = std::max<T>(
-      constants.minForcing,
-      std::min<T>(constants.maxForcing,
+      m_constants.minForcing,
+      std::min<T>(m_constants.maxForcing,
                   math::sqrt(gradientNorm / solver.gradientNorm0)));
-  if (PDEPreconditioner::BlockGaussSeidelLU
-      == m_options.askInt("PDEPreconditioner", PDEPreconditioner::Automatic)) {
+  if (Core::Preconditioner::BlockGaussSeidelLU
+      == m_options.getInt("PDE.Preconditioner")) {
     // incomplete Cholesky (the preconditioner before NodalAMG)
     const gsVector<T> zero = gsVector<T>::Zero(gradient.size());
     solver.pcg.setTolerance(forcing);
@@ -3496,7 +3501,7 @@ void gsRegularizedStage<d, T>::linearSolve(NewtonSolver &solver,
   solver.amg->compute(full);
   gsConjugateGradient<T> cg(full, solver.amg);
   cg.setTolerance(forcing);
-  cg.setMaxIterations(constants.maxCGIterations);
+  cg.setMaxIterations(m_constants.maxCGIterations);
   gsMatrix<T> solution = gsMatrix<T>::Zero(gradient.size(), 1);
   cg.solve(gradient, solution);
   solver.numCGIterations += cg.iterations();
@@ -3506,22 +3511,21 @@ void gsRegularizedStage<d, T>::linearSolve(NewtonSolver &solver,
 template<short_t d, typename T>
 void gsRegularizedStage<d, T>::minimizeEnergy(gsVector<T> &x, T &Dmin,
                                               const bool final) {
-  // Hessian: as set by PDEEnergyHessian; automatic: projected Newton for the
+  // Hessian: as set by PDE.EnergyHessian; automatic: projected Newton for the
   // final minimization of volumes, Gauss-Newton otherwise
-  index_t hessianType = m_options.askInt("PDEEnergyHessian",
-                                         PDEEnergyHessian::Automatic);
-  if (hessianType < PDEEnergyHessian::GaussNewton
-      || hessianType > PDEEnergyHessian::ProjectedNewton) {
-    hessianType = (final && 3 == d) ? PDEEnergyHessian::ProjectedNewton
-                                    : PDEEnergyHessian::GaussNewton;
+  index_t hessianType = m_options.getInt("PDE.EnergyHessian");
+  if (hessianType < Core::EnergyHessian::GaussNewton
+      || hessianType > Core::EnergyHessian::ProjectedNewton) {
+    hessianType = (final && 3 == d) ? Core::EnergyHessian::ProjectedNewton
+                                    : Core::EnergyHessian::GaussNewton;
   }
-  const index_t maxIterations = final ? constants.maxFinalIterations
-                                      : constants.maxUntangleIterations;
-  const T tolerance = final ? T(m_options.askReal("PDEEnergyTol", 1e-11))
-                            : constants.untangleTol;
+  const index_t maxIterations = final ? m_constants.maxFinalIterations
+                                      : m_constants.maxUntangleIterations;
+  const T tolerance = final ? T(m_options.getReal("PDE.EnergyTol"))
+                            : m_constants.untangleTol;
   verboseLog(final ? std::string("\nMinimizing the regularized Winslow "
                                  "energy (final stage)...")
-                   : "\nThe H2 result is folded (min det(J) / mean det(J) = "
+                   : "\nThe starting point is folded (min det(J) / mean det(J) = "
                          + std::to_string(Dmin / m_meanDet)
                          + "). Start untangling...", m_verbose);
 
@@ -3539,12 +3543,12 @@ void gsRegularizedStage<d, T>::minimizeEnergy(gsVector<T> &x, T &Dmin,
   index_t iter = 0;
   for (; iter != maxIterations; ++iter) {
     const T negPart = std::min<T>(Dmin, 0);
-    eps = math::sqrt(m_epsMin * m_epsMin + constants.epsFactor
-                     * constants.epsFactor * negPart * negPart);
+    eps = math::sqrt(m_epsMin * m_epsMin + m_constants.epsFactor
+                     * m_constants.epsFactor * negPart * negPart);
     // to convergence, once unfolded: chi ~ det(J) everywhere, so that the
     // energy acts as a barrier against degenerate cells (with eps > det(J)
     // it is bounded there)
-    if (final && Dmin > 0) { eps = std::min(eps, constants.epsShrink * Dmin); }
+    if (final && Dmin > 0) { eps = std::min(eps, m_constants.epsShrink * Dmin); }
 
     timer.restart();
     const T W0 = energy(x);
@@ -3552,12 +3556,12 @@ void gsRegularizedStage<d, T>::minimizeEnergy(gsVector<T> &x, T &Dmin,
     timeEnergy += timer.stop();
     m_fem.setFreeVector(x);
     newtonDirection(eps, hessianType, solver, gradient, hessian, direction);
-    if (PDEEnergyHessian::GaussNewton != hessianType
+    if (Core::EnergyHessian::GaussNewton != hessianType
         && (!direction.allFinite() || !(gradient.dot(direction) < 0))) {
       // no descent direction from the (projected) Newton step:
       // Gauss-Newton step instead
       ++numNewtonFallbacks;
-      newtonDirection(eps, PDEEnergyHessian::GaussNewton, solver, gradient,
+      newtonDirection(eps, Core::EnergyHessian::GaussNewton, solver, gradient,
                       hessian, direction);
     }
 
@@ -3568,13 +3572,13 @@ void gsRegularizedStage<d, T>::minimizeEnergy(gsVector<T> &x, T &Dmin,
     timer.restart();
     T step = 1, W1 = W0, D1 = Dmin;
     bool accepted = false;
-    for (index_t ib = 0; ib != constants.maxBacktracking; ++ib, step *= 0.5) {
+    for (index_t ib = 0; ib != m_constants.maxBacktracking; ++ib, step *= 0.5) {
       trial = x + step * direction;
       W1 = energy(trial);
       ++numEnergyEvaluations;
-      if (!(W1 <= W0 + constants.armijo * step * slope)) { continue; }
+      if (!(W1 <= W0 + m_constants.armijo * step * slope)) { continue; }
       D1 = minDet(trial);
-      if (Dmin > 0 && !(D1 >= constants.stepFraction * Dmin)) { continue; }
+      if (Dmin > 0 && !(D1 >= m_constants.stepFraction * Dmin)) { continue; }
       accepted = true;
       break;
     }
@@ -3585,7 +3589,8 @@ void gsRegularizedStage<d, T>::minimizeEnergy(gsVector<T> &x, T &Dmin,
     x = trial;
     Dmin = D1;
     if (m_verbose > 1) {
-      gsInfo << "  untangling iter " << iter << ": energy = " << W1
+      gsInfo << (final ? "  energy iter " : "  untangling iter ") << iter
+             << ": energy = " << W1
              << ", min det(J) / mean det(J) = " << Dmin / m_meanDet << "\n";
     }
     // unfolded and the energy has settled
@@ -3594,12 +3599,13 @@ void gsRegularizedStage<d, T>::minimizeEnergy(gsVector<T> &x, T &Dmin,
       break;
     }
     // still folded, but no progress any more: give up
-    if (!(Dmin > 0) && (W0 - W1) <= constants.stagnationTol * W0) {
+    if (!(Dmin > 0) && (W0 - W1) <= m_constants.stagnationTol * W0) {
       ++iter;
       break;
     }
   }
-  verboseLog("Untangling finished after " + std::to_string(iter)
+  verboseLog((final ? "Energy minimization finished after " : "Untangling finished after ")
+                 + std::to_string(iter)
                  + " iterations, min det(J) / mean det(J) = "
                  + std::to_string(Dmin / m_meanDet), m_verbose);
   if (m_verbose > 0) {
@@ -3645,15 +3651,15 @@ bool gsRegularizedStage<d, T>::solveH1(gsVector<T> &x) {
   param.m = m_options.askInt("AAwindowsize", 5);
   param.usePreconditioning = true;
   param.updatePreconditionerStep = m_options.askInt("N_update", 5);
-  param.epsilon = constants.h1Tolerance;
+  param.epsilon = m_constants.h1Tolerance;
   if (m_iterative) {
     param.linearSolver =
         gsBarrierCore<d, T>::gmresPreconditioner(m_options, false);
     param.blocks = gsBarrierCore<d, T>::componentOfDofs(m_mp, m_mapper);
     param.nodes = gsBarrierCore<d, T>::nodeOfDofs(m_mp, m_mapper);
-    param.innerMaxIterations = m_options.askInt("PDEInnerMaxIterations", 100);
+    param.innerMaxIterations = m_options.getInt("PDE.InnerMaxIterations");
   }
-  param.safeguardFactor = m_options.askReal("PDEH1Safeguard", 100);
+  param.safeguardFactor = m_options.getReal("PDE.H1Safeguard");
 
   preAApp::AndersonAcceleration<T> solver(param);
   if (m_verbose > 1) { solver.enableIterationInfoPrinting(); }
@@ -3662,15 +3668,23 @@ bool gsRegularizedStage<d, T>::solveH1(gsVector<T> &x) {
   // Backtracking: an unfolded parameterization stays unfolded
   index_t numShortenedSteps = 0;
   double timeFilter = 0;
+  // the last accepted iterate and its min det(J): usually the next \a from
+  gsVector<T> accepted;
+  T acceptedMinDet = 0;
   solver.setStepFilter([&](gsVector<T> const &from, gsVector<T> &to) {
     gsStopwatch filterTimer;
-    const T bound = constants.stepFraction * minDet(from);
+    const bool known = accepted.size() == from.size()
+                       && (accepted.array() == from.array()).all();
+    const T bound = m_constants.stepFraction * (known ? acceptedMinDet : minDet(from));
     const gsVector<T> direction = to - from;
     T step = 1;
-    for (index_t ib = 0; ib != constants.maxBacktracking; ++ib, step *= 0.5) {
+    for (index_t ib = 0; ib != m_constants.maxBacktracking; ++ib, step *= 0.5) {
       to = from + step * direction;
-      if (minDet(to) >= bound) {
+      const T toMinDet = minDet(to);
+      if (toMinDet >= bound) {
         if (ib > 0) { ++numShortenedSteps; }
+        accepted = to;
+        acceptedMinDet = toMinDet;
         timeFilter += filterTimer.stop();
         return true;
       }
@@ -3715,25 +3729,30 @@ gsBarrierCore<d, T>::regularizedStage(const gsMultiPatch<T> &mp,
     return result;
   };
 
-  // 1. Energy minimization: untangling if folded. With PDEEnergyFinal (set for
+  // 1. Energy minimization: untangling if folded. With PDE.EnergyFinal (set for
   //    free interfaces) it is the last stage: it also runs for an unfolded
   //    start, to convergence, and the H1 stage is skipped.
-  const bool energyFinal = options.askSwitch("PDEEnergyFinal", false);
+  const bool energyFinal = options.getSwitch("PDE.EnergyFinal");
   T Dmin = stage.minDet(x);
+  if (stage.mixedOrientation()) {
+    verboseLog("The patches are oriented differently; det(J) is taken with "
+               "the orientation of each patch.", options.askInt("Verbose", 0));
+  }
   if (!(Dmin > 0) || energyFinal) { stage.minimizeEnergy(x, Dmin, energyFinal); }
-  if (energyFinal || !options.askSwitch("needPDEH1", true)) { return finish(x); }
   if (!(Dmin > 0)) {
-    gsWarn << "The parameterization could not be untangled; the H1 "
-              "discretization is skipped.\n";
+    gsWarn << "The parameterization could not be untangled: det(J) <= 0 at "
+              "some quadrature nodes"
+           << (energyFinal ? "" : "; the H1 discretization is skipped") << ".\n";
     return finish(x);
   }
+  if (energyFinal || !options.askSwitch("needPDEH1", true)) { return finish(x); }
 
   // 2. Regularized H1 stage. If it does not converge: back to its start,
   //    which is only unfolded at the quadrature nodes and may be barely so;
   //    the energy is then minimized to convergence from there
-  //    (PDEEnergyFallback).
+  //    (PDE.EnergyFallback).
   if (!stage.solveH1(x)) {
-    if (options.askSwitch("PDEEnergyFallback", true)) {
+    if (options.getSwitch("PDE.EnergyFallback")) {
       verboseLog("The energy is minimized instead.", options.askInt("Verbose", 0));
       Dmin = stage.minDet(x);
       stage.minimizeEnergy(x, Dmin, true);
@@ -3762,29 +3781,13 @@ class jacScaledLxH1_expr;
 template<class E>
 class jacScaledLxH1DiagBlock_expr;
 
-/*
+/**
 
-  Expression for the product of the jacob of space and matrix A. Return term
-  is a column vector (d*n x 1). The result should be the same as the result
-  from jac(space) % A, whereas avoids redundant multiply with zero-value components.
-
- For 2D case:
- frprod2(space,A) = [a_{11}*dN_1/dxi_1, a_{12}*dN_1/dxi_2, a_{11}*dN_2/dxi_1,
- a_{12}*dN_2/dxi_2,...,a_{11}*dN_n/dxi_1, a_{12}*dN_n/dxi_2, a_{21}*dN_1/dxi_1,
- a_{22}*dN_1/dxi_2, a_{21}*dN_2/dxi_1, a_{22}*dN_2/dxi_2,...,a_{21}*dN_n/dxi_1,
- a_{22}*dN_n/dxi_2]
- For 3D case:
- frprod2(space,A) = [a_{11}*dN_1/dxi_1, a_{12}*dN_1/dxi_2, a_{13}*dN_1/dxi_3,...
- a_{11}*dN_2/dxi_1, a_{12}*dN_2/dxi_1, a_{13}*dN_2/dxi_3,...,
- a_{11}*dN_n/dxi_1, a_{12}*dN_n/dxi_1, a_{13}*dN_n/dxi_3,
- a_{21}*dN_1/dxi_1, a_{22}*dN_1/dxi_2, a_{23}*dN_1/dxi_3,...
- a_{21}*dN_2/dxi_1, a_{22}*dN_2/dxi_1, a_{23}*dN_2/dxi_3,...,
- a_{21}*dN_n/dxi_1, a_{22}*dN_n/dxi_1, a_{23}*dN_n/dxi_3,
- a_{31}*dN_1/dxi_1, a_{32}*dN_1/dxi_2, a_{33}*dN_1/dxi_3,...
- a_{31}*dN_2/dxi_1, a_{32}*dN_2/dxi_1, a_{33}*dN_2/dxi_3,...,
- a_{31}*dN_n/dxi_1, a_{32}*dN_n/dxi_1, a_{33}*dN_n/dxi_3,]
-
-NOTE: _u should be a space, _v should NOT be a space (fix with assert)
+  Products of the test functions of the space u with the vector
+  expression M: one entry per active function phi_i and component c,
+  phi_i * M_c, i.e. the element vector of the weak form int phi M dxi
+  (column vector, d*n x 1). Used for the residual of the H2
+  discretization, M = L(x).
 
  */
 template<typename E1, typename E2>
@@ -3802,18 +3805,12 @@ class frprod3_expr : public _expr<frprod3_expr<E1, E2> > {
  public:
 
   frprod3_expr(_expr<E1> const &u, _expr<E2> const &v)
-      : _u(u), _v(v) {
-    // GISMO_ASSERT(_u.rows() == _v.rows(),
-    //              "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in % operation");
-    // GISMO_ASSERT(_u.cols() == _v.cols(),
-    //              "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in % operation");
-  }
+      : _u(u), _v(v) {}
 
   const gsMatrix<Scalar> &eval(const index_t k) const //todo: specialize for nb==1
   {
     auto A = _v.eval(k);
     b = _u.eval(k);
-//        gsDebugVar(b);
 
     res.noalias() = b * A;
     return res;
@@ -3824,8 +3821,6 @@ class frprod3_expr : public _expr<frprod3_expr<E1, E2> > {
 
   void parse(gsExprHelper<Scalar> &evList) const {
     _v.parse(evList);
-//        evList.add(_u);
-//        _u.data().flags |= NEED_GRAD;
     _u.parse(evList);
   }
 
@@ -3849,7 +3844,7 @@ frprod3_expr<E1, E2> const frprod3(E1 const &u,
   return frprod3_expr<E1, E2>(u, M);
 }
 
-/*
+/**
   Expression for Jacobian matrix for PDE-based parameterization construction
 */
 template<class E>
@@ -3869,8 +3864,6 @@ class jacScaledLx_expr : public _expr<jacScaledLx_expr<E> > {
   mutable gsMatrix<Scalar> res, derivGeom, deriv2Geom, derivBasis, deriv2Basis;
   mutable gsMatrix<Scalar> dg11dx, dg11dy, dg22dx, dg22dy, dg12dx, dg12dy;
   mutable gsMatrix<Scalar> commonTerm, dLxdx, dLxdy, dLydx, dLydy;
-
-//  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   const gsMatrix<Scalar> &eval(const index_t k) const {
     gsMatrix<Scalar> basis = _u.data().values[0].col(k);
@@ -3957,7 +3950,7 @@ class jacScaledLx_expr : public _expr<jacScaledLx_expr<E> > {
   }
 };
 
-/*
+/**
   Expression for Jacobian matrix (diagonal part) for PDE-based parameterization construction
 */
 template<class E>
@@ -3978,8 +3971,6 @@ class jacScaledLxDiag_expr : public _expr<jacScaledLxDiag_expr<E> > {
   mutable gsMatrix<Scalar> res, derivGeom, deriv2Geom, derivBasis, deriv2Basis;
   mutable gsMatrix<Scalar> dg11dx, dg11dy, dg22dx, dg22dy, dg12dx, dg12dy;
   mutable gsMatrix<Scalar> commonTerm, dLxdx, dLydy;
-
-//  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   const gsMatrix<Scalar> &eval(const index_t k) const {
     derivBasis = _u.data().values[1].col(k).transpose();
@@ -4059,7 +4050,7 @@ class jacScaledLxDiag_expr : public _expr<jacScaledLxDiag_expr<E> > {
   }
 };
 
-/*
+/**
   Expression for Jacobian matrix (diagonal block) for PDE-based parameterization construction
 */
 template<class E>
@@ -4082,11 +4073,7 @@ class jacScaledLxDiagBlock_expr : public _expr<jacScaledLxDiagBlock_expr<E> > {
   mutable gsMatrix<Scalar> dg11dx, dg11dy, dg22dx, dg22dy, dg12dx, dg12dy;
   mutable gsMatrix<Scalar> commonTerm, dLxdx, dLydy;
 
-//  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
   const gsMatrix<Scalar> &eval(const index_t k) const {
-//        basis = _u.data().values[0].col(k);
-
     derivBasis = _u.data().values[1].col(k).transpose();
     deriv2Basis = _u.data().values[2].col(k).transpose();
 
@@ -4163,7 +4150,7 @@ class jacScaledLxDiagBlock_expr : public _expr<jacScaledLxDiagBlock_expr<E> > {
   }
 };
 
-/*
+/**
   Expression for Jacobian matrix (in H1 space) for PDE-based parameterization construction
 */
 template<class E>
@@ -4182,8 +4169,6 @@ class jacScaledLxH1_expr : public _expr<jacScaledLxH1_expr<E> > {
       : _u(u), _G(G) {}
 
   mutable gsMatrix<Scalar> res, derivBasis;
-
-//  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   const gsMatrix<Scalar> &eval(const index_t k) const {
     gsMatrix<Scalar> jacMat = _G.data().values[1].reshapeCol(k,
@@ -4262,7 +4247,7 @@ class jacScaledLxH1_expr : public _expr<jacScaledLxH1_expr<E> > {
   }
 };
 
-/*
+/**
   Expression for Jacobian matrix (in H1 space) for PDE-based parameterization construction
 */
 template<class E>
@@ -4283,8 +4268,6 @@ class jacScaledLxH1DiagBlock_expr
 
   mutable gsMatrix<Scalar> res, derivBasis;
 
-//  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-
   const gsMatrix<Scalar> &eval(const index_t k) const {
     gsMatrix<Scalar> jacMat = _G.data().values[1].reshapeCol(k,
                                                              _G.data().dim.first,
@@ -4296,9 +4279,8 @@ class jacScaledLxH1DiagBlock_expr
     gsMatrix<Scalar> invJacHatG = invJacMat * derivBasis;
 
     const index_t N = _u.cardinality() / _u.dim(); // _u.data().actives.rows()
+    // diagonal blocks only: d(L_x)/dx and d(L_y)/dy
     gsMatrix<Scalar> jacdLxdx(N, N);
-//        gsMatrix<Scalar> jacdLxdy(N,N);
-//        gsMatrix<Scalar> jacdLydx(N,N);
     gsMatrix<Scalar> jacdLydy(N, N);
 
     gsMatrix<> temp(2, N);
@@ -4311,7 +4293,6 @@ class jacScaledLxH1DiagBlock_expr
       dinvJacdx.row(1) = invJacHatG(1, i) * invJacMat.row(0);
       jacdLxdx.col(i) = -temp.transpose() * invJacMat.col(0)
           - invJacHatG.transpose() * dinvJacdx.col(0);
-//            jacdLydx.col(i) = -temp.transpose()*invJacMat.col(1) - invJacHatG.transpose()*dinvJacdx.col(1);
 
       // for y-direction
       temp.row(0) = invJacHatG(0, i) * invJacHatG.row(1);
@@ -4319,7 +4300,6 @@ class jacScaledLxH1DiagBlock_expr
       gsMatrix<Scalar> dinvJacdy(2, 2);
       dinvJacdy.row(0) = invJacHatG(0, i) * invJacMat.row(1);
       dinvJacdy.row(1) = invJacHatG(1, i) * invJacMat.row(1);
-//            jacdLxdy.col(i) = -temp.transpose()*invJacMat.col(0) - invJacHatG.transpose()*dinvJacdy.col(0);
       jacdLydy.col(i) = -temp.transpose() * invJacMat.col(1)
           - invJacHatG.transpose() * dinvJacdy.col(1);
     }
@@ -4327,8 +4307,6 @@ class jacScaledLxH1DiagBlock_expr
     res.resize(_u.cardinality(), _u.cardinality());
     res.setZero();
     res.topLeftCorner(N, N) = jacdLxdx;
-//        res.topRightCorner(N,N) = jacdLxdy;
-//        res.bottomLeftCorner(N,N) = jacdLydx;
     res.bottomRightCorner(N, N) = jacdLydy;
 
     return res;
@@ -4359,7 +4337,7 @@ class jacScaledLxH1DiagBlock_expr
   }
 };
 
-/*
+/**
 
   Expression for the product of the jacob of space and matrix A. Return term
   is a column vector (d*n x 1). The result should be the same as the result
@@ -4399,12 +4377,7 @@ class frprod2_expr : public _expr<frprod2_expr<E1, E2> > {
  public:
 
   frprod2_expr(_expr<E1> const &u, _expr<E2> const &v)
-      : _u(u), _v(v) {
-    // GISMO_ASSERT(_u.rows() == _v.rows(),
-    //              "Wrong dimensions "<<_u.rows()<<"!="<<_v.rows()<<" in % operation");
-    // GISMO_ASSERT(_u.cols() == _v.cols(),
-    //              "Wrong dimensions "<<_u.cols()<<"!="<<_v.cols()<<" in % operation");
-  }
+      : _u(u), _v(v) {}
 
   const gsMatrix<Scalar> &eval(const index_t k) const //todo: specialize for nb==1
   {
@@ -4414,7 +4387,6 @@ class frprod2_expr : public _expr<frprod2_expr<E1, E2> > {
     res.noalias() = A * bGrads;
     res.transposeInPlace();
     res.resize(1, _u.cardinality());
-//        res.reshaped(1,_u.cardinality());
     res.transposeInPlace();
     return res;
   }
@@ -4489,7 +4461,7 @@ frprod2_expr<E1, E2> const frprod2(E1 const &u,
   return frprod2_expr<E1, E2>(u, M);
 }
 
-/*
+/**
   Residual of the (scaled) elliptic grid generation equations in
   non-divergence form (H2 discretization), in two and three dimensions:
 
@@ -4569,7 +4541,7 @@ class scaledEGGRes_expr : public _expr<scaledEGGRes_expr<E> > {
   }
 };
 
-/*
+/**
   Exact Jacobian matrix of scaledEGGRes_expr with respect to the control
   points, in two and three dimensions.
   mode 0: full matrix, 1: diagonal only, 2: diagonal blocks only
@@ -4686,7 +4658,7 @@ class scaledEGGJac_expr : public _expr<scaledEGGJac_expr<E> > {
   }
 };
 
-/*
+/**
   Residual of the H1 discretization of the PDE-based parameterization
   (cf. jacU % invJac with invJac = jac(G).inv(), jacU = jac(u) * invJac),
   where 1/det(J) is replaced by 1/chi(det(J),eps):
@@ -4768,7 +4740,7 @@ class regularizedH1Res_expr : public _expr<regularizedH1Res_expr<E> > {
   }
 };
 
-/*
+/**
   Exact Jacobian matrix of regularizedH1Res_expr with respect to the control
   points (optionally only its diagonal blocks). Two and three dimensions.
 */
@@ -4871,7 +4843,7 @@ class regularizedH1Jac_expr : public _expr<regularizedH1Jac_expr<E> > {
   }
 };
 
-/*
+/**
   Gradient (isHessian = false) and Gauss-Newton Hessian (isHessian = true) of
   Garanzha's regularized Winslow functional in dimension d = 2, 3,
 
@@ -4986,7 +4958,7 @@ class garanzhaWinslow_expr
   }
 };
 
-/*
+/**
   Density of Garanzha's regularized Winslow functional in dimension d = 2, 3:
 
      |J|_F^2 / chi(det(J),eps)^(2/d)
@@ -5163,13 +5135,9 @@ public:
     Space = E1::Space
   }; // == E2::Space
 
-  //  const Scalar eval(const index_t k) const { return (_u.eval(k) > 0 ? _v.eval (k) : _w.eval(k)); }
-
   const Temporary_t eval(const index_t k) const {
     return (_u.eval(k) > 0 ? _v.eval(k) : _w.eval(k));
   }
-
-  // { res = eval_impl(_u,_v,_w,k); return  res;}
 
   index_t rows() const { return _v.rows(); }
   index_t cols() const { return _v.cols(); }
@@ -5192,4 +5160,418 @@ EIGEN_STRONG_INLINE ternary_expr<E0, E1, E2> ternary(const E0 &u,
 }
 
 } // namespace expr
+
+namespace preAApp {
+
+template<typename Scalar>
+void NodalAMG<Scalar>::setNodes(const std::vector<index_t> &nodes, const std::vector<index_t> &components) {
+  GISMO_ENSURE(nodes.size() == components.size(),
+               "NodalAMG: nodes and components differ in size.");
+  const index_t n = nodes.size();
+  // order the unknowns node by node
+  m_perm.resize(n);
+  for (index_t i = 0; i != n; ++i) { m_perm[i] = i; }
+  std::stable_sort(m_perm.begin(), m_perm.end(), [&](index_t a, index_t b) {
+    return nodes[a] != nodes[b] ? nodes[a] < nodes[b]
+                                : components[a] < components[b];
+  });
+  m_inv.resize(n);
+  for (index_t i = 0; i != n; ++i) { m_inv[m_perm[i]] = i; }
+  m_nodePtr0.assign(1, 0);
+  m_comp0.resize(n);
+  for (index_t i = 0; i != n; ++i) {
+    m_comp0[i] = components[m_perm[i]];
+    if (i > 0 && nodes[m_perm[i]] != nodes[m_perm[i - 1]]) {
+      m_nodePtr0.push_back(i);
+    }
+  }
+  if (n > 0) { m_nodePtr0.push_back(n); }
+}
+
+template<typename Scalar>
+template<typename MatType>
+NodalAMG<Scalar> &NodalAMG<Scalar>::compute(const MatType &mat) {
+  const index_t n = mat.rows();
+  GISMO_ENSURE(index_t(m_perm.size()) == n && mat.cols() == n,
+               "NodalAMG: the nodes of the unknowns are not set.");
+  m_levels.clear();
+  m_levels.emplace_back();
+  {
+    Level &fine = m_levels.back();
+    std::vector<gsEigen::Triplet<Scalar, index_t> > entries;
+    entries.reserve(mat.nonZeros());
+    for (index_t j = 0; j < mat.outerSize(); ++j)
+      for (typename MatType::InnerIterator it(mat, j); it; ++it)
+        entries.emplace_back(m_inv[it.row()], m_inv[it.col()], it.value());
+    fine.A.resize(n, n);
+    fine.A.setFromTriplets(entries.begin(), entries.end());
+    fine.nodePtr = m_nodePtr0;
+    fine.comp = m_comp0;
+  }
+  m_info = gsEigen::Success;
+  while (true) {
+    Level &L = m_levels.back();
+    if (!blockDiagonalInverse(L)) { m_info = gsEigen::NumericalIssue; }
+    const index_t numNodes = L.nodePtr.size() - 1;
+    if (L.A.rows() <= m_settings.coarseSize
+        || index_t(m_levels.size()) >= m_settings.maxLevels) { break; }
+    std::vector<index_t> agg;
+    const index_t numAgg = aggregate(L, agg);
+    // stop if the aggregation hardly coarsens
+    if (numAgg == 0 || 10 * numAgg > 9 * numNodes) { break; }
+    Level C;
+    L.P = prolongation(L, agg, numAgg, C);
+    L.R = RowMatrix(L.P.transpose());
+    const RowMatrix AP = L.A * L.P;
+    C.A = RowMatrix(L.R * AP);
+    m_levels.push_back(give(C));
+  }
+  const Level &coarsest = m_levels.back();
+  m_coarseDirect = (coarsest.A.rows() <= 4 * m_settings.coarseSize);
+  if (m_coarseDirect && coarsest.A.rows() > 0) {
+    m_coarseLU.compute(Dense(coarsest.A));
+    if (!m_coarseLU.matrixLU().diagonal().allFinite()
+        || m_coarseLU.matrixLU().diagonal().cwiseAbs().minCoeff() == Scalar(0)) {
+      m_info = gsEigen::NumericalIssue;
+    }
+  }
+  return *this;
+}
+
+template<typename Scalar>
+Scalar NodalAMG<Scalar>::operatorComplexity() const {
+  Scalar sum = 0;
+  for (const Level &L : m_levels) { sum += L.A.nonZeros(); }
+  return m_levels.empty() ? Scalar(0)
+                          : sum / Scalar(m_levels.front().A.nonZeros());
+}
+
+template<typename Scalar>
+void NodalAMG<Scalar>::apply(const gsMatrix<Scalar> &input, gsMatrix<Scalar> &x) const {
+  const index_t n = m_perm.size();
+  x.resize(input.rows(), input.cols());
+  if (0 == n) { return; }
+  Vector b(n), y;
+  for (index_t j = 0; j != input.cols(); ++j) {
+    for (index_t i = 0; i != n; ++i) { b(i) = input(m_perm[i], j); }
+    cycle(0, b, y);
+    for (index_t i = 0; i != n; ++i) { x(m_perm[i], j) = y(i); }
+  }
+}
+
+template<typename Scalar>
+bool NodalAMG<Scalar>::blockDiagonalInverse(Level &L) const {
+  const index_t numNodes = L.nodePtr.size() - 1;
+  L.dinvPtr.assign(numNodes + 1, 0);
+  for (index_t I = 0; I != numNodes; ++I) {
+    const index_t bs = L.nodePtr[I + 1] - L.nodePtr[I];
+    L.dinvPtr[I + 1] = L.dinvPtr[I] + bs * bs;
+  }
+  L.dinv.assign(L.dinvPtr.back(), Scalar(0));
+  bool regular = true;
+  for (index_t I = 0; I != numNodes; ++I) {
+    const index_t s = L.nodePtr[I], bs = L.nodePtr[I + 1] - s;
+    Dense block = Dense::Zero(bs, bs);
+    for (index_t i = s; i != s + bs; ++i)
+      for (typename RowMatrix::InnerIterator it(L.A, i); it; ++it)
+        if (it.col() >= s && it.col() < s + bs) {
+          block(i - s, it.col() - s) = it.value();
+        }
+    gsEigen::FullPivLU<Dense> lu(block);
+    Dense inverse;
+    if (lu.isInvertible()) {
+      inverse = lu.inverse();
+    } else {
+      inverse = Dense::Zero(bs, bs);
+      for (index_t k = 0; k != bs; ++k) {
+        if (block(k, k) != Scalar(0)) { inverse(k, k) = 1 / block(k, k); }
+        else { regular = false; }
+      }
+    }
+    for (index_t r = 0; r != bs; ++r)
+      for (index_t c = 0; c != bs; ++c)
+        L.dinv[L.dinvPtr[I] + r * bs + c] = inverse(r, c);
+  }
+  return regular;
+}
+
+template<typename Scalar>
+index_t NodalAMG<Scalar>::aggregate(const Level &L, std::vector<index_t> &agg) const {
+  const index_t numNodes = L.nodePtr.size() - 1;
+  std::vector<index_t> nodeOf(L.A.rows());
+  for (index_t I = 0; I != numNodes; ++I)
+    for (index_t i = L.nodePtr[I]; i != L.nodePtr[I + 1]; ++i) { nodeOf[i] = I; }
+  // Frobenius norms of the node blocks; pass 0: diagonal blocks,
+  // pass 1: strong off-diagonal couplings
+  std::vector<Scalar> diag(numNodes, 0), acc(numNodes, 0);
+  std::vector<char> seen(numNodes, 0);
+  std::vector<index_t> touched;
+  std::vector<std::vector<std::pair<index_t, Scalar> > > strong(numNodes);
+  for (index_t pass = 0; pass != 2; ++pass) {
+    for (index_t I = 0; I != numNodes; ++I) {
+      touched.clear();
+      for (index_t i = L.nodePtr[I]; i != L.nodePtr[I + 1]; ++i)
+        for (typename RowMatrix::InnerIterator it(L.A, i); it; ++it) {
+          const index_t J = nodeOf[it.col()];
+          if (!seen[J]) { seen[J] = 1; touched.push_back(J); }
+          acc[J] += it.value() * it.value();
+        }
+      for (index_t J : touched) {
+        const Scalar norm = math::sqrt(acc[J]);
+        acc[J] = 0;
+        seen[J] = 0;
+        if (0 == pass) {
+          if (J == I) { diag[I] = norm; }
+        } else if (J != I && norm > m_settings.theta * math::sqrt(diag[I] * diag[J])) {
+          strong[I].emplace_back(J, norm);
+          strong[J].emplace_back(I, norm);
+        }
+      }
+    }
+  }
+  for (auto &list : strong) { // remove duplicates, keep the max. strength
+    std::sort(list.begin(), list.end());
+    size_t k = 0;
+    for (size_t m = 0; m != list.size(); ++m) {
+      if (k > 0 && list[k - 1].first == list[m].first) {
+        list[k - 1].second = std::max(list[k - 1].second, list[m].second);
+      } else {
+        list[k++] = list[m];
+      }
+    }
+    list.resize(k);
+  }
+  agg.assign(numNodes, -1);
+  index_t numAgg = 0;
+  // 1. a node and its strong neighbours, if none of them is aggregated yet
+  for (index_t I = 0; I != numNodes; ++I) {
+    if (agg[I] >= 0) { continue; }
+    bool free = true;
+    for (const auto &e : strong[I]) {
+      if (agg[e.first] >= 0) { free = false; break; }
+    }
+    if (!free) { continue; }
+    agg[I] = numAgg;
+    for (const auto &e : strong[I]) { agg[e.first] = numAgg; }
+    ++numAgg;
+  }
+  // 2. the remaining nodes join the most strongly coupled aggregate of 1.
+  const std::vector<index_t> first = agg;
+  for (index_t I = 0; I != numNodes; ++I) {
+    if (agg[I] >= 0) { continue; }
+    Scalar best = -1;
+    for (const auto &e : strong[I]) {
+      if (first[e.first] >= 0 && e.second > best) {
+        best = e.second;
+        agg[I] = first[e.first];
+      }
+    }
+  }
+  // 3. nodes without strong couplings to aggregates
+  for (index_t I = 0; I != numNodes; ++I) {
+    if (agg[I] >= 0) { continue; }
+    agg[I] = numAgg;
+    for (const auto &e : strong[I]) {
+      if (agg[e.first] < 0) { agg[e.first] = numAgg; }
+    }
+    ++numAgg;
+  }
+  return numAgg;
+}
+
+template<typename Scalar>
+typename NodalAMG<Scalar>::RowMatrix NodalAMG<Scalar>::prolongation(const Level &L, const std::vector<index_t> &agg, const index_t numAgg, Level &C) const {
+  const index_t numNodes = L.nodePtr.size() - 1;
+  // (component, number of unknowns) of every aggregate
+  std::vector<std::vector<std::pair<index_t, index_t> > > comps(numAgg);
+  for (index_t I = 0; I != numNodes; ++I)
+    for (index_t i = L.nodePtr[I]; i != L.nodePtr[I + 1]; ++i) {
+      std::vector<std::pair<index_t, index_t> > &list = comps[agg[I]];
+      size_t k = 0;
+      while (k != list.size() && list[k].first != L.comp[i]) { ++k; }
+      if (k == list.size()) { list.emplace_back(L.comp[i], 1); }
+      else { ++list[k].second; }
+    }
+  C.nodePtr.assign(numAgg + 1, 0);
+  C.comp.clear();
+  for (index_t a = 0; a != numAgg; ++a) {
+    std::sort(comps[a].begin(), comps[a].end());
+    C.nodePtr[a + 1] = C.nodePtr[a] + comps[a].size();
+    for (const auto &p : comps[a]) { C.comp.push_back(p.first); }
+  }
+  std::vector<gsEigen::Triplet<Scalar, index_t> > entries;
+  entries.reserve(L.A.rows());
+  for (index_t I = 0; I != numNodes; ++I)
+    for (index_t i = L.nodePtr[I]; i != L.nodePtr[I + 1]; ++i) {
+      const index_t a = agg[I];
+      for (size_t k = 0; k != comps[a].size(); ++k)
+        if (comps[a][k].first == L.comp[i]) {
+          entries.emplace_back(i, C.nodePtr[a] + k,
+                               1 / math::sqrt(Scalar(comps[a][k].second)));
+        }
+    }
+  RowMatrix P(L.A.rows(), C.nodePtr.back());
+  P.setFromTriplets(entries.begin(), entries.end());
+  if (!m_settings.smoothProlongation) { return P; }
+
+  // P <- (I - omega D^{-1} A) P, omega = 4 / (3 rho(D^{-1} A))
+  entries.clear();
+  for (index_t I = 0; I != numNodes; ++I) {
+    const index_t s = L.nodePtr[I], bs = L.nodePtr[I + 1] - s;
+    for (index_t r = 0; r != bs; ++r)
+      for (index_t c = 0; c != bs; ++c)
+        entries.emplace_back(s + r, s + c, L.dinv[L.dinvPtr[I] + r * bs + c]);
+  }
+  RowMatrix Dinv(L.A.rows(), L.A.rows());
+  Dinv.setFromTriplets(entries.begin(), entries.end());
+  const RowMatrix DA = Dinv * L.A;
+  Vector v = Vector::Ones(L.A.rows()), w;
+  for (index_t i = 0; i < v.size(); i += 3) { v(i) = Scalar(-0.5); }
+  Scalar rho = 1;
+  for (index_t k = 0; k != 15; ++k) {
+    w = DA * v;
+    rho = w.norm() / v.norm();
+    if (!(rho > 0)) { return P; }
+    v = w / w.norm();
+  }
+  const RowMatrix smoothed = P - (Scalar(4) / (3 * rho)) * RowMatrix(DA * P);
+  return smoothed;
+}
+
+template<typename Scalar>
+void NodalAMG<Scalar>::smooth(const Level &L, const Vector &b, Vector &x, const bool forward) const {
+  const index_t numNodes = L.nodePtr.size() - 1;
+  Vector r;
+  for (index_t k = 0; k != numNodes; ++k) {
+    const index_t I = forward ? k : numNodes - 1 - k;
+    const index_t s = L.nodePtr[I], bs = L.nodePtr[I + 1] - s;
+    r.resize(bs);
+    for (index_t i = s; i != s + bs; ++i) {
+      Scalar sum = b(i);
+      for (typename RowMatrix::InnerIterator it(L.A, i); it; ++it) {
+        sum -= it.value() * x(it.col());
+      }
+      r(i - s) = sum;
+    }
+    const Scalar *D = &L.dinv[L.dinvPtr[I]];
+    for (index_t p = 0; p != bs; ++p) {
+      Scalar dx = 0;
+      for (index_t q = 0; q != bs; ++q) { dx += D[p * bs + q] * r(q); }
+      x(s + p) += dx;
+    }
+  }
+}
+
+template<typename Scalar>
+void NodalAMG<Scalar>::cycle(const size_t l, const Vector &b, Vector &x) const {
+  const Level &L = m_levels[l];
+  if (l + 1 == m_levels.size()) {
+    if (m_coarseDirect) {
+      x = m_coarseLU.solve(b);
+    } else {  // the coarsening stopped early: smoothing only
+      x.setZero(b.size());
+      for (index_t k = 0; k != 2 * m_settings.postSweeps; ++k) {
+        smooth(L, b, x, true);
+        smooth(L, b, x, false);
+      }
+    }
+    return;
+  }
+  x.setZero(b.size());
+  for (index_t k = 0; k != m_settings.preSweeps; ++k) { smooth(L, b, x, true); }
+  const Vector coarseRhs = L.R * (b - L.A * x);
+  Vector coarseSol;
+  cycle(l + 1, coarseRhs, coarseSol);
+  x += L.P * coarseSol;
+  for (index_t k = 0; k != m_settings.postSweeps; ++k) { smooth(L, b, x, false); }
+}
+
+template<typename Scalar>
+void BlockGaussSeidel<Scalar>::setBlocks(const std::vector<index_t> &blocks) {
+  m_blockOf = blocks;
+  const index_t numBlocks = blocks.empty() ? 0
+      : *std::max_element(blocks.begin(), blocks.end()) + 1;
+  m_members.assign(numBlocks, std::vector<index_t>());
+  m_local.resize(blocks.size());
+  for (size_t i = 0; i != blocks.size(); ++i) {
+    m_local[i] = m_members[blocks[i]].size();
+    m_members[blocks[i]].push_back(i);
+  }
+}
+
+template<typename Scalar>
+template<typename MatType>
+BlockGaussSeidel<Scalar> &BlockGaussSeidel<Scalar>::compute(const MatType &mat) {
+  GISMO_ENSURE(m_blockOf.size() == size_t(mat.rows()) && mat.cols() == mat.rows(),
+               "BlockGaussSeidel: the blocks of the unknowns are not set.");
+  const size_t numBlocks = m_members.size();
+  typedef std::vector<gsEigen::Triplet<Scalar, index_t> > Entries;
+  // entries[g][h]: block (g,h) of the lower block triangle
+  std::vector<std::vector<Entries> > entries(numBlocks,
+                                             std::vector<Entries>(numBlocks));
+  for (index_t j = 0; j < mat.outerSize(); ++j) {
+    for (typename MatType::InnerIterator it(mat, j); it; ++it) {
+      const index_t g = m_blockOf[it.row()], h = m_blockOf[it.col()];
+      if (g >= h && it.value() != Scalar(0)) {
+        entries[g][h].emplace_back(m_local[it.row()], m_local[it.col()],
+                                   it.value());
+      }
+    }
+  }
+  m_lower.assign(numBlocks, std::vector<SparseMatrix>(numBlocks));
+  for (size_t g = 0; g != numBlocks; ++g) {
+    for (size_t h = 0; h < g; ++h) {
+      m_lower[g][h].resize(m_members[g].size(), m_members[h].size());
+      m_lower[g][h].setFromTriplets(entries[g][h].begin(),
+                                    entries[g][h].end());
+    }
+  }
+  m_info = gsEigen::Success;
+  m_lu.assign(numBlocks, nullptr);
+  m_amg.assign(numBlocks, nullptr);
+  for (size_t b = 0; b != numBlocks; ++b) {
+    SparseMatrix block(m_members[b].size(), m_members[b].size());
+    block.setFromTriplets(entries[b][b].begin(), entries[b][b].end());
+    if (m_amgBlocks) {
+      std::vector<index_t> nodes(m_members[b].size()), zero(nodes.size(), 0);
+      for (size_t i = 0; i != nodes.size(); ++i) { nodes[i] = i; }
+      m_amg[b].reset(new NodalAMG<Scalar>());
+      m_amg[b]->setNodes(nodes, zero);
+      m_amg[b]->compute(block);
+      if (m_amg[b]->info() != gsEigen::Success) { m_info = m_amg[b]->info(); }
+    } else {
+      m_lu[b].reset(new gsEigen::SparseLU<SparseMatrix>());
+      m_lu[b]->compute(block);
+      if (m_lu[b]->info() != gsEigen::Success) { m_info = m_lu[b]->info(); }
+    }
+  }
+  return *this;
+}
+
+template<typename Scalar>
+template<typename Rhs>
+gsVector<Scalar> BlockGaussSeidel<Scalar>::solve(const gsEigen::MatrixBase<Rhs> &rhs) const {
+  gsVector<Scalar> result(rhs.rows());
+  gsMatrix<Scalar> blockRhs;
+  std::vector<gsMatrix<Scalar> > blockSol(m_members.size());
+  for (size_t b = 0; b != m_members.size(); ++b) {
+    const std::vector<index_t> &members = m_members[b];
+    blockRhs.resize(members.size(), 1);
+    for (size_t i = 0; i != members.size(); ++i) { blockRhs(i) = rhs(members[i]); }
+    for (size_t h = 0; h < b; ++h) { blockRhs -= m_lower[b][h] * blockSol[h]; }
+    if (m_amgBlocks) { m_amg[b]->apply(blockRhs, blockSol[b]); }
+    else { blockSol[b] = m_lu[b]->solve(blockRhs); }
+    for (size_t i = 0; i != members.size(); ++i) { result(members[i]) = blockSol[b](i); }
+  }
+  return result;
+}
+
+template<typename Scalar>
+void BlockGaussSeidel<Scalar>::apply(const gsMatrix<Scalar> &input, gsMatrix<Scalar> &x) const {
+  x.resize(input.rows(), input.cols());
+  for (index_t j = 0; j != input.cols(); ++j) { x.col(j) = solve(input.col(j)); }
+}
+
+} // namespace preAApp
+
 }// namespace gismo

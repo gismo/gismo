@@ -10,6 +10,8 @@ In the gismo/examples sub-directory we find:
 
 - \subpage adaptRefinementThb_example
 
+- \subpage as_parameterization_example
+
 - \subpage assembly_example
 
 - \subpage basis_example

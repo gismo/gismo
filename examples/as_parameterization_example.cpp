@@ -13,6 +13,7 @@
 
 #include <gismo.h>
 #include <gsAssembler/gsDofMapperCreator.h>
+#include <gsModeling/gsBarrierCore.h>
 
 using namespace gismo;
 
@@ -63,8 +64,10 @@ void makeMapperFreeInterface(const gsMultiPatch<T> &mp, gsDofMapper &mapper) {
              });
 }
 
-/// Constructs the parameterization of \a mp with gsBarrierPatch<d>; the
-/// entries of \a settings override the default options.
+/// Constructs the parameterization of \a mp with gsBarrierPatch<d>. The
+/// entries of \a settings (here: from the command line) override the
+/// default options of gsBarrierPatch; a name that gsBarrierPatch does not
+/// know is an error rather than silently ignored.
 template<short_t d, typename T>
 gsMultiPatch<T> computeParameterization(const gsMultiPatch<T> &mp,
                                         bool fixInterfaces,
@@ -151,15 +154,18 @@ int main(int argc, char *argv[]) {
   index_t AAPreconditionType = 0; // Preconditioner type for Anderson Acceleration
   bool isInterfaceFree = false; // Make interfaces free
   bool isBRep = false; // Input data is B-Rep
-  bool noRegularization = false; // Disable Garanzha's regularization (PDE patch)
-  bool skipH2 = false; // PDE patch: no H2 stage, untangling directly from the initial guess
-  bool freePDE = false; // PDE patch, free interfaces: H2/H1 as for single patches
-  index_t linearSolver = 0; // Linear solvers of the PDE patch: 0 auto, 1 direct, 2 iterative
-  index_t preconditioner = 0; // Preconditioner of GMRES (PDE patch): 0 auto, 1-3 see below
-  index_t h1Form = 0;       // Regularized H1 stage: 0 original form, 1 weak Laplace equation of the inverse map
-  real_t safeguard = 100;   // Regularized H1 stage: divergence safeguard factor (0: off)
-  index_t extraNodes = 0;   // Regularized stage: additional Gauss-Lobatto nodes per direction
-  index_t adaptiveRounds = 0; // Regularized stage: max. adaptive refinements of the quadrature
+  // PDE-based method (option group PDE of gsBarrierPatch), initialized with
+  // the default values of the library
+  const gsOptionList pdeDefaults = gsBarrierCore<2, real_t>::defaultPDEOptions();
+  bool noRegularization = !pdeDefaults.getSwitch("Garanzha");
+  bool skipH2 = pdeDefaults.getSwitch("SkipH2");
+  bool freeInterfacePDE = !pdeDefaults.getSwitch("FreeInterfaceEnergy");
+  index_t linearSolver = pdeDefaults.getInt("LinearSolver");
+  index_t preconditioner = pdeDefaults.getInt("Preconditioner");
+  index_t h1Form = pdeDefaults.getInt("H1Form");
+  real_t safeguard = pdeDefaults.getReal("H1Safeguard");
+  index_t extraNodes = pdeDefaults.getInt("ExtraNodes");
+  index_t adaptiveRounds = pdeDefaults.getInt("AdaptiveRounds");
 
   // Constants for input file and description
   std::string INPUT_FILE = "breps/other/TUDflame.xml";
@@ -178,25 +184,26 @@ int main(int argc, char *argv[]) {
   cmd.addInt("a", "preconditionType", "Preconditioner type for Anderson Acceleration", AAPreconditionType);
   cmd.addInt("s", "linearSolver", "Linear solvers of the PDE patch with regularization: "
              "0 automatic (by problem size), 1 direct, 2 iterative", linearSolver);
-  cmd.addInt("", "precond", "PDE patch, preconditioner of GMRES: 0 automatic, "
+  cmd.addInt("", "preconditioner", "PDE patch, preconditioner of GMRES: 0 automatic, "
              "1 block Gauss-Seidel by coordinate (sparse LU), 2 algebraic "
              "multigrid (nodal), 3 block Gauss-Seidel (multigrid)", preconditioner);
-  cmd.addInt("", "h1form", "PDE patch, regularized H1 stage: 0 original form, "
+  cmd.addInt("", "h1Form", "PDE patch, regularized H1 stage: 0 original form, "
              "1 weak form of Laplace's equation for the inverse map", h1Form);
   cmd.addReal("", "safeguard", "PDE patch, regularized H1 stage: divergence "
               "safeguard factor (0: off)", safeguard);
-  cmd.addInt("", "extranodes", "PDE patch, regularized stage: additional "
+  cmd.addInt("", "extraNodes", "PDE patch, regularized stage: additional "
              "Gauss-Lobatto nodes per direction", extraNodes);
-  cmd.addInt("", "adaptive", "PDE patch, regularized stage: max. number of "
+  cmd.addInt("", "adaptiveRounds", "PDE patch, regularized stage: max. number of "
              "adaptive refinements where det(J) <= 0 between the nodes (0: off)",
              adaptiveRounds);
   cmd.addSwitch("free", "Make interfaces free", isInterfaceFree);
-  cmd.addSwitch("freepde", "PDE patch with --free: apply the H2/H1 stages as for "
-                "single patches (by default, the parameter domains are scaled by "
-                "chord lengths and the regularized Winslow energy is minimized)", freePDE);
-  cmd.addSwitch("noh2", "PDE patch (experimental): skip the H2 stage and start "
+  cmd.addSwitch("freeInterfacePDE", "PDE patch with --free: apply the H2/H1 "
+                "stages as for single patches (by default, the parameter domains "
+                "are scaled by chord lengths and the regularized Winslow energy "
+                "is minimized)", freeInterfacePDE);
+  cmd.addSwitch("skipH2", "PDE patch (experimental): skip the H2 stage and start "
                 "the untangling from the initial interior", skipH2);
-  cmd.addSwitch("noreg", "PDE patch: disable Garanzha's regularization, i.e., no "
+  cmd.addSwitch("noRegularization", "PDE patch: disable Garanzha's regularization, i.e., no "
                          "untangling and the original H1 solver (planar) or "
                          "the H2 solver only (volumes)", noRegularization);
   try { cmd.getValues(argc, argv); }
@@ -252,19 +259,20 @@ int main(int argc, char *argv[]) {
   //! [refine the geometry for better result]
 
   //! [perform analysis-suitable parameterization construction]
+  // the command-line values, overriding the defaults of gsBarrierPatch
   gsOptionList settings;
   settings.addInt("Verbose", "", verboseMode);
   settings.addInt("ParamMethod", "", paramMethod);
   settings.addInt("AAPreconditionType", "", AAPreconditionType);
-  settings.addSwitch("PDEGaranzha", "", !noRegularization);
-  settings.addSwitch("PDESkipH2", "", skipH2);
-  settings.addSwitch("PDEFreeInterfaceEnergy", "", !freePDE);
-  settings.addInt("PDELinearSolver", "", linearSolver);
-  settings.addInt("PDEPreconditioner", "", preconditioner);
-  settings.addInt("PDEH1Form", "", h1Form);
-  settings.addReal("PDEH1Safeguard", "", safeguard);
-  settings.addInt("PDEExtraNodes", "", extraNodes);
-  settings.addInt("PDEAdaptiveRounds", "", adaptiveRounds);
+  settings.addSwitch("PDE.Garanzha", "", !noRegularization);
+  settings.addSwitch("PDE.SkipH2", "", skipH2);
+  settings.addSwitch("PDE.FreeInterfaceEnergy", "", !freeInterfacePDE);
+  settings.addInt("PDE.LinearSolver", "", linearSolver);
+  settings.addInt("PDE.Preconditioner", "", preconditioner);
+  settings.addInt("PDE.H1Form", "", h1Form);
+  settings.addReal("PDE.H1Safeguard", "", safeguard);
+  settings.addInt("PDE.ExtraNodes", "", extraNodes);
+  settings.addInt("PDE.AdaptiveRounds", "", adaptiveRounds);
 
   gsMultiPatch<> result;
   if (geodim == 2) {
